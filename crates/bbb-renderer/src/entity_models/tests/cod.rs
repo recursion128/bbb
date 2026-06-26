@@ -1,5 +1,6 @@
 use super::*;
 
+use crate::entity_models::colored::cod_model_root_transform;
 use crate::entity_models::model::ModelCube;
 
 #[test]
@@ -135,19 +136,32 @@ fn cod_textured_cubes_match_vanilla_renderer() {
 #[test]
 fn cod_textured_mesh_uses_vanilla_geometry_and_animates() {
     let (atlas, _) = build_entity_model_texture_atlas(&cod_texture_images()).unwrap();
-    // Seven cubes → 168 textured vertices on the cutout pass.
+    // Vanilla `CodModel` calls `EntityModel(root)`, so the base submit uses the default
+    // `entityCutout` render type. The backend folds it into the cutout mesh, but the submission
+    // keeps the vanilla texture, render type, tint, transform, and default collector order.
     let base = EntityModelInstance::cod(910, [0.0, 64.0, 0.0], 0.0).with_in_water(true);
-    let still = entity_model_textured_mesh(&[base], &atlas);
-    assert_eq!(still.vertices.len(), 168);
+    let still_meshes = entity_model_textured_meshes(&[base], &atlas);
+    assert_cod_base_submission(&still_meshes, base, true);
+
+    // Seven cubes → 168 textured vertices on the cutout pass.
+    assert!(still_meshes.translucent.vertices.is_empty());
+    assert!(still_meshes.eyes.vertices.is_empty());
+    assert_eq!(still_meshes.cutout.vertices.len(), 168);
 
     // The tail sway / body wiggle reorient the mesh as the age advances.
-    let swimming = entity_model_textured_mesh(&[base.with_age_in_ticks(7.0)], &atlas);
-    assert_eq!(still.vertices.len(), swimming.vertices.len());
-    assert_ne!(still.vertices, swimming.vertices);
+    let swimming = entity_model_textured_meshes(&[base.with_age_in_ticks(7.0)], &atlas);
+    assert_cod_base_submission(&swimming, base.with_age_in_ticks(7.0), true);
+    assert_eq!(
+        still_meshes.cutout.vertices.len(),
+        swimming.cutout.vertices.len()
+    );
+    assert_ne!(still_meshes.cutout.vertices, swimming.cutout.vertices);
 
     // A beached cod flops onto its side.
-    let beached = entity_model_textured_mesh(&[base.with_in_water(false)], &atlas);
-    assert_ne!(still.vertices, beached.vertices);
+    let beached_instance = base.with_in_water(false);
+    let beached = entity_model_textured_meshes(&[beached_instance], &atlas);
+    assert_cod_base_submission(&beached, beached_instance, false);
+    assert_ne!(still_meshes.cutout.vertices, beached.cutout.vertices);
 }
 
 fn cod_texture_images() -> Vec<EntityModelTextureImage> {
@@ -159,4 +173,22 @@ fn cod_texture_images() -> Vec<EntityModelTextureImage> {
             EntityModelTextureImage::new(*texture, vec![index as u8; len])
         })
         .collect()
+}
+
+fn assert_cod_base_submission(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    in_water: bool,
+) {
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.texture, COD_TEXTURE_REF);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        submit.transform,
+        cod_model_root_transform(instance, in_water)
+    );
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
 }
