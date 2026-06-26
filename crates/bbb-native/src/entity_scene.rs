@@ -1283,6 +1283,7 @@ fn entity_model_instance(
         .with_goat_ramming_x_head_rot(goat_ramming_x_head_rot)
         .with_iron_golem_attack_ticks_remaining(source.iron_golem_attack_ticks_remaining)
         .with_iron_golem_offer_flower_tick(source.iron_golem_offer_flower_tick)
+        .with_snow_golem_pumpkin(source.snow_golem_pumpkin)
         .with_ravager_stunned_ticks_remaining(source.ravager_stunned_ticks_remaining)
         .with_ravager_attack_ticks_remaining(source.ravager_attack_ticks_remaining)
         .with_ravager_roar_animation(source.ravager_roar_animation)
@@ -6621,6 +6622,48 @@ mod tests {
             ItemEquipmentSlot::Saddle,
         )]));
         assert!(pig_saddle(&world, 110));
+    }
+
+    #[test]
+    fn entity_model_instances_project_snow_golem_pumpkin_render_state() {
+        const SNOW_GOLEM_PUMPKIN_DATA_ID: u8 = 16;
+
+        let pumpkin = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .snow_golem_pumpkin
+        };
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            111,
+            VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+            [1.0, 64.0, -3.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            112,
+            VANILLA_ENTITY_TYPE_COW_ID,
+            [3.0, 64.0, -3.0],
+        ));
+
+        assert!(
+            pumpkin(&world, 111),
+            "SnowGolem.DATA_PUMPKIN_ID defaults to bit 16"
+        );
+        assert!(!pumpkin(&world, 112));
+
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 111,
+            values: vec![EntityDataValue {
+                data_id: SNOW_GOLEM_PUMPKIN_DATA_ID,
+                serializer_id: 0,
+                value: EntityDataValueKind::Byte(0),
+            }],
+        }));
+        assert!(!pumpkin(&world, 111));
     }
 
     #[test]

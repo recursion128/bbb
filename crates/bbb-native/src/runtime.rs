@@ -41,7 +41,7 @@ use crate::{
     },
     item_entities::item_entity_billboards_from_world,
     item_frames::item_frame_models,
-    item_models::{dropped_item_models, held_item_models},
+    item_models::{dropped_item_models, entity_block_models, held_item_models},
     item_runtime::NativeItemRuntime,
     particle_runtime::ParticleEventSink,
     terrain_runtime::{
@@ -421,9 +421,11 @@ pub(crate) fn pump_network_and_terrain(
         held_item_models(&entity_instances, world, item_runtime, terrain_textures);
     // Item frames render their wooden border + framed item into the same two atlas draws.
     let item_frame_models = item_frame_models(world, item_runtime, terrain_textures);
+    let entity_block_meshes = entity_block_models(&entity_instances, terrain_textures);
     let mut block_item_meshes = dropped_item_models.block_meshes;
     block_item_meshes.extend(held_item_models.block_meshes);
     block_item_meshes.extend(item_frame_models.block_meshes);
+    block_item_meshes.extend(entity_block_meshes);
     let mut flat_item_meshes = dropped_item_models.flat_meshes;
     flat_item_meshes.extend(held_item_models.flat_meshes);
     flat_item_meshes.extend(item_frame_models.flat_meshes);

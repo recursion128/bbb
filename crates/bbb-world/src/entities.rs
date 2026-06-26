@@ -77,6 +77,7 @@ pub(crate) const VANILLA_ENTITY_TYPE_PALE_OAK_BOAT_ID: i32 = 94;
 pub(crate) const VANILLA_ENTITY_TYPE_PALE_OAK_CHEST_BOAT_ID: i32 = 95;
 pub(crate) const VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID: i32 = 116;
 pub(crate) const VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID: i32 = 118;
+pub(crate) const VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID: i32 = 121;
 pub(crate) const VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID: i32 = 122;
 pub(crate) const VANILLA_ENTITY_TYPE_SPRUCE_BOAT_ID: i32 = 125;
 pub(crate) const VANILLA_ENTITY_TYPE_SPRUCE_CHEST_BOAT_ID: i32 = 126;
@@ -592,6 +593,11 @@ pub struct EntityModelSourceState {
     /// golem holds a poppy out to a villager. `0` when not offering and for every non-golem.
     #[serde(default)]
     pub iron_golem_offer_flower_tick: i32,
+    /// Vanilla `SnowGolemRenderState.headBlock`: whether the snow golem has its carved pumpkin head
+    /// block. Projected from `SnowGolem.DATA_PUMPKIN_ID` byte bit 16, whose vanilla default is set.
+    /// `false` for every non-snow-golem entity.
+    #[serde(default)]
+    pub snow_golem_pumpkin: bool,
     /// Vanilla `RavagerRenderState.stunnedTicksRemaining` (partial-lerped `stunnedTick`, from entity
     /// event 39): the post-shield-block stun head shake. `0.0` when not stunned and for every non-ravager.
     #[serde(default)]

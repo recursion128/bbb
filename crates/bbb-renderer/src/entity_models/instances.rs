@@ -595,6 +595,10 @@ entity_render_state! {
     /// equipment item whose equipment asset provides a `NAUTILUS_BODY` layer. Baby living nautilus
     /// skip it because vanilla supplies no baby armor model.
     (with_nautilus_body_armor) nautilus_body_armor: Option<EntityArmorMaterial> = None;
+    /// Vanilla `SnowGolemRenderState.headBlock`: a carved pumpkin block model on the snow golem head
+    /// while the synced `SnowGolem.DATA_PUMPKIN_ID` flag is set. The block layer is baked by native
+    /// into the shared block-item model pass because it samples the terrain atlas.
+    (with_snow_golem_pumpkin) snow_golem_pumpkin: bool = false;
     /// Vanilla `LlamaRenderState.bodyItem`: an adult llama/trader-llama body equipment item whose
     /// equipment asset is one of the 16 carpet colors. Baby llamas ignore body items for the decor
     /// layer; trader llamas render their built-in decor when this is `None`.
@@ -2056,6 +2060,7 @@ mod tests {
                 camel_saddle_ridden: false,
                 nautilus_saddle: false,
                 nautilus_body_armor: None,
+                snow_golem_pumpkin: false,
                 llama_body_decor: None,
                 illager_spellcasting: false,
                 illager_celebrating: false,

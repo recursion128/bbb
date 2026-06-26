@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
 use bbb_renderer::{
     bake_generated_item_quads, bake_item_model_mesh, humanoid_hand_attach_transform,
-    EntityModelInstance, ItemModelMesh, ItemModelQuad,
+    snow_golem_head_block_transform, EntityModelInstance, ItemModelMesh, ItemModelQuad,
 };
 use bbb_world::WorldStore;
 use glam::{Mat4, Vec3};
@@ -39,6 +39,7 @@ const GENERATED_GROUND_FALLBACK: BlockModelDisplayTransform = BlockModelDisplayT
 /// Vanilla `FLAT_ITEM_DEPTH_THRESHOLD` / `ITEM_MIN_HOVER_HEIGHT`: a rendered model thinner than this in Z
 /// is stacked back-to-front; a thicker one is scattered in 3D.
 const FLAT_ITEM_DEPTH_THRESHOLD: f32 = 0.0625;
+const CARVED_PUMPKIN_BLOCK_ID: &str = "minecraft:carved_pumpkin";
 
 /// The baked item-model meshes for this frame, split by which atlas they sample (block-items → blocks
 /// atlas, flat items → item atlas), plus the set of dropped-item entity ids they cover (so the billboard
@@ -47,6 +48,43 @@ pub(crate) struct DroppedItemModels {
     pub block_meshes: Vec<ItemModelMesh>,
     pub flat_meshes: Vec<ItemModelMesh>,
     pub handled_entity_ids: BTreeSet<i32>,
+}
+
+/// Bakes entity-attached block-model layers that sample the blocks atlas. This is the block-model
+/// counterpart to held items: the renderer supplies the posed entity-bone transform, and native resolves
+/// the block model through the terrain atlas state.
+pub(crate) fn entity_block_models(
+    instances: &[EntityModelInstance],
+    terrain_textures: &TerrainTextureState,
+) -> Vec<ItemModelMesh> {
+    let transforms: Vec<Mat4> = instances
+        .iter()
+        .filter_map(snow_golem_head_block_transform)
+        .collect();
+    if transforms.is_empty() {
+        return Vec::new();
+    }
+
+    let pumpkin_properties = carved_pumpkin_default_properties();
+    let Some(carved_pumpkin_quads) =
+        terrain_textures.block_item_quads(CARVED_PUMPKIN_BLOCK_ID, &pumpkin_properties)
+    else {
+        return Vec::new();
+    };
+    if carved_pumpkin_quads.is_empty() {
+        return Vec::new();
+    }
+
+    transforms
+        .into_iter()
+        .map(|transform| bake_item_model_mesh(&carved_pumpkin_quads, transform))
+        .collect()
+}
+
+/// Vanilla `Blocks.CARVED_PUMPKIN.defaultBlockState()` sets `FACING = NORTH`; the snow-golem head layer
+/// uses that exact blockstate.
+fn carved_pumpkin_default_properties() -> BTreeMap<String, String> {
+    BTreeMap::from([("facing".to_string(), "north".to_string())])
 }
 
 /// Bakes a 3D model for every dropped item entity — a block model for block items, an extruded sprite
@@ -480,6 +518,14 @@ mod tests {
             tint: [1.0; 4],
             shade: 1.0,
         }]
+    }
+
+    #[test]
+    fn carved_pumpkin_layer_uses_vanilla_default_block_state() {
+        assert_eq!(
+            carved_pumpkin_default_properties(),
+            BTreeMap::from([("facing".to_string(), "north".to_string())])
+        );
     }
 
     #[test]

@@ -1813,8 +1813,15 @@ When an agent does any of the following, update this file in the same slice:
       upper-body quarter-yaw twist (`upperBody.yRot = headYaw * 0.25`) and the two
       stick arms orbiting that twist (`arm.yRot = upperBodyYRot [+ π]`, with `x`/`z`
       recomputed from cos/sin so the arms ride the body and collapse to `z = 0` when
-      facing forward), on both render paths (colored and textured); carved pumpkin
-      head block layer and pumpkin/no-pumpkin state projection remain unsupported
+      facing forward), on both render paths (colored and textured). The
+      `SnowGolemHeadLayer` carved-pumpkin block model is now implemented through
+      the entity-attached block-model path: bbb-world projects `SnowGolem.DATA_PUMPKIN_ID`
+      (index 16 BYTE, bit 16, vanilla default on), native resolves
+      `Blocks.CARVED_PUMPKIN.defaultBlockState()` (`facing=north`) through the terrain
+      block-model catalog, and the renderer-owned head attachment transform mirrors
+      vanilla's head-bone transform plus `translate(0,-0.34375,0)`, `rotateY(180°)`,
+      `scale(0.625,-0.625,-0.625)`, `translate(-0.5,-0.5,-0.5)`. The invisible-glowing
+      outline-only variant remains covered by the broader deferred entity-outline path
     - witch entities as renderer-owned vanilla 26.1
       `WitchModel.createBodyLayer()` geometry, including the
       `VillagerModel.createBodyModel()` body/arms/legs/nose, the four nested
@@ -3179,8 +3186,7 @@ When an agent does any of the following, update this file in the same slice:
     spider walk-animation presentation (the 180-degree death flip is implemented),
     enderman held-block block-model render and creepy render jitter (the
     carried-block arm pose and creepy head/hat shift are implemented),
-    iron golem crackiness/flower/animation presentation, and
-    snow golem pumpkin/animation presentation, armor stand equipment/custom
+    iron golem flower block/body-wobble presentation, armor stand equipment/custom
     layers/wiggle/marker presentation, slime/magma-cube squish/full
     render-state lighting/sorting presentation, and precise vanilla mesh parity
     for primitive/placeholder entity families.

@@ -1134,6 +1134,58 @@ fn entity_model_sources_project_pig_saddle_from_saddle_slot() {
 }
 
 #[test]
+fn entity_model_sources_project_snow_golem_pumpkin_flag() {
+    const VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID: i32 = 121;
+    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
+    const SNOW_GOLEM_PUMPKIN_DATA_ID: u8 = 16;
+
+    fn pumpkin(store: &WorldStore, entity_id: i32) -> bool {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == entity_id)
+            .unwrap()
+            .snow_golem_pumpkin
+    }
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        70,
+        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        71,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+
+    assert!(
+        pumpkin(&store, 70),
+        "SnowGolem.defineSynchedData defaults DATA_PUMPKIN_ID to bit 16"
+    );
+    assert!(!pumpkin(&store, 71));
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 70,
+        values: vec![ProtocolEntityDataValue {
+            data_id: SNOW_GOLEM_PUMPKIN_DATA_ID,
+            serializer_id: 0,
+            value: EntityDataValueKind::Byte(0),
+        }],
+    }));
+    assert!(!pumpkin(&store, 70));
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 70,
+        values: vec![ProtocolEntityDataValue {
+            data_id: SNOW_GOLEM_PUMPKIN_DATA_ID,
+            serializer_id: 0,
+            value: EntityDataValueKind::Byte(16),
+        }],
+    }));
+    assert!(pumpkin(&store, 70));
+}
+
+#[test]
 fn entity_model_sources_project_equine_saddle_and_ridden_state() {
     use crate::ItemEquipmentSlot;
     use std::collections::BTreeMap;

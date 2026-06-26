@@ -23,9 +23,9 @@ use super::{
     VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
     VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
     VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-    VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
-    VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID,
-    VANILLA_UPSIDE_DOWN_NAMES,
+    VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+    VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+    VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_UPSIDE_DOWN_NAMES,
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, camel_is_dashing, creaking_can_move,
@@ -99,6 +99,12 @@ const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
 /// Vanilla `Mob.MOB_FLAG_AGGRESSIVE` (4): the `DATA_MOB_FLAGS_ID` bit set while a mob is
 /// in its aggressive AI state (`Mob.isAggressive`).
 const MOB_FLAG_AGGRESSIVE: i8 = 4;
+
+/// Vanilla `SnowGolem.DATA_PUMPKIN_ID` data id (16): the byte holding the carved-pumpkin-head flag.
+const VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID: u8 = 16;
+
+/// Vanilla `SnowGolem.PUMPKIN_FLAG` (16). `defineSynchedData` initializes the byte to this value.
+const SNOW_GOLEM_PUMPKIN_FLAG: i8 = 16;
 
 /// Vanilla `Enderman.DATA_CARRY_STATE` data id (16): the optional carried `BlockState`.
 /// The enderman is the first `Monster` accessor after `Mob.DATA_MOB_FLAGS_ID` (15).
@@ -735,6 +741,20 @@ impl EntityStore {
                 .unwrap_or(0)
                 & VEX_FLAG_IS_CHARGING
                 != 0;
+        // Vanilla `SnowGolemRenderer.extractRenderState`: when `SnowGolem.hasPumpkin()` is true, the
+        // renderer resolves `Blocks.CARVED_PUMPKIN.defaultBlockState()` into `state.headBlock`. The
+        // snow golem's synced byte defaults to 16, so a newly spawned golem shows the pumpkin until the
+        // server clears that bit.
+        let snow_golem_pumpkin = identity.entity_type_id == VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID
+            && self
+                .metadata_byte(
+                    id,
+                    VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID,
+                    SNOW_GOLEM_PUMPKIN_FLAG,
+                )
+                .unwrap_or(SNOW_GOLEM_PUMPKIN_FLAG)
+                & SNOW_GOLEM_PUMPKIN_FLAG
+                != 0;
         // Vanilla `WitherBossRenderer.extractRenderState`: `state.invulnerableTicks =
         // invulnerableTicks > 0 ? invulnerableTicks - partialTicks : 0.0` (the synced `DATA_ID_INV`
         // spawn countdown, lerped against the partial tick). It drives both the `scale()` spawn-charge
@@ -912,6 +932,7 @@ impl EntityStore {
             iron_golem_offer_flower_tick: client_animations
                 .animations
                 .iron_golem_offer_flower_tick(),
+            snow_golem_pumpkin,
             ravager_stunned_ticks_remaining: client_animations
                 .animations
                 .ravager_stunned_ticks_remaining(partial_ticks),
