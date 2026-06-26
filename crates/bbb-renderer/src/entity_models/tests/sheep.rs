@@ -717,8 +717,9 @@ fn sheep_head_eat_position_scale_matches_vanilla_curve() {
 fn sheep_head_eat_angle_scale_matches_vanilla_curve() {
     // Vanilla Sheep.getHeadEatAngleScale(partialTick).
     let plateau = std::f32::consts::PI / 5.0;
-    // Not eating: vanilla folds in the head-look pitch, which is not yet
-    // projected, so the resting angle is 0.0.
+    // Not eating: vanilla folds in the head-look pitch. The eat-pose scalar
+    // only carries the eating branches, so the resting eat angle is 0.0 and
+    // `sheep_head_pose` applies the separate head-look pitch.
     assert_eq!(SheepHeadEatPose::from_eat_tick(0, 0.0).angle_scale, 0.0);
     // The ramp-in/ramp-out and short ticks hold the constant plateau angle.
     for tick in [1, 2, 3, 4, 37, 38, 39, 40] {

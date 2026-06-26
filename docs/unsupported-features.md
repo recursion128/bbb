@@ -1488,10 +1488,12 @@ When an agent does any of the following, update this file in the same slice:
       `SheepModel`/`SheepFurModel.setupAnim` eat-grass head pose (`head.y +=
       headEatPositionScale * 9.0 * ageScale`, `head.xRot = headEatAngleScale`)
       projected from entity event `10` and the canonical `eatAnimationTick`
-      countdown into the base, wool, and undercoat head part; invisible glowing
-      outline wool rendering, base-model invisibility/outline handling, the
-      non-eating head-look pitch fallback, lighting, overlay, and remaining
-      render-state extraction remain unsupported
+      countdown into the base, wool, and undercoat head part, including the
+      non-eating `Sheep.getHeadEatAngleScale` head-look fallback through the
+      shared projection (`getXRot(partialTick) * PI/180` while not eating);
+      invisible glowing outline wool rendering, base-model invisibility/outline
+      handling, lighting, overlay, and remaining render-state extraction remain
+      unsupported
     - wolf entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AdultWolfModel`, `BabyWolfModel`, and `WolfRenderer`,
       including nested real-head and tail parts plus baked baby
