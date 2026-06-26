@@ -1472,9 +1472,11 @@ When an agent does any of the following, update this file in the same slice:
       variant metadata is present, texture-backed base layer pass emission,
       adult/baby/warm/cold model-layer selection, official PNG atlas
       upload/bind/sample path, and the vanilla `QuadrupedModel.setupAnim`
-      head-look yaw/pitch on the head part; variant sound metadata,
-      custom/datapack cow variant asset decoding, walk animation, and lighting
-      remain unsupported
+      head-look yaw/pitch on the head part plus the standard diagonal leg walk
+      swing (`cos(pos * 0.6662 [+ pi]) * 1.4 * speed`) on adult, baby,
+      warm, and cold textured models; variant sound metadata,
+      custom/datapack cow variant asset decoding, and lighting remain
+      unsupported
     - sheep entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `SheepModel`, `BabySheepModel`, and `SheepRenderer`, with
       official base/wool/undercoat texture references, texture-backed base,
