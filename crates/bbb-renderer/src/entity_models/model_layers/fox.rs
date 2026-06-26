@@ -45,10 +45,9 @@ const fn scale_channel(keyframes: &'static [Keyframe]) -> AnimationChannel {
 //
 // The baby's `FoxBabyAnimation.FOX_BABY_WALK` keyframe gait is reproduced ([`FOX_BABY_WALK`],
 // applied in [`fox_set_walking_pose`] via [`apply_fox_baby_walk`]), so a moving baby scampers with the
-// diagonal trot, head lift, leg stretch, and tail cock. Deferred: the `FoxRenderer.setupRotations` body-PITCH flip for
-// `isPouncing || isFaceplanted` (a renderer root-transform concern, like the death tip-over); the four
-// `Fox.Variant` (red/snow) idle/sleeping textures and the held-item layer (so the colored debug path
-// renders one orange tint).
+// diagonal trot, head lift, leg stretch, and tail cock. The `FoxRenderer.setupRotations` body-pitch
+// flip for `isPouncing || isFaceplanted` lives in `fox_model_root_transform`; the four `Fox.Variant`
+// (red/snow) idle/sleeping textures and the held-item layer are also wired.
 
 // `head` cubes: the 8×6×6 skull, the two 2×2×1 ears, and the 4×2×3 snout.
 pub(in crate::entity_models) const FOX_HEAD_CUBES: [ModelCube; 1] = [ModelCube::new(
@@ -742,8 +741,8 @@ fn apply_fox_baby_walk(root: &mut ModelPart, walk_animation_pos: f32, walk_anima
 
 /// Mutable fox model, mirroring vanilla `AdultFoxModel` / `BabyFoxModel`. The named root parts hang off
 /// a synthetic root, built from the baked colored geometry for the selected `baby` layout. The unified
-/// tree drives both render paths; `setup_anim` mirrors `FoxModel.setupAnim` faithfully (the renderer
-/// pounce/faceplant body pitch stays deferred).
+/// tree drives both render paths; `setup_anim` mirrors `FoxModel.setupAnim` faithfully, while
+/// `fox_model_root_transform` carries the renderer-level pounce / faceplant body pitch.
 pub(in crate::entity_models) struct FoxModel {
     root: ModelPart,
     baby: bool,

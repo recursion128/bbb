@@ -7,8 +7,9 @@ use std::f32::consts::{FRAC_PI_2, PI};
 use glam::{Mat4, Vec3};
 
 use super::colored::{
-    entity_model_root_transform, player_model_root_transform, villager_adult_model_root_transform,
-    wither_skeleton_model_root_transform, zombie_variant_root_transform,
+    entity_model_root_transform, fox_model_root_transform, player_model_root_transform,
+    villager_adult_model_root_transform, wither_skeleton_model_root_transform,
+    zombie_variant_root_transform,
 };
 use super::model::EntityModel;
 use super::model_layers::{
@@ -342,7 +343,7 @@ pub fn fox_held_item_transform(instance: &EntityModelInstance) -> Option<Mat4> {
     let mut model = FoxModel::new(baby);
     model.prepare(instance);
     let head =
-        entity_model_root_transform(*instance) * model.root().try_child_attach_transform("head")?;
+        fox_model_root_transform(*instance) * model.root().try_child_attach_transform("head")?;
     let sleeping = instance.render_state.fox_is_sleeping;
     let offset = match (baby, sleeping) {
         (true, true) => Vec3::new(0.4, 0.26, 0.15),
@@ -765,6 +766,23 @@ mod tests {
             0.0
         ))
         .is_none());
+    }
+
+    #[test]
+    fn fox_held_item_follows_faceplant_renderer_pitch() {
+        // `FoxHeldItemLayer` runs after `FoxRenderer.setupRotations` on the same pose stack. While
+        // faceplanted, `FoxModel.setupAnim` suppresses the normal head look, so a pitch-only movement here
+        // proves the layer picked up the renderer-level root `Rx(-state.xRot)`.
+        let fox = EntityModelInstance::fox(25, [0.0, 64.0, 0.0], 0.0, false, FoxModelVariant::Red)
+            .with_fox_is_faceplanted(true)
+            .with_age_in_ticks(0.0);
+        let flat = fox_held_item_transform(&fox.with_head_look(0.0, 0.0))
+            .unwrap()
+            .transform_point3(Vec3::ZERO);
+        let pitched = fox_held_item_transform(&fox.with_head_look(0.0, 30.0))
+            .unwrap()
+            .transform_point3(Vec3::ZERO);
+        assert_ne!(flat, pitched);
     }
 
     #[test]

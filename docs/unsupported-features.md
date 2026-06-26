@@ -3150,13 +3150,14 @@ When an agent does any of the following, update this file in the same slice:
       driven off the projected `walk_animation_pos/speed` via `keyframe_walk_sample` (zero amplitude at
       rest). Renderer tests pin the def (0.5s looping, 7 bones, the leg kick/stretch, the head lift) and
       that a walking baby scampers (head included, unlike the adult swing) while a standing one holds
-      bind. Deferred: the `FoxRenderer.setupRotations` body-PITCH flip for `isPouncing || isFaceplanted`
-      (a renderer root-transform concern, like the death tip-over). The textured path now binds the full `FoxRenderer.getTextureLocation` matrix: the
+      bind. `FoxRenderer.setupRotations`'s pounce / faceplant body-pitch branch is now reproduced:
+      after the standard living-entity setup rotation and before the model flip, `fox_model_root_transform`
+      applies `Rx(-state.xRot)` while `isPouncing || isFaceplanted`, and the fox held-item transform uses
+      the same root so carried items pitch with the body. The textured path now binds the full `FoxRenderer.getTextureLocation` matrix: the
       native scene reads `DATA_TYPE_ID` (18, int) and `Fox.Variant.byId` selects red/snow, crossed
       with the age (`fox`/`fox_baby`) and the projected `fox_is_sleeping` flag (`fox_sleep`/
       `fox_snow_sleep` and their `_baby` cells) — eight textures total. The held-item layer is now
-      implemented through the shared item-model pass; only the `FoxRenderer.setupRotations`
-      body-PITCH flip for `isPouncing || isFaceplanted` remains deferred for fox-specific presentation.
+      implemented through the shared item-model pass.
     - cat and ocelot entities (adult and baby) as renderer-owned vanilla 26.1
       `AdultFelineModel.createBodyMesh()` / `BabyFelineModel.createBodyMesh()` geometry on the colored
       path: the native entity scene (`entity_scene.rs`) now splits vanilla type ids `21` (cat) and `91`

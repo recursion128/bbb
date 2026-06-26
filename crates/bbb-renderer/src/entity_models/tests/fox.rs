@@ -379,6 +379,43 @@ fn sleeping_fox_overrides_the_head_pose() {
 }
 
 #[test]
+fn fox_pounce_and_faceplant_setup_rotations_pitch_the_whole_model() {
+    // Vanilla `FoxRenderer.setupRotations`: after `super.setupRotations`, pouncing or faceplanted foxes
+    // rotate the whole model by `Axis.XP.rotationDegrees(-state.xRot)`. Use a baby fox for the pounce
+    // check because `BabyFoxModel` has no pounce model-pose override; any non-head movement here is the
+    // renderer root pitch, not `AdultFoxModel.setPouncingPose`.
+    let base = EntityModelInstance::fox(470, [0.0, 64.0, 0.0], 0.0, true, FoxModelVariant::Red);
+
+    let standing_flat = entity_model_mesh(&[base.with_head_look(0.0, 0.0)]);
+    let standing_pitched = entity_model_mesh(&[base.with_head_look(0.0, 30.0)]);
+    assert_eq!(
+        standing_flat.vertices[96..],
+        standing_pitched.vertices[96..],
+        "without the renderer pounce/faceplant branch, pitch only turns the head"
+    );
+
+    let pouncing_flat =
+        entity_model_mesh(&[base.with_fox_is_pouncing(true).with_head_look(0.0, 0.0)]);
+    let pouncing_pitched =
+        entity_model_mesh(&[base.with_fox_is_pouncing(true).with_head_look(0.0, 30.0)]);
+    assert_ne!(
+        pouncing_flat.vertices[96..],
+        pouncing_pitched.vertices[96..],
+        "pouncing applies the pitch to the whole model"
+    );
+
+    let faceplanted_flat =
+        entity_model_mesh(&[base.with_fox_is_faceplanted(true).with_head_look(0.0, 0.0)]);
+    let faceplanted_pitched =
+        entity_model_mesh(&[base.with_fox_is_faceplanted(true).with_head_look(0.0, 30.0)]);
+    assert_ne!(
+        faceplanted_flat.vertices[96..],
+        faceplanted_pitched.vertices[96..],
+        "faceplanted applies the pitch to the whole model"
+    );
+}
+
+#[test]
 fn fox_exposes_stable_model_keys() {
     // The model key tracks only the body layout (adult/baby); the colour variant shares geometry.
     for variant in [FoxModelVariant::Red, FoxModelVariant::Snow] {

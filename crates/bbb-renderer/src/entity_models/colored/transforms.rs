@@ -21,10 +21,18 @@ const GHAST_SCALE: f32 = 4.5;
 const HAPPY_GHAST_SCALE: f32 = 4.0;
 
 pub(in crate::entity_models) fn entity_model_root_transform(instance: EntityModelInstance) -> Mat4 {
+    living_entity_model_root_transform_with_extra_setup_rotation(instance, Mat4::IDENTITY)
+}
+
+fn living_entity_model_root_transform_with_extra_setup_rotation(
+    instance: EntityModelInstance,
+    setup_rotation_tail: Mat4,
+) -> Mat4 {
     Mat4::from_translation(Vec3::from_array(instance.position))
         * entity_pre_scale_translation(instance)
         * Mat4::from_scale(Vec3::splat(instance.render_state.scale))
         * entity_setup_rotations_transform(instance)
+        * setup_rotation_tail
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
         * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
 }
@@ -70,6 +78,20 @@ pub(in crate::entity_models) fn creeper_model_root_transform(
         instance,
         Mat4::from_scale(Vec3::new(sx, sy, sz)),
     )
+}
+
+/// Vanilla `FoxRenderer.setupRotations`: after the standard living-entity setup rotation
+/// (`super.setupRotations`) and before the model flip / `-1.501` translate, a pouncing or faceplanted
+/// fox applies `Axis.XP.rotationDegrees(-state.xRot)`. This pitches the whole model and all layers by
+/// the render-state head pitch; every other fox uses the standard root transform.
+pub(in crate::entity_models) fn fox_model_root_transform(instance: EntityModelInstance) -> Mat4 {
+    let setup_rotation_tail =
+        if instance.render_state.fox_is_pouncing || instance.render_state.fox_is_faceplanted {
+            Mat4::from_rotation_x((-instance.render_state.head_pitch).to_radians())
+        } else {
+            Mat4::IDENTITY
+        };
+    living_entity_model_root_transform_with_extra_setup_rotation(instance, setup_rotation_tail)
 }
 
 /// Vanilla `WitherBossRenderer.scale` uniform model scale, applied at the per-renderer `this.scale()`
