@@ -920,6 +920,8 @@ fn entity_model_instance(
         item_runtime,
         EntityDynamicPlayerTextureKind::Elytra,
     );
+    let (player_chest_equipment_has_wings, player_chest_equipment_has_humanoid) =
+        player_chest_equipment_layers(&source, world, item_runtime);
     // Only skeletons drive the `BOW_AND_ARROW` aim pose; resolve the held item just for them to avoid a
     // per-entity item lookup for every mob.
     let main_hand_holds_bow =
@@ -1279,6 +1281,8 @@ fn entity_model_instance(
         .with_player_off_hand_item_pose(player_off_hand_item_pose)
         .with_player_cape_texture(player_cape_texture)
         .with_player_elytra_texture(player_elytra_texture)
+        .with_player_chest_equipment_has_wings(player_chest_equipment_has_wings)
+        .with_player_chest_equipment_has_humanoid(player_chest_equipment_has_humanoid)
         .with_use_item_off_hand(source.use_item_off_hand)
         .with_main_hand_holds_crossbow(main_hand_holds_crossbow)
         .with_illager_main_hand_empty(illager_main_hand_empty)
@@ -2449,6 +2453,32 @@ fn player_profile_texture(
     let info = world.player_info_entry(source.uuid)?;
     item_runtime
         .player_profile_texture_for_profile(&player_info_profile_resolvable(&info.profile), kind)
+}
+
+fn player_chest_equipment_layers(
+    source: &EntityModelSourceState,
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> (bool, bool) {
+    if source.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID {
+        return (false, false);
+    }
+    let Some(item_runtime) = item_runtime else {
+        return (false, false);
+    };
+    let Some(stack) = world.equipment_item(source.entity_id, EquipmentSlot::Chest) else {
+        return (false, false);
+    };
+    if !item_stack_non_empty(&stack) {
+        return (false, false);
+    }
+    let Some(item_id) = stack.item_id else {
+        return (false, false);
+    };
+    (
+        item_runtime.item_equipment_asset_has_wings_layer(item_id),
+        item_runtime.item_equipment_asset_has_humanoid_layer(item_id),
+    )
 }
 
 fn player_info_profile_resolvable(
@@ -7924,6 +7954,117 @@ mod tests {
         assert_ne!(cape.handle, 0);
         assert_ne!(elytra.handle, 0);
         assert_ne!(cape.handle, elytra.handle);
+    }
+
+    #[test]
+    fn entity_model_instances_project_player_chest_equipment_layers() {
+        const CHESTPLATE_ID: i32 = 0;
+        const ELYTRA_ID: i32 = 1;
+
+        let registry: bbb_pack::ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+            "resource_ids": [
+                "minecraft:diamond_chestplate",
+                "minecraft:elytra"
+            ],
+            "protocol_ids": {
+                "minecraft:diamond_chestplate": CHESTPLATE_ID,
+                "minecraft:elytra": ELYTRA_ID
+            },
+            "default_equipment_slots": {
+                "minecraft:diamond_chestplate": "chest",
+                "minecraft:elytra": "chest"
+            },
+            "humanoid_armor_assets": {
+                "minecraft:diamond_chestplate": "diamond"
+            },
+            "equippable_assets": {
+                "minecraft:diamond_chestplate": "diamond",
+                "minecraft:elytra": "elytra"
+            }
+        }))
+        .unwrap();
+        let equipment_assets: bbb_pack::EquipmentAssetCatalog =
+            serde_json::from_value(serde_json::json!({
+                "assets": {
+                    "minecraft:diamond": {
+                        "layers": {
+                            "humanoid": [
+                                {
+                                    "texture": "minecraft:diamond",
+                                    "texture_location": "minecraft:textures/entity/equipment/humanoid/diamond.png",
+                                    "use_player_texture": false
+                                }
+                            ]
+                        }
+                    },
+                    "minecraft:elytra": {
+                        "layers": {
+                            "wings": [
+                                {
+                                    "texture": "minecraft:elytra",
+                                    "texture_location": "minecraft:textures/entity/equipment/wings/elytra.png",
+                                    "use_player_texture": true
+                                }
+                            ]
+                        }
+                    }
+                }
+            }))
+            .unwrap();
+        let runtime = NativeItemRuntime::for_test_with_registry_and_equipment_assets(
+            registry,
+            equipment_assets,
+        );
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            1553,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            1554,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            [3.0, 64.0, -2.0],
+        ));
+        let equip = |entity_id: i32, item_id: Option<i32>, count: i32| SetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Chest,
+                item: ItemStackSummary {
+                    item_id,
+                    count,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            }],
+        };
+        let state = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, Some(&runtime), 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+        };
+
+        assert!(world.apply_set_equipment(equip(1553, Some(ELYTRA_ID), 1)));
+        let with_elytra = state(&world, 1553);
+        assert!(with_elytra.player_chest_equipment_has_wings);
+        assert!(!with_elytra.player_chest_equipment_has_humanoid);
+
+        assert!(world.apply_set_equipment(equip(1553, Some(CHESTPLATE_ID), 1)));
+        let with_chestplate = state(&world, 1553);
+        assert!(!with_chestplate.player_chest_equipment_has_wings);
+        assert!(with_chestplate.player_chest_equipment_has_humanoid);
+
+        assert!(world.apply_set_equipment(equip(1553, None, 0)));
+        let empty_chest = state(&world, 1553);
+        assert!(!empty_chest.player_chest_equipment_has_wings);
+        assert!(!empty_chest.player_chest_equipment_has_humanoid);
+
+        assert!(world.apply_set_equipment(equip(1554, Some(ELYTRA_ID), 1)));
+        let zombie = state(&world, 1554);
+        assert!(!zombie.player_chest_equipment_has_wings);
+        assert!(!zombie.player_chest_equipment_has_humanoid);
     }
 
     #[test]

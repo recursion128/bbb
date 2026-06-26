@@ -58,6 +58,11 @@ pub struct ItemRegistryCatalog {
     /// for the `HumanoidArmorLayer` texture path. Only `.humanoidArmor(...)` items appear here.
     #[serde(default)]
     humanoid_armor_assets: BTreeMap<String, String>,
+    /// Resource id -> equippable equipment-asset name. Humanoid armor contributes the same asset as
+    /// `humanoid_armor_assets`; explicit `Equippable.builder(...).setAsset(EquipmentAssets.X)` items
+    /// such as elytra contribute their declared asset.
+    #[serde(default)]
+    equippable_assets: BTreeMap<String, String>,
     #[serde(default)]
     default_mount_body_armor_kinds: BTreeMap<String, ItemMountBodyArmorKind>,
     /// Resource id -> mount body armor equipment-asset name (`ArmorMaterials.<MAT>` ->
@@ -182,6 +187,7 @@ impl ItemRegistryCatalog {
         let mut max_stack_size = BTreeMap::new();
         let mut default_equipment_slots = BTreeMap::new();
         let mut humanoid_armor_assets = BTreeMap::new();
+        let mut equippable_assets = BTreeMap::new();
         let mut default_mount_body_armor_kinds = BTreeMap::new();
         let mut mount_body_armor_assets = BTreeMap::new();
         let mut default_piercing_weapon_ids = BTreeSet::new();
@@ -197,6 +203,7 @@ impl ItemRegistryCatalog {
             let stack_size = max_stack_size_for_declaration(expression)?;
             let equipment_slot = equipment_slot_for_declaration(expression)?;
             let humanoid_armor_asset = humanoid_armor_asset_for_declaration(expression)?;
+            let explicit_equippable_asset = explicit_equippable_asset_for_declaration(expression)?;
             let mount_body_armor_kind = mount_body_armor_kind_for_declaration(expression);
             let mount_body_armor_asset = mount_body_armor_asset_for_declaration(expression)?;
             let default_piercing_weapon = default_piercing_weapon_for_declaration(expression);
@@ -217,6 +224,10 @@ impl ItemRegistryCatalog {
                 }
                 if let Some(asset) = &humanoid_armor_asset {
                     humanoid_armor_assets.insert(resource_id.clone(), asset.clone());
+                    equippable_assets.insert(resource_id.clone(), asset.clone());
+                }
+                if let Some(asset) = &explicit_equippable_asset {
+                    equippable_assets.insert(resource_id.clone(), asset.clone());
                 }
                 if let Some(kind) = mount_body_armor_kind {
                     default_mount_body_armor_kinds.insert(resource_id.clone(), kind);
@@ -264,6 +275,7 @@ impl ItemRegistryCatalog {
             max_stack_size,
             default_equipment_slots,
             humanoid_armor_assets,
+            equippable_assets,
             default_mount_body_armor_kinds,
             mount_body_armor_assets,
             default_piercing_weapon_ids,
@@ -319,6 +331,11 @@ impl ItemRegistryCatalog {
         self.humanoid_armor_assets
             .get(&resource_id)
             .map(String::as_str)
+    }
+
+    pub fn equippable_asset(&self, resource_id: &str) -> Option<&str> {
+        let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
+        self.equippable_assets.get(&resource_id).map(String::as_str)
     }
 
     pub fn mount_body_armor_kind(&self, resource_id: &str) -> Option<ItemMountBodyArmorKind> {
@@ -555,6 +572,14 @@ fn tool_material_durability(material: &str) -> Result<i32> {
 fn humanoid_armor_asset_for_declaration(expression: &str) -> Result<Option<String>> {
     Ok(humanoid_armor_material_and_type(expression)?
         .map(|(material, _armor_type)| material.to_lowercase()))
+}
+
+fn explicit_equippable_asset_for_declaration(expression: &str) -> Result<Option<String>> {
+    Ok(optional_capture(
+        r#"\.setAsset\(\s*EquipmentAssets\.([A-Z_]+)\s*\)"#,
+        expression,
+    )?
+    .map(|asset| asset.to_lowercase()))
 }
 
 fn humanoid_armor_material_and_type(expression: &str) -> Result<Option<(String, String)>> {
@@ -1231,7 +1256,9 @@ mod tests {
                   new Item.Properties()
                      .component(
                         DataComponents.EQUIPPABLE,
-                        Equippable.builder(EquipmentSlot.CHEST).build()
+                        Equippable.builder(EquipmentSlot.CHEST)
+                           .setAsset(EquipmentAssets.ELYTRA)
+                           .build()
                      )
                );
                public static final Item SHIELD = registerItem(
@@ -1339,6 +1366,13 @@ mod tests {
         assert_eq!(catalog.humanoid_armor_asset("minecraft:horse_armor"), None);
         assert_eq!(catalog.humanoid_armor_asset("minecraft:wolf_armor"), None);
         assert_eq!(catalog.humanoid_armor_asset("minecraft:stone"), None);
+        assert_eq!(
+            catalog.equippable_asset("minecraft:diamond_chestplate"),
+            Some("diamond")
+        );
+        assert_eq!(catalog.equippable_asset("minecraft:elytra"), Some("elytra"));
+        assert_eq!(catalog.equippable_asset("minecraft:carved_pumpkin"), None);
+        assert_eq!(catalog.equippable_asset("minecraft:stone"), None);
         assert_eq!(
             catalog.mount_body_armor_kind("minecraft:horse_armor"),
             Some(ItemMountBodyArmorKind::Horse)

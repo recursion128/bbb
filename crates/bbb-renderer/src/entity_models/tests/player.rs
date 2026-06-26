@@ -2,6 +2,7 @@ use super::*;
 
 use crate::entity_models::model::{EntityModel, ModelCube};
 use crate::player_skin::{DynamicPlayerSkinImage, DynamicPlayerTextureImage};
+use glam::{Mat4, Vec3};
 
 /// The wide-player limb rest poses, for the desc-level arm-swing/bob reference-formula tests (the
 /// player now builds a named tree, so it has no `*_PARTS` desc const). Right arm `x = -5`, left arm
@@ -542,6 +543,92 @@ fn player_cape_layer_waits_for_dynamic_profile_texture_upload() {
         .dynamic_player_texture_translucent
         .vertices
         .is_empty());
+}
+
+#[test]
+fn player_cape_layer_is_suppressed_by_wings_chest_equipment() {
+    let (static_atlas, _) =
+        build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
+    let cape_texture = EntityDynamicPlayerTexture {
+        handle: 7103,
+        kind: EntityDynamicPlayerTextureKind::Cape,
+    };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicPlayerTextureImage {
+        handle: cape_texture.handle,
+        size: [64, 32],
+        rgba: vec![0x77; 64 * 32 * 4],
+    }])
+    .unwrap()
+    .0;
+    let instance = EntityModelInstance::player_with_skin(
+        47,
+        [0.0, 64.0, 0.0],
+        0.0,
+        EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_player_cape_texture(Some(cape_texture))
+    .with_player_chest_equipment_has_wings(true)
+    .with_player_chest_equipment_has_humanoid(true);
+
+    let meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[instance],
+        &static_atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+
+    assert!(meshes
+        .submissions
+        .iter()
+        .all(|submit| submit.dynamic_player_texture != Some(cape_texture)));
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+}
+
+#[test]
+fn player_cape_layer_offsets_for_humanoid_chest_equipment() {
+    let (static_atlas, _) =
+        build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
+    let cape_texture = EntityDynamicPlayerTexture {
+        handle: 7104,
+        kind: EntityDynamicPlayerTextureKind::Cape,
+    };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicPlayerTextureImage {
+        handle: cape_texture.handle,
+        size: [64, 32],
+        rgba: vec![0x88; 64 * 32 * 4],
+    }])
+    .unwrap()
+    .0;
+    let instance = EntityModelInstance::player_with_skin(
+        48,
+        [3.0, 66.0, -4.0],
+        25.0,
+        EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_player_cape_texture(Some(cape_texture))
+    .with_player_chest_equipment_has_humanoid(true);
+
+    let meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[instance],
+        &static_atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+
+    let cape_submit = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.dynamic_player_texture == Some(cape_texture))
+        .expect("cape submission");
+    assert_eq!(
+        cape_submit.transform,
+        player_model_root_transform(instance)
+            * Mat4::from_translation(Vec3::new(0.0, -0.053125, 0.06875))
+    );
+    assert_eq!((cape_submit.order, cape_submit.submit_sequence), (0, 1));
+    assert_eq!(meshes.dynamic_player_texture_cutout.vertices.len(), 24);
 }
 
 #[test]

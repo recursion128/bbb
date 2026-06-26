@@ -2497,6 +2497,9 @@ fn emit_player_cape_layer(
     if !parts.cape {
         return;
     }
+    if instance.render_state.player_chest_equipment_has_wings {
+        return;
+    }
     let Some(cape_texture) = instance.render_state.player_cape_texture else {
         return;
     };
@@ -2507,12 +2510,13 @@ fn emit_player_cape_layer(
     };
 
     let root = player_model_root_transform(instance);
+    let layer_transform = root * player_cape_chest_equipment_transform(&instance);
     let mut model = PlayerModel::new(skin.is_slim());
     model.prepare(&instance);
     let Some(body_transform) = model.root().try_descendant_attach_transform(&["body"]) else {
         return;
     };
-    let cape_transform = root
+    let cape_transform = layer_transform
         * body_transform
         * part_pose_transform(PartPose {
             offset: [0.0, 0.0, 2.0],
@@ -2524,7 +2528,7 @@ fn emit_player_cape_layer(
         EntityModelLayerRenderType::EntitySolid,
         PLAYER_PROFILE_CAPE_TEXTURE_REF,
         tint,
-        root,
+        layer_transform,
         0,
         1,
     )
@@ -2539,6 +2543,14 @@ fn emit_player_cape_layer(
             tint,
         );
     });
+}
+
+fn player_cape_chest_equipment_transform(instance: &EntityModelInstance) -> Mat4 {
+    if instance.render_state.player_chest_equipment_has_humanoid {
+        Mat4::from_translation(Vec3::new(0.0, -0.053125, 0.06875))
+    } else {
+        Mat4::IDENTITY
+    }
 }
 
 fn player_cape_animation_transform(instance: &EntityModelInstance) -> Mat4 {

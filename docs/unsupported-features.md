@@ -1282,10 +1282,12 @@ When an agent does any of the following, update this file in the same slice:
         entry is ready. That submission records vanilla `entitySolid`, the
         dynamic cape handle, white tint, root transform, and default order 0
         plus the layer submit sequence;
-        missing atlas entries wait instead of drawing stale geometry. Still
-        deferred: `WingsLayer`/elytra, chest-equipment WINGS suppression,
-        HUMANOID cape translation, full cloak interpolation, and broader
-        arbitrary dynamic texture loading.
+        missing atlas entries wait instead of drawing stale geometry. Pack/native
+        now preserve item equippable asset ids and query equipment asset layers,
+        so the cape is suppressed for chest WINGS equipment and nudged by the
+        vanilla HUMANOID chest-equipment translation. Still deferred:
+        `WingsLayer`/elytra, full cloak interpolation, and broader arbitrary
+        dynamic texture loading.
       - fox held item DONE: `FoxHeldItemLayer` is reproduced through the same
         item-model pass. Renderer exposes `fox_held_item_transform`, which builds
         and poses the vanilla adult/baby `FoxModel`, reads the posed `head` part,
@@ -1314,8 +1316,8 @@ When an agent does any of the following, update this file in the same slice:
         through the projected passenger state. STAB/NONE swing-type parity on non-player
         humanoids remains separate work.
       - remaining slices: held-item refinements (first-person viewmodel;
-        `WingsLayer`/elytra, cape chest-equipment interactions, full cloak
-        interpolation, and broader arbitrary dynamic texture loading; the
+        `WingsLayer`/elytra, full cloak interpolation, and broader arbitrary
+        dynamic texture loading; the
         STAB swing pose on non-player humanoid models; the `NONE` swing type; the
         attack swing on the non-player humanoid models). Item lighting
         context (GUI front-lit vs world diffuse) is an open point — the baked
@@ -1349,7 +1351,7 @@ When an agent does any of the following, update this file in the same slice:
       with `ageInTicks`) — all applied once to the shared
       visibility-filtered part array (colored and textured); true
       `RenderTypes.entityTranslucent` alpha blending, ears, armor/equipment, held items,
-      elytra/wings, chest-equipment cape interactions, shoulder parrots,
+      elytra/wings, shoulder parrots,
       arrows/stingers, spectator visibility, the elytra flying offsets, name
       display, the held-item/attack/swim arm poses, and the elytra
       `speedValue` poses remain unsupported; the `HumanoidModel` crouch
@@ -1360,8 +1362,8 @@ When an agent does any of the following, update this file in the same slice:
       hat/jacket/sleeves/pants overlay visibility for the texture-backed base
       player/mannequin model, and the cape bit is preserved in renderer
       visibility state; profile cape presentation is partially covered by the
-      dynamic `entitySolid` cape layer, while WingsLayer/elytra and
-      chest-equipment cape gates remain deferred)
+      dynamic `entitySolid` cape layer, while WingsLayer/elytra remains
+      deferred)
     - wooden boat, chest boat, bamboo raft, and bamboo chest raft entities as
       renderer-owned vanilla 26.1 `BoatModel` / `RaftModel` body-layer
       geometry from `BoatModel`, `RaftModel`, `BoatRenderer`, `RaftRenderer`,
@@ -1832,8 +1834,7 @@ When an agent does any of the following, update this file in the same slice:
       piglin uses the held-out `animateZombieArms` arms;
       the `DrownedOuterLayer` (adult and baby) and drowned swim re-pose ARE implemented (see the drowned
       note above); zombie/piglin converting shake, remaining zombie-family and
-      piglin-family armor nuances, player WingsLayer/elytra and cape
-      chest-equipment interactions, and
+      piglin-family armor nuances, player WingsLayer/elytra, and
       held-item refinements remain unsupported
       (generic non-skull head-slot items and static skeleton/wither-skeleton/
       zombie/creeper skulls plus profileless default-player heads, profiled

@@ -7,14 +7,14 @@ use std::{
 use anyhow::{Context, Result};
 use bbb_pack::{
     AtlasImage, AtlasLayout, AtlasPacker, AtlasSprite, BlockModelDisplayContext,
-    BlockModelDisplayTransform, BlockModelDisplayTransforms, FreezeImmuneWearableCatalog,
-    FurnaceFuelCatalog, ItemAttackRange as PackItemAttackRange, ItemCuboidModel,
-    ItemCuboidModelCatalog, ItemCuboidModelSet, ItemCuboidTextureImageCatalog,
-    ItemEquipmentSlot as PackItemEquipmentSlot, ItemMiningProfile as PackItemMiningProfile,
-    ItemMiningRule as PackItemMiningRule, ItemModelCatalog, ItemModelDefinition,
-    ItemMountBodyArmorKind as PackItemMountBodyArmorKind, ItemRegistryCatalog, ItemTintSource,
-    ItemUseEffects as PackItemUseEffects, LanguageCatalog, PackRoots, SpriteImage,
-    TerrainColorMaps, DEFAULT_LANGUAGE_CODE,
+    BlockModelDisplayTransform, BlockModelDisplayTransforms, EquipmentAssetCatalog,
+    EquipmentLayerType, FreezeImmuneWearableCatalog, FurnaceFuelCatalog,
+    ItemAttackRange as PackItemAttackRange, ItemCuboidModel, ItemCuboidModelCatalog,
+    ItemCuboidModelSet, ItemCuboidTextureImageCatalog, ItemEquipmentSlot as PackItemEquipmentSlot,
+    ItemMiningProfile as PackItemMiningProfile, ItemMiningRule as PackItemMiningRule,
+    ItemModelCatalog, ItemModelDefinition, ItemMountBodyArmorKind as PackItemMountBodyArmorKind,
+    ItemRegistryCatalog, ItemTintSource, ItemUseEffects as PackItemUseEffects, LanguageCatalog,
+    PackRoots, SpriteImage, TerrainColorMaps, DEFAULT_LANGUAGE_CODE,
 };
 use bbb_protocol::packets::{
     DataComponentPatchSummary, ItemRaritySummary, ItemStackSummary, ItemStackTemplateSummary,
@@ -152,6 +152,7 @@ pub(crate) struct NativeItemRuntime {
     item_icon_models: HashMap<String, ItemIconModel>,
     item_display_transforms: HashMap<String, BlockModelDisplayTransforms>,
     registry: Option<ItemRegistryCatalog>,
+    equipment_assets: EquipmentAssetCatalog,
     language: LanguageCatalog,
     textures: ItemTextureState,
     profile_resolutions: RefCell<Option<AsyncProfileResolutionRuntime>>,
@@ -218,6 +219,14 @@ impl NativeItemRuntime {
             .as_ref()
             .map(recipe_specific_crafting_remainder_item_ids)
             .unwrap_or_default();
+        let equipment_assets = roots
+            .load_equipment_asset_catalog()
+            .context("load equipment asset catalog")
+            .map_err(|err| {
+                tracing::warn!(?err, "continuing without native equipment asset catalog");
+                err
+            })
+            .unwrap_or_default();
         let colormaps = roots
             .load_terrain_colormaps()
             .context("load terrain colormaps for item tints")
@@ -239,6 +248,7 @@ impl NativeItemRuntime {
             freeze_immune_wearable_item_ids,
             powder_snow_walkable_foot_item_ids,
             recipe_specific_crafting_remainder_item_ids,
+            equipment_assets,
             language,
         )
     }
@@ -253,6 +263,7 @@ impl NativeItemRuntime {
         freeze_immune_wearable_item_ids: BTreeSet<i32>,
         powder_snow_walkable_foot_item_ids: BTreeSet<i32>,
         recipe_specific_crafting_remainder_item_ids: BTreeSet<i32>,
+        equipment_assets: EquipmentAssetCatalog,
         language: LanguageCatalog,
     ) -> Result<Self> {
         let mut texture_ids = BTreeSet::new();
@@ -330,6 +341,7 @@ impl NativeItemRuntime {
             item_icon_models,
             item_display_transforms,
             registry,
+            equipment_assets,
             language,
             textures,
             profile_resolutions: RefCell::default(),
@@ -356,6 +368,7 @@ impl NativeItemRuntime {
             item_icon_models: HashMap::new(),
             item_display_transforms: HashMap::new(),
             registry: None,
+            equipment_assets: EquipmentAssetCatalog::default(),
             language: LanguageCatalog::from_json_bytes(b"{}").expect("empty test language"),
             textures: ItemTextureState::from_images(vec![missing])
                 .expect("test item texture atlas is valid"),
@@ -364,6 +377,17 @@ impl NativeItemRuntime {
             dynamic_textures: RefCell::default(),
             profile_skins: RefCell::default(),
         }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn for_test_with_registry_and_equipment_assets(
+        registry: ItemRegistryCatalog,
+        equipment_assets: EquipmentAssetCatalog,
+    ) -> Self {
+        let mut runtime = Self::empty_for_test();
+        runtime.registry = Some(registry);
+        runtime.equipment_assets = equipment_assets;
+        runtime
     }
 
     pub(crate) fn item_definition_count(&self) -> usize {
@@ -458,6 +482,33 @@ impl NativeItemRuntime {
             return false;
         };
         registry.humanoid_armor_asset(resource_id).is_some()
+    }
+
+    pub(crate) fn item_equipment_asset_has_wings_layer(&self, protocol_id: i32) -> bool {
+        self.item_equipment_asset_has_layer(protocol_id, EquipmentLayerType::Wings)
+    }
+
+    pub(crate) fn item_equipment_asset_has_humanoid_layer(&self, protocol_id: i32) -> bool {
+        self.item_equipment_asset_has_layer(protocol_id, EquipmentLayerType::Humanoid)
+    }
+
+    fn item_equipment_asset_has_layer(
+        &self,
+        protocol_id: i32,
+        layer_type: EquipmentLayerType,
+    ) -> bool {
+        let Some(registry) = &self.registry else {
+            return false;
+        };
+        let Some(resource_id) = registry.resource_id(protocol_id) else {
+            return false;
+        };
+        let Some(asset_id) = registry.equippable_asset(resource_id) else {
+            return false;
+        };
+        self.equipment_assets
+            .asset(asset_id)
+            .is_some_and(|asset| !asset.layers(layer_type).is_empty())
     }
 
     pub(crate) fn custom_head_skull_for_stack(
@@ -2471,6 +2522,20 @@ mod tests {
                     "diamond_helmet",
                     new Item.Properties().humanoidArmor(ArmorMaterials.DIAMOND, ArmorType.HELMET)
                 );
+                public static final Item DIAMOND_CHESTPLATE = registerItem(
+                    "diamond_chestplate",
+                    new Item.Properties().humanoidArmor(ArmorMaterials.DIAMOND, ArmorType.CHESTPLATE)
+                );
+                public static final Item ELYTRA = registerItem(
+                    "elytra",
+                    new Item.Properties()
+                       .component(
+                          DataComponents.EQUIPPABLE,
+                          Equippable.builder(EquipmentSlot.CHEST)
+                             .setAsset(EquipmentAssets.ELYTRA)
+                             .build()
+                       )
+                );
                 public static final Item CARVED_PUMPKIN = registerBlock(
                     Blocks.CARVED_PUMPKIN,
                     p -> p.component(
@@ -2481,17 +2546,51 @@ mod tests {
                 public static final Item STONE = registerBlock(Blocks.STONE);
             }"#,
         );
+        write_json(
+            &assets.join("equipment").join("diamond.json"),
+            r#"{
+                "layers": {
+                    "humanoid": [
+                        { "texture": "minecraft:diamond" }
+                    ],
+                    "humanoid_leggings": [
+                        { "texture": "minecraft:diamond" }
+                    ]
+                }
+            }"#,
+        );
+        write_json(
+            &assets.join("equipment").join("elytra.json"),
+            r#"{
+                "layers": {
+                    "wings": [
+                        { "texture": "minecraft:elytra", "use_player_texture": true }
+                    ]
+                }
+            }"#,
+        );
 
         let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
         let registry = runtime.registry.as_ref().unwrap();
         let helmet_id = registry.protocol_id("minecraft:diamond_helmet").unwrap();
+        let chestplate_id = registry
+            .protocol_id("minecraft:diamond_chestplate")
+            .unwrap();
+        let elytra_id = registry.protocol_id("minecraft:elytra").unwrap();
         let pumpkin_id = registry.protocol_id("minecraft:carved_pumpkin").unwrap();
         let stone_id = registry.protocol_id("minecraft:stone").unwrap();
 
         assert!(runtime.item_has_humanoid_armor_asset(helmet_id));
+        assert!(runtime.item_has_humanoid_armor_asset(chestplate_id));
         assert!(!runtime.item_has_humanoid_armor_asset(pumpkin_id));
         assert!(!runtime.item_has_humanoid_armor_asset(stone_id));
         assert!(!runtime.item_has_humanoid_armor_asset(999));
+        assert!(runtime.item_equipment_asset_has_humanoid_layer(chestplate_id));
+        assert!(!runtime.item_equipment_asset_has_wings_layer(chestplate_id));
+        assert!(runtime.item_equipment_asset_has_wings_layer(elytra_id));
+        assert!(!runtime.item_equipment_asset_has_humanoid_layer(elytra_id));
+        assert!(!runtime.item_equipment_asset_has_wings_layer(pumpkin_id));
+        assert!(!runtime.item_equipment_asset_has_humanoid_layer(stone_id));
 
         std::fs::remove_dir_all(root).unwrap();
     }
