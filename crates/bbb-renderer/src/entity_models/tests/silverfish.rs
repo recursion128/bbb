@@ -233,18 +233,20 @@ fn silverfish_mesh_uses_vanilla_body_layer_geometry() {
 #[test]
 fn silverfish_textured_mesh_uses_vanilla_uvs_and_geometry() {
     let (atlas, _) = build_entity_model_texture_atlas(&silverfish_texture_images()).unwrap();
-    let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::silverfish(114, [0.0, 64.0, 0.0], 0.0)],
-        &atlas,
-    );
-    assert_eq!(mesh.cutout_faces, 60);
-    assert_eq!(mesh.vertices.len(), 240);
-    assert_eq!(mesh.indices.len(), 360);
-    assert!(mesh
+    let instance = EntityModelInstance::silverfish(114, [0.0, 64.0, 0.0], 0.0);
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    assert_silverfish_base_submission(&meshes, instance);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert_eq!(meshes.cutout.cutout_faces, 60);
+    assert_eq!(meshes.cutout.vertices.len(), 240);
+    assert_eq!(meshes.cutout.indices.len(), 360);
+    assert!(meshes
+        .cutout
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
-    let (min, max) = textured_mesh_extents(&mesh);
+    let (min, max) = textured_mesh_extents(&meshes.cutout);
     assert_close3(min, [-0.3198125, 64.001, -0.78584146]);
     assert_close3(max, [0.3198125, 64.501, 0.3169995]);
 }
@@ -263,10 +265,13 @@ fn silverfish_segments_wiggle_as_age_in_ticks_advances() {
     );
 
     let (atlas, _) = build_entity_model_texture_atlas(&silverfish_texture_images()).unwrap();
-    let early_t = entity_model_textured_mesh(&[base], &atlas);
-    let later_t = entity_model_textured_mesh(&[base.with_age_in_ticks(20.0)], &atlas);
+    let early_t = entity_model_textured_meshes(&[base], &atlas);
+    assert_silverfish_base_submission(&early_t, base);
+    let later_instance = base.with_age_in_ticks(20.0);
+    let later_t = entity_model_textured_meshes(&[later_instance], &atlas);
+    assert_silverfish_base_submission(&later_t, later_instance);
     assert_ne!(
-        early_t.vertices, later_t.vertices,
+        early_t.cutout.vertices, later_t.cutout.vertices,
         "the textured segments wiggle too"
     );
 }
@@ -280,4 +285,18 @@ fn silverfish_texture_images() -> Vec<EntityModelTextureImage> {
             EntityModelTextureImage::new(*texture, vec![index as u8; len])
         })
         .collect()
+}
+
+fn assert_silverfish_base_submission(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.texture, SILVERFISH_TEXTURE_REF);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.transform, entity_model_root_transform(instance));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
 }
