@@ -807,11 +807,12 @@ When an agent does any of the following, update this file in the same slice:
     off hand and suppressed only when the OFF hand is the using hand (its use poses win; using the MAIN hand
     leaves the off hand on `ITEM`), excluding off-hand spears/charged crossbows. The `BLOCK` use-item arm
     pose IS now implemented too (`apply_humanoid_block_pose`, `HumanoidModel.poseRightArm`/`poseLeftArm`
-    `BLOCK` → `poseBlockingArm`): while a player raises a shield (`isUsingItem` + the using hand holds a
-    `DataComponents.BLOCKS_ATTACKS` item — detected by the resolved `minecraft:shield` id, since the component
-    is a prototype default not in the network patch) the holding arm tucks the shield forward along the head
-    look — `xRot = arm.xRot · 0.5 − 0.9424779 + clamp(head.xRot, −4π/9, 0.43633232)`, `yRot = (right ? −π/6 :
-    π/6) + clamp(head.yRot, −π/6, π/6)` — applied before the crouch block. The `THROW_TRIDENT` use-item arm
+    `BLOCK` → `poseBlockingArm`): while a player raises a non-consumable `DataComponents.BLOCKS_ATTACKS` item
+    (`isUsingItem` + using hand; vanilla shield by resolved `minecraft:shield` id, datapack/patch-granted
+    blockers by component type id 37 in `added_type_ids`; `CONSUMABLE` type id 24 still wins and routes to
+    EAT/DRINK) the holding arm tucks the blocking item forward along the head look — `xRot = arm.xRot · 0.5 −
+    0.9424779 + clamp(head.xRot, −4π/9, 0.43633232)`, `yRot = (right ? −π/6 : π/6) + clamp(head.yRot, −π/6,
+    π/6)` — applied before the crouch block. The `THROW_TRIDENT` use-item arm
     pose IS now implemented too (`apply_humanoid_throw_trident_pose`, the same `poseRightArm`/`poseLeftArm`
     `THROW_TRIDENT` case the drowned reaches via aggression): while a player charges a trident throw
     (`isUsingItem` + the using hand holds a trident, `TridentItem.getUseAnimation() == TRIDENT`) the holding
@@ -850,9 +851,9 @@ When an agent does any of the following, update this file in the same slice:
     eating food, drinking a potion, or using any plain item correctly shows the lowered `ITEM` arm. The
     `affectsOffhandPose` skip is now symmetric (`main_hand_use_affects_offhand` /
     `off_hand_use_affects_offhand`), so an `affectsOffhandPose` draw in either hand suppresses the OPPOSITE
-    hand's `ITEM`. The remaining use-item arm poses on the same dispatch (a non-shield datapack
-    `BLOCKS_ATTACKS` item and the off-arm `EMPTY` reset — a near-no-op since at rest the off arm's `yRot` is
-    already `0`) stay deferred. (The `getArmPose` `isTwoHanded`-forces-off-hand-to-`ITEM` branch
+    hand's `ITEM`. The remaining use-item arm pose edge on the same dispatch (the off-arm `EMPTY` reset — a
+    near-no-op since at rest the off arm's `yRot` is already `0`) stays deferred. (The `getArmPose`
+    `isTwoHanded`-forces-off-hand-to-`ITEM` branch
     needs no implementation: every `isTwoHanded` pose is also `affectsOffhandPose`, so `setupAnim` always
     SKIPS the forced arm's `poseArm` and the forced value is never rendered.) The
     per-subclass arm/ear/nose poses that override it are tracked separately (the zombie held-out

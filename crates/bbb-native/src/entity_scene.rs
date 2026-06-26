@@ -673,27 +673,61 @@ fn entity_hand_holds_brush(
     item_runtime.item_resource_id(item_id) == Some("minecraft:brush")
 }
 
+/// Vanilla `DataComponents.CONSUMABLE` network type id (24, the registry order of `minecraft:consumable` in
+/// `DataComponents`). `Item.getUseAnimation` checks `CONSUMABLE` before `BLOCKS_ATTACKS`, so a stack patch
+/// that adds both should stay on EAT/DRINK rather than the block pose.
+const DATA_COMPONENT_CONSUMABLE_TYPE_ID: i32 = 24;
+
+/// Vanilla `DataComponents.BLOCKS_ATTACKS` network type id (37, the registry order of
+/// `minecraft:blocks_attacks` in `DataComponents`). `Item.getUseAnimation` returns `BLOCK` for a non-consumable
+/// item carrying this component.
+const DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID: i32 = 37;
+
+fn component_patch_has_added_component(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    type_id: i32,
+) -> bool {
+    patch.added_type_ids.contains(&type_id) && !patch.removed_type_ids.contains(&type_id)
+}
+
 /// Whether the item in the given hand has the `BLOCK` use-animation (vanilla `ItemStack.getUseAnimation() ==
-/// ItemUseAnimation.BLOCK`, returned by `Item.getUseAnimation` for an item carrying
-/// `DataComponents.BLOCKS_ATTACKS` — the shield). While the entity raises it,
-/// `HumanoidModel.poseRightArm`/`poseLeftArm` `poseBlockingArm` tucks that arm's shield forward. The
-/// `blocks_attacks` component is a prototype default on `minecraft:shield` (not part of the network
-/// component patch), so it is detected by the resolved item id, mirroring the brush/spyglass checks (a
-/// datapack item granted `blocks_attacks` over the wire is a deferred edge). Resolved through the item
-/// registry; `false` without it or for any other / empty hand.
-fn entity_hand_holds_shield(
+/// ItemUseAnimation.BLOCK`, returned by `Item.getUseAnimation` for a non-consumable item carrying
+/// `DataComponents.BLOCKS_ATTACKS`). While the entity raises it, `HumanoidModel.poseRightArm`/`poseLeftArm`
+/// `poseBlockingArm` tucks that arm's blocking item forward. The vanilla shield is detected by resolved item
+/// id because its component is a prototype default; datapack/patch-granted `blocks_attacks` is detected from
+/// `added_type_ids` and does not need the item registry.
+fn entity_hand_blocks_attacks(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     entity_id: i32,
     off_hand: bool,
 ) -> bool {
-    let Some(item_runtime) = item_runtime else {
-        return false;
-    };
     let Some(stack) = world.held_item(entity_id, off_hand) else {
         return false;
     };
     let Some(item_id) = stack.item_id else {
+        return false;
+    };
+    if component_patch_has_added_component(
+        &stack.component_patch,
+        DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+    ) {
+        return false;
+    }
+    if component_patch_has_added_component(
+        &stack.component_patch,
+        DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
+    ) {
+        return true;
+    }
+    if stack
+        .component_patch
+        .removed_type_ids
+        .contains(&DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID)
+    {
+        return false;
+    }
+    let Some(item_runtime) = item_runtime else {
         return false;
     };
     item_runtime.item_resource_id(item_id) == Some("minecraft:shield")
@@ -722,10 +756,9 @@ fn entity_hand_holds_crossbow(
 
 /// Whether the item in the given hand routes to a SPECIAL `getArmPose` (not the `ITEM` fallback) when used:
 /// the use-animation poses `BOW_AND_ARROW` (bow), `CROSSBOW_CHARGE` (crossbow), `THROW_TRIDENT` (trident),
-/// `BLOCK` (shield), `SPYGLASS`, `TOOT_HORN` (goat horn), `BRUSH`. While the entity uses one of these in this
-/// hand, that hand gets its dedicated pose instead of `ITEM`; any OTHER used item (food/potion -> `EAT`/
-/// `DRINK`, or any plain item) falls through to `ITEM`. Resolved through the item registry; `false` without
-/// it or for an empty / non-special hand.
+/// `BLOCK` (non-consumable `BLOCKS_ATTACKS` item, normally the shield), `SPYGLASS`, `TOOT_HORN` (goat horn),
+/// `BRUSH`. While the entity uses one of these in this hand, that hand gets its dedicated pose instead of
+/// `ITEM`; any OTHER used item (food/potion -> `EAT`/`DRINK`, or any plain item) falls through to `ITEM`.
 fn entity_hand_holds_special_use_item(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
@@ -735,7 +768,7 @@ fn entity_hand_holds_special_use_item(
     entity_hand_holds_bow(world, item_runtime, entity_id, off_hand)
         || entity_hand_holds_crossbow(world, item_runtime, entity_id, off_hand)
         || entity_hand_holds_trident(world, item_runtime, entity_id, off_hand)
-        || entity_hand_holds_shield(world, item_runtime, entity_id, off_hand)
+        || entity_hand_blocks_attacks(world, item_runtime, entity_id, off_hand)
         || entity_hand_holds_spyglass(world, item_runtime, entity_id, off_hand)
         || entity_hand_holds_goat_horn(world, item_runtime, entity_id, off_hand)
         || entity_hand_holds_brush(world, item_runtime, entity_id, off_hand)
@@ -977,12 +1010,12 @@ fn entity_model_instance(
             source.entity_id,
             source.use_item_off_hand,
         );
-    // Vanilla `HumanoidModel.setupAnim` use-item arm pose `BLOCK` (`poseBlockingArm`): while a player raises
-    // a shield (`isUsingItem` + the using hand holds a `BLOCKS_ATTACKS` item, i.e. the shield), the holding
-    // arm tucks the shield forward along the head look.
+    // Vanilla `HumanoidModel.setupAnim` use-item arm pose `BLOCK` (`poseBlockingArm`): while a player raises a
+    // non-consumable `BLOCKS_ATTACKS` item (the vanilla shield or a datapack/patch-granted blocker), the
+    // holding arm tucks the blocking item forward along the head look.
     let player_blocking = matches!(kind, EntityModelKind::Player { .. })
         && source.is_using_item
-        && entity_hand_holds_shield(
+        && entity_hand_blocks_attacks(
             world,
             item_runtime,
             source.entity_id,
@@ -5675,33 +5708,78 @@ mod tests {
     }
 
     #[test]
-    fn entity_model_instances_block_pose_needs_a_resolved_shield() {
-        // The BLOCK use-item pose needs the using-hand item resolved through the item registry to confirm a
-        // `BLOCKS_ATTACKS` item (the shield); without an item runtime it can never resolve, so the projection
-        // defaults off even for a player flagged as using an item.
+    fn entity_model_instances_block_pose_uses_shield_or_blocks_attacks_component() {
+        // The BLOCK use-item pose needs a non-consumable `BLOCKS_ATTACKS` item. Vanilla shields resolve from
+        // the item registry, while datapack/patch-granted blockers are visible in `added_type_ids` and work
+        // without an item runtime.
         const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
         const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
+        const PLAIN_ITEM_ID: i32 = 730;
 
         let mut world = WorldStore::new();
+        let equip = |entity_id: i32, added_type_ids: Vec<i32>| SetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::MainHand,
+                item: ItemStackSummary {
+                    item_id: Some(PLAIN_ITEM_ID),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary {
+                        added_type_ids,
+                        ..DataComponentPatchSummary::default()
+                    },
+                },
+            }],
+        };
+        let set_using = |id: i32| SetEntityData {
+            id,
+            values: vec![protocol_byte_data(
+                VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
+                LIVING_ENTITY_FLAG_IS_USING,
+            )],
+        };
+        let blocking = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .player_blocking
+        };
+
         world.apply_add_entity(protocol_add_entity(
             253,
             VANILLA_ENTITY_TYPE_PLAYER_ID,
             [4.0, 64.0, -10.0],
         ));
-        assert!(world.apply_set_entity_data(SetEntityData {
-            id: 253,
-            values: vec![protocol_byte_data(
-                VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
-                LIVING_ENTITY_FLAG_IS_USING
-            )],
-        }));
-        let blocking = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
-            .into_iter()
-            .find(|instance| instance.entity_id == 253)
-            .unwrap()
-            .render_state
-            .player_blocking;
-        assert!(!blocking);
+        assert!(world.apply_set_entity_data(set_using(253)));
+        assert!(!blocking(&world, 253));
+
+        world.apply_add_entity(protocol_add_entity(
+            254,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [5.0, 64.0, -10.0],
+        ));
+        assert!(world.apply_set_equipment(equip(254, vec![DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID])));
+        assert!(world.apply_set_entity_data(set_using(254)));
+        assert!(blocking(&world, 254));
+
+        // `Item.getUseAnimation` checks CONSUMABLE before BLOCKS_ATTACKS, so a stack adding both routes to
+        // EAT/DRINK rather than the BLOCK pose.
+        world.apply_add_entity(protocol_add_entity(
+            255,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [6.0, 64.0, -10.0],
+        ));
+        assert!(world.apply_set_equipment(equip(
+            255,
+            vec![
+                DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+                DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID
+            ]
+        )));
+        assert!(world.apply_set_entity_data(set_using(255)));
+        assert!(!blocking(&world, 255));
     }
 
     #[test]

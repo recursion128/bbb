@@ -446,11 +446,12 @@ pub(in crate::entity_models) fn apply_humanoid_item_hold_pose(
 }
 
 /// Vanilla `HumanoidModel.poseRightArm`/`poseLeftArm` `BLOCK` use-item arm pose (`poseBlockingArm`): while a
-/// player is raising a shield (`isUsingItem` + the using hand holds an item whose use-animation is `BLOCK`,
-/// i.e. carries `DataComponents.BLOCKS_ATTACKS` — the shield), the holding arm tucks the shield forward along
-/// the head look. The arm pitch is `arm.xRot · 0.5 − 0.9424779 + clamp(head.xRot, −4π/9, 0.43633232)` and the
-/// yaw is `(right ? −π/6 : π/6) + clamp(head.yRot, −π/6, π/6)` (vanilla's `±30°` in radians). Like the brush
-/// pose this READS the arm's current pitch and halves it (the folded-in idle bob rides along — the shared
+/// player is raising a blocking item (`isUsingItem` + the using hand holds a non-consumable item whose
+/// use-animation is `BLOCK`, i.e. carries `DataComponents.BLOCKS_ATTACKS`; vanilla's common case is the
+/// shield), the holding arm tucks the item forward along the head look. The arm pitch is
+/// `arm.xRot · 0.5 − 0.9424779 + clamp(head.xRot, −4π/9, 0.43633232)` and the yaw is
+/// `(right ? −π/6 : π/6) + clamp(head.yRot, −π/6, π/6)` (vanilla's `±30°` in radians). Like the brush pose
+/// this READS the arm's current pitch and halves it (the folded-in idle bob rides along — the shared
 /// posed-arm bob convention); the bob roll (`zRot`) is kept (vanilla applies the bob after `poseArm` and does
 /// NOT skip it for BLOCK). Applied before the crouch block so the crouch `arm.xRot += 0.4` still lands on top.
 pub(in crate::entity_models) fn apply_humanoid_block_pose(

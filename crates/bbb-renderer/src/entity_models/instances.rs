@@ -369,11 +369,12 @@ entity_render_state! {
     /// Vanilla `AvatarRenderState.capeLean2`, produced by `AvatarRenderer.extractCapeState`.
     (with_player_cape_lean2) player_cape_lean2: f32 = 0.0;
     /// Vanilla `HumanoidModel.poseRightArm`/`poseLeftArm` use-item arm pose `BLOCK` (`poseBlockingArm`):
-    /// while a player raises a shield (`isUsingItem` + the using hand holds a `BLOCKS_ATTACKS` item) the
-    /// holding arm tucks the shield forward along the head look — `xRot = arm.xRot · 0.5 − 0.9424779 +
-    /// clamp(head.xRot, −4π/9, 0.43633232)`, `yRot = (right ? −π/6 : π/6) + clamp(head.yRot, −π/6, π/6)`.
+    /// while a player raises a blocking item (`isUsingItem` + the using hand holds a non-consumable
+    /// `BLOCKS_ATTACKS` item, normally the shield) the holding arm tucks the item forward along the head
+    /// look — `xRot = arm.xRot · 0.5 − 0.9424779 + clamp(head.xRot, −4π/9, 0.43633232)`, `yRot = (right ?
+    /// −π/6 : π/6) + clamp(head.yRot, −π/6, π/6)`.
     /// Applied to the [`use_item_off_hand`](Self::use_item_off_hand) arm. `false` for every entity not
-    /// raising a shield — only `PlayerModel` consumes it.
+    /// raising a blocking item — only `PlayerModel` consumes it.
     (with_player_blocking) player_blocking: bool = false;
     /// Vanilla `HumanoidModel.poseRightArm`/`poseLeftArm` use-item arm pose `THROW_TRIDENT`: while a player
     /// charges a trident throw (`isUsingItem` + the using hand holds a trident) the holding arm raises the
