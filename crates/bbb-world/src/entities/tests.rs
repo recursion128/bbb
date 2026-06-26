@@ -4121,6 +4121,7 @@ fn entity_model_sources_project_squid_tentacle_and_body_animation() {
     let resting = source(&store, 1.0);
     assert_eq!(resting.squid_tentacle_angle, 0.0);
     assert_eq!(resting.squid_x_body_rot, 0.0);
+    assert_eq!(resting.squid_y_body_rot, 0.0);
     assert_eq!(resting.squid_z_body_rot, 0.0);
 
     // A few ticks in (still early in the half-cycle, `scale < 0.75`) the tentacle
@@ -4137,6 +4138,12 @@ fn entity_model_sources_project_squid_tentacle_and_body_animation() {
         after_five.squid_x_body_rot < 0.0,
         "a diving squid pitches its body negative: {}",
         after_five.squid_x_body_rot
+    );
+    let expected_y_body_rot = -90.0 * (1.0 - 0.9_f32.powi(5));
+    assert!(
+        (after_five.squid_y_body_rot - expected_y_body_rot).abs() < 1.0e-5,
+        "in water, Squid.aiStep eases yBodyRot toward -atan2(dm.x, dm.z): expected {expected_y_body_rot}, got {}",
+        after_five.squid_y_body_rot
     );
 
     // Advance deep into the half-cycle so `scale > 0.75` engages `rotateSpeed = 1`,
@@ -4169,6 +4176,17 @@ fn entity_model_sources_project_squid_tentacle_and_body_animation() {
     assert!(
         (at_half - (at_zero + (at_one - at_zero) * 0.5)).abs() < 1.0e-4,
         "the projection is a linear lerp between the endpoints"
+    );
+    let yaw_at_zero = source(&store, 0.0).squid_y_body_rot;
+    let yaw_at_half = source(&store, 0.5).squid_y_body_rot;
+    let yaw_at_one = source(&store, 1.0).squid_y_body_rot;
+    assert!(
+        yaw_at_zero > yaw_at_half && yaw_at_half > yaw_at_one,
+        "partial tick rot-lerps the movement-derived body yaw: {yaw_at_zero} > {yaw_at_half} > {yaw_at_one}"
+    );
+    assert!(
+        (yaw_at_half - (yaw_at_zero + (yaw_at_one - yaw_at_zero) * 0.5)).abs() < 1.0e-4,
+        "the body yaw projection follows vanilla Mth.rotLerp for this non-wrapping case"
     );
 
     // Entity event 19 (`Squid.handleEntityEvent`) resets `tentacleMovement` to 0.
@@ -4220,6 +4238,10 @@ fn squid_out_of_water_branch_flexes_tentacles_and_pitches_down() {
     assert_eq!(
         after_one.squid_z_body_rot, 0.0,
         "out of water leaves the swim roll untouched"
+    );
+    assert_eq!(
+        after_one.squid_y_body_rot, 30.0,
+        "out of water leaves the yBodyRot seeded from the add-entity head yaw untouched"
     );
 }
 

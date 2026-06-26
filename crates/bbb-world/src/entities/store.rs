@@ -22,10 +22,11 @@ use super::{
     LlamaBodyDecorColor, WolfArmorCrackiness, VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
     VANILLA_ENTITY_SILENT_DATA_ID, VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
     VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
-    VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
-    VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-    VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
-    VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+    VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
+    VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MULE_ID,
+    VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
+    VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+    VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
     VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID,
     VANILLA_UPSIDE_DOWN_NAMES,
 };
@@ -993,6 +994,21 @@ impl EntityStore {
                 self.living_entity_walk_animation_position(vehicle_id, partial_ticks)
             })
             .unwrap_or(walk_animation_position);
+        // Vanilla `LivingEntity.recreateFromPacket` seeds squid `yBodyRot` from
+        // the add-entity head yaw; `Squid.aiStep` then refines it from movement
+        // while in water. Keep it as renderer-only body yaw so the synced
+        // transform yaw remains canonical.
+        let squid_y_body_rot = if matches!(
+            identity.entity_type_id,
+            VANILLA_ENTITY_TYPE_SQUID_ID | VANILLA_ENTITY_TYPE_GLOW_SQUID_ID
+        ) {
+            client_animations
+                .animations
+                .squid_y_body_rot(partial_ticks)
+                .unwrap_or(transform.y_head_rot)
+        } else {
+            0.0
+        };
         Some(EntityModelSourceState {
             entity_id: identity.id,
             uuid: identity.uuid,
@@ -1224,12 +1240,13 @@ impl EntityStore {
             attack_arm_off_hand: client_animations.animations.attack_arm_off_hand(),
             is_swinging: client_animations.animations.is_swinging(),
             // Vanilla `SquidRenderer.extractRenderState`: the lerped tentacle flex
-            // angle and body pitch/roll. `0.0` for every non-squid entity (only the
-            // squid/glow squid is given a squid animation state).
+            // angle plus body pitch/yaw/roll. `0.0` for every non-squid entity
+            // (only the squid/glow squid is given a squid animation state).
             squid_tentacle_angle: client_animations
                 .animations
                 .squid_tentacle_angle(partial_ticks),
             squid_x_body_rot: client_animations.animations.squid_x_body_rot(partial_ticks),
+            squid_y_body_rot,
             squid_z_body_rot: client_animations.animations.squid_z_body_rot(partial_ticks),
             // Vanilla `GuardianRenderer.extractRenderState`: the lerped tail-sway
             // phase. `0.0` for every non-guardian entity (only the guardian / elder

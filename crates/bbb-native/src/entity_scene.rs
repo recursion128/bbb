@@ -1207,14 +1207,23 @@ fn entity_model_instance(
     // Vanilla LivingEntityRenderer.extractRenderState negates the net head yaw and
     // pitch while the entity is upside down (Dinnerbone/Grumm).
     let head_sign = if source.is_upside_down { -1.0 } else { 1.0 };
-    let net_head_yaw = wrap_degrees(source.y_head_rot - source.y_rot) * head_sign;
+    // Vanilla `Squid.aiStep` refines `yBodyRot` from movement independently of
+    // the synced transform yaw, and `LivingEntityRenderer.extractRenderState`
+    // uses that value as `bodyRot`. Other entities still use the canonical
+    // synced yaw projected by WorldStore.
+    let projected_body_yaw = if is_squid_entity_type(source.entity_type_id) {
+        source.squid_y_body_rot
+    } else {
+        source.y_rot
+    };
+    let net_head_yaw = wrap_degrees(source.y_head_rot - projected_body_yaw) * head_sign;
     let head_pitch = source.x_rot * head_sign;
     let is_shaking = entity_shaking(
         source.entity_type_id,
         &source.data_values,
         source.is_fully_frozen,
     );
-    let body_rot = source.y_rot + entity_body_shake_degrees(source.age_ticks, is_shaking);
+    let body_rot = projected_body_yaw + entity_body_shake_degrees(source.age_ticks, is_shaking);
     // Vanilla LivingEntityRenderer.setupRotations riptide branch reads the lerped
     // `state.ageInTicks` (= tickCount + partialTick) only while `isAutoSpinAttack`.
     let auto_spin_age_ticks = source
@@ -1549,6 +1558,13 @@ fn wrap_degrees(degrees: f32) -> f32 {
         wrapped += 360.0;
     }
     wrapped
+}
+
+fn is_squid_entity_type(entity_type_id: i32) -> bool {
+    matches!(
+        entity_type_id,
+        VANILLA_ENTITY_TYPE_SQUID_ID | VANILLA_ENTITY_TYPE_GLOW_SQUID_ID
+    )
 }
 
 /// Vanilla `CreeperRenderer.getWhiteOverlayProgress`: with `step` =
@@ -3990,6 +4006,37 @@ mod tests {
         assert_eq!(
             squid.render_state.squid_z_body_rot, 0.0,
             "out of water leaves the swim roll untouched"
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_squid_body_yaw_from_world_animation() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity_with_rotation(
+            96,
+            VANILLA_ENTITY_TYPE_SQUID_ID,
+            [1.0, 64.0, -2.0],
+            20.0,
+            5.0,
+            30.0,
+        ));
+
+        // Vanilla `LivingEntity.recreateFromPacket` seeds squid `yBodyRot` from
+        // the head yaw. A dry squid does not refine that yaw in `Squid.aiStep`, so
+        // the native instance must use 30 as `bodyRot` and keep the head yaw
+        // relative to that projected body yaw, not the synced transform yaw 20.
+        world.advance_entity_client_animations(1);
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
+        let squid = instances
+            .iter()
+            .find(|instance| instance.entity_id == 96)
+            .unwrap();
+        assert_eq!(squid.render_state.body_rot, 30.0);
+        assert_eq!(squid.render_state.head_yaw, 0.0);
+        assert_eq!(squid.render_state.head_pitch, 5.0);
+        assert!(
+            squid.render_state.squid_x_body_rot < 0.0,
+            "the same world animation state still feeds SquidRenderer body pitch"
         );
     }
 

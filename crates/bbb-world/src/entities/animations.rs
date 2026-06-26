@@ -1628,8 +1628,9 @@ impl WardenCombatAnimationState {
 /// id-seeded `tentacleSpeed` each client tick and derives the tentacle flex angle
 /// and body pitch/roll; `SquidRenderer.extractRenderState` lerps the pairs.
 ///
-/// Both `isInWater()` branches are modelled. The movement-derived `yBodyRot` refinement stays
-/// deferred because it mutates the entity yaw itself, which is currently owned by the synced transform.
+/// Both `isInWater()` branches are modelled. The movement-derived `yBodyRot`
+/// refinement is kept as render-state projection so bbb does not mutate the
+/// canonical synced transform.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct SquidAnimationState {
     /// Vanilla `Squid.tentacleSpeed`, seeded once from the entity id in the
@@ -1654,6 +1655,12 @@ pub struct SquidAnimationState {
     /// Vanilla `Squid.xBodyRotO`.
     #[serde(default)]
     pub old_x_body_rot: f32,
+    /// Vanilla `Squid.yBodyRot` (movement-derived body yaw, degrees).
+    #[serde(default)]
+    pub y_body_rot: f32,
+    /// Vanilla `Squid.yBodyRotO`.
+    #[serde(default)]
+    pub old_y_body_rot: f32,
     /// Vanilla `Squid.zBodyRot` (swim roll, degrees).
     #[serde(default)]
     pub z_body_rot: f32,
@@ -2572,7 +2579,15 @@ impl SquidAnimationState {
     /// Vanilla `Squid` constructor: `random.setSeed(getId()); tentacleSpeed = 1 /
     /// (random.nextFloat() + 1) * 0.2`. Seeding by the entity id makes the speed
     /// deterministic on the client (the `aiStep` re-randomization is server-only).
+    #[cfg(test)]
     pub(crate) fn new(entity_id: i32) -> Self {
+        Self::new_with_y_body_rot(entity_id, 0.0)
+    }
+
+    /// Vanilla `LivingEntity.recreateFromPacket` seeds `yBodyRot` and
+    /// `yBodyRotO` from the add-entity packet's head yaw before the first squid
+    /// `aiStep` refines it from movement.
+    pub(crate) fn new_with_y_body_rot(entity_id: i32, y_body_rot: f32) -> Self {
         let tentacle_speed = 1.0 / (java_random_first_next_float(i64::from(entity_id)) + 1.0) * 0.2;
         Self {
             tentacle_speed,
@@ -2582,6 +2597,8 @@ impl SquidAnimationState {
             old_tentacle_angle: 0.0,
             x_body_rot: 0.0,
             old_x_body_rot: 0.0,
+            y_body_rot,
+            old_y_body_rot: y_body_rot,
             z_body_rot: 0.0,
             old_z_body_rot: 0.0,
             rotate_speed: 0.0,
@@ -2601,17 +2618,16 @@ impl SquidAnimationState {
     /// `tentacleSpeed`, and on the client clamps it at `2π` (the server instead
     /// resets to `0` and broadcasts event `19`). The in-water branch then derives
     /// `tentacleAngle`/`rotateSpeed` from the half-cycle position and turns the
-    /// body roll/pitch from the synced velocity. Out of water it switches the tentacle angle to
-    /// `abs(sin(tentacleMovement)) * π * 0.25` and eases the body pitch toward `-90°`; the server-side
-    /// gravity/levitation branch is not mirrored because the client renderer reads only these local
-    /// animation fields.
-    ///
-    /// DEFERRED: the vanilla movement-derived `yBodyRot` refinement is not modelled (that mutates the
-    /// entity body yaw itself, which bbb projects separately from synced transform state).
+    /// body yaw/roll/pitch from the synced velocity. Out of water it switches the
+    /// tentacle angle to `abs(sin(tentacleMovement)) * π * 0.25` and eases the
+    /// body pitch toward `-90°`; the server-side gravity/levitation branch is not
+    /// mirrored because the client renderer reads only these local animation
+    /// fields.
     fn advance_client_tick(&mut self, delta_movement: EntityVec3, in_water: bool) {
         use std::f32::consts::{PI, TAU};
 
         self.old_x_body_rot = self.x_body_rot;
+        self.old_y_body_rot = self.y_body_rot;
         self.old_z_body_rot = self.z_body_rot;
         self.old_tentacle_movement = self.tentacle_movement;
         self.old_tentacle_angle = self.tentacle_angle;
@@ -2638,6 +2654,10 @@ impl SquidAnimationState {
             let horizontal = (delta_movement.x * delta_movement.x
                 + delta_movement.z * delta_movement.z)
                 .sqrt() as f32;
+            self.y_body_rot += (-(delta_movement.x as f32).atan2(delta_movement.z as f32)
+                * (180.0 / PI)
+                - self.y_body_rot)
+                * 0.1;
             self.z_body_rot += PI * self.rotate_speed * 1.5;
             self.x_body_rot += (-(horizontal.atan2(delta_movement.y as f32)) * (180.0 / PI)
                 - self.x_body_rot)
@@ -2658,6 +2678,13 @@ impl SquidAnimationState {
     /// xBodyRot)`.
     fn x_body_rot(&self, partial_tick: f32) -> f32 {
         self.old_x_body_rot + (self.x_body_rot - self.old_x_body_rot) * partial_tick
+    }
+
+    /// Vanilla `LivingEntityRenderer.extractRenderState`:
+    /// `Mth.rotLerp(partialTicks, yBodyRotO, yBodyRot)`. Squid updates this from
+    /// its movement vector during `aiStep`.
+    fn y_body_rot(&self, partial_tick: f32) -> f32 {
+        self.old_y_body_rot + wrap_degrees(self.y_body_rot - self.old_y_body_rot) * partial_tick
     }
 
     /// Vanilla `SquidRenderer.extractRenderState`: `lerp(partialTicks, zBodyRotO,
@@ -4068,6 +4095,13 @@ impl EntityClientAnimationState {
             .map_or(0.0, |squid| squid.x_body_rot(partial_tick))
     }
 
+    /// Vanilla `LivingEntityRenderState.bodyRot` for squid (`Squid.yBodyRot`
+    /// lerped, degrees). Returns `None` for every non-squid entity so callers can
+    /// keep using the synced transform yaw.
+    pub fn squid_y_body_rot(&self, partial_tick: f32) -> Option<f32> {
+        self.squid.map(|squid| squid.y_body_rot(partial_tick))
+    }
+
     /// Vanilla `SquidRenderState.zBodyRot` (`Squid.zBodyRot` lerped, degrees): the
     /// swim roll `SquidRenderer.setupRotations` applies to the squid root. Returns
     /// `0.0` for every non-squid entity.
@@ -4489,7 +4523,9 @@ impl EntityClientAnimationState {
                 .advance_client_tick(transform),
             VANILLA_ENTITY_TYPE_SQUID_ID | VANILLA_ENTITY_TYPE_GLOW_SQUID_ID => self
                 .squid
-                .get_or_insert_with(|| SquidAnimationState::new(entity_id))
+                .get_or_insert_with(|| {
+                    SquidAnimationState::new_with_y_body_rot(entity_id, transform.y_head_rot)
+                })
                 .advance_client_tick(transform.delta_movement, in_water),
             VANILLA_ENTITY_TYPE_GUARDIAN_ID | VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID => {
                 // Vanilla `Guardian.aiStep` reads `isInWater()` (the world fact

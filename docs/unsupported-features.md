@@ -3177,8 +3177,12 @@ When an agent does any of the following, update this file in the same slice:
       the synced velocity; out of water, it switches to the vanilla suffocating
       branch (`tentacleAngle = abs(sin(tentacleMovement)) * π * 0.25`, `xBodyRot`
       easing toward `-90°`) — all lerped by partial tick and projected world →
-      native → renderer); only the movement-derived body yaw (`yBodyRot`) remains
-      deferred
+      native → renderer). The movement-derived body yaw (`yBodyRot`) is also now
+      projected: it is seeded from the add-entity head yaw like vanilla
+      `LivingEntity.recreateFromPacket`, in water eases by
+      `(-atan2(dm.x, dm.z) * 180 / π - yBodyRot) * 0.1`, out of water remains
+      untouched, and native uses the lerped value as squid/glow-squid renderer
+      `bodyRot` while preserving the canonical synced `yRot`
     - cod entities are wired end to end: the native entity scene (`entity_scene.rs`)
       projects vanilla type id `27` to the real `CodModel`, replacing the former
       placeholder box. Renderer-owned vanilla 26.1 `CodModel.createBodyLayer()`

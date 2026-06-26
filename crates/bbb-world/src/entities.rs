@@ -61,6 +61,7 @@ pub(crate) const VANILLA_ENTITY_TYPE_END_CRYSTAL_ID: i32 = 45;
 pub(crate) const VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID: i32 = 49;
 pub(crate) const VANILLA_ENTITY_TYPE_FIREBALL_ID: i32 = 52;
 pub(crate) const VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID: i32 = 56;
+pub(crate) const VANILLA_ENTITY_TYPE_GLOW_SQUID_ID: i32 = 61;
 pub(crate) const VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID: i32 = 65;
 pub(crate) const VANILLA_ENTITY_TYPE_HORSE_ID: i32 = 66;
 pub(crate) const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
@@ -84,6 +85,7 @@ pub(crate) const VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID: i32 = 121;
 pub(crate) const VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID: i32 = 122;
 pub(crate) const VANILLA_ENTITY_TYPE_SPRUCE_BOAT_ID: i32 = 125;
 pub(crate) const VANILLA_ENTITY_TYPE_SPRUCE_CHEST_BOAT_ID: i32 = 126;
+pub(crate) const VANILLA_ENTITY_TYPE_SQUID_ID: i32 = 127;
 pub(crate) const VANILLA_ENTITY_TYPE_STRIDER_ID: i32 = 129;
 pub(crate) const VANILLA_ENTITY_TYPE_TNT_MINECART_ID: i32 = 133;
 pub(crate) const VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID: i32 = 134;
@@ -894,6 +896,12 @@ pub struct EntityModelSourceState {
     /// at rest and for every non-squid entity.
     #[serde(default)]
     pub squid_x_body_rot: f32,
+    /// Vanilla `LivingEntityRenderState.bodyRot` for squid (`Squid.yBodyRot`
+    /// lerped, degrees): the movement-derived body yaw `SquidRenderer.setupRotations`
+    /// receives before applying its squid-specific pitch/roll. `0.0` for every
+    /// non-squid entity.
+    #[serde(default)]
+    pub squid_y_body_rot: f32,
     /// Vanilla `SquidRenderState.zBodyRot` (`Squid.zBodyRot` lerped, degrees): the
     /// squid swim roll `SquidRenderer.setupRotations` applies to the root. `0.0` at
     /// rest and for every non-squid entity.
