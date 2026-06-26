@@ -916,15 +916,16 @@ When an agent does any of the following, update this file in the same slice:
     `AbstractZombieRenderer` ORs in `Zombie.isUnderWaterConverting()`
     (`DATA_DROWNED_CONVERSION_ID`, id `18`) for the whole zombie family, and
     `ZombieVillagerRenderer` additionally ORs in `ZombieVillager.isConverting()`
-    (`DATA_CONVERTING_ID`, id `19`). While shaking, the scene folds
+    (`DATA_CONVERTING_ID`, id `19`). `StriderRenderer` additionally ORs in
+    `StriderRenderState.isSuffocating` from synced `Strider.DATA_SUFFOCATING`
+    (id `19`), the same flag used by the cold texture swap. While shaking, the scene folds
     `cos(floor(ageInTicks) * 3.25) * π * 0.4` (degrees) into the projected
     `body_rot`, computed against the integer `ageInTicks` (= `Mth.floor`, so no
     partial lerp); the net head-look yaw is taken against the unshaken body yaw, so
     the whole model jitters while the head turn relative to the body is unchanged.
     Remaining gap: the conversion shakes that are not a synced client flag — the
     hoglin/piglin zombification shake (environment-attribute derived, server-side)
-    and the base-`Skeleton` freeze-conversion shake (server-side `conversionTime`),
-    plus `StriderRenderer` cold (the strider model itself is still a placeholder).
+    and the base-`Skeleton` freeze-conversion shake (server-side `conversionTime`).
   - The head-look projection is implemented as a reusable render-state field: the
     canonical `Entity.yHeadRot`/`getXRot` flow through `EntityModelSourceState`,
     the native scene derives `LivingEntityRenderState.yRot` =
@@ -2319,8 +2320,10 @@ When an agent does any of the following, update this file in the same slice:
       `SimpleEquipmentLayer(STRIDER_SADDLE)` with `AdultStriderModel(ModelLayers.STRIDER_SADDLE)`,
       `LayerDefinitions` maps that layer to the same adult strider body layer, and the renderer draws
       `textures/entity/equipment/strider_saddle/saddle.png` (64×128). Baby striders intentionally skip
-      this layer because vanilla supplies `null` for the baby saddle model. The suffocating shake remains
-      unsupported
+      this layer because vanilla supplies `null` for the baby saddle model. The suffocating shake is also
+      covered: native mirrors `StriderRenderer.isShaking = super.isShaking || state.isSuffocating` and
+      folds the existing `setupRotations` body-shake formula into `body_rot` from the same synced
+      `DATA_SUFFOCATING` flag.
     - turtle entities are wired end to end on both render paths: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `137` to the real `AdultTurtleModel` /
       `BabyTurtleModel`, replacing the former placeholder box, keyed off the synced

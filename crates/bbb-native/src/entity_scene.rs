@@ -1508,6 +1508,9 @@ fn entity_body_shake_degrees(age_ticks: u32, is_shaking: bool) -> f32 {
 /// ORs in `Zombie.isUnderWaterConverting()` (synced `DATA_DROWNED_CONVERSION_ID`,
 /// id 18) for the whole zombie family, and `ZombieVillagerRenderer` additionally
 /// ORs in `ZombieVillager.isConverting()` (synced `DATA_CONVERTING_ID`, id 19).
+/// `StriderRenderer.isShaking` additionally ORs in `Strider.isSuffocating()`
+/// (synced `DATA_SUFFOCATING`, id 19), the same flag that selects the cold
+/// texture.
 /// The hoglin/piglin zombification shake is environment-attribute-derived (not a
 /// synced flag) and the base-`Skeleton` freeze-conversion shake is server-side
 /// `conversionTime`, so both remain deferred.
@@ -1528,6 +1531,9 @@ fn entity_shaking(
         VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID => {
             entity_data_bool(data_values, ZOMBIE_DROWNED_CONVERSION_DATA_ID, false)
                 || entity_data_bool(data_values, ZOMBIE_VILLAGER_CONVERTING_DATA_ID, false)
+        }
+        VANILLA_ENTITY_TYPE_STRIDER_ID => {
+            entity_data_bool(data_values, STRIDER_SUFFOCATING_DATA_ID, false)
         }
         _ => false,
     }
@@ -4540,6 +4546,54 @@ mod tests {
             values: vec![protocol_bool_data(ZOMBIE_VILLAGER_CONVERTING_DATA_ID, true)],
         }));
         assert!((body_rot(&world, 85) - shake).abs() < 1e-6);
+    }
+
+    #[test]
+    fn entity_model_instances_shake_striders_while_suffocating() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            86,
+            VANILLA_ENTITY_TYPE_STRIDER_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.advance_entity_client_animations(2);
+
+        let strider = |world: &WorldStore| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.25)
+                .into_iter()
+                .find(|instance| instance.entity_id == 86)
+                .unwrap()
+        };
+
+        // A warm strider does not shake and keeps the non-cold texture variant.
+        let warm = strider(&world);
+        assert_eq!(warm.render_state.body_rot, 0.0);
+        assert_eq!(
+            warm.kind,
+            EntityModelKind::Strider {
+                baby: false,
+                cold: false
+            }
+        );
+
+        // StriderRenderer.isShaking ORs in StriderRenderState.isSuffocating,
+        // which is extracted from DATA_SUFFOCATING (19). The same flag also
+        // selects the cold texture.
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 86,
+            values: vec![protocol_bool_data(STRIDER_SUFFOCATING_DATA_ID, true)],
+        }));
+        let shaking = strider(&world);
+        let expected_shake = (2.0_f32 * 3.25).cos() * std::f32::consts::PI * 0.4;
+        assert!((shaking.render_state.body_rot - expected_shake).abs() < 1e-6);
+        assert_eq!(shaking.render_state.head_yaw, 0.0);
+        assert_eq!(
+            shaking.kind,
+            EntityModelKind::Strider {
+                baby: false,
+                cold: true
+            }
+        );
     }
 
     #[test]

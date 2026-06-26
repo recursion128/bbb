@@ -307,7 +307,8 @@ pub enum EntityModelKind {
     /// vertical bob, leg swing/lift, and bristle flow read `EntityRenderState.age_in_ticks`,
     /// the walk animation, and the look angles. The `cold` flag (the synced `isSuffocating()`) swaps
     /// to the `strider_cold` texture × age (`StriderRenderer.getTextureLocation`). The generic render
-    /// state carries `isRidden` and the saddle equipment-layer flag; the suffocating shake is deferred.
+    /// state carries `isRidden` and the saddle equipment-layer flag; native folds the suffocating
+    /// shake into `body_rot` like vanilla `StriderRenderer.isShaking`.
     Strider {
         baby: bool,
         cold: bool,
