@@ -64,9 +64,10 @@ resolved profile/properties。native 也已补 skin PNG 异步下载队列，成
 Loading/Failed 仍采样 fallback。native 也已补 cape/elytra 这类普通 profile
 texture PNG 的异步下载/缓存 primitive（不走 legacy skin post-process，按 capes/elytra
 分目录缓存并 drain 给 renderer），renderer 已补普通 profile texture 动态 atlas
-上传入口与采样 mesh primitive；Ready 普通 profile texture submission 可进动态 atlas
-bucket，缺 entry 时回退静态 atlas。剩余的是接入实际 CapeLayer/WingsLayer presentation，
-以及更泛化的任意动态纹理加载。
+上传入口与采样 mesh primitive；玩家 profile cape layer 现在会在 cape model part
+可见且动态 atlas entry ready 时以 vanilla `entitySolid` submission 采样上传后的 cape，
+缺 entry 时等待。剩余的是 WingsLayer/elytra、胸甲装备对 cape 的 WINGS/HUMANOID
+交互、完整 cloak physics，以及更泛化的任意动态纹理加载。
 铜傀儡 vanilla 模型、四态风化贴图和 emissive eyes layer 已完成。
 Illager 家族的主要 arm-pose 分支已覆盖到 evoker/illusioner spellcasting、illusioner bow aim、
 pillager crossbow hold/charge、evoker/vindicator celebrating，以及 vindicator empty/armed
@@ -86,7 +87,7 @@ Shulker bullet 的第二次 vanilla submit 也已补齐：textured path 在 base
 模型之后复用同一个 posed model，追加 `scale(1.5)` 的 translucent outer shell，
 颜色/alpha 使用 vanilla packed color `0x26ffffff`。
 实体 textured path 现在显式记录 vanilla-shaped submission 元数据：render type 区分
-`armorCutoutNoCull` / `entityCutout` / `entityCutoutCull` / `entityCutoutZOffset` /
+`entitySolid` / `armorCutoutNoCull` / `entityCutout` / `entityCutoutCull` / `entityCutoutZOffset` /
 `entityTranslucent` / `Eyes` / `breezeWind` / `energySwirl`，`order`
 对应 `SubmitNodeCollector.order(n)`，并用 `submit_sequence` 保留同 order 内的 layer 顺序。
 render type 还暴露 vanilla 名称断言，防止这些细分退回粗 bucket。
@@ -164,7 +165,12 @@ Panda sit/lie/roll client-tick 动画已完成：world 侧按 vanilla `Panda.tic
    9. DONE for renderer 普通 profile texture 采样 primitive：textured submission 可携带
       `EntityDynamicPlayerTexture` handle，Ready entry 会进入绑定动态 profile texture atlas
       的 cutout/translucent bucket，缺 atlas entry 时保留 submission 元数据并回退静态 atlas。
-   10. 接入实际 CapeLayer/WingsLayer presentation，并继续抽象 broader
-      arbitrary dynamic texture loading。
+   10. DONE for 玩家 profile CapeLayer dynamic texture presentation：native 会把
+      PlayerInfo profile 的 cape URL 投影成 `EntityDynamicPlayerTextureKind::Cape`，
+      renderer 在 cape model part 可见且动态 atlas entry ready 时提交
+      `RenderTypes.entitySolid(skin.cape().texturePath())` 等价的 profile cape layer，
+      并测试 texture、render type、tint、transform、order 和缺 entry 等待路径。
+   11. 接入 WingsLayer/elytra、胸甲 WINGS suppression 与 HUMANOID cape translation、
+      完整 cloak physics，并继续抽象 broader arbitrary dynamic texture loading。
 > 落地前务必先在 bbb 里 grep 确认该 feature 确实缺失（历史上多次「以为缺失实则已实现」）。
 > 索引/数据陷阱见 memory `entity-metadata-index-layout.md`；模型/代理历史见 `proxy-entity-replacement.md`。

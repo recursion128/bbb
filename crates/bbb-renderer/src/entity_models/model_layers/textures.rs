@@ -49,6 +49,11 @@ pub(in crate::entity_models) const PLAYER_WIDE_NOOR_TEXTURE_REF: EntityModelText
     player_default_skin_ref("textures/entity/player/wide/noor.png");
 pub(in crate::entity_models) const PLAYER_WIDE_STEVE_TEXTURE_REF: EntityModelTextureRef =
     player_default_skin_ref("textures/entity/player/wide/steve.png");
+pub(in crate::entity_models) const PLAYER_PROFILE_CAPE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "dynamic/player/cape",
+        size: [64, 32],
+    };
 pub(in crate::entity_models) const PLAYER_WIDE_SUNNY_TEXTURE_REF: EntityModelTextureRef =
     player_default_skin_ref("textures/entity/player/wide/sunny.png");
 pub(in crate::entity_models) const PLAYER_WIDE_ZURI_TEXTURE_REF: EntityModelTextureRef =

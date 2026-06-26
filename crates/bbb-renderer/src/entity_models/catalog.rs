@@ -51,6 +51,13 @@ pub struct EntityDynamicPlayerSkin {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EntityDynamicPlayerTexture {
     pub handle: u64,
+    pub kind: EntityDynamicPlayerTextureKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EntityDynamicPlayerTextureKind {
+    Cape,
+    Elytra,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

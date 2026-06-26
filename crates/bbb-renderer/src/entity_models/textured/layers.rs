@@ -74,6 +74,8 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::entity_models) enum EntityModelLayerRenderType {
+    /// Vanilla `RenderTypes.entitySolid(texture)`.
+    EntitySolid,
     /// Vanilla `RenderTypes.armorCutoutNoCull(texture)` used by equipment layers.
     ArmorCutoutNoCull,
     /// Vanilla `RenderTypes.entityCutout(texture)`; this is also the default
@@ -97,6 +99,7 @@ impl EntityModelLayerRenderType {
     #[cfg(test)]
     pub(in crate::entity_models) const fn vanilla_name(self) -> &'static str {
         match self {
+            Self::EntitySolid => "entitySolid",
             Self::ArmorCutoutNoCull => "armorCutoutNoCull",
             Self::EntityCutout => "entityCutout",
             Self::EntityCutoutCull => "entityCutoutCull",

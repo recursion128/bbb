@@ -22,8 +22,8 @@ use bbb_protocol::packets::{
 };
 use bbb_renderer::{
     DynamicPlayerSkinImage, DynamicPlayerTextureImage, EntityCustomHeadSkull,
-    EntityDefaultPlayerSkin, EntityDynamicPlayerSkinStatus, EntityPlayerSkin, ItemSpriteRect,
-    SpriteAlphaMask,
+    EntityDefaultPlayerSkin, EntityDynamicPlayerSkinStatus, EntityDynamicPlayerTexture,
+    EntityDynamicPlayerTextureKind, EntityPlayerSkin, ItemSpriteRect, SpriteAlphaMask,
 };
 #[cfg(test)]
 use bbb_renderer::{EntityDynamicPlayerSkin, EntityPlayerSkinModel};
@@ -491,6 +491,24 @@ impl NativeItemRuntime {
             &self.dynamic_textures,
         );
         player_skin
+    }
+
+    pub(crate) fn player_profile_texture_for_profile(
+        &self,
+        profile: &ResolvableProfileSummary,
+        kind: EntityDynamicPlayerTextureKind,
+    ) -> Option<EntityDynamicPlayerTexture> {
+        let player_skin = self
+            .profile_skins
+            .borrow_mut()
+            .player_skin_for_profile(profile);
+        queue_dynamic_profile_texture_downloads(
+            profile,
+            player_skin,
+            &self.dynamic_skins,
+            &self.dynamic_textures,
+        );
+        dynamic_player_texture_for_profile(profile, kind)
     }
 
     pub(crate) fn enable_http_profile_resolution(&self) {
@@ -1424,6 +1442,26 @@ fn queue_dynamic_profile_texture_downloads(
             );
         }
     }
+}
+
+fn dynamic_player_texture_for_profile(
+    profile: &ResolvableProfileSummary,
+    kind: EntityDynamicPlayerTextureKind,
+) -> Option<EntityDynamicPlayerTexture> {
+    let textures = profile.profile_textures.as_ref()?;
+    let url = match kind {
+        EntityDynamicPlayerTextureKind::Cape if profile.skin_patch.cape.is_none() => {
+            textures.cape.as_ref()?.url.as_str()
+        }
+        EntityDynamicPlayerTextureKind::Elytra if profile.skin_patch.elytra.is_none() => {
+            textures.elytra.as_ref()?.url.as_str()
+        }
+        _ => return None,
+    };
+    Some(EntityDynamicPlayerTexture {
+        handle: profile_texture_handle(url),
+        kind,
+    })
 }
 
 fn component_patch_has_profile(component_patch: &DataComponentPatchSummary) -> bool {

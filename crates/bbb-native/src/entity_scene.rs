@@ -7,8 +7,9 @@ use bbb_renderer::{
     ArmorStandModelPose, ArrowModelTexture, AxolotlModelVariant, BoatModelFamily, CamelModelFamily,
     CatModelVariant, ChickenModelVariant, CopperGolemWeathering, CowModelVariant,
     DonkeyModelFamily, EntityArmorMaterial, EntityCustomHeadSkull, EntityDefaultPlayerSkin,
-    EntityDyeColor, EntityModelInstance, EntityModelKind, EntityPlayerSkin, FoxModelVariant,
-    FrogModelVariant, GuardianBeamRenderState, HoglinModelFamily, HorseColorVariant, HorseMarkings,
+    EntityDyeColor, EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind,
+    EntityModelInstance, EntityModelKind, EntityPlayerSkin, FoxModelVariant, FrogModelVariant,
+    GuardianBeamRenderState, HoglinModelFamily, HorseColorVariant, HorseMarkings,
     IllagerModelFamily, IronGolemCrackiness, LlamaModelFamily, LlamaVariant, MooshroomVariant,
     PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
     PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SelectionBox, SelectionOutline,
@@ -907,6 +908,18 @@ fn entity_model_instance(
         *rolled_up = source.armadillo_is_hiding_in_shell;
     }
     apply_player_profile_skin(&mut kind, &source, world, item_runtime);
+    let player_cape_texture = player_profile_texture(
+        &source,
+        world,
+        item_runtime,
+        EntityDynamicPlayerTextureKind::Cape,
+    );
+    let player_elytra_texture = player_profile_texture(
+        &source,
+        world,
+        item_runtime,
+        EntityDynamicPlayerTextureKind::Elytra,
+    );
     // Only skeletons drive the `BOW_AND_ARROW` aim pose; resolve the held item just for them to avoid a
     // per-entity item lookup for every mob.
     let main_hand_holds_bow =
@@ -1264,6 +1277,8 @@ fn entity_model_instance(
         .with_player_crossbow_hold(player_crossbow_hold)
         .with_player_main_hand_item_pose(player_main_hand_item_pose)
         .with_player_off_hand_item_pose(player_off_hand_item_pose)
+        .with_player_cape_texture(player_cape_texture)
+        .with_player_elytra_texture(player_elytra_texture)
         .with_use_item_off_hand(source.use_item_off_hand)
         .with_main_hand_holds_crossbow(main_hand_holds_crossbow)
         .with_illager_main_hand_empty(illager_main_hand_empty)
@@ -2419,6 +2434,21 @@ fn apply_player_profile_skin(
         return;
     };
     *skin = item_runtime.player_skin_for_profile(&player_info_profile_resolvable(&info.profile));
+}
+
+fn player_profile_texture(
+    source: &EntityModelSourceState,
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    kind: EntityDynamicPlayerTextureKind,
+) -> Option<EntityDynamicPlayerTexture> {
+    if source.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID {
+        return None;
+    }
+    let item_runtime = item_runtime?;
+    let info = world.player_info_entry(source.uuid)?;
+    item_runtime
+        .player_profile_texture_for_profile(&player_info_profile_resolvable(&info.profile), kind)
 }
 
 fn player_info_profile_resolvable(
@@ -7881,6 +7911,19 @@ mod tests {
         assert_eq!(skin.status, EntityDynamicPlayerSkinStatus::Loading);
         assert_ne!(skin.handle, 0);
         assert_eq!(parts, PlayerModelPartVisibility::from_vanilla_mask(0));
+        let cape = instance
+            .render_state
+            .player_cape_texture
+            .expect("profile cape texture");
+        let elytra = instance
+            .render_state
+            .player_elytra_texture
+            .expect("profile elytra texture");
+        assert_eq!(cape.kind, EntityDynamicPlayerTextureKind::Cape);
+        assert_eq!(elytra.kind, EntityDynamicPlayerTextureKind::Elytra);
+        assert_ne!(cape.handle, 0);
+        assert_ne!(elytra.handle, 0);
+        assert_ne!(cape.handle, elytra.handle);
     }
 
     #[test]

@@ -1,4 +1,3 @@
-#[cfg(test)]
 use super::catalog::EntityDynamicPlayerTextureAtlasEntry;
 use super::colored::{
     creeper_model_root_transform, drowned_model_root_transform, end_crystal_model_root_transform,
@@ -33,7 +32,7 @@ use super::{
         append_scrolled_textured_mesh, emit_textured_model_cube, emit_textured_model_parts,
         fill_entity_textured_light, fill_entity_textured_overlay, part_pose_transform,
         EntityModelScrollMesh, EntityModelScrollVertex, EntityModelTexturedMesh, PartPose,
-        TexturedModelPartDesc,
+        TexturedModelCubeDesc, TexturedModelPartDesc,
     },
     instances::EntityModelInstance,
     mesh_transformer_scaled_model_root_transform,
@@ -59,15 +58,23 @@ use super::{
         HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
         LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
         PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF,
-        SHULKER_BULLET_TEXTURE_REF, SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF,
-        STANDARD_OUTER_ARMOR_DEFORMATION, STRIDER_SADDLE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF,
-        WITHER_ARMOR_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
-        ZOMBIE_TEXTURE_REF,
+        PLAYER_PROFILE_CAPE_TEXTURE_REF, SHULKER_BULLET_TEXTURE_REF,
+        SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION,
+        STRIDER_SADDLE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF,
+        WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF, ZOMBIE_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
 };
-use glam::{Mat4, Vec3};
+use glam::{Mat4, Quat, Vec3};
+
+const PLAYER_CAPE_CUBE: TexturedModelCubeDesc = TexturedModelCubeDesc {
+    min: [-5.0, 0.0, -1.0],
+    size: [10.0, 16.0, 1.0],
+    uv_size: [10.0, 16.0, 1.0],
+    tex: [0.0, 0.0],
+    mirror: false,
+};
 
 mod layers;
 #[cfg(test)]
@@ -160,7 +167,8 @@ impl EntityModelTexturedMeshes {
         render_type: EntityModelLayerRenderType,
     ) -> &mut EntityModelTexturedMesh {
         match render_type {
-            EntityModelLayerRenderType::ArmorCutoutNoCull
+            EntityModelLayerRenderType::EntitySolid
+            | EntityModelLayerRenderType::ArmorCutoutNoCull
             | EntityModelLayerRenderType::EntityCutout
             | EntityModelLayerRenderType::EntityCutoutCull
             | EntityModelLayerRenderType::EntityCutoutZOffset => &mut self.cutout,
@@ -177,7 +185,8 @@ impl EntityModelTexturedMeshes {
         render_type: EntityModelLayerRenderType,
     ) -> &mut EntityModelTexturedMesh {
         match render_type {
-            EntityModelLayerRenderType::ArmorCutoutNoCull
+            EntityModelLayerRenderType::EntitySolid
+            | EntityModelLayerRenderType::ArmorCutoutNoCull
             | EntityModelLayerRenderType::EntityCutout
             | EntityModelLayerRenderType::EntityCutoutCull
             | EntityModelLayerRenderType::EntityCutoutZOffset => {
@@ -194,13 +203,13 @@ impl EntityModelTexturedMeshes {
         }
     }
 
-    #[cfg(test)]
     fn dynamic_player_texture_mesh_mut(
         &mut self,
         render_type: EntityModelLayerRenderType,
     ) -> &mut EntityModelTexturedMesh {
         match render_type {
-            EntityModelLayerRenderType::ArmorCutoutNoCull
+            EntityModelLayerRenderType::EntitySolid
+            | EntityModelLayerRenderType::ArmorCutoutNoCull
             | EntityModelLayerRenderType::EntityCutout
             | EntityModelLayerRenderType::EntityCutoutCull
             | EntityModelLayerRenderType::EntityCutoutZOffset => {
@@ -279,7 +288,6 @@ impl EntityModelSubmissionEmit {
         self
     }
 
-    #[cfg(test)]
     fn with_dynamic_player_texture(mut self, texture: EntityDynamicPlayerTexture) -> Self {
         self.dynamic_player_texture = Some(texture);
         self
@@ -323,7 +331,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
     dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) -> EntityModelTexturedMeshes {
     let mut meshes = EntityModelTexturedMeshes::new();
-    let _ = dynamic_player_texture_atlas;
     for instance in instances {
         if instance.render_state.invisible {
             continue;
@@ -494,6 +501,7 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         // The guardian attack beam is a world-space billboarded prism from the guardian eye to its
         // target; it folds into the scroll (tiled) pass and runs regardless of `handled`.
         emit_guardian_beam(&mut meshes, *instance, atlas);
+        emit_player_cape_layer(&mut meshes, *instance, dynamic_player_texture_atlas);
         // Worn armor is a cutout overlay draped on the host humanoid pose; it runs regardless of
         // `handled` and folds into the cutout pass before the shared light/overlay fill below.
         emit_worn_humanoid_armor(&mut meshes, *instance, atlas);
@@ -855,7 +863,6 @@ fn render_textured_dynamic_player_skin_submission(
     );
 }
 
-#[cfg(test)]
 fn render_textured_dynamic_player_texture_submission(
     meshes: &mut EntityModelTexturedMeshes,
     submit: EntityModelSubmissionEmit,
@@ -1668,7 +1675,6 @@ fn dynamic_player_skin_atlas_entry(
         .find(|entry| entry.handle == handle)
 }
 
-#[cfg(test)]
 fn dynamic_player_texture_atlas_entry(
     atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
     texture: EntityDynamicPlayerTexture,
@@ -2449,8 +2455,8 @@ fn emit_player_textured_model(
     // The unified `PlayerModel` tree drives both render paths; `setup_anim` looks the head, runs the
     // inherited `HumanoidModel` walk swing + idle arm bob, and applies the crouch sneaking pose. The
     // six skin overlay parts (hat/jacket/sleeves/pants) are toggled by the player's part visibility
-    // after `prepare` (the colored fallback shows every overlay). Held-item/attack/swim arm poses,
-    // the cape, and the elytra defer.
+    // after `prepare` (the colored fallback shows every overlay). Held-item/attack/swim arm poses and
+    // the elytra defer; the profile cape is emitted as a separate layer after the base body.
     let transform = player_model_root_transform(instance);
     let slim = skin.is_slim();
     let mut model = PlayerModel::new(slim);
@@ -2478,6 +2484,72 @@ fn emit_player_textured_model(
         player_textured_layer_passes_with_texture(slim, parts, texture),
         atlas,
     );
+}
+
+fn emit_player_cape_layer(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+) {
+    let EntityModelKind::Player { skin, parts } = instance.kind else {
+        return;
+    };
+    if !parts.cape {
+        return;
+    }
+    let Some(cape_texture) = instance.render_state.player_cape_texture else {
+        return;
+    };
+    let Some(entry) =
+        dynamic_player_texture_atlas_entry(dynamic_player_texture_atlas, cape_texture)
+    else {
+        return;
+    };
+
+    let root = player_model_root_transform(instance);
+    let mut model = PlayerModel::new(skin.is_slim());
+    model.prepare(&instance);
+    let Some(body_transform) = model.root().try_descendant_attach_transform(&["body"]) else {
+        return;
+    };
+    let cape_transform = root
+        * body_transform
+        * part_pose_transform(PartPose {
+            offset: [0.0, 0.0, 2.0],
+            rotation: [0.0, std::f32::consts::PI, 0.0],
+        })
+        * player_cape_animation_transform(&instance);
+    let tint = [1.0, 1.0, 1.0, 1.0];
+    let submit = EntityModelSubmissionEmit::new(
+        EntityModelLayerRenderType::EntitySolid,
+        PLAYER_PROFILE_CAPE_TEXTURE_REF,
+        tint,
+        root,
+        0,
+        1,
+    )
+    .with_dynamic_player_texture(cape_texture);
+    render_textured_dynamic_player_texture_submission(meshes, submit, entry, |mesh, entry| {
+        emit_textured_model_cube(
+            mesh,
+            cape_transform,
+            PLAYER_CAPE_CUBE,
+            PLAYER_PROFILE_CAPE_TEXTURE_REF,
+            entry.uv,
+            tint,
+        );
+    });
+}
+
+fn player_cape_animation_transform(instance: &EntityModelInstance) -> Mat4 {
+    let state = &instance.render_state;
+    let rotation = Quat::from_rotation_y(-std::f32::consts::PI)
+        * Quat::from_rotation_x(
+            (6.0 + state.player_cape_lean / 2.0 + state.player_cape_flap).to_radians(),
+        )
+        * Quat::from_rotation_z((state.player_cape_lean2 / 2.0).to_radians())
+        * Quat::from_rotation_y((180.0 - state.player_cape_lean2 / 2.0).to_radians());
+    Mat4::from_quat(rotation)
 }
 
 fn emit_sheep_textured_model(

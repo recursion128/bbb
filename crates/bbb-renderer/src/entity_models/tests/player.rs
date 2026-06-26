@@ -388,7 +388,10 @@ fn dynamic_player_texture_atlas_rejects_bad_profile_texture_dimensions() {
 fn ready_dynamic_player_texture_submission_uses_dynamic_texture_atlas_bucket() {
     let (static_atlas, _) =
         build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
-    let dynamic_texture = EntityDynamicPlayerTexture { handle: 7001 };
+    let dynamic_texture = EntityDynamicPlayerTexture {
+        handle: 7001,
+        kind: EntityDynamicPlayerTextureKind::Cape,
+    };
     let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicPlayerTextureImage {
         handle: dynamic_texture.handle,
         size: [64, 64],
@@ -426,7 +429,10 @@ fn ready_dynamic_player_texture_submission_uses_dynamic_texture_atlas_bucket() {
 fn dynamic_player_texture_submission_falls_back_to_static_atlas_when_not_uploaded() {
     let (static_atlas, _) =
         build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
-    let dynamic_texture = EntityDynamicPlayerTexture { handle: 7002 };
+    let dynamic_texture = EntityDynamicPlayerTexture {
+        handle: 7002,
+        kind: EntityDynamicPlayerTextureKind::Cape,
+    };
 
     let meshes = dynamic_player_texture_test_meshes(
         EntityModelLayerRenderType::EntityTranslucent,
@@ -448,6 +454,94 @@ fn dynamic_player_texture_submission_falls_back_to_static_atlas_when_not_uploade
     assert!(meshes.cutout.vertices.is_empty());
     assert_eq!(meshes.translucent.cutout_faces, 72);
     assert_eq!(meshes.translucent.vertices.len(), 288);
+}
+
+#[test]
+fn player_cape_layer_uses_dynamic_profile_texture_atlas_submission() {
+    let (static_atlas, _) =
+        build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
+    let cape_texture = EntityDynamicPlayerTexture {
+        handle: 7101,
+        kind: EntityDynamicPlayerTextureKind::Cape,
+    };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicPlayerTextureImage {
+        handle: cape_texture.handle,
+        size: [64, 32],
+        rgba: vec![0x66; 64 * 32 * 4],
+    }])
+    .unwrap()
+    .0;
+    let instance = EntityModelInstance::player_with_skin(
+        45,
+        [1.0, 65.0, -2.0],
+        30.0,
+        EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_player_cape_texture(Some(cape_texture))
+    .with_player_cape_flap(4.0)
+    .with_player_cape_lean(10.0)
+    .with_player_cape_lean2(-6.0);
+
+    let meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[instance],
+        &static_atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+
+    let cape_submit = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.dynamic_player_texture == Some(cape_texture))
+        .expect("cape submission");
+    assert_eq!(
+        cape_submit.render_type,
+        EntityModelLayerRenderType::EntitySolid
+    );
+    assert_eq!(cape_submit.render_type.vanilla_name(), "entitySolid");
+    assert_eq!(cape_submit.texture, PLAYER_PROFILE_CAPE_TEXTURE_REF);
+    assert_eq!(cape_submit.dynamic_player_skin, None);
+    assert_eq!(cape_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(cape_submit.transform, player_model_root_transform(instance));
+    assert_eq!((cape_submit.order, cape_submit.submit_sequence), (0, 1));
+    assert_eq!(meshes.dynamic_player_texture_cutout.cutout_faces, 6);
+    assert_eq!(meshes.dynamic_player_texture_cutout.vertices.len(), 24);
+    assert!(meshes
+        .dynamic_player_texture_translucent
+        .vertices
+        .is_empty());
+}
+
+#[test]
+fn player_cape_layer_waits_for_dynamic_profile_texture_upload() {
+    let (static_atlas, _) =
+        build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
+    let cape_texture = EntityDynamicPlayerTexture {
+        handle: 7102,
+        kind: EntityDynamicPlayerTextureKind::Cape,
+    };
+    let instance = EntityModelInstance::player_with_skin(
+        46,
+        [0.0, 64.0, 0.0],
+        0.0,
+        EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_player_cape_texture(Some(cape_texture));
+
+    let meshes =
+        entity_model_textured_meshes_with_dynamic_textures(&[instance], &static_atlas, None, None);
+
+    assert!(meshes
+        .submissions
+        .iter()
+        .all(|submit| submit.dynamic_player_texture != Some(cape_texture)));
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_translucent
+        .vertices
+        .is_empty());
 }
 
 #[test]

@@ -331,6 +331,20 @@ entity_render_state! {
     /// plain item in the off hand — only `PlayerModel` consumes it, and only when not using that hand and the
     /// item is not a spear (`SPEAR`) or charged crossbow (`CROSSBOW_HOLD`).
     (with_player_off_hand_item_pose) player_off_hand_item_pose: bool = false;
+    /// Vanilla `AvatarRenderState.skin.cape()` as a downloaded profile texture. The actual cape layer also
+    /// checks the `PlayerModelPart.CAPE` visibility bit carried by [`EntityModelKind::Player`] and emits only
+    /// once the dynamic profile-texture atlas has the matching handle.
+    (with_player_cape_texture) player_cape_texture: Option<EntityDynamicPlayerTexture> = None;
+    /// Vanilla `AvatarRenderState.skin.elytra()` as a downloaded profile texture. Projected now for the
+    /// deferred `WingsLayer`; the cape layer does not consume it.
+    (with_player_elytra_texture) player_elytra_texture: Option<EntityDynamicPlayerTexture> = None;
+    /// Vanilla `AvatarRenderState.capeFlap`, produced by `AvatarRenderer.extractCapeState`. Defaults to the
+    /// still-player value until the world side mirrors cloak interpolation.
+    (with_player_cape_flap) player_cape_flap: f32 = 0.0;
+    /// Vanilla `AvatarRenderState.capeLean`, produced by `AvatarRenderer.extractCapeState`.
+    (with_player_cape_lean) player_cape_lean: f32 = 0.0;
+    /// Vanilla `AvatarRenderState.capeLean2`, produced by `AvatarRenderer.extractCapeState`.
+    (with_player_cape_lean2) player_cape_lean2: f32 = 0.0;
     /// Vanilla `HumanoidModel.poseRightArm`/`poseLeftArm` use-item arm pose `BLOCK` (`poseBlockingArm`):
     /// while a player raises a shield (`isUsingItem` + the using hand holds a `BLOCKS_ATTACKS` item) the
     /// holding arm tucks the shield forward along the head look — `xRot = arm.xRot · 0.5 − 0.9424779 +
@@ -2119,6 +2133,11 @@ mod tests {
                 player_brushing: false,
                 player_main_hand_item_pose: false,
                 player_off_hand_item_pose: false,
+                player_cape_texture: None,
+                player_elytra_texture: None,
+                player_cape_flap: 0.0,
+                player_cape_lean: 0.0,
+                player_cape_lean2: 0.0,
                 player_blocking: false,
                 player_throwing_trident: false,
                 player_drawing_bow: false,
