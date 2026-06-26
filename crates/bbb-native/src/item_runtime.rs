@@ -379,6 +379,16 @@ impl NativeItemRuntime {
         materials
     }
 
+    pub(crate) fn item_has_humanoid_armor_asset(&self, protocol_id: i32) -> bool {
+        let Some(registry) = &self.registry else {
+            return false;
+        };
+        let Some(resource_id) = registry.resource_id(protocol_id) else {
+            return false;
+        };
+        registry.humanoid_armor_asset(resource_id).is_some()
+    }
+
     pub(crate) fn mount_body_armor_kinds_by_protocol_id(
         &self,
     ) -> BTreeMap<i32, WorldMountArmorSlotKind> {
@@ -2043,6 +2053,50 @@ mod tests {
             runtime.item_display_transform(999, BlockModelDisplayContext::ThirdPersonRightHand),
             None
         );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn humanoid_armor_asset_query_excludes_head_equippable_non_armor() {
+        let root = unique_temp_dir("item-runtime-humanoid-armor-asset");
+        let assets = assets_dir(&root);
+        write_item_atlases(&assets);
+        write_json(
+            &root
+                .join("sources")
+                .join(bbb_pack::MC_VERSION)
+                .join("net")
+                .join("minecraft")
+                .join("world")
+                .join("item")
+                .join("Items.java"),
+            r#"public class Items {
+                public static final Item DIAMOND_HELMET = registerItem(
+                    "diamond_helmet",
+                    new Item.Properties().humanoidArmor(ArmorMaterials.DIAMOND, ArmorType.HELMET)
+                );
+                public static final Item CARVED_PUMPKIN = registerBlock(
+                    Blocks.CARVED_PUMPKIN,
+                    p -> p.component(
+                        DataComponents.EQUIPPABLE,
+                        Equippable.builder(EquipmentSlot.HEAD).setSwappable(false).build()
+                    )
+                );
+                public static final Item STONE = registerBlock(Blocks.STONE);
+            }"#,
+        );
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let registry = runtime.registry.as_ref().unwrap();
+        let helmet_id = registry.protocol_id("minecraft:diamond_helmet").unwrap();
+        let pumpkin_id = registry.protocol_id("minecraft:carved_pumpkin").unwrap();
+        let stone_id = registry.protocol_id("minecraft:stone").unwrap();
+
+        assert!(runtime.item_has_humanoid_armor_asset(helmet_id));
+        assert!(!runtime.item_has_humanoid_armor_asset(pumpkin_id));
+        assert!(!runtime.item_has_humanoid_armor_asset(stone_id));
+        assert!(!runtime.item_has_humanoid_armor_asset(999));
 
         std::fs::remove_dir_all(root).unwrap();
     }

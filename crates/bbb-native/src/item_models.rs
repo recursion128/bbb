@@ -15,7 +15,7 @@ use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
 use bbb_protocol::packets::{EquipmentSlot, ItemStackSummary};
 use bbb_renderer::{
     bake_generated_item_quads, bake_item_model_mesh, copper_golem_antenna_block_transform,
-    copper_golem_hand_attach_transform, dolphin_carried_item_transform,
+    copper_golem_hand_attach_transform, custom_head_item_transform, dolphin_carried_item_transform,
     enderman_carried_block_transform, fox_held_item_transform, humanoid_hand_attach_transform,
     iron_golem_flower_block_transform, mooshroom_mushroom_block_transforms,
     panda_held_item_transform, snow_golem_head_block_transform,
@@ -305,6 +305,23 @@ const GENERATED_THIRD_PERSON_FALLBACK: BlockModelDisplayTransform = BlockModelDi
     scale: [0.55, 0.55, 0.55],
 };
 
+/// Fallback HEAD display transform for a block item whose model does not define one. Vanilla's
+/// `block/block` parent has no `head` entry, so the item transform is the identity centered on the
+/// model by [`display_matrix`].
+const BLOCK_HEAD_FALLBACK: BlockModelDisplayTransform = BlockModelDisplayTransform {
+    rotation: [0.0, 0.0, 0.0],
+    translation: [0.0, 0.0, 0.0],
+    scale: [1.0, 1.0, 1.0],
+};
+
+/// Fallback HEAD display transform for `builtin/generated` items: vanilla `item/generated.json`
+/// rotation `[0, 180, 0]`, translation `[0, 13, 7]` pixels, scale `1`.
+const GENERATED_HEAD_FALLBACK: BlockModelDisplayTransform = BlockModelDisplayTransform {
+    rotation: [0.0, 180.0, 0.0],
+    translation: [0.0, 13.0 / 16.0, 7.0 / 16.0],
+    scale: [1.0, 1.0, 1.0],
+};
+
 /// The display transform about the model center: `T(t) · Rxyz · S · T(-0.5)` (vanilla
 /// `ItemTransform.apply`). `Rxyz` matches joml `rotationXYZ`. The pack's `BlockModelDisplayTransform`
 /// already holds translation in world units (the model JSON's 1/16 value pre-multiplied) and per-axis
@@ -413,6 +430,14 @@ pub(crate) fn held_item_models(
             &mut flat_meshes,
         );
         bake_panda_held_item(
+            instance,
+            world,
+            item_runtime,
+            terrain_textures,
+            &mut block_meshes,
+            &mut flat_meshes,
+        );
+        bake_custom_head_item(
             instance,
             world,
             item_runtime,
@@ -666,6 +691,63 @@ fn bake_panda_held_item(
         block_meshes,
         flat_meshes,
     );
+}
+
+/// Bakes the non-skull, non-armor item rendered by vanilla `CustomHeadLayer` from the HEAD equipment
+/// slot. Skull block items use `SkullBlockRenderer` in vanilla and stay deferred to the dedicated skull
+/// path; humanoid armor with an equipment asset is already emitted by the armor overlay.
+#[allow(clippy::too_many_arguments)]
+fn bake_custom_head_item(
+    instance: &EntityModelInstance,
+    world: &WorldStore,
+    item_runtime: &NativeItemRuntime,
+    terrain_textures: &TerrainTextureState,
+    block_meshes: &mut Vec<ItemModelMesh>,
+    flat_meshes: &mut Vec<ItemModelMesh>,
+) {
+    let Some(stack) = world.equipment_item(instance.entity_id, EquipmentSlot::Head) else {
+        return;
+    };
+    let Some(item_id) = stack.item_id else {
+        return;
+    };
+    if item_runtime.item_has_humanoid_armor_asset(item_id) {
+        return;
+    }
+    if item_runtime
+        .item_resource_id(item_id)
+        .is_some_and(is_custom_head_skull_item_id)
+    {
+        return;
+    }
+    let Some(transform) = custom_head_item_transform(instance) else {
+        return;
+    };
+    bake_item_stack_at_transform(
+        &stack,
+        transform,
+        BlockModelDisplayContext::Head,
+        false,
+        BLOCK_HEAD_FALLBACK,
+        GENERATED_HEAD_FALLBACK,
+        item_runtime,
+        terrain_textures,
+        block_meshes,
+        flat_meshes,
+    );
+}
+
+fn is_custom_head_skull_item_id(resource_id: &str) -> bool {
+    matches!(
+        resource_id,
+        "minecraft:skeleton_skull"
+            | "minecraft:wither_skeleton_skull"
+            | "minecraft:player_head"
+            | "minecraft:zombie_head"
+            | "minecraft:creeper_head"
+            | "minecraft:dragon_head"
+            | "minecraft:piglin_head"
+    )
 }
 
 /// Bakes one item stack at an entity-supplied attach transform, applying the stack's retained item
@@ -1176,6 +1258,27 @@ mod tests {
     }
 
     #[test]
+    fn custom_head_skull_items_are_reserved_for_the_skull_renderer() {
+        for resource_id in [
+            "minecraft:skeleton_skull",
+            "minecraft:wither_skeleton_skull",
+            "minecraft:player_head",
+            "minecraft:zombie_head",
+            "minecraft:creeper_head",
+            "minecraft:dragon_head",
+            "minecraft:piglin_head",
+        ] {
+            assert!(
+                is_custom_head_skull_item_id(resource_id),
+                "{resource_id} should not use the generic CustomHeadLayer item path"
+            );
+        }
+
+        assert!(!is_custom_head_skull_item_id("minecraft:carved_pumpkin"));
+        assert!(!is_custom_head_skull_item_id("minecraft:white_banner"));
+    }
+
+    #[test]
     fn cluster_count_drives_geometry_and_is_non_empty() {
         let quads = unit_block_quads();
         // One copy and four copies both produce geometry; the four-copy mesh holds four times as much.
@@ -1218,6 +1321,13 @@ mod tests {
         let block =
             display_matrix(&BLOCK_THIRD_PERSON_FALLBACK, false).transform_point3(Vec3::splat(0.5));
         assert!((block - Vec3::new(0.0, 2.5 / 16.0, 0.0)).length() < 1e-6);
+
+        let generated_head =
+            display_matrix(&GENERATED_HEAD_FALLBACK, false).transform_point3(Vec3::splat(0.5));
+        assert!((generated_head - Vec3::new(0.0, 13.0 / 16.0, 7.0 / 16.0)).length() < 1e-6);
+        let block_head =
+            display_matrix(&BLOCK_HEAD_FALLBACK, false).transform_point3(Vec3::splat(0.5));
+        assert!((block_head - Vec3::ZERO).length() < 1e-6);
     }
 
     #[test]

@@ -18,6 +18,33 @@ use super::model_layers::{
 };
 use super::{EntityModelInstance, EntityModelKind, SkeletonModelFamily};
 
+const CUSTOM_HEAD_ITEM_SCALE: f32 = 0.625;
+const PIGLIN_CUSTOM_HEAD_HORIZONTAL_SCALE: f32 = 1.001_953_1;
+const VILLAGER_CUSTOM_HEAD_Y_OFFSET: f32 = -0.117_187_5;
+
+#[derive(Debug, Clone, Copy)]
+struct CustomHeadTransforms {
+    y_offset: f32,
+    horizontal_scale: f32,
+}
+
+impl CustomHeadTransforms {
+    const DEFAULT: Self = Self {
+        y_offset: 0.0,
+        horizontal_scale: 1.0,
+    };
+
+    const PIGLIN: Self = Self {
+        y_offset: 0.0,
+        horizontal_scale: PIGLIN_CUSTOM_HEAD_HORIZONTAL_SCALE,
+    };
+
+    const VILLAGER: Self = Self {
+        y_offset: VILLAGER_CUSTOM_HEAD_Y_OFFSET,
+        horizontal_scale: 1.0,
+    };
+}
+
 /// The model→world transform of the hand attach point for a humanoid's main (`right`) or off (`left`)
 /// hand, or `None` if the instance is not a humanoid that holds items the standard way. Composes the
 /// posed arm bone (vanilla `translateToHand` = root + arm `translateAndRotate`) with the
@@ -83,6 +110,160 @@ pub fn copper_golem_hand_attach_transform(
             * Mat4::from_rotation_y(PI)
             * Mat4::from_translation(Vec3::new(sign / 16.0, 2.0 / 16.0, -10.0 / 16.0)),
     )
+}
+
+/// The model→world transform used by vanilla `CustomHeadLayer` for non-skull, non-armor head-slot
+/// items. The native item path applies the stack's retained `ItemDisplayContext.HEAD` transform after
+/// this matrix.
+pub fn custom_head_item_transform(instance: &EntityModelInstance) -> Option<Mat4> {
+    let (root, head, transforms) = custom_head_item_base_transform(instance)?;
+    Some(custom_head_item_layer_transform(root, head, transforms))
+}
+
+fn custom_head_item_layer_transform(
+    root: Mat4,
+    head: Mat4,
+    transforms: CustomHeadTransforms,
+) -> Mat4 {
+    root * Mat4::from_scale(Vec3::new(
+        transforms.horizontal_scale,
+        1.0,
+        transforms.horizontal_scale,
+    )) * head
+        * Mat4::from_translation(Vec3::new(0.0, -0.25 + transforms.y_offset, 0.0))
+        * Mat4::from_rotation_y(PI)
+        * Mat4::from_scale(Vec3::new(
+            CUSTOM_HEAD_ITEM_SCALE,
+            -CUSTOM_HEAD_ITEM_SCALE,
+            -CUSTOM_HEAD_ITEM_SCALE,
+        ))
+}
+
+fn custom_head_item_base_transform(
+    instance: &EntityModelInstance,
+) -> Option<(Mat4, Mat4, CustomHeadTransforms)> {
+    match instance.kind {
+        EntityModelKind::Player { slim, .. } => {
+            let mut model = PlayerModel::new(slim);
+            model.prepare(instance);
+            Some((
+                player_model_root_transform(*instance),
+                model.root().try_child_attach_transform("head")?,
+                CustomHeadTransforms::DEFAULT,
+            ))
+        }
+        EntityModelKind::Zombie { baby } => {
+            let mut model = ZombieModel::new(baby);
+            model.prepare(instance);
+            Some((
+                entity_model_root_transform(*instance),
+                model.root().try_child_attach_transform("head")?,
+                CustomHeadTransforms::DEFAULT,
+            ))
+        }
+        EntityModelKind::ZombieVariant { family, baby } => {
+            let mut model = ZombieVariantModel::new(family, baby);
+            model.prepare(instance);
+            Some((
+                zombie_variant_root_transform(*instance, family, baby),
+                model.root().try_child_attach_transform("head")?,
+                CustomHeadTransforms::DEFAULT,
+            ))
+        }
+        EntityModelKind::Piglin { family, baby } => {
+            let mut model = PiglinModel::new(family, baby);
+            model.prepare(instance);
+            Some((
+                entity_model_root_transform(*instance),
+                model.root().try_child_attach_transform("head")?,
+                CustomHeadTransforms::PIGLIN,
+            ))
+        }
+        EntityModelKind::Skeleton => {
+            let mut model = SkeletonModel::new(None);
+            model.prepare(instance);
+            Some((
+                entity_model_root_transform(*instance),
+                model.root().try_child_attach_transform("head")?,
+                CustomHeadTransforms::DEFAULT,
+            ))
+        }
+        EntityModelKind::SkeletonVariant { family } => {
+            let mut model = SkeletonModel::new(Some(family));
+            model.prepare(instance);
+            let root = if family == SkeletonModelFamily::WitherSkeleton {
+                wither_skeleton_model_root_transform(*instance)
+            } else {
+                entity_model_root_transform(*instance)
+            };
+            Some((
+                root,
+                model.root().try_child_attach_transform("head")?,
+                CustomHeadTransforms::DEFAULT,
+            ))
+        }
+        EntityModelKind::Illager { family } => {
+            let mut model = IllagerModel::new(instance, family);
+            model.prepare(instance);
+            Some((
+                villager_adult_model_root_transform(*instance),
+                model.root().try_child_attach_transform("head")?,
+                CustomHeadTransforms::DEFAULT,
+            ))
+        }
+        EntityModelKind::Villager { baby } => {
+            let mut model = VillagerModel::new(baby);
+            model.prepare(instance);
+            let root = if baby {
+                entity_model_root_transform(*instance)
+            } else {
+                villager_adult_model_root_transform(*instance)
+            };
+            Some((
+                root,
+                model.root().try_child_attach_transform("head")?,
+                CustomHeadTransforms::VILLAGER,
+            ))
+        }
+        EntityModelKind::WanderingTrader => {
+            let mut model = WanderingTraderModel::new();
+            model.prepare(instance);
+            Some((
+                villager_adult_model_root_transform(*instance),
+                model.root().try_child_attach_transform("head")?,
+                CustomHeadTransforms::DEFAULT,
+            ))
+        }
+        EntityModelKind::ArmorStand {
+            small,
+            show_arms,
+            show_base_plate,
+            pose,
+        } => {
+            let mut model = ArmorStandModel::new(small, show_arms, show_base_plate, pose);
+            model.prepare(instance);
+            Some((
+                entity_model_root_transform(*instance),
+                model.root().try_child_attach_transform("head")?,
+                CustomHeadTransforms::DEFAULT,
+            ))
+        }
+        EntityModelKind::CopperGolem { .. } => {
+            let mut model = CopperGolemModel::new();
+            model.prepare(instance);
+            let head = model
+                .root()
+                .try_descendant_attach_transform(&["body", "head"])?
+                * Mat4::from_translation(Vec3::new(0.0, 0.125, 0.0))
+                * Mat4::from_scale(Vec3::splat(1.0625));
+            Some((
+                entity_model_root_transform(*instance),
+                head,
+                CustomHeadTransforms::DEFAULT,
+            ))
+        }
+        _ => None,
+    }
 }
 
 /// The model→world transform used by vanilla `CrossedArmsItemLayer` for villagers and wandering
@@ -336,7 +517,10 @@ fn humanoid_arm_world_transform(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::entity_models::CopperGolemWeathering;
+    use crate::entity_models::{
+        CopperGolemWeathering, IllagerModelFamily, PiglinModelFamily, ZombieVariantModelFamily,
+        DEFAULT_ARMOR_STAND_MODEL_POSE,
+    };
     use crate::entity_models::{FoxModelVariant, PLAYER_MODEL_PARTS_ALL_VISIBLE};
 
     fn player_instance(y_rot: f32) -> EntityModelInstance {
@@ -353,6 +537,152 @@ mod tests {
     fn non_humanoid_instances_have_no_hand_attach() {
         let creeper = EntityModelInstance::new(2, EntityModelKind::Creeper, [0.0, 0.0, 0.0], 0.0);
         assert!(humanoid_hand_attach_transform(&creeper, false).is_none());
+    }
+
+    #[test]
+    fn custom_head_item_transform_covers_vanilla_custom_head_models() {
+        let instances = [
+            EntityModelInstance::player_with_parts(
+                10,
+                [0.0, 64.0, 0.0],
+                0.0,
+                false,
+                PLAYER_MODEL_PARTS_ALL_VISIBLE,
+            ),
+            EntityModelInstance::new(
+                11,
+                EntityModelKind::Zombie { baby: false },
+                [0.0, 64.0, 0.0],
+                0.0,
+            ),
+            EntityModelInstance::new(
+                12,
+                EntityModelKind::ZombieVariant {
+                    family: ZombieVariantModelFamily::ZombieVillager,
+                    baby: false,
+                },
+                [0.0, 64.0, 0.0],
+                0.0,
+            ),
+            EntityModelInstance::new(13, EntityModelKind::Skeleton, [0.0, 64.0, 0.0], 0.0),
+            EntityModelInstance::new(
+                14,
+                EntityModelKind::SkeletonVariant {
+                    family: SkeletonModelFamily::WitherSkeleton,
+                },
+                [0.0, 64.0, 0.0],
+                0.0,
+            ),
+            EntityModelInstance::new(
+                15,
+                EntityModelKind::Piglin {
+                    family: PiglinModelFamily::Piglin,
+                    baby: false,
+                },
+                [0.0, 64.0, 0.0],
+                0.0,
+            ),
+            EntityModelInstance::new(
+                16,
+                EntityModelKind::Illager {
+                    family: IllagerModelFamily::Pillager,
+                },
+                [0.0, 64.0, 0.0],
+                0.0,
+            ),
+            EntityModelInstance::villager(17, [0.0, 64.0, 0.0], 0.0, false),
+            EntityModelInstance::wandering_trader(18, [0.0, 64.0, 0.0], 0.0),
+            EntityModelInstance::new(
+                19,
+                EntityModelKind::ArmorStand {
+                    small: false,
+                    show_arms: true,
+                    show_base_plate: true,
+                    pose: DEFAULT_ARMOR_STAND_MODEL_POSE,
+                },
+                [0.0, 64.0, 0.0],
+                0.0,
+            ),
+            EntityModelInstance::new(
+                20,
+                EntityModelKind::CopperGolem {
+                    weathering: CopperGolemWeathering::Unaffected,
+                },
+                [0.0, 64.0, 0.0],
+                0.0,
+            ),
+        ];
+
+        for instance in instances {
+            let origin = custom_head_item_transform(&instance)
+                .unwrap()
+                .transform_point3(Vec3::ZERO);
+            assert!(
+                origin.is_finite(),
+                "{:?} should expose a finite custom-head item transform",
+                instance.kind
+            );
+        }
+
+        assert!(custom_head_item_transform(&EntityModelInstance::new(
+            21,
+            EntityModelKind::Creeper,
+            [0.0, 64.0, 0.0],
+            0.0,
+        ))
+        .is_none());
+    }
+
+    #[test]
+    fn custom_head_item_transform_follows_the_posed_head() {
+        let zombie = EntityModelInstance::new(
+            22,
+            EntityModelKind::Zombie { baby: false },
+            [0.0, 64.0, 0.0],
+            0.0,
+        );
+        let resting = custom_head_item_transform(&zombie)
+            .unwrap()
+            .transform_point3(Vec3::ZERO);
+        let looking = custom_head_item_transform(&zombie.with_head_look(45.0, -20.0))
+            .unwrap()
+            .transform_point3(Vec3::ZERO);
+
+        assert!(looking.is_finite());
+        assert_ne!(
+            resting, looking,
+            "CustomHeadLayer walks through the already-posed head bone"
+        );
+    }
+
+    #[test]
+    fn custom_head_layer_applies_villager_and_piglin_transforms() {
+        let default_origin = custom_head_item_layer_transform(
+            Mat4::IDENTITY,
+            Mat4::IDENTITY,
+            CustomHeadTransforms::DEFAULT,
+        )
+        .transform_point3(Vec3::ZERO);
+        let villager_origin = custom_head_item_layer_transform(
+            Mat4::IDENTITY,
+            Mat4::IDENTITY,
+            CustomHeadTransforms::VILLAGER,
+        )
+        .transform_point3(Vec3::ZERO);
+        assert!(
+            (villager_origin.y - default_origin.y - VILLAGER_CUSTOM_HEAD_Y_OFFSET).abs() < 1e-6
+        );
+
+        let piglin_x = custom_head_item_layer_transform(
+            Mat4::IDENTITY,
+            Mat4::IDENTITY,
+            CustomHeadTransforms::PIGLIN,
+        )
+        .transform_vector3(Vec3::X)
+        .length();
+        assert!(
+            (piglin_x - CUSTOM_HEAD_ITEM_SCALE * PIGLIN_CUSTOM_HEAD_HORIZONTAL_SCALE).abs() < 1e-6
+        );
     }
 
     #[test]
@@ -654,7 +984,6 @@ mod tests {
 
     #[test]
     fn armor_stand_held_items_include_the_small_model_part_scale() {
-        use crate::entity_models::DEFAULT_ARMOR_STAND_MODEL_POSE;
         let stand = |small| {
             EntityModelInstance::new(
                 7,

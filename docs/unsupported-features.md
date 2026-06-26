@@ -1167,6 +1167,18 @@ When an agent does any of the following, update this file in the same slice:
         applies the shared `Rx(0.75) · scale(1.07) · T(0,0.13,-0.34) · Rx(π)`
         transform, and native bakes the main-hand stack with
         `ItemDisplayContext.GROUND`.
+      - generic non-skull custom-head items DONE:
+        `CustomHeadLayer` now renders head-slot items that are not humanoid
+        armor and not skull block items. Native mirrors
+        `LivingEntityRenderer.extractRenderState`: items with a humanoid armor
+        equipment asset stay on `HumanoidArmorLayer`, skull block items are
+        reserved for the dedicated `SkullBlockRenderer` path, and everything
+        else in `EquipmentSlot.HEAD` is baked with `ItemDisplayContext.HEAD`.
+        Renderer exports the posed head transform for the vanilla custom-head
+        carriers (players, zombie/skeleton/piglin families, illagers,
+        villagers/wandering traders, armor stands, and copper golems),
+        including piglin horizontal scale, villager y-offset, and the copper
+        golem `body -> head -> T(0,0.125,0) -> scale(1.0625)` override.
       - fox held item DONE: `FoxHeldItemLayer` is reproduced through the same
         item-model pass. Renderer exposes `fox_held_item_transform`, which builds
         and poses the vanilla adult/baby `FoxModel`, reads the posed `head` part,
@@ -1193,6 +1205,7 @@ When an agent does any of the following, update this file in the same slice:
         `apply_humanoid_attack_animation`/`apply_humanoid_stab_attack_animation` to the
         zombie/skeleton/illager/vindicator models is now just per-model wiring.
       - remaining slices: held-item refinements (first-person viewmodel; the
+        skull/profile branch of `CustomHeadLayer` / `SkullBlockRenderer`; the
         STAB swing pose on non-player humanoid models; the `NONE` swing type; the
         attack swing on the non-player humanoid models). Item lighting
         context (GUI front-lit vs world diffuse) is an open point — the baked
@@ -1577,9 +1590,10 @@ When an agent does any of the following, update this file in the same slice:
       badge for `NONE`/`NITWIT`, clamps badge texture selection to levels
       `1..=5`, and applies the vanilla hat metadata/no-hat rule. Crossed-arms
       item layer is implemented for adult/baby villagers and wandering traders
-      through the shared item-model pass; custom head layer, unhappy animation,
-      leg walk animation, lighting, and wandering trader baby presentation remain
-      unsupported
+      through the shared item-model pass; generic non-skull custom-head items
+      are implemented through `CustomHeadLayer`'s `HEAD` item display transform,
+      while skull/profile heads, unhappy animation, leg walk animation, lighting,
+      and wandering trader baby presentation remain unsupported
     - worn humanoid armor as a renderer-owned vanilla 26.1 `HumanoidArmorLayer` overlay (framework
       slice 1, renderer-side): the inflated `HumanoidArmorModel`
       (`HumanoidModel.createBaseArmorMesh` / `createArmorMeshSet`) is built per equipment slot as a
@@ -1698,8 +1712,11 @@ When an agent does any of the following, update this file in the same slice:
       piglin keeps its held-out `animateZombieArms` arms deferred);
       the `DrownedOuterLayer` (adult and baby) IS implemented (see the drowned note above); drowned
       swim
-      rotation, zombie/piglin converting shake, zombie-family and piglin-family
-      armor, custom head layers, and held items remain unsupported; zombie
+      rotation, zombie/piglin converting shake, remaining zombie-family and
+      piglin-family armor nuances, skull/profile custom-head layers, and
+      held-item refinements remain unsupported
+      (generic non-skull head-slot items are covered by the shared custom-head
+      item path); zombie
       villager type/profession/level overlays ARE implemented via
       `VillagerProfessionLayer` parity, reading `VillagerData` at entity-data id
       `20`, using the zombie-villager overlay textures, baby type robes, level
@@ -1868,9 +1885,11 @@ When an agent does any of the following, update this file in the same slice:
       (`EquipmentSlot.SADDLE`), resolves block-item resource ids plus component
       properties, and the renderer-owned transform mirrors
       `CopperGolemModel.applyBlockOnAntennaTransform` plus
-      `BlockDecorationLayer`'s unit-cube antenna matrix. The keyframe
-      walk/walk-with-item/idle/interaction animations and custom-head layer
-      remain unsupported
+      `BlockDecorationLayer`'s unit-cube antenna matrix. Generic non-skull
+      custom-head items are implemented via the shared `CustomHeadLayer` item
+      path, including the copper golem `translateToHead` override; the keyframe
+      walk/walk-with-item/idle/interaction animations and skull/profile head
+      branch remain unsupported
     - witch entities as renderer-owned vanilla 26.1
       `WitchModel.createBodyLayer()` geometry, including the
       `VillagerModel.createBodyModel()` body/arms/legs/nose, the four nested
@@ -1909,7 +1928,9 @@ When an agent does any of the following, update this file in the same slice:
       `HumanoidModel` arm swing on its separate arms) on both render paths. The
       standard `ItemInHandLayer` is covered by the shared humanoid held-item
       dispatch, which builds the posed `IllagerModel` and reads `right_arm` /
-      `left_arm`; custom-head layers, spell/crossbow/attacking/celebrating/riding
+      `left_arm`; generic non-skull custom-head items are implemented by the
+      shared `CustomHeadLayer` item path; skull/profile custom-heads,
+      spell/crossbow/attacking/celebrating/riding
       arm poses and animation, illusioner clone offsets/invisible-body rendering,
       and renderer state extraction for dynamic arm visibility remain unsupported
     - armor stand entities as renderer-owned vanilla 26.1
@@ -1922,8 +1943,9 @@ When an agent does any of the following, update this file in the same slice:
       because `BABY_TRANSFORMER` only scales geometry, not texture coordinates),
       with official PNG atlas upload/bind/sample on both render paths, and the
       standard held-item layer for both full and small stands (small hand items
-      ride the `BABY_TRANSFORMER` 0.5 arm-part scale);
-      armor/equipment/custom-head/elytra layers, hurt wiggle, marker/invisible
+      ride the `BABY_TRANSFORMER` 0.5 arm-part scale), plus the generic
+      non-skull custom-head item path; armor/equipment skull/profile custom-head
+      branches, elytra layers, hurt wiggle, marker/invisible
       render-type nuances, and animation interpolation remain
       unsupported
     - slime entities as renderer-owned vanilla 26.1 `SlimeModel` inner
@@ -3245,11 +3267,12 @@ When an agent does any of the following, update this file in the same slice:
     presentation,
     horse animation, donkey/mule animation presentation,
     undead horse animation presentation, and remaining non-base-equine presentation,
-    villager custom-head presentation (crossed-arms held items are implemented),
-    illager custom-head/arm-pose presentation (standard held items are
-    implemented), zombie-family
+    villager skull/profile custom-head presentation (crossed-arms held items and
+    generic non-skull head items are implemented),
+    illager skull/profile custom-head/arm-pose presentation (standard held items
+    and generic non-skull head items are implemented), zombie-family
     armor/drowned swim/zombie-villager converting-state/piglin-family
-    armor/custom-head/arm-pose/converting-state
+    armor/skull-profile custom-head/arm-pose/converting-state
     presentation (the drowned outer layer — adult and baby — and the trident-throw arm
     pose ARE implemented; only the drowned swim re-pose defers),
     skeleton armor, held-item, and animation presentation,
@@ -3257,11 +3280,11 @@ When an agent does any of the following, update this file in the same slice:
     spider walk-animation presentation (the 180-degree death flip is implemented),
     enderman creepy render jitter (the carried-block arm pose, held-block block-model render,
     and creepy head/hat shift are implemented),
-    copper golem keyframe/custom-head presentation (the base model, weathering
-    texture swap, emissive eyes, standard held-item layer, and antenna block
-    decoration are implemented),
-    iron golem body-wobble presentation, armor stand equipment/custom
-    layers/wiggle/marker presentation, slime/magma-cube squish/full
+    copper golem keyframe/skull-profile custom-head presentation (the base
+    model, weathering texture swap, emissive eyes, standard held-item layer,
+    antenna block decoration, and generic non-skull head items are implemented),
+    iron golem body-wobble presentation, armor stand equipment/skull-profile
+    custom layers/wiggle/marker presentation, slime/magma-cube squish/full
     render-state lighting/sorting presentation, and precise vanilla mesh parity
     for primitive/placeholder entity families.
 
