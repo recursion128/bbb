@@ -167,10 +167,23 @@ fn dolphin_textured_mesh_uses_vanilla_geometry_and_animates() {
     let (atlas, _) = build_entity_model_texture_atlas(&dolphin_texture_images()).unwrap();
 
     // The dolphin draws into the cutout mesh (`DolphinModel` uses `EntityModel`'s default
-    // `entityCutout` render type).
-    // Eight cubes → 48 faces / 192 vertices, nothing on the translucent or eyes passes, white tint.
+    // `entityCutout` render type). The backend folds adult/baby into the cutout mesh, but the
+    // submissions keep the vanilla texture, render type, tint, transform, and default collector order.
     let base = EntityModelInstance::dolphin(980, [0.0, 64.0, 0.0], 0.0, false);
     let meshes = entity_model_textured_meshes(&[base], &atlas);
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.texture, DOLPHIN_TEXTURE_REF);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        submit.transform,
+        mesh_transformer_scaled_model_root_transform(base, 1.0)
+    );
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+
+    // Eight cubes → 48 faces / 192 vertices, nothing on the translucent or eyes passes, white tint.
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
     assert_eq!(meshes.cutout.cutout_faces, 48);
@@ -184,6 +197,19 @@ fn dolphin_textured_mesh_uses_vanilla_geometry_and_animates() {
     // The baby is the same geometry scaled by 0.5.
     let baby = EntityModelInstance::dolphin(981, [0.0, 64.0, 0.0], 0.0, true);
     let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
+    assert_eq!(baby_meshes.submissions.len(), 1);
+    let baby_submit = baby_meshes.submissions[0];
+    assert_eq!(
+        baby_submit.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(baby_submit.texture, DOLPHIN_BABY_TEXTURE_REF);
+    assert_eq!(baby_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        baby_submit.transform,
+        mesh_transformer_scaled_model_root_transform(baby, 0.5)
+    );
+    assert_eq!((baby_submit.order, baby_submit.submit_sequence), (0, 0));
     assert_eq!(baby_meshes.cutout.vertices.len(), 192);
     assert_ne!(meshes.cutout.vertices, baby_meshes.cutout.vertices);
 

@@ -2513,9 +2513,11 @@ When an agent does any of the following, update this file in the same slice:
       baby uses the `MeshTransformer.scaling(0.5)` body layer (the shared mesh-transformer root
       scale, like the squid baby). The textured base layer draws the
       `textures/entity/dolphin/dolphin.png` / `dolphin_baby.png` atlas references into the cutout
-      mesh (`DolphinModel` calls `EntityModel`'s default `RenderTypes::entityCutout`),
-      hand-emitted through the same animated hierarchy as the colored path (which approximates the
-      texture with a single representative grey). This already covers the older goal-listed dolphin
+      mesh (`DolphinModel` calls `EntityModel`'s default `RenderTypes::entityCutout`) while
+      preserving explicit base submission metadata for texture, white tint, adult/baby
+      mesh-transformer root transform, and `order(0)`; it is hand-emitted through the same animated
+      hierarchy as the colored path (which approximates the texture with a single representative
+      grey). This already covers the older goal-listed dolphin
       swim re-pose item. The held-item carry layer (`DolphinCarryingItemLayer`) is now implemented
       through the shared item-model pass: renderer exposes `dolphin_carried_item_transform`, which keeps
       the item in the unscaled entity root frame and applies the vanilla `xRot`-dependent `(0, y, z)`
