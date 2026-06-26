@@ -994,6 +994,7 @@ impl EntityStore {
             y_rot: transform.y_rot,
             x_rot: transform.x_rot,
             y_head_rot: transform.y_head_rot,
+            arrow_shake: client_animations.animations.arrow_shake(partial_ticks),
             is_passenger,
             age_ticks: client_animations.animations.age_ticks,
             is_fully_frozen,
@@ -1847,6 +1848,23 @@ impl EntityStore {
         animations
             .animations
             .sync_targets_from_metadata(identity.entity_type_id, &metadata.data_values);
+        Some(())
+    }
+
+    pub(crate) fn sync_client_animation_events_from_metadata_update(
+        &mut self,
+        id: i32,
+        updated_values: &[bbb_protocol::packets::EntityDataValue],
+    ) -> Option<()> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?.clone();
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?.clone();
+        let mut animations = self.ecs.get::<&mut EntityClientAnimations>(entity).ok()?;
+        animations.animations.sync_events_from_metadata_update(
+            identity.entity_type_id,
+            updated_values,
+            &metadata.data_values,
+        );
         Some(())
     }
 

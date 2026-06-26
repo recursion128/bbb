@@ -2962,15 +2962,17 @@ When an agent does any of the following, update this file in the same slice:
       0×5×5 YZ plane at `offset(-11, 0, 0)`, pitched π/4, with `withScale(0.8)` baked into its cube → a 0×4×4
       box) and the two crossed fletching planes (`cross_1`/`cross_2`, each a 16×4×0 XY plane pitched π/4 and
       3π/4) — three cubes. The whole mesh is baked through `mesh.transformed(pose -> pose.scaled(0.9))`; that
-      0.9 lives in `arrow_model_root_transform`. `ArrowModel.setupAnim` only adds the impact-shake `root.zRot`
-      wobble (`-sin(shake·3)·shake`), which is deferred. `ArrowRenderer` is a plain `EntityRenderer` that
-      orients the arrow along its flight with `Ry(yRot - 90)` then `Rz(xRot)` (no flip), projected through the
-      instance's `body_rot` / `head_pitch`. All three arrow images are now bound on the textured path:
+      0.9 lives in `arrow_model_root_transform`. `ArrowModel.setupAnim` now applies the impact-shake `root.zRot`
+      wobble (`-sin(shake·3)·shake` degrees) from world-projected `AbstractArrow.shakeTime`: bbb-world starts
+      the seven-tick countdown on post-first-tick `IN_GROUND` metadata updates, decrements it each client tick,
+      and projects `ArrowRenderState.shake = shakeTime - partialTick` through native into the renderer.
+      `ArrowRenderer` is a plain `EntityRenderer` that orients the arrow along its flight with `Ry(yRot - 90)`
+      then `Rz(xRot)` (no flip), projected through the instance's `body_rot` / `head_pitch`. All three arrow
+      images are now bound on the textured path:
       `ArrowModelTexture::{Normal,Tipped,Spectral}` selects `arrow.png` / `arrow_tipped.png` / `arrow_spectral.png`
       via `arrow_texture_ref` — a tipped arrow (`TippableArrowRenderer`, `getColor() > 0` off the synced
       `ID_EFFECT_COLOR` 11) binds the tipped image, and the spectral-arrow type binds the spectral image.
-      Only the impact-shake wobble stays deferred. The colored debug path stays as a fallback (it renders the
-      shaft cross and the head with two tints)
+      The colored debug path stays as a fallback (it renders the shaft cross and the head with two tints)
     - thrown trident entities as renderer-owned vanilla 26.1 `TridentModel.createLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `135` to the new
       `EntityModelKind::Trident`, replacing the former placeholder bounds box. The static hierarchy is

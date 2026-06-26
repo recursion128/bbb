@@ -377,6 +377,9 @@ const WITHER_SKULL_DANGEROUS_DATA_ID: u8 = 8;
 // Entity`, so after Entity (0-7) come the three AbstractArrow accessors ID_FLAGS (8) / PIERCE_LEVEL
 // (9) / IN_GROUND (10), then Arrow's own potion color. `getColor() > 0` marks a tipped arrow.
 const ARROW_EFFECT_COLOR_DATA_ID: u8 = 11;
+// Vanilla `AbstractArrow.IN_GROUND` (10, BOOLEAN): updating it to true after the first client tick
+// starts the seven-tick `shakeTime` impact wobble that `ArrowRenderer.extractRenderState` projects.
+const ARROW_IN_GROUND_DATA_ID: u8 = 10;
 const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
 const TAMABLE_ANIMAL_TAME_FLAG: i8 = 0x04;
 /// Vanilla `Creaking.IS_ACTIVE` data id (17, BOOLEAN): `Creaking extends Monster` (not ageable), so
@@ -1251,6 +1254,7 @@ fn entity_model_instance(
         )
         .with_head_eat(head_eat)
         .with_head_look(net_head_yaw, head_pitch)
+        .with_arrow_shake(source.arrow_shake)
         .with_invisible(entity_invisible(&source.data_values))
         .with_polar_bear_stand_scale(source.polar_bear_stand_scale)
         .with_light_coords(light_coords)
@@ -10159,6 +10163,34 @@ mod tests {
                 texture: ArrowModelTexture::Spectral
             }
         );
+    }
+
+    #[test]
+    fn entity_model_instances_project_arrow_impact_shake() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            60,
+            VANILLA_ENTITY_TYPE_ARROW_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.advance_entity_client_animations(1);
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 60,
+            values: vec![protocol_bool_data(ARROW_IN_GROUND_DATA_ID, true)],
+        }));
+
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 0.25);
+        let arrow = instances
+            .iter()
+            .find(|instance| instance.entity_id == 60)
+            .expect("arrow instance");
+        assert_eq!(
+            arrow.kind,
+            EntityModelKind::Arrow {
+                texture: ArrowModelTexture::Normal
+            }
+        );
+        assert_eq!(arrow.render_state.arrow_shake, 6.75);
     }
 
     #[test]

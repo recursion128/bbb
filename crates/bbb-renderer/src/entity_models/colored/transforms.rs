@@ -429,8 +429,8 @@ pub(in crate::entity_models) fn evoker_fangs_model_root_transform(
 /// direction with `Axis.YP.rotationDegrees(yRot - 90)` then `Axis.ZP.rotationDegrees(xRot)` (no flip
 /// / y-offset). `ArrowModel.createBodyLayer` bakes the whole mesh through `mesh.transformed(pose ->
 /// pose.scaled(0.9))`, captured here as the trailing `scale(0.9)`. The arrow yaw/pitch are projected
-/// through `body_rot` / `head_pitch` (the instance's `y_rot` and head pitch); the `setupAnim` shake
-/// is deferred.
+/// through `body_rot` / `head_pitch` (the instance's `y_rot` and head pitch); `ArrowModel.setupAnim`
+/// applies the impact-shake root zRot inside the model tree.
 pub(in crate::entity_models) fn arrow_model_root_transform(instance: EntityModelInstance) -> Mat4 {
     Mat4::from_translation(Vec3::from_array(instance.position))
         * Mat4::from_rotation_y((instance.render_state.body_rot - 90.0).to_radians())

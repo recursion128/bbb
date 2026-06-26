@@ -8,7 +8,8 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 // The whole mesh is baked through `mesh.transformed(pose -> pose.scaled(0.9))`; that 0.9 lives in
 // `arrow_model_root_transform`, while the `back` part's `withScale(0.8)` is baked into its cube
 // (a 0×5×5 box → a 0×4×4 box; the UV box stays the integer `texOffs(0,0)` dims [0,5,5]).
-// `ArrowModel.setupAnim` only adds the impact-shake `root.zRot` wobble, which is deferred.
+// `ArrowModel.setupAnim` only adds the impact-shake `root.zRot` wobble from
+// `ArrowRenderState.shake`; bbb projects that from world `AbstractArrow.shakeTime`.
 // `ArrowRenderer` orients the arrow along its flight with `Ry(yRot - 90)` then `Rz(xRot)` (no flip).
 //
 // The fletching plane's `addBox(..., 1.0F, 0.8F)` carries a `texScaleV = 0.8`: vanilla shrinks the V
@@ -16,7 +17,7 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 // 0-depth plane only the front face has area and its V extent is exactly `uv_size[1]` (the textured
 // emit's `v2 = y_tex + depth + height` with `depth = 0`), so the `0.8` is baked as
 // `uv_size[1] = 4 × 0.8 = 3.2`. The `arrow.png` texture is wired here; the tipped/spectral variants
-// stay deferred.
+// stay bound by the entity kind's texture choice.
 
 // `back`: the 0×5×5 arrowhead plane, `withScale(0.8)` baked into the centred YZ box → 0×4×4.
 pub(in crate::entity_models) const ARROW_BACK_CUBE: ModelCube = ModelCube::new(
@@ -53,10 +54,20 @@ pub(in crate::entity_models) const ARROW_CROSS_2_POSE: PartPose = PartPose {
 };
 
 /// Static arrow model mirroring vanilla `ArrowModel`: a root holding the `back` arrowhead plane and
-/// the two crossed `cross_1`/`cross_2` fletching planes, no `setup_anim` (the impact shake is
-/// deferred). Each cube carries the colored tint and the textured UV.
+/// the two crossed `cross_1`/`cross_2` fletching planes. `setup_anim` applies vanilla's impact shake
+/// to the root z-rotation. Each cube carries the colored tint and the textured UV.
 pub(in crate::entity_models) struct ArrowModel {
     root: ModelPart,
+}
+
+/// Vanilla `ArrowModel.setupAnim`: `pow = -sin(shake * 3) * shake`, then
+/// `root.zRot += pow * π / 180`.
+pub(in crate::entity_models) fn arrow_shake_z_rot(shake: f32) -> f32 {
+    if shake > 0.0 {
+        -f32::sin(shake * 3.0) * shake * std::f32::consts::PI / 180.0
+    } else {
+        0.0
+    }
 }
 
 impl ArrowModel {
@@ -93,5 +104,7 @@ impl EntityModel for ArrowModel {
         &mut self.root
     }
 
-    fn setup_anim(&mut self, _instance: &EntityModelInstance) {}
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        self.root.pose.rotation[2] += arrow_shake_z_rot(instance.render_state.arrow_shake);
+    }
 }

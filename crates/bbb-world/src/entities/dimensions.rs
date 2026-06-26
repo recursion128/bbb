@@ -1091,6 +1091,7 @@ const VANILLA_ENTITY_PICK_BOUNDS: &[(i32, EntityPickBoundsState)] = &[
     (2, pick(0.35, 0.6, 0.0)),        // minecraft:allay
     (4, pick(0.7, 0.65, 0.0)),        // minecraft:armadillo
     (5, pick(0.5, 1.975, 0.0)),       // minecraft:armor_stand
+    (6, pick(0.5, 0.5, 0.0)),         // minecraft:arrow
     (7, pick(0.75, 0.42, 0.0)),       // minecraft:axolotl
     (8, pick(1.375, 0.5625, 0.0)),    // minecraft:bamboo_chest_raft
     (9, pick(1.375, 0.5625, 0.0)),    // minecraft:bamboo_raft
@@ -1183,6 +1184,7 @@ const VANILLA_ENTITY_PICK_BOUNDS: &[(i32, EntityPickBoundsState)] = &[
     (119, pick(1.9, 1.75, 0.0)),      // minecraft:sniffer
     (121, pick(0.7, 1.9, 0.0)),       // minecraft:snow_golem
     (122, pick(0.98, 0.7, 0.0)),      // minecraft:spawner_minecart
+    (123, pick(0.5, 0.5, 0.0)),       // minecraft:spectral_arrow
     (124, pick(1.4, 0.9, 0.0)),       // minecraft:spider
     (125, pick(1.375, 0.5625, 0.0)),  // minecraft:spruce_boat
     (126, pick(1.375, 0.5625, 0.0)),  // minecraft:spruce_chest_boat
@@ -1193,6 +1195,7 @@ const VANILLA_ENTITY_PICK_BOUNDS: &[(i32, EntityPickBoundsState)] = &[
     (132, pick(0.98, 0.98, 0.0)),     // minecraft:tnt
     (133, pick(0.98, 0.7, 0.0)),      // minecraft:tnt_minecart
     (134, pick(0.9, 1.87, 0.0)),      // minecraft:trader_llama
+    (135, pick(0.5, 0.5, 0.0)),       // minecraft:trident
     (136, pick(0.5, 0.4, 0.0)),       // minecraft:tropical_fish
     (137, pick(1.2, 0.4, 0.0)),       // minecraft:turtle
     (138, pick(0.4, 0.8, 0.0)),       // minecraft:vex

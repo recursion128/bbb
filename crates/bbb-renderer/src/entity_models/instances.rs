@@ -120,6 +120,10 @@ entity_render_state! {
     /// (`entity.getXRot`), applied as `head.xRot = xRot * π/180`. `0.0` when the
     /// head is level.
     () head_pitch: f32 = 0.0;
+    /// Vanilla `ArrowRenderState.shake` (`AbstractArrow.shakeTime - partialTick`):
+    /// the impact wobble amount that `ArrowModel.setupAnim` converts into a root
+    /// z-rotation. `0.0` for arrows that are not shaking and every non-arrow entity.
+    (with_arrow_shake) arrow_shake: f32 = 0.0;
     /// Per-frame sheep eat-grass head pose (`Sheep.getHeadEatPositionScale` /
     /// `getHeadEatAngleScale`). [`SheepHeadEatPose::NONE`] for every non-sheep
     /// entity and for a sheep that is not currently eating.
@@ -2139,6 +2143,7 @@ mod tests {
                 body_rot: 123.0,
                 head_yaw: 0.0,
                 head_pitch: 0.0,
+                arrow_shake: 0.0,
                 head_eat: SheepHeadEatPose::NONE,
                 polar_bear_stand_scale: 0.0,
                 death_time: 0.0,

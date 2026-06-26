@@ -9963,6 +9963,98 @@ fn rabbit_jump_event_drives_the_hop_window() {
 }
 
 #[test]
+fn entity_model_sources_project_arrow_impact_shake() {
+    const VANILLA_ENTITY_TYPE_ARROW_ID: i32 = 6;
+    const VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID: i32 = 123;
+    const VANILLA_ENTITY_TYPE_TRIDENT_ID: i32 = 135;
+    const ABSTRACT_ARROW_IN_GROUND_DATA_ID: u8 = 10;
+
+    let source = |store: &WorldStore, id: i32, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        60,
+        VANILLA_ENTITY_TYPE_ARROW_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        61,
+        VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        62,
+        VANILLA_ENTITY_TYPE_TRIDENT_ID,
+    ));
+
+    // Vanilla `AbstractArrow.onSyncedDataUpdated(IN_GROUND)` ignores the entity's first tick.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 60,
+        values: vec![protocol_bool_data(ABSTRACT_ARROW_IN_GROUND_DATA_ID, true)],
+    }));
+    assert_eq!(source(&store, 60, 0.0).arrow_shake, 0.0);
+
+    store.advance_entity_client_animations(1);
+    assert_eq!(
+        source(&store, 60, 0.0).arrow_shake,
+        0.0,
+        "the first-tick metadata update must not be replayed from stored state"
+    );
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 60,
+        values: vec![protocol_bool_data(ABSTRACT_ARROW_IN_GROUND_DATA_ID, false)],
+    }));
+    assert_eq!(source(&store, 60, 0.0).arrow_shake, 0.0);
+
+    // Past the first client tick, an `IN_GROUND` update to true starts `shakeTime = 7`;
+    // `ArrowRenderer.extractRenderState` projects `shakeTime - partialTick`.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 60,
+        values: vec![protocol_bool_data(ABSTRACT_ARROW_IN_GROUND_DATA_ID, true)],
+    }));
+    assert_eq!(source(&store, 60, 0.0).arrow_shake, 7.0);
+    assert_eq!(source(&store, 60, 0.5).arrow_shake, 6.5);
+
+    store.advance_entity_client_animations(1);
+    assert_eq!(source(&store, 60, 0.0).arrow_shake, 6.0);
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 60,
+        values: vec![protocol_bool_data(ABSTRACT_ARROW_IN_GROUND_DATA_ID, true)],
+    }));
+    assert_eq!(
+        source(&store, 60, 0.0).arrow_shake,
+        6.0,
+        "vanilla only restarts when the current shake has settled"
+    );
+    store.advance_entity_client_animations(6);
+    assert_eq!(source(&store, 60, 0.0).arrow_shake, 0.0);
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 61,
+        values: vec![protocol_bool_data(ABSTRACT_ARROW_IN_GROUND_DATA_ID, true)],
+    }));
+    assert_eq!(
+        source(&store, 61, 0.25).arrow_shake,
+        6.75,
+        "spectral arrows share AbstractArrow.shakeTime"
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 62,
+        values: vec![protocol_bool_data(ABSTRACT_ARROW_IN_GROUND_DATA_ID, true)],
+    }));
+    assert_eq!(
+        source(&store, 62, 0.0).arrow_shake,
+        0.0,
+        "thrown tridents use their own renderer state and do not consume ArrowRenderState.shake"
+    );
+}
+
+#[test]
 fn creaking_combat_events_and_tearing_down_drive_the_keyframes() {
     const VANILLA_ENTITY_TYPE_CREAKING_ID: i32 = 31;
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;

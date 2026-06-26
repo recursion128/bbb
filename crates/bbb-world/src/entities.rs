@@ -351,6 +351,11 @@ pub struct EntityModelSourceState {
     /// derives the net head-look yaw `Mth.wrapDegrees(y_head_rot - y_rot)`.
     #[serde(default)]
     pub y_head_rot: f32,
+    /// Vanilla `ArrowRenderState.shake` (`AbstractArrow.shakeTime - partialTick`):
+    /// the impact wobble amount that `ArrowModel.setupAnim` converts into a root
+    /// z-rotation. `0.0` for non-arrow entities and arrows that are not shaking.
+    #[serde(default)]
+    pub arrow_shake: f32,
     /// Vanilla `Entity.isPassenger()`: whether this entity is mounted on another
     /// entity. World animation uses it to stop passenger limb swing, and renderer
     /// projections that have a seated passenger branch consume the same fact.

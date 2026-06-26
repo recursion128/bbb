@@ -11,6 +11,15 @@ use super::dragon::{
 use super::{EntityTransform, EntityVec3};
 
 const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+/// Vanilla `EntityType.ARROW` / `EntityType.SPECTRAL_ARROW`: both extend
+/// `AbstractArrow` and share the same client-side `shakeTime` impact wobble.
+const VANILLA_ENTITY_TYPE_ARROW_ID: i32 = 6;
+const VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID: i32 = 123;
+/// Vanilla `AbstractArrow.IN_GROUND`, the synced boolean after `ID_FLAGS` (`8`) and
+/// `PIERCE_LEVEL` (`9`). `onSyncedDataUpdated(IN_GROUND)` starts `shakeTime = 7`
+/// when the arrow is no longer on its first tick and the current shake has settled.
+const ABSTRACT_ARROW_IN_GROUND_DATA_ID: u8 = 10;
+const ARROW_SHAKE_TICKS: i32 = 7;
 const VANILLA_ENTITY_TYPE_CREEPER_ID: i32 = 32;
 /// Vanilla `EntityType.ELDER_GUARDIAN` / `EntityType.GUARDIAN`. Both share
 /// `GuardianModel` and the same client `Guardian.aiStep` tail accumulator (the
@@ -360,6 +369,8 @@ pub struct EntityClientAnimationState {
     #[serde(default)]
     pub age_ticks: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub arrow_shake: Option<ArrowShakeAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub polar_bear_standing: Option<PolarBearStandingAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shulker_peek: Option<ShulkerPeekAnimationState>,
@@ -452,6 +463,35 @@ pub struct EntityClientAnimationState {
     pub breeze: Option<BreezeAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub walk_animation: Option<WalkAnimationState>,
+}
+
+/// Canonical client-side arrow impact wobble, mirroring vanilla
+/// `AbstractArrow.shakeTime`. A metadata update of `IN_GROUND` to `true` sets it
+/// to 7 once the entity has ticked at least once; each client tick decrements it,
+/// and `ArrowRenderer.extractRenderState` projects `shakeTime - partialTick`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ArrowShakeAnimationState {
+    pub shake_time: i32,
+}
+
+impl ArrowShakeAnimationState {
+    fn started() -> Self {
+        Self {
+            shake_time: ARROW_SHAKE_TICKS,
+        }
+    }
+
+    fn advance_client_tick(&mut self) {
+        self.shake_time = (self.shake_time - 1).max(0);
+    }
+
+    fn shake(self, partial_tick: f32) -> f32 {
+        self.shake_time as f32 - partial_tick
+    }
+
+    fn is_settled(self) -> bool {
+        self.shake_time <= 0
+    }
 }
 
 /// Canonical client-side creeper fuse animation, mirroring vanilla
@@ -2902,6 +2942,29 @@ impl FoxAnimationState {
 }
 
 impl EntityClientAnimationState {
+    pub(crate) fn sync_events_from_metadata_update(
+        &mut self,
+        entity_type_id: i32,
+        updated_values: &[EntityDataValue],
+        data_values: &[EntityDataValue],
+    ) {
+        // Vanilla `AbstractArrow.onSyncedDataUpdated(IN_GROUND)`: once the entity is past
+        // its first client tick, setting `IN_GROUND` true starts the seven-tick impact
+        // wobble if the previous shake has already settled.
+        if is_vanilla_arrow_type(entity_type_id)
+            && self.age_ticks > 0
+            && updated_values
+                .iter()
+                .any(|value| value.data_id == ABSTRACT_ARROW_IN_GROUND_DATA_ID)
+            && entity_data_bool(data_values, ABSTRACT_ARROW_IN_GROUND_DATA_ID, false)
+            && self
+                .arrow_shake
+                .map_or(true, ArrowShakeAnimationState::is_settled)
+        {
+            self.arrow_shake = Some(ArrowShakeAnimationState::started());
+        }
+    }
+
     pub(crate) fn sync_targets_from_metadata(
         &mut self,
         entity_type_id: i32,
@@ -3769,6 +3832,15 @@ impl EntityClientAnimationState {
             .map_or(0.0, |state| state.head_roll_angle(partial_tick))
     }
 
+    /// Vanilla `ArrowRenderState.shake` =
+    /// `AbstractArrow.shakeTime - partialTick`, consumed by `ArrowModel.setupAnim`
+    /// for the impact wobble. `0.0` for arrows that are not currently shaking and
+    /// every non-arrow entity.
+    pub fn arrow_shake(&self, partial_tick: f32) -> f32 {
+        self.arrow_shake
+            .map_or(0.0, |state| state.shake(partial_tick))
+    }
+
     /// Resets the hurt animation countdown to [`HURT_ANIMATION_DURATION`],
     /// mirroring vanilla `LivingEntity.animateHurt` / `handleDamageEvent` setting
     /// `hurtTime = hurtDuration`.
@@ -4082,6 +4154,15 @@ impl EntityClientAnimationState {
         is_swimming: bool,
     ) {
         self.age_ticks = self.age_ticks.saturating_add(1);
+        // Vanilla `AbstractArrow.tick`: `if (shakeTime > 0) --shakeTime`.
+        // The state is only created for arrow/spectral-arrow metadata updates, so
+        // it can advance outside the per-type match without touching other entities.
+        if let Some(shake) = self.arrow_shake.as_mut() {
+            shake.advance_client_tick();
+            if shake.is_settled() {
+                self.arrow_shake = None;
+            }
+        }
         // Vanilla `LivingEntity.baseTick`: `if (hurtTime > 0) hurtTime--`. Applies
         // to every living entity, so it runs outside the per-type match.
         if let Some(hurt) = self.hurt.as_mut() {
@@ -4450,6 +4531,13 @@ pub(crate) fn entity_animation_uses_in_water(entity_type_id: i32) -> bool {
             | VANILLA_ENTITY_TYPE_FROG_ID
             | VANILLA_ENTITY_TYPE_WOLF_ID
             | VANILLA_ENTITY_TYPE_AXOLOTL_ID
+    )
+}
+
+fn is_vanilla_arrow_type(entity_type_id: i32) -> bool {
+    matches!(
+        entity_type_id,
+        VANILLA_ENTITY_TYPE_ARROW_ID | VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID
     )
 }
 

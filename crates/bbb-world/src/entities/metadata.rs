@@ -17,6 +17,7 @@ impl WorldStore {
         self.counters.entity_data_values_received += packet.values.len();
         let id = packet.id;
         let is_local_player = self.local_player_id == Some(id);
+        let updated_values = packet.values.clone();
         let mut local_living_entity_flags = None;
         let Some(()) = self.entities.with_metadata_mut(id, |metadata| {
             for value in packet.values {
@@ -43,6 +44,9 @@ impl WorldStore {
         let _ = self
             .entities
             .sync_client_animation_targets_from_metadata(id);
+        let _ = self
+            .entities
+            .sync_client_animation_events_from_metadata_update(id, &updated_values);
         let _ = self.entities.refresh_client_position_from_entity_data(id);
         if let Some(flags) = local_living_entity_flags {
             self.sync_local_using_item_from_living_entity_flags(flags);

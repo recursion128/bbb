@@ -1,5 +1,8 @@
 use super::*;
 
+use crate::entity_models::colored::arrow_model_root_transform;
+use crate::entity_models::model::EntityModel;
+
 #[test]
 fn arrow_geometry_matches_vanilla_26_1_body_layer() {
     // Vanilla `ArrowModel.createBodyLayer` (atlas 32×32): the `back` arrowhead plane plus the two
@@ -58,6 +61,32 @@ fn arrow_mesh_uses_vanilla_body_layer_geometry() {
 }
 
 #[test]
+fn arrow_impact_shake_rolls_root_like_vanilla_setup_anim() {
+    let base = EntityModelInstance::arrow(60, [0.0, 64.0, 0.0], 0.0, ArrowModelTexture::Normal);
+    let mut model = ArrowModel::new();
+
+    model.prepare(&base);
+    assert_eq!(model.root().pose.rotation[2], 0.0);
+
+    let shaken = base.with_arrow_shake(4.5);
+    model.prepare(&shaken);
+    let expected = arrow_shake_z_rot(4.5);
+    assert!(
+        (model.root().pose.rotation[2] - expected).abs() < 1.0e-6,
+        "root zRot expected {expected}, got {}",
+        model.root().pose.rotation[2]
+    );
+
+    model.prepare(&base);
+    assert_eq!(
+        model.root().pose.rotation[2],
+        0.0,
+        "prepare must reset the previous frame's shake pose"
+    );
+    assert_eq!(arrow_shake_z_rot(0.0), 0.0);
+}
+
+#[test]
 fn arrow_textured_render_matches_vanilla_renderer() {
     // One model, three images: normal / tipped (`getColor() > 0`) / spectral (the distinct entity).
     for (texture, texture_ref) in [
@@ -70,6 +99,9 @@ fn arrow_textured_render_matches_vanilla_renderer() {
             arrow_textured_layer_passes(texture)[0].render_type,
             EntityModelLayerRenderType::EntityCutoutCull
         );
+        assert_eq!(arrow_textured_layer_passes(texture)[0].tint, [1.0; 4]);
+        assert_eq!(arrow_textured_layer_passes(texture)[0].order, 0);
+        assert_eq!(arrow_textured_layer_passes(texture)[0].submit_sequence, 0);
         assert_eq!(
             EntityModelKind::Arrow { texture }.vanilla_texture_ref(),
             Some(texture_ref)
@@ -91,18 +123,42 @@ fn arrow_textured_render_matches_vanilla_renderer() {
         vec![0u8; len],
     )];
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::arrow(
-            60,
-            [0.0, 64.0, 0.0],
-            0.0,
-            ArrowModelTexture::Tipped,
-        )],
-        &atlas,
-    );
+    let instance =
+        EntityModelInstance::arrow(60, [0.0, 64.0, 0.0], 35.0, ArrowModelTexture::Tipped)
+            .with_head_look(0.0, -12.0);
+    let mesh = entity_model_textured_mesh(&[instance], &atlas);
     assert!(!mesh.vertices.is_empty());
     assert!(mesh
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.texture, ARROW_TIPPED_TEXTURE_REF);
+    assert_eq!(
+        submit.render_type,
+        EntityModelLayerRenderType::EntityCutoutCull
+    );
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.order, 0);
+    assert_eq!(submit.submit_sequence, 0);
+    assert_eq!(submit.transform, arrow_model_root_transform(instance));
+
+    let shaken_meshes = entity_model_textured_meshes(&[instance.with_arrow_shake(4.5)], &atlas);
+    assert_eq!(shaken_meshes.submissions[0].transform, submit.transform);
+    assert_eq!(
+        shaken_meshes.cutout.vertices.len(),
+        meshes.cutout.vertices.len()
+    );
+    assert!(
+        meshes
+            .cutout
+            .vertices
+            .iter()
+            .zip(&shaken_meshes.cutout.vertices)
+            .any(|(base, shaken)| base.position != shaken.position),
+        "impact shake should pose arrow geometry without changing the renderer root transform"
+    );
 }
