@@ -2346,16 +2346,20 @@ When an agent does any of the following, update this file in the same slice:
       vanilla when the strider is a vehicle.
       The textured base layer draws the `textures/entity/strider/strider.png` /
       `strider_baby.png` atlas references into the cutout mesh (default
-      `RenderTypes::entityCutout`), hand-emitted through the same animated leg/body/bristle
-      hierarchy as the colored path. The cold/suffocating texture swap IS wired:
+      `RenderTypes::entityCutout`) while preserving explicit base submission metadata for
+      texture, white tint, root transform, and `order(0)`; it is hand-emitted through the
+      same animated leg/body/bristle hierarchy as the colored path. The cold/suffocating
+      texture swap IS wired:
       `StriderRenderer.getTextureLocation` returns `strider_cold.png` / `strider_cold_baby.png` when
       `isSuffocating()`, projected onto `cold` from the synced `DATA_SUFFOCATING` flag (19) and selected
       via `strider_texture_ref(baby, cold)` (the strider texture set grows to four). The adult saddle
       equipment layer is implemented from `EquipmentSlot.SADDLE`: vanilla `StriderRenderer` adds
       `SimpleEquipmentLayer(STRIDER_SADDLE)` with `AdultStriderModel(ModelLayers.STRIDER_SADDLE)`,
       `LayerDefinitions` maps that layer to the same adult strider body layer, and the renderer draws
-      `textures/entity/equipment/strider_saddle/saddle.png` (64×128). Baby striders intentionally skip
-      this layer because vanilla supplies `null` for the baby saddle model. The suffocating shake is also
+      `textures/entity/equipment/strider_saddle/saddle.png` (64×128) as an `armorCutoutNoCull`
+      submission at the same collector order with `submit_sequence = 1`, after the base submit.
+      Baby striders intentionally skip this layer because vanilla supplies `null` for the baby
+      saddle model. The suffocating shake is also
       covered: native mirrors `StriderRenderer.isShaking = super.isShaking || state.isSuffocating` and
       folds the existing `setupRotations` body-shake formula into `body_rot` from the same synced
       `DATA_SUFFOCATING` flag.

@@ -303,10 +303,21 @@ fn strider_texture_refs_match_vanilla_renderer() {
 fn strider_textured_mesh_uses_vanilla_geometry_and_animates() {
     let (atlas, _) = build_entity_model_texture_atlas(&strider_texture_images()).unwrap();
 
-    // Adult renders into the cutout mesh (default `RenderTypes::entityCutout`). Nine cubes →
-    // 54 faces / 216 vertices, with nothing on the translucent or eyes passes.
+    // `StriderModel` inherits `EntityModel`'s default `RenderTypes::entityCutout`. The backend folds
+    // adult/baby into the cutout mesh, but the submissions keep the vanilla texture, render type,
+    // tint, transform, and default collector order.
     let adult = EntityModelInstance::strider(750, [0.0, 64.0, 0.0], 0.0, false, false);
     let meshes = entity_model_textured_meshes(&[adult], &atlas);
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.texture, STRIDER_TEXTURE_REF);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.transform, entity_model_root_transform(adult));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+
+    // Nine cubes → 54 faces / 216 vertices, with nothing on the translucent or eyes passes.
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
     assert_eq!(meshes.cutout.cutout_faces, 54);
@@ -321,6 +332,16 @@ fn strider_textured_mesh_uses_vanilla_geometry_and_animates() {
     // Baby is the smaller model: six cubes → 36 faces / 144 vertices.
     let baby = EntityModelInstance::strider(751, [0.0, 64.0, 0.0], 0.0, true, false);
     let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
+    assert_eq!(baby_meshes.submissions.len(), 1);
+    let baby_submit = baby_meshes.submissions[0];
+    assert_eq!(
+        baby_submit.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(baby_submit.texture, STRIDER_BABY_TEXTURE_REF);
+    assert_eq!(baby_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(baby_submit.transform, entity_model_root_transform(baby));
+    assert_eq!((baby_submit.order, baby_submit.submit_sequence), (0, 0));
     assert_eq!(baby_meshes.cutout.vertices.len(), 144);
 
     // The body tracks the look, and the walk + age animate the legs/body/bristles.
@@ -361,6 +382,18 @@ fn strider_saddle_layer_renders_for_adults_only() {
     let bare = &bare_meshes.cutout;
     let saddled = &saddled_meshes.cutout;
     assert_eq!(saddled_meshes.submissions.len(), 2);
+    let base_submit = saddled_meshes.submissions[0];
+    assert_eq!(
+        base_submit.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(base_submit.texture, STRIDER_TEXTURE_REF);
+    assert_eq!(base_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        base_submit.transform,
+        entity_model_root_transform(saddled_instance)
+    );
+    assert_eq!((base_submit.order, base_submit.submit_sequence), (0, 0));
     let saddle_submit = saddled_meshes.submissions[1];
     assert_eq!(
         saddle_submit.render_type,
