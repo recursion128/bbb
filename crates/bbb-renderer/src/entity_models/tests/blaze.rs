@@ -133,18 +133,20 @@ fn blaze_mesh_uses_vanilla_body_layer_geometry() {
 #[test]
 fn blaze_textured_mesh_uses_vanilla_uvs_and_geometry() {
     let (atlas, _) = build_entity_model_texture_atlas(&blaze_texture_images()).unwrap();
-    let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::blaze(14, [0.0, 64.0, 0.0], 0.0)],
-        &atlas,
-    );
-    assert_eq!(mesh.cutout_faces, 78);
-    assert_eq!(mesh.vertices.len(), 312);
-    assert_eq!(mesh.indices.len(), 468);
-    assert!(mesh
+    let instance = EntityModelInstance::blaze(14, [0.0, 64.0, 0.0], 0.0);
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    assert_blaze_base_submission(&meshes, instance);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert_eq!(meshes.cutout.cutout_faces, 78);
+    assert_eq!(meshes.cutout.vertices.len(), 312);
+    assert_eq!(meshes.cutout.indices.len(), 468);
+    assert!(meshes
+        .cutout
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
-    let (min, max) = textured_mesh_extents(&mesh);
+    let (min, max) = textured_mesh_extents(&meshes.cutout);
     assert_close3(min, [-0.5625, 64.25349, -0.6875]);
     assert_close3(max, [0.6875, 65.751, 0.5625]);
 }
@@ -168,15 +170,18 @@ fn blaze_rods_orbit_as_age_in_ticks_advances() {
     );
 
     let (atlas, _) = build_entity_model_texture_atlas(&blaze_texture_images()).unwrap();
-    let early_t = entity_model_textured_mesh(&[base], &atlas);
-    let later_t = entity_model_textured_mesh(&[base.with_age_in_ticks(31.4)], &atlas);
+    let early_t = entity_model_textured_meshes(&[base], &atlas);
+    assert_blaze_base_submission(&early_t, base);
+    let later_instance = base.with_age_in_ticks(31.4);
+    let later_t = entity_model_textured_meshes(&[later_instance], &atlas);
+    assert_blaze_base_submission(&later_t, later_instance);
     assert_ne!(
-        early_t.vertices, later_t.vertices,
+        early_t.cutout.vertices, later_t.cutout.vertices,
         "the textured rods orbit too"
     );
     assert_eq!(
-        early_t.vertices[..24],
-        later_t.vertices[..24],
+        early_t.cutout.vertices[..24],
+        later_t.cutout.vertices[..24],
         "the textured head does not depend on ageInTicks at a rest head look"
     );
 }
@@ -210,4 +215,15 @@ fn blaze_texture_images() -> Vec<EntityModelTextureImage> {
             EntityModelTextureImage::new(*texture, vec![index as u8; len])
         })
         .collect()
+}
+
+fn assert_blaze_base_submission(meshes: &EntityModelTexturedMeshes, instance: EntityModelInstance) {
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.texture, BLAZE_TEXTURE_REF);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.transform, entity_model_root_transform(instance));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
 }

@@ -2235,13 +2235,16 @@ When an agent does any of the following, update this file in the same slice:
       shared `texOffs(0, 16)` `rod` builder), with no `MeshTransformer` scaling (the
       unit entity model-root transform); the official
       `textures/entity/blaze/blaze.png` texture reference, texture-backed base layer
-      pass emission, official PNG atlas upload/bind/sample path, the vanilla
-      `BlazeModel.setupAnim` rod orbit (twelve rods in three rings of radius 9/7/5,
-      their x/y/z offsets set every frame from the projected `ageInTicks`), and the
-      shared head look (`head.yRot/xRot` from the net look angles), on both render
-      paths. The `BlazeRenderer` full-bright block light (`getBlockLightLevel = 15`) IS now
-      applied (in `entity_light_coords`, forcing the packed block light to 15 for the blaze type);
-      lighting and overlay remain unsupported
+      pass emission (vanilla `BlazeModel` calls `EntityModel`'s default
+      `RenderTypes::entityCutout`) while preserving explicit submission metadata for
+      texture, white tint, unit root transform, and `order(0)`, official PNG atlas
+      upload/bind/sample path, the vanilla `BlazeModel.setupAnim` rod orbit (twelve
+      rods in three rings of radius 9/7/5, their x/y/z offsets set every frame from
+      the projected `ageInTicks`), and the shared head look (`head.yRot/xRot` from the
+      net look angles), on both render paths. The `BlazeRenderer` full-bright block
+      light (`getBlockLightLevel = 15`) IS now applied (in `entity_light_coords`,
+      forcing the packed block light to 15 for the blaze type); lighting and overlay
+      remain unsupported
     - endermite entities as renderer-owned vanilla 26.1
       `EndermiteModel.createBodyLayer()` geometry: the four nested chitin segments
       from `BODY_SIZES`/`BODY_TEXS` (each `addBox(-sx/2, 0, -sz/2, sx, sy, sz)` posed
