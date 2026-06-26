@@ -342,8 +342,7 @@ pub enum EntityModelKind {
     },
     /// `GuardianModel` (`elder = false`) or the same mesh scaled 2.35× by
     /// `GuardianModel.ELDER_GUARDIAN_SCALE` (`elder = true`). The procedural spike pulse /
-    /// withdrawal, eye tracking, tail sway, and attack beam are deferred (rendered at the
-    /// `createBodyLayer` rest pose).
+    /// withdrawal, tail sway, and attack beam are projected; eye tracking stays deferred.
     Guardian {
         elder: bool,
     },
@@ -411,9 +410,9 @@ pub enum EntityModelKind {
     /// The head look and limb swing match the zombie; the armor / item-in-hand layers and the
     /// zombie texture are deferred.
     Giant,
-    /// `EndCrystalModel` at its `createBodyLayer` rest pose (the base slab plus the nested glass /
-    /// core boxes, scaled 2× by `EndCrystalRenderer`). The diagonal spin, the vertical bob, the
-    /// `showsBottom` base toggle, and the beam to the dragon are deferred.
+    /// `EndCrystalModel` (the base slab plus the nested glass / core boxes, scaled 2× by
+    /// `EndCrystalRenderer`). The diagonal spin, vertical bob, `showsBottom` base toggle, and
+    /// `DATA_BEAM_TARGET` custom beam are projected.
     EndCrystal,
     /// `EvokerFangsModel` at its `createBodyLayer` closed-jaw rest pose (the base block plus the two
     /// jaws). The bite open/close, the base drop, and the emerge scale are deferred.
@@ -456,7 +455,7 @@ pub enum EntityModelKind {
     /// `EnderDragonModel` at its `createBodyLayer` straight bind layout (head + jaw, five neck and
     /// twelve tail segments, body with wings and four legs). The fully procedural `setupAnim` (the
     /// flight-history neck/tail placement, the wing flap, the jaw, the root bounce), the dying
-    /// dissolve, the emissive eyes layer, and the crystal-healing beam are deferred.
+    /// dissolve and nearest-crystal healing beam are deferred; the emissive eyes layer is projected.
     EnderDragon,
     /// Entities whose vanilla renderer is `NoopRenderer` — the area effect cloud (its potion cloud
     /// is particles, not a model), the marker (a pure data entity), and the interaction (an
@@ -1010,6 +1009,14 @@ pub struct GuardianBeamRenderState {
     pub eye_height: f32,
     pub attack_time: f32,
     pub attack_scale: f32,
+}
+
+/// Vanilla `EndCrystalRenderState.beamOffset`: target block center relative to the crystal position.
+/// The renderer combines this with the crystal's `ageInTicks` bob (`EndCrystalRenderer.getY`) when
+/// submitting the `endCrystalBeam` custom geometry.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct EndCrystalBeamRenderState {
+    pub beam_offset: [f32; 3],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

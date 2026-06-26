@@ -11,10 +11,11 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 // gets the `bounce` y / fixed `z = -48` / `xRot` adjustments. All of that is deferred (like the
 // guardian's procedural tail), so the model renders at this straight bind layout. `EnderDragonRenderer`
 // applies the flight-history yaw, a pitch, a fixed `translate(0, 0, 1)`, and the standard flip /
-// y-offset (captured by `ender_dragon_model_root_transform`). The dying dissolve, the emissive eyes
-// layer, the crystal-healing beam, and the texture-backed path are deferred, so the colored debug
-// path renders the body dark and the wing membranes a lighter tint. Each unified cube carries both
-// the colored debug tint (`DRAGON_BODY` / `DRAGON_MEMBRANE`) and the textured `uv_size` / `texOffs`.
+// y-offset (captured by `ender_dragon_model_root_transform`). The dying dissolve and nearest-crystal
+// healing beam are deferred; the base texture path and emissive eyes pass are wired. The colored
+// debug path renders the body dark and the wing membranes a lighter tint. Each unified cube carries
+// both the colored debug tint (`DRAGON_BODY` / `DRAGON_MEMBRANE`) and the textured `uv_size` /
+// `texOffs`.
 
 // ----- Head + jaw -----
 

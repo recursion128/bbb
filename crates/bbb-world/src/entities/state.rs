@@ -1,7 +1,7 @@
 pub use crate::entities::dimensions::EntityPickBoundsState;
 pub use crate::entities::status::{EntityDamageEventState, ItemCooldownState, MobEffectState};
 pub use crate::entities::{
-    ArmorMaterialKind, DragonFlightHistorySample, DragonFlightHistoryState,
+    ArmorMaterialKind, DragonFlightHistorySample, DragonFlightHistoryState, EndCrystalBeamSource,
     EnderDragonAnimationState, EntityBlockModelState, EntityCameraPoseState,
     EntityClientAnimationState, EntityModelSourceState, EntityPickTargetState, EntityState,
     EntityStatusProbeState, EntityTransformState, EntityVec3, GuardianBeamSource,

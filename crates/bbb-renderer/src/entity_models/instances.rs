@@ -853,6 +853,10 @@ entity_render_state! {
     /// crystals that heal the dragon). Defaults `true` (vanilla default) for every non-crystal
     /// entity, where it is unused.
     (with_end_crystal_shows_bottom) end_crystal_shows_bottom: bool = true;
+    /// Vanilla `EndCrystalRenderState.beamOffset`: target block center relative to the crystal position
+    /// when `EndCrystal.DATA_BEAM_TARGET` is present. `None` for crystals without a beam target and
+    /// every non-crystal entity.
+    (with_end_crystal_beam) end_crystal_beam: Option<EndCrystalBeamRenderState> = None;
     /// Vanilla `SquidRenderState.tentacleAngle` (`Mth.lerp(partialTick,
     /// oldTentacleAngle, tentacleAngle)`): the `xRot` `SquidModel.setupAnim` applies to
     /// all eight tentacles. `0.0` for a floating squid at rest and every non-squid
@@ -2270,6 +2274,7 @@ mod tests {
                 turtle_has_egg: false,
                 turtle_laying_egg: false,
                 end_crystal_shows_bottom: true,
+                end_crystal_beam: None,
                 squid_tentacle_angle: 0.0,
                 squid_x_body_rot: 0.0,
                 squid_z_body_rot: 0.0,

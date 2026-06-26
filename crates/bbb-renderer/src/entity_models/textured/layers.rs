@@ -93,6 +93,8 @@ pub(in crate::entity_models) enum EntityModelLayerRenderType {
     BreezeWind,
     /// Vanilla `RenderTypes.energySwirl(texture, u, v)`.
     EnergySwirl,
+    /// Vanilla `RenderTypes.endCrystalBeam(texture)`.
+    EndCrystalBeam,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -114,7 +116,7 @@ impl EntityModelLayerRenderType {
             | Self::EntityCutoutZOffset => EntityModelLayerRenderBucket::Cutout,
             Self::EntityTranslucent => EntityModelLayerRenderBucket::Translucent,
             Self::Eyes => EntityModelLayerRenderBucket::Eyes,
-            Self::BreezeWind => EntityModelLayerRenderBucket::Scroll,
+            Self::BreezeWind | Self::EndCrystalBeam => EntityModelLayerRenderBucket::Scroll,
             Self::EnergySwirl => EntityModelLayerRenderBucket::AdditiveScroll,
         }
     }
@@ -131,6 +133,7 @@ impl EntityModelLayerRenderType {
             Self::Eyes => "eyes",
             Self::BreezeWind => "breezeWind",
             Self::EnergySwirl => "energySwirl",
+            Self::EndCrystalBeam => "end_crystal_beam",
         }
     }
 }

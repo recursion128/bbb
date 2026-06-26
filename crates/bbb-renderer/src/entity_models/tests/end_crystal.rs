@@ -7,6 +7,11 @@ fn count_cubes(parts: &[ModelPartDesc]) -> usize {
         .sum()
 }
 
+fn blank_texture(texture: EntityModelTextureRef) -> EntityModelTextureImage {
+    let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+    EntityModelTextureImage::new(texture, vec![0u8; len])
+}
+
 #[test]
 fn end_crystal_geometry_matches_vanilla_26_1_body_layer() {
     // Vanilla `EndCrystalModel.createBodyLayer` (atlas 64×32): the base slab at ZERO plus the
@@ -90,18 +95,16 @@ fn end_crystal_textured_submit_matches_vanilla_renderer() {
         Some(END_CRYSTAL_TEXTURE_REF)
     );
     assert!(entity_model_texture_refs().contains(&END_CRYSTAL_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&END_CRYSTAL_BEAM_TEXTURE_REF));
     assert_eq!(
         end_crystal_entity_texture_refs(),
-        &[END_CRYSTAL_TEXTURE_REF]
+        &[END_CRYSTAL_TEXTURE_REF, END_CRYSTAL_BEAM_TEXTURE_REF]
     );
 
-    let len =
-        usize::try_from(END_CRYSTAL_TEXTURE_REF.size[0] * END_CRYSTAL_TEXTURE_REF.size[1] * 4)
-            .unwrap();
-    let images = vec![EntityModelTextureImage::new(
-        END_CRYSTAL_TEXTURE_REF,
-        vec![0u8; len],
-    )];
+    let images = vec![
+        blank_texture(END_CRYSTAL_TEXTURE_REF),
+        blank_texture(END_CRYSTAL_BEAM_TEXTURE_REF),
+    ];
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
     let instance =
         EntityModelInstance::end_crystal(450, [0.0, 64.0, 0.0], 0.0).with_age_in_ticks(30.0);
@@ -131,6 +134,89 @@ fn end_crystal_textured_submit_matches_vanilla_renderer() {
     let (textured_min, textured_max) = textured_mesh_extents(&meshes.cutout);
     assert_close3(textured_min, colored_min);
     assert_close3(textured_max, colored_max);
+}
+
+#[test]
+fn end_crystal_beam_records_vanilla_submission_and_geometry() {
+    // Vanilla `EndCrystalRenderer.submit`: after the `entityCutout` body submit, a crystal with
+    // `beamOffset` translates by that offset and calls `EnderDragonRenderer.submitCrystalBeams`.
+    // The helper uses `RenderTypes.endCrystalBeam(end_crystal_beam.png)`, `order(0)`, a later submit
+    // sequence than the body, black inner vertices, white outer vertices, and tiled V coordinates.
+    let images = vec![
+        blank_texture(END_CRYSTAL_TEXTURE_REF),
+        blank_texture(END_CRYSTAL_BEAM_TEXTURE_REF),
+    ];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let age = 30.0;
+    let position = [10.0, 64.0, -3.0];
+    let beam_offset = [4.5, 3.5, -6.5];
+    let instance = EntityModelInstance::end_crystal(451, position, 0.0)
+        .with_age_in_ticks(age)
+        .with_end_crystal_beam(Some(EndCrystalBeamRenderState { beam_offset }));
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 2);
+    assert_eq!(
+        meshes.submissions[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    let beam_submit = meshes.submissions[1];
+    assert_eq!(
+        beam_submit.render_type,
+        EntityModelLayerRenderType::EndCrystalBeam
+    );
+    assert_eq!(beam_submit.render_type.vanilla_name(), "end_crystal_beam");
+    assert_eq!(beam_submit.texture, END_CRYSTAL_BEAM_TEXTURE_REF);
+    assert_eq!(beam_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((beam_submit.order, beam_submit.submit_sequence), (0, 1));
+
+    let origin = Vec3::from_array(position) + Vec3::from_array(beam_offset) + Vec3::Y * 2.0;
+    assert_close3(
+        beam_submit
+            .transform
+            .transform_point3(Vec3::ZERO)
+            .to_array(),
+        origin.to_array(),
+    );
+    let delta = Vec3::new(
+        -beam_offset[0],
+        -beam_offset[1] + end_crystal_get_y(age),
+        -beam_offset[2],
+    );
+    assert_close3(
+        beam_submit
+            .transform
+            .transform_vector3(Vec3::Z)
+            .normalize()
+            .to_array(),
+        delta.normalize().to_array(),
+    );
+
+    assert_eq!(meshes.scroll.vertices.len(), 32);
+    assert_eq!(meshes.scroll.indices.len(), 48);
+    let rect = atlas
+        .entries
+        .iter()
+        .find(|entry| entry.texture == END_CRYSTAL_BEAM_TEXTURE_REF)
+        .unwrap()
+        .uv;
+    assert_eq!(meshes.scroll.vertices[0].uv_rect_min, rect.min);
+    assert_eq!(
+        meshes.scroll.vertices[0].uv_rect_size,
+        [rect.max[0] - rect.min[0], rect.max[1] - rect.min[1]]
+    );
+    assert_eq!(meshes.scroll.vertices[0].tint, [0.0, 0.0, 0.0, 1.0]);
+    assert_eq!(meshes.scroll.vertices[1].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(meshes.scroll.vertices[0].local_uv[0], 0.0);
+    assert_eq!(meshes.scroll.vertices[3].local_uv[0], 0.125);
+    let length = delta.length();
+    assert!(
+        (meshes.scroll.vertices[1].local_uv[1]
+            - meshes.scroll.vertices[0].local_uv[1]
+            - length / 32.0)
+            .abs()
+            < 1.0e-6
+    );
 }
 
 #[test]
@@ -165,13 +251,7 @@ fn end_crystal_hides_base_when_shows_bottom_false() {
 
 #[test]
 fn end_crystal_textured_submit_hides_base_when_shows_bottom_false() {
-    let len =
-        usize::try_from(END_CRYSTAL_TEXTURE_REF.size[0] * END_CRYSTAL_TEXTURE_REF.size[1] * 4)
-            .unwrap();
-    let images = vec![EntityModelTextureImage::new(
-        END_CRYSTAL_TEXTURE_REF,
-        vec![0u8; len],
-    )];
+    let images = vec![blank_texture(END_CRYSTAL_TEXTURE_REF)];
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
     let hidden = entity_model_textured_meshes(
         &[EntityModelInstance::end_crystal(450, [0.0, 64.0, 0.0], 0.0)

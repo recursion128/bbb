@@ -6,24 +6,24 @@ use bbb_protocol::packets::{
 use bbb_renderer::{
     ArmorStandModelPose, ArrowModelTexture, AxolotlModelVariant, BoatModelFamily, CamelModelFamily,
     CatModelVariant, ChickenModelVariant, CopperGolemWeathering, CowModelVariant,
-    DonkeyModelFamily, EntityArmorMaterial, EntityCustomHeadSkull, EntityDefaultPlayerSkin,
-    EntityDyeColor, EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind,
-    EntityEquipmentLayerTexture, EntityModelInstance, EntityModelKind, EntityPlayerSkin,
-    FoxModelVariant, FrogModelVariant, GuardianBeamRenderState, HoglinModelFamily,
-    HorseColorVariant, HorseMarkings, IllagerModelFamily, IronGolemCrackiness, LlamaModelFamily,
-    LlamaVariant, MooshroomVariant, PandaModelVariant, ParrotModelVariant, PigModelVariant,
-    PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize,
-    SelectionBox, SelectionOutline, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily,
-    SleepingPose, TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily,
-    VillagerModelData, VillagerModelProfession, VillagerModelType, WolfModelVariant,
-    ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    DonkeyModelFamily, EndCrystalBeamRenderState, EntityArmorMaterial, EntityCustomHeadSkull,
+    EntityDefaultPlayerSkin, EntityDyeColor, EntityDynamicPlayerTexture,
+    EntityDynamicPlayerTextureKind, EntityEquipmentLayerTexture, EntityModelInstance,
+    EntityModelKind, EntityPlayerSkin, FoxModelVariant, FrogModelVariant, GuardianBeamRenderState,
+    HoglinModelFamily, HorseColorVariant, HorseMarkings, IllagerModelFamily, IronGolemCrackiness,
+    LlamaModelFamily, LlamaVariant, MooshroomVariant, PandaModelVariant, ParrotModelVariant,
+    PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant,
+    SalmonModelSize, SelectionBox, SelectionOutline, SheepHeadEatPose, SheepWoolColor,
+    SkeletonModelFamily, SleepingPose, TropicalFishModelShape, TropicalFishPattern,
+    UndeadHorseModelFamily, VillagerModelData, VillagerModelProfession, VillagerModelType,
+    WolfModelVariant, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 #[cfg(test)]
 use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
 use bbb_world::{
-    ArmorMaterialKind as WorldArmorMaterialKind, EntityModelSourceState, EntityPickTargetState,
-    GuardianBeamSource as WorldGuardianBeamSource, LlamaBodyDecorColor as WorldLlamaBodyDecorColor,
-    RegistryContentState, WorldStore,
+    ArmorMaterialKind as WorldArmorMaterialKind, EndCrystalBeamSource as WorldEndCrystalBeamSource,
+    EntityModelSourceState, EntityPickTargetState, GuardianBeamSource as WorldGuardianBeamSource,
+    LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryContentState, WorldStore,
 };
 
 use crate::item_runtime::{default_player_skin_for_profile_id, NativeItemRuntime};
@@ -1359,6 +1359,7 @@ fn entity_model_instance(
         .with_nautilus_body_armor(armor_material(source.nautilus_body_armor))
         .with_llama_body_decor(llama_body_decor_color(source.llama_body_decor))
         .with_guardian_beam(guardian_beam(source.guardian_beam))
+        .with_end_crystal_beam(end_crystal_beam(source.end_crystal_beam))
         .with_is_crouching(source.is_crouching)
         .with_elytra_rot_x(source.elytra_rot_x)
         .with_elytra_rot_y(source.elytra_rot_y)
@@ -3503,6 +3504,13 @@ fn guardian_beam(beam: Option<WorldGuardianBeamSource>) -> Option<GuardianBeamRe
         eye_height: beam.eye_height,
         attack_time: beam.attack_time,
         attack_scale: beam.attack_scale,
+    })
+}
+
+/// Maps a projected end-crystal healing beam onto the renderer's `EndCrystalBeamRenderState`.
+fn end_crystal_beam(beam: Option<WorldEndCrystalBeamSource>) -> Option<EndCrystalBeamRenderState> {
+    beam.map(|beam| EndCrystalBeamRenderState {
+        beam_offset: beam.beam_offset,
     })
 }
 
@@ -6216,6 +6224,71 @@ mod tests {
 
         // A non-crystal keeps the default `true` (unused).
         assert!(shows_bottom(&world, 161));
+    }
+
+    #[test]
+    fn entity_model_instances_project_end_crystal_beam_target() {
+        // Vanilla EndCrystal.DATA_BEAM_TARGET (OPTIONAL_BLOCK_POS id 8) projects as
+        // EndCrystalRenderState.beamOffset = target block center - crystal position.
+        const END_CRYSTAL_BEAM_TARGET_DATA_ID: u8 = 8;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            162,
+            VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+            [10.0, 64.0, -3.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            163,
+            VANILLA_ENTITY_TYPE_BAT_ID,
+            [10.0, 64.0, -3.0],
+        ));
+
+        let beam = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .end_crystal_beam
+        };
+
+        assert!(beam(&world, 162).is_none());
+
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 162,
+            values: vec![protocol_optional_block_pos_data(
+                END_CRYSTAL_BEAM_TARGET_DATA_ID,
+                Some(bbb_protocol::packets::BlockPos {
+                    x: 14,
+                    y: 67,
+                    z: -10,
+                }),
+            )],
+        }));
+        assert_eq!(beam(&world, 162).unwrap().beam_offset, [4.5, 3.5, -6.5]);
+
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 162,
+            values: vec![protocol_optional_block_pos_data(
+                END_CRYSTAL_BEAM_TARGET_DATA_ID,
+                None,
+            )],
+        }));
+        assert!(beam(&world, 162).is_none());
+
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 163,
+            values: vec![protocol_optional_block_pos_data(
+                END_CRYSTAL_BEAM_TARGET_DATA_ID,
+                Some(bbb_protocol::packets::BlockPos {
+                    x: 14,
+                    y: 67,
+                    z: -10,
+                }),
+            )],
+        }));
+        assert!(beam(&world, 163).is_none());
     }
 
     #[test]
@@ -9808,8 +9881,8 @@ mod tests {
     #[test]
     fn entity_model_kind_maps_end_crystal_to_real_model() {
         // The end crystal was a placeholder bounds box; it now resolves to the real `EndCrystalModel`
-        // at its rest pose. The diagonal spin, the vertical bob, the `showsBottom` base toggle, and
-        // the beam to the dragon are deferred entity-side state, so no synced data is read.
+        // at its rest pose. The model kind itself reads no synced data; age, `showsBottom`, and the
+        // optional `DATA_BEAM_TARGET` custom beam are projected into render state separately.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, &[]),
             EntityModelKind::EndCrystal
@@ -9961,8 +10034,8 @@ mod tests {
     fn entity_model_kind_maps_ender_dragon_to_real_model() {
         // The ender dragon was a placeholder bounds box; it now resolves to the real
         // `EnderDragonModel` at its bind layout. The fully procedural flight animation, the dying
-        // dissolve, the emissive eyes, and the crystal beam are deferred entity-side state, so no
-        // synced data is read.
+        // dissolve, and the nearest-crystal healing beam are deferred entity-side state; the emissive
+        // eyes pass is renderer-owned and no synced data is read here.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, &[]),
             EntityModelKind::EnderDragon
@@ -11683,6 +11756,17 @@ mod tests {
             data_id,
             serializer_id: 8,
             value: EntityDataValueKind::Boolean(value),
+        }
+    }
+
+    fn protocol_optional_block_pos_data(
+        data_id: u8,
+        value: Option<bbb_protocol::packets::BlockPos>,
+    ) -> EntityDataValue {
+        EntityDataValue {
+            data_id,
+            serializer_id: 11,
+            value: EntityDataValueKind::OptionalBlockPos(value),
         }
     }
 

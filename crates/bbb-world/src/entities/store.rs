@@ -21,12 +21,12 @@ use super::{
     ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor,
     VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
     VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
-    VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
-    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
-    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
-    VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
-    VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID,
-    VANILLA_UPSIDE_DOWN_NAMES,
+    VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
+    VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
+    VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+    VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+    VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+    VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_UPSIDE_DOWN_NAMES,
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, camel_is_dashing, creaking_can_move,
@@ -168,6 +168,10 @@ const VANILLA_ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;
 /// Vanilla `LivingEntity.SLEEPING_POS_ID` data id (14): the optional bed position
 /// the entity is sleeping in (`getSleepingPos`).
 const VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID: u8 = 14;
+
+/// Vanilla `EndCrystal.DATA_BEAM_TARGET` data id (8): optional block target for the dragon-healing
+/// beam. `DATA_SHOW_BOTTOM` follows at id 9.
+const END_CRYSTAL_BEAM_TARGET_DATA_ID: u8 = 8;
 
 /// Vanilla `Avatar.DATA_PLAYER_MODE_CUSTOMISATION` data id (16): the byte of shown
 /// player model parts, read by the player upside-down check for the cape part.
@@ -1229,6 +1233,11 @@ impl EntityStore {
                 position,
                 partial_ticks,
             ),
+            end_crystal_beam: self.end_crystal_beam_source(
+                identity.entity_type_id,
+                &metadata.data_values,
+                position,
+            ),
             llama_body_decor,
             nautilus_body_armor,
             data_values: metadata.data_values.clone(),
@@ -1284,6 +1293,34 @@ impl EntityStore {
             eye_height,
             attack_time: attack.attack_time(partial_ticks),
             attack_scale: attack.attack_scale(partial_ticks, attack_duration),
+        })
+    }
+
+    /// Vanilla `EndCrystalRenderer.extractRenderState`: when an end crystal has a synced
+    /// `DATA_BEAM_TARGET`, project the target block center relative to the crystal's interpolated
+    /// position. `None` for crystals without a target and every non-crystal entity.
+    fn end_crystal_beam_source(
+        &self,
+        entity_type_id: i32,
+        data_values: &[bbb_protocol::packets::EntityDataValue],
+        position: super::EntityVec3,
+    ) -> Option<super::EndCrystalBeamSource> {
+        if entity_type_id != VANILLA_ENTITY_TYPE_END_CRYSTAL_ID {
+            return None;
+        }
+        let target = data_values
+            .iter()
+            .find(|value| value.data_id == END_CRYSTAL_BEAM_TARGET_DATA_ID)
+            .and_then(|value| match &value.value {
+                EntityDataValueKind::OptionalBlockPos(Some(pos)) => Some(pos),
+                _ => None,
+            })?;
+        Some(super::EndCrystalBeamSource {
+            beam_offset: [
+                (f64::from(target.x) + 0.5 - position.x) as f32,
+                (f64::from(target.y) + 0.5 - position.y) as f32,
+                (f64::from(target.z) + 0.5 - position.z) as f32,
+            ],
         })
     }
 

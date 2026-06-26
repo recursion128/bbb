@@ -98,7 +98,7 @@ Shulker bullet 的第二次 vanilla submit 也已补齐：textured path 在 base
 颜色/alpha 使用 vanilla packed color `0x26ffffff`。
 实体 textured path 现在显式记录 vanilla-shaped submission 元数据：render type 区分
 `entitySolid` / `armorCutoutNoCull` / `entityCutout` / `entityCutoutCull` / `entityCutoutZOffset` /
-`entityTranslucent` / `Eyes` / `breezeWind` / `energySwirl`，`order`
+`entityTranslucent` / `Eyes` / `breezeWind` / `energySwirl` / `end_crystal_beam`，`order`
 对应 `SubmitNodeCollector.order(n)`，并用 `submit_sequence` 保留同 order 内的 layer 顺序。
 render type 还暴露 vanilla 名称断言，防止这些细分退回粗 bucket。
 当前实现还显式记录 render type 到 GPU mesh bucket 的映射（cutout / translucent /
@@ -116,7 +116,11 @@ folding their tiled custom geometry into the scroll bucket. End Crystal 的 resi
 geometry 也已改为先生成 `entityCutout` submission，再通过统一 helper 折进 mesh。
 End Crystal 已从 colored-only fallback 推进到 textured path，绑定
 `textures/entity/end_crystal/end_crystal.png`，使用 vanilla 默认 `entityCutout`、
-order 0、白 tint 和 `scale(2)·translate(0,-0.5,0)` root transform；dragon healing beam 仍 deferred。
+order 0、白 tint 和 `scale(2)·translate(0,-0.5,0)` root transform；`EndCrystal.DATA_BEAM_TARGET`
+custom beam 也已按 vanilla 投影 target center offset，记录
+`RenderTypes.endCrystalBeam(end_crystal_beam.png)` submission（order 0 / sequence 1），
+再把八面 prism 几何折进 scroll mesh，测试覆盖 texture、render type、tint、transform、order
+以及 tiled UV。EnderDragonRenderer 自身的 nearest-crystal healing beam 仍是独立 deferred 项。
 Wolf 湿身 shade tint 已完成：world 侧按 `Wolf.getWetShade(partialTick)` 维护
 `isWet/shakeAnimO/shakeAnim` 计时，native 转抄到 render state，renderer 只把
 `wetShade` 乘到基础 wolf submit，collar 保持自己的染色 tint/order。

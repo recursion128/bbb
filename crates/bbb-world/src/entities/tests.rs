@@ -4107,6 +4107,81 @@ fn entity_model_sources_project_guardian_attack_beam() {
 }
 
 #[test]
+fn entity_model_sources_project_end_crystal_beam_target() {
+    // Vanilla `EndCrystal.DATA_BEAM_TARGET` is Optional<BlockPos> id 8. `EndCrystalRenderer`
+    // projects `Vec3.atCenterOf(target) - entity.getPosition(partialTicks)` into
+    // `EndCrystalRenderState.beamOffset`.
+    const VANILLA_ENTITY_TYPE_END_CRYSTAL_ID: i32 = 45;
+    const VANILLA_ENTITY_TYPE_BAT_ID: i32 = 10;
+    const END_CRYSTAL_BEAM_TARGET_DATA_ID: u8 = 8;
+
+    let add_at = |id: i32, type_id: i32| ProtocolAddEntity {
+        id,
+        uuid: default_entity_uuid(),
+        entity_type_id: type_id,
+        position: ProtocolVec3d {
+            x: 10.0,
+            y: 64.0,
+            z: -3.0,
+        },
+        delta_movement: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    };
+    let beam_target = |target: Option<ProtocolBlockPos>| ProtocolEntityDataValue {
+        data_id: END_CRYSTAL_BEAM_TARGET_DATA_ID,
+        serializer_id: 11,
+        value: EntityDataValueKind::OptionalBlockPos(target),
+    };
+    let beam = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .end_crystal_beam
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(add_at(180, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID));
+    store.apply_add_entity(add_at(181, VANILLA_ENTITY_TYPE_BAT_ID));
+    assert!(beam(&store, 180).is_none());
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 180,
+        values: vec![beam_target(Some(ProtocolBlockPos {
+            x: 14,
+            y: 67,
+            z: -10,
+        }))],
+    }));
+    assert_eq!(beam(&store, 180).unwrap().beam_offset, [4.5, 3.5, -6.5]);
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 180,
+        values: vec![beam_target(None)],
+    }));
+    assert!(beam(&store, 180).is_none());
+
+    // The same data id on a non-crystal is ignored.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 181,
+        values: vec![beam_target(Some(ProtocolBlockPos {
+            x: 14,
+            y: 67,
+            z: -10,
+        }))],
+    }));
+    assert!(beam(&store, 181).is_none());
+}
+
+#[test]
 fn frog_swim_idle_activates_only_in_water_and_idle() {
     // Vanilla `Frog.tick` (client): `swimIdleAnimationState.animateWhen(isInWater() &&
     // !walkAnimation.isMoving(), tickCount)`. The projected `frog_swim_idle_seconds` is `>= 0` while

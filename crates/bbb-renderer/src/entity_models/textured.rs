@@ -39,22 +39,23 @@ use super::{
     mesh_transformer_scaled_model_root_transform,
     model_layers::{
         armor_layer_tint, armor_slot_texture, default_player_skin_texture_ref, end_crystal_bob_y,
-        end_crystal_glass_quaternions, equine_head_look_pose, equine_leg_swing_pose,
-        equine_tail_swing_pose, head_look_at_rest, horse_body_armor_texture_layers,
-        limb_swing_at_rest, llama_body_decor_texture_ref, nautilus_body_armor_texture_ref,
-        BreezeWindModel, CamelModel, CreeperModel, CustomHeadDragonSkullModel,
-        CustomHeadPiglinSkullModel, CustomHeadSkullModel, DrownedOuterModel, ElytraModel,
-        HoglinModel, HumanoidArmorSlot, LlamaModel, NautilusModel, PigModel, PiglinModel,
-        PlayerModel, SheepFurModel, SheepModel, ShulkerBulletModel, SkeletonClothingModel,
-        SkeletonModel, SlimeModel, SlimeOuterModel, SquidModel, StriderModel, TropicalFishModel,
-        TropicalFishPatternModel, VillagerModel, WindChargeModel, WitherModel, ZombieModel,
-        ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
-        ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
-        ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
-        ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
-        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF,
-        CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF,
-        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF,
+        end_crystal_get_y, end_crystal_glass_quaternions, equine_head_look_pose,
+        equine_leg_swing_pose, equine_tail_swing_pose, head_look_at_rest,
+        horse_body_armor_texture_layers, limb_swing_at_rest, llama_body_decor_texture_ref,
+        nautilus_body_armor_texture_ref, BreezeWindModel, CamelModel, CreeperModel,
+        CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel, CustomHeadSkullModel,
+        DrownedOuterModel, ElytraModel, HoglinModel, HumanoidArmorSlot, LlamaModel, NautilusModel,
+        PigModel, PiglinModel, PlayerModel, SheepFurModel, SheepModel, ShulkerBulletModel,
+        SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SquidModel,
+        StriderModel, TropicalFishModel, TropicalFishPatternModel, VillagerModel, WindChargeModel,
+        WitherModel, ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
+        ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_DONKEY_SADDLE_PARTS_TEXTURED,
+        ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED, ADULT_HORSE_ARMOR_PARTS_TEXTURED,
+        ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
+        ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
+        BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF, CAMEL_HUSK_SADDLE_TEXTURE_REF,
+        CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF, CREEPER_TEXTURE_REF,
+        DONKEY_SADDLE_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_BEAM_TEXTURE_REF,
         END_CRYSTAL_TEXTURED_PARTS, END_CRYSTAL_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF,
         HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
         LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
@@ -481,6 +482,8 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         // The guardian attack beam is a world-space billboarded prism from the guardian eye to its
         // target; it folds into the scroll (tiled) pass and runs regardless of `handled`.
         emit_guardian_beam(&mut meshes, *instance, atlas);
+        // The end-crystal healing beam is custom world-space geometry submitted after the model body.
+        emit_end_crystal_beam(&mut meshes, *instance, atlas);
         emit_player_cape_layer(&mut meshes, *instance, dynamic_player_texture_atlas);
         // Worn armor is a cutout overlay draped on the host humanoid pose; it runs regardless of
         // `handled` and folds into the cutout pass before the shared light/overlay fill below.
@@ -619,8 +622,8 @@ fn emit_shulker_bullet_textured_model(
 }
 
 /// Vanilla `EndCrystalRenderer.submit`: render `EndCrystalModel` with `end_crystal.png` after the
-/// renderer root transform (`scale(2)` + `translate(0,-0.5,0)`). The dragon beam is submitted by a
-/// separate renderer helper and remains outside the entity-model mesh path.
+/// renderer root transform (`scale(2)` + `translate(0,-0.5,0)`). The optional `DATA_BEAM_TARGET`
+/// custom geometry is submitted separately by [`emit_end_crystal_beam`].
 fn emit_end_crystal_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -1303,6 +1306,106 @@ fn emit_guardian_beam(
             .scroll
             .indices
             .extend_from_slice(&[o, o + 1, o + 2, o, o + 2, o + 3]);
+    }
+}
+
+/// Vanilla `EnderDragonRenderer.submitCrystalBeams`, as called by `EndCrystalRenderer.submit` when
+/// `EndCrystalRenderState.beamOffset` is present. The crystal renderer first translates by the beam
+/// target offset, then the shared helper translates up by two units, rotates local +Z toward the
+/// crystal→beam-target delta (including the crystal bob), and submits eight prism quads with black
+/// inner vertices, white outer vertices, and a vertically tiled `end_crystal_beam.png` texture.
+fn emit_end_crystal_beam(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    if !matches!(instance.kind, EntityModelKind::EndCrystal) {
+        return;
+    }
+    let Some(beam) = instance.render_state.end_crystal_beam else {
+        return;
+    };
+
+    let beam_offset = Vec3::from_array(beam.beam_offset);
+    let age = instance.render_state.age_in_ticks;
+    let delta = Vec3::new(
+        -beam_offset.x,
+        -beam_offset.y + end_crystal_get_y(age),
+        -beam_offset.z,
+    );
+    let horizontal_length = (delta.x * delta.x + delta.z * delta.z).sqrt();
+    let length = delta.length();
+
+    let transform = Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_translation(beam_offset)
+        * Mat4::from_translation(Vec3::new(0.0, 2.0, 0.0))
+        * Mat4::from_rotation_y(-delta.z.atan2(delta.x) - std::f32::consts::FRAC_PI_2)
+        * Mat4::from_rotation_x(-horizontal_length.atan2(delta.y) - std::f32::consts::FRAC_PI_2);
+    let submit = EntityModelSubmissionEmit::new(
+        EntityModelLayerRenderType::EndCrystalBeam,
+        END_CRYSTAL_BEAM_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+        transform,
+        0,
+        1,
+    );
+    meshes.record_submission(submit);
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, submit.texture) else {
+        return;
+    };
+
+    let rect = entry.uv;
+    let size = [rect.max[0] - rect.min[0], rect.max[1] - rect.min[1]];
+    let v0 = -age * 0.01;
+    let v1 = length / 32.0 - age * 0.01;
+    let mut last_sin = 0.0;
+    let mut last_cos = 0.75;
+    let mut last_u = 0.0;
+
+    for i in 1..=8 {
+        let angle = i as f32 * std::f32::consts::TAU / 8.0;
+        let sin = angle.sin() * 0.75;
+        let cos = angle.cos() * 0.75;
+        let u = i as f32 / 8.0;
+        let base =
+            u32::try_from(meshes.scroll.vertices.len()).expect("scroll vertex count fits in u32");
+        for (position, local_uv, tint) in [
+            (
+                Vec3::new(last_sin * 0.2, last_cos * 0.2, 0.0),
+                [last_u, v0],
+                [0.0, 0.0, 0.0, 1.0],
+            ),
+            (
+                Vec3::new(last_sin, last_cos, length),
+                [last_u, v1],
+                [1.0, 1.0, 1.0, 1.0],
+            ),
+            (Vec3::new(sin, cos, length), [u, v1], [1.0, 1.0, 1.0, 1.0]),
+            (
+                Vec3::new(sin * 0.2, cos * 0.2, 0.0),
+                [u, v0],
+                [0.0, 0.0, 0.0, 1.0],
+            ),
+        ] {
+            meshes.scroll.vertices.push(EntityModelScrollVertex {
+                position: submit.transform.transform_point3(position).to_array(),
+                local_uv,
+                uv_rect_min: rect.min,
+                uv_rect_size: size,
+                tint,
+            });
+        }
+        meshes.scroll.indices.extend_from_slice(&[
+            base,
+            base + 1,
+            base + 2,
+            base,
+            base + 2,
+            base + 3,
+        ]);
+        last_sin = sin;
+        last_cos = cos;
+        last_u = u;
     }
 }
 

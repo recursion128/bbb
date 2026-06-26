@@ -57,6 +57,7 @@ pub(crate) const VANILLA_ENTITY_TYPE_DARK_OAK_BOAT_ID: i32 = 33;
 pub(crate) const VANILLA_ENTITY_TYPE_DARK_OAK_CHEST_BOAT_ID: i32 = 34;
 pub(crate) const VANILLA_ENTITY_TYPE_DONKEY_ID: i32 = 36;
 pub(crate) const VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID: i32 = 37;
+pub(crate) const VANILLA_ENTITY_TYPE_END_CRYSTAL_ID: i32 = 45;
 pub(crate) const VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID: i32 = 49;
 pub(crate) const VANILLA_ENTITY_TYPE_FIREBALL_ID: i32 = 52;
 pub(crate) const VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID: i32 = 56;
@@ -1028,6 +1029,11 @@ pub struct EntityModelSourceState {
     /// other entity.
     #[serde(default)]
     pub guardian_beam: Option<GuardianBeamSource>,
+    /// Vanilla `EndCrystalRenderState.beamOffset`: present when an end crystal has a synced
+    /// `DATA_BEAM_TARGET` block position. This is the target block center minus the crystal's
+    /// interpolated position; `None` for a crystal without a target and every non-crystal.
+    #[serde(default)]
+    pub end_crystal_beam: Option<EndCrystalBeamSource>,
     /// Vanilla `LlamaRenderState.bodyItem`: the carpet color from an adult llama/trader-llama body
     /// equipment item. Baby llamas ignore body items for the decor layer; trader llamas still get their
     /// built-in trader decor in the renderer when this is `None`.
@@ -1052,6 +1058,14 @@ pub struct GuardianBeamSource {
     pub eye_height: f32,
     pub attack_time: f32,
     pub attack_scale: f32,
+}
+
+/// Vanilla `EndCrystalRenderer.extractRenderState` beam projection. `beam_offset` is
+/// `Vec3.atCenterOf(DATA_BEAM_TARGET) - entity.getPosition(partialTicks)`; the renderer combines it
+/// with `EndCrystalRenderer.getY(ageInTicks)` when submitting the dragon-healing beam.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct EndCrystalBeamSource {
+    pub beam_offset: [f32; 3],
 }
 
 /// Vanilla `DyeColor` carried by `Equippable.llamaSwag(color)` carpet body items. The renderer maps

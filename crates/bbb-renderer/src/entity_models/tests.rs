@@ -137,6 +137,11 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             "energySwirl",
             EntityModelLayerRenderBucket::AdditiveScroll,
         ),
+        (
+            EntityModelLayerRenderType::EndCrystalBeam,
+            "end_crystal_beam",
+            EntityModelLayerRenderBucket::Scroll,
+        ),
     ];
 
     for (render_type, vanilla_name, bucket) in cases {

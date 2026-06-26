@@ -393,6 +393,7 @@ mod tests {
                 "textures/entity/cow/mooshroom_brown.png",
                 "textures/entity/cow/mooshroom_brown_baby.png",
                 "textures/entity/end_crystal/end_crystal.png",
+                "textures/entity/end_crystal/end_crystal_beam.png",
                 "textures/entity/projectiles/arrow.png",
                 "textures/entity/projectiles/arrow_tipped.png",
                 "textures/entity/projectiles/arrow_spectral.png",

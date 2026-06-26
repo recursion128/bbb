@@ -1010,7 +1010,7 @@ When an agent does any of the following, update this file in the same slice:
       metadata alongside the existing mesh buckets: `render_type`
       distinguishes `entitySolid`, `armorCutoutNoCull`, `entityCutout`, `entityCutoutCull`,
       `entityCutoutZOffset`, `entityTranslucent`, `Eyes`,
-      `breezeWind`, and `energySwirl`; `order` mirrors
+      `breezeWind`, `energySwirl`, and `end_crystal_beam`; `order` mirrors
       `SubmitNodeCollector.order(n)`; and `submit_sequence` preserves
       same-order layer order while the GPU backend still folds compatible
       submits into shared meshes. The render-type expression is pinned by
@@ -1023,7 +1023,10 @@ When an agent does any of the following, update this file in the same slice:
       attack beams also record vanilla `entityCutout` submissions before
       folding their tiled custom geometry into the scroll bucket; End Crystal
       now creates its vanilla `entityCutout` submission before the residual
-      bob/spin geometry is folded through the standard submission helper.
+      bob/spin geometry is folded through the standard submission helper, and
+      crystals with a beam target now record vanilla `end_crystal_beam`
+      submissions before their tiled prism geometry is folded into the scroll
+      bucket.
       Uniform layer passes, Warden retained
       emissive layers, Breeze base/eyes/wind, Shulker bullet's two submits,
       WindCharge `breezeWind`, charged-creeper / wither `energySwirl`,
@@ -1031,7 +1034,7 @@ When an agent does any of the following, update this file in the same slice:
       base+saddle/body-armor submits, horse markings, villager
       profession/type/level overlays, custom-head skull submissions, player
       profile cape plus player WINGS/elytra submissions, and the
-      Guardian beam / newly textured End Crystal paths are covered by source-verified
+      Guardian beam / End Crystal body+beam paths are covered by source-verified
       texture/render-type/tint/transform/order tests.
     - dropped item entities as camera-facing item-icon billboards from:
       - canonical item entity stack metadata
@@ -2904,7 +2907,12 @@ When an agent does any of the following, update this file in the same slice:
       `textures/entity/end_crystal/end_crystal.png` as the vanilla default `entityCutout` submit with
       collector order `0`, sequence `0`, white tint, and the same `scale(2)·translate(0,-0.5,0)` root
       transform; the colored debug path stays as the missing-atlas fallback with separate glass/core/base
-      tints. The `submitCrystalBeams` beam to the dragon remains deferred
+      tints. The `EndCrystal.DATA_BEAM_TARGET` custom beam is now wired too: world projects
+      `EndCrystal.DATA_BEAM_TARGET` (Optional<BlockPos> data id 8) as
+      `Vec3.atCenterOf(target) - entity.getPosition(partialTicks)`, native forwards it as
+      `EndCrystalRenderState.beamOffset`, and the renderer records
+      `RenderTypes.endCrystalBeam(textures/entity/end_crystal/end_crystal_beam.png)` at order `0`,
+      sequence `1` before folding the eight-quad black/white prism into the tiled scroll mesh.
     - evoker fangs entities as renderer-owned vanilla 26.1 `EvokerFangsModel.createBodyLayer()` geometry on
       the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `47` to the new
       `EntityModelKind::EvokerFangs`, replacing the former placeholder bounds box. The static closed-jaw
