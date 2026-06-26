@@ -764,6 +764,90 @@ pub(in crate::entity_models) fn cow_texture_ref(
     }
 }
 
+pub(in crate::entity_models) fn villager_type_texture_ref(
+    villager_type: VillagerModelType,
+    baby: bool,
+) -> EntityModelTextureRef {
+    let refs = if baby {
+        &VILLAGER_BABY_TYPE_TEXTURE_REFS
+    } else {
+        &VILLAGER_TYPE_TEXTURE_REFS
+    };
+    refs[villager_type_index(villager_type)]
+}
+
+pub(in crate::entity_models) fn zombie_villager_type_texture_ref(
+    villager_type: VillagerModelType,
+    baby: bool,
+) -> EntityModelTextureRef {
+    let refs = if baby {
+        &ZOMBIE_VILLAGER_BABY_TYPE_TEXTURE_REFS
+    } else {
+        &ZOMBIE_VILLAGER_TYPE_TEXTURE_REFS
+    };
+    refs[villager_type_index(villager_type)]
+}
+
+pub(in crate::entity_models) fn villager_profession_texture_ref(
+    profession: VillagerModelProfession,
+) -> Option<EntityModelTextureRef> {
+    villager_profession_texture_index(profession)
+        .map(|index| VILLAGER_PROFESSION_TEXTURE_REFS[index])
+}
+
+pub(in crate::entity_models) fn zombie_villager_profession_texture_ref(
+    profession: VillagerModelProfession,
+) -> Option<EntityModelTextureRef> {
+    villager_profession_texture_index(profession)
+        .map(|index| ZOMBIE_VILLAGER_PROFESSION_TEXTURE_REFS[index])
+}
+
+pub(in crate::entity_models) fn villager_level_texture_ref(level: i32) -> EntityModelTextureRef {
+    VILLAGER_LEVEL_TEXTURE_REFS[villager_level_index(level)]
+}
+
+pub(in crate::entity_models) fn zombie_villager_level_texture_ref(
+    level: i32,
+) -> EntityModelTextureRef {
+    ZOMBIE_VILLAGER_LEVEL_TEXTURE_REFS[villager_level_index(level)]
+}
+
+fn villager_type_index(villager_type: VillagerModelType) -> usize {
+    match villager_type {
+        VillagerModelType::Desert => 0,
+        VillagerModelType::Jungle => 1,
+        VillagerModelType::Plains => 2,
+        VillagerModelType::Savanna => 3,
+        VillagerModelType::Snow => 4,
+        VillagerModelType::Swamp => 5,
+        VillagerModelType::Taiga => 6,
+    }
+}
+
+fn villager_profession_texture_index(profession: VillagerModelProfession) -> Option<usize> {
+    Some(match profession {
+        VillagerModelProfession::None => return None,
+        VillagerModelProfession::Armorer => 0,
+        VillagerModelProfession::Butcher => 1,
+        VillagerModelProfession::Cartographer => 2,
+        VillagerModelProfession::Cleric => 3,
+        VillagerModelProfession::Farmer => 4,
+        VillagerModelProfession::Fisherman => 5,
+        VillagerModelProfession::Fletcher => 6,
+        VillagerModelProfession::Leatherworker => 7,
+        VillagerModelProfession::Librarian => 8,
+        VillagerModelProfession::Mason => 9,
+        VillagerModelProfession::Nitwit => 10,
+        VillagerModelProfession::Shepherd => 11,
+        VillagerModelProfession::Toolsmith => 12,
+        VillagerModelProfession::Weaponsmith => 13,
+    })
+}
+
+fn villager_level_index(level: i32) -> usize {
+    (level.clamp(1, 5) - 1) as usize
+}
+
 pub(in crate::entity_models) fn squid_texture_ref(glow: bool, baby: bool) -> EntityModelTextureRef {
     match (glow, baby) {
         (false, false) => SQUID_TEXTURE_REF,

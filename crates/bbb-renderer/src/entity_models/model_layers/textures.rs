@@ -114,6 +114,152 @@ pub(in crate::entity_models) const ZOMBIE_VILLAGER_BABY_TEXTURE_REF: EntityModel
         size: [64, 64],
     };
 
+pub(in crate::entity_models) const ZOMBIE_VILLAGER_TYPE_TEXTURE_REFS: [EntityModelTextureRef; 7] = [
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/type/desert.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/type/jungle.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/type/plains.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/type/savanna.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/type/snow.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/type/swamp.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/type/taiga.png",
+        size: [64, 64],
+    },
+];
+
+pub(in crate::entity_models) const ZOMBIE_VILLAGER_BABY_TYPE_TEXTURE_REFS: [EntityModelTextureRef;
+    7] = [
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/baby/desert.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/baby/jungle.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/baby/plains.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/baby/savanna.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/baby/snow.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/baby/swamp.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/baby/taiga.png",
+        size: [64, 64],
+    },
+];
+
+pub(in crate::entity_models) const ZOMBIE_VILLAGER_PROFESSION_TEXTURE_REFS:
+    [EntityModelTextureRef; 14] = [
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/profession/armorer.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/profession/butcher.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/profession/cartographer.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/profession/cleric.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/profession/farmer.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/profession/fisherman.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/profession/fletcher.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/profession/leatherworker.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/profession/librarian.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/profession/mason.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/profession/nitwit.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/profession/shepherd.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/profession/toolsmith.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/profession/weaponsmith.png",
+        size: [64, 64],
+    },
+];
+
+pub(in crate::entity_models) const ZOMBIE_VILLAGER_LEVEL_TEXTURE_REFS: [EntityModelTextureRef; 5] = [
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/profession_level/stone.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/profession_level/iron.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/profession_level/gold.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/profession_level/emerald.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/zombie_villager/profession_level/diamond.png",
+        size: [64, 64],
+    },
+];
+
 pub(in crate::entity_models) const ZOMBIE_VILLAGER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] = [
     ZOMBIE_VILLAGER_TEXTURE_REF,
     ZOMBIE_VILLAGER_BABY_TEXTURE_REF,
@@ -517,6 +663,150 @@ pub(in crate::entity_models) const WANDERING_TRADER_TEXTURE_REF: EntityModelText
         path: "textures/entity/wandering_trader/wandering_trader.png",
         size: [64, 64],
     };
+
+pub(in crate::entity_models) const VILLAGER_TYPE_TEXTURE_REFS: [EntityModelTextureRef; 7] = [
+    EntityModelTextureRef {
+        path: "textures/entity/villager/type/desert.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/type/jungle.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/type/plains.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/type/savanna.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/type/snow.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/type/swamp.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/type/taiga.png",
+        size: [64, 64],
+    },
+];
+
+pub(in crate::entity_models) const VILLAGER_BABY_TYPE_TEXTURE_REFS: [EntityModelTextureRef; 7] = [
+    EntityModelTextureRef {
+        path: "textures/entity/villager/baby/desert.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/baby/jungle.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/baby/plains.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/baby/savanna.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/baby/snow.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/baby/swamp.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/baby/taiga.png",
+        size: [64, 64],
+    },
+];
+
+pub(in crate::entity_models) const VILLAGER_PROFESSION_TEXTURE_REFS: [EntityModelTextureRef; 14] = [
+    EntityModelTextureRef {
+        path: "textures/entity/villager/profession/armorer.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/profession/butcher.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/profession/cartographer.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/profession/cleric.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/profession/farmer.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/profession/fisherman.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/profession/fletcher.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/profession/leatherworker.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/profession/librarian.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/profession/mason.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/profession/nitwit.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/profession/shepherd.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/profession/toolsmith.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/profession/weaponsmith.png",
+        size: [64, 64],
+    },
+];
+
+pub(in crate::entity_models) const VILLAGER_LEVEL_TEXTURE_REFS: [EntityModelTextureRef; 5] = [
+    EntityModelTextureRef {
+        path: "textures/entity/villager/profession_level/stone.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/profession_level/iron.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/profession_level/gold.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/profession_level/emerald.png",
+        size: [64, 64],
+    },
+    EntityModelTextureRef {
+        path: "textures/entity/villager/profession_level/diamond.png",
+        size: [64, 64],
+    },
+];
 
 pub(in crate::entity_models) const VILLAGER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 3] = [
     VILLAGER_TEXTURE_REF,
@@ -1120,7 +1410,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 399] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 465] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -1195,6 +1485,39 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     RAVAGER_TEXTURE_REF,
     VILLAGER_TEXTURE_REF,
     VILLAGER_BABY_TEXTURE_REF,
+    VILLAGER_TYPE_TEXTURE_REFS[0],
+    VILLAGER_TYPE_TEXTURE_REFS[1],
+    VILLAGER_TYPE_TEXTURE_REFS[2],
+    VILLAGER_TYPE_TEXTURE_REFS[3],
+    VILLAGER_TYPE_TEXTURE_REFS[4],
+    VILLAGER_TYPE_TEXTURE_REFS[5],
+    VILLAGER_TYPE_TEXTURE_REFS[6],
+    VILLAGER_BABY_TYPE_TEXTURE_REFS[0],
+    VILLAGER_BABY_TYPE_TEXTURE_REFS[1],
+    VILLAGER_BABY_TYPE_TEXTURE_REFS[2],
+    VILLAGER_BABY_TYPE_TEXTURE_REFS[3],
+    VILLAGER_BABY_TYPE_TEXTURE_REFS[4],
+    VILLAGER_BABY_TYPE_TEXTURE_REFS[5],
+    VILLAGER_BABY_TYPE_TEXTURE_REFS[6],
+    VILLAGER_PROFESSION_TEXTURE_REFS[0],
+    VILLAGER_PROFESSION_TEXTURE_REFS[1],
+    VILLAGER_PROFESSION_TEXTURE_REFS[2],
+    VILLAGER_PROFESSION_TEXTURE_REFS[3],
+    VILLAGER_PROFESSION_TEXTURE_REFS[4],
+    VILLAGER_PROFESSION_TEXTURE_REFS[5],
+    VILLAGER_PROFESSION_TEXTURE_REFS[6],
+    VILLAGER_PROFESSION_TEXTURE_REFS[7],
+    VILLAGER_PROFESSION_TEXTURE_REFS[8],
+    VILLAGER_PROFESSION_TEXTURE_REFS[9],
+    VILLAGER_PROFESSION_TEXTURE_REFS[10],
+    VILLAGER_PROFESSION_TEXTURE_REFS[11],
+    VILLAGER_PROFESSION_TEXTURE_REFS[12],
+    VILLAGER_PROFESSION_TEXTURE_REFS[13],
+    VILLAGER_LEVEL_TEXTURE_REFS[0],
+    VILLAGER_LEVEL_TEXTURE_REFS[1],
+    VILLAGER_LEVEL_TEXTURE_REFS[2],
+    VILLAGER_LEVEL_TEXTURE_REFS[3],
+    VILLAGER_LEVEL_TEXTURE_REFS[4],
     WANDERING_TRADER_TEXTURE_REF,
     CHICKEN_TEMPERATE_TEXTURE_REF,
     CHICKEN_TEMPERATE_BABY_TEXTURE_REF,
@@ -1392,6 +1715,39 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     DROWNED_OUTER_LAYER_BABY_TEXTURE_REF,
     ZOMBIE_VILLAGER_TEXTURE_REF,
     ZOMBIE_VILLAGER_BABY_TEXTURE_REF,
+    ZOMBIE_VILLAGER_TYPE_TEXTURE_REFS[0],
+    ZOMBIE_VILLAGER_TYPE_TEXTURE_REFS[1],
+    ZOMBIE_VILLAGER_TYPE_TEXTURE_REFS[2],
+    ZOMBIE_VILLAGER_TYPE_TEXTURE_REFS[3],
+    ZOMBIE_VILLAGER_TYPE_TEXTURE_REFS[4],
+    ZOMBIE_VILLAGER_TYPE_TEXTURE_REFS[5],
+    ZOMBIE_VILLAGER_TYPE_TEXTURE_REFS[6],
+    ZOMBIE_VILLAGER_BABY_TYPE_TEXTURE_REFS[0],
+    ZOMBIE_VILLAGER_BABY_TYPE_TEXTURE_REFS[1],
+    ZOMBIE_VILLAGER_BABY_TYPE_TEXTURE_REFS[2],
+    ZOMBIE_VILLAGER_BABY_TYPE_TEXTURE_REFS[3],
+    ZOMBIE_VILLAGER_BABY_TYPE_TEXTURE_REFS[4],
+    ZOMBIE_VILLAGER_BABY_TYPE_TEXTURE_REFS[5],
+    ZOMBIE_VILLAGER_BABY_TYPE_TEXTURE_REFS[6],
+    ZOMBIE_VILLAGER_PROFESSION_TEXTURE_REFS[0],
+    ZOMBIE_VILLAGER_PROFESSION_TEXTURE_REFS[1],
+    ZOMBIE_VILLAGER_PROFESSION_TEXTURE_REFS[2],
+    ZOMBIE_VILLAGER_PROFESSION_TEXTURE_REFS[3],
+    ZOMBIE_VILLAGER_PROFESSION_TEXTURE_REFS[4],
+    ZOMBIE_VILLAGER_PROFESSION_TEXTURE_REFS[5],
+    ZOMBIE_VILLAGER_PROFESSION_TEXTURE_REFS[6],
+    ZOMBIE_VILLAGER_PROFESSION_TEXTURE_REFS[7],
+    ZOMBIE_VILLAGER_PROFESSION_TEXTURE_REFS[8],
+    ZOMBIE_VILLAGER_PROFESSION_TEXTURE_REFS[9],
+    ZOMBIE_VILLAGER_PROFESSION_TEXTURE_REFS[10],
+    ZOMBIE_VILLAGER_PROFESSION_TEXTURE_REFS[11],
+    ZOMBIE_VILLAGER_PROFESSION_TEXTURE_REFS[12],
+    ZOMBIE_VILLAGER_PROFESSION_TEXTURE_REFS[13],
+    ZOMBIE_VILLAGER_LEVEL_TEXTURE_REFS[0],
+    ZOMBIE_VILLAGER_LEVEL_TEXTURE_REFS[1],
+    ZOMBIE_VILLAGER_LEVEL_TEXTURE_REFS[2],
+    ZOMBIE_VILLAGER_LEVEL_TEXTURE_REFS[3],
+    ZOMBIE_VILLAGER_LEVEL_TEXTURE_REFS[4],
     PIGLIN_TEXTURE_REF,
     PIGLIN_BABY_TEXTURE_REF,
     PIGLIN_BRUTE_TEXTURE_REF,

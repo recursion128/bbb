@@ -1218,8 +1218,44 @@ fn zombie_villager_textured_mesh_matches_colored_geometry_and_legs_swing() {
     }
 }
 
+#[test]
+fn zombie_villager_profession_layers_render_with_zombie_textures_and_no_hat_rule() {
+    let textures = [
+        ZOMBIE_VILLAGER_TEXTURE_REF,
+        ZOMBIE_VILLAGER_TYPE_TEXTURE_REFS[4],
+        ZOMBIE_VILLAGER_PROFESSION_TEXTURE_REFS[4],
+        ZOMBIE_VILLAGER_LEVEL_TEXTURE_REFS[3],
+    ];
+    let (atlas, _) = build_entity_model_texture_atlas(&texture_images(&textures)).unwrap();
+    let instance = EntityModelInstance::zombie_variant(
+        404,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ZombieVariantModelFamily::ZombieVillager,
+        false,
+    )
+    .with_villager_model_data(VillagerModelData::new(
+        VillagerModelType::Snow,
+        VillagerModelProfession::Farmer,
+        4,
+    ));
+    let mesh = entity_model_textured_mesh(&[instance], &atlas);
+
+    // Base 60 faces + type layer without hat/rim 48 + profession 60 + level 60.
+    assert_eq!(mesh.cutout_faces, 228);
+    assert_eq!(mesh.vertices.len(), 912);
+    assert_close2(mesh.vertices[0].uv, [16.0 / 64.0, 0.0]);
+    assert_close2(mesh.vertices[240].uv, [16.0 / 64.0, 1.0 / 4.0]);
+    assert_close2(mesh.vertices[432].uv, [16.0 / 64.0, 2.0 / 4.0]);
+    assert_close2(mesh.vertices[672].uv, [16.0 / 64.0, 3.0 / 4.0]);
+}
+
 fn zombie_villager_texture_images() -> Vec<EntityModelTextureImage> {
-    zombie_villager_entity_texture_refs()
+    texture_images(zombie_villager_entity_texture_refs())
+}
+
+fn texture_images(textures: &[EntityModelTextureRef]) -> Vec<EntityModelTextureImage> {
+    textures
         .iter()
         .enumerate()
         .map(|(index, texture)| {

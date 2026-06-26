@@ -1,18 +1,22 @@
 use super::colored::{
-    creeper_model_root_transform, wind_charge_model_root_transform, wither_model_root_transform,
-    HORSE_SCALE,
+    creeper_model_root_transform, villager_adult_model_root_transform,
+    wind_charge_model_root_transform, wither_model_root_transform, HORSE_SCALE,
 };
 use super::dispatch::{dispatch_uniform_entity_model, TexturedSink};
 use super::model::{EntityModel, ModelPart};
 use super::{
-    catalog::horse_markings_texture_ref,
-    catalog::squid_texture_ref,
+    catalog::{
+        horse_markings_texture_ref, squid_texture_ref, villager_level_texture_ref,
+        villager_profession_texture_ref, villager_type_texture_ref,
+        zombie_villager_level_texture_ref, zombie_villager_profession_texture_ref,
+        zombie_villager_type_texture_ref,
+    },
     catalog::{
         CamelModelFamily, DonkeyModelFamily, EntityDyeColor, EntityModelKind,
         EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureRef,
         EntityModelUvRect, HoglinModelFamily, HorseMarkings, LlamaVariant, PiglinModelFamily,
         PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape,
-        TropicalFishPattern, ZombieVariantModelFamily,
+        TropicalFishPattern, VillagerModelData, VillagerModelHat, ZombieVariantModelFamily,
     },
     entity_model_root_transform,
     geometry::{
@@ -28,8 +32,8 @@ use super::{
         equine_tail_swing_pose, head_look_at_rest, limb_swing_at_rest, BreezeWindModel, CamelModel,
         CreeperModel, DrownedOuterModel, HoglinModel, HumanoidArmorSlot, LlamaModel, PiglinModel,
         PlayerModel, SheepFurModel, SheepModel, SkeletonClothingModel, SkeletonModel, SlimeModel,
-        SlimeOuterModel, SquidModel, TropicalFishModel, TropicalFishPatternModel, WindChargeModel,
-        WitherModel, ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
+        SlimeOuterModel, SquidModel, TropicalFishModel, TropicalFishPatternModel, VillagerModel,
+        WindChargeModel, WitherModel, ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
         ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
         BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF,
         CREEPER_ARMOR_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION,
@@ -271,6 +275,9 @@ pub(super) fn entity_model_textured_meshes(
         // Worn armor is a cutout overlay draped on the host humanoid pose; it runs regardless of
         // `handled` and folds into the cutout pass before the shared light/overlay fill below.
         emit_worn_humanoid_armor(&mut meshes, *instance, atlas);
+        // VillagerProfessionLayer overlays (biome type, profession, level badge) are cutout layers
+        // over the base villager or zombie-villager model and share the same light/overlay fill.
+        emit_villager_profession_layers(&mut meshes, *instance, atlas);
         let light = instance.render_state.shader_light();
         fill_entity_textured_light(&mut meshes.cutout, cutout_start, light);
         fill_entity_textured_light(&mut meshes.translucent, translucent_start, light);
@@ -1017,6 +1024,151 @@ fn emit_zombie_villager_textured_model(
         zombie_villager_textured_layer_passes(baby),
         atlas,
     );
+}
+
+const VILLAGER_NO_HAT_EXCLUDED_PARTS: [&str; 2] = ["hat", "hat_rim"];
+
+fn emit_villager_profession_layers(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    match instance.kind {
+        EntityModelKind::Villager { baby } => {
+            let transform = if baby {
+                entity_model_root_transform(instance)
+            } else {
+                villager_adult_model_root_transform(instance)
+            };
+            let mut model = VillagerModel::new(baby);
+            model.prepare(&instance);
+            emit_villager_data_layers(
+                meshes,
+                &model,
+                transform,
+                baby,
+                false,
+                instance.render_state.villager_model_data,
+                atlas,
+            );
+        }
+        EntityModelKind::ZombieVariant {
+            family: ZombieVariantModelFamily::ZombieVillager,
+            baby,
+        } => {
+            let transform = entity_model_root_transform(instance);
+            let mut model = ZombieVariantModel::new(ZombieVariantModelFamily::ZombieVillager, baby);
+            model.prepare(&instance);
+            emit_villager_data_layers(
+                meshes,
+                &model,
+                transform,
+                baby,
+                true,
+                instance.render_state.villager_model_data,
+                atlas,
+            );
+        }
+        _ => {}
+    }
+}
+
+fn emit_villager_data_layers<M: EntityModel>(
+    meshes: &mut EntityModelTexturedMeshes,
+    model: &M,
+    transform: Mat4,
+    baby: bool,
+    zombie: bool,
+    data: VillagerModelData,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let type_texture = if zombie {
+        zombie_villager_type_texture_ref(data.villager_type, baby)
+    } else {
+        villager_type_texture_ref(data.villager_type, baby)
+    };
+    emit_villager_profession_layer(
+        meshes,
+        model.root(),
+        transform,
+        type_texture,
+        !villager_type_hat_visible(data, zombie),
+        atlas,
+    );
+
+    if baby {
+        return;
+    }
+    let profession_texture = if zombie {
+        zombie_villager_profession_texture_ref(data.profession)
+    } else {
+        villager_profession_texture_ref(data.profession)
+    };
+    let Some(profession_texture) = profession_texture else {
+        return;
+    };
+    emit_villager_profession_layer(
+        meshes,
+        model.root(),
+        transform,
+        profession_texture,
+        false,
+        atlas,
+    );
+
+    if data.profession.renders_level_badge() {
+        let level_texture = if zombie {
+            zombie_villager_level_texture_ref(data.level)
+        } else {
+            villager_level_texture_ref(data.level)
+        };
+        emit_villager_profession_layer(
+            meshes,
+            model.root(),
+            transform,
+            level_texture,
+            false,
+            atlas,
+        );
+    }
+}
+
+fn villager_type_hat_visible(data: VillagerModelData, zombie: bool) -> bool {
+    let type_hat = if zombie {
+        VillagerModelHat::None
+    } else {
+        data.villager_type.hat()
+    };
+    let profession_hat = data.profession.hat();
+    profession_hat == VillagerModelHat::None
+        || profession_hat == VillagerModelHat::Partial && type_hat != VillagerModelHat::Full
+}
+
+fn emit_villager_profession_layer(
+    meshes: &mut EntityModelTexturedMeshes,
+    root: &ModelPart,
+    transform: Mat4,
+    texture: EntityModelTextureRef,
+    no_hat: bool,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
+        return;
+    };
+    let tint = [1.0, 1.0, 1.0, 1.0];
+    if no_hat {
+        root.render_textured_excluding(
+            &mut meshes.cutout,
+            transform,
+            texture,
+            entry.uv,
+            tint,
+            "",
+            &VILLAGER_NO_HAT_EXCLUDED_PARTS,
+        );
+    } else {
+        root.render_textured(&mut meshes.cutout, transform, texture, entry.uv, tint);
+    }
 }
 
 fn emit_piglin_textured_model(

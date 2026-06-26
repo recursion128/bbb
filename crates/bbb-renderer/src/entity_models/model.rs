@@ -303,6 +303,42 @@ impl ModelPart {
             );
         }
     }
+
+    /// Walks the subtree like [`ModelPart::render_textured`], but skips any part whose name is listed
+    /// in `excluded` and drops that skipped part's whole subtree. This mirrors the vanilla no-hat
+    /// villager layers, where the alternate model omits the `hat` / `hat_rim` parts but keeps the
+    /// already-posed head, body, arms, and legs.
+    #[allow(clippy::too_many_arguments)]
+    pub(in crate::entity_models) fn render_textured_excluding(
+        &self,
+        mesh: &mut EntityModelTexturedMesh,
+        parent_transform: Mat4,
+        texture: EntityModelTextureRef,
+        uv_rect: EntityModelUvRect,
+        tint: [f32; 4],
+        name: &str,
+        excluded: &[&str],
+    ) {
+        if !self.visible || excluded.contains(&name) {
+            return;
+        }
+        let transform = parent_transform * self.local_transform();
+        for cube in &self.cubes {
+            emit_textured_model_cube(
+                mesh,
+                transform,
+                cube.textured_desc(),
+                texture,
+                uv_rect,
+                tint,
+            );
+        }
+        for (child_name, child) in &self.children {
+            child.render_textured_excluding(
+                mesh, transform, texture, uv_rect, tint, child_name, excluded,
+            );
+        }
+    }
 }
 
 /// A mutable entity model, mirroring vanilla `EntityModel`: own a [`ModelPart`] tree, reset it to

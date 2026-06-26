@@ -1511,10 +1511,16 @@ When an agent does any of the following, update this file in the same slice:
       texture-backed base layer pass emission, official PNG atlas
       upload/bind/sample path, and the vanilla `VillagerModel.setupAnim`
       head-look yaw/pitch on the head part (colored and textured, including the
-      baby villager index-3 head); villager type/profession/level overlays, hat
-      metadata/no-hat model selection, crossed-arms item layer, custom head
-      layer, unhappy animation, leg walk animation, lighting, and wandering
-      trader baby presentation remain unsupported
+      baby villager index-3 head). Villager `VillagerProfessionLayer` type,
+      profession, and level-badge overlays are implemented on the textured path:
+      native reads `VillagerData` at entity-data id `18`, resolves
+      `villager_type` / `villager_profession` through the dynamic registries
+      with vanilla bootstrap-order fallback, emits baby type robes only for
+      baby villagers, skips profession/level layers for babies, skips the level
+      badge for `NONE`/`NITWIT`, clamps badge texture selection to levels
+      `1..=5`, and applies the vanilla hat metadata/no-hat rule. Crossed-arms
+      item layer, custom head layer, unhappy animation, leg walk animation,
+      lighting, and wandering trader baby presentation remain unsupported
     - worn humanoid armor as a renderer-owned vanilla 26.1 `HumanoidArmorLayer` overlay (framework
       slice 1, renderer-side): the inflated `HumanoidArmorModel`
       (`HumanoidModel.createBaseArmorMesh` / `createArmorMeshSet`) is built per equipment slot as a
@@ -1633,10 +1639,13 @@ When an agent does any of the following, update this file in the same slice:
       piglin keeps its held-out `animateZombieArms` arms deferred);
       the `DrownedOuterLayer` (adult and baby) IS implemented (see the drowned note above); drowned
       swim
-      rotation, zombie villager type/profession/level
-      overlays, zombie villager no-hat model selection, zombie/piglin
-      converting shake, zombie-family and piglin-family armor, custom head
-      layers, and held items remain unsupported; the piglin
+      rotation, zombie/piglin converting shake, zombie-family and piglin-family
+      armor, custom head layers, and held items remain unsupported; zombie
+      villager type/profession/level overlays ARE implemented via
+      `VillagerProfessionLayer` parity, reading `VillagerData` at entity-data id
+      `20`, using the zombie-villager overlay textures, baby type robes, level
+      badges for non-`NONE`/`NITWIT` adult professions, and vanilla no-hat model
+      selection; the piglin
       dance/attack/crossbow-hold/crossbow-charge/admiring arm poses ARE all implemented
       (see the piglin note);
       the zombie-arm attack swing IS implemented (the
@@ -3108,10 +3117,10 @@ When an agent does any of the following, update this file in the same slice:
     horse variant/markings/saddle/armor/animation, donkey/mule saddle and
     animation presentation, undead horse body-armor/saddle/animation
     presentation, and remaining non-base-equine presentation,
-    villager profession/type/held-item/custom-head presentation,
+    villager held-item/custom-head presentation,
     illager held-item/custom-head/arm-pose presentation, zombie-family
-    armor/drowned swim/zombie-villager overlays/no-hat/
-    converting-state/piglin-family armor/custom-head/arm-pose/converting-state
+    armor/drowned swim/zombie-villager converting-state/piglin-family
+    armor/custom-head/arm-pose/converting-state
     presentation (the drowned outer layer — adult and baby — and the trident-throw arm
     pose ARE implemented; only the drowned swim re-pose defers),
     skeleton armor, held-item, and animation presentation,

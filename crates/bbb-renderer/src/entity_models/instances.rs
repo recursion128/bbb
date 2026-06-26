@@ -154,6 +154,11 @@ entity_render_state! {
     /// charged creeper (struck by lightning) wears the scrolling `CreeperPowerLayer` energy swirl over
     /// its inflated armor model. `false` for every other entity and an uncharged creeper.
     (with_creeper_powered) creeper_powered: bool = false;
+    /// Vanilla `VillagerDataHolderRenderState.getVillagerData()`: the villager biome type,
+    /// profession, and trade level that `VillagerProfessionLayer` uses to render the type robe,
+    /// profession robe/hat, and level badge overlays. Defaults to plains/none/1 for non-villagers and
+    /// for villager data that has not arrived yet.
+    (with_villager_model_data) villager_model_data: VillagerModelData = VillagerModelData::DEFAULT;
     /// Vanilla `ShulkerRenderState.peekAmount` (`Shulker.getClientPeekAmount`, lerped): the
     /// client peek that `ShulkerModel.setupAnim` opens the lid by — `lid.y = 16 + sin((0.5 +
     /// peek)·π)·8` (plus an `ageInTicks` bob above `0.5`) and a `lid.yRot` twist above `0.3`.
@@ -1912,6 +1917,7 @@ mod tests {
                 white_overlay_progress: 0.0,
                 creeper_swelling: 0.0,
                 creeper_powered: false,
+                villager_model_data: VillagerModelData::DEFAULT,
                 shulker_peek: 0.0,
                 tendril_animation: 0.0,
                 heart_animation: 0.0,

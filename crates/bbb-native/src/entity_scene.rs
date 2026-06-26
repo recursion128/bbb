@@ -10,8 +10,8 @@ use bbb_renderer::{
     MooshroomVariant, PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
     PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SelectionBox, SelectionOutline,
     SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose, TropicalFishModelShape,
-    TropicalFishPattern, UndeadHorseModelFamily, WolfModelVariant, ZombieVariantModelFamily,
-    DEFAULT_ARMOR_STAND_MODEL_POSE,
+    TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelProfession,
+    VillagerModelType, WolfModelVariant, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, EntityModelSourceState, EntityPickTargetState,
@@ -210,6 +210,12 @@ const ZOMBIE_DROWNED_CONVERSION_DATA_ID: u8 = 18;
 /// Vanilla `ZombieVillager.DATA_CONVERTING_ID` (synced boolean, id 19, right
 /// after the inherited `Zombie` ids). Drives `ZombieVillager.isConverting()`.
 const ZOMBIE_VILLAGER_CONVERTING_DATA_ID: u8 = 19;
+/// Vanilla `Villager.DATA_VILLAGER_DATA` (synced `VillagerData`, serializer 18): `AgeableMob`
+/// consumes baby id 16 and age-locked id 17, so the first `Villager` own accessor is id 18.
+const VILLAGER_DATA_DATA_ID: u8 = 18;
+/// Vanilla `ZombieVillager.DATA_VILLAGER_DATA`: `Zombie` consumes baby 16, special-type 17, and
+/// drowned-conversion 18; `ZombieVillager` then defines converting 19 before villager data at 20.
+const ZOMBIE_VILLAGER_DATA_DATA_ID: u8 = 20;
 const PIGLIN_BABY_DATA_ID: u8 = 17;
 const BOGGED_SHEARED_DATA_ID: u8 = 16;
 /// Vanilla `Armadillo.ARMADILLO_STATE` data id (18): the synced `ArmadilloState` enum, the
@@ -430,6 +436,8 @@ pub(crate) fn entity_model_instances_from_world_at_partial_tick(
     let frog_variants = world.registry_content("minecraft:frog_variant");
     let cat_variants = world.registry_content("minecraft:cat_variant");
     let wolf_variants = world.registry_content("minecraft:wolf_variant");
+    let villager_types = world.registry_content("minecraft:villager_type");
+    let villager_professions = world.registry_content("minecraft:villager_profession");
     let game_time = world.world_time().map(|time| time.game_time).unwrap_or(0);
     world
         .entity_model_sources_at_partial_tick(entity_partial_tick)
@@ -450,6 +458,8 @@ pub(crate) fn entity_model_instances_from_world_at_partial_tick(
                 frog_variants,
                 cat_variants,
                 wolf_variants,
+                villager_types,
+                villager_professions,
             )
         })
         .collect()
@@ -830,6 +840,8 @@ fn entity_model_instance(
     frog_variants: Option<&RegistryContentState>,
     cat_variants: Option<&RegistryContentState>,
     wolf_variants: Option<&RegistryContentState>,
+    villager_types: Option<&RegistryContentState>,
+    villager_professions: Option<&RegistryContentState>,
 ) -> Option<EntityModelInstance> {
     let mut kind = entity_model_kind_with_time_and_registries(
         source.entity_type_id,
@@ -1273,6 +1285,12 @@ fn entity_model_instance(
         ))
         .with_creeper_swelling(source.creeper_swelling)
         .with_creeper_powered(creeper_powered(source.entity_type_id, &source.data_values))
+        .with_villager_model_data(villager_model_data(
+            source.entity_type_id,
+            &source.data_values,
+            villager_types,
+            villager_professions,
+        ))
         .with_shulker_peek(source.shulker_peek)
         .with_tendril_animation(source.tendril_animation)
         .with_heart_animation(source.heart_animation)
@@ -1826,6 +1844,156 @@ fn entity_model_kind_with_time_and_registries(
 
 fn humanoid(family: HumanoidModelFamily, baby: bool) -> EntityModelKind {
     EntityModelKind::Humanoid { family, baby }
+}
+
+fn villager_model_data(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+    villager_types: Option<&RegistryContentState>,
+    villager_professions: Option<&RegistryContentState>,
+) -> VillagerModelData {
+    let data_id = match entity_type_id {
+        VANILLA_ENTITY_TYPE_VILLAGER_ID => VILLAGER_DATA_DATA_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID => ZOMBIE_VILLAGER_DATA_DATA_ID,
+        _ => return VillagerModelData::DEFAULT,
+    };
+    values
+        .iter()
+        .rev()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::VillagerData {
+                villager_type,
+                profession,
+                level,
+            } => Some((*villager_type, *profession, *level)),
+            _ => None,
+        })
+        .map(|(villager_type, profession, level)| {
+            VillagerModelData::new(
+                resolve_villager_type(villager_type, villager_types),
+                resolve_villager_profession(profession, villager_professions),
+                level,
+            )
+        })
+        .unwrap_or(VillagerModelData::DEFAULT)
+}
+
+fn resolve_villager_type(
+    registry_id: i32,
+    registry: Option<&RegistryContentState>,
+) -> VillagerModelType {
+    if let Some(registry) = registry {
+        villager_type_from_registry_id(registry, registry_id).unwrap_or(VillagerModelType::Plains)
+    } else {
+        villager_type_from_vanilla_registry_id(registry_id)
+    }
+}
+
+fn villager_type_from_registry_id(
+    registry: &RegistryContentState,
+    registry_id: i32,
+) -> Option<VillagerModelType> {
+    if registry_id < 0 {
+        return None;
+    }
+    registry
+        .entries
+        .get(registry_id as usize)
+        .and_then(|entry| villager_type_from_entry_id(entry.id.as_str()))
+}
+
+fn villager_type_from_entry_id(id: &str) -> Option<VillagerModelType> {
+    match id {
+        "minecraft:desert" => Some(VillagerModelType::Desert),
+        "minecraft:jungle" => Some(VillagerModelType::Jungle),
+        "minecraft:plains" => Some(VillagerModelType::Plains),
+        "minecraft:savanna" => Some(VillagerModelType::Savanna),
+        "minecraft:snow" => Some(VillagerModelType::Snow),
+        "minecraft:swamp" => Some(VillagerModelType::Swamp),
+        "minecraft:taiga" => Some(VillagerModelType::Taiga),
+        _ => None,
+    }
+}
+
+fn villager_type_from_vanilla_registry_id(registry_id: i32) -> VillagerModelType {
+    match registry_id {
+        0 => VillagerModelType::Desert,
+        1 => VillagerModelType::Jungle,
+        2 => VillagerModelType::Plains,
+        3 => VillagerModelType::Savanna,
+        4 => VillagerModelType::Snow,
+        5 => VillagerModelType::Swamp,
+        6 => VillagerModelType::Taiga,
+        _ => VillagerModelType::Plains,
+    }
+}
+
+fn resolve_villager_profession(
+    registry_id: i32,
+    registry: Option<&RegistryContentState>,
+) -> VillagerModelProfession {
+    if let Some(registry) = registry {
+        villager_profession_from_registry_id(registry, registry_id)
+            .unwrap_or(VillagerModelProfession::None)
+    } else {
+        villager_profession_from_vanilla_registry_id(registry_id)
+    }
+}
+
+fn villager_profession_from_registry_id(
+    registry: &RegistryContentState,
+    registry_id: i32,
+) -> Option<VillagerModelProfession> {
+    if registry_id < 0 {
+        return None;
+    }
+    registry
+        .entries
+        .get(registry_id as usize)
+        .and_then(|entry| villager_profession_from_entry_id(entry.id.as_str()))
+}
+
+fn villager_profession_from_entry_id(id: &str) -> Option<VillagerModelProfession> {
+    match id {
+        "minecraft:none" => Some(VillagerModelProfession::None),
+        "minecraft:armorer" => Some(VillagerModelProfession::Armorer),
+        "minecraft:butcher" => Some(VillagerModelProfession::Butcher),
+        "minecraft:cartographer" => Some(VillagerModelProfession::Cartographer),
+        "minecraft:cleric" => Some(VillagerModelProfession::Cleric),
+        "minecraft:farmer" => Some(VillagerModelProfession::Farmer),
+        "minecraft:fisherman" => Some(VillagerModelProfession::Fisherman),
+        "minecraft:fletcher" => Some(VillagerModelProfession::Fletcher),
+        "minecraft:leatherworker" => Some(VillagerModelProfession::Leatherworker),
+        "minecraft:librarian" => Some(VillagerModelProfession::Librarian),
+        "minecraft:mason" => Some(VillagerModelProfession::Mason),
+        "minecraft:nitwit" => Some(VillagerModelProfession::Nitwit),
+        "minecraft:shepherd" => Some(VillagerModelProfession::Shepherd),
+        "minecraft:toolsmith" => Some(VillagerModelProfession::Toolsmith),
+        "minecraft:weaponsmith" => Some(VillagerModelProfession::Weaponsmith),
+        _ => None,
+    }
+}
+
+fn villager_profession_from_vanilla_registry_id(registry_id: i32) -> VillagerModelProfession {
+    match registry_id {
+        0 => VillagerModelProfession::None,
+        1 => VillagerModelProfession::Armorer,
+        2 => VillagerModelProfession::Butcher,
+        3 => VillagerModelProfession::Cartographer,
+        4 => VillagerModelProfession::Cleric,
+        5 => VillagerModelProfession::Farmer,
+        6 => VillagerModelProfession::Fisherman,
+        7 => VillagerModelProfession::Fletcher,
+        8 => VillagerModelProfession::Leatherworker,
+        9 => VillagerModelProfession::Librarian,
+        10 => VillagerModelProfession::Mason,
+        11 => VillagerModelProfession::Nitwit,
+        12 => VillagerModelProfession::Shepherd,
+        13 => VillagerModelProfession::Toolsmith,
+        14 => VillagerModelProfession::Weaponsmith,
+        _ => VillagerModelProfession::None,
+    }
 }
 
 /// Vanilla `RabbitRenderer` picks `AdultRabbitModel` for an adult and `BabyRabbitModel` for a baby; both
@@ -8338,6 +8506,94 @@ mod tests {
     }
 
     #[test]
+    fn villager_model_data_reads_vanilla_serializer_and_static_fallback_order() {
+        assert_eq!(
+            villager_model_data(VANILLA_ENTITY_TYPE_VILLAGER_ID, &[], None, None),
+            VillagerModelData::DEFAULT
+        );
+        assert_eq!(
+            villager_model_data(
+                VANILLA_ENTITY_TYPE_VILLAGER_ID,
+                &[protocol_villager_data(VILLAGER_DATA_DATA_ID, 6, 14, 9)],
+                None,
+                None,
+            ),
+            VillagerModelData::new(
+                VillagerModelType::Taiga,
+                VillagerModelProfession::Weaponsmith,
+                9,
+            )
+        );
+        assert_eq!(
+            villager_model_data(
+                VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+                &[protocol_villager_data(
+                    ZOMBIE_VILLAGER_DATA_DATA_ID,
+                    4,
+                    11,
+                    2
+                )],
+                None,
+                None,
+            ),
+            VillagerModelData::new(VillagerModelType::Snow, VillagerModelProfession::Nitwit, 2,)
+        );
+        assert_eq!(
+            villager_model_data(
+                VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+                &[protocol_villager_data(VILLAGER_DATA_DATA_ID, 4, 11, 2)],
+                None,
+                None,
+            ),
+            VillagerModelData::DEFAULT,
+            "zombie villager data lives at id 20, not the villager id 18"
+        );
+    }
+
+    #[test]
+    fn villager_model_data_prefers_dynamic_registry_order() {
+        let mut world = WorldStore::new();
+        world.record_registry_entries(
+            "minecraft:villager_type",
+            0,
+            vec![
+                RegistryPacketEntry::stub("minecraft:swamp"),
+                RegistryPacketEntry::stub("minecraft:desert"),
+            ],
+        );
+        world.record_registry_entries(
+            "minecraft:villager_profession",
+            0,
+            vec![
+                RegistryPacketEntry::stub("minecraft:librarian"),
+                RegistryPacketEntry::stub("minecraft:farmer"),
+            ],
+        );
+        assert_eq!(
+            villager_model_data(
+                VANILLA_ENTITY_TYPE_VILLAGER_ID,
+                &[protocol_villager_data(VILLAGER_DATA_DATA_ID, 1, 0, 5)],
+                world.registry_content("minecraft:villager_type"),
+                world.registry_content("minecraft:villager_profession"),
+            ),
+            VillagerModelData::new(
+                VillagerModelType::Desert,
+                VillagerModelProfession::Librarian,
+                5,
+            )
+        );
+        assert_eq!(
+            villager_model_data(
+                VANILLA_ENTITY_TYPE_VILLAGER_ID,
+                &[protocol_villager_data(VILLAGER_DATA_DATA_ID, 99, -1, 3)],
+                world.registry_content("minecraft:villager_type"),
+                world.registry_content("minecraft:villager_profession"),
+            ),
+            VillagerModelData::new(VillagerModelType::Plains, VillagerModelProfession::None, 3,)
+        );
+    }
+
+    #[test]
     fn entity_model_kind_uses_exact_models_for_wolves() {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_WOLF_ID, &[]),
@@ -9788,6 +10044,23 @@ mod tests {
             value: EntityDataValueKind::EnumId {
                 serializer: EntityDataEnumSerializer::ArmadilloState,
                 id,
+            },
+        }
+    }
+
+    fn protocol_villager_data(
+        data_id: u8,
+        villager_type: i32,
+        profession: i32,
+        level: i32,
+    ) -> EntityDataValue {
+        EntityDataValue {
+            data_id,
+            serializer_id: 18,
+            value: EntityDataValueKind::VillagerData {
+                villager_type,
+                profession,
+                level,
             },
         }
     }

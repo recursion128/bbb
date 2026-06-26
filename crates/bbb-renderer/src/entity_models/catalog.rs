@@ -3,7 +3,10 @@ mod selection;
 pub(in crate::entity_models) use selection::{
     boat_texture_ref, camel_texture_ref, chicken_texture_ref, cow_texture_ref,
     horse_markings_texture_ref, llama_texture_ref, mooshroom_texture_ref, pig_texture_ref,
-    player_texture_ref, sheep_wool_render_color, squid_texture_ref, wolf_texture_ref,
+    player_texture_ref, sheep_wool_render_color, squid_texture_ref, villager_level_texture_ref,
+    villager_profession_texture_ref, villager_type_texture_ref, wolf_texture_ref,
+    zombie_villager_level_texture_ref, zombie_villager_profession_texture_ref,
+    zombie_villager_type_texture_ref,
 };
 #[cfg(test)]
 pub(in crate::entity_models) use selection::{sheep_jeb_wool_layer_color, sheep_wool_layer_color};
@@ -524,6 +527,107 @@ pub enum ZombieVariantModelFamily {
     Husk,
     Drowned,
     ZombieVillager,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VillagerModelType {
+    Desert,
+    Jungle,
+    Plains,
+    Savanna,
+    Snow,
+    Swamp,
+    Taiga,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VillagerModelProfession {
+    None,
+    Armorer,
+    Butcher,
+    Cartographer,
+    Cleric,
+    Farmer,
+    Fisherman,
+    Fletcher,
+    Leatherworker,
+    Librarian,
+    Mason,
+    Nitwit,
+    Shepherd,
+    Toolsmith,
+    Weaponsmith,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VillagerModelHat {
+    None,
+    Partial,
+    Full,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VillagerModelData {
+    pub villager_type: VillagerModelType,
+    pub profession: VillagerModelProfession,
+    pub level: i32,
+}
+
+impl VillagerModelData {
+    pub const DEFAULT: Self = Self {
+        villager_type: VillagerModelType::Plains,
+        profession: VillagerModelProfession::None,
+        level: 1,
+    };
+
+    pub const fn new(
+        villager_type: VillagerModelType,
+        profession: VillagerModelProfession,
+        level: i32,
+    ) -> Self {
+        Self {
+            villager_type,
+            profession,
+            level,
+        }
+    }
+}
+
+impl VillagerModelType {
+    pub const fn hat(self) -> VillagerModelHat {
+        match self {
+            // Vanilla villager type mcmeta declares `hat: full` only for desert and snow.
+            Self::Desert | Self::Snow => VillagerModelHat::Full,
+            Self::Jungle | Self::Plains | Self::Savanna | Self::Swamp | Self::Taiga => {
+                VillagerModelHat::None
+            }
+        }
+    }
+}
+
+impl VillagerModelProfession {
+    pub const fn hat(self) -> VillagerModelHat {
+        match self {
+            // Vanilla profession mcmeta declares butcher as partial and these six as full.
+            Self::Butcher => VillagerModelHat::Partial,
+            Self::Farmer | Self::Fisherman | Self::Fletcher | Self::Librarian | Self::Shepherd => {
+                VillagerModelHat::Full
+            }
+            Self::None
+            | Self::Armorer
+            | Self::Cartographer
+            | Self::Cleric
+            | Self::Leatherworker
+            | Self::Mason
+            | Self::Nitwit
+            | Self::Toolsmith
+            | Self::Weaponsmith => VillagerModelHat::None,
+        }
+    }
+
+    pub const fn renders_level_badge(self) -> bool {
+        !matches!(self, Self::None | Self::Nitwit)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

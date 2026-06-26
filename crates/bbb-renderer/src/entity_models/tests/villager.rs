@@ -357,6 +357,64 @@ fn villager_textured_mesh_uses_vanilla_uvs_tints_and_body_layer_bounds() {
 }
 
 #[test]
+fn villager_profession_layers_render_type_profession_and_level_overlays() {
+    let textures = [
+        VILLAGER_TEXTURE_REF,
+        VILLAGER_TYPE_TEXTURE_REFS[3],
+        VILLAGER_PROFESSION_TEXTURE_REFS[9],
+        VILLAGER_LEVEL_TEXTURE_REFS[4],
+    ];
+    let (atlas, _) = build_entity_model_texture_atlas(&texture_images(&textures)).unwrap();
+    let mason = EntityModelInstance::villager(401, [0.0, 64.0, 0.0], 0.0, false)
+        .with_villager_model_data(VillagerModelData::new(
+            VillagerModelType::Savanna,
+            VillagerModelProfession::Mason,
+            9,
+        ));
+    let mesh = entity_model_textured_mesh(&[mason], &atlas);
+
+    assert_eq!(mesh.cutout_faces, 264);
+    assert_eq!(mesh.vertices.len(), 1056);
+    assert_close2(mesh.vertices[0].uv, [16.0 / 64.0, 0.0]);
+    assert_close2(mesh.vertices[264].uv, [16.0 / 64.0, 1.0 / 4.0]);
+    assert_close2(mesh.vertices[528].uv, [16.0 / 64.0, 2.0 / 4.0]);
+    assert_close2(mesh.vertices[792].uv, [16.0 / 64.0, 3.0 / 4.0]);
+}
+
+#[test]
+fn villager_profession_layers_apply_no_hat_and_baby_rules() {
+    let textures = [
+        VILLAGER_TEXTURE_REF,
+        VILLAGER_BABY_TEXTURE_REF,
+        VILLAGER_TYPE_TEXTURE_REFS[0],
+        VILLAGER_BABY_TYPE_TEXTURE_REFS[2],
+        VILLAGER_PROFESSION_TEXTURE_REFS[4],
+        VILLAGER_LEVEL_TEXTURE_REFS[0],
+    ];
+    let (atlas, _) = build_entity_model_texture_atlas(&texture_images(&textures)).unwrap();
+
+    let desert_farmer = EntityModelInstance::villager(402, [0.0, 64.0, 0.0], 0.0, false)
+        .with_villager_model_data(VillagerModelData::new(
+            VillagerModelType::Desert,
+            VillagerModelProfession::Farmer,
+            1,
+        ));
+    let mesh = entity_model_textured_mesh(&[desert_farmer], &atlas);
+    // Base 66 faces + type layer without hat/rim 54 + profession 66 + level 66.
+    assert_eq!(mesh.cutout_faces, 252);
+    assert_eq!(mesh.vertices.len(), 1008);
+
+    let baby =
+        EntityModelInstance::villager(403, [2.0, 64.0, 0.0], 0.0, true).with_villager_model_data(
+            VillagerModelData::new(VillagerModelType::Plains, VillagerModelProfession::Mason, 5),
+        );
+    let baby_mesh = entity_model_textured_mesh(&[baby], &atlas);
+    // Vanilla skips profession and level overlays for babies even when data carries a profession.
+    assert_eq!(baby_mesh.cutout_faces, 132);
+    assert_eq!(baby_mesh.vertices.len(), 528);
+}
+
+#[test]
 fn villager_textured_mesh_applies_head_look() {
     let (atlas, _) = build_entity_model_texture_atlas(&villager_texture_images()).unwrap();
 
@@ -488,7 +546,11 @@ fn villager_family_textured_mesh_swings_legs_when_walking() {
 }
 
 fn villager_texture_images() -> Vec<EntityModelTextureImage> {
-    villager_entity_texture_refs()
+    texture_images(villager_entity_texture_refs())
+}
+
+fn texture_images(textures: &[EntityModelTextureRef]) -> Vec<EntityModelTextureImage> {
+    textures
         .iter()
         .enumerate()
         .map(|(index, texture)| {
