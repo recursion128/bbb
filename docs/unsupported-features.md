@@ -1767,7 +1767,10 @@ When an agent does any of the following, update this file in the same slice:
       texture-backed base layer pass emission, official PNG atlas
       upload/bind/sample path, and the vanilla `VillagerModel.setupAnim`
       head-look yaw/pitch on the head part (colored and textured, including the
-      baby villager index-3 head). Villager `VillagerProfessionLayer` type,
+      baby villager index-3 head) plus the half-amplitude leg walk swing
+      (`cos(pos * 0.6662 [+ PI]) * 1.4 * speed * 0.5`) on adult/baby
+      villager and wandering-trader colored and textured paths. Villager
+      `VillagerProfessionLayer` type,
       profession, and level-badge overlays are implemented on the textured path:
       native reads `VillagerData` at entity-data id `18`, resolves
       `villager_type` / `villager_profession` through the dynamic registries
@@ -1781,8 +1784,8 @@ When an agent does any of the following, update this file in the same slice:
       and static skeleton/wither-skeleton/zombie/creeper skulls plus
       profileless default-player heads, profiled default-skin player heads,
       dynamic profiled-player heads, dragon heads, and piglin heads render
-      through the skull branch; unhappy animation, leg walk animation,
-      lighting, and wandering trader baby presentation remain unsupported
+      through the skull branch; unhappy animation, lighting, and wandering
+      trader baby presentation remain unsupported
     - worn humanoid armor as a renderer-owned vanilla 26.1 `HumanoidArmorLayer` overlay (framework
       slice 1, renderer-side): the inflated `HumanoidArmorModel`
       (`HumanoidModel.createBaseArmorMesh` / `createArmorMeshSet`) is built per equipment slot as a
