@@ -525,6 +525,11 @@ pub struct EntityModelSourceState {
     /// deferred.
     #[serde(default)]
     pub fox_is_faceplanted: bool,
+    /// Vanilla `WolfRenderState.wetShade` (`Wolf.getWetShade(partialTick)`): the base-model
+    /// grayscale tint multiplier returned by `WolfRenderer.getModelTint`. A wet wolf starts at
+    /// `0.75`, then brightens with the shake/drying timer; `1.0` for a dry wolf and every non-wolf.
+    #[serde(default = "entity_model_source_default_scale")]
+    pub wolf_wet_shade: f32,
     /// Vanilla `VexRenderState.isCharging` (`Vex.isCharging`, the synced `DATA_FLAGS_ID & 1`):
     /// the vex is charging an attack, which `VexModel.setupAnim` shows by leveling the body
     /// (`xRot = 0`) and raising both arms (`setArmsCharging`). Projected only for the vex

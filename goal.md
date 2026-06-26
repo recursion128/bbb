@@ -71,6 +71,9 @@ Shulker bullet 的第二次 vanilla submit 也已补齐：textured path 在 base
 End Crystal 已从 colored-only fallback 推进到 textured path，绑定
 `textures/entity/end_crystal/end_crystal.png`，使用 vanilla 默认 `entityCutout`、
 order 0、白 tint 和 `scale(2)·translate(0,-0.5,0)` root transform；dragon healing beam 仍 deferred。
+Wolf 湿身 shade tint 已完成：world 侧按 `Wolf.getWetShade(partialTick)` 维护
+`isWet/shakeAnimO/shakeAnim` 计时，native 转抄到 render state，renderer 只把
+`wetShade` 乘到基础 wolf submit，collar 保持自己的染色 tint/order。
 
 ## 剩余大子系统（按优先级）
 
@@ -80,7 +83,7 @@ order 0、白 tint 和 `scale(2)·translate(0,-0.5,0)` root transform；dragon h
    `CustomHeadLayer` / `SkullBlockRenderer` 的远程或动态 profiled-player 皮肤、其他专用装备/物品层等），逐项从
    deferred 改为 covered。
 2. **世界侧动画计时器**
-   狼湿身着色、溺尸/海豚游泳重姿态等 client-tick 动画。
+   溺尸/海豚游泳重姿态、panda sit/lie/roll 等 client-tick 动画。
 
 > 落地前务必先在 bbb 里 grep 确认该 feature 确实缺失（历史上多次「以为缺失实则已实现」）。
 > 索引/数据陷阱见 memory `entity-metadata-index-layout.md`；模型/代理历史见 `proxy-entity-replacement.md`。

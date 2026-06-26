@@ -763,6 +763,11 @@ entity_render_state! {
     /// folds its legs and tilts its body (`WolfModel.setSittingPose`) instead of swinging
     /// its legs. `false` for a standing wolf and every non-wolf entity.
     (with_wolf_sitting) wolf_sitting: bool = false;
+    /// Vanilla `WolfRenderState.wetShade` (`Wolf.getWetShade(partialTick)`): the
+    /// grayscale model tint multiplier `WolfRenderer.getModelTint` applies to the
+    /// base wolf model only. `1.0` is dry/white; wet wolves start at `0.75` and
+    /// brighten as the shake/drying timer advances.
+    (with_wolf_wet_shade) wolf_wet_shade: f32 = 1.0;
     /// Vanilla `ParrotRenderState.pose == SITTING` (`Parrot.isInSittingPose()`, the
     /// `TamableAnimal.DATA_FLAGS_ID` sitting bit): a perched parrot, whose
     /// `ParrotModel.prepare(SITTING)` raises every part `y += 1.9`, folds the legs
@@ -2164,6 +2169,7 @@ mod tests {
                 invisible: false,
                 wolf_tail_angle: std::f32::consts::PI / 5.0,
                 wolf_sitting: false,
+                wolf_wet_shade: 1.0,
                 parrot_sitting: false,
                 turtle_has_egg: false,
                 turtle_laying_egg: false,

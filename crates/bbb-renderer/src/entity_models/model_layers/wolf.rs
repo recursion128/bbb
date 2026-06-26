@@ -356,7 +356,7 @@ fn baby_wolf_tree() -> ModelPart {
 /// the shared `WolfModel.setupAnim`: the head follows the look, then either the `setSittingPose` fold
 /// (body tilt + leg tuck + tail lift) or the `QuadrupedModel` diagonal leg swing, then the tail `xRot`
 /// (`tailAngle`) + wag `yRot` (angry → the raised constant). The collar dye overlay is a second
-/// textured pass on the same posed tree; the water-shake roll is deferred.
+/// textured pass on the same posed tree; wet shade is a pass tint, while the water-shake roll is deferred.
 pub(in crate::entity_models) struct WolfModel {
     root: ModelPart,
     baby: bool,

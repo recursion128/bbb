@@ -110,6 +110,16 @@ const BEE_FLAGS_DATA_ID: u8 = 18;
 const BEE_FLAG_ROLL: i8 = 2;
 /// Vanilla `Fox` entity type id (`EntityType.FOX`).
 const VANILLA_ENTITY_TYPE_FOX_ID: i32 = 54;
+/// Vanilla `Wolf` entity type id (`EntityType.WOLF`).
+const VANILLA_ENTITY_TYPE_WOLF_ID: i32 = 148;
+/// Vanilla wolf shake/drying progress increment (`Wolf.tick`: `shakeAnim += 0.05F`).
+const WOLF_SHAKE_ANIM_PER_TICK: f32 = 0.05;
+/// Vanilla wolf wet shade floor (`Wolf.getWetShade`: `0.75 + lerp(shake) / 2 * 0.25`).
+const WOLF_WET_SHADE_BASE: f32 = 0.75;
+/// Vanilla wolf wet shade shake multiplier (`lerp(shakeAnimO, shakeAnim) / 2 * 0.25`).
+const WOLF_WET_SHADE_SHAKE_SCALE: f32 = 0.125;
+/// Vanilla wolf drying completes once `shakeAnimO >= 2.0F`; the shade reaches white at `shakeAnim = 2`.
+const WOLF_SHAKE_ANIM_DONE: f32 = 2.0;
 const VANILLA_ENTITY_TYPE_GOAT_ID: i32 = 62;
 const VANILLA_ENTITY_TYPE_HOGLIN_ID: i32 = 64;
 const VANILLA_ENTITY_TYPE_IRON_GOLEM_ID: i32 = 70;
@@ -315,6 +325,8 @@ pub struct EntityClientAnimationState {
     pub bee_roll: Option<BeeRollAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fox: Option<FoxAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wolf_wet: Option<WolfWetAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub frog_croak: Option<KeyframeAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -658,6 +670,66 @@ pub struct FoxAnimationState {
     pub crouching: bool,
     pub previous_crouch_amount: f32,
     pub current_crouch_amount: f32,
+}
+
+/// Canonical client-side wolf wet/drying shade state, mirroring the `Wolf.tick` fields that
+/// `Wolf.getWetShade(partialTick)` reads. While `isInWaterOrRain()` is true, vanilla marks the wolf
+/// wet and `getWetShade` returns the `0.75` floor (re-entering water also cancels any drying shake, as
+/// vanilla event `56` does). After leaving water, the server broadcasts the shake event when
+/// grounded/path-free; bbb reconstructs the common world-side visual timer from the same `isInWater()`
+/// and `onGround()` facts, incrementing `shakeAnim` by `0.05` until the wet shade has lerped back to
+/// white. The body/head/tail shake roll remains a separate deferred renderer pose.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct WolfWetAnimationState {
+    pub is_wet: bool,
+    pub is_shaking: bool,
+    pub previous_shake_anim: f32,
+    pub current_shake_anim: f32,
+}
+
+impl WolfWetAnimationState {
+    fn advance_client_tick(&mut self, in_water: bool, on_ground: bool) {
+        if in_water {
+            self.is_wet = true;
+            self.is_shaking = false;
+            self.previous_shake_anim = 0.0;
+            self.current_shake_anim = 0.0;
+            return;
+        }
+
+        if self.is_wet && !self.is_shaking && on_ground {
+            self.is_shaking = true;
+            self.previous_shake_anim = 0.0;
+            self.current_shake_anim = 0.0;
+        }
+
+        if (self.is_wet || self.is_shaking) && self.is_shaking {
+            self.previous_shake_anim = self.current_shake_anim;
+            self.current_shake_anim += WOLF_SHAKE_ANIM_PER_TICK;
+            if self.previous_shake_anim >= WOLF_SHAKE_ANIM_DONE {
+                self.is_wet = false;
+                self.is_shaking = false;
+                self.previous_shake_anim = 0.0;
+                self.current_shake_anim = 0.0;
+            }
+        }
+    }
+
+    fn wet_shade(self, partial_tick: f32) -> f32 {
+        if !self.is_wet {
+            return 1.0;
+        }
+        let shake_anim = self.previous_shake_anim
+            + partial_tick * (self.current_shake_anim - self.previous_shake_anim);
+        (WOLF_WET_SHADE_BASE + shake_anim * WOLF_WET_SHADE_SHAKE_SCALE).min(1.0)
+    }
+
+    fn is_settled(self) -> bool {
+        !self.is_wet
+            && !self.is_shaking
+            && self.previous_shake_anim == 0.0
+            && self.current_shake_anim == 0.0
+    }
 }
 
 /// Canonical client-side sheep eat-grass animation countdown, mirroring vanilla
@@ -3079,6 +3151,15 @@ impl EntityClientAnimationState {
             .map_or(0.0, |state| state.crouch_amount(partial_tick))
     }
 
+    /// Vanilla `WolfRenderState.wetShade` (`Wolf.getWetShade(partialTick)`): the base
+    /// model tint multiplier used by `WolfRenderer.getModelTint`. Returns `1.0` when
+    /// the wolf is dry, the `0.75` wet floor while submerged, and lerps back to white
+    /// over the shake/drying timer. `1.0` for every non-wolf entity.
+    pub fn wolf_wet_shade(&self, partial_tick: f32) -> f32 {
+        self.wolf_wet
+            .map_or(1.0, |state| state.wet_shade(partial_tick))
+    }
+
     /// Resets the hurt animation countdown to [`HURT_ANIMATION_DURATION`],
     /// mirroring vanilla `LivingEntity.animateHurt` / `handleDamageEvent` setting
     /// `hurtTime = hurtDuration`.
@@ -3509,6 +3590,20 @@ impl EntityClientAnimationState {
                     fox.advance_client_tick();
                 }
             }
+            VANILLA_ENTITY_TYPE_WOLF_ID => {
+                if self.wolf_wet.is_some() || in_water {
+                    let wolf_wet = self.wolf_wet.get_or_insert(WolfWetAnimationState {
+                        is_wet: false,
+                        is_shaking: false,
+                        previous_shake_anim: 0.0,
+                        current_shake_anim: 0.0,
+                    });
+                    wolf_wet.advance_client_tick(in_water, transform.on_ground.unwrap_or(false));
+                    if wolf_wet.is_settled() {
+                        self.wolf_wet = None;
+                    }
+                }
+            }
             VANILLA_ENTITY_TYPE_WARDEN_ID => {
                 if let Some(tendril) = self.warden_tendril.as_mut() {
                     tendril.advance_client_tick();
@@ -3677,14 +3772,15 @@ impl EntityClientAnimationState {
 /// Whether an entity type's client-tick animation reads `isInWater()` and so needs
 /// the per-entity `in_water` map [`WorldStore::advance_entity_client_animations`]
 /// builds. Keeping this cheap (a tiny `match`) lets the world skip the AABB / fluid
-/// probe for every other entity. Adding a consumer (the frog swim-idle, dolphin,
-/// axolotl, fish, …) is just another arm here.
+/// probe for every other entity. Adding a consumer (the frog swim-idle, wolf wet shade,
+/// dolphin, axolotl, fish, …) is just another arm here.
 pub(crate) fn entity_animation_uses_in_water(entity_type_id: i32) -> bool {
     matches!(
         entity_type_id,
         VANILLA_ENTITY_TYPE_GUARDIAN_ID
             | VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID
             | VANILLA_ENTITY_TYPE_FROG_ID
+            | VANILLA_ENTITY_TYPE_WOLF_ID
             | VANILLA_ENTITY_TYPE_AXOLOTL_ID
     )
 }

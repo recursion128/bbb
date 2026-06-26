@@ -363,7 +363,7 @@ fn wolf_texture_refs_match_vanilla_renderer_biome_variants() {
 #[test]
 fn wolf_textured_layer_passes_match_vanilla_renderer_layers() {
     // The vestigial `parts` slices are nulled; every pass reads the unified `WolfModel` tree.
-    let wild = wolf_textured_layer_passes(false, false, false, None, WolfModelVariant::Pale);
+    let wild = wolf_textured_layer_passes(false, false, false, None, WolfModelVariant::Pale, 1.0);
     assert_eq!(
         wild.iter().map(|pass| pass.kind).collect::<Vec<_>>(),
         vec![EntityModelLayerKind::WolfBase]
@@ -379,6 +379,7 @@ fn wolf_textured_layer_passes_match_vanilla_renderer_layers() {
         false,
         Some(EntityDyeColor::Blue),
         WolfModelVariant::Pale,
+        1.0,
     );
     assert_eq!(
         tame_blue.iter().map(|pass| pass.kind).collect::<Vec<_>>(),
@@ -407,6 +408,7 @@ fn wolf_textured_layer_passes_match_vanilla_renderer_layers() {
         false,
         Some(EntityDyeColor::Blue),
         WolfModelVariant::Pale,
+        1.0,
     );
     assert_eq!(
         untamed_with_collar
@@ -417,7 +419,7 @@ fn wolf_textured_layer_passes_match_vanilla_renderer_layers() {
     );
     assert_eq!(untamed_with_collar[0].texture, WOLF_TEXTURE_REF);
 
-    let angry = wolf_textured_layer_passes(false, false, true, None, WolfModelVariant::Pale);
+    let angry = wolf_textured_layer_passes(false, false, true, None, WolfModelVariant::Pale, 1.0);
     assert_eq!(angry[0].texture, WOLF_ANGRY_TEXTURE_REF);
     assert_eq!(angry.len(), 1);
 
@@ -427,6 +429,7 @@ fn wolf_textured_layer_passes_match_vanilla_renderer_layers() {
         true,
         Some(EntityDyeColor::Red),
         WolfModelVariant::Pale,
+        1.0,
     );
     assert_eq!(tame_angry[0].texture, WOLF_TAME_TEXTURE_REF);
     assert_eq!(tame_angry.len(), 2);
@@ -437,6 +440,7 @@ fn wolf_textured_layer_passes_match_vanilla_renderer_layers() {
         false,
         Some(EntityDyeColor::Red),
         WolfModelVariant::Pale,
+        1.0,
     );
     assert_eq!(baby_tame[0].model_layer, MODEL_LAYER_WOLF_BABY);
     assert_eq!(baby_tame[0].texture, WOLF_TAME_BABY_TEXTURE_REF);
@@ -444,6 +448,78 @@ fn wolf_textured_layer_passes_match_vanilla_renderer_layers() {
 
     assert_eq!(MODEL_LAYER_WOLF, "minecraft:wolf#main");
     assert_eq!(MODEL_LAYER_WOLF_BABY, "minecraft:wolf_baby#main");
+}
+
+#[test]
+fn wet_wolf_textured_base_tints_like_vanilla_model_tint_without_shading_collar() {
+    // Vanilla `WolfRenderer.getModelTint`: `wetShade == 1 ? -1 :
+    // ARGB.colorFromFloat(1, wetShade, wetShade, wetShade)`. `LivingEntityRenderer.submit`
+    // multiplies that tint into the base model submission; `WolfCollarLayer` is a later
+    // order-1 layer with its own dye color.
+    let wet_shade = 0.75;
+    let passes = wolf_textured_layer_passes(
+        false,
+        true,
+        false,
+        Some(EntityDyeColor::Blue),
+        WolfModelVariant::Pale,
+        wet_shade,
+    );
+    assert_eq!(passes.len(), 2);
+    assert_eq!(passes[0].kind, EntityModelLayerKind::WolfBase);
+    assert_eq!(passes[0].texture, WOLF_TAME_TEXTURE_REF);
+    assert_eq!(passes[0].tint, [wet_shade, wet_shade, wet_shade, 1.0]);
+    assert_eq!(
+        (passes[0].collector_order, passes[0].submit_sequence),
+        (0, 0)
+    );
+    assert_eq!(passes[1].kind, EntityModelLayerKind::WolfCollar);
+    assert_eq!(passes[1].texture, WOLF_COLLAR_TEXTURE_REF);
+    assert_eq!(passes[1].tint, EntityDyeColor::Blue.texture_diffuse_color());
+    assert_eq!(
+        (passes[1].collector_order, passes[1].submit_sequence),
+        (1, 1)
+    );
+
+    let (atlas, _) = build_entity_model_texture_atlas(&wolf_texture_images()).unwrap();
+    let meshes = entity_model_textured_meshes(
+        &[EntityModelInstance::wolf_state(
+            306,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            true,
+            false,
+            false,
+            Some(EntityDyeColor::Blue),
+        )
+        .with_wolf_wet_shade(wet_shade)],
+        &atlas,
+    );
+
+    assert_eq!(meshes.submissions.len(), 2);
+    assert_eq!(meshes.submissions[0].texture, WOLF_TAME_TEXTURE_REF);
+    assert_eq!(
+        meshes.submissions[0].tint,
+        [wet_shade, wet_shade, wet_shade, 1.0]
+    );
+    assert_eq!(meshes.submissions[0].collector_order, 0);
+    assert_eq!(meshes.submissions[0].submit_sequence, 0);
+    assert_eq!(meshes.submissions[1].texture, WOLF_COLLAR_TEXTURE_REF);
+    assert_eq!(
+        meshes.submissions[1].tint,
+        EntityDyeColor::Blue.texture_diffuse_color()
+    );
+    assert_eq!(meshes.submissions[1].collector_order, 1);
+    assert_eq!(meshes.submissions[1].submit_sequence, 1);
+    assert_eq!(
+        meshes.cutout.vertices[0].tint,
+        [wet_shade, wet_shade, wet_shade, 1.0]
+    );
+    assert_eq!(
+        meshes.cutout.vertices[264].tint,
+        EntityDyeColor::Blue.texture_diffuse_color()
+    );
 }
 
 #[test]

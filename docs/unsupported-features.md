@@ -983,10 +983,10 @@ When an agent does any of the following, update this file in the same slice:
       rusty/woods/chestnut/striped) × wild/tame/angry × adult/baby
       (`bee[...]`→`wolf_<coat>[_tame|_angry][_baby].png`), the 48 new biome faces
       joining the master atlas array (→359)
-    - add armor, wet tint, sitting/head/tail/shake/walk pose, base-model
+    - add armor, head-shake/begging tilt, water-shake roll pose, base-model
       invisibility/outline handling, the white overlay, and remaining
-      render-state extraction parity (packed lighting and the hurt red overlay
-      are now applied)
+      render-state extraction parity (sitting/head/tail/walk pose, wet shade
+      tint, packed lighting, and the hurt red overlay are now applied)
   - Implement vanilla dropped-item follow-up rendering:
     - ground-context model rendering
     - bobbing
@@ -1398,9 +1398,12 @@ When an agent does any of the following, update this file in the same slice:
       `Wolf.getTexture` biome-variant texture swap is now implemented (the synced
       `DATA_VARIANT_ID` index-23 `Holder<WolfVariant>` resolved to one of the nine
       coats × wild/tame/angry × adult/baby faces; see the wolf presentation parity
-      list above). The armor layer, wet tint, head-shake/begging tilt pose, the
-      water-shake body roll, base-model invisibility/outline handling, lighting,
-      overlay, and remaining render-state extraction remain unsupported
+      list above), plus `Wolf.getWetShade(partialTick)` wet-shade tint on the
+      base model (`WolfRenderer.getModelTint`: wet wolves start at `0.75` and
+      brighten with the `shakeAnim += 0.05` drying timer; the collar layer keeps
+      its own dye tint/order). The armor layer, head-shake/begging tilt pose,
+      the water-shake body roll, base-model invisibility/outline handling,
+      lighting, overlay, and remaining render-state extraction remain unsupported
     - base horse entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AbstractEquineModel.createBodyMesh(CubeDeformation.NONE)`,
       `BabyHorseModel.createBabyMesh(CubeDeformation.NONE)`, `HorseModel`, and
@@ -3329,7 +3332,7 @@ When an agent does any of the following, update this file in the same slice:
     variants, equipment, skins, animation, lighting, custom/datapack cow/pig
     variant asset presentation, sheep
     head-look-pitch presentation,
-    wolf variant/armor/wet-tint/pose presentation,
+    wolf armor/head-shake/water-shake-roll pose presentation,
     boat/raft paddle animation, damage roll, bubble wobble, and water-mask
     presentation,
     horse animation, donkey/mule animation presentation,

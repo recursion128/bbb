@@ -1968,6 +1968,117 @@ fn entity_model_sources_project_in_water_from_world_fluid() {
 }
 
 #[test]
+fn wolf_wet_shade_follows_vanilla_get_wet_shade_timer() {
+    // Vanilla `Wolf.tick` marks the wolf wet while `isInWaterOrRain()`, then `getWetShade(partialTick)`
+    // returns `0.75 + lerp(shakeAnimO, shakeAnim) * 0.125`, clamped to `1.0`, while wet. The client-side
+    // drying timer advances `shakeAnim += 0.05` after the wolf leaves water and reaches white at 40 dry
+    // ticks; one more tick clears the wet state.
+    const VANILLA_ENTITY_TYPE_WOLF_ID: i32 = 148;
+    const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
+    const AIR_BLOCK_STATE_ID: i32 = 0;
+
+    let mut store = WorldStore::with_dimension(crate::WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store.insert_decoded_chunk(empty_test_chunk());
+    store.apply_add_entity(ProtocolAddEntity {
+        id: 82,
+        uuid: default_entity_uuid(),
+        entity_type_id: VANILLA_ENTITY_TYPE_WOLF_ID,
+        position: ProtocolVec3d {
+            x: 8.5,
+            y: 2.0,
+            z: 8.5,
+        },
+        delta_movement: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 99,
+    });
+    assert!(
+        store.apply_entity_position_sync(ProtocolEntityPositionSync {
+            id: 82,
+            position: ProtocolVec3d {
+                x: 8.5,
+                y: 2.0,
+                z: 8.5,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            y_rot: 0.0,
+            x_rot: 0.0,
+            on_ground: true,
+        })
+    );
+
+    let fill = |store: &mut WorldStore, block_state_id: i32| {
+        for y in 1..=3 {
+            assert!(store.apply_block_update(ProtocolBlockUpdate {
+                pos: ProtocolBlockPos { x: 8, y, z: 8 },
+                block_state_id,
+            }));
+        }
+    };
+    let shade = |store: &WorldStore, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 82)
+            .unwrap()
+            .wolf_wet_shade
+    };
+
+    assert_eq!(
+        shade(&store, 1.0),
+        1.0,
+        "an unticked dry wolf is not tinted"
+    );
+
+    fill(&mut store, SOURCE_WATER_BLOCK_STATE_ID);
+    store.advance_entity_client_animations(1);
+    assert!(
+        (shade(&store, 1.0) - 0.75).abs() < 1.0e-6,
+        "a wet wolf starts at the vanilla 0.75 shade floor: {}",
+        shade(&store, 1.0)
+    );
+
+    fill(&mut store, AIR_BLOCK_STATE_ID);
+    store.advance_entity_client_animations(1);
+    assert!(
+        (shade(&store, 0.0) - 0.75).abs() < 1.0e-6,
+        "partial 0 reads shakeAnimO before the first dry tick increment: {}",
+        shade(&store, 0.0)
+    );
+    let first_dry_tick = 0.75 + 0.05 * 0.125;
+    assert!(
+        (shade(&store, 1.0) - first_dry_tick).abs() < 1.0e-6,
+        "partial 1 reads shakeAnim after one 0.05 increment: {}",
+        shade(&store, 1.0)
+    );
+
+    store.advance_entity_client_animations(39);
+    assert!(
+        (shade(&store, 1.0) - 1.0).abs() < 1.0e-6,
+        "forty dry ticks reach white before the wet state is dropped"
+    );
+    store.advance_entity_client_animations(1);
+    assert_eq!(
+        shade(&store, 1.0),
+        1.0,
+        "the cleared dry state keeps the default white shade"
+    );
+}
+
+#[test]
 fn entity_model_sources_project_on_ground_from_movement() {
     // Vanilla `Entity.onGround()`: the scene projects the entity's last synced movement ground
     // flag (combined with `isInWater` to drive the `TurtleRenderer` walk/swim branch). It

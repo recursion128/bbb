@@ -314,12 +314,15 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             angry,
             collar_color,
             variant,
-        } => sink.model(
-            WolfModel::new(baby, angry),
-            entity_model_root_transform(*instance),
-            instance,
-            &wolf_textured_layer_passes(baby, tame, angry, collar_color, variant),
-        ),
+        } => {
+            let wet_shade = instance.render_state.wolf_wet_shade;
+            sink.model(
+                WolfModel::new(baby, angry),
+                entity_model_root_transform(*instance),
+                instance,
+                &wolf_textured_layer_passes(baby, tame, angry, collar_color, variant, wet_shade),
+            )
+        }
         EntityModelKind::Boat { family, chest } => sink.model(
             BoatModel::new(family, chest),
             boat_model_root_transform(*instance),

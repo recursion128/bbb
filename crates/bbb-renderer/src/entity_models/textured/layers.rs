@@ -1410,6 +1410,7 @@ pub(in crate::entity_models) fn wolf_textured_layer_passes(
     angry: bool,
     collar_color: Option<EntityDyeColor>,
     variant: WolfModelVariant,
+    wet_shade: f32,
 ) -> Vec<EntityModelLayerPass> {
     let model_layer = if baby {
         MODEL_LAYER_WOLF_BABY
@@ -1423,7 +1424,7 @@ pub(in crate::entity_models) fn wolf_textured_layer_passes(
         model_layer,
         texture: wolf_texture_ref(baby, tame, angry, variant),
         visibility: EntityModelLayerVisibility::All,
-        tint: [1.0, 1.0, 1.0, 1.0],
+        tint: [wet_shade, wet_shade, wet_shade, 1.0],
         collector_order: 0,
         submit_sequence: 0,
     });

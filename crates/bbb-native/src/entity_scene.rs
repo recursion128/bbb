@@ -1325,6 +1325,7 @@ fn entity_model_instance(
             game_time,
         ))
         .with_wolf_sitting(wolf_sitting(source.entity_type_id, &source.data_values))
+        .with_wolf_wet_shade(source.wolf_wet_shade)
         .with_parrot_sitting(parrot_sitting(source.entity_type_id, &source.data_values))
         .with_illager_spellcasting(illager_spellcasting(
             source.entity_type_id,
@@ -10386,6 +10387,56 @@ mod tests {
         assert!(
             !standing[0].render_state.wolf_sitting,
             "a standing wolf does not project wolf_sitting"
+        );
+    }
+
+    #[test]
+    fn entity_model_instance_projects_wolf_wet_shade_from_source() {
+        // Vanilla `WolfRenderer.extractRenderState` copies `Wolf.getWetShade(partialTicks)`
+        // into `WolfRenderState.wetShade`, and `WolfRenderer.getModelTint` consumes that
+        // render-state field. The world layer owns the timer; native must preserve the
+        // projected shade when building `EntityRenderState`.
+        let source: EntityModelSourceState = serde_json::from_value(serde_json::json!({
+            "entity_id": 148,
+            "entity_type_id": VANILLA_ENTITY_TYPE_WOLF_ID,
+            "position": { "x": 1.0, "y": 64.0, "z": -2.0 },
+            "y_rot": 0.0,
+            "wolf_wet_shade": 0.75625,
+            "data_values": []
+        }))
+        .unwrap();
+
+        let instance = entity_model_instance(
+            source,
+            &WorldStore::new(),
+            None,
+            0,
+            1.0,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(
+            instance.kind,
+            EntityModelKind::Wolf {
+                baby: false,
+                tame: false,
+                angry: false,
+                collar_color: None,
+                variant: WolfModelVariant::Pale,
+            }
+        );
+        assert!(
+            (instance.render_state.wolf_wet_shade - 0.75625).abs() < 1.0e-6,
+            "native preserves world-projected WolfRenderState.wetShade: {}",
+            instance.render_state.wolf_wet_shade
         );
     }
 
