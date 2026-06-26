@@ -2413,7 +2413,8 @@ When an agent does any of the following, update this file in the same slice:
       bones (head, body, feet, both wings, both wing tips) drives the flap, sampled at
       `ageInTicks·0.05` seconds and added to the bind pose as vanilla `applyStatic` offsets. The
       textured base layer draws the `textures/entity/bat/bat.png` atlas reference into the cutout
-      mesh (vanilla `RenderTypes::entityCutoutCull`), hand-emitted through the same animated
+      mesh (vanilla `RenderTypes::entityCutoutCull`) while preserving explicit submission metadata
+      for texture, white tint, root transform, and `order(0)`, hand-emitted through the same animated
       head/body/wing hierarchy as the colored path. The `isResting` branch is implemented on both
       paths: while the projected `bat_resting` (the synced `Bat.DATA_ID_FLAGS & 1`) is set the model
       swaps to the static `BAT_RESTING` hanging pose (head/body flipped 180° about X plus `+0.5` y,

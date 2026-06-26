@@ -124,13 +124,7 @@ fn bat_textured_mesh_uses_vanilla_geometry_and_animates() {
     // 54 faces / 216 vertices, with nothing on the translucent or eyes passes and a white tint.
     let base = EntityModelInstance::bat(920, [0.0, 64.0, 0.0], 0.0);
     let meshes = entity_model_textured_meshes(&[base], &atlas);
-    assert_eq!(meshes.submissions.len(), 1);
-    assert_eq!(
-        meshes.submissions[0].render_type,
-        EntityModelLayerRenderType::EntityCutoutCull
-    );
-    assert_eq!(meshes.submissions[0].texture, BAT_TEXTURE_REF);
-    assert_eq!(meshes.submissions[0].order, 0);
+    assert_bat_base_submission(&meshes, base);
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
     assert_eq!(meshes.cutout.cutout_faces, 54);
@@ -143,8 +137,10 @@ fn bat_textured_mesh_uses_vanilla_geometry_and_animates() {
 
     // The looping flap re-poses the wings as the age advances and repeats every 10 ticks.
     let later = entity_model_textured_meshes(&[base.with_age_in_ticks(3.0)], &atlas);
+    assert_bat_base_submission(&later, base.with_age_in_ticks(3.0));
     assert_ne!(meshes.cutout.vertices, later.cutout.vertices);
     let one_cycle = entity_model_textured_meshes(&[base.with_age_in_ticks(10.0)], &atlas);
+    assert_bat_base_submission(&one_cycle, base.with_age_in_ticks(10.0));
     assert_eq!(meshes.cutout.vertices, one_cycle.cutout.vertices);
 }
 
@@ -201,7 +197,10 @@ fn bat_textured_mesh_hangs_upside_down_when_resting() {
     let (atlas, _) = build_entity_model_texture_atlas(&bat_texture_images()).unwrap();
     let base = EntityModelInstance::bat(931, [0.0, 64.0, 0.0], 0.0);
     let flying = entity_model_textured_meshes(&[base], &atlas);
-    let resting = entity_model_textured_meshes(&[base.with_bat_resting(true)], &atlas);
+    assert_bat_base_submission(&flying, base);
+    let resting_instance = base.with_bat_resting(true);
+    let resting = entity_model_textured_meshes(&[resting_instance], &atlas);
+    assert_bat_base_submission(&resting, resting_instance);
     assert_eq!(flying.cutout.vertices.len(), resting.cutout.vertices.len());
     assert_ne!(
         flying.cutout.vertices, resting.cutout.vertices,
@@ -212,6 +211,7 @@ fn bat_textured_mesh_hangs_upside_down_when_resting() {
         &[base.with_bat_resting(true).with_age_in_ticks(3.0)],
         &atlas,
     );
+    assert_bat_base_submission(&resting_later, resting_instance.with_age_in_ticks(3.0));
     assert_eq!(
         resting.cutout.vertices, resting_later.cutout.vertices,
         "the resting pose holds still"
@@ -221,6 +221,7 @@ fn bat_textured_mesh_hangs_upside_down_when_resting() {
         &[base.with_bat_resting(true).with_head_look(60.0, 0.0)],
         &atlas,
     );
+    assert_bat_base_submission(&resting_look, resting_instance.with_head_look(60.0, 0.0));
     assert_ne!(
         resting.cutout.vertices, resting_look.cutout.vertices,
         "a resting bat turns its head to look"
@@ -236,4 +237,18 @@ fn bat_texture_images() -> Vec<EntityModelTextureImage> {
             EntityModelTextureImage::new(*texture, vec![index as u8; len])
         })
         .collect()
+}
+
+fn assert_bat_base_submission(meshes: &EntityModelTexturedMeshes, instance: EntityModelInstance) {
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(
+        submit.render_type,
+        EntityModelLayerRenderType::EntityCutoutCull
+    );
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutoutCull");
+    assert_eq!(submit.texture, BAT_TEXTURE_REF);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.transform, entity_model_root_transform(instance));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
 }
