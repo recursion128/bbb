@@ -865,8 +865,8 @@ When an agent does any of the following, update this file in the same slice:
     below; the zombified piglin `AnimationUtils.animateZombieArms` held-out pose is implemented; the
     `PiglinModel` `DANCING`, `CROSSBOW_HOLD`, `ATTACKING_WITH_MELEE_WEAPON`, and `ADMIRING_ITEM` poses
     and the `AbstractPiglinModel` ear flap are implemented for the piglin/brute — see below),
-    the `VillagerModel` unhappy
-    head shake (the `WitchModel` idle nose bob and `isHoldingItem` nose hold pose are
+    the `WitchModel` idle nose bob and `isHoldingItem` nose hold pose are
+    implemented — see below; the `VillagerModel` unhappy head shake is
     implemented — see below; the `GoatModel` ramming head
     tilt is implemented — see the goat note below; the `HoglinModel` headbutt head ram is implemented — see the hoglin note above), (the `EndermanModel`
     carried-block arm pose and creepy head/hat shift are implemented — see the
@@ -1769,10 +1769,13 @@ When an agent does any of the following, update this file in the same slice:
       head-look yaw/pitch on the head part (colored and textured, including the
       baby villager index-3 head) plus the half-amplitude leg walk swing
       (`cos(pos * 0.6662 [+ PI]) * 1.4 * speed * 0.5`) on adult/baby
-      villager and wandering-trader colored and textured paths. Villager
+      villager and wandering-trader colored and textured paths, and the unhappy
+      head shake (`head.xRot = 0.4`, `head.zRot = 0.3 * sin(0.45 *
+      ageInTicks)`) projected from `AbstractVillager.DATA_UNHAPPY_COUNTER` id
+      `18` for villagers and wandering traders. Villager
       `VillagerProfessionLayer` type,
       profession, and level-badge overlays are implemented on the textured path:
-      native reads `VillagerData` at entity-data id `18`, resolves
+      native reads `VillagerData` at entity-data id `19`, resolves
       `villager_type` / `villager_profession` through the dynamic registries
       with vanilla bootstrap-order fallback, emits baby type robes only for
       baby villagers, skips profession/level layers for babies, skips the level
@@ -1784,8 +1787,8 @@ When an agent does any of the following, update this file in the same slice:
       and static skeleton/wither-skeleton/zombie/creeper skulls plus
       profileless default-player heads, profiled default-skin player heads,
       dynamic profiled-player heads, dragon heads, and piglin heads render
-      through the skull branch; unhappy animation, lighting, and wandering
-      trader baby presentation remain unsupported
+      through the skull branch; lighting and wandering trader baby presentation
+      remain unsupported
     - worn humanoid armor as a renderer-owned vanilla 26.1 `HumanoidArmorLayer` overlay (framework
       slice 1, renderer-side): the inflated `HumanoidArmorModel`
       (`HumanoidModel.createBaseArmorMesh` / `createArmorMeshSet`) is built per equipment slot as a

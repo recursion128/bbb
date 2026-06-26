@@ -222,9 +222,9 @@ const ZOMBIE_DROWNED_CONVERSION_DATA_ID: u8 = 18;
 /// Vanilla `ZombieVillager.DATA_CONVERTING_ID` (synced boolean, id 19, right
 /// after the inherited `Zombie` ids). Drives `ZombieVillager.isConverting()`.
 const ZOMBIE_VILLAGER_CONVERTING_DATA_ID: u8 = 19;
-/// Vanilla `Villager.DATA_VILLAGER_DATA` (synced `VillagerData`, serializer 18): `AgeableMob`
-/// consumes baby id 16 and age-locked id 17, so the first `Villager` own accessor is id 18.
-const VILLAGER_DATA_DATA_ID: u8 = 18;
+/// Vanilla `Villager.DATA_VILLAGER_DATA` (synced `VillagerData`, serializer 18):
+/// `AbstractVillager.DATA_UNHAPPY_COUNTER` occupies id 18, so the first `Villager` own accessor is id 19.
+const VILLAGER_DATA_DATA_ID: u8 = 19;
 /// Vanilla `ZombieVillager.DATA_VILLAGER_DATA`: `Zombie` consumes baby 16, special-type 17, and
 /// drowned-conversion 18; `ZombieVillager` then defines converting 19 before villager data at 20.
 const ZOMBIE_VILLAGER_DATA_DATA_ID: u8 = 20;
@@ -1517,6 +1517,7 @@ fn entity_model_instance(
             villager_types,
             villager_professions,
         ))
+        .with_villager_unhappy(source.villager_unhappy)
         .with_shulker_peek(source.shulker_peek)
         .with_shulker_attach_face(entity_attachment_face(source.shulker_attach_face))
         .with_tendril_animation(source.tendril_animation)
@@ -6520,6 +6521,64 @@ mod tests {
     }
 
     #[test]
+    fn entity_model_instances_project_villager_unhappy() {
+        const ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID: u8 = 18;
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            191,
+            VANILLA_ENTITY_TYPE_VILLAGER_ID,
+            [1.0, 64.0, -4.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            192,
+            VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
+            [2.0, 64.0, -4.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            193,
+            VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+            [3.0, 64.0, -4.0],
+        ));
+
+        let villager_unhappy = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .villager_unhappy
+        };
+
+        assert!(!villager_unhappy(&world, 191));
+        assert!(!villager_unhappy(&world, 192));
+
+        for id in [191, 192, 193] {
+            assert!(world.apply_set_entity_data(SetEntityData {
+                id,
+                values: vec![protocol_int_data(
+                    ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID,
+                    12,
+                )],
+            }));
+        }
+        assert!(villager_unhappy(&world, 191));
+        assert!(villager_unhappy(&world, 192));
+        assert!(
+            !villager_unhappy(&world, 193),
+            "zombie villagers do not use VillagerRenderState"
+        );
+
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 191,
+            values: vec![protocol_int_data(
+                ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID,
+                0
+            )],
+        }));
+        assert!(!villager_unhappy(&world, 191));
+    }
+
+    #[test]
     fn entity_model_instances_project_goat_ramming_head_tilt() {
         use std::f32::consts::PI;
 
@@ -10806,6 +10865,16 @@ mod tests {
         assert_eq!(
             villager_model_data(
                 VANILLA_ENTITY_TYPE_VILLAGER_ID,
+                &[protocol_villager_data(18, 6, 14, 9)],
+                None,
+                None,
+            ),
+            VillagerModelData::DEFAULT,
+            "id 18 is AbstractVillager.DATA_UNHAPPY_COUNTER, not Villager.DATA_VILLAGER_DATA"
+        );
+        assert_eq!(
+            villager_model_data(
+                VANILLA_ENTITY_TYPE_VILLAGER_ID,
                 &[protocol_villager_data(VILLAGER_DATA_DATA_ID, 6, 14, 9)],
                 None,
                 None,
@@ -10838,7 +10907,7 @@ mod tests {
                 None,
             ),
             VillagerModelData::DEFAULT,
-            "zombie villager data lives at id 20, not the villager id 18"
+            "zombie villager data lives at id 20, not the villager id 19"
         );
     }
 

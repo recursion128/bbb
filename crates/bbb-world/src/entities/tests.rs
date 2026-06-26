@@ -2926,6 +2926,79 @@ fn entity_model_sources_project_aggressive_for_piglin_and_illager_arm_poses() {
 }
 
 #[test]
+fn entity_model_sources_project_villager_unhappy() {
+    const VANILLA_ENTITY_TYPE_VILLAGER_ID: i32 = 139;
+    const VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID: i32 = 141;
+    const VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID: i32 = 153;
+    // Vanilla AbstractVillager.DATA_UNHAPPY_COUNTER (INT id 18): read by
+    // VillagerRenderer and WanderingTraderRenderer as `getUnhappyCounter() > 0`.
+    const ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID: u8 = 18;
+
+    let source = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        86,
+        VANILLA_ENTITY_TYPE_VILLAGER_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        87,
+        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        88,
+        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+    ));
+
+    assert!(!source(&store, 86).villager_unhappy);
+    assert!(!source(&store, 87).villager_unhappy);
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 86,
+        values: vec![protocol_int_data(
+            ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID,
+            12
+        )],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 87,
+        values: vec![protocol_int_data(
+            ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID,
+            1
+        )],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 88,
+        values: vec![protocol_int_data(
+            ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID,
+            12
+        )],
+    }));
+
+    assert!(source(&store, 86).villager_unhappy);
+    assert!(source(&store, 87).villager_unhappy);
+    assert!(
+        !source(&store, 88).villager_unhappy,
+        "zombie villagers do not use AbstractVillagerRenderState"
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 86,
+        values: vec![protocol_int_data(
+            ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID,
+            0
+        )],
+    }));
+    assert!(!source(&store, 86).villager_unhappy);
+}
+
+#[test]
 fn entity_model_sources_project_enderman_carrying_and_creepy() {
     const VANILLA_ENTITY_TYPE_ENDERMAN_ID: i32 = 41;
     const VANILLA_ENTITY_TYPE_ZOMBIE_ID: i32 = 150;

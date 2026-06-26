@@ -164,6 +164,10 @@ entity_render_state! {
     /// profession robe/hat, and level badge overlays. Defaults to plains/none/1 for non-villagers and
     /// for villager data that has not arrived yet.
     (with_villager_model_data) villager_model_data: VillagerModelData = VillagerModelData::DEFAULT;
+    /// Vanilla `VillagerRenderState.isUnhappy` (`AbstractVillager.getUnhappyCounter() > 0`): an unhappy
+    /// villager or wandering trader whose `VillagerModel.setupAnim` fixes the head pitch to `0.4` and rolls
+    /// it by `0.3 * sin(0.45 * ageInTicks)`. `false` for content villagers/traders and every other entity.
+    (with_villager_unhappy) villager_unhappy: bool = false;
     /// Vanilla `ShulkerRenderState.peekAmount` (`Shulker.getClientPeekAmount`, lerped): the
     /// client peek that `ShulkerModel.setupAnim` opens the lid by — `lid.y = 16 + sin((0.5 +
     /// peek)·π)·8` (plus an `ageInTicks` bob above `0.5`) and a `lid.yRot` twist above `0.3`.
@@ -2164,6 +2168,7 @@ mod tests {
                 creeper_swelling: 0.0,
                 creeper_powered: false,
                 villager_model_data: VillagerModelData::DEFAULT,
+                villager_unhappy: false,
                 shulker_peek: 0.0,
                 shulker_attach_face: EntityAttachmentFace::Down,
                 tendril_animation: 0.0,

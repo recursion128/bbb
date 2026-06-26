@@ -424,9 +424,8 @@ fn villager_tree(baby: bool) -> ModelPart {
 
 /// Mutable villager model, mirroring vanilla `VillagerModel`/`BabyVillagerModel`. The unified tree is
 /// built for the selected `baby` layout with the vanilla child names. `setup_anim` looks the head
-/// ([`apply_head_look`] on `head`) and swings the legs at the villager-family half amplitude
-/// ([`apply_half_amplitude_leg_swing`]). The combined `arms` part and the unhappy head shake
-/// defer.
+/// ([`apply_head_look`] on `head`), applies the unhappy head shake, and swings the legs at the
+/// villager-family half amplitude ([`apply_half_amplitude_leg_swing`]). The combined `arms` part defers.
 pub(in crate::entity_models) struct VillagerModel {
     root: ModelPart,
 }
@@ -450,11 +449,14 @@ impl EntityModel for VillagerModel {
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
         let render_state = &instance.render_state;
-        apply_head_look(
-            self.root.child_mut("head"),
-            render_state.head_yaw,
-            render_state.head_pitch,
-        );
+        let head = self.root.child_mut("head");
+        apply_head_look(head, render_state.head_yaw, render_state.head_pitch);
+        if render_state.villager_unhappy {
+            head.pose.rotation[2] = 0.3 * (0.45 * render_state.age_in_ticks).sin();
+            head.pose.rotation[0] = 0.4;
+        } else {
+            head.pose.rotation[2] = 0.0;
+        }
         apply_half_amplitude_leg_swing(
             &mut self.root,
             render_state.walk_animation_pos,

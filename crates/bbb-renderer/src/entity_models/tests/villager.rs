@@ -1,7 +1,7 @@
 use super::*;
 
 use crate::entity_models::colored::villager_adult_model_root_transform;
-use crate::entity_models::model::ModelCube;
+use crate::entity_models::model::{EntityModel, ModelCube};
 
 #[test]
 fn villager_adult_model_parts_match_vanilla_26_1_body_layer() {
@@ -470,6 +470,65 @@ fn villager_textured_mesh_applies_head_look() {
 }
 
 #[test]
+fn villager_unhappy_head_pose_matches_vanilla_setup_anim() {
+    // Vanilla `VillagerModel.setupAnim`: head look sets yRot/xRot first; the unhappy branch preserves
+    // yRot, sets `head.xRot = 0.4`, and rolls by `0.3 * sin(0.45 * ageInTicks)`.
+    let age = 7.0_f32;
+    let base = EntityModelInstance::villager(145, [0.0, 64.0, 0.0], 0.0, false)
+        .with_head_look(35.0, -20.0)
+        .with_age_in_ticks(age);
+
+    let mut content = VillagerModel::new(false);
+    content.prepare(&base);
+    let content_head = content.root_mut().child_mut("head").pose.rotation;
+    assert!(
+        (content_head[0] - (-20.0_f32).to_radians()).abs() < 1.0e-6,
+        "content villager keeps the look pitch: {}",
+        content_head[0]
+    );
+    assert!(
+        (content_head[1] - 35.0_f32.to_radians()).abs() < 1.0e-6,
+        "content villager keeps the look yaw: {}",
+        content_head[1]
+    );
+    assert_eq!(content_head[2], 0.0);
+
+    let mut unhappy = VillagerModel::new(false);
+    unhappy.prepare(&base.with_villager_unhappy(true));
+    let unhappy_head = unhappy.root_mut().child_mut("head").pose.rotation;
+    let shake = 0.3 * (0.45 * age).sin();
+    assert!(
+        (unhappy_head[0] - 0.4).abs() < 1.0e-6,
+        "unhappy branch fixes the head pitch: {}",
+        unhappy_head[0]
+    );
+    assert!(
+        (unhappy_head[1] - 35.0_f32.to_radians()).abs() < 1.0e-6,
+        "unhappy branch preserves the look yaw: {}",
+        unhappy_head[1]
+    );
+    assert!(
+        (unhappy_head[2] - shake).abs() < 1.0e-6,
+        "unhappy branch rolls the head: {} vs {shake}",
+        unhappy_head[2]
+    );
+
+    let mut baby = VillagerModel::new(true);
+    baby.prepare(&base.with_villager_unhappy(true));
+    let baby_head = baby.root_mut().child_mut("head").pose.rotation;
+    assert!(
+        (baby_head[0] - 0.4).abs() < 1.0e-6,
+        "baby villagers use the same unhappy pitch: {}",
+        baby_head[0]
+    );
+    assert!(
+        (baby_head[2] - shake).abs() < 1.0e-6,
+        "baby villagers use the same unhappy roll: {}",
+        baby_head[2]
+    );
+}
+
+#[test]
 fn villager_family_swings_its_legs_when_walking() {
     // `VillagerModel.setupAnim` swings the legs `cos(pos * 0.6662 [+ π]) * 1.4 *
     // speed * 0.5` (half the `HumanoidModel` amplitude). A standing villager is inert
@@ -477,7 +536,7 @@ fn villager_family_swings_its_legs_when_walking() {
     // trader (which reuses the adult layer). The adult-size legs (12 tall) also lift
     // the feet and splay along Z; the baby's short 3-px legs swing too but the motion
     // stays inside the larger head/body bounding box, so only the adult-size models
-    // assert the extent change. The combined `arms` part and unhappy head shake defer.
+    // assert the extent change. The combined `arms` part defers.
     let instances: [(&str, EntityModelInstance, bool); 3] = [
         (
             "villager_adult",

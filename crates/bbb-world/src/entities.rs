@@ -89,6 +89,8 @@ pub(crate) const VANILLA_ENTITY_TYPE_SQUID_ID: i32 = 127;
 pub(crate) const VANILLA_ENTITY_TYPE_STRIDER_ID: i32 = 129;
 pub(crate) const VANILLA_ENTITY_TYPE_TNT_MINECART_ID: i32 = 133;
 pub(crate) const VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID: i32 = 134;
+pub(crate) const VANILLA_ENTITY_TYPE_VILLAGER_ID: i32 = 139;
+pub(crate) const VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID: i32 = 141;
 pub(crate) const VANILLA_ENTITY_TYPE_WIND_CHARGE_ID: i32 = 143;
 pub(crate) const VANILLA_ENTITY_TYPE_WITHER_SKULL_ID: i32 = 147;
 pub(crate) const VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID: i32 = 151;
@@ -378,6 +380,11 @@ pub struct EntityModelSourceState {
     /// every other entity (which has no mob-flags byte or does not use those arms).
     #[serde(default)]
     pub is_aggressive: bool,
+    /// Vanilla `VillagerRenderState.isUnhappy` (`AbstractVillager.getUnhappyCounter() > 0`, synced INT id
+    /// 18), consumed by `VillagerModel.setupAnim` to shake the villager-family head. `false` for content
+    /// villagers/traders and every non-villager entity.
+    #[serde(default)]
+    pub villager_unhappy: bool,
     /// Vanilla `EndermanRenderState.carriedBlock` non-empty (`Enderman.getCarriedBlock`
     /// present, the synced `DATA_CARRY_STATE`): the enderman is holding a block, which
     /// `EndermanModel.setupAnim` poses both arms forward to carry (`xRot = -0.5`, `zRot =

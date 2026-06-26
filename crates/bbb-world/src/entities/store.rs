@@ -26,9 +26,9 @@ use super::{
     VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MULE_ID,
     VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
     VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
-    VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
-    VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID,
-    VANILLA_UPSIDE_DOWN_NAMES,
+    VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
+    VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+    VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_UPSIDE_DOWN_NAMES,
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, camel_is_dashing, creaking_can_move,
@@ -55,6 +55,10 @@ use crate::entities::dragon::{
 use crate::entities::projectiles::entity_hurting_projectile_from_state;
 use crate::registries::RegistrySet;
 use crate::ItemEquipmentSlot;
+
+/// Vanilla `AbstractVillager.DATA_UNHAPPY_COUNTER` (INT): `AgeableMob` consumes
+/// baby id 16 and age-locked id 17, so the abstract-villager counter is id 18.
+const ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID: u8 = 18;
 
 /// Vanilla `Entity.getTicksRequiredToFreeze()`: the powder-snow freeze threshold
 /// at which `isFullyFrozen()` becomes true and the body starts shaking.
@@ -797,6 +801,16 @@ impl EntityStore {
                 .unwrap_or(0)
                 & MOB_FLAG_AGGRESSIVE
                 != 0;
+        // Vanilla `VillagerRenderer` / `WanderingTraderRenderer.extractRenderState`:
+        // `state.isUnhappy = entity.getUnhappyCounter() > 0`. The counter is defined on
+        // `AbstractVillager` at synced int id 18, so only villager-family renderers read it.
+        let villager_unhappy = matches!(
+            identity.entity_type_id,
+            VANILLA_ENTITY_TYPE_VILLAGER_ID | VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID
+        ) && self
+            .metadata_int(id, ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID, 0)
+            .unwrap_or(0)
+            > 0;
         // Vanilla `EndermanModel.setupAnim`: a carried block (`!carriedBlock.isEmpty()`,
         // the synced `DATA_CARRY_STATE`) poses both arms forward, and `isCreepy` (the
         // synced `DATA_CREEPY`) drops the head / raises the hat. Only the enderman defines
@@ -1024,6 +1038,7 @@ impl EntityStore {
             wither_y_head_rots,
             is_fully_frozen,
             is_aggressive,
+            villager_unhappy,
             enderman_carrying,
             enderman_carried_block,
             enderman_creepy,
