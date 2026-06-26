@@ -31,12 +31,12 @@ use super::{
     model_layers::{
         armor_layer_tint, armor_slot_texture, equine_head_look_pose, equine_leg_swing_pose,
         equine_tail_swing_pose, head_look_at_rest, limb_swing_at_rest,
-        llama_body_decor_texture_ref, BreezeWindModel, CamelModel, CreeperModel, DrownedOuterModel,
-        HoglinModel, HumanoidArmorSlot, LlamaModel, NautilusModel, PigModel, PiglinModel,
-        PlayerModel, SheepFurModel, SheepModel, SkeletonClothingModel, SkeletonModel, SlimeModel,
-        SlimeOuterModel, SquidModel, StriderModel, TropicalFishModel, TropicalFishPatternModel,
-        VillagerModel, WindChargeModel, WitherModel, ZombieModel, ZombieVariantModel,
-        ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
+        llama_body_decor_texture_ref, nautilus_body_armor_texture_ref, BreezeWindModel, CamelModel,
+        CreeperModel, DrownedOuterModel, HoglinModel, HumanoidArmorSlot, LlamaModel, NautilusModel,
+        PigModel, PiglinModel, PlayerModel, SheepFurModel, SheepModel, SkeletonClothingModel,
+        SkeletonModel, SlimeModel, SlimeOuterModel, SquidModel, StriderModel, TropicalFishModel,
+        TropicalFishPatternModel, VillagerModel, WindChargeModel, WitherModel, ZombieModel,
+        ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
         ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
         ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
         ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
@@ -293,6 +293,8 @@ pub(super) fn entity_model_textured_meshes(
         emit_strider_saddle_layer(&mut meshes, *instance, atlas);
         // Camel and camel-husk saddles use the adult CamelSaddleModel tree.
         emit_camel_saddle_layer(&mut meshes, *instance, atlas);
+        // Living and zombie nautilus body armor uses the adult NautilusArmorModel tree.
+        emit_nautilus_body_armor_layer(&mut meshes, *instance, atlas);
         // Living and zombie nautilus saddles use the adult NautilusSaddleModel tree.
         emit_nautilus_saddle_layer(&mut meshes, *instance, atlas);
         // VillagerProfessionLayer overlays (biome type, profession, level badge) are cutout layers
@@ -1095,6 +1097,42 @@ fn emit_nautilus_saddle_layer(
         transform,
         EntityModelLayerRenderType::Cutout,
         NAUTILUS_SADDLE_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+        atlas,
+    );
+}
+
+/// Vanilla `NautilusRenderer` / `ZombieNautilusRenderer` `SimpleEquipmentLayer(NAUTILUS_BODY)`:
+/// a non-empty nautilus body armor item renders `NautilusArmorModel(ModelLayers.NAUTILUS_ARMOR)` over
+/// adult living nautilus and zombie nautilus. The layer has no baby model, so baby living nautilus
+/// skip it.
+fn emit_nautilus_body_armor_layer(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let Some(material) = instance.render_state.nautilus_body_armor else {
+        return;
+    };
+    if !matches!(
+        instance.kind,
+        EntityModelKind::Nautilus { baby: false } | EntityModelKind::ZombieNautilus { .. }
+    ) {
+        return;
+    }
+    let Some(texture) = nautilus_body_armor_texture_ref(material) else {
+        return;
+    };
+
+    let transform = entity_model_root_transform(instance);
+    let mut model = NautilusModel::new_armor();
+    model.prepare(&instance);
+    render_textured_pass(
+        meshes,
+        &model,
+        transform,
+        EntityModelLayerRenderType::Cutout,
+        texture,
         [1.0, 1.0, 1.0, 1.0],
         atlas,
     );

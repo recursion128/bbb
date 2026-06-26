@@ -1,7 +1,7 @@
 use super::super::EntityModelTextureRef;
 use crate::entity_models::catalog::{
-    ArrowModelTexture, AxolotlModelVariant, CatModelVariant, EntityDyeColor, FoxModelVariant,
-    FrogModelVariant, PandaModelVariant, ParrotModelVariant, RabbitModelVariant,
+    ArrowModelTexture, AxolotlModelVariant, CatModelVariant, EntityArmorMaterial, EntityDyeColor,
+    FoxModelVariant, FrogModelVariant, PandaModelVariant, ParrotModelVariant, RabbitModelVariant,
 };
 
 mod equine;
@@ -1421,7 +1421,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 493] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 498] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -1610,6 +1610,11 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     NAUTILUS_TEXTURE_REF,
     NAUTILUS_BABY_TEXTURE_REF,
     NAUTILUS_SADDLE_TEXTURE_REF,
+    NAUTILUS_BODY_COPPER_TEXTURE_REF,
+    NAUTILUS_BODY_IRON_TEXTURE_REF,
+    NAUTILUS_BODY_GOLD_TEXTURE_REF,
+    NAUTILUS_BODY_DIAMOND_TEXTURE_REF,
+    NAUTILUS_BODY_NETHERITE_TEXTURE_REF,
     ZOMBIE_NAUTILUS_TEXTURE_REF,
     ZOMBIE_NAUTILUS_CORAL_TEXTURE_REF,
     PANDA_NORMAL_TEXTURE_REF,
@@ -3071,10 +3076,44 @@ pub(in crate::entity_models) const NAUTILUS_SADDLE_TEXTURE_REF: EntityModelTextu
         path: "textures/entity/equipment/nautilus_saddle/saddle.png",
         size: [128, 128],
     };
+// Vanilla `EquipmentClientInfo.LayerType.NAUTILUS_BODY`, resolved from the armor material equipment
+// asset to `textures/entity/equipment/nautilus_body/<asset>.png`. Vanilla 26.1 has five nautilus
+// body armor items/materials; there is no leather/chainmail/turtle-scute nautilus armor texture.
+const fn nautilus_body_armor_ref(asset: &'static str) -> EntityModelTextureRef {
+    EntityModelTextureRef {
+        path: asset,
+        size: [128, 128],
+    }
+}
+pub(in crate::entity_models) const NAUTILUS_BODY_COPPER_TEXTURE_REF: EntityModelTextureRef =
+    nautilus_body_armor_ref("textures/entity/equipment/nautilus_body/copper.png");
+pub(in crate::entity_models) const NAUTILUS_BODY_IRON_TEXTURE_REF: EntityModelTextureRef =
+    nautilus_body_armor_ref("textures/entity/equipment/nautilus_body/iron.png");
+pub(in crate::entity_models) const NAUTILUS_BODY_GOLD_TEXTURE_REF: EntityModelTextureRef =
+    nautilus_body_armor_ref("textures/entity/equipment/nautilus_body/gold.png");
+pub(in crate::entity_models) const NAUTILUS_BODY_DIAMOND_TEXTURE_REF: EntityModelTextureRef =
+    nautilus_body_armor_ref("textures/entity/equipment/nautilus_body/diamond.png");
+pub(in crate::entity_models) const NAUTILUS_BODY_NETHERITE_TEXTURE_REF: EntityModelTextureRef =
+    nautilus_body_armor_ref("textures/entity/equipment/nautilus_body/netherite.png");
 pub(in crate::entity_models) const NAUTILUS_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
     [NAUTILUS_TEXTURE_REF, NAUTILUS_BABY_TEXTURE_REF];
 pub fn nautilus_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &NAUTILUS_ENTITY_TEXTURE_REFS
+}
+
+pub(in crate::entity_models) fn nautilus_body_armor_texture_ref(
+    material: EntityArmorMaterial,
+) -> Option<EntityModelTextureRef> {
+    Some(match material {
+        EntityArmorMaterial::Copper => NAUTILUS_BODY_COPPER_TEXTURE_REF,
+        EntityArmorMaterial::Iron => NAUTILUS_BODY_IRON_TEXTURE_REF,
+        EntityArmorMaterial::Gold => NAUTILUS_BODY_GOLD_TEXTURE_REF,
+        EntityArmorMaterial::Diamond => NAUTILUS_BODY_DIAMOND_TEXTURE_REF,
+        EntityArmorMaterial::Netherite => NAUTILUS_BODY_NETHERITE_TEXTURE_REF,
+        EntityArmorMaterial::Leather
+        | EntityArmorMaterial::Chainmail
+        | EntityArmorMaterial::TurtleScute => return None,
+    })
 }
 
 // Vanilla `ZombieNautilusRenderer` `NORMAL`/`TEMPERATE` variant texture (`ZombieNautilusVariants`

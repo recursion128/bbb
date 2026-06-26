@@ -1251,6 +1251,16 @@ impl WorldStore {
             .collect();
     }
 
+    pub fn set_default_nautilus_body_armor_materials(
+        &mut self,
+        armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,
+    ) {
+        self.default_nautilus_body_armor_materials = armor_materials
+            .into_iter()
+            .filter(|(item_id, _)| *item_id >= 0)
+            .collect();
+    }
+
     pub fn build_container_click_slot(
         &self,
         request: ContainerClickSlotRequest,

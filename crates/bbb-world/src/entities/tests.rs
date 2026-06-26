@@ -1498,6 +1498,110 @@ fn entity_model_sources_project_nautilus_saddle_from_saddle_slot() {
 }
 
 #[test]
+fn entity_model_sources_project_nautilus_body_armor_from_body_slot() {
+    use std::collections::BTreeMap;
+
+    const IRON_NAUTILUS_ARMOR_ITEM_ID: i32 = 841;
+    const NETHERITE_NAUTILUS_ARMOR_ITEM_ID: i32 = 842;
+    const PLAIN_ITEM_ID: i32 = 843;
+    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
+    const AGEABLE_BABY_DATA_ID: u8 = 16;
+
+    fn stack(item_id: i32, count: i32) -> ItemStackSummary {
+        ItemStackSummary {
+            item_id: Some(item_id),
+            count,
+            component_patch: Default::default(),
+        }
+    }
+    fn nautilus_body_armor(store: &WorldStore, entity_id: i32) -> Option<ArmorMaterialKind> {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == entity_id)
+            .unwrap()
+            .nautilus_body_armor
+    }
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        78,
+        VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        79,
+        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        80,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        81,
+        VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 81,
+        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+    }));
+
+    for (entity_id, item_id) in [
+        (78, IRON_NAUTILUS_ARMOR_ITEM_ID),
+        (79, NETHERITE_NAUTILUS_ARMOR_ITEM_ID),
+        (80, IRON_NAUTILUS_ARMOR_ITEM_ID),
+        (81, IRON_NAUTILUS_ARMOR_ITEM_ID),
+    ] {
+        assert!(store.apply_set_equipment(ProtocolSetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Body,
+                item: stack(item_id, 1),
+            }],
+        }));
+    }
+    assert_eq!(
+        nautilus_body_armor(&store, 78),
+        None,
+        "without the item registry's nautilus armor material map, a raw body item id is not enough"
+    );
+
+    store.set_default_nautilus_body_armor_materials(BTreeMap::from([
+        (IRON_NAUTILUS_ARMOR_ITEM_ID, ArmorMaterialKind::Iron),
+        (
+            NETHERITE_NAUTILUS_ARMOR_ITEM_ID,
+            ArmorMaterialKind::Netherite,
+        ),
+    ]));
+    assert_eq!(
+        nautilus_body_armor(&store, 78),
+        Some(ArmorMaterialKind::Iron)
+    );
+    assert_eq!(
+        nautilus_body_armor(&store, 79),
+        Some(ArmorMaterialKind::Netherite)
+    );
+    assert_eq!(
+        nautilus_body_armor(&store, 80),
+        None,
+        "non-nautilus entities do not project the nautilus body armor flag"
+    );
+    assert_eq!(
+        nautilus_body_armor(&store, 81),
+        None,
+        "baby living nautilus skip the layer because vanilla supplies no baby armor model"
+    );
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 78,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Body,
+            item: stack(PLAIN_ITEM_ID, 1),
+        }],
+    }));
+    assert_eq!(nautilus_body_armor(&store, 78), None);
+}
+
+#[test]
 fn entity_model_sources_project_llama_body_decor_from_body_slot() {
     use std::collections::BTreeMap;
 

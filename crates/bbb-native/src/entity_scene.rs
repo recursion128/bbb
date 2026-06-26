@@ -1242,6 +1242,7 @@ fn entity_model_instance(
         .with_camel_saddle(source.camel_saddle)
         .with_camel_saddle_ridden(source.camel_saddle_ridden)
         .with_nautilus_saddle(source.nautilus_saddle)
+        .with_nautilus_body_armor(armor_material(source.nautilus_body_armor))
         .with_llama_body_decor(llama_body_decor_color(source.llama_body_decor))
         .with_guardian_beam(guardian_beam(source.guardian_beam))
         .with_is_crouching(source.is_crouching)
@@ -3348,8 +3349,8 @@ mod tests {
         SetEquipment, SetPassengers, TagNetworkPayload, UpdateAttributes, UpdateTags, Vec3d,
     };
     use bbb_world::{
-        EntityPickBoundsState, EntityVec3, ItemEquipmentSlot,
-        LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryPacketEntry,
+        ArmorMaterialKind as WorldArmorMaterialKind, EntityPickBoundsState, EntityVec3,
+        ItemEquipmentSlot, LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryPacketEntry,
     };
     use uuid::Uuid;
 
@@ -6846,6 +6847,79 @@ mod tests {
 
         assert!(world.apply_set_equipment(saddle(119)));
         assert!(nautilus_saddle(&world, 119));
+    }
+
+    #[test]
+    fn entity_model_instances_project_nautilus_body_armor_render_state() {
+        const IRON_NAUTILUS_ARMOR_ITEM_ID: i32 = 747;
+        const NETHERITE_NAUTILUS_ARMOR_ITEM_ID: i32 = 748;
+        const AGEABLE_BABY_DATA_ID: u8 = 16;
+
+        let body_armor = |entity_id: i32, item_id: i32| SetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Body,
+                item: ItemStackSummary {
+                    item_id: Some(item_id),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            }],
+        };
+        let nautilus_body_armor = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .nautilus_body_armor
+        };
+
+        let mut world = WorldStore::new();
+        world.set_default_nautilus_body_armor_materials(std::collections::BTreeMap::from([
+            (IRON_NAUTILUS_ARMOR_ITEM_ID, WorldArmorMaterialKind::Iron),
+            (
+                NETHERITE_NAUTILUS_ARMOR_ITEM_ID,
+                WorldArmorMaterialKind::Netherite,
+            ),
+        ]));
+        world.apply_add_entity(protocol_add_entity(
+            123,
+            VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+            [1.0, 64.0, -3.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            124,
+            VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+            [2.0, 64.0, -3.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            125,
+            VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+            [3.0, 64.0, -3.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 125,
+            values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+        }));
+
+        assert!(world.apply_set_equipment(body_armor(123, IRON_NAUTILUS_ARMOR_ITEM_ID)));
+        assert!(world.apply_set_equipment(body_armor(124, NETHERITE_NAUTILUS_ARMOR_ITEM_ID)));
+        assert!(world.apply_set_equipment(body_armor(125, IRON_NAUTILUS_ARMOR_ITEM_ID)));
+
+        assert_eq!(
+            nautilus_body_armor(&world, 123),
+            Some(EntityArmorMaterial::Iron)
+        );
+        assert_eq!(
+            nautilus_body_armor(&world, 124),
+            Some(EntityArmorMaterial::Netherite)
+        );
+        assert_eq!(
+            nautilus_body_armor(&world, 125),
+            None,
+            "baby living nautilus skip the body armor equipment layer"
+        );
     }
 
     #[test]

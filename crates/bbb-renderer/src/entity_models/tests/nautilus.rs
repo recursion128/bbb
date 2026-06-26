@@ -44,6 +44,29 @@ fn nautilus_saddle_geometry_matches_vanilla_26_1_layer() {
 }
 
 #[test]
+fn nautilus_body_armor_geometry_matches_vanilla_26_1_layer() {
+    // Vanilla `NautilusArmorModel.createBodyLayer()` starts from `NautilusModel.createBodyMesh`,
+    // replaces the adult shell with the three shell cubes, and inflates only the dome and whorl by
+    // `CubeDeformation(0.01F)`. `SimpleEquipmentLayer` supplies no baby model.
+    assert_eq!(NAUTILUS_ARMOR_SHELL_CUBES.len(), 3);
+    assert_eq!(NAUTILUS_ARMOR_SHELL_CUBES[0].min, [-7.01, -10.01, -7.01]);
+    assert_eq!(NAUTILUS_ARMOR_SHELL_CUBES[0].size, [14.02, 10.02, 16.02]);
+    assert_eq!(NAUTILUS_ARMOR_SHELL_CUBES[0].uv_size, [14.0, 10.0, 16.0]);
+    assert_eq!(NAUTILUS_ARMOR_SHELL_CUBES[0].tex, [0.0, 0.0]);
+    assert_eq!(NAUTILUS_ARMOR_SHELL_CUBES[1].min, [-7.01, -0.01, -7.01]);
+    assert_eq!(NAUTILUS_ARMOR_SHELL_CUBES[1].size, [14.02, 8.02, 20.02]);
+    assert_eq!(NAUTILUS_ARMOR_SHELL_CUBES[1].uv_size, [14.0, 8.0, 20.0]);
+    assert_eq!(
+        NAUTILUS_ARMOR_SHELL_CUBES[2].min,
+        NAUTILUS_SHELL_CUBES[2].min
+    );
+    assert_eq!(
+        NAUTILUS_ARMOR_SHELL_CUBES[2].size,
+        NAUTILUS_SHELL_CUBES[2].size
+    );
+}
+
+#[test]
 fn nautilus_mesh_uses_vanilla_body_layer_geometry() {
     // 8 cubes → 48 faces / 192 vertices / 288 indices, two tones: tan shell, pale body/mouths.
     let nautilus = entity_model_mesh(&[EntityModelInstance::nautilus(
@@ -283,7 +306,47 @@ fn nautilus_textured_render_matches_vanilla_renderer() {
             size: [128, 128],
         }
     );
+    assert_eq!(
+        NAUTILUS_BODY_IRON_TEXTURE_REF,
+        EntityModelTextureRef {
+            path: "textures/entity/equipment/nautilus_body/iron.png",
+            size: [128, 128],
+        }
+    );
+    assert_eq!(
+        nautilus_body_armor_texture_ref(EntityArmorMaterial::Copper),
+        Some(NAUTILUS_BODY_COPPER_TEXTURE_REF)
+    );
+    assert_eq!(
+        nautilus_body_armor_texture_ref(EntityArmorMaterial::Iron),
+        Some(NAUTILUS_BODY_IRON_TEXTURE_REF)
+    );
+    assert_eq!(
+        nautilus_body_armor_texture_ref(EntityArmorMaterial::Gold),
+        Some(NAUTILUS_BODY_GOLD_TEXTURE_REF)
+    );
+    assert_eq!(
+        nautilus_body_armor_texture_ref(EntityArmorMaterial::Diamond),
+        Some(NAUTILUS_BODY_DIAMOND_TEXTURE_REF)
+    );
+    assert_eq!(
+        nautilus_body_armor_texture_ref(EntityArmorMaterial::Netherite),
+        Some(NAUTILUS_BODY_NETHERITE_TEXTURE_REF)
+    );
+    assert_eq!(
+        nautilus_body_armor_texture_ref(EntityArmorMaterial::Chainmail),
+        None
+    );
     assert!(entity_model_texture_refs().contains(&NAUTILUS_SADDLE_TEXTURE_REF));
+    for texture in [
+        NAUTILUS_BODY_COPPER_TEXTURE_REF,
+        NAUTILUS_BODY_IRON_TEXTURE_REF,
+        NAUTILUS_BODY_GOLD_TEXTURE_REF,
+        NAUTILUS_BODY_DIAMOND_TEXTURE_REF,
+        NAUTILUS_BODY_NETHERITE_TEXTURE_REF,
+    ] {
+        assert!(entity_model_texture_refs().contains(&texture));
+    }
     assert_eq!(
         nautilus_entity_texture_refs(),
         &[NAUTILUS_TEXTURE_REF, NAUTILUS_BABY_TEXTURE_REF]
@@ -388,6 +451,108 @@ fn nautilus_saddle_layer_renders_for_adult_living_and_zombie_only() {
     let warm_saddled = entity_model_textured_mesh(&[warm.with_nautilus_saddle(true)], &atlas);
     assert_eq!(warm_saddled.cutout_faces - warm_bare.cutout_faces, 36);
     assert_eq!(warm_saddled.vertices.len() - warm_bare.vertices.len(), 144);
+}
+
+#[test]
+fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
+    let images: Vec<EntityModelTextureImage> = [
+        NAUTILUS_TEXTURE_REF,
+        NAUTILUS_BABY_TEXTURE_REF,
+        ZOMBIE_NAUTILUS_TEXTURE_REF,
+        ZOMBIE_NAUTILUS_CORAL_TEXTURE_REF,
+        NAUTILUS_BODY_IRON_TEXTURE_REF,
+        NAUTILUS_BODY_NETHERITE_TEXTURE_REF,
+    ]
+    .iter()
+    .enumerate()
+    .map(|(index, texture)| {
+        let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+        EntityModelTextureImage::new(*texture, vec![(index * 35) as u8; len])
+    })
+    .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let iron_uv = atlas
+        .entries
+        .iter()
+        .find(|entry| entry.texture == NAUTILUS_BODY_IRON_TEXTURE_REF)
+        .unwrap()
+        .uv;
+
+    let adult = EntityModelInstance::nautilus(930, [0.0, 64.0, 0.0], 0.0, false);
+    let bare = entity_model_textured_mesh(&[adult], &atlas);
+    let armored = entity_model_textured_mesh(
+        &[adult.with_nautilus_body_armor(Some(EntityArmorMaterial::Iron))],
+        &atlas,
+    );
+    // Armor layer: adult shell/body/mouth subtree = 8 cubes.
+    assert_eq!(armored.cutout_faces - bare.cutout_faces, 48);
+    assert_eq!(armored.vertices.len() - bare.vertices.len(), 192);
+    let first_armor_vertex = armored.vertices[bare.vertices.len()].uv;
+    assert!(first_armor_vertex[0] >= iron_uv.min[0]);
+    assert!(first_armor_vertex[0] <= iron_uv.max[0]);
+    assert!(first_armor_vertex[1] >= iron_uv.min[1]);
+    assert!(first_armor_vertex[1] <= iron_uv.max[1]);
+
+    let invalid_material = entity_model_textured_mesh(
+        &[adult.with_nautilus_body_armor(Some(EntityArmorMaterial::Chainmail))],
+        &atlas,
+    );
+    assert_eq!(
+        invalid_material.vertices.len(),
+        bare.vertices.len(),
+        "vanilla 26.1 has no chainmail nautilus_body equipment texture"
+    );
+
+    let baby = EntityModelInstance::nautilus(931, [0.0, 64.0, 0.0], 0.0, true);
+    let baby_bare = entity_model_textured_mesh(&[baby], &atlas);
+    let baby_armored = entity_model_textured_mesh(
+        &[baby.with_nautilus_body_armor(Some(EntityArmorMaterial::Iron))],
+        &atlas,
+    );
+    assert_eq!(
+        baby_armored.vertices.len(),
+        baby_bare.vertices.len(),
+        "vanilla supplies no baby nautilus armor model"
+    );
+
+    let zombie = EntityModelInstance::new(
+        932,
+        EntityModelKind::ZombieNautilus { coral: false },
+        [0.0, 64.0, 0.0],
+        0.0,
+    );
+    let zombie_bare = entity_model_textured_mesh(&[zombie], &atlas);
+    let zombie_armored = entity_model_textured_mesh(
+        &[zombie.with_nautilus_body_armor(Some(EntityArmorMaterial::Netherite))],
+        &atlas,
+    );
+    assert_eq!(zombie_armored.cutout_faces - zombie_bare.cutout_faces, 48);
+    assert_eq!(
+        zombie_armored.vertices.len() - zombie_bare.vertices.len(),
+        192
+    );
+
+    let warm = EntityModelInstance::new(
+        933,
+        EntityModelKind::ZombieNautilus { coral: true },
+        [0.0, 64.0, 0.0],
+        0.0,
+    );
+    let warm_bare = entity_model_textured_mesh(&[warm], &atlas);
+    let warm_armored = entity_model_textured_mesh(
+        &[warm.with_nautilus_body_armor(Some(EntityArmorMaterial::Netherite))],
+        &atlas,
+    );
+    assert_eq!(
+        warm_bare.cutout_faces - zombie_bare.cutout_faces,
+        48,
+        "warm zombie nautilus normally adds the coral cluster"
+    );
+    assert_eq!(
+        warm_armored.cutout_faces, zombie_armored.cutout_faces,
+        "ZombieNautilusCoralModel hides corals while body armor is present"
+    );
+    assert_eq!(warm_armored.vertices.len(), zombie_armored.vertices.len());
 }
 
 #[test]

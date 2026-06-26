@@ -423,6 +423,34 @@ impl NativeItemRuntime {
         self.llama_body_decor_colors_by_protocol_id().len()
     }
 
+    pub(crate) fn nautilus_body_armor_materials_by_protocol_id(
+        &self,
+    ) -> BTreeMap<i32, WorldArmorMaterialKind> {
+        let mut materials = BTreeMap::new();
+        let Some(registry) = &self.registry else {
+            return materials;
+        };
+        for (protocol_id, resource_id) in registry.resource_ids().iter().enumerate() {
+            if registry.mount_body_armor_kind(resource_id)
+                != Some(PackItemMountBodyArmorKind::Nautilus)
+            {
+                continue;
+            }
+            let Some(asset) = registry.mount_body_armor_asset(resource_id) else {
+                continue;
+            };
+            let Some(material) = nautilus_body_armor_material_from_asset(asset) else {
+                continue;
+            };
+            materials.insert(protocol_id as i32, material);
+        }
+        materials
+    }
+
+    pub(crate) fn nautilus_body_armor_material_count(&self) -> usize {
+        self.nautilus_body_armor_materials_by_protocol_id().len()
+    }
+
     pub(crate) fn default_piercing_weapon_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
         self.registry
             .as_ref()
@@ -1065,6 +1093,20 @@ fn llama_body_decor_color_from_item_id(resource_id: &str) -> Option<WorldLlamaBo
         "black" => WorldLlamaBodyDecorColor::Black,
         _ => return None,
     })
+}
+
+fn nautilus_body_armor_material_from_asset(asset: &str) -> Option<WorldArmorMaterialKind> {
+    let material = WorldArmorMaterialKind::from_equipment_asset(asset)?;
+    match material {
+        WorldArmorMaterialKind::Copper
+        | WorldArmorMaterialKind::Iron
+        | WorldArmorMaterialKind::Gold
+        | WorldArmorMaterialKind::Diamond
+        | WorldArmorMaterialKind::Netherite => Some(material),
+        WorldArmorMaterialKind::Leather
+        | WorldArmorMaterialKind::Chainmail
+        | WorldArmorMaterialKind::TurtleScute => None,
+    }
 }
 
 fn world_item_attack_range(range: PackItemAttackRange) -> WorldItemAttackRange {
@@ -1996,6 +2038,59 @@ mod tests {
         assert_eq!(colors.get(&white), Some(&WorldLlamaBodyDecorColor::White));
         assert_eq!(colors.get(&black), Some(&WorldLlamaBodyDecorColor::Black));
         assert_eq!(colors.get(&horse_armor), None);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn native_item_runtime_projects_nautilus_body_armor_materials() {
+        let root = unique_temp_dir("item-runtime-nautilus-body-armor");
+        let assets = assets_dir(&root);
+        write_item_atlases(&assets);
+        write_json(
+            &root
+                .join("sources")
+                .join(bbb_pack::MC_VERSION)
+                .join("net")
+                .join("minecraft")
+                .join("world")
+                .join("item")
+                .join("Items.java"),
+            r#"public class Items {
+                public static final Item IRON_NAUTILUS_ARMOR = registerItem("iron_nautilus_armor", new Item.Properties().nautilusArmor(ArmorMaterials.IRON));
+                public static final Item GOLDEN_NAUTILUS_ARMOR = registerItem("golden_nautilus_armor", new Item.Properties().nautilusArmor(ArmorMaterials.GOLD));
+                public static final Item NETHERITE_NAUTILUS_ARMOR = registerItem("netherite_nautilus_armor", new Item.Properties().nautilusArmor(ArmorMaterials.NETHERITE).fireResistant());
+                public static final Item CHAINMAIL_NAUTILUS_ARMOR = registerItem("chainmail_nautilus_armor", new Item.Properties().nautilusArmor(ArmorMaterials.CHAINMAIL));
+                public static final Item HORSE_ARMOR = registerItem("horse_armor", new Item.Properties().horseArmor(ArmorMaterials.DIAMOND));
+            }"#,
+        );
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let registry = runtime.registry.as_ref().unwrap();
+        let iron = registry
+            .protocol_id("minecraft:iron_nautilus_armor")
+            .unwrap();
+        let gold = registry
+            .protocol_id("minecraft:golden_nautilus_armor")
+            .unwrap();
+        let netherite = registry
+            .protocol_id("minecraft:netherite_nautilus_armor")
+            .unwrap();
+        let chainmail = registry
+            .protocol_id("minecraft:chainmail_nautilus_armor")
+            .unwrap();
+        let horse_armor = registry.protocol_id("minecraft:horse_armor").unwrap();
+        let materials = runtime.nautilus_body_armor_materials_by_protocol_id();
+
+        assert_eq!(runtime.nautilus_body_armor_material_count(), 3);
+        assert_eq!(materials.get(&iron), Some(&WorldArmorMaterialKind::Iron));
+        assert_eq!(materials.get(&gold), Some(&WorldArmorMaterialKind::Gold));
+        assert_eq!(
+            materials.get(&netherite),
+            Some(&WorldArmorMaterialKind::Netherite)
+        );
+        assert_eq!(materials.get(&chainmail), None);
+        assert_eq!(materials.get(&horse_armor), None);
 
         std::fs::remove_dir_all(root).unwrap();
     }

@@ -11,8 +11,8 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 // reproduced; the SWIMMING keyframe undulation needs the keyframe machinery + an `AnimationState`, so it
 // stays deferred (the nautilus renders at this bind pose plus the clamped look). Both the adult
 // `createBodyMesh` and the smaller baby `createBabyBodyLayer` are modeled (same `root → shell + body →
-// mouths` structure), along with the zombie warm coral variant and the adult saddle equipment layer.
-// The body armor equipment layer stays deferred. Each unified cube carries both the colored debug tint
+// mouths` structure), along with the zombie warm coral variant and the adult saddle/body-armor
+// equipment layers. Each unified cube carries both the colored debug tint
 // (tan shell over a pale body) and the textured `uv_size` / `texOffs`. Nautilus uses a plain
 // `MobRenderer`.
 
@@ -55,6 +55,36 @@ pub(in crate::entity_models) const NAUTILUS_SADDLE_SHELL_CUBES: [ModelCube; 1] =
     [0.0, 0.0],
     false,
 )];
+
+// Vanilla 26.1 `NautilusArmorModel.createBodyLayer`: starts from `NautilusModel.createBodyMesh`,
+// replaces the adult `shell` child with the three shell boxes; the dome and whorl are inflated by
+// `CubeDeformation(0.01F)`, while the zero-thickness rear fin is not inflated.
+pub(in crate::entity_models) const NAUTILUS_ARMOR_SHELL_CUBES: [ModelCube; 3] = [
+    ModelCube::new(
+        [-7.01, -10.01, -7.01],
+        [14.02, 10.02, 16.02],
+        NAUTILUS_SHELL,
+        [14.0, 10.0, 16.0],
+        [0.0, 0.0],
+        false,
+    ),
+    ModelCube::new(
+        [-7.01, -0.01, -7.01],
+        [14.02, 8.02, 20.02],
+        NAUTILUS_SHELL,
+        [14.0, 8.0, 20.0],
+        [0.0, 26.0],
+        false,
+    ),
+    ModelCube::new(
+        [-7.0, 0.0, 6.0],
+        [14.0, 8.0, 0.0],
+        NAUTILUS_SHELL,
+        [14.0, 8.0, 0.0],
+        [48.0, 26.0],
+        false,
+    ),
+];
 
 // `body` cubes: the 10×8×14 trunk and a 10×8×0 rear fin plane.
 pub(in crate::entity_models) const NAUTILUS_BODY_CUBES: [ModelCube; 2] = [
@@ -355,7 +385,7 @@ fn coral_part(offset: [f32; 3], rotation: [f32; 3], cube: ModelCube) -> ModelPar
 /// Builds the `corals` subtree (vanilla `ZombieNautilusCoralModel.createBodyLayer`), parented under the
 /// adult `shell`. The four clusters keep the vanilla child order; the cross-planes are billboards
 /// (`y`-rotated ±π/4, the pink pair `z`-rotated π/2). The `corals.visible = bodyArmorItem.isEmpty()`
-/// gate is always-visible here (body armor is deferred).
+/// gate is applied in [`NautilusModel::setup_anim`].
 fn nautilus_corals() -> ModelPart {
     let yellow = ModelPart::new(
         PartPose {
@@ -493,6 +523,22 @@ fn nautilus_saddle_root() -> ModelPart {
     )
 }
 
+/// Builds the adult nautilus armor layer tree: the full adult body mesh with the shell replaced by
+/// the lightly inflated `NautilusArmorModel` shell. Vanilla supplies no baby armor model.
+fn nautilus_armor_root() -> ModelPart {
+    ModelPart::new(
+        NAUTILUS_ROOT_POSE,
+        Vec::new(),
+        vec![
+            (
+                "shell",
+                ModelPart::leaf(NAUTILUS_SHELL_POSE, NAUTILUS_ARMOR_SHELL_CUBES.to_vec()),
+            ),
+            ("body", nautilus_adult_body()),
+        ],
+    )
+}
+
 /// Vanilla `NautilusModel.applyBodyRotation` clamps the look yaw/pitch to ±10° before steering the body.
 const NAUTILUS_LOOK_CLAMP_DEGREES: f32 = 10.0;
 
@@ -504,6 +550,7 @@ const NAUTILUS_LOOK_CLAMP_DEGREES: f32 = 10.0;
 /// the SWIMMING keyframe undulation and every other pose stay deferred.
 pub(in crate::entity_models) struct NautilusModel {
     root: ModelPart,
+    has_corals: bool,
 }
 
 impl NautilusModel {
@@ -514,6 +561,7 @@ impl NautilusModel {
                 Vec::new(),
                 vec![("root", nautilus_root(baby))],
             ),
+            has_corals: false,
         }
     }
 
@@ -527,6 +575,7 @@ impl NautilusModel {
                 Vec::new(),
                 vec![("root", nautilus_coral_root())],
             ),
+            has_corals: true,
         }
     }
 
@@ -540,6 +589,21 @@ impl NautilusModel {
                 Vec::new(),
                 vec![("root", nautilus_saddle_root())],
             ),
+            has_corals: false,
+        }
+    }
+
+    /// Vanilla `NautilusArmorModel(ModelLayers.NAUTILUS_ARMOR)`: the adult body-armor equipment layer.
+    /// It keeps the adult body subtree from `NautilusModel.createBodyMesh` and replaces the shell with
+    /// the lightly inflated armor shell; no baby armor model exists.
+    pub(in crate::entity_models) fn new_armor() -> Self {
+        Self {
+            root: ModelPart::new(
+                PART_POSE_ZERO,
+                Vec::new(),
+                vec![("root", nautilus_armor_root())],
+            ),
+            has_corals: false,
         }
     }
 }
@@ -567,5 +631,12 @@ impl EntityModel for NautilusModel {
                 .head_pitch
                 .clamp(-NAUTILUS_LOOK_CLAMP_DEGREES, NAUTILUS_LOOK_CLAMP_DEGREES),
         );
+        if self.has_corals {
+            self.root
+                .child_mut("root")
+                .child_mut("shell")
+                .child_mut("corals")
+                .visible = render_state.nautilus_body_armor.is_none();
+        }
     }
 }

@@ -60,6 +60,10 @@ pub struct ItemRegistryCatalog {
     humanoid_armor_assets: BTreeMap<String, String>,
     #[serde(default)]
     default_mount_body_armor_kinds: BTreeMap<String, ItemMountBodyArmorKind>,
+    /// Resource id -> mount body armor equipment-asset name (`ArmorMaterials.<MAT>` ->
+    /// `EquipmentAssets.<MAT>`, lowercased), for horse/nautilus body equipment layers.
+    #[serde(default)]
+    mount_body_armor_assets: BTreeMap<String, String>,
     #[serde(default)]
     default_piercing_weapon_ids: BTreeSet<String>,
     #[serde(default)]
@@ -179,6 +183,7 @@ impl ItemRegistryCatalog {
         let mut default_equipment_slots = BTreeMap::new();
         let mut humanoid_armor_assets = BTreeMap::new();
         let mut default_mount_body_armor_kinds = BTreeMap::new();
+        let mut mount_body_armor_assets = BTreeMap::new();
         let mut default_piercing_weapon_ids = BTreeSet::new();
         let mut default_attack_ranges = BTreeMap::new();
         let mut default_use_effects = BTreeMap::new();
@@ -193,6 +198,7 @@ impl ItemRegistryCatalog {
             let equipment_slot = equipment_slot_for_declaration(expression)?;
             let humanoid_armor_asset = humanoid_armor_asset_for_declaration(expression)?;
             let mount_body_armor_kind = mount_body_armor_kind_for_declaration(expression);
+            let mount_body_armor_asset = mount_body_armor_asset_for_declaration(expression)?;
             let default_piercing_weapon = default_piercing_weapon_for_declaration(expression);
             let default_attack_range = default_attack_range_for_declaration(expression)?;
             let default_use_effect = default_use_effects_for_declaration(expression)?;
@@ -214,6 +220,9 @@ impl ItemRegistryCatalog {
                 }
                 if let Some(kind) = mount_body_armor_kind {
                     default_mount_body_armor_kinds.insert(resource_id.clone(), kind);
+                }
+                if let Some(asset) = &mount_body_armor_asset {
+                    mount_body_armor_assets.insert(resource_id.clone(), asset.clone());
                 }
                 if default_piercing_weapon {
                     default_piercing_weapon_ids.insert(resource_id.clone());
@@ -256,6 +265,7 @@ impl ItemRegistryCatalog {
             default_equipment_slots,
             humanoid_armor_assets,
             default_mount_body_armor_kinds,
+            mount_body_armor_assets,
             default_piercing_weapon_ids,
             default_attack_ranges,
             default_use_effects,
@@ -316,6 +326,15 @@ impl ItemRegistryCatalog {
         self.default_mount_body_armor_kinds
             .get(&resource_id)
             .copied()
+    }
+
+    /// The equipment-asset material name for a horse/nautilus body armor item (e.g. `iron`,
+    /// `diamond`, `netherite`), or `None` for llama carpets and non-mount body armor.
+    pub fn mount_body_armor_asset(&self, resource_id: &str) -> Option<&str> {
+        let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
+        self.mount_body_armor_assets
+            .get(&resource_id)
+            .map(String::as_str)
     }
 
     pub fn mount_body_armor_kinds_by_protocol_id(&self) -> BTreeMap<i32, ItemMountBodyArmorKind> {
@@ -547,6 +566,18 @@ fn humanoid_armor_material_and_type(expression: &str) -> Result<Option<(String, 
             capture.get(2).unwrap().as_str().to_string(),
         )
     }))
+}
+
+fn mount_body_armor_asset_for_declaration(expression: &str) -> Result<Option<String>> {
+    for pattern in [
+        r#"\.horseArmor\(\s*ArmorMaterials\.([A-Z_]+)"#,
+        r#"\.nautilusArmor\(\s*ArmorMaterials\.([A-Z_]+)"#,
+    ] {
+        if let Some(material) = optional_capture(pattern, expression)? {
+            return Ok(Some(material.to_lowercase()));
+        }
+    }
+    Ok(None)
 }
 
 fn armor_material_durability_multiplier(material: &str) -> Result<i32> {
@@ -1313,14 +1344,27 @@ mod tests {
             Some(ItemMountBodyArmorKind::Horse)
         );
         assert_eq!(
+            catalog.mount_body_armor_asset("minecraft:horse_armor"),
+            Some("diamond")
+        );
+        assert_eq!(
             catalog.mount_body_armor_kind("minecraft:white_carpet"),
             Some(ItemMountBodyArmorKind::Llama)
+        );
+        assert_eq!(
+            catalog.mount_body_armor_asset("minecraft:white_carpet"),
+            None
         );
         assert_eq!(
             catalog.mount_body_armor_kind("minecraft:nautilus_armor"),
             Some(ItemMountBodyArmorKind::Nautilus)
         );
+        assert_eq!(
+            catalog.mount_body_armor_asset("minecraft:nautilus_armor"),
+            Some("iron")
+        );
         assert_eq!(catalog.mount_body_armor_kind("minecraft:wolf_armor"), None);
+        assert_eq!(catalog.mount_body_armor_asset("minecraft:wolf_armor"), None);
 
         let mount_body_armor_kinds = catalog.mount_body_armor_kinds_by_protocol_id();
         assert_eq!(

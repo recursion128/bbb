@@ -927,6 +927,11 @@ pub struct EntityModelSourceState {
     /// built-in trader decor in the renderer when this is `None`.
     #[serde(default)]
     pub llama_body_decor: Option<LlamaBodyDecorColor>,
+    /// Vanilla `NautilusRenderState.bodyArmorItem`: an adult living nautilus / zombie nautilus body
+    /// equipment item whose equipment asset has a `nautilus_body` layer. Baby living nautilus skip it
+    /// because `SimpleEquipmentLayer` supplies no baby armor model.
+    #[serde(default)]
+    pub nautilus_body_armor: Option<ArmorMaterialKind>,
     pub data_values: Vec<ProtocolEntityDataValue>,
 }
 
@@ -1246,6 +1251,7 @@ impl WorldStore {
                     &self.default_item_armor_materials,
                     &self.default_item_equipment_slots,
                     &self.default_llama_body_decor_colors,
+                    &self.default_nautilus_body_armor_materials,
                 )?;
                 source.light = self
                     .sample_block_light(entity_light_block_pos(target.position))

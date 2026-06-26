@@ -525,6 +525,7 @@ impl EntityStore {
         armor_materials: &BTreeMap<i32, ArmorMaterialKind>,
         equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
         llama_body_decor_colors: &BTreeMap<i32, LlamaBodyDecorColor>,
+        nautilus_body_armor_materials: &BTreeMap<i32, ArmorMaterialKind>,
     ) -> Option<EntityModelSourceState> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
@@ -609,9 +610,7 @@ impl EntityStore {
                 .is_some_and(|mount| !mount.passengers.is_empty());
         let nautilus_saddle = is_vanilla_abstract_nautilus_type(identity.entity_type_id)
             && saddle_slot_contains_saddle_item();
-        let llama_body_decor = if is_vanilla_llama_type(identity.entity_type_id)
-            && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values)
-        {
+        let body_slot_item_id = || -> Option<i32> {
             equipment
                 .as_ref()
                 .and_then(|equipment| {
@@ -621,7 +620,19 @@ impl EntityStore {
                         .find(|update| update.slot == ProtocolEquipmentSlot::Body)
                 })
                 .and_then(|update| (update.item.count > 0).then_some(update.item.item_id)?)
-                .and_then(|item_id| llama_body_decor_colors.get(&item_id).copied())
+        };
+        let llama_body_decor = if is_vanilla_llama_type(identity.entity_type_id)
+            && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values)
+        {
+            body_slot_item_id().and_then(|item_id| llama_body_decor_colors.get(&item_id).copied())
+        } else {
+            None
+        };
+        let nautilus_body_armor = if is_vanilla_abstract_nautilus_type(identity.entity_type_id)
+            && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values)
+        {
+            body_slot_item_id()
+                .and_then(|item_id| nautilus_body_armor_materials.get(&item_id).copied())
         } else {
             None
         };
@@ -1094,6 +1105,7 @@ impl EntityStore {
                 partial_ticks,
             ),
             llama_body_decor,
+            nautilus_body_armor,
             data_values: metadata.data_values.clone(),
         })
     }

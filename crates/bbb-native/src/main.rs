@@ -139,6 +139,9 @@ fn main() -> Result<()> {
         world.set_item_armor_materials(items.item_armor_materials_by_protocol_id());
         world.set_default_mount_body_armor_kinds(items.mount_body_armor_kinds_by_protocol_id());
         world.set_default_llama_body_decor_colors(items.llama_body_decor_colors_by_protocol_id());
+        world.set_default_nautilus_body_armor_materials(
+            items.nautilus_body_armor_materials_by_protocol_id(),
+        );
         world.set_default_item_attack_ranges(items.item_attack_ranges_by_protocol_id());
         world.set_default_piercing_weapon_item_ids(
             items.default_piercing_weapon_item_ids_by_protocol_id(),
@@ -171,6 +174,7 @@ fn main() -> Result<()> {
             icon_textures = items.icon_texture_count(),
             item_equipment_slots = items.item_equipment_slot_count(),
             mount_body_armor_kinds = items.mount_body_armor_kind_count(),
+            nautilus_body_armor_materials = items.nautilus_body_armor_material_count(),
             default_attack_range_items = items.item_attack_range_count(),
             default_piercing_weapon_items = items.default_piercing_weapon_item_count(),
             default_damageable_items = items.default_damageable_item_count(),
