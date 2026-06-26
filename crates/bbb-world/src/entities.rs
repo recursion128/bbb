@@ -346,6 +346,11 @@ pub struct EntityModelSourceState {
     /// derives the net head-look yaw `Mth.wrapDegrees(y_head_rot - y_rot)`.
     #[serde(default)]
     pub y_head_rot: f32,
+    /// Vanilla `Entity.isPassenger()`: whether this entity is mounted on another
+    /// entity. World animation uses it to stop passenger limb swing, and renderer
+    /// projections that have a seated passenger branch consume the same fact.
+    #[serde(default)]
+    pub is_passenger: bool,
     #[serde(default)]
     pub age_ticks: u32,
     /// Vanilla `LivingEntityRenderState.isFullyFrozen` (`Entity.isFullyFrozen`,

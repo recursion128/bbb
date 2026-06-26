@@ -243,6 +243,62 @@ fn illager_family_swings_its_legs_when_walking() {
 }
 
 #[test]
+fn riding_illagers_use_vanilla_seated_pose() {
+    use std::f32::consts::PI;
+
+    // Vanilla `IllagerRenderer.extractRenderState`: `state.isRiding = entity.isPassenger()`.
+    // `IllagerModel.setupAnim` then uses the fixed seated pose instead of the walk swing.
+    let riding =
+        EntityModelInstance::illager(103, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Pillager)
+            .with_is_riding(true)
+            .with_walk_animation(0.0, 1.0);
+    let mut model = IllagerModel::new(&riding, IllagerModelFamily::Pillager);
+    model.prepare(&riding);
+
+    let right_arm = model.root_mut().child_mut("right_arm").pose.rotation;
+    assert!((right_arm[0] - (-PI / 5.0)).abs() < 1e-6);
+    assert!(right_arm[1].abs() < 1e-6 && right_arm[2].abs() < 1e-6);
+    let left_arm = model.root_mut().child_mut("left_arm").pose.rotation;
+    assert!((left_arm[0] - (-PI / 5.0)).abs() < 1e-6);
+    assert!(left_arm[1].abs() < 1e-6 && left_arm[2].abs() < 1e-6);
+
+    let right_leg = model.root_mut().child_mut("right_leg").pose.rotation;
+    assert!((right_leg[0] - -1.4137167).abs() < 1e-6);
+    assert!((right_leg[1] - PI / 10.0).abs() < 1e-6);
+    assert!((right_leg[2] - 0.07853982).abs() < 1e-6);
+    let left_leg = model.root_mut().child_mut("left_leg").pose.rotation;
+    assert!((left_leg[0] - -1.4137167).abs() < 1e-6);
+    assert!((left_leg[1] - -PI / 10.0).abs() < 1e-6);
+    assert!((left_leg[2] - -0.07853982).abs() < 1e-6);
+
+    // The seated branch replaces walking legs, but vanilla still runs the arm-pose branch afterwards.
+    let attacking =
+        EntityModelInstance::illager(140, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Vindicator)
+            .with_is_riding(true)
+            .with_walk_animation(0.0, 1.0)
+            .with_is_aggressive(true);
+    let mut attacking_model = IllagerModel::new(&attacking, IllagerModelFamily::Vindicator);
+    attacking_model.prepare(&attacking);
+    let attacking_right_arm = attacking_model
+        .root_mut()
+        .child_mut("right_arm")
+        .pose
+        .rotation;
+    assert!(
+        (attacking_right_arm[0] - (-PI / 5.0)).abs() > 0.5,
+        "ATTACKING runs after the seated arm preset"
+    );
+    let attacking_right_leg = attacking_model
+        .root_mut()
+        .child_mut("right_leg")
+        .pose
+        .rotation;
+    assert!((attacking_right_leg[0] - -1.4137167).abs() < 1e-6);
+    assert!((attacking_right_leg[1] - PI / 10.0).abs() < 1e-6);
+    assert!((attacking_right_leg[2] - 0.07853982).abs() < 1e-6);
+}
+
+#[test]
 fn pillager_swings_its_arms_when_walking() {
     // Vanilla `IllagerModel.setupAnim` swings the separate arms with the `HumanoidModel`
     // amplitude `cos(pos * 0.6662 [+ π]) * 2.0 * speed * 0.5` (right arm a half-cycle out of

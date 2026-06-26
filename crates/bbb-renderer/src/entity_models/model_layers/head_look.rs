@@ -820,7 +820,7 @@ pub(in crate::entity_models) fn witch_nose_bob_pose(
 /// right leg (part offset `x < 0`) is in phase and the left leg a half-cycle out of
 /// phase, both legs sitting at `z = 0`. The base leg pose carries no `xRot`, so it
 /// is set (not accumulated). The `IllagerModel` riding sit pose (fixed `-1.4137167`
-/// with leg yaw/roll splay) is a separate deferred pose.
+/// with leg yaw/roll splay) is a separate model-local branch.
 pub(in crate::entity_models) fn half_amplitude_leg_swing_pose(
     base: PartPose,
     walk_animation_pos: f32,

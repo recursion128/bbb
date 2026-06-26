@@ -261,6 +261,10 @@ entity_render_state! {
     /// position for non-passenger entities and the vehicle walk animation position when riding a
     /// living entity.
     (with_worn_head_animation_pos) worn_head_animation_pos: f32 = 0.0;
+    /// Vanilla `IllagerRenderState.isRiding` (`entity.isPassenger()`): an illager riding any vehicle
+    /// uses the fixed seated arm/leg pose before its arm-pose branch runs. `false` for every
+    /// non-passenger entity; currently consumed by `IllagerModel`.
+    (with_is_riding) is_riding: bool = false;
     /// Vanilla `HumanoidRenderState.attackTime` (`LivingEntity.getAttackAnim(partialTick)`): the
     /// lerped `0..1` melee swing progress that `HumanoidModel.setupAttackAnimation` turns into the
     /// body twist + arm whack (the off arm tracked via [`attack_arm_off_hand`](Self::attack_arm_off_hand)).
@@ -2031,6 +2035,7 @@ mod tests {
                 walk_animation_pos: 0.0,
                 walk_animation_speed: 0.0,
                 worn_head_animation_pos: 0.0,
+                is_riding: false,
                 attack_anim: 0.0,
                 attack_arm_off_hand: false,
                 age_in_ticks: 0.0,

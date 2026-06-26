@@ -395,7 +395,8 @@ fn resolve_illager_arm_pose(
 /// aggressive illusioner draws its bow ([`apply_illager_bow_aim`]); an aggressive vindicator either
 /// reaches with empty zombie arms ([`apply_zombie_arms_held_out_named`]) or chops its axe
 /// ([`apply_humanoid_weapon_swing_down`]); a celebrating evoker/vindicator dances
-/// ([`illager_celebrate_arm_pose`]). The riding sit pose defers.
+/// ([`illager_celebrate_arm_pose`]). Riding illagers use vanilla's fixed seated leg pose before
+/// those arm-pose branches run.
 pub(in crate::entity_models) struct IllagerModel {
     root: ModelPart,
     pose: IllagerArmPose,
@@ -432,16 +433,22 @@ impl EntityModel for IllagerModel {
         );
         let limb_swing = render_state.walk_animation_pos;
         let limb_swing_amount = render_state.walk_animation_speed;
-        apply_half_amplitude_leg_swing(&mut self.root, limb_swing, limb_swing_amount);
+        if render_state.is_riding {
+            apply_illager_riding_pose(&mut self.root, self.pose.uses_separate_arms());
+        } else {
+            apply_half_amplitude_leg_swing(&mut self.root, limb_swing, limb_swing_amount);
+        }
         let age = render_state.age_in_ticks;
         match self.pose {
             // The folded `arms` part is static — vanilla never animates it (it swings the invisible
             // separate arms), so the crossed illager only swings its legs.
             IllagerArmPose::Crossed => {}
             IllagerArmPose::Swing => {
-                for name in ["right_arm", "left_arm"] {
-                    let arm = self.root.child_mut(name);
-                    arm.pose = humanoid_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
+                if !render_state.is_riding {
+                    for name in ["right_arm", "left_arm"] {
+                        let arm = self.root.child_mut(name);
+                        arm.pose = humanoid_arm_swing_pose(arm.pose, limb_swing, limb_swing_amount);
+                    }
                 }
                 // Vanilla `Pillager.getArmPose`: `CROSSBOW_CHARGE` (drawing) takes priority over
                 // `CROSSBOW_HOLD` (holding a level crossbow). A charging pillager pulls the crossbow back
@@ -499,4 +506,16 @@ impl EntityModel for IllagerModel {
             }
         }
     }
+}
+
+fn apply_illager_riding_pose(root: &mut ModelPart, has_separate_arms: bool) {
+    use std::f32::consts::PI;
+
+    if has_separate_arms {
+        for name in ["right_arm", "left_arm"] {
+            root.child_mut(name).pose.rotation = [-PI / 5.0, 0.0, 0.0];
+        }
+    }
+    root.child_mut("right_leg").pose.rotation = [-1.4137167, PI / 10.0, 0.07853982];
+    root.child_mut("left_leg").pose.rotation = [-1.4137167, -PI / 10.0, -0.07853982];
 }

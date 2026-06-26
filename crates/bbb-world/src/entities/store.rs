@@ -855,6 +855,9 @@ impl EntityStore {
         let walk_animation_position = client_animations
             .animations
             .walk_animation_position(partial_ticks);
+        let is_passenger = mount
+            .as_ref()
+            .is_some_and(|mount| mount.vehicle_id.is_some());
         // Vanilla `LivingEntityRenderer.extractRenderState`: worn skull animation normally mirrors
         // the entity walk position, but while riding a living entity it reads the vehicle's walk
         // animation position even though the passenger's own limb swing is stopped.
@@ -872,6 +875,7 @@ impl EntityStore {
             y_rot: transform.y_rot,
             x_rot: transform.x_rot,
             y_head_rot: transform.y_head_rot,
+            is_passenger,
             age_ticks: client_animations.animations.age_ticks,
             is_fully_frozen,
             is_aggressive,

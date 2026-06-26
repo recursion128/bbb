@@ -630,8 +630,11 @@ When an agent does any of the following, update this file in the same slice:
     right arm raises overhead (`xRot = -1.8849558 + cos(age·0.09)·0.15`) and chops with
     `+= sin(t·π)·2.2 - sin((1-(1-t)²)·π)·0.4`, the left arm trails
     (`xRot = cos(age·0.19)·0.5 + sin(t·π)·1.2 - …·0.4`), both yawing apart `±π/20` with the
-    shared `bobArms` roll. `IllagerModel` is not a `HumanoidModel`, so there is no body twist
-    (no `setupAttackAnimation`). The riding sit pose stays deferred. The villager family
+    shared `bobArms` roll. `IllagerModel.isRiding` is projected from `Entity.isPassenger()` too:
+    riding illagers use the vanilla fixed seated preset (`arms.xRot = -π/5`, legs at
+    `xRot = -1.4137167`, `yRot = ±π/10`, `zRot = ±0.07853982`) before the arm-pose
+    branch runs, so crossbow / spell / celebrate / attack arms can still overwrite it. `IllagerModel`
+    is not a `HumanoidModel`, so there is no body twist (no `setupAttackAnimation`). The villager family
     (`emit_villager_model`/`emit_wandering_trader_model`/`emit_witch_model` colored and
     `emit_villager_family_textured_passes` textured for the villager/wandering-trader, plus
     the witch's own `emit_witch_model`/`emit_witch_textured_model` that add the idle nose bob)
@@ -855,13 +858,8 @@ When an agent does any of the following, update this file in the same slice:
     driven by the projected `attack_anim`) are both implemented — see the skeleton note
     below; the zombified piglin `AnimationUtils.animateZombieArms` held-out pose (the
     `PiglinModel` `DANCING`, `CROSSBOW_HOLD`, `ATTACKING_WITH_MELEE_WEAPON`, and `ADMIRING_ITEM` poses
-    and the `AbstractPiglinModel` ear flap are implemented for the piglin/brute — see below), the `IllagerModel`
-    riding sit
-    pose (the default walk arm swing is implemented for the pillager, and the
-    evoker/illusioner spellcasting raise, the illusioner `BOW_AND_ARROW`, the pillager
-    `CROSSBOW_HOLD` and `CROSSBOW_CHARGE`, the evoker/vindicator `CELEBRATING`, and the
-    vindicator empty/armed `ATTACKING` poses are implemented — see the
-    illager note above), the `VillagerModel` unhappy
+    and the `AbstractPiglinModel` ear flap are implemented for the piglin/brute — see below),
+    the `VillagerModel` unhappy
     head shake (the `WitchModel` idle nose bob and `isHoldingItem` nose hold pose are
     implemented — see below; the `GoatModel` ramming head
     tilt is implemented — see the goat note below; the `HoglinModel` headbutt head ram is implemented — see the hoglin note above), (the `EndermanModel`
@@ -1231,7 +1229,8 @@ When an agent does any of the following, update this file in the same slice:
         (`attack_anim`/`attack_arm_off_hand` from the `ClientboundAnimate` packet, see
         the player entry above). Non-player default WHACK arm poses are also covered where vanilla
         uses model-specific branches: zombie-family `animateZombieArms`, skeleton melee,
-        and vindicator empty/armed `ATTACKING`. STAB/NONE swing-type parity on non-player
+        and vindicator empty/armed `ATTACKING`; illager riding sit pose is also covered
+        through the projected passenger state. STAB/NONE swing-type parity on non-player
         humanoids remains separate work.
       - remaining slices: held-item refinements (first-person viewmodel; remote
         and arbitrary dynamic profiled-player skins in
@@ -1971,11 +1970,11 @@ When an agent does any of the following, update this file in the same slice:
       shared `CustomHeadLayer` item path, and static skeleton/wither-skeleton/
       zombie/creeper skulls plus profileless default-player heads and profiled
       default-skin player heads are implemented by the skull branch;
-      live/dynamic profiled-player skin textures, riding sit pose,
+      live/dynamic profiled-player skin textures,
       illusioner clone offsets/invisible-body rendering, and renderer state
       extraction for dynamic arm visibility remain unsupported. Spellcasting,
       crossbow hold/charge, illusioner bow aim, evoker/vindicator celebrating,
-      and vindicator empty/armed attacking arm poses are implemented.
+      vindicator empty/armed attacking, and riding sit arm/leg poses are implemented.
     - armor stand entities as renderer-owned vanilla 26.1
       `ArmorStandModel.createBodyLayer()` geometry, including the normal layer,
       `ModelLayers.ARMOR_STAND_SMALL` `HumanoidModel.BABY_TRANSFORMER` root-part

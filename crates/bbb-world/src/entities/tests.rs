@@ -4893,13 +4893,14 @@ fn entity_model_sources_walk_animation_stops_for_passengers_and_the_dead() {
     const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
     const FLOAT_SERIALIZER_ID: i32 = 3;
 
-    let walk = |store: &WorldStore, id: i32| -> (f32, f32, f32) {
+    let walk = |store: &WorldStore, id: i32| -> (bool, f32, f32, f32) {
         let source = store
             .entity_model_sources_at_partial_tick(1.0)
             .into_iter()
             .find(|source| source.entity_id == id)
             .unwrap();
         (
+            source.is_passenger,
             source.walk_animation_position,
             source.walk_animation_speed,
             source.worn_head_animation_position,
@@ -4941,7 +4942,7 @@ fn entity_model_sources_walk_animation_stops_for_passengers_and_the_dead() {
         passenger_ids: vec![71],
     }));
     move_one_step(&mut store, 71, 0.0, 0.5);
-    assert_eq!(walk(&store, 71), (0.0, 0.0, 0.0));
+    assert_eq!(walk(&store, 71), (true, 0.0, 0.0, 0.0));
 
     // A cow riding a living entity still stops its own limb swing, but vanilla
     // `LivingEntityRenderer.extractRenderState` drives worn skull animation from the
@@ -4959,7 +4960,8 @@ fn entity_model_sources_walk_animation_stops_for_passengers_and_the_dead() {
         passenger_ids: vec![74],
     }));
     move_one_step(&mut store, 73, 0.0, 0.5);
-    let (passenger_pos, passenger_speed, worn_head_pos) = walk(&store, 74);
+    let (is_passenger, passenger_pos, passenger_speed, worn_head_pos) = walk(&store, 74);
+    assert!(is_passenger);
     assert_eq!((passenger_pos, passenger_speed), (0.0, 0.0));
     assert!(
         (worn_head_pos - 0.4).abs() < 1e-5,
@@ -4980,7 +4982,7 @@ fn entity_model_sources_walk_animation_stops_for_passengers_and_the_dead() {
         }],
     }));
     move_one_step(&mut store, 72, 0.0, 0.5);
-    assert_eq!(walk(&store, 72), (0.0, 0.0, 0.0));
+    assert_eq!(walk(&store, 72), (false, 0.0, 0.0, 0.0));
 }
 
 #[test]
