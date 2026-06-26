@@ -387,8 +387,24 @@ fn camel_saddle_layer_renders_for_adult_camel_and_husk_only() {
 
     let adult =
         EntityModelInstance::camel(760, [0.0, 64.0, 0.0], 0.0, CamelModelFamily::Camel, false);
-    let bare = entity_model_textured_mesh(&[adult], &atlas);
-    let saddled = entity_model_textured_mesh(&[adult.with_camel_saddle(true)], &atlas);
+    let bare_meshes = entity_model_textured_meshes(&[adult], &atlas);
+    let saddled_instance = adult.with_camel_saddle(true);
+    let saddled_meshes = entity_model_textured_meshes(&[saddled_instance], &atlas);
+    let bare = &bare_meshes.cutout;
+    let saddled = &saddled_meshes.cutout;
+    assert_eq!(saddled_meshes.submissions.len(), 2);
+    let saddle_submit = saddled_meshes.submissions[1];
+    assert_eq!(
+        saddle_submit.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(saddle_submit.texture, CAMEL_SADDLE_TEXTURE_REF);
+    assert_eq!(saddle_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((saddle_submit.order, saddle_submit.submit_sequence), (0, 1));
+    assert_eq!(
+        saddle_submit.transform,
+        entity_model_root_transform(saddled_instance)
+    );
     assert_eq!(saddled.cutout_faces - bare.cutout_faces, 120);
     assert_eq!(saddled.vertices.len() - bare.vertices.len(), 480);
 
@@ -430,7 +446,23 @@ fn camel_saddle_layer_renders_for_adult_camel_and_husk_only() {
         false,
     )
     .with_camel_saddle(true);
-    let husk_mesh = entity_model_textured_mesh(&[husk], &atlas);
+    let husk_meshes = entity_model_textured_meshes(&[husk], &atlas);
+    let husk_mesh = &husk_meshes.cutout;
+    assert_eq!(husk_meshes.submissions.len(), 2);
+    let husk_saddle_submit = husk_meshes.submissions[1];
+    assert_eq!(
+        husk_saddle_submit.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(husk_saddle_submit.texture, CAMEL_HUSK_SADDLE_TEXTURE_REF);
+    assert_eq!(
+        (husk_saddle_submit.order, husk_saddle_submit.submit_sequence),
+        (0, 1)
+    );
+    assert_eq!(
+        husk_saddle_submit.transform,
+        entity_model_root_transform(husk)
+    );
     assert_eq!(husk_mesh.cutout_faces - bare.cutout_faces, 120);
     let husk_saddle_uv = atlas
         .entries

@@ -355,8 +355,24 @@ fn strider_saddle_layer_renders_for_adults_only() {
     .unwrap();
 
     let adult = EntityModelInstance::strider(752, [0.0, 64.0, 0.0], 0.0, false, false);
-    let bare = entity_model_textured_mesh(&[adult], &atlas);
-    let saddled = entity_model_textured_mesh(&[adult.with_strider_saddle(true)], &atlas);
+    let bare_meshes = entity_model_textured_meshes(&[adult], &atlas);
+    let saddled_instance = adult.with_strider_saddle(true);
+    let saddled_meshes = entity_model_textured_meshes(&[saddled_instance], &atlas);
+    let bare = &bare_meshes.cutout;
+    let saddled = &saddled_meshes.cutout;
+    assert_eq!(saddled_meshes.submissions.len(), 2);
+    let saddle_submit = saddled_meshes.submissions[1];
+    assert_eq!(
+        saddle_submit.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(saddle_submit.texture, STRIDER_SADDLE_TEXTURE_REF);
+    assert_eq!(saddle_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((saddle_submit.order, saddle_submit.submit_sequence), (0, 1));
+    assert_eq!(
+        saddle_submit.transform,
+        entity_model_root_transform(saddled_instance)
+    );
     assert_eq!(saddled.cutout_faces - bare.cutout_faces, 54);
     assert_eq!(saddled.vertices.len() - bare.vertices.len(), 216);
 

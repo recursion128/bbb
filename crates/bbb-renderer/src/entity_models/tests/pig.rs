@@ -375,26 +375,30 @@ fn pig_saddle_layer_renders_for_adults_only() {
         PIG_TEMPERATE_BABY_TEXTURE_REF,
     ]))
     .unwrap();
-    let bare = entity_model_textured_mesh(
-        &[EntityModelInstance::pig(
-            521,
-            [0.0, 64.0, 0.0],
-            0.0,
-            PigModelVariant::Temperate,
-            false,
-        )],
-        &atlas,
+    let adult = EntityModelInstance::pig(
+        521,
+        [0.0, 64.0, 0.0],
+        0.0,
+        PigModelVariant::Temperate,
+        false,
     );
-    let saddled = entity_model_textured_mesh(
-        &[EntityModelInstance::pig(
-            522,
-            [0.0, 64.0, 0.0],
-            0.0,
-            PigModelVariant::Temperate,
-            false,
-        )
-        .with_pig_saddle(true)],
-        &atlas,
+    let bare_meshes = entity_model_textured_meshes(&[adult], &atlas);
+    let saddled_instance = adult.with_pig_saddle(true);
+    let saddled_meshes = entity_model_textured_meshes(&[saddled_instance], &atlas);
+    let bare = &bare_meshes.cutout;
+    let saddled = &saddled_meshes.cutout;
+    assert_eq!(saddled_meshes.submissions.len(), 2);
+    let saddle_submit = saddled_meshes.submissions[1];
+    assert_eq!(
+        saddle_submit.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(saddle_submit.texture, PIG_SADDLE_TEXTURE_REF);
+    assert_eq!(saddle_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((saddle_submit.order, saddle_submit.submit_sequence), (0, 1));
+    assert_eq!(
+        saddle_submit.transform,
+        entity_model_root_transform(saddled_instance)
     );
     assert_eq!(saddled.cutout_faces - bare.cutout_faces, 42);
     assert_eq!(saddled.vertices.len() - bare.vertices.len(), 168);
