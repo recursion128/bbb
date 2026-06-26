@@ -513,9 +513,9 @@ pub struct EntityModelSourceState {
     /// `-1.0` when no roll-out is running and for every other entity.
     #[serde(default = "entity_model_source_default_neg_one")]
     pub armadillo_roll_out_seconds: f32,
-    /// Vanilla armadillo peek timing (`Armadillo.peekAnimationState`). Deferred: always `-1.0` (the
-    /// peek's `fastForward` baseline is not cleanly derivable; see `docs/unsupported-features.md`),
-    /// so the renderer applies no `ARMADILLO_PEEK` keyframe.
+    /// Vanilla armadillo peek timing (`Armadillo.peekAnimationState`): the elapsed seconds for
+    /// `ARMADILLO_PEEK`, including the first SCARED setup tick's `fastForward(50, 1.0F)` baseline
+    /// and entity event `64` restart. `-1.0` when no peek is running and for every other entity.
     #[serde(default = "entity_model_source_default_neg_one")]
     pub armadillo_peek_seconds: f32,
     /// Vanilla `FoxRenderState.headRollAngle` (`Fox.getHeadRollAngle(partialTick)`, the lerped client

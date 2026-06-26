@@ -123,6 +123,12 @@ const ARMADILLO_STATE_IDLE_ID: i32 = 0;
 const ARMADILLO_STATE_ROLLING_ID: i32 = 1;
 const ARMADILLO_STATE_SCARED_ID: i32 = 2;
 const ARMADILLO_STATE_UNROLLING_ID: i32 = 3;
+/// Vanilla `Armadillo.ArmadilloState.SCARED.animationDuration()`; the first SCARED
+/// setup tick starts `peekAnimationState` and `fastForward`s it by this many ticks.
+const ARMADILLO_STATE_SCARED_ANIMATION_TICKS: i32 = 50;
+/// Vanilla `Armadillo.handleEntityEvent(64)`: the client marks `peekReceivedClient`
+/// so the next `setupAnimationStates()` restarts the peek animation.
+const ARMADILLO_PEEK_EVENT_ID: i8 = 64;
 const POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
 const POLAR_BEAR_STAND_ANIMATION_TICKS: f32 = 6.0;
 /// Vanilla `Creeper.DATA_SWELL_DIR` (synced fuse direction, default `-1`) and
@@ -1053,7 +1059,7 @@ fn armadillo_should_hide_in_shell(state_id: i32, in_state_ticks: u32) -> bool {
     }
 }
 
-/// Canonical client-side armadillo roll animation state, mirroring vanilla
+/// Canonical client-side armadillo roll/peek animation state, mirroring vanilla
 /// `Armadillo.setupAnimationStates()`. The synced `ARMADILLO_STATE` (the `ArmadilloState` enum)
 /// plus the `inStateTicks` counter (vanilla `Armadillo.inStateTicks`, reset to `0` on a state
 /// change and `++` each tick) drive both the `isHidingInShell` shell-ball swap and the three
@@ -1061,8 +1067,8 @@ fn armadillo_should_hide_in_shell(state_id: i32, in_state_ticks: u32) -> bool {
 /// UNROLLING, `peek` while SCARED. We reconstruct `inStateTicks` from the `age_ticks` recorded when
 /// the state last changed, and reuse [`KeyframeAnimationState`] for the rollUp/rollOut elapsed
 /// timers (started at the state-entry age, vanilla's `.startIfStopped(tickCount)`). The `peek`
-/// animation, which vanilla `fastForward`s on the first SCARED tick, is deferred (see
-/// `docs/unsupported-features.md`).
+/// timer stores a signed start tick because vanilla `fastForward(50, 1.0F)` subtracts 50 ticks from
+/// `AnimationState.startTick`, which can make the first client tick's start negative.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ArmadilloAnimationState {
     /// The current `ArmadilloState` ordinal id (the synced `ARMADILLO_STATE`).
@@ -1074,30 +1080,92 @@ pub struct ArmadilloAnimationState {
     pub roll_up: KeyframeAnimationState,
     /// The `ARMADILLO_ROLL_OUT` one-shot, started on the rising edge into UNROLLING.
     pub roll_out: KeyframeAnimationState,
+    /// The `ARMADILLO_PEEK` one-shot, active while SCARED. Signed for vanilla fast-forward.
+    #[serde(default)]
+    pub peek_start_age: Option<i32>,
+    /// Vanilla `peekReceivedClient`, set by entity event `64` and consumed by the next SCARED setup.
+    #[serde(default)]
+    pub peek_received_client: bool,
 }
 
 impl ArmadilloAnimationState {
+    fn new(state_id: i32, age_ticks: u32) -> Self {
+        let mut state = Self {
+            state_id,
+            state_change_age: age_ticks,
+            roll_up: KeyframeAnimationState { start_age: None },
+            roll_out: KeyframeAnimationState { start_age: None },
+            peek_start_age: None,
+            peek_received_client: false,
+        };
+        state.setup_animation_states(age_ticks);
+        state
+    }
+
     /// Vanilla `Armadillo.switchToState` + `setupAnimationStates`: a change to a different ordinal
     /// resets `inStateTicks` (so we re-anchor `state_change_age`) and `.startIfStopped`s the new
-    /// state's transition timer (rollUp into ROLLING, rollOut into UNROLLING); the other timers
-    /// stop. A redundant re-set to the same state keeps the running timers.
+    /// state's transition timer (rollUp into ROLLING, rollOut into UNROLLING, peek while SCARED);
+    /// the other timers stop. A redundant re-set to the same state keeps the running timers.
     fn set_state(&mut self, state_id: i32, age_ticks: u32) {
         if state_id == self.state_id {
             return;
         }
         self.state_id = state_id;
         self.state_change_age = age_ticks;
-        self.roll_up.start_age = (state_id == ARMADILLO_STATE_ROLLING_ID).then_some(age_ticks);
-        self.roll_out.start_age = (state_id == ARMADILLO_STATE_UNROLLING_ID).then_some(age_ticks);
+        self.setup_animation_states(age_ticks);
+    }
+
+    fn in_state_ticks(self, age_ticks: u32) -> u32 {
+        age_ticks.saturating_sub(self.state_change_age)
+    }
+
+    fn setup_animation_states(&mut self, age_ticks: u32) {
+        match self.state_id {
+            ARMADILLO_STATE_ROLLING_ID => {
+                self.roll_out.start_age = None;
+                if self.roll_up.start_age.is_none() {
+                    self.roll_up.start_age = Some(age_ticks);
+                }
+                self.peek_start_age = None;
+            }
+            ARMADILLO_STATE_SCARED_ID => {
+                self.roll_out.start_age = None;
+                self.roll_up.start_age = None;
+                if self.peek_received_client {
+                    self.peek_start_age = None;
+                    self.peek_received_client = false;
+                }
+                if self.in_state_ticks(age_ticks) == 0 {
+                    self.peek_start_age =
+                        Some(age_ticks as i32 - ARMADILLO_STATE_SCARED_ANIMATION_TICKS);
+                } else if self.peek_start_age.is_none() {
+                    self.peek_start_age = Some(age_ticks as i32);
+                }
+            }
+            ARMADILLO_STATE_UNROLLING_ID => {
+                if self.roll_out.start_age.is_none() {
+                    self.roll_out.start_age = Some(age_ticks);
+                }
+                self.roll_up.start_age = None;
+                self.peek_start_age = None;
+            }
+            _ => {
+                self.roll_out.start_age = None;
+                self.roll_up.start_age = None;
+                self.peek_start_age = None;
+            }
+        }
     }
 
     /// Vanilla `Armadillo.shouldHideInShell()` = `getState().shouldHideInShell(inStateTicks)`,
     /// projected for the renderer `isHidingInShell` shell-ball swap.
     fn is_hiding_in_shell(self, age_ticks: u32) -> bool {
-        armadillo_should_hide_in_shell(
-            self.state_id,
-            age_ticks.saturating_sub(self.state_change_age),
-        )
+        armadillo_should_hide_in_shell(self.state_id, self.in_state_ticks(age_ticks))
+    }
+
+    fn peek_elapsed_seconds(self, age_ticks: u32, partial_tick: f32) -> Option<f32> {
+        self.peek_start_age
+            .map(|start| (age_ticks as f32 - start as f32 + partial_tick) / 20.0)
     }
 }
 
@@ -3298,18 +3366,7 @@ impl EntityClientAnimationState {
                 if let Some(armadillo) = self.armadillo.as_mut() {
                     armadillo.set_state(state_id, self.age_ticks);
                 } else if state_id != ARMADILLO_STATE_IDLE_ID {
-                    self.armadillo = Some(ArmadilloAnimationState {
-                        state_id,
-                        state_change_age: self.age_ticks,
-                        roll_up: KeyframeAnimationState {
-                            start_age: (state_id == ARMADILLO_STATE_ROLLING_ID)
-                                .then_some(self.age_ticks),
-                        },
-                        roll_out: KeyframeAnimationState {
-                            start_age: (state_id == ARMADILLO_STATE_UNROLLING_ID)
-                                .then_some(self.age_ticks),
-                        },
-                    });
+                    self.armadillo = Some(ArmadilloAnimationState::new(state_id, self.age_ticks));
                 }
             }
             VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID => {
@@ -3450,6 +3507,18 @@ impl EntityClientAnimationState {
                     hop: KeyframeAnimationState { start_age: None },
                 })
                 .start_jump();
+        } else if entity_type_id == VANILLA_ENTITY_TYPE_ARMADILLO_ID
+            && event_id == ARMADILLO_PEEK_EVENT_ID
+        {
+            // Vanilla `Armadillo.handleEntityEvent(64)`: set `peekReceivedClient`; the next
+            // `setupAnimationStates()` consumes it by stopping the old peek and immediately
+            // restarting it for the current SCARED state.
+            let age_ticks = self.age_ticks;
+            self.armadillo
+                .get_or_insert_with(|| {
+                    ArmadilloAnimationState::new(ARMADILLO_STATE_IDLE_ID, age_ticks)
+                })
+                .peek_received_client = true;
         } else if entity_type_id == VANILLA_ENTITY_TYPE_CREAKING_ID
             && matches!(
                 event_id,
@@ -3914,12 +3983,13 @@ impl EntityClientAnimationState {
             .unwrap_or(-1.0)
     }
 
-    /// The armadillo's `ARMADILLO_PEEK` elapsed seconds (vanilla `peekAnimationState`). Deferred: the
-    /// `fastForward(50, 1.0)` baseline vanilla applies on the first SCARED tick is not cleanly
-    /// derivable from the synced state + `inStateTicks`, so the peek is never driven (`-1.0`), and
-    /// the renderer applies no `ARMADILLO_PEEK` keyframe. See `docs/unsupported-features.md`.
-    pub fn armadillo_peek_seconds(&self, _partial_tick: f32) -> f32 {
-        -1.0
+    /// The armadillo's `ARMADILLO_PEEK` elapsed seconds (vanilla `peekAnimationState`), including the
+    /// first SCARED setup tick's `fastForward(50, 1.0F)` baseline and entity event `64` restart. `-1.0`
+    /// when no peek is running and for every other entity.
+    pub fn armadillo_peek_seconds(&self, partial_tick: f32) -> f32 {
+        self.armadillo
+            .and_then(|state| state.peek_elapsed_seconds(self.age_ticks, partial_tick))
+            .unwrap_or(-1.0)
     }
 
     /// Vanilla `Fox.getHeadRollAngle(partialTick)` projected for the renderer
@@ -4458,6 +4528,11 @@ impl EntityClientAnimationState {
                 };
                 if settled {
                     self.panda = None;
+                }
+            }
+            VANILLA_ENTITY_TYPE_ARMADILLO_ID => {
+                if let Some(armadillo) = self.armadillo.as_mut() {
+                    armadillo.setup_animation_states(self.age_ticks);
                 }
             }
             VANILLA_ENTITY_TYPE_FOX_ID => {

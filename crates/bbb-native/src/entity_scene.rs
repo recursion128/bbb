@@ -4221,6 +4221,44 @@ mod tests {
     }
 
     #[test]
+    fn entity_model_instances_project_armadillo_peek_seconds_from_world() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            100,
+            VANILLA_ENTITY_TYPE_ARMADILLO_ID,
+            [1.0, 64.0, -2.0],
+        ));
+
+        let peek = |world: &WorldStore| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .iter()
+                .find(|instance| instance.entity_id == 100)
+                .map(|instance| instance.render_state.armadillo_peek_seconds)
+        };
+
+        assert_eq!(peek(&world), Some(-1.0));
+
+        // Vanilla `Armadillo.setupAnimationStates`: entering SCARED starts `peekAnimationState`
+        // and fast-forwards it by 50 ticks; that elapsed value flows through EntityModelSourceState
+        // into the renderer EntityRenderState (`ArmadilloModel.setupAnim` `ARMADILLO_PEEK`).
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 100,
+            values: vec![protocol_armadillo_state_data(2)],
+        }));
+        let fast_forwarded = peek(&world).expect("the scared armadillo projects an instance");
+        assert!((fast_forwarded - 2.5).abs() < 1.0e-6);
+
+        // Event 64 restarts the peek on the next client tick.
+        assert!(world.apply_entity_event(EntityEvent {
+            entity_id: 100,
+            event_id: 64,
+        }));
+        world.advance_entity_client_animations(1);
+        let restarted = peek(&world).expect("the restarted armadillo projects an instance");
+        assert!((restarted - 0.0).abs() < 1.0e-6);
+    }
+
+    #[test]
     fn entity_model_instances_project_axolotl_play_dead_from_world() {
         const AXOLOTL_PLAYING_DEAD_DATA_ID: u8 = 19;
 
@@ -10029,8 +10067,8 @@ mod tests {
         // The armadillo was a placeholder bounds box; it now resolves to the real
         // `AdultArmadilloModel` / `BabyArmadilloModel`, keyed off the synced `AgeableMob.DATA_BABY_ID`
         // (index 16, default adult), as in the vanilla `AgeableMobRenderer`. The clamped head look,
-        // `applyWalk` leg sway, and the roll-out / roll-up / peek keyframe transitions are deferred
-        // entity-side state.
+        // `applyWalk` leg sway, and the roll-out / roll-up / peek keyframe transitions are projected
+        // separately from world animation state.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_ARMADILLO_ID, &[]),
             EntityModelKind::Armadillo {

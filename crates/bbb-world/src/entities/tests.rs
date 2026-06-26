@@ -5555,7 +5555,9 @@ fn entity_model_sources_project_armadillo_state_animation() {
     // UNROLLING, and `shouldHideInShell(inStateTicks)` gates the shell-ball swap.
     const ARMADILLO_STATE_DATA_ID: u8 = 18;
     const ARMADILLO_STATE_ROLLING_ID: i32 = 1;
+    const ARMADILLO_STATE_SCARED_ID: i32 = 2;
     const ARMADILLO_STATE_UNROLLING_ID: i32 = 3;
+    const ARMADILLO_PEEK_EVENT_ID: i8 = 64;
     let project = |store: &WorldStore| {
         let source = store
             .entity_model_sources_at_partial_tick(0.0)
@@ -5607,8 +5609,52 @@ fn entity_model_sources_project_armadillo_state_animation() {
     // The roll-up keeps advancing past the hide (vanilla applies it regardless of hiding).
     assert!((project(&store).1 - 0.3).abs() < 1.0e-6);
 
+    // Entering SCARED starts `peekAnimationState` and immediately fast-forwards it by the state's
+    // 50-tick animation duration. The shell stays hidden for the whole SCARED state.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 4,
+        values: vec![protocol_enum_data(
+            ARMADILLO_STATE_DATA_ID,
+            EntityDataEnumSerializer::ArmadilloState,
+            ARMADILLO_STATE_SCARED_ID,
+        )],
+    }));
+    let (hiding, roll_up, roll_out, peek) = project(&store);
+    assert!(hiding, "SCARED always hides in the shell");
+    assert_eq!((roll_up, roll_out), (-1.0, -1.0));
+    assert!(
+        (peek - 2.5).abs() < 1.0e-6,
+        "first SCARED setup fast-forwards peek by 50 ticks"
+    );
+    store.advance_entity_client_animations(1);
+    assert!(
+        (project(&store).3 - 2.55).abs() < 1.0e-6,
+        "peek keeps advancing while SCARED"
+    );
+
+    // Vanilla entity event 64 sets `peekReceivedClient`; the next setup tick stops the old
+    // fast-forwarded peek and immediately restarts it from 0.
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 4,
+        event_id: ARMADILLO_PEEK_EVENT_ID,
+    }));
+    assert!(
+        (project(&store).3 - 2.55).abs() < 1.0e-6,
+        "the event is consumed by the next setup tick, not synchronously"
+    );
+    store.advance_entity_client_animations(1);
+    assert!(
+        (project(&store).3 - 0.0).abs() < 1.0e-6,
+        "event 64 restarts peek on the next tick"
+    );
+    store.advance_entity_client_animations(1);
+    assert!(
+        (project(&store).3 - 0.05).abs() < 1.0e-6,
+        "restarted peek advances from the new tick"
+    );
+
     // Entering UNROLLING restarts: the roll-out timer starts at 0, the roll-up stops, and the body
-    // stays hidden while `inStateTicks < 26` (`UNROLLING.shouldHideInShell`).
+    // stays hidden while `inStateTicks < 26` (`UNROLLING.shouldHideInShell`); peek stops.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 4,
         values: vec![protocol_enum_data(
@@ -5617,13 +5663,14 @@ fn entity_model_sources_project_armadillo_state_animation() {
             ARMADILLO_STATE_UNROLLING_ID,
         )],
     }));
-    let (hiding, roll_up, roll_out, _) = project(&store);
+    let (hiding, roll_up, roll_out, peek) = project(&store);
     assert!(
         hiding,
         "unrolling keeps the ball until inStateTicks reaches 26"
     );
     assert_eq!(roll_up, -1.0, "the roll-up timer stops on the transition");
     assert!((roll_out - 0.0).abs() < 1.0e-6, "roll-out starts at 0s");
+    assert_eq!(peek, -1.0, "the peek timer stops on the transition");
 
     // The body stays hidden through inStateTicks 25, then un-hides at 26.
     store.advance_entity_client_animations(25);

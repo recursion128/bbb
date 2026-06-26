@@ -22,10 +22,9 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 // legs, and head as the armadillo moves (the head walk roll ADDS onto the look). Both the adult
 // ([`ARMADILLO_WALK`]) and the baby ([`ARMADILLO_BABY_WALK`], the same bones at slightly different
 // timestamps) walks are reproduced. The roll-up ([`ARMADILLO_ROLL_UP`]) and roll-out
-// ([`ARMADILLO_ROLL_OUT`]) keyframe transitions then ADD onto the walk pose during the visible
-// not-hiding window, so a rolling armadillo curls in during its first ~5 ticks and an unrolling one
-// un-curls during its last ~4 ticks before/after the ball takes over. The SCARED `peek` animation
-// (its `fastForward` baseline) and the texture-backed path are deferred.
+// ([`ARMADILLO_ROLL_OUT`]) keyframe transitions then ADD onto the walk pose, and the SCARED
+// [`ARMADILLO_PEEK`] applies to the visible head/front-leg/shell-ball parts even while hiding. The
+// texture-backed path is covered by the shared textured entity submission path.
 
 // ----- Adult -----
 
@@ -1228,6 +1227,167 @@ pub(in crate::entity_models) const ARMADILLO_ROLL_OUT: AnimationDefinition = Ani
     bones: &ARMADILLO_ROLL_OUT_BONES,
 };
 
+// ----- `ArmadilloAnimation.ARMADILLO_PEEK` (the scared peek; length 2.5s, non-looping) -----
+//
+// Vanilla starts `peekAnimationState` while SCARED. On the first SCARED setup tick it immediately
+// `fastForward(50, 1.0F)`s the timer to the end pose; entity event `64` stops it so the next setup
+// tick restarts from the beginning. The animation applies even while hiding in the shell: the body,
+// tail, and hind legs are hidden by `skipDraw`/visibility, but the head, front legs, and `cube` stay
+// visible and receive their keyframes.
+
+const ARMADILLO_PEEK_HEAD_ROT: [Keyframe; 12] = [
+    keyframe(0.0, degree_vec(-70.0, 0.0, 0.0), LINEAR),
+    keyframe(0.15, degree_vec(-65.0, 0.0, 0.0), LINEAR),
+    keyframe(0.4, degree_vec(-50.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.7, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.9, degree_vec(-7.5, 0.0, 45.0), CATMULLROM),
+    keyframe(1.15, degree_vec(-7.5, 0.0, 45.0), LINEAR),
+    keyframe(1.3, degree_vec(-0.8639, -1.4959, -39.1287), CATMULLROM),
+    keyframe(1.6, degree_vec(-0.8639, -1.4959, -39.1287), LINEAR),
+    keyframe(1.75, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.8, degree_vec(-25.0, 0.0, 0.0), LINEAR),
+    keyframe(1.85, degree_vec(-70.0, 0.0, 0.0), LINEAR),
+];
+const ARMADILLO_PEEK_HEAD_POS: [Keyframe; 15] = [
+    keyframe(0.0, pos_vec(0.0, 1.0, 7.0), LINEAR),
+    keyframe(0.05, pos_vec(0.0, 1.0, 4.0), LINEAR),
+    keyframe(0.15, pos_vec(0.0, 1.0, 4.0), LINEAR),
+    keyframe(0.25, pos_vec(0.0, 1.0, 5.0), LINEAR),
+    keyframe(0.35, pos_vec(0.0, 1.0, 0.2), LINEAR),
+    keyframe(0.4, pos_vec(0.0, 1.0, 0.2), LINEAR),
+    keyframe(0.5, pos_vec(0.0, 2.1, 1.2), LINEAR),
+    keyframe(0.6, pos_vec(0.0, 1.1, 0.2), LINEAR),
+    keyframe(0.7, pos_vec(0.0, 1.1, 0.2), LINEAR),
+    keyframe(1.75, pos_vec(0.0, 1.1, 0.2), LINEAR),
+    keyframe(1.8, pos_vec(0.0, 0.1, 0.2), LINEAR),
+    keyframe(1.95, pos_vec(0.0, 0.1, 5.2), LINEAR),
+    keyframe(2.0, pos_vec(0.0, 0.1, 7.2), LINEAR),
+    keyframe(2.15, pos_vec(0.0, 0.1, 8.2), LINEAR),
+    keyframe(2.3, pos_vec(0.0, 0.1, 5.2), LINEAR),
+];
+const ARMADILLO_PEEK_RIGHT_HIND_LEG_POS: [Keyframe; 1] =
+    [keyframe(0.0, pos_vec(0.0, 3.0, -2.0), LINEAR)];
+const ARMADILLO_PEEK_LEFT_HIND_LEG_POS: [Keyframe; 1] =
+    [keyframe(0.0, pos_vec(0.0, 3.0, -2.0), LINEAR)];
+const ARMADILLO_PEEK_RIGHT_FRONT_LEG_ROT: [Keyframe; 7] = [
+    keyframe(0.0, degree_vec(-90.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5833, degree_vec(-90.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.8333, degree_vec(-45.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.0, degree_vec(-45.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.75, degree_vec(-45.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.8, degree_vec(-90.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.95, degree_vec(-90.0, 0.0, 0.0), CATMULLROM),
+];
+const ARMADILLO_PEEK_RIGHT_FRONT_LEG_POS: [Keyframe; 9] = [
+    keyframe(0.0, pos_vec(-1.0, 2.0, 2.0), LINEAR),
+    keyframe(0.5833, pos_vec(-1.0, 2.0, 2.0), CATMULLROM),
+    keyframe(0.6667, pos_vec(-1.0, 2.0, -2.0), CATMULLROM),
+    keyframe(0.8333, pos_vec(-1.0, 2.0, -1.0), CATMULLROM),
+    keyframe(1.0, pos_vec(-1.0, 2.0, -1.0), CATMULLROM),
+    keyframe(1.75, pos_vec(-1.0, 2.0, -1.0), CATMULLROM),
+    keyframe(1.95, pos_vec(-1.0, 2.0, -1.0), CATMULLROM),
+    keyframe(2.0, pos_vec(-1.0, 2.0, 3.0), CATMULLROM),
+    keyframe(2.15, pos_vec(-1.0, 3.0, 4.0), CATMULLROM),
+];
+const ARMADILLO_PEEK_LEFT_FRONT_LEG_ROT: [Keyframe; 7] = [
+    keyframe(0.0, degree_vec(-90.0, 0.0, 0.0), LINEAR),
+    keyframe(0.6667, degree_vec(-90.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.8333, degree_vec(-45.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.0, degree_vec(-45.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.75, degree_vec(-45.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.8, degree_vec(-90.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.95, degree_vec(-90.0, 0.0, 0.0), CATMULLROM),
+];
+const ARMADILLO_PEEK_LEFT_FRONT_LEG_POS: [Keyframe; 9] = [
+    keyframe(0.0, pos_vec(1.0, 2.0, 2.0), LINEAR),
+    keyframe(0.6667, pos_vec(1.0, 2.0, 2.0), CATMULLROM),
+    keyframe(0.75, pos_vec(1.0, 2.0, -2.0), CATMULLROM),
+    keyframe(0.8333, pos_vec(1.0, 2.0, -1.0), CATMULLROM),
+    keyframe(1.0, pos_vec(1.0, 2.0, -1.0), CATMULLROM),
+    keyframe(1.75, pos_vec(1.0, 2.0, -1.0), CATMULLROM),
+    keyframe(1.95, pos_vec(1.0, 2.0, -1.0), CATMULLROM),
+    keyframe(2.0, pos_vec(1.0, 2.0, 3.0), CATMULLROM),
+    keyframe(2.15, pos_vec(1.0, 3.0, 4.0), CATMULLROM),
+];
+const ARMADILLO_PEEK_CUBE_ROT: [Keyframe; 11] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.25, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.35, degree_vec(15.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(-7.5, 0.0, 0.0), LINEAR),
+    keyframe(0.6, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.05, degree_vec(-17.5, 0.0, 0.0), LINEAR),
+    keyframe(2.15, degree_vec(-25.0, 0.0, 0.0), LINEAR),
+    keyframe(2.25, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.3, degree_vec(12.5, 0.0, 0.0), LINEAR),
+    keyframe(2.5, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const ARMADILLO_PEEK_CUBE_POS: [Keyframe; 10] = [
+    keyframe(0.25, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.35, pos_vec(0.0, 1.6, 0.0), LINEAR),
+    keyframe(0.5, pos_vec(0.0, 0.5, 0.0), LINEAR),
+    keyframe(0.6, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.05, pos_vec(0.0, 1.2, 0.0), LINEAR),
+    keyframe(2.15, pos_vec(0.0, 1.7, 0.0), LINEAR),
+    keyframe(2.25, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.3, pos_vec(0.0, 1.3, 0.0), LINEAR),
+    keyframe(2.5, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const ARMADILLO_PEEK_HEAD_CHANNELS: [AnimationChannel; 2] =
+    [rot(&ARMADILLO_PEEK_HEAD_ROT), pos(&ARMADILLO_PEEK_HEAD_POS)];
+const ARMADILLO_PEEK_RIGHT_HIND_LEG_CHANNELS: [AnimationChannel; 1] =
+    [pos(&ARMADILLO_PEEK_RIGHT_HIND_LEG_POS)];
+const ARMADILLO_PEEK_LEFT_HIND_LEG_CHANNELS: [AnimationChannel; 1] =
+    [pos(&ARMADILLO_PEEK_LEFT_HIND_LEG_POS)];
+const ARMADILLO_PEEK_RIGHT_FRONT_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&ARMADILLO_PEEK_RIGHT_FRONT_LEG_ROT),
+    pos(&ARMADILLO_PEEK_RIGHT_FRONT_LEG_POS),
+];
+const ARMADILLO_PEEK_LEFT_FRONT_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&ARMADILLO_PEEK_LEFT_FRONT_LEG_ROT),
+    pos(&ARMADILLO_PEEK_LEFT_FRONT_LEG_POS),
+];
+const ARMADILLO_PEEK_CUBE_CHANNELS: [AnimationChannel; 2] =
+    [rot(&ARMADILLO_PEEK_CUBE_ROT), pos(&ARMADILLO_PEEK_CUBE_POS)];
+
+const ARMADILLO_PEEK_BONES: [BoneAnimation; 6] = [
+    BoneAnimation {
+        bone: "head",
+        channels: &ARMADILLO_PEEK_HEAD_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_hind_leg",
+        channels: &ARMADILLO_PEEK_RIGHT_HIND_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_hind_leg",
+        channels: &ARMADILLO_PEEK_LEFT_HIND_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_front_leg",
+        channels: &ARMADILLO_PEEK_RIGHT_FRONT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_front_leg",
+        channels: &ARMADILLO_PEEK_LEFT_FRONT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "cube",
+        channels: &ARMADILLO_PEEK_CUBE_CHANNELS,
+    },
+];
+
+/// Vanilla `ArmadilloAnimation.ARMADILLO_PEEK`: the 2.5s non-looping SCARED peek, sampled by
+/// `ArmadilloModel.setupAnim` at `armadillo_peek_seconds`.
+pub(in crate::entity_models) const ARMADILLO_PEEK: AnimationDefinition = AnimationDefinition {
+    length_seconds: 2.5,
+    looping: false,
+    bones: &ARMADILLO_PEEK_BONES,
+};
+
 // ----- `BabyArmadilloAnimation.ARMADILLO_BABY_WALK` (the baby walk; length 1.4583s, looping) -----
 //
 // The same seven bones (body / tail / four legs / head) and value structure as the adult walk, with
@@ -1411,9 +1571,9 @@ pub(in crate::entity_models) const ARMADILLO_BABY_WALK: AnimationDefinition = An
 /// off a synthetic root, built from the baked adult/baby geometry selected at construction. When
 /// `rolled_up` (the projected `armadillo_is_hiding_in_shell` — the steady SCARED ball plus the
 /// `inStateTicks`-gated ROLLING/UNROLLING windows), the shell-ball variant tree is used and held
-/// static (no head look, no walk). Colored-only: while not hiding, `setup_anim` sets the clamped
-/// head look, adds the looping walk cycle onto the body, tail, head, and four legs, then ADDS the
-/// active roll-up / roll-out transition keyframes for the visible curl-in / un-curl.
+/// static except for vanilla keyframes that target the still-visible shell ball, head, and front
+/// legs. While not hiding, `setup_anim` sets the clamped head look, adds the looping walk cycle onto
+/// the body, tail, head, and four legs, then ADDS the active roll-up / roll-out / peek keyframes.
 pub(in crate::entity_models) struct ArmadilloModel {
     root: ModelPart,
     baby: bool,
@@ -1446,15 +1606,61 @@ impl EntityModel for ArmadilloModel {
     }
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
-        // While hiding in its shell the rolled-up variant tree is rendered as the static shell ball
-        // (vanilla shows the ball with no head look or walk). Vanilla still `apply`s rollUp/rollOut/
-        // peek to the `cube` regardless of hiding, but bbb renders the ball statically and the rolled
-        // tree carries none of the transition bones, so this branch is a no-op. The user-visible
-        // curl-in (ROLLING ticks 0–5) and un-curl (UNROLLING ticks 26–30) both fall in the NOT-hiding
-        // window below, where the full rest tree is posed by the rollUp/rollOut keyframes.
+        let roll_out = (instance.render_state.armadillo_roll_out_seconds >= 0.0).then(|| {
+            keyframe_elapsed_seconds(
+                &ARMADILLO_ROLL_OUT,
+                instance.render_state.armadillo_roll_out_seconds,
+            )
+        });
+        let roll_up = (instance.render_state.armadillo_roll_up_seconds >= 0.0).then(|| {
+            keyframe_elapsed_seconds(
+                &ARMADILLO_ROLL_UP,
+                instance.render_state.armadillo_roll_up_seconds,
+            )
+        });
+        let peek = (instance.render_state.armadillo_peek_seconds >= 0.0).then(|| {
+            keyframe_elapsed_seconds(
+                &ARMADILLO_PEEK,
+                instance.render_state.armadillo_peek_seconds,
+            )
+        });
+
+        let apply_definition =
+            |part: &mut ModelPart, definition: &AnimationDefinition, bone: &str, elapsed: f32| {
+                let (position, rotation) = sample_bone_offsets(definition, bone, elapsed, 1.0);
+                part.pose = keyframe_animated_pose(part.pose, position, rotation);
+            };
+        let apply_one_shots = |part: &mut ModelPart, bone: &str| {
+            if let Some(elapsed) = roll_out {
+                apply_definition(part, &ARMADILLO_ROLL_OUT, bone, elapsed);
+            }
+            if let Some(elapsed) = roll_up {
+                apply_definition(part, &ARMADILLO_ROLL_UP, bone, elapsed);
+            }
+            if let Some(elapsed) = peek {
+                apply_definition(part, &ARMADILLO_PEEK, bone, elapsed);
+            }
+        };
+
+        // Vanilla still applies the one-shot keyframes while hiding, but skips the head look and
+        // walk. The rolled tree keeps exactly the visible parts: body→head, both front legs, and
+        // shell `cube` (body cubes/tail/hind legs are absent/hidden).
         if self.rolled_up {
+            if peek.is_some() || roll_out.is_some() || roll_up.is_some() {
+                {
+                    let head = self.root.child_mut("body").child_mut("head");
+                    apply_one_shots(head, "head");
+                }
+                for bone in ["right_front_leg", "left_front_leg"] {
+                    let part = self.root.child_mut(bone);
+                    apply_one_shots(part, bone);
+                }
+                let cube = self.root.child_mut("cube");
+                apply_one_shots(cube, "cube");
+            }
             return;
         }
+
         // Vanilla `ArmadilloModel.setupAnim` (not hiding): the clamped head look, then
         // `applyWalk(walkAnimationPos, walkAnimationSpeed, 16.5, 2.5)`. The walk rolls the body
         // (CatmullRom z-sway + y-bob, carrying the tail and head), rocks the tail, adds a head z-roll
@@ -1481,49 +1687,23 @@ impl EntityModel for ArmadilloModel {
             part.pose = keyframe_animated_pose(part.pose, position, rotation);
         };
 
-        // Vanilla `ArmadilloModel.setupAnim` then `apply`s the roll-up / roll-out one-shots AFTER the
-        // walk, ADDING their offsets onto the already-walk-posed parts. The world projects the elapsed
-        // seconds for the active transition (rollUp on entry to ROLLING, rollOut on entry to
-        // UNROLLING; `-1.0` when stopped). Both are non-looping, so the sampling clamps at the final
-        // keyframe. The `peek` SCARED animation is deferred (its `fastForward` baseline is not cleanly
-        // derivable — see `docs/unsupported-features.md`), so no peek offsets are applied. The babies
-        // share the adult bone names, so the shared adult defs apply to both (the baby curl-in pose is
-        // a close approximation; the baby-specific roll defs stay deferred).
-        let roll_up = (instance.render_state.armadillo_roll_up_seconds >= 0.0).then(|| {
-            keyframe_elapsed_seconds(
-                &ARMADILLO_ROLL_UP,
-                instance.render_state.armadillo_roll_up_seconds,
-            )
-        });
-        let roll_out = (instance.render_state.armadillo_roll_out_seconds >= 0.0).then(|| {
-            keyframe_elapsed_seconds(
-                &ARMADILLO_ROLL_OUT,
-                instance.render_state.armadillo_roll_out_seconds,
-            )
-        });
-        let apply_roll = |part: &mut ModelPart, bone: &str| {
-            if let Some(elapsed) = roll_up {
-                let (position, rotation) =
-                    sample_bone_offsets(&ARMADILLO_ROLL_UP, bone, elapsed, 1.0);
-                part.pose = keyframe_animated_pose(part.pose, position, rotation);
-            }
-            if let Some(elapsed) = roll_out {
-                let (position, rotation) =
-                    sample_bone_offsets(&ARMADILLO_ROLL_OUT, bone, elapsed, 1.0);
-                part.pose = keyframe_animated_pose(part.pose, position, rotation);
-            }
-        };
+        // Vanilla `ArmadilloModel.setupAnim` then `apply`s rollOut, rollUp, and peek AFTER the walk,
+        // ADDING their offsets onto the already-walk-posed parts. All three definitions are
+        // non-looping, so sampling clamps at the final keyframe once their elapsed seconds exceed the
+        // definition length. The babies share the adult bone names, so the shared adult defs apply to
+        // both (the baby curl-in/peek pose is a close approximation; baby-specific roll defs stay
+        // deferred).
 
         {
             let body = self.root.child_mut("body");
             animate(body, "body");
-            apply_roll(body, "body");
+            apply_one_shots(body, "body");
             let tail = body.child_mut("tail");
             animate(tail, "tail");
-            apply_roll(tail, "tail");
+            apply_one_shots(tail, "tail");
 
             // The body-nested `head`: the clamped look (set) plus the walk z-roll (added), then the
-            // roll-up/roll-out head offsets ADD onto the composed look + walk rotation.
+            // one-shot head offsets ADD onto the composed look + walk rotation.
             let head = body.child_mut("head");
             let (_, head_walk_rot) = sample_bone_offsets(walk, "head", seconds, scale);
             head.pose.rotation = [
@@ -1531,7 +1711,7 @@ impl EntityModel for ArmadilloModel {
                 head_yaw.to_radians() + head_walk_rot[1],
                 head.pose.rotation[2] + head_walk_rot[2],
             ];
-            apply_roll(head, "head");
+            apply_one_shots(head, "head");
         }
         for bone in [
             "right_hind_leg",
@@ -1541,7 +1721,7 @@ impl EntityModel for ArmadilloModel {
         ] {
             let part = self.root.child_mut(bone);
             animate(part, bone);
-            apply_roll(part, bone);
+            apply_one_shots(part, bone);
         }
     }
 }

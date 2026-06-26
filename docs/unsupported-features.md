@@ -2750,13 +2750,15 @@ When an agent does any of the following, update this file in the same slice:
       `armadillo_roll_up_seconds`) curls the body/tail/head/four legs in during the first ~5 ticks before the
       ball takes over, and `ARMADILLO_ROLL_OUT` (1.5 s, non-looping; started on entry to `UNROLLING`,
       projected as `armadillo_roll_out_seconds`) un-curls them once the ball un-hides at tick 26 (the
-      `body` channel is POSITION-only). Both transitions' `cube` channels stay deferred — bbb renders the
-      shell ball statically while hiding, and the rest tree (which the keyframes pose) carries no `cube`. The
-      `ARMADILLO_PEEK` SCARED animation (2.5 s, non-looping) stays deferred: vanilla `start`s it then
-      `fastForward(50, 1.0)`s it on the first SCARED tick, a baseline that is not cleanly derivable from the
-      synced state + `inStateTicks` alone, so `armadillo_peek_seconds` is always `-1.0` (no peek keyframe
-      applied). The baby rolls share the adult roll defs (same bone names; the baby-specific roll keyframes
-      stay deferred). While NOT hiding, the clamped head
+      `body` channel is POSITION-only). Both transitions' `cube` channels stay deferred — the shell `cube`
+      itself stays static for roll-up / roll-out while hiding, but the visible head/front-leg roll keyframes
+      are now applied in the rolled tree too. `ARMADILLO_PEEK` SCARED animation (2.5 s, non-looping) is now reproduced: vanilla
+      `start`s it then `fastForward(50, 1.0)`s it on the first SCARED setup tick, and entity event `64`
+      (`peekReceivedClient`) restarts it on the next client tick. World projects `armadillo_peek_seconds`
+      from the synced state + reconstructed `inStateTicks` with a signed start tick for the fast-forward
+      baseline, and the renderer applies the vanilla head / front-leg / shell-`cube` keyframes even while the
+      armadillo is hiding in its shell. The baby rolls share the adult roll defs (same bone names; the
+      baby-specific roll keyframes stay deferred). While NOT hiding, the clamped head
       look is reproduced: `setupAnim` clamps the projected look to vanilla's bounds (pitch `head.xRot` to
       [-22.5, 25], yaw `head.yRot` to [-32.5, 32.5] degrees) and turns the body-nested head pivot so the
       snout and both ears inherit the turn; the look is skipped while hiding (the head is balled up). The

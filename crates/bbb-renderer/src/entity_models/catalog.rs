@@ -378,11 +378,10 @@ pub enum EntityModelKind {
     /// tendril sway, the attack / sonic-boom / digging / emerge / roar / sniff keyframe
     /// animations, and the four emissive overlay layers are deferred.
     Warden,
-    /// `AdultArmadilloModel` / `BabyArmadilloModel` at their `createBodyLayer` rest pose (`baby`
-    /// selects the baby body layer). When `rolled_up` (the synced `Armadillo.ArmadilloState`
-    /// is `SCARED`), `setupAnim`'s `isHidingInShell` swap is emitted — the body cubes, tail, and
-    /// hind legs hide and the shell-ball `cube` shows. The clamped head look, the `applyWalk`
-    /// leg sway, and the roll-out / roll-up / peek keyframe transition animations are deferred.
+    /// `AdultArmadilloModel` / `BabyArmadilloModel` (`baby` selects the baby body layer). When
+    /// `rolled_up`, `setupAnim`'s `isHidingInShell` swap is emitted — the body cubes, tail, and
+    /// hind legs hide and the shell-ball `cube` shows. The clamped head look, `applyWalk`, roll-out /
+    /// roll-up, and peek keyframe animations are projected through render-state fields.
     Armadillo {
         baby: bool,
         rolled_up: bool,

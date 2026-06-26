@@ -441,6 +441,25 @@ fn armadillo_roll_up_and_out_animations_match_vanilla_definitions() {
     // negates Y to the model's coordinate convention, so the offset is `-5`).
     let (body_pos, _) = sample_bone_offsets(&ARMADILLO_ROLL_OUT, "body", 1.25, 1.0);
     assert!((body_pos[1] - -5.0).abs() < 1.0e-4);
+
+    // Vanilla `ARMADILLO_PEEK`: 2.5 s non-looping, six bones (head, four legs, shell `cube`) and
+    // 82 keyframes. The shell `cube` is included because vanilla still applies peek while the
+    // armadillo is hiding in its shell.
+    assert_eq!(ARMADILLO_PEEK.length_seconds, 2.5);
+    assert!(!ARMADILLO_PEEK.looping);
+    assert_eq!(ARMADILLO_PEEK.bones.len(), 6);
+    let peek_keyframes: usize = ARMADILLO_PEEK
+        .bones
+        .iter()
+        .flat_map(|bone| bone.channels.iter())
+        .map(|channel| channel.keyframes.len())
+        .sum();
+    assert_eq!(peek_keyframes, 82);
+    let (_, head_rot) = sample_bone_offsets(&ARMADILLO_PEEK, "head", 1.3, 1.0);
+    assert!((head_rot[2] - (-39.1287_f32).to_radians()).abs() < 1.0e-4);
+    let (cube_pos, cube_rot) = sample_bone_offsets(&ARMADILLO_PEEK, "cube", 2.15, 1.0);
+    assert!((cube_pos[1] - -1.7).abs() < 1.0e-4);
+    assert!((cube_rot[0] - (-25.0_f32).to_radians()).abs() < 1.0e-4);
 }
 
 #[test]
@@ -515,9 +534,10 @@ fn armadillo_unrolling_re_poses_off_the_bind_pose() {
 }
 
 #[test]
-fn armadillo_hidden_shows_the_static_ball_ignoring_roll_seconds() {
-    // While `isHidingInShell` (the `rolled_up` tree) the shell ball is rendered statically: the
-    // roll-up / roll-out elapsed seconds do not change the mesh (vanilla's `cube` wobble is deferred).
+fn armadillo_hidden_applies_visible_roll_keyframes() {
+    // While `isHidingInShell` (the `rolled_up` tree), vanilla still applies roll-up / roll-out
+    // keyframes after the visibility swap. bbb's rolled tree omits the hidden body/tail/hind legs
+    // and the roll `cube` channels, but it still re-poses the visible head and front legs.
     let hidden = entity_model_mesh(&[EntityModelInstance::armadillo(
         87,
         [0.0, 64.0, 0.0],
@@ -532,13 +552,61 @@ fn armadillo_hidden_shows_the_static_ball_ignoring_roll_seconds() {
         false,
         true,
     )
-    .with_armadillo_roll_up_seconds(0.2)
-    .with_armadillo_roll_out_seconds(1.0)]);
+    .with_armadillo_roll_up_seconds(0.2)]);
     // Six cubes → 36 faces / 144 vertices: the shell ball, head, ears, two front legs.
     assert_eq!(hidden.vertices.len(), 144);
-    assert_eq!(
+    assert_eq!(hidden.vertices.len(), hidden_rolling.vertices.len());
+    assert_ne!(
         hidden.vertices, hidden_rolling.vertices,
-        "a hidden armadillo shows the static ball regardless of the roll seconds"
+        "hidden armadillo roll keyframes move the visible head/front legs"
+    );
+}
+
+#[test]
+fn armadillo_peek_re_poses_visible_parts_even_while_hidden() {
+    // Vanilla `ArmadilloModel.setupAnim` applies `ARMADILLO_PEEK` after the hide/show swap. An
+    // unhidden armadillo moves its head and all four legs; a hidden armadillo still moves the
+    // visible head, front legs, and shell `cube`.
+    let rest = entity_model_mesh(&[EntityModelInstance::armadillo(
+        89,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+    )]);
+    let peeking = entity_model_mesh(&[EntityModelInstance::armadillo(
+        90,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+    )
+    .with_armadillo_peek_seconds(0.5)]);
+    assert_eq!(rest.vertices.len(), peeking.vertices.len());
+    assert_ne!(
+        rest.vertices, peeking.vertices,
+        "peek re-poses the expanded armadillo without changing cube count"
+    );
+
+    let hidden = entity_model_mesh(&[EntityModelInstance::armadillo(
+        91,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        true,
+    )]);
+    let hidden_peeking = entity_model_mesh(&[EntityModelInstance::armadillo(
+        92,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        true,
+    )
+    .with_armadillo_peek_seconds(2.15)]);
+    assert_eq!(hidden.vertices.len(), hidden_peeking.vertices.len());
+    assert_ne!(
+        hidden.vertices, hidden_peeking.vertices,
+        "peek moves the visible shell ball/head/front legs while hidden"
     );
 }
 
@@ -637,27 +705,38 @@ fn armadillo_textured_render_matches_vanilla_renderer() {
         })
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    // Both ages, both rolled/unrolled, emit textured geometry tinted white.
+    // Both ages, both rolled/unrolled, emit textured geometry through a vanilla-shaped submission
+    // before folding into the cutout mesh.
     for baby in [false, true] {
         for rolled_up in [false, true] {
-            let mesh = entity_model_textured_mesh(
-                &[EntityModelInstance::armadillo(
-                    980,
-                    [0.0, 64.0, 0.0],
-                    0.0,
-                    baby,
-                    rolled_up,
-                )],
-                &atlas,
-            );
+            let instance =
+                EntityModelInstance::armadillo(980, [0.0, 64.0, 0.0], 15.0, baby, rolled_up)
+                    .with_armadillo_peek_seconds(if rolled_up { 2.15 } else { 0.5 });
+            let meshes = entity_model_textured_meshes(&[instance], &atlas);
             assert!(
-                !mesh.vertices.is_empty(),
+                !meshes.cutout.vertices.is_empty(),
                 "baby={baby} rolled_up={rolled_up} emits textured geometry"
             );
-            assert!(mesh
+            assert!(meshes
+                .cutout
                 .vertices
                 .iter()
                 .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+            assert_eq!(meshes.submissions.len(), 1);
+            let submit = meshes.submissions[0];
+            assert_eq!(
+                submit.texture,
+                if baby {
+                    ARMADILLO_BABY_TEXTURE_REF
+                } else {
+                    ARMADILLO_TEXTURE_REF
+                }
+            );
+            assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+            assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+            assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+            assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+            assert_eq!(submit.transform, entity_model_root_transform(instance));
         }
     }
 }

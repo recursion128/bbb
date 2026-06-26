@@ -538,9 +538,9 @@ entity_render_state! {
     /// UNROLLING): the elapsed seconds since the un-curl began, sampled from `ARMADILLO_ROLL_OUT`.
     /// `-1.0` for every other entity and for an armadillo that is not unrolling.
     (with_armadillo_roll_out_seconds) armadillo_roll_out_seconds: f32 = -1.0;
-    /// Vanilla armadillo peek timing (`Armadillo.peekAnimationState`). Deferred: always `-1.0` (the
-    /// peek's `fastForward` baseline is not cleanly derivable; see `docs/unsupported-features.md`), so
-    /// `ArmadilloModel.setupAnim` applies no `ARMADILLO_PEEK` keyframe.
+    /// Vanilla armadillo peek timing (`Armadillo.peekAnimationState`): elapsed seconds for
+    /// `ARMADILLO_PEEK`, including the first SCARED setup tick's `fastForward(50, 1.0F)` baseline
+    /// and entity event `64` restart. `-1.0` for every other entity and while no peek is running.
     (with_armadillo_peek_seconds) armadillo_peek_seconds: f32 = -1.0;
     /// Vanilla `FoxRenderState.headRollAngle` (`Fox.getHeadRollAngle(partialTick)`): an interested
     /// fox tilts its head, which `FoxModel.setWalkingPose` applies as `head.zRot = headRollAngle`.
