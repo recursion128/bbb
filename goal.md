@@ -99,7 +99,7 @@ Drowned swimAmount 重姿态已完成：world 侧按 `LivingEntity.updateSwimAmo
       或独立动态 skin atlas，先接 `CustomHeadLayer` / `SkullBlockRenderer`
       的 `player_head`，再推广到玩家实体本体、cape、elytra 等层。
 2. **世界侧动画计时器**
-   海豚游泳重姿态、panda sit/lie/roll 等 client-tick 动画。
+   panda sit/lie/roll 等 client-tick 动画。
 
 > 落地前务必先在 bbb 里 grep 确认该 feature 确实缺失（历史上多次「以为缺失实则已实现」）。
 > 索引/数据陷阱见 memory `entity-metadata-index-layout.md`；模型/代理历史见 `proxy-entity-replacement.md`。
