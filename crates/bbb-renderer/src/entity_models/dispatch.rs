@@ -474,6 +474,11 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             } else {
                 TURTLE_TEXTURE_REF
             };
+            let render_type = if baby {
+                EntityModelLayerRenderType::EntityCutoutCull
+            } else {
+                EntityModelLayerRenderType::EntityCutout
+            };
             let has_egg = !baby && instance.render_state.turtle_has_egg;
             let mut transform = entity_model_root_transform(*instance);
             if has_egg {
@@ -484,7 +489,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                 transform,
                 instance,
                 &[EntityModelLayerPass::base(
-                    EntityModelLayerRenderType::EntityCutout,
+                    render_type,
                     texture,
                     [1.0, 1.0, 1.0, 1.0],
                 )],

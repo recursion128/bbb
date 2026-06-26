@@ -2300,7 +2300,9 @@ When an agent does any of the following, update this file in the same slice:
       flag are now projected into the entity render state), under the standard
       `LivingEntityRenderer.setupRotations`. The textured base layer draws the
       `textures/entity/turtle/turtle.png` / `turtle_baby.png` atlas references into the cutout
-      mesh (default `RenderTypes::entityCutout`), hand-emitted through the same animated
+      mesh while preserving the vanilla submission render type split: adult
+      `AdultTurtleModel` uses `RenderTypes::entityCutout`, while baby `BabyTurtleModel` uses
+      `RenderTypes::entityCutoutCull`. Both are hand-emitted through the same animated
       head/body/leg hierarchy as the colored path. When the adult turtle carries an egg, the
       `egg_belly` overlay shell (`AdultTurtleModel`'s `texOffs(70, 33)` 9×18×1 plane at the body
       pose) is drawn on both paths and the whole model is shifted by `this.root.y--`, gated on the
@@ -2431,10 +2433,10 @@ When an agent does any of the following, update this file in the same slice:
       baby uses the `MeshTransformer.scaling(0.5)` body layer (the shared mesh-transformer root
       scale, like the squid baby). The textured base layer draws the
       `textures/entity/dolphin/dolphin.png` / `dolphin_baby.png` atlas references into the cutout
-      mesh (the `DolphinModel` default `RenderTypes::entityCutoutNoCull`), hand-emitted through the
-      same animated hierarchy as the colored path (which approximates the texture with a single
-      representative grey). This already covers the older goal-listed dolphin swim re-pose item. The
-      held-item carry layer (`DolphinCarryingItemLayer`) is now implemented
+      mesh (`DolphinModel` calls `EntityModel`'s default `RenderTypes::entityCutout`),
+      hand-emitted through the same animated hierarchy as the colored path (which approximates the
+      texture with a single representative grey). This already covers the older goal-listed dolphin
+      swim re-pose item. The held-item carry layer (`DolphinCarryingItemLayer`) is now implemented
       through the shared item-model pass: renderer exposes `dolphin_carried_item_transform`, which keeps
       the item in the unscaled entity root frame and applies the vanilla `xRot`-dependent `(0, y, z)`
       offset, while native reads the main-hand stack and bakes it with `ItemDisplayContext.GROUND`.

@@ -415,6 +415,17 @@ fn turtle_textured_mesh_uses_vanilla_geometry_and_animates() {
     // 42 faces / 168 vertices, with nothing on the translucent or eyes passes.
     let adult = EntityModelInstance::turtle(750, [0.0, 64.0, 0.0], 0.0, false).with_on_ground(true);
     let meshes = entity_model_textured_meshes(&[adult], &atlas);
+    assert_eq!(meshes.submissions.len(), 1);
+    let adult_submit = meshes.submissions[0];
+    assert_eq!(
+        adult_submit.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(adult_submit.texture, TURTLE_TEXTURE_REF);
+    assert_eq!(adult_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(adult_submit.order, 0);
+    assert_eq!(adult_submit.submit_sequence, 0);
+    assert_eq!(adult_submit.transform, entity_model_root_transform(adult));
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
     assert_eq!(meshes.cutout.cutout_faces, 42);
@@ -425,9 +436,21 @@ fn turtle_textured_mesh_uses_vanilla_geometry_and_animates() {
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
 
-    // Baby is the smaller model: six cubes → 36 faces / 144 vertices.
+    // Baby is the smaller model and uses vanilla `BabyTurtleModel`'s `entityCutoutCull` render type:
+    // six cubes → 36 faces / 144 vertices.
     let baby = EntityModelInstance::turtle(751, [0.0, 64.0, 0.0], 0.0, true);
     let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
+    assert_eq!(baby_meshes.submissions.len(), 1);
+    let baby_submit = baby_meshes.submissions[0];
+    assert_eq!(
+        baby_submit.render_type,
+        EntityModelLayerRenderType::EntityCutoutCull
+    );
+    assert_eq!(baby_submit.texture, TURTLE_BABY_TEXTURE_REF);
+    assert_eq!(baby_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(baby_submit.order, 0);
+    assert_eq!(baby_submit.submit_sequence, 0);
+    assert_eq!(baby_submit.transform, entity_model_root_transform(baby));
     assert_eq!(baby_meshes.cutout.vertices.len(), 144);
 
     // The head tracks the look, and the land walk differs from the water paddle.

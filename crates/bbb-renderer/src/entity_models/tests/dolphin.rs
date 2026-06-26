@@ -166,7 +166,8 @@ fn dolphin_texture_ref_matches_vanilla_renderer() {
 fn dolphin_textured_mesh_uses_vanilla_geometry_and_animates() {
     let (atlas, _) = build_entity_model_texture_atlas(&dolphin_texture_images()).unwrap();
 
-    // The dolphin draws into the cutout mesh (the `DolphinModel` default `entityCutoutNoCull`).
+    // The dolphin draws into the cutout mesh (`DolphinModel` uses `EntityModel`'s default
+    // `entityCutout` render type).
     // Eight cubes → 48 faces / 192 vertices, nothing on the translucent or eyes passes, white tint.
     let base = EntityModelInstance::dolphin(980, [0.0, 64.0, 0.0], 0.0, false);
     let meshes = entity_model_textured_meshes(&[base], &atlas);
