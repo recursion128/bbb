@@ -3046,8 +3046,9 @@ When an agent does any of the following, update this file in the same slice:
       is complete (nothing deferred on the geometry side). `LeashKnotRenderer` is a plain `EntityRenderer`
       that applies only the model flip (`scale(-1, -1, 1)`, no yaw / y-offset / scale), captured by
       `leash_knot_model_root_transform`. The base texture is now bound on the textured path
-      (`LEASH_KNOT_TEXTURE_REF`), the primary now-wired path, with nothing left deferred on the texture
-      side. The colored debug path stays as a fallback (it renders the knot with one brown tint)
+      (`LEASH_KNOT_TEXTURE_REF`), the primary now-wired path, with explicit submission metadata for vanilla
+      `entityCutout`, white tint, the renderer root transform, and `(order, submit_sequence) == (0, 0)`.
+      The colored debug path stays as a fallback (it renders the knot with one brown tint)
     - arrow and spectral arrow entities as renderer-owned vanilla 26.1 `ArrowModel.createBodyLayer()`
       geometry on the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type ids `6`
       (arrow) and `123` (spectral arrow) to the new `EntityModelKind::Arrow { texture }` (they share one model,
