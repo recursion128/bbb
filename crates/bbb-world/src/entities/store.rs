@@ -945,6 +945,7 @@ impl EntityStore {
                 .animations
                 .fox_crouch_amount(partial_ticks),
             wolf_wet_shade: client_animations.animations.wolf_wet_shade(partial_ticks),
+            wolf_shake_anim: client_animations.animations.wolf_shake_anim(partial_ticks),
             fox_is_crouching,
             fox_is_sleeping,
             fox_is_sitting,

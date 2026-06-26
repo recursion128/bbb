@@ -1,5 +1,6 @@
 use super::*;
 
+use crate::entity_models::model::EntityModel;
 use crate::entity_models::model::ModelCube;
 
 // The adult wolf tail bind pose, mirrored from the model file so the tail pose-math tests can run
@@ -759,6 +760,126 @@ fn wolf_wags_its_tail_when_walking() {
             "baby={baby}: a yRot tail wag deepens the tail X footprint: {rest_tail_x} -> {walk_tail_x}"
         );
     }
+}
+
+#[test]
+fn wolf_water_shake_roll_matches_vanilla_body_roll_angle() {
+    // Vanilla `WolfRenderState.getBodyRollAngle(offset)` clamps `(shakeAnim + offset) / 1.8` and
+    // applies two sine waves. Adult `AdultWolfModel.shakeOffWater` rolls the real head, body,
+    // upper-body mane, and real tail; baby `BabyWolfModel.shakeOffWater` rolls head/body/tail.
+    let shake_anim = 0.9;
+    assert_eq!(wolf_body_roll_angle(0.0, -0.16), 0.0);
+    assert!(wolf_body_roll_angle(2.5, 0.0).abs() < 1.0e-6);
+
+    let adult_instance = EntityModelInstance::wolf(170, [0.0, 64.0, 0.0], 0.0, false)
+        .with_wolf_shake_anim(shake_anim);
+    let mut adult = WolfModel::new(false, false);
+    adult.prepare(&adult_instance);
+    let adult_root = adult.root_mut();
+    assert!(
+        (adult_root.child_mut("body").pose.rotation[2] - wolf_body_roll_angle(shake_anim, -0.16))
+            .abs()
+            < 1.0e-6
+    );
+    assert!(
+        (adult_root
+            .child_mut("head")
+            .child_mut("real_head")
+            .pose
+            .rotation[2]
+            - wolf_body_roll_angle(shake_anim, 0.0))
+        .abs()
+            < 1.0e-6
+    );
+    assert!(
+        (adult_root.child_mut("upper_body").pose.rotation[2]
+            - wolf_body_roll_angle(shake_anim, -0.08))
+        .abs()
+            < 1.0e-6
+    );
+    assert!(
+        (adult_root
+            .child_mut("tail")
+            .child_mut("real_tail")
+            .pose
+            .rotation[2]
+            - wolf_body_roll_angle(shake_anim, -0.2))
+        .abs()
+            < 1.0e-6
+    );
+
+    let baby_instance = EntityModelInstance::wolf(171, [0.0, 64.0, 0.0], 0.0, true)
+        .with_wolf_shake_anim(shake_anim);
+    let mut baby = WolfModel::new(true, false);
+    baby.prepare(&baby_instance);
+    let baby_root = baby.root_mut();
+    assert!(
+        (baby_root.child_mut("body").pose.rotation[2] - wolf_body_roll_angle(shake_anim, -0.16))
+            .abs()
+            < 1.0e-6
+    );
+    assert!(
+        (baby_root.child_mut("head").pose.rotation[2] - wolf_body_roll_angle(shake_anim, 0.0))
+            .abs()
+            < 1.0e-6
+    );
+    assert!(
+        (baby_root.child_mut("tail").pose.rotation[2] - wolf_body_roll_angle(shake_anim, -0.2))
+            .abs()
+            < 1.0e-6
+    );
+}
+
+#[test]
+fn wolf_textured_mesh_applies_water_shake_roll_to_base_and_collar() {
+    let (atlas, _) = build_entity_model_texture_atlas(&wolf_texture_images()).unwrap();
+    let base = EntityModelInstance::wolf_state(
+        172,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        true,
+        false,
+        false,
+        Some(EntityDyeColor::Blue),
+    );
+    let dry = entity_model_textured_meshes(&[base], &atlas);
+    let shaking = entity_model_textured_meshes(&[base.with_wolf_shake_anim(0.9)], &atlas);
+
+    assert_eq!(dry.cutout.vertices.len(), shaking.cutout.vertices.len());
+    assert_ne!(
+        dry.cutout.vertices[..264],
+        shaking.cutout.vertices[..264],
+        "base wolf pass rolls while shaking water off"
+    );
+    assert_ne!(
+        dry.cutout.vertices[264..],
+        shaking.cutout.vertices[264..],
+        "collar pass reuses the same rolled wolf pose"
+    );
+
+    assert_eq!(shaking.submissions.len(), 2);
+    assert_eq!(shaking.submissions[0].texture, WOLF_TAME_TEXTURE_REF);
+    assert_eq!(shaking.submissions[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        (
+            shaking.submissions[0].collector_order,
+            shaking.submissions[0].submit_sequence
+        ),
+        (0, 0)
+    );
+    assert_eq!(shaking.submissions[1].texture, WOLF_COLLAR_TEXTURE_REF);
+    assert_eq!(
+        shaking.submissions[1].tint,
+        EntityDyeColor::Blue.texture_diffuse_color()
+    );
+    assert_eq!(
+        (
+            shaking.submissions[1].collector_order,
+            shaking.submissions[1].submit_sequence
+        ),
+        (1, 1)
+    );
 }
 
 #[test]

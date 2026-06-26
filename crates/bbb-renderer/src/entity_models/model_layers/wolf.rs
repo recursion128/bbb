@@ -350,13 +350,38 @@ fn baby_wolf_tree() -> ModelPart {
     ModelPart::new(PART_POSE_ZERO, Vec::new(), children)
 }
 
+/// Vanilla `WolfRenderState.getBodyRollAngle(offset)`: clamp `(shakeAnim + offset) / 1.8` to `0..1`,
+/// then use the paired sine wave to roll body parts while the wolf shakes water off.
+pub(in crate::entity_models) fn wolf_body_roll_angle(shake_anim: f32, offset: f32) -> f32 {
+    let progress = ((shake_anim + offset) / 1.8).clamp(0.0, 1.0);
+    (progress * std::f32::consts::PI).sin()
+        * (progress * std::f32::consts::PI * 11.0).sin()
+        * 0.15
+        * std::f32::consts::PI
+}
+
+fn apply_wolf_water_shake_roll(root: &mut ModelPart, baby: bool, shake_anim: f32) {
+    root.child_mut("body").pose.rotation[2] = wolf_body_roll_angle(shake_anim, -0.16);
+    if baby {
+        root.child_mut("head").pose.rotation[2] = wolf_body_roll_angle(shake_anim, 0.0);
+        root.child_mut("tail").pose.rotation[2] = wolf_body_roll_angle(shake_anim, -0.2);
+    } else {
+        root.child_mut("head").child_mut("real_head").pose.rotation[2] =
+            wolf_body_roll_angle(shake_anim, 0.0);
+        root.child_mut("upper_body").pose.rotation[2] = wolf_body_roll_angle(shake_anim, -0.08);
+        root.child_mut("tail").child_mut("real_tail").pose.rotation[2] =
+            wolf_body_roll_angle(shake_anim, -0.2);
+    }
+}
+
 /// Mutable wolf model, mirroring vanilla `WolfModel` / `BabyWolfModel`. The unified tree is built once
 /// with named children selected by `baby`: the `head` (carrying the ears/real head), `body`,
 /// `upper_body` mane (adult only), the four legs, and the `tail` (carrying its tip). `setup_anim` runs
 /// the shared `WolfModel.setupAnim`: the head follows the look, then either the `setSittingPose` fold
 /// (body tilt + leg tuck + tail lift) or the `QuadrupedModel` diagonal leg swing, then the tail `xRot`
 /// (`tailAngle`) + wag `yRot` (angry → the raised constant). The collar dye overlay is a second
-/// textured pass on the same posed tree; wet shade is a pass tint, while the water-shake roll is deferred.
+/// textured pass on the same posed tree; wet shade is a pass tint, while `shakeAnim` rolls the body /
+/// mane / tail as the wolf dries off.
 pub(in crate::entity_models) struct WolfModel {
     root: ModelPart,
     baby: bool,
@@ -428,5 +453,7 @@ impl EntityModel for WolfModel {
                 render_state.walk_animation_speed,
             )
         };
+
+        apply_wolf_water_shake_roll(&mut self.root, self.baby, render_state.wolf_shake_anim);
     }
 }

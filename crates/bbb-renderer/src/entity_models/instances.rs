@@ -777,6 +777,10 @@ entity_render_state! {
     /// base wolf model only. `1.0` is dry/white; wet wolves start at `0.75` and
     /// brighten as the shake/drying timer advances.
     (with_wolf_wet_shade) wolf_wet_shade: f32 = 1.0;
+    /// Vanilla `WolfRenderState.shakeAnim` (`Wolf.getShakeAnim(partialTick)`): the
+    /// partial-lerped water-shake timer used by `getBodyRollAngle(offset)` to roll
+    /// the body, adult mane, and tail while drying off. `0.0` for a dry wolf.
+    (with_wolf_shake_anim) wolf_shake_anim: f32 = 0.0;
     /// Vanilla `ParrotRenderState.pose == SITTING` (`Parrot.isInSittingPose()`, the
     /// `TamableAnimal.DATA_FLAGS_ID` sitting bit): a perched parrot, whose
     /// `ParrotModel.prepare(SITTING)` raises every part `y += 1.9`, folds the legs
@@ -2181,6 +2185,7 @@ mod tests {
                 wolf_tail_angle: std::f32::consts::PI / 5.0,
                 wolf_sitting: false,
                 wolf_wet_shade: 1.0,
+                wolf_shake_anim: 0.0,
                 parrot_sitting: false,
                 turtle_has_egg: false,
                 turtle_laying_egg: false,

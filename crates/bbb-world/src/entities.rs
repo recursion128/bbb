@@ -530,6 +530,11 @@ pub struct EntityModelSourceState {
     /// `0.75`, then brightens with the shake/drying timer; `1.0` for a dry wolf and every non-wolf.
     #[serde(default = "entity_model_source_default_scale")]
     pub wolf_wet_shade: f32,
+    /// Vanilla `WolfRenderState.shakeAnim` (`Wolf.getShakeAnim(partialTick)`): the same
+    /// partial-lerped water-shake timer, used by `WolfRenderState.getBodyRollAngle(offset)` for
+    /// the body / mane / tail roll. `0.0` for a dry wolf and every non-wolf.
+    #[serde(default)]
+    pub wolf_shake_anim: f32,
     /// Vanilla `VexRenderState.isCharging` (`Vex.isCharging`, the synced `DATA_FLAGS_ID & 1`):
     /// the vex is charging an attack, which `VexModel.setupAnim` shows by leveling the body
     /// (`xRot = 0`) and raising both arms (`setArmsCharging`). Projected only for the vex

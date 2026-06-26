@@ -748,10 +748,9 @@ When an agent does any of the following, update this file in the same slice:
     `getTailAngle()` an untamed wolf returns. An angry wolf instead holds the tail straight
     and raised (`wolf_angry_tail_pose`: `tail.yRot = 0`, `tail.xRot = getTailAngle() =
     1.5393804`, overriding the rest droop even when standing), driven by the `isAngry`
-    render state, in both the colored and textured paths. `isSitting` is a deferred AI state,
-    so a standing wolf always takes the leg-swing branch. The tame `tail.xRot = tailAngle`
-    health droop (it needs the wolf's health), the `shakeOffWater` body roll, and the sitting
-    pose are deferred. Deferred:
+    render state, in both the colored and textured paths. `isSitting`, tame
+    `tail.xRot = tailAngle` health droop, and the `shakeOffWater` water-shake roll are now
+    projected and applied on both render paths. Deferred:
     (1) the
     `Camel`/`Frog` `updateWalkAnimation` overrides use different
     distance→speed mappings AND gate on pose/jump animation states the client does not
@@ -983,10 +982,10 @@ When an agent does any of the following, update this file in the same slice:
       rusty/woods/chestnut/striped) × wild/tame/angry × adult/baby
       (`bee[...]`→`wolf_<coat>[_tame|_angry][_baby].png`), the 48 new biome faces
       joining the master atlas array (→359)
-    - add armor, head-shake/begging tilt, water-shake roll pose, base-model
+    - add armor, head-shake/begging tilt, base-model
       invisibility/outline handling, the white overlay, and remaining
       render-state extraction parity (sitting/head/tail/walk pose, wet shade
-      tint, packed lighting, and the hurt red overlay are now applied)
+      tint, water-shake roll pose, packed lighting, and the hurt red overlay are now applied)
   - Implement vanilla dropped-item follow-up rendering:
     - ground-context model rendering
     - bobbing
@@ -1401,8 +1400,10 @@ When an agent does any of the following, update this file in the same slice:
       list above), plus `Wolf.getWetShade(partialTick)` wet-shade tint on the
       base model (`WolfRenderer.getModelTint`: wet wolves start at `0.75` and
       brighten with the `shakeAnim += 0.05` drying timer; the collar layer keeps
-      its own dye tint/order). The armor layer, head-shake/begging tilt pose,
-      the water-shake body roll, base-model invisibility/outline handling,
+      its own dye tint/order), and the water-shake roll pose (`WolfRenderState.shakeAnim`
+      feeds `getBodyRollAngle(offset)` for the adult body / real-head / upper-body / real-tail
+      and the baby body / head / tail; the collar layer reuses the same rolled pose). The armor layer,
+      head-shake/begging tilt pose, base-model invisibility/outline handling,
       lighting, overlay, and remaining render-state extraction remain unsupported
     - base horse entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AbstractEquineModel.createBodyMesh(CubeDeformation.NONE)`,
@@ -3333,7 +3334,7 @@ When an agent does any of the following, update this file in the same slice:
     variants, equipment, skins, animation, lighting, custom/datapack cow/pig
     variant asset presentation, sheep
     head-look-pitch presentation,
-    wolf armor/head-shake/water-shake-roll pose presentation,
+    wolf armor/head-shake presentation,
     boat/raft paddle animation, damage roll, bubble wobble, and water-mask
     presentation,
     horse animation, donkey/mule animation presentation,

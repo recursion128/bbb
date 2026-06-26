@@ -984,8 +984,8 @@ pub(in crate::entity_models) fn wolf_tail_swing_pose(
 /// Vanilla `WolfModel.setupAnim` angry tail: an angry wolf zeroes the wag (`tail.yRot = 0`)
 /// and `getTailAngle()` returns the constant `1.5393804` (≈ 88°), so `tail.xRot` is *set*
 /// to that raised angle — overriding the layer's `π/5` wild rest droop. The offset and
-/// `zRot` are preserved. Driven by the `isAngry` render state; tame/health droop and
-/// sitting are projected separately, while the water-shake roll pose remains deferred.
+/// `zRot` is preserved so the water-shake roll can layer on later. Driven by the `isAngry`
+/// render state; tame/health droop and sitting are projected separately.
 pub(in crate::entity_models) const WOLF_ANGRY_TAIL_X_ROT: f32 = 1.5393804;
 
 pub(in crate::entity_models) fn wolf_angry_tail_pose(base: PartPose) -> PartPose {

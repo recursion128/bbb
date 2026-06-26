@@ -74,6 +74,9 @@ order 0、白 tint 和 `scale(2)·translate(0,-0.5,0)` root transform；dragon h
 Wolf 湿身 shade tint 已完成：world 侧按 `Wolf.getWetShade(partialTick)` 维护
 `isWet/shakeAnimO/shakeAnim` 计时，native 转抄到 render state，renderer 只把
 `wetShade` 乘到基础 wolf submit，collar 保持自己的染色 tint/order。
+Wolf water-shake roll pose 也已完成：同一 world `shakeAnim` 现在作为
+`WolfRenderState.shakeAnim` 转抄到 renderer，并按 vanilla
+`WolfRenderState.getBodyRollAngle(offset)` 滚动 adult/baby base 与 collar 模型。
 Drowned swimAmount 重姿态已完成：world 侧按 `LivingEntity.updateSwimAmount`
 从 synced `Pose.SWIMMING` 维护 `swimAmountO/swimAmount`（每 tick `±0.09`），native
 转抄 `swim_amount` 和 `bounding_box_height`，renderer 对 drowned base/outer 同步应用

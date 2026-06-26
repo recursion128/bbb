@@ -1337,6 +1337,7 @@ fn entity_model_instance(
         ))
         .with_wolf_sitting(wolf_sitting(source.entity_type_id, &source.data_values))
         .with_wolf_wet_shade(source.wolf_wet_shade)
+        .with_wolf_shake_anim(source.wolf_shake_anim)
         .with_parrot_sitting(parrot_sitting(source.entity_type_id, &source.data_values))
         .with_illager_spellcasting(illager_spellcasting(
             source.entity_type_id,
@@ -10451,14 +10452,16 @@ mod tests {
     fn entity_model_instance_projects_wolf_wet_shade_from_source() {
         // Vanilla `WolfRenderer.extractRenderState` copies `Wolf.getWetShade(partialTicks)`
         // into `WolfRenderState.wetShade`, and `WolfRenderer.getModelTint` consumes that
-        // render-state field. The world layer owns the timer; native must preserve the
-        // projected shade when building `EntityRenderState`.
+        // render-state field. It also copies `Wolf.getShakeAnim(partialTicks)` for
+        // `WolfRenderState.getBodyRollAngle`. The world layer owns the timers; native must
+        // preserve the projected values when building `EntityRenderState`.
         let source: EntityModelSourceState = serde_json::from_value(serde_json::json!({
             "entity_id": 148,
             "entity_type_id": VANILLA_ENTITY_TYPE_WOLF_ID,
             "position": { "x": 1.0, "y": 64.0, "z": -2.0 },
             "y_rot": 0.0,
             "wolf_wet_shade": 0.75625,
+            "wolf_shake_anim": 0.5,
             "data_values": []
         }))
         .unwrap();
@@ -10494,6 +10497,11 @@ mod tests {
             (instance.render_state.wolf_wet_shade - 0.75625).abs() < 1.0e-6,
             "native preserves world-projected WolfRenderState.wetShade: {}",
             instance.render_state.wolf_wet_shade
+        );
+        assert!(
+            (instance.render_state.wolf_shake_anim - 0.5).abs() < 1.0e-6,
+            "native preserves world-projected WolfRenderState.shakeAnim: {}",
+            instance.render_state.wolf_shake_anim
         );
     }
 

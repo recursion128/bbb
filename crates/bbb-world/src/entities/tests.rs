@@ -1972,7 +1972,7 @@ fn wolf_wet_shade_follows_vanilla_get_wet_shade_timer() {
     // Vanilla `Wolf.tick` marks the wolf wet while `isInWaterOrRain()`, then `getWetShade(partialTick)`
     // returns `0.75 + lerp(shakeAnimO, shakeAnim) * 0.125`, clamped to `1.0`, while wet. The client-side
     // drying timer advances `shakeAnim += 0.05` after the wolf leaves water and reaches white at 40 dry
-    // ticks; one more tick clears the wet state.
+    // ticks; f32 accumulation clears the wet state once the previous value compares `>= 2.0`.
     const VANILLA_ENTITY_TYPE_WOLF_ID: i32 = 148;
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
     const AIR_BLOCK_STATE_ID: i32 = 0;
@@ -2028,14 +2028,21 @@ fn wolf_wet_shade_follows_vanilla_get_wet_shade_timer() {
             }));
         }
     };
-    let shade = |store: &WorldStore, partial: f32| {
+    let wolf_source = |store: &WorldStore, partial: f32| {
         store
             .entity_model_sources_at_partial_tick(partial)
             .into_iter()
             .find(|source| source.entity_id == 82)
             .unwrap()
-            .wolf_wet_shade
     };
+    let shade = |store: &WorldStore, partial: f32| wolf_source(store, partial).wolf_wet_shade;
+    let shake = |store: &WorldStore, partial: f32| wolf_source(store, partial).wolf_shake_anim;
+
+    assert_eq!(
+        shake(&store, 1.0),
+        0.0,
+        "an unticked dry wolf has no shakeAnim"
+    );
 
     assert_eq!(
         shade(&store, 1.0),
@@ -2050,9 +2057,24 @@ fn wolf_wet_shade_follows_vanilla_get_wet_shade_timer() {
         "a wet wolf starts at the vanilla 0.75 shade floor: {}",
         shade(&store, 1.0)
     );
+    assert_eq!(
+        shake(&store, 1.0),
+        0.0,
+        "a wolf still in water has not started the drying shake"
+    );
 
     fill(&mut store, AIR_BLOCK_STATE_ID);
     store.advance_entity_client_animations(1);
+    assert_eq!(
+        shake(&store, 0.0),
+        0.0,
+        "partial 0 reads shakeAnimO before the first dry tick increment"
+    );
+    assert!(
+        (shake(&store, 1.0) - 0.05).abs() < 1.0e-6,
+        "partial 1 reads shakeAnim after one 0.05 increment: {}",
+        shake(&store, 1.0)
+    );
     assert!(
         (shade(&store, 0.0) - 0.75).abs() < 1.0e-6,
         "partial 0 reads shakeAnimO before the first dry tick increment: {}",
@@ -2067,14 +2089,24 @@ fn wolf_wet_shade_follows_vanilla_get_wet_shade_timer() {
 
     store.advance_entity_client_animations(39);
     assert!(
+        (shake(&store, 1.0) - 2.0).abs() < 1.0e-6,
+        "forty dry ticks reach vanilla's shakeAnim cap before clearing: {}",
+        shake(&store, 1.0)
+    );
+    assert!(
         (shade(&store, 1.0) - 1.0).abs() < 1.0e-6,
         "forty dry ticks reach white before the wet state is dropped"
     );
-    store.advance_entity_client_animations(1);
+    store.advance_entity_client_animations(2);
     assert_eq!(
         shade(&store, 1.0),
         1.0,
         "the cleared dry state keeps the default white shade"
+    );
+    assert_eq!(
+        shake(&store, 1.0),
+        0.0,
+        "the cleared dry state resets shakeAnim"
     );
 }
 

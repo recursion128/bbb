@@ -728,7 +728,7 @@ pub struct FoxAnimationState {
 /// vanilla event `56` does). After leaving water, the server broadcasts the shake event when
 /// grounded/path-free; bbb reconstructs the common world-side visual timer from the same `isInWater()`
 /// and `onGround()` facts, incrementing `shakeAnim` by `0.05` until the wet shade has lerped back to
-/// white. The body/head/tail shake roll remains a separate deferred renderer pose.
+/// white. The same `shakeAnim` is also projected for `WolfRenderState.getBodyRollAngle`.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct WolfWetAnimationState {
     pub is_wet: bool,
@@ -772,6 +772,11 @@ impl WolfWetAnimationState {
         let shake_anim = self.previous_shake_anim
             + partial_tick * (self.current_shake_anim - self.previous_shake_anim);
         (WOLF_WET_SHADE_BASE + shake_anim * WOLF_WET_SHADE_SHAKE_SCALE).min(1.0)
+    }
+
+    fn shake_anim(self, partial_tick: f32) -> f32 {
+        self.previous_shake_anim
+            + partial_tick * (self.current_shake_anim - self.previous_shake_anim)
     }
 
     fn is_settled(self) -> bool {
@@ -3227,6 +3232,14 @@ impl EntityClientAnimationState {
     pub fn wolf_wet_shade(&self, partial_tick: f32) -> f32 {
         self.wolf_wet
             .map_or(1.0, |state| state.wet_shade(partial_tick))
+    }
+
+    /// Vanilla `WolfRenderState.shakeAnim` (`Wolf.getShakeAnim(partialTick)`): the
+    /// partial-lerped water-shake timer that `getBodyRollAngle(offset)` uses for
+    /// the body / mane / tail roll. Returns `0.0` for a dry wolf and every non-wolf.
+    pub fn wolf_shake_anim(&self, partial_tick: f32) -> f32 {
+        self.wolf_wet
+            .map_or(0.0, |state| state.shake_anim(partial_tick))
     }
 
     /// Resets the hurt animation countdown to [`HURT_ANIMATION_DURATION`],
