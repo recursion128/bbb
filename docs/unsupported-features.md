@@ -2438,12 +2438,16 @@ When an agent does any of the following, update this file in the same slice:
       ground the model rests at its bind pose. The anger gate is implemented on both paths: the
       projected `bee_angry` (`Bee.isAngry()`, the synced `NeutralMob` `DATA_ANGER_END_TIME` vs the
       world game time) suppresses `bobUpAndDown`, so an angry airborne bee keeps flapping but holds
-      its body, legs (at `π/4`) and antennae still. The textured base layer draws the
-      `textures/entity/bee/bee.png` / `bee_baby.png` atlas references into the cutout mesh (vanilla
-      `RenderTypes::entityCutoutCull`), hand-emitted through the same animated hierarchy as the
-      colored path (which approximates the striped texture with a single representative yellow). The
-      stinger-loss visibility is implemented on both paths: the stinger cube is drawn only while the
-      projected `bee_has_stinger` (`!Bee.hasStung()`, the synced `DATA_FLAGS_ID & 4`) is set,
+      its body, legs (at `π/4`) and antennae still. The textured base layer draws the selected
+      `textures/entity/bee/bee[_angry][_nectar][_baby].png` atlas reference into the cutout mesh
+      (vanilla `BeeModel` calls `EntityModel`'s default `RenderTypes::entityCutout`) while preserving
+      explicit base submission metadata for texture, white tint, root transform, and `order(0)`;
+      it is hand-emitted through the same animated hierarchy as the colored path (which approximates
+      the striped texture with a single representative yellow). Vanilla's separate
+      `BeeStingerModel` uses `RenderTypes::entityCutoutCull`; bbb still folds the visible carried
+      stinger cube into the base BeeModel tree for now. The stinger-loss visibility is implemented on
+      both paths: the stinger cube is drawn only while the projected `bee_has_stinger`
+      (`!Bee.hasStung()`, the synced `DATA_FLAGS_ID & 4`) is set,
       dropping to eight cubes once the bee stings. The barrel-roll somersault is implemented on both
       paths: the projected `bee_roll_amount` (`Bee.getRollAmount(partialTick)`, the client
       `updateRollAmount` accumulator easing toward the synced `DATA_FLAGS_ID & 2` roll flag — `+0.2`
