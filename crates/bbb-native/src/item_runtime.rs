@@ -15,7 +15,7 @@ use bbb_pack::{
 use bbb_protocol::packets::{
     DataComponentPatchSummary, ItemRaritySummary, ItemStackSummary, ItemStackTemplateSummary,
 };
-use bbb_renderer::{ItemSpriteRect, SpriteAlphaMask};
+use bbb_renderer::{EntityCustomHeadSkull, ItemSpriteRect, SpriteAlphaMask};
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, ItemAttackRange as WorldItemAttackRange,
     ItemEquipmentSlot as WorldItemEquipmentSlot, ItemUseEffects as WorldItemUseEffects,
@@ -387,6 +387,14 @@ impl NativeItemRuntime {
             return false;
         };
         registry.humanoid_armor_asset(resource_id).is_some()
+    }
+
+    pub(crate) fn custom_head_skull_for_protocol_id(
+        &self,
+        protocol_id: i32,
+    ) -> Option<EntityCustomHeadSkull> {
+        let registry = self.registry.as_ref()?;
+        custom_head_skull_for_resource_id(registry.resource_id(protocol_id)?)
     }
 
     pub(crate) fn mount_body_armor_kinds_by_protocol_id(
@@ -1084,6 +1092,16 @@ fn protocol_ids_for_resource_ids(
 
 fn recipe_specific_crafting_remainder_item_ids(registry: &ItemRegistryCatalog) -> BTreeSet<i32> {
     protocol_ids_for_resource_ids(registry, RECIPE_SPECIFIC_CRAFTING_REMAINDER_ITEM_IDS)
+}
+
+fn custom_head_skull_for_resource_id(resource_id: &str) -> Option<EntityCustomHeadSkull> {
+    match resource_id {
+        "minecraft:skeleton_skull" => Some(EntityCustomHeadSkull::Skeleton),
+        "minecraft:wither_skeleton_skull" => Some(EntityCustomHeadSkull::WitherSkeleton),
+        "minecraft:zombie_head" => Some(EntityCustomHeadSkull::Zombie),
+        "minecraft:creeper_head" => Some(EntityCustomHeadSkull::Creeper),
+        _ => None,
+    }
 }
 
 fn world_item_equipment_slot(slot: PackItemEquipmentSlot) -> WorldItemEquipmentSlot {
@@ -2097,6 +2115,59 @@ mod tests {
         assert!(!runtime.item_has_humanoid_armor_asset(pumpkin_id));
         assert!(!runtime.item_has_humanoid_armor_asset(stone_id));
         assert!(!runtime.item_has_humanoid_armor_asset(999));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn custom_head_skull_projection_resolves_static_mob_skulls_only() {
+        let root = unique_temp_dir("item-runtime-custom-head-skulls");
+        let assets = assets_dir(&root);
+        write_item_atlases(&assets);
+        write_item_registry_source(
+            &root,
+            &[
+                "skeleton_skull",
+                "wither_skeleton_skull",
+                "zombie_head",
+                "creeper_head",
+                "player_head",
+                "dragon_head",
+                "piglin_head",
+                "carved_pumpkin",
+            ],
+        );
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let registry = runtime.registry.as_ref().unwrap();
+
+        for (resource_id, expected) in [
+            (
+                "minecraft:skeleton_skull",
+                Some(EntityCustomHeadSkull::Skeleton),
+            ),
+            (
+                "minecraft:wither_skeleton_skull",
+                Some(EntityCustomHeadSkull::WitherSkeleton),
+            ),
+            ("minecraft:zombie_head", Some(EntityCustomHeadSkull::Zombie)),
+            (
+                "minecraft:creeper_head",
+                Some(EntityCustomHeadSkull::Creeper),
+            ),
+            ("minecraft:player_head", None),
+            ("minecraft:dragon_head", None),
+            ("minecraft:piglin_head", None),
+            ("minecraft:carved_pumpkin", None),
+        ] {
+            let protocol_id = registry.protocol_id(resource_id).unwrap();
+            assert_eq!(
+                runtime.custom_head_skull_for_protocol_id(protocol_id),
+                expected,
+                "{resource_id}"
+            );
+        }
+        assert_eq!(runtime.custom_head_skull_for_protocol_id(999), None);
 
         std::fs::remove_dir_all(root).unwrap();
     }

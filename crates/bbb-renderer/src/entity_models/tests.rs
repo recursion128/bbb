@@ -19,6 +19,7 @@ mod copper_golem;
 mod cow;
 mod creaking;
 mod creeper;
+mod custom_head_skull;
 mod death;
 mod dolphin;
 mod end_crystal;

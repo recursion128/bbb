@@ -1,18 +1,18 @@
 use bbb_protocol::packets::{
-    EntityDataEnumSerializer, EntityDataRegistryHolder, EntityDataValueKind,
+    EntityDataEnumSerializer, EntityDataRegistryHolder, EntityDataValueKind, EquipmentSlot,
 };
 use bbb_renderer::{
     ArmorStandModelPose, ArrowModelTexture, AxolotlModelVariant, BoatModelFamily, CamelModelFamily,
     CatModelVariant, ChickenModelVariant, CopperGolemWeathering, CowModelVariant,
-    DonkeyModelFamily, EntityArmorMaterial, EntityDyeColor, EntityModelInstance, EntityModelKind,
-    FoxModelVariant, FrogModelVariant, GuardianBeamRenderState, HoglinModelFamily,
-    HorseColorVariant, HorseMarkings, IllagerModelFamily, IronGolemCrackiness, LlamaModelFamily,
-    LlamaVariant, MooshroomVariant, PandaModelVariant, ParrotModelVariant, PigModelVariant,
-    PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize,
-    SelectionBox, SelectionOutline, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily,
-    SleepingPose, TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily,
-    VillagerModelData, VillagerModelProfession, VillagerModelType, WolfModelVariant,
-    ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    DonkeyModelFamily, EntityArmorMaterial, EntityCustomHeadSkull, EntityDyeColor,
+    EntityModelInstance, EntityModelKind, FoxModelVariant, FrogModelVariant,
+    GuardianBeamRenderState, HoglinModelFamily, HorseColorVariant, HorseMarkings,
+    IllagerModelFamily, IronGolemCrackiness, LlamaModelFamily, LlamaVariant, MooshroomVariant,
+    PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
+    PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SelectionBox, SelectionOutline,
+    SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose, TropicalFishModelShape,
+    TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelProfession,
+    VillagerModelType, WolfModelVariant, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, EntityModelSourceState, EntityPickTargetState,
@@ -787,6 +787,19 @@ fn entity_offhand_non_empty(world: &WorldStore, entity_id: i32) -> bool {
         .is_some()
 }
 
+/// The supported skull block item in the HEAD equipment slot, if any. Vanilla
+/// `LivingEntityRenderer.extractRenderState` routes skull `BlockItem`s to `wornHeadType` and clears the
+/// generic head item; bbb mirrors that only for static mob heads whose `SkullModel` branch is implemented.
+fn entity_custom_head_skull(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    entity_id: i32,
+) -> Option<EntityCustomHeadSkull> {
+    let item_runtime = item_runtime?;
+    let stack = world.equipment_item(entity_id, EquipmentSlot::Head)?;
+    item_runtime.custom_head_skull_for_protocol_id(stack.item_id?)
+}
+
 /// Vanilla `ItemTags.PIGLIN_LOVED` tag id — the items a piglin admires.
 const PIGLIN_LOVED_ITEM_TAG: &str = "minecraft:piglin_loved";
 
@@ -1062,6 +1075,7 @@ fn entity_model_instance(
     let copper_golem_holding_item = matches!(kind, EntityModelKind::CopperGolem { .. })
         && (entity_main_hand_non_empty(world, source.entity_id)
             || entity_offhand_non_empty(world, source.entity_id));
+    let custom_head_skull = entity_custom_head_skull(world, item_runtime, source.entity_id);
     // Vanilla `Piglin.getArmPose` `ADMIRING_ITEM` (`PiglinAi.isLovedItem(getOffhandItem())`): a regular
     // piglin holding a piglin-loved item in its OFFHAND admires it (head tilts down, the off arm lifts the
     // item). Second-highest priority (below DANCING, above ATTACKING / CROSSBOW), so it suppresses those.
@@ -1247,6 +1261,7 @@ fn entity_model_instance(
         .with_witch_holding_item(witch_holding_item)
         .with_witch_holding_potion(witch_holding_potion)
         .with_copper_golem_holding_item(copper_golem_holding_item)
+        .with_custom_head_skull(custom_head_skull)
         .with_bee_angry(bee_is_angry(
             source.entity_type_id,
             &source.data_values,
@@ -4882,6 +4897,36 @@ mod tests {
             .unwrap()
             .render_state;
         assert!(state.copper_golem_holding_item);
+    }
+
+    #[test]
+    fn entity_model_instances_custom_head_skull_needs_item_runtime() {
+        // `LivingEntityRenderer.extractRenderState` needs the HEAD stack resolved as an AbstractSkullBlock.
+        // Without the item registry runtime, bbb must not guess from the protocol id.
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            246,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            [3.0, 64.0, -2.0],
+        ));
+        assert!(world.apply_set_equipment(SetEquipment {
+            entity_id: 246,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Head,
+                item: ItemStackSummary {
+                    item_id: Some(7),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            }],
+        }));
+
+        let state = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
+            .into_iter()
+            .find(|instance| instance.entity_id == 246)
+            .unwrap()
+            .render_state;
+        assert_eq!(state.custom_head_skull, None);
     }
 
     #[test]

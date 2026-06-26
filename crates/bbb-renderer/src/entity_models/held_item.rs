@@ -19,28 +19,34 @@ use super::model_layers::{
 use super::{EntityModelInstance, EntityModelKind, SkeletonModelFamily};
 
 const CUSTOM_HEAD_ITEM_SCALE: f32 = 0.625;
+const CUSTOM_HEAD_SKULL_SCALE: f32 = 1.1875;
 const PIGLIN_CUSTOM_HEAD_HORIZONTAL_SCALE: f32 = 1.001_953_1;
 const VILLAGER_CUSTOM_HEAD_Y_OFFSET: f32 = -0.117_187_5;
+const VILLAGER_CUSTOM_HEAD_SKULL_Y_OFFSET: f32 = -0.074_218_75;
 
 #[derive(Debug, Clone, Copy)]
 struct CustomHeadTransforms {
     y_offset: f32,
+    skull_y_offset: f32,
     horizontal_scale: f32,
 }
 
 impl CustomHeadTransforms {
     const DEFAULT: Self = Self {
         y_offset: 0.0,
+        skull_y_offset: 0.0,
         horizontal_scale: 1.0,
     };
 
     const PIGLIN: Self = Self {
         y_offset: 0.0,
+        skull_y_offset: 0.0,
         horizontal_scale: PIGLIN_CUSTOM_HEAD_HORIZONTAL_SCALE,
     };
 
     const VILLAGER: Self = Self {
         y_offset: VILLAGER_CUSTOM_HEAD_Y_OFFSET,
+        skull_y_offset: VILLAGER_CUSTOM_HEAD_SKULL_Y_OFFSET,
         horizontal_scale: 1.0,
     };
 }
@@ -120,6 +126,16 @@ pub fn custom_head_item_transform(instance: &EntityModelInstance) -> Option<Mat4
     Some(custom_head_item_layer_transform(root, head, transforms))
 }
 
+/// The model->world transform used by vanilla `CustomHeadLayer` for skull block items in the HEAD
+/// equipment slot. Unlike the generic item branch, the skull branch calls `SkullBlockRenderer`
+/// directly, so it does not apply the item display rotation or the negative item-model scale.
+pub(in crate::entity_models) fn custom_head_skull_transform(
+    instance: &EntityModelInstance,
+) -> Option<Mat4> {
+    let (root, head, transforms) = custom_head_item_base_transform(instance)?;
+    Some(custom_head_skull_layer_transform(root, head, transforms))
+}
+
 fn custom_head_item_layer_transform(
     root: Mat4,
     head: Mat4,
@@ -137,6 +153,20 @@ fn custom_head_item_layer_transform(
             -CUSTOM_HEAD_ITEM_SCALE,
             -CUSTOM_HEAD_ITEM_SCALE,
         ))
+}
+
+fn custom_head_skull_layer_transform(
+    root: Mat4,
+    head: Mat4,
+    transforms: CustomHeadTransforms,
+) -> Mat4 {
+    root * Mat4::from_scale(Vec3::new(
+        transforms.horizontal_scale,
+        1.0,
+        transforms.horizontal_scale,
+    )) * head
+        * Mat4::from_translation(Vec3::new(0.0, transforms.skull_y_offset, 0.0))
+        * Mat4::from_scale(Vec3::splat(CUSTOM_HEAD_SKULL_SCALE))
 }
 
 fn custom_head_item_base_transform(
@@ -683,6 +713,35 @@ mod tests {
         assert!(
             (piglin_x - CUSTOM_HEAD_ITEM_SCALE * PIGLIN_CUSTOM_HEAD_HORIZONTAL_SCALE).abs() < 1e-6
         );
+    }
+
+    #[test]
+    fn custom_head_skull_layer_uses_skull_offsets_and_scale() {
+        let default_origin = custom_head_skull_layer_transform(
+            Mat4::IDENTITY,
+            Mat4::IDENTITY,
+            CustomHeadTransforms::DEFAULT,
+        )
+        .transform_point3(Vec3::ZERO);
+        let villager_origin = custom_head_skull_layer_transform(
+            Mat4::IDENTITY,
+            Mat4::IDENTITY,
+            CustomHeadTransforms::VILLAGER,
+        )
+        .transform_point3(Vec3::ZERO);
+        assert!(
+            (villager_origin.y - default_origin.y - VILLAGER_CUSTOM_HEAD_SKULL_Y_OFFSET).abs()
+                < 1e-6
+        );
+
+        let skull_x = custom_head_skull_layer_transform(
+            Mat4::IDENTITY,
+            Mat4::IDENTITY,
+            CustomHeadTransforms::DEFAULT,
+        )
+        .transform_vector3(Vec3::X)
+        .length();
+        assert!((skull_x - CUSTOM_HEAD_SKULL_SCALE).abs() < 1e-6);
     }
 
     #[test]

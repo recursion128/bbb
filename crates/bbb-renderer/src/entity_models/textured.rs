@@ -3,6 +3,7 @@ use super::colored::{
     wind_charge_model_root_transform, wither_model_root_transform, HORSE_SCALE,
 };
 use super::dispatch::{dispatch_uniform_entity_model, TexturedSink};
+use super::held_item::custom_head_skull_transform;
 use super::model::{EntityModel, ModelPart};
 use super::{
     catalog::{
@@ -12,12 +13,13 @@ use super::{
         zombie_villager_type_texture_ref,
     },
     catalog::{
-        CamelModelFamily, DonkeyModelFamily, EntityArmorMaterial, EntityDyeColor, EntityModelKind,
-        EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureRef,
-        EntityModelUvRect, HoglinModelFamily, HorseMarkings, LlamaModelFamily, LlamaVariant,
-        PiglinModelFamily, PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily,
-        TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData,
-        VillagerModelHat, ZombieVariantModelFamily,
+        CamelModelFamily, DonkeyModelFamily, EntityArmorMaterial, EntityCustomHeadSkull,
+        EntityDyeColor, EntityModelKind, EntityModelTextureAtlasEntry,
+        EntityModelTextureAtlasLayout, EntityModelTextureRef, EntityModelUvRect, HoglinModelFamily,
+        HorseMarkings, LlamaModelFamily, LlamaVariant, PiglinModelFamily,
+        PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape,
+        TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelHat,
+        ZombieVariantModelFamily,
     },
     entity_model_root_transform,
     geometry::{
@@ -32,9 +34,9 @@ use super::{
         armor_layer_tint, armor_slot_texture, equine_head_look_pose, equine_leg_swing_pose,
         equine_tail_swing_pose, head_look_at_rest, horse_body_armor_texture_layers,
         limb_swing_at_rest, llama_body_decor_texture_ref, nautilus_body_armor_texture_ref,
-        BreezeWindModel, CamelModel, CreeperModel, DrownedOuterModel, HoglinModel,
-        HumanoidArmorSlot, LlamaModel, NautilusModel, PigModel, PiglinModel, PlayerModel,
-        SheepFurModel, SheepModel, SkeletonClothingModel, SkeletonModel, SlimeModel,
+        BreezeWindModel, CamelModel, CreeperModel, CustomHeadSkullModel, DrownedOuterModel,
+        HoglinModel, HumanoidArmorSlot, LlamaModel, NautilusModel, PigModel, PiglinModel,
+        PlayerModel, SheepFurModel, SheepModel, SkeletonClothingModel, SkeletonModel, SlimeModel,
         SlimeOuterModel, SquidModel, StriderModel, TropicalFishModel, TropicalFishPatternModel,
         VillagerModel, WindChargeModel, WitherModel, ZombieModel, ZombieVariantModel,
         ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
@@ -43,12 +45,13 @@ use super::{
         ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
         BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF,
         CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF,
-        DONKEY_SADDLE_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
-        LLAMA_BODY_TRADER_BABY_TEXTURE_REF, LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF,
-        NAUTILUS_SADDLE_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION, PIG_SADDLE_TEXTURE_REF,
-        SKELETON_HORSE_SADDLE_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION,
-        STRIDER_SADDLE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF,
-        ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
+        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF,
+        HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
+        LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
+        PIGLIN_OUTER_ARMOR_DEFORMATION, PIG_SADDLE_TEXTURE_REF, SKELETON_HORSE_SADDLE_TEXTURE_REF,
+        SKELETON_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION, STRIDER_SADDLE_TEXTURE_REF,
+        WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF,
+        ZOMBIE_HORSE_SADDLE_TEXTURE_REF, ZOMBIE_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
@@ -287,6 +290,9 @@ pub(super) fn entity_model_textured_meshes(
         // Worn armor is a cutout overlay draped on the host humanoid pose; it runs regardless of
         // `handled` and folds into the cutout pass before the shared light/overlay fill below.
         emit_worn_humanoid_armor(&mut meshes, *instance, atlas);
+        // Skull block items in the head slot use vanilla `CustomHeadLayer`'s skull branch: a static
+        // `SkullModel` mob head attached to the host head, not the generic item-model HEAD display path.
+        emit_custom_head_skull_layer(&mut meshes, *instance, atlas);
         // The pig saddle is a simple equipment overlay over the adult pig body.
         emit_pig_saddle_layer(&mut meshes, *instance, atlas);
         // Horse/zombie-horse body armor uses the adult HORSE_BODY equipment layer.
@@ -887,6 +893,38 @@ fn emit_worn_humanoid_armor(
             );
         }
         _ => {}
+    }
+}
+
+fn emit_custom_head_skull_layer(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let Some(skull) = instance.render_state.custom_head_skull else {
+        return;
+    };
+    let Some(transform) = custom_head_skull_transform(&instance) else {
+        return;
+    };
+    let model = CustomHeadSkullModel::new();
+    render_textured_pass(
+        meshes,
+        &model,
+        transform,
+        EntityModelLayerRenderType::Cutout,
+        custom_head_skull_texture_ref(skull),
+        [1.0, 1.0, 1.0, 1.0],
+        atlas,
+    );
+}
+
+fn custom_head_skull_texture_ref(skull: EntityCustomHeadSkull) -> EntityModelTextureRef {
+    match skull {
+        EntityCustomHeadSkull::Skeleton => SKELETON_TEXTURE_REF,
+        EntityCustomHeadSkull::WitherSkeleton => WITHER_SKELETON_TEXTURE_REF,
+        EntityCustomHeadSkull::Zombie => ZOMBIE_TEXTURE_REF,
+        EntityCustomHeadSkull::Creeper => CREEPER_TEXTURE_REF,
     }
 }
 

@@ -531,6 +531,11 @@ entity_render_state! {
     /// `ItemInHandLayer` reads the hand transform. `false` for empty-handed copper golems and every other
     /// entity. The walk-with-item keyframe itself remains deferred.
     (with_copper_golem_holding_item) copper_golem_holding_item: bool = false;
+    /// Vanilla `LivingEntityRenderState.wornHeadType`: a supported skull block item in the HEAD slot,
+    /// rendered by `CustomHeadLayer` through `SkullBlockRenderer` instead of the generic item-model path.
+    /// Only the static `SkullModel` mob heads are projected for now; player profile skins, dragon jaws,
+    /// and piglin ear animation remain deferred.
+    (with_custom_head_skull) custom_head_skull: Option<EntityCustomHeadSkull> = None;
     /// Vanilla `VexRenderState.isCharging` (`Vex.isCharging`, the synced `DATA_FLAGS_ID & 1`):
     /// the vex is charging an attack, so `VexModel.setupAnim` levels the body (`xRot = 0`) and
     /// `setArmsCharging` raises both arms. `false` for every other entity and for an idle vex.
@@ -2066,6 +2071,7 @@ mod tests {
                 witch_holding_item: false,
                 witch_holding_potion: false,
                 copper_golem_holding_item: false,
+                custom_head_skull: None,
                 vex_charging: false,
                 wither_invulnerable_ticks: 0.0,
                 wither_powered: false,

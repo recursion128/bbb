@@ -34,8 +34,10 @@ iron golem held poppy block layer、mooshroom mushroom block layer、enderman ca
 layer 已完成，copper golem antenna block decoration 也已通过同一方块附着路径完成。
 通用 `CustomHeadLayer` 的非 skull/非 armor head-slot item 分支已完成：player、
 zombie/skeleton/piglin family、illager、villager/wandering trader、armor stand、
-copper golem 会用 `ItemDisplayContext.HEAD` 渲染头槽物品；skull/profile 头颅专用
-分支仍待做。
+copper golem 会用 `ItemDisplayContext.HEAD` 渲染头槽物品；custom-head skull 头颅专用
+分支中的静态 mob 头颅也已完成：`skeleton_skull`、`wither_skeleton_skull`、
+`zombie_head`、`creeper_head` 会通过 `SkullModel` 和对应实体贴图渲染。剩余的是
+player profile skin、dragon head jaw、piglin head ear animation 等动态头颅分支。
 铜傀儡 vanilla 模型、四态风化贴图和 emissive eyes layer 已完成。
 
 ## 剩余大子系统（按优先级）
@@ -43,7 +45,7 @@ copper golem 会用 `ItemDisplayContext.HEAD` 渲染头槽物品；skull/profile
 1. **实体上的物品渲染器**
    目标中原列的手持物 / 狐狸叼物 / 物品展示框内容已经接到 item-model primitive。
    继续按 `docs/unsupported-features.md` 审计剩余专用 item-on-entity 层（如
-   `CustomHeadLayer` 的 skull/profile 头颅分支、其他专用装备/物品层等），逐项从
+   `CustomHeadLayer` 剩余的 player-profile / dragon / piglin 头颅分支、其他专用装备/物品层等），逐项从
    deferred 改为 covered。
 2. **世界侧动画计时器**
    狼湿身着色、溺尸/海豚游泳重姿态等 client-tick 动画。

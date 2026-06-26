@@ -19,6 +19,17 @@ pub(in crate::entity_models) const WITHER_SKULL_CUBE: ModelCube = ModelCube::new
     false,
 );
 
+// Vanilla `SkullModel.createMobHeadLayer` used by `CustomHeadLayer` for skeleton / wither-skeleton /
+// zombie / creeper skull equipment: one `head` cube at `texOffs(0, 0)` on a 64x32 texture.
+pub(in crate::entity_models) const CUSTOM_HEAD_SKULL_CUBE: ModelCube = ModelCube::new(
+    [-4.0, -8.0, -4.0],
+    [8.0, 8.0, 8.0],
+    WITHER_SKULL_GRAY,
+    [8.0, 8.0, 8.0],
+    [0.0, 0.0],
+    false,
+);
+
 /// Static wither-skull model mirroring vanilla `SkullModel` at its ZERO rest pose: a single `head`
 /// part holding the 8×8×8 skull box (the flight facing lives in the root transform), no `setup_anim`.
 pub(in crate::entity_models) struct WitherSkullModel {
@@ -41,6 +52,39 @@ impl WitherSkullModel {
 }
 
 impl EntityModel for WitherSkullModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, _instance: &EntityModelInstance) {}
+}
+
+/// Static mob-head model for `CustomHeadLayer` skull equipment. The host model already supplied the
+/// posed head transform, so this skull tree remains at its baked ZERO pose.
+pub(in crate::entity_models) struct CustomHeadSkullModel {
+    root: ModelPart,
+}
+
+impl CustomHeadSkullModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::new(
+                PART_POSE_ZERO,
+                Vec::new(),
+                vec![(
+                    "head",
+                    ModelPart::leaf(PART_POSE_ZERO, vec![CUSTOM_HEAD_SKULL_CUBE]),
+                )],
+            ),
+        }
+    }
+}
+
+impl EntityModel for CustomHeadSkullModel {
     fn root(&self) -> &ModelPart {
         &self.root
     }
