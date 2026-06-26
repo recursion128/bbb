@@ -2030,8 +2030,11 @@ When an agent does any of the following, update this file in the same slice:
       (the three faces join the master atlas array → 364) over the same model
       layer. The held flower block layer is now implemented through the entity-attached
       block-model path while `offerFlowerTick > 0`, using `Blocks.POPPY.defaultBlockState()`
-      and the vanilla `IronGolemFlowerLayer` right-arm transform. The renderer body-wobble
-      rotation remains unsupported
+      and the vanilla `IronGolemFlowerLayer` right-arm transform. The renderer
+      body-wobble rotation is now applied at the vanilla setup-rotation point
+      (`6.5 * triangleWave(walkAnimationPos + 6, 13)` degrees around Z when
+      `walkAnimationSpeed >= 0.01`), and the base/crack submissions plus the
+      held poppy block transform share that root
     - snow golem entities as renderer-owned vanilla 26.1
       `SnowGolemModel.createBodyLayer()` geometry, including its 64x64 body
       layer, baked `CubeDeformation(-0.5F)` snow body/arm/head cubes, and the
@@ -3517,7 +3520,7 @@ When an agent does any of the following, update this file in the same slice:
     (the base model, weathering texture swap, emissive eyes, standard held-item
     layer, antenna block decoration, generic non-skull head items, static mob
     skulls, profileless default-player heads, profiled default-skin player heads, dragon heads, and piglin heads are implemented),
-    iron golem body-wobble presentation, armor stand equipment/live/dynamic profiled-player/
+    armor stand equipment/live/dynamic profiled-player/
     custom layers/wiggle/marker presentation, slime/magma-cube squish/full
     render-state lighting/sorting presentation, and precise vanilla mesh parity
     for primitive/placeholder entity families.

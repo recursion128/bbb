@@ -95,6 +95,32 @@ pub(in crate::entity_models) fn creeper_model_root_transform(
     )
 }
 
+/// Vanilla `IronGolemRenderer.setupRotations`: after the standard living-entity setup rotation and
+/// before the model flip / `-1.501` translate, a walking golem applies a whole-body Z wobble of
+/// `6.5 * triangleWave(walkAnimationPos + 6, 13)` degrees. The wobble is skipped while the walk
+/// animation speed is below `0.01`.
+pub(in crate::entity_models) fn iron_golem_model_root_transform(
+    instance: EntityModelInstance,
+) -> Mat4 {
+    living_entity_model_root_transform_with_extra_setup_rotation(
+        instance,
+        iron_golem_setup_rotation_tail(
+            instance.render_state.walk_animation_pos,
+            instance.render_state.walk_animation_speed,
+        ),
+    )
+}
+
+fn iron_golem_setup_rotation_tail(walk_animation_pos: f32, walk_animation_speed: f32) -> Mat4 {
+    if walk_animation_speed < 0.01 {
+        return Mat4::IDENTITY;
+    }
+
+    let wave_pos = walk_animation_pos + 6.0;
+    let triangle_wave = ((wave_pos % 13.0 - 6.5).abs() - 3.25) / 3.25;
+    Mat4::from_rotation_z((6.5 * triangle_wave).to_radians())
+}
+
 /// Vanilla `FoxRenderer.setupRotations`: after the standard living-entity setup rotation
 /// (`super.setupRotations`) and before the model flip / `-1.501` translate, a pouncing or faceplanted
 /// fox applies `Axis.XP.rotationDegrees(-state.xRot)`. This pitches the whole model and all layers by

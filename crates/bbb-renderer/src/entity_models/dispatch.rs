@@ -15,12 +15,12 @@ use super::colored::{
     arrow_model_root_transform, boat_model_root_transform, cave_spider_model_root_transform,
     cod_model_root_transform, creeper_model_root_transform, ender_dragon_model_root_transform,
     entity_model_root_transform, evoker_fangs_model_root_transform, fox_model_root_transform,
-    ghast_model_root_transform, happy_ghast_model_root_transform, leash_knot_model_root_transform,
-    llama_spit_model_root_transform, magma_cube_model_root_transform,
-    mesh_transformer_scaled_model_root_transform, panda_model_root_transform,
-    phantom_model_root_transform, polar_bear_model_root_transform, pufferfish_model_root_transform,
-    salmon_model_root_transform, shulker_model_root_transform, trident_model_root_transform,
-    villager_adult_model_root_transform, wither_model_root_transform,
+    ghast_model_root_transform, happy_ghast_model_root_transform, iron_golem_model_root_transform,
+    leash_knot_model_root_transform, llama_spit_model_root_transform,
+    magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
+    panda_model_root_transform, phantom_model_root_transform, polar_bear_model_root_transform,
+    pufferfish_model_root_transform, salmon_model_root_transform, shulker_model_root_transform,
+    trident_model_root_transform, villager_adult_model_root_transform, wither_model_root_transform,
     wither_skull_model_root_transform, GIANT_SCALE,
 };
 use super::geometry::{part_pose_transform, EntityModelMesh};
@@ -218,7 +218,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
         ),
         EntityModelKind::IronGolem { crackiness } => sink.model(
             IronGolemModel::new(),
-            entity_model_root_transform(*instance),
+            iron_golem_model_root_transform(*instance),
             instance,
             &iron_golem_textured_layer_passes(crackiness),
         ),

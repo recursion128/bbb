@@ -170,6 +170,78 @@ fn iron_golem_textured_layer_pass_matches_vanilla_renderer_model_layer() {
 }
 
 #[test]
+fn iron_golem_renderer_body_wobble_matches_vanilla_setup_rotations() {
+    // Vanilla `IronGolemRenderer.setupRotations` appends the renderer-level Z wobble after
+    // `super.setupRotations` and before the model flip. At walk pos 0:
+    //   triangleWave(0 + 6, 13) = (|6 - 6.5| - 3.25) / 3.25 = -11/13.
+    let position = [1.0, 64.0, -2.0];
+    let base = EntityModelInstance::iron_golem(75, position, 0.0);
+
+    let still = base.with_walk_animation(3.0, 0.009);
+    assert_eq!(
+        iron_golem_model_root_transform(still),
+        entity_model_root_transform(still),
+        "speed below 0.01 skips the renderer wobble"
+    );
+
+    let walking = base.with_walk_animation(0.0, 1.0);
+    let triangle_wave = ((6.0_f32 % 13.0 - 6.5).abs() - 3.25) / 3.25;
+    let expected = Mat4::from_translation(Vec3::from_array(position))
+        * Mat4::from_rotation_y(std::f32::consts::PI)
+        * Mat4::from_rotation_z((6.5 * triangle_wave).to_radians())
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+        * Mat4::from_translation(Vec3::new(0.0, -1.501, 0.0));
+    let actual = iron_golem_model_root_transform(walking);
+
+    assert_ne!(
+        actual,
+        entity_model_root_transform(walking),
+        "walking golems use a renderer root distinct from generic living entities"
+    );
+    assert_close_transform(actual, expected);
+}
+
+#[test]
+fn iron_golem_textured_submissions_apply_body_wobble_to_base_and_cracks() {
+    let (atlas, _) = build_entity_model_texture_atlas(&iron_golem_submission_texture_images())
+        .expect("iron golem submission atlas");
+    let walking = EntityModelInstance::new(
+        76,
+        EntityModelKind::IronGolem {
+            crackiness: IronGolemCrackiness::High,
+        },
+        [0.0, 64.0, 0.0],
+        0.0,
+    )
+    .with_walk_animation(0.0, 1.0);
+
+    let meshes = entity_model_textured_meshes(&[walking], &atlas);
+    assert_eq!(meshes.submissions.len(), 2);
+    assert!(!meshes.cutout.vertices.is_empty());
+
+    let expected_transform = iron_golem_model_root_transform(walking);
+    assert_ne!(
+        expected_transform,
+        entity_model_root_transform(walking),
+        "the submission transform includes the renderer body wobble"
+    );
+
+    let base = meshes.submissions[0];
+    assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(base.texture, IRON_GOLEM_TEXTURE_REF);
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+    assert_eq!(base.transform, expected_transform);
+
+    let cracks = meshes.submissions[1];
+    assert_eq!(cracks.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(cracks.texture, IRON_GOLEM_CRACKINESS_HIGH_TEXTURE_REF);
+    assert_eq!(cracks.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((cracks.order, cracks.submit_sequence), (1, 1));
+    assert_eq!(cracks.transform, expected_transform);
+}
+
+#[test]
 fn iron_golem_textured_model_parts_match_vanilla_model_layer_uv_sources() {
     assert_eq!(MODEL_LAYER_IRON_GOLEM, "minecraft:iron_golem#main");
     assert_eq!(IRON_GOLEM_TEXTURE_REF.size, [128, 128]);
@@ -590,6 +662,29 @@ fn golem_texture_images() -> Vec<EntityModelTextureImage> {
 // Vanilla `Mth.triangleWave(index, period)` (replicated for the test expectations).
 fn triangle_wave(index: f32, period: f32) -> f32 {
     ((index % period - period * 0.5).abs() - period * 0.25) / (period * 0.25)
+}
+
+fn iron_golem_submission_texture_images() -> Vec<EntityModelTextureImage> {
+    [
+        IRON_GOLEM_TEXTURE_REF,
+        IRON_GOLEM_CRACKINESS_HIGH_TEXTURE_REF,
+    ]
+    .into_iter()
+    .enumerate()
+    .map(|(index, texture)| {
+        let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+        EntityModelTextureImage::new(texture, vec![index as u8; len])
+    })
+    .collect()
+}
+
+fn assert_close_transform(actual: Mat4, expected: Mat4) {
+    for vector in [Vec3::ZERO, Vec3::X, Vec3::Y, Vec3::Z] {
+        assert_close3(
+            actual.transform_point3(vector).to_array(),
+            expected.transform_point3(vector).to_array(),
+        );
+    }
 }
 
 #[test]

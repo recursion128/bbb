@@ -6,7 +6,7 @@ use std::f32::consts::PI;
 
 use glam::{Mat4, Vec3};
 
-use super::colored::entity_model_root_transform;
+use super::colored::{entity_model_root_transform, iron_golem_model_root_transform};
 use super::model::EntityModel;
 use super::model_layers::{CopperGolemModel, CowModel, IronGolemModel, SnowGolemModel};
 use super::{CowModelVariant, EntityModelInstance, EntityModelKind, MooshroomVariant};
@@ -81,7 +81,7 @@ pub fn iron_golem_flower_block_transform(instance: &EntityModelInstance) -> Opti
     let mut model = IronGolemModel::new();
     model.prepare(instance);
     Some(
-        entity_model_root_transform(*instance)
+        iron_golem_model_root_transform(*instance)
             * model.root().try_child_attach_transform("right_arm")?
             * Mat4::from_translation(Vec3::new(-1.1875, 1.0625, -0.9375))
             * Mat4::from_translation(Vec3::splat(0.5))
@@ -295,6 +295,33 @@ mod tests {
     }
 
     #[test]
+    fn iron_golem_flower_block_follows_renderer_body_wobble() {
+        let walking = iron_golem().with_walk_animation(0.0, 1.0);
+        let mut model = IronGolemModel::new();
+        model.prepare(&walking);
+        let flower_from_arm = model
+            .root()
+            .try_child_attach_transform("right_arm")
+            .unwrap()
+            * Mat4::from_translation(Vec3::new(-1.1875, 1.0625, -0.9375))
+            * Mat4::from_translation(Vec3::splat(0.5))
+            * Mat4::from_scale(Vec3::splat(0.5))
+            * Mat4::from_rotation_x(-PI / 2.0)
+            * Mat4::from_translation(Vec3::splat(-0.5));
+        let actual = iron_golem_flower_block_transform(&walking).unwrap();
+
+        assert_close_transform(
+            actual,
+            iron_golem_model_root_transform(walking) * flower_from_arm,
+        );
+        assert_ne!(
+            actual,
+            entity_model_root_transform(walking) * flower_from_arm,
+            "held poppy uses the same renderer root wobble as the golem body"
+        );
+    }
+
+    #[test]
     fn mooshroom_mushroom_blocks_are_gated_on_adult_visibility_and_kind() {
         let (variant, transforms) = mooshroom_mushroom_block_transforms(&mooshroom(false)).unwrap();
         assert_eq!(variant, MooshroomVariant::Red);
@@ -351,5 +378,16 @@ mod tests {
         assert!(base_center.is_finite());
         assert!(turned_center.is_finite());
         assert_ne!(base_center, turned_center);
+    }
+
+    fn assert_close_transform(actual: Mat4, expected: Mat4) {
+        for point in [Vec3::ZERO, Vec3::X, Vec3::Y, Vec3::Z] {
+            let actual = actual.transform_point3(point);
+            let expected = expected.transform_point3(point);
+            assert!(
+                actual.abs_diff_eq(expected, 1.0e-5),
+                "expected {expected:?}, got {actual:?}"
+            );
+        }
     }
 }

@@ -649,7 +649,8 @@ pub enum EntityModelKind {
     /// Iron golem (`IronGolemModel`, `IronGolemRenderer`). `crackiness` drives the vanilla
     /// `IronGolemCrackinessLayer` damage-crack overlay (`iron_golem_crackiness_{low,medium,high}.png`),
     /// selected by `IronGolem.getCrackiness()`. Attack and offer-flower arm poses are render-state
-    /// driven, with the held poppy rendered by the entity-attached block-model path.
+    /// driven, the renderer walk wobble is applied at the root, and the held poppy is rendered by the
+    /// entity-attached block-model path.
     IronGolem {
         crackiness: IronGolemCrackiness,
     },
