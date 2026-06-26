@@ -99,6 +99,12 @@ fn arrow_textured_render_matches_vanilla_renderer() {
             arrow_textured_layer_passes(texture)[0].render_type,
             EntityModelLayerRenderType::EntityCutoutCull
         );
+        assert_eq!(
+            arrow_textured_layer_passes(texture)[0]
+                .render_type
+                .vanilla_name(),
+            "entityCutoutCull"
+        );
         assert_eq!(arrow_textured_layer_passes(texture)[0].tint, [1.0; 4]);
         assert_eq!(arrow_textured_layer_passes(texture)[0].order, 0);
         assert_eq!(arrow_textured_layer_passes(texture)[0].submit_sequence, 0);
@@ -126,14 +132,15 @@ fn arrow_textured_render_matches_vanilla_renderer() {
     let instance =
         EntityModelInstance::arrow(60, [0.0, 64.0, 0.0], 35.0, ArrowModelTexture::Tipped)
             .with_head_look(0.0, -12.0);
-    let mesh = entity_model_textured_mesh(&[instance], &atlas);
-    assert!(!mesh.vertices.is_empty());
-    assert!(mesh
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(!meshes.cutout.vertices.is_empty());
+    assert!(meshes
+        .cutout
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
-
-    let meshes = entity_model_textured_meshes(&[instance], &atlas);
     assert_eq!(meshes.submissions.len(), 1);
     let submit = meshes.submissions[0];
     assert_eq!(submit.texture, ARROW_TIPPED_TEXTURE_REF);
@@ -141,6 +148,7 @@ fn arrow_textured_render_matches_vanilla_renderer() {
         submit.render_type,
         EntityModelLayerRenderType::EntityCutoutCull
     );
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutoutCull");
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(submit.order, 0);
     assert_eq!(submit.submit_sequence, 0);

@@ -3068,7 +3068,10 @@ When an agent does any of the following, update this file in the same slice:
       `ArrowModelTexture::{Normal,Tipped,Spectral}` selects `arrow.png` / `arrow_tipped.png` / `arrow_spectral.png`
       via `arrow_texture_ref` — a tipped arrow (`TippableArrowRenderer`, `getColor() > 0` off the synced
       `ID_EFFECT_COLOR` 11) binds the tipped image, and the spectral-arrow type binds the spectral image.
-      The colored debug path stays as a fallback (it renders the shaft cross and the head with two tints)
+      Tests now pin explicit submission metadata for vanilla `entityCutoutCull`, white tint,
+      `arrow_model_root_transform`, and `(order, submit_sequence) == (0, 0)` before checking the folded
+      shake-posed mesh. The colored debug path stays as a fallback (it renders the shaft cross and the head
+      with two tints)
     - thrown trident entities as renderer-owned vanilla 26.1 `TridentModel.createLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `135` to the new
       `EntityModelKind::Trident`, replacing the former placeholder bounds box. The static hierarchy is
