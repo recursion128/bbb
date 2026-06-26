@@ -18,7 +18,7 @@ use super::{
         EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureImage,
         EntityModelUvRect,
     },
-    entity_model_colored_runtime_mesh, entity_model_textured_meshes_with_dynamic_skins,
+    entity_model_colored_runtime_mesh, entity_model_textured_meshes_with_dynamic_textures,
     geometry::{
         EntityModelScrollMesh, EntityModelScrollVertex, EntityModelTexturedMesh,
         EntityModelTexturedVertex, EntityModelVertex,
@@ -63,7 +63,6 @@ pub(crate) struct EntityDynamicPlayerSkinAtlasGpu {
     pub(crate) layout: EntityDynamicPlayerSkinAtlasLayout,
 }
 
-#[allow(dead_code)]
 pub(crate) struct EntityDynamicPlayerTextureAtlasGpu {
     _texture: wgpu::Texture,
     _view: wgpu::TextureView,
@@ -634,10 +633,15 @@ impl Renderer {
                 .entity_dynamic_player_skin_atlas
                 .as_ref()
                 .map(|atlas| &atlas.layout);
-            let meshes = entity_model_textured_meshes_with_dynamic_skins(
+            let dynamic_player_texture_atlas = self
+                .entity_dynamic_player_texture_atlas
+                .as_ref()
+                .map(|atlas| &atlas.layout);
+            let meshes = entity_model_textured_meshes_with_dynamic_textures(
                 &self.entity_model_instances,
                 &atlas.layout,
                 dynamic_player_skin_atlas,
+                dynamic_player_texture_atlas,
             );
             self.entity_model_textured_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
                 &self.device,
@@ -666,6 +670,18 @@ impl Renderer {
                     meshes.dynamic_player_skin_translucent,
                     "bbb-entity-dynamic-player-skin-translucent",
                 );
+            self.entity_dynamic_player_texture_cutout_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.dynamic_player_texture_cutout,
+                    "bbb-entity-dynamic-player-texture-cutout",
+                );
+            self.entity_dynamic_player_texture_translucent_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.dynamic_player_texture_translucent,
+                    "bbb-entity-dynamic-player-texture-translucent",
+                );
             self.entity_model_scroll_mesh = create_entity_model_scroll_mesh_gpu_from_mesh(
                 &self.device,
                 meshes.scroll,
@@ -682,6 +698,8 @@ impl Renderer {
             self.entity_model_eyes_mesh = None;
             self.entity_dynamic_player_skin_cutout_mesh = None;
             self.entity_dynamic_player_skin_translucent_mesh = None;
+            self.entity_dynamic_player_texture_cutout_mesh = None;
+            self.entity_dynamic_player_texture_translucent_mesh = None;
             self.entity_model_scroll_mesh = None;
             self.entity_model_scroll_additive_mesh = None;
         }
@@ -700,6 +718,12 @@ impl Renderer {
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_dynamic_player_skin_translucent_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_dynamic_player_texture_cutout_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_dynamic_player_texture_translucent_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_scroll_mesh

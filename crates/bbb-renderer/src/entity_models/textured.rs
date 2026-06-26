@@ -1,3 +1,5 @@
+#[cfg(test)]
+use super::catalog::EntityDynamicPlayerTextureAtlasEntry;
 use super::colored::{
     creeper_model_root_transform, drowned_model_root_transform, end_crystal_model_root_transform,
     shulker_bullet_model_root_transform, villager_adult_model_root_transform,
@@ -6,6 +8,8 @@ use super::colored::{
 use super::dispatch::{dispatch_uniform_entity_model, TexturedSink};
 use super::held_item::custom_head_skull_transform;
 use super::model::{EntityModel, ModelPart};
+#[cfg(test)]
+use super::model_layers::PLAYER_WIDE_STEVE_TEXTURE_REF;
 use super::{
     catalog::{
         horse_markings_texture_ref, squid_texture_ref, villager_level_texture_ref,
@@ -16,7 +20,8 @@ use super::{
     catalog::{
         CamelModelFamily, DonkeyModelFamily, EntityArmorMaterial, EntityCustomHeadSkull,
         EntityDyeColor, EntityDynamicPlayerSkin, EntityDynamicPlayerSkinAtlasEntry,
-        EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerSkinStatus, EntityModelKind,
+        EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerSkinStatus,
+        EntityDynamicPlayerTexture, EntityDynamicPlayerTextureAtlasLayout, EntityModelKind,
         EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureRef,
         EntityModelUvRect, EntityPlayerSkin, HoglinModelFamily, HorseMarkings, LlamaModelFamily,
         LlamaVariant, PiglinModelFamily, PlayerModelPartVisibility, SheepWoolColor,
@@ -105,6 +110,7 @@ pub(super) struct EntityModelRenderSubmission {
     pub(super) render_type: EntityModelLayerRenderType,
     pub(super) texture: EntityModelTextureRef,
     pub(super) dynamic_player_skin: Option<EntityDynamicPlayerSkin>,
+    pub(super) dynamic_player_texture: Option<EntityDynamicPlayerTexture>,
     pub(super) tint: [f32; 4],
     pub(super) transform: Mat4,
     pub(super) order: i32,
@@ -119,6 +125,10 @@ pub(super) struct EntityModelTexturedMeshes {
     /// cutout/translucent render type while swapping only the texture source.
     pub(super) dynamic_player_skin_cutout: EntityModelTexturedMesh,
     pub(super) dynamic_player_skin_translucent: EntityModelTexturedMesh,
+    /// Ready remote non-skin player profile textures, such as capes and elytra, use a separate
+    /// variable-size atlas while preserving the vanilla render type.
+    pub(super) dynamic_player_texture_cutout: EntityModelTexturedMesh,
+    pub(super) dynamic_player_texture_translucent: EntityModelTexturedMesh,
     /// Translucent scrolling overlay (vanilla `breezeWind` — the wind charge).
     pub(super) scroll: EntityModelScrollMesh,
     /// Additive scrolling overlay (vanilla `energySwirl` — the charged-creeper / wither glow).
@@ -137,6 +147,8 @@ impl EntityModelTexturedMeshes {
             eyes: EntityModelTexturedMesh::new(),
             dynamic_player_skin_cutout: EntityModelTexturedMesh::new(),
             dynamic_player_skin_translucent: EntityModelTexturedMesh::new(),
+            dynamic_player_texture_cutout: EntityModelTexturedMesh::new(),
+            dynamic_player_texture_translucent: EntityModelTexturedMesh::new(),
             scroll: EntityModelScrollMesh::new(),
             scroll_additive: EntityModelScrollMesh::new(),
             submissions: Vec::new(),
@@ -182,11 +194,35 @@ impl EntityModelTexturedMeshes {
         }
     }
 
+    #[cfg(test)]
+    fn dynamic_player_texture_mesh_mut(
+        &mut self,
+        render_type: EntityModelLayerRenderType,
+    ) -> &mut EntityModelTexturedMesh {
+        match render_type {
+            EntityModelLayerRenderType::ArmorCutoutNoCull
+            | EntityModelLayerRenderType::EntityCutout
+            | EntityModelLayerRenderType::EntityCutoutCull
+            | EntityModelLayerRenderType::EntityCutoutZOffset => {
+                &mut self.dynamic_player_texture_cutout
+            }
+            EntityModelLayerRenderType::EntityTranslucent => {
+                &mut self.dynamic_player_texture_translucent
+            }
+            EntityModelLayerRenderType::Eyes
+            | EntityModelLayerRenderType::BreezeWind
+            | EntityModelLayerRenderType::EnergySwirl => {
+                panic!("unsupported dynamic player texture render type")
+            }
+        }
+    }
+
     fn record_submission(
         &mut self,
         render_type: EntityModelLayerRenderType,
         texture: EntityModelTextureRef,
         dynamic_player_skin: Option<EntityDynamicPlayerSkin>,
+        dynamic_player_texture: Option<EntityDynamicPlayerTexture>,
         tint: [f32; 4],
         transform: Mat4,
         order: i32,
@@ -196,6 +232,7 @@ impl EntityModelTexturedMeshes {
             render_type,
             texture,
             dynamic_player_skin,
+            dynamic_player_texture,
             tint,
             transform,
             order,
@@ -209,6 +246,7 @@ struct EntityModelSubmissionEmit {
     render_type: EntityModelLayerRenderType,
     texture: EntityModelTextureRef,
     dynamic_player_skin: Option<EntityDynamicPlayerSkin>,
+    dynamic_player_texture: Option<EntityDynamicPlayerTexture>,
     tint: [f32; 4],
     transform: Mat4,
     order: i32,
@@ -228,6 +266,7 @@ impl EntityModelSubmissionEmit {
             render_type,
             texture,
             dynamic_player_skin: None,
+            dynamic_player_texture: None,
             tint,
             transform,
             order,
@@ -237,6 +276,12 @@ impl EntityModelSubmissionEmit {
 
     fn with_dynamic_player_skin(mut self, skin: EntityDynamicPlayerSkin) -> Self {
         self.dynamic_player_skin = Some(skin);
+        self
+    }
+
+    #[cfg(test)]
+    fn with_dynamic_player_texture(mut self, texture: EntityDynamicPlayerTexture) -> Self {
+        self.dynamic_player_texture = Some(texture);
         self
     }
 }
@@ -254,15 +299,31 @@ pub(super) fn entity_model_textured_meshes(
     instances: &[EntityModelInstance],
     atlas: &EntityModelTextureAtlasLayout,
 ) -> EntityModelTexturedMeshes {
-    entity_model_textured_meshes_with_dynamic_skins(instances, atlas, None)
+    entity_model_textured_meshes_with_dynamic_textures(instances, atlas, None, None)
 }
 
+#[cfg(test)]
 pub(super) fn entity_model_textured_meshes_with_dynamic_skins(
     instances: &[EntityModelInstance],
     atlas: &EntityModelTextureAtlasLayout,
     dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
 ) -> EntityModelTexturedMeshes {
+    entity_model_textured_meshes_with_dynamic_textures(
+        instances,
+        atlas,
+        dynamic_player_skin_atlas,
+        None,
+    )
+}
+
+pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
+    instances: &[EntityModelInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+    dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
+    dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+) -> EntityModelTexturedMeshes {
     let mut meshes = EntityModelTexturedMeshes::new();
+    let _ = dynamic_player_texture_atlas;
     for instance in instances {
         if instance.render_state.invisible {
             continue;
@@ -273,6 +334,10 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_skins(
         let dynamic_player_skin_cutout_start = meshes.dynamic_player_skin_cutout.vertices.len();
         let dynamic_player_skin_translucent_start =
             meshes.dynamic_player_skin_translucent.vertices.len();
+        let dynamic_player_texture_cutout_start =
+            meshes.dynamic_player_texture_cutout.vertices.len();
+        let dynamic_player_texture_translucent_start =
+            meshes.dynamic_player_texture_translucent.vertices.len();
         let handled = {
             let mut sink = TexturedSink {
                 meshes: &mut meshes,
@@ -466,6 +531,16 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_skins(
             dynamic_player_skin_translucent_start,
             light,
         );
+        fill_entity_textured_light(
+            &mut meshes.dynamic_player_texture_cutout,
+            dynamic_player_texture_cutout_start,
+            light,
+        );
+        fill_entity_textured_light(
+            &mut meshes.dynamic_player_texture_translucent,
+            dynamic_player_texture_translucent_start,
+            light,
+        );
         let overlay = instance.render_state.overlay_coords();
         fill_entity_textured_overlay(&mut meshes.cutout, cutout_start, overlay);
         fill_entity_textured_overlay(&mut meshes.translucent, translucent_start, overlay);
@@ -480,7 +555,40 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_skins(
             dynamic_player_skin_translucent_start,
             overlay,
         );
+        fill_entity_textured_overlay(
+            &mut meshes.dynamic_player_texture_cutout,
+            dynamic_player_texture_cutout_start,
+            overlay,
+        );
+        fill_entity_textured_overlay(
+            &mut meshes.dynamic_player_texture_translucent,
+            dynamic_player_texture_translucent_start,
+            overlay,
+        );
     }
+    meshes
+}
+
+#[cfg(test)]
+pub(super) fn dynamic_player_texture_test_meshes(
+    render_type: EntityModelLayerRenderType,
+    dynamic_player_texture: EntityDynamicPlayerTexture,
+    atlas: &EntityModelTextureAtlasLayout,
+    dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+) -> EntityModelTexturedMeshes {
+    let mut meshes = EntityModelTexturedMeshes::new();
+    let model = PlayerModel::new(false);
+    render_textured_pass_with_dynamic_player_texture(
+        &mut meshes,
+        &model,
+        Mat4::IDENTITY,
+        render_type,
+        PLAYER_WIDE_STEVE_TEXTURE_REF,
+        dynamic_player_texture,
+        [0.25, 0.5, 0.75, 1.0],
+        atlas,
+        dynamic_player_texture_atlas,
+    );
     meshes
 }
 
@@ -531,6 +639,7 @@ fn emit_end_crystal_textured_model(
     meshes.record_submission(
         EntityModelLayerRenderType::EntityCutout,
         END_CRYSTAL_TEXTURE_REF,
+        None,
         None,
         tint,
         root,
@@ -684,6 +793,46 @@ fn render_textured_pass_with_dynamic_player_skin<M: EntityModel>(
     });
 }
 
+#[cfg(test)]
+fn render_textured_pass_with_dynamic_player_texture<M: EntityModel>(
+    meshes: &mut EntityModelTexturedMeshes,
+    model: &M,
+    transform: Mat4,
+    render_type: EntityModelLayerRenderType,
+    texture: EntityModelTextureRef,
+    dynamic_player_texture: EntityDynamicPlayerTexture,
+    tint: [f32; 4],
+    atlas: &EntityModelTextureAtlasLayout,
+    dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+) {
+    let submit = EntityModelSubmissionEmit::new(render_type, texture, tint, transform, 0, 0)
+        .with_dynamic_player_texture(dynamic_player_texture);
+    if let Some(entry) =
+        dynamic_player_texture_atlas_entry(dynamic_player_texture_atlas, dynamic_player_texture)
+    {
+        render_textured_dynamic_player_texture_submission(meshes, submit, entry, |mesh, entry| {
+            model.root().render_textured(
+                mesh,
+                submit.transform,
+                submit.texture,
+                entry.uv,
+                submit.tint,
+            );
+        });
+        return;
+    }
+
+    render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+        model.root().render_textured(
+            mesh,
+            submit.transform,
+            submit.texture,
+            entry.uv,
+            submit.tint,
+        );
+    });
+}
+
 fn render_textured_dynamic_player_skin_submission(
     meshes: &mut EntityModelTexturedMeshes,
     submit: EntityModelSubmissionEmit,
@@ -694,6 +843,7 @@ fn render_textured_dynamic_player_skin_submission(
         submit.render_type,
         submit.texture,
         submit.dynamic_player_skin,
+        submit.dynamic_player_texture,
         submit.tint,
         submit.transform,
         submit.order,
@@ -701,6 +851,29 @@ fn render_textured_dynamic_player_skin_submission(
     );
     emit(
         meshes.dynamic_player_skin_mesh_mut(submit.render_type),
+        entry,
+    );
+}
+
+#[cfg(test)]
+fn render_textured_dynamic_player_texture_submission(
+    meshes: &mut EntityModelTexturedMeshes,
+    submit: EntityModelSubmissionEmit,
+    entry: EntityDynamicPlayerTextureAtlasEntry,
+    emit: impl FnOnce(&mut EntityModelTexturedMesh, EntityDynamicPlayerTextureAtlasEntry),
+) {
+    meshes.record_submission(
+        submit.render_type,
+        submit.texture,
+        submit.dynamic_player_skin,
+        submit.dynamic_player_texture,
+        submit.tint,
+        submit.transform,
+        submit.order,
+        submit.submit_sequence,
+    );
+    emit(
+        meshes.dynamic_player_texture_mesh_mut(submit.render_type),
         entry,
     );
 }
@@ -715,6 +888,7 @@ fn render_textured_submission(
         submit.render_type,
         submit.texture,
         submit.dynamic_player_skin,
+        submit.dynamic_player_texture,
         submit.tint,
         submit.transform,
         submit.order,
@@ -747,6 +921,7 @@ fn render_scrolled_textured_submission(
         submit.render_type,
         submit.texture,
         submit.dynamic_player_skin,
+        submit.dynamic_player_texture,
         submit.tint,
         submit.transform,
         submit.order,
@@ -1135,6 +1310,7 @@ fn emit_guardian_beam(
         EntityModelLayerRenderType::EntityCutout,
         GUARDIAN_BEAM_TEXTURE_REF,
         None,
+        None,
         tint,
         transform,
         0,
@@ -1490,6 +1666,18 @@ fn dynamic_player_skin_atlas_entry(
         .iter()
         .copied()
         .find(|entry| entry.handle == handle)
+}
+
+#[cfg(test)]
+fn dynamic_player_texture_atlas_entry(
+    atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+    texture: EntityDynamicPlayerTexture,
+) -> Option<EntityDynamicPlayerTextureAtlasEntry> {
+    atlas?
+        .entries
+        .iter()
+        .copied()
+        .find(|entry| entry.handle == texture.handle)
 }
 
 fn custom_head_skull_texture_ref(skull: EntityCustomHeadSkull) -> EntityModelTextureRef {

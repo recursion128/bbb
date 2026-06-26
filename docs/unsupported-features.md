@@ -1272,9 +1272,12 @@ When an agent does any of the following, update this file in the same slice:
         post-processing, native keeps separate memory/disk caches for cape and
         elytra textures, profile cape/elytra URLs queue async downloads, and
         the main loop uploads successful results into a renderer-owned
-        variable-size dynamic player texture atlas. Sampling that atlas from
-        the actual CapeLayer/WingsLayer presentation, and broader arbitrary
-        dynamic texture loading remain deferred.
+        variable-size dynamic player texture atlas. Renderer can now record
+        dynamic player texture submissions and draw cutout/translucent dynamic
+        profile-texture buckets bound to that atlas, with static-atlas fallback
+        when the dynamic entry is absent. Actual CapeLayer/WingsLayer
+        presentation and broader arbitrary dynamic texture loading remain
+        deferred.
       - fox held item DONE: `FoxHeldItemLayer` is reproduced through the same
         item-model pass. Renderer exposes `fox_held_item_transform`, which builds
         and poses the vanilla adult/baby `FoxModel`, reads the posed `head` part,
@@ -1303,7 +1306,7 @@ When an agent does any of the following, update this file in the same slice:
         through the projected passenger state. STAB/NONE swing-type parity on non-player
         humanoids remains separate work.
       - remaining slices: held-item refinements (first-person viewmodel; player
-        cape/elytra dynamic texture sampling/presentation and broader arbitrary
+        cape/elytra dynamic texture layer presentation and broader arbitrary
         dynamic texture loading; the
         STAB swing pose on non-player humanoid models; the `NONE` swing type; the
         attack swing on the non-player humanoid models). Item lighting

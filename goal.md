@@ -64,8 +64,9 @@ resolved profile/properties。native 也已补 skin PNG 异步下载队列，成
 Loading/Failed 仍采样 fallback。native 也已补 cape/elytra 这类普通 profile
 texture PNG 的异步下载/缓存 primitive（不走 legacy skin post-process，按 capes/elytra
 分目录缓存并 drain 给 renderer），renderer 已补普通 profile texture 动态 atlas
-上传入口。剩余的是采样该 atlas 的 CapeLayer/WingsLayer presentation，以及更泛化的
-任意动态纹理加载。
+上传入口与采样 mesh primitive；Ready 普通 profile texture submission 可进动态 atlas
+bucket，缺 entry 时回退静态 atlas。剩余的是接入实际 CapeLayer/WingsLayer presentation，
+以及更泛化的任意动态纹理加载。
 铜傀儡 vanilla 模型、四态风化贴图和 emissive eyes layer 已完成。
 Illager 家族的主要 arm-pose 分支已覆盖到 evoker/illusioner spellcasting、illusioner bow aim、
 pillager crossbow hold/charge、evoker/vindicator celebrating，以及 vindicator empty/armed
@@ -160,7 +161,10 @@ Panda sit/lie/roll client-tick 动画已完成：world 侧按 vanilla `Panda.tic
    8. DONE for renderer 普通 profile texture 上传 primitive：renderer 维护可变尺寸
       dynamic player texture atlas，`upload_dynamic_player_texture` 按 handle 替换/排序并
       上传 GPU texture；main 会把 cape/elytra 下载成功结果上传到该 atlas。
-   9. 推广 renderer 动态纹理采样入口到 CapeLayer/WingsLayer 等层，并继续抽象 broader
+   9. DONE for renderer 普通 profile texture 采样 primitive：textured submission 可携带
+      `EntityDynamicPlayerTexture` handle，Ready entry 会进入绑定动态 profile texture atlas
+      的 cutout/translucent bucket，缺 atlas entry 时保留 submission 元数据并回退静态 atlas。
+   10. 接入实际 CapeLayer/WingsLayer presentation，并继续抽象 broader
       arbitrary dynamic texture loading。
 > 落地前务必先在 bbb 里 grep 确认该 feature 确实缺失（历史上多次「以为缺失实则已实现」）。
 > 索引/数据陷阱见 memory `entity-metadata-index-layout.md`；模型/代理历史见 `proxy-entity-replacement.md`。

@@ -385,6 +385,72 @@ fn dynamic_player_texture_atlas_rejects_bad_profile_texture_dimensions() {
 }
 
 #[test]
+fn ready_dynamic_player_texture_submission_uses_dynamic_texture_atlas_bucket() {
+    let (static_atlas, _) =
+        build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
+    let dynamic_texture = EntityDynamicPlayerTexture { handle: 7001 };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicPlayerTextureImage {
+        handle: dynamic_texture.handle,
+        size: [64, 64],
+        rgba: vec![0xaa; 64 * 64 * 4],
+    }])
+    .unwrap()
+    .0;
+
+    let meshes = dynamic_player_texture_test_meshes(
+        EntityModelLayerRenderType::EntityCutout,
+        dynamic_texture,
+        &static_atlas,
+        Some(&dynamic_atlas),
+    );
+
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.texture, PLAYER_WIDE_STEVE_TEXTURE_REF);
+    assert_eq!(submit.dynamic_player_skin, None);
+    assert_eq!(submit.dynamic_player_texture, Some(dynamic_texture));
+    assert_eq!(submit.tint, [0.25, 0.5, 0.75, 1.0]);
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert!(meshes.cutout.vertices.is_empty());
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_translucent
+        .vertices
+        .is_empty());
+    assert_eq!(meshes.dynamic_player_texture_cutout.cutout_faces, 72);
+    assert_eq!(meshes.dynamic_player_texture_cutout.vertices.len(), 288);
+}
+
+#[test]
+fn dynamic_player_texture_submission_falls_back_to_static_atlas_when_not_uploaded() {
+    let (static_atlas, _) =
+        build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
+    let dynamic_texture = EntityDynamicPlayerTexture { handle: 7002 };
+
+    let meshes = dynamic_player_texture_test_meshes(
+        EntityModelLayerRenderType::EntityTranslucent,
+        dynamic_texture,
+        &static_atlas,
+        None,
+    );
+
+    assert_eq!(meshes.submissions.len(), 1);
+    assert_eq!(
+        meshes.submissions[0].dynamic_player_texture,
+        Some(dynamic_texture)
+    );
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_translucent
+        .vertices
+        .is_empty());
+    assert!(meshes.cutout.vertices.is_empty());
+    assert_eq!(meshes.translucent.cutout_faces, 72);
+    assert_eq!(meshes.translucent.vertices.len(), 288);
+}
+
+#[test]
 fn player_textured_mesh_applies_vanilla_model_part_visibility_to_overlay_parts() {
     let (atlas, _) = build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
     let hidden = entity_model_textured_mesh(

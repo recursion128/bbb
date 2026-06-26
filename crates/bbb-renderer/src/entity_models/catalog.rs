@@ -49,6 +49,11 @@ pub struct EntityDynamicPlayerSkin {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EntityDynamicPlayerTexture {
+    pub handle: u64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EntityDynamicPlayerSkinStatus {
     Loading,
     Ready,

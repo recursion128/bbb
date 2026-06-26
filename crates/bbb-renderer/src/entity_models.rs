@@ -91,9 +91,7 @@ pub use model_layers::{
 };
 #[cfg(test)]
 use textured::entity_model_textured_mesh;
-#[cfg(test)]
-use textured::entity_model_textured_meshes;
-use textured::entity_model_textured_meshes_with_dynamic_skins;
+use textured::entity_model_textured_meshes_with_dynamic_textures;
 #[cfg(test)]
 use textured::{
     armadillo_textured_layer_passes, arrow_textured_layer_passes, axolotl_textured_layer_passes,
@@ -123,6 +121,11 @@ use textured::{
     zombie_nautilus_textured_layer_passes, zombie_textured_layer_passes,
     zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerRenderType,
     EntityModelLayerVisibility,
+};
+#[cfg(test)]
+use textured::{
+    dynamic_player_texture_test_meshes, entity_model_textured_meshes,
+    entity_model_textured_meshes_with_dynamic_skins,
 };
 
 #[cfg(test)]
