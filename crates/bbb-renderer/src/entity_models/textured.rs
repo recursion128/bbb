@@ -45,20 +45,20 @@ use super::{
         nautilus_body_armor_texture_ref, wolf_armor_crackiness_texture_ref,
         wolf_body_armor_texture_layers, BreezeWindModel, CamelModel, CreeperModel,
         CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel, CustomHeadSkullModel,
-        DrownedOuterModel, ElytraModel, HoglinModel, HumanoidArmorSlot, LlamaModel, NautilusModel,
-        PigModel, PiglinModel, PlayerModel, SheepFurModel, SheepModel, ShulkerBulletModel,
-        SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SquidModel,
-        StriderModel, TropicalFishModel, TropicalFishPatternModel, VillagerModel, WindChargeModel,
-        WitherModel, WolfModel, ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
-        ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_DONKEY_SADDLE_PARTS_TEXTURED,
-        ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED, ADULT_HORSE_ARMOR_PARTS_TEXTURED,
-        ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
-        ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
-        BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF, CAMEL_HUSK_SADDLE_TEXTURE_REF,
-        CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF, CREEPER_TEXTURE_REF,
-        DONKEY_SADDLE_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_BEAM_TEXTURE_REF,
-        END_CRYSTAL_TEXTURED_PARTS, END_CRYSTAL_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF,
-        HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
+        DrownedOuterModel, ElytraModel, HoglinModel, HumanoidArmorSlot, HumanoidBabyArmorKind,
+        LlamaModel, NautilusModel, PigModel, PiglinModel, PlayerModel, SheepFurModel, SheepModel,
+        ShulkerBulletModel, SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel,
+        SquidModel, StriderModel, TropicalFishModel, TropicalFishPatternModel, VillagerModel,
+        WindChargeModel, WitherModel, WolfModel, ZombieModel, ZombieVariantModel,
+        ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
+        ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
+        ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
+        ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
+        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF,
+        CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF,
+        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF,
+        END_CRYSTAL_BEAM_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, END_CRYSTAL_TEXTURE_REF,
+        GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
         LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
         PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF,
         PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
@@ -1503,7 +1503,7 @@ fn emit_humanoid_armor(
     host_root: &ModelPart,
     transform: Mat4,
     outer: f32,
-    baby: bool,
+    baby_kind: Option<HumanoidBabyArmorKind>,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     let render_state = &instance.render_state;
@@ -1532,7 +1532,8 @@ fn emit_humanoid_armor(
         let Some(material) = material else {
             continue;
         };
-        let Some(texture) = armor_slot_texture_for_layer(material, slot, baby) else {
+        let Some(texture) = armor_slot_texture_for_layer(material, slot, baby_kind.is_some())
+        else {
             continue;
         };
         let submit_sequence = match slot {
@@ -1541,13 +1542,13 @@ fn emit_humanoid_armor(
             HumanoidArmorSlot::Feet => 3,
             HumanoidArmorSlot::Head => 4,
         };
-        let mut tree = if baby {
-            slot.build_standard_baby_tree()
+        let mut tree = if let Some(kind) = baby_kind {
+            slot.build_baby_tree(kind)
         } else {
             slot.build_tree(outer)
         };
-        if baby {
-            tree.copy_child_rotations_from(host_root, slot.baby_pose_part_names());
+        if baby_kind.is_some() {
+            tree.copy_child_animation_from(host_root, slot.baby_pose_part_names());
         } else {
             tree.copy_child_poses_from(host_root, slot.part_names());
         }
@@ -1603,7 +1604,7 @@ fn emit_worn_humanoid_armor(
                 host.root(),
                 transform,
                 STANDARD_OUTER_ARMOR_DEFORMATION,
-                false,
+                None,
                 atlas,
             );
         }
@@ -1617,7 +1618,7 @@ fn emit_worn_humanoid_armor(
                 host.root(),
                 transform,
                 STANDARD_OUTER_ARMOR_DEFORMATION,
-                true,
+                Some(HumanoidBabyArmorKind::Standard),
                 atlas,
             );
         }
@@ -1631,7 +1632,7 @@ fn emit_worn_humanoid_armor(
                 host.root(),
                 transform,
                 STANDARD_OUTER_ARMOR_DEFORMATION,
-                false,
+                None,
                 atlas,
             );
         }
@@ -1655,7 +1656,7 @@ fn emit_worn_humanoid_armor(
                 host.root(),
                 transform,
                 STANDARD_OUTER_ARMOR_DEFORMATION,
-                false,
+                None,
                 atlas,
             );
         }
@@ -1676,7 +1677,7 @@ fn emit_worn_humanoid_armor(
                 host.root(),
                 transform,
                 STANDARD_OUTER_ARMOR_DEFORMATION,
-                true,
+                Some(HumanoidBabyArmorKind::Standard),
                 atlas,
             );
         }
@@ -1690,7 +1691,7 @@ fn emit_worn_humanoid_armor(
                 host.root(),
                 transform,
                 STANDARD_OUTER_ARMOR_DEFORMATION,
-                false,
+                None,
                 atlas,
             );
         }
@@ -1708,7 +1709,7 @@ fn emit_worn_humanoid_armor(
                 host.root(),
                 transform,
                 STANDARD_OUTER_ARMOR_DEFORMATION,
-                false,
+                None,
                 atlas,
             );
         }
@@ -1723,7 +1724,7 @@ fn emit_worn_humanoid_armor(
                 host.root(),
                 transform,
                 STANDARD_OUTER_ARMOR_DEFORMATION,
-                false,
+                None,
                 atlas,
             );
         }
@@ -1744,7 +1745,40 @@ fn emit_worn_humanoid_armor(
                 host.root(),
                 transform,
                 PIGLIN_OUTER_ARMOR_DEFORMATION,
-                false,
+                None,
+                atlas,
+            );
+        }
+        EntityModelKind::Piglin { family, baby: true }
+            if family != PiglinModelFamily::PiglinBrute =>
+        {
+            let mut host = PiglinModel::new(family, true);
+            host.prepare(&instance);
+            let transform = entity_model_root_transform(instance);
+            emit_humanoid_armor(
+                meshes,
+                instance,
+                host.root(),
+                transform,
+                PIGLIN_OUTER_ARMOR_DEFORMATION,
+                Some(HumanoidBabyArmorKind::Piglin),
+                atlas,
+            );
+        }
+        EntityModelKind::Piglin {
+            family: PiglinModelFamily::PiglinBrute,
+            baby: true,
+        } => {
+            let mut host = PiglinModel::new(PiglinModelFamily::PiglinBrute, true);
+            host.prepare(&instance);
+            let transform = entity_model_root_transform(instance);
+            emit_humanoid_armor(
+                meshes,
+                instance,
+                host.root(),
+                transform,
+                PIGLIN_OUTER_ARMOR_DEFORMATION,
+                None,
                 atlas,
             );
         }

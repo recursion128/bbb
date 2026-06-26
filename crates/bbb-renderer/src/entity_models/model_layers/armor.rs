@@ -143,6 +143,8 @@ const LEFT_LEG_POSE: PartPose = PartPose {
 // `HumanoidModel.createBabyArmorMesh` parts. These are used by zombie, husk, and drowned baby armor.
 const BABY_OUTER_ARMOR_DEFORMATION: [f32; 3] = [-0.1, 0.5, 0.3];
 const BABY_INNER_ARMOR_DEFORMATION: [f32; 3] = [-0.1, 0.3, 0.3];
+const BABY_PIGLIN_ARMOR_DEFORMATION: [f32; 3] = [0.7, 0.7, 0.7];
+const BABY_PIGLIN_ARMOR_ARM_OFFSET: [f32; 3] = [0.5, -0.5, 0.0];
 
 const BABY_ARMOR_HEAD_MIN: [f32; 3] = [-4.5, -7.0, -4.5];
 const BABY_ARMOR_HEAD_SIZE: [f32; 3] = [9.0, 8.0, 8.0];
@@ -195,6 +197,35 @@ pub(in crate::entity_models) enum HumanoidArmorSlot {
     Legs,
     Feet,
     Head,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(in crate::entity_models) enum HumanoidBabyArmorKind {
+    Standard,
+    Piglin,
+}
+
+impl HumanoidBabyArmorKind {
+    const fn inner_deformation(self) -> [f32; 3] {
+        match self {
+            Self::Standard => BABY_INNER_ARMOR_DEFORMATION,
+            Self::Piglin => BABY_PIGLIN_ARMOR_DEFORMATION,
+        }
+    }
+
+    const fn outer_deformation(self) -> [f32; 3] {
+        match self {
+            Self::Standard => BABY_OUTER_ARMOR_DEFORMATION,
+            Self::Piglin => BABY_PIGLIN_ARMOR_DEFORMATION,
+        }
+    }
+
+    const fn arm_offset(self) -> [f32; 3] {
+        match self {
+            Self::Standard => [0.0, 0.0, 0.0],
+            Self::Piglin => BABY_PIGLIN_ARMOR_ARM_OFFSET,
+        }
+    }
 }
 
 impl HumanoidArmorSlot {
@@ -333,12 +364,16 @@ impl HumanoidArmorSlot {
         ModelPart::new(PART_POSE_ZERO, Vec::new(), children)
     }
 
-    /// Builds the standard baby humanoid armor model used by vanilla zombie, husk, and drowned baby
-    /// armor sets (`HumanoidModel.createBabyArmorMeshSet`). Unlike adult armor, all four slots use the
-    /// `HUMANOID_BABY` equipment texture and the 64x64 baby UV layout.
-    pub(in crate::entity_models) fn build_standard_baby_tree(self) -> ModelPart {
-        let outer = BABY_OUTER_ARMOR_DEFORMATION;
-        let inner = BABY_INNER_ARMOR_DEFORMATION;
+    /// Builds a baby humanoid armor model from vanilla `HumanoidModel.createBabyArmorMeshSet`. The
+    /// standard zombie/husk/drowned set uses axis-specific baby deformations; the piglin family uses a
+    /// uniform `0.7` deformation plus the vanilla baby piglin arm offset.
+    pub(in crate::entity_models) fn build_baby_tree(
+        self,
+        kind: HumanoidBabyArmorKind,
+    ) -> ModelPart {
+        let outer = kind.outer_deformation();
+        let inner = kind.inner_deformation();
+        let arm_offset = kind.arm_offset();
         let children: Vec<(&'static str, ModelPart)> = match self {
             Self::Head => vec![(
                 "head",
@@ -371,7 +406,14 @@ impl HumanoidArmorSlot {
                 (
                     "right_arm",
                     ModelPart::leaf(
-                        BABY_ARMOR_RIGHT_ARM_POSE,
+                        PartPose {
+                            offset: [
+                                BABY_ARMOR_RIGHT_ARM_POSE.offset[0] - arm_offset[0],
+                                BABY_ARMOR_RIGHT_ARM_POSE.offset[1] + arm_offset[1],
+                                BABY_ARMOR_RIGHT_ARM_POSE.offset[2] + arm_offset[2],
+                            ],
+                            rotation: BABY_ARMOR_RIGHT_ARM_POSE.rotation,
+                        },
                         vec![armor_cube_deformed(
                             BABY_ARMOR_ARM_MIN,
                             BABY_ARMOR_ARM_SIZE,
@@ -384,7 +426,14 @@ impl HumanoidArmorSlot {
                 (
                     "left_arm",
                     ModelPart::leaf(
-                        BABY_ARMOR_LEFT_ARM_POSE,
+                        PartPose {
+                            offset: [
+                                BABY_ARMOR_LEFT_ARM_POSE.offset[0] + arm_offset[0],
+                                BABY_ARMOR_LEFT_ARM_POSE.offset[1] + arm_offset[1],
+                                BABY_ARMOR_LEFT_ARM_POSE.offset[2] + arm_offset[2],
+                            ],
+                            rotation: BABY_ARMOR_LEFT_ARM_POSE.rotation,
+                        },
                         vec![armor_cube_deformed(
                             BABY_ARMOR_ARM_MIN,
                             BABY_ARMOR_ARM_SIZE,

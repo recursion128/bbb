@@ -514,12 +514,58 @@ fn piglin_family_drapes_armor_at_wider_deformation() {
         "piglin armor (OUTER 1.02) extends wider than zombie armor (OUTER 1.0): {piglin_x} vs {zombie_x}"
     );
 
-    // A baby piglin wears the deferred baby armor mesh, so it drapes nothing.
-    let baby =
-        EntityModelInstance::piglin(93, [0.0, 64.0, 0.0], 0.0, PiglinModelFamily::Piglin, true);
-    let bare = entity_model_textured_meshes(&[baby], &atlas);
-    let armored = entity_model_textured_meshes(&[full_iron(baby)], &atlas);
-    assert_eq!(bare.cutout.vertices.len(), armored.cutout.vertices.len());
+    // Baby piglin-family armor uses vanilla `AbstractPiglinModel.createBabyArmorMeshSet`: the same
+    // 9-cube baby retained topology as standard baby armor, but with uniform 0.7 deformation and the
+    // `(0.5, -0.5, 0)` arm offset.
+    for (family, base_texture) in [
+        (PiglinModelFamily::Piglin, PIGLIN_BABY_TEXTURE_REF),
+        (
+            PiglinModelFamily::ZombifiedPiglin,
+            ZOMBIFIED_PIGLIN_BABY_TEXTURE_REF,
+        ),
+    ] {
+        let baby = EntityModelInstance::piglin(93, [0.0, 64.0, 0.0], 0.0, family, true);
+        let bare = entity_model_textured_meshes(&[baby], &atlas);
+        let armored = entity_model_textured_meshes(&[full_iron(baby)], &atlas);
+        assert_eq!(
+            armored.cutout.vertices.len() - bare.cutout.vertices.len(),
+            216,
+            "{family:?} baby armor retains nine baby cubes"
+        );
+        assert_eq!(armored.submissions.len(), 5);
+        assert_eq!(armored.submissions[0].texture, base_texture);
+        assert_eq!(
+            (
+                armored.submissions[0].order,
+                armored.submissions[0].submit_sequence
+            ),
+            (0, 0)
+        );
+        let expected_transform = entity_model_root_transform(baby);
+        for (submit, sequence) in armored.submissions[1..].iter().zip(1..) {
+            assert_eq!(
+                submit.render_type,
+                EntityModelLayerRenderType::ArmorCutoutNoCull
+            );
+            assert_eq!(submit.texture, ARMOR_IRON_BABY_HUMANOID_TEXTURE_REF);
+            assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+            assert_eq!((submit.order, submit.submit_sequence), (1, sequence));
+            assert_eq!(submit.transform, expected_transform);
+        }
+    }
+
+    let baby_zombie_x = max_armor_x(EntityModelInstance::zombie(95, [0.0, 64.0, 0.0], 0.0, true));
+    let baby_piglin_x = max_armor_x(EntityModelInstance::piglin(
+        96,
+        [0.0, 64.0, 0.0],
+        0.0,
+        PiglinModelFamily::Piglin,
+        true,
+    ));
+    assert!(
+        baby_piglin_x > baby_zombie_x,
+        "piglin baby armor's 0.7 deformation / arm offset extends wider than standard baby armor: {baby_piglin_x} vs {baby_zombie_x}"
+    );
 }
 
 #[test]

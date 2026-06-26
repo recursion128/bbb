@@ -209,10 +209,10 @@ impl ModelPart {
         }
     }
 
-    /// Copies only the animated rotation and scale of each named direct child. Baby armor models have
-    /// vanilla-authored bind offsets that differ from the baby zombie body, so they need the host's
-    /// animation without replacing their own `PartPose.offset`.
-    pub(in crate::entity_models) fn copy_child_rotations_from(
+    /// Copies the animated delta of each named direct child while preserving this model's own bind
+    /// offsets. Baby armor models have vanilla-authored bind offsets that differ from their host body;
+    /// they still need dynamic offset bobbing, rotations, and scale from the posed host model.
+    pub(in crate::entity_models) fn copy_child_animation_from(
         &mut self,
         source: &ModelPart,
         names: &[&str],
@@ -220,6 +220,11 @@ impl ModelPart {
         for name in names {
             if let Some((_, src)) = source.children.iter().find(|(n, _)| n == name) {
                 let target = self.child_mut(name);
+                for axis in 0..3 {
+                    target.pose.offset[axis] = target.default_pose.offset[axis]
+                        + src.pose.offset[axis]
+                        - src.default_pose.offset[axis];
+                }
                 target.pose.rotation = src.pose.rotation;
                 target.scale = src.scale;
             }
