@@ -1421,7 +1421,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 472] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 474] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -1835,6 +1835,8 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     CAMEL_TEXTURE_REF,
     CAMEL_BABY_TEXTURE_REF,
     CAMEL_HUSK_TEXTURE_REF,
+    CAMEL_SADDLE_TEXTURE_REF,
+    CAMEL_HUSK_SADDLE_TEXTURE_REF,
     SQUID_TEXTURE_REF,
     SQUID_BABY_TEXTURE_REF,
     GLOW_SQUID_TEXTURE_REF,
@@ -2108,6 +2110,16 @@ pub(in crate::entity_models) const CAMEL_BABY_TEXTURE_REF: EntityModelTextureRef
 pub(in crate::entity_models) const CAMEL_HUSK_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/camel/camel_husk.png",
+        size: [128, 128],
+    };
+pub(in crate::entity_models) const CAMEL_SADDLE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/camel_saddle/saddle.png",
+        size: [128, 128],
+    };
+pub(in crate::entity_models) const CAMEL_HUSK_SADDLE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/equipment/camel_husk_saddle/saddle.png",
         size: [128, 128],
     };
 

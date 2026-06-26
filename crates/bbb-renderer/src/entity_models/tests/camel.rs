@@ -194,6 +194,22 @@ fn camel_texture_refs_match_vanilla_renderer() {
         assert_eq!(kind.model_key(), model_key);
         assert_eq!(kind.vanilla_texture_ref(), Some(texture));
     }
+    assert_eq!(
+        CAMEL_SADDLE_TEXTURE_REF,
+        EntityModelTextureRef {
+            path: "textures/entity/equipment/camel_saddle/saddle.png",
+            size: [128, 128],
+        }
+    );
+    assert_eq!(
+        CAMEL_HUSK_SADDLE_TEXTURE_REF,
+        EntityModelTextureRef {
+            path: "textures/entity/equipment/camel_husk_saddle/saddle.png",
+            size: [128, 128],
+        }
+    );
+    assert!(entity_model_texture_refs().contains(&CAMEL_SADDLE_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&CAMEL_HUSK_SADDLE_TEXTURE_REF));
 }
 
 #[test]
@@ -284,6 +300,33 @@ fn camel_cubes_match_vanilla_model_layer_uv_sources() {
 }
 
 #[test]
+fn camel_saddle_model_parts_match_vanilla_layer_sources() {
+    // Vanilla `CamelSaddleModel.createSaddleLayer()` starts from the adult camel body mesh and appends
+    // saddle, reins, and bridle children. Inflated boxes use `CubeDeformation(0.05F)`, while the reins
+    // planes and two mouth cubes use no deformation.
+    assert_eq!(ADULT_CAMEL_SADDLE[0].min, [-4.55, -17.05, -15.55]);
+    assert_eq!(ADULT_CAMEL_SADDLE[0].size, [9.1, 5.1, 11.1]);
+    assert_eq!(ADULT_CAMEL_SADDLE[0].uv_size, [9.0, 5.0, 11.0]);
+    assert_eq!(ADULT_CAMEL_SADDLE[0].tex, [74.0, 64.0]);
+    assert_eq!(ADULT_CAMEL_SADDLE[1].tex, [92.0, 114.0]);
+    assert_eq!(ADULT_CAMEL_SADDLE[2].tex, [0.0, 89.0]);
+
+    assert_eq!(ADULT_CAMEL_REINS[0].min, [3.51, -18.0, -17.0]);
+    assert_eq!(ADULT_CAMEL_REINS[0].size, [0.0, 7.0, 15.0]);
+    assert_eq!(ADULT_CAMEL_REINS[1].size, [7.0, 7.0, 0.0]);
+    assert_eq!(ADULT_CAMEL_REINS[1].tex, [84.0, 57.0]);
+    assert_eq!(ADULT_CAMEL_REINS[2].tex, [98.0, 42.0]);
+
+    assert_eq!(ADULT_CAMEL_BRIDLE[0].min, [-3.55, -7.05, -15.05]);
+    assert_eq!(ADULT_CAMEL_BRIDLE[0].size, [7.1, 8.1, 19.1]);
+    assert_eq!(ADULT_CAMEL_BRIDLE[1].tex, [21.0, 64.0]);
+    assert_eq!(ADULT_CAMEL_BRIDLE[2].tex, [50.0, 64.0]);
+    assert_eq!(ADULT_CAMEL_BRIDLE[3].size, [1.0, 2.0, 2.0]);
+    assert!(!ADULT_CAMEL_BRIDLE[3].mirror);
+    assert!(ADULT_CAMEL_BRIDLE[4].mirror);
+}
+
+#[test]
 fn camel_textured_mesh_matches_static_vanilla_pose() {
     // Vanilla `CamelModel.setupAnim` drives the limbs via baked `KeyframeAnimation`s plus a
     // direct head clamp. The textured meshes carry the full body-layer geometry (12 adult cubes /
@@ -329,6 +372,77 @@ fn camel_textured_mesh_matches_static_vanilla_pose() {
     let walking = entity_model_textured_mesh(&[adult.with_walk_animation(5.0, 1.0)], &atlas);
     assert_eq!(adult_mesh.vertices.len(), walking.vertices.len());
     assert_ne!(adult_mesh.vertices, walking.vertices);
+}
+
+#[test]
+fn camel_saddle_layer_renders_for_adult_camel_and_husk_only() {
+    let (atlas, _) = build_entity_model_texture_atlas(&texture_images(&[
+        CAMEL_TEXTURE_REF,
+        CAMEL_BABY_TEXTURE_REF,
+        CAMEL_HUSK_TEXTURE_REF,
+        CAMEL_SADDLE_TEXTURE_REF,
+        CAMEL_HUSK_SADDLE_TEXTURE_REF,
+    ]))
+    .unwrap();
+
+    let adult =
+        EntityModelInstance::camel(760, [0.0, 64.0, 0.0], 0.0, CamelModelFamily::Camel, false);
+    let bare = entity_model_textured_mesh(&[adult], &atlas);
+    let saddled = entity_model_textured_mesh(&[adult.with_camel_saddle(true)], &atlas);
+    assert_eq!(saddled.cutout_faces - bare.cutout_faces, 120);
+    assert_eq!(saddled.vertices.len() - bare.vertices.len(), 480);
+
+    let ridden = entity_model_textured_mesh(
+        &[adult.with_camel_saddle(true).with_camel_saddle_ridden(true)],
+        &atlas,
+    );
+    assert_eq!(ridden.cutout_faces - saddled.cutout_faces, 18);
+    assert_eq!(ridden.vertices.len() - saddled.vertices.len(), 72);
+
+    let saddle_uv = atlas
+        .entries
+        .iter()
+        .find(|entry| entry.texture == CAMEL_SADDLE_TEXTURE_REF)
+        .unwrap()
+        .uv;
+    let first_saddle_vertex = saddled.vertices[bare.vertices.len()].uv;
+    assert!(first_saddle_vertex[0] >= saddle_uv.min[0]);
+    assert!(first_saddle_vertex[0] <= saddle_uv.max[0]);
+    assert!(first_saddle_vertex[1] >= saddle_uv.min[1]);
+    assert!(first_saddle_vertex[1] <= saddle_uv.max[1]);
+
+    let baby =
+        EntityModelInstance::camel(761, [0.0, 64.0, 0.0], 0.0, CamelModelFamily::Camel, true)
+            .with_camel_saddle(true)
+            .with_camel_saddle_ridden(true);
+    let baby_mesh = entity_model_textured_mesh(&[baby], &atlas);
+    assert_eq!(
+        baby_mesh.vertices.len(),
+        264,
+        "vanilla supplies no baby model for the camel saddle layer"
+    );
+
+    let husk = EntityModelInstance::camel(
+        762,
+        [0.0, 64.0, 0.0],
+        0.0,
+        CamelModelFamily::CamelHusk,
+        false,
+    )
+    .with_camel_saddle(true);
+    let husk_mesh = entity_model_textured_mesh(&[husk], &atlas);
+    assert_eq!(husk_mesh.cutout_faces - bare.cutout_faces, 120);
+    let husk_saddle_uv = atlas
+        .entries
+        .iter()
+        .find(|entry| entry.texture == CAMEL_HUSK_SADDLE_TEXTURE_REF)
+        .unwrap()
+        .uv;
+    let first_husk_saddle_vertex = husk_mesh.vertices[bare.vertices.len()].uv;
+    assert!(first_husk_saddle_vertex[0] >= husk_saddle_uv.min[0]);
+    assert!(first_husk_saddle_vertex[0] <= husk_saddle_uv.max[0]);
+    assert!(first_husk_saddle_vertex[1] >= husk_saddle_uv.min[1]);
+    assert!(first_husk_saddle_vertex[1] <= husk_saddle_uv.max[1]);
 }
 
 /// The adult camel's depth-first emit order: body `[0, 24)`, hump `[24, 48)`, the zero-thickness
@@ -693,7 +807,11 @@ fn camel_sitting_and_standing_re_pose_the_body_and_legs_vs_the_bind_pose() {
 }
 
 fn camel_texture_images() -> Vec<EntityModelTextureImage> {
-    camel_entity_texture_refs()
+    texture_images(camel_entity_texture_refs())
+}
+
+fn texture_images(textures: &[EntityModelTextureRef]) -> Vec<EntityModelTextureImage> {
+    textures
         .iter()
         .enumerate()
         .map(|(index, texture)| {

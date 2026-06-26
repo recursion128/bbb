@@ -1238,6 +1238,8 @@ fn entity_model_instance(
         .with_equine_saddle_ridden(source.equine_saddle_ridden)
         .with_strider_ridden(source.strider_ridden)
         .with_strider_saddle(source.strider_saddle)
+        .with_camel_saddle(source.camel_saddle)
+        .with_camel_saddle_ridden(source.camel_saddle_ridden)
         .with_guardian_beam(guardian_beam(source.guardian_beam))
         .with_is_crouching(source.is_crouching)
         .with_wolf_tail_angle(wolf_tail_angle(
@@ -6699,6 +6701,69 @@ mod tests {
             passenger_ids: vec![114],
         }));
         assert_eq!(strider_state(&world, 113), (true, true));
+    }
+
+    #[test]
+    fn entity_model_instances_project_camel_saddle_and_ridden_render_state() {
+        const SADDLE_ITEM_ID: i32 = 743;
+
+        let saddle = |entity_id: i32| SetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Saddle,
+                item: ItemStackSummary {
+                    item_id: Some(SADDLE_ITEM_ID),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            }],
+        };
+        let camel_saddle = |world: &WorldStore, id: i32| {
+            let render_state = entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state;
+            (render_state.camel_saddle, render_state.camel_saddle_ridden)
+        };
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            115,
+            VANILLA_ENTITY_TYPE_CAMEL_ID,
+            [1.0, 64.0, -3.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            116,
+            VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+            [2.0, 64.0, -3.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            117,
+            VANILLA_ENTITY_TYPE_COW_ID,
+            [3.0, 64.0, -3.0],
+        ));
+        assert!(world.apply_set_equipment(saddle(115)));
+        assert_eq!(
+            camel_saddle(&world, 115),
+            (false, false),
+            "without the item registry's saddle-slot map, a raw item id is not enough"
+        );
+
+        world.set_default_item_equipment_slots(std::collections::BTreeMap::from([(
+            SADDLE_ITEM_ID,
+            ItemEquipmentSlot::Saddle,
+        )]));
+        assert_eq!(camel_saddle(&world, 115), (true, false));
+
+        assert!(world.apply_set_passengers(SetPassengers {
+            vehicle_id: 115,
+            passenger_ids: vec![117],
+        }));
+        assert_eq!(camel_saddle(&world, 115), (true, true));
+
+        assert!(world.apply_set_equipment(saddle(116)));
+        assert_eq!(camel_saddle(&world, 116), (true, false));
     }
 
     #[test]

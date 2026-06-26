@@ -903,6 +903,15 @@ pub struct EntityModelSourceState {
     /// layer on adult striders.
     #[serde(default)]
     pub strider_saddle: bool,
+    /// Vanilla `CamelRenderState.saddle`: true when a camel/camel_husk carries a non-empty saddle item
+    /// in `EquipmentSlot.SADDLE`. The renderer consumes this to draw the adult `CamelSaddleModel`
+    /// equipment layer.
+    #[serde(default)]
+    pub camel_saddle: bool,
+    /// Vanilla `CamelRenderState.isRidden`: true when a saddled camel/camel_husk has passengers, which
+    /// makes `CamelSaddleModel` show the `reins` part.
+    #[serde(default)]
+    pub camel_saddle_ridden: bool,
     /// Vanilla `GuardianRenderer` attack beam: present when a guardian has an active attack target.
     /// Mirrors the renderer's `GuardianBeamRenderState`; `None` for a guardian with no target and every
     /// other entity.

@@ -1440,9 +1440,14 @@ When an agent does any of the following, update this file in the same slice:
       world game time (`getPoseTime = gameTime - |lastPoseChangeTick|`), mirroring
       `Camel.setupAnimationStates()` / `isCamelVisuallySitting` / `isVisuallySittingDown` /
       `isInPoseTransition` (the 40-tick sit-down and 52-tick stand-up windows) — no client-side
-      accumulator is needed. Saddle equipment layers, the camel `CAMEL_DASH` and `CAMEL_IDLE`
-      keyframe animations (dash needs the rising-edge tick of the synced `DASH` flag, not cleanly
-      projection-derivable; idle is driven by a client-side `random.nextInt(40) + 80` timer, not
+      accumulator is needed. The adult camel and camel_husk saddle equipment layers are implemented from
+      `EquipmentSlot.SADDLE`: vanilla `CamelRenderer.createCamelSaddleLayer` / `CamelHuskRenderer`
+      add `SimpleEquipmentLayer(CAMEL_SADDLE/CAMEL_HUSK_SADDLE)` with
+      `CamelSaddleModel(ModelLayers.CAMEL*_SADDLE)`, `CamelSaddleModel.createSaddleLayer()` starts from
+      the adult camel mesh and appends the saddle, bridle, and ridden-only reins, and bbb renders the
+      family-specific `textures/entity/equipment/{camel_saddle,camel_husk_saddle}/saddle.png` (128×128).
+      Baby camels intentionally skip this layer because vanilla supplies no baby saddle model. The camel
+      `CAMEL_IDLE` keyframe animation (driven by a client-side `random.nextInt(40) + 80` timer, not
       derivable from synced state), the body-anchor sit/stand y-offset
       (`Camel.getBodyAnchorAnimationYOffset`), the `jumpCooldown` extra-pitch head boost (needs the
       un-projected jump-cooldown state), and lighting remain unsupported

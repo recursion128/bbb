@@ -14,6 +14,31 @@ const fn camel_cube(min: [f32; 3], size: [f32; 3], tex: [f32; 2]) -> ModelCube {
     ModelCube::new(min, size, CAMEL_TAN, size, tex, false)
 }
 
+const fn camel_saddle_cube(min: [f32; 3], size: [f32; 3], tex: [f32; 2]) -> ModelCube {
+    const INFLATE: f32 = 0.05;
+    ModelCube::new(
+        [min[0] - INFLATE, min[1] - INFLATE, min[2] - INFLATE],
+        [
+            size[0] + INFLATE * 2.0,
+            size[1] + INFLATE * 2.0,
+            size[2] + INFLATE * 2.0,
+        ],
+        CAMEL_TAN,
+        size,
+        tex,
+        false,
+    )
+}
+
+const fn camel_plain_equipment_cube(
+    min: [f32; 3],
+    size: [f32; 3],
+    tex: [f32; 2],
+    mirror: bool,
+) -> ModelCube {
+    ModelCube::new(min, size, CAMEL_TAN, size, tex, mirror)
+}
+
 // Vanilla 26.1 `AdultCamelModel.createBodyMesh` cubes (atlas 128×128). The tail is a zero-thickness
 // (depth 0) plane.
 pub(in crate::entity_models) const ADULT_CAMEL_BODY: [ModelCube; 1] = [camel_cube(
@@ -51,6 +76,26 @@ pub(in crate::entity_models) const ADULT_CAMEL_LEFT_FRONT_LEG: [ModelCube; 1] =
     [camel_cube([-2.5, 2.0, -2.5], [5.0, 21.0, 5.0], [0.0, 0.0])];
 pub(in crate::entity_models) const ADULT_CAMEL_RIGHT_FRONT_LEG: [ModelCube; 1] =
     [camel_cube([-2.5, 2.0, -2.5], [5.0, 21.0, 5.0], [0.0, 26.0])];
+
+// Vanilla `CamelSaddleModel.createSaddleLayer` adds the saddle to the adult camel body, then adds the
+// reins and bridle under the head. The layer atlas is 128×128 and starts from the adult body mesh.
+pub(in crate::entity_models) const ADULT_CAMEL_SADDLE: [ModelCube; 3] = [
+    camel_saddle_cube([-4.5, -17.0, -15.5], [9.0, 5.0, 11.0], [74.0, 64.0]),
+    camel_saddle_cube([-3.5, -20.0, -15.5], [7.0, 3.0, 11.0], [92.0, 114.0]),
+    camel_saddle_cube([-7.5, -12.0, -23.5], [15.0, 12.0, 27.0], [0.0, 89.0]),
+];
+pub(in crate::entity_models) const ADULT_CAMEL_REINS: [ModelCube; 3] = [
+    camel_plain_equipment_cube([3.51, -18.0, -17.0], [0.0, 7.0, 15.0], [98.0, 42.0], false),
+    camel_plain_equipment_cube([-3.5, -18.0, -2.0], [7.0, 7.0, 0.0], [84.0, 57.0], false),
+    camel_plain_equipment_cube([-3.51, -18.0, -17.0], [0.0, 7.0, 15.0], [98.0, 42.0], false),
+];
+pub(in crate::entity_models) const ADULT_CAMEL_BRIDLE: [ModelCube; 5] = [
+    camel_saddle_cube([-3.5, -7.0, -15.0], [7.0, 8.0, 19.0], [60.0, 87.0]),
+    camel_saddle_cube([-3.5, -21.0, -15.0], [7.0, 14.0, 7.0], [21.0, 64.0]),
+    camel_saddle_cube([-2.5, -21.0, -21.0], [5.0, 5.0, 6.0], [50.0, 64.0]),
+    camel_plain_equipment_cube([2.5, -19.0, -18.0], [1.0, 2.0, 2.0], [74.0, 70.0], false),
+    camel_plain_equipment_cube([-3.5, -19.0, -18.0], [1.0, 2.0, 2.0], [74.0, 70.0], true),
+];
 
 // Vanilla 26.1 `BabyCamelModel.createBodyLayer` cubes (atlas 64×64). Each leg has its own `texOffs`.
 pub(in crate::entity_models) const BABY_CAMEL_BODY: [ModelCube; 1] = [camel_cube(
@@ -1109,36 +1154,56 @@ const CAMEL_WALK_SWING_BONES: [&str; 7] = [
 
 /// Builds the adult camel tree (vanilla `AdultCamelModel.createBodyLayer`): the `body` carries
 /// `[hump, tail, head]`, the `head` carries `[left_ear, right_ear]`, and the four legs hang off the
-/// root in the order `[left_hind_leg, right_hind_leg, left_front_leg, right_front_leg]`.
-fn adult_camel_tree() -> ModelPart {
+/// root in the order `[left_hind_leg, right_hind_leg, left_front_leg, right_front_leg]`. The saddle
+/// variant mirrors `CamelSaddleModel.createSaddleLayer`: `reins`/`bridle` are appended under `head`,
+/// and `saddle` is appended under `body`.
+fn adult_camel_tree(saddle: bool) -> ModelPart {
+    let mut head_children = vec![
+        (
+            "left_ear",
+            ModelPart::leaf(ADULT_CAMEL_LEFT_EAR_POSE, ADULT_CAMEL_LEFT_EAR.to_vec()),
+        ),
+        (
+            "right_ear",
+            ModelPart::leaf(ADULT_CAMEL_RIGHT_EAR_POSE, ADULT_CAMEL_RIGHT_EAR.to_vec()),
+        ),
+    ];
+    if saddle {
+        head_children.push((
+            "reins",
+            ModelPart::leaf(PART_POSE_ZERO, ADULT_CAMEL_REINS.to_vec()),
+        ));
+        head_children.push((
+            "bridle",
+            ModelPart::leaf(PART_POSE_ZERO, ADULT_CAMEL_BRIDLE.to_vec()),
+        ));
+    }
     let head = ModelPart::new(
         ADULT_CAMEL_HEAD_POSE,
         ADULT_CAMEL_HEAD.to_vec(),
-        vec![
-            (
-                "left_ear",
-                ModelPart::leaf(ADULT_CAMEL_LEFT_EAR_POSE, ADULT_CAMEL_LEFT_EAR.to_vec()),
-            ),
-            (
-                "right_ear",
-                ModelPart::leaf(ADULT_CAMEL_RIGHT_EAR_POSE, ADULT_CAMEL_RIGHT_EAR.to_vec()),
-            ),
-        ],
+        head_children,
     );
+    let mut body_children = vec![
+        (
+            "hump",
+            ModelPart::leaf(ADULT_CAMEL_HUMP_POSE, ADULT_CAMEL_HUMP.to_vec()),
+        ),
+        (
+            "tail",
+            ModelPart::leaf(ADULT_CAMEL_TAIL_POSE, ADULT_CAMEL_TAIL.to_vec()),
+        ),
+        ("head", head),
+    ];
+    if saddle {
+        body_children.push((
+            "saddle",
+            ModelPart::leaf(PART_POSE_ZERO, ADULT_CAMEL_SADDLE.to_vec()),
+        ));
+    }
     let body = ModelPart::new(
         ADULT_CAMEL_BODY_POSE,
         ADULT_CAMEL_BODY.to_vec(),
-        vec![
-            (
-                "hump",
-                ModelPart::leaf(ADULT_CAMEL_HUMP_POSE, ADULT_CAMEL_HUMP.to_vec()),
-            ),
-            (
-                "tail",
-                ModelPart::leaf(ADULT_CAMEL_TAIL_POSE, ADULT_CAMEL_TAIL.to_vec()),
-            ),
-            ("head", head),
-        ],
+        body_children,
     );
     let children: Vec<(&'static str, ModelPart)> = vec![
         ("body", body),
@@ -1250,6 +1315,7 @@ fn baby_camel_tree() -> ModelPart {
 pub(in crate::entity_models) struct CamelModel {
     root: ModelPart,
     walk: &'static AnimationDefinition,
+    saddle: bool,
 }
 
 impl CamelModel {
@@ -1259,12 +1325,22 @@ impl CamelModel {
             Self {
                 root: baby_camel_tree(),
                 walk: &CAMEL_BABY_WALK,
+                saddle: false,
             }
         } else {
             Self {
-                root: adult_camel_tree(),
+                root: adult_camel_tree(false),
                 walk: &CAMEL_WALK,
+                saddle: false,
             }
+        }
+    }
+
+    pub(in crate::entity_models) fn new_saddle() -> Self {
+        Self {
+            root: adult_camel_tree(true),
+            walk: &CAMEL_WALK,
+            saddle: true,
         }
     }
 }
@@ -1414,6 +1490,14 @@ impl EntityModel for CamelModel {
                 };
                 part.pose = keyframe_animated_pose(part.pose, dash_pos, dash_rot);
             }
+        }
+
+        if self.saddle && !instance.render_state.camel_saddle_ridden {
+            self.root
+                .child_mut("body")
+                .child_mut("head")
+                .child_mut("reins")
+                .visible = false;
         }
     }
 }

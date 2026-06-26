@@ -571,6 +571,13 @@ entity_render_state! {
     /// renders `AdultStriderModel(ModelLayers.STRIDER_SADDLE)` over the base strider. Babies skip the
     /// layer because vanilla supplies no baby saddle model.
     (with_strider_saddle) strider_saddle: bool = false;
+    /// Vanilla `CamelRenderState.saddle`: the item in `EquipmentSlot.SADDLE` for camel and camel husk.
+    /// A non-empty saddle item renders `CamelSaddleModel`; baby camels skip it because vanilla supplies
+    /// no baby saddle model.
+    (with_camel_saddle) camel_saddle: bool = false;
+    /// Vanilla `CamelRenderState.isRidden`: the camel saddle layer shows its `reins` part only while
+    /// the camel is a vehicle. `false` for unridden camels and every non-camel entity.
+    (with_camel_saddle_ridden) camel_saddle_ridden: bool = false;
     /// Vanilla `IllagerRenderState.armPose == SPELLCASTING` (`SpellcasterIllager.isCastingSpell()`,
     /// the synced `DATA_SPELL_CASTING_ID` byte > 0): a casting evoker/illusioner, whose
     /// `IllagerModel.setupAnim` hides the crossed `arms` part and raises the two separate arms
@@ -2022,6 +2029,8 @@ mod tests {
                 equine_saddle_ridden: false,
                 strider_ridden: false,
                 strider_saddle: false,
+                camel_saddle: false,
+                camel_saddle_ridden: false,
                 illager_spellcasting: false,
                 illager_celebrating: false,
                 piglin_dancing: false,

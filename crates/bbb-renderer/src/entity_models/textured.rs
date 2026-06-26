@@ -39,12 +39,12 @@ use super::{
         ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
         ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
         ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
-        BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF,
-        DONKEY_SADDLE_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
-        MULE_SADDLE_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION, PIG_SADDLE_TEXTURE_REF,
-        SKELETON_HORSE_SADDLE_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION,
-        STRIDER_SADDLE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF,
-        ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
+        BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF, CAMEL_HUSK_SADDLE_TEXTURE_REF,
+        CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF,
+        GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF,
+        PIGLIN_OUTER_ARMOR_DEFORMATION, PIG_SADDLE_TEXTURE_REF, SKELETON_HORSE_SADDLE_TEXTURE_REF,
+        STANDARD_OUTER_ARMOR_DEFORMATION, STRIDER_SADDLE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF,
+        WITHER_ARMOR_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
@@ -288,6 +288,8 @@ pub(super) fn entity_model_textured_meshes(
         emit_equine_saddle_layer(&mut meshes, *instance, atlas);
         // Strider saddles reuse the adult strider body layer with the strider equipment texture.
         emit_strider_saddle_layer(&mut meshes, *instance, atlas);
+        // Camel and camel-husk saddles use the adult CamelSaddleModel tree.
+        emit_camel_saddle_layer(&mut meshes, *instance, atlas);
         // VillagerProfessionLayer overlays (biome type, profession, level badge) are cutout layers
         // over the base villager or zombie-villager model and share the same light/overlay fill.
         emit_villager_profession_layers(&mut meshes, *instance, atlas);
@@ -367,8 +369,8 @@ pub(in crate::entity_models) fn render_textured_layers<M: EntityModel>(
 /// The textured camel base layer. Vanilla `CamelModel.setupAnim` drives every limb via
 /// baked `KeyframeAnimation`s (walk/sit/standup/idle/dash) plus a direct head yaw/pitch
 /// clamp ([`camel_clamped_head_look`]). The head look and the walk (adult/husk `CAMEL_WALK`,
-/// baby `CAMEL_BABY_WALK`) are reproduced here; the sit/standup/idle/dash animations remain
-/// deferred. The camel husk shares the adult mesh, differing only in texture.
+/// baby `CAMEL_BABY_WALK`), the sit/standup one-shots, and the dash gallop are reproduced here;
+/// the idle timer remains deferred. The camel husk shares the adult mesh, differing only in texture.
 fn emit_camel_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -1017,6 +1019,45 @@ fn emit_strider_saddle_layer(
         transform,
         EntityModelLayerRenderType::Cutout,
         STRIDER_SADDLE_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+        atlas,
+    );
+}
+
+/// Vanilla `CamelRenderer` / `CamelHuskRenderer` `SimpleEquipmentLayer`: a non-empty saddle item
+/// renders `CamelSaddleModel(ModelLayers.CAMEL*_SADDLE)` with the family-specific equipment texture.
+/// The layer has no baby model, so baby camels skip it; camel husks are adult-only and always use the
+/// adult saddle model.
+fn emit_camel_saddle_layer(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    if !instance.render_state.camel_saddle {
+        return;
+    }
+
+    let texture = match instance.kind {
+        EntityModelKind::Camel {
+            family: CamelModelFamily::Camel,
+            baby: false,
+        } => CAMEL_SADDLE_TEXTURE_REF,
+        EntityModelKind::Camel {
+            family: CamelModelFamily::CamelHusk,
+            ..
+        } => CAMEL_HUSK_SADDLE_TEXTURE_REF,
+        _ => return,
+    };
+
+    let transform = entity_model_root_transform(instance);
+    let mut model = CamelModel::new_saddle();
+    model.prepare(&instance);
+    render_textured_pass(
+        meshes,
+        &model,
+        transform,
+        EntityModelLayerRenderType::Cutout,
+        texture,
         [1.0, 1.0, 1.0, 1.0],
         atlas,
     );

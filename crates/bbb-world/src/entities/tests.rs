@@ -1314,6 +1314,102 @@ fn entity_model_sources_project_strider_saddle_and_ridden_state() {
 }
 
 #[test]
+fn entity_model_sources_project_camel_saddle_and_ridden_state() {
+    use crate::ItemEquipmentSlot;
+    use std::collections::BTreeMap;
+
+    const SADDLE_ITEM_ID: i32 = 834;
+    const PLAIN_ITEM_ID: i32 = 835;
+    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
+
+    fn stack(item_id: i32, count: i32) -> ItemStackSummary {
+        ItemStackSummary {
+            item_id: Some(item_id),
+            count,
+            component_patch: Default::default(),
+        }
+    }
+    fn camel_saddle_state(store: &WorldStore, entity_id: i32) -> (bool, bool) {
+        let source = store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == entity_id)
+            .unwrap();
+        (source.camel_saddle, source.camel_saddle_ridden)
+    }
+
+    let mut store = WorldStore::new();
+    store.set_default_item_equipment_slots(BTreeMap::from([(
+        SADDLE_ITEM_ID,
+        ItemEquipmentSlot::Saddle,
+    )]));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        68,
+        VANILLA_ENTITY_TYPE_CAMEL_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        69,
+        VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        70,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+
+    assert_eq!(camel_saddle_state(&store, 68), (false, false));
+
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 68,
+        passenger_ids: vec![70],
+    }));
+    assert_eq!(
+        camel_saddle_state(&store, 68),
+        (false, false),
+        "the reins gate is only useful when the saddle layer itself renders"
+    );
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 68,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Saddle,
+            item: stack(SADDLE_ITEM_ID, 1),
+        }],
+    }));
+    assert_eq!(camel_saddle_state(&store, 68), (true, true));
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 69,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Saddle,
+            item: stack(SADDLE_ITEM_ID, 1),
+        }],
+    }));
+    assert_eq!(camel_saddle_state(&store, 69), (true, false));
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 70,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Saddle,
+            item: stack(SADDLE_ITEM_ID, 1),
+        }],
+    }));
+    assert_eq!(
+        camel_saddle_state(&store, 70),
+        (false, false),
+        "non-camels do not project the camel saddle flag"
+    );
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 68,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Saddle,
+            item: stack(PLAIN_ITEM_ID, 1),
+        }],
+    }));
+    assert_eq!(camel_saddle_state(&store, 68), (false, false));
+}
+
+#[test]
 fn entity_model_sources_project_in_water_from_world_fluid() {
     // Vanilla `LivingEntityRenderState.isInWater = entity.isInWater()`: the scene projects
     // the `wasTouchingWater` overlap of the entity's world AABB against the chunk fluid
