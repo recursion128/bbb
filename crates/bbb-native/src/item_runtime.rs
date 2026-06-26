@@ -45,6 +45,7 @@ use icon_model::{
     contains_runtime_condition, item_icon_model_ref_for_definition, CrossbowChargeType,
     IconResolveContext, ItemIconModel, ItemIconModelRef,
 };
+pub(crate) use profile_skin::default_player_skin_for_profile_id;
 #[cfg(test)]
 use profile_skin::profile_texture_handle;
 use profile_skin::ProfileSkinCache;

@@ -24,7 +24,7 @@ use bbb_world::{
     RegistryContentState, WorldStore,
 };
 
-use crate::item_runtime::NativeItemRuntime;
+use crate::item_runtime::{default_player_skin_for_profile_id, NativeItemRuntime};
 
 const VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID: i32 = 0;
 const VANILLA_ENTITY_TYPE_ACACIA_CHEST_BOAT_ID: i32 = 1;
@@ -2411,6 +2411,7 @@ fn apply_player_profile_skin(
     if source.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID {
         return;
     }
+    *skin = EntityPlayerSkin::Default(default_player_skin_for_profile_id(source.uuid.as_u128()));
     let Some(item_runtime) = item_runtime else {
         return;
     };
@@ -7757,11 +7758,9 @@ mod tests {
     #[test]
     fn entity_model_instances_project_avatar_model_part_visibility_from_world() {
         let mut world = WorldStore::new();
-        world.apply_add_entity(protocol_add_entity(
-            1550,
-            VANILLA_ENTITY_TYPE_PLAYER_ID,
-            [1.0, 64.0, -2.0],
-        ));
+        let player = protocol_add_entity(1550, VANILLA_ENTITY_TYPE_PLAYER_ID, [1.0, 64.0, -2.0]);
+        let player_uuid = player.uuid;
+        world.apply_add_entity(player);
         world.apply_add_entity(protocol_add_entity(
             830,
             VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
@@ -7786,11 +7785,13 @@ mod tests {
             instances,
             aged(
                 vec![
-                    EntityModelInstance::player_with_parts(
+                    EntityModelInstance::player_with_skin(
                         1550,
                         [1.0, 64.0, -2.0],
                         0.0,
-                        false,
+                        EntityPlayerSkin::Default(default_player_skin_for_profile_id(
+                            player_uuid.as_u128(),
+                        )),
                         player_parts,
                     ),
                     EntityModelInstance::player_with_parts(
@@ -7805,6 +7806,30 @@ mod tests {
                 ],
                 1.0,
             )
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_use_uuid_default_skin_without_player_info() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity_with_uuid(
+            1551,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            Uuid::nil(),
+            [2.0, 64.0, -2.0],
+        ));
+
+        let instance = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0)
+            .into_iter()
+            .find(|instance| instance.entity_id == 1551)
+            .unwrap();
+
+        assert_eq!(
+            instance.kind,
+            EntityModelKind::Player {
+                skin: EntityPlayerSkin::Default(EntityDefaultPlayerSkin::SlimAlex),
+                parts: PlayerModelPartVisibility::from_vanilla_mask(0),
+            }
         );
     }
 
@@ -11281,6 +11306,17 @@ mod tests {
 
     fn protocol_add_entity(id: i32, entity_type_id: i32, position: [f64; 3]) -> AddEntity {
         protocol_add_entity_with_rotation(id, entity_type_id, position, 0.0, 0.0, 0.0)
+    }
+
+    fn protocol_add_entity_with_uuid(
+        id: i32,
+        entity_type_id: i32,
+        uuid: Uuid,
+        position: [f64; 3],
+    ) -> AddEntity {
+        let mut entity = protocol_add_entity(id, entity_type_id, position);
+        entity.uuid = uuid;
+        entity
     }
 
     /// Stamps the projected `ageInTicks` (= entity `age_ticks` + partial tick) onto every

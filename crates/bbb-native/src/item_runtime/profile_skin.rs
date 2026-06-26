@@ -100,6 +100,10 @@ fn profile_default_player_skin(profile: &ResolvableProfileSummary) -> EntityDefa
                 .map(|name| bbb_protocol::codec::offline_player_uuid(name).as_u128())
         })
         .unwrap_or(0);
+    default_player_skin_for_profile_id(profile_id)
+}
+
+pub(crate) fn default_player_skin_for_profile_id(profile_id: u128) -> EntityDefaultPlayerSkin {
     EntityDefaultPlayerSkin::from_vanilla_index(default_player_skin_index(profile_id))
 }
 

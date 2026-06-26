@@ -1259,12 +1259,14 @@ When an agent does any of the following, update this file in the same slice:
         profile skin is marked Ready. Ready `player_head` submissions use
         vanilla `entityTranslucent` with the dynamic atlas mesh; Loading/Failed
         or missing atlas entries keep sampling the fallback default skin. Player
-        entity bodies now also use PlayerInfo profile skins: the native model
-        kind carries `EntityPlayerSkin`, picks wide/slim from `PlayerSkin.model`,
-        and Ready dynamic body submissions sample the dynamic player-skin atlas
-        through a cutout mesh while preserving vanilla `entityCutout`
-        submission metadata. Cape, elytra, and broader arbitrary dynamic texture
-        loading remain deferred.
+        entity bodies now also use vanilla player skins: without PlayerInfo they
+        reproduce `DefaultPlayerSkin.get(uuid)` across the 18 built-in defaults;
+        with PlayerInfo profile skins the native model kind carries
+        `EntityPlayerSkin`, picks wide/slim from `PlayerSkin.model`, and Ready
+        dynamic body submissions sample the dynamic player-skin atlas through a
+        cutout mesh while preserving vanilla `entityCutout` submission metadata.
+        Cape, elytra, and broader arbitrary dynamic texture loading remain
+        deferred.
       - fox held item DONE: `FoxHeldItemLayer` is reproduced through the same
         item-model pass. Renderer exposes `fox_held_item_transform`, which builds
         and poses the vanilla adult/baby `FoxModel`, reads the posed `head` part,
@@ -1327,8 +1329,7 @@ When an agent does any of the following, update this file in the same slice:
       both arms every frame on top of the swing so even a standing player's arms move
       with `ageInTicks`) — all applied once to the shared
       visibility-filtered part array (colored and textured); true
-      `RenderTypes.entityTranslucent` alpha blending, UUID/default-skin
-      selection for players without PlayerInfo, capes, ears, armor/equipment, held items,
+      `RenderTypes.entityTranslucent` alpha blending, capes, ears, armor/equipment, held items,
       elytra/wings, shoulder parrots,
       arrows/stingers, spectator visibility, the elytra flying offsets, name
       display, the held-item/attack/swim arm poses, and the elytra
