@@ -835,6 +835,10 @@ entity_render_state! {
     /// partial-lerped water-shake timer used by `getBodyRollAngle(offset)` to roll
     /// the body, adult mane, and tail while drying off. `0.0` for a dry wolf.
     (with_wolf_shake_anim) wolf_shake_anim: f32 = 0.0;
+    /// Vanilla `WolfRenderState.headRollAngle` (`Wolf.getHeadRollAngle(partialTick)`): the
+    /// interested/begging head tilt, added to the head water-shake roll in adult and baby wolf
+    /// models. `0.0` for a level-headed wolf.
+    (with_wolf_head_roll_angle) wolf_head_roll_angle: f32 = 0.0;
     /// Vanilla `ParrotRenderState.pose == SITTING` (`Parrot.isInSittingPose()`, the
     /// `TamableAnimal.DATA_FLAGS_ID` sitting bit): a perched parrot, whose
     /// `ParrotModel.prepare(SITTING)` raises every part `y += 1.9`, folds the legs
@@ -2280,6 +2284,7 @@ mod tests {
                 wolf_sitting: false,
                 wolf_wet_shade: 1.0,
                 wolf_shake_anim: 0.0,
+                wolf_head_roll_angle: 0.0,
                 parrot_sitting: false,
                 turtle_has_egg: false,
                 turtle_laying_egg: false,

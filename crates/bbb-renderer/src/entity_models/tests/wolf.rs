@@ -758,12 +758,15 @@ fn wolf_water_shake_roll_matches_vanilla_body_roll_angle() {
     // Vanilla `WolfRenderState.getBodyRollAngle(offset)` clamps `(shakeAnim + offset) / 1.8` and
     // applies two sine waves. Adult `AdultWolfModel.shakeOffWater` rolls the real head, body,
     // upper-body mane, and real tail; baby `BabyWolfModel.shakeOffWater` rolls head/body/tail.
+    // Both models add `headRollAngle` to only the head roll for the interested/begging tilt.
     let shake_anim = 0.9;
+    let head_roll_angle = 0.17;
     assert_eq!(wolf_body_roll_angle(0.0, -0.16), 0.0);
     assert!(wolf_body_roll_angle(2.5, 0.0).abs() < 1.0e-6);
 
     let adult_instance = EntityModelInstance::wolf(170, [0.0, 64.0, 0.0], 0.0, false)
-        .with_wolf_shake_anim(shake_anim);
+        .with_wolf_shake_anim(shake_anim)
+        .with_wolf_head_roll_angle(head_roll_angle);
     let mut adult = WolfModel::new(false, false);
     adult.prepare(&adult_instance);
     let adult_root = adult.root_mut();
@@ -778,7 +781,7 @@ fn wolf_water_shake_roll_matches_vanilla_body_roll_angle() {
             .child_mut("real_head")
             .pose
             .rotation[2]
-            - wolf_body_roll_angle(shake_anim, 0.0))
+            - (head_roll_angle + wolf_body_roll_angle(shake_anim, 0.0)))
         .abs()
             < 1.0e-6
     );
@@ -800,7 +803,8 @@ fn wolf_water_shake_roll_matches_vanilla_body_roll_angle() {
     );
 
     let baby_instance = EntityModelInstance::wolf(171, [0.0, 64.0, 0.0], 0.0, true)
-        .with_wolf_shake_anim(shake_anim);
+        .with_wolf_shake_anim(shake_anim)
+        .with_wolf_head_roll_angle(head_roll_angle);
     let mut baby = WolfModel::new(true, false);
     baby.prepare(&baby_instance);
     let baby_root = baby.root_mut();
@@ -810,8 +814,9 @@ fn wolf_water_shake_roll_matches_vanilla_body_roll_angle() {
             < 1.0e-6
     );
     assert!(
-        (baby_root.child_mut("head").pose.rotation[2] - wolf_body_roll_angle(shake_anim, 0.0))
-            .abs()
+        (baby_root.child_mut("head").pose.rotation[2]
+            - (head_roll_angle + wolf_body_roll_angle(shake_anim, 0.0)))
+        .abs()
             < 1.0e-6
     );
     assert!(
@@ -835,7 +840,12 @@ fn wolf_textured_mesh_applies_water_shake_roll_to_base_and_collar() {
         Some(EntityDyeColor::Blue),
     );
     let dry = entity_model_textured_meshes(&[base], &atlas);
-    let shaking = entity_model_textured_meshes(&[base.with_wolf_shake_anim(0.9)], &atlas);
+    let shaking = entity_model_textured_meshes(
+        &[base
+            .with_wolf_shake_anim(0.9)
+            .with_wolf_head_roll_angle(0.17)],
+        &atlas,
+    );
 
     assert_eq!(dry.cutout.vertices.len(), shaking.cutout.vertices.len());
     assert_ne!(
@@ -850,8 +860,14 @@ fn wolf_textured_mesh_applies_water_shake_roll_to_base_and_collar() {
     );
 
     assert_eq!(shaking.submissions.len(), 2);
+    let expected_transform = entity_model_root_transform(base);
+    assert_eq!(
+        shaking.submissions[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(shaking.submissions[0].texture, WOLF_TAME_TEXTURE_REF);
     assert_eq!(shaking.submissions[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(shaking.submissions[0].transform, expected_transform);
     assert_eq!(
         (
             shaking.submissions[0].order,
@@ -859,11 +875,16 @@ fn wolf_textured_mesh_applies_water_shake_roll_to_base_and_collar() {
         ),
         (0, 0)
     );
+    assert_eq!(
+        shaking.submissions[1].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
     assert_eq!(shaking.submissions[1].texture, WOLF_COLLAR_TEXTURE_REF);
     assert_eq!(
         shaking.submissions[1].tint,
         EntityDyeColor::Blue.texture_diffuse_color()
     );
+    assert_eq!(shaking.submissions[1].transform, expected_transform);
     assert_eq!(
         (
             shaking.submissions[1].order,

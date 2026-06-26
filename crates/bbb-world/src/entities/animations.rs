@@ -130,6 +130,10 @@ const BEE_FLAG_ROLL: i8 = 2;
 const VANILLA_ENTITY_TYPE_FOX_ID: i32 = 54;
 /// Vanilla `Wolf` entity type id (`EntityType.WOLF`).
 const VANILLA_ENTITY_TYPE_WOLF_ID: i32 = 148;
+/// Vanilla `Wolf.DATA_INTERESTED_ID` (`isInterested()`), the wolf's first own accessor:
+/// Entity 0–7, LivingEntity 8–14, Mob 15, AgeableMob 16–17, TamableAnimal 18–19,
+/// then Wolf interested 20.
+const WOLF_INTERESTED_DATA_ID: u8 = 20;
 /// Vanilla wolf shake/drying progress increment (`Wolf.tick`: `shakeAnim += 0.05F`).
 const WOLF_SHAKE_ANIM_PER_TICK: f32 = 0.05;
 /// Vanilla wolf wet shade floor (`Wolf.getWetShade`: `0.75 + lerp(shake) / 2 * 0.25`).
@@ -138,6 +142,10 @@ const WOLF_WET_SHADE_BASE: f32 = 0.75;
 const WOLF_WET_SHADE_SHAKE_SCALE: f32 = 0.125;
 /// Vanilla wolf drying completes once `shakeAnimO >= 2.0F`; the shade reaches white at `shakeAnim = 2`.
 const WOLF_SHAKE_ANIM_DONE: f32 = 2.0;
+/// Vanilla `Wolf.tick` interested-angle easing toward the synced `DATA_INTERESTED_ID` target.
+const WOLF_INTERESTED_EASE: f32 = 0.4;
+/// Vanilla `Wolf.getHeadRollAngle(partialTick)`: `lerp(interestedAngleO, interestedAngle) * 0.15 * π`.
+const WOLF_HEAD_ROLL_SCALE: f32 = 0.15;
 const VANILLA_ENTITY_TYPE_GOAT_ID: i32 = 62;
 const VANILLA_ENTITY_TYPE_HOGLIN_ID: i32 = 64;
 const VANILLA_ENTITY_TYPE_IRON_GOLEM_ID: i32 = 70;
@@ -363,6 +371,8 @@ pub struct EntityClientAnimationState {
     pub fox: Option<FoxAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wolf_wet: Option<WolfWetAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wolf_head_roll: Option<WolfHeadRollAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub frog_croak: Option<KeyframeAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1085,6 +1095,46 @@ impl WolfWetAnimationState {
             && !self.is_shaking
             && self.previous_shake_anim == 0.0
             && self.current_shake_anim == 0.0
+    }
+}
+
+/// Canonical client-side wolf begging/head-roll accumulator, mirroring vanilla
+/// `Wolf.interestedAngleO` / `interestedAngle`. The synced `DATA_INTERESTED_ID` boolean
+/// selects the target; each client tick eases toward `1` or `0` by `0.4`, and
+/// `Wolf.getHeadRollAngle(partialTick)` scales the lerped angle by `0.15π`.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct WolfHeadRollAnimationState {
+    pub interested: bool,
+    pub previous_interested_angle: f32,
+    pub current_interested_angle: f32,
+}
+
+impl WolfHeadRollAnimationState {
+    fn advance_client_tick(&mut self, interested: bool) {
+        self.interested = interested;
+        self.previous_interested_angle = self.current_interested_angle;
+        let target = if interested { 1.0 } else { 0.0 };
+        self.current_interested_angle +=
+            (target - self.current_interested_angle) * WOLF_INTERESTED_EASE;
+        if self.is_settled() {
+            self.previous_interested_angle = 0.0;
+            self.current_interested_angle = 0.0;
+        }
+    }
+
+    fn head_roll_angle(self, partial_tick: f32) -> f32 {
+        lerp_f32(
+            partial_tick,
+            self.previous_interested_angle,
+            self.current_interested_angle,
+        ) * WOLF_HEAD_ROLL_SCALE
+            * std::f32::consts::PI
+    }
+
+    fn is_settled(self) -> bool {
+        !self.interested
+            && self.previous_interested_angle.abs() <= f32::EPSILON
+            && self.current_interested_angle.abs() <= f32::EPSILON
     }
 }
 
@@ -3711,6 +3761,14 @@ impl EntityClientAnimationState {
             .map_or(0.0, |state| state.shake_anim(partial_tick))
     }
 
+    /// Vanilla `WolfRenderState.headRollAngle` (`Wolf.getHeadRollAngle(partialTick)`):
+    /// the lerped interested-angle accumulator scaled by `0.15π`. Returns `0.0`
+    /// when the wolf is not begging/interested and every non-wolf entity.
+    pub fn wolf_head_roll_angle(&self, partial_tick: f32) -> f32 {
+        self.wolf_head_roll
+            .map_or(0.0, |state| state.head_roll_angle(partial_tick))
+    }
+
     /// Resets the hurt animation countdown to [`HURT_ANIMATION_DURATION`],
     /// mirroring vanilla `LivingEntity.animateHurt` / `handleDamageEvent` setting
     /// `hurtTime = hurtDuration`.
@@ -4017,6 +4075,9 @@ impl EntityClientAnimationState {
         // crossbow-draw counter (the item-agnostic `getTicksUsingItem` reconstruction). `false` for
         // entities that do not consume it.
         player_is_using_item: bool,
+        // The synced `Wolf.DATA_INTERESTED_ID` boolean (`isInterested()`), read from metadata in the
+        // tick loop ([`wolf_is_interested`]). It drives the wolf's client-side interested-angle ease.
+        wolf_is_interested: bool,
         // Vanilla `Entity.isSwimming()` for player cape bob suppression.
         is_swimming: bool,
     ) {
@@ -4174,6 +4235,19 @@ impl EntityClientAnimationState {
                 }
             }
             VANILLA_ENTITY_TYPE_WOLF_ID => {
+                if self.wolf_head_roll.is_some() || wolf_is_interested {
+                    let head_roll = self
+                        .wolf_head_roll
+                        .get_or_insert(WolfHeadRollAnimationState {
+                            interested: false,
+                            previous_interested_angle: 0.0,
+                            current_interested_angle: 0.0,
+                        });
+                    head_roll.advance_client_tick(wolf_is_interested);
+                    if head_roll.is_settled() {
+                        self.wolf_head_roll = None;
+                    }
+                }
                 if self.wolf_wet.is_some() || in_water {
                     let wolf_wet = self.wolf_wet.get_or_insert(WolfWetAnimationState {
                         is_wet: false,
@@ -4522,6 +4596,11 @@ fn panda_pose_flags(data_values: &[EntityDataValue]) -> (bool, bool, bool) {
 /// Vanilla `Fox.isInterested()` = `getFlag(FLAG_INTERESTED)` = `(flags & 8) != 0`.
 fn fox_is_interested(data_values: &[EntityDataValue]) -> bool {
     entity_data_byte(data_values, FOX_FLAGS_DATA_ID, 0) & FOX_FLAG_INTERESTED != 0
+}
+
+/// Vanilla `Wolf.isInterested()` = `entityData.get(DATA_INTERESTED_ID)`.
+pub(crate) fn wolf_is_interested(data_values: &[EntityDataValue]) -> bool {
+    entity_data_bool(data_values, WOLF_INTERESTED_DATA_ID, false)
 }
 
 /// Vanilla `Fox.isCrouching()` = `getFlag(FLAG_CROUCHING)` = `(flags & 4) != 0`.

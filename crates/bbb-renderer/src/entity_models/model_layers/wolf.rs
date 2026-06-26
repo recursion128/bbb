@@ -351,7 +351,8 @@ fn baby_wolf_tree() -> ModelPart {
 }
 
 /// Vanilla `WolfRenderState.getBodyRollAngle(offset)`: clamp `(shakeAnim + offset) / 1.8` to `0..1`,
-/// then use the paired sine wave to roll body parts while the wolf shakes water off.
+/// then use the paired sine wave to roll body parts while the wolf shakes water off. The head part
+/// adds `WolfRenderState.headRollAngle` on top for the interested/begging tilt.
 pub(in crate::entity_models) fn wolf_body_roll_angle(shake_anim: f32, offset: f32) -> f32 {
     let progress = ((shake_anim + offset) / 1.8).clamp(0.0, 1.0);
     (progress * std::f32::consts::PI).sin()
@@ -360,14 +361,20 @@ pub(in crate::entity_models) fn wolf_body_roll_angle(shake_anim: f32, offset: f3
         * std::f32::consts::PI
 }
 
-fn apply_wolf_water_shake_roll(root: &mut ModelPart, baby: bool, shake_anim: f32) {
+fn apply_wolf_water_shake_roll(
+    root: &mut ModelPart,
+    baby: bool,
+    shake_anim: f32,
+    head_roll_angle: f32,
+) {
     root.child_mut("body").pose.rotation[2] = wolf_body_roll_angle(shake_anim, -0.16);
     if baby {
-        root.child_mut("head").pose.rotation[2] = wolf_body_roll_angle(shake_anim, 0.0);
+        root.child_mut("head").pose.rotation[2] =
+            head_roll_angle + wolf_body_roll_angle(shake_anim, 0.0);
         root.child_mut("tail").pose.rotation[2] = wolf_body_roll_angle(shake_anim, -0.2);
     } else {
         root.child_mut("head").child_mut("real_head").pose.rotation[2] =
-            wolf_body_roll_angle(shake_anim, 0.0);
+            head_roll_angle + wolf_body_roll_angle(shake_anim, 0.0);
         root.child_mut("upper_body").pose.rotation[2] = wolf_body_roll_angle(shake_anim, -0.08);
         root.child_mut("tail").child_mut("real_tail").pose.rotation[2] =
             wolf_body_roll_angle(shake_anim, -0.2);
@@ -454,6 +461,11 @@ impl EntityModel for WolfModel {
             )
         };
 
-        apply_wolf_water_shake_roll(&mut self.root, self.baby, render_state.wolf_shake_anim);
+        apply_wolf_water_shake_roll(
+            &mut self.root,
+            self.baby,
+            render_state.wolf_shake_anim,
+            render_state.wolf_head_roll_angle,
+        );
     }
 }

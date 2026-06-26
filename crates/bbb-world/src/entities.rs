@@ -560,6 +560,11 @@ pub struct EntityModelSourceState {
     /// the body / mane / tail roll. `0.0` for a dry wolf and every non-wolf.
     #[serde(default)]
     pub wolf_shake_anim: f32,
+    /// Vanilla `WolfRenderState.headRollAngle` (`Wolf.getHeadRollAngle(partialTick)`): the
+    /// interested/begging head tilt, reconstructed from the synced `DATA_INTERESTED_ID` client
+    /// accumulator and scaled by `0.15π`. `0.0` for a level-headed wolf and every non-wolf.
+    #[serde(default)]
+    pub wolf_head_roll_angle: f32,
     /// Vanilla `VexRenderState.isCharging` (`Vex.isCharging`, the synced `DATA_FLAGS_ID & 1`):
     /// the vex is charging an attack, which `VexModel.setupAnim` shows by leveling the body
     /// (`xRot = 0`) and raising both arms (`setArmsCharging`). Projected only for the vex

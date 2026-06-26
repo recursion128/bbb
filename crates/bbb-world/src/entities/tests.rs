@@ -2111,6 +2111,68 @@ fn wolf_wet_shade_follows_vanilla_get_wet_shade_timer() {
 }
 
 #[test]
+fn wolf_head_roll_follows_vanilla_interested_angle_ease() {
+    // Vanilla `Wolf.tick`: `interestedAngleO = interestedAngle`, then the synced
+    // `DATA_INTERESTED_ID` target eases the current angle by 0.4/tick. `getHeadRollAngle`
+    // lerps those two endpoints and scales the result by `0.15π`.
+    const VANILLA_ENTITY_TYPE_WOLF_ID: i32 = 148;
+    const WOLF_INTERESTED_DATA_ID: u8 = 20;
+    const WOLF_HEAD_ROLL_SCALE: f32 = 0.15 * std::f32::consts::PI;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        183,
+        VANILLA_ENTITY_TYPE_WOLF_ID,
+    ));
+
+    let head_roll = |store: &WorldStore, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 183)
+            .unwrap()
+            .wolf_head_roll_angle
+    };
+    let assert_close = |actual: f32, expected: f32, label: &str| {
+        assert!(
+            (actual - expected).abs() < 1.0e-6,
+            "{label}: expected {expected}, got {actual}"
+        );
+    };
+
+    assert_eq!(head_roll(&store, 1.0), 0.0);
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 183,
+        values: vec![protocol_bool_data(WOLF_INTERESTED_DATA_ID, true)],
+    }));
+    store.advance_entity_client_animations(1);
+    assert_close(
+        head_roll(&store, 0.5),
+        0.2 * WOLF_HEAD_ROLL_SCALE,
+        "first interested tick lerps 0.0 -> 0.4 at partial 0.5",
+    );
+
+    store.advance_entity_client_animations(1);
+    assert_close(
+        head_roll(&store, 1.0),
+        0.64 * WOLF_HEAD_ROLL_SCALE,
+        "second interested tick eases 0.4 -> 0.64",
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 183,
+        values: vec![protocol_bool_data(WOLF_INTERESTED_DATA_ID, false)],
+    }));
+    store.advance_entity_client_animations(1);
+    assert_close(
+        head_roll(&store, 0.5),
+        0.512 * WOLF_HEAD_ROLL_SCALE,
+        "interest clearing lerps 0.64 -> 0.384 at partial 0.5",
+    );
+}
+
+#[test]
 fn living_swim_amount_follows_vanilla_pose_swimming_ease_for_drowned() {
     // Vanilla `LivingEntity.updateSwimAmount`: save `swimAmountO`, then if
     // `isVisuallySwimming()` (`Pose.SWIMMING`) add `0.09` up to `1.0`, else subtract

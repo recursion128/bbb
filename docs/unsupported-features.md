@@ -1509,9 +1509,12 @@ When an agent does any of the following, update this file in the same slice:
       brighten with the `shakeAnim += 0.05` drying timer; the collar layer keeps
       its own dye tint/order), and the water-shake roll pose (`WolfRenderState.shakeAnim`
       feeds `getBodyRollAngle(offset)` for the adult body / real-head / upper-body / real-tail
-      and the baby body / head / tail; the collar layer reuses the same rolled pose). The armor layer,
-      head-shake/begging tilt pose, base-model invisibility/outline handling,
-      lighting, overlay, and remaining render-state extraction remain unsupported
+      and the baby body / head / tail; the collar layer reuses the same rolled pose), and the
+      begging/head-roll tilt (`Wolf.DATA_INTERESTED_ID` index 20 drives the client
+      `interestedAngleO/interestedAngle` `0.4` ease, projected as
+      `WolfRenderState.headRollAngle` and added to adult `real_head` / baby `head`
+      on top of `getBodyRollAngle(0)`). The armor layer, base-model
+      invisibility/outline handling, lighting, overlay, and remaining render-state extraction remain unsupported
     - base horse entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AbstractEquineModel.createBodyMesh(CubeDeformation.NONE)`,
       `BabyHorseModel.createBabyMesh(CubeDeformation.NONE)`, `HorseModel`, and

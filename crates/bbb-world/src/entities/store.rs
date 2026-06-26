@@ -34,7 +34,8 @@ use crate::entities::animations::{
     creaking_is_tearing_down, entity_animation_uses_in_water, entity_is_fall_flying,
     guardian_attack_duration, guardian_attack_target_id, guardian_is_moving,
     is_guardian_entity_type, piglin_is_charging_crossbow, pillager_is_charging_crossbow,
-    player_is_using_item, warden_heartbeat_delay, VANILLA_ENTITY_TYPE_CREAKING_ID,
+    player_is_using_item, warden_heartbeat_delay, wolf_is_interested,
+    VANILLA_ENTITY_TYPE_CREAKING_ID,
 };
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_holds_map, item_frame_item,
@@ -1027,6 +1028,9 @@ impl EntityStore {
                 .fox_crouch_amount(partial_ticks),
             wolf_wet_shade: client_animations.animations.wolf_wet_shade(partial_ticks),
             wolf_shake_anim: client_animations.animations.wolf_shake_anim(partial_ticks),
+            wolf_head_roll_angle: client_animations
+                .animations
+                .wolf_head_roll_angle(partial_ticks),
             fox_is_crouching,
             fox_is_sleeping,
             fox_is_sitting,
@@ -1909,6 +1913,7 @@ impl EntityStore {
                 let piglin_is_charging_crossbow =
                     piglin_is_charging_crossbow(&metadata.data_values);
                 let player_is_using_item = player_is_using_item(&metadata.data_values);
+                let wolf_is_interested = wolf_is_interested(&metadata.data_values);
                 animations.animations.advance_client_tick(
                     identity.entity_type_id,
                     identity.id,
@@ -1928,6 +1933,7 @@ impl EntityStore {
                     pillager_is_charging_crossbow,
                     piglin_is_charging_crossbow,
                     player_is_using_item,
+                    wolf_is_interested,
                     is_swimming,
                 );
             }
