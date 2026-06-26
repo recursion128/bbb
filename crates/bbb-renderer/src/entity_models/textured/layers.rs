@@ -3,12 +3,13 @@ use super::super::{
         boat_texture_ref, camel_texture_ref, chicken_texture_ref, cow_texture_ref,
         llama_texture_ref, mooshroom_texture_ref, pig_texture_ref, player_texture_ref,
         sheep_wool_render_color, wolf_texture_ref, ArrowModelTexture, AxolotlModelVariant,
-        BoatModelFamily, CamelModelFamily, CatModelVariant, ChickenModelVariant, CowModelVariant,
-        EntityDyeColor, EntityModelTextureRef, FoxModelVariant, FrogModelVariant,
-        HoglinModelFamily, IllagerModelFamily, IronGolemCrackiness, LlamaVariant, MooshroomVariant,
-        PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
-        PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SheepWoolColor,
-        SkeletonModelFamily, TropicalFishModelShape, TropicalFishPattern, WolfModelVariant,
+        BoatModelFamily, CamelModelFamily, CatModelVariant, ChickenModelVariant,
+        CopperGolemWeathering, CowModelVariant, EntityDyeColor, EntityModelTextureRef,
+        FoxModelVariant, FrogModelVariant, HoglinModelFamily, IllagerModelFamily,
+        IronGolemCrackiness, LlamaVariant, MooshroomVariant, PandaModelVariant, ParrotModelVariant,
+        PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant,
+        SalmonModelSize, SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape,
+        TropicalFishPattern, WolfModelVariant,
     },
     model_layers::*,
 };
@@ -25,6 +26,8 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     CreeperBase,
     EndermanBase,
     EndermanEyes,
+    CopperGolemBase,
+    CopperGolemEyes,
     GoatBase,
     HoglinBase,
     LlamaBase,
@@ -357,6 +360,33 @@ pub(in crate::entity_models) fn enderman_textured_layer_passes() -> Vec<EntityMo
             render_type: EntityModelLayerRenderType::Eyes,
             model_layer: MODEL_LAYER_ENDERMAN,
             texture: ENDERMAN_EYES_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            collector_order: 1,
+            submit_sequence: 1,
+        },
+    ]
+}
+
+pub(in crate::entity_models) fn copper_golem_textured_layer_passes(
+    weathering: CopperGolemWeathering,
+) -> Vec<EntityModelLayerPass> {
+    vec![
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::CopperGolemBase,
+            render_type: EntityModelLayerRenderType::Cutout,
+            model_layer: MODEL_LAYER_COPPER_GOLEM,
+            texture: copper_golem_texture_ref(weathering),
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            collector_order: 0,
+            submit_sequence: 0,
+        },
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::CopperGolemEyes,
+            render_type: EntityModelLayerRenderType::Eyes,
+            model_layer: MODEL_LAYER_COPPER_GOLEM,
+            texture: copper_golem_eyes_texture_ref(weathering),
             visibility: EntityModelLayerVisibility::All,
             tint: [1.0, 1.0, 1.0, 1.0],
             collector_order: 1,

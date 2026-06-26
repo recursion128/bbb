@@ -395,6 +395,14 @@ pub enum EntityModelKind {
     Spider,
     CaveSpider,
     Enderman,
+    /// `CopperGolemModel` at its vanilla `createBodyLayer` rest pose, textured by
+    /// `WeatheringCopper.WeatherState` (`CopperGolemRenderer.getTextureLocation`) and re-rendered
+    /// with the matching emissive eyes texture through vanilla `LivingEntityEmissiveLayer`.
+    /// Interaction keyframes, held items, custom head, and the antenna block decoration stay
+    /// deferred entity-side layers.
+    CopperGolem {
+        weathering: CopperGolemWeathering,
+    },
     /// Iron golem (`IronGolemModel`, `IronGolemRenderer`). `crackiness` drives the vanilla
     /// `IronGolemCrackinessLayer` damage-crack overlay (`iron_golem_crackiness_{low,medium,high}.png`),
     /// selected by `IronGolem.getCrackiness()`. Attack and offer-flower arm poses are render-state
@@ -1061,6 +1069,28 @@ impl IronGolemCrackiness {
             Self::Low
         } else {
             Self::None
+        }
+    }
+}
+
+/// Vanilla `WeatheringCopper.WeatherState` for the copper golem's body and emissive-eye texture
+/// selection. The stream codec maps ordinals 0..=3 with CLAMP, so out-of-range synced ids clamp to
+/// the nearest weathering state.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CopperGolemWeathering {
+    Unaffected,
+    Exposed,
+    Weathered,
+    Oxidized,
+}
+
+impl CopperGolemWeathering {
+    pub fn from_vanilla_id(id: i32) -> Self {
+        match id {
+            i32::MIN..=0 => Self::Unaffected,
+            1 => Self::Exposed,
+            2 => Self::Weathered,
+            _ => Self::Oxidized,
         }
     }
 }

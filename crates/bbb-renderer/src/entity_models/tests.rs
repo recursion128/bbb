@@ -15,6 +15,7 @@ mod breeze;
 mod camel;
 mod chicken;
 mod cod;
+mod copper_golem;
 mod cow;
 mod creaking;
 mod creeper;
@@ -125,6 +126,14 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     let iron_golem = EntityModelInstance::iron_golem(323, [38.0, 64.0, 0.0], 0.0);
     let snow_golem = EntityModelInstance::snow_golem(324, [40.0, 64.0, 0.0], 0.0);
     let witch = EntityModelInstance::witch(325, [42.0, 64.0, 0.0], 0.0);
+    let copper_golem = EntityModelInstance::new(
+        326,
+        EntityModelKind::CopperGolem {
+            weathering: CopperGolemWeathering::Unaffected,
+        },
+        [44.0, 64.0, 0.0],
+        0.0,
+    );
     let colored = entity_model_colored_runtime_mesh(&[
         chicken,
         sheep,
@@ -149,6 +158,7 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
         iron_golem,
         snow_golem,
         witch,
+        copper_golem,
     ]);
     assert!(colored.vertices.is_empty());
     assert!(colored.indices.is_empty());
@@ -198,6 +208,8 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     assert!(!legacy_snow_golem_geometry_guard.vertices.is_empty());
     let legacy_witch_geometry_guard = entity_model_mesh(&[witch]);
     assert!(!legacy_witch_geometry_guard.vertices.is_empty());
+    let legacy_copper_golem_geometry_guard = entity_model_mesh(&[copper_golem]);
+    assert!(!legacy_copper_golem_geometry_guard.vertices.is_empty());
 }
 
 #[test]

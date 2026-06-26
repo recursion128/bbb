@@ -3,15 +3,16 @@ use bbb_protocol::packets::{
 };
 use bbb_renderer::{
     ArmorStandModelPose, ArrowModelTexture, AxolotlModelVariant, BoatModelFamily, CamelModelFamily,
-    CatModelVariant, ChickenModelVariant, CowModelVariant, DonkeyModelFamily, EntityArmorMaterial,
-    EntityDyeColor, EntityModelInstance, EntityModelKind, FoxModelVariant, FrogModelVariant,
-    GuardianBeamRenderState, HoglinModelFamily, HorseColorVariant, HorseMarkings,
-    HumanoidModelFamily, IllagerModelFamily, IronGolemCrackiness, LlamaModelFamily, LlamaVariant,
-    MooshroomVariant, PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
-    PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SelectionBox, SelectionOutline,
-    SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose, TropicalFishModelShape,
-    TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelProfession,
-    VillagerModelType, WolfModelVariant, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    CatModelVariant, ChickenModelVariant, CopperGolemWeathering, CowModelVariant,
+    DonkeyModelFamily, EntityArmorMaterial, EntityDyeColor, EntityModelInstance, EntityModelKind,
+    FoxModelVariant, FrogModelVariant, GuardianBeamRenderState, HoglinModelFamily,
+    HorseColorVariant, HorseMarkings, IllagerModelFamily, IronGolemCrackiness, LlamaModelFamily,
+    LlamaVariant, MooshroomVariant, PandaModelVariant, ParrotModelVariant, PigModelVariant,
+    PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize,
+    SelectionBox, SelectionOutline, SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily,
+    SleepingPose, TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily,
+    VillagerModelData, VillagerModelProfession, VillagerModelType, WolfModelVariant,
+    ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, EntityModelSourceState, EntityPickTargetState,
@@ -219,6 +220,10 @@ const VILLAGER_DATA_DATA_ID: u8 = 18;
 const ZOMBIE_VILLAGER_DATA_DATA_ID: u8 = 20;
 const PIGLIN_BABY_DATA_ID: u8 = 17;
 const BOGGED_SHEARED_DATA_ID: u8 = 16;
+/// Vanilla `CopperGolem.DATA_WEATHER_STATE` data id (16): `CopperGolem` extends `AbstractGolem`
+/// without adding inherited synced data after `Mob.DATA_MOB_FLAGS_ID` (15), so its first own
+/// accessor is the weathering enum.
+const COPPER_GOLEM_WEATHER_STATE_DATA_ID: u8 = 16;
 /// Vanilla `Armadillo.ARMADILLO_STATE` data id (18): the synced `ArmadilloState` enum, the
 /// armadillo's first own accessor after `AgeableMob.AGE_LOCKED` (17). Matches the
 /// `Sniffer.DATA_STATE` slot (both `extends Animal`).
@@ -1607,7 +1612,9 @@ fn entity_model_kind_with_time_and_registries(
             crackiness: iron_golem_crackiness(data_values),
         },
         VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID => EntityModelKind::SnowGolem,
-        VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID => humanoid(HumanoidModelFamily::Player, false),
+        VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID => EntityModelKind::CopperGolem {
+            weathering: copper_golem_weathering(data_values),
+        },
         VANILLA_ENTITY_TYPE_CREEPER_ID => EntityModelKind::Creeper,
         VANILLA_ENTITY_TYPE_PIG_ID => pig_model_kind(data_values, pig_variants),
         VANILLA_ENTITY_TYPE_COW_ID => cow_model_kind(data_values, cow_variants),
@@ -1854,10 +1861,6 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_WITHER_SKULL_ID => EntityModelKind::WitherSkull,
         _ => placeholder("todo_unknown_entity_type_bounds", 0.75, 0.75, 0.75),
     }
-}
-
-fn humanoid(family: HumanoidModelFamily, baby: bool) -> EntityModelKind {
-    EntityModelKind::Humanoid { family, baby }
 }
 
 fn villager_model_data(
@@ -3246,6 +3249,27 @@ fn iron_golem_crackiness(values: &[bbb_protocol::packets::EntityDataValue]) -> I
     const IRON_GOLEM_MAX_HEALTH: f32 = 100.0;
     let health = entity_data_float(values, LIVING_ENTITY_HEALTH_DATA_ID, IRON_GOLEM_MAX_HEALTH);
     IronGolemCrackiness::from_health_fraction(health / IRON_GOLEM_MAX_HEALTH)
+}
+
+/// Vanilla `CopperGolemRenderer.extractRenderState`: `state.weathering = entity.getWeatherState()`.
+/// The synced `WeatheringCopper.WeatherState` ordinal maps 0..=3 to unaffected/exposed/weathered/
+/// oxidized, clamping out-of-range values like vanilla's `ByIdMap.OutOfBoundsStrategy.CLAMP`.
+fn copper_golem_weathering(
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> CopperGolemWeathering {
+    values
+        .iter()
+        .rev()
+        .find(|value| value.data_id == COPPER_GOLEM_WEATHER_STATE_DATA_ID)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::EnumId {
+                serializer: EntityDataEnumSerializer::WeatheringCopperState,
+                id,
+            } => Some(*id),
+            _ => None,
+        })
+        .map(CopperGolemWeathering::from_vanilla_id)
+        .unwrap_or(CopperGolemWeathering::Unaffected)
 }
 
 fn entity_data_int(
@@ -10382,10 +10406,6 @@ mod tests {
                 parts: PlayerModelPartVisibility::from_vanilla_mask(0),
             }
         );
-        assert_eq!(
-            entity_model_kind(VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, &[]),
-            humanoid(HumanoidModelFamily::Player, false)
-        );
     }
 
     #[test]
@@ -10468,10 +10488,6 @@ mod tests {
             EntityModelKind::Enderman
         );
         assert_eq!(
-            entity_model_kind(VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, &[]),
-            humanoid(HumanoidModelFamily::Player, false)
-        );
-        assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, &[]),
             EntityModelKind::SnowGolem
         );
@@ -10498,10 +10514,6 @@ mod tests {
             }
         );
         assert_eq!(
-            entity_model_kind(VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, &[]),
-            humanoid(HumanoidModelFamily::Player, false)
-        );
-        assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, &[]),
             EntityModelKind::SnowGolem
         );
@@ -10513,9 +10525,40 @@ mod tests {
             entity_model_kind(VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, &[]),
             EntityModelKind::SnowGolem
         );
+    }
+
+    #[test]
+    fn entity_model_kind_uses_exact_model_for_copper_golem_weathering() {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, &[]),
-            humanoid(HumanoidModelFamily::Player, false)
+            EntityModelKind::CopperGolem {
+                weathering: CopperGolemWeathering::Unaffected,
+            }
+        );
+        for (id, weathering) in [
+            (-5, CopperGolemWeathering::Unaffected),
+            (0, CopperGolemWeathering::Unaffected),
+            (1, CopperGolemWeathering::Exposed),
+            (2, CopperGolemWeathering::Weathered),
+            (3, CopperGolemWeathering::Oxidized),
+            (99, CopperGolemWeathering::Oxidized),
+        ] {
+            assert_eq!(
+                entity_model_kind(
+                    VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
+                    &[protocol_copper_golem_weathering_data(id)],
+                ),
+                EntityModelKind::CopperGolem { weathering }
+            );
+        }
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
+                &[protocol_armadillo_state_data(2)],
+            ),
+            EntityModelKind::CopperGolem {
+                weathering: CopperGolemWeathering::Unaffected,
+            }
         );
     }
 
@@ -10633,6 +10676,18 @@ mod tests {
             serializer_id: 36,
             value: EntityDataValueKind::EnumId {
                 serializer: EntityDataEnumSerializer::ArmadilloState,
+                id,
+            },
+        }
+    }
+
+    fn protocol_copper_golem_weathering_data(id: i32) -> EntityDataValue {
+        // Vanilla `EntityDataSerializers.WEATHERING_COPPER_STATE` is serializer id 38.
+        EntityDataValue {
+            data_id: COPPER_GOLEM_WEATHER_STATE_DATA_ID,
+            serializer_id: 38,
+            value: EntityDataValueKind::EnumId {
+                serializer: EntityDataEnumSerializer::WeatheringCopperState,
                 id,
             },
         }

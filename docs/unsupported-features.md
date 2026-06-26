@@ -1830,6 +1830,18 @@ When an agent does any of the following, update this file in the same slice:
       vanilla's head-bone transform plus `translate(0,-0.34375,0)`, `rotateY(180°)`,
       `scale(0.625,-0.625,-0.625)`, `translate(-0.5,-0.5,-0.5)`. The invisible-glowing
       outline-only variant remains covered by the broader deferred entity-outline path
+    - copper golem entities as renderer-owned vanilla 26.1
+      `CopperGolemModel.createBodyLayer()` geometry, including the mesh-root
+      `(0,24,0)` transform, body/head/arm/leg cuboids, the deformed head and
+      antenna cubes, the official 64x64
+      `textures/entity/copper_golem/copper_golem*.png` weathering texture set,
+      and the matching emissive eyes texture set. `EntityModelKind::CopperGolem`
+      now carries `WeatheringCopper.WeatherState` projected from
+      `CopperGolem.DATA_WEATHER_STATE` (data id 16,
+      `WEATHERING_COPPER_STATE`) and selects unaffected / exposed / weathered /
+      oxidized body and eyes passes like `CopperGolemRenderer`. The head look is
+      projected; the keyframe walk/idle/interaction animations, held-item layer,
+      custom-head layer, and antenna block decoration remain unsupported
     - witch entities as renderer-owned vanilla 26.1
       `WitchModel.createBodyLayer()` geometry, including the
       `VillagerModel.createBodyModel()` body/arms/legs/nose, the four nested
@@ -3198,6 +3210,8 @@ When an agent does any of the following, update this file in the same slice:
     spider walk-animation presentation (the 180-degree death flip is implemented),
     enderman creepy render jitter (the carried-block arm pose, held-block block-model render,
     and creepy head/hat shift are implemented),
+    copper golem keyframe/held-item/custom-head/antenna-block presentation (the base model,
+    weathering texture swap, and emissive eyes are implemented),
     iron golem body-wobble presentation, armor stand equipment/custom
     layers/wiggle/marker presentation, slime/magma-cube squish/full
     render-state lighting/sorting presentation, and precise vanilla mesh parity

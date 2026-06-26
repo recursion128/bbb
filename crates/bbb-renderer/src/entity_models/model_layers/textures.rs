@@ -1,7 +1,8 @@
 use super::super::EntityModelTextureRef;
 use crate::entity_models::catalog::{
-    ArrowModelTexture, AxolotlModelVariant, CatModelVariant, EntityArmorMaterial, EntityDyeColor,
-    FoxModelVariant, FrogModelVariant, PandaModelVariant, ParrotModelVariant, RabbitModelVariant,
+    ArrowModelTexture, AxolotlModelVariant, CatModelVariant, CopperGolemWeathering,
+    EntityArmorMaterial, EntityDyeColor, FoxModelVariant, FrogModelVariant, PandaModelVariant,
+    ParrotModelVariant, RabbitModelVariant,
 };
 
 mod equine;
@@ -1421,7 +1422,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 505] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 513] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -1563,6 +1564,14 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     SPIDER_EYES_TEXTURE_REF,
     ENDERMAN_TEXTURE_REF,
     ENDERMAN_EYES_TEXTURE_REF,
+    COPPER_GOLEM_TEXTURE_REF,
+    COPPER_GOLEM_EXPOSED_TEXTURE_REF,
+    COPPER_GOLEM_WEATHERED_TEXTURE_REF,
+    COPPER_GOLEM_OXIDIZED_TEXTURE_REF,
+    COPPER_GOLEM_EYES_TEXTURE_REF,
+    COPPER_GOLEM_EYES_EXPOSED_TEXTURE_REF,
+    COPPER_GOLEM_EYES_WEATHERED_TEXTURE_REF,
+    COPPER_GOLEM_EYES_OXIDIZED_TEXTURE_REF,
     IRON_GOLEM_TEXTURE_REF,
     IRON_GOLEM_CRACKINESS_LOW_TEXTURE_REF,
     IRON_GOLEM_CRACKINESS_MEDIUM_TEXTURE_REF,
@@ -2550,6 +2559,110 @@ pub(in crate::entity_models) const ENDERMAN_ENTITY_TEXTURE_REFS: [EntityModelTex
 
 pub fn enderman_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &ENDERMAN_ENTITY_TEXTURE_REFS
+}
+
+pub(in crate::entity_models) const COPPER_GOLEM_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/copper_golem/copper_golem.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const COPPER_GOLEM_EXPOSED_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/copper_golem/copper_golem_exposed.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const COPPER_GOLEM_WEATHERED_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/copper_golem/copper_golem_weathered.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const COPPER_GOLEM_OXIDIZED_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/copper_golem/copper_golem_oxidized.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const COPPER_GOLEM_EYES_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/copper_golem/copper_golem_eyes.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const COPPER_GOLEM_EYES_EXPOSED_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/copper_golem/copper_golem_eyes_exposed.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const COPPER_GOLEM_EYES_WEATHERED_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/copper_golem/copper_golem_eyes_weathered.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const COPPER_GOLEM_EYES_OXIDIZED_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/copper_golem/copper_golem_eyes_oxidized.png",
+        size: [64, 64],
+    };
+
+pub(in crate::entity_models) const COPPER_GOLEM_EYES_LAYER_TEXTURE_REFS: [EntityModelTextureRef;
+    4] = [
+    COPPER_GOLEM_EYES_TEXTURE_REF,
+    COPPER_GOLEM_EYES_EXPOSED_TEXTURE_REF,
+    COPPER_GOLEM_EYES_WEATHERED_TEXTURE_REF,
+    COPPER_GOLEM_EYES_OXIDIZED_TEXTURE_REF,
+];
+
+pub(in crate::entity_models) const COPPER_GOLEM_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 8] = [
+    COPPER_GOLEM_TEXTURE_REF,
+    COPPER_GOLEM_EXPOSED_TEXTURE_REF,
+    COPPER_GOLEM_WEATHERED_TEXTURE_REF,
+    COPPER_GOLEM_OXIDIZED_TEXTURE_REF,
+    COPPER_GOLEM_EYES_TEXTURE_REF,
+    COPPER_GOLEM_EYES_EXPOSED_TEXTURE_REF,
+    COPPER_GOLEM_EYES_WEATHERED_TEXTURE_REF,
+    COPPER_GOLEM_EYES_OXIDIZED_TEXTURE_REF,
+];
+
+pub fn copper_golem_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &COPPER_GOLEM_ENTITY_TEXTURE_REFS
+}
+
+pub(in crate::entity_models) fn copper_golem_texture_ref(
+    weathering: CopperGolemWeathering,
+) -> EntityModelTextureRef {
+    match weathering {
+        CopperGolemWeathering::Unaffected => COPPER_GOLEM_TEXTURE_REF,
+        CopperGolemWeathering::Exposed => COPPER_GOLEM_EXPOSED_TEXTURE_REF,
+        CopperGolemWeathering::Weathered => COPPER_GOLEM_WEATHERED_TEXTURE_REF,
+        CopperGolemWeathering::Oxidized => COPPER_GOLEM_OXIDIZED_TEXTURE_REF,
+    }
+}
+
+pub(in crate::entity_models) fn copper_golem_eyes_texture_ref(
+    weathering: CopperGolemWeathering,
+) -> EntityModelTextureRef {
+    match weathering {
+        CopperGolemWeathering::Unaffected => COPPER_GOLEM_EYES_TEXTURE_REF,
+        CopperGolemWeathering::Exposed => COPPER_GOLEM_EYES_EXPOSED_TEXTURE_REF,
+        CopperGolemWeathering::Weathered => COPPER_GOLEM_EYES_WEATHERED_TEXTURE_REF,
+        CopperGolemWeathering::Oxidized => COPPER_GOLEM_EYES_OXIDIZED_TEXTURE_REF,
+    }
+}
+
+pub(in crate::entity_models) fn copper_golem_eyes_layer_texture_refs(
+    weathering: CopperGolemWeathering,
+) -> &'static [EntityModelTextureRef] {
+    match weathering {
+        CopperGolemWeathering::Unaffected => &COPPER_GOLEM_EYES_LAYER_TEXTURE_REFS[0..1],
+        CopperGolemWeathering::Exposed => &COPPER_GOLEM_EYES_LAYER_TEXTURE_REFS[1..2],
+        CopperGolemWeathering::Weathered => &COPPER_GOLEM_EYES_LAYER_TEXTURE_REFS[2..3],
+        CopperGolemWeathering::Oxidized => &COPPER_GOLEM_EYES_LAYER_TEXTURE_REFS[3..4],
+    }
 }
 
 pub(in crate::entity_models) const IRON_GOLEM_TEXTURE_REF: EntityModelTextureRef =

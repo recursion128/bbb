@@ -59,8 +59,8 @@ mod layers;
 pub(super) use layers::{
     armadillo_textured_layer_passes, arrow_textured_layer_passes, axolotl_textured_layer_passes,
     blaze_textured_layer_passes, boat_textured_layer_passes, camel_textured_layer_passes,
-    chicken_textured_layer_passes, cow_textured_layer_passes, creaking_textured_layer_passes,
-    creeper_textured_layer_passes, drowned_textured_layer_passes,
+    chicken_textured_layer_passes, copper_golem_textured_layer_passes, cow_textured_layer_passes,
+    creaking_textured_layer_passes, creeper_textured_layer_passes, drowned_textured_layer_passes,
     ender_dragon_textured_layer_passes, enderman_textured_layer_passes,
     endermite_textured_layer_passes, evoker_fangs_textured_layer_passes,
     feline_textured_layer_passes, fox_textured_layer_passes, frog_textured_layer_passes,
