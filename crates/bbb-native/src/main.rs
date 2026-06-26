@@ -775,13 +775,27 @@ fn drain_dynamic_player_skin_downloads(
     for download in items.drain_dynamic_player_texture_download_results() {
         match download.texture {
             Some(texture) => {
+                let handle = texture.handle;
+                let size = texture.size;
+                if let Err(err) = renderer.upload_dynamic_player_texture(texture) {
+                    tracing::warn!(
+                        ?err,
+                        kind = ?download.kind,
+                        url = %download.url,
+                        handle,
+                        width = size[0],
+                        height = size[1],
+                        "failed to upload dynamic player profile texture"
+                    );
+                    continue;
+                }
                 tracing::debug!(
                     kind = ?download.kind,
                     url = %download.url,
-                    handle = texture.handle,
-                    width = texture.size[0],
-                    height = texture.size[1],
-                    "downloaded dynamic player profile texture pending renderer upload"
+                    handle,
+                    width = size[0],
+                    height = size[1],
+                    "uploaded dynamic player profile texture"
                 );
             }
             None => {

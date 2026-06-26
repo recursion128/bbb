@@ -1,7 +1,7 @@
 use super::*;
 
 use crate::entity_models::model::{EntityModel, ModelCube};
-use crate::player_skin::DynamicPlayerSkinImage;
+use crate::player_skin::{DynamicPlayerSkinImage, DynamicPlayerTextureImage};
 
 /// The wide-player limb rest poses, for the desc-level arm-swing/bob reference-formula tests (the
 /// player now builds a named tree, so it has no `*_PARTS` desc const). Right arm `x = -5`, left arm
@@ -345,6 +345,43 @@ fn ready_dynamic_player_skin_body_uses_dynamic_cutout_atlas_submission() {
     assert!(meshes.dynamic_player_skin_translucent.vertices.is_empty());
     assert_eq!(meshes.dynamic_player_skin_cutout.cutout_faces, 48);
     assert_eq!(meshes.dynamic_player_skin_cutout.vertices.len(), 192);
+}
+
+#[test]
+fn dynamic_player_texture_atlas_stitches_variable_profile_textures() {
+    let cape = dynamic_player_texture_image(20, [4, 2], 10);
+    let elytra = dynamic_player_texture_image(10, [2, 3], 40);
+
+    let (layout, rgba) = build_dynamic_player_texture_atlas(&[cape.clone(), elytra.clone()])
+        .expect("dynamic player texture atlas");
+
+    assert_eq!(layout.width, 4);
+    assert_eq!(layout.height, 5);
+    assert_eq!(layout.entries.len(), 2);
+    assert_eq!(layout.entries[0].handle, cape.handle);
+    assert_eq!(layout.entries[0].size, cape.size);
+    assert_close2(layout.entries[0].uv.min, [0.0, 0.0]);
+    assert_close2(layout.entries[0].uv.max, [1.0, 2.0 / 5.0]);
+    assert_eq!(layout.entries[1].handle, elytra.handle);
+    assert_eq!(layout.entries[1].size, elytra.size);
+    assert_close2(layout.entries[1].uv.min, [0.0, 2.0 / 5.0]);
+    assert_close2(layout.entries[1].uv.max, [0.5, 1.0]);
+
+    assert_eq!(atlas_pixel(&rgba, layout.width, 3, 1), [13, 3, 1, 255]);
+    assert_eq!(atlas_pixel(&rgba, layout.width, 1, 2), [41, 1, 0, 255]);
+    assert_eq!(atlas_pixel(&rgba, layout.width, 2, 2), [0, 0, 0, 0]);
+}
+
+#[test]
+fn dynamic_player_texture_atlas_rejects_bad_profile_texture_dimensions() {
+    let err = build_dynamic_player_texture_atlas(&[DynamicPlayerTextureImage {
+        handle: 88,
+        size: [2, 2],
+        rgba: vec![0xff; 15],
+    }])
+    .unwrap_err();
+
+    assert!(err.to_string().contains("expected 16 for 2x2"));
 }
 
 #[test]
@@ -1346,4 +1383,28 @@ fn steve_player_texture_images() -> Vec<EntityModelTextureImage> {
             EntityModelTextureImage::new(texture, vec![index as u8; len])
         })
         .collect()
+}
+
+fn dynamic_player_texture_image(
+    handle: u64,
+    size: [u32; 2],
+    base: u8,
+) -> DynamicPlayerTextureImage {
+    let mut rgba = Vec::new();
+    for y in 0..size[1] {
+        for x in 0..size[0] {
+            rgba.extend_from_slice(&[base + x as u8, x as u8, y as u8, 255]);
+        }
+    }
+    DynamicPlayerTextureImage { handle, size, rgba }
+}
+
+fn atlas_pixel(rgba: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {
+    let offset = rgba_offset(width, y, x, "test atlas pixel").unwrap();
+    [
+        rgba[offset],
+        rgba[offset + 1],
+        rgba[offset + 2],
+        rgba[offset + 3],
+    ]
 }

@@ -5,12 +5,16 @@ use glam::Vec3;
 use wgpu::util::DeviceExt;
 
 use crate::{
-    camera::TerrainBounds, gpu::DEPTH_FORMAT, player_skin::DynamicPlayerSkinImage, Renderer,
+    camera::TerrainBounds,
+    gpu::DEPTH_FORMAT,
+    player_skin::{DynamicPlayerSkinImage, DynamicPlayerTextureImage},
+    Renderer,
 };
 
 use super::{
     catalog::{
         EntityDynamicPlayerSkinAtlasEntry, EntityDynamicPlayerSkinAtlasLayout,
+        EntityDynamicPlayerTextureAtlasEntry, EntityDynamicPlayerTextureAtlasLayout,
         EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureImage,
         EntityModelUvRect,
     },
@@ -57,6 +61,15 @@ pub(crate) struct EntityDynamicPlayerSkinAtlasGpu {
     _sampler: wgpu::Sampler,
     pub(crate) bind_group: wgpu::BindGroup,
     pub(crate) layout: EntityDynamicPlayerSkinAtlasLayout,
+}
+
+#[allow(dead_code)]
+pub(crate) struct EntityDynamicPlayerTextureAtlasGpu {
+    _texture: wgpu::Texture,
+    _view: wgpu::TextureView,
+    _sampler: wgpu::Sampler,
+    pub(crate) bind_group: wgpu::BindGroup,
+    pub(crate) layout: EntityDynamicPlayerTextureAtlasLayout,
 }
 
 pub(super) const ENTITY_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 4] =
@@ -577,6 +590,32 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn upload_dynamic_player_texture(
+        &mut self,
+        image: DynamicPlayerTextureImage,
+    ) -> Result<()> {
+        validate_dynamic_player_texture_image(&image)?;
+        match self
+            .entity_dynamic_player_texture_images
+            .iter_mut()
+            .find(|texture| texture.handle == image.handle)
+        {
+            Some(existing) => *existing = image,
+            None => self.entity_dynamic_player_texture_images.push(image),
+        }
+        self.entity_dynamic_player_texture_images
+            .sort_by_key(|texture| texture.handle);
+        self.entity_dynamic_player_texture_atlas = Some(create_dynamic_player_texture_atlas_gpu(
+            &self.device,
+            &self.queue,
+            &self.terrain_bind_group_layout,
+            &self.camera_buffer,
+            &self.entity_dynamic_player_texture_images,
+        )?);
+        self.rebuild_entity_model_meshes();
+        Ok(())
+    }
+
     pub fn set_entity_model_instances(&mut self, instances: Vec<EntityModelInstance>) {
         let instances = sanitize_entity_model_instances(instances);
         if self.entity_model_instances.as_slice() == instances.as_slice() {
@@ -834,6 +873,86 @@ fn create_dynamic_player_skin_atlas_gpu(
     })
 }
 
+fn create_dynamic_player_texture_atlas_gpu(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    camera_buffer: &wgpu::Buffer,
+    images: &[DynamicPlayerTextureImage],
+) -> Result<EntityDynamicPlayerTextureAtlasGpu> {
+    let (layout, rgba) = build_dynamic_player_texture_atlas(images)?;
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("bbb-dynamic-player-texture-atlas"),
+        size: wgpu::Extent3d {
+            width: layout.width,
+            height: layout.height,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8UnormSrgb,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    queue.write_texture(
+        wgpu::ImageCopyTexture {
+            texture: &texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        &rgba,
+        wgpu::ImageDataLayout {
+            offset: 0,
+            bytes_per_row: Some(layout.width * 4),
+            rows_per_image: Some(layout.height),
+        },
+        wgpu::Extent3d {
+            width: layout.width,
+            height: layout.height,
+            depth_or_array_layers: 1,
+        },
+    );
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("bbb-dynamic-player-texture-sampler"),
+        address_mode_u: wgpu::AddressMode::ClampToEdge,
+        address_mode_v: wgpu::AddressMode::ClampToEdge,
+        address_mode_w: wgpu::AddressMode::ClampToEdge,
+        mag_filter: wgpu::FilterMode::Nearest,
+        min_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::FilterMode::Nearest,
+        ..Default::default()
+    });
+    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("bbb-dynamic-player-texture-bind-group"),
+        layout: bind_group_layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: camera_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(&view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::Sampler(&sampler),
+            },
+        ],
+    });
+
+    Ok(EntityDynamicPlayerTextureAtlasGpu {
+        _texture: texture,
+        _view: view,
+        _sampler: sampler,
+        bind_group,
+        layout,
+    })
+}
+
 #[cfg_attr(not(test), allow(dead_code))]
 pub(super) fn build_dynamic_player_skin_atlas(
     images: &[DynamicPlayerSkinImage],
@@ -882,6 +1001,73 @@ pub(super) fn build_dynamic_player_skin_atlas(
 
     Ok((
         EntityDynamicPlayerSkinAtlasLayout {
+            width,
+            height,
+            entries,
+        },
+        rgba,
+    ))
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
+pub(super) fn build_dynamic_player_texture_atlas(
+    images: &[DynamicPlayerTextureImage],
+) -> Result<(EntityDynamicPlayerTextureAtlasLayout, Vec<u8>)> {
+    if images.is_empty() {
+        bail!("dynamic player texture atlas requires at least one image");
+    }
+
+    let mut seen = BTreeMap::new();
+    let mut width = 0u32;
+    let mut height = 0u32;
+    for image in images {
+        validate_dynamic_player_texture_image(image)?;
+        if seen.insert(image.handle, ()).is_some() {
+            bail!("duplicate dynamic player texture handle {}", image.handle);
+        }
+        width = width.max(image.size[0]);
+        height = height
+            .checked_add(image.size[1])
+            .ok_or_else(|| anyhow!("dynamic player texture atlas height overflow"))?;
+    }
+    if width == 0 || height == 0 {
+        bail!("dynamic player texture atlas dimensions must be non-zero");
+    }
+    let atlas_len = rgba_len(width, height, "dynamic player texture atlas")?;
+    let mut rgba = vec![0u8; atlas_len];
+    let mut entries = Vec::with_capacity(images.len());
+
+    let mut y = 0u32;
+    for image in images {
+        let image_width = image.size[0];
+        let image_height = image.size[1];
+        let row_len = usize::try_from(image_width)
+            .ok()
+            .and_then(|width| width.checked_mul(4))
+            .ok_or_else(|| anyhow!("dynamic player texture row size overflow"))?;
+        for row in 0..image_height {
+            let src_start = rgba_offset(image_width, row, 0, "dynamic player texture source")?;
+            let src_end = src_start + row_len;
+            let dst_start = rgba_offset(width, y + row, 0, "dynamic player texture atlas")?;
+            let dst_end = dst_start + row_len;
+            rgba[dst_start..dst_end].copy_from_slice(&image.rgba[src_start..src_end]);
+        }
+        entries.push(EntityDynamicPlayerTextureAtlasEntry {
+            handle: image.handle,
+            size: image.size,
+            uv: EntityModelUvRect {
+                min: [0.0, y as f32 / height as f32],
+                max: [
+                    image_width as f32 / width as f32,
+                    (y + image_height) as f32 / height as f32,
+                ],
+            },
+        });
+        y += image_height;
+    }
+
+    Ok((
+        EntityDynamicPlayerTextureAtlasLayout {
             width,
             height,
             entries,
@@ -981,6 +1167,28 @@ fn validate_dynamic_player_skin_image(image: &DynamicPlayerSkinImage) -> Result<
     if image.rgba.len() != expected_len {
         bail!(
             "dynamic player skin {} has {} RGBA bytes, expected {} for {}x{}",
+            image.handle,
+            image.rgba.len(),
+            expected_len,
+            width,
+            height
+        );
+    }
+    Ok(())
+}
+
+fn validate_dynamic_player_texture_image(image: &DynamicPlayerTextureImage) -> Result<()> {
+    let [width, height] = image.size;
+    if width == 0 || height == 0 {
+        bail!(
+            "dynamic player texture {} has zero-sized dimensions",
+            image.handle
+        );
+    }
+    let expected_len = rgba_len(width, height, "dynamic player texture")?;
+    if image.rgba.len() != expected_len {
+        bail!(
+            "dynamic player texture {} has {} RGBA bytes, expected {} for {}x{}",
             image.handle,
             image.rgba.len(),
             expected_len,

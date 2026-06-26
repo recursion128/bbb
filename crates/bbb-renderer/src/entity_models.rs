@@ -36,8 +36,9 @@ use geometry::*;
 use glam::{Mat4, Vec3};
 #[cfg(test)]
 use gpu::{
-    build_dynamic_player_skin_atlas, build_entity_model_texture_atlas, entity_model_vertex_layout,
-    rgba_offset, sanitize_entity_model_instances, ENTITY_MODEL_EYES_SHADER, ENTITY_MODEL_SHADER,
+    build_dynamic_player_skin_atlas, build_dynamic_player_texture_atlas,
+    build_entity_model_texture_atlas, entity_model_vertex_layout, rgba_offset,
+    sanitize_entity_model_instances, ENTITY_MODEL_EYES_SHADER, ENTITY_MODEL_SHADER,
     ENTITY_MODEL_TEXTURED_SHADER, ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES,
     ENTITY_MODEL_VERTEX_ATTRIBUTES,
 };
@@ -47,8 +48,8 @@ pub(crate) use gpu::{
     create_entity_model_textured_pipeline, create_entity_model_translucent_pipeline,
 };
 pub(super) use gpu::{
-    EntityDynamicPlayerSkinAtlasGpu, EntityModelMeshGpu, EntityModelScrollMeshGpu,
-    EntityModelTextureAtlasGpu, EntityModelTexturedMeshGpu,
+    EntityDynamicPlayerSkinAtlasGpu, EntityDynamicPlayerTextureAtlasGpu, EntityModelMeshGpu,
+    EntityModelScrollMeshGpu, EntityModelTextureAtlasGpu, EntityModelTexturedMeshGpu,
 };
 pub use held_item::{
     copper_golem_hand_attach_transform, custom_head_item_transform, dolphin_carried_item_transform,
