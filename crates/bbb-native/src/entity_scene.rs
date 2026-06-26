@@ -797,7 +797,7 @@ fn entity_custom_head_skull(
 ) -> Option<EntityCustomHeadSkull> {
     let item_runtime = item_runtime?;
     let stack = world.equipment_item(entity_id, EquipmentSlot::Head)?;
-    item_runtime.custom_head_skull_for_protocol_id(stack.item_id?)
+    item_runtime.custom_head_skull_for_stack(&stack)
 }
 
 /// Vanilla `ItemTags.PIGLIN_LOVED` tag id — the items a piglin admires.

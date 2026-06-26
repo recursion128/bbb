@@ -30,6 +30,17 @@ pub(in crate::entity_models) const CUSTOM_HEAD_SKULL_CUBE: ModelCube = ModelCube
     false,
 );
 
+// Vanilla `SkullModel.createHumanoidHeadLayer` adds a `hat` child to the same base head:
+// `texOffs(32, 0).addBox(-4, -8, -4, 8, 8, 8, CubeDeformation(0.25))` on a 64x64 skin texture.
+pub(in crate::entity_models) const CUSTOM_HEAD_PLAYER_HAT_CUBE: ModelCube = ModelCube::new(
+    [-4.25, -8.25, -4.25],
+    [8.5, 8.5, 8.5],
+    WITHER_SKULL_GRAY,
+    [8.0, 8.0, 8.0],
+    [32.0, 0.0],
+    false,
+);
+
 /// Static wither-skull model mirroring vanilla `SkullModel` at its ZERO rest pose: a single `head`
 /// part holding the 8×8×8 skull box (the flight facing lives in the root transform), no `setup_anim`.
 pub(in crate::entity_models) struct WitherSkullModel {
@@ -63,23 +74,29 @@ impl EntityModel for WitherSkullModel {
     fn setup_anim(&mut self, _instance: &EntityModelInstance) {}
 }
 
-/// Static mob-head model for `CustomHeadLayer` skull equipment. The host model already supplied the
-/// posed head transform, so this skull tree remains at its baked ZERO pose.
+/// Static skull model for `CustomHeadLayer` skull equipment. Mob heads are only the base `head` cube;
+/// profileless player heads use the humanoid head layer with the inflated hat child. The host model
+/// already supplied the posed head transform, so this skull tree remains at its baked ZERO pose.
 pub(in crate::entity_models) struct CustomHeadSkullModel {
     root: ModelPart,
 }
 
 impl CustomHeadSkullModel {
-    pub(in crate::entity_models) fn new() -> Self {
-        Self {
-            root: ModelPart::new(
+    pub(in crate::entity_models) fn new(include_player_hat: bool) -> Self {
+        let head = if include_player_hat {
+            ModelPart::new(
                 PART_POSE_ZERO,
-                Vec::new(),
+                vec![CUSTOM_HEAD_SKULL_CUBE],
                 vec![(
-                    "head",
-                    ModelPart::leaf(PART_POSE_ZERO, vec![CUSTOM_HEAD_SKULL_CUBE]),
+                    "hat",
+                    ModelPart::leaf(PART_POSE_ZERO, vec![CUSTOM_HEAD_PLAYER_HAT_CUBE]),
                 )],
-            ),
+            )
+        } else {
+            ModelPart::leaf(PART_POSE_ZERO, vec![CUSTOM_HEAD_SKULL_CUBE])
+        };
+        Self {
+            root: ModelPart::new(PART_POSE_ZERO, Vec::new(), vec![("head", head)]),
         }
     }
 }

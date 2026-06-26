@@ -1179,15 +1179,18 @@ When an agent does any of the following, update this file in the same slice:
         villagers/wandering traders, armor stands, and copper golems),
         including piglin horizontal scale, villager y-offset, and the copper
         golem `body -> head -> T(0,0.125,0) -> scale(1.0625)` override.
-      - static custom-head mob skulls DONE:
+      - custom-head static mob skulls and profileless default player head DONE:
         `CustomHeadLayer`'s skull branch now renders `skeleton_skull`,
         `wither_skeleton_skull`, `zombie_head`, and `creeper_head` in the
         HEAD slot using vanilla `SkullModel.createMobHeadLayer()` geometry,
         the `SKULL_SCALE = 1.1875` transform, villager skull y-offset, and
         the matching entity textures via the textured cutout pass. Native
         resolves these skull block items from the item registry into
-        `EntityRenderState.custom_head_skull`. Player profile skins, the
-        animated dragon head, and the animated piglin head remain deferred.
+        `EntityRenderState.custom_head_skull`. A `player_head` whose stack has
+        no active `DataComponents.PROFILE` component is rendered with vanilla
+        `DefaultPlayerSkin` (`textures/entity/player/slim/steve.png`) and the
+        humanoid head+hat skull layer; profiled player skins, the animated
+        dragon head, and the animated piglin head remain deferred.
       - fox held item DONE: `FoxHeldItemLayer` is reproduced through the same
         item-model pass. Renderer exposes `fox_held_item_transform`, which builds
         and poses the vanilla adult/baby `FoxModel`, reads the posed `head` part,
@@ -1214,7 +1217,7 @@ When an agent does any of the following, update this file in the same slice:
         `apply_humanoid_attack_animation`/`apply_humanoid_stab_attack_animation` to the
         zombie/skeleton/illager/vindicator models is now just per-model wiring.
       - remaining slices: held-item refinements (first-person viewmodel; the
-        remaining player-profile / dragon / piglin branches of
+        remaining profiled-player / dragon / piglin branches of
         `CustomHeadLayer` / `SkullBlockRenderer`; the
         STAB swing pose on non-player humanoid models; the `NONE` swing type; the
         attack swing on the non-player humanoid models). Item lighting
@@ -1602,8 +1605,9 @@ When an agent does any of the following, update this file in the same slice:
       item layer is implemented for adult/baby villagers and wandering traders
       through the shared item-model pass; generic non-skull custom-head items
       are implemented through `CustomHeadLayer`'s `HEAD` item display transform,
-      and static skeleton/wither-skeleton/zombie/creeper skulls render through
-      the skull branch; player-profile / dragon / piglin heads, unhappy
+      and static skeleton/wither-skeleton/zombie/creeper skulls plus
+      profileless default-player heads render through the skull branch;
+      profiled-player / dragon / piglin heads, unhappy
       animation, leg walk animation, lighting, and wandering trader baby
       presentation remain unsupported
     - worn humanoid armor as a renderer-owned vanilla 26.1 `HumanoidArmorLayer` overlay (framework
@@ -1725,10 +1729,11 @@ When an agent does any of the following, update this file in the same slice:
       the `DrownedOuterLayer` (adult and baby) IS implemented (see the drowned note above); drowned
       swim
       rotation, zombie/piglin converting shake, remaining zombie-family and
-      piglin-family armor nuances, player-profile / dragon / piglin custom-head
+      piglin-family armor nuances, profiled-player / dragon / piglin custom-head
       skull branches, and held-item refinements remain unsupported
       (generic non-skull head-slot items and static skeleton/wither-skeleton/
-      zombie/creeper skulls are covered by the shared custom-head paths); zombie
+      zombie/creeper skulls plus profileless default-player heads are covered by
+      the shared custom-head paths); zombie
       villager type/profession/level overlays ARE implemented via
       `VillagerProfessionLayer` parity, reading `VillagerData` at entity-data id
       `20`, using the zombie-villager overlay textures, baby type robes, level
@@ -1902,7 +1907,7 @@ When an agent does any of the following, update this file in the same slice:
       path, including the copper golem `translateToHead` override; static
       skeleton/wither-skeleton/zombie/creeper skulls also use that override in
       the skull branch. The keyframe walk/walk-with-item/idle/interaction
-      animations and player-profile / dragon / piglin head branches remain
+      animations and profiled-player / dragon / piglin head branches remain
       unsupported
     - witch entities as renderer-owned vanilla 26.1
       `WitchModel.createBodyLayer()` geometry, including the
@@ -1944,7 +1949,8 @@ When an agent does any of the following, update this file in the same slice:
       dispatch, which builds the posed `IllagerModel` and reads `right_arm` /
       `left_arm`; generic non-skull custom-head items are implemented by the
       shared `CustomHeadLayer` item path, and static skeleton/wither-skeleton/
-      zombie/creeper skulls are implemented by the skull branch; player-profile
+      zombie/creeper skulls plus profileless default-player heads are
+      implemented by the skull branch; profiled-player
       / dragon / piglin custom-heads,
       spell/crossbow/attacking/celebrating/riding
       arm poses and animation, illusioner clone offsets/invisible-body rendering,
@@ -1961,7 +1967,8 @@ When an agent does any of the following, update this file in the same slice:
       standard held-item layer for both full and small stands (small hand items
       ride the `BABY_TRANSFORMER` 0.5 arm-part scale), plus the generic
       non-skull custom-head item path and static skeleton/wither-skeleton/
-      zombie/creeper skulls; armor/equipment player-profile / dragon / piglin
+      zombie/creeper skulls plus profileless default-player heads; armor/equipment
+      profiled-player / dragon / piglin
       custom-head branches, elytra layers, hurt wiggle, marker/invisible
       render-type nuances, and animation interpolation remain
       unsupported
@@ -3284,14 +3291,14 @@ When an agent does any of the following, update this file in the same slice:
     presentation,
     horse animation, donkey/mule animation presentation,
     undead horse animation presentation, and remaining non-base-equine presentation,
-    villager player-profile/dragon/piglin custom-head presentation (crossed-arms
-    held items, generic non-skull head items, and static mob skulls are
-    implemented),
-    illager player-profile/dragon/piglin custom-head/arm-pose presentation
-    (standard held items, generic non-skull head items, and static mob skulls
-    are implemented), zombie-family
+    villager profiled-player/dragon/piglin custom-head presentation (crossed-arms
+    held items, generic non-skull head items, static mob skulls, and profileless
+    default-player heads are implemented),
+    illager profiled-player/dragon/piglin custom-head/arm-pose presentation
+    (standard held items, generic non-skull head items, static mob skulls, and
+    profileless default-player heads are implemented), zombie-family
     armor/drowned swim/zombie-villager converting-state/piglin-family
-    armor/player-profile/dragon/piglin custom-head/arm-pose/converting-state
+    armor/profiled-player/dragon/piglin custom-head/arm-pose/converting-state
     presentation (the drowned outer layer — adult and baby — and the trident-throw arm
     pose ARE implemented; only the drowned swim re-pose defers),
     skeleton armor, held-item, and animation presentation,
@@ -3299,11 +3306,11 @@ When an agent does any of the following, update this file in the same slice:
     spider walk-animation presentation (the 180-degree death flip is implemented),
     enderman creepy render jitter (the carried-block arm pose, held-block block-model render,
     and creepy head/hat shift are implemented),
-    copper golem keyframe/player-profile/dragon/piglin custom-head presentation
+    copper golem keyframe/profiled-player/dragon/piglin custom-head presentation
     (the base model, weathering texture swap, emissive eyes, standard held-item
-    layer, antenna block decoration, generic non-skull head items, and static
-    mob skulls are implemented),
-    iron golem body-wobble presentation, armor stand equipment/player-profile/
+    layer, antenna block decoration, generic non-skull head items, static mob
+    skulls, and profileless default-player heads are implemented),
+    iron golem body-wobble presentation, armor stand equipment/profiled-player/
     dragon/piglin custom layers/wiggle/marker presentation, slime/magma-cube squish/full
     render-state lighting/sorting presentation, and precise vanilla mesh parity
     for primitive/placeholder entity families.

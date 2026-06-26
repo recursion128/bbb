@@ -13,13 +13,15 @@ pub(in crate::entity_models) use selection::{sheep_jeb_wool_layer_color, sheep_w
 
 /// Vanilla `SkullBlock.Type` values currently rendered by bbb's `CustomHeadLayer` skull branch.
 ///
-/// The static `SkullModel` variants all use the same 8x8x8 mob-head layer and differ only by the
-/// entity texture. Player heads need profile skin resolution, while dragon and piglin heads use
-/// specialized animated models, so those stay out of this enum until their full branches are owned.
+/// Static mob heads share the same 8x8x8 mob-head layer and differ only by entity texture. Player
+/// heads use the humanoid head layer (base head plus hat) and are only projected for profileless
+/// stacks until bbb owns profile skin resolution. Dragon and piglin heads use specialized animated
+/// models, so those stay out of this enum until their full branches are owned.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EntityCustomHeadSkull {
     Skeleton,
     WitherSkeleton,
+    Player,
     Zombie,
     Creeper,
 }

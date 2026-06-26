@@ -19,6 +19,17 @@ fn custom_head_skull_model_uses_vanilla_mob_head_layer_geometry() {
 }
 
 #[test]
+fn custom_head_player_skull_model_adds_the_humanoid_hat_geometry() {
+    // Vanilla `SkullModel.createHumanoidHeadLayer` adds a `hat` child inflated by
+    // `CubeDeformation(0.25)` at `texOffs(32, 0)` on the 64x64 player skin.
+    assert_eq!(CUSTOM_HEAD_PLAYER_HAT_CUBE.min, [-4.25, -8.25, -4.25]);
+    assert_eq!(CUSTOM_HEAD_PLAYER_HAT_CUBE.size, [8.5, 8.5, 8.5]);
+    assert_eq!(CUSTOM_HEAD_PLAYER_HAT_CUBE.uv_size, [8.0, 8.0, 8.0]);
+    assert_eq!(CUSTOM_HEAD_PLAYER_HAT_CUBE.tex, [32.0, 0.0]);
+    assert!(!CUSTOM_HEAD_PLAYER_HAT_CUBE.mirror);
+}
+
+#[test]
 fn custom_head_skull_layer_renders_static_mob_heads_with_matching_textures() {
     for (skull, texture) in [
         (EntityCustomHeadSkull::Skeleton, SKELETON_TEXTURE_REF),
@@ -50,6 +61,30 @@ fn custom_head_skull_layer_renders_static_mob_heads_with_matching_textures() {
             .iter()
             .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
     }
+}
+
+#[test]
+fn custom_head_skull_layer_renders_profileless_player_head_with_default_skin() {
+    let atlas = atlas_with(PLAYER_SLIM_STEVE_TEXTURE_REF);
+    let mesh = entity_model_textured_mesh(
+        &[EntityModelInstance::player_with_parts(
+            913,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            PLAYER_MODEL_PARTS_ALL_VISIBLE,
+        )
+        .with_custom_head_skull(Some(EntityCustomHeadSkull::Player))],
+        &atlas,
+    );
+
+    assert_eq!(mesh.cutout_faces, 12);
+    assert_eq!(mesh.vertices.len(), 48);
+    assert_eq!(mesh.indices.len(), 72);
+    assert!(mesh
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
 }
 
 #[test]

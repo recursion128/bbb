@@ -389,12 +389,16 @@ impl NativeItemRuntime {
         registry.humanoid_armor_asset(resource_id).is_some()
     }
 
-    pub(crate) fn custom_head_skull_for_protocol_id(
+    pub(crate) fn custom_head_skull_for_stack(
         &self,
-        protocol_id: i32,
+        stack: &ItemStackSummary,
     ) -> Option<EntityCustomHeadSkull> {
         let registry = self.registry.as_ref()?;
-        custom_head_skull_for_resource_id(registry.resource_id(protocol_id)?)
+        let protocol_id = stack.item_id?;
+        custom_head_skull_for_resource_id(
+            registry.resource_id(protocol_id)?,
+            &stack.component_patch,
+        )
     }
 
     pub(crate) fn mount_body_armor_kinds_by_protocol_id(
@@ -1094,14 +1098,31 @@ fn recipe_specific_crafting_remainder_item_ids(registry: &ItemRegistryCatalog) -
     protocol_ids_for_resource_ids(registry, RECIPE_SPECIFIC_CRAFTING_REMAINDER_ITEM_IDS)
 }
 
-fn custom_head_skull_for_resource_id(resource_id: &str) -> Option<EntityCustomHeadSkull> {
+const DATA_COMPONENT_PROFILE_TYPE_ID: i32 = 70;
+
+fn custom_head_skull_for_resource_id(
+    resource_id: &str,
+    component_patch: &DataComponentPatchSummary,
+) -> Option<EntityCustomHeadSkull> {
     match resource_id {
         "minecraft:skeleton_skull" => Some(EntityCustomHeadSkull::Skeleton),
         "minecraft:wither_skeleton_skull" => Some(EntityCustomHeadSkull::WitherSkeleton),
+        "minecraft:player_head" if !component_patch_has_profile(component_patch) => {
+            Some(EntityCustomHeadSkull::Player)
+        }
         "minecraft:zombie_head" => Some(EntityCustomHeadSkull::Zombie),
         "minecraft:creeper_head" => Some(EntityCustomHeadSkull::Creeper),
         _ => None,
     }
+}
+
+fn component_patch_has_profile(component_patch: &DataComponentPatchSummary) -> bool {
+    component_patch
+        .added_type_ids
+        .contains(&DATA_COMPONENT_PROFILE_TYPE_ID)
+        && !component_patch
+            .removed_type_ids
+            .contains(&DATA_COMPONENT_PROFILE_TYPE_ID)
 }
 
 fn world_item_equipment_slot(slot: PackItemEquipmentSlot) -> WorldItemEquipmentSlot {
@@ -2120,7 +2141,7 @@ mod tests {
     }
 
     #[test]
-    fn custom_head_skull_projection_resolves_static_mob_skulls_only() {
+    fn custom_head_skull_projection_resolves_static_and_profileless_player_skulls() {
         let root = unique_temp_dir("item-runtime-custom-head-skulls");
         let assets = assets_dir(&root);
         write_item_atlases(&assets);
@@ -2155,19 +2176,66 @@ mod tests {
                 "minecraft:creeper_head",
                 Some(EntityCustomHeadSkull::Creeper),
             ),
-            ("minecraft:player_head", None),
+            ("minecraft:player_head", Some(EntityCustomHeadSkull::Player)),
             ("minecraft:dragon_head", None),
             ("minecraft:piglin_head", None),
             ("minecraft:carved_pumpkin", None),
         ] {
             let protocol_id = registry.protocol_id(resource_id).unwrap();
+            let stack = ItemStackSummary {
+                item_id: Some(protocol_id),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            };
             assert_eq!(
-                runtime.custom_head_skull_for_protocol_id(protocol_id),
+                runtime.custom_head_skull_for_stack(&stack),
                 expected,
                 "{resource_id}"
             );
         }
-        assert_eq!(runtime.custom_head_skull_for_protocol_id(999), None);
+        assert_eq!(
+            runtime.custom_head_skull_for_stack(&ItemStackSummary {
+                item_id: Some(999),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            }),
+            None
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn custom_head_skull_projection_skips_profiled_player_heads() {
+        let root = unique_temp_dir("item-runtime-custom-profiled-player-head");
+        let assets = assets_dir(&root);
+        write_item_atlases(&assets);
+        write_item_registry_source(&root, &["player_head"]);
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let registry = runtime.registry.as_ref().unwrap();
+        let player_head_id = registry.protocol_id("minecraft:player_head").unwrap();
+
+        let mut profiled = ItemStackSummary {
+            item_id: Some(player_head_id),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        profiled
+            .component_patch
+            .added_type_ids
+            .push(DATA_COMPONENT_PROFILE_TYPE_ID);
+        assert_eq!(runtime.custom_head_skull_for_stack(&profiled), None);
+
+        let mut profile_removed = profiled.clone();
+        profile_removed
+            .component_patch
+            .removed_type_ids
+            .push(DATA_COMPONENT_PROFILE_TYPE_ID);
+        assert_eq!(
+            runtime.custom_head_skull_for_stack(&profile_removed),
+            Some(EntityCustomHeadSkull::Player)
+        );
 
         std::fs::remove_dir_all(root).unwrap();
     }

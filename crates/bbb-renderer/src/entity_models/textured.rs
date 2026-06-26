@@ -48,10 +48,10 @@ use super::{
         CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF,
         HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
         LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
-        PIGLIN_OUTER_ARMOR_DEFORMATION, PIG_SADDLE_TEXTURE_REF, SKELETON_HORSE_SADDLE_TEXTURE_REF,
-        SKELETON_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION, STRIDER_SADDLE_TEXTURE_REF,
-        WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF,
-        ZOMBIE_HORSE_SADDLE_TEXTURE_REF, ZOMBIE_TEXTURE_REF,
+        PIGLIN_OUTER_ARMOR_DEFORMATION, PIG_SADDLE_TEXTURE_REF, PLAYER_SLIM_STEVE_TEXTURE_REF,
+        SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION,
+        STRIDER_SADDLE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF,
+        WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF, ZOMBIE_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
@@ -907,7 +907,7 @@ fn emit_custom_head_skull_layer(
     let Some(transform) = custom_head_skull_transform(&instance) else {
         return;
     };
-    let model = CustomHeadSkullModel::new();
+    let model = CustomHeadSkullModel::new(matches!(skull, EntityCustomHeadSkull::Player));
     render_textured_pass(
         meshes,
         &model,
@@ -923,6 +923,7 @@ fn custom_head_skull_texture_ref(skull: EntityCustomHeadSkull) -> EntityModelTex
     match skull {
         EntityCustomHeadSkull::Skeleton => SKELETON_TEXTURE_REF,
         EntityCustomHeadSkull::WitherSkeleton => WITHER_SKELETON_TEXTURE_REF,
+        EntityCustomHeadSkull::Player => PLAYER_SLIM_STEVE_TEXTURE_REF,
         EntityCustomHeadSkull::Zombie => ZOMBIE_TEXTURE_REF,
         EntityCustomHeadSkull::Creeper => CREEPER_TEXTURE_REF,
     }
