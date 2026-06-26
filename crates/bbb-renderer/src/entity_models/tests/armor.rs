@@ -615,3 +615,98 @@ fn baby_zombie_armor_uses_humanoid_baby_layer() {
         assert_eq!(submit.transform, expected_transform);
     }
 }
+
+#[test]
+fn baby_zombie_villager_armor_uses_zombie_villager_baby_armor_set() {
+    // Vanilla `ZombieVillagerRenderer` registers a dedicated
+    // `ModelLayers.ZOMBIE_VILLAGER_BABY_ARMOR`, but `LayerDefinitions` builds it through inherited
+    // `HumanoidModel.createBabyArmorMeshSet(..., PartPose.ZERO)`. The layer therefore uses the same
+    // standard baby humanoid armor topology and `HUMANOID_BABY` equipment texture, posed from the
+    // `BabyZombieVillagerModel` host.
+    let textures = [
+        ZOMBIE_VILLAGER_BABY_TEXTURE_REF,
+        ZOMBIE_VILLAGER_BABY_TYPE_TEXTURE_REFS[2],
+        ARMOR_IRON_BABY_HUMANOID_TEXTURE_REF,
+    ];
+    let images: Vec<EntityModelTextureImage> = textures
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let base = EntityModelInstance::zombie_variant(
+        76,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ZombieVariantModelFamily::ZombieVillager,
+        true,
+    )
+    .with_villager_model_data(VillagerModelData::new(
+        VillagerModelType::Plains,
+        VillagerModelProfession::None,
+        1,
+    ));
+    let armored = base
+        .with_head_armor(Some(EntityArmorMaterial::Iron))
+        .with_chest_armor(Some(EntityArmorMaterial::Iron))
+        .with_legs_armor(Some(EntityArmorMaterial::Iron))
+        .with_feet_armor(Some(EntityArmorMaterial::Iron));
+
+    let bare_meshes = entity_model_textured_meshes(&[base], &atlas);
+    let armored_meshes = entity_model_textured_meshes(&[armored], &atlas);
+    assert_eq!(
+        armored_meshes.cutout.vertices.len() - bare_meshes.cutout.vertices.len(),
+        216,
+        "baby zombie-villager armor keeps the nine-cube baby humanoid armor topology"
+    );
+    assert_eq!(armored_meshes.submissions.len(), 6);
+    let expected_transform = entity_model_root_transform(base);
+    assert_eq!(
+        armored_meshes.submissions[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(
+        armored_meshes.submissions[0].texture,
+        ZOMBIE_VILLAGER_BABY_TEXTURE_REF
+    );
+    assert_eq!(armored_meshes.submissions[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        (
+            armored_meshes.submissions[0].order,
+            armored_meshes.submissions[0].submit_sequence
+        ),
+        (0, 0)
+    );
+    assert_eq!(armored_meshes.submissions[0].transform, expected_transform);
+
+    for (submit, sequence) in armored_meshes.submissions[1..5].iter().zip(1..) {
+        assert_eq!(
+            submit.render_type,
+            EntityModelLayerRenderType::ArmorCutoutNoCull
+        );
+        assert_eq!(submit.texture, ARMOR_IRON_BABY_HUMANOID_TEXTURE_REF);
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!((submit.order, submit.submit_sequence), (1, sequence));
+        assert_eq!(submit.transform, expected_transform);
+    }
+
+    let type_submit = armored_meshes.submissions[5];
+    assert_eq!(
+        type_submit.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(
+        type_submit.texture,
+        ZOMBIE_VILLAGER_BABY_TYPE_TEXTURE_REFS[2]
+    );
+    assert_eq!(type_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        (type_submit.order, type_submit.submit_sequence),
+        (1, 1),
+        "VillagerProfessionLayer submits the baby type overlay with vanilla order(1) after armor"
+    );
+    assert_eq!(type_submit.transform, expected_transform);
+}

@@ -1790,7 +1790,11 @@ When an agent does any of the following, update this file in the same slice:
       and baby zombified-piglin armor are covered through
       `AbstractPiglinModel.createBabyArmorMeshSet`: uniform `CubeDeformation(0.7)`, the vanilla
       `BABY_PIGLIN_ARMOR_ARM_OFFSET = (0.5, -0.5, 0)`, and the same `HUMANOID_BABY` equipment texture layer.
-      Pending coverage: baby zombie-villager armor, which uses its own vanilla model set. The cross-crate
+      Baby zombie-villager armor is covered through the dedicated vanilla
+      `ModelLayers.ZOMBIE_VILLAGER_BABY_ARMOR` set, which `LayerDefinitions` builds from inherited
+      `ZombieVillagerModel.createBabyArmorMeshSet(..., PartPose.ZERO)`: the same standard baby humanoid
+      armor topology and `HUMANOID_BABY` equipment texture layer, posed from `BabyZombieVillagerModel`.
+      The cross-crate
       equipment projection is now wired end-to-end (framework slice 2): `bbb_pack`'s item registry parses
       each `.humanoidArmor(ArmorMaterials.<MAT>, ...)` item to its equipment-asset name
       (`humanoid_armor_asset`), the native layer installs an item id → material table
@@ -1805,7 +1809,7 @@ When an agent does any of the following, update this file in the same slice:
       `armor_layer_tint` forces it opaque and applies it only to leather — exactly vanilla
       `DyedItemColor.getOrDefault` → `EquipmentLayerRenderer.getColorForLayer` (every other material renders
       white, vanilla color `-1`, ignoring any stray dye). STILL DEFERRED: the enchant-glint and armor-trim
-      passes, baby zombie-villager armor, and any remaining mob-specific armor models
+      passes and any remaining mob-specific armor models
     - base zombie entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `HumanoidModel`, `BabyZombieModel`, and `ZombieRenderer`,
       with a texture-backed cutout render path: the adult layer emits the vanilla

@@ -1577,9 +1577,10 @@ fn emit_humanoid_armor(
 /// family's `OUTER 1.02`). The base body is emitted by the shared dispatch / bespoke emits; here we
 /// rebuild and pose an identical host humanoid model purely to read its limb poses, then drape the
 /// armor pieces on it ([`emit_humanoid_armor`]). Covered: the adult zombie family (zombie, husk,
-/// drowned, zombie villager), standard baby zombie/husk/drowned armor, the skeleton family (skeleton,
-/// stray, wither/normal/bogged), the player, and the adult piglin family (piglin, piglin brute,
-/// zombified piglin). DEFERRED: baby zombie-villager and baby piglin-family armor models.
+/// drowned, zombie villager), standard baby zombie/husk/drowned/zombie-villager armor, the skeleton
+/// family (skeleton, stray, wither/normal/bogged), the player, the adult piglin family (piglin,
+/// piglin brute, zombified piglin), and baby piglin / zombified-piglin armor models. DEFERRED:
+/// enchant-glint, armor-trim, and any remaining mob-specific armor models.
 fn emit_worn_humanoid_armor(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -1671,6 +1672,23 @@ fn emit_worn_humanoid_armor(
             };
             let mut host = ZombieVariantModel::new(family, true);
             host.prepare(&instance);
+            emit_humanoid_armor(
+                meshes,
+                instance,
+                host.root(),
+                transform,
+                STANDARD_OUTER_ARMOR_DEFORMATION,
+                Some(HumanoidBabyArmorKind::Standard),
+                atlas,
+            );
+        }
+        EntityModelKind::ZombieVariant {
+            family: ZombieVariantModelFamily::ZombieVillager,
+            baby: true,
+        } => {
+            let mut host = ZombieVariantModel::new(ZombieVariantModelFamily::ZombieVillager, true);
+            host.prepare(&instance);
+            let transform = entity_model_root_transform(instance);
             emit_humanoid_armor(
                 meshes,
                 instance,
