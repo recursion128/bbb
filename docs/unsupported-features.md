@@ -1303,8 +1303,12 @@ When an agent does any of the following, update this file in the same slice:
         vanilla `LivingEntity.elytraAnimationState` rotX/Y/Z into the renderer,
         and the same WINGS path now covers humanoid mobs, armor stands (small
         armor stands select the baby layer through `ArmorStand.isBaby()`), and
-        baby humanoid mob `ELYTRA_BABY` geometry. Still deferred: full cloak
-        interpolation and broader arbitrary dynamic texture loading.
+        baby humanoid mob `ELYTRA_BABY` geometry. Player cloak interpolation is
+        now also covered: world tracks the vanilla `ClientAvatarState` cloak
+        lag, partial lerps it, applies `AvatarRenderer.extractCapeState`
+        flap/lean/lean2 clamps and fall-flying lean suppression, and native
+        forwards those values into the renderer cape layer. Still deferred:
+        broader arbitrary dynamic texture loading.
       - fox held item DONE: `FoxHeldItemLayer` is reproduced through the same
         item-model pass. Renderer exposes `fox_held_item_transform`, which builds
         and poses the vanilla adult/baby `FoxModel`, reads the posed `head` part,
@@ -1333,7 +1337,7 @@ When an agent does any of the following, update this file in the same slice:
         through the projected passenger state. STAB/NONE swing-type parity on non-player
         humanoids remains separate work.
       - remaining slices: held-item refinements (first-person viewmodel;
-        full cloak interpolation, broader arbitrary dynamic texture loading; the
+        broader arbitrary dynamic texture loading; the
         STAB swing pose on non-player humanoid models; the `NONE` swing type; the
         attack swing on the non-player humanoid models). Item lighting
         context (GUI front-lit vs world diffuse) is an open point — the baked
@@ -1380,7 +1384,8 @@ When an agent does any of the following, update this file in the same slice:
       visibility state; player profile cape presentation is covered by the
       dynamic `entitySolid` cape layer, and WingsLayer/elytra presentation plus
       elytra animation-state projection are covered for vanilla elytra equipment
-      on players, humanoid mobs, armor stands, and baby humanoid mobs)
+      on players, humanoid mobs, armor stands, and baby humanoid mobs; player
+      cloak interpolation now feeds the cape flap/lean/lean2 values)
     - wooden boat, chest boat, bamboo raft, and bamboo chest raft entities as
       renderer-owned vanilla 26.1 `BoatModel` / `RaftModel` body-layer
       geometry from `BoatModel`, `RaftModel`, `BoatRenderer`, `RaftRenderer`,

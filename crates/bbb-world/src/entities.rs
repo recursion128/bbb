@@ -592,6 +592,19 @@ pub struct EntityModelSourceState {
     /// mirrors this value in `ElytraModel.setupAnim`.
     #[serde(default = "entity_model_source_default_elytra_rot_z")]
     pub elytra_rot_z: f32,
+    /// Vanilla `AvatarRenderState.capeFlap`, produced by `AvatarRenderer.extractCapeState` from
+    /// the lerped cloak lag plus walk bob. `0.0` for non-player entities and for a player before
+    /// the first client cloak tick.
+    #[serde(default)]
+    pub player_cape_flap: f32,
+    /// Vanilla `AvatarRenderState.capeLean`, the forward/backward cloak lag component clamped to
+    /// `0..=150` and suppressed while fall-flying. `0.0` for non-player entities.
+    #[serde(default)]
+    pub player_cape_lean: f32,
+    /// Vanilla `AvatarRenderState.capeLean2`, the side-to-side cloak lag component clamped to
+    /// `-20..=20`. `0.0` for non-player entities.
+    #[serde(default)]
+    pub player_cape_lean2: f32,
     /// Vanilla `LivingEntityRenderState.isAutoSpinAttack`
     /// (`LivingEntity.isAutoSpinAttack`, `DATA_LIVING_ENTITY_FLAGS & 4`): a living
     /// entity mid riptide-trident spin, which the renderer flips onto the spin

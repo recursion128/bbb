@@ -74,8 +74,10 @@ transform 含官方 `z=0.125` layer 平移，并按官方优先级采样 Ready p
 profile cape fallback 或静态 `textures/entity/equipment/wings/elytra.png`；缺 profile
 atlas entry 时等待。world/native 也已按 vanilla `LivingEntity.elytraAnimationState`
 投影 elytra rotX/Y/Z，并转发到 renderer；WINGS layer 也已推广到 humanoid mob、
-armor stand 和 baby `ELYTRA_BABY` 模型。剩余的是完整 cloak，以及更泛化的任意
-动态纹理加载。
+armor stand 和 baby `ELYTRA_BABY` 模型。world/native 也已补玩家 cloak interpolation：
+按 vanilla `ClientAvatarState.moveCloak` 的 0.25 追随、10-block teleport reset、
+`AvatarRenderer.extractCapeState` 的 flap/lean/lean2 clamp、partial lerp、fall-flying
+lean suppression 和 walk bob 投影到 renderer。剩余的是更泛化的任意动态纹理加载。
 铜傀儡 vanilla 模型、四态风化贴图和 emissive eyes layer 已完成。
 Illager 家族的主要 arm-pose 分支已覆盖到 evoker/illusioner spellcasting、illusioner bow aim、
 pillager crossbow hold/charge、evoker/vindicator celebrating，以及 vindicator empty/armed
@@ -189,7 +191,10 @@ Panda sit/lie/roll client-tick 动画已完成：world 侧按 vanilla `Panda.tic
       pin 住 texture、render type、tint、transform、order，并复现 profile elytra 优先、
       cape fallback、静态 equipment texture、缺动态上传等待路径；world/native 已投影
       vanilla `LivingEntity.elytraAnimationState` rotX/Y/Z，并覆盖 humanoid mob、
-      armor stand 和 baby `ELYTRA_BABY`。剩余：完整 cloak，以及 broader arbitrary
-      dynamic texture loading。
+      armor stand 和 baby `ELYTRA_BABY`。
+   12. DONE for full cloak interpolation：world 侧维护 player cloak old/current position、
+      walkDist/bob 和 fall-flying ticks，按 vanilla `AvatarRenderer.extractCapeState`
+      生成 `capeFlap`/`capeLean`/`capeLean2`；native 转发到 renderer cape submission。
+      剩余：broader arbitrary dynamic texture loading。
 > 落地前务必先在 bbb 里 grep 确认该 feature 确实缺失（历史上多次「以为缺失实则已实现」）。
 > 索引/数据陷阱见 memory `entity-metadata-index-layout.md`；模型/代理历史见 `proxy-entity-replacement.md`。

@@ -352,8 +352,8 @@ entity_render_state! {
     /// Vanilla player `CapeLayer` nudges the cape away from humanoid chest equipment by
     /// `(0, -0.053125, 0.06875)`.
     (with_chest_equipment_has_humanoid) chest_equipment_has_humanoid: bool = false;
-    /// Vanilla `AvatarRenderState.capeFlap`, produced by `AvatarRenderer.extractCapeState`. Defaults to the
-    /// still-player value until the world side mirrors cloak interpolation.
+    /// Vanilla `AvatarRenderState.capeFlap`, produced by `AvatarRenderer.extractCapeState` from the
+    /// world-projected cloak interpolation.
     (with_player_cape_flap) player_cape_flap: f32 = 0.0;
     /// Vanilla `AvatarRenderState.capeLean`, produced by `AvatarRenderer.extractCapeState`.
     (with_player_cape_lean) player_cape_lean: f32 = 0.0;

@@ -1285,6 +1285,9 @@ fn entity_model_instance(
         .with_chest_wings_layer(chest_wings_layer)
         .with_chest_equipment_has_wings(chest_equipment_has_wings)
         .with_chest_equipment_has_humanoid(chest_equipment_has_humanoid)
+        .with_player_cape_flap(source.player_cape_flap)
+        .with_player_cape_lean(source.player_cape_lean)
+        .with_player_cape_lean2(source.player_cape_lean2)
         .with_use_item_off_hand(source.use_item_off_hand)
         .with_main_hand_holds_crossbow(main_hand_holds_crossbow)
         .with_illager_main_hand_empty(illager_main_hand_empty)
@@ -7997,6 +8000,76 @@ mod tests {
         assert_ne!(cape.handle, 0);
         assert_ne!(elytra.handle, 0);
         assert_ne!(cape.handle, elytra.handle);
+    }
+
+    #[test]
+    fn entity_model_instances_forward_player_cape_cloak_state() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            1553,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [0.0, 64.0, 0.0],
+        ));
+        assert!(world.apply_entity_position_sync(EntityPositionSync {
+            id: 1553,
+            position: Vec3d {
+                x: 0.0,
+                y: 64.0,
+                z: 0.0,
+            },
+            delta_movement: Vec3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            y_rot: 0.0,
+            x_rot: 0.0,
+            on_ground: true,
+        }));
+        world.advance_entity_client_animations(1);
+        assert!(world.apply_entity_position_sync(EntityPositionSync {
+            id: 1553,
+            position: Vec3d {
+                x: 0.0,
+                y: 65.0,
+                z: 1.0,
+            },
+            delta_movement: Vec3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            y_rot: 0.0,
+            x_rot: 0.0,
+            on_ground: true,
+        }));
+        world.advance_entity_client_animations(1);
+
+        let source = world
+            .entity_model_sources_at_partial_tick(1.0)
+            .into_iter()
+            .find(|source| source.entity_id == 1553)
+            .unwrap();
+        let instance = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0)
+            .into_iter()
+            .find(|instance| instance.entity_id == 1553)
+            .unwrap();
+
+        assert_eq!(
+            (
+                instance.render_state.player_cape_flap,
+                instance.render_state.player_cape_lean,
+                instance.render_state.player_cape_lean2,
+            ),
+            (
+                source.player_cape_flap,
+                source.player_cape_lean,
+                source.player_cape_lean2,
+            )
+        );
+        assert_eq!(instance.render_state.player_cape_flap, -6.0);
+        assert_eq!(instance.render_state.player_cape_lean, 74.25);
+        assert_eq!(instance.render_state.player_cape_lean2, 0.0);
     }
 
     #[test]

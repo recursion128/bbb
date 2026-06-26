@@ -3175,6 +3175,80 @@ fn entity_model_sources_project_elytra_animation_state() {
 }
 
 #[test]
+fn entity_model_sources_project_player_cape_cloak_state() {
+    const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
+    const EPSILON: f32 = 1.0e-5;
+
+    let sync_position = |store: &mut WorldStore, x: f64, y: f64, z: f64| {
+        assert!(
+            store.apply_entity_position_sync(ProtocolEntityPositionSync {
+                id: 78,
+                position: ProtocolVec3d { x, y, z },
+                delta_movement: ProtocolVec3d {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+                // Facing vanilla north: forwardX = 0, forwardZ = -1.
+                y_rot: 0.0,
+                x_rot: 0.0,
+                on_ground: true,
+            })
+        );
+    };
+    let cape = |store: &WorldStore, partial: f32| {
+        let source = store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 78)
+            .unwrap();
+        (
+            source.player_cape_flap,
+            source.player_cape_lean,
+            source.player_cape_lean2,
+        )
+    };
+    let assert_close = |actual: f32, expected: f32, label: &str| {
+        assert!(
+            (actual - expected).abs() <= EPSILON,
+            "{label}: expected {expected}, got {actual}"
+        );
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        78,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+
+    // The first cloak tick initializes both entity and cloak positions to the
+    // player position, matching vanilla's teleport-safe startup behavior.
+    sync_position(&mut store, 0.0, 64.0, 0.0);
+    store.advance_entity_client_animations(1);
+    assert_eq!(cape(&store, 1.0), (0.0, 0.0, 0.0));
+
+    // Vanilla `ClientAvatarState.moveCloak`: each axis follows the player by 25%
+    // per tick when the delta stays within 10 blocks. Moving +1y/+1z leaves the
+    // cloak 0.75 blocks behind on both axes at partial=1:
+    // flap = clamp(-0.75 * 10, -6, 32) = -6,
+    // lean = (-0.75 * forwardZ=-1) * 100 * (1 - 1^2/100) = 74.25,
+    // lean2 = 0.
+    sync_position(&mut store, 0.0, 65.0, 1.0);
+    store.advance_entity_client_animations(1);
+    let (flap, lean, lean2) = cape(&store, 1.0);
+    assert_close(flap, -6.0, "full-tick cape flap clamp");
+    assert_close(lean, 74.25, "full-tick forward cape lean");
+    assert_close(lean2, 0.0, "full-tick side cape lean");
+
+    // Partial tick lerps both entity and cloak positions before the same
+    // projection: the lag is half as large at partial=0.5.
+    let (flap, lean, lean2) = cape(&store, 0.5);
+    assert_close(flap, -3.75, "mid-tick cape flap");
+    assert_close(lean, 37.40625, "mid-tick forward cape lean");
+    assert_close(lean2, 0.0, "mid-tick side cape lean");
+}
+
+#[test]
 fn entity_model_sources_project_dinnerbone_upside_down() {
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;

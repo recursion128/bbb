@@ -58,6 +58,8 @@ const VANILLA_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
 
 /// Vanilla 26.1 `EntityType.PIG` registry id, used to gate `PigRenderState.saddle`.
 const VANILLA_ENTITY_TYPE_PIG_ID: i32 = 100;
+/// Vanilla `Pose.SWIMMING` ordinal, used by player cape bob suppression.
+const VANILLA_POSE_SWIMMING_ID: i32 = 3;
 
 fn vanilla_equine_saddle_type(entity_type_id: i32) -> bool {
     matches!(
@@ -856,6 +858,14 @@ impl EntityStore {
         let walk_animation_position = client_animations
             .animations
             .walk_animation_position(partial_ticks);
+        let (player_cape_flap, player_cape_lean, player_cape_lean2) =
+            if identity.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
+                client_animations
+                    .animations
+                    .player_cape_state(partial_ticks, transform.y_rot)
+            } else {
+                (0.0, 0.0, 0.0)
+            };
         let is_baby = vanilla_is_baby(identity.entity_type_id, &metadata.data_values);
         let is_panda = identity.entity_type_id == VANILLA_ENTITY_TYPE_PANDA_ID;
         let panda_roll_amount = if is_panda && !is_baby {
@@ -978,6 +988,9 @@ impl EntityStore {
             elytra_rot_x: client_animations.animations.elytra_rot_x(partial_ticks),
             elytra_rot_y: client_animations.animations.elytra_rot_y(partial_ticks),
             elytra_rot_z: client_animations.animations.elytra_rot_z(partial_ticks),
+            player_cape_flap,
+            player_cape_lean,
+            player_cape_lean2,
             is_auto_spin_attack,
             is_using_item,
             use_item_off_hand,
@@ -1737,6 +1750,8 @@ impl EntityStore {
                 let is_fall_flying = entity_is_fall_flying(&metadata.data_values);
                 let is_crouching =
                     entity_data_pose(&metadata.data_values) == VANILLA_POSE_CROUCHING_ID;
+                let is_swimming =
+                    entity_data_pose(&metadata.data_values) == VANILLA_POSE_SWIMMING_ID;
                 // The per-tick world fact (`isInWater()`) the world resolved before
                 // this mutable pass, defaulting to `false` for non-consumers, and the
                 // synced `Guardian.DATA_ID_MOVING` flag read from the metadata here.
@@ -1772,6 +1787,7 @@ impl EntityStore {
                     pillager_is_charging_crossbow,
                     piglin_is_charging_crossbow,
                     player_is_using_item,
+                    is_swimming,
                 );
             }
         }

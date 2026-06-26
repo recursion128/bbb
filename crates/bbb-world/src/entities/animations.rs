@@ -159,6 +159,9 @@ const ELYTRA_CROUCHING_X_ROT: f32 = std::f32::consts::PI * 2.0 / 9.0;
 const ELYTRA_CROUCHING_Y_ROT: f32 = 0.087_266_46;
 const ELYTRA_CROUCHING_Z_ROT: f32 = -std::f32::consts::PI / 4.0;
 const ELYTRA_ROT_EASE: f32 = 0.3;
+const PLAYER_CLOAK_TELEPORT_THRESHOLD: f64 = 10.0;
+const PLAYER_CLOAK_EASE: f64 = 0.25;
+const PLAYER_CLOAK_WALK_DISTANCE_SCALE: f32 = 0.6;
 const VANILLA_ENTITY_TYPE_ALLAY_ID: i32 = 2;
 const VANILLA_ENTITY_TYPE_PILLAGER_ID: i32 = 103;
 const VANILLA_ENTITY_TYPE_PIGLIN_ID: i32 = 101;
@@ -404,6 +407,8 @@ pub struct EntityClientAnimationState {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub elytra: Option<ElytraAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub player_cloak: Option<PlayerCloakAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub creeper_swell: Option<CreeperSwellAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub warden_tendril: Option<WardenTendrilAnimationState>,
@@ -636,6 +641,152 @@ fn elytra_fall_flying_ratio(delta_movement: EntityVec3) -> f32 {
 
 fn lerp_f32(delta: f32, start: f32, end: f32) -> f32 {
     start + delta * (end - start)
+}
+
+fn lerp_f64(delta: f32, start: f64, end: f64) -> f64 {
+    start + f64::from(delta) * (end - start)
+}
+
+fn lerp_vec3(delta: f32, start: EntityVec3, end: EntityVec3) -> EntityVec3 {
+    EntityVec3 {
+        x: lerp_f64(delta, start.x, end.x),
+        y: lerp_f64(delta, start.y, end.y),
+        z: lerp_f64(delta, start.z, end.z),
+    }
+}
+
+fn horizontal_distance(delta: EntityVec3) -> f32 {
+    (delta.x * delta.x + delta.z * delta.z).sqrt() as f32
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct PlayerCloakAnimationState {
+    pub initialized: bool,
+    pub entity_position_old: EntityVec3,
+    pub entity_position: EntityVec3,
+    pub cloak_position_old: EntityVec3,
+    pub cloak_position: EntityVec3,
+    pub walk_dist_old: f32,
+    pub walk_dist: f32,
+    pub bob_old: f32,
+    pub bob: f32,
+    pub fall_flying_ticks: u32,
+}
+
+impl Default for PlayerCloakAnimationState {
+    fn default() -> Self {
+        Self {
+            initialized: false,
+            entity_position_old: EntityVec3::default(),
+            entity_position: EntityVec3::default(),
+            cloak_position_old: EntityVec3::default(),
+            cloak_position: EntityVec3::default(),
+            walk_dist_old: 0.0,
+            walk_dist: 0.0,
+            bob_old: 0.0,
+            bob: 0.0,
+            fall_flying_ticks: 0,
+        }
+    }
+}
+
+impl PlayerCloakAnimationState {
+    /// Vanilla `ClientAvatarState.tick` / `moveCloak`, plus the local-player
+    /// walk-distance and bob inputs that `AvatarRenderer.extractCapeState`
+    /// consumes. bbb drives the walk pulse from the synced feet movement for all
+    /// players because the local-only `LocalPlayer.addWalkedDistance` path is not
+    /// split out at this render-state boundary.
+    fn advance_client_tick(
+        &mut self,
+        position: EntityVec3,
+        delta_movement: EntityVec3,
+        on_ground: bool,
+        is_alive: bool,
+        is_swimming: bool,
+        is_fall_flying: bool,
+    ) {
+        if !self.initialized {
+            self.initialized = true;
+            self.entity_position_old = position;
+            self.entity_position = position;
+            self.cloak_position_old = position;
+            self.cloak_position = position;
+        }
+
+        let previous_position = self.entity_position;
+        self.entity_position_old = previous_position;
+        self.entity_position = position;
+        self.walk_dist_old = self.walk_dist;
+
+        let travel = EntityVec3 {
+            x: position.x - previous_position.x,
+            y: position.y - previous_position.y,
+            z: position.z - previous_position.z,
+        };
+        self.walk_dist += horizontal_distance(travel) * PLAYER_CLOAK_WALK_DISTANCE_SCALE;
+
+        self.move_cloak(position);
+
+        self.bob_old = self.bob;
+        let target_bob = if on_ground && is_alive && !is_swimming {
+            horizontal_distance(delta_movement).min(0.1)
+        } else {
+            0.0
+        };
+        self.bob += (target_bob - self.bob) * 0.4;
+
+        self.fall_flying_ticks = if is_fall_flying {
+            self.fall_flying_ticks.saturating_add(1)
+        } else {
+            0
+        };
+    }
+
+    fn move_cloak(&mut self, position: EntityVec3) {
+        let (x_old, x) = move_cloak_axis(self.cloak_position.x, position.x);
+        let (y_old, y) = move_cloak_axis(self.cloak_position.y, position.y);
+        let (z_old, z) = move_cloak_axis(self.cloak_position.z, position.z);
+        self.cloak_position_old = EntityVec3 {
+            x: x_old,
+            y: y_old,
+            z: z_old,
+        };
+        self.cloak_position = EntityVec3 { x, y, z };
+    }
+
+    fn cape_state(self, partial_tick: f32, y_body_rot: f32) -> (f32, f32, f32) {
+        let cloak = lerp_vec3(partial_tick, self.cloak_position_old, self.cloak_position);
+        let entity = lerp_vec3(partial_tick, self.entity_position_old, self.entity_position);
+        let delta_x = cloak.x - entity.x;
+        let delta_y = cloak.y - entity.y;
+        let delta_z = cloak.z - entity.z;
+        let y_body_rot_rad = y_body_rot.to_radians();
+        let forward_x = f64::from(y_body_rot_rad.sin());
+        let forward_z = f64::from(-y_body_rot_rad.cos());
+
+        let mut flap = (delta_y as f32 * 10.0).clamp(-6.0, 32.0);
+        let fall_flying_scale =
+            ((self.fall_flying_ticks as f32 + partial_tick).powi(2) / 100.0).clamp(0.0, 1.0);
+        let lean = ((delta_x * forward_x + delta_z * forward_z) as f32
+            * 100.0
+            * (1.0 - fall_flying_scale))
+            .clamp(0.0, 150.0);
+        let lean2 = ((delta_x * forward_z - delta_z * forward_x) as f32 * 100.0).clamp(-20.0, 20.0);
+        let bob = lerp_f32(partial_tick, self.bob_old, self.bob);
+        let walk_dist = lerp_f32(partial_tick, self.walk_dist_old, self.walk_dist);
+        flap += (walk_dist * 6.0).sin() * 32.0 * bob;
+
+        (flap, lean, lean2)
+    }
+}
+
+fn move_cloak_axis(current_cloak: f64, position: f64) -> (f64, f64) {
+    let delta = position - current_cloak;
+    if !(-PLAYER_CLOAK_TELEPORT_THRESHOLD..=PLAYER_CLOAK_TELEPORT_THRESHOLD).contains(&delta) {
+        (position, position)
+    } else {
+        (current_cloak, current_cloak + delta * PLAYER_CLOAK_EASE)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -3347,6 +3498,14 @@ impl EntityClientAnimationState {
             .map_or(ELYTRA_DEFAULT_Z_ROT, |state| state.rot_z(partial_tick))
     }
 
+    /// Vanilla `AvatarRenderer.extractCapeState`: the player cloak lag projected
+    /// into `AvatarRenderState.capeFlap`, `capeLean`, and `capeLean2`.
+    pub fn player_cape_state(&self, partial_tick: f32, y_body_rot: f32) -> (f32, f32, f32) {
+        self.player_cloak.map_or((0.0, 0.0, 0.0), |state| {
+            state.cape_state(partial_tick, y_body_rot)
+        })
+    }
+
     /// The frog croak's elapsed seconds since `Pose.CROAKING` started (vanilla
     /// `croakAnimationState`'s `getTimeInMillis`/`getElapsedSeconds`), projected for
     /// `FrogModel.setupAnim`. Returns `-1.0` (the stopped-animation sentinel) for a
@@ -3858,6 +4017,8 @@ impl EntityClientAnimationState {
         // crossbow-draw counter (the item-agnostic `getTicksUsingItem` reconstruction). `false` for
         // entities that do not consume it.
         player_is_using_item: bool,
+        // Vanilla `Entity.isSwimming()` for player cape bob suppression.
+        is_swimming: bool,
     ) {
         self.age_ticks = self.age_ticks.saturating_add(1);
         // Vanilla `LivingEntity.baseTick`: `if (hurtTime > 0) hurtTime--`. Applies
@@ -4116,6 +4277,17 @@ impl EntityClientAnimationState {
                 // is item-agnostic, so the same shared draw counter is advanced off the player's `isUsingItem`
                 // bit. The native layer applies the pose only when the using item is an uncharged crossbow.
                 self.advance_crossbow_charge(player_is_using_item);
+                let is_alive = self.death.is_none();
+                self.player_cloak
+                    .get_or_insert_with(PlayerCloakAnimationState::default)
+                    .advance_client_tick(
+                        transform.position,
+                        transform.delta_movement,
+                        transform.on_ground.unwrap_or(false),
+                        is_alive,
+                        is_swimming,
+                        is_fall_flying,
+                    );
             }
             VANILLA_ENTITY_TYPE_AXOLOTL_ID => {
                 // Vanilla `Axolotl.tickAdultAnimations`: the play-dead / in-water / on-ground state
