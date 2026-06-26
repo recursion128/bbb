@@ -1,5 +1,7 @@
 use super::*;
 
+use crate::entity_models::colored::llama_spit_model_root_transform;
+
 #[test]
 fn llama_spit_geometry_matches_vanilla_26_1_body_layer() {
     // Vanilla `LlamaSpitModel.createBodyLayer` (atlas 64×32): one `main` part at ZERO with seven
@@ -67,10 +69,16 @@ fn llama_spit_orients_along_flight() {
 
 #[test]
 fn llama_spit_textured_render_matches_vanilla_renderer() {
+    let passes = llama_spit_textured_layer_passes();
+    assert_eq!(passes.len(), 1);
+    assert_eq!(passes[0].texture, LLAMA_SPIT_TEXTURE_REF);
     assert_eq!(
-        llama_spit_textured_layer_passes()[0].texture,
-        LLAMA_SPIT_TEXTURE_REF
+        passes[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
     );
+    assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
+    assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
     assert_eq!(
         EntityModelKind::LlamaSpit.vanilla_texture_ref(),
         Some(LLAMA_SPIT_TEXTURE_REF)
@@ -85,12 +93,24 @@ fn llama_spit_textured_render_matches_vanilla_renderer() {
         vec![0u8; len],
     )];
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::llama_spit(790, [0.0, 64.0, 0.0], 0.0)],
-        &atlas,
-    );
-    assert!(!mesh.vertices.is_empty());
-    assert!(mesh
+    let instance =
+        EntityModelInstance::llama_spit(790, [0.0, 64.0, 0.0], 35.0).with_head_look(0.0, -12.0);
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.texture, LLAMA_SPIT_TEXTURE_REF);
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.transform, llama_spit_model_root_transform(instance));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert_eq!(meshes.cutout.cutout_faces, 42);
+    assert_eq!(meshes.cutout.vertices.len(), 168);
+    assert_eq!(meshes.cutout.indices.len(), 252);
+    assert!(meshes
+        .cutout
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));

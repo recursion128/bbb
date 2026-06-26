@@ -3104,8 +3104,9 @@ When an agent does any of the following, update this file in the same slice:
       along its flight with `translate(0, 0.15, 0)` then `Ry(yRot - 90)` then `Rz(xRot)`, projected through
       the instance's `body_rot` / `head_pitch` and captured by `llama_spit_model_root_transform`. The base
       texture is now bound on the textured path (`LLAMA_SPIT_TEXTURE_REF`), the primary now-wired path, with
-      nothing left deferred on the texture side. The colored debug path stays as a fallback (it renders the
-      cross with one tint)
+      explicit submission metadata for vanilla `entityCutout`, white tint, the renderer root transform, and
+      `(order, submit_sequence) == (0, 0)`. The colored debug path stays as a fallback (it renders the cross
+      with one tint)
     - shulker bullet entities as renderer-owned vanilla 26.1 `ShulkerBulletModel.createBodyLayer()` geometry
       on the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `113` to the
       new `EntityModelKind::ShulkerBullet`, replacing the former placeholder bounds box. The static `main`
