@@ -41,7 +41,9 @@ copper golem 会用 `ItemDisplayContext.HEAD` 渲染头槽物品；custom-head s
 `piglin_head` 会通过专用 PiglinHeadModel 几何和 `wornHeadAnimationPos` 耳朵动画渲染。
 `dragon_head` 会通过专用 DragonHeadModel 几何和 `wornHeadAnimationPos` 下颚动画渲染。
 `wornHeadAnimationPos` 也已按 vanilla 在乘骑 living entity 时读取载具 walk animation。
-剩余的是 profiled player skin。
+`DataComponents.PROFILE` 已按 26.1 `ResolvableProfile.STREAM_CODEC` 保留为结构化
+profile summary（full/partial、UUID/name、properties、`PlayerSkin.Patch` 资源纹理/模型覆盖）。
+剩余的是 profiled player skin 的解析、默认皮肤选择和动态纹理加载。
 铜傀儡 vanilla 模型、四态风化贴图和 emissive eyes layer 已完成。
 
 ## 剩余大子系统（按优先级）

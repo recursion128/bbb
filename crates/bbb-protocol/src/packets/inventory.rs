@@ -9,9 +9,11 @@ use crate::{
 const MAX_CONTAINER_ITEMS: usize = 1024;
 
 pub use data_components::{
-    AttackRangeSummary, CustomModelDataFloats, DataComponentPatchSummary, ItemEnchantmentSummary,
-    ItemRaritySummary, ItemStackTemplateSummary, MapPostProcessingSummary, UseEffectsSummary,
-    WrittenBookContentSummary,
+    AttackRangeSummary, CustomModelDataFloats, DataComponentPatchSummary,
+    GameProfilePropertySummary, ItemEnchantmentSummary, ItemRaritySummary,
+    ItemStackTemplateSummary, MapPostProcessingSummary, PlayerModelTypeSummary,
+    PlayerSkinPatchSummary, ResolvableProfileKindSummary, ResolvableProfileSummary,
+    ResourceTextureSummary, UseEffectsSummary, WrittenBookContentSummary,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

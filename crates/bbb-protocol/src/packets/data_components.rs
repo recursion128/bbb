@@ -7,6 +7,7 @@ use crate::{
     codec::{Decoder, ProtocolError, Result},
     component::{decode_component_summary_from_decoder, skip_nbt_tag_from_decoder},
 };
+use uuid::Uuid;
 
 pub(crate) const MAX_DATA_COMPONENT_PATCH_ENTRIES: usize = 1024;
 pub(crate) const MAX_DATA_COMPONENT_PREDICATE_ENTRIES: usize = 1024;
@@ -89,6 +90,8 @@ pub struct DataComponentPatchSummary {
     pub written_book: Option<WrittenBookContentSummary>,
     #[serde(default)]
     pub block_state_properties: BTreeMap<String, String>,
+    #[serde(default)]
+    pub profile: Option<ResolvableProfileSummary>,
 }
 
 /// The `floats` list of a `minecraft:custom_model_data` component, preserved so
@@ -202,6 +205,50 @@ pub struct ItemStackTemplateSummary {
     pub item_id: i32,
     pub count: i32,
     pub component_patch: DataComponentPatchSummary,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResolvableProfileSummary {
+    pub kind: ResolvableProfileKindSummary,
+    pub uuid: Option<Uuid>,
+    pub name: Option<String>,
+    pub properties: Vec<GameProfilePropertySummary>,
+    pub skin_patch: PlayerSkinPatchSummary,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ResolvableProfileKindSummary {
+    GameProfile,
+    Partial,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GameProfilePropertySummary {
+    pub name: String,
+    pub value: String,
+    pub signature: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PlayerSkinPatchSummary {
+    pub body: Option<ResourceTextureSummary>,
+    pub cape: Option<ResourceTextureSummary>,
+    pub elytra: Option<ResourceTextureSummary>,
+    pub model: Option<PlayerModelTypeSummary>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResourceTextureSummary {
+    pub asset_id: String,
+    pub texture_path: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PlayerModelTypeSummary {
+    Slim,
+    Wide,
 }
 
 pub(crate) fn decode_data_component_patch_summary(
@@ -324,6 +371,9 @@ fn decode_typed_data_component_patch_summary(
             }
             68 => {
                 summary.firework_explosion_colors = decode_firework_explosion(decoder)?;
+            }
+            70 => {
+                summary.profile = Some(decode_resolvable_profile(decoder)?);
             }
             13 => {
                 summary.enchantments = decode_varint_map(decoder)?;
@@ -475,7 +525,9 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         64 => decode_jukebox_playable(decoder)?,
         65 => decode_holder_set(decoder)?,
         67 => decode_lodestone_tracker(decoder)?,
-        70 => decode_resolvable_profile(decoder)?,
+        70 => {
+            let _ = decode_resolvable_profile(decoder)?;
+        }
         80 => decode_sound_event_holder(decoder)?,
         102 => decode_painting_variant_holder(decoder)?,
         // firework_explosion and fireworks.
@@ -1081,54 +1133,123 @@ fn decode_lodestone_tracker(decoder: &mut Decoder<'_>) -> Result<()> {
     Ok(())
 }
 
-fn decode_resolvable_profile(decoder: &mut Decoder<'_>) -> Result<()> {
-    if decoder.read_bool()? {
-        decode_game_profile(decoder)?;
+fn decode_resolvable_profile(decoder: &mut Decoder<'_>) -> Result<ResolvableProfileSummary> {
+    let (kind, uuid, name, properties) = if decoder.read_bool()? {
+        let profile = decode_game_profile(decoder)?;
+        (
+            ResolvableProfileKindSummary::GameProfile,
+            Some(profile.uuid),
+            Some(profile.name),
+            profile.properties,
+        )
     } else {
-        decode_partial_profile(decoder)?;
-    }
-    decode_player_skin_patch(decoder)
+        let partial = decode_partial_profile(decoder)?;
+        (
+            ResolvableProfileKindSummary::Partial,
+            partial.uuid,
+            partial.name,
+            partial.properties,
+        )
+    };
+    let skin_patch = decode_player_skin_patch(decoder)?;
+    Ok(ResolvableProfileSummary {
+        kind,
+        uuid,
+        name,
+        properties,
+        skin_patch,
+    })
 }
 
-fn decode_game_profile(decoder: &mut Decoder<'_>) -> Result<()> {
-    decoder.read_uuid()?;
-    decoder.read_string(MAX_PLAYER_NAME_CHARS)?;
-    decode_game_profile_properties(decoder)
+struct DecodedGameProfile {
+    uuid: Uuid,
+    name: String,
+    properties: Vec<GameProfilePropertySummary>,
 }
 
-fn decode_partial_profile(decoder: &mut Decoder<'_>) -> Result<()> {
-    decode_optional_string(decoder, MAX_PLAYER_NAME_CHARS)?;
-    if decoder.read_bool()? {
-        decoder.read_uuid()?;
-    }
-    decode_game_profile_properties(decoder)
+fn decode_game_profile(decoder: &mut Decoder<'_>) -> Result<DecodedGameProfile> {
+    Ok(DecodedGameProfile {
+        uuid: decoder.read_uuid()?,
+        name: decoder.read_string(MAX_PLAYER_NAME_CHARS)?,
+        properties: decode_game_profile_properties(decoder)?,
+    })
 }
 
-fn decode_game_profile_properties(decoder: &mut Decoder<'_>) -> Result<()> {
+struct DecodedPartialProfile {
+    name: Option<String>,
+    uuid: Option<Uuid>,
+    properties: Vec<GameProfilePropertySummary>,
+}
+
+fn decode_partial_profile(decoder: &mut Decoder<'_>) -> Result<DecodedPartialProfile> {
+    let name = decode_optional_string_value(decoder, MAX_PLAYER_NAME_CHARS)?;
+    let uuid = if decoder.read_bool()? {
+        Some(decoder.read_uuid()?)
+    } else {
+        None
+    };
+    Ok(DecodedPartialProfile {
+        name,
+        uuid,
+        properties: decode_game_profile_properties(decoder)?,
+    })
+}
+
+fn decode_game_profile_properties(
+    decoder: &mut Decoder<'_>,
+) -> Result<Vec<GameProfilePropertySummary>> {
     let property_count = read_bounded_len(decoder, MAX_PROFILE_PROPERTIES)?;
+    let mut properties = Vec::with_capacity(property_count);
     for _ in 0..property_count {
-        decoder.read_string(MAX_PROFILE_PROPERTY_NAME_CHARS)?;
-        decoder.read_string(MAX_STRING_CHARS)?;
-        decode_optional_string(decoder, MAX_PROFILE_SIGNATURE_CHARS)?;
+        properties.push(GameProfilePropertySummary {
+            name: decoder.read_string(MAX_PROFILE_PROPERTY_NAME_CHARS)?,
+            value: decoder.read_string(MAX_STRING_CHARS)?,
+            signature: decode_optional_string_value(decoder, MAX_PROFILE_SIGNATURE_CHARS)?,
+        });
     }
-    Ok(())
+    Ok(properties)
 }
 
-fn decode_player_skin_patch(decoder: &mut Decoder<'_>) -> Result<()> {
-    for _ in 0..3 {
-        decode_optional_resource_texture(decoder)?;
-    }
-    if decoder.read_bool()? {
-        decoder.read_bool()?;
-    }
-    Ok(())
+fn decode_player_skin_patch(decoder: &mut Decoder<'_>) -> Result<PlayerSkinPatchSummary> {
+    Ok(PlayerSkinPatchSummary {
+        body: decode_optional_resource_texture(decoder)?,
+        cape: decode_optional_resource_texture(decoder)?,
+        elytra: decode_optional_resource_texture(decoder)?,
+        model: decode_optional_player_model_type(decoder)?,
+    })
 }
 
-fn decode_optional_resource_texture(decoder: &mut Decoder<'_>) -> Result<()> {
+fn decode_optional_resource_texture(
+    decoder: &mut Decoder<'_>,
+) -> Result<Option<ResourceTextureSummary>> {
     if decoder.read_bool()? {
-        decode_identifier(decoder)?;
+        let asset_id = read_resource_location(decoder)?;
+        return Ok(Some(ResourceTextureSummary {
+            texture_path: resource_texture_path(&asset_id),
+            asset_id,
+        }));
     }
-    Ok(())
+    Ok(None)
+}
+
+fn resource_texture_path(asset_id: &str) -> String {
+    let (namespace, path) = asset_id
+        .split_once(':')
+        .expect("resource locations decoded by read_resource_location include a namespace");
+    format!("{namespace}:textures/{path}.png")
+}
+
+fn decode_optional_player_model_type(
+    decoder: &mut Decoder<'_>,
+) -> Result<Option<PlayerModelTypeSummary>> {
+    if decoder.read_bool()? {
+        return Ok(Some(if decoder.read_bool()? {
+            PlayerModelTypeSummary::Slim
+        } else {
+            PlayerModelTypeSummary::Wide
+        }));
+    }
+    Ok(None)
 }
 
 fn decode_direct_jukebox_song(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -1340,10 +1461,18 @@ fn decode_string_map(decoder: &mut Decoder<'_>, max: usize) -> Result<BTreeMap<S
 }
 
 fn decode_optional_string(decoder: &mut Decoder<'_>, max_chars: usize) -> Result<()> {
-    if decoder.read_bool()? {
-        decoder.read_string(max_chars)?;
-    }
+    let _ = decode_optional_string_value(decoder, max_chars)?;
     Ok(())
+}
+
+fn decode_optional_string_value(
+    decoder: &mut Decoder<'_>,
+    max_chars: usize,
+) -> Result<Option<String>> {
+    if decoder.read_bool()? {
+        return decoder.read_string(max_chars).map(Some);
+    }
+    Ok(None)
 }
 
 fn decode_tooltip_display(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -1958,6 +2087,81 @@ mod tests {
                 added: component_ids.len(),
                 added_type_ids: component_ids.to_vec(),
                 removed_type_ids: Vec::new(),
+                profile: Some(ResolvableProfileSummary {
+                    kind: ResolvableProfileKindSummary::Partial,
+                    uuid: Some(Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678)),
+                    name: Some("Steve".to_string()),
+                    properties: vec![GameProfilePropertySummary {
+                        name: "textures".to_string(),
+                        value: "skin-value".to_string(),
+                        signature: Some("skin-signature".to_string()),
+                    }],
+                    skin_patch: PlayerSkinPatchSummary {
+                        body: Some(ResourceTextureSummary {
+                            asset_id: "minecraft:entity/player/wide/steve".to_string(),
+                            texture_path: "minecraft:textures/entity/player/wide/steve.png"
+                                .to_string(),
+                        }),
+                        cape: None,
+                        elytra: Some(ResourceTextureSummary {
+                            asset_id: "minecraft:entity/player/elytra".to_string(),
+                            texture_path: "minecraft:textures/entity/player/elytra.png".to_string(),
+                        }),
+                        model: Some(PlayerModelTypeSummary::Slim),
+                    },
+                }),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_game_profile_data_component_summary() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+
+        let profile_id = Uuid::from_u128(0xabcdef01_2345_6789_0011_223344556677);
+        payload.write_var_i32(70);
+        payload.write_bool(true);
+        payload.write_uuid(profile_id);
+        payload.write_string("Alex");
+        payload.write_var_i32(1);
+        payload.write_string("textures");
+        payload.write_string("packed-skin");
+        payload.write_bool(false);
+        payload.write_bool(false);
+        payload.write_bool(false);
+        payload.write_bool(false);
+        payload.write_bool(true);
+        payload.write_bool(false);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![70],
+                removed_type_ids: Vec::new(),
+                profile: Some(ResolvableProfileSummary {
+                    kind: ResolvableProfileKindSummary::GameProfile,
+                    uuid: Some(profile_id),
+                    name: Some("Alex".to_string()),
+                    properties: vec![GameProfilePropertySummary {
+                        name: "textures".to_string(),
+                        value: "packed-skin".to_string(),
+                        signature: None,
+                    }],
+                    skin_patch: PlayerSkinPatchSummary {
+                        body: None,
+                        cape: None,
+                        elytra: None,
+                        model: Some(PlayerModelTypeSummary::Wide),
+                    },
+                }),
                 ..DataComponentPatchSummary::default()
             }
         );

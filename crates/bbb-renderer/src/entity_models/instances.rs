@@ -538,8 +538,8 @@ entity_render_state! {
     (with_copper_golem_holding_item) copper_golem_holding_item: bool = false;
     /// Vanilla `LivingEntityRenderState.wornHeadType`: a supported skull block item in the HEAD slot,
     /// rendered by `CustomHeadLayer` through `SkullBlockRenderer` instead of the generic item-model path.
-    /// Only the static `SkullModel` mob heads are projected for now; player profile skins, dragon jaws,
-    /// and piglin ear animation remain deferred.
+    /// Static mob skulls, profileless default player heads, and the specialized dragon/piglin skull
+    /// models are projected; profiled player skin resolution remains deferred.
     (with_custom_head_skull) custom_head_skull: Option<EntityCustomHeadSkull> = None;
     /// Vanilla `VexRenderState.isCharging` (`Vex.isCharging`, the synced `DATA_FLAGS_ID & 1`):
     /// the vex is charging an attack, so `VexModel.setupAnim` levels the body (`xRot = 0`) and

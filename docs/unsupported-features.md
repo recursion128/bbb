@@ -1196,7 +1196,11 @@ When an agent does any of the following, update this file in the same slice:
         `dragon_head` renders with vanilla
         `DragonHeadModel` head/jaw geometry, the skull head `scaled(0.75)` part
         pose, the `dragon.png` texture, and `wornHeadAnimationPos` jaw
-        animation. Profiled player skins remain deferred.
+        animation. Protocol now preserves `DataComponents.PROFILE` (type id
+        70) as a structured `ResolvableProfileSummary`, including full vs
+        partial profile, UUID/name, profile properties, and `PlayerSkin.Patch`
+        resource texture/model overrides. Profiled player skin resolution and
+        dynamic player-skin texture loading remain deferred.
       - fox held item DONE: `FoxHeldItemLayer` is reproduced through the same
         item-model pass. Renderer exposes `fox_held_item_transform`, which builds
         and poses the vanilla adult/baby `FoxModel`, reads the posed `head` part,

@@ -10,10 +10,11 @@ use bbb_protocol::packets::{
     PlayerExperience as ProtocolPlayerExperience, RecipeBookAdd as ProtocolRecipeBookAdd,
     RecipeBookAddEntry as ProtocolRecipeBookAddEntry,
     RecipeDisplayEntry as ProtocolRecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary,
-    RecipeDisplayType, RecipePropertySetSummary, RegistryTags,
-    SetEntityData as ProtocolSetEntityData, SlotDisplaySummary, StonecutterSelectableRecipeSummary,
-    TagNetworkPayload, UpdateRecipes as ProtocolUpdateRecipes, UpdateTags as ProtocolUpdateTags,
-    UseEffectsSummary as ProtocolUseEffectsSummary, Vec3d as ProtocolVec3d,
+    RecipeDisplayType, RecipePropertySetSummary, RegistryTags, ResolvableProfileKindSummary,
+    ResolvableProfileSummary, SetEntityData as ProtocolSetEntityData, SlotDisplaySummary,
+    StonecutterSelectableRecipeSummary, TagNetworkPayload, UpdateRecipes as ProtocolUpdateRecipes,
+    UpdateTags as ProtocolUpdateTags, UseEffectsSummary as ProtocolUseEffectsSummary,
+    Vec3d as ProtocolVec3d,
 };
 use uuid::Uuid;
 
@@ -1691,6 +1692,26 @@ fn apply_local_container_click_slot_rejects_incomplete_integer_component_patch()
             input: ProtocolContainerInput::Pickup,
         }),
         Err(ContainerClickBuildError::UnhashableChangedSlot(0))
+    );
+}
+
+#[test]
+fn apply_local_container_click_slot_rejects_profile_component_patch() {
+    let mut store = WorldStore::new();
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: 7,
+        state_id: 13,
+        items: vec![profiled_item_stack(42, 1)],
+        carried_item: ProtocolItemStackSummary::empty(),
+    });
+
+    assert_eq!(
+        store.apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: 0,
+            button_num: 0,
+            input: ProtocolContainerInput::Pickup,
+        }),
+        Err(ContainerClickBuildError::UnhashableCarriedItem)
     );
 }
 
@@ -8975,6 +8996,20 @@ fn item_stack_with_component_summary(
     let mut stack = item_stack(item_id, count);
     stack.component_patch.added = 1;
     stack.component_patch.added_type_ids = vec![component_type_id];
+    stack
+}
+
+fn profiled_item_stack(item_id: i32, count: i32) -> ProtocolItemStackSummary {
+    const VANILLA_PROFILE_COMPONENT_ID: i32 = 70;
+
+    let mut stack = item_stack_with_component_summary(item_id, count, VANILLA_PROFILE_COMPONENT_ID);
+    stack.component_patch.profile = Some(ResolvableProfileSummary {
+        kind: ResolvableProfileKindSummary::Partial,
+        uuid: Some(Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678)),
+        name: Some("Steve".to_string()),
+        properties: Vec::new(),
+        skin_patch: Default::default(),
+    });
     stack
 }
 
