@@ -54,6 +54,7 @@ use runtime::{
     snapshot_is_running, take_control_screenshot, ClientAnimationTickState,
     LevelEventSoundRandomState,
 };
+use skin_runtime::default_player_skin_cache_dir;
 use startup::{
     build_window, create_event_loop, init_tracing, load_pack_roots, parse_args,
     run_probe_if_requested, spawn_frame_tick, start_control_api, start_network_if_requested,
@@ -133,6 +134,11 @@ fn main() -> Result<()> {
     });
     if let Some(items) = &item_runtime {
         items.enable_http_profile_resolution();
+        let player_skin_cache_dir = args
+            .player_skin_cache_dir
+            .clone()
+            .unwrap_or_else(default_player_skin_cache_dir);
+        items.enable_http_player_skin_downloads(player_skin_cache_dir);
         world.set_default_item_max_stack_sizes(items.item_max_stack_sizes_by_protocol_id());
         world.set_default_item_crafting_remainders(items.item_crafting_remainders_by_protocol_id());
         world.set_recipe_specific_crafting_remainder_item_ids(
@@ -493,6 +499,7 @@ fn main() -> Result<()> {
                     }
                     if let Some(items) = item_runtime.as_ref() {
                         items.drain_profile_resolution_results();
+                        items.drain_dynamic_player_skin_download_results();
                     }
                     if !pump_network_and_terrain(
                         &mut net_events,
@@ -616,6 +623,7 @@ fn main() -> Result<()> {
                 }
                 if let Some(items) = item_runtime.as_ref() {
                     items.drain_profile_resolution_results();
+                    items.drain_dynamic_player_skin_download_results();
                 }
                 if !pump_network_and_terrain(
                     &mut net_events,

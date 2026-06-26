@@ -1248,8 +1248,12 @@ When an agent does any of the following, update this file in the same slice:
         profile/properties responses. The native main loop explicitly enables
         an async profile-resolution worker and drains completed results; a
         `player_head` keeps the fallback while pending/failed and uses the
-        resolved profile/properties once available. Skin PNG download scheduling,
-        upload completion, and arbitrary dynamic player-skin texture loading remain
+        resolved profile/properties once available. The native main loop also
+        enables an async player-skin download worker with a configurable cache
+        directory; dynamic skin URLs queue PNG download/cache/post-process work,
+        failed downloads mark the profile skin failed, and successful downloads
+        stay cached as pending upload data. GPU upload completion, Ready status
+        feedback, and arbitrary dynamic player-skin texture loading remain
         deferred.
       - fox held item DONE: `FoxHeldItemLayer` is reproduced through the same
         item-model pass. Renderer exposes `fox_held_item_transform`, which builds

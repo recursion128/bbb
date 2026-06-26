@@ -40,6 +40,8 @@ pub(crate) struct Args {
     pub(crate) code_of_conduct_store: Option<PathBuf>,
     #[arg(long = "resource-pack-dir", value_name = "PATH")]
     pub(crate) resource_pack_dirs: Vec<PathBuf>,
+    #[arg(long = "player-skin-cache-dir", value_name = "PATH")]
+    pub(crate) player_skin_cache_dir: Option<PathBuf>,
     #[arg(long = "client-locale", default_value = "en_us")]
     pub(crate) client_locale: String,
     #[arg(long = "client-view-distance", default_value_t = 10)]
@@ -277,6 +279,18 @@ mod tests {
         assert_eq!(
             args.resource_pack_dirs,
             vec![PathBuf::from("packs/base"), PathBuf::from("packs/overlay")]
+        );
+    }
+
+    #[test]
+    fn args_accept_player_skin_cache_dir() {
+        let args =
+            Args::try_parse_from(["bbb-native", "--player-skin-cache-dir", "/tmp/bbb-skins"])
+                .unwrap();
+
+        assert_eq!(
+            args.player_skin_cache_dir,
+            Some(PathBuf::from("/tmp/bbb-skins"))
         );
     }
 

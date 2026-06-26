@@ -2,6 +2,8 @@ use std::{
     collections::HashMap,
     fs,
     path::{Path, PathBuf},
+    sync::mpsc::{self, Receiver, Sender},
+    thread,
     time::Duration,
 };
 
@@ -112,6 +114,119 @@ impl DynamicPlayerSkinRuntime {
     }
 }
 
+#[derive(Debug)]
+pub(crate) struct AsyncDynamicPlayerSkinRuntime {
+    entries: HashMap<String, AsyncDynamicPlayerSkinEntry>,
+    request_tx: Sender<DynamicPlayerSkinRequest>,
+    result_rx: Receiver<DynamicPlayerSkinResult>,
+}
+
+impl AsyncDynamicPlayerSkinRuntime {
+    pub(crate) fn new(
+        cache_dir: impl Into<PathBuf>,
+        fetcher: impl SkinPngFetcher + Send + 'static,
+    ) -> Self {
+        let (request_tx, request_rx) = mpsc::channel::<DynamicPlayerSkinRequest>();
+        let (result_tx, result_rx) = mpsc::channel::<DynamicPlayerSkinResult>();
+        let cache_dir = cache_dir.into();
+        thread::spawn(move || {
+            let mut runtime = DynamicPlayerSkinRuntime::new(cache_dir);
+            let mut fetcher = fetcher;
+            for request in request_rx {
+                let result = runtime
+                    .get_or_fetch_player_skin(request.handle, &request.url, &mut fetcher)
+                    .cloned()
+                    .map_err(|err| err.to_string());
+                if result_tx
+                    .send(DynamicPlayerSkinResult {
+                        url: request.url,
+                        result,
+                    })
+                    .is_err()
+                {
+                    break;
+                }
+            }
+        });
+        Self {
+            entries: HashMap::new(),
+            request_tx,
+            result_rx,
+        }
+    }
+
+    pub(crate) fn queue(&mut self, handle: u64, url: &str) {
+        self.drain_results();
+        if self.entries.contains_key(url) {
+            return;
+        }
+
+        self.entries
+            .insert(url.to_string(), AsyncDynamicPlayerSkinEntry::Pending);
+        let request = DynamicPlayerSkinRequest {
+            handle,
+            url: url.to_string(),
+        };
+        if self.request_tx.send(request).is_err() {
+            self.entries
+                .insert(url.to_string(), AsyncDynamicPlayerSkinEntry::Failed);
+        }
+    }
+
+    pub(crate) fn drain_results(&mut self) -> Vec<AsyncDynamicPlayerSkinResult> {
+        let mut drained = Vec::new();
+        while let Ok(result) = self.result_rx.try_recv() {
+            let entry = match &result.result {
+                Ok(skin) => AsyncDynamicPlayerSkinEntry::Downloaded(skin.clone()),
+                Err(_) => AsyncDynamicPlayerSkinEntry::Failed,
+            };
+            self.entries.insert(result.url.clone(), entry);
+            drained.push(AsyncDynamicPlayerSkinResult {
+                url: result.url,
+                skin: result.result.ok(),
+            });
+        }
+        drained
+    }
+
+    #[cfg(test)]
+    pub(crate) fn downloaded_skin_count(&self) -> usize {
+        self.entries
+            .values()
+            .filter(|entry| matches!(entry, AsyncDynamicPlayerSkinEntry::Downloaded(_)))
+            .count()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct AsyncDynamicPlayerSkinResult {
+    pub(crate) url: String,
+    pub(crate) skin: Option<DynamicPlayerSkinImage>,
+}
+
+#[derive(Debug, Clone)]
+struct DynamicPlayerSkinRequest {
+    handle: u64,
+    url: String,
+}
+
+#[derive(Debug)]
+struct DynamicPlayerSkinResult {
+    url: String,
+    result: std::result::Result<DynamicPlayerSkinImage, String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum AsyncDynamicPlayerSkinEntry {
+    Pending,
+    Downloaded(DynamicPlayerSkinImage),
+    Failed,
+}
+
+pub(crate) fn default_player_skin_cache_dir() -> PathBuf {
+    std::env::temp_dir().join("bbb-native-player-skins")
+}
+
 pub(crate) fn player_skin_cache_path(cache_dir: &Path, handle: u64) -> PathBuf {
     cache_dir
         .join("skins")
@@ -133,8 +248,12 @@ mod tests {
     use std::{
         io::{Cursor, Read, Write},
         net::TcpListener,
-        sync::atomic::{AtomicU64, Ordering},
+        sync::{
+            atomic::{AtomicU64, AtomicUsize, Ordering},
+            Arc,
+        },
         thread,
+        time::Duration,
     };
 
     static NEXT_TEMP_DIR_ID: AtomicU64 = AtomicU64::new(0);
@@ -220,6 +339,57 @@ mod tests {
     }
 
     #[test]
+    fn async_dynamic_skin_runtime_downloads_processes_and_reuses_result() {
+        let root = unique_temp_dir("async-dynamic-skin-runtime-ready");
+        let calls = Arc::new(AtomicUsize::new(0));
+        let mut runtime = AsyncDynamicPlayerSkinRuntime::new(
+            &root,
+            AsyncStaticSkinFetcher::new(
+                rgba_png(64, 64, |x, y| [x as u8, y as u8, 19, 255]),
+                calls.clone(),
+            ),
+        );
+        let url = "https://textures.minecraft.net/texture/async-ready";
+
+        runtime.queue(0x55, url);
+        let results = drain_until_async_skin_result(&mut runtime);
+        runtime.queue(0x55, url);
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].url, url);
+        let skin = results[0].skin.as_ref().unwrap();
+        assert_eq!(skin.handle, 0x55);
+        assert_eq!(skin.rgba.len(), 64 * 64 * 4);
+        assert_eq!(runtime.downloaded_skin_count(), 1);
+        assert_eq!(calls.load(Ordering::Relaxed), 1);
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn async_dynamic_skin_runtime_caches_failed_download_or_decode() {
+        let root = unique_temp_dir("async-dynamic-skin-runtime-failed");
+        let calls = Arc::new(AtomicUsize::new(0));
+        let mut runtime = AsyncDynamicPlayerSkinRuntime::new(
+            &root,
+            AsyncStaticSkinFetcher::new(b"not a png".to_vec(), calls.clone()),
+        );
+        let url = "https://textures.minecraft.net/texture/async-failed";
+
+        runtime.queue(0x66, url);
+        let results = drain_until_async_skin_result(&mut runtime);
+        runtime.queue(0x66, url);
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].url, url);
+        assert_eq!(results[0].skin, None);
+        assert_eq!(runtime.downloaded_skin_count(), 0);
+        assert_eq!(calls.load(Ordering::Relaxed), 1);
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn http_skin_fetcher_reads_successful_response_bytes() {
         let body = b"player skin bytes".to_vec();
         let url = spawn_http_response(200, "OK", body.clone());
@@ -256,6 +426,24 @@ mod tests {
         }
     }
 
+    struct AsyncStaticSkinFetcher {
+        bytes: Vec<u8>,
+        calls: Arc<AtomicUsize>,
+    }
+
+    impl AsyncStaticSkinFetcher {
+        fn new(bytes: Vec<u8>, calls: Arc<AtomicUsize>) -> Self {
+            Self { bytes, calls }
+        }
+    }
+
+    impl SkinPngFetcher for AsyncStaticSkinFetcher {
+        fn fetch_skin_png(&mut self, _url: &str) -> Result<Vec<u8>> {
+            self.calls.fetch_add(1, Ordering::Relaxed);
+            Ok(self.bytes.clone())
+        }
+    }
+
     fn rgba_png(width: u32, height: u32, pixel: impl Fn(u32, u32) -> [u8; 4]) -> Vec<u8> {
         let mut image = image::RgbaImage::new(width, height);
         for y in 0..height {
@@ -268,6 +456,19 @@ mod tests {
             .write_to(&mut cursor, image::ImageFormat::Png)
             .unwrap();
         cursor.into_inner()
+    }
+
+    fn drain_until_async_skin_result(
+        runtime: &mut AsyncDynamicPlayerSkinRuntime,
+    ) -> Vec<AsyncDynamicPlayerSkinResult> {
+        for _ in 0..100 {
+            let results = runtime.drain_results();
+            if !results.is_empty() {
+                return results;
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
+        panic!("timed out waiting for async skin result");
     }
 
     fn spawn_http_response(status: u16, reason: &str, body: Vec<u8>) -> String {

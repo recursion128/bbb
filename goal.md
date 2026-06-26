@@ -55,7 +55,8 @@ native/render-state 也已能携带 profile texture URL 派生的 dynamic skin h
 贴图绘制）。native 已补 `ResolvableProfile` 的 name/UUID profile resolution
 缓存 primitive、reqwest/rustls HTTP fetcher，以及显式启用的异步 profile resolution
 worker；custom-head player head 投影会在 pending/failed 时保留默认 fallback，完成后使用
-resolved profile/properties。剩余的是把 skin PNG 下载接入异步反馈、GPU 动态纹理上传，
+resolved profile/properties。native 也已补 skin PNG 异步下载队列，成功结果先保留为待上传
+数据、失败回写 failed fallback。剩余的是 GPU 动态纹理上传、成功后 Ready 回写，
 以及任意动态纹理加载。
 铜傀儡 vanilla 模型、四态风化贴图和 emissive eyes layer 已完成。
 Illager 家族的主要 arm-pose 分支已覆盖到 evoker/illusioner spellcasting、illusioner bow aim、
@@ -119,15 +120,16 @@ Panda sit/lie/roll client-tick 动画已完成：world 侧按 vanilla `Panda.tic
       覆盖 Mojang name→UUID 与 session profile/properties 解析；main 显式启用 worker
       并 drain 完成结果，`player_head` 投影先返回 fallback，完成后使用 resolved
       profile/properties 与 decoded textures。
-   3. IN PROGRESS：renderer 已补下载后 skin PNG 格式/尺寸校验、64x32 legacy skin
+   3. DONE：renderer 已补下载后 skin PNG 格式/尺寸校验、64x32 legacy skin
       到 64x64 当前布局的 vanilla `SkinTextureDownloader.processLegacySkin` 转换，以及
       opaque-base / Notch transparency alpha 规则；native 已补 fetcher-backed memory/disk
       skin PNG cache（disk hit 优先、miss 后 fetch/write/process）和 reqwest/rustls HTTP
-      fetcher；还缺把 skin PNG 下载接入运行时异步调度和 profile-skin 状态回写。
+      fetcher；main 显式启用 skin cache dir 和异步下载 worker，custom-head dynamic
+      skin URL 会排队下载，失败回写 failed fallback，成功结果保留给后续 GPU 上传。
    4. IN PROGRESS：native/render-state 已从 `EntityDefaultPlayerSkin` 扩到默认 fallback、
       dynamic skin handle、slim/wide model、loading/ready/failed 状态，以及按 texture URL
-      缓存并可替换 resolved texture handle 的 profile-skin cache；还缺真实异步下载/上传回写
-      与动态纹理采样。
+      缓存并可替换 resolved texture handle 的 profile-skin cache；还缺 GPU 上传成功后的
+      ready 回写与动态纹理采样。
    5. 扩展 renderer 动态纹理入口：支持运行时上传/替换 dynamic skin texture
       或独立动态 skin atlas，先接 `CustomHeadLayer` / `SkullBlockRenderer`
       的 `player_head`，再推广到玩家实体本体、cape、elytra 等层。

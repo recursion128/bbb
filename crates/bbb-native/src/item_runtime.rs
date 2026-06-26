@@ -1,6 +1,7 @@
 use std::{
     cell::RefCell,
     collections::{BTreeMap, BTreeSet, HashMap},
+    path::PathBuf,
 };
 
 use anyhow::{Context, Result};
@@ -15,17 +16,16 @@ use bbb_pack::{
     ItemUseEffects as PackItemUseEffects, LanguageCatalog, PackRoots, SpriteImage,
     TerrainColorMaps, DEFAULT_LANGUAGE_CODE,
 };
-#[cfg(test)]
-use bbb_protocol::packets::ResolvableProfileSummary;
 use bbb_protocol::packets::{
     DataComponentPatchSummary, ItemRaritySummary, ItemStackSummary, ItemStackTemplateSummary,
+    ResolvableProfileSummary,
 };
 use bbb_renderer::{
-    EntityCustomHeadSkull, EntityDefaultPlayerSkin, EntityPlayerSkin, ItemSpriteRect,
-    SpriteAlphaMask,
+    EntityCustomHeadSkull, EntityDefaultPlayerSkin, EntityDynamicPlayerSkinStatus,
+    EntityPlayerSkin, ItemSpriteRect, SpriteAlphaMask,
 };
 #[cfg(test)]
-use bbb_renderer::{EntityDynamicPlayerSkin, EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
+use bbb_renderer::{EntityDynamicPlayerSkin, EntityPlayerSkinModel};
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, ItemAttackRange as WorldItemAttackRange,
     ItemEquipmentSlot as WorldItemEquipmentSlot, ItemUseEffects as WorldItemUseEffects,
@@ -33,7 +33,10 @@ use bbb_world::{
     WorldItemMiningProfile, WorldItemMiningRule,
 };
 
-use crate::profile_resolver::{AsyncProfileResolutionRuntime, HttpGameProfileFetcher};
+use crate::{
+    profile_resolver::{AsyncProfileResolutionRuntime, HttpGameProfileFetcher},
+    skin_runtime::{AsyncDynamicPlayerSkinRuntime, HttpSkinPngFetcher},
+};
 
 mod icon_model;
 mod profile_skin;
@@ -135,6 +138,7 @@ pub(crate) struct NativeItemRuntime {
     language: LanguageCatalog,
     textures: ItemTextureState,
     profile_resolutions: RefCell<Option<AsyncProfileResolutionRuntime>>,
+    dynamic_skins: RefCell<Option<AsyncDynamicPlayerSkinRuntime>>,
     profile_skins: RefCell<ProfileSkinCache>,
 }
 
@@ -311,6 +315,7 @@ impl NativeItemRuntime {
             language,
             textures,
             profile_resolutions: RefCell::default(),
+            dynamic_skins: RefCell::default(),
             profile_skins: RefCell::default(),
         })
     }
@@ -419,6 +424,7 @@ impl NativeItemRuntime {
             registry.resource_id(protocol_id)?,
             &stack.component_patch,
             &self.profile_resolutions,
+            &self.dynamic_skins,
             &self.profile_skins,
         )
     }
@@ -443,6 +449,50 @@ impl NativeItemRuntime {
             .borrow_mut()
             .as_mut()
             .map(AsyncProfileResolutionRuntime::drain_results)
+            .unwrap_or(0)
+    }
+
+    pub(crate) fn enable_http_player_skin_downloads(&self, cache_dir: impl Into<PathBuf>) {
+        let mut dynamic_skins = self.dynamic_skins.borrow_mut();
+        if dynamic_skins.is_some() {
+            return;
+        }
+        match HttpSkinPngFetcher::new() {
+            Ok(fetcher) => {
+                *dynamic_skins = Some(AsyncDynamicPlayerSkinRuntime::new(cache_dir, fetcher));
+            }
+            Err(err) => {
+                tracing::warn!(?err, "continuing without async player skin downloads");
+            }
+        }
+    }
+
+    pub(crate) fn drain_dynamic_player_skin_download_results(&self) -> usize {
+        let results = self
+            .dynamic_skins
+            .borrow_mut()
+            .as_mut()
+            .map(AsyncDynamicPlayerSkinRuntime::drain_results)
+            .unwrap_or_default();
+        for result in &results {
+            if result.skin.is_none() {
+                self.profile_skins.borrow_mut().mark_failed(&result.url);
+            }
+        }
+        results.len()
+    }
+
+    #[cfg(test)]
+    fn enable_player_skin_downloads_for_test(&self, runtime: AsyncDynamicPlayerSkinRuntime) {
+        *self.dynamic_skins.borrow_mut() = Some(runtime);
+    }
+
+    #[cfg(test)]
+    fn downloaded_player_skin_count(&self) -> usize {
+        self.dynamic_skins
+            .borrow()
+            .as_ref()
+            .map(AsyncDynamicPlayerSkinRuntime::downloaded_skin_count)
             .unwrap_or(0)
     }
 
@@ -1159,14 +1209,18 @@ fn custom_head_skull_for_resource_id(
     resource_id: &str,
     component_patch: &DataComponentPatchSummary,
     profile_resolutions: &RefCell<Option<AsyncProfileResolutionRuntime>>,
+    dynamic_skins: &RefCell<Option<AsyncDynamicPlayerSkinRuntime>>,
     profile_skins: &RefCell<ProfileSkinCache>,
 ) -> Option<EntityCustomHeadSkull> {
     match resource_id {
         "minecraft:skeleton_skull" => Some(EntityCustomHeadSkull::Skeleton),
         "minecraft:wither_skeleton_skull" => Some(EntityCustomHeadSkull::WitherSkeleton),
-        "minecraft:player_head" => {
-            custom_head_player_skull(component_patch, profile_resolutions, profile_skins)
-        }
+        "minecraft:player_head" => custom_head_player_skull(
+            component_patch,
+            profile_resolutions,
+            dynamic_skins,
+            profile_skins,
+        ),
         "minecraft:zombie_head" => Some(EntityCustomHeadSkull::Zombie),
         "minecraft:creeper_head" => Some(EntityCustomHeadSkull::Creeper),
         "minecraft:dragon_head" => Some(EntityCustomHeadSkull::Dragon),
@@ -1178,6 +1232,7 @@ fn custom_head_skull_for_resource_id(
 fn custom_head_player_skull(
     component_patch: &DataComponentPatchSummary,
     profile_resolutions: &RefCell<Option<AsyncProfileResolutionRuntime>>,
+    dynamic_skins: &RefCell<Option<AsyncDynamicPlayerSkinRuntime>>,
     profile_skins: &RefCell<ProfileSkinCache>,
 ) -> Option<EntityCustomHeadSkull> {
     if !component_patch_has_profile(component_patch) {
@@ -1192,9 +1247,33 @@ fn custom_head_player_skull(
         .as_mut()
         .map(|profile_resolutions| profile_resolutions.resolve_or_queue(profile))
         .unwrap_or_else(|| profile.clone());
-    Some(EntityCustomHeadSkull::Player(
-        profile_skins.borrow_mut().player_skin_for_profile(&profile),
-    ))
+    let player_skin = profile_skins.borrow_mut().player_skin_for_profile(&profile);
+    queue_dynamic_player_skin_download(&profile, player_skin, dynamic_skins);
+    Some(EntityCustomHeadSkull::Player(player_skin))
+}
+
+fn queue_dynamic_player_skin_download(
+    profile: &ResolvableProfileSummary,
+    player_skin: EntityPlayerSkin,
+    dynamic_skins: &RefCell<Option<AsyncDynamicPlayerSkinRuntime>>,
+) {
+    let EntityPlayerSkin::Dynamic(skin) = player_skin else {
+        return;
+    };
+    if skin.status != EntityDynamicPlayerSkinStatus::Loading {
+        return;
+    }
+    let Some(url) = profile
+        .profile_textures
+        .as_ref()
+        .and_then(|textures| textures.skin.as_ref())
+        .map(|skin| skin.url.as_str())
+    else {
+        return;
+    };
+    if let Some(dynamic_skins) = dynamic_skins.borrow_mut().as_mut() {
+        dynamic_skins.queue(skin.handle, url);
+    }
 }
 
 fn component_patch_has_profile(component_patch: &DataComponentPatchSummary) -> bool {
@@ -1724,10 +1803,16 @@ fn item_uv_rect(layout: &AtlasLayout, sprite: &AtlasSprite) -> ItemAtlasUvRect {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::skin_runtime::{AsyncDynamicPlayerSkinRuntime, SkinPngFetcher};
     use std::{
+        io::Cursor,
         path::{Path, PathBuf},
-        sync::atomic::{AtomicU64, Ordering},
-        time::{SystemTime, UNIX_EPOCH},
+        sync::{
+            atomic::{AtomicU64, AtomicUsize, Ordering},
+            Arc,
+        },
+        thread,
+        time::{Duration, SystemTime, UNIX_EPOCH},
     };
 
     static NEXT_TEMP_DIR_ID: AtomicU64 = AtomicU64::new(0);
@@ -2363,6 +2448,41 @@ mod tests {
                 }
             )))
         );
+
+        let skin_download_calls = Arc::new(AtomicUsize::new(0));
+        runtime.enable_player_skin_downloads_for_test(AsyncDynamicPlayerSkinRuntime::new(
+            root.join("skin-cache"),
+            TestSkinPngFetcher {
+                bytes: player_skin_png_bytes(),
+                calls: skin_download_calls.clone(),
+            },
+        ));
+        assert_eq!(
+            runtime.custom_head_skull_for_stack(&dynamic),
+            Some(EntityCustomHeadSkull::Player(EntityPlayerSkin::Dynamic(
+                EntityDynamicPlayerSkin {
+                    handle: profile_texture_handle(skin_url),
+                    fallback: EntityDefaultPlayerSkin::SlimAlex,
+                    model: EntityPlayerSkinModel::Wide,
+                    status: EntityDynamicPlayerSkinStatus::Loading,
+                }
+            )))
+        );
+        drain_until_player_skin_download_result(&runtime);
+        assert_eq!(runtime.downloaded_player_skin_count(), 1);
+        assert_eq!(skin_download_calls.load(Ordering::Relaxed), 1);
+        assert_eq!(
+            runtime.custom_head_skull_for_stack(&dynamic),
+            Some(EntityCustomHeadSkull::Player(EntityPlayerSkin::Dynamic(
+                EntityDynamicPlayerSkin {
+                    handle: profile_texture_handle(skin_url),
+                    fallback: EntityDefaultPlayerSkin::SlimAlex,
+                    model: EntityPlayerSkinModel::Wide,
+                    status: EntityDynamicPlayerSkinStatus::Loading,
+                }
+            )))
+        );
+        assert_eq!(skin_download_calls.load(Ordering::Relaxed), 1);
 
         runtime.mark_profile_skin_resolved(skin_url, 12_345);
         assert_eq!(
@@ -3690,6 +3810,42 @@ mod tests {
     fn write_json(path: &Path, contents: &str) {
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, contents).unwrap();
+    }
+
+    struct TestSkinPngFetcher {
+        bytes: Vec<u8>,
+        calls: Arc<AtomicUsize>,
+    }
+
+    impl SkinPngFetcher for TestSkinPngFetcher {
+        fn fetch_skin_png(&mut self, _url: &str) -> Result<Vec<u8>> {
+            self.calls.fetch_add(1, Ordering::Relaxed);
+            Ok(self.bytes.clone())
+        }
+    }
+
+    fn player_skin_png_bytes() -> Vec<u8> {
+        let mut image = image::RgbaImage::new(64, 64);
+        for y in 0..64 {
+            for x in 0..64 {
+                image.put_pixel(x, y, image::Rgba([x as u8, y as u8, 31, 255]));
+            }
+        }
+        let mut cursor = Cursor::new(Vec::new());
+        image::DynamicImage::ImageRgba8(image)
+            .write_to(&mut cursor, image::ImageFormat::Png)
+            .unwrap();
+        cursor.into_inner()
+    }
+
+    fn drain_until_player_skin_download_result(runtime: &NativeItemRuntime) {
+        for _ in 0..100 {
+            if runtime.drain_dynamic_player_skin_download_results() > 0 {
+                return;
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
+        panic!("timed out waiting for player skin download result");
     }
 
     fn write_test_rgba_png(path: &Path, width: u32, height: u32, rgba: &[u8]) {
