@@ -49,6 +49,7 @@ pub(super) use gpu::{
 };
 pub use held_item::{
     dolphin_carried_item_transform, fox_held_item_transform, humanoid_hand_attach_transform,
+    witch_held_item_transform,
 };
 pub use instances::*;
 use keyframe::*;

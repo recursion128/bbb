@@ -862,7 +862,7 @@ When an agent does any of the following, update this file in the same slice:
     `CROSSBOW_HOLD` and `CROSSBOW_CHARGE`, the evoker/vindicator `CELEBRATING`, and the vindicator `ATTACKING`
     axe swing poses are implemented — see the
     illager note above), the `VillagerModel` unhappy
-    head shake and the `WitchModel` `isHoldingItem` nose hold pose (the idle nose bob is
+    head shake (the `WitchModel` idle nose bob and `isHoldingItem` nose hold pose are
     implemented — see below; the `GoatModel` ramming head
     tilt is implemented — see the goat note below; the `HoglinModel` headbutt head ram is implemented — see the hoglin note above), (the `EndermanModel`
     carried-block arm pose and creepy head/hat shift are implemented — see the
@@ -906,8 +906,9 @@ When an agent does any of the following, update this file in the same slice:
     `&'static` head child (and carries the mole as its own child), so the witch's head subtree
     is hand-emitted with the bobbed nose in both the colored and textured paths; because
     `cos` never reaches a zRot of `0`, the nose is always re-posed (there is no static fast
-    path). Only the `isHoldingItem` nose hold pose (`setPos(0, 1, -1.5)`, `xRot = -0.9`) stays
-    deferred, since it needs the witch's held-potion render state.
+    path). The `isHoldingItem` nose hold pose is projected from a non-empty main hand and
+    applied after the idle bob (`setPos(0, 1, -1.5)`, `xRot = -0.9`), preserving the bobbed
+    `zRot` for `WitchItemLayer`'s potion branch.
   - The `LivingEntityRenderer.setupRotations` body shake is implemented end to end.
     World side: a living entity (`vanilla_living_entity_type` gate) whose synced
     `ticksFrozen` (`DATA_TICKS_FROZEN`, id `7`) reaches `getTicksRequiredToFreeze()`
@@ -1863,8 +1864,12 @@ When an agent does any of the following, update this file in the same slice:
       `ageInTicks`-driven idle nose bob (`nose.xRot = sin(ageInTicks * speed) *
       4.5°`, `nose.zRot = cos(ageInTicks * speed) * 2.5°`, `speed = 0.01 *
       (entityId % 10)`), all on both render paths (colored and textured);
-      `WitchItemLayer`, the held-potion state, and the `isHoldingItem` nose hold
-      pose remain unsupported
+      `WitchRenderState.isHoldingItem` projection from a non-empty main hand, the
+      `isHoldingItem` nose hold pose (`setPos(0, 1, -1.5)`, `xRot = -0.9`),
+      `WitchRenderState.isHoldingPotion` resolution for `minecraft:potion`, and
+      `WitchItemLayer` main-hand item rendering with `ItemDisplayContext.GROUND`
+      on both vanilla branches: the nose-attached potion transform and the
+      crossed-arms generic-item transform
     - evoker, illusioner, pillager, and vindicator entities as renderer-owned
       vanilla 26.1 `IllagerModel.createBodyLayer()` geometry, including
       `LayerDefinitions`' shared `MeshTransformer.scaling(0.9375F)`, baked

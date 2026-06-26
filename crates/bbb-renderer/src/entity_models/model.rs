@@ -166,6 +166,27 @@ impl ModelPart {
         Some(self.local_transform() * child.local_transform())
     }
 
+    /// The posed transform that reaches a descendant path from this part's parent frame. This is the
+    /// multi-part counterpart to [`Self::try_child_attach_transform`], used by item layers that walk a
+    /// vanilla `PoseStack` through nested bones such as `root -> head -> nose`.
+    pub(in crate::entity_models) fn try_descendant_attach_transform(
+        &self,
+        names: &[&str],
+    ) -> Option<Mat4> {
+        let mut transform = self.local_transform();
+        let mut part = self;
+        for name in names {
+            let child = part
+                .children
+                .iter()
+                .find(|(child_name, _)| child_name == name)
+                .map(|(_, child)| child)?;
+            transform *= child.local_transform();
+            part = child;
+        }
+        Some(transform)
+    }
+
     /// Copies the posed transform of each named direct child from `source` onto this part's same-named
     /// direct child — vanilla `HumanoidModel.copyPropertiesTo`. Used to drape an armor-layer overlay
     /// tree on the host humanoid model's already-posed limbs (head, body, arms, legs) so the armor

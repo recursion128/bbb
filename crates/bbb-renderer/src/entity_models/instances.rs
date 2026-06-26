@@ -518,6 +518,14 @@ entity_render_state! {
     /// `false` for every other entity and for an upright fox. The `FoxRenderer.setupRotations`
     /// body-pitch flip is a deferred renderer concern.
     (with_fox_is_faceplanted) fox_is_faceplanted: bool = false;
+    /// Vanilla `WitchRenderState.isHoldingItem`: true when the witch's main hand is non-empty. The model
+    /// pins the nose to the drinking pose (`nose.setPos(0, 1, -1.5)`, `xRot = -0.9`) before item layers
+    /// read the nose transform. `false` for every other entity and for an empty-handed witch.
+    (with_witch_holding_item) witch_holding_item: bool = false;
+    /// Vanilla `WitchRenderState.isHoldingPotion`: true only when the main-hand item is
+    /// `Items.POTION`; `WitchItemLayer` then attaches the rendered stack to the nose instead of the
+    /// crossed arms. `false` for non-potion held items and every other entity.
+    (with_witch_holding_potion) witch_holding_potion: bool = false;
     /// Vanilla `VexRenderState.isCharging` (`Vex.isCharging`, the synced `DATA_FLAGS_ID & 1`):
     /// the vex is charging an attack, so `VexModel.setupAnim` levels the body (`xRot = 0`) and
     /// `setArmsCharging` raises both arms. `false` for every other entity and for an idle vex.
@@ -2039,6 +2047,8 @@ mod tests {
                 fox_is_sitting: false,
                 fox_is_pouncing: false,
                 fox_is_faceplanted: false,
+                witch_holding_item: false,
+                witch_holding_potion: false,
                 vex_charging: false,
                 wither_invulnerable_ticks: 0.0,
                 wither_powered: false,

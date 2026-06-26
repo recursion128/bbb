@@ -479,6 +479,17 @@ fn entity_main_hand_holds_bow(
     item_runtime: Option<&NativeItemRuntime>,
     entity_id: i32,
 ) -> bool {
+    entity_main_hand_is_item(world, item_runtime, entity_id, "minecraft:bow")
+}
+
+/// Whether the entity's main-hand item resolves to a specific item resource id. Used for renderer
+/// states whose vanilla extraction calls `getMainHandItem().is(Items.X)`.
+fn entity_main_hand_is_item(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    entity_id: i32,
+    resource_id: &str,
+) -> bool {
     let Some(item_runtime) = item_runtime else {
         return false;
     };
@@ -488,7 +499,7 @@ fn entity_main_hand_holds_bow(
     let Some(item_id) = stack.item_id else {
         return false;
     };
-    item_runtime.item_resource_id(item_id) == Some("minecraft:bow")
+    item_runtime.item_resource_id(item_id) == Some(resource_id)
 }
 
 /// Whether the item in the given hand is a trident (vanilla `Items.TRIDENT`). Drives the drowned's
@@ -1037,6 +1048,13 @@ fn entity_model_instance(
         }
     ) && source.is_aggressive
         && entity_hand_holds_trident(world, item_runtime, source.entity_id, false);
+    // Vanilla `WitchRenderer.extractRenderState`: `isHoldingItem` is any non-empty main hand and
+    // `isHoldingPotion` is exactly `Items.POTION`. The former drives the witch model's nose hold pose; the
+    // latter selects `WitchItemLayer`'s nose-attached potion branch.
+    let witch_holding_item = matches!(kind, EntityModelKind::Witch)
+        && entity_main_hand_non_empty(world, source.entity_id);
+    let witch_holding_potion = witch_holding_item
+        && entity_main_hand_is_item(world, item_runtime, source.entity_id, "minecraft:potion");
     // Vanilla `Piglin.getArmPose` `ADMIRING_ITEM` (`PiglinAi.isLovedItem(getOffhandItem())`): a regular
     // piglin holding a piglin-loved item in its OFFHAND admires it (head tilts down, the off arm lifts the
     // item). Second-highest priority (below DANCING, above ATTACKING / CROSSBOW), so it suppresses those.
@@ -1219,6 +1237,8 @@ fn entity_model_instance(
         .with_fox_is_sitting(source.fox_is_sitting)
         .with_fox_is_pouncing(source.fox_is_pouncing)
         .with_fox_is_faceplanted(source.fox_is_faceplanted)
+        .with_witch_holding_item(witch_holding_item)
+        .with_witch_holding_potion(witch_holding_potion)
         .with_bee_angry(bee_is_angry(
             source.entity_type_id,
             &source.data_values,
@@ -4727,6 +4747,38 @@ mod tests {
             .render_state
             .drowned_throw_trident;
         assert!(!throwing);
+    }
+
+    #[test]
+    fn entity_model_instances_project_witch_holding_item_without_runtime() {
+        // `WitchRenderState.isHoldingItem` only needs a non-empty main hand, so it projects without the
+        // item runtime. `isHoldingPotion` needs registry resolution (`Items.POTION`), so it stays false
+        // without the runtime.
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            244,
+            VANILLA_ENTITY_TYPE_WITCH_ID,
+            [3.0, 64.0, -4.0],
+        ));
+        assert!(world.apply_set_equipment(SetEquipment {
+            entity_id: 244,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::MainHand,
+                item: ItemStackSummary {
+                    item_id: Some(5),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            }],
+        }));
+
+        let state = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
+            .into_iter()
+            .find(|instance| instance.entity_id == 244)
+            .unwrap()
+            .render_state;
+        assert!(state.witch_holding_item);
+        assert!(!state.witch_holding_potion);
     }
 
     #[test]

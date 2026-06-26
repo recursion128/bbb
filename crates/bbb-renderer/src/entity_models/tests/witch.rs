@@ -262,6 +262,20 @@ fn witch_nose_bob_pose_matches_vanilla_formula() {
 }
 
 #[test]
+fn witch_holding_item_pins_the_nose_to_the_drinking_pose() {
+    // Vanilla `WitchModel.setupAnim` applies the idle nose bob first, then `isHoldingItem` moves the nose
+    // to `(0, 1, -1.5)` and forces `xRot = -0.9`. The visible mesh must differ from the idle bob.
+    let base = EntityModelInstance::witch(312, [0.0, 64.0, 0.0], 0.0).with_age_in_ticks(40.0);
+    let idle = entity_model_mesh(&[base]);
+    let holding = entity_model_mesh(&[base.with_witch_holding_item(true)]);
+    assert_eq!(idle.vertices.len(), holding.vertices.len());
+    assert_ne!(
+        idle.vertices, holding.vertices,
+        "holding a main-hand item re-poses the nose"
+    );
+}
+
+#[test]
 fn witch_colored_mesh_bobs_its_nose_as_age_advances() {
     // Vanilla runs `WitchModel.setupAnim` every frame, bobbing the nose from `ageInTicks`
     // (`speed = 0.01 * (entityId % 10)`). Advancing `ageInTicks` re-poses only the nose

@@ -792,8 +792,8 @@ pub(in crate::entity_models) fn piglin_ear_flap_pose(
 /// layer's zeroed rest) and preserving the offset and `yRot`. Because `cos(0) = 1`, the
 /// nose carries a constant `+2.5°` zRot baseline even at `ageInTicks = 0`, and `ageInTicks`
 /// advances every frame, so the nose never sits at the layer rest. The `isHoldingItem`
-/// drinking pose (which repositions the nose and sets `xRot = -0.9`) needs the held-item
-/// render state and is deferred.
+/// drinking pose runs after this helper in `WitchModel.setupAnim`, preserving this bob's
+/// `zRot` while replacing the offset and `xRot`.
 pub(in crate::entity_models) fn witch_nose_bob_pose(
     base: PartPose,
     age_in_ticks: f32,

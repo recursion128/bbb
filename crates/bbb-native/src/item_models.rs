@@ -17,8 +17,8 @@ use bbb_renderer::{
     bake_generated_item_quads, bake_item_model_mesh, dolphin_carried_item_transform,
     enderman_carried_block_transform, fox_held_item_transform, humanoid_hand_attach_transform,
     iron_golem_flower_block_transform, mooshroom_mushroom_block_transforms,
-    snow_golem_head_block_transform, EntityModelInstance, ItemModelMesh, ItemModelQuad,
-    MooshroomVariant,
+    snow_golem_head_block_transform, witch_held_item_transform, EntityModelInstance, ItemModelMesh,
+    ItemModelQuad, MooshroomVariant,
 };
 use bbb_world::WorldStore;
 use glam::{Mat4, Vec3};
@@ -354,6 +354,14 @@ pub(crate) fn held_item_models(
             &mut block_meshes,
             &mut flat_meshes,
         );
+        bake_witch_held_item(
+            instance,
+            world,
+            item_runtime,
+            terrain_textures,
+            &mut block_meshes,
+            &mut flat_meshes,
+        );
     }
 
     HeldItemModels {
@@ -453,6 +461,38 @@ fn bake_dolphin_carried_item(
         return;
     };
     let Some(transform) = dolphin_carried_item_transform(instance) else {
+        return;
+    };
+    bake_item_stack_at_transform(
+        &stack,
+        transform,
+        BlockModelDisplayContext::Ground,
+        false,
+        BLOCK_GROUND_FALLBACK,
+        GENERATED_GROUND_FALLBACK,
+        item_runtime,
+        terrain_textures,
+        block_meshes,
+        flat_meshes,
+    );
+}
+
+/// Bakes a witch's main-hand stack through `WitchItemLayer`: potions attach to the posed nose, while all
+/// other held items sit in the crossed arms. Vanilla resolves the stack through `HoldingEntityRenderState`
+/// with `ItemDisplayContext.GROUND`.
+#[allow(clippy::too_many_arguments)]
+fn bake_witch_held_item(
+    instance: &EntityModelInstance,
+    world: &WorldStore,
+    item_runtime: &NativeItemRuntime,
+    terrain_textures: &TerrainTextureState,
+    block_meshes: &mut Vec<ItemModelMesh>,
+    flat_meshes: &mut Vec<ItemModelMesh>,
+) {
+    let Some(stack) = world.held_item(instance.entity_id, false) else {
+        return;
+    };
+    let Some(transform) = witch_held_item_transform(instance) else {
         return;
     };
     bake_item_stack_at_transform(

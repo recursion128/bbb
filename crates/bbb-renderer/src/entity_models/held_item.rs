@@ -12,8 +12,8 @@ use super::colored::{
 };
 use super::model::EntityModel;
 use super::model_layers::{
-    ArmorStandModel, FoxModel, IllagerModel, PiglinModel, PlayerModel, SkeletonModel, ZombieModel,
-    ZombieVariantModel,
+    ArmorStandModel, FoxModel, IllagerModel, PiglinModel, PlayerModel, SkeletonModel, WitchModel,
+    ZombieModel, ZombieVariantModel,
 };
 use super::{EntityModelInstance, EntityModelKind, SkeletonModelFamily};
 
@@ -108,6 +108,41 @@ pub fn dolphin_carried_item_transform(instance: &EntityModelInstance) -> Option<
         )
     };
     Some(entity_model_root_transform(*instance) * Mat4::from_translation(offset))
+}
+
+/// The model→world transform used by vanilla `WitchItemLayer` before the held stack's `GROUND` display
+/// transform. Non-potion items use `CrossedArmsItemLayer` (`root -> arms`, then the crossed-arms
+/// rotation/scale/offset). Potions use the special drinking branch: `root -> head -> nose`, then the
+/// nose-local potion rotations. The model is prepared first so `isHoldingItem` pins the nose before the
+/// potion branch reads it.
+pub fn witch_held_item_transform(instance: &EntityModelInstance) -> Option<Mat4> {
+    let EntityModelKind::Witch = instance.kind else {
+        return None;
+    };
+    if !instance.render_state.witch_holding_item {
+        return None;
+    }
+
+    let mut model = WitchModel::new();
+    model.prepare(instance);
+    let root = villager_adult_model_root_transform(*instance);
+    let local = if instance.render_state.witch_holding_potion {
+        model
+            .root()
+            .try_descendant_attach_transform(&["head", "nose"])?
+            * Mat4::from_translation(Vec3::new(0.0625, 0.25, 0.0))
+            * Mat4::from_rotation_z(PI)
+            * Mat4::from_rotation_x(140.0_f32.to_radians())
+            * Mat4::from_rotation_z(10.0_f32.to_radians())
+            * Mat4::from_rotation_x(PI)
+    } else {
+        model.root().try_descendant_attach_transform(&["arms"])?
+            * Mat4::from_rotation_x(0.75)
+            * Mat4::from_scale(Vec3::splat(1.07))
+            * Mat4::from_translation(Vec3::new(0.0, 0.13, -0.34))
+            * Mat4::from_rotation_x(PI)
+    };
+    Some(root * local)
 }
 
 /// The world transform of a named arm bone plus whether the instance is a baby (so the caller picks the
@@ -312,6 +347,26 @@ mod tests {
             0.0
         ))
         .is_none());
+    }
+
+    #[test]
+    fn witch_held_item_uses_crossed_arms_or_potion_nose_branch() {
+        // Vanilla `WitchItemLayer` uses the crossed-arms item layer for generic held items, but potions
+        // attach to the already-posed nose after `WitchModel.setupAnim` pins it to the drinking pose.
+        let base = EntityModelInstance::witch(41, [0.0, 64.0, 0.0], 0.0);
+        assert!(witch_held_item_transform(&base).is_none());
+
+        let generic = base.with_witch_holding_item(true);
+        let generic_transform = witch_held_item_transform(&generic).unwrap();
+        let potion_transform =
+            witch_held_item_transform(&generic.with_witch_holding_potion(true)).unwrap();
+        assert!(generic_transform.transform_point3(Vec3::ZERO).is_finite());
+        assert!(potion_transform.transform_point3(Vec3::ZERO).is_finite());
+        assert_ne!(
+            generic_transform.transform_point3(Vec3::ZERO),
+            potion_transform.transform_point3(Vec3::ZERO),
+            "potion branch attaches to the nose, not the crossed arms"
+        );
     }
 
     #[test]
