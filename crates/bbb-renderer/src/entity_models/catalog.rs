@@ -266,9 +266,8 @@ pub enum EntityModelKind {
     /// temperate cow, `MOOSHROOM_BABY` to `BabyCowModel.createBodyLayer()`). Rendered on the colored path
     /// as the temperate [`Cow`](EntityModelKind::Cow) geometry (`baby` selecting the baby layout), so it
     /// is the real cow body rather than the generic quadruped stand-in. `variant` drives the vanilla
-    /// `MushroomCowRenderer` red/brown body-texture swap (`mooshroom_<variant>[_baby].png`). The
-    /// defining mushroom block-model layer (`MushroomCowMushroomLayer`, rendered via the block
-    /// renderer) stays on the deferred block-model path.
+    /// `MushroomCowRenderer` red/brown body-texture swap (`mooshroom_<variant>[_baby].png`) and the
+    /// adult-only `MushroomCowMushroomLayer` block-model variant.
     Mooshroom {
         baby: bool,
         variant: MooshroomVariant,

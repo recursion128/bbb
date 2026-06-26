@@ -3767,7 +3767,7 @@ pub fn feline_entity_texture_refs() -> &'static [EntityModelTextureRef] {
 // UV layout and only swaps in the mooshroom recolor. Vanilla `MushroomCowRenderer` keys the texture on
 // the red/brown variant (`MushroomCowRenderer.getTextureLocation`), keyed on the synced
 // `MushroomCow.DATA_TYPE`; `RED` is the vanilla default. The `MushroomCowMushroomLayer`
-// block-mushrooms stay deferred (they need the block-model renderer).
+// block-mushrooms are baked by the entity-attached block-model path.
 pub(in crate::entity_models) const MOOSHROOM_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/cow/mooshroom_red.png",

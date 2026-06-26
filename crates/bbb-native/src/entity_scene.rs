@@ -2254,8 +2254,8 @@ fn cow_model_kind(
 /// `CowModel` / `BabyCowModel` body (`ModelLayers.MOOSHROOM` bakes to the temperate `cowBodyLayer`,
 /// `MOOSHROOM_BABY` to `BabyCowModel.createBodyLayer()`), so it maps to the dedicated
 /// [`EntityModelKind::Mooshroom`] (`baby` selecting the layout) — the real cow body instead of the
-/// generic quadruped stand-in. The mushroom block-model layer stays deferred; the red/brown body
-/// texture is projected from the synced `MushroomCow.DATA_TYPE` (index 20).
+/// generic quadruped stand-in. The red/brown body texture and adult-only mushroom block-model layer are
+/// projected from the synced `MushroomCow.DATA_TYPE` (index 20).
 fn mooshroom_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
     EntityModelKind::Mooshroom {
         baby: ageable_baby(values),

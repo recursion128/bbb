@@ -3087,8 +3087,12 @@ When an agent does any of the following, update this file in the same slice:
       `MushroomCowRenderer.getTextureLocation` red/brown texture swap is now implemented:
       `EntityModelKind::Mooshroom` carries a `variant` projected from the synced `MushroomCow.DATA_TYPE`
       (index 20 INT, `ByIdMap` CLAMP, `Red` default) which binds `mooshroom_{red,brown}[_baby].png` on
-      the textured path (the two brown faces join the master atlas array → 361); the mushroom
-      block-model layer (`MushroomCowMushroomLayer`, drawn through the block renderer) stays deferred.
+      the textured path (the two brown faces join the master atlas array → 361). The adult-only
+      mushroom block-model layer (`MushroomCowMushroomLayer`) is now implemented through the
+      entity-attached block-model path: red mooshrooms resolve `Blocks.RED_MUSHROOM.defaultBlockState()`,
+      brown mooshrooms resolve `Blocks.BROWN_MUSHROOM.defaultBlockState()`, the two back mushrooms use
+      vanilla's hardcoded entity-frame transforms, and the head mushroom follows the posed cow head bone.
+      The invisible-glowing outline-only variant remains under the broader deferred entity-outline path.
       The colored debug path stays as a fallback (it shows the cow-brown body tint)
     - panda entities (adult and baby) as renderer-owned vanilla 26.1 `PandaModel.createBodyLayer()` /
       `BabyPandaModel.createBodyLayer()` geometry on the colored path: the native entity scene

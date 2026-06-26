@@ -42,7 +42,7 @@ pub use crate::entity_models::{
 };
 pub use crate::entity_models::{
     humanoid_hand_attach_transform, iron_golem_flower_block_transform,
-    snow_golem_head_block_transform,
+    mooshroom_mushroom_block_transforms, snow_golem_head_block_transform,
 };
 pub use crate::generated_item::{bake_generated_item_quads, ItemSpriteRect, SpriteAlphaMask};
 pub use crate::hud::{

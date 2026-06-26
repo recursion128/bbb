@@ -11,8 +11,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
 use bbb_renderer::{
     bake_generated_item_quads, bake_item_model_mesh, humanoid_hand_attach_transform,
-    iron_golem_flower_block_transform, snow_golem_head_block_transform, EntityModelInstance,
-    ItemModelMesh, ItemModelQuad,
+    iron_golem_flower_block_transform, mooshroom_mushroom_block_transforms,
+    snow_golem_head_block_transform, EntityModelInstance, ItemModelMesh, ItemModelQuad,
+    MooshroomVariant,
 };
 use bbb_world::WorldStore;
 use glam::{Mat4, Vec3};
@@ -42,6 +43,8 @@ const GENERATED_GROUND_FALLBACK: BlockModelDisplayTransform = BlockModelDisplayT
 const FLAT_ITEM_DEPTH_THRESHOLD: f32 = 0.0625;
 const CARVED_PUMPKIN_BLOCK_ID: &str = "minecraft:carved_pumpkin";
 const POPPY_BLOCK_ID: &str = "minecraft:poppy";
+const RED_MUSHROOM_BLOCK_ID: &str = "minecraft:red_mushroom";
+const BROWN_MUSHROOM_BLOCK_ID: &str = "minecraft:brown_mushroom";
 
 /// The baked item-model meshes for this frame, split by which atlas they sample (block-items → blocks
 /// atlas, flat items → item atlas), plus the set of dropped-item entity ids they cover (so the billboard
@@ -101,6 +104,15 @@ fn entity_block_attachments(instances: &[EntityModelInstance]) -> Vec<EntityBloc
                 transform,
             });
         }
+        if let Some((variant, transforms)) = mooshroom_mushroom_block_transforms(instance) {
+            for transform in transforms {
+                attachments.push(EntityBlockAttachment {
+                    block_id: mooshroom_mushroom_block_id(variant),
+                    properties: mooshroom_mushroom_default_properties(),
+                    transform,
+                });
+            }
+        }
     }
     attachments
 }
@@ -114,6 +126,19 @@ fn carved_pumpkin_default_properties() -> BTreeMap<String, String> {
 /// Vanilla `Blocks.POPPY.defaultBlockState()` has no properties; the iron-golem flower layer uses that
 /// exact blockstate while `offerFlowerTick > 0`.
 fn poppy_default_properties() -> BTreeMap<String, String> {
+    BTreeMap::new()
+}
+
+fn mooshroom_mushroom_block_id(variant: MooshroomVariant) -> &'static str {
+    match variant {
+        MooshroomVariant::Red => RED_MUSHROOM_BLOCK_ID,
+        MooshroomVariant::Brown => BROWN_MUSHROOM_BLOCK_ID,
+    }
+}
+
+/// Vanilla `MushroomCow.Variant` stores `Blocks.RED_MUSHROOM.defaultBlockState()` or
+/// `Blocks.BROWN_MUSHROOM.defaultBlockState()`, both property-less states.
+fn mooshroom_mushroom_default_properties() -> BTreeMap<String, String> {
     BTreeMap::new()
 }
 
@@ -564,16 +589,37 @@ mod tests {
     }
 
     #[test]
-    fn entity_block_attachments_collect_snow_golem_and_iron_golem_layers() {
+    fn mooshroom_mushroom_layers_use_vanilla_default_block_states() {
+        assert_eq!(
+            mooshroom_mushroom_block_id(MooshroomVariant::Red),
+            RED_MUSHROOM_BLOCK_ID
+        );
+        assert_eq!(
+            mooshroom_mushroom_block_id(MooshroomVariant::Brown),
+            BROWN_MUSHROOM_BLOCK_ID
+        );
+        assert_eq!(mooshroom_mushroom_default_properties(), BTreeMap::new());
+    }
+
+    #[test]
+    fn entity_block_attachments_collect_snow_golem_iron_golem_and_mooshroom_layers() {
         let snow_golem = EntityModelInstance::snow_golem(121, [0.0, 64.0, 0.0], 0.0)
             .with_snow_golem_pumpkin(true);
         let iron_golem = EntityModelInstance::iron_golem(74, [1.0, 64.0, 0.0], 0.0)
             .with_iron_golem_offer_flower_tick(400);
         let idle_iron_golem = EntityModelInstance::iron_golem(75, [2.0, 64.0, 0.0], 0.0);
+        let mooshroom = EntityModelInstance::mooshroom(86, [3.0, 64.0, 0.0], 0.0, false);
+        let baby_mooshroom = EntityModelInstance::mooshroom(87, [4.0, 64.0, 0.0], 0.0, true);
 
-        let attachments = entity_block_attachments(&[snow_golem, iron_golem, idle_iron_golem]);
+        let attachments = entity_block_attachments(&[
+            snow_golem,
+            iron_golem,
+            idle_iron_golem,
+            mooshroom,
+            baby_mooshroom,
+        ]);
 
-        assert_eq!(attachments.len(), 2);
+        assert_eq!(attachments.len(), 5);
         assert_eq!(attachments[0].block_id, CARVED_PUMPKIN_BLOCK_ID);
         assert_eq!(
             attachments[0].properties,
@@ -581,6 +627,13 @@ mod tests {
         );
         assert_eq!(attachments[1].block_id, POPPY_BLOCK_ID);
         assert_eq!(attachments[1].properties, poppy_default_properties());
+        for attachment in &attachments[2..] {
+            assert_eq!(attachment.block_id, RED_MUSHROOM_BLOCK_ID);
+            assert_eq!(
+                attachment.properties,
+                mooshroom_mushroom_default_properties()
+            );
+        }
     }
 
     #[test]

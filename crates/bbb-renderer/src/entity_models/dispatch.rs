@@ -639,8 +639,8 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             entity_model_root_transform(*instance),
             instance,
             // Vanilla `MushroomCowRenderer` renders the cow mesh with the mooshroom recolor; reuse the
-            // cow geometry and bind the red/brown mooshroom texture (the block-mushroom layer stays
-            // deferred).
+            // cow geometry and bind the red/brown mooshroom texture. The adult-only block-mushroom
+            // layer is baked separately by the entity-attached block-model path.
             &mooshroom_textured_layer_passes(baby, variant),
         ),
         EntityModelKind::Panda { baby, variant } => sink.model(
