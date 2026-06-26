@@ -1239,8 +1239,10 @@ When an agent does any of the following, update this file in the same slice:
         player-skin runtime cache that reuses decoded skins from memory, loads
         cached PNG bytes from disk before fetching, writes fetched bytes to disk,
         and feeds every hit/miss through the vanilla-compatible PNG post-process.
-        Remote profile resolution, actual HTTP fetcher wiring, async upload
-        completion, and arbitrary dynamic player-skin texture loading remain
+        A blocking reqwest/rustls HTTP fetcher is available behind that boundary
+        and is covered with loopback HTTP tests. Remote profile resolution,
+        runtime async scheduling/upload completion, and arbitrary dynamic
+        player-skin texture loading remain
         deferred.
       - fox held item DONE: `FoxHeldItemLayer` is reproduced through the same
         item-model pass. Renderer exposes `fox_held_item_transform`, which builds

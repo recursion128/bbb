@@ -2,6 +2,7 @@ use std::{
     collections::HashMap,
     fs,
     path::{Path, PathBuf},
+    time::Duration,
 };
 
 use anyhow::{Context, Result};
@@ -9,6 +10,39 @@ use bbb_renderer::{decode_dynamic_player_skin_png, DynamicPlayerSkinImage};
 
 pub(crate) trait SkinPngFetcher {
     fn fetch_skin_png(&mut self, url: &str) -> Result<Vec<u8>>;
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct HttpSkinPngFetcher {
+    client: reqwest::blocking::Client,
+}
+
+impl HttpSkinPngFetcher {
+    pub(crate) fn new() -> Result<Self> {
+        Ok(Self {
+            client: reqwest::blocking::Client::builder()
+                .timeout(Duration::from_secs(15))
+                .user_agent("bbb-native")
+                .build()
+                .context("create player skin HTTP client")?,
+        })
+    }
+}
+
+impl SkinPngFetcher for HttpSkinPngFetcher {
+    fn fetch_skin_png(&mut self, url: &str) -> Result<Vec<u8>> {
+        let response = self
+            .client
+            .get(url)
+            .send()
+            .with_context(|| format!("request HTTP player skin {url}"))?
+            .error_for_status()
+            .with_context(|| format!("fetch HTTP player skin {url}"))?;
+        Ok(response
+            .bytes()
+            .with_context(|| format!("read HTTP player skin {url}"))?
+            .to_vec())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -97,8 +131,10 @@ fn write_player_skin_cache(path: &Path, bytes: &[u8]) -> Result<()> {
 mod tests {
     use super::*;
     use std::{
-        io::Cursor,
+        io::{Cursor, Read, Write},
+        net::TcpListener,
         sync::atomic::{AtomicU64, Ordering},
+        thread,
     };
 
     static NEXT_TEMP_DIR_ID: AtomicU64 = AtomicU64::new(0);
@@ -183,6 +219,25 @@ mod tests {
         fs::remove_dir_all(root).unwrap();
     }
 
+    #[test]
+    fn http_skin_fetcher_reads_successful_response_bytes() {
+        let body = b"player skin bytes".to_vec();
+        let url = spawn_http_response(200, "OK", body.clone());
+        let mut fetcher = HttpSkinPngFetcher::new().unwrap();
+
+        assert_eq!(fetcher.fetch_skin_png(&url).unwrap(), body);
+    }
+
+    #[test]
+    fn http_skin_fetcher_rejects_non_success_status() {
+        let url = spawn_http_response(404, "Not Found", b"missing".to_vec());
+        let mut fetcher = HttpSkinPngFetcher::new().unwrap();
+
+        let err = fetcher.fetch_skin_png(&url).unwrap_err();
+
+        assert!(err.to_string().contains("fetch HTTP player skin"));
+    }
+
     struct StaticSkinFetcher {
         bytes: Vec<u8>,
         calls: usize,
@@ -213,6 +268,25 @@ mod tests {
             .write_to(&mut cursor, image::ImageFormat::Png)
             .unwrap();
         cursor.into_inner()
+    }
+
+    fn spawn_http_response(status: u16, reason: &str, body: Vec<u8>) -> String {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let addr = listener.local_addr().unwrap();
+        let reason = reason.to_string();
+        thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut request = [0u8; 1024];
+            let _ = stream.read(&mut request);
+            write!(
+                stream,
+                "HTTP/1.1 {status} {reason}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len()
+            )
+            .unwrap();
+            stream.write_all(&body).unwrap();
+        });
+        format!("http://{addr}/skin.png")
     }
 
     fn unique_temp_dir(prefix: &str) -> PathBuf {

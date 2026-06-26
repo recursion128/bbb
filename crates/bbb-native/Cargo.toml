@@ -23,6 +23,7 @@ bbb-world = { path = "../bbb-world" }
 clap = { workspace = true }
 glam = { workspace = true }
 pollster = { workspace = true }
+reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }
