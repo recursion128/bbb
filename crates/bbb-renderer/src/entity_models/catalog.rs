@@ -398,7 +398,8 @@ pub enum EntityModelKind {
     Enderman,
     /// Iron golem (`IronGolemModel`, `IronGolemRenderer`). `crackiness` drives the vanilla
     /// `IronGolemCrackinessLayer` damage-crack overlay (`iron_golem_crackiness_{low,medium,high}.png`),
-    /// selected by `IronGolem.getCrackiness()`. The poppy-holding / attack poses stay deferred.
+    /// selected by `IronGolem.getCrackiness()`. Attack and offer-flower arm poses are render-state
+    /// driven, with the held poppy rendered by the entity-attached block-model path.
     IronGolem {
         crackiness: IronGolemCrackiness,
     },

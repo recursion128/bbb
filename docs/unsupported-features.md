@@ -698,7 +698,11 @@ When an agent does any of the following, update this file in the same slice:
     triangleWave(tick, 10)` (the two-fisted smash); events `11`/`34` set/clear `offerFlowerTick`
     (`400`-tick countdown) → right arm `xRot = -0.8 + 0.025 * triangleWave(tick, 70)`, left arm
     `xRot = 0` (holding a poppy out); attack takes priority, and the legs keep the walk swing
-    under both. Only the held poppy block render is deferred. The ravager (`emit_ravager_model` colored and
+    under both. The held poppy block render is implemented through the entity-attached block-model
+    path: native resolves `Blocks.POPPY.defaultBlockState()` and the renderer-owned attachment
+    transform mirrors `IronGolemFlowerLayer`'s right-arm bone plus
+    `translate(-1.1875,1.0625,-0.9375)`, center translate, `scale(0.5)`, `rotateX(-90°)`,
+    `translate(-0.5,-0.5,-0.5)`. The ravager (`emit_ravager_model` colored and
     `emit_ravager_textured_model` textured) uses a dedicated `ravager_leg_swing_pose`:
     `RavagerModel` is a custom `EntityModel` whose `setupAnim` swings the four legs with
     the `QuadrupedModel` diagonal phase (`cos(pos * 0.6662 [+ π])`, in phase when
@@ -1801,8 +1805,10 @@ When an agent does any of the following, update this file in the same slice:
       (`<0.25` high, `<0.5` medium, `<0.75` low, else none), appending a white
       Cutout overlay pass binding `iron_golem_crackiness_{low,medium,high}.png`
       (the three faces join the master atlas array → 364) over the same model
-      layer. The held flower block layer and the renderer body-wobble rotation
-      remain unsupported
+      layer. The held flower block layer is now implemented through the entity-attached
+      block-model path while `offerFlowerTick > 0`, using `Blocks.POPPY.defaultBlockState()`
+      and the vanilla `IronGolemFlowerLayer` right-arm transform. The renderer body-wobble
+      rotation remains unsupported
     - snow golem entities as renderer-owned vanilla 26.1
       `SnowGolemModel.createBodyLayer()` geometry, including its 64x64 body
       layer, baked `CubeDeformation(-0.5F)` snow body/arm/head cubes, and the
@@ -3186,7 +3192,7 @@ When an agent does any of the following, update this file in the same slice:
     spider walk-animation presentation (the 180-degree death flip is implemented),
     enderman held-block block-model render and creepy render jitter (the
     carried-block arm pose and creepy head/hat shift are implemented),
-    iron golem flower block/body-wobble presentation, armor stand equipment/custom
+    iron golem body-wobble presentation, armor stand equipment/custom
     layers/wiggle/marker presentation, slime/magma-cube squish/full
     render-state lighting/sorting presentation, and precise vanilla mesh parity
     for primitive/placeholder entity families.

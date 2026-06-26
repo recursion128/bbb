@@ -11,7 +11,7 @@ mod model;
 mod model_layers;
 mod textured;
 
-pub use block_attachment::snow_golem_head_block_transform;
+pub use block_attachment::{iron_golem_flower_block_transform, snow_golem_head_block_transform};
 pub use catalog::*;
 #[cfg(test)]
 use colored::{

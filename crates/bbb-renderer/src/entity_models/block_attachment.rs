@@ -8,8 +8,35 @@ use glam::{Mat4, Vec3};
 
 use super::colored::entity_model_root_transform;
 use super::model::EntityModel;
-use super::model_layers::SnowGolemModel;
+use super::model_layers::{IronGolemModel, SnowGolemModel};
 use super::{EntityModelInstance, EntityModelKind};
+
+/// World transform for vanilla `IronGolemFlowerLayer`'s held poppy block model.
+///
+/// The returned matrix expects block quads normalized to the `0..1` unit cube, matching
+/// [`crate::ItemModelMesh::append_quads`]. It includes the posed right-arm bone and the vanilla layer
+/// transform after `getFlowerHoldingArm().translateAndRotate`: translate `(-1.1875, 1.0625,
+/// -0.9375)`, translate to the block center, scale by `0.5`, rotate X by `-90°`, then translate the
+/// block origin by `(-0.5, -0.5, -0.5)`.
+pub fn iron_golem_flower_block_transform(instance: &EntityModelInstance) -> Option<Mat4> {
+    if !matches!(instance.kind, EntityModelKind::IronGolem { .. })
+        || instance.render_state.iron_golem_offer_flower_tick <= 0
+        || instance.render_state.invisible
+    {
+        return None;
+    }
+    let mut model = IronGolemModel::new();
+    model.prepare(instance);
+    Some(
+        entity_model_root_transform(*instance)
+            * model.root().try_child_attach_transform("right_arm")?
+            * Mat4::from_translation(Vec3::new(-1.1875, 1.0625, -0.9375))
+            * Mat4::from_translation(Vec3::splat(0.5))
+            * Mat4::from_scale(Vec3::splat(0.5))
+            * Mat4::from_rotation_x(-PI / 2.0)
+            * Mat4::from_translation(Vec3::splat(-0.5)),
+    )
+}
 
 /// World transform for vanilla `SnowGolemHeadLayer`'s carved-pumpkin block model.
 ///
@@ -41,8 +68,50 @@ mod tests {
     use super::*;
     use glam::Vec3;
 
+    fn iron_golem() -> EntityModelInstance {
+        EntityModelInstance::iron_golem(74, [0.0, 64.0, 0.0], 0.0)
+            .with_iron_golem_offer_flower_tick(400)
+    }
+
     fn snow_golem() -> EntityModelInstance {
         EntityModelInstance::snow_golem(121, [0.0, 64.0, 0.0], 0.0).with_snow_golem_pumpkin(true)
+    }
+
+    #[test]
+    fn iron_golem_flower_block_is_gated_on_kind_visibility_and_offer_state() {
+        assert!(iron_golem_flower_block_transform(&iron_golem()).is_some());
+
+        let idle = iron_golem().with_iron_golem_offer_flower_tick(0);
+        assert!(iron_golem_flower_block_transform(&idle).is_none());
+
+        let invisible = iron_golem().with_invisible(true);
+        assert!(iron_golem_flower_block_transform(&invisible).is_none());
+
+        let creeper =
+            EntityModelInstance::new(100, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0)
+                .with_iron_golem_offer_flower_tick(400);
+        assert!(iron_golem_flower_block_transform(&creeper).is_none());
+    }
+
+    #[test]
+    fn iron_golem_flower_block_follows_flower_arm_pose() {
+        let base = iron_golem_flower_block_transform(&iron_golem()).unwrap();
+        let later =
+            iron_golem_flower_block_transform(&iron_golem().with_iron_golem_offer_flower_tick(350))
+                .unwrap();
+        let attacking = iron_golem_flower_block_transform(
+            &iron_golem().with_iron_golem_attack_ticks_remaining(5.0),
+        )
+        .unwrap();
+        let base_center = base.transform_point3(Vec3::splat(0.5));
+        let later_center = later.transform_point3(Vec3::splat(0.5));
+        let attacking_center = attacking.transform_point3(Vec3::splat(0.5));
+
+        assert!(base_center.is_finite());
+        assert!(later_center.is_finite());
+        assert!(attacking_center.is_finite());
+        assert_ne!(base_center, later_center);
+        assert_ne!(base_center, attacking_center);
     }
 
     #[test]

@@ -11,7 +11,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
 use bbb_renderer::{
     bake_generated_item_quads, bake_item_model_mesh, humanoid_hand_attach_transform,
-    snow_golem_head_block_transform, EntityModelInstance, ItemModelMesh, ItemModelQuad,
+    iron_golem_flower_block_transform, snow_golem_head_block_transform, EntityModelInstance,
+    ItemModelMesh, ItemModelQuad,
 };
 use bbb_world::WorldStore;
 use glam::{Mat4, Vec3};
@@ -40,6 +41,7 @@ const GENERATED_GROUND_FALLBACK: BlockModelDisplayTransform = BlockModelDisplayT
 /// is stacked back-to-front; a thicker one is scattered in 3D.
 const FLAT_ITEM_DEPTH_THRESHOLD: f32 = 0.0625;
 const CARVED_PUMPKIN_BLOCK_ID: &str = "minecraft:carved_pumpkin";
+const POPPY_BLOCK_ID: &str = "minecraft:poppy";
 
 /// The baked item-model meshes for this frame, split by which atlas they sample (block-items → blocks
 /// atlas, flat items → item atlas), plus the set of dropped-item entity ids they cover (so the billboard
@@ -50,6 +52,12 @@ pub(crate) struct DroppedItemModels {
     pub handled_entity_ids: BTreeSet<i32>,
 }
 
+struct EntityBlockAttachment {
+    block_id: &'static str,
+    properties: BTreeMap<String, String>,
+    transform: Mat4,
+}
+
 /// Bakes entity-attached block-model layers that sample the blocks atlas. This is the block-model
 /// counterpart to held items: the renderer supplies the posed entity-bone transform, and native resolves
 /// the block model through the terrain atlas state.
@@ -57,34 +65,56 @@ pub(crate) fn entity_block_models(
     instances: &[EntityModelInstance],
     terrain_textures: &TerrainTextureState,
 ) -> Vec<ItemModelMesh> {
-    let transforms: Vec<Mat4> = instances
-        .iter()
-        .filter_map(snow_golem_head_block_transform)
-        .collect();
-    if transforms.is_empty() {
+    let attachments = entity_block_attachments(instances);
+    if attachments.is_empty() {
         return Vec::new();
     }
 
-    let pumpkin_properties = carved_pumpkin_default_properties();
-    let Some(carved_pumpkin_quads) =
-        terrain_textures.block_item_quads(CARVED_PUMPKIN_BLOCK_ID, &pumpkin_properties)
-    else {
-        return Vec::new();
-    };
-    if carved_pumpkin_quads.is_empty() {
-        return Vec::new();
+    let mut meshes = Vec::new();
+    for attachment in attachments {
+        let Some(quads) =
+            terrain_textures.block_item_quads(attachment.block_id, &attachment.properties)
+        else {
+            continue;
+        };
+        if !quads.is_empty() {
+            meshes.push(bake_item_model_mesh(&quads, attachment.transform));
+        }
     }
+    meshes
+}
 
-    transforms
-        .into_iter()
-        .map(|transform| bake_item_model_mesh(&carved_pumpkin_quads, transform))
-        .collect()
+fn entity_block_attachments(instances: &[EntityModelInstance]) -> Vec<EntityBlockAttachment> {
+    let mut attachments = Vec::new();
+    for instance in instances {
+        if let Some(transform) = snow_golem_head_block_transform(instance) {
+            attachments.push(EntityBlockAttachment {
+                block_id: CARVED_PUMPKIN_BLOCK_ID,
+                properties: carved_pumpkin_default_properties(),
+                transform,
+            });
+        }
+        if let Some(transform) = iron_golem_flower_block_transform(instance) {
+            attachments.push(EntityBlockAttachment {
+                block_id: POPPY_BLOCK_ID,
+                properties: poppy_default_properties(),
+                transform,
+            });
+        }
+    }
+    attachments
 }
 
 /// Vanilla `Blocks.CARVED_PUMPKIN.defaultBlockState()` sets `FACING = NORTH`; the snow-golem head layer
 /// uses that exact blockstate.
 fn carved_pumpkin_default_properties() -> BTreeMap<String, String> {
     BTreeMap::from([("facing".to_string(), "north".to_string())])
+}
+
+/// Vanilla `Blocks.POPPY.defaultBlockState()` has no properties; the iron-golem flower layer uses that
+/// exact blockstate while `offerFlowerTick > 0`.
+fn poppy_default_properties() -> BTreeMap<String, String> {
+    BTreeMap::new()
 }
 
 /// Bakes a 3D model for every dropped item entity — a block model for block items, an extruded sprite
@@ -526,6 +556,31 @@ mod tests {
             carved_pumpkin_default_properties(),
             BTreeMap::from([("facing".to_string(), "north".to_string())])
         );
+    }
+
+    #[test]
+    fn poppy_layer_uses_vanilla_default_block_state() {
+        assert_eq!(poppy_default_properties(), BTreeMap::new());
+    }
+
+    #[test]
+    fn entity_block_attachments_collect_snow_golem_and_iron_golem_layers() {
+        let snow_golem = EntityModelInstance::snow_golem(121, [0.0, 64.0, 0.0], 0.0)
+            .with_snow_golem_pumpkin(true);
+        let iron_golem = EntityModelInstance::iron_golem(74, [1.0, 64.0, 0.0], 0.0)
+            .with_iron_golem_offer_flower_tick(400);
+        let idle_iron_golem = EntityModelInstance::iron_golem(75, [2.0, 64.0, 0.0], 0.0);
+
+        let attachments = entity_block_attachments(&[snow_golem, iron_golem, idle_iron_golem]);
+
+        assert_eq!(attachments.len(), 2);
+        assert_eq!(attachments[0].block_id, CARVED_PUMPKIN_BLOCK_ID);
+        assert_eq!(
+            attachments[0].properties,
+            carved_pumpkin_default_properties()
+        );
+        assert_eq!(attachments[1].block_id, POPPY_BLOCK_ID);
+        assert_eq!(attachments[1].properties, poppy_default_properties());
     }
 
     #[test]

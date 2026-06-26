@@ -40,7 +40,10 @@ pub use crate::entity_models::{
     VillagerModelType, WolfModelVariant, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
     ENTITY_FULL_BRIGHT_LIGHT_COORDS, PLAYER_MODEL_PARTS_ALL_HIDDEN, PLAYER_MODEL_PARTS_ALL_VISIBLE,
 };
-pub use crate::entity_models::{humanoid_hand_attach_transform, snow_golem_head_block_transform};
+pub use crate::entity_models::{
+    humanoid_hand_attach_transform, iron_golem_flower_block_transform,
+    snow_golem_head_block_transform,
+};
 pub use crate::generated_item::{bake_generated_item_quads, ItemSpriteRect, SpriteAlphaMask};
 pub use crate::hud::{
     HudAsciiGlyph, HudDigitGlyph, HudIconLayer, HudInventoryBackgroundLayer,

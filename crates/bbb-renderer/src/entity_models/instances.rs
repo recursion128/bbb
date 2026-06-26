@@ -668,7 +668,8 @@ entity_render_state! {
     (with_iron_golem_attack_ticks_remaining) iron_golem_attack_ticks_remaining: f32 = 0.0;
     /// Vanilla `IronGolemRenderState.offerFlowerTick`: while `> 0` (and not attacking), the golem holds
     /// its right arm out with a poppy (`xRot = -0.8 + 0.025·triangleWave(tick, 70)`, left arm flat).
-    /// `0` for a golem not offering and every other entity. The flower block itself is not yet rendered.
+    /// `0` for a golem not offering and every other entity. The poppy block layer uses this same state
+    /// to attach `Blocks.POPPY.defaultBlockState()` to the posed right arm.
     (with_iron_golem_offer_flower_tick) iron_golem_offer_flower_tick: i32 = 0;
     /// Vanilla `RavagerRenderState.stunnedTicksRemaining` (partial-lerped `stunnedTick`): while `> 0`,
     /// `RavagerModel.setupAnim` tilts the neck and shakes the head side-to-side (`neck.x =
