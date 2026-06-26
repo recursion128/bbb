@@ -1,5 +1,6 @@
 use super::*;
 
+use crate::entity_models::colored::villager_adult_model_root_transform;
 use crate::entity_models::model::ModelCube;
 
 #[test]
@@ -380,7 +381,8 @@ fn villager_profession_layers_render_type_profession_and_level_overlays() {
             VillagerModelProfession::Mason,
             9,
         ));
-    let mesh = entity_model_textured_mesh(&[mason], &atlas);
+    let meshes = entity_model_textured_meshes(&[mason], &atlas);
+    let mesh = &meshes.cutout;
 
     assert_eq!(mesh.cutout_faces, 264);
     assert_eq!(mesh.vertices.len(), 1056);
@@ -388,6 +390,29 @@ fn villager_profession_layers_render_type_profession_and_level_overlays() {
     assert_close2(mesh.vertices[264].uv, [16.0 / 64.0, 1.0 / 4.0]);
     assert_close2(mesh.vertices[528].uv, [16.0 / 64.0, 2.0 / 4.0]);
     assert_close2(mesh.vertices[792].uv, [16.0 / 64.0, 3.0 / 4.0]);
+
+    assert_eq!(meshes.submissions.len(), 4);
+    let expected_transform = villager_adult_model_root_transform(mason);
+    for (submit, texture, order, sequence) in [
+        (meshes.submissions[0], VILLAGER_TEXTURE_REF, 0, 0),
+        (meshes.submissions[1], VILLAGER_TYPE_TEXTURE_REFS[3], 1, 1),
+        (
+            meshes.submissions[2],
+            VILLAGER_PROFESSION_TEXTURE_REFS[9],
+            2,
+            2,
+        ),
+        (meshes.submissions[3], VILLAGER_LEVEL_TEXTURE_REFS[4], 3, 3),
+    ] {
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.texture, texture);
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(
+            (submit.collector_order, submit.submit_sequence),
+            (order, sequence)
+        );
+        assert_eq!(submit.transform, expected_transform);
+    }
 }
 
 #[test]

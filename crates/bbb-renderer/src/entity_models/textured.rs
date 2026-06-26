@@ -138,7 +138,8 @@ impl EntityModelTexturedMeshes {
         render_type: EntityModelLayerRenderType,
     ) -> &mut EntityModelTexturedMesh {
         match render_type {
-            EntityModelLayerRenderType::EntityCutout
+            EntityModelLayerRenderType::ArmorCutoutNoCull
+            | EntityModelLayerRenderType::EntityCutout
             | EntityModelLayerRenderType::EntityCutoutCull
             | EntityModelLayerRenderType::EntityCutoutZOffset => &mut self.cutout,
             EntityModelLayerRenderType::EntityTranslucent => &mut self.translucent,
@@ -166,6 +167,36 @@ impl EntityModelTexturedMeshes {
             collector_order,
             submit_sequence,
         });
+    }
+}
+
+#[derive(Clone, Copy)]
+struct EntityModelSubmissionEmit {
+    render_type: EntityModelLayerRenderType,
+    texture: EntityModelTextureRef,
+    tint: [f32; 4],
+    transform: Mat4,
+    collector_order: i32,
+    submit_sequence: u32,
+}
+
+impl EntityModelSubmissionEmit {
+    fn new(
+        render_type: EntityModelLayerRenderType,
+        texture: EntityModelTextureRef,
+        tint: [f32; 4],
+        transform: Mat4,
+        collector_order: i32,
+        submit_sequence: u32,
+    ) -> Self {
+        Self {
+            render_type,
+            texture,
+            tint,
+            transform,
+            collector_order,
+            submit_sequence,
+        }
     }
 }
 
@@ -512,7 +543,7 @@ fn render_textured_pass_ordered<M: EntityModel>(
     submit_sequence: u32,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    meshes.record_submission(
+    let submit = EntityModelSubmissionEmit::new(
         render_type,
         texture,
         tint,
@@ -520,14 +551,33 @@ fn render_textured_pass_ordered<M: EntityModel>(
         collector_order,
         submit_sequence,
     );
-    if let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) {
+    render_textured_submission(meshes, submit, atlas, |mesh, entry| {
         model.root().render_textured(
-            meshes.mesh_mut(render_type),
-            transform,
-            texture,
+            mesh,
+            submit.transform,
+            submit.texture,
             entry.uv,
-            tint,
+            submit.tint,
         );
+    });
+}
+
+fn render_textured_submission(
+    meshes: &mut EntityModelTexturedMeshes,
+    submit: EntityModelSubmissionEmit,
+    atlas: &EntityModelTextureAtlasLayout,
+    emit: impl FnOnce(&mut EntityModelTexturedMesh, EntityModelTextureAtlasEntry),
+) {
+    meshes.record_submission(
+        submit.render_type,
+        submit.texture,
+        submit.tint,
+        submit.transform,
+        submit.collector_order,
+        submit.submit_sequence,
+    );
+    if let Some(entry) = entity_model_texture_atlas_entry(atlas, submit.texture) {
+        emit(meshes.mesh_mut(submit.render_type), entry);
     }
 }
 
@@ -538,7 +588,7 @@ fn render_textured_root_pass(
     pass: EntityModelLayerPass,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    meshes.record_submission(
+    let submit = EntityModelSubmissionEmit::new(
         pass.render_type,
         pass.texture,
         pass.tint,
@@ -546,15 +596,15 @@ fn render_textured_root_pass(
         pass.collector_order,
         pass.submit_sequence,
     );
-    if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+    render_textured_submission(meshes, submit, atlas, |mesh, entry| {
         root.render_textured(
-            meshes.mesh_mut(pass.render_type),
-            transform,
-            pass.texture,
+            mesh,
+            submit.transform,
+            submit.texture,
             entry.uv,
-            pass.tint,
+            submit.tint,
         );
-    }
+    });
 }
 
 /// Render a model's full textured layer-pass list (already prepared) into `meshes`.
@@ -569,7 +619,7 @@ pub(in crate::entity_models) fn render_textured_layers<M: EntityModel>(
         match pass.visibility {
             // A part-subset emissive overlay (vanilla `retainExactParts`): render only its named parts.
             layers::EntityModelLayerVisibility::RetainedParts(parts) => {
-                meshes.record_submission(
+                let submit = EntityModelSubmissionEmit::new(
                     pass.render_type,
                     pass.texture,
                     pass.tint,
@@ -577,17 +627,17 @@ pub(in crate::entity_models) fn render_textured_layers<M: EntityModel>(
                     pass.collector_order,
                     pass.submit_sequence,
                 );
-                if let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) {
+                render_textured_submission(meshes, submit, atlas, |mesh, entry| {
                     model.root().render_textured_retained(
-                        meshes.mesh_mut(pass.render_type),
-                        transform,
-                        pass.texture,
+                        mesh,
+                        submit.transform,
+                        submit.texture,
                         entry.uv,
-                        pass.tint,
+                        submit.tint,
                         "",
                         parts,
                     );
-                }
+                });
             }
             // `All` (and the player-parts case, whose subset is pre-applied to the tree) render whole.
             _ => render_textured_pass_ordered(
@@ -1005,18 +1055,31 @@ fn emit_humanoid_armor(
             continue;
         };
         let texture = armor_slot_texture(material, slot);
-        let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
-            continue;
+        let submit_sequence = match slot {
+            HumanoidArmorSlot::Chest => 1,
+            HumanoidArmorSlot::Legs => 2,
+            HumanoidArmorSlot::Feet => 3,
+            HumanoidArmorSlot::Head => 4,
         };
         let mut tree = slot.build_tree(outer);
         tree.copy_child_poses_from(host_root, slot.part_names());
-        tree.render_textured(
-            meshes.mesh_mut(EntityModelLayerRenderType::EntityCutout),
-            transform,
+        let submit = EntityModelSubmissionEmit::new(
+            EntityModelLayerRenderType::ArmorCutoutNoCull,
             texture,
-            entry.uv,
             armor_layer_tint(material, dye),
+            transform,
+            1,
+            submit_sequence,
         );
+        render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+            tree.render_textured(
+                mesh,
+                submit.transform,
+                submit.texture,
+                entry.uv,
+                submit.tint,
+            );
+        });
     }
 }
 
@@ -1231,13 +1294,15 @@ fn emit_pig_saddle_layer(
     let transform = entity_model_root_transform(instance);
     let mut model = PigModel::new_saddle();
     model.prepare(&instance);
-    render_textured_pass(
+    render_textured_pass_ordered(
         meshes,
         &model,
         transform,
-        EntityModelLayerRenderType::EntityCutout,
+        EntityModelLayerRenderType::ArmorCutoutNoCull,
         PIG_SADDLE_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
+        0,
+        1,
         atlas,
     );
 }
@@ -1255,9 +1320,21 @@ fn emit_equine_saddle_layer(
     }
 
     let ridden = instance.render_state.equine_saddle_ridden;
-    let (parts, transform, texture): (&[TexturedModelPartDesc], Mat4, EntityModelTextureRef) =
-        match instance.kind {
-            EntityModelKind::Horse { baby: false, .. } => (
+    let (parts, transform, texture, collector_order, submit_sequence): (
+        &[TexturedModelPartDesc],
+        Mat4,
+        EntityModelTextureRef,
+        i32,
+        u32,
+    ) = match instance.kind {
+        EntityModelKind::Horse { baby: false, .. } => {
+            let body_layer_count = instance
+                .render_state
+                .equine_body_armor
+                .and_then(horse_body_armor_texture_layers)
+                .map(|layers| layers.len())
+                .unwrap_or(0);
+            (
                 if ridden {
                     &ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED
                 } else {
@@ -1265,66 +1342,84 @@ fn emit_equine_saddle_layer(
                 },
                 mesh_transformer_scaled_model_root_transform(instance, HORSE_SCALE),
                 HORSE_SADDLE_TEXTURE_REF,
-            ),
-            EntityModelKind::Donkey {
-                family,
-                baby: false,
-                ..
-            } => {
-                let scale = match family {
-                    DonkeyModelFamily::Donkey => 0.87,
-                    DonkeyModelFamily::Mule => 0.92,
-                };
-                let texture = match family {
-                    DonkeyModelFamily::Donkey => DONKEY_SADDLE_TEXTURE_REF,
-                    DonkeyModelFamily::Mule => MULE_SADDLE_TEXTURE_REF,
-                };
-                (
-                    if ridden {
-                        &ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED
-                    } else {
-                        &ADULT_DONKEY_SADDLE_PARTS_TEXTURED
-                    },
-                    mesh_transformer_scaled_model_root_transform(instance, scale),
-                    texture,
-                )
-            }
-            EntityModelKind::UndeadHorse {
-                family,
-                baby: false,
-            } => {
-                let texture = match family {
-                    UndeadHorseModelFamily::Skeleton => SKELETON_HORSE_SADDLE_TEXTURE_REF,
-                    UndeadHorseModelFamily::Zombie => ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
-                };
-                (
-                    if ridden {
-                        &ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED
-                    } else {
-                        &ADULT_HORSE_SADDLE_PARTS_TEXTURED
-                    },
-                    entity_model_root_transform(instance),
-                    texture,
-                )
-            }
-            _ => return,
-        };
-
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
-        return;
+                2,
+                2 + body_layer_count as u32,
+            )
+        }
+        EntityModelKind::Donkey {
+            family,
+            baby: false,
+            ..
+        } => {
+            let scale = match family {
+                DonkeyModelFamily::Donkey => 0.87,
+                DonkeyModelFamily::Mule => 0.92,
+            };
+            let texture = match family {
+                DonkeyModelFamily::Donkey => DONKEY_SADDLE_TEXTURE_REF,
+                DonkeyModelFamily::Mule => MULE_SADDLE_TEXTURE_REF,
+            };
+            (
+                if ridden {
+                    &ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED
+                } else {
+                    &ADULT_DONKEY_SADDLE_PARTS_TEXTURED
+                },
+                mesh_transformer_scaled_model_root_transform(instance, scale),
+                texture,
+                0,
+                1,
+            )
+        }
+        EntityModelKind::UndeadHorse {
+            family,
+            baby: false,
+        } => {
+            let texture = match family {
+                UndeadHorseModelFamily::Skeleton => SKELETON_HORSE_SADDLE_TEXTURE_REF,
+                UndeadHorseModelFamily::Zombie => ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
+            };
+            let body_layer_count = match family {
+                UndeadHorseModelFamily::Zombie => instance
+                    .render_state
+                    .equine_body_armor
+                    .and_then(horse_body_armor_texture_layers)
+                    .map(|layers| layers.len())
+                    .unwrap_or(0),
+                UndeadHorseModelFamily::Skeleton => 0,
+            };
+            (
+                if ridden {
+                    &ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED
+                } else {
+                    &ADULT_HORSE_SADDLE_PARTS_TEXTURED
+                },
+                entity_model_root_transform(instance),
+                texture,
+                0,
+                1 + body_layer_count as u32,
+            )
+        }
+        _ => return,
     };
-    emit_equine_textured_posed(
-        &mut meshes.cutout,
+
+    emit_equine_textured_submission(
+        meshes,
         parts,
         [2, 3, 4, 5],
         1,
         0.0,
         1.0,
-        transform,
-        texture,
-        entry.uv,
-        [1.0, 1.0, 1.0, 1.0],
+        EntityModelSubmissionEmit::new(
+            EntityModelLayerRenderType::ArmorCutoutNoCull,
+            texture,
+            [1.0, 1.0, 1.0, 1.0],
+            transform,
+            collector_order,
+            submit_sequence,
+        ),
         instance,
+        atlas,
     );
 }
 
@@ -1344,21 +1439,20 @@ fn emit_equine_body_armor_layer(
     let Some(layers) = horse_body_armor_texture_layers(material) else {
         return;
     };
-    let transform = match instance.kind {
-        EntityModelKind::Horse { baby: false, .. } => {
-            mesh_transformer_scaled_model_root_transform(instance, HORSE_SCALE)
-        }
+    let (transform, collector_order, first_submit_sequence) = match instance.kind {
+        EntityModelKind::Horse { baby: false, .. } => (
+            mesh_transformer_scaled_model_root_transform(instance, HORSE_SCALE),
+            2,
+            2,
+        ),
         EntityModelKind::UndeadHorse {
             family: UndeadHorseModelFamily::Zombie,
             baby: false,
-        } => entity_model_root_transform(instance),
+        } => (entity_model_root_transform(instance), 0, 1),
         _ => return,
     };
 
-    for layer in layers {
-        let Some(entry) = entity_model_texture_atlas_entry(atlas, layer.texture) else {
-            continue;
-        };
+    for (layer_index, layer) in layers.iter().enumerate() {
         let tint = if layer.dyeable {
             armor_layer_tint(
                 EntityArmorMaterial::Leather,
@@ -1367,18 +1461,23 @@ fn emit_equine_body_armor_layer(
         } else {
             [1.0, 1.0, 1.0, 1.0]
         };
-        emit_equine_textured_posed(
-            &mut meshes.cutout,
+        emit_equine_textured_submission(
+            meshes,
             &ADULT_HORSE_ARMOR_PARTS_TEXTURED,
             [2, 3, 4, 5],
             1,
             0.0,
             1.0,
-            transform,
-            layer.texture,
-            entry.uv,
-            tint,
+            EntityModelSubmissionEmit::new(
+                EntityModelLayerRenderType::ArmorCutoutNoCull,
+                layer.texture,
+                tint,
+                transform,
+                collector_order + layer_index as i32,
+                first_submit_sequence + layer_index as u32,
+            ),
             instance,
+            atlas,
         );
     }
 }
@@ -1401,13 +1500,15 @@ fn emit_strider_saddle_layer(
     let transform = entity_model_root_transform(instance);
     let mut model = StriderModel::new(false);
     model.prepare(&instance);
-    render_textured_pass(
+    render_textured_pass_ordered(
         meshes,
         &model,
         transform,
-        EntityModelLayerRenderType::EntityCutout,
+        EntityModelLayerRenderType::ArmorCutoutNoCull,
         STRIDER_SADDLE_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
+        0,
+        1,
         atlas,
     );
 }
@@ -1440,13 +1541,15 @@ fn emit_camel_saddle_layer(
     let transform = entity_model_root_transform(instance);
     let mut model = CamelModel::new_saddle();
     model.prepare(&instance);
-    render_textured_pass(
+    render_textured_pass_ordered(
         meshes,
         &model,
         transform,
-        EntityModelLayerRenderType::EntityCutout,
+        EntityModelLayerRenderType::ArmorCutoutNoCull,
         texture,
         [1.0, 1.0, 1.0, 1.0],
+        0,
+        1,
         atlas,
     );
 }
@@ -1472,13 +1575,21 @@ fn emit_nautilus_saddle_layer(
     let transform = entity_model_root_transform(instance);
     let mut model = NautilusModel::new_saddle();
     model.prepare(&instance);
-    render_textured_pass(
+    let body_layer_count = instance
+        .render_state
+        .nautilus_body_armor
+        .and_then(nautilus_body_armor_texture_ref)
+        .map(|_| 1)
+        .unwrap_or(0);
+    render_textured_pass_ordered(
         meshes,
         &model,
         transform,
-        EntityModelLayerRenderType::EntityCutout,
+        EntityModelLayerRenderType::ArmorCutoutNoCull,
         NAUTILUS_SADDLE_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
+        0,
+        1 + body_layer_count,
         atlas,
     );
 }
@@ -1508,13 +1619,15 @@ fn emit_nautilus_body_armor_layer(
     let transform = entity_model_root_transform(instance);
     let mut model = NautilusModel::new_armor();
     model.prepare(&instance);
-    render_textured_pass(
+    render_textured_pass_ordered(
         meshes,
         &model,
         transform,
-        EntityModelLayerRenderType::EntityCutout,
+        EntityModelLayerRenderType::ArmorCutoutNoCull,
         texture,
         [1.0, 1.0, 1.0, 1.0],
+        0,
+        1,
         atlas,
     );
 }
@@ -1831,7 +1944,7 @@ fn emit_villager_profession_layer(
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     let tint = [1.0, 1.0, 1.0, 1.0];
-    meshes.record_submission(
+    let submit = EntityModelSubmissionEmit::new(
         EntityModelLayerRenderType::EntityCutout,
         texture,
         tint,
@@ -1839,22 +1952,27 @@ fn emit_villager_profession_layer(
         collector_order,
         submit_sequence,
     );
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
-        return;
-    };
-    if no_hat {
-        root.render_textured_excluding(
-            &mut meshes.cutout,
-            transform,
-            texture,
-            entry.uv,
-            tint,
-            "",
-            &VILLAGER_NO_HAT_EXCLUDED_PARTS,
-        );
-    } else {
-        root.render_textured(&mut meshes.cutout, transform, texture, entry.uv, tint);
-    }
+    render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+        if no_hat {
+            root.render_textured_excluding(
+                mesh,
+                submit.transform,
+                submit.texture,
+                entry.uv,
+                submit.tint,
+                "",
+                &VILLAGER_NO_HAT_EXCLUDED_PARTS,
+            );
+        } else {
+            root.render_textured(
+                mesh,
+                submit.transform,
+                submit.texture,
+                entry.uv,
+                submit.tint,
+            );
+        }
+    });
 }
 
 fn emit_piglin_textured_model(
@@ -1973,6 +2091,35 @@ const EQUINE_TAIL_CHILD_INDEX: usize = 0;
 /// pose math is shared with the colored path (the `equine_*_pose` helpers are geometry-agnostic), so the
 /// two paths stay in lockstep.
 #[allow(clippy::too_many_arguments)]
+fn emit_equine_textured_submission(
+    meshes: &mut EntityModelTexturedMeshes,
+    parts: &[TexturedModelPartDesc],
+    leg_indices: [usize; 4],
+    head_parts_index: usize,
+    tail_x_rot_offset: f32,
+    age_scale: f32,
+    submit: EntityModelSubmissionEmit,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+        emit_equine_textured_posed(
+            mesh,
+            parts,
+            leg_indices,
+            head_parts_index,
+            tail_x_rot_offset,
+            age_scale,
+            submit.transform,
+            submit.texture,
+            entry.uv,
+            submit.tint,
+            instance,
+        );
+    });
+}
+
+#[allow(clippy::too_many_arguments)]
 fn emit_equine_textured_posed(
     mesh: &mut EntityModelTexturedMesh,
     parts: &[TexturedModelPartDesc],
@@ -2058,18 +2205,25 @@ fn emit_donkey_textured_model(
     let Some(texture) = instance.kind.vanilla_texture_ref() else {
         return;
     };
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
-        return;
-    };
     if baby {
-        emit_textured_model_parts(
-            &mut meshes.cutout,
-            &BABY_DONKEY_PARTS_TEXTURED,
-            entity_model_root_transform(instance),
+        let submit = EntityModelSubmissionEmit::new(
+            EntityModelLayerRenderType::EntityCutout,
             texture,
-            entry.uv,
             [1.0, 1.0, 1.0, 1.0],
+            entity_model_root_transform(instance),
+            0,
+            0,
         );
+        render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+            emit_textured_model_parts(
+                mesh,
+                &BABY_DONKEY_PARTS_TEXTURED,
+                submit.transform,
+                submit.texture,
+                entry.uv,
+                submit.tint,
+            );
+        });
         return;
     }
     let parts: &[TexturedModelPartDesc] = if has_chest {
@@ -2083,18 +2237,23 @@ fn emit_donkey_textured_model(
         DonkeyModelFamily::Donkey => 0.87,
         DonkeyModelFamily::Mule => 0.92,
     };
-    emit_equine_textured_posed(
-        &mut meshes.cutout,
+    emit_equine_textured_submission(
+        meshes,
         parts,
         [2, 3, 4, 5],
         1,
         0.0,
         1.0,
-        mesh_transformer_scaled_model_root_transform(instance, scale),
-        texture,
-        entry.uv,
-        [1.0, 1.0, 1.0, 1.0],
+        EntityModelSubmissionEmit::new(
+            EntityModelLayerRenderType::EntityCutout,
+            texture,
+            [1.0, 1.0, 1.0, 1.0],
+            mesh_transformer_scaled_model_root_transform(instance, scale),
+            0,
+            0,
+        ),
         instance,
+        atlas,
     );
 }
 
@@ -2114,9 +2273,6 @@ fn emit_horse_textured_model(
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     let Some(texture) = instance.kind.vanilla_texture_ref() else {
-        return;
-    };
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
         return;
     };
     let (parts, leg_indices, head_parts_index, tail_x_rot_offset, age_scale, transform): (
@@ -2145,38 +2301,46 @@ fn emit_horse_textured_model(
             mesh_transformer_scaled_model_root_transform(instance, HORSE_SCALE),
         )
     };
-    emit_equine_textured_posed(
-        &mut meshes.cutout,
+    emit_equine_textured_submission(
+        meshes,
         parts,
         leg_indices,
         head_parts_index,
         tail_x_rot_offset,
         age_scale,
-        transform,
-        texture,
-        entry.uv,
-        [1.0, 1.0, 1.0, 1.0],
+        EntityModelSubmissionEmit::new(
+            EntityModelLayerRenderType::EntityCutout,
+            texture,
+            [1.0, 1.0, 1.0, 1.0],
+            transform,
+            0,
+            0,
+        ),
         instance,
+        atlas,
     );
     // `HorseMarkingLayer`: a translucent white overlay of the SAME posed model, drawn after the base
     // when the coat carries markings (`Markings.NONE` → `INVISIBLE_TEXTURE`, skipped). It rides the
     // identical pose, so re-emitting the same tree into the translucent mesh tracks the body.
     if let Some(markings_texture) = horse_markings_texture_ref(markings, baby) {
-        if let Some(markings_entry) = entity_model_texture_atlas_entry(atlas, markings_texture) {
-            emit_equine_textured_posed(
-                &mut meshes.translucent,
-                parts,
-                leg_indices,
-                head_parts_index,
-                tail_x_rot_offset,
-                age_scale,
-                transform,
+        emit_equine_textured_submission(
+            meshes,
+            parts,
+            leg_indices,
+            head_parts_index,
+            tail_x_rot_offset,
+            age_scale,
+            EntityModelSubmissionEmit::new(
+                EntityModelLayerRenderType::EntityTranslucent,
                 markings_texture,
-                markings_entry.uv,
                 [1.0, 1.0, 1.0, 1.0],
-                instance,
-            );
-        }
+                transform,
+                1,
+                1,
+            ),
+            instance,
+            atlas,
+        );
     }
 }
 
@@ -2197,9 +2361,6 @@ fn emit_undead_horse_textured_model(
     let Some(texture) = instance.kind.vanilla_texture_ref() else {
         return;
     };
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, texture) else {
-        return;
-    };
     let (parts, leg_indices, head_parts_index, tail_x_rot_offset, age_scale): (
         &[TexturedModelPartDesc],
         [usize; 4],
@@ -2217,18 +2378,23 @@ fn emit_undead_horse_textured_model(
     } else {
         (&ADULT_HORSE_PARTS_TEXTURED, [2, 3, 4, 5], 1, 0.0, 1.0)
     };
-    emit_equine_textured_posed(
-        &mut meshes.cutout,
+    emit_equine_textured_submission(
+        meshes,
         parts,
         leg_indices,
         head_parts_index,
         tail_x_rot_offset,
         age_scale,
-        entity_model_root_transform(instance),
-        texture,
-        entry.uv,
-        [1.0, 1.0, 1.0, 1.0],
+        EntityModelSubmissionEmit::new(
+            EntityModelLayerRenderType::EntityCutout,
+            texture,
+            [1.0, 1.0, 1.0, 1.0],
+            entity_model_root_transform(instance),
+            0,
+            0,
+        ),
         instance,
+        atlas,
     );
 }
 

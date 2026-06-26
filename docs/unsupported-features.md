@@ -1008,7 +1008,7 @@ When an agent does any of the following, update this file in the same slice:
     - a basic hecs-derived entity bounds scene proxy
     - textured entity model submits now carry vanilla-shaped submission
       metadata alongside the existing mesh buckets: `render_type`
-      distinguishes `entityCutout`, `entityCutoutCull`,
+      distinguishes `armorCutoutNoCull`, `entityCutout`, `entityCutoutCull`,
       `entityCutoutZOffset`, `entityTranslucent`, `Eyes`,
       `breezeWind`, and `energySwirl`; `collector_order` mirrors
       `SubmitNodeCollector.order(n)`; and `submit_sequence` preserves
@@ -1016,8 +1016,10 @@ When an agent does any of the following, update this file in the same slice:
       submits into shared meshes. Uniform layer passes, Warden retained
       emissive layers, Breeze base/eyes/wind, Shulker bullet's two submits,
       WindCharge `breezeWind`, charged-creeper / wither `energySwirl`,
-      villager profession/type/level overlays, and the newly textured End
-      Crystal path are covered by source-verified render-type/order tests.
+      humanoid armor `armorCutoutNoCull`, horse/donkey/undead-horse
+      base+saddle/body-armor submits, horse markings, villager
+      profession/type/level overlays, and the newly textured End Crystal
+      path are covered by source-verified texture/render-type/tint/transform/order tests.
     - dropped item entities as camera-facing item-icon billboards from:
       - canonical item entity stack metadata
       - the native item atlas

@@ -1411,7 +1411,8 @@ fn zombie_villager_profession_layers_render_with_zombie_textures_and_no_hat_rule
         VillagerModelProfession::Farmer,
         4,
     ));
-    let mesh = entity_model_textured_mesh(&[instance], &atlas);
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    let mesh = &meshes.cutout;
 
     // Base 60 faces + type layer without hat/rim 48 + profession 60 + level 60.
     assert_eq!(mesh.cutout_faces, 228);
@@ -1420,6 +1421,39 @@ fn zombie_villager_profession_layers_render_with_zombie_textures_and_no_hat_rule
     assert_close2(mesh.vertices[240].uv, [16.0 / 64.0, 1.0 / 4.0]);
     assert_close2(mesh.vertices[432].uv, [16.0 / 64.0, 2.0 / 4.0]);
     assert_close2(mesh.vertices[672].uv, [16.0 / 64.0, 3.0 / 4.0]);
+
+    assert_eq!(meshes.submissions.len(), 4);
+    let expected_transform = entity_model_root_transform(instance);
+    for (submit, texture, order, sequence) in [
+        (meshes.submissions[0], ZOMBIE_VILLAGER_TEXTURE_REF, 0, 0),
+        (
+            meshes.submissions[1],
+            ZOMBIE_VILLAGER_TYPE_TEXTURE_REFS[4],
+            1,
+            1,
+        ),
+        (
+            meshes.submissions[2],
+            ZOMBIE_VILLAGER_PROFESSION_TEXTURE_REFS[4],
+            2,
+            2,
+        ),
+        (
+            meshes.submissions[3],
+            ZOMBIE_VILLAGER_LEVEL_TEXTURE_REFS[3],
+            3,
+            3,
+        ),
+    ] {
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.texture, texture);
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(
+            (submit.collector_order, submit.submit_sequence),
+            (order, sequence)
+        );
+        assert_eq!(submit.transform, expected_transform);
+    }
 }
 
 fn zombie_villager_texture_images() -> Vec<EntityModelTextureImage> {

@@ -73,6 +73,8 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::entity_models) enum EntityModelLayerRenderType {
+    /// Vanilla `RenderTypes.armorCutoutNoCull(texture)` used by equipment layers.
+    ArmorCutoutNoCull,
     /// Vanilla `RenderTypes.entityCutout(texture)`; this is also the default
     /// `EntityModel` render type when the model does not override it.
     EntityCutout,

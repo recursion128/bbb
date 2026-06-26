@@ -209,6 +209,43 @@ fn armored_zombie_emits_inflated_armor_pieces() {
         240,
         "four iron armor pieces add 10 cubes of cutout geometry"
     );
+    assert_eq!(armored.submissions.len(), 5);
+    assert_eq!(
+        armored.submissions[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(armored.submissions[0].texture, ZOMBIE_TEXTURE_REF);
+    assert_eq!(
+        (
+            armored.submissions[0].collector_order,
+            armored.submissions[0].submit_sequence
+        ),
+        (0, 0)
+    );
+    let expected_transform = entity_model_root_transform(EntityModelInstance::zombie(
+        71,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+    ));
+    for (submit, texture, sequence) in [
+        (armored.submissions[1], ARMOR_IRON_HUMANOID_TEXTURE_REF, 1),
+        (armored.submissions[2], ARMOR_IRON_LEGGINGS_TEXTURE_REF, 2),
+        (armored.submissions[3], ARMOR_IRON_HUMANOID_TEXTURE_REF, 3),
+        (armored.submissions[4], ARMOR_IRON_HUMANOID_TEXTURE_REF, 4),
+    ] {
+        assert_eq!(
+            submit.render_type,
+            EntityModelLayerRenderType::ArmorCutoutNoCull
+        );
+        assert_eq!(submit.texture, texture);
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(
+            (submit.collector_order, submit.submit_sequence),
+            (1, sequence)
+        );
+        assert_eq!(submit.transform, expected_transform);
+    }
 
     // The armor is inflated (`CubeDeformation 1.0` / `0.5`), so it floats just outside the body: the
     // armored cutout reaches wider in X than the bare body.

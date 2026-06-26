@@ -1397,34 +1397,82 @@ fn horse_markings_overlay_layers_a_translucent_white_copy() {
     let (atlas, _) = build_entity_model_texture_atlas(&horse_texture_images()).unwrap();
 
     // A plain (no-markings) horse: only the cutout base, no translucent overlay.
-    let plain = entity_model_textured_meshes(
-        &[EntityModelInstance::horse_with_variant(
-            170,
-            [0.0, 64.0, 0.0],
-            0.0,
-            false,
-            HorseColorVariant::White,
-        )],
-        &atlas,
+    let plain_instance = EntityModelInstance::horse_with_variant(
+        170,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        HorseColorVariant::White,
     );
+    let plain = entity_model_textured_meshes(&[plain_instance], &atlas);
     assert_eq!(plain.cutout.vertices.len(), 288);
     assert!(plain.translucent.vertices.is_empty());
+    assert_eq!(plain.submissions.len(), 1);
+    assert_eq!(
+        plain.submissions[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(plain.submissions[0].texture, HORSE_WHITE_TEXTURE_REF);
+    assert_eq!(plain.submissions[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        (
+            plain.submissions[0].collector_order,
+            plain.submissions[0].submit_sequence
+        ),
+        (0, 0)
+    );
+    assert_eq!(
+        plain.submissions[0].transform,
+        mesh_transformer_scaled_model_root_transform(plain_instance, 1.1)
+    );
 
     // A marked horse: the same cutout base PLUS a translucent overlay of identical geometry.
-    let marked = entity_model_textured_meshes(
-        &[EntityModelInstance::horse_full(
-            171,
-            [0.0, 64.0, 0.0],
-            0.0,
-            false,
-            HorseColorVariant::White,
-            HorseMarkings::WhiteDots,
-        )],
-        &atlas,
+    let marked_instance = EntityModelInstance::horse_full(
+        171,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        HorseColorVariant::White,
+        HorseMarkings::WhiteDots,
     );
+    let marked = entity_model_textured_meshes(&[marked_instance], &atlas);
     assert_eq!(marked.cutout.vertices.len(), 288);
     assert_eq!(marked.translucent.cutout_faces, 72);
     assert_eq!(marked.translucent.vertices.len(), 288);
+    assert_eq!(marked.submissions.len(), 2);
+    let base_submit = marked.submissions[0];
+    let markings_submit = marked.submissions[1];
+    assert_eq!(
+        base_submit.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(base_submit.texture, HORSE_WHITE_TEXTURE_REF);
+    assert_eq!(base_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        (base_submit.collector_order, base_submit.submit_sequence),
+        (0, 0)
+    );
+    assert_eq!(
+        base_submit.transform,
+        mesh_transformer_scaled_model_root_transform(marked_instance, 1.1)
+    );
+    assert_eq!(
+        markings_submit.render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(
+        markings_submit.texture,
+        HORSE_MARKINGS_WHITEDOTS_TEXTURE_REF
+    );
+    assert_eq!(markings_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        (
+            markings_submit.collector_order,
+            markings_submit.submit_sequence
+        ),
+        (1, 1)
+    );
+    assert_eq!(markings_submit.transform, base_submit.transform);
     let base_positions: Vec<_> = marked.cutout.vertices.iter().map(|v| v.position).collect();
     let overlay_positions: Vec<_> = marked
         .translucent
@@ -1493,9 +1541,31 @@ fn equine_saddle_layer_renders_for_adult_horses_only() {
 
     let base = EntityModelInstance::horse(172, [0.0, 64.0, 0.0], 0.0, false);
     let bare = entity_model_textured_mesh(&[base], &atlas);
-    let saddled = entity_model_textured_mesh(&[base.with_equine_saddle(true)], &atlas);
+    let saddled_meshes = entity_model_textured_meshes(&[base.with_equine_saddle(true)], &atlas);
+    let saddled = &saddled_meshes.cutout;
     assert_eq!(saddled.cutout_faces - bare.cutout_faces, 102);
     assert_eq!(saddled.vertices.len() - bare.vertices.len(), 408);
+    assert_eq!(saddled_meshes.submissions.len(), 2);
+    assert_eq!(
+        saddled_meshes.submissions[1].render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(
+        saddled_meshes.submissions[1].texture,
+        HORSE_SADDLE_TEXTURE_REF
+    );
+    assert_eq!(saddled_meshes.submissions[1].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        (
+            saddled_meshes.submissions[1].collector_order,
+            saddled_meshes.submissions[1].submit_sequence
+        ),
+        (2, 2)
+    );
+    assert_eq!(
+        saddled_meshes.submissions[1].transform,
+        saddled_meshes.submissions[0].transform
+    );
     assert!(
         saddled.vertices[288].uv[1] >= 64.0 / 192.0,
         "the overlay samples the horse_saddle atlas region"
@@ -1540,12 +1610,34 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
 
     let horse = EntityModelInstance::horse(182, [0.0, 64.0, 0.0], 0.0, false);
     let bare = entity_model_textured_mesh(&[horse], &atlas);
-    let iron = entity_model_textured_mesh(
+    let iron_meshes = entity_model_textured_meshes(
         &[horse.with_equine_body_armor(Some(EntityArmorMaterial::Iron))],
         &atlas,
     );
+    let iron = &iron_meshes.cutout;
     assert_eq!(iron.cutout_faces - bare.cutout_faces, 72);
     assert_eq!(iron.vertices.len() - bare.vertices.len(), 288);
+    assert_eq!(iron_meshes.submissions.len(), 2);
+    assert_eq!(
+        iron_meshes.submissions[1].render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(
+        iron_meshes.submissions[1].texture,
+        HORSE_BODY_IRON_TEXTURE_REF
+    );
+    assert_eq!(iron_meshes.submissions[1].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        (
+            iron_meshes.submissions[1].collector_order,
+            iron_meshes.submissions[1].submit_sequence
+        ),
+        (2, 2)
+    );
+    assert_eq!(
+        iron_meshes.submissions[1].transform,
+        iron_meshes.submissions[0].transform
+    );
     let iron_uv = atlas
         .entries
         .iter()
@@ -1565,14 +1657,48 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
         0xCC as f32 / 255.0,
         1.0,
     ];
-    let leather = entity_model_textured_mesh(
+    let leather_meshes = entity_model_textured_meshes(
         &[horse
             .with_equine_body_armor(Some(EntityArmorMaterial::Leather))
             .with_equine_body_armor_dye(Some(dye))],
         &atlas,
     );
+    let leather = &leather_meshes.cutout;
     assert_eq!(leather.cutout_faces - bare.cutout_faces, 144);
     assert_eq!(leather.vertices.len() - bare.vertices.len(), 576);
+    assert_eq!(leather_meshes.submissions.len(), 3);
+    assert_eq!(
+        leather_meshes.submissions[1].render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(
+        leather_meshes.submissions[1].texture,
+        HORSE_BODY_LEATHER_TEXTURE_REF
+    );
+    assert_eq!(leather_meshes.submissions[1].tint, dyed_tint);
+    assert_eq!(
+        (
+            leather_meshes.submissions[1].collector_order,
+            leather_meshes.submissions[1].submit_sequence
+        ),
+        (2, 2)
+    );
+    assert_eq!(
+        leather_meshes.submissions[2].texture,
+        HORSE_BODY_LEATHER_OVERLAY_TEXTURE_REF
+    );
+    assert_eq!(
+        (
+            leather_meshes.submissions[2].collector_order,
+            leather_meshes.submissions[2].submit_sequence
+        ),
+        (3, 3)
+    );
+    assert_eq!(leather_meshes.submissions[2].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        leather_meshes.submissions[2].transform,
+        leather_meshes.submissions[0].transform
+    );
     assert!(
         leather.vertices[bare.vertices.len()..bare.vertices.len() + 288]
             .iter()
@@ -1651,7 +1777,7 @@ fn equine_saddle_layer_uses_family_specific_models_and_textures() {
     ]))
     .unwrap();
 
-    let donkey = entity_model_textured_mesh(
+    let donkey_meshes = entity_model_textured_meshes(
         &[EntityModelInstance::donkey(
             174,
             [0.0, 64.0, 0.0],
@@ -1663,8 +1789,25 @@ fn equine_saddle_layer_uses_family_specific_models_and_textures() {
         .with_equine_saddle(true)],
         &atlas,
     );
+    let donkey = &donkey_meshes.cutout;
     assert_eq!(donkey.cutout_faces, 72 + 114);
     assert_eq!(donkey.vertices.len(), 288 + 456);
+    assert_eq!(donkey_meshes.submissions.len(), 2);
+    assert_eq!(
+        donkey_meshes.submissions[1].render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(
+        donkey_meshes.submissions[1].texture,
+        DONKEY_SADDLE_TEXTURE_REF
+    );
+    assert_eq!(
+        (
+            donkey_meshes.submissions[1].collector_order,
+            donkey_meshes.submissions[1].submit_sequence
+        ),
+        (0, 1)
+    );
 
     let mule = entity_model_textured_mesh(
         &[EntityModelInstance::donkey(
@@ -1697,7 +1840,7 @@ fn equine_saddle_layer_uses_family_specific_models_and_textures() {
         .with_equine_saddle(true)],
         &atlas,
     );
-    let zombie = entity_model_textured_mesh(
+    let zombie_meshes = entity_model_textured_meshes(
         &[EntityModelInstance::undead_horse(
             177,
             [0.0, 64.0, 0.0],
@@ -1708,8 +1851,25 @@ fn equine_saddle_layer_uses_family_specific_models_and_textures() {
         .with_equine_saddle(true)],
         &atlas,
     );
+    let zombie = &zombie_meshes.cutout;
     assert_eq!(skeleton.cutout_faces, 72 + 102);
     assert_eq!(zombie.cutout_faces, 72 + 102);
+    assert_eq!(zombie_meshes.submissions.len(), 2);
+    assert_eq!(
+        zombie_meshes.submissions[1].render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(
+        zombie_meshes.submissions[1].texture,
+        ZOMBIE_HORSE_SADDLE_TEXTURE_REF
+    );
+    assert_eq!(
+        (
+            zombie_meshes.submissions[1].collector_order,
+            zombie_meshes.submissions[1].submit_sequence
+        ),
+        (0, 1)
+    );
     let skeleton_overlay_uv = skeleton.vertices[288].uv;
     let zombie_overlay_uv = zombie.vertices[288].uv;
     assert_ne!(
