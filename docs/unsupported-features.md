@@ -2251,11 +2251,14 @@ When an agent does any of the following, update this file in the same slice:
       at `(0, 24 - sy, placement)`), with no `MeshTransformer` scaling (the unit
       entity model-root transform); the official
       `textures/entity/endermite/endermite.png` texture reference, texture-backed
-      base layer pass emission, official PNG atlas upload/bind/sample path, and the
-      vanilla `EndermiteModel.setupAnim` segment wiggle (`segment.yRot = cos(phase) *
-      π * 0.01 * (1 + |i - 2|)`, `segment.x = sin(phase) * π * 0.1 * |i - 2|`,
-      `phase = ageInTicks * 0.9 + i * 0.15 * π`, driven by the projected
-      `ageInTicks`, on both render paths). Lighting and overlay remain unsupported
+      base layer pass emission (vanilla `EndermiteModel` calls `EntityModel`'s
+      default `RenderTypes::entityCutout`) while preserving explicit submission
+      metadata for texture, white tint, unit root transform, and `order(0)`, official
+      PNG atlas upload/bind/sample path, and the vanilla `EndermiteModel.setupAnim`
+      segment wiggle (`segment.yRot = cos(phase) * π * 0.01 * (1 + |i - 2|)`,
+      `segment.x = sin(phase) * π * 0.1 * |i - 2|`, `phase = ageInTicks * 0.9 + i *
+      0.15 * π`, driven by the projected `ageInTicks`, on both render paths).
+      Lighting and overlay remain unsupported
     - silverfish entities as renderer-owned vanilla 26.1
       `SilverfishModel.createBodyLayer()` geometry: the seven nested body segments
       from `BODY_SIZES`/`BODY_TEXS` plus the three wider overlay layers riding
