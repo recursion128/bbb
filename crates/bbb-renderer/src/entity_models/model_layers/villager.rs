@@ -467,8 +467,8 @@ impl EntityModel for VillagerModel {
 /// `VillagerModel` layer. The unified tree is built with the vanilla child names (`head`, `body`, the
 /// combined `arms`, `right_leg`, `left_leg`). `setup_anim` looks the head ([`apply_head_look`] on
 /// `head`) and swings the legs at the villager-family half amplitude
-/// ([`apply_half_amplitude_leg_swing`]). The held-item arm pose and the combined `arms` part
-/// defer.
+/// ([`apply_half_amplitude_leg_swing`]). The combined `arms` part is also used by
+/// `villager_crossed_arms_item_transform` for `CrossedArmsItemLayer`.
 pub(in crate::entity_models) struct WanderingTraderModel {
     root: ModelPart,
 }

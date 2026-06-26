@@ -1160,6 +1160,13 @@ When an agent does any of the following, update this file in the same slice:
         so the item rides the same small-model scale as vanilla. The world already
         exposes armor-stand hand equipment (`EntityEquipment`, no living-entity
         gate).
+      - villager / wandering-trader crossed-arms held items DONE:
+        `CrossedArmsItemLayer` is reproduced for `VillagerModel` /
+        `BabyVillagerModel` / `WanderingTraderModel`: renderer builds and poses
+        the matching model, reads the combined `arms` part (`translateToArms`),
+        applies the shared `Rx(0.75) · scale(1.07) · T(0,0.13,-0.34) · Rx(π)`
+        transform, and native bakes the main-hand stack with
+        `ItemDisplayContext.GROUND`.
       - fox held item DONE: `FoxHeldItemLayer` is reproduced through the same
         item-model pass. Renderer exposes `fox_held_item_transform`, which builds
         and poses the vanilla adult/baby `FoxModel`, reads the posed `head` part,
@@ -1569,8 +1576,10 @@ When an agent does any of the following, update this file in the same slice:
       baby villagers, skips profession/level layers for babies, skips the level
       badge for `NONE`/`NITWIT`, clamps badge texture selection to levels
       `1..=5`, and applies the vanilla hat metadata/no-hat rule. Crossed-arms
-      item layer, custom head layer, unhappy animation, leg walk animation,
-      lighting, and wandering trader baby presentation remain unsupported
+      item layer is implemented for adult/baby villagers and wandering traders
+      through the shared item-model pass; custom head layer, unhappy animation,
+      leg walk animation, lighting, and wandering trader baby presentation remain
+      unsupported
     - worn humanoid armor as a renderer-owned vanilla 26.1 `HumanoidArmorLayer` overlay (framework
       slice 1, renderer-side): the inflated `HumanoidArmorModel`
       (`HumanoidModel.createBaseArmorMesh` / `createArmorMeshSet`) is built per equipment slot as a
@@ -1889,11 +1898,12 @@ When an agent does any of the following, update this file in the same slice:
       `textures/entity/illager/{evoker,illusioner,pillager,vindicator}.png`, with
       official PNG atlas upload/bind/sample and the vanilla `IllagerModel.setupAnim`
       head-look yaw/pitch plus the half-amplitude leg swing (and the pillager's
-      `HumanoidModel` arm swing on its separate arms) on both render paths; the
-      item-in-hand/custom-head layers, spell/crossbow/attacking/
-      celebrating/riding arm poses and animation, held item projection,
-      illusioner clone offsets/invisible-body rendering, and renderer state
-      extraction for dynamic arm visibility remain unsupported
+      `HumanoidModel` arm swing on its separate arms) on both render paths. The
+      standard `ItemInHandLayer` is covered by the shared humanoid held-item
+      dispatch, which builds the posed `IllagerModel` and reads `right_arm` /
+      `left_arm`; custom-head layers, spell/crossbow/attacking/celebrating/riding
+      arm poses and animation, illusioner clone offsets/invisible-body rendering,
+      and renderer state extraction for dynamic arm visibility remain unsupported
     - armor stand entities as renderer-owned vanilla 26.1
       `ArmorStandModel.createBodyLayer()` geometry, including the normal layer,
       `ModelLayers.ARMOR_STAND_SMALL` `HumanoidModel.BABY_TRANSFORMER` root-part
@@ -3220,8 +3230,9 @@ When an agent does any of the following, update this file in the same slice:
     presentation,
     horse animation, donkey/mule animation presentation,
     undead horse animation presentation, and remaining non-base-equine presentation,
-    villager held-item/custom-head presentation,
-    illager held-item/custom-head/arm-pose presentation, zombie-family
+    villager custom-head presentation (crossed-arms held items are implemented),
+    illager custom-head/arm-pose presentation (standard held items are
+    implemented), zombie-family
     armor/drowned swim/zombie-villager converting-state/piglin-family
     armor/custom-head/arm-pose/converting-state
     presentation (the drowned outer layer — adult and baby — and the trident-throw arm

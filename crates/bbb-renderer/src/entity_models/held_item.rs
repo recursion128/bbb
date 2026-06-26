@@ -13,7 +13,8 @@ use super::colored::{
 use super::model::EntityModel;
 use super::model_layers::{
     ArmorStandModel, CopperGolemModel, FoxModel, IllagerModel, PiglinModel, PlayerModel,
-    SkeletonModel, WitchModel, ZombieModel, ZombieVariantModel,
+    SkeletonModel, VillagerModel, WanderingTraderModel, WitchModel, ZombieModel,
+    ZombieVariantModel,
 };
 use super::{EntityModelInstance, EntityModelKind, SkeletonModelFamily};
 
@@ -81,6 +82,40 @@ pub fn copper_golem_hand_attach_transform(
             * Mat4::from_rotation_x(-FRAC_PI_2)
             * Mat4::from_rotation_y(PI)
             * Mat4::from_translation(Vec3::new(sign / 16.0, 2.0 / 16.0, -10.0 / 16.0)),
+    )
+}
+
+/// The model→world transform used by vanilla `CrossedArmsItemLayer` for villagers and wandering
+/// traders before the held stack's `GROUND` display transform. The layer walks through the model's
+/// combined `arms` part, then applies the shared crossed-arms rotation/scale/offset.
+pub fn villager_crossed_arms_item_transform(instance: &EntityModelInstance) -> Option<Mat4> {
+    let (root, arms) = match instance.kind {
+        EntityModelKind::Villager { baby } => {
+            let mut model = VillagerModel::new(baby);
+            model.prepare(instance);
+            let root = if baby {
+                entity_model_root_transform(*instance)
+            } else {
+                villager_adult_model_root_transform(*instance)
+            };
+            (root, model.root().try_child_attach_transform("arms")?)
+        }
+        EntityModelKind::WanderingTrader => {
+            let mut model = WanderingTraderModel::new();
+            model.prepare(instance);
+            (
+                villager_adult_model_root_transform(*instance),
+                model.root().try_child_attach_transform("arms")?,
+            )
+        }
+        _ => return None,
+    };
+    Some(
+        root * arms
+            * Mat4::from_rotation_x(0.75)
+            * Mat4::from_scale(Vec3::splat(1.07))
+            * Mat4::from_translation(Vec3::new(0.0, 0.13, -0.34))
+            * Mat4::from_rotation_x(PI),
     )
 }
 
@@ -429,6 +464,38 @@ mod tests {
             holding.transform_point3(Vec3::ZERO),
             left.transform_point3(Vec3::ZERO),
             "left and right hands use mirrored vanilla hand rotations"
+        );
+    }
+
+    #[test]
+    fn villager_crossed_arms_item_transform_covers_baby_and_trader() {
+        let adult = EntityModelInstance::villager(31, [0.0, 64.0, 0.0], 0.0, false);
+        let baby = EntityModelInstance::villager(32, [0.0, 64.0, 0.0], 0.0, true);
+        let trader = EntityModelInstance::wandering_trader(33, [0.0, 64.0, 0.0], 0.0);
+        let adult_origin = villager_crossed_arms_item_transform(&adult)
+            .unwrap()
+            .transform_point3(Vec3::ZERO);
+        let baby_origin = villager_crossed_arms_item_transform(&baby)
+            .unwrap()
+            .transform_point3(Vec3::ZERO);
+        let trader_origin = villager_crossed_arms_item_transform(&trader)
+            .unwrap()
+            .transform_point3(Vec3::ZERO);
+        assert!(adult_origin.is_finite());
+        assert!(baby_origin.is_finite());
+        assert!(trader_origin.is_finite());
+        assert_ne!(
+            adult_origin, baby_origin,
+            "baby villager uses BabyVillagerModel's own crossed-arms part"
+        );
+        assert!(
+            villager_crossed_arms_item_transform(&EntityModelInstance::new(
+                34,
+                EntityModelKind::Skeleton,
+                [0.0, 64.0, 0.0],
+                0.0,
+            ))
+            .is_none()
         );
     }
 

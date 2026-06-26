@@ -18,7 +18,8 @@ use bbb_renderer::{
     dolphin_carried_item_transform, enderman_carried_block_transform, fox_held_item_transform,
     humanoid_hand_attach_transform, iron_golem_flower_block_transform,
     mooshroom_mushroom_block_transforms, snow_golem_head_block_transform,
-    witch_held_item_transform, EntityModelInstance, ItemModelMesh, ItemModelQuad, MooshroomVariant,
+    villager_crossed_arms_item_transform, witch_held_item_transform, EntityModelInstance,
+    ItemModelMesh, ItemModelQuad, MooshroomVariant,
 };
 use bbb_world::WorldStore;
 use glam::{Mat4, Vec3};
@@ -370,6 +371,14 @@ pub(crate) fn held_item_models(
             &mut block_meshes,
             &mut flat_meshes,
         );
+        bake_villager_crossed_arms_item(
+            instance,
+            world,
+            item_runtime,
+            terrain_textures,
+            &mut block_meshes,
+            &mut flat_meshes,
+        );
     }
 
     HeldItemModels {
@@ -553,6 +562,37 @@ fn bake_copper_golem_held_items(
             flat_meshes,
         );
     }
+}
+
+/// Bakes the main-hand stack rendered by vanilla `CrossedArmsItemLayer` for villagers and wandering
+/// traders. `HoldingEntityRenderState` resolves this layer with `ItemDisplayContext.GROUND`.
+#[allow(clippy::too_many_arguments)]
+fn bake_villager_crossed_arms_item(
+    instance: &EntityModelInstance,
+    world: &WorldStore,
+    item_runtime: &NativeItemRuntime,
+    terrain_textures: &TerrainTextureState,
+    block_meshes: &mut Vec<ItemModelMesh>,
+    flat_meshes: &mut Vec<ItemModelMesh>,
+) {
+    let Some(stack) = world.held_item(instance.entity_id, false) else {
+        return;
+    };
+    let Some(transform) = villager_crossed_arms_item_transform(instance) else {
+        return;
+    };
+    bake_item_stack_at_transform(
+        &stack,
+        transform,
+        BlockModelDisplayContext::Ground,
+        false,
+        BLOCK_GROUND_FALLBACK,
+        GENERATED_GROUND_FALLBACK,
+        item_runtime,
+        terrain_textures,
+        block_meshes,
+        flat_meshes,
+    );
 }
 
 /// Bakes one item stack at an entity-supplied attach transform, applying the stack's retained item
