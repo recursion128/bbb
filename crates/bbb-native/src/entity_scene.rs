@@ -334,9 +334,10 @@ const CAT_DEFAULT_COLLAR_COLOR_ID: i32 = 14;
 const SHEEP_WOOL_DATA_ID: u8 = 18;
 const SHEEP_WOOL_COLOR_MASK: u8 = 0x0f;
 const SHEEP_WOOL_SHEARED_FLAG: u8 = 0x10;
-// Vanilla Panda MAIN_GENE_ID (21, BYTE) / HIDDEN_GENE_ID (22, BYTE): `Panda extends Animal`, so after
-// Mob.DATA_MOB_FLAGS_ID (15), the two AgeableMob accessors (16/17), and the three int counters
-// UNHAPPY (18) / SNEEZE (19) / EAT (20) come the two gene bytes; DATA_ID_FLAGS follows at 23.
+// Vanilla Panda counters / genes / flags: `Panda extends Animal`, so after Mob.DATA_MOB_FLAGS_ID (15) and
+// the two AgeableMob accessors (16/17) come UNHAPPY (18), SNEEZE (19), EAT (20), MAIN_GENE (21),
+// HIDDEN_GENE (22), and DATA_ID_FLAGS (23).
+const PANDA_EAT_COUNTER_DATA_ID: u8 = 20;
 const PANDA_MAIN_GENE_DATA_ID: u8 = 21;
 const PANDA_HIDDEN_GENE_DATA_ID: u8 = 22;
 /// Vanilla `Panda.UNHAPPY_COUNTER` (18, INT): `> 0` drives `PandaRenderState.isUnhappy`, the head-shake
@@ -346,6 +347,7 @@ const PANDA_UNHAPPY_COUNTER_DATA_ID: u8 = 18;
 const PANDA_SNEEZE_COUNTER_DATA_ID: u8 = 19;
 const PANDA_FLAGS_DATA_ID: u8 = 23;
 const PANDA_SNEEZING_FLAG: i8 = 0x02;
+const PANDA_SITTING_FLAG: i8 = 0x08;
 // Vanilla Strider.DATA_SUFFOCATING (19, BOOLEAN): `Strider extends Animal`, so after Mob (15), the
 // two AgeableMob accessors (16/17), and DATA_BOOST_TIME (18) comes the cold/suffocating flag.
 const STRIDER_SUFFOCATING_DATA_ID: u8 = 19;
@@ -1311,6 +1313,13 @@ fn entity_model_instance(
             source.entity_type_id,
             &source.data_values,
         ))
+        .with_panda_eating(panda_is_eating(source.entity_type_id, &source.data_values))
+        .with_panda_scared(panda_is_scared(
+            source.entity_type_id,
+            &source.data_values,
+            world,
+        ))
+        .with_panda_sitting(panda_is_sitting(source.entity_type_id, &source.data_values))
         .with_goat_ramming_x_head_rot(goat_ramming_x_head_rot)
         .with_iron_golem_attack_ticks_remaining(source.iron_golem_attack_ticks_remaining)
         .with_iron_golem_offer_flower_tick(source.iron_golem_offer_flower_tick)
@@ -2665,6 +2674,64 @@ fn panda_sneeze_time(
     } else {
         0
     }
+}
+
+/// Vanilla `PandaRenderState.isEating = Panda.isEating()` (the synced `EAT_COUNTER` int, id 20, `> 0`).
+/// The held-item layer uses this only to bob the item while the sitting gate is active.
+fn panda_is_eating(entity_type_id: i32, values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
+    entity_type_id == VANILLA_ENTITY_TYPE_PANDA_ID
+        && entity_data_int(values, PANDA_EAT_COUNTER_DATA_ID, 0) > 0
+}
+
+/// Vanilla `PandaRenderState.isSitting = Panda.isSitting()` (the synced `DATA_ID_FLAGS` byte, id 23, bit
+/// `0x08`). `PandaHoldsItemLayer` renders only in this state.
+fn panda_is_sitting(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> bool {
+    entity_type_id == VANILLA_ENTITY_TYPE_PANDA_ID
+        && (entity_data_byte(values, PANDA_FLAGS_DATA_ID, 0) & PANDA_SITTING_FLAG) != 0
+}
+
+/// Vanilla `PandaRenderState.isScared = Panda.isScared()` = `isWorried() && level.isThundering()`.
+/// `isWorried()` reads the displayed gene from main/hidden genes; `Level.isThundering()` gates weather-capable
+/// dimensions and checks `getThunderLevel(1.0F) > 0.9`, where `getThunderLevel` multiplies thunder by rain.
+fn panda_is_scared(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+    world: &WorldStore,
+) -> bool {
+    if entity_type_id != VANILLA_ENTITY_TYPE_PANDA_ID || !world_is_thundering(world) {
+        return false;
+    }
+    let main_gene = entity_data_byte(values, PANDA_MAIN_GENE_DATA_ID, 0) as i32;
+    let hidden_gene = entity_data_byte(values, PANDA_HIDDEN_GENE_DATA_ID, 0) as i32;
+    PandaModelVariant::from_genes(main_gene, hidden_gene) == PandaModelVariant::Worried
+}
+
+fn world_is_thundering(world: &WorldStore) -> bool {
+    if !world_can_have_weather(world) {
+        return false;
+    }
+    let weather = world.weather();
+    weather.rain_level.clamp(0.0, 1.0) * weather.thunder_level.clamp(0.0, 1.0) > 0.9
+}
+
+fn world_can_have_weather(world: &WorldStore) -> bool {
+    let Some(level) = world.level_info() else {
+        return true;
+    };
+    let dimension = level.dimension.as_str();
+    let dimension_type = level.dimension_type_name.as_deref();
+    !matches!(
+        (level.dimension_type_id, dimension, dimension_type),
+        (1, _, _)
+            | (2, _, _)
+            | (_, "minecraft:the_nether", _)
+            | (_, "minecraft:the_end", _)
+            | (_, _, Some("minecraft:the_nether"))
+            | (_, _, Some("minecraft:the_end"))
+    )
 }
 
 /// Vanilla `TurtleRenderState.hasEgg = !isBaby() && Turtle.hasEgg()` (the synced `HAS_EGG`
@@ -5481,8 +5548,11 @@ mod tests {
     #[test]
     fn entity_model_instances_project_panda_unhappy_and_sneezing() {
         // Vanilla PandaRenderState: isUnhappy = getUnhappyCounter() > 0 (INT id 18); isSneezing =
-        // isSneezing() (DATA_ID_FLAGS byte id 23, bit 0x02); sneezeTime = getSneezeCounter() (INT id 19).
+        // isSneezing() (DATA_ID_FLAGS byte id 23, bit 0x02); sneezeTime = getSneezeCounter() (INT id 19);
+        // isEating = EAT_COUNTER > 0 (INT id 20); isSitting = DATA_ID_FLAGS bit 0x08; isScared =
+        // worried-gene panda in a thundering level.
         let mut world = WorldStore::new();
+        world.apply_login(&protocol_play_login(1));
         world.apply_add_entity(protocol_add_entity(
             190,
             VANILLA_ENTITY_TYPE_PANDA_ID,
@@ -5502,32 +5572,69 @@ mod tests {
         assert!(!rest.panda_unhappy);
         assert!(!rest.panda_sneezing);
         assert_eq!(rest.panda_sneeze_time, 0);
+        assert!(!rest.panda_eating);
+        assert!(!rest.panda_sitting);
+        assert!(!rest.panda_scared);
 
-        // UNHAPPY_COUNTER > 0 projects the unhappy shake; the sneeze flag + counter project the dip.
+        // UNHAPPY_COUNTER > 0 projects the unhappy shake; the sneeze flag + counter project the dip; the
+        // sitting bit + EAT_COUNTER project the held-item layer state.
         assert!(world.apply_set_entity_data(SetEntityData {
             id: 190,
             values: vec![
                 protocol_int_data(PANDA_UNHAPPY_COUNTER_DATA_ID, 12),
                 protocol_int_data(PANDA_SNEEZE_COUNTER_DATA_ID, 9),
-                protocol_byte_data(PANDA_FLAGS_DATA_ID, PANDA_SNEEZING_FLAG),
+                protocol_int_data(PANDA_EAT_COUNTER_DATA_ID, 4),
+                protocol_byte_data(
+                    PANDA_FLAGS_DATA_ID,
+                    PANDA_SNEEZING_FLAG | PANDA_SITTING_FLAG,
+                ),
             ],
         }));
         let active = panda(&world);
         assert!(active.panda_unhappy);
         assert!(active.panda_sneezing);
         assert_eq!(active.panda_sneeze_time, 9);
+        assert!(active.panda_eating);
+        assert!(active.panda_sitting);
+        assert!(!active.panda_scared);
+
+        world.apply_game_event(bbb_protocol::packets::GameEvent {
+            event_id: 2,
+            param: 0.0,
+        });
+        world.apply_game_event(bbb_protocol::packets::GameEvent {
+            event_id: 8,
+            param: 0.9,
+        });
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 190,
+            values: vec![
+                protocol_byte_data(PANDA_MAIN_GENE_DATA_ID, 2),
+                protocol_byte_data(PANDA_HIDDEN_GENE_DATA_ID, 0),
+            ],
+        }));
+        assert!(!panda(&world).panda_scared);
+        world.apply_game_event(bbb_protocol::packets::GameEvent {
+            event_id: 8,
+            param: 1.0,
+        });
+        assert!(panda(&world).panda_scared);
 
         // A zero unhappy counter is content again; clearing the flag stops the sneeze even with a counter.
         assert!(world.apply_set_entity_data(SetEntityData {
             id: 190,
             values: vec![
                 protocol_int_data(PANDA_UNHAPPY_COUNTER_DATA_ID, 0),
+                protocol_int_data(PANDA_EAT_COUNTER_DATA_ID, 0),
                 protocol_byte_data(PANDA_FLAGS_DATA_ID, 0),
             ],
         }));
         let calmed = panda(&world);
         assert!(!calmed.panda_unhappy);
         assert!(!calmed.panda_sneezing);
+        assert!(!calmed.panda_eating);
+        assert!(!calmed.panda_sitting);
+        assert!(calmed.panda_scared);
     }
 
     #[test]

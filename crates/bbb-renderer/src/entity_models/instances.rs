@@ -669,6 +669,17 @@ entity_render_state! {
     /// Vanilla `PandaRenderState.sneezeTime` (`Panda.getSneezeCounter()`, the 0..20 ramp): drives the
     /// sneeze head dip (`head.xRot` falls to `-π/4` over ticks 0..14, then holds). `0` when not sneezing.
     (with_panda_sneeze_time) panda_sneeze_time: i32 = 0;
+    /// Vanilla `PandaRenderState.isEating` (`Panda.isEating()`, synced `EAT_COUNTER > 0`): while a sitting
+    /// panda holds a main-hand item, `PandaHoldsItemLayer` bobs the GROUND-context item toward the mouth.
+    /// `false` for every other entity and a panda whose eat counter is zero.
+    (with_panda_eating) panda_eating: bool = false;
+    /// Vanilla `PandaRenderState.isScared` (`Panda.isWorried() && level.isThundering()`): scared sitting
+    /// pandas suppress `PandaHoldsItemLayer` and use the scared sitting pose. `false` for every other
+    /// entity, a non-worried panda, or a non-thundering level.
+    (with_panda_scared) panda_scared: bool = false;
+    /// Vanilla `PandaRenderState.isSitting` (`DATA_ID_FLAGS` bit `0x08`): the held item layer renders only
+    /// while the panda is sitting and not scared. `false` for every other entity and a standing panda.
+    (with_panda_sitting) panda_sitting: bool = false;
     /// Vanilla `GoatRenderState.rammingXHeadRot` (`Goat.getRammingXHeadRot()`): the head-down tilt
     /// (radians) of a ramming goat, `lowerHeadTick/20 · (baby ? 52.5° : 30°)`. `GoatModel.setupAnim` SETs
     /// `head.xRot` to it while non-zero, overwriting the head-look pitch. `0.0` for a resting goat and
@@ -2089,6 +2100,9 @@ mod tests {
                 panda_unhappy: false,
                 panda_sneezing: false,
                 panda_sneeze_time: 0,
+                panda_eating: false,
+                panda_scared: false,
+                panda_sitting: false,
                 goat_ramming_x_head_rot: 0.0,
                 iron_golem_attack_ticks_remaining: 0.0,
                 iron_golem_offer_flower_tick: 0,

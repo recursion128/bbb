@@ -177,6 +177,27 @@ pub fn dolphin_carried_item_transform(instance: &EntityModelInstance) -> Option<
     Some(entity_model_root_transform(*instance) * Mat4::from_translation(offset))
 }
 
+/// The model→world transform used by vanilla `PandaHoldsItemLayer` before the main-hand stack's `GROUND`
+/// display transform. The layer stays in entity-root space: it renders only while the panda is sitting and
+/// not scared, then offsets the stack to `(0.1, 1.4, -0.6)` with the eating bob applied directly to Y/Z.
+pub fn panda_held_item_transform(instance: &EntityModelInstance) -> Option<Mat4> {
+    let EntityModelKind::Panda { .. } = instance.kind else {
+        return None;
+    };
+    if !instance.render_state.panda_sitting || instance.render_state.panda_scared {
+        return None;
+    }
+
+    let mut z = -0.6;
+    let mut y = 1.4;
+    if instance.render_state.panda_eating {
+        let bob = (instance.render_state.age_in_ticks * 0.6).sin();
+        z -= 0.2 * bob + 0.2;
+        y -= 0.09 * bob;
+    }
+    Some(entity_model_root_transform(*instance) * Mat4::from_translation(Vec3::new(0.1, y, z)))
+}
+
 /// The model→world transform used by vanilla `WitchItemLayer` before the held stack's `GROUND` display
 /// transform. Non-potion items use `CrossedArmsItemLayer` (`root -> arms`, then the crossed-arms
 /// rotation/scale/offset). Potions use the special drinking branch: `root -> head -> nose`, then the
@@ -435,6 +456,56 @@ mod tests {
             potion_transform.transform_point3(Vec3::ZERO),
             "potion branch attaches to the nose, not the crossed arms"
         );
+    }
+
+    #[test]
+    fn panda_held_item_uses_sitting_gate_and_eating_bob() {
+        let local_offset = |instance: EntityModelInstance| {
+            let transform = panda_held_item_transform(&instance).unwrap();
+            let root = entity_model_root_transform(instance);
+            (root.inverse() * transform).transform_point3(Vec3::ZERO)
+        };
+        let assert_close = |actual: Vec3, expected: Vec3| {
+            assert!(
+                (actual - expected).length() < 1e-5,
+                "{actual:?} should be close to {expected:?}"
+            );
+        };
+
+        let base = EntityModelInstance::panda(
+            27,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            crate::entity_models::PandaModelVariant::Normal,
+        );
+        assert!(panda_held_item_transform(&base).is_none());
+        assert!(
+            panda_held_item_transform(&base.with_panda_sitting(true).with_panda_scared(true))
+                .is_none()
+        );
+
+        assert_close(
+            local_offset(base.with_panda_sitting(true)),
+            Vec3::new(0.1, 1.4, -0.6),
+        );
+
+        let eating = base
+            .with_panda_sitting(true)
+            .with_panda_eating(true)
+            .with_age_in_ticks(5.0);
+        let bob = (5.0_f32 * 0.6).sin();
+        assert_close(
+            local_offset(eating),
+            Vec3::new(0.1, 1.4 - 0.09 * bob, -0.6 - 0.2 * bob - 0.2),
+        );
+        assert!(panda_held_item_transform(&EntityModelInstance::new(
+            28,
+            EntityModelKind::Creeper,
+            [0.0, 64.0, 0.0],
+            0.0,
+        ))
+        .is_none());
     }
 
     #[test]

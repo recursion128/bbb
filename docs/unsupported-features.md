@@ -3172,7 +3172,14 @@ When an agent does any of the following, update this file in the same slice:
       `PandaRenderer.getTextureLocation` keys the 14-entry texture matrix (seven genes × adult/baby, with
       the inconsistent vanilla baby filenames `panda_baby.png` / `lazy_panda_baby.png` / … preserved) off
       it, bumping the master `ENTITY_MODEL_TEXTURE_REFS` array to 272. Nothing on the panda base path stays
-      deferred (only the per-gene pose animations above remain)
+      deferred (only the per-gene pose animations above remain). `PandaHoldsItemLayer` is also covered:
+      native projects `PandaRenderState.isEating` from synced `EAT_COUNTER` int id 20, `isSitting` from
+      `DATA_ID_FLAGS` byte id 23 bit `0x08`, and `isScared = isWorried() && level.isThundering()` (displayed
+      `WORRIED` gene plus vanilla `rain_level * thunder_level > 0.9` weather-capable-level gate). The
+      renderer exports the entity-root transform for the main-hand stack resolved in `ItemDisplayContext.GROUND`:
+      render only while sitting and not scared, translate to `(0.1, 1.4, -0.6)`, and while eating apply the
+      vanilla bob (`z -= 0.2*sin(age*0.6)+0.2`, `y -= 0.09*sin(age*0.6)`) before bbb-native bakes the item
+      through the shared block/flat item-model pass.
     - rabbit entities (adult and baby) as renderer-owned vanilla 26.1 `AdultRabbitModel.createBodyLayer()`
       / `BabyRabbitModel.createBodyLayer()` geometry on the textured path: the native entity scene
       (`entity_scene.rs`) now splits vanilla type id `108` out of the cat/ocelot/fox wolf-shaped quadruped
