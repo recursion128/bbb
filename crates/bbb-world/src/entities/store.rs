@@ -962,6 +962,9 @@ impl EntityStore {
             sleeping_bed_yaw: None,
             sleeping_bed_offset: [0.0, 0.0],
             scale,
+            swim_amount: client_animations
+                .animations
+                .living_swim_amount(partial_ticks),
             sheep_eat_animation_tick: client_animations.animations.sheep_eat_animation_tick(),
             goat_lower_head_tick: client_animations.animations.goat_lower_head_tick(),
             iron_golem_attack_ticks_remaining: client_animations

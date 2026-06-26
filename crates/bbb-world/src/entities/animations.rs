@@ -46,6 +46,9 @@ const VANILLA_ENTITY_TYPE_FROG_ID: i32 = 55;
 /// `Frog.onSyncedDataUpdated` reads to start/stop `croakAnimationState` (`animateWhen(pose ==
 /// CROAKING, tickCount)`).
 const VANILLA_POSE_CROAKING_ID: i32 = 8;
+/// Vanilla `Pose.SWIMMING` ordinal, the synced `DATA_POSE` value that makes
+/// `Entity.isVisuallySwimming()` true and ramps `LivingEntity.swimAmount`.
+const VANILLA_POSE_SWIMMING_ID: i32 = 3;
 /// Vanilla `Pose.USING_TONGUE` ordinal (`Pose.USING_TONGUE(9, …)`), the synced `DATA_POSE` int value
 /// that `Frog.onSyncedDataUpdated` reads to start/stop `tongueAnimationState` (`pose == USING_TONGUE`
 /// starts it, otherwise stops it).
@@ -128,6 +131,10 @@ const VANILLA_ENTITY_TYPE_ZOGLIN_ID: i32 = 149;
 const VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID: i32 = 80;
 const VANILLA_ENTITY_TYPE_SLIME_ID: i32 = 117;
 const VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID: i32 = 47;
+/// Vanilla `LivingEntity.updateSwimAmount`: the easing step per client tick.
+const LIVING_SWIM_AMOUNT_PER_TICK: f32 = 0.09;
+/// Vanilla `LivingEntity.updateSwimAmount`: the fully visually-swimming upper bound.
+const LIVING_SWIM_AMOUNT_MAX: f32 = 1.0;
 const VANILLA_ENTITY_TYPE_ALLAY_ID: i32 = 2;
 const VANILLA_ENTITY_TYPE_PILLAGER_ID: i32 = 103;
 const VANILLA_ENTITY_TYPE_PIGLIN_ID: i32 = 101;
@@ -367,6 +374,8 @@ pub struct EntityClientAnimationState {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub death: Option<DeathAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub living_swim: Option<LivingSwimAmountState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub creeper_swell: Option<CreeperSwellAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub warden_tendril: Option<WardenTendrilAnimationState>,
@@ -457,6 +466,47 @@ pub struct AttackSwingAnimationState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeathAnimationState {
     pub death_time: i32,
+}
+
+/// Canonical client-side `LivingEntity` swim-amount accumulator, mirroring vanilla
+/// `swimAmountO` / `swimAmount`. Each client tick saves the previous value, then eases
+/// toward `1.0` while `isVisuallySwimming()` and toward `0.0` otherwise by `0.09`.
+/// The drowned consumes this today for `DrownedModel.setupAnim` and
+/// `DrownedRenderer.setupRotations`; the state shape is generic so player/humanoid
+/// swim poses can reuse it later.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct LivingSwimAmountState {
+    pub visually_swimming: bool,
+    pub previous_swim_amount: f32,
+    pub current_swim_amount: f32,
+}
+
+impl LivingSwimAmountState {
+    fn set_visually_swimming(&mut self, visually_swimming: bool) {
+        self.visually_swimming = visually_swimming;
+    }
+
+    fn advance_client_tick(&mut self) {
+        self.previous_swim_amount = self.current_swim_amount;
+        if self.visually_swimming {
+            self.current_swim_amount = (self.current_swim_amount + LIVING_SWIM_AMOUNT_PER_TICK)
+                .min(LIVING_SWIM_AMOUNT_MAX);
+        } else {
+            self.current_swim_amount =
+                (self.current_swim_amount - LIVING_SWIM_AMOUNT_PER_TICK).max(0.0);
+        }
+    }
+
+    fn swim_amount(self, partial_tick: f32) -> f32 {
+        self.previous_swim_amount
+            + partial_tick * (self.current_swim_amount - self.previous_swim_amount)
+    }
+
+    fn is_settled(self) -> bool {
+        !self.visually_swimming
+            && self.previous_swim_amount == 0.0
+            && self.current_swim_amount == 0.0
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -2421,6 +2471,16 @@ impl EntityClientAnimationState {
                     self.death = None;
                 }
             }
+            let visually_swimming = entity_data_pose(data_values) == VANILLA_POSE_SWIMMING_ID;
+            if let Some(swim) = self.living_swim.as_mut() {
+                swim.set_visually_swimming(visually_swimming);
+            } else if visually_swimming {
+                self.living_swim = Some(LivingSwimAmountState {
+                    visually_swimming,
+                    previous_swim_amount: 0.0,
+                    current_swim_amount: 0.0,
+                });
+            }
         }
         match entity_type_id {
             VANILLA_ENTITY_TYPE_POLAR_BEAR_ID => {
@@ -2963,6 +3023,15 @@ impl EntityClientAnimationState {
             .map_or(0.0, |state| state.roll_amount(partial_tick))
     }
 
+    /// Vanilla `LivingEntity.getSwimAmount(partialTick)`: the 0..1 eased blend toward
+    /// `isVisuallySwimming()`, used today by the drowned render path for the swim body
+    /// pitch and limb overrides. Returns `0.0` for a living entity that is not swimming
+    /// and for every non-living entity.
+    pub fn living_swim_amount(&self, partial_tick: f32) -> f32 {
+        self.living_swim
+            .map_or(0.0, |state| state.swim_amount(partial_tick))
+    }
+
     /// The frog croak's elapsed seconds since `Pose.CROAKING` started (vanilla
     /// `croakAnimationState`'s `getTimeInMillis`/`getElapsedSeconds`), projected for
     /// `FrogModel.setupAnim`. Returns `-1.0` (the stopped-animation sentinel) for a
@@ -3479,6 +3548,14 @@ impl EntityClientAnimationState {
         // synced health), so this also runs outside the per-type match.
         if let Some(death) = self.death.as_mut() {
             death.death_time = (death.death_time + 1).min(DEATH_ANIMATION_MAX_TICKS);
+        }
+        // Vanilla `LivingEntity.updateSwimAmount`: save `swimAmountO`, then ease
+        // `swimAmount` toward the current `isVisuallySwimming()` target by 0.09.
+        if let Some(swim) = self.living_swim.as_mut() {
+            swim.advance_client_tick();
+            if swim.is_settled() {
+                self.living_swim = None;
+            }
         }
         // Vanilla `LivingEntity` (`oAttackAnim = attackAnim` at tick start, then
         // `updateSwingTime`): the melee swing ramps for every living entity, so it runs

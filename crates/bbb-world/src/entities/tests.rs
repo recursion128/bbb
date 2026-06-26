@@ -2079,6 +2079,80 @@ fn wolf_wet_shade_follows_vanilla_get_wet_shade_timer() {
 }
 
 #[test]
+fn living_swim_amount_follows_vanilla_pose_swimming_ease_for_drowned() {
+    // Vanilla `LivingEntity.updateSwimAmount`: save `swimAmountO`, then if
+    // `isVisuallySwimming()` (`Pose.SWIMMING`) add `0.09` up to `1.0`, else subtract
+    // `0.09` down to `0.0`. `getSwimAmount(partialTick)` lerps the two endpoints.
+    const VANILLA_ENTITY_TYPE_DROWNED_ID: i32 = 38;
+    const ENTITY_DATA_POSE_ID: u8 = 6;
+    const POSE_STANDING: i32 = 0;
+    const POSE_SWIMMING: i32 = 3;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        184,
+        VANILLA_ENTITY_TYPE_DROWNED_ID,
+    ));
+
+    let swim_amount = |store: &WorldStore, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 184)
+            .unwrap()
+            .swim_amount
+    };
+
+    assert_eq!(swim_amount(&store, 1.0), 0.0);
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 184,
+        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_SWIMMING)],
+    }));
+    store.advance_entity_client_animations(1);
+    assert_eq!(
+        swim_amount(&store, 0.0),
+        0.0,
+        "partial 0 reads swimAmountO before the first swimming tick"
+    );
+    assert!(
+        (swim_amount(&store, 1.0) - 0.09).abs() < 1.0e-6,
+        "partial 1 reads swimAmount after one +0.09 tick: {}",
+        swim_amount(&store, 1.0)
+    );
+
+    store.advance_entity_client_animations(11);
+    assert_eq!(
+        swim_amount(&store, 1.0),
+        1.0,
+        "swimAmount clamps at vanilla's fully-swimming value"
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 184,
+        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_STANDING)],
+    }));
+    store.advance_entity_client_animations(1);
+    assert_eq!(
+        swim_amount(&store, 0.0),
+        1.0,
+        "partial 0 reads the previous fully-swimming value while easing out"
+    );
+    assert!(
+        (swim_amount(&store, 1.0) - 0.91).abs() < 1.0e-6,
+        "partial 1 subtracts the vanilla 0.09 step: {}",
+        swim_amount(&store, 1.0)
+    );
+
+    store.advance_entity_client_animations(12);
+    assert_eq!(
+        swim_amount(&store, 1.0),
+        0.0,
+        "after enough dry ticks the swim amount returns to rest"
+    );
+}
+
+#[test]
 fn entity_model_sources_project_on_ground_from_movement() {
     // Vanilla `Entity.onGround()`: the scene projects the entity's last synced movement ground
     // flag (combined with `isInWater` to drive the `TurtleRenderer` walk/swim branch). It

@@ -235,6 +235,10 @@ entity_render_state! {
     /// `None` for every entity that is not upside down (death and the riptide spin
     /// both take precedence over this branch).
     (with_upside_down_height) upside_down_height: Option<f32> = None;
+    /// Vanilla `EntityRenderState.boundingBoxHeight` (`Entity.getBbHeight`), in world units. Drowned
+    /// swim rotations use `bbHeight / 2 / entityScale` as their pivot after the standard living setup.
+    /// `0.0` for callers that do not provide an AABB-derived height.
+    (with_bounding_box_height) bounding_box_height: f32 = 0.0;
     /// Vanilla `LivingEntityRenderState.hasPose(Pose.SLEEPING)`: when sleeping in a
     /// bed, the renderer skips the `180 - bodyRot` yaw and lays the model down via
     /// [`SleepingPose`]. `None` for every entity that is not sleeping. Death and
@@ -246,6 +250,11 @@ entity_render_state! {
     /// `poseStack.scale(scale, scale, scale)` before `setupRotations`. `1.0` for an
     /// entity at its default size.
     (with_scale) scale: f32 = 1.0;
+    /// Vanilla `HumanoidRenderState.swimAmount` / `LivingEntity.getSwimAmount(partialTick)`: the
+    /// eased 0..1 blend toward `isVisuallySwimming()`. The drowned consumes this for
+    /// `DrownedRenderer.setupRotations` and the `DrownedModel.setupAnim` swim limb override. `0.0`
+    /// for a living entity that is not visually swimming and every non-living entity.
+    (with_swim_amount) swim_amount: f32 = 0.0;
     /// Vanilla `LivingEntityRenderState.walkAnimationPos`
     /// (`WalkAnimationState.position(partialTick)`): the lerped limb-swing position
     /// that models feed into the `cos(animationPos * 0.6662 ...)` leg/arm sway in
@@ -2059,8 +2068,10 @@ mod tests {
                 creaking_death_seconds: -1.0,
                 auto_spin_age_ticks: None,
                 upside_down_height: None,
+                bounding_box_height: 0.0,
                 sleeping: None,
                 scale: 1.0,
+                swim_amount: 0.0,
                 walk_animation_pos: 0.0,
                 walk_animation_speed: 0.0,
                 worn_head_animation_pos: 0.0,

@@ -74,6 +74,10 @@ order 0、白 tint 和 `scale(2)·translate(0,-0.5,0)` root transform；dragon h
 Wolf 湿身 shade tint 已完成：world 侧按 `Wolf.getWetShade(partialTick)` 维护
 `isWet/shakeAnimO/shakeAnim` 计时，native 转抄到 render state，renderer 只把
 `wetShade` 乘到基础 wolf submit，collar 保持自己的染色 tint/order。
+Drowned swimAmount 重姿态已完成：world 侧按 `LivingEntity.updateSwimAmount`
+从 synced `Pose.SWIMMING` 维护 `swimAmountO/swimAmount`（每 tick `±0.09`），native
+转抄 `swim_amount` 和 `bounding_box_height`，renderer 对 drowned base/outer 同步应用
+`DrownedRenderer.setupRotations` body pitch 与 `DrownedModel.setupAnim` arm/leg swim pose。
 
 ## 剩余大子系统（按优先级）
 
@@ -82,8 +86,20 @@ Wolf 湿身 shade tint 已完成：world 侧按 `Wolf.getWetShade(partialTick)` 
    继续按 `docs/unsupported-features.md` 审计剩余专用 item-on-entity 层（如
    `CustomHeadLayer` / `SkullBlockRenderer` 的远程或动态 profiled-player 皮肤、其他专用装备/物品层等），逐项从
    deferred 改为 covered。
+   其中远程 / 动态 player skin 资源管线按优先级推进：
+   1. 先解析 profile `textures` property 的 base64 JSON，提取 skin URL、cape URL
+      和 slim/wide model 信息；保持现有默认皮肤 fallback。
+   2. 补 `ResolvableProfile` 的异步 profile resolution 与缓存：partial name/UUID
+      能解析为完整 profile/properties，失败时保留默认皮肤。
+   3. 补远程 skin PNG 下载、内存/磁盘缓存、尺寸/格式校验，以及 64x32 旧 skin
+      到当前布局的转换。
+   4. 扩展 native/render-state 表达，从 `EntityDefaultPlayerSkin` 扩到默认 fallback、
+      loading/error fallback、resolved dynamic skin handle 和 slim/wide model。
+   5. 扩展 renderer 动态纹理入口：支持运行时上传/替换 dynamic skin texture
+      或独立动态 skin atlas，先接 `CustomHeadLayer` / `SkullBlockRenderer`
+      的 `player_head`，再推广到玩家实体本体、cape、elytra 等层。
 2. **世界侧动画计时器**
-   溺尸/海豚游泳重姿态、panda sit/lie/roll 等 client-tick 动画。
+   海豚游泳重姿态、panda sit/lie/roll 等 client-tick 动画。
 
 > 落地前务必先在 bbb 里 grep 确认该 feature 确实缺失（历史上多次「以为缺失实则已实现」）。
 > 索引/数据陷阱见 memory `entity-metadata-index-layout.md`；模型/代理历史见 `proxy-entity-replacement.md`。

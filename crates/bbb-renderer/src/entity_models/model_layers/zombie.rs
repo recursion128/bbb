@@ -759,12 +759,54 @@ fn apply_zombie_family_anim(root: &mut ModelPart, instance: &EntityModelInstance
 /// Vanilla `DrownedModel.setupAnim` `THROW_TRIDENT` override: after the held-out zombie arms, the main
 /// (right) arm raises the trident straight overhead to throw (`rightArm.xRot = rightArm.xRot * 0.5 - π`,
 /// `rightArm.yRot = 0`). Only the main arm is posed (`getMainArm() == arm`); left-handed mobs are not
-/// projected, so this always poses the right arm. The swim-amount override (which would fold the arm back
-/// while swimming) is deferred along with the drowned swim animation.
+/// projected, so this always poses the right arm.
 fn apply_drowned_throw_trident(root: &mut ModelPart) {
     let right = root.child_mut("right_arm");
     right.pose.rotation[0] = right.pose.rotation[0] * 0.5 - std::f32::consts::PI;
     right.pose.rotation[1] = 0.0;
+}
+
+/// Vanilla `DrownedModel.setupAnim` swim override, applied after the trident pose. `swimAmount`
+/// blends both arms toward the folded-back swimming pose, adds the out-of-phase arm/leg sine wave,
+/// rolls the arms, and zeroes the head pitch.
+fn apply_drowned_swim_pose(root: &mut ModelPart, instance: &EntityModelInstance) {
+    let swim_amount = instance.render_state.swim_amount;
+    if swim_amount <= 0.0 {
+        return;
+    }
+
+    let age_wave = (0.1 * instance.render_state.age_in_ticks).sin();
+    let right = root.child_mut("right_arm");
+    right.pose.rotation[0] = rot_lerp_rad(
+        swim_amount,
+        right.pose.rotation[0],
+        -std::f32::consts::PI * 4.0 / 5.0,
+    ) + swim_amount * 0.35 * age_wave;
+    right.pose.rotation[2] = rot_lerp_rad(swim_amount, right.pose.rotation[2], -0.15);
+
+    let left = root.child_mut("left_arm");
+    left.pose.rotation[0] = rot_lerp_rad(
+        swim_amount,
+        left.pose.rotation[0],
+        -std::f32::consts::PI * 4.0 / 5.0,
+    ) - swim_amount * 0.35 * age_wave;
+    left.pose.rotation[2] = rot_lerp_rad(swim_amount, left.pose.rotation[2], 0.15);
+
+    root.child_mut("left_leg").pose.rotation[0] -= swim_amount * 0.55 * age_wave;
+    root.child_mut("right_leg").pose.rotation[0] += swim_amount * 0.55 * age_wave;
+    root.child_mut("head").pose.rotation[0] = 0.0;
+}
+
+/// Vanilla `Mth.rotLerpRad(a, from, to)`: wraps the angular delta to `[-π, π)` before lerping.
+fn rot_lerp_rad(a: f32, from: f32, to: f32) -> f32 {
+    let mut diff = to - from;
+    while diff < -std::f32::consts::PI {
+        diff += 2.0 * std::f32::consts::PI;
+    }
+    while diff >= std::f32::consts::PI {
+        diff -= 2.0 * std::f32::consts::PI;
+    }
+    from + a * diff
 }
 
 /// Mutable zombie model, mirroring vanilla `ZombieModel` (an `AbstractZombieModel` over `HumanoidModel`).
@@ -800,11 +842,12 @@ impl EntityModel for ZombieModel {
 /// `ZombieVillagerRenderer` — all of which inherit `ZombieModel.setupAnim`. The unified tree is
 /// selected by `family`/`baby`: the husk and drowned reuse the plain zombie body, the zombie villager
 /// builds its own robed tree; `setup_anim` runs the shared [`apply_zombie_family_anim`], then an aggressive
-/// trident-holding drowned raises the trident to throw ([`apply_drowned_throw_trident`]). The per-family
-/// root scale (husk) and the colored recolor / textured texture are supplied by the caller; the drowned
-/// swim/outer layer and the profession overlays defer.
+/// trident-holding drowned raises the trident to throw ([`apply_drowned_throw_trident`]) and then applies
+/// the `swimAmount` limb override. The per-family root scale (husk) and the colored recolor / textured
+/// texture are supplied by the caller; the profession overlays defer.
 pub(in crate::entity_models) struct ZombieVariantModel {
     root: ModelPart,
+    family: ZombieVariantModelFamily,
 }
 
 impl ZombieVariantModel {
@@ -813,7 +856,7 @@ impl ZombieVariantModel {
             ZombieVariantModelFamily::ZombieVillager => zombie_villager_tree(baby),
             _ => zombie_tree(baby),
         };
-        Self { root }
+        Self { root, family }
     }
 }
 
@@ -833,6 +876,9 @@ impl EntityModel for ZombieVariantModel {
         if instance.render_state.drowned_throw_trident {
             apply_drowned_throw_trident(&mut self.root);
         }
+        if self.family == ZombieVariantModelFamily::Drowned {
+            apply_drowned_swim_pose(&mut self.root, instance);
+        }
     }
 }
 
@@ -841,9 +887,8 @@ impl EntityModel for ZombieVariantModel {
 /// `drowned_outer_layer.png` (adult) / `drowned_outer_layer_baby.png` (baby). It is a `DrownedModel`
 /// (adult `DrownedModel.createBodyLayer(0.25)`) / `BabyDrownedModel` (baby
 /// `BabyZombieModel.createBodyLayer(0.25)`) in its own right, so it is posed by the exact same animator
-/// as the base (the shared `ZombieModel.setupAnim` plus the drowned trident throw), keeping the
-/// inflated shell glued to the limbs. The swim re-pose stays deferred along with the base swim
-/// animation.
+/// as the base (the shared `ZombieModel.setupAnim` plus the drowned trident throw and swim override),
+/// keeping the inflated shell glued to the limbs.
 pub(in crate::entity_models) struct DrownedOuterModel {
     root: ModelPart,
 }
@@ -874,5 +919,6 @@ impl EntityModel for DrownedOuterModel {
         if instance.render_state.drowned_throw_trident {
             apply_drowned_throw_trident(&mut self.root);
         }
+        apply_drowned_swim_pose(&mut self.root, instance);
     }
 }

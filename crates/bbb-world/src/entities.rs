@@ -600,6 +600,11 @@ pub struct EntityModelSourceState {
     /// for an entity at its default size (and every non-living entity).
     #[serde(default = "entity_model_source_default_scale")]
     pub scale: f32,
+    /// Vanilla `LivingEntityRenderState.swimAmount` (`LivingEntity.getSwimAmount(partialTick)`): the
+    /// eased 0..1 blend toward `Entity.isVisuallySwimming()`. The drowned render path currently
+    /// consumes it for the body pitch and limb swim overrides; `0.0` for dry/non-swimming entities.
+    #[serde(default)]
+    pub swim_amount: f32,
     #[serde(default)]
     pub sheep_eat_animation_tick: i32,
     /// Vanilla `Goat.lowerHeadTick` (the `0..=20` ram counter, advanced from entity events 58/59): the

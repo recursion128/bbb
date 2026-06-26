@@ -1,5 +1,5 @@
 use super::colored::{
-    creeper_model_root_transform, end_crystal_model_root_transform,
+    creeper_model_root_transform, drowned_model_root_transform, end_crystal_model_root_transform,
     shulker_bullet_model_root_transform, villager_adult_model_root_transform,
     wind_charge_model_root_transform, wither_model_root_transform, HORSE_SCALE,
 };
@@ -1061,6 +1061,8 @@ fn emit_worn_humanoid_armor(
             // The husk wears the `HUSK_SCALE` mesh-transformer scale; the other variants render at 1.0×.
             let transform = if matches!(family, ZombieVariantModelFamily::Husk) {
                 mesh_transformer_scaled_model_root_transform(instance, HUSK_SCALE)
+            } else if matches!(family, ZombieVariantModelFamily::Drowned) {
+                drowned_model_root_transform(instance)
             } else {
                 entity_model_root_transform(instance)
             };
@@ -1656,9 +1658,9 @@ fn emit_drowned_textured_model(
     // `DrownedModel extends ZombieModel`, so the non-swimming drowned reuses the zombie body. The
     // always-on `DrownedOuterLayer` is a second white cutout pass driven by a `DrownedOuterModel`
     // (the inflated `createBodyLayer(0.25)` shell — the adult humanoid mesh or the distinct baby-zombie
-    // mesh) posed by the SAME animator, so it tracks the limbs. The swim re-pose (needs `swimAmount`)
-    // stays deferred. No root scale.
-    let transform = entity_model_root_transform(instance);
+    // mesh) posed by the SAME animator, so it tracks the limbs. `DrownedRenderer.setupRotations`
+    // adds the swim body pitch onto both passes. No root scale.
+    let transform = drowned_model_root_transform(instance);
     let mut base = ZombieVariantModel::new(ZombieVariantModelFamily::Drowned, baby);
     base.prepare(&instance);
     for pass in drowned_textured_layer_passes(baby) {

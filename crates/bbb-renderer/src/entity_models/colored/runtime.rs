@@ -17,7 +17,7 @@ use super::selection::{
     hoglin_model_color, humanoid_model_color, piglin_model_color, quadruped_model_color,
 };
 use super::transforms::{
-    end_crystal_model_root_transform, entity_model_root_transform,
+    drowned_model_root_transform, end_crystal_model_root_transform, entity_model_root_transform,
     mesh_transformer_scaled_model_root_transform, player_model_root_transform,
     scaled_model_root_transform, shulker_bullet_model_root_transform, slime_model_root_transform,
     squid_model_root_transform, tropical_fish_model_root_transform,
@@ -418,8 +418,8 @@ fn zombie_variant_color(family: ZombieVariantModelFamily) -> [f32; 4] {
 }
 
 /// The model→world transform for a zombie variant. Only the adult husk is scaled (vanilla
-/// `huskScale` 1.0625, a `MeshTransformer.scaling` baked by `HuskRenderer`); the baby husk, the
-/// drowned, and the zombie villager render at the unscaled humanoid root.
+/// `huskScale` 1.0625, a `MeshTransformer.scaling` baked by `HuskRenderer`); the drowned adds its
+/// swim `setupRotations` pitch, and the zombie villager renders at the unscaled humanoid root.
 pub(in crate::entity_models) fn zombie_variant_root_transform(
     instance: EntityModelInstance,
     family: ZombieVariantModelFamily,
@@ -427,6 +427,8 @@ pub(in crate::entity_models) fn zombie_variant_root_transform(
 ) -> Mat4 {
     if family == ZombieVariantModelFamily::Husk && !baby {
         mesh_transformer_scaled_model_root_transform(instance, HUSK_SCALE)
+    } else if family == ZombieVariantModelFamily::Drowned {
+        drowned_model_root_transform(instance)
     } else {
         entity_model_root_transform(instance)
     }

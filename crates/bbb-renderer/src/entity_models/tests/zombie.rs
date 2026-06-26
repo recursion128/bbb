@@ -350,6 +350,104 @@ fn drowned_raises_its_trident_to_throw() {
 }
 
 #[test]
+fn drowned_swim_amount_reposes_limbs_after_trident_pose() {
+    // Vanilla `DrownedModel.setupAnim` applies the THROW_TRIDENT arm first, then the swimAmount
+    // override folds both arms toward `-4π/5`, adds opposite sine waves to arms/legs, rolls the arms,
+    // and clears the head pitch.
+    let rot_lerp_rad = |a: f32, from: f32, to: f32| {
+        let mut diff = to - from;
+        while diff < -std::f32::consts::PI {
+            diff += 2.0 * std::f32::consts::PI;
+        }
+        while diff >= std::f32::consts::PI {
+            diff -= 2.0 * std::f32::consts::PI;
+        }
+        from + a * diff
+    };
+    let base = EntityModelInstance::zombie_variant(
+        39,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ZombieVariantModelFamily::Drowned,
+        false,
+    )
+    .with_is_aggressive(true)
+    .with_drowned_throw_trident(true)
+    .with_head_look(0.0, -25.0)
+    .with_age_in_ticks(10.0);
+    let swim_amount = 0.5;
+    let wave = (0.1_f32 * 10.0).sin();
+
+    let mut dry_model = ZombieVariantModel::new(ZombieVariantModelFamily::Drowned, false);
+    dry_model.prepare(&base);
+    let dry_right = dry_model.root_mut().child_mut("right_arm").pose.rotation;
+    let dry_left = dry_model.root_mut().child_mut("left_arm").pose.rotation;
+    let dry_left_leg_x = dry_model.root_mut().child_mut("left_leg").pose.rotation[0];
+    let dry_right_leg_x = dry_model.root_mut().child_mut("right_leg").pose.rotation[0];
+
+    let mut swimming_model = ZombieVariantModel::new(ZombieVariantModelFamily::Drowned, false);
+    swimming_model.prepare(&base.with_swim_amount(swim_amount));
+    let swim_right = swimming_model
+        .root_mut()
+        .child_mut("right_arm")
+        .pose
+        .rotation;
+    let swim_left = swimming_model
+        .root_mut()
+        .child_mut("left_arm")
+        .pose
+        .rotation;
+
+    assert!(
+        (swim_right[0]
+            - (rot_lerp_rad(swim_amount, dry_right[0], -std::f32::consts::PI * 4.0 / 5.0,)
+                + swim_amount * 0.35 * wave))
+            .abs()
+            < 1.0e-6,
+        "right arm xRot follows DrownedModel swim override"
+    );
+    assert!(
+        (swim_left[0]
+            - (rot_lerp_rad(swim_amount, dry_left[0], -std::f32::consts::PI * 4.0 / 5.0,)
+                - swim_amount * 0.35 * wave))
+            .abs()
+            < 1.0e-6,
+        "left arm xRot follows opposite swim wave"
+    );
+    assert!((swim_right[2] - rot_lerp_rad(swim_amount, dry_right[2], -0.15)).abs() < 1.0e-6);
+    assert!((swim_left[2] - rot_lerp_rad(swim_amount, dry_left[2], 0.15)).abs() < 1.0e-6);
+    assert!(
+        (swimming_model
+            .root_mut()
+            .child_mut("left_leg")
+            .pose
+            .rotation[0]
+            - (dry_left_leg_x - swim_amount * 0.55 * wave))
+            .abs()
+            < 1.0e-6
+    );
+    assert!(
+        (swimming_model
+            .root_mut()
+            .child_mut("right_leg")
+            .pose
+            .rotation[0]
+            - (dry_right_leg_x + swim_amount * 0.55 * wave))
+            .abs()
+            < 1.0e-6
+    );
+    assert_eq!(
+        swimming_model.root_mut().child_mut("head").pose.rotation[0],
+        0.0
+    );
+    assert_ne!(
+        entity_model_mesh(&[base]).vertices,
+        entity_model_mesh(&[base.with_swim_amount(swim_amount)]).vertices,
+        "the colored drowned mesh visibly re-poses while swimming"
+    );
+}
+
+#[test]
 fn zombie_baby_model_parts_match_vanilla_26_1_body_layer() {
     // The baby zombie head carries the base cube plus the `0.25` deformation overlay (which keeps
     // the base 6x6x6 box as uv_size).
@@ -884,10 +982,10 @@ fn drowned_textured_layer_passes_reuse_the_zombie_body_layer() {
         "minecraft:drowned_baby#outer"
     );
 
-    // Vanilla `DrownedModel.createBodyLayer extends ZombieModel`; the non-swimming drowned reuses
-    // the unified `ZombieVariantModel` (plain-zombie) tree for the base body, so the base layer-pass
-    // geometry is vestigial. The drowned's distinct left-limb `texOffs(32, 48)`/`texOffs(16, 48)`
-    // live on the adult outer-layer overlay; the swim re-pose defers.
+    // Vanilla `DrownedModel.createBodyLayer extends ZombieModel`; the drowned reuses the unified
+    // `ZombieVariantModel` (plain-zombie) tree for the base body, then swimAmount re-poses that tree at
+    // runtime. The drowned's distinct left-limb `texOffs(32, 48)`/`texOffs(16, 48)` live on the adult
+    // outer-layer overlay.
     assert_eq!(DROWNED_OUTER_LEFT_ARM.tex, [32.0, 48.0]);
     assert!(!DROWNED_OUTER_LEFT_ARM.mirror);
     assert_eq!(DROWNED_OUTER_LEFT_LEG.tex, [16.0, 48.0]);
@@ -920,7 +1018,7 @@ fn drowned_textured_layer_passes_reuse_the_zombie_body_layer() {
 #[test]
 fn drowned_textured_layer_passes_match_vanilla_renderer() {
     // Adult: base body (`drowned.png`) + the always-on white `DrownedOuterLayer` overlay
-    // (`drowned_outer_layer.png`). Baby: base body only — the baby outer layer defers.
+    // (`drowned_outer_layer.png`). Baby: base body + the distinct baby outer layer.
     let adult = drowned_textured_layer_passes(false);
     assert_eq!(adult.len(), 2);
     assert_eq!(adult[0].kind, EntityModelLayerKind::DrownedBase);
@@ -931,6 +1029,8 @@ fn drowned_textured_layer_passes_match_vanilla_renderer() {
     assert_eq!(adult[0].model_layer, "minecraft:drowned#main");
     assert_eq!(adult[0].texture, DROWNED_TEXTURE_REF);
     assert_eq!(adult[0].visibility, EntityModelLayerVisibility::All);
+    assert_eq!(adult[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((adult[0].collector_order, adult[0].submit_sequence), (0, 0));
 
     assert_eq!(adult[1].kind, EntityModelLayerKind::DrownedOuter);
     assert_eq!(
@@ -990,7 +1090,7 @@ fn drowned_textured_mesh_matches_colored_geometry_and_legs_swing() {
         assert_close3(tmax, cmax);
 
         // Vanilla runs the leg swing every frame; advancing the walk animation re-poses the legs
-        // (the held-out arms and the swim/outer layers stay deferred, like the colored path).
+        // (the held-out arms and the swim override share the same colored/textured animator).
         let walking = [instances[0]
             .with_walk_animation(2.0, 1.0)
             .with_age_in_ticks(8.0)];
@@ -1000,6 +1100,49 @@ fn drowned_textured_mesh_matches_colored_geometry_and_legs_swing() {
             "legs swing (baby={baby})"
         );
     }
+}
+
+#[test]
+fn drowned_textured_mesh_applies_swim_amount_pose_and_body_pitch() {
+    let (atlas, _) = build_entity_model_texture_atlas(&drowned_texture_images()).unwrap();
+    let base = EntityModelInstance::zombie_variant(
+        59,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ZombieVariantModelFamily::Drowned,
+        false,
+    )
+    .with_head_look(0.0, 25.0)
+    .with_age_in_ticks(10.0)
+    .with_bounding_box_height(1.95);
+    let dry = entity_model_textured_mesh(&[base], &atlas);
+    let swimming = entity_model_textured_mesh(&[base.with_swim_amount(0.5)], &atlas);
+    assert_eq!(dry.cutout_faces, swimming.cutout_faces);
+    assert_eq!(dry.vertices.len(), swimming.vertices.len());
+    assert_ne!(
+        dry.vertices, swimming.vertices,
+        "swimAmount re-poses the textured drowned"
+    );
+    assert!(swimming
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+
+    let colored_swim = entity_model_mesh(&[base.with_swim_amount(0.5)]);
+    let (cmin, cmax) = mesh_extents(&colored_swim);
+    let (tmin, tmax) = textured_mesh_extents(&swimming);
+    assert_close3(tmin, cmin);
+    assert_close3(tmax, cmax);
+
+    let pivoted = entity_model_textured_mesh(&[base.with_swim_amount(0.5)], &atlas);
+    let foot_pivot = entity_model_textured_mesh(
+        &[base.with_swim_amount(0.5).with_bounding_box_height(0.0)],
+        &atlas,
+    );
+    assert_ne!(
+        pivoted.vertices, foot_pivot.vertices,
+        "DrownedRenderer.setupRotations uses boundingBoxHeight / 2 as the swim pitch pivot"
+    );
 }
 
 fn drowned_texture_images() -> Vec<EntityModelTextureImage> {
@@ -1038,6 +1181,20 @@ fn drowned_outer_layer_overlays_the_inflated_white_shell() {
     )];
     let base = entity_model_textured_mesh(&instances, &base_only);
     let outer = entity_model_textured_mesh(&instances, &with_outer);
+    let outer_meshes = entity_model_textured_meshes(&instances, &with_outer);
+
+    assert_eq!(outer_meshes.submissions.len(), 2);
+    assert_eq!(outer_meshes.submissions[0].texture, DROWNED_TEXTURE_REF);
+    assert_eq!(outer_meshes.submissions[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(outer_meshes.submissions[0].collector_order, 0);
+    assert_eq!(outer_meshes.submissions[0].submit_sequence, 0);
+    assert_eq!(
+        outer_meshes.submissions[1].texture,
+        DROWNED_OUTER_LAYER_TEXTURE_REF
+    );
+    assert_eq!(outer_meshes.submissions[1].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(outer_meshes.submissions[1].collector_order, 1);
+    assert_eq!(outer_meshes.submissions[1].submit_sequence, 1);
 
     // The outer adds exactly the inflated humanoid shell (7 boxes * 6 faces).
     assert_eq!(outer.cutout_faces, base.cutout_faces + 42);

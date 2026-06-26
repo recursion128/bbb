@@ -94,6 +94,25 @@ pub(in crate::entity_models) fn fox_model_root_transform(instance: EntityModelIn
     living_entity_model_root_transform_with_extra_setup_rotation(instance, setup_rotation_tail)
 }
 
+/// Vanilla `DrownedRenderer.setupRotations`: after the standard living setup, a visually swimming
+/// drowned rotates around `y = boundingBoxHeight / 2 / entityScale` by
+/// `lerp(swimAmount, 0, -10 - xRot)` degrees. The rotation is identity when `swimAmount == 0`.
+pub(in crate::entity_models) fn drowned_model_root_transform(
+    instance: EntityModelInstance,
+) -> Mat4 {
+    let swim_amount = instance.render_state.swim_amount;
+    let setup_rotation_tail = if swim_amount > 0.0 {
+        let rotation_x = swim_amount * (-10.0 - instance.render_state.head_pitch);
+        let pivot_y = instance.render_state.bounding_box_height / 2.0 / instance.render_state.scale;
+        Mat4::from_translation(Vec3::new(0.0, pivot_y, 0.0))
+            * Mat4::from_rotation_x(rotation_x.to_radians())
+            * Mat4::from_translation(Vec3::new(0.0, -pivot_y, 0.0))
+    } else {
+        Mat4::IDENTITY
+    };
+    living_entity_model_root_transform_with_extra_setup_rotation(instance, setup_rotation_tail)
+}
+
 /// Vanilla `WitherBossRenderer.scale` uniform model scale, applied at the per-renderer `this.scale()`
 /// hook (after the `(-1, -1, 1)` flip, before the `-1.501` y-offset): `scale = 2.0`, minus
 /// `invulnerableTicks / 220 * 0.5` while the wither is mid-spawn (`invulnerableTicks > 0`). So a

@@ -1197,6 +1197,15 @@ fn entity_model_instance(
     let vex_left_hand_item_non_empty = is_vex && entity_offhand_non_empty(world, source.entity_id);
     // Vanilla setupRotations lifts the upside-down model by its bounding box height.
     let upside_down_height = source.is_upside_down.then_some(source.bounding_box_height);
+    let drowned_bounding_box_height = matches!(
+        &kind,
+        EntityModelKind::ZombieVariant {
+            family: ZombieVariantModelFamily::Drowned,
+            ..
+        }
+    )
+    .then_some(source.bounding_box_height)
+    .unwrap_or_default();
     // Vanilla setupRotations sleeping branch: the bed yaw (or the body yaw when not
     // in a bed) plus the bed head-offset translate.
     let sleeping = source.is_sleeping.then_some(SleepingPose {
@@ -1223,8 +1232,10 @@ fn entity_model_instance(
         .with_death_time(source.death_time)
         .with_auto_spin_age_ticks(auto_spin_age_ticks)
         .with_upside_down_height(upside_down_height)
+        .with_bounding_box_height(drowned_bounding_box_height)
         .with_sleeping(sleeping)
         .with_scale(source.scale)
+        .with_swim_amount(source.swim_amount)
         .with_in_water(source.in_water)
         .with_on_ground(source.on_ground)
         .with_is_moving(source.is_moving)
@@ -4973,6 +4984,52 @@ mod tests {
             .render_state
             .drowned_throw_trident;
         assert!(!throwing);
+    }
+
+    #[test]
+    fn entity_model_instance_projects_drowned_swim_amount_from_source() {
+        // Vanilla `HumanoidMobRenderer.extractHumanoidRenderState` copies
+        // `LivingEntity.getSwimAmount(partialTicks)` into `state.swimAmount`; `DrownedRenderer`
+        // additionally needs `boundingBoxHeight` for its swim rotation pivot.
+        const VANILLA_ENTITY_TYPE_DROWNED_ID: i32 = 38;
+
+        let source: EntityModelSourceState = serde_json::from_value(serde_json::json!({
+            "entity_id": 231,
+            "entity_type_id": VANILLA_ENTITY_TYPE_DROWNED_ID,
+            "position": { "x": 1.0, "y": 64.0, "z": -2.0 },
+            "y_rot": 0.0,
+            "swim_amount": 0.27,
+            "bounding_box_height": 1.95,
+            "data_values": []
+        }))
+        .unwrap();
+
+        let instance = entity_model_instance(
+            source,
+            &WorldStore::new(),
+            None,
+            0,
+            1.0,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(
+            instance.kind,
+            EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::Drowned,
+                baby: false,
+            }
+        );
+        assert!((instance.render_state.swim_amount - 0.27).abs() < 1.0e-6);
+        assert!((instance.render_state.bounding_box_height - 1.95).abs() < 1.0e-6);
     }
 
     #[test]
