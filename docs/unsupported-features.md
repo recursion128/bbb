@@ -2226,8 +2226,10 @@ When an agent does any of the following, update this file in the same slice:
       `textures/entity/dolphin/dolphin.png` / `dolphin_baby.png` atlas references into the cutout
       mesh (the `DolphinModel` default `RenderTypes::entityCutoutNoCull`), hand-emitted through the
       same animated hierarchy as the colored path (which approximates the texture with a single
-      representative grey). The held-item carry layer (`DolphinCarryingItemLayer`) remains
-      unsupported
+      representative grey). The held-item carry layer (`DolphinCarryingItemLayer`) is now implemented
+      through the shared item-model pass: renderer exposes `dolphin_carried_item_transform`, which keeps
+      the item in the unscaled entity root frame and applies the vanilla `xRot`-dependent `(0, y, z)`
+      offset, while native reads the main-hand stack and bakes it with `ItemDisplayContext.GROUND`.
     - guardian / elder guardian entities as renderer-owned vanilla 26.1
       `GuardianModel.createBodyLayer()` geometry on the colored path: the native entity scene
       (`entity_scene.rs`) projects vanilla type ids `63` (guardian) and `40` (elder guardian) to

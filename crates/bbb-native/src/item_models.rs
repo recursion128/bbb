@@ -14,10 +14,11 @@ use std::{
 use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
 use bbb_protocol::packets::ItemStackSummary;
 use bbb_renderer::{
-    bake_generated_item_quads, bake_item_model_mesh, enderman_carried_block_transform,
-    fox_held_item_transform, humanoid_hand_attach_transform, iron_golem_flower_block_transform,
-    mooshroom_mushroom_block_transforms, snow_golem_head_block_transform, EntityModelInstance,
-    ItemModelMesh, ItemModelQuad, MooshroomVariant,
+    bake_generated_item_quads, bake_item_model_mesh, dolphin_carried_item_transform,
+    enderman_carried_block_transform, fox_held_item_transform, humanoid_hand_attach_transform,
+    iron_golem_flower_block_transform, mooshroom_mushroom_block_transforms,
+    snow_golem_head_block_transform, EntityModelInstance, ItemModelMesh, ItemModelQuad,
+    MooshroomVariant,
 };
 use bbb_world::WorldStore;
 use glam::{Mat4, Vec3};
@@ -345,6 +346,14 @@ pub(crate) fn held_item_models(
             &mut block_meshes,
             &mut flat_meshes,
         );
+        bake_dolphin_carried_item(
+            instance,
+            world,
+            item_runtime,
+            terrain_textures,
+            &mut block_meshes,
+            &mut flat_meshes,
+        );
     }
 
     HeldItemModels {
@@ -412,6 +421,38 @@ fn bake_fox_held_item(
         return;
     };
     let Some(transform) = fox_held_item_transform(instance) else {
+        return;
+    };
+    bake_item_stack_at_transform(
+        &stack,
+        transform,
+        BlockModelDisplayContext::Ground,
+        false,
+        BLOCK_GROUND_FALLBACK,
+        GENERATED_GROUND_FALLBACK,
+        item_runtime,
+        terrain_textures,
+        block_meshes,
+        flat_meshes,
+    );
+}
+
+/// Bakes a dolphin's carried main-hand stack. Vanilla `DolphinCarryingItemLayer` shares
+/// `HoldingEntityRenderState` with foxes, so it reads `entity.getMainHandItem()` resolved in the
+/// `GROUND` display context and places it at a pitch-adjusted entity-root offset.
+#[allow(clippy::too_many_arguments)]
+fn bake_dolphin_carried_item(
+    instance: &EntityModelInstance,
+    world: &WorldStore,
+    item_runtime: &NativeItemRuntime,
+    terrain_textures: &TerrainTextureState,
+    block_meshes: &mut Vec<ItemModelMesh>,
+    flat_meshes: &mut Vec<ItemModelMesh>,
+) {
+    let Some(stack) = world.held_item(instance.entity_id, false) else {
+        return;
+    };
+    let Some(transform) = dolphin_carried_item_transform(instance) else {
         return;
     };
     bake_item_stack_at_transform(

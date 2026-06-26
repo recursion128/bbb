@@ -83,6 +83,33 @@ pub fn fox_held_item_transform(instance: &EntityModelInstance) -> Option<Mat4> {
     Some(transform)
 }
 
+/// The model→world transform used by vanilla `DolphinCarryingItemLayer` before the carried stack's
+/// `GROUND` display transform. The layer does not read `DolphinModel` parts; it stays in the entity root
+/// frame and nudges the item from `(0, 1, -1)` based only on `state.xRot`. The baby dolphin's `0.5`
+/// geometry scale is baked into `ModelLayers.DOLPHIN_BABY`, so this layer intentionally uses the unscaled
+/// entity root transform.
+pub fn dolphin_carried_item_transform(instance: &EntityModelInstance) -> Option<Mat4> {
+    let EntityModelKind::Dolphin { .. } = instance.kind else {
+        return None;
+    };
+    let pitch = instance.render_state.head_pitch;
+    let angle_x_percent = pitch.abs() / 60.0;
+    let offset = if pitch < 0.0 {
+        Vec3::new(
+            0.0,
+            1.0 - angle_x_percent * 0.5,
+            -1.0 + angle_x_percent * 0.5,
+        )
+    } else {
+        Vec3::new(
+            0.0,
+            1.0 + angle_x_percent * 0.8,
+            -1.0 + angle_x_percent * 0.2,
+        )
+    };
+    Some(entity_model_root_transform(*instance) * Mat4::from_translation(offset))
+}
+
 /// The world transform of a named arm bone plus whether the instance is a baby (so the caller picks the
 /// baby hand offset), for the humanoid families that render held items: builds and poses the same model
 /// + root transform the entity scene uses, then reads `root · arm` (vanilla `translateToHand`). Returns
@@ -248,6 +275,43 @@ mod tests {
             (baby_x - 0.75).abs() < 1e-6,
             "baby item vector length {baby_x}"
         );
+    }
+
+    #[test]
+    fn dolphin_carried_item_uses_x_rot_offset_without_baby_scale() {
+        // Vanilla `DolphinCarryingItemLayer` leaves the item in entity-root space and only changes the
+        // `(0, 1, -1)` offset by `abs(xRot) / 60`. The baby model's mesh transformer does not scale the
+        // layer.
+        let local_offset = |instance: EntityModelInstance| {
+            let transform = dolphin_carried_item_transform(&instance).unwrap();
+            let root = entity_model_root_transform(instance);
+            (root.inverse() * transform).transform_point3(Vec3::ZERO)
+        };
+        let assert_close = |actual: Vec3, expected: Vec3| {
+            assert!(
+                (actual - expected).length() < 1e-5,
+                "{actual:?} should be close to {expected:?}"
+            );
+        };
+        let base = EntityModelInstance::dolphin(31, [0.0, 64.0, 0.0], 0.0, false);
+        assert_close(local_offset(base), Vec3::new(0.0, 1.0, -1.0));
+        assert_close(
+            local_offset(base.with_head_look(0.0, -60.0)),
+            Vec3::new(0.0, 0.5, -0.5),
+        );
+        assert_close(
+            local_offset(base.with_head_look(0.0, 60.0)),
+            Vec3::new(0.0, 1.8, -0.8),
+        );
+        let baby = EntityModelInstance::dolphin(32, [0.0, 64.0, 0.0], 0.0, true);
+        assert_close(local_offset(baby), Vec3::new(0.0, 1.0, -1.0));
+        assert!(dolphin_carried_item_transform(&EntityModelInstance::new(
+            33,
+            EntityModelKind::Creeper,
+            [0.0, 64.0, 0.0],
+            0.0
+        ))
+        .is_none());
     }
 
     #[test]

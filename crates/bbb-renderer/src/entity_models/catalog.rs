@@ -106,7 +106,8 @@ pub enum EntityModelKind {
     /// Dolphin (`DolphinModel`, `DolphinRenderer`). The procedural `DolphinModel.setupAnim` steers
     /// the body by the look pitch/yaw and, while moving (`isMoving`, the synced velocity), adds the
     /// swim body tilt and tail/tail-fin wave. The baby uses the `MeshTransformer.scaling(0.5)` body
-    /// layer. The held-item carry layer is deferred entity-side state.
+    /// layer. The held-item carry layer is baked by the native item-model pass from the renderer-owned
+    /// `dolphin_carried_item_transform`.
     Dolphin {
         baby: bool,
     },

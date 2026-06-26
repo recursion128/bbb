@@ -47,7 +47,9 @@ pub(super) use gpu::{
     EntityModelMeshGpu, EntityModelScrollMeshGpu, EntityModelTextureAtlasGpu,
     EntityModelTexturedMeshGpu,
 };
-pub use held_item::{fox_held_item_transform, humanoid_hand_attach_transform};
+pub use held_item::{
+    dolphin_carried_item_transform, fox_held_item_transform, humanoid_hand_attach_transform,
+};
 pub use instances::*;
 use keyframe::*;
 #[cfg(test)]
