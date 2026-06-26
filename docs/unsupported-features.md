@@ -1159,6 +1159,14 @@ When an agent does any of the following, update this file in the same slice:
         is deferred: vanilla scales its arm part by `BABY_TRANSFORMER` (0.5) and the
         held item rides that scale, but this crate bakes that scale into the small
         mesh's vertices (no part scale), so the held item would not pick it up.
+      - fox held item DONE: `FoxHeldItemLayer` is reproduced through the same
+        item-model pass. Renderer exposes `fox_held_item_transform`, which builds
+        and poses the vanilla adult/baby `FoxModel`, reads the posed `head` part,
+        applies the layer's baby `0.75` scale, sleep/non-sleep mouth offsets, the
+        `rotX(90°)` upright rotation, and the sleeping `rotZ(90°)` spin. Native
+        reads the fox main-hand equipment stack, uses vanilla
+        `HoldingEntityRenderState`'s `ItemDisplayContext.GROUND`, and bakes block
+        or generated item quads with the retained ground display transform.
       - family combat arm poses, first pose DONE (skeleton bow-aim): the
         `BOW_AND_ARROW` `ArmPose` raises both arms forward along the head look when
         a skeleton `isAggressive() && getMainHandItem().is(Items.BOW)`. The
@@ -3046,8 +3054,9 @@ When an agent does any of the following, update this file in the same slice:
       (a renderer root-transform concern, like the death tip-over). The textured path now binds the full `FoxRenderer.getTextureLocation` matrix: the
       native scene reads `DATA_TYPE_ID` (18, int) and `Fox.Variant.byId` selects red/snow, crossed
       with the age (`fox`/`fox_baby`) and the projected `fox_is_sleeping` flag (`fox_sleep`/
-      `fox_snow_sleep` and their `_baby` cells) — eight textures total. Only the held-item layer
-      remains deferred
+      `fox_snow_sleep` and their `_baby` cells) — eight textures total. The held-item layer is now
+      implemented through the shared item-model pass; only the `FoxRenderer.setupRotations`
+      body-PITCH flip for `isPouncing || isFaceplanted` remains deferred for fox-specific presentation.
     - cat and ocelot entities (adult and baby) as renderer-owned vanilla 26.1
       `AdultFelineModel.createBodyMesh()` / `BabyFelineModel.createBodyMesh()` geometry on the colored
       path: the native entity scene (`entity_scene.rs`) now splits vanilla type ids `21` (cat) and `91`

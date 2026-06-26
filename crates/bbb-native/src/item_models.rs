@@ -12,9 +12,10 @@ use std::{
 };
 
 use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
+use bbb_protocol::packets::ItemStackSummary;
 use bbb_renderer::{
     bake_generated_item_quads, bake_item_model_mesh, enderman_carried_block_transform,
-    humanoid_hand_attach_transform, iron_golem_flower_block_transform,
+    fox_held_item_transform, humanoid_hand_attach_transform, iron_golem_flower_block_transform,
     mooshroom_mushroom_block_transforms, snow_golem_head_block_transform, EntityModelInstance,
     ItemModelMesh, ItemModelQuad, MooshroomVariant,
 };
@@ -336,6 +337,14 @@ pub(crate) fn held_item_models(
             &mut block_meshes,
             &mut flat_meshes,
         );
+        bake_fox_held_item(
+            instance,
+            world,
+            item_runtime,
+            terrain_textures,
+            &mut block_meshes,
+            &mut flat_meshes,
+        );
     }
 
     HeldItemModels {
@@ -359,9 +368,6 @@ fn bake_held_hand(
     let Some(stack) = world.held_item(instance.entity_id, off_hand) else {
         return;
     };
-    let Some(item_id) = stack.item_id else {
-        return;
-    };
     // The off hand is the left arm (default right-handed main arm); the left arm gets the left-hand
     // display mirror.
     let left_arm = off_hand;
@@ -376,14 +382,79 @@ fn bake_held_hand(
     } else {
         BlockModelDisplayContext::ThirdPersonRightHand
     };
+    bake_item_stack_at_transform(
+        &stack,
+        hand,
+        context,
+        left_arm,
+        BLOCK_THIRD_PERSON_FALLBACK,
+        GENERATED_THIRD_PERSON_FALLBACK,
+        item_runtime,
+        terrain_textures,
+        block_meshes,
+        flat_meshes,
+    );
+}
+
+/// Bakes a fox's main-hand stack in its mouth. Vanilla `FoxHeldItemLayer` is backed by
+/// `HoldingEntityRenderState.extractHoldingEntityRenderState`, which resolves `entity.getMainHandItem()`
+/// with `ItemDisplayContext.GROUND` before applying the fox-head layer transform.
+#[allow(clippy::too_many_arguments)]
+fn bake_fox_held_item(
+    instance: &EntityModelInstance,
+    world: &WorldStore,
+    item_runtime: &NativeItemRuntime,
+    terrain_textures: &TerrainTextureState,
+    block_meshes: &mut Vec<ItemModelMesh>,
+    flat_meshes: &mut Vec<ItemModelMesh>,
+) {
+    let Some(stack) = world.held_item(instance.entity_id, false) else {
+        return;
+    };
+    let Some(transform) = fox_held_item_transform(instance) else {
+        return;
+    };
+    bake_item_stack_at_transform(
+        &stack,
+        transform,
+        BlockModelDisplayContext::Ground,
+        false,
+        BLOCK_GROUND_FALLBACK,
+        GENERATED_GROUND_FALLBACK,
+        item_runtime,
+        terrain_textures,
+        block_meshes,
+        flat_meshes,
+    );
+}
+
+/// Bakes one item stack at an entity-supplied attach transform, applying the stack's retained item
+/// display transform for the selected vanilla context and falling back to the parent-model default for
+/// block vs generated items.
+#[allow(clippy::too_many_arguments)]
+fn bake_item_stack_at_transform(
+    stack: &ItemStackSummary,
+    attach: Mat4,
+    context: BlockModelDisplayContext,
+    left_hand: bool,
+    block_fallback: BlockModelDisplayTransform,
+    generated_fallback: BlockModelDisplayTransform,
+    item_runtime: &NativeItemRuntime,
+    terrain_textures: &TerrainTextureState,
+    block_meshes: &mut Vec<ItemModelMesh>,
+    flat_meshes: &mut Vec<ItemModelMesh>,
+) {
+    let Some(item_id) = stack.item_id else {
+        return;
+    };
     let retained = item_runtime.item_display_transform(item_id, context);
 
     // Block path.
     if let Some(resource_id) = item_runtime.item_resource_id(item_id) {
         if let Some(quads) = terrain_textures.block_item_quads(resource_id, &BTreeMap::new()) {
             if !quads.is_empty() {
-                let display = retained.unwrap_or(BLOCK_THIRD_PERSON_FALLBACK);
-                let transform = hand * display_matrix(&display, left_arm);
+                let display = retained.unwrap_or(block_fallback);
+                let transform = attach * display_matrix(&display, left_hand);
                 block_meshes.push(bake_item_model_mesh(&quads, transform));
                 return;
             }
@@ -392,7 +463,7 @@ fn bake_held_hand(
 
     // Flat path.
     let mut quads: Vec<ItemModelQuad> = Vec::new();
-    for layer in item_runtime.generated_item_layers_for_stack(&stack) {
+    for layer in item_runtime.generated_item_layers_for_stack(stack) {
         quads.extend(bake_generated_item_quads(
             &layer.mask,
             layer.rect,
@@ -402,8 +473,8 @@ fn bake_held_hand(
     if quads.is_empty() {
         return;
     }
-    let display = retained.unwrap_or(GENERATED_THIRD_PERSON_FALLBACK);
-    let transform = hand * display_matrix(&display, left_arm);
+    let display = retained.unwrap_or(generated_fallback);
+    let transform = attach * display_matrix(&display, left_hand);
     flat_meshes.push(bake_item_model_mesh(&quads, transform));
 }
 

@@ -42,7 +42,7 @@ pub use crate::entity_models::{
     ENTITY_FULL_BRIGHT_LIGHT_COORDS, PLAYER_MODEL_PARTS_ALL_HIDDEN, PLAYER_MODEL_PARTS_ALL_VISIBLE,
 };
 pub use crate::entity_models::{
-    enderman_carried_block_transform, humanoid_hand_attach_transform,
+    enderman_carried_block_transform, fox_held_item_transform, humanoid_hand_attach_transform,
     iron_golem_flower_block_transform, mooshroom_mushroom_block_transforms,
     snow_golem_head_block_transform,
 };

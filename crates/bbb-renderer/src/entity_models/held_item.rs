@@ -1,7 +1,6 @@
-//! Held-item attachment: the world-space transform that places a held item at a humanoid's hand,
-//! following vanilla `ItemInHandLayer` + `HumanoidModel.translateToHand`. The renderer owns the model
-//! pose (the posed arm bone); the native layer resolves the item to quads and applies the per-item
-//! third-person display transform before baking the held-item mesh into the item-model pass.
+//! Held-item attachment: world-space transforms that place an item on a posed entity model. The renderer
+//! owns the model pose (the posed arm bone or head bone); the native layer resolves the item to quads and
+//! applies the per-item display transform before baking the held-item mesh into the item-model pass.
 
 use std::f32::consts::{FRAC_PI_2, PI};
 
@@ -13,7 +12,7 @@ use super::colored::{
 };
 use super::model::EntityModel;
 use super::model_layers::{
-    ArmorStandModel, IllagerModel, PiglinModel, PlayerModel, SkeletonModel, ZombieModel,
+    ArmorStandModel, FoxModel, IllagerModel, PiglinModel, PlayerModel, SkeletonModel, ZombieModel,
     ZombieVariantModel,
 };
 use super::{EntityModelInstance, EntityModelKind, SkeletonModelFamily};
@@ -51,6 +50,37 @@ pub fn humanoid_hand_attach_transform(
                 offset_z / 16.0,
             )),
     )
+}
+
+/// The model→world transform used by vanilla `FoxHeldItemLayer` before the held stack's `GROUND`
+/// display transform is applied. The layer manually translates to the already-posed fox head pivot, scales
+/// baby held items by `0.75`, applies the head rotations, then offsets the item differently for
+/// sleeping/non-sleeping adult and baby foxes before rotating the item upright.
+pub fn fox_held_item_transform(instance: &EntityModelInstance) -> Option<Mat4> {
+    let EntityModelKind::Fox { baby, .. } = instance.kind else {
+        return None;
+    };
+
+    let mut model = FoxModel::new(baby);
+    model.prepare(instance);
+    let head =
+        entity_model_root_transform(*instance) * model.root().try_child_attach_transform("head")?;
+    let sleeping = instance.render_state.fox_is_sleeping;
+    let offset = match (baby, sleeping) {
+        (true, true) => Vec3::new(0.4, 0.26, 0.15),
+        (true, false) => Vec3::new(0.06, 0.26, -0.5),
+        (false, true) => Vec3::new(0.46, 0.26, 0.22),
+        (false, false) => Vec3::new(0.06, 0.27, -0.5),
+    };
+    let mut transform = head;
+    if baby {
+        transform *= Mat4::from_scale(Vec3::splat(0.75));
+    }
+    transform *= Mat4::from_translation(offset) * Mat4::from_rotation_x(FRAC_PI_2);
+    if sleeping {
+        transform *= Mat4::from_rotation_z(FRAC_PI_2);
+    }
+    Some(transform)
 }
 
 /// The world transform of a named arm bone plus whether the instance is a baby (so the caller picks the
@@ -156,7 +186,7 @@ fn humanoid_arm_world_transform(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::entity_models::PLAYER_MODEL_PARTS_ALL_VISIBLE;
+    use crate::entity_models::{FoxModelVariant, PLAYER_MODEL_PARTS_ALL_VISIBLE};
 
     fn player_instance(y_rot: f32) -> EntityModelInstance {
         EntityModelInstance::player_with_parts(
@@ -172,6 +202,52 @@ mod tests {
     fn non_humanoid_instances_have_no_hand_attach() {
         let creeper = EntityModelInstance::new(2, EntityModelKind::Creeper, [0.0, 0.0, 0.0], 0.0);
         assert!(humanoid_hand_attach_transform(&creeper, false).is_none());
+    }
+
+    #[test]
+    fn fox_held_item_attaches_to_the_posed_head() {
+        // Vanilla `FoxHeldItemLayer` reads the already-posed parent model head, so the carried item moves
+        // with the fox's interested head roll rather than remaining at the bind-pose snout.
+        let fox = EntityModelInstance::fox(21, [0.0, 64.0, 0.0], 0.0, false, FoxModelVariant::Red);
+        let resting = fox_held_item_transform(&fox)
+            .unwrap()
+            .transform_point3(Vec3::ZERO);
+        let tilted = fox_held_item_transform(&fox.with_fox_head_roll_angle(0.35))
+            .unwrap()
+            .transform_point3(Vec3::ZERO);
+        assert!(resting.is_finite());
+        assert!(tilted.is_finite());
+        assert_ne!(resting, tilted);
+        assert!(fox_held_item_transform(&EntityModelInstance::new(
+            22,
+            EntityModelKind::Creeper,
+            [0.0, 64.0, 0.0],
+            0.0
+        ))
+        .is_none());
+    }
+
+    #[test]
+    fn baby_fox_held_item_uses_the_layer_scale() {
+        // `FoxHeldItemLayer` scales the baby-held stack by 0.75 after translating to the baby head pivot.
+        // A unit vector therefore comes out shorter than the adult's even though both use the same item
+        // display transform afterwards.
+        let adult =
+            EntityModelInstance::fox(23, [0.0, 64.0, 0.0], 0.0, false, FoxModelVariant::Red);
+        let baby = EntityModelInstance::fox(24, [0.0, 64.0, 0.0], 0.0, true, FoxModelVariant::Red);
+        let adult_x = fox_held_item_transform(&adult)
+            .unwrap()
+            .transform_vector3(Vec3::X)
+            .length();
+        let baby_x = fox_held_item_transform(&baby)
+            .unwrap()
+            .transform_vector3(Vec3::X)
+            .length();
+        assert!((adult_x - 1.0).abs() < 1e-6);
+        assert!(
+            (baby_x - 0.75).abs() < 1e-6,
+            "baby item vector length {baby_x}"
+        );
     }
 
     #[test]

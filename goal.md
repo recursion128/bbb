@@ -36,7 +36,10 @@ layer 已完成。铜傀儡 vanilla 模型、四态风化贴图和 emissive eyes
 ## 剩余大子系统（按优先级）
 
 1. **实体上的物品渲染器**
-   手持物 / 狐狸叼物 / 物品展示框内容 —— 需要 item-model primitive。
+   目标中原列的手持物 / 狐狸叼物 / 物品展示框内容已经接到 item-model primitive。
+   继续按 `docs/unsupported-features.md` 审计剩余专用 item-on-entity 层（如
+   dolphin carry、witch potion、copper golem held-item/custom-head 等），逐项从
+   deferred 改为 covered。
 2. **世界侧动画计时器**
    狼湿身着色、溺尸/海豚游泳重姿态等 client-tick 动画。
 
