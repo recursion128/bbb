@@ -32,7 +32,7 @@ fn wither_skull_mesh_uses_vanilla_skull_layer_geometry() {
 fn wither_skull_colored_runtime_skips_the_texture_backed_skull() {
     // The wither skull now binds the wither texture, so it renders through the textured path. The
     // texture-skipping colored runtime path emits nothing for it, while the full path still emits the
-    // colored fallback geometry. (The wither_invulnerable charged swap stays deferred.)
+    // colored fallback geometry.
     let instances = [EntityModelInstance::wither_skull(
         821,
         [0.0, 64.0, 0.0],
@@ -70,23 +70,38 @@ fn wither_skull_orients_along_flight() {
 #[test]
 fn wither_skull_textured_render_matches_vanilla_renderer() {
     assert_eq!(
-        wither_skull_textured_layer_passes()[0].texture,
+        wither_skull_textured_layer_passes(false)[0].texture,
         WITHER_TEXTURE_REF
     );
     assert_eq!(
-        EntityModelKind::WitherSkull.vanilla_texture_ref(),
+        wither_skull_textured_layer_passes(true)[0].texture,
+        WITHER_INVULNERABLE_TEXTURE_REF
+    );
+    assert_eq!(
+        EntityModelKind::WitherSkull { dangerous: false }.vanilla_texture_ref(),
         Some(WITHER_TEXTURE_REF)
     );
+    assert_eq!(
+        EntityModelKind::WitherSkull { dangerous: true }.vanilla_texture_ref(),
+        Some(WITHER_INVULNERABLE_TEXTURE_REF)
+    );
     assert!(entity_model_texture_refs().contains(&WITHER_TEXTURE_REF));
-    assert_eq!(wither_skull_entity_texture_refs(), &[WITHER_TEXTURE_REF]);
+    assert!(entity_model_texture_refs().contains(&WITHER_INVULNERABLE_TEXTURE_REF));
+    assert_eq!(
+        wither_skull_entity_texture_refs(),
+        &[WITHER_TEXTURE_REF, WITHER_INVULNERABLE_TEXTURE_REF]
+    );
 
-    let len = usize::try_from(WITHER_TEXTURE_REF.size[0] * WITHER_TEXTURE_REF.size[1] * 4).unwrap();
-    let images = vec![EntityModelTextureImage::new(
-        WITHER_TEXTURE_REF,
-        vec![0u8; len],
-    )];
+    let images: Vec<EntityModelTextureImage> = wither_skull_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let mesh = entity_model_textured_mesh(
+    let normal_mesh = entity_model_textured_mesh(
         &[EntityModelInstance::wither_skull(
             820,
             [0.0, 64.0, 0.0],
@@ -94,8 +109,26 @@ fn wither_skull_textured_render_matches_vanilla_renderer() {
         )],
         &atlas,
     );
-    assert!(!mesh.vertices.is_empty());
-    assert!(mesh
+    let dangerous_mesh = entity_model_textured_mesh(
+        &[EntityModelInstance::wither_skull_with_dangerous(
+            820,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+        )],
+        &atlas,
+    );
+    assert!(!normal_mesh.vertices.is_empty());
+    assert_eq!(normal_mesh.vertices.len(), dangerous_mesh.vertices.len());
+    assert_ne!(
+        normal_mesh.vertices, dangerous_mesh.vertices,
+        "dangerous skulls select the invulnerable texture atlas entry"
+    );
+    assert!(normal_mesh
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    assert!(dangerous_mesh
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
@@ -103,5 +136,12 @@ fn wither_skull_textured_render_matches_vanilla_renderer() {
 
 #[test]
 fn wither_skull_exposes_stable_model_key() {
-    assert_eq!(EntityModelKind::WitherSkull.model_key(), "wither_skull");
+    assert_eq!(
+        EntityModelKind::WitherSkull { dangerous: false }.model_key(),
+        "wither_skull"
+    );
+    assert_eq!(
+        EntityModelKind::WitherSkull { dangerous: true }.model_key(),
+        "wither_skull"
+    );
 }

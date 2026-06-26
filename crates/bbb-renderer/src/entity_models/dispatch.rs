@@ -621,11 +621,11 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &llama_spit_textured_layer_passes(),
         ),
-        EntityModelKind::WitherSkull => sink.model(
+        EntityModelKind::WitherSkull { dangerous } => sink.model(
             WitherSkullModel::new(),
             wither_skull_model_root_transform(*instance),
             instance,
-            &wither_skull_textured_layer_passes(),
+            &wither_skull_textured_layer_passes(dangerous),
         ),
         EntityModelKind::ShulkerBullet => sink.model(
             ShulkerBulletModel::new(),

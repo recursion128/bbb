@@ -359,6 +359,9 @@ const GHAST_IS_CHARGING_DATA_ID: u8 = 16;
 // first own accessor lands right after Mob's DATA_MOB_FLAGS_ID (15) — index 16. `isCharging` is bit 1.
 const VEX_FLAGS_DATA_ID: u8 = 16;
 const VEX_FLAG_IS_CHARGING: i8 = 1;
+// Vanilla WitherSkull.DATA_DANGEROUS (8, BOOLEAN): `Entity` defines ids 0..=7, while `Projectile` and
+// `AbstractHurtingProjectile` add no synced accessors, so the wither skull's first own accessor lands at 8.
+const WITHER_SKULL_DANGEROUS_DATA_ID: u8 = 8;
 // Vanilla Arrow.ID_EFFECT_COLOR (11, INT): `Arrow extends AbstractArrow extends Projectile extends
 // Entity`, so after Entity (0-7) come the three AbstractArrow accessors ID_FLAGS (8) / PIERCE_LEVEL
 // (9) / IN_GROUND (10), then Arrow's own potion color. `getColor() > 0` marks a tipped arrow.
@@ -1928,7 +1931,9 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_WARDEN_ID => EntityModelKind::Warden,
         VANILLA_ENTITY_TYPE_WIND_CHARGE_ID => EntityModelKind::WindCharge,
         VANILLA_ENTITY_TYPE_WITHER_ID => EntityModelKind::Wither,
-        VANILLA_ENTITY_TYPE_WITHER_SKULL_ID => EntityModelKind::WitherSkull,
+        VANILLA_ENTITY_TYPE_WITHER_SKULL_ID => EntityModelKind::WitherSkull {
+            dangerous: entity_data_bool(data_values, WITHER_SKULL_DANGEROUS_DATA_ID, false),
+        },
         _ => placeholder("todo_unknown_entity_type_bounds", 0.75, 0.75, 0.75),
     }
 }
@@ -9369,12 +9374,19 @@ mod tests {
     #[test]
     fn entity_model_kind_maps_wither_skull_to_real_model() {
         // The wither skull was a placeholder box; it now resolves to the real `SkullModel`. Its flight
-        // facing comes from the projected yaw/pitch (a plain `EntityRenderer`); the wither /
-        // invulnerable textures and the `isDangerous` swap are deferred entity-side state, so no synced
-        // data is read.
+        // facing comes from the projected yaw/pitch (a plain `EntityRenderer`). Vanilla
+        // `WitherSkull.DATA_DANGEROUS` is the synced boolean at id 8 and swaps to
+        // `wither_invulnerable.png`.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_WITHER_SKULL_ID, &[]),
-            EntityModelKind::WitherSkull
+            EntityModelKind::WitherSkull { dangerous: false }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
+                &[protocol_bool_data(WITHER_SKULL_DANGEROUS_DATA_ID, true)]
+            ),
+            EntityModelKind::WitherSkull { dangerous: true }
         );
     }
 

@@ -1348,7 +1348,21 @@ impl EntityModelInstance {
     }
 
     pub fn wither_skull(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
-        Self::new(entity_id, EntityModelKind::WitherSkull, position, y_rot)
+        Self::wither_skull_with_dangerous(entity_id, position, y_rot, false)
+    }
+
+    pub fn wither_skull_with_dangerous(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        dangerous: bool,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::WitherSkull { dangerous },
+            position,
+            y_rot,
+        )
     }
 
     pub fn llama_spit(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {

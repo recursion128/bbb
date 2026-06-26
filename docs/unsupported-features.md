@@ -2853,10 +2853,11 @@ When an agent does any of the following, update this file in the same slice:
       transform, together with the `WitherSkullRenderer` `scale(-1, -1, 1)` flip — `scale(-1, -1, 1) ·
       Ry(yRot) · Rx(xRot)`, projected through the instance's `body_rot` / `head_pitch` and captured by
       `wither_skull_model_root_transform` (a plain `EntityRenderer`, so no `-1.501` y-offset or render
-      scale). The base skull texture is now bound on the textured path (`WITHER_TEXTURE_REF`, `wither.png`),
-      the primary now-wired path; the `wither_invulnerable.png` charged-skull texture and the `isDangerous`
-      swap between them stay deferred. The colored debug path stays as a fallback (it renders the skull as
-      one dark tint)
+      scale). The normal and dangerous skull textures are now bound on the textured path: native reads
+      vanilla `WitherSkull.DATA_DANGEROUS` at synced data id `8` and projects
+      `EntityModelKind::WitherSkull { dangerous }`; `false` selects `WITHER_TEXTURE_REF` (`wither.png`)
+      and `true` selects `WITHER_INVULNERABLE_TEXTURE_REF` (`wither_invulnerable.png`). The colored debug
+      path stays as a fallback (it renders the skull as one dark tint)
     - llama spit entities as renderer-owned vanilla 26.1 `LlamaSpitModel.createBodyLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `79` to the new
       `EntityModelKind::LlamaSpit`, replacing the former placeholder bounds box. The static `main` part is

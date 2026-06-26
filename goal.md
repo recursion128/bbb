@@ -57,6 +57,10 @@ Vex charging 姿态也已补齐 `setArmsCharging` 的持物分支：native 从 m
 `xRot = π*7/6` 的 held-item arm pose。
 Fox pouncing / faceplanted 的 `FoxRenderer.setupRotations` body pitch 也已补齐：
 root transform 在标准 living setup 后追加 `Rx(-state.xRot)`，叼物层共享该 root。
+Wither skull 的 `isDangerous` 纹理切换已补齐：native 读取 26.1
+`WitherSkull.DATA_DANGEROUS` 布尔同步字段（index 8）并投影到
+`EntityModelKind::WitherSkull { dangerous }`，renderer 在 textured path 里按状态选择
+`wither.png` / `wither_invulnerable.png`。
 
 ## 剩余大子系统（按优先级）
 

@@ -11,9 +11,9 @@ use std::f32::consts::PI;
 // single 8×8×8 box (`addBox(-4, -8, -4, 8, 8, 8)` at `texOffs(0, 35)`). `SkullModel.setupAnim` turns
 // the head by the projectile's flight `yRot`/`xRot`; since the single part sits at ZERO that facing is
 // folded into `wither_skull_model_root_transform` (together with the renderer's `scale(-1, -1, 1)`
-// flip). `WitherSkullRenderer` is a plain `EntityRenderer`; the `wither.png` texture is wired here,
-// while the `wither_invulnerable.png` `isDangerous` swap stays deferred. The cube carries the colored
-// debug tint and the textured `uv_size` / `texOffs(0, 35)`.
+// flip). `WitherSkullRenderer` is a plain `EntityRenderer`; `isDangerous` selects between `wither.png`
+// and `wither_invulnerable.png`. The cube carries the colored debug tint and the textured `uv_size` /
+// `texOffs(0, 35)`.
 
 pub(in crate::entity_models) const WITHER_SKULL_CUBE: ModelCube = ModelCube::new(
     [-4.0, -8.0, -4.0],

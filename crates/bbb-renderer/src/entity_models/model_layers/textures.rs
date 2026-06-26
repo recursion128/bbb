@@ -3986,8 +3986,9 @@ pub fn mooshroom_entity_texture_refs() -> &'static [EntityModelTextureRef] {
 }
 
 // Projectiles: small single-texture models. `WITHER_TEXTURE_REF` (wither.png) is shared by the wither
-// skull and the wither boss (which also swaps in `WITHER_INVULNERABLE_TEXTURE_REF` mid-spawn); the
-// tipped-arrow / spectral arrow variants stay deferred.
+// skull and the wither boss; the skull swaps to `WITHER_INVULNERABLE_TEXTURE_REF` when dangerous, while
+// the boss swaps to it during its spawn charge. The arrow texture variants are selected from entity
+// state.
 pub(in crate::entity_models) const ARROW_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/projectiles/arrow.png",
@@ -4051,7 +4052,8 @@ pub(in crate::entity_models) const WITHER_TEXTURE_REF: EntityModelTextureRef =
         path: "textures/entity/wither/wither.png",
         size: [64, 64],
     };
-// The wither boss swaps to this during its spawn charge (`WitherBossRenderer.getTextureLocation`).
+// The wither boss swaps to this during its spawn charge (`WitherBossRenderer.getTextureLocation`), and
+// dangerous wither skulls use it directly (`WitherSkullRenderer.getTextureLocation`).
 pub(in crate::entity_models) const WITHER_INVULNERABLE_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/wither/wither_invulnerable.png",
@@ -4064,8 +4066,15 @@ pub(in crate::entity_models) const WITHER_ARMOR_TEXTURE_REF: EntityModelTextureR
         path: "textures/entity/wither/wither_armor.png",
         size: [64, 64],
     };
-pub(in crate::entity_models) const WITHER_SKULL_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
-    [WITHER_TEXTURE_REF];
+pub(in crate::entity_models) fn wither_skull_texture_ref(dangerous: bool) -> EntityModelTextureRef {
+    if dangerous {
+        WITHER_INVULNERABLE_TEXTURE_REF
+    } else {
+        WITHER_TEXTURE_REF
+    }
+}
+pub(in crate::entity_models) const WITHER_SKULL_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
+    [WITHER_TEXTURE_REF, WITHER_INVULNERABLE_TEXTURE_REF];
 pub fn wither_skull_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WITHER_SKULL_ENTITY_TEXTURE_REFS
 }

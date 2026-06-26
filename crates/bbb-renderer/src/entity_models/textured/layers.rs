@@ -1016,10 +1016,12 @@ pub(in crate::entity_models) fn shulker_bullet_textured_layer_passes() -> Vec<En
     )]
 }
 
-pub(in crate::entity_models) fn wither_skull_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+pub(in crate::entity_models) fn wither_skull_textured_layer_passes(
+    dangerous: bool,
+) -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass::base(
         EntityModelLayerRenderType::Cutout,
-        WITHER_TEXTURE_REF,
+        wither_skull_texture_ref(dangerous),
         [1.0, 1.0, 1.0, 1.0],
     )]
 }

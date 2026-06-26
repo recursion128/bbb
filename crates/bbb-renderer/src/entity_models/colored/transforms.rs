@@ -297,8 +297,7 @@ pub(in crate::entity_models) fn llama_spit_model_root_transform(
 /// submits the `SkullModel`, whose `setupAnim` turns the single `head` by the flight `yRot`/`xRot`
 /// (`head.yRot = yRot`, `head.xRot = xRot`). Since the head sits at ZERO that facing folds into the
 /// root: `scale(-1, -1, 1) · Ry(yRot) · Rx(xRot)`, the yaw/pitch projected through `body_rot` /
-/// `head_pitch`. There is no `-1.501` y-offset or render scale (it is not a `LivingEntityRenderer`); the
-/// `isDangerous` wither / invulnerable textures are deferred (colored-first).
+/// `head_pitch`. There is no `-1.501` y-offset or render scale (it is not a `LivingEntityRenderer`).
 pub(in crate::entity_models) fn wither_skull_model_root_transform(
     instance: EntityModelInstance,
 ) -> Mat4 {
