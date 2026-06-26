@@ -1,5 +1,6 @@
 use super::*;
 
+use super::super::textured::EntityModelRenderSubmission;
 use crate::entity_models::model::ModelCube;
 
 #[test]
@@ -409,6 +410,21 @@ fn llama_textured_model_parts_match_vanilla_model_layer_uv_sources() {
 fn llama_textured_mesh_renders_vanilla_decor_layer() {
     let images = llama_decor_texture_images();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let assert_submission = |submit: EntityModelRenderSubmission,
+                             instance: EntityModelInstance,
+                             render_type: EntityModelLayerRenderType,
+                             texture: EntityModelTextureRef,
+                             order: i32,
+                             submit_sequence: u32| {
+        assert_eq!(submit.render_type, render_type);
+        assert_eq!(submit.texture, texture);
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(submit.transform, entity_model_root_transform(instance));
+        assert_eq!(
+            (submit.order, submit.submit_sequence),
+            (order, submit_sequence)
+        );
+    };
     let adult = EntityModelInstance::llama(
         606,
         [0.0, 64.0, 0.0],
@@ -419,10 +435,9 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
         false,
     );
     let bare = entity_model_textured_mesh(&[adult], &atlas);
-    let white = entity_model_textured_mesh(
-        &[adult.with_llama_body_decor(Some(EntityDyeColor::White))],
-        &atlas,
-    );
+    let white_instance = adult.with_llama_body_decor(Some(EntityDyeColor::White));
+    let white_meshes = entity_model_textured_meshes(&[white_instance], &atlas);
+    let white = &white_meshes.cutout;
     assert_eq!(white.vertices.len(), bare.vertices.len() * 2);
     assert_eq!(white.indices.len(), bare.indices.len() * 2);
     assert_vertex_inside_texture(
@@ -435,6 +450,23 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
     let (decor_min, decor_max) = textured_mesh_extents(&white);
     assert!(decor_min[0] < bare_min[0]);
     assert!(decor_max[0] > bare_max[0]);
+    assert_eq!(white_meshes.submissions.len(), 2);
+    assert_submission(
+        white_meshes.submissions[0],
+        white_instance,
+        EntityModelLayerRenderType::EntityCutout,
+        LLAMA_CREAMY_TEXTURE_REF,
+        0,
+        0,
+    );
+    assert_submission(
+        white_meshes.submissions[1],
+        white_instance,
+        EntityModelLayerRenderType::ArmorCutoutNoCull,
+        LLAMA_BODY_WHITE_TEXTURE_REF,
+        1,
+        1,
+    );
 
     let adult_trader = EntityModelInstance::llama(
         607,
@@ -445,23 +477,48 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
         false,
         false,
     );
-    let trader = entity_model_textured_mesh(&[adult_trader], &atlas);
+    let trader_meshes = entity_model_textured_meshes(&[adult_trader], &atlas);
+    let trader = &trader_meshes.cutout;
     assert_eq!(trader.vertices.len(), bare.vertices.len() * 2);
     assert_vertex_inside_texture(
         trader.vertices[bare.vertices.len()].uv,
         LLAMA_BODY_TRADER_TEXTURE_REF,
         &atlas,
     );
-
-    let black_trader = entity_model_textured_mesh(
-        &[adult_trader.with_llama_body_decor(Some(EntityDyeColor::Black))],
-        &atlas,
+    assert_eq!(trader_meshes.submissions.len(), 2);
+    assert_submission(
+        trader_meshes.submissions[0],
+        adult_trader,
+        EntityModelLayerRenderType::EntityCutout,
+        LLAMA_CREAMY_TEXTURE_REF,
+        0,
+        0,
     );
+    assert_submission(
+        trader_meshes.submissions[1],
+        adult_trader,
+        EntityModelLayerRenderType::ArmorCutoutNoCull,
+        LLAMA_BODY_TRADER_TEXTURE_REF,
+        1,
+        1,
+    );
+
+    let black_trader_instance = adult_trader.with_llama_body_decor(Some(EntityDyeColor::Black));
+    let black_trader_meshes = entity_model_textured_meshes(&[black_trader_instance], &atlas);
+    let black_trader = &black_trader_meshes.cutout;
     assert_eq!(black_trader.vertices.len(), trader.vertices.len());
     assert_vertex_inside_texture(
         black_trader.vertices[bare.vertices.len()].uv,
         LLAMA_BODY_BLACK_TEXTURE_REF,
         &atlas,
+    );
+    assert_submission(
+        black_trader_meshes.submissions[1],
+        black_trader_instance,
+        EntityModelLayerRenderType::ArmorCutoutNoCull,
+        LLAMA_BODY_BLACK_TEXTURE_REF,
+        1,
+        1,
     );
 
     let baby = EntityModelInstance::llama(
@@ -474,14 +531,14 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
         false,
     );
     let baby_bare = entity_model_textured_mesh(&[baby], &atlas);
-    let baby_with_decor = entity_model_textured_mesh(
-        &[baby.with_llama_body_decor(Some(EntityDyeColor::White))],
-        &atlas,
-    );
+    let baby_with_decor_instance = baby.with_llama_body_decor(Some(EntityDyeColor::White));
+    let baby_with_decor_meshes = entity_model_textured_meshes(&[baby_with_decor_instance], &atlas);
+    let baby_with_decor = &baby_with_decor_meshes.cutout;
     assert_eq!(
         baby_with_decor.vertices, baby_bare.vertices,
         "baby llamas ignore carpet body equipment"
     );
+    assert_eq!(baby_with_decor_meshes.submissions.len(), 1);
 
     let baby_trader = EntityModelInstance::llama(
         609,
@@ -502,6 +559,16 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
         baby_trader_mesh.vertices[baby_bare.vertices.len()].uv,
         LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
         &atlas,
+    );
+    let baby_trader_meshes = entity_model_textured_meshes(&[baby_trader], &atlas);
+    assert_eq!(baby_trader_meshes.submissions.len(), 2);
+    assert_submission(
+        baby_trader_meshes.submissions[1],
+        baby_trader,
+        EntityModelLayerRenderType::ArmorCutoutNoCull,
+        LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
+        1,
+        1,
     );
 }
 

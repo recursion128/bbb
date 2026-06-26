@@ -1681,9 +1681,11 @@ When an agent does any of the following, update this file in the same slice:
       equipment renders the matching `textures/entity/equipment/llama_body/<color>.png`
       overlay from `Equippable.llamaSwag(DyeColor)`, adult trader llamas fall back
       to `trader_llama.png` when no carpet item overrides it, and baby trader llamas
-      use `trader_llama_baby.png` while ignoring body-item carpets. Lighting remains
-      unsupported (the llama spit projectile is now modeled on the colored path —
-      see the llama spit entry below)
+      use `trader_llama_baby.png` while ignoring body-item carpets. The decor overlay
+      records vanilla `EquipmentLayerRenderer` submission metadata (`armorCutoutNoCull`,
+      `order(1)`, submit sequence 1, white tint, base transform) before folding into
+      the cutout bucket. Lighting remains unsupported (the llama spit projectile is
+      now modeled on the colored path — see the llama spit entry below)
     - goat entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `GoatModel`, `BabyGoatModel`, and `GoatRenderer`,
       including `ModelLayers.GOAT` / `GOAT_BABY`, official adult/baby texture

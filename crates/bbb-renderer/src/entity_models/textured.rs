@@ -2443,13 +2443,17 @@ fn emit_llama_decor_layer(
 
     let mut model = LlamaModel::new_decor(baby, has_chest);
     model.prepare(&instance);
-    render_textured_pass(
+    // Vanilla `EquipmentLayerRenderer.renderLayers(..., order = 1)` renders LLAMA_BODY with
+    // `RenderTypes.armorCutoutNoCull`, even though the current backend folds it into the cutout mesh.
+    render_textured_pass_ordered(
         meshes,
         &model,
         transform,
-        EntityModelLayerRenderType::EntityCutout,
+        EntityModelLayerRenderType::ArmorCutoutNoCull,
         texture,
         [1.0, 1.0, 1.0, 1.0],
+        1,
+        1,
         atlas,
     );
 }
