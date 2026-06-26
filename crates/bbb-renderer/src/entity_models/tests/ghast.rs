@@ -1,5 +1,6 @@
 use super::*;
 
+use crate::entity_models::colored::ghast_model_root_transform;
 use crate::entity_models::model::ModelCube;
 
 #[test]
@@ -133,23 +134,38 @@ fn ghast_mesh_uses_vanilla_scaled_body_layer_geometry() {
 #[test]
 fn ghast_textured_mesh_uses_vanilla_uvs_and_scaling() {
     let (atlas, _) = build_entity_model_texture_atlas(&ghast_texture_images()).unwrap();
-    let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::ghast(57, [0.0, 64.0, 0.0], 0.0)],
-        &atlas,
-    );
-    assert_eq!(mesh.cutout_faces, 60);
-    assert_eq!(mesh.vertices.len(), 240);
-    assert_eq!(mesh.indices.len(), 360);
-    assert!(mesh
+    let base = EntityModelInstance::ghast(57, [0.0, 64.0, 0.0], 0.0);
+    let meshes = entity_model_textured_meshes(&[base], &atlas);
+    assert_ghast_base_submission(&meshes, base, GHAST_TEXTURE_REF);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert_eq!(meshes.cutout.cutout_faces, 60);
+    assert_eq!(meshes.cutout.vertices.len(), 240);
+    assert_eq!(meshes.cutout.indices.len(), 360);
+    assert!(meshes
+        .cutout
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
     // The body's first vertex samples u = 2*depth/width = 32/64 = 0.5 at the texOffs(0, 0)
     // top edge; the textured mesh shares the colored geometry's bounds.
-    assert_close2(mesh.vertices[0].uv, [0.5, 0.0]);
-    let (min, max) = textured_mesh_extents(&mesh);
+    assert_close2(meshes.cutout.vertices[0].uv, [0.5, 0.0]);
+    let (min, max) = textured_mesh_extents(&meshes.cutout);
     assert_close3(min, [-2.2500002, 60.56373, -3.5384488]);
     assert_close3(max, [2.2500002, 68.054504, 2.2500002]);
+
+    let charging = EntityModelInstance::new(
+        58,
+        EntityModelKind::Ghast { charging: true },
+        [0.0, 64.0, 0.0],
+        0.0,
+    );
+    let charging_meshes = entity_model_textured_meshes(&[charging], &atlas);
+    assert_ghast_base_submission(&charging_meshes, charging, GHAST_SHOOTING_TEXTURE_REF);
+    assert_eq!(
+        charging_meshes.cutout.vertices.len(),
+        meshes.cutout.vertices.len()
+    );
 }
 
 #[test]
@@ -171,15 +187,18 @@ fn ghast_tentacles_wave_as_age_in_ticks_advances() {
     );
 
     let (atlas, _) = build_entity_model_texture_atlas(&ghast_texture_images()).unwrap();
-    let early_t = entity_model_textured_mesh(&[base], &atlas);
-    let later_t = entity_model_textured_mesh(&[base.with_age_in_ticks(31.4)], &atlas);
+    let early_t = entity_model_textured_meshes(&[base], &atlas);
+    assert_ghast_base_submission(&early_t, base, GHAST_TEXTURE_REF);
+    let later_instance = base.with_age_in_ticks(31.4);
+    let later_t = entity_model_textured_meshes(&[later_instance], &atlas);
+    assert_ghast_base_submission(&later_t, later_instance, GHAST_TEXTURE_REF);
     assert_ne!(
-        early_t.vertices, later_t.vertices,
+        early_t.cutout.vertices, later_t.cutout.vertices,
         "the textured tentacles wave too"
     );
     assert_eq!(
-        early_t.vertices[..24],
-        later_t.vertices[..24],
+        early_t.cutout.vertices[..24],
+        later_t.cutout.vertices[..24],
         "the textured body does not depend on ageInTicks"
     );
 }
@@ -193,4 +212,19 @@ fn ghast_texture_images() -> Vec<EntityModelTextureImage> {
             EntityModelTextureImage::new(*texture, vec![index as u8; len])
         })
         .collect()
+}
+
+fn assert_ghast_base_submission(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    texture: EntityModelTextureRef,
+) {
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.texture, texture);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.transform, ghast_model_root_transform(instance));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
 }

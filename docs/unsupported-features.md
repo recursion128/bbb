@@ -2204,7 +2204,9 @@ When an agent does any of the following, update this file in the same slice:
       whose xz offsets come from the vanilla index formula, scaled 4.5x by the
       `MeshTransformer.scaling(4.5F)` model-root transform; the official
       `textures/entity/ghast/ghast.png` texture reference, texture-backed base
-      layer pass emission, official PNG atlas upload/bind/sample path, and the
+      layer pass emission (vanilla `GhastModel` calls `EntityModel`'s default
+      `RenderTypes::entityCutout`) while preserving explicit submission metadata for texture, white
+      tint, scaled root transform, and `order(0)`, official PNG atlas upload/bind/sample path, and the
       vanilla `GhastModel.setupAnim` tentacle wave (`tentacle.xRot = 0.2 *
       sin(ageInTicks * 0.3 + i) + 0.4`, driven by the projected `ageInTicks`, on
       both render paths), and the vanilla `GhastRenderer.getTextureLocation`
