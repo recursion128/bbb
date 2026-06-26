@@ -357,8 +357,10 @@ const PANDA_UNHAPPY_COUNTER_DATA_ID: u8 = 18;
 const PANDA_SNEEZE_COUNTER_DATA_ID: u8 = 19;
 const PANDA_FLAGS_DATA_ID: u8 = 23;
 const PANDA_SNEEZING_FLAG: i8 = 0x02;
+#[cfg(test)]
 const PANDA_ROLLING_FLAG: i8 = 0x04;
 const PANDA_SITTING_FLAG: i8 = 0x08;
+#[cfg(test)]
 const PANDA_ON_BACK_FLAG: i8 = 0x10;
 // Vanilla Strider.DATA_SUFFOCATING (19, BOOLEAN): `Strider extends Animal`, so after Mob (15), the
 // two AgeableMob accessors (16/17), and DATA_BOOST_TIME (18) comes the cold/suffocating flag.
@@ -379,6 +381,7 @@ const WITHER_SKULL_DANGEROUS_DATA_ID: u8 = 8;
 const ARROW_EFFECT_COLOR_DATA_ID: u8 = 11;
 // Vanilla `AbstractArrow.IN_GROUND` (10, BOOLEAN): updating it to true after the first client tick
 // starts the seven-tick `shakeTime` impact wobble that `ArrowRenderer.extractRenderState` projects.
+#[cfg(test)]
 const ARROW_IN_GROUND_DATA_ID: u8 = 10;
 const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
 const TAMABLE_ANIMAL_TAME_FLAG: i8 = 0x04;
@@ -1345,6 +1348,8 @@ fn entity_model_instance(
         .with_vex_right_hand_item_non_empty(vex_right_hand_item_non_empty)
         .with_vex_left_hand_item_non_empty(vex_left_hand_item_non_empty)
         .with_wither_invulnerable_ticks(source.wither_invulnerable_ticks)
+        .with_wither_x_head_rots(source.wither_x_head_rots)
+        .with_wither_y_head_rots(source.wither_y_head_rots)
         .with_wither_powered(wither_powered(source.entity_type_id, &source.data_values))
         .with_head_armor(armor_material(source.head_armor))
         .with_chest_armor(armor_material(source.chest_armor))
@@ -7153,6 +7158,51 @@ mod tests {
             powered[0].render_state.wither_powered,
             "the half-health wither projects isPowered, gating the energy-swirl overlay"
         );
+    }
+
+    #[test]
+    fn entity_model_instances_project_wither_side_head_rotations() {
+        // Vanilla WitherBoss.DATA_TARGET_B (17): the first side-head target id.
+        const VANILLA_WITHER_TARGET_B_DATA_ID: u8 = 17;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            145,
+            VANILLA_ENTITY_TYPE_WITHER_ID,
+            [0.0, 64.0, 0.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            26,
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            [0.0, 64.0, 0.0],
+        ));
+        let target_eye = f64::from(world.probe_entity_camera_pose(26).unwrap().eye_height);
+        assert!(world.apply_entity_position_sync(EntityPositionSync {
+            id: 26,
+            position: Vec3d {
+                x: 11.3,
+                y: 66.2 - target_eye,
+                z: 0.0,
+            },
+            delta_movement: Vec3d::default(),
+            y_rot: 0.0,
+            x_rot: 0.0,
+            on_ground: true,
+        }));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 145,
+            values: vec![protocol_int_data(VANILLA_WITHER_TARGET_B_DATA_ID, 26)],
+        }));
+        world.advance_entity_client_animations(1);
+
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 0.5);
+        let wither = instances
+            .iter()
+            .find(|instance| instance.entity_id == 145)
+            .expect("wither instance");
+        assert!(wither.render_state.wither_x_head_rots[0].abs() < 1.0e-5);
+        assert_eq!(wither.render_state.wither_x_head_rots[1], 0.0);
+        assert_eq!(wither.render_state.wither_y_head_rots, [-10.0, 0.0]);
     }
 
     #[test]

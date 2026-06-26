@@ -11,8 +11,8 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 // sin(0.20420352) * 10)`, derived from the ribcage's bind pitch (the `anim = 0` rest of the
 // breathing sway below). The center head follows the plain head look
 // (`centerHead.yRot/xRot = state.yRot/xRot`), reproduced via `head_look_pose`; the ribcage and tail
-// breathe with `cos(ageInTicks * 0.1)` via [`wither_breathing_poses`]. The two side heads' target
-// tracking is deferred (the `DATA_TARGET_*` head targets are client-tick lerped). The `wither.png`
+// breathe with `cos(ageInTicks * 0.1)` via [`wither_breathing_poses`]. The two side heads track the
+// client-tick-lerped `WitherRenderState.xHeadRots/yHeadRots` arrays. The `wither.png`
 // texture is wired here, and the wither swaps to `wither_invulnerable.png` during its spawn charge
 // (`WitherBossRenderer.getTextureLocation`, see [`super::super::wither_model_root_transform`] and
 // `wither_textured_layer_passes`); the `WITHER_ARMOR` powered energy-swirl overlay (`wither_armor.png`,
@@ -149,12 +149,12 @@ pub(in crate::entity_models) const WITHER_TAIL_POSE: PartPose = PartPose {
 };
 /// The `center_head` bind pose; it tracks the plain head look.
 pub(in crate::entity_models) const WITHER_CENTER_HEAD_POSE: PartPose = PART_POSE_ZERO;
-/// The `right_head` bind pose (its `DATA_TARGET_*` tracking is deferred).
+/// The `right_head` bind pose; `setup_anim` applies vanilla side-head target tracking over it.
 pub(in crate::entity_models) const WITHER_RIGHT_HEAD_POSE: PartPose = PartPose {
     offset: [-8.0, 4.0, 0.0],
     rotation: [0.0, 0.0, 0.0],
 };
-/// The `left_head` bind pose (its `DATA_TARGET_*` tracking is deferred).
+/// The `left_head` bind pose; `setup_anim` applies vanilla side-head target tracking over it.
 pub(in crate::entity_models) const WITHER_LEFT_HEAD_POSE: PartPose = PartPose {
     offset: [10.0, 4.0, 0.0],
     rotation: [0.0, 0.0, 0.0],
@@ -267,15 +267,24 @@ impl EntityModel for WitherModel {
     }
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
-        // Vanilla `WitherBossModel.setupAnim`: the ribcage and tail breathe with `ageInTicks`
-        // ([`wither_breathing_poses`]), then the center head tracks the look angles. The two side
-        // heads' `DATA_TARGET_*` tracking stays deferred (they keep their bind pose).
+        // Vanilla `WitherBossModel.setupAnim`: side heads track the copied wither head rotation
+        // arrays, the ribcage and tail breathe with `ageInTicks` ([`wither_breathing_poses`]), then
+        // the center head tracks the ordinary look angles.
+        let render_state = instance.render_state;
+        let body_rot = render_state.body_rot;
+        for (name, index) in [("right_head", 0_usize), ("left_head", 1_usize)] {
+            let head = self.root.child_mut(name);
+            head.pose.rotation[0] = render_state.wither_x_head_rots[index].to_radians();
+            head.pose.rotation[1] =
+                (render_state.wither_y_head_rots[index] - body_rot).to_radians();
+        }
+
         let (ribcage_pose, tail_pose) = wither_breathing_poses(instance.render_state.age_in_ticks);
         self.root.child_mut("ribcage").pose = ribcage_pose;
         self.root.child_mut("tail").pose = tail_pose;
 
-        let head_yaw = instance.render_state.head_yaw;
-        let head_pitch = instance.render_state.head_pitch;
+        let head_yaw = render_state.head_yaw;
+        let head_pitch = render_state.head_pitch;
         if !head_look_at_rest(head_yaw, head_pitch) {
             let center_head = self.root.child_mut("center_head");
             center_head.pose = head_look_pose(center_head.pose, head_yaw, head_pitch);

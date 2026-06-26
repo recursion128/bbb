@@ -1,5 +1,7 @@
 use super::*;
 
+use crate::entity_models::model::EntityModel;
+
 #[test]
 fn wither_geometry_matches_vanilla_26_1_body_layer() {
     // Vanilla `WitherBossModel.createBodyLayer(CubeDeformation.NONE)` (atlas 64×64): six sibling
@@ -87,7 +89,34 @@ fn wither_center_head_follows_look_angles() {
     assert_eq!(
         rest.vertices[168..],
         turned.vertices[168..],
-        "the two side heads stay at bind"
+        "the two side heads stay at bind without side-head target rotations"
+    );
+}
+
+#[test]
+fn wither_side_heads_follow_vanilla_target_rotation_arrays() {
+    // Vanilla `WitherBossModel.setupHeadRotation`:
+    //   head.yRot = (state.yHeadRots[index] - state.bodyRot) * PI / 180
+    //   head.xRot = state.xHeadRots[index] * PI / 180
+    let instance = EntityModelInstance::wither(1452, [0.0, 64.0, 0.0], 30.0)
+        .with_wither_x_head_rots([-12.0, 25.0])
+        .with_wither_y_head_rots([50.0, -10.0]);
+    let mut model = WitherModel::new();
+    model.prepare(&instance);
+
+    let right = model.root_mut().child_mut("right_head").pose.rotation;
+    assert!((right[0] - (-12.0_f32).to_radians()).abs() < 1.0e-6);
+    assert!((right[1] - 20.0_f32.to_radians()).abs() < 1.0e-6);
+
+    let left = model.root_mut().child_mut("left_head").pose.rotation;
+    assert!((left[0] - 25.0_f32.to_radians()).abs() < 1.0e-6);
+    assert!((left[1] - (-40.0_f32).to_radians()).abs() < 1.0e-6);
+
+    model.prepare(&EntityModelInstance::wither(1453, [0.0, 64.0, 0.0], 0.0));
+    assert_eq!(
+        model.root_mut().child_mut("right_head").pose.rotation,
+        [0.0, 0.0, 0.0],
+        "prepare must reset the previous frame's side-head target pose"
     );
 }
 
@@ -207,6 +236,17 @@ fn wither_textured_render_matches_vanilla_renderer() {
         })
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let instance = EntityModelInstance::wither(1450, [0.0, 64.0, 0.0], 0.0);
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.texture, WITHER_TEXTURE_REF);
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.order, 0);
+    assert_eq!(submit.submit_sequence, 0);
+    assert_eq!(submit.transform, wither_model_root_transform(instance));
+
     // A fully-spawned and a mid-spawn (invulnerable) wither both emit textured geometry tinted white.
     for invulnerable_ticks in [0.0, 220.0] {
         let mesh = entity_model_textured_mesh(

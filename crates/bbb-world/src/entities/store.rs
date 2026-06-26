@@ -34,7 +34,8 @@ use crate::entities::animations::{
     creaking_is_tearing_down, entity_animation_uses_in_water, entity_is_fall_flying,
     guardian_attack_duration, guardian_attack_target_id, guardian_is_moving,
     is_guardian_entity_type, piglin_is_charging_crossbow, pillager_is_charging_crossbow,
-    player_is_using_item, warden_heartbeat_delay, wolf_is_interested,
+    player_is_using_item, warden_heartbeat_delay, wither_side_head_target_ids,
+    wither_side_head_target_rotation, wolf_is_interested, WitherHeadTargetRotations,
     VANILLA_ENTITY_TYPE_CREAKING_ID,
 };
 use crate::entities::dimensions::{
@@ -976,6 +977,12 @@ impl EntityStore {
         let is_passenger = mount
             .as_ref()
             .is_some_and(|mount| mount.vehicle_id.is_some());
+        let (wither_x_head_rots, wither_y_head_rots) = if vanilla_is_wither(identity.entity_type_id)
+        {
+            client_animations.animations.wither_head_rotations()
+        } else {
+            ([0.0; 2], [0.0; 2])
+        };
         // Vanilla `LivingEntityRenderer.extractRenderState`: worn skull animation normally mirrors
         // the entity walk position, but while riding a living entity it reads the vehicle's walk
         // animation position even though the passenger's own limb swing is stopped.
@@ -997,6 +1004,8 @@ impl EntityStore {
             arrow_shake: client_animations.animations.arrow_shake(partial_ticks),
             is_passenger,
             age_ticks: client_animations.animations.age_ticks,
+            wither_x_head_rots,
+            wither_y_head_rots,
             is_fully_frozen,
             is_aggressive,
             enderman_carrying,
@@ -1516,6 +1525,67 @@ impl EntityStore {
         )
     }
 
+    fn wither_head_targets_by_id(&self) -> HashMap<i32, [WitherHeadTargetRotations; 2]> {
+        let mut eye_positions = HashMap::new();
+        let mut withers = Vec::new();
+        let mut query = self.ecs.query::<(
+            &EntityIdentity,
+            &EntityTransform,
+            &EntityMetadata,
+            &EntityAttributes,
+            &EntityClientAnimations,
+        )>();
+        for (_, (identity, transform, metadata, attributes, client_animations)) in query.iter() {
+            if let Some(eye_height) = vanilla_eye_height_for_entity_data(
+                identity.entity_type_id,
+                identity.data,
+                &metadata.data_values,
+                &attributes.attributes,
+                Some(client_animations.animations),
+            ) {
+                eye_positions.insert(identity.id, (transform.position, eye_height));
+            }
+
+            if vanilla_is_wither(identity.entity_type_id) {
+                withers.push((
+                    identity.id,
+                    transform.position,
+                    transform.y_rot,
+                    vanilla_render_scale(identity.entity_type_id, &attributes.attributes),
+                    wither_side_head_target_ids(&metadata.data_values),
+                ));
+            }
+        }
+
+        withers
+            .into_iter()
+            .map(|(id, position, y_body_rot, scale, target_ids)| {
+                let mut targets = [
+                    WitherHeadTargetRotations::fallback_to_body(y_body_rot),
+                    WitherHeadTargetRotations::fallback_to_body(y_body_rot),
+                ];
+                for (head_index, target_id) in target_ids.into_iter().enumerate() {
+                    if target_id <= 0 {
+                        continue;
+                    }
+                    if let Some((target_position, target_eye_height)) =
+                        eye_positions.get(&target_id).copied()
+                    {
+                        targets[head_index] = wither_side_head_target_rotation(
+                            position,
+                            y_body_rot,
+                            scale,
+                            head_index,
+                            target_position,
+                            target_eye_height,
+                        );
+                    }
+                }
+                (id, targets)
+            })
+            .collect()
+    }
+
     pub(crate) fn mount(&self, id: i32) -> Option<EntityMount> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         self.ecs
@@ -1943,6 +2013,7 @@ impl EntityStore {
         ticks: u32,
         in_water_by_id: &HashMap<i32, bool>,
     ) {
+        let wither_head_targets_by_id = self.wither_head_targets_by_id();
         for _ in 0..ticks {
             for (_, (identity, transform, mount, metadata, animations)) in self.ecs.query_mut::<(
                 &EntityIdentity,
@@ -1968,6 +2039,7 @@ impl EntityStore {
                 let is_moving = guardian_is_moving(&metadata.data_values);
                 let warden_heartbeat_delay = warden_heartbeat_delay(&metadata.data_values);
                 let guardian_attack_target_id = guardian_attack_target_id(&metadata.data_values);
+                let wither_head_targets = wither_head_targets_by_id.get(&identity.id).copied();
                 let camel_is_dashing = camel_is_dashing(&metadata.data_values);
                 let allay_is_dancing = allay_is_dancing(&metadata.data_values);
                 let axolotl_is_playing_dead = axolotl_is_playing_dead(&metadata.data_values);
@@ -1990,6 +2062,7 @@ impl EntityStore {
                     is_moving,
                     warden_heartbeat_delay,
                     guardian_attack_target_id,
+                    wither_head_targets,
                     camel_is_dashing,
                     allay_is_dancing,
                     axolotl_is_playing_dead,

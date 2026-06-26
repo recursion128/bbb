@@ -614,6 +614,14 @@ entity_render_state! {
     /// and `getTextureLocation` swaps to `wither_invulnerable.png` (flickering every 5 ticks once
     /// `<= 80`). `0.0` for every other entity and for a fully-spawned wither.
     (with_wither_invulnerable_ticks) wither_invulnerable_ticks: f32 = 0.0;
+    /// Vanilla `WitherRenderState.xHeadRots`: side-head pitch rotations in degrees,
+    /// copied from `WitherBoss.xRotHeads` as `[right_head, left_head]`. `WitherBossModel`
+    /// applies these directly as `head.xRot`. `[0.0; 2]` for every non-wither.
+    (with_wither_x_head_rots) wither_x_head_rots: [f32; 2] = [0.0; 2];
+    /// Vanilla `WitherRenderState.yHeadRots`: side-head absolute yaw rotations in
+    /// degrees, copied from `WitherBoss.yRotHeads` as `[right_head, left_head]`.
+    /// `WitherBossModel` applies `yHeadRot - bodyRot`. `[0.0; 2]` for every non-wither.
+    (with_wither_y_head_rots) wither_y_head_rots: [f32; 2] = [0.0; 2];
     /// Vanilla `WitherRenderState.isPowered` (`WitherBoss.isPowered() = getHealth() <=
     /// getMaxHealth() / 2`): the wither is at or below half health, so the `WitherArmorLayer` energy
     /// swirl (the same `EnergySwirlLayer` as the charged creeper) glows over the inflated
@@ -2243,6 +2251,8 @@ mod tests {
                 vex_right_hand_item_non_empty: false,
                 vex_left_hand_item_non_empty: false,
                 wither_invulnerable_ticks: 0.0,
+                wither_x_head_rots: [0.0; 2],
+                wither_y_head_rots: [0.0; 2],
                 wither_powered: false,
                 head_armor: None,
                 chest_armor: None,

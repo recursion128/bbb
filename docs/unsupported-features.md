@@ -2876,8 +2876,13 @@ When an agent does any of the following, update this file in the same slice:
       `0xFF808080` half-grey, its U scrolled by the oscillating `cos(ageInTicks · 0.02) · 3 % 1` (distinct
       from the creeper's linear scroll) and V by `ageInTicks · 0.01 % 1`, sharing the same per-fragment
       `fract` atlas-wrap scroll pipeline as the charged creeper. The remaining `WitherBossModel.setupAnim`
-      motion is deferred: the two side heads' target tracking (the `DATA_TARGET_*` head targets are
-      client-tick lerped)
+      side-head target tracking is now wired too: bbb-world reads `DATA_TARGET_B/C` (`17`/`18`), resolves
+      tracked target eye positions, applies vanilla `WitherBoss.aiStep` `rotlerp` limits (`40°` pitch /
+      `10°` yaw per tick, yaw-only fallback to `yBodyRot` when a target is missing), native forwards
+      `WitherRenderState.xHeadRots/yHeadRots`, and the renderer applies
+      `setupHeadRotation` (`yHeadRot - bodyRot`, `xHeadRot`) to the right/left side heads. Tests cover
+      target ids, missing-target fallback, native forwarding, side-head pose, and the base wither
+      submission texture/render type/tint/transform/order
     - giant entities as renderer-owned vanilla 26.1 `GiantZombieModel` geometry on the textured path: the
       native entity scene (`entity_scene.rs`) projects vanilla type id `59` to the new
       `EntityModelKind::Giant`, replacing the former placeholder bounds box. `GiantZombieModel` is the

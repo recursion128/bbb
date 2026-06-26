@@ -3127,6 +3127,163 @@ fn entity_model_sources_project_wither_invulnerable_ticks() {
 }
 
 #[test]
+fn entity_model_sources_project_wither_side_head_tracking() {
+    const VANILLA_ENTITY_TYPE_WITHER_ID: i32 = 145;
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    // Vanilla WitherBoss.DATA_TARGET_B/C (17/18): side-head target entity ids.
+    const VANILLA_WITHER_TARGET_B_DATA_ID: u8 = 17;
+    const VANILLA_WITHER_TARGET_C_DATA_ID: u8 = 18;
+
+    let add_at = |id, entity_type_id, position: [f64; 3], y_rot| ProtocolAddEntity {
+        id,
+        uuid: default_entity_uuid(),
+        entity_type_id,
+        position: ProtocolVec3d {
+            x: position[0],
+            y: position[1],
+            z: position[2],
+        },
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot,
+        y_head_rot: y_rot,
+        data: 0,
+    };
+    let sync_position = |store: &mut WorldStore, id, position: [f64; 3], y_rot| {
+        store.apply_entity_position_sync(ProtocolEntityPositionSync {
+            id,
+            position: ProtocolVec3d {
+                x: position[0],
+                y: position[1],
+                z: position[2],
+            },
+            delta_movement: ProtocolVec3d::default(),
+            y_rot,
+            x_rot: 0.0,
+            on_ground: true,
+        })
+    };
+    let heads = |store: &WorldStore, id, partial| {
+        let source = store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap();
+        (source.wither_x_head_rots, source.wither_y_head_rots)
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(add_at(
+        80,
+        VANILLA_ENTITY_TYPE_WITHER_ID,
+        [0.0, 64.0, 0.0],
+        0.0,
+    ));
+    store.apply_add_entity(add_at(
+        81,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+        [0.0, 64.0, 0.0],
+        0.0,
+    ));
+    store.apply_add_entity(add_at(
+        82,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+        [0.0, 64.0, 0.0],
+        0.0,
+    ));
+
+    // Wither side-head origins for bodyRot=0 and scale=1:
+    //   right (index 1): (x + 1.3, y + 2.2, z)
+    //   left  (index 2): (x - 1.3, y + 2.2, z)
+    let right_head = [1.3, 66.2, 0.0];
+    let left_head = [-1.3, 66.2, 0.0];
+    let right_eye = f64::from(store.probe_entity_camera_pose(81).unwrap().eye_height);
+    let left_eye = f64::from(store.probe_entity_camera_pose(82).unwrap().eye_height);
+    assert!(sync_position(
+        &mut store,
+        81,
+        [
+            right_head[0] + 10.0,
+            right_head[1] - right_eye,
+            right_head[2]
+        ],
+        0.0,
+    ));
+    assert!(sync_position(
+        &mut store,
+        82,
+        [
+            left_head[0] - 10.0,
+            left_head[1] + 10.0 - left_eye,
+            left_head[2]
+        ],
+        0.0,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 80,
+        values: vec![
+            protocol_int_data(VANILLA_WITHER_TARGET_B_DATA_ID, 81),
+            protocol_int_data(VANILLA_WITHER_TARGET_C_DATA_ID, 82),
+        ],
+    }));
+
+    assert_eq!(heads(&store, 80, 0.5), ([0.0; 2], [0.0; 2]));
+    store.advance_entity_client_animations(1);
+    let (x_rots, y_rots) = heads(&store, 80, 0.0);
+    assert!(
+        x_rots[0].abs() < 1.0e-6,
+        "right target is level with the head"
+    );
+    assert_eq!(
+        x_rots[1], -40.0,
+        "left target pitch wants -45 degrees but rotlerp clamps to 40 degrees on the first tick"
+    );
+    assert_eq!(y_rots, [-10.0, 10.0]);
+    assert_eq!(
+        heads(&store, 80, 0.75),
+        (x_rots, y_rots),
+        "26.1 WitherBossRenderer copies current side-head arrays without partial lerp"
+    );
+
+    store.advance_entity_client_animations(1);
+    let (x_rots, y_rots) = heads(&store, 80, 0.0);
+    assert_eq!(x_rots[1], -45.0);
+    assert_eq!(y_rots, [-20.0, 20.0]);
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 80,
+        values: vec![
+            protocol_int_data(VANILLA_WITHER_TARGET_B_DATA_ID, 0),
+            protocol_int_data(VANILLA_WITHER_TARGET_C_DATA_ID, 0),
+        ],
+    }));
+    store.advance_entity_client_animations(1);
+    let (x_rots, y_rots) = heads(&store, 80, 0.0);
+    assert_eq!(
+        x_rots[1], -45.0,
+        "no-target fallback leaves pitch at the last tracked value"
+    );
+    assert_eq!(
+        y_rots,
+        [-10.0, 10.0],
+        "no-target fallback lerps yaw back toward bodyRot=0"
+    );
+
+    store.apply_add_entity(add_at(
+        83,
+        VANILLA_ENTITY_TYPE_WITHER_ID,
+        [4.0, 64.0, 0.0],
+        30.0,
+    ));
+    store.advance_entity_client_animations(1);
+    assert_eq!(
+        heads(&store, 83, 0.0).1,
+        [10.0, 10.0],
+        "a wither with no target lerps both side-head yaws toward yBodyRot"
+    );
+}
+
+#[test]
 fn entity_model_sources_project_bee_stinger_from_flags() {
     const VANILLA_ENTITY_TYPE_BEE_ID: i32 = 11;
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;

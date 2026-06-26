@@ -38,6 +38,13 @@ const VANILLA_ENTITY_TYPE_SHEEP_ID: i32 = 111;
 const VANILLA_ENTITY_TYPE_SHULKER_ID: i32 = 112;
 const VANILLA_ENTITY_TYPE_SQUID_ID: i32 = 127;
 const VANILLA_ENTITY_TYPE_WARDEN_ID: i32 = 142;
+/// Vanilla `EntityType.WITHER`; its two alternative render heads keep client-side
+/// `xRotHeads` / `yRotHeads` arrays that lerp toward synced target entities.
+const VANILLA_ENTITY_TYPE_WITHER_ID: i32 = 145;
+/// Vanilla `WitherBoss.DATA_TARGET_B/C`, the two side-head target ids. `DATA_TARGET_A`
+/// (16) is the center combat target; model side heads read B/C at 17/18.
+const WITHER_TARGET_B_DATA_ID: u8 = 17;
+const WITHER_TARGET_C_DATA_ID: u8 = 18;
 /// Vanilla `FlyingAnimal` implementors (`Bee`, `Parrot`): their
 /// `LivingEntity.calculateEntityAnimation` measures the full 3-D travel distance
 /// (`calculateEntityAnimation(this instanceof FlyingAnimal)`), so the limb-swing
@@ -385,6 +392,8 @@ pub struct EntityClientAnimationState {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wolf_head_roll: Option<WolfHeadRollAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wither_heads: Option<WitherHeadRotationsState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub frog_croak: Option<KeyframeAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub frog_tongue: Option<KeyframeAnimationState>,
@@ -491,6 +500,44 @@ impl ArrowShakeAnimationState {
 
     fn is_settled(self) -> bool {
         self.shake_time <= 0
+    }
+}
+
+/// Desired per-tick target for one vanilla wither side head. When the synced
+/// target entity is visible, both pitch and yaw lerp toward it; when it is absent
+/// or unknown, vanilla only lerps yaw back toward `yBodyRot` and leaves pitch as-is.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct WitherHeadTargetRotations {
+    pub(crate) x_rot: Option<f32>,
+    pub(crate) y_rot: f32,
+}
+
+impl WitherHeadTargetRotations {
+    pub(crate) fn fallback_to_body(y_body_rot: f32) -> Self {
+        Self {
+            x_rot: None,
+            y_rot: y_body_rot,
+        }
+    }
+}
+
+/// Canonical client-side wither side-head rotations, mirroring vanilla
+/// `WitherBoss.xRotHeads` / `yRotHeads`. The renderer copies these current arrays
+/// directly into `WitherRenderState`; 26.1 does not partial-lerp the side heads.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+pub struct WitherHeadRotationsState {
+    pub x_head_rots: [f32; 2],
+    pub y_head_rots: [f32; 2],
+}
+
+impl WitherHeadRotationsState {
+    fn advance_client_tick(&mut self, targets: [WitherHeadTargetRotations; 2]) {
+        for (index, target) in targets.into_iter().enumerate() {
+            if let Some(x_rot) = target.x_rot {
+                self.x_head_rots[index] = rotlerp(self.x_head_rots[index], x_rot, 40.0);
+            }
+            self.y_head_rots[index] = rotlerp(self.y_head_rots[index], target.y_rot, 10.0);
+        }
     }
 }
 
@@ -2323,6 +2370,57 @@ fn walk_update_target_speed(entity_type_id: i32, distance: f32) -> f32 {
     }
 }
 
+/// Vanilla `WitherBoss.getAlternativeTarget(1/2)`: side heads read
+/// `DATA_TARGET_B/C`. Target `0` means "no target".
+pub(crate) fn wither_side_head_target_ids(data_values: &[EntityDataValue]) -> [i32; 2] {
+    [
+        entity_data_int(data_values, WITHER_TARGET_B_DATA_ID, 0),
+        entity_data_int(data_values, WITHER_TARGET_C_DATA_ID, 0),
+    ]
+}
+
+/// Vanilla `WitherBoss.aiStep` target-angle math for side head `head_index`
+/// (`0` = right/head B, `1` = left/head C). The returned yaw is absolute
+/// `yRotHeads[index]`, later converted in the model as `yHeadRot - bodyRot`.
+pub(crate) fn wither_side_head_target_rotation(
+    wither_position: EntityVec3,
+    y_body_rot: f32,
+    scale: f32,
+    head_index: usize,
+    target_position: EntityVec3,
+    target_eye_height: f32,
+) -> WitherHeadTargetRotations {
+    let vanilla_index = head_index + 1;
+    let head_angle = (y_body_rot + 180.0 * (vanilla_index as f32 - 1.0)).to_radians();
+    let hx = wither_position.x + f64::from(head_angle.cos() * 1.3 * scale);
+    let hy = wither_position.y + f64::from(2.2 * scale);
+    let hz = wither_position.z + f64::from(head_angle.sin() * 1.3 * scale);
+    let xd = target_position.x - hx;
+    let yd = target_position.y + f64::from(target_eye_height) - hy;
+    let zd = target_position.z - hz;
+    let sd = (xd * xd + zd * zd).sqrt();
+    WitherHeadTargetRotations {
+        x_rot: Some(-(yd.atan2(sd).to_degrees() as f32)),
+        y_rot: zd.atan2(xd).to_degrees() as f32 - 90.0,
+    }
+}
+
+fn rotlerp(a: f32, b: f32, max: f32) -> f32 {
+    let diff = wrap_degrees(b - a).clamp(-max, max);
+    a + diff
+}
+
+fn wrap_degrees(degrees: f32) -> f32 {
+    let mut wrapped = degrees % 360.0;
+    if wrapped >= 180.0 {
+        wrapped -= 360.0;
+    }
+    if wrapped < -180.0 {
+        wrapped += 360.0;
+    }
+    wrapped
+}
+
 impl Default for PolarBearStandingAnimationState {
     fn default() -> Self {
         Self {
@@ -3841,6 +3939,15 @@ impl EntityClientAnimationState {
             .map_or(0.0, |state| state.shake(partial_tick))
     }
 
+    /// Vanilla `WitherRenderState.xHeadRots/yHeadRots`: current side-head
+    /// rotations copied from `WitherBoss.xRotHeads/yRotHeads`. The arrays are
+    /// `[right_head, left_head]`; every non-wither keeps the zeroed default.
+    pub fn wither_head_rotations(&self) -> ([f32; 2], [f32; 2]) {
+        self.wither_heads
+            .map(|state| (state.x_head_rots, state.y_head_rots))
+            .unwrap_or(([0.0; 2], [0.0; 2]))
+    }
+
     /// Resets the hurt animation countdown to [`HURT_ANIMATION_DURATION`],
     /// mirroring vanilla `LivingEntity.animateHurt` / `handleDamageEvent` setting
     /// `hurtTime = hurtDuration`.
@@ -4120,6 +4227,9 @@ impl EntityClientAnimationState {
         // metadata in the tick loop ([`guardian_attack_target_id`]). `0` (no target) for entities that
         // do not consume it.
         guardian_attack_target_id: i32,
+        // Vanilla `WitherBoss.aiStep` side-head targets, pre-resolved by `EntityStore` because the
+        // tick needs other entities' current positions and eye heights. `None` for non-withers.
+        wither_head_targets: Option<[WitherHeadTargetRotations; 2]>,
         // The synced `Camel.DASH` boolean (`isDashing()`), read from the entity metadata in the tick
         // loop ([`camel_is_dashing`]). `false` for entities that do not consume it.
         camel_is_dashing: bool,
@@ -4355,6 +4465,17 @@ impl EntityClientAnimationState {
                 self.warden_heart
                     .get_or_insert_with(WardenHeartAnimationState::default)
                     .advance_client_tick(self.age_ticks, warden_heartbeat_delay);
+            }
+            VANILLA_ENTITY_TYPE_WITHER_ID => {
+                let targets = wither_head_targets.unwrap_or_else(|| {
+                    [
+                        WitherHeadTargetRotations::fallback_to_body(transform.y_rot),
+                        WitherHeadTargetRotations::fallback_to_body(transform.y_rot),
+                    ]
+                });
+                self.wither_heads
+                    .get_or_insert_with(WitherHeadRotationsState::default)
+                    .advance_client_tick(targets);
             }
             VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID => self
                 .ender_dragon

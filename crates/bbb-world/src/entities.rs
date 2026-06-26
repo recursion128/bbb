@@ -597,6 +597,16 @@ pub struct EntityModelSourceState {
     /// wither ([`vanilla_is_wither`](crate::entities::dimensions)); `0.0` for every other entity.
     #[serde(default)]
     pub wither_invulnerable_ticks: f32,
+    /// Vanilla `WitherRenderState.xHeadRots`, copied from `WitherBoss.xRotHeads`
+    /// for the two side heads `[right_head, left_head]`. Projected only for the
+    /// wither; `[0.0; 2]` for every other entity.
+    #[serde(default)]
+    pub wither_x_head_rots: [f32; 2],
+    /// Vanilla `WitherRenderState.yHeadRots`, copied from `WitherBoss.yRotHeads`
+    /// for the two side heads `[right_head, left_head]`. The model applies these
+    /// as `yHeadRot - bodyRot`; `[0.0; 2]` for every non-wither.
+    #[serde(default)]
+    pub wither_y_head_rots: [f32; 2],
     /// Vanilla `LivingEntityRenderState.isCrouching` (`Entity.isCrouching`, the synced
     /// `Pose.CROUCHING`): a sneaking player, whose `HumanoidModel.setupAnim` leans the body,
     /// drops the head, tucks the legs and tilts the arms. Projected only for the player (the
