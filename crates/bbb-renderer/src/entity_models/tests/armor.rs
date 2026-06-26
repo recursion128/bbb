@@ -458,6 +458,71 @@ fn standard_humanoid_wearers_all_drape_armor() {
 }
 
 #[test]
+fn skeleton_family_armor_submissions_match_vanilla_armor_layer() {
+    let atlas = iron_armor_atlas();
+    let cases = [
+        EntityModelInstance::skeleton(86, [0.0, 64.0, 0.0], 0.0),
+        EntityModelInstance::skeleton_variant(
+            87,
+            [0.0, 64.0, 0.0],
+            0.0,
+            SkeletonModelFamily::Stray,
+        ),
+        EntityModelInstance::skeleton_variant(
+            88,
+            [0.0, 64.0, 0.0],
+            0.0,
+            SkeletonModelFamily::Parched,
+        ),
+        EntityModelInstance::skeleton_variant(
+            89,
+            [0.0, 64.0, 0.0],
+            0.0,
+            SkeletonModelFamily::WitherSkeleton,
+        ),
+        EntityModelInstance::skeleton_variant(
+            90,
+            [0.0, 64.0, 0.0],
+            0.0,
+            SkeletonModelFamily::Bogged { sheared: false },
+        ),
+        EntityModelInstance::skeleton_variant(
+            91,
+            [0.0, 64.0, 0.0],
+            0.0,
+            SkeletonModelFamily::Bogged { sheared: true },
+        ),
+    ];
+
+    for instance in cases {
+        let armored = instance.with_chest_armor(Some(EntityArmorMaterial::Iron));
+        let meshes = entity_model_textured_meshes(&[armored], &atlas);
+        let armor_submissions: Vec<_> = meshes
+            .submissions
+            .iter()
+            .filter(|submit| submit.render_type == EntityModelLayerRenderType::ArmorCutoutNoCull)
+            .collect();
+        assert_eq!(
+            armor_submissions.len(),
+            1,
+            "{:?} should emit exactly the chest armor submit",
+            instance.kind
+        );
+        let submit = armor_submissions[0];
+        assert_eq!(submit.texture, ARMOR_IRON_HUMANOID_TEXTURE_REF);
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!((submit.order, submit.submit_sequence), (1, 1));
+        let expected_transform = match instance.kind {
+            EntityModelKind::SkeletonVariant {
+                family: SkeletonModelFamily::WitherSkeleton,
+            } => wither_skeleton_model_root_transform(instance),
+            _ => entity_model_root_transform(instance),
+        };
+        assert_eq!(submit.transform, expected_transform);
+    }
+}
+
+#[test]
 fn piglin_family_drapes_armor_at_wider_deformation() {
     let atlas = iron_armor_atlas();
     let full_iron = |instance: EntityModelInstance| {

@@ -1779,7 +1779,8 @@ When an agent does any of the following, update this file in the same slice:
       (head/chest/feet) and `humanoid_leggings/<asset>.png` (legs) textures, stitched into the entity
       atlas. The humanoid armor wearers are covered (`emit_worn_humanoid_armor` dispatch): the zombie
       family (zombie, husk with `HUSK_SCALE`, drowned, zombie villager), the skeleton family (skeleton,
-      stray, wither/bogged), the player, and the piglin family (piglin, piglin brute, zombified piglin) —
+      stray, parched, wither skeleton, bogged), the player, and the piglin family (piglin, piglin brute,
+      zombified piglin) —
       each rebuilds its posed host model and drapes the armor. The piglin family uses the same base armor
       mesh grown by the piglin `1.02` outer deformation (`build_tree(outer)`, vanilla
       `AbstractPiglinModel.createArmorMeshSet` = `PlayerModel.createArmorMeshSet(..).map(removeEars)`, the
@@ -1958,7 +1959,9 @@ When an agent does any of the following, update this file in the same slice:
       `isAggressive && !isHoldingBow` raising both arms to `-π/2` and chopping with
       the projected `attack_anim` (the right arm yawing in, the left out), over the
       shared `setupAttackAnimation` body twist, on the base body and the clothing
-      overlay alike; skeleton-family armor and lighting remain unsupported
+      overlay alike; skeleton-family armor is covered by `emit_worn_humanoid_armor`
+      for skeleton, stray, parched, wither skeleton, and bogged, while lighting
+      remains unsupported
     - creeper entities as renderer-owned vanilla 26.1
       `CreeperModel.createBodyLayer(CubeDeformation.NONE)` geometry, with the
       official `textures/entity/creeper/creeper.png` texture reference,
