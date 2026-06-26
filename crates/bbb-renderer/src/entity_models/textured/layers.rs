@@ -861,7 +861,8 @@ pub(in crate::entity_models) fn trident_textured_layer_passes() -> Vec<EntityMod
         EntityModelLayerRenderType::EntityCutout,
         TRIDENT_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
-    )]
+    )
+    .with_order(0, 0)]
 }
 
 pub(in crate::entity_models) fn evoker_fangs_textured_layer_passes() -> Vec<EntityModelLayerPass> {
@@ -1112,7 +1113,8 @@ pub(in crate::entity_models) fn wither_skull_textured_layer_passes(
         EntityModelLayerRenderType::EntityTranslucent,
         wither_skull_texture_ref(dangerous),
         [1.0, 1.0, 1.0, 1.0],
-    )]
+    )
+    .with_order(0, 0)]
 }
 
 pub(in crate::entity_models) fn wither_textured_layer_passes(

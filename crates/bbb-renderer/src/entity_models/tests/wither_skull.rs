@@ -1,5 +1,7 @@
 use super::*;
 
+use crate::entity_models::colored::wither_skull_model_root_transform;
+
 #[test]
 fn wither_skull_geometry_matches_vanilla_26_1_skull_layer() {
     // Vanilla `WitherSkullRenderer.createSkullLayer` (atlas 64×64): one `head` part at ZERO with a
@@ -69,17 +71,24 @@ fn wither_skull_orients_along_flight() {
 
 #[test]
 fn wither_skull_textured_render_matches_vanilla_renderer() {
+    let normal_pass = wither_skull_textured_layer_passes(false)[0];
+    assert_eq!(normal_pass.texture, WITHER_TEXTURE_REF);
     assert_eq!(
-        wither_skull_textured_layer_passes(false)[0].texture,
-        WITHER_TEXTURE_REF
-    );
-    assert_eq!(
-        wither_skull_textured_layer_passes(false)[0].render_type,
+        normal_pass.render_type,
         EntityModelLayerRenderType::EntityTranslucent
     );
+    assert_eq!(normal_pass.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((normal_pass.order, normal_pass.submit_sequence), (0, 0));
+    let dangerous_pass = wither_skull_textured_layer_passes(true)[0];
+    assert_eq!(dangerous_pass.texture, WITHER_INVULNERABLE_TEXTURE_REF);
     assert_eq!(
-        wither_skull_textured_layer_passes(true)[0].texture,
-        WITHER_INVULNERABLE_TEXTURE_REF
+        dangerous_pass.render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(dangerous_pass.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        (dangerous_pass.order, dangerous_pass.submit_sequence),
+        (0, 0)
     );
     assert_eq!(
         EntityModelKind::WitherSkull { dangerous: false }.vanilla_texture_ref(),
@@ -105,30 +114,47 @@ fn wither_skull_textured_render_matches_vanilla_renderer() {
         })
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let normal_meshes = entity_model_textured_meshes(
-        &[EntityModelInstance::wither_skull(
-            820,
-            [0.0, 64.0, 0.0],
-            0.0,
-        )],
-        &atlas,
-    );
-    let dangerous_meshes = entity_model_textured_meshes(
-        &[EntityModelInstance::wither_skull_with_dangerous(
-            820,
-            [0.0, 64.0, 0.0],
-            0.0,
-            true,
-        )],
-        &atlas,
-    );
+    let normal =
+        EntityModelInstance::wither_skull(820, [1.0, 64.0, -2.0], 37.0).with_head_look(0.0, -18.0);
+    let dangerous =
+        EntityModelInstance::wither_skull_with_dangerous(820, [1.0, 64.0, -2.0], 37.0, true)
+            .with_head_look(0.0, -18.0);
+    let normal_meshes = entity_model_textured_meshes(&[normal], &atlas);
+    let dangerous_meshes = entity_model_textured_meshes(&[dangerous], &atlas);
     assert!(normal_meshes.cutout.vertices.is_empty());
     assert_eq!(normal_meshes.submissions.len(), 1);
+    let normal_submit = normal_meshes.submissions[0];
     assert_eq!(
-        normal_meshes.submissions[0].render_type,
+        normal_submit.render_type,
         EntityModelLayerRenderType::EntityTranslucent
     );
-    assert_eq!(normal_meshes.submissions[0].order, 0);
+    assert_eq!(
+        normal_submit.render_type.vanilla_name(),
+        "entityTranslucent"
+    );
+    assert_eq!(normal_submit.texture, WITHER_TEXTURE_REF);
+    assert_eq!(normal_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((normal_submit.order, normal_submit.submit_sequence), (0, 0));
+    assert_eq!(
+        normal_submit.transform,
+        wither_skull_model_root_transform(normal)
+    );
+    assert_eq!(dangerous_meshes.submissions.len(), 1);
+    let dangerous_submit = dangerous_meshes.submissions[0];
+    assert_eq!(
+        dangerous_submit.render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(dangerous_submit.texture, WITHER_INVULNERABLE_TEXTURE_REF);
+    assert_eq!(dangerous_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        (dangerous_submit.order, dangerous_submit.submit_sequence),
+        (0, 0)
+    );
+    assert_eq!(
+        dangerous_submit.transform,
+        wither_skull_model_root_transform(dangerous)
+    );
     let normal_mesh = &normal_meshes.translucent;
     let dangerous_mesh = &dangerous_meshes.translucent;
     assert!(!normal_mesh.vertices.is_empty());

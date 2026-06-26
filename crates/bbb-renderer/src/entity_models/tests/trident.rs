@@ -1,5 +1,6 @@
 use super::*;
 
+use crate::entity_models::colored::trident_model_root_transform;
 use crate::entity_models::model::ModelCube;
 
 #[test]
@@ -93,6 +94,7 @@ fn trident_layer_passes_and_texture_ref_match_vanilla_renderer() {
     );
     assert_eq!(passes[0].texture, TRIDENT_TEXTURE_REF);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
 
     assert_eq!(
         EntityModelKind::Trident.vanilla_texture_ref(),
@@ -116,10 +118,21 @@ fn trident_textured_mesh_uses_vanilla_uvs_and_geometry() {
         })
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::trident(1350, [0.0, 64.0, 0.0], 0.0)],
-        &atlas,
-    );
+    let instance =
+        EntityModelInstance::trident(1350, [1.0, 64.0, -2.0], 37.0).with_head_look(0.0, -18.0);
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.texture, TRIDENT_TEXTURE_REF);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert_eq!(submit.transform, trident_model_root_transform(instance));
+
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    let mesh = meshes.cutout;
     assert_eq!(mesh.cutout_faces, 30);
     assert_eq!(mesh.vertices.len(), 120);
     assert_eq!(mesh.indices.len(), 180);

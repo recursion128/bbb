@@ -3015,8 +3015,9 @@ When an agent does any of the following, update this file in the same slice:
       (the `+90` points the upright pole along the flight axis), projected through the instance's `body_rot`
       / `head_pitch` and captured by `trident_model_root_transform`. The base texture is now bound on the
       textured path (`TRIDENT_TEXTURE_REF`), the primary now-wired path; the enchant-foil overlay pass
-      stays deferred. The colored debug path stays as a fallback (it renders the pole/base in teal and the
-      spikes lighter)
+      stays deferred. The base submission explicitly records vanilla `order(0)`, `entityCutout`, white
+      tint, texture, and the flight-orientation transform. The colored debug path stays as a fallback (it
+      renders the pole/base in teal and the spikes lighter)
     - wither skull entities as renderer-owned vanilla 26.1 `WitherSkullRenderer.createSkullLayer()`
       (`SkullModel`) geometry on the colored path: the native entity scene (`entity_scene.rs`) projects
       vanilla type id `147` to the new `EntityModelKind::WitherSkull`, replacing the former placeholder
@@ -3030,7 +3031,8 @@ When an agent does any of the following, update this file in the same slice:
       vanilla `WitherSkull.DATA_DANGEROUS` at synced data id `8` and projects
       `EntityModelKind::WitherSkull { dangerous }`; `false` selects `WITHER_TEXTURE_REF` (`wither.png`)
       and `true` selects `WITHER_INVULNERABLE_TEXTURE_REF` (`wither_invulnerable.png`). The colored debug
-      path stays as a fallback (it renders the skull as one dark tint)
+      path stays as a fallback (it renders the skull as one dark tint). Both textured variants now pin
+      explicit `order(0)`, `entityTranslucent`, white tint, texture, and transform submission metadata.
     - llama spit entities as renderer-owned vanilla 26.1 `LlamaSpitModel.createBodyLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `79` to the new
       `EntityModelKind::LlamaSpit`, replacing the former placeholder bounds box. The static `main` part is

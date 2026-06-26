@@ -9,8 +9,8 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 // `Ry(yRot - 90)` then `Rz(xRot + 90)` (the `+90` points the upright pole along the flight axis),
 // captured by `trident_model_root_transform`. Each unified cube carries both the colored debug tint
 // (`TRIDENT_POLE` / `TRIDENT_SPIKE`) and the textured `uv_size` / `texOffs`; the right spike is the
-// only mirrored box (it samples the same atlas region as the left spike, flipped). The enchant-foil
-// overlay pass stays deferred.
+// only mirrored box (it samples the same atlas region as the left spike, flipped). The base texture
+// submit is wired; only the enchant-foil overlay pass stays deferred.
 
 // `pole`: the 1×25×1 shaft.
 pub(in crate::entity_models) const TRIDENT_POLE_CUBE: ModelCube = ModelCube::new(
