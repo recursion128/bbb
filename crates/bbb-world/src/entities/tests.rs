@@ -1817,6 +1817,144 @@ fn entity_model_sources_project_horse_body_armor_from_body_slot() {
 }
 
 #[test]
+fn entity_model_sources_project_wolf_body_armor_from_body_slot() {
+    use std::collections::BTreeMap;
+
+    const WOLF_ARMOR_ITEM_ID: i32 = 848;
+    const PLAIN_ITEM_ID: i32 = 849;
+    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
+    const VANILLA_ENTITY_TYPE_WOLF_ID: i32 = 148;
+    const AGEABLE_BABY_DATA_ID: u8 = 16;
+    const WOLF_ARMOR_DYE: i32 = 0x0033_66CC;
+
+    fn stack(
+        item_id: i32,
+        count: i32,
+        dyed_color: Option<i32>,
+        damage: Option<i32>,
+        unbreakable: bool,
+    ) -> ItemStackSummary {
+        ItemStackSummary {
+            item_id: Some(item_id),
+            count,
+            component_patch: DataComponentPatchSummary {
+                dyed_color,
+                damage,
+                unbreakable,
+                ..Default::default()
+            },
+        }
+    }
+    fn wolf_body_armor(
+        store: &WorldStore,
+        entity_id: i32,
+    ) -> (Option<ArmorMaterialKind>, Option<i32>, WolfArmorCrackiness) {
+        let source = store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == entity_id)
+            .unwrap();
+        (
+            source.wolf_body_armor,
+            source.wolf_body_armor_dye,
+            source.wolf_body_armor_crackiness,
+        )
+    }
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        87,
+        VANILLA_ENTITY_TYPE_WOLF_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        88,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        89,
+        VANILLA_ENTITY_TYPE_WOLF_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 89,
+        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+    }));
+
+    for entity_id in [87, 88, 89] {
+        assert!(store.apply_set_equipment(ProtocolSetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Body,
+                item: stack(WOLF_ARMOR_ITEM_ID, 1, Some(WOLF_ARMOR_DYE), Some(4), false),
+            }],
+        }));
+    }
+    assert_eq!(
+        wolf_body_armor(&store, 87),
+        (None, None, WolfArmorCrackiness::None),
+        "without the item registry's wolf armor material map, a raw body item id is not enough"
+    );
+
+    store.set_default_wolf_body_armor_materials(BTreeMap::from([(
+        WOLF_ARMOR_ITEM_ID,
+        ArmorMaterialKind::ArmadilloScute,
+    )]));
+    store.set_default_item_max_damage(BTreeMap::from([(WOLF_ARMOR_ITEM_ID, 64)]));
+    assert_eq!(
+        wolf_body_armor(&store, 87),
+        (
+            Some(ArmorMaterialKind::ArmadilloScute),
+            Some(WOLF_ARMOR_DYE),
+            WolfArmorCrackiness::Low
+        )
+    );
+    assert_eq!(
+        wolf_body_armor(&store, 88),
+        (None, None, WolfArmorCrackiness::None),
+        "non-wolf entities do not project wolf body armor"
+    );
+    assert_eq!(
+        wolf_body_armor(&store, 89),
+        (None, None, WolfArmorCrackiness::None),
+        "baby wolves skip WolfArmorLayer because vanilla supplies only the adult WOLF_ARMOR layer"
+    );
+
+    for (damage, expected) in [
+        (24, WolfArmorCrackiness::Medium),
+        (44, WolfArmorCrackiness::High),
+    ] {
+        assert!(store.apply_set_equipment(ProtocolSetEquipment {
+            entity_id: 87,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Body,
+                item: stack(WOLF_ARMOR_ITEM_ID, 1, None, Some(damage), false),
+            }],
+        }));
+        assert_eq!(wolf_body_armor(&store, 87).2, expected);
+    }
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 87,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Body,
+            item: stack(WOLF_ARMOR_ITEM_ID, 1, None, Some(44), true),
+        }],
+    }));
+    assert_eq!(wolf_body_armor(&store, 87).2, WolfArmorCrackiness::None);
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 87,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Body,
+            item: stack(PLAIN_ITEM_ID, 0, Some(WOLF_ARMOR_DYE), Some(44), false),
+        }],
+    }));
+    assert_eq!(
+        wolf_body_armor(&store, 87),
+        (None, None, WolfArmorCrackiness::None)
+    );
+}
+
+#[test]
 fn entity_model_sources_project_llama_body_decor_from_body_slot() {
     use std::collections::BTreeMap;
 
@@ -4281,11 +4419,13 @@ fn entity_model_sources_project_ender_dragon_nearest_crystal_beam() {
                 position,
                 partial_ticks,
                 &store.registries,
+                &store.default_item_max_damage,
                 &store.default_item_armor_materials,
                 &store.default_item_equipment_slots,
                 &store.default_llama_body_decor_colors,
                 &store.default_nautilus_body_armor_materials,
                 &store.default_horse_body_armor_materials,
+                &store.default_wolf_body_armor_materials,
             )
             .unwrap()
             .ender_dragon_beam

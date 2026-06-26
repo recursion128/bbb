@@ -1005,6 +1005,16 @@ pub enum EntityArmorMaterial {
     Diamond,
     TurtleScute,
     Netherite,
+    ArmadilloScute,
+}
+
+/// Vanilla `Crackiness.Level` for wolf armor (`Crackiness.WOLF_ARMOR.byDamage`): selected by the
+/// body armor item's remaining durability and rendered as an `armorTranslucent` overlay.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WolfArmorCrackiness {
+    Low,
+    Medium,
+    High,
 }
 
 /// Vanilla `GuardianRenderer` attack-beam render state (`GuardianRenderState.attackTargetPosition`

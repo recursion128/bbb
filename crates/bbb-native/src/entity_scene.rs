@@ -16,7 +16,8 @@ use bbb_renderer::{
     PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SelectionBox, SelectionOutline,
     SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose, TropicalFishModelShape,
     TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelProfession,
-    VillagerModelType, WolfModelVariant, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    VillagerModelType, WolfArmorCrackiness, WolfModelVariant, ZombieVariantModelFamily,
+    DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 #[cfg(test)]
 use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
@@ -25,7 +26,8 @@ use bbb_world::{
     EnderDragonBeamSource as WorldEnderDragonBeamSource,
     EntityAttachmentFace as WorldEntityAttachmentFace, EntityModelSourceState,
     EntityPickTargetState, GuardianBeamSource as WorldGuardianBeamSource,
-    LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryContentState, WorldStore,
+    LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryContentState,
+    WolfArmorCrackiness as WorldWolfArmorCrackiness, WorldStore,
 };
 
 use crate::item_runtime::{default_player_skin_for_profile_id, NativeItemRuntime};
@@ -1353,6 +1355,9 @@ fn entity_model_instance(
         .with_equine_saddle_ridden(source.equine_saddle_ridden)
         .with_equine_body_armor(armor_material(source.equine_body_armor))
         .with_equine_body_armor_dye(armor_dye(source.equine_body_armor_dye))
+        .with_wolf_body_armor(armor_material(source.wolf_body_armor))
+        .with_wolf_body_armor_dye(armor_dye(source.wolf_body_armor_dye))
+        .with_wolf_body_armor_crackiness(wolf_armor_crackiness(source.wolf_body_armor_crackiness))
         .with_strider_ridden(source.strider_ridden)
         .with_strider_saddle(source.strider_saddle)
         .with_camel_saddle(source.camel_saddle)
@@ -3468,7 +3473,17 @@ fn armor_material(material: Option<WorldArmorMaterialKind>) -> Option<EntityArmo
         WorldArmorMaterialKind::Diamond => EntityArmorMaterial::Diamond,
         WorldArmorMaterialKind::TurtleScute => EntityArmorMaterial::TurtleScute,
         WorldArmorMaterialKind::Netherite => EntityArmorMaterial::Netherite,
+        WorldArmorMaterialKind::ArmadilloScute => EntityArmorMaterial::ArmadilloScute,
     })
+}
+
+fn wolf_armor_crackiness(crackiness: WorldWolfArmorCrackiness) -> Option<WolfArmorCrackiness> {
+    match crackiness {
+        WorldWolfArmorCrackiness::None => None,
+        WorldWolfArmorCrackiness::Low => Some(WolfArmorCrackiness::Low),
+        WorldWolfArmorCrackiness::Medium => Some(WolfArmorCrackiness::Medium),
+        WorldWolfArmorCrackiness::High => Some(WolfArmorCrackiness::High),
+    }
 }
 
 /// Carries a projected per-slot `DyedItemColor` (a packed RGB `i32`) onto the renderer's armor dye
@@ -7945,6 +7960,82 @@ mod tests {
             horse_body_armor(&world, 129),
             (None, None),
             "baby horses skip the body armor equipment layer"
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_wolf_body_armor_render_state() {
+        const WOLF_ARMOR_ITEM_ID: i32 = 751;
+        const AGEABLE_BABY_DATA_ID: u8 = 16;
+        const WOLF_ARMOR_DYE: i32 = 0x0033_66CC;
+
+        let body_armor = |entity_id: i32, damage: i32| SetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Body,
+                item: ItemStackSummary {
+                    item_id: Some(WOLF_ARMOR_ITEM_ID),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary {
+                        dyed_color: Some(WOLF_ARMOR_DYE),
+                        damage: Some(damage),
+                        ..Default::default()
+                    },
+                },
+            }],
+        };
+        let wolf_body_armor = |world: &WorldStore, id: i32| {
+            let render_state = entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state;
+            (
+                render_state.wolf_body_armor,
+                render_state.wolf_body_armor_dye,
+                render_state.wolf_body_armor_crackiness,
+            )
+        };
+
+        let mut world = WorldStore::new();
+        world.set_default_wolf_body_armor_materials(std::collections::BTreeMap::from([(
+            WOLF_ARMOR_ITEM_ID,
+            WorldArmorMaterialKind::ArmadilloScute,
+        )]));
+        world.set_default_item_max_damage(std::collections::BTreeMap::from([(
+            WOLF_ARMOR_ITEM_ID,
+            64,
+        )]));
+        world.apply_add_entity(protocol_add_entity(
+            130,
+            VANILLA_ENTITY_TYPE_WOLF_ID,
+            [1.0, 64.0, -3.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            131,
+            VANILLA_ENTITY_TYPE_WOLF_ID,
+            [2.0, 64.0, -3.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 131,
+            values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+        }));
+
+        assert!(world.apply_set_equipment(body_armor(130, 24)));
+        assert!(world.apply_set_equipment(body_armor(131, 44)));
+
+        assert_eq!(
+            wolf_body_armor(&world, 130),
+            (
+                Some(EntityArmorMaterial::ArmadilloScute),
+                Some(WOLF_ARMOR_DYE as u32),
+                Some(WolfArmorCrackiness::Medium)
+            )
+        );
+        assert_eq!(
+            wolf_body_armor(&world, 131),
+            (None, None, None),
+            "baby wolves skip the adult-only WolfArmorLayer"
         );
     }
 

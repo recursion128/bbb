@@ -78,6 +78,8 @@ pub(in crate::entity_models) enum EntityModelLayerRenderType {
     EntitySolid,
     /// Vanilla `RenderTypes.armorCutoutNoCull(texture)` used by equipment layers.
     ArmorCutoutNoCull,
+    /// Vanilla `RenderTypes.armorTranslucent(texture)` used by translucent armor damage overlays.
+    ArmorTranslucent,
     /// Vanilla `RenderTypes.entityCutout(texture)`; this is also the default
     /// `EntityModel` render type when the model does not override it.
     EntityCutout,
@@ -114,7 +116,9 @@ impl EntityModelLayerRenderType {
             | Self::EntityCutout
             | Self::EntityCutoutCull
             | Self::EntityCutoutZOffset => EntityModelLayerRenderBucket::Cutout,
-            Self::EntityTranslucent => EntityModelLayerRenderBucket::Translucent,
+            Self::ArmorTranslucent | Self::EntityTranslucent => {
+                EntityModelLayerRenderBucket::Translucent
+            }
             Self::Eyes => EntityModelLayerRenderBucket::Eyes,
             Self::BreezeWind | Self::EndCrystalBeam => EntityModelLayerRenderBucket::Scroll,
             Self::EnergySwirl => EntityModelLayerRenderBucket::AdditiveScroll,
@@ -126,6 +130,7 @@ impl EntityModelLayerRenderType {
         match self {
             Self::EntitySolid => "entitySolid",
             Self::ArmorCutoutNoCull => "armorCutoutNoCull",
+            Self::ArmorTranslucent => "armorTranslucent",
             Self::EntityCutout => "entityCutout",
             Self::EntityCutoutCull => "entityCutoutCull",
             Self::EntityCutoutZOffset => "entityCutoutZOffset",

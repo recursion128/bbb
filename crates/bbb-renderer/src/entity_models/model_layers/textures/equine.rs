@@ -282,6 +282,8 @@ pub(in crate::entity_models) fn horse_body_armor_texture_layers(
         EntityArmorMaterial::Gold => &HORSE_BODY_GOLD_LAYERS,
         EntityArmorMaterial::Diamond => &HORSE_BODY_DIAMOND_LAYERS,
         EntityArmorMaterial::Netherite => &HORSE_BODY_NETHERITE_LAYERS,
-        EntityArmorMaterial::Chainmail | EntityArmorMaterial::TurtleScute => return None,
+        EntityArmorMaterial::Chainmail
+        | EntityArmorMaterial::TurtleScute
+        | EntityArmorMaterial::ArmadilloScute => return None,
     })
 }

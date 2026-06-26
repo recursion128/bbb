@@ -515,6 +515,149 @@ fn wet_wolf_textured_base_tints_like_vanilla_model_tint_without_shading_collar()
 }
 
 #[test]
+fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
+    let (atlas, _) = build_entity_model_texture_atlas(&wolf_armor_texture_images()).unwrap();
+    let dye = 0x0033_66CC;
+    let dyed_tint = [
+        0x33 as f32 / 255.0,
+        0x66 as f32 / 255.0,
+        0xCC as f32 / 255.0,
+        1.0,
+    ];
+    let wolf = EntityModelInstance::wolf_state(
+        308,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        true,
+        false,
+        false,
+        Some(EntityDyeColor::Blue),
+    )
+    .with_wolf_body_armor(Some(EntityArmorMaterial::ArmadilloScute))
+    .with_wolf_body_armor_dye(Some(dye))
+    .with_wolf_body_armor_crackiness(Some(WolfArmorCrackiness::Medium));
+    let meshes = entity_model_textured_meshes(&[wolf], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 5);
+    assert_eq!(meshes.submissions[0].texture, WOLF_TAME_TEXTURE_REF);
+    assert_eq!(
+        meshes.submissions[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(
+        (
+            meshes.submissions[0].order,
+            meshes.submissions[0].submit_sequence
+        ),
+        (0, 0)
+    );
+    assert_eq!(meshes.submissions[1].texture, WOLF_COLLAR_TEXTURE_REF);
+    assert_eq!(
+        meshes.submissions[1].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(
+        meshes.submissions[1].tint,
+        EntityDyeColor::Blue.texture_diffuse_color()
+    );
+    assert_eq!(
+        (
+            meshes.submissions[1].order,
+            meshes.submissions[1].submit_sequence
+        ),
+        (1, 1)
+    );
+
+    let armor_base = meshes.submissions[2];
+    assert_eq!(armor_base.texture, WOLF_BODY_ARMADILLO_SCUTE_TEXTURE_REF);
+    assert_eq!(
+        armor_base.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(armor_base.render_type.vanilla_name(), "armorCutoutNoCull");
+    assert_eq!(armor_base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((armor_base.order, armor_base.submit_sequence), (1, 2));
+    assert_eq!(armor_base.transform, meshes.submissions[0].transform);
+
+    let armor_overlay = meshes.submissions[3];
+    assert_eq!(
+        armor_overlay.texture,
+        WOLF_BODY_ARMADILLO_SCUTE_OVERLAY_TEXTURE_REF
+    );
+    assert_eq!(
+        armor_overlay.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(armor_overlay.tint, dyed_tint);
+    assert_eq!((armor_overlay.order, armor_overlay.submit_sequence), (2, 3));
+    assert_eq!(armor_overlay.transform, meshes.submissions[0].transform);
+
+    let cracks = meshes.submissions[4];
+    assert_eq!(cracks.texture, WOLF_ARMOR_CRACKINESS_MEDIUM_TEXTURE_REF);
+    assert_eq!(
+        cracks.render_type,
+        EntityModelLayerRenderType::ArmorTranslucent
+    );
+    assert_eq!(cracks.render_type.vanilla_name(), "armorTranslucent");
+    assert_eq!(cracks.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((cracks.order, cracks.submit_sequence), (3, 4));
+    assert_eq!(cracks.transform, meshes.submissions[0].transform);
+    assert!(
+        !meshes.translucent.vertices.is_empty(),
+        "armorTranslucent cracks should emit into the translucent bucket"
+    );
+
+    let undyed = entity_model_textured_meshes(
+        &[EntityModelInstance::wolf_state(
+            309,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            false,
+            false,
+            false,
+            None,
+        )
+        .with_wolf_body_armor(Some(EntityArmorMaterial::ArmadilloScute))],
+        &atlas,
+    );
+    assert_eq!(undyed.submissions.len(), 2);
+    assert_eq!(
+        undyed.submissions[1].texture,
+        WOLF_BODY_ARMADILLO_SCUTE_TEXTURE_REF
+    );
+    assert!(!undyed
+        .submissions
+        .iter()
+        .any(|submit| submit.texture == WOLF_BODY_ARMADILLO_SCUTE_OVERLAY_TEXTURE_REF));
+    assert!(undyed.translucent.vertices.is_empty());
+
+    let baby = entity_model_textured_meshes(
+        &[EntityModelInstance::wolf_state(
+            310,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+            true,
+            false,
+            false,
+            Some(EntityDyeColor::Red),
+        )
+        .with_wolf_body_armor(Some(EntityArmorMaterial::ArmadilloScute))
+        .with_wolf_body_armor_dye(Some(dye))
+        .with_wolf_body_armor_crackiness(Some(WolfArmorCrackiness::High))],
+        &atlas,
+    );
+    assert_eq!(baby.submissions.len(), 2);
+    assert!(!baby.submissions.iter().any(|submit| matches!(
+        submit.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+            | EntityModelLayerRenderType::ArmorTranslucent
+    )));
+}
+
+#[test]
 fn wolf_textured_meshes_apply_head_look() {
     let (atlas, _) = build_entity_model_texture_atlas(&wolf_texture_images()).unwrap();
     for base in [
@@ -664,6 +807,28 @@ fn wolf_texture_images() -> Vec<EntityModelTextureImage> {
             EntityModelTextureImage::new(*texture, vec![index as u8; len])
         })
         .collect()
+}
+
+fn wolf_armor_texture_images() -> Vec<EntityModelTextureImage> {
+    let mut images = wolf_texture_images();
+    let start = images.len();
+    for (offset, texture) in [
+        WOLF_BODY_ARMADILLO_SCUTE_TEXTURE_REF,
+        WOLF_BODY_ARMADILLO_SCUTE_OVERLAY_TEXTURE_REF,
+        WOLF_ARMOR_CRACKINESS_LOW_TEXTURE_REF,
+        WOLF_ARMOR_CRACKINESS_MEDIUM_TEXTURE_REF,
+        WOLF_ARMOR_CRACKINESS_HIGH_TEXTURE_REF,
+    ]
+    .iter()
+    .enumerate()
+    {
+        let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+        images.push(EntityModelTextureImage::new(
+            *texture,
+            vec![(start + offset) as u8; len],
+        ));
+    }
+    images
 }
 
 #[test]

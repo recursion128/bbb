@@ -560,6 +560,24 @@ impl NativeItemRuntime {
         sizes
     }
 
+    pub(crate) fn item_max_damage_by_protocol_id(&self) -> BTreeMap<i32, i32> {
+        let mut max_damage = BTreeMap::new();
+        let Some(registry) = &self.registry else {
+            return max_damage;
+        };
+        for (protocol_id, resource_id) in registry.resource_ids().iter().enumerate() {
+            let Some(damage) = registry.max_damage(resource_id) else {
+                continue;
+            };
+            max_damage.insert(protocol_id as i32, damage);
+        }
+        max_damage
+    }
+
+    pub(crate) fn item_max_damage_count(&self) -> usize {
+        self.item_max_damage_by_protocol_id().len()
+    }
+
     pub(crate) fn item_crafting_remainders_by_protocol_id(&self) -> BTreeMap<i32, i32> {
         self.registry
             .as_ref()
@@ -982,6 +1000,36 @@ impl NativeItemRuntime {
 
     pub(crate) fn horse_body_armor_material_count(&self) -> usize {
         self.horse_body_armor_materials_by_protocol_id().len()
+    }
+
+    pub(crate) fn wolf_body_armor_materials_by_protocol_id(
+        &self,
+    ) -> BTreeMap<i32, WorldArmorMaterialKind> {
+        let mut materials = BTreeMap::new();
+        let Some(registry) = &self.registry else {
+            return materials;
+        };
+        for (protocol_id, resource_id) in registry.resource_ids().iter().enumerate() {
+            let Some(asset) = registry.equippable_asset(resource_id) else {
+                continue;
+            };
+            if self
+                .equipment_assets
+                .asset(asset)
+                .is_none_or(|asset| asset.layers(EquipmentLayerType::WolfBody).is_empty())
+            {
+                continue;
+            }
+            let Some(material) = wolf_body_armor_material_from_asset(asset) else {
+                continue;
+            };
+            materials.insert(protocol_id as i32, material);
+        }
+        materials
+    }
+
+    pub(crate) fn wolf_body_armor_material_count(&self) -> usize {
+        self.wolf_body_armor_materials_by_protocol_id().len()
     }
 
     pub(crate) fn default_piercing_weapon_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
@@ -1902,7 +1950,8 @@ fn nautilus_body_armor_material_from_asset(asset: &str) -> Option<WorldArmorMate
         | WorldArmorMaterialKind::Netherite => Some(material),
         WorldArmorMaterialKind::Leather
         | WorldArmorMaterialKind::Chainmail
-        | WorldArmorMaterialKind::TurtleScute => None,
+        | WorldArmorMaterialKind::TurtleScute
+        | WorldArmorMaterialKind::ArmadilloScute => None,
     }
 }
 
@@ -1915,7 +1964,24 @@ fn horse_body_armor_material_from_asset(asset: &str) -> Option<WorldArmorMateria
         | WorldArmorMaterialKind::Gold
         | WorldArmorMaterialKind::Diamond
         | WorldArmorMaterialKind::Netherite => Some(material),
-        WorldArmorMaterialKind::Chainmail | WorldArmorMaterialKind::TurtleScute => None,
+        WorldArmorMaterialKind::Chainmail
+        | WorldArmorMaterialKind::TurtleScute
+        | WorldArmorMaterialKind::ArmadilloScute => None,
+    }
+}
+
+fn wolf_body_armor_material_from_asset(asset: &str) -> Option<WorldArmorMaterialKind> {
+    let material = WorldArmorMaterialKind::from_equipment_asset(asset)?;
+    match material {
+        WorldArmorMaterialKind::ArmadilloScute => Some(material),
+        WorldArmorMaterialKind::Leather
+        | WorldArmorMaterialKind::Copper
+        | WorldArmorMaterialKind::Chainmail
+        | WorldArmorMaterialKind::Iron
+        | WorldArmorMaterialKind::Gold
+        | WorldArmorMaterialKind::Diamond
+        | WorldArmorMaterialKind::TurtleScute
+        | WorldArmorMaterialKind::Netherite => None,
     }
 }
 
@@ -3690,6 +3756,66 @@ mod tests {
         );
         assert_eq!(materials.get(&chainmail), None);
         assert_eq!(materials.get(&nautilus), None);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn native_item_runtime_projects_wolf_body_armor_materials_and_max_damage() {
+        let root = unique_temp_dir("item-runtime-wolf-body-armor");
+        let assets = assets_dir(&root);
+        write_item_atlases(&assets);
+        write_json(
+            &root
+                .join("sources")
+                .join(bbb_pack::MC_VERSION)
+                .join("net")
+                .join("minecraft")
+                .join("world")
+                .join("item")
+                .join("Items.java"),
+            r#"public class Items {
+                public static final Item WOLF_ARMOR = registerItem("wolf_armor", new Item.Properties().wolfArmor(ArmorMaterials.ARMADILLO_SCUTE));
+                public static final Item HORSE_ARMOR = registerItem("horse_armor", new Item.Properties().horseArmor(ArmorMaterials.DIAMOND));
+            }"#,
+        );
+        write_json(
+            &assets.join("equipment").join("armadillo_scute.json"),
+            r#"{
+                "layers": {
+                    "wolf_body": [
+                        { "texture": "minecraft:armadillo_scute" },
+                        { "texture": "minecraft:armadillo_scute_overlay", "dyeable": {} }
+                    ]
+                }
+            }"#,
+        );
+        write_json(
+            &assets.join("equipment").join("diamond.json"),
+            r#"{
+                "layers": {
+                    "horse_body": [
+                        { "texture": "minecraft:diamond" }
+                    ]
+                }
+            }"#,
+        );
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let registry = runtime.registry.as_ref().unwrap();
+        let wolf_armor = registry.protocol_id("minecraft:wolf_armor").unwrap();
+        let horse_armor = registry.protocol_id("minecraft:horse_armor").unwrap();
+        let materials = runtime.wolf_body_armor_materials_by_protocol_id();
+        let max_damage = runtime.item_max_damage_by_protocol_id();
+
+        assert_eq!(runtime.wolf_body_armor_material_count(), 1);
+        assert_eq!(
+            materials.get(&wolf_armor),
+            Some(&WorldArmorMaterialKind::ArmadilloScute)
+        );
+        assert_eq!(materials.get(&horse_armor), None);
+        assert_eq!(max_damage.get(&wolf_armor), Some(&64));
+        assert_eq!(runtime.item_max_damage_count(), 1);
 
         std::fs::remove_dir_all(root).unwrap();
     }

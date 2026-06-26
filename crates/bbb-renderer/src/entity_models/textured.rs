@@ -42,13 +42,14 @@ use super::{
         end_crystal_get_y, end_crystal_glass_quaternions, equine_head_look_pose,
         equine_leg_swing_pose, equine_tail_swing_pose, head_look_at_rest,
         horse_body_armor_texture_layers, limb_swing_at_rest, llama_body_decor_texture_ref,
-        nautilus_body_armor_texture_ref, BreezeWindModel, CamelModel, CreeperModel,
+        nautilus_body_armor_texture_ref, wolf_armor_crackiness_texture_ref,
+        wolf_body_armor_texture_layers, BreezeWindModel, CamelModel, CreeperModel,
         CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel, CustomHeadSkullModel,
         DrownedOuterModel, ElytraModel, HoglinModel, HumanoidArmorSlot, LlamaModel, NautilusModel,
         PigModel, PiglinModel, PlayerModel, SheepFurModel, SheepModel, ShulkerBulletModel,
         SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SquidModel,
         StriderModel, TropicalFishModel, TropicalFishPatternModel, VillagerModel, WindChargeModel,
-        WitherModel, ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
+        WitherModel, WolfModel, ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
         ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_DONKEY_SADDLE_PARTS_TEXTURED,
         ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED, ADULT_HORSE_ARMOR_PARTS_TEXTURED,
         ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
@@ -499,6 +500,8 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         emit_wings_layer(&mut meshes, *instance, atlas, dynamic_player_texture_atlas);
         // The pig saddle is a simple equipment overlay over the adult pig body.
         emit_pig_saddle_layer(&mut meshes, *instance, atlas);
+        // Wolf body armor uses the adult WOLF_ARMOR equipment layer and optional damage cracks.
+        emit_wolf_body_armor_layer(&mut meshes, *instance, atlas);
         // Horse/zombie-horse body armor uses the adult HORSE_BODY equipment layer.
         emit_equine_body_armor_layer(&mut meshes, *instance, atlas);
         // Horse/donkey/mule/undead-horse saddles use the shared EquineSaddleModel tree.
@@ -1528,7 +1531,9 @@ fn emit_humanoid_armor(
         let Some(material) = material else {
             continue;
         };
-        let texture = armor_slot_texture(material, slot);
+        let Some(texture) = armor_slot_texture(material, slot) else {
+            continue;
+        };
         let submit_sequence = match slot {
             HumanoidArmorSlot::Chest => 1,
             HumanoidArmorSlot::Legs => 2,
@@ -1838,6 +1843,96 @@ fn emit_pig_saddle_layer(
         1,
         atlas,
     );
+}
+
+/// Vanilla `WolfArmorLayer`: adult wolves with a body armor item render the `WOLF_BODY` equipment
+/// asset over `AdultWolfModel(ModelLayers.WOLF_ARMOR)`, baked with `CubeDeformation(0.2)`. The
+/// armadillo-scute asset has a white base layer plus a dye-only overlay; damaged armor then adds an
+/// `armorTranslucent` crack texture.
+fn emit_wolf_body_armor_layer(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let Some(material) = instance.render_state.wolf_body_armor else {
+        return;
+    };
+    if !matches!(instance.kind, EntityModelKind::Wolf { baby: false, .. }) {
+        return;
+    }
+    let Some(layers) = wolf_body_armor_texture_layers(material) else {
+        return;
+    };
+
+    let transform = entity_model_root_transform(instance);
+    let mut model = WolfModel::armor(wolf_is_angry(instance.kind));
+    model.prepare(&instance);
+    let mut submit_sequence = if wolf_has_collar(instance.kind) { 2 } else { 1 };
+    for (layer_index, layer) in layers.iter().enumerate() {
+        let Some(tint) =
+            wolf_body_armor_layer_tint(layer.dyeable, instance.render_state.wolf_body_armor_dye)
+        else {
+            continue;
+        };
+        render_textured_pass_ordered(
+            meshes,
+            &model,
+            transform,
+            EntityModelLayerRenderType::ArmorCutoutNoCull,
+            layer.texture,
+            tint,
+            1 + layer_index as i32,
+            submit_sequence,
+            atlas,
+        );
+        submit_sequence += 1;
+    }
+
+    if let Some(crackiness) = instance.render_state.wolf_body_armor_crackiness {
+        render_textured_pass_ordered(
+            meshes,
+            &model,
+            transform,
+            EntityModelLayerRenderType::ArmorTranslucent,
+            wolf_armor_crackiness_texture_ref(crackiness),
+            [1.0, 1.0, 1.0, 1.0],
+            3,
+            submit_sequence,
+            atlas,
+        );
+    }
+}
+
+fn wolf_body_armor_layer_tint(dyeable: bool, dye: Option<u32>) -> Option<[f32; 4]> {
+    if dyeable {
+        dye.map(opaque_wolf_armor_rgb_to_tint)
+    } else {
+        Some([1.0, 1.0, 1.0, 1.0])
+    }
+}
+
+fn opaque_wolf_armor_rgb_to_tint(rgb: u32) -> [f32; 4] {
+    [
+        ((rgb >> 16) & 0xFF) as f32 / 255.0,
+        ((rgb >> 8) & 0xFF) as f32 / 255.0,
+        (rgb & 0xFF) as f32 / 255.0,
+        1.0,
+    ]
+}
+
+fn wolf_is_angry(kind: EntityModelKind) -> bool {
+    matches!(kind, EntityModelKind::Wolf { angry: true, .. })
+}
+
+fn wolf_has_collar(kind: EntityModelKind) -> bool {
+    matches!(
+        kind,
+        EntityModelKind::Wolf {
+            tame: true,
+            collar_color: Some(_),
+            ..
+        }
+    )
 }
 
 /// Vanilla `SimpleEquipmentLayer` over `EquineSaddleModel` for horse, donkey, mule, skeleton-horse,

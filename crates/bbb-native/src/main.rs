@@ -140,6 +140,7 @@ fn main() -> Result<()> {
             .unwrap_or_else(default_player_skin_cache_dir);
         items.enable_http_player_skin_downloads(player_skin_cache_dir);
         world.set_default_item_max_stack_sizes(items.item_max_stack_sizes_by_protocol_id());
+        world.set_default_item_max_damage(items.item_max_damage_by_protocol_id());
         world.set_default_item_crafting_remainders(items.item_crafting_remainders_by_protocol_id());
         world.set_recipe_specific_crafting_remainder_item_ids(
             items.recipe_specific_crafting_remainder_item_ids_by_protocol_id(),
@@ -153,6 +154,9 @@ fn main() -> Result<()> {
         );
         world.set_default_horse_body_armor_materials(
             items.horse_body_armor_materials_by_protocol_id(),
+        );
+        world.set_default_wolf_body_armor_materials(
+            items.wolf_body_armor_materials_by_protocol_id(),
         );
         world.set_default_item_attack_ranges(items.item_attack_ranges_by_protocol_id());
         world.set_default_piercing_weapon_item_ids(
@@ -188,8 +192,10 @@ fn main() -> Result<()> {
             mount_body_armor_kinds = items.mount_body_armor_kind_count(),
             nautilus_body_armor_materials = items.nautilus_body_armor_material_count(),
             horse_body_armor_materials = items.horse_body_armor_material_count(),
+            wolf_body_armor_materials = items.wolf_body_armor_material_count(),
             default_attack_range_items = items.item_attack_range_count(),
             default_piercing_weapon_items = items.default_piercing_weapon_item_count(),
+            default_item_max_damage = items.item_max_damage_count(),
             default_damageable_items = items.default_damageable_item_count(),
             item_crafting_remainders = items.item_crafting_remainder_count(),
             recipe_specific_crafting_remainder_items =

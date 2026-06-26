@@ -565,6 +565,19 @@ pub struct EntityModelSourceState {
     /// accumulator and scaled by `0.15π`. `0.0` for a level-headed wolf and every non-wolf.
     #[serde(default)]
     pub wolf_head_roll_angle: f32,
+    /// Vanilla `WolfRenderState.bodyArmorItem`: an adult wolf body equipment item whose equipment asset
+    /// has a `wolf_body` layer. Baby wolves skip it because `WolfArmorLayer` renders only the adult
+    /// `ModelLayers.WOLF_ARMOR` model.
+    #[serde(default)]
+    pub wolf_body_armor: Option<ArmorMaterialKind>,
+    /// Vanilla `DyedItemColor.getOrDefault` for the wolf body armor item: a packed RGB dye. The
+    /// `armadillo_scute_overlay` wolf-body equipment layer renders only when this is present.
+    #[serde(default)]
+    pub wolf_body_armor_dye: Option<i32>,
+    /// Vanilla `Crackiness.WOLF_ARMOR.byDamage(bodyArmorItem)`: the damage crack overlay tier for
+    /// wolf armor. `None` draws no crack texture.
+    #[serde(default)]
+    pub wolf_body_armor_crackiness: WolfArmorCrackiness,
     /// Vanilla `VexRenderState.isCharging` (`Vex.isCharging`, the synced `DATA_FLAGS_ID & 1`):
     /// the vex is charging an attack, which `VexModel.setupAnim` shows by leveling the body
     /// (`xRot = 0`) and raising both arms (`setArmsCharging`). Projected only for the vex
@@ -1151,6 +1164,7 @@ pub enum ArmorMaterialKind {
     Diamond,
     TurtleScute,
     Netherite,
+    ArmadilloScute,
 }
 
 impl ArmorMaterialKind {
@@ -1166,9 +1180,22 @@ impl ArmorMaterialKind {
             "diamond" => Self::Diamond,
             "turtle_scute" => Self::TurtleScute,
             "netherite" => Self::Netherite,
+            "armadillo_scute" => Self::ArmadilloScute,
             _ => return None,
         })
     }
+}
+
+/// Vanilla `Crackiness.Level` for wolf armor (`Crackiness.WOLF_ARMOR.byDamage`): low / medium /
+/// high damage cracks overlaid on the adult wolf armor model, with `None` for intact armor or any
+/// body item that is not damageable client-side.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum WolfArmorCrackiness {
+    #[default]
+    None,
+    Low,
+    Medium,
+    High,
 }
 
 /// Vanilla `EntityRenderer` light-probe full-bright fallback
@@ -1425,11 +1452,13 @@ impl WorldStore {
                     target.position,
                     partial_ticks,
                     &self.registries,
+                    &self.default_item_max_damage,
                     &self.default_item_armor_materials,
                     &self.default_item_equipment_slots,
                     &self.default_llama_body_decor_colors,
                     &self.default_nautilus_body_armor_materials,
                     &self.default_horse_body_armor_materials,
+                    &self.default_wolf_body_armor_materials,
                 )?;
                 source.light = self
                     .sample_block_light(entity_light_block_pos(target.position))

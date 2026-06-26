@@ -1513,8 +1513,15 @@ When an agent does any of the following, update this file in the same slice:
       begging/head-roll tilt (`Wolf.DATA_INTERESTED_ID` index 20 drives the client
       `interestedAngleO/interestedAngle` `0.4` ease, projected as
       `WolfRenderState.headRollAngle` and added to adult `real_head` / baby `head`
-      on top of `getBodyRollAngle(0)`). The armor layer, base-model
-      invisibility/outline handling, lighting, overlay, and remaining render-state extraction remain unsupported
+      on top of `getBodyRollAngle(0)`), and the adult-only wolf armor layer
+      (`WolfArmorLayer`: `ModelLayers.WOLF_ARMOR` with `CubeDeformation(0.2)`,
+      body-slot `wolf_armor` resolved through the `armadillo_scute` equipment
+      asset, the `wolf_body` base and dyeable overlay layers as
+      `armorCutoutNoCull` submissions at orders `1`/`2`, undyed overlay
+      suppression, and the low/medium/high durability crack overlays as
+      `armorTranslucent` submissions at order `3`). Base-model
+      invisibility/outline handling, lighting, overlay, glint/foil, and remaining
+      render-state extraction remain unsupported
     - base horse entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AbstractEquineModel.createBodyMesh(CubeDeformation.NONE)`,
       `BabyHorseModel.createBabyMesh(CubeDeformation.NONE)`, `HorseModel`, and
@@ -3455,7 +3462,7 @@ When an agent does any of the following, update this file in the same slice:
     variants, equipment, skins, animation, lighting, custom/datapack cow/pig
     variant asset presentation, sheep
     head-look-pitch presentation,
-    wolf armor/head-shake presentation,
+    wolf base-model invisibility/outline presentation,
     boat/raft paddle animation, damage roll, bubble wobble, and water-mask
     presentation,
     horse animation, donkey/mule animation presentation,

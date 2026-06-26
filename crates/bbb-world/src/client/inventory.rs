@@ -1064,6 +1064,13 @@ impl WorldStore {
             .collect();
     }
 
+    pub fn set_default_item_max_damage(&mut self, max_damage: BTreeMap<i32, i32>) {
+        self.default_item_max_damage = max_damage
+            .into_iter()
+            .filter(|(item_id, max_damage)| *item_id >= 0 && *max_damage > 0)
+            .collect();
+    }
+
     pub fn set_default_item_crafting_remainders(&mut self, remainders: BTreeMap<i32, i32>) {
         self.default_item_crafting_remainders_known = true;
         self.default_item_crafting_remainders = remainders
@@ -1266,6 +1273,16 @@ impl WorldStore {
         armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,
     ) {
         self.default_horse_body_armor_materials = armor_materials
+            .into_iter()
+            .filter(|(item_id, _)| *item_id >= 0)
+            .collect();
+    }
+
+    pub fn set_default_wolf_body_armor_materials(
+        &mut self,
+        armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,
+    ) {
+        self.default_wolf_body_armor_materials = armor_materials
             .into_iter()
             .filter(|(item_id, _)| *item_id >= 0)
             .collect();

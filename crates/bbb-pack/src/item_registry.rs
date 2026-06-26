@@ -203,6 +203,7 @@ impl ItemRegistryCatalog {
             let stack_size = max_stack_size_for_declaration(expression)?;
             let equipment_slot = equipment_slot_for_declaration(expression)?;
             let humanoid_armor_asset = humanoid_armor_asset_for_declaration(expression)?;
+            let wolf_armor_asset = wolf_armor_asset_for_declaration(expression)?;
             let explicit_equippable_asset = explicit_equippable_asset_for_declaration(expression)?;
             let mount_body_armor_kind = mount_body_armor_kind_for_declaration(expression);
             let mount_body_armor_asset = mount_body_armor_asset_for_declaration(expression)?;
@@ -224,6 +225,9 @@ impl ItemRegistryCatalog {
                 }
                 if let Some(asset) = &humanoid_armor_asset {
                     humanoid_armor_assets.insert(resource_id.clone(), asset.clone());
+                    equippable_assets.insert(resource_id.clone(), asset.clone());
+                }
+                if let Some(asset) = &wolf_armor_asset {
                     equippable_assets.insert(resource_id.clone(), asset.clone());
                 }
                 if let Some(asset) = &explicit_equippable_asset {
@@ -580,6 +584,13 @@ fn explicit_equippable_asset_for_declaration(expression: &str) -> Result<Option<
         expression,
     )?
     .map(|asset| asset.to_lowercase()))
+}
+
+fn wolf_armor_asset_for_declaration(expression: &str) -> Result<Option<String>> {
+    Ok(
+        optional_capture(r#"\.wolfArmor\(\s*ArmorMaterials\.([A-Z_]+)"#, expression)?
+            .map(|asset| asset.to_lowercase()),
+    )
 }
 
 fn humanoid_armor_material_and_type(expression: &str) -> Result<Option<(String, String)>> {
@@ -1371,6 +1382,10 @@ mod tests {
             Some("diamond")
         );
         assert_eq!(catalog.equippable_asset("minecraft:elytra"), Some("elytra"));
+        assert_eq!(
+            catalog.equippable_asset("minecraft:wolf_armor"),
+            Some("armadillo_scute")
+        );
         assert_eq!(catalog.equippable_asset("minecraft:carved_pumpkin"), None);
         assert_eq!(catalog.equippable_asset("minecraft:stone"), None);
         assert_eq!(

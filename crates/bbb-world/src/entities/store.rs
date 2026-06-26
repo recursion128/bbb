@@ -19,9 +19,9 @@ use super::{
     EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
     EntityMobEffects, EntityModelSourceState, EntityMount, EntityState, EntityTransform,
     EntityTransformState, EntityTransientEvents, ItemEntityStackState, ItemFrameRenderState,
-    LlamaBodyDecorColor, VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
-    VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
-    VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
+    LlamaBodyDecorColor, WolfArmorCrackiness, VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
+    VANILLA_ENTITY_SILENT_DATA_ID, VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
+    VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
     VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
     VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
     VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
@@ -60,10 +60,47 @@ const VANILLA_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
 
 /// Vanilla 26.1 `EntityType.PIG` registry id, used to gate `PigRenderState.saddle`.
 const VANILLA_ENTITY_TYPE_PIG_ID: i32 = 100;
+/// Vanilla 26.1 `EntityType.WOLF` registry id, used to gate `WolfArmorLayer`.
+const VANILLA_ENTITY_TYPE_WOLF_ID: i32 = 148;
 /// Vanilla `Pose.SWIMMING` ordinal, used by player cape bob suppression.
 const VANILLA_POSE_SWIMMING_ID: i32 = 3;
 /// Vanilla `Shulker.DATA_ATTACH_FACE_ID` (Direction), declared before peek and color metadata.
 const SHULKER_ATTACH_FACE_DATA_ID: u8 = 16;
+
+fn wolf_armor_crackiness(
+    item: &ItemStackSummary,
+    default_item_max_damage: &BTreeMap<i32, i32>,
+) -> WolfArmorCrackiness {
+    if item.component_patch.unbreakable {
+        return WolfArmorCrackiness::None;
+    }
+    let Some(item_id) = item.item_id else {
+        return WolfArmorCrackiness::None;
+    };
+    let Some(max_damage) = item
+        .component_patch
+        .max_damage
+        .or_else(|| default_item_max_damage.get(&item_id).copied())
+        .filter(|max_damage| *max_damage > 0)
+    else {
+        return WolfArmorCrackiness::None;
+    };
+    let damage = item
+        .component_patch
+        .damage
+        .unwrap_or(0)
+        .clamp(0, max_damage);
+    let fraction = (max_damage - damage) as f32 / max_damage as f32;
+    if fraction < 0.32 {
+        WolfArmorCrackiness::High
+    } else if fraction < 0.69 {
+        WolfArmorCrackiness::Medium
+    } else if fraction < 0.95 {
+        WolfArmorCrackiness::Low
+    } else {
+        WolfArmorCrackiness::None
+    }
+}
 
 fn end_crystal_renderer_y(time_in_ticks: f32) -> f32 {
     let hh = (time_in_ticks * 0.2).sin() / 2.0 + 0.5;
@@ -597,11 +634,13 @@ impl EntityStore {
         position: super::EntityVec3,
         partial_ticks: f32,
         registries: &RegistrySet,
+        default_item_max_damage: &BTreeMap<i32, i32>,
         armor_materials: &BTreeMap<i32, ArmorMaterialKind>,
         equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
         llama_body_decor_colors: &BTreeMap<i32, LlamaBodyDecorColor>,
         nautilus_body_armor_materials: &BTreeMap<i32, ArmorMaterialKind>,
         horse_body_armor_materials: &BTreeMap<i32, ArmorMaterialKind>,
+        wolf_body_armor_materials: &BTreeMap<i32, ArmorMaterialKind>,
     ) -> Option<EntityModelSourceState> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
@@ -686,7 +725,7 @@ impl EntityStore {
                 .is_some_and(|mount| !mount.passengers.is_empty());
         let nautilus_saddle = is_vanilla_abstract_nautilus_type(identity.entity_type_id)
             && saddle_slot_contains_saddle_item();
-        let body_slot_item_id = || -> Option<i32> {
+        let body_slot_item = || -> Option<&ItemStackSummary> {
             equipment
                 .as_ref()
                 .and_then(|equipment| {
@@ -695,21 +734,13 @@ impl EntityStore {
                         .iter()
                         .find(|update| update.slot == ProtocolEquipmentSlot::Body)
                 })
-                .and_then(|update| (update.item.count > 0).then_some(update.item.item_id)?)
+                .map(|update| &update.item)
+                .filter(|item| item.count > 0)
         };
-        let body_slot_armor_dye = || -> Option<i32> {
-            equipment
-                .as_ref()
-                .and_then(|equipment| {
-                    equipment
-                        .equipment
-                        .iter()
-                        .find(|update| update.slot == ProtocolEquipmentSlot::Body)
-                })
-                .and_then(|update| {
-                    (update.item.count > 0).then_some(update.item.component_patch.dyed_color)?
-                })
-        };
+        let body_slot_item_id =
+            || -> Option<i32> { body_slot_item().and_then(|item| item.item_id) };
+        let body_slot_armor_dye =
+            || -> Option<i32> { body_slot_item().and_then(|item| item.component_patch.dyed_color) };
         let llama_body_decor = if is_vanilla_llama_type(identity.entity_type_id)
             && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values)
         {
@@ -734,6 +765,18 @@ impl EntityStore {
             None
         };
         let horse_body_armor_dye = horse_body_armor.and_then(|_| body_slot_armor_dye());
+        let wolf_body_armor = if identity.entity_type_id == VANILLA_ENTITY_TYPE_WOLF_ID
+            && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values)
+        {
+            body_slot_item_id().and_then(|item_id| wolf_body_armor_materials.get(&item_id).copied())
+        } else {
+            None
+        };
+        let wolf_body_armor_dye = wolf_body_armor.and_then(|_| body_slot_armor_dye());
+        let wolf_body_armor_crackiness = wolf_body_armor
+            .and_then(|_| body_slot_item())
+            .map(|item| wolf_armor_crackiness(item, default_item_max_damage))
+            .unwrap_or(WolfArmorCrackiness::None);
         // Vanilla `LivingEntityRenderer.isShaking` (base) is `Entity.isFullyFrozen`
         // (`getTicksFrozen() >= 140`), and only living entities shake.
         let is_fully_frozen = vanilla_living_entity_type(identity.entity_type_id)
@@ -1272,6 +1315,9 @@ impl EntityStore {
             chest_armor_dye: armor_dye(ProtocolEquipmentSlot::Chest),
             legs_armor_dye: armor_dye(ProtocolEquipmentSlot::Legs),
             feet_armor_dye: armor_dye(ProtocolEquipmentSlot::Feet),
+            wolf_body_armor,
+            wolf_body_armor_dye,
+            wolf_body_armor_crackiness,
             pig_saddle: pig_saddle(),
             equine_saddle,
             equine_saddle_ridden,

@@ -23,23 +23,30 @@ fn armor_slot_textures_match_vanilla_layer_types() {
     // texture; the head / chest / feet slots read the `humanoid` texture.
     assert_eq!(
         armor_slot_texture(EntityArmorMaterial::Iron, HumanoidArmorSlot::Head),
-        ARMOR_IRON_HUMANOID_TEXTURE_REF
+        Some(ARMOR_IRON_HUMANOID_TEXTURE_REF)
     );
     assert_eq!(
         armor_slot_texture(EntityArmorMaterial::Iron, HumanoidArmorSlot::Chest),
-        ARMOR_IRON_HUMANOID_TEXTURE_REF
+        Some(ARMOR_IRON_HUMANOID_TEXTURE_REF)
     );
     assert_eq!(
         armor_slot_texture(EntityArmorMaterial::Iron, HumanoidArmorSlot::Feet),
-        ARMOR_IRON_HUMANOID_TEXTURE_REF
+        Some(ARMOR_IRON_HUMANOID_TEXTURE_REF)
     );
     assert_eq!(
         armor_slot_texture(EntityArmorMaterial::Iron, HumanoidArmorSlot::Legs),
-        ARMOR_IRON_LEGGINGS_TEXTURE_REF
+        Some(ARMOR_IRON_LEGGINGS_TEXTURE_REF)
     );
     assert_eq!(
         armor_slot_texture(EntityArmorMaterial::Diamond, HumanoidArmorSlot::Legs),
-        ARMOR_DIAMOND_LEGGINGS_TEXTURE_REF
+        Some(ARMOR_DIAMOND_LEGGINGS_TEXTURE_REF)
+    );
+    assert_eq!(
+        armor_slot_texture(
+            EntityArmorMaterial::ArmadilloScute,
+            HumanoidArmorSlot::Chest
+        ),
+        None
     );
     // Every equipment texture is stitched into the shared atlas.
     assert!(entity_model_texture_refs().contains(&ARMOR_IRON_HUMANOID_TEXTURE_REF));

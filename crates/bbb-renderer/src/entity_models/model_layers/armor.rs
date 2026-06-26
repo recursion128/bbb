@@ -282,16 +282,17 @@ fn opaque_rgb_to_tint(rgb: u32) -> [f32; 4] {
     ]
 }
 
-/// The equipment-asset texture for a given armor material in a given slot: the `humanoid_leggings`
-/// variant for the inner (legs) slot, the `humanoid` variant otherwise (vanilla
+/// The equipment-asset texture for a given humanoid armor material in a given slot: the
+/// `humanoid_leggings` variant for the inner (legs) slot, the `humanoid` variant otherwise (vanilla
 /// `EquipmentClientInfo.LayerType` → `getTextureLocation`). `TurtleScute` only ever fills the head
-/// slot, so its (non-existent) leggings texture falls back to its humanoid texture.
+/// slot, so its (non-existent) leggings texture falls back to its humanoid texture. Materials without
+/// humanoid equipment textures, such as wolf armor's `ArmadilloScute`, return `None`.
 pub(in crate::entity_models) fn armor_slot_texture(
     material: EntityArmorMaterial,
     slot: HumanoidArmorSlot,
-) -> EntityModelTextureRef {
+) -> Option<EntityModelTextureRef> {
     use EntityArmorMaterial::*;
-    if slot.uses_inner_model() {
+    Some(if slot.uses_inner_model() {
         match material {
             Leather => ARMOR_LEATHER_LEGGINGS_TEXTURE_REF,
             Copper => ARMOR_COPPER_LEGGINGS_TEXTURE_REF,
@@ -301,6 +302,7 @@ pub(in crate::entity_models) fn armor_slot_texture(
             Diamond => ARMOR_DIAMOND_LEGGINGS_TEXTURE_REF,
             Netherite => ARMOR_NETHERITE_LEGGINGS_TEXTURE_REF,
             TurtleScute => ARMOR_TURTLE_SCUTE_HUMANOID_TEXTURE_REF,
+            ArmadilloScute => return None,
         }
     } else {
         match material {
@@ -312,6 +314,7 @@ pub(in crate::entity_models) fn armor_slot_texture(
             Diamond => ARMOR_DIAMOND_HUMANOID_TEXTURE_REF,
             TurtleScute => ARMOR_TURTLE_SCUTE_HUMANOID_TEXTURE_REF,
             Netherite => ARMOR_NETHERITE_HUMANOID_TEXTURE_REF,
+            ArmadilloScute => return None,
         }
-    }
+    })
 }

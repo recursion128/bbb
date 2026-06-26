@@ -197,10 +197,38 @@ const WOLF_LEG_NAMES: [&str; 4] = [
     "left_front_leg",
 ];
 
+fn wolf_cubes(cubes: &[ModelCube], deformation: f32) -> Vec<ModelCube> {
+    if deformation == 0.0 {
+        return cubes.to_vec();
+    }
+    cubes
+        .iter()
+        .map(|cube| {
+            ModelCube::new(
+                [
+                    cube.min[0] - deformation,
+                    cube.min[1] - deformation,
+                    cube.min[2] - deformation,
+                ],
+                [
+                    cube.size[0] + deformation * 2.0,
+                    cube.size[1] + deformation * 2.0,
+                    cube.size[2] + deformation * 2.0,
+                ],
+                cube.color,
+                cube.uv_size,
+                cube.tex,
+                cube.mirror,
+            )
+        })
+        .collect()
+}
+
 /// Builds the adult wolf tree with the vanilla `AdultWolfModel.createBodyLayer` names: a cubeless
 /// `head` parenting `real_head` (skull + ears + snout), `body`, `upper_body` (mane), the four legs,
-/// and a cubeless `tail` parenting `real_tail`.
-fn adult_wolf_tree() -> ModelPart {
+/// and a cubeless `tail` parenting `real_tail`. `deformation` mirrors the vanilla `CubeDeformation`
+/// argument; `ModelLayers.WOLF_ARMOR` passes `0.2`.
+fn adult_wolf_tree_with_deformation(deformation: f32) -> ModelPart {
     let head = ModelPart::new(
         PartPose {
             offset: [-1.0, 13.5, -7.0],
@@ -209,7 +237,10 @@ fn adult_wolf_tree() -> ModelPart {
         Vec::new(),
         vec![(
             "real_head",
-            ModelPart::leaf(PART_POSE_ZERO, ADULT_WOLF_REAL_HEAD.to_vec()),
+            ModelPart::leaf(
+                PART_POSE_ZERO,
+                wolf_cubes(&ADULT_WOLF_REAL_HEAD, deformation),
+            ),
         )],
     );
     let tail = ModelPart::new(
@@ -220,14 +251,29 @@ fn adult_wolf_tree() -> ModelPart {
         Vec::new(),
         vec![(
             "real_tail",
-            ModelPart::leaf(PART_POSE_ZERO, ADULT_WOLF_REAL_TAIL.to_vec()),
+            ModelPart::leaf(
+                PART_POSE_ZERO,
+                wolf_cubes(&ADULT_WOLF_REAL_TAIL, deformation),
+            ),
         )],
     );
     let legs = [
-        ([-2.5, 16.0, 7.0], ADULT_WOLF_RIGHT_LEG.to_vec()),
-        ([0.5, 16.0, 7.0], ADULT_WOLF_LEFT_LEG.to_vec()),
-        ([-2.5, 16.0, -4.0], ADULT_WOLF_RIGHT_LEG.to_vec()),
-        ([0.5, 16.0, -4.0], ADULT_WOLF_LEFT_LEG.to_vec()),
+        (
+            [-2.5, 16.0, 7.0],
+            wolf_cubes(&ADULT_WOLF_RIGHT_LEG, deformation),
+        ),
+        (
+            [0.5, 16.0, 7.0],
+            wolf_cubes(&ADULT_WOLF_LEFT_LEG, deformation),
+        ),
+        (
+            [-2.5, 16.0, -4.0],
+            wolf_cubes(&ADULT_WOLF_RIGHT_LEG, deformation),
+        ),
+        (
+            [0.5, 16.0, -4.0],
+            wolf_cubes(&ADULT_WOLF_LEFT_LEG, deformation),
+        ),
     ];
     let mut children: Vec<(&'static str, ModelPart)> = Vec::with_capacity(8);
     children.push(("head", head));
@@ -238,7 +284,7 @@ fn adult_wolf_tree() -> ModelPart {
                 offset: [0.0, 14.0, 2.0],
                 rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
             },
-            ADULT_WOLF_BODY.to_vec(),
+            wolf_cubes(&ADULT_WOLF_BODY, deformation),
         ),
     ));
     children.push((
@@ -248,7 +294,7 @@ fn adult_wolf_tree() -> ModelPart {
                 offset: [-1.0, 14.0, -3.0],
                 rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
             },
-            ADULT_WOLF_UPPER_BODY.to_vec(),
+            wolf_cubes(&ADULT_WOLF_UPPER_BODY, deformation),
         ),
     ));
     for (&name, (offset, cubes)) in WOLF_LEG_NAMES.iter().zip(legs) {
@@ -265,6 +311,10 @@ fn adult_wolf_tree() -> ModelPart {
     }
     children.push(("tail", tail));
     ModelPart::new(PART_POSE_ZERO, Vec::new(), children)
+}
+
+fn adult_wolf_tree() -> ModelPart {
+    adult_wolf_tree_with_deformation(0.0)
 }
 
 /// Builds the baby wolf tree with the same names minus the mane: the `head` carries its two cubes and
@@ -404,6 +454,14 @@ impl WolfModel {
                 adult_wolf_tree()
             },
             baby,
+            angry,
+        }
+    }
+
+    pub(in crate::entity_models) fn armor(angry: bool) -> Self {
+        Self {
+            root: adult_wolf_tree_with_deformation(0.2),
+            baby: false,
             angry,
         }
     }

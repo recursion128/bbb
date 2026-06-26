@@ -3,6 +3,7 @@ use crate::entity_models::catalog::{
     ArrowModelTexture, AxolotlModelVariant, CatModelVariant, CopperGolemWeathering,
     EntityArmorMaterial, EntityDefaultPlayerSkin, EntityDyeColor, FoxModelVariant,
     FrogModelVariant, PandaModelVariant, ParrotModelVariant, RabbitModelVariant,
+    WolfArmorCrackiness,
 };
 
 mod equine;
@@ -1484,6 +1485,69 @@ pub(in crate::entity_models) const WOLF_BABY_COLLAR_TEXTURE_REF: EntityModelText
         size: [32, 32],
     };
 
+const fn wolf_body_armor_ref(path: &'static str) -> EntityModelTextureRef {
+    EntityModelTextureRef {
+        path,
+        size: [64, 32],
+    }
+}
+
+pub(in crate::entity_models) const WOLF_BODY_ARMADILLO_SCUTE_TEXTURE_REF: EntityModelTextureRef =
+    wolf_body_armor_ref("textures/entity/equipment/wolf_body/armadillo_scute.png");
+pub(in crate::entity_models) const WOLF_BODY_ARMADILLO_SCUTE_OVERLAY_TEXTURE_REF:
+    EntityModelTextureRef =
+    wolf_body_armor_ref("textures/entity/equipment/wolf_body/armadillo_scute_overlay.png");
+pub(in crate::entity_models) const WOLF_ARMOR_CRACKINESS_LOW_TEXTURE_REF: EntityModelTextureRef =
+    wolf_body_armor_ref("textures/entity/wolf/wolf_armor_crackiness_low.png");
+pub(in crate::entity_models) const WOLF_ARMOR_CRACKINESS_MEDIUM_TEXTURE_REF: EntityModelTextureRef =
+    wolf_body_armor_ref("textures/entity/wolf/wolf_armor_crackiness_medium.png");
+pub(in crate::entity_models) const WOLF_ARMOR_CRACKINESS_HIGH_TEXTURE_REF: EntityModelTextureRef =
+    wolf_body_armor_ref("textures/entity/wolf/wolf_armor_crackiness_high.png");
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(in crate::entity_models) struct WolfBodyArmorTextureLayer {
+    pub(in crate::entity_models) texture: EntityModelTextureRef,
+    pub(in crate::entity_models) dyeable: bool,
+}
+
+pub(in crate::entity_models) const WOLF_BODY_ARMADILLO_SCUTE_LAYERS: [WolfBodyArmorTextureLayer;
+    2] = [
+    WolfBodyArmorTextureLayer {
+        texture: WOLF_BODY_ARMADILLO_SCUTE_TEXTURE_REF,
+        dyeable: false,
+    },
+    WolfBodyArmorTextureLayer {
+        texture: WOLF_BODY_ARMADILLO_SCUTE_OVERLAY_TEXTURE_REF,
+        dyeable: true,
+    },
+];
+
+pub(in crate::entity_models) fn wolf_body_armor_texture_layers(
+    material: EntityArmorMaterial,
+) -> Option<&'static [WolfBodyArmorTextureLayer]> {
+    match material {
+        EntityArmorMaterial::ArmadilloScute => Some(&WOLF_BODY_ARMADILLO_SCUTE_LAYERS),
+        EntityArmorMaterial::Leather
+        | EntityArmorMaterial::Copper
+        | EntityArmorMaterial::Chainmail
+        | EntityArmorMaterial::Iron
+        | EntityArmorMaterial::Gold
+        | EntityArmorMaterial::Diamond
+        | EntityArmorMaterial::TurtleScute
+        | EntityArmorMaterial::Netherite => None,
+    }
+}
+
+pub(in crate::entity_models) fn wolf_armor_crackiness_texture_ref(
+    crackiness: WolfArmorCrackiness,
+) -> EntityModelTextureRef {
+    match crackiness {
+        WolfArmorCrackiness::Low => WOLF_ARMOR_CRACKINESS_LOW_TEXTURE_REF,
+        WolfArmorCrackiness::Medium => WOLF_ARMOR_CRACKINESS_MEDIUM_TEXTURE_REF,
+        WolfArmorCrackiness::High => WOLF_ARMOR_CRACKINESS_HIGH_TEXTURE_REF,
+    }
+}
+
 pub(in crate::entity_models) const WOLF_COLLAR_LAYER_TEXTURE_REFS: [EntityModelTextureRef; 1] =
     [WOLF_COLLAR_TEXTURE_REF];
 pub(in crate::entity_models) const WOLF_BABY_COLLAR_LAYER_TEXTURE_REFS: [EntityModelTextureRef; 1] =
@@ -1508,7 +1572,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 532] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 537] = [
     PLAYER_SLIM_ALEX_TEXTURE_REF,
     PLAYER_SLIM_ARI_TEXTURE_REF,
     PLAYER_SLIM_EFE_TEXTURE_REF,
@@ -1588,6 +1652,11 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     WOLF_STRIPED_ANGRY_BABY_TEXTURE_REF,
     WOLF_COLLAR_TEXTURE_REF,
     WOLF_BABY_COLLAR_TEXTURE_REF,
+    WOLF_BODY_ARMADILLO_SCUTE_TEXTURE_REF,
+    WOLF_BODY_ARMADILLO_SCUTE_OVERLAY_TEXTURE_REF,
+    WOLF_ARMOR_CRACKINESS_LOW_TEXTURE_REF,
+    WOLF_ARMOR_CRACKINESS_MEDIUM_TEXTURE_REF,
+    WOLF_ARMOR_CRACKINESS_HIGH_TEXTURE_REF,
     GOAT_TEXTURE_REF,
     GOAT_BABY_TEXTURE_REF,
     POLAR_BEAR_TEXTURE_REF,
@@ -3340,7 +3409,8 @@ pub(in crate::entity_models) fn nautilus_body_armor_texture_ref(
         EntityArmorMaterial::Netherite => NAUTILUS_BODY_NETHERITE_TEXTURE_REF,
         EntityArmorMaterial::Leather
         | EntityArmorMaterial::Chainmail
-        | EntityArmorMaterial::TurtleScute => return None,
+        | EntityArmorMaterial::TurtleScute
+        | EntityArmorMaterial::ArmadilloScute => return None,
     })
 }
 

@@ -653,6 +653,16 @@ entity_render_state! {
     /// component on leather horse armor. Non-leather horse armor ignores it and renders white; undyed
     /// leather falls back to `DyedItemColor.LEATHER_COLOR`.
     (with_equine_body_armor_dye) equine_body_armor_dye: Option<u32> = None;
+    /// Vanilla `WolfRenderState.bodyArmorItem`: an adult wolf body equipment item whose equipment
+    /// asset provides a `WOLF_BODY` layer. The renderer maps `ArmadilloScute` to the wolf armor
+    /// equipment textures and skips babies.
+    (with_wolf_body_armor) wolf_body_armor: Option<EntityArmorMaterial> = None;
+    /// Vanilla `DyedItemColor.getOrDefault` for the wolf body armor item: a packed RGB dye. The
+    /// `armadillo_scute_overlay` wolf-body layer renders only when this is present.
+    (with_wolf_body_armor_dye) wolf_body_armor_dye: Option<u32> = None;
+    /// Vanilla `Crackiness.WOLF_ARMOR.byDamage(bodyArmorItem)`: low / medium / high damage cracks over
+    /// the adult wolf armor model. `None` draws no crack texture.
+    (with_wolf_body_armor_crackiness) wolf_body_armor_crackiness: Option<WolfArmorCrackiness> = None;
     /// Vanilla `StriderRenderState.isRidden`: a strider with passengers zeroes body pitch/yaw in
     /// `StriderModel.setupAnim`. `false` for unridden striders and every non-strider entity.
     (with_strider_ridden) strider_ridden: bool = false;
@@ -2242,6 +2252,9 @@ mod tests {
                 equine_saddle_ridden: false,
                 equine_body_armor: None,
                 equine_body_armor_dye: None,
+                wolf_body_armor: None,
+                wolf_body_armor_dye: None,
+                wolf_body_armor_crackiness: None,
                 strider_ridden: false,
                 strider_saddle: false,
                 camel_saddle: false,
