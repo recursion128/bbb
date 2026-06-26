@@ -1191,9 +1191,9 @@ When an agent does any of the following, update this file in the same slice:
         `DefaultPlayerSkin` (`textures/entity/player/slim/steve.png`) and the
         humanoid head+hat skull layer. A `piglin_head` renders with vanilla
         `PiglinHeadModel` head/ear geometry and uses
-        `wornHeadAnimationPos` for the skull ear flap on the non-passenger
-        path; the vanilla riding-a-living-entity branch that reads the vehicle
-        walk animation remains deferred. A `dragon_head` renders with vanilla
+        `wornHeadAnimationPos` for the skull ear flap, including vanilla's
+        riding-a-living-entity branch that reads the vehicle walk animation. A
+        `dragon_head` renders with vanilla
         `DragonHeadModel` head/jaw geometry, the skull head `scaled(0.75)` part
         pose, the `dragon.png` texture, and `wornHeadAnimationPos` jaw
         animation. Profiled player skins remain deferred.

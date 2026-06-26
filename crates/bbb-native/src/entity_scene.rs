@@ -1211,7 +1211,7 @@ fn entity_model_instance(
         .with_on_ground(source.on_ground)
         .with_is_moving(source.is_moving)
         .with_walk_animation(source.walk_animation_position, source.walk_animation_speed)
-        .with_worn_head_animation_pos(source.walk_animation_position)
+        .with_worn_head_animation_pos(source.worn_head_animation_position)
         .with_attack_anim(source.attack_anim)
         .with_attack_arm_off_hand(source.attack_arm_off_hand)
         .with_age_in_ticks(source.age_ticks as f32 + entity_partial_tick)
@@ -6220,9 +6220,9 @@ mod tests {
                 state.worn_head_animation_pos,
             )
         };
-        let sync = |world: &mut WorldStore, x: f64| {
+        let sync = |world: &mut WorldStore, id: i32, x: f64| {
             assert!(world.apply_entity_position_sync(EntityPositionSync {
-                id: 98,
+                id,
                 position: Vec3d { x, y: 64.0, z: 0.0 },
                 delta_movement: Vec3d {
                     x: 0.0,
@@ -6243,7 +6243,7 @@ mod tests {
         // position = 0.4 (targetSpeed = min(0.5 * 4, 1) = 1.0), and both flow through
         // EntityModelSourceState to the renderer EntityRenderState. Vanilla also reuses the same
         // position for LivingEntityRenderState.wornHeadAnimationPos while not riding a living entity.
-        sync(&mut world, 0.5);
+        sync(&mut world, 98, 0.5);
         world.advance_entity_client_animations(1);
         let (pos, speed, worn_head_pos) = walk(&world);
         assert!((speed - 0.4).abs() < 1e-5, "walk speed: {speed}");
@@ -6251,6 +6251,41 @@ mod tests {
         assert!(
             (worn_head_pos - 0.4).abs() < 1e-5,
             "worn head animation position: {worn_head_pos}"
+        );
+
+        // While riding a living entity, vanilla keeps the passenger's limb swing stopped but drives
+        // worn skull animation from the vehicle walk animation position.
+        world.apply_add_entity(protocol_add_entity(
+            99,
+            VANILLA_ENTITY_TYPE_COW_ID,
+            [0.0, 64.0, 0.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            100,
+            VANILLA_ENTITY_TYPE_COW_ID,
+            [0.0, 64.0, 0.0],
+        ));
+        assert!(world.apply_set_passengers(SetPassengers {
+            vehicle_id: 99,
+            passenger_ids: vec![100],
+        }));
+        sync(&mut world, 99, 0.0);
+        world.advance_entity_client_animations(1);
+        sync(&mut world, 99, 0.5);
+        world.advance_entity_client_animations(1);
+        let passenger = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0)
+            .into_iter()
+            .find(|instance| instance.entity_id == 100)
+            .unwrap()
+            .render_state;
+        assert_eq!(
+            (passenger.walk_animation_pos, passenger.walk_animation_speed),
+            (0.0, 0.0)
+        );
+        assert!(
+            (passenger.worn_head_animation_pos - 0.4).abs() < 1e-5,
+            "passenger worn head animation position: {}",
+            passenger.worn_head_animation_pos
         );
     }
 

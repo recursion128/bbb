@@ -852,6 +852,19 @@ impl EntityStore {
         let (sniffer_animation_id, sniffer_animation_seconds) = client_animations
             .animations
             .sniffer_animation(partial_ticks);
+        let walk_animation_position = client_animations
+            .animations
+            .walk_animation_position(partial_ticks);
+        // Vanilla `LivingEntityRenderer.extractRenderState`: worn skull animation normally mirrors
+        // the entity walk position, but while riding a living entity it reads the vehicle's walk
+        // animation position even though the passenger's own limb swing is stopped.
+        let worn_head_animation_position = mount
+            .as_ref()
+            .and_then(|mount| mount.vehicle_id)
+            .and_then(|vehicle_id| {
+                self.living_entity_walk_animation_position(vehicle_id, partial_ticks)
+            })
+            .unwrap_or(walk_animation_position);
         Some(EntityModelSourceState {
             entity_id: identity.id,
             entity_type_id: identity.entity_type_id,
@@ -1038,12 +1051,11 @@ impl EntityStore {
             creaking_death_seconds: client_animations
                 .animations
                 .creaking_death_seconds(partial_ticks),
-            walk_animation_position: client_animations
-                .animations
-                .walk_animation_position(partial_ticks),
+            walk_animation_position,
             walk_animation_speed: client_animations
                 .animations
                 .walk_animation_speed(partial_ticks),
+            worn_head_animation_position,
             // Vanilla `HumanoidRenderState.attackTime`/`attackArm`
             // (`LivingEntity.getAttackAnim(partialTick)` + `swingingArm`): the lerped melee swing
             // progress and which arm swings. `0.0` for an entity that is not mid-swing.
@@ -1250,6 +1262,20 @@ impl EntityStore {
             x_rot: transform.x_rot,
             eye_height,
         })
+    }
+
+    fn living_entity_walk_animation_position(&self, id: i32, partial_ticks: f32) -> Option<f32> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        if !vanilla_living_entity_type(identity.entity_type_id) {
+            return None;
+        }
+        let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        Some(
+            client_animations
+                .animations
+                .walk_animation_position(partial_ticks),
+        )
     }
 
     pub(crate) fn mount(&self, id: i32) -> Option<EntityMount> {

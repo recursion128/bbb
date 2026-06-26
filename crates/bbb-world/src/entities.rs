@@ -754,6 +754,12 @@ pub struct EntityModelSourceState {
     /// every non-living entity.
     #[serde(default)]
     pub walk_animation_speed: f32,
+    /// Vanilla `LivingEntityRenderState.wornHeadAnimationPos`: the animation position
+    /// sent to `SkullBlockRenderer.submitSkull` for worn skulls. It mirrors the
+    /// entity's own walk position unless the entity rides a living entity, in which
+    /// case vanilla reads the vehicle's walk position.
+    #[serde(default)]
+    pub worn_head_animation_position: f32,
     /// Vanilla `HumanoidRenderState.attackTime` (`LivingEntity.getAttackAnim(partialTick)`):
     /// the lerped `0..1` melee swing progress `HumanoidModel.setupAttackAnimation` feeds the
     /// body twist + arm whack. `0.0` for an entity that is not mid-swing.
