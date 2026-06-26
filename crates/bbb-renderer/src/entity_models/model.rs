@@ -209,6 +209,23 @@ impl ModelPart {
         }
     }
 
+    /// Copies only the animated rotation and scale of each named direct child. Baby armor models have
+    /// vanilla-authored bind offsets that differ from the baby zombie body, so they need the host's
+    /// animation without replacing their own `PartPose.offset`.
+    pub(in crate::entity_models) fn copy_child_rotations_from(
+        &mut self,
+        source: &ModelPart,
+        names: &[&str],
+    ) {
+        for name in names {
+            if let Some((_, src)) = source.children.iter().find(|(n, _)| n == name) {
+                let target = self.child_mut(name);
+                target.pose.rotation = src.pose.rotation;
+                target.scale = src.scale;
+            }
+        }
+    }
+
     /// Walks the subtree, emitting every visible cube into the colored `mesh` with the cube's baked
     /// color. Mirrors vanilla `ModelPart.render`: apply this part's pose, draw the cubes, recurse.
     pub(in crate::entity_models) fn render_colored(

@@ -1572,7 +1572,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 537] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 545] = [
     PLAYER_SLIM_ALEX_TEXTURE_REF,
     PLAYER_SLIM_ARI_TEXTURE_REF,
     PLAYER_SLIM_EFE_TEXTURE_REF,
@@ -2109,6 +2109,14 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     ARMOR_GOLD_LEGGINGS_TEXTURE_REF,
     ARMOR_DIAMOND_LEGGINGS_TEXTURE_REF,
     ARMOR_NETHERITE_LEGGINGS_TEXTURE_REF,
+    ARMOR_LEATHER_BABY_HUMANOID_TEXTURE_REF,
+    ARMOR_COPPER_BABY_HUMANOID_TEXTURE_REF,
+    ARMOR_CHAINMAIL_BABY_HUMANOID_TEXTURE_REF,
+    ARMOR_IRON_BABY_HUMANOID_TEXTURE_REF,
+    ARMOR_GOLD_BABY_HUMANOID_TEXTURE_REF,
+    ARMOR_DIAMOND_BABY_HUMANOID_TEXTURE_REF,
+    ARMOR_TURTLE_SCUTE_BABY_HUMANOID_TEXTURE_REF,
+    ARMOR_NETHERITE_BABY_HUMANOID_TEXTURE_REF,
     ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
 ];
 
@@ -4219,18 +4227,26 @@ pub fn wind_charge_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WIND_CHARGE_ENTITY_TEXTURE_REFS
 }
 
-// Vanilla `HumanoidArmorLayer` equipment-asset textures (`EquipmentClientInfo.Layer.getTextureLocation`),
-// shared by every humanoid armor-wearer. The `HUMANOID` layer (head / chest / feet) reads
-// `textures/entity/equipment/humanoid/<asset>.png`; the `HUMANOID_LEGGINGS` layer (legs) reads
-// `textures/entity/equipment/humanoid_leggings/<asset>.png`. Both are the 64×32 humanoid UV layout. The
-// asset id is the `ArmorMaterials.<MAT>` → `EquipmentAssets.<MAT>` name (`CHAINMAIL` → `chainmail`,
-// `TURTLE_SCUTE` → `turtle_scute`). Turtle scute is helmet-only, so it has no leggings texture.
+// Vanilla `HumanoidArmorLayer` equipment-asset textures (`EquipmentClientInfo.Layer.getTextureLocation`).
+// Adult `HUMANOID` (head / chest / feet) and `HUMANOID_LEGGINGS` (legs) textures are 64x32. Baby
+// humanoid armor uses the distinct `HUMANOID_BABY` layer for every slot and those textures are 64x64.
+// The asset id is the `ArmorMaterials.<MAT>` → `EquipmentAssets.<MAT>` name (`CHAINMAIL` →
+// `chainmail`, `TURTLE_SCUTE` → `turtle_scute`). Turtle scute is helmet-only for real equipment, so
+// it has no leggings texture.
 const fn armor_humanoid_ref(path: &'static str) -> EntityModelTextureRef {
     EntityModelTextureRef {
         path,
         size: [64, 32],
     }
 }
+
+const fn baby_armor_humanoid_ref(path: &'static str) -> EntityModelTextureRef {
+    EntityModelTextureRef {
+        path,
+        size: [64, 64],
+    }
+}
+
 pub(in crate::entity_models) const ARMOR_LEATHER_HUMANOID_TEXTURE_REF: EntityModelTextureRef =
     armor_humanoid_ref("textures/entity/equipment/humanoid/leather.png");
 pub(in crate::entity_models) const ARMOR_COPPER_HUMANOID_TEXTURE_REF: EntityModelTextureRef =
@@ -4261,6 +4277,26 @@ pub(in crate::entity_models) const ARMOR_DIAMOND_LEGGINGS_TEXTURE_REF: EntityMod
     armor_humanoid_ref("textures/entity/equipment/humanoid_leggings/diamond.png");
 pub(in crate::entity_models) const ARMOR_NETHERITE_LEGGINGS_TEXTURE_REF: EntityModelTextureRef =
     armor_humanoid_ref("textures/entity/equipment/humanoid_leggings/netherite.png");
+
+pub(in crate::entity_models) const ARMOR_LEATHER_BABY_HUMANOID_TEXTURE_REF: EntityModelTextureRef =
+    baby_armor_humanoid_ref("textures/entity/equipment/humanoid_baby/leather.png");
+pub(in crate::entity_models) const ARMOR_COPPER_BABY_HUMANOID_TEXTURE_REF: EntityModelTextureRef =
+    baby_armor_humanoid_ref("textures/entity/equipment/humanoid_baby/copper.png");
+pub(in crate::entity_models) const ARMOR_CHAINMAIL_BABY_HUMANOID_TEXTURE_REF:
+    EntityModelTextureRef =
+    baby_armor_humanoid_ref("textures/entity/equipment/humanoid_baby/chainmail.png");
+pub(in crate::entity_models) const ARMOR_IRON_BABY_HUMANOID_TEXTURE_REF: EntityModelTextureRef =
+    baby_armor_humanoid_ref("textures/entity/equipment/humanoid_baby/iron.png");
+pub(in crate::entity_models) const ARMOR_GOLD_BABY_HUMANOID_TEXTURE_REF: EntityModelTextureRef =
+    baby_armor_humanoid_ref("textures/entity/equipment/humanoid_baby/gold.png");
+pub(in crate::entity_models) const ARMOR_DIAMOND_BABY_HUMANOID_TEXTURE_REF: EntityModelTextureRef =
+    baby_armor_humanoid_ref("textures/entity/equipment/humanoid_baby/diamond.png");
+pub(in crate::entity_models) const ARMOR_TURTLE_SCUTE_BABY_HUMANOID_TEXTURE_REF:
+    EntityModelTextureRef =
+    baby_armor_humanoid_ref("textures/entity/equipment/humanoid_baby/turtle_scute.png");
+pub(in crate::entity_models) const ARMOR_NETHERITE_BABY_HUMANOID_TEXTURE_REF:
+    EntityModelTextureRef =
+    baby_armor_humanoid_ref("textures/entity/equipment/humanoid_baby/netherite.png");
 
 // Vanilla `EquipmentClientInfo.LayerType.WINGS` for the elytra equipment asset. The layer is 64x32
 // and may be overridden by a player's profile elytra/cape texture when `use_player_texture` is true.

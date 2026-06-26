@@ -38,8 +38,8 @@ use super::{
     instances::EntityModelInstance,
     mesh_transformer_scaled_model_root_transform,
     model_layers::{
-        armor_layer_tint, armor_slot_texture, default_player_skin_texture_ref, end_crystal_bob_y,
-        end_crystal_get_y, end_crystal_glass_quaternions, equine_head_look_pose,
+        armor_layer_tint, armor_slot_texture_for_layer, default_player_skin_texture_ref,
+        end_crystal_bob_y, end_crystal_get_y, end_crystal_glass_quaternions, equine_head_look_pose,
         equine_leg_swing_pose, equine_tail_swing_pose, head_look_at_rest,
         horse_body_armor_texture_layers, limb_swing_at_rest, llama_body_decor_texture_ref,
         nautilus_body_armor_texture_ref, wolf_armor_crackiness_texture_ref,
@@ -1503,6 +1503,7 @@ fn emit_humanoid_armor(
     host_root: &ModelPart,
     transform: Mat4,
     outer: f32,
+    baby: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     let render_state = &instance.render_state;
@@ -1531,7 +1532,7 @@ fn emit_humanoid_armor(
         let Some(material) = material else {
             continue;
         };
-        let Some(texture) = armor_slot_texture(material, slot) else {
+        let Some(texture) = armor_slot_texture_for_layer(material, slot, baby) else {
             continue;
         };
         let submit_sequence = match slot {
@@ -1540,8 +1541,16 @@ fn emit_humanoid_armor(
             HumanoidArmorSlot::Feet => 3,
             HumanoidArmorSlot::Head => 4,
         };
-        let mut tree = slot.build_tree(outer);
-        tree.copy_child_poses_from(host_root, slot.part_names());
+        let mut tree = if baby {
+            slot.build_standard_baby_tree()
+        } else {
+            slot.build_tree(outer)
+        };
+        if baby {
+            tree.copy_child_rotations_from(host_root, slot.baby_pose_part_names());
+        } else {
+            tree.copy_child_poses_from(host_root, slot.part_names());
+        }
         let submit = EntityModelSubmissionEmit::new(
             EntityModelLayerRenderType::ArmorCutoutNoCull,
             texture,
@@ -1563,12 +1572,13 @@ fn emit_humanoid_armor(
 }
 
 /// Worn armor for the humanoid armor wearers (vanilla `HumanoidModel.createArmorMeshSet`, `INNER 0.5`
-/// / `OUTER 1.0`, or the piglin family's `OUTER 1.02`). The base body is emitted by the shared dispatch
-/// / bespoke emits; here we rebuild and pose an identical host humanoid model purely to read its limb
-/// poses, then drape the armor pieces on it ([`emit_humanoid_armor`]). Covered: the zombie family
-/// (zombie, husk, drowned, zombie villager), the skeleton family (skeleton, stray, wither/normal/bogged),
-/// the player, and the piglin family (piglin, piglin brute, zombified piglin). DEFERRED: baby variants
-/// (a distinct `createBabyArmorMesh`).
+/// / `OUTER 1.0`, the standard baby zombie/husk/drowned `createBabyArmorMeshSet`, or the piglin
+/// family's `OUTER 1.02`). The base body is emitted by the shared dispatch / bespoke emits; here we
+/// rebuild and pose an identical host humanoid model purely to read its limb poses, then drape the
+/// armor pieces on it ([`emit_humanoid_armor`]). Covered: the adult zombie family (zombie, husk,
+/// drowned, zombie villager), standard baby zombie/husk/drowned armor, the skeleton family (skeleton,
+/// stray, wither/normal/bogged), the player, and the adult piglin family (piglin, piglin brute,
+/// zombified piglin). DEFERRED: baby zombie-villager and baby piglin-family armor models.
 fn emit_worn_humanoid_armor(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -1593,6 +1603,21 @@ fn emit_worn_humanoid_armor(
                 host.root(),
                 transform,
                 STANDARD_OUTER_ARMOR_DEFORMATION,
+                false,
+                atlas,
+            );
+        }
+        EntityModelKind::Zombie { baby: true } => {
+            let mut host = ZombieModel::new(true);
+            host.prepare(&instance);
+            let transform = entity_model_root_transform(instance);
+            emit_humanoid_armor(
+                meshes,
+                instance,
+                host.root(),
+                transform,
+                STANDARD_OUTER_ARMOR_DEFORMATION,
+                true,
                 atlas,
             );
         }
@@ -1606,6 +1631,7 @@ fn emit_worn_humanoid_armor(
                 host.root(),
                 transform,
                 STANDARD_OUTER_ARMOR_DEFORMATION,
+                false,
                 atlas,
             );
         }
@@ -1629,6 +1655,28 @@ fn emit_worn_humanoid_armor(
                 host.root(),
                 transform,
                 STANDARD_OUTER_ARMOR_DEFORMATION,
+                false,
+                atlas,
+            );
+        }
+        EntityModelKind::ZombieVariant {
+            family: family @ (ZombieVariantModelFamily::Husk | ZombieVariantModelFamily::Drowned),
+            baby: true,
+        } => {
+            let transform = if matches!(family, ZombieVariantModelFamily::Husk) {
+                mesh_transformer_scaled_model_root_transform(instance, HUSK_SCALE)
+            } else {
+                drowned_model_root_transform(instance)
+            };
+            let mut host = ZombieVariantModel::new(family, true);
+            host.prepare(&instance);
+            emit_humanoid_armor(
+                meshes,
+                instance,
+                host.root(),
+                transform,
+                STANDARD_OUTER_ARMOR_DEFORMATION,
+                true,
                 atlas,
             );
         }
@@ -1642,6 +1690,7 @@ fn emit_worn_humanoid_armor(
                 host.root(),
                 transform,
                 STANDARD_OUTER_ARMOR_DEFORMATION,
+                false,
                 atlas,
             );
         }
@@ -1659,6 +1708,7 @@ fn emit_worn_humanoid_armor(
                 host.root(),
                 transform,
                 STANDARD_OUTER_ARMOR_DEFORMATION,
+                false,
                 atlas,
             );
         }
@@ -1673,6 +1723,7 @@ fn emit_worn_humanoid_armor(
                 host.root(),
                 transform,
                 STANDARD_OUTER_ARMOR_DEFORMATION,
+                false,
                 atlas,
             );
         }
@@ -1693,6 +1744,7 @@ fn emit_worn_humanoid_armor(
                 host.root(),
                 transform,
                 PIGLIN_OUTER_ARMOR_DEFORMATION,
+                false,
                 atlas,
             );
         }

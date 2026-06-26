@@ -631,6 +631,14 @@ mod tests {
                 "textures/entity/equipment/humanoid_leggings/gold.png",
                 "textures/entity/equipment/humanoid_leggings/diamond.png",
                 "textures/entity/equipment/humanoid_leggings/netherite.png",
+                "textures/entity/equipment/humanoid_baby/leather.png",
+                "textures/entity/equipment/humanoid_baby/copper.png",
+                "textures/entity/equipment/humanoid_baby/chainmail.png",
+                "textures/entity/equipment/humanoid_baby/iron.png",
+                "textures/entity/equipment/humanoid_baby/gold.png",
+                "textures/entity/equipment/humanoid_baby/diamond.png",
+                "textures/entity/equipment/humanoid_baby/turtle_scute.png",
+                "textures/entity/equipment/humanoid_baby/netherite.png",
                 "textures/entity/equipment/wings/elytra.png",
             ]
         );

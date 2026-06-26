@@ -7,6 +7,7 @@ fn iron_armor_atlas() -> EntityModelTextureAtlasLayout {
     let mut refs: Vec<EntityModelTextureRef> = zombie_entity_texture_refs().to_vec();
     refs.push(ARMOR_IRON_HUMANOID_TEXTURE_REF);
     refs.push(ARMOR_IRON_LEGGINGS_TEXTURE_REF);
+    refs.push(ARMOR_IRON_BABY_HUMANOID_TEXTURE_REF);
     let images: Vec<EntityModelTextureImage> = refs
         .iter()
         .enumerate()
@@ -23,35 +24,51 @@ fn armor_slot_textures_match_vanilla_layer_types() {
     // Vanilla `HumanoidArmorLayer.usesInnerModel`: only the LEGS slot reads the `humanoid_leggings`
     // texture; the head / chest / feet slots read the `humanoid` texture.
     assert_eq!(
-        armor_slot_texture(EntityArmorMaterial::Iron, HumanoidArmorSlot::Head),
+        armor_slot_texture_for_layer(EntityArmorMaterial::Iron, HumanoidArmorSlot::Head, false),
         Some(ARMOR_IRON_HUMANOID_TEXTURE_REF)
     );
     assert_eq!(
-        armor_slot_texture(EntityArmorMaterial::Iron, HumanoidArmorSlot::Chest),
+        armor_slot_texture_for_layer(EntityArmorMaterial::Iron, HumanoidArmorSlot::Chest, false),
         Some(ARMOR_IRON_HUMANOID_TEXTURE_REF)
     );
     assert_eq!(
-        armor_slot_texture(EntityArmorMaterial::Iron, HumanoidArmorSlot::Feet),
+        armor_slot_texture_for_layer(EntityArmorMaterial::Iron, HumanoidArmorSlot::Feet, false),
         Some(ARMOR_IRON_HUMANOID_TEXTURE_REF)
     );
     assert_eq!(
-        armor_slot_texture(EntityArmorMaterial::Iron, HumanoidArmorSlot::Legs),
+        armor_slot_texture_for_layer(EntityArmorMaterial::Iron, HumanoidArmorSlot::Legs, false),
         Some(ARMOR_IRON_LEGGINGS_TEXTURE_REF)
     );
     assert_eq!(
-        armor_slot_texture(EntityArmorMaterial::Diamond, HumanoidArmorSlot::Legs),
+        armor_slot_texture_for_layer(EntityArmorMaterial::Diamond, HumanoidArmorSlot::Legs, false),
         Some(ARMOR_DIAMOND_LEGGINGS_TEXTURE_REF)
     );
+    // Vanilla `HumanoidArmorLayer` switches every non-armor-stand baby slot to
+    // `EquipmentClientInfo.LayerType.HUMANOID_BABY`, so baby leggings do not read the adult
+    // `humanoid_leggings` texture.
+    for slot in [
+        HumanoidArmorSlot::Head,
+        HumanoidArmorSlot::Chest,
+        HumanoidArmorSlot::Legs,
+        HumanoidArmorSlot::Feet,
+    ] {
+        assert_eq!(
+            armor_slot_texture_for_layer(EntityArmorMaterial::Iron, slot, true),
+            Some(ARMOR_IRON_BABY_HUMANOID_TEXTURE_REF)
+        );
+    }
     assert_eq!(
-        armor_slot_texture(
+        armor_slot_texture_for_layer(
             EntityArmorMaterial::ArmadilloScute,
-            HumanoidArmorSlot::Chest
+            HumanoidArmorSlot::Chest,
+            false
         ),
         None
     );
     // Every equipment texture is stitched into the shared atlas.
     assert!(entity_model_texture_refs().contains(&ARMOR_IRON_HUMANOID_TEXTURE_REF));
     assert!(entity_model_texture_refs().contains(&ARMOR_NETHERITE_LEGGINGS_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&ARMOR_IRON_BABY_HUMANOID_TEXTURE_REF));
 }
 
 #[test]
@@ -72,6 +89,22 @@ fn armor_slot_part_subsets_match_vanilla_retain_exact_parts() {
     );
     assert!(HumanoidArmorSlot::Legs.uses_inner_model());
     assert!(!HumanoidArmorSlot::Chest.uses_inner_model());
+
+    // Vanilla `HumanoidModel.BABY_ARMOR_PARTS_PER_SLOT` keeps the waist static and nests baby feet
+    // under empty leg parents, so only the humanoid direct children copy animated pose data.
+    assert_eq!(HumanoidArmorSlot::Head.baby_pose_part_names(), &["head"]);
+    assert_eq!(
+        HumanoidArmorSlot::Chest.baby_pose_part_names(),
+        &["body", "right_arm", "left_arm"]
+    );
+    assert_eq!(
+        HumanoidArmorSlot::Legs.baby_pose_part_names(),
+        &["right_leg", "left_leg"]
+    );
+    assert_eq!(
+        HumanoidArmorSlot::Feet.baby_pose_part_names(),
+        &["right_leg", "left_leg"]
+    );
 }
 
 #[test]
@@ -407,7 +440,8 @@ fn standard_humanoid_wearers_all_drape_armor() {
         );
     }
 
-    // A baby husk wears a distinct baby armor mesh (deferred), so it drapes nothing.
+    // A baby husk uses the standard baby humanoid armor mesh: helmet (1 cube), chestplate (body +
+    // 2 arms), leggings (waist + 2 legs), boots (2 feet) — 9 cubes -> 216 vertices.
     let baby_husk = EntityModelInstance::zombie_variant(
         84,
         [0.0, 64.0, 0.0],
@@ -417,7 +451,10 @@ fn standard_humanoid_wearers_all_drape_armor() {
     );
     let bare = entity_model_textured_meshes(&[baby_husk], &atlas);
     let armored = entity_model_textured_meshes(&[full_iron(baby_husk)], &atlas);
-    assert_eq!(bare.cutout.vertices.len(), armored.cutout.vertices.len());
+    assert_eq!(
+        armored.cutout.vertices.len() - bare.cutout.vertices.len(),
+        216
+    );
 }
 
 #[test]
@@ -486,18 +523,49 @@ fn piglin_family_drapes_armor_at_wider_deformation() {
 }
 
 #[test]
-fn baby_zombie_armor_is_deferred() {
+fn baby_zombie_armor_uses_humanoid_baby_layer() {
     let atlas = iron_armor_atlas();
-    // The baby zombie wears a distinct baby armor mesh, deferred for now — its cutout is unchanged
-    // whether or not armor is equipped.
     let bare = entity_model_textured_meshes(
         &[EntityModelInstance::zombie(74, [0.0, 64.0, 0.0], 0.0, true)],
         &atlas,
     );
     let armored = entity_model_textured_meshes(
         &[EntityModelInstance::zombie(75, [0.0, 64.0, 0.0], 0.0, true)
-            .with_chest_armor(Some(EntityArmorMaterial::Iron))],
+            .with_head_armor(Some(EntityArmorMaterial::Iron))
+            .with_chest_armor(Some(EntityArmorMaterial::Iron))
+            .with_legs_armor(Some(EntityArmorMaterial::Iron))
+            .with_feet_armor(Some(EntityArmorMaterial::Iron))],
         &atlas,
     );
-    assert_eq!(bare.cutout.vertices.len(), armored.cutout.vertices.len());
+    assert_eq!(
+        armored.cutout.vertices.len() - bare.cutout.vertices.len(),
+        216,
+        "baby humanoid armor keeps nine retained cubes"
+    );
+    assert_eq!(armored.submissions.len(), 5);
+    assert_eq!(armored.submissions[0].texture, ZOMBIE_BABY_TEXTURE_REF);
+    assert_eq!(
+        armored.submissions[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(
+        (
+            armored.submissions[0].order,
+            armored.submissions[0].submit_sequence
+        ),
+        (0, 0)
+    );
+
+    let expected_transform =
+        entity_model_root_transform(EntityModelInstance::zombie(75, [0.0, 64.0, 0.0], 0.0, true));
+    for (submit, sequence) in armored.submissions[1..].iter().zip(1..) {
+        assert_eq!(
+            submit.render_type,
+            EntityModelLayerRenderType::ArmorCutoutNoCull
+        );
+        assert_eq!(submit.texture, ARMOR_IRON_BABY_HUMANOID_TEXTURE_REF);
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!((submit.order, submit.submit_sequence), (1, sequence));
+        assert_eq!(submit.transform, expected_transform);
+    }
 }

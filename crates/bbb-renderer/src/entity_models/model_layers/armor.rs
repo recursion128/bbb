@@ -1,11 +1,15 @@
 use super::{
-    PartPose, ARMOR_CHAINMAIL_HUMANOID_TEXTURE_REF, ARMOR_CHAINMAIL_LEGGINGS_TEXTURE_REF,
+    PartPose, ARMOR_CHAINMAIL_BABY_HUMANOID_TEXTURE_REF, ARMOR_CHAINMAIL_HUMANOID_TEXTURE_REF,
+    ARMOR_CHAINMAIL_LEGGINGS_TEXTURE_REF, ARMOR_COPPER_BABY_HUMANOID_TEXTURE_REF,
     ARMOR_COPPER_HUMANOID_TEXTURE_REF, ARMOR_COPPER_LEGGINGS_TEXTURE_REF,
-    ARMOR_DIAMOND_HUMANOID_TEXTURE_REF, ARMOR_DIAMOND_LEGGINGS_TEXTURE_REF,
+    ARMOR_DIAMOND_BABY_HUMANOID_TEXTURE_REF, ARMOR_DIAMOND_HUMANOID_TEXTURE_REF,
+    ARMOR_DIAMOND_LEGGINGS_TEXTURE_REF, ARMOR_GOLD_BABY_HUMANOID_TEXTURE_REF,
     ARMOR_GOLD_HUMANOID_TEXTURE_REF, ARMOR_GOLD_LEGGINGS_TEXTURE_REF,
-    ARMOR_IRON_HUMANOID_TEXTURE_REF, ARMOR_IRON_LEGGINGS_TEXTURE_REF,
+    ARMOR_IRON_BABY_HUMANOID_TEXTURE_REF, ARMOR_IRON_HUMANOID_TEXTURE_REF,
+    ARMOR_IRON_LEGGINGS_TEXTURE_REF, ARMOR_LEATHER_BABY_HUMANOID_TEXTURE_REF,
     ARMOR_LEATHER_HUMANOID_TEXTURE_REF, ARMOR_LEATHER_LEGGINGS_TEXTURE_REF,
-    ARMOR_NETHERITE_HUMANOID_TEXTURE_REF, ARMOR_NETHERITE_LEGGINGS_TEXTURE_REF,
+    ARMOR_NETHERITE_BABY_HUMANOID_TEXTURE_REF, ARMOR_NETHERITE_HUMANOID_TEXTURE_REF,
+    ARMOR_NETHERITE_LEGGINGS_TEXTURE_REF, ARMOR_TURTLE_SCUTE_BABY_HUMANOID_TEXTURE_REF,
     ARMOR_TURTLE_SCUTE_HUMANOID_TEXTURE_REF, PART_POSE_ZERO,
 };
 use crate::entity_models::catalog::{EntityArmorMaterial, EntityModelTextureRef};
@@ -39,6 +43,27 @@ const INNER_ARMOR_DEFORMATION: f32 = 0.5;
 
 /// Vanilla `CubeListBuilder.addBox(..., g)` with `CubeDeformation(g)`: grows the box (`min -= g`,
 /// `size += 2·g`) while keeping the base `texOffs` and the base box dims for the UV mapping.
+const fn armor_cube_deformed(
+    min: [f32; 3],
+    size: [f32; 3],
+    tex: [f32; 2],
+    mirror: bool,
+    g: [f32; 3],
+) -> ModelCube {
+    ModelCube::new(
+        [min[0] - g[0], min[1] - g[1], min[2] - g[2]],
+        [
+            size[0] + 2.0 * g[0],
+            size[1] + 2.0 * g[1],
+            size[2] + 2.0 * g[2],
+        ],
+        ARMOR_PLACEHOLDER_COLOR,
+        size,
+        tex,
+        mirror,
+    )
+}
+
 const fn armor_cube(
     min: [f32; 3],
     size: [f32; 3],
@@ -46,14 +71,11 @@ const fn armor_cube(
     mirror: bool,
     g: f32,
 ) -> ModelCube {
-    ModelCube::new(
-        [min[0] - g, min[1] - g, min[2] - g],
-        [size[0] + 2.0 * g, size[1] + 2.0 * g, size[2] + 2.0 * g],
-        ARMOR_PLACEHOLDER_COLOR,
-        size,
-        tex,
-        mirror,
-    )
+    armor_cube_deformed(min, size, tex, mirror, [g, g, g])
+}
+
+const fn extend_deformation(g: [f32; 3], factor: f32) -> [f32; 3] {
+    [g[0] + factor, g[1] + factor, g[2] + factor]
 }
 
 // The base humanoid boxes (`HumanoidModel.createMesh`, g = 0). Grown per slot below.
@@ -117,6 +139,55 @@ const LEFT_LEG_POSE: PartPose = PartPose {
     rotation: [0.0, 0.0, 0.0],
 };
 
+// Vanilla `LayerDefinitions` standard baby humanoid armor deformations and
+// `HumanoidModel.createBabyArmorMesh` parts. These are used by zombie, husk, and drowned baby armor.
+const BABY_OUTER_ARMOR_DEFORMATION: [f32; 3] = [-0.1, 0.5, 0.3];
+const BABY_INNER_ARMOR_DEFORMATION: [f32; 3] = [-0.1, 0.3, 0.3];
+
+const BABY_ARMOR_HEAD_MIN: [f32; 3] = [-4.5, -7.0, -4.5];
+const BABY_ARMOR_HEAD_SIZE: [f32; 3] = [9.0, 8.0, 8.0];
+const BABY_ARMOR_BODY_MIN: [f32; 3] = [-3.0, -3.0, -1.5];
+const BABY_ARMOR_BODY_SIZE: [f32; 3] = [6.0, 5.0, 3.0];
+const BABY_ARMOR_WAIST_MIN: [f32; 3] = [-3.0, -1.2, -1.49];
+const BABY_ARMOR_WAIST_SIZE: [f32; 3] = [5.9, 2.0, 2.9];
+const BABY_ARMOR_ARM_MIN: [f32; 3] = [-1.0, 0.0, -1.53];
+const BABY_ARMOR_ARM_SIZE: [f32; 3] = [2.0, 5.0, 3.0];
+const BABY_ARMOR_LEFT_LEG_MIN: [f32; 3] = [-2.0, -0.2, -2.0];
+const BABY_ARMOR_RIGHT_LEG_MIN: [f32; 3] = [-1.0, -0.2, -2.0];
+const BABY_ARMOR_LEG_SIZE: [f32; 3] = [3.0, 4.0, 3.0];
+const BABY_ARMOR_RIGHT_FOOT_MIN: [f32; 3] = [-2.0, 2.9, -2.0];
+const BABY_ARMOR_LEFT_FOOT_MIN: [f32; 3] = [-1.0, 2.9, -2.0];
+const BABY_ARMOR_FOOT_SIZE: [f32; 3] = [3.0, 1.0, 3.0];
+
+const BABY_ARMOR_HEAD_POSE: PartPose = PartPose {
+    offset: [0.0, 15.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+const BABY_ARMOR_BODY_POSE: PartPose = PartPose {
+    offset: [0.0, 18.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+const BABY_ARMOR_WAIST_POSE: PartPose = PartPose {
+    offset: [0.0, 19.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+const BABY_ARMOR_RIGHT_ARM_POSE: PartPose = PartPose {
+    offset: [-3.5, 15.5, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+const BABY_ARMOR_LEFT_ARM_POSE: PartPose = PartPose {
+    offset: [3.5, 15.5, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+const BABY_ARMOR_LEFT_LEG_POSE: PartPose = PartPose {
+    offset: [1.5, 20.0, 0.5],
+    rotation: [0.0, 0.0, 0.0],
+};
+const BABY_ARMOR_RIGHT_LEG_POSE: PartPose = PartPose {
+    offset: [-1.5, 20.0, 0.5],
+    rotation: [0.0, 0.0, 0.0],
+};
+
 /// The four humanoid armor slots, in the vanilla `HumanoidArmorLayer.submit` render order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::entity_models) enum HumanoidArmorSlot {
@@ -135,6 +206,17 @@ impl HumanoidArmorSlot {
             Self::Chest => &["body", "right_arm", "left_arm"],
             Self::Legs => &["body", "right_leg", "left_leg"],
             Self::Feet => &["right_leg", "left_leg"],
+        }
+    }
+
+    /// Direct humanoid child poses that vanilla `HumanoidModel.setupAnim` mutates on the baby armor
+    /// model. The retained baby `waist` and nested foot cubes keep their own bind poses; the root leg
+    /// parents carry walking/swimming rotations.
+    pub(in crate::entity_models) fn baby_pose_part_names(self) -> &'static [&'static str] {
+        match self {
+            Self::Head => &["head"],
+            Self::Chest => &["body", "right_arm", "left_arm"],
+            Self::Legs | Self::Feet => &["right_leg", "left_leg"],
         }
     }
 
@@ -250,6 +332,155 @@ impl HumanoidArmorSlot {
         };
         ModelPart::new(PART_POSE_ZERO, Vec::new(), children)
     }
+
+    /// Builds the standard baby humanoid armor model used by vanilla zombie, husk, and drowned baby
+    /// armor sets (`HumanoidModel.createBabyArmorMeshSet`). Unlike adult armor, all four slots use the
+    /// `HUMANOID_BABY` equipment texture and the 64x64 baby UV layout.
+    pub(in crate::entity_models) fn build_standard_baby_tree(self) -> ModelPart {
+        let outer = BABY_OUTER_ARMOR_DEFORMATION;
+        let inner = BABY_INNER_ARMOR_DEFORMATION;
+        let children: Vec<(&'static str, ModelPart)> = match self {
+            Self::Head => vec![(
+                "head",
+                ModelPart::new(
+                    BABY_ARMOR_HEAD_POSE,
+                    vec![armor_cube_deformed(
+                        BABY_ARMOR_HEAD_MIN,
+                        BABY_ARMOR_HEAD_SIZE,
+                        [0.0, 0.0],
+                        false,
+                        outer,
+                    )],
+                    vec![("hat", ModelPart::leaf(PART_POSE_ZERO, Vec::new()))],
+                ),
+            )],
+            Self::Chest => vec![
+                (
+                    "body",
+                    ModelPart::leaf(
+                        BABY_ARMOR_BODY_POSE,
+                        vec![armor_cube_deformed(
+                            BABY_ARMOR_BODY_MIN,
+                            BABY_ARMOR_BODY_SIZE,
+                            [0.0, 17.0],
+                            false,
+                            outer,
+                        )],
+                    ),
+                ),
+                (
+                    "right_arm",
+                    ModelPart::leaf(
+                        BABY_ARMOR_RIGHT_ARM_POSE,
+                        vec![armor_cube_deformed(
+                            BABY_ARMOR_ARM_MIN,
+                            BABY_ARMOR_ARM_SIZE,
+                            [30.0, 25.0],
+                            false,
+                            outer,
+                        )],
+                    ),
+                ),
+                (
+                    "left_arm",
+                    ModelPart::leaf(
+                        BABY_ARMOR_LEFT_ARM_POSE,
+                        vec![armor_cube_deformed(
+                            BABY_ARMOR_ARM_MIN,
+                            BABY_ARMOR_ARM_SIZE,
+                            [30.0, 17.0],
+                            false,
+                            outer,
+                        )],
+                    ),
+                ),
+            ],
+            Self::Legs => vec![
+                (
+                    "waist",
+                    ModelPart::leaf(
+                        BABY_ARMOR_WAIST_POSE,
+                        vec![armor_cube_deformed(
+                            BABY_ARMOR_WAIST_MIN,
+                            BABY_ARMOR_WAIST_SIZE,
+                            [0.0, 36.0],
+                            false,
+                            extend_deformation(inner, -0.1),
+                        )],
+                    ),
+                ),
+                (
+                    "left_leg",
+                    ModelPart::leaf(
+                        BABY_ARMOR_LEFT_LEG_POSE,
+                        vec![armor_cube_deformed(
+                            BABY_ARMOR_LEFT_LEG_MIN,
+                            BABY_ARMOR_LEG_SIZE,
+                            [18.0, 24.0],
+                            false,
+                            extend_deformation(inner, -0.1),
+                        )],
+                    ),
+                ),
+                (
+                    "right_leg",
+                    ModelPart::leaf(
+                        BABY_ARMOR_RIGHT_LEG_POSE,
+                        vec![armor_cube_deformed(
+                            BABY_ARMOR_RIGHT_LEG_MIN,
+                            BABY_ARMOR_LEG_SIZE,
+                            [18.0, 17.0],
+                            false,
+                            extend_deformation(inner, -0.1),
+                        )],
+                    ),
+                ),
+            ],
+            Self::Feet => vec![
+                (
+                    "left_leg",
+                    ModelPart::new(
+                        BABY_ARMOR_LEFT_LEG_POSE,
+                        Vec::new(),
+                        vec![(
+                            "right_foot",
+                            ModelPart::leaf(
+                                PART_POSE_ZERO,
+                                vec![armor_cube_deformed(
+                                    BABY_ARMOR_RIGHT_FOOT_MIN,
+                                    BABY_ARMOR_FOOT_SIZE,
+                                    [0.0, 25.0],
+                                    false,
+                                    outer,
+                                )],
+                            ),
+                        )],
+                    ),
+                ),
+                (
+                    "right_leg",
+                    ModelPart::new(
+                        BABY_ARMOR_RIGHT_LEG_POSE,
+                        Vec::new(),
+                        vec![(
+                            "left_foot",
+                            ModelPart::leaf(
+                                PART_POSE_ZERO,
+                                vec![armor_cube_deformed(
+                                    BABY_ARMOR_LEFT_FOOT_MIN,
+                                    BABY_ARMOR_FOOT_SIZE,
+                                    [0.0, 29.0],
+                                    true,
+                                    outer,
+                                )],
+                            ),
+                        )],
+                    ),
+                ),
+            ],
+        };
+        ModelPart::new(PART_POSE_ZERO, Vec::new(), children)
+    }
 }
 
 /// The vanilla `DyedItemColor.LEATHER_COLOR` (`0xA06540`), leather's `colorWhenUndyed`.
@@ -282,16 +513,29 @@ fn opaque_rgb_to_tint(rgb: u32) -> [f32; 4] {
     ]
 }
 
-/// The equipment-asset texture for a given humanoid armor material in a given slot: the
-/// `humanoid_leggings` variant for the inner (legs) slot, the `humanoid` variant otherwise (vanilla
-/// `EquipmentClientInfo.LayerType` → `getTextureLocation`). `TurtleScute` only ever fills the head
-/// slot, so its (non-existent) leggings texture falls back to its humanoid texture. Materials without
-/// humanoid equipment textures, such as wolf armor's `ArmadilloScute`, return `None`.
-pub(in crate::entity_models) fn armor_slot_texture(
+/// The equipment-asset texture for a given humanoid armor material in a given slot and age layer.
+/// Adult armor uses the `humanoid_leggings` variant for the inner (legs) slot and the `humanoid`
+/// variant otherwise; baby armor always uses `EquipmentClientInfo.LayerType.HUMANOID_BABY`. Materials
+/// without humanoid equipment textures, such as wolf armor's `ArmadilloScute`, return `None`.
+pub(in crate::entity_models) fn armor_slot_texture_for_layer(
     material: EntityArmorMaterial,
     slot: HumanoidArmorSlot,
+    baby: bool,
 ) -> Option<EntityModelTextureRef> {
     use EntityArmorMaterial::*;
+    if baby {
+        return Some(match material {
+            Leather => ARMOR_LEATHER_BABY_HUMANOID_TEXTURE_REF,
+            Copper => ARMOR_COPPER_BABY_HUMANOID_TEXTURE_REF,
+            Chainmail => ARMOR_CHAINMAIL_BABY_HUMANOID_TEXTURE_REF,
+            Iron => ARMOR_IRON_BABY_HUMANOID_TEXTURE_REF,
+            Gold => ARMOR_GOLD_BABY_HUMANOID_TEXTURE_REF,
+            Diamond => ARMOR_DIAMOND_BABY_HUMANOID_TEXTURE_REF,
+            TurtleScute => ARMOR_TURTLE_SCUTE_BABY_HUMANOID_TEXTURE_REF,
+            Netherite => ARMOR_NETHERITE_BABY_HUMANOID_TEXTURE_REF,
+            ArmadilloScute => return None,
+        });
+    }
     Some(if slot.uses_inner_model() {
         match material {
             Leather => ARMOR_LEATHER_LEGGINGS_TEXTURE_REF,
