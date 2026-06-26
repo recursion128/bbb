@@ -83,7 +83,9 @@ impl ProfileSkinCache {
     }
 }
 
-fn profile_default_player_skin(profile: &ResolvableProfileSummary) -> EntityDefaultPlayerSkin {
+pub(crate) fn profile_default_player_skin(
+    profile: &ResolvableProfileSummary,
+) -> EntityDefaultPlayerSkin {
     if let Some(body) = profile.skin_patch.body.as_ref() {
         if let Some(skin) = EntityDefaultPlayerSkin::from_texture_path(&body.texture_path) {
             return skin;
@@ -107,7 +109,7 @@ pub(crate) fn default_player_skin_for_profile_id(profile_id: u128) -> EntityDefa
     EntityDefaultPlayerSkin::from_vanilla_index(default_player_skin_index(profile_id))
 }
 
-fn entity_player_skin_model(model: PlayerModelTypeSummary) -> EntityPlayerSkinModel {
+pub(crate) fn entity_player_skin_model(model: PlayerModelTypeSummary) -> EntityPlayerSkinModel {
     match model {
         PlayerModelTypeSummary::Slim => EntityPlayerSkinModel::Slim,
         PlayerModelTypeSummary::Wide => EntityPlayerSkinModel::Wide,
