@@ -53,13 +53,36 @@ fn tadpole_textured_mesh_uses_vanilla_uvs_and_geometry() {
         })
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::tadpole(640, [0.0, 64.0, 0.0], 0.0)],
-        &atlas,
-    );
+    let base = EntityModelInstance::tadpole(640, [0.0, 64.0, 0.0], 0.0).with_in_water(true);
+    let meshes = entity_model_textured_meshes(&[base], &atlas);
+    assert_tadpole_base_submission(&meshes, base);
+
     // body box = 6 faces; the textured path emits all 6 faces of the 0-width tail box (the 4
     // degenerate side quads have zero area) → 12 cutout faces.
-    assert_eq!(mesh.cutout_faces, 12);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert_eq!(meshes.cutout.cutout_faces, 12);
+    assert_eq!(meshes.cutout.vertices.len(), 48);
+
+    // The textured path preserves the same animation split as the colored path: the body remains
+    // stable while the tail sways with age, and the beached tail uses the larger amplitude.
+    let swaying = entity_model_textured_meshes(&[base.with_age_in_ticks(5.0)], &atlas);
+    assert_tadpole_base_submission(&swaying, base.with_age_in_ticks(5.0));
+    assert_eq!(
+        meshes.cutout.vertices[..24],
+        swaying.cutout.vertices[..24],
+        "the textured body stays put"
+    );
+    assert_ne!(
+        meshes.cutout.vertices[24..],
+        swaying.cutout.vertices[24..],
+        "the textured tail fin sways with age"
+    );
+
+    let beached =
+        entity_model_textured_meshes(&[base.with_in_water(false).with_age_in_ticks(5.0)], &atlas);
+    assert_tadpole_base_submission(&beached, base.with_in_water(false).with_age_in_ticks(5.0));
+    assert_ne!(beached.cutout.vertices[24..], swaying.cutout.vertices[24..]);
 }
 
 #[test]
@@ -113,4 +136,18 @@ fn tadpole_swims_its_tail_with_age() {
     // A beached tadpole thrashes harder, so its tail differs from the in-water sway at the same age.
     let beached = entity_model_mesh(&[base.with_in_water(false).with_age_in_ticks(5.0)]);
     assert_ne!(beached.vertices[24..], swaying.vertices[24..]);
+}
+
+fn assert_tadpole_base_submission(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.texture, TADPOLE_TEXTURE_REF);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.transform, entity_model_root_transform(instance));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
 }

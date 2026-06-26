@@ -2852,7 +2852,9 @@ When an agent does any of the following, update this file in the same slice:
       sin(0.3 * ageInTicks)`, amplitude `1.0` in water / `1.5` on land), IS reproduced from the projected
       `age_in_ticks` + `in_water` (mirroring the cod/salmon tail-fin sway), with a test pinning the exact
       curve and that only the tail moves. The base texture is now bound on the textured path
-      (`TADPOLE_TEXTURE_REF`), the primary now-wired path, with nothing left deferred on the texture side.
+      (`TADPOLE_TEXTURE_REF`; vanilla `TadpoleModel` constructs with
+      `RenderTypes::entityCutout`) while preserving explicit submission metadata for texture, white
+      tint, root transform, and `order(0)`, with nothing left deferred on the texture side.
       The colored debug path stays as a fallback (it approximates the body with one dark tint and the
       tail fin with a lighter tint)
     - parrot entities as renderer-owned vanilla 26.1 `ParrotModel.createBodyLayer()` geometry on the
