@@ -119,8 +119,8 @@ use textured::{
     warden_pulsating_spots_alpha, warden_textured_layer_passes, witch_textured_layer_passes,
     wither_skull_textured_layer_passes, wither_textured_layer_passes, wolf_textured_layer_passes,
     zombie_nautilus_textured_layer_passes, zombie_textured_layer_passes,
-    zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerRenderType,
-    EntityModelLayerVisibility,
+    zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerRenderBucket,
+    EntityModelLayerRenderType, EntityModelLayerVisibility,
 };
 #[cfg(test)]
 use textured::{

@@ -97,6 +97,10 @@ Shulker bullet 的第二次 vanilla submit 也已补齐：textured path 在 base
 `entityTranslucent` / `Eyes` / `breezeWind` / `energySwirl`，`order`
 对应 `SubmitNodeCollector.order(n)`，并用 `submit_sequence` 保留同 order 内的 layer 顺序。
 render type 还暴露 vanilla 名称断言，防止这些细分退回粗 bucket。
+当前实现还显式记录 render type 到 GPU mesh bucket 的映射（cutout / translucent /
+eyes / scroll / additive-scroll），因此 `entityCutout`、`entityCutoutCull`、
+`entityCutoutZOffset` 等 vanilla render type 会保留各自 submission 表达，即使当下
+backend 把兼容内容折进同一个 cutout mesh。
 residual hand-emitted equipment / equine / villager overlay paths are now emitted through
 submission metadata before folding into the mesh buckets, including humanoid armor,
 horse/donkey/undead-horse base+saddle/body-armor, horse markings, and villager type/profession/level
@@ -104,7 +108,8 @@ overlays; custom-head skull residual emits also record texture/render type/tint/
 submissions before folding into cutout or translucent buckets. `breezeWind` / `energySwirl`
 scroll residual emits now also go through a shared scrolled submission helper before folding into
 the scroll buckets, and Guardian attack beams now record vanilla `entityCutout` submissions before
-folding their tiled custom geometry into the scroll bucket.
+folding their tiled custom geometry into the scroll bucket. End Crystal 的 residual textured
+geometry 也已改为先生成 `entityCutout` submission，再通过统一 helper 折进 mesh。
 End Crystal 已从 colored-only fallback 推进到 textured path，绑定
 `textures/entity/end_crystal/end_crystal.png`，使用 vanilla 默认 `entityCutout`、
 order 0、白 tint 和 `scale(2)·translate(0,-0.5,0)` root transform；dragon healing beam 仍 deferred。

@@ -95,7 +95,30 @@ pub(in crate::entity_models) enum EntityModelLayerRenderType {
     EnergySwirl,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(in crate::entity_models) enum EntityModelLayerRenderBucket {
+    Cutout,
+    Translucent,
+    Eyes,
+    Scroll,
+    AdditiveScroll,
+}
+
 impl EntityModelLayerRenderType {
+    pub(in crate::entity_models) const fn mesh_bucket(self) -> EntityModelLayerRenderBucket {
+        match self {
+            Self::EntitySolid
+            | Self::ArmorCutoutNoCull
+            | Self::EntityCutout
+            | Self::EntityCutoutCull
+            | Self::EntityCutoutZOffset => EntityModelLayerRenderBucket::Cutout,
+            Self::EntityTranslucent => EntityModelLayerRenderBucket::Translucent,
+            Self::Eyes => EntityModelLayerRenderBucket::Eyes,
+            Self::BreezeWind => EntityModelLayerRenderBucket::Scroll,
+            Self::EnergySwirl => EntityModelLayerRenderBucket::AdditiveScroll,
+        }
+    }
+
     #[cfg(test)]
     pub(in crate::entity_models) const fn vanilla_name(self) -> &'static str {
         match self {

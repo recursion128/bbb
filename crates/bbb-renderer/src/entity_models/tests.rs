@@ -91,31 +91,56 @@ mod zombie;
 #[test]
 fn textured_layer_render_type_names_match_vanilla_render_types() {
     let cases = [
-        (EntityModelLayerRenderType::EntitySolid, "entitySolid"),
+        (
+            EntityModelLayerRenderType::EntitySolid,
+            "entitySolid",
+            EntityModelLayerRenderBucket::Cutout,
+        ),
         (
             EntityModelLayerRenderType::ArmorCutoutNoCull,
             "armorCutoutNoCull",
+            EntityModelLayerRenderBucket::Cutout,
         ),
-        (EntityModelLayerRenderType::EntityCutout, "entityCutout"),
+        (
+            EntityModelLayerRenderType::EntityCutout,
+            "entityCutout",
+            EntityModelLayerRenderBucket::Cutout,
+        ),
         (
             EntityModelLayerRenderType::EntityCutoutCull,
             "entityCutoutCull",
+            EntityModelLayerRenderBucket::Cutout,
         ),
         (
             EntityModelLayerRenderType::EntityCutoutZOffset,
             "entityCutoutZOffset",
+            EntityModelLayerRenderBucket::Cutout,
         ),
         (
             EntityModelLayerRenderType::EntityTranslucent,
             "entityTranslucent",
+            EntityModelLayerRenderBucket::Translucent,
         ),
-        (EntityModelLayerRenderType::Eyes, "eyes"),
-        (EntityModelLayerRenderType::BreezeWind, "breezeWind"),
-        (EntityModelLayerRenderType::EnergySwirl, "energySwirl"),
+        (
+            EntityModelLayerRenderType::Eyes,
+            "eyes",
+            EntityModelLayerRenderBucket::Eyes,
+        ),
+        (
+            EntityModelLayerRenderType::BreezeWind,
+            "breezeWind",
+            EntityModelLayerRenderBucket::Scroll,
+        ),
+        (
+            EntityModelLayerRenderType::EnergySwirl,
+            "energySwirl",
+            EntityModelLayerRenderBucket::AdditiveScroll,
+        ),
     ];
 
-    for (render_type, vanilla_name) in cases {
+    for (render_type, vanilla_name, bucket) in cases {
         assert_eq!(render_type.vanilla_name(), vanilla_name);
+        assert_eq!(render_type.mesh_bucket(), bucket);
     }
 }
 

@@ -1014,11 +1014,17 @@ When an agent does any of the following, update this file in the same slice:
       `SubmitNodeCollector.order(n)`; and `submit_sequence` preserves
       same-order layer order while the GPU backend still folds compatible
       submits into shared meshes. The render-type expression is pinned by
-      vanilla-name tests, and `breezeWind` / `energySwirl` residual emits now
-      use a shared scrolled submission helper before folding into the scroll
-      mesh buckets; Guardian attack beams also record vanilla `entityCutout`
-      submissions before folding their tiled custom geometry into the scroll
-      bucket. Uniform layer passes, Warden retained
+      vanilla-name and mesh-bucket tests, so `entityCutout`,
+      `entityCutoutCull`, `entityCutoutZOffset`, `Eyes`, `breezeWind`, and
+      `energySwirl` stay distinct at the submission boundary even when the
+      current backend can fold compatible output into shared mesh buffers.
+      `breezeWind` / `energySwirl` residual emits now use a shared scrolled
+      submission helper before folding into the scroll mesh buckets; Guardian
+      attack beams also record vanilla `entityCutout` submissions before
+      folding their tiled custom geometry into the scroll bucket; End Crystal
+      now creates its vanilla `entityCutout` submission before the residual
+      bob/spin geometry is folded through the standard submission helper.
+      Uniform layer passes, Warden retained
       emissive layers, Breeze base/eyes/wind, Shulker bullet's two submits,
       WindCharge `breezeWind`, charged-creeper / wither `energySwirl`,
       humanoid armor `armorCutoutNoCull`, horse/donkey/undead-horse

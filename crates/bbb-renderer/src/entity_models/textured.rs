@@ -109,7 +109,7 @@ pub(super) use layers::{
     witch_textured_layer_passes, wither_skull_textured_layer_passes, wither_textured_layer_passes,
     wolf_textured_layer_passes, zombie_nautilus_textured_layer_passes,
     zombie_textured_layer_passes, zombie_villager_textured_layer_passes, EntityModelLayerKind,
-    EntityModelLayerPass, EntityModelLayerRenderType,
+    EntityModelLayerPass, EntityModelLayerRenderBucket, EntityModelLayerRenderType,
 };
 #[cfg(test)]
 pub(super) use layers::{warden_pulsating_spots_alpha, EntityModelLayerVisibility};
@@ -168,15 +168,11 @@ impl EntityModelTexturedMeshes {
         &mut self,
         render_type: EntityModelLayerRenderType,
     ) -> &mut EntityModelTexturedMesh {
-        match render_type {
-            EntityModelLayerRenderType::EntitySolid
-            | EntityModelLayerRenderType::ArmorCutoutNoCull
-            | EntityModelLayerRenderType::EntityCutout
-            | EntityModelLayerRenderType::EntityCutoutCull
-            | EntityModelLayerRenderType::EntityCutoutZOffset => &mut self.cutout,
-            EntityModelLayerRenderType::EntityTranslucent => &mut self.translucent,
-            EntityModelLayerRenderType::Eyes => &mut self.eyes,
-            EntityModelLayerRenderType::BreezeWind | EntityModelLayerRenderType::EnergySwirl => {
+        match render_type.mesh_bucket() {
+            EntityModelLayerRenderBucket::Cutout => &mut self.cutout,
+            EntityModelLayerRenderBucket::Translucent => &mut self.translucent,
+            EntityModelLayerRenderBucket::Eyes => &mut self.eyes,
+            EntityModelLayerRenderBucket::Scroll | EntityModelLayerRenderBucket::AdditiveScroll => {
                 panic!("scroll render types are not emitted into textured mesh buckets")
             }
         }
@@ -186,20 +182,12 @@ impl EntityModelTexturedMeshes {
         &mut self,
         render_type: EntityModelLayerRenderType,
     ) -> &mut EntityModelTexturedMesh {
-        match render_type {
-            EntityModelLayerRenderType::EntitySolid
-            | EntityModelLayerRenderType::ArmorCutoutNoCull
-            | EntityModelLayerRenderType::EntityCutout
-            | EntityModelLayerRenderType::EntityCutoutCull
-            | EntityModelLayerRenderType::EntityCutoutZOffset => {
-                &mut self.dynamic_player_skin_cutout
-            }
-            EntityModelLayerRenderType::EntityTranslucent => {
-                &mut self.dynamic_player_skin_translucent
-            }
-            EntityModelLayerRenderType::Eyes
-            | EntityModelLayerRenderType::BreezeWind
-            | EntityModelLayerRenderType::EnergySwirl => {
+        match render_type.mesh_bucket() {
+            EntityModelLayerRenderBucket::Cutout => &mut self.dynamic_player_skin_cutout,
+            EntityModelLayerRenderBucket::Translucent => &mut self.dynamic_player_skin_translucent,
+            EntityModelLayerRenderBucket::Eyes
+            | EntityModelLayerRenderBucket::Scroll
+            | EntityModelLayerRenderBucket::AdditiveScroll => {
                 panic!("unsupported dynamic player skin render type")
             }
         }
@@ -209,46 +197,21 @@ impl EntityModelTexturedMeshes {
         &mut self,
         render_type: EntityModelLayerRenderType,
     ) -> &mut EntityModelTexturedMesh {
-        match render_type {
-            EntityModelLayerRenderType::EntitySolid
-            | EntityModelLayerRenderType::ArmorCutoutNoCull
-            | EntityModelLayerRenderType::EntityCutout
-            | EntityModelLayerRenderType::EntityCutoutCull
-            | EntityModelLayerRenderType::EntityCutoutZOffset => {
-                &mut self.dynamic_player_texture_cutout
-            }
-            EntityModelLayerRenderType::EntityTranslucent => {
+        match render_type.mesh_bucket() {
+            EntityModelLayerRenderBucket::Cutout => &mut self.dynamic_player_texture_cutout,
+            EntityModelLayerRenderBucket::Translucent => {
                 &mut self.dynamic_player_texture_translucent
             }
-            EntityModelLayerRenderType::Eyes
-            | EntityModelLayerRenderType::BreezeWind
-            | EntityModelLayerRenderType::EnergySwirl => {
+            EntityModelLayerRenderBucket::Eyes
+            | EntityModelLayerRenderBucket::Scroll
+            | EntityModelLayerRenderBucket::AdditiveScroll => {
                 panic!("unsupported dynamic player texture render type")
             }
         }
     }
 
-    fn record_submission(
-        &mut self,
-        render_type: EntityModelLayerRenderType,
-        texture: EntityModelTextureRef,
-        dynamic_player_skin: Option<EntityDynamicPlayerSkin>,
-        dynamic_player_texture: Option<EntityDynamicPlayerTexture>,
-        tint: [f32; 4],
-        transform: Mat4,
-        order: i32,
-        submit_sequence: u32,
-    ) {
-        self.submissions.push(EntityModelRenderSubmission {
-            render_type,
-            texture,
-            dynamic_player_skin,
-            dynamic_player_texture,
-            tint,
-            transform,
-            order,
-            submit_sequence,
-        });
+    fn record_submission(&mut self, submit: EntityModelSubmissionEmit) {
+        self.submissions.push(submit.into());
     }
 }
 
@@ -293,6 +256,21 @@ impl EntityModelSubmissionEmit {
     fn with_dynamic_player_texture(mut self, texture: EntityDynamicPlayerTexture) -> Self {
         self.dynamic_player_texture = Some(texture);
         self
+    }
+}
+
+impl From<EntityModelSubmissionEmit> for EntityModelRenderSubmission {
+    fn from(submit: EntityModelSubmissionEmit) -> Self {
+        Self {
+            render_type: submit.render_type,
+            texture: submit.texture,
+            dynamic_player_skin: submit.dynamic_player_skin,
+            dynamic_player_texture: submit.dynamic_player_texture,
+            tint: submit.tint,
+            transform: submit.transform,
+            order: submit.order,
+            submit_sequence: submit.submit_sequence,
+        }
     }
 }
 
@@ -649,65 +627,47 @@ fn emit_end_crystal_textured_model(
 ) {
     let root = end_crystal_model_root_transform(instance);
     let tint = [1.0, 1.0, 1.0, 1.0];
-    meshes.record_submission(
+    let submit = EntityModelSubmissionEmit::new(
         EntityModelLayerRenderType::EntityCutout,
         END_CRYSTAL_TEXTURE_REF,
-        None,
-        None,
         tint,
         root,
         0,
         0,
     );
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, END_CRYSTAL_TEXTURE_REF) else {
-        return;
-    };
-    let mesh = meshes.mesh_mut(EntityModelLayerRenderType::EntityCutout);
-    if instance.render_state.end_crystal_shows_bottom {
-        emit_textured_model_parts(
-            mesh,
-            &END_CRYSTAL_TEXTURED_PARTS[..1],
-            root,
-            END_CRYSTAL_TEXTURE_REF,
-            entry.uv,
-            tint,
-        );
-    }
+    render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+        if instance.render_state.end_crystal_shows_bottom {
+            emit_textured_model_parts(
+                mesh,
+                &END_CRYSTAL_TEXTURED_PARTS[..1],
+                submit.transform,
+                submit.texture,
+                entry.uv,
+                submit.tint,
+            );
+        }
 
-    let age = instance.render_state.age_in_ticks;
-    let bob = end_crystal_bob_y(age);
-    let (q_outer, q_inner) = end_crystal_glass_quaternions(age);
-    let centre = root
-        * part_pose_transform(PartPose {
-            offset: [0.0, 24.0 + bob, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        });
-    let outer_t = centre * Mat4::from_quat(q_outer);
-    let inner_t = outer_t * Mat4::from_quat(q_inner);
-    let core_t = inner_t * Mat4::from_quat(q_inner);
-    for cube in END_CRYSTAL_TEXTURED_PARTS[1].cubes {
-        emit_textured_model_cube(
-            mesh,
-            outer_t,
-            *cube,
-            END_CRYSTAL_TEXTURE_REF,
-            entry.uv,
-            tint,
-        );
-    }
-    for cube in END_CRYSTAL_TEXTURED_PARTS[2].cubes {
-        emit_textured_model_cube(
-            mesh,
-            inner_t,
-            *cube,
-            END_CRYSTAL_TEXTURE_REF,
-            entry.uv,
-            tint,
-        );
-    }
-    for cube in END_CRYSTAL_TEXTURED_PARTS[3].cubes {
-        emit_textured_model_cube(mesh, core_t, *cube, END_CRYSTAL_TEXTURE_REF, entry.uv, tint);
-    }
+        let age = instance.render_state.age_in_ticks;
+        let bob = end_crystal_bob_y(age);
+        let (q_outer, q_inner) = end_crystal_glass_quaternions(age);
+        let centre = submit.transform
+            * part_pose_transform(PartPose {
+                offset: [0.0, 24.0 + bob, 0.0],
+                rotation: [0.0, 0.0, 0.0],
+            });
+        let outer_t = centre * Mat4::from_quat(q_outer);
+        let inner_t = outer_t * Mat4::from_quat(q_inner);
+        let core_t = inner_t * Mat4::from_quat(q_inner);
+        for cube in END_CRYSTAL_TEXTURED_PARTS[1].cubes {
+            emit_textured_model_cube(mesh, outer_t, *cube, submit.texture, entry.uv, submit.tint);
+        }
+        for cube in END_CRYSTAL_TEXTURED_PARTS[2].cubes {
+            emit_textured_model_cube(mesh, inner_t, *cube, submit.texture, entry.uv, submit.tint);
+        }
+        for cube in END_CRYSTAL_TEXTURED_PARTS[3].cubes {
+            emit_textured_model_cube(mesh, core_t, *cube, submit.texture, entry.uv, submit.tint);
+        }
+    });
 }
 
 /// Render one textured pass of an already-prepared model: look up the texture's atlas entry and,
@@ -852,16 +812,7 @@ fn render_textured_dynamic_player_skin_submission(
     entry: EntityDynamicPlayerSkinAtlasEntry,
     emit: impl FnOnce(&mut EntityModelTexturedMesh, EntityDynamicPlayerSkinAtlasEntry),
 ) {
-    meshes.record_submission(
-        submit.render_type,
-        submit.texture,
-        submit.dynamic_player_skin,
-        submit.dynamic_player_texture,
-        submit.tint,
-        submit.transform,
-        submit.order,
-        submit.submit_sequence,
-    );
+    meshes.record_submission(submit);
     emit(
         meshes.dynamic_player_skin_mesh_mut(submit.render_type),
         entry,
@@ -874,16 +825,7 @@ fn render_textured_dynamic_player_texture_submission(
     entry: EntityDynamicPlayerTextureAtlasEntry,
     emit: impl FnOnce(&mut EntityModelTexturedMesh, EntityDynamicPlayerTextureAtlasEntry),
 ) {
-    meshes.record_submission(
-        submit.render_type,
-        submit.texture,
-        submit.dynamic_player_skin,
-        submit.dynamic_player_texture,
-        submit.tint,
-        submit.transform,
-        submit.order,
-        submit.submit_sequence,
-    );
+    meshes.record_submission(submit);
     emit(
         meshes.dynamic_player_texture_mesh_mut(submit.render_type),
         entry,
@@ -896,16 +838,7 @@ fn render_textured_submission(
     atlas: &EntityModelTextureAtlasLayout,
     emit: impl FnOnce(&mut EntityModelTexturedMesh, EntityModelTextureAtlasEntry),
 ) {
-    meshes.record_submission(
-        submit.render_type,
-        submit.texture,
-        submit.dynamic_player_skin,
-        submit.dynamic_player_texture,
-        submit.tint,
-        submit.transform,
-        submit.order,
-        submit.submit_sequence,
-    );
+    meshes.record_submission(submit);
     if let Some(entry) = entity_model_texture_atlas_entry(atlas, submit.texture) {
         emit(meshes.mesh_mut(submit.render_type), entry);
     }
@@ -915,9 +848,9 @@ fn scroll_mesh_mut(
     meshes: &mut EntityModelTexturedMeshes,
     render_type: EntityModelLayerRenderType,
 ) -> &mut EntityModelScrollMesh {
-    match render_type {
-        EntityModelLayerRenderType::BreezeWind => &mut meshes.scroll,
-        EntityModelLayerRenderType::EnergySwirl => &mut meshes.scroll_additive,
+    match render_type.mesh_bucket() {
+        EntityModelLayerRenderBucket::Scroll => &mut meshes.scroll,
+        EntityModelLayerRenderBucket::AdditiveScroll => &mut meshes.scroll_additive,
         _ => panic!("only scroll render types are emitted through the scroll mesh"),
     }
 }
@@ -929,16 +862,7 @@ fn render_scrolled_textured_submission(
     uv_offset: [f32; 2],
     emit: impl FnOnce(&mut EntityModelTexturedMesh, EntityModelTextureAtlasEntry),
 ) {
-    meshes.record_submission(
-        submit.render_type,
-        submit.texture,
-        submit.dynamic_player_skin,
-        submit.dynamic_player_texture,
-        submit.tint,
-        submit.transform,
-        submit.order,
-        submit.submit_sequence,
-    );
+    meshes.record_submission(submit);
     let Some(entry) = entity_model_texture_atlas_entry(atlas, submit.texture) else {
         return;
     };
@@ -1318,17 +1242,16 @@ fn emit_guardian_beam(
     // `BEAM_RENDER_TYPE = RenderTypes.entityCutout(guardian_beam.png)` on the same collector. Preserve
     // that as a vanilla-shaped submission even though the current backend folds the tiled V coordinates
     // into the scroll mesh.
-    meshes.record_submission(
+    let submit = EntityModelSubmissionEmit::new(
         EntityModelLayerRenderType::EntityCutout,
         GUARDIAN_BEAM_TEXTURE_REF,
-        None,
-        None,
         tint,
         transform,
         0,
         1,
     );
-    let Some(entry) = entity_model_texture_atlas_entry(atlas, GUARDIAN_BEAM_TEXTURE_REF) else {
+    meshes.record_submission(submit);
+    let Some(entry) = entity_model_texture_atlas_entry(atlas, submit.texture) else {
         return;
     };
 
