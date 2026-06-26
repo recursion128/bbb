@@ -7733,6 +7733,18 @@ fn shulker_pick_bounds_follow_attach_face_and_peek_metadata() {
             shulker_pick_bounds(attach_face, 1.0, 1.0),
         );
     }
+
+    // Vanilla `Direction.BY_ID` uses positive-modulo wrap, so -1 wraps to EAST.
+    store.apply_add_entity(protocol_add_entity_with_type(88, SHULKER_TYPE_ID));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 88,
+        values: vec![shulker_attach_face_data(-1), shulker_peek_data(100)],
+    }));
+    store.advance_entity_client_animations(20);
+    assert_pick_bounds_close(
+        store.probe_entity_pick_bounds(88),
+        shulker_pick_bounds(DIRECTION_EAST, 1.0, 1.0),
+    );
 }
 
 #[test]

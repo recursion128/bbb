@@ -165,6 +165,11 @@ entity_render_state! {
     /// peek)·π)·8` (plus an `ageInTicks` bob above `0.5`) and a `lid.yRot` twist above `0.3`.
     /// `0.0` (closed/bind pose, `lid.y = 24`) for every non-shulker and a shut shulker.
     (with_shulker_peek) shulker_peek: f32 = 0.0;
+    /// Vanilla `ShulkerRenderState.attachFace`: the block face the shulker is attached to. The
+    /// renderer rotates the whole shulker around `(0, 0.5, 0)` by
+    /// `attachFace.getOpposite().getRotation()`. `Down` is the vanilla default and leaves the floor
+    /// shulker in its normal rest orientation.
+    (with_shulker_attach_face) shulker_attach_face: EntityAttachmentFace = EntityAttachmentFace::Down;
     /// Vanilla `WardenRenderState.tendrilAnimation` (`Warden.getTendrilAnimation`, lerped): the
     /// `0..=1` tendril pulse that `WardenModel.animateTendrils` swings the two antennae by —
     /// `leftTendril.xRot = tendrilAnimation · cos(ageInTicks · 2.25) · π · 0.1`, the right negated.
@@ -2130,6 +2135,7 @@ mod tests {
                 creeper_powered: false,
                 villager_model_data: VillagerModelData::DEFAULT,
                 shulker_peek: 0.0,
+                shulker_attach_face: EntityAttachmentFace::Down,
                 tendril_animation: 0.0,
                 heart_animation: 0.0,
                 warden_roar_seconds: -1.0,

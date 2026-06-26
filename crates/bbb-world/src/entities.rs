@@ -77,6 +77,7 @@ pub(crate) const VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID: i32 = 90;
 pub(crate) const VANILLA_ENTITY_TYPE_PALE_OAK_BOAT_ID: i32 = 94;
 pub(crate) const VANILLA_ENTITY_TYPE_PALE_OAK_CHEST_BOAT_ID: i32 = 95;
 pub(crate) const VANILLA_ENTITY_TYPE_PANDA_ID: i32 = 96;
+pub(crate) const VANILLA_ENTITY_TYPE_SHULKER_ID: i32 = 112;
 pub(crate) const VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID: i32 = 116;
 pub(crate) const VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID: i32 = 118;
 pub(crate) const VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID: i32 = 121;
@@ -747,6 +748,11 @@ pub struct EntityModelSourceState {
     /// (closed/bind pose) for every non-shulker entity and for a shut shulker.
     #[serde(default)]
     pub shulker_peek: f32,
+    /// Vanilla `ShulkerRenderState.attachFace` (`Shulker.DATA_ATTACH_FACE_ID`, default `DOWN`):
+    /// the block face the shulker is attached to. `ShulkerRenderer.setupRotations` rotates the model
+    /// around `(0, 0.5, 0)` by `attachFace.getOpposite().getRotation()`.
+    #[serde(default)]
+    pub shulker_attach_face: EntityAttachmentFace,
     /// Vanilla `WardenRenderState.tendrilAnimation` (`Warden.getTendrilAnimation(partialTick)`):
     /// the lerped tendril pulse (`0..=1`) that drives `WardenModel.animateTendrils`. `0.0` for
     /// every non-warden entity and for a warden whose tendrils are at rest.
@@ -1079,6 +1085,30 @@ pub struct EndCrystalBeamSource {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct EnderDragonBeamSource {
     pub beam_offset: [f32; 3],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum EntityAttachmentFace {
+    #[default]
+    Down,
+    Up,
+    North,
+    South,
+    West,
+    East,
+}
+
+impl EntityAttachmentFace {
+    pub(crate) fn from_3d_data(data: i32) -> Self {
+        match data.rem_euclid(6) {
+            0 => Self::Down,
+            1 => Self::Up,
+            2 => Self::North,
+            3 => Self::South,
+            4 => Self::West,
+            _ => Self::East,
+        }
+    }
 }
 
 /// Vanilla `DyeColor` carried by `Equippable.llamaSwag(color)` carpet body items. The renderer maps

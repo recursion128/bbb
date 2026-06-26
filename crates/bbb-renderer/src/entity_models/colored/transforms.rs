@@ -1,6 +1,6 @@
 use glam::{Mat4, Vec3};
 
-use super::super::catalog::{EntityModelKind, SalmonModelSize};
+use super::super::catalog::{EntityAttachmentFace, EntityModelKind, SalmonModelSize};
 use super::super::geometry::{part_pose_transform, PartPose};
 use super::super::instances::EntityModelInstance;
 
@@ -22,6 +22,21 @@ const HAPPY_GHAST_SCALE: f32 = 4.0;
 
 pub(in crate::entity_models) fn entity_model_root_transform(instance: EntityModelInstance) -> Mat4 {
     living_entity_model_root_transform_with_extra_setup_rotation(instance, Mat4::IDENTITY)
+}
+
+/// Vanilla `ShulkerRenderer.setupRotations`: call the living setup with `bodyRot + 180`, then rotate
+/// around `(0, 0.5, 0)` by `attachFace.getOpposite().getRotation()`. Passing `bodyRot + 180` changes
+/// the normal non-sleeping yaw stage from `180 - bodyRot` to `-bodyRot`.
+pub(in crate::entity_models) fn shulker_model_root_transform(
+    instance: EntityModelInstance,
+) -> Mat4 {
+    Mat4::from_translation(Vec3::from_array(instance.position))
+        * entity_pre_scale_translation(instance)
+        * Mat4::from_scale(Vec3::splat(instance.render_state.scale))
+        * shulker_setup_rotations_transform(instance)
+        * shulker_attach_face_transform(instance.render_state.shulker_attach_face)
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+        * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
 }
 
 fn living_entity_model_root_transform_with_extra_setup_rotation(
@@ -276,6 +291,35 @@ fn entity_setup_rotations_transform(instance: EntityModelInstance) -> Mat4 {
         Mat4::from_rotation_y((180.0 - instance.render_state.body_rot).to_radians())
     };
     initial_yaw * entity_post_yaw_transform(instance)
+}
+
+fn shulker_setup_rotations_transform(instance: EntityModelInstance) -> Mat4 {
+    let initial_yaw = if instance.render_state.sleeping.is_some() {
+        Mat4::IDENTITY
+    } else {
+        Mat4::from_rotation_y((-instance.render_state.body_rot).to_radians())
+    };
+    initial_yaw * entity_post_yaw_transform(instance)
+}
+
+fn shulker_attach_face_transform(face: EntityAttachmentFace) -> Mat4 {
+    use std::f32::consts::{FRAC_PI_2, PI};
+
+    let rotation = match face {
+        // `attachFace.getOpposite()` is UP, whose `Direction.getRotation()` is identity.
+        EntityAttachmentFace::Down => Mat4::IDENTITY,
+        EntityAttachmentFace::Up => Mat4::from_rotation_x(PI),
+        EntityAttachmentFace::North => Mat4::from_rotation_x(FRAC_PI_2),
+        EntityAttachmentFace::South => Mat4::from_rotation_x(FRAC_PI_2) * Mat4::from_rotation_z(PI),
+        EntityAttachmentFace::West => {
+            Mat4::from_rotation_x(FRAC_PI_2) * Mat4::from_rotation_z(-FRAC_PI_2)
+        }
+        EntityAttachmentFace::East => {
+            Mat4::from_rotation_x(FRAC_PI_2) * Mat4::from_rotation_z(FRAC_PI_2)
+        }
+    };
+    let pivot = Vec3::new(0.0, 0.5, 0.0);
+    Mat4::from_translation(pivot) * rotation * Mat4::from_translation(-pivot)
 }
 
 /// Vanilla `LivingEntityRenderer.setupRotations` else-if chain, inserted right

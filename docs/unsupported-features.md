@@ -2823,16 +2823,12 @@ When an agent does any of the following, update this file in the same slice:
       open-lid bob once past half-open) and the `lid.yRot = (−1 + sin(bs))⁴ · π · 0.125` twist above
       `peek > 0.3`; at `peek = 0` the lid sits back at its `y = 24` bind offset, so the closed pose equals
       the bind pose. The head look is now applied: `head.xRot = xRot`, `head.yRot = (yHeadRot − 180 −
-      yBodyRot)`, which equals the already-projected `head_yaw − 180` (a 360° offset is a no-op
-      rotation). The `−180` is vanilla's cancel for `ShulkerRenderer.setupRotations`' `bodyRot + 180`;
-      bbb keeps the standard `180 − bodyRot` root, whose floor-shulker orientation differs from vanilla's
-      by exactly 180° about Y — invisible on the 180°-symmetric square shell — so the head-vs-shell angle
-      reproduces vanilla for the floor (`attachFace = DOWN`) case. The `ShulkerRenderer.setupRotations`
-      non-floor attach-face rotation (`attachFace.getOpposite().getRotation()`, the identity for a floor
-      shulker), the `bodyRot + 180` body-yaw inversion, and the Dinnerbone-negated head sign read the
-      entity-side `attachFace`/yaw state the native scene does not yet project, so the floor rest pose is
-      emitted
-      (the geometry is exact; only the wall/ceiling attach orientation is deferred). The sixteen dye-color
+      yBodyRot)`, which equals the projected `head_yaw − 180`. `ShulkerRenderState.attachFace` is now
+      projected too: world reads `Shulker.DATA_ATTACH_FACE_ID` (16, DIRECTION; default `DOWN`), native
+      forwards it to renderer state, and the renderer reproduces `ShulkerRenderer.setupRotations` by
+      passing `bodyRot + 180` to the living setup (non-sleeping yaw becomes `−bodyRot`) and then applying
+      `attachFace.getOpposite().getRotation()` around `(0, 0.5, 0)`. Wall and ceiling shulkers therefore
+      use the vanilla root orientation instead of the old floor-only fallback. The sixteen dye-color
       variants are now bound on the textured path: the native scene reads `DATA_COLOR_ID` (18, byte) and
       `Shulker.getColor()` (0..=15 → the dye, the default byte 16 → `null`) selects the texture, matching
       `ShulkerRenderer.getTextureLocation` (the uncolored `shulker.png` plus the sixteen `shulker_<color>.png`)

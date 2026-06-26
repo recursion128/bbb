@@ -85,6 +85,68 @@ fn shulker_head_tracks_look_angles() {
 }
 
 #[test]
+fn shulker_root_transform_matches_vanilla_attach_face_setup_rotations() {
+    // Vanilla `ShulkerRenderer.setupRotations` calls `super.setupRotations(bodyRot + 180)`, so the
+    // normal non-sleeping yaw becomes `-bodyRot`, then rotates around `(0, 0.5, 0)` by
+    // `attachFace.getOpposite().getRotation()`.
+    let position = [1.0, 64.0, -2.0];
+    let body_rot = 30.0;
+    let base = EntityModelInstance::shulker(1131, position, body_rot, None);
+
+    let floor =
+        shulker_model_root_transform(base.with_shulker_attach_face(EntityAttachmentFace::Down));
+    let expected_floor = Mat4::from_translation(Vec3::from_array(position))
+        * Mat4::from_rotation_y((-body_rot).to_radians())
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+        * Mat4::from_translation(Vec3::new(0.0, -1.501, 0.0));
+    assert_close3(
+        floor.transform_point3(Vec3::ZERO).to_array(),
+        expected_floor.transform_point3(Vec3::ZERO).to_array(),
+    );
+    assert_close3(
+        floor.transform_vector3(Vec3::X).to_array(),
+        expected_floor.transform_vector3(Vec3::X).to_array(),
+    );
+    assert_close3(
+        floor.transform_vector3(Vec3::Y).to_array(),
+        expected_floor.transform_vector3(Vec3::Y).to_array(),
+    );
+    assert_close3(
+        floor.transform_vector3(Vec3::Z).to_array(),
+        expected_floor.transform_vector3(Vec3::Z).to_array(),
+    );
+
+    // Attach NORTH uses opposite SOUTH, and `Direction.SOUTH.getRotation()` is `rotationX(π/2)`.
+    let north =
+        shulker_model_root_transform(base.with_shulker_attach_face(EntityAttachmentFace::North));
+    let pivot = Vec3::new(0.0, 0.5, 0.0);
+    let expected_north = Mat4::from_translation(Vec3::from_array(position))
+        * Mat4::from_rotation_y((-body_rot).to_radians())
+        * Mat4::from_translation(pivot)
+        * Mat4::from_rotation_x(std::f32::consts::FRAC_PI_2)
+        * Mat4::from_translation(-pivot)
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+        * Mat4::from_translation(Vec3::new(0.0, -1.501, 0.0));
+    assert_close3(
+        north.transform_point3(Vec3::ZERO).to_array(),
+        expected_north.transform_point3(Vec3::ZERO).to_array(),
+    );
+    assert_close3(
+        north.transform_vector3(Vec3::X).to_array(),
+        expected_north.transform_vector3(Vec3::X).to_array(),
+    );
+    assert_close3(
+        north.transform_vector3(Vec3::Y).to_array(),
+        expected_north.transform_vector3(Vec3::Y).to_array(),
+    );
+    assert_close3(
+        north.transform_vector3(Vec3::Z).to_array(),
+        expected_north.transform_vector3(Vec3::Z).to_array(),
+    );
+    assert_ne!(floor, north);
+}
+
+#[test]
 fn shulker_mesh_uses_vanilla_body_layer_geometry() {
     // 3 cubes → 18 faces / 72 vertices / 108 indices; the shell carries the shell tint and the head
     // carries its own yellow tint.
@@ -183,4 +245,23 @@ fn shulker_textured_render_matches_vanilla_renderer() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+
+    let north =
+        EntityModelInstance::shulker(901, [0.0, 64.0, 0.0], 15.0, Some(EntityDyeColor::Red))
+            .with_shulker_attach_face(EntityAttachmentFace::North);
+    let meshes = entity_model_textured_meshes(&[north], &atlas);
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(
+        submit.texture,
+        shulker_texture_ref(Some(EntityDyeColor::Red))
+    );
+    assert_eq!(
+        submit.render_type,
+        EntityModelLayerRenderType::EntityCutoutZOffset
+    );
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutoutZOffset");
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert_eq!(submit.transform, shulker_model_root_transform(north));
 }

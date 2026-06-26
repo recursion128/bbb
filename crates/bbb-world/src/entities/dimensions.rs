@@ -972,7 +972,7 @@ impl VanillaDirection {
 }
 
 fn vanilla_direction_from_3d_data(data: i32) -> VanillaDirection {
-    match (data % 6).abs() {
+    match data.rem_euclid(6) {
         0 => VanillaDirection::Down,
         1 => VanillaDirection::Up,
         2 => VanillaDirection::North,

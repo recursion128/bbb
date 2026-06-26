@@ -14,19 +14,20 @@ use bbb_protocol::packets::ItemStackSummary;
 
 use super::{
     is_vanilla_abstract_nautilus_type, is_vanilla_can_wear_horse_armor_type, is_vanilla_llama_type,
-    ArmorMaterialKind, EntityAttributes, EntityBlockModelState, EntityCameraPoseState,
-    EntityClientAnimations, EntityDamage, EntityEquipment, EntityHurtingProjectile, EntityIdentity,
-    EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState,
-    EntityMount, EntityState, EntityTransform, EntityTransformState, EntityTransientEvents,
-    ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor,
-    VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
+    ArmorMaterialKind, EntityAttachmentFace, EntityAttributes, EntityBlockModelState,
+    EntityCameraPoseState, EntityClientAnimations, EntityDamage, EntityEquipment,
+    EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
+    EntityMobEffects, EntityModelSourceState, EntityMount, EntityState, EntityTransform,
+    EntityTransformState, EntityTransientEvents, ItemEntityStackState, ItemFrameRenderState,
+    LlamaBodyDecorColor, VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
     VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
     VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
     VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
     VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-    VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
-    VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
-    VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_UPSIDE_DOWN_NAMES,
+    VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
+    VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+    VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID,
+    VANILLA_UPSIDE_DOWN_NAMES,
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, camel_is_dashing, creaking_can_move,
@@ -60,6 +61,8 @@ const VANILLA_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
 const VANILLA_ENTITY_TYPE_PIG_ID: i32 = 100;
 /// Vanilla `Pose.SWIMMING` ordinal, used by player cape bob suppression.
 const VANILLA_POSE_SWIMMING_ID: i32 = 3;
+/// Vanilla `Shulker.DATA_ATTACH_FACE_ID` (Direction), declared before peek and color metadata.
+const SHULKER_ATTACH_FACE_DATA_ID: u8 = 16;
 
 fn end_crystal_renderer_y(time_in_ticks: f32) -> f32 {
     let hh = (time_in_ticks * 0.2).sin() / 2.0 + 0.5;
@@ -1084,6 +1087,10 @@ impl EntityStore {
             shulker_peek: client_animations
                 .animations
                 .shulker_peek_amount(partial_ticks),
+            shulker_attach_face: shulker_attach_face(
+                identity.entity_type_id,
+                &metadata.data_values,
+            ),
             // Spatial light is sampled by the WorldStore aggregation, which owns
             // the chunk light data; the per-entity source defaults to full bright.
             light: super::ENTITY_LIGHT_PROBE_FULL_BRIGHT,
@@ -2165,6 +2172,27 @@ fn vanilla_attribute_value(attribute: &ProtocolAttributeSnapshot) -> f64 {
         }
     }
     result
+}
+
+fn shulker_attach_face(
+    entity_type_id: i32,
+    data_values: &[bbb_protocol::packets::EntityDataValue],
+) -> EntityAttachmentFace {
+    if entity_type_id != VANILLA_ENTITY_TYPE_SHULKER_ID {
+        return EntityAttachmentFace::Down;
+    }
+    data_values
+        .iter()
+        .find_map(|value| {
+            if value.data_id != SHULKER_ATTACH_FACE_DATA_ID {
+                return None;
+            }
+            let EntityDataValueKind::Direction(direction) = &value.value else {
+                return None;
+            };
+            Some(EntityAttachmentFace::from_3d_data(*direction))
+        })
+        .unwrap_or_default()
 }
 
 fn item_entity_render_stack(

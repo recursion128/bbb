@@ -96,6 +96,10 @@ Wither skull 的 `isDangerous` 纹理切换已补齐：native 读取 26.1
 Shulker bullet 的第二次 vanilla submit 也已补齐：textured path 在 base `spark.png`
 模型之后复用同一个 posed model，追加 `scale(1.5)` 的 translucent outer shell，
 颜色/alpha 使用 vanilla packed color `0x26ffffff`。
+Shulker attach-face root transform 已完成：world 读取 `DATA_ATTACH_FACE_ID`(16)、
+native 转发 `attachFace`，renderer 按 `ShulkerRenderer.setupRotations` 的
+`bodyRot + 180` 和 `attachFace.getOpposite().getRotation()` 绕 `(0,0.5,0)` 旋转，
+测试覆盖 metadata 投影、transform、texture、render type、tint、order。
 实体 textured path 现在显式记录 vanilla-shaped submission 元数据：render type 区分
 `entitySolid` / `armorCutoutNoCull` / `entityCutout` / `entityCutoutCull` / `entityCutoutZOffset` /
 `entityTranslucent` / `Eyes` / `breezeWind` / `energySwirl` / `end_crystal_beam`，`order`

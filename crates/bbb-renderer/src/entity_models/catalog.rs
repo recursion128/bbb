@@ -240,6 +240,17 @@ const DEFAULT_PLAYER_SKINS: [EntityDefaultPlayerSkin; 18] = [
     EntityDefaultPlayerSkin::WideZuri,
 ];
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum EntityAttachmentFace {
+    #[default]
+    Down,
+    Up,
+    North,
+    South,
+    West,
+    East,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum EntityModelKind {
     Chicken {
@@ -396,8 +407,8 @@ pub enum EntityModelKind {
     },
     /// `ShulkerModel` at its `createBodyLayer` closed rest pose, textured by dye colour
     /// (`ShulkerRenderer.getTextureLocation`: `None` → the default `shulker.png`, else
-    /// `shulker_<color>.png`). The peek open/close, the head look, and the
-    /// `ShulkerRenderer.setupRotations` attach-face rotation and body-yaw inversion are deferred.
+    /// `shulker_<color>.png`). The peek open/close, head look, and
+    /// `ShulkerRenderer.setupRotations` attach-face/body-yaw root transform are reproduced.
     Shulker {
         color: Option<EntityDyeColor>,
     },

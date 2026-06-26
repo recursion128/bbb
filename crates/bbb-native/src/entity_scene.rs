@@ -7,22 +7,23 @@ use bbb_renderer::{
     ArmorStandModelPose, ArrowModelTexture, AxolotlModelVariant, BoatModelFamily, CamelModelFamily,
     CatModelVariant, ChickenModelVariant, CopperGolemWeathering, CowModelVariant,
     DonkeyModelFamily, EndCrystalBeamRenderState, EnderDragonBeamRenderState, EntityArmorMaterial,
-    EntityCustomHeadSkull, EntityDefaultPlayerSkin, EntityDyeColor, EntityDynamicPlayerTexture,
-    EntityDynamicPlayerTextureKind, EntityEquipmentLayerTexture, EntityModelInstance,
-    EntityModelKind, EntityPlayerSkin, FoxModelVariant, FrogModelVariant, GuardianBeamRenderState,
-    HoglinModelFamily, HorseColorVariant, HorseMarkings, IllagerModelFamily, IronGolemCrackiness,
-    LlamaModelFamily, LlamaVariant, MooshroomVariant, PandaModelVariant, ParrotModelVariant,
-    PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant,
-    SalmonModelSize, SelectionBox, SelectionOutline, SheepHeadEatPose, SheepWoolColor,
-    SkeletonModelFamily, SleepingPose, TropicalFishModelShape, TropicalFishPattern,
-    UndeadHorseModelFamily, VillagerModelData, VillagerModelProfession, VillagerModelType,
-    WolfModelVariant, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    EntityAttachmentFace, EntityCustomHeadSkull, EntityDefaultPlayerSkin, EntityDyeColor,
+    EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind, EntityEquipmentLayerTexture,
+    EntityModelInstance, EntityModelKind, EntityPlayerSkin, FoxModelVariant, FrogModelVariant,
+    GuardianBeamRenderState, HoglinModelFamily, HorseColorVariant, HorseMarkings,
+    IllagerModelFamily, IronGolemCrackiness, LlamaModelFamily, LlamaVariant, MooshroomVariant,
+    PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
+    PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SelectionBox, SelectionOutline,
+    SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose, TropicalFishModelShape,
+    TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelProfession,
+    VillagerModelType, WolfModelVariant, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 #[cfg(test)]
 use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, EndCrystalBeamSource as WorldEndCrystalBeamSource,
-    EnderDragonBeamSource as WorldEnderDragonBeamSource, EntityModelSourceState,
+    EnderDragonBeamSource as WorldEnderDragonBeamSource,
+    EntityAttachmentFace as WorldEntityAttachmentFace, EntityModelSourceState,
     EntityPickTargetState, GuardianBeamSource as WorldGuardianBeamSource,
     LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryContentState, WorldStore,
 };
@@ -1437,6 +1438,7 @@ fn entity_model_instance(
             villager_professions,
         ))
         .with_shulker_peek(source.shulker_peek)
+        .with_shulker_attach_face(entity_attachment_face(source.shulker_attach_face))
         .with_tendril_animation(source.tendril_animation)
         .with_heart_animation(source.heart_animation)
         .with_warden_roar_seconds(source.warden_roar_seconds)
@@ -3498,6 +3500,18 @@ fn llama_body_decor_color(color: Option<WorldLlamaBodyDecorColor>) -> Option<Ent
     })
 }
 
+/// Maps `ShulkerRenderState.attachFace` from world metadata onto the renderer root transform input.
+fn entity_attachment_face(face: WorldEntityAttachmentFace) -> EntityAttachmentFace {
+    match face {
+        WorldEntityAttachmentFace::Down => EntityAttachmentFace::Down,
+        WorldEntityAttachmentFace::Up => EntityAttachmentFace::Up,
+        WorldEntityAttachmentFace::North => EntityAttachmentFace::North,
+        WorldEntityAttachmentFace::South => EntityAttachmentFace::South,
+        WorldEntityAttachmentFace::West => EntityAttachmentFace::West,
+        WorldEntityAttachmentFace::East => EntityAttachmentFace::East,
+    }
+}
+
 /// Maps a projected guardian attack beam onto the renderer's `GuardianBeamRenderState` (1:1; the two
 /// structs mirror vanilla `GuardianRenderState`'s beam fields).
 fn guardian_beam(beam: Option<WorldGuardianBeamSource>) -> Option<GuardianBeamRenderState> {
@@ -4345,6 +4359,59 @@ mod tests {
         assert!((peek(&world, 82, 0.5) - 0.025).abs() < 1.0e-6);
         // The chicken has no peek state, so it stays at the closed/bind pose.
         assert_eq!(peek(&world, 83, 0.5), 0.0);
+    }
+
+    #[test]
+    fn entity_model_instances_project_shulker_attach_face() {
+        // Vanilla Shulker.DATA_ATTACH_FACE_ID (16, DIRECTION) feeds
+        // `ShulkerRenderState.attachFace`, whose default is `Direction.DOWN`.
+        const VANILLA_SHULKER_ATTACH_FACE_DATA_ID: u8 = 16;
+        const DIRECTION_NORTH: i32 = 2;
+        const DIRECTION_NEGATIVE_ONE: i32 = -1;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            82,
+            VANILLA_ENTITY_TYPE_SHULKER_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            83,
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            [3.0, 64.0, -2.0],
+        ));
+
+        let attach_face = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 1.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .shulker_attach_face
+        };
+
+        assert_eq!(attach_face(&world, 82), EntityAttachmentFace::Down);
+        assert_eq!(attach_face(&world, 83), EntityAttachmentFace::Down);
+
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 82,
+            values: vec![protocol_direction_data(
+                VANILLA_SHULKER_ATTACH_FACE_DATA_ID,
+                DIRECTION_NORTH,
+            )],
+        }));
+        assert_eq!(attach_face(&world, 82), EntityAttachmentFace::North);
+        assert_eq!(attach_face(&world, 83), EntityAttachmentFace::Down);
+
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 82,
+            values: vec![protocol_direction_data(
+                VANILLA_SHULKER_ATTACH_FACE_DATA_ID,
+                DIRECTION_NEGATIVE_ONE,
+            )],
+        }));
+        // Vanilla `Direction.BY_ID` uses positive-modulo wrap, so -1 wraps to EAST.
+        assert_eq!(attach_face(&world, 82), EntityAttachmentFace::East);
     }
 
     #[test]
@@ -11983,6 +12050,14 @@ mod tests {
             data_id,
             serializer_id: 0,
             value: EntityDataValueKind::Byte(value),
+        }
+    }
+
+    fn protocol_direction_data(data_id: u8, value: i32) -> EntityDataValue {
+        EntityDataValue {
+            data_id,
+            serializer_id: 12,
+            value: EntityDataValueKind::Direction(value),
         }
     }
 

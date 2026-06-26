@@ -8,14 +8,12 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 // lid back to `y = 16 + sin((0.5 + peekAmount) * π) * 8`, which is exactly `24` when `peekAmount = 0`.
 // The peek open/close and the head look are now driven from the projected peek and head angles (see
 // [`emit_shulker_model`](crate::entity_models::colored::runtime)). The head look uses the vanilla
-// non-standard `head.yRot = (yHeadRot − 180 − yBodyRot)`, which equals the projected `head_yaw − 180`;
-// it is vanilla-correct for a floor shulker because bbb's standard root differs from the shulker's
-// `bodyRot + 180` root by a 180° rotation the 180°-symmetric square shell hides. The
-// `ShulkerRenderer.setupRotations` non-floor attach-face rotation (`attachFace.getOpposite()`, the
-// identity for a floor shulker) and the `bodyRot + 180` body-yaw inversion read the entity-side
-// `attachFace`/yaw state, which the native scene does not yet project, so the floor rest orientation
-// is emitted. The sixteen dye-color variants share this one UV layout (only the texture image
-// differs); the colored debug path renders a purple shell tint plus a yellow head tint.
+// non-standard `head.yRot = (yHeadRot − 180 − yBodyRot)`, which equals the projected `head_yaw − 180`.
+// `shulker_model_root_transform` reproduces `ShulkerRenderer.setupRotations`: `bodyRot + 180` changes
+// the non-sleeping root yaw to `-bodyRot`, and `attachFace.getOpposite().getRotation()` rotates wall
+// and ceiling shulkers around `(0, 0.5, 0)`. The sixteen dye-color variants share this one UV layout
+// (only the texture image differs); the colored debug path renders a purple shell tint plus a yellow
+// head tint.
 
 // `lid`: the 16×12×16 upper shell at texOffs(0, 0). Each unified cube carries the colored tint and
 // the textured `uv_size` / `texOffs`.
