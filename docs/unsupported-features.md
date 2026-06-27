@@ -3752,8 +3752,9 @@ When an agent does any of the following, update this file in the same slice:
       `textures/entity/equipment/nautilus_body/<asset>.png` (all 128×128). Baby living nautilus skip
       both layers because vanilla passes no baby models. The `corals.visible = bodyArmorItem.isEmpty()`
       gate is reproduced, so the warm zombie nautilus coral cluster hides while body armor is present.
-      Missing-atlas coverage pins that the adult living nautilus saddle submission is still recorded
-      without `nautilus_saddle/saddle.png` while only folded saddle geometry is suppressed.
+      Missing-atlas coverage pins that the adult living nautilus saddle and body-armor submissions
+      are still recorded without `nautilus_saddle/saddle.png` or `nautilus_body/iron.png`
+      while only the corresponding folded equipment geometry is suppressed.
       The dynamic-registry reorder path stays deferred. The adult rest-pose
       hierarchy is emitted directly (atlas 128×128): one cubeless `root` pivot at
       `offset(0, 29, -6)` parenting the `shell` at `offset(0, -13, 5)` (the 14×10×16 dome, the 14×8×20

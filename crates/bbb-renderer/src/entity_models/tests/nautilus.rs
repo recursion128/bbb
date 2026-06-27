@@ -704,6 +704,63 @@ fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
 }
 
 #[test]
+fn nautilus_body_armor_submission_survives_missing_armor_texture_atlas_entry() {
+    // Vanilla `NautilusRenderer` records `SimpleEquipmentLayer(NAUTILUS_BODY)` before the saddle
+    // layer, at the default collector order, and forces `OverlayTexture.NO_OVERLAY`.
+    let images: Vec<EntityModelTextureImage> = [NAUTILUS_TEXTURE_REF]
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![(index * 35) as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let instance = EntityModelInstance::nautilus(934, [0.0, 64.0, 0.0], 0.0, false)
+        .with_light_coords((6_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true)
+        .with_nautilus_body_armor(Some(EntityArmorMaterial::Iron));
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 2);
+    let base = meshes.submissions[0];
+    assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(base.texture, NAUTILUS_TEXTURE_REF);
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(base.transform, entity_model_root_transform(instance));
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+    assert_eq!(base.light, instance.render_state.shader_light());
+    assert_eq!(base.overlay, instance.render_state.overlay_coords());
+    assert_eq!(
+        meshes.cutout.vertices.len(),
+        192,
+        "missing nautilus_body/iron.png suppresses only folded armor geometry"
+    );
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == base.light && vertex.overlay == base.overlay));
+
+    let armor = meshes.submissions[1];
+    assert_eq!(
+        armor.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(armor.render_type.vanilla_name(), "armorCutoutNoCull");
+    assert_eq!(armor.texture, NAUTILUS_BODY_IRON_TEXTURE_REF);
+    assert_eq!(armor.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(armor.transform, base.transform);
+    assert_eq!((armor.order, armor.submit_sequence), (0, 1));
+    assert_eq!(armor.light, base.light);
+    assert_eq!(armor.overlay, [0.0, 10.0]);
+    assert_nautilus_folded_meshes_are_cutout_only(&meshes);
+}
+
+#[test]
 fn zombie_nautilus_uses_its_own_texture_over_the_shared_adult_body() {
     // Vanilla `ZombieNautilusRenderer` `NORMAL` variant: the shared adult `NautilusModel` body
     // (`ModelLayers.ZOMBIE_NAUTILUS` bakes to `NautilusModel.createBodyLayer()`) textured by
