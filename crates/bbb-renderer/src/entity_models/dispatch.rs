@@ -12,7 +12,7 @@ use glam::{Mat4, Vec3};
 
 use super::catalog::{
     CamelModelFamily, CowModelVariant, EntityModelKind, EntityModelTextureAtlasLayout,
-    SkeletonModelFamily,
+    PiglinModelFamily, SkeletonModelFamily,
 };
 use super::colored::{
     arrow_model_root_transform, boat_model_root_transform, camel_model_color,
@@ -22,8 +22,8 @@ use super::colored::{
     happy_ghast_model_root_transform, hoglin_model_color, iron_golem_model_root_transform,
     leash_knot_model_root_transform, llama_model_color, llama_spit_model_root_transform,
     magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
-    panda_model_root_transform, phantom_model_root_transform, polar_bear_model_root_transform,
-    pufferfish_model_root_transform, salmon_model_root_transform,
+    panda_model_root_transform, phantom_model_root_transform, piglin_model_color,
+    polar_bear_model_root_transform, pufferfish_model_root_transform, salmon_model_root_transform,
     shulker_bullet_model_root_transform, shulker_model_root_transform, slime_model_root_transform,
     squid_model_root_transform, trident_model_root_transform, tropical_fish_model_root_transform,
     villager_adult_model_root_transform, wither_model_root_transform,
@@ -39,7 +39,7 @@ use super::model_layers::{
     EnderDragonModel, EndermanModel, EndermiteModel, EvokerFangsModel, FelineModel, FoxModel,
     FrogModel, GhastModel, GoatModel, GuardianModel, HappyGhastModel, HoglinModel, IllagerModel,
     IronGolemModel, LeashKnotModel, LlamaModel, LlamaSpitModel, MagmaCubeModel, MinecartModel,
-    NautilusModel, PandaModel, ParrotModel, PhantomModel, PigModel, PolarBearModel,
+    NautilusModel, PandaModel, ParrotModel, PhantomModel, PigModel, PiglinModel, PolarBearModel,
     PufferfishModel, RabbitModel, RavagerModel, SalmonModel, ShulkerBulletModel, ShulkerModel,
     SilverfishModel, SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel,
     SnifferModel, SnowGolemModel, SpiderModel, SquidModel, StriderModel, TadpoleModel,
@@ -66,12 +66,12 @@ use super::textured::{
     magma_cube_textured_layer_passes, minecart_textured_layer_passes,
     mooshroom_textured_layer_passes, nautilus_textured_layer_passes, panda_textured_layer_passes,
     parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
-    polar_bear_textured_layer_passes, rabbit_textured_layer_passes, ravager_textured_layer_passes,
-    render_textured_layers, salmon_textured_layer_passes, shulker_bullet_textured_layer_passes,
-    shulker_textured_layer_passes, silverfish_textured_layer_passes,
-    skeleton_textured_layer_passes, slime_textured_layer_passes, sniffer_textured_layer_passes,
-    snow_golem_textured_layer_passes, spider_textured_layer_passes, squid_textured_layer_passes,
-    tadpole_textured_layer_passes, trident_textured_layer_passes,
+    piglin_textured_layer_passes, polar_bear_textured_layer_passes, rabbit_textured_layer_passes,
+    ravager_textured_layer_passes, render_textured_layers, salmon_textured_layer_passes,
+    shulker_bullet_textured_layer_passes, shulker_textured_layer_passes,
+    silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
+    sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
+    squid_textured_layer_passes, tadpole_textured_layer_passes, trident_textured_layer_passes,
     tropical_fish_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, warden_textured_layer_passes,
     witch_textured_layer_passes, wither_skull_textured_layer_passes, wither_textured_layer_passes,
@@ -307,6 +307,18 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                 instance,
                 &passes,
                 hoglin_model_color(family),
+            );
+        }
+        EntityModelKind::Piglin { family, baby } => {
+            let transform = entity_model_root_transform(*instance);
+            let baby_layout = baby && family != PiglinModelFamily::PiglinBrute;
+            let passes = piglin_textured_layer_passes(family, baby_layout);
+            sink.model_with_colored_override(
+                PiglinModel::new(family, baby),
+                transform,
+                instance,
+                &passes,
+                piglin_model_color(family),
             );
         }
         EntityModelKind::ShulkerBullet => {

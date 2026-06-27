@@ -13,7 +13,7 @@ pub(super) fn humanoid_model_color(family: HumanoidModelFamily) -> [f32; 4] {
     }
 }
 
-pub(super) fn piglin_model_color(family: PiglinModelFamily) -> [f32; 4] {
+pub(in crate::entity_models) fn piglin_model_color(family: PiglinModelFamily) -> [f32; 4] {
     match family {
         PiglinModelFamily::Piglin => PIGLIN_SKIN,
         PiglinModelFamily::PiglinBrute => PIGLIN_BRUTE_SKIN,

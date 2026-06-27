@@ -10,7 +10,7 @@ use super::super::instances::EntityModelInstance;
 use super::super::model::EntityModel;
 use super::super::model_layers::*;
 use super::mounts::{emit_donkey_model, emit_horse_model, emit_undead_horse_model};
-use super::selection::{humanoid_model_color, piglin_model_color, quadruped_model_color};
+use super::selection::{humanoid_model_color, quadruped_model_color};
 use super::transforms::{
     drowned_model_root_transform, end_crystal_model_root_transform, entity_model_root_transform,
     mesh_transformer_scaled_model_root_transform, player_model_root_transform,
@@ -92,11 +92,6 @@ fn entity_model_mesh_with_options(
                     // The husk, drowned, and zombie villager all have wired texture-backed paths now.
                     if !skip_texture_backed_entities {
                         emit_zombie_variant_model(&mut mesh, *instance, family, baby)
-                    }
-                }
-                EntityModelKind::Piglin { family, baby } => {
-                    if !skip_texture_backed_entities {
-                        emit_piglin_model(&mut mesh, *instance, family, baby)
                     }
                 }
                 EntityModelKind::Sheep {
@@ -314,23 +309,6 @@ pub(in crate::entity_models) fn zombie_variant_root_transform(
     } else {
         entity_model_root_transform(instance)
     }
-}
-
-fn emit_piglin_model(
-    mesh: &mut EntityModelMesh,
-    instance: EntityModelInstance,
-    family: PiglinModelFamily,
-    baby: bool,
-) {
-    // The unified `PiglinModel` tree drives both render paths; `setup_anim` runs the head look, the
-    // humanoid walk (legs only for the zombified piglin), and the ear flap. The colored fallback
-    // recolors the whole model with the family skin; the textured path uses the family texture.
-    PiglinModel::new(family, baby).prepare_and_render_with_color(
-        mesh,
-        &instance,
-        entity_model_root_transform(instance),
-        piglin_model_color(family),
-    );
 }
 
 /// Applies the vanilla `QuadrupedModel.setupAnim` leg swing

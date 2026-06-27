@@ -4,7 +4,7 @@ mod selection;
 mod transforms;
 
 pub(in crate::entity_models) use selection::{
-    camel_model_color, hoglin_model_color, llama_model_color,
+    camel_model_color, hoglin_model_color, llama_model_color, piglin_model_color,
 };
 
 #[cfg(test)]

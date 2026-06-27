@@ -395,9 +395,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
                 } => {
                     emit_zombie_villager_textured_model(&mut meshes, *instance, baby, atlas);
                 }
-                EntityModelKind::Piglin { family, baby } => {
-                    emit_piglin_textured_model(&mut meshes, *instance, family, baby, atlas);
-                }
                 EntityModelKind::Player { skin, parts } => {
                     emit_player_textured_model(
                         &mut meshes,
@@ -2680,30 +2677,6 @@ fn emit_villager_profession_layer(
             );
         }
     });
-}
-
-fn emit_piglin_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    family: PiglinModelFamily,
-    baby: bool,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `PiglinModel` tree drives both render paths; `setup_anim` runs the head look, the
-    // humanoid walk (legs only for the zombified piglin), and the ear flap (head children). `new`
-    // selects the adult/baby tree; the family chooses the texture. The brute is never baby. The
-    // dance/attack/crossbow/admire arm poses and held items defer.
-    let baby_layout = baby && family != PiglinModelFamily::PiglinBrute;
-    let transform = entity_model_root_transform(instance);
-    let mut model = PiglinModel::new(family, baby);
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        piglin_textured_layer_passes(family, baby_layout),
-        atlas,
-    );
 }
 
 fn emit_player_textured_model(

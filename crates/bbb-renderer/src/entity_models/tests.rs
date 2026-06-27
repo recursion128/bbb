@@ -204,18 +204,25 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     );
     let zoglin_baby =
         EntityModelInstance::hoglin(319, [30.0, 64.0, 0.0], 0.0, HoglinModelFamily::Zoglin, true);
-    let ravager = EntityModelInstance::ravager(320, [32.0, 64.0, 0.0], 0.0);
-    let villager = EntityModelInstance::villager(321, [34.0, 64.0, 0.0], 0.0, false);
-    let wandering_trader = EntityModelInstance::wandering_trader(322, [36.0, 64.0, 0.0], 0.0);
-    let iron_golem = EntityModelInstance::iron_golem(323, [38.0, 64.0, 0.0], 0.0);
-    let snow_golem = EntityModelInstance::snow_golem(324, [40.0, 64.0, 0.0], 0.0);
-    let witch = EntityModelInstance::witch(325, [42.0, 64.0, 0.0], 0.0);
+    let piglin = EntityModelInstance::piglin(
+        320,
+        [32.0, 64.0, 0.0],
+        0.0,
+        PiglinModelFamily::Piglin,
+        false,
+    );
+    let ravager = EntityModelInstance::ravager(321, [34.0, 64.0, 0.0], 0.0);
+    let villager = EntityModelInstance::villager(322, [36.0, 64.0, 0.0], 0.0, false);
+    let wandering_trader = EntityModelInstance::wandering_trader(323, [38.0, 64.0, 0.0], 0.0);
+    let iron_golem = EntityModelInstance::iron_golem(324, [40.0, 64.0, 0.0], 0.0);
+    let snow_golem = EntityModelInstance::snow_golem(325, [42.0, 64.0, 0.0], 0.0);
+    let witch = EntityModelInstance::witch(326, [44.0, 64.0, 0.0], 0.0);
     let copper_golem = EntityModelInstance::new(
-        326,
+        327,
         EntityModelKind::CopperGolem {
             weathering: CopperGolemWeathering::Unaffected,
         },
-        [44.0, 64.0, 0.0],
+        [46.0, 64.0, 0.0],
         0.0,
     );
     let colored = entity_model_colored_runtime_mesh(&[
@@ -236,6 +243,7 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
         polar_bear,
         hoglin,
         zoglin_baby,
+        piglin,
         ravager,
         villager,
         wandering_trader,
@@ -280,6 +288,8 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     assert!(!legacy_hoglin_geometry_guard.vertices.is_empty());
     let legacy_zoglin_baby_geometry_guard = entity_model_mesh(&[zoglin_baby]);
     assert!(!legacy_zoglin_baby_geometry_guard.vertices.is_empty());
+    let legacy_piglin_geometry_guard = entity_model_mesh(&[piglin]);
+    assert!(!legacy_piglin_geometry_guard.vertices.is_empty());
     let legacy_ravager_geometry_guard = entity_model_mesh(&[ravager]);
     assert!(!legacy_ravager_geometry_guard.vertices.is_empty());
     let legacy_villager_geometry_guard = entity_model_mesh(&[villager]);
