@@ -618,12 +618,16 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                 &wolf_textured_layer_passes(baby, tame, angry, collar_color, variant, wet_shade),
             )
         }
-        EntityModelKind::Boat { family, chest } => sink.model(
-            BoatModel::new(family, chest),
-            boat_model_root_transform(*instance),
-            instance,
-            &boat_textured_layer_passes(family, chest),
-        ),
+        EntityModelKind::Boat { family, chest } => {
+            let passes = boat_textured_layer_passes(family, chest);
+            let body_passes = [passes[0]];
+            sink.model(
+                BoatModel::new(family, chest),
+                boat_model_root_transform(*instance),
+                instance,
+                &body_passes,
+            )
+        }
         EntityModelKind::Spider => sink.model(
             SpiderModel::new(),
             entity_model_root_transform(*instance),

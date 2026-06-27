@@ -219,7 +219,7 @@ fn boat_texture_refs_match_vanilla_model_layer_paths() {
 #[test]
 fn boat_textured_layer_passes_match_vanilla_renderer_model_layers() {
     let oak_boat = boat_textured_layer_passes(BoatModelFamily::Oak, false);
-    assert_eq!(oak_boat.len(), 1);
+    assert_eq!(oak_boat.len(), 2);
     assert_eq!(oak_boat[0].kind, EntityModelLayerKind::BoatBase);
     assert_eq!(
         oak_boat[0].render_type,
@@ -230,15 +230,27 @@ fn boat_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(oak_boat[0].texture, BOAT_OAK_TEXTURE_REF);
     assert_eq!(oak_boat[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((oak_boat[0].order, oak_boat[0].submit_sequence), (0, 0));
+    assert_eq!(oak_boat[1].kind, EntityModelLayerKind::BoatWaterMask);
+    assert_eq!(
+        oak_boat[1].render_type,
+        EntityModelLayerRenderType::WaterMask
+    );
+    assert_eq!(oak_boat[1].render_type.vanilla_name(), "waterMask");
+    assert_eq!(oak_boat[1].model_layer, MODEL_LAYER_BOAT_WATER_PATCH);
+    assert_eq!(oak_boat[1].texture, BOAT_OAK_TEXTURE_REF);
+    assert_eq!(oak_boat[1].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((oak_boat[1].order, oak_boat[1].submit_sequence), (0, 1));
 
     let oak_chest_boat = boat_textured_layer_passes(BoatModelFamily::Oak, true);
     assert_eq!(oak_chest_boat[0].kind, EntityModelLayerKind::BoatBase);
     assert_eq!(oak_chest_boat[0].model_layer, MODEL_LAYER_OAK_CHEST_BOAT);
     assert_eq!(oak_chest_boat[0].texture, CHEST_BOAT_OAK_TEXTURE_REF);
+    assert_eq!(oak_chest_boat[1].texture, CHEST_BOAT_OAK_TEXTURE_REF);
 
     let bamboo_raft = boat_textured_layer_passes(BoatModelFamily::Bamboo, false);
     assert_eq!(bamboo_raft[0].model_layer, MODEL_LAYER_BAMBOO_RAFT);
     assert_eq!(bamboo_raft[0].texture, BOAT_BAMBOO_TEXTURE_REF);
+    assert_eq!(bamboo_raft[1].texture, BOAT_BAMBOO_TEXTURE_REF);
 
     let bamboo_chest_raft = boat_textured_layer_passes(BoatModelFamily::Bamboo, true);
     assert_eq!(
@@ -246,6 +258,7 @@ fn boat_textured_layer_passes_match_vanilla_renderer_model_layers() {
         MODEL_LAYER_BAMBOO_CHEST_RAFT
     );
     assert_eq!(bamboo_chest_raft[0].texture, CHEST_BOAT_BAMBOO_TEXTURE_REF);
+    assert_eq!(bamboo_chest_raft[1].texture, CHEST_BOAT_BAMBOO_TEXTURE_REF);
 }
 
 #[test]

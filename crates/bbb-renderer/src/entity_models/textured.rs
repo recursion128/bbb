@@ -12,9 +12,9 @@ use super::model::{EntityModel, ModelPart};
 use super::model_layers::PLAYER_WIDE_STEVE_TEXTURE_REF;
 use super::{
     catalog::{
-        boat_texture_ref, villager_level_texture_ref, villager_profession_texture_ref,
-        villager_type_texture_ref, zombie_villager_level_texture_ref,
-        zombie_villager_profession_texture_ref, zombie_villager_type_texture_ref,
+        villager_level_texture_ref, villager_profession_texture_ref, villager_type_texture_ref,
+        zombie_villager_level_texture_ref, zombie_villager_profession_texture_ref,
+        zombie_villager_type_texture_ref,
     },
     catalog::{
         CamelModelFamily, DonkeyModelFamily, EntityArmorMaterial, EntityCustomHeadSkull,
@@ -787,13 +787,15 @@ fn emit_boat_water_mask_submission(
     // `ModelLayers.BOAT_WATER_PATCH` depth-only `RenderTypes.waterMask()` model with the same texture
     // and pose stack as the base boat. bbb does not yet project `BoatRenderState.isUnderWater`, so the
     // default visible-above-water path records the submission while GPU presentation remains deferred.
+    let passes = boat_textured_layer_passes(family, chest);
+    let pass = passes[1];
     let submit = no_overlay_submission(
-        EntityModelLayerRenderType::WaterMask,
-        boat_texture_ref(family, chest),
-        [1.0, 1.0, 1.0, 1.0],
+        pass.render_type,
+        pass.texture,
+        pass.tint,
         boat_model_root_transform(instance),
-        0,
-        1,
+        pass.order,
+        pass.submit_sequence,
     );
     meshes.record_submission(submit);
 }
@@ -947,6 +949,7 @@ fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
         pass.kind,
         EntityModelLayerKind::ArrowBase
             | EntityModelLayerKind::BoatBase
+            | EntityModelLayerKind::BoatWaterMask
             | EntityModelLayerKind::BreezeEyes
             | EntityModelLayerKind::BreezeWind
             | EntityModelLayerKind::CreeperArmor

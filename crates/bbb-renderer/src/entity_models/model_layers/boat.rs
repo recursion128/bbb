@@ -36,6 +36,8 @@ pub(in crate::entity_models) const MODEL_LAYER_PALE_OAK_CHEST_BOAT: &str =
 pub(in crate::entity_models) const MODEL_LAYER_SPRUCE_BOAT: &str = "minecraft:boat/spruce#main";
 pub(in crate::entity_models) const MODEL_LAYER_SPRUCE_CHEST_BOAT: &str =
     "minecraft:chest_boat/spruce#main";
+pub(in crate::entity_models) const MODEL_LAYER_BOAT_WATER_PATCH: &str =
+    "minecraft:boat#water_patch";
 
 pub(in crate::entity_models) const BOAT_BOTTOM: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-14.0, -9.0, -3.0],

@@ -1492,9 +1492,9 @@ When an agent does any of the following, update this file in the same slice:
       explicit base submission metadata for vanilla `entityCutout`, selected
       texture, white tint, `boat_model_root_transform`, and
       `(order, submit_sequence) == (0, 0)`, with renderer light plus
-      `OverlayTexture.NO_OVERLAY` inherited by folded cutout vertices; the above-water boat water-mask
-      submit is now recorded as vanilla `waterMask` metadata at `(0, 1)` with
-      the same texture/transform/light and `OverlayTexture.NO_OVERLAY`, but its
+      `OverlayTexture.NO_OVERLAY` inherited by folded cutout vertices; `boat_textured_layer_passes`
+      now also records the above-water `ModelLayers.BOAT_WATER_PATCH` submit as vanilla `waterMask`
+      metadata at `(0, 1)` with the same texture/transform/light and `OverlayTexture.NO_OVERLAY`, but its
       depth-only GPU presentation is still deferred. Paddle rowing
       animation, hurt/damage roll, bubble wobble, underwater state and water
       mask presentation, and lighting remain unsupported
