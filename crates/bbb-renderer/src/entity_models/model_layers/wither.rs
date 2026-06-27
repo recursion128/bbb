@@ -4,6 +4,9 @@ use super::{
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_WITHER: &str = "minecraft:wither#main";
+pub(in crate::entity_models) const MODEL_LAYER_WITHER_ARMOR: &str = "minecraft:wither#armor";
+
 // Vanilla 26.1 `WitherBossModel.createBodyLayer(CubeDeformation.NONE)` (atlas 64×64). The mesh root
 // holds six sibling parts: the shoulders bar, the ribcage (its spine plus three rib bars), the
 // hanging tail, the center head, and the two side heads. The ribcage and tail carry their baked

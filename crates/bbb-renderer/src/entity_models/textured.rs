@@ -60,8 +60,8 @@ use super::{
         NAUTILUS_SADDLE_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF,
         PIG_SADDLE_TEXTURE_REF, PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
         SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION,
-        STRIDER_SADDLE_TEXTURE_REF, TRIDENT_RIPTIDE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF,
-        WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF, ZOMBIE_TEXTURE_REF,
+        STRIDER_SADDLE_TEXTURE_REF, TRIDENT_RIPTIDE_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF,
+        ZOMBIE_HORSE_SADDLE_TEXTURE_REF, ZOMBIE_TEXTURE_REF,
     },
     player_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
 };
@@ -961,6 +961,7 @@ fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
             | EntityModelLayerKind::SpiderEyes
             | EntityModelLayerKind::TridentBase
             | EntityModelLayerKind::WindChargeBase
+            | EntityModelLayerKind::WitherArmor
             | EntityModelLayerKind::WitherSkullBase
             | EntityModelLayerKind::WolfCollar
     )
@@ -1163,16 +1164,16 @@ fn emit_wither_energy_swirl(
         return;
     }
     let transform = wither_model_root_transform(instance);
-    let grey = 128.0 / 255.0;
-    let submit = EntityModelSubmissionEmit::new(
-        EntityModelLayerRenderType::EnergySwirl,
-        WITHER_ARMOR_TEXTURE_REF,
-        [grey, grey, grey, 1.0],
+    let passes = wither_textured_layer_passes(instance.render_state.wither_invulnerable_ticks);
+    let pass = passes[1];
+    let submit = no_overlay_submission(
+        pass.render_type,
+        pass.texture,
+        pass.tint,
         transform,
-        1,
-        1,
-    )
-    .with_overlay(ENTITY_VERTEX_NO_OVERLAY);
+        pass.order,
+        pass.submit_sequence,
+    );
     let mut model = WitherModel::new_armor();
     model.prepare(&instance);
     // Vanilla `WitherArmorLayer.xOffset(t) = cos(t · 0.02) · 3` on U (oscillating, not linear like the

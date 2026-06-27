@@ -1061,9 +1061,9 @@ When an agent does any of the following, update this file in the same slice:
       passes that vanilla gates on `state.isInvisible` still do not submit.
       `breezeWind` / `energySwirl` residual emits now use a shared scrolled
       submission helper before folding into the scroll mesh buckets, with
-      WindCharge, Breeze wind, and charged Creeper armor submits consuming explicit
-      layer-pass metadata before the scroll helper and missing-atlas tests pinning
-      that submission metadata is recorded before folded geometry is suppressed; Guardian
+      WindCharge, Breeze wind, charged Creeper armor, and powered Wither armor submits consuming
+      explicit layer-pass metadata before the scroll helper and missing-atlas tests pinning that
+      submission metadata is recorded before folded geometry is suppressed; Guardian
       attack beams also record vanilla `entityCutout` submissions before
       folding their tiled custom geometry into the scroll bucket through the
       custom scroll-geometry submission helper; End Crystal
@@ -3349,10 +3349,13 @@ When an agent does any of the following, update this file in the same slice:
       `RenderTypes.energySwirl`: `wither_armor.png` (`WITHER_ARMOR_TEXTURE_REF`) tinted by the vanilla
       `0xFF808080` half-grey, its U scrolled by the oscillating `cos(ageInTicks · 0.02) · 3 % 1` (distinct
       from the creeper's linear scroll) and V by `ageInTicks · 0.01 % 1`, sharing the same per-fragment
-      `fract` atlas-wrap scroll pipeline as the charged creeper; its submission preserves per-entity light
-      and vanilla `OverlayTexture.NO_OVERLAY`, and missing-atlas coverage now pins that the order-1
-      `energySwirl` submission survives when `wither_armor.png` is absent while only folded additive
-      scroll geometry is suppressed. The remaining `WitherBossModel.setupAnim`
+      `fract` atlas-wrap scroll pipeline as the charged creeper. `wither_textured_layer_passes` now records
+      vanilla `ModelLayers.WITHER` and `ModelLayers.WITHER_ARMOR`, with base `entityCutout` and armor
+      `energySwirl` texture/render-type/tint/order metadata; dispatch consumes only the body pass, while
+      the powered overlay helper consumes the armor pass and still gates it on `isPowered`. Its submission
+      preserves per-entity light and vanilla `OverlayTexture.NO_OVERLAY`, and missing-atlas coverage now
+      pins that the order-1 `energySwirl` submission survives when `wither_armor.png` is absent while only
+      folded additive scroll geometry is suppressed. The remaining `WitherBossModel.setupAnim`
       side-head target tracking is now wired too: bbb-world reads `DATA_TARGET_B/C` (`17`/`18`), resolves
       tracked target eye positions, applies vanilla `WitherBoss.aiStep` `rotlerp` limits (`40°` pitch /
       `10°` yaw per tick, yaw-only fallback to `yBodyRot` when a target is missing), native forwards

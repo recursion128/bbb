@@ -882,12 +882,17 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &shulker_textured_layer_passes(color),
         ),
-        EntityModelKind::Wither => sink.model(
-            WitherModel::new(),
-            wither_model_root_transform(*instance),
-            instance,
-            &wither_textured_layer_passes(instance.render_state.wither_invulnerable_ticks),
-        ),
+        EntityModelKind::Wither => {
+            let passes =
+                wither_textured_layer_passes(instance.render_state.wither_invulnerable_ticks);
+            let body_passes = [passes[0]];
+            sink.model(
+                WitherModel::new(),
+                wither_model_root_transform(*instance),
+                instance,
+                &body_passes,
+            )
+        }
         EntityModelKind::Giant => sink.model(
             ZombieModel::new(false),
             mesh_transformer_scaled_model_root_transform(*instance, GIANT_SCALE),

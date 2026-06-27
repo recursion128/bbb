@@ -208,6 +208,29 @@ fn wither_textured_render_matches_vanilla_renderer() {
         WITHER_TEXTURE_REF,
         "i=5: 5/5%2=1, so it flickers back to wither.png"
     );
+    let passes = wither_textured_layer_passes(0.0);
+    assert_eq!(passes.len(), 2);
+    assert_eq!(passes[0].kind, EntityModelLayerKind::WitherBase);
+    assert_eq!(passes[0].model_layer, MODEL_LAYER_WITHER);
+    assert_eq!(
+        passes[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
+    assert_eq!(passes[0].texture, WITHER_TEXTURE_REF);
+    assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
+    let grey = 128.0 / 255.0;
+    assert_eq!(passes[1].kind, EntityModelLayerKind::WitherArmor);
+    assert_eq!(passes[1].model_layer, MODEL_LAYER_WITHER_ARMOR);
+    assert_eq!(
+        passes[1].render_type,
+        EntityModelLayerRenderType::EnergySwirl
+    );
+    assert_eq!(passes[1].render_type.vanilla_name(), "energySwirl");
+    assert_eq!(passes[1].texture, WITHER_ARMOR_TEXTURE_REF);
+    assert_eq!(passes[1].tint, [grey, grey, grey, 1.0]);
+    assert_eq!((passes[1].order, passes[1].submit_sequence), (1, 1));
 
     // The catalog's static mapping is the base texture (the invulnerable variant is render-state
     // driven, picked per-instance in the dispatch).

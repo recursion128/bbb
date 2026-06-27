@@ -101,6 +101,8 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     VillagerBase,
     WanderingTraderBase,
     WitchBase,
+    WitherBase,
+    WitherArmor,
     WitherSkullBase,
     WardenBase,
     WardenBioluminescent,
@@ -1404,11 +1406,29 @@ pub(in crate::entity_models) fn wither_textured_layer_passes(
     } else {
         WITHER_TEXTURE_REF
     };
-    vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::EntityCutout,
-        texture,
-        [1.0, 1.0, 1.0, 1.0],
-    )]
+    let grey = 128.0 / 255.0;
+    vec![
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::WitherBase,
+            render_type: EntityModelLayerRenderType::EntityCutout,
+            model_layer: MODEL_LAYER_WITHER,
+            texture,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 0,
+            submit_sequence: 0,
+        },
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::WitherArmor,
+            render_type: EntityModelLayerRenderType::EnergySwirl,
+            model_layer: MODEL_LAYER_WITHER_ARMOR,
+            texture: WITHER_ARMOR_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [grey, grey, grey, 1.0],
+            order: 1,
+            submit_sequence: 1,
+        },
+    ]
 }
 
 pub(in crate::entity_models) fn guardian_textured_layer_passes(
