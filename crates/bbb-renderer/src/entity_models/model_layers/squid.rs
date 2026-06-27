@@ -4,6 +4,12 @@ use super::{PartPose, PART_POSE_ZERO, SQUID_BLUE};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_SQUID: &str = "minecraft:squid#main";
+pub(in crate::entity_models) const MODEL_LAYER_SQUID_BABY: &str = "minecraft:squid_baby#main";
+pub(in crate::entity_models) const MODEL_LAYER_GLOW_SQUID: &str = "minecraft:glow_squid#main";
+pub(in crate::entity_models) const MODEL_LAYER_GLOW_SQUID_BABY: &str =
+    "minecraft:glow_squid_baby#main";
+
 // Vanilla 26.1 `SquidModel.createBodyLayer` (atlas 64×32). The body carries a `CubeDeformation(0.02)`,
 // so its cube is the base box inflated by 0.02 on every side (the colored path bakes the inflated
 // min/size directly, while the textured `uv_size` keeps the base 12×16×12 box). Each cube carries both

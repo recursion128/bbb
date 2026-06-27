@@ -3653,8 +3653,8 @@ When an agent does any of the following, update this file in the same slice:
       `Axis.XP.rotationDegrees(xBodyRot)` pitch then `Axis.YP.rotationDegrees(zBodyRot)`
       roll, both lerped into the render state), with no death tip-over (the squid
       override replaces `LivingEntityRenderer.setupRotations`); the official squid/glow_squid adult
-      (64x32) / baby (32x32) texture references, the hand-emitted texture-backed
-      render path over the procedural ring, and the official PNG atlas
+      (64x32) / baby (32x32) texture references, the shared-dispatch texture-backed
+      base submission over the procedural ring, and the official PNG atlas
       upload/bind/sample path (colored and textured). Renderer tests now also pin the generated
       squid submissions' vanilla `entityCutout` render type, selected texture, white tint,
       root transform, `order(0)`, light, and hurt/white overlay metadata rather than only

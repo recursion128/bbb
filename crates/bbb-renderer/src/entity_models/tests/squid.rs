@@ -166,6 +166,35 @@ fn squid_texture_refs_match_vanilla_renderer() {
 }
 
 #[test]
+fn squid_textured_layer_passes_match_vanilla_renderer_model_choice() {
+    let cases = [
+        (false, false, MODEL_LAYER_SQUID, SQUID_TEXTURE_REF),
+        (false, true, MODEL_LAYER_SQUID_BABY, SQUID_BABY_TEXTURE_REF),
+        (true, false, MODEL_LAYER_GLOW_SQUID, GLOW_SQUID_TEXTURE_REF),
+        (
+            true,
+            true,
+            MODEL_LAYER_GLOW_SQUID_BABY,
+            GLOW_SQUID_BABY_TEXTURE_REF,
+        ),
+    ];
+    for (glow, baby, model_layer, texture) in cases {
+        let passes = squid_textured_layer_passes(glow, baby);
+        assert_eq!(passes.len(), 1);
+        assert_eq!(passes[0].kind, EntityModelLayerKind::SquidBase);
+        assert_eq!(passes[0].model_layer, model_layer);
+        assert_eq!(
+            passes[0].render_type,
+            EntityModelLayerRenderType::EntityCutout
+        );
+        assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
+        assert_eq!(passes[0].texture, texture);
+        assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
+    }
+}
+
+#[test]
 fn squid_textured_mesh_uses_vanilla_geometry_and_variant_texture() {
     let (atlas, _) = build_entity_model_texture_atlas(&squid_texture_images()).unwrap();
     // Vanilla `SquidModel` inherits the default `EntityModel` render type (`entityCutout`).

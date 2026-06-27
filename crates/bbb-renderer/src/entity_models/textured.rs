@@ -12,8 +12,8 @@ use super::model::{EntityModel, ModelPart};
 use super::model_layers::PLAYER_WIDE_STEVE_TEXTURE_REF;
 use super::{
     catalog::{
-        boat_texture_ref, horse_markings_texture_ref, squid_texture_ref,
-        villager_level_texture_ref, villager_profession_texture_ref, villager_type_texture_ref,
+        boat_texture_ref, horse_markings_texture_ref, villager_level_texture_ref,
+        villager_profession_texture_ref, villager_type_texture_ref,
         zombie_villager_level_texture_ref, zombie_villager_profession_texture_ref,
         zombie_villager_type_texture_ref,
     },
@@ -49,7 +49,7 @@ use super::{
         CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel, CustomHeadSkullModel,
         DrownedOuterModel, ElytraModel, HoglinModel, HumanoidArmorSlot, HumanoidBabyArmorKind,
         LlamaModel, NautilusModel, PigModel, PiglinModel, PlayerEarsModel, PlayerModel,
-        SheepFurModel, SheepModel, SkeletonModel, SpinAttackEffectModel, SquidModel, StriderModel,
+        SheepFurModel, SheepModel, SkeletonModel, SpinAttackEffectModel, StriderModel,
         TropicalFishModel, TropicalFishPatternModel, VillagerModel, WindChargeModel, WitherModel,
         WolfModel, ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
         ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_DONKEY_SADDLE_PARTS_TEXTURED,
@@ -69,7 +69,7 @@ use super::{
         WITHER_ARMOR_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
         ZOMBIE_TEXTURE_REF,
     },
-    player_model_root_transform, squid_model_root_transform, tropical_fish_model_root_transform,
+    player_model_root_transform, tropical_fish_model_root_transform,
     wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 use glam::{Mat4, Quat, Vec3};
@@ -111,7 +111,7 @@ pub(super) use layers::{
     salmon_textured_layer_passes, sheep_textured_layer_passes, shulker_textured_layer_passes,
     silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
     sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
-    tadpole_textured_layer_passes, trident_textured_layer_passes,
+    squid_textured_layer_passes, tadpole_textured_layer_passes, trident_textured_layer_passes,
     tropical_fish_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, warden_textured_layer_passes,
     witch_textured_layer_passes, wither_skull_textured_layer_passes, wither_textured_layer_passes,
@@ -380,9 +380,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
                 EntityModelKind::EndCrystal => {
                     emit_end_crystal_textured_model(&mut meshes, *instance, atlas);
                 }
-                EntityModelKind::Squid { glow, baby } => {
-                    emit_squid_textured_model(&mut meshes, *instance, glow, baby, atlas);
-                }
                 EntityModelKind::TropicalFish {
                     shape,
                     base_color,
@@ -615,61 +612,6 @@ fn emit_end_crystal_textured_model(
         for cube in END_CRYSTAL_TEXTURED_PARTS[3].cubes {
             emit_textured_model_cube(mesh, core_t, *cube, submit.texture, entry.uv, submit.tint);
         }
-    });
-}
-
-/// Render one textured pass of an already-prepared model: look up the texture's atlas entry and,
-/// if present, walk the posed tree into the pass's mesh. The shared terminal of every textured
-/// emit — the textured analogue of the colored path's `render_colored`.
-fn render_textured_pass<M: EntityModel>(
-    meshes: &mut EntityModelTexturedMeshes,
-    model: &M,
-    transform: Mat4,
-    render_type: EntityModelLayerRenderType,
-    texture: EntityModelTextureRef,
-    tint: [f32; 4],
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    render_textured_pass_ordered(
-        meshes,
-        model,
-        transform,
-        render_type,
-        texture,
-        tint,
-        0,
-        0,
-        atlas,
-    );
-}
-
-fn render_textured_pass_ordered<M: EntityModel>(
-    meshes: &mut EntityModelTexturedMeshes,
-    model: &M,
-    transform: Mat4,
-    render_type: EntityModelLayerRenderType,
-    texture: EntityModelTextureRef,
-    tint: [f32; 4],
-    order: i32,
-    submit_sequence: u32,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    let submit = EntityModelSubmissionEmit::new(
-        render_type,
-        texture,
-        tint,
-        transform,
-        order,
-        submit_sequence,
-    );
-    render_textured_submission(meshes, submit, atlas, |mesh, entry| {
-        model.root().render_textured(
-            mesh,
-            submit.transform,
-            submit.texture,
-            entry.uv,
-            submit.tint,
-        );
     });
 }
 
@@ -2515,28 +2457,6 @@ fn emit_nautilus_body_armor_layer(
         [1.0, 1.0, 1.0, 1.0],
         0,
         1,
-        atlas,
-    );
-}
-
-fn emit_squid_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    glow: bool,
-    baby: bool,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    let texture = squid_texture_ref(glow, baby);
-    let transform = squid_model_root_transform(instance, baby);
-    let mut model = SquidModel::new();
-    model.prepare(&instance);
-    render_textured_pass(
-        meshes,
-        &model,
-        transform,
-        EntityModelLayerRenderType::EntityCutout,
-        texture,
-        [1.0, 1.0, 1.0, 1.0],
         atlas,
     );
 }

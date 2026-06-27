@@ -16,7 +16,7 @@ use super::selection::{
 use super::transforms::{
     drowned_model_root_transform, end_crystal_model_root_transform, entity_model_root_transform,
     mesh_transformer_scaled_model_root_transform, player_model_root_transform,
-    scaled_model_root_transform, squid_model_root_transform, tropical_fish_model_root_transform,
+    scaled_model_root_transform, tropical_fish_model_root_transform,
     wind_charge_model_root_transform, HUSK_SCALE,
 };
 
@@ -148,11 +148,6 @@ fn entity_model_mesh_with_options(
                 EntityModelKind::Quadruped { family, baby } => {
                     emit_quadruped_model(&mut mesh, *instance, family, baby)
                 }
-                EntityModelKind::Squid { glow, baby } => {
-                    if !skip_texture_backed_entities {
-                        emit_squid_model(&mut mesh, *instance, glow, baby);
-                    }
-                }
                 EntityModelKind::TropicalFish {
                     shape, base_color, ..
                 } => {
@@ -236,21 +231,6 @@ fn emit_tropical_fish_model(
         root,
         base_color.texture_diffuse_color(),
     );
-}
-
-fn emit_squid_model(
-    mesh: &mut EntityModelMesh,
-    instance: EntityModelInstance,
-    glow: bool,
-    baby: bool,
-) {
-    // Vanilla `SquidModel.setupAnim` only sweeps the eight tentacles by the lerped
-    // `tentacleAngle` (`tentacle.xRot = tentacleAngle`); the body is static. The swim
-    // body tilt and the `0.5/1.2` translate live in `squid_model_root_transform`. The
-    // colored fallback recolors the whole tree with the squid / glow-squid tint.
-    let root = squid_model_root_transform(instance, baby);
-    let color = if glow { GLOW_SQUID_TEAL } else { SQUID_BLUE };
-    SquidModel::new().prepare_and_render_with_color(mesh, &instance, root, color);
 }
 
 fn emit_humanoid_model(

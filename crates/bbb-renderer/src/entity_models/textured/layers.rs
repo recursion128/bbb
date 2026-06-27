@@ -4,13 +4,14 @@ use super::super::{
     catalog::{
         boat_texture_ref, camel_texture_ref, chicken_texture_ref, cow_texture_ref,
         llama_texture_ref, mooshroom_texture_ref, pig_texture_ref, sheep_wool_render_color,
-        wolf_texture_ref, ArrowModelTexture, AxolotlModelVariant, BoatModelFamily,
-        CamelModelFamily, CatModelVariant, ChickenModelVariant, CopperGolemWeathering,
-        CowModelVariant, EntityDyeColor, EntityModelTextureRef, FoxModelVariant, FrogModelVariant,
-        HoglinModelFamily, IllagerModelFamily, IronGolemCrackiness, LlamaVariant, MooshroomVariant,
-        PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
-        PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SheepWoolColor,
-        SkeletonModelFamily, TropicalFishModelShape, TropicalFishPattern, WolfModelVariant,
+        squid_texture_ref, wolf_texture_ref, ArrowModelTexture, AxolotlModelVariant,
+        BoatModelFamily, CamelModelFamily, CatModelVariant, ChickenModelVariant,
+        CopperGolemWeathering, CowModelVariant, EntityDyeColor, EntityModelTextureRef,
+        FoxModelVariant, FrogModelVariant, HoglinModelFamily, IllagerModelFamily,
+        IronGolemCrackiness, LlamaVariant, MooshroomVariant, PandaModelVariant, ParrotModelVariant,
+        PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant,
+        SalmonModelSize, SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape,
+        TropicalFishPattern, WolfModelVariant,
     },
     model_layers::*,
 };
@@ -79,6 +80,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     BlazeBase,
     EndermiteBase,
     SilverfishBase,
+    SquidBase,
     PhantomBase,
     PhantomEyes,
     PolarBearBase,
@@ -395,6 +397,28 @@ pub(in crate::entity_models) fn tropical_fish_textured_layer_passes(
             submit_sequence: 1,
         },
     ]
+}
+
+pub(in crate::entity_models) fn squid_textured_layer_passes(
+    glow: bool,
+    baby: bool,
+) -> Vec<EntityModelLayerPass> {
+    let model_layer = match (glow, baby) {
+        (false, false) => MODEL_LAYER_SQUID,
+        (false, true) => MODEL_LAYER_SQUID_BABY,
+        (true, false) => MODEL_LAYER_GLOW_SQUID,
+        (true, true) => MODEL_LAYER_GLOW_SQUID_BABY,
+    };
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::SquidBase,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer,
+        texture: squid_texture_ref(glow, baby),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
 }
 
 pub(in crate::entity_models) fn camel_textured_layer_passes(
