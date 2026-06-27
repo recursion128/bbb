@@ -1470,7 +1470,9 @@ When an agent does any of the following, update this file in the same slice:
       `(order, submit_sequence) == (0, 0)` plus vanilla `LivingEntityRenderer`
       `lightCoords` and hurt/white overlay metadata before folded cutout checks for UVs,
       folded vertex light/overlay inheritance, overlay part visibility, head-look,
-      walk swing, idle arm bob, and crouch. Deadmau5 ears are implemented from the
+      walk swing, idle arm bob, and crouch; dynamic player-skin base submissions now
+      consume the same `player_textured_layer_passes_with_texture` metadata before
+      selecting the ready dynamic skin atlas. Deadmau5 ears are implemented from the
       exact lowercase player-info GameProfile name `"deadmau5"` through
       `Deadmau5EarsLayer` / `PlayerEarsModel`: visible players submit an
       `entitySolid` same-skin layer with zero-white overlay at player same-order

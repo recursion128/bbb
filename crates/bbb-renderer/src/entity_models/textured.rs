@@ -590,14 +590,12 @@ fn render_textured_pass_with_dynamic_player_skin<M: EntityModel>(
     meshes: &mut EntityModelTexturedMeshes,
     model: &M,
     transform: Mat4,
-    render_type: EntityModelLayerRenderType,
-    texture: EntityModelTextureRef,
+    pass: EntityModelLayerPass,
     dynamic_player_skin: EntityDynamicPlayerSkin,
-    tint: [f32; 4],
     atlas: &EntityModelTextureAtlasLayout,
     dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
 ) {
-    let submit = EntityModelSubmissionEmit::new(render_type, texture, tint, transform, 0, 0)
+    let submit = textured_layer_submission(meshes, pass, transform)
         .with_dynamic_player_skin(dynamic_player_skin);
     if dynamic_player_skin.status == EntityDynamicPlayerSkinStatus::Ready {
         if let Some(entry) =
@@ -2605,14 +2603,13 @@ fn emit_player_textured_model(
     model.apply_part_visibility(parts);
     let texture = default_player_skin_texture_ref(skin.fallback());
     if let EntityPlayerSkin::Dynamic(dynamic_player_skin) = skin {
+        let passes = player_textured_layer_passes_with_texture(slim, parts, texture);
         render_textured_pass_with_dynamic_player_skin(
             meshes,
             &model,
             transform,
-            EntityModelLayerRenderType::EntityCutout,
-            texture,
+            passes[0],
             dynamic_player_skin,
-            [1.0, 1.0, 1.0, 1.0],
             atlas,
             dynamic_player_skin_atlas,
         );
