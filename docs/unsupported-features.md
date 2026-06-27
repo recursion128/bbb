@@ -2633,7 +2633,9 @@ When an agent does any of the following, update this file in the same slice:
       `LayerDefinitions` maps that layer to the same adult strider body layer, and the renderer draws
       `textures/entity/equipment/strider_saddle/saddle.png` (64×128) as an `armorCutoutNoCull`
       submission at the same collector order with `submit_sequence = 1`, entity light, and
-      `OverlayTexture.NO_OVERLAY`, after the base submit. Folded saddle vertices inherit the saddle metadata.
+      `OverlayTexture.NO_OVERLAY`, after the base submit. Folded saddle vertices inherit the saddle metadata;
+      missing-atlas coverage pins that the saddle submission is still recorded without
+      `strider_saddle/saddle.png` while only folded saddle geometry is suppressed.
       Baby striders intentionally skip this layer because vanilla supplies `null` for the baby
       saddle model, and tests pin that the baby saddle path still has only the base submission.
       The suffocating shake is also
