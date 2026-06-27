@@ -686,13 +686,12 @@ fn piglin_textured_mesh_matches_colored_geometry_and_animates() {
         (PiglinModelFamily::ZombifiedPiglin, true),
     ];
     for (family, baby) in cases {
-        let instances = [EntityModelInstance::piglin(
-            90,
-            [0.0, 64.0, 0.0],
-            0.0,
-            family,
-            baby,
-        )];
+        let instances = [
+            EntityModelInstance::piglin(90, [0.0, 64.0, 0.0], 0.0, family, baby)
+                .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+                .with_white_overlay_progress(0.8)
+                .with_has_red_overlay(true),
+        ];
         let colored = entity_model_mesh(&instances);
         let textured_meshes = entity_model_textured_meshes(&instances, &atlas);
         assert_piglin_submissions_match_vanilla(&textured_meshes, &instances);
@@ -729,6 +728,10 @@ fn piglin_textured_mesh_matches_colored_geometry_and_animates() {
     // Non-zombified piglins swing their arms when walking; the zombified piglin holds them out.
     let piglin =
         EntityModelInstance::piglin(90, [0.0, 64.0, 0.0], 0.0, PiglinModelFamily::Piglin, false);
+    let piglin = piglin
+        .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let piglin_walk_instance = piglin.with_walk_animation(0.0, 1.0);
     let piglin_rest = entity_model_textured_meshes(&[piglin], &atlas);
     let piglin_walk = entity_model_textured_meshes(&[piglin_walk_instance], &atlas);
@@ -755,7 +758,17 @@ fn assert_piglin_submissions_match_vanilla(
         assert_eq!(submit.texture, instance.kind.vanilla_texture_ref().unwrap());
         assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
         assert_eq!(submit.transform, entity_model_root_transform(instance));
+        assert_eq!(submit.light, instance.render_state.shader_light());
+        assert_eq!(submit.overlay, instance.render_state.overlay_coords());
+        assert_ne!(submit.overlay, [0.0, 10.0]);
         assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    }
+    if instances.len() == 1 {
+        let instance = instances[0];
+        assert!(meshes.cutout.vertices.iter().all(|vertex| {
+            vertex.light == instance.render_state.shader_light()
+                && vertex.overlay == instance.render_state.overlay_coords()
+        }));
     }
 }
 

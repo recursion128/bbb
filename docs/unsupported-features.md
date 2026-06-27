@@ -2063,7 +2063,8 @@ When an agent does any of the following, update this file in the same slice:
       `textures/entity/piglin/{piglin,piglin_baby,piglin_brute,zombified_piglin,zombified_piglin_baby}.png`,
       with official PNG atlas upload/bind/sample and explicit base submission metadata for vanilla
       `entityCutout`, selected texture, white tint, `entity_model_root_transform`, and
-      `(order, submit_sequence) == (0, 0)`, before folded geometry checks, plus the vanilla
+      `(order, submit_sequence) == (0, 0)`, plus `LivingEntityRenderer` entity light and
+      hurt/white overlay metadata before folded geometry checks, plus the vanilla
       `AbstractPiglinModel.setupAnim` head-look, leg swing, ear flap, and (for the
       non-zombified families) arm counter-swing on both render paths, while the zombified
       piglin uses the held-out `animateZombieArms` arms;
