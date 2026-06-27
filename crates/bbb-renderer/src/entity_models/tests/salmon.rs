@@ -281,9 +281,13 @@ fn salmon_textured_mesh_uses_vanilla_geometry_and_animates() {
     let (atlas, _) = build_entity_model_texture_atlas(&salmon_texture_images()).unwrap();
     // Eight cubes → 192 textured vertices on the cutout pass.
     let base = EntityModelInstance::salmon(720, [0.0, 64.0, 0.0], 0.0, SalmonModelSize::Medium)
-        .with_in_water(true);
+        .with_in_water(true)
+        .with_light_coords((6_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let still = entity_model_textured_meshes(&[base], &atlas);
     assert_salmon_base_submission(&still, base, SalmonModelSize::Medium, true);
+    assert_ne!(base.render_state.overlay_coords(), [0.0, 10.0]);
     assert!(still.translucent.vertices.is_empty());
     assert!(still.eyes.vertices.is_empty());
     assert_eq!(still.cutout.vertices.len(), 192);
@@ -304,7 +308,10 @@ fn salmon_textured_mesh_uses_vanilla_geometry_and_animates() {
     // The size variants scale the textured mesh exactly like the colored path.
     let small_instance =
         EntityModelInstance::salmon(721, [0.0, 64.0, 0.0], 0.0, SalmonModelSize::Small)
-            .with_in_water(true);
+            .with_in_water(true)
+            .with_light_coords((6_u32 << 4) | (12_u32 << 20))
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true);
     let small = entity_model_textured_meshes(&[small_instance], &atlas);
     assert_salmon_base_submission(&small, small_instance, SalmonModelSize::Small, true);
     assert_eq!(small.cutout.vertices.len(), still.cutout.vertices.len());
@@ -342,4 +349,9 @@ fn assert_salmon_base_submission(
         salmon_model_root_transform(instance, in_water, size)
     );
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, instance.render_state.overlay_coords());
+    assert!(meshes.cutout.vertices.iter().all(|vertex| vertex.light
+        == instance.render_state.shader_light()
+        && vertex.overlay == instance.render_state.overlay_coords()));
 }
