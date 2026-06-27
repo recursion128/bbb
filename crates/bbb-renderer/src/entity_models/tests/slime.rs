@@ -368,6 +368,7 @@ fn slime_and_magma_cube_textured_meshes_use_vanilla_submissions_uvs_and_layer_bu
         glowing_base.overlay,
         glowing_invisible_slime.render_state.overlay_coords()
     );
+    assert_eq!(glowing_base.outline_color, 0xffff_ffff);
     assert_eq!(
         glowing_outer.render_type,
         EntityModelLayerRenderType::Outline
@@ -391,6 +392,7 @@ fn slime_and_magma_cube_textured_meshes_use_vanilla_submissions_uvs_and_layer_bu
             glowing_invisible_slime.render_state.overlay_coords()[1]
         ]
     );
+    assert_eq!(glowing_outer.outline_color, 0xffff_ffff);
     assert!(glowing_slime.cutout.vertices.is_empty());
     assert!(glowing_slime.translucent.vertices.is_empty());
     assert!(glowing_slime.eyes.vertices.is_empty());

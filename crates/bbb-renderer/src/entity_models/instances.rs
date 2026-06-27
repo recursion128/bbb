@@ -6,6 +6,9 @@ use super::SheepHeadEatPose;
 /// `EntityRenderState`/`LivingEntityRenderState.lightCoords` default used until
 /// the entity scene projects sampled block+sky light.
 pub const ENTITY_FULL_BRIGHT_LIGHT_COORDS: u32 = 15_728_880;
+/// Vanilla `Entity.getTeamColor()` fallback (`0xFFFFFF`) wrapped by
+/// `ARGB.opaque` for a glowing entity with no colored scoreboard team.
+pub const ENTITY_DEFAULT_OUTLINE_COLOR: u32 = 0xffff_ffff;
 
 /// Vanilla sleeping pose (`LivingEntityRenderer.setupRotations`/`submit` when
 /// `state.hasPose(Pose.SLEEPING)`): the entity lies down in a bed. The renderer
@@ -867,7 +870,12 @@ entity_render_state! {
     /// `Entity.isCurrentlyGlowing()`: when an invisible living entity is still
     /// invisible to this client, `LivingEntityRenderer.getRenderType` submits the
     /// base model with `RenderTypes.outline(texture)` instead of dropping it.
-    (with_appears_glowing) appears_glowing: bool = false;
+    () appears_glowing: bool = false;
+    /// Vanilla `EntityRenderState.outlineColor`: `0` when the entity does not
+    /// appear glowing, otherwise `ARGB.opaque(entity.getTeamColor())`. The
+    /// renderer records this on every texture-backed submission so later GPU
+    /// outline work can preserve the official submit metadata.
+    () outline_color: u32 = 0;
     /// Vanilla `WolfRenderState.tailAngle` (`Wolf.getTailAngle()`): the wolf tail's
     /// `xRot`. An angry wolf returns `1.5393804`; a tame wolf droops its tail with
     /// damage, `(0.55 - (maxHealth - health) / maxHealth * 0.4) * π` (tame `maxHealth`
@@ -1068,6 +1076,26 @@ impl EntityModelInstance {
     pub fn with_invisible(mut self, invisible: bool) -> Self {
         self.render_state.invisible = invisible;
         self.render_state.invisible_to_player = invisible;
+        self
+    }
+
+    /// Sets the legacy boolean glowing flag and mirrors vanilla's default white
+    /// outline color for callers that do not supply scoreboard-derived color.
+    pub fn with_appears_glowing(mut self, appears_glowing: bool) -> Self {
+        self.render_state.appears_glowing = appears_glowing;
+        self.render_state.outline_color = if appears_glowing {
+            ENTITY_DEFAULT_OUTLINE_COLOR
+        } else {
+            0
+        };
+        self
+    }
+
+    /// Sets vanilla `EntityRenderState.outlineColor` and derives
+    /// `appearsGlowing()` from whether the color is non-zero.
+    pub fn with_outline_color(mut self, outline_color: u32) -> Self {
+        self.render_state.outline_color = outline_color;
+        self.render_state.appears_glowing = outline_color != 0;
         self
     }
 }
@@ -2380,6 +2408,7 @@ mod tests {
                 invisible: false,
                 invisible_to_player: false,
                 appears_glowing: false,
+                outline_color: 0,
                 wolf_tail_angle: std::f32::consts::PI / 5.0,
                 wolf_sitting: false,
                 wolf_wet_shade: 1.0,

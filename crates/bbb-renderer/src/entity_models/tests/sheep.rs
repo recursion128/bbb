@@ -758,7 +758,7 @@ fn sheep_textured_mesh_uses_vanilla_uvs_tints_and_layer_visibility() {
     // metadata for the base body and unsheared wool. `SheepWoolUndercoatLayer` still gates on
     // `!state.isInvisible`, so the adult red undercoat is not submitted.
     let glowing_invisible = invisible_red_instance
-        .with_appears_glowing(true)
+        .with_outline_color(0xff55_ff55)
         .with_light_coords((5_u32 << 4) | (11_u32 << 20))
         .with_white_overlay_progress(0.8)
         .with_has_red_overlay(true);
@@ -780,6 +780,7 @@ fn sheep_textured_mesh_uses_vanilla_uvs_tints_and_layer_visibility() {
         base.overlay,
         glowing_invisible.render_state.overlay_coords()
     );
+    assert_eq!(base.outline_color, 0xff55_ff55);
 
     assert_eq!(wool.render_type, EntityModelLayerRenderType::Outline);
     assert_eq!(wool.render_type.vanilla_name(), "outline");
@@ -795,6 +796,7 @@ fn sheep_textured_mesh_uses_vanilla_uvs_tints_and_layer_visibility() {
         wool.overlay,
         [0.0, glowing_invisible.render_state.overlay_coords()[1]]
     );
+    assert_eq!(wool.outline_color, 0xff55_ff55);
     assert!(glowing
         .submissions
         .iter()

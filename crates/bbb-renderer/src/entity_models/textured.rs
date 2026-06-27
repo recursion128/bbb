@@ -141,6 +141,7 @@ pub(super) struct EntityModelRenderSubmission {
     pub(super) transform: Mat4,
     pub(super) light: [f32; 2],
     pub(super) overlay: [f32; 2],
+    pub(super) outline_color: u32,
     pub(super) order: i32,
     pub(super) submit_sequence: u32,
 }
@@ -167,6 +168,7 @@ pub(super) struct EntityModelTexturedMeshes {
     pub(super) submissions: Vec<EntityModelRenderSubmission>,
     current_submission_light: [f32; 2],
     current_submission_overlay: [f32; 2],
+    current_submission_outline_color: u32,
     current_force_transparent: bool,
     current_outline_only: bool,
 }
@@ -186,6 +188,7 @@ impl EntityModelTexturedMeshes {
             submissions: Vec::new(),
             current_submission_light: ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
             current_submission_overlay: ENTITY_VERTEX_NO_OVERLAY,
+            current_submission_outline_color: 0,
             current_force_transparent: false,
             current_outline_only: false,
         }
@@ -251,6 +254,7 @@ impl EntityModelTexturedMeshes {
     fn set_current_submission_state(&mut self, instance: EntityModelInstance) {
         self.current_submission_light = instance.render_state.shader_light();
         self.current_submission_overlay = instance.render_state.overlay_coords();
+        self.current_submission_outline_color = instance.render_state.outline_color;
         self.current_force_transparent =
             instance.render_state.invisible && !instance.render_state.invisible_to_player;
         self.current_outline_only = instance.render_state.invisible
@@ -265,6 +269,9 @@ impl EntityModelTexturedMeshes {
         let mut submission = EntityModelRenderSubmission::from(submit);
         submission.light = submit.light.unwrap_or(self.current_submission_light);
         submission.overlay = submit.overlay.unwrap_or(self.current_submission_overlay);
+        submission.outline_color = submit
+            .outline_color
+            .unwrap_or(self.current_submission_outline_color);
         self.submissions.push(submission);
         submission
     }
@@ -280,6 +287,7 @@ struct EntityModelSubmissionEmit {
     transform: Mat4,
     light: Option<[f32; 2]>,
     overlay: Option<[f32; 2]>,
+    outline_color: Option<u32>,
     order: i32,
     submit_sequence: u32,
 }
@@ -302,6 +310,7 @@ impl EntityModelSubmissionEmit {
             transform,
             light: None,
             overlay: None,
+            outline_color: None,
             order,
             submit_sequence,
         }
@@ -339,6 +348,7 @@ impl From<EntityModelSubmissionEmit> for EntityModelRenderSubmission {
             transform: submit.transform,
             light: submit.light.unwrap_or(ENTITY_VERTEX_FULL_BRIGHT_LIGHT),
             overlay: submit.overlay.unwrap_or(ENTITY_VERTEX_NO_OVERLAY),
+            outline_color: submit.outline_color.unwrap_or(0),
             order: submit.order,
             submit_sequence: submit.submit_sequence,
         }

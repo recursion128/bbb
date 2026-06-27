@@ -17,7 +17,7 @@ use bbb_renderer::{
     SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose, TropicalFishModelShape,
     TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelProfession,
     VillagerModelType, WolfArmorCrackiness, WolfModelVariant, ZombieVariantModelFamily,
-    DEFAULT_ARMOR_STAND_MODEL_POSE,
+    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_DEFAULT_OUTLINE_COLOR,
 };
 #[cfg(test)]
 use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
@@ -1313,6 +1313,13 @@ fn entity_model_instance(
         yaw_angle: source.sleeping_bed_yaw.unwrap_or(body_rot),
         bed_offset: source.sleeping_bed_offset,
     });
+    let outline_color = if source.outline_color != 0 {
+        source.outline_color
+    } else if source.appears_glowing {
+        ENTITY_DEFAULT_OUTLINE_COLOR
+    } else {
+        0
+    };
     Some(
         EntityModelInstance::new(
             source.entity_id,
@@ -1333,7 +1340,7 @@ fn entity_model_instance(
         ))
         .with_invisible(entity_invisible(&source.data_values))
         .with_invisible_to_player(source.invisible_to_player)
-        .with_appears_glowing(source.appears_glowing)
+        .with_outline_color(outline_color)
         .with_polar_bear_stand_scale(source.polar_bear_stand_scale)
         .with_light_coords(light_coords)
         .with_has_red_overlay(source.has_red_overlay)
@@ -3799,11 +3806,12 @@ fn thrown_trident_foil(
 mod tests {
     use super::*;
     use bbb_protocol::packets::{
-        AddEntity, AttributeSnapshot, CommonPlayerSpawnInfo, DataComponentPatchSummary,
-        EntityDataValue, EntityEvent, EntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
-        GameProfile, GameProfileProperty, GameType, ItemStackSummary, PlayLogin, PlayTime,
-        PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate, RegistryTags, SetCamera,
-        SetEntityData, SetEquipment, SetPassengers, TagNetworkPayload, UpdateAttributes,
+        AddEntity, AttributeSnapshot, ChatFormatting, CommonPlayerSpawnInfo,
+        DataComponentPatchSummary, EntityDataValue, EntityEvent, EntityPositionSync, EquipmentSlot,
+        EquipmentSlotUpdate, GameProfile, GameProfileProperty, GameType, ItemStackSummary,
+        PlayLogin, PlayTime, PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate, PlayerTeamMethod,
+        PlayerTeamParameters, RegistryTags, SetCamera, SetEntityData, SetEquipment, SetPassengers,
+        SetPlayerTeam, TagNetworkPayload, TeamCollisionRule, TeamVisibility, UpdateAttributes,
         UpdateTags, Vec3d,
     };
     use bbb_world::{
@@ -10348,11 +10356,9 @@ mod tests {
     #[test]
     fn entity_model_instances_project_glowing_shared_flag_from_world() {
         let mut world = WorldStore::new();
-        world.apply_add_entity(protocol_add_entity(
-            113,
-            VANILLA_ENTITY_TYPE_SHEEP_ID,
-            [1.0, 64.0, -2.0],
-        ));
+        let sheep = protocol_add_entity(113, VANILLA_ENTITY_TYPE_SHEEP_ID, [1.0, 64.0, -2.0]);
+        let sheep_uuid = sheep.uuid;
+        world.apply_add_entity(sheep);
         assert!(world.apply_set_entity_data(SetEntityData {
             id: 113,
             values: vec![
@@ -10363,6 +10369,20 @@ mod tests {
                 protocol_byte_data(SHEEP_WOOL_DATA_ID, 14),
             ],
         }));
+        assert!(world.apply_set_player_team(SetPlayerTeam {
+            name: "green".to_string(),
+            method: PlayerTeamMethod::Add,
+            parameters: Some(PlayerTeamParameters {
+                display_name: "Green".to_string(),
+                options: 0,
+                nametag_visibility: TeamVisibility::Always,
+                collision_rule: TeamCollisionRule::Always,
+                color: ChatFormatting::Green,
+                player_prefix: String::new(),
+                player_suffix: String::new(),
+            }),
+            players: vec![sheep_uuid.to_string()],
+        }));
 
         let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 0.25);
 
@@ -10370,6 +10390,7 @@ mod tests {
         assert!(instances[0].render_state.invisible);
         assert!(instances[0].render_state.invisible_to_player);
         assert!(instances[0].render_state.appears_glowing);
+        assert_eq!(instances[0].render_state.outline_color, 0xff55_ff55);
     }
 
     #[test]

@@ -288,6 +288,57 @@ fn scoreboard_teams_add_change_join_leave_and_remove() {
 }
 
 #[test]
+fn scoreboard_team_color_rgb_matches_vanilla_chat_formatting() {
+    let mut store = WorldStore::new();
+
+    assert!(store.apply_set_player_team(protocol_set_player_team(
+        "green",
+        PlayerTeamMethod::Add,
+        Some(protocol_team_parameters(
+            "Green",
+            0,
+            TeamVisibility::Always,
+            TeamCollisionRule::Always,
+            ChatFormatting::Green,
+            "",
+            "",
+        )),
+        &["Alex"],
+    )));
+    assert_eq!(
+        store
+            .scoreboard()
+            .team_color_rgb_for_scoreboard_name("Alex"),
+        Some(0x55ff55)
+    );
+
+    assert!(store.apply_set_player_team(protocol_set_player_team(
+        "reset",
+        PlayerTeamMethod::Add,
+        Some(protocol_team_parameters(
+            "Reset",
+            0,
+            TeamVisibility::Always,
+            TeamCollisionRule::Always,
+            ChatFormatting::Reset,
+            "",
+            "",
+        )),
+        &["Cow"],
+    )));
+    assert_eq!(
+        store.scoreboard().team_color_rgb_for_scoreboard_name("Cow"),
+        None
+    );
+    assert_eq!(
+        store
+            .scoreboard()
+            .team_color_rgb_for_scoreboard_name("Missing"),
+        None
+    );
+}
+
+#[test]
 fn scoreboard_ignored_updates_are_counted() {
     let mut store = WorldStore::new();
 

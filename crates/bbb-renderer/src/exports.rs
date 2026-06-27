@@ -43,8 +43,8 @@ pub use crate::entity_models::{
     SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose, TropicalFishModelShape,
     TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelProfession,
     VillagerModelType, WolfArmorCrackiness, WolfModelVariant, ZombieVariantModelFamily,
-    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS, PLAYER_MODEL_PARTS_ALL_HIDDEN,
-    PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_DEFAULT_OUTLINE_COLOR, ENTITY_FULL_BRIGHT_LIGHT_COORDS,
+    PLAYER_MODEL_PARTS_ALL_HIDDEN, PLAYER_MODEL_PARTS_ALL_VISIBLE,
 };
 pub use crate::entity_models::{
     copper_golem_antenna_block_transform, copper_golem_hand_attach_transform,

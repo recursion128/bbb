@@ -3,10 +3,10 @@ use super::*;
 use bbb_protocol::packets::{
     AddEntity as ProtocolAddEntity, AttributeModifier as ProtocolAttributeModifier,
     AttributeSnapshot as ProtocolAttributeSnapshot, BlockPos as ProtocolBlockPos,
-    BlockUpdate as ProtocolBlockUpdate, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
-    DamageEvent as ProtocolDamageEvent, DataComponentPatchSummary,
-    EntityAnimation as ProtocolEntityAnimation, EntityDataEnumSerializer,
-    EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
+    BlockUpdate as ProtocolBlockUpdate, ChatFormatting as ProtocolChatFormatting,
+    CommonPlayerSpawnInfo as ProtocolSpawnInfo, DamageEvent as ProtocolDamageEvent,
+    DataComponentPatchSummary, EntityAnimation as ProtocolEntityAnimation,
+    EntityDataEnumSerializer, EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
     EntityEvent as ProtocolEntityEvent, EntityMove as ProtocolEntityMove,
     EntityPositionSync as ProtocolEntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
     GameEvent as ProtocolGameEvent, GameProfile as ProtocolGameProfile,
@@ -15,13 +15,16 @@ use bbb_protocol::packets::{
     MinecartStep as ProtocolMinecartStep, MoveMinecartAlongTrack as ProtocolMoveMinecartAlongTrack,
     MoveVehicle as ProtocolMoveVehicle, PlayLogin as ProtocolPlayLogin,
     PlayerInfoAction as ProtocolPlayerInfoAction, PlayerInfoEntry as ProtocolPlayerInfoEntry,
-    PlayerInfoUpdate as ProtocolPlayerInfoUpdate, RemoveEntities as ProtocolRemoveEntities,
+    PlayerInfoUpdate as ProtocolPlayerInfoUpdate, PlayerTeamMethod as ProtocolPlayerTeamMethod,
+    PlayerTeamParameters as ProtocolPlayerTeamParameters, RemoveEntities as ProtocolRemoveEntities,
     RotateHead as ProtocolRotateHead, SetEntityData as ProtocolSetEntityData,
     SetEntityLink as ProtocolSetEntityLink, SetEntityMotion as ProtocolSetEntityMotion,
     SetEquipment as ProtocolSetEquipment, SetPassengers as ProtocolSetPassengers,
-    SetPlayerInventory as ProtocolSetPlayerInventory, TakeItemEntity as ProtocolTakeItemEntity,
-    TeleportEntity as ProtocolTeleportEntity, UpdateAttributes as ProtocolUpdateAttributes,
-    Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_X,
+    SetPlayerInventory as ProtocolSetPlayerInventory, SetPlayerTeam as ProtocolSetPlayerTeam,
+    TakeItemEntity as ProtocolTakeItemEntity, TeamCollisionRule as ProtocolTeamCollisionRule,
+    TeamVisibility as ProtocolTeamVisibility, TeleportEntity as ProtocolTeleportEntity,
+    UpdateAttributes as ProtocolUpdateAttributes, Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_Y,
+    PLAYER_RELATIVE_X,
 };
 
 #[test]
@@ -1038,7 +1041,71 @@ fn entity_model_sources_project_glowing_shared_flag() {
         .find(|source| source.entity_id == 37)
         .unwrap();
     assert!(chicken.appears_glowing);
+    assert_eq!(chicken.outline_color, 0xffff_ffff);
     assert!(!chicken.invisible_to_player);
+}
+
+#[test]
+fn entity_model_sources_project_team_outline_color() {
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
+    const ENTITY_SHARED_FLAG_GLOWING: i8 = 1 << 6;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        37,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    let chicken_uuid = default_entity_uuid();
+    let player_uuid = Uuid::from_u128(0x22345678123456781234567812345678);
+    let mut player = protocol_add_entity_with_type(38, VANILLA_ENTITY_TYPE_PLAYER_ID);
+    player.uuid = player_uuid;
+    store.apply_add_entity(player);
+    store.apply_player_info_update(ProtocolPlayerInfoUpdate {
+        actions: vec![ProtocolPlayerInfoAction::AddPlayer],
+        entries: vec![protocol_player_info_entry_with_mode(
+            player_uuid,
+            ProtocolGameType::Survival,
+        )],
+    });
+    assert!(store.apply_set_player_team(ProtocolSetPlayerTeam {
+        name: "green".to_string(),
+        method: ProtocolPlayerTeamMethod::Add,
+        parameters: Some(ProtocolPlayerTeamParameters {
+            display_name: "Green".to_string(),
+            options: 0,
+            nametag_visibility: ProtocolTeamVisibility::Always,
+            collision_rule: ProtocolTeamCollisionRule::Always,
+            color: ProtocolChatFormatting::Green,
+            player_prefix: String::new(),
+            player_suffix: String::new(),
+        }),
+        players: vec![chicken_uuid.to_string(), "PickTarget".to_string()],
+    }));
+    for id in [37, 38] {
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![protocol_byte_data(
+                ENTITY_SHARED_FLAGS_DATA_ID,
+                ENTITY_SHARED_FLAG_GLOWING,
+            )],
+        }));
+    }
+
+    let sources = store.entity_model_sources_at_partial_tick(1.0);
+    let chicken = sources
+        .iter()
+        .find(|source| source.entity_id == 37)
+        .unwrap();
+    let player = sources
+        .iter()
+        .find(|source| source.entity_id == 38)
+        .unwrap();
+
+    assert!(chicken.appears_glowing);
+    assert_eq!(chicken.outline_color, 0xff55_ff55);
+    assert!(player.appears_glowing);
+    assert_eq!(player.outline_color, 0xff55_ff55);
 }
 
 #[test]

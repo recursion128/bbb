@@ -108,6 +108,7 @@ fn wolf_textured_mesh_uses_vanilla_uvs_and_collar_tint() {
         submit.overlay,
         glowing_invisible.render_state.overlay_coords()
     );
+    assert_eq!(submit.outline_color, 0xffff_ffff);
     assert!(glowing.cutout.vertices.is_empty());
     assert!(glowing.translucent.vertices.is_empty());
     assert!(glowing.eyes.vertices.is_empty());

@@ -96,6 +96,8 @@ pub(crate) const VANILLA_ENTITY_TYPE_WITHER_SKULL_ID: i32 = 147;
 pub(crate) const VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID: i32 = 151;
 pub(crate) const VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID: i32 = 152;
 pub(crate) const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
+const VANILLA_DEFAULT_ENTITY_OUTLINE_RGB: u32 = 0x00ff_ffff;
+const VANILLA_OPAQUE_ALPHA: u32 = 0xff00_0000;
 
 /// Vanilla `LivingEntityRenderer.isUpsideDownName`: the custom/profile names that
 /// flip a living entity upside down (the Dinnerbone/Grumm easter egg).
@@ -393,6 +395,13 @@ pub struct EntityModelSourceState {
     /// invisible entity that is otherwise hidden from this client.
     #[serde(default)]
     pub appears_glowing: bool,
+    /// Vanilla `EntityRenderState.outlineColor`: `0` when the entity does not
+    /// appear glowing, otherwise `ARGB.opaque(entity.getTeamColor())`. Team
+    /// color uses the scoreboard member keyed by `Entity.getScoreboardName()`
+    /// (UUID string for ordinary entities, GameProfile name for players);
+    /// missing/reset team color falls back to opaque white.
+    #[serde(default)]
+    pub outline_color: u32,
     /// Vanilla `Mob.isAggressive()` (`DATA_MOB_FLAGS_ID & 4`): whether the mob is in its
     /// aggressive AI state, which deepens the held-out `animateZombieArms` arm drop
     /// (`-π / 1.5` aggressive vs `-π / 2.25` calm). Projected only for the zombie-model
@@ -1560,10 +1569,34 @@ impl WorldStore {
                 if !source.is_upside_down && self.resolve_player_upside_down(target.entity_id) {
                     source.is_upside_down = true;
                 }
+                source.outline_color = self.entity_outline_color(&source);
                 source.show_extra_ears = self.resolve_player_extra_ears(target.entity_id);
                 Some(source)
             })
             .collect()
+    }
+
+    fn entity_outline_color(&self, source: &EntityModelSourceState) -> u32 {
+        if !source.appears_glowing {
+            return 0;
+        }
+
+        let scoreboard_name = self.entity_scoreboard_name(source);
+        let rgb = self
+            .scoreboard
+            .team_color_rgb_for_scoreboard_name(&scoreboard_name)
+            .unwrap_or(VANILLA_DEFAULT_ENTITY_OUTLINE_RGB);
+        VANILLA_OPAQUE_ALPHA | rgb
+    }
+
+    fn entity_scoreboard_name(&self, source: &EntityModelSourceState) -> String {
+        if source.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
+            if let Some(player) = self.player_info_entry(source.uuid) {
+                return player.profile.name.clone();
+            }
+        }
+
+        source.uuid.to_string()
     }
 
     pub fn enderman_carried_block_state(&self, entity_id: i32) -> Option<EntityBlockModelState> {

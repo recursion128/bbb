@@ -358,14 +358,18 @@ When an agent does any of the following, update this file in the same slice:
       sheep wool and slime outer overlay submissions are also recorded as
       `RenderTypes.outline(...)`; snow-golem carved-pumpkin and mooshroom mushroom
       block attachments now record outline-only metadata for their vanilla
-      `submitOnlyOutline` path while skipping ordinary block-quad baking. Other
+      `submitOnlyOutline` path while skipping ordinary block-quad baking.
+      `EntityRenderState.outlineColor` is now projected from the scoreboard team
+      color used by `Entity.getTeamColor()` (ordinary entities by UUID scoreboard
+      name, players by GameProfile name) and recorded on texture-backed
+      submissions; missing/reset team color uses vanilla opaque white. Other
       invisible-gated non-base layers still skip. Same-team friendly-invisible
-      visibility, colored-path force-transparent output, outline color extraction,
-      and GPU outline presentation remain deferred under the `outlineColor` slot.
+      visibility, colored-path force-transparent output, and GPU outline
+      presentation remain deferred under the `outlineColor` slot.
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
       proportions applied in model `setupAnim`, distinct from the now-projected
-      `SCALE`-attribute `scale`), and `outlineColor` glow
+      `SCALE`-attribute `scale`)
   - Entity packed-light shading is implemented end to end and no longer flat:
     `WorldStore::sample_block_light` samples the stored block+sky nibbles at the
     entity's floored light-probe block position (vanilla
@@ -1626,11 +1630,12 @@ When an agent does any of the following, update this file in the same slice:
       (`entityTranslucentCullItemTarget`, `38/255` alpha, base order `(0,0)`)
       while wool/undercoat layers remain skipped by `state.isInvisible`; invisible
       glowing sheep now records vanilla base and `SheepWoolLayer` wool outline
-      submissions (adult wool order `(0,2)`, baby wool order `(1,2)`) while
-      `SheepWoolUndercoatLayer` still skips. Folded/GPU invisible glowing outline
+      submissions (adult wool order `(0,2)`, baby wool order `(1,2)`) with
+      `outlineColor` metadata while `SheepWoolUndercoatLayer` still skips.
+      Folded/GPU invisible glowing outline
       wool rendering, colored-path force-transparent / outline handling, and
       remaining render-state extraction remain unsupported; outline submission
-      metadata is now recorded from the shared glowing flag
+      metadata is now recorded from the shared glowing flag and scoreboard team color
     - wolf entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AdultWolfModel`, `BabyWolfModel`, and `WolfRenderer`,
       including nested real-head and tail parts plus baked baby
@@ -2540,8 +2545,9 @@ When an agent does any of the following, update this file in the same slice:
       `(order, submit_sequence)`) with folded cutout/translucent vertices inheriting the matching
       metadata, shared dispatch ownership instead of a residual textured emit helper, and an
       alpha-blended translucent GPU bucket. Invisible glowing slime now records the
-      vanilla base and order-1 `SlimeOuterLayer` outline submissions while folded/GPU
-      outline presentation remains deferred; particle/audio coupling, broader lighting
+      vanilla base and order-1 `SlimeOuterLayer` outline submissions with
+      `outlineColor` metadata while folded/GPU outline presentation remains
+      deferred; particle/audio coupling, broader lighting
       presentation, crumbling, and full render-graph sorting parity remain unsupported
     - magma cube entities as renderer-owned vanilla 26.1
       `MagmaCubeModel.createBodyLayer()` segment/inside-cube geometry, official

@@ -1104,6 +1104,7 @@ impl EntityStore {
             is_fully_frozen,
             invisible_to_player,
             appears_glowing,
+            outline_color: 0,
             is_aggressive,
             villager_unhappy,
             enderman_carrying,

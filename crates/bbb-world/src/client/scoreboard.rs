@@ -55,6 +55,20 @@ pub struct ScoreboardTeamParameters {
     pub player_suffix: String,
 }
 
+impl ScoreboardState {
+    pub fn team_for_scoreboard_name(&self, scoreboard_name: &str) -> Option<&ScoreboardTeam> {
+        self.teams
+            .values()
+            .find(|team| team.players.contains(scoreboard_name))
+    }
+
+    pub fn team_color_rgb_for_scoreboard_name(&self, scoreboard_name: &str) -> Option<u32> {
+        let team = self.team_for_scoreboard_name(scoreboard_name)?;
+        let parameters = team.parameters.as_ref()?;
+        chat_formatting_rgb(parameters.color.as_str())
+    }
+}
+
 impl WorldStore {
     pub fn apply_set_objective(&mut self, packet: ProtocolSetObjective) -> bool {
         self.counters.set_objective_packets += 1;
@@ -371,6 +385,28 @@ fn chat_formatting_name(color: ProtocolChatFormatting) -> String {
         ProtocolChatFormatting::Reset => "reset",
     }
     .to_string()
+}
+
+fn chat_formatting_rgb(color: &str) -> Option<u32> {
+    match color {
+        "black" => Some(0x000000),
+        "dark_blue" => Some(0x0000aa),
+        "dark_green" => Some(0x00aa00),
+        "dark_aqua" => Some(0x00aaaa),
+        "dark_red" => Some(0xaa0000),
+        "dark_purple" => Some(0xaa00aa),
+        "gold" => Some(0xffaa00),
+        "gray" => Some(0xaaaaaa),
+        "dark_gray" => Some(0x555555),
+        "blue" => Some(0x5555ff),
+        "green" => Some(0x55ff55),
+        "aqua" => Some(0x55ffff),
+        "red" => Some(0xff5555),
+        "light_purple" => Some(0xff55ff),
+        "yellow" => Some(0xffff55),
+        "white" => Some(0xffffff),
+        _ => None,
+    }
 }
 
 fn scoreboard_team_parameters(
