@@ -24,9 +24,9 @@ use super::{
         EntityDynamicPlayerTexture, EntityDynamicPlayerTextureAtlasLayout,
         EntityEquipmentLayerTexture, EntityModelKind, EntityModelTextureAtlasEntry,
         EntityModelTextureAtlasLayout, EntityModelTextureRef, EntityModelUvRect, EntityPlayerSkin,
-        HoglinModelFamily, HorseMarkings, LlamaModelFamily, PiglinModelFamily,
-        PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily, UndeadHorseModelFamily,
-        VillagerModelData, VillagerModelHat, ZombieVariantModelFamily,
+        HorseMarkings, LlamaModelFamily, PiglinModelFamily, PlayerModelPartVisibility,
+        SheepWoolColor, SkeletonModelFamily, UndeadHorseModelFamily, VillagerModelData,
+        VillagerModelHat, ZombieVariantModelFamily,
     },
     entity_model_root_transform,
     geometry::{
@@ -46,10 +46,10 @@ use super::{
         nautilus_body_armor_texture_ref, wolf_armor_crackiness_texture_ref,
         wolf_body_armor_texture_layers, BreezeWindModel, CamelModel, CreeperModel,
         CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel, CustomHeadSkullModel,
-        DrownedOuterModel, ElytraModel, HoglinModel, HumanoidArmorSlot, HumanoidBabyArmorKind,
-        LlamaModel, NautilusModel, PigModel, PiglinModel, PlayerEarsModel, PlayerModel,
-        SheepFurModel, SheepModel, SkeletonModel, SpinAttackEffectModel, StriderModel,
-        VillagerModel, WindChargeModel, WitherModel, WolfModel, ZombieModel, ZombieVariantModel,
+        DrownedOuterModel, ElytraModel, HumanoidArmorSlot, HumanoidBabyArmorKind, LlamaModel,
+        NautilusModel, PigModel, PiglinModel, PlayerEarsModel, PlayerModel, SheepFurModel,
+        SheepModel, SkeletonModel, SpinAttackEffectModel, StriderModel, VillagerModel,
+        WindChargeModel, WitherModel, WolfModel, ZombieModel, ZombieVariantModel,
         ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
         ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
         ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
@@ -397,9 +397,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
                 }
                 EntityModelKind::Piglin { family, baby } => {
                     emit_piglin_textured_model(&mut meshes, *instance, family, baby, atlas);
-                }
-                EntityModelKind::Hoglin { family, baby } => {
-                    emit_hoglin_textured_model(&mut meshes, *instance, family, baby, atlas);
                 }
                 EntityModelKind::Player { skin, parts } => {
                     emit_player_textured_model(
@@ -2705,28 +2702,6 @@ fn emit_piglin_textured_model(
         &model,
         transform,
         piglin_textured_layer_passes(family, baby_layout),
-        atlas,
-    );
-}
-
-fn emit_hoglin_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    family: HoglinModelFamily,
-    baby: bool,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `HoglinModel` tree drives both render paths; `setup_anim` runs the yaw-only head
-    // look, ear sway (head children), and four-leg swing. `new` selects the adult/baby tree; the
-    // family only chooses the texture (hoglin vs zoglin). The headbutt head tilt defers.
-    let transform = entity_model_root_transform(instance);
-    let mut model = HoglinModel::new(baby);
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        hoglin_textured_layer_passes(family, baby),
         atlas,
     );
 }

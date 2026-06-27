@@ -19,7 +19,7 @@ use super::colored::{
     cave_spider_model_root_transform, cod_model_root_transform, creeper_model_root_transform,
     ender_dragon_model_root_transform, entity_model_root_transform,
     evoker_fangs_model_root_transform, fox_model_root_transform, ghast_model_root_transform,
-    happy_ghast_model_root_transform, iron_golem_model_root_transform,
+    happy_ghast_model_root_transform, hoglin_model_color, iron_golem_model_root_transform,
     leash_knot_model_root_transform, llama_model_color, llama_spit_model_root_transform,
     magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
     panda_model_root_transform, phantom_model_root_transform, polar_bear_model_root_transform,
@@ -37,15 +37,15 @@ use super::model_layers::{
     AxolotlModel, BatModel, BeeModel, BlazeModel, BoatModel, BreezeModel, CamelModel, ChickenModel,
     CodModel, CopperGolemModel, CowModel, CreakingModel, CreeperModel, DolphinModel,
     EnderDragonModel, EndermanModel, EndermiteModel, EvokerFangsModel, FelineModel, FoxModel,
-    FrogModel, GhastModel, GoatModel, GuardianModel, HappyGhastModel, IllagerModel, IronGolemModel,
-    LeashKnotModel, LlamaModel, LlamaSpitModel, MagmaCubeModel, MinecartModel, NautilusModel,
-    PandaModel, ParrotModel, PhantomModel, PigModel, PolarBearModel, PufferfishModel, RabbitModel,
-    RavagerModel, SalmonModel, ShulkerBulletModel, ShulkerModel, SilverfishModel,
-    SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SnifferModel,
-    SnowGolemModel, SpiderModel, SquidModel, StriderModel, TadpoleModel, TridentModel,
-    TropicalFishModel, TropicalFishPatternModel, TurtleModel, VexModel, VillagerModel,
-    WanderingTraderModel, WardenModel, WitchModel, WitherModel, WitherSkullModel, WolfModel,
-    ZombieModel, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF,
+    FrogModel, GhastModel, GoatModel, GuardianModel, HappyGhastModel, HoglinModel, IllagerModel,
+    IronGolemModel, LeashKnotModel, LlamaModel, LlamaSpitModel, MagmaCubeModel, MinecartModel,
+    NautilusModel, PandaModel, ParrotModel, PhantomModel, PigModel, PolarBearModel,
+    PufferfishModel, RabbitModel, RavagerModel, SalmonModel, ShulkerBulletModel, ShulkerModel,
+    SilverfishModel, SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel,
+    SnifferModel, SnowGolemModel, SpiderModel, SquidModel, StriderModel, TadpoleModel,
+    TridentModel, TropicalFishModel, TropicalFishPatternModel, TurtleModel, VexModel,
+    VillagerModel, WanderingTraderModel, WardenModel, WitchModel, WitherModel, WitherSkullModel,
+    WolfModel, ZombieModel, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF,
     BREEZE_EYES_TEXTURE_REF, BREEZE_TEXTURE_REF, COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF,
     DOLPHIN_TEXTURE_REF, FELINE_CAT_SCALE, GLOW_SQUID_TEAL, GUARDIAN_ELDER_SCALE,
     PUFFERFISH_TEXTURE_REF, SQUID_BLUE, TURTLE_BABY_TEXTURE_REF, TURTLE_EGG_ROOT_DROP_POSE,
@@ -60,7 +60,7 @@ use super::textured::{
     endermite_textured_layer_passes, evoker_fangs_textured_layer_passes,
     feline_textured_layer_passes, fox_textured_layer_passes, frog_textured_layer_passes,
     ghast_textured_layer_passes, goat_textured_layer_passes, guardian_textured_layer_passes,
-    happy_ghast_textured_layer_passes, illager_textured_layer_passes,
+    happy_ghast_textured_layer_passes, hoglin_textured_layer_passes, illager_textured_layer_passes,
     iron_golem_textured_layer_passes, leash_knot_textured_layer_passes,
     llama_spit_textured_layer_passes, llama_textured_layer_passes,
     magma_cube_textured_layer_passes, minecart_textured_layer_passes,
@@ -296,6 +296,17 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                 transform,
                 instance,
                 &passes[1..2],
+            );
+        }
+        EntityModelKind::Hoglin { family, baby } => {
+            let transform = entity_model_root_transform(*instance);
+            let passes = hoglin_textured_layer_passes(family, baby);
+            sink.model_with_colored_override(
+                HoglinModel::new(baby),
+                transform,
+                instance,
+                &passes,
+                hoglin_model_color(family),
             );
         }
         EntityModelKind::ShulkerBullet => {

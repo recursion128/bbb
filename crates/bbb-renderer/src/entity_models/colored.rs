@@ -3,7 +3,9 @@ mod runtime;
 mod selection;
 mod transforms;
 
-pub(in crate::entity_models) use selection::{camel_model_color, llama_model_color};
+pub(in crate::entity_models) use selection::{
+    camel_model_color, hoglin_model_color, llama_model_color,
+};
 
 #[cfg(test)]
 pub(super) use runtime::entity_model_mesh;

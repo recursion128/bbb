@@ -10,9 +10,7 @@ use super::super::instances::EntityModelInstance;
 use super::super::model::EntityModel;
 use super::super::model_layers::*;
 use super::mounts::{emit_donkey_model, emit_horse_model, emit_undead_horse_model};
-use super::selection::{
-    hoglin_model_color, humanoid_model_color, piglin_model_color, quadruped_model_color,
-};
+use super::selection::{humanoid_model_color, piglin_model_color, quadruped_model_color};
 use super::transforms::{
     drowned_model_root_transform, end_crystal_model_root_transform, entity_model_root_transform,
     mesh_transformer_scaled_model_root_transform, player_model_root_transform,
@@ -99,11 +97,6 @@ fn entity_model_mesh_with_options(
                 EntityModelKind::Piglin { family, baby } => {
                     if !skip_texture_backed_entities {
                         emit_piglin_model(&mut mesh, *instance, family, baby)
-                    }
-                }
-                EntityModelKind::Hoglin { family, baby } => {
-                    if !skip_texture_backed_entities {
-                        emit_hoglin_model(&mut mesh, *instance, family, baby)
                     }
                 }
                 EntityModelKind::Sheep {
@@ -337,23 +330,6 @@ fn emit_piglin_model(
         &instance,
         entity_model_root_transform(instance),
         piglin_model_color(family),
-    );
-}
-
-fn emit_hoglin_model(
-    mesh: &mut EntityModelMesh,
-    instance: EntityModelInstance,
-    family: HoglinModelFamily,
-    baby: bool,
-) {
-    // The unified `HoglinModel` tree drives both render paths; `setup_anim` runs the yaw-only head
-    // look, ear sway, and four-leg swing. The colored fallback recolors the whole model with the
-    // family color (hoglin red / zoglin gray); the textured path uses the family texture instead.
-    HoglinModel::new(baby).prepare_and_render_with_color(
-        mesh,
-        &instance,
-        entity_model_root_transform(instance),
-        hoglin_model_color(family),
     );
 }
 

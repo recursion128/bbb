@@ -21,7 +21,7 @@ pub(super) fn piglin_model_color(family: PiglinModelFamily) -> [f32; 4] {
     }
 }
 
-pub(super) fn hoglin_model_color(family: HoglinModelFamily) -> [f32; 4] {
+pub(in crate::entity_models) fn hoglin_model_color(family: HoglinModelFamily) -> [f32; 4] {
     match family {
         HoglinModelFamily::Hoglin => HOGLIN_RED,
         HoglinModelFamily::Zoglin => ZOGLIN_GREEN,

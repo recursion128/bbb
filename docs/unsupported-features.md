@@ -1902,7 +1902,7 @@ When an agent does any of the following, update this file in the same slice:
       `AbstractHoglinRenderer`, `HoglinRenderer`, and `ZoglinRenderer`,
       including shared `ModelLayers.HOGLIN` / `ZOGLIN` and `HOGLIN_BABY` /
       `ZOGLIN_BABY` layers plus official adult/baby hoglin/zoglin texture
-      references, texture-backed base layer pass emission, official PNG
+      references, shared-dispatch texture-backed base submission emission, official PNG
       atlas upload/bind/sample path, the vanilla `HoglinModel.setupAnim`
       yaw-only head look (`head.yRot = yRot * π/180`, keeping `head.xRot` at the
       fixed headbutt-rest tilt `HOGLIN_HEAD_X_ROT`) on the head part, the
