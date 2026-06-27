@@ -77,6 +77,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     PlayerCape,
     PlayerExtraEars,
     PlayerSpinAttackEffect,
+    Wings,
     SheepBase,
     SheepWool,
     SheepWoolUndercoat,
@@ -1971,6 +1972,27 @@ pub(in crate::entity_models) fn player_cape_layer_pass() -> EntityModelLayerPass
         tint: [1.0, 1.0, 1.0, 1.0],
         order: 0,
         submit_sequence: 2,
+    }
+}
+
+pub(in crate::entity_models) fn wings_layer_pass(
+    texture: EntityModelTextureRef,
+    baby: bool,
+    submit_sequence: u32,
+) -> EntityModelLayerPass {
+    EntityModelLayerPass {
+        kind: EntityModelLayerKind::Wings,
+        render_type: EntityModelLayerRenderType::ArmorCutoutNoCull,
+        model_layer: if baby {
+            MODEL_LAYER_ELYTRA_BABY
+        } else {
+            MODEL_LAYER_ELYTRA
+        },
+        texture,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence,
     }
 }
 

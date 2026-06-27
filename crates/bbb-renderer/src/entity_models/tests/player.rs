@@ -1005,6 +1005,18 @@ fn player_cape_layer_offsets_for_humanoid_chest_equipment() {
 
 #[test]
 fn player_wings_layer_uses_static_equipment_texture_submission() {
+    let pass = wings_layer_pass(ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF, false, 3);
+    assert_eq!(pass.kind, EntityModelLayerKind::Wings);
+    assert_eq!(pass.model_layer, MODEL_LAYER_ELYTRA);
+    assert_eq!(
+        pass.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(pass.render_type.vanilla_name(), "armorCutoutNoCull");
+    assert_eq!(pass.texture, ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF);
+    assert_eq!(pass.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((pass.order, pass.submit_sequence), (0, 3));
+
     let (static_atlas, _) =
         build_entity_model_texture_atlas(&steve_and_elytra_texture_images()).unwrap();
     let instance = EntityModelInstance::player_with_skin(
@@ -1131,6 +1143,18 @@ fn player_wings_layer_static_submission_survives_missing_texture_atlas_entry() {
 
 #[test]
 fn player_wings_layer_prefers_ready_profile_elytra_texture_over_cape() {
+    let pass = wings_layer_pass(PLAYER_PROFILE_ELYTRA_TEXTURE_REF, false, 3);
+    assert_eq!(pass.kind, EntityModelLayerKind::Wings);
+    assert_eq!(pass.model_layer, MODEL_LAYER_ELYTRA);
+    assert_eq!(
+        pass.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(pass.render_type.vanilla_name(), "armorCutoutNoCull");
+    assert_eq!(pass.texture, PLAYER_PROFILE_ELYTRA_TEXTURE_REF);
+    assert_eq!(pass.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((pass.order, pass.submit_sequence), (0, 3));
+
     let (static_atlas, _) =
         build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
     let profile_elytra = EntityDynamicPlayerTexture {
@@ -1216,6 +1240,18 @@ fn player_wings_layer_prefers_ready_profile_elytra_texture_over_cape() {
 
 #[test]
 fn player_wings_layer_uses_ready_profile_cape_texture_when_elytra_is_absent() {
+    let pass = wings_layer_pass(PLAYER_PROFILE_CAPE_TEXTURE_REF, false, 3);
+    assert_eq!(pass.kind, EntityModelLayerKind::Wings);
+    assert_eq!(pass.model_layer, MODEL_LAYER_ELYTRA);
+    assert_eq!(
+        pass.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(pass.render_type.vanilla_name(), "armorCutoutNoCull");
+    assert_eq!(pass.texture, PLAYER_PROFILE_CAPE_TEXTURE_REF);
+    assert_eq!(pass.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((pass.order, pass.submit_sequence), (0, 3));
+
     let (static_atlas, _) =
         build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
     let profile_cape = EntityDynamicPlayerTexture {

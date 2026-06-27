@@ -2,6 +2,8 @@ use super::{PartPose, DRAGON_MEMBRANE, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_ELYTRA: &str = "minecraft:elytra#main";
+pub(in crate::entity_models) const MODEL_LAYER_ELYTRA_BABY: &str = "minecraft:elytra_baby#main";
 pub(in crate::entity_models) const ELYTRA_DEFAULT_X_ROT: f32 = std::f32::consts::PI / 12.0;
 pub(in crate::entity_models) const ELYTRA_DEFAULT_Y_ROT: f32 = 0.0;
 pub(in crate::entity_models) const ELYTRA_DEFAULT_Z_ROT: f32 = -std::f32::consts::PI / 12.0;

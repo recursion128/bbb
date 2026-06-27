@@ -79,6 +79,18 @@ fn non_player_humanoid_wings_layer_uses_static_equipment_texture_submission() {
     // Vanilla `HumanoidMobRenderer` adds `WingsLayer` to humanoid mobs. The profile
     // elytra/cape override is only for `AvatarRenderState`, so a zombie with a
     // WINGS asset still uses the equipment texture even when `use_player_texture` is true.
+    let pass = wings_layer_pass(ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF, false, 2);
+    assert_eq!(pass.kind, EntityModelLayerKind::Wings);
+    assert_eq!(pass.model_layer, MODEL_LAYER_ELYTRA);
+    assert_eq!(
+        pass.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(pass.render_type.vanilla_name(), "armorCutoutNoCull");
+    assert_eq!(pass.texture, ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF);
+    assert_eq!(pass.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((pass.order, pass.submit_sequence), (0, 2));
+
     let atlas = atlas_for(&[ZOMBIE_TEXTURE_REF, ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF]);
     let profile_elytra = EntityDynamicPlayerTexture {
         handle: 911,
@@ -221,6 +233,17 @@ fn non_player_humanoid_wings_submission_survives_missing_texture_atlas_entry() {
 fn small_armor_stand_wings_layer_uses_baby_elytra_model() {
     // Vanilla `ArmorStand.isBaby()` returns `isSmall()`, and `WingsLayer` selects
     // `ModelLayers.ELYTRA_BABY` when `state.isBaby`.
+    let adult_pass = wings_layer_pass(ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF, false, 2);
+    let baby_pass = wings_layer_pass(ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF, true, 2);
+    assert_eq!(adult_pass.model_layer, MODEL_LAYER_ELYTRA);
+    assert_eq!(baby_pass.model_layer, MODEL_LAYER_ELYTRA_BABY);
+    assert_eq!(baby_pass.kind, EntityModelLayerKind::Wings);
+    assert_eq!(
+        baby_pass.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!((baby_pass.order, baby_pass.submit_sequence), (0, 2));
+
     let atlas = atlas_for(&[ARMOR_STAND_TEXTURE_REF, ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF]);
     let layer = Some(EntityEquipmentLayerTexture {
         texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,

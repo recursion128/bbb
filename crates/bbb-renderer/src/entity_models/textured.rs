@@ -102,7 +102,7 @@ pub(super) use layers::{
     tropical_fish_textured_layer_passes, undead_horse_textured_layer_passes,
     villager_data_textured_layer_passes, villager_textured_layer_passes, villager_type_hat_visible,
     wandering_trader_textured_layer_passes, warden_textured_layer_passes,
-    wind_charge_textured_layer_passes, witch_textured_layer_passes,
+    wind_charge_textured_layer_passes, wings_layer_pass, witch_textured_layer_passes,
     wither_skull_textured_layer_passes, wither_textured_layer_passes, wolf_textured_layer_passes,
     zombie_nautilus_textured_layer_passes, zombie_textured_layer_passes,
     zombie_villager_data_textured_layer_passes, zombie_villager_textured_layer_passes,
@@ -964,6 +964,7 @@ fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
             | EntityModelLayerKind::WindChargeBase
             | EntityModelLayerKind::WitherArmor
             | EntityModelLayerKind::WitherSkullBase
+            | EntityModelLayerKind::Wings
             | EntityModelLayerKind::WolfCollar
     )
 }
@@ -2723,7 +2724,6 @@ fn emit_wings_layer(
 
     let mut model = ElytraModel::new(baby);
     model.prepare(&instance);
-    let tint = [1.0, 1.0, 1.0, 1.0];
 
     if let Some(profile_texture) = player_wings_profile_texture(&instance, layer) {
         let Some(entry) =
@@ -2731,15 +2731,13 @@ fn emit_wings_layer(
         else {
             return;
         };
-        let submit = no_overlay_submission(
-            EntityModelLayerRenderType::ArmorCutoutNoCull,
+        let pass = wings_layer_pass(
             player_profile_wings_texture_ref(profile_texture),
-            tint,
-            transform,
-            0,
+            baby,
             submit_sequence,
-        )
-        .with_dynamic_player_texture(profile_texture);
+        );
+        let submit = textured_layer_submission(meshes, pass, transform)
+            .with_dynamic_player_texture(profile_texture);
         render_textured_dynamic_player_texture_submission(meshes, submit, entry, |mesh, entry| {
             model.root().render_textured(
                 mesh,
@@ -2752,14 +2750,8 @@ fn emit_wings_layer(
         return;
     }
 
-    let submit = no_overlay_submission(
-        EntityModelLayerRenderType::ArmorCutoutNoCull,
-        layer.texture,
-        tint,
-        transform,
-        0,
-        submit_sequence,
-    );
+    let pass = wings_layer_pass(layer.texture, baby, submit_sequence);
+    let submit = textured_layer_submission(meshes, pass, transform);
     render_textured_submission(meshes, submit, atlas, |mesh, entry| {
         model.root().render_textured(
             mesh,

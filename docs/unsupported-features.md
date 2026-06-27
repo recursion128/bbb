@@ -1376,9 +1376,10 @@ When an agent does any of the following, update this file in the same slice:
         submission also pinning texture, dynamic handle, white tint, light/no-overlay
         metadata, and folded cape vertex inheritance. Player `WingsLayer` / elytra
         presentation is also covered for vanilla elytra equipment: native projects
-        the chest WINGS layer texture/use-player-texture metadata, renderer emits an
-        `ElytraModel` `armorCutoutNoCull` submission at order 0 with the vanilla
-        `z=0.125` layer transform and `OverlayTexture.NO_OVERLAY`, prefers ready profile elytra texture over cape,
+        the chest WINGS layer texture/use-player-texture metadata, renderer now consumes
+        `wings_layer_pass` for an `ElytraModel` `armorCutoutNoCull` submission with vanilla
+        `ModelLayers.ELYTRA` / `ModelLayers.ELYTRA_BABY`, order 0, the vanilla
+        `z=0.125` layer transform, and `OverlayTexture.NO_OVERLAY`, prefers ready profile elytra texture over cape,
         falls back to a ready profile cape when the cape part is visible, uses the
         static equipment elytra texture when no profile override exists, and waits
         when an override texture has not been uploaded. The profile elytra/cape
@@ -1485,7 +1486,8 @@ When an agent does any of the following, update this file in the same slice:
       `ModelLayers.PLAYER_EARS`, including ready dynamic player skin atlas support. Player profile
       cape presentation is covered by the
       dynamic `entitySolid` cape layer through `player_cape_layer_pass` with vanilla
-      `ModelLayers.PLAYER_CAPE`, and WingsLayer/elytra presentation plus
+      `ModelLayers.PLAYER_CAPE`, and WingsLayer/elytra presentation now consumes
+      `wings_layer_pass` with vanilla `ModelLayers.ELYTRA` / `ModelLayers.ELYTRA_BABY` plus
       elytra animation-state projection are covered for vanilla elytra equipment
       on players, humanoid mobs, armor stands, and baby humanoid mobs; player
       cloak interpolation now feeds the cape flap/lean/lean2 values)
