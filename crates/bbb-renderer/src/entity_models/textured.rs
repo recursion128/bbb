@@ -56,10 +56,10 @@ use super::{
         CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF,
         CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENCHANTED_GLINT_ITEM_TEXTURE_REF,
         ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_BEAM_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS,
-        END_CRYSTAL_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
-        LLAMA_BODY_TRADER_BABY_TEXTURE_REF, LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF,
-        NAUTILUS_SADDLE_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF,
-        PIG_SADDLE_TEXTURE_REF, PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
+        GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
+        LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
+        PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF,
+        PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
         SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION,
         STRIDER_SADDLE_TEXTURE_REF, TRIDENT_RIPTIDE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF,
         WITHER_ARMOR_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
@@ -91,13 +91,13 @@ pub(super) use layers::{
     blaze_textured_layer_passes, boat_textured_layer_passes, camel_textured_layer_passes,
     chicken_textured_layer_passes, copper_golem_textured_layer_passes, cow_textured_layer_passes,
     creaking_textured_layer_passes, creeper_textured_layer_passes, donkey_textured_layer_passes,
-    drowned_textured_layer_passes, ender_dragon_textured_layer_passes,
-    enderman_textured_layer_passes, endermite_textured_layer_passes,
-    evoker_fangs_textured_layer_passes, feline_textured_layer_passes, fox_textured_layer_passes,
-    frog_textured_layer_passes, ghast_textured_layer_passes, goat_textured_layer_passes,
-    guardian_textured_layer_passes, happy_ghast_textured_layer_passes,
-    hoglin_textured_layer_passes, horse_textured_layer_passes, husk_textured_layer_passes,
-    illager_textured_layer_passes, iron_golem_textured_layer_passes,
+    drowned_textured_layer_passes, end_crystal_textured_layer_passes,
+    ender_dragon_textured_layer_passes, enderman_textured_layer_passes,
+    endermite_textured_layer_passes, evoker_fangs_textured_layer_passes,
+    feline_textured_layer_passes, fox_textured_layer_passes, frog_textured_layer_passes,
+    ghast_textured_layer_passes, goat_textured_layer_passes, guardian_textured_layer_passes,
+    happy_ghast_textured_layer_passes, hoglin_textured_layer_passes, horse_textured_layer_passes,
+    husk_textured_layer_passes, illager_textured_layer_passes, iron_golem_textured_layer_passes,
     leash_knot_textured_layer_passes, llama_spit_textured_layer_passes,
     llama_textured_layer_passes, magma_cube_textured_layer_passes, minecart_textured_layer_passes,
     mooshroom_textured_layer_passes, nautilus_textured_layer_passes, panda_textured_layer_passes,
@@ -521,15 +521,8 @@ fn emit_end_crystal_textured_model(
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     let root = end_crystal_model_root_transform(instance);
-    let tint = [1.0, 1.0, 1.0, 1.0];
-    let submit = no_overlay_submission(
-        EntityModelLayerRenderType::EntityCutout,
-        END_CRYSTAL_TEXTURE_REF,
-        tint,
-        root,
-        0,
-        0,
-    );
+    let passes = end_crystal_textured_layer_passes();
+    let submit = textured_layer_submission(meshes, passes[0], root);
     render_textured_submission(meshes, submit, atlas, |mesh, entry| {
         if instance.render_state.end_crystal_shows_bottom {
             emit_textured_model_parts(
@@ -955,6 +948,7 @@ fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
         EntityModelLayerKind::ArrowBase
             | EntityModelLayerKind::BoatBase
             | EntityModelLayerKind::BreezeEyes
+            | EntityModelLayerKind::EndCrystalBase
             | EntityModelLayerKind::EnderDragonEyes
             | EntityModelLayerKind::EndermanEyes
             | EntityModelLayerKind::EvokerFangsBase

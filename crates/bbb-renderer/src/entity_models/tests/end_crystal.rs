@@ -100,6 +100,18 @@ fn end_crystal_textured_submit_matches_vanilla_renderer() {
         end_crystal_entity_texture_refs(),
         &[END_CRYSTAL_TEXTURE_REF, END_CRYSTAL_BEAM_TEXTURE_REF]
     );
+    let passes = end_crystal_textured_layer_passes();
+    assert_eq!(passes.len(), 1);
+    assert_eq!(passes[0].kind, EntityModelLayerKind::EndCrystalBase);
+    assert_eq!(passes[0].model_layer, MODEL_LAYER_END_CRYSTAL);
+    assert_eq!(
+        passes[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
+    assert_eq!(passes[0].texture, END_CRYSTAL_TEXTURE_REF);
+    assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
 
     let images = vec![
         blank_texture(END_CRYSTAL_TEXTURE_REF),

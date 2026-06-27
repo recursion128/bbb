@@ -4,6 +4,8 @@ use super::{
 };
 use glam::{Quat, Vec3};
 
+pub(in crate::entity_models) const MODEL_LAYER_END_CRYSTAL: &str = "minecraft:end_crystal#main";
+
 // Vanilla 26.1 `EndCrystalModel.createBodyLayer` (atlas 64×32). The mesh root holds the base slab
 // (at ZERO) and the nested glass stack: `outer_glass` at `offset(0, 24, 0)` parents `inner_glass`
 // (`PartPose.ZERO.withScale(0.875)`), which parents the core `cube` (`PartPose.ZERO.withScale(
