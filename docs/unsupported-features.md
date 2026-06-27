@@ -1709,6 +1709,9 @@ When an agent does any of the following, update this file in the same slice:
       on the head part plus the standard `QuadrupedModel` diagonal leg swing
       (`cos(pos * 0.6662 [+ π]) * 1.4 * speed`, legs at `[2, 3, 4, 5]` adult /
       `[4, 5, 6, 7]` with-chest / `[1, 2, 3, 4]` baby, colored and textured). The
+      texture-backed tests now pin explicit base submission metadata for vanilla
+      `entityCutout`, selected adult/baby variant texture, white tint, root
+      transform, and `order(0)` before folded UV/decor/head-look/walk checks. The
       vanilla `LlamaDecorLayer` is implemented for `LLAMA_BODY`: adult carpet body
       equipment renders the matching `textures/entity/equipment/llama_body/<color>.png`
       overlay from `Equippable.llamaSwag(DyeColor)`, adult trader llamas fall back

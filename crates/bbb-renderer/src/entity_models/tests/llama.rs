@@ -354,6 +354,11 @@ fn llama_textured_layer_passes_match_vanilla_renderer_model_choice() {
     assert_eq!(adult.len(), 1);
     assert_eq!(adult[0].kind, EntityModelLayerKind::LlamaBase);
     assert_eq!(adult[0].model_layer, MODEL_LAYER_LLAMA);
+    assert_eq!(
+        adult[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(adult[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(adult[0].texture, LLAMA_CREAMY_TEXTURE_REF);
     assert_eq!(adult[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((adult[0].order, adult[0].submit_sequence), (0, 0));
@@ -410,21 +415,6 @@ fn llama_textured_model_parts_match_vanilla_model_layer_uv_sources() {
 fn llama_textured_mesh_renders_vanilla_decor_layer() {
     let images = llama_decor_texture_images();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let assert_submission = |submit: EntityModelRenderSubmission,
-                             instance: EntityModelInstance,
-                             render_type: EntityModelLayerRenderType,
-                             texture: EntityModelTextureRef,
-                             order: i32,
-                             submit_sequence: u32| {
-        assert_eq!(submit.render_type, render_type);
-        assert_eq!(submit.texture, texture);
-        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
-        assert_eq!(submit.transform, entity_model_root_transform(instance));
-        assert_eq!(
-            (submit.order, submit.submit_sequence),
-            (order, submit_sequence)
-        );
-    };
     let adult = EntityModelInstance::llama(
         606,
         [0.0, 64.0, 0.0],
@@ -434,7 +424,10 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
         false,
         false,
     );
-    let bare = entity_model_textured_mesh(&[adult], &atlas);
+    let bare_meshes = entity_model_textured_meshes(&[adult], &atlas);
+    assert_eq!(bare_meshes.submissions.len(), 1);
+    assert_llama_base_submission_at(&bare_meshes, 0, adult);
+    let bare = &bare_meshes.cutout;
     let white_instance = adult.with_llama_body_decor(Some(EntityDyeColor::White));
     let white_meshes = entity_model_textured_meshes(&[white_instance], &atlas);
     let white = &white_meshes.cutout;
@@ -451,15 +444,8 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
     assert!(decor_min[0] < bare_min[0]);
     assert!(decor_max[0] > bare_max[0]);
     assert_eq!(white_meshes.submissions.len(), 2);
-    assert_submission(
-        white_meshes.submissions[0],
-        white_instance,
-        EntityModelLayerRenderType::EntityCutout,
-        LLAMA_CREAMY_TEXTURE_REF,
-        0,
-        0,
-    );
-    assert_submission(
+    assert_llama_base_submission_at(&white_meshes, 0, white_instance);
+    assert_llama_submission(
         white_meshes.submissions[1],
         white_instance,
         EntityModelLayerRenderType::ArmorCutoutNoCull,
@@ -486,15 +472,8 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
         &atlas,
     );
     assert_eq!(trader_meshes.submissions.len(), 2);
-    assert_submission(
-        trader_meshes.submissions[0],
-        adult_trader,
-        EntityModelLayerRenderType::EntityCutout,
-        LLAMA_CREAMY_TEXTURE_REF,
-        0,
-        0,
-    );
-    assert_submission(
+    assert_llama_base_submission_at(&trader_meshes, 0, adult_trader);
+    assert_llama_submission(
         trader_meshes.submissions[1],
         adult_trader,
         EntityModelLayerRenderType::ArmorCutoutNoCull,
@@ -506,13 +485,15 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
     let black_trader_instance = adult_trader.with_llama_body_decor(Some(EntityDyeColor::Black));
     let black_trader_meshes = entity_model_textured_meshes(&[black_trader_instance], &atlas);
     let black_trader = &black_trader_meshes.cutout;
+    assert_eq!(black_trader_meshes.submissions.len(), 2);
+    assert_llama_base_submission_at(&black_trader_meshes, 0, black_trader_instance);
     assert_eq!(black_trader.vertices.len(), trader.vertices.len());
     assert_vertex_inside_texture(
         black_trader.vertices[bare.vertices.len()].uv,
         LLAMA_BODY_BLACK_TEXTURE_REF,
         &atlas,
     );
-    assert_submission(
+    assert_llama_submission(
         black_trader_meshes.submissions[1],
         black_trader_instance,
         EntityModelLayerRenderType::ArmorCutoutNoCull,
@@ -530,7 +511,10 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
         true,
         false,
     );
-    let baby_bare = entity_model_textured_mesh(&[baby], &atlas);
+    let baby_bare_meshes = entity_model_textured_meshes(&[baby], &atlas);
+    assert_eq!(baby_bare_meshes.submissions.len(), 1);
+    assert_llama_base_submission_at(&baby_bare_meshes, 0, baby);
+    let baby_bare = &baby_bare_meshes.cutout;
     let baby_with_decor_instance = baby.with_llama_body_decor(Some(EntityDyeColor::White));
     let baby_with_decor_meshes = entity_model_textured_meshes(&[baby_with_decor_instance], &atlas);
     let baby_with_decor = &baby_with_decor_meshes.cutout;
@@ -539,6 +523,7 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
         "baby llamas ignore carpet body equipment"
     );
     assert_eq!(baby_with_decor_meshes.submissions.len(), 1);
+    assert_llama_base_submission_at(&baby_with_decor_meshes, 0, baby_with_decor_instance);
 
     let baby_trader = EntityModelInstance::llama(
         609,
@@ -550,7 +535,10 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
         false,
     )
     .with_llama_body_decor(Some(EntityDyeColor::Black));
-    let baby_trader_mesh = entity_model_textured_mesh(&[baby_trader], &atlas);
+    let baby_trader_meshes = entity_model_textured_meshes(&[baby_trader], &atlas);
+    assert_eq!(baby_trader_meshes.submissions.len(), 2);
+    assert_llama_base_submission_at(&baby_trader_meshes, 0, baby_trader);
+    let baby_trader_mesh = &baby_trader_meshes.cutout;
     assert_eq!(
         baby_trader_mesh.vertices.len(),
         baby_bare.vertices.len() * 2
@@ -560,9 +548,7 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
         LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
         &atlas,
     );
-    let baby_trader_meshes = entity_model_textured_meshes(&[baby_trader], &atlas);
-    assert_eq!(baby_trader_meshes.submissions.len(), 2);
-    assert_submission(
+    assert_llama_submission(
         baby_trader_meshes.submissions[1],
         baby_trader,
         EntityModelLayerRenderType::ArmorCutoutNoCull,
@@ -584,15 +570,23 @@ fn llama_textured_mesh_applies_head_look() {
         false,
         false,
     );
-    let resting = entity_model_textured_mesh(&[base], &atlas);
-    let yawed = entity_model_textured_mesh(&[base.with_head_look(45.0, 0.0)], &atlas);
-    let pitched = entity_model_textured_mesh(&[base.with_head_look(0.0, -25.0)], &atlas);
+    let yawed_instance = base.with_head_look(45.0, 0.0);
+    let pitched_instance = base.with_head_look(0.0, -25.0);
+    let resting = entity_model_textured_meshes(&[base], &atlas);
+    let yawed = entity_model_textured_meshes(&[yawed_instance], &atlas);
+    let pitched = entity_model_textured_meshes(&[pitched_instance], &atlas);
+    assert_eq!(resting.submissions.len(), 1);
+    assert_eq!(yawed.submissions.len(), 1);
+    assert_eq!(pitched.submissions.len(), 1);
+    assert_llama_base_submission_at(&resting, 0, base);
+    assert_llama_base_submission_at(&yawed, 0, yawed_instance);
+    assert_llama_base_submission_at(&pitched, 0, pitched_instance);
 
     // Head look turns the textured head part without adding or dropping vertices.
-    assert_eq!(resting.vertices.len(), yawed.vertices.len());
-    assert_ne!(resting.vertices, yawed.vertices);
-    assert_ne!(resting.vertices, pitched.vertices);
-    assert_ne!(yawed.vertices, pitched.vertices);
+    assert_eq!(resting.cutout.vertices.len(), yawed.cutout.vertices.len());
+    assert_ne!(resting.cutout.vertices, yawed.cutout.vertices);
+    assert_ne!(resting.cutout.vertices, pitched.cutout.vertices);
+    assert_ne!(yawed.cutout.vertices, pitched.cutout.vertices);
 }
 
 #[test]
@@ -616,31 +610,96 @@ fn llama_textured_mesh_swings_legs_when_walking() {
             baby,
             has_chest,
         );
-        let resting = entity_model_textured_mesh(&[base], &atlas);
-        let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
-        let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+        let still_instance = base.with_walk_animation(2.5, 0.0);
+        let walking_instance = base.with_walk_animation(0.0, 1.0);
+        let resting = entity_model_textured_meshes(&[base], &atlas);
+        let still = entity_model_textured_meshes(&[still_instance], &atlas);
+        let walking = entity_model_textured_meshes(&[walking_instance], &atlas);
+        assert_eq!(resting.submissions.len(), 1);
+        assert_eq!(still.submissions.len(), 1);
+        assert_eq!(walking.submissions.len(), 1);
+        assert_llama_base_submission_at(&resting, 0, base);
+        assert_llama_base_submission_at(&still, 0, still_instance);
+        assert_llama_base_submission_at(&walking, 0, walking_instance);
 
         assert_eq!(
-            resting.vertices, still.vertices,
+            resting.cutout.vertices, still.cutout.vertices,
             "{variant:?} baby={baby} chest={has_chest}: a standing llama is inert"
         );
         assert_eq!(
-            resting.vertices.len(),
-            walking.vertices.len(),
+            resting.cutout.vertices.len(),
+            walking.cutout.vertices.len(),
             "{variant:?} baby={baby} chest={has_chest}: leg swing keeps the vertex count"
         );
         assert_ne!(
-            resting.vertices, walking.vertices,
+            resting.cutout.vertices, walking.cutout.vertices,
             "{variant:?} baby={baby} chest={has_chest}: a walking llama differs"
         );
 
-        let (rest_min, rest_max) = textured_mesh_extents(&resting);
-        let (walk_min, walk_max) = textured_mesh_extents(&walking);
+        let (rest_min, rest_max) = textured_mesh_extents(&resting.cutout);
+        let (walk_min, walk_max) = textured_mesh_extents(&walking.cutout);
         assert!(
             (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
             "{variant:?} baby={baby} chest={has_chest}: a walking llama's feet lift off"
         );
     }
+}
+
+fn assert_llama_base_submission_at(
+    meshes: &EntityModelTexturedMeshes,
+    index: usize,
+    instance: EntityModelInstance,
+) {
+    assert_llama_folded_meshes_are_cutout_only(meshes);
+    assert_llama_submission(
+        meshes.submissions[index],
+        instance,
+        EntityModelLayerRenderType::EntityCutout,
+        instance
+            .kind
+            .vanilla_texture_ref()
+            .expect("llama base texture ref"),
+        0,
+        u32::try_from(index).expect("submission index fits in u32"),
+    );
+}
+
+fn assert_llama_submission(
+    submit: EntityModelRenderSubmission,
+    instance: EntityModelInstance,
+    render_type: EntityModelLayerRenderType,
+    texture: EntityModelTextureRef,
+    order: i32,
+    submit_sequence: u32,
+) {
+    let expected_render_type_name = match render_type {
+        EntityModelLayerRenderType::EntityCutout => "entityCutout",
+        EntityModelLayerRenderType::ArmorCutoutNoCull => "armorCutoutNoCull",
+        other => panic!("unexpected llama render type {other:?}"),
+    };
+    assert_eq!(submit.render_type, render_type);
+    assert_eq!(submit.render_type.vanilla_name(), expected_render_type_name);
+    assert_eq!(submit.texture, texture);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.transform, entity_model_root_transform(instance));
+    assert_eq!(
+        (submit.order, submit.submit_sequence),
+        (order, submit_sequence)
+    );
+}
+
+fn assert_llama_folded_meshes_are_cutout_only(meshes: &EntityModelTexturedMeshes) {
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_cutout.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_translucent.vertices.is_empty());
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_translucent
+        .vertices
+        .is_empty());
+    assert!(meshes.scroll.vertices.is_empty());
+    assert!(meshes.scroll_additive.vertices.is_empty());
 }
 
 fn llama_texture_images() -> Vec<EntityModelTextureImage> {
