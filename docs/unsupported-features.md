@@ -1752,7 +1752,9 @@ When an agent does any of the following, update this file in the same slice:
       `OverlayTexture.NO_OVERLAY` before folded cutout/translucent geometry checks;
       missing-atlas coverage pins that a marked horse still records the
       `entityTranslucent` `horse_markings_whitedots.png` submission before only
-      the folded markings geometry is suppressed.
+      the folded markings geometry is suppressed, and that a saddled horse still records the
+      `armorCutoutNoCull` `horse_saddle/saddle.png` submission before only the
+      folded saddle geometry is suppressed.
       The ridden/eat/stand/mouth poses, the tail's `ageInTicks` yRot wag, and broader lighting presentation remain
       unsupported
     - camel and camel_husk entities as renderer-owned vanilla 26.1 body-layer
