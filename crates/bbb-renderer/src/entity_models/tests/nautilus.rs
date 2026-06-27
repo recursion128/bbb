@@ -368,9 +368,13 @@ fn nautilus_textured_render_matches_vanilla_renderer() {
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
     for baby in [false, true] {
-        let instance = EntityModelInstance::nautilus(900, [0.0, 64.0, 0.0], 0.0, baby);
+        let instance = EntityModelInstance::nautilus(900, [0.0, 64.0, 0.0], 0.0, baby)
+            .with_light_coords((6_u32 << 4) | (12_u32 << 20))
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true);
         let meshes = entity_model_textured_meshes(&[instance], &atlas);
         assert_nautilus_submissions_match_vanilla(&meshes, instance);
+        assert_ne!(instance.render_state.overlay_coords(), [0.0, 10.0]);
         let mesh = &meshes.cutout;
         assert!(
             !mesh.vertices.is_empty(),
@@ -380,6 +384,9 @@ fn nautilus_textured_render_matches_vanilla_renderer() {
             .vertices
             .iter()
             .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+        assert!(mesh.vertices.iter().all(|vertex| vertex.light
+            == instance.render_state.shader_light()
+            && vertex.overlay == instance.render_state.overlay_coords()));
     }
 }
 
@@ -407,7 +414,10 @@ fn nautilus_saddle_layer_renders_for_adult_living_and_zombie_only() {
         .unwrap()
         .uv;
 
-    let adult = EntityModelInstance::nautilus(920, [0.0, 64.0, 0.0], 0.0, false);
+    let adult = EntityModelInstance::nautilus(920, [0.0, 64.0, 0.0], 0.0, false)
+        .with_light_coords((6_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let bare_meshes = entity_model_textured_meshes(&[adult], &atlas);
     let saddled_instance = adult.with_nautilus_saddle(true);
     let saddled_meshes = entity_model_textured_meshes(&[saddled_instance], &atlas);
@@ -432,9 +442,16 @@ fn nautilus_saddle_layer_renders_for_adult_living_and_zombie_only() {
         saddle_submit.transform,
         entity_model_root_transform(saddled_instance)
     );
+    assert_eq!(saddle_submit.light, adult.render_state.shader_light());
+    assert_eq!(saddle_submit.overlay, [0.0, 10.0]);
     // Saddle layer: one inflated shell cube plus the adult body/mouth subtree = 6 cubes.
     assert_eq!(saddled.cutout_faces - bare.cutout_faces, 36);
     assert_eq!(saddled.vertices.len() - bare.vertices.len(), 144);
+    assert_eq!(
+        saddled.vertices[bare.vertices.len()].light,
+        adult.render_state.shader_light()
+    );
+    assert_eq!(saddled.vertices[bare.vertices.len()].overlay, [0.0, 10.0]);
     let first_saddle_vertex = saddled.vertices[bare.vertices.len()].uv;
     assert!(first_saddle_vertex[0] >= saddle_uv.min[0]);
     assert!(first_saddle_vertex[0] <= saddle_uv.max[0]);
@@ -519,7 +536,10 @@ fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
         .unwrap()
         .uv;
 
-    let adult = EntityModelInstance::nautilus(930, [0.0, 64.0, 0.0], 0.0, false);
+    let adult = EntityModelInstance::nautilus(930, [0.0, 64.0, 0.0], 0.0, false)
+        .with_light_coords((6_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let bare_meshes = entity_model_textured_meshes(&[adult], &atlas);
     let armored_instance = adult.with_nautilus_body_armor(Some(EntityArmorMaterial::Iron));
     let armored_meshes = entity_model_textured_meshes(&[armored_instance], &atlas);
@@ -541,9 +561,16 @@ fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
         armor_submit.transform,
         entity_model_root_transform(armored_instance)
     );
+    assert_eq!(armor_submit.light, adult.render_state.shader_light());
+    assert_eq!(armor_submit.overlay, [0.0, 10.0]);
     // Armor layer: adult shell/body/mouth subtree = 8 cubes.
     assert_eq!(armored.cutout_faces - bare.cutout_faces, 48);
     assert_eq!(armored.vertices.len() - bare.vertices.len(), 192);
+    assert_eq!(
+        armored.vertices[bare.vertices.len()].light,
+        adult.render_state.shader_light()
+    );
+    assert_eq!(armored.vertices[bare.vertices.len()].overlay, [0.0, 10.0]);
     let first_armor_vertex = armored.vertices[bare.vertices.len()].uv;
     assert!(first_armor_vertex[0] >= iron_uv.min[0]);
     assert!(first_armor_vertex[0] <= iron_uv.max[0]);
@@ -819,6 +846,12 @@ fn assert_nautilus_submissions_match_vanilla(
         assert_eq!(submit.texture, texture);
         assert_eq!(submit.tint, tint);
         assert_eq!(submit.transform, entity_model_root_transform(instance));
+        assert_eq!(submit.light, instance.render_state.shader_light());
+        if render_type == EntityModelLayerRenderType::ArmorCutoutNoCull {
+            assert_eq!(submit.overlay, [0.0, 10.0]);
+        } else {
+            assert_eq!(submit.overlay, instance.render_state.overlay_coords());
+        }
         assert_eq!((submit.order, submit.submit_sequence), (order, sequence));
     }
 }
