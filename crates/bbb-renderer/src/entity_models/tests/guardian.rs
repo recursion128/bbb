@@ -458,6 +458,23 @@ fn guardian_beam_submission_survives_missing_beam_texture_atlas_entry() {
         }));
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
 
+    assert_eq!(meshes.submissions.len(), 2);
+    let base_submit = meshes.submissions[0];
+    assert_eq!(
+        base_submit.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(base_submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(base_submit.texture, GUARDIAN_TEXTURE_REF);
+    assert_eq!(base_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        base_submit.transform,
+        mesh_transformer_scaled_model_root_transform(instance, 1.0)
+    );
+    assert_eq!((base_submit.order, base_submit.submit_sequence), (0, 0));
+    assert_eq!(base_submit.light, instance.render_state.shader_light());
+    assert_eq!(base_submit.overlay, instance.render_state.overlay_coords());
+    assert!(!meshes.cutout.vertices.is_empty());
     let beam_submit = meshes
         .submissions
         .iter()
@@ -467,7 +484,20 @@ fn guardian_beam_submission_survives_missing_beam_texture_atlas_entry() {
         beam_submit.render_type,
         EntityModelLayerRenderType::EntityCutout
     );
+    assert_eq!(beam_submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(beam_submit.texture, GUARDIAN_BEAM_TEXTURE_REF);
     assert_eq!(beam_submit.tint, [1.0, 223.0 / 255.0, 64.0 / 255.0, 1.0]);
+    assert_close3(
+        beam_submit
+            .transform
+            .transform_point3(Vec3::ZERO)
+            .to_array(),
+        [0.0, 64.5, 0.0],
+    );
+    assert_close3(
+        beam_submit.transform.transform_vector3(Vec3::Y).to_array(),
+        [0.0, 1.0, 0.0],
+    );
     assert_eq!(beam_submit.light, [1.0, 1.0]);
     assert_ne!(beam_submit.light, instance.render_state.shader_light());
     assert_eq!(beam_submit.overlay, [0.0, 10.0]);
