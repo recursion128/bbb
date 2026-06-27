@@ -114,11 +114,17 @@ fn wither_skull_textured_render_matches_vanilla_renderer() {
         })
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let normal =
-        EntityModelInstance::wither_skull(820, [1.0, 64.0, -2.0], 37.0).with_head_look(0.0, -18.0);
+    let normal = EntityModelInstance::wither_skull(820, [1.0, 64.0, -2.0], 37.0)
+        .with_head_look(0.0, -18.0)
+        .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let dangerous =
         EntityModelInstance::wither_skull_with_dangerous(820, [1.0, 64.0, -2.0], 37.0, true)
-            .with_head_look(0.0, -18.0);
+            .with_head_look(0.0, -18.0)
+            .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true);
     let normal_meshes = entity_model_textured_meshes(&[normal], &atlas);
     let dangerous_meshes = entity_model_textured_meshes(&[dangerous], &atlas);
     assert!(normal_meshes.cutout.vertices.is_empty());
@@ -139,6 +145,9 @@ fn wither_skull_textured_render_matches_vanilla_renderer() {
         normal_submit.transform,
         wither_skull_model_root_transform(normal)
     );
+    assert_eq!(normal_submit.light, normal.render_state.shader_light());
+    assert_eq!(normal_submit.overlay, [0.0, 10.0]);
+    assert_ne!(normal_submit.overlay, normal.render_state.overlay_coords());
     assert_eq!(dangerous_meshes.submissions.len(), 1);
     let dangerous_submit = dangerous_meshes.submissions[0];
     assert_eq!(
@@ -155,6 +164,15 @@ fn wither_skull_textured_render_matches_vanilla_renderer() {
         dangerous_submit.transform,
         wither_skull_model_root_transform(dangerous)
     );
+    assert_eq!(
+        dangerous_submit.light,
+        dangerous.render_state.shader_light()
+    );
+    assert_eq!(dangerous_submit.overlay, [0.0, 10.0]);
+    assert_ne!(
+        dangerous_submit.overlay,
+        dangerous.render_state.overlay_coords()
+    );
     let normal_mesh = &normal_meshes.translucent;
     let dangerous_mesh = &dangerous_meshes.translucent;
     assert!(!normal_mesh.vertices.is_empty());
@@ -166,11 +184,15 @@ fn wither_skull_textured_render_matches_vanilla_renderer() {
     assert!(normal_mesh
         .vertices
         .iter()
-        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]
+            && vertex.light == normal_submit.light
+            && vertex.overlay == normal_submit.overlay));
     assert!(dangerous_mesh
         .vertices
         .iter()
-        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]
+            && vertex.light == dangerous_submit.light
+            && vertex.overlay == dangerous_submit.overlay));
 }
 
 #[test]

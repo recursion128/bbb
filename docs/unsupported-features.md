@@ -1026,8 +1026,12 @@ When an agent does any of the following, update this file in the same slice:
       explicit `OverlayTexture.NO_OVERLAY` overrides for vanilla eyes,
       `breezeWind`, energy-swirl, equipment, cape/wings, wolf-collar layers,
       object/projectile renderer submits (arrows, tridents, evoker fangs, llama spit,
-      shulker bullets, and end-crystal bodies), and crystal-beam submissions, while the GPU
-      backend still folds compatible submits into shared meshes. The render-type expression is pinned by
+      shulker bullets, wither skulls, and end-crystal bodies), and crystal-beam submissions, while the GPU
+      backend still folds compatible submits into shared meshes and now fills standard folded mesh
+      vertices from each submission's resolved light / overlay instead of a later per-entity overwrite.
+      NO_OVERLAY selection is keyed by pass identity rather than texture alone, so `wither.png` can be
+      no-overlay for `WitherSkullRenderer` without clearing the Wither boss body overlay.
+      The render-type expression is pinned by
       vanilla-name and mesh-bucket tests, so `entityCutout`,
       `entityCutoutCull`, `entityCutoutZOffset`, `Eyes`, `breezeWind`, and
       `energySwirl` stay distinct at the submission boundary even when the
@@ -3257,7 +3261,10 @@ When an agent does any of the following, update this file in the same slice:
       `EntityModelKind::WitherSkull { dangerous }`; `false` selects `WITHER_TEXTURE_REF` (`wither.png`)
       and `true` selects `WITHER_INVULNERABLE_TEXTURE_REF` (`wither_invulnerable.png`). The colored debug
       path stays as a fallback (it renders the skull as one dark tint). Both textured variants now pin
-      explicit `order(0)`, `entityTranslucent`, white tint, texture, and transform submission metadata.
+      explicit `order(0)`, `entityTranslucent`, white tint, texture, light coords,
+      `OverlayTexture.NO_OVERLAY`, and transform submission metadata, while the Wither boss base test
+      proves the same shared `wither.png` / `wither_invulnerable.png` texture refs still preserve body
+      overlay when submitted by `WitherBossRenderer`.
     - llama spit entities as renderer-owned vanilla 26.1 `LlamaSpitModel.createBodyLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `79` to the new
       `EntityModelKind::LlamaSpit`, replacing the former placeholder bounds box. The static `main` part is

@@ -55,22 +55,18 @@ use super::{
         ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
         ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
         ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
-        ARROW_SPECTRAL_TEXTURE_REF, ARROW_TEXTURE_REF, ARROW_TIPPED_TEXTURE_REF,
-        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, BREEZE_EYES_TEXTURE_REF,
-        BREEZE_WIND_TEXTURE_REF, CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF,
-        CREEPER_ARMOR_TEXTURE_REF, CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF,
-        ENDERMAN_EYES_TEXTURE_REF, ENDER_DRAGON_EYES_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF,
+        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF,
+        CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF,
+        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF,
         END_CRYSTAL_BEAM_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, END_CRYSTAL_TEXTURE_REF,
-        EVOKER_FANGS_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
-        LLAMA_BODY_TRADER_BABY_TEXTURE_REF, LLAMA_BODY_TRADER_TEXTURE_REF, LLAMA_SPIT_TEXTURE_REF,
-        MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF, PHANTOM_EYES_TEXTURE_REF,
+        GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
+        LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
         PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF,
         PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
         SHULKER_BULLET_TEXTURE_REF, SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF,
-        SPIDER_EYES_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION, STRIDER_SADDLE_TEXTURE_REF,
-        TRIDENT_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF,
-        WITHER_SKELETON_TEXTURE_REF, WOLF_BABY_COLLAR_TEXTURE_REF, WOLF_COLLAR_TEXTURE_REF,
-        ZOMBIE_HORSE_SADDLE_TEXTURE_REF, ZOMBIE_TEXTURE_REF,
+        STANDARD_OUTER_ARMOR_DEFORMATION, STRIDER_SADDLE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF,
+        WITHER_ARMOR_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
+        ZOMBIE_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
@@ -228,11 +224,15 @@ impl EntityModelTexturedMeshes {
         self.current_submission_overlay = instance.render_state.overlay_coords();
     }
 
-    fn record_submission(&mut self, submit: EntityModelSubmissionEmit) {
+    fn record_submission(
+        &mut self,
+        submit: EntityModelSubmissionEmit,
+    ) -> EntityModelRenderSubmission {
         let mut submission = EntityModelRenderSubmission::from(submit);
         submission.light = submit.light.unwrap_or(self.current_submission_light);
         submission.overlay = submit.overlay.unwrap_or(self.current_submission_overlay);
         self.submissions.push(submission);
+        submission
     }
 }
 
@@ -340,16 +340,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
             continue;
         }
         meshes.set_current_submission_state(*instance);
-        let cutout_start = meshes.cutout.vertices.len();
-        let translucent_start = meshes.translucent.vertices.len();
-        let eyes_start = meshes.eyes.vertices.len();
-        let dynamic_player_skin_cutout_start = meshes.dynamic_player_skin_cutout.vertices.len();
-        let dynamic_player_skin_translucent_start =
-            meshes.dynamic_player_skin_translucent.vertices.len();
-        let dynamic_player_texture_cutout_start =
-            meshes.dynamic_player_texture_cutout.vertices.len();
-        let dynamic_player_texture_translucent_start =
-            meshes.dynamic_player_texture_translucent.vertices.len();
         let handled = {
             let mut sink = TexturedSink {
                 meshes: &mut meshes,
@@ -540,54 +530,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         // VillagerProfessionLayer overlays (biome type, profession, level badge) are cutout layers
         // over the base villager or zombie-villager model and share the same light/overlay fill.
         emit_villager_profession_layers(&mut meshes, *instance, atlas);
-        let light = instance.render_state.shader_light();
-        fill_entity_textured_light(&mut meshes.cutout, cutout_start, light);
-        fill_entity_textured_light(&mut meshes.translucent, translucent_start, light);
-        fill_entity_textured_light(&mut meshes.eyes, eyes_start, light);
-        fill_entity_textured_light(
-            &mut meshes.dynamic_player_skin_cutout,
-            dynamic_player_skin_cutout_start,
-            light,
-        );
-        fill_entity_textured_light(
-            &mut meshes.dynamic_player_skin_translucent,
-            dynamic_player_skin_translucent_start,
-            light,
-        );
-        fill_entity_textured_light(
-            &mut meshes.dynamic_player_texture_cutout,
-            dynamic_player_texture_cutout_start,
-            light,
-        );
-        fill_entity_textured_light(
-            &mut meshes.dynamic_player_texture_translucent,
-            dynamic_player_texture_translucent_start,
-            light,
-        );
-        let overlay = instance.render_state.overlay_coords();
-        fill_entity_textured_overlay(&mut meshes.cutout, cutout_start, overlay);
-        fill_entity_textured_overlay(&mut meshes.translucent, translucent_start, overlay);
-        fill_entity_textured_overlay(&mut meshes.eyes, eyes_start, overlay);
-        fill_entity_textured_overlay(
-            &mut meshes.dynamic_player_skin_cutout,
-            dynamic_player_skin_cutout_start,
-            overlay,
-        );
-        fill_entity_textured_overlay(
-            &mut meshes.dynamic_player_skin_translucent,
-            dynamic_player_skin_translucent_start,
-            overlay,
-        );
-        fill_entity_textured_overlay(
-            &mut meshes.dynamic_player_texture_cutout,
-            dynamic_player_texture_cutout_start,
-            overlay,
-        );
-        fill_entity_textured_overlay(
-            &mut meshes.dynamic_player_texture_translucent,
-            dynamic_player_texture_translucent_start,
-            overlay,
-        );
     }
     meshes
 }
@@ -874,11 +816,11 @@ fn render_textured_dynamic_player_skin_submission(
     entry: EntityDynamicPlayerSkinAtlasEntry,
     emit: impl FnOnce(&mut EntityModelTexturedMesh, EntityDynamicPlayerSkinAtlasEntry),
 ) {
-    meshes.record_submission(submit);
-    emit(
-        meshes.dynamic_player_skin_mesh_mut(submit.render_type),
-        entry,
-    );
+    let submission = meshes.record_submission(submit);
+    let mesh = meshes.dynamic_player_skin_mesh_mut(submit.render_type);
+    let start = mesh.vertices.len();
+    emit(mesh, entry);
+    fill_textured_submission_vertices(mesh, start, submission);
 }
 
 fn render_textured_dynamic_player_texture_submission(
@@ -887,11 +829,11 @@ fn render_textured_dynamic_player_texture_submission(
     entry: EntityDynamicPlayerTextureAtlasEntry,
     emit: impl FnOnce(&mut EntityModelTexturedMesh, EntityDynamicPlayerTextureAtlasEntry),
 ) {
-    meshes.record_submission(submit);
-    emit(
-        meshes.dynamic_player_texture_mesh_mut(submit.render_type),
-        entry,
-    );
+    let submission = meshes.record_submission(submit);
+    let mesh = meshes.dynamic_player_texture_mesh_mut(submit.render_type);
+    let start = mesh.vertices.len();
+    emit(mesh, entry);
+    fill_textured_submission_vertices(mesh, start, submission);
 }
 
 fn render_textured_submission(
@@ -900,10 +842,22 @@ fn render_textured_submission(
     atlas: &EntityModelTextureAtlasLayout,
     emit: impl FnOnce(&mut EntityModelTexturedMesh, EntityModelTextureAtlasEntry),
 ) {
-    meshes.record_submission(submit);
+    let submission = meshes.record_submission(submit);
     if let Some(entry) = entity_model_texture_atlas_entry(atlas, submit.texture) {
-        emit(meshes.mesh_mut(submit.render_type), entry);
+        let mesh = meshes.mesh_mut(submit.render_type);
+        let start = mesh.vertices.len();
+        emit(mesh, entry);
+        fill_textured_submission_vertices(mesh, start, submission);
     }
+}
+
+fn fill_textured_submission_vertices(
+    mesh: &mut EntityModelTexturedMesh,
+    start: usize,
+    submission: EntityModelRenderSubmission,
+) {
+    fill_entity_textured_light(mesh, start, submission.light);
+    fill_entity_textured_overlay(mesh, start, submission.overlay);
 }
 
 fn scroll_mesh_mut(
@@ -1021,19 +975,20 @@ fn textured_layer_submission(
 }
 
 fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
-    pass.texture == BREEZE_EYES_TEXTURE_REF
-        || pass.texture == ENDERMAN_EYES_TEXTURE_REF
-        || pass.texture == ENDER_DRAGON_EYES_TEXTURE_REF
-        || pass.texture == PHANTOM_EYES_TEXTURE_REF
-        || pass.texture == SPIDER_EYES_TEXTURE_REF
-        || pass.texture == WOLF_COLLAR_TEXTURE_REF
-        || pass.texture == WOLF_BABY_COLLAR_TEXTURE_REF
-        || pass.texture == ARROW_TEXTURE_REF
-        || pass.texture == ARROW_TIPPED_TEXTURE_REF
-        || pass.texture == ARROW_SPECTRAL_TEXTURE_REF
-        || pass.texture == EVOKER_FANGS_TEXTURE_REF
-        || pass.texture == LLAMA_SPIT_TEXTURE_REF
-        || pass.texture == TRIDENT_TEXTURE_REF
+    matches!(
+        pass.kind,
+        EntityModelLayerKind::ArrowBase
+            | EntityModelLayerKind::BreezeEyes
+            | EntityModelLayerKind::EnderDragonEyes
+            | EntityModelLayerKind::EndermanEyes
+            | EntityModelLayerKind::EvokerFangsBase
+            | EntityModelLayerKind::LlamaSpitBase
+            | EntityModelLayerKind::PhantomEyes
+            | EntityModelLayerKind::SpiderEyes
+            | EntityModelLayerKind::TridentBase
+            | EntityModelLayerKind::WitherSkullBase
+            | EntityModelLayerKind::WolfCollar
+    )
 }
 
 /// Render a model's full textured layer-pass list (already prepared) into `meshes`.

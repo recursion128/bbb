@@ -243,7 +243,10 @@ fn wither_textured_render_matches_vanilla_renderer() {
         (220.0, WITHER_INVULNERABLE_TEXTURE_REF),
     ] {
         let instance = EntityModelInstance::wither(1450, [0.0, 64.0, 0.0], 0.0)
-            .with_wither_invulnerable_ticks(invulnerable_ticks);
+            .with_wither_invulnerable_ticks(invulnerable_ticks)
+            .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true);
         let meshes = entity_model_textured_meshes(&[instance], &atlas);
         assert!(meshes.translucent.vertices.is_empty());
         assert!(meshes.eyes.vertices.is_empty());
@@ -255,13 +258,18 @@ fn wither_textured_render_matches_vanilla_renderer() {
         assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
         assert_eq!(submit.transform, wither_model_root_transform(instance));
         assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+        assert_eq!(submit.light, instance.render_state.shader_light());
+        assert_eq!(submit.overlay, instance.render_state.overlay_coords());
+        assert_ne!(submit.overlay, [0.0, 10.0]);
         let mesh = &meshes.cutout;
 
         assert!(!mesh.vertices.is_empty());
         assert!(mesh
             .vertices
             .iter()
-            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]
+                && vertex.light == submit.light
+                && vertex.overlay == submit.overlay));
     }
 }
 

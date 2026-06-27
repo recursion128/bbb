@@ -17,20 +17,26 @@ use super::super::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::entity_models) enum EntityModelLayerKind {
+    ArrowBase,
     BoatBase,
+    BreezeEyes,
     CamelBase,
     ChickenBase,
     SalmonBase,
     TropicalFishBase,
     TropicalFishPattern,
+    TridentBase,
     CowBase,
     CreeperBase,
+    EnderDragonEyes,
     EndermanBase,
     EndermanEyes,
+    EvokerFangsBase,
     CopperGolemBase,
     CopperGolemEyes,
     GoatBase,
     HoglinBase,
+    LlamaSpitBase,
     LlamaBase,
     IronGolemBase,
     IronGolemCrackiness,
@@ -67,6 +73,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     VillagerBase,
     WanderingTraderBase,
     WitchBase,
+    WitherSkullBase,
     WolfBase,
     WolfCollar,
     FelineCollar,
@@ -225,6 +232,11 @@ impl EntityModelLayerPass {
     pub(in crate::entity_models) fn with_order(mut self, order: i32, submit_sequence: u32) -> Self {
         self.order = order;
         self.submit_sequence = submit_sequence;
+        self
+    }
+
+    pub(in crate::entity_models) fn with_kind(mut self, kind: EntityModelLayerKind) -> Self {
+        self.kind = kind;
         self
     }
 }
@@ -862,6 +874,7 @@ pub(in crate::entity_models) fn trident_textured_layer_passes() -> Vec<EntityMod
         TRIDENT_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
     )
+    .with_kind(EntityModelLayerKind::TridentBase)
     .with_order(0, 0)]
 }
 
@@ -870,7 +883,8 @@ pub(in crate::entity_models) fn evoker_fangs_textured_layer_passes() -> Vec<Enti
         EntityModelLayerRenderType::EntityCutout,
         EVOKER_FANGS_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
-    )]
+    )
+    .with_kind(EntityModelLayerKind::EvokerFangsBase)]
 }
 
 pub(in crate::entity_models) fn tadpole_textured_layer_passes() -> Vec<EntityModelLayerPass> {
@@ -951,6 +965,7 @@ pub(in crate::entity_models) fn ender_dragon_textured_layer_passes() -> Vec<Enti
             ENDER_DRAGON_EYES_TEXTURE_REF,
             [1.0, 1.0, 1.0, 1.0],
         )
+        .with_kind(EntityModelLayerKind::EnderDragonEyes)
         .with_order(0, 1),
     ]
 }
@@ -1088,7 +1103,8 @@ pub(in crate::entity_models) fn arrow_textured_layer_passes(
         EntityModelLayerRenderType::EntityCutoutCull,
         arrow_texture_ref(texture),
         [1.0, 1.0, 1.0, 1.0],
-    )]
+    )
+    .with_kind(EntityModelLayerKind::ArrowBase)]
 }
 
 pub(in crate::entity_models) fn llama_spit_textured_layer_passes() -> Vec<EntityModelLayerPass> {
@@ -1096,7 +1112,8 @@ pub(in crate::entity_models) fn llama_spit_textured_layer_passes() -> Vec<Entity
         EntityModelLayerRenderType::EntityCutout,
         LLAMA_SPIT_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
-    )]
+    )
+    .with_kind(EntityModelLayerKind::LlamaSpitBase)]
 }
 
 #[cfg(test)]
@@ -1117,6 +1134,7 @@ pub(in crate::entity_models) fn wither_skull_textured_layer_passes(
         wither_skull_texture_ref(dangerous),
         [1.0, 1.0, 1.0, 1.0],
     )
+    .with_kind(EntityModelLayerKind::WitherSkullBase)
     .with_order(0, 0)]
 }
 

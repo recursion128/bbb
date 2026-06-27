@@ -65,8 +65,8 @@ use super::textured::{
     wandering_trader_textured_layer_passes, warden_textured_layer_passes,
     witch_textured_layer_passes, wither_skull_textured_layer_passes, wither_textured_layer_passes,
     wolf_textured_layer_passes, zombie_nautilus_textured_layer_passes,
-    zombie_textured_layer_passes, EntityModelLayerPass, EntityModelLayerRenderType,
-    EntityModelTexturedMeshes,
+    zombie_textured_layer_passes, EntityModelLayerKind, EntityModelLayerPass,
+    EntityModelLayerRenderType, EntityModelTexturedMeshes,
 };
 
 /// A render-path-agnostic sink for a "uniform" entity (one model under one root transform, with its
@@ -443,6 +443,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                     BREEZE_EYES_TEXTURE_REF,
                     [1.0, 1.0, 1.0, 1.0],
                 )
+                .with_kind(EntityModelLayerKind::BreezeEyes)
                 .with_order(1, 2),
             ],
         ),
