@@ -2755,7 +2755,9 @@ When an agent does any of the following, update this file in the same slice:
       world-aligned frame (`translate(pos) · translate(0, eyeHeight, 0) · rotY(yRot) · rotX(xRot)`,
       orienting local +Y onto the world `eye_to_target` vector — no body yaw, matching vanilla where the
       beam draws after `super.submit` pops `setupRotations`), folded into the scroll (fract-wrap) pass so
-      `guardian_beam.png` tiles vertically over `length · 2.5`. The WORLD projection that fills
+      `guardian_beam.png` tiles vertically over `length · 2.5`; the submission now also pins vanilla
+      `setLight(15728880)` full-bright and `OverlayTexture.NO_OVERLAY` instead of inheriting entity
+      hurt/white overlay or sampled entity light. The WORLD projection that fills
       `guardian_beam` is now wired end-to-end: the synced `DATA_ID_ATTACK_TARGET` (idx 17, the int right
       after `DATA_ID_MOVING`) drives a client-side `GuardianAttackAnimationState.clientSideAttackTime`
       counter (`Guardian.aiStep` ramps it to `getAttackDuration()` = `80` guardian / `60` elder while a

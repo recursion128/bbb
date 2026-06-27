@@ -432,19 +432,17 @@ fn guardian_beam_submission_survives_missing_beam_texture_atlas_entry() {
     // overlays: the vanilla `RenderTypes.entityCutout(guardian_beam.png)` submit is recorded before
     // atlas lookup, and missing texture data suppresses only the folded mesh output.
     let atlas = guardian_base_only_atlas();
-    let meshes = entity_model_textured_meshes(
-        &[
-            EntityModelInstance::guardian(501, [0.0, 64.0, 0.0], 0.0, false).with_guardian_beam(
-                Some(GuardianBeamRenderState {
-                    eye_to_target: [0.0, 8.0, 0.0],
-                    eye_height: 0.5,
-                    attack_time: 0.0,
-                    attack_scale: 1.0,
-                }),
-            ),
-        ],
-        &atlas,
-    );
+    let instance = EntityModelInstance::guardian(501, [0.0, 64.0, 0.0], 0.0, false)
+        .with_light_coords((2_u32 << 4) | (7_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true)
+        .with_guardian_beam(Some(GuardianBeamRenderState {
+            eye_to_target: [0.0, 8.0, 0.0],
+            eye_height: 0.5,
+            attack_time: 0.0,
+            attack_scale: 1.0,
+        }));
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
 
     let beam_submit = meshes
         .submissions
@@ -456,6 +454,10 @@ fn guardian_beam_submission_survives_missing_beam_texture_atlas_entry() {
         EntityModelLayerRenderType::EntityCutout
     );
     assert_eq!(beam_submit.tint, [1.0, 223.0 / 255.0, 64.0 / 255.0, 1.0]);
+    assert_eq!(beam_submit.light, [1.0, 1.0]);
+    assert_ne!(beam_submit.light, instance.render_state.shader_light());
+    assert_eq!(beam_submit.overlay, [0.0, 10.0]);
+    assert_ne!(beam_submit.overlay, instance.render_state.overlay_coords());
     assert_eq!((beam_submit.order, beam_submit.submit_sequence), (0, 1));
     assert!(meshes.scroll.vertices.is_empty());
     assert!(meshes.scroll.indices.is_empty());
@@ -466,19 +468,17 @@ fn guardian_beam_emits_twisted_prism_with_scale_color() {
     // Vanilla `GuardianRenderer.renderBeam`: the beam is a 12-vertex twisted prism (two crossed
     // longitudinal strips + a top cap), folded into the scroll (tiled) pass — three quads → 18 indices.
     let atlas = guardian_beam_atlas();
-    let meshes = entity_model_textured_meshes(
-        &[
-            EntityModelInstance::guardian(501, [0.0, 64.0, 0.0], 0.0, false).with_guardian_beam(
-                Some(GuardianBeamRenderState {
-                    eye_to_target: [0.0, 8.0, 0.0],
-                    eye_height: 0.5,
-                    attack_time: 0.0,
-                    attack_scale: 1.0,
-                }),
-            ),
-        ],
-        &atlas,
-    );
+    let instance = EntityModelInstance::guardian(501, [0.0, 64.0, 0.0], 0.0, false)
+        .with_light_coords((2_u32 << 4) | (7_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true)
+        .with_guardian_beam(Some(GuardianBeamRenderState {
+            eye_to_target: [0.0, 8.0, 0.0],
+            eye_height: 0.5,
+            attack_time: 0.0,
+            attack_scale: 1.0,
+        }));
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
     assert_eq!(meshes.scroll.vertices.len(), 12, "12 beam vertices");
     assert_eq!(meshes.scroll.indices.len(), 18, "3 quads → 18 indices");
 
@@ -504,6 +504,10 @@ fn guardian_beam_emits_twisted_prism_with_scale_color() {
     );
     assert_eq!(beam_submit.dynamic_player_skin, None);
     assert_eq!(beam_submit.tint, expected);
+    assert_eq!(beam_submit.light, [1.0, 1.0]);
+    assert_ne!(beam_submit.light, instance.render_state.shader_light());
+    assert_eq!(beam_submit.overlay, [0.0, 10.0]);
+    assert_ne!(beam_submit.overlay, instance.render_state.overlay_coords());
     assert_eq!((beam_submit.order, beam_submit.submit_sequence), (0, 1));
     assert_close3(
         beam_submit

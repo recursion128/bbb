@@ -297,6 +297,11 @@ impl EntityModelSubmissionEmit {
         self.overlay = Some(overlay);
         self
     }
+
+    fn with_light(mut self, light: [f32; 2]) -> Self {
+        self.light = Some(light);
+        self
+    }
 }
 
 impl From<EntityModelSubmissionEmit> for EntityModelRenderSubmission {
@@ -1397,7 +1402,9 @@ fn emit_guardian_beam(
         transform,
         0,
         1,
-    );
+    )
+    .with_light(ENTITY_VERTEX_FULL_BRIGHT_LIGHT)
+    .with_overlay(ENTITY_VERTEX_NO_OVERLAY);
     render_scroll_geometry_submission(
         meshes,
         submit,
