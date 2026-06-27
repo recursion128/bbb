@@ -441,7 +441,8 @@ pub enum EntityModelKind {
         texture: ArrowModelTexture,
     },
     /// `TridentModel` — the pole, crossguard, and three spikes. The model has no animation, so the
-    /// geometry and base texture are complete; only the enchant-foil overlay is deferred.
+    /// geometry and base texture are complete; foil overlay submits are recorded as `entityGlint`
+    /// metadata while GPU glint presentation remains deferred.
     /// `ThrownTridentRenderer` orients it along its flight.
     Trident,
     /// `SkullModel` at `WitherSkullRenderer.createSkullLayer` — a single 8×8×8 `head` box. `setupAnim`

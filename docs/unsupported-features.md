@@ -3269,9 +3269,12 @@ When an agent does any of the following, update this file in the same slice:
       `EntityRenderer` that orients the trident along its flight with `Ry(yRot - 90)` then `Rz(xRot + 90)`
       (the `+90` points the upright pole along the flight axis), projected through the instance's `body_rot`
       / `head_pitch` and captured by `trident_model_root_transform`. The base texture is now bound on the
-      textured path (`TRIDENT_TEXTURE_REF`), the primary now-wired path; the enchant-foil overlay pass
-      stays deferred. The base submission explicitly records vanilla `order(0)`, `entityCutout`, white
-      tint, texture, light coords, `OverlayTexture.NO_OVERLAY`, and the flight-orientation transform. The colored debug path stays as a fallback (it
+      textured path (`TRIDENT_TEXTURE_REF`), the primary now-wired path. A synced `ID_FOIL` trident now
+      records the vanilla order-1 `entityGlint` submission with `textures/misc/enchanted_glint_item.png`,
+      white tint, the same flight transform, light coords, and `OverlayTexture.NO_OVERLAY`; GPU glint
+      presentation remains deferred. The base submission explicitly records vanilla `order(0)`,
+      `entityCutout`, white tint, texture, light coords, `OverlayTexture.NO_OVERLAY`, and the
+      flight-orientation transform. The colored debug path stays as a fallback (it
       renders the pole/base in teal and the spikes lighter)
     - wither skull entities as renderer-owned vanilla 26.1 `WitherSkullRenderer.createSkullLayer()`
       (`SkullModel`) geometry on the colored path: the native entity scene (`entity_scene.rs`) projects

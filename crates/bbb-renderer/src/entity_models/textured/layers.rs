@@ -100,6 +100,8 @@ pub(in crate::entity_models) enum EntityModelLayerRenderType {
     /// Vanilla `RenderTypes.entityTranslucentCullItemTarget(texture)`, used by
     /// `LivingEntityRenderer.getRenderType` for invisible entities still visible to this client.
     EntityTranslucentCullItemTarget,
+    /// Vanilla `RenderTypes.entityGlint()` item foil overlay.
+    EntityGlint,
     /// Vanilla eyes/emissive render type (`EyesLayer` / translucent emissive overlays).
     Eyes,
     /// Vanilla `RenderTypes.breezeWind(texture, u, v)`.
@@ -120,11 +122,12 @@ pub(in crate::entity_models) enum EntityModelLayerRenderBucket {
     Scroll,
     AdditiveScroll,
     DepthOnly,
+    GlintOnly,
 }
 
 impl EntityModelLayerRenderType {
     #[cfg(test)]
-    pub(in crate::entity_models) const ALL: [Self; 13] = [
+    pub(in crate::entity_models) const ALL: [Self; 14] = [
         Self::EntitySolid,
         Self::ArmorCutoutNoCull,
         Self::ArmorTranslucent,
@@ -133,6 +136,7 @@ impl EntityModelLayerRenderType {
         Self::EntityCutoutZOffset,
         Self::EntityTranslucent,
         Self::EntityTranslucentCullItemTarget,
+        Self::EntityGlint,
         Self::Eyes,
         Self::BreezeWind,
         Self::EnergySwirl,
@@ -150,6 +154,7 @@ impl EntityModelLayerRenderType {
             Self::ArmorTranslucent
             | Self::EntityTranslucent
             | Self::EntityTranslucentCullItemTarget => EntityModelLayerRenderBucket::Translucent,
+            Self::EntityGlint => EntityModelLayerRenderBucket::GlintOnly,
             Self::Eyes => EntityModelLayerRenderBucket::Eyes,
             Self::BreezeWind | Self::EndCrystalBeam => EntityModelLayerRenderBucket::Scroll,
             Self::EnergySwirl => EntityModelLayerRenderBucket::AdditiveScroll,
@@ -168,6 +173,7 @@ impl EntityModelLayerRenderType {
             Self::EntityCutoutZOffset => "entityCutoutZOffset",
             Self::EntityTranslucent => "entityTranslucent",
             Self::EntityTranslucentCullItemTarget => "entityTranslucentCullItemTarget",
+            Self::EntityGlint => "entityGlint",
             Self::Eyes => "eyes",
             Self::BreezeWind => "breezeWind",
             Self::EnergySwirl => "energySwirl",

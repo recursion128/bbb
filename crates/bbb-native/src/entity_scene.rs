@@ -384,6 +384,9 @@ const ARROW_EFFECT_COLOR_DATA_ID: u8 = 11;
 // starts the seven-tick `shakeTime` impact wobble that `ArrowRenderer.extractRenderState` projects.
 #[cfg(test)]
 const ARROW_IN_GROUND_DATA_ID: u8 = 10;
+// Vanilla `ThrownTrident.ID_FOIL` (12, BOOLEAN): after Entity (0-7) and AbstractArrow's
+// ID_FLAGS / PIERCE_LEVEL / IN_GROUND (8/9/10), trident defines ID_LOYALTY (11) then ID_FOIL (12).
+const TRIDENT_FOIL_DATA_ID: u8 = 12;
 const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
 const TAMABLE_ANIMAL_TAME_FLAG: i8 = 0x04;
 /// Vanilla `Creaking.IS_ACTIVE` data id (17, BOOLEAN): `Creaking extends Monster` (not ageable), so
@@ -1323,6 +1326,10 @@ fn entity_model_instance(
         .with_head_eat(head_eat)
         .with_head_look(net_head_yaw, head_pitch)
         .with_arrow_shake(source.arrow_shake)
+        .with_trident_foil(thrown_trident_foil(
+            source.entity_type_id,
+            &source.data_values,
+        ))
         .with_invisible(entity_invisible(&source.data_values))
         .with_invisible_to_player(source.invisible_to_player)
         .with_polar_bear_stand_scale(source.polar_bear_stand_scale)
@@ -3775,6 +3782,14 @@ fn entity_data_rotations(
             _ => None,
         })
         .unwrap_or(default)
+}
+
+fn thrown_trident_foil(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> bool {
+    entity_type_id == VANILLA_ENTITY_TYPE_TRIDENT_ID
+        && entity_data_bool(values, TRIDENT_FOIL_DATA_ID, false)
 }
 
 #[cfg(test)]
@@ -10692,12 +10707,44 @@ mod tests {
     #[test]
     fn entity_model_kind_maps_trident_to_real_model() {
         // The thrown trident was a placeholder box; it now resolves to the real `TridentModel`. The
-        // model has no animation, so the geometry is complete; the enchant-foil overlay and the
-        // texture are deferred entity-side state, so no synced data is read.
+        // model has no animation, so the geometry is complete; the foil flag is projected onto render
+        // state separately, so model kind selection still reads no synced data.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_TRIDENT_ID, &[]),
             EntityModelKind::Trident
         );
+    }
+
+    #[test]
+    fn entity_model_instances_project_thrown_trident_foil_flag() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            135,
+            VANILLA_ENTITY_TYPE_TRIDENT_ID,
+            [1.0, 64.0, -2.0],
+        ));
+
+        let default_instances =
+            entity_model_instances_from_world_at_partial_tick(&world, None, 0.0);
+        let trident = default_instances
+            .iter()
+            .find(|instance| instance.entity_id == 135)
+            .expect("trident instance");
+        assert_eq!(trident.kind, EntityModelKind::Trident);
+        assert!(!trident.render_state.trident_foil);
+
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 135,
+            values: vec![protocol_bool_data(TRIDENT_FOIL_DATA_ID, true)],
+        }));
+
+        let foiled_instances = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0);
+        let trident = foiled_instances
+            .iter()
+            .find(|instance| instance.entity_id == 135)
+            .expect("foiled trident instance");
+        assert_eq!(trident.kind, EntityModelKind::Trident);
+        assert!(trident.render_state.trident_foil);
     }
 
     #[test]

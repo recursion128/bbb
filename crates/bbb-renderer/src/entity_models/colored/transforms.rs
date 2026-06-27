@@ -468,8 +468,8 @@ pub(in crate::entity_models) fn arrow_model_root_transform(instance: EntityModel
 /// its flight with `Axis.YP.rotationDegrees(yRot - 90)` then `Axis.ZP.rotationDegrees(xRot + 90)`
 /// (no flip / scale / y-offset; the `+90` points the upright pole along the flight axis).
 /// `TridentModel` is a `Model<Unit>` with no animation, so this is the complete transform. The
-/// textured base submit is wired; only the enchant-foil overlay is deferred. The yaw/pitch are
-/// projected through `body_rot` / `head_pitch`.
+/// textured base submit is wired, and foil reuses this same transform for its `entityGlint`
+/// submission. The yaw/pitch are projected through `body_rot` / `head_pitch`.
 pub(in crate::entity_models) fn trident_model_root_transform(
     instance: EntityModelInstance,
 ) -> Mat4 {

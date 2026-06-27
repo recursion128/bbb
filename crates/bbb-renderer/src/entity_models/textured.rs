@@ -2,8 +2,8 @@ use super::catalog::EntityDynamicPlayerTextureAtlasEntry;
 use super::colored::{
     boat_model_root_transform, creeper_model_root_transform, drowned_model_root_transform,
     end_crystal_model_root_transform, shulker_bullet_model_root_transform,
-    villager_adult_model_root_transform, wind_charge_model_root_transform,
-    wither_model_root_transform, GIANT_SCALE, HORSE_SCALE,
+    trident_model_root_transform, villager_adult_model_root_transform,
+    wind_charge_model_root_transform, wither_model_root_transform, GIANT_SCALE, HORSE_SCALE,
 };
 use super::dispatch::{dispatch_uniform_entity_model, TexturedSink};
 use super::held_item::custom_head_skull_transform;
@@ -58,12 +58,12 @@ use super::{
         ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
         BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF,
         CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF,
-        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF,
-        END_CRYSTAL_BEAM_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, END_CRYSTAL_TEXTURE_REF,
-        GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
-        LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
-        PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF,
-        PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
+        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENCHANTED_GLINT_ITEM_TEXTURE_REF,
+        ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_BEAM_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS,
+        END_CRYSTAL_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
+        LLAMA_BODY_TRADER_BABY_TEXTURE_REF, LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF,
+        NAUTILUS_SADDLE_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF,
+        PIG_SADDLE_TEXTURE_REF, PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
         SHULKER_BULLET_TEXTURE_REF, SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF,
         STANDARD_OUTER_ARMOR_DEFORMATION, STRIDER_SADDLE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF,
         WITHER_ARMOR_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
@@ -187,8 +187,8 @@ impl EntityModelTexturedMeshes {
             EntityModelLayerRenderBucket::Scroll | EntityModelLayerRenderBucket::AdditiveScroll => {
                 panic!("scroll render types are not emitted into textured mesh buckets")
             }
-            EntityModelLayerRenderBucket::DepthOnly => {
-                panic!("depth-only render types are not emitted into textured mesh buckets")
+            EntityModelLayerRenderBucket::DepthOnly | EntityModelLayerRenderBucket::GlintOnly => {
+                panic!("non-color render types are not emitted into textured mesh buckets")
             }
         }
     }
@@ -203,7 +203,8 @@ impl EntityModelTexturedMeshes {
             EntityModelLayerRenderBucket::Eyes
             | EntityModelLayerRenderBucket::Scroll
             | EntityModelLayerRenderBucket::AdditiveScroll
-            | EntityModelLayerRenderBucket::DepthOnly => {
+            | EntityModelLayerRenderBucket::DepthOnly
+            | EntityModelLayerRenderBucket::GlintOnly => {
                 panic!("unsupported dynamic player skin render type")
             }
         }
@@ -221,7 +222,8 @@ impl EntityModelTexturedMeshes {
             EntityModelLayerRenderBucket::Eyes
             | EntityModelLayerRenderBucket::Scroll
             | EntityModelLayerRenderBucket::AdditiveScroll
-            | EntityModelLayerRenderBucket::DepthOnly => {
+            | EntityModelLayerRenderBucket::DepthOnly
+            | EntityModelLayerRenderBucket::GlintOnly => {
                 panic!("unsupported dynamic player texture render type")
             }
         }
@@ -514,6 +516,9 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         // BoatRenderer submits the water patch after the base boat model. Keep it as explicit
         // submission metadata; the current backend does not yet have a depth-only water-mask pass.
         emit_boat_water_mask_submission(&mut meshes, *instance);
+        // ThrownTridentRenderer submits the foil overlay at order 1 when the synced trident item has
+        // foil. Keep the glint as explicit metadata while GPU glint presentation remains deferred.
+        emit_trident_foil_submission(&mut meshes, *instance);
         // The guardian attack beam is a world-space billboarded prism from the guardian eye to its
         // target; it folds into the scroll (tiled) pass and runs regardless of `handled`.
         emit_guardian_beam(&mut meshes, *instance, atlas);
@@ -916,6 +921,24 @@ fn emit_boat_water_mask_submission(
         [1.0, 1.0, 1.0, 1.0],
         boat_model_root_transform(instance),
         0,
+        1,
+    );
+    meshes.record_submission(submit);
+}
+
+fn emit_trident_foil_submission(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    if !matches!(instance.kind, EntityModelKind::Trident) || !instance.render_state.trident_foil {
+        return;
+    }
+    let submit = no_overlay_submission(
+        EntityModelLayerRenderType::EntityGlint,
+        ENCHANTED_GLINT_ITEM_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+        trident_model_root_transform(instance),
+        1,
         1,
     );
     meshes.record_submission(submit);

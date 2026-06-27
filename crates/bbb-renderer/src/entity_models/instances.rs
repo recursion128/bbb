@@ -124,6 +124,12 @@ entity_render_state! {
     /// the impact wobble amount that `ArrowModel.setupAnim` converts into a root
     /// z-rotation. `0.0` for arrows that are not shaking and every non-arrow entity.
     (with_arrow_shake) arrow_shake: f32 = 0.0;
+    /// Vanilla `ThrownTridentRenderState.isFoil`: when true,
+    /// `ThrownTridentRenderer` submits the same `TridentModel` again at
+    /// `SubmitNodeCollector.order(1)` with `ItemFeatureRenderer.getFoilRenderType(..., false)`,
+    /// i.e. `entityGlint`, using `OverlayTexture.NO_OVERLAY`. `false` for non-tridents
+    /// and for tridents whose synced `ID_FOIL` flag is not set.
+    (with_trident_foil) trident_foil: bool = false;
     /// Per-frame sheep eat-grass head pose (`Sheep.getHeadEatPositionScale` /
     /// `getHeadEatAngleScale`). [`SheepHeadEatPose::NONE`] for every non-sheep
     /// entity and for a sheep that is not currently eating.
@@ -2202,6 +2208,7 @@ mod tests {
                 head_yaw: 0.0,
                 head_pitch: 0.0,
                 arrow_shake: 0.0,
+                trident_foil: false,
                 head_eat: SheepHeadEatPose::NONE,
                 polar_bear_stand_scale: 0.0,
                 death_time: 0.0,
