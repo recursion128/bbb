@@ -2092,9 +2092,13 @@ When an agent does any of the following, update this file in the same slice:
       carried-block arm pose (`enderman_carried_arm_pose`, both arms out front when
       the projected `enderman_carrying` is set) and the creepy head/hat shift
       (head `y -= 5` / hat `y += 5` when `enderman_creepy` is set) (colored and
-      textured); the held block's own block-model render is implemented through
-      `CarriedBlockLayer`'s vanilla root transform, while the creepy render
-      jitter and lighting remain unsupported
+      textured). The textured enderman regressions now pin both vanilla
+      submissions before folded geometry checks: base `entityCutout`
+      `enderman.png` at `(order, submit_sequence) == (0, 0)` and eyes
+      `RenderTypes.eyes` / `enderman_eyes.png` at `(1, 1)`, both with white
+      tint and `entity_model_root_transform`; the held block's own block-model
+      render is implemented through `CarriedBlockLayer`'s vanilla root
+      transform, while the creepy render jitter and lighting remain unsupported
     - iron golem entities as renderer-owned vanilla 26.1
       `IronGolemModel.createBodyLayer()` geometry, including its 128x128 body
       layer, baked `CubeDeformation(0.5F)` lower-body cube, and the official

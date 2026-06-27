@@ -124,6 +124,7 @@ fn enderman_textured_layer_passes_match_vanilla_renderer_model_layers() {
         passes[0].render_type,
         EntityModelLayerRenderType::EntityCutout
     );
+    assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(passes[0].model_layer, MODEL_LAYER_ENDERMAN);
     assert_eq!(passes[0].texture, ENDERMAN_TEXTURE_REF);
     // The vestigial `parts` slices are nulled; both passes read the unified `EndermanModel` tree.
@@ -132,6 +133,7 @@ fn enderman_textured_layer_passes_match_vanilla_renderer_model_layers() {
 
     assert_eq!(passes[1].kind, EntityModelLayerKind::EndermanEyes);
     assert_eq!(passes[1].render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(passes[1].render_type.vanilla_name(), "eyes");
     assert_eq!(passes[1].model_layer, MODEL_LAYER_ENDERMAN);
     assert_eq!(passes[1].texture, ENDERMAN_EYES_TEXTURE_REF);
     assert_eq!(passes[1].tint, [1.0, 1.0, 1.0, 1.0]);
@@ -174,11 +176,10 @@ fn entity_texture_atlas_stitches_official_enderman_png_slots() {
 #[test]
 fn enderman_textured_mesh_uses_parent_geometry_for_base_and_eyes_layers() {
     let (atlas, _) = build_entity_model_texture_atlas(&enderman_texture_images()).unwrap();
+    let instance = EntityModelInstance::enderman(142, [0.0, 64.0, 0.0], 0.0);
 
-    let meshes = entity_model_textured_meshes(
-        &[EntityModelInstance::enderman(142, [0.0, 64.0, 0.0], 0.0)],
-        &atlas,
-    );
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    assert_enderman_submissions_match_vanilla(&meshes, instance);
 
     assert_eq!(meshes.cutout.cutout_faces, 42);
     assert_eq!(meshes.cutout.vertices.len(), 168);
@@ -212,12 +213,17 @@ fn enderman_textured_mesh_uses_parent_geometry_for_base_and_eyes_layers() {
 fn enderman_textured_mesh_applies_head_look() {
     let (atlas, _) = build_entity_model_texture_atlas(&enderman_texture_images()).unwrap();
     let base = EntityModelInstance::enderman(143, [0.0, 64.0, 0.0], 0.0);
-    let resting = entity_model_textured_mesh(&[base], &atlas);
-    let yawed = entity_model_textured_mesh(&[base.with_head_look(45.0, 0.0)], &atlas);
-    let pitched = entity_model_textured_mesh(&[base.with_head_look(0.0, -20.0)], &atlas);
-    assert_eq!(resting.vertices.len(), yawed.vertices.len());
-    assert_ne!(resting.vertices, yawed.vertices);
-    assert_ne!(yawed.vertices, pitched.vertices);
+    let yawed_instance = base.with_head_look(45.0, 0.0);
+    let pitched_instance = base.with_head_look(0.0, -20.0);
+    let resting = entity_model_textured_meshes(&[base], &atlas);
+    let yawed = entity_model_textured_meshes(&[yawed_instance], &atlas);
+    let pitched = entity_model_textured_meshes(&[pitched_instance], &atlas);
+    assert_enderman_submissions_match_vanilla(&resting, base);
+    assert_enderman_submissions_match_vanilla(&yawed, yawed_instance);
+    assert_enderman_submissions_match_vanilla(&pitched, pitched_instance);
+    assert_eq!(resting.cutout.vertices.len(), yawed.cutout.vertices.len());
+    assert_ne!(resting.cutout.vertices, yawed.cutout.vertices);
+    assert_ne!(yawed.cutout.vertices, pitched.cutout.vertices);
 }
 
 #[test]
@@ -366,26 +372,31 @@ fn enderman_textured_mesh_swings_legs_when_walking() {
     // a walking one lifts its feet.
     let (atlas, _) = build_entity_model_texture_atlas(&enderman_texture_images()).unwrap();
     let base = EntityModelInstance::enderman(261, [0.0, 64.0, 0.0], 0.0);
-    let resting = entity_model_textured_mesh(&[base], &atlas);
-    let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
-    let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+    let still_instance = base.with_walk_animation(2.5, 0.0);
+    let walking_instance = base.with_walk_animation(0.0, 1.0);
+    let resting = entity_model_textured_meshes(&[base], &atlas);
+    let still = entity_model_textured_meshes(&[still_instance], &atlas);
+    let walking = entity_model_textured_meshes(&[walking_instance], &atlas);
+    assert_enderman_submissions_match_vanilla(&resting, base);
+    assert_enderman_submissions_match_vanilla(&still, still_instance);
+    assert_enderman_submissions_match_vanilla(&walking, walking_instance);
 
     assert_eq!(
-        resting.vertices, still.vertices,
+        resting.cutout.vertices, still.cutout.vertices,
         "a standing enderman is inert"
     );
     assert_eq!(
-        resting.vertices.len(),
-        walking.vertices.len(),
+        resting.cutout.vertices.len(),
+        walking.cutout.vertices.len(),
         "leg swing keeps the vertex count"
     );
     assert_ne!(
-        resting.vertices, walking.vertices,
+        resting.cutout.vertices, walking.cutout.vertices,
         "a walking enderman differs"
     );
 
-    let (rest_min, rest_max) = textured_mesh_extents(&resting);
-    let (walk_min, walk_max) = textured_mesh_extents(&walking);
+    let (rest_min, rest_max) = textured_mesh_extents(&resting.cutout);
+    let (walk_min, walk_max) = textured_mesh_extents(&walking.cutout);
     assert!(
         (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
         "a walking enderman's feet should lift off the ground"
@@ -451,20 +462,23 @@ fn enderman_textured_mesh_swings_arms_when_walking() {
     };
     let (atlas, _) = build_entity_model_texture_atlas(&enderman_texture_images()).unwrap();
     let base = EntityModelInstance::enderman(263, [0.0, 64.0, 0.0], 0.0);
-    let resting = entity_model_textured_mesh(&[base], &atlas);
-    let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+    let walking_instance = base.with_walk_animation(0.0, 1.0);
+    let resting = entity_model_textured_meshes(&[base], &atlas);
+    let walking = entity_model_textured_meshes(&[walking_instance], &atlas);
+    assert_enderman_submissions_match_vanilla(&resting, base);
+    assert_enderman_submissions_match_vanilla(&walking, walking_instance);
     assert_eq!(
-        resting.vertices[0..72],
-        walking.vertices[0..72],
+        resting.cutout.vertices[0..72],
+        walking.cutout.vertices[0..72],
         "head and body never swing"
     );
     assert_ne!(
-        resting.vertices[72..120],
-        walking.vertices[72..120],
+        resting.cutout.vertices[72..120],
+        walking.cutout.vertices[72..120],
         "arms swing"
     );
-    let rest_arm_z = z_extent(&resting.vertices[72..120]);
-    let walk_arm_z = z_extent(&walking.vertices[72..120]);
+    let rest_arm_z = z_extent(&resting.cutout.vertices[72..120]);
+    let walk_arm_z = z_extent(&walking.cutout.vertices[72..120]);
     assert!(
         walk_arm_z > rest_arm_z + 0.1,
         "the textured arms splay along Z when walking: {rest_arm_z} -> {walk_arm_z}"
@@ -539,20 +553,23 @@ fn enderman_textured_mesh_holds_its_arms_out_when_carrying() {
     };
     let (atlas, _) = build_entity_model_texture_atlas(&enderman_texture_images()).unwrap();
     let base = EntityModelInstance::enderman(265, [0.0, 64.0, 0.0], 0.0);
-    let resting = entity_model_textured_mesh(&[base], &atlas);
-    let carrying = entity_model_textured_mesh(&[base.with_enderman_carrying(true)], &atlas);
+    let carrying_instance = base.with_enderman_carrying(true);
+    let resting = entity_model_textured_meshes(&[base], &atlas);
+    let carrying = entity_model_textured_meshes(&[carrying_instance], &atlas);
+    assert_enderman_submissions_match_vanilla(&resting, base);
+    assert_enderman_submissions_match_vanilla(&carrying, carrying_instance);
     assert_eq!(
-        resting.vertices[0..72],
-        carrying.vertices[0..72],
+        resting.cutout.vertices[0..72],
+        carrying.cutout.vertices[0..72],
         "the head and body stay put"
     );
     assert_ne!(
-        resting.vertices[72..120],
-        carrying.vertices[72..120],
+        resting.cutout.vertices[72..120],
+        carrying.cutout.vertices[72..120],
         "the textured arms are held out to carry the block"
     );
-    let rest_arm_z = z_extent(&resting.vertices[72..120]);
-    let carry_arm_z = z_extent(&carrying.vertices[72..120]);
+    let rest_arm_z = z_extent(&resting.cutout.vertices[72..120]);
+    let carry_arm_z = z_extent(&carrying.cutout.vertices[72..120]);
     assert!(
         carry_arm_z > rest_arm_z + 0.3,
         "the held-out arms reach forward along Z: {rest_arm_z} -> {carry_arm_z}"
@@ -601,23 +618,62 @@ fn enderman_textured_mesh_drops_its_head_when_creepy() {
     // moves; the hat stays put and the rest of the body is byte-identical.
     let (atlas, _) = build_entity_model_texture_atlas(&enderman_texture_images()).unwrap();
     let base = EntityModelInstance::enderman(267, [0.0, 64.0, 0.0], 0.0);
-    let resting = entity_model_textured_mesh(&[base], &atlas);
-    let creepy = entity_model_textured_mesh(&[base.with_enderman_creepy(true)], &atlas);
+    let creepy_instance = base.with_enderman_creepy(true);
+    let resting = entity_model_textured_meshes(&[base], &atlas);
+    let creepy = entity_model_textured_meshes(&[creepy_instance], &atlas);
+    assert_enderman_submissions_match_vanilla(&resting, base);
+    assert_enderman_submissions_match_vanilla(&creepy, creepy_instance);
     assert_ne!(
-        resting.vertices[0..24],
-        creepy.vertices[0..24],
+        resting.cutout.vertices[0..24],
+        creepy.cutout.vertices[0..24],
         "the inner head drops"
     );
     assert_eq!(
-        resting.vertices[24..48],
-        creepy.vertices[24..48],
+        resting.cutout.vertices[24..48],
+        creepy.cutout.vertices[24..48],
         "the hat holds its world position"
     );
     assert_eq!(
-        resting.vertices[48..168],
-        creepy.vertices[48..168],
+        resting.cutout.vertices[48..168],
+        creepy.cutout.vertices[48..168],
         "the body, arms and legs do not move"
     );
+}
+
+fn assert_enderman_submissions_match_vanilla(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    assert_enderman_folded_meshes_are_base_and_eyes_only(meshes);
+    let passes = enderman_textured_layer_passes();
+    assert_eq!(meshes.submissions.len(), passes.len());
+    for (submit, pass) in meshes.submissions.iter().copied().zip(passes) {
+        assert_eq!(submit.render_type, pass.render_type);
+        assert_eq!(
+            submit.render_type.vanilla_name(),
+            pass.render_type.vanilla_name()
+        );
+        assert_eq!(submit.texture, pass.texture);
+        assert_eq!(submit.tint, pass.tint);
+        assert_eq!(submit.transform, entity_model_root_transform(instance));
+        assert_eq!(
+            (submit.order, submit.submit_sequence),
+            (pass.order, pass.submit_sequence)
+        );
+    }
+}
+
+fn assert_enderman_folded_meshes_are_base_and_eyes_only(meshes: &EntityModelTexturedMeshes) {
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_cutout.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_translucent.vertices.is_empty());
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_translucent
+        .vertices
+        .is_empty());
+    assert!(meshes.scroll.vertices.is_empty());
+    assert!(meshes.scroll_additive.vertices.is_empty());
 }
 
 fn enderman_texture_images() -> Vec<EntityModelTextureImage> {
