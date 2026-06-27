@@ -1875,7 +1875,8 @@ When an agent does any of the following, update this file in the same slice:
       official PNG atlas upload/bind/sample path, and explicit base submission metadata
       for vanilla `entityCutout`, `ravager.png`, white tint, `entity_model_root_transform`,
       packed light, overlay coords, and `(order, submit_sequence) == (0, 0)` before
-      folded cutout checks, and the vanilla `RavagerModel.setupAnim` head look (`head.xRot/yRot = xRot/yRot * π/180`) on
+      folded cutout checks. Folded cutout vertices inherit the base submission's
+      light/overlay metadata, and the vanilla `RavagerModel.setupAnim` head look (`head.xRot/yRot = xRot/yRot * π/180`) on
       the neck-nested head part — the neck subtree is emitted by hand so the head
       carries the look while its horn/mouth children inherit it (colored and
       textured), and the vanilla `RavagerModel.setupAnim` leg walk swing

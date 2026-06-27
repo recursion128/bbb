@@ -137,6 +137,12 @@ fn ravager_textured_mesh_uses_vanilla_uvs_tints_and_body_layer_bounds() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    let submit = meshes.submissions[0];
+    assert_ne!(submit.overlay, [0.0, 10.0]);
+    assert!(mesh
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
 
     let colored = entity_model_mesh(&[instance]);
     let (expected_min, expected_max) = mesh_extents(&colored);
