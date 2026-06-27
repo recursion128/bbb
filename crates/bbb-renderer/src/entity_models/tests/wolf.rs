@@ -130,6 +130,53 @@ fn wolf_textured_mesh_uses_vanilla_uvs_and_collar_tint() {
 }
 
 #[test]
+fn self_visible_invisible_wolf_submission_survives_missing_texture_atlas_entry() {
+    // Vanilla `LivingEntityRenderer.getRenderType` records the force-transparent base body submit;
+    // missing texture data suppresses only folded translucent geometry.
+    let len = usize::try_from(WOLF_TEXTURE_REF.size[0] * WOLF_TEXTURE_REF.size[1] * 4).unwrap();
+    let images = vec![EntityModelTextureImage::new(
+        WOLF_TEXTURE_REF,
+        vec![0u8; len],
+    )];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let instance = EntityModelInstance::wolf_state(
+        307,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        true,
+        false,
+        true,
+        Some(EntityDyeColor::Blue),
+    )
+    .with_invisible_to_player(false)
+    .with_light_coords((6_u32 << 4) | (8_u32 << 20))
+    .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(
+        submit.render_type,
+        EntityModelLayerRenderType::EntityTranslucentCullItemTarget
+    );
+    assert_eq!(
+        submit.render_type.vanilla_name(),
+        "entityTranslucentCullItemTarget"
+    );
+    assert_eq!(submit.texture, WOLF_TAME_TEXTURE_REF);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 38.0 / 255.0]);
+    assert_eq!(submit.transform, entity_model_root_transform(instance));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, instance.render_state.overlay_coords());
+    assert!(meshes.cutout.vertices.is_empty());
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+}
+
+#[test]
 fn wolf_cubes_match_vanilla_26_1_body_layers() {
     // Vanilla `AdultWolfModel.createBodyLayer` (atlas 64×32). Each unified cube carries the colored
     // tint (`WOLF_GRAY`) and the textured UV; the right legs reuse the left leg's `texOffs(0, 18)`

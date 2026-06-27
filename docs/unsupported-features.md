@@ -1632,7 +1632,9 @@ When an agent does any of the following, update this file in the same slice:
       layers when only the crack texture is absent, suppressing only folded translucent crack geometry,
       including the texture-backed invisible-but-visible-to-client base body
       branch (`entityTranslucentCullItemTarget`, `38/255` alpha, base order
-      `(0,0)`) while the collar layer remains skipped by `state.isInvisible`.
+      `(0,0)`) while the collar layer remains skipped by `state.isInvisible`;
+      missing-atlas coverage pins that this force-transparent base submit is still recorded when
+      `wolf_tame.png` is absent, suppressing only folded translucent geometry.
       Colored-path force-transparent / outline presentation, glint/foil, and
       remaining render-state extraction remain unsupported
     - base horse entities as renderer-owned vanilla 26.1 adult/baby body-layer
