@@ -3367,7 +3367,8 @@ When an agent does any of the following, update this file in the same slice:
       `ID_EFFECT_COLOR` 11) binds the tipped image, and the spectral-arrow type binds the spectral image.
       Tests now pin explicit submission metadata for vanilla `entityCutoutCull`, white tint,
       light coords, `OverlayTexture.NO_OVERLAY`, `arrow_model_root_transform`, and
-      `(order, submit_sequence) == (0, 0)` before checking the folded
+      `(order, submit_sequence) == (0, 0)`, with folded cutout vertices inheriting that
+      light/no-overlay metadata before checking the folded
       shake-posed mesh. The colored debug path stays as a fallback (it renders the shaft cross and the head
       with two tints)
     - thrown trident entities as renderer-owned vanilla 26.1 `TridentModel.createLayer()` geometry on the

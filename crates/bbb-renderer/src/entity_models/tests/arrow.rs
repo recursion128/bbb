@@ -159,6 +159,11 @@ fn arrow_textured_render_matches_vanilla_renderer() {
     assert_eq!(submit.light, instance.render_state.shader_light());
     assert_eq!(submit.overlay, [0.0, 10.0]);
     assert_ne!(submit.overlay, instance.render_state.overlay_coords());
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
 
     let shaken_meshes = entity_model_textured_meshes(&[instance.with_arrow_shake(4.5)], &atlas);
     assert_eq!(shaken_meshes.submissions[0].transform, submit.transform);
