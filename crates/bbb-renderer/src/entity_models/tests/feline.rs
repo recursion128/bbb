@@ -621,7 +621,29 @@ fn feline_textured_render_matches_vanilla_renderer() {
     assert_eq!(collar.transform, base.transform);
     assert_eq!((collar.order, collar.submit_sequence), (1, 1));
     assert_eq!(collar.light, base.light);
-    assert_eq!(collar.overlay, base.overlay);
+    let collar_overlay = [0.0, base.overlay[1]];
+    assert_eq!(collar.overlay, collar_overlay);
+    assert_ne!(collar.overlay, base.overlay);
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == base.light));
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .any(|vertex| vertex.overlay == base.overlay));
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .any(|vertex| vertex.overlay == collar_overlay));
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.overlay == base.overlay || vertex.overlay == collar_overlay));
 }
 
 #[test]
