@@ -500,6 +500,15 @@ fn player_spin_attack_effect_records_vanilla_submission_and_geometry() {
     // Vanilla `AvatarRenderer` registers `SpinAttackEffectLayer` after WingsLayer/ParrotOnShoulder:
     // while `isAutoSpinAttack` is set it submits `SpinAttackEffectModel` with the riptide trident
     // texture, default `EntityModel` render type (`entityCutout`), no overlay, and default order 0.
+    let pass = player_spin_attack_effect_layer_pass();
+    assert_eq!(pass.kind, EntityModelLayerKind::PlayerSpinAttackEffect);
+    assert_eq!(pass.model_layer, MODEL_LAYER_PLAYER_SPIN_ATTACK);
+    assert_eq!(pass.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(pass.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(pass.texture, TRIDENT_RIPTIDE_TEXTURE_REF);
+    assert_eq!(pass.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((pass.order, pass.submit_sequence), (0, 4));
+
     let (atlas, _) = build_entity_model_texture_atlas(&steve_and_riptide_texture_images()).unwrap();
     let instance = EntityModelInstance::player_with_skin(
         54,

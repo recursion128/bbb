@@ -418,9 +418,11 @@ When an agent does any of the following, update this file in the same slice:
     trailing uniform model scale and tip/spin every colored and textured living
     model; the death flip takes precedence over the spin, matching vanilla.
     The player-only `SpinAttackEffectLayer` visual shell is also recorded as an
-    explicit submission while auto-spinning: `trident_riptide.png`, `entityCutout`,
-    no overlay, `order(0)`, same-order sequence after the currently implemented
-    WingsLayer path, and submission-first missing-atlas behavior. Its two vanilla
+    explicit submission while auto-spinning, now through
+    `player_spin_attack_effect_layer_pass` with vanilla `ModelLayers.PLAYER_SPIN_ATTACK`:
+    `trident_riptide.png`, `entityCutout`, no overlay, `order(0)`,
+    same-order sequence after the currently implemented WingsLayer path, and
+    submission-first missing-atlas behavior. Its two vanilla
     `SpinAttackEffectModel` boxes use the 64×64 riptide texture atlas, per-box scale
     `0.75`/`1.5`, and `ageInTicks * -50°/-55°` y-rotation.
   - The Dinnerbone/Grumm upside-down easter egg is implemented end to end, for both
@@ -1084,7 +1086,7 @@ When an agent does any of the following, update this file in the same slice:
       humanoid armor `armorCutoutNoCull`, horse/donkey/undead-horse
       base+saddle/body-armor submits, horse markings, villager and zombie-villager
       profession/type/level overlay layer passes, custom-head skull submissions, player
-      profile cape plus player WINGS/elytra submissions, strider
+      profile cape plus player WINGS/elytra and spin-attack-effect submissions, strider
       base/saddle/no-baby-saddle submits, armor stand
       visibility/scale base submits, axolotl color/age base submits,
       feline cat/ocelot base plus collar submits, fox type/age/sleeping base

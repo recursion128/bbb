@@ -54,8 +54,8 @@ use super::{
         NAUTILUS_SADDLE_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF,
         PIG_SADDLE_TEXTURE_REF, PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
         SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION,
-        STRIDER_SADDLE_TEXTURE_REF, TRIDENT_RIPTIDE_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF,
-        ZOMBIE_HORSE_SADDLE_TEXTURE_REF, ZOMBIE_TEXTURE_REF,
+        STRIDER_SADDLE_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
+        ZOMBIE_TEXTURE_REF,
     },
     player_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
 };
@@ -71,7 +71,6 @@ const PLAYER_CAPE_CUBE: TexturedModelCubeDesc = TexturedModelCubeDesc {
 const PLAYER_CAPE_LAYER_SUBMIT_SEQUENCE: u32 = 2;
 const PLAYER_WINGS_LAYER_SUBMIT_SEQUENCE: u32 = 3;
 const NON_PLAYER_WINGS_LAYER_SUBMIT_SEQUENCE: u32 = 2;
-const PLAYER_SPIN_ATTACK_EFFECT_LAYER_SUBMIT_SEQUENCE: u32 = 4;
 
 mod layers;
 #[cfg(test)]
@@ -94,12 +93,12 @@ pub(super) use layers::{
     mooshroom_textured_layer_passes, nautilus_textured_layer_passes, panda_textured_layer_passes,
     parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
     piglin_textured_layer_passes, player_extra_ears_layer_pass_with_texture,
-    player_textured_layer_passes_with_texture, polar_bear_textured_layer_passes,
-    rabbit_textured_layer_passes, ravager_textured_layer_passes, salmon_textured_layer_passes,
-    sheep_textured_layer_passes, shulker_textured_layer_passes, silverfish_textured_layer_passes,
-    skeleton_textured_layer_passes, slime_textured_layer_passes, sniffer_textured_layer_passes,
-    snow_golem_textured_layer_passes, spider_textured_layer_passes, squid_textured_layer_passes,
-    tadpole_textured_layer_passes, trident_textured_layer_passes,
+    player_spin_attack_effect_layer_pass, player_textured_layer_passes_with_texture,
+    polar_bear_textured_layer_passes, rabbit_textured_layer_passes, ravager_textured_layer_passes,
+    salmon_textured_layer_passes, sheep_textured_layer_passes, shulker_textured_layer_passes,
+    silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
+    sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
+    squid_textured_layer_passes, tadpole_textured_layer_passes, trident_textured_layer_passes,
     tropical_fish_textured_layer_passes, undead_horse_textured_layer_passes,
     villager_data_textured_layer_passes, villager_textured_layer_passes, villager_type_hat_visible,
     wandering_trader_textured_layer_passes, warden_textured_layer_passes,
@@ -955,6 +954,7 @@ fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
             | EntityModelLayerKind::LlamaSpitBase
             | EntityModelLayerKind::MinecartBase
             | EntityModelLayerKind::PhantomEyes
+            | EntityModelLayerKind::PlayerSpinAttackEffect
             | EntityModelLayerKind::ShulkerBulletBase
             | EntityModelLayerKind::ShulkerBulletShell
             | EntityModelLayerKind::SpiderEyes
@@ -2790,14 +2790,8 @@ fn emit_player_spin_attack_effect_layer(
 
     let mut model = SpinAttackEffectModel::new();
     model.prepare(&instance);
-    let submit = no_overlay_submission(
-        EntityModelLayerRenderType::EntityCutout,
-        TRIDENT_RIPTIDE_TEXTURE_REF,
-        [1.0, 1.0, 1.0, 1.0],
-        player_model_root_transform(instance),
-        0,
-        PLAYER_SPIN_ATTACK_EFFECT_LAYER_SUBMIT_SEQUENCE,
-    );
+    let pass = player_spin_attack_effect_layer_pass();
+    let submit = textured_layer_submission(meshes, pass, player_model_root_transform(instance));
     render_textured_submission(meshes, submit, atlas, |mesh, entry| {
         model.root().render_textured(
             mesh,

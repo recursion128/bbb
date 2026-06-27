@@ -75,6 +75,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     PigBase,
     PlayerBase,
     PlayerExtraEars,
+    PlayerSpinAttackEffect,
     SheepBase,
     SheepWool,
     SheepWoolUndercoat,
@@ -1956,6 +1957,19 @@ pub(in crate::entity_models) fn player_extra_ears_layer_pass_with_texture(
         tint: [1.0, 1.0, 1.0, 1.0],
         order: 0,
         submit_sequence: 1,
+    }
+}
+
+pub(in crate::entity_models) fn player_spin_attack_effect_layer_pass() -> EntityModelLayerPass {
+    EntityModelLayerPass {
+        kind: EntityModelLayerKind::PlayerSpinAttackEffect,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: MODEL_LAYER_PLAYER_SPIN_ATTACK,
+        texture: TRIDENT_RIPTIDE_TEXTURE_REF,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 4,
     }
 }
 

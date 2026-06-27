@@ -8,6 +8,9 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 // `textures/entity/trident/trident_riptide.png` and the default `EntityModel` render type
 // (`entityCutout`).
 
+pub(in crate::entity_models) const MODEL_LAYER_PLAYER_SPIN_ATTACK: &str =
+    "minecraft:spin_attack#main";
+
 pub(in crate::entity_models) const SPIN_ATTACK_BOX0_CUBE: ModelCube = ModelCube::new(
     [-8.0, -9.6, -8.0],
     [16.0, 32.0, 16.0],
