@@ -1049,7 +1049,8 @@ When an agent does any of the following, update this file in the same slice:
       humanoid armor `armorCutoutNoCull`, horse/donkey/undead-horse
       base+saddle/body-armor submits, horse markings, villager
       profession/type/level overlays, custom-head skull submissions, player
-      profile cape plus player WINGS/elytra submissions, armor stand
+      profile cape plus player WINGS/elytra submissions, strider
+      base/saddle/no-baby-saddle submits, armor stand
       visibility/scale base submits, axolotl color/age base submits,
       feline cat/ocelot base plus collar submits, fox type/age/sleeping base
       submits, frog temperature base submits, panda gene/age base submits,
@@ -2382,7 +2383,8 @@ When an agent does any of the following, update this file in the same slice:
       `textures/entity/equipment/strider_saddle/saddle.png` (64×128) as an `armorCutoutNoCull`
       submission at the same collector order with `submit_sequence = 1`, after the base submit.
       Baby striders intentionally skip this layer because vanilla supplies `null` for the baby
-      saddle model. The suffocating shake is also
+      saddle model, and tests pin that the baby saddle path still has only the base submission.
+      The suffocating shake is also
       covered: native mirrors `StriderRenderer.isShaking = super.isShaking || state.isSuffocating` and
       folds the existing `setupRotations` body-shake formula into `body_rot` from the same synced
       `DATA_SUFFOCATING` flag.

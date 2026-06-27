@@ -423,12 +423,22 @@ fn strider_saddle_layer_renders_for_adults_only() {
 
     let baby = EntityModelInstance::strider(753, [0.0, 64.0, 0.0], 0.0, true, false)
         .with_strider_saddle(true);
-    let baby_mesh = entity_model_textured_mesh(&[baby], &atlas);
+    let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
+    assert_eq!(baby_meshes.submissions.len(), 1);
+    let baby_submit = baby_meshes.submissions[0];
     assert_eq!(
-        baby_mesh.cutout_faces, 36,
+        baby_submit.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(baby_submit.texture, STRIDER_BABY_TEXTURE_REF);
+    assert_eq!(baby_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(baby_submit.transform, entity_model_root_transform(baby));
+    assert_eq!((baby_submit.order, baby_submit.submit_sequence), (0, 0));
+    assert_eq!(
+        baby_meshes.cutout.cutout_faces, 36,
         "vanilla supplies no baby model for the strider saddle layer"
     );
-    assert_eq!(baby_mesh.vertices.len(), 144);
+    assert_eq!(baby_meshes.cutout.vertices.len(), 144);
 }
 
 fn strider_texture_images() -> Vec<EntityModelTextureImage> {
