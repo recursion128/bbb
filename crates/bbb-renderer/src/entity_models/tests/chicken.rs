@@ -198,11 +198,21 @@ fn chicken_textured_layer_passes_match_vanilla_renderer_model_choice() {
     let adult_temperate = chicken_textured_layer_passes(ChickenModelVariant::Temperate, false);
     assert_eq!(adult_temperate.len(), 1);
     assert_eq!(adult_temperate[0].kind, EntityModelLayerKind::ChickenBase);
+    assert_eq!(
+        adult_temperate[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(
+        adult_temperate[0].render_type.vanilla_name(),
+        "entityCutout"
+    );
     assert_eq!(adult_temperate[0].model_layer, MODEL_LAYER_CHICKEN);
     assert_eq!(adult_temperate[0].texture, CHICKEN_TEMPERATE_TEXTURE_REF);
     assert_eq!(adult_temperate[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(adult_temperate[0].order, 0);
-    assert_eq!(adult_temperate[0].submit_sequence, 0);
+    assert_eq!(
+        (adult_temperate[0].order, adult_temperate[0].submit_sequence),
+        (0, 0)
+    );
 
     let adult_warm = chicken_textured_layer_passes(ChickenModelVariant::Warm, false);
     assert_eq!(adult_warm[0].model_layer, MODEL_LAYER_CHICKEN);
@@ -319,32 +329,32 @@ fn entity_texture_atlas_stitches_official_chicken_png_slots() {
 #[test]
 fn chicken_textured_mesh_uses_vanilla_uvs_tints_and_variant_textures() {
     let (atlas, _) = build_entity_model_texture_atlas(&chicken_texture_images()).unwrap();
-    let mesh = entity_model_textured_mesh(
-        &[
-            EntityModelInstance::chicken_variant(
-                401,
-                [0.0, 64.0, 0.0],
-                0.0,
-                ChickenModelVariant::Temperate,
-                false,
-            ),
-            EntityModelInstance::chicken_variant(
-                402,
-                [1.0, 64.0, 0.0],
-                0.0,
-                ChickenModelVariant::Cold,
-                false,
-            ),
-            EntityModelInstance::chicken_variant(
-                403,
-                [2.0, 64.0, 0.0],
-                0.0,
-                ChickenModelVariant::Warm,
-                true,
-            ),
-        ],
-        &atlas,
-    );
+    let instances = [
+        EntityModelInstance::chicken_variant(
+            401,
+            [0.0, 64.0, 0.0],
+            0.0,
+            ChickenModelVariant::Temperate,
+            false,
+        ),
+        EntityModelInstance::chicken_variant(
+            402,
+            [1.0, 64.0, 0.0],
+            0.0,
+            ChickenModelVariant::Cold,
+            false,
+        ),
+        EntityModelInstance::chicken_variant(
+            403,
+            [2.0, 64.0, 0.0],
+            0.0,
+            ChickenModelVariant::Warm,
+            true,
+        ),
+    ];
+    let meshes = entity_model_textured_meshes(&instances, &atlas);
+    assert_chicken_submissions_match_vanilla(&meshes, &instances);
+    let mesh = &meshes.cutout;
 
     assert_eq!(mesh.cutout_faces, 156);
     assert_eq!(mesh.vertices.len(), 624);
@@ -416,24 +426,52 @@ fn chicken_textured_mesh_swings_its_legs_when_walking() {
         ),
         EntityModelInstance::chicken(427, [0.0, 64.0, 0.0], 0.0, true),
     ] {
-        let resting = entity_model_textured_mesh(&[base], &atlas);
-        let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
-        let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+        let still_instance = base.with_walk_animation(2.5, 0.0);
+        let walking_instance = base.with_walk_animation(0.0, 1.0);
+        let resting = entity_model_textured_meshes(&[base], &atlas);
+        let still = entity_model_textured_meshes(&[still_instance], &atlas);
+        let walking = entity_model_textured_meshes(&[walking_instance], &atlas);
+        assert_chicken_submissions_match_vanilla(&resting, &[base]);
+        assert_chicken_submissions_match_vanilla(&still, &[still_instance]);
+        assert_chicken_submissions_match_vanilla(&walking, &[walking_instance]);
 
-        assert_eq!(resting.vertices, still.vertices, "{:?} is inert", base.kind);
         assert_eq!(
-            resting.vertices.len(),
-            walking.vertices.len(),
+            resting.cutout.vertices, still.cutout.vertices,
+            "{:?} is inert",
+            base.kind
+        );
+        assert_eq!(
+            resting.cutout.vertices.len(),
+            walking.cutout.vertices.len(),
             "{:?} leg swing keeps the vertex count",
             base.kind
         );
-        let (rest_min, rest_max) = textured_mesh_extents(&resting);
-        let (walk_min, walk_max) = textured_mesh_extents(&walking);
+        let (rest_min, rest_max) = textured_mesh_extents(&resting.cutout);
+        let (walk_min, walk_max) = textured_mesh_extents(&walking.cutout);
         assert!(
             (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
             "{:?} feet should lift off the ground (textured)",
             base.kind
         );
+    }
+}
+
+fn assert_chicken_submissions_match_vanilla(
+    meshes: &EntityModelTexturedMeshes,
+    instances: &[EntityModelInstance],
+) {
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert_eq!(meshes.submissions.len(), instances.len());
+
+    for (submit, instance) in meshes.submissions.iter().zip(instances) {
+        let instance = *instance;
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(submit.texture, instance.kind.vanilla_texture_ref().unwrap());
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(submit.transform, entity_model_root_transform(instance));
+        assert_eq!((submit.order, submit.submit_sequence), (0, 0));
     }
 }
 

@@ -1441,7 +1441,10 @@ When an agent does any of the following, update this file in the same slice:
       registry order, official adult/baby variant texture references, and
       vanilla fallback to temperate when no variant metadata is present,
       texture-backed base layer pass emission, adult/baby/cold model-layer
-      selection, and official PNG atlas upload/bind/sample path, and the vanilla
+      selection, official PNG atlas upload/bind/sample path, and tests that now pin
+      emitted base submissions as vanilla `entityCutout` with selected variant texture,
+      white tint, `entity_model_root_transform`, and `(order, submit_sequence) == (0, 0)`,
+      before folded cutout geometry checks, and the vanilla
       `ChickenModel.setupAnim` two-leg walk swing (the `HumanoidModel` phase
       `cos(pos * 0.6662 [+ π]) * 1.4 * speed`, legs at `[2, 3]` adult/cold and
       `[1, 2]` on the headless baby layer, on both render paths and every variant
