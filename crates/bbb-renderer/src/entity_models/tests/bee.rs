@@ -207,9 +207,13 @@ fn bee_textured_mesh_uses_vanilla_geometry_and_animates() {
     // Vanilla `BeeModel` calls `EntityModel(root)`, so the base submit uses the default
     // `entityCutout` render type. The backend folds it into the cutout mesh, but the submission
     // keeps the vanilla texture, render type, tint, transform, and default collector order.
-    let adult = EntityModelInstance::bee(940, [0.0, 64.0, 0.0], 0.0, false);
+    let adult = EntityModelInstance::bee(940, [0.0, 64.0, 0.0], 0.0, false)
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[adult], &atlas);
     assert_bee_base_submission(&meshes, adult, BEE_TEXTURE_REF);
+    assert_bee_cutout_vertices_match_submission(&meshes);
 
     // Nine cubes → 54 faces / 216 vertices, nothing on the translucent or eyes passes, white tint.
     assert!(meshes.translucent.vertices.is_empty());
@@ -223,10 +227,14 @@ fn bee_textured_mesh_uses_vanilla_geometry_and_animates() {
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
 
     // Baby is the smaller separate model: also nine cubes → 54 faces / 216 vertices.
-    let baby = EntityModelInstance::bee(941, [0.0, 64.0, 0.0], 0.0, true);
+    let baby = EntityModelInstance::bee(941, [0.0, 64.0, 0.0], 0.0, true)
+        .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
     assert_bee_base_submission(&baby_meshes, baby, BEE_BABY_TEXTURE_REF);
     assert_eq!(baby_meshes.cutout.vertices.len(), 216);
+    assert_bee_cutout_vertices_match_submission(&baby_meshes);
 
     // Texture variants stay a model-kind selection: angry + nectar swaps the atlas reference while
     // preserving the base render type, tint, transform, and order.
@@ -240,7 +248,10 @@ fn bee_textured_mesh_uses_vanilla_geometry_and_animates() {
         [0.0, 64.0, 0.0],
         0.0,
     )
-    .with_bee_angry(true);
+    .with_bee_angry(true)
+    .with_light_coords((7_u32 << 4) | (9_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let angry_nectar_meshes = entity_model_textured_meshes(&[angry_nectar], &atlas);
     assert_bee_base_submission(
         &angry_nectar_meshes,
@@ -248,6 +259,7 @@ fn bee_textured_mesh_uses_vanilla_geometry_and_animates() {
         BEE_ANGRY_NECTAR_TEXTURE_REF,
     );
     assert_eq!(angry_nectar_meshes.cutout.vertices.len(), 216);
+    assert_bee_cutout_vertices_match_submission(&angry_nectar_meshes);
 
     // Airborne the flap re-poses the mesh with age; a grounded bee rests at its bind pose.
     let later = entity_model_textured_meshes(&[adult.with_age_in_ticks(3.0)], &atlas);
@@ -449,5 +461,17 @@ fn assert_bee_base_submission(
     assert_eq!(submit.texture, texture);
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(submit.transform, entity_model_root_transform(instance));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, instance.render_state.overlay_coords());
+    assert_ne!(submit.overlay, [0.0, 10.0]);
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+}
+
+fn assert_bee_cutout_vertices_match_submission(meshes: &EntityModelTexturedMeshes) {
+    let submit = meshes.submissions[0];
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
 }

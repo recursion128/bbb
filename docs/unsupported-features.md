@@ -2681,7 +2681,9 @@ When an agent does any of the following, update this file in the same slice:
       index 18) and `isAngry` (the synced `DATA_ANGER_END_TIME`, index 19, vs the world game time)
       select among `bee[_angry][_nectar][_baby].png` (the six new variant references join the master
       atlas array → 311), so a pollen-laden or aggravated bee shows the matching face on the textured
-      path while the model/animation stay identical
+      path while the model/animation stay identical. Textured bee base submissions now also pin
+      vanilla entity light plus hurt/white overlay metadata, and folded cutout vertices inherit that
+      metadata under non-default light/overlay state
     - breeze entities are wired end to end on both render paths off the real vanilla 26.1
       `BreezeModel`: the native entity scene (`entity_scene.rs`) projects vanilla type id `17` to the
       new `EntityModelKind::Breeze`, replacing the former placeholder box. Renderer-owned vanilla
