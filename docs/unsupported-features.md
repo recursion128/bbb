@@ -2783,8 +2783,9 @@ When an agent does any of the following, update this file in the same slice:
       `BreezeEyesLayer` and `BreezeWindLayer` preserve entity light and force `OverlayTexture.NO_OVERLAY`
       before folded eyes and scroll vertices inherit their submit metadata; `BreezeWindLayer` now also
       pins the vanilla `breezeWind` render-type name, and missing-atlas coverage proves the wind submit
-      survives without `breeze_wind.png` while only folded scroll geometry is suppressed. Breeze is now
-      fully aligned with vanilla 26.1
+      survives without `breeze_wind.png` while only folded scroll geometry is suppressed, and the eyes
+      submit survives without `breeze_eyes.png` while only folded emissive eyes geometry is suppressed.
+      Breeze is now fully aligned with vanilla 26.1
     - dolphin entities are wired end to end on both render paths off the real vanilla 26.1
       `DolphinModel`: the native entity scene (`entity_scene.rs`) projects vanilla type id `35` to
       the new `EntityModelKind::Dolphin { baby }`, keyed off the synced `AgeableMob.DATA_BABY_ID`

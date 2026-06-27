@@ -422,6 +422,75 @@ fn breeze_wind_submission_survives_missing_wind_texture_atlas_entry() {
     assert!(meshes.scroll.indices.is_empty());
 }
 
+#[test]
+fn breeze_eyes_submission_survives_missing_eyes_texture_atlas_entry() {
+    // Vanilla `BreezeEyesLayer` records an order(1) eyes submit after the wind layer; missing
+    // eyes texture data suppresses only the folded emissive eyes geometry.
+    let images: Vec<_> = breeze_texture_images()
+        .into_iter()
+        .filter(|image| image.texture != BREEZE_EYES_TEXTURE_REF)
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let base = EntityModelInstance::breeze(972, [0.0, 64.0, 0.0], 0.0)
+        .with_light_coords((3_u32 << 4) | (13_u32 << 20))
+        .with_white_overlay_progress(0.75)
+        .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[base], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 3);
+    let body_submit = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == BREEZE_TEXTURE_REF)
+        .expect("breeze emits a base body submit");
+    assert_eq!(
+        body_submit.render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(body_submit.render_type.vanilla_name(), "entityTranslucent");
+    assert_eq!(body_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(body_submit.transform, entity_model_root_transform(base));
+    assert_eq!((body_submit.order, body_submit.submit_sequence), (0, 0));
+    assert_eq!(body_submit.light, base.render_state.shader_light());
+    assert_eq!(body_submit.overlay, base.render_state.overlay_coords());
+    assert!(!meshes.translucent.vertices.is_empty());
+
+    let wind_submit = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.render_type == EntityModelLayerRenderType::BreezeWind)
+        .expect("breeze emits a breezeWind layer submit");
+    assert_eq!(wind_submit.render_type.vanilla_name(), "breezeWind");
+    assert_eq!(wind_submit.texture, BREEZE_WIND_TEXTURE_REF);
+    assert_eq!(wind_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(wind_submit.transform, entity_model_root_transform(base));
+    assert_eq!((wind_submit.order, wind_submit.submit_sequence), (1, 1));
+    assert_eq!(wind_submit.light, body_submit.light);
+    assert_eq!(wind_submit.overlay, [0.0, 10.0]);
+    assert!(!meshes.scroll.vertices.is_empty());
+
+    let eyes_submit = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == BREEZE_EYES_TEXTURE_REF)
+        .expect("breeze records a breezeEyes submit before atlas lookup");
+    assert_eq!(eyes_submit.render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(eyes_submit.render_type.vanilla_name(), "eyes");
+    assert_eq!(eyes_submit.texture, BREEZE_EYES_TEXTURE_REF);
+    assert_eq!(eyes_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(eyes_submit.transform, entity_model_root_transform(base));
+    assert_eq!((eyes_submit.order, eyes_submit.submit_sequence), (1, 2));
+    assert_eq!(eyes_submit.light, body_submit.light);
+    assert_eq!(eyes_submit.overlay, [0.0, 10.0]);
+    assert_ne!(eyes_submit.overlay, body_submit.overlay);
+    assert!(
+        meshes.eyes.vertices.is_empty(),
+        "missing breeze_eyes.png suppresses only folded eyes geometry"
+    );
+    assert!(meshes.eyes.indices.is_empty());
+}
+
 fn breeze_texture_images() -> Vec<EntityModelTextureImage> {
     breeze_entity_texture_refs()
         .iter()
