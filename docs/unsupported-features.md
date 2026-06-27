@@ -1725,8 +1725,12 @@ When an agent does any of the following, update this file in the same slice:
       render types (`entityCutout`, `entityTranslucent`, `armorCutoutNoCull`),
       selected textures, white or leather-dye tint, root transforms (horse
       `livingHorseScale`, donkey/mule scale, undead unscaled), and explicit
-      `SubmitNodeCollector.order` / submit-sequence metadata before folded
-      cutout/translucent geometry checks. The ridden/eat/stand/mouth poses, the tail's `ageInTicks` yRot wag, and lighting remain
+      `SubmitNodeCollector.order` / submit-sequence metadata; horse and undead-horse
+      base submits now also pin vanilla entity light plus hurt/white overlay,
+      `HorseMarkingLayer` keeps entity light and zeroes the white overlay column,
+      and saddle/body-armor equipment submits keep entity light while forcing
+      `OverlayTexture.NO_OVERLAY` before folded cutout/translucent geometry checks.
+      The ridden/eat/stand/mouth poses, the tail's `ageInTicks` yRot wag, and broader lighting presentation remain
       unsupported
     - camel and camel_husk entities as renderer-owned vanilla 26.1 body-layer
       geometry from `AdultCamelModel`, `BabyCamelModel`, `CamelRenderer`, and

@@ -3459,7 +3459,8 @@ fn emit_horse_textured_model(
                 transform,
                 1,
                 1,
-            ),
+            )
+            .with_overlay([0.0, meshes.current_submission_overlay[1]]),
             instance,
             atlas,
         );

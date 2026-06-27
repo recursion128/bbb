@@ -6,6 +6,7 @@ use crate::entity_models::catalog::horse_markings_texture_ref;
 use crate::entity_models::colored::{
     entity_model_root_transform, mesh_transformer_scaled_model_root_transform, HORSE_SCALE,
 };
+use crate::entity_models::textured::EntityModelRenderSubmission;
 
 #[test]
 fn horse_model_parts_match_vanilla_26_1_body_layers() {
@@ -1306,12 +1307,19 @@ fn horse_textured_mesh_matches_vanilla_horse_geometry() {
     // coat variant only changes the sampled atlas region — positions stay identical.
     let (atlas, _) = build_entity_model_texture_atlas(&horse_texture_images()).unwrap();
 
-    let white_adult_instance = EntityModelInstance::horse(160, [0.0, 64.0, 0.0], 0.0, false);
+    let white_adult_instance = EntityModelInstance::horse(160, [0.0, 64.0, 0.0], 0.0, false)
+        .with_light_coords((4_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let white_adult_meshes = entity_model_textured_meshes(&[white_adult_instance], &atlas);
     assert_equine_submissions_match_vanilla(&white_adult_meshes, white_adult_instance);
     let white_adult = &white_adult_meshes.cutout;
     assert_eq!(white_adult.cutout_faces, 72);
     assert_eq!(white_adult.vertices.len(), 288);
+    assert_textured_vertices_match_submission(
+        &white_adult.vertices,
+        white_adult_meshes.submissions[0],
+    );
     let colored_adult = entity_model_mesh(&[EntityModelInstance::horse(
         161,
         [0.0, 64.0, 0.0],
@@ -1330,10 +1338,17 @@ fn horse_textured_mesh_matches_vanilla_horse_geometry() {
         0.0,
         false,
         HorseColorVariant::Black,
-    );
+    )
+    .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let black_adult_meshes = entity_model_textured_meshes(&[black_adult_instance], &atlas);
     assert_equine_submissions_match_vanilla(&black_adult_meshes, black_adult_instance);
     let black_adult = &black_adult_meshes.cutout;
+    assert_textured_vertices_match_submission(
+        &black_adult.vertices,
+        black_adult_meshes.submissions[0],
+    );
     let white_positions: Vec<_> = white_adult.vertices.iter().map(|v| v.position).collect();
     let black_positions: Vec<_> = black_adult.vertices.iter().map(|v| v.position).collect();
     assert_eq!(white_positions, black_positions);
@@ -1348,12 +1363,16 @@ fn horse_textured_mesh_matches_vanilla_horse_geometry() {
         0.0,
         true,
         HorseColorVariant::Gray,
-    );
+    )
+    .with_light_coords((7_u32 << 4) | (9_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let baby_meshes = entity_model_textured_meshes(&[baby_instance], &atlas);
     assert_equine_submissions_match_vanilla(&baby_meshes, baby_instance);
     let baby = &baby_meshes.cutout;
     assert_eq!(baby.cutout_faces, 60);
     assert_eq!(baby.vertices.len(), 240);
+    assert_textured_vertices_match_submission(&baby.vertices, baby_meshes.submissions[0]);
     let colored_baby =
         entity_model_mesh(&[EntityModelInstance::horse(164, [0.0, 64.0, 0.0], 0.0, true)]);
     let (baby_min, baby_max) = textured_mesh_extents(&baby);
@@ -1411,12 +1430,17 @@ fn horse_markings_overlay_layers_a_translucent_white_copy() {
         0.0,
         false,
         HorseColorVariant::White,
-    );
+    )
+    .with_light_coords((4_u32 << 4) | (12_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let plain = entity_model_textured_meshes(&[plain_instance], &atlas);
     assert_equine_submissions_match_vanilla(&plain, plain_instance);
     assert_eq!(plain.cutout.vertices.len(), 288);
     assert!(plain.translucent.vertices.is_empty());
     assert_eq!(plain.submissions.len(), 1);
+    assert_ne!(plain_instance.render_state.overlay_coords(), [0.0, 10.0]);
+    assert_textured_vertices_match_submission(&plain.cutout.vertices, plain.submissions[0]);
     assert_eq!(
         plain.submissions[0].render_type,
         EntityModelLayerRenderType::EntityCutout
@@ -1443,7 +1467,10 @@ fn horse_markings_overlay_layers_a_translucent_white_copy() {
         false,
         HorseColorVariant::White,
         HorseMarkings::WhiteDots,
-    );
+    )
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let marked = entity_model_textured_meshes(&[marked_instance], &atlas);
     assert_equine_submissions_match_vanilla(&marked, marked_instance);
     assert_eq!(marked.cutout.vertices.len(), 288);
@@ -1477,6 +1504,14 @@ fn horse_markings_overlay_layers_a_translucent_white_copy() {
         (1, 1)
     );
     assert_eq!(markings_submit.transform, base_submit.transform);
+    assert_eq!(base_submit.light, markings_submit.light);
+    assert_ne!(base_submit.overlay, markings_submit.overlay);
+    assert_eq!(
+        markings_submit.overlay,
+        [0.0, marked_instance.render_state.overlay_coords()[1]]
+    );
+    assert_textured_vertices_match_submission(&marked.cutout.vertices, base_submit);
+    assert_textured_vertices_match_submission(&marked.translucent.vertices, markings_submit);
     let base_positions: Vec<_> = marked.cutout.vertices.iter().map(|v| v.position).collect();
     let overlay_positions: Vec<_> = marked
         .translucent
@@ -1543,10 +1578,14 @@ fn equine_saddle_layer_renders_for_adult_horses_only() {
     ]))
     .unwrap();
 
-    let base = EntityModelInstance::horse(172, [0.0, 64.0, 0.0], 0.0, false);
+    let base = EntityModelInstance::horse(172, [0.0, 64.0, 0.0], 0.0, false)
+        .with_light_coords((4_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let bare_meshes = entity_model_textured_meshes(&[base], &atlas);
     assert_equine_submissions_match_vanilla(&bare_meshes, base);
     let bare = &bare_meshes.cutout;
+    assert_textured_vertices_match_submission(&bare.vertices, bare_meshes.submissions[0]);
     let saddled_instance = base.with_equine_saddle(true);
     let saddled_meshes = entity_model_textured_meshes(&[saddled_instance], &atlas);
     assert_equine_submissions_match_vanilla(&saddled_meshes, saddled_instance);
@@ -1574,6 +1613,16 @@ fn equine_saddle_layer_renders_for_adult_horses_only() {
         saddled_meshes.submissions[1].transform,
         saddled_meshes.submissions[0].transform
     );
+    assert_ne!(saddled_meshes.submissions[0].overlay, [0.0, 10.0]);
+    assert_eq!(saddled_meshes.submissions[1].overlay, [0.0, 10.0]);
+    assert_textured_vertices_match_submission(
+        &saddled.vertices[..288],
+        saddled_meshes.submissions[0],
+    );
+    assert_textured_vertices_match_submission(
+        &saddled.vertices[288..],
+        saddled_meshes.submissions[1],
+    );
     assert!(
         saddled.vertices[288].uv[1] >= 64.0 / 192.0,
         "the overlay samples the horse_saddle atlas region"
@@ -1591,8 +1640,19 @@ fn equine_saddle_layer_renders_for_adult_horses_only() {
     let ridden = &ridden_meshes.cutout;
     assert_eq!(ridden.cutout_faces - saddled.cutout_faces, 12);
     assert_eq!(ridden.vertices.len() - saddled.vertices.len(), 48);
+    assert_textured_vertices_match_submission(
+        &ridden.vertices[..288],
+        ridden_meshes.submissions[0],
+    );
+    assert_textured_vertices_match_submission(
+        &ridden.vertices[288..],
+        ridden_meshes.submissions[1],
+    );
 
     let baby_instance = EntityModelInstance::horse(173, [0.0, 64.0, 0.0], 0.0, true)
+        .with_light_coords((7_u32 << 4) | (9_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true)
         .with_equine_saddle(true)
         .with_equine_saddle_ridden(true);
     let baby_meshes = entity_model_textured_meshes(&[baby_instance], &atlas);
@@ -1600,6 +1660,7 @@ fn equine_saddle_layer_renders_for_adult_horses_only() {
     let baby = &baby_meshes.cutout;
     assert_eq!(baby.cutout_faces, 60);
     assert_eq!(baby.vertices.len(), 240);
+    assert_textured_vertices_match_submission(&baby.vertices, baby_meshes.submissions[0]);
 }
 
 #[test]
@@ -1616,10 +1677,14 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
     ]))
     .unwrap();
 
-    let horse = EntityModelInstance::horse(182, [0.0, 64.0, 0.0], 0.0, false);
+    let horse = EntityModelInstance::horse(182, [0.0, 64.0, 0.0], 0.0, false)
+        .with_light_coords((4_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let bare_meshes = entity_model_textured_meshes(&[horse], &atlas);
     assert_equine_submissions_match_vanilla(&bare_meshes, horse);
     let bare = &bare_meshes.cutout;
+    assert_textured_vertices_match_submission(&bare.vertices, bare_meshes.submissions[0]);
     let iron_meshes = entity_model_textured_meshes(
         &[horse.with_equine_body_armor(Some(EntityArmorMaterial::Iron))],
         &atlas,
@@ -1652,6 +1717,10 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
         iron_meshes.submissions[1].transform,
         iron_meshes.submissions[0].transform
     );
+    assert_ne!(iron_meshes.submissions[0].overlay, [0.0, 10.0]);
+    assert_eq!(iron_meshes.submissions[1].overlay, [0.0, 10.0]);
+    assert_textured_vertices_match_submission(&iron.vertices[..288], iron_meshes.submissions[0]);
+    assert_textured_vertices_match_submission(&iron.vertices[288..], iron_meshes.submissions[1]);
     let iron_uv = atlas
         .entries
         .iter()
@@ -1719,6 +1788,20 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
         leather_meshes.submissions[2].transform,
         leather_meshes.submissions[0].transform
     );
+    assert_eq!(leather_meshes.submissions[1].overlay, [0.0, 10.0]);
+    assert_eq!(leather_meshes.submissions[2].overlay, [0.0, 10.0]);
+    assert_textured_vertices_match_submission(
+        &leather.vertices[..288],
+        leather_meshes.submissions[0],
+    );
+    assert_textured_vertices_match_submission(
+        &leather.vertices[288..576],
+        leather_meshes.submissions[1],
+    );
+    assert_textured_vertices_match_submission(
+        &leather.vertices[576..],
+        leather_meshes.submissions[2],
+    );
     assert!(
         leather.vertices[bare.vertices.len()..bare.vertices.len() + 288]
             .iter()
@@ -1728,7 +1811,10 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
 
-    let baby = EntityModelInstance::horse(183, [0.0, 64.0, 0.0], 0.0, true);
+    let baby = EntityModelInstance::horse(183, [0.0, 64.0, 0.0], 0.0, true)
+        .with_light_coords((7_u32 << 4) | (9_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let baby_bare_meshes = entity_model_textured_meshes(&[baby], &atlas);
     assert_equine_submissions_match_vanilla(&baby_bare_meshes, baby);
     let baby_bare = &baby_bare_meshes.cutout;
@@ -1737,6 +1823,10 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
     assert_equine_submissions_match_vanilla(&baby_armored_meshes, baby_armored_instance);
     let baby_armored = &baby_armored_meshes.cutout;
     assert_eq!(baby_armored.vertices.len(), baby_bare.vertices.len());
+    assert_textured_vertices_match_submission(
+        &baby_armored.vertices,
+        baby_armored_meshes.submissions[0],
+    );
 
     let zombie = EntityModelInstance::undead_horse(
         184,
@@ -1744,10 +1834,17 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
         0.0,
         UndeadHorseModelFamily::Zombie,
         false,
-    );
+    )
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let zombie_bare_meshes = entity_model_textured_meshes(&[zombie], &atlas);
     assert_equine_submissions_match_vanilla(&zombie_bare_meshes, zombie);
     let zombie_bare = &zombie_bare_meshes.cutout;
+    assert_textured_vertices_match_submission(
+        &zombie_bare.vertices,
+        zombie_bare_meshes.submissions[0],
+    );
     let zombie_armored_instance =
         zombie.with_equine_body_armor(Some(EntityArmorMaterial::Netherite));
     let zombie_armored_meshes = entity_model_textured_meshes(&[zombie_armored_instance], &atlas);
@@ -1758,6 +1855,14 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
         zombie_armored.vertices.len() - zombie_bare.vertices.len(),
         288
     );
+    assert_textured_vertices_match_submission(
+        &zombie_armored.vertices[..288],
+        zombie_armored_meshes.submissions[0],
+    );
+    assert_textured_vertices_match_submission(
+        &zombie_armored.vertices[288..],
+        zombie_armored_meshes.submissions[1],
+    );
 
     let skeleton = EntityModelInstance::undead_horse(
         185,
@@ -1765,10 +1870,17 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
         0.0,
         UndeadHorseModelFamily::Skeleton,
         false,
-    );
+    )
+    .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let skeleton_bare_meshes = entity_model_textured_meshes(&[skeleton], &atlas);
     assert_equine_submissions_match_vanilla(&skeleton_bare_meshes, skeleton);
     let skeleton_bare = &skeleton_bare_meshes.cutout;
+    assert_textured_vertices_match_submission(
+        &skeleton_bare.vertices,
+        skeleton_bare_meshes.submissions[0],
+    );
     let skeleton_armored_instance =
         skeleton.with_equine_body_armor(Some(EntityArmorMaterial::Netherite));
     let skeleton_armored_meshes =
@@ -1889,6 +2001,9 @@ fn equine_saddle_layer_uses_family_specific_models_and_textures() {
         UndeadHorseModelFamily::Skeleton,
         false,
     )
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true)
     .with_equine_saddle(true);
     let skeleton_meshes = entity_model_textured_meshes(&[skeleton_instance], &atlas);
     assert_equine_submissions_match_vanilla(&skeleton_meshes, skeleton_instance);
@@ -1900,6 +2015,9 @@ fn equine_saddle_layer_uses_family_specific_models_and_textures() {
         UndeadHorseModelFamily::Zombie,
         false,
     )
+    .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true)
     .with_equine_saddle(true);
     let zombie_meshes = entity_model_textured_meshes(&[zombie_instance], &atlas);
     assert_equine_submissions_match_vanilla(&zombie_meshes, zombie_instance);
@@ -1921,6 +2039,22 @@ fn equine_saddle_layer_uses_family_specific_models_and_textures() {
             zombie_meshes.submissions[1].submit_sequence
         ),
         (0, 1)
+    );
+    assert_textured_vertices_match_submission(
+        &skeleton.vertices[..288],
+        skeleton_meshes.submissions[0],
+    );
+    assert_textured_vertices_match_submission(
+        &skeleton.vertices[288..],
+        skeleton_meshes.submissions[1],
+    );
+    assert_textured_vertices_match_submission(
+        &zombie.vertices[..288],
+        zombie_meshes.submissions[0],
+    );
+    assert_textured_vertices_match_submission(
+        &zombie.vertices[288..],
+        zombie_meshes.submissions[1],
     );
     let skeleton_overlay_uv = skeleton.vertices[288].uv;
     let zombie_overlay_uv = zombie.vertices[288].uv;
@@ -2127,13 +2261,20 @@ fn undead_horse_textured_mesh_matches_vanilla_horse_geometry() {
         0.0,
         UndeadHorseModelFamily::Skeleton,
         false,
-    );
+    )
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let skeleton_adult_meshes = entity_model_textured_meshes(&[skeleton_adult_instance], &atlas);
     assert_equine_submissions_match_vanilla(&skeleton_adult_meshes, skeleton_adult_instance);
     let skeleton_adult = &skeleton_adult_meshes.cutout;
     assert_eq!(skeleton_adult.cutout_faces, 72);
     assert_eq!(skeleton_adult.vertices.len(), 288);
     assert_eq!(skeleton_adult.indices.len(), 432);
+    assert_textured_vertices_match_submission(
+        &skeleton_adult.vertices,
+        skeleton_adult_meshes.submissions[0],
+    );
     let (adult_min, adult_max) = textured_mesh_extents(&skeleton_adult);
     assert_close3(adult_min, [-0.31562507, 64.001625, -1.0915062]);
     assert_close3(adult_max, [0.31562507, 66.11081, 1.4726361]);
@@ -2146,10 +2287,17 @@ fn undead_horse_textured_mesh_matches_vanilla_horse_geometry() {
         0.0,
         UndeadHorseModelFamily::Zombie,
         false,
-    );
+    )
+    .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let zombie_adult_meshes = entity_model_textured_meshes(&[zombie_adult_instance], &atlas);
     assert_equine_submissions_match_vanilla(&zombie_adult_meshes, zombie_adult_instance);
     let zombie_adult = &zombie_adult_meshes.cutout;
+    assert_textured_vertices_match_submission(
+        &zombie_adult.vertices,
+        zombie_adult_meshes.submissions[0],
+    );
     let skeleton_positions: Vec<_> = skeleton_adult.vertices.iter().map(|v| v.position).collect();
     let zombie_positions: Vec<_> = zombie_adult.vertices.iter().map(|v| v.position).collect();
     assert_eq!(skeleton_positions, zombie_positions);
@@ -2165,12 +2313,19 @@ fn undead_horse_textured_mesh_matches_vanilla_horse_geometry() {
         0.0,
         UndeadHorseModelFamily::Zombie,
         true,
-    );
+    )
+    .with_light_coords((7_u32 << 4) | (9_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let zombie_baby_meshes = entity_model_textured_meshes(&[zombie_baby_instance], &atlas);
     assert_equine_submissions_match_vanilla(&zombie_baby_meshes, zombie_baby_instance);
     let zombie_baby = &zombie_baby_meshes.cutout;
     assert_eq!(zombie_baby.cutout_faces, 60);
     assert_eq!(zombie_baby.vertices.len(), 240);
+    assert_textured_vertices_match_submission(
+        &zombie_baby.vertices,
+        zombie_baby_meshes.submissions[0],
+    );
     let colored_baby = entity_model_mesh(&[EntityModelInstance::undead_horse(
         173,
         [0.0, 64.0, 0.0],
@@ -2481,4 +2636,13 @@ fn assert_equine_folded_meshes_match_expected_buckets(
         .is_empty());
     assert!(meshes.scroll.vertices.is_empty());
     assert!(meshes.scroll_additive.vertices.is_empty());
+}
+
+fn assert_textured_vertices_match_submission(
+    vertices: &[EntityModelTexturedVertex],
+    submit: EntityModelRenderSubmission,
+) {
+    assert!(vertices
+        .iter()
+        .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
 }
