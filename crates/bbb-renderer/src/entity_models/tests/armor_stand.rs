@@ -263,7 +263,7 @@ fn armor_stand_textured_mesh_matches_colored_geometry_and_visibility() {
         let mut pose = DEFAULT_ARMOR_STAND_MODEL_POSE;
         pose.head = [0.0, 45.0, 0.0];
         pose.body = [0.0, 0.0, 12.0];
-        let instances = [EntityModelInstance::armor_stand(
+        let instance = EntityModelInstance::armor_stand(
             5,
             [0.0, 64.0, 0.0],
             0.0,
@@ -271,10 +271,23 @@ fn armor_stand_textured_mesh_matches_colored_geometry_and_visibility() {
             show_arms,
             show_base_plate,
             pose,
-        )];
+        );
+        let instances = [instance];
         let colored = entity_model_mesh(&instances);
-        let textured = entity_model_textured_mesh(&instances, &atlas);
-        // The textured cart shares the colored geometry exactly: same cube count and bounds.
+        let textured_meshes = entity_model_textured_meshes(&instances, &atlas);
+        assert!(textured_meshes.translucent.vertices.is_empty());
+        assert!(textured_meshes.eyes.vertices.is_empty());
+        assert_eq!(textured_meshes.submissions.len(), 1);
+        let submit = textured_meshes.submissions[0];
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(submit.texture, ARMOR_STAND_TEXTURE_REF);
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(submit.transform, entity_model_root_transform(instance));
+        assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+        let textured = &textured_meshes.cutout;
+
+        // The textured armor stand shares the colored geometry exactly: same cube count and bounds.
         assert_eq!(textured.cutout_faces, colored.opaque_faces);
         assert_eq!(textured.vertices.len(), colored.vertices.len());
         assert!(textured
