@@ -651,9 +651,12 @@ fn piglin_textured_layer_passes_match_vanilla_renderer() {
             passes[0].render_type,
             EntityModelLayerRenderType::EntityCutout
         );
+        assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
         assert_eq!(passes[0].model_layer, model_layer);
         assert_eq!(passes[0].texture, texture);
         assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
+        assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
         assert!(entity_model_texture_refs().contains(&texture));
         // The unified `PiglinModel` tree drives the geometry, so the layer-pass parts are vestigial.
     }
@@ -691,7 +694,9 @@ fn piglin_textured_mesh_matches_colored_geometry_and_animates() {
             baby,
         )];
         let colored = entity_model_mesh(&instances);
-        let textured = entity_model_textured_mesh(&instances, &atlas);
+        let textured_meshes = entity_model_textured_meshes(&instances, &atlas);
+        assert_piglin_submissions_match_vanilla(&textured_meshes, &instances);
+        let textured = &textured_meshes.cutout;
         // The textured piglin shares the colored geometry exactly (same flapped ears at age 0).
         assert_eq!(
             textured.cutout_faces, colored.opaque_faces,
@@ -713,19 +718,45 @@ fn piglin_textured_mesh_matches_colored_geometry_and_animates() {
 
         // The ears flap as ageInTicks advances on the textured path too.
         let aged = [instances[0].with_age_in_ticks(31.4)];
-        let textured_aged = entity_model_textured_mesh(&aged, &atlas);
-        assert_ne!(textured.vertices, textured_aged.vertices, "{family:?} ears");
+        let textured_aged = entity_model_textured_meshes(&aged, &atlas);
+        assert_piglin_submissions_match_vanilla(&textured_aged, &aged);
+        assert_ne!(
+            textured.vertices, textured_aged.cutout.vertices,
+            "{family:?} ears"
+        );
     }
 
     // Non-zombified piglins swing their arms when walking; the zombified piglin holds them out.
     let piglin =
         EntityModelInstance::piglin(90, [0.0, 64.0, 0.0], 0.0, PiglinModelFamily::Piglin, false);
-    let piglin_rest = entity_model_textured_mesh(&[piglin], &atlas);
-    let piglin_walk = entity_model_textured_mesh(&[piglin.with_walk_animation(0.0, 1.0)], &atlas);
+    let piglin_walk_instance = piglin.with_walk_animation(0.0, 1.0);
+    let piglin_rest = entity_model_textured_meshes(&[piglin], &atlas);
+    let piglin_walk = entity_model_textured_meshes(&[piglin_walk_instance], &atlas);
+    assert_piglin_submissions_match_vanilla(&piglin_rest, &[piglin]);
+    assert_piglin_submissions_match_vanilla(&piglin_walk, &[piglin_walk_instance]);
     assert_ne!(
-        piglin_rest.vertices, piglin_walk.vertices,
+        piglin_rest.cutout.vertices, piglin_walk.cutout.vertices,
         "the textured piglin swings its arms/legs when walking"
     );
+}
+
+fn assert_piglin_submissions_match_vanilla(
+    meshes: &EntityModelTexturedMeshes,
+    instances: &[EntityModelInstance],
+) {
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert_eq!(meshes.submissions.len(), instances.len());
+
+    for (submit, instance) in meshes.submissions.iter().zip(instances) {
+        let instance = *instance;
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(submit.texture, instance.kind.vanilla_texture_ref().unwrap());
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(submit.transform, entity_model_root_transform(instance));
+        assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    }
 }
 
 #[test]

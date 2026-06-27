@@ -889,7 +889,7 @@ When an agent does any of the following, update this file in the same slice:
     `leftEar.zRot = -default - cos(freq * 1.2) * amp`, `rightEar.zRot = default +
     cos(freq) * amp`, with `default` the `getDefaultEarAngleInDegrees()` of `30°` (adult/
     brute) or `5°` (baby). The ears are `&'static` head children, so the head subtree is
-    hand-emitted with the flapped ears (colored path; piglins have no textured path); because
+    hand-emitted with the flapped ears on both colored and textured paths; because
     the `±0.08` baseline and `ageInTicks` advance every frame, the ears never sit still.
     The regular piglin's `PiglinModel.setupAnim` `DANCING` pose (`Piglin.isDancing()`, the synced
     `DATA_IS_DANCING` boolean id `19`, projected as `piglin_dancing` and gated to the piglin type —
@@ -1929,7 +1929,9 @@ When an agent does any of the following, update this file in the same slice:
       (the `PlayerModel` jacket is cleared), and the shared `PlayerModel.createMesh`
       wide arm/sleeve/leg/pants UVs — over each family's own
       `textures/entity/piglin/{piglin,piglin_baby,piglin_brute,zombified_piglin,zombified_piglin_baby}.png`,
-      with official PNG atlas upload/bind/sample and the vanilla
+      with official PNG atlas upload/bind/sample and explicit base submission metadata for vanilla
+      `entityCutout`, selected texture, white tint, `entity_model_root_transform`, and
+      `(order, submit_sequence) == (0, 0)`, before folded geometry checks, plus the vanilla
       `AbstractPiglinModel.setupAnim` head-look, leg swing, ear flap, and (for the
       non-zombified families) arm counter-swing on both render paths, while the zombified
       piglin uses the held-out `animateZombieArms` arms;
