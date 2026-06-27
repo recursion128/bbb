@@ -1056,6 +1056,8 @@ fn textured_layer_submission(
     );
     if layer_pass_uses_no_overlay(pass) {
         submit.with_overlay(ENTITY_VERTEX_NO_OVERLAY)
+    } else if layer_pass_uses_zero_white_overlay(pass) {
+        submit.with_overlay([0.0, meshes.current_submission_overlay[1]])
     } else {
         submit
     }
@@ -1083,6 +1085,10 @@ fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
             | EntityModelLayerKind::WitherSkullBase
             | EntityModelLayerKind::WolfCollar
     )
+}
+
+fn layer_pass_uses_zero_white_overlay(pass: EntityModelLayerPass) -> bool {
+    matches!(pass.kind, EntityModelLayerKind::TropicalFishPattern)
 }
 
 /// Render a model's full textured layer-pass list (already prepared) into `meshes`.

@@ -3570,8 +3570,10 @@ When an agent does any of the following, update this file in the same slice:
       box for UVs) and tinted by the pattern color (`getPatternColor().getTextureDiffuseColor()`,
       `DyeColor.byId((packedVariant >> 24) & 0xFF)`). Tests now pin the emitted base and pattern
       submissions' textures, vanilla `entityCutout` render type, base/pattern dye tints,
-      `tropical_fish_model_root_transform`, and explicit `(order, submit_sequence)` pairs `(0, 0)`
-      and `(1, 1)` before checking the folded cutout mesh animation/flop behavior. Only the colored
+      `tropical_fish_model_root_transform`, light, overlay metadata (base keeps the full
+      hurt/white overlay; `TropicalFishPatternLayer` preserves the red row but clears the white
+      overlay via `getOverlayCoords(state, 0.0F)`), and explicit `(order, submit_sequence)` pairs
+      `(0, 0)` and `(1, 1)` before checking the folded cutout mesh animation/flop behavior. Only the colored
       debug path omits the
       pattern overlay (a cutout texture whose shape comes from the texture alpha cannot be
       approximated by a solid-color box); its lighting/overlay remain the standard deferred

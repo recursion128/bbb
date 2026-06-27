@@ -381,7 +381,10 @@ fn tropical_fish_textured_mesh_uses_vanilla_geometry_and_animates() {
         TropicalFishPattern::Brinely,
         EntityDyeColor::Cyan,
     )
-    .with_in_water(true);
+    .with_in_water(true)
+    .with_light_coords((6_u32 << 4) | (12_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let small_still = entity_model_textured_meshes(&[small], &atlas);
     assert_tropical_fish_submission_pair(
         &small_still,
@@ -392,6 +395,7 @@ fn tropical_fish_textured_mesh_uses_vanilla_geometry_and_animates() {
         TROPICAL_FISH_BRINELY_PATTERN_TEXTURE_REF,
         EntityDyeColor::Cyan.texture_diffuse_color(),
     );
+    assert_ne!(small.render_state.overlay_coords(), [0.0, 10.0]);
     assert_eq!(small_still.cutout.vertices.len(), 240);
 
     let large = EntityModelInstance::tropical_fish(
@@ -403,7 +407,10 @@ fn tropical_fish_textured_mesh_uses_vanilla_geometry_and_animates() {
         TropicalFishPattern::Betty,
         EntityDyeColor::Cyan,
     )
-    .with_in_water(true);
+    .with_in_water(true)
+    .with_light_coords((6_u32 << 4) | (12_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let large_still = entity_model_textured_meshes(&[large], &atlas);
     assert_tropical_fish_submission_pair(
         &large_still,
@@ -471,6 +478,8 @@ fn assert_tropical_fish_submission_pair(
         base.transform,
         tropical_fish_model_root_transform(instance, in_water)
     );
+    assert_eq!(base.light, instance.render_state.shader_light());
+    assert_eq!(base.overlay, instance.render_state.overlay_coords());
     assert_eq!((base.order, base.submit_sequence), (0, 0));
 
     let pattern = meshes.submissions[1];
@@ -482,6 +491,12 @@ fn assert_tropical_fish_submission_pair(
     assert_eq!(pattern.texture, pattern_texture);
     assert_eq!(pattern.tint, pattern_tint);
     assert_eq!(pattern.transform, base.transform);
+    assert_eq!(pattern.light, instance.render_state.shader_light());
+    assert_eq!(
+        pattern.overlay,
+        [0.0, instance.render_state.overlay_coords()[1]]
+    );
+    assert_ne!(pattern.overlay, instance.render_state.overlay_coords());
     assert_eq!((pattern.order, pattern.submit_sequence), (1, 1));
 
     assert!(meshes
@@ -493,7 +508,25 @@ fn assert_tropical_fish_submission_pair(
         .cutout
         .vertices
         .iter()
+        .filter(|vertex| vertex.tint == base_tint)
+        .all(
+            |vertex| vertex.light == instance.render_state.shader_light()
+                && vertex.overlay == instance.render_state.overlay_coords()
+        ));
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
         .any(|vertex| vertex.tint == pattern_tint));
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .filter(|vertex| vertex.tint == pattern_tint)
+        .all(
+            |vertex| vertex.light == instance.render_state.shader_light()
+                && vertex.overlay == pattern.overlay
+        ));
 }
 
 fn tropical_fish_texture_images() -> Vec<EntityModelTextureImage> {
