@@ -51,6 +51,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     SkeletonClothing,
     SlimeBase,
     SlimeOuter,
+    SnifferBase,
     MagmaCubeBase,
     GhastBase,
     HappyGhastBase,
@@ -948,7 +949,9 @@ pub(in crate::entity_models) fn sniffer_textured_layer_passes() -> Vec<EntityMod
         EntityModelLayerRenderType::EntityCutout,
         SNIFFER_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
-    )]
+    )
+    .with_kind(EntityModelLayerKind::SnifferBase)
+    .with_order(0, 0)]
 }
 
 pub(in crate::entity_models) fn parrot_textured_layer_passes(

@@ -2895,7 +2895,9 @@ When an agent does any of the following, update this file in the same slice:
       SCALE puff over the eleven animated bones. Only the baby-transform
       (`BABY_TRANSFORM`/`SNIFFER_BABY_FALL`) stays deferred. The adult base texture is now bound on the
       textured path (`SNIFFER_TEXTURE_REF`), the primary now-wired path, with explicit submission
-      metadata pinned for vanilla `entityCutout`, white tint, root transform, and `order(0)`.
+      metadata pinned for the `SnifferBase` pass identity, vanilla `entityCutout` render type/name,
+      white tint, root transform, `(order, submit_sequence) == (0, 0)`, and the
+      `AgeableMobRenderer` / `LivingEntityRenderer` `lightCoords` plus hurt/white overlay metadata.
       The colored debug path stays as a fallback (it approximates the body with one brown tint and the
       nose pad with a pink tint)
     - warden entities as renderer-owned vanilla 26.1 `WardenModel.createBodyLayer()` geometry on the
