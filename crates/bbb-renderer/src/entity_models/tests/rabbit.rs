@@ -310,17 +310,30 @@ fn rabbit_textured_render_matches_vanilla_renderer() {
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
     for baby in [false, true] {
-        let mesh = entity_model_textured_mesh(
-            &[EntityModelInstance::rabbit(
-                900,
-                [0.0, 64.0, 0.0],
-                0.0,
-                baby,
-                RabbitModelVariant::Gold,
-                false,
-            )],
-            &atlas,
+        let instance = EntityModelInstance::rabbit(
+            900,
+            [0.0, 64.0, 0.0],
+            0.0,
+            baby,
+            RabbitModelVariant::Gold,
+            false,
         );
+        let meshes = entity_model_textured_meshes(&[instance], &atlas);
+        assert!(meshes.translucent.vertices.is_empty());
+        assert!(meshes.eyes.vertices.is_empty());
+        assert_eq!(meshes.submissions.len(), 1);
+        let submit = meshes.submissions[0];
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(
+            submit.texture,
+            rabbit_texture_ref(RabbitModelVariant::Gold, baby, false)
+        );
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(submit.transform, entity_model_root_transform(instance));
+        assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+        let mesh = &meshes.cutout;
+
         assert!(
             !mesh.vertices.is_empty(),
             "baby={baby} emits textured geometry"
