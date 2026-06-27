@@ -523,18 +523,36 @@ fn feline_textured_render_matches_vanilla_renderer() {
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
     for (cat, baby) in [(true, false), (true, true), (false, false), (false, true)] {
-        let mesh = entity_model_textured_mesh(
-            &[EntityModelInstance::feline(
-                900,
-                [0.0, 64.0, 0.0],
-                0.0,
-                cat,
-                baby,
-                CatModelVariant::Black,
-                None,
-            )],
-            &atlas,
+        let instance = EntityModelInstance::feline(
+            900,
+            [0.0, 64.0, 0.0],
+            0.0,
+            cat,
+            baby,
+            CatModelVariant::Black,
+            None,
         );
+        let meshes = entity_model_textured_meshes(&[instance], &atlas);
+        assert!(meshes.translucent.vertices.is_empty());
+        assert!(meshes.eyes.vertices.is_empty());
+        assert_eq!(meshes.submissions.len(), 1);
+        let submit = meshes.submissions[0];
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(
+            submit.texture,
+            feline_texture_ref(cat, baby, CatModelVariant::Black)
+        );
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        let expected_transform = if cat && !baby {
+            mesh_transformer_scaled_model_root_transform(instance, FELINE_CAT_SCALE)
+        } else {
+            entity_model_root_transform(instance)
+        };
+        assert_eq!(submit.transform, expected_transform);
+        assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+        let mesh = &meshes.cutout;
+
         assert!(
             !mesh.vertices.is_empty(),
             "cat={cat} baby={baby} emits textured geometry"
@@ -544,6 +562,36 @@ fn feline_textured_render_matches_vanilla_renderer() {
             .iter()
             .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
     }
+
+    let collared = EntityModelInstance::feline(
+        901,
+        [0.0, 64.0, 0.0],
+        0.0,
+        true,
+        false,
+        CatModelVariant::Black,
+        Some(EntityDyeColor::Lime),
+    );
+    let meshes = entity_model_textured_meshes(&[collared], &atlas);
+    assert_eq!(meshes.submissions.len(), 2);
+    let base = meshes.submissions[0];
+    assert_eq!(
+        base.texture,
+        feline_texture_ref(true, false, CatModelVariant::Black)
+    );
+    assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(
+        base.transform,
+        mesh_transformer_scaled_model_root_transform(collared, FELINE_CAT_SCALE)
+    );
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+    let collar = meshes.submissions[1];
+    assert_eq!(collar.texture, FELINE_CAT_COLLAR_TEXTURE_REF);
+    assert_eq!(collar.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(collar.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(collar.tint, EntityDyeColor::Lime.texture_diffuse_color());
+    assert_eq!(collar.transform, base.transform);
+    assert_eq!((collar.order, collar.submit_sequence), (1, 1));
 }
 
 #[test]
