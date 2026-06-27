@@ -197,4 +197,9 @@ fn assert_happy_ghast_base_submission(
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
     assert_eq!(submit.light, instance.render_state.shader_light());
     assert_eq!(submit.overlay, instance.render_state.overlay_coords());
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
 }

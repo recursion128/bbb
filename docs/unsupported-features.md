@@ -2454,8 +2454,9 @@ When an agent does any of the following, update this file in the same slice:
       layer pass emission (vanilla `HappyGhastModel` calls `EntityModel`'s default
       `RenderTypes::entityCutout`) while preserving explicit submission metadata for
       texture, render type, white tint, scaled root transform, `order(0)`, packed
-      light, and overlay, official PNG atlas upload/bind/sample path, and the vanilla
-      `HappyGhastModel.setupAnim` tentacle
+      light, and overlay, with the folded cutout vertices inheriting the same
+      submission light/overlay, official PNG atlas upload/bind/sample path, and the
+      vanilla `HappyGhastModel.setupAnim` tentacle
       wave (it reuses `GhastModel.animateTentacles` verbatim, `tentacle.xRot = 0.2 *
       sin(ageInTicks * 0.3 + i) + 0.4`, driven by the projected `ageInTicks`, on both
       render paths).
