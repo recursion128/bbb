@@ -12,10 +12,9 @@ use super::model::{EntityModel, ModelPart};
 use super::model_layers::PLAYER_WIDE_STEVE_TEXTURE_REF;
 use super::{
     catalog::{
-        boat_texture_ref, horse_markings_texture_ref, villager_level_texture_ref,
-        villager_profession_texture_ref, villager_type_texture_ref,
-        zombie_villager_level_texture_ref, zombie_villager_profession_texture_ref,
-        zombie_villager_type_texture_ref,
+        boat_texture_ref, villager_level_texture_ref, villager_profession_texture_ref,
+        villager_type_texture_ref, zombie_villager_level_texture_ref,
+        zombie_villager_profession_texture_ref, zombie_villager_type_texture_ref,
     },
     catalog::{
         CamelModelFamily, DonkeyModelFamily, EntityArmorMaterial, EntityCustomHeadSkull,
@@ -24,9 +23,9 @@ use super::{
         EntityDynamicPlayerTexture, EntityDynamicPlayerTextureAtlasLayout,
         EntityEquipmentLayerTexture, EntityModelKind, EntityModelTextureAtlasEntry,
         EntityModelTextureAtlasLayout, EntityModelTextureRef, EntityModelUvRect, EntityPlayerSkin,
-        HorseMarkings, LlamaModelFamily, PiglinModelFamily, PlayerModelPartVisibility,
-        SkeletonModelFamily, UndeadHorseModelFamily, VillagerModelData, VillagerModelHat,
-        ZombieVariantModelFamily,
+        HorseColorVariant, HorseMarkings, LlamaModelFamily, PiglinModelFamily,
+        PlayerModelPartVisibility, SkeletonModelFamily, UndeadHorseModelFamily, VillagerModelData,
+        VillagerModelHat, ZombieVariantModelFamily,
     },
     entity_model_root_transform,
     geometry::{
@@ -91,12 +90,13 @@ pub(super) use layers::{
     armadillo_textured_layer_passes, arrow_textured_layer_passes, axolotl_textured_layer_passes,
     blaze_textured_layer_passes, boat_textured_layer_passes, camel_textured_layer_passes,
     chicken_textured_layer_passes, copper_golem_textured_layer_passes, cow_textured_layer_passes,
-    creaking_textured_layer_passes, creeper_textured_layer_passes, drowned_textured_layer_passes,
-    ender_dragon_textured_layer_passes, enderman_textured_layer_passes,
-    endermite_textured_layer_passes, evoker_fangs_textured_layer_passes,
-    feline_textured_layer_passes, fox_textured_layer_passes, frog_textured_layer_passes,
-    ghast_textured_layer_passes, goat_textured_layer_passes, guardian_textured_layer_passes,
-    happy_ghast_textured_layer_passes, hoglin_textured_layer_passes, husk_textured_layer_passes,
+    creaking_textured_layer_passes, creeper_textured_layer_passes, donkey_textured_layer_passes,
+    drowned_textured_layer_passes, ender_dragon_textured_layer_passes,
+    enderman_textured_layer_passes, endermite_textured_layer_passes,
+    evoker_fangs_textured_layer_passes, feline_textured_layer_passes, fox_textured_layer_passes,
+    frog_textured_layer_passes, ghast_textured_layer_passes, goat_textured_layer_passes,
+    guardian_textured_layer_passes, happy_ghast_textured_layer_passes,
+    hoglin_textured_layer_passes, horse_textured_layer_passes, husk_textured_layer_passes,
     illager_textured_layer_passes, iron_golem_textured_layer_passes,
     leash_knot_textured_layer_passes, llama_spit_textured_layer_passes,
     llama_textured_layer_passes, magma_cube_textured_layer_passes, minecart_textured_layer_passes,
@@ -108,12 +108,13 @@ pub(super) use layers::{
     silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
     sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
     squid_textured_layer_passes, tadpole_textured_layer_passes, trident_textured_layer_passes,
-    tropical_fish_textured_layer_passes, villager_textured_layer_passes,
-    wandering_trader_textured_layer_passes, warden_textured_layer_passes,
-    witch_textured_layer_passes, wither_skull_textured_layer_passes, wither_textured_layer_passes,
-    wolf_textured_layer_passes, zombie_nautilus_textured_layer_passes,
-    zombie_textured_layer_passes, zombie_villager_textured_layer_passes, EntityModelLayerKind,
-    EntityModelLayerPass, EntityModelLayerRenderBucket, EntityModelLayerRenderType,
+    tropical_fish_textured_layer_passes, undead_horse_textured_layer_passes,
+    villager_textured_layer_passes, wandering_trader_textured_layer_passes,
+    warden_textured_layer_passes, witch_textured_layer_passes, wither_skull_textured_layer_passes,
+    wither_textured_layer_passes, wolf_textured_layer_passes,
+    zombie_nautilus_textured_layer_passes, zombie_textured_layer_passes,
+    zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerPass,
+    EntityModelLayerRenderBucket, EntityModelLayerRenderType,
 };
 #[cfg(test)]
 pub(super) use layers::{warden_pulsating_spots_alpha, EntityModelLayerVisibility};
@@ -386,8 +387,19 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
                         dynamic_player_skin_atlas,
                     );
                 }
-                EntityModelKind::Horse { baby, markings, .. } => {
-                    emit_horse_textured_model(&mut meshes, *instance, baby, markings, atlas);
+                EntityModelKind::Horse {
+                    variant,
+                    baby,
+                    markings,
+                } => {
+                    emit_horse_textured_model(
+                        &mut meshes,
+                        *instance,
+                        variant,
+                        baby,
+                        markings,
+                        atlas,
+                    );
                 }
                 EntityModelKind::Donkey {
                     family,
@@ -403,8 +415,8 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
                         atlas,
                     );
                 }
-                EntityModelKind::UndeadHorse { baby, .. } => {
-                    emit_undead_horse_textured_model(&mut meshes, *instance, baby, atlas);
+                EntityModelKind::UndeadHorse { family, baby } => {
+                    emit_undead_horse_textured_model(&mut meshes, *instance, family, baby, atlas);
                 }
                 _ => {}
             }
@@ -965,6 +977,7 @@ fn layer_pass_uses_zero_white_overlay(pass: EntityModelLayerPass) -> bool {
         EntityModelLayerKind::CopperGolemEyes
             | EntityModelLayerKind::CreakingEyes
             | EntityModelLayerKind::FelineCollar
+            | EntityModelLayerKind::HorseMarkings
             | EntityModelLayerKind::IronGolemCrackiness
             | EntityModelLayerKind::DrownedOuter
             | EntityModelLayerKind::SkeletonClothing
@@ -2967,6 +2980,39 @@ fn emit_equine_textured_submission(
 }
 
 #[allow(clippy::too_many_arguments)]
+fn emit_equine_textured_layer_pass(
+    meshes: &mut EntityModelTexturedMeshes,
+    parts: &[TexturedModelPartDesc],
+    leg_indices: [usize; 4],
+    head_parts_index: usize,
+    tail_x_rot_offset: f32,
+    age_scale: f32,
+    pass: EntityModelLayerPass,
+    transform: Mat4,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    if pass.tint[3] <= 1.0e-5 {
+        return;
+    }
+    if meshes.current_force_transparent && !layer_pass_is_base(pass) {
+        return;
+    }
+    let submit = textured_layer_submission(meshes, pass, transform);
+    emit_equine_textured_submission(
+        meshes,
+        parts,
+        leg_indices,
+        head_parts_index,
+        tail_x_rot_offset,
+        age_scale,
+        submit,
+        instance,
+        atlas,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
 fn emit_equine_textured_posed(
     mesh: &mut EntityModelTexturedMesh,
     parts: &[TexturedModelPartDesc],
@@ -3049,23 +3095,19 @@ fn emit_donkey_textured_model(
     has_chest: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    let Some(texture) = instance.kind.vanilla_texture_ref() else {
-        return;
-    };
+    let passes = donkey_textured_layer_passes(family, baby, has_chest);
+    let pass = passes[0];
     if baby {
-        let submit = EntityModelSubmissionEmit::new(
-            EntityModelLayerRenderType::EntityCutout,
-            texture,
-            [1.0, 1.0, 1.0, 1.0],
-            entity_model_root_transform(instance),
-            0,
-            0,
-        );
+        let transform = entity_model_root_transform(instance);
+        if meshes.current_force_transparent && !layer_pass_is_base(pass) {
+            return;
+        }
+        let submit = textured_layer_submission(meshes, pass, transform);
         render_textured_submission(meshes, submit, atlas, |mesh, entry| {
             emit_textured_model_parts(
                 mesh,
                 &BABY_DONKEY_PARTS_TEXTURED,
-                submit.transform,
+                transform,
                 submit.texture,
                 entry.uv,
                 submit.tint,
@@ -3084,21 +3126,16 @@ fn emit_donkey_textured_model(
         DonkeyModelFamily::Donkey => 0.87,
         DonkeyModelFamily::Mule => 0.92,
     };
-    emit_equine_textured_submission(
+    let transform = mesh_transformer_scaled_model_root_transform(instance, scale);
+    emit_equine_textured_layer_pass(
         meshes,
         parts,
         [2, 3, 4, 5],
         1,
         0.0,
         1.0,
-        EntityModelSubmissionEmit::new(
-            EntityModelLayerRenderType::EntityCutout,
-            texture,
-            [1.0, 1.0, 1.0, 1.0],
-            mesh_transformer_scaled_model_root_transform(instance, scale),
-            0,
-            0,
-        ),
+        pass,
+        transform,
         instance,
         atlas,
     );
@@ -3115,13 +3152,11 @@ fn emit_donkey_textured_model(
 fn emit_horse_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
+    variant: HorseColorVariant,
     baby: bool,
     markings: HorseMarkings,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    let Some(texture) = instance.kind.vanilla_texture_ref() else {
-        return;
-    };
     let (parts, leg_indices, head_parts_index, tail_x_rot_offset, age_scale, transform): (
         &[TexturedModelPartDesc],
         [usize; 4],
@@ -3148,44 +3183,32 @@ fn emit_horse_textured_model(
             mesh_transformer_scaled_model_root_transform(instance, HORSE_SCALE),
         )
     };
-    emit_equine_textured_submission(
+    let passes = horse_textured_layer_passes(variant, baby, markings);
+    emit_equine_textured_layer_pass(
         meshes,
         parts,
         leg_indices,
         head_parts_index,
         tail_x_rot_offset,
         age_scale,
-        EntityModelSubmissionEmit::new(
-            EntityModelLayerRenderType::EntityCutout,
-            texture,
-            [1.0, 1.0, 1.0, 1.0],
-            transform,
-            0,
-            0,
-        ),
+        passes[0],
+        transform,
         instance,
         atlas,
     );
     // `HorseMarkingLayer`: a translucent white overlay of the SAME posed model, drawn after the base
     // when the coat carries markings (`Markings.NONE` → `INVISIBLE_TEXTURE`, skipped). It rides the
     // identical pose, so re-emitting the same tree into the translucent mesh tracks the body.
-    if let Some(markings_texture) = horse_markings_texture_ref(markings, baby) {
-        emit_equine_textured_submission(
+    for pass in passes.iter().skip(1).copied() {
+        emit_equine_textured_layer_pass(
             meshes,
             parts,
             leg_indices,
             head_parts_index,
             tail_x_rot_offset,
             age_scale,
-            EntityModelSubmissionEmit::new(
-                EntityModelLayerRenderType::EntityTranslucent,
-                markings_texture,
-                [1.0, 1.0, 1.0, 1.0],
-                transform,
-                1,
-                1,
-            )
-            .with_overlay([0.0, meshes.current_submission_overlay[1]]),
+            pass,
+            transform,
             instance,
             atlas,
         );
@@ -3203,12 +3226,10 @@ fn emit_horse_textured_model(
 fn emit_undead_horse_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
+    family: UndeadHorseModelFamily,
     baby: bool,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    let Some(texture) = instance.kind.vanilla_texture_ref() else {
-        return;
-    };
     let (parts, leg_indices, head_parts_index, tail_x_rot_offset, age_scale): (
         &[TexturedModelPartDesc],
         [usize; 4],
@@ -3226,21 +3247,16 @@ fn emit_undead_horse_textured_model(
     } else {
         (&ADULT_HORSE_PARTS_TEXTURED, [2, 3, 4, 5], 1, 0.0, 1.0)
     };
-    emit_equine_textured_submission(
+    let passes = undead_horse_textured_layer_passes(family, baby);
+    emit_equine_textured_layer_pass(
         meshes,
         parts,
         leg_indices,
         head_parts_index,
         tail_x_rot_offset,
         age_scale,
-        EntityModelSubmissionEmit::new(
-            EntityModelLayerRenderType::EntityCutout,
-            texture,
-            [1.0, 1.0, 1.0, 1.0],
-            entity_model_root_transform(instance),
-            0,
-            0,
-        ),
+        passes[0],
+        entity_model_root_transform(instance),
         instance,
         atlas,
     );

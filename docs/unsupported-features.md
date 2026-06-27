@@ -1777,6 +1777,16 @@ When an agent does any of the following, update this file in the same slice:
       folded saddle geometry is suppressed. Missing-atlas coverage now also pins
       that an adult iron horse body-armor submission is still recorded before
       only the folded armor geometry is suppressed.
+      Horse, donkey/mule, and undead-horse base submissions plus the horse
+      markings overlay now come from explicit equine `EntityModelLayerPass`
+      lists (`horse_textured_layer_passes`, `donkey_textured_layer_passes`,
+      `undead_horse_textured_layer_passes`) with vanilla `ModelLayers.*`
+      metadata, texture refs, render type names, white tint, and
+      `(order, submit_sequence)` pinned before the custom equine hand-walk folds
+      geometry. A self-visible invisible marked horse now uses the shared
+      force-transparent base submission path (`entityTranslucentCullItemTarget`,
+      `38/255` alpha) and skips the `HorseMarkingLayer`, matching vanilla's
+      `!state.isInvisible` layer gate.
       The ridden/eat/stand/mouth poses, the tail's `ageInTicks` yRot wag, and broader lighting presentation remain
       unsupported
     - camel and camel_husk entities as renderer-owned vanilla 26.1 body-layer

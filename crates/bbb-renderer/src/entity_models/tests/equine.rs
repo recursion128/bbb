@@ -346,6 +346,86 @@ fn horse_texture_refs_match_vanilla_renderer_defaults() {
 }
 
 #[test]
+fn equine_textured_layer_passes_match_vanilla_renderer_order() {
+    // Vanilla `HorseRenderer`: base model submit first, `HorseMarkingLayer.order(1)` second only
+    // when the markings texture is not the sentinel invisible texture.
+    let marked_horse =
+        horse_textured_layer_passes(HorseColorVariant::White, false, HorseMarkings::WhiteDots);
+    assert_eq!(marked_horse.len(), 2);
+    assert_eq!(marked_horse[0].kind, EntityModelLayerKind::HorseBase);
+    assert_eq!(marked_horse[0].model_layer, MODEL_LAYER_HORSE);
+    assert_eq!(
+        marked_horse[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(marked_horse[0].render_type.vanilla_name(), "entityCutout");
+    assert_eq!(marked_horse[0].texture, HORSE_WHITE_TEXTURE_REF);
+    assert_eq!(marked_horse[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        (marked_horse[0].order, marked_horse[0].submit_sequence),
+        (0, 0)
+    );
+    assert_eq!(marked_horse[1].kind, EntityModelLayerKind::HorseMarkings);
+    assert_eq!(marked_horse[1].model_layer, MODEL_LAYER_HORSE);
+    assert_eq!(
+        marked_horse[1].render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(
+        marked_horse[1].render_type.vanilla_name(),
+        "entityTranslucent"
+    );
+    assert_eq!(
+        marked_horse[1].texture,
+        HORSE_MARKINGS_WHITEDOTS_TEXTURE_REF
+    );
+    assert_eq!(marked_horse[1].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        (marked_horse[1].order, marked_horse[1].submit_sequence),
+        (1, 1)
+    );
+
+    let plain_baby =
+        horse_textured_layer_passes(HorseColorVariant::Creamy, true, HorseMarkings::None);
+    assert_eq!(plain_baby.len(), 1);
+    assert_eq!(plain_baby[0].model_layer, MODEL_LAYER_HORSE_BABY);
+    assert_eq!(plain_baby[0].texture, HORSE_CREAMY_BABY_TEXTURE_REF);
+
+    // Vanilla `DonkeyRenderer` / `UndeadHorseRenderer`: the base body is one order-0 cutout submit;
+    // saddle and body-equipment layers stay in their dedicated post-base helpers.
+    let donkey = donkey_textured_layer_passes(DonkeyModelFamily::Donkey, false, true);
+    assert_eq!(donkey.len(), 1);
+    assert_eq!(donkey[0].kind, EntityModelLayerKind::DonkeyBase);
+    assert_eq!(donkey[0].model_layer, MODEL_LAYER_DONKEY);
+    assert_eq!(donkey[0].texture, DONKEY_TEXTURE_REF);
+    assert_eq!(donkey[0].render_type.vanilla_name(), "entityCutout");
+    assert_eq!((donkey[0].order, donkey[0].submit_sequence), (0, 0));
+
+    let mule_baby = donkey_textured_layer_passes(DonkeyModelFamily::Mule, true, false);
+    assert_eq!(mule_baby[0].model_layer, MODEL_LAYER_MULE_BABY);
+    assert_eq!(mule_baby[0].texture, MULE_BABY_TEXTURE_REF);
+
+    let skeleton_horse =
+        undead_horse_textured_layer_passes(UndeadHorseModelFamily::Skeleton, false);
+    assert_eq!(skeleton_horse.len(), 1);
+    assert_eq!(
+        skeleton_horse[0].kind,
+        EntityModelLayerKind::UndeadHorseBase
+    );
+    assert_eq!(skeleton_horse[0].model_layer, MODEL_LAYER_SKELETON_HORSE);
+    assert_eq!(skeleton_horse[0].texture, SKELETON_HORSE_TEXTURE_REF);
+    assert_eq!(skeleton_horse[0].render_type.vanilla_name(), "entityCutout");
+    assert_eq!(
+        (skeleton_horse[0].order, skeleton_horse[0].submit_sequence),
+        (0, 0)
+    );
+
+    let zombie_baby = undead_horse_textured_layer_passes(UndeadHorseModelFamily::Zombie, true);
+    assert_eq!(zombie_baby[0].model_layer, MODEL_LAYER_ZOMBIE_HORSE_BABY);
+    assert_eq!(zombie_baby[0].texture, ZOMBIE_HORSE_BABY_TEXTURE_REF);
+}
+
+#[test]
 fn horse_body_armor_texture_layers_match_vanilla_equipment_assets() {
     let leather = horse_body_armor_texture_layers(EntityArmorMaterial::Leather).unwrap();
     assert_eq!(leather.len(), 2);
@@ -1582,6 +1662,52 @@ fn horse_markings_submission_survives_missing_markings_texture_atlas_entry() {
         "missing horse_markings_whitedots.png suppresses only folded markings geometry"
     );
     assert!(meshes.translucent.indices.is_empty());
+}
+
+#[test]
+fn self_visible_invisible_horse_uses_translucent_base_and_skips_markings_layer() {
+    // Vanilla `LivingEntityRenderer.getRenderType`: an invisible living entity that is still visible
+    // to this client uses `entityTranslucentCullItemTarget` for the base model. `HorseMarkingLayer`
+    // additionally checks `!state.isInvisible`, so markings do not submit in this branch.
+    let (atlas, _) = build_entity_model_texture_atlas(&horse_texture_images()).unwrap();
+    let instance = EntityModelInstance::horse_full(
+        173,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        HorseColorVariant::White,
+        HorseMarkings::WhiteDots,
+    )
+    .with_invisible(true)
+    .with_invisible_to_player(false)
+    .with_light_coords((4_u32 << 4) | (12_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 1);
+    let base = meshes.submissions[0];
+    assert_eq!(
+        base.render_type,
+        EntityModelLayerRenderType::EntityTranslucentCullItemTarget
+    );
+    assert_eq!(
+        base.render_type.vanilla_name(),
+        "entityTranslucentCullItemTarget"
+    );
+    assert_eq!(base.texture, HORSE_WHITE_TEXTURE_REF);
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 38.0 / 255.0]);
+    assert_eq!(
+        base.transform,
+        mesh_transformer_scaled_model_root_transform(instance, HORSE_SCALE)
+    );
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+    assert_eq!(base.light, instance.render_state.shader_light());
+    assert_eq!(base.overlay, instance.render_state.overlay_coords());
+    assert!(meshes.cutout.vertices.is_empty());
+    assert_eq!(meshes.translucent.vertices.len(), 288);
+    assert_textured_vertices_match_submission(&meshes.translucent.vertices, base);
 }
 
 #[test]

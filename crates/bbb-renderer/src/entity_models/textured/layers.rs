@@ -3,15 +3,16 @@ use super::super::catalog::player_texture_ref;
 use super::super::{
     catalog::{
         boat_texture_ref, camel_texture_ref, chicken_texture_ref, cow_texture_ref,
-        llama_texture_ref, mooshroom_texture_ref, pig_texture_ref, sheep_wool_render_color,
-        squid_texture_ref, wolf_texture_ref, ArrowModelTexture, AxolotlModelVariant,
-        BoatModelFamily, CamelModelFamily, CatModelVariant, ChickenModelVariant,
-        CopperGolemWeathering, CowModelVariant, EntityDyeColor, EntityModelTextureRef,
-        FoxModelVariant, FrogModelVariant, HoglinModelFamily, IllagerModelFamily,
+        horse_coat_texture_ref, horse_markings_texture_ref, llama_texture_ref,
+        mooshroom_texture_ref, pig_texture_ref, sheep_wool_render_color, squid_texture_ref,
+        wolf_texture_ref, ArrowModelTexture, AxolotlModelVariant, BoatModelFamily,
+        CamelModelFamily, CatModelVariant, ChickenModelVariant, CopperGolemWeathering,
+        CowModelVariant, DonkeyModelFamily, EntityDyeColor, EntityModelTextureRef, FoxModelVariant,
+        FrogModelVariant, HoglinModelFamily, HorseColorVariant, HorseMarkings, IllagerModelFamily,
         IronGolemCrackiness, LlamaVariant, MooshroomVariant, PandaModelVariant, ParrotModelVariant,
         PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant,
         SalmonModelSize, SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape,
-        TropicalFishPattern, WolfModelVariant,
+        TropicalFishPattern, UndeadHorseModelFamily, WolfModelVariant,
     },
     model_layers::*,
 };
@@ -40,6 +41,10 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     EvokerFangsBase,
     FelineBase,
     FoxBase,
+    HorseBase,
+    HorseMarkings,
+    DonkeyBase,
+    UndeadHorseBase,
     LeashKnotBase,
     CopperGolemBase,
     CopperGolemEyes,
@@ -449,6 +454,71 @@ pub(in crate::entity_models) fn llama_textured_layer_passes(
         render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: llama_model_layer(baby),
         texture: llama_texture_ref(variant, baby),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(in crate::entity_models) fn horse_textured_layer_passes(
+    variant: HorseColorVariant,
+    baby: bool,
+    markings: HorseMarkings,
+) -> Vec<EntityModelLayerPass> {
+    let model_layer = horse_model_layer(baby);
+    let mut passes = vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::HorseBase,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer,
+        texture: horse_coat_texture_ref(variant, baby),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }];
+    if let Some(texture) = horse_markings_texture_ref(markings, baby) {
+        passes.push(EntityModelLayerPass {
+            kind: EntityModelLayerKind::HorseMarkings,
+            render_type: EntityModelLayerRenderType::EntityTranslucent,
+            model_layer,
+            texture,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 1,
+            submit_sequence: 1,
+        });
+    }
+    passes
+}
+
+pub(in crate::entity_models) fn donkey_textured_layer_passes(
+    family: DonkeyModelFamily,
+    baby: bool,
+    // Chest visibility changes the `DonkeyModel` tree, not vanilla's texture submit metadata.
+    _has_chest: bool,
+) -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::DonkeyBase,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: donkey_model_layer(family, baby),
+        texture: donkey_texture_ref(family, baby),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(in crate::entity_models) fn undead_horse_textured_layer_passes(
+    family: UndeadHorseModelFamily,
+    baby: bool,
+) -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::UndeadHorseBase,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: undead_horse_model_layer(family, baby),
+        texture: undead_horse_texture_ref(family, baby),
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         order: 0,
@@ -1779,6 +1849,50 @@ fn llama_model_layer(baby: bool) -> &'static str {
         MODEL_LAYER_LLAMA_BABY
     } else {
         MODEL_LAYER_LLAMA
+    }
+}
+
+fn horse_model_layer(baby: bool) -> &'static str {
+    if baby {
+        MODEL_LAYER_HORSE_BABY
+    } else {
+        MODEL_LAYER_HORSE
+    }
+}
+
+fn donkey_model_layer(family: DonkeyModelFamily, baby: bool) -> &'static str {
+    match (family, baby) {
+        (DonkeyModelFamily::Donkey, false) => MODEL_LAYER_DONKEY,
+        (DonkeyModelFamily::Donkey, true) => MODEL_LAYER_DONKEY_BABY,
+        (DonkeyModelFamily::Mule, false) => MODEL_LAYER_MULE,
+        (DonkeyModelFamily::Mule, true) => MODEL_LAYER_MULE_BABY,
+    }
+}
+
+fn donkey_texture_ref(family: DonkeyModelFamily, baby: bool) -> EntityModelTextureRef {
+    match (family, baby) {
+        (DonkeyModelFamily::Donkey, false) => DONKEY_TEXTURE_REF,
+        (DonkeyModelFamily::Donkey, true) => DONKEY_BABY_TEXTURE_REF,
+        (DonkeyModelFamily::Mule, false) => MULE_TEXTURE_REF,
+        (DonkeyModelFamily::Mule, true) => MULE_BABY_TEXTURE_REF,
+    }
+}
+
+fn undead_horse_model_layer(family: UndeadHorseModelFamily, baby: bool) -> &'static str {
+    match (family, baby) {
+        (UndeadHorseModelFamily::Skeleton, false) => MODEL_LAYER_SKELETON_HORSE,
+        (UndeadHorseModelFamily::Skeleton, true) => MODEL_LAYER_SKELETON_HORSE_BABY,
+        (UndeadHorseModelFamily::Zombie, false) => MODEL_LAYER_ZOMBIE_HORSE,
+        (UndeadHorseModelFamily::Zombie, true) => MODEL_LAYER_ZOMBIE_HORSE_BABY,
+    }
+}
+
+fn undead_horse_texture_ref(family: UndeadHorseModelFamily, baby: bool) -> EntityModelTextureRef {
+    match (family, baby) {
+        (UndeadHorseModelFamily::Skeleton, false) => SKELETON_HORSE_TEXTURE_REF,
+        (UndeadHorseModelFamily::Skeleton, true) => SKELETON_HORSE_BABY_TEXTURE_REF,
+        (UndeadHorseModelFamily::Zombie, false) => ZOMBIE_HORSE_TEXTURE_REF,
+        (UndeadHorseModelFamily::Zombie, true) => ZOMBIE_HORSE_BABY_TEXTURE_REF,
     }
 }
 

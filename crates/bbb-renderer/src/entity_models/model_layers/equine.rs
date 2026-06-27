@@ -3,6 +3,20 @@ use super::{
     DONKEY_GRAY, HORSE_BROWN, PART_POSE_ZERO,
 };
 
+pub(in crate::entity_models) const MODEL_LAYER_HORSE: &str = "minecraft:horse#main";
+pub(in crate::entity_models) const MODEL_LAYER_HORSE_BABY: &str = "minecraft:horse_baby#main";
+pub(in crate::entity_models) const MODEL_LAYER_DONKEY: &str = "minecraft:donkey#main";
+pub(in crate::entity_models) const MODEL_LAYER_DONKEY_BABY: &str = "minecraft:donkey_baby#main";
+pub(in crate::entity_models) const MODEL_LAYER_MULE: &str = "minecraft:mule#main";
+pub(in crate::entity_models) const MODEL_LAYER_MULE_BABY: &str = "minecraft:mule_baby#main";
+pub(in crate::entity_models) const MODEL_LAYER_SKELETON_HORSE: &str =
+    "minecraft:skeleton_horse#main";
+pub(in crate::entity_models) const MODEL_LAYER_SKELETON_HORSE_BABY: &str =
+    "minecraft:skeleton_horse_baby#main";
+pub(in crate::entity_models) const MODEL_LAYER_ZOMBIE_HORSE: &str = "minecraft:zombie_horse#main";
+pub(in crate::entity_models) const MODEL_LAYER_ZOMBIE_HORSE_BABY: &str =
+    "minecraft:zombie_horse_baby#main";
+
 pub(in crate::entity_models) const ADULT_HORSE_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-5.05, -8.05, -17.05],
     size: [10.1, 10.1, 22.1],
