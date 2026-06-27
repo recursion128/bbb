@@ -124,6 +124,11 @@ fn evoker_fangs_textured_mesh_uses_vanilla_uvs_and_geometry() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
 }
 
 #[test]
