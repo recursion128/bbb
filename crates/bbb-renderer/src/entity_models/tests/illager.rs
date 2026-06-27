@@ -585,12 +585,12 @@ fn illager_textured_mesh_matches_colored_geometry_and_swings() {
         IllagerModelFamily::Vindicator,
     ];
     for family in families {
-        let instances = [EntityModelInstance::illager(
-            45,
-            [0.0, 64.0, 0.0],
-            0.0,
-            family,
-        )];
+        let instances = [
+            EntityModelInstance::illager(45, [0.0, 64.0, 0.0], 0.0, family)
+                .with_light_coords((5_u32 << 4) | (12_u32 << 20))
+                .with_white_overlay_progress(0.8)
+                .with_has_red_overlay(true),
+        ];
         let colored = entity_model_mesh(&instances);
         let textured_meshes = entity_model_textured_meshes(&instances, &atlas);
         assert_illager_base_submission_matches_vanilla(&textured_meshes, instances[0]);
@@ -606,6 +606,10 @@ fn illager_textured_mesh_matches_colored_geometry_and_swings() {
             .vertices
             .iter()
             .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+        assert!(textured.vertices.iter().all(|vertex| vertex.light
+            == instances[0].render_state.shader_light()
+            && vertex.overlay == instances[0].render_state.overlay_coords()));
+        assert_ne!(instances[0].render_state.overlay_coords(), [0.0, 10.0]);
         let (cmin, cmax) = mesh_extents(&colored);
         let (tmin, tmax) = textured_mesh_extents(&textured);
         assert_close3(tmin, cmin);
@@ -693,6 +697,8 @@ fn assert_illager_base_submission_matches_vanilla(
         villager_adult_model_root_transform(instance)
     );
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, instance.render_state.overlay_coords());
 }
 
 fn illager_base_texture_ref(instance: EntityModelInstance) -> EntityModelTextureRef {
