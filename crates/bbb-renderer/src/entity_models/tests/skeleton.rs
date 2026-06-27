@@ -465,7 +465,8 @@ fn skeleton_variant_meshes_use_vanilla_body_layer_geometry() {
 fn skeleton_textured_mesh_uses_vanilla_uvs_tints_and_variant_geometry() {
     let (atlas, _) = build_entity_model_texture_atlas(&skeleton_texture_images()).unwrap();
 
-    let skeleton_instance = EntityModelInstance::skeleton(51, [0.0, 64.0, 0.0], 0.0);
+    let skeleton_instance =
+        skeleton_submission_probe(EntityModelInstance::skeleton(51, [0.0, 64.0, 0.0], 0.0));
     let skeleton_meshes = entity_model_textured_meshes(&[skeleton_instance], &atlas);
     assert_skeleton_submissions_match_vanilla(&skeleton_meshes, skeleton_instance);
     let skeleton = &skeleton_meshes.cutout;
@@ -482,12 +483,12 @@ fn skeleton_textured_mesh_uses_vanilla_uvs_tints_and_variant_geometry() {
     assert_close3(min, [-0.43708366, 64.001, -0.28125]);
     assert_close3(max, [0.43708366, 66.03225, 0.28125]);
 
-    let stray_instance = EntityModelInstance::skeleton_variant(
+    let stray_instance = skeleton_submission_probe(EntityModelInstance::skeleton_variant(
         128,
         [0.0, 64.0, 0.0],
         0.0,
         SkeletonModelFamily::Stray,
-    );
+    ));
     let stray_meshes = entity_model_textured_meshes(&[stray_instance], &atlas);
     assert_skeleton_submissions_match_vanilla(&stray_meshes, stray_instance);
     let stray = &stray_meshes.cutout;
@@ -499,12 +500,12 @@ fn skeleton_textured_mesh_uses_vanilla_uvs_tints_and_variant_geometry() {
     assert_close3(stray_min, [-0.578566, 63.985374, -0.296875]);
     assert_close3(stray_max, [0.578566, 66.047875, 0.296875]);
 
-    let wither_instance = EntityModelInstance::skeleton_variant(
+    let wither_instance = skeleton_submission_probe(EntityModelInstance::skeleton_variant(
         146,
         [0.0, 64.0, 0.0],
         0.0,
         SkeletonModelFamily::WitherSkeleton,
-    );
+    ));
     let wither_meshes = entity_model_textured_meshes(&[wither_instance], &atlas);
     assert_skeleton_submissions_match_vanilla(&wither_meshes, wither_instance);
     let wither = &wither_meshes.cutout;
@@ -514,12 +515,12 @@ fn skeleton_textured_mesh_uses_vanilla_uvs_tints_and_variant_geometry() {
     assert_close3(wither_min, [-0.52450037, 64.0012, -0.33750004]);
     assert_close3(wither_max, [0.52450037, 66.4387, 0.33750004]);
 
-    let parched_instance = EntityModelInstance::skeleton_variant(
+    let parched_instance = skeleton_submission_probe(EntityModelInstance::skeleton_variant(
         97,
         [0.0, 64.0, 0.0],
         0.0,
         SkeletonModelFamily::Parched,
-    );
+    ));
     let parched_meshes = entity_model_textured_meshes(&[parched_instance], &atlas);
     assert_skeleton_submissions_match_vanilla(&parched_meshes, parched_instance);
     let parched = &parched_meshes.cutout;
@@ -530,12 +531,12 @@ fn skeleton_textured_mesh_uses_vanilla_uvs_tints_and_variant_geometry() {
     assert_close3(parched_min, [-0.50238097, 64.001, -0.26250002]);
     assert_close3(parched_max, [0.50238097, 66.0135, 0.26250002]);
 
-    let bogged_instance = EntityModelInstance::skeleton_variant(
+    let bogged_instance = skeleton_submission_probe(EntityModelInstance::skeleton_variant(
         16,
         [0.0, 64.0, 0.0],
         0.0,
         SkeletonModelFamily::Bogged { sheared: false },
-    );
+    ));
     let bogged_meshes = entity_model_textured_meshes(&[bogged_instance], &atlas);
     assert_skeleton_submissions_match_vanilla(&bogged_meshes, bogged_instance);
     let bogged = &bogged_meshes.cutout;
@@ -547,12 +548,12 @@ fn skeleton_textured_mesh_uses_vanilla_uvs_tints_and_variant_geometry() {
     assert_close3(bogged_min, [-0.57514465, 63.9885, -0.5]);
     assert_close3(bogged_max, [0.57514465, 66.1885, 0.32008255]);
 
-    let sheared_bogged_instance = EntityModelInstance::skeleton_variant(
+    let sheared_bogged_instance = skeleton_submission_probe(EntityModelInstance::skeleton_variant(
         17,
         [0.0, 64.0, 0.0],
         0.0,
         SkeletonModelFamily::Bogged { sheared: true },
-    );
+    ));
     let sheared_bogged_meshes = entity_model_textured_meshes(&[sheared_bogged_instance], &atlas);
     assert_skeleton_submissions_match_vanilla(&sheared_bogged_meshes, sheared_bogged_instance);
     let sheared_bogged = &sheared_bogged_meshes.cutout;
@@ -1360,6 +1361,13 @@ fn skeleton_texture_images() -> Vec<EntityModelTextureImage> {
         .collect()
 }
 
+fn skeleton_submission_probe(instance: EntityModelInstance) -> EntityModelInstance {
+    instance
+        .with_light_coords((4_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true)
+}
+
 fn assert_skeleton_submissions_match_vanilla(
     meshes: &EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -1388,6 +1396,50 @@ fn assert_skeleton_submissions_match_vanilla(
             (submit.order, submit.submit_sequence),
             (pass.order, pass.submit_sequence)
         );
+        assert_eq!(submit.light, instance.render_state.shader_light());
+        let expected_overlay = match pass.kind {
+            EntityModelLayerKind::SkeletonClothing => {
+                [0.0, instance.render_state.overlay_coords()[1]]
+            }
+            _ => instance.render_state.overlay_coords(),
+        };
+        assert_eq!(submit.overlay, expected_overlay);
+        if matches!(pass.kind, EntityModelLayerKind::SkeletonClothing)
+            && expected_overlay != instance.render_state.overlay_coords()
+        {
+            assert_ne!(submit.overlay, instance.render_state.overlay_coords());
+        }
+    }
+    let base_overlay = instance.render_state.overlay_coords();
+    let clothing_overlay = [0.0, base_overlay[1]];
+    let has_clothing = passes
+        .iter()
+        .any(|pass| matches!(pass.kind, EntityModelLayerKind::SkeletonClothing));
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == instance.render_state.shader_light()));
+    if has_clothing && clothing_overlay != base_overlay {
+        assert!(meshes
+            .cutout
+            .vertices
+            .iter()
+            .any(|vertex| vertex.overlay == base_overlay));
+        assert!(meshes
+            .cutout
+            .vertices
+            .iter()
+            .any(|vertex| vertex.overlay == clothing_overlay));
+        assert!(meshes.cutout.vertices.iter().all(|vertex| {
+            vertex.overlay == base_overlay || vertex.overlay == clothing_overlay
+        }));
+    } else {
+        assert!(meshes
+            .cutout
+            .vertices
+            .iter()
+            .all(|vertex| vertex.overlay == base_overlay));
     }
 }
 

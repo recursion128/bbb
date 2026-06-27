@@ -2145,10 +2145,11 @@ When an agent does any of the following, update this file in the same slice:
       selected textures, `entityCutout` render type, white tint, root transform
       (`wither_skeleton_model_root_transform` for wither skeleton, generic
       `entity_model_root_transform` otherwise), and explicit `(order, submit_sequence)`
-      pairs `(0, 0)` / `(1, 1)` before folded cutout geometry checks. Skeleton-family
+      pairs `(0, 0)` / `(1, 1)`, plus vanilla entity light and the body full
+      hurt/white overlay versus `SkeletonClothingLayer` zero-white overlay split before
+      folded cutout geometry checks. Skeleton-family
       armor is covered by `emit_worn_humanoid_armor`
-      for skeleton, stray, parched, wither skeleton, and bogged, while lighting
-      remains unsupported
+      for skeleton, stray, parched, wither skeleton, and bogged
     - creeper entities as renderer-owned vanilla 26.1
       `CreeperModel.createBodyLayer(CubeDeformation.NONE)` geometry, with the
       official `textures/entity/creeper/creeper.png` texture reference,
