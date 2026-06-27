@@ -3269,7 +3269,9 @@ When an agent does any of the following, update this file in the same slice:
       `0xFF808080` half-grey, its U scrolled by the oscillating `cos(ageInTicks · 0.02) · 3 % 1` (distinct
       from the creeper's linear scroll) and V by `ageInTicks · 0.01 % 1`, sharing the same per-fragment
       `fract` atlas-wrap scroll pipeline as the charged creeper; its submission preserves per-entity light
-      and vanilla `OverlayTexture.NO_OVERLAY`. The remaining `WitherBossModel.setupAnim`
+      and vanilla `OverlayTexture.NO_OVERLAY`, and missing-atlas coverage now pins that the order-1
+      `energySwirl` submission survives when `wither_armor.png` is absent while only folded additive
+      scroll geometry is suppressed. The remaining `WitherBossModel.setupAnim`
       side-head target tracking is now wired too: bbb-world reads `DATA_TARGET_B/C` (`17`/`18`), resolves
       tracked target eye positions, applies vanilla `WitherBoss.aiStep` `rotlerp` limits (`40°` pitch /
       `10°` yaw per tick, yaw-only fallback to `yBodyRot` when a target is missing), native forwards

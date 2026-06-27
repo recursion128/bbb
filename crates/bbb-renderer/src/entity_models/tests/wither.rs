@@ -337,11 +337,14 @@ fn powered_wither_emits_scrolling_energy_swirl() {
         .iter()
         .find(|submit| submit.render_type == EntityModelLayerRenderType::EnergySwirl)
         .expect("powered wither emits an energySwirl submit");
+    assert_eq!(swirl.render_type.vanilla_name(), "energySwirl");
     assert_eq!(swirl.texture, WITHER_ARMOR_TEXTURE_REF);
     assert_eq!(swirl.tint, [grey, grey, grey, 1.0]);
     assert_eq!(swirl.order, 1);
     assert_eq!(swirl.submit_sequence, 1);
     assert_eq!(swirl.transform, wither_model_root_transform(powered));
+    assert_eq!(swirl.light, powered.render_state.shader_light());
+    assert_eq!(swirl.overlay, [0.0, 10.0]);
     assert_eq!(rest.scroll_additive.vertices.len(), 216);
     assert!(rest
         .scroll_additive
@@ -395,4 +398,54 @@ fn powered_wither_emits_scrolling_energy_swirl() {
             (scrolled_vertex.local_uv[1] - (rest_vertex.local_uv[1] + v_expected)).abs() < 1.0e-6
         );
     }
+}
+
+#[test]
+fn powered_wither_energy_swirl_submission_survives_missing_armor_atlas_entry() {
+    // Vanilla `EnergySwirlLayer.submit` records the order(1) wither armor submit before the texture
+    // lookup used by the backend's folded additive-scroll mesh path.
+    let len = usize::try_from(WITHER_TEXTURE_REF.size[0] * WITHER_TEXTURE_REF.size[1] * 4).unwrap();
+    let images = vec![EntityModelTextureImage::new(
+        WITHER_TEXTURE_REF,
+        vec![0u8; len],
+    )];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let grey = 128.0 / 255.0;
+    let powered = EntityModelInstance::wither(1472, [0.0, 64.0, 0.0], 0.0)
+        .with_wither_powered(true)
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[powered], &atlas);
+
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.scroll.vertices.is_empty());
+    assert_eq!(meshes.submissions.len(), 2);
+    let base = meshes.submissions[0];
+    assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(base.texture, WITHER_TEXTURE_REF);
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(base.transform, wither_model_root_transform(powered));
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+    assert_eq!(base.light, powered.render_state.shader_light());
+    assert_eq!(base.overlay, powered.render_state.overlay_coords());
+    assert_ne!(base.overlay, [0.0, 10.0]);
+    assert_eq!(meshes.cutout.vertices.len(), 216);
+    let swirl = meshes.submissions[1];
+    assert_eq!(swirl.render_type, EntityModelLayerRenderType::EnergySwirl);
+    assert_eq!(swirl.render_type.vanilla_name(), "energySwirl");
+    assert_eq!(swirl.texture, WITHER_ARMOR_TEXTURE_REF);
+    assert_eq!(swirl.tint, [grey, grey, grey, 1.0]);
+    assert_eq!(swirl.transform, wither_model_root_transform(powered));
+    assert_eq!((swirl.order, swirl.submit_sequence), (1, 1));
+    assert_eq!(swirl.light, powered.render_state.shader_light());
+    assert_eq!(swirl.overlay, [0.0, 10.0]);
+    assert_ne!(swirl.overlay, powered.render_state.overlay_coords());
+    assert!(
+        meshes.scroll_additive.vertices.is_empty(),
+        "missing wither_armor.png suppresses only folded energy-swirl geometry"
+    );
 }
