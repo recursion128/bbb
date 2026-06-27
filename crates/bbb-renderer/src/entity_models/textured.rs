@@ -396,9 +396,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
                         atlas,
                     );
                 }
-                EntityModelKind::Camel { family, baby } => {
-                    emit_camel_textured_model(&mut meshes, *instance, family, baby, atlas);
-                }
                 EntityModelKind::Squid { glow, baby } => {
                     emit_squid_textured_model(&mut meshes, *instance, glow, baby, atlas);
                 }
@@ -1153,34 +1150,6 @@ pub(in crate::entity_models) fn render_textured_layers<M: EntityModel>(
             _ => render_textured_root_pass(meshes, model.root(), transform, pass, atlas),
         }
     }
-}
-
-/// The textured camel base layer. Vanilla `CamelModel.setupAnim` drives every limb via
-/// baked `KeyframeAnimation`s (walk/sit/standup/idle/dash) plus a direct head yaw/pitch
-/// clamp ([`camel_clamped_head_look`]). The head look and the walk (adult/husk `CAMEL_WALK`,
-/// baby `CAMEL_BABY_WALK`), the sit/standup one-shots, and the dash gallop are reproduced here;
-/// the idle timer remains deferred. The camel husk shares the adult mesh, differing only in texture.
-fn emit_camel_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    family: CamelModelFamily,
-    baby: bool,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `CamelModel` tree drives both render paths; `new` selects the adult / baby / husk mesh
-    // and walk, and `setup_anim` clamps the head look and samples the walk (`root` roll, leg / ear / tail
-    // swing, `head` pitch added onto the look, baby `body` dip). The camel is a single cutout pass; the
-    // family / baby texture comes from the pass.
-    let transform = entity_model_root_transform(instance);
-    let mut model = CamelModel::new(family, baby);
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        camel_textured_layer_passes(family, baby),
-        atlas,
-    );
 }
 
 /// The textured tropical fish base layer plus the `TropicalFishPatternLayer` overlay. The unified

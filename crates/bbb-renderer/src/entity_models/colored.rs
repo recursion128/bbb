@@ -3,6 +3,8 @@ mod runtime;
 mod selection;
 mod transforms;
 
+pub(in crate::entity_models) use selection::camel_model_color;
+
 #[cfg(test)]
 pub(super) use runtime::entity_model_mesh;
 pub(super) use runtime::{entity_model_colored_runtime_mesh, zombie_variant_root_transform};

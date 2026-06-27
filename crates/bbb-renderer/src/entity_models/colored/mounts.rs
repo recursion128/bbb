@@ -1,5 +1,5 @@
 use super::super::catalog::{
-    CamelModelFamily, DonkeyModelFamily, LlamaModelFamily, LlamaVariant, UndeadHorseModelFamily,
+    DonkeyModelFamily, LlamaModelFamily, LlamaVariant, UndeadHorseModelFamily,
 };
 use glam::Mat4;
 
@@ -11,7 +11,7 @@ use super::super::instances::EntityModelInstance;
 use super::super::model::EntityModel;
 use super::super::model_layers::{
     equine_head_look_pose, equine_leg_swing_pose, equine_tail_swing_pose, head_look_at_rest,
-    limb_swing_at_rest, CamelModel, LlamaModel, ADULT_DONKEY_PARTS, ADULT_DONKEY_PARTS_WITH_CHEST,
+    limb_swing_at_rest, LlamaModel, ADULT_DONKEY_PARTS, ADULT_DONKEY_PARTS_WITH_CHEST,
     ADULT_HORSE_PARTS, BABY_DONKEY_PARTS, BABY_HORSE_PARTS,
 };
 
@@ -51,8 +51,7 @@ const BABY_HORSE_TAIL_X_ROT_OFFSET: f32 = -std::f32::consts::FRAC_PI_2;
 const ADULT_AGE_SCALE: f32 = 1.0;
 const BABY_AGE_SCALE: f32 = 0.5;
 use super::selection::{
-    camel_model_color, donkey_model_color, donkey_model_scale, llama_model_color,
-    undead_horse_model_color,
+    donkey_model_color, donkey_model_scale, llama_model_color, undead_horse_model_color,
 };
 use super::transforms::{
     entity_model_root_transform, mesh_transformer_scaled_model_root_transform, HORSE_SCALE,
@@ -275,25 +274,6 @@ pub(super) fn emit_undead_horse_model(
         entity_model_root_transform(instance),
         Some(undead_horse_model_color(family)),
         instance,
-    );
-}
-
-pub(super) fn emit_camel_model(
-    mesh: &mut EntityModelMesh,
-    instance: EntityModelInstance,
-    family: CamelModelFamily,
-    baby: bool,
-) {
-    // The unified `CamelModel` tree drives both render paths; `new` selects the adult / baby / husk mesh
-    // and walk, and `setup_anim` clamps the head look (`CamelModel.applyHeadRotation`) and samples the
-    // looping walk via `applyWalk(..., 2, 2.5)`. The transient `jumpCooldown` extra-pitch boost needs
-    // un-projected render state and is deferred. The colored fallback recolors the whole model with the
-    // family tint.
-    CamelModel::new(family, baby).prepare_and_render_with_color(
-        mesh,
-        &instance,
-        entity_model_root_transform(instance),
-        camel_model_color(family),
     );
 }
 

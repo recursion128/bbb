@@ -4,20 +4,22 @@
 //! [`super::textured`]) used to each carry their own `match instance.kind` arm picking the model and
 //! transform; [`dispatch_uniform_entity_model`] is now the single source of truth for that selection,
 //! emitting through whichever [`EntityModelSink`] (colored or textured) the caller supplies. Entities
-//! whose two paths diverge (recolor, family helpers, part visibility, single-pass
-//! `render_textured_pass` emits, bespoke hand-walks, …) stay out of here and keep their own per-path
+//! whose two paths still diverge in model structure, part visibility, single-pass `render_textured_pass`
+//! emits, bespoke hand-walks, or custom layer walkers stay out of here and keep their own per-path
 //! residual arm.
 
 use glam::{Mat4, Vec3};
 
 use super::catalog::{
-    CowModelVariant, EntityModelKind, EntityModelTextureAtlasLayout, SkeletonModelFamily,
+    CamelModelFamily, CowModelVariant, EntityModelKind, EntityModelTextureAtlasLayout,
+    SkeletonModelFamily,
 };
 use super::colored::{
-    arrow_model_root_transform, boat_model_root_transform, cave_spider_model_root_transform,
-    cod_model_root_transform, creeper_model_root_transform, ender_dragon_model_root_transform,
-    entity_model_root_transform, evoker_fangs_model_root_transform, fox_model_root_transform,
-    ghast_model_root_transform, happy_ghast_model_root_transform, iron_golem_model_root_transform,
+    arrow_model_root_transform, boat_model_root_transform, camel_model_color,
+    cave_spider_model_root_transform, cod_model_root_transform, creeper_model_root_transform,
+    ender_dragon_model_root_transform, entity_model_root_transform,
+    evoker_fangs_model_root_transform, fox_model_root_transform, ghast_model_root_transform,
+    happy_ghast_model_root_transform, iron_golem_model_root_transform,
     leash_knot_model_root_transform, llama_spit_model_root_transform,
     magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
     panda_model_root_transform, phantom_model_root_transform, polar_bear_model_root_transform,
@@ -31,17 +33,17 @@ use super::instances::EntityModelInstance;
 use super::model::EntityModel;
 use super::model_layers::{
     bee_texture_ref, strider_texture_ref, AllayModel, ArmadilloModel, ArmorStandModel, ArrowModel,
-    AxolotlModel, BatModel, BeeModel, BlazeModel, BoatModel, BreezeModel, ChickenModel, CodModel,
-    CopperGolemModel, CowModel, CreakingModel, CreeperModel, DolphinModel, EnderDragonModel,
-    EndermanModel, EndermiteModel, EvokerFangsModel, FelineModel, FoxModel, FrogModel, GhastModel,
-    GoatModel, GuardianModel, HappyGhastModel, IllagerModel, IronGolemModel, LeashKnotModel,
-    LlamaSpitModel, MagmaCubeModel, MinecartModel, NautilusModel, PandaModel, ParrotModel,
-    PhantomModel, PigModel, PolarBearModel, PufferfishModel, RabbitModel, RavagerModel,
-    SalmonModel, ShulkerBulletModel, ShulkerModel, SilverfishModel, SkeletonClothingModel,
-    SkeletonModel, SlimeModel, SlimeOuterModel, SnifferModel, SnowGolemModel, SpiderModel,
-    StriderModel, TadpoleModel, TridentModel, TurtleModel, VexModel, VillagerModel,
-    WanderingTraderModel, WardenModel, WitchModel, WitherModel, WitherSkullModel, WolfModel,
-    ZombieModel, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF,
+    AxolotlModel, BatModel, BeeModel, BlazeModel, BoatModel, BreezeModel, CamelModel, ChickenModel,
+    CodModel, CopperGolemModel, CowModel, CreakingModel, CreeperModel, DolphinModel,
+    EnderDragonModel, EndermanModel, EndermiteModel, EvokerFangsModel, FelineModel, FoxModel,
+    FrogModel, GhastModel, GoatModel, GuardianModel, HappyGhastModel, IllagerModel, IronGolemModel,
+    LeashKnotModel, LlamaSpitModel, MagmaCubeModel, MinecartModel, NautilusModel, PandaModel,
+    ParrotModel, PhantomModel, PigModel, PolarBearModel, PufferfishModel, RabbitModel,
+    RavagerModel, SalmonModel, ShulkerBulletModel, ShulkerModel, SilverfishModel,
+    SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SnifferModel,
+    SnowGolemModel, SpiderModel, StriderModel, TadpoleModel, TridentModel, TurtleModel, VexModel,
+    VillagerModel, WanderingTraderModel, WardenModel, WitchModel, WitherModel, WitherSkullModel,
+    WolfModel, ZombieModel, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF,
     BREEZE_EYES_TEXTURE_REF, BREEZE_TEXTURE_REF, COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF,
     DOLPHIN_TEXTURE_REF, FELINE_CAT_SCALE, GUARDIAN_ELDER_SCALE, PUFFERFISH_TEXTURE_REF,
     TURTLE_BABY_TEXTURE_REF, TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF,
@@ -49,20 +51,21 @@ use super::model_layers::{
 };
 use super::textured::{
     armadillo_textured_layer_passes, arrow_textured_layer_passes, axolotl_textured_layer_passes,
-    blaze_textured_layer_passes, boat_textured_layer_passes, chicken_textured_layer_passes,
-    copper_golem_textured_layer_passes, cow_textured_layer_passes, creaking_textured_layer_passes,
-    creeper_textured_layer_passes, ender_dragon_textured_layer_passes,
-    enderman_textured_layer_passes, endermite_textured_layer_passes,
-    evoker_fangs_textured_layer_passes, feline_textured_layer_passes, fox_textured_layer_passes,
-    frog_textured_layer_passes, ghast_textured_layer_passes, goat_textured_layer_passes,
-    guardian_textured_layer_passes, happy_ghast_textured_layer_passes,
-    illager_textured_layer_passes, iron_golem_textured_layer_passes,
-    leash_knot_textured_layer_passes, llama_spit_textured_layer_passes,
-    magma_cube_textured_layer_passes, minecart_textured_layer_passes,
-    mooshroom_textured_layer_passes, nautilus_textured_layer_passes, panda_textured_layer_passes,
-    parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
-    polar_bear_textured_layer_passes, rabbit_textured_layer_passes, ravager_textured_layer_passes,
-    render_textured_layers, salmon_textured_layer_passes, shulker_bullet_textured_layer_passes,
+    blaze_textured_layer_passes, boat_textured_layer_passes, camel_textured_layer_passes,
+    chicken_textured_layer_passes, copper_golem_textured_layer_passes, cow_textured_layer_passes,
+    creaking_textured_layer_passes, creeper_textured_layer_passes,
+    ender_dragon_textured_layer_passes, enderman_textured_layer_passes,
+    endermite_textured_layer_passes, evoker_fangs_textured_layer_passes,
+    feline_textured_layer_passes, fox_textured_layer_passes, frog_textured_layer_passes,
+    ghast_textured_layer_passes, goat_textured_layer_passes, guardian_textured_layer_passes,
+    happy_ghast_textured_layer_passes, illager_textured_layer_passes,
+    iron_golem_textured_layer_passes, leash_knot_textured_layer_passes,
+    llama_spit_textured_layer_passes, magma_cube_textured_layer_passes,
+    minecart_textured_layer_passes, mooshroom_textured_layer_passes,
+    nautilus_textured_layer_passes, panda_textured_layer_passes, parrot_textured_layer_passes,
+    phantom_textured_layer_passes, pig_textured_layer_passes, polar_bear_textured_layer_passes,
+    rabbit_textured_layer_passes, ravager_textured_layer_passes, render_textured_layers,
+    salmon_textured_layer_passes, shulker_bullet_textured_layer_passes,
     shulker_textured_layer_passes, silverfish_textured_layer_passes,
     skeleton_textured_layer_passes, slime_textured_layer_passes, sniffer_textured_layer_passes,
     snow_golem_textured_layer_passes, spider_textured_layer_passes, tadpole_textured_layer_passes,
@@ -224,6 +227,21 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             let passes = slime_textured_layer_passes();
             sink.model(SlimeModel::new(), transform, instance, &passes[0..1]);
             sink.model(SlimeOuterModel::new(), transform, instance, &passes[1..2]);
+        }
+        EntityModelKind::Camel { family, baby } => {
+            let transform = entity_model_root_transform(*instance);
+            let passes = camel_textured_layer_passes(family, baby);
+            if matches!(family, CamelModelFamily::CamelHusk) {
+                sink.model_with_colored_override(
+                    CamelModel::new(family, baby),
+                    transform,
+                    instance,
+                    &passes,
+                    camel_model_color(family),
+                );
+            } else {
+                sink.model(CamelModel::new(family, baby), transform, instance, &passes);
+            }
         }
         EntityModelKind::ShulkerBullet => {
             let transform = shulker_bullet_model_root_transform(*instance);

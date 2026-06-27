@@ -1783,7 +1783,7 @@ When an agent does any of the following, update this file in the same slice:
       husk reuses the adult `camel#main` mesh), normal camel adult/baby model
       selection, camel_husk adult-only renderer selection, zero-thickness tail
       cubes, official camel (128×128) / camel_baby (64×64) / camel_husk (128×128)
-      texture references, texture-backed base layer pass emission, the official
+      texture references, shared-dispatch texture-backed base submission emission, the official
       PNG atlas upload/bind/sample path, and the `CamelModel.applyHeadRotation`
       clamped head yaw/pitch tracking applied to the body-nested head (`yRot` clamped
       to [-30, 30], `xRot` to [-25, 45] degrees) on both the colored and textured

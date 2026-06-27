@@ -59,7 +59,7 @@ pub(super) fn undead_horse_model_color(family: UndeadHorseModelFamily) -> [f32; 
     }
 }
 
-pub(super) fn camel_model_color(family: CamelModelFamily) -> [f32; 4] {
+pub(in crate::entity_models) fn camel_model_color(family: CamelModelFamily) -> [f32; 4] {
     match family {
         CamelModelFamily::Camel => CAMEL_TAN,
         CamelModelFamily::CamelHusk => CAMEL_HUSK_BROWN,

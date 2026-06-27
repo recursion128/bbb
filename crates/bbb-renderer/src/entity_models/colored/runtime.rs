@@ -10,8 +10,7 @@ use super::super::instances::EntityModelInstance;
 use super::super::model::EntityModel;
 use super::super::model_layers::*;
 use super::mounts::{
-    emit_camel_model, emit_donkey_model, emit_horse_model, emit_llama_model,
-    emit_undead_horse_model,
+    emit_donkey_model, emit_horse_model, emit_llama_model, emit_undead_horse_model,
 };
 use super::selection::{
     hoglin_model_color, humanoid_model_color, piglin_model_color, quadruped_model_color,
@@ -146,11 +145,6 @@ fn entity_model_mesh_with_options(
                     // emit is the full-mesh fallback only (skipped in the texture-backed runtime mesh).
                     if !skip_texture_backed_entities {
                         emit_undead_horse_model(&mut mesh, *instance, family, baby);
-                    }
-                }
-                EntityModelKind::Camel { family, baby } => {
-                    if !skip_texture_backed_entities {
-                        emit_camel_model(&mut mesh, *instance, family, baby);
                     }
                 }
                 EntityModelKind::Llama {
