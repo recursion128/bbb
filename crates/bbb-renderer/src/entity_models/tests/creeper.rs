@@ -235,8 +235,12 @@ fn charged_creeper_energy_swirl_submission_survives_missing_armor_atlas_entry() 
     )];
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
     let grey = 128.0 / 255.0;
+    let light_coords = (5_u32 << 4) | (11_u32 << 20);
     let powered = EntityModelInstance::new(962, EntityModelKind::Creeper, [1.0, 64.0, 2.0], 45.0)
-        .with_creeper_powered(true);
+        .with_creeper_powered(true)
+        .with_light_coords(light_coords)
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
 
     let meshes = entity_model_textured_meshes(&[powered], &atlas);
     assert_eq!(meshes.submissions.len(), 2);
@@ -260,6 +264,9 @@ fn charged_creeper_energy_swirl_submission_survives_missing_armor_atlas_entry() 
     assert_eq!(swirl.tint, [grey, grey, grey, 1.0]);
     assert_eq!((swirl.order, swirl.submit_sequence), (1, 1));
     assert_eq!(swirl.transform, creeper_model_root_transform(powered));
+    assert_eq!(swirl.light, powered.render_state.shader_light());
+    assert_eq!(swirl.overlay, [0.0, 10.0]);
+    assert_ne!(swirl.overlay, powered.render_state.overlay_coords());
 }
 
 #[test]
@@ -509,6 +516,8 @@ fn assert_creeper_base_submission_matches_vanilla(
     assert_eq!(submit.texture, CREEPER_TEXTURE_REF);
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(submit.transform, creeper_model_root_transform(instance));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, instance.render_state.overlay_coords());
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
 }
 

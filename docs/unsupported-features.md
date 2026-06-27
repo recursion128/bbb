@@ -2104,8 +2104,10 @@ When an agent does any of the following, update this file in the same slice:
       folded UV/head-look/walk/swell geometry. Charged creepers also emit the
       vanilla `CreeperPowerLayer` / `EnergySwirlLayer` submission at `order(1)`
       with `creeper_armor.png`, `energySwirl`, the vanilla half-grey tint, and
-      the same creeper root transform before folding the inflated armor model
-      into the additive scroll mesh; lighting remains unsupported
+      the same creeper root transform, preserving the per-entity light and
+      vanilla `OverlayTexture.NO_OVERLAY` before folding the inflated armor
+      model into the additive scroll mesh; full scroll-mesh lighting presentation
+      parity remains deferred
     - base spider entities as renderer-owned vanilla 26.1
       `SpiderModel.createSpiderBodyLayer()` geometry, with
       `ModelLayers.SPIDER`, the official
@@ -3102,7 +3104,8 @@ When an agent does any of the following, update this file in the same slice:
       `RenderTypes.energySwirl`: `wither_armor.png` (`WITHER_ARMOR_TEXTURE_REF`) tinted by the vanilla
       `0xFF808080` half-grey, its U scrolled by the oscillating `cos(ageInTicks · 0.02) · 3 % 1` (distinct
       from the creeper's linear scroll) and V by `ageInTicks · 0.01 % 1`, sharing the same per-fragment
-      `fract` atlas-wrap scroll pipeline as the charged creeper. The remaining `WitherBossModel.setupAnim`
+      `fract` atlas-wrap scroll pipeline as the charged creeper; its submission preserves per-entity light
+      and vanilla `OverlayTexture.NO_OVERLAY`. The remaining `WitherBossModel.setupAnim`
       side-head target tracking is now wired too: bbb-world reads `DATA_TARGET_B/C` (`17`/`18`), resolves
       tracked target eye positions, applies vanilla `WitherBoss.aiStep` `rotlerp` limits (`40°` pitch /
       `10°` yaw per tick, yaw-only fallback to `yBodyRot` when a target is missing), native forwards

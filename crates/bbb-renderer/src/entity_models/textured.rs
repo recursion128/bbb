@@ -226,8 +226,8 @@ impl EntityModelTexturedMeshes {
 
     fn record_submission(&mut self, submit: EntityModelSubmissionEmit) {
         let mut submission = EntityModelRenderSubmission::from(submit);
-        submission.light = self.current_submission_light;
-        submission.overlay = self.current_submission_overlay;
+        submission.light = submit.light.unwrap_or(self.current_submission_light);
+        submission.overlay = submit.overlay.unwrap_or(self.current_submission_overlay);
         self.submissions.push(submission);
     }
 }
@@ -240,6 +240,8 @@ struct EntityModelSubmissionEmit {
     dynamic_player_texture: Option<EntityDynamicPlayerTexture>,
     tint: [f32; 4],
     transform: Mat4,
+    light: Option<[f32; 2]>,
+    overlay: Option<[f32; 2]>,
     order: i32,
     submit_sequence: u32,
 }
@@ -260,6 +262,8 @@ impl EntityModelSubmissionEmit {
             dynamic_player_texture: None,
             tint,
             transform,
+            light: None,
+            overlay: None,
             order,
             submit_sequence,
         }
@@ -274,6 +278,11 @@ impl EntityModelSubmissionEmit {
         self.dynamic_player_texture = Some(texture);
         self
     }
+
+    fn with_overlay(mut self, overlay: [f32; 2]) -> Self {
+        self.overlay = Some(overlay);
+        self
+    }
 }
 
 impl From<EntityModelSubmissionEmit> for EntityModelRenderSubmission {
@@ -285,8 +294,8 @@ impl From<EntityModelSubmissionEmit> for EntityModelRenderSubmission {
             dynamic_player_texture: submit.dynamic_player_texture,
             tint: submit.tint,
             transform: submit.transform,
-            light: ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
-            overlay: ENTITY_VERTEX_NO_OVERLAY,
+            light: submit.light.unwrap_or(ENTITY_VERTEX_FULL_BRIGHT_LIGHT),
+            overlay: submit.overlay.unwrap_or(ENTITY_VERTEX_NO_OVERLAY),
             order: submit.order,
             submit_sequence: submit.submit_sequence,
         }
@@ -1162,7 +1171,8 @@ fn emit_charged_creeper_energy_swirl(
         transform,
         1,
         1,
-    );
+    )
+    .with_overlay(ENTITY_VERTEX_NO_OVERLAY);
     let mut model = CreeperModel::new_armor();
     model.prepare(&instance);
     // Vanilla creeper `xOffset(t) = t · 0.01`, taken `% 1.0` on both U and V.
@@ -1203,7 +1213,8 @@ fn emit_wither_energy_swirl(
         transform,
         1,
         1,
-    );
+    )
+    .with_overlay(ENTITY_VERTEX_NO_OVERLAY);
     let mut model = WitherModel::new_armor();
     model.prepare(&instance);
     // Vanilla `WitherArmorLayer.xOffset(t) = cos(t · 0.02) · 3` on U (oscillating, not linear like the
