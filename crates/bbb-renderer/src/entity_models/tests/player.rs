@@ -710,6 +710,81 @@ fn player_wings_layer_uses_static_equipment_texture_submission() {
 }
 
 #[test]
+fn player_wings_layer_static_submission_survives_missing_texture_atlas_entry() {
+    // Vanilla `WingsLayer` falls back to the equipment WINGS texture when the
+    // avatar has no profile elytra/cape override. A missing stitched texture
+    // must suppress only folded geometry, not the submission boundary.
+    let (static_atlas, _) =
+        build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
+    assert!(!static_atlas
+        .entries
+        .iter()
+        .any(|entry| entry.texture == ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF));
+    let instance = EntityModelInstance::player_with_skin(
+        53,
+        [2.0, 65.0, -3.0],
+        35.0,
+        EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_light_coords((7_u32 << 4) | (9_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true)
+    .with_chest_wings_layer(Some(EntityEquipmentLayerTexture {
+        texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
+        use_player_texture: true,
+    }))
+    .with_chest_equipment_has_wings(true);
+
+    let meshes =
+        entity_model_textured_meshes_with_dynamic_textures(&[instance], &static_atlas, None, None);
+
+    let body_submit = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == PLAYER_WIDE_STEVE_TEXTURE_REF)
+        .expect("player body submission");
+    assert_eq!(
+        body_submit.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(body_submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(body_submit.dynamic_player_texture, None);
+    assert_eq!(body_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(body_submit.transform, player_model_root_transform(instance));
+    assert_eq!(body_submit.light, instance.render_state.shader_light());
+    assert_eq!(body_submit.overlay, instance.render_state.overlay_coords());
+    assert_eq!((body_submit.order, body_submit.submit_sequence), (0, 0));
+
+    let wings_submit = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF)
+        .expect("static elytra wings submission");
+    assert_eq!(
+        wings_submit.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(wings_submit.render_type.vanilla_name(), "armorCutoutNoCull");
+    assert_eq!(wings_submit.dynamic_player_texture, None);
+    assert_eq!(wings_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        wings_submit.transform,
+        player_model_root_transform(instance) * Mat4::from_translation(Vec3::Z * 0.125)
+    );
+    assert_eq!(wings_submit.light, body_submit.light);
+    assert_eq!(wings_submit.overlay, [0.0, 10.0]);
+    assert_ne!(wings_submit.overlay, body_submit.overlay);
+    assert_eq!((wings_submit.order, wings_submit.submit_sequence), (0, 2));
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.overlay == body_submit.overlay));
+}
+
+#[test]
 fn player_wings_layer_prefers_ready_profile_elytra_texture_over_cape() {
     let (static_atlas, _) =
         build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();

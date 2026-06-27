@@ -1373,7 +1373,7 @@ When an agent does any of the following, update this file in the same slice:
         baby humanoid mob `ELYTRA_BABY` geometry; their static equipment wings
         submissions now also pin entity light plus `OverlayTexture.NO_OVERLAY`,
         with folded elytra vertices inheriting that metadata, and missing-atlas
-        coverage proves the static non-player WINGS submission survives without
+        coverage proves the static player and non-player WINGS submissions survive without
         stale elytra geometry. Player cloak interpolation is
         now also covered: world tracks the vanilla `ClientAvatarState` cloak
         lag, partial lerps it, applies `AvatarRenderer.extractCapeState`
