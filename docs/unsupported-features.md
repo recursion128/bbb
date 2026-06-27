@@ -3314,9 +3314,10 @@ When an agent does any of the following, update this file in the same slice:
       inner shells inherit the outer rotation) and the `EndCrystalRenderer.getY` vertical bob
       (`getY(age)·16/2` lifting the whole glass stack). The textured path now binds
       `textures/entity/end_crystal/end_crystal.png` as the vanilla default `entityCutout` submit with
-      collector order `0`, sequence `0`, white tint, vanilla light coords,
+      vanilla render-type name coverage, collector order `0`, sequence `0`, white tint, vanilla light coords,
       `OverlayTexture.NO_OVERLAY`, and the same `scale(2)·translate(0,-0.5,0)` root
-      transform, with folded cutout vertices inheriting that metadata; the colored debug path stays as the
+      transform, with folded cutout vertices inheriting that metadata; missing-atlas coverage pins that the
+      submission is still recorded before folded cutout geometry is suppressed. The colored debug path stays as the
       missing-atlas fallback with separate glass/core/base tints. The `EndCrystal.DATA_BEAM_TARGET` custom
       beam is now wired too: world projects
       `EndCrystal.DATA_BEAM_TARGET` (Optional<BlockPos> data id 8) as

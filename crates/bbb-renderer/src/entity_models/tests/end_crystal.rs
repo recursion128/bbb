@@ -116,6 +116,7 @@ fn end_crystal_textured_submit_matches_vanilla_renderer() {
     assert_eq!(meshes.submissions.len(), 1);
     let submit = meshes.submissions[0];
     assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
     assert_eq!(submit.texture, END_CRYSTAL_TEXTURE_REF);
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(submit.order, 0);
@@ -145,6 +146,35 @@ fn end_crystal_textured_submit_matches_vanilla_renderer() {
     let (textured_min, textured_max) = textured_mesh_extents(&meshes.cutout);
     assert_close3(textured_min, colored_min);
     assert_close3(textured_max, colored_max);
+}
+
+#[test]
+fn end_crystal_body_submission_survives_missing_texture_atlas_entry() {
+    // The bespoke EndCrystalRenderer body arm is submission-first: the vanilla `end_crystal.png`
+    // submit is recorded before atlas lookup, and missing texture data suppresses only folded geometry.
+    let images = vec![blank_texture(END_CRYSTAL_BEAM_TEXTURE_REF)];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let instance = EntityModelInstance::end_crystal(452, [2.0, 65.0, -4.0], 0.0)
+        .with_age_in_ticks(30.0)
+        .with_light_coords((9_u32 << 4) | (7_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.texture, END_CRYSTAL_TEXTURE_REF);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert_eq!(submit.transform, end_crystal_model_root_transform(instance));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, [0.0, 10.0]);
+    assert!(meshes.cutout.vertices.is_empty());
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.scroll.vertices.is_empty());
 }
 
 #[test]
@@ -293,6 +323,10 @@ fn end_crystal_textured_submit_hides_base_when_shows_bottom_false() {
     assert_eq!(
         hidden.submissions[0].render_type,
         EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(
+        hidden.submissions[0].render_type.vanilla_name(),
+        "entityCutout"
     );
     assert_eq!(hidden.cutout.vertices.len(), 72);
     assert_eq!(hidden.cutout.indices.len(), 108);
