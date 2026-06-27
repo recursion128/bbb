@@ -1,5 +1,12 @@
 use super::*;
 
+use glam::Mat4;
+
+use crate::entity_models::catalog::horse_markings_texture_ref;
+use crate::entity_models::colored::{
+    entity_model_root_transform, mesh_transformer_scaled_model_root_transform, HORSE_SCALE,
+};
+
 #[test]
 fn horse_model_parts_match_vanilla_26_1_body_layers() {
     assert_eq!(
@@ -1299,15 +1306,10 @@ fn horse_textured_mesh_matches_vanilla_horse_geometry() {
     // coat variant only changes the sampled atlas region — positions stay identical.
     let (atlas, _) = build_entity_model_texture_atlas(&horse_texture_images()).unwrap();
 
-    let white_adult = entity_model_textured_mesh(
-        &[EntityModelInstance::horse(
-            160,
-            [0.0, 64.0, 0.0],
-            0.0,
-            false,
-        )],
-        &atlas,
-    );
+    let white_adult_instance = EntityModelInstance::horse(160, [0.0, 64.0, 0.0], 0.0, false);
+    let white_adult_meshes = entity_model_textured_meshes(&[white_adult_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&white_adult_meshes, white_adult_instance);
+    let white_adult = &white_adult_meshes.cutout;
     assert_eq!(white_adult.cutout_faces, 72);
     assert_eq!(white_adult.vertices.len(), 288);
     let colored_adult = entity_model_mesh(&[EntityModelInstance::horse(
@@ -1322,16 +1324,16 @@ fn horse_textured_mesh_matches_vanilla_horse_geometry() {
     assert_close3(tex_max, col_max);
 
     // Coat variant → same geometry, different atlas sub-rect.
-    let black_adult = entity_model_textured_mesh(
-        &[EntityModelInstance::horse_with_variant(
-            162,
-            [0.0, 64.0, 0.0],
-            0.0,
-            false,
-            HorseColorVariant::Black,
-        )],
-        &atlas,
+    let black_adult_instance = EntityModelInstance::horse_with_variant(
+        162,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        HorseColorVariant::Black,
     );
+    let black_adult_meshes = entity_model_textured_meshes(&[black_adult_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&black_adult_meshes, black_adult_instance);
+    let black_adult = &black_adult_meshes.cutout;
     let white_positions: Vec<_> = white_adult.vertices.iter().map(|v| v.position).collect();
     let black_positions: Vec<_> = black_adult.vertices.iter().map(|v| v.position).collect();
     assert_eq!(white_positions, black_positions);
@@ -1340,16 +1342,16 @@ fn horse_textured_mesh_matches_vanilla_horse_geometry() {
     assert_ne!(white_uvs, black_uvs);
 
     // The unscaled baby layer occupies the same space as its colored baby fallback.
-    let baby = entity_model_textured_mesh(
-        &[EntityModelInstance::horse_with_variant(
-            163,
-            [0.0, 64.0, 0.0],
-            0.0,
-            true,
-            HorseColorVariant::Gray,
-        )],
-        &atlas,
+    let baby_instance = EntityModelInstance::horse_with_variant(
+        163,
+        [0.0, 64.0, 0.0],
+        0.0,
+        true,
+        HorseColorVariant::Gray,
     );
+    let baby_meshes = entity_model_textured_meshes(&[baby_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&baby_meshes, baby_instance);
+    let baby = &baby_meshes.cutout;
     assert_eq!(baby.cutout_faces, 60);
     assert_eq!(baby.vertices.len(), 240);
     let colored_baby =
@@ -1379,8 +1381,14 @@ fn horse_colored_runtime_skips_the_texture_backed_horse() {
 fn horse_textured_swings_legs_when_walking() {
     let (atlas, _) = build_entity_model_texture_atlas(&horse_texture_images()).unwrap();
     let base = EntityModelInstance::horse(167, [0.0, 64.0, 0.0], 0.0, false);
-    let still = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 0.0)], &atlas);
-    let walking = entity_model_textured_mesh(&[base.with_walk_animation(5.0, 1.0)], &atlas);
+    let still_instance = base.with_walk_animation(0.0, 0.0);
+    let walking_instance = base.with_walk_animation(5.0, 1.0);
+    let still_meshes = entity_model_textured_meshes(&[still_instance], &atlas);
+    let walking_meshes = entity_model_textured_meshes(&[walking_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&still_meshes, still_instance);
+    assert_equine_submissions_match_vanilla(&walking_meshes, walking_instance);
+    let still = &still_meshes.cutout;
+    let walking = &walking_meshes.cutout;
     assert_eq!(still.vertices.len(), walking.vertices.len());
     assert_ne!(
         still.vertices, walking.vertices,
@@ -1405,6 +1413,7 @@ fn horse_markings_overlay_layers_a_translucent_white_copy() {
         HorseColorVariant::White,
     );
     let plain = entity_model_textured_meshes(&[plain_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&plain, plain_instance);
     assert_eq!(plain.cutout.vertices.len(), 288);
     assert!(plain.translucent.vertices.is_empty());
     assert_eq!(plain.submissions.len(), 1);
@@ -1436,6 +1445,7 @@ fn horse_markings_overlay_layers_a_translucent_white_copy() {
         HorseMarkings::WhiteDots,
     );
     let marked = entity_model_textured_meshes(&[marked_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&marked, marked_instance);
     assert_eq!(marked.cutout.vertices.len(), 288);
     assert_eq!(marked.translucent.cutout_faces, 72);
     assert_eq!(marked.translucent.vertices.len(), 288);
@@ -1534,8 +1544,12 @@ fn equine_saddle_layer_renders_for_adult_horses_only() {
     .unwrap();
 
     let base = EntityModelInstance::horse(172, [0.0, 64.0, 0.0], 0.0, false);
-    let bare = entity_model_textured_mesh(&[base], &atlas);
-    let saddled_meshes = entity_model_textured_meshes(&[base.with_equine_saddle(true)], &atlas);
+    let bare_meshes = entity_model_textured_meshes(&[base], &atlas);
+    assert_equine_submissions_match_vanilla(&bare_meshes, base);
+    let bare = &bare_meshes.cutout;
+    let saddled_instance = base.with_equine_saddle(true);
+    let saddled_meshes = entity_model_textured_meshes(&[saddled_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&saddled_meshes, saddled_instance);
     let saddled = &saddled_meshes.cutout;
     assert_eq!(saddled.cutout_faces - bare.cutout_faces, 102);
     assert_eq!(saddled.vertices.len() - bare.vertices.len(), 408);
@@ -1569,21 +1583,21 @@ fn equine_saddle_layer_renders_for_adult_horses_only() {
     assert!(saddle_min[0] < bare_min[0]);
     assert!(saddle_max[0] > bare_max[0]);
 
-    let ridden = entity_model_textured_mesh(
-        &[base
-            .with_equine_saddle(true)
-            .with_equine_saddle_ridden(true)],
-        &atlas,
-    );
+    let ridden_instance = base
+        .with_equine_saddle(true)
+        .with_equine_saddle_ridden(true);
+    let ridden_meshes = entity_model_textured_meshes(&[ridden_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&ridden_meshes, ridden_instance);
+    let ridden = &ridden_meshes.cutout;
     assert_eq!(ridden.cutout_faces - saddled.cutout_faces, 12);
     assert_eq!(ridden.vertices.len() - saddled.vertices.len(), 48);
 
-    let baby = entity_model_textured_mesh(
-        &[EntityModelInstance::horse(173, [0.0, 64.0, 0.0], 0.0, true)
-            .with_equine_saddle(true)
-            .with_equine_saddle_ridden(true)],
-        &atlas,
-    );
+    let baby_instance = EntityModelInstance::horse(173, [0.0, 64.0, 0.0], 0.0, true)
+        .with_equine_saddle(true)
+        .with_equine_saddle_ridden(true);
+    let baby_meshes = entity_model_textured_meshes(&[baby_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&baby_meshes, baby_instance);
+    let baby = &baby_meshes.cutout;
     assert_eq!(baby.cutout_faces, 60);
     assert_eq!(baby.vertices.len(), 240);
 }
@@ -1603,10 +1617,16 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
     .unwrap();
 
     let horse = EntityModelInstance::horse(182, [0.0, 64.0, 0.0], 0.0, false);
-    let bare = entity_model_textured_mesh(&[horse], &atlas);
+    let bare_meshes = entity_model_textured_meshes(&[horse], &atlas);
+    assert_equine_submissions_match_vanilla(&bare_meshes, horse);
+    let bare = &bare_meshes.cutout;
     let iron_meshes = entity_model_textured_meshes(
         &[horse.with_equine_body_armor(Some(EntityArmorMaterial::Iron))],
         &atlas,
+    );
+    assert_equine_submissions_match_vanilla(
+        &iron_meshes,
+        horse.with_equine_body_armor(Some(EntityArmorMaterial::Iron)),
     );
     let iron = &iron_meshes.cutout;
     assert_eq!(iron.cutout_faces - bare.cutout_faces, 72);
@@ -1657,6 +1677,12 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
             .with_equine_body_armor_dye(Some(dye))],
         &atlas,
     );
+    assert_equine_submissions_match_vanilla(
+        &leather_meshes,
+        horse
+            .with_equine_body_armor(Some(EntityArmorMaterial::Leather))
+            .with_equine_body_armor_dye(Some(dye)),
+    );
     let leather = &leather_meshes.cutout;
     assert_eq!(leather.cutout_faces - bare.cutout_faces, 144);
     assert_eq!(leather.vertices.len() - bare.vertices.len(), 576);
@@ -1703,11 +1729,13 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
 
     let baby = EntityModelInstance::horse(183, [0.0, 64.0, 0.0], 0.0, true);
-    let baby_bare = entity_model_textured_mesh(&[baby], &atlas);
-    let baby_armored = entity_model_textured_mesh(
-        &[baby.with_equine_body_armor(Some(EntityArmorMaterial::Iron))],
-        &atlas,
-    );
+    let baby_bare_meshes = entity_model_textured_meshes(&[baby], &atlas);
+    assert_equine_submissions_match_vanilla(&baby_bare_meshes, baby);
+    let baby_bare = &baby_bare_meshes.cutout;
+    let baby_armored_instance = baby.with_equine_body_armor(Some(EntityArmorMaterial::Iron));
+    let baby_armored_meshes = entity_model_textured_meshes(&[baby_armored_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&baby_armored_meshes, baby_armored_instance);
+    let baby_armored = &baby_armored_meshes.cutout;
     assert_eq!(baby_armored.vertices.len(), baby_bare.vertices.len());
 
     let zombie = EntityModelInstance::undead_horse(
@@ -1717,11 +1745,14 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
         UndeadHorseModelFamily::Zombie,
         false,
     );
-    let zombie_bare = entity_model_textured_mesh(&[zombie], &atlas);
-    let zombie_armored = entity_model_textured_mesh(
-        &[zombie.with_equine_body_armor(Some(EntityArmorMaterial::Netherite))],
-        &atlas,
-    );
+    let zombie_bare_meshes = entity_model_textured_meshes(&[zombie], &atlas);
+    assert_equine_submissions_match_vanilla(&zombie_bare_meshes, zombie);
+    let zombie_bare = &zombie_bare_meshes.cutout;
+    let zombie_armored_instance =
+        zombie.with_equine_body_armor(Some(EntityArmorMaterial::Netherite));
+    let zombie_armored_meshes = entity_model_textured_meshes(&[zombie_armored_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&zombie_armored_meshes, zombie_armored_instance);
+    let zombie_armored = &zombie_armored_meshes.cutout;
     assert_eq!(zombie_armored.cutout_faces - zombie_bare.cutout_faces, 72);
     assert_eq!(
         zombie_armored.vertices.len() - zombie_bare.vertices.len(),
@@ -1735,21 +1766,27 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
         UndeadHorseModelFamily::Skeleton,
         false,
     );
-    let skeleton_bare = entity_model_textured_mesh(&[skeleton], &atlas);
-    let skeleton_armored = entity_model_textured_mesh(
-        &[skeleton.with_equine_body_armor(Some(EntityArmorMaterial::Netherite))],
-        &atlas,
-    );
+    let skeleton_bare_meshes = entity_model_textured_meshes(&[skeleton], &atlas);
+    assert_equine_submissions_match_vanilla(&skeleton_bare_meshes, skeleton);
+    let skeleton_bare = &skeleton_bare_meshes.cutout;
+    let skeleton_armored_instance =
+        skeleton.with_equine_body_armor(Some(EntityArmorMaterial::Netherite));
+    let skeleton_armored_meshes =
+        entity_model_textured_meshes(&[skeleton_armored_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&skeleton_armored_meshes, skeleton_armored_instance);
+    let skeleton_armored = &skeleton_armored_meshes.cutout;
     assert_eq!(
         skeleton_armored.vertices.len(),
         skeleton_bare.vertices.len(),
         "EntityTypeTags.CAN_WEAR_HORSE_ARMOR excludes skeleton horses"
     );
 
-    let invalid_material = entity_model_textured_mesh(
-        &[horse.with_equine_body_armor(Some(EntityArmorMaterial::Chainmail))],
-        &atlas,
-    );
+    let invalid_material_instance =
+        horse.with_equine_body_armor(Some(EntityArmorMaterial::Chainmail));
+    let invalid_material_meshes =
+        entity_model_textured_meshes(&[invalid_material_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&invalid_material_meshes, invalid_material_instance);
+    let invalid_material = &invalid_material_meshes.cutout;
     assert_eq!(
         invalid_material.vertices.len(),
         bare.vertices.len(),
@@ -1771,18 +1808,17 @@ fn equine_saddle_layer_uses_family_specific_models_and_textures() {
     ]))
     .unwrap();
 
-    let donkey_meshes = entity_model_textured_meshes(
-        &[EntityModelInstance::donkey(
-            174,
-            [0.0, 64.0, 0.0],
-            0.0,
-            DonkeyModelFamily::Donkey,
-            false,
-            false,
-        )
-        .with_equine_saddle(true)],
-        &atlas,
-    );
+    let donkey_instance = EntityModelInstance::donkey(
+        174,
+        [0.0, 64.0, 0.0],
+        0.0,
+        DonkeyModelFamily::Donkey,
+        false,
+        false,
+    )
+    .with_equine_saddle(true);
+    let donkey_meshes = entity_model_textured_meshes(&[donkey_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&donkey_meshes, donkey_instance);
     let donkey = &donkey_meshes.cutout;
     assert_eq!(donkey.cutout_faces, 72 + 114);
     assert_eq!(donkey.vertices.len(), 288 + 456);
@@ -1803,18 +1839,18 @@ fn equine_saddle_layer_uses_family_specific_models_and_textures() {
         (0, 1)
     );
 
-    let mule = entity_model_textured_mesh(
-        &[EntityModelInstance::donkey(
-            175,
-            [0.0, 64.0, 0.0],
-            0.0,
-            DonkeyModelFamily::Mule,
-            false,
-            false,
-        )
-        .with_equine_saddle(true)],
-        &atlas,
-    );
+    let mule_instance = EntityModelInstance::donkey(
+        175,
+        [0.0, 64.0, 0.0],
+        0.0,
+        DonkeyModelFamily::Mule,
+        false,
+        false,
+    )
+    .with_equine_saddle(true);
+    let mule_meshes = entity_model_textured_meshes(&[mule_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&mule_meshes, mule_instance);
+    let mule = &mule_meshes.cutout;
     assert_eq!(mule.cutout_faces, 72 + 114);
     let (_, donkey_max) = textured_mesh_extents(&donkey);
     let (_, mule_max) = textured_mesh_extents(&mule);
@@ -1823,28 +1859,27 @@ fn equine_saddle_layer_uses_family_specific_models_and_textures() {
         "the mule saddle layer uses the larger 0.92 layer scale"
     );
 
-    let skeleton = entity_model_textured_mesh(
-        &[EntityModelInstance::undead_horse(
-            176,
-            [0.0, 64.0, 0.0],
-            0.0,
-            UndeadHorseModelFamily::Skeleton,
-            false,
-        )
-        .with_equine_saddle(true)],
-        &atlas,
-    );
-    let zombie_meshes = entity_model_textured_meshes(
-        &[EntityModelInstance::undead_horse(
-            177,
-            [0.0, 64.0, 0.0],
-            0.0,
-            UndeadHorseModelFamily::Zombie,
-            false,
-        )
-        .with_equine_saddle(true)],
-        &atlas,
-    );
+    let skeleton_instance = EntityModelInstance::undead_horse(
+        176,
+        [0.0, 64.0, 0.0],
+        0.0,
+        UndeadHorseModelFamily::Skeleton,
+        false,
+    )
+    .with_equine_saddle(true);
+    let skeleton_meshes = entity_model_textured_meshes(&[skeleton_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&skeleton_meshes, skeleton_instance);
+    let skeleton = &skeleton_meshes.cutout;
+    let zombie_instance = EntityModelInstance::undead_horse(
+        177,
+        [0.0, 64.0, 0.0],
+        0.0,
+        UndeadHorseModelFamily::Zombie,
+        false,
+    )
+    .with_equine_saddle(true);
+    let zombie_meshes = entity_model_textured_meshes(&[zombie_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&zombie_meshes, zombie_instance);
     let zombie = &zombie_meshes.cutout;
     assert_eq!(skeleton.cutout_faces, 72 + 102);
     assert_eq!(zombie.cutout_faces, 72 + 102);
@@ -1892,17 +1927,17 @@ fn donkey_textured_mesh_matches_vanilla_adult_geometry() {
     // larger 0.92 scale. The baby donkey/mule stays colored (deferred), exercised separately.
     let (atlas, _) = build_entity_model_texture_atlas(&donkey_texture_images()).unwrap();
 
-    let donkey = entity_model_textured_mesh(
-        &[EntityModelInstance::donkey(
-            160,
-            [0.0, 64.0, 0.0],
-            0.0,
-            DonkeyModelFamily::Donkey,
-            false,
-            false,
-        )],
-        &atlas,
+    let donkey_instance = EntityModelInstance::donkey(
+        160,
+        [0.0, 64.0, 0.0],
+        0.0,
+        DonkeyModelFamily::Donkey,
+        false,
+        false,
     );
+    let donkey_meshes = entity_model_textured_meshes(&[donkey_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&donkey_meshes, donkey_instance);
+    let donkey = &donkey_meshes.cutout;
     assert_eq!(donkey.cutout_faces, 72);
     assert_eq!(donkey.vertices.len(), 288);
     let colored = entity_model_mesh(&[EntityModelInstance::donkey(
@@ -1919,32 +1954,32 @@ fn donkey_textured_mesh_matches_vanilla_adult_geometry() {
     assert_close3(t_max, c_max);
 
     // The two side chests add 12 faces (2 boxes × 6).
-    let with_chest = entity_model_textured_mesh(
-        &[EntityModelInstance::donkey(
-            162,
-            [0.0, 64.0, 0.0],
-            0.0,
-            DonkeyModelFamily::Donkey,
-            false,
-            true,
-        )],
-        &atlas,
+    let with_chest_instance = EntityModelInstance::donkey(
+        162,
+        [0.0, 64.0, 0.0],
+        0.0,
+        DonkeyModelFamily::Donkey,
+        false,
+        true,
     );
+    let with_chest_meshes = entity_model_textured_meshes(&[with_chest_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&with_chest_meshes, with_chest_instance);
+    let with_chest = &with_chest_meshes.cutout;
     assert_eq!(with_chest.cutout_faces, 84);
     assert_eq!(with_chest.vertices.len(), 336);
 
     // The mule shares the geometry at the larger 0.92 scale (vs donkey 0.87) and a different texture.
-    let mule = entity_model_textured_mesh(
-        &[EntityModelInstance::donkey(
-            163,
-            [0.0, 64.0, 0.0],
-            0.0,
-            DonkeyModelFamily::Mule,
-            false,
-            false,
-        )],
-        &atlas,
+    let mule_instance = EntityModelInstance::donkey(
+        163,
+        [0.0, 64.0, 0.0],
+        0.0,
+        DonkeyModelFamily::Mule,
+        false,
+        false,
     );
+    let mule_meshes = entity_model_textured_meshes(&[mule_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&mule_meshes, mule_instance);
+    let mule = &mule_meshes.cutout;
     assert_eq!(mule.cutout_faces, 72);
     let (_, mule_max) = textured_mesh_extents(&mule);
     assert!(
@@ -1960,17 +1995,17 @@ fn donkey_textured_baby_matches_vanilla_baby_geometry() {
     // textured baby occupies the same space as its colored baby fallback (both unscaled), and the empty
     // chest children make `hasChest` immaterial.
     let (atlas, _) = build_entity_model_texture_atlas(&donkey_texture_images()).unwrap();
-    let baby = entity_model_textured_mesh(
-        &[EntityModelInstance::donkey(
-            165,
-            [0.0, 64.0, 0.0],
-            0.0,
-            DonkeyModelFamily::Donkey,
-            true,
-            false,
-        )],
-        &atlas,
+    let baby_instance = EntityModelInstance::donkey(
+        165,
+        [0.0, 64.0, 0.0],
+        0.0,
+        DonkeyModelFamily::Donkey,
+        true,
+        false,
     );
+    let baby_meshes = entity_model_textured_meshes(&[baby_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&baby_meshes, baby_instance);
+    let baby = &baby_meshes.cutout;
     assert_eq!(baby.cutout_faces, 60);
     assert_eq!(baby.vertices.len(), 240);
     let colored = entity_model_mesh(&[EntityModelInstance::donkey(
@@ -1987,17 +2022,17 @@ fn donkey_textured_baby_matches_vanilla_baby_geometry() {
     assert_close3(t_max, c_max);
 
     // `hasChest` does not change the baby (its chest children are empty).
-    let baby_chest = entity_model_textured_mesh(
-        &[EntityModelInstance::donkey(
-            167,
-            [0.0, 64.0, 0.0],
-            0.0,
-            DonkeyModelFamily::Mule,
-            true,
-            true,
-        )],
-        &atlas,
+    let baby_chest_instance = EntityModelInstance::donkey(
+        167,
+        [0.0, 64.0, 0.0],
+        0.0,
+        DonkeyModelFamily::Mule,
+        true,
+        true,
     );
+    let baby_chest_meshes = entity_model_textured_meshes(&[baby_chest_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&baby_chest_meshes, baby_chest_instance);
+    let baby_chest = &baby_chest_meshes.cutout;
     assert_eq!(baby_chest.cutout_faces, 60);
 }
 
@@ -2039,16 +2074,16 @@ fn undead_horse_textured_mesh_matches_vanilla_horse_geometry() {
     // texture, not a per-cube color, differs.
     let (atlas, _) = build_entity_model_texture_atlas(&undead_horse_texture_images()).unwrap();
 
-    let skeleton_adult = entity_model_textured_mesh(
-        &[EntityModelInstance::undead_horse(
-            170,
-            [0.0, 64.0, 0.0],
-            0.0,
-            UndeadHorseModelFamily::Skeleton,
-            false,
-        )],
-        &atlas,
+    let skeleton_adult_instance = EntityModelInstance::undead_horse(
+        170,
+        [0.0, 64.0, 0.0],
+        0.0,
+        UndeadHorseModelFamily::Skeleton,
+        false,
     );
+    let skeleton_adult_meshes = entity_model_textured_meshes(&[skeleton_adult_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&skeleton_adult_meshes, skeleton_adult_instance);
+    let skeleton_adult = &skeleton_adult_meshes.cutout;
     assert_eq!(skeleton_adult.cutout_faces, 72);
     assert_eq!(skeleton_adult.vertices.len(), 288);
     assert_eq!(skeleton_adult.indices.len(), 432);
@@ -2058,16 +2093,16 @@ fn undead_horse_textured_mesh_matches_vanilla_horse_geometry() {
 
     // Same geometry, different family → identical vertex positions but a different atlas sub-rect
     // (proving the per-family texture is routed through the emit via `vanilla_texture_ref`).
-    let zombie_adult = entity_model_textured_mesh(
-        &[EntityModelInstance::undead_horse(
-            171,
-            [0.0, 64.0, 0.0],
-            0.0,
-            UndeadHorseModelFamily::Zombie,
-            false,
-        )],
-        &atlas,
+    let zombie_adult_instance = EntityModelInstance::undead_horse(
+        171,
+        [0.0, 64.0, 0.0],
+        0.0,
+        UndeadHorseModelFamily::Zombie,
+        false,
     );
+    let zombie_adult_meshes = entity_model_textured_meshes(&[zombie_adult_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&zombie_adult_meshes, zombie_adult_instance);
+    let zombie_adult = &zombie_adult_meshes.cutout;
     let skeleton_positions: Vec<_> = skeleton_adult.vertices.iter().map(|v| v.position).collect();
     let zombie_positions: Vec<_> = zombie_adult.vertices.iter().map(|v| v.position).collect();
     assert_eq!(skeleton_positions, zombie_positions);
@@ -2077,16 +2112,16 @@ fn undead_horse_textured_mesh_matches_vanilla_horse_geometry() {
 
     // The baby re-parented layout (`BabyHorseModel.createBabyLayer`) renders on the textured path with
     // the same bounds as its colored fallback.
-    let zombie_baby = entity_model_textured_mesh(
-        &[EntityModelInstance::undead_horse(
-            172,
-            [0.0, 64.0, 0.0],
-            0.0,
-            UndeadHorseModelFamily::Zombie,
-            true,
-        )],
-        &atlas,
+    let zombie_baby_instance = EntityModelInstance::undead_horse(
+        172,
+        [0.0, 64.0, 0.0],
+        0.0,
+        UndeadHorseModelFamily::Zombie,
+        true,
     );
+    let zombie_baby_meshes = entity_model_textured_meshes(&[zombie_baby_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&zombie_baby_meshes, zombie_baby_instance);
+    let zombie_baby = &zombie_baby_meshes.cutout;
     assert_eq!(zombie_baby.cutout_faces, 60);
     assert_eq!(zombie_baby.vertices.len(), 240);
     let colored_baby = entity_model_mesh(&[EntityModelInstance::undead_horse(
@@ -2141,11 +2176,250 @@ fn undead_horse_textured_swings_legs_when_walking() {
         UndeadHorseModelFamily::Skeleton,
         false,
     );
-    let still = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 0.0)], &atlas);
-    let walking = entity_model_textured_mesh(&[base.with_walk_animation(5.0, 1.0)], &atlas);
+    let still_instance = base.with_walk_animation(0.0, 0.0);
+    let walking_instance = base.with_walk_animation(5.0, 1.0);
+    let still_meshes = entity_model_textured_meshes(&[still_instance], &atlas);
+    let walking_meshes = entity_model_textured_meshes(&[walking_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&still_meshes, still_instance);
+    assert_equine_submissions_match_vanilla(&walking_meshes, walking_instance);
+    let still = &still_meshes.cutout;
+    let walking = &walking_meshes.cutout;
     assert_eq!(still.vertices.len(), walking.vertices.len());
     assert_ne!(
         still.vertices, walking.vertices,
         "the walking undead horse re-poses on the textured path"
     );
+}
+
+#[derive(Clone, Copy)]
+struct ExpectedEquineSubmission {
+    render_type: EntityModelLayerRenderType,
+    texture: EntityModelTextureRef,
+    tint: [f32; 4],
+    transform: Mat4,
+    order: i32,
+    submit_sequence: u32,
+}
+
+fn assert_equine_submissions_match_vanilla(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    let mut expected = Vec::new();
+    match instance.kind {
+        EntityModelKind::Horse { baby, markings, .. } => {
+            let transform = if baby {
+                entity_model_root_transform(instance)
+            } else {
+                mesh_transformer_scaled_model_root_transform(instance, HORSE_SCALE)
+            };
+            push_expected_equine_submit(
+                &mut expected,
+                EntityModelLayerRenderType::EntityCutout,
+                instance.kind.vanilla_texture_ref().unwrap(),
+                [1.0, 1.0, 1.0, 1.0],
+                transform,
+                0,
+                0,
+            );
+            if let Some(texture) = horse_markings_texture_ref(markings, baby) {
+                push_expected_equine_submit(
+                    &mut expected,
+                    EntityModelLayerRenderType::EntityTranslucent,
+                    texture,
+                    [1.0, 1.0, 1.0, 1.0],
+                    transform,
+                    1,
+                    1,
+                );
+            }
+            let body_layer_count = if baby {
+                0
+            } else {
+                push_expected_equine_body_armor_submits(&mut expected, instance, transform, 2, 2)
+            };
+            if instance.render_state.equine_saddle && !baby {
+                push_expected_equine_submit(
+                    &mut expected,
+                    EntityModelLayerRenderType::ArmorCutoutNoCull,
+                    HORSE_SADDLE_TEXTURE_REF,
+                    [1.0, 1.0, 1.0, 1.0],
+                    transform,
+                    2,
+                    2 + body_layer_count as u32,
+                );
+            }
+        }
+        EntityModelKind::Donkey { family, baby, .. } => {
+            let transform = if baby {
+                entity_model_root_transform(instance)
+            } else {
+                let scale = match family {
+                    DonkeyModelFamily::Donkey => 0.87,
+                    DonkeyModelFamily::Mule => 0.92,
+                };
+                mesh_transformer_scaled_model_root_transform(instance, scale)
+            };
+            push_expected_equine_submit(
+                &mut expected,
+                EntityModelLayerRenderType::EntityCutout,
+                instance.kind.vanilla_texture_ref().unwrap(),
+                [1.0, 1.0, 1.0, 1.0],
+                transform,
+                0,
+                0,
+            );
+            if instance.render_state.equine_saddle && !baby {
+                let texture = match family {
+                    DonkeyModelFamily::Donkey => DONKEY_SADDLE_TEXTURE_REF,
+                    DonkeyModelFamily::Mule => MULE_SADDLE_TEXTURE_REF,
+                };
+                push_expected_equine_submit(
+                    &mut expected,
+                    EntityModelLayerRenderType::ArmorCutoutNoCull,
+                    texture,
+                    [1.0, 1.0, 1.0, 1.0],
+                    transform,
+                    0,
+                    1,
+                );
+            }
+        }
+        EntityModelKind::UndeadHorse { family, baby } => {
+            let transform = entity_model_root_transform(instance);
+            push_expected_equine_submit(
+                &mut expected,
+                EntityModelLayerRenderType::EntityCutout,
+                instance.kind.vanilla_texture_ref().unwrap(),
+                [1.0, 1.0, 1.0, 1.0],
+                transform,
+                0,
+                0,
+            );
+            let body_layer_count = if family == UndeadHorseModelFamily::Zombie && !baby {
+                push_expected_equine_body_armor_submits(&mut expected, instance, transform, 0, 1)
+            } else {
+                0
+            };
+            if instance.render_state.equine_saddle && !baby {
+                let texture = match family {
+                    UndeadHorseModelFamily::Skeleton => SKELETON_HORSE_SADDLE_TEXTURE_REF,
+                    UndeadHorseModelFamily::Zombie => ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
+                };
+                push_expected_equine_submit(
+                    &mut expected,
+                    EntityModelLayerRenderType::ArmorCutoutNoCull,
+                    texture,
+                    [1.0, 1.0, 1.0, 1.0],
+                    transform,
+                    0,
+                    1 + body_layer_count as u32,
+                );
+            }
+        }
+        _ => panic!("expected equine instance"),
+    }
+
+    assert_equine_folded_meshes_match_expected_buckets(meshes, &expected);
+    assert_eq!(meshes.submissions.len(), expected.len());
+    for (submit, expected) in meshes.submissions.iter().zip(expected.iter()) {
+        assert_eq!(submit.render_type, expected.render_type);
+        assert_eq!(
+            submit.render_type.vanilla_name(),
+            expected.render_type.vanilla_name()
+        );
+        assert_eq!(submit.texture, expected.texture);
+        assert_eq!(submit.tint, expected.tint);
+        assert_eq!(submit.transform, expected.transform);
+        assert_eq!(
+            (submit.order, submit.submit_sequence),
+            (expected.order, expected.submit_sequence)
+        );
+    }
+}
+
+fn push_expected_equine_body_armor_submits(
+    expected: &mut Vec<ExpectedEquineSubmission>,
+    instance: EntityModelInstance,
+    transform: Mat4,
+    order: i32,
+    first_submit_sequence: u32,
+) -> usize {
+    let Some(material) = instance.render_state.equine_body_armor else {
+        return 0;
+    };
+    let Some(layers) = horse_body_armor_texture_layers(material) else {
+        return 0;
+    };
+    for (layer_index, layer) in layers.iter().enumerate() {
+        let tint = if layer.dyeable {
+            expected_leather_horse_body_armor_tint(instance.render_state.equine_body_armor_dye)
+        } else {
+            [1.0, 1.0, 1.0, 1.0]
+        };
+        push_expected_equine_submit(
+            expected,
+            EntityModelLayerRenderType::ArmorCutoutNoCull,
+            layer.texture,
+            tint,
+            transform,
+            order + layer_index as i32,
+            first_submit_sequence + layer_index as u32,
+        );
+    }
+    layers.len()
+}
+
+fn expected_leather_horse_body_armor_tint(dye: Option<u32>) -> [f32; 4] {
+    let color = dye.unwrap_or(0x00A0_6540);
+    [
+        ((color >> 16) & 0xFF) as f32 / 255.0,
+        ((color >> 8) & 0xFF) as f32 / 255.0,
+        (color & 0xFF) as f32 / 255.0,
+        1.0,
+    ]
+}
+
+fn push_expected_equine_submit(
+    expected: &mut Vec<ExpectedEquineSubmission>,
+    render_type: EntityModelLayerRenderType,
+    texture: EntityModelTextureRef,
+    tint: [f32; 4],
+    transform: Mat4,
+    order: i32,
+    submit_sequence: u32,
+) {
+    expected.push(ExpectedEquineSubmission {
+        render_type,
+        texture,
+        tint,
+        transform,
+        order,
+        submit_sequence,
+    });
+}
+
+fn assert_equine_folded_meshes_match_expected_buckets(
+    meshes: &EntityModelTexturedMeshes,
+    expected: &[ExpectedEquineSubmission],
+) {
+    assert!(!meshes.cutout.vertices.is_empty());
+    if expected
+        .iter()
+        .any(|submit| submit.render_type == EntityModelLayerRenderType::EntityTranslucent)
+    {
+        assert!(!meshes.translucent.vertices.is_empty());
+    } else {
+        assert!(meshes.translucent.vertices.is_empty());
+    }
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_cutout.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_translucent.vertices.is_empty());
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_translucent
+        .vertices
+        .is_empty());
+    assert!(meshes.scroll.vertices.is_empty());
+    assert!(meshes.scroll_additive.vertices.is_empty());
 }

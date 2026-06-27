@@ -277,14 +277,6 @@ impl From<EntityModelSubmissionEmit> for EntityModelRenderSubmission {
 }
 
 #[cfg(test)]
-pub(super) fn entity_model_textured_mesh(
-    instances: &[EntityModelInstance],
-    atlas: &EntityModelTextureAtlasLayout,
-) -> EntityModelTexturedMesh {
-    entity_model_textured_meshes(instances, atlas).cutout
-}
-
-#[cfg(test)]
 pub(super) fn entity_model_textured_meshes(
     instances: &[EntityModelInstance],
     atlas: &EntityModelTextureAtlasLayout,

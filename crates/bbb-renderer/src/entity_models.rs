@@ -91,8 +91,6 @@ pub use model_layers::{
     wither_entity_texture_refs, wither_skull_entity_texture_refs, wolf_entity_texture_refs,
     zombie_entity_texture_refs, zombie_villager_entity_texture_refs, SheepHeadEatPose,
 };
-#[cfg(test)]
-use textured::entity_model_textured_mesh;
 use textured::entity_model_textured_meshes_with_dynamic_textures;
 #[cfg(test)]
 use textured::{

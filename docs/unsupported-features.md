@@ -1681,7 +1681,15 @@ When an agent does any of the following, update this file in the same slice:
       `HorseModel(ModelLayers.UNDEAD_HORSE_ARMOR)` with the unscaled horse armor mesh and the
       same `horse_body` equipment textures; skeleton horses intentionally do not project horse
       armor because vanilla `EntityTypeTags.CAN_WEAR_HORSE_ARMOR` includes only horse and
-      zombie_horse. The ridden/eat/stand/mouth poses, the tail's `ageInTicks` yRot wag, and lighting remain
+      zombie_horse. Textured equine regressions now route through
+      `entity_model_textured_meshes`, pinning horse/donkey/mule/skeleton-horse/
+      zombie-horse base submissions, `HorseMarkingLayer` translucent overlays,
+      equine saddle layers, and horse/zombie-horse body armor layers with vanilla
+      render types (`entityCutout`, `entityTranslucent`, `armorCutoutNoCull`),
+      selected textures, white or leather-dye tint, root transforms (horse
+      `livingHorseScale`, donkey/mule scale, undead unscaled), and explicit
+      `SubmitNodeCollector.order` / submit-sequence metadata before folded
+      cutout/translucent geometry checks. The ridden/eat/stand/mouth poses, the tail's `ageInTicks` yRot wag, and lighting remain
       unsupported
     - camel and camel_husk entities as renderer-owned vanilla 26.1 body-layer
       geometry from `AdultCamelModel`, `BabyCamelModel`, `CamelRenderer`, and
