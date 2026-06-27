@@ -112,7 +112,10 @@ fn happy_ghast_mesh_uses_vanilla_scaled_body_layer_geometry() {
 #[test]
 fn happy_ghast_textured_mesh_uses_vanilla_uvs_and_scaling() {
     let (atlas, _) = build_entity_model_texture_atlas(&happy_ghast_texture_images()).unwrap();
-    let instance = EntityModelInstance::happy_ghast(58, [0.0, 64.0, 0.0], 0.0);
+    let instance = EntityModelInstance::happy_ghast(58, [0.0, 64.0, 0.0], 0.0)
+        .with_light_coords((4_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.6)
+        .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
     assert_happy_ghast_base_submission(&meshes, instance);
     assert!(meshes.translucent.vertices.is_empty());
@@ -192,4 +195,6 @@ fn assert_happy_ghast_base_submission(
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(submit.transform, happy_ghast_model_root_transform(instance));
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, instance.render_state.overlay_coords());
 }

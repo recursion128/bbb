@@ -2382,15 +2382,15 @@ When an agent does any of the following, update this file in the same slice:
       `textures/entity/ghast/happy_ghast.png` texture reference, texture-backed base
       layer pass emission (vanilla `HappyGhastModel` calls `EntityModel`'s default
       `RenderTypes::entityCutout`) while preserving explicit submission metadata for
-      texture, white tint, scaled root transform, and `order(0)`, official PNG atlas
-      upload/bind/sample path, and the vanilla `HappyGhastModel.setupAnim` tentacle
+      texture, render type, white tint, scaled root transform, `order(0)`, packed
+      light, and overlay, official PNG atlas upload/bind/sample path, and the vanilla
+      `HappyGhastModel.setupAnim` tentacle
       wave (it reuses `GhastModel.animateTentacles` verbatim, `tentacle.xRot = 0.2 *
       sin(ageInTicks * 0.3 + i) + 0.4`, driven by the projected `ageInTicks`, on both
       render paths).
       The baby model (the extra `inner_body` cube plus the 0.2375 baby scale), the
       `bodyItem` body squeeze (`0.9375` scale when a harness is equipped) with the
-      harness equipment layer and the rope/lead layer, lighting, and overlay remain
-      unsupported
+      harness equipment layer and the rope/lead layer remain unsupported
     - blaze entities as renderer-owned vanilla 26.1 `BlazeModel.createBodyLayer()`
       geometry: the 8x8x8 head at `PartPose.ZERO` plus twelve `2x8x2` rods (the
       shared `texOffs(0, 16)` `rod` builder), with no `MeshTransformer` scaling (the
