@@ -1081,9 +1081,9 @@ When an agent does any of the following, update this file in the same slice:
       puff-state base submits, rabbit color/age/Toast base submits,
       sniffer base submits, and the
       Guardian beam / End Crystal body+beam / Ender Dragon body+eyes+beam paths are covered by source-verified
-      texture/render-type/tint/transform/order tests, including the Guardian
-      and End Crystal beam missing-atlas cases where submission metadata survives
-      while folded geometry is suppressed.
+      texture/render-type/tint/transform/order tests, including the Guardian,
+      End Crystal, and Ender Dragon beam missing-atlas cases where submission
+      metadata survives while folded geometry is suppressed.
     - dropped item entities as camera-facing item-icon billboards from:
       - canonical item entity stack metadata
       - the native item atlas
@@ -3526,7 +3526,9 @@ When an agent does any of the following, update this file in the same slice:
       inflated search box, includes the `EndCrystalRenderer.getY` bob in `beamOffset`, and records
       `RenderTypes.endCrystalBeam(end_crystal_beam.png)` after body+eyes with preserved light and
       `OverlayTexture.NO_OVERLAY` before folding the shared prism geometry into the scroll mesh with
-      matching vertex metadata. The base body keeps the projected vanilla red overlay input; the eyes and
+      matching vertex metadata; missing-atlas coverage pins that the beam
+      submission survives when `end_crystal_beam.png` is absent while only
+      folded scroll geometry is suppressed. The base body keeps the projected vanilla red overlay input; the eyes and
       healing beam record no-overlay submits. The dying-dissolve render type stays deferred. The colored
       debug path stays as a fallback (it renders the body dark and the wing membranes a lighter tint)
     - area effect cloud, marker, and interaction entities now resolve to `EntityModelKind::NoRender`,

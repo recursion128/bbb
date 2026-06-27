@@ -292,3 +292,82 @@ fn ender_dragon_healing_beam_records_vanilla_submission_and_geometry() {
             < 1.0e-6
     );
 }
+
+#[test]
+fn ender_dragon_healing_beam_submission_survives_missing_beam_texture_atlas_entry() {
+    // Vanilla `EnderDragonRenderer.submit` records body, eyes, then the healing beam submission;
+    // missing beam texture data suppresses only the backend's folded scroll geometry.
+    let images = vec![
+        blank_texture(ENDER_DRAGON_TEXTURE_REF),
+        blank_texture(ENDER_DRAGON_EYES_TEXTURE_REF),
+    ];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let position = [2.0, 70.0, -5.0];
+    let beam_offset = [6.0, -0.1, 8.0];
+    let instance = EntityModelInstance::ender_dragon(431, position, 0.0)
+        .with_age_in_ticks(40.0)
+        .with_ender_dragon_beam(Some(EnderDragonBeamRenderState { beam_offset }))
+        .with_light_coords((11_u32 << 4) | (5_u32 << 20))
+        .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert!(meshes.translucent.vertices.is_empty());
+    assert_eq!(meshes.submissions.len(), 3);
+    let base = meshes.submissions[0];
+    assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(base.texture, ENDER_DRAGON_TEXTURE_REF);
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(base.transform, ender_dragon_model_root_transform(instance));
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+    assert_eq!(base.light, instance.render_state.shader_light());
+    assert_eq!(base.overlay, instance.render_state.overlay_coords());
+    assert!(!meshes.cutout.vertices.is_empty());
+
+    let eyes = meshes.submissions[1];
+    assert_eq!(eyes.render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(eyes.render_type.vanilla_name(), "eyes");
+    assert_eq!(eyes.texture, ENDER_DRAGON_EYES_TEXTURE_REF);
+    assert_eq!(eyes.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(eyes.transform, base.transform);
+    assert_eq!((eyes.order, eyes.submit_sequence), (0, 1));
+    assert_eq!(eyes.light, base.light);
+    assert_eq!(eyes.overlay, [0.0, 10.0]);
+    assert_eq!(meshes.eyes.vertices.len(), meshes.cutout.vertices.len());
+
+    let beam_submit = meshes.submissions[2];
+    assert_eq!(
+        beam_submit.render_type,
+        EntityModelLayerRenderType::EndCrystalBeam
+    );
+    assert_eq!(beam_submit.render_type.vanilla_name(), "end_crystal_beam");
+    assert_eq!(beam_submit.texture, END_CRYSTAL_BEAM_TEXTURE_REF);
+    assert_eq!(beam_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((beam_submit.order, beam_submit.submit_sequence), (0, 2));
+    assert_eq!(beam_submit.light, base.light);
+    assert_eq!(beam_submit.overlay, [0.0, 10.0]);
+    assert_ne!(beam_submit.overlay, base.overlay);
+    let delta = Vec3::from_array(beam_offset);
+    let origin = Vec3::from_array(position) + Vec3::Y * 2.0;
+    assert_close3(
+        beam_submit
+            .transform
+            .transform_point3(Vec3::ZERO)
+            .to_array(),
+        origin.to_array(),
+    );
+    assert_close3(
+        beam_submit
+            .transform
+            .transform_vector3(Vec3::Z)
+            .normalize()
+            .to_array(),
+        delta.normalize().to_array(),
+    );
+    assert!(
+        meshes.scroll.vertices.is_empty(),
+        "missing end_crystal_beam.png suppresses only folded healing-beam geometry"
+    );
+    assert!(meshes.scroll.indices.is_empty());
+}
