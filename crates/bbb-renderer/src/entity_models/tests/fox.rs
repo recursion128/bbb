@@ -486,23 +486,50 @@ fn fox_textured_render_matches_vanilla_renderer() {
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
     for baby in [false, true] {
-        let mesh = entity_model_textured_mesh(
-            &[EntityModelInstance::fox(
-                900,
-                [0.0, 64.0, 0.0],
-                0.0,
-                baby,
-                FoxModelVariant::Snow,
-            )],
-            &atlas,
-        );
-        assert!(
-            !mesh.vertices.is_empty(),
-            "baby={baby} emits textured geometry"
-        );
-        assert!(mesh
-            .vertices
-            .iter()
-            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+        for sleeping in [false, true] {
+            let instance =
+                EntityModelInstance::fox(900, [0.0, 64.0, 0.0], 0.0, baby, FoxModelVariant::Snow)
+                    .with_fox_is_sleeping(sleeping);
+            let meshes = entity_model_textured_meshes(&[instance], &atlas);
+            assert!(meshes.translucent.vertices.is_empty());
+            assert!(meshes.eyes.vertices.is_empty());
+            assert_eq!(meshes.submissions.len(), 1);
+            let submit = meshes.submissions[0];
+            assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+            assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+            assert_eq!(
+                submit.texture,
+                fox_texture_ref(FoxModelVariant::Snow, baby, sleeping)
+            );
+            assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+            assert_eq!(submit.transform, fox_model_root_transform(instance));
+            assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+            let mesh = &meshes.cutout;
+
+            assert!(
+                !mesh.vertices.is_empty(),
+                "baby={baby} sleeping={sleeping} emits textured geometry"
+            );
+            assert!(mesh
+                .vertices
+                .iter()
+                .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+        }
     }
+
+    let pouncing =
+        EntityModelInstance::fox(901, [0.0, 64.0, 0.0], 0.0, true, FoxModelVariant::Snow)
+            .with_fox_is_pouncing(true)
+            .with_head_look(0.0, 30.0);
+    let meshes = entity_model_textured_meshes(&[pouncing], &atlas);
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(
+        submit.texture,
+        fox_texture_ref(FoxModelVariant::Snow, true, false)
+    );
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.transform, fox_model_root_transform(pouncing));
+    assert_ne!(submit.transform, entity_model_root_transform(pouncing));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
 }
