@@ -72,6 +72,62 @@ fn armor_slot_textures_match_vanilla_layer_types() {
 }
 
 #[test]
+fn humanoid_armor_layer_pass_records_vanilla_model_layer_metadata() {
+    let chest = humanoid_armor_layer_pass(
+        HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE,
+        HumanoidArmorSlot::Chest,
+        EntityArmorMaterial::Iron,
+        ARMOR_IRON_HUMANOID_TEXTURE_REF,
+        None,
+        1,
+    );
+    assert_eq!(chest.kind, EntityModelLayerKind::HumanoidArmor);
+    assert_eq!(chest.model_layer, "minecraft:zombie#chestplate");
+    assert_eq!(
+        chest.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(chest.render_type.vanilla_name(), "armorCutoutNoCull");
+    assert_eq!(chest.texture, ARMOR_IRON_HUMANOID_TEXTURE_REF);
+    assert_eq!(chest.visibility, EntityModelLayerVisibility::All);
+    assert_eq!(chest.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((chest.order, chest.submit_sequence), (1, 1));
+
+    let baby_legs = humanoid_armor_layer_pass(
+        HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_BABY,
+        HumanoidArmorSlot::Legs,
+        EntityArmorMaterial::Iron,
+        ARMOR_IRON_BABY_HUMANOID_TEXTURE_REF,
+        None,
+        2,
+    );
+    assert_eq!(baby_legs.model_layer, "minecraft:zombie_baby#leggings");
+    assert_eq!(baby_legs.texture, ARMOR_IRON_BABY_HUMANOID_TEXTURE_REF);
+    assert_eq!((baby_legs.order, baby_legs.submit_sequence), (1, 2));
+
+    let dyed_helmet = humanoid_armor_layer_pass(
+        HUMANOID_ARMOR_MODEL_LAYERS_PLAYER_SLIM,
+        HumanoidArmorSlot::Head,
+        EntityArmorMaterial::Leather,
+        ARMOR_LEATHER_HUMANOID_TEXTURE_REF,
+        Some(0x003F_6CDA),
+        4,
+    );
+    assert_eq!(dyed_helmet.model_layer, "minecraft:player_slim#helmet");
+    assert_eq!(dyed_helmet.texture, ARMOR_LEATHER_HUMANOID_TEXTURE_REF);
+    assert_eq!(
+        dyed_helmet.tint,
+        [
+            0x3F as f32 / 255.0,
+            0x6C as f32 / 255.0,
+            0xDA as f32 / 255.0,
+            1.0
+        ]
+    );
+    assert_eq!((dyed_helmet.order, dyed_helmet.submit_sequence), (1, 4));
+}
+
+#[test]
 fn armor_slot_part_subsets_match_vanilla_retain_exact_parts() {
     // Vanilla `HumanoidModel.ADULT_ARMOR_PARTS_PER_SLOT`.
     assert_eq!(HumanoidArmorSlot::Head.part_names(), &["head"]);

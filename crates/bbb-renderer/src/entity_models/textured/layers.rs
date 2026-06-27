@@ -10,13 +10,13 @@ use super::super::{
         zombie_villager_profession_texture_ref, zombie_villager_type_texture_ref,
         ArrowModelTexture, AxolotlModelVariant, BoatModelFamily, CamelModelFamily, CatModelVariant,
         ChickenModelVariant, CopperGolemWeathering, CowModelVariant, DonkeyModelFamily,
-        EntityCustomHeadSkull, EntityDyeColor, EntityModelTextureRef, EntityPlayerSkin,
-        FoxModelVariant, FrogModelVariant, HoglinModelFamily, HorseColorVariant, HorseMarkings,
-        IllagerModelFamily, IronGolemCrackiness, LlamaVariant, MooshroomVariant, PandaModelVariant,
-        ParrotModelVariant, PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility,
-        RabbitModelVariant, SalmonModelSize, SheepWoolColor, SkeletonModelFamily,
-        TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData,
-        VillagerModelHat, WolfModelVariant,
+        EntityArmorMaterial, EntityCustomHeadSkull, EntityDyeColor, EntityModelTextureRef,
+        EntityPlayerSkin, FoxModelVariant, FrogModelVariant, HoglinModelFamily, HorseColorVariant,
+        HorseMarkings, IllagerModelFamily, IronGolemCrackiness, LlamaVariant, MooshroomVariant,
+        PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
+        PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SheepWoolColor,
+        SkeletonModelFamily, TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily,
+        VillagerModelData, VillagerModelHat, WolfModelVariant,
     },
     model_layers::*,
 };
@@ -57,6 +57,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     GuardianBeam,
     HorseBase,
     HorseMarkings,
+    HumanoidArmor,
     DonkeyBase,
     UndeadHorseBase,
     LeashKnotBase,
@@ -2039,6 +2040,26 @@ pub(in crate::entity_models) fn custom_head_skull_layer_pass(
         tint: [1.0, 1.0, 1.0, 1.0],
         order: 0,
         submit_sequence: 0,
+    }
+}
+
+pub(in crate::entity_models) fn humanoid_armor_layer_pass(
+    model_layers: HumanoidArmorModelLayerSet,
+    slot: HumanoidArmorSlot,
+    material: EntityArmorMaterial,
+    texture: EntityModelTextureRef,
+    dye: Option<u32>,
+    submit_sequence: u32,
+) -> EntityModelLayerPass {
+    EntityModelLayerPass {
+        kind: EntityModelLayerKind::HumanoidArmor,
+        render_type: EntityModelLayerRenderType::ArmorCutoutNoCull,
+        model_layer: model_layers.model_layer(slot),
+        texture,
+        visibility: EntityModelLayerVisibility::All,
+        tint: armor_layer_tint(material, dye),
+        order: 1,
+        submit_sequence,
     }
 }
 

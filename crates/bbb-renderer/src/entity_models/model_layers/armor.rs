@@ -205,6 +205,176 @@ pub(in crate::entity_models) enum HumanoidBabyArmorKind {
     Piglin,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(in crate::entity_models) struct HumanoidArmorModelLayerSet {
+    helmet: &'static str,
+    chestplate: &'static str,
+    leggings: &'static str,
+    boots: &'static str,
+}
+
+impl HumanoidArmorModelLayerSet {
+    pub(in crate::entity_models) const fn model_layer(
+        self,
+        slot: HumanoidArmorSlot,
+    ) -> &'static str {
+        match slot {
+            HumanoidArmorSlot::Head => self.helmet,
+            HumanoidArmorSlot::Chest => self.chestplate,
+            HumanoidArmorSlot::Legs => self.leggings,
+            HumanoidArmorSlot::Feet => self.boots,
+        }
+    }
+}
+
+pub(in crate::entity_models) const HUMANOID_ARMOR_MODEL_LAYERS_BOGGED: HumanoidArmorModelLayerSet =
+    HumanoidArmorModelLayerSet {
+        helmet: "minecraft:bogged#helmet",
+        chestplate: "minecraft:bogged#chestplate",
+        leggings: "minecraft:bogged#leggings",
+        boots: "minecraft:bogged#boots",
+    };
+pub(in crate::entity_models) const HUMANOID_ARMOR_MODEL_LAYERS_DROWNED: HumanoidArmorModelLayerSet =
+    HumanoidArmorModelLayerSet {
+        helmet: "minecraft:drowned#helmet",
+        chestplate: "minecraft:drowned#chestplate",
+        leggings: "minecraft:drowned#leggings",
+        boots: "minecraft:drowned#boots",
+    };
+pub(in crate::entity_models) const HUMANOID_ARMOR_MODEL_LAYERS_DROWNED_BABY:
+    HumanoidArmorModelLayerSet = HumanoidArmorModelLayerSet {
+    helmet: "minecraft:drowned_baby#helmet",
+    chestplate: "minecraft:drowned_baby#chestplate",
+    leggings: "minecraft:drowned_baby#leggings",
+    boots: "minecraft:drowned_baby#boots",
+};
+pub(in crate::entity_models) const HUMANOID_ARMOR_MODEL_LAYERS_GIANT: HumanoidArmorModelLayerSet =
+    HumanoidArmorModelLayerSet {
+        helmet: "minecraft:giant#helmet",
+        chestplate: "minecraft:giant#chestplate",
+        leggings: "minecraft:giant#leggings",
+        boots: "minecraft:giant#boots",
+    };
+pub(in crate::entity_models) const HUMANOID_ARMOR_MODEL_LAYERS_HUSK: HumanoidArmorModelLayerSet =
+    HumanoidArmorModelLayerSet {
+        helmet: "minecraft:husk#helmet",
+        chestplate: "minecraft:husk#chestplate",
+        leggings: "minecraft:husk#leggings",
+        boots: "minecraft:husk#boots",
+    };
+pub(in crate::entity_models) const HUMANOID_ARMOR_MODEL_LAYERS_HUSK_BABY:
+    HumanoidArmorModelLayerSet = HumanoidArmorModelLayerSet {
+    helmet: "minecraft:husk_baby#helmet",
+    chestplate: "minecraft:husk_baby#chestplate",
+    leggings: "minecraft:husk_baby#leggings",
+    boots: "minecraft:husk_baby#boots",
+};
+pub(in crate::entity_models) const HUMANOID_ARMOR_MODEL_LAYERS_PARCHED: HumanoidArmorModelLayerSet =
+    HumanoidArmorModelLayerSet {
+        helmet: "minecraft:parched#helmet",
+        chestplate: "minecraft:parched#chestplate",
+        leggings: "minecraft:parched#leggings",
+        boots: "minecraft:parched#boots",
+    };
+pub(in crate::entity_models) const HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN: HumanoidArmorModelLayerSet =
+    HumanoidArmorModelLayerSet {
+        helmet: "minecraft:piglin#helmet",
+        chestplate: "minecraft:piglin#chestplate",
+        leggings: "minecraft:piglin#leggings",
+        boots: "minecraft:piglin#boots",
+    };
+pub(in crate::entity_models) const HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BABY:
+    HumanoidArmorModelLayerSet = HumanoidArmorModelLayerSet {
+    helmet: "minecraft:piglin_baby#helmet",
+    chestplate: "minecraft:piglin_baby#chestplate",
+    leggings: "minecraft:piglin_baby#leggings",
+    boots: "minecraft:piglin_baby#boots",
+};
+pub(in crate::entity_models) const HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BRUTE:
+    HumanoidArmorModelLayerSet = HumanoidArmorModelLayerSet {
+    helmet: "minecraft:piglin_brute#helmet",
+    chestplate: "minecraft:piglin_brute#chestplate",
+    leggings: "minecraft:piglin_brute#leggings",
+    boots: "minecraft:piglin_brute#boots",
+};
+pub(in crate::entity_models) const HUMANOID_ARMOR_MODEL_LAYERS_PLAYER: HumanoidArmorModelLayerSet =
+    HumanoidArmorModelLayerSet {
+        helmet: "minecraft:player#helmet",
+        chestplate: "minecraft:player#chestplate",
+        leggings: "minecraft:player#leggings",
+        boots: "minecraft:player#boots",
+    };
+pub(in crate::entity_models) const HUMANOID_ARMOR_MODEL_LAYERS_PLAYER_SLIM:
+    HumanoidArmorModelLayerSet = HumanoidArmorModelLayerSet {
+    helmet: "minecraft:player_slim#helmet",
+    chestplate: "minecraft:player_slim#chestplate",
+    leggings: "minecraft:player_slim#leggings",
+    boots: "minecraft:player_slim#boots",
+};
+pub(in crate::entity_models) const HUMANOID_ARMOR_MODEL_LAYERS_SKELETON:
+    HumanoidArmorModelLayerSet = HumanoidArmorModelLayerSet {
+    helmet: "minecraft:skeleton#helmet",
+    chestplate: "minecraft:skeleton#chestplate",
+    leggings: "minecraft:skeleton#leggings",
+    boots: "minecraft:skeleton#boots",
+};
+pub(in crate::entity_models) const HUMANOID_ARMOR_MODEL_LAYERS_STRAY: HumanoidArmorModelLayerSet =
+    HumanoidArmorModelLayerSet {
+        helmet: "minecraft:stray#helmet",
+        chestplate: "minecraft:stray#chestplate",
+        leggings: "minecraft:stray#leggings",
+        boots: "minecraft:stray#boots",
+    };
+pub(in crate::entity_models) const HUMANOID_ARMOR_MODEL_LAYERS_WITHER_SKELETON:
+    HumanoidArmorModelLayerSet = HumanoidArmorModelLayerSet {
+    helmet: "minecraft:wither_skeleton#helmet",
+    chestplate: "minecraft:wither_skeleton#chestplate",
+    leggings: "minecraft:wither_skeleton#leggings",
+    boots: "minecraft:wither_skeleton#boots",
+};
+pub(in crate::entity_models) const HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE: HumanoidArmorModelLayerSet =
+    HumanoidArmorModelLayerSet {
+        helmet: "minecraft:zombie#helmet",
+        chestplate: "minecraft:zombie#chestplate",
+        leggings: "minecraft:zombie#leggings",
+        boots: "minecraft:zombie#boots",
+    };
+pub(in crate::entity_models) const HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_BABY:
+    HumanoidArmorModelLayerSet = HumanoidArmorModelLayerSet {
+    helmet: "minecraft:zombie_baby#helmet",
+    chestplate: "minecraft:zombie_baby#chestplate",
+    leggings: "minecraft:zombie_baby#leggings",
+    boots: "minecraft:zombie_baby#boots",
+};
+pub(in crate::entity_models) const HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_VILLAGER:
+    HumanoidArmorModelLayerSet = HumanoidArmorModelLayerSet {
+    helmet: "minecraft:zombie_villager#helmet",
+    chestplate: "minecraft:zombie_villager#chestplate",
+    leggings: "minecraft:zombie_villager#leggings",
+    boots: "minecraft:zombie_villager#boots",
+};
+pub(in crate::entity_models) const HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_VILLAGER_BABY:
+    HumanoidArmorModelLayerSet = HumanoidArmorModelLayerSet {
+    helmet: "minecraft:zombie_villager_baby#helmet",
+    chestplate: "minecraft:zombie_villager_baby#chestplate",
+    leggings: "minecraft:zombie_villager_baby#leggings",
+    boots: "minecraft:zombie_villager_baby#boots",
+};
+pub(in crate::entity_models) const HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIFIED_PIGLIN:
+    HumanoidArmorModelLayerSet = HumanoidArmorModelLayerSet {
+    helmet: "minecraft:zombified_piglin#helmet",
+    chestplate: "minecraft:zombified_piglin#chestplate",
+    leggings: "minecraft:zombified_piglin#leggings",
+    boots: "minecraft:zombified_piglin#boots",
+};
+pub(in crate::entity_models) const HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIFIED_PIGLIN_BABY:
+    HumanoidArmorModelLayerSet = HumanoidArmorModelLayerSet {
+    helmet: "minecraft:zombified_piglin_baby#helmet",
+    chestplate: "minecraft:zombified_piglin_baby#chestplate",
+    leggings: "minecraft:zombified_piglin_baby#leggings",
+    boots: "minecraft:zombified_piglin_baby#boots",
+};
+
 impl HumanoidBabyArmorKind {
     const fn inner_deformation(self) -> [f32; 3] {
         match self {

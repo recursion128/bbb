@@ -2026,7 +2026,9 @@ When an agent does any of the following, update this file in the same slice:
       already-posed limbs via `ModelPart::copy_child_poses_from` (vanilla `HumanoidModel.copyPropertiesTo`),
       so the armor inherits the host `setup_anim` without re-running it, and is drawn into the cutout pass
       in the vanilla submit order (chest, legs, feet, head) as `armorCutoutNoCull`
-      submissions at `order(1)` with entity light plus `OverlayTexture.NO_OVERLAY`;
+      submissions generated from `humanoid_armor_layer_pass` at `order(1)` with the selected
+      vanilla armor model set (`<host>#helmet/chestplate/leggings/boots`), entity light plus
+      `OverlayTexture.NO_OVERLAY`;
       folded armor vertex segments inherit the matching submission light/overlay, and missing-atlas
       coverage now proves both adult full-armor and baby `HUMANOID_BABY` submissions survive
       when only the matching base zombie body texture is stitched. All eight equipment-asset materials
@@ -3402,7 +3404,7 @@ When an agent does any of the following, update this file in the same slice:
       `ItemInHandLayer` uses the renderer-owned hand attach transform from the same 6.0-scaled zombie
       model so native bakes main/off hands through the standard third-person item contexts, and
       `HumanoidArmorLayer` rebuilds the scaled host pose, draping standard adult humanoid armor as
-      `armorCutoutNoCull` submissions at order `1`
+      `armorCutoutNoCull` submissions through `humanoid_armor_layer_pass` at order `1`
       with vanilla slot sequences. Tests pin the giant armor texture/render type/tint/transform/order and
       the held-item hand basis scaling (the `attack_anim` melee swing is implemented via the shared
       zombie-family anim). The
