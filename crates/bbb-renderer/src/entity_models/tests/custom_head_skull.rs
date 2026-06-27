@@ -129,6 +129,45 @@ fn custom_head_skull_layer_renders_static_mob_heads_with_matching_textures() {
 }
 
 #[test]
+fn custom_head_static_skull_submission_survives_missing_texture_atlas_entry() {
+    // Vanilla `CustomHeadLayer` delegates static skulls to
+    // `SkullBlockRenderer.submitSkull`, which submits the chosen skull render type
+    // with `OverlayTexture.NO_OVERLAY`; a missing stitched skull texture must not
+    // erase that submission metadata.
+    let atlas = atlas_with(PLAYER_WIDE_STEVE_TEXTURE_REF);
+    assert!(!atlas
+        .entries
+        .iter()
+        .any(|entry| entry.texture == SKELETON_TEXTURE_REF));
+    let instance = EntityModelInstance::player_with_skin(
+        917,
+        [0.0, 64.0, 0.0],
+        0.0,
+        EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_custom_head_skull(Some(EntityCustomHeadSkull::Skeleton))
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_skull_submission(
+        &instance,
+        &meshes,
+        EntityModelLayerRenderType::EntityCutoutZOffset,
+        SKELETON_TEXTURE_REF,
+    );
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.overlay != [0.0, 10.0]));
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+}
+
+#[test]
 fn custom_head_skull_layer_renders_profileless_player_head_with_default_skin() {
     let atlas = atlas_with(PLAYER_SLIM_STEVE_TEXTURE_REF);
     let instance = EntityModelInstance::player_with_parts(
