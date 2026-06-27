@@ -1749,7 +1749,10 @@ When an agent does any of the following, update this file in the same slice:
       base submits now also pin vanilla entity light plus hurt/white overlay,
       `HorseMarkingLayer` keeps entity light and zeroes the white overlay column,
       and saddle/body-armor equipment submits keep entity light while forcing
-      `OverlayTexture.NO_OVERLAY` before folded cutout/translucent geometry checks.
+      `OverlayTexture.NO_OVERLAY` before folded cutout/translucent geometry checks;
+      missing-atlas coverage pins that a marked horse still records the
+      `entityTranslucent` `horse_markings_whitedots.png` submission before only
+      the folded markings geometry is suppressed.
       The ridden/eat/stand/mouth poses, the tail's `ageInTicks` yRot wag, and broader lighting presentation remain
       unsupported
     - camel and camel_husk entities as renderer-owned vanilla 26.1 body-layer

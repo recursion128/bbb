@@ -1527,6 +1527,64 @@ fn horse_markings_overlay_layers_a_translucent_white_copy() {
 }
 
 #[test]
+fn horse_markings_submission_survives_missing_markings_texture_atlas_entry() {
+    // Vanilla `HorseMarkingLayer.submit` records the marked coat's `entityTranslucent` overlay at
+    // `order(1)` when the markings texture is not `INVISIBLE_TEXTURE` and the horse is visible.
+    let images = texture_images(&[HORSE_WHITE_TEXTURE_REF]);
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let instance = EntityModelInstance::horse_full(
+        172,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        HorseColorVariant::White,
+        HorseMarkings::WhiteDots,
+    )
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 2);
+    let base = meshes.submissions[0];
+    assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(base.texture, HORSE_WHITE_TEXTURE_REF);
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        base.transform,
+        mesh_transformer_scaled_model_root_transform(instance, 1.1)
+    );
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+    assert_eq!(base.light, instance.render_state.shader_light());
+    assert_eq!(base.overlay, instance.render_state.overlay_coords());
+    assert!(!meshes.cutout.vertices.is_empty());
+
+    let markings = meshes.submissions[1];
+    assert_eq!(
+        markings.render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(markings.render_type.vanilla_name(), "entityTranslucent");
+    assert_eq!(markings.texture, HORSE_MARKINGS_WHITEDOTS_TEXTURE_REF);
+    assert_eq!(markings.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(markings.transform, base.transform);
+    assert_eq!((markings.order, markings.submit_sequence), (1, 1));
+    assert_eq!(markings.light, base.light);
+    assert_eq!(
+        markings.overlay,
+        [0.0, instance.render_state.overlay_coords()[1]]
+    );
+    assert_ne!(markings.overlay, base.overlay);
+    assert!(
+        meshes.translucent.vertices.is_empty(),
+        "missing horse_markings_whitedots.png suppresses only folded markings geometry"
+    );
+    assert!(meshes.translucent.indices.is_empty());
+}
+
+#[test]
 fn equine_saddle_model_parts_match_vanilla_layer_sources() {
     // Vanilla `EquineSaddleModel.createSaddleLayer()` adds the saddle body cube, bridle mouth/wrap
     // cubes, and two ridden-only zero-width line planes on top of the normal adult equine body mesh.
