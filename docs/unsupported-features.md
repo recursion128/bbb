@@ -1953,9 +1953,12 @@ When an agent does any of the following, update this file in the same slice:
       type, profession, and level overlays use `entityCutout`, white tint, the
       same transform, and vanilla `VillagerProfessionLayer` orders `(1, 1)`,
       `(2, 2)`, and `(3, 3)`, preserving entity light while clearing the white
-      overlay column via `getOverlayCoords(state, 0.0F)`. Base villager and
-      wandering trader submissions preserve entity light plus full hurt/white
-      overlay. Wandering trader textured regressions pin its
+      overlay column via `getOverlayCoords(state, 0.0F)`. Missing-atlas coverage
+      now proves adult type/profession/level overlays and baby type overlays
+      still record their vanilla `entityCutout` submissions while only folded
+      overlay geometry is suppressed. Base villager and wandering trader
+      submissions preserve entity light plus full hurt/white overlay. Wandering
+      trader textured regressions pin its
       single `wandering_trader.png` base submission with
       `villager_adult_model_root_transform` and `(0, 0)`. Crossed-arms
       item layer is implemented for adult/baby villagers and wandering traders

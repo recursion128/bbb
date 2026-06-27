@@ -460,6 +460,130 @@ fn villager_profession_layers_render_type_profession_and_level_overlays() {
 }
 
 #[test]
+fn villager_profession_submissions_survive_missing_texture_atlas_entries() {
+    // Vanilla `VillagerProfessionLayer.submit` records type/profession/level submits at orders
+    // 1/2/3 after the base body; missing atlas data suppresses only folded overlay geometry.
+    let (atlas, _) = build_entity_model_texture_atlas(&texture_images(&[
+        VILLAGER_TEXTURE_REF,
+        VILLAGER_BABY_TEXTURE_REF,
+    ]))
+    .unwrap();
+
+    let adult = villager_submission_probe(
+        EntityModelInstance::villager(406, [0.0, 64.0, 0.0], 0.0, false).with_villager_model_data(
+            VillagerModelData::new(
+                VillagerModelType::Savanna,
+                VillagerModelProfession::Mason,
+                9,
+            ),
+        ),
+    );
+    let adult_meshes = entity_model_textured_meshes(&[adult], &atlas);
+    assert_villager_folded_meshes_are_cutout_only(&adult_meshes);
+    assert_eq!(adult_meshes.submissions.len(), 4);
+    assert_eq!(adult_meshes.cutout.vertices.len(), 264);
+    let adult_base_overlay = adult.render_state.overlay_coords();
+    let adult_layer_overlay = [0.0, adult_base_overlay[1]];
+    let adult_transform = villager_adult_model_root_transform(adult);
+    for (submit, texture, order, sequence, overlay) in [
+        (
+            adult_meshes.submissions[0],
+            VILLAGER_TEXTURE_REF,
+            0,
+            0,
+            adult_base_overlay,
+        ),
+        (
+            adult_meshes.submissions[1],
+            villager_type_texture_ref(VillagerModelType::Savanna, false),
+            1,
+            1,
+            adult_layer_overlay,
+        ),
+        (
+            adult_meshes.submissions[2],
+            villager_profession_texture_ref(VillagerModelProfession::Mason).unwrap(),
+            2,
+            2,
+            adult_layer_overlay,
+        ),
+        (
+            adult_meshes.submissions[3],
+            villager_level_texture_ref(9),
+            3,
+            3,
+            adult_layer_overlay,
+        ),
+    ] {
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(submit.texture, texture);
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(submit.transform, adult_transform);
+        assert_eq!(submit.light, adult.render_state.shader_light());
+        assert_eq!(submit.overlay, overlay);
+        assert_eq!((submit.order, submit.submit_sequence), (order, sequence));
+    }
+    assert!(adult_meshes.cutout.vertices.iter().all(|vertex| {
+        vertex.tint == [1.0, 1.0, 1.0, 1.0]
+            && vertex.light == adult.render_state.shader_light()
+            && vertex.overlay == adult_base_overlay
+    }));
+    assert!(adult_meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.overlay != adult_layer_overlay));
+
+    let baby = villager_submission_probe(
+        EntityModelInstance::villager(407, [2.0, 64.0, 0.0], 0.0, true).with_villager_model_data(
+            VillagerModelData::new(VillagerModelType::Plains, VillagerModelProfession::Mason, 5),
+        ),
+    );
+    let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
+    assert_villager_folded_meshes_are_cutout_only(&baby_meshes);
+    assert_eq!(baby_meshes.submissions.len(), 2);
+    assert_eq!(baby_meshes.cutout.vertices.len(), 264);
+    let baby_base_overlay = baby.render_state.overlay_coords();
+    let baby_layer_overlay = [0.0, baby_base_overlay[1]];
+    for (submit, texture, order, sequence, overlay) in [
+        (
+            baby_meshes.submissions[0],
+            VILLAGER_BABY_TEXTURE_REF,
+            0,
+            0,
+            baby_base_overlay,
+        ),
+        (
+            baby_meshes.submissions[1],
+            villager_type_texture_ref(VillagerModelType::Plains, true),
+            1,
+            1,
+            baby_layer_overlay,
+        ),
+    ] {
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(submit.texture, texture);
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(submit.transform, entity_model_root_transform(baby));
+        assert_eq!(submit.light, baby.render_state.shader_light());
+        assert_eq!(submit.overlay, overlay);
+        assert_eq!((submit.order, submit.submit_sequence), (order, sequence));
+    }
+    assert!(baby_meshes.cutout.vertices.iter().all(|vertex| {
+        vertex.tint == [1.0, 1.0, 1.0, 1.0]
+            && vertex.light == baby.render_state.shader_light()
+            && vertex.overlay == baby_base_overlay
+    }));
+    assert!(baby_meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.overlay != baby_layer_overlay));
+}
+
+#[test]
 fn villager_profession_layers_apply_no_hat_and_baby_rules() {
     let textures = [
         VILLAGER_TEXTURE_REF,
