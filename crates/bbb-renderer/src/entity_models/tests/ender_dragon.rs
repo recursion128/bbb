@@ -90,17 +90,35 @@ fn ender_dragon_mesh_uses_vanilla_body_layer_geometry() {
 #[test]
 fn ender_dragon_textured_render_matches_vanilla_renderer() {
     let passes = ender_dragon_textured_layer_passes();
-    // The cutout base body plus the always-on emissive `dragon_eyes.png` eyes overlay.
-    assert_eq!(passes.len(), 2);
+    // The cutout base body, always-on emissive eyes overlay, and optional healing-beam custom geometry.
+    assert_eq!(passes.len(), 3);
+    assert_eq!(passes[0].kind, EntityModelLayerKind::EnderDragonBase);
     assert_eq!(
         passes[0].render_type,
         EntityModelLayerRenderType::EntityCutout
     );
+    assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
+    assert_eq!(passes[0].model_layer, MODEL_LAYER_ENDER_DRAGON);
     assert_eq!(passes[0].texture, ENDER_DRAGON_TEXTURE_REF);
+    assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
+    assert_eq!(passes[1].kind, EntityModelLayerKind::EnderDragonEyes);
     assert_eq!(passes[1].render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(passes[1].render_type.vanilla_name(), "eyes");
+    assert_eq!(passes[1].model_layer, MODEL_LAYER_ENDER_DRAGON);
     assert_eq!(passes[1].texture, ENDER_DRAGON_EYES_TEXTURE_REF);
+    assert_eq!(passes[1].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((passes[1].order, passes[1].submit_sequence), (0, 1));
+    assert_eq!(passes[2].kind, EntityModelLayerKind::EnderDragonBeam);
+    assert_eq!(
+        passes[2].render_type,
+        EntityModelLayerRenderType::EndCrystalBeam
+    );
+    assert_eq!(passes[2].render_type.vanilla_name(), "end_crystal_beam");
+    assert_eq!(passes[2].model_layer, "");
+    assert_eq!(passes[2].texture, END_CRYSTAL_BEAM_TEXTURE_REF);
+    assert_eq!(passes[2].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((passes[2].order, passes[2].submit_sequence), (0, 2));
     assert_eq!(
         EntityModelKind::EnderDragon.vanilla_texture_ref(),
         Some(EntityModelTextureRef {

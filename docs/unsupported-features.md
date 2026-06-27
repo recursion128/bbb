@@ -1071,9 +1071,11 @@ When an agent does any of the following, update this file in the same slice:
       bob/spin geometry is folded through the standard submission helper, and
       crystals with a beam target now consume explicit `EndCrystalBeam` pass metadata before
       recording vanilla `end_crystal_beam` submissions and folding their tiled prism geometry into the scroll
-      bucket with preserved light / no-overlay metadata. Ender dragon nearest-crystal healing beams now project the
-      bobbed crystal `beamOffset`, record the same vanilla `end_crystal_beam`
-      submission after body+eyes, and then fold the shared eight-quad prism
+      bucket with preserved light / no-overlay metadata. Ender dragon nearest-crystal healing beams
+      now project the
+      bobbed crystal `beamOffset`, consume explicit `EnderDragonBeam` pass metadata,
+      record the same vanilla `end_crystal_beam` submission after body+eyes, and then fold the
+      shared eight-quad prism
       into the scroll bucket with preserved light / no-overlay metadata.
       Uniform layer passes, Creaking base+eyes submits, Warden retained
       emissive layers, Breeze base/eyes/wind, Shulker color/default base
@@ -3628,7 +3630,8 @@ When an agent does any of the following, update this file in the same slice:
       `dragon_eyes.png` even when the folded emissive geometry is suppressed. The nearest-crystal healing beam is
       now source-projected from the
       closest tracked end crystal intersecting the vanilla
-      inflated search box, includes the `EndCrystalRenderer.getY` bob in `beamOffset`, and records
+      inflated search box, includes the `EndCrystalRenderer.getY` bob in `beamOffset`, and consumes
+      explicit `EnderDragonBeam` pass metadata before recording
       `RenderTypes.endCrystalBeam(end_crystal_beam.png)` after body+eyes with preserved light and
       `OverlayTexture.NO_OVERLAY` before folding the shared prism geometry into the scroll mesh with
       matching vertex metadata; missing-atlas coverage pins that the beam

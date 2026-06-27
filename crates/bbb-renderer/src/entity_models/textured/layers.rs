@@ -44,7 +44,9 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     CreeperArmor,
     CreakingBase,
     CreakingEyes,
+    EnderDragonBase,
     EnderDragonEyes,
+    EnderDragonBeam,
     EndermanBase,
     EndermanEyes,
     EvokerFangsBase,
@@ -1291,21 +1293,39 @@ pub(in crate::entity_models) fn shulker_textured_layer_passes(
 
 pub(in crate::entity_models) fn ender_dragon_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     vec![
-        EntityModelLayerPass::base(
-            EntityModelLayerRenderType::EntityCutout,
-            ENDER_DRAGON_TEXTURE_REF,
-            [1.0, 1.0, 1.0, 1.0],
-        )
-        .with_order(0, 0),
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::EnderDragonBase,
+            render_type: EntityModelLayerRenderType::EntityCutout,
+            model_layer: MODEL_LAYER_ENDER_DRAGON,
+            texture: ENDER_DRAGON_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 0,
+            submit_sequence: 0,
+        },
         // Vanilla `EnderDragonRenderer` always re-submits the whole model with the emissive
         // `dragon_eyes.png` in the eyes render type before the optional healing beam custom geometry.
-        EntityModelLayerPass::base(
-            EntityModelLayerRenderType::Eyes,
-            ENDER_DRAGON_EYES_TEXTURE_REF,
-            [1.0, 1.0, 1.0, 1.0],
-        )
-        .with_kind(EntityModelLayerKind::EnderDragonEyes)
-        .with_order(0, 1),
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::EnderDragonEyes,
+            render_type: EntityModelLayerRenderType::Eyes,
+            model_layer: MODEL_LAYER_ENDER_DRAGON,
+            texture: ENDER_DRAGON_EYES_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 0,
+            submit_sequence: 1,
+        },
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::EnderDragonBeam,
+            render_type: EntityModelLayerRenderType::EndCrystalBeam,
+            // The healing beam is custom geometry from `submitCrystalBeams`, not a baked ModelLayer.
+            model_layer: "",
+            texture: END_CRYSTAL_BEAM_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 0,
+            submit_sequence: 2,
+        },
     ]
 }
 

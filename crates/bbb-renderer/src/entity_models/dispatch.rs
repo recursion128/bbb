@@ -950,12 +950,15 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
         // posed model as a larger translucent shell. Colored/textured residual arms handle that split.
         // The wind charge is NOT uniform: its textured render is the scrolling `breezeWind` overlay
         // ([`emit_wind_charge_scroll_model`]), so it is handled by the colored + textured residual arms.
-        EntityModelKind::EnderDragon => sink.model(
-            EnderDragonModel::new(),
-            ender_dragon_model_root_transform(*instance),
-            instance,
-            &ender_dragon_textured_layer_passes(),
-        ),
+        EntityModelKind::EnderDragon => {
+            let passes = ender_dragon_textured_layer_passes();
+            sink.model(
+                EnderDragonModel::new(),
+                ender_dragon_model_root_transform(*instance),
+                instance,
+                &passes[0..2],
+            )
+        }
         EntityModelKind::Mooshroom { baby, variant } => sink.model(
             CowModel::new(CowModelVariant::Temperate, baby),
             entity_model_root_transform(*instance),

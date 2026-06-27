@@ -17,6 +17,8 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 // both the colored debug tint (`DRAGON_BODY` / `DRAGON_MEMBRANE`) and the textured `uv_size` /
 // `texOffs`.
 
+pub(in crate::entity_models) const MODEL_LAYER_ENDER_DRAGON: &str = "minecraft:ender_dragon#main";
+
 // ----- Head + jaw -----
 
 // `head` (offset (0, 20, -62)): the upper lip, the upper head, and the mirrored scale/nostril pairs.
