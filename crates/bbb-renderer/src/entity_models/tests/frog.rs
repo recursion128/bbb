@@ -575,15 +575,20 @@ fn frog_textured_render_matches_vanilla_renderer() {
         })
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::frog(
-            950,
-            [0.0, 64.0, 0.0],
-            0.0,
-            FrogModelVariant::Warm,
-        )],
-        &atlas,
-    );
+    let instance = EntityModelInstance::frog(950, [0.0, 64.0, 0.0], 0.0, FrogModelVariant::Warm);
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.texture, FROG_WARM_TEXTURE_REF);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.transform, entity_model_root_transform(instance));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    let mesh = &meshes.cutout;
+
     assert!(
         !mesh.vertices.is_empty(),
         "the frog emits textured geometry"
