@@ -3694,7 +3694,11 @@ When an agent does any of the following, update this file in the same slice:
       tinted by the dye's diffuse color, projected onto `collar` mirroring `CatRenderer`
       (`isTame() ? getCollarColor() : null`) off the `TamableAnimal` tame flag and `Cat.DATA_COLLAR_COLOR`
       (23, `DyeColor.byId`, default RED); the ocelot never carries one. This makes the feline texture set a
-      26-entry matrix (eleven breeds × adult/baby + ocelot × adult/baby + the collar × adult/baby). Nothing on
+      26-entry matrix (eleven breeds × adult/baby + ocelot × adult/baby + the collar × adult/baby).
+      Textured regressions now pin the `FelineBase` and `FelineCollar` pass identities, vanilla
+      `entityCutout` render type/name, base white tint, collar dye tint, adult-cat scale transform,
+      `(order, submit_sequence) == (0, 0)` for base and `(1, 1)` for `CatCollarLayer`, and
+      `AgeableMobRenderer` / `LivingEntityRenderer` light plus hurt/white overlay metadata. Nothing on
       the cat base/collar path stays deferred (only the feline pose animations above remain)
     - mooshroom entities (adult and baby) as renderer-owned vanilla 26.1 cow-body geometry on the colored
       path: the native entity scene (`entity_scene.rs`) now maps vanilla type id `86` (adult and baby) to

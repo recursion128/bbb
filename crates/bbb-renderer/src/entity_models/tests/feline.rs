@@ -476,14 +476,17 @@ fn feline_textured_render_matches_vanilla_renderer() {
         for baby in [false, true] {
             // The cat binds its per-breed texture; the ocelot ignores the breed.
             let cat_texture = feline_texture_ref(true, baby, cat_variant);
+            let cat_passes = feline_textured_layer_passes(true, baby, cat_variant, None);
+            assert_eq!(cat_passes.len(), 1);
             assert_eq!(
-                feline_textured_layer_passes(true, baby, cat_variant, None)[0].texture,
-                cat_texture
-            );
-            assert_eq!(
-                feline_textured_layer_passes(true, baby, cat_variant, None)[0].render_type,
+                cat_passes[0].render_type,
                 EntityModelLayerRenderType::EntityCutout
             );
+            assert_eq!(cat_passes[0].render_type.vanilla_name(), "entityCutout");
+            assert_eq!(cat_passes[0].kind, EntityModelLayerKind::FelineBase);
+            assert_eq!(cat_passes[0].texture, cat_texture);
+            assert_eq!(cat_passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+            assert_eq!((cat_passes[0].order, cat_passes[0].submit_sequence), (0, 0));
             assert_eq!(
                 EntityModelKind::Feline {
                     cat: true,
@@ -505,9 +508,19 @@ fn feline_textured_render_matches_vanilla_renderer() {
                     FELINE_OCELOT_TEXTURE_REF
                 }
             );
+            let ocelot_passes = feline_textured_layer_passes(false, baby, cat_variant, None);
+            assert_eq!(ocelot_passes.len(), 1);
             assert_eq!(
-                feline_textured_layer_passes(false, baby, cat_variant, None)[0].texture,
-                ocelot_texture
+                ocelot_passes[0].render_type,
+                EntityModelLayerRenderType::EntityCutout
+            );
+            assert_eq!(ocelot_passes[0].render_type.vanilla_name(), "entityCutout");
+            assert_eq!(ocelot_passes[0].kind, EntityModelLayerKind::FelineBase);
+            assert_eq!(ocelot_passes[0].texture, ocelot_texture);
+            assert_eq!(ocelot_passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+            assert_eq!(
+                (ocelot_passes[0].order, ocelot_passes[0].submit_sequence),
+                (0, 0)
             );
         }
     }
@@ -531,7 +544,10 @@ fn feline_textured_render_matches_vanilla_renderer() {
             baby,
             CatModelVariant::Black,
             None,
-        );
+        )
+        .with_light_coords((4_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
         let meshes = entity_model_textured_meshes(&[instance], &atlas);
         assert!(meshes.translucent.vertices.is_empty());
         assert!(meshes.eyes.vertices.is_empty());
@@ -551,6 +567,9 @@ fn feline_textured_render_matches_vanilla_renderer() {
         };
         assert_eq!(submit.transform, expected_transform);
         assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+        assert_eq!(submit.light, instance.render_state.shader_light());
+        assert_eq!(submit.overlay, instance.render_state.overlay_coords());
+        assert_ne!(submit.overlay, [0.0, 10.0]);
         let mesh = &meshes.cutout;
 
         assert!(
@@ -560,7 +579,9 @@ fn feline_textured_render_matches_vanilla_renderer() {
         assert!(mesh
             .vertices
             .iter()
-            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]
+                && vertex.light == submit.light
+                && vertex.overlay == submit.overlay));
     }
 
     let collared = EntityModelInstance::feline(
@@ -571,7 +592,10 @@ fn feline_textured_render_matches_vanilla_renderer() {
         false,
         CatModelVariant::Black,
         Some(EntityDyeColor::Lime),
-    );
+    )
+    .with_light_coords((5_u32 << 4) | (13_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[collared], &atlas);
     assert_eq!(meshes.submissions.len(), 2);
     let base = meshes.submissions[0];
@@ -580,11 +604,15 @@ fn feline_textured_render_matches_vanilla_renderer() {
         feline_texture_ref(true, false, CatModelVariant::Black)
     );
     assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         base.transform,
         mesh_transformer_scaled_model_root_transform(collared, FELINE_CAT_SCALE)
     );
     assert_eq!((base.order, base.submit_sequence), (0, 0));
+    assert_eq!(base.light, collared.render_state.shader_light());
+    assert_eq!(base.overlay, collared.render_state.overlay_coords());
+    assert_ne!(base.overlay, [0.0, 10.0]);
     let collar = meshes.submissions[1];
     assert_eq!(collar.texture, FELINE_CAT_COLLAR_TEXTURE_REF);
     assert_eq!(collar.render_type, EntityModelLayerRenderType::EntityCutout);
@@ -592,6 +620,8 @@ fn feline_textured_render_matches_vanilla_renderer() {
     assert_eq!(collar.tint, EntityDyeColor::Lime.texture_diffuse_color());
     assert_eq!(collar.transform, base.transform);
     assert_eq!((collar.order, collar.submit_sequence), (1, 1));
+    assert_eq!(collar.light, base.light);
+    assert_eq!(collar.overlay, base.overlay);
 }
 
 #[test]
@@ -614,12 +644,17 @@ fn feline_collar_layer_matches_vanilla_cat_collar_layer() {
             Some(EntityDyeColor::Red),
         );
         assert_eq!(passes.len(), 2, "the base body plus the collar overlay");
+        assert_eq!(passes[0].kind, EntityModelLayerKind::FelineBase);
+        assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
+        assert_eq!(passes[1].kind, EntityModelLayerKind::FelineCollar);
         assert_eq!(
             passes[1].render_type,
             EntityModelLayerRenderType::EntityCutout
         );
+        assert_eq!(passes[1].render_type.vanilla_name(), "entityCutout");
         assert_eq!(passes[1].texture, collar_texture);
         assert_eq!(passes[1].tint, EntityDyeColor::Red.texture_diffuse_color());
+        assert_eq!((passes[1].order, passes[1].submit_sequence), (1, 1));
         assert!(entity_model_texture_refs().contains(&collar_texture));
     }
 

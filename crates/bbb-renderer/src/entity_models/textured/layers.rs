@@ -35,6 +35,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     EndermanBase,
     EndermanEyes,
     EvokerFangsBase,
+    FelineBase,
     FoxBase,
     LeashKnotBase,
     CopperGolemBase,
@@ -1109,7 +1110,9 @@ pub(in crate::entity_models) fn feline_textured_layer_passes(
         EntityModelLayerRenderType::EntityCutout,
         feline_texture_ref(cat, baby, cat_variant),
         [1.0, 1.0, 1.0, 1.0],
-    )];
+    )
+    .with_kind(EntityModelLayerKind::FelineBase)
+    .with_order(0, 0)];
     // Vanilla `CatCollarLayer`: a tame cat re-renders the mesh with `cat_collar.png` tinted by the
     // dye's diffuse color (`collar` is already gated on cat && tame; the ocelot never carries one).
     if let Some(collar) = collar {
