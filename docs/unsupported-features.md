@@ -3347,7 +3347,9 @@ When an agent does any of the following, update this file in the same slice:
       `evoker_fangs_model_root_transform`). The base texture is bound on the textured path
       (`EVOKER_FANGS_TEXTURE_REF`), the primary path, with explicit submission metadata for vanilla
       `entityCutout`, white tint, light coords, `OverlayTexture.NO_OVERLAY`, the renderer root transform,
-      and `(order, submit_sequence) == (0, 0)`, with folded cutout vertices inheriting that metadata.
+      and `(order, submit_sequence) == (0, 0)`, with folded cutout vertices inheriting that metadata;
+      missing-atlas coverage pins that a nonzero-`biteProgress` submit is still recorded before folded
+      cutout geometry is suppressed.
       The colored debug path stays as a fallback (it renders a grey base and lighter-bone jaws)
     - leash knot entities as renderer-owned vanilla 26.1 `LeashKnotModel.createBodyLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `76` to the new

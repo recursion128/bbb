@@ -132,6 +132,44 @@ fn evoker_fangs_textured_mesh_uses_vanilla_uvs_and_geometry() {
 }
 
 #[test]
+fn evoker_fangs_submission_survives_missing_texture_atlas_entry() {
+    // The shared object-renderer dispatch is submission-first: the vanilla `evoker_fangs.png`
+    // submit is recorded before atlas lookup, and missing texture data suppresses only folded
+    // geometry. Keep biteProgress nonzero because vanilla skips the submit while it is zero.
+    let base_len =
+        usize::try_from(ZOMBIE_TEXTURE_REF.size[0] * ZOMBIE_TEXTURE_REF.size[1] * 4).unwrap();
+    let images = vec![EntityModelTextureImage::new(
+        ZOMBIE_TEXTURE_REF,
+        vec![0u8; base_len],
+    )];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let instance = EntityModelInstance::evoker_fangs(471, [1.0, 64.0, -2.0], 35.0)
+        .with_evoker_fangs_bite_progress(0.5)
+        .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.texture, EVOKER_FANGS_TEXTURE_REF);
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        submit.transform,
+        evoker_fangs_model_root_transform(instance)
+    );
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, [0.0, 10.0]);
+    assert!(meshes.cutout.vertices.is_empty());
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+}
+
+#[test]
 fn evoker_fangs_bite_progress_snaps_the_jaws_and_vanishes() {
     use crate::entity_models::model::EntityModel;
     use std::f32::consts::PI;
