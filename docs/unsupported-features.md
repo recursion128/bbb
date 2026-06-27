@@ -1849,8 +1849,8 @@ When an agent does any of the following, update this file in the same slice:
       `ModelLayers.RAVAGER`, texture-backed base layer pass emission,
       official PNG atlas upload/bind/sample path, and explicit base submission metadata
       for vanilla `entityCutout`, `ravager.png`, white tint, `entity_model_root_transform`,
-      and `(order, submit_sequence) == (0, 0)` before folded cutout checks, and the vanilla
-      `RavagerModel.setupAnim` head look (`head.xRot/yRot = xRot/yRot * π/180`) on
+      packed light, overlay coords, and `(order, submit_sequence) == (0, 0)` before
+      folded cutout checks, and the vanilla `RavagerModel.setupAnim` head look (`head.xRot/yRot = xRot/yRot * π/180`) on
       the neck-nested head part — the neck subtree is emitted by hand so the head
       carries the look while its horn/mouth children inherit it (colored and
       textured), and the vanilla `RavagerModel.setupAnim` leg walk swing
@@ -1859,7 +1859,7 @@ When an agent does any of the following, update this file in the same slice:
       `xRot` only so the neck/head subtree is untouched) plus the event-driven attack
       neck-lunge, stunned neck shake, and roar mouth-gape poses (`apply_ravager_combat`
       — see the ravager note above) on both render paths; only the roar
-      particle/knockback effects and lighting remain unsupported
+      particle/knockback effects and full vanilla LightTexture/gamma parity remain unsupported
     - villager entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `VillagerModel`, `BabyVillagerModel`, and
       `VillagerRenderer`, with the adult `MeshTransformer.scaling(0.9375F)`

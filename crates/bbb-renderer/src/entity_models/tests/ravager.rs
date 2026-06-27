@@ -121,7 +121,10 @@ fn entity_texture_atlas_stitches_official_ravager_png_slot() {
 #[test]
 fn ravager_textured_mesh_uses_vanilla_uvs_tints_and_body_layer_bounds() {
     let (atlas, _) = build_entity_model_texture_atlas(&ravager_texture_images()).unwrap();
-    let instance = EntityModelInstance::ravager(109, [0.0, 64.0, 0.0], 0.0);
+    let instance = EntityModelInstance::ravager(109, [0.0, 64.0, 0.0], 0.0)
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
     assert_ravager_submission_matches_vanilla(&meshes, instance);
     let mesh = &meshes.cutout;
@@ -252,6 +255,8 @@ fn assert_ravager_submission_matches_vanilla(
     assert_eq!(submit.texture, RAVAGER_TEXTURE_REF);
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(submit.transform, entity_model_root_transform(instance));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, instance.render_state.overlay_coords());
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
 }
 
