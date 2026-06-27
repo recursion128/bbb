@@ -3069,7 +3069,9 @@ When an agent does any of the following, update this file in the same slice:
       texture, internal render type (`entityCutout` / `eyes`, used here for vanilla `entityTranslucentEmissive`),
       tint alpha, root transform, entity light, base hurt/white overlay, emissive
       `getOverlayCoords(state, 0.0F)` red-row/zero-white overlay, folded cutout/eyes vertex metadata,
-      and explicit `(order, submit_sequence)`. `heart_animation` mirrors the client-side `Warden.heartAnimation`/`O`
+      and explicit `(order, submit_sequence)`; missing-atlas coverage proves the always-on bioluminescent
+      submission is still recorded without `warden_bioluminescent_layer.png` while only that layer's
+      folded retained geometry is suppressed. `heart_animation` mirrors the client-side `Warden.heartAnimation`/`O`
       heartbeat: `bbb-world` resets it to `10` whenever `tickCount % getHeartBeatDelay() == 0` (the delay
       `40 - floor(clamp(clientAngerLevel/80, 0, 1)·30)` shrinking from `40` calm to `10` fully angry off the
       synced `CLIENT_ANGER_LEVEL`), decrements it each client tick, and exposes it lerped `/10` like

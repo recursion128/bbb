@@ -599,6 +599,68 @@ fn warden_textured_render_matches_vanilla_renderer() {
     }));
 }
 
+#[test]
+fn warden_bioluminescent_submission_survives_missing_texture_atlas_entry() {
+    // Vanilla records the always-on bioluminescent emissive layer at order(1); missing texture data
+    // suppresses only that layer's folded retained-part geometry.
+    let images: Vec<EntityModelTextureImage> = warden_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .filter_map(|(index, texture)| {
+            if *texture == WARDEN_BIOLUMINESCENT_TEXTURE_REF {
+                return None;
+            }
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            Some(EntityModelTextureImage::new(
+                *texture,
+                vec![index as u8; len],
+            ))
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let instance = EntityModelInstance::warden(922, [0.0, 64.0, 0.0], 0.0)
+        .with_light_coords((2_u32 << 4) | (14_u32 << 20))
+        .with_white_overlay_progress(0.7)
+        .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_warden_submissions_match_vanilla(&meshes, instance);
+    assert_eq!(meshes.submissions.len(), 3);
+    let bioluminescent = meshes.submissions[1];
+    assert_eq!(bioluminescent.render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(bioluminescent.render_type.vanilla_name(), "eyes");
+    assert_eq!(bioluminescent.texture, WARDEN_BIOLUMINESCENT_TEXTURE_REF);
+    assert_eq!(
+        (bioluminescent.order, bioluminescent.submit_sequence),
+        (1, 1)
+    );
+    assert_eq!(bioluminescent.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        bioluminescent.transform,
+        entity_model_root_transform(instance)
+    );
+    assert_eq!(bioluminescent.light, instance.render_state.shader_light());
+    assert_eq!(
+        bioluminescent.overlay,
+        [0.0, instance.render_state.overlay_coords()[1]]
+    );
+
+    assert_eq!(meshes.cutout.vertices.len(), 240);
+    assert_eq!(
+        meshes.eyes.vertices.len(),
+        3 * 24,
+        "missing bioluminescent texture suppresses only its five retained cubes"
+    );
+    assert!(meshes
+        .eyes
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 0.25]
+            && vertex.light == instance.render_state.shader_light()
+            && vertex.overlay == [0.0, instance.render_state.overlay_coords()[1]]));
+}
+
 fn assert_warden_submissions_match_vanilla(
     meshes: &EntityModelTexturedMeshes,
     instance: EntityModelInstance,
