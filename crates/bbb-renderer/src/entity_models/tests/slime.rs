@@ -338,6 +338,63 @@ fn slime_and_magma_cube_textured_meshes_use_vanilla_submissions_uvs_and_layer_bu
     assert_close3(slime_outer_min, [-0.24975, 64.0, -0.24975]);
     assert_close3(slime_outer_max, [0.24975, 64.4995, 0.24975]);
 
+    // Vanilla `SlimeOuterLayer`: an invisible slime that appears glowing keeps both the base body
+    // outline and the order-1 outer shell outline, while folded GPU outline presentation remains
+    // deferred in the current backend.
+    let glowing_invisible_slime = slime_instance
+        .with_invisible(true)
+        .with_appears_glowing(true);
+    let glowing_slime = entity_model_textured_meshes(&[glowing_invisible_slime], &atlas);
+    assert_eq!(glowing_slime.submissions.len(), 2);
+    let glowing_base = glowing_slime.submissions[0];
+    let glowing_outer = glowing_slime.submissions[1];
+    assert_eq!(
+        glowing_base.render_type,
+        EntityModelLayerRenderType::Outline
+    );
+    assert_eq!(glowing_base.render_type.vanilla_name(), "outline");
+    assert_eq!(glowing_base.texture, SLIME_TEXTURE_REF);
+    assert_eq!(glowing_base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        glowing_base.transform,
+        slime_model_root_transform(glowing_invisible_slime, 1)
+    );
+    assert_eq!((glowing_base.order, glowing_base.submit_sequence), (0, 0));
+    assert_eq!(
+        glowing_base.light,
+        glowing_invisible_slime.render_state.shader_light()
+    );
+    assert_eq!(
+        glowing_base.overlay,
+        glowing_invisible_slime.render_state.overlay_coords()
+    );
+    assert_eq!(
+        glowing_outer.render_type,
+        EntityModelLayerRenderType::Outline
+    );
+    assert_eq!(glowing_outer.render_type.vanilla_name(), "outline");
+    assert_eq!(glowing_outer.texture, SLIME_TEXTURE_REF);
+    assert_eq!(glowing_outer.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        glowing_outer.transform,
+        slime_model_root_transform(glowing_invisible_slime, 1)
+    );
+    assert_eq!((glowing_outer.order, glowing_outer.submit_sequence), (1, 1));
+    assert_eq!(
+        glowing_outer.light,
+        glowing_invisible_slime.render_state.shader_light()
+    );
+    assert_eq!(
+        glowing_outer.overlay,
+        [
+            0.0,
+            glowing_invisible_slime.render_state.overlay_coords()[1]
+        ]
+    );
+    assert!(glowing_slime.cutout.vertices.is_empty());
+    assert!(glowing_slime.translucent.vertices.is_empty());
+    assert!(glowing_slime.eyes.vertices.is_empty());
+
     let magma_instance = EntityModelInstance::magma_cube(80, [0.0, 64.0, 0.0], 0.0, 3)
         .with_light_coords((6_u32 << 4) | (10_u32 << 20))
         .with_white_overlay_progress(0.8)

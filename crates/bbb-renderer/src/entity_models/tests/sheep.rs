@@ -753,6 +753,55 @@ fn sheep_textured_mesh_uses_vanilla_uvs_tints_and_layer_visibility() {
         .all(|vertex| vertex.tint == submit.tint
             && vertex.light == submit.light
             && vertex.overlay == submit.overlay));
+
+    // Vanilla `SheepWoolLayer`: an invisible sheep that appears glowing submits outline
+    // metadata for the base body and unsheared wool. `SheepWoolUndercoatLayer` still gates on
+    // `!state.isInvisible`, so the adult red undercoat is not submitted.
+    let glowing_invisible = invisible_red_instance
+        .with_appears_glowing(true)
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
+    let glowing = entity_model_textured_meshes(&[glowing_invisible], &atlas);
+    assert_eq!(glowing.submissions.len(), 2);
+    let base = glowing.submissions[0];
+    let wool = glowing.submissions[1];
+    assert_eq!(base.render_type, EntityModelLayerRenderType::Outline);
+    assert_eq!(base.render_type.vanilla_name(), "outline");
+    assert_eq!(base.texture, SHEEP_TEXTURE_REF);
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        base.transform,
+        entity_model_root_transform(glowing_invisible)
+    );
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+    assert_eq!(base.light, glowing_invisible.render_state.shader_light());
+    assert_eq!(
+        base.overlay,
+        glowing_invisible.render_state.overlay_coords()
+    );
+
+    assert_eq!(wool.render_type, EntityModelLayerRenderType::Outline);
+    assert_eq!(wool.render_type.vanilla_name(), "outline");
+    assert_eq!(wool.texture, SHEEP_WOOL_TEXTURE_REF);
+    assert_eq!(wool.tint, [0.0, 0.0, 0.0, 1.0]);
+    assert_eq!(
+        wool.transform,
+        entity_model_root_transform(glowing_invisible)
+    );
+    assert_eq!((wool.order, wool.submit_sequence), (0, 2));
+    assert_eq!(wool.light, glowing_invisible.render_state.shader_light());
+    assert_eq!(
+        wool.overlay,
+        [0.0, glowing_invisible.render_state.overlay_coords()[1]]
+    );
+    assert!(glowing
+        .submissions
+        .iter()
+        .all(|submit| submit.texture != SHEEP_WOOL_UNDERCOAT_TEXTURE_REF));
+    assert!(glowing.cutout.vertices.is_empty());
+    assert!(glowing.translucent.vertices.is_empty());
+    assert!(glowing.eyes.vertices.is_empty());
 }
 
 #[test]

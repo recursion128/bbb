@@ -928,8 +928,11 @@ fn textured_layer_submission(
     pass: EntityModelLayerPass,
     transform: Mat4,
 ) -> EntityModelSubmissionEmit {
-    let (render_type, tint) = if meshes.current_outline_only && layer_pass_is_base(pass) {
-        (EntityModelLayerRenderType::Outline, pass.tint)
+    let (render_type, tint) = if layer_pass_uses_outline_render_type(meshes, pass) {
+        (
+            EntityModelLayerRenderType::Outline,
+            outline_layer_tint(pass),
+        )
     } else if meshes.current_force_transparent && layer_pass_is_base(pass) {
         let mut tint = pass.tint;
         tint[3] *= 38.0 / 255.0;
@@ -972,7 +975,36 @@ fn layer_pass_hidden_by_invisible(
     meshes: &EntityModelTexturedMeshes,
     pass: EntityModelLayerPass,
 ) -> bool {
-    (meshes.current_force_transparent || meshes.current_outline_only) && !layer_pass_is_base(pass)
+    if meshes.current_force_transparent {
+        return !layer_pass_is_base(pass);
+    }
+    if meshes.current_outline_only {
+        return !layer_pass_is_base(pass) && !layer_pass_uses_invisible_outline(pass);
+    }
+    false
+}
+
+fn layer_pass_uses_outline_render_type(
+    meshes: &EntityModelTexturedMeshes,
+    pass: EntityModelLayerPass,
+) -> bool {
+    meshes.current_outline_only
+        && (layer_pass_is_base(pass) || layer_pass_uses_invisible_outline(pass))
+}
+
+fn layer_pass_uses_invisible_outline(pass: EntityModelLayerPass) -> bool {
+    matches!(
+        pass.kind,
+        EntityModelLayerKind::SheepWool | EntityModelLayerKind::SlimeOuter
+    )
+}
+
+fn outline_layer_tint(pass: EntityModelLayerPass) -> [f32; 4] {
+    match pass.kind {
+        // Vanilla `SheepWoolLayer` passes ARGB `0xFF000000` for the invisible-glowing outline model.
+        EntityModelLayerKind::SheepWool => [0.0, 0.0, 0.0, 1.0],
+        _ => pass.tint,
+    }
 }
 
 fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {

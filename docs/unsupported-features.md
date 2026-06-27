@@ -354,10 +354,12 @@ When an agent does any of the following, update this file in the same slice:
       (`Entity.DATA_SHARED_FLAGS_ID` bit 6 / client `isCurrentlyGlowing()`) is now
       projected as `appears_glowing`; an invisible living textured base that is still
       invisible to this client records vanilla `RenderTypes.outline(texture)` submission
-      metadata for the base body while non-base invisible layers still skip. Same-team
-      friendly-invisible visibility, colored-path force-transparent output, outline
-      color extraction, and GPU outline presentation remain deferred under the
-      `outlineColor` slot.
+      metadata for the base body, and the vanilla-specific invisible-glowing
+      sheep wool and slime outer overlay submissions are also recorded as
+      `RenderTypes.outline(...)` while other invisible-gated non-base layers still
+      skip. Same-team friendly-invisible visibility, colored-path force-transparent
+      output, outline color extraction, and GPU outline presentation remain deferred
+      under the `outlineColor` slot.
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
       proportions applied in model `setupAnim`, distinct from the now-projected
@@ -1002,8 +1004,8 @@ When an agent does any of the following, update this file in the same slice:
       preserve entity light and clear the white overlay column like vanilla
       `renderColoredCutoutModel(... getOverlayCoords(state, 0.0F))`
   - Finish remaining sheep presentation parity:
-    - implement folded/GPU invisible glowing outline wool rendering; base outline
-      submission metadata is now recorded
+    - implement folded/GPU invisible glowing outline wool rendering; base and wool
+      outline submission metadata is now recorded
     - implement colored-path force-transparent output and remaining base-model
       outline handling
   - Finish wolf presentation parity:
@@ -1620,10 +1622,13 @@ When an agent does any of the following, update this file in the same slice:
       shared projection (`getXRot(partialTick) * PI/180` while not eating), and
       the texture-backed invisible-but-visible-to-client base body branch
       (`entityTranslucentCullItemTarget`, `38/255` alpha, base order `(0,0)`)
-      while wool/undercoat layers remain skipped by `state.isInvisible`;
-      folded/GPU invisible glowing outline wool rendering, colored-path force-transparent /
-      outline handling, and remaining render-state extraction remain unsupported; base outline
-      submission metadata is now recorded from the shared glowing flag
+      while wool/undercoat layers remain skipped by `state.isInvisible`; invisible
+      glowing sheep now records vanilla base and `SheepWoolLayer` wool outline
+      submissions (adult wool order `(0,2)`, baby wool order `(1,2)`) while
+      `SheepWoolUndercoatLayer` still skips. Folded/GPU invisible glowing outline
+      wool rendering, colored-path force-transparent / outline handling, and
+      remaining render-state extraction remain unsupported; outline submission
+      metadata is now recorded from the shared glowing flag
     - wolf entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AdultWolfModel`, `BabyWolfModel`, and `WolfRenderer`,
       including nested real-head and tail parts plus baked baby
@@ -2531,9 +2536,10 @@ When an agent does any of the following, update this file in the same slice:
       the base, `getOverlayCoords(state, 0.0F)` zero-white overlay for the outer layer, and
       `(order, submit_sequence)`) with folded cutout/translucent vertices inheriting the matching
       metadata, shared dispatch ownership instead of a residual textured emit helper, and an
-      alpha-blended translucent GPU bucket; invisible glowing outline rendering,
-      particle/audio coupling, broader lighting presentation, crumbling, and full render-graph
-      sorting parity remain unsupported
+      alpha-blended translucent GPU bucket. Invisible glowing slime now records the
+      vanilla base and order-1 `SlimeOuterLayer` outline submissions while folded/GPU
+      outline presentation remains deferred; particle/audio coupling, broader lighting
+      presentation, crumbling, and full render-graph sorting parity remain unsupported
     - magma cube entities as renderer-owned vanilla 26.1
       `MagmaCubeModel.createBodyLayer()` segment/inside-cube geometry, official
       `textures/entity/slime/magmacube.png` texture reference, renderer
