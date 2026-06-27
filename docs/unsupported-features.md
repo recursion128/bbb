@@ -3757,7 +3757,10 @@ When an agent does any of the following, update this file in the same slice:
       recessive main gene (`BROWN`/`WEAK`) shows only when both genes match, else `NORMAL` — and
       `PandaRenderer.getTextureLocation` keys the 14-entry texture matrix (seven genes × adult/baby, with
       the inconsistent vanilla baby filenames `panda_baby.png` / `lazy_panda_baby.png` / … preserved) off
-      it, bumping the master `ENTITY_MODEL_TEXTURE_REFS` array to 272. Nothing on the panda base path stays
+      it, bumping the master `ENTITY_MODEL_TEXTURE_REFS` array to 272. Adult and baby textured regressions
+      now pin the `PandaBase` pass identity, vanilla `entityCutout` render type/name, white tint, root
+      transform, `(order, submit_sequence) == (0, 0)`, and the `AgeableMobRenderer` /
+      `LivingEntityRenderer` `lightCoords` plus hurt/white overlay metadata. Nothing on the panda base path stays
       deferred. `PandaHoldsItemLayer` is also covered:
       native projects `PandaRenderState.isEating` from synced `EAT_COUNTER` int id 20, `isSitting` from
       `DATA_ID_FLAGS` byte id 23 bit `0x08`, and `isScared = isWorried() && level.isThundering()` (displayed

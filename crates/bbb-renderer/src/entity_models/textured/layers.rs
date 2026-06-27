@@ -44,6 +44,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     LlamaSpitBase,
     LlamaBase,
     MooshroomBase,
+    PandaBase,
     IronGolemBase,
     IronGolemCrackiness,
     PigBase,
@@ -1045,7 +1046,9 @@ pub(in crate::entity_models) fn panda_textured_layer_passes(
         EntityModelLayerRenderType::EntityCutout,
         panda_texture_ref(variant, baby),
         [1.0, 1.0, 1.0, 1.0],
-    )]
+    )
+    .with_kind(EntityModelLayerKind::PandaBase)
+    .with_order(0, 0)]
 }
 
 pub(in crate::entity_models) fn axolotl_textured_layer_passes(
