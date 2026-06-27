@@ -1372,7 +1372,9 @@ When an agent does any of the following, update this file in the same slice:
         armor stands select the baby layer through `ArmorStand.isBaby()`), and
         baby humanoid mob `ELYTRA_BABY` geometry; their static equipment wings
         submissions now also pin entity light plus `OverlayTexture.NO_OVERLAY`,
-        with folded elytra vertices inheriting that metadata. Player cloak interpolation is
+        with folded elytra vertices inheriting that metadata, and missing-atlas
+        coverage proves the static non-player WINGS submission survives without
+        stale elytra geometry. Player cloak interpolation is
         now also covered: world tracks the vanilla `ClientAvatarState` cloak
         lag, partial lerps it, applies `AvatarRenderer.extractCapeState`
         flap/lean/lean2 clamps and fall-flying lean suppression, and native

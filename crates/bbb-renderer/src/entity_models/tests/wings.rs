@@ -134,6 +134,90 @@ fn non_player_humanoid_wings_layer_uses_static_equipment_texture_submission() {
 }
 
 #[test]
+fn non_player_humanoid_wings_submission_survives_missing_texture_atlas_entry() {
+    // Vanilla `WingsLayer` still submits the WINGS equipment layer through
+    // `EquipmentLayerRenderer.renderLayers(..., order = 0)`; a missing stitched
+    // texture may suppress folded geometry, but must not erase the submission metadata.
+    let atlas = atlas_for(&[ZOMBIE_TEXTURE_REF]);
+    assert!(!atlas
+        .entries
+        .iter()
+        .any(|entry| entry.texture == ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF));
+    let profile_elytra = EntityDynamicPlayerTexture {
+        handle: 912,
+        kind: EntityDynamicPlayerTextureKind::Elytra,
+    };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicPlayerTextureImage {
+        handle: profile_elytra.handle,
+        size: [64, 32],
+        rgba: vec![0x44; 64 * 32 * 4],
+    }])
+    .unwrap()
+    .0;
+    let instance = EntityModelInstance::zombie(86, [1.0, 64.0, -2.0], 25.0, false)
+        .with_chest_wings_layer(Some(EntityEquipmentLayerTexture {
+            texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
+            use_player_texture: true,
+        }))
+        .with_chest_equipment_has_wings(true)
+        .with_player_elytra_texture(Some(profile_elytra))
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[instance],
+        &atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+
+    let body_submit = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == ZOMBIE_TEXTURE_REF)
+        .expect("zombie body submission");
+    assert_eq!(
+        body_submit.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(body_submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(body_submit.dynamic_player_texture, None);
+    assert_eq!(body_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(body_submit.transform, entity_model_root_transform(instance));
+    assert_eq!(body_submit.light, instance.render_state.shader_light());
+    assert_eq!(body_submit.overlay, instance.render_state.overlay_coords());
+    assert_eq!((body_submit.order, body_submit.submit_sequence), (0, 0));
+
+    let wings_submit = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF)
+        .expect("zombie elytra wings submission");
+    assert_eq!(
+        wings_submit.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(wings_submit.render_type.vanilla_name(), "armorCutoutNoCull");
+    assert_eq!(wings_submit.dynamic_player_texture, None);
+    assert_eq!(wings_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        wings_submit.transform,
+        entity_model_root_transform(instance) * Mat4::from_translation(Vec3::Z * 0.125)
+    );
+    assert_eq!(wings_submit.light, instance.render_state.shader_light());
+    assert_eq!(wings_submit.overlay, [0.0, 10.0]);
+    assert_ne!(wings_submit.overlay, body_submit.overlay);
+    assert_eq!((wings_submit.order, wings_submit.submit_sequence), (0, 2));
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.overlay == body_submit.overlay));
+}
+
+#[test]
 fn small_armor_stand_wings_layer_uses_baby_elytra_model() {
     // Vanilla `ArmorStand.isBaby()` returns `isSmall()`, and `WingsLayer` selects
     // `ModelLayers.ELYTRA_BABY` when `state.isBaby`.
