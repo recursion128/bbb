@@ -1,5 +1,6 @@
 use super::*;
 
+use crate::entity_models::colored::villager_adult_model_root_transform;
 use crate::entity_models::model::ModelCube;
 
 #[test]
@@ -92,6 +93,7 @@ fn witch_textured_layer_pass_matches_vanilla_renderer_model_layer() {
         passes[0].render_type,
         EntityModelLayerRenderType::EntityCutout
     );
+    assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(passes[0].model_layer, MODEL_LAYER_WITCH);
     assert_eq!(passes[0].texture, WITCH_TEXTURE_REF);
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
@@ -137,10 +139,10 @@ fn witch_texture_atlas_stitches_official_png_slot() {
 #[test]
 fn witch_textured_mesh_uses_vanilla_uvs_tints_and_body_layer_bounds() {
     let (atlas, _) = build_entity_model_texture_atlas(&witch_texture_images()).unwrap();
-    let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::witch(66, [0.0, 64.0, 0.0], 0.0)],
-        &atlas,
-    );
+    let instance = EntityModelInstance::witch(66, [0.0, 64.0, 0.0], 0.0);
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    assert_witch_base_submission_matches_vanilla(&meshes, instance);
+    let mesh = &meshes.cutout;
 
     assert_eq!(mesh.cutout_faces, 84);
     assert_eq!(mesh.vertices.len(), 336);
@@ -159,14 +161,19 @@ fn witch_textured_mesh_uses_vanilla_uvs_tints_and_body_layer_bounds() {
 fn witch_textured_mesh_applies_head_look() {
     let (atlas, _) = build_entity_model_texture_atlas(&witch_texture_images()).unwrap();
     let base = EntityModelInstance::witch(67, [0.0, 64.0, 0.0], 0.0);
-    let resting = entity_model_textured_mesh(&[base], &atlas);
-    let yawed = entity_model_textured_mesh(&[base.with_head_look(45.0, 0.0)], &atlas);
-    let pitched = entity_model_textured_mesh(&[base.with_head_look(0.0, -20.0)], &atlas);
+    let yawed_instance = base.with_head_look(45.0, 0.0);
+    let pitched_instance = base.with_head_look(0.0, -20.0);
+    let resting = entity_model_textured_meshes(&[base], &atlas);
+    let yawed = entity_model_textured_meshes(&[yawed_instance], &atlas);
+    let pitched = entity_model_textured_meshes(&[pitched_instance], &atlas);
+    assert_witch_base_submission_matches_vanilla(&resting, base);
+    assert_witch_base_submission_matches_vanilla(&yawed, yawed_instance);
+    assert_witch_base_submission_matches_vanilla(&pitched, pitched_instance);
 
     // Witch head is part 0; head look turns it without changing vertex count.
-    assert_eq!(resting.vertices.len(), yawed.vertices.len());
-    assert_ne!(resting.vertices, yawed.vertices);
-    assert_ne!(yawed.vertices, pitched.vertices);
+    assert_eq!(resting.cutout.vertices.len(), yawed.cutout.vertices.len());
+    assert_ne!(resting.cutout.vertices, yawed.cutout.vertices);
+    assert_ne!(yawed.cutout.vertices, pitched.cutout.vertices);
 }
 
 #[test]
@@ -202,26 +209,31 @@ fn witch_textured_mesh_swings_legs_when_walking() {
     // walking one lifts its feet.
     let (atlas, _) = build_entity_model_texture_atlas(&witch_texture_images()).unwrap();
     let base = EntityModelInstance::witch(311, [0.0, 64.0, 0.0], 0.0);
-    let resting = entity_model_textured_mesh(&[base], &atlas);
-    let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
-    let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+    let still_instance = base.with_walk_animation(2.5, 0.0);
+    let walking_instance = base.with_walk_animation(0.0, 1.0);
+    let resting = entity_model_textured_meshes(&[base], &atlas);
+    let still = entity_model_textured_meshes(&[still_instance], &atlas);
+    let walking = entity_model_textured_meshes(&[walking_instance], &atlas);
+    assert_witch_base_submission_matches_vanilla(&resting, base);
+    assert_witch_base_submission_matches_vanilla(&still, still_instance);
+    assert_witch_base_submission_matches_vanilla(&walking, walking_instance);
 
     assert_eq!(
-        resting.vertices, still.vertices,
+        resting.cutout.vertices, still.cutout.vertices,
         "a standing witch is inert"
     );
     assert_eq!(
-        resting.vertices.len(),
-        walking.vertices.len(),
+        resting.cutout.vertices.len(),
+        walking.cutout.vertices.len(),
         "leg swing keeps the vertex count"
     );
     assert_ne!(
-        resting.vertices, walking.vertices,
+        resting.cutout.vertices, walking.cutout.vertices,
         "a walking witch differs"
     );
 
-    let (rest_min, rest_max) = textured_mesh_extents(&resting);
-    let (walk_min, walk_max) = textured_mesh_extents(&walking);
+    let (rest_min, rest_max) = textured_mesh_extents(&resting.cutout);
+    let (walk_min, walk_max) = textured_mesh_extents(&walking.cutout);
     assert!(
         (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
         "a walking witch's feet should lift off the ground"
@@ -303,19 +315,51 @@ fn witch_textured_mesh_bobs_its_nose_as_age_advances() {
     // The texture-backed render path bobs the same nose. entityId 313 → speed 0.03.
     let (atlas, _) = build_entity_model_texture_atlas(&witch_texture_images()).unwrap();
     let base = EntityModelInstance::witch(313, [0.0, 64.0, 0.0], 0.0);
-    let early = entity_model_textured_mesh(&[base], &atlas);
-    let later = entity_model_textured_mesh(&[base.with_age_in_ticks(31.4)], &atlas);
-    assert_eq!(early.vertices.len(), later.vertices.len());
+    let later_instance = base.with_age_in_ticks(31.4);
+    let early = entity_model_textured_meshes(&[base], &atlas);
+    let later = entity_model_textured_meshes(&[later_instance], &atlas);
+    assert_witch_base_submission_matches_vanilla(&early, base);
+    assert_witch_base_submission_matches_vanilla(&later, later_instance);
+    assert_eq!(early.cutout.vertices.len(), later.cutout.vertices.len());
     assert_ne!(
-        early.vertices, later.vertices,
+        early.cutout.vertices, later.cutout.vertices,
         "the nose bobs as ageInTicks advances"
     );
-    let leg_tail = early.vertices.len() - 24;
+    let leg_tail = early.cutout.vertices.len() - 24;
     assert_eq!(
-        early.vertices[leg_tail..],
-        later.vertices[leg_tail..],
+        early.cutout.vertices[leg_tail..],
+        later.cutout.vertices[leg_tail..],
         "the legs do not depend on ageInTicks"
     );
+}
+
+fn assert_witch_base_submission_matches_vanilla(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_cutout.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_translucent.vertices.is_empty());
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_translucent
+        .vertices
+        .is_empty());
+    assert!(meshes.scroll.vertices.is_empty());
+    assert!(meshes.scroll_additive.vertices.is_empty());
+    assert_eq!(meshes.submissions.len(), 1);
+
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.texture, WITCH_TEXTURE_REF);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        submit.transform,
+        villager_adult_model_root_transform(instance)
+    );
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
 }
 
 fn witch_texture_images() -> Vec<EntityModelTextureImage> {
