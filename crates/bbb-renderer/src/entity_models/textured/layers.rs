@@ -35,6 +35,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     TridentBase,
     CowBase,
     CreeperBase,
+    CreeperArmor,
     CreakingBase,
     CreakingEyes,
     EnderDragonEyes,
@@ -566,16 +567,29 @@ pub(in crate::entity_models) fn undead_horse_textured_layer_passes(
 }
 
 pub(in crate::entity_models) fn creeper_textured_layer_passes() -> Vec<EntityModelLayerPass> {
-    vec![EntityModelLayerPass {
-        kind: EntityModelLayerKind::CreeperBase,
-        render_type: EntityModelLayerRenderType::EntityCutout,
-        model_layer: MODEL_LAYER_CREEPER,
-        texture: CREEPER_TEXTURE_REF,
-        visibility: EntityModelLayerVisibility::All,
-        tint: [1.0, 1.0, 1.0, 1.0],
-        order: 0,
-        submit_sequence: 0,
-    }]
+    let grey = 128.0 / 255.0;
+    vec![
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::CreeperBase,
+            render_type: EntityModelLayerRenderType::EntityCutout,
+            model_layer: MODEL_LAYER_CREEPER,
+            texture: CREEPER_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 0,
+            submit_sequence: 0,
+        },
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::CreeperArmor,
+            render_type: EntityModelLayerRenderType::EnergySwirl,
+            model_layer: MODEL_LAYER_CREEPER_ARMOR,
+            texture: CREEPER_ARMOR_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [grey, grey, grey, 1.0],
+            order: 1,
+            submit_sequence: 1,
+        },
+    ]
 }
 
 pub(in crate::entity_models) fn spider_textured_layer_passes(

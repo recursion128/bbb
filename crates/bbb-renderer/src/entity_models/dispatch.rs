@@ -500,12 +500,16 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &ravager_textured_layer_passes(),
         ),
-        EntityModelKind::Creeper => sink.model(
-            CreeperModel::new(),
-            creeper_model_root_transform(*instance),
-            instance,
-            &creeper_textured_layer_passes(),
-        ),
+        EntityModelKind::Creeper => {
+            let passes = creeper_textured_layer_passes();
+            let body_passes = [passes[0]];
+            sink.model(
+                CreeperModel::new(),
+                creeper_model_root_transform(*instance),
+                instance,
+                &body_passes,
+            )
+        }
         EntityModelKind::IronGolem { crackiness } => sink.model(
             IronGolemModel::new(),
             iron_golem_model_root_transform(*instance),

@@ -541,7 +541,10 @@ When an agent does any of the following, update this file in the same slice:
     `RenderTypes.energySwirl`): `creeper_armor.png` (`CREEPER_ARMOR_TEXTURE_REF`) scrolling both axes by
     `xOffset(ageInTicks) % 1 = (ageInTicks · 0.01) % 1`, tinted by the vanilla `0xFF808080` half-grey,
     `BlendFunction.ADDITIVE`, emissive, `ALPHA_CUTOUT 0.1` — the same shader-side `fract` atlas-wrap as
-    the wind charge's `breezeWind`, just additively blended. The
+    the wind charge's `breezeWind`, just additively blended. `creeper_textured_layer_passes` now records
+    both vanilla `ModelLayers.CREEPER` and `ModelLayers.CREEPER_ARMOR`, with base `entityCutout` and armor
+    `energySwirl` texture/render-type/tint/order metadata; the base dispatch consumes only the body pass,
+    while the charged overlay helper consumes the armor pass and still gates it on `isPowered`. The
     `HumanoidModel` leg swing (`humanoid_leg_swing_pose`: the right leg, part offset
     `x < 0`, in phase and the left leg out of phase, since both legs sit at `z = 0`) is
     consumed by the zombie family (`ZombieModel` / shared-dispatch `ZombieVariantModel` —
@@ -1058,9 +1061,9 @@ When an agent does any of the following, update this file in the same slice:
       passes that vanilla gates on `state.isInvisible` still do not submit.
       `breezeWind` / `energySwirl` residual emits now use a shared scrolled
       submission helper before folding into the scroll mesh buckets, with
-      WindCharge and Breeze wind submits consuming explicit layer-pass metadata
-      before the scroll helper and missing-atlas tests pinning that submission
-      metadata is recorded before folded geometry is suppressed; Guardian
+      WindCharge, Breeze wind, and charged Creeper armor submits consuming explicit
+      layer-pass metadata before the scroll helper and missing-atlas tests pinning
+      that submission metadata is recorded before folded geometry is suppressed; Guardian
       attack beams also record vanilla `entityCutout` submissions before
       folding their tiled custom geometry into the scroll bucket through the
       custom scroll-geometry submission helper; End Crystal

@@ -53,13 +53,12 @@ use super::{
         ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
         ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
         BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, CAMEL_HUSK_SADDLE_TEXTURE_REF,
-        CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF, CREEPER_TEXTURE_REF,
-        DONKEY_SADDLE_TEXTURE_REF, ENCHANTED_GLINT_ITEM_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF,
-        END_CRYSTAL_BEAM_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, GUARDIAN_BEAM_TEXTURE_REF,
-        HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
-        LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
-        PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF,
-        PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
+        CAMEL_SADDLE_TEXTURE_REF, CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF,
+        ENCHANTED_GLINT_ITEM_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_BEAM_TEXTURE_REF,
+        END_CRYSTAL_TEXTURED_PARTS, GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
+        LLAMA_BODY_TRADER_BABY_TEXTURE_REF, LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF,
+        NAUTILUS_SADDLE_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF,
+        PIG_SADDLE_TEXTURE_REF, PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
         SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION,
         STRIDER_SADDLE_TEXTURE_REF, TRIDENT_RIPTIDE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF,
         WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF, ZOMBIE_TEXTURE_REF,
@@ -948,6 +947,7 @@ fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
             | EntityModelLayerKind::BoatBase
             | EntityModelLayerKind::BreezeEyes
             | EntityModelLayerKind::BreezeWind
+            | EntityModelLayerKind::CreeperArmor
             | EntityModelLayerKind::EndCrystalBase
             | EntityModelLayerKind::EnderDragonEyes
             | EntityModelLayerKind::EndermanEyes
@@ -1121,16 +1121,16 @@ fn emit_charged_creeper_energy_swirl(
         return;
     }
     let transform = creeper_model_root_transform(instance);
-    let grey = 128.0 / 255.0;
-    let submit = EntityModelSubmissionEmit::new(
-        EntityModelLayerRenderType::EnergySwirl,
-        CREEPER_ARMOR_TEXTURE_REF,
-        [grey, grey, grey, 1.0],
+    let passes = creeper_textured_layer_passes();
+    let pass = passes[1];
+    let submit = no_overlay_submission(
+        pass.render_type,
+        pass.texture,
+        pass.tint,
         transform,
-        1,
-        1,
-    )
-    .with_overlay(ENTITY_VERTEX_NO_OVERLAY);
+        pass.order,
+        pass.submit_sequence,
+    );
     let mut model = CreeperModel::new_armor();
     model.prepare(&instance);
     // Vanilla creeper `xOffset(t) = t · 0.01`, taken `% 1.0` on both U and V.

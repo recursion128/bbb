@@ -3,6 +3,7 @@ use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 pub(in crate::entity_models) const MODEL_LAYER_CREEPER: &str = "minecraft:creeper#main";
+pub(in crate::entity_models) const MODEL_LAYER_CREEPER_ARMOR: &str = "minecraft:creeper#armor";
 
 // Vanilla 26.1 `CreeperModel.createBodyLayer(CubeDeformation.NONE)`. Each cube carries both render
 // paths' data: the colored debug tint (`CREEPER_GREEN`) and the textured `uv_size` / `texOffs`.

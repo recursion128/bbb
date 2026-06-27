@@ -86,18 +86,35 @@ fn creeper_texture_ref_matches_vanilla_renderer() {
 #[test]
 fn creeper_textured_layer_passes_match_vanilla_renderer_model_layer() {
     let passes = creeper_textured_layer_passes();
-    assert_eq!(passes.len(), 1);
+    assert_eq!(passes.len(), 2);
     assert_eq!(passes[0].kind, EntityModelLayerKind::CreeperBase);
     assert_eq!(passes[0].model_layer, MODEL_LAYER_CREEPER);
+    assert_eq!(
+        passes[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(passes[0].texture, CREEPER_TEXTURE_REF);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
+    let grey = 128.0 / 255.0;
+    assert_eq!(passes[1].kind, EntityModelLayerKind::CreeperArmor);
+    assert_eq!(passes[1].model_layer, MODEL_LAYER_CREEPER_ARMOR);
+    assert_eq!(
+        passes[1].render_type,
+        EntityModelLayerRenderType::EnergySwirl
+    );
+    assert_eq!(passes[1].render_type.vanilla_name(), "energySwirl");
+    assert_eq!(passes[1].texture, CREEPER_ARMOR_TEXTURE_REF);
+    assert_eq!(passes[1].tint, [grey, grey, grey, 1.0]);
+    assert_eq!((passes[1].order, passes[1].submit_sequence), (1, 1));
 }
 
 #[test]
 fn creeper_textured_model_parts_match_vanilla_model_layer_uv_sources() {
     // The textured UV sources now live on the unified cubes (`uv_size`/`tex`/`mirror`).
     assert_eq!(MODEL_LAYER_CREEPER, "minecraft:creeper#main");
+    assert_eq!(MODEL_LAYER_CREEPER_ARMOR, "minecraft:creeper#armor");
     assert_eq!(CREEPER_HEAD[0].uv_size, [8.0, 8.0, 8.0]);
     assert_eq!(CREEPER_HEAD[0].tex, [0.0, 0.0]);
     assert!(!CREEPER_HEAD[0].mirror);
