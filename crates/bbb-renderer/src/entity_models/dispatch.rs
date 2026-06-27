@@ -49,9 +49,13 @@ use super::model_layers::{
     WanderingTraderModel, WardenModel, WitchModel, WitherModel, WitherSkullModel, WolfModel,
     ZombieModel, ZombieVariantModel, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF,
     COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF, FELINE_CAT_SCALE,
-    GLOW_SQUID_TEAL, GUARDIAN_ELDER_SCALE, PUFFERFISH_TEXTURE_REF, SQUID_BLUE,
-    TURTLE_BABY_TEXTURE_REF, TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF,
-    VEX_CHARGING_TEXTURE_REF, VEX_TEXTURE_REF, WITHER_SKELETON_DARK,
+    GLOW_SQUID_TEAL, GUARDIAN_ELDER_SCALE, MODEL_LAYER_ALLAY, MODEL_LAYER_ARMOR_STAND,
+    MODEL_LAYER_ARMOR_STAND_SMALL, MODEL_LAYER_BAT, MODEL_LAYER_BEE, MODEL_LAYER_BEE_BABY,
+    MODEL_LAYER_COD, MODEL_LAYER_DOLPHIN, MODEL_LAYER_DOLPHIN_BABY, MODEL_LAYER_PUFFERFISH_BIG,
+    MODEL_LAYER_PUFFERFISH_MEDIUM, MODEL_LAYER_PUFFERFISH_SMALL, MODEL_LAYER_STRIDER,
+    MODEL_LAYER_STRIDER_BABY, MODEL_LAYER_TURTLE, MODEL_LAYER_TURTLE_BABY, MODEL_LAYER_VEX,
+    PUFFERFISH_TEXTURE_REF, SQUID_BLUE, TURTLE_BABY_TEXTURE_REF, TURTLE_EGG_ROOT_DROP_POSE,
+    TURTLE_TEXTURE_REF, VEX_CHARGING_TEXTURE_REF, VEX_TEXTURE_REF, WITHER_SKELETON_DARK,
 };
 use super::textured::{
     armadillo_textured_layer_passes, arrow_textured_layer_passes, axolotl_textured_layer_passes,
@@ -81,7 +85,8 @@ use super::textured::{
     witch_textured_layer_passes, wither_skull_textured_layer_passes, wither_textured_layer_passes,
     wolf_textured_layer_passes, zombie_nautilus_textured_layer_passes,
     zombie_textured_layer_passes, zombie_villager_textured_layer_passes, EntityModelLayerKind,
-    EntityModelLayerPass, EntityModelLayerRenderType, EntityModelTexturedMeshes,
+    EntityModelLayerPass, EntityModelLayerRenderType, EntityModelLayerVisibility,
+    EntityModelTexturedMeshes,
 };
 
 /// A render-path-agnostic sink for each model/root-transform/layer-pass tuple in a uniform entity.
@@ -667,57 +672,89 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                 ArmorStandModel::new(small, show_arms, show_base_plate, pose),
                 entity_model_root_transform(*instance),
                 instance,
-                &[EntityModelLayerPass::base(
+                &[EntityModelLayerPass {
+                    kind: EntityModelLayerKind::ArmorStandBase,
                     render_type,
-                    ARMOR_STAND_TEXTURE_REF,
-                    [1.0, 1.0, 1.0, 1.0],
-                )
-                .with_kind(EntityModelLayerKind::ArmorStandBase)],
+                    model_layer: if small {
+                        MODEL_LAYER_ARMOR_STAND_SMALL
+                    } else {
+                        MODEL_LAYER_ARMOR_STAND
+                    },
+                    texture: ARMOR_STAND_TEXTURE_REF,
+                    visibility: EntityModelLayerVisibility::All,
+                    tint: [1.0, 1.0, 1.0, 1.0],
+                    order: 0,
+                    submit_sequence: 0,
+                }],
             )
         }
         EntityModelKind::Vex { charging } => sink.model(
             VexModel::new(),
             entity_model_root_transform(*instance),
             instance,
-            &[EntityModelLayerPass::base(
-                EntityModelLayerRenderType::EntityTranslucent,
-                if charging {
+            &[EntityModelLayerPass {
+                kind: EntityModelLayerKind::VexBase,
+                render_type: EntityModelLayerRenderType::EntityTranslucent,
+                model_layer: MODEL_LAYER_VEX,
+                texture: if charging {
                     VEX_CHARGING_TEXTURE_REF
                 } else {
                     VEX_TEXTURE_REF
                 },
-                [1.0, 1.0, 1.0, 1.0],
-            )],
+                visibility: EntityModelLayerVisibility::All,
+                tint: [1.0, 1.0, 1.0, 1.0],
+                order: 0,
+                submit_sequence: 0,
+            }],
         ),
         EntityModelKind::Allay => sink.model(
             AllayModel::new(),
             entity_model_root_transform(*instance),
             instance,
-            &[EntityModelLayerPass::base(
-                EntityModelLayerRenderType::EntityTranslucent,
-                ALLAY_TEXTURE_REF,
-                [1.0, 1.0, 1.0, 1.0],
-            )],
+            &[EntityModelLayerPass {
+                kind: EntityModelLayerKind::AllayBase,
+                render_type: EntityModelLayerRenderType::EntityTranslucent,
+                model_layer: MODEL_LAYER_ALLAY,
+                texture: ALLAY_TEXTURE_REF,
+                visibility: EntityModelLayerVisibility::All,
+                tint: [1.0, 1.0, 1.0, 1.0],
+                order: 0,
+                submit_sequence: 0,
+            }],
         ),
         EntityModelKind::Strider { baby, cold } => sink.model(
             StriderModel::new(baby),
             entity_model_root_transform(*instance),
             instance,
-            &[EntityModelLayerPass::base(
-                EntityModelLayerRenderType::EntityCutout,
-                strider_texture_ref(baby, cold),
-                [1.0, 1.0, 1.0, 1.0],
-            )],
+            &[EntityModelLayerPass {
+                kind: EntityModelLayerKind::StriderBase,
+                render_type: EntityModelLayerRenderType::EntityCutout,
+                model_layer: if baby {
+                    MODEL_LAYER_STRIDER_BABY
+                } else {
+                    MODEL_LAYER_STRIDER
+                },
+                texture: strider_texture_ref(baby, cold),
+                visibility: EntityModelLayerVisibility::All,
+                tint: [1.0, 1.0, 1.0, 1.0],
+                order: 0,
+                submit_sequence: 0,
+            }],
         ),
         EntityModelKind::Bat => sink.model(
             BatModel::new(),
             entity_model_root_transform(*instance),
             instance,
-            &[EntityModelLayerPass::base(
-                EntityModelLayerRenderType::EntityCutoutCull,
-                BAT_TEXTURE_REF,
-                [1.0, 1.0, 1.0, 1.0],
-            )],
+            &[EntityModelLayerPass {
+                kind: EntityModelLayerKind::BatBase,
+                render_type: EntityModelLayerRenderType::EntityCutoutCull,
+                model_layer: MODEL_LAYER_BAT,
+                texture: BAT_TEXTURE_REF,
+                visibility: EntityModelLayerVisibility::All,
+                tint: [1.0, 1.0, 1.0, 1.0],
+                order: 0,
+                submit_sequence: 0,
+            }],
         ),
         EntityModelKind::Bee {
             baby,
@@ -729,11 +766,20 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                 BeeModel::new(baby),
                 entity_model_root_transform(*instance),
                 instance,
-                &[EntityModelLayerPass::base(
-                    EntityModelLayerRenderType::EntityCutout,
+                &[EntityModelLayerPass {
+                    kind: EntityModelLayerKind::BeeBase,
+                    render_type: EntityModelLayerRenderType::EntityCutout,
+                    model_layer: if baby {
+                        MODEL_LAYER_BEE_BABY
+                    } else {
+                        MODEL_LAYER_BEE
+                    },
                     texture,
-                    [1.0, 1.0, 1.0, 1.0],
-                )],
+                    visibility: EntityModelLayerVisibility::All,
+                    tint: [1.0, 1.0, 1.0, 1.0],
+                    order: 0,
+                    submit_sequence: 0,
+                }],
             )
         }
         EntityModelKind::Breeze => {
@@ -752,23 +798,40 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                 CodModel::new(),
                 cod_model_root_transform(*instance, in_water),
                 instance,
-                &[EntityModelLayerPass::base(
-                    EntityModelLayerRenderType::EntityCutout,
-                    COD_TEXTURE_REF,
-                    [1.0, 1.0, 1.0, 1.0],
-                )],
+                &[EntityModelLayerPass {
+                    kind: EntityModelLayerKind::CodBase,
+                    render_type: EntityModelLayerRenderType::EntityCutout,
+                    model_layer: MODEL_LAYER_COD,
+                    texture: COD_TEXTURE_REF,
+                    visibility: EntityModelLayerVisibility::All,
+                    tint: [1.0, 1.0, 1.0, 1.0],
+                    order: 0,
+                    submit_sequence: 0,
+                }],
             )
         }
-        EntityModelKind::Pufferfish { puff_state } => sink.model(
-            PufferfishModel::new(puff_state),
-            pufferfish_model_root_transform(*instance),
-            instance,
-            &[EntityModelLayerPass::base(
-                EntityModelLayerRenderType::EntityCutout,
-                PUFFERFISH_TEXTURE_REF,
-                [1.0, 1.0, 1.0, 1.0],
-            )],
-        ),
+        EntityModelKind::Pufferfish { puff_state } => {
+            let model_layer = match puff_state {
+                0 => MODEL_LAYER_PUFFERFISH_SMALL,
+                1 => MODEL_LAYER_PUFFERFISH_MEDIUM,
+                _ => MODEL_LAYER_PUFFERFISH_BIG,
+            };
+            sink.model(
+                PufferfishModel::new(puff_state),
+                pufferfish_model_root_transform(*instance),
+                instance,
+                &[EntityModelLayerPass {
+                    kind: EntityModelLayerKind::PufferfishBase,
+                    render_type: EntityModelLayerRenderType::EntityCutout,
+                    model_layer,
+                    texture: PUFFERFISH_TEXTURE_REF,
+                    visibility: EntityModelLayerVisibility::All,
+                    tint: [1.0, 1.0, 1.0, 1.0],
+                    order: 0,
+                    submit_sequence: 0,
+                }],
+            )
+        }
         EntityModelKind::Turtle { baby } => {
             let texture = if baby {
                 TURTLE_BABY_TEXTURE_REF
@@ -789,11 +852,20 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                 TurtleModel::new(baby),
                 transform,
                 instance,
-                &[EntityModelLayerPass::base(
+                &[EntityModelLayerPass {
+                    kind: EntityModelLayerKind::TurtleBase,
                     render_type,
+                    model_layer: if baby {
+                        MODEL_LAYER_TURTLE_BABY
+                    } else {
+                        MODEL_LAYER_TURTLE
+                    },
                     texture,
-                    [1.0, 1.0, 1.0, 1.0],
-                )],
+                    visibility: EntityModelLayerVisibility::All,
+                    tint: [1.0, 1.0, 1.0, 1.0],
+                    order: 0,
+                    submit_sequence: 0,
+                }],
             )
         }
         EntityModelKind::Dolphin { baby } => {
@@ -810,11 +882,20 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                 DolphinModel::new(),
                 transform,
                 instance,
-                &[EntityModelLayerPass::base(
-                    EntityModelLayerRenderType::EntityCutout,
+                &[EntityModelLayerPass {
+                    kind: EntityModelLayerKind::DolphinBase,
+                    render_type: EntityModelLayerRenderType::EntityCutout,
+                    model_layer: if baby {
+                        MODEL_LAYER_DOLPHIN_BABY
+                    } else {
+                        MODEL_LAYER_DOLPHIN
+                    },
                     texture,
-                    [1.0, 1.0, 1.0, 1.0],
-                )],
+                    visibility: EntityModelLayerVisibility::All,
+                    tint: [1.0, 1.0, 1.0, 1.0],
+                    order: 0,
+                    submit_sequence: 0,
+                }],
             )
         }
 

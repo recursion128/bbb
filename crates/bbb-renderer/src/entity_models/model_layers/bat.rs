@@ -10,6 +10,8 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 use KeyframeInterpolation::Linear;
 
+pub(in crate::entity_models) const MODEL_LAYER_BAT: &str = "minecraft:bat#main";
+
 // Vanilla 26.1 `BatModel.createBodyLayer` (atlas 32×32). The body and head hang under the root;
 // the wings (each with a tip) and the feet are children of the body, and the two ears are
 // children of the head. The keyframe `BatAnimation.BAT_FLYING` (below) adds per-frame position

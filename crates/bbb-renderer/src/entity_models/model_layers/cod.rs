@@ -4,6 +4,8 @@ use super::{PartPose, COD_TAN, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_COD: &str = "minecraft:cod#main";
+
 // Vanilla 26.1 `CodModel.createBodyLayer` (atlas 32×32). All offsets share the `yo = 22` baseline.
 // The fins are zero-thickness planes (`right`/`left` flat in Y, `tail`/`top` flat in X). Each cube
 // carries both render paths' data: the colored debug tint (`COD_TAN`) and the textured `uv_size` /

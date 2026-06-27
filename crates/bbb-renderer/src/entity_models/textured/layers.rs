@@ -23,10 +23,13 @@ use super::super::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::entity_models) enum EntityModelLayerKind {
+    AllayBase,
     ArmadilloBase,
     ArmorStandBase,
     ArrowBase,
     AxolotlBase,
+    BatBase,
+    BeeBase,
     BoatBase,
     BoatWaterMask,
     BreezeBase,
@@ -40,6 +43,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     TropicalFishPattern,
     TridentBase,
     TridentFoil,
+    CodBase,
     CowBase,
     CreeperBase,
     CreeperArmor,
@@ -128,7 +132,9 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     SnowGolemBase,
     SpiderBase,
     SpiderEyes,
+    StriderBase,
     TadpoleBase,
+    TurtleBase,
     VillagerBase,
     VillagerType,
     VillagerProfession,
@@ -138,6 +144,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     WitherBase,
     WitherArmor,
     WitherSkullBase,
+    VexBase,
     WardenBase,
     WardenBioluminescent,
     WardenPulsatingSpots1,
@@ -149,6 +156,8 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     WolfBodyArmorCrack,
     WolfCollar,
     FelineCollar,
+    DolphinBase,
+    PufferfishBase,
     WindChargeBase,
 }
 
@@ -275,60 +284,6 @@ pub(in crate::entity_models) struct EntityModelLayerPass {
     pub(in crate::entity_models) tint: [f32; 4],
     pub(in crate::entity_models) order: i32,
     pub(in crate::entity_models) submit_sequence: u32,
-}
-
-impl EntityModelLayerPass {
-    /// A single render pass carrying only the fields the renderer consumes (render type, texture,
-    /// tint). The routing-only fields (kind/model_layer/visibility/order/submit_sequence)
-    /// get placeholder defaults; they are never read for a single-tree uniform entity. Used by the
-    /// shared dispatch for entities whose textured render is one plain pass.
-    pub(in crate::entity_models) fn base(
-        render_type: EntityModelLayerRenderType,
-        texture: EntityModelTextureRef,
-        tint: [f32; 4],
-    ) -> Self {
-        Self {
-            // `kind` selects which model tree a multi-tree emit walks; a single-tree uniform entity
-            // never branches on it, so this is a neutral "base body" placeholder. `PlayerBase` is the
-            // canonical base-body layer kind reused here.
-            kind: EntityModelLayerKind::PlayerBase,
-            render_type,
-            // `model_layer` is the vestigial vanilla layer key; the renderer drives geometry off the
-            // unified tree and never reads it, so the empty string is a safe placeholder.
-            model_layer: "",
-            texture,
-            visibility: EntityModelLayerVisibility::All,
-            tint,
-            order: 0,
-            submit_sequence: 0,
-        }
-    }
-
-    /// Like [`EntityModelLayerPass::base`] but renders only the cubes of the named parts (vanilla
-    /// `retainExactParts`), for an emissive overlay baked as a part subset of one body mesh. The
-    /// routing-only fields keep their `base` placeholders; only `visibility` carries the subset.
-    pub(in crate::entity_models) fn retained(
-        render_type: EntityModelLayerRenderType,
-        texture: EntityModelTextureRef,
-        tint: [f32; 4],
-        parts: &'static [&'static str],
-    ) -> Self {
-        Self {
-            visibility: EntityModelLayerVisibility::RetainedParts(parts),
-            ..Self::base(render_type, texture, tint)
-        }
-    }
-
-    pub(in crate::entity_models) fn with_order(mut self, order: i32, submit_sequence: u32) -> Self {
-        self.order = order;
-        self.submit_sequence = submit_sequence;
-        self
-    }
-
-    pub(in crate::entity_models) fn with_kind(mut self, kind: EntityModelLayerKind) -> Self {
-        self.kind = kind;
-        self
-    }
 }
 
 pub(in crate::entity_models) fn boat_textured_layer_passes(
@@ -1765,62 +1720,76 @@ pub(in crate::entity_models) fn warden_textured_layer_passes(
     // tendril overlay, which reuses the base `warden.png` over the two tendril planes at the lerped
     // `tendrilAnimation` alpha; and the heart overlay (body only) at the lerped `heartAnimation` alpha.
     vec![
-        EntityModelLayerPass::base(
-            EntityModelLayerRenderType::EntityCutout,
-            WARDEN_TEXTURE_REF,
-            [1.0, 1.0, 1.0, 1.0],
-        )
-        .with_kind(EntityModelLayerKind::WardenBase),
-        EntityModelLayerPass::retained(
-            EntityModelLayerRenderType::Eyes,
-            WARDEN_BIOLUMINESCENT_TEXTURE_REF,
-            [1.0, 1.0, 1.0, 1.0],
-            WARDEN_BIOLUMINESCENT_PARTS,
-        )
-        .with_kind(EntityModelLayerKind::WardenBioluminescent)
-        .with_order(1, 1),
-        EntityModelLayerPass::retained(
-            EntityModelLayerRenderType::Eyes,
-            WARDEN_PULSATING_SPOTS_1_TEXTURE_REF,
-            [
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::WardenBase,
+            render_type: EntityModelLayerRenderType::EntityCutout,
+            model_layer: MODEL_LAYER_WARDEN,
+            texture: WARDEN_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 0,
+            submit_sequence: 0,
+        },
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::WardenBioluminescent,
+            render_type: EntityModelLayerRenderType::Eyes,
+            model_layer: MODEL_LAYER_WARDEN_BIOLUMINESCENT,
+            texture: WARDEN_BIOLUMINESCENT_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::RetainedParts(WARDEN_BIOLUMINESCENT_PARTS),
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 1,
+            submit_sequence: 1,
+        },
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::WardenPulsatingSpots1,
+            render_type: EntityModelLayerRenderType::Eyes,
+            model_layer: MODEL_LAYER_WARDEN_PULSATING_SPOTS,
+            texture: WARDEN_PULSATING_SPOTS_1_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::RetainedParts(WARDEN_PULSATING_SPOTS_PARTS),
+            tint: [
                 1.0,
                 1.0,
                 1.0,
                 warden_pulsating_spots_alpha(age_in_ticks, 0.0),
             ],
-            WARDEN_PULSATING_SPOTS_PARTS,
-        )
-        .with_kind(EntityModelLayerKind::WardenPulsatingSpots1)
-        .with_order(1, 2),
-        EntityModelLayerPass::retained(
-            EntityModelLayerRenderType::Eyes,
-            WARDEN_PULSATING_SPOTS_2_TEXTURE_REF,
-            [
+            order: 1,
+            submit_sequence: 2,
+        },
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::WardenPulsatingSpots2,
+            render_type: EntityModelLayerRenderType::Eyes,
+            model_layer: MODEL_LAYER_WARDEN_PULSATING_SPOTS,
+            texture: WARDEN_PULSATING_SPOTS_2_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::RetainedParts(WARDEN_PULSATING_SPOTS_PARTS),
+            tint: [
                 1.0,
                 1.0,
                 1.0,
                 warden_pulsating_spots_alpha(age_in_ticks, std::f32::consts::PI),
             ],
-            WARDEN_PULSATING_SPOTS_PARTS,
-        )
-        .with_kind(EntityModelLayerKind::WardenPulsatingSpots2)
-        .with_order(1, 3),
-        EntityModelLayerPass::retained(
-            EntityModelLayerRenderType::Eyes,
-            WARDEN_TEXTURE_REF,
-            [1.0, 1.0, 1.0, tendril_animation],
-            WARDEN_TENDRILS_PARTS,
-        )
-        .with_kind(EntityModelLayerKind::WardenTendrils)
-        .with_order(1, 4),
-        EntityModelLayerPass::retained(
-            EntityModelLayerRenderType::Eyes,
-            WARDEN_HEART_TEXTURE_REF,
-            [1.0, 1.0, 1.0, heart_animation],
-            WARDEN_HEART_PARTS,
-        )
-        .with_kind(EntityModelLayerKind::WardenHeart)
-        .with_order(1, 5),
+            order: 1,
+            submit_sequence: 3,
+        },
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::WardenTendrils,
+            render_type: EntityModelLayerRenderType::Eyes,
+            model_layer: MODEL_LAYER_WARDEN_TENDRILS,
+            texture: WARDEN_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::RetainedParts(WARDEN_TENDRILS_PARTS),
+            tint: [1.0, 1.0, 1.0, tendril_animation],
+            order: 1,
+            submit_sequence: 4,
+        },
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::WardenHeart,
+            render_type: EntityModelLayerRenderType::Eyes,
+            model_layer: MODEL_LAYER_WARDEN_HEART,
+            texture: WARDEN_HEART_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::RetainedParts(WARDEN_HEART_PARTS),
+            tint: [1.0, 1.0, 1.0, heart_animation],
+            order: 1,
+            submit_sequence: 5,
+        },
     ]
 }
 

@@ -2,6 +2,8 @@ use super::{PartPose, ALLAY_BLUE, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_ALLAY: &str = "minecraft:allay#main";
+
 // Vanilla 26.1 `AllayModel.createBodyLayer` (atlas 32×32). The model root is the `root` part
 // at `(0, 23.5, 0)`; `head` and `body` hang under it, and the arms and wings are children of
 // `body` (so the body tilt carries them). `CubeDeformation` insets are baked into the cube

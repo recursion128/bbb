@@ -1088,7 +1088,9 @@ When an agent does any of the following, update this file in the same slice:
       profession/type/level overlay layer passes, custom-head skull submissions, player
       profile cape plus player WINGS/elytra and spin-attack-effect submissions, strider
       base/saddle/no-baby-saddle submits, armor stand
-      visibility/scale base submits, axolotl color/age base submits,
+      visibility/scale base submits, vex/allay/cod/pufferfish/turtle/bat/bee/dolphin
+      dispatch-local base submits (now with explicit vanilla model-layer metadata instead of the
+      old residual base-pass helper), axolotl color/age base submits,
       feline cat/ocelot base plus collar submits, fox type/age/sleeping base
       submits, frog temperature base submits, panda gene/age base submits,
       guardian/elder base plus attack-beam submits, parrot variant base submits, pufferfish
@@ -2491,7 +2493,8 @@ When an agent does any of the following, update this file in the same slice:
       arm/leg pose metadata projection; the textured base layer emits the vanilla
       `createBodyLayer` `texOffs` UVs (the small layer reuses the full-model UVs
       because `BABY_TRANSFORMER` only scales geometry, not texture coordinates),
-      with official PNG atlas upload/bind/sample on both render paths, and the
+      with official PNG atlas upload/bind/sample on both render paths, explicit vanilla
+      `ModelLayers.ARMOR_STAND` / `ARMOR_STAND_SMALL` base-pass metadata, and the
       standard held-item layer for both full and small stands (small hand items
       ride the `BABY_TRANSFORMER` 0.5 arm-part scale), plus the generic
       non-skull custom-head item path and static skeleton/wither-skeleton/
@@ -2644,7 +2647,7 @@ When an agent does any of the following, update this file in the same slice:
       `vex_right_hand_item_non_empty` / `vex_left_hand_item_non_empty`. The textured base layer
       draws into the translucent mesh
       (`RenderTypes::entityTranslucent`) while preserving explicit `entityTranslucent`
-      submission metadata for texture, white tint, root transform, `order(0)`, the projected
+      submission metadata for `ModelLayers.VEX`, texture, white tint, root transform, `order(0)`, the projected
       full-bright block-light input, and hurt/white overlay metadata before folding; it uses the
       same animated body→arm/wing hierarchy as the colored path,
       and the `isCharging` texture swap IS now applied
@@ -2679,7 +2682,7 @@ When an agent does any of the following, update this file in the same slice:
       rising edge and projects `isDancing` / `isSpinning` / `spinningProgress`. The textured base
       layer draws the `textures/entity/allay/allay.png` atlas reference into the translucent mesh
       (`RenderTypes::entityTranslucent`) while preserving explicit `entityTranslucent`
-      submission metadata for texture, white tint, root transform, `order(0)`, the projected
+      submission metadata for `ModelLayers.ALLAY`, texture, white tint, root transform, `order(0)`, the projected
       full-bright block-light input, and hurt/white overlay metadata before folding; it uses the
       same animated body→arm/wing hierarchy as the colored path.
       The held-item arm poses (`holdingAnimationProgress` scaling
@@ -2709,7 +2712,8 @@ When an agent does any of the following, update this file in the same slice:
       The textured base layer draws the `textures/entity/strider/strider.png` /
       `strider_baby.png` atlas references into the cutout mesh (default
       `RenderTypes::entityCutout`) while preserving explicit base submission metadata for
-      texture, white tint, root transform, entity light, hurt/white overlay, and `order(0)`;
+      `ModelLayers.STRIDER` / `STRIDER_BABY`, texture, white tint, root transform, entity light,
+      hurt/white overlay, and `order(0)`;
       folded base vertices inherit that metadata. It is hand-emitted through the
       same animated leg/body/bristle hierarchy as the colored path. The cold/suffocating
       texture swap IS wired:
@@ -2748,7 +2752,8 @@ When an agent does any of the following, update this file in the same slice:
       flag are now projected into the entity render state), under the standard
       `LivingEntityRenderer.setupRotations`. The textured base layer draws the
       `textures/entity/turtle/turtle.png` / `turtle_baby.png` atlas references into the cutout
-      mesh while preserving explicit submission metadata for texture, white tint, root/egg-drop
+      mesh while preserving explicit submission metadata for `ModelLayers.TURTLE` / `TURTLE_BABY`,
+      texture, white tint, root/egg-drop
       transform, entity light, hurt/white overlay, and `order(0)`, plus the vanilla render type
       split: adult `AdultTurtleModel` uses `RenderTypes::entityCutout`, while baby
       `BabyTurtleModel` uses `RenderTypes::entityCutoutCull`. Both are hand-emitted through the
@@ -2783,7 +2788,7 @@ When an agent does any of the following, update this file in the same slice:
       `ageInTicks·0.05` seconds and added to the bind pose as vanilla `applyStatic` offsets. The
       textured base layer draws the `textures/entity/bat/bat.png` atlas reference into the cutout
       mesh (vanilla `RenderTypes::entityCutoutCull`) while preserving explicit submission metadata
-      for texture, white tint, root transform, `LivingEntityRenderer` light plus hurt/white overlay,
+      for `ModelLayers.BAT`, texture, white tint, root transform, `LivingEntityRenderer` light plus hurt/white overlay,
       and `order(0)`; folded cutout vertices inherit the matching metadata before the model is
       hand-emitted through the same animated
       head/body/wing hierarchy as the colored path. The `isResting` branch is implemented on both
@@ -2814,7 +2819,8 @@ When an agent does any of the following, update this file in the same slice:
       its body, legs (at `π/4`) and antennae still. The textured base layer draws the selected
       `textures/entity/bee/bee[_angry][_nectar][_baby].png` atlas reference into the cutout mesh
       (vanilla `BeeModel` calls `EntityModel`'s default `RenderTypes::entityCutout`) while preserving
-      explicit base submission metadata for texture, white tint, root transform, and `order(0)`;
+      explicit base submission metadata for `ModelLayers.BEE` / `BEE_BABY`, texture, white tint,
+      root transform, and `order(0)`;
       it is hand-emitted through the same animated hierarchy as the colored path (which approximates
       the striped texture with a single representative yellow). Vanilla's separate
       `BeeStingerModel` uses `RenderTypes::entityCutoutCull`; bbb still folds the visible carried
@@ -2902,7 +2908,8 @@ When an agent does any of the following, update this file in the same slice:
       scale, like the squid baby). The textured base layer draws the
       `textures/entity/dolphin/dolphin.png` / `dolphin_baby.png` atlas references into the cutout
       mesh (`DolphinModel` calls `EntityModel`'s default `RenderTypes::entityCutout`) while
-      preserving explicit base submission metadata for texture, white tint, adult/baby
+      preserving explicit base submission metadata for `ModelLayers.DOLPHIN` / `DOLPHIN_BABY`,
+      texture, white tint, adult/baby
       mesh-transformer root transform, `LivingEntityRenderer` light plus hurt/white overlay, and
       `order(0)`; folded cutout vertices inherit the matching metadata, and the model is hand-emitted
       through the same animated hierarchy as the colored path (which approximates the texture with a
@@ -3175,7 +3182,8 @@ When an agent does any of the following, update this file in the same slice:
       lerped `heart_animation` alpha). Zero-alpha emissive layers are now skipped before submission, matching
       `LivingEntityEmissiveLayer`'s `alpha <= 1e-5` gate; textured tests pin the remaining base/emissive submissions'
       texture, internal render type (`entityCutout` / `eyes`, used here for vanilla `entityTranslucentEmissive`),
-      tint alpha, root transform, entity light, base hurt/white overlay, emissive
+      vanilla model layers (`WARDEN`, `WARDEN_BIOLUMINESCENT`, `WARDEN_PULSATING_SPOTS`,
+      `WARDEN_TENDRILS`, `WARDEN_HEART`), tint alpha, root transform, entity light, base hurt/white overlay, emissive
       `getOverlayCoords(state, 0.0F)` red-row/zero-white overlay, folded cutout/eyes vertex metadata,
       and explicit `(order, submit_sequence)`; missing-atlas coverage proves the always-on bioluminescent
       submission is still recorded without `warden_bioluminescent_layer.png` while only that layer's
@@ -3714,7 +3722,8 @@ When an agent does any of the following, update this file in the same slice:
       `PufferfishRenderer.submit`), with the vanilla `PufferfishRenderer.setupRotations`
       vertical bob (`translate(0, cos(ageInTicks · 0.05) · 0.08, 0)`); the official
       `textures/entity/fish/pufferfish.png` texture reference, texture-backed cutout
-      emission with explicit `entityCutout` submission metadata for texture, white
+      emission with explicit `entityCutout` submission metadata for
+      `ModelLayers.PUFFERFISH_SMALL` / `PUFFERFISH_MEDIUM` / `PUFFERFISH_BIG`, texture, white
       tint, renderer root transform, `order(0)`, light, and hurt/white overlay,
       official PNG atlas upload/bind/sample path, and the shared vanilla
       `setupAnim` pectoral/blue fin wiggle (`right.zRot = -0.2 + 0.4 · sin(ageInTicks ·
@@ -3780,7 +3789,7 @@ When an agent does any of the following, update this file in the same slice:
       the official `textures/entity/fish/cod.png` texture reference, texture-backed
       base layer pass emission (vanilla `CodModel` calls `EntityModel`'s default
       `RenderTypes::entityCutout`; the top fin keeps its negative `texOffs(20, -6)` V
-      origin) while preserving explicit submission metadata for texture, white tint,
+      origin) while preserving explicit submission metadata for `ModelLayers.COD`, texture, white tint,
       water/beached root transform, per-entity light/overlay coords, and `order(0)`, and the official PNG atlas
       upload/bind/sample path (colored and textured). Full vanilla lighting/gamma parity remains deferred
     - salmon entities are wired end to end: the native entity scene (`entity_scene.rs`)

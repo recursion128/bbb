@@ -3,6 +3,10 @@ use crate::entity_models::catalog::ArmorStandModelPose;
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_ARMOR_STAND: &str = "minecraft:armor_stand#main";
+pub(in crate::entity_models) const MODEL_LAYER_ARMOR_STAND_SMALL: &str =
+    "minecraft:armor_stand_small#main";
+
 pub(in crate::entity_models) const ARMOR_STAND_WOOD: [f32; 4] = [0.55, 0.36, 0.19, 1.0];
 
 pub(in crate::entity_models) const ARMOR_STAND_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {

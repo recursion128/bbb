@@ -7,6 +7,14 @@ use super::{PartPose, PART_POSE_ZERO, WARDEN_BODY, WARDEN_TENDRIL};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_WARDEN: &str = "minecraft:warden#main";
+pub(in crate::entity_models) const MODEL_LAYER_WARDEN_BIOLUMINESCENT: &str =
+    "minecraft:warden#bioluminescent";
+pub(in crate::entity_models) const MODEL_LAYER_WARDEN_PULSATING_SPOTS: &str =
+    "minecraft:warden#pulsating_spots";
+pub(in crate::entity_models) const MODEL_LAYER_WARDEN_TENDRILS: &str = "minecraft:warden#tendrils";
+pub(in crate::entity_models) const MODEL_LAYER_WARDEN_HEART: &str = "minecraft:warden#heart";
+
 const CATMULLROM: KeyframeInterpolation = KeyframeInterpolation::CatmullRom;
 const LINEAR: KeyframeInterpolation = KeyframeInterpolation::Linear;
 
@@ -37,8 +45,8 @@ const fn pos(keyframes: &'static [Keyframe]) -> AnimationChannel {
 // (attack → sonic_boom → dig → emerge → roar → sniff): [`WARDEN_ATTACK`] (event 4),
 // [`WARDEN_SONIC_BOOM`] (event 62), [`WARDEN_DIG`] (`Pose.DIGGING`), [`WARDEN_EMERGE`]
 // (`Pose.EMERGING`), [`WARDEN_ROAR`] (`Pose.ROARING`), and [`WARDEN_SNIFF`] (`Pose.SNIFFING`), each
-// applied only when its projected elapsed-seconds value is `>= 0`. The four emissive overlay layers
-// (tendrils, heart, bioluminescent, pulsating spots) and the texture-backed path are deferred.
+// applied only when its projected elapsed-seconds value is `>= 0`. The base and emissive overlay
+// texture-backed paths are wired through explicit vanilla model-layer pass metadata.
 
 // `body`: one 18×21×11 box (`texOffs(0,0)`).
 pub(in crate::entity_models) const WARDEN_BODY_CUBES: [ModelCube; 1] = [ModelCube::new(

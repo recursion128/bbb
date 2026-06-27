@@ -4,6 +4,9 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 use std::f32::consts::PI;
 
+pub(in crate::entity_models) const MODEL_LAYER_DOLPHIN: &str = "minecraft:dolphin#main";
+pub(in crate::entity_models) const MODEL_LAYER_DOLPHIN_BABY: &str = "minecraft:dolphin_baby#main";
+
 // Vanilla 26.1 `DolphinModel.createBodyLayer` (atlas 64×64). The `body` is the root child and
 // parents the back/left/right fins, the tail (with its tail fin), and the head (with its nose).
 // The baby uses the `MeshTransformer.scaling(0.5)` of this same geometry. Each cube carries both

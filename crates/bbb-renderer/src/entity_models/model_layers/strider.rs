@@ -2,6 +2,10 @@ use super::{PartPose, PART_POSE_ZERO, STRIDER_LEG, STRIDER_MAROON};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+// Vanilla 26.1 `ModelLayers.STRIDER`.
+pub(in crate::entity_models) const MODEL_LAYER_STRIDER: &str = "minecraft:strider#main";
+// Vanilla 26.1 `ModelLayers.STRIDER_BABY`.
+pub(in crate::entity_models) const MODEL_LAYER_STRIDER_BABY: &str = "minecraft:strider_baby#main";
 // Vanilla 26.1 `ModelLayers.STRIDER_SADDLE`.
 pub(in crate::entity_models) const MODEL_LAYER_STRIDER_SADDLE: &str = "minecraft:strider#saddle";
 

@@ -2,6 +2,13 @@ use super::{PartPose, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_PUFFERFISH_SMALL: &str =
+    "minecraft:pufferfish_small#main";
+pub(in crate::entity_models) const MODEL_LAYER_PUFFERFISH_MEDIUM: &str =
+    "minecraft:pufferfish_medium#main";
+pub(in crate::entity_models) const MODEL_LAYER_PUFFERFISH_BIG: &str =
+    "minecraft:pufferfish_big#main";
+
 // The pufferfish fallback paints its body and fins a sandy yellow.
 pub(in crate::entity_models) const PUFFERFISH_YELLOW: [f32; 4] = [0.93, 0.80, 0.22, 1.0];
 

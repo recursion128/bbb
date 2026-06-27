@@ -2,6 +2,9 @@ use super::{PartPose, PART_POSE_ZERO, TURTLE_GREEN, TURTLE_SHELL};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_TURTLE: &str = "minecraft:turtle#main";
+pub(in crate::entity_models) const MODEL_LAYER_TURTLE_BABY: &str = "minecraft:turtle_baby#main";
+
 // Vanilla 26.1 `AdultTurtleModel.createBodyLayer` (atlas 128×64). The head, body (shell +
 // belly), and four legs are direct children of the mesh root; the `egg_belly` overlay shell (one
 // extra cube at the body pose) is emitted when the synced `hasEgg` state is set, and vanilla then

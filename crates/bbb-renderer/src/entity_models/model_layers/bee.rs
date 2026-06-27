@@ -4,6 +4,9 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 use std::f32::consts::PI;
 
+pub(in crate::entity_models) const MODEL_LAYER_BEE: &str = "minecraft:bee#main";
+pub(in crate::entity_models) const MODEL_LAYER_BEE_BABY: &str = "minecraft:bee_baby#main";
+
 // Vanilla 26.1 `AdultBeeModel.createBodyLayer` (atlas 64×64). The empty `bone` pivot parents the
 // body (which carries the stinger and the two antennae), the two wings, and the three leg planes.
 // Each cube carries both render paths' data: the colored debug tint (`BEE_YELLOW`, a single

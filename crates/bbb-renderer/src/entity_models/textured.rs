@@ -93,6 +93,8 @@ mod layers;
 #[cfg(test)]
 pub(super) use layers::player_textured_layer_passes;
 pub(super) use layers::shulker_bullet_textured_layer_passes;
+#[cfg(test)]
+pub(super) use layers::warden_pulsating_spots_alpha;
 pub(super) use layers::{
     armadillo_textured_layer_passes, arrow_textured_layer_passes, axolotl_textured_layer_passes,
     blaze_textured_layer_passes, boat_textured_layer_passes, breeze_textured_layer_passes,
@@ -126,10 +128,8 @@ pub(super) use layers::{
     zombie_nautilus_textured_layer_passes, zombie_textured_layer_passes,
     zombie_villager_data_textured_layer_passes, zombie_villager_textured_layer_passes,
     EntityModelLayerKind, EntityModelLayerPass, EntityModelLayerRenderBucket,
-    EntityModelLayerRenderType,
+    EntityModelLayerRenderType, EntityModelLayerVisibility,
 };
-#[cfg(test)]
-pub(super) use layers::{warden_pulsating_spots_alpha, EntityModelLayerVisibility};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) struct EntityModelRenderSubmission {
