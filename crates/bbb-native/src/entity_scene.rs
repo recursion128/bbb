@@ -277,6 +277,7 @@ const ARMOR_STAND_RIGHT_LEG_POSE_DATA_ID: u8 = 21;
 const ARMOR_STAND_CLIENT_FLAG_SMALL: i8 = 1;
 const ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS: i8 = 4;
 const ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE: i8 = 8;
+const ARMOR_STAND_CLIENT_FLAG_MARKER: i8 = 16;
 const SLIME_SIZE_DATA_ID: u8 = 16;
 const SLIME_DEFAULT_SIZE: i32 = 1;
 // Phantom (`Phantom.ID_SIZE`, the first Mob-subclass synced data, index 16). Defaults to 0.
@@ -3140,6 +3141,7 @@ fn armor_stand_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> 
     let flags = entity_data_byte(values, ARMOR_STAND_CLIENT_FLAGS_DATA_ID, 0);
     EntityModelKind::ArmorStand {
         small: flags & ARMOR_STAND_CLIENT_FLAG_SMALL != 0,
+        marker: flags & ARMOR_STAND_CLIENT_FLAG_MARKER != 0,
         show_arms: flags & ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS != 0,
         show_base_plate: flags & ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE == 0,
         pose: armor_stand_pose(values),
@@ -8585,7 +8587,8 @@ mod tests {
                     ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
                     ARMOR_STAND_CLIENT_FLAG_SMALL
                         | ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS
-                        | ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE,
+                        | ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE
+                        | ARMOR_STAND_CLIENT_FLAG_MARKER,
                 ),
                 protocol_rotations_data(ARMOR_STAND_BODY_POSE_DATA_ID, pose.body),
                 protocol_rotations_data(ARMOR_STAND_LEFT_ARM_POSE_DATA_ID, pose.left_arm),
@@ -8597,10 +8600,11 @@ mod tests {
         assert_eq!(
             instances,
             aged(
-                vec![EntityModelInstance::armor_stand(
+                vec![EntityModelInstance::armor_stand_with_marker(
                     5,
                     [1.0, 64.0, -2.0],
                     0.0,
+                    true,
                     true,
                     true,
                     false,
@@ -9200,6 +9204,7 @@ mod tests {
             entity_model_kind(VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, &[]),
             EntityModelKind::ArmorStand {
                 small: false,
+                marker: false,
                 show_arms: false,
                 show_base_plate: true,
                 pose: DEFAULT_ARMOR_STAND_MODEL_POSE,
@@ -9212,11 +9217,13 @@ mod tests {
                     ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
                     ARMOR_STAND_CLIENT_FLAG_SMALL
                         | ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS
-                        | ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE,
+                        | ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE
+                        | ARMOR_STAND_CLIENT_FLAG_MARKER,
                 )],
             ),
             EntityModelKind::ArmorStand {
                 small: true,
+                marker: true,
                 show_arms: true,
                 show_base_plate: false,
                 pose: DEFAULT_ARMOR_STAND_MODEL_POSE,
@@ -9238,6 +9245,7 @@ mod tests {
             ),
             EntityModelKind::ArmorStand {
                 small: false,
+                marker: false,
                 show_arms: false,
                 show_base_plate: true,
                 pose,

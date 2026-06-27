@@ -2327,10 +2327,14 @@ When an agent does any of the following, update this file in the same slice:
       non-skull custom-head item path and static skeleton/wither-skeleton/
       zombie/creeper skulls plus profileless default-player heads, profiled
       default-skin player heads, dynamic profiled-player heads, piglin heads,
-      and dragon heads; armor/equipment, elytra layers, hurt wiggle,
-      marker/invisible
-      render-type nuances, and animation interpolation remain
-      unsupported
+      and dragon heads; marker client flags now project into the render kind,
+      marker stands keep vanilla 0x0 non-pickable dimensions while still
+      producing model sources, and marker base submissions follow vanilla
+      `ArmorStandRenderer.getRenderType`
+      (`entityCutout` while visible, no submission when hidden, and
+      `entityTranslucent` with the vanilla force-transparent alpha when invisible
+      but visible to this client). Armor/equipment, hurt wiggle, and animation
+      interpolation remain unsupported
     - slime entities as renderer-owned vanilla 26.1 `SlimeModel` inner
       `ModelLayers.SLIME` geometry plus outer `ModelLayers.SLIME_OUTER`
       geometry, official `textures/entity/slime/slime.png` texture reference,
@@ -3812,7 +3816,7 @@ When an agent does any of the following, update this file in the same slice:
     layer, antenna block decoration, generic non-skull head items, static mob
     skulls, profileless default-player heads, profiled default-skin player heads, dragon heads, and piglin heads are implemented),
     armor stand equipment/live/dynamic profiled-player/
-    custom layers/wiggle/marker presentation, slime/magma-cube squish/full
+    custom layers/wiggle presentation, slime/magma-cube squish/full
     render-state lighting/sorting presentation, and precise vanilla mesh parity
     for primitive/placeholder entity families.
 

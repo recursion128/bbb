@@ -45,9 +45,10 @@ use crate::entities::dimensions::{
     vanilla_eye_height_for_entity_data, vanilla_illager_aggressive_arm_pose_family,
     vanilla_is_baby, vanilla_is_bat, vanilla_is_bee, vanilla_is_enderman, vanilla_is_fox,
     vanilla_is_vex, vanilla_is_wither, vanilla_living_entity_type,
-    vanilla_pick_bounds_for_entity_data, vanilla_piglin_melee_attack_family, vanilla_render_scale,
-    vanilla_zombie_model_family, ENTITY_DATA_POSE_ID, ITEM_FRAME_ENTITY_TYPE_IDS,
-    VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID, VANILLA_POSE_CROUCHING_ID, VANILLA_POSE_SLEEPING_ID,
+    vanilla_model_source_bounds_for_entity_data, vanilla_pick_bounds_for_entity_data,
+    vanilla_piglin_melee_attack_family, vanilla_render_scale, vanilla_zombie_model_family,
+    ENTITY_DATA_POSE_ID, ITEM_FRAME_ENTITY_TYPE_IDS, VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
+    VANILLA_POSE_CROUCHING_ID, VANILLA_POSE_SLEEPING_ID,
 };
 use crate::entities::dragon::{
     ender_dragon_part_pick_targets_at_partial_tick, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
@@ -533,6 +534,21 @@ impl EntityStore {
         )
     }
 
+    fn model_source_bounds(&self, id: i32) -> Option<super::EntityPickBoundsState> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        let attributes = self.ecs.get::<&EntityAttributes>(entity).ok()?;
+        let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        vanilla_model_source_bounds_for_entity_data(
+            identity.entity_type_id,
+            identity.data,
+            &metadata.data_values,
+            &attributes.attributes,
+            Some(client_animations.animations),
+        )
+    }
+
     pub(crate) fn pick_targets_at_partial_tick(
         &self,
         partial_ticks: f32,
@@ -567,6 +583,36 @@ impl EntityStore {
                     bounds,
                 });
             }
+        }
+        targets
+    }
+
+    pub(crate) fn model_targets_at_partial_tick(
+        &self,
+        _partial_ticks: f32,
+    ) -> Vec<super::EntityModelTargetState> {
+        let mut targets = Vec::new();
+        for id in &self.order {
+            let Some(entity) = self.by_protocol_id.get(id).copied() else {
+                continue;
+            };
+            let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
+                continue;
+            };
+            if identity.entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
+                continue;
+            }
+            let Ok(transform) = self.ecs.get::<&EntityTransform>(entity) else {
+                continue;
+            };
+            let Some(bounds) = self.model_source_bounds(identity.id) else {
+                continue;
+            };
+            targets.push(super::EntityModelTargetState {
+                entity_id: identity.id,
+                position: transform.position,
+                bounds,
+            });
         }
         targets
     }

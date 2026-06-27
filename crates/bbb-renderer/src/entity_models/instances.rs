@@ -1249,10 +1249,34 @@ impl EntityModelInstance {
         show_base_plate: bool,
         pose: ArmorStandModelPose,
     ) -> Self {
+        Self::armor_stand_with_marker(
+            entity_id,
+            position,
+            y_rot,
+            small,
+            false,
+            show_arms,
+            show_base_plate,
+            pose,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn armor_stand_with_marker(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        small: bool,
+        marker: bool,
+        show_arms: bool,
+        show_base_plate: bool,
+        pose: ArmorStandModelPose,
+    ) -> Self {
         Self::new(
             entity_id,
             EntityModelKind::ArmorStand {
                 small,
+                marker,
                 show_arms,
                 show_base_plate,
                 pose,

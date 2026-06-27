@@ -332,6 +332,13 @@ pub struct EntityPickTargetState {
     pub bounds: EntityPickBoundsState,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct EntityModelTargetState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+    pub bounds: EntityPickBoundsState,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EntityBlockModelState {
     pub name: String,
@@ -1481,8 +1488,18 @@ impl WorldStore {
         &self,
         partial_ticks: f32,
     ) -> Vec<EntityModelSourceState> {
-        self.entity_pick_targets_at_partial_tick(partial_ticks)
+        self.entities
+            .model_targets_at_partial_tick(partial_ticks)
             .into_iter()
+            .filter(|target| {
+                let Some(identity) = self.entities.identity(target.entity_id) else {
+                    return true;
+                };
+                identity.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID
+                    || !self
+                        .player_info_entry(identity.uuid)
+                        .is_some_and(|info| info.is_spectator())
+            })
             .filter_map(|target| {
                 let mut source = self.entities.model_source(
                     target.entity_id,

@@ -17,6 +17,7 @@ use super::super::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::entity_models) enum EntityModelLayerKind {
+    ArmorStandBase,
     ArrowBase,
     BoatBase,
     BreezeEyes,

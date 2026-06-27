@@ -271,6 +271,7 @@ pub enum EntityModelKind {
     },
     ArmorStand {
         small: bool,
+        marker: bool,
         show_arms: bool,
         show_base_plate: bool,
         pose: ArmorStandModelPose,

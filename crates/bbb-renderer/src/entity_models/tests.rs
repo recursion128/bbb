@@ -475,6 +475,7 @@ fn entity_model_kind_exposes_stable_model_keys() {
     assert_eq!(
         EntityModelKind::ArmorStand {
             small: true,
+            marker: false,
             show_arms: true,
             show_base_plate: false,
             pose: DEFAULT_ARMOR_STAND_MODEL_POSE,

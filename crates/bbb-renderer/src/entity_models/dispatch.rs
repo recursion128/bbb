@@ -352,19 +352,31 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
         // ---- Both-uniform single-pass: one plain `render_textured_pass`, no `*_textured_layer_passes` fn ----
         EntityModelKind::ArmorStand {
             small,
+            marker,
             show_arms,
             show_base_plate,
             pose,
-        } => sink.model(
-            ArmorStandModel::new(small, show_arms, show_base_plate, pose),
-            entity_model_root_transform(*instance),
-            instance,
-            &[EntityModelLayerPass::base(
-                EntityModelLayerRenderType::EntityCutout,
-                ARMOR_STAND_TEXTURE_REF,
-                [1.0, 1.0, 1.0, 1.0],
-            )],
-        ),
+        } => {
+            let marker_force_transparent = marker
+                && instance.render_state.invisible
+                && !instance.render_state.invisible_to_player;
+            let render_type = if marker_force_transparent {
+                EntityModelLayerRenderType::EntityTranslucent
+            } else {
+                EntityModelLayerRenderType::EntityCutout
+            };
+            sink.model(
+                ArmorStandModel::new(small, show_arms, show_base_plate, pose),
+                entity_model_root_transform(*instance),
+                instance,
+                &[EntityModelLayerPass::base(
+                    render_type,
+                    ARMOR_STAND_TEXTURE_REF,
+                    [1.0, 1.0, 1.0, 1.0],
+                )
+                .with_kind(EntityModelLayerKind::ArmorStandBase)],
+            )
+        }
         EntityModelKind::Vex { charging } => sink.model(
             VexModel::new(),
             entity_model_root_transform(*instance),

@@ -912,7 +912,7 @@ fn entity_camera_pose_uses_vanilla_eye_height() {
 }
 
 #[test]
-fn entity_model_sources_project_narrow_render_state_from_pick_targets() {
+fn entity_model_sources_project_narrow_render_state_from_model_targets() {
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const AGEABLE_BABY_DATA_ID: u8 = 16;
 
@@ -8779,6 +8779,59 @@ fn armor_stand_pick_bounds_follow_client_flags() {
         }],
     }));
     assert_eq!(store.probe_entity_pick_bounds(28), None);
+}
+
+#[test]
+fn armor_stand_marker_has_model_target_without_pick_target() {
+    const VANILLA_ENTITY_TYPE_ARMOR_STAND_ID: i32 = 5;
+    const ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 15;
+    const ARMOR_STAND_CLIENT_FLAG_MARKER: i8 = 16;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        28,
+        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+    ));
+    let marker_flag = protocol_byte_data(
+        ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
+        ARMOR_STAND_CLIENT_FLAG_MARKER,
+    );
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 28,
+        values: vec![marker_flag.clone()],
+    }));
+
+    assert_eq!(store.probe_entity_pick_bounds(28), None);
+    assert!(store
+        .entity_pick_targets()
+        .iter()
+        .all(|target| target.entity_id != 28));
+
+    let model_targets = store.entities.model_targets_at_partial_tick(1.0);
+    let model_target = model_targets
+        .iter()
+        .find(|target| target.entity_id == 28)
+        .unwrap_or_else(|| panic!("missing marker armor stand model target"));
+    assert_eq!(
+        model_target.bounds,
+        EntityPickBoundsState::from_base_size(0.0, 0.0, 0.0)
+    );
+
+    let sources = store.entity_model_sources_at_partial_tick(1.0);
+    let source = sources
+        .iter()
+        .find(|source| source.entity_id == 28)
+        .unwrap_or_else(|| panic!("missing marker armor stand model source"));
+    assert_eq!(source.entity_type_id, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID);
+    assert_eq!(
+        source.position,
+        EntityVec3 {
+            x: 1.0,
+            y: 64.0,
+            z: -2.0,
+        }
+    );
+    assert_eq!(source.data_values, vec![marker_flag]);
 }
 
 #[test]

@@ -272,6 +272,7 @@ fn custom_head_item_base_transform(
             show_arms,
             show_base_plate,
             pose,
+            ..
         } => {
             let mut model = ArmorStandModel::new(small, show_arms, show_base_plate, pose);
             model.prepare(instance);
@@ -543,6 +544,7 @@ fn humanoid_arm_world_transform(
             show_arms,
             show_base_plate,
             pose,
+            ..
         } => {
             let mut model = ArmorStandModel::new(small, show_arms, show_base_plate, pose);
             model.prepare(instance);
@@ -639,6 +641,7 @@ mod tests {
                 19,
                 EntityModelKind::ArmorStand {
                     small: false,
+                    marker: false,
                     show_arms: true,
                     show_base_plate: true,
                     pose: DEFAULT_ARMOR_STAND_MODEL_POSE,
@@ -1104,6 +1107,7 @@ mod tests {
                 7,
                 EntityModelKind::ArmorStand {
                     small,
+                    marker: false,
                     show_arms: true,
                     show_base_plate: true,
                     pose: DEFAULT_ARMOR_STAND_MODEL_POSE,

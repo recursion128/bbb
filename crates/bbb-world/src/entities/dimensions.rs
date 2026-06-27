@@ -269,6 +269,33 @@ pub(crate) fn vanilla_pick_bounds_for_entity_data(
     ))
 }
 
+pub(crate) fn vanilla_model_source_bounds_for_entity_data(
+    entity_type_id: i32,
+    add_entity_data: i32,
+    data_values: &[EntityDataValue],
+    attributes: &[AttributeSnapshot],
+    client_animations: Option<EntityClientAnimationState>,
+) -> Option<EntityPickBoundsState> {
+    if entity_type_id == VANILLA_ENTITY_TYPE_ARMOR_STAND_ID && armor_stand_is_marker(data_values) {
+        // Vanilla `ArmorStand.MARKER_DIMENSIONS = EntityDimensions.fixed(0.0F, 0.0F)`:
+        // marker stands are not pickable, but they still submit their marker render model.
+        let bounds = EntityPickBoundsState::from_base_size(0.0, 0.0, 0.0);
+        return Some(apply_living_scale(
+            entity_type_id,
+            bounds,
+            attributes,
+            scales_with_living_scale_attribute(entity_type_id, data_values),
+        ));
+    }
+    vanilla_pick_bounds_for_entity_data(
+        entity_type_id,
+        add_entity_data,
+        data_values,
+        attributes,
+        client_animations,
+    )
+}
+
 pub(crate) fn vanilla_eye_height_for_entity_data(
     entity_type_id: i32,
     add_entity_data: i32,
@@ -618,8 +645,8 @@ fn wind_charge_pick_bounds() -> EntityPickBoundsState {
 }
 
 fn armor_stand_pick_bounds(data_values: &[EntityDataValue]) -> Option<EntityPickBoundsState> {
-    let flags = entity_data_byte(data_values, ARMOR_STAND_CLIENT_FLAGS_DATA_ID, 0);
-    if flags & ARMOR_STAND_CLIENT_FLAG_MARKER != 0 {
+    let flags = armor_stand_client_flags(data_values);
+    if armor_stand_is_marker(data_values) {
         return None;
     }
     if entity_data_pose(data_values) == VANILLA_POSE_SLEEPING_ID {
@@ -635,6 +662,14 @@ fn armor_stand_pick_bounds(data_values: &[EntityDataValue]) -> Option<EntityPick
         ARMOR_STAND_HEIGHT * scale,
         0.0,
     ))
+}
+
+fn armor_stand_client_flags(data_values: &[EntityDataValue]) -> i8 {
+    entity_data_byte(data_values, ARMOR_STAND_CLIENT_FLAGS_DATA_ID, 0)
+}
+
+fn armor_stand_is_marker(data_values: &[EntityDataValue]) -> bool {
+    armor_stand_client_flags(data_values) & ARMOR_STAND_CLIENT_FLAG_MARKER != 0
 }
 
 fn apply_living_scale(

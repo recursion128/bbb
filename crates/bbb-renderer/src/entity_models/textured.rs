@@ -973,10 +973,17 @@ fn textured_layer_submission(
     let (render_type, tint) = if meshes.current_force_transparent && layer_pass_is_base(pass) {
         let mut tint = pass.tint;
         tint[3] *= 38.0 / 255.0;
-        (
-            EntityModelLayerRenderType::EntityTranslucentCullItemTarget,
-            tint,
-        )
+        let render_type = if pass.kind == EntityModelLayerKind::ArmorStandBase
+            && pass.render_type == EntityModelLayerRenderType::EntityTranslucent
+        {
+            // Vanilla `ArmorStandRenderer.getRenderType`: marker armor stands use
+            // `entityTranslucent(texture, false)` for the force-transparent branch,
+            // instead of the generic living `entityTranslucentCullItemTarget`.
+            EntityModelLayerRenderType::EntityTranslucent
+        } else {
+            EntityModelLayerRenderType::EntityTranslucentCullItemTarget
+        };
+        (render_type, tint)
     } else {
         (pass.render_type, pass.tint)
     };

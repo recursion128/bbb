@@ -188,12 +188,14 @@ fn armor_stand_mesh_uses_vanilla_visibility_and_pose_state() {
 fn armor_stand_texture_refs_match_vanilla_renderer() {
     let adult = EntityModelKind::ArmorStand {
         small: false,
+        marker: false,
         show_arms: false,
         show_base_plate: true,
         pose: DEFAULT_ARMOR_STAND_MODEL_POSE,
     };
     let small = EntityModelKind::ArmorStand {
         small: true,
+        marker: false,
         show_arms: false,
         show_base_plate: true,
         pose: DEFAULT_ARMOR_STAND_MODEL_POSE,
@@ -299,6 +301,77 @@ fn armor_stand_textured_mesh_matches_colored_geometry_and_visibility() {
         assert_close3(tmin, cmin);
         assert_close3(tmax, cmax);
     }
+}
+
+#[test]
+fn armor_stand_marker_render_type_follows_vanilla_visibility_branch() {
+    let (atlas, _) = build_entity_model_texture_atlas(&armor_stand_texture_images()).unwrap();
+    let visible_marker = EntityModelInstance::armor_stand_with_marker(
+        9,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        true,
+        false,
+        true,
+        DEFAULT_ARMOR_STAND_MODEL_POSE,
+    )
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
+
+    let visible = entity_model_textured_meshes(&[visible_marker], &atlas);
+    assert_eq!(visible.submissions.len(), 1);
+    let submit = visible.submissions[0];
+    assert_eq!(submit.texture, ARMOR_STAND_TEXTURE_REF);
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        submit.transform,
+        entity_model_root_transform(visible_marker)
+    );
+    assert_eq!(submit.light, visible_marker.render_state.shader_light());
+    assert_eq!(submit.overlay, visible_marker.render_state.overlay_coords());
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert!(!visible.cutout.vertices.is_empty());
+    assert!(visible.translucent.vertices.is_empty());
+
+    let hidden_invisible = visible_marker.with_invisible(true);
+    let hidden = entity_model_textured_meshes(&[hidden_invisible], &atlas);
+    assert!(hidden.submissions.is_empty());
+    assert!(hidden.cutout.vertices.is_empty());
+    assert!(hidden.translucent.vertices.is_empty());
+
+    let self_visible_invisible = hidden_invisible.with_invisible_to_player(false);
+    let self_visible = entity_model_textured_meshes(&[self_visible_invisible], &atlas);
+    assert_eq!(self_visible.submissions.len(), 1);
+    let submit = self_visible.submissions[0];
+    assert_eq!(submit.texture, ARMOR_STAND_TEXTURE_REF);
+    // Vanilla `ArmorStandRenderer.getRenderType`: marker force-transparent uses
+    // `RenderTypes.entityTranslucent(texture, false)`, not the generic living
+    // `entityTranslucentCullItemTarget`.
+    assert_eq!(
+        submit.render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(submit.render_type.vanilla_name(), "entityTranslucent");
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 38.0 / 255.0]);
+    assert_eq!(
+        submit.transform,
+        entity_model_root_transform(self_visible_invisible)
+    );
+    assert_eq!(
+        submit.light,
+        self_visible_invisible.render_state.shader_light()
+    );
+    assert_eq!(
+        submit.overlay,
+        self_visible_invisible.render_state.overlay_coords()
+    );
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert!(self_visible.cutout.vertices.is_empty());
+    assert!(!self_visible.translucent.vertices.is_empty());
 }
 
 fn armor_stand_texture_images() -> Vec<EntityModelTextureImage> {
