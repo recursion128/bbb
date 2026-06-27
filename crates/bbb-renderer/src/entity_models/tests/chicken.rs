@@ -336,21 +336,30 @@ fn chicken_textured_mesh_uses_vanilla_uvs_tints_and_variant_textures() {
             0.0,
             ChickenModelVariant::Temperate,
             false,
-        ),
+        )
+        .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true),
         EntityModelInstance::chicken_variant(
             402,
             [1.0, 64.0, 0.0],
             0.0,
             ChickenModelVariant::Cold,
             false,
-        ),
+        )
+        .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true),
         EntityModelInstance::chicken_variant(
             403,
             [2.0, 64.0, 0.0],
             0.0,
             ChickenModelVariant::Warm,
             true,
-        ),
+        )
+        .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true),
     ];
     let meshes = entity_model_textured_meshes(&instances, &atlas);
     assert_chicken_submissions_match_vanilla(&meshes, &instances);
@@ -365,6 +374,10 @@ fn chicken_textured_mesh_uses_vanilla_uvs_tints_and_variant_textures() {
     assert_eq!(mesh.vertices[192].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_close2(mesh.vertices[432].uv, [8.0 / 64.0, 80.0 / 144.0]);
     assert_eq!(mesh.vertices[432].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert!(mesh.vertices.iter().all(|vertex| vertex.light
+        == instances[0].render_state.shader_light()
+        && vertex.overlay == instances[0].render_state.overlay_coords()));
+    assert_ne!(instances[0].render_state.overlay_coords(), [0.0, 10.0]);
 }
 
 #[test]
@@ -472,6 +485,8 @@ fn assert_chicken_submissions_match_vanilla(
         assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
         assert_eq!(submit.transform, entity_model_root_transform(instance));
         assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+        assert_eq!(submit.light, instance.render_state.shader_light());
+        assert_eq!(submit.overlay, instance.render_state.overlay_coords());
     }
 }
 

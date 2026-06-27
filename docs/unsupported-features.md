@@ -1480,6 +1480,7 @@ When an agent does any of the following, update this file in the same slice:
       selection, official PNG atlas upload/bind/sample path, and tests that now pin
       emitted base submissions as vanilla `entityCutout` with selected variant texture,
       white tint, `entity_model_root_transform`, and `(order, submit_sequence) == (0, 0)`,
+      plus `MobRenderer` / `LivingEntityRenderer` `lightCoords` and hurt/white overlay metadata,
       before folded cutout geometry checks, and the vanilla
       `ChickenModel.setupAnim` two-leg walk swing (the `HumanoidModel` phase
       `cos(pos * 0.6662 [+ π]) * 1.4 * speed`, legs at `[2, 3]` adult/cold and
@@ -1490,7 +1491,7 @@ When an agent does any of the following, update this file in the same slice:
       and `ChickenModel.setupAnim` applies `(sin(flap) + 1) * flapSpeed` to
       `right_wing.zRot` / `-left_wing.zRot` on adult, cold, and baby models. The
       chicken has no head look in vanilla (`ChickenModel` never animates the head).
-      Variant sound metadata, custom/datapack chicken variant asset decoding, and lighting
+      Variant sound metadata, custom/datapack chicken variant asset decoding, and broader lighting presentation
       remain unsupported
     - pig entities as renderer-owned vanilla 26.1
       `PigModel`, `ColdPigModel`, and `BabyPigModel` body-layer geometry from
