@@ -2969,9 +2969,10 @@ When an agent does any of the following, update this file in the same slice:
       submission, including base entity light plus hurt/white overlay and the emissive eyes pass's
       entity light plus
       `getOverlayCoords(state, 0.0F)` red-row/zero-white overlay, before checking folded
-      cutout/eyes geometry. Only the tearing-down death-flicker (`hasGlowingEyes`, a client-tick
-      toggle) stays deferred. The colored debug path stays as a fallback (it approximates the whole
-      model with one dark-bark tint)
+      cutout/eyes geometry; missing-atlas coverage proves the eyes submission is still recorded without
+      `creaking_eyes.png` while only folded emissive geometry is suppressed. Only the tearing-down
+      death-flicker (`hasGlowingEyes`, a client-tick toggle) stays deferred. The colored debug path
+      stays as a fallback (it approximates the whole model with one dark-bark tint)
     - sniffer entities as renderer-owned vanilla 26.1 `SnifferModel.createBodyLayer()` geometry on
       the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `119`
       to the new `EntityModelKind::Sniffer`, replacing the former cow-quadruped approximation (the
