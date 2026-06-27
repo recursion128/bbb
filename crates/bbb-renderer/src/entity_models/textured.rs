@@ -800,14 +800,7 @@ fn emit_boat_water_mask_submission(
     // default visible-above-water path records the submission while GPU presentation remains deferred.
     let passes = boat_textured_layer_passes(family, chest);
     let pass = passes[1];
-    let submit = no_overlay_submission(
-        pass.render_type,
-        pass.texture,
-        pass.tint,
-        boat_model_root_transform(instance),
-        pass.order,
-        pass.submit_sequence,
-    );
+    let submit = no_overlay_layer_submission(pass, boat_model_root_transform(instance));
     meshes.record_submission(submit);
 }
 
@@ -820,14 +813,7 @@ fn emit_trident_foil_submission(
     }
     let passes = trident_textured_layer_passes();
     let pass = passes[1];
-    let submit = no_overlay_submission(
-        pass.render_type,
-        pass.texture,
-        pass.tint,
-        trident_model_root_transform(instance),
-        pass.order,
-        pass.submit_sequence,
-    );
+    let submit = no_overlay_layer_submission(pass, trident_model_root_transform(instance));
     meshes.record_submission(submit);
 }
 
@@ -916,10 +902,18 @@ fn no_overlay_layer_submission(
     pass: EntityModelLayerPass,
     transform: Mat4,
 ) -> EntityModelSubmissionEmit {
+    no_overlay_layer_submission_with_tint(pass, pass.tint, transform)
+}
+
+fn no_overlay_layer_submission_with_tint(
+    pass: EntityModelLayerPass,
+    tint: [f32; 4],
+    transform: Mat4,
+) -> EntityModelSubmissionEmit {
     no_overlay_submission(
         pass.render_type,
         pass.texture,
-        pass.tint,
+        tint,
         transform,
         pass.order,
         pass.submit_sequence,
@@ -1082,14 +1076,7 @@ fn emit_wind_charge_scroll_model(
     let transform = wind_charge_model_root_transform(instance);
     let passes = wind_charge_textured_layer_passes();
     let pass = passes[0];
-    let submit = no_overlay_submission(
-        pass.render_type,
-        pass.texture,
-        pass.tint,
-        transform,
-        pass.order,
-        pass.submit_sequence,
-    );
+    let submit = no_overlay_layer_submission(pass, transform);
     let mut model = WindChargeModel::new();
     model.prepare(&instance);
     // Vanilla `WindChargeRenderer.xOffset(t) = t · 0.03`, taken `% 1.0`; `ageInTicks ≥ 0` so the Java
@@ -1124,14 +1111,7 @@ fn emit_breeze_wind_scroll_model(
     let transform = entity_model_root_transform(instance);
     let passes = breeze_textured_layer_passes();
     let pass = passes[1];
-    let submit = no_overlay_submission(
-        pass.render_type,
-        pass.texture,
-        pass.tint,
-        transform,
-        pass.order,
-        pass.submit_sequence,
-    );
+    let submit = no_overlay_layer_submission(pass, transform);
     let mut model = BreezeWindModel::new();
     model.prepare(&instance);
     // Vanilla `BreezeWindLayer.xOffset(t) = t · 0.02`, taken `% 1.0`; `ageInTicks ≥ 0` so the Java
@@ -1166,14 +1146,7 @@ fn emit_charged_creeper_energy_swirl(
     let transform = creeper_model_root_transform(instance);
     let passes = creeper_textured_layer_passes();
     let pass = passes[1];
-    let submit = no_overlay_submission(
-        pass.render_type,
-        pass.texture,
-        pass.tint,
-        transform,
-        pass.order,
-        pass.submit_sequence,
-    );
+    let submit = no_overlay_layer_submission(pass, transform);
     let mut model = CreeperModel::new_armor();
     model.prepare(&instance);
     // Vanilla creeper `xOffset(t) = t · 0.01`, taken `% 1.0` on both U and V.
@@ -1208,14 +1181,7 @@ fn emit_wither_energy_swirl(
     let transform = wither_model_root_transform(instance);
     let passes = wither_textured_layer_passes(instance.render_state.wither_invulnerable_ticks);
     let pass = passes[1];
-    let submit = no_overlay_submission(
-        pass.render_type,
-        pass.texture,
-        pass.tint,
-        transform,
-        pass.order,
-        pass.submit_sequence,
-    );
+    let submit = no_overlay_layer_submission(pass, transform);
     let mut model = WitherModel::new_armor();
     model.prepare(&instance);
     // Vanilla `WitherArmorLayer.xOffset(t) = cos(t · 0.02) · 3` on U (oscillating, not linear like the
@@ -1304,16 +1270,8 @@ fn emit_guardian_beam(
     let elder = matches!(instance.kind, EntityModelKind::Guardian { elder: true });
     let passes = guardian_textured_layer_passes(elder);
     let beam_pass = passes[1];
-    let submit = no_overlay_submission(
-        beam_pass.render_type,
-        beam_pass.texture,
-        tint,
-        transform,
-        beam_pass.order,
-        beam_pass.submit_sequence,
-    )
-    .with_light(ENTITY_VERTEX_FULL_BRIGHT_LIGHT)
-    .with_overlay(ENTITY_VERTEX_NO_OVERLAY);
+    let submit = no_overlay_layer_submission_with_tint(beam_pass, tint, transform)
+        .with_light(ENTITY_VERTEX_FULL_BRIGHT_LIGHT);
     render_scroll_geometry_submission(
         meshes,
         submit,
@@ -1404,14 +1362,7 @@ fn emit_end_crystal_beam(
         * Mat4::from_rotation_x(-horizontal_length.atan2(delta.y) - std::f32::consts::FRAC_PI_2);
     let passes = end_crystal_textured_layer_passes();
     let beam_pass = passes[1];
-    let submit = no_overlay_submission(
-        beam_pass.render_type,
-        beam_pass.texture,
-        beam_pass.tint,
-        transform,
-        beam_pass.order,
-        beam_pass.submit_sequence,
-    );
+    let submit = no_overlay_layer_submission(beam_pass, transform);
     emit_crystal_beam_submission(meshes, submit, atlas, delta.length(), age);
 }
 
@@ -1439,14 +1390,7 @@ fn emit_ender_dragon_beam(
         * Mat4::from_rotation_x(-horizontal_length.atan2(delta.y) - std::f32::consts::FRAC_PI_2);
     let passes = ender_dragon_textured_layer_passes();
     let beam_pass = passes[2];
-    let submit = no_overlay_submission(
-        beam_pass.render_type,
-        beam_pass.texture,
-        beam_pass.tint,
-        transform,
-        beam_pass.order,
-        beam_pass.submit_sequence,
-    );
+    let submit = no_overlay_layer_submission(beam_pass, transform);
     emit_crystal_beam_submission(
         meshes,
         submit,

@@ -1064,18 +1064,18 @@ When an agent does any of the following, update this file in the same slice:
       `breezeWind` / `energySwirl` residual emits now use a shared scrolled
       submission helper before folding into the scroll mesh buckets, with
       WindCharge, Breeze wind, charged Creeper armor, and powered Wither armor submits consuming
-      explicit layer-pass metadata before the scroll helper and missing-atlas tests pinning that
+      explicit layer-pass metadata through the pass-backed no-overlay emitter before the scroll helper and missing-atlas tests pinning that
       submission metadata is recorded before folded geometry is suppressed; Guardian
-      attack beams now consume explicit `GuardianBeam` pass metadata before
+      attack beams now consume explicit `GuardianBeam` pass metadata through the same pass-backed emitter before
       recording vanilla `entityCutout` submissions and folding their tiled custom geometry into the scroll bucket through the
       custom scroll-geometry submission helper; End Crystal
       now creates its vanilla `entityCutout` submission before the residual
       bob/spin geometry is folded through the standard submission helper, and
-      crystals with a beam target now consume explicit `EndCrystalBeam` pass metadata before
+      crystals with a beam target now consume explicit `EndCrystalBeam` pass metadata through the pass-backed emitter before
       recording vanilla `end_crystal_beam` submissions and folding their tiled prism geometry into the scroll
       bucket with preserved light / no-overlay metadata. Ender dragon nearest-crystal healing beams
       now project the
-      bobbed crystal `beamOffset`, consume explicit `EnderDragonBeam` pass metadata,
+      bobbed crystal `beamOffset`, consume explicit `EnderDragonBeam` pass metadata through that emitter,
       record the same vanilla `end_crystal_beam` submission after body+eyes, and then fold the
       shared eight-quad prism
       into the scroll bucket with preserved light / no-overlay metadata.
