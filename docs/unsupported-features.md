@@ -3875,8 +3875,10 @@ When an agent does any of the following, update this file in the same slice:
       `(order, submit_sequence) == (0, 0)` for base and `(1, 1)` for `CatCollarLayer`, and
       base `AgeableMobRenderer` / `LivingEntityRenderer` light plus hurt/white overlay versus
       `CatCollarLayer` entity light with zero-white overlay via
-      `getOverlayCoords(state, 0.0F)`, including folded cutout vertex metadata. Nothing on
-      the cat base/collar path stays deferred (only the feline pose animations above remain)
+      `getOverlayCoords(state, 0.0F)`, including folded cutout vertex metadata. Missing-atlas coverage
+      proves adult/baby collar submissions are still recorded without `cat_collar*.png` while only
+      folded collar geometry is suppressed. Nothing on the cat base/collar path stays deferred
+      (only the feline pose animations above remain)
     - mooshroom entities (adult and baby) as renderer-owned vanilla 26.1 cow-body geometry on the colored
       path: the native entity scene (`entity_scene.rs`) now maps vanilla type id `86` (adult and baby) to
       the new `EntityModelKind::Mooshroom` (`baby` selecting the layout), replacing the generic six-cube

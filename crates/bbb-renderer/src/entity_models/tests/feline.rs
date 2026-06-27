@@ -647,6 +647,103 @@ fn feline_textured_render_matches_vanilla_renderer() {
 }
 
 #[test]
+fn feline_collar_submission_survives_missing_texture_atlas_entry() {
+    // Vanilla `CatCollarLayer` calls the shared colored-cutout copy helper with `order(1)`;
+    // missing atlas data suppresses only the folded collar geometry.
+    let images = [
+        feline_texture_ref(true, false, CatModelVariant::Black),
+        feline_texture_ref(true, true, CatModelVariant::Black),
+    ]
+    .iter()
+    .enumerate()
+    .map(|(index, texture)| {
+        let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+        EntityModelTextureImage::new(*texture, vec![index as u8; len])
+    })
+    .collect::<Vec<_>>();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+
+    for (id, baby, collar_texture) in [
+        (902, false, FELINE_CAT_COLLAR_TEXTURE_REF),
+        (903, true, FELINE_CAT_COLLAR_BABY_TEXTURE_REF),
+    ] {
+        let bare = EntityModelInstance::feline(
+            id,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+            baby,
+            CatModelVariant::Black,
+            None,
+        )
+        .with_light_coords((5_u32 << 4) | (13_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
+        let bare_meshes = entity_model_textured_meshes(&[bare], &atlas);
+        assert_eq!(bare_meshes.submissions.len(), 1);
+
+        let collared = EntityModelInstance::feline(
+            id,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+            baby,
+            CatModelVariant::Black,
+            Some(EntityDyeColor::Lime),
+        )
+        .with_light_coords((5_u32 << 4) | (13_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
+        let meshes = entity_model_textured_meshes(&[collared], &atlas);
+
+        assert_eq!(meshes.submissions.len(), 2);
+        let base = meshes.submissions[0];
+        assert_eq!(
+            base.texture,
+            feline_texture_ref(true, baby, CatModelVariant::Black)
+        );
+        assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
+        let expected_transform = if baby {
+            entity_model_root_transform(collared)
+        } else {
+            mesh_transformer_scaled_model_root_transform(collared, FELINE_CAT_SCALE)
+        };
+        assert_eq!(base.transform, expected_transform);
+        assert_eq!((base.order, base.submit_sequence), (0, 0));
+        assert_eq!(base.light, collared.render_state.shader_light());
+        assert_eq!(base.overlay, collared.render_state.overlay_coords());
+
+        let collar = meshes.submissions[1];
+        assert_eq!(collar.texture, collar_texture);
+        assert_eq!(collar.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(collar.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(collar.tint, EntityDyeColor::Lime.texture_diffuse_color());
+        assert_eq!(collar.transform, expected_transform);
+        assert_eq!((collar.order, collar.submit_sequence), (1, 1));
+        assert_eq!(collar.light, base.light);
+        assert_eq!(collar.overlay, [0.0, base.overlay[1]]);
+        assert_ne!(collar.overlay, base.overlay);
+
+        assert_eq!(
+            meshes.cutout.vertices,
+            bare_meshes.cutout.vertices,
+            "missing {path} suppresses only folded collar geometry",
+            path = collar_texture.path
+        );
+        assert_eq!(meshes.cutout.indices, bare_meshes.cutout.indices);
+        assert!(meshes
+            .cutout
+            .vertices
+            .iter()
+            .all(|vertex| vertex.light == base.light && vertex.overlay == base.overlay));
+        assert!(meshes.translucent.vertices.is_empty());
+        assert!(meshes.eyes.vertices.is_empty());
+    }
+}
+
+#[test]
 fn feline_collar_layer_matches_vanilla_cat_collar_layer() {
     // Vanilla `CatCollarLayer`: a tame cat re-renders the mesh with `cat_collar.png` (adult) /
     // `cat_collar_baby.png` (baby), tinted by the dye's diffuse color. With no collar there is just
