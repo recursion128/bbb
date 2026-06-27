@@ -1538,12 +1538,14 @@ impl WorldStore {
                     .sample_block_light(entity_light_block_pos(target.position))
                     .unwrap_or(ENTITY_LIGHT_PROBE_FULL_BRIGHT);
                 if source.invisible_to_player
-                    && self.local_player_is_spectator()
                     && vanilla_living_entity_type(source.entity_type_id)
+                    && (self.local_player_is_spectator()
+                        || self.local_player_can_see_friendly_invisible(&source))
                 {
-                    // Vanilla `Entity.isInvisibleTo(player)`: spectator viewers can see invisible
-                    // entities, so `LivingEntityRenderState.isInvisibleToPlayer` is false and the
-                    // living renderer takes the force-transparent branch instead of the hidden branch.
+                    // Vanilla `Entity.isInvisibleTo(player)`: spectator viewers and same-team
+                    // viewers whose team enables `canSeeFriendlyInvisibles` can see invisible
+                    // living entities, so the renderer takes the force-transparent branch instead
+                    // of the hidden branch.
                     source.invisible_to_player = false;
                 }
                 // Vanilla `LivingEntityRenderState.isInWater = entity.isInWater()`: project
@@ -1589,14 +1591,33 @@ impl WorldStore {
         VANILLA_OPAQUE_ALPHA | rgb
     }
 
+    fn local_player_can_see_friendly_invisible(&self, source: &EntityModelSourceState) -> bool {
+        let Some(local_player_name) = self.local_player_scoreboard_name() else {
+            return false;
+        };
+        let target_name = self.entity_scoreboard_name(source);
+        self.scoreboard
+            .same_team_can_see_friendly_invisibles(&local_player_name, &target_name)
+    }
+
+    fn local_player_scoreboard_name(&self) -> Option<String> {
+        let local_player_id = self.local_player_id?;
+        let identity = self.entities.identity(local_player_id)?;
+        Some(self.scoreboard_name_for_identity(identity.entity_type_id, identity.uuid))
+    }
+
     fn entity_scoreboard_name(&self, source: &EntityModelSourceState) -> String {
-        if source.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
-            if let Some(player) = self.player_info_entry(source.uuid) {
+        self.scoreboard_name_for_identity(source.entity_type_id, source.uuid)
+    }
+
+    fn scoreboard_name_for_identity(&self, entity_type_id: i32, uuid: uuid::Uuid) -> String {
+        if entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
+            if let Some(player) = self.player_info_entry(uuid) {
                 return player.profile.name.clone();
             }
         }
 
-        source.uuid.to_string()
+        uuid.to_string()
     }
 
     pub fn enderman_carried_block_state(&self, entity_id: i32) -> Option<EntityBlockModelState> {

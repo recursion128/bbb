@@ -1017,6 +1017,102 @@ fn entity_model_sources_project_invisible_to_player_for_spectator_viewer() {
 }
 
 #[test]
+fn entity_model_sources_project_same_team_friendly_invisible_visibility() {
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
+    const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
+    const ENTITY_SHARED_FLAG_INVISIBLE: i8 = 1 << 5;
+
+    let mut store = WorldStore::new();
+    let local_uuid = Uuid::from_u128(0x33345678123456781234567812345678);
+    let chicken_uuid = Uuid::from_u128(0x44345678123456781234567812345678);
+    let minecart_uuid = Uuid::from_u128(0x55345678123456781234567812345678);
+
+    let mut local_player = protocol_add_entity_with_type(40, VANILLA_ENTITY_TYPE_PLAYER_ID);
+    local_player.uuid = local_uuid;
+    store.apply_add_entity(local_player);
+    store.apply_login(&protocol_play_login(40));
+    store.apply_player_info_update(ProtocolPlayerInfoUpdate {
+        actions: vec![ProtocolPlayerInfoAction::AddPlayer],
+        entries: vec![protocol_player_info_entry_with_mode(
+            local_uuid,
+            ProtocolGameType::Survival,
+        )],
+    });
+
+    let mut chicken = protocol_add_entity_with_type(41, VANILLA_ENTITY_TYPE_CHICKEN_ID);
+    chicken.uuid = chicken_uuid;
+    store.apply_add_entity(chicken);
+    let mut minecart = protocol_add_entity_with_type(42, VANILLA_ENTITY_TYPE_MINECART_ID);
+    minecart.uuid = minecart_uuid;
+    store.apply_add_entity(minecart);
+    for id in [41, 42] {
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![protocol_byte_data(
+                ENTITY_SHARED_FLAGS_DATA_ID,
+                ENTITY_SHARED_FLAG_INVISIBLE,
+            )],
+        }));
+    }
+
+    assert!(store.apply_set_player_team(ProtocolSetPlayerTeam {
+        name: "green".to_string(),
+        method: ProtocolPlayerTeamMethod::Add,
+        parameters: Some(ProtocolPlayerTeamParameters {
+            display_name: "Green".to_string(),
+            options: 0,
+            nametag_visibility: ProtocolTeamVisibility::Always,
+            collision_rule: ProtocolTeamCollisionRule::Always,
+            color: ProtocolChatFormatting::Green,
+            player_prefix: String::new(),
+            player_suffix: String::new(),
+        }),
+        players: vec![
+            "PickTarget".to_string(),
+            chicken_uuid.to_string(),
+            minecart_uuid.to_string(),
+        ],
+    }));
+
+    let hidden = store.entity_model_sources_at_partial_tick(1.0);
+    assert!(
+        hidden
+            .iter()
+            .find(|source| source.entity_id == 41)
+            .unwrap()
+            .invisible_to_player
+    );
+
+    assert!(store.apply_set_player_team(ProtocolSetPlayerTeam {
+        name: "green".to_string(),
+        method: ProtocolPlayerTeamMethod::Change,
+        parameters: Some(ProtocolPlayerTeamParameters {
+            display_name: "Green".to_string(),
+            options: 2,
+            nametag_visibility: ProtocolTeamVisibility::Always,
+            collision_rule: ProtocolTeamCollisionRule::Always,
+            color: ProtocolChatFormatting::Green,
+            player_prefix: String::new(),
+            player_suffix: String::new(),
+        }),
+        players: Vec::new(),
+    }));
+
+    let friendly_visible = store.entity_model_sources_at_partial_tick(1.0);
+    let friendly_chicken = friendly_visible
+        .iter()
+        .find(|source| source.entity_id == 41)
+        .unwrap();
+    let friendly_minecart = friendly_visible
+        .iter()
+        .find(|source| source.entity_id == 42)
+        .unwrap();
+    assert!(!friendly_chicken.invisible_to_player);
+    assert!(friendly_minecart.invisible_to_player);
+}
+
+#[test]
 fn entity_model_sources_project_glowing_shared_flag() {
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;

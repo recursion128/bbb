@@ -339,6 +339,50 @@ fn scoreboard_team_color_rgb_matches_vanilla_chat_formatting() {
 }
 
 #[test]
+fn scoreboard_same_team_friendly_invisibles_uses_team_options_bit() {
+    let mut store = WorldStore::new();
+
+    assert!(store.apply_set_player_team(protocol_set_player_team(
+        "green",
+        PlayerTeamMethod::Add,
+        Some(protocol_team_parameters(
+            "Green",
+            0,
+            TeamVisibility::Always,
+            TeamCollisionRule::Always,
+            ChatFormatting::Green,
+            "",
+            "",
+        )),
+        &["Viewer", "Target"],
+    )));
+    assert!(!store
+        .scoreboard()
+        .same_team_can_see_friendly_invisibles("Viewer", "Target"));
+
+    assert!(store.apply_set_player_team(protocol_set_player_team(
+        "green",
+        PlayerTeamMethod::Change,
+        Some(protocol_team_parameters(
+            "Green",
+            2,
+            TeamVisibility::Always,
+            TeamCollisionRule::Always,
+            ChatFormatting::Green,
+            "",
+            "",
+        )),
+        &[],
+    )));
+    assert!(store
+        .scoreboard()
+        .same_team_can_see_friendly_invisibles("Viewer", "Target"));
+    assert!(!store
+        .scoreboard()
+        .same_team_can_see_friendly_invisibles("Viewer", "Missing"));
+}
+
+#[test]
 fn scoreboard_ignored_updates_are_counted() {
     let mut store = WorldStore::new();
 

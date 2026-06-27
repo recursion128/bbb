@@ -67,6 +67,31 @@ impl ScoreboardState {
         let parameters = team.parameters.as_ref()?;
         chat_formatting_rgb(parameters.color.as_str())
     }
+
+    pub fn same_team_can_see_friendly_invisibles(
+        &self,
+        viewer_scoreboard_name: &str,
+        target_scoreboard_name: &str,
+    ) -> bool {
+        let Some(viewer_team) = self.team_for_scoreboard_name(viewer_scoreboard_name) else {
+            return false;
+        };
+        let Some(target_team) = self.team_for_scoreboard_name(target_scoreboard_name) else {
+            return false;
+        };
+
+        viewer_team.name == target_team.name
+            && target_team
+                .parameters
+                .as_ref()
+                .is_some_and(ScoreboardTeamParameters::can_see_friendly_invisibles)
+    }
+}
+
+impl ScoreboardTeamParameters {
+    pub fn can_see_friendly_invisibles(&self) -> bool {
+        self.options & 2 != 0
+    }
 }
 
 impl WorldStore {

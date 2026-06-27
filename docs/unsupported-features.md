@@ -362,10 +362,13 @@ When an agent does any of the following, update this file in the same slice:
       `EntityRenderState.outlineColor` is now projected from the scoreboard team
       color used by `Entity.getTeamColor()` (ordinary entities by UUID scoreboard
       name, players by GameProfile name) and recorded on texture-backed
-      submissions; missing/reset team color uses vanilla opaque white. Other
-      invisible-gated non-base layers still skip. Same-team friendly-invisible
-      visibility, colored-path force-transparent output, and GPU outline
-      presentation remain deferred under the `outlineColor` slot.
+      submissions; missing/reset team color uses vanilla opaque white.
+      Same-team friendly-invisible visibility now follows `PlayerTeam` option
+      bit 2 (`canSeeFriendlyInvisibles`) for the local player's team, clearing
+      `isInvisibleToPlayer` for living entities that vanilla would render
+      translucent. Other invisible-gated non-base layers still skip.
+      Colored-path force-transparent output and GPU outline presentation remain
+      deferred under the `outlineColor` slot.
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
       proportions applied in model `setupAnim`, distinct from the now-projected
