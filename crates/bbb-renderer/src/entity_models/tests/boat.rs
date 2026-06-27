@@ -445,6 +445,15 @@ fn boat_textured_mesh_uses_vanilla_uvs_tints_and_root_transform() {
     assert_eq!(mesh.cutout_faces, 216);
     assert_eq!(mesh.vertices.len(), 864);
     assert_eq!(mesh.indices.len(), 1296);
+    for (index, (start, end)) in [(0, 216), (216, 504), (504, 648), (648, 864)]
+        .into_iter()
+        .enumerate()
+    {
+        let base = meshes.submissions[index * 2];
+        assert!(mesh.vertices[start..end]
+            .iter()
+            .all(|vertex| vertex.light == base.light && vertex.overlay == base.overlay));
+    }
     assert_close2(mesh.vertices[0].uv, [31.0 / 128.0, 0.0]);
     assert_close2(mesh.vertices[216].uv, [31.0 / 128.0, 64.0 / 384.0]);
     assert_close2(mesh.vertices[504].uv, [32.0 / 128.0, 192.0 / 384.0]);
