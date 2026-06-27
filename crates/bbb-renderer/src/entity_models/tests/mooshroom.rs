@@ -108,22 +108,28 @@ fn mooshroom_exposes_stable_model_keys() {
 #[test]
 fn mooshroom_textured_render_reuses_cow_geometry_with_the_mooshroom_recolor() {
     // Vanilla `MushroomCowRenderer.getTextureLocation`: red/brown × adult/baby.
-    assert_eq!(
-        mooshroom_textured_layer_passes(false, MooshroomVariant::Red)[0].texture,
-        MOOSHROOM_TEXTURE_REF
-    );
-    assert_eq!(
-        mooshroom_textured_layer_passes(true, MooshroomVariant::Red)[0].texture,
-        MOOSHROOM_BABY_TEXTURE_REF
-    );
-    assert_eq!(
-        mooshroom_textured_layer_passes(false, MooshroomVariant::Brown)[0].texture,
-        MOOSHROOM_BROWN_TEXTURE_REF
-    );
-    assert_eq!(
-        mooshroom_textured_layer_passes(true, MooshroomVariant::Brown)[0].texture,
-        MOOSHROOM_BROWN_BABY_TEXTURE_REF
-    );
+    for (baby, variant, texture) in [
+        (false, MooshroomVariant::Red, MOOSHROOM_TEXTURE_REF),
+        (true, MooshroomVariant::Red, MOOSHROOM_BABY_TEXTURE_REF),
+        (false, MooshroomVariant::Brown, MOOSHROOM_BROWN_TEXTURE_REF),
+        (
+            true,
+            MooshroomVariant::Brown,
+            MOOSHROOM_BROWN_BABY_TEXTURE_REF,
+        ),
+    ] {
+        let passes = mooshroom_textured_layer_passes(baby, variant);
+        assert_eq!(passes.len(), 1);
+        assert_eq!(passes[0].kind, EntityModelLayerKind::MooshroomBase);
+        assert_eq!(passes[0].texture, texture);
+        assert_eq!(
+            passes[0].render_type,
+            EntityModelLayerRenderType::EntityCutout
+        );
+        assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
+        assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
+    }
     let texture = |baby, variant| {
         EntityModelKind::Mooshroom { baby, variant }
             .vanilla_texture_ref()
@@ -186,7 +192,10 @@ fn mooshroom_textured_render_reuses_cow_geometry_with_the_mooshroom_recolor() {
             EntityModelKind::Mooshroom { baby, variant },
             [0.0, 64.0, 0.0],
             0.0,
-        );
+        )
+        .with_light_coords((6_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
         let mooshroom = entity_model_textured_meshes(&[instance], &atlas);
         assert!(mooshroom.translucent.vertices.is_empty());
         assert!(mooshroom.eyes.vertices.is_empty());
@@ -198,6 +207,9 @@ fn mooshroom_textured_render_reuses_cow_geometry_with_the_mooshroom_recolor() {
         assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
         assert_eq!(submit.transform, entity_model_root_transform(instance));
         assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+        assert_eq!(submit.light, instance.render_state.shader_light());
+        assert_eq!(submit.overlay, instance.render_state.overlay_coords());
+        assert_ne!(submit.overlay, [0.0, 10.0]);
 
         // The mooshroom reuses the cow tree, so it emits the same textured geometry the cow does.
         let cow = entity_model_textured_meshes(
@@ -213,6 +225,8 @@ fn mooshroom_textured_render_reuses_cow_geometry_with_the_mooshroom_recolor() {
             .cutout
             .vertices
             .iter()
-            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]
+                && vertex.light == submit.light
+                && vertex.overlay == submit.overlay));
     }
 }

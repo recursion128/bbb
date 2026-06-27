@@ -3709,8 +3709,10 @@ When an agent does any of the following, update this file in the same slice:
       `EntityModelKind::Mooshroom` carries a `variant` projected from the synced `MushroomCow.DATA_TYPE`
       (index 20 INT, `ByIdMap` CLAMP, `Red` default) which binds `mooshroom_{red,brown}[_baby].png` on
       the textured path (the two brown faces join the master atlas array → 361); tests now pin all
-      red/brown adult/baby body submissions as vanilla `entityCutout` with white tint, the shared living
-      root transform, and `(order, submit_sequence) == (0, 0)` before comparing the folded cow geometry.
+      red/brown adult/baby body submissions with the `MooshroomBase` pass identity, vanilla `entityCutout`
+      render type/name, white tint, the shared living root transform, `(order, submit_sequence) == (0, 0)`,
+      and `AgeableMobRenderer` / `LivingEntityRenderer` `lightCoords` plus hurt/white overlay metadata before
+      comparing the folded cow geometry.
       The adult-only
       mushroom block-model layer (`MushroomCowMushroomLayer`) is now implemented through the
       entity-attached block-model path: red mooshrooms resolve `Blocks.RED_MUSHROOM.defaultBlockState()`,

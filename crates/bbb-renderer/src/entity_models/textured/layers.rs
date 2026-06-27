@@ -43,6 +43,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     HoglinBase,
     LlamaSpitBase,
     LlamaBase,
+    MooshroomBase,
     IronGolemBase,
     IronGolemCrackiness,
     PigBase,
@@ -1130,7 +1131,9 @@ pub(in crate::entity_models) fn mooshroom_textured_layer_passes(
         EntityModelLayerRenderType::EntityCutout,
         mooshroom_texture_ref(baby, variant),
         [1.0, 1.0, 1.0, 1.0],
-    )]
+    )
+    .with_kind(EntityModelLayerKind::MooshroomBase)
+    .with_order(0, 0)]
 }
 
 pub(in crate::entity_models) fn arrow_textured_layer_passes(
