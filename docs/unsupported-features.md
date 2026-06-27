@@ -2777,9 +2777,9 @@ When an agent does any of the following, update this file in the same slice:
       the wind body folding into the scroll mesh and U-scrolling past the looped idle, plus vanilla
       submission metadata: base `entityTranslucent` keeps entity light plus hurt/white overlay, while
       `BreezeEyesLayer` and `BreezeWindLayer` preserve entity light and force `OverlayTexture.NO_OVERLAY`
-      before folded eyes vertices inherit their submit metadata; the folded scroll mesh still stores
-      scroll-local UV/tint only, so per-vertex scroll light/overlay presentation remains a later GPU path
-      detail. Breeze is now
+      before folded eyes and scroll vertices inherit their submit metadata; `BreezeWindLayer` now also
+      pins the vanilla `breezeWind` render-type name, and missing-atlas coverage proves the wind submit
+      survives without `breeze_wind.png` while only folded scroll geometry is suppressed. Breeze is now
       fully aligned with vanilla 26.1
     - dolphin entities are wired end to end on both render paths off the real vanilla 26.1
       `DolphinModel`: the native entity scene (`entity_scene.rs`) projects vanilla type id `35` to

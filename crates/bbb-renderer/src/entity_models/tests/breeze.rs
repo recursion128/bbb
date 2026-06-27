@@ -329,6 +329,7 @@ fn breeze_wind_body_folds_into_scrolling_overlay() {
         .iter()
         .find(|submit| submit.render_type == EntityModelLayerRenderType::BreezeWind)
         .expect("breeze emits a breezeWind layer submit");
+    assert_eq!(wind_submit.render_type.vanilla_name(), "breezeWind");
     assert_eq!(wind_submit.texture, BREEZE_WIND_TEXTURE_REF);
     assert_eq!(wind_submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(wind_submit.order, 1);
@@ -339,6 +340,11 @@ fn breeze_wind_body_folds_into_scrolling_overlay() {
     assert_ne!(wind_submit.overlay, body_submit.overlay);
     assert_eq!(meshes.scroll.vertices.len(), 168);
     assert_eq!(meshes.scroll.indices.len(), 42 * 6);
+    assert!(meshes
+        .scroll
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == wind_submit.light && vertex.overlay == wind_submit.overlay));
     assert!(meshes.scroll_additive.vertices.is_empty());
 
     // The wind body sways with the looping IDLE and its U coordinate scrolls by `ageInTicks · 0.02`;
@@ -360,6 +366,60 @@ fn breeze_wind_body_folds_into_scrolling_overlay() {
         meshes.scroll.vertices, shooting.scroll.vertices,
         "the shoot action re-poses the wind body"
     );
+}
+
+#[test]
+fn breeze_wind_submission_survives_missing_wind_texture_atlas_entry() {
+    // Vanilla `BreezeWindLayer` records an order(1) `breezeWind` submit after the base body; missing
+    // wind texture data suppresses only the folded scrolling wind-body geometry.
+    let images: Vec<_> = breeze_texture_images()
+        .into_iter()
+        .filter(|image| image.texture != BREEZE_WIND_TEXTURE_REF)
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let base = EntityModelInstance::breeze(971, [0.0, 64.0, 0.0], 0.0)
+        .with_light_coords((2_u32 << 4) | (14_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[base], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 3);
+    let body_submit = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == BREEZE_TEXTURE_REF)
+        .expect("breeze emits a base body submit");
+    assert_eq!(
+        body_submit.render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(body_submit.render_type.vanilla_name(), "entityTranslucent");
+    assert_eq!(body_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(body_submit.transform, entity_model_root_transform(base));
+    assert_eq!((body_submit.order, body_submit.submit_sequence), (0, 0));
+    assert_eq!(body_submit.light, base.render_state.shader_light());
+    assert_eq!(body_submit.overlay, base.render_state.overlay_coords());
+    assert!(!meshes.translucent.vertices.is_empty());
+
+    let wind_submit = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.render_type == EntityModelLayerRenderType::BreezeWind)
+        .expect("breeze records a breezeWind submit before atlas lookup");
+    assert_eq!(wind_submit.render_type.vanilla_name(), "breezeWind");
+    assert_eq!(wind_submit.texture, BREEZE_WIND_TEXTURE_REF);
+    assert_eq!(wind_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(wind_submit.transform, entity_model_root_transform(base));
+    assert_eq!((wind_submit.order, wind_submit.submit_sequence), (1, 1));
+    assert_eq!(wind_submit.light, body_submit.light);
+    assert_eq!(wind_submit.overlay, [0.0, 10.0]);
+    assert_ne!(wind_submit.overlay, body_submit.overlay);
+    assert!(
+        meshes.scroll.vertices.is_empty(),
+        "missing breeze_wind.png suppresses only folded wind-body geometry"
+    );
+    assert!(meshes.scroll.indices.is_empty());
 }
 
 fn breeze_texture_images() -> Vec<EntityModelTextureImage> {
