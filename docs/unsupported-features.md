@@ -3470,7 +3470,7 @@ When an agent does any of the following, update this file in the same slice:
       seam) with the `0.1` alpha cutout, translucent-blended and depth-writing. The one simplification is
       lighting: vanilla `breezeWind` is lightmap-lit with `NO_CARDINAL_LIGHTING`, while the scroll shader is
       full-bright (a glowing projectile reads the same in practice). The wind charge records this as a
-      `breezeWind` submit with collector order `0` and vanilla `OverlayTexture.NO_OVERLAY`, with folded
+      `breezeWind` submit with vanilla render-type name coverage, collector order `0`, and vanilla `OverlayTexture.NO_OVERLAY`, with folded
       scroll vertices now retaining that submission light/no-overlay metadata. Breeze's separate
       `BreezeWindLayer` records order `1` and the same no-overlay submit metadata, ahead of the same-order
       eyes layer per `BreezeRenderer.addLayer` order. The colored debug path stays as a fallback

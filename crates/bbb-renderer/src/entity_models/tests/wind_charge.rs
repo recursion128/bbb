@@ -110,6 +110,7 @@ fn wind_charge_textured_render_matches_vanilla_renderer() {
         rest.submissions[0].render_type,
         EntityModelLayerRenderType::BreezeWind
     );
+    assert_eq!(rest.submissions[0].render_type.vanilla_name(), "breezeWind");
     assert_eq!(rest.submissions[0].texture, WIND_CHARGE_TEXTURE_REF);
     assert_eq!(rest.submissions[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(rest.submissions[0].order, 0);
@@ -190,6 +191,7 @@ fn wind_charge_breeze_wind_submission_survives_missing_texture_atlas_entry() {
     assert_eq!(meshes.submissions.len(), 1);
     let submit = meshes.submissions[0];
     assert_eq!(submit.render_type, EntityModelLayerRenderType::BreezeWind);
+    assert_eq!(submit.render_type.vanilla_name(), "breezeWind");
     assert_eq!(submit.texture, WIND_CHARGE_TEXTURE_REF);
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
