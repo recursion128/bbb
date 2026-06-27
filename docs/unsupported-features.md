@@ -1045,7 +1045,7 @@ When an agent does any of the following, update this file in the same slice:
       Uniform layer passes, Creaking base+eyes submits, Warden retained
       emissive layers, Breeze base/eyes/wind, Shulker color/default base
       submits, Shulker bullet's two submits, WindCharge `breezeWind`,
-      charged-creeper / wither `energySwirl`,
+      wither normal/invulnerable base submits, charged-creeper / wither `energySwirl`,
       humanoid armor `armorCutoutNoCull`, horse/donkey/undead-horse
       base+saddle/body-armor submits, horse markings, villager
       profession/type/level overlays, custom-head skull submissions, player
@@ -2966,7 +2966,9 @@ When an agent does any of the following, update this file in the same slice:
       and swaps to `wither_invulnerable.png` via the vanilla `getTextureLocation` flicker (solid above 80
       ticks, then alternating every 5 ticks) off the projected `WitherRenderState.invulnerableTicks`
       (`DATA_ID_INV`, lerped `invulnerableTicks - partialTicks`), with both the colored and textured paths
-      wired. The `WitherArmorLayer` powered energy-swirl overlay is now wired: when `isPowered`
+      wired; tests pin the selected normal/invulnerable texture, vanilla `entityCutout`, white tint,
+      root transform, and `order(0)` submission metadata before checking folded geometry. The
+      `WitherArmorLayer` powered energy-swirl overlay is now wired: when `isPowered`
       (vanilla `WitherBoss.isPowered() = getHealth() <= getMaxHealth() / 2`, projected from the synced
       `LivingEntity.DATA_HEALTH_ID` against the wither's `300` base max-health), the inflated `WITHER_ARMOR`
       model (`WitherBossModel.createBodyLayer(INNER_ARMOR_DEFORMATION)` = `CubeDeformation(0.5)`, driven by

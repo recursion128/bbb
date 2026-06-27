@@ -236,24 +236,27 @@ fn wither_textured_render_matches_vanilla_renderer() {
         })
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let instance = EntityModelInstance::wither(1450, [0.0, 64.0, 0.0], 0.0);
-    let meshes = entity_model_textured_meshes(&[instance], &atlas);
-    assert_eq!(meshes.submissions.len(), 1);
-    let submit = meshes.submissions[0];
-    assert_eq!(submit.texture, WITHER_TEXTURE_REF);
-    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
-    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(submit.order, 0);
-    assert_eq!(submit.submit_sequence, 0);
-    assert_eq!(submit.transform, wither_model_root_transform(instance));
+    // A fully-spawned and a mid-spawn (invulnerable) wither both emit base submissions and folded
+    // cutout geometry tinted white; only the selected texture differs.
+    for (invulnerable_ticks, expected_texture) in [
+        (0.0, WITHER_TEXTURE_REF),
+        (220.0, WITHER_INVULNERABLE_TEXTURE_REF),
+    ] {
+        let instance = EntityModelInstance::wither(1450, [0.0, 64.0, 0.0], 0.0)
+            .with_wither_invulnerable_ticks(invulnerable_ticks);
+        let meshes = entity_model_textured_meshes(&[instance], &atlas);
+        assert!(meshes.translucent.vertices.is_empty());
+        assert!(meshes.eyes.vertices.is_empty());
+        assert_eq!(meshes.submissions.len(), 1);
+        let submit = meshes.submissions[0];
+        assert_eq!(submit.texture, expected_texture);
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(submit.transform, wither_model_root_transform(instance));
+        assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+        let mesh = &meshes.cutout;
 
-    // A fully-spawned and a mid-spawn (invulnerable) wither both emit textured geometry tinted white.
-    for invulnerable_ticks in [0.0, 220.0] {
-        let mesh = entity_model_textured_mesh(
-            &[EntityModelInstance::wither(1450, [0.0, 64.0, 0.0], 0.0)
-                .with_wither_invulnerable_ticks(invulnerable_ticks)],
-            &atlas,
-        );
         assert!(!mesh.vertices.is_empty());
         assert!(mesh
             .vertices
