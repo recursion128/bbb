@@ -118,8 +118,11 @@ fn trident_textured_mesh_uses_vanilla_uvs_and_geometry() {
         })
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let instance =
-        EntityModelInstance::trident(1350, [1.0, 64.0, -2.0], 37.0).with_head_look(0.0, -18.0);
+    let instance = EntityModelInstance::trident(1350, [1.0, 64.0, -2.0], 37.0)
+        .with_head_look(0.0, -18.0)
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
     assert_eq!(meshes.submissions.len(), 1);
     let submit = meshes.submissions[0];
@@ -129,6 +132,9 @@ fn trident_textured_mesh_uses_vanilla_uvs_and_geometry() {
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
     assert_eq!(submit.transform, trident_model_root_transform(instance));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, [0.0, 10.0]);
+    assert_ne!(submit.overlay, instance.render_state.overlay_coords());
 
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());

@@ -174,7 +174,9 @@ fn ender_dragon_healing_beam_records_vanilla_submission_and_geometry() {
     let beam_offset = [6.0, -0.1, 8.0];
     let instance = EntityModelInstance::ender_dragon(430, position, 0.0)
         .with_age_in_ticks(age)
-        .with_ender_dragon_beam(Some(EnderDragonBeamRenderState { beam_offset }));
+        .with_ender_dragon_beam(Some(EnderDragonBeamRenderState { beam_offset }))
+        .with_light_coords((11_u32 << 4) | (5_u32 << 20))
+        .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
 
     assert_eq!(meshes.submissions.len(), 3);
@@ -195,6 +197,14 @@ fn ender_dragon_healing_beam_records_vanilla_submission_and_geometry() {
         )
     );
     assert_eq!(
+        meshes.submissions[0].light,
+        instance.render_state.shader_light()
+    );
+    assert_eq!(
+        meshes.submissions[0].overlay,
+        instance.render_state.overlay_coords()
+    );
+    assert_eq!(
         (
             meshes.submissions[1].render_type,
             meshes.submissions[1].texture,
@@ -210,6 +220,8 @@ fn ender_dragon_healing_beam_records_vanilla_submission_and_geometry() {
             1,
         )
     );
+    assert_eq!(meshes.submissions[1].light, meshes.submissions[0].light);
+    assert_eq!(meshes.submissions[1].overlay, [0.0, 10.0]);
 
     let beam_submit = meshes.submissions[2];
     assert_eq!(
@@ -220,6 +232,9 @@ fn ender_dragon_healing_beam_records_vanilla_submission_and_geometry() {
     assert_eq!(beam_submit.texture, END_CRYSTAL_BEAM_TEXTURE_REF);
     assert_eq!(beam_submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((beam_submit.order, beam_submit.submit_sequence), (0, 2));
+    assert_eq!(beam_submit.light, meshes.submissions[0].light);
+    assert_eq!(beam_submit.overlay, [0.0, 10.0]);
+    assert_ne!(beam_submit.overlay, meshes.submissions[0].overlay);
 
     let delta = Vec3::from_array(beam_offset);
     let origin = Vec3::from_array(position) + Vec3::Y * 2.0;

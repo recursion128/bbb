@@ -131,7 +131,10 @@ fn arrow_textured_render_matches_vanilla_renderer() {
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
     let instance =
         EntityModelInstance::arrow(60, [0.0, 64.0, 0.0], 35.0, ArrowModelTexture::Tipped)
-            .with_head_look(0.0, -12.0);
+            .with_head_look(0.0, -12.0)
+            .with_light_coords((4_u32 << 4) | (12_u32 << 20))
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
@@ -153,6 +156,9 @@ fn arrow_textured_render_matches_vanilla_renderer() {
     assert_eq!(submit.order, 0);
     assert_eq!(submit.submit_sequence, 0);
     assert_eq!(submit.transform, arrow_model_root_transform(instance));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, [0.0, 10.0]);
+    assert_ne!(submit.overlay, instance.render_state.overlay_coords());
 
     let shaken_meshes = entity_model_textured_meshes(&[instance.with_arrow_shake(4.5)], &atlas);
     assert_eq!(shaken_meshes.submissions[0].transform, submit.transform);

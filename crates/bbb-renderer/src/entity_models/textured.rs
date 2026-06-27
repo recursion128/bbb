@@ -55,20 +55,22 @@ use super::{
         ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
         ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
         ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
+        ARROW_SPECTRAL_TEXTURE_REF, ARROW_TEXTURE_REF, ARROW_TIPPED_TEXTURE_REF,
         BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, BREEZE_EYES_TEXTURE_REF,
         BREEZE_WIND_TEXTURE_REF, CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF,
         CREEPER_ARMOR_TEXTURE_REF, CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF,
         ENDERMAN_EYES_TEXTURE_REF, ENDER_DRAGON_EYES_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF,
         END_CRYSTAL_BEAM_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, END_CRYSTAL_TEXTURE_REF,
-        GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
-        LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
-        PHANTOM_EYES_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF,
-        PIG_SADDLE_TEXTURE_REF, PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
+        EVOKER_FANGS_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
+        LLAMA_BODY_TRADER_BABY_TEXTURE_REF, LLAMA_BODY_TRADER_TEXTURE_REF, LLAMA_SPIT_TEXTURE_REF,
+        MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF, PHANTOM_EYES_TEXTURE_REF,
+        PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF,
+        PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
         SHULKER_BULLET_TEXTURE_REF, SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF,
         SPIDER_EYES_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION, STRIDER_SADDLE_TEXTURE_REF,
-        WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF,
-        WOLF_BABY_COLLAR_TEXTURE_REF, WOLF_COLLAR_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
-        ZOMBIE_TEXTURE_REF,
+        TRIDENT_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF,
+        WITHER_SKELETON_TEXTURE_REF, WOLF_BABY_COLLAR_TEXTURE_REF, WOLF_COLLAR_TEXTURE_REF,
+        ZOMBIE_HORSE_SADDLE_TEXTURE_REF, ZOMBIE_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
@@ -623,7 +625,7 @@ fn emit_shulker_bullet_textured_model(
     let mut model = ShulkerBulletModel::new();
     model.prepare(&instance);
     let transform = shulker_bullet_model_root_transform(instance);
-    render_textured_pass_ordered(
+    render_textured_no_overlay_pass_ordered(
         meshes,
         &model,
         transform,
@@ -634,7 +636,7 @@ fn emit_shulker_bullet_textured_model(
         0,
         atlas,
     );
-    render_textured_pass_ordered(
+    render_textured_no_overlay_pass_ordered(
         meshes,
         &model,
         transform * Mat4::from_scale(Vec3::splat(1.5)),
@@ -657,7 +659,7 @@ fn emit_end_crystal_textured_model(
 ) {
     let root = end_crystal_model_root_transform(instance);
     let tint = [1.0, 1.0, 1.0, 1.0];
-    let submit = EntityModelSubmissionEmit::new(
+    let submit = no_overlay_submission(
         EntityModelLayerRenderType::EntityCutout,
         END_CRYSTAL_TEXTURE_REF,
         tint,
@@ -1026,6 +1028,12 @@ fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
         || pass.texture == SPIDER_EYES_TEXTURE_REF
         || pass.texture == WOLF_COLLAR_TEXTURE_REF
         || pass.texture == WOLF_BABY_COLLAR_TEXTURE_REF
+        || pass.texture == ARROW_TEXTURE_REF
+        || pass.texture == ARROW_TIPPED_TEXTURE_REF
+        || pass.texture == ARROW_SPECTRAL_TEXTURE_REF
+        || pass.texture == EVOKER_FANGS_TEXTURE_REF
+        || pass.texture == LLAMA_SPIT_TEXTURE_REF
+        || pass.texture == TRIDENT_TEXTURE_REF
 }
 
 /// Render a model's full textured layer-pass list (already prepared) into `meshes`.
@@ -1453,7 +1461,7 @@ fn emit_end_crystal_beam(
         * Mat4::from_translation(Vec3::new(0.0, 2.0, 0.0))
         * Mat4::from_rotation_y(-delta.z.atan2(delta.x) - std::f32::consts::FRAC_PI_2)
         * Mat4::from_rotation_x(-horizontal_length.atan2(delta.y) - std::f32::consts::FRAC_PI_2);
-    let submit = EntityModelSubmissionEmit::new(
+    let submit = no_overlay_submission(
         EntityModelLayerRenderType::EndCrystalBeam,
         END_CRYSTAL_BEAM_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
@@ -1486,7 +1494,7 @@ fn emit_ender_dragon_beam(
         * Mat4::from_translation(Vec3::new(0.0, 2.0, 0.0))
         * Mat4::from_rotation_y(-delta.z.atan2(delta.x) - std::f32::consts::FRAC_PI_2)
         * Mat4::from_rotation_x(-horizontal_length.atan2(delta.y) - std::f32::consts::FRAC_PI_2);
-    let submit = EntityModelSubmissionEmit::new(
+    let submit = no_overlay_submission(
         EntityModelLayerRenderType::EndCrystalBeam,
         END_CRYSTAL_BEAM_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],

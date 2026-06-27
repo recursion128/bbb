@@ -101,7 +101,10 @@ fn shulker_bullet_textured_render_matches_vanilla_renderer() {
         vec![0u8; len],
     )];
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let instance = EntityModelInstance::shulker_bullet(1130, [0.0, 64.0, 0.0], 0.0);
+    let instance = EntityModelInstance::shulker_bullet(1130, [0.0, 64.0, 0.0], 0.0)
+        .with_light_coords((8_u32 << 4) | (8_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
     assert_eq!(meshes.submissions.len(), 2);
     assert_eq!(
@@ -120,6 +123,11 @@ fn shulker_bullet_textured_render_matches_vanilla_renderer() {
     assert_eq!(meshes.submissions[1].order, 1);
     assert_eq!(meshes.submissions[0].submit_sequence, 0);
     assert_eq!(meshes.submissions[1].submit_sequence, 1);
+    for submit in &meshes.submissions {
+        assert_eq!(submit.light, instance.render_state.shader_light());
+        assert_eq!(submit.overlay, [0.0, 10.0]);
+        assert_ne!(submit.overlay, instance.render_state.overlay_coords());
+    }
     let base_transform = shulker_bullet_model_root_transform(instance);
     assert_eq!(meshes.submissions[0].transform, base_transform);
     assert_eq!(

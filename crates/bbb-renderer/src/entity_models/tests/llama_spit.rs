@@ -93,8 +93,11 @@ fn llama_spit_textured_render_matches_vanilla_renderer() {
         vec![0u8; len],
     )];
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let instance =
-        EntityModelInstance::llama_spit(790, [0.0, 64.0, 0.0], 35.0).with_head_look(0.0, -12.0);
+    let instance = EntityModelInstance::llama_spit(790, [0.0, 64.0, 0.0], 35.0)
+        .with_head_look(0.0, -12.0)
+        .with_light_coords((7_u32 << 4) | (9_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
@@ -106,6 +109,9 @@ fn llama_spit_textured_render_matches_vanilla_renderer() {
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(submit.transform, llama_spit_model_root_transform(instance));
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, [0.0, 10.0]);
+    assert_ne!(submit.overlay, instance.render_state.overlay_coords());
     assert_eq!(meshes.cutout.cutout_faces, 42);
     assert_eq!(meshes.cutout.vertices.len(), 168);
     assert_eq!(meshes.cutout.indices.len(), 252);

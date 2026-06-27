@@ -1024,7 +1024,9 @@ When an agent does any of the following, update this file in the same slice:
       same-order layer order; and `light` / `overlay` preserve per-submit
       `submitModel(... lightCoords, overlayCoords, ...)` inputs, including
       explicit `OverlayTexture.NO_OVERLAY` overrides for vanilla eyes,
-      `breezeWind`, energy-swirl, equipment, cape/wings, and wolf-collar layers, while the GPU
+      `breezeWind`, energy-swirl, equipment, cape/wings, wolf-collar layers,
+      object/projectile renderer submits (arrows, tridents, evoker fangs, llama spit,
+      shulker bullets, and end-crystal bodies), and crystal-beam submissions, while the GPU
       backend still folds compatible submits into shared meshes. The render-type expression is pinned by
       vanilla-name and mesh-bucket tests, so `entityCutout`,
       `entityCutoutCull`, `entityCutoutZOffset`, `Eyes`, `breezeWind`, and
@@ -1041,10 +1043,10 @@ When an agent does any of the following, update this file in the same slice:
       bob/spin geometry is folded through the standard submission helper, and
       crystals with a beam target now record vanilla `end_crystal_beam`
       submissions before their tiled prism geometry is folded into the scroll
-      bucket. Ender dragon nearest-crystal healing beams now project the
+      bucket with preserved light / no-overlay metadata. Ender dragon nearest-crystal healing beams now project the
       bobbed crystal `beamOffset`, record the same vanilla `end_crystal_beam`
       submission after body+eyes, and then fold the shared eight-quad prism
-      into the scroll bucket.
+      into the scroll bucket with preserved light / no-overlay metadata.
       Uniform layer passes, Creaking base+eyes submits, Warden retained
       emissive layers, Breeze base/eyes/wind, Shulker color/default base
       submits, Shulker bullet's two submits, WindCharge `breezeWind`,
@@ -3163,14 +3165,16 @@ When an agent does any of the following, update this file in the same slice:
       inner shells inherit the outer rotation) and the `EndCrystalRenderer.getY` vertical bob
       (`getY(age)·16/2` lifting the whole glass stack). The textured path now binds
       `textures/entity/end_crystal/end_crystal.png` as the vanilla default `entityCutout` submit with
-      collector order `0`, sequence `0`, white tint, and the same `scale(2)·translate(0,-0.5,0)` root
+      collector order `0`, sequence `0`, white tint, vanilla light coords,
+      `OverlayTexture.NO_OVERLAY`, and the same `scale(2)·translate(0,-0.5,0)` root
       transform; the colored debug path stays as the missing-atlas fallback with separate glass/core/base
       tints. The `EndCrystal.DATA_BEAM_TARGET` custom beam is now wired too: world projects
       `EndCrystal.DATA_BEAM_TARGET` (Optional<BlockPos> data id 8) as
       `Vec3.atCenterOf(target) - entity.getPosition(partialTicks)`, native forwards it as
       `EndCrystalRenderState.beamOffset`, and the renderer records
       `RenderTypes.endCrystalBeam(textures/entity/end_crystal/end_crystal_beam.png)` at order `0`,
-      sequence `1` before folding the eight-quad black/white prism into the tiled scroll mesh.
+      sequence `1` with vanilla light coords and `OverlayTexture.NO_OVERLAY` before folding the
+      eight-quad black/white prism into the tiled scroll mesh.
     - evoker fangs entities as renderer-owned vanilla 26.1 `EvokerFangsModel.createBodyLayer()` geometry on
       the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `47` to the new
       `EntityModelKind::EvokerFangs`, replacing the former placeholder bounds box. The static closed-jaw
@@ -3190,7 +3194,8 @@ When an agent does any of the following, update this file in the same slice:
       applies the standard flip and `-1.501` y-offset but a distinct `Ry(90 - yRot)` yaw (captured by
       `evoker_fangs_model_root_transform`). The base texture is bound on the textured path
       (`EVOKER_FANGS_TEXTURE_REF`), the primary path, with explicit submission metadata for vanilla
-      `entityCutout`, white tint, the renderer root transform, and `(order, submit_sequence) == (0, 0)`.
+      `entityCutout`, white tint, light coords, `OverlayTexture.NO_OVERLAY`, the renderer root transform,
+      and `(order, submit_sequence) == (0, 0)`.
       The colored debug path stays as a fallback (it renders a grey base and lighter-bone jaws)
     - leash knot entities as renderer-owned vanilla 26.1 `LeashKnotModel.createBodyLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `76` to the new
@@ -3221,7 +3226,8 @@ When an agent does any of the following, update this file in the same slice:
       via `arrow_texture_ref` — a tipped arrow (`TippableArrowRenderer`, `getColor() > 0` off the synced
       `ID_EFFECT_COLOR` 11) binds the tipped image, and the spectral-arrow type binds the spectral image.
       Tests now pin explicit submission metadata for vanilla `entityCutoutCull`, white tint,
-      `arrow_model_root_transform`, and `(order, submit_sequence) == (0, 0)` before checking the folded
+      light coords, `OverlayTexture.NO_OVERLAY`, `arrow_model_root_transform`, and
+      `(order, submit_sequence) == (0, 0)` before checking the folded
       shake-posed mesh. The colored debug path stays as a fallback (it renders the shaft cross and the head
       with two tints)
     - thrown trident entities as renderer-owned vanilla 26.1 `TridentModel.createLayer()` geometry on the
@@ -3235,7 +3241,7 @@ When an agent does any of the following, update this file in the same slice:
       / `head_pitch` and captured by `trident_model_root_transform`. The base texture is now bound on the
       textured path (`TRIDENT_TEXTURE_REF`), the primary now-wired path; the enchant-foil overlay pass
       stays deferred. The base submission explicitly records vanilla `order(0)`, `entityCutout`, white
-      tint, texture, and the flight-orientation transform. The colored debug path stays as a fallback (it
+      tint, texture, light coords, `OverlayTexture.NO_OVERLAY`, and the flight-orientation transform. The colored debug path stays as a fallback (it
       renders the pole/base in teal and the spikes lighter)
     - wither skull entities as renderer-owned vanilla 26.1 `WitherSkullRenderer.createSkullLayer()`
       (`SkullModel`) geometry on the colored path: the native entity scene (`entity_scene.rs`) projects
@@ -3261,8 +3267,9 @@ When an agent does any of the following, update this file in the same slice:
       along its flight with `translate(0, 0.15, 0)` then `Ry(yRot - 90)` then `Rz(xRot)`, projected through
       the instance's `body_rot` / `head_pitch` and captured by `llama_spit_model_root_transform`. The base
       texture is now bound on the textured path (`LLAMA_SPIT_TEXTURE_REF`), the primary now-wired path, with
-      explicit submission metadata for vanilla `entityCutout`, white tint, the renderer root transform, and
-      `(order, submit_sequence) == (0, 0)`. The colored debug path stays as a fallback (it renders the cross
+      explicit submission metadata for vanilla `entityCutout`, white tint, light coords,
+      `OverlayTexture.NO_OVERLAY`, the renderer root transform, and `(order, submit_sequence) == (0, 0)`.
+      The colored debug path stays as a fallback (it renders the cross
       with one tint)
     - shulker bullet entities as renderer-owned vanilla 26.1 `ShulkerBulletModel.createBodyLayer()` geometry
       on the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `113` to the
@@ -3275,8 +3282,8 @@ When an agent does any of the following, update this file in the same slice:
       captured by `shulker_bullet_model_root_transform`. The textured path now reproduces both vanilla
       submits over `SHULKER_BULLET_TEXTURE_REF`: the base `entityCutout` submit at order `0`, then the same
       posed model multiplied by `scale(1.5)` as `entityTranslucent` at order `1` with packed color
-      `0x26ffffff`. Submission metadata tests pin the texture, render types, alpha tint, transform, and
-      order. The colored debug path stays as a fallback (it renders the three slabs with one tint)
+      `0x26ffffff`. Submission metadata tests pin the texture, render types, alpha tint, transform, light,
+      `OverlayTexture.NO_OVERLAY`, and order. The colored debug path stays as a fallback (it renders the three slabs with one tint)
     - wind charge and breeze wind charge entities as renderer-owned vanilla 26.1
       `WindChargeModel.createBodyLayer()` geometry on the colored path: the native entity scene
       (`entity_scene.rs`) projects vanilla type ids `143` (wind charge) and `18` (breeze wind charge) — both
@@ -3327,8 +3334,10 @@ When an agent does any of the following, update this file in the same slice:
       `(0, 0)` / `(0, 1)`. The nearest-crystal
       healing beam is now source-projected from the closest tracked end crystal intersecting the vanilla
       inflated search box, includes the `EndCrystalRenderer.getY` bob in `beamOffset`, and records
-      `RenderTypes.endCrystalBeam(end_crystal_beam.png)` after body+eyes before folding the shared prism
-      geometry into the scroll mesh. The dying-dissolve render type stays deferred. The colored debug path stays as a fallback (it renders
+      `RenderTypes.endCrystalBeam(end_crystal_beam.png)` after body+eyes with preserved light and
+      `OverlayTexture.NO_OVERLAY` before folding the shared prism geometry into the scroll mesh.
+      The base body keeps the projected vanilla red overlay input; the eyes and healing beam record
+      no-overlay submits. The dying-dissolve render type stays deferred. The colored debug path stays as a fallback (it renders
       the body dark and the wing membranes a lighter tint)
     - area effect cloud, marker, and interaction entities now resolve to `EntityModelKind::NoRender`,
       which emits no geometry — exact parity with vanilla, whose `EntityRenderers` registers all three to

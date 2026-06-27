@@ -106,8 +106,11 @@ fn end_crystal_textured_submit_matches_vanilla_renderer() {
         blank_texture(END_CRYSTAL_BEAM_TEXTURE_REF),
     ];
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let instance =
-        EntityModelInstance::end_crystal(450, [0.0, 64.0, 0.0], 0.0).with_age_in_ticks(30.0);
+    let instance = EntityModelInstance::end_crystal(450, [0.0, 64.0, 0.0], 0.0)
+        .with_age_in_ticks(30.0)
+        .with_light_coords((9_u32 << 4) | (7_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
 
     assert_eq!(meshes.submissions.len(), 1);
@@ -118,6 +121,9 @@ fn end_crystal_textured_submit_matches_vanilla_renderer() {
     assert_eq!(submit.order, 0);
     assert_eq!(submit.submit_sequence, 0);
     assert_eq!(submit.transform, end_crystal_model_root_transform(instance));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, [0.0, 10.0]);
+    assert_ne!(submit.overlay, instance.render_state.overlay_coords());
 
     assert_eq!(meshes.cutout.vertices.len(), 96);
     assert_eq!(meshes.cutout.indices.len(), 144);
@@ -152,7 +158,10 @@ fn end_crystal_beam_records_vanilla_submission_and_geometry() {
     let beam_offset = [4.5, 3.5, -6.5];
     let instance = EntityModelInstance::end_crystal(451, position, 0.0)
         .with_age_in_ticks(age)
-        .with_end_crystal_beam(Some(EndCrystalBeamRenderState { beam_offset }));
+        .with_end_crystal_beam(Some(EndCrystalBeamRenderState { beam_offset }))
+        .with_light_coords((10_u32 << 4) | (6_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
 
     assert_eq!(meshes.submissions.len(), 2);
@@ -160,6 +169,11 @@ fn end_crystal_beam_records_vanilla_submission_and_geometry() {
         meshes.submissions[0].render_type,
         EntityModelLayerRenderType::EntityCutout
     );
+    assert_eq!(
+        meshes.submissions[0].light,
+        instance.render_state.shader_light()
+    );
+    assert_eq!(meshes.submissions[0].overlay, [0.0, 10.0]);
     let beam_submit = meshes.submissions[1];
     assert_eq!(
         beam_submit.render_type,
@@ -169,6 +183,9 @@ fn end_crystal_beam_records_vanilla_submission_and_geometry() {
     assert_eq!(beam_submit.texture, END_CRYSTAL_BEAM_TEXTURE_REF);
     assert_eq!(beam_submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((beam_submit.order, beam_submit.submit_sequence), (0, 1));
+    assert_eq!(beam_submit.light, meshes.submissions[0].light);
+    assert_eq!(beam_submit.overlay, [0.0, 10.0]);
+    assert_ne!(beam_submit.overlay, instance.render_state.overlay_coords());
 
     let origin = Vec3::from_array(position) + Vec3::from_array(beam_offset) + Vec3::Y * 2.0;
     assert_close3(
