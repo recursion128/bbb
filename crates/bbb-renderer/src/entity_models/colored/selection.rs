@@ -66,7 +66,10 @@ pub(in crate::entity_models) fn camel_model_color(family: CamelModelFamily) -> [
     }
 }
 
-pub(super) fn llama_model_color(_family: LlamaModelFamily, variant: LlamaVariant) -> [f32; 4] {
+pub(in crate::entity_models) fn llama_model_color(
+    _family: LlamaModelFamily,
+    variant: LlamaVariant,
+) -> [f32; 4] {
     match variant {
         LlamaVariant::Creamy => LLAMA_CREAMY,
         LlamaVariant::White => LLAMA_WHITE,

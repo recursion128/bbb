@@ -1,6 +1,4 @@
-use super::super::catalog::{
-    DonkeyModelFamily, LlamaModelFamily, LlamaVariant, UndeadHorseModelFamily,
-};
+use super::super::catalog::{DonkeyModelFamily, UndeadHorseModelFamily};
 use glam::Mat4;
 
 use super::super::geometry::{
@@ -8,11 +6,10 @@ use super::super::geometry::{
     part_pose_transform, EntityModelMesh, ModelPartDesc,
 };
 use super::super::instances::EntityModelInstance;
-use super::super::model::EntityModel;
 use super::super::model_layers::{
     equine_head_look_pose, equine_leg_swing_pose, equine_tail_swing_pose, head_look_at_rest,
-    limb_swing_at_rest, LlamaModel, ADULT_DONKEY_PARTS, ADULT_DONKEY_PARTS_WITH_CHEST,
-    ADULT_HORSE_PARTS, BABY_DONKEY_PARTS, BABY_HORSE_PARTS,
+    limb_swing_at_rest, ADULT_DONKEY_PARTS, ADULT_DONKEY_PARTS_WITH_CHEST, ADULT_HORSE_PARTS,
+    BABY_DONKEY_PARTS, BABY_HORSE_PARTS,
 };
 
 /// The four leg part indices in the adult equine body layers: body and neck at `0`/`1`,
@@ -50,9 +47,7 @@ const BABY_HORSE_TAIL_X_ROT_OFFSET: f32 = -std::f32::consts::FRAC_PI_2;
 /// walk translation scales by this.
 const ADULT_AGE_SCALE: f32 = 1.0;
 const BABY_AGE_SCALE: f32 = 0.5;
-use super::selection::{
-    donkey_model_color, donkey_model_scale, llama_model_color, undead_horse_model_color,
-};
+use super::selection::{donkey_model_color, donkey_model_scale, undead_horse_model_color};
 use super::transforms::{
     entity_model_root_transform, mesh_transformer_scaled_model_root_transform, HORSE_SCALE,
 };
@@ -274,24 +269,5 @@ pub(super) fn emit_undead_horse_model(
         entity_model_root_transform(instance),
         Some(undead_horse_model_color(family)),
         instance,
-    );
-}
-
-pub(super) fn emit_llama_model(
-    mesh: &mut EntityModelMesh,
-    instance: EntityModelInstance,
-    family: LlamaModelFamily,
-    variant: LlamaVariant,
-    baby: bool,
-    has_chest: bool,
-) {
-    // The unified `LlamaModel` tree drives both render paths; `setup_anim` looks the head and swings
-    // the four legs at the standard quadruped phase. The colored fallback recolors the whole model
-    // with the family/variant color; the textured path uses the family/variant texture instead.
-    LlamaModel::new(baby, has_chest).prepare_and_render_with_color(
-        mesh,
-        &instance,
-        entity_model_root_transform(instance),
-        llama_model_color(family, variant),
     );
 }

@@ -24,7 +24,7 @@ use super::{
         EntityDynamicPlayerTexture, EntityDynamicPlayerTextureAtlasLayout,
         EntityEquipmentLayerTexture, EntityModelKind, EntityModelTextureAtlasEntry,
         EntityModelTextureAtlasLayout, EntityModelTextureRef, EntityModelUvRect, EntityPlayerSkin,
-        HoglinModelFamily, HorseMarkings, LlamaModelFamily, LlamaVariant, PiglinModelFamily,
+        HoglinModelFamily, HorseMarkings, LlamaModelFamily, PiglinModelFamily,
         PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape,
         TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelHat,
         ZombieVariantModelFamily,
@@ -380,22 +380,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
                 EntityModelKind::EndCrystal => {
                     emit_end_crystal_textured_model(&mut meshes, *instance, atlas);
                 }
-                EntityModelKind::Llama {
-                    family,
-                    variant,
-                    baby,
-                    has_chest,
-                } => {
-                    emit_llama_textured_model(
-                        &mut meshes,
-                        *instance,
-                        family,
-                        variant,
-                        baby,
-                        has_chest,
-                        atlas,
-                    );
-                }
                 EntityModelKind::Squid { glow, baby } => {
                     emit_squid_textured_model(&mut meshes, *instance, glow, baby, atlas);
                 }
@@ -545,6 +529,8 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         emit_strider_saddle_layer(&mut meshes, *instance, atlas);
         // Camel and camel-husk saddles use the adult CamelSaddleModel tree.
         emit_camel_saddle_layer(&mut meshes, *instance, atlas);
+        // LlamaDecorLayer appends adult carpet or trader-llama body decor after the base body.
+        emit_llama_decor_layer(&mut meshes, *instance, atlas);
         // Living and zombie nautilus body armor uses the adult NautilusArmorModel tree.
         emit_nautilus_body_armor_layer(&mut meshes, *instance, atlas);
         // Living and zombie nautilus saddles use the adult NautilusSaddleModel tree.
@@ -2555,41 +2541,20 @@ fn emit_squid_textured_model(
     );
 }
 
-/// The textured llama base layer plus vanilla `LlamaDecorLayer`: adult carpet body equipment uses the
-/// matching `LLAMA_BODY` equipment texture, otherwise trader llamas render their built-in adult/baby
-/// trader overlay. The unified `LlamaModel` tree drives both render paths; `setup_anim` is the standard
-/// `QuadrupedModel` head look plus the diagonal leg swing.
-fn emit_llama_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    family: LlamaModelFamily,
-    variant: LlamaVariant,
-    baby: bool,
-    has_chest: bool,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    let transform = entity_model_root_transform(instance);
-    let mut model = LlamaModel::new(baby, has_chest);
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        llama_textured_layer_passes(variant, baby, has_chest),
-        atlas,
-    );
-    emit_llama_decor_layer(meshes, instance, family, baby, has_chest, transform, atlas);
-}
-
 fn emit_llama_decor_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
-    family: LlamaModelFamily,
-    baby: bool,
-    has_chest: bool,
-    transform: Mat4,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    let EntityModelKind::Llama {
+        family,
+        baby,
+        has_chest,
+        ..
+    } = instance.kind
+    else {
+        return;
+    };
     let texture = match (baby, instance.render_state.llama_body_decor, family) {
         (false, Some(color), _) => llama_body_decor_texture_ref(color),
         (_, _, LlamaModelFamily::TraderLlama) if baby => LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
@@ -2604,7 +2569,7 @@ fn emit_llama_decor_layer(
     render_textured_no_overlay_pass_ordered(
         meshes,
         &model,
-        transform,
+        entity_model_root_transform(instance),
         EntityModelLayerRenderType::ArmorCutoutNoCull,
         texture,
         [1.0, 1.0, 1.0, 1.0],

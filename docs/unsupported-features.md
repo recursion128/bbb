@@ -1831,7 +1831,7 @@ When an agent does any of the following, update this file in the same slice:
       `LlamaRenderer`, including `ModelLayers.LLAMA` / `LLAMA_BABY` (the trader
       llama shares the same baked mesh under `ModelLayers.TRADER_LLAMA` /
       `TRADER_LLAMA_BABY`), official per-variant adult (128×64) / baby (64×64)
-      texture references, texture-backed base layer pass emission, official PNG
+      texture references, shared-dispatch texture-backed base submission emission, official PNG
       atlas upload/bind/sample path, metadata-driven adult chest visibility, baby
       chest suppression, and the vanilla `LlamaModel.setupAnim` head-look yaw/pitch
       on the head part plus the standard `QuadrupedModel` diagonal leg swing

@@ -20,7 +20,7 @@ use super::colored::{
     ender_dragon_model_root_transform, entity_model_root_transform,
     evoker_fangs_model_root_transform, fox_model_root_transform, ghast_model_root_transform,
     happy_ghast_model_root_transform, iron_golem_model_root_transform,
-    leash_knot_model_root_transform, llama_spit_model_root_transform,
+    leash_knot_model_root_transform, llama_model_color, llama_spit_model_root_transform,
     magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
     panda_model_root_transform, phantom_model_root_transform, polar_bear_model_root_transform,
     pufferfish_model_root_transform, salmon_model_root_transform,
@@ -37,8 +37,8 @@ use super::model_layers::{
     CodModel, CopperGolemModel, CowModel, CreakingModel, CreeperModel, DolphinModel,
     EnderDragonModel, EndermanModel, EndermiteModel, EvokerFangsModel, FelineModel, FoxModel,
     FrogModel, GhastModel, GoatModel, GuardianModel, HappyGhastModel, IllagerModel, IronGolemModel,
-    LeashKnotModel, LlamaSpitModel, MagmaCubeModel, MinecartModel, NautilusModel, PandaModel,
-    ParrotModel, PhantomModel, PigModel, PolarBearModel, PufferfishModel, RabbitModel,
+    LeashKnotModel, LlamaModel, LlamaSpitModel, MagmaCubeModel, MinecartModel, NautilusModel,
+    PandaModel, ParrotModel, PhantomModel, PigModel, PolarBearModel, PufferfishModel, RabbitModel,
     RavagerModel, SalmonModel, ShulkerBulletModel, ShulkerModel, SilverfishModel,
     SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SnifferModel,
     SnowGolemModel, SpiderModel, StriderModel, TadpoleModel, TridentModel, TurtleModel, VexModel,
@@ -60,12 +60,12 @@ use super::textured::{
     ghast_textured_layer_passes, goat_textured_layer_passes, guardian_textured_layer_passes,
     happy_ghast_textured_layer_passes, illager_textured_layer_passes,
     iron_golem_textured_layer_passes, leash_knot_textured_layer_passes,
-    llama_spit_textured_layer_passes, magma_cube_textured_layer_passes,
-    minecart_textured_layer_passes, mooshroom_textured_layer_passes,
-    nautilus_textured_layer_passes, panda_textured_layer_passes, parrot_textured_layer_passes,
-    phantom_textured_layer_passes, pig_textured_layer_passes, polar_bear_textured_layer_passes,
-    rabbit_textured_layer_passes, ravager_textured_layer_passes, render_textured_layers,
-    salmon_textured_layer_passes, shulker_bullet_textured_layer_passes,
+    llama_spit_textured_layer_passes, llama_textured_layer_passes,
+    magma_cube_textured_layer_passes, minecart_textured_layer_passes,
+    mooshroom_textured_layer_passes, nautilus_textured_layer_passes, panda_textured_layer_passes,
+    parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
+    polar_bear_textured_layer_passes, rabbit_textured_layer_passes, ravager_textured_layer_passes,
+    render_textured_layers, salmon_textured_layer_passes, shulker_bullet_textured_layer_passes,
     shulker_textured_layer_passes, silverfish_textured_layer_passes,
     skeleton_textured_layer_passes, slime_textured_layer_passes, sniffer_textured_layer_passes,
     snow_golem_textured_layer_passes, spider_textured_layer_passes, tadpole_textured_layer_passes,
@@ -242,6 +242,22 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             } else {
                 sink.model(CamelModel::new(family, baby), transform, instance, &passes);
             }
+        }
+        EntityModelKind::Llama {
+            family,
+            variant,
+            baby,
+            has_chest,
+        } => {
+            let transform = entity_model_root_transform(*instance);
+            let passes = llama_textured_layer_passes(variant, baby, has_chest);
+            sink.model_with_colored_override(
+                LlamaModel::new(baby, has_chest),
+                transform,
+                instance,
+                &passes,
+                llama_model_color(family, variant),
+            );
         }
         EntityModelKind::ShulkerBullet => {
             let transform = shulker_bullet_model_root_transform(*instance);
