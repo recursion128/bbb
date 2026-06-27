@@ -91,6 +91,7 @@ fn ravager_textured_layer_pass_matches_vanilla_renderer_model_layer() {
         passes[0].render_type,
         EntityModelLayerRenderType::EntityCutout
     );
+    assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(passes[0].model_layer, MODEL_LAYER_RAVAGER);
     assert_eq!(passes[0].texture, RAVAGER_TEXTURE_REF);
     // The vestigial `parts` slice is nulled; emit builds `RavagerModel::new()` and renders its tree.
@@ -121,7 +122,9 @@ fn entity_texture_atlas_stitches_official_ravager_png_slot() {
 fn ravager_textured_mesh_uses_vanilla_uvs_tints_and_body_layer_bounds() {
     let (atlas, _) = build_entity_model_texture_atlas(&ravager_texture_images()).unwrap();
     let instance = EntityModelInstance::ravager(109, [0.0, 64.0, 0.0], 0.0);
-    let mesh = entity_model_textured_mesh(&[instance], &atlas);
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    assert_ravager_submission_matches_vanilla(&meshes, instance);
+    let mesh = &meshes.cutout;
 
     assert_eq!(mesh.cutout_faces, 72);
     assert_eq!(mesh.vertices.len(), 288);
@@ -134,7 +137,7 @@ fn ravager_textured_mesh_uses_vanilla_uvs_tints_and_body_layer_bounds() {
 
     let colored = entity_model_mesh(&[instance]);
     let (expected_min, expected_max) = mesh_extents(&colored);
-    let (actual_min, actual_max) = textured_mesh_extents(&mesh);
+    let (actual_min, actual_max) = textured_mesh_extents(mesh);
     assert_close3(actual_min, expected_min);
     assert_close3(actual_max, expected_max);
 }
@@ -143,18 +146,29 @@ fn ravager_textured_mesh_uses_vanilla_uvs_tints_and_body_layer_bounds() {
 fn ravager_textured_mesh_turns_nested_head_not_neck_or_body() {
     let (atlas, _) = build_entity_model_texture_atlas(&ravager_texture_images()).unwrap();
     let base = EntityModelInstance::ravager(110, [0.0, 64.0, 0.0], 0.0);
-    let resting = entity_model_textured_mesh(&[base], &atlas);
-    let yawed = entity_model_textured_mesh(&[base.with_head_look(50.0, 0.0)], &atlas);
-    let pitched = entity_model_textured_mesh(&[base.with_head_look(0.0, -20.0)], &atlas);
+    let yawed_instance = base.with_head_look(50.0, 0.0);
+    let pitched_instance = base.with_head_look(0.0, -20.0);
+    let resting = entity_model_textured_meshes(&[base], &atlas);
+    let yawed = entity_model_textured_meshes(&[yawed_instance], &atlas);
+    let pitched = entity_model_textured_meshes(&[pitched_instance], &atlas);
+    assert_ravager_submission_matches_vanilla(&resting, base);
+    assert_ravager_submission_matches_vanilla(&yawed, yawed_instance);
+    assert_ravager_submission_matches_vanilla(&pitched, pitched_instance);
 
     // Emit order matches the colored path: neck cube (verts 0..24), head + horn/
     // mouth children (24..144), then body and legs (144..). The vanilla look turns
     // the nested head only; the neck cube and the body/legs stay put.
-    assert_eq!(resting.vertices.len(), yawed.vertices.len());
-    assert_eq!(resting.vertices[0..24], yawed.vertices[0..24]);
-    assert_ne!(resting.vertices[24..144], yawed.vertices[24..144]);
-    assert_ne!(yawed.vertices[24..144], pitched.vertices[24..144]);
-    assert_eq!(resting.vertices[144..], yawed.vertices[144..]);
+    assert_eq!(resting.cutout.vertices.len(), yawed.cutout.vertices.len());
+    assert_eq!(resting.cutout.vertices[0..24], yawed.cutout.vertices[0..24]);
+    assert_ne!(
+        resting.cutout.vertices[24..144],
+        yawed.cutout.vertices[24..144]
+    );
+    assert_ne!(
+        yawed.cutout.vertices[24..144],
+        pitched.cutout.vertices[24..144]
+    );
+    assert_eq!(resting.cutout.vertices[144..], yawed.cutout.vertices[144..]);
 }
 
 #[test]
@@ -195,29 +209,50 @@ fn ravager_textured_mesh_swings_legs_not_neck_or_head() {
     // byte-identical however far the swing has advanced.
     let (atlas, _) = build_entity_model_texture_atlas(&ravager_texture_images()).unwrap();
     let base = EntityModelInstance::ravager(281, [0.0, 64.0, 0.0], 0.0);
-    let resting = entity_model_textured_mesh(&[base], &atlas);
-    let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
-    let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+    let still_instance = base.with_walk_animation(2.5, 0.0);
+    let walking_instance = base.with_walk_animation(0.0, 1.0);
+    let resting = entity_model_textured_meshes(&[base], &atlas);
+    let still = entity_model_textured_meshes(&[still_instance], &atlas);
+    let walking = entity_model_textured_meshes(&[walking_instance], &atlas);
+    assert_ravager_submission_matches_vanilla(&resting, base);
+    assert_ravager_submission_matches_vanilla(&still, still_instance);
+    assert_ravager_submission_matches_vanilla(&walking, walking_instance);
 
     assert_eq!(
-        resting.vertices, still.vertices,
+        resting.cutout.vertices, still.cutout.vertices,
         "a standing ravager is inert"
     );
     assert_eq!(
-        resting.vertices.len(),
-        walking.vertices.len(),
+        resting.cutout.vertices.len(),
+        walking.cutout.vertices.len(),
         "leg swing keeps the vertex count"
     );
     assert_eq!(
-        resting.vertices[0..144],
-        walking.vertices[0..144],
+        resting.cutout.vertices[0..144],
+        walking.cutout.vertices[0..144],
         "the neck and head stay put while walking"
     );
     assert_ne!(
-        resting.vertices[144..],
-        walking.vertices[144..],
+        resting.cutout.vertices[144..],
+        walking.cutout.vertices[144..],
         "the body/leg region swings"
     );
+}
+
+fn assert_ravager_submission_matches_vanilla(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.texture, RAVAGER_TEXTURE_REF);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.transform, entity_model_root_transform(instance));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
 }
 
 #[test]

@@ -1762,7 +1762,9 @@ When an agent does any of the following, update this file in the same slice:
       including nested neck/head/horn/mouth parts, official
       `textures/entity/illager/ravager.png` texture reference, and
       `ModelLayers.RAVAGER`, texture-backed base layer pass emission,
-      official PNG atlas upload/bind/sample path, and the vanilla
+      official PNG atlas upload/bind/sample path, and explicit base submission metadata
+      for vanilla `entityCutout`, `ravager.png`, white tint, `entity_model_root_transform`,
+      and `(order, submit_sequence) == (0, 0)` before folded cutout checks, and the vanilla
       `RavagerModel.setupAnim` head look (`head.xRot/yRot = xRot/yRot * π/180`) on
       the neck-nested head part — the neck subtree is emitted by hand so the head
       carries the look while its horn/mouth children inherit it (colored and
