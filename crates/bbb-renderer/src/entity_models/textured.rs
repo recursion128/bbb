@@ -937,6 +937,10 @@ pub(in crate::entity_models) fn render_textured_layers<M: EntityModel>(
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     for pass in passes {
+        // Vanilla `LivingEntityEmissiveLayer` skips layers whose computed alpha is effectively zero.
+        if pass.tint[3] <= 1.0e-5 {
+            continue;
+        }
         match pass.visibility {
             // A part-subset emissive overlay (vanilla `retainExactParts`): render only its named parts.
             layers::EntityModelLayerVisibility::RetainedParts(parts) => {

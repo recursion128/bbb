@@ -551,10 +551,9 @@ fn warden_textured_render_matches_vanilla_renderer() {
         })
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let meshes = entity_model_textured_meshes(
-        &[EntityModelInstance::warden(920, [0.0, 64.0, 0.0], 0.0)],
-        &atlas,
-    );
+    let default_instance = EntityModelInstance::warden(920, [0.0, 64.0, 0.0], 0.0);
+    let meshes = entity_model_textured_meshes(&[default_instance], &atlas);
+    assert_warden_submissions_match_vanilla(&meshes, default_instance);
     // The base cutout pass draws the whole body (10 cubes → 240 vertices), every cube at the neutral
     // tint; the emissive overlays route to the eyes mesh, not here.
     assert_eq!(meshes.cutout.vertices.len(), 240);
@@ -563,8 +562,52 @@ fn warden_textured_render_matches_vanilla_renderer() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
-    // The five emissive overlays each emit only their `retainExactParts` subset (24 vertices / cube):
-    // bioluminescent head/arms/legs (5) + pulsating-spots body/legs (3) twice + tendrils (2) + heart
-    // body (1) = 14 cubes, far fewer than the 50 a naive whole-model overlay (5 × 10 cubes) would emit.
-    assert_eq!(meshes.eyes.vertices.len(), 14 * 24);
+    // Vanilla skips 0-alpha emissive layers. At age 0 with no heart/tendril pulse, only the
+    // bioluminescent layer (5 cubes) and the first pulsating-spots layer (3 cubes) submit.
+    assert_eq!(meshes.eyes.vertices.len(), 8 * 24);
+
+    let animated_instance = EntityModelInstance::warden(921, [0.0, 64.0, 0.0], 0.0)
+        .with_age_in_ticks(half_period)
+        .with_tendril_animation(1.0)
+        .with_heart_animation(0.7);
+    let animated_meshes = entity_model_textured_meshes(&[animated_instance], &atlas);
+    assert_warden_submissions_match_vanilla(&animated_meshes, animated_instance);
+    // Half a pulsating-spots period flips the active spots layer; the non-zero tendril and heart
+    // pulses add their retained tendril (2 cubes) and body-heart (1 cube) submissions.
+    assert_eq!(animated_meshes.eyes.vertices.len(), 11 * 24);
+}
+
+fn assert_warden_submissions_match_vanilla(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    let EntityModelKind::Warden = instance.kind else {
+        panic!("expected warden instance");
+    };
+    let expected: Vec<_> = warden_textured_layer_passes(
+        instance.render_state.age_in_ticks,
+        instance.render_state.tendril_animation,
+        instance.render_state.heart_animation,
+    )
+    .into_iter()
+    .filter(|pass| pass.tint[3] > 1.0e-5)
+    .collect();
+    assert_eq!(meshes.submissions.len(), expected.len());
+    let transform = entity_model_root_transform(instance);
+    for (submit, pass) in meshes.submissions.iter().zip(expected.iter()) {
+        assert_eq!(submit.render_type, pass.render_type);
+        assert_eq!(
+            submit.render_type.vanilla_name(),
+            pass.render_type.vanilla_name()
+        );
+        assert_eq!(submit.texture, pass.texture);
+        assert_eq!(submit.tint, pass.tint);
+        assert_eq!(submit.transform, transform);
+        assert_eq!(
+            (submit.order, submit.submit_sequence),
+            (pass.order, pass.submit_sequence)
+        );
+        assert!(submit.dynamic_player_skin.is_none());
+        assert!(submit.dynamic_player_texture.is_none());
+    }
 }

@@ -2909,7 +2909,10 @@ When an agent does any of the following, update this file in the same slice:
       head/arm children — each fading on `max(0, cos(ageInTicks·0.045 + phase)·0.25)`, phase `0` and `π`, off the
       projected `age_in_ticks`); the tendril overlay (reusing `WARDEN_TEXTURE_REF` over the two tendril planes at
       the lerped `tendril_animation` alpha); and the heart overlay (`WARDEN_HEART_TEXTURE_REF`, body only, at the
-      lerped `heart_animation` alpha). `heart_animation` mirrors the client-side `Warden.heartAnimation`/`O`
+      lerped `heart_animation` alpha). Zero-alpha emissive layers are now skipped before submission, matching
+      `LivingEntityEmissiveLayer`'s `alpha <= 1e-5` gate; textured tests pin the remaining base/emissive submissions'
+      texture, internal render type (`entityCutout` / `eyes`, used here for vanilla `entityTranslucentEmissive`),
+      tint alpha, root transform, and explicit `(order, submit_sequence)`. `heart_animation` mirrors the client-side `Warden.heartAnimation`/`O`
       heartbeat: `bbb-world` resets it to `10` whenever `tickCount % getHeartBeatDelay() == 0` (the delay
       `40 - floor(clamp(clientAngerLevel/80, 0, 1)·30)` shrinking from `40` calm to `10` fully angry off the
       synced `CLIENT_ANGER_LEVEL`), decrements it each client tick, and exposes it lerped `/10` like
