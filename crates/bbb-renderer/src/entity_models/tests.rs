@@ -152,6 +152,11 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             "end_crystal_beam",
             EntityModelLayerRenderBucket::Scroll,
         ),
+        (
+            EntityModelLayerRenderType::WaterMask,
+            "waterMask",
+            EntityModelLayerRenderBucket::DepthOnly,
+        ),
     ];
 
     assert_eq!(cases.len(), EntityModelLayerRenderType::ALL.len());

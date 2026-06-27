@@ -1,8 +1,9 @@
 use super::catalog::EntityDynamicPlayerTextureAtlasEntry;
 use super::colored::{
-    creeper_model_root_transform, drowned_model_root_transform, end_crystal_model_root_transform,
-    shulker_bullet_model_root_transform, villager_adult_model_root_transform,
-    wind_charge_model_root_transform, wither_model_root_transform, GIANT_SCALE, HORSE_SCALE,
+    boat_model_root_transform, creeper_model_root_transform, drowned_model_root_transform,
+    end_crystal_model_root_transform, shulker_bullet_model_root_transform,
+    villager_adult_model_root_transform, wind_charge_model_root_transform,
+    wither_model_root_transform, GIANT_SCALE, HORSE_SCALE,
 };
 use super::dispatch::{dispatch_uniform_entity_model, TexturedSink};
 use super::held_item::custom_head_skull_transform;
@@ -11,8 +12,8 @@ use super::model::{EntityModel, ModelPart};
 use super::model_layers::PLAYER_WIDE_STEVE_TEXTURE_REF;
 use super::{
     catalog::{
-        horse_markings_texture_ref, squid_texture_ref, villager_level_texture_ref,
-        villager_profession_texture_ref, villager_type_texture_ref,
+        boat_texture_ref, horse_markings_texture_ref, squid_texture_ref,
+        villager_level_texture_ref, villager_profession_texture_ref, villager_type_texture_ref,
         zombie_villager_level_texture_ref, zombie_villager_profession_texture_ref,
         zombie_villager_type_texture_ref,
     },
@@ -186,6 +187,9 @@ impl EntityModelTexturedMeshes {
             EntityModelLayerRenderBucket::Scroll | EntityModelLayerRenderBucket::AdditiveScroll => {
                 panic!("scroll render types are not emitted into textured mesh buckets")
             }
+            EntityModelLayerRenderBucket::DepthOnly => {
+                panic!("depth-only render types are not emitted into textured mesh buckets")
+            }
         }
     }
 
@@ -198,7 +202,8 @@ impl EntityModelTexturedMeshes {
             EntityModelLayerRenderBucket::Translucent => &mut self.dynamic_player_skin_translucent,
             EntityModelLayerRenderBucket::Eyes
             | EntityModelLayerRenderBucket::Scroll
-            | EntityModelLayerRenderBucket::AdditiveScroll => {
+            | EntityModelLayerRenderBucket::AdditiveScroll
+            | EntityModelLayerRenderBucket::DepthOnly => {
                 panic!("unsupported dynamic player skin render type")
             }
         }
@@ -215,7 +220,8 @@ impl EntityModelTexturedMeshes {
             }
             EntityModelLayerRenderBucket::Eyes
             | EntityModelLayerRenderBucket::Scroll
-            | EntityModelLayerRenderBucket::AdditiveScroll => {
+            | EntityModelLayerRenderBucket::AdditiveScroll
+            | EntityModelLayerRenderBucket::DepthOnly => {
                 panic!("unsupported dynamic player texture render type")
             }
         }
@@ -500,6 +506,9 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         // layered on top of the base body (already emitted by the shared dispatch), so it likewise runs
         // regardless of `handled`.
         emit_breeze_wind_scroll_model(&mut meshes, *instance, atlas);
+        // BoatRenderer submits the water patch after the base boat model. Keep it as explicit
+        // submission metadata; the current backend does not yet have a depth-only water-mask pass.
+        emit_boat_water_mask_submission(&mut meshes, *instance);
         // The guardian attack beam is a world-space billboarded prism from the guardian eye to its
         // target; it folds into the scroll (tiled) pass and runs regardless of `handled`.
         emit_guardian_beam(&mut meshes, *instance, atlas);
@@ -885,6 +894,28 @@ fn scroll_bucket_mut(
     }
 }
 
+fn emit_boat_water_mask_submission(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    let EntityModelKind::Boat { family, chest } = instance.kind else {
+        return;
+    };
+    // Vanilla `BoatRenderer.submitTypeAdditions`: when the boat is not underwater, submit the
+    // `ModelLayers.BOAT_WATER_PATCH` depth-only `RenderTypes.waterMask()` model with the same texture
+    // and pose stack as the base boat. bbb does not yet project `BoatRenderState.isUnderWater`, so the
+    // default visible-above-water path records the submission while GPU presentation remains deferred.
+    let submit = no_overlay_submission(
+        EntityModelLayerRenderType::WaterMask,
+        boat_texture_ref(family, chest),
+        [1.0, 1.0, 1.0, 1.0],
+        boat_model_root_transform(instance),
+        0,
+        1,
+    );
+    meshes.record_submission(submit);
+}
+
 fn render_scrolled_textured_submission(
     meshes: &mut EntityModelTexturedMeshes,
     submit: EntityModelSubmissionEmit,
@@ -1010,6 +1041,7 @@ fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
     matches!(
         pass.kind,
         EntityModelLayerKind::ArrowBase
+            | EntityModelLayerKind::BoatBase
             | EntityModelLayerKind::BreezeEyes
             | EntityModelLayerKind::EnderDragonEyes
             | EntityModelLayerKind::EndermanEyes

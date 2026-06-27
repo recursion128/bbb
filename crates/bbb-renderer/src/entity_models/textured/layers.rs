@@ -108,6 +108,8 @@ pub(in crate::entity_models) enum EntityModelLayerRenderType {
     EnergySwirl,
     /// Vanilla `RenderTypes.endCrystalBeam(texture)`.
     EndCrystalBeam,
+    /// Vanilla `RenderTypes.waterMask()`, used by the boat water patch.
+    WaterMask,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -117,11 +119,12 @@ pub(in crate::entity_models) enum EntityModelLayerRenderBucket {
     Eyes,
     Scroll,
     AdditiveScroll,
+    DepthOnly,
 }
 
 impl EntityModelLayerRenderType {
     #[cfg(test)]
-    pub(in crate::entity_models) const ALL: [Self; 12] = [
+    pub(in crate::entity_models) const ALL: [Self; 13] = [
         Self::EntitySolid,
         Self::ArmorCutoutNoCull,
         Self::ArmorTranslucent,
@@ -134,6 +137,7 @@ impl EntityModelLayerRenderType {
         Self::BreezeWind,
         Self::EnergySwirl,
         Self::EndCrystalBeam,
+        Self::WaterMask,
     ];
 
     pub(in crate::entity_models) const fn mesh_bucket(self) -> EntityModelLayerRenderBucket {
@@ -149,6 +153,7 @@ impl EntityModelLayerRenderType {
             Self::Eyes => EntityModelLayerRenderBucket::Eyes,
             Self::BreezeWind | Self::EndCrystalBeam => EntityModelLayerRenderBucket::Scroll,
             Self::EnergySwirl => EntityModelLayerRenderBucket::AdditiveScroll,
+            Self::WaterMask => EntityModelLayerRenderBucket::DepthOnly,
         }
     }
 
@@ -167,6 +172,7 @@ impl EntityModelLayerRenderType {
             Self::BreezeWind => "breezeWind",
             Self::EnergySwirl => "energySwirl",
             Self::EndCrystalBeam => "end_crystal_beam",
+            Self::WaterMask => "waterMask",
         }
     }
 }

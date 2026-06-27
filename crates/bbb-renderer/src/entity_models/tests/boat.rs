@@ -395,30 +395,48 @@ fn boat_textured_mesh_uses_vanilla_uvs_tints_and_root_transform() {
         EntityModelInstance::boat(203, [6.0, 64.0, 0.0], 0.0, BoatModelFamily::Bamboo, false),
         EntityModelInstance::boat(204, [9.0, 64.0, 0.0], 0.0, BoatModelFamily::Bamboo, true),
     ];
+    let instances = instances.map(|instance| {
+        instance
+            .with_light_coords((7_u32 << 4) | (12_u32 << 20))
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true)
+    });
     let meshes = entity_model_textured_meshes(&instances, &atlas);
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
-    assert_eq!(meshes.submissions.len(), 4);
-    for (index, (submit, texture)) in meshes
-        .submissions
-        .iter()
-        .zip([
-            BOAT_OAK_TEXTURE_REF,
-            CHEST_BOAT_OAK_TEXTURE_REF,
-            BOAT_BAMBOO_TEXTURE_REF,
-            CHEST_BOAT_BAMBOO_TEXTURE_REF,
-        ])
-        .enumerate()
+    assert_eq!(meshes.submissions.len(), 8);
+    for (index, texture) in [
+        BOAT_OAK_TEXTURE_REF,
+        CHEST_BOAT_OAK_TEXTURE_REF,
+        BOAT_BAMBOO_TEXTURE_REF,
+        CHEST_BOAT_BAMBOO_TEXTURE_REF,
+    ]
+    .into_iter()
+    .enumerate()
     {
-        assert_eq!(submit.texture, texture);
-        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
-        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
-        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        let base = meshes.submissions[index * 2];
+        assert_eq!(base.texture, texture);
+        assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(base.transform, boat_model_root_transform(instances[index]));
+        assert_eq!(base.light, instances[index].render_state.shader_light());
+        assert_eq!(base.overlay, [0.0, 10.0]);
+        assert_ne!(base.overlay, instances[index].render_state.overlay_coords());
+        assert_eq!((base.order, base.submit_sequence), (0, 0));
+
+        let water_mask = meshes.submissions[index * 2 + 1];
+        assert_eq!(water_mask.texture, texture);
         assert_eq!(
-            submit.transform,
-            boat_model_root_transform(instances[index])
+            water_mask.render_type,
+            EntityModelLayerRenderType::WaterMask
         );
-        assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+        assert_eq!(water_mask.render_type.vanilla_name(), "waterMask");
+        assert_eq!(water_mask.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(water_mask.transform, base.transform);
+        assert_eq!(water_mask.light, base.light);
+        assert_eq!(water_mask.overlay, [0.0, 10.0]);
+        assert_eq!((water_mask.order, water_mask.submit_sequence), (0, 1));
     }
     let mesh = &meshes.cutout;
 
