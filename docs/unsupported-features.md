@@ -1832,7 +1832,16 @@ When an agent does any of the following, update this file in the same slice:
       with vanilla bootstrap-order fallback, emits baby type robes only for
       baby villagers, skips profession/level layers for babies, skips the level
       badge for `NONE`/`NITWIT`, clamps badge texture selection to levels
-      `1..=5`, and applies the vanilla hat metadata/no-hat rule. Crossed-arms
+      `1..=5`, and applies the vanilla hat metadata/no-hat rule. The textured
+      villager regressions now pin vanilla submission metadata before folded
+      geometry checks: base robes use `entityCutout`, selected base texture,
+      white tint, adult `villager_adult_model_root_transform` or baby
+      `entity_model_root_transform`, and `(order, submit_sequence) == (0, 0)`;
+      type, profession, and level overlays use `entityCutout`, white tint, the
+      same transform, and vanilla `VillagerProfessionLayer` orders `(1, 1)`,
+      `(2, 2)`, and `(3, 3)`. Wandering trader textured regressions pin its
+      single `wandering_trader.png` base submission with
+      `villager_adult_model_root_transform` and `(0, 0)`. Crossed-arms
       item layer is implemented for adult/baby villagers and wandering traders
       through the shared item-model pass; generic non-skull custom-head items
       are implemented through `CustomHeadLayer`'s `HEAD` item display transform,

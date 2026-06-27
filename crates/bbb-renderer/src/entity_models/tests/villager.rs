@@ -203,6 +203,7 @@ fn villager_textured_layer_passes_match_vanilla_renderer_model_layers() {
         adult[0].render_type,
         EntityModelLayerRenderType::EntityCutout
     );
+    assert_eq!(adult[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(adult[0].model_layer, MODEL_LAYER_VILLAGER);
     assert_eq!(adult[0].texture, VILLAGER_TEXTURE_REF);
     assert_eq!(adult[0].visibility, EntityModelLayerVisibility::All);
@@ -215,6 +216,7 @@ fn villager_textured_layer_passes_match_vanilla_renderer_model_layers() {
         baby[0].render_type,
         EntityModelLayerRenderType::EntityCutout
     );
+    assert_eq!(baby[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(baby[0].model_layer, MODEL_LAYER_VILLAGER_BABY);
     assert_eq!(baby[0].texture, VILLAGER_BABY_TEXTURE_REF);
     assert_eq!(baby[0].visibility, EntityModelLayerVisibility::All);
@@ -227,6 +229,7 @@ fn villager_textured_layer_passes_match_vanilla_renderer_model_layers() {
         trader[0].render_type,
         EntityModelLayerRenderType::EntityCutout
     );
+    assert_eq!(trader[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(trader[0].model_layer, MODEL_LAYER_WANDERING_TRADER);
     assert_eq!(trader[0].texture, WANDERING_TRADER_TEXTURE_REF);
     assert_eq!(trader[0].visibility, EntityModelLayerVisibility::All);
@@ -322,43 +325,60 @@ fn villager_textured_mesh_uses_vanilla_uvs_tints_and_body_layer_bounds() {
     let baby = EntityModelInstance::villager(140, [2.0, 64.0, 0.0], 0.0, true);
     let trader = EntityModelInstance::wandering_trader(141, [4.0, 64.0, 0.0], 0.0);
 
-    let adult_mesh = entity_model_textured_mesh(&[adult], &atlas);
-    assert_eq!(adult_mesh.cutout_faces, 66);
-    assert_eq!(adult_mesh.vertices.len(), 264);
-    assert_eq!(adult_mesh.indices.len(), 396);
-    assert_close2(adult_mesh.vertices[0].uv, [16.0 / 64.0, 0.0]);
-    assert!(adult_mesh
+    let adult_meshes = entity_model_textured_meshes(&[adult], &atlas);
+    assert_villager_submissions_match_vanilla(&adult_meshes, adult);
+    assert_eq!(adult_meshes.cutout.cutout_faces, 66);
+    assert_eq!(adult_meshes.cutout.vertices.len(), 264);
+    assert_eq!(adult_meshes.cutout.indices.len(), 396);
+    assert_close2(adult_meshes.cutout.vertices[0].uv, [16.0 / 64.0, 0.0]);
+    assert!(adult_meshes
+        .cutout
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
     let adult_colored = entity_model_mesh(&[adult]);
     let (adult_expected_min, adult_expected_max) = mesh_extents(&adult_colored);
-    let (adult_actual_min, adult_actual_max) = textured_mesh_extents(&adult_mesh);
+    let (adult_actual_min, adult_actual_max) = textured_mesh_extents(&adult_meshes.cutout);
     assert_close3(adult_actual_min, adult_expected_min);
     assert_close3(adult_actual_max, adult_expected_max);
 
-    let baby_mesh = entity_model_textured_mesh(&[baby], &atlas);
-    assert_eq!(baby_mesh.cutout_faces, 66);
-    assert_eq!(baby_mesh.vertices.len(), 264);
-    assert_eq!(baby_mesh.indices.len(), 396);
-    assert!(baby_mesh
+    let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
+    assert_villager_submissions_match_vanilla(&baby_meshes, baby);
+    assert_eq!(baby_meshes.cutout.cutout_faces, 66);
+    assert_eq!(baby_meshes.cutout.vertices.len(), 264);
+    assert_eq!(baby_meshes.cutout.indices.len(), 396);
+    assert!(baby_meshes
+        .cutout
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
     let baby_colored = entity_model_mesh(&[baby]);
     let (baby_expected_min, baby_expected_max) = mesh_extents(&baby_colored);
-    let (baby_actual_min, baby_actual_max) = textured_mesh_extents(&baby_mesh);
+    let (baby_actual_min, baby_actual_max) = textured_mesh_extents(&baby_meshes.cutout);
     assert_close3(baby_actual_min, baby_expected_min);
     assert_close3(baby_actual_max, baby_expected_max);
 
-    let trader_mesh = entity_model_textured_mesh(&[trader], &atlas);
-    assert_eq!(trader_mesh.cutout_faces, adult_mesh.cutout_faces);
-    assert_eq!(trader_mesh.vertices.len(), adult_mesh.vertices.len());
-    assert_eq!(trader_mesh.indices.len(), adult_mesh.indices.len());
-    assert_close2(trader_mesh.vertices[0].uv, [16.0 / 64.0, 2.0 / 3.0]);
+    let trader_meshes = entity_model_textured_meshes(&[trader], &atlas);
+    assert_villager_submissions_match_vanilla(&trader_meshes, trader);
+    assert_eq!(
+        trader_meshes.cutout.cutout_faces,
+        adult_meshes.cutout.cutout_faces
+    );
+    assert_eq!(
+        trader_meshes.cutout.vertices.len(),
+        adult_meshes.cutout.vertices.len()
+    );
+    assert_eq!(
+        trader_meshes.cutout.indices.len(),
+        adult_meshes.cutout.indices.len()
+    );
+    assert_close2(
+        trader_meshes.cutout.vertices[0].uv,
+        [16.0 / 64.0, 2.0 / 3.0],
+    );
     let trader_colored = entity_model_mesh(&[trader]);
     let (trader_expected_min, trader_expected_max) = mesh_extents(&trader_colored);
-    let (trader_actual_min, trader_actual_max) = textured_mesh_extents(&trader_mesh);
+    let (trader_actual_min, trader_actual_max) = textured_mesh_extents(&trader_meshes.cutout);
     assert_close3(trader_actual_min, trader_expected_min);
     assert_close3(trader_actual_max, trader_expected_max);
 }
@@ -402,6 +422,7 @@ fn villager_profession_layers_render_type_profession_and_level_overlays() {
         (meshes.submissions[3], VILLAGER_LEVEL_TEXTURE_REFS[4], 3, 3),
     ] {
         assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
         assert_eq!(submit.texture, texture);
         assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
         assert_eq!((submit.order, submit.submit_sequence), (order, sequence));
@@ -427,7 +448,9 @@ fn villager_profession_layers_apply_no_hat_and_baby_rules() {
             VillagerModelProfession::Farmer,
             1,
         ));
-    let mesh = entity_model_textured_mesh(&[desert_farmer], &atlas);
+    let meshes = entity_model_textured_meshes(&[desert_farmer], &atlas);
+    assert_villager_submissions_match_vanilla(&meshes, desert_farmer);
+    let mesh = &meshes.cutout;
     // Base 66 faces + type layer without hat/rim 54 + profession 66 + level 66.
     assert_eq!(mesh.cutout_faces, 252);
     assert_eq!(mesh.vertices.len(), 1008);
@@ -436,10 +459,11 @@ fn villager_profession_layers_apply_no_hat_and_baby_rules() {
         EntityModelInstance::villager(403, [2.0, 64.0, 0.0], 0.0, true).with_villager_model_data(
             VillagerModelData::new(VillagerModelType::Plains, VillagerModelProfession::Mason, 5),
         );
-    let baby_mesh = entity_model_textured_mesh(&[baby], &atlas);
+    let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
+    assert_villager_submissions_match_vanilla(&baby_meshes, baby);
     // Vanilla skips profession and level overlays for babies even when data carries a profession.
-    assert_eq!(baby_mesh.cutout_faces, 132);
-    assert_eq!(baby_mesh.vertices.len(), 528);
+    assert_eq!(baby_meshes.cutout.cutout_faces, 132);
+    assert_eq!(baby_meshes.cutout.vertices.len(), 528);
 }
 
 #[test]
@@ -448,25 +472,45 @@ fn villager_textured_mesh_applies_head_look() {
 
     // Adult villager/wandering trader head is part 0: head look turns it.
     let adult = EntityModelInstance::villager(142, [0.0, 64.0, 0.0], 0.0, false);
-    let adult_resting = entity_model_textured_mesh(&[adult], &atlas);
-    let adult_yawed = entity_model_textured_mesh(&[adult.with_head_look(45.0, 0.0)], &atlas);
-    let adult_pitched = entity_model_textured_mesh(&[adult.with_head_look(0.0, -20.0)], &atlas);
-    assert_eq!(adult_resting.vertices.len(), adult_yawed.vertices.len());
-    assert_ne!(adult_resting.vertices, adult_yawed.vertices);
-    assert_ne!(adult_yawed.vertices, adult_pitched.vertices);
+    let adult_yawed_instance = adult.with_head_look(45.0, 0.0);
+    let adult_pitched_instance = adult.with_head_look(0.0, -20.0);
+    let adult_resting = entity_model_textured_meshes(&[adult], &atlas);
+    let adult_yawed = entity_model_textured_meshes(&[adult_yawed_instance], &atlas);
+    let adult_pitched = entity_model_textured_meshes(&[adult_pitched_instance], &atlas);
+    assert_villager_submissions_match_vanilla(&adult_resting, adult);
+    assert_villager_submissions_match_vanilla(&adult_yawed, adult_yawed_instance);
+    assert_villager_submissions_match_vanilla(&adult_pitched, adult_pitched_instance);
+    assert_eq!(
+        adult_resting.cutout.vertices.len(),
+        adult_yawed.cutout.vertices.len()
+    );
+    assert_ne!(adult_resting.cutout.vertices, adult_yawed.cutout.vertices);
+    assert_ne!(adult_yawed.cutout.vertices, adult_pitched.cutout.vertices);
 
     let trader = EntityModelInstance::wandering_trader(143, [0.0, 64.0, 0.0], 0.0);
-    let trader_resting = entity_model_textured_mesh(&[trader], &atlas);
-    let trader_looking = entity_model_textured_mesh(&[trader.with_head_look(45.0, -20.0)], &atlas);
-    assert_ne!(trader_resting.vertices, trader_looking.vertices);
+    let trader_looking_instance = trader.with_head_look(45.0, -20.0);
+    let trader_resting = entity_model_textured_meshes(&[trader], &atlas);
+    let trader_looking = entity_model_textured_meshes(&[trader_looking_instance], &atlas);
+    assert_villager_submissions_match_vanilla(&trader_resting, trader);
+    assert_villager_submissions_match_vanilla(&trader_looking, trader_looking_instance);
+    assert_ne!(
+        trader_resting.cutout.vertices,
+        trader_looking.cutout.vertices
+    );
 
     // Baby villager lists an empty arms container then legs first (head at index
     // 3); head look turns the head and leaves the leading leg cube untouched.
     let baby = EntityModelInstance::villager(144, [0.0, 64.0, 0.0], 0.0, true);
-    let baby_resting = entity_model_textured_mesh(&[baby], &atlas);
-    let baby_looking = entity_model_textured_mesh(&[baby.with_head_look(45.0, -20.0)], &atlas);
-    assert_ne!(baby_resting.vertices, baby_looking.vertices);
-    assert_eq!(baby_resting.vertices[0..24], baby_looking.vertices[0..24]);
+    let baby_looking_instance = baby.with_head_look(45.0, -20.0);
+    let baby_resting = entity_model_textured_meshes(&[baby], &atlas);
+    let baby_looking = entity_model_textured_meshes(&[baby_looking_instance], &atlas);
+    assert_villager_submissions_match_vanilla(&baby_resting, baby);
+    assert_villager_submissions_match_vanilla(&baby_looking, baby_looking_instance);
+    assert_ne!(baby_resting.cutout.vertices, baby_looking.cutout.vertices);
+    assert_eq!(
+        baby_resting.cutout.vertices[0..24],
+        baby_looking.cutout.vertices[0..24]
+    );
 }
 
 #[test]
@@ -603,33 +647,107 @@ fn villager_family_textured_mesh_swings_legs_when_walking() {
         ),
     ];
     for (name, base, adult_size) in instances {
-        let resting = entity_model_textured_mesh(&[base], &atlas);
-        let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
-        let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+        let still_instance = base.with_walk_animation(2.5, 0.0);
+        let walking_instance = base.with_walk_animation(0.0, 1.0);
+        let resting = entity_model_textured_meshes(&[base], &atlas);
+        let still = entity_model_textured_meshes(&[still_instance], &atlas);
+        let walking = entity_model_textured_meshes(&[walking_instance], &atlas);
+        assert_villager_submissions_match_vanilla(&resting, base);
+        assert_villager_submissions_match_vanilla(&still, still_instance);
+        assert_villager_submissions_match_vanilla(&walking, walking_instance);
 
         assert_eq!(
-            resting.vertices, still.vertices,
+            resting.cutout.vertices, still.cutout.vertices,
             "{name}: a standing villager is inert"
         );
         assert_eq!(
-            resting.vertices.len(),
-            walking.vertices.len(),
+            resting.cutout.vertices.len(),
+            walking.cutout.vertices.len(),
             "{name}: leg swing keeps the vertex count"
         );
         assert_ne!(
-            resting.vertices, walking.vertices,
+            resting.cutout.vertices, walking.cutout.vertices,
             "{name}: a walking villager differs"
         );
 
         if adult_size {
-            let (rest_min, rest_max) = textured_mesh_extents(&resting);
-            let (walk_min, walk_max) = textured_mesh_extents(&walking);
+            let (rest_min, rest_max) = textured_mesh_extents(&resting.cutout);
+            let (walk_min, walk_max) = textured_mesh_extents(&walking.cutout);
             assert!(
                 (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
                 "{name}: a walking villager's feet should lift off the ground"
             );
         }
     }
+}
+
+fn assert_villager_submissions_match_vanilla(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    assert_villager_folded_meshes_are_cutout_only(meshes);
+    let (base_passes, transform, data) = match instance.kind {
+        EntityModelKind::Villager { baby } => {
+            let transform = if baby {
+                entity_model_root_transform(instance)
+            } else {
+                villager_adult_model_root_transform(instance)
+            };
+            (
+                villager_textured_layer_passes(baby),
+                transform,
+                Some((baby, instance.render_state.villager_model_data)),
+            )
+        }
+        EntityModelKind::WanderingTrader => (
+            wandering_trader_textured_layer_passes(),
+            villager_adult_model_root_transform(instance),
+            None,
+        ),
+        _ => panic!("expected villager family instance"),
+    };
+
+    let mut expected = Vec::new();
+    expected.extend(
+        base_passes
+            .iter()
+            .map(|pass| (pass.texture, pass.order, pass.submit_sequence)),
+    );
+    if let Some((baby, data)) = data {
+        expected.push((villager_type_texture_ref(data.villager_type, baby), 1, 1));
+        if !baby {
+            if let Some(texture) = villager_profession_texture_ref(data.profession) {
+                expected.push((texture, 2, 2));
+                if data.profession.renders_level_badge() {
+                    expected.push((villager_level_texture_ref(data.level), 3, 3));
+                }
+            }
+        }
+    }
+
+    assert_eq!(meshes.submissions.len(), expected.len());
+    for (submit, (texture, order, sequence)) in meshes.submissions.iter().zip(expected) {
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(submit.texture, texture);
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(submit.transform, transform);
+        assert_eq!((submit.order, submit.submit_sequence), (order, sequence));
+    }
+}
+
+fn assert_villager_folded_meshes_are_cutout_only(meshes: &EntityModelTexturedMeshes) {
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_cutout.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_translucent.vertices.is_empty());
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_translucent
+        .vertices
+        .is_empty());
+    assert!(meshes.scroll.vertices.is_empty());
+    assert!(meshes.scroll_additive.vertices.is_empty());
 }
 
 fn villager_texture_images() -> Vec<EntityModelTextureImage> {
