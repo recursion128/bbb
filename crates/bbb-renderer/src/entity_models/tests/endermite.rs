@@ -157,7 +157,10 @@ fn endermite_mesh_uses_vanilla_body_layer_geometry() {
 #[test]
 fn endermite_textured_mesh_uses_vanilla_uvs_and_geometry() {
     let (atlas, _) = build_entity_model_texture_atlas(&endermite_texture_images()).unwrap();
-    let instance = EntityModelInstance::endermite(55, [0.0, 64.0, 0.0], 0.0);
+    let instance = EntityModelInstance::endermite(55, [0.0, 64.0, 0.0], 0.0)
+        .with_light_coords((4_u32 << 4) | (13_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
     assert_endermite_base_submission(&meshes, instance);
     assert!(meshes.translucent.vertices.is_empty());
@@ -170,6 +173,10 @@ fn endermite_textured_mesh_uses_vanilla_uvs_and_geometry() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    assert!(meshes.cutout.vertices.iter().all(|vertex| vertex.light
+        == instance.render_state.shader_light()
+        && vertex.overlay == instance.render_state.overlay_coords()));
+    assert_ne!(instance.render_state.overlay_coords(), [0.0, 10.0]);
     let (min, max) = textured_mesh_extents(&meshes.cutout);
     assert_close3(min, [-0.18703502, 64.001, -0.28155565]);
     assert_close3(max, [0.20486319, 64.251, 0.29273614]);
@@ -223,4 +230,6 @@ fn assert_endermite_base_submission(
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(submit.transform, entity_model_root_transform(instance));
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, instance.render_state.overlay_coords());
 }
