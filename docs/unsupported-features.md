@@ -2229,8 +2229,9 @@ When an agent does any of the following, update this file in the same slice:
       `RenderTypes.eyes` / `enderman_eyes.png` at `(1, 1)`, both with white
       tint, `entity_model_root_transform`, and matching entity light, while the
       eyes submit now preserves vanilla `OverlayTexture.NO_OVERLAY` even when the
-      base body carries hurt/white overlay; the held block's own block-model
-      render is implemented through `CarriedBlockLayer`'s vanilla root
+      base body carries hurt/white overlay; folded cutout/eyes vertices inherit
+      their respective submission light/overlay metadata. The held block's own
+      block-model render is implemented through `CarriedBlockLayer`'s vanilla root
       transform, while the creepy render jitter and lighting remain unsupported
     - iron golem entities as renderer-owned vanilla 26.1
       `IronGolemModel.createBodyLayer()` geometry, including its 128x128 body

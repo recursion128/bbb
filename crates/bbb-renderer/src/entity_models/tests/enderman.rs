@@ -688,6 +688,18 @@ fn assert_enderman_submissions_match_vanilla(
             (pass.order, pass.submit_sequence)
         );
     }
+    let base_submit = meshes.submissions[0];
+    let eyes_submit = meshes.submissions[1];
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == base_submit.light && vertex.overlay == base_submit.overlay));
+    assert!(meshes
+        .eyes
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == eyes_submit.light && vertex.overlay == eyes_submit.overlay));
 }
 
 fn assert_enderman_folded_meshes_are_base_and_eyes_only(meshes: &EntityModelTexturedMeshes) {
