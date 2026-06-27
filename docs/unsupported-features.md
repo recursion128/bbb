@@ -2565,7 +2565,8 @@ When an agent does any of the following, update this file in the same slice:
       The textured base layer draws the `textures/entity/strider/strider.png` /
       `strider_baby.png` atlas references into the cutout mesh (default
       `RenderTypes::entityCutout`) while preserving explicit base submission metadata for
-      texture, white tint, root transform, and `order(0)`; it is hand-emitted through the
+      texture, white tint, root transform, entity light, hurt/white overlay, and `order(0)`;
+      folded base vertices inherit that metadata. It is hand-emitted through the
       same animated leg/body/bristle hierarchy as the colored path. The cold/suffocating
       texture swap IS wired:
       `StriderRenderer.getTextureLocation` returns `strider_cold.png` / `strider_cold_baby.png` when
@@ -2575,7 +2576,8 @@ When an agent does any of the following, update this file in the same slice:
       `SimpleEquipmentLayer(STRIDER_SADDLE)` with `AdultStriderModel(ModelLayers.STRIDER_SADDLE)`,
       `LayerDefinitions` maps that layer to the same adult strider body layer, and the renderer draws
       `textures/entity/equipment/strider_saddle/saddle.png` (64×128) as an `armorCutoutNoCull`
-      submission at the same collector order with `submit_sequence = 1`, after the base submit.
+      submission at the same collector order with `submit_sequence = 1`, entity light, and
+      `OverlayTexture.NO_OVERLAY`, after the base submit. Folded saddle vertices inherit the saddle metadata.
       Baby striders intentionally skip this layer because vanilla supplies `null` for the baby
       saddle model, and tests pin that the baby saddle path still has only the base submission.
       The suffocating shake is also

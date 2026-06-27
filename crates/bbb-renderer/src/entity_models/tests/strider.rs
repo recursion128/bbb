@@ -306,7 +306,10 @@ fn strider_textured_mesh_uses_vanilla_geometry_and_animates() {
     // `StriderModel` inherits `EntityModel`'s default `RenderTypes::entityCutout`. The backend folds
     // adult/baby into the cutout mesh, but the submissions keep the vanilla texture, render type,
     // tint, transform, and default collector order.
-    let adult = EntityModelInstance::strider(750, [0.0, 64.0, 0.0], 0.0, false, false);
+    let adult = EntityModelInstance::strider(750, [0.0, 64.0, 0.0], 0.0, false, false)
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[adult], &atlas);
     assert_eq!(meshes.submissions.len(), 1);
     let submit = meshes.submissions[0];
@@ -315,6 +318,9 @@ fn strider_textured_mesh_uses_vanilla_geometry_and_animates() {
     assert_eq!(submit.texture, STRIDER_TEXTURE_REF);
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(submit.transform, entity_model_root_transform(adult));
+    assert_eq!(submit.light, adult.render_state.shader_light());
+    assert_eq!(submit.overlay, adult.render_state.overlay_coords());
+    assert_ne!(submit.overlay, [0.0, 10.0]);
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
 
     // Nine cubes → 54 faces / 216 vertices, with nothing on the translucent or eyes passes.
@@ -328,9 +334,17 @@ fn strider_textured_mesh_uses_vanilla_geometry_and_animates() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
 
     // Baby is the smaller model: six cubes → 36 faces / 144 vertices.
-    let baby = EntityModelInstance::strider(751, [0.0, 64.0, 0.0], 0.0, true, false);
+    let baby = EntityModelInstance::strider(751, [0.0, 64.0, 0.0], 0.0, true, false)
+        .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
     assert_eq!(baby_meshes.submissions.len(), 1);
     let baby_submit = baby_meshes.submissions[0];
@@ -341,8 +355,16 @@ fn strider_textured_mesh_uses_vanilla_geometry_and_animates() {
     assert_eq!(baby_submit.texture, STRIDER_BABY_TEXTURE_REF);
     assert_eq!(baby_submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(baby_submit.transform, entity_model_root_transform(baby));
+    assert_eq!(baby_submit.light, baby.render_state.shader_light());
+    assert_eq!(baby_submit.overlay, baby.render_state.overlay_coords());
+    assert_ne!(baby_submit.overlay, [0.0, 10.0]);
     assert_eq!((baby_submit.order, baby_submit.submit_sequence), (0, 0));
     assert_eq!(baby_meshes.cutout.vertices.len(), 144);
+    assert!(baby_meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == baby_submit.light && vertex.overlay == baby_submit.overlay));
 
     // The body tracks the look, and the walk + age animate the legs/body/bristles.
     let looking = entity_model_textured_meshes(&[adult.with_head_look(40.0, -25.0)], &atlas);
@@ -375,7 +397,10 @@ fn strider_saddle_layer_renders_for_adults_only() {
     ]))
     .unwrap();
 
-    let adult = EntityModelInstance::strider(752, [0.0, 64.0, 0.0], 0.0, false, false);
+    let adult = EntityModelInstance::strider(752, [0.0, 64.0, 0.0], 0.0, false, false)
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let bare_meshes = entity_model_textured_meshes(&[adult], &atlas);
     let saddled_instance = adult.with_strider_saddle(true);
     let saddled_meshes = entity_model_textured_meshes(&[saddled_instance], &atlas);
@@ -393,6 +418,9 @@ fn strider_saddle_layer_renders_for_adults_only() {
         base_submit.transform,
         entity_model_root_transform(saddled_instance)
     );
+    assert_eq!(base_submit.light, adult.render_state.shader_light());
+    assert_eq!(base_submit.overlay, adult.render_state.overlay_coords());
+    assert_ne!(base_submit.overlay, [0.0, 10.0]);
     assert_eq!((base_submit.order, base_submit.submit_sequence), (0, 0));
     let saddle_submit = saddled_meshes.submissions[1];
     assert_eq!(
@@ -406,8 +434,16 @@ fn strider_saddle_layer_renders_for_adults_only() {
         saddle_submit.transform,
         entity_model_root_transform(saddled_instance)
     );
+    assert_eq!(saddle_submit.light, adult.render_state.shader_light());
+    assert_eq!(saddle_submit.overlay, [0.0, 10.0]);
     assert_eq!(saddled.cutout_faces - bare.cutout_faces, 54);
     assert_eq!(saddled.vertices.len() - bare.vertices.len(), 216);
+    assert!(saddled.vertices[..216]
+        .iter()
+        .all(|vertex| vertex.light == base_submit.light && vertex.overlay == base_submit.overlay));
+    assert!(saddled.vertices[216..].iter().all(
+        |vertex| vertex.light == saddle_submit.light && vertex.overlay == saddle_submit.overlay
+    ));
 
     let saddle_uv = atlas
         .entries
@@ -422,6 +458,9 @@ fn strider_saddle_layer_renders_for_adults_only() {
     assert!(first_saddle_vertex[1] <= saddle_uv.max[1]);
 
     let baby = EntityModelInstance::strider(753, [0.0, 64.0, 0.0], 0.0, true, false)
+        .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true)
         .with_strider_saddle(true);
     let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
     assert_eq!(baby_meshes.submissions.len(), 1);
@@ -433,12 +472,19 @@ fn strider_saddle_layer_renders_for_adults_only() {
     assert_eq!(baby_submit.texture, STRIDER_BABY_TEXTURE_REF);
     assert_eq!(baby_submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(baby_submit.transform, entity_model_root_transform(baby));
+    assert_eq!(baby_submit.light, baby.render_state.shader_light());
+    assert_eq!(baby_submit.overlay, baby.render_state.overlay_coords());
     assert_eq!((baby_submit.order, baby_submit.submit_sequence), (0, 0));
     assert_eq!(
         baby_meshes.cutout.cutout_faces, 36,
         "vanilla supplies no baby model for the strider saddle layer"
     );
     assert_eq!(baby_meshes.cutout.vertices.len(), 144);
+    assert!(baby_meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == baby_submit.light && vertex.overlay == baby_submit.overlay));
 }
 
 fn strider_texture_images() -> Vec<EntityModelTextureImage> {
