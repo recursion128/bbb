@@ -1264,7 +1264,8 @@ When an agent does any of the following, update this file in the same slice:
         metadata for static, piglin, dragon, default-player, profiled-default,
         and dynamic-player heads: selected texture or dynamic skin handle,
         `entityCutoutZOffset` or `entityTranslucent`, white tint, skull
-        transform, and `(order, submit_sequence) == (0, 0)` before folded
+        transform, entity `lightCoords`, vanilla `OverlayTexture.NO_OVERLAY`,
+        and `(order, submit_sequence) == (0, 0)` before folded
         cutout/translucent/dynamic geometry checks. Native resolves these skull
         block items from the item
         registry into `EntityRenderState.custom_head_skull`. A `player_head`

@@ -56,6 +56,8 @@ fn assert_skull_submission(
     assert_eq!(submit.dynamic_player_skin, None);
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
     assert_eq!(submit.transform, expected_transform);
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, [0.0, 10.0]);
 }
 
 #[test]
@@ -99,7 +101,10 @@ fn custom_head_skull_layer_renders_static_mob_heads_with_matching_textures() {
             false,
             PLAYER_MODEL_PARTS_ALL_VISIBLE,
         )
-        .with_custom_head_skull(Some(skull));
+        .with_custom_head_skull(Some(skull))
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
         let meshes = entity_model_textured_meshes(&[instance], &atlas);
 
         assert_skull_submission(
@@ -116,7 +121,10 @@ fn custom_head_skull_layer_renders_static_mob_heads_with_matching_textures() {
             .cutout
             .vertices
             .iter()
-            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]
+                && vertex.light == instance.render_state.shader_light()
+                && vertex.overlay == [0.0, 10.0]));
+        assert_ne!(instance.render_state.overlay_coords(), [0.0, 10.0]);
     }
 }
 
@@ -132,7 +140,10 @@ fn custom_head_skull_layer_renders_profileless_player_head_with_default_skin() {
     )
     .with_custom_head_skull(Some(EntityCustomHeadSkull::Player(
         EntityPlayerSkin::Default(EntityDefaultPlayerSkin::SlimSteve),
-    )));
+    )))
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
 
     assert_skull_submission(
@@ -149,7 +160,10 @@ fn custom_head_skull_layer_renders_profileless_player_head_with_default_skin() {
         .cutout
         .vertices
         .iter()
-        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]
+            && vertex.light == instance.render_state.shader_light()
+            && vertex.overlay == [0.0, 10.0]));
+    assert_ne!(instance.render_state.overlay_coords(), [0.0, 10.0]);
 }
 
 #[test]
@@ -175,7 +189,10 @@ fn custom_head_skull_layer_uses_profile_default_player_skin_texture() {
     )
     .with_custom_head_skull(Some(EntityCustomHeadSkull::Player(
         EntityPlayerSkin::ProfiledDefault(EntityDefaultPlayerSkin::SlimAlex),
-    )));
+    )))
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let wide_instance = EntityModelInstance::player_with_parts(
         915,
         [0.0, 64.0, 0.0],
@@ -185,7 +202,10 @@ fn custom_head_skull_layer_uses_profile_default_player_skin_texture() {
     )
     .with_custom_head_skull(Some(EntityCustomHeadSkull::Player(
         EntityPlayerSkin::ProfiledDefault(EntityDefaultPlayerSkin::WideSteve),
-    )));
+    )))
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let dynamic_skin = EntityDynamicPlayerSkin {
         handle: 42,
         fallback: EntityDefaultPlayerSkin::WideSteve,
@@ -201,7 +221,10 @@ fn custom_head_skull_layer_uses_profile_default_player_skin_texture() {
     )
     .with_custom_head_skull(Some(EntityCustomHeadSkull::Player(
         EntityPlayerSkin::Dynamic(dynamic_skin),
-    )));
+    )))
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let slim_meshes = entity_model_textured_meshes(&[slim_instance], &atlas);
     let wide_meshes = entity_model_textured_meshes(&[wide_instance], &atlas);
     let dynamic_meshes = entity_model_textured_meshes(&[dynamic_instance], &atlas);
@@ -246,6 +269,12 @@ fn custom_head_skull_layer_uses_profile_default_player_skin_texture() {
         dynamic_submit.transform,
         expected_skull_transform(&dynamic_instance)
     );
+    assert_eq!(
+        dynamic_submit.light,
+        dynamic_instance.render_state.shader_light()
+    );
+    assert_eq!(dynamic_submit.overlay, [0.0, 10.0]);
+    assert_ne!(dynamic_instance.render_state.overlay_coords(), [0.0, 10.0]);
 
     assert!(slim_meshes.cutout.vertices.is_empty());
     assert!(wide_meshes.cutout.vertices.is_empty());
@@ -295,6 +324,30 @@ fn custom_head_skull_layer_uses_profile_default_player_skin_texture() {
             .map(|vertex| vertex.uv)
             .collect::<Vec<_>>()
     );
+    assert!(slim_meshes
+        .translucent
+        .vertices
+        .iter()
+        .all(
+            |vertex| vertex.light == slim_instance.render_state.shader_light()
+                && vertex.overlay == [0.0, 10.0]
+        ));
+    assert!(wide_meshes
+        .translucent
+        .vertices
+        .iter()
+        .all(
+            |vertex| vertex.light == wide_instance.render_state.shader_light()
+                && vertex.overlay == [0.0, 10.0]
+        ));
+    assert!(dynamic_meshes
+        .translucent
+        .vertices
+        .iter()
+        .all(
+            |vertex| vertex.light == dynamic_instance.render_state.shader_light()
+                && vertex.overlay == [0.0, 10.0]
+        ));
 }
 
 #[test]
@@ -318,7 +371,10 @@ fn custom_head_ready_dynamic_player_skin_renders_from_dynamic_skin_atlas() {
     )
     .with_custom_head_skull(Some(EntityCustomHeadSkull::Player(
         EntityPlayerSkin::Dynamic(dynamic_skin),
-    )));
+    )))
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let rgba = (0..usize::try_from(64 * 64 * 4).unwrap())
         .map(|index| index as u8)
         .collect::<Vec<_>>();
@@ -363,6 +419,9 @@ fn custom_head_ready_dynamic_player_skin_renders_from_dynamic_skin_atlas() {
         (dynamic_submit.order, dynamic_submit.submit_sequence),
         (0, 0)
     );
+    assert_eq!(dynamic_submit.light, instance.render_state.shader_light());
+    assert_eq!(dynamic_submit.overlay, [0.0, 10.0]);
+    assert_ne!(instance.render_state.overlay_coords(), [0.0, 10.0]);
 
     assert!(dynamic_meshes.translucent.vertices.is_empty());
     assert_eq!(
@@ -413,6 +472,8 @@ fn custom_head_ready_dynamic_player_skin_renders_from_dynamic_skin_atlas() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]
+            && vertex.light == instance.render_state.shader_light()
+            && vertex.overlay == [0.0, 10.0]
             && (0.0..=1.0).contains(&vertex.uv[0])
             && (0.0..=1.0).contains(&vertex.uv[1])));
 }

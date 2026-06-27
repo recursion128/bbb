@@ -796,6 +796,47 @@ fn render_textured_pass_with_dynamic_player_skin<M: EntityModel>(
     });
 }
 
+fn render_textured_no_overlay_pass_with_dynamic_player_skin<M: EntityModel>(
+    meshes: &mut EntityModelTexturedMeshes,
+    model: &M,
+    transform: Mat4,
+    render_type: EntityModelLayerRenderType,
+    texture: EntityModelTextureRef,
+    dynamic_player_skin: EntityDynamicPlayerSkin,
+    tint: [f32; 4],
+    atlas: &EntityModelTextureAtlasLayout,
+    dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
+) {
+    let submit = no_overlay_submission(render_type, texture, tint, transform, 0, 0)
+        .with_dynamic_player_skin(dynamic_player_skin);
+    if dynamic_player_skin.status == EntityDynamicPlayerSkinStatus::Ready {
+        if let Some(entry) =
+            dynamic_player_skin_atlas_entry(dynamic_player_skin_atlas, dynamic_player_skin.handle)
+        {
+            render_textured_dynamic_player_skin_submission(meshes, submit, entry, |mesh, entry| {
+                model.root().render_textured(
+                    mesh,
+                    submit.transform,
+                    submit.texture,
+                    entry.uv,
+                    submit.tint,
+                );
+            });
+            return;
+        }
+    }
+
+    render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+        model.root().render_textured(
+            mesh,
+            submit.transform,
+            submit.texture,
+            entry.uv,
+            submit.tint,
+        );
+    });
+}
+
 #[cfg(test)]
 fn render_textured_pass_with_dynamic_player_texture<M: EntityModel>(
     meshes: &mut EntityModelTexturedMeshes,
@@ -1983,13 +2024,15 @@ fn emit_custom_head_skull_layer(
         EntityCustomHeadSkull::Dragon => {
             let mut model = CustomHeadDragonSkullModel::new();
             model.prepare(&instance);
-            render_textured_pass(
+            render_textured_no_overlay_pass_ordered(
                 meshes,
                 &model,
                 transform,
                 EntityModelLayerRenderType::EntityCutoutZOffset,
                 custom_head_skull_texture_ref(skull),
                 [1.0, 1.0, 1.0, 1.0],
+                0,
+                0,
                 atlas,
             );
             return;
@@ -1997,13 +2040,15 @@ fn emit_custom_head_skull_layer(
         EntityCustomHeadSkull::Piglin => {
             let mut model = CustomHeadPiglinSkullModel::new();
             model.prepare(&instance);
-            render_textured_pass(
+            render_textured_no_overlay_pass_ordered(
                 meshes,
                 &model,
                 transform,
                 EntityModelLayerRenderType::EntityCutoutZOffset,
                 custom_head_skull_texture_ref(skull),
                 [1.0, 1.0, 1.0, 1.0],
+                0,
+                0,
                 atlas,
             );
             return;
@@ -2016,7 +2061,7 @@ fn emit_custom_head_skull_layer(
     let render_type = custom_head_skull_render_type(skull);
     let texture = custom_head_skull_texture_ref(skull);
     if let Some(dynamic_player_skin) = custom_head_dynamic_player_skin(skull) {
-        render_textured_pass_with_dynamic_player_skin(
+        render_textured_no_overlay_pass_with_dynamic_player_skin(
             meshes,
             &model,
             transform,
@@ -2029,13 +2074,15 @@ fn emit_custom_head_skull_layer(
         );
         return;
     }
-    render_textured_pass(
+    render_textured_no_overlay_pass_ordered(
         meshes,
         &model,
         transform,
         render_type,
         texture,
         [1.0, 1.0, 1.0, 1.0],
+        0,
+        0,
         atlas,
     );
 }
