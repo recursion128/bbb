@@ -533,6 +533,35 @@ fn spider_eyes_textured_mesh_uses_parent_model_geometry_and_eyes_render_type() {
     );
 }
 
+#[test]
+fn spider_eyes_submission_survives_missing_texture_atlas_entry() {
+    // Vanilla `SpiderEyesLayer` records an order(1) eyes submit for both spider renderers; missing
+    // eyes texture data suppresses only the folded emissive eyes geometry.
+    let images: Vec<_> = spider_texture_images()
+        .into_iter()
+        .filter(|image| image.texture != SPIDER_EYES_TEXTURE_REF)
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+
+    for instance in [
+        EntityModelInstance::spider(912, [0.0, 64.0, 0.0], 0.0)
+            .with_light_coords((4_u32 << 4) | (10_u32 << 20))
+            .with_white_overlay_progress(0.45)
+            .with_has_red_overlay(true),
+        EntityModelInstance::cave_spider(913, [0.0, 64.0, 0.0], 0.0)
+            .with_light_coords((7_u32 << 4) | (9_u32 << 20))
+            .with_white_overlay_progress(0.35)
+            .with_has_red_overlay(true),
+    ] {
+        let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+        assert_spider_submissions_match_vanilla(&meshes, instance);
+        assert!(!meshes.cutout.vertices.is_empty(), "{:?}", instance.kind);
+        assert!(meshes.eyes.vertices.is_empty(), "{:?}", instance.kind);
+        assert!(meshes.eyes.indices.is_empty(), "{:?}", instance.kind);
+    }
+}
+
 fn assert_spider_submissions_match_vanilla(
     meshes: &EntityModelTexturedMeshes,
     instance: EntityModelInstance,

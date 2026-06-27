@@ -2210,7 +2210,9 @@ When an agent does any of the following, update this file in the same slice:
       `RenderTypes.eyes`-style translucent/depth-write-disabled GPU path. Tests
       now also pin base entity light plus hurt/white overlay and `SpiderEyesLayer`
       entity light plus `OverlayTexture.NO_OVERLAY` on both submissions and
-      folded buckets. The
+      folded buckets; missing-atlas coverage proves both spider renderers still
+      record the eyes submission without `spider_eyes.png` while only folded
+      emissive geometry is suppressed. The
       vanilla `SpiderModel.setupAnim` head-look yaw/pitch on the head part and the
       vanilla `SpiderModel.setupAnim` eight-leg walk swing (`spider_leg_swing_pose`:
       each leg sweeps `yRot += -(cos(animationPos*2 + phase) * 0.4) * speed` and steps
