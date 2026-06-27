@@ -13,19 +13,19 @@ const ADULT_WOLF_TAIL_POSE: PartPose = PartPose {
 #[test]
 fn wolf_textured_mesh_uses_vanilla_uvs_and_collar_tint() {
     let (atlas, _) = build_entity_model_texture_atlas(&wolf_texture_images()).unwrap();
-    let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::wolf_state(
-            305,
-            [0.0, 64.0, 0.0],
-            0.0,
-            false,
-            true,
-            false,
-            false,
-            Some(EntityDyeColor::Blue),
-        )],
-        &atlas,
+    let wolf = EntityModelInstance::wolf_state(
+        305,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        true,
+        false,
+        false,
+        Some(EntityDyeColor::Blue),
     );
+    let meshes = entity_model_textured_meshes(&[wolf], &atlas);
+    assert_wolf_submissions_match_vanilla(&meshes, wolf);
+    let mesh = &meshes.cutout;
 
     assert_eq!(mesh.cutout_faces, 132);
     assert_eq!(mesh.vertices.len(), 528);
@@ -39,42 +39,41 @@ fn wolf_textured_mesh_uses_vanilla_uvs_and_collar_tint() {
         EntityDyeColor::Blue.texture_diffuse_color()
     );
 
-    let untamed_with_collar_metadata = entity_model_textured_mesh(
-        &[EntityModelInstance::wolf_state(
-            306,
-            [0.0, 64.0, 0.0],
-            0.0,
-            false,
-            false,
-            false,
-            false,
-            Some(EntityDyeColor::Red),
-        )],
-        &atlas,
+    let untamed = EntityModelInstance::wolf_state(
+        306,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+        false,
+        false,
+        Some(EntityDyeColor::Red),
     );
-    assert_eq!(untamed_with_collar_metadata.cutout_faces, 66);
+    let untamed_with_collar_metadata = entity_model_textured_meshes(&[untamed], &atlas);
+    assert_wolf_submissions_match_vanilla(&untamed_with_collar_metadata, untamed);
+    assert_eq!(untamed_with_collar_metadata.cutout.cutout_faces, 66);
     assert!(untamed_with_collar_metadata
+        .cutout
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
 
-    let invisible_tame = entity_model_textured_mesh(
-        &[EntityModelInstance::wolf_state(
-            307,
-            [0.0, 64.0, 0.0],
-            0.0,
-            false,
-            true,
-            false,
-            true,
-            Some(EntityDyeColor::Blue),
-        )],
-        &atlas,
+    let invisible = EntityModelInstance::wolf_state(
+        307,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        true,
+        false,
+        true,
+        Some(EntityDyeColor::Blue),
     );
+    let invisible_tame = entity_model_textured_meshes(&[invisible], &atlas);
+    assert_wolf_submissions_match_vanilla(&invisible_tame, invisible);
     // An invisible wolf renders nothing: the unified `render_state.invisible` skips the whole
     // model in both paths, so no body and no collar layer is emitted.
-    assert_eq!(invisible_tame.cutout_faces, 0);
-    assert!(invisible_tame.vertices.is_empty());
+    assert_eq!(invisible_tame.cutout.cutout_faces, 0);
+    assert!(invisible_tame.cutout.vertices.is_empty());
 }
 
 #[test]
@@ -664,9 +663,17 @@ fn wolf_textured_meshes_apply_head_look() {
         EntityModelInstance::wolf(480, [0.0, 64.0, 0.0], 0.0, false),
         EntityModelInstance::wolf(481, [0.0, 64.0, 0.0], 0.0, true),
     ] {
-        let resting = entity_model_textured_mesh(&[base], &atlas);
-        let yawed = entity_model_textured_mesh(&[base.with_head_look(45.0, 0.0)], &atlas);
-        let pitched = entity_model_textured_mesh(&[base.with_head_look(0.0, -20.0)], &atlas);
+        let yawed_instance = base.with_head_look(45.0, 0.0);
+        let pitched_instance = base.with_head_look(0.0, -20.0);
+        let resting = entity_model_textured_meshes(&[base], &atlas);
+        let yawed = entity_model_textured_meshes(&[yawed_instance], &atlas);
+        let pitched = entity_model_textured_meshes(&[pitched_instance], &atlas);
+        assert_wolf_submissions_match_vanilla(&resting, base);
+        assert_wolf_submissions_match_vanilla(&yawed, yawed_instance);
+        assert_wolf_submissions_match_vanilla(&pitched, pitched_instance);
+        let resting = &resting.cutout;
+        let yawed = &yawed.cutout;
+        let pitched = &pitched.cutout;
         assert_eq!(resting.vertices.len(), yawed.vertices.len());
         assert_ne!(resting.vertices, yawed.vertices, "{:?}", base.kind);
         assert_ne!(yawed.vertices, pitched.vertices, "{:?}", base.kind);
@@ -764,9 +771,17 @@ fn wolf_textured_mesh_swings_its_legs_when_walking() {
             120..216,
         ),
     ] {
-        let resting = entity_model_textured_mesh(&[base], &atlas);
-        let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
-        let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+        let still_instance = base.with_walk_animation(2.5, 0.0);
+        let walking_instance = base.with_walk_animation(0.0, 1.0);
+        let resting = entity_model_textured_meshes(&[base], &atlas);
+        let still = entity_model_textured_meshes(&[still_instance], &atlas);
+        let walking = entity_model_textured_meshes(&[walking_instance], &atlas);
+        assert_wolf_submissions_match_vanilla(&resting, base);
+        assert_wolf_submissions_match_vanilla(&still, still_instance);
+        assert_wolf_submissions_match_vanilla(&walking, walking_instance);
+        let resting = &resting.cutout;
+        let still = &still.cutout;
+        let walking = &walking.cutout;
 
         assert_eq!(resting.vertices, still.vertices, "{:?} is inert", base.kind);
         assert_eq!(
@@ -1075,8 +1090,13 @@ fn wolf_textured_mesh_wags_its_tail_when_walking() {
     };
     let (atlas, _) = build_entity_model_texture_atlas(&wolf_texture_images()).unwrap();
     let base = EntityModelInstance::wolf(151, [0.0, 64.0, 0.0], 0.0, false);
-    let resting = entity_model_textured_mesh(&[base], &atlas);
-    let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+    let walking_instance = base.with_walk_animation(0.0, 1.0);
+    let resting = entity_model_textured_meshes(&[base], &atlas);
+    let walking = entity_model_textured_meshes(&[walking_instance], &atlas);
+    assert_wolf_submissions_match_vanilla(&resting, base);
+    assert_wolf_submissions_match_vanilla(&walking, walking_instance);
+    let resting = &resting.cutout;
+    let walking = &walking.cutout;
     assert_ne!(
         resting.vertices[240..264],
         walking.vertices[240..264],
@@ -1130,9 +1150,17 @@ fn tame_wolf_droops_its_tail_with_damage_textured() {
     let wild = EntityModelInstance::wolf(151, [0.0, 64.0, 0.0], 0.0, false);
     let full = 0.55 * std::f32::consts::PI;
     let hurt = (0.55 - 0.8 * 0.4) * std::f32::consts::PI;
-    let wild_mesh = entity_model_textured_mesh(&[wild], &atlas);
-    let healthy_mesh = entity_model_textured_mesh(&[wild.with_wolf_tail_angle(full)], &atlas);
-    let damaged_mesh = entity_model_textured_mesh(&[wild.with_wolf_tail_angle(hurt)], &atlas);
+    let healthy_instance = wild.with_wolf_tail_angle(full);
+    let damaged_instance = wild.with_wolf_tail_angle(hurt);
+    let wild_meshes = entity_model_textured_meshes(&[wild], &atlas);
+    let healthy_meshes = entity_model_textured_meshes(&[healthy_instance], &atlas);
+    let damaged_meshes = entity_model_textured_meshes(&[damaged_instance], &atlas);
+    assert_wolf_submissions_match_vanilla(&wild_meshes, wild);
+    assert_wolf_submissions_match_vanilla(&healthy_meshes, healthy_instance);
+    assert_wolf_submissions_match_vanilla(&damaged_meshes, damaged_instance);
+    let wild_mesh = &wild_meshes.cutout;
+    let healthy_mesh = &healthy_meshes.cutout;
+    let damaged_mesh = &damaged_meshes.cutout;
     let tail = 240..264;
     assert_eq!(
         wild_mesh.vertices[..240],
@@ -1255,8 +1283,12 @@ fn wolf_textured_mesh_sits_folds_legs_and_tilts_body() {
     for (baby, head_end) in [(false, 96), (true, 72)] {
         let standing = EntityModelInstance::wolf(161, [0.0, 64.0, 0.0], 0.0, baby);
         let sitting = standing.with_wolf_sitting(true);
-        let stand_mesh = entity_model_textured_mesh(&[standing], &atlas);
-        let sit_mesh = entity_model_textured_mesh(&[sitting], &atlas);
+        let stand_meshes = entity_model_textured_meshes(&[standing], &atlas);
+        let sit_meshes = entity_model_textured_meshes(&[sitting], &atlas);
+        assert_wolf_submissions_match_vanilla(&stand_meshes, standing);
+        assert_wolf_submissions_match_vanilla(&sit_meshes, sitting);
+        let stand_mesh = &stand_meshes.cutout;
+        let sit_mesh = &sit_meshes.cutout;
         assert_eq!(
             stand_mesh.vertices.len(),
             sit_mesh.vertices.len(),
@@ -1367,15 +1399,22 @@ fn angry_wolf_textured_mesh_raises_and_holds_its_tail_still() {
         None,
     );
 
-    let calm_rest = entity_model_textured_mesh(&[calm], &atlas);
-    let angry_rest = entity_model_textured_mesh(&[angry], &atlas);
+    let calm_rest_meshes = entity_model_textured_meshes(&[calm], &atlas);
+    let angry_rest_meshes = entity_model_textured_meshes(&[angry], &atlas);
+    assert_wolf_submissions_match_vanilla(&calm_rest_meshes, calm);
+    assert_wolf_submissions_match_vanilla(&angry_rest_meshes, angry);
+    let calm_rest = &calm_rest_meshes.cutout;
+    let angry_rest = &angry_rest_meshes.cutout;
     assert_ne!(
         tail_positions(&calm_rest.vertices),
         tail_positions(&angry_rest.vertices),
         "the angry wolf raises its textured tail"
     );
 
-    let angry_walking = entity_model_textured_mesh(&[angry.with_walk_animation(0.0, 1.0)], &atlas);
+    let angry_walking_instance = angry.with_walk_animation(0.0, 1.0);
+    let angry_walking_meshes = entity_model_textured_meshes(&[angry_walking_instance], &atlas);
+    assert_wolf_submissions_match_vanilla(&angry_walking_meshes, angry_walking_instance);
+    let angry_walking = &angry_walking_meshes.cutout;
     assert_eq!(
         angry_rest.vertices[240..264],
         angry_walking.vertices[240..264],
@@ -1386,4 +1425,144 @@ fn angry_wolf_textured_mesh_raises_and_holds_its_tail_still() {
         angry_walking.vertices[144..240],
         "the angry wolf still swings its legs in the textured path"
     );
+}
+
+fn assert_wolf_submissions_match_vanilla(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    if instance.render_state.invisible {
+        assert!(meshes.submissions.is_empty());
+        assert_wolf_folded_meshes_match_submission_buckets(meshes, false);
+        return;
+    }
+
+    let EntityModelKind::Wolf {
+        baby,
+        tame,
+        angry,
+        collar_color,
+        variant,
+    } = instance.kind
+    else {
+        panic!("expected wolf instance");
+    };
+    let mut expected = Vec::new();
+    expected.extend(
+        wolf_textured_layer_passes(
+            baby,
+            tame,
+            angry,
+            collar_color,
+            variant,
+            instance.render_state.wolf_wet_shade,
+        )
+        .iter()
+        .map(|pass| {
+            (
+                pass.render_type,
+                pass.texture,
+                pass.tint,
+                pass.order,
+                pass.submit_sequence,
+            )
+        }),
+    );
+
+    if !baby {
+        if let Some(material) = instance.render_state.wolf_body_armor {
+            if let Some(layers) = wolf_body_armor_texture_layers(material) {
+                let mut submit_sequence: u32 = if tame && collar_color.is_some() { 2 } else { 1 };
+                for (layer_index, layer) in layers.iter().enumerate() {
+                    let Some(tint) = wolf_expected_armor_layer_tint(
+                        layer.dyeable,
+                        instance.render_state.wolf_body_armor_dye,
+                    ) else {
+                        continue;
+                    };
+                    expected.push((
+                        EntityModelLayerRenderType::ArmorCutoutNoCull,
+                        layer.texture,
+                        tint,
+                        1 + layer_index as i32,
+                        submit_sequence,
+                    ));
+                    submit_sequence += 1;
+                }
+                if let Some(crackiness) = instance.render_state.wolf_body_armor_crackiness {
+                    expected.push((
+                        EntityModelLayerRenderType::ArmorTranslucent,
+                        wolf_armor_crackiness_texture_ref(crackiness),
+                        [1.0, 1.0, 1.0, 1.0],
+                        3,
+                        submit_sequence,
+                    ));
+                }
+            }
+        }
+    }
+
+    assert_eq!(meshes.submissions.len(), expected.len());
+    let expected_transform = entity_model_root_transform(instance);
+    for (submit, (render_type, texture, tint, order, sequence)) in
+        meshes.submissions.iter().zip(expected.iter())
+    {
+        assert_eq!(submit.render_type, *render_type);
+        let expected_render_type_name = match render_type {
+            EntityModelLayerRenderType::EntityCutout => "entityCutout",
+            EntityModelLayerRenderType::ArmorCutoutNoCull => "armorCutoutNoCull",
+            EntityModelLayerRenderType::ArmorTranslucent => "armorTranslucent",
+            _ => panic!("unexpected wolf render type"),
+        };
+        assert_eq!(submit.render_type.vanilla_name(), expected_render_type_name);
+        assert_eq!(submit.texture, *texture);
+        assert_eq!(submit.tint, *tint);
+        assert_eq!(submit.transform, expected_transform);
+        assert_eq!((submit.order, submit.submit_sequence), (*order, *sequence));
+    }
+
+    let expects_translucent = expected.iter().any(|(render_type, _, _, _, _)| {
+        *render_type == EntityModelLayerRenderType::ArmorTranslucent
+    });
+    assert_wolf_folded_meshes_match_submission_buckets(meshes, expects_translucent);
+}
+
+fn wolf_expected_armor_layer_tint(dyeable: bool, dye: Option<u32>) -> Option<[f32; 4]> {
+    if !dyeable {
+        return Some([1.0, 1.0, 1.0, 1.0]);
+    }
+    dye.map(|rgb| {
+        [
+            ((rgb >> 16) & 0xFF) as f32 / 255.0,
+            ((rgb >> 8) & 0xFF) as f32 / 255.0,
+            (rgb & 0xFF) as f32 / 255.0,
+            1.0,
+        ]
+    })
+}
+
+fn assert_wolf_folded_meshes_match_submission_buckets(
+    meshes: &EntityModelTexturedMeshes,
+    expects_translucent: bool,
+) {
+    if meshes.submissions.is_empty() {
+        assert!(meshes.cutout.vertices.is_empty());
+    } else {
+        assert!(!meshes.cutout.vertices.is_empty());
+    }
+    if expects_translucent {
+        assert!(!meshes.translucent.vertices.is_empty());
+    } else {
+        assert!(meshes.translucent.vertices.is_empty());
+    }
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_cutout.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_translucent.vertices.is_empty());
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_translucent
+        .vertices
+        .is_empty());
+    assert!(meshes.scroll.vertices.is_empty());
+    assert!(meshes.scroll_additive.vertices.is_empty());
 }

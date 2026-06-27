@@ -1572,7 +1572,13 @@ When an agent does any of the following, update this file in the same slice:
       asset, the `wolf_body` base and dyeable overlay layers as
       `armorCutoutNoCull` submissions at orders `1`/`2`, undyed overlay
       suppression, and the low/medium/high durability crack overlays as
-      `armorTranslucent` submissions at order `3`). Base-model
+      `armorTranslucent` submissions at order `3`). Textured wolf UV, head-look, leg-swing,
+      tail-wag, tail-droop, sitting, angry-tail, wet-shade, collar, and armor regressions now
+      route through `entity_model_textured_meshes`, pinning selected wild/tame/angry/variant
+      base textures, adult/baby collar textures, armor/crack textures, `entityCutout` /
+      `armorCutoutNoCull` / `armorTranslucent` render type names, tints, `entity_model_root_transform`,
+      and explicit `(order, submit_sequence)` before folded cutout/translucent geometry checks.
+      Base-model
       invisibility/outline handling, lighting, overlay, glint/foil, and remaining
       render-state extraction remain unsupported
     - base horse entities as renderer-owned vanilla 26.1 adult/baby body-layer
