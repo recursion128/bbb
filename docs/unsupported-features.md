@@ -1504,7 +1504,8 @@ When an agent does any of the following, update this file in the same slice:
       to temperate when no variant metadata is present, texture-backed base
       layer pass emission, explicit base submission metadata for vanilla
       `entityCutout`, the selected variant texture, white tint,
-      `entity_model_root_transform`, and `(order, submit_sequence) == (0, 0)`,
+      `entity_model_root_transform`, `(order, submit_sequence) == (0, 0)`, and
+      `MobRenderer` / `LivingEntityRenderer` light plus hurt/white overlay metadata,
       adult/baby/cold model-layer selection, official PNG atlas upload/bind/sample path,
       and the vanilla
       `QuadrupedModel.setupAnim` head-look yaw/pitch on the head part plus the
@@ -1514,10 +1515,11 @@ When an agent does any of the following, update this file in the same slice:
       `PigModel.createBodyLayer(CubeDeformation(0.5F))` and
       `textures/entity/equipment/pig_saddle/saddle.png`, with submission metadata
       for vanilla `armorCutoutNoCull`, white tint, `entity_model_root_transform`, and
-      `(order, submit_sequence) == (0, 1)`; baby pigs intentionally
+      `(order, submit_sequence) == (0, 1)`, preserving entity light while forcing the vanilla equipment
+      `OverlayTexture.NO_OVERLAY`; baby pigs intentionally
       skip it because vanilla provides no baby saddle model. Boost/ridden
       animation, variant sound metadata, custom/datapack pig variant asset
-      decoding, and lighting remain unsupported
+      decoding, and broader lighting presentation remain unsupported
     - cow entities as renderer-owned vanilla 26.1 `CowModel`, `WarmCowModel`,
       `ColdCowModel`, and `BabyCowModel` body-layer geometry from `CowModel`,
       `WarmCowModel`, `ColdCowModel`, `BabyCowModel`, `CowRenderer`,
@@ -1530,12 +1532,13 @@ When an agent does any of the following, update this file in the same slice:
       adult/baby/warm/cold model-layer selection, official PNG atlas
       upload/bind/sample path, and explicit base submission metadata for vanilla
       `entityCutout`, selected texture, white tint, `entity_model_root_transform`,
-      and `(order, submit_sequence) == (0, 0)` before folded cutout checks, and the
+      `(order, submit_sequence) == (0, 0)`, and `MobRenderer` / `LivingEntityRenderer`
+      light plus hurt/white overlay metadata before folded cutout checks, and the
       vanilla `QuadrupedModel.setupAnim`
       head-look yaw/pitch on the head part plus the standard diagonal leg walk
       swing (`cos(pos * 0.6662 [+ pi]) * 1.4 * speed`) on adult, baby,
       warm, and cold textured models; variant sound metadata,
-      custom/datapack cow variant asset decoding, and lighting remain
+      custom/datapack cow variant asset decoding, and broader lighting presentation remain
       unsupported
     - sheep entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `SheepModel`, `BabySheepModel`, and `SheepRenderer`, with

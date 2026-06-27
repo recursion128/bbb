@@ -48,9 +48,18 @@ fn cow_textured_mesh_uses_vanilla_uvs_tints_and_variant_textures() {
             0.0,
             CowModelVariant::Temperate,
             false,
-        ),
-        EntityModelInstance::cow_variant(602, [1.0, 64.0, 0.0], 0.0, CowModelVariant::Cold, false),
-        EntityModelInstance::cow_variant(603, [2.0, 64.0, 0.0], 0.0, CowModelVariant::Warm, true),
+        )
+        .with_light_coords((6_u32 << 4) | (13_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true),
+        EntityModelInstance::cow_variant(602, [1.0, 64.0, 0.0], 0.0, CowModelVariant::Cold, false)
+            .with_light_coords((6_u32 << 4) | (13_u32 << 20))
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true),
+        EntityModelInstance::cow_variant(603, [2.0, 64.0, 0.0], 0.0, CowModelVariant::Warm, true)
+            .with_light_coords((6_u32 << 4) | (13_u32 << 20))
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true),
     ];
     let meshes = entity_model_textured_meshes(&instances, &atlas);
     assert_cow_submissions_match_vanilla(&meshes, &instances);
@@ -65,6 +74,10 @@ fn cow_textured_mesh_uses_vanilla_uvs_tints_and_variant_textures() {
     assert_eq!(mesh.vertices[240].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_close2(mesh.vertices[504].uv, [11.0 / 64.0, 210.0 / 384.0]);
     assert_eq!(mesh.vertices[504].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert!(mesh.vertices.iter().all(|vertex| vertex.light
+        == instances[0].render_state.shader_light()
+        && vertex.overlay == instances[0].render_state.overlay_coords()));
+    assert_ne!(instances[0].render_state.overlay_coords(), [0.0, 10.0]);
     let (min, max) = textured_mesh_extents(mesh);
     assert_close3(min, [-0.375, 64.001, -0.65625]);
     assert_close3(max, [2.25, 65.5635, 1.0]);
@@ -499,6 +512,8 @@ fn assert_cow_submissions_match_vanilla(
         assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
         assert_eq!(submit.transform, entity_model_root_transform(instance));
         assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+        assert_eq!(submit.light, instance.render_state.shader_light());
+        assert_eq!(submit.overlay, instance.render_state.overlay_coords());
     }
 }
 

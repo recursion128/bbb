@@ -350,9 +350,18 @@ fn pig_textured_mesh_uses_vanilla_uvs_tints_and_variant_textures() {
             0.0,
             PigModelVariant::Temperate,
             false,
-        ),
-        EntityModelInstance::pig(502, [1.0, 64.0, 0.0], 0.0, PigModelVariant::Cold, false),
-        EntityModelInstance::pig(503, [2.0, 64.0, 0.0], 0.0, PigModelVariant::Warm, true),
+        )
+        .with_light_coords((5_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true),
+        EntityModelInstance::pig(502, [1.0, 64.0, 0.0], 0.0, PigModelVariant::Cold, false)
+            .with_light_coords((5_u32 << 4) | (12_u32 << 20))
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true),
+        EntityModelInstance::pig(503, [2.0, 64.0, 0.0], 0.0, PigModelVariant::Warm, true)
+            .with_light_coords((5_u32 << 4) | (12_u32 << 20))
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true),
     ];
     let meshes = entity_model_textured_meshes(&instances, &atlas);
     assert_pig_only_uses_cutout_buckets(&meshes);
@@ -371,6 +380,10 @@ fn pig_textured_mesh_uses_vanilla_uvs_tints_and_variant_textures() {
     assert_eq!(mesh.vertices[168].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_close2(mesh.vertices[360].uv, [16.0 / 64.0, 160.0 / 288.0]);
     assert_eq!(mesh.vertices[360].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert!(mesh.vertices.iter().all(|vertex| vertex.light
+        == instances[0].render_state.shader_light()
+        && vertex.overlay == instances[0].render_state.overlay_coords()));
+    assert_ne!(instances[0].render_state.overlay_coords(), [0.0, 10.0]);
     let (min, max) = textured_mesh_extents(&mesh);
     assert!(max[0] - min[0] > 2.0);
     assert_close3([min[1], max[1], max[2] - min[2]], [64.001, 65.001, 1.5]);
@@ -390,7 +403,10 @@ fn pig_saddle_layer_renders_for_adults_only() {
         0.0,
         PigModelVariant::Temperate,
         false,
-    );
+    )
+    .with_light_coords((4_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let bare_meshes = entity_model_textured_meshes(&[adult], &atlas);
     let saddled_instance = adult.with_pig_saddle(true);
     let saddled_meshes = entity_model_textured_meshes(&[saddled_instance], &atlas);
@@ -415,6 +431,15 @@ fn pig_saddle_layer_renders_for_adults_only() {
     assert_eq!(saddle_submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((saddle_submit.order, saddle_submit.submit_sequence), (0, 1));
     assert_eq!(
+        saddle_submit.light,
+        saddled_instance.render_state.shader_light()
+    );
+    assert_eq!(saddle_submit.overlay, [0.0, 10.0]);
+    assert_ne!(
+        saddle_submit.overlay,
+        saddled_instance.render_state.overlay_coords()
+    );
+    assert_eq!(
         saddle_submit.transform,
         entity_model_root_transform(saddled_instance)
     );
@@ -428,7 +453,10 @@ fn pig_saddle_layer_renders_for_adults_only() {
 
     let baby_instance =
         EntityModelInstance::pig(523, [0.0, 64.0, 0.0], 0.0, PigModelVariant::Temperate, true)
-            .with_pig_saddle(true);
+            .with_pig_saddle(true)
+            .with_light_coords((4_u32 << 4) | (11_u32 << 20))
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true);
     let baby_meshes = entity_model_textured_meshes(&[baby_instance], &atlas);
     assert_pig_only_uses_cutout_buckets(&baby_meshes);
     assert_eq!(baby_meshes.submissions.len(), 1);
@@ -584,6 +612,8 @@ fn assert_pig_base_submission_at(
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(submit.transform, entity_model_root_transform(instance));
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, instance.render_state.overlay_coords());
 }
 
 fn pig_base_texture_ref(instance: EntityModelInstance) -> EntityModelTextureRef {
