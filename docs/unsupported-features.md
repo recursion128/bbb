@@ -3492,14 +3492,15 @@ When an agent does any of the following, update this file in the same slice:
       emissive `dragon_eyes.png` eyes overlay (`ENDER_DRAGON_EYES_TEXTURE_REF`, an eyes-render-type pass
       re-rendering the whole model, matching vanilla `EnderDragonRenderer.EYES`). Tests pin both
       submissions' texture, render type, white tint, root transform, and same-order sequences
-      `(0, 0)` / `(0, 1)`. The nearest-crystal
-      healing beam is now source-projected from the closest tracked end crystal intersecting the vanilla
+      `(0, 0)` / `(0, 1)`, with folded base/eyes vertices inheriting their respective
+      light/overlay metadata. The nearest-crystal healing beam is now source-projected from the
+      closest tracked end crystal intersecting the vanilla
       inflated search box, includes the `EndCrystalRenderer.getY` bob in `beamOffset`, and records
       `RenderTypes.endCrystalBeam(end_crystal_beam.png)` after body+eyes with preserved light and
-      `OverlayTexture.NO_OVERLAY` before folding the shared prism geometry into the scroll mesh.
-      The base body keeps the projected vanilla red overlay input; the eyes and healing beam record
-      no-overlay submits. The dying-dissolve render type stays deferred. The colored debug path stays as a fallback (it renders
-      the body dark and the wing membranes a lighter tint)
+      `OverlayTexture.NO_OVERLAY` before folding the shared prism geometry into the scroll mesh with
+      matching vertex metadata. The base body keeps the projected vanilla red overlay input; the eyes and
+      healing beam record no-overlay submits. The dying-dissolve render type stays deferred. The colored
+      debug path stays as a fallback (it renders the body dark and the wing membranes a lighter tint)
     - area effect cloud, marker, and interaction entities now resolve to `EntityModelKind::NoRender`,
       which emits no geometry — exact parity with vanilla, whose `EntityRenderers` registers all three to
       `NoopRenderer` (the area effect cloud is drawn as particles, not a model; the marker is a pure

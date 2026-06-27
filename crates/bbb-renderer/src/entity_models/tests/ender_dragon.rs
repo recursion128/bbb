@@ -204,6 +204,10 @@ fn ender_dragon_healing_beam_records_vanilla_submission_and_geometry() {
         meshes.submissions[0].overlay,
         instance.render_state.overlay_coords()
     );
+    assert!(meshes.cutout.vertices.iter().all(|vertex| {
+        vertex.light == meshes.submissions[0].light
+            && vertex.overlay == meshes.submissions[0].overlay
+    }));
     assert_eq!(
         (
             meshes.submissions[1].render_type,
@@ -222,6 +226,10 @@ fn ender_dragon_healing_beam_records_vanilla_submission_and_geometry() {
     );
     assert_eq!(meshes.submissions[1].light, meshes.submissions[0].light);
     assert_eq!(meshes.submissions[1].overlay, [0.0, 10.0]);
+    assert!(meshes.eyes.vertices.iter().all(|vertex| {
+        vertex.light == meshes.submissions[1].light
+            && vertex.overlay == meshes.submissions[1].overlay
+    }));
 
     let beam_submit = meshes.submissions[2];
     assert_eq!(
@@ -269,6 +277,11 @@ fn ender_dragon_healing_beam_records_vanilla_submission_and_geometry() {
     );
     assert_eq!(meshes.scroll.vertices[0].tint, [0.0, 0.0, 0.0, 1.0]);
     assert_eq!(meshes.scroll.vertices[1].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert!(meshes
+        .scroll
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == beam_submit.light && vertex.overlay == beam_submit.overlay));
     assert_eq!(meshes.scroll.vertices[0].local_uv[0], 0.0);
     assert_eq!(meshes.scroll.vertices[3].local_uv[0], 0.125);
     assert!(
