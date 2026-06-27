@@ -104,6 +104,10 @@ fn minecart_textured_mesh_matches_colored_geometry_and_vanilla_uvs() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    assert!(textured
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
     // The textured cart shares the colored cart's geometry exactly (same parts and transform).
     let colored = entity_model_mesh(&[EntityModelInstance::minecart(1, [0.0, 64.0, 0.0], 0.0)]);
     let (cmin, cmax) = mesh_extents(&colored);

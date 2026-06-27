@@ -3923,7 +3923,8 @@ When an agent does any of the following, update this file in the same slice:
       paths. Tests now pin explicit submission metadata for vanilla `entityCutout`,
       white tint, `entity_model_root_transform`, `minecraft:minecart#main`, and
       `(order, submit_sequence) == (0, 0)`, including entity light coords and
-      vanilla `OverlayTexture.NO_OVERLAY`. The `AbstractMinecartRenderer` rail-follow transform (along-track
+      vanilla `OverlayTexture.NO_OVERLAY`, with folded cutout vertices inheriting that
+      metadata. The `AbstractMinecartRenderer` rail-follow transform (along-track
       position lerp, slope tilt, hover, the TNT/spawner `displayOffset` and 0.75x
       block-content scale), the chest/furnace/hopper/command-block/TNT/spawner content
       models, and lighting remain unsupported
