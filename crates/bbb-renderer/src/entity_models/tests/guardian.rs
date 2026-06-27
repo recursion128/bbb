@@ -336,15 +336,33 @@ fn guardian_textured_render_matches_vanilla_renderer() {
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
     for elder in [false, true] {
-        let mesh = entity_model_textured_mesh(
-            &[EntityModelInstance::guardian(
-                990,
-                [0.0, 64.0, 0.0],
-                0.0,
-                elder,
-            )],
-            &atlas,
+        let instance = EntityModelInstance::guardian(990, [0.0, 64.0, 0.0], 0.0, elder);
+        let meshes = entity_model_textured_meshes(&[instance], &atlas);
+        assert!(meshes.translucent.vertices.is_empty());
+        assert!(meshes.eyes.vertices.is_empty());
+        assert_eq!(meshes.submissions.len(), 1);
+        let submit = meshes.submissions[0];
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(
+            submit.texture,
+            if elder {
+                GUARDIAN_ELDER_TEXTURE_REF
+            } else {
+                GUARDIAN_TEXTURE_REF
+            }
         );
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(
+            submit.transform,
+            mesh_transformer_scaled_model_root_transform(
+                instance,
+                if elder { GUARDIAN_ELDER_SCALE } else { 1.0 }
+            )
+        );
+        assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+        let mesh = &meshes.cutout;
+
         assert!(
             !mesh.vertices.is_empty(),
             "elder={elder} emits textured geometry"

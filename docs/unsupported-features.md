@@ -1054,8 +1054,9 @@ When an agent does any of the following, update this file in the same slice:
       visibility/scale base submits, axolotl color/age base submits,
       feline cat/ocelot base plus collar submits, fox type/age/sleeping base
       submits, frog temperature base submits, panda gene/age base submits,
-      parrot variant base submits, pufferfish puff-state base submits, rabbit
-      color/age/Toast base submits, sniffer base submits, and the
+      guardian/elder base submits, parrot variant base submits, pufferfish
+      puff-state base submits, rabbit color/age/Toast base submits,
+      sniffer base submits, and the
       Guardian beam / End Crystal body+beam paths are covered by source-verified
       texture/render-type/tint/transform/order tests, including the Guardian
       beam missing-atlas case where submission metadata survives while folded
