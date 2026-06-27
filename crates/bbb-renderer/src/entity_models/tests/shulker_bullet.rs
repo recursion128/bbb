@@ -182,3 +182,54 @@ fn shulker_bullet_textured_render_matches_vanilla_renderer() {
         [base_size[0] * 1.5, base_size[1] * 1.5, base_size[2] * 1.5],
     );
 }
+
+#[test]
+fn shulker_bullet_submissions_survive_missing_texture_atlas_entry() {
+    // The bespoke ShulkerBulletRenderer arm is submission-first: both vanilla `spark.png` submits
+    // are recorded before atlas lookup, and missing texture data suppresses only folded geometry.
+    let base_len =
+        usize::try_from(ZOMBIE_TEXTURE_REF.size[0] * ZOMBIE_TEXTURE_REF.size[1] * 4).unwrap();
+    let images = vec![EntityModelTextureImage::new(
+        ZOMBIE_TEXTURE_REF,
+        vec![0u8; base_len],
+    )];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let instance = EntityModelInstance::shulker_bullet(1133, [2.0, 65.0, -4.0], 30.0)
+        .with_light_coords((7_u32 << 4) | (10_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 2);
+    let base = meshes.submissions[0];
+    assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(base.texture, SHULKER_BULLET_TEXTURE_REF);
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+    assert_eq!(
+        base.transform,
+        shulker_bullet_model_root_transform(instance)
+    );
+    assert_eq!(base.light, instance.render_state.shader_light());
+    assert_eq!(base.overlay, [0.0, 10.0]);
+
+    let shell = meshes.submissions[1];
+    assert_eq!(
+        shell.render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(shell.render_type.vanilla_name(), "entityTranslucent");
+    assert_eq!(shell.texture, SHULKER_BULLET_TEXTURE_REF);
+    assert_eq!(shell.tint, [1.0, 1.0, 1.0, 38.0 / 255.0]);
+    assert_eq!((shell.order, shell.submit_sequence), (1, 1));
+    assert_eq!(
+        shell.transform,
+        shulker_bullet_model_root_transform(instance) * Mat4::from_scale(Vec3::splat(1.5))
+    );
+    assert_eq!(shell.light, instance.render_state.shader_light());
+    assert_eq!(shell.overlay, [0.0, 10.0]);
+    assert!(meshes.cutout.vertices.is_empty());
+    assert!(meshes.translucent.vertices.is_empty());
+}
