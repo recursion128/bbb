@@ -512,6 +512,63 @@ fn nautilus_saddle_layer_renders_for_adult_living_and_zombie_only() {
 }
 
 #[test]
+fn nautilus_saddle_submission_survives_missing_saddle_texture_atlas_entry() {
+    // Vanilla `NautilusRenderer` records `SimpleEquipmentLayer(NAUTILUS_SADDLE)` after the base body
+    // at the default collector order, forcing `OverlayTexture.NO_OVERLAY`.
+    let images: Vec<EntityModelTextureImage> = [NAUTILUS_TEXTURE_REF]
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![(index * 40) as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let instance = EntityModelInstance::nautilus(924, [0.0, 64.0, 0.0], 0.0, false)
+        .with_light_coords((6_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true)
+        .with_nautilus_saddle(true);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 2);
+    let base = meshes.submissions[0];
+    assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(base.texture, NAUTILUS_TEXTURE_REF);
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(base.transform, entity_model_root_transform(instance));
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+    assert_eq!(base.light, instance.render_state.shader_light());
+    assert_eq!(base.overlay, instance.render_state.overlay_coords());
+    assert_eq!(
+        meshes.cutout.vertices.len(),
+        192,
+        "missing nautilus_saddle/saddle.png suppresses only folded saddle geometry"
+    );
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == base.light && vertex.overlay == base.overlay));
+
+    let saddle = meshes.submissions[1];
+    assert_eq!(
+        saddle.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(saddle.render_type.vanilla_name(), "armorCutoutNoCull");
+    assert_eq!(saddle.texture, NAUTILUS_SADDLE_TEXTURE_REF);
+    assert_eq!(saddle.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(saddle.transform, base.transform);
+    assert_eq!((saddle.order, saddle.submit_sequence), (0, 1));
+    assert_eq!(saddle.light, base.light);
+    assert_eq!(saddle.overlay, [0.0, 10.0]);
+    assert_nautilus_folded_meshes_are_cutout_only(&meshes);
+}
+
+#[test]
 fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
     let images: Vec<EntityModelTextureImage> = [
         NAUTILUS_TEXTURE_REF,
