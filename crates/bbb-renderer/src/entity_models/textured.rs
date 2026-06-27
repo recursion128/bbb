@@ -1090,7 +1090,9 @@ fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
 fn layer_pass_uses_zero_white_overlay(pass: EntityModelLayerPass) -> bool {
     matches!(
         pass.kind,
-        EntityModelLayerKind::CreakingEyes | EntityModelLayerKind::TropicalFishPattern
+        EntityModelLayerKind::CopperGolemEyes
+            | EntityModelLayerKind::CreakingEyes
+            | EntityModelLayerKind::TropicalFishPattern
     )
 }
 

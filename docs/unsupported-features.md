@@ -2271,7 +2271,11 @@ When an agent does any of the following, update this file in the same slice:
       now carries `WeatheringCopper.WeatherState` projected from
       `CopperGolem.DATA_WEATHER_STATE` (data id 16,
       `WEATHERING_COPPER_STATE`) and selects unaffected / exposed / weathered /
-      oxidized body and eyes passes like `CopperGolemRenderer`. The head look and
+      oxidized body and eyes passes like `CopperGolemRenderer`. Textured tests pin the
+      `CopperGolemBase` `entityCutout` submission's entity light plus hurt/white overlay and the
+      `CopperGolemEyes` `LivingEntityEmissiveLayer` submission's entity light plus
+      `getOverlayCoords(state, 0.0F)` red-row/zero-white overlay, including folded cutout/eyes
+      vertex metadata. The head look and
       standard `ItemInHandLayer` are projected: non-empty main/off-hand equipment
       clamps both arms into `CopperGolemModel.poseHeldItemArmsIfStill`, the
       renderer exports the `translateToHand` IDLE hand branch (`body -> arm`,
