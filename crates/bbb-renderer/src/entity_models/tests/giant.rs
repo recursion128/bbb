@@ -77,7 +77,10 @@ fn giant_textured_render_reuses_the_zombie_texture_scaled_six_times() {
         })
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let giant_instance = EntityModelInstance::giant(594, [0.0, 64.0, 0.0], 0.0);
+    let giant_instance = EntityModelInstance::giant(594, [0.0, 64.0, 0.0], 0.0)
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let zombie_instance = EntityModelInstance::zombie(595, [0.0, 64.0, 0.0], 0.0, false);
     let giant_meshes = entity_model_textured_meshes(&[giant_instance], &atlas);
     let zombie_meshes = entity_model_textured_meshes(&[zombie_instance], &atlas);
@@ -96,6 +99,15 @@ fn giant_textured_render_reuses_the_zombie_texture_scaled_six_times() {
         giant_submit.transform,
         mesh_transformer_scaled_model_root_transform(giant_instance, GIANT_SCALE)
     );
+    assert_eq!(
+        giant_submit.light,
+        giant_instance.render_state.shader_light()
+    );
+    assert_eq!(
+        giant_submit.overlay,
+        giant_instance.render_state.overlay_coords()
+    );
+    assert_ne!(giant_submit.overlay, [0.0, 10.0]);
     assert_eq!((giant_submit.order, giant_submit.submit_sequence), (0, 0));
     let giant = &giant_meshes.cutout;
     let zombie = &zombie_meshes.cutout;
@@ -106,6 +118,9 @@ fn giant_textured_render_reuses_the_zombie_texture_scaled_six_times() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    assert!(giant.vertices.iter().all(|vertex| {
+        vertex.light == giant_submit.light && vertex.overlay == giant_submit.overlay
+    }));
 
     // The giant span is 6× the zombie span on the textured path too.
     let (giant_min, giant_max) = textured_mesh_extents(giant);
