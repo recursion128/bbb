@@ -74,7 +74,7 @@ pub(crate) struct EntityDynamicPlayerTextureAtlasGpu {
 pub(super) const ENTITY_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 4] =
     wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4, 2 => Float32x2, 3 => Float32x2];
 pub(super) const ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2, 4 => Float32x2];
-pub(super) const ENTITY_MODEL_SCROLL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x2, 3 => Float32x2, 4 => Float32x4];
+pub(super) const ENTITY_MODEL_SCROLL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x2, 3 => Float32x2, 4 => Float32x4, 5 => Float32x2, 6 => Float32x2];
 
 pub(super) const ENTITY_MODEL_SHADER: &str = r#"
 struct Camera {
@@ -248,6 +248,8 @@ struct VertexIn {
     @location(2) uv_rect_min: vec2<f32>,
     @location(3) uv_rect_size: vec2<f32>,
     @location(4) tint: vec4<f32>,
+    @location(5) light: vec2<f32>,
+    @location(6) overlay: vec2<f32>,
 };
 
 struct VertexOut {

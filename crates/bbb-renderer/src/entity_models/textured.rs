@@ -992,12 +992,13 @@ fn render_scrolled_textured_submission(
     uv_offset: [f32; 2],
     emit: impl FnOnce(&mut EntityModelTexturedMesh, EntityModelTextureAtlasEntry),
 ) {
-    meshes.record_submission(submit);
+    let submission = meshes.record_submission(submit);
     let Some(entry) = entity_model_texture_atlas_entry(atlas, submit.texture) else {
         return;
     };
     let mut scratch = EntityModelTexturedMesh::new();
     emit(&mut scratch, entry);
+    fill_textured_submission_vertices(&mut scratch, 0, submission);
     append_scrolled_textured_mesh(
         scroll_mesh_mut(meshes, submit.render_type),
         &scratch,
@@ -1014,14 +1015,14 @@ fn render_scroll_geometry_submission(
     emit: impl FnOnce(
         &mut EntityModelScrollMesh,
         EntityModelTextureAtlasEntry,
-        EntityModelSubmissionEmit,
+        EntityModelRenderSubmission,
     ),
 ) {
-    meshes.record_submission(submit);
+    let submission = meshes.record_submission(submit);
     let Some(entry) = entity_model_texture_atlas_entry(atlas, submit.texture) else {
         return;
     };
-    emit(scroll_bucket_mut(meshes, target_bucket), entry, submit);
+    emit(scroll_bucket_mut(meshes, target_bucket), entry, submission);
 }
 
 fn render_textured_root_pass(
@@ -1536,6 +1537,8 @@ fn emit_guardian_beam(
                     uv_rect_min: rect.min,
                     uv_rect_size: size,
                     tint: submit.tint,
+                    light: submit.light,
+                    overlay: submit.overlay,
                 });
             }
             // Each quad → two triangles (the scroll pipeline renders cull-off, so winding is
@@ -1681,6 +1684,8 @@ fn emit_crystal_beam_submission(
                         uv_rect_min: rect.min,
                         uv_rect_size: size,
                         tint,
+                        light: submit.light,
+                        overlay: submit.overlay,
                     });
                 }
                 mesh.indices.extend_from_slice(&[

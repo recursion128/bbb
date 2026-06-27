@@ -135,6 +135,9 @@ fn wind_charge_textured_render_matches_vanilla_renderer() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    assert!(rest.scroll.vertices.iter().all(|vertex| {
+        vertex.light == rest.submissions[0].light && vertex.overlay == rest.submissions[0].overlay
+    }));
     // Every scroll vertex carries the wind charge texture's atlas sub-rect for the shader's wrap.
     let rect_min = rest.scroll.vertices[0].uv_rect_min;
     let rect_size = rest.scroll.vertices[0].uv_rect_size;

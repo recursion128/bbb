@@ -82,6 +82,8 @@ pub(super) struct EntityModelScrollVertex {
     pub(super) uv_rect_min: [f32; 2],
     pub(super) uv_rect_size: [f32; 2],
     pub(super) tint: [f32; 4],
+    pub(super) light: [f32; 2],
+    pub(super) overlay: [f32; 2],
 }
 
 pub(super) struct EntityModelScrollMesh {
@@ -128,6 +130,8 @@ pub(super) fn append_scrolled_textured_mesh(
             uv_rect_min: rect.min,
             uv_rect_size: size,
             tint: vertex.tint,
+            light: vertex.light,
+            overlay: vertex.overlay,
         });
     }
     scroll
