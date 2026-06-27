@@ -2276,7 +2276,8 @@ When an agent does any of the following, update this file in the same slice:
       `WitchRenderer`, `ModelLayers.WITCH`, texture-backed base layer pass
       emission, explicit base submission metadata for vanilla `entityCutout`,
       `witch.png`, white tint, `villager_adult_model_root_transform`, and
-      `(order, submit_sequence) == (0, 0)`, official PNG atlas upload/bind/sample path,
+      `(order, submit_sequence) == (0, 0)`, plus `MobRenderer` /
+      `LivingEntityRenderer` light plus hurt/white overlay metadata, official PNG atlas upload/bind/sample path,
       and the vanilla
       `WitchModel.setupAnim` head-look yaw/pitch on the head part, the
       half-amplitude leg walk swing (legs at `[3, 4]`), and the continuous
