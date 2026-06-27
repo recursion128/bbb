@@ -12,11 +12,6 @@ use super::model::{EntityModel, ModelPart};
 use super::model_layers::PLAYER_WIDE_STEVE_TEXTURE_REF;
 use super::{
     catalog::{
-        villager_level_texture_ref, villager_profession_texture_ref, villager_type_texture_ref,
-        zombie_villager_level_texture_ref, zombie_villager_profession_texture_ref,
-        zombie_villager_type_texture_ref,
-    },
-    catalog::{
         CamelModelFamily, DonkeyModelFamily, EntityArmorMaterial, EntityCustomHeadSkull,
         EntityDynamicPlayerSkin, EntityDynamicPlayerSkinAtlasEntry,
         EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerSkinStatus,
@@ -25,7 +20,7 @@ use super::{
         EntityModelTextureAtlasLayout, EntityModelTextureRef, EntityModelUvRect, EntityPlayerSkin,
         HorseColorVariant, HorseMarkings, LlamaModelFamily, PiglinModelFamily,
         PlayerModelPartVisibility, SkeletonModelFamily, UndeadHorseModelFamily, VillagerModelData,
-        VillagerModelHat, ZombieVariantModelFamily,
+        ZombieVariantModelFamily,
     },
     entity_model_root_transform,
     geometry::{
@@ -107,12 +102,14 @@ pub(super) use layers::{
     snow_golem_textured_layer_passes, spider_textured_layer_passes, squid_textured_layer_passes,
     tadpole_textured_layer_passes, trident_textured_layer_passes,
     tropical_fish_textured_layer_passes, undead_horse_textured_layer_passes,
-    villager_textured_layer_passes, wandering_trader_textured_layer_passes,
-    warden_textured_layer_passes, wind_charge_textured_layer_passes, witch_textured_layer_passes,
+    villager_data_textured_layer_passes, villager_textured_layer_passes, villager_type_hat_visible,
+    wandering_trader_textured_layer_passes, warden_textured_layer_passes,
+    wind_charge_textured_layer_passes, witch_textured_layer_passes,
     wither_skull_textured_layer_passes, wither_textured_layer_passes, wolf_textured_layer_passes,
     zombie_nautilus_textured_layer_passes, zombie_textured_layer_passes,
-    zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerPass,
-    EntityModelLayerRenderBucket, EntityModelLayerRenderType,
+    zombie_villager_data_textured_layer_passes, zombie_villager_textured_layer_passes,
+    EntityModelLayerKind, EntityModelLayerPass, EntityModelLayerRenderBucket,
+    EntityModelLayerRenderType,
 };
 #[cfg(test)]
 pub(super) use layers::{warden_pulsating_spots_alpha, EntityModelLayerVisibility};
@@ -986,11 +983,17 @@ fn layer_pass_uses_zero_white_overlay(pass: EntityModelLayerPass) -> bool {
             | EntityModelLayerKind::SheepWoolUndercoat
             | EntityModelLayerKind::SlimeOuter
             | EntityModelLayerKind::TropicalFishPattern
+            | EntityModelLayerKind::VillagerType
+            | EntityModelLayerKind::VillagerProfession
+            | EntityModelLayerKind::VillagerLevel
             | EntityModelLayerKind::WardenBioluminescent
             | EntityModelLayerKind::WardenHeart
             | EntityModelLayerKind::WardenPulsatingSpots1
             | EntityModelLayerKind::WardenPulsatingSpots2
             | EntityModelLayerKind::WardenTendrils
+            | EntityModelLayerKind::ZombieVillagerType
+            | EntityModelLayerKind::ZombieVillagerProfession
+            | EntityModelLayerKind::ZombieVillagerLevel
     )
 }
 
@@ -2472,94 +2475,37 @@ fn emit_villager_data_layers<M: EntityModel>(
     data: VillagerModelData,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    let type_texture = if zombie {
-        zombie_villager_type_texture_ref(data.villager_type, baby)
+    let passes = if zombie {
+        zombie_villager_data_textured_layer_passes(baby, data)
     } else {
-        villager_type_texture_ref(data.villager_type, baby)
+        villager_data_textured_layer_passes(baby, data)
+    };
+    let Some(type_pass) = passes.first().copied() else {
+        return;
     };
     emit_villager_profession_layer(
         meshes,
         model.root(),
         transform,
-        type_texture,
+        type_pass,
         !villager_type_hat_visible(data, zombie),
-        1,
-        1,
         atlas,
     );
 
-    if baby {
-        return;
+    for pass in passes.iter().copied().skip(1) {
+        emit_villager_profession_layer(meshes, model.root(), transform, pass, false, atlas);
     }
-    let profession_texture = if zombie {
-        zombie_villager_profession_texture_ref(data.profession)
-    } else {
-        villager_profession_texture_ref(data.profession)
-    };
-    let Some(profession_texture) = profession_texture else {
-        return;
-    };
-    emit_villager_profession_layer(
-        meshes,
-        model.root(),
-        transform,
-        profession_texture,
-        false,
-        2,
-        2,
-        atlas,
-    );
-
-    if data.profession.renders_level_badge() {
-        let level_texture = if zombie {
-            zombie_villager_level_texture_ref(data.level)
-        } else {
-            villager_level_texture_ref(data.level)
-        };
-        emit_villager_profession_layer(
-            meshes,
-            model.root(),
-            transform,
-            level_texture,
-            false,
-            3,
-            3,
-            atlas,
-        );
-    }
-}
-
-fn villager_type_hat_visible(data: VillagerModelData, zombie: bool) -> bool {
-    let type_hat = if zombie {
-        VillagerModelHat::None
-    } else {
-        data.villager_type.hat()
-    };
-    let profession_hat = data.profession.hat();
-    profession_hat == VillagerModelHat::None
-        || profession_hat == VillagerModelHat::Partial && type_hat != VillagerModelHat::Full
 }
 
 fn emit_villager_profession_layer(
     meshes: &mut EntityModelTexturedMeshes,
     root: &ModelPart,
     transform: Mat4,
-    texture: EntityModelTextureRef,
+    pass: EntityModelLayerPass,
     no_hat: bool,
-    order: i32,
-    submit_sequence: u32,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    let tint = [1.0, 1.0, 1.0, 1.0];
-    let submit = EntityModelSubmissionEmit::new(
-        EntityModelLayerRenderType::EntityCutout,
-        texture,
-        tint,
-        transform,
-        order,
-        submit_sequence,
-    )
-    .with_overlay([0.0, meshes.current_submission_overlay[1]]);
+    let submit = textured_layer_submission(meshes, pass, transform);
     render_textured_submission(meshes, submit, atlas, |mesh, entry| {
         if no_hat {
             root.render_textured_excluding(

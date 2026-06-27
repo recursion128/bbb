@@ -5,14 +5,18 @@ use super::super::{
         boat_texture_ref, camel_texture_ref, chicken_texture_ref, cow_texture_ref,
         horse_coat_texture_ref, horse_markings_texture_ref, llama_texture_ref,
         mooshroom_texture_ref, pig_texture_ref, sheep_wool_render_color, squid_texture_ref,
-        wolf_texture_ref, ArrowModelTexture, AxolotlModelVariant, BoatModelFamily,
-        CamelModelFamily, CatModelVariant, ChickenModelVariant, CopperGolemWeathering,
-        CowModelVariant, DonkeyModelFamily, EntityDyeColor, EntityModelTextureRef, FoxModelVariant,
-        FrogModelVariant, HoglinModelFamily, HorseColorVariant, HorseMarkings, IllagerModelFamily,
+        villager_level_texture_ref, villager_profession_texture_ref, villager_type_texture_ref,
+        wolf_texture_ref, zombie_villager_level_texture_ref,
+        zombie_villager_profession_texture_ref, zombie_villager_type_texture_ref,
+        ArrowModelTexture, AxolotlModelVariant, BoatModelFamily, CamelModelFamily, CatModelVariant,
+        ChickenModelVariant, CopperGolemWeathering, CowModelVariant, DonkeyModelFamily,
+        EntityDyeColor, EntityModelTextureRef, FoxModelVariant, FrogModelVariant,
+        HoglinModelFamily, HorseColorVariant, HorseMarkings, IllagerModelFamily,
         IronGolemCrackiness, LlamaVariant, MooshroomVariant, PandaModelVariant, ParrotModelVariant,
         PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant,
         SalmonModelSize, SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape,
-        TropicalFishPattern, UndeadHorseModelFamily, WolfModelVariant,
+        TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelHat,
+        WolfModelVariant,
     },
     model_layers::*,
 };
@@ -86,6 +90,9 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     DrownedBase,
     DrownedOuter,
     ZombieVillagerBase,
+    ZombieVillagerType,
+    ZombieVillagerProfession,
+    ZombieVillagerLevel,
     PiglinBase,
     RabbitBase,
     IllagerBase,
@@ -102,6 +109,9 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     SpiderEyes,
     TadpoleBase,
     VillagerBase,
+    VillagerType,
+    VillagerProfession,
+    VillagerLevel,
     WanderingTraderBase,
     WitchBase,
     WitherBase,
@@ -981,6 +991,62 @@ pub(in crate::entity_models) fn zombie_villager_textured_layer_passes(
     }]
 }
 
+pub(in crate::entity_models) fn zombie_villager_data_textured_layer_passes(
+    baby: bool,
+    data: VillagerModelData,
+) -> Vec<EntityModelLayerPass> {
+    let type_model_layer = if villager_type_hat_visible(data, true) {
+        if baby {
+            MODEL_LAYER_ZOMBIE_VILLAGER_BABY
+        } else {
+            MODEL_LAYER_ZOMBIE_VILLAGER
+        }
+    } else if baby {
+        MODEL_LAYER_ZOMBIE_VILLAGER_BABY_NO_HAT
+    } else {
+        MODEL_LAYER_ZOMBIE_VILLAGER_NO_HAT
+    };
+    let mut passes = vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::ZombieVillagerType,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: type_model_layer,
+        texture: zombie_villager_type_texture_ref(data.villager_type, baby),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 1,
+        submit_sequence: 1,
+    }];
+    if baby {
+        return passes;
+    }
+    let Some(profession_texture) = zombie_villager_profession_texture_ref(data.profession) else {
+        return passes;
+    };
+    passes.push(EntityModelLayerPass {
+        kind: EntityModelLayerKind::ZombieVillagerProfession,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: MODEL_LAYER_ZOMBIE_VILLAGER,
+        texture: profession_texture,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 2,
+        submit_sequence: 2,
+    });
+    if data.profession.renders_level_badge() {
+        passes.push(EntityModelLayerPass {
+            kind: EntityModelLayerKind::ZombieVillagerLevel,
+            render_type: EntityModelLayerRenderType::EntityCutout,
+            model_layer: MODEL_LAYER_ZOMBIE_VILLAGER,
+            texture: zombie_villager_level_texture_ref(data.level),
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 3,
+            submit_sequence: 3,
+        });
+    }
+    passes
+}
+
 pub(in crate::entity_models) fn piglin_textured_layer_passes(
     family: PiglinModelFamily,
     baby_layout: bool,
@@ -1687,6 +1753,76 @@ pub(in crate::entity_models) fn villager_textured_layer_passes(
         order: 0,
         submit_sequence: 0,
     }]
+}
+
+pub(in crate::entity_models) fn villager_data_textured_layer_passes(
+    baby: bool,
+    data: VillagerModelData,
+) -> Vec<EntityModelLayerPass> {
+    let type_model_layer = if villager_type_hat_visible(data, false) {
+        if baby {
+            MODEL_LAYER_VILLAGER_BABY
+        } else {
+            MODEL_LAYER_VILLAGER
+        }
+    } else if baby {
+        MODEL_LAYER_VILLAGER_BABY_NO_HAT
+    } else {
+        MODEL_LAYER_VILLAGER_NO_HAT
+    };
+    let mut passes = vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::VillagerType,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: type_model_layer,
+        texture: villager_type_texture_ref(data.villager_type, baby),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 1,
+        submit_sequence: 1,
+    }];
+    if baby {
+        return passes;
+    }
+    let Some(profession_texture) = villager_profession_texture_ref(data.profession) else {
+        return passes;
+    };
+    passes.push(EntityModelLayerPass {
+        kind: EntityModelLayerKind::VillagerProfession,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: MODEL_LAYER_VILLAGER,
+        texture: profession_texture,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 2,
+        submit_sequence: 2,
+    });
+    if data.profession.renders_level_badge() {
+        passes.push(EntityModelLayerPass {
+            kind: EntityModelLayerKind::VillagerLevel,
+            render_type: EntityModelLayerRenderType::EntityCutout,
+            model_layer: MODEL_LAYER_VILLAGER,
+            texture: villager_level_texture_ref(data.level),
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 3,
+            submit_sequence: 3,
+        });
+    }
+    passes
+}
+
+pub(in crate::entity_models) fn villager_type_hat_visible(
+    data: VillagerModelData,
+    zombie: bool,
+) -> bool {
+    let type_hat = if zombie {
+        VillagerModelHat::None
+    } else {
+        data.villager_type.hat()
+    };
+    let profession_hat = data.profession.hat();
+    profession_hat == VillagerModelHat::None
+        || profession_hat == VillagerModelHat::Partial && type_hat != VillagerModelHat::Full
 }
 
 pub(in crate::entity_models) fn wandering_trader_textured_layer_passes() -> Vec<EntityModelLayerPass>

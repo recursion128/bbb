@@ -1080,8 +1080,8 @@ When an agent does any of the following, update this file in the same slice:
       submits, Shulker bullet's two submits, WindCharge `breezeWind`,
       wither normal/invulnerable base submits, charged-creeper / wither `energySwirl`,
       humanoid armor `armorCutoutNoCull`, horse/donkey/undead-horse
-      base+saddle/body-armor submits, horse markings, villager
-      profession/type/level overlays, custom-head skull submissions, player
+      base+saddle/body-armor submits, horse markings, villager and zombie-villager
+      profession/type/level overlay layer passes, custom-head skull submissions, player
       profile cape plus player WINGS/elytra submissions, strider
       base/saddle/no-baby-saddle submits, armor stand
       visibility/scale base submits, axolotl color/age base submits,
@@ -1985,7 +1985,9 @@ When an agent does any of the following, update this file in the same slice:
       geometry checks: base robes use `entityCutout`, selected base texture,
       white tint, adult `villager_adult_model_root_transform` or baby
       `entity_model_root_transform`, and `(order, submit_sequence) == (0, 0)`;
-      type, profession, and level overlays use `entityCutout`, white tint, the
+      type, profession, and level overlays now consume explicit data-layer pass
+      metadata, including vanilla `VILLAGER_NO_HAT` / `VILLAGER_BABY_NO_HAT`
+      model-layer identity for hidden type hats, `entityCutout`, white tint, the
       same transform, and vanilla `VillagerProfessionLayer` orders `(1, 1)`,
       `(2, 2)`, and `(3, 3)`, preserving entity light while clearing the white
       overlay column via `getOverlayCoords(state, 0.0F)`. Missing-atlas coverage
@@ -2155,7 +2157,9 @@ When an agent does any of the following, update this file in the same slice:
       `VillagerProfessionLayer` parity, reading `VillagerData` at entity-data id
       `20`, using the zombie-villager overlay textures, baby type robes, level
       badges for non-`NONE`/`NITWIT` adult professions, and vanilla no-hat model
-      selection; shared dispatch now owns the husk/drowned/zombie-villager base
+      selection through explicit data-layer passes that record
+      `ZOMBIE_VILLAGER_NO_HAT` / `ZOMBIE_VILLAGER_BABY_NO_HAT` when the type hat
+      is hidden; shared dispatch now owns the husk/drowned/zombie-villager base
       submissions and the drowned textured-only outer layer instead of residual
       textured emit helpers; textured zombie-family regressions now route through
       `entity_model_textured_meshes`, pinning zombie/husk/drowned/zombie-villager

@@ -223,6 +223,46 @@ fn villager_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(baby[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((baby[0].order, baby[0].submit_sequence), (0, 0));
 
+    let farmer =
+        VillagerModelData::new(VillagerModelType::Snow, VillagerModelProfession::Farmer, 4);
+    let overlays = villager_data_textured_layer_passes(false, farmer);
+    assert_eq!(overlays.len(), 3);
+    assert_eq!(overlays[0].kind, EntityModelLayerKind::VillagerType);
+    assert_eq!(overlays[0].render_type.vanilla_name(), "entityCutout");
+    assert_eq!(overlays[0].model_layer, MODEL_LAYER_VILLAGER_NO_HAT);
+    assert_eq!(
+        overlays[0].texture,
+        villager_type_texture_ref(VillagerModelType::Snow, false)
+    );
+    assert_eq!((overlays[0].order, overlays[0].submit_sequence), (1, 1));
+    assert_eq!(overlays[1].kind, EntityModelLayerKind::VillagerProfession);
+    assert_eq!(overlays[1].model_layer, MODEL_LAYER_VILLAGER);
+    assert_eq!(
+        overlays[1].texture,
+        villager_profession_texture_ref(VillagerModelProfession::Farmer).unwrap()
+    );
+    assert_eq!((overlays[1].order, overlays[1].submit_sequence), (2, 2));
+    assert_eq!(overlays[2].kind, EntityModelLayerKind::VillagerLevel);
+    assert_eq!(overlays[2].model_layer, MODEL_LAYER_VILLAGER);
+    assert_eq!(overlays[2].texture, villager_level_texture_ref(4));
+    assert_eq!((overlays[2].order, overlays[2].submit_sequence), (3, 3));
+
+    let baby_overlays = villager_data_textured_layer_passes(true, farmer);
+    assert_eq!(baby_overlays.len(), 1);
+    assert_eq!(baby_overlays[0].kind, EntityModelLayerKind::VillagerType);
+    assert_eq!(
+        baby_overlays[0].model_layer,
+        MODEL_LAYER_VILLAGER_BABY_NO_HAT
+    );
+    assert_eq!(
+        baby_overlays[0].texture,
+        villager_type_texture_ref(VillagerModelType::Snow, true)
+    );
+    assert_eq!(
+        (baby_overlays[0].order, baby_overlays[0].submit_sequence),
+        (1, 1)
+    );
+
     assert_eq!(trader.len(), 1);
     assert_eq!(trader[0].kind, EntityModelLayerKind::WanderingTraderBase);
     assert_eq!(
@@ -867,20 +907,11 @@ fn assert_villager_submissions_match_vanilla(
             .map(|pass| (pass.texture, pass.order, pass.submit_sequence, false)),
     );
     if let Some((baby, data)) = data {
-        expected.push((
-            villager_type_texture_ref(data.villager_type, baby),
-            1,
-            1,
-            true,
-        ));
-        if !baby {
-            if let Some(texture) = villager_profession_texture_ref(data.profession) {
-                expected.push((texture, 2, 2, true));
-                if data.profession.renders_level_badge() {
-                    expected.push((villager_level_texture_ref(data.level), 3, 3, true));
-                }
-            }
-        }
+        expected.extend(
+            villager_data_textured_layer_passes(baby, data)
+                .iter()
+                .map(|pass| (pass.texture, pass.order, pass.submit_sequence, true)),
+        );
     }
 
     assert_eq!(meshes.submissions.len(), expected.len());

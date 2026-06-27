@@ -1442,6 +1442,51 @@ fn zombie_villager_textured_layer_passes_match_vanilla_renderer() {
         assert_eq!(passes[0].texture, texture);
         assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
     }
+    let farmer =
+        VillagerModelData::new(VillagerModelType::Snow, VillagerModelProfession::Farmer, 4);
+    let overlays = zombie_villager_data_textured_layer_passes(false, farmer);
+    assert_eq!(overlays.len(), 3);
+    assert_eq!(overlays[0].kind, EntityModelLayerKind::ZombieVillagerType);
+    assert_eq!(overlays[0].render_type.vanilla_name(), "entityCutout");
+    assert_eq!(overlays[0].model_layer, MODEL_LAYER_ZOMBIE_VILLAGER_NO_HAT);
+    assert_eq!(
+        overlays[0].texture,
+        zombie_villager_type_texture_ref(VillagerModelType::Snow, false)
+    );
+    assert_eq!((overlays[0].order, overlays[0].submit_sequence), (1, 1));
+    assert_eq!(
+        overlays[1].kind,
+        EntityModelLayerKind::ZombieVillagerProfession
+    );
+    assert_eq!(overlays[1].model_layer, MODEL_LAYER_ZOMBIE_VILLAGER);
+    assert_eq!(
+        overlays[1].texture,
+        zombie_villager_profession_texture_ref(VillagerModelProfession::Farmer).unwrap()
+    );
+    assert_eq!((overlays[1].order, overlays[1].submit_sequence), (2, 2));
+    assert_eq!(overlays[2].kind, EntityModelLayerKind::ZombieVillagerLevel);
+    assert_eq!(overlays[2].model_layer, MODEL_LAYER_ZOMBIE_VILLAGER);
+    assert_eq!(overlays[2].texture, zombie_villager_level_texture_ref(4));
+    assert_eq!((overlays[2].order, overlays[2].submit_sequence), (3, 3));
+
+    let baby_overlays = zombie_villager_data_textured_layer_passes(true, farmer);
+    assert_eq!(baby_overlays.len(), 1);
+    assert_eq!(
+        baby_overlays[0].kind,
+        EntityModelLayerKind::ZombieVillagerType
+    );
+    assert_eq!(
+        baby_overlays[0].model_layer,
+        MODEL_LAYER_ZOMBIE_VILLAGER_BABY_NO_HAT
+    );
+    assert_eq!(
+        baby_overlays[0].texture,
+        zombie_villager_type_texture_ref(VillagerModelType::Snow, true)
+    );
+    assert_eq!(
+        (baby_overlays[0].order, baby_overlays[0].submit_sequence),
+        (1, 1)
+    );
     assert!(entity_model_texture_refs().contains(&ZOMBIE_VILLAGER_TEXTURE_REF));
     assert!(entity_model_texture_refs().contains(&ZOMBIE_VILLAGER_BABY_TEXTURE_REF));
     assert_eq!(
@@ -1773,36 +1818,20 @@ fn assert_zombie_family_submissions_match_vanilla(
         )
     }));
     if let Some((baby, data)) = villager_data {
-        expected.push((
-            EntityModelLayerRenderType::EntityCutout,
-            zombie_villager_type_texture_ref(data.villager_type, baby),
-            [1.0, 1.0, 1.0, 1.0],
-            1,
-            1,
-            true,
-        ));
-        if !baby {
-            if let Some(texture) = zombie_villager_profession_texture_ref(data.profession) {
-                expected.push((
-                    EntityModelLayerRenderType::EntityCutout,
-                    texture,
-                    [1.0, 1.0, 1.0, 1.0],
-                    2,
-                    2,
-                    true,
-                ));
-                if data.profession.renders_level_badge() {
-                    expected.push((
-                        EntityModelLayerRenderType::EntityCutout,
-                        zombie_villager_level_texture_ref(data.level),
-                        [1.0, 1.0, 1.0, 1.0],
-                        3,
-                        3,
+        expected.extend(
+            zombie_villager_data_textured_layer_passes(baby, data)
+                .iter()
+                .map(|pass| {
+                    (
+                        pass.render_type,
+                        pass.texture,
+                        pass.tint,
+                        pass.order,
+                        pass.submit_sequence,
                         true,
-                    ));
-                }
-            }
-        }
+                    )
+                }),
+        );
     }
 
     assert_eq!(meshes.submissions.len(), expected.len());

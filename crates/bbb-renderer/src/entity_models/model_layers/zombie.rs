@@ -14,8 +14,12 @@ pub(in crate::entity_models) const MODEL_LAYER_DROWNED: &str = "minecraft:drowne
 pub(in crate::entity_models) const MODEL_LAYER_DROWNED_BABY: &str = "minecraft:drowned_baby#main";
 pub(in crate::entity_models) const MODEL_LAYER_ZOMBIE_VILLAGER: &str =
     "minecraft:zombie_villager#main";
+pub(in crate::entity_models) const MODEL_LAYER_ZOMBIE_VILLAGER_NO_HAT: &str =
+    "minecraft:zombie_villager_no_hat#main";
 pub(in crate::entity_models) const MODEL_LAYER_ZOMBIE_VILLAGER_BABY: &str =
     "minecraft:zombie_villager_baby#main";
+pub(in crate::entity_models) const MODEL_LAYER_ZOMBIE_VILLAGER_BABY_NO_HAT: &str =
+    "minecraft:zombie_villager_baby_no_hat#main";
 
 pub(in crate::entity_models) const ZOMBIE_GREEN: [f32; 4] = [0.33, 0.62, 0.34, 1.0];
 pub(in crate::entity_models) const HUSK_TAN: [f32; 4] = [0.60, 0.50, 0.31, 1.0];
