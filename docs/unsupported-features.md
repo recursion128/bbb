@@ -1057,7 +1057,7 @@ When an agent does any of the following, update this file in the same slice:
       guardian/elder base submits, parrot variant base submits, pufferfish
       puff-state base submits, rabbit color/age/Toast base submits,
       sniffer base submits, and the
-      Guardian beam / End Crystal body+beam paths are covered by source-verified
+      Guardian beam / End Crystal body+beam / Ender Dragon body+eyes+beam paths are covered by source-verified
       texture/render-type/tint/transform/order tests, including the Guardian
       beam missing-atlas case where submission metadata survives while folded
       geometry is suppressed.
@@ -3188,7 +3188,9 @@ When an agent does any of the following, update this file in the same slice:
       identity at rest and the yaw projected through `body_rot`). The base texture is now bound on the
       textured path (`ENDER_DRAGON_TEXTURE_REF`), the primary now-wired path, together with the always-on
       emissive `dragon_eyes.png` eyes overlay (`ENDER_DRAGON_EYES_TEXTURE_REF`, an eyes-render-type pass
-      re-rendering the whole model, matching vanilla `EnderDragonRenderer.EYES`). The nearest-crystal
+      re-rendering the whole model, matching vanilla `EnderDragonRenderer.EYES`). Tests pin both
+      submissions' texture, render type, white tint, root transform, and same-order sequences
+      `(0, 0)` / `(0, 1)`. The nearest-crystal
       healing beam is now source-projected from the closest tracked end crystal intersecting the vanilla
       inflated search box, includes the `EndCrystalRenderer.getY` bob in `beamOffset`, and records
       `RenderTypes.endCrystalBeam(end_crystal_beam.png)` after body+eyes before folding the shared prism

@@ -129,15 +129,28 @@ fn ender_dragon_textured_render_matches_vanilla_renderer() {
         })
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::ender_dragon(
-            900,
-            [0.0, 64.0, 0.0],
-            0.0,
-        )],
-        &atlas,
-    );
+    let instance = EntityModelInstance::ender_dragon(900, [0.0, 64.0, 0.0], 0.0);
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert_eq!(meshes.submissions.len(), 2);
+    let base = meshes.submissions[0];
+    assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(base.texture, ENDER_DRAGON_TEXTURE_REF);
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(base.transform, ender_dragon_model_root_transform(instance));
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+    let eyes = meshes.submissions[1];
+    assert_eq!(eyes.render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(eyes.render_type.vanilla_name(), "eyes");
+    assert_eq!(eyes.texture, ENDER_DRAGON_EYES_TEXTURE_REF);
+    assert_eq!(eyes.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(eyes.transform, base.transform);
+    assert_eq!((eyes.order, eyes.submit_sequence), (0, 1));
+    let mesh = &meshes.cutout;
+
     assert!(!mesh.vertices.is_empty());
+    assert_eq!(meshes.eyes.vertices.len(), mesh.vertices.len());
     assert!(mesh
         .vertices
         .iter()
