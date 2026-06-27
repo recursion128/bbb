@@ -171,27 +171,46 @@ fn mooshroom_textured_render_reuses_cow_geometry_with_the_mooshroom_recolor() {
         })
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    for baby in [false, true] {
-        let mooshroom = entity_model_textured_mesh(
-            &[EntityModelInstance::mooshroom(
-                900,
-                [0.0, 64.0, 0.0],
-                0.0,
-                baby,
-            )],
-            &atlas,
+    for (baby, variant, expected_texture) in [
+        (false, MooshroomVariant::Red, MOOSHROOM_TEXTURE_REF),
+        (true, MooshroomVariant::Red, MOOSHROOM_BABY_TEXTURE_REF),
+        (false, MooshroomVariant::Brown, MOOSHROOM_BROWN_TEXTURE_REF),
+        (
+            true,
+            MooshroomVariant::Brown,
+            MOOSHROOM_BROWN_BABY_TEXTURE_REF,
+        ),
+    ] {
+        let instance = EntityModelInstance::new(
+            900,
+            EntityModelKind::Mooshroom { baby, variant },
+            [0.0, 64.0, 0.0],
+            0.0,
         );
+        let mooshroom = entity_model_textured_meshes(&[instance], &atlas);
+        assert!(mooshroom.translucent.vertices.is_empty());
+        assert!(mooshroom.eyes.vertices.is_empty());
+        assert_eq!(mooshroom.submissions.len(), 1);
+        let submit = mooshroom.submissions[0];
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(submit.texture, expected_texture);
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(submit.transform, entity_model_root_transform(instance));
+        assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+
         // The mooshroom reuses the cow tree, so it emits the same textured geometry the cow does.
-        let cow = entity_model_textured_mesh(
-            &[EntityModelInstance::cow(901, [0.0, 64.0, 0.0], 0.0, baby)],
+        let cow = entity_model_textured_meshes(
+            &[EntityModelInstance::cow(900, [0.0, 64.0, 0.0], 0.0, baby)],
             &atlas,
         );
         assert!(
-            !mooshroom.vertices.is_empty(),
-            "baby={baby} emits textured geometry"
+            !mooshroom.cutout.vertices.is_empty(),
+            "baby={baby} variant={variant:?} emits textured geometry"
         );
-        assert_eq!(mooshroom.vertices.len(), cow.vertices.len());
+        assert_eq!(mooshroom.cutout.vertices.len(), cow.cutout.vertices.len());
         assert!(mooshroom
+            .cutout
             .vertices
             .iter()
             .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
