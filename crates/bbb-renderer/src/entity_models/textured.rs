@@ -52,11 +52,11 @@ use super::{
         ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
         ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
         ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
-        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF,
-        CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF,
-        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENCHANTED_GLINT_ITEM_TEXTURE_REF,
-        ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_BEAM_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS,
-        GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
+        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, CAMEL_HUSK_SADDLE_TEXTURE_REF,
+        CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF, CREEPER_TEXTURE_REF,
+        DONKEY_SADDLE_TEXTURE_REF, ENCHANTED_GLINT_ITEM_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF,
+        END_CRYSTAL_BEAM_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, GUARDIAN_BEAM_TEXTURE_REF,
+        HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
         LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
         PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF,
         PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
@@ -87,10 +87,10 @@ pub(super) use layers::player_textured_layer_passes;
 pub(super) use layers::shulker_bullet_textured_layer_passes;
 pub(super) use layers::{
     armadillo_textured_layer_passes, arrow_textured_layer_passes, axolotl_textured_layer_passes,
-    blaze_textured_layer_passes, boat_textured_layer_passes, camel_textured_layer_passes,
-    chicken_textured_layer_passes, copper_golem_textured_layer_passes, cow_textured_layer_passes,
-    creaking_textured_layer_passes, creeper_textured_layer_passes, donkey_textured_layer_passes,
-    drowned_textured_layer_passes, end_crystal_textured_layer_passes,
+    blaze_textured_layer_passes, boat_textured_layer_passes, breeze_textured_layer_passes,
+    camel_textured_layer_passes, chicken_textured_layer_passes, copper_golem_textured_layer_passes,
+    cow_textured_layer_passes, creaking_textured_layer_passes, creeper_textured_layer_passes,
+    donkey_textured_layer_passes, drowned_textured_layer_passes, end_crystal_textured_layer_passes,
     ender_dragon_textured_layer_passes, enderman_textured_layer_passes,
     endermite_textured_layer_passes, evoker_fangs_textured_layer_passes,
     feline_textured_layer_passes, fox_textured_layer_passes, frog_textured_layer_passes,
@@ -947,6 +947,7 @@ fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
         EntityModelLayerKind::ArrowBase
             | EntityModelLayerKind::BoatBase
             | EntityModelLayerKind::BreezeEyes
+            | EntityModelLayerKind::BreezeWind
             | EntityModelLayerKind::EndCrystalBase
             | EntityModelLayerKind::EnderDragonEyes
             | EntityModelLayerKind::EndermanEyes
@@ -1078,15 +1079,16 @@ fn emit_breeze_wind_scroll_model(
         return;
     }
     let transform = entity_model_root_transform(instance);
-    let submit = EntityModelSubmissionEmit::new(
-        EntityModelLayerRenderType::BreezeWind,
-        BREEZE_WIND_TEXTURE_REF,
-        [1.0, 1.0, 1.0, 1.0],
+    let passes = breeze_textured_layer_passes();
+    let pass = passes[1];
+    let submit = no_overlay_submission(
+        pass.render_type,
+        pass.texture,
+        pass.tint,
         transform,
-        1,
-        1,
-    )
-    .with_overlay(ENTITY_VERTEX_NO_OVERLAY);
+        pass.order,
+        pass.submit_sequence,
+    );
     let mut model = BreezeWindModel::new();
     model.prepare(&instance);
     // Vanilla `BreezeWindLayer.xOffset(t) = t · 0.02`, taken `% 1.0`; `ageInTicks ≥ 0` so the Java

@@ -1058,8 +1058,9 @@ When an agent does any of the following, update this file in the same slice:
       passes that vanilla gates on `state.isInvisible` still do not submit.
       `breezeWind` / `energySwirl` residual emits now use a shared scrolled
       submission helper before folding into the scroll mesh buckets, with
-      missing-atlas tests pinning that submission metadata is recorded before
-      folded geometry is suppressed; Guardian
+      WindCharge and Breeze wind submits consuming explicit layer-pass metadata
+      before the scroll helper and missing-atlas tests pinning that submission
+      metadata is recorded before folded geometry is suppressed; Guardian
       attack beams also record vanilla `entityCutout` submissions before
       folding their tiled custom geometry into the scroll bucket through the
       custom scroll-geometry submission helper; End Crystal
@@ -2841,12 +2842,15 @@ When an agent does any of the following, update this file in the same slice:
       The colored debug path keeps the base body only, consistent with every other scrolling overlay
       (the energy swirls, the guardian beam). Renderer tests pin the wind geometry, the eyes pass,
       the wind body folding into the scroll mesh and U-scrolling past the looped idle, plus vanilla
-      submission metadata: base `entityTranslucent` keeps entity light plus hurt/white overlay, while
-      `BreezeEyesLayer` and `BreezeWindLayer` preserve entity light and force `OverlayTexture.NO_OVERLAY`
-      before folded eyes and scroll vertices inherit their submit metadata; `BreezeWindLayer` now also
-      pins the vanilla `breezeWind` render-type name, and missing-atlas coverage proves the wind submit
-      survives without `breeze_wind.png` while only folded scroll geometry is suppressed, and the eyes
-      submit survives without `breeze_eyes.png` while only folded emissive eyes geometry is suppressed.
+      submission metadata: `breeze_textured_layer_passes` records vanilla `ModelLayers.BREEZE`,
+      `ModelLayers.BREEZE_WIND`, and `ModelLayers.BREEZE_EYES`, with texture, render type,
+      `vanilla_name()`, white tint, and order/sequence coverage. The base `entityTranslucent` submit
+      keeps entity light plus hurt/white overlay, while `BreezeEyesLayer` and `BreezeWindLayer`
+      preserve entity light and force `OverlayTexture.NO_OVERLAY` before folded eyes and scroll
+      vertices inherit their submit metadata; `BreezeWindLayer` now also pins the vanilla `breezeWind`
+      render-type name, and missing-atlas coverage proves the wind submit survives without
+      `breeze_wind.png` while only folded scroll geometry is suppressed, and the eyes submit survives
+      without `breeze_eyes.png` while only folded emissive eyes geometry is suppressed.
       Breeze is now fully aligned with vanilla 26.1
     - dolphin entities are wired end to end on both render paths off the real vanilla 26.1
       `DolphinModel`: the native entity scene (`entity_scene.rs`) projects vanilla type id `35` to
@@ -3576,8 +3580,9 @@ When an agent does any of the following, update this file in the same slice:
       `ModelLayers.WIND_CHARGE`, texture ref, render-type name coverage, white tint, collector
       order `0`, and vanilla `OverlayTexture.NO_OVERLAY`, with folded
       scroll vertices now retaining that submission light/no-overlay metadata. Breeze's separate
-      `BreezeWindLayer` records order `1` and the same no-overlay submit metadata, ahead of the same-order
-      eyes layer per `BreezeRenderer.addLayer` order. The colored debug path stays as a fallback
+      `BreezeWindLayer` is likewise recorded through `breeze_textured_layer_passes` with order `1`,
+      vanilla `ModelLayers.BREEZE_WIND`, and the same no-overlay submit metadata, ahead of the
+      same-order eyes layer per `BreezeRenderer.addLayer` order. The colored debug path stays as a fallback
       (it renders the spinning wind shell and core as opaque tinted geometry)
     - ender dragon entities as renderer-owned vanilla 26.1 `EnderDragonModel.createBodyLayer()` geometry on
       the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `43` to the new

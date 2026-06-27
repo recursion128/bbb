@@ -48,24 +48,25 @@ use super::model_layers::{
     TropicalFishModel, TropicalFishPatternModel, TurtleModel, VexModel, VillagerModel,
     WanderingTraderModel, WardenModel, WitchModel, WitherModel, WitherSkullModel, WolfModel,
     ZombieModel, ZombieVariantModel, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF,
-    BREEZE_EYES_TEXTURE_REF, BREEZE_TEXTURE_REF, COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF,
-    DOLPHIN_TEXTURE_REF, FELINE_CAT_SCALE, GLOW_SQUID_TEAL, GUARDIAN_ELDER_SCALE,
-    PUFFERFISH_TEXTURE_REF, SQUID_BLUE, TURTLE_BABY_TEXTURE_REF, TURTLE_EGG_ROOT_DROP_POSE,
-    TURTLE_TEXTURE_REF, VEX_CHARGING_TEXTURE_REF, VEX_TEXTURE_REF, WITHER_SKELETON_DARK,
+    COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF, FELINE_CAT_SCALE,
+    GLOW_SQUID_TEAL, GUARDIAN_ELDER_SCALE, PUFFERFISH_TEXTURE_REF, SQUID_BLUE,
+    TURTLE_BABY_TEXTURE_REF, TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF,
+    VEX_CHARGING_TEXTURE_REF, VEX_TEXTURE_REF, WITHER_SKELETON_DARK,
 };
 use super::textured::{
     armadillo_textured_layer_passes, arrow_textured_layer_passes, axolotl_textured_layer_passes,
-    blaze_textured_layer_passes, boat_textured_layer_passes, camel_textured_layer_passes,
-    chicken_textured_layer_passes, copper_golem_textured_layer_passes, cow_textured_layer_passes,
-    creaking_textured_layer_passes, creeper_textured_layer_passes, drowned_textured_layer_passes,
-    ender_dragon_textured_layer_passes, enderman_textured_layer_passes,
-    endermite_textured_layer_passes, evoker_fangs_textured_layer_passes,
-    feline_textured_layer_passes, fox_textured_layer_passes, frog_textured_layer_passes,
-    ghast_textured_layer_passes, goat_textured_layer_passes, guardian_textured_layer_passes,
-    happy_ghast_textured_layer_passes, hoglin_textured_layer_passes, husk_textured_layer_passes,
-    illager_textured_layer_passes, iron_golem_textured_layer_passes,
-    leash_knot_textured_layer_passes, llama_spit_textured_layer_passes,
-    llama_textured_layer_passes, magma_cube_textured_layer_passes, minecart_textured_layer_passes,
+    blaze_textured_layer_passes, boat_textured_layer_passes, breeze_textured_layer_passes,
+    camel_textured_layer_passes, chicken_textured_layer_passes, copper_golem_textured_layer_passes,
+    cow_textured_layer_passes, creaking_textured_layer_passes, creeper_textured_layer_passes,
+    drowned_textured_layer_passes, ender_dragon_textured_layer_passes,
+    enderman_textured_layer_passes, endermite_textured_layer_passes,
+    evoker_fangs_textured_layer_passes, feline_textured_layer_passes, fox_textured_layer_passes,
+    frog_textured_layer_passes, ghast_textured_layer_passes, goat_textured_layer_passes,
+    guardian_textured_layer_passes, happy_ghast_textured_layer_passes,
+    hoglin_textured_layer_passes, husk_textured_layer_passes, illager_textured_layer_passes,
+    iron_golem_textured_layer_passes, leash_knot_textured_layer_passes,
+    llama_spit_textured_layer_passes, llama_textured_layer_passes,
+    magma_cube_textured_layer_passes, minecart_textured_layer_passes,
     mooshroom_textured_layer_passes, nautilus_textured_layer_passes, panda_textured_layer_passes,
     parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
     piglin_textured_layer_passes, polar_bear_textured_layer_passes, rabbit_textured_layer_passes,
@@ -727,27 +728,16 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                 )],
             )
         }
-        EntityModelKind::Breeze => sink.model(
-            BreezeModel::new(),
-            entity_model_root_transform(*instance),
-            instance,
-            &[
-                EntityModelLayerPass::base(
-                    EntityModelLayerRenderType::EntityTranslucent,
-                    BREEZE_TEXTURE_REF,
-                    [1.0, 1.0, 1.0, 1.0],
-                ),
-                // Vanilla `BreezeEyesLayer`: the always-on emissive eye glow re-renders the model in
-                // the eyes render type with `breeze_eyes.png` (transparent except the head's eye UVs).
-                EntityModelLayerPass::base(
-                    EntityModelLayerRenderType::Eyes,
-                    BREEZE_EYES_TEXTURE_REF,
-                    [1.0, 1.0, 1.0, 1.0],
-                )
-                .with_kind(EntityModelLayerKind::BreezeEyes)
-                .with_order(1, 2),
-            ],
-        ),
+        EntityModelKind::Breeze => {
+            let passes = breeze_textured_layer_passes();
+            let body_passes = [passes[0], passes[2]];
+            sink.model(
+                BreezeModel::new(),
+                entity_model_root_transform(*instance),
+                instance,
+                &body_passes,
+            )
+        }
         EntityModelKind::Cod => {
             let in_water = instance.render_state.in_water;
             sink.model(

@@ -202,6 +202,35 @@ fn breeze_texture_ref_matches_vanilla_renderer() {
             },
         ]
     );
+    let passes = breeze_textured_layer_passes();
+    assert_eq!(passes.len(), 3);
+    assert_eq!(passes[0].kind, EntityModelLayerKind::BreezeBase);
+    assert_eq!(passes[0].model_layer, MODEL_LAYER_BREEZE);
+    assert_eq!(
+        passes[0].render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(passes[0].render_type.vanilla_name(), "entityTranslucent");
+    assert_eq!(passes[0].texture, BREEZE_TEXTURE_REF);
+    assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
+    assert_eq!(passes[1].kind, EntityModelLayerKind::BreezeWind);
+    assert_eq!(passes[1].model_layer, MODEL_LAYER_BREEZE_WIND);
+    assert_eq!(
+        passes[1].render_type,
+        EntityModelLayerRenderType::BreezeWind
+    );
+    assert_eq!(passes[1].render_type.vanilla_name(), "breezeWind");
+    assert_eq!(passes[1].texture, BREEZE_WIND_TEXTURE_REF);
+    assert_eq!(passes[1].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((passes[1].order, passes[1].submit_sequence), (1, 1));
+    assert_eq!(passes[2].kind, EntityModelLayerKind::BreezeEyes);
+    assert_eq!(passes[2].model_layer, MODEL_LAYER_BREEZE_EYES);
+    assert_eq!(passes[2].render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(passes[2].render_type.vanilla_name(), "eyes");
+    assert_eq!(passes[2].texture, BREEZE_EYES_TEXTURE_REF);
+    assert_eq!(passes[2].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((passes[2].order, passes[2].submit_sequence), (1, 2));
 }
 
 #[test]

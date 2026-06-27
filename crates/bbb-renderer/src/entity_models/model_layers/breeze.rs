@@ -32,6 +32,10 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 use KeyframeInterpolation::{CatmullRom, Linear};
 
+pub(in crate::entity_models) const MODEL_LAYER_BREEZE: &str = "minecraft:breeze#main";
+pub(in crate::entity_models) const MODEL_LAYER_BREEZE_WIND: &str = "minecraft:breeze#wind";
+pub(in crate::entity_models) const MODEL_LAYER_BREEZE_EYES: &str = "minecraft:breeze#eyes";
+
 // Vanilla 26.1 `BreezeModel.createBodyLayer` (atlas 32×32): the base body layer retains only the
 // `head` (with its emissive `eyes` child) and the three `rods` under the `body` pivot; the swirling
 // `wind_body` is a separate translucent layer. The colored path approximates the wind body's

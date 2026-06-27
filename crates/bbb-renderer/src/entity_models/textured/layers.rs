@@ -24,6 +24,8 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     ArrowBase,
     AxolotlBase,
     BoatBase,
+    BreezeBase,
+    BreezeWind,
     BreezeEyes,
     CamelBase,
     ChickenBase,
@@ -304,6 +306,41 @@ pub(in crate::entity_models) fn boat_textured_layer_passes(
         order: 0,
         submit_sequence: 0,
     }]
+}
+
+pub(in crate::entity_models) fn breeze_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    vec![
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::BreezeBase,
+            render_type: EntityModelLayerRenderType::EntityTranslucent,
+            model_layer: MODEL_LAYER_BREEZE,
+            texture: BREEZE_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 0,
+            submit_sequence: 0,
+        },
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::BreezeWind,
+            render_type: EntityModelLayerRenderType::BreezeWind,
+            model_layer: MODEL_LAYER_BREEZE_WIND,
+            texture: BREEZE_WIND_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 1,
+            submit_sequence: 1,
+        },
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::BreezeEyes,
+            render_type: EntityModelLayerRenderType::Eyes,
+            model_layer: MODEL_LAYER_BREEZE_EYES,
+            texture: BREEZE_EYES_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 1,
+            submit_sequence: 2,
+        },
+    ]
 }
 
 pub(in crate::entity_models) fn chicken_textured_layer_passes(
