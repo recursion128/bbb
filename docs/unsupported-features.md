@@ -1053,7 +1053,7 @@ When an agent does any of the following, update this file in the same slice:
       feline cat/ocelot base plus collar submits, fox type/age/sleeping base
       submits, frog temperature base submits, panda gene/age base submits,
       parrot variant base submits, pufferfish puff-state base submits, rabbit
-      color/age/Toast base submits, and the
+      color/age/Toast base submits, sniffer base submits, and the
       Guardian beam / End Crystal body+beam paths are covered by source-verified
       texture/render-type/tint/transform/order tests, including the Guardian
       beam missing-atlas case where submission metadata survives while folded
@@ -2726,10 +2726,11 @@ When an agent does any of the following, update this file in the same slice:
       it is the same enum the one-shots read) swaps the looping 2.0 s `SNIFFER_SNIFF_SEARCH` in for the
       base `SNIFFER_WALK` under the same `applyWalk(..., 9, 100)`, adding a head-down shift and a `nose`
       SCALE puff over the eleven animated bones. Only the baby-transform
-      (`BABY_TRANSFORM`/`SNIFFER_BABY_FALL`) stays deferred. The base texture is now bound on the textured path
-      (`SNIFFER_TEXTURE_REF`), the primary now-wired path, with nothing left deferred on the texture
-      side. The colored debug path stays as a fallback (it approximates the body with one brown tint
-      and the nose pad with a pink tint)
+      (`BABY_TRANSFORM`/`SNIFFER_BABY_FALL`) stays deferred. The adult base texture is now bound on the
+      textured path (`SNIFFER_TEXTURE_REF`), the primary now-wired path, with explicit submission
+      metadata pinned for vanilla `entityCutout`, white tint, root transform, and `order(0)`.
+      The colored debug path stays as a fallback (it approximates the body with one brown tint and the
+      nose pad with a pink tint)
     - warden entities as renderer-owned vanilla 26.1 `WardenModel.createBodyLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `142` to the
       new `EntityModelKind::Warden`, replacing the former placeholder bounds box. The static rest-pose
