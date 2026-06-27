@@ -1355,7 +1355,9 @@ When an agent does any of the following, update this file in the same slice:
         missing atlas entries wait instead of drawing stale geometry. Pack/native
         now preserve item equippable asset ids and query equipment asset layers,
         so the cape is suppressed for chest WINGS equipment and nudged by the
-        vanilla HUMANOID chest-equipment translation. Player `WingsLayer` / elytra
+        vanilla HUMANOID chest-equipment translation, with the nudged `entitySolid`
+        submission also pinning texture, dynamic handle, white tint, light/no-overlay
+        metadata, and folded cape vertex inheritance. Player `WingsLayer` / elytra
         presentation is also covered for vanilla elytra equipment: native projects
         the chest WINGS layer texture/use-player-texture metadata, renderer emits an
         `ElytraModel` `armorCutoutNoCull` submission at order 0 with the vanilla

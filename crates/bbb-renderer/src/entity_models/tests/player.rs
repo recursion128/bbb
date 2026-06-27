@@ -613,6 +613,9 @@ fn player_cape_layer_offsets_for_humanoid_chest_equipment() {
         EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
         PLAYER_MODEL_PARTS_ALL_VISIBLE,
     )
+    .with_light_coords((4_u32 << 4) | (10_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true)
     .with_player_cape_texture(Some(cape_texture))
     .with_chest_equipment_has_humanoid(true);
 
@@ -629,12 +632,30 @@ fn player_cape_layer_offsets_for_humanoid_chest_equipment() {
         .find(|submit| submit.dynamic_player_texture == Some(cape_texture))
         .expect("cape submission");
     assert_eq!(
+        cape_submit.render_type,
+        EntityModelLayerRenderType::EntitySolid
+    );
+    assert_eq!(cape_submit.render_type.vanilla_name(), "entitySolid");
+    assert_eq!(cape_submit.texture, PLAYER_PROFILE_CAPE_TEXTURE_REF);
+    assert_eq!(cape_submit.dynamic_player_skin, None);
+    assert_eq!(cape_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
         cape_submit.transform,
         player_model_root_transform(instance)
             * Mat4::from_translation(Vec3::new(0.0, -0.053125, 0.06875))
     );
     assert_eq!((cape_submit.order, cape_submit.submit_sequence), (0, 1));
+    assert_eq!(cape_submit.light, instance.render_state.shader_light());
+    assert_eq!(cape_submit.overlay, [0.0, 10.0]);
+    assert_ne!(cape_submit.overlay, instance.render_state.overlay_coords());
     assert_eq!(meshes.dynamic_player_texture_cutout.vertices.len(), 24);
+    assert!(meshes
+        .dynamic_player_texture_cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]
+            && vertex.light == cape_submit.light
+            && vertex.overlay == cape_submit.overlay));
 }
 
 #[test]
