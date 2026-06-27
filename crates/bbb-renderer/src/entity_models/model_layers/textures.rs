@@ -1572,7 +1572,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 546] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 547] = [
     PLAYER_SLIM_ALEX_TEXTURE_REF,
     PLAYER_SLIM_ARI_TEXTURE_REF,
     PLAYER_SLIM_EFE_TEXTURE_REF,
@@ -1758,6 +1758,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     SILVERFISH_TEXTURE_REF,
     LEASH_KNOT_TEXTURE_REF,
     TRIDENT_TEXTURE_REF,
+    TRIDENT_RIPTIDE_TEXTURE_REF,
     ENCHANTED_GLINT_ITEM_TEXTURE_REF,
     EVOKER_FANGS_TEXTURE_REF,
     TADPOLE_TEXTURE_REF,
@@ -3082,14 +3083,23 @@ pub(in crate::entity_models) const TRIDENT_TEXTURE_REF: EntityModelTextureRef =
         size: [32, 32],
     };
 
+pub(in crate::entity_models) const TRIDENT_RIPTIDE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/trident/trident_riptide.png",
+        size: [64, 64],
+    };
+
 pub(in crate::entity_models) const ENCHANTED_GLINT_ITEM_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/misc/enchanted_glint_item.png",
         size: [128, 128],
     };
 
-pub(in crate::entity_models) const TRIDENT_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
-    [TRIDENT_TEXTURE_REF, ENCHANTED_GLINT_ITEM_TEXTURE_REF];
+pub(in crate::entity_models) const TRIDENT_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 3] = [
+    TRIDENT_TEXTURE_REF,
+    TRIDENT_RIPTIDE_TEXTURE_REF,
+    ENCHANTED_GLINT_ITEM_TEXTURE_REF,
+];
 
 pub fn trident_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &TRIDENT_ENTITY_TEXTURE_REFS

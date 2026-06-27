@@ -302,6 +302,139 @@ fn player_textured_submission_records_vanilla_render_type_texture_tint_transform
 }
 
 #[test]
+fn player_spin_attack_effect_records_vanilla_submission_and_geometry() {
+    // Vanilla `AvatarRenderer` registers `SpinAttackEffectLayer` after WingsLayer/ParrotOnShoulder:
+    // while `isAutoSpinAttack` is set it submits `SpinAttackEffectModel` with the riptide trident
+    // texture, default `EntityModel` render type (`entityCutout`), no overlay, and default order 0.
+    let (atlas, _) = build_entity_model_texture_atlas(&steve_and_riptide_texture_images()).unwrap();
+    let instance = EntityModelInstance::player_with_skin(
+        54,
+        [2.0, 65.0, -3.0],
+        35.0,
+        EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_age_in_ticks(2.0)
+    .with_auto_spin_age_ticks(Some(2.0))
+    .with_light_coords((7_u32 << 4) | (9_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    let body_submit = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == PLAYER_WIDE_STEVE_TEXTURE_REF)
+        .expect("player body submission");
+    assert_eq!(
+        body_submit.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(body_submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(body_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(body_submit.transform, player_model_root_transform(instance));
+    assert_eq!(body_submit.light, instance.render_state.shader_light());
+    assert_eq!(body_submit.overlay, instance.render_state.overlay_coords());
+    assert_eq!((body_submit.order, body_submit.submit_sequence), (0, 0));
+
+    let spin_submit = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == TRIDENT_RIPTIDE_TEXTURE_REF)
+        .expect("riptide spin attack submission");
+    assert_eq!(
+        spin_submit.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(spin_submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(spin_submit.dynamic_player_skin, None);
+    assert_eq!(spin_submit.dynamic_player_texture, None);
+    assert_eq!(spin_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(spin_submit.transform, player_model_root_transform(instance));
+    assert_eq!(spin_submit.light, body_submit.light);
+    assert_eq!(spin_submit.overlay, [0.0, 10.0]);
+    assert_ne!(spin_submit.overlay, body_submit.overlay);
+    assert_eq!((spin_submit.order, spin_submit.submit_sequence), (0, 3));
+
+    let riptide_entry = atlas
+        .entries
+        .iter()
+        .find(|entry| entry.texture == TRIDENT_RIPTIDE_TEXTURE_REF)
+        .expect("riptide atlas entry");
+    let riptide_vertices: Vec<_> = meshes
+        .cutout
+        .vertices
+        .iter()
+        .filter(|vertex| {
+            vertex.uv[0] >= riptide_entry.uv.min[0]
+                && vertex.uv[0] <= riptide_entry.uv.max[0]
+                && vertex.uv[1] >= riptide_entry.uv.min[1]
+                && vertex.uv[1] <= riptide_entry.uv.max[1]
+        })
+        .collect();
+    assert_eq!(riptide_vertices.len(), 48);
+    assert!(riptide_vertices.iter().all(|vertex| {
+        vertex.tint == spin_submit.tint
+            && vertex.light == spin_submit.light
+            && vertex.overlay == spin_submit.overlay
+    }));
+    assert_eq!(meshes.cutout.vertices.len(), 336);
+}
+
+#[test]
+fn player_spin_attack_submission_survives_missing_texture_atlas_entry() {
+    // Missing stitched riptide texture data must suppress only the folded `SpinAttackEffectModel`
+    // vertices; vanilla still builds the submit node for `trident_riptide.png` while spinning.
+    let (atlas, _) = build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
+    assert!(!atlas
+        .entries
+        .iter()
+        .any(|entry| entry.texture == TRIDENT_RIPTIDE_TEXTURE_REF));
+    let instance = EntityModelInstance::player_with_skin(
+        55,
+        [2.0, 65.0, -3.0],
+        35.0,
+        EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_age_in_ticks(2.0)
+    .with_auto_spin_age_ticks(Some(2.0))
+    .with_light_coords((7_u32 << 4) | (9_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    let body_submit = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == PLAYER_WIDE_STEVE_TEXTURE_REF)
+        .expect("player body submission");
+    let spin_submit = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == TRIDENT_RIPTIDE_TEXTURE_REF)
+        .expect("riptide spin attack submission");
+    assert_eq!(
+        spin_submit.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(spin_submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(spin_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(spin_submit.transform, player_model_root_transform(instance));
+    assert_eq!(spin_submit.light, body_submit.light);
+    assert_eq!(spin_submit.overlay, [0.0, 10.0]);
+    assert_eq!((spin_submit.order, spin_submit.submit_sequence), (0, 3));
+    assert_eq!(meshes.cutout.vertices.len(), 288);
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.overlay == body_submit.overlay));
+}
+
+#[test]
 fn ready_dynamic_player_skin_body_uses_dynamic_cutout_atlas_submission() {
     let (atlas, _) = build_entity_model_texture_atlas(&player_texture_images()).unwrap();
     let dynamic_skin = EntityDynamicPlayerSkin {
@@ -2102,6 +2235,21 @@ fn steve_and_elytra_texture_images() -> Vec<EntityModelTextureImage> {
         PLAYER_WIDE_STEVE_TEXTURE_REF,
         PLAYER_SLIM_STEVE_TEXTURE_REF,
         ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
+    ]
+    .into_iter()
+    .enumerate()
+    .map(|(index, texture)| {
+        let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+        EntityModelTextureImage::new(texture, vec![index as u8; len])
+    })
+    .collect()
+}
+
+fn steve_and_riptide_texture_images() -> Vec<EntityModelTextureImage> {
+    [
+        PLAYER_WIDE_STEVE_TEXTURE_REF,
+        PLAYER_SLIM_STEVE_TEXTURE_REF,
+        TRIDENT_RIPTIDE_TEXTURE_REF,
     ]
     .into_iter()
     .enumerate()

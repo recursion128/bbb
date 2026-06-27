@@ -50,24 +50,25 @@ use super::{
         DrownedOuterModel, ElytraModel, HoglinModel, HumanoidArmorSlot, HumanoidBabyArmorKind,
         LlamaModel, NautilusModel, PigModel, PiglinModel, PlayerModel, SheepFurModel, SheepModel,
         ShulkerBulletModel, SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel,
-        SquidModel, StriderModel, TropicalFishModel, TropicalFishPatternModel, VillagerModel,
-        WindChargeModel, WitherModel, WolfModel, ZombieModel, ZombieVariantModel,
-        ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
-        ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
-        ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
-        ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
-        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF,
-        CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF,
-        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENCHANTED_GLINT_ITEM_TEXTURE_REF,
-        ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_BEAM_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS,
-        END_CRYSTAL_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
-        LLAMA_BODY_TRADER_BABY_TEXTURE_REF, LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF,
-        NAUTILUS_SADDLE_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF,
-        PIG_SADDLE_TEXTURE_REF, PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
+        SpinAttackEffectModel, SquidModel, StriderModel, TropicalFishModel,
+        TropicalFishPatternModel, VillagerModel, WindChargeModel, WitherModel, WolfModel,
+        ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
+        ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_DONKEY_SADDLE_PARTS_TEXTURED,
+        ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED, ADULT_HORSE_ARMOR_PARTS_TEXTURED,
+        ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
+        ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
+        BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF, CAMEL_HUSK_SADDLE_TEXTURE_REF,
+        CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF, CREEPER_TEXTURE_REF,
+        DONKEY_SADDLE_TEXTURE_REF, ENCHANTED_GLINT_ITEM_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF,
+        END_CRYSTAL_BEAM_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, END_CRYSTAL_TEXTURE_REF,
+        GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
+        LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
+        PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF,
+        PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
         SHULKER_BULLET_TEXTURE_REF, SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF,
-        STANDARD_OUTER_ARMOR_DEFORMATION, STRIDER_SADDLE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF,
-        WITHER_ARMOR_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
-        ZOMBIE_TEXTURE_REF,
+        STANDARD_OUTER_ARMOR_DEFORMATION, STRIDER_SADDLE_TEXTURE_REF, TRIDENT_RIPTIDE_TEXTURE_REF,
+        WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF,
+        ZOMBIE_HORSE_SADDLE_TEXTURE_REF, ZOMBIE_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
@@ -537,6 +538,10 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         // humanoid mobs, and armor stands. Only players can replace the equipment texture with
         // a ready profile elytra/cape texture.
         emit_wings_layer(&mut meshes, *instance, atlas, dynamic_player_texture_atlas);
+        // AvatarRenderer registers SpinAttackEffectLayer after WingsLayer/ParrotOnShoulderLayer; the
+        // parrot layer is still unsupported, so keep the riptide visual as the next same-order player
+        // submission after wings.
+        emit_player_spin_attack_effect_layer(&mut meshes, *instance, atlas);
         // The pig saddle is a simple equipment overlay over the adult pig body.
         emit_pig_saddle_layer(&mut meshes, *instance, atlas);
         // Wolf body armor uses the adult WOLF_ARMOR equipment layer and optional damage cracks.
@@ -3162,6 +3167,38 @@ fn emit_wings_layer(
         transform,
         0,
         2,
+    );
+    render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+        model.root().render_textured(
+            mesh,
+            submit.transform,
+            submit.texture,
+            entry.uv,
+            submit.tint,
+        );
+    });
+}
+
+fn emit_player_spin_attack_effect_layer(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    if !matches!(instance.kind, EntityModelKind::Player { .. })
+        || instance.render_state.auto_spin_age_ticks.is_none()
+    {
+        return;
+    }
+
+    let mut model = SpinAttackEffectModel::new();
+    model.prepare(&instance);
+    let submit = no_overlay_submission(
+        EntityModelLayerRenderType::EntityCutout,
+        TRIDENT_RIPTIDE_TEXTURE_REF,
+        [1.0, 1.0, 1.0, 1.0],
+        player_model_root_transform(instance),
+        0,
+        3,
     );
     render_textured_submission(meshes, submit, atlas, |mesh, entry| {
         model.root().render_textured(

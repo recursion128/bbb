@@ -417,6 +417,12 @@ When an agent does any of the following, update this file in the same slice:
     about the post-yaw origin, so (like the death flip) they commute with the
     trailing uniform model scale and tip/spin every colored and textured living
     model; the death flip takes precedence over the spin, matching vanilla.
+    The player-only `SpinAttackEffectLayer` visual shell is also recorded as an
+    explicit submission while auto-spinning: `trident_riptide.png`, `entityCutout`,
+    no overlay, `order(0)`, same-order sequence after the currently implemented
+    WingsLayer path, and submission-first missing-atlas behavior. Its two vanilla
+    `SpinAttackEffectModel` boxes use the 64×64 riptide texture atlas, per-box scale
+    `0.75`/`1.5`, and `ageInTicks * -50°/-55°` y-rotation.
   - The Dinnerbone/Grumm upside-down easter egg is implemented end to end, for both
     the non-player and player render paths. World side: a non-player living entity
     (`vanilla_living_entity_type` gate) whose synced `DATA_CUSTOM_NAME` (id `2`) is

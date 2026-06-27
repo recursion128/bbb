@@ -105,10 +105,15 @@ fn trident_layer_passes_and_texture_ref_match_vanilla_renderer() {
         })
     );
     assert!(entity_model_texture_refs().contains(&TRIDENT_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&TRIDENT_RIPTIDE_TEXTURE_REF));
     assert!(entity_model_texture_refs().contains(&ENCHANTED_GLINT_ITEM_TEXTURE_REF));
     assert_eq!(
         trident_entity_texture_refs(),
-        &[TRIDENT_TEXTURE_REF, ENCHANTED_GLINT_ITEM_TEXTURE_REF]
+        &[
+            TRIDENT_TEXTURE_REF,
+            TRIDENT_RIPTIDE_TEXTURE_REF,
+            ENCHANTED_GLINT_ITEM_TEXTURE_REF
+        ]
     );
 }
 

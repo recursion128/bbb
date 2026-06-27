@@ -280,6 +280,7 @@ mod tests {
                 "textures/entity/silverfish/silverfish.png",
                 "textures/entity/lead_knot/lead_knot.png",
                 "textures/entity/trident/trident.png",
+                "textures/entity/trident/trident_riptide.png",
                 "textures/misc/enchanted_glint_item.png",
                 "textures/entity/illager/evoker_fangs.png",
                 "textures/entity/tadpole/tadpole.png",
