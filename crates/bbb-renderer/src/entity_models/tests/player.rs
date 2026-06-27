@@ -708,6 +708,9 @@ fn player_wings_layer_prefers_ready_profile_elytra_texture_over_cape() {
         EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
         PLAYER_MODEL_PARTS_ALL_VISIBLE,
     )
+    .with_light_coords((4_u32 << 4) | (12_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true)
     .with_chest_wings_layer(Some(EntityEquipmentLayerTexture {
         texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
         use_player_texture: true,
@@ -723,6 +726,10 @@ fn player_wings_layer_prefers_ready_profile_elytra_texture_over_cape() {
         Some(&dynamic_atlas),
     );
 
+    let body_submit = meshes.submissions[0];
+    assert_eq!(body_submit.texture, PLAYER_WIDE_STEVE_TEXTURE_REF);
+    assert_eq!(body_submit.light, instance.render_state.shader_light());
+    assert_eq!(body_submit.overlay, instance.render_state.overlay_coords());
     let wings_submit = meshes
         .submissions
         .iter()
@@ -732,12 +739,17 @@ fn player_wings_layer_prefers_ready_profile_elytra_texture_over_cape() {
         wings_submit.render_type,
         EntityModelLayerRenderType::ArmorCutoutNoCull
     );
+    assert_eq!(wings_submit.render_type.vanilla_name(), "armorCutoutNoCull");
     assert_eq!(wings_submit.texture, PLAYER_PROFILE_ELYTRA_TEXTURE_REF);
+    assert_eq!(wings_submit.dynamic_player_skin, None);
     assert_eq!(wings_submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         wings_submit.transform,
         player_model_root_transform(instance) * Mat4::from_translation(Vec3::Z * 0.125)
     );
+    assert_eq!(wings_submit.light, body_submit.light);
+    assert_eq!(wings_submit.overlay, [0.0, 10.0]);
+    assert_ne!(wings_submit.overlay, body_submit.overlay);
     assert_eq!((wings_submit.order, wings_submit.submit_sequence), (0, 2));
     assert!(meshes
         .submissions
@@ -745,6 +757,14 @@ fn player_wings_layer_prefers_ready_profile_elytra_texture_over_cape() {
         .all(|submit| submit.dynamic_player_texture != Some(profile_cape)));
     assert_eq!(meshes.cutout.vertices.len(), 288);
     assert_eq!(meshes.dynamic_player_texture_cutout.vertices.len(), 48);
+    assert!(
+        meshes
+            .dynamic_player_texture_cutout
+            .vertices
+            .iter()
+            .all(|vertex| vertex.light == wings_submit.light
+                && vertex.overlay == wings_submit.overlay)
+    );
 }
 
 #[test]
@@ -769,6 +789,9 @@ fn player_wings_layer_uses_ready_profile_cape_texture_when_elytra_is_absent() {
         EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
         PLAYER_MODEL_PARTS_ALL_VISIBLE,
     )
+    .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true)
     .with_chest_wings_layer(Some(EntityEquipmentLayerTexture {
         texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
         use_player_texture: true,
@@ -783,6 +806,10 @@ fn player_wings_layer_uses_ready_profile_cape_texture_when_elytra_is_absent() {
         Some(&dynamic_atlas),
     );
 
+    let body_submit = meshes.submissions[0];
+    assert_eq!(body_submit.texture, PLAYER_WIDE_STEVE_TEXTURE_REF);
+    assert_eq!(body_submit.light, instance.render_state.shader_light());
+    assert_eq!(body_submit.overlay, instance.render_state.overlay_coords());
     let wings_submit = meshes
         .submissions
         .iter()
@@ -792,14 +819,27 @@ fn player_wings_layer_uses_ready_profile_cape_texture_when_elytra_is_absent() {
         wings_submit.render_type,
         EntityModelLayerRenderType::ArmorCutoutNoCull
     );
+    assert_eq!(wings_submit.render_type.vanilla_name(), "armorCutoutNoCull");
     assert_eq!(wings_submit.texture, PLAYER_PROFILE_CAPE_TEXTURE_REF);
+    assert_eq!(wings_submit.dynamic_player_skin, None);
     assert_eq!(wings_submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         wings_submit.transform,
         player_model_root_transform(instance) * Mat4::from_translation(Vec3::Z * 0.125)
     );
+    assert_eq!(wings_submit.light, body_submit.light);
+    assert_eq!(wings_submit.overlay, [0.0, 10.0]);
+    assert_ne!(wings_submit.overlay, body_submit.overlay);
     assert_eq!((wings_submit.order, wings_submit.submit_sequence), (0, 2));
     assert_eq!(meshes.dynamic_player_texture_cutout.vertices.len(), 48);
+    assert!(
+        meshes
+            .dynamic_player_texture_cutout
+            .vertices
+            .iter()
+            .all(|vertex| vertex.light == wings_submit.light
+                && vertex.overlay == wings_submit.overlay)
+    );
 }
 
 #[test]

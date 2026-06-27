@@ -1360,7 +1360,9 @@ When an agent does any of the following, update this file in the same slice:
         `z=0.125` layer transform and `OverlayTexture.NO_OVERLAY`, prefers ready profile elytra texture over cape,
         falls back to a ready profile cape when the cape part is visible, uses the
         static equipment elytra texture when no profile override exists, and waits
-        when an override texture has not been uploaded. World/native also project
+        when an override texture has not been uploaded. The profile elytra/cape
+        WINGS branches now also pin entity light plus no-overlay metadata on both
+        the submission and folded dynamic texture vertices. World/native also project
         vanilla `LivingEntity.elytraAnimationState` rotX/Y/Z into the renderer,
         and the same WINGS path now covers humanoid mobs, armor stands (small
         armor stands select the baby layer through `ArmorStand.isBaby()`), and
