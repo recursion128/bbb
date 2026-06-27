@@ -1830,7 +1830,9 @@ When an agent does any of the following, update this file in the same slice:
       `OverlayTexture.NO_OVERLAY`) before folding into the cutout bucket. The base
       `entityCutout` submission now also pins vanilla `LivingEntityRenderer`
       light plus hurt/white overlay metadata, and folded cutout vertices inherit
-      the corresponding base or decor submission metadata. The llama spit
+      the corresponding base or decor submission metadata. Missing-atlas coverage
+      pins that adult carpet and baby trader decor submissions are still recorded
+      before only the folded decor geometry is suppressed. The llama spit
       projectile is covered separately below with object-renderer no-overlay
       submission metadata
     - goat entities as renderer-owned vanilla 26.1 adult/baby body-layer

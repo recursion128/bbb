@@ -583,6 +583,107 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
 }
 
 #[test]
+fn llama_decor_submission_survives_missing_texture_atlas_entry() {
+    // Vanilla `LlamaDecorLayer` delegates to `EquipmentLayerRenderer.renderLayers(LLAMA_BODY)`,
+    // whose public overload starts at `SubmitNodeCollector.order(1)` and uses no overlay.
+    let images = texture_images(&[LLAMA_CREAMY_TEXTURE_REF, LLAMA_CREAMY_BABY_TEXTURE_REF]);
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let adult = EntityModelInstance::llama(
+        610,
+        [0.0, 64.0, 0.0],
+        0.0,
+        LlamaModelFamily::Llama,
+        LlamaVariant::Creamy,
+        false,
+        false,
+    )
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
+    let bare_meshes = entity_model_textured_meshes(&[adult], &atlas);
+    assert_llama_base_submission_at(&bare_meshes, 0, adult);
+
+    let white_instance = adult.with_llama_body_decor(Some(EntityDyeColor::White));
+    let white_meshes = entity_model_textured_meshes(&[white_instance], &atlas);
+    assert_eq!(white_meshes.submissions.len(), 2);
+    assert_llama_base_submission_at(&white_meshes, 0, white_instance);
+    assert_llama_submission(
+        white_meshes.submissions[1],
+        white_instance,
+        EntityModelLayerRenderType::ArmorCutoutNoCull,
+        LLAMA_BODY_WHITE_TEXTURE_REF,
+        1,
+        1,
+    );
+    assert_eq!(
+        white_meshes.cutout.vertices, bare_meshes.cutout.vertices,
+        "missing llama_body/white.png suppresses only folded decor geometry"
+    );
+    assert_eq!(white_meshes.cutout.indices, bare_meshes.cutout.indices);
+    let base_submit = white_meshes.submissions[0];
+    assert!(white_meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == base_submit.light && vertex.overlay == base_submit.overlay));
+
+    let baby_bare = EntityModelInstance::llama(
+        611,
+        [0.0, 64.0, 0.0],
+        0.0,
+        LlamaModelFamily::Llama,
+        LlamaVariant::Creamy,
+        true,
+        false,
+    )
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
+    let baby_bare_meshes = entity_model_textured_meshes(&[baby_bare], &atlas);
+    assert_llama_base_submission_at(&baby_bare_meshes, 0, baby_bare);
+    let baby_trader = EntityModelInstance::llama(
+        612,
+        [0.0, 64.0, 0.0],
+        0.0,
+        LlamaModelFamily::TraderLlama,
+        LlamaVariant::Creamy,
+        true,
+        false,
+    )
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true)
+    .with_llama_body_decor(Some(EntityDyeColor::Black));
+    let baby_trader_meshes = entity_model_textured_meshes(&[baby_trader], &atlas);
+    assert_eq!(baby_trader_meshes.submissions.len(), 2);
+    assert_llama_base_submission_at(&baby_trader_meshes, 0, baby_trader);
+    assert_llama_submission(
+        baby_trader_meshes.submissions[1],
+        baby_trader,
+        EntityModelLayerRenderType::ArmorCutoutNoCull,
+        LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
+        1,
+        1,
+    );
+    assert_eq!(
+        baby_trader_meshes.cutout.vertices, baby_bare_meshes.cutout.vertices,
+        "missing llama_body/trader_llama_baby.png suppresses only folded trader decor geometry"
+    );
+    assert_eq!(
+        baby_trader_meshes.cutout.indices,
+        baby_bare_meshes.cutout.indices
+    );
+    assert!(baby_trader_meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(
+            |vertex| vertex.light == baby_trader_meshes.submissions[0].light
+                && vertex.overlay == baby_trader_meshes.submissions[0].overlay
+        ));
+}
+
+#[test]
 fn llama_textured_mesh_applies_head_look() {
     let (atlas, _) = build_entity_model_texture_atlas(&llama_texture_images()).unwrap();
     let base = EntityModelInstance::llama(
