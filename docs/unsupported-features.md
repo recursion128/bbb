@@ -2174,13 +2174,14 @@ When an agent does any of the following, update this file in the same slice:
       creeper) (colored and textured). The texture-backed tests now pin explicit
       base submission metadata for vanilla `entityCutout`, `creeper.png`, white
       tint, the creeper swell root transform, and `order(0)` before checking
-      folded UV/head-look/walk/swell geometry. Charged creepers also emit the
+      folded UV/head-look/walk/swell geometry, with cutout vertices inheriting
+      the base light/overlay. Charged creepers also emit the
       vanilla `CreeperPowerLayer` / `EnergySwirlLayer` submission at `order(1)`
       with `creeper_armor.png`, `energySwirl`, the vanilla half-grey tint, and
       the same creeper root transform, preserving the per-entity light and
       vanilla `OverlayTexture.NO_OVERLAY` before folding the inflated armor
-      model into the additive scroll mesh; full scroll-mesh lighting presentation
-      parity remains deferred
+      model into the additive scroll mesh with matching vertex metadata; full
+      scroll-mesh lighting presentation parity remains deferred
     - base spider entities as renderer-owned vanilla 26.1
       `SpiderModel.createSpiderBodyLayer()` geometry, with
       `ModelLayers.SPIDER`, the official

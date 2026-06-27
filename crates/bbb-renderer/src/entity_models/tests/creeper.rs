@@ -186,6 +186,11 @@ fn charged_creeper_emits_scrolling_energy_swirl() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [grey, grey, grey, 1.0]));
+    assert!(rest
+        .scroll_additive
+        .vertices
+        .iter()
+        .all(|vertex| { vertex.light == swirl.light && vertex.overlay == swirl.overlay }));
 
     // The inflated armor floats outside the body: its X half-extent (head 8→12 wide, so split ±6 →
     // 0.375 block) exceeds the base creeper's 0.25, confirming the `CubeDeformation(2.0)` inflate.
@@ -519,6 +524,11 @@ fn assert_creeper_base_submission_matches_vanilla(
     assert_eq!(submit.light, instance.render_state.shader_light());
     assert_eq!(submit.overlay, instance.render_state.overlay_coords());
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
 }
 
 fn creeper_texture_images() -> Vec<EntityModelTextureImage> {
