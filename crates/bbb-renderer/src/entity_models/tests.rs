@@ -225,6 +225,27 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
         [46.0, 64.0, 0.0],
         0.0,
     );
+    let husk = EntityModelInstance::zombie_variant(
+        328,
+        [48.0, 64.0, 0.0],
+        0.0,
+        ZombieVariantModelFamily::Husk,
+        false,
+    );
+    let drowned = EntityModelInstance::zombie_variant(
+        329,
+        [50.0, 64.0, 0.0],
+        0.0,
+        ZombieVariantModelFamily::Drowned,
+        false,
+    );
+    let zombie_villager = EntityModelInstance::zombie_variant(
+        330,
+        [52.0, 64.0, 0.0],
+        0.0,
+        ZombieVariantModelFamily::ZombieVillager,
+        false,
+    );
     let colored = entity_model_colored_runtime_mesh(&[
         chicken,
         sheep,
@@ -251,6 +272,9 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
         snow_golem,
         witch,
         copper_golem,
+        husk,
+        drowned,
+        zombie_villager,
     ]);
     assert!(colored.vertices.is_empty());
     assert!(colored.indices.is_empty());
@@ -304,6 +328,12 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     assert!(!legacy_witch_geometry_guard.vertices.is_empty());
     let legacy_copper_golem_geometry_guard = entity_model_mesh(&[copper_golem]);
     assert!(!legacy_copper_golem_geometry_guard.vertices.is_empty());
+    let legacy_husk_geometry_guard = entity_model_mesh(&[husk]);
+    assert!(!legacy_husk_geometry_guard.vertices.is_empty());
+    let legacy_drowned_geometry_guard = entity_model_mesh(&[drowned]);
+    assert!(!legacy_drowned_geometry_guard.vertices.is_empty());
+    let legacy_zombie_villager_geometry_guard = entity_model_mesh(&[zombie_villager]);
+    assert!(!legacy_zombie_villager_geometry_guard.vertices.is_empty());
 }
 
 #[test]

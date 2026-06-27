@@ -88,12 +88,6 @@ fn entity_model_mesh_with_options(
                     // Vanilla `NoopRenderer` entities (area effect cloud, marker, interaction) render no
                     // model, so this arm emits nothing — exact parity with vanilla.
                 }
-                EntityModelKind::ZombieVariant { family, baby } => {
-                    // The husk, drowned, and zombie villager all have wired texture-backed paths now.
-                    if !skip_texture_backed_entities {
-                        emit_zombie_variant_model(&mut mesh, *instance, family, baby)
-                    }
-                }
                 EntityModelKind::Sheep {
                     baby,
                     sheared,
@@ -269,24 +263,9 @@ fn emit_humanoid_model(
     }
 }
 
-fn emit_zombie_variant_model(
-    mesh: &mut EntityModelMesh,
-    instance: EntityModelInstance,
-    family: ZombieVariantModelFamily,
-    baby: bool,
-) {
-    // The unified `ZombieVariantModel` tree drives both render paths; `setup_anim` runs the shared
-    // `ZombieModel.setupAnim` (head look + leg swing + held-out arms). The colored fallback recolors
-    // the whole model with the family color (the textured path uses the family texture instead).
-    let color = zombie_variant_color(family);
-    let transform = zombie_variant_root_transform(instance, family, baby);
-    ZombieVariantModel::new(family, baby)
-        .prepare_and_render_with_color(mesh, &instance, transform, color);
-}
-
 /// The colored-fallback recolor for a zombie variant: the husk's tan, the drowned's blue, or the
 /// zombie villager's robe. The textured path uses the family texture instead of this override.
-fn zombie_variant_color(family: ZombieVariantModelFamily) -> [f32; 4] {
+pub(in crate::entity_models) fn zombie_variant_color(family: ZombieVariantModelFamily) -> [f32; 4] {
     match family {
         ZombieVariantModelFamily::Husk => HUSK_TAN,
         ZombieVariantModelFamily::Drowned => DROWNED_BLUE,

@@ -45,23 +45,23 @@ use super::{
         horse_body_armor_texture_layers, limb_swing_at_rest, llama_body_decor_texture_ref,
         nautilus_body_armor_texture_ref, wolf_armor_crackiness_texture_ref,
         wolf_body_armor_texture_layers, BreezeWindModel, CamelModel, CreeperModel,
-        CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel, CustomHeadSkullModel,
-        DrownedOuterModel, ElytraModel, HumanoidArmorSlot, HumanoidBabyArmorKind, LlamaModel,
-        NautilusModel, PigModel, PiglinModel, PlayerEarsModel, PlayerModel, SheepFurModel,
-        SheepModel, SkeletonModel, SpinAttackEffectModel, StriderModel, VillagerModel,
-        WindChargeModel, WitherModel, WolfModel, ZombieModel, ZombieVariantModel,
-        ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
-        ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
-        ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
-        ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
-        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF,
-        CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF,
-        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENCHANTED_GLINT_ITEM_TEXTURE_REF,
-        ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_BEAM_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS,
-        END_CRYSTAL_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
-        LLAMA_BODY_TRADER_BABY_TEXTURE_REF, LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF,
-        NAUTILUS_SADDLE_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF,
-        PIG_SADDLE_TEXTURE_REF, PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
+        CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel, CustomHeadSkullModel, ElytraModel,
+        HumanoidArmorSlot, HumanoidBabyArmorKind, LlamaModel, NautilusModel, PigModel, PiglinModel,
+        PlayerEarsModel, PlayerModel, SheepFurModel, SheepModel, SkeletonModel,
+        SpinAttackEffectModel, StriderModel, VillagerModel, WindChargeModel, WitherModel,
+        WolfModel, ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
+        ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_DONKEY_SADDLE_PARTS_TEXTURED,
+        ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED, ADULT_HORSE_ARMOR_PARTS_TEXTURED,
+        ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
+        ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
+        BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF, CAMEL_HUSK_SADDLE_TEXTURE_REF,
+        CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF, CREEPER_TEXTURE_REF,
+        DONKEY_SADDLE_TEXTURE_REF, ENCHANTED_GLINT_ITEM_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF,
+        END_CRYSTAL_BEAM_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, END_CRYSTAL_TEXTURE_REF,
+        GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
+        LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
+        PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF,
+        PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
         SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION,
         STRIDER_SADDLE_TEXTURE_REF, TRIDENT_RIPTIDE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF,
         WITHER_ARMOR_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
@@ -376,24 +376,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
                 }
                 EntityModelKind::EndCrystal => {
                     emit_end_crystal_textured_model(&mut meshes, *instance, atlas);
-                }
-                EntityModelKind::ZombieVariant {
-                    family: ZombieVariantModelFamily::Husk,
-                    baby,
-                } => {
-                    emit_husk_textured_model(&mut meshes, *instance, baby, atlas);
-                }
-                EntityModelKind::ZombieVariant {
-                    family: ZombieVariantModelFamily::Drowned,
-                    baby,
-                } => {
-                    emit_drowned_textured_model(&mut meshes, *instance, baby, atlas);
-                }
-                EntityModelKind::ZombieVariant {
-                    family: ZombieVariantModelFamily::ZombieVillager,
-                    baby,
-                } => {
-                    emit_zombie_villager_textured_model(&mut meshes, *instance, baby, atlas);
                 }
                 EntityModelKind::Player { skin, parts } => {
                     emit_player_textured_model(
@@ -2433,81 +2415,6 @@ fn emit_llama_decor_layer(
         [1.0, 1.0, 1.0, 1.0],
         1,
         1,
-        atlas,
-    );
-}
-
-fn emit_husk_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    baby: bool,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `ZombieVariantModel` tree drives both render paths; `setup_anim` runs the shared
-    // `ZombieModel.setupAnim` (head look + leg swing + held-out arms). `HuskRenderer extends
-    // ZombieRenderer`, so the husk reuses the zombie body; vanilla scales the adult husk mesh by
-    // 1.0625 (`huskScale`), while the baby husk reuses the unscaled `babyZombieLayer`.
-    let transform = if baby {
-        entity_model_root_transform(instance)
-    } else {
-        mesh_transformer_scaled_model_root_transform(instance, HUSK_SCALE)
-    };
-    let mut model = ZombieVariantModel::new(ZombieVariantModelFamily::Husk, baby);
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        husk_textured_layer_passes(baby),
-        atlas,
-    );
-}
-
-fn emit_drowned_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    baby: bool,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `ZombieVariantModel` tree drives the base body; `setup_anim` runs the shared
-    // `ZombieModel.setupAnim` (head look + leg swing + held-out arms) plus the drowned trident throw.
-    // `DrownedModel extends ZombieModel`, so the non-swimming drowned reuses the zombie body. The
-    // always-on `DrownedOuterLayer` is a second white cutout pass driven by a `DrownedOuterModel`
-    // (the inflated `createBodyLayer(0.25)` shell — the adult humanoid mesh or the distinct baby-zombie
-    // mesh) posed by the SAME animator, so it tracks the limbs. `DrownedRenderer.setupRotations`
-    // adds the swim body pitch onto both passes. No root scale.
-    let transform = drowned_model_root_transform(instance);
-    let mut base = ZombieVariantModel::new(ZombieVariantModelFamily::Drowned, baby);
-    base.prepare(&instance);
-    for pass in drowned_textured_layer_passes(baby) {
-        if matches!(pass.kind, EntityModelLayerKind::DrownedOuter) {
-            let mut outer = DrownedOuterModel::new(baby);
-            outer.prepare(&instance);
-            render_textured_root_pass(meshes, outer.root(), transform, pass, atlas);
-        } else {
-            render_textured_root_pass(meshes, base.root(), transform, pass, atlas);
-        }
-    }
-}
-
-fn emit_zombie_villager_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    baby: bool,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `ZombieVariantModel` tree drives both render paths; `setup_anim` runs the shared
-    // `ZombieModel.setupAnim` (head look + leg swing + held-out arms). `ZombieVillagerModel extends
-    // HumanoidModel` over its own robed body layer. The hatted base layer is emitted; the no-hat
-    // model selection and the profession/type/level overlays stay deferred. No root scale.
-    let transform = entity_model_root_transform(instance);
-    let mut model = ZombieVariantModel::new(ZombieVariantModelFamily::ZombieVillager, baby);
-    model.prepare(&instance);
-    render_textured_layers(
-        meshes,
-        &model,
-        transform,
-        zombie_villager_textured_layer_passes(baby),
         atlas,
     );
 }

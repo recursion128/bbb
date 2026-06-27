@@ -544,7 +544,7 @@ When an agent does any of the following, update this file in the same slice:
     the wind charge's `breezeWind`, just additively blended. The
     `HumanoidModel` leg swing (`humanoid_leg_swing_pose`: the right leg, part offset
     `x < 0`, in phase and the left leg out of phase, since both legs sit at `z = 0`) is
-    consumed by the zombie family (`emit_zombie_model`/`emit_zombie_variant_model` —
+    consumed by the zombie family (`ZombieModel` / shared-dispatch `ZombieVariantModel` —
     zombie, husk, drowned, zombie villager, adult and baby) and the skeleton family
     (`emit_skeleton_model`/`emit_skeleton_variant_model` colored and
     `emit_skeleton_textured_model` → `emit_humanoid_textured_passes` — skeleton, stray,
@@ -2136,7 +2136,9 @@ When an agent does any of the following, update this file in the same slice:
       `VillagerProfessionLayer` parity, reading `VillagerData` at entity-data id
       `20`, using the zombie-villager overlay textures, baby type robes, level
       badges for non-`NONE`/`NITWIT` adult professions, and vanilla no-hat model
-      selection; textured zombie-family regressions now route through
+      selection; shared dispatch now owns the husk/drowned/zombie-villager base
+      submissions and the drowned textured-only outer layer instead of residual
+      textured emit helpers; textured zombie-family regressions now route through
       `entity_model_textured_meshes`, pinning zombie/husk/drowned/zombie-villager
       base submissions plus the drowned outer layer and zombie-villager data
       overlays as vanilla `entityCutout` submits with selected textures, white

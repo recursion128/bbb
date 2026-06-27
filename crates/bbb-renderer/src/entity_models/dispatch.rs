@@ -12,7 +12,7 @@ use glam::{Mat4, Vec3};
 
 use super::catalog::{
     CamelModelFamily, CowModelVariant, EntityModelKind, EntityModelTextureAtlasLayout,
-    PiglinModelFamily, SkeletonModelFamily,
+    PiglinModelFamily, SkeletonModelFamily, ZombieVariantModelFamily,
 };
 use super::colored::{
     arrow_model_root_transform, boat_model_root_transform, camel_model_color,
@@ -27,7 +27,8 @@ use super::colored::{
     shulker_bullet_model_root_transform, shulker_model_root_transform, slime_model_root_transform,
     squid_model_root_transform, trident_model_root_transform, tropical_fish_model_root_transform,
     villager_adult_model_root_transform, wither_model_root_transform,
-    wither_skeleton_model_root_transform, wither_skull_model_root_transform, GIANT_SCALE,
+    wither_skeleton_model_root_transform, wither_skull_model_root_transform, zombie_variant_color,
+    zombie_variant_root_transform, GIANT_SCALE,
 };
 use super::geometry::{part_pose_transform, EntityModelMesh};
 use super::instances::EntityModelInstance;
@@ -36,34 +37,35 @@ use super::model_layers::{
     bee_texture_ref, strider_texture_ref, AllayModel, ArmadilloModel, ArmorStandModel, ArrowModel,
     AxolotlModel, BatModel, BeeModel, BlazeModel, BoatModel, BreezeModel, CamelModel, ChickenModel,
     CodModel, CopperGolemModel, CowModel, CreakingModel, CreeperModel, DolphinModel,
-    EnderDragonModel, EndermanModel, EndermiteModel, EvokerFangsModel, FelineModel, FoxModel,
-    FrogModel, GhastModel, GoatModel, GuardianModel, HappyGhastModel, HoglinModel, IllagerModel,
-    IronGolemModel, LeashKnotModel, LlamaModel, LlamaSpitModel, MagmaCubeModel, MinecartModel,
-    NautilusModel, PandaModel, ParrotModel, PhantomModel, PigModel, PiglinModel, PolarBearModel,
-    PufferfishModel, RabbitModel, RavagerModel, SalmonModel, ShulkerBulletModel, ShulkerModel,
-    SilverfishModel, SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel,
-    SnifferModel, SnowGolemModel, SpiderModel, SquidModel, StriderModel, TadpoleModel,
-    TridentModel, TropicalFishModel, TropicalFishPatternModel, TurtleModel, VexModel,
-    VillagerModel, WanderingTraderModel, WardenModel, WitchModel, WitherModel, WitherSkullModel,
-    WolfModel, ZombieModel, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF,
-    BREEZE_EYES_TEXTURE_REF, BREEZE_TEXTURE_REF, COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF,
-    DOLPHIN_TEXTURE_REF, FELINE_CAT_SCALE, GLOW_SQUID_TEAL, GUARDIAN_ELDER_SCALE,
-    PUFFERFISH_TEXTURE_REF, SQUID_BLUE, TURTLE_BABY_TEXTURE_REF, TURTLE_EGG_ROOT_DROP_POSE,
-    TURTLE_TEXTURE_REF, VEX_CHARGING_TEXTURE_REF, VEX_TEXTURE_REF, WITHER_SKELETON_DARK,
+    DrownedOuterModel, EnderDragonModel, EndermanModel, EndermiteModel, EvokerFangsModel,
+    FelineModel, FoxModel, FrogModel, GhastModel, GoatModel, GuardianModel, HappyGhastModel,
+    HoglinModel, IllagerModel, IronGolemModel, LeashKnotModel, LlamaModel, LlamaSpitModel,
+    MagmaCubeModel, MinecartModel, NautilusModel, PandaModel, ParrotModel, PhantomModel, PigModel,
+    PiglinModel, PolarBearModel, PufferfishModel, RabbitModel, RavagerModel, SalmonModel,
+    ShulkerBulletModel, ShulkerModel, SilverfishModel, SkeletonClothingModel, SkeletonModel,
+    SlimeModel, SlimeOuterModel, SnifferModel, SnowGolemModel, SpiderModel, SquidModel,
+    StriderModel, TadpoleModel, TridentModel, TropicalFishModel, TropicalFishPatternModel,
+    TurtleModel, VexModel, VillagerModel, WanderingTraderModel, WardenModel, WitchModel,
+    WitherModel, WitherSkullModel, WolfModel, ZombieModel, ZombieVariantModel, ALLAY_TEXTURE_REF,
+    ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF, BREEZE_EYES_TEXTURE_REF, BREEZE_TEXTURE_REF,
+    COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF, FELINE_CAT_SCALE,
+    GLOW_SQUID_TEAL, GUARDIAN_ELDER_SCALE, PUFFERFISH_TEXTURE_REF, SQUID_BLUE,
+    TURTLE_BABY_TEXTURE_REF, TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF,
+    VEX_CHARGING_TEXTURE_REF, VEX_TEXTURE_REF, WITHER_SKELETON_DARK,
 };
 use super::textured::{
     armadillo_textured_layer_passes, arrow_textured_layer_passes, axolotl_textured_layer_passes,
     blaze_textured_layer_passes, boat_textured_layer_passes, camel_textured_layer_passes,
     chicken_textured_layer_passes, copper_golem_textured_layer_passes, cow_textured_layer_passes,
-    creaking_textured_layer_passes, creeper_textured_layer_passes,
+    creaking_textured_layer_passes, creeper_textured_layer_passes, drowned_textured_layer_passes,
     ender_dragon_textured_layer_passes, enderman_textured_layer_passes,
     endermite_textured_layer_passes, evoker_fangs_textured_layer_passes,
     feline_textured_layer_passes, fox_textured_layer_passes, frog_textured_layer_passes,
     ghast_textured_layer_passes, goat_textured_layer_passes, guardian_textured_layer_passes,
-    happy_ghast_textured_layer_passes, hoglin_textured_layer_passes, illager_textured_layer_passes,
-    iron_golem_textured_layer_passes, leash_knot_textured_layer_passes,
-    llama_spit_textured_layer_passes, llama_textured_layer_passes,
-    magma_cube_textured_layer_passes, minecart_textured_layer_passes,
+    happy_ghast_textured_layer_passes, hoglin_textured_layer_passes, husk_textured_layer_passes,
+    illager_textured_layer_passes, iron_golem_textured_layer_passes,
+    leash_knot_textured_layer_passes, llama_spit_textured_layer_passes,
+    llama_textured_layer_passes, magma_cube_textured_layer_passes, minecart_textured_layer_passes,
     mooshroom_textured_layer_passes, nautilus_textured_layer_passes, panda_textured_layer_passes,
     parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
     piglin_textured_layer_passes, polar_bear_textured_layer_passes, rabbit_textured_layer_passes,
@@ -76,8 +78,8 @@ use super::textured::{
     wandering_trader_textured_layer_passes, warden_textured_layer_passes,
     witch_textured_layer_passes, wither_skull_textured_layer_passes, wither_textured_layer_passes,
     wolf_textured_layer_passes, zombie_nautilus_textured_layer_passes,
-    zombie_textured_layer_passes, EntityModelLayerKind, EntityModelLayerPass,
-    EntityModelLayerRenderType, EntityModelTexturedMeshes,
+    zombie_textured_layer_passes, zombie_villager_textured_layer_passes, EntityModelLayerKind,
+    EntityModelLayerPass, EntityModelLayerRenderType, EntityModelTexturedMeshes,
 };
 
 /// A render-path-agnostic sink for each model/root-transform/layer-pass tuple in a uniform entity.
@@ -410,6 +412,54 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &zombie_textured_layer_passes(baby),
         ),
+        EntityModelKind::ZombieVariant {
+            family: family @ ZombieVariantModelFamily::Husk,
+            baby,
+        } => {
+            let transform = zombie_variant_root_transform(*instance, family, baby);
+            let passes = husk_textured_layer_passes(baby);
+            sink.model_with_colored_override(
+                ZombieVariantModel::new(family, baby),
+                transform,
+                instance,
+                &passes,
+                zombie_variant_color(family),
+            );
+        }
+        EntityModelKind::ZombieVariant {
+            family: family @ ZombieVariantModelFamily::Drowned,
+            baby,
+        } => {
+            let transform = zombie_variant_root_transform(*instance, family, baby);
+            let passes = drowned_textured_layer_passes(baby);
+            sink.model_with_colored_override(
+                ZombieVariantModel::new(family, baby),
+                transform,
+                instance,
+                &passes[0..1],
+                zombie_variant_color(family),
+            );
+            sink.textured_only_model(
+                DrownedOuterModel::new(baby),
+                transform,
+                instance,
+                &passes[1..2],
+            );
+        }
+        EntityModelKind::ZombieVariant {
+            family: family @ ZombieVariantModelFamily::ZombieVillager,
+            baby,
+        } => {
+            let transform = zombie_variant_root_transform(*instance, family, baby);
+            let passes = zombie_villager_textured_layer_passes(baby);
+            sink.model_with_colored_override(
+                ZombieVariantModel::new(family, baby),
+                transform,
+                instance,
+                &passes,
+                zombie_variant_color(family),
+            );
+        }
         EntityModelKind::Ravager => sink.model(
             RavagerModel::new(),
             entity_model_root_transform(*instance),
