@@ -1685,10 +1685,13 @@ When an agent does any of the following, update this file in the same slice:
       saddle equipment layers are implemented from `EquipmentSlot.SADDLE`, using vanilla
       `DONKEY_SADDLE` / `MULE_SADDLE`, `DonkeyModel.createSaddleLayer(0.87F/0.92F)`, the
       family-specific `textures/entity/equipment/{donkey_saddle,mule_saddle}/saddle.png`,
-      and ridden-only bridle line visibility from passenger state; baby donkey/mule entities
+      ridden-only bridle line visibility from passenger state, entity light, and
+      `OverlayTexture.NO_OVERLAY`, while the base `entityCutout` submits keep
+      vanilla entity light plus hurt/white overlay coords. Folded cutout vertices
+      inherit the corresponding base or saddle submission metadata; baby donkey/mule entities
       intentionally skip the layer because vanilla supplies no baby saddle model. The baby leg
       swing / head look / tail, the ridden/eat/stand/mouth poses, the tail's `ageInTicks`
-      yRot wag, and lighting remain unsupported
+      yRot wag, and broader lighting presentation remain unsupported
     - skeleton horse and zombie horse entities as renderer-owned vanilla 26.1
       adult/baby body-layer geometry from `AbstractEquineModel`,
       `BabyHorseModel`, `HorseModel`, and `UndeadHorseRenderer`, now rendered on

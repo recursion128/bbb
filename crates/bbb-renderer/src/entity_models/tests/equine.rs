@@ -1816,6 +1816,9 @@ fn equine_saddle_layer_uses_family_specific_models_and_textures() {
         false,
         false,
     )
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true)
     .with_equine_saddle(true);
     let donkey_meshes = entity_model_textured_meshes(&[donkey_instance], &atlas);
     assert_equine_submissions_match_vanilla(&donkey_meshes, donkey_instance);
@@ -1838,6 +1841,15 @@ fn equine_saddle_layer_uses_family_specific_models_and_textures() {
         ),
         (0, 1)
     );
+    assert_ne!(donkey_instance.render_state.overlay_coords(), [0.0, 10.0]);
+    let donkey_base = donkey_meshes.submissions[0];
+    let donkey_saddle = donkey_meshes.submissions[1];
+    assert!(donkey.vertices[..288]
+        .iter()
+        .all(|vertex| vertex.light == donkey_base.light && vertex.overlay == donkey_base.overlay));
+    assert!(donkey.vertices[288..].iter().all(
+        |vertex| vertex.light == donkey_saddle.light && vertex.overlay == donkey_saddle.overlay
+    ));
 
     let mule_instance = EntityModelInstance::donkey(
         175,
@@ -1847,11 +1859,22 @@ fn equine_saddle_layer_uses_family_specific_models_and_textures() {
         false,
         false,
     )
+    .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true)
     .with_equine_saddle(true);
     let mule_meshes = entity_model_textured_meshes(&[mule_instance], &atlas);
     assert_equine_submissions_match_vanilla(&mule_meshes, mule_instance);
     let mule = &mule_meshes.cutout;
     assert_eq!(mule.cutout_faces, 72 + 114);
+    let mule_base = mule_meshes.submissions[0];
+    let mule_saddle = mule_meshes.submissions[1];
+    assert!(mule.vertices[..288]
+        .iter()
+        .all(|vertex| vertex.light == mule_base.light && vertex.overlay == mule_base.overlay));
+    assert!(mule.vertices[288..]
+        .iter()
+        .all(|vertex| vertex.light == mule_saddle.light && vertex.overlay == mule_saddle.overlay));
     let (_, donkey_max) = textured_mesh_extents(&donkey);
     let (_, mule_max) = textured_mesh_extents(&mule);
     assert!(
@@ -1934,12 +1957,19 @@ fn donkey_textured_mesh_matches_vanilla_adult_geometry() {
         DonkeyModelFamily::Donkey,
         false,
         false,
-    );
+    )
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let donkey_meshes = entity_model_textured_meshes(&[donkey_instance], &atlas);
     assert_equine_submissions_match_vanilla(&donkey_meshes, donkey_instance);
     let donkey = &donkey_meshes.cutout;
     assert_eq!(donkey.cutout_faces, 72);
     assert_eq!(donkey.vertices.len(), 288);
+    let donkey_submit = donkey_meshes.submissions[0];
+    assert!(donkey.vertices.iter().all(
+        |vertex| vertex.light == donkey_submit.light && vertex.overlay == donkey_submit.overlay
+    ));
     let colored = entity_model_mesh(&[EntityModelInstance::donkey(
         161,
         [0.0, 64.0, 0.0],
@@ -1961,12 +1991,21 @@ fn donkey_textured_mesh_matches_vanilla_adult_geometry() {
         DonkeyModelFamily::Donkey,
         false,
         true,
-    );
+    )
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let with_chest_meshes = entity_model_textured_meshes(&[with_chest_instance], &atlas);
     assert_equine_submissions_match_vanilla(&with_chest_meshes, with_chest_instance);
     let with_chest = &with_chest_meshes.cutout;
     assert_eq!(with_chest.cutout_faces, 84);
     assert_eq!(with_chest.vertices.len(), 336);
+    let with_chest_submit = with_chest_meshes.submissions[0];
+    assert!(with_chest
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == with_chest_submit.light
+            && vertex.overlay == with_chest_submit.overlay));
 
     // The mule shares the geometry at the larger 0.92 scale (vs donkey 0.87) and a different texture.
     let mule_instance = EntityModelInstance::donkey(
@@ -1976,11 +2015,19 @@ fn donkey_textured_mesh_matches_vanilla_adult_geometry() {
         DonkeyModelFamily::Mule,
         false,
         false,
-    );
+    )
+    .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let mule_meshes = entity_model_textured_meshes(&[mule_instance], &atlas);
     assert_equine_submissions_match_vanilla(&mule_meshes, mule_instance);
     let mule = &mule_meshes.cutout;
     assert_eq!(mule.cutout_faces, 72);
+    let mule_submit = mule_meshes.submissions[0];
+    assert!(mule
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == mule_submit.light && vertex.overlay == mule_submit.overlay));
     let (_, mule_max) = textured_mesh_extents(&mule);
     assert!(
         mule_max[1] > t_max[1],
@@ -2334,6 +2381,18 @@ fn assert_equine_submissions_match_vanilla(
         assert_eq!(
             (submit.order, submit.submit_sequence),
             (expected.order, expected.submit_sequence)
+        );
+        assert_eq!(submit.light, instance.render_state.shader_light());
+        assert_eq!(
+            submit.overlay,
+            match submit.render_type {
+                EntityModelLayerRenderType::EntityCutout => instance.render_state.overlay_coords(),
+                EntityModelLayerRenderType::EntityTranslucent => {
+                    [0.0, instance.render_state.overlay_coords()[1]]
+                }
+                EntityModelLayerRenderType::ArmorCutoutNoCull => [0.0, 10.0],
+                other => panic!("unexpected equine render type {other:?}"),
+            }
         );
     }
 }
