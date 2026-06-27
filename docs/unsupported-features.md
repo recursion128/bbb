@@ -1704,7 +1704,13 @@ When an agent does any of the following, update this file in the same slice:
       `CamelSaddleModel(ModelLayers.CAMEL*_SADDLE)`, `CamelSaddleModel.createSaddleLayer()` starts from
       the adult camel mesh and appends the saddle, bridle, and ridden-only reins, and bbb renders the
       family-specific `textures/entity/equipment/{camel_saddle,camel_husk_saddle}/saddle.png` (128×128).
-      Baby camels intentionally skip this layer because vanilla supplies no baby saddle model. The camel
+      The textured camel regressions now pin vanilla submissions before folded
+      geometry checks: base camel/camel_baby/camel_husk passes use `entityCutout`,
+      selected texture, white tint, `entity_model_root_transform`, and
+      `(order, submit_sequence) == (0, 0)`; adult camel and camel_husk saddle
+      passes use `armorCutoutNoCull`, the family-specific saddle texture, white
+      tint, the same transform, and `(0, 1)`. Baby camels intentionally skip this
+      layer because vanilla supplies no baby saddle model. The camel
       `CAMEL_IDLE` keyframe animation (driven by a client-side `random.nextInt(40) + 80` timer, not
       derivable from synced state), the body-anchor sit/stand y-offset
       (`Camel.getBodyAnchorAnimationYOffset`), the `jumpCooldown` extra-pitch head boost (needs the

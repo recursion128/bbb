@@ -217,18 +217,33 @@ fn camel_textured_layer_passes_match_vanilla_renderer_model_choice() {
     let adult = camel_textured_layer_passes(CamelModelFamily::Camel, false);
     assert_eq!(adult.len(), 1);
     assert_eq!(adult[0].kind, EntityModelLayerKind::CamelBase);
+    assert_eq!(
+        adult[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(adult[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(adult[0].model_layer, MODEL_LAYER_CAMEL);
     assert_eq!(adult[0].texture, CAMEL_TEXTURE_REF);
     assert_eq!(adult[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((adult[0].order, adult[0].submit_sequence), (0, 0));
 
     let baby = camel_textured_layer_passes(CamelModelFamily::Camel, true);
+    assert_eq!(
+        baby[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(baby[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(baby[0].model_layer, MODEL_LAYER_CAMEL_BABY);
     assert_eq!(baby[0].texture, CAMEL_BABY_TEXTURE_REF);
 
     // The camel husk shares the adult mesh/layer; only the texture differs, and it is
     // never a baby (the husk renderer is adult-only), so the age flag must not change it.
     let husk = camel_textured_layer_passes(CamelModelFamily::CamelHusk, false);
+    assert_eq!(
+        husk[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(husk[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(husk[0].model_layer, MODEL_LAYER_CAMEL);
     assert_eq!(husk[0].texture, CAMEL_HUSK_TEXTURE_REF);
     let husk_baby = camel_textured_layer_passes(CamelModelFamily::CamelHusk, true);
@@ -345,20 +360,25 @@ fn camel_textured_mesh_matches_static_vanilla_pose() {
         true,
     );
 
-    let adult_mesh = entity_model_textured_mesh(&[adult], &atlas);
-    let baby_mesh = entity_model_textured_mesh(&[baby], &atlas);
-    let husk_mesh = entity_model_textured_mesh(&[husk], &atlas);
-    assert_eq!(adult_mesh.vertices.len(), 288);
-    assert_eq!(baby_mesh.vertices.len(), 264);
+    let adult_meshes = entity_model_textured_meshes(&[adult], &atlas);
+    let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
+    let husk_meshes = entity_model_textured_meshes(&[husk], &atlas);
+    assert_camel_submissions_match_vanilla(&adult_meshes, adult);
+    assert_camel_submissions_match_vanilla(&baby_meshes, baby);
+    assert_camel_submissions_match_vanilla(&husk_meshes, husk);
+    assert_eq!(adult_meshes.cutout.vertices.len(), 288);
+    assert_eq!(baby_meshes.cutout.vertices.len(), 264);
     // The husk reuses the adult mesh (adult-only renderer); only its sampled texels differ.
-    assert_eq!(husk_mesh.vertices.len(), 288);
+    assert_eq!(husk_meshes.cutout.vertices.len(), 288);
     assert_eq!(
-        husk_mesh
+        husk_meshes
+            .cutout
             .vertices
             .iter()
             .map(|v| v.position)
             .collect::<Vec<_>>(),
-        adult_mesh
+        adult_meshes
+            .cutout
             .vertices
             .iter()
             .map(|v| v.position)
@@ -367,11 +387,18 @@ fn camel_textured_mesh_matches_static_vanilla_pose() {
 
     // The adult/husk walk is reproduced on the textured path: a still camel (walk speed 0) matches
     // the rest pose, while a walking camel (speed > 0) differs.
-    let still = entity_model_textured_mesh(&[adult.with_walk_animation(0.0, 0.0)], &atlas);
-    assert_eq!(adult_mesh.vertices, still.vertices);
-    let walking = entity_model_textured_mesh(&[adult.with_walk_animation(5.0, 1.0)], &atlas);
-    assert_eq!(adult_mesh.vertices.len(), walking.vertices.len());
-    assert_ne!(adult_mesh.vertices, walking.vertices);
+    let still_instance = adult.with_walk_animation(0.0, 0.0);
+    let walking_instance = adult.with_walk_animation(5.0, 1.0);
+    let still = entity_model_textured_meshes(&[still_instance], &atlas);
+    let walking = entity_model_textured_meshes(&[walking_instance], &atlas);
+    assert_camel_submissions_match_vanilla(&still, still_instance);
+    assert_camel_submissions_match_vanilla(&walking, walking_instance);
+    assert_eq!(adult_meshes.cutout.vertices, still.cutout.vertices);
+    assert_eq!(
+        adult_meshes.cutout.vertices.len(),
+        walking.cutout.vertices.len()
+    );
+    assert_ne!(adult_meshes.cutout.vertices, walking.cutout.vertices);
 }
 
 #[test]
@@ -390,6 +417,8 @@ fn camel_saddle_layer_renders_for_adult_camel_and_husk_only() {
     let bare_meshes = entity_model_textured_meshes(&[adult], &atlas);
     let saddled_instance = adult.with_camel_saddle(true);
     let saddled_meshes = entity_model_textured_meshes(&[saddled_instance], &atlas);
+    assert_camel_submissions_match_vanilla(&bare_meshes, adult);
+    assert_camel_submissions_match_vanilla(&saddled_meshes, saddled_instance);
     let bare = &bare_meshes.cutout;
     let saddled = &saddled_meshes.cutout;
     assert_eq!(saddled_meshes.submissions.len(), 2);
@@ -397,6 +426,10 @@ fn camel_saddle_layer_renders_for_adult_camel_and_husk_only() {
     assert_eq!(
         saddle_submit.render_type,
         EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(
+        saddle_submit.render_type.vanilla_name(),
+        "armorCutoutNoCull"
     );
     assert_eq!(saddle_submit.texture, CAMEL_SADDLE_TEXTURE_REF);
     assert_eq!(saddle_submit.tint, [1.0, 1.0, 1.0, 1.0]);
@@ -408,12 +441,14 @@ fn camel_saddle_layer_renders_for_adult_camel_and_husk_only() {
     assert_eq!(saddled.cutout_faces - bare.cutout_faces, 120);
     assert_eq!(saddled.vertices.len() - bare.vertices.len(), 480);
 
-    let ridden = entity_model_textured_mesh(
-        &[adult.with_camel_saddle(true).with_camel_saddle_ridden(true)],
-        &atlas,
+    let ridden_instance = adult.with_camel_saddle(true).with_camel_saddle_ridden(true);
+    let ridden_meshes = entity_model_textured_meshes(&[ridden_instance], &atlas);
+    assert_camel_submissions_match_vanilla(&ridden_meshes, ridden_instance);
+    assert_eq!(ridden_meshes.cutout.cutout_faces - saddled.cutout_faces, 18);
+    assert_eq!(
+        ridden_meshes.cutout.vertices.len() - saddled.vertices.len(),
+        72
     );
-    assert_eq!(ridden.cutout_faces - saddled.cutout_faces, 18);
-    assert_eq!(ridden.vertices.len() - saddled.vertices.len(), 72);
 
     let saddle_uv = atlas
         .entries
@@ -431,9 +466,10 @@ fn camel_saddle_layer_renders_for_adult_camel_and_husk_only() {
         EntityModelInstance::camel(761, [0.0, 64.0, 0.0], 0.0, CamelModelFamily::Camel, true)
             .with_camel_saddle(true)
             .with_camel_saddle_ridden(true);
-    let baby_mesh = entity_model_textured_mesh(&[baby], &atlas);
+    let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
+    assert_camel_submissions_match_vanilla(&baby_meshes, baby);
     assert_eq!(
-        baby_mesh.vertices.len(),
+        baby_meshes.cutout.vertices.len(),
         264,
         "vanilla supplies no baby model for the camel saddle layer"
     );
@@ -447,12 +483,17 @@ fn camel_saddle_layer_renders_for_adult_camel_and_husk_only() {
     )
     .with_camel_saddle(true);
     let husk_meshes = entity_model_textured_meshes(&[husk], &atlas);
+    assert_camel_submissions_match_vanilla(&husk_meshes, husk);
     let husk_mesh = &husk_meshes.cutout;
     assert_eq!(husk_meshes.submissions.len(), 2);
     let husk_saddle_submit = husk_meshes.submissions[1];
     assert_eq!(
         husk_saddle_submit.render_type,
         EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(
+        husk_saddle_submit.render_type.vanilla_name(),
+        "armorCutoutNoCull"
     );
     assert_eq!(husk_saddle_submit.texture, CAMEL_HUSK_SADDLE_TEXTURE_REF);
     assert_eq!(
@@ -512,22 +553,27 @@ fn camel_head_look_turns_only_the_nested_head_subtree() {
     );
 
     let (atlas, _) = build_entity_model_texture_atlas(&camel_texture_images()).unwrap();
-    let rest_textured = entity_model_textured_mesh(&[rest], &atlas);
-    let looked_textured = entity_model_textured_mesh(&[looked], &atlas);
-    assert_eq!(rest_textured.vertices.len(), looked_textured.vertices.len());
+    let rest_textured = entity_model_textured_meshes(&[rest], &atlas);
+    let looked_textured = entity_model_textured_meshes(&[looked], &atlas);
+    assert_camel_submissions_match_vanilla(&rest_textured, rest);
+    assert_camel_submissions_match_vanilla(&looked_textured, looked);
     assert_eq!(
-        rest_textured.vertices[..head.start],
-        looked_textured.vertices[..head.start],
+        rest_textured.cutout.vertices.len(),
+        looked_textured.cutout.vertices.len()
+    );
+    assert_eq!(
+        rest_textured.cutout.vertices[..head.start],
+        looked_textured.cutout.vertices[..head.start],
         "the body/hump/tail stay put"
     );
     assert_ne!(
-        rest_textured.vertices[head.clone()],
-        looked_textured.vertices[head.clone()],
+        rest_textured.cutout.vertices[head.clone()],
+        looked_textured.cutout.vertices[head.clone()],
         "the nested head subtree turns"
     );
     assert_eq!(
-        rest_textured.vertices[head.end..],
-        looked_textured.vertices[head.end..],
+        rest_textured.cutout.vertices[head.end..],
+        looked_textured.cutout.vertices[head.end..],
         "the legs stay put"
     );
 }
@@ -628,28 +674,34 @@ fn camel_textured_walk_moves_the_whole_model_and_composes_with_the_look() {
         .with_walk_animation(5.0, 1.0)
         .with_head_look(40.0, -20.0);
 
-    let still_mesh = entity_model_textured_mesh(&[still], &atlas);
-    let walking_mesh = entity_model_textured_mesh(&[walking], &atlas);
-    assert_eq!(still_mesh.vertices.len(), walking_mesh.vertices.len());
+    let still_mesh = entity_model_textured_meshes(&[still], &atlas);
+    let walking_mesh = entity_model_textured_meshes(&[walking], &atlas);
+    assert_camel_submissions_match_vanilla(&still_mesh, still);
+    assert_camel_submissions_match_vanilla(&walking_mesh, walking);
+    assert_eq!(
+        still_mesh.cutout.vertices.len(),
+        walking_mesh.cutout.vertices.len()
+    );
     assert_ne!(
-        still_mesh.vertices, walking_mesh.vertices,
+        still_mesh.cutout.vertices, walking_mesh.cutout.vertices,
         "the walking camel rolls its whole body and swings its legs"
     );
 
-    let walking_looking_mesh = entity_model_textured_mesh(&[walking_looking], &atlas);
+    let walking_looking_mesh = entity_model_textured_meshes(&[walking_looking], &atlas);
+    assert_camel_submissions_match_vanilla(&walking_looking_mesh, walking_looking);
     assert_ne!(
-        walking_mesh.vertices[head.clone()],
-        walking_looking_mesh.vertices[head.clone()],
+        walking_mesh.cutout.vertices[head.clone()],
+        walking_looking_mesh.cutout.vertices[head.clone()],
         "the look composes onto the walking head"
     );
     assert_eq!(
-        walking_mesh.vertices[..head.start],
-        walking_looking_mesh.vertices[..head.start],
+        walking_mesh.cutout.vertices[..head.start],
+        walking_looking_mesh.cutout.vertices[..head.start],
         "the body/hump/tail share the same walk regardless of the look"
     );
     assert_eq!(
-        walking_mesh.vertices[head.end..],
-        walking_looking_mesh.vertices[head.end..],
+        walking_mesh.cutout.vertices[head.end..],
+        walking_looking_mesh.cutout.vertices[head.end..],
         "the legs share the same walk regardless of the look"
     );
 }
@@ -728,14 +780,16 @@ fn camel_baby_walk_moves_the_model_and_composes_with_the_look() {
 
     // The textured path reproduces the same baby walk.
     let (atlas, _) = build_entity_model_texture_atlas(&camel_texture_images()).unwrap();
-    let still_textured = entity_model_textured_mesh(&[still], &atlas);
-    let walking_textured = entity_model_textured_mesh(&[walking], &atlas);
+    let still_textured = entity_model_textured_meshes(&[still], &atlas);
+    let walking_textured = entity_model_textured_meshes(&[walking], &atlas);
+    assert_camel_submissions_match_vanilla(&still_textured, still);
+    assert_camel_submissions_match_vanilla(&walking_textured, walking);
     assert_eq!(
-        still_textured.vertices.len(),
-        walking_textured.vertices.len()
+        still_textured.cutout.vertices.len(),
+        walking_textured.cutout.vertices.len()
     );
     assert_ne!(
-        still_textured.vertices, walking_textured.vertices,
+        still_textured.cutout.vertices, walking_textured.cutout.vertices,
         "the textured baby camel walks too"
     );
 }
@@ -829,13 +883,90 @@ fn camel_sitting_and_standing_re_pose_the_body_and_legs_vs_the_bind_pose() {
 
     // The textured path reproduces the same sit/stand re-pose.
     let (atlas, _) = build_entity_model_texture_atlas(&camel_texture_images()).unwrap();
-    let bind_textured = entity_model_textured_mesh(&[bind], &atlas);
-    let seated_textured = entity_model_textured_mesh(&[seated], &atlas);
-    assert_eq!(bind_textured.vertices.len(), seated_textured.vertices.len());
+    let bind_textured = entity_model_textured_meshes(&[bind], &atlas);
+    let seated_textured = entity_model_textured_meshes(&[seated], &atlas);
+    assert_camel_submissions_match_vanilla(&bind_textured, bind);
+    assert_camel_submissions_match_vanilla(&seated_textured, seated);
+    assert_eq!(
+        bind_textured.cutout.vertices.len(),
+        seated_textured.cutout.vertices.len()
+    );
     assert_ne!(
-        bind_textured.vertices, seated_textured.vertices,
+        bind_textured.cutout.vertices, seated_textured.cutout.vertices,
         "the seated camel re-poses on the textured path too"
     );
+}
+
+fn assert_camel_submissions_match_vanilla(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    assert_camel_folded_meshes_are_cutout_only(meshes);
+    let (family, baby) = match instance.kind {
+        EntityModelKind::Camel { family, baby } => (family, baby),
+        _ => panic!("expected camel instance"),
+    };
+    let base_passes = camel_textured_layer_passes(family, baby);
+    let mut expected = Vec::new();
+    expected.extend(base_passes.iter().map(|pass| {
+        (
+            pass.render_type,
+            pass.texture,
+            pass.tint,
+            pass.order,
+            pass.submit_sequence,
+        )
+    }));
+    if instance.render_state.camel_saddle {
+        match (family, baby) {
+            (CamelModelFamily::Camel, false) => expected.push((
+                EntityModelLayerRenderType::ArmorCutoutNoCull,
+                CAMEL_SADDLE_TEXTURE_REF,
+                [1.0, 1.0, 1.0, 1.0],
+                0,
+                1,
+            )),
+            (CamelModelFamily::CamelHusk, _) => expected.push((
+                EntityModelLayerRenderType::ArmorCutoutNoCull,
+                CAMEL_HUSK_SADDLE_TEXTURE_REF,
+                [1.0, 1.0, 1.0, 1.0],
+                0,
+                1,
+            )),
+            (CamelModelFamily::Camel, true) => {}
+        }
+    }
+
+    assert_eq!(meshes.submissions.len(), expected.len());
+    for (submit, (render_type, texture, tint, order, sequence)) in
+        meshes.submissions.iter().zip(expected)
+    {
+        assert_eq!(submit.render_type, render_type);
+        let expected_render_type_name = match render_type {
+            EntityModelLayerRenderType::EntityCutout => "entityCutout",
+            EntityModelLayerRenderType::ArmorCutoutNoCull => "armorCutoutNoCull",
+            _ => panic!("unexpected camel render type"),
+        };
+        assert_eq!(submit.render_type.vanilla_name(), expected_render_type_name);
+        assert_eq!(submit.texture, texture);
+        assert_eq!(submit.tint, tint);
+        assert_eq!(submit.transform, entity_model_root_transform(instance));
+        assert_eq!((submit.order, submit.submit_sequence), (order, sequence));
+    }
+}
+
+fn assert_camel_folded_meshes_are_cutout_only(meshes: &EntityModelTexturedMeshes) {
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_cutout.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_translucent.vertices.is_empty());
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_translucent
+        .vertices
+        .is_empty());
+    assert!(meshes.scroll.vertices.is_empty());
+    assert!(meshes.scroll_additive.vertices.is_empty());
 }
 
 fn camel_texture_images() -> Vec<EntityModelTextureImage> {
