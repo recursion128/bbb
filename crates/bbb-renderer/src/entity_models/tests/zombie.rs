@@ -1226,6 +1226,27 @@ fn drowned_outer_layer_overlays_the_inflated_white_shell() {
     let body_overlay = instances[0].render_state.overlay_coords();
     let layer_overlay = [0.0, body_overlay[1]];
     assert_ne!(body_overlay, layer_overlay);
+    assert_eq!(base_meshes.submissions.len(), 2);
+    assert_eq!(
+        base_meshes.submissions[1].texture,
+        DROWNED_OUTER_LAYER_TEXTURE_REF
+    );
+    assert_eq!(
+        (
+            base_meshes.submissions[1].order,
+            base_meshes.submissions[1].submit_sequence
+        ),
+        (1, 1)
+    );
+    assert!(base.vertices.iter().all(|vertex| {
+        vertex.tint == [1.0, 1.0, 1.0, 1.0]
+            && vertex.light == instances[0].render_state.shader_light()
+            && vertex.overlay == body_overlay
+    }));
+    assert!(base
+        .vertices
+        .iter()
+        .all(|vertex| vertex.overlay != layer_overlay));
     assert!(outer
         .vertices
         .iter()
@@ -1288,6 +1309,27 @@ fn drowned_outer_layer_overlays_the_inflated_white_shell() {
     let baby_body_overlay = baby[0].render_state.overlay_coords();
     let baby_layer_overlay = [0.0, baby_body_overlay[1]];
     assert_ne!(baby_body_overlay, baby_layer_overlay);
+    assert_eq!(baby_base_meshes.submissions.len(), 2);
+    assert_eq!(
+        baby_base_meshes.submissions[1].texture,
+        DROWNED_OUTER_LAYER_BABY_TEXTURE_REF
+    );
+    assert_eq!(
+        (
+            baby_base_meshes.submissions[1].order,
+            baby_base_meshes.submissions[1].submit_sequence
+        ),
+        (1, 1)
+    );
+    assert!(baby_base.vertices.iter().all(|vertex| {
+        vertex.tint == [1.0, 1.0, 1.0, 1.0]
+            && vertex.light == baby[0].render_state.shader_light()
+            && vertex.overlay == baby_body_overlay
+    }));
+    assert!(baby_base
+        .vertices
+        .iter()
+        .all(|vertex| vertex.overlay != baby_layer_overlay));
     assert!(baby_outer
         .vertices
         .iter()
