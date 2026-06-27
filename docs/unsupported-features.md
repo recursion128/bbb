@@ -3422,15 +3422,16 @@ When an agent does any of the following, update this file in the same slice:
       pitch; the official `textures/entity/phantom/phantom.png` texture reference,
       texture-backed base layer pass emission (vanilla `PhantomModel` calls
       `EntityModel`'s default `RenderTypes::entityCutout`) while preserving explicit
-      submission metadata for texture, white tint, renderer root transform, and
-      `order(0)`, official PNG atlas upload/bind/sample path, and the vanilla
+      submission metadata for texture, white tint, renderer root transform,
+      `order(0)`, light, and hurt/white overlay, official PNG atlas
+      upload/bind/sample path, and the vanilla
       `PhantomModel.setupAnim` flap (`flapTime = id*3 + ageInTicks`; wings `zRot =
       ±cos(anim)·16°`, tail `xRot = -(5° + cos(2·anim)·5°)`, `anim = flapTime ·
       7.448451 · π/180`, on both render paths) plus the vanilla `PhantomEyesLayer` —
       an emissive `EyesLayer` re-rendering the whole model with
       `textures/entity/phantom/phantom_eyes.png` in the eyes render type at `order(1)`
-      / `submit_sequence = 1`, with the same transform and white tint. Lighting and
-      overlay remain unsupported
+      / `submit_sequence = 1`, with the same transform, entity light, white tint, and
+      `OverlayTexture.NO_OVERLAY`. Broader lighting presentation remains unsupported
     - pufferfish entities as renderer-owned vanilla 26.1
       `PufferfishSmallModel`/`PufferfishMidModel`/`PufferfishBigModel.createBodyLayer()`
       geometry: the small (6-cube), medium (11-cube), and big (13-cube) body layers

@@ -206,7 +206,10 @@ fn phantom_size_scales_the_mesh() {
 #[test]
 fn phantom_textured_mesh_uses_vanilla_uvs_and_geometry() {
     let (atlas, _) = build_entity_model_texture_atlas(&phantom_texture_images()).unwrap();
-    let instance = EntityModelInstance::phantom(99, [0.0, 64.0, 0.0], 0.0, 0);
+    let instance = EntityModelInstance::phantom(99, [0.0, 64.0, 0.0], 0.0, 0)
+        .with_light_coords((6_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
     assert_phantom_submissions(&meshes, instance, 0);
     assert!(meshes.translucent.vertices.is_empty());
@@ -218,6 +221,13 @@ fn phantom_textured_mesh_uses_vanilla_uvs_and_geometry() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    assert!(meshes.cutout.vertices.iter().all(|vertex| vertex.light
+        == instance.render_state.shader_light()
+        && vertex.overlay == instance.render_state.overlay_coords()));
+    assert!(meshes.eyes.vertices.iter().all(|vertex| vertex.light
+        == instance.render_state.shader_light()
+        && vertex.overlay == [0.0, 10.0]));
+    assert_ne!(instance.render_state.overlay_coords(), [0.0, 10.0]);
     let (min, max) = textured_mesh_extents(&meshes.cutout);
     assert_close3(min, [-1.3223567, 63.913067, -0.991909]);
     assert_close3(max, [1.2598567, 64.36279, 0.577472]);
@@ -321,6 +331,8 @@ fn assert_phantom_submissions(
     assert_eq!(base.texture, PHANTOM_TEXTURE_REF);
     assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(base.transform, phantom_model_root_transform(instance, size));
+    assert_eq!(base.light, instance.render_state.shader_light());
+    assert_eq!(base.overlay, instance.render_state.overlay_coords());
     assert_eq!((base.order, base.submit_sequence), (0, 0));
 
     let eyes = meshes.submissions[1];
@@ -329,5 +341,7 @@ fn assert_phantom_submissions(
     assert_eq!(eyes.texture, PHANTOM_EYES_TEXTURE_REF);
     assert_eq!(eyes.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(eyes.transform, phantom_model_root_transform(instance, size));
+    assert_eq!(eyes.light, instance.render_state.shader_light());
+    assert_eq!(eyes.overlay, [0.0, 10.0]);
     assert_eq!((eyes.order, eyes.submit_sequence), (1, 1));
 }
