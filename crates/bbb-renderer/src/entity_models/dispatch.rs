@@ -25,9 +25,9 @@ use super::colored::{
     panda_model_root_transform, phantom_model_root_transform, polar_bear_model_root_transform,
     pufferfish_model_root_transform, salmon_model_root_transform,
     shulker_bullet_model_root_transform, shulker_model_root_transform, slime_model_root_transform,
-    squid_model_root_transform, trident_model_root_transform, villager_adult_model_root_transform,
-    wither_model_root_transform, wither_skeleton_model_root_transform,
-    wither_skull_model_root_transform, GIANT_SCALE,
+    squid_model_root_transform, trident_model_root_transform, tropical_fish_model_root_transform,
+    villager_adult_model_root_transform, wither_model_root_transform,
+    wither_skeleton_model_root_transform, wither_skull_model_root_transform, GIANT_SCALE,
 };
 use super::geometry::{part_pose_transform, EntityModelMesh};
 use super::instances::EntityModelInstance;
@@ -42,14 +42,14 @@ use super::model_layers::{
     PandaModel, ParrotModel, PhantomModel, PigModel, PolarBearModel, PufferfishModel, RabbitModel,
     RavagerModel, SalmonModel, ShulkerBulletModel, ShulkerModel, SilverfishModel,
     SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SnifferModel,
-    SnowGolemModel, SpiderModel, SquidModel, StriderModel, TadpoleModel, TridentModel, TurtleModel,
-    VexModel, VillagerModel, WanderingTraderModel, WardenModel, WitchModel, WitherModel,
-    WitherSkullModel, WolfModel, ZombieModel, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF,
-    BAT_TEXTURE_REF, BREEZE_EYES_TEXTURE_REF, BREEZE_TEXTURE_REF, COD_TEXTURE_REF,
-    DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF, FELINE_CAT_SCALE, GLOW_SQUID_TEAL,
-    GUARDIAN_ELDER_SCALE, PUFFERFISH_TEXTURE_REF, SQUID_BLUE, TURTLE_BABY_TEXTURE_REF,
-    TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF, VEX_CHARGING_TEXTURE_REF, VEX_TEXTURE_REF,
-    WITHER_SKELETON_DARK,
+    SnowGolemModel, SpiderModel, SquidModel, StriderModel, TadpoleModel, TridentModel,
+    TropicalFishModel, TropicalFishPatternModel, TurtleModel, VexModel, VillagerModel,
+    WanderingTraderModel, WardenModel, WitchModel, WitherModel, WitherSkullModel, WolfModel,
+    ZombieModel, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF,
+    BREEZE_EYES_TEXTURE_REF, BREEZE_TEXTURE_REF, COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF,
+    DOLPHIN_TEXTURE_REF, FELINE_CAT_SCALE, GLOW_SQUID_TEAL, GUARDIAN_ELDER_SCALE,
+    PUFFERFISH_TEXTURE_REF, SQUID_BLUE, TURTLE_BABY_TEXTURE_REF, TURTLE_EGG_ROOT_DROP_POSE,
+    TURTLE_TEXTURE_REF, VEX_CHARGING_TEXTURE_REF, VEX_TEXTURE_REF, WITHER_SKELETON_DARK,
 };
 use super::textured::{
     armadillo_textured_layer_passes, arrow_textured_layer_passes, axolotl_textured_layer_passes,
@@ -71,7 +71,8 @@ use super::textured::{
     shulker_textured_layer_passes, silverfish_textured_layer_passes,
     skeleton_textured_layer_passes, slime_textured_layer_passes, sniffer_textured_layer_passes,
     snow_golem_textured_layer_passes, spider_textured_layer_passes, squid_textured_layer_passes,
-    tadpole_textured_layer_passes, trident_textured_layer_passes, villager_textured_layer_passes,
+    tadpole_textured_layer_passes, trident_textured_layer_passes,
+    tropical_fish_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, warden_textured_layer_passes,
     witch_textured_layer_passes, wither_skull_textured_layer_passes, wither_textured_layer_passes,
     wolf_textured_layer_passes, zombie_nautilus_textured_layer_passes,
@@ -271,6 +272,30 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                 instance,
                 &passes,
                 color,
+            );
+        }
+        EntityModelKind::TropicalFish {
+            shape,
+            base_color,
+            pattern,
+            pattern_color,
+        } => {
+            let transform =
+                tropical_fish_model_root_transform(*instance, instance.render_state.in_water);
+            let passes =
+                tropical_fish_textured_layer_passes(shape, base_color, pattern, pattern_color);
+            sink.model_with_colored_override(
+                TropicalFishModel::new(shape),
+                transform,
+                instance,
+                &passes[0..1],
+                base_color.texture_diffuse_color(),
+            );
+            sink.textured_only_model(
+                TropicalFishPatternModel::new(shape),
+                transform,
+                instance,
+                &passes[1..2],
             );
         }
         EntityModelKind::ShulkerBullet => {

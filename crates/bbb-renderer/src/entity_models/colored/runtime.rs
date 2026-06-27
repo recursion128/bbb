@@ -16,8 +16,7 @@ use super::selection::{
 use super::transforms::{
     drowned_model_root_transform, end_crystal_model_root_transform, entity_model_root_transform,
     mesh_transformer_scaled_model_root_transform, player_model_root_transform,
-    scaled_model_root_transform, tropical_fish_model_root_transform,
-    wind_charge_model_root_transform, HUSK_SCALE,
+    scaled_model_root_transform, wind_charge_model_root_transform, HUSK_SCALE,
 };
 
 #[cfg(test)]
@@ -148,16 +147,6 @@ fn entity_model_mesh_with_options(
                 EntityModelKind::Quadruped { family, baby } => {
                     emit_quadruped_model(&mut mesh, *instance, family, baby)
                 }
-                EntityModelKind::TropicalFish {
-                    shape, base_color, ..
-                } => {
-                    // The colored debug path approximates the textured base body as a solid base-color
-                    // box; the `TropicalFishPatternLayer` overlay is a cutout texture (its shape comes
-                    // from the texture alpha) and so is only meaningful on the textured path.
-                    if !skip_texture_backed_entities {
-                        emit_tropical_fish_model(&mut mesh, *instance, shape, base_color);
-                    }
-                }
                 EntityModelKind::Placeholder { bounds, .. } => {
                     emit_placeholder_bounds_model(&mut mesh, *instance, bounds)
                 }
@@ -210,27 +199,6 @@ fn emit_end_crystal_model(mesh: &mut EntityModelMesh, instance: EntityModelInsta
     for cube in END_CRYSTAL_PARTS[3].cubes {
         emit_model_cube(mesh, core_t, *cube);
     }
-}
-
-fn emit_tropical_fish_model(
-    mesh: &mut EntityModelMesh,
-    instance: EntityModelInstance,
-    shape: TropicalFishModelShape,
-    base_color: EntityDyeColor,
-) {
-    // Vanilla `TropicalFish{Small,Large}Model.setupAnim` sways only the tail (`yRot`); the
-    // swim wiggle and out-of-water flop live in `tropical_fish_model_root_transform`. The
-    // kob-style small body and flopper-style large body differ only in geometry. The colored
-    // fallback recolors the whole body with the vanilla `getModelTint` =
-    // `getBaseColor().getTextureDiffuseColor()` (the pattern overlay is textured-only).
-    let in_water = instance.render_state.in_water;
-    let root = tropical_fish_model_root_transform(instance, in_water);
-    TropicalFishModel::new(shape).prepare_and_render_with_color(
-        mesh,
-        &instance,
-        root,
-        base_color.texture_diffuse_color(),
-    );
 }
 
 fn emit_humanoid_model(

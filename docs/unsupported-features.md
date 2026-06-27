@@ -3743,7 +3743,7 @@ When an agent does any of the following, update this file in the same slice:
       out-of-water flop `translate(0.2, 0.1, 0.0)` + `Axis.ZP.rotationDegrees(90)`), both
       reading the projected `in_water` render-state flag and `age_in_ticks`; the official
       `textures/entity/fish/tropical_a.png` (small) / `tropical_b.png` (large) base
-      texture references, per-shape texture-backed base-layer pass emission
+      texture references, shared-dispatch per-shape texture-backed base/pattern submission emission
       (`ModelLayers.TROPICAL_FISH_{SMALL,LARGE}` keys, the tail/top fins keeping their
       negative `texOffs` V origins), and the official PNG atlas upload/bind/sample path
       (colored and textured); the per-entity base body tint

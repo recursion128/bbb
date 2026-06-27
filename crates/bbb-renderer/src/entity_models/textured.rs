@@ -19,15 +19,14 @@ use super::{
     },
     catalog::{
         CamelModelFamily, DonkeyModelFamily, EntityArmorMaterial, EntityCustomHeadSkull,
-        EntityDyeColor, EntityDynamicPlayerSkin, EntityDynamicPlayerSkinAtlasEntry,
+        EntityDynamicPlayerSkin, EntityDynamicPlayerSkinAtlasEntry,
         EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerSkinStatus,
         EntityDynamicPlayerTexture, EntityDynamicPlayerTextureAtlasLayout,
         EntityEquipmentLayerTexture, EntityModelKind, EntityModelTextureAtlasEntry,
         EntityModelTextureAtlasLayout, EntityModelTextureRef, EntityModelUvRect, EntityPlayerSkin,
         HoglinModelFamily, HorseMarkings, LlamaModelFamily, PiglinModelFamily,
-        PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape,
-        TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelHat,
-        ZombieVariantModelFamily,
+        PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily, UndeadHorseModelFamily,
+        VillagerModelData, VillagerModelHat, ZombieVariantModelFamily,
     },
     entity_model_root_transform,
     geometry::{
@@ -50,27 +49,25 @@ use super::{
         DrownedOuterModel, ElytraModel, HoglinModel, HumanoidArmorSlot, HumanoidBabyArmorKind,
         LlamaModel, NautilusModel, PigModel, PiglinModel, PlayerEarsModel, PlayerModel,
         SheepFurModel, SheepModel, SkeletonModel, SpinAttackEffectModel, StriderModel,
-        TropicalFishModel, TropicalFishPatternModel, VillagerModel, WindChargeModel, WitherModel,
-        WolfModel, ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
-        ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_DONKEY_SADDLE_PARTS_TEXTURED,
-        ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED, ADULT_HORSE_ARMOR_PARTS_TEXTURED,
-        ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
-        ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
-        BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF, CAMEL_HUSK_SADDLE_TEXTURE_REF,
-        CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF, CREEPER_TEXTURE_REF,
-        DONKEY_SADDLE_TEXTURE_REF, ENCHANTED_GLINT_ITEM_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF,
-        END_CRYSTAL_BEAM_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, END_CRYSTAL_TEXTURE_REF,
-        GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
-        LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
-        PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF,
-        PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
+        VillagerModel, WindChargeModel, WitherModel, WolfModel, ZombieModel, ZombieVariantModel,
+        ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
+        ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
+        ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
+        ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
+        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF,
+        CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF,
+        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENCHANTED_GLINT_ITEM_TEXTURE_REF,
+        ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_BEAM_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS,
+        END_CRYSTAL_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
+        LLAMA_BODY_TRADER_BABY_TEXTURE_REF, LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF,
+        NAUTILUS_SADDLE_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF,
+        PIG_SADDLE_TEXTURE_REF, PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
         SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION,
         STRIDER_SADDLE_TEXTURE_REF, TRIDENT_RIPTIDE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF,
         WITHER_ARMOR_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
         ZOMBIE_TEXTURE_REF,
     },
-    player_model_root_transform, tropical_fish_model_root_transform,
-    wither_skeleton_model_root_transform, HUSK_SCALE,
+    player_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 use glam::{Mat4, Quat, Vec3};
 
@@ -379,22 +376,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
                 }
                 EntityModelKind::EndCrystal => {
                     emit_end_crystal_textured_model(&mut meshes, *instance, atlas);
-                }
-                EntityModelKind::TropicalFish {
-                    shape,
-                    base_color,
-                    pattern,
-                    pattern_color,
-                } => {
-                    emit_tropical_fish_textured_model(
-                        &mut meshes,
-                        *instance,
-                        shape,
-                        base_color,
-                        pattern,
-                        pattern_color,
-                        atlas,
-                    );
                 }
                 EntityModelKind::ZombieVariant {
                     family: ZombieVariantModelFamily::Husk,
@@ -1080,43 +1061,6 @@ pub(in crate::entity_models) fn render_textured_layers<M: EntityModel>(
     }
 }
 
-/// The textured tropical fish base layer plus the `TropicalFishPatternLayer` overlay. The unified
-/// [`TropicalFishModel`] (base body) and [`TropicalFishPatternModel`] (the overlay, inflated by
-/// `FISH_PATTERN_DEFORMATION`) trees both run the shared `TropicalFish{Small,Large}Model.setupAnim`
-/// tail sway; the swim wiggle, out-of-water flop, and small/large body shape live in
-/// [`tropical_fish_model_root_transform`]. Each pass routes to the base body (tinted by `getModelTint`
-/// = `getBaseColor().getTextureDiffuseColor()`) or the pattern overlay (tinted by
-/// `getPatternColor().getTextureDiffuseColor()`), in the pre-sorted layer order.
-#[allow(clippy::too_many_arguments)]
-fn emit_tropical_fish_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    shape: TropicalFishModelShape,
-    base_color: EntityDyeColor,
-    pattern: TropicalFishPattern,
-    pattern_color: EntityDyeColor,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    let in_water = instance.render_state.in_water;
-    let transform = tropical_fish_model_root_transform(instance, in_water);
-    let mut body = TropicalFishModel::new(shape);
-    body.prepare(&instance);
-    let mut overlay = TropicalFishPatternModel::new(shape);
-    overlay.prepare(&instance);
-    for pass in tropical_fish_textured_layer_passes(shape, base_color, pattern, pattern_color) {
-        let root = if pass.kind == layers::EntityModelLayerKind::TropicalFishPattern {
-            overlay.root()
-        } else {
-            body.root()
-        };
-        render_textured_root_pass(meshes, root, transform, pass, atlas);
-    }
-}
-
-/// The textured squid / glow squid base layer. The unified [`SquidModel`] tree (body + the
-/// procedural eight-tentacle ring) runs the shared `SquidModel.setupAnim` and renders under
-/// [`squid_model_root_transform`]; the variant texture's atlas UV is resolved once. The glow squid
-/// differs only by texture (its emissive light boost is deferred lighting).
 /// The wind charge's scrolling `breezeWind` overlay (vanilla `WindChargeRenderer`): the whole
 /// `WindChargeModel` rendered with the `breezeWind` render type, whose texture matrix scrolls the U
 /// coordinate by `xOffset(ageInTicks) % 1 = (ageInTicks · 0.03) % 1` (V fixed at `0`). We render the
