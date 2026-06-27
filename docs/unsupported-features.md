@@ -3009,7 +3009,9 @@ When an agent does any of the following, update this file in the same slice:
       lerped `heart_animation` alpha). Zero-alpha emissive layers are now skipped before submission, matching
       `LivingEntityEmissiveLayer`'s `alpha <= 1e-5` gate; textured tests pin the remaining base/emissive submissions'
       texture, internal render type (`entityCutout` / `eyes`, used here for vanilla `entityTranslucentEmissive`),
-      tint alpha, root transform, and explicit `(order, submit_sequence)`. `heart_animation` mirrors the client-side `Warden.heartAnimation`/`O`
+      tint alpha, root transform, entity light, base hurt/white overlay, emissive
+      `getOverlayCoords(state, 0.0F)` red-row/zero-white overlay, folded cutout/eyes vertex metadata,
+      and explicit `(order, submit_sequence)`. `heart_animation` mirrors the client-side `Warden.heartAnimation`/`O`
       heartbeat: `bbb-world` resets it to `10` whenever `tickCount % getHeartBeatDelay() == 0` (the delay
       `40 - floor(clamp(clientAngerLevel/80, 0, 1)·30)` shrinking from `40` calm to `10` fully angry off the
       synced `CLIENT_ANGER_LEVEL`), decrements it each client tick, and exposes it lerped `/10` like

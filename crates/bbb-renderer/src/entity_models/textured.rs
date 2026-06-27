@@ -1093,6 +1093,11 @@ fn layer_pass_uses_zero_white_overlay(pass: EntityModelLayerPass) -> bool {
         EntityModelLayerKind::CopperGolemEyes
             | EntityModelLayerKind::CreakingEyes
             | EntityModelLayerKind::TropicalFishPattern
+            | EntityModelLayerKind::WardenBioluminescent
+            | EntityModelLayerKind::WardenHeart
+            | EntityModelLayerKind::WardenPulsatingSpots1
+            | EntityModelLayerKind::WardenPulsatingSpots2
+            | EntityModelLayerKind::WardenTendrils
     )
 }
 

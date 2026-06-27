@@ -89,6 +89,12 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     WanderingTraderBase,
     WitchBase,
     WitherSkullBase,
+    WardenBase,
+    WardenBioluminescent,
+    WardenPulsatingSpots1,
+    WardenPulsatingSpots2,
+    WardenTendrils,
+    WardenHeart,
     WolfBase,
     WolfCollar,
     FelineCollar,
@@ -1300,13 +1306,15 @@ pub(in crate::entity_models) fn warden_textured_layer_passes(
             EntityModelLayerRenderType::EntityCutout,
             WARDEN_TEXTURE_REF,
             [1.0, 1.0, 1.0, 1.0],
-        ),
+        )
+        .with_kind(EntityModelLayerKind::WardenBase),
         EntityModelLayerPass::retained(
             EntityModelLayerRenderType::Eyes,
             WARDEN_BIOLUMINESCENT_TEXTURE_REF,
             [1.0, 1.0, 1.0, 1.0],
             WARDEN_BIOLUMINESCENT_PARTS,
         )
+        .with_kind(EntityModelLayerKind::WardenBioluminescent)
         .with_order(1, 1),
         EntityModelLayerPass::retained(
             EntityModelLayerRenderType::Eyes,
@@ -1319,6 +1327,7 @@ pub(in crate::entity_models) fn warden_textured_layer_passes(
             ],
             WARDEN_PULSATING_SPOTS_PARTS,
         )
+        .with_kind(EntityModelLayerKind::WardenPulsatingSpots1)
         .with_order(1, 2),
         EntityModelLayerPass::retained(
             EntityModelLayerRenderType::Eyes,
@@ -1331,6 +1340,7 @@ pub(in crate::entity_models) fn warden_textured_layer_passes(
             ],
             WARDEN_PULSATING_SPOTS_PARTS,
         )
+        .with_kind(EntityModelLayerKind::WardenPulsatingSpots2)
         .with_order(1, 3),
         EntityModelLayerPass::retained(
             EntityModelLayerRenderType::Eyes,
@@ -1338,6 +1348,7 @@ pub(in crate::entity_models) fn warden_textured_layer_passes(
             [1.0, 1.0, 1.0, tendril_animation],
             WARDEN_TENDRILS_PARTS,
         )
+        .with_kind(EntityModelLayerKind::WardenTendrils)
         .with_order(1, 4),
         EntityModelLayerPass::retained(
             EntityModelLayerRenderType::Eyes,
@@ -1345,6 +1356,7 @@ pub(in crate::entity_models) fn warden_textured_layer_passes(
             [1.0, 1.0, 1.0, heart_animation],
             WARDEN_HEART_PARTS,
         )
+        .with_kind(EntityModelLayerKind::WardenHeart)
         .with_order(1, 5),
     ]
 }
