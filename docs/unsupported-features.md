@@ -3013,7 +3013,10 @@ When an agent does any of the following, update this file in the same slice:
       same seven bones at slightly different timestamps) walks are reproduced, sharing one hand-walked
       `body → tail/head` + four-leg pass. The base texture is now bound on the textured path
       (`ARMADILLO_TEXTURE_REF` / `ARMADILLO_BABY_TEXTURE_REF`), the primary now-wired path, with nothing
-      left deferred on the texture side. The colored debug path stays as a fallback (it approximates the
+      left deferred on the texture side. Adult and baby textured regressions now pin the `ArmadilloBase`
+      pass identity, vanilla `entityCutout` render type/name, white tint, root transform,
+      `(order, submit_sequence) == (0, 0)`, and the `AgeableMobRenderer` / `LivingEntityRenderer`
+      `lightCoords` plus hurt/white overlay metadata. The colored debug path stays as a fallback (it approximates the
       armored body/legs with one brown tint and the soft head/ears/tail with a tan tint)
     - axolotl entities as renderer-owned vanilla 26.1 `AdultAxolotlModel` /
       `BabyAxolotlModel.createBodyLayer()` geometry on the textured path: the native entity scene

@@ -17,6 +17,7 @@ use super::super::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::entity_models) enum EntityModelLayerKind {
+    ArmadilloBase,
     ArmorStandBase,
     ArrowBase,
     AxolotlBase,
@@ -1224,7 +1225,9 @@ pub(in crate::entity_models) fn armadillo_textured_layer_passes(
             ARMADILLO_TEXTURE_REF
         },
         [1.0, 1.0, 1.0, 1.0],
-    )]
+    )
+    .with_kind(EntityModelLayerKind::ArmadilloBase)
+    .with_order(0, 0)]
 }
 
 pub(in crate::entity_models) fn frog_textured_layer_passes(

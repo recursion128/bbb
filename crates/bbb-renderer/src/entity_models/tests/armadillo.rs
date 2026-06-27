@@ -665,14 +665,22 @@ fn baby_armadillo_walk_moves_the_limbs_and_composes_with_the_look() {
 #[test]
 fn armadillo_textured_render_matches_vanilla_renderer() {
     // The adult and baby armadillo share the UV layout but bind their own 64×64 textures.
-    assert_eq!(
-        armadillo_textured_layer_passes(false)[0].texture,
-        ARMADILLO_TEXTURE_REF
-    );
-    assert_eq!(
-        armadillo_textured_layer_passes(true)[0].texture,
-        ARMADILLO_BABY_TEXTURE_REF
-    );
+    for (baby, texture) in [
+        (false, ARMADILLO_TEXTURE_REF),
+        (true, ARMADILLO_BABY_TEXTURE_REF),
+    ] {
+        let passes = armadillo_textured_layer_passes(baby);
+        assert_eq!(passes.len(), 1);
+        assert_eq!(passes[0].kind, EntityModelLayerKind::ArmadilloBase);
+        assert_eq!(passes[0].texture, texture);
+        assert_eq!(
+            passes[0].render_type,
+            EntityModelLayerRenderType::EntityCutout
+        );
+        assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
+        assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
+    }
     assert_eq!(
         EntityModelKind::Armadillo {
             baby: false,
@@ -711,7 +719,10 @@ fn armadillo_textured_render_matches_vanilla_renderer() {
         for rolled_up in [false, true] {
             let instance =
                 EntityModelInstance::armadillo(980, [0.0, 64.0, 0.0], 15.0, baby, rolled_up)
-                    .with_armadillo_peek_seconds(if rolled_up { 2.15 } else { 0.5 });
+                    .with_armadillo_peek_seconds(if rolled_up { 2.15 } else { 0.5 })
+                    .with_light_coords((5_u32 << 4) | (10_u32 << 20))
+                    .with_white_overlay_progress(0.8)
+                    .with_has_red_overlay(true);
             let meshes = entity_model_textured_meshes(&[instance], &atlas);
             assert!(
                 !meshes.cutout.vertices.is_empty(),
@@ -721,7 +732,9 @@ fn armadillo_textured_render_matches_vanilla_renderer() {
                 .cutout
                 .vertices
                 .iter()
-                .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+                .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]
+                    && vertex.light == instance.render_state.shader_light()
+                    && vertex.overlay == instance.render_state.overlay_coords()));
             assert_eq!(meshes.submissions.len(), 1);
             let submit = meshes.submissions[0];
             assert_eq!(
@@ -736,6 +749,9 @@ fn armadillo_textured_render_matches_vanilla_renderer() {
             assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
             assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
             assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+            assert_eq!(submit.light, instance.render_state.shader_light());
+            assert_eq!(submit.overlay, instance.render_state.overlay_coords());
+            assert_ne!(submit.overlay, [0.0, 10.0]);
             assert_eq!(submit.transform, entity_model_root_transform(instance));
         }
     }
