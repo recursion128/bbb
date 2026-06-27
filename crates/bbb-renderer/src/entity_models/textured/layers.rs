@@ -58,6 +58,8 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     SheepWoolUndercoat,
     SkeletonBase,
     SkeletonClothing,
+    ShulkerBulletBase,
+    ShulkerBulletShell,
     SlimeBase,
     SlimeOuter,
     SnifferBase,
@@ -1177,14 +1179,30 @@ pub(in crate::entity_models) fn llama_spit_textured_layer_passes() -> Vec<Entity
     .with_kind(EntityModelLayerKind::LlamaSpitBase)]
 }
 
-#[cfg(test)]
 pub(in crate::entity_models) fn shulker_bullet_textured_layer_passes() -> Vec<EntityModelLayerPass>
 {
-    vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::EntityCutout,
-        SHULKER_BULLET_TEXTURE_REF,
-        [1.0, 1.0, 1.0, 1.0],
-    )]
+    vec![
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::ShulkerBulletBase,
+            render_type: EntityModelLayerRenderType::EntityCutout,
+            model_layer: MODEL_LAYER_SHULKER_BULLET,
+            texture: SHULKER_BULLET_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 0,
+            submit_sequence: 0,
+        },
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::ShulkerBulletShell,
+            render_type: EntityModelLayerRenderType::EntityTranslucent,
+            model_layer: MODEL_LAYER_SHULKER_BULLET,
+            texture: SHULKER_BULLET_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 38.0 / 255.0],
+            order: 1,
+            submit_sequence: 1,
+        },
+    ]
 }
 
 pub(in crate::entity_models) fn wither_skull_textured_layer_passes(

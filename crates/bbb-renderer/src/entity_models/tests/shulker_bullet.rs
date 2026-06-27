@@ -78,10 +78,32 @@ fn shulker_bullet_tumbles_with_age() {
 
 #[test]
 fn shulker_bullet_textured_render_matches_vanilla_renderer() {
+    let passes = shulker_bullet_textured_layer_passes();
+    assert_eq!(passes.len(), 2);
+    assert_eq!(passes[0].kind, EntityModelLayerKind::ShulkerBulletBase);
     assert_eq!(
-        shulker_bullet_textured_layer_passes()[0].texture,
-        SHULKER_BULLET_TEXTURE_REF
+        passes[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
     );
+    assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
+    assert_eq!(passes[0].model_layer, MODEL_LAYER_SHULKER_BULLET);
+    assert_eq!(
+        (passes[0].texture, passes[0].tint),
+        (SHULKER_BULLET_TEXTURE_REF, [1.0, 1.0, 1.0, 1.0])
+    );
+    assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
+    assert_eq!(passes[1].kind, EntityModelLayerKind::ShulkerBulletShell);
+    assert_eq!(
+        passes[1].render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(passes[1].render_type.vanilla_name(), "entityTranslucent");
+    assert_eq!(passes[1].model_layer, MODEL_LAYER_SHULKER_BULLET);
+    assert_eq!(
+        (passes[1].texture, passes[1].tint),
+        (SHULKER_BULLET_TEXTURE_REF, [1.0, 1.0, 1.0, 38.0 / 255.0])
+    );
+    assert_eq!((passes[1].order, passes[1].submit_sequence), (1, 1));
     assert_eq!(
         EntityModelKind::ShulkerBullet.vanilla_texture_ref(),
         Some(SHULKER_BULLET_TEXTURE_REF)
@@ -185,7 +207,7 @@ fn shulker_bullet_textured_render_matches_vanilla_renderer() {
 
 #[test]
 fn shulker_bullet_submissions_survive_missing_texture_atlas_entry() {
-    // The bespoke ShulkerBulletRenderer arm is submission-first: both vanilla `spark.png` submits
+    // The shared dispatch path is submission-first: both vanilla `spark.png` submits
     // are recorded before atlas lookup, and missing texture data suppresses only folded geometry.
     let base_len =
         usize::try_from(ZOMBIE_TEXTURE_REF.size[0] * ZOMBIE_TEXTURE_REF.size[1] * 4).unwrap();

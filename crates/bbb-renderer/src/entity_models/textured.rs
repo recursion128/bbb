@@ -1,9 +1,9 @@
 use super::catalog::EntityDynamicPlayerTextureAtlasEntry;
 use super::colored::{
     boat_model_root_transform, creeper_model_root_transform, drowned_model_root_transform,
-    end_crystal_model_root_transform, shulker_bullet_model_root_transform,
-    trident_model_root_transform, villager_adult_model_root_transform,
-    wind_charge_model_root_transform, wither_model_root_transform, GIANT_SCALE, HORSE_SCALE,
+    end_crystal_model_root_transform, trident_model_root_transform,
+    villager_adult_model_root_transform, wind_charge_model_root_transform,
+    wither_model_root_transform, GIANT_SCALE, HORSE_SCALE,
 };
 use super::dispatch::{dispatch_uniform_entity_model, TexturedSink};
 use super::held_item::custom_head_skull_transform;
@@ -49,26 +49,25 @@ use super::{
         CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel, CustomHeadSkullModel,
         DrownedOuterModel, ElytraModel, HoglinModel, HumanoidArmorSlot, HumanoidBabyArmorKind,
         LlamaModel, NautilusModel, PigModel, PiglinModel, PlayerEarsModel, PlayerModel,
-        SheepFurModel, SheepModel, ShulkerBulletModel, SkeletonClothingModel, SkeletonModel,
-        SpinAttackEffectModel, SquidModel, StriderModel, TropicalFishModel,
-        TropicalFishPatternModel, VillagerModel, WindChargeModel, WitherModel, WolfModel,
-        ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
-        ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_DONKEY_SADDLE_PARTS_TEXTURED,
-        ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED, ADULT_HORSE_ARMOR_PARTS_TEXTURED,
-        ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
-        ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
-        BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF, CAMEL_HUSK_SADDLE_TEXTURE_REF,
-        CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF, CREEPER_TEXTURE_REF,
-        DONKEY_SADDLE_TEXTURE_REF, ENCHANTED_GLINT_ITEM_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF,
-        END_CRYSTAL_BEAM_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, END_CRYSTAL_TEXTURE_REF,
-        GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
-        LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
-        PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF,
-        PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
-        SHULKER_BULLET_TEXTURE_REF, SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF,
-        STANDARD_OUTER_ARMOR_DEFORMATION, STRIDER_SADDLE_TEXTURE_REF, TRIDENT_RIPTIDE_TEXTURE_REF,
-        WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF,
-        ZOMBIE_HORSE_SADDLE_TEXTURE_REF, ZOMBIE_TEXTURE_REF,
+        SheepFurModel, SheepModel, SkeletonClothingModel, SkeletonModel, SpinAttackEffectModel,
+        SquidModel, StriderModel, TropicalFishModel, TropicalFishPatternModel, VillagerModel,
+        WindChargeModel, WitherModel, WolfModel, ZombieModel, ZombieVariantModel,
+        ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
+        ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
+        ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
+        ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
+        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF,
+        CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF,
+        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENCHANTED_GLINT_ITEM_TEXTURE_REF,
+        ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_BEAM_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS,
+        END_CRYSTAL_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
+        LLAMA_BODY_TRADER_BABY_TEXTURE_REF, LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF,
+        NAUTILUS_SADDLE_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF,
+        PIG_SADDLE_TEXTURE_REF, PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
+        SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION,
+        STRIDER_SADDLE_TEXTURE_REF, TRIDENT_RIPTIDE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF,
+        WITHER_ARMOR_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
+        ZOMBIE_TEXTURE_REF,
     },
     player_model_root_transform, squid_model_root_transform, tropical_fish_model_root_transform,
     wither_skeleton_model_root_transform, HUSK_SCALE,
@@ -91,7 +90,6 @@ const PLAYER_SPIN_ATTACK_EFFECT_LAYER_SUBMIT_SEQUENCE: u32 = 4;
 mod layers;
 #[cfg(test)]
 pub(super) use layers::player_textured_layer_passes;
-#[cfg(test)]
 pub(super) use layers::shulker_bullet_textured_layer_passes;
 pub(super) use layers::{
     armadillo_textured_layer_passes, arrow_textured_layer_passes, axolotl_textured_layer_passes,
@@ -379,9 +377,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
                 EntityModelKind::WindCharge => {
                     emit_wind_charge_scroll_model(&mut meshes, *instance, atlas);
                 }
-                EntityModelKind::ShulkerBullet => {
-                    emit_shulker_bullet_textured_model(&mut meshes, *instance, atlas);
-                }
                 EntityModelKind::EndCrystal => {
                     emit_end_crystal_textured_model(&mut meshes, *instance, atlas);
                 }
@@ -591,40 +586,6 @@ pub(super) fn dynamic_player_texture_test_meshes(
         dynamic_player_texture_atlas,
     );
     meshes
-}
-
-/// Vanilla `ShulkerBulletRenderer.submit`: the base `spark.png` model is submitted first, then the same
-/// posed model is scaled by 1.5 and submitted as translucent white with alpha `0x26`.
-fn emit_shulker_bullet_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    let mut model = ShulkerBulletModel::new();
-    model.prepare(&instance);
-    let transform = shulker_bullet_model_root_transform(instance);
-    render_textured_no_overlay_pass_ordered(
-        meshes,
-        &model,
-        transform,
-        EntityModelLayerRenderType::EntityCutout,
-        SHULKER_BULLET_TEXTURE_REF,
-        [1.0, 1.0, 1.0, 1.0],
-        0,
-        0,
-        atlas,
-    );
-    render_textured_no_overlay_pass_ordered(
-        meshes,
-        &model,
-        transform * Mat4::from_scale(Vec3::splat(1.5)),
-        EntityModelLayerRenderType::EntityTranslucent,
-        SHULKER_BULLET_TEXTURE_REF,
-        [1.0, 1.0, 1.0, 38.0 / 255.0],
-        1,
-        1,
-        atlas,
-    );
 }
 
 /// Vanilla `EndCrystalRenderer.submit`: render `EndCrystalModel` with `end_crystal.png` after the
@@ -1132,6 +1093,8 @@ fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
             | EntityModelLayerKind::LlamaSpitBase
             | EntityModelLayerKind::MinecartBase
             | EntityModelLayerKind::PhantomEyes
+            | EntityModelLayerKind::ShulkerBulletBase
+            | EntityModelLayerKind::ShulkerBulletShell
             | EntityModelLayerKind::SpiderEyes
             | EntityModelLayerKind::TridentBase
             | EntityModelLayerKind::WitherSkullBase

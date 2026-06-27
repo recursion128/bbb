@@ -3528,7 +3528,9 @@ When an agent does any of the following, update this file in the same slice:
       `0x26ffffff`. Submission metadata tests pin the texture, render types, alpha tint, transform, light,
       `OverlayTexture.NO_OVERLAY`, order, vanilla render-type names, and folded cutout/translucent vertex
       light/no-overlay inheritance; a missing-atlas regression pins that both submissions are still recorded
-      before folded geometry is suppressed. The colored debug path stays as a fallback (it renders the three slabs with one tint)
+      before folded geometry is suppressed. The shared dispatch path now owns both base/shell submissions
+      instead of a residual textured emit helper; the colored debug path stays as a fallback (it renders
+      the three slabs with one tint)
     - wind charge and breeze wind charge entities as renderer-owned vanilla 26.1
       `WindChargeModel.createBodyLayer()` geometry on the colored path: the native entity scene
       (`entity_scene.rs`) projects vanilla type ids `143` (wind charge) and `18` (breeze wind charge) — both

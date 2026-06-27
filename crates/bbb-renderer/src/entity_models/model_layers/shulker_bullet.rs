@@ -2,6 +2,9 @@ use super::{PART_POSE_ZERO, SHULKER_BULLET_COLOR};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_SHULKER_BULLET: &str =
+    "minecraft:shulker_bullet#main";
+
 // Vanilla 26.1 `ShulkerBulletModel.createBodyLayer` (atlas 64×32). The mesh root holds a single
 // `main` part at ZERO with three interlocking slabs (one flat in each of the XY / YZ / XZ planes):
 // `texOffs(0, 0)` 8×8×2, `texOffs(0, 10)` 2×8×8, and `texOffs(20, 0)` 8×2×8. `setupAnim` only sets
