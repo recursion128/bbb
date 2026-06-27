@@ -1822,8 +1822,10 @@ When an agent does any of the following, update this file in the same slice:
       { head.xRot = rammingXHeadRot }` head-down tilt, overwriting the head-look pitch during a
       ram. The textured goat regressions now pin the vanilla base submission metadata for both
       adult and baby paths: `entityCutout`, selected adult/baby texture, white tint,
-      `entity_model_root_transform`, and `(order, submit_sequence) == (0, 0)` before checking
-      folded UVs, horn visibility, head look, and leg swing; only the screaming-goat sounds remain
+      `entity_model_root_transform`, entity light, hurt/white overlay, and
+      `(order, submit_sequence) == (0, 0)` before checking folded UVs, horn visibility,
+      head look, and leg swing. Folded cutout vertices inherit the base submission's
+      light/overlay metadata; only the screaming-goat sounds remain
       unsupported
     - polar bear entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `PolarBearModel`, `BabyPolarBearModel`, and

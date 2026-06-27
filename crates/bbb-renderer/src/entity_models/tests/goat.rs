@@ -245,9 +245,13 @@ fn entity_texture_atlas_stitches_official_goat_png_slots() {
 #[test]
 fn goat_textured_mesh_uses_vanilla_uvs_tints_and_horn_visibility() {
     let (atlas, _) = build_entity_model_texture_atlas(&goat_texture_images()).unwrap();
-    let adult = EntityModelInstance::goat(401, [0.0, 64.0, 0.0], 0.0, false, true, true);
+    let adult = EntityModelInstance::goat(401, [0.0, 64.0, 0.0], 0.0, false, true, true)
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let adult_meshes = entity_model_textured_meshes(&[adult], &atlas);
     assert_goat_submissions_match_vanilla(&adult_meshes, adult);
+    assert_goat_vertices_match_submission(&adult_meshes);
     let adult_mesh = &adult_meshes.cutout;
     assert_eq!(adult_mesh.cutout_faces, 72);
     assert_eq!(adult_mesh.vertices.len(), 288);
@@ -260,28 +264,40 @@ fn goat_textured_mesh_uses_vanilla_uvs_tints_and_horn_visibility() {
     assert_close3(adult_textured_max, adult_colored_max);
 
     let adult_left_horn_only_instance =
-        EntityModelInstance::goat(402, [0.0, 64.0, 0.0], 0.0, false, true, false);
+        EntityModelInstance::goat(402, [0.0, 64.0, 0.0], 0.0, false, true, false)
+            .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true);
     let adult_left_horn_only_meshes =
         entity_model_textured_meshes(&[adult_left_horn_only_instance], &atlas);
     assert_goat_submissions_match_vanilla(
         &adult_left_horn_only_meshes,
         adult_left_horn_only_instance,
     );
+    assert_goat_vertices_match_submission(&adult_left_horn_only_meshes);
     let adult_left_horn_only = &adult_left_horn_only_meshes.cutout;
     assert_eq!(adult_left_horn_only.cutout_faces, 66);
     assert_eq!(adult_left_horn_only.vertices.len(), 264);
 
     let adult_no_horns_instance =
-        EntityModelInstance::goat(403, [0.0, 64.0, 0.0], 0.0, false, false, false);
+        EntityModelInstance::goat(403, [0.0, 64.0, 0.0], 0.0, false, false, false)
+            .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true);
     let adult_no_horns_meshes = entity_model_textured_meshes(&[adult_no_horns_instance], &atlas);
     assert_goat_submissions_match_vanilla(&adult_no_horns_meshes, adult_no_horns_instance);
+    assert_goat_vertices_match_submission(&adult_no_horns_meshes);
     let adult_no_horns = &adult_no_horns_meshes.cutout;
     assert_eq!(adult_no_horns.cutout_faces, 60);
     assert_eq!(adult_no_horns.vertices.len(), 240);
 
-    let baby = EntityModelInstance::goat(404, [0.0, 64.0, 0.0], 0.0, true, true, true);
+    let baby = EntityModelInstance::goat(404, [0.0, 64.0, 0.0], 0.0, true, true, true)
+        .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
     assert_goat_submissions_match_vanilla(&baby_meshes, baby);
+    assert_goat_vertices_match_submission(&baby_meshes);
     let baby_mesh = &baby_meshes.cutout;
     assert_eq!(baby_mesh.cutout_faces, 72);
     assert_close2(baby_mesh.vertices[0].uv, [33.0 / 64.0, 76.0 / 128.0]);
@@ -291,9 +307,13 @@ fn goat_textured_mesh_uses_vanilla_uvs_tints_and_horn_visibility() {
     assert_close3(baby_textured_max, baby_colored_max);
 
     let baby_no_horns_instance =
-        EntityModelInstance::goat(405, [0.0, 64.0, 0.0], 0.0, true, false, false);
+        EntityModelInstance::goat(405, [0.0, 64.0, 0.0], 0.0, true, false, false)
+            .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true);
     let baby_no_horns_meshes = entity_model_textured_meshes(&[baby_no_horns_instance], &atlas);
     assert_goat_submissions_match_vanilla(&baby_no_horns_meshes, baby_no_horns_instance);
+    assert_goat_vertices_match_submission(&baby_no_horns_meshes);
     let baby_no_horns = &baby_no_horns_meshes.cutout;
     assert_eq!(baby_no_horns.cutout_faces, 60);
     assert!(baby_no_horns
@@ -444,11 +464,23 @@ fn assert_goat_submissions_match_vanilla(
         assert_eq!(submit.texture, pass.texture);
         assert_eq!(submit.tint, pass.tint);
         assert_eq!(submit.transform, entity_model_root_transform(instance));
+        assert_eq!(submit.light, instance.render_state.shader_light());
+        assert_eq!(submit.overlay, instance.render_state.overlay_coords());
         assert_eq!(
             (submit.order, submit.submit_sequence),
             (pass.order, pass.submit_sequence)
         );
     }
+}
+
+fn assert_goat_vertices_match_submission(meshes: &EntityModelTexturedMeshes) {
+    let submit = meshes.submissions[0];
+    assert_ne!(submit.overlay, [0.0, 10.0]);
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
 }
 
 fn assert_goat_folded_meshes_are_cutout_only(meshes: &EntityModelTexturedMeshes) {
