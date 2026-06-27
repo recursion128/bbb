@@ -413,7 +413,10 @@ fn camel_saddle_layer_renders_for_adult_camel_and_husk_only() {
     .unwrap();
 
     let adult =
-        EntityModelInstance::camel(760, [0.0, 64.0, 0.0], 0.0, CamelModelFamily::Camel, false);
+        EntityModelInstance::camel(760, [0.0, 64.0, 0.0], 0.0, CamelModelFamily::Camel, false)
+            .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true);
     let bare_meshes = entity_model_textured_meshes(&[adult], &atlas);
     let saddled_instance = adult.with_camel_saddle(true);
     let saddled_meshes = entity_model_textured_meshes(&[saddled_instance], &atlas);
@@ -438,6 +441,7 @@ fn camel_saddle_layer_renders_for_adult_camel_and_husk_only() {
         saddle_submit.transform,
         entity_model_root_transform(saddled_instance)
     );
+    assert_ne!(saddled_instance.render_state.overlay_coords(), [0.0, 10.0]);
     assert_eq!(saddled.cutout_faces - bare.cutout_faces, 120);
     assert_eq!(saddled.vertices.len() - bare.vertices.len(), 480);
 
@@ -464,6 +468,9 @@ fn camel_saddle_layer_renders_for_adult_camel_and_husk_only() {
 
     let baby =
         EntityModelInstance::camel(761, [0.0, 64.0, 0.0], 0.0, CamelModelFamily::Camel, true)
+            .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true)
             .with_camel_saddle(true)
             .with_camel_saddle_ridden(true);
     let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
@@ -481,6 +488,9 @@ fn camel_saddle_layer_renders_for_adult_camel_and_husk_only() {
         CamelModelFamily::CamelHusk,
         false,
     )
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true)
     .with_camel_saddle(true);
     let husk_meshes = entity_model_textured_meshes(&[husk], &atlas);
     assert_camel_submissions_match_vanilla(&husk_meshes, husk);
@@ -952,6 +962,30 @@ fn assert_camel_submissions_match_vanilla(
         assert_eq!(submit.tint, tint);
         assert_eq!(submit.transform, entity_model_root_transform(instance));
         assert_eq!((submit.order, submit.submit_sequence), (order, sequence));
+        assert_eq!(submit.light, instance.render_state.shader_light());
+        assert_eq!(
+            submit.overlay,
+            match render_type {
+                EntityModelLayerRenderType::EntityCutout => instance.render_state.overlay_coords(),
+                EntityModelLayerRenderType::ArmorCutoutNoCull => [0.0, 10.0],
+                _ => panic!("unexpected camel render type"),
+            }
+        );
+    }
+
+    let base_vertex_count = match (family, baby) {
+        (CamelModelFamily::Camel, true) => 264,
+        _ => 288,
+    };
+    let base_submit = meshes.submissions[0];
+    assert!(meshes.cutout.vertices[..base_vertex_count]
+        .iter()
+        .all(|vertex| vertex.light == base_submit.light && vertex.overlay == base_submit.overlay));
+    if let Some(saddle_submit) = meshes.submissions.get(1) {
+        assert!(meshes.cutout.vertices[base_vertex_count..]
+            .iter()
+            .all(|vertex| vertex.light == saddle_submit.light
+                && vertex.overlay == saddle_submit.overlay));
     }
 }
 

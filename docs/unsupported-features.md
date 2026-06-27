@@ -1760,14 +1760,18 @@ When an agent does any of the following, update this file in the same slice:
       The textured camel regressions now pin vanilla submissions before folded
       geometry checks: base camel/camel_baby/camel_husk passes use `entityCutout`,
       selected texture, white tint, `entity_model_root_transform`, and
-      `(order, submit_sequence) == (0, 0)`; adult camel and camel_husk saddle
-      passes use `armorCutoutNoCull`, the family-specific saddle texture, white
-      tint, the same transform, and `(0, 1)`. Baby camels intentionally skip this
-      layer because vanilla supplies no baby saddle model. The camel
+      `(order, submit_sequence) == (0, 0)` with vanilla entity light plus
+      hurt/white overlay; adult camel and camel_husk saddle passes use
+      `armorCutoutNoCull`, the family-specific saddle texture, white tint, the
+      same transform, `(0, 1)`, entity light, and `OverlayTexture.NO_OVERLAY`.
+      Folded cutout vertices inherit the corresponding base or saddle submission
+      metadata. Baby camels intentionally skip this layer because vanilla
+      supplies no baby saddle model. The camel
       `CAMEL_IDLE` keyframe animation (driven by a client-side `random.nextInt(40) + 80` timer, not
       derivable from synced state), the body-anchor sit/stand y-offset
-      (`Camel.getBodyAnchorAnimationYOffset`), the `jumpCooldown` extra-pitch head boost (needs the
-      un-projected jump-cooldown state), and lighting remain unsupported
+      (`Camel.getBodyAnchorAnimationYOffset`), and the `jumpCooldown`
+      extra-pitch head boost (needs the un-projected jump-cooldown state) remain
+      unsupported
     - llama and trader llama entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `LlamaModel`, `BabyLlamaModel`, and
       `LlamaRenderer`, including `ModelLayers.LLAMA` / `LLAMA_BABY` (the trader
