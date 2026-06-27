@@ -3533,7 +3533,9 @@ When an agent does any of the following, update this file in the same slice:
       re-rendering the whole model, matching vanilla `EnderDragonRenderer.EYES`). Tests pin both
       submissions' texture, render type, white tint, root transform, and same-order sequences
       `(0, 0)` / `(0, 1)`, with folded base/eyes vertices inheriting their respective
-      light/overlay metadata. The nearest-crystal healing beam is now source-projected from the
+      light/overlay metadata; missing-atlas coverage pins that the eyes submission still records
+      `dragon_eyes.png` even when the folded emissive geometry is suppressed. The nearest-crystal healing beam is
+      now source-projected from the
       closest tracked end crystal intersecting the vanilla
       inflated search box, includes the `EndCrystalRenderer.getY` bob in `beamOffset`, and records
       `RenderTypes.endCrystalBeam(end_crystal_beam.png)` after body+eyes with preserved light and

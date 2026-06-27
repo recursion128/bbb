@@ -158,6 +158,47 @@ fn ender_dragon_textured_render_matches_vanilla_renderer() {
 }
 
 #[test]
+fn ender_dragon_eyes_submission_survives_missing_eyes_texture_atlas_entry() {
+    // Vanilla `EnderDragonRenderer.submit` records the always-on eyes submission immediately after
+    // the body, with `RenderTypes.eyes(dragon_eyes.png)` and `OverlayTexture.NO_OVERLAY`.
+    let images = vec![blank_texture(ENDER_DRAGON_TEXTURE_REF)];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let instance = EntityModelInstance::ender_dragon(901, [0.0, 64.0, 0.0], 0.0)
+        .with_light_coords((9_u32 << 4) | (12_u32 << 20))
+        .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert!(meshes.translucent.vertices.is_empty());
+    assert_eq!(meshes.submissions.len(), 2);
+    let base = meshes.submissions[0];
+    assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(base.texture, ENDER_DRAGON_TEXTURE_REF);
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(base.transform, ender_dragon_model_root_transform(instance));
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+    assert_eq!(base.light, instance.render_state.shader_light());
+    assert_eq!(base.overlay, instance.render_state.overlay_coords());
+    assert!(!meshes.cutout.vertices.is_empty());
+
+    let eyes = meshes.submissions[1];
+    assert_eq!(eyes.render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(eyes.render_type.vanilla_name(), "eyes");
+    assert_eq!(eyes.texture, ENDER_DRAGON_EYES_TEXTURE_REF);
+    assert_eq!(eyes.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(eyes.transform, base.transform);
+    assert_eq!((eyes.order, eyes.submit_sequence), (0, 1));
+    assert_eq!(eyes.light, base.light);
+    assert_eq!(eyes.overlay, [0.0, 10.0]);
+    assert!(
+        meshes.eyes.vertices.is_empty(),
+        "missing dragon_eyes.png suppresses only folded emissive eyes geometry"
+    );
+    assert!(meshes.eyes.indices.is_empty());
+}
+
+#[test]
 fn ender_dragon_healing_beam_records_vanilla_submission_and_geometry() {
     // Vanilla `EnderDragonRenderer.submit`: submit body, submit emissive eyes, pop the model pose,
     // then call `submitCrystalBeams` with `EnderDragonRenderState.beamOffset`. The beam uses
