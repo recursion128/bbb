@@ -2309,8 +2309,11 @@ When an agent does any of the following, update this file in the same slice:
       partial tick) projected into the `SlimeRenderer.scale` non-uniform body
       stretch (`ss = squish / (size * 0.5 + 1)`, `w = 1/(ss + 1)`, scale
       `[w, 1/w, w] * size`), texture-backed base and outer layer pass emission,
-      the `SlimeOuterLayer` submit order `1`, and an alpha-blended translucent
-      GPU bucket; invisible glowing outline rendering, particle/audio coupling,
+      the `SlimeOuterLayer` submit order `1`, explicit submission metadata for
+      the base `entityCutout` and outer `entityTranslucent` passes (texture,
+      white tint, slime root transform, and `(order, submit_sequence)`), and an
+      alpha-blended translucent GPU bucket; invisible glowing outline rendering,
+      particle/audio coupling,
       lighting, overlay, crumbling, and full render-graph sorting parity remain
       unsupported
     - magma cube entities as renderer-owned vanilla 26.1
@@ -2320,8 +2323,10 @@ When an agent does any of the following, update this file in the same slice:
       squish accumulator driving both the `MagmaCubeRenderer.scale` non-uniform
       body stretch and the `LavaSlimeModel.setupAnim` per-segment vertical spread
       (`cubeN.y = -(4 - N) * max(0, squish) * 1.7`), texture-backed base layer
-      pass emission, and official PNG atlas upload/bind/sample path; the full-bright
-      block light (`MagmaCubeRenderer.getBlockLightLevel = 15`) IS now applied (`entity_light_coords`).
+      pass emission with explicit submission metadata for vanilla `entityCutout`,
+      selected texture, white tint, magma-cube root transform, and `(0, 0)`, and
+      official PNG atlas upload/bind/sample path; the full-bright block light
+      (`MagmaCubeRenderer.getBlockLightLevel = 15`) IS now applied (`entity_light_coords`).
       Particle/audio coupling, lighting, overlay, crumbling, and
       full render-graph sorting parity remain unsupported
     - ghast entities as renderer-owned vanilla 26.1 `GhastModel.createBodyLayer()`

@@ -22,10 +22,10 @@ use colored::{
     creeper_model_root_transform, death_fall_factor, end_crystal_model_root_transform,
     ender_dragon_model_root_transform, entity_flip_degrees, entity_model_mesh,
     fox_model_root_transform, humanoid_arm_swing_parts, humanoid_limb_swing_parts,
-    iron_golem_model_root_transform, panda_model_root_transform, quadruped_leg_x_rotations,
-    quadruped_limb_swing_parts, shulker_bullet_model_root_transform, shulker_model_root_transform,
-    wind_charge_model_root_transform, wither_model_root_transform, HUMANOID_ARM_PART_INDICES,
-    HUMANOID_LEG_PART_INDICES,
+    iron_golem_model_root_transform, magma_cube_model_root_transform, panda_model_root_transform,
+    quadruped_leg_x_rotations, quadruped_limb_swing_parts, shulker_bullet_model_root_transform,
+    shulker_model_root_transform, wind_charge_model_root_transform, wither_model_root_transform,
+    HUMANOID_ARM_PART_INDICES, HUMANOID_LEG_PART_INDICES,
 };
 use colored::{
     entity_model_colored_runtime_mesh, entity_model_root_transform,
@@ -119,8 +119,8 @@ use textured::{
     warden_pulsating_spots_alpha, warden_textured_layer_passes, witch_textured_layer_passes,
     wither_skull_textured_layer_passes, wither_textured_layer_passes, wolf_textured_layer_passes,
     zombie_nautilus_textured_layer_passes, zombie_textured_layer_passes,
-    zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerRenderBucket,
-    EntityModelLayerRenderType, EntityModelLayerVisibility,
+    zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerPass,
+    EntityModelLayerRenderBucket, EntityModelLayerRenderType, EntityModelLayerVisibility,
 };
 #[cfg(test)]
 use textured::{

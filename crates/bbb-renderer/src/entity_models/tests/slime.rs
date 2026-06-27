@@ -285,13 +285,12 @@ fn entity_texture_atlas_stitches_official_slime_png_slots() {
 }
 
 #[test]
-fn slime_and_magma_cube_textured_meshes_use_vanilla_uvs_and_layer_buckets() {
+fn slime_and_magma_cube_textured_meshes_use_vanilla_submissions_uvs_and_layer_buckets() {
     let (atlas, _) = build_entity_model_texture_atlas(&slime_texture_images()).unwrap();
-    let slime = entity_model_textured_meshes(
-        &[EntityModelInstance::slime(117, [0.0, 64.0, 0.0], 0.0, 1)],
-        &atlas,
-    );
+    let slime_instance = EntityModelInstance::slime(117, [0.0, 64.0, 0.0], 0.0, 1);
+    let slime = entity_model_textured_meshes(&[slime_instance], &atlas);
 
+    assert_slime_submissions_match_vanilla(&slime, slime_instance);
     assert_eq!(slime.cutout.cutout_faces, 24);
     assert_eq!(slime.cutout.vertices.len(), 96);
     assert_eq!(slime.cutout.indices.len(), 144);
@@ -311,15 +310,9 @@ fn slime_and_magma_cube_textured_meshes_use_vanilla_uvs_and_layer_buckets() {
     assert_close3(slime_outer_min, [-0.24975, 64.0, -0.24975]);
     assert_close3(slime_outer_max, [0.24975, 64.4995, 0.24975]);
 
-    let magma = entity_model_textured_meshes(
-        &[EntityModelInstance::magma_cube(
-            80,
-            [0.0, 64.0, 0.0],
-            0.0,
-            3,
-        )],
-        &atlas,
-    );
+    let magma_instance = EntityModelInstance::magma_cube(80, [0.0, 64.0, 0.0], 0.0, 3);
+    let magma = entity_model_textured_meshes(&[magma_instance], &atlas);
+    assert_magma_cube_submission_matches_vanilla(&magma, magma_instance);
     assert_eq!(magma.cutout.cutout_faces, 54);
     assert_eq!(magma.cutout.vertices.len(), 216);
     assert_eq!(magma.cutout.indices.len(), 324);
@@ -368,4 +361,56 @@ fn slime_texture_images() -> Vec<EntityModelTextureImage> {
             EntityModelTextureImage::new(*texture, vec![index as u8; len])
         })
         .collect()
+}
+
+fn assert_slime_submissions_match_vanilla(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    let EntityModelKind::Slime { size } = instance.kind else {
+        panic!("expected slime instance");
+    };
+    assert_textured_submission_passes(
+        meshes,
+        &slime_textured_layer_passes(),
+        slime_model_root_transform(instance, size),
+    );
+}
+
+fn assert_magma_cube_submission_matches_vanilla(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    let EntityModelKind::MagmaCube { size } = instance.kind else {
+        panic!("expected magma cube instance");
+    };
+    assert_textured_submission_passes(
+        meshes,
+        &magma_cube_textured_layer_passes(),
+        magma_cube_model_root_transform(instance, size),
+    );
+}
+
+fn assert_textured_submission_passes(
+    meshes: &EntityModelTexturedMeshes,
+    passes: &[EntityModelLayerPass],
+    transform: Mat4,
+) {
+    assert_eq!(meshes.submissions.len(), passes.len());
+    for (submit, pass) in meshes.submissions.iter().zip(passes) {
+        assert_eq!(submit.render_type, pass.render_type);
+        assert_eq!(
+            submit.render_type.vanilla_name(),
+            pass.render_type.vanilla_name()
+        );
+        assert_eq!(submit.texture, pass.texture);
+        assert_eq!(submit.tint, pass.tint);
+        assert_eq!(submit.transform, transform);
+        assert_eq!(
+            (submit.order, submit.submit_sequence),
+            (pass.order, pass.submit_sequence)
+        );
+        assert!(submit.dynamic_player_skin.is_none());
+        assert!(submit.dynamic_player_texture.is_none());
+    }
 }
