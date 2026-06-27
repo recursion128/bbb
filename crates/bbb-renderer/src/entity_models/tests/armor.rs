@@ -793,6 +793,83 @@ fn baby_zombie_armor_uses_humanoid_baby_layer() {
 }
 
 #[test]
+fn baby_humanoid_armor_submissions_survive_missing_texture_atlas_entry() {
+    // Vanilla `HumanoidArmorLayer` switches every non-armor-stand baby slot to
+    // `HUMANOID_BABY`, so all four iron armor pieces read the same baby texture.
+    let len =
+        usize::try_from(ZOMBIE_BABY_TEXTURE_REF.size[0] * ZOMBIE_BABY_TEXTURE_REF.size[1] * 4)
+            .unwrap();
+    let (atlas, _) = build_entity_model_texture_atlas(&[EntityModelTextureImage::new(
+        ZOMBIE_BABY_TEXTURE_REF,
+        vec![0x37; len],
+    )])
+    .unwrap();
+    assert!(!atlas
+        .entries
+        .iter()
+        .any(|entry| entry.texture == ARMOR_IRON_BABY_HUMANOID_TEXTURE_REF));
+
+    let bare_instance = EntityModelInstance::zombie(97, [0.0, 64.0, 0.0], 0.0, true)
+        .with_light_coords((4_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
+    let armored_instance = bare_instance
+        .with_head_armor(Some(EntityArmorMaterial::Iron))
+        .with_chest_armor(Some(EntityArmorMaterial::Iron))
+        .with_legs_armor(Some(EntityArmorMaterial::Iron))
+        .with_feet_armor(Some(EntityArmorMaterial::Iron));
+
+    let bare = entity_model_textured_meshes(&[bare_instance], &atlas);
+    let armored = entity_model_textured_meshes(&[armored_instance], &atlas);
+
+    assert_eq!(
+        armored.cutout.vertices.len(),
+        bare.cutout.vertices.len(),
+        "missing baby armor atlas entry must not fold stale armor geometry"
+    );
+    assert_eq!(armored.submissions.len(), 5);
+    let body_submit = armored.submissions[0];
+    assert_eq!(
+        body_submit.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(body_submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(body_submit.texture, ZOMBIE_BABY_TEXTURE_REF);
+    assert_eq!(body_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        body_submit.transform,
+        entity_model_root_transform(armored_instance)
+    );
+    assert_eq!(
+        body_submit.light,
+        armored_instance.render_state.shader_light()
+    );
+    assert_eq!(
+        body_submit.overlay,
+        armored_instance.render_state.overlay_coords()
+    );
+    assert_eq!((body_submit.order, body_submit.submit_sequence), (0, 0));
+    assert!(armored.cutout.vertices.iter().all(|vertex| {
+        vertex.light == body_submit.light && vertex.overlay == body_submit.overlay
+    }));
+
+    for (submit, sequence) in armored.submissions[1..].iter().copied().zip(1..) {
+        assert_eq!(
+            submit.render_type,
+            EntityModelLayerRenderType::ArmorCutoutNoCull
+        );
+        assert_eq!(submit.render_type.vanilla_name(), "armorCutoutNoCull");
+        assert_eq!(submit.texture, ARMOR_IRON_BABY_HUMANOID_TEXTURE_REF);
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(submit.transform, body_submit.transform);
+        assert_eq!(submit.light, body_submit.light);
+        assert_eq!(submit.overlay, [0.0, 10.0]);
+        assert_ne!(submit.overlay, body_submit.overlay);
+        assert_eq!((submit.order, submit.submit_sequence), (1, sequence));
+    }
+}
+
+#[test]
 fn baby_zombie_villager_armor_uses_zombie_villager_baby_armor_set() {
     // Vanilla `ZombieVillagerRenderer` registers a dedicated
     // `ModelLayers.ZOMBIE_VILLAGER_BABY_ARMOR`, but `LayerDefinitions` builds it through inherited

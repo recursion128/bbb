@@ -1984,8 +1984,8 @@ When an agent does any of the following, update this file in the same slice:
       in the vanilla submit order (chest, legs, feet, head) as `armorCutoutNoCull`
       submissions at `order(1)` with entity light plus `OverlayTexture.NO_OVERLAY`;
       folded armor vertex segments inherit the matching submission light/overlay, and missing-atlas
-      coverage now proves the four armor submissions survive when only the base zombie body
-      texture is stitched. All eight equipment-asset materials
+      coverage now proves both adult full-armor and baby `HUMANOID_BABY` submissions survive
+      when only the matching base zombie body texture is stitched. All eight equipment-asset materials
       (`ArmorMaterials.<MAT>` → `EquipmentAssets.<MAT>`: leather, copper, chainmail, iron, gold, diamond,
       turtle_scute, netherite) resolve to their `textures/entity/equipment/humanoid/<asset>.png`
       (head/chest/feet) and `humanoid_leggings/<asset>.png` (legs) textures, stitched into the entity
