@@ -309,13 +309,25 @@ fn entity_texture_atlas_stitches_official_hoglin_png_slots() {
 fn hoglin_textured_mesh_uses_vanilla_uvs_tints_and_family_textures() {
     let (atlas, _) = build_entity_model_texture_atlas(&hoglin_texture_images()).unwrap();
     let adult_hoglin =
-        EntityModelInstance::hoglin(224, [0.0, 64.0, 0.0], 0.0, HoglinModelFamily::Hoglin, false);
+        EntityModelInstance::hoglin(224, [0.0, 64.0, 0.0], 0.0, HoglinModelFamily::Hoglin, false)
+            .with_light_coords((4_u32 << 4) | (12_u32 << 20))
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true);
     let adult_zoglin =
-        EntityModelInstance::hoglin(225, [3.0, 64.0, 0.0], 0.0, HoglinModelFamily::Zoglin, false);
+        EntityModelInstance::hoglin(225, [3.0, 64.0, 0.0], 0.0, HoglinModelFamily::Zoglin, false)
+            .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true);
     let baby_hoglin =
-        EntityModelInstance::hoglin(226, [6.0, 64.0, 0.0], 0.0, HoglinModelFamily::Hoglin, true);
+        EntityModelInstance::hoglin(226, [6.0, 64.0, 0.0], 0.0, HoglinModelFamily::Hoglin, true)
+            .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true);
     let baby_zoglin =
-        EntityModelInstance::hoglin(227, [9.0, 64.0, 0.0], 0.0, HoglinModelFamily::Zoglin, true);
+        EntityModelInstance::hoglin(227, [9.0, 64.0, 0.0], 0.0, HoglinModelFamily::Zoglin, true)
+            .with_light_coords((7_u32 << 4) | (9_u32 << 20))
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true);
     let instances = [adult_hoglin, adult_zoglin, baby_hoglin, baby_zoglin];
     let meshes = entity_model_textured_meshes(&instances, &atlas);
     assert_hoglin_submissions_match_vanilla(&meshes, &instances);
@@ -565,6 +577,7 @@ fn assert_hoglin_submissions_match_vanilla(
 ) {
     assert_hoglin_folded_meshes_are_cutout_only(meshes);
     assert_eq!(meshes.submissions.len(), instances.len());
+    let mut vertex_offset = 0;
     for (submit, instance) in meshes.submissions.iter().copied().zip(instances) {
         let (family, baby) = match instance.kind {
             EntityModelKind::Hoglin { family, baby } => (family, baby),
@@ -583,7 +596,17 @@ fn assert_hoglin_submissions_match_vanilla(
             (submit.order, submit.submit_sequence),
             (pass.order, pass.submit_sequence)
         );
+        assert_eq!(submit.light, instance.render_state.shader_light());
+        assert_eq!(submit.overlay, instance.render_state.overlay_coords());
+        let vertex_count = 264;
+        assert!(
+            meshes.cutout.vertices[vertex_offset..vertex_offset + vertex_count]
+                .iter()
+                .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay)
+        );
+        vertex_offset += vertex_count;
     }
+    assert_eq!(vertex_offset, meshes.cutout.vertices.len());
 }
 
 fn assert_hoglin_folded_meshes_are_cutout_only(meshes: &EntityModelTexturedMeshes) {

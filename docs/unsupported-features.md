@@ -1852,9 +1852,10 @@ When an agent does any of the following, update this file in the same slice:
       colored and textured. The textured hoglin/zoglin regressions now pin the
       vanilla base submission metadata for adult and baby paths: `entityCutout`,
       selected hoglin/zoglin texture, white tint, `entity_model_root_transform`,
-      and `(order, submit_sequence) == (0, 0)` before folded UV, yaw-only head
-      look, leg swing, and ear-sway checks; the hoglin converting shake and
-      lighting remain unsupported
+      `(order, submit_sequence) == (0, 0)`, vanilla entity light, and hurt/white
+      overlay coords before folded UV, yaw-only head look, leg swing, and
+      ear-sway checks. Folded cutout vertices inherit each corresponding
+      submission's metadata; the hoglin converting shake remains unsupported
     - ravager entities as renderer-owned vanilla 26.1 `RavagerModel`
       body-layer geometry from `RavagerModel` and `RavagerRenderer`,
       including nested neck/head/horn/mouth parts, official
