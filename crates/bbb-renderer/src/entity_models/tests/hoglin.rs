@@ -247,6 +247,7 @@ fn hoglin_textured_layer_passes_match_vanilla_renderer_model_choice() {
             passes[0].render_type,
             EntityModelLayerRenderType::EntityCutout
         );
+        assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
         assert_eq!(passes[0].model_layer, model_layer);
         assert_eq!(passes[0].texture, texture);
         // The vestigial `parts` slice is nulled; emit builds `HoglinModel::new(baby)` and renders it.
@@ -315,10 +316,10 @@ fn hoglin_textured_mesh_uses_vanilla_uvs_tints_and_family_textures() {
         EntityModelInstance::hoglin(226, [6.0, 64.0, 0.0], 0.0, HoglinModelFamily::Hoglin, true);
     let baby_zoglin =
         EntityModelInstance::hoglin(227, [9.0, 64.0, 0.0], 0.0, HoglinModelFamily::Zoglin, true);
-    let mesh = entity_model_textured_mesh(
-        &[adult_hoglin, adult_zoglin, baby_hoglin, baby_zoglin],
-        &atlas,
-    );
+    let instances = [adult_hoglin, adult_zoglin, baby_hoglin, baby_zoglin];
+    let meshes = entity_model_textured_meshes(&instances, &atlas);
+    assert_hoglin_submissions_match_vanilla(&meshes, &instances);
+    let mesh = &meshes.cutout;
 
     assert_eq!(mesh.cutout_faces, 264);
     assert_eq!(mesh.vertices.len(), 1056);
@@ -332,14 +333,17 @@ fn hoglin_textured_mesh_uses_vanilla_uvs_tints_and_family_textures() {
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
 
-    let adult_hoglin_mesh = entity_model_textured_mesh(&[adult_hoglin], &atlas);
-    let (adult_textured_min, adult_textured_max) = textured_mesh_extents(&adult_hoglin_mesh);
+    let adult_hoglin_meshes = entity_model_textured_meshes(&[adult_hoglin], &atlas);
+    assert_hoglin_submissions_match_vanilla(&adult_hoglin_meshes, &[adult_hoglin]);
+    let (adult_textured_min, adult_textured_max) =
+        textured_mesh_extents(&adult_hoglin_meshes.cutout);
     let (adult_colored_min, adult_colored_max) = mesh_extents(&entity_model_mesh(&[adult_hoglin]));
     assert_close3(adult_textured_min, adult_colored_min);
     assert_close3(adult_textured_max, adult_colored_max);
 
-    let baby_hoglin_mesh = entity_model_textured_mesh(&[baby_hoglin], &atlas);
-    let (baby_textured_min, baby_textured_max) = textured_mesh_extents(&baby_hoglin_mesh);
+    let baby_hoglin_meshes = entity_model_textured_meshes(&[baby_hoglin], &atlas);
+    assert_hoglin_submissions_match_vanilla(&baby_hoglin_meshes, &[baby_hoglin]);
+    let (baby_textured_min, baby_textured_max) = textured_mesh_extents(&baby_hoglin_meshes.cutout);
     let (baby_colored_min, baby_colored_max) = mesh_extents(&entity_model_mesh(&[baby_hoglin]));
     assert_close3(baby_textured_min, baby_colored_min);
     assert_close3(baby_textured_max, baby_colored_max);
@@ -354,16 +358,21 @@ fn hoglin_textured_meshes_apply_yaw_only_head_look() {
     for (id, baby) in [(228, false), (229, true)] {
         let base =
             EntityModelInstance::hoglin(id, [0.0, 64.0, 0.0], 0.0, HoglinModelFamily::Hoglin, baby);
-        let resting = entity_model_textured_mesh(&[base], &atlas);
-        let yawed = entity_model_textured_mesh(&[base.with_head_look(50.0, 0.0)], &atlas);
-        let pitched = entity_model_textured_mesh(&[base.with_head_look(0.0, -20.0)], &atlas);
-        assert_eq!(resting.vertices.len(), yawed.vertices.len());
+        let yawed_instance = base.with_head_look(50.0, 0.0);
+        let pitched_instance = base.with_head_look(0.0, -20.0);
+        let resting = entity_model_textured_meshes(&[base], &atlas);
+        let yawed = entity_model_textured_meshes(&[yawed_instance], &atlas);
+        let pitched = entity_model_textured_meshes(&[pitched_instance], &atlas);
+        assert_hoglin_submissions_match_vanilla(&resting, &[base]);
+        assert_hoglin_submissions_match_vanilla(&yawed, &[yawed_instance]);
+        assert_hoglin_submissions_match_vanilla(&pitched, &[pitched_instance]);
+        assert_eq!(resting.cutout.vertices.len(), yawed.cutout.vertices.len());
         assert_ne!(
-            resting.vertices, yawed.vertices,
+            resting.cutout.vertices, yawed.cutout.vertices,
             "baby={baby} yaw turns head"
         );
         assert_eq!(
-            resting.vertices, pitched.vertices,
+            resting.cutout.vertices, pitched.cutout.vertices,
             "baby={baby} pitch ignored"
         );
     }
@@ -516,33 +525,79 @@ fn hoglin_textured_mesh_swings_legs_when_walking() {
             false,
         ),
     ] {
-        let resting = entity_model_textured_mesh(&[base], &atlas);
-        let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
-        let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+        let still_instance = base.with_walk_animation(2.5, 0.0);
+        let walking_instance = base.with_walk_animation(0.0, 1.0);
+        let resting = entity_model_textured_meshes(&[base], &atlas);
+        let still = entity_model_textured_meshes(&[still_instance], &atlas);
+        let walking = entity_model_textured_meshes(&[walking_instance], &atlas);
+        assert_hoglin_submissions_match_vanilla(&resting, &[base]);
+        assert_hoglin_submissions_match_vanilla(&still, &[still_instance]);
+        assert_hoglin_submissions_match_vanilla(&walking, &[walking_instance]);
 
         assert_eq!(
-            resting.vertices, still.vertices,
+            resting.cutout.vertices, still.cutout.vertices,
             "{name}: a standing hoglin is inert"
         );
         assert_eq!(
-            resting.vertices.len(),
-            walking.vertices.len(),
+            resting.cutout.vertices.len(),
+            walking.cutout.vertices.len(),
             "{name}: leg swing keeps the vertex count"
         );
         assert_ne!(
-            resting.vertices, walking.vertices,
+            resting.cutout.vertices, walking.cutout.vertices,
             "{name}: a walking hoglin differs"
         );
 
         if adult_size {
-            let (rest_min, rest_max) = textured_mesh_extents(&resting);
-            let (walk_min, walk_max) = textured_mesh_extents(&walking);
+            let (rest_min, rest_max) = textured_mesh_extents(&resting.cutout);
+            let (walk_min, walk_max) = textured_mesh_extents(&walking.cutout);
             assert!(
                 (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
                 "{name}: a walking hoglin's feet should lift off the ground"
             );
         }
     }
+}
+
+fn assert_hoglin_submissions_match_vanilla(
+    meshes: &EntityModelTexturedMeshes,
+    instances: &[EntityModelInstance],
+) {
+    assert_hoglin_folded_meshes_are_cutout_only(meshes);
+    assert_eq!(meshes.submissions.len(), instances.len());
+    for (submit, instance) in meshes.submissions.iter().copied().zip(instances) {
+        let (family, baby) = match instance.kind {
+            EntityModelKind::Hoglin { family, baby } => (family, baby),
+            _ => panic!("expected hoglin instance"),
+        };
+        let passes = hoglin_textured_layer_passes(family, baby);
+        assert_eq!(passes.len(), 1);
+        let pass = passes[0];
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.render_type, pass.render_type);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(submit.texture, pass.texture);
+        assert_eq!(submit.tint, pass.tint);
+        assert_eq!(submit.transform, entity_model_root_transform(*instance));
+        assert_eq!(
+            (submit.order, submit.submit_sequence),
+            (pass.order, pass.submit_sequence)
+        );
+    }
+}
+
+fn assert_hoglin_folded_meshes_are_cutout_only(meshes: &EntityModelTexturedMeshes) {
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_cutout.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_translucent.vertices.is_empty());
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_translucent
+        .vertices
+        .is_empty());
+    assert!(meshes.scroll.vertices.is_empty());
+    assert!(meshes.scroll_additive.vertices.is_empty());
 }
 
 fn hoglin_texture_images() -> Vec<EntityModelTextureImage> {
@@ -703,21 +758,24 @@ fn hoglin_textured_mesh_sways_its_ears_when_walking() {
     let (atlas, _) = build_entity_model_texture_atlas(&hoglin_texture_images()).unwrap();
     let base =
         EntityModelInstance::hoglin(251, [0.0, 64.0, 0.0], 0.0, HoglinModelFamily::Hoglin, false);
-    let resting = entity_model_textured_mesh(&[base], &atlas);
-    let walking = entity_model_textured_mesh(&[base.with_walk_animation(1.5, 1.0)], &atlas);
+    let walking_instance = base.with_walk_animation(1.5, 1.0);
+    let resting = entity_model_textured_meshes(&[base], &atlas);
+    let walking = entity_model_textured_meshes(&[walking_instance], &atlas);
+    assert_hoglin_submissions_match_vanilla(&resting, &[base]);
+    assert_hoglin_submissions_match_vanilla(&walking, &[walking_instance]);
     assert_eq!(
-        resting.vertices.len(),
-        walking.vertices.len(),
+        resting.cutout.vertices.len(),
+        walking.cutout.vertices.len(),
         "the ear sway keeps the vertex count"
     );
     assert_ne!(
-        resting.vertices[72..120],
-        walking.vertices[72..120],
+        resting.cutout.vertices[72..120],
+        walking.cutout.vertices[72..120],
         "the textured ears sway when walking"
     );
     assert_eq!(
-        resting.vertices[0..72],
-        walking.vertices[0..72],
+        resting.cutout.vertices[0..72],
+        walking.cutout.vertices[0..72],
         "body/mane/head cubes stay put"
     );
 }

@@ -1779,7 +1779,12 @@ When an agent does any of the following, update this file in the same slice:
       head subtree hand-emitted; the formula sets the absolute `±2π/9`, overriding the wider
       rest angle of `BabyHoglinModel`'s layer), and the event-driven headbutt head ram
       (`apply_hoglin_headbutt`, from entity event 4 — see the hoglin note above) — all
-      colored and textured; the hoglin converting shake and lighting remain unsupported
+      colored and textured. The textured hoglin/zoglin regressions now pin the
+      vanilla base submission metadata for adult and baby paths: `entityCutout`,
+      selected hoglin/zoglin texture, white tint, `entity_model_root_transform`,
+      and `(order, submit_sequence) == (0, 0)` before folded UV, yaw-only head
+      look, leg swing, and ear-sway checks; the hoglin converting shake and
+      lighting remain unsupported
     - ravager entities as renderer-owned vanilla 26.1 `RavagerModel`
       body-layer geometry from `RavagerModel` and `RavagerRenderer`,
       including nested neck/head/horn/mouth parts, official
