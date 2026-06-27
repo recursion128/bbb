@@ -55,6 +55,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     GhastBase,
     HappyGhastBase,
     MinecartBase,
+    ParrotBase,
     ZombieBase,
     HuskBase,
     DrownedBase,
@@ -959,7 +960,9 @@ pub(in crate::entity_models) fn parrot_textured_layer_passes(
         EntityModelLayerRenderType::EntityCutout,
         parrot_texture_ref(variant),
         [1.0, 1.0, 1.0, 1.0],
-    )]
+    )
+    .with_kind(EntityModelLayerKind::ParrotBase)
+    .with_order(0, 0)]
 }
 
 pub(in crate::entity_models) fn shulker_textured_layer_passes(

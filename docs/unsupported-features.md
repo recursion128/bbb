@@ -3092,7 +3092,10 @@ When an agent does any of the following, update this file in the same slice:
       bound on the textured path: the native scene reads the synced `DATA_VARIANT_ID` (20, int — after
       `AgeableMob.AGE_LOCKED` at 17 and the two `TamableAnimal` accessors at 18/19) and `Parrot.Variant.byId`
       selects the per-colour texture (`parrot_red_blue` / `_blue` / `_green` / `_yellow_blue` / `parrot_grey.png`),
-      matching `ParrotRenderer.getVariantTexture`
+      matching `ParrotRenderer.getVariantTexture`. The five textured variant regressions now pin the
+      explicit `ParrotBase` submission identity, vanilla `entityCutout` render type/name, white tint,
+      root transform, `(order, submit_sequence) == (0, 0)`, and the `MobRenderer` / `LivingEntityRenderer`
+      `lightCoords` plus hurt/white overlay metadata before checking folded geometry.
     - shulker entities as renderer-owned vanilla 26.1 `ShulkerModel.createBodyLayer()` geometry on the
       textured path: the native entity scene (`entity_scene.rs`) projects vanilla type id `112` to
       `EntityModelKind::Shulker { color }`, replacing the former placeholder bounds box. The hierarchy is emitted

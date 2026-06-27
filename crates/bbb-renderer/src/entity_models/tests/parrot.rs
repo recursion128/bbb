@@ -448,7 +448,11 @@ fn parrot_textured_render_matches_vanilla_renderer() {
             passes[0].render_type,
             EntityModelLayerRenderType::EntityCutout
         );
+        assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
+        assert_eq!(passes[0].kind, EntityModelLayerKind::ParrotBase);
         assert_eq!(passes[0].texture, expected);
+        assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
         assert_eq!(
             EntityModelKind::Parrot { variant }.vanilla_texture_ref(),
             Some(expected)
@@ -473,7 +477,10 @@ fn parrot_textured_render_matches_vanilla_renderer() {
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
     // Each colour emits textured geometry tinted white.
     for (variant, _) in variant_textures {
-        let instance = EntityModelInstance::parrot(900, [0.0, 64.0, 0.0], 0.0, variant);
+        let instance = EntityModelInstance::parrot(900, [0.0, 64.0, 0.0], 0.0, variant)
+            .with_light_coords((6_u32 << 4) | (13_u32 << 20))
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true);
         let meshes = entity_model_textured_meshes(&[instance], &atlas);
         assert!(meshes.translucent.vertices.is_empty());
         assert!(meshes.eyes.vertices.is_empty());
@@ -485,6 +492,9 @@ fn parrot_textured_render_matches_vanilla_renderer() {
         assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
         assert_eq!(submit.transform, entity_model_root_transform(instance));
         assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+        assert_eq!(submit.light, instance.render_state.shader_light());
+        assert_eq!(submit.overlay, instance.render_state.overlay_coords());
+        assert_ne!(submit.overlay, [0.0, 10.0]);
         let mesh = &meshes.cutout;
 
         assert!(
