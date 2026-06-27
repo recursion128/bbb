@@ -72,15 +72,20 @@ fn wither_skull_orients_along_flight() {
 #[test]
 fn wither_skull_textured_render_matches_vanilla_renderer() {
     let normal_pass = wither_skull_textured_layer_passes(false)[0];
+    assert_eq!(normal_pass.kind, EntityModelLayerKind::WitherSkullBase);
+    assert_eq!(normal_pass.model_layer, MODEL_LAYER_WITHER_SKULL);
     assert_eq!(normal_pass.texture, WITHER_TEXTURE_REF);
     assert_eq!(
         normal_pass.render_type,
         EntityModelLayerRenderType::EntityTranslucent
     );
     assert_eq!(normal_pass.render_type.vanilla_name(), "entityTranslucent");
+    assert_eq!(normal_pass.visibility, EntityModelLayerVisibility::All);
     assert_eq!(normal_pass.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((normal_pass.order, normal_pass.submit_sequence), (0, 0));
     let dangerous_pass = wither_skull_textured_layer_passes(true)[0];
+    assert_eq!(dangerous_pass.kind, EntityModelLayerKind::WitherSkullBase);
+    assert_eq!(dangerous_pass.model_layer, MODEL_LAYER_WITHER_SKULL);
     assert_eq!(dangerous_pass.texture, WITHER_INVULNERABLE_TEXTURE_REF);
     assert_eq!(
         dangerous_pass.render_type,
@@ -90,6 +95,7 @@ fn wither_skull_textured_render_matches_vanilla_renderer() {
         dangerous_pass.render_type.vanilla_name(),
         "entityTranslucent"
     );
+    assert_eq!(dangerous_pass.visibility, EntityModelLayerVisibility::All);
     assert_eq!(dangerous_pass.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         (dangerous_pass.order, dangerous_pass.submit_sequence),

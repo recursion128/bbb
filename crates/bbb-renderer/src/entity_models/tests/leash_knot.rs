@@ -44,6 +44,7 @@ fn leash_knot_layer_passes_match_vanilla_renderer() {
         EntityModelLayerRenderType::EntityCutout
     );
     assert_eq!(passes[0].kind, EntityModelLayerKind::LeashKnotBase);
+    assert_eq!(passes[0].model_layer, MODEL_LAYER_LEASH_KNOT);
     assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(passes[0].texture, LEASH_KNOT_TEXTURE_REF);
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);

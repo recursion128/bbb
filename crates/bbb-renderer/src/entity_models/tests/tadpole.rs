@@ -31,7 +31,9 @@ fn tadpole_layer_passes_and_texture_ref_match_vanilla_renderer() {
     );
     assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(passes[0].kind, EntityModelLayerKind::TadpoleBase);
+    assert_eq!(passes[0].model_layer, MODEL_LAYER_TADPOLE);
     assert_eq!(passes[0].texture, TADPOLE_TEXTURE_REF);
+    assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
 

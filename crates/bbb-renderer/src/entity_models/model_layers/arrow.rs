@@ -2,6 +2,8 @@ use super::{PartPose, ARROW_HEAD, ARROW_SHAFT, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_ARROW: &str = "minecraft:arrow#main";
+
 // Vanilla 26.1 `ArrowModel.createBodyLayer` (atlas 32×32). The mesh root holds three sibling planes:
 // the `back` arrowhead (a 0×5×5 YZ plane at `offset(-11, 0, 0)`, pitched π/4, `withScale(0.8)`), and
 // two crossed fletching planes (`cross_1`/`cross_2`, each a 16×4×0 XY plane pitched π/4 and 3π/4).

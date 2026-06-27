@@ -3279,7 +3279,8 @@ When an agent does any of the following, update this file in the same slice:
       (`TADPOLE_TEXTURE_REF`; vanilla `TadpoleModel` constructs with
       `RenderTypes::entityCutout`) while preserving explicit submission metadata for texture, white
       tint, root transform, and `order(0)`. The pass now has an explicit `TadpoleBase` identity and
-      tests use non-default packed light plus hurt/white overlay to pin the vanilla
+      records vanilla `ModelLayers.TADPOLE` (`minecraft:tadpole#main`) instead of an empty model-layer
+      placeholder. Tests use non-default packed light plus hurt/white overlay to pin the vanilla
       `LivingEntityRenderer.submit` path: tadpole base submissions inherit `lightCoords` and
       `getOverlayCoords(...)` instead of using the object-renderer `OverlayTexture.NO_OVERLAY`
       override, and folded cutout vertices inherit that submission metadata. Nothing is left deferred on the
@@ -3481,6 +3482,9 @@ When an agent does any of the following, update this file in the same slice:
       (`EVOKER_FANGS_TEXTURE_REF`), the primary path, with explicit submission metadata for vanilla
       `entityCutout`, white tint, light coords, `OverlayTexture.NO_OVERLAY`, the renderer root transform,
       and `(order, submit_sequence) == (0, 0)`, with folded cutout vertices inheriting that metadata;
+      `evoker_fangs_textured_layer_passes` now records vanilla `ModelLayers.EVOKER_FANGS`
+      (`minecraft:evoker_fangs#main`) instead of an empty model-layer placeholder, and tests pin that
+      alongside the texture/render-type/tint/order fields.
       missing-atlas coverage pins that a nonzero-`biteProgress` submit is still recorded before folded
       cutout geometry is suppressed.
       The colored debug path stays as a fallback (it renders a grey base and lighter-bone jaws)
@@ -3494,7 +3498,8 @@ When an agent does any of the following, update this file in the same slice:
       (`LEASH_KNOT_TEXTURE_REF`), the primary now-wired path, with explicit submission metadata for vanilla
       `entityCutout`, white tint, the renderer root transform, entity light coords,
       `OverlayTexture.NO_OVERLAY`, and `(order, submit_sequence) == (0, 0)`, with folded cutout vertices
-      inheriting that metadata.
+      inheriting that metadata. `leash_knot_textured_layer_passes` now records vanilla
+      `ModelLayers.LEASH_KNOT` (`minecraft:leash_knot#main`) instead of an empty model-layer placeholder.
       The colored debug path stays as a fallback (it renders the knot with one brown tint)
     - arrow and spectral arrow entities as renderer-owned vanilla 26.1 `ArrowModel.createBodyLayer()`
       geometry on the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type ids `6`
@@ -3517,7 +3522,8 @@ When an agent does any of the following, update this file in the same slice:
       Tests now pin explicit submission metadata for vanilla `entityCutoutCull`, white tint,
       light coords, `OverlayTexture.NO_OVERLAY`, `arrow_model_root_transform`, and
       `(order, submit_sequence) == (0, 0)`, with folded cutout vertices inheriting that
-      light/no-overlay metadata before checking the folded shake-posed mesh; missing-atlas
+      light/no-overlay metadata before checking the folded shake-posed mesh; the pass generator also records
+      vanilla `ModelLayers.ARROW` (`minecraft:arrow#main`) for all three arrow textures; missing-atlas
       coverage pins that the spectral-arrow `entityCutoutCull` submit is still recorded before
       folded cutout geometry is suppressed.
       The colored debug path stays as a fallback (it renders the shaft cross and the head
@@ -3557,7 +3563,8 @@ When an agent does any of the following, update this file in the same slice:
       and `true` selects `WITHER_INVULNERABLE_TEXTURE_REF` (`wither_invulnerable.png`). The colored debug
       path stays as a fallback (it renders the skull as one dark tint). Both textured variants now pin
       explicit `order(0)`, `entityTranslucent`, white tint, texture, light coords,
-      `OverlayTexture.NO_OVERLAY`, and transform submission metadata, while the Wither boss base test
+      `OverlayTexture.NO_OVERLAY`, `ModelLayers.WITHER_SKULL` (`minecraft:wither_skull#main`), and
+      transform submission metadata, while the Wither boss base test
       proves the same shared `wither.png` / `wither_invulnerable.png` texture refs still preserve body
       overlay when submitted by `WitherBossRenderer`; missing-atlas coverage pins that the dangerous
       skull's `entityTranslucent` / `wither_invulnerable.png` submit is still recorded before folded
@@ -3572,7 +3579,8 @@ When an agent does any of the following, update this file in the same slice:
       the instance's `body_rot` / `head_pitch` and captured by `llama_spit_model_root_transform`. The base
       texture is now bound on the textured path (`LLAMA_SPIT_TEXTURE_REF`), the primary now-wired path, with
       explicit submission metadata for vanilla `entityCutout`, white tint, light coords,
-      `OverlayTexture.NO_OVERLAY`, the renderer root transform, and `(order, submit_sequence) == (0, 0)`.
+      `OverlayTexture.NO_OVERLAY`, the renderer root transform, vanilla `ModelLayers.LLAMA_SPIT`
+      (`minecraft:llama_spit#main`), and `(order, submit_sequence) == (0, 0)`.
       Folded cutout vertices now inherit that submission light and no-overlay metadata rather than the
       instance's hurt/white overlay coordinates; missing-atlas coverage pins that the submission is still
       recorded before folded cutout geometry is suppressed.

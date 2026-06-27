@@ -94,20 +94,19 @@ fn arrow_textured_render_matches_vanilla_renderer() {
         (ArrowModelTexture::Tipped, ARROW_TIPPED_TEXTURE_REF),
         (ArrowModelTexture::Spectral, ARROW_SPECTRAL_TEXTURE_REF),
     ] {
-        assert_eq!(arrow_textured_layer_passes(texture)[0].texture, texture_ref);
+        let pass = arrow_textured_layer_passes(texture)[0];
+        assert_eq!(pass.kind, EntityModelLayerKind::ArrowBase);
+        assert_eq!(pass.model_layer, MODEL_LAYER_ARROW);
+        assert_eq!(pass.texture, texture_ref);
         assert_eq!(
-            arrow_textured_layer_passes(texture)[0].render_type,
+            pass.render_type,
             EntityModelLayerRenderType::EntityCutoutCull
         );
-        assert_eq!(
-            arrow_textured_layer_passes(texture)[0]
-                .render_type
-                .vanilla_name(),
-            "entityCutoutCull"
-        );
-        assert_eq!(arrow_textured_layer_passes(texture)[0].tint, [1.0; 4]);
-        assert_eq!(arrow_textured_layer_passes(texture)[0].order, 0);
-        assert_eq!(arrow_textured_layer_passes(texture)[0].submit_sequence, 0);
+        assert_eq!(pass.render_type.vanilla_name(), "entityCutoutCull");
+        assert_eq!(pass.visibility, EntityModelLayerVisibility::All);
+        assert_eq!(pass.tint, [1.0; 4]);
+        assert_eq!(pass.order, 0);
+        assert_eq!(pass.submit_sequence, 0);
         assert_eq!(
             EntityModelKind::Arrow { texture }.vanilla_texture_ref(),
             Some(texture_ref)

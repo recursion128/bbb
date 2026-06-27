@@ -2,6 +2,8 @@ use super::{LLAMA_SPIT_COLOR, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_LLAMA_SPIT: &str = "minecraft:llama_spit#main";
+
 // Vanilla 26.1 `LlamaSpitModel.createBodyLayer` (atlas 64×32). The mesh root holds a single `main`
 // part at ZERO with seven 2×2×2 boxes (all at `texOffs(0, 0)`) forming a plus/cross: a centre cube
 // with one neighbour stepping out along each of the +X/-X, +Y/-Y, +Z/-Z directions. `LlamaSpitModel`

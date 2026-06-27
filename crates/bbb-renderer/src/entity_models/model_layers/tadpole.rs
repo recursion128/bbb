@@ -2,6 +2,8 @@ use super::{PartPose, PART_POSE_ZERO, TADPOLE_BODY, TADPOLE_TAIL};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_TADPOLE: &str = "minecraft:tadpole#main";
+
 // Vanilla 26.1 `TadpoleModel.createBodyLayer` (atlas 16×16). The mesh root holds two named sibling
 // parts: a 3×2×3 `body` box at `offset(0, 22, -3)` and a 0×2×7 `tail` fin plane at `offset(0, 22, 0)`.
 // The only `TadpoleModel.setupAnim` motion is the tail yaw sway ([`tadpole_tail_yrot`]), reproduced

@@ -13,6 +13,7 @@ pub(in crate::entity_models) const MODEL_LAYER_PIGLIN_HEAD: &str = "minecraft:pi
 pub(in crate::entity_models) const MODEL_LAYER_PLAYER_HEAD: &str = "minecraft:player_head#main";
 pub(in crate::entity_models) const MODEL_LAYER_SKELETON_SKULL: &str =
     "minecraft:skeleton_skull#main";
+pub(in crate::entity_models) const MODEL_LAYER_WITHER_SKULL: &str = "minecraft:wither_skull#main";
 pub(in crate::entity_models) const MODEL_LAYER_WITHER_SKELETON_SKULL: &str =
     "minecraft:wither_skeleton_skull#main";
 pub(in crate::entity_models) const MODEL_LAYER_ZOMBIE_HEAD: &str = "minecraft:zombie_head#main";

@@ -2,6 +2,8 @@ use super::{LEASH_KNOT_COLOR, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_LEASH_KNOT: &str = "minecraft:leash_knot#main";
+
 // Vanilla 26.1 `LeashKnotModel.createBodyLayer` (atlas 32×32): the mesh root holds a single `knot`
 // part at ZERO with one 6×8×6 box at texOffs(0, 0). `LeashKnotModel` has no `setupAnim`, so the model
 // is fully static. The unified cube carries both render paths' data: the colored debug tint

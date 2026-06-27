@@ -1193,13 +1193,16 @@ pub(in crate::entity_models) fn silverfish_textured_layer_passes() -> Vec<Entity
 }
 
 pub(in crate::entity_models) fn leash_knot_textured_layer_passes() -> Vec<EntityModelLayerPass> {
-    vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::EntityCutout,
-        LEASH_KNOT_TEXTURE_REF,
-        [1.0, 1.0, 1.0, 1.0],
-    )
-    .with_kind(EntityModelLayerKind::LeashKnotBase)
-    .with_order(0, 0)]
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::LeashKnotBase,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: MODEL_LAYER_LEASH_KNOT,
+        texture: LEASH_KNOT_TEXTURE_REF,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
 }
 
 pub(in crate::entity_models) fn trident_textured_layer_passes() -> Vec<EntityModelLayerPass> {
@@ -1228,22 +1231,29 @@ pub(in crate::entity_models) fn trident_textured_layer_passes() -> Vec<EntityMod
 }
 
 pub(in crate::entity_models) fn evoker_fangs_textured_layer_passes() -> Vec<EntityModelLayerPass> {
-    vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::EntityCutout,
-        EVOKER_FANGS_TEXTURE_REF,
-        [1.0, 1.0, 1.0, 1.0],
-    )
-    .with_kind(EntityModelLayerKind::EvokerFangsBase)]
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::EvokerFangsBase,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: MODEL_LAYER_EVOKER_FANGS,
+        texture: EVOKER_FANGS_TEXTURE_REF,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
 }
 
 pub(in crate::entity_models) fn tadpole_textured_layer_passes() -> Vec<EntityModelLayerPass> {
-    vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::EntityCutout,
-        TADPOLE_TEXTURE_REF,
-        [1.0, 1.0, 1.0, 1.0],
-    )
-    .with_kind(EntityModelLayerKind::TadpoleBase)
-    .with_order(0, 0)]
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::TadpoleBase,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: MODEL_LAYER_TADPOLE,
+        texture: TADPOLE_TEXTURE_REF,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
 }
 
 pub(in crate::entity_models) fn creaking_textured_layer_passes(
@@ -1505,21 +1515,29 @@ pub(in crate::entity_models) fn arrow_textured_layer_passes(
     texture: ArrowModelTexture,
 ) -> Vec<EntityModelLayerPass> {
     // One model shared by the normal / tipped / spectral arrow; only the bound image differs.
-    vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::EntityCutoutCull,
-        arrow_texture_ref(texture),
-        [1.0, 1.0, 1.0, 1.0],
-    )
-    .with_kind(EntityModelLayerKind::ArrowBase)]
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::ArrowBase,
+        render_type: EntityModelLayerRenderType::EntityCutoutCull,
+        model_layer: MODEL_LAYER_ARROW,
+        texture: arrow_texture_ref(texture),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
 }
 
 pub(in crate::entity_models) fn llama_spit_textured_layer_passes() -> Vec<EntityModelLayerPass> {
-    vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::EntityCutout,
-        LLAMA_SPIT_TEXTURE_REF,
-        [1.0, 1.0, 1.0, 1.0],
-    )
-    .with_kind(EntityModelLayerKind::LlamaSpitBase)]
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::LlamaSpitBase,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: MODEL_LAYER_LLAMA_SPIT,
+        texture: LLAMA_SPIT_TEXTURE_REF,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
 }
 
 pub(in crate::entity_models) fn shulker_bullet_textured_layer_passes() -> Vec<EntityModelLayerPass>
@@ -1551,13 +1569,16 @@ pub(in crate::entity_models) fn shulker_bullet_textured_layer_passes() -> Vec<En
 pub(in crate::entity_models) fn wither_skull_textured_layer_passes(
     dangerous: bool,
 ) -> Vec<EntityModelLayerPass> {
-    vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::EntityTranslucent,
-        wither_skull_texture_ref(dangerous),
-        [1.0, 1.0, 1.0, 1.0],
-    )
-    .with_kind(EntityModelLayerKind::WitherSkullBase)
-    .with_order(0, 0)]
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::WitherSkullBase,
+        render_type: EntityModelLayerRenderType::EntityTranslucent,
+        model_layer: MODEL_LAYER_WITHER_SKULL,
+        texture: wither_skull_texture_ref(dangerous),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
 }
 
 pub(in crate::entity_models) fn wither_textured_layer_passes(

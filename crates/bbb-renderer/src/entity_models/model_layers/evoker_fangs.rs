@@ -2,6 +2,8 @@ use super::{PartPose, EVOKER_FANGS_BASE, EVOKER_FANGS_JAW, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_EVOKER_FANGS: &str = "minecraft:evoker_fangs#main";
+
 // Vanilla 26.1 `EvokerFangsModel.createBodyLayer` (atlas 64×32). The mesh root holds the base block
 // at `offset(-5, 24, -5)`, which parents the two jaws (a shared 4×14×8 box). The bind-pose jaw
 // rotations are exactly the `setupAnim` closed-jaw rest at `biteProgress = 0`: `upperJaw.zRot =
