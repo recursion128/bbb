@@ -19,6 +19,7 @@ use super::super::{
 pub(in crate::entity_models) enum EntityModelLayerKind {
     ArmorStandBase,
     ArrowBase,
+    AxolotlBase,
     BoatBase,
     BreezeEyes,
     CamelBase,
@@ -1053,7 +1054,9 @@ pub(in crate::entity_models) fn axolotl_textured_layer_passes(
         EntityModelLayerRenderType::EntityCutout,
         axolotl_texture_ref(variant, baby),
         [1.0, 1.0, 1.0, 1.0],
-    )]
+    )
+    .with_kind(EntityModelLayerKind::AxolotlBase)
+    .with_order(0, 0)]
 }
 
 pub(in crate::entity_models) fn fox_textured_layer_passes(

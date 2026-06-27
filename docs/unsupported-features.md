@@ -3042,7 +3042,10 @@ When an agent does any of the following, update this file in the same slice:
       The five `Axolotl.Variant` color variants (lucy / wild / gold / cyan / blue, each with adult and baby
       textures) are now bound on the textured path: the native scene reads `DATA_VARIANT` (18, int) and
       `Axolotl.Variant.byId` selects the colour, crossed with the age, matching
-      `AxolotlRenderer.TEXTURE_BY_TYPE` (`axolotl_<name>.png` / `axolotl_<name>_baby.png`) — ten textures
+      `AxolotlRenderer.TEXTURE_BY_TYPE` (`axolotl_<name>.png` / `axolotl_<name>_baby.png`) — ten textures.
+      Adult and baby textured regressions now pin the `AxolotlBase` pass identity, vanilla
+      `entityCutout` render type/name, white tint, root transform, `(order, submit_sequence) == (0, 0)`,
+      and the `AgeableMobRenderer` / `LivingEntityRenderer` `lightCoords` plus hurt/white overlay metadata
     - tadpole entities as renderer-owned vanilla 26.1 `TadpoleModel.createBodyLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `130` to the new
       `EntityModelKind::Tadpole`, replacing the former placeholder bounds box. The static rest-pose
