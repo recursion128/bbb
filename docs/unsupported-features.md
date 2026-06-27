@@ -1420,7 +1420,12 @@ When an agent does any of the following, update this file in the same slice:
       (metadata-driven `DATA_PLAYER_MODE_CUSTOMISATION` projection now controls
       hat/jacket/sleeves/pants overlay visibility for the texture-backed base
       player/mannequin model, and the cape bit is preserved in renderer
-      visibility state; player profile cape presentation is covered by the
+      visibility state. Static player textured regressions now route through
+      `entity_model_textured_meshes`, pinning the base `entityCutout` submission's
+      default wide/slim Steve texture, white tint, `player_model_root_transform`, and
+      `(order, submit_sequence) == (0, 0)` before folded cutout checks for UVs, overlay
+      part visibility, head-look, walk swing, idle arm bob, and crouch. Player profile
+      cape presentation is covered by the
       dynamic `entitySolid` cape layer, and WingsLayer/elytra presentation plus
       elytra animation-state projection are covered for vanilla elytra equipment
       on players, humanoid mobs, armor stands, and baby humanoid mobs; player

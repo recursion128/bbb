@@ -242,24 +242,14 @@ fn entity_texture_atlas_stitches_official_player_png_slots() {
 #[test]
 fn player_textured_mesh_uses_vanilla_uvs_tints_and_avatar_scale() {
     let (atlas, _) = build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
-    let wide = entity_model_textured_mesh(
-        &[EntityModelInstance::player(
-            901,
-            [0.0, 64.0, 0.0],
-            0.0,
-            false,
-        )],
-        &atlas,
-    );
-    let slim = entity_model_textured_mesh(
-        &[EntityModelInstance::player(
-            902,
-            [0.0, 64.0, 0.0],
-            0.0,
-            true,
-        )],
-        &atlas,
-    );
+    let wide_instance = EntityModelInstance::player(901, [0.0, 64.0, 0.0], 0.0, false);
+    let slim_instance = EntityModelInstance::player(902, [0.0, 64.0, 0.0], 0.0, true);
+    let wide_meshes = entity_model_textured_meshes(&[wide_instance], &atlas);
+    let slim_meshes = entity_model_textured_meshes(&[slim_instance], &atlas);
+    assert_player_submissions_match_vanilla(&wide_meshes, wide_instance);
+    assert_player_submissions_match_vanilla(&slim_meshes, slim_instance);
+    let wide = &wide_meshes.cutout;
+    let slim = &slim_meshes.cutout;
 
     for mesh in [&wide, &slim] {
         assert_eq!(mesh.cutout_faces, 72);
@@ -832,16 +822,16 @@ fn player_wings_layer_waits_for_profile_texture_upload() {
 #[test]
 fn player_textured_mesh_applies_vanilla_model_part_visibility_to_overlay_parts() {
     let (atlas, _) = build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
-    let hidden = entity_model_textured_mesh(
-        &[EntityModelInstance::player_with_parts(
-            903,
-            [0.0, 64.0, 0.0],
-            0.0,
-            false,
-            PLAYER_MODEL_PARTS_ALL_HIDDEN,
-        )],
-        &atlas,
+    let hidden_instance = EntityModelInstance::player_with_parts(
+        903,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        PLAYER_MODEL_PARTS_ALL_HIDDEN,
     );
+    let hidden_meshes = entity_model_textured_meshes(&[hidden_instance], &atlas);
+    assert_player_submissions_match_vanilla(&hidden_meshes, hidden_instance);
+    let hidden = &hidden_meshes.cutout;
     assert_eq!(hidden.cutout_faces, 36);
     assert_eq!(hidden.vertices.len(), 144);
     assert_eq!(hidden.indices.len(), 216);
@@ -849,16 +839,11 @@ fn player_textured_mesh_applies_vanilla_model_part_visibility_to_overlay_parts()
     let partial_parts = PlayerModelPartVisibility::from_vanilla_mask(
         PlayerModelPartVisibility::HAT_MASK | PlayerModelPartVisibility::RIGHT_SLEEVE_MASK,
     );
-    let partial = entity_model_textured_mesh(
-        &[EntityModelInstance::player_with_parts(
-            904,
-            [0.0, 64.0, 0.0],
-            0.0,
-            true,
-            partial_parts,
-        )],
-        &atlas,
-    );
+    let partial_instance =
+        EntityModelInstance::player_with_parts(904, [0.0, 64.0, 0.0], 0.0, true, partial_parts);
+    let partial_meshes = entity_model_textured_meshes(&[partial_instance], &atlas);
+    assert_player_submissions_match_vanilla(&partial_meshes, partial_instance);
+    let partial = &partial_meshes.cutout;
     assert_eq!(partial.cutout_faces, 48);
     assert_eq!(partial.vertices.len(), 192);
     assert_eq!(partial.indices.len(), 288);
@@ -873,9 +858,17 @@ fn player_textured_mesh_applies_head_look() {
     let (atlas, _) = build_entity_model_texture_atlas(&player_texture_images()).unwrap();
     for slim in [false, true] {
         let base = EntityModelInstance::player(903, [0.0, 64.0, 0.0], 0.0, slim);
-        let resting = entity_model_textured_mesh(&[base], &atlas);
-        let yawed = entity_model_textured_mesh(&[base.with_head_look(45.0, 0.0)], &atlas);
-        let pitched = entity_model_textured_mesh(&[base.with_head_look(0.0, -20.0)], &atlas);
+        let yawed_instance = base.with_head_look(45.0, 0.0);
+        let pitched_instance = base.with_head_look(0.0, -20.0);
+        let resting_meshes = entity_model_textured_meshes(&[base], &atlas);
+        let yawed_meshes = entity_model_textured_meshes(&[yawed_instance], &atlas);
+        let pitched_meshes = entity_model_textured_meshes(&[pitched_instance], &atlas);
+        assert_player_submissions_match_vanilla(&resting_meshes, base);
+        assert_player_submissions_match_vanilla(&yawed_meshes, yawed_instance);
+        assert_player_submissions_match_vanilla(&pitched_meshes, pitched_instance);
+        let resting = &resting_meshes.cutout;
+        let yawed = &yawed_meshes.cutout;
+        let pitched = &pitched_meshes.cutout;
 
         // Head look turns the head part (index 0, shared across all passes)
         // without changing the vertex count.
@@ -1611,9 +1604,17 @@ fn player_textured_mesh_swings_legs_when_walking() {
                 EntityModelInstance::player_with_parts(912, [0.0, 64.0, 0.0], 0.0, slim, no_pants),
             ),
         ] {
-            let resting = entity_model_textured_mesh(&[base], &atlas);
-            let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
-            let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+            let still_instance = base.with_walk_animation(2.5, 0.0);
+            let walking_instance = base.with_walk_animation(0.0, 1.0);
+            let resting_meshes = entity_model_textured_meshes(&[base], &atlas);
+            let still_meshes = entity_model_textured_meshes(&[still_instance], &atlas);
+            let walking_meshes = entity_model_textured_meshes(&[walking_instance], &atlas);
+            assert_player_submissions_match_vanilla(&resting_meshes, base);
+            assert_player_submissions_match_vanilla(&still_meshes, still_instance);
+            assert_player_submissions_match_vanilla(&walking_meshes, walking_instance);
+            let resting = &resting_meshes.cutout;
+            let still = &still_meshes.cutout;
+            let walking = &walking_meshes.cutout;
 
             assert_eq!(
                 resting.vertices, still.vertices,
@@ -1672,9 +1673,17 @@ fn player_textured_mesh_swings_its_arms_when_walking() {
     let (atlas, _) = build_entity_model_texture_atlas(&player_texture_images()).unwrap();
     for slim in [false, true] {
         let base = EntityModelInstance::player(921, [0.0, 64.0, 0.0], 0.0, slim);
-        let resting = entity_model_textured_mesh(&[base], &atlas);
-        let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
-        let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+        let still_instance = base.with_walk_animation(2.5, 0.0);
+        let walking_instance = base.with_walk_animation(0.0, 1.0);
+        let resting_meshes = entity_model_textured_meshes(&[base], &atlas);
+        let still_meshes = entity_model_textured_meshes(&[still_instance], &atlas);
+        let walking_meshes = entity_model_textured_meshes(&[walking_instance], &atlas);
+        assert_player_submissions_match_vanilla(&resting_meshes, base);
+        assert_player_submissions_match_vanilla(&still_meshes, still_instance);
+        assert_player_submissions_match_vanilla(&walking_meshes, walking_instance);
+        let resting = &resting_meshes.cutout;
+        let still = &still_meshes.cutout;
+        let walking = &walking_meshes.cutout;
         assert_eq!(
             resting.vertices, still.vertices,
             "slim={slim}: inert when standing"
@@ -1808,8 +1817,13 @@ fn player_textured_arms_idle_bob_as_age_advances() {
     let (atlas, _) = build_entity_model_texture_atlas(&player_texture_images()).unwrap();
     for slim in [false, true] {
         let base = EntityModelInstance::player(931, [0.0, 64.0, 0.0], 0.0, slim);
-        let early = entity_model_textured_mesh(&[base], &atlas);
-        let later = entity_model_textured_mesh(&[base.with_age_in_ticks(27.3)], &atlas);
+        let later_instance = base.with_age_in_ticks(27.3);
+        let early_meshes = entity_model_textured_meshes(&[base], &atlas);
+        let later_meshes = entity_model_textured_meshes(&[later_instance], &atlas);
+        assert_player_submissions_match_vanilla(&early_meshes, base);
+        assert_player_submissions_match_vanilla(&later_meshes, later_instance);
+        let early = &early_meshes.cutout;
+        let later = &later_meshes.cutout;
         assert_eq!(early.vertices.len(), 288, "slim={slim}");
         assert_eq!(
             early.vertices[0..96],
@@ -1873,8 +1887,13 @@ fn player_textured_mesh_crouches_when_sneaking() {
     let (atlas, _) = build_entity_model_texture_atlas(&player_texture_images()).unwrap();
     for slim in [false, true] {
         let base = EntityModelInstance::player(921, [0.0, 64.0, 0.0], 0.0, slim);
-        let standing = entity_model_textured_mesh(&[base], &atlas);
-        let crouching = entity_model_textured_mesh(&[base.with_is_crouching(true)], &atlas);
+        let crouching_instance = base.with_is_crouching(true);
+        let standing_meshes = entity_model_textured_meshes(&[base], &atlas);
+        let crouching_meshes = entity_model_textured_meshes(&[crouching_instance], &atlas);
+        assert_player_submissions_match_vanilla(&standing_meshes, base);
+        assert_player_submissions_match_vanilla(&crouching_meshes, crouching_instance);
+        let standing = &standing_meshes.cutout;
+        let crouching = &crouching_meshes.cutout;
         assert_eq!(standing.vertices.len(), crouching.vertices.len());
         assert_ne!(
             standing.vertices, crouching.vertices,
@@ -1929,6 +1948,46 @@ fn steve_and_elytra_texture_images() -> Vec<EntityModelTextureImage> {
         EntityModelTextureImage::new(texture, vec![index as u8; len])
     })
     .collect()
+}
+
+fn assert_player_submissions_match_vanilla(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    let EntityModelKind::Player { skin, parts } = instance.kind else {
+        panic!("expected player instance");
+    };
+    assert_player_folded_meshes_are_static_cutout_only(meshes);
+    let passes = player_textured_layer_passes(skin.is_slim(), parts);
+    assert_eq!(meshes.submissions.len(), passes.len());
+    assert_eq!(passes.len(), 1);
+    let submit = meshes.submissions[0];
+    let pass = passes[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.render_type, pass.render_type);
+    assert_eq!(submit.texture, pass.texture);
+    assert_eq!(submit.tint, pass.tint);
+    assert_eq!(submit.transform, player_model_root_transform(instance));
+    assert_eq!(
+        (submit.order, submit.submit_sequence),
+        (pass.order, pass.submit_sequence)
+    );
+}
+
+fn assert_player_folded_meshes_are_static_cutout_only(meshes: &EntityModelTexturedMeshes) {
+    assert!(!meshes.cutout.vertices.is_empty());
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_cutout.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_translucent.vertices.is_empty());
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_translucent
+        .vertices
+        .is_empty());
+    assert!(meshes.scroll.vertices.is_empty());
+    assert!(meshes.scroll_additive.vertices.is_empty());
 }
 
 fn dynamic_player_texture_image(
