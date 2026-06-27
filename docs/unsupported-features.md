@@ -2907,7 +2907,10 @@ When an agent does any of the following, update this file in the same slice:
       (`CREAKING_EYES_TEXTURE_REF`, vanilla `CreakingRenderer`'s `LivingEntityEmissiveLayer`): an
       eyes-render-type pass re-rendering the whole model at vanilla `order(1)`, gated on
       `eyes_glowing` projected from the synced `IS_ACTIVE` flag (17). Tests pin the base
-      `entityCutout` order 0 submission and the eyes order 1 submission before checking folded
+      `CreakingBase` `entityCutout` order 0 submission and the `CreakingEyes` eyes order 1
+      submission, including base entity light plus hurt/white overlay and the emissive eyes pass's
+      entity light plus
+      `getOverlayCoords(state, 0.0F)` red-row/zero-white overlay, before checking folded
       cutout/eyes geometry. Only the tearing-down death-flicker (`hasGlowingEyes`, a client-tick
       toggle) stays deferred. The colored debug path stays as a fallback (it approximates the whole
       model with one dark-bark tint)

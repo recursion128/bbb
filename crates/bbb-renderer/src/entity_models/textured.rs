@@ -1088,7 +1088,10 @@ fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
 }
 
 fn layer_pass_uses_zero_white_overlay(pass: EntityModelLayerPass) -> bool {
-    matches!(pass.kind, EntityModelLayerKind::TropicalFishPattern)
+    matches!(
+        pass.kind,
+        EntityModelLayerKind::CreakingEyes | EntityModelLayerKind::TropicalFishPattern
+    )
 }
 
 /// Render a model's full textured layer-pass list (already prepared) into `meshes`.
