@@ -7,6 +7,16 @@ use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 use std::f32::consts::PI;
 
+pub(in crate::entity_models) const MODEL_LAYER_CREEPER_HEAD: &str = "minecraft:creeper_head#main";
+pub(in crate::entity_models) const MODEL_LAYER_DRAGON_SKULL: &str = "minecraft:dragon_skull#main";
+pub(in crate::entity_models) const MODEL_LAYER_PIGLIN_HEAD: &str = "minecraft:piglin_head#main";
+pub(in crate::entity_models) const MODEL_LAYER_PLAYER_HEAD: &str = "minecraft:player_head#main";
+pub(in crate::entity_models) const MODEL_LAYER_SKELETON_SKULL: &str =
+    "minecraft:skeleton_skull#main";
+pub(in crate::entity_models) const MODEL_LAYER_WITHER_SKELETON_SKULL: &str =
+    "minecraft:wither_skeleton_skull#main";
+pub(in crate::entity_models) const MODEL_LAYER_ZOMBIE_HEAD: &str = "minecraft:zombie_head#main";
+
 // Vanilla 26.1 `WitherSkullRenderer.createSkullLayer` (atlas 64×64): one `head` part at ZERO with a
 // single 8×8×8 box (`addBox(-4, -8, -4, 8, 8, 8)` at `texOffs(0, 35)`). `SkullModel.setupAnim` turns
 // the head by the projectile's flight `yRot`/`xRot`; since the single part sits at ZERO that facing is

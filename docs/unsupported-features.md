@@ -1275,7 +1275,10 @@ When an agent does any of the following, update this file in the same slice:
         HEAD slot using vanilla `SkullModel.createMobHeadLayer()` geometry,
         the `SKULL_SCALE = 1.1875` transform, villager skull y-offset, and
         the matching entity textures via vanilla `entityCutoutZOffset`
-        submissions. The custom-head skull regressions now pin submission
+        submissions generated from `custom_head_skull_layer_pass`, including
+        vanilla `ModelLayers.SKELETON_SKULL` / `WITHER_SKELETON_SKULL` /
+        `ZOMBIE_HEAD` / `CREEPER_HEAD` / `PLAYER_HEAD` / `DRAGON_SKULL` /
+        `PIGLIN_HEAD`. The custom-head skull regressions now pin submission
         metadata for static, piglin, dragon, default-player, profiled-default,
         and dynamic-player heads: selected texture or dynamic skin handle,
         `entityCutoutZOffset` or `entityTranslucent`, white tint, skull
@@ -2012,7 +2015,7 @@ When an agent does any of the following, update this file in the same slice:
       and static skeleton/wither-skeleton/zombie/creeper skulls plus
       profileless default-player heads, profiled default-skin player heads,
       dynamic profiled-player heads, dragon heads, and piglin heads render
-      through the skull branch; wandering trader baby presentation remains unsupported
+      through the skull branch via `custom_head_skull_layer_pass`; wandering trader baby presentation remains unsupported
     - worn humanoid armor as a renderer-owned vanilla 26.1 `HumanoidArmorLayer` overlay (framework
       slice 1, renderer-side): the inflated `HumanoidArmorModel`
       (`HumanoidModel.createBaseArmorMesh` / `createArmorMeshSet`) is built per equipment slot as a

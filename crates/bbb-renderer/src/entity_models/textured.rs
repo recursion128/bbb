@@ -80,13 +80,14 @@ pub(super) use layers::{
     blaze_textured_layer_passes, boat_textured_layer_passes, breeze_textured_layer_passes,
     camel_textured_layer_passes, chicken_textured_layer_passes, copper_golem_textured_layer_passes,
     cow_textured_layer_passes, creaking_textured_layer_passes, creeper_textured_layer_passes,
-    donkey_textured_layer_passes, drowned_textured_layer_passes, end_crystal_textured_layer_passes,
-    ender_dragon_textured_layer_passes, enderman_textured_layer_passes,
-    endermite_textured_layer_passes, evoker_fangs_textured_layer_passes,
-    feline_textured_layer_passes, fox_textured_layer_passes, frog_textured_layer_passes,
-    ghast_textured_layer_passes, goat_textured_layer_passes, guardian_textured_layer_passes,
-    happy_ghast_textured_layer_passes, hoglin_textured_layer_passes, horse_textured_layer_passes,
-    husk_textured_layer_passes, illager_textured_layer_passes, iron_golem_textured_layer_passes,
+    custom_head_skull_layer_pass, donkey_textured_layer_passes, drowned_textured_layer_passes,
+    end_crystal_textured_layer_passes, ender_dragon_textured_layer_passes,
+    enderman_textured_layer_passes, endermite_textured_layer_passes,
+    evoker_fangs_textured_layer_passes, feline_textured_layer_passes, fox_textured_layer_passes,
+    frog_textured_layer_passes, ghast_textured_layer_passes, goat_textured_layer_passes,
+    guardian_textured_layer_passes, happy_ghast_textured_layer_passes,
+    hoglin_textured_layer_passes, horse_textured_layer_passes, husk_textured_layer_passes,
+    illager_textured_layer_passes, iron_golem_textured_layer_passes,
     leash_knot_textured_layer_passes, llama_spit_textured_layer_passes,
     llama_textured_layer_passes, magma_cube_textured_layer_passes, minecart_textured_layer_passes,
     mooshroom_textured_layer_passes, nautilus_textured_layer_passes, panda_textured_layer_passes,
@@ -620,19 +621,36 @@ fn render_textured_pass_with_dynamic_player_skin<M: EntityModel>(
     });
 }
 
-fn render_textured_no_overlay_pass_with_dynamic_player_skin<M: EntityModel>(
+fn render_textured_no_overlay_layer_pass<M: EntityModel>(
     meshes: &mut EntityModelTexturedMeshes,
     model: &M,
     transform: Mat4,
-    render_type: EntityModelLayerRenderType,
-    texture: EntityModelTextureRef,
+    pass: EntityModelLayerPass,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let submit = no_overlay_layer_submission(pass, transform);
+    render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+        model.root().render_textured(
+            mesh,
+            submit.transform,
+            submit.texture,
+            entry.uv,
+            submit.tint,
+        );
+    });
+}
+
+fn render_textured_no_overlay_layer_pass_with_dynamic_player_skin<M: EntityModel>(
+    meshes: &mut EntityModelTexturedMeshes,
+    model: &M,
+    transform: Mat4,
+    pass: EntityModelLayerPass,
     dynamic_player_skin: EntityDynamicPlayerSkin,
-    tint: [f32; 4],
     atlas: &EntityModelTextureAtlasLayout,
     dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
 ) {
-    let submit = no_overlay_submission(render_type, texture, tint, transform, 0, 0)
-        .with_dynamic_player_skin(dynamic_player_skin);
+    let submit =
+        no_overlay_layer_submission(pass, transform).with_dynamic_player_skin(dynamic_player_skin);
     if dynamic_player_skin.status == EntityDynamicPlayerSkinStatus::Ready {
         if let Some(entry) =
             dynamic_player_skin_atlas_entry(dynamic_player_skin_atlas, dynamic_player_skin.handle)
@@ -894,6 +912,20 @@ fn no_overlay_submission(
     .with_overlay(ENTITY_VERTEX_NO_OVERLAY)
 }
 
+fn no_overlay_layer_submission(
+    pass: EntityModelLayerPass,
+    transform: Mat4,
+) -> EntityModelSubmissionEmit {
+    no_overlay_submission(
+        pass.render_type,
+        pass.texture,
+        pass.tint,
+        transform,
+        pass.order,
+        pass.submit_sequence,
+    )
+}
+
 fn textured_layer_submission(
     meshes: &EntityModelTexturedMeshes,
     pass: EntityModelLayerPass,
@@ -946,6 +978,7 @@ fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
             | EntityModelLayerKind::BreezeEyes
             | EntityModelLayerKind::BreezeWind
             | EntityModelLayerKind::CreeperArmor
+            | EntityModelLayerKind::CustomHeadSkull
             | EntityModelLayerKind::EndCrystalBase
             | EntityModelLayerKind::EnderDragonEyes
             | EntityModelLayerKind::EndermanEyes
@@ -1825,33 +1858,15 @@ fn emit_custom_head_skull_layer(
         EntityCustomHeadSkull::Dragon => {
             let mut model = CustomHeadDragonSkullModel::new();
             model.prepare(&instance);
-            render_textured_no_overlay_pass_ordered(
-                meshes,
-                &model,
-                transform,
-                EntityModelLayerRenderType::EntityCutoutZOffset,
-                custom_head_skull_texture_ref(skull),
-                [1.0, 1.0, 1.0, 1.0],
-                0,
-                0,
-                atlas,
-            );
+            let pass = custom_head_skull_layer_pass(skull, custom_head_skull_texture_ref(skull));
+            render_textured_no_overlay_layer_pass(meshes, &model, transform, pass, atlas);
             return;
         }
         EntityCustomHeadSkull::Piglin => {
             let mut model = CustomHeadPiglinSkullModel::new();
             model.prepare(&instance);
-            render_textured_no_overlay_pass_ordered(
-                meshes,
-                &model,
-                transform,
-                EntityModelLayerRenderType::EntityCutoutZOffset,
-                custom_head_skull_texture_ref(skull),
-                [1.0, 1.0, 1.0, 1.0],
-                0,
-                0,
-                atlas,
-            );
+            let pass = custom_head_skull_layer_pass(skull, custom_head_skull_texture_ref(skull));
+            render_textured_no_overlay_layer_pass(meshes, &model, transform, pass, atlas);
             return;
         }
         _ => {}
@@ -1859,43 +1874,21 @@ fn emit_custom_head_skull_layer(
 
     let mut model = CustomHeadSkullModel::new(matches!(skull, EntityCustomHeadSkull::Player(_)));
     model.prepare(&instance);
-    let render_type = custom_head_skull_render_type(skull);
     let texture = custom_head_skull_texture_ref(skull);
+    let pass = custom_head_skull_layer_pass(skull, texture);
     if let Some(dynamic_player_skin) = custom_head_dynamic_player_skin(skull) {
-        render_textured_no_overlay_pass_with_dynamic_player_skin(
+        render_textured_no_overlay_layer_pass_with_dynamic_player_skin(
             meshes,
             &model,
             transform,
-            render_type,
-            texture,
+            pass,
             dynamic_player_skin,
-            [1.0, 1.0, 1.0, 1.0],
             atlas,
             dynamic_player_skin_atlas,
         );
         return;
     }
-    render_textured_no_overlay_pass_ordered(
-        meshes,
-        &model,
-        transform,
-        render_type,
-        texture,
-        [1.0, 1.0, 1.0, 1.0],
-        0,
-        0,
-        atlas,
-    );
-}
-
-fn custom_head_skull_render_type(skull: EntityCustomHeadSkull) -> EntityModelLayerRenderType {
-    match skull {
-        EntityCustomHeadSkull::Player(EntityPlayerSkin::ProfiledDefault(_))
-        | EntityCustomHeadSkull::Player(EntityPlayerSkin::Dynamic(_)) => {
-            EntityModelLayerRenderType::EntityTranslucent
-        }
-        _ => EntityModelLayerRenderType::EntityCutoutZOffset,
-    }
+    render_textured_no_overlay_layer_pass(meshes, &model, transform, pass, atlas);
 }
 
 fn custom_head_dynamic_player_skin(

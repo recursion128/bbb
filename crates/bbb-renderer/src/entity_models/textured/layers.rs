@@ -10,13 +10,13 @@ use super::super::{
         zombie_villager_profession_texture_ref, zombie_villager_type_texture_ref,
         ArrowModelTexture, AxolotlModelVariant, BoatModelFamily, CamelModelFamily, CatModelVariant,
         ChickenModelVariant, CopperGolemWeathering, CowModelVariant, DonkeyModelFamily,
-        EntityDyeColor, EntityModelTextureRef, FoxModelVariant, FrogModelVariant,
-        HoglinModelFamily, HorseColorVariant, HorseMarkings, IllagerModelFamily,
-        IronGolemCrackiness, LlamaVariant, MooshroomVariant, PandaModelVariant, ParrotModelVariant,
-        PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, RabbitModelVariant,
-        SalmonModelSize, SheepWoolColor, SkeletonModelFamily, TropicalFishModelShape,
-        TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelHat,
-        WolfModelVariant,
+        EntityCustomHeadSkull, EntityDyeColor, EntityModelTextureRef, EntityPlayerSkin,
+        FoxModelVariant, FrogModelVariant, HoglinModelFamily, HorseColorVariant, HorseMarkings,
+        IllagerModelFamily, IronGolemCrackiness, LlamaVariant, MooshroomVariant, PandaModelVariant,
+        ParrotModelVariant, PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility,
+        RabbitModelVariant, SalmonModelSize, SheepWoolColor, SkeletonModelFamily,
+        TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData,
+        VillagerModelHat, WolfModelVariant,
     },
     model_layers::*,
 };
@@ -42,6 +42,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     CowBase,
     CreeperBase,
     CreeperArmor,
+    CustomHeadSkull,
     CreakingBase,
     CreakingEyes,
     EnderDragonBase,
@@ -2006,6 +2007,38 @@ pub(in crate::entity_models) fn player_spin_attack_effect_layer_pass() -> Entity
         tint: [1.0, 1.0, 1.0, 1.0],
         order: 0,
         submit_sequence: 4,
+    }
+}
+
+pub(in crate::entity_models) fn custom_head_skull_layer_pass(
+    skull: EntityCustomHeadSkull,
+    texture: EntityModelTextureRef,
+) -> EntityModelLayerPass {
+    let render_type = match skull {
+        EntityCustomHeadSkull::Player(EntityPlayerSkin::ProfiledDefault(_))
+        | EntityCustomHeadSkull::Player(EntityPlayerSkin::Dynamic(_)) => {
+            EntityModelLayerRenderType::EntityTranslucent
+        }
+        _ => EntityModelLayerRenderType::EntityCutoutZOffset,
+    };
+    let model_layer = match skull {
+        EntityCustomHeadSkull::Skeleton => MODEL_LAYER_SKELETON_SKULL,
+        EntityCustomHeadSkull::WitherSkeleton => MODEL_LAYER_WITHER_SKELETON_SKULL,
+        EntityCustomHeadSkull::Player(_) => MODEL_LAYER_PLAYER_HEAD,
+        EntityCustomHeadSkull::Zombie => MODEL_LAYER_ZOMBIE_HEAD,
+        EntityCustomHeadSkull::Creeper => MODEL_LAYER_CREEPER_HEAD,
+        EntityCustomHeadSkull::Dragon => MODEL_LAYER_DRAGON_SKULL,
+        EntityCustomHeadSkull::Piglin => MODEL_LAYER_PIGLIN_HEAD,
+    };
+    EntityModelLayerPass {
+        kind: EntityModelLayerKind::CustomHeadSkull,
+        render_type,
+        model_layer,
+        texture,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
     }
 }
 

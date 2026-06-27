@@ -60,6 +60,28 @@ fn assert_skull_submission(
     assert_eq!(submit.overlay, [0.0, 10.0]);
 }
 
+fn assert_skull_layer_pass(
+    skull: EntityCustomHeadSkull,
+    texture: EntityModelTextureRef,
+    render_type: EntityModelLayerRenderType,
+    model_layer: &'static str,
+) {
+    let pass = custom_head_skull_layer_pass(skull, texture);
+    assert_eq!(pass.kind, EntityModelLayerKind::CustomHeadSkull);
+    assert_eq!(pass.model_layer, model_layer);
+    assert_eq!(pass.render_type, render_type);
+    let expected_render_type_name = match render_type {
+        EntityModelLayerRenderType::EntityCutoutZOffset => "entityCutoutZOffset",
+        EntityModelLayerRenderType::EntityTranslucent => "entityTranslucent",
+        _ => render_type.vanilla_name(),
+    };
+    assert_eq!(pass.render_type.vanilla_name(), expected_render_type_name);
+    assert_eq!(pass.texture, texture);
+    assert_eq!(pass.visibility, EntityModelLayerVisibility::All);
+    assert_eq!(pass.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((pass.order, pass.submit_sequence), (0, 0));
+}
+
 #[test]
 fn custom_head_skull_model_uses_vanilla_mob_head_layer_geometry() {
     // Vanilla `SkullModel.createMobHeadLayer` (atlas 64x32): one `head` part at ZERO with
@@ -84,15 +106,34 @@ fn custom_head_player_skull_model_adds_the_humanoid_hat_geometry() {
 
 #[test]
 fn custom_head_skull_layer_renders_static_mob_heads_with_matching_textures() {
-    for (skull, texture) in [
-        (EntityCustomHeadSkull::Skeleton, SKELETON_TEXTURE_REF),
+    for (skull, texture, model_layer) in [
+        (
+            EntityCustomHeadSkull::Skeleton,
+            SKELETON_TEXTURE_REF,
+            MODEL_LAYER_SKELETON_SKULL,
+        ),
         (
             EntityCustomHeadSkull::WitherSkeleton,
             WITHER_SKELETON_TEXTURE_REF,
+            MODEL_LAYER_WITHER_SKELETON_SKULL,
         ),
-        (EntityCustomHeadSkull::Zombie, ZOMBIE_TEXTURE_REF),
-        (EntityCustomHeadSkull::Creeper, CREEPER_TEXTURE_REF),
+        (
+            EntityCustomHeadSkull::Zombie,
+            ZOMBIE_TEXTURE_REF,
+            MODEL_LAYER_ZOMBIE_HEAD,
+        ),
+        (
+            EntityCustomHeadSkull::Creeper,
+            CREEPER_TEXTURE_REF,
+            MODEL_LAYER_CREEPER_HEAD,
+        ),
     ] {
+        assert_skull_layer_pass(
+            skull,
+            texture,
+            EntityModelLayerRenderType::EntityCutoutZOffset,
+            model_layer,
+        );
         let atlas = atlas_with(texture);
         let instance = EntityModelInstance::player_with_parts(
             910,
@@ -135,6 +176,12 @@ fn custom_head_static_skull_submission_survives_missing_texture_atlas_entry() {
     // with `OverlayTexture.NO_OVERLAY`; a missing stitched skull texture must not
     // erase that submission metadata.
     let atlas = atlas_with(PLAYER_WIDE_STEVE_TEXTURE_REF);
+    assert_skull_layer_pass(
+        EntityCustomHeadSkull::Skeleton,
+        SKELETON_TEXTURE_REF,
+        EntityModelLayerRenderType::EntityCutoutZOffset,
+        MODEL_LAYER_SKELETON_SKULL,
+    );
     assert!(!atlas
         .entries
         .iter()
@@ -170,6 +217,14 @@ fn custom_head_static_skull_submission_survives_missing_texture_atlas_entry() {
 #[test]
 fn custom_head_skull_layer_renders_profileless_player_head_with_default_skin() {
     let atlas = atlas_with(PLAYER_SLIM_STEVE_TEXTURE_REF);
+    assert_skull_layer_pass(
+        EntityCustomHeadSkull::Player(EntityPlayerSkin::Default(
+            EntityDefaultPlayerSkin::SlimSteve,
+        )),
+        PLAYER_SLIM_STEVE_TEXTURE_REF,
+        EntityModelLayerRenderType::EntityCutoutZOffset,
+        MODEL_LAYER_PLAYER_HEAD,
+    );
     let instance = EntityModelInstance::player_with_parts(
         910,
         [0.0, 64.0, 0.0],
@@ -267,6 +322,29 @@ fn custom_head_skull_layer_uses_profile_default_player_skin_texture() {
     let slim_meshes = entity_model_textured_meshes(&[slim_instance], &atlas);
     let wide_meshes = entity_model_textured_meshes(&[wide_instance], &atlas);
     let dynamic_meshes = entity_model_textured_meshes(&[dynamic_instance], &atlas);
+
+    assert_skull_layer_pass(
+        EntityCustomHeadSkull::Player(EntityPlayerSkin::ProfiledDefault(
+            EntityDefaultPlayerSkin::SlimAlex,
+        )),
+        PLAYER_SLIM_ALEX_TEXTURE_REF,
+        EntityModelLayerRenderType::EntityTranslucent,
+        MODEL_LAYER_PLAYER_HEAD,
+    );
+    assert_skull_layer_pass(
+        EntityCustomHeadSkull::Player(EntityPlayerSkin::ProfiledDefault(
+            EntityDefaultPlayerSkin::WideSteve,
+        )),
+        PLAYER_WIDE_STEVE_TEXTURE_REF,
+        EntityModelLayerRenderType::EntityTranslucent,
+        MODEL_LAYER_PLAYER_HEAD,
+    );
+    assert_skull_layer_pass(
+        EntityCustomHeadSkull::Player(EntityPlayerSkin::Dynamic(dynamic_skin)),
+        PLAYER_WIDE_STEVE_TEXTURE_REF,
+        EntityModelLayerRenderType::EntityTranslucent,
+        MODEL_LAYER_PLAYER_HEAD,
+    );
 
     assert_skull_submission(
         &slim_instance,
@@ -520,6 +598,12 @@ fn custom_head_ready_dynamic_player_skin_renders_from_dynamic_skin_atlas() {
 #[test]
 fn custom_head_skull_layer_renders_piglin_head_with_specialized_geometry() {
     let atlas = atlas_with(PIGLIN_TEXTURE_REF);
+    assert_skull_layer_pass(
+        EntityCustomHeadSkull::Piglin,
+        PIGLIN_TEXTURE_REF,
+        EntityModelLayerRenderType::EntityCutoutZOffset,
+        MODEL_LAYER_PIGLIN_HEAD,
+    );
     let instance = EntityModelInstance::player_with_parts(
         914,
         [0.0, 64.0, 0.0],
@@ -598,6 +682,12 @@ fn custom_head_dragon_skull_model_uses_vanilla_head_layer_pose() {
 #[test]
 fn custom_head_skull_layer_renders_dragon_head_with_specialized_geometry() {
     let atlas = atlas_with(ENDER_DRAGON_TEXTURE_REF);
+    assert_skull_layer_pass(
+        EntityCustomHeadSkull::Dragon,
+        ENDER_DRAGON_TEXTURE_REF,
+        EntityModelLayerRenderType::EntityCutoutZOffset,
+        MODEL_LAYER_DRAGON_SKULL,
+    );
     let instance = EntityModelInstance::player_with_parts(
         916,
         [0.0, 64.0, 0.0],
