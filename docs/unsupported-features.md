@@ -1486,7 +1486,10 @@ When an agent does any of the following, update this file in the same slice:
       variant texture references, and vanilla fallback to temperate when no
       variant metadata is present, texture-backed base layer pass emission,
       adult/baby/warm/cold model-layer selection, official PNG atlas
-      upload/bind/sample path, and the vanilla `QuadrupedModel.setupAnim`
+      upload/bind/sample path, and explicit base submission metadata for vanilla
+      `entityCutout`, selected texture, white tint, `entity_model_root_transform`,
+      and `(order, submit_sequence) == (0, 0)` before folded cutout checks, and the
+      vanilla `QuadrupedModel.setupAnim`
       head-look yaw/pitch on the head part plus the standard diagonal leg walk
       swing (`cos(pos * 0.6662 [+ pi]) * 1.4 * speed`) on adult, baby,
       warm, and cold textured models; variant sound metadata,

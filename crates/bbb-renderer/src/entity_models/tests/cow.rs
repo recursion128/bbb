@@ -41,32 +41,20 @@ fn entity_texture_atlas_stitches_official_cow_png_slots() {
 #[test]
 fn cow_textured_mesh_uses_vanilla_uvs_tints_and_variant_textures() {
     let (atlas, _) = build_entity_model_texture_atlas(&cow_texture_images()).unwrap();
-    let mesh = entity_model_textured_mesh(
-        &[
-            EntityModelInstance::cow_variant(
-                601,
-                [0.0, 64.0, 0.0],
-                0.0,
-                CowModelVariant::Temperate,
-                false,
-            ),
-            EntityModelInstance::cow_variant(
-                602,
-                [1.0, 64.0, 0.0],
-                0.0,
-                CowModelVariant::Cold,
-                false,
-            ),
-            EntityModelInstance::cow_variant(
-                603,
-                [2.0, 64.0, 0.0],
-                0.0,
-                CowModelVariant::Warm,
-                true,
-            ),
-        ],
-        &atlas,
-    );
+    let instances = [
+        EntityModelInstance::cow_variant(
+            601,
+            [0.0, 64.0, 0.0],
+            0.0,
+            CowModelVariant::Temperate,
+            false,
+        ),
+        EntityModelInstance::cow_variant(602, [1.0, 64.0, 0.0], 0.0, CowModelVariant::Cold, false),
+        EntityModelInstance::cow_variant(603, [2.0, 64.0, 0.0], 0.0, CowModelVariant::Warm, true),
+    ];
+    let meshes = entity_model_textured_meshes(&instances, &atlas);
+    assert_cow_submissions_match_vanilla(&meshes, &instances);
+    let mesh = &meshes.cutout;
 
     assert_eq!(mesh.cutout_faces, 180);
     assert_eq!(mesh.vertices.len(), 720);
@@ -77,7 +65,7 @@ fn cow_textured_mesh_uses_vanilla_uvs_tints_and_variant_textures() {
     assert_eq!(mesh.vertices[240].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_close2(mesh.vertices[504].uv, [11.0 / 64.0, 210.0 / 384.0]);
     assert_eq!(mesh.vertices[504].tint, [1.0, 1.0, 1.0, 1.0]);
-    let (min, max) = textured_mesh_extents(&mesh);
+    let (min, max) = textured_mesh_extents(mesh);
     assert_close3(min, [-0.375, 64.001, -0.65625]);
     assert_close3(max, [2.25, 65.5635, 1.0]);
 }
@@ -365,6 +353,11 @@ fn cow_textured_layer_passes_match_vanilla_renderer_model_choice() {
     let temperate = cow_textured_layer_passes(CowModelVariant::Temperate, false);
     assert_eq!(temperate.len(), 1);
     assert_eq!(temperate[0].kind, EntityModelLayerKind::CowBase);
+    assert_eq!(
+        temperate[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(temperate[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(temperate[0].model_layer, MODEL_LAYER_COW);
     assert_eq!(temperate[0].texture, COW_TEMPERATE_TEXTURE_REF);
     assert_eq!(temperate[0].tint, [1.0, 1.0, 1.0, 1.0]);
@@ -428,15 +421,20 @@ fn cow_textured_mesh_applies_head_look() {
         CowModelVariant::Temperate,
         false,
     );
-    let resting = entity_model_textured_mesh(&[base], &atlas);
-    let yawed = entity_model_textured_mesh(&[base.with_head_look(45.0, 0.0)], &atlas);
-    let pitched = entity_model_textured_mesh(&[base.with_head_look(0.0, -25.0)], &atlas);
+    let yawed_instance = base.with_head_look(45.0, 0.0);
+    let pitched_instance = base.with_head_look(0.0, -25.0);
+    let resting = entity_model_textured_meshes(&[base], &atlas);
+    let yawed = entity_model_textured_meshes(&[yawed_instance], &atlas);
+    let pitched = entity_model_textured_meshes(&[pitched_instance], &atlas);
+    assert_cow_submissions_match_vanilla(&resting, &[base]);
+    assert_cow_submissions_match_vanilla(&yawed, &[yawed_instance]);
+    assert_cow_submissions_match_vanilla(&pitched, &[pitched_instance]);
 
     // Head look turns the textured head part without adding or dropping vertices.
-    assert_eq!(resting.vertices.len(), yawed.vertices.len());
-    assert_ne!(resting.vertices, yawed.vertices);
-    assert_ne!(resting.vertices, pitched.vertices);
-    assert_ne!(yawed.vertices, pitched.vertices);
+    assert_eq!(resting.cutout.vertices.len(), yawed.cutout.vertices.len());
+    assert_ne!(resting.cutout.vertices, yawed.cutout.vertices);
+    assert_ne!(resting.cutout.vertices, pitched.cutout.vertices);
+    assert_ne!(yawed.cutout.vertices, pitched.cutout.vertices);
 }
 
 #[test]
@@ -453,30 +451,54 @@ fn cow_textured_mesh_swings_legs_when_walking() {
         (CowModelVariant::Temperate, true),
     ] {
         let base = EntityModelInstance::cow_variant(605, [0.0, 64.0, 0.0], 0.0, variant, baby);
-        let resting = entity_model_textured_mesh(&[base], &atlas);
-        let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
-        let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+        let still_instance = base.with_walk_animation(2.5, 0.0);
+        let walking_instance = base.with_walk_animation(0.0, 1.0);
+        let resting = entity_model_textured_meshes(&[base], &atlas);
+        let still = entity_model_textured_meshes(&[still_instance], &atlas);
+        let walking = entity_model_textured_meshes(&[walking_instance], &atlas);
+        assert_cow_submissions_match_vanilla(&resting, &[base]);
+        assert_cow_submissions_match_vanilla(&still, &[still_instance]);
+        assert_cow_submissions_match_vanilla(&walking, &[walking_instance]);
 
         assert_eq!(
-            resting.vertices, still.vertices,
+            resting.cutout.vertices, still.cutout.vertices,
             "{variant:?} baby={baby}: a standing cow is inert"
         );
         assert_eq!(
-            resting.vertices.len(),
-            walking.vertices.len(),
+            resting.cutout.vertices.len(),
+            walking.cutout.vertices.len(),
             "{variant:?} baby={baby}: leg swing keeps the vertex count"
         );
         assert_ne!(
-            resting.vertices, walking.vertices,
+            resting.cutout.vertices, walking.cutout.vertices,
             "{variant:?} baby={baby}: a walking cow differs"
         );
 
-        let (rest_min, rest_max) = textured_mesh_extents(&resting);
-        let (walk_min, walk_max) = textured_mesh_extents(&walking);
+        let (rest_min, rest_max) = textured_mesh_extents(&resting.cutout);
+        let (walk_min, walk_max) = textured_mesh_extents(&walking.cutout);
         assert!(
             (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.1,
             "{variant:?} baby={baby}: a walking cow's feet should lift off the ground"
         );
+    }
+}
+
+fn assert_cow_submissions_match_vanilla(
+    meshes: &EntityModelTexturedMeshes,
+    instances: &[EntityModelInstance],
+) {
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert_eq!(meshes.submissions.len(), instances.len());
+
+    for (submit, instance) in meshes.submissions.iter().zip(instances) {
+        let instance = *instance;
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(submit.texture, instance.kind.vanilla_texture_ref().unwrap());
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(submit.transform, entity_model_root_transform(instance));
+        assert_eq!((submit.order, submit.submit_sequence), (0, 0));
     }
 }
 
