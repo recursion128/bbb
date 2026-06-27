@@ -2102,7 +2102,11 @@ When an agent does any of the following, update this file in the same slice:
       body-wobble rotation is now applied at the vanilla setup-rotation point
       (`6.5 * triangleWave(walkAnimationPos + 6, 13)` degrees around Z when
       `walkAnimationSpeed >= 0.01`), and the base/crack submissions plus the
-      held poppy block transform share that root
+      held poppy block transform share that root. The textured golem regressions
+      now pin the vanilla submission metadata too: base and crack overlays are
+      `entityCutout`, bind the selected vanilla texture, use white tint, carry
+      `iron_golem_model_root_transform`, and preserve `(order, submit_sequence)`
+      as `(0, 0)` for base plus `(1, 1)` for the crack layer
     - snow golem entities as renderer-owned vanilla 26.1
       `SnowGolemModel.createBodyLayer()` geometry, including its 64x64 body
       layer, baked `CubeDeformation(-0.5F)` snow body/arm/head cubes, and the
@@ -2114,6 +2118,9 @@ When an agent does any of the following, update this file in the same slice:
       stick arms orbiting that twist (`arm.yRot = upperBodyYRot [+ π]`, with `x`/`z`
       recomputed from cos/sin so the arms ride the body and collapse to `z = 0` when
       facing forward), on both render paths (colored and textured). The
+      textured snow-golem regressions now pin the base submission as
+      `entityCutout`, the selected vanilla snow-golem texture, white tint,
+      `entity_model_root_transform`, and `(order, submit_sequence) == (0, 0)`. The
       `SnowGolemHeadLayer` carved-pumpkin block model is now implemented through
       the entity-attached block-model path: bbb-world projects `SnowGolem.DATA_PUMPKIN_ID`
       (index 16 BYTE, bit 16, vanilla default on), native resolves

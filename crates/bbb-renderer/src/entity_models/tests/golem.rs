@@ -216,6 +216,7 @@ fn iron_golem_textured_submissions_apply_body_wobble_to_base_and_cracks() {
     .with_walk_animation(0.0, 1.0);
 
     let meshes = entity_model_textured_meshes(&[walking], &atlas);
+    assert_golem_submissions_match_vanilla(&meshes, walking);
     assert_eq!(meshes.submissions.len(), 2);
     assert!(!meshes.cutout.vertices.is_empty());
 
@@ -228,6 +229,7 @@ fn iron_golem_textured_submissions_apply_body_wobble_to_base_and_cracks() {
 
     let base = meshes.submissions[0];
     assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(base.render_type.vanilla_name(), "entityCutout");
     assert_eq!(base.texture, IRON_GOLEM_TEXTURE_REF);
     assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((base.order, base.submit_sequence), (0, 0));
@@ -235,6 +237,7 @@ fn iron_golem_textured_submissions_apply_body_wobble_to_base_and_cracks() {
 
     let cracks = meshes.submissions[1];
     assert_eq!(cracks.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(cracks.render_type.vanilla_name(), "entityCutout");
     assert_eq!(cracks.texture, IRON_GOLEM_CRACKINESS_HIGH_TEXTURE_REF);
     assert_eq!(cracks.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((cracks.order, cracks.submit_sequence), (1, 1));
@@ -379,10 +382,10 @@ fn golem_texture_atlas_stitches_official_png_slots() {
 fn golem_textured_meshes_use_vanilla_uvs_tints_and_body_layer_bounds() {
     let (atlas, _) = build_entity_model_texture_atlas(&golem_texture_images()).unwrap();
 
-    let iron = entity_model_textured_mesh(
-        &[EntityModelInstance::iron_golem(70, [0.0, 64.0, 0.0], 0.0)],
-        &atlas,
-    );
+    let iron_instance = EntityModelInstance::iron_golem(70, [0.0, 64.0, 0.0], 0.0);
+    let iron_meshes = entity_model_textured_meshes(&[iron_instance], &atlas);
+    assert_golem_submissions_match_vanilla(&iron_meshes, iron_instance);
+    let iron = &iron_meshes.cutout;
     assert_eq!(iron.cutout_faces, 48);
     assert_eq!(iron.vertices.len(), 192);
     assert_eq!(iron.indices.len(), 288);
@@ -391,14 +394,14 @@ fn golem_textured_meshes_use_vanilla_uvs_tints_and_body_layer_bounds() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
-    let (iron_min, iron_max) = textured_mesh_extents(&iron);
+    let (iron_min, iron_max) = textured_mesh_extents(iron);
     assert_close3(iron_min, [-0.8125, 64.001, -0.3125]);
     assert_close3(iron_max, [0.8125, 66.6885, 0.59375]);
 
-    let snow = entity_model_textured_mesh(
-        &[EntityModelInstance::snow_golem(121, [0.0, 64.0, 0.0], 0.0)],
-        &atlas,
-    );
+    let snow_instance = EntityModelInstance::snow_golem(121, [0.0, 64.0, 0.0], 0.0);
+    let snow_meshes = entity_model_textured_meshes(&[snow_instance], &atlas);
+    assert_golem_submissions_match_vanilla(&snow_meshes, snow_instance);
+    let snow = &snow_meshes.cutout;
     assert_eq!(snow.cutout_faces, 30);
     assert_eq!(snow.vertices.len(), 120);
     assert_eq!(snow.indices.len(), 180);
@@ -407,7 +410,7 @@ fn golem_textured_meshes_use_vanilla_uvs_tints_and_body_layer_bounds() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
-    let (snow_min, snow_max) = textured_mesh_extents(&snow);
+    let (snow_min, snow_max) = textured_mesh_extents(snow);
     assert_close3(snow_min, [-0.6407774, 64.03225, -0.34375]);
     assert_close3(snow_max, [0.6407774, 65.71975, 0.34375]);
 }
@@ -457,19 +460,26 @@ fn snow_golem_textured_mesh_twists_upper_body_and_orbits_arms() {
     // The real (texture-backed) snow golem render path applies the same twist and orbit.
     let (atlas, _) = build_entity_model_texture_atlas(&golem_texture_images()).unwrap();
     let base = EntityModelInstance::snow_golem(123, [0.0, 64.0, 0.0], 0.0);
-    let rest = entity_model_textured_mesh(&[base], &atlas);
-    let yawed = entity_model_textured_mesh(&[base.with_head_look(60.0, 0.0)], &atlas);
-    assert_eq!(rest.vertices.len(), 120);
-    assert_eq!(rest.vertices.len(), yawed.vertices.len());
-    assert_ne!(rest.vertices[24..72], yawed.vertices[24..72], "arms orbit");
+    let yawed_instance = base.with_head_look(60.0, 0.0);
+    let rest = entity_model_textured_meshes(&[base], &atlas);
+    let yawed = entity_model_textured_meshes(&[yawed_instance], &atlas);
+    assert_golem_submissions_match_vanilla(&rest, base);
+    assert_golem_submissions_match_vanilla(&yawed, yawed_instance);
+    assert_eq!(rest.cutout.vertices.len(), 120);
+    assert_eq!(rest.cutout.vertices.len(), yawed.cutout.vertices.len());
     assert_ne!(
-        rest.vertices[72..96],
-        yawed.vertices[72..96],
+        rest.cutout.vertices[24..72],
+        yawed.cutout.vertices[24..72],
+        "arms orbit"
+    );
+    assert_ne!(
+        rest.cutout.vertices[72..96],
+        yawed.cutout.vertices[72..96],
         "upper body twists"
     );
     assert_eq!(
-        rest.vertices[96..120],
-        yawed.vertices[96..120],
+        rest.cutout.vertices[96..120],
+        yawed.cutout.vertices[96..120],
         "lower body stays put"
     );
 }
@@ -524,12 +534,25 @@ fn golem_textured_meshes_apply_head_look() {
         EntityModelInstance::iron_golem(71, [0.0, 64.0, 0.0], 0.0),
         EntityModelInstance::snow_golem(122, [0.0, 64.0, 0.0], 0.0),
     ] {
-        let resting = entity_model_textured_mesh(&[base], &atlas);
-        let yawed = entity_model_textured_mesh(&[base.with_head_look(45.0, 0.0)], &atlas);
-        let pitched = entity_model_textured_mesh(&[base.with_head_look(0.0, -20.0)], &atlas);
-        assert_eq!(resting.vertices.len(), yawed.vertices.len());
-        assert_ne!(resting.vertices, yawed.vertices, "{:?}", base.kind);
-        assert_ne!(yawed.vertices, pitched.vertices, "{:?}", base.kind);
+        let yawed_instance = base.with_head_look(45.0, 0.0);
+        let pitched_instance = base.with_head_look(0.0, -20.0);
+        let resting = entity_model_textured_meshes(&[base], &atlas);
+        let yawed = entity_model_textured_meshes(&[yawed_instance], &atlas);
+        let pitched = entity_model_textured_meshes(&[pitched_instance], &atlas);
+        assert_golem_submissions_match_vanilla(&resting, base);
+        assert_golem_submissions_match_vanilla(&yawed, yawed_instance);
+        assert_golem_submissions_match_vanilla(&pitched, pitched_instance);
+        assert_eq!(resting.cutout.vertices.len(), yawed.cutout.vertices.len());
+        assert_ne!(
+            resting.cutout.vertices, yawed.cutout.vertices,
+            "{:?}",
+            base.kind
+        );
+        assert_ne!(
+            yawed.cutout.vertices, pitched.cutout.vertices,
+            "{:?}",
+            base.kind
+        );
     }
 }
 
@@ -622,30 +645,80 @@ fn iron_golem_textured_mesh_swings_its_limbs_when_walking() {
     // one lifts its feet.
     let (atlas, _) = build_entity_model_texture_atlas(&golem_texture_images()).unwrap();
     let base = EntityModelInstance::iron_golem(271, [0.0, 64.0, 0.0], 0.0);
-    let resting = entity_model_textured_mesh(&[base], &atlas);
-    let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
-    let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+    let still_instance = base.with_walk_animation(2.5, 0.0);
+    let walking_instance = base.with_walk_animation(0.0, 1.0);
+    let resting = entity_model_textured_meshes(&[base], &atlas);
+    let still = entity_model_textured_meshes(&[still_instance], &atlas);
+    let walking = entity_model_textured_meshes(&[walking_instance], &atlas);
+    assert_golem_submissions_match_vanilla(&resting, base);
+    assert_golem_submissions_match_vanilla(&still, still_instance);
+    assert_golem_submissions_match_vanilla(&walking, walking_instance);
 
     assert_eq!(
-        resting.vertices, still.vertices,
+        resting.cutout.vertices, still.cutout.vertices,
         "a standing iron golem is inert"
     );
     assert_eq!(
-        resting.vertices.len(),
-        walking.vertices.len(),
+        resting.cutout.vertices.len(),
+        walking.cutout.vertices.len(),
         "limb swing keeps the vertex count"
     );
     assert_ne!(
-        resting.vertices, walking.vertices,
+        resting.cutout.vertices, walking.cutout.vertices,
         "a walking iron golem differs"
     );
 
-    let (rest_min, rest_max) = textured_mesh_extents(&resting);
-    let (walk_min, walk_max) = textured_mesh_extents(&walking);
+    let (rest_min, rest_max) = textured_mesh_extents(&resting.cutout);
+    let (walk_min, walk_max) = textured_mesh_extents(&walking.cutout);
     assert!(
         (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
         "a walking iron golem's feet should lift off the ground"
     );
+}
+
+fn assert_golem_submissions_match_vanilla(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    assert_golem_folded_meshes_are_cutout_only(meshes);
+    let (passes, transform) = match instance.kind {
+        EntityModelKind::IronGolem { crackiness } => (
+            iron_golem_textured_layer_passes(crackiness),
+            iron_golem_model_root_transform(instance),
+        ),
+        EntityModelKind::SnowGolem => (
+            snow_golem_textured_layer_passes(),
+            entity_model_root_transform(instance),
+        ),
+        _ => panic!("expected golem instance"),
+    };
+    assert_eq!(meshes.submissions.len(), passes.len());
+    for (submit, pass) in meshes.submissions.iter().copied().zip(passes) {
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.render_type, pass.render_type);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(submit.texture, pass.texture);
+        assert_eq!(submit.tint, pass.tint);
+        assert_eq!(submit.transform, transform);
+        assert_eq!(
+            (submit.order, submit.submit_sequence),
+            (pass.order, pass.submit_sequence)
+        );
+    }
+}
+
+fn assert_golem_folded_meshes_are_cutout_only(meshes: &EntityModelTexturedMeshes) {
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_cutout.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_translucent.vertices.is_empty());
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_translucent
+        .vertices
+        .is_empty());
+    assert!(meshes.scroll.vertices.is_empty());
+    assert!(meshes.scroll_additive.vertices.is_empty());
 }
 
 fn golem_texture_images() -> Vec<EntityModelTextureImage> {
