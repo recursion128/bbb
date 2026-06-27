@@ -4,6 +4,8 @@ use super::{PartPose, PART_POSE_ZERO, WIND_CHARGE_CORE, WIND_CHARGE_WIND};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_WIND_CHARGE: &str = "minecraft:wind_charge#main";
+
 // Vanilla 26.1 `WindChargeModel.createBodyLayer` (atlas 64×32). The `bone` root (no cubes) parents
 // the `wind` shell and the `wind_charge` core. The `wind` part carries a fixed `yRot = -0.7854`
 // (≈ -π/4) bind rotation and two boxes (`texOffs(15, 20)` 8×2×8 + `texOffs(0, 9)` 6×4×6); the

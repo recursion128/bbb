@@ -61,9 +61,8 @@ use super::{
         PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF,
         PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
         SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION,
-        STRIDER_SADDLE_TEXTURE_REF, TRIDENT_RIPTIDE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF,
-        WITHER_ARMOR_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
-        ZOMBIE_TEXTURE_REF,
+        STRIDER_SADDLE_TEXTURE_REF, TRIDENT_RIPTIDE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF,
+        WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF, ZOMBIE_TEXTURE_REF,
     },
     player_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
 };
@@ -110,8 +109,8 @@ pub(super) use layers::{
     squid_textured_layer_passes, tadpole_textured_layer_passes, trident_textured_layer_passes,
     tropical_fish_textured_layer_passes, undead_horse_textured_layer_passes,
     villager_textured_layer_passes, wandering_trader_textured_layer_passes,
-    warden_textured_layer_passes, witch_textured_layer_passes, wither_skull_textured_layer_passes,
-    wither_textured_layer_passes, wolf_textured_layer_passes,
+    warden_textured_layer_passes, wind_charge_textured_layer_passes, witch_textured_layer_passes,
+    wither_skull_textured_layer_passes, wither_textured_layer_passes, wolf_textured_layer_passes,
     zombie_nautilus_textured_layer_passes, zombie_textured_layer_passes,
     zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerPass,
     EntityModelLayerRenderBucket, EntityModelLayerRenderType,
@@ -960,6 +959,7 @@ fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
             | EntityModelLayerKind::ShulkerBulletShell
             | EntityModelLayerKind::SpiderEyes
             | EntityModelLayerKind::TridentBase
+            | EntityModelLayerKind::WindChargeBase
             | EntityModelLayerKind::WitherSkullBase
             | EntityModelLayerKind::WolfCollar
     )
@@ -1036,15 +1036,16 @@ fn emit_wind_charge_scroll_model(
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     let transform = wind_charge_model_root_transform(instance);
-    let submit = EntityModelSubmissionEmit::new(
-        EntityModelLayerRenderType::BreezeWind,
-        WIND_CHARGE_TEXTURE_REF,
-        [1.0, 1.0, 1.0, 1.0],
+    let passes = wind_charge_textured_layer_passes();
+    let pass = passes[0];
+    let submit = no_overlay_submission(
+        pass.render_type,
+        pass.texture,
+        pass.tint,
         transform,
-        0,
-        0,
-    )
-    .with_overlay(ENTITY_VERTEX_NO_OVERLAY);
+        pass.order,
+        pass.submit_sequence,
+    );
     let mut model = WindChargeModel::new();
     model.prepare(&instance);
     // Vanilla `WindChargeRenderer.xOffset(t) = t · 0.03`, taken `% 1.0`; `ageInTicks ≥ 0` so the Java

@@ -88,6 +88,18 @@ fn wind_charge_textured_render_matches_vanilla_renderer() {
         wind_charge_entity_texture_refs(),
         &[WIND_CHARGE_TEXTURE_REF]
     );
+    let passes = wind_charge_textured_layer_passes();
+    assert_eq!(passes.len(), 1);
+    assert_eq!(passes[0].kind, EntityModelLayerKind::WindChargeBase);
+    assert_eq!(passes[0].model_layer, MODEL_LAYER_WIND_CHARGE);
+    assert_eq!(
+        passes[0].render_type,
+        EntityModelLayerRenderType::BreezeWind
+    );
+    assert_eq!(passes[0].render_type.vanilla_name(), "breezeWind");
+    assert_eq!(passes[0].texture, WIND_CHARGE_TEXTURE_REF);
+    assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
 
     let len =
         usize::try_from(WIND_CHARGE_TEXTURE_REF.size[0] * WIND_CHARGE_TEXTURE_REF.size[1] * 4)

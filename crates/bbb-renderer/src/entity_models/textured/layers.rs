@@ -108,6 +108,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     WolfBase,
     WolfCollar,
     FelineCollar,
+    WindChargeBase,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -975,6 +976,19 @@ pub(in crate::entity_models) fn blaze_textured_layer_passes() -> Vec<EntityModel
         render_type: EntityModelLayerRenderType::EntityCutout,
         model_layer: MODEL_LAYER_BLAZE,
         texture: BLAZE_TEXTURE_REF,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(in crate::entity_models) fn wind_charge_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::WindChargeBase,
+        render_type: EntityModelLayerRenderType::BreezeWind,
+        model_layer: MODEL_LAYER_WIND_CHARGE,
+        texture: WIND_CHARGE_TEXTURE_REF,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         order: 0,
