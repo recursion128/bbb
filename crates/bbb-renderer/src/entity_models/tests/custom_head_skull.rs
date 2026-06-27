@@ -45,6 +45,12 @@ fn assert_skull_submission(
     assert_eq!(submissions.len(), 1);
     let submit = submissions[0];
     assert_eq!(submit.render_type, render_type);
+    let expected_render_type_name = match render_type {
+        EntityModelLayerRenderType::EntityCutoutZOffset => "entityCutoutZOffset",
+        EntityModelLayerRenderType::EntityTranslucent => "entityTranslucent",
+        _ => render_type.vanilla_name(),
+    };
+    assert_eq!(submit.render_type.vanilla_name(), expected_render_type_name);
     assert_eq!(submit.texture, texture);
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(submit.dynamic_player_skin, None);
@@ -456,13 +462,27 @@ fn custom_head_piglin_skull_animates_ears_from_worn_head_animation_pos() {
     )
     .with_custom_head_skull(Some(EntityCustomHeadSkull::Piglin));
 
-    let first = entity_model_textured_mesh(&[base.with_worn_head_animation_pos(0.0)], &atlas);
-    let later = entity_model_textured_mesh(&[base.with_worn_head_animation_pos(7.0)], &atlas);
+    let first_instance = base.with_worn_head_animation_pos(0.0);
+    let later_instance = base.with_worn_head_animation_pos(7.0);
+    let first = entity_model_textured_meshes(&[first_instance], &atlas);
+    let later = entity_model_textured_meshes(&[later_instance], &atlas);
+    assert_skull_submission(
+        &first_instance,
+        &first,
+        EntityModelLayerRenderType::EntityCutoutZOffset,
+        PIGLIN_TEXTURE_REF,
+    );
+    assert_skull_submission(
+        &later_instance,
+        &later,
+        EntityModelLayerRenderType::EntityCutoutZOffset,
+        PIGLIN_TEXTURE_REF,
+    );
 
-    assert_eq!(first.cutout_faces, later.cutout_faces);
-    assert_eq!(first.vertices.len(), later.vertices.len());
+    assert_eq!(first.cutout.cutout_faces, later.cutout.cutout_faces);
+    assert_eq!(first.cutout.vertices.len(), later.cutout.vertices.len());
     assert_ne!(
-        first.vertices, later.vertices,
+        first.cutout.vertices, later.cutout.vertices,
         "PiglinHeadModel drives its ear zRot from SkullModelBase.State.animationPos"
     );
 }
@@ -519,13 +539,27 @@ fn custom_head_dragon_skull_animates_jaw_from_worn_head_animation_pos() {
     )
     .with_custom_head_skull(Some(EntityCustomHeadSkull::Dragon));
 
-    let first = entity_model_textured_mesh(&[base.with_worn_head_animation_pos(0.0)], &atlas);
-    let later = entity_model_textured_mesh(&[base.with_worn_head_animation_pos(2.5)], &atlas);
+    let first_instance = base.with_worn_head_animation_pos(0.0);
+    let later_instance = base.with_worn_head_animation_pos(2.5);
+    let first = entity_model_textured_meshes(&[first_instance], &atlas);
+    let later = entity_model_textured_meshes(&[later_instance], &atlas);
+    assert_skull_submission(
+        &first_instance,
+        &first,
+        EntityModelLayerRenderType::EntityCutoutZOffset,
+        ENDER_DRAGON_TEXTURE_REF,
+    );
+    assert_skull_submission(
+        &later_instance,
+        &later,
+        EntityModelLayerRenderType::EntityCutoutZOffset,
+        ENDER_DRAGON_TEXTURE_REF,
+    );
 
-    assert_eq!(first.cutout_faces, later.cutout_faces);
-    assert_eq!(first.vertices.len(), later.vertices.len());
+    assert_eq!(first.cutout.cutout_faces, later.cutout.cutout_faces);
+    assert_eq!(first.cutout.vertices.len(), later.cutout.vertices.len());
     assert_ne!(
-        first.vertices, later.vertices,
+        first.cutout.vertices, later.cutout.vertices,
         "DragonHeadModel drives its jaw xRot from SkullModelBase.State.animationPos"
     );
 }
@@ -541,27 +575,58 @@ fn custom_head_skull_layer_follows_host_head_pose() {
     )
     .with_custom_head_skull(Some(EntityCustomHeadSkull::Skeleton));
 
-    let resting = entity_model_textured_mesh(&[base], &atlas);
-    let looking = entity_model_textured_mesh(&[base.with_head_look(35.0, -20.0)], &atlas);
+    let looking_instance = base.with_head_look(35.0, -20.0);
+    let resting = entity_model_textured_meshes(&[base], &atlas);
+    let looking = entity_model_textured_meshes(&[looking_instance], &atlas);
+    assert_skull_submission(
+        &base,
+        &resting,
+        EntityModelLayerRenderType::EntityCutoutZOffset,
+        SKELETON_TEXTURE_REF,
+    );
+    assert_skull_submission(
+        &looking_instance,
+        &looking,
+        EntityModelLayerRenderType::EntityCutoutZOffset,
+        SKELETON_TEXTURE_REF,
+    );
 
-    assert_eq!(resting.vertices.len(), looking.vertices.len());
+    assert_eq!(resting.cutout.vertices.len(), looking.cutout.vertices.len());
     assert_ne!(
-        resting.vertices, looking.vertices,
+        resting.cutout.vertices, looking.cutout.vertices,
         "CustomHeadLayer walks through the posed host head before rendering the skull"
     );
 }
 
 #[test]
 fn custom_head_skull_layer_requires_a_custom_head_host_model() {
-    let atlas = atlas_with(SKELETON_TEXTURE_REF);
-    let mesh = entity_model_textured_mesh(
-        &[
-            EntityModelInstance::new(912, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0)
-                .with_custom_head_skull(Some(EntityCustomHeadSkull::Skeleton)),
-        ],
-        &atlas,
-    );
+    let atlas = atlas_with_many(&[CREEPER_TEXTURE_REF, SKELETON_TEXTURE_REF]);
+    let instance = EntityModelInstance::new(912, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0)
+        .with_custom_head_skull(Some(EntityCustomHeadSkull::Skeleton));
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
 
-    assert!(mesh.vertices.is_empty());
-    assert!(mesh.indices.is_empty());
+    assert_eq!(meshes.submissions.len(), 1);
+    let base = meshes.submissions[0];
+    assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(base.texture, CREEPER_TEXTURE_REF);
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(base.transform, creeper_model_root_transform(instance));
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+    assert!(!meshes
+        .submissions
+        .iter()
+        .any(|submit| submit.texture == SKELETON_TEXTURE_REF));
+    assert!(!meshes.cutout.vertices.is_empty());
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_cutout.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_translucent.vertices.is_empty());
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_translucent
+        .vertices
+        .is_empty());
+    assert!(meshes.scroll.vertices.is_empty());
+    assert!(meshes.scroll_additive.vertices.is_empty());
 }
