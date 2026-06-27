@@ -423,7 +423,10 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
         LlamaVariant::Creamy,
         false,
         false,
-    );
+    )
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let bare_meshes = entity_model_textured_meshes(&[adult], &atlas);
     assert_eq!(bare_meshes.submissions.len(), 1);
     assert_llama_base_submission_at(&bare_meshes, 0, adult);
@@ -453,6 +456,18 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
         1,
         1,
     );
+    assert_ne!(white_instance.render_state.overlay_coords(), [0.0, 10.0]);
+    let base_submit = white_meshes.submissions[0];
+    let decor_submit = white_meshes.submissions[1];
+    assert!(white.vertices[..bare.vertices.len()]
+        .iter()
+        .all(|vertex| vertex.light == base_submit.light && vertex.overlay == base_submit.overlay));
+    assert!(
+        white.vertices[bare.vertices.len()..]
+            .iter()
+            .all(|vertex| vertex.light == decor_submit.light
+                && vertex.overlay == decor_submit.overlay)
+    );
 
     let adult_trader = EntityModelInstance::llama(
         607,
@@ -462,7 +477,10 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
         LlamaVariant::Creamy,
         false,
         false,
-    );
+    )
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let trader_meshes = entity_model_textured_meshes(&[adult_trader], &atlas);
     let trader = &trader_meshes.cutout;
     assert_eq!(trader.vertices.len(), bare.vertices.len() * 2);
@@ -510,7 +528,10 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
         LlamaVariant::Creamy,
         true,
         false,
-    );
+    )
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let baby_bare_meshes = entity_model_textured_meshes(&[baby], &atlas);
     assert_eq!(baby_bare_meshes.submissions.len(), 1);
     assert_llama_base_submission_at(&baby_bare_meshes, 0, baby);
@@ -534,6 +555,9 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
         true,
         false,
     )
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true)
     .with_llama_body_decor(Some(EntityDyeColor::Black));
     let baby_trader_meshes = entity_model_textured_meshes(&[baby_trader], &atlas);
     assert_eq!(baby_trader_meshes.submissions.len(), 2);
@@ -685,6 +709,15 @@ fn assert_llama_submission(
     assert_eq!(
         (submit.order, submit.submit_sequence),
         (order, submit_sequence)
+    );
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(
+        submit.overlay,
+        match render_type {
+            EntityModelLayerRenderType::EntityCutout => instance.render_state.overlay_coords(),
+            EntityModelLayerRenderType::ArmorCutoutNoCull => [0.0, 10.0],
+            other => panic!("unexpected llama render type {other:?}"),
+        }
     );
 }
 

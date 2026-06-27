@@ -1788,10 +1788,13 @@ When an agent does any of the following, update this file in the same slice:
       to `trader_llama.png` when no carpet item overrides it, and baby trader llamas
       use `trader_llama_baby.png` while ignoring body-item carpets. The decor overlay
       records vanilla `EquipmentLayerRenderer` submission metadata (`armorCutoutNoCull`,
-      `order(1)`, submit sequence 1, white tint, base transform) before folding into
-      the cutout bucket. Lighting remains unsupported for the llama base/decor
-      entity submissions; the llama spit projectile is covered separately below
-      with object-renderer no-overlay submission metadata
+      `order(1)`, submit sequence 1, white tint, base transform, entity light, and
+      `OverlayTexture.NO_OVERLAY`) before folding into the cutout bucket. The base
+      `entityCutout` submission now also pins vanilla `LivingEntityRenderer`
+      light plus hurt/white overlay metadata, and folded cutout vertices inherit
+      the corresponding base or decor submission metadata. The llama spit
+      projectile is covered separately below with object-renderer no-overlay
+      submission metadata
     - goat entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `GoatModel`, `BabyGoatModel`, and `GoatRenderer`,
       including `ModelLayers.GOAT` / `GOAT_BABY`, official adult/baby texture
