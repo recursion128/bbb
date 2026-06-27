@@ -1048,8 +1048,9 @@ When an agent does any of the following, update this file in the same slice:
       humanoid armor `armorCutoutNoCull`, horse/donkey/undead-horse
       base+saddle/body-armor submits, horse markings, villager
       profession/type/level overlays, custom-head skull submissions, player
-      profile cape plus player WINGS/elytra submissions, and the
-      Guardian beam / End Crystal body+beam paths are covered by source-verified
+      profile cape plus player WINGS/elytra submissions, pufferfish
+      puff-state base submits, and the Guardian beam / End Crystal body+beam
+      paths are covered by source-verified
       texture/render-type/tint/transform/order tests, including the Guardian
       beam missing-atlas case where submission metadata survives while folded
       geometry is suppressed.

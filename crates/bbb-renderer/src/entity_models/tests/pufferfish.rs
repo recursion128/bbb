@@ -1,4 +1,5 @@
 use super::*;
+use crate::entity_models::colored::pufferfish_model_root_transform;
 use std::f32::consts::FRAC_PI_4;
 
 // (offset, rotation, cube min, cube size, texOffs)
@@ -363,15 +364,20 @@ fn pufferfish_meshes_use_vanilla_body_layer_geometry() {
 #[test]
 fn pufferfish_textured_mesh_uses_vanilla_uvs_and_geometry() {
     let (atlas, _) = build_entity_model_texture_atlas(&pufferfish_texture_images()).unwrap();
-    let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::pufferfish(
-            107,
-            [0.0, 64.0, 0.0],
-            0.0,
-            2,
-        )],
-        &atlas,
-    );
+    let instance = EntityModelInstance::pufferfish(107, [0.0, 64.0, 0.0], 0.0, 2);
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.texture, PUFFERFISH_TEXTURE_REF);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.transform, pufferfish_model_root_transform(instance));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    let mesh = &meshes.cutout;
+
     assert_eq!(mesh.cutout_faces, 78);
     assert_eq!(mesh.vertices.len(), 312);
     assert!(mesh
