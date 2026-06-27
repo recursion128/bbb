@@ -2022,8 +2022,14 @@ When an agent does any of the following, update this file in the same slice:
       `QuadrupedModel`-formula four-leg walk swing, and the `CreeperRenderer.scale`
       swell (the inflate-and-flicker `this.scale()` non-uniform scale before
       exploding, driven by the projected `creeper_swelling`; identity for a calm
-      creeper) (colored and textured); powered armor layer and lighting remain
-      unsupported
+      creeper) (colored and textured). The texture-backed tests now pin explicit
+      base submission metadata for vanilla `entityCutout`, `creeper.png`, white
+      tint, the creeper swell root transform, and `order(0)` before checking
+      folded UV/head-look/walk/swell geometry. Charged creepers also emit the
+      vanilla `CreeperPowerLayer` / `EnergySwirlLayer` submission at `order(1)`
+      with `creeper_armor.png`, `energySwirl`, the vanilla half-grey tint, and
+      the same creeper root transform before folding the inflated armor model
+      into the additive scroll mesh; lighting remains unsupported
     - base spider entities as renderer-owned vanilla 26.1
       `SpiderModel.createSpiderBodyLayer()` geometry, with
       `ModelLayers.SPIDER`, the official

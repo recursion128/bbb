@@ -151,6 +151,11 @@ fn charged_creeper_emits_scrolling_energy_swirl() {
         plain.scroll_additive.vertices.is_empty(),
         "no energy swirl when not powered"
     );
+    assert_eq!(plain.submissions.len(), 1);
+    assert_creeper_base_submission_matches_vanilla(
+        &plain,
+        EntityModelInstance::new(960, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0),
+    );
     assert!(!plain
         .submissions
         .iter()
@@ -162,11 +167,14 @@ fn charged_creeper_emits_scrolling_energy_swirl() {
     let powered = EntityModelInstance::new(961, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0)
         .with_creeper_powered(true);
     let rest = entity_model_textured_meshes(&[powered], &atlas);
+    assert_eq!(rest.submissions.len(), 2);
+    assert_creeper_base_submission_matches_vanilla(&rest, powered);
     let swirl = rest
         .submissions
         .iter()
         .find(|submit| submit.render_type == EntityModelLayerRenderType::EnergySwirl)
         .expect("powered creeper emits an energySwirl submit");
+    assert_eq!(swirl.render_type.vanilla_name(), "energySwirl");
     assert_eq!(swirl.texture, CREEPER_ARMOR_TEXTURE_REF);
     assert_eq!(swirl.tint, [grey, grey, grey, 1.0]);
     assert_eq!(swirl.order, 1);
@@ -231,6 +239,8 @@ fn charged_creeper_energy_swirl_submission_survives_missing_armor_atlas_entry() 
         .with_creeper_powered(true);
 
     let meshes = entity_model_textured_meshes(&[powered], &atlas);
+    assert_eq!(meshes.submissions.len(), 2);
+    assert_creeper_base_submission_matches_vanilla(&meshes, powered);
     assert_eq!(
         meshes.cutout.vertices.len(),
         144,
@@ -245,6 +255,7 @@ fn charged_creeper_energy_swirl_submission_survives_missing_armor_atlas_entry() 
         .iter()
         .find(|submit| submit.render_type == EntityModelLayerRenderType::EnergySwirl)
         .expect("powered creeper records an energySwirl submit before atlas lookup");
+    assert_eq!(swirl.render_type.vanilla_name(), "energySwirl");
     assert_eq!(swirl.texture, CREEPER_ARMOR_TEXTURE_REF);
     assert_eq!(swirl.tint, [grey, grey, grey, 1.0]);
     assert_eq!((swirl.order, swirl.submit_sequence), (1, 1));
@@ -254,15 +265,12 @@ fn charged_creeper_energy_swirl_submission_survives_missing_armor_atlas_entry() 
 #[test]
 fn creeper_textured_mesh_uses_vanilla_uvs_tints_and_body_layer_bounds() {
     let (atlas, _) = build_entity_model_texture_atlas(&creeper_texture_images()).unwrap();
-    let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::new(
-            910,
-            EntityModelKind::Creeper,
-            [0.0, 64.0, 0.0],
-            0.0,
-        )],
-        &atlas,
-    );
+    let instance = EntityModelInstance::new(910, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0);
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    assert_eq!(meshes.submissions.len(), 1);
+    assert_creeper_base_submission_matches_vanilla(&meshes, instance);
+    assert!(meshes.scroll_additive.vertices.is_empty());
+    let mesh = &meshes.cutout;
 
     assert_eq!(mesh.cutout_faces, 36);
     assert_eq!(mesh.vertices.len(), 144);
@@ -281,12 +289,23 @@ fn creeper_textured_mesh_uses_vanilla_uvs_tints_and_body_layer_bounds() {
 fn creeper_textured_mesh_applies_head_look() {
     let (atlas, _) = build_entity_model_texture_atlas(&creeper_texture_images()).unwrap();
     let base = EntityModelInstance::new(199, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0);
-    let resting = entity_model_textured_mesh(&[base], &atlas);
-    let yawed = entity_model_textured_mesh(&[base.with_head_look(45.0, 0.0)], &atlas);
-    let pitched = entity_model_textured_mesh(&[base.with_head_look(0.0, -20.0)], &atlas);
-    assert_eq!(resting.vertices.len(), yawed.vertices.len());
-    assert_ne!(resting.vertices, yawed.vertices);
-    assert_ne!(yawed.vertices, pitched.vertices);
+    let yawed_instance = base.with_head_look(45.0, 0.0);
+    let pitched_instance = base.with_head_look(0.0, -20.0);
+    let resting = entity_model_textured_meshes(&[base], &atlas);
+    let yawed = entity_model_textured_meshes(&[yawed_instance], &atlas);
+    let pitched = entity_model_textured_meshes(&[pitched_instance], &atlas);
+    assert_eq!(resting.submissions.len(), 1);
+    assert_eq!(yawed.submissions.len(), 1);
+    assert_eq!(pitched.submissions.len(), 1);
+    assert_creeper_base_submission_matches_vanilla(&resting, base);
+    assert_creeper_base_submission_matches_vanilla(&yawed, yawed_instance);
+    assert_creeper_base_submission_matches_vanilla(&pitched, pitched_instance);
+    assert!(resting.scroll_additive.vertices.is_empty());
+    assert!(yawed.scroll_additive.vertices.is_empty());
+    assert!(pitched.scroll_additive.vertices.is_empty());
+    assert_eq!(resting.cutout.vertices.len(), yawed.cutout.vertices.len());
+    assert_ne!(resting.cutout.vertices, yawed.cutout.vertices);
+    assert_ne!(yawed.cutout.vertices, pitched.cutout.vertices);
 }
 
 #[test]
@@ -323,26 +342,37 @@ fn creeper_textured_mesh_swings_legs_when_walking() {
     // a walking one lifts its feet.
     let (atlas, _) = build_entity_model_texture_atlas(&creeper_texture_images()).unwrap();
     let base = EntityModelInstance::new(251, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0);
-    let resting = entity_model_textured_mesh(&[base], &atlas);
-    let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
-    let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+    let still_instance = base.with_walk_animation(2.5, 0.0);
+    let walking_instance = base.with_walk_animation(0.0, 1.0);
+    let resting = entity_model_textured_meshes(&[base], &atlas);
+    let still = entity_model_textured_meshes(&[still_instance], &atlas);
+    let walking = entity_model_textured_meshes(&[walking_instance], &atlas);
+    assert_eq!(resting.submissions.len(), 1);
+    assert_eq!(still.submissions.len(), 1);
+    assert_eq!(walking.submissions.len(), 1);
+    assert_creeper_base_submission_matches_vanilla(&resting, base);
+    assert_creeper_base_submission_matches_vanilla(&still, still_instance);
+    assert_creeper_base_submission_matches_vanilla(&walking, walking_instance);
+    assert!(resting.scroll_additive.vertices.is_empty());
+    assert!(still.scroll_additive.vertices.is_empty());
+    assert!(walking.scroll_additive.vertices.is_empty());
 
     assert_eq!(
-        resting.vertices, still.vertices,
+        resting.cutout.vertices, still.cutout.vertices,
         "a standing creeper is inert"
     );
     assert_eq!(
-        resting.vertices.len(),
-        walking.vertices.len(),
+        resting.cutout.vertices.len(),
+        walking.cutout.vertices.len(),
         "leg swing keeps the vertex count"
     );
     assert_ne!(
-        resting.vertices, walking.vertices,
+        resting.cutout.vertices, walking.cutout.vertices,
         "a walking creeper differs"
     );
 
-    let (rest_min, rest_max) = textured_mesh_extents(&resting);
-    let (walk_min, walk_max) = textured_mesh_extents(&walking);
+    let (rest_min, rest_max) = textured_mesh_extents(&resting.cutout);
+    let (walk_min, walk_max) = textured_mesh_extents(&walking.cutout);
     assert!(
         (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
         "a walking creeper's feet should lift off the ground"
@@ -417,34 +447,69 @@ fn creeper_textured_mesh_inflates_as_it_primes_to_explode() {
     // one grows on the X/Z plane by `(1 + 0.4) * wobble`.
     let (atlas, _) = build_entity_model_texture_atlas(&creeper_texture_images()).unwrap();
     let base = EntityModelInstance::new(253, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0);
-    let calm = entity_model_textured_mesh(&[base], &atlas);
-    let unswollen = entity_model_textured_mesh(&[base.with_creeper_swelling(0.0)], &atlas);
+    let unswollen_instance = base.with_creeper_swelling(0.0);
+    let calm = entity_model_textured_meshes(&[base], &atlas);
+    let unswollen = entity_model_textured_meshes(&[unswollen_instance], &atlas);
+    assert_eq!(calm.submissions.len(), 1);
+    assert_eq!(unswollen.submissions.len(), 1);
+    assert_creeper_base_submission_matches_vanilla(&calm, base);
+    assert_creeper_base_submission_matches_vanilla(&unswollen, unswollen_instance);
+    assert!(calm.scroll_additive.vertices.is_empty());
+    assert!(unswollen.scroll_additive.vertices.is_empty());
     assert_eq!(
-        calm.vertices, unswollen.vertices,
+        calm.cutout.vertices, unswollen.cutout.vertices,
         "an unswollen creeper is unscaled"
     );
 
     let swelling = 1.0_f32;
-    let primed = entity_model_textured_mesh(&[base.with_creeper_swelling(swelling)], &atlas);
+    let primed_instance = base.with_creeper_swelling(swelling);
+    let primed = entity_model_textured_meshes(&[primed_instance], &atlas);
+    assert_eq!(primed.submissions.len(), 1);
+    assert_creeper_base_submission_matches_vanilla(&primed, primed_instance);
+    assert!(primed.scroll_additive.vertices.is_empty());
     assert_eq!(
-        calm.vertices.len(),
-        primed.vertices.len(),
+        calm.cutout.vertices.len(),
+        primed.cutout.vertices.len(),
         "the swell scale keeps the vertex count"
     );
     assert_ne!(
-        calm.vertices, primed.vertices,
+        calm.cutout.vertices, primed.cutout.vertices,
         "a priming creeper is rescaled"
     );
 
     let wobble = 1.0 + (swelling * 100.0).sin() * swelling * 0.01;
     let expected_s = 1.4 * wobble;
-    let (calm_min, calm_max) = textured_mesh_extents(&calm);
-    let (primed_min, primed_max) = textured_mesh_extents(&primed);
+    let (calm_min, calm_max) = textured_mesh_extents(&calm.cutout);
+    let (primed_min, primed_max) = textured_mesh_extents(&primed.cutout);
     let ratio = (primed_max[0] - primed_min[0]) / (calm_max[0] - calm_min[0]);
     assert!(
         (ratio - expected_s).abs() < 1.0e-4,
         "X extent ratio {ratio} should match swell factor {expected_s}"
     );
+}
+
+fn assert_creeper_base_submission_matches_vanilla(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_cutout.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_translucent.vertices.is_empty());
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_translucent
+        .vertices
+        .is_empty());
+    assert!(meshes.scroll.vertices.is_empty());
+
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.texture, CREEPER_TEXTURE_REF);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.transform, creeper_model_root_transform(instance));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
 }
 
 fn creeper_texture_images() -> Vec<EntityModelTextureImage> {
