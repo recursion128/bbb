@@ -2513,13 +2513,14 @@ When an agent does any of the following, update this file in the same slice:
       rising edge and projects `isDancing` / `isSpinning` / `spinningProgress`. The textured base
       layer draws the `textures/entity/allay/allay.png` atlas reference into the translucent mesh
       (`RenderTypes::entityTranslucent`) while preserving explicit `entityTranslucent`
-      submission metadata for texture, white tint, root transform, and `order(0)`;
-      it is hand-emitted through the same animated body→arm/wing hierarchy as the colored path.
+      submission metadata for texture, white tint, root transform, `order(0)`, the projected
+      full-bright block-light input, and hurt/white overlay metadata before folding; it uses the
+      same animated body→arm/wing hierarchy as the colored path.
       The held-item arm poses (`holdingAnimationProgress` scaling
       the arm roll to zero and adding the `±0.27925268` arm yaw plus the flying-lerped arm pitch
       and held item) remain unsupported; the constant full-bright `getBlockLightLevel` (→ 15) glow IS
       now applied (`entity_light_coords` forces the packed block light to 15 for the allay type).
-      Lighting and overlay remain unsupported
+      Broader lighting presentation remains unsupported
     - strider entities are wired end to end on both render paths: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `129` to the real `AdultStriderModel` /
       `BabyStriderModel`, replacing the former horse-quadruped fallback, keyed off the synced
