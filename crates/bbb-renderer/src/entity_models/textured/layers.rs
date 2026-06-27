@@ -96,6 +96,9 @@ pub(in crate::entity_models) enum EntityModelLayerRenderType {
     EntityCutoutZOffset,
     /// Vanilla `RenderTypes.entityTranslucent(texture)`.
     EntityTranslucent,
+    /// Vanilla `RenderTypes.entityTranslucentCullItemTarget(texture)`, used by
+    /// `LivingEntityRenderer.getRenderType` for invisible entities still visible to this client.
+    EntityTranslucentCullItemTarget,
     /// Vanilla eyes/emissive render type (`EyesLayer` / translucent emissive overlays).
     Eyes,
     /// Vanilla `RenderTypes.breezeWind(texture, u, v)`.
@@ -117,7 +120,7 @@ pub(in crate::entity_models) enum EntityModelLayerRenderBucket {
 
 impl EntityModelLayerRenderType {
     #[cfg(test)]
-    pub(in crate::entity_models) const ALL: [Self; 11] = [
+    pub(in crate::entity_models) const ALL: [Self; 12] = [
         Self::EntitySolid,
         Self::ArmorCutoutNoCull,
         Self::ArmorTranslucent,
@@ -125,6 +128,7 @@ impl EntityModelLayerRenderType {
         Self::EntityCutoutCull,
         Self::EntityCutoutZOffset,
         Self::EntityTranslucent,
+        Self::EntityTranslucentCullItemTarget,
         Self::Eyes,
         Self::BreezeWind,
         Self::EnergySwirl,
@@ -138,9 +142,9 @@ impl EntityModelLayerRenderType {
             | Self::EntityCutout
             | Self::EntityCutoutCull
             | Self::EntityCutoutZOffset => EntityModelLayerRenderBucket::Cutout,
-            Self::ArmorTranslucent | Self::EntityTranslucent => {
-                EntityModelLayerRenderBucket::Translucent
-            }
+            Self::ArmorTranslucent
+            | Self::EntityTranslucent
+            | Self::EntityTranslucentCullItemTarget => EntityModelLayerRenderBucket::Translucent,
             Self::Eyes => EntityModelLayerRenderBucket::Eyes,
             Self::BreezeWind | Self::EndCrystalBeam => EntityModelLayerRenderBucket::Scroll,
             Self::EnergySwirl => EntityModelLayerRenderBucket::AdditiveScroll,
@@ -157,6 +161,7 @@ impl EntityModelLayerRenderType {
             Self::EntityCutoutCull => "entityCutoutCull",
             Self::EntityCutoutZOffset => "entityCutoutZOffset",
             Self::EntityTranslucent => "entityTranslucent",
+            Self::EntityTranslucentCullItemTarget => "entityTranslucentCullItemTarget",
             Self::Eyes => "eyes",
             Self::BreezeWind => "breezeWind",
             Self::EnergySwirl => "energySwirl",

@@ -153,6 +153,7 @@ pub(super) struct EntityModelTexturedMeshes {
     pub(super) submissions: Vec<EntityModelRenderSubmission>,
     current_submission_light: [f32; 2],
     current_submission_overlay: [f32; 2],
+    current_force_transparent: bool,
 }
 
 impl EntityModelTexturedMeshes {
@@ -170,6 +171,7 @@ impl EntityModelTexturedMeshes {
             submissions: Vec::new(),
             current_submission_light: ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
             current_submission_overlay: ENTITY_VERTEX_NO_OVERLAY,
+            current_force_transparent: false,
         }
     }
 
@@ -222,6 +224,8 @@ impl EntityModelTexturedMeshes {
     fn set_current_submission_state(&mut self, instance: EntityModelInstance) {
         self.current_submission_light = instance.render_state.shader_light();
         self.current_submission_overlay = instance.render_state.overlay_coords();
+        self.current_force_transparent =
+            instance.render_state.invisible && !instance.render_state.invisible_to_player;
     }
 
     fn record_submission(
@@ -336,7 +340,7 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
 ) -> EntityModelTexturedMeshes {
     let mut meshes = EntityModelTexturedMeshes::new();
     for instance in instances {
-        if instance.render_state.invisible {
+        if instance.render_state.invisible && instance.render_state.invisible_to_player {
             continue;
         }
         meshes.set_current_submission_state(*instance);
@@ -483,6 +487,9 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
                 }
                 _ => {}
             }
+        }
+        if meshes.current_force_transparent {
+            continue;
         }
         // The charged-creeper and powered-wither energy swirls are additive scrolling overlays layered
         // on top of the base model (already emitted by the shared dispatch), so they run regardless of
@@ -924,7 +931,10 @@ fn render_textured_root_pass(
     pass: EntityModelLayerPass,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    let submit = textured_layer_submission(pass, transform);
+    if meshes.current_force_transparent && !layer_pass_is_base(pass) {
+        return;
+    }
+    let submit = textured_layer_submission(meshes, pass, transform);
     render_textured_submission(meshes, submit, atlas, |mesh, entry| {
         root.render_textured(
             mesh,
@@ -956,13 +966,24 @@ fn no_overlay_submission(
 }
 
 fn textured_layer_submission(
+    meshes: &EntityModelTexturedMeshes,
     pass: EntityModelLayerPass,
     transform: Mat4,
 ) -> EntityModelSubmissionEmit {
+    let (render_type, tint) = if meshes.current_force_transparent && layer_pass_is_base(pass) {
+        let mut tint = pass.tint;
+        tint[3] *= 38.0 / 255.0;
+        (
+            EntityModelLayerRenderType::EntityTranslucentCullItemTarget,
+            tint,
+        )
+    } else {
+        (pass.render_type, pass.tint)
+    };
     let submit = EntityModelSubmissionEmit::new(
-        pass.render_type,
+        render_type,
         pass.texture,
-        pass.tint,
+        tint,
         transform,
         pass.order,
         pass.submit_sequence,
@@ -972,6 +993,10 @@ fn textured_layer_submission(
     } else {
         submit
     }
+}
+
+fn layer_pass_is_base(pass: EntityModelLayerPass) -> bool {
+    pass.order == 0 && pass.submit_sequence == 0
 }
 
 fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
@@ -1007,7 +1032,10 @@ pub(in crate::entity_models) fn render_textured_layers<M: EntityModel>(
         match pass.visibility {
             // A part-subset emissive overlay (vanilla `retainExactParts`): render only its named parts.
             layers::EntityModelLayerVisibility::RetainedParts(parts) => {
-                let submit = textured_layer_submission(pass, transform);
+                if meshes.current_force_transparent && !layer_pass_is_base(pass) {
+                    continue;
+                }
+                let submit = textured_layer_submission(meshes, pass, transform);
                 render_textured_submission(meshes, submit, atlas, |mesh, entry| {
                     model.root().render_textured_retained(
                         mesh,

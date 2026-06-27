@@ -128,6 +128,11 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             EntityModelLayerRenderBucket::Translucent,
         ),
         (
+            EntityModelLayerRenderType::EntityTranslucentCullItemTarget,
+            "entityTranslucentCullItemTarget",
+            EntityModelLayerRenderBucket::Translucent,
+        ),
+        (
             EntityModelLayerRenderType::Eyes,
             "eyes",
             EntityModelLayerRenderBucket::Eyes,

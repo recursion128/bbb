@@ -74,6 +74,51 @@ fn wolf_textured_mesh_uses_vanilla_uvs_and_collar_tint() {
     // model in both paths, so no body and no collar layer is emitted.
     assert_eq!(invisible_tame.cutout.cutout_faces, 0);
     assert!(invisible_tame.cutout.vertices.is_empty());
+
+    // Vanilla `LivingEntityRenderer.getRenderType`: an invisible wolf that remains visible to this
+    // client submits only the base body as `entityTranslucentCullItemTarget` with the
+    // force-transparent `0x26ffffff` alpha. `WolfCollarLayer` still gates on `state.isInvisible`, so
+    // the tame collar is skipped.
+    let self_visible_invisible = invisible
+        .with_invisible_to_player(false)
+        .with_light_coords((6_u32 << 4) | (8_u32 << 20))
+        .with_has_red_overlay(true);
+    let self_visible = entity_model_textured_meshes(&[self_visible_invisible], &atlas);
+    assert_eq!(self_visible.submissions.len(), 1);
+    let submit = self_visible.submissions[0];
+    assert_eq!(
+        submit.render_type,
+        EntityModelLayerRenderType::EntityTranslucentCullItemTarget
+    );
+    assert_eq!(
+        submit.render_type.vanilla_name(),
+        "entityTranslucentCullItemTarget"
+    );
+    assert_eq!(submit.texture, WOLF_TAME_TEXTURE_REF);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 38.0 / 255.0]);
+    assert_eq!(
+        submit.transform,
+        entity_model_root_transform(self_visible_invisible)
+    );
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert_eq!(
+        submit.light,
+        self_visible_invisible.render_state.shader_light()
+    );
+    assert_eq!(
+        submit.overlay,
+        self_visible_invisible.render_state.overlay_coords()
+    );
+    assert!(self_visible.cutout.vertices.is_empty());
+    assert_eq!(self_visible.translucent.cutout_faces, 66);
+    assert_eq!(self_visible.translucent.vertices.len(), 264);
+    assert!(self_visible
+        .translucent
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == submit.tint
+            && vertex.light == submit.light
+            && vertex.overlay == submit.overlay));
 }
 
 #[test]

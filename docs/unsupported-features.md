@@ -343,10 +343,14 @@ When an agent does any of the following, update this file in the same slice:
     - `isInvisible` is now projected uniformly into `EntityRenderState.invisible`
       for every entity (vanilla `LivingEntityRenderer.isBodyVisible`): a
       normally-invisible entity (Invisibility effect / `setInvisible`) skips the
-      whole model — no body and no layers — in both the colored and textured
-      render paths, matching vanilla's null body `getRenderType` plus the
-      `isInvisible` self-check in the overlay layers. The spectator-translucent and
-      glowing-outline cases remain deferred under the `outlineColor` slot.
+      whole model — no body and no layers — for a client that cannot see it,
+      matching vanilla's null body `getRenderType` plus the `isInvisible`
+      self-check in the overlay layers. The texture-backed
+      `isInvisible && !isInvisibleToPlayer` branch now records the base body as
+      `entityTranslucentCullItemTarget` with the vanilla `0x26ffffff`
+      force-transparent alpha while invisible-gated layers still skip. Colored-path
+      force-transparent output and glowing-outline cases remain deferred under the
+      `outlineColor` slot.
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
       proportions applied in model `setupAnim`, distinct from the now-projected
@@ -980,7 +984,8 @@ When an agent does any of the following, update this file in the same slice:
       progress (packed lighting and the hurt red overlay are now applied to every
       textured entity pass)
     - implement invisible glowing outline wool rendering
-    - implement base-model invisibility/outline handling
+    - implement colored-path force-transparent output and remaining base-model
+      outline handling
   - Finish wolf presentation parity:
     - registry-driven wolf variants are DONE: the synced `Wolf.DATA_VARIANT_ID`
       (index 23) `Holder<WolfVariant>` is resolved (dynamic `wolf_variant`
@@ -990,8 +995,8 @@ When an agent does any of the following, update this file in the same slice:
       rusty/woods/chestnut/striped) × wild/tame/angry × adult/baby
       (`bee[...]`→`wolf_<coat>[_tame|_angry][_baby].png`), the 48 new biome faces
       joining the master atlas array (→359)
-    - add armor, head-shake/begging tilt, base-model
-      invisibility/outline handling, the white overlay, and remaining
+    - add armor, head-shake/begging tilt, colored-path force-transparent /
+      outline presentation, the white overlay, and remaining
       render-state extraction parity (sitting/head/tail/walk pose, wet shade
       tint, water-shake roll pose, packed lighting, and the hurt red overlay are now applied)
   - Implement vanilla dropped-item follow-up rendering:
@@ -1018,7 +1023,8 @@ When an agent does any of the following, update this file in the same slice:
       metadata alongside the existing mesh buckets: `render_type`
       distinguishes `entitySolid`, `armorCutoutNoCull`, `armorTranslucent`,
       `entityCutout`, `entityCutoutCull`,
-      `entityCutoutZOffset`, `entityTranslucent`, `Eyes`,
+      `entityCutoutZOffset`, `entityTranslucent`,
+      `entityTranslucentCullItemTarget`, `Eyes`,
       `breezeWind`, `energySwirl`, and `end_crystal_beam`; `order` mirrors
       `SubmitNodeCollector.order(n)`; `submit_sequence` preserves
       same-order layer order; and `light` / `overlay` preserve per-submit
@@ -1033,9 +1039,14 @@ When an agent does any of the following, update this file in the same slice:
       no-overlay for `WitherSkullRenderer` without clearing the Wither boss body overlay.
       The render-type expression is pinned by
       vanilla-name and mesh-bucket tests, so `entityCutout`,
-      `entityCutoutCull`, `entityCutoutZOffset`, `Eyes`, `breezeWind`, and
+      `entityCutoutCull`, `entityCutoutZOffset`, `entityTranslucent`,
+      `entityTranslucentCullItemTarget`, `Eyes`, `breezeWind`, and
       `energySwirl` stay distinct at the submission boundary even when the
       current backend can fold compatible output into shared mesh buffers.
+      Texture-backed invisible-but-visible-to-client living base bodies now
+      override their base submission to `entityTranslucentCullItemTarget` with
+      the vanilla `38/255` alpha before folding into the translucent mesh; layer
+      passes that vanilla gates on `state.isInvisible` still do not submit.
       `breezeWind` / `energySwirl` residual emits now use a shared scrolled
       submission helper before folding into the scroll mesh buckets, with
       missing-atlas tests pinning that submission metadata is recorded before
@@ -1537,10 +1548,12 @@ When an agent does any of the following, update this file in the same slice:
       projected from entity event `10` and the canonical `eatAnimationTick`
       countdown into the base, wool, and undercoat head part, including the
       non-eating `Sheep.getHeadEatAngleScale` head-look fallback through the
-      shared projection (`getXRot(partialTick) * PI/180` while not eating);
-      invisible glowing outline wool rendering, base-model invisibility/outline
-      handling, lighting, overlay, and remaining render-state extraction remain
-      unsupported
+      shared projection (`getXRot(partialTick) * PI/180` while not eating), and
+      the texture-backed invisible-but-visible-to-client base body branch
+      (`entityTranslucentCullItemTarget`, `38/255` alpha, base order `(0,0)`)
+      while wool/undercoat layers remain skipped by `state.isInvisible`;
+      invisible glowing outline wool rendering, colored-path force-transparent /
+      outline handling, and remaining render-state extraction remain unsupported
     - wolf entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AdultWolfModel`, `BabyWolfModel`, and `WolfRenderer`,
       including nested real-head and tail parts plus baked baby
@@ -1592,10 +1605,12 @@ When an agent does any of the following, update this file in the same slice:
       route through `entity_model_textured_meshes`, pinning selected wild/tame/angry/variant
       base textures, adult/baby collar textures, armor/crack textures, `entityCutout` /
       `armorCutoutNoCull` / `armorTranslucent` render type names, tints, `entity_model_root_transform`,
-      light/overlay metadata, and explicit `(order, submit_sequence)` before folded cutout/translucent geometry checks.
-      Base-model
-      invisibility/outline handling, lighting, overlay, glint/foil, and remaining
-      render-state extraction remain unsupported
+      light/overlay metadata, and explicit `(order, submit_sequence)` before folded cutout/translucent geometry checks,
+      including the texture-backed invisible-but-visible-to-client base body
+      branch (`entityTranslucentCullItemTarget`, `38/255` alpha, base order
+      `(0,0)`) while the collar layer remains skipped by `state.isInvisible`.
+      Colored-path force-transparent / outline presentation, glint/foil, and
+      remaining render-state extraction remain unsupported
     - base horse entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AbstractEquineModel.createBodyMesh(CubeDeformation.NONE)`,
       `BabyHorseModel.createBabyMesh(CubeDeformation.NONE)`, `HorseModel`, and
@@ -3770,7 +3785,7 @@ When an agent does any of the following, update this file in the same slice:
     variants, equipment, skins, animation, lighting, custom/datapack cow/pig
     variant asset presentation, sheep
     head-look-pitch presentation,
-    wolf base-model invisibility/outline presentation,
+    wolf colored force-transparent / outline presentation,
     boat/raft paddle animation, damage roll, bubble wobble, and water-mask
     presentation,
     horse animation, donkey/mule animation presentation,
