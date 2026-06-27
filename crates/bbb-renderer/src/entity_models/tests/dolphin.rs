@@ -169,7 +169,10 @@ fn dolphin_textured_mesh_uses_vanilla_geometry_and_animates() {
     // The dolphin draws into the cutout mesh (`DolphinModel` uses `EntityModel`'s default
     // `entityCutout` render type). The backend folds adult/baby into the cutout mesh, but the
     // submissions keep the vanilla texture, render type, tint, transform, and default collector order.
-    let base = EntityModelInstance::dolphin(980, [0.0, 64.0, 0.0], 0.0, false);
+    let base = EntityModelInstance::dolphin(980, [0.0, 64.0, 0.0], 0.0, false)
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[base], &atlas);
     assert_eq!(meshes.submissions.len(), 1);
     let submit = meshes.submissions[0];
@@ -181,6 +184,9 @@ fn dolphin_textured_mesh_uses_vanilla_geometry_and_animates() {
         submit.transform,
         mesh_transformer_scaled_model_root_transform(base, 1.0)
     );
+    assert_eq!(submit.light, base.render_state.shader_light());
+    assert_eq!(submit.overlay, base.render_state.overlay_coords());
+    assert_ne!(submit.overlay, [0.0, 10.0]);
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
 
     // Eight cubes → 48 faces / 192 vertices, nothing on the translucent or eyes passes, white tint.
@@ -193,9 +199,17 @@ fn dolphin_textured_mesh_uses_vanilla_geometry_and_animates() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
 
     // The baby is the same geometry scaled by 0.5.
-    let baby = EntityModelInstance::dolphin(981, [0.0, 64.0, 0.0], 0.0, true);
+    let baby = EntityModelInstance::dolphin(981, [0.0, 64.0, 0.0], 0.0, true)
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
     assert_eq!(baby_meshes.submissions.len(), 1);
     let baby_submit = baby_meshes.submissions[0];
@@ -209,8 +223,16 @@ fn dolphin_textured_mesh_uses_vanilla_geometry_and_animates() {
         baby_submit.transform,
         mesh_transformer_scaled_model_root_transform(baby, 0.5)
     );
+    assert_eq!(baby_submit.light, baby.render_state.shader_light());
+    assert_eq!(baby_submit.overlay, baby.render_state.overlay_coords());
+    assert_ne!(baby_submit.overlay, [0.0, 10.0]);
     assert_eq!((baby_submit.order, baby_submit.submit_sequence), (0, 0));
     assert_eq!(baby_meshes.cutout.vertices.len(), 192);
+    assert!(baby_meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == baby_submit.light && vertex.overlay == baby_submit.overlay));
     assert_ne!(meshes.cutout.vertices, baby_meshes.cutout.vertices);
 
     // A still dolphin is static; a moving one waves its tail with age.
