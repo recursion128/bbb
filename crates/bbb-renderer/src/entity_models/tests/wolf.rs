@@ -177,6 +177,94 @@ fn self_visible_invisible_wolf_submission_survives_missing_texture_atlas_entry()
 }
 
 #[test]
+fn wolf_collar_submission_survives_missing_texture_atlas_entry() {
+    // Vanilla `WolfCollarLayer` records `RenderTypes.entityCutout(collar)` at order(1) with no
+    // overlay; missing atlas data suppresses only the folded collar geometry.
+    let images = [WOLF_TAME_TEXTURE_REF, WOLF_TAME_BABY_TEXTURE_REF]
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect::<Vec<_>>();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+
+    for (id, baby, base_texture, collar_texture) in [
+        (311, false, WOLF_TAME_TEXTURE_REF, WOLF_COLLAR_TEXTURE_REF),
+        (
+            312,
+            true,
+            WOLF_TAME_BABY_TEXTURE_REF,
+            WOLF_BABY_COLLAR_TEXTURE_REF,
+        ),
+    ] {
+        let bare = wolf_submission_probe(EntityModelInstance::wolf_state(
+            id,
+            [0.0, 64.0, 0.0],
+            0.0,
+            baby,
+            true,
+            false,
+            false,
+            None,
+        ));
+        let bare_meshes = entity_model_textured_meshes(&[bare], &atlas);
+        assert_wolf_submissions_match_vanilla(&bare_meshes, bare);
+        assert_eq!(bare_meshes.submissions[0].texture, base_texture);
+
+        let collared = wolf_submission_probe(EntityModelInstance::wolf_state(
+            id,
+            [0.0, 64.0, 0.0],
+            0.0,
+            baby,
+            true,
+            false,
+            false,
+            Some(EntityDyeColor::Yellow),
+        ));
+        let meshes = entity_model_textured_meshes(&[collared], &atlas);
+        assert_wolf_submissions_match_vanilla(&meshes, collared);
+        assert_eq!(meshes.submissions.len(), 2);
+        let base = meshes.submissions[0];
+        assert_eq!(base.texture, base_texture);
+        assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(base.transform, entity_model_root_transform(collared));
+        assert_eq!((base.order, base.submit_sequence), (0, 0));
+        assert_eq!(base.light, collared.render_state.shader_light());
+        assert_eq!(base.overlay, collared.render_state.overlay_coords());
+
+        let collar = meshes.submissions[1];
+        assert_eq!(collar.texture, collar_texture);
+        assert_eq!(collar.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(collar.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(collar.tint, EntityDyeColor::Yellow.texture_diffuse_color());
+        assert_eq!(collar.transform, entity_model_root_transform(collared));
+        assert_eq!((collar.order, collar.submit_sequence), (1, 1));
+        assert_eq!(collar.light, collared.render_state.shader_light());
+        assert_eq!(collar.overlay, [0.0, 10.0]);
+        assert_ne!(collar.overlay, collared.render_state.overlay_coords());
+
+        assert_eq!(
+            meshes.cutout.vertices,
+            bare_meshes.cutout.vertices,
+            "missing {path} suppresses only folded collar geometry",
+            path = collar_texture.path
+        );
+        assert_eq!(meshes.cutout.indices, bare_meshes.cutout.indices);
+        assert!(meshes
+            .cutout
+            .vertices
+            .iter()
+            .all(|vertex| vertex.light == base.light && vertex.overlay == base.overlay));
+        assert!(meshes.translucent.vertices.is_empty());
+        assert!(meshes.eyes.vertices.is_empty());
+    }
+}
+
+#[test]
 fn wolf_cubes_match_vanilla_26_1_body_layers() {
     // Vanilla `AdultWolfModel.createBodyLayer` (atlas 64×32). Each unified cube carries the colored
     // tint (`WOLF_GRAY`) and the textured UV; the right legs reuse the left leg's `texOffs(0, 18)`

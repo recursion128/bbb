@@ -1631,9 +1631,10 @@ When an agent does any of the following, update this file in the same slice:
       base entity light plus hurt/white overlay versus collar/armor/crack
       `OverlayTexture.NO_OVERLAY`, and explicit `(order, submit_sequence)` before
       folded cutout/translucent light/overlay geometry checks; missing-atlas coverage now pins that
-      the medium-damage `armorTranslucent` crack submit is still recorded after the base armor
-      layers when only the crack texture is absent, suppressing only folded translucent crack geometry,
-      including the texture-backed invisible-but-visible-to-client base body
+      adult/baby collar submits are still recorded without `wolf_collar*.png`, suppressing only
+      folded collar geometry, and that the medium-damage `armorTranslucent` crack submit is still
+      recorded after the base armor layers when only the crack texture is absent, suppressing only
+      folded translucent crack geometry, including the texture-backed invisible-but-visible-to-client base body
       branch (`entityTranslucentCullItemTarget`, `38/255` alpha, base order
       `(0,0)`) while the collar layer remains skipped by `state.isInvisible`;
       missing-atlas coverage pins that this force-transparent base submit is still recorded when
