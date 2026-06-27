@@ -65,6 +65,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     DrownedOuter,
     ZombieVillagerBase,
     PiglinBase,
+    RabbitBase,
     IllagerBase,
     BlazeBase,
     EndermiteBase,
@@ -1083,7 +1084,9 @@ pub(in crate::entity_models) fn rabbit_textured_layer_passes(
         EntityModelLayerRenderType::EntityCutout,
         rabbit_texture_ref(variant, baby, toast),
         [1.0, 1.0, 1.0, 1.0],
-    )]
+    )
+    .with_kind(EntityModelLayerKind::RabbitBase)
+    .with_order(0, 0)]
 }
 
 pub(in crate::entity_models) fn feline_textured_layer_passes(

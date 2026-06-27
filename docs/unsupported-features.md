@@ -3792,7 +3792,10 @@ When an agent does any of the following, update this file in the same slice:
       the native scene reads `DATA_TYPE_ID` (18, int) and `Rabbit.Variant.byId` (sparse; EVIL = 99 → the
       `caerbannog` texture) selects the colour, crossed with the age and the `Toast` custom-name override
       (`checkMagicName(entity, "Toast")` → `rabbit_toast`/`_baby`), matching
-      `RabbitRenderer.getTextureLocation` — sixteen textures
+      `RabbitRenderer.getTextureLocation` — sixteen textures. Adult and baby textured regressions now pin
+      the `RabbitBase` pass identity, vanilla `entityCutout` render type/name, white tint, root transform,
+      `(order, submit_sequence) == (0, 0)`, and the `AgeableMobRenderer` / `LivingEntityRenderer`
+      `lightCoords` plus hurt/white overlay metadata
     - minecart entities as renderer-owned vanilla 26.1
       `MinecartModel.createBodyLayer()` geometry: the `texOffs(0, 10)` 20x16x2 floor
       panel laid flat plus the four `texOffs(0, 0)` 16x8x2 wall panels boxed in, on a
