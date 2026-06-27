@@ -281,6 +281,83 @@ fn end_crystal_beam_records_vanilla_submission_and_geometry() {
 }
 
 #[test]
+fn end_crystal_beam_submission_survives_missing_beam_texture_atlas_entry() {
+    // Vanilla `EndCrystalRenderer.submit` records the beam via `submitCrystalBeams` after the body;
+    // missing beam texture data suppresses only the backend's folded scroll geometry.
+    let images = vec![blank_texture(END_CRYSTAL_TEXTURE_REF)];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let age = 30.0;
+    let position = [10.0, 64.0, -3.0];
+    let beam_offset = [4.5, 3.5, -6.5];
+    let instance = EntityModelInstance::end_crystal(453, position, 0.0)
+        .with_age_in_ticks(age)
+        .with_end_crystal_beam(Some(EndCrystalBeamRenderState { beam_offset }))
+        .with_light_coords((10_u32 << 4) | (6_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 2);
+    let body_submit = meshes.submissions[0];
+    assert_eq!(
+        body_submit.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(body_submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(body_submit.texture, END_CRYSTAL_TEXTURE_REF);
+    assert_eq!(body_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        body_submit.transform,
+        end_crystal_model_root_transform(instance)
+    );
+    assert_eq!((body_submit.order, body_submit.submit_sequence), (0, 0));
+    assert_eq!(body_submit.light, instance.render_state.shader_light());
+    assert_eq!(body_submit.overlay, [0.0, 10.0]);
+    assert_ne!(body_submit.overlay, instance.render_state.overlay_coords());
+    assert_eq!(meshes.cutout.vertices.len(), 96);
+
+    let beam_submit = meshes.submissions[1];
+    assert_eq!(
+        beam_submit.render_type,
+        EntityModelLayerRenderType::EndCrystalBeam
+    );
+    assert_eq!(beam_submit.render_type.vanilla_name(), "end_crystal_beam");
+    assert_eq!(beam_submit.texture, END_CRYSTAL_BEAM_TEXTURE_REF);
+    assert_eq!(beam_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((beam_submit.order, beam_submit.submit_sequence), (0, 1));
+    assert_eq!(beam_submit.light, body_submit.light);
+    assert_eq!(beam_submit.overlay, [0.0, 10.0]);
+    assert_ne!(beam_submit.overlay, instance.render_state.overlay_coords());
+    let origin = Vec3::from_array(position) + Vec3::from_array(beam_offset) + Vec3::Y * 2.0;
+    assert_close3(
+        beam_submit
+            .transform
+            .transform_point3(Vec3::ZERO)
+            .to_array(),
+        origin.to_array(),
+    );
+    let delta = Vec3::new(
+        -beam_offset[0],
+        -beam_offset[1] + end_crystal_get_y(age),
+        -beam_offset[2],
+    );
+    assert_close3(
+        beam_submit
+            .transform
+            .transform_vector3(Vec3::Z)
+            .normalize()
+            .to_array(),
+        delta.normalize().to_array(),
+    );
+    assert!(
+        meshes.scroll.vertices.is_empty(),
+        "missing end_crystal_beam.png suppresses only folded beam geometry"
+    );
+    assert!(meshes.scroll.indices.is_empty());
+}
+
+#[test]
 fn end_crystal_hides_base_when_shows_bottom_false() {
     // Vanilla `EndCrystalModel.setupAnim`: `base.visible = showsBottom`. The default instance
     // shows the base (vanilla default `true`); clearing `showsBottom` drops the base slab

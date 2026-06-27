@@ -1082,8 +1082,8 @@ When an agent does any of the following, update this file in the same slice:
       sniffer base submits, and the
       Guardian beam / End Crystal body+beam / Ender Dragon body+eyes+beam paths are covered by source-verified
       texture/render-type/tint/transform/order tests, including the Guardian
-      beam missing-atlas case where submission metadata survives while folded
-      geometry is suppressed.
+      and End Crystal beam missing-atlas cases where submission metadata survives
+      while folded geometry is suppressed.
     - dropped item entities as camera-facing item-icon billboards from:
       - canonical item entity stack metadata
       - the native item atlas
@@ -3338,7 +3338,8 @@ When an agent does any of the following, update this file in the same slice:
       `RenderTypes.endCrystalBeam(textures/entity/end_crystal/end_crystal_beam.png)` at order `0`,
       sequence `1` with vanilla light coords and `OverlayTexture.NO_OVERLAY` before folding the
       eight-quad black/white prism into the tiled scroll mesh with matching vertex light/no-overlay
-      metadata.
+      metadata; missing-atlas coverage pins that the beam submission survives when
+      `end_crystal_beam.png` is absent while only folded scroll geometry is suppressed.
     - evoker fangs entities as renderer-owned vanilla 26.1 `EvokerFangsModel.createBodyLayer()` geometry on
       the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `47` to the new
       `EntityModelKind::EvokerFangs`, replacing the former placeholder bounds box. The static closed-jaw
