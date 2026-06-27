@@ -550,7 +550,17 @@ fn frog_textured_render_matches_vanilla_renderer() {
         (FrogModelVariant::Warm, FROG_WARM_TEXTURE_REF),
         (FrogModelVariant::Cold, FROG_COLD_TEXTURE_REF),
     ] {
-        assert_eq!(frog_textured_layer_passes(variant)[0].texture, texture);
+        let passes = frog_textured_layer_passes(variant);
+        assert_eq!(passes.len(), 1);
+        assert_eq!(
+            passes[0].render_type,
+            EntityModelLayerRenderType::EntityCutout
+        );
+        assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
+        assert_eq!(passes[0].kind, EntityModelLayerKind::FrogBase);
+        assert_eq!(passes[0].texture, texture);
+        assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
         assert_eq!(
             EntityModelKind::Frog { variant }.vanilla_texture_ref(),
             Some(texture)
@@ -575,7 +585,10 @@ fn frog_textured_render_matches_vanilla_renderer() {
         })
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let instance = EntityModelInstance::frog(950, [0.0, 64.0, 0.0], 0.0, FrogModelVariant::Warm);
+    let instance = EntityModelInstance::frog(950, [0.0, 64.0, 0.0], 0.0, FrogModelVariant::Warm)
+        .with_light_coords((8_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
@@ -587,6 +600,9 @@ fn frog_textured_render_matches_vanilla_renderer() {
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(submit.transform, entity_model_root_transform(instance));
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, instance.render_state.overlay_coords());
+    assert_ne!(submit.overlay, [0.0, 10.0]);
     let mesh = &meshes.cutout;
 
     assert!(

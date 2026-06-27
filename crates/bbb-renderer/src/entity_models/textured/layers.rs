@@ -36,6 +36,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     LeashKnotBase,
     CopperGolemBase,
     CopperGolemEyes,
+    FrogBase,
     GoatBase,
     HoglinBase,
     LlamaSpitBase,
@@ -1228,7 +1229,9 @@ pub(in crate::entity_models) fn frog_textured_layer_passes(
         EntityModelLayerRenderType::EntityCutout,
         frog_texture_ref(variant),
         [1.0, 1.0, 1.0, 1.0],
-    )]
+    )
+    .with_kind(EntityModelLayerKind::FrogBase)
+    .with_order(0, 0)]
 }
 
 /// Vanilla `WardenRenderer`'s pulsating-spots `alphaFunction`: `max(0, cos(ageInTicks · 0.045 +
