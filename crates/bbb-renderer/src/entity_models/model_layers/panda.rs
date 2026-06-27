@@ -4,6 +4,9 @@ use super::{
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_PANDA: &str = "minecraft:panda#main";
+pub(in crate::entity_models) const MODEL_LAYER_PANDA_BABY: &str = "minecraft:panda_baby#main";
+
 // Vanilla 26.1 `PandaModel.createBodyLayer` (atlas 64×64). `PandaModel extends QuadrupedModel`, so the
 // six root parts follow the quadruped layout — `head` (carrying the muzzle and two ears), the pitched
 // `body`, and the four legs (all sharing one 6×9×6 box) — and the base `QuadrupedModel.setupAnim` turns

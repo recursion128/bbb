@@ -3033,7 +3033,8 @@ When an agent does any of the following, update this file in the same slice:
       `minecraft:frog_variant` registry (static `FrogVariants.bootstrap` fallback
       temperate=0/warm=1/cold=2), so `FrogRenderer.getTextureLocation`'s per-variant asset is matched;
       textured regressions now pin the `FrogBase` pass identity, vanilla `entityCutout` render
-      type/name, white tint, root transform, `(order, submit_sequence) == (0, 0)`, and the
+      type/name, vanilla `ModelLayers.FROG` (`minecraft:frog#main`), white tint, root transform,
+      `(order, submit_sequence) == (0, 0)`, and the
       `MobRenderer` / `LivingEntityRenderer` `lightCoords` plus hurt/white overlay metadata, with
       folded cutout vertices inheriting the same metadata;
       only the tongue prey-targeting stays deferred
@@ -3235,8 +3236,9 @@ When an agent does any of the following, update this file in the same slice:
       `body → tail/head` + four-leg pass. The base texture is now bound on the textured path
       (`ARMADILLO_TEXTURE_REF` / `ARMADILLO_BABY_TEXTURE_REF`), the primary now-wired path, with nothing
       left deferred on the texture side. Adult and baby textured regressions now pin the `ArmadilloBase`
-      pass identity, vanilla `entityCutout` render type/name, white tint, root transform,
-      `(order, submit_sequence) == (0, 0)`, and the `AgeableMobRenderer` / `LivingEntityRenderer`
+      pass identity, vanilla `entityCutout` render type/name, vanilla `ModelLayers.ARMADILLO` /
+      `ARMADILLO_BABY` (`minecraft:armadillo#main` / `minecraft:armadillo_baby#main`), white tint, root
+      transform, `(order, submit_sequence) == (0, 0)`, and the `AgeableMobRenderer` / `LivingEntityRenderer`
       `lightCoords` plus hurt/white overlay metadata. The colored debug path stays as a fallback (it approximates the
       armored body/legs with one brown tint and the soft head/ears/tail with a tan tint)
     - axolotl entities as renderer-owned vanilla 26.1 `AdultAxolotlModel` /
@@ -3268,7 +3270,9 @@ When an agent does any of the following, update this file in the same slice:
       `Axolotl.Variant.byId` selects the colour, crossed with the age, matching
       `AxolotlRenderer.TEXTURE_BY_TYPE` (`axolotl_<name>.png` / `axolotl_<name>_baby.png`) — ten textures.
       Adult and baby textured regressions now pin the `AxolotlBase` pass identity, vanilla
-      `entityCutout` render type/name, white tint, root transform, `(order, submit_sequence) == (0, 0)`,
+      `entityCutout` render type/name, vanilla `ModelLayers.AXOLOTL` / `AXOLOTL_BABY`
+      (`minecraft:axolotl#main` / `minecraft:axolotl_baby#main`), white tint, root transform,
+      `(order, submit_sequence) == (0, 0)`,
       and the `AgeableMobRenderer` / `LivingEntityRenderer` `lightCoords` plus hurt/white overlay metadata,
       with folded cutout vertices inheriting that metadata
     - tadpole entities as renderer-owned vanilla 26.1 `TadpoleModel.createBodyLayer()` geometry on the
@@ -3951,7 +3955,8 @@ When an agent does any of the following, update this file in the same slice:
       native scene reads `DATA_TYPE_ID` (18, int) and `Fox.Variant.byId` selects red/snow, crossed
       with the age (`fox`/`fox_baby`) and the projected `fox_is_sleeping` flag (`fox_sleep`/
       `fox_snow_sleep` and their `_baby` cells) — eight textures total. Adult and baby textured regressions
-      now pin the `FoxBase` pass identity, vanilla `entityCutout` render type/name, white tint, root
+      now pin the `FoxBase` pass identity, vanilla `entityCutout` render type/name, vanilla
+      `ModelLayers.FOX` / `FOX_BABY` (`minecraft:fox#main` / `minecraft:fox_baby#main`), white tint, root
       transform including the pounce / faceplant root-pitch branch, `(order, submit_sequence) == (0, 0)`,
       and the `AgeableMobRenderer` / `LivingEntityRenderer` `lightCoords` plus hurt/white overlay metadata.
       The held-item layer is now
@@ -3993,7 +3998,9 @@ When an agent does any of the following, update this file in the same slice:
       (23, `DyeColor.byId`, default RED); the ocelot never carries one. This makes the feline texture set a
       26-entry matrix (eleven breeds × adult/baby + ocelot × adult/baby + the collar × adult/baby).
       Textured regressions now pin the `FelineBase` and `FelineCollar` pass identities, vanilla
-      `entityCutout` render type/name, base white tint, collar dye tint, adult-cat scale transform,
+      `entityCutout` render type/name, vanilla base model layers (`CAT`, `CAT_BABY`, `OCELOT`,
+      `OCELOT_BABY`) and collar layers (`CAT_COLLAR`, `CAT_BABY_COLLAR`), base white tint, collar dye tint,
+      adult-cat scale transform,
       `(order, submit_sequence) == (0, 0)` for base and `(1, 1)` for `CatCollarLayer`, and
       base `AgeableMobRenderer` / `LivingEntityRenderer` light plus hurt/white overlay versus
       `CatCollarLayer` entity light with zero-white overlay via
@@ -4019,7 +4026,9 @@ When an agent does any of the following, update this file in the same slice:
       (index 20 INT, `ByIdMap` CLAMP, `Red` default) which binds `mooshroom_{red,brown}[_baby].png` on
       the textured path (the two brown faces join the master atlas array → 361); tests now pin all
       red/brown adult/baby body submissions with the `MooshroomBase` pass identity, vanilla `entityCutout`
-      render type/name, white tint, the shared living root transform, `(order, submit_sequence) == (0, 0)`,
+      render type/name, vanilla `ModelLayers.MOOSHROOM` / `MOOSHROOM_BABY`
+      (`minecraft:mooshroom#main` / `minecraft:mooshroom_baby#main`), white tint, the shared living root
+      transform, `(order, submit_sequence) == (0, 0)`,
       and `AgeableMobRenderer` / `LivingEntityRenderer` `lightCoords` plus hurt/white overlay metadata before
       comparing the folded cow geometry.
       The adult-only
@@ -4068,7 +4077,8 @@ When an agent does any of the following, update this file in the same slice:
       the inconsistent vanilla baby filenames `panda_baby.png` / `lazy_panda_baby.png` / … preserved) off
       it, bumping the master `ENTITY_MODEL_TEXTURE_REFS` array to 272. Adult and baby textured regressions
       now pin the `PandaBase` pass identity, vanilla `entityCutout` render type/name, white tint, root
-      transform, `(order, submit_sequence) == (0, 0)`, and the `AgeableMobRenderer` /
+      transform, vanilla `ModelLayers.PANDA` / `PANDA_BABY`
+      (`minecraft:panda#main` / `minecraft:panda_baby#main`), `(order, submit_sequence) == (0, 0)`, and the `AgeableMobRenderer` /
       `LivingEntityRenderer` `lightCoords` plus hurt/white overlay metadata. Nothing on the panda base path stays
       deferred. `PandaHoldsItemLayer` is also covered:
       native projects `PandaRenderState.isEating` from synced `EAT_COUNTER` int id 20, `isSitting` from
@@ -4110,7 +4120,8 @@ When an agent does any of the following, update this file in the same slice:
       `caerbannog` texture) selects the colour, crossed with the age and the `Toast` custom-name override
       (`checkMagicName(entity, "Toast")` → `rabbit_toast`/`_baby`), matching
       `RabbitRenderer.getTextureLocation` — sixteen textures. Adult and baby textured regressions now pin
-      the `RabbitBase` pass identity, vanilla `entityCutout` render type/name, white tint, root transform,
+      the `RabbitBase` pass identity, vanilla `entityCutout` render type/name, vanilla
+      `ModelLayers.RABBIT` / `RABBIT_BABY` (`minecraft:rabbit#main` / `minecraft:rabbit_baby#main`), white tint, root transform,
       `(order, submit_sequence) == (0, 0)`, and the `AgeableMobRenderer` / `LivingEntityRenderer`
       `lightCoords` plus hurt/white overlay metadata
     - minecart entities as renderer-owned vanilla 26.1

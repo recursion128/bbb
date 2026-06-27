@@ -294,6 +294,9 @@ pub(in crate::entity_models) const MODEL_LAYER_WARM_COW: &str = "minecraft:warm_
 pub(in crate::entity_models) const MODEL_LAYER_WARM_COW_BABY: &str = "minecraft:warm_cow_baby#main";
 pub(in crate::entity_models) const MODEL_LAYER_COLD_COW: &str = "minecraft:cold_cow#main";
 pub(in crate::entity_models) const MODEL_LAYER_COLD_COW_BABY: &str = "minecraft:cold_cow_baby#main";
+pub(in crate::entity_models) const MODEL_LAYER_MOOSHROOM: &str = "minecraft:mooshroom#main";
+pub(in crate::entity_models) const MODEL_LAYER_MOOSHROOM_BABY: &str =
+    "minecraft:mooshroom_baby#main";
 
 /// The adult/warm/cold cow head part pose (vanilla `PartPose.offset(0, 4, -8)`).
 const ADULT_HEAD_POSE: PartPose = PartPose {

@@ -2,6 +2,13 @@ use super::{apply_head_look, limb_swing_at_rest, PartPose, FELINE_TAN, PART_POSE
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_CAT: &str = "minecraft:cat#main";
+pub(in crate::entity_models) const MODEL_LAYER_CAT_BABY: &str = "minecraft:cat_baby#main";
+pub(in crate::entity_models) const MODEL_LAYER_CAT_COLLAR: &str = "minecraft:cat#collar";
+pub(in crate::entity_models) const MODEL_LAYER_CAT_BABY_COLLAR: &str = "minecraft:cat_baby#collar";
+pub(in crate::entity_models) const MODEL_LAYER_OCELOT: &str = "minecraft:ocelot#main";
+pub(in crate::entity_models) const MODEL_LAYER_OCELOT_BABY: &str = "minecraft:ocelot_baby#main";
+
 // Vanilla 26.1 `AdultFelineModel.createBodyMesh(CubeDeformation.NONE)` (atlas 64×32), shared by the
 // ocelot (`ModelLayers.OCELOT`, unscaled) and the cat (`ModelLayers.CAT`, the same mesh scaled 0.8 by
 // `AdultCatModel.CAT_TRANSFORMER` — applied in the root transform). Eight root parts: the `head`

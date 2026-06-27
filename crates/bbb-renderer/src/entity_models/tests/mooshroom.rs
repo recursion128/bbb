@@ -121,12 +121,21 @@ fn mooshroom_textured_render_reuses_cow_geometry_with_the_mooshroom_recolor() {
         let passes = mooshroom_textured_layer_passes(baby, variant);
         assert_eq!(passes.len(), 1);
         assert_eq!(passes[0].kind, EntityModelLayerKind::MooshroomBase);
+        assert_eq!(
+            passes[0].model_layer,
+            if baby {
+                MODEL_LAYER_MOOSHROOM_BABY
+            } else {
+                MODEL_LAYER_MOOSHROOM
+            }
+        );
         assert_eq!(passes[0].texture, texture);
         assert_eq!(
             passes[0].render_type,
             EntityModelLayerRenderType::EntityCutout
         );
         assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
+        assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
         assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
         assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
     }

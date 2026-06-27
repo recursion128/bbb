@@ -8,6 +8,8 @@ use super::{PartPose, FROG_BODY, FROG_EYE, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_FROG: &str = "minecraft:frog#main";
+
 // Vanilla 26.1 `FrogModel.createBodyLayer` (atlas 48×48). The mesh root holds one `root` part at
 // `offset(0, 24, 0)` parenting `body` and the two legs; `body` parents the head (with its eye
 // chain), the `croaking_body` pouch, the tongue, and the two arms (with their hands). The looping

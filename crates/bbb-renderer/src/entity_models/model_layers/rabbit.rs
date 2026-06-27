@@ -7,6 +7,9 @@ use super::{apply_head_look, PartPose, PART_POSE_ZERO, RABBIT_BROWN};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_RABBIT: &str = "minecraft:rabbit#main";
+pub(in crate::entity_models) const MODEL_LAYER_RABBIT_BABY: &str = "minecraft:rabbit_baby#main";
+
 // Vanilla 26.1 `AdultRabbitModel.createBodyLayer` (atlas 64×64). The mesh root holds two parts: the
 // `body` (carrying the tail, head — with the two ears — and the cubeless `frontlegs` pivot) and the
 // cubeless `backlegs` pivot (carrying the two hind legs, each parenting a haunch). `RabbitModel.setupAnim`

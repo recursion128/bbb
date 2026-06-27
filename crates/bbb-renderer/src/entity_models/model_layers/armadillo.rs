@@ -7,6 +7,10 @@ use super::{PartPose, ARMADILLO_SHELL, ARMADILLO_SKIN, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_ARMADILLO: &str = "minecraft:armadillo#main";
+pub(in crate::entity_models) const MODEL_LAYER_ARMADILLO_BABY: &str =
+    "minecraft:armadillo_baby#main";
+
 // Vanilla 26.1 `AdultArmadilloModel`/`BabyArmadilloModel.createBodyLayer` (atlas 64×64). The mesh
 // root parents the body and the four legs directly (no wrapping bone); the body parents the tail
 // and the head, and the head parents the head cube and the two ear planes. The armadillo is one of

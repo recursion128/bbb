@@ -1429,13 +1429,16 @@ pub(in crate::entity_models) fn panda_textured_layer_passes(
     baby: bool,
 ) -> Vec<EntityModelLayerPass> {
     // The seven genes share one `PandaModel` / `BabyPandaModel` and differ only by texture × age.
-    vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::EntityCutout,
-        panda_texture_ref(variant, baby),
-        [1.0, 1.0, 1.0, 1.0],
-    )
-    .with_kind(EntityModelLayerKind::PandaBase)
-    .with_order(0, 0)]
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::PandaBase,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: panda_model_layer(baby),
+        texture: panda_texture_ref(variant, baby),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
 }
 
 pub(in crate::entity_models) fn axolotl_textured_layer_passes(
@@ -1443,13 +1446,16 @@ pub(in crate::entity_models) fn axolotl_textured_layer_passes(
     baby: bool,
 ) -> Vec<EntityModelLayerPass> {
     // `AxolotlRenderer.getTextureLocation` picks the colour × age cell from `TEXTURE_BY_TYPE`.
-    vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::EntityCutout,
-        axolotl_texture_ref(variant, baby),
-        [1.0, 1.0, 1.0, 1.0],
-    )
-    .with_kind(EntityModelLayerKind::AxolotlBase)
-    .with_order(0, 0)]
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::AxolotlBase,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: axolotl_model_layer(baby),
+        texture: axolotl_texture_ref(variant, baby),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
 }
 
 pub(in crate::entity_models) fn fox_textured_layer_passes(
@@ -1458,13 +1464,16 @@ pub(in crate::entity_models) fn fox_textured_layer_passes(
     sleeping: bool,
 ) -> Vec<EntityModelLayerPass> {
     // `FoxRenderer.getTextureLocation` picks the {red, snow} × {adult, baby} × {idle, sleeping} cell.
-    vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::EntityCutout,
-        fox_texture_ref(variant, baby, sleeping),
-        [1.0, 1.0, 1.0, 1.0],
-    )
-    .with_kind(EntityModelLayerKind::FoxBase)
-    .with_order(0, 0)]
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::FoxBase,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: fox_model_layer(baby),
+        texture: fox_texture_ref(variant, baby, sleeping),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
 }
 
 pub(in crate::entity_models) fn rabbit_textured_layer_passes(
@@ -1474,13 +1483,16 @@ pub(in crate::entity_models) fn rabbit_textured_layer_passes(
 ) -> Vec<EntityModelLayerPass> {
     // `RabbitRenderer.getTextureLocation` picks the colour × age cell, overridden by `toast`/
     // `toast_baby` for the `Toast` named rabbit.
-    vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::EntityCutout,
-        rabbit_texture_ref(variant, baby, toast),
-        [1.0, 1.0, 1.0, 1.0],
-    )
-    .with_kind(EntityModelLayerKind::RabbitBase)
-    .with_order(0, 0)]
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::RabbitBase,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: rabbit_model_layer(baby),
+        texture: rabbit_texture_ref(variant, baby, toast),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
 }
 
 pub(in crate::entity_models) fn feline_textured_layer_passes(
@@ -1491,20 +1503,23 @@ pub(in crate::entity_models) fn feline_textured_layer_passes(
 ) -> Vec<EntityModelLayerPass> {
     // The cat and ocelot share `AbstractFelineModel`, so the base pass differs only in which image it
     // binds: the per-breed `CatVariant` texture for cats, the `ocelot` texture otherwise.
-    let mut passes = vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::EntityCutout,
-        feline_texture_ref(cat, baby, cat_variant),
-        [1.0, 1.0, 1.0, 1.0],
-    )
-    .with_kind(EntityModelLayerKind::FelineBase)
-    .with_order(0, 0)];
+    let mut passes = vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::FelineBase,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: feline_model_layer(cat, baby),
+        texture: feline_texture_ref(cat, baby, cat_variant),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }];
     // Vanilla `CatCollarLayer`: a tame cat re-renders the mesh with `cat_collar.png` tinted by the
     // dye's diffuse color (`collar` is already gated on cat && tame; the ocelot never carries one).
     if let Some(collar) = collar {
         passes.push(EntityModelLayerPass {
             kind: EntityModelLayerKind::FelineCollar,
             render_type: EntityModelLayerRenderType::EntityCutout,
-            model_layer: "",
+            model_layer: feline_collar_model_layer(baby),
             texture: feline_collar_texture_ref(baby),
             visibility: EntityModelLayerVisibility::All,
             tint: collar.texture_diffuse_color(),
@@ -1521,13 +1536,16 @@ pub(in crate::entity_models) fn mooshroom_textured_layer_passes(
 ) -> Vec<EntityModelLayerPass> {
     // The mooshroom reuses the cow model tree (geometry drives off it), so this binds only the
     // mooshroom recolor (the red/brown variant face) over the shared cow UVs.
-    vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::EntityCutout,
-        mooshroom_texture_ref(baby, variant),
-        [1.0, 1.0, 1.0, 1.0],
-    )
-    .with_kind(EntityModelLayerKind::MooshroomBase)
-    .with_order(0, 0)]
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::MooshroomBase,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: mooshroom_model_layer(baby),
+        texture: mooshroom_texture_ref(baby, variant),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
 }
 
 pub(in crate::entity_models) fn arrow_textured_layer_passes(
@@ -1679,30 +1697,36 @@ pub(in crate::entity_models) fn armadillo_textured_layer_passes(
     baby: bool,
 ) -> Vec<EntityModelLayerPass> {
     // The adult and baby armadillo share the UV layout; the baby binds its own texture.
-    vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::EntityCutout,
-        if baby {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::ArmadilloBase,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: armadillo_model_layer(baby),
+        texture: if baby {
             ARMADILLO_BABY_TEXTURE_REF
         } else {
             ARMADILLO_TEXTURE_REF
         },
-        [1.0, 1.0, 1.0, 1.0],
-    )
-    .with_kind(EntityModelLayerKind::ArmadilloBase)
-    .with_order(0, 0)]
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
 }
 
 pub(in crate::entity_models) fn frog_textured_layer_passes(
     variant: FrogModelVariant,
 ) -> Vec<EntityModelLayerPass> {
     // The frog binds its temperature-variant base texture; all three share one `FrogModel` geometry.
-    vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::EntityCutout,
-        frog_texture_ref(variant),
-        [1.0, 1.0, 1.0, 1.0],
-    )
-    .with_kind(EntityModelLayerKind::FrogBase)
-    .with_order(0, 0)]
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::FrogBase,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: MODEL_LAYER_FROG,
+        texture: frog_texture_ref(variant),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
 }
 
 /// Vanilla `WardenRenderer`'s pulsating-spots `alphaFunction`: `max(0, cos(ageInTicks · 0.045 +
@@ -2363,6 +2387,71 @@ fn cow_model_layer(variant: CowModelVariant, baby: bool) -> &'static str {
         (CowModelVariant::Warm, true) => MODEL_LAYER_WARM_COW_BABY,
         (CowModelVariant::Cold, false) => MODEL_LAYER_COLD_COW,
         (CowModelVariant::Cold, true) => MODEL_LAYER_COLD_COW_BABY,
+    }
+}
+
+fn panda_model_layer(baby: bool) -> &'static str {
+    if baby {
+        MODEL_LAYER_PANDA_BABY
+    } else {
+        MODEL_LAYER_PANDA
+    }
+}
+
+fn axolotl_model_layer(baby: bool) -> &'static str {
+    if baby {
+        MODEL_LAYER_AXOLOTL_BABY
+    } else {
+        MODEL_LAYER_AXOLOTL
+    }
+}
+
+fn fox_model_layer(baby: bool) -> &'static str {
+    if baby {
+        MODEL_LAYER_FOX_BABY
+    } else {
+        MODEL_LAYER_FOX
+    }
+}
+
+fn rabbit_model_layer(baby: bool) -> &'static str {
+    if baby {
+        MODEL_LAYER_RABBIT_BABY
+    } else {
+        MODEL_LAYER_RABBIT
+    }
+}
+
+fn feline_model_layer(cat: bool, baby: bool) -> &'static str {
+    match (cat, baby) {
+        (true, false) => MODEL_LAYER_CAT,
+        (true, true) => MODEL_LAYER_CAT_BABY,
+        (false, false) => MODEL_LAYER_OCELOT,
+        (false, true) => MODEL_LAYER_OCELOT_BABY,
+    }
+}
+
+fn feline_collar_model_layer(baby: bool) -> &'static str {
+    if baby {
+        MODEL_LAYER_CAT_BABY_COLLAR
+    } else {
+        MODEL_LAYER_CAT_COLLAR
+    }
+}
+
+fn mooshroom_model_layer(baby: bool) -> &'static str {
+    if baby {
+        MODEL_LAYER_MOOSHROOM_BABY
+    } else {
+        MODEL_LAYER_MOOSHROOM
+    }
+}
+
+fn armadillo_model_layer(baby: bool) -> &'static str {
+    if baby {
+        MODEL_LAYER_ARMADILLO_BABY
+    } else {
+        MODEL_LAYER_ARMADILLO
     }
 }
 

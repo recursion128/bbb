@@ -8,6 +8,9 @@ use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 use std::f32::consts::{FRAC_PI_2, PI};
 
+pub(in crate::entity_models) const MODEL_LAYER_FOX: &str = "minecraft:fox#main";
+pub(in crate::entity_models) const MODEL_LAYER_FOX_BABY: &str = "minecraft:fox_baby#main";
+
 const LINEAR: KeyframeInterpolation = KeyframeInterpolation::Linear;
 const CATMULLROM: KeyframeInterpolation = KeyframeInterpolation::CatmullRom;
 

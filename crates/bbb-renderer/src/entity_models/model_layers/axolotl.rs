@@ -2,6 +2,9 @@ use super::{PartPose, AXOLOTL_BODY, AXOLOTL_GILLS, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_AXOLOTL: &str = "minecraft:axolotl#main";
+pub(in crate::entity_models) const MODEL_LAYER_AXOLOTL_BABY: &str = "minecraft:axolotl_baby#main";
+
 // Vanilla 26.1 `AdultAxolotlModel` (atlas 64×64) / `BabyAxolotlModel` (atlas 32×32)
 // `createBodyLayer`. The axolotl is one of the `AgeableMobRenderer` two-model entities: the synced
 // `AgeableMob.DATA_BABY_ID` flag selects the baby body layer, which has its own smaller geometry

@@ -484,7 +484,16 @@ fn feline_textured_render_matches_vanilla_renderer() {
             );
             assert_eq!(cat_passes[0].render_type.vanilla_name(), "entityCutout");
             assert_eq!(cat_passes[0].kind, EntityModelLayerKind::FelineBase);
+            assert_eq!(
+                cat_passes[0].model_layer,
+                if baby {
+                    MODEL_LAYER_CAT_BABY
+                } else {
+                    MODEL_LAYER_CAT
+                }
+            );
             assert_eq!(cat_passes[0].texture, cat_texture);
+            assert_eq!(cat_passes[0].visibility, EntityModelLayerVisibility::All);
             assert_eq!(cat_passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
             assert_eq!((cat_passes[0].order, cat_passes[0].submit_sequence), (0, 0));
             assert_eq!(
@@ -516,7 +525,16 @@ fn feline_textured_render_matches_vanilla_renderer() {
             );
             assert_eq!(ocelot_passes[0].render_type.vanilla_name(), "entityCutout");
             assert_eq!(ocelot_passes[0].kind, EntityModelLayerKind::FelineBase);
+            assert_eq!(
+                ocelot_passes[0].model_layer,
+                if baby {
+                    MODEL_LAYER_OCELOT_BABY
+                } else {
+                    MODEL_LAYER_OCELOT
+                }
+            );
             assert_eq!(ocelot_passes[0].texture, ocelot_texture);
+            assert_eq!(ocelot_passes[0].visibility, EntityModelLayerVisibility::All);
             assert_eq!(ocelot_passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
             assert_eq!(
                 (ocelot_passes[0].order, ocelot_passes[0].submit_sequence),
@@ -767,11 +785,20 @@ fn feline_collar_layer_matches_vanilla_cat_collar_layer() {
         assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
         assert_eq!(passes[1].kind, EntityModelLayerKind::FelineCollar);
         assert_eq!(
+            passes[1].model_layer,
+            if baby {
+                MODEL_LAYER_CAT_BABY_COLLAR
+            } else {
+                MODEL_LAYER_CAT_COLLAR
+            }
+        );
+        assert_eq!(
             passes[1].render_type,
             EntityModelLayerRenderType::EntityCutout
         );
         assert_eq!(passes[1].render_type.vanilla_name(), "entityCutout");
         assert_eq!(passes[1].texture, collar_texture);
+        assert_eq!(passes[1].visibility, EntityModelLayerVisibility::All);
         assert_eq!(passes[1].tint, EntityDyeColor::Red.texture_diffuse_color());
         assert_eq!((passes[1].order, passes[1].submit_sequence), (1, 1));
         assert!(entity_model_texture_refs().contains(&collar_texture));

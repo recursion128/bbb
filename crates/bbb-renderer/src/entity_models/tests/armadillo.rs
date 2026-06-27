@@ -672,12 +672,21 @@ fn armadillo_textured_render_matches_vanilla_renderer() {
         let passes = armadillo_textured_layer_passes(baby);
         assert_eq!(passes.len(), 1);
         assert_eq!(passes[0].kind, EntityModelLayerKind::ArmadilloBase);
+        assert_eq!(
+            passes[0].model_layer,
+            if baby {
+                MODEL_LAYER_ARMADILLO_BABY
+            } else {
+                MODEL_LAYER_ARMADILLO
+            }
+        );
         assert_eq!(passes[0].texture, texture);
         assert_eq!(
             passes[0].render_type,
             EntityModelLayerRenderType::EntityCutout
         );
         assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
+        assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
         assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
         assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
     }
