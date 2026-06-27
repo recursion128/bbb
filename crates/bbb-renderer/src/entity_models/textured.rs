@@ -1368,13 +1368,15 @@ fn emit_end_crystal_beam(
         * Mat4::from_translation(Vec3::new(0.0, 2.0, 0.0))
         * Mat4::from_rotation_y(-delta.z.atan2(delta.x) - std::f32::consts::FRAC_PI_2)
         * Mat4::from_rotation_x(-horizontal_length.atan2(delta.y) - std::f32::consts::FRAC_PI_2);
+    let passes = end_crystal_textured_layer_passes();
+    let beam_pass = passes[1];
     let submit = no_overlay_submission(
-        EntityModelLayerRenderType::EndCrystalBeam,
-        END_CRYSTAL_BEAM_TEXTURE_REF,
-        [1.0, 1.0, 1.0, 1.0],
+        beam_pass.render_type,
+        beam_pass.texture,
+        beam_pass.tint,
         transform,
-        0,
-        1,
+        beam_pass.order,
+        beam_pass.submit_sequence,
     );
     emit_crystal_beam_submission(meshes, submit, atlas, delta.length(), age);
 }

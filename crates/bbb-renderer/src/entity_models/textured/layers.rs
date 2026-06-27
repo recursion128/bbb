@@ -62,6 +62,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     FrogBase,
     GoatBase,
     EndCrystalBase,
+    EndCrystalBeam,
     HoglinBase,
     LlamaSpitBase,
     LlamaBase,
@@ -684,16 +685,29 @@ pub(in crate::entity_models) fn enderman_textured_layer_passes() -> Vec<EntityMo
 }
 
 pub(in crate::entity_models) fn end_crystal_textured_layer_passes() -> Vec<EntityModelLayerPass> {
-    vec![EntityModelLayerPass {
-        kind: EntityModelLayerKind::EndCrystalBase,
-        render_type: EntityModelLayerRenderType::EntityCutout,
-        model_layer: MODEL_LAYER_END_CRYSTAL,
-        texture: END_CRYSTAL_TEXTURE_REF,
-        visibility: EntityModelLayerVisibility::All,
-        tint: [1.0, 1.0, 1.0, 1.0],
-        order: 0,
-        submit_sequence: 0,
-    }]
+    vec![
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::EndCrystalBase,
+            render_type: EntityModelLayerRenderType::EntityCutout,
+            model_layer: MODEL_LAYER_END_CRYSTAL,
+            texture: END_CRYSTAL_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 0,
+            submit_sequence: 0,
+        },
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::EndCrystalBeam,
+            render_type: EntityModelLayerRenderType::EndCrystalBeam,
+            // The healing beam is custom geometry from `submitCrystalBeams`, not a baked ModelLayer.
+            model_layer: "",
+            texture: END_CRYSTAL_BEAM_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 0,
+            submit_sequence: 1,
+        },
+    ]
 }
 
 pub(in crate::entity_models) fn copper_golem_textured_layer_passes(

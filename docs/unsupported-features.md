@@ -1069,8 +1069,8 @@ When an agent does any of the following, update this file in the same slice:
       custom scroll-geometry submission helper; End Crystal
       now creates its vanilla `entityCutout` submission before the residual
       bob/spin geometry is folded through the standard submission helper, and
-      crystals with a beam target now record vanilla `end_crystal_beam`
-      submissions before their tiled prism geometry is folded into the scroll
+      crystals with a beam target now consume explicit `EndCrystalBeam` pass metadata before
+      recording vanilla `end_crystal_beam` submissions and folding their tiled prism geometry into the scroll
       bucket with preserved light / no-overlay metadata. Ender dragon nearest-crystal healing beams now project the
       bobbed crystal `beamOffset`, record the same vanilla `end_crystal_beam`
       submission after body+eyes, and then fold the shared eight-quad prism
@@ -3430,7 +3430,8 @@ When an agent does any of the following, update this file in the same slice:
       beam is now wired too: world projects
       `EndCrystal.DATA_BEAM_TARGET` (Optional<BlockPos> data id 8) as
       `Vec3.atCenterOf(target) - entity.getPosition(partialTicks)`, native forwards it as
-      `EndCrystalRenderState.beamOffset`, and the renderer records
+      `EndCrystalRenderState.beamOffset`, and the renderer consumes explicit `EndCrystalBeam` pass
+      metadata before recording
       `RenderTypes.endCrystalBeam(textures/entity/end_crystal/end_crystal_beam.png)` at order `0`,
       sequence `1` with vanilla light coords and `OverlayTexture.NO_OVERLAY` before folding the
       eight-quad black/white prism into the tiled scroll mesh with matching vertex light/no-overlay
