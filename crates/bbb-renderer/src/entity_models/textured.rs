@@ -74,7 +74,6 @@ const PLAYER_CAPE_CUBE: TexturedModelCubeDesc = TexturedModelCubeDesc {
     tex: [0.0, 0.0],
     mirror: false,
 };
-const PLAYER_EARS_LAYER_SUBMIT_SEQUENCE: u32 = 1;
 const PLAYER_CAPE_LAYER_SUBMIT_SEQUENCE: u32 = 2;
 const PLAYER_WINGS_LAYER_SUBMIT_SEQUENCE: u32 = 3;
 const NON_PLAYER_WINGS_LAYER_SUBMIT_SEQUENCE: u32 = 2;
@@ -100,12 +99,13 @@ pub(super) use layers::{
     llama_textured_layer_passes, magma_cube_textured_layer_passes, minecart_textured_layer_passes,
     mooshroom_textured_layer_passes, nautilus_textured_layer_passes, panda_textured_layer_passes,
     parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
-    piglin_textured_layer_passes, player_textured_layer_passes_with_texture,
-    polar_bear_textured_layer_passes, rabbit_textured_layer_passes, ravager_textured_layer_passes,
-    salmon_textured_layer_passes, sheep_textured_layer_passes, shulker_textured_layer_passes,
-    silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
-    sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
-    squid_textured_layer_passes, tadpole_textured_layer_passes, trident_textured_layer_passes,
+    piglin_textured_layer_passes, player_extra_ears_layer_pass_with_texture,
+    player_textured_layer_passes_with_texture, polar_bear_textured_layer_passes,
+    rabbit_textured_layer_passes, ravager_textured_layer_passes, salmon_textured_layer_passes,
+    sheep_textured_layer_passes, shulker_textured_layer_passes, silverfish_textured_layer_passes,
+    skeleton_textured_layer_passes, slime_textured_layer_passes, sniffer_textured_layer_passes,
+    snow_golem_textured_layer_passes, spider_textured_layer_passes, squid_textured_layer_passes,
+    tadpole_textured_layer_passes, trident_textured_layer_passes,
     tropical_fish_textured_layer_passes, undead_horse_textured_layer_passes,
     villager_textured_layer_passes, wandering_trader_textured_layer_passes,
     warden_textured_layer_passes, wind_charge_textured_layer_passes, witch_textured_layer_passes,
@@ -982,6 +982,7 @@ fn layer_pass_uses_zero_white_overlay(pass: EntityModelLayerPass) -> bool {
             | EntityModelLayerKind::HorseMarkings
             | EntityModelLayerKind::IronGolemCrackiness
             | EntityModelLayerKind::DrownedOuter
+            | EntityModelLayerKind::PlayerExtraEars
             | EntityModelLayerKind::SkeletonClothing
             | EntityModelLayerKind::SheepWool
             | EntityModelLayerKind::SheepWoolUndercoat
@@ -2643,15 +2644,8 @@ fn emit_player_extra_ears_layer(
     let mut model = PlayerEarsModel::new();
     model.prepare(&instance);
     let texture = default_player_skin_texture_ref(skin.fallback());
-    let submit = EntityModelSubmissionEmit::new(
-        EntityModelLayerRenderType::EntitySolid,
-        texture,
-        [1.0, 1.0, 1.0, 1.0],
-        transform,
-        0,
-        PLAYER_EARS_LAYER_SUBMIT_SEQUENCE,
-    )
-    .with_overlay([0.0, meshes.current_submission_overlay[1]]);
+    let pass = player_extra_ears_layer_pass_with_texture(texture);
+    let submit = textured_layer_submission(meshes, pass, transform);
 
     let submit = if let EntityPlayerSkin::Dynamic(dynamic_player_skin) = skin {
         let submit = submit.with_dynamic_player_skin(dynamic_player_skin);

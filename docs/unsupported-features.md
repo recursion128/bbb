@@ -1474,7 +1474,8 @@ When an agent does any of the following, update this file in the same slice:
       exact lowercase player-info GameProfile name `"deadmau5"` through
       `Deadmau5EarsLayer` / `PlayerEarsModel`: visible players submit an
       `entitySolid` same-skin layer with zero-white overlay at player same-order
-      sequence 1, including ready dynamic player skin atlas support. Player profile
+      sequence 1, now through `player_extra_ears_layer_pass_with_texture` with vanilla
+      `ModelLayers.PLAYER_EARS`, including ready dynamic player skin atlas support. Player profile
       cape presentation is covered by the
       dynamic `entitySolid` cape layer, and WingsLayer/elytra presentation plus
       elytra animation-state projection are covered for vanilla elytra equipment

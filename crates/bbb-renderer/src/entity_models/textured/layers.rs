@@ -65,6 +65,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     IronGolemCrackiness,
     PigBase,
     PlayerBase,
+    PlayerExtraEars,
     SheepBase,
     SheepWool,
     SheepWoolUndercoat,
@@ -1749,6 +1750,21 @@ pub(in crate::entity_models) fn player_textured_layer_passes_with_texture(
         order: 0,
         submit_sequence: 0,
     }]
+}
+
+pub(in crate::entity_models) fn player_extra_ears_layer_pass_with_texture(
+    texture: EntityModelTextureRef,
+) -> EntityModelLayerPass {
+    EntityModelLayerPass {
+        kind: EntityModelLayerKind::PlayerExtraEars,
+        render_type: EntityModelLayerRenderType::EntitySolid,
+        model_layer: MODEL_LAYER_PLAYER_EARS,
+        texture,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 1,
+    }
 }
 
 pub(in crate::entity_models) fn sheep_textured_layer_passes(

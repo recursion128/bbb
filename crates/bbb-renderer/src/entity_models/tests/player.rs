@@ -338,6 +338,18 @@ fn player_deadmau5_ears_layer_records_vanilla_submission_and_geometry() {
     // Vanilla `Deadmau5EarsLayer`: when `showExtraEars && !isInvisible`, submits
     // `PlayerEarsModel` with the player's body skin, `entitySolid`, `getOverlayCoords(state, 0.0)`,
     // and default order 0 before the cape layer.
+    let ears_pass = player_extra_ears_layer_pass_with_texture(PLAYER_WIDE_STEVE_TEXTURE_REF);
+    assert_eq!(ears_pass.kind, EntityModelLayerKind::PlayerExtraEars);
+    assert_eq!(ears_pass.model_layer, MODEL_LAYER_PLAYER_EARS);
+    assert_eq!(
+        ears_pass.render_type,
+        EntityModelLayerRenderType::EntitySolid
+    );
+    assert_eq!(ears_pass.render_type.vanilla_name(), "entitySolid");
+    assert_eq!(ears_pass.texture, PLAYER_WIDE_STEVE_TEXTURE_REF);
+    assert_eq!(ears_pass.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((ears_pass.order, ears_pass.submit_sequence), (0, 1));
+
     let (atlas, _) = build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
     let instance = EntityModelInstance::player_with_skin(
         56,
