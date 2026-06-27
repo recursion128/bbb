@@ -3,7 +3,7 @@ use std::borrow::Cow;
 
 use glam::{Mat4, Vec3};
 
-use super::super::catalog::{sheep_wool_render_color, *};
+use super::super::catalog::*;
 use super::super::dispatch::{dispatch_uniform_entity_model, ColoredSink};
 use super::super::geometry::*;
 use super::super::instances::EntityModelInstance;
@@ -87,19 +87,6 @@ fn entity_model_mesh_with_options(
                 EntityModelKind::NoRender => {
                     // Vanilla `NoopRenderer` entities (area effect cloud, marker, interaction) render no
                     // model, so this arm emits nothing — exact parity with vanilla.
-                }
-                EntityModelKind::Sheep {
-                    baby,
-                    sheared,
-                    wool_color,
-                    jeb,
-                    age_ticks,
-                } => {
-                    if !skip_texture_backed_entities {
-                        emit_sheep_model(
-                            &mut mesh, *instance, baby, sheared, wool_color, jeb, age_ticks,
-                        );
-                    }
                 }
                 EntityModelKind::Horse { baby, .. } => {
                     // The living horse now renders through the textured path (per-coat texture); the
@@ -384,36 +371,6 @@ pub(in crate::entity_models) fn humanoid_arm_swing_parts(
         }
     }
     Cow::Owned(owned)
-}
-
-fn emit_sheep_model(
-    mesh: &mut EntityModelMesh,
-    instance: EntityModelInstance,
-    baby: bool,
-    sheared: bool,
-    wool_color: SheepWoolColor,
-    jeb: bool,
-    age_ticks: f32,
-) {
-    // The unified `SheepModel` (body) and `SheepFurModel` (wool) trees drive both render paths; both
-    // run the shared `SheepModel.setupAnim` (leg swing + eat-grass head pose). The colored fallback
-    // renders the body with baked colors, optionally recolors the body undercoat (non-white adult),
-    // then renders the wool tinted (unless sheared).
-    let transform = entity_model_root_transform(instance);
-    let wool_layer_color = sheep_wool_render_color(wool_color, jeb, age_ticks);
-    let mut body = SheepModel::new(baby);
-    body.prepare(&instance);
-    body.root().render_colored(mesh, transform);
-    if !baby && (jeb || wool_color != SheepWoolColor::White) {
-        body.root()
-            .render_colored_with_color(mesh, transform, wool_layer_color);
-    }
-    if !sheared {
-        let mut fur = SheepFurModel::new(baby);
-        fur.prepare(&instance);
-        fur.root()
-            .render_colored_with_color(mesh, transform, wool_layer_color);
-    }
 }
 
 fn emit_quadruped_model(

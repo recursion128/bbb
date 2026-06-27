@@ -1571,7 +1571,9 @@ When an agent does any of the following, update this file in the same slice:
       official base/wool/undercoat texture references, texture-backed base,
       wool, and undercoat layer passes, metadata-driven sheared state, and dye
       color projection, custom-name `jeb_` color cycling from entity metadata
-      and renderer age ticks. Texture-backed tests now pin explicit submission
+      and renderer age ticks. Shared dispatch now owns the sheep base body,
+      wool, and undercoat submissions instead of residual colored/textured emit
+      helpers. Texture-backed tests now pin explicit submission
       metadata for the vanilla `entityCutout` base, wool, and undercoat submits:
       selected adult/baby texture, wool or `jeb_` tint, root transform, entity
       light, base hurt/white overlay versus wool/undercoat zero-white overlay,

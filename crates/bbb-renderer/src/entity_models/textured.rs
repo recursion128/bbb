@@ -25,8 +25,8 @@ use super::{
         EntityEquipmentLayerTexture, EntityModelKind, EntityModelTextureAtlasEntry,
         EntityModelTextureAtlasLayout, EntityModelTextureRef, EntityModelUvRect, EntityPlayerSkin,
         HorseMarkings, LlamaModelFamily, PiglinModelFamily, PlayerModelPartVisibility,
-        SheepWoolColor, SkeletonModelFamily, UndeadHorseModelFamily, VillagerModelData,
-        VillagerModelHat, ZombieVariantModelFamily,
+        SkeletonModelFamily, UndeadHorseModelFamily, VillagerModelData, VillagerModelHat,
+        ZombieVariantModelFamily,
     },
     entity_model_root_transform,
     geometry::{
@@ -47,21 +47,20 @@ use super::{
         wolf_body_armor_texture_layers, BreezeWindModel, CamelModel, CreeperModel,
         CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel, CustomHeadSkullModel, ElytraModel,
         HumanoidArmorSlot, HumanoidBabyArmorKind, LlamaModel, NautilusModel, PigModel, PiglinModel,
-        PlayerEarsModel, PlayerModel, SheepFurModel, SheepModel, SkeletonModel,
-        SpinAttackEffectModel, StriderModel, VillagerModel, WindChargeModel, WitherModel,
-        WolfModel, ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
-        ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_DONKEY_SADDLE_PARTS_TEXTURED,
-        ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED, ADULT_HORSE_ARMOR_PARTS_TEXTURED,
-        ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
-        ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
-        BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF, CAMEL_HUSK_SADDLE_TEXTURE_REF,
-        CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF, CREEPER_TEXTURE_REF,
-        DONKEY_SADDLE_TEXTURE_REF, ENCHANTED_GLINT_ITEM_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF,
-        END_CRYSTAL_BEAM_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, END_CRYSTAL_TEXTURE_REF,
-        GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
-        LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
-        PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF,
-        PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
+        PlayerEarsModel, PlayerModel, SkeletonModel, SpinAttackEffectModel, StriderModel,
+        VillagerModel, WindChargeModel, WitherModel, WolfModel, ZombieModel, ZombieVariantModel,
+        ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
+        ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
+        ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
+        ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
+        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF,
+        CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF,
+        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENCHANTED_GLINT_ITEM_TEXTURE_REF,
+        ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_BEAM_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS,
+        END_CRYSTAL_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
+        LLAMA_BODY_TRADER_BABY_TEXTURE_REF, LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF,
+        NAUTILUS_SADDLE_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF,
+        PIG_SADDLE_TEXTURE_REF, PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
         SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION,
         STRIDER_SADDLE_TEXTURE_REF, TRIDENT_RIPTIDE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF,
         WITHER_ARMOR_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
@@ -385,24 +384,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
                         parts,
                         atlas,
                         dynamic_player_skin_atlas,
-                    );
-                }
-                EntityModelKind::Sheep {
-                    baby,
-                    sheared,
-                    wool_color,
-                    jeb,
-                    age_ticks,
-                } => {
-                    emit_sheep_textured_model(
-                        &mut meshes,
-                        *instance,
-                        baby,
-                        sheared,
-                        wool_color,
-                        jeb,
-                        age_ticks,
-                        atlas,
                     );
                 }
                 EntityModelKind::Horse { baby, markings, .. } => {
@@ -2938,35 +2919,6 @@ fn player_profile_wings_texture_ref(texture: EntityDynamicPlayerTexture) -> Enti
     match texture.kind {
         super::catalog::EntityDynamicPlayerTextureKind::Cape => PLAYER_PROFILE_CAPE_TEXTURE_REF,
         super::catalog::EntityDynamicPlayerTextureKind::Elytra => PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
-    }
-}
-
-fn emit_sheep_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    baby: bool,
-    sheared: bool,
-    wool_color: SheepWoolColor,
-    jeb: bool,
-    age_ticks: f32,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `SheepModel` (body) and `SheepFurModel` (wool) trees drive both render paths; both
-    // run the shared `SheepModel.setupAnim` (leg swing + eat-grass head pose). Each pass routes to the
-    // body tree (base + dyed undercoat) or the fur tree (wool), in the pre-sorted layer order; the
-    // wool tint and per-state visibility are baked into the passes.
-    let transform = entity_model_root_transform(instance);
-    let mut body = SheepModel::new(baby);
-    body.prepare(&instance);
-    let mut fur = SheepFurModel::new(baby);
-    fur.prepare(&instance);
-    for pass in sheep_textured_layer_passes(baby, sheared, wool_color, jeb, age_ticks) {
-        let root = if pass.kind == layers::EntityModelLayerKind::SheepWool {
-            fur.root()
-        } else {
-            body.root()
-        };
-        render_textured_root_pass(meshes, root, transform, pass, atlas);
     }
 }
 

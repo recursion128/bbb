@@ -42,16 +42,16 @@ use super::model_layers::{
     HoglinModel, IllagerModel, IronGolemModel, LeashKnotModel, LlamaModel, LlamaSpitModel,
     MagmaCubeModel, MinecartModel, NautilusModel, PandaModel, ParrotModel, PhantomModel, PigModel,
     PiglinModel, PolarBearModel, PufferfishModel, RabbitModel, RavagerModel, SalmonModel,
-    ShulkerBulletModel, ShulkerModel, SilverfishModel, SkeletonClothingModel, SkeletonModel,
-    SlimeModel, SlimeOuterModel, SnifferModel, SnowGolemModel, SpiderModel, SquidModel,
-    StriderModel, TadpoleModel, TridentModel, TropicalFishModel, TropicalFishPatternModel,
-    TurtleModel, VexModel, VillagerModel, WanderingTraderModel, WardenModel, WitchModel,
-    WitherModel, WitherSkullModel, WolfModel, ZombieModel, ZombieVariantModel, ALLAY_TEXTURE_REF,
-    ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF, BREEZE_EYES_TEXTURE_REF, BREEZE_TEXTURE_REF,
-    COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF, FELINE_CAT_SCALE,
-    GLOW_SQUID_TEAL, GUARDIAN_ELDER_SCALE, PUFFERFISH_TEXTURE_REF, SQUID_BLUE,
-    TURTLE_BABY_TEXTURE_REF, TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF,
-    VEX_CHARGING_TEXTURE_REF, VEX_TEXTURE_REF, WITHER_SKELETON_DARK,
+    SheepFurModel, SheepModel, ShulkerBulletModel, ShulkerModel, SilverfishModel,
+    SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SnifferModel,
+    SnowGolemModel, SpiderModel, SquidModel, StriderModel, TadpoleModel, TridentModel,
+    TropicalFishModel, TropicalFishPatternModel, TurtleModel, VexModel, VillagerModel,
+    WanderingTraderModel, WardenModel, WitchModel, WitherModel, WitherSkullModel, WolfModel,
+    ZombieModel, ZombieVariantModel, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF,
+    BREEZE_EYES_TEXTURE_REF, BREEZE_TEXTURE_REF, COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF,
+    DOLPHIN_TEXTURE_REF, FELINE_CAT_SCALE, GLOW_SQUID_TEAL, GUARDIAN_ELDER_SCALE,
+    PUFFERFISH_TEXTURE_REF, SQUID_BLUE, TURTLE_BABY_TEXTURE_REF, TURTLE_EGG_ROOT_DROP_POSE,
+    TURTLE_TEXTURE_REF, VEX_CHARGING_TEXTURE_REF, VEX_TEXTURE_REF, WITHER_SKELETON_DARK,
 };
 use super::textured::{
     armadillo_textured_layer_passes, arrow_textured_layer_passes, axolotl_textured_layer_passes,
@@ -70,10 +70,11 @@ use super::textured::{
     parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
     piglin_textured_layer_passes, polar_bear_textured_layer_passes, rabbit_textured_layer_passes,
     ravager_textured_layer_passes, render_textured_layers, salmon_textured_layer_passes,
-    shulker_bullet_textured_layer_passes, shulker_textured_layer_passes,
-    silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
-    sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
-    squid_textured_layer_passes, tadpole_textured_layer_passes, trident_textured_layer_passes,
+    sheep_textured_layer_passes, shulker_bullet_textured_layer_passes,
+    shulker_textured_layer_passes, silverfish_textured_layer_passes,
+    skeleton_textured_layer_passes, slime_textured_layer_passes, sniffer_textured_layer_passes,
+    snow_golem_textured_layer_passes, spider_textured_layer_passes, squid_textured_layer_passes,
+    tadpole_textured_layer_passes, trident_textured_layer_passes,
     tropical_fish_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, warden_textured_layer_passes,
     witch_textured_layer_passes, wither_skull_textured_layer_passes, wither_textured_layer_passes,
@@ -221,6 +222,38 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &cow_textured_layer_passes(variant, baby),
         ),
+        EntityModelKind::Sheep {
+            baby,
+            sheared,
+            wool_color,
+            jeb,
+            age_ticks,
+        } => {
+            let transform = entity_model_root_transform(*instance);
+            for pass in sheep_textured_layer_passes(baby, sheared, wool_color, jeb, age_ticks) {
+                let passes = [pass];
+                match pass.kind {
+                    EntityModelLayerKind::SheepBase => {
+                        sink.model(SheepModel::new(baby), transform, instance, &passes)
+                    }
+                    EntityModelLayerKind::SheepWoolUndercoat => sink.model_with_colored_override(
+                        SheepModel::new(baby),
+                        transform,
+                        instance,
+                        &passes,
+                        pass.tint,
+                    ),
+                    EntityModelLayerKind::SheepWool => sink.model_with_colored_override(
+                        SheepFurModel::new(baby),
+                        transform,
+                        instance,
+                        &passes,
+                        pass.tint,
+                    ),
+                    _ => unreachable!("sheep_textured_layer_passes only emits sheep passes"),
+                }
+            }
+        }
         EntityModelKind::MagmaCube { size } => sink.model(
             MagmaCubeModel::new(),
             magma_cube_model_root_transform(*instance, size),
