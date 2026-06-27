@@ -35,6 +35,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     EndermanBase,
     EndermanEyes,
     EvokerFangsBase,
+    FoxBase,
     LeashKnotBase,
     CopperGolemBase,
     CopperGolemEyes,
@@ -1075,7 +1076,9 @@ pub(in crate::entity_models) fn fox_textured_layer_passes(
         EntityModelLayerRenderType::EntityCutout,
         fox_texture_ref(variant, baby, sleeping),
         [1.0, 1.0, 1.0, 1.0],
-    )]
+    )
+    .with_kind(EntityModelLayerKind::FoxBase)
+    .with_order(0, 0)]
 }
 
 pub(in crate::entity_models) fn rabbit_textured_layer_passes(
