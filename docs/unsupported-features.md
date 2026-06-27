@@ -1797,7 +1797,9 @@ When an agent does any of the following, update this file in the same slice:
       `armorCutoutNoCull`, the family-specific saddle texture, white tint, the
       same transform, `(0, 1)`, entity light, and `OverlayTexture.NO_OVERLAY`.
       Folded cutout vertices inherit the corresponding base or saddle submission
-      metadata. Baby camels intentionally skip this layer because vanilla
+      metadata; missing-atlas coverage pins that the adult camel saddle submission is still
+      recorded without `camel_saddle/saddle.png` while only folded saddle geometry is
+      suppressed. Baby camels intentionally skip this layer because vanilla
       supplies no baby saddle model. The camel
       `CAMEL_IDLE` keyframe animation (driven by a client-side `random.nextInt(40) + 80` timer, not
       derivable from synced state), the body-anchor sit/stand y-offset

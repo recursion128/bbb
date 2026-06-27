@@ -528,6 +528,60 @@ fn camel_saddle_layer_renders_for_adult_camel_and_husk_only() {
     assert!(first_husk_saddle_vertex[1] <= husk_saddle_uv.max[1]);
 }
 
+#[test]
+fn camel_saddle_submission_survives_missing_saddle_texture_atlas_entry() {
+    // Vanilla `CamelRenderer.createCamelSaddleLayer` records the adult camel saddle as a default-order
+    // `SimpleEquipmentLayer(CAMEL_SADDLE)` submit after the base body, with no overlay.
+    let images = texture_images(&[CAMEL_TEXTURE_REF]);
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let instance =
+        EntityModelInstance::camel(763, [0.0, 64.0, 0.0], 0.0, CamelModelFamily::Camel, false)
+            .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true)
+            .with_camel_saddle(true);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 2);
+    let base = meshes.submissions[0];
+    assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(base.texture, CAMEL_TEXTURE_REF);
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(base.transform, entity_model_root_transform(instance));
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+    assert_eq!(base.light, instance.render_state.shader_light());
+    assert_eq!(base.overlay, instance.render_state.overlay_coords());
+    assert_eq!(
+        meshes.cutout.vertices.len(),
+        288,
+        "missing camel_saddle/saddle.png suppresses only folded saddle geometry"
+    );
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == base.light && vertex.overlay == base.overlay));
+
+    let saddle = meshes.submissions[1];
+    assert_eq!(
+        saddle.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(saddle.render_type.vanilla_name(), "armorCutoutNoCull");
+    assert_eq!(saddle.texture, CAMEL_SADDLE_TEXTURE_REF);
+    assert_eq!(saddle.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(saddle.transform, base.transform);
+    assert_eq!((saddle.order, saddle.submit_sequence), (0, 1));
+    assert_eq!(saddle.light, base.light);
+    assert_eq!(saddle.overlay, [0.0, 10.0]);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.scroll.vertices.is_empty());
+    assert!(meshes.scroll_additive.vertices.is_empty());
+}
+
 /// The adult camel's depth-first emit order: body `[0, 24)`, hump `[24, 48)`, the zero-thickness
 /// tail plane `[48, 72)`, the three head cubes and two ears `[72, 192)`, then the four legs
 /// `[192, 288)`. The head sits nested under the body, so a head look turns only `[72, 192)`.
