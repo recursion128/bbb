@@ -326,6 +326,11 @@ fn tropical_fish_textured_layer_passes_match_vanilla_renderer() {
         assert_eq!(passes.len(), 2);
 
         assert_eq!(passes[0].kind, EntityModelLayerKind::TropicalFishBase);
+        assert_eq!(
+            passes[0].render_type,
+            EntityModelLayerRenderType::EntityCutout
+        );
+        assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
         assert_eq!(passes[0].model_layer, layer);
         assert_eq!(passes[0].texture, texture);
         // `getModelTint = state.baseColor`: the base layer is tinted by the base dye's diffuse
@@ -334,15 +339,19 @@ fn tropical_fish_textured_layer_passes_match_vanilla_renderer() {
             passes[0].tint,
             EntityDyeColor::Orange.texture_diffuse_color()
         );
-        assert_eq!(passes[0].submit_sequence, 0);
+        assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
 
         assert_eq!(passes[1].kind, EntityModelLayerKind::TropicalFishPattern);
+        assert_eq!(
+            passes[1].render_type,
+            EntityModelLayerRenderType::EntityCutout
+        );
+        assert_eq!(passes[1].render_type.vanilla_name(), "entityCutout");
         assert_eq!(passes[1].model_layer, pattern_layer);
         assert_eq!(passes[1].texture, pattern_texture);
         // The overlay is tinted by the pattern dye's diffuse color and drawn after the base.
         assert_eq!(passes[1].tint, EntityDyeColor::Cyan.texture_diffuse_color());
-        assert_eq!(passes[1].submit_sequence, 1);
-        assert!(passes[1].order > passes[0].order);
+        assert_eq!((passes[1].order, passes[1].submit_sequence), (1, 1));
     }
 
     // The base layer uses `CubeDeformation.NONE` (no mirror, `uv_size == size`).
@@ -368,35 +377,123 @@ fn tropical_fish_textured_mesh_uses_vanilla_geometry_and_animates() {
         [0.0, 64.0, 0.0],
         0.0,
         TropicalFishModelShape::Small,
-        EntityDyeColor::White,
-        TropicalFishPattern::Kob,
-        EntityDyeColor::White,
+        EntityDyeColor::Orange,
+        TropicalFishPattern::Brinely,
+        EntityDyeColor::Cyan,
     )
     .with_in_water(true);
-    let small_still = entity_model_textured_mesh(&[small], &atlas);
-    assert_eq!(small_still.vertices.len(), 240);
+    let small_still = entity_model_textured_meshes(&[small], &atlas);
+    assert_tropical_fish_submission_pair(
+        &small_still,
+        small,
+        true,
+        TROPICAL_FISH_SMALL_TEXTURE_REF,
+        EntityDyeColor::Orange.texture_diffuse_color(),
+        TROPICAL_FISH_BRINELY_PATTERN_TEXTURE_REF,
+        EntityDyeColor::Cyan.texture_diffuse_color(),
+    );
+    assert_eq!(small_still.cutout.vertices.len(), 240);
 
     let large = EntityModelInstance::tropical_fish(
         811,
         [0.0, 64.0, 0.0],
         0.0,
         TropicalFishModelShape::Large,
-        EntityDyeColor::White,
-        TropicalFishPattern::Flopper,
-        EntityDyeColor::White,
+        EntityDyeColor::Orange,
+        TropicalFishPattern::Betty,
+        EntityDyeColor::Cyan,
     )
     .with_in_water(true);
-    let large_still = entity_model_textured_mesh(&[large], &atlas);
-    assert_eq!(large_still.vertices.len(), 288);
+    let large_still = entity_model_textured_meshes(&[large], &atlas);
+    assert_tropical_fish_submission_pair(
+        &large_still,
+        large,
+        true,
+        TROPICAL_FISH_LARGE_TEXTURE_REF,
+        EntityDyeColor::Orange.texture_diffuse_color(),
+        TROPICAL_FISH_BETTY_PATTERN_TEXTURE_REF,
+        EntityDyeColor::Cyan.texture_diffuse_color(),
+    );
+    assert_eq!(large_still.cutout.vertices.len(), 288);
 
     // The tail sway / body wiggle reorient the mesh as the age advances.
-    let swimming = entity_model_textured_mesh(&[small.with_age_in_ticks(7.0)], &atlas);
-    assert_eq!(small_still.vertices.len(), swimming.vertices.len());
-    assert_ne!(small_still.vertices, swimming.vertices);
+    let swimming_instance = small.with_age_in_ticks(7.0);
+    let swimming = entity_model_textured_meshes(&[swimming_instance], &atlas);
+    assert_tropical_fish_submission_pair(
+        &swimming,
+        swimming_instance,
+        true,
+        TROPICAL_FISH_SMALL_TEXTURE_REF,
+        EntityDyeColor::Orange.texture_diffuse_color(),
+        TROPICAL_FISH_BRINELY_PATTERN_TEXTURE_REF,
+        EntityDyeColor::Cyan.texture_diffuse_color(),
+    );
+    assert_eq!(
+        small_still.cutout.vertices.len(),
+        swimming.cutout.vertices.len()
+    );
+    assert_ne!(small_still.cutout.vertices, swimming.cutout.vertices);
 
     // A beached fish flops onto its side.
-    let beached = entity_model_textured_mesh(&[small.with_in_water(false)], &atlas);
-    assert_ne!(small_still.vertices, beached.vertices);
+    let beached_instance = small.with_in_water(false);
+    let beached = entity_model_textured_meshes(&[beached_instance], &atlas);
+    assert_tropical_fish_submission_pair(
+        &beached,
+        beached_instance,
+        false,
+        TROPICAL_FISH_SMALL_TEXTURE_REF,
+        EntityDyeColor::Orange.texture_diffuse_color(),
+        TROPICAL_FISH_BRINELY_PATTERN_TEXTURE_REF,
+        EntityDyeColor::Cyan.texture_diffuse_color(),
+    );
+    assert_ne!(small_still.cutout.vertices, beached.cutout.vertices);
+}
+
+fn assert_tropical_fish_submission_pair(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    in_water: bool,
+    base_texture: EntityModelTextureRef,
+    base_tint: [f32; 4],
+    pattern_texture: EntityModelTextureRef,
+    pattern_tint: [f32; 4],
+) {
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert_eq!(meshes.submissions.len(), 2);
+
+    let base = meshes.submissions[0];
+    assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(base.texture, base_texture);
+    assert_eq!(base.tint, base_tint);
+    assert_eq!(
+        base.transform,
+        tropical_fish_model_root_transform(instance, in_water)
+    );
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+
+    let pattern = meshes.submissions[1];
+    assert_eq!(
+        pattern.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(pattern.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(pattern.texture, pattern_texture);
+    assert_eq!(pattern.tint, pattern_tint);
+    assert_eq!(pattern.transform, base.transform);
+    assert_eq!((pattern.order, pattern.submit_sequence), (1, 1));
+
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .any(|vertex| vertex.tint == base_tint));
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .any(|vertex| vertex.tint == pattern_tint));
 }
 
 fn tropical_fish_texture_images() -> Vec<EntityModelTextureImage> {
