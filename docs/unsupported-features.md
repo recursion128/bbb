@@ -2986,7 +2986,8 @@ When an agent does any of the following, update this file in the same slice:
       textured path (`SNIFFER_TEXTURE_REF`), the primary now-wired path, with explicit submission
       metadata pinned for the `SnifferBase` pass identity, vanilla `entityCutout` render type/name,
       white tint, root transform, `(order, submit_sequence) == (0, 0)`, and the
-      `AgeableMobRenderer` / `LivingEntityRenderer` `lightCoords` plus hurt/white overlay metadata.
+      `AgeableMobRenderer` / `LivingEntityRenderer` `lightCoords` plus hurt/white overlay metadata, with
+      folded cutout vertices inheriting that metadata.
       The colored debug path stays as a fallback (it approximates the body with one brown tint and the
       nose pad with a pink tint)
     - warden entities as renderer-owned vanilla 26.1 `WardenModel.createBodyLayer()` geometry on the
