@@ -50,6 +50,8 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     EvokerFangsBase,
     FelineBase,
     FoxBase,
+    GuardianBase,
+    GuardianBeam,
     HorseBase,
     HorseMarkings,
     DonkeyBase,
@@ -1531,17 +1533,37 @@ pub(in crate::entity_models) fn wither_textured_layer_passes(
 pub(in crate::entity_models) fn guardian_textured_layer_passes(
     elder: bool,
 ) -> Vec<EntityModelLayerPass> {
-    // The guardian and elder guardian share one mesh, differing only by texture; the attack beam stays
-    // deferred.
-    vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::EntityCutout,
-        if elder {
-            GUARDIAN_ELDER_TEXTURE_REF
-        } else {
-            GUARDIAN_TEXTURE_REF
+    // The guardian and elder guardian share one body mesh; the elder uses a distinct vanilla
+    // ModelLayer and root-scale. `GuardianRenderer.submit` then appends custom beam geometry with
+    // `RenderTypes.entityCutout(guardian_beam.png)` on the same collector.
+    let (model_layer, texture) = if elder {
+        (MODEL_LAYER_ELDER_GUARDIAN, GUARDIAN_ELDER_TEXTURE_REF)
+    } else {
+        (MODEL_LAYER_GUARDIAN, GUARDIAN_TEXTURE_REF)
+    };
+    vec![
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::GuardianBase,
+            render_type: EntityModelLayerRenderType::EntityCutout,
+            model_layer,
+            texture,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 0,
+            submit_sequence: 0,
         },
-        [1.0, 1.0, 1.0, 1.0],
-    )]
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::GuardianBeam,
+            render_type: EntityModelLayerRenderType::EntityCutout,
+            // The beam is custom geometry, not a baked ModelLayer.
+            model_layer: "",
+            texture: GUARDIAN_BEAM_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 0,
+            submit_sequence: 1,
+        },
+    ]
 }
 
 pub(in crate::entity_models) fn armadillo_textured_layer_passes(

@@ -298,14 +298,47 @@ fn guardian_tail_sway_is_independent_of_the_spike_pulse() {
 fn guardian_textured_render_matches_vanilla_renderer() {
     // The guardian and elder guardian share one mesh, differing only by texture (and the elder's 2.35
     // root scale).
+    let guardian_passes = guardian_textured_layer_passes(false);
+    assert_eq!(guardian_passes.len(), 2);
+    assert_eq!(guardian_passes[0].kind, EntityModelLayerKind::GuardianBase);
     assert_eq!(
-        guardian_textured_layer_passes(false)[0].texture,
-        GUARDIAN_TEXTURE_REF
+        guardian_passes[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
     );
     assert_eq!(
-        guardian_textured_layer_passes(true)[0].texture,
-        GUARDIAN_ELDER_TEXTURE_REF
+        guardian_passes[0].render_type.vanilla_name(),
+        "entityCutout"
     );
+    assert_eq!(guardian_passes[0].model_layer, MODEL_LAYER_GUARDIAN);
+    assert_eq!(guardian_passes[0].texture, GUARDIAN_TEXTURE_REF);
+    assert_eq!(guardian_passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        (guardian_passes[0].order, guardian_passes[0].submit_sequence),
+        (0, 0)
+    );
+    assert_eq!(guardian_passes[1].kind, EntityModelLayerKind::GuardianBeam);
+    assert_eq!(
+        guardian_passes[1].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(
+        guardian_passes[1].render_type.vanilla_name(),
+        "entityCutout"
+    );
+    assert_eq!(guardian_passes[1].model_layer, "");
+    assert_eq!(guardian_passes[1].texture, GUARDIAN_BEAM_TEXTURE_REF);
+    assert_eq!(guardian_passes[1].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        (guardian_passes[1].order, guardian_passes[1].submit_sequence),
+        (0, 1)
+    );
+
+    let elder_passes = guardian_textured_layer_passes(true);
+    assert_eq!(elder_passes.len(), 2);
+    assert_eq!(elder_passes[0].kind, EntityModelLayerKind::GuardianBase);
+    assert_eq!(elder_passes[0].model_layer, MODEL_LAYER_ELDER_GUARDIAN);
+    assert_eq!(elder_passes[0].texture, GUARDIAN_ELDER_TEXTURE_REF);
+    assert_eq!(elder_passes[1], guardian_passes[1]);
     assert_eq!(
         EntityModelKind::Guardian { elder: false }.vanilla_texture_ref(),
         Some(GUARDIAN_TEXTURE_REF)

@@ -50,7 +50,7 @@ use super::{
         BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, CAMEL_HUSK_SADDLE_TEXTURE_REF,
         CAMEL_SADDLE_TEXTURE_REF, CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF,
         ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_BEAM_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS,
-        GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
+        HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
         LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
         PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF,
         PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
@@ -1265,16 +1265,18 @@ fn emit_guardian_beam(
         1.0,
     ];
     // `GuardianRenderer.submit` calls `super.submit` first, then submits custom geometry with
-    // `BEAM_RENDER_TYPE = RenderTypes.entityCutout(guardian_beam.png)` on the same collector. Preserve
-    // that as a vanilla-shaped submission even though the current backend folds the tiled V coordinates
-    // into the scroll mesh.
-    let submit = EntityModelSubmissionEmit::new(
-        EntityModelLayerRenderType::EntityCutout,
-        GUARDIAN_BEAM_TEXTURE_REF,
+    // `BEAM_RENDER_TYPE = RenderTypes.entityCutout(guardian_beam.png)` on the same collector. Consume
+    // the explicit beam pass metadata before folding the tiled V coordinates into the scroll mesh.
+    let elder = matches!(instance.kind, EntityModelKind::Guardian { elder: true });
+    let passes = guardian_textured_layer_passes(elder);
+    let beam_pass = passes[1];
+    let submit = no_overlay_submission(
+        beam_pass.render_type,
+        beam_pass.texture,
         tint,
         transform,
-        0,
-        1,
+        beam_pass.order,
+        beam_pass.submit_sequence,
     )
     .with_light(ENTITY_VERTEX_FULL_BRIGHT_LIGHT)
     .with_overlay(ENTITY_VERTEX_NO_OVERLAY);

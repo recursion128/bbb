@@ -5,8 +5,13 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 // Vanilla 26.1 `GuardianModel.createBodyLayer` (atlas 64×64). The whole model hangs off a
 // single `head` part (`PartPose.ZERO`) carrying the body shell, twelve spikes, the eye, and the
 // three-segment tail. The `guardian.png` texture is wired here; the elder guardian (the same mesh
-// scaled 2.35 via a `MeshTransformer`, `guardian_elder.png`) and the attack beam stay deferred. Each
-// cube carries the colored debug tint and the textured `uv_size` / `texOffs`.
+// scaled 2.35 via a `MeshTransformer`, `guardian_elder.png`) shares the body tree, while the attack
+// beam is custom geometry submitted after the body. Each cube carries the colored debug tint and the
+// textured `uv_size` / `texOffs`.
+
+pub(in crate::entity_models) const MODEL_LAYER_GUARDIAN: &str = "minecraft:guardian#main";
+pub(in crate::entity_models) const MODEL_LAYER_ELDER_GUARDIAN: &str =
+    "minecraft:elder_guardian#main";
 
 /// Vanilla `GuardianModel.ELDER_GUARDIAN_SCALE = MeshTransformer.scaling(2.35F)`.
 pub(in crate::entity_models) const GUARDIAN_ELDER_SCALE: f32 = 2.35;

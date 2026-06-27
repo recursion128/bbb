@@ -821,11 +821,12 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
         // ---- Colored-only uniform (no textured arm): empty passes, textured side is a no-op ----
         EntityModelKind::Guardian { elder } => {
             let scale = if elder { GUARDIAN_ELDER_SCALE } else { 1.0 };
+            let passes = guardian_textured_layer_passes(elder);
             sink.model(
                 GuardianModel::new(),
                 mesh_transformer_scaled_model_root_transform(*instance, scale),
                 instance,
-                &guardian_textured_layer_passes(elder),
+                &passes[0..1],
             )
         }
         EntityModelKind::Frog { variant } => sink.model(

@@ -1064,8 +1064,8 @@ When an agent does any of the following, update this file in the same slice:
       WindCharge, Breeze wind, charged Creeper armor, and powered Wither armor submits consuming
       explicit layer-pass metadata before the scroll helper and missing-atlas tests pinning that
       submission metadata is recorded before folded geometry is suppressed; Guardian
-      attack beams also record vanilla `entityCutout` submissions before
-      folding their tiled custom geometry into the scroll bucket through the
+      attack beams now consume explicit `GuardianBeam` pass metadata before
+      recording vanilla `entityCutout` submissions and folding their tiled custom geometry into the scroll bucket through the
       custom scroll-geometry submission helper; End Crystal
       now creates its vanilla `entityCutout` submission before the residual
       bob/spin geometry is folded through the standard submission helper, and
@@ -1087,7 +1087,7 @@ When an agent does any of the following, update this file in the same slice:
       visibility/scale base submits, axolotl color/age base submits,
       feline cat/ocelot base plus collar submits, fox type/age/sleeping base
       submits, frog temperature base submits, panda gene/age base submits,
-      guardian/elder base submits, parrot variant base submits, pufferfish
+      guardian/elder base plus attack-beam submits, parrot variant base submits, pufferfish
       puff-state base submits, rabbit color/age/Toast base submits,
       sniffer base submits, and the
       Guardian beam / End Crystal body+beam / Ender Dragon body+eyes+beam paths are covered by source-verified
@@ -2915,7 +2915,9 @@ When an agent does any of the following, update this file in the same slice:
       phase is `0.0` (vanilla seeds it with a per-spawn `random.nextFloat()`, which is
       non-deterministic — only the starting phase is approximated; the sway dynamics are exact). The
       textured guardian/elder base submission now pins vanilla `LivingEntityRenderer.submit`
-      metadata for texture, `entityCutout` render type, white tint, root/elder-scale transform,
+      metadata through explicit `GuardianBase` passes for `ModelLayers.GUARDIAN` /
+      `ModelLayers.ELDER_GUARDIAN`: texture, `entityCutout` render type, white tint,
+      root/elder-scale transform,
       entity light, hurt/white overlay, and `order(0)`, and folded cutout vertices inherit that
       base submit metadata. The
       spike WITHDRAWAL is now reproduced too: the same `Guardian.aiStep` eases
@@ -2934,8 +2936,9 @@ When an agent does any of the following, update this file in the same slice:
       world-aligned frame (`translate(pos) · translate(0, eyeHeight, 0) · rotY(yRot) · rotX(xRot)`,
       orienting local +Y onto the world `eye_to_target` vector — no body yaw, matching vanilla where the
       beam draws after `super.submit` pops `setupRotations`), folded into the scroll (fract-wrap) pass so
-      `guardian_beam.png` tiles vertically over `length · 2.5`; the submission now pins the vanilla
-      `entityCutout` render-type name, texture, attack-scale tint, order `(0, 1)`, beam transform,
+      `guardian_beam.png` tiles vertically over `length · 2.5`; the submission now consumes explicit
+      `GuardianBeam` pass metadata and pins the vanilla `entityCutout` render-type name, texture,
+      attack-scale tint, order `(0, 1)`, beam transform,
       `setLight(15728880)` full-bright, and `OverlayTexture.NO_OVERLAY` instead of inheriting entity
       hurt/white overlay or sampled entity light, including a missing-atlas regression where only the
       folded scroll geometry is suppressed. The WORLD projection that fills
