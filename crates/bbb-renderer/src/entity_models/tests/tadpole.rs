@@ -29,7 +29,11 @@ fn tadpole_layer_passes_and_texture_ref_match_vanilla_renderer() {
         passes[0].render_type,
         EntityModelLayerRenderType::EntityCutout
     );
+    assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
+    assert_eq!(passes[0].kind, EntityModelLayerKind::TadpoleBase);
     assert_eq!(passes[0].texture, TADPOLE_TEXTURE_REF);
+    assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
 
     assert_eq!(
         EntityModelKind::Tadpole.vanilla_texture_ref(),
@@ -53,7 +57,11 @@ fn tadpole_textured_mesh_uses_vanilla_uvs_and_geometry() {
         })
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let base = EntityModelInstance::tadpole(640, [0.0, 64.0, 0.0], 0.0).with_in_water(true);
+    let base = EntityModelInstance::tadpole(640, [0.0, 64.0, 0.0], 0.0)
+        .with_in_water(true)
+        .with_light_coords((7_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[base], &atlas);
     assert_tadpole_base_submission(&meshes, base);
 
@@ -150,4 +158,7 @@ fn assert_tadpole_base_submission(
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(submit.transform, entity_model_root_transform(instance));
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, instance.render_state.overlay_coords());
+    assert_ne!(submit.overlay, [0.0, 10.0]);
 }

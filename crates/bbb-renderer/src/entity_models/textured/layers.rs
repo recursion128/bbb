@@ -72,6 +72,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     SnowGolemBase,
     SpiderBase,
     SpiderEyes,
+    TadpoleBase,
     VillagerBase,
     WanderingTraderBase,
     WitchBase,
@@ -913,7 +914,9 @@ pub(in crate::entity_models) fn tadpole_textured_layer_passes() -> Vec<EntityMod
         EntityModelLayerRenderType::EntityCutout,
         TADPOLE_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
-    )]
+    )
+    .with_kind(EntityModelLayerKind::TadpoleBase)
+    .with_order(0, 0)]
 }
 
 pub(in crate::entity_models) fn creaking_textured_layer_passes(

@@ -3049,7 +3049,11 @@ When an agent does any of the following, update this file in the same slice:
       curve and that only the tail moves. The base texture is now bound on the textured path
       (`TADPOLE_TEXTURE_REF`; vanilla `TadpoleModel` constructs with
       `RenderTypes::entityCutout`) while preserving explicit submission metadata for texture, white
-      tint, root transform, and `order(0)`, with nothing left deferred on the texture side.
+      tint, root transform, and `order(0)`. The pass now has an explicit `TadpoleBase` identity and
+      tests use non-default packed light plus hurt/white overlay to pin the vanilla
+      `LivingEntityRenderer.submit` path: tadpole base submissions inherit `lightCoords` and
+      `getOverlayCoords(...)` instead of using the object-renderer `OverlayTexture.NO_OVERLAY`
+      override. Nothing is left deferred on the texture side.
       The colored debug path stays as a fallback (it approximates the body with one dark tint and the
       tail fin with a lighter tint)
     - parrot entities as renderer-owned vanilla 26.1 `ParrotModel.createBodyLayer()` geometry on the
