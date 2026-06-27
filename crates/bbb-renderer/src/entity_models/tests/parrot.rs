@@ -473,15 +473,20 @@ fn parrot_textured_render_matches_vanilla_renderer() {
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
     // Each colour emits textured geometry tinted white.
     for (variant, _) in variant_textures {
-        let mesh = entity_model_textured_mesh(
-            &[EntityModelInstance::parrot(
-                900,
-                [0.0, 64.0, 0.0],
-                0.0,
-                variant,
-            )],
-            &atlas,
-        );
+        let instance = EntityModelInstance::parrot(900, [0.0, 64.0, 0.0], 0.0, variant);
+        let meshes = entity_model_textured_meshes(&[instance], &atlas);
+        assert!(meshes.translucent.vertices.is_empty());
+        assert!(meshes.eyes.vertices.is_empty());
+        assert_eq!(meshes.submissions.len(), 1);
+        let submit = meshes.submissions[0];
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(submit.texture, parrot_texture_ref(variant));
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(submit.transform, entity_model_root_transform(instance));
+        assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+        let mesh = &meshes.cutout;
+
         assert!(
             !mesh.vertices.is_empty(),
             "parrot {variant:?} emits geometry"
