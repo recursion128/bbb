@@ -290,8 +290,18 @@ fn breeze_wind_body_folds_into_scrolling_overlay() {
     // Vanilla `BreezeWindLayer` renders the separate `wind_body` shell chain with the translucent,
     // U-scrolling `breezeWind` render type. The wind body's 7 cubes (`wind_bottom` 1 + `wind_mid` 3 +
     // `wind_top` 3) → 42 faces / 168 vertices fold into the scroll mesh; nothing on the additive swirl.
-    let base = EntityModelInstance::breeze(970, [0.0, 64.0, 0.0], 0.0);
+    let base = EntityModelInstance::breeze(970, [0.0, 64.0, 0.0], 0.0)
+        .with_light_coords((2_u32 << 4) | (14_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[base], &atlas);
+    let body_submit = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == BREEZE_TEXTURE_REF)
+        .expect("breeze emits a base body submit");
+    assert_eq!(body_submit.light, base.render_state.shader_light());
+    assert_eq!(body_submit.overlay, base.render_state.overlay_coords());
     let wind_submit = meshes
         .submissions
         .iter()
@@ -302,6 +312,9 @@ fn breeze_wind_body_folds_into_scrolling_overlay() {
     assert_eq!(wind_submit.order, 1);
     assert_eq!(wind_submit.submit_sequence, 1);
     assert_eq!(wind_submit.transform, entity_model_root_transform(base));
+    assert_eq!(wind_submit.light, body_submit.light);
+    assert_eq!(wind_submit.overlay, [0.0, 10.0]);
+    assert_ne!(wind_submit.overlay, body_submit.overlay);
     assert_eq!(meshes.scroll.vertices.len(), 168);
     assert_eq!(meshes.scroll.indices.len(), 42 * 6);
     assert!(meshes.scroll_additive.vertices.is_empty());

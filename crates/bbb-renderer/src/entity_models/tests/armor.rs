@@ -235,16 +235,15 @@ fn armored_zombie_emits_inflated_armor_pieces() {
     // A fully iron-clad adult zombie adds the four armor pieces into the cutout pass: helmet
     // (head + hat = 2 cubes), chestplate (body + 2 arms = 3), leggings (body + 2 legs = 3), boots
     // (2 legs = 2) — 10 cubes → 240 vertices.
-    let armored = entity_model_textured_meshes(
-        &[
-            EntityModelInstance::zombie(71, [0.0, 64.0, 0.0], 0.0, false)
-                .with_head_armor(Some(EntityArmorMaterial::Iron))
-                .with_chest_armor(Some(EntityArmorMaterial::Iron))
-                .with_legs_armor(Some(EntityArmorMaterial::Iron))
-                .with_feet_armor(Some(EntityArmorMaterial::Iron)),
-        ],
-        &atlas,
-    );
+    let armored_instance = EntityModelInstance::zombie(71, [0.0, 64.0, 0.0], 0.0, false)
+        .with_light_coords((4_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true)
+        .with_head_armor(Some(EntityArmorMaterial::Iron))
+        .with_chest_armor(Some(EntityArmorMaterial::Iron))
+        .with_legs_armor(Some(EntityArmorMaterial::Iron))
+        .with_feet_armor(Some(EntityArmorMaterial::Iron));
+    let armored = entity_model_textured_meshes(&[armored_instance], &atlas);
     assert_eq!(
         armored.cutout.vertices.len() - bare_cutout,
         240,
@@ -263,12 +262,15 @@ fn armored_zombie_emits_inflated_armor_pieces() {
         ),
         (0, 0)
     );
-    let expected_transform = entity_model_root_transform(EntityModelInstance::zombie(
-        71,
-        [0.0, 64.0, 0.0],
-        0.0,
-        false,
-    ));
+    assert_eq!(
+        armored.submissions[0].light,
+        armored_instance.render_state.shader_light()
+    );
+    assert_eq!(
+        armored.submissions[0].overlay,
+        armored_instance.render_state.overlay_coords()
+    );
+    let expected_transform = entity_model_root_transform(armored_instance);
     for (submit, texture, sequence) in [
         (armored.submissions[1], ARMOR_IRON_HUMANOID_TEXTURE_REF, 1),
         (armored.submissions[2], ARMOR_IRON_LEGGINGS_TEXTURE_REF, 2),
@@ -283,6 +285,8 @@ fn armored_zombie_emits_inflated_armor_pieces() {
         assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
         assert_eq!((submit.order, submit.submit_sequence), (1, sequence));
         assert_eq!(submit.transform, expected_transform);
+        assert_eq!(submit.light, armored_instance.render_state.shader_light());
+        assert_eq!(submit.overlay, [0.0, 10.0]);
     }
 
     // The armor is inflated (`CubeDeformation 1.0` / `0.5`), so it floats just outside the body: the

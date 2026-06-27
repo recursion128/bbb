@@ -535,7 +535,10 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
     )
     .with_wolf_body_armor(Some(EntityArmorMaterial::ArmadilloScute))
     .with_wolf_body_armor_dye(Some(dye))
-    .with_wolf_body_armor_crackiness(Some(WolfArmorCrackiness::Medium));
+    .with_wolf_body_armor_crackiness(Some(WolfArmorCrackiness::Medium))
+    .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[wolf], &atlas);
 
     assert_eq!(meshes.submissions.len(), 5);
@@ -550,6 +553,14 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
             meshes.submissions[0].submit_sequence
         ),
         (0, 0)
+    );
+    assert_eq!(
+        meshes.submissions[0].light,
+        wolf.render_state.shader_light()
+    );
+    assert_eq!(
+        meshes.submissions[0].overlay,
+        wolf.render_state.overlay_coords()
     );
     assert_eq!(meshes.submissions[1].texture, WOLF_COLLAR_TEXTURE_REF);
     assert_eq!(
@@ -567,6 +578,9 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
         ),
         (1, 1)
     );
+    assert_eq!(meshes.submissions[1].light, meshes.submissions[0].light);
+    assert_eq!(meshes.submissions[1].overlay, [0.0, 10.0]);
+    assert_ne!(meshes.submissions[1].overlay, meshes.submissions[0].overlay);
 
     let armor_base = meshes.submissions[2];
     assert_eq!(armor_base.texture, WOLF_BODY_ARMADILLO_SCUTE_TEXTURE_REF);
@@ -578,6 +592,8 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
     assert_eq!(armor_base.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((armor_base.order, armor_base.submit_sequence), (1, 2));
     assert_eq!(armor_base.transform, meshes.submissions[0].transform);
+    assert_eq!(armor_base.light, meshes.submissions[0].light);
+    assert_eq!(armor_base.overlay, [0.0, 10.0]);
 
     let armor_overlay = meshes.submissions[3];
     assert_eq!(
@@ -591,6 +607,8 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
     assert_eq!(armor_overlay.tint, dyed_tint);
     assert_eq!((armor_overlay.order, armor_overlay.submit_sequence), (2, 3));
     assert_eq!(armor_overlay.transform, meshes.submissions[0].transform);
+    assert_eq!(armor_overlay.light, meshes.submissions[0].light);
+    assert_eq!(armor_overlay.overlay, [0.0, 10.0]);
 
     let cracks = meshes.submissions[4];
     assert_eq!(cracks.texture, WOLF_ARMOR_CRACKINESS_MEDIUM_TEXTURE_REF);
@@ -602,6 +620,8 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
     assert_eq!(cracks.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((cracks.order, cracks.submit_sequence), (3, 4));
     assert_eq!(cracks.transform, meshes.submissions[0].transform);
+    assert_eq!(cracks.light, meshes.submissions[0].light);
+    assert_eq!(cracks.overlay, [0.0, 10.0]);
     assert!(
         !meshes.translucent.vertices.is_empty(),
         "armorTranslucent cracks should emit into the translucent bucket"

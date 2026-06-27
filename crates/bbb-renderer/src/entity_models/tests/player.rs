@@ -469,6 +469,9 @@ fn player_cape_layer_uses_dynamic_profile_texture_atlas_submission() {
         EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
         PLAYER_MODEL_PARTS_ALL_VISIBLE,
     )
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true)
     .with_player_cape_texture(Some(cape_texture))
     .with_player_cape_flap(4.0)
     .with_player_cape_lean(10.0)
@@ -481,6 +484,10 @@ fn player_cape_layer_uses_dynamic_profile_texture_atlas_submission() {
         Some(&dynamic_atlas),
     );
 
+    let body_submit = meshes.submissions[0];
+    assert_eq!(body_submit.texture, PLAYER_WIDE_STEVE_TEXTURE_REF);
+    assert_eq!(body_submit.light, instance.render_state.shader_light());
+    assert_eq!(body_submit.overlay, instance.render_state.overlay_coords());
     let cape_submit = meshes
         .submissions
         .iter()
@@ -495,6 +502,9 @@ fn player_cape_layer_uses_dynamic_profile_texture_atlas_submission() {
     assert_eq!(cape_submit.dynamic_player_skin, None);
     assert_eq!(cape_submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(cape_submit.transform, player_model_root_transform(instance));
+    assert_eq!(cape_submit.light, body_submit.light);
+    assert_eq!(cape_submit.overlay, [0.0, 10.0]);
+    assert_ne!(cape_submit.overlay, body_submit.overlay);
     assert_eq!((cape_submit.order, cape_submit.submit_sequence), (0, 1));
     assert_eq!(meshes.dynamic_player_texture_cutout.cutout_faces, 6);
     assert_eq!(meshes.dynamic_player_texture_cutout.vertices.len(), 24);
@@ -632,6 +642,9 @@ fn player_wings_layer_uses_static_equipment_texture_submission() {
         EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
         PLAYER_MODEL_PARTS_ALL_VISIBLE,
     )
+    .with_light_coords((7_u32 << 4) | (9_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true)
     .with_chest_wings_layer(Some(EntityEquipmentLayerTexture {
         texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
         use_player_texture: true,
@@ -641,6 +654,10 @@ fn player_wings_layer_uses_static_equipment_texture_submission() {
     let meshes =
         entity_model_textured_meshes_with_dynamic_textures(&[instance], &static_atlas, None, None);
 
+    let body_submit = meshes.submissions[0];
+    assert_eq!(body_submit.texture, PLAYER_WIDE_STEVE_TEXTURE_REF);
+    assert_eq!(body_submit.light, instance.render_state.shader_light());
+    assert_eq!(body_submit.overlay, instance.render_state.overlay_coords());
     let wings_submit = meshes
         .submissions
         .iter()
@@ -657,6 +674,9 @@ fn player_wings_layer_uses_static_equipment_texture_submission() {
         wings_submit.transform,
         player_model_root_transform(instance) * Mat4::from_translation(Vec3::Z * 0.125)
     );
+    assert_eq!(wings_submit.light, body_submit.light);
+    assert_eq!(wings_submit.overlay, [0.0, 10.0]);
+    assert_ne!(wings_submit.overlay, body_submit.overlay);
     assert_eq!((wings_submit.order, wings_submit.submit_sequence), (0, 2));
     assert_eq!(meshes.dynamic_player_texture_cutout.vertices.len(), 0);
     assert_eq!(meshes.cutout.vertices.len(), 336);

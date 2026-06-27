@@ -1023,7 +1023,8 @@ When an agent does any of the following, update this file in the same slice:
       `SubmitNodeCollector.order(n)`; `submit_sequence` preserves
       same-order layer order; and `light` / `overlay` preserve per-submit
       `submitModel(... lightCoords, overlayCoords, ...)` inputs, including
-      explicit `OverlayTexture.NO_OVERLAY` overrides for vanilla eyes/energy-swirl layers, while the GPU
+      explicit `OverlayTexture.NO_OVERLAY` overrides for vanilla eyes,
+      `breezeWind`, energy-swirl, equipment, cape/wings, and wolf-collar layers, while the GPU
       backend still folds compatible submits into shared meshes. The render-type expression is pinned by
       vanilla-name and mesh-bucket tests, so `entityCutout`,
       `entityCutoutCull`, `entityCutoutZOffset`, `Eyes`, `breezeWind`, and
@@ -1328,8 +1329,8 @@ When an agent does any of the following, update this file in the same slice:
         `EntityDynamicPlayerTextureKind::Cape`, and renderer emits the cape
         layer only when the cape model part is visible and the dynamic atlas
         entry is ready. That submission records vanilla `entitySolid`, the
-        dynamic cape handle, white tint, root transform, and default order 0
-        plus the layer submit sequence;
+        dynamic cape handle, white tint, root transform, default order 0 plus
+        the layer submit sequence, and vanilla `OverlayTexture.NO_OVERLAY`;
         missing atlas entries wait instead of drawing stale geometry. Pack/native
         now preserve item equippable asset ids and query equipment asset layers,
         so the cape is suppressed for chest WINGS equipment and nudged by the
@@ -1337,7 +1338,7 @@ When an agent does any of the following, update this file in the same slice:
         presentation is also covered for vanilla elytra equipment: native projects
         the chest WINGS layer texture/use-player-texture metadata, renderer emits an
         `ElytraModel` `armorCutoutNoCull` submission at order 0 with the vanilla
-        `z=0.125` layer transform, prefers ready profile elytra texture over cape,
+        `z=0.125` layer transform and `OverlayTexture.NO_OVERLAY`, prefers ready profile elytra texture over cape,
         falls back to a ready profile cape when the cape part is visible, uses the
         static equipment elytra texture when no profile override exists, and waits
         when an override texture has not been uploaded. World/native also project
@@ -1578,13 +1579,14 @@ When an agent does any of the following, update this file in the same slice:
       body-slot `wolf_armor` resolved through the `armadillo_scute` equipment
       asset, the `wolf_body` base and dyeable overlay layers as
       `armorCutoutNoCull` submissions at orders `1`/`2`, undyed overlay
-      suppression, and the low/medium/high durability crack overlays as
+      suppression, all wolf armor/collar submissions preserving vanilla
+      `OverlayTexture.NO_OVERLAY`, and the low/medium/high durability crack overlays as
       `armorTranslucent` submissions at order `3`). Textured wolf UV, head-look, leg-swing,
       tail-wag, tail-droop, sitting, angry-tail, wet-shade, collar, and armor regressions now
       route through `entity_model_textured_meshes`, pinning selected wild/tame/angry/variant
       base textures, adult/baby collar textures, armor/crack textures, `entityCutout` /
       `armorCutoutNoCull` / `armorTranslucent` render type names, tints, `entity_model_root_transform`,
-      and explicit `(order, submit_sequence)` before folded cutout/translucent geometry checks.
+      light/overlay metadata, and explicit `(order, submit_sequence)` before folded cutout/translucent geometry checks.
       Base-model
       invisibility/outline handling, lighting, overlay, glint/foil, and remaining
       render-state extraction remain unsupported
@@ -3297,7 +3299,8 @@ When an agent does any of the following, update this file in the same slice:
       seam) with the `0.1` alpha cutout, translucent-blended and depth-writing. The one simplification is
       lighting: vanilla `breezeWind` is lightmap-lit with `NO_CARDINAL_LIGHTING`, while the scroll shader is
       full-bright (a glowing projectile reads the same in practice). The wind charge records this as a
-      `breezeWind` submit with collector order `0`; Breeze's separate `BreezeWindLayer` records order `1`,
+      `breezeWind` submit with collector order `0` and vanilla `OverlayTexture.NO_OVERLAY`;
+      Breeze's separate `BreezeWindLayer` records order `1` and the same no-overlay submit metadata,
       ahead of the same-order eyes layer per `BreezeRenderer.addLayer` order. The colored debug path stays as a fallback
       (it renders the spinning wind shell and core as opaque tinted geometry)
     - ender dragon entities as renderer-owned vanilla 26.1 `EnderDragonModel.createBodyLayer()` geometry on

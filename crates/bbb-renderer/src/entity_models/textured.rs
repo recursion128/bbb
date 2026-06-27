@@ -67,7 +67,8 @@ use super::{
         SHULKER_BULLET_TEXTURE_REF, SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF,
         SPIDER_EYES_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION, STRIDER_SADDLE_TEXTURE_REF,
         WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF,
-        ZOMBIE_HORSE_SADDLE_TEXTURE_REF, ZOMBIE_TEXTURE_REF,
+        WOLF_BABY_COLLAR_TEXTURE_REF, WOLF_COLLAR_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
+        ZOMBIE_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
@@ -754,6 +755,36 @@ fn render_textured_pass_ordered<M: EntityModel>(
     });
 }
 
+fn render_textured_no_overlay_pass_ordered<M: EntityModel>(
+    meshes: &mut EntityModelTexturedMeshes,
+    model: &M,
+    transform: Mat4,
+    render_type: EntityModelLayerRenderType,
+    texture: EntityModelTextureRef,
+    tint: [f32; 4],
+    order: i32,
+    submit_sequence: u32,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let submit = no_overlay_submission(
+        render_type,
+        texture,
+        tint,
+        transform,
+        order,
+        submit_sequence,
+    );
+    render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+        model.root().render_textured(
+            mesh,
+            submit.transform,
+            submit.texture,
+            entry.uv,
+            submit.tint,
+        );
+    });
+}
+
 fn render_textured_pass_with_dynamic_player_skin<M: EntityModel>(
     meshes: &mut EntityModelTexturedMeshes,
     model: &M,
@@ -949,6 +980,25 @@ fn render_textured_root_pass(
     });
 }
 
+fn no_overlay_submission(
+    render_type: EntityModelLayerRenderType,
+    texture: EntityModelTextureRef,
+    tint: [f32; 4],
+    transform: Mat4,
+    order: i32,
+    submit_sequence: u32,
+) -> EntityModelSubmissionEmit {
+    EntityModelSubmissionEmit::new(
+        render_type,
+        texture,
+        tint,
+        transform,
+        order,
+        submit_sequence,
+    )
+    .with_overlay(ENTITY_VERTEX_NO_OVERLAY)
+}
+
 fn textured_layer_submission(
     pass: EntityModelLayerPass,
     transform: Mat4,
@@ -974,6 +1024,8 @@ fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
         || pass.texture == ENDER_DRAGON_EYES_TEXTURE_REF
         || pass.texture == PHANTOM_EYES_TEXTURE_REF
         || pass.texture == SPIDER_EYES_TEXTURE_REF
+        || pass.texture == WOLF_COLLAR_TEXTURE_REF
+        || pass.texture == WOLF_BABY_COLLAR_TEXTURE_REF
 }
 
 /// Render a model's full textured layer-pass list (already prepared) into `meshes`.
@@ -1094,7 +1146,8 @@ fn emit_wind_charge_scroll_model(
         transform,
         0,
         0,
-    );
+    )
+    .with_overlay(ENTITY_VERTEX_NO_OVERLAY);
     let mut model = WindChargeModel::new();
     model.prepare(&instance);
     // Vanilla `WindChargeRenderer.xOffset(t) = t · 0.03`, taken `% 1.0`; `ageInTicks ≥ 0` so the Java
@@ -1134,7 +1187,8 @@ fn emit_breeze_wind_scroll_model(
         transform,
         1,
         1,
-    );
+    )
+    .with_overlay(ENTITY_VERTEX_NO_OVERLAY);
     let mut model = BreezeWindModel::new();
     model.prepare(&instance);
     // Vanilla `BreezeWindLayer.xOffset(t) = t · 0.02`, taken `% 1.0`; `ageInTicks ≥ 0` so the Java
@@ -1581,7 +1635,7 @@ fn emit_humanoid_armor(
         } else {
             tree.copy_child_poses_from(host_root, slot.part_names());
         }
-        let submit = EntityModelSubmissionEmit::new(
+        let submit = no_overlay_submission(
             EntityModelLayerRenderType::ArmorCutoutNoCull,
             texture,
             armor_layer_tint(material, dye),
@@ -1978,7 +2032,7 @@ fn emit_pig_saddle_layer(
     let transform = entity_model_root_transform(instance);
     let mut model = PigModel::new_saddle();
     model.prepare(&instance);
-    render_textured_pass_ordered(
+    render_textured_no_overlay_pass_ordered(
         meshes,
         &model,
         transform,
@@ -2020,7 +2074,7 @@ fn emit_wolf_body_armor_layer(
         else {
             continue;
         };
-        render_textured_pass_ordered(
+        render_textured_no_overlay_pass_ordered(
             meshes,
             &model,
             transform,
@@ -2035,7 +2089,7 @@ fn emit_wolf_body_armor_layer(
     }
 
     if let Some(crackiness) = instance.render_state.wolf_body_armor_crackiness {
-        render_textured_pass_ordered(
+        render_textured_no_overlay_pass_ordered(
             meshes,
             &model,
             transform,
@@ -2184,7 +2238,7 @@ fn emit_equine_saddle_layer(
         1,
         0.0,
         1.0,
-        EntityModelSubmissionEmit::new(
+        no_overlay_submission(
             EntityModelLayerRenderType::ArmorCutoutNoCull,
             texture,
             [1.0, 1.0, 1.0, 1.0],
@@ -2242,7 +2296,7 @@ fn emit_equine_body_armor_layer(
             1,
             0.0,
             1.0,
-            EntityModelSubmissionEmit::new(
+            no_overlay_submission(
                 EntityModelLayerRenderType::ArmorCutoutNoCull,
                 layer.texture,
                 tint,
@@ -2274,7 +2328,7 @@ fn emit_strider_saddle_layer(
     let transform = entity_model_root_transform(instance);
     let mut model = StriderModel::new(false);
     model.prepare(&instance);
-    render_textured_pass_ordered(
+    render_textured_no_overlay_pass_ordered(
         meshes,
         &model,
         transform,
@@ -2315,7 +2369,7 @@ fn emit_camel_saddle_layer(
     let transform = entity_model_root_transform(instance);
     let mut model = CamelModel::new_saddle();
     model.prepare(&instance);
-    render_textured_pass_ordered(
+    render_textured_no_overlay_pass_ordered(
         meshes,
         &model,
         transform,
@@ -2355,7 +2409,7 @@ fn emit_nautilus_saddle_layer(
         .and_then(nautilus_body_armor_texture_ref)
         .map(|_| 1)
         .unwrap_or(0);
-    render_textured_pass_ordered(
+    render_textured_no_overlay_pass_ordered(
         meshes,
         &model,
         transform,
@@ -2393,7 +2447,7 @@ fn emit_nautilus_body_armor_layer(
     let transform = entity_model_root_transform(instance);
     let mut model = NautilusModel::new_armor();
     model.prepare(&instance);
-    render_textured_pass_ordered(
+    render_textured_no_overlay_pass_ordered(
         meshes,
         &model,
         transform,
@@ -2474,7 +2528,7 @@ fn emit_llama_decor_layer(
     model.prepare(&instance);
     // Vanilla `EquipmentLayerRenderer.renderLayers(..., order = 1)` renders LLAMA_BODY with
     // `RenderTypes.armorCutoutNoCull`, even though the current backend folds it into the cutout mesh.
-    render_textured_pass_ordered(
+    render_textured_no_overlay_pass_ordered(
         meshes,
         &model,
         transform,
@@ -2879,7 +2933,7 @@ fn emit_player_cape_layer(
         })
         * player_cape_animation_transform(&instance);
     let tint = [1.0, 1.0, 1.0, 1.0];
-    let submit = EntityModelSubmissionEmit::new(
+    let submit = no_overlay_submission(
         EntityModelLayerRenderType::EntitySolid,
         PLAYER_PROFILE_CAPE_TEXTURE_REF,
         tint,
@@ -2942,7 +2996,7 @@ fn emit_wings_layer(
         else {
             return;
         };
-        let submit = EntityModelSubmissionEmit::new(
+        let submit = no_overlay_submission(
             EntityModelLayerRenderType::ArmorCutoutNoCull,
             player_profile_wings_texture_ref(profile_texture),
             tint,
@@ -2963,7 +3017,7 @@ fn emit_wings_layer(
         return;
     }
 
-    let submit = EntityModelSubmissionEmit::new(
+    let submit = no_overlay_submission(
         EntityModelLayerRenderType::ArmorCutoutNoCull,
         layer.texture,
         tint,
