@@ -2909,7 +2909,8 @@ When an agent does any of the following, update this file in the same slice:
       temperate=0/warm=1/cold=2), so `FrogRenderer.getTextureLocation`'s per-variant asset is matched;
       textured regressions now pin the `FrogBase` pass identity, vanilla `entityCutout` render
       type/name, white tint, root transform, `(order, submit_sequence) == (0, 0)`, and the
-      `MobRenderer` / `LivingEntityRenderer` `lightCoords` plus hurt/white overlay metadata;
+      `MobRenderer` / `LivingEntityRenderer` `lightCoords` plus hurt/white overlay metadata, with
+      folded cutout vertices inheriting the same metadata;
       only the tongue prey-targeting stays deferred
     - creaking entities as renderer-owned vanilla 26.1 `CreakingModel.createBodyLayer()` geometry
       on the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id
@@ -3151,7 +3152,8 @@ When an agent does any of the following, update this file in the same slice:
       tests use non-default packed light plus hurt/white overlay to pin the vanilla
       `LivingEntityRenderer.submit` path: tadpole base submissions inherit `lightCoords` and
       `getOverlayCoords(...)` instead of using the object-renderer `OverlayTexture.NO_OVERLAY`
-      override. Nothing is left deferred on the texture side.
+      override, and folded cutout vertices inherit that submission metadata. Nothing is left deferred on the
+      texture side.
       The colored debug path stays as a fallback (it approximates the body with one dark tint and the
       tail fin with a lighter tint)
     - parrot entities as renderer-owned vanilla 26.1 `ParrotModel.createBodyLayer()` geometry on the

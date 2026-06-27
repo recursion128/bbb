@@ -161,4 +161,9 @@ fn assert_tadpole_base_submission(
     assert_eq!(submit.light, instance.render_state.shader_light());
     assert_eq!(submit.overlay, instance.render_state.overlay_coords());
     assert_ne!(submit.overlay, [0.0, 10.0]);
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
 }
