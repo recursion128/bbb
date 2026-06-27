@@ -43,6 +43,7 @@ fn leash_knot_layer_passes_match_vanilla_renderer() {
         passes[0].render_type,
         EntityModelLayerRenderType::EntityCutout
     );
+    assert_eq!(passes[0].kind, EntityModelLayerKind::LeashKnotBase);
     assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(passes[0].texture, LEASH_KNOT_TEXTURE_REF);
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
@@ -75,7 +76,10 @@ fn leash_knot_textured_mesh_uses_vanilla_uvs_and_geometry() {
         })
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let instance = EntityModelInstance::leash_knot(760, [1.0, 64.0, -2.0], 45.0);
+    let instance = EntityModelInstance::leash_knot(760, [1.0, 64.0, -2.0], 45.0)
+        .with_light_coords((4_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
@@ -86,6 +90,9 @@ fn leash_knot_textured_mesh_uses_vanilla_uvs_and_geometry() {
     assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(submit.transform, leash_knot_model_root_transform(instance));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, [0.0, 10.0]);
+    assert_ne!(submit.overlay, instance.render_state.overlay_coords());
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
     assert_eq!(meshes.cutout.cutout_faces, 6);
     assert_eq!(meshes.cutout.vertices.len(), 24);

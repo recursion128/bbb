@@ -1074,6 +1074,7 @@ fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
             | EntityModelLayerKind::EnderDragonEyes
             | EntityModelLayerKind::EndermanEyes
             | EntityModelLayerKind::EvokerFangsBase
+            | EntityModelLayerKind::LeashKnotBase
             | EntityModelLayerKind::LlamaSpitBase
             | EntityModelLayerKind::MinecartBase
             | EntityModelLayerKind::PhantomEyes

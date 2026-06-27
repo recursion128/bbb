@@ -33,6 +33,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     EndermanBase,
     EndermanEyes,
     EvokerFangsBase,
+    LeashKnotBase,
     CopperGolemBase,
     CopperGolemEyes,
     GoatBase,
@@ -883,7 +884,9 @@ pub(in crate::entity_models) fn leash_knot_textured_layer_passes() -> Vec<Entity
         EntityModelLayerRenderType::EntityCutout,
         LEASH_KNOT_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
-    )]
+    )
+    .with_kind(EntityModelLayerKind::LeashKnotBase)
+    .with_order(0, 0)]
 }
 
 pub(in crate::entity_models) fn trident_textured_layer_passes() -> Vec<EntityModelLayerPass> {
