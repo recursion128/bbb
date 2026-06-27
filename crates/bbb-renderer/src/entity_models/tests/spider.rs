@@ -1,5 +1,6 @@
 use super::*;
 
+use crate::entity_models::colored::cave_spider_model_root_transform;
 use crate::entity_models::model::ModelCube;
 
 // The eight spider leg bind poses, mirrored from the model file (right/left pairs hind-to-front), so
@@ -171,12 +172,14 @@ fn spider_textured_layer_passes_match_vanilla_renderer_model_layers() {
         spider[0].render_type,
         EntityModelLayerRenderType::EntityCutout
     );
+    assert_eq!(spider[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(spider[0].model_layer, MODEL_LAYER_SPIDER);
     assert_eq!(spider[0].texture, SPIDER_TEXTURE_REF);
     assert_eq!(spider[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((spider[0].order, spider[0].submit_sequence), (0, 0));
     assert_eq!(spider[1].kind, EntityModelLayerKind::SpiderEyes);
     assert_eq!(spider[1].render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(spider[1].render_type.vanilla_name(), "eyes");
     assert_eq!(spider[1].model_layer, MODEL_LAYER_SPIDER);
     assert_eq!(spider[1].texture, SPIDER_EYES_TEXTURE_REF);
     assert_eq!(spider[1].tint, [1.0, 1.0, 1.0, 1.0]);
@@ -185,10 +188,17 @@ fn spider_textured_layer_passes_match_vanilla_renderer_model_layers() {
     let cave = spider_textured_layer_passes(true);
     assert_eq!(cave.len(), 2);
     assert_eq!(cave[0].kind, EntityModelLayerKind::SpiderBase);
+    assert_eq!(
+        cave[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(cave[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(cave[0].model_layer, MODEL_LAYER_CAVE_SPIDER);
     assert_eq!(cave[0].texture, CAVE_SPIDER_TEXTURE_REF);
     assert_eq!((cave[0].order, cave[0].submit_sequence), (0, 0));
     assert_eq!(cave[1].kind, EntityModelLayerKind::SpiderEyes);
+    assert_eq!(cave[1].render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(cave[1].render_type.vanilla_name(), "eyes");
     assert_eq!(cave[1].model_layer, MODEL_LAYER_CAVE_SPIDER);
     assert_eq!(cave[1].texture, SPIDER_EYES_TEXTURE_REF);
     assert_eq!((cave[1].order, cave[1].submit_sequence), (1, 1));
@@ -243,10 +253,10 @@ fn entity_texture_atlas_stitches_official_spider_png_slots() {
 fn spider_textured_mesh_uses_vanilla_uvs_tints_and_cave_scale() {
     let (atlas, _) = build_entity_model_texture_atlas(&spider_texture_images()).unwrap();
 
-    let spider = entity_model_textured_mesh(
-        &[EntityModelInstance::spider(912, [0.0, 64.0, 0.0], 0.0)],
-        &atlas,
-    );
+    let spider_instance = EntityModelInstance::spider(912, [0.0, 64.0, 0.0], 0.0);
+    let spider_meshes = entity_model_textured_meshes(&[spider_instance], &atlas);
+    assert_spider_submissions_match_vanilla(&spider_meshes, spider_instance);
+    let spider = &spider_meshes.cutout;
     assert_eq!(spider.cutout_faces, 66);
     assert_eq!(spider.vertices.len(), 264);
     assert_eq!(spider.indices.len(), 396);
@@ -259,10 +269,10 @@ fn spider_textured_mesh_uses_vanilla_uvs_tints_and_cave_scale() {
     assert_close3(min, [-1.0282283, 64.0193, -0.9375]);
     assert_close3(max, [1.0282283, 64.8135, 0.7696068]);
 
-    let cave = entity_model_textured_mesh(
-        &[EntityModelInstance::cave_spider(913, [0.0, 64.0, 0.0], 0.0)],
-        &atlas,
-    );
+    let cave_instance = EntityModelInstance::cave_spider(913, [0.0, 64.0, 0.0], 0.0);
+    let cave_meshes = entity_model_textured_meshes(&[cave_instance], &atlas);
+    assert_spider_submissions_match_vanilla(&cave_meshes, cave_instance);
+    let cave = &cave_meshes.cutout;
     assert_eq!(cave.cutout_faces, 66);
     assert_eq!(cave.vertices.len(), 264);
     assert_eq!(cave.indices.len(), 396);
@@ -283,12 +293,36 @@ fn spider_textured_mesh_applies_head_look() {
         EntityModelInstance::spider(914, [0.0, 64.0, 0.0], 0.0),
         EntityModelInstance::cave_spider(915, [0.0, 64.0, 0.0], 0.0),
     ] {
-        let resting = entity_model_textured_mesh(&[base], &atlas);
-        let yawed = entity_model_textured_mesh(&[base.with_head_look(45.0, 0.0)], &atlas);
-        let pitched = entity_model_textured_mesh(&[base.with_head_look(0.0, -20.0)], &atlas);
-        assert_eq!(resting.vertices.len(), yawed.vertices.len());
-        assert_ne!(resting.vertices, yawed.vertices, "{:?}", base.kind);
-        assert_ne!(yawed.vertices, pitched.vertices, "{:?}", base.kind);
+        let yawed_instance = base.with_head_look(45.0, 0.0);
+        let pitched_instance = base.with_head_look(0.0, -20.0);
+        let resting = entity_model_textured_meshes(&[base], &atlas);
+        let yawed = entity_model_textured_meshes(&[yawed_instance], &atlas);
+        let pitched = entity_model_textured_meshes(&[pitched_instance], &atlas);
+        assert_spider_submissions_match_vanilla(&resting, base);
+        assert_spider_submissions_match_vanilla(&yawed, yawed_instance);
+        assert_spider_submissions_match_vanilla(&pitched, pitched_instance);
+        assert_eq!(resting.cutout.vertices.len(), yawed.cutout.vertices.len());
+        assert_eq!(resting.eyes.vertices.len(), yawed.eyes.vertices.len());
+        assert_ne!(
+            resting.cutout.vertices, yawed.cutout.vertices,
+            "{:?}",
+            base.kind
+        );
+        assert_ne!(
+            resting.eyes.vertices, yawed.eyes.vertices,
+            "{:?} eyes",
+            base.kind
+        );
+        assert_ne!(
+            yawed.cutout.vertices, pitched.cutout.vertices,
+            "{:?}",
+            base.kind
+        );
+        assert_ne!(
+            yawed.eyes.vertices, pitched.eyes.vertices,
+            "{:?} eyes",
+            base.kind
+        );
     }
 }
 
@@ -349,27 +383,54 @@ fn spider_textured_mesh_swings_legs_not_head_or_body() {
         EntityModelInstance::spider(916, [0.0, 64.0, 0.0], 0.0),
         EntityModelInstance::cave_spider(917, [0.0, 64.0, 0.0], 0.0),
     ] {
-        let resting = entity_model_textured_mesh(&[base], &atlas);
-        let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
-        let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+        let still_instance = base.with_walk_animation(2.5, 0.0);
+        let walking_instance = base.with_walk_animation(0.0, 1.0);
+        let resting = entity_model_textured_meshes(&[base], &atlas);
+        let still = entity_model_textured_meshes(&[still_instance], &atlas);
+        let walking = entity_model_textured_meshes(&[walking_instance], &atlas);
+        assert_spider_submissions_match_vanilla(&resting, base);
+        assert_spider_submissions_match_vanilla(&still, still_instance);
+        assert_spider_submissions_match_vanilla(&walking, walking_instance);
 
-        assert_eq!(resting.vertices, still.vertices, "{:?} is inert", base.kind);
         assert_eq!(
-            resting.vertices.len(),
-            walking.vertices.len(),
-            "{:?}",
+            resting.cutout.vertices, still.cutout.vertices,
+            "{:?} is inert",
             base.kind
         );
         assert_eq!(
-            resting.vertices[0..72],
-            walking.vertices[0..72],
+            resting.eyes.vertices, still.eyes.vertices,
+            "{:?} eyes are inert",
+            base.kind
+        );
+        assert_eq!(
+            resting.cutout.vertices.len(),
+            walking.cutout.vertices.len(),
+            "{:?}",
+            base.kind
+        );
+        assert_eq!(resting.eyes.vertices.len(), walking.eyes.vertices.len());
+        assert_eq!(
+            resting.cutout.vertices[0..72],
+            walking.cutout.vertices[0..72],
             "{:?} head and body stay put",
             base.kind
         );
         assert_ne!(
-            resting.vertices[72..],
-            walking.vertices[72..],
+            resting.cutout.vertices[72..],
+            walking.cutout.vertices[72..],
             "{:?} the legs swing",
+            base.kind
+        );
+        assert_eq!(
+            resting.eyes.vertices[0..72],
+            walking.eyes.vertices[0..72],
+            "{:?} eyes head and body stay put",
+            base.kind
+        );
+        assert_ne!(
+            resting.eyes.vertices[72..],
+            walking.eyes.vertices[72..],
+            "{:?} eyes legs swing",
             base.kind
         );
     }
@@ -464,4 +525,46 @@ fn spider_eyes_textured_mesh_uses_parent_model_geometry_and_eyes_render_type() {
         textured_mesh_extents(&meshes.eyes),
         textured_mesh_extents(&meshes.cutout)
     );
+}
+
+fn assert_spider_submissions_match_vanilla(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_cutout.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_translucent.vertices.is_empty());
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_translucent
+        .vertices
+        .is_empty());
+    assert!(meshes.scroll.vertices.is_empty());
+    assert!(meshes.scroll_additive.vertices.is_empty());
+    assert_eq!(meshes.submissions.len(), 2);
+
+    let (base_texture, expected_transform) = match instance.kind {
+        EntityModelKind::Spider => (SPIDER_TEXTURE_REF, entity_model_root_transform(instance)),
+        EntityModelKind::CaveSpider => (
+            CAVE_SPIDER_TEXTURE_REF,
+            cave_spider_model_root_transform(instance),
+        ),
+        other => panic!("unexpected spider test kind: {other:?}"),
+    };
+
+    let base = meshes.submissions[0];
+    assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(base.texture, base_texture);
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(base.transform, expected_transform);
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+
+    let eyes = meshes.submissions[1];
+    assert_eq!(eyes.render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(eyes.render_type.vanilla_name(), "eyes");
+    assert_eq!(eyes.texture, SPIDER_EYES_TEXTURE_REF);
+    assert_eq!(eyes.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(eyes.transform, expected_transform);
+    assert_eq!((eyes.order, eyes.submit_sequence), (1, 1));
 }

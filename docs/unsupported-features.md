@@ -2031,7 +2031,10 @@ When an agent does any of the following, update this file in the same slice:
       `CaveSpiderRenderer`, texture-backed base layer pass emission, and
       official PNG atlas upload/bind/sample path; both spider and cave spider
       include the vanilla `SpiderEyesLayer` `spider_eyes.png` texture-backed
-      eyes pass using the parent spider model parts, submit order `1`, and a
+      eyes pass using the parent spider model parts, explicit base/eyes submission
+      metadata for `entityCutout` then `eyes`, white tint, spider/cave-spider root
+      transforms, `spider.png` or `cave_spider.png`, `spider_eyes.png`, and
+      `(order, submit_sequence) == (0, 0)` then `(1, 1)`, plus a
       `RenderTypes.eyes`-style translucent/depth-write-disabled GPU path, and the
       vanilla `SpiderModel.setupAnim` head-look yaw/pitch on the head part and the
       vanilla `SpiderModel.setupAnim` eight-leg walk swing (`spider_leg_swing_pose`:
