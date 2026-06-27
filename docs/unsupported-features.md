@@ -2240,8 +2240,12 @@ When an agent does any of the following, update this file in the same slice:
       held poppy block transform share that root. The textured golem regressions
       now pin the vanilla submission metadata too: base and crack overlays are
       `entityCutout`, bind the selected vanilla texture, use white tint, carry
-      `iron_golem_model_root_transform`, and preserve `(order, submit_sequence)`
-      as `(0, 0)` for base plus `(1, 1)` for the crack layer
+      `iron_golem_model_root_transform`, keep the entity light, preserve full
+      hurt/white overlay on the base body, clear only the crack layer's white
+      overlay column via `getOverlayCoords(state, 0.0F)` while preserving the
+      red row, and preserve `(order, submit_sequence)` as `(0, 0)` for base plus
+      `(1, 1)` for the crack layer. Folded cutout vertices inherit the matching
+      base/crack submission light and overlay metadata
     - snow golem entities as renderer-owned vanilla 26.1
       `SnowGolemModel.createBodyLayer()` geometry, including its 64x64 body
       layer, baked `CubeDeformation(-0.5F)` snow body/arm/head cubes, and the

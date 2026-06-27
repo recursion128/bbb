@@ -213,12 +213,15 @@ fn iron_golem_textured_submissions_apply_body_wobble_to_base_and_cracks() {
         [0.0, 64.0, 0.0],
         0.0,
     )
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true)
     .with_walk_animation(0.0, 1.0);
 
     let meshes = entity_model_textured_meshes(&[walking], &atlas);
     assert_golem_submissions_match_vanilla(&meshes, walking);
     assert_eq!(meshes.submissions.len(), 2);
-    assert!(!meshes.cutout.vertices.is_empty());
+    assert_eq!(meshes.cutout.vertices.len(), 384);
 
     let expected_transform = iron_golem_model_root_transform(walking);
     assert_ne!(
@@ -234,6 +237,9 @@ fn iron_golem_textured_submissions_apply_body_wobble_to_base_and_cracks() {
     assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((base.order, base.submit_sequence), (0, 0));
     assert_eq!(base.transform, expected_transform);
+    assert_eq!(base.light, walking.render_state.shader_light());
+    assert_eq!(base.overlay, walking.render_state.overlay_coords());
+    assert_ne!(base.overlay, [0.0, 10.0]);
 
     let cracks = meshes.submissions[1];
     assert_eq!(cracks.render_type, EntityModelLayerRenderType::EntityCutout);
@@ -242,6 +248,20 @@ fn iron_golem_textured_submissions_apply_body_wobble_to_base_and_cracks() {
     assert_eq!(cracks.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((cracks.order, cracks.submit_sequence), (1, 1));
     assert_eq!(cracks.transform, expected_transform);
+    assert_eq!(cracks.light, walking.render_state.shader_light());
+    assert_eq!(
+        cracks.overlay,
+        [0.0, walking.render_state.overlay_coords()[1]]
+    );
+    assert_ne!(cracks.overlay, base.overlay);
+    assert_ne!(cracks.overlay, [0.0, 10.0]);
+
+    assert!(meshes.cutout.vertices[..192]
+        .iter()
+        .all(|vertex| vertex.light == base.light && vertex.overlay == base.overlay));
+    assert!(meshes.cutout.vertices[192..]
+        .iter()
+        .all(|vertex| vertex.light == cracks.light && vertex.overlay == cracks.overlay));
 }
 
 #[test]
@@ -700,6 +720,14 @@ fn assert_golem_submissions_match_vanilla(
         assert_eq!(submit.texture, pass.texture);
         assert_eq!(submit.tint, pass.tint);
         assert_eq!(submit.transform, transform);
+        assert_eq!(submit.light, instance.render_state.shader_light());
+        let expected_overlay = match pass.kind {
+            EntityModelLayerKind::IronGolemCrackiness => {
+                [0.0, instance.render_state.overlay_coords()[1]]
+            }
+            _ => instance.render_state.overlay_coords(),
+        };
+        assert_eq!(submit.overlay, expected_overlay);
         assert_eq!(
             (submit.order, submit.submit_sequence),
             (pass.order, pass.submit_sequence)
