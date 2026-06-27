@@ -1042,7 +1042,7 @@ When an agent does any of the following, update this file in the same slice:
       bobbed crystal `beamOffset`, record the same vanilla `end_crystal_beam`
       submission after body+eyes, and then fold the shared eight-quad prism
       into the scroll bucket.
-      Uniform layer passes, Warden retained
+      Uniform layer passes, Creaking base+eyes submits, Warden retained
       emissive layers, Breeze base/eyes/wind, Shulker bullet's two submits,
       WindCharge `breezeWind`, charged-creeper / wither `energySwirl`,
       humanoid armor `armorCutoutNoCull`, horse/donkey/undead-horse
@@ -2692,8 +2692,10 @@ When an agent does any of the following, update this file in the same slice:
       now bound on the textured path
       (`CREAKING_TEXTURE_REF`), together with the emissive eyes overlay
       (`CREAKING_EYES_TEXTURE_REF`, vanilla `CreakingRenderer`'s `LivingEntityEmissiveLayer`): an
-      eyes-render-type pass re-rendering the whole model, gated on `eyes_glowing` projected from the
-      synced `IS_ACTIVE` flag (17). Only the tearing-down death-flicker (`hasGlowingEyes`, a client-tick
+      eyes-render-type pass re-rendering the whole model at vanilla `order(1)`, gated on
+      `eyes_glowing` projected from the synced `IS_ACTIVE` flag (17). Tests pin the base
+      `entityCutout` order 0 submission and the eyes order 1 submission before checking folded
+      cutout/eyes geometry. Only the tearing-down death-flicker (`hasGlowingEyes`, a client-tick
       toggle) stays deferred. The colored debug path stays as a fallback (it approximates the whole
       model with one dark-bark tint)
     - sniffer entities as renderer-owned vanilla 26.1 `SnifferModel.createBodyLayer()` geometry on

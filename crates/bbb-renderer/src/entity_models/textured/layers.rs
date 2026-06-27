@@ -892,11 +892,14 @@ pub(in crate::entity_models) fn creaking_textured_layer_passes(
     // Vanilla `CreakingRenderer`'s `LivingEntityEmissiveLayer`: an active creaking re-renders the whole
     // model with the emissive `creaking_eyes.png` in the eyes render type (alpha `1.0` when glowing).
     if eyes_glowing {
-        passes.push(EntityModelLayerPass::base(
-            EntityModelLayerRenderType::Eyes,
-            CREAKING_EYES_TEXTURE_REF,
-            [1.0, 1.0, 1.0, 1.0],
-        ));
+        passes.push(
+            EntityModelLayerPass::base(
+                EntityModelLayerRenderType::Eyes,
+                CREAKING_EYES_TEXTURE_REF,
+                [1.0, 1.0, 1.0, 1.0],
+            )
+            .with_order(1, 1),
+        );
     }
     passes
 }

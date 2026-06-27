@@ -277,6 +277,7 @@ fn creaking_textured_render_matches_vanilla_renderer() {
     assert_eq!(glowing.len(), 2);
     assert_eq!(glowing[1].render_type, EntityModelLayerRenderType::Eyes);
     assert_eq!(glowing[1].texture, CREAKING_EYES_TEXTURE_REF);
+    assert_eq!((glowing[1].order, glowing[1].submit_sequence), (1, 1));
     assert_eq!(
         EntityModelKind::Creaking { eyes_glowing: true }.vanilla_texture_ref(),
         Some(EntityModelTextureRef {
@@ -300,16 +301,28 @@ fn creaking_textured_render_matches_vanilla_renderer() {
         })
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::creaking(
-            900,
-            [0.0, 64.0, 0.0],
-            0.0,
-            true,
-        )],
-        &atlas,
-    );
+    let instance = EntityModelInstance::creaking(900, [0.0, 64.0, 0.0], 0.0, true);
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert_eq!(meshes.submissions.len(), 2);
+    let base = meshes.submissions[0];
+    assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(base.texture, CREAKING_TEXTURE_REF);
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(base.transform, entity_model_root_transform(instance));
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+    let eyes = meshes.submissions[1];
+    assert_eq!(eyes.render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(eyes.render_type.vanilla_name(), "eyes");
+    assert_eq!(eyes.texture, CREAKING_EYES_TEXTURE_REF);
+    assert_eq!(eyes.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(eyes.transform, base.transform);
+    assert_eq!((eyes.order, eyes.submit_sequence), (1, 1));
+    let mesh = &meshes.cutout;
+
     assert!(!mesh.vertices.is_empty());
+    assert_eq!(meshes.eyes.vertices.len(), mesh.vertices.len());
     assert!(mesh
         .vertices
         .iter()
