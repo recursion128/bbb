@@ -2382,13 +2382,14 @@ When an agent does any of the following, update this file in the same slice:
       `textures/entity/ghast/ghast.png` texture reference, texture-backed base
       layer pass emission (vanilla `GhastModel` calls `EntityModel`'s default
       `RenderTypes::entityCutout`) while preserving explicit submission metadata for texture, white
-      tint, scaled root transform, and `order(0)`, official PNG atlas upload/bind/sample path, and the
+      tint, scaled root transform, `order(0)`, and `MobRenderer` / `LivingEntityRenderer`
+      light plus hurt/white overlay metadata, official PNG atlas upload/bind/sample path, and the
       vanilla `GhastModel.setupAnim` tentacle wave (`tentacle.xRot = 0.2 *
       sin(ageInTicks * 0.3 + i) + 0.4`, driven by the projected `ageInTicks`, on
       both render paths), and the vanilla `GhastRenderer.getTextureLocation`
       `isCharging` texture swap (`ghast.png` → `ghast_shooting.png`), driven by
       the projected `Ghast.DATA_IS_CHARGING` synced boolean (index 16, since
-      `Ghast extends Mob` directly). Lighting and overlay remain unsupported
+      `Ghast extends Mob` directly). Broader lighting presentation remains unsupported
     - happy ghast entities as renderer-owned vanilla 26.1
       `HappyGhastModel.createBodyLayer(false, NONE)` geometry: the 16x16x16 body at
       y 16 plus the nine tentacles parented under the body (world-space y 23) with

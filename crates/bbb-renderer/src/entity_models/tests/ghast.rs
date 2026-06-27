@@ -134,7 +134,10 @@ fn ghast_mesh_uses_vanilla_scaled_body_layer_geometry() {
 #[test]
 fn ghast_textured_mesh_uses_vanilla_uvs_and_scaling() {
     let (atlas, _) = build_entity_model_texture_atlas(&ghast_texture_images()).unwrap();
-    let base = EntityModelInstance::ghast(57, [0.0, 64.0, 0.0], 0.0);
+    let base = EntityModelInstance::ghast(57, [0.0, 64.0, 0.0], 0.0)
+        .with_light_coords((6_u32 << 4) | (13_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[base], &atlas);
     assert_ghast_base_submission(&meshes, base, GHAST_TEXTURE_REF);
     assert!(meshes.translucent.vertices.is_empty());
@@ -147,6 +150,13 @@ fn ghast_textured_mesh_uses_vanilla_uvs_and_scaling() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == base.render_state.shader_light()
+            && vertex.overlay == base.render_state.overlay_coords()));
+    assert_ne!(base.render_state.overlay_coords(), [0.0, 10.0]);
     // The body's first vertex samples u = 2*depth/width = 32/64 = 0.5 at the texOffs(0, 0)
     // top edge; the textured mesh shares the colored geometry's bounds.
     assert_close2(meshes.cutout.vertices[0].uv, [0.5, 0.0]);
@@ -227,4 +237,6 @@ fn assert_ghast_base_submission(
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(submit.transform, ghast_model_root_transform(instance));
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, instance.render_state.overlay_coords());
 }
