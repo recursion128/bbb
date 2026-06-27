@@ -3440,10 +3440,12 @@ When an agent does any of the following, update this file in the same slice:
       `PufferfishRenderer.submit`), with the vanilla `PufferfishRenderer.setupRotations`
       vertical bob (`translate(0, cos(ageInTicks · 0.05) · 0.08, 0)`); the official
       `textures/entity/fish/pufferfish.png` texture reference, texture-backed cutout
-      emission, official PNG atlas upload/bind/sample path, and the shared vanilla
+      emission with explicit `entityCutout` submission metadata for texture, white
+      tint, renderer root transform, `order(0)`, light, and hurt/white overlay,
+      official PNG atlas upload/bind/sample path, and the shared vanilla
       `setupAnim` pectoral/blue fin wiggle (`right.zRot = -0.2 + 0.4 · sin(ageInTicks ·
       0.2)`, left negated, set absolutely over the rest pose, on both render paths).
-      Lighting and overlay remain unsupported
+      Broader lighting presentation remains unsupported
     - squid and glow squid entities are wired end to end: the native entity scene
       (`entity_scene.rs`) projects vanilla type ids `127` (squid) / `61` (glow squid)
       to the real `SquidModel` (the glow variant keyed off the type id and the baby flag

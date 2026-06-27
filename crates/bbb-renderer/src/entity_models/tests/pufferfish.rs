@@ -364,7 +364,10 @@ fn pufferfish_meshes_use_vanilla_body_layer_geometry() {
 #[test]
 fn pufferfish_textured_mesh_uses_vanilla_uvs_and_geometry() {
     let (atlas, _) = build_entity_model_texture_atlas(&pufferfish_texture_images()).unwrap();
-    let instance = EntityModelInstance::pufferfish(107, [0.0, 64.0, 0.0], 0.0, 2);
+    let instance = EntityModelInstance::pufferfish(107, [0.0, 64.0, 0.0], 0.0, 2)
+        .with_light_coords((5_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
@@ -375,6 +378,8 @@ fn pufferfish_textured_mesh_uses_vanilla_uvs_and_geometry() {
     assert_eq!(submit.texture, PUFFERFISH_TEXTURE_REF);
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(submit.transform, pufferfish_model_root_transform(instance));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, instance.render_state.overlay_coords());
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
     let mesh = &meshes.cutout;
 
@@ -384,6 +389,10 @@ fn pufferfish_textured_mesh_uses_vanilla_uvs_and_geometry() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    assert!(mesh.vertices.iter().all(|vertex| vertex.light
+        == instance.render_state.shader_light()
+        && vertex.overlay == instance.render_state.overlay_coords()));
+    assert_ne!(instance.render_state.overlay_coords(), [0.0, 10.0]);
     // Same geometry and transform as the colored path, so the extents match exactly.
     let (min, max) = textured_mesh_extents(&mesh);
     assert_close3(min, [-0.37250832, 64.1435, -0.29419422]);
