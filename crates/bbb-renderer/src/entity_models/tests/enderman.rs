@@ -210,6 +210,56 @@ fn enderman_textured_mesh_uses_parent_geometry_for_base_and_eyes_layers() {
 }
 
 #[test]
+fn enderman_eyes_submission_survives_missing_texture_atlas_entry() {
+    // Vanilla `EnderEyesLayer` submits order(1) `RenderTypes.eyes` with no overlay; a missing eyes
+    // atlas entry suppresses only the folded eyes geometry, not the submission metadata.
+    let len =
+        usize::try_from(ENDERMAN_TEXTURE_REF.size[0] * ENDERMAN_TEXTURE_REF.size[1] * 4).unwrap();
+    let images = vec![EntityModelTextureImage::new(
+        ENDERMAN_TEXTURE_REF,
+        vec![0u8; len],
+    )];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let instance = EntityModelInstance::enderman(142, [0.0, 64.0, 0.0], 0.0)
+        .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 2);
+    let base = meshes.submissions[0];
+    assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(base.texture, ENDERMAN_TEXTURE_REF);
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(base.transform, entity_model_root_transform(instance));
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+    assert_eq!(base.light, instance.render_state.shader_light());
+    assert_eq!(base.overlay, instance.render_state.overlay_coords());
+
+    let eyes = meshes.submissions[1];
+    assert_eq!(eyes.render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(eyes.render_type.vanilla_name(), "eyes");
+    assert_eq!(eyes.texture, ENDERMAN_EYES_TEXTURE_REF);
+    assert_eq!(eyes.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(eyes.transform, entity_model_root_transform(instance));
+    assert_eq!((eyes.order, eyes.submit_sequence), (1, 1));
+    assert_eq!(eyes.light, instance.render_state.shader_light());
+    assert_eq!(eyes.overlay, [0.0, 10.0]);
+    assert_ne!(eyes.overlay, base.overlay);
+
+    assert!(!meshes.cutout.vertices.is_empty());
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == base.light && vertex.overlay == base.overlay));
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.translucent.vertices.is_empty());
+}
+
+#[test]
 fn enderman_textured_mesh_applies_head_look() {
     let (atlas, _) = build_entity_model_texture_atlas(&enderman_texture_images()).unwrap();
     let base = EntityModelInstance::enderman(143, [0.0, 64.0, 0.0], 0.0);
