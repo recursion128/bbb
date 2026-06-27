@@ -242,8 +242,14 @@ fn entity_texture_atlas_stitches_official_player_png_slots() {
 #[test]
 fn player_textured_mesh_uses_vanilla_uvs_tints_and_avatar_scale() {
     let (atlas, _) = build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
-    let wide_instance = EntityModelInstance::player(901, [0.0, 64.0, 0.0], 0.0, false);
-    let slim_instance = EntityModelInstance::player(902, [0.0, 64.0, 0.0], 0.0, true);
+    let wide_instance = EntityModelInstance::player(901, [0.0, 64.0, 0.0], 0.0, false)
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
+    let slim_instance = EntityModelInstance::player(902, [0.0, 64.0, 0.0], 0.0, true)
+        .with_light_coords((4_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.6)
+        .with_has_red_overlay(true);
     let wide_meshes = entity_model_textured_meshes(&[wide_instance], &atlas);
     let slim_meshes = entity_model_textured_meshes(&[slim_instance], &atlas);
     assert_player_submissions_match_vanilla(&wide_meshes, wide_instance);
@@ -2029,10 +2035,17 @@ fn assert_player_submissions_match_vanilla(
     assert_eq!(submit.texture, pass.texture);
     assert_eq!(submit.tint, pass.tint);
     assert_eq!(submit.transform, player_model_root_transform(instance));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, instance.render_state.overlay_coords());
     assert_eq!(
         (submit.order, submit.submit_sequence),
         (pass.order, pass.submit_sequence)
     );
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
 }
 
 fn assert_player_folded_meshes_are_static_cutout_only(meshes: &EntityModelTexturedMeshes) {

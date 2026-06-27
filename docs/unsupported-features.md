@@ -1451,8 +1451,10 @@ When an agent does any of the following, update this file in the same slice:
       visibility state. Static player textured regressions now route through
       `entity_model_textured_meshes`, pinning the base `entityCutout` submission's
       default wide/slim Steve texture, white tint, `player_model_root_transform`, and
-      `(order, submit_sequence) == (0, 0)` before folded cutout checks for UVs, overlay
-      part visibility, head-look, walk swing, idle arm bob, and crouch. Player profile
+      `(order, submit_sequence) == (0, 0)` plus vanilla `LivingEntityRenderer`
+      `lightCoords` and hurt/white overlay metadata before folded cutout checks for UVs,
+      folded vertex light/overlay inheritance, overlay part visibility, head-look,
+      walk swing, idle arm bob, and crouch. Player profile
       cape presentation is covered by the
       dynamic `entitySolid` cape layer, and WingsLayer/elytra presentation plus
       elytra animation-state projection are covered for vanilla elytra equipment
