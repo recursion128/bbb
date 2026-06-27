@@ -202,6 +202,69 @@ fn copper_golem_textured_submissions_pin_living_emissive_metadata() {
 }
 
 #[test]
+fn copper_golem_eyes_submission_survives_missing_texture_atlas_entry() {
+    // Vanilla `CopperGolemRenderer` records its LivingEntityEmissiveLayer eyes submit at order(1);
+    // missing weathered eyes texture data suppresses only the folded emissive eyes geometry.
+    let images: Vec<EntityModelTextureImage> = copper_golem_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .filter_map(|(index, texture)| {
+            if *texture == COPPER_GOLEM_EYES_WEATHERED_TEXTURE_REF {
+                return None;
+            }
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            Some(EntityModelTextureImage::new(
+                *texture,
+                vec![index as u8; len],
+            ))
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let instance = EntityModelInstance::new(
+        911,
+        EntityModelKind::CopperGolem {
+            weathering: CopperGolemWeathering::Weathered,
+        },
+        [0.0, 64.0, 0.0],
+        0.0,
+    )
+    .with_light_coords((2_u32 << 4) | (14_u32 << 20))
+    .with_white_overlay_progress(0.7)
+    .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 2);
+    let base = meshes.submissions[0];
+    assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(base.texture, COPPER_GOLEM_WEATHERED_TEXTURE_REF);
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(base.transform, entity_model_root_transform(instance));
+    assert_eq!(base.light, instance.render_state.shader_light());
+    assert_eq!(base.overlay, instance.render_state.overlay_coords());
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+
+    let eyes = meshes.submissions[1];
+    assert_eq!(eyes.render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(eyes.render_type.vanilla_name(), "eyes");
+    assert_eq!(eyes.texture, COPPER_GOLEM_EYES_WEATHERED_TEXTURE_REF);
+    assert_eq!(eyes.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(eyes.transform, base.transform);
+    assert_eq!(eyes.light, instance.render_state.shader_light());
+    assert_eq!(
+        eyes.overlay,
+        [0.0, instance.render_state.overlay_coords()[1]]
+    );
+    assert_ne!(eyes.overlay, base.overlay);
+    assert_eq!((eyes.order, eyes.submit_sequence), (1, 1));
+
+    assert!(!meshes.cutout.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.eyes.indices.is_empty());
+}
+
+#[test]
 fn copper_golem_textures_are_in_entity_model_atlas() {
     for texture in copper_golem_entity_texture_refs() {
         assert!(entity_model_texture_refs().contains(texture));
