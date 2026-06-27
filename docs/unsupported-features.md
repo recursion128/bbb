@@ -3726,7 +3726,9 @@ When an agent does any of the following, update this file in the same slice:
       `tropical_fish_model_root_transform`, light, overlay metadata (base keeps the full
       hurt/white overlay; `TropicalFishPatternLayer` preserves the red row but clears the white
       overlay via `getOverlayCoords(state, 0.0F)`), and explicit `(order, submit_sequence)` pairs
-      `(0, 0)` and `(1, 1)` before checking the folded cutout mesh animation/flop behavior. Only the colored
+      `(0, 0)` and `(1, 1)` before checking the folded cutout mesh animation/flop behavior.
+      Missing-atlas coverage proves small/large pattern submissions are still recorded without the
+      selected `tropical_{a,b}_pattern_*.png` while only folded pattern geometry is suppressed. Only the colored
       debug path omits the
       pattern overlay (a cutout texture whose shape comes from the texture alpha cannot be
       approximated by a solid-color box); its lighting/overlay remain the standard deferred

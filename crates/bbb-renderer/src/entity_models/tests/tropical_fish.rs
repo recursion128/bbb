@@ -456,6 +456,115 @@ fn tropical_fish_textured_mesh_uses_vanilla_geometry_and_animates() {
     assert_ne!(small_still.cutout.vertices, beached.cutout.vertices);
 }
 
+#[test]
+fn tropical_fish_pattern_submission_survives_missing_texture_atlas_entry() {
+    // Vanilla `TropicalFishPatternLayer` uses the shared colored-cutout copy helper at order(1);
+    // missing atlas data suppresses only the folded pattern geometry.
+    let images = [
+        TROPICAL_FISH_SMALL_TEXTURE_REF,
+        TROPICAL_FISH_LARGE_TEXTURE_REF,
+    ]
+    .iter()
+    .enumerate()
+    .map(|(index, texture)| {
+        let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+        EntityModelTextureImage::new(*texture, vec![index as u8; len])
+    })
+    .collect::<Vec<_>>();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+
+    for (id, shape, base_texture, pattern, pattern_texture) in [
+        (
+            812,
+            TropicalFishModelShape::Small,
+            TROPICAL_FISH_SMALL_TEXTURE_REF,
+            TropicalFishPattern::Brinely,
+            TROPICAL_FISH_BRINELY_PATTERN_TEXTURE_REF,
+        ),
+        (
+            813,
+            TropicalFishModelShape::Large,
+            TROPICAL_FISH_LARGE_TEXTURE_REF,
+            TropicalFishPattern::Betty,
+            TROPICAL_FISH_BETTY_PATTERN_TEXTURE_REF,
+        ),
+    ] {
+        let instance = EntityModelInstance::tropical_fish(
+            id,
+            [0.0, 64.0, 0.0],
+            0.0,
+            shape,
+            EntityDyeColor::Orange,
+            pattern,
+            EntityDyeColor::Cyan,
+        )
+        .with_in_water(true)
+        .with_light_coords((6_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
+        let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+        assert_eq!(meshes.submissions.len(), 2);
+        let base = meshes.submissions[0];
+        assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(base.texture, base_texture);
+        let base_tint = EntityDyeColor::Orange.texture_diffuse_color();
+        assert_eq!(base.tint, base_tint);
+        assert_eq!(
+            base.transform,
+            tropical_fish_model_root_transform(instance, true)
+        );
+        assert_eq!(base.light, instance.render_state.shader_light());
+        assert_eq!(base.overlay, instance.render_state.overlay_coords());
+        assert_eq!((base.order, base.submit_sequence), (0, 0));
+
+        let pattern_submit = meshes.submissions[1];
+        assert_eq!(
+            pattern_submit.render_type,
+            EntityModelLayerRenderType::EntityCutout
+        );
+        assert_eq!(pattern_submit.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(pattern_submit.texture, pattern_texture);
+        let pattern_tint = EntityDyeColor::Cyan.texture_diffuse_color();
+        assert_eq!(pattern_submit.tint, pattern_tint);
+        assert_eq!(pattern_submit.transform, base.transform);
+        assert_eq!(pattern_submit.light, instance.render_state.shader_light());
+        assert_eq!(
+            pattern_submit.overlay,
+            [0.0, instance.render_state.overlay_coords()[1]]
+        );
+        assert_ne!(
+            pattern_submit.overlay,
+            instance.render_state.overlay_coords()
+        );
+        assert_eq!(
+            (pattern_submit.order, pattern_submit.submit_sequence),
+            (1, 1)
+        );
+
+        assert!(
+            !meshes.cutout.vertices.is_empty(),
+            "missing {path} keeps the base mesh",
+            path = pattern_texture.path
+        );
+        assert!(meshes
+            .cutout
+            .vertices
+            .iter()
+            .all(|vertex| vertex.tint == base_tint
+                && vertex.light == base.light
+                && vertex.overlay == base.overlay));
+        assert!(!meshes
+            .cutout
+            .vertices
+            .iter()
+            .any(|vertex| vertex.tint == pattern_tint));
+        assert!(meshes.translucent.vertices.is_empty());
+        assert!(meshes.eyes.vertices.is_empty());
+    }
+}
+
 fn assert_tropical_fish_submission_pair(
     meshes: &EntityModelTexturedMeshes,
     instance: EntityModelInstance,
