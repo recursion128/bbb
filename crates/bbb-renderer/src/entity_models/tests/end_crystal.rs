@@ -134,6 +134,11 @@ fn end_crystal_textured_submit_matches_vanilla_renderer() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
 
     let colored = entity_model_mesh(&[instance]);
     let (colored_min, colored_max) = mesh_extents(&colored);
@@ -174,6 +179,10 @@ fn end_crystal_beam_records_vanilla_submission_and_geometry() {
         instance.render_state.shader_light()
     );
     assert_eq!(meshes.submissions[0].overlay, [0.0, 10.0]);
+    assert!(meshes.cutout.vertices.iter().all(|vertex| {
+        vertex.light == meshes.submissions[0].light
+            && vertex.overlay == meshes.submissions[0].overlay
+    }));
     let beam_submit = meshes.submissions[1];
     assert_eq!(
         beam_submit.render_type,
@@ -224,6 +233,11 @@ fn end_crystal_beam_records_vanilla_submission_and_geometry() {
     );
     assert_eq!(meshes.scroll.vertices[0].tint, [0.0, 0.0, 0.0, 1.0]);
     assert_eq!(meshes.scroll.vertices[1].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert!(meshes
+        .scroll
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == beam_submit.light && vertex.overlay == beam_submit.overlay));
     assert_eq!(meshes.scroll.vertices[0].local_uv[0], 0.0);
     assert_eq!(meshes.scroll.vertices[3].local_uv[0], 0.125);
     let length = delta.length();

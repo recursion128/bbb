@@ -3311,14 +3311,16 @@ When an agent does any of the following, update this file in the same slice:
       `textures/entity/end_crystal/end_crystal.png` as the vanilla default `entityCutout` submit with
       collector order `0`, sequence `0`, white tint, vanilla light coords,
       `OverlayTexture.NO_OVERLAY`, and the same `scale(2)·translate(0,-0.5,0)` root
-      transform; the colored debug path stays as the missing-atlas fallback with separate glass/core/base
-      tints. The `EndCrystal.DATA_BEAM_TARGET` custom beam is now wired too: world projects
+      transform, with folded cutout vertices inheriting that metadata; the colored debug path stays as the
+      missing-atlas fallback with separate glass/core/base tints. The `EndCrystal.DATA_BEAM_TARGET` custom
+      beam is now wired too: world projects
       `EndCrystal.DATA_BEAM_TARGET` (Optional<BlockPos> data id 8) as
       `Vec3.atCenterOf(target) - entity.getPosition(partialTicks)`, native forwards it as
       `EndCrystalRenderState.beamOffset`, and the renderer records
       `RenderTypes.endCrystalBeam(textures/entity/end_crystal/end_crystal_beam.png)` at order `0`,
       sequence `1` with vanilla light coords and `OverlayTexture.NO_OVERLAY` before folding the
-      eight-quad black/white prism into the tiled scroll mesh.
+      eight-quad black/white prism into the tiled scroll mesh with matching vertex light/no-overlay
+      metadata.
     - evoker fangs entities as renderer-owned vanilla 26.1 `EvokerFangsModel.createBodyLayer()` geometry on
       the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `47` to the new
       `EntityModelKind::EvokerFangs`, replacing the former placeholder bounds box. The static closed-jaw
