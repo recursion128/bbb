@@ -1557,7 +1557,8 @@ When an agent does any of the following, update this file in the same slice:
       through the default item equipment-slot map, using vanilla `PIG_SADDLE` /
       `PigModel.createBodyLayer(CubeDeformation(0.5F))` and
       `textures/entity/equipment/pig_saddle/saddle.png`, with submission metadata
-      for vanilla `armorCutoutNoCull`, white tint, `entity_model_root_transform`, and
+      generated from `equipment_layer_pass` for vanilla `ModelLayers.PIG_SADDLE`,
+      `armorCutoutNoCull`, white tint, `entity_model_root_transform`, and
       `(order, submit_sequence) == (0, 1)`, preserving entity light while forcing the vanilla equipment
       `OverlayTexture.NO_OVERLAY`; missing saddle atlas data now preserves that
       submission while suppressing only the folded saddle geometry; baby pigs intentionally
@@ -1657,10 +1658,10 @@ When an agent does any of the following, update this file in the same slice:
       (`WolfArmorLayer`: `ModelLayers.WOLF_ARMOR` with `CubeDeformation(0.2)`,
       body-slot `wolf_armor` resolved through the `armadillo_scute` equipment
       asset, the `wolf_body` base and dyeable overlay layers as
-      `armorCutoutNoCull` submissions at orders `1`/`2`, undyed overlay
+      `equipment_layer_pass`-generated `armorCutoutNoCull` submissions at orders `1`/`2`, undyed overlay
       suppression, all wolf armor/collar submissions preserving vanilla
       `OverlayTexture.NO_OVERLAY`, and the low/medium/high durability crack overlays as
-      `armorTranslucent` submissions at order `3`). Textured wolf UV, head-look, leg-swing,
+      `equipment_layer_pass`-generated `armorTranslucent` submissions at order `3`). Textured wolf UV, head-look, leg-swing,
       tail-wag, tail-droop, sitting, angry-tail, wet-shade, collar, and armor regressions now
       route through `entity_model_textured_meshes`, pinning selected wild/tame/angry/variant
       base textures, adult/baby collar textures, armor/crack textures, `entityCutout` /
@@ -1844,7 +1845,8 @@ When an agent does any of the following, update this file in the same slice:
       selected texture, white tint, `entity_model_root_transform`, and
       `(order, submit_sequence) == (0, 0)` with vanilla entity light plus
       hurt/white overlay; adult camel and camel_husk saddle passes use
-      `armorCutoutNoCull`, the family-specific saddle texture, white tint, the
+      `equipment_layer_pass` with vanilla `ModelLayers.CAMEL_SADDLE` /
+      `CAMEL_HUSK_SADDLE`, `armorCutoutNoCull`, the family-specific saddle texture, white tint, the
       same transform, `(0, 1)`, entity light, and `OverlayTexture.NO_OVERLAY`.
       Folded cutout vertices inherit the corresponding base or saddle submission
       metadata; missing-atlas coverage pins that the adult camel saddle submission is still
@@ -1875,8 +1877,9 @@ When an agent does any of the following, update this file in the same slice:
       overlay from `Equippable.llamaSwag(DyeColor)`, adult trader llamas fall back
       to `trader_llama.png` when no carpet item overrides it, and baby trader llamas
       use `trader_llama_baby.png` while ignoring body-item carpets. The decor overlay
-      records vanilla `EquipmentLayerRenderer` submission metadata (`armorCutoutNoCull`,
-      `order(1)`, submit sequence 1, white tint, base transform, entity light, and
+      records vanilla `EquipmentLayerRenderer` submission metadata generated from
+      `equipment_layer_pass` (`ModelLayers.LLAMA_DECOR` / `LLAMA_BABY_DECOR`,
+      `armorCutoutNoCull`, `order(1)`, submit sequence 1, white tint, base transform, entity light, and
       `OverlayTexture.NO_OVERLAY`) before folding into the cutout bucket. The base
       `entityCutout` submission now also pins vanilla `LivingEntityRenderer`
       light plus hurt/white overlay metadata, and folded cutout vertices inherit
@@ -2711,7 +2714,8 @@ When an agent does any of the following, update this file in the same slice:
       `SimpleEquipmentLayer(STRIDER_SADDLE)` with `AdultStriderModel(ModelLayers.STRIDER_SADDLE)`,
       `LayerDefinitions` maps that layer to the same adult strider body layer, and the renderer draws
       `textures/entity/equipment/strider_saddle/saddle.png` (64×128) as an `armorCutoutNoCull`
-      submission at the same collector order with `submit_sequence = 1`, entity light, and
+      submission generated from `equipment_layer_pass` for vanilla `ModelLayers.STRIDER_SADDLE`
+      at the same collector order with `submit_sequence = 1`, entity light, and
       `OverlayTexture.NO_OVERLAY`, after the base submit. Folded saddle vertices inherit the saddle metadata;
       missing-atlas coverage pins that the saddle submission is still recorded without
       `strider_saddle/saddle.png` while only folded saddle geometry is suppressed.
@@ -3873,9 +3877,10 @@ When an agent does any of the following, update this file in the same slice:
       geometry checks: living/zombie/coral base passes are `entityCutout`, selected texture, white tint,
       `entity_model_root_transform`, light, hurt/white overlay, and `(order, submit_sequence) == (0, 0)`;
       adult living nautilus and
-      all zombie-nautilus saddle/body-armor equipment layers are `armorCutoutNoCull` with white tint and
-      the same transform, entity light, and `OverlayTexture.NO_OVERLAY` at `(0, 1)`, with saddle advancing
-      to `(0, 2)` when a valid body-armor layer is also present. Baby living nautilus remain base-only
+      all zombie-nautilus saddle/body-armor equipment layers are `equipment_layer_pass`-generated
+      `armorCutoutNoCull` submissions for vanilla `ModelLayers.NAUTILUS_SADDLE` / `NAUTILUS_ARMOR`
+      with white tint and the same transform, entity light, and `OverlayTexture.NO_OVERLAY` at `(0, 1)`,
+      with saddle advancing to `(0, 2)` when a valid body-armor layer is also present. Baby living nautilus remain base-only
       because vanilla `SimpleEquipmentLayer` has no
       baby model. The colored debug path stays as a fallback (it renders a tan shell over a pale body)
     - fox entities (adult and baby) as renderer-owned vanilla 26.1 `AdultFoxModel.createBodyLayer()` /

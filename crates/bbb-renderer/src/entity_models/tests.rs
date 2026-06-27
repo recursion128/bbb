@@ -172,6 +172,116 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
 }
 
 #[test]
+fn equipment_layer_pass_records_vanilla_model_layer_metadata() {
+    let cases = [
+        (
+            EntityModelLayerKind::PigSaddle,
+            EntityModelLayerRenderType::ArmorCutoutNoCull,
+            MODEL_LAYER_PIG_SADDLE,
+            PIG_SADDLE_TEXTURE_REF,
+            [1.0, 1.0, 1.0, 1.0],
+            0,
+            1,
+        ),
+        (
+            EntityModelLayerKind::StriderSaddle,
+            EntityModelLayerRenderType::ArmorCutoutNoCull,
+            MODEL_LAYER_STRIDER_SADDLE,
+            STRIDER_SADDLE_TEXTURE_REF,
+            [1.0, 1.0, 1.0, 1.0],
+            0,
+            1,
+        ),
+        (
+            EntityModelLayerKind::CamelSaddle,
+            EntityModelLayerRenderType::ArmorCutoutNoCull,
+            MODEL_LAYER_CAMEL_HUSK_SADDLE,
+            CAMEL_HUSK_SADDLE_TEXTURE_REF,
+            [1.0, 1.0, 1.0, 1.0],
+            0,
+            1,
+        ),
+        (
+            EntityModelLayerKind::NautilusBodyArmor,
+            EntityModelLayerRenderType::ArmorCutoutNoCull,
+            MODEL_LAYER_NAUTILUS_ARMOR,
+            NAUTILUS_BODY_IRON_TEXTURE_REF,
+            [1.0, 1.0, 1.0, 1.0],
+            0,
+            1,
+        ),
+        (
+            EntityModelLayerKind::NautilusSaddle,
+            EntityModelLayerRenderType::ArmorCutoutNoCull,
+            MODEL_LAYER_NAUTILUS_SADDLE,
+            NAUTILUS_SADDLE_TEXTURE_REF,
+            [1.0, 1.0, 1.0, 1.0],
+            0,
+            2,
+        ),
+        (
+            EntityModelLayerKind::LlamaDecor,
+            EntityModelLayerRenderType::ArmorCutoutNoCull,
+            MODEL_LAYER_LLAMA_BABY_DECOR,
+            LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
+            [1.0, 1.0, 1.0, 1.0],
+            1,
+            1,
+        ),
+        (
+            EntityModelLayerKind::WolfBodyArmor,
+            EntityModelLayerRenderType::ArmorCutoutNoCull,
+            MODEL_LAYER_WOLF_ARMOR,
+            WOLF_BODY_ARMADILLO_SCUTE_OVERLAY_TEXTURE_REF,
+            [
+                0x33 as f32 / 255.0,
+                0x66 as f32 / 255.0,
+                0x99 as f32 / 255.0,
+                1.0,
+            ],
+            2,
+            3,
+        ),
+        (
+            EntityModelLayerKind::WolfBodyArmorCrack,
+            EntityModelLayerRenderType::ArmorTranslucent,
+            MODEL_LAYER_WOLF_ARMOR,
+            WOLF_ARMOR_CRACKINESS_HIGH_TEXTURE_REF,
+            [1.0, 1.0, 1.0, 1.0],
+            3,
+            4,
+        ),
+    ];
+
+    for (kind, render_type, model_layer, texture, tint, order, submit_sequence) in cases {
+        let pass = equipment_layer_pass(
+            kind,
+            render_type,
+            model_layer,
+            texture,
+            tint,
+            order,
+            submit_sequence,
+        );
+        assert_eq!(pass.kind, kind);
+        assert_eq!(pass.render_type, render_type);
+        assert_eq!(
+            pass.render_type.vanilla_name(),
+            match render_type {
+                EntityModelLayerRenderType::ArmorCutoutNoCull => "armorCutoutNoCull",
+                EntityModelLayerRenderType::ArmorTranslucent => "armorTranslucent",
+                _ => panic!("unexpected equipment render type"),
+            }
+        );
+        assert_eq!(pass.model_layer, model_layer);
+        assert_eq!(pass.texture, texture);
+        assert_eq!(pass.visibility, EntityModelLayerVisibility::All);
+        assert_eq!(pass.tint, tint);
+        assert_eq!((pass.order, pass.submit_sequence), (order, submit_sequence));
+    }
+}
+
+#[test]
 fn runtime_colored_mesh_excludes_texture_backed_entities() {
     let chicken = EntityModelInstance::chicken(303, [-2.0, 64.0, 0.0], 0.0, false);
     let sheep = EntityModelInstance::sheep(304, [0.0, 64.0, 0.0], 0.0, false);

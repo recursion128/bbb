@@ -193,6 +193,9 @@ pub(in crate::entity_models) fn camel_clamped_head_look(
 // texture differs, so it reuses the `camel#main` layer/parts.
 pub(in crate::entity_models) const MODEL_LAYER_CAMEL: &str = "minecraft:camel#main";
 pub(in crate::entity_models) const MODEL_LAYER_CAMEL_BABY: &str = "minecraft:camel_baby#main";
+pub(in crate::entity_models) const MODEL_LAYER_CAMEL_SADDLE: &str = "minecraft:camel#saddle";
+pub(in crate::entity_models) const MODEL_LAYER_CAMEL_HUSK_SADDLE: &str =
+    "minecraft:camel_husk#saddle";
 
 // ----- `CamelAnimation.CAMEL_WALK` (the adult walk; length 1.5s, looping) -----
 //

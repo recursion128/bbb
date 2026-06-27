@@ -2,6 +2,11 @@ use super::{apply_head_look, PartPose, NAUTILUS_BODY, NAUTILUS_SHELL, PART_POSE_
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+// Vanilla 26.1 `ModelLayers.NAUTILUS_SADDLE` and `NAUTILUS_ARMOR`.
+pub(in crate::entity_models) const MODEL_LAYER_NAUTILUS_SADDLE: &str = "minecraft:nautilus#saddle";
+pub(in crate::entity_models) const MODEL_LAYER_NAUTILUS_ARMOR: &str =
+    "minecraft:nautilus_armor#main";
+
 // Vanilla 26.1 `NautilusModel.createBodyLayer` (atlas 128×128) — the new rideable nautilus mob.
 // `NautilusModel extends EntityModel`: one cubeless `root` pivot parenting the `shell` (the spiral shell,
 // three boxes) and the `body` (the trunk plus its 0-thickness rear fin) which in turn parents the three

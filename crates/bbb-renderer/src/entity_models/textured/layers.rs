@@ -33,6 +33,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     BreezeWind,
     BreezeEyes,
     CamelBase,
+    CamelSaddle,
     ChickenBase,
     SalmonBase,
     TropicalFishBase,
@@ -70,11 +71,15 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     HoglinBase,
     LlamaSpitBase,
     LlamaBase,
+    LlamaDecor,
     MooshroomBase,
+    NautilusBodyArmor,
+    NautilusSaddle,
     PandaBase,
     IronGolemBase,
     IronGolemCrackiness,
     PigBase,
+    PigSaddle,
     PlayerBase,
     PlayerCape,
     PlayerExtraEars,
@@ -91,6 +96,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     SlimeOuter,
     SnifferBase,
     MagmaCubeBase,
+    StriderSaddle,
     GhastBase,
     HappyGhastBase,
     MinecartBase,
@@ -134,6 +140,8 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     WardenTendrils,
     WardenHeart,
     WolfBase,
+    WolfBodyArmor,
+    WolfBodyArmorCrack,
     WolfCollar,
     FelineCollar,
     WindChargeBase,
@@ -2059,6 +2067,27 @@ pub(in crate::entity_models) fn humanoid_armor_layer_pass(
         visibility: EntityModelLayerVisibility::All,
         tint: armor_layer_tint(material, dye),
         order: 1,
+        submit_sequence,
+    }
+}
+
+pub(in crate::entity_models) fn equipment_layer_pass(
+    kind: EntityModelLayerKind,
+    render_type: EntityModelLayerRenderType,
+    model_layer: &'static str,
+    texture: EntityModelTextureRef,
+    tint: [f32; 4],
+    order: i32,
+    submit_sequence: u32,
+) -> EntityModelLayerPass {
+    EntityModelLayerPass {
+        kind,
+        render_type,
+        model_layer,
+        texture,
+        visibility: EntityModelLayerVisibility::All,
+        tint,
+        order,
         submit_sequence,
     }
 }

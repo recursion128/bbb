@@ -9,6 +9,7 @@ pub(in crate::entity_models) const WOLF_GRAY: [f32; 4] = [0.64, 0.66, 0.66, 1.0]
 
 pub(in crate::entity_models) const MODEL_LAYER_WOLF: &str = "minecraft:wolf#main";
 pub(in crate::entity_models) const MODEL_LAYER_WOLF_BABY: &str = "minecraft:wolf_baby#main";
+pub(in crate::entity_models) const MODEL_LAYER_WOLF_ARMOR: &str = "minecraft:wolf_armor#main";
 
 // Vanilla 26.1 `AdultWolfModel.createBodyLayer(CubeDeformation.NONE)` cubes (atlas 64×32). Each
 // unified cube carries the colored tint (`WOLF_GRAY`) and the textured `uv_size`/`texOffs`/`mirror`.

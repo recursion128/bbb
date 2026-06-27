@@ -176,9 +176,7 @@ pub(in crate::entity_models) const BABY_LLAMA_BODY: [ModelCube; 1] = [ModelCube:
 // `LlamaModel.createBodyLayer` mesh; its distinction is the `LlamaDecorLayer` overlay.
 pub(in crate::entity_models) const MODEL_LAYER_LLAMA: &str = "minecraft:llama#main";
 pub(in crate::entity_models) const MODEL_LAYER_LLAMA_BABY: &str = "minecraft:llama_baby#main";
-#[cfg(test)]
 pub(in crate::entity_models) const MODEL_LAYER_LLAMA_DECOR: &str = "minecraft:llama#decor";
-#[cfg(test)]
 pub(in crate::entity_models) const MODEL_LAYER_LLAMA_BABY_DECOR: &str =
     "minecraft:llama_baby#decor";
 

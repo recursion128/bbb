@@ -100,7 +100,7 @@ use textured::{
     cow_textured_layer_passes, creaking_textured_layer_passes, creeper_textured_layer_passes,
     custom_head_skull_layer_pass, donkey_textured_layer_passes, drowned_textured_layer_passes,
     end_crystal_textured_layer_passes, ender_dragon_textured_layer_passes,
-    enderman_textured_layer_passes, endermite_textured_layer_passes,
+    enderman_textured_layer_passes, endermite_textured_layer_passes, equipment_layer_pass,
     evoker_fangs_textured_layer_passes, feline_textured_layer_passes, fox_textured_layer_passes,
     frog_textured_layer_passes, ghast_textured_layer_passes, goat_textured_layer_passes,
     guardian_textured_layer_passes, happy_ghast_textured_layer_passes,

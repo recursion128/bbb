@@ -8,7 +8,6 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 pub(in crate::entity_models) const MODEL_LAYER_PIG: &str = "minecraft:pig#main";
 pub(in crate::entity_models) const MODEL_LAYER_PIG_BABY: &str = "minecraft:pig_baby#main";
 pub(in crate::entity_models) const MODEL_LAYER_COLD_PIG: &str = "minecraft:cold_pig#main";
-#[cfg(test)]
 pub(in crate::entity_models) const MODEL_LAYER_PIG_SADDLE: &str = "minecraft:pig#saddle";
 
 const PIG_SADDLE_DEFORMATION: f32 = 0.5;
