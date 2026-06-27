@@ -54,11 +54,11 @@ use super::{
         ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
         BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, CAMEL_HUSK_SADDLE_TEXTURE_REF,
         CAMEL_SADDLE_TEXTURE_REF, CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF,
-        ENCHANTED_GLINT_ITEM_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_BEAM_TEXTURE_REF,
-        END_CRYSTAL_TEXTURED_PARTS, GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
-        LLAMA_BODY_TRADER_BABY_TEXTURE_REF, LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF,
-        NAUTILUS_SADDLE_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF,
-        PIG_SADDLE_TEXTURE_REF, PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
+        ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_BEAM_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS,
+        GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
+        LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
+        PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF,
+        PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
         SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION,
         STRIDER_SADDLE_TEXTURE_REF, TRIDENT_RIPTIDE_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF,
         ZOMBIE_HORSE_SADDLE_TEXTURE_REF, ZOMBIE_TEXTURE_REF,
@@ -805,13 +805,15 @@ fn emit_trident_foil_submission(
     if !matches!(instance.kind, EntityModelKind::Trident) || !instance.render_state.trident_foil {
         return;
     }
+    let passes = trident_textured_layer_passes();
+    let pass = passes[1];
     let submit = no_overlay_submission(
-        EntityModelLayerRenderType::EntityGlint,
-        ENCHANTED_GLINT_ITEM_TEXTURE_REF,
-        [1.0, 1.0, 1.0, 1.0],
+        pass.render_type,
+        pass.texture,
+        pass.tint,
         trident_model_root_transform(instance),
-        1,
-        1,
+        pass.order,
+        pass.submit_sequence,
     );
     meshes.record_submission(submit);
 }
@@ -960,6 +962,7 @@ fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
             | EntityModelLayerKind::ShulkerBulletShell
             | EntityModelLayerKind::SpiderEyes
             | EntityModelLayerKind::TridentBase
+            | EntityModelLayerKind::TridentFoil
             | EntityModelLayerKind::WindChargeBase
             | EntityModelLayerKind::WitherArmor
             | EntityModelLayerKind::WitherSkullBase

@@ -2,6 +2,8 @@ use super::{PART_POSE_ZERO, TRIDENT_POLE, TRIDENT_SPIKE};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_TRIDENT: &str = "minecraft:trident#main";
+
 // Vanilla 26.1 `TridentModel.createLayer` (atlas 32×32). The mesh root holds the `pole` (a 1×25×1
 // shaft), which parents the `base` crossguard and the three spikes (left / middle / right) — all at
 // ZERO. `TridentModel` is a `Model<Unit>` with no animation, so the geometry is complete; nothing is

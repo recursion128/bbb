@@ -919,12 +919,16 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &arrow_textured_layer_passes(texture),
         ),
-        EntityModelKind::Trident => sink.model(
-            TridentModel::new(),
-            trident_model_root_transform(*instance),
-            instance,
-            &trident_textured_layer_passes(),
-        ),
+        EntityModelKind::Trident => {
+            let passes = trident_textured_layer_passes();
+            let body_passes = [passes[0]];
+            sink.model(
+                TridentModel::new(),
+                trident_model_root_transform(*instance),
+                instance,
+                &body_passes,
+            )
+        }
         EntityModelKind::LlamaSpit => sink.model(
             LlamaSpitModel::new(),
             llama_spit_model_root_transform(*instance),

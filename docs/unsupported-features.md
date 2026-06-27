@@ -3497,11 +3497,12 @@ When an agent does any of the following, update this file in the same slice:
       `EntityRenderer` that orients the trident along its flight with `Ry(yRot - 90)` then `Rz(xRot + 90)`
       (the `+90` points the upright pole along the flight axis), projected through the instance's `body_rot`
       / `head_pitch` and captured by `trident_model_root_transform`. The base texture is now bound on the
-      textured path (`TRIDENT_TEXTURE_REF`), the primary now-wired path. A synced `ID_FOIL` trident now
-      records the vanilla order-1 `entityGlint` submission with `textures/misc/enchanted_glint_item.png`,
-      white tint, the same flight transform, light coords, and `OverlayTexture.NO_OVERLAY`; GPU glint
-      presentation remains deferred. The base submission explicitly records vanilla `order(0)`,
-      `entityCutout`, white tint, texture, light coords, `OverlayTexture.NO_OVERLAY`, and the
+      textured path (`TRIDENT_TEXTURE_REF`), the primary now-wired path. `trident_textured_layer_passes`
+      now records vanilla `ModelLayers.TRIDENT` for both the order-0 base `entityCutout` submit and the
+      synced `ID_FOIL` order-1 `entityGlint` submit with `textures/misc/enchanted_glint_item.png`, white
+      tint, same flight transform, light coords, and `OverlayTexture.NO_OVERLAY`; GPU glint presentation
+      remains deferred. The base submission explicitly records vanilla `order(0)`, `entityCutout`,
+      white tint, texture, light coords, `OverlayTexture.NO_OVERLAY`, and the
       flight-orientation transform, with folded cutout vertices inheriting that base
       light/no-overlay metadata. Missing-atlas coverage now pins that a foiled trident still records
       both the order-0 base `entityCutout` submit and the order-1 `entityGlint` submit before folded

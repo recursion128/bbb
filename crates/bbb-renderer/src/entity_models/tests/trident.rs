@@ -87,7 +87,9 @@ fn trident_mesh_uses_vanilla_body_layer_geometry() {
 #[test]
 fn trident_layer_passes_and_texture_ref_match_vanilla_renderer() {
     let passes = trident_textured_layer_passes();
-    assert_eq!(passes.len(), 1);
+    assert_eq!(passes.len(), 2);
+    assert_eq!(passes[0].kind, EntityModelLayerKind::TridentBase);
+    assert_eq!(passes[0].model_layer, MODEL_LAYER_TRIDENT);
     assert_eq!(
         passes[0].render_type,
         EntityModelLayerRenderType::EntityCutout
@@ -96,6 +98,16 @@ fn trident_layer_passes_and_texture_ref_match_vanilla_renderer() {
     assert_eq!(passes[0].texture, TRIDENT_TEXTURE_REF);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
+    assert_eq!(passes[1].kind, EntityModelLayerKind::TridentFoil);
+    assert_eq!(passes[1].model_layer, MODEL_LAYER_TRIDENT);
+    assert_eq!(
+        passes[1].render_type,
+        EntityModelLayerRenderType::EntityGlint
+    );
+    assert_eq!(passes[1].render_type.vanilla_name(), "entityGlint");
+    assert_eq!(passes[1].texture, ENCHANTED_GLINT_ITEM_TEXTURE_REF);
+    assert_eq!(passes[1].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((passes[1].order, passes[1].submit_sequence), (1, 1));
 
     assert_eq!(
         EntityModelKind::Trident.vanilla_texture_ref(),

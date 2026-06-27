@@ -33,6 +33,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     TropicalFishBase,
     TropicalFishPattern,
     TridentBase,
+    TridentFoil,
     CowBase,
     CreeperBase,
     CreeperArmor,
@@ -1086,13 +1087,28 @@ pub(in crate::entity_models) fn leash_knot_textured_layer_passes() -> Vec<Entity
 }
 
 pub(in crate::entity_models) fn trident_textured_layer_passes() -> Vec<EntityModelLayerPass> {
-    vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::EntityCutout,
-        TRIDENT_TEXTURE_REF,
-        [1.0, 1.0, 1.0, 1.0],
-    )
-    .with_kind(EntityModelLayerKind::TridentBase)
-    .with_order(0, 0)]
+    vec![
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::TridentBase,
+            render_type: EntityModelLayerRenderType::EntityCutout,
+            model_layer: MODEL_LAYER_TRIDENT,
+            texture: TRIDENT_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 0,
+            submit_sequence: 0,
+        },
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::TridentFoil,
+            render_type: EntityModelLayerRenderType::EntityGlint,
+            model_layer: MODEL_LAYER_TRIDENT,
+            texture: ENCHANTED_GLINT_ITEM_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 1,
+            submit_sequence: 1,
+        },
+    ]
 }
 
 pub(in crate::entity_models) fn evoker_fangs_textured_layer_passes() -> Vec<EntityModelLayerPass> {
