@@ -122,7 +122,10 @@ fn bat_textured_mesh_uses_vanilla_geometry_and_animates() {
 
     // Bat renders into the cutout mesh (vanilla `RenderTypes::entityCutoutCull`). Nine cubes →
     // 54 faces / 216 vertices, with nothing on the translucent or eyes passes and a white tint.
-    let base = EntityModelInstance::bat(920, [0.0, 64.0, 0.0], 0.0);
+    let base = EntityModelInstance::bat(920, [0.0, 64.0, 0.0], 0.0)
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[base], &atlas);
     assert_bat_base_submission(&meshes, base);
     assert!(meshes.translucent.vertices.is_empty());
@@ -195,7 +198,10 @@ fn bat_hangs_upside_down_when_resting() {
 #[test]
 fn bat_textured_mesh_hangs_upside_down_when_resting() {
     let (atlas, _) = build_entity_model_texture_atlas(&bat_texture_images()).unwrap();
-    let base = EntityModelInstance::bat(931, [0.0, 64.0, 0.0], 0.0);
+    let base = EntityModelInstance::bat(931, [0.0, 64.0, 0.0], 0.0)
+        .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let flying = entity_model_textured_meshes(&[base], &atlas);
     assert_bat_base_submission(&flying, base);
     let resting_instance = base.with_bat_resting(true);
@@ -250,5 +256,13 @@ fn assert_bat_base_submission(meshes: &EntityModelTexturedMeshes, instance: Enti
     assert_eq!(submit.texture, BAT_TEXTURE_REF);
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(submit.transform, entity_model_root_transform(instance));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, instance.render_state.overlay_coords());
+    assert_ne!(submit.overlay, [0.0, 10.0]);
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
 }
