@@ -2059,7 +2059,13 @@ When an agent does any of the following, update this file in the same slice:
       `isAggressive && !isHoldingBow` raising both arms to `-π/2` and chopping with
       the projected `attack_anim` (the right arm yawing in, the left out), over the
       shared `setupAttackAnimation` body twist, on the base body and the clothing
-      overlay alike; skeleton-family armor is covered by `emit_worn_humanoid_armor`
+      overlay alike. Textured skeleton-family regressions now route through
+      `entity_model_textured_meshes`, pinning base and Stray/Bogged clothing submissions'
+      selected textures, `entityCutout` render type, white tint, root transform
+      (`wither_skeleton_model_root_transform` for wither skeleton, generic
+      `entity_model_root_transform` otherwise), and explicit `(order, submit_sequence)`
+      pairs `(0, 0)` / `(1, 1)` before folded cutout geometry checks. Skeleton-family
+      armor is covered by `emit_worn_humanoid_armor`
       for skeleton, stray, parched, wither skeleton, and bogged, while lighting
       remains unsupported
     - creeper entities as renderer-owned vanilla 26.1

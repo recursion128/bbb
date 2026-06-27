@@ -465,10 +465,10 @@ fn skeleton_variant_meshes_use_vanilla_body_layer_geometry() {
 fn skeleton_textured_mesh_uses_vanilla_uvs_tints_and_variant_geometry() {
     let (atlas, _) = build_entity_model_texture_atlas(&skeleton_texture_images()).unwrap();
 
-    let skeleton = entity_model_textured_mesh(
-        &[EntityModelInstance::skeleton(51, [0.0, 64.0, 0.0], 0.0)],
-        &atlas,
-    );
+    let skeleton_instance = EntityModelInstance::skeleton(51, [0.0, 64.0, 0.0], 0.0);
+    let skeleton_meshes = entity_model_textured_meshes(&[skeleton_instance], &atlas);
+    assert_skeleton_submissions_match_vanilla(&skeleton_meshes, skeleton_instance);
+    let skeleton = &skeleton_meshes.cutout;
     assert_eq!(skeleton.cutout_faces, 42);
     assert_eq!(skeleton.vertices.len(), 168);
     assert_eq!(skeleton.indices.len(), 252);
@@ -482,15 +482,15 @@ fn skeleton_textured_mesh_uses_vanilla_uvs_tints_and_variant_geometry() {
     assert_close3(min, [-0.43708366, 64.001, -0.28125]);
     assert_close3(max, [0.43708366, 66.03225, 0.28125]);
 
-    let stray = entity_model_textured_mesh(
-        &[EntityModelInstance::skeleton_variant(
-            128,
-            [0.0, 64.0, 0.0],
-            0.0,
-            SkeletonModelFamily::Stray,
-        )],
-        &atlas,
+    let stray_instance = EntityModelInstance::skeleton_variant(
+        128,
+        [0.0, 64.0, 0.0],
+        0.0,
+        SkeletonModelFamily::Stray,
     );
+    let stray_meshes = entity_model_textured_meshes(&[stray_instance], &atlas);
+    assert_skeleton_submissions_match_vanilla(&stray_meshes, stray_instance);
+    let stray = &stray_meshes.cutout;
     assert_eq!(stray.cutout_faces, 84);
     assert_eq!(stray.vertices.len(), 336);
     assert_close2(stray.vertices[0].uv, [16.0 / 64.0, 32.0 / 256.0]);
@@ -499,30 +499,30 @@ fn skeleton_textured_mesh_uses_vanilla_uvs_tints_and_variant_geometry() {
     assert_close3(stray_min, [-0.578566, 63.985374, -0.296875]);
     assert_close3(stray_max, [0.578566, 66.047875, 0.296875]);
 
-    let wither = entity_model_textured_mesh(
-        &[EntityModelInstance::skeleton_variant(
-            146,
-            [0.0, 64.0, 0.0],
-            0.0,
-            SkeletonModelFamily::WitherSkeleton,
-        )],
-        &atlas,
+    let wither_instance = EntityModelInstance::skeleton_variant(
+        146,
+        [0.0, 64.0, 0.0],
+        0.0,
+        SkeletonModelFamily::WitherSkeleton,
     );
+    let wither_meshes = entity_model_textured_meshes(&[wither_instance], &atlas);
+    assert_skeleton_submissions_match_vanilla(&wither_meshes, wither_instance);
+    let wither = &wither_meshes.cutout;
     assert_eq!(wither.cutout_faces, 42);
     assert_close2(wither.vertices[0].uv, [16.0 / 64.0, 160.0 / 256.0]);
     let (wither_min, wither_max) = textured_mesh_extents(&wither);
     assert_close3(wither_min, [-0.52450037, 64.0012, -0.33750004]);
     assert_close3(wither_max, [0.52450037, 66.4387, 0.33750004]);
 
-    let parched = entity_model_textured_mesh(
-        &[EntityModelInstance::skeleton_variant(
-            97,
-            [0.0, 64.0, 0.0],
-            0.0,
-            SkeletonModelFamily::Parched,
-        )],
-        &atlas,
+    let parched_instance = EntityModelInstance::skeleton_variant(
+        97,
+        [0.0, 64.0, 0.0],
+        0.0,
+        SkeletonModelFamily::Parched,
     );
+    let parched_meshes = entity_model_textured_meshes(&[parched_instance], &atlas);
+    assert_skeleton_submissions_match_vanilla(&parched_meshes, parched_instance);
+    let parched = &parched_meshes.cutout;
     assert_eq!(parched.cutout_faces, 78);
     assert_eq!(parched.vertices.len(), 312);
     assert_close2(parched.vertices[0].uv, [28.0 / 64.0, 112.0 / 256.0]);
@@ -530,15 +530,15 @@ fn skeleton_textured_mesh_uses_vanilla_uvs_tints_and_variant_geometry() {
     assert_close3(parched_min, [-0.50238097, 64.001, -0.26250002]);
     assert_close3(parched_max, [0.50238097, 66.0135, 0.26250002]);
 
-    let bogged = entity_model_textured_mesh(
-        &[EntityModelInstance::skeleton_variant(
-            16,
-            [0.0, 64.0, 0.0],
-            0.0,
-            SkeletonModelFamily::Bogged { sheared: false },
-        )],
-        &atlas,
+    let bogged_instance = EntityModelInstance::skeleton_variant(
+        16,
+        [0.0, 64.0, 0.0],
+        0.0,
+        SkeletonModelFamily::Bogged { sheared: false },
     );
+    let bogged_meshes = entity_model_textured_meshes(&[bogged_instance], &atlas);
+    assert_skeleton_submissions_match_vanilla(&bogged_meshes, bogged_instance);
+    let bogged = &bogged_meshes.cutout;
     assert_eq!(bogged.cutout_faces, 120);
     assert_eq!(bogged.vertices.len(), 480);
     assert_close2(bogged.vertices[48].uv, [56.0 / 64.0, 208.0 / 256.0]);
@@ -547,15 +547,15 @@ fn skeleton_textured_mesh_uses_vanilla_uvs_tints_and_variant_geometry() {
     assert_close3(bogged_min, [-0.57514465, 63.9885, -0.5]);
     assert_close3(bogged_max, [0.57514465, 66.1885, 0.32008255]);
 
-    let sheared_bogged = entity_model_textured_mesh(
-        &[EntityModelInstance::skeleton_variant(
-            17,
-            [0.0, 64.0, 0.0],
-            0.0,
-            SkeletonModelFamily::Bogged { sheared: true },
-        )],
-        &atlas,
+    let sheared_bogged_instance = EntityModelInstance::skeleton_variant(
+        17,
+        [0.0, 64.0, 0.0],
+        0.0,
+        SkeletonModelFamily::Bogged { sheared: true },
     );
+    let sheared_bogged_meshes = entity_model_textured_meshes(&[sheared_bogged_instance], &atlas);
+    assert_skeleton_submissions_match_vanilla(&sheared_bogged_meshes, sheared_bogged_instance);
+    let sheared_bogged = &sheared_bogged_meshes.cutout;
     assert_eq!(sheared_bogged.cutout_faces, 84);
     assert_eq!(sheared_bogged.vertices.len(), 336);
     assert_close2(
@@ -573,9 +573,17 @@ fn skeleton_textured_mesh_applies_head_look() {
 
     // Skeleton head is part 0: head look turns it without changing vertex count.
     let base = EntityModelInstance::skeleton(714, [0.0, 64.0, 0.0], 0.0);
-    let resting = entity_model_textured_mesh(&[base], &atlas);
-    let yawed = entity_model_textured_mesh(&[base.with_head_look(45.0, 0.0)], &atlas);
-    let pitched = entity_model_textured_mesh(&[base.with_head_look(0.0, -20.0)], &atlas);
+    let yawed_instance = base.with_head_look(45.0, 0.0);
+    let pitched_instance = base.with_head_look(0.0, -20.0);
+    let resting_meshes = entity_model_textured_meshes(&[base], &atlas);
+    let yawed_meshes = entity_model_textured_meshes(&[yawed_instance], &atlas);
+    let pitched_meshes = entity_model_textured_meshes(&[pitched_instance], &atlas);
+    assert_skeleton_submissions_match_vanilla(&resting_meshes, base);
+    assert_skeleton_submissions_match_vanilla(&yawed_meshes, yawed_instance);
+    assert_skeleton_submissions_match_vanilla(&pitched_meshes, pitched_instance);
+    let resting = &resting_meshes.cutout;
+    let yawed = &yawed_meshes.cutout;
+    let pitched = &pitched_meshes.cutout;
     assert_eq!(resting.vertices.len(), yawed.vertices.len());
     assert_ne!(resting.vertices, yawed.vertices);
     assert_ne!(yawed.vertices, pitched.vertices);
@@ -588,9 +596,13 @@ fn skeleton_textured_mesh_applies_head_look() {
         0.0,
         SkeletonModelFamily::Parched,
     );
-    let parched_resting = entity_model_textured_mesh(&[parched], &atlas);
-    let parched_looking =
-        entity_model_textured_mesh(&[parched.with_head_look(45.0, -20.0)], &atlas);
+    let parched_looking_instance = parched.with_head_look(45.0, -20.0);
+    let parched_resting_meshes = entity_model_textured_meshes(&[parched], &atlas);
+    let parched_looking_meshes = entity_model_textured_meshes(&[parched_looking_instance], &atlas);
+    assert_skeleton_submissions_match_vanilla(&parched_resting_meshes, parched);
+    assert_skeleton_submissions_match_vanilla(&parched_looking_meshes, parched_looking_instance);
+    let parched_resting = &parched_resting_meshes.cutout;
+    let parched_looking = &parched_looking_meshes.cutout;
     assert_ne!(parched_resting.vertices, parched_looking.vertices);
     assert_eq!(
         parched_resting.vertices[0..24],
@@ -788,9 +800,17 @@ fn skeleton_textured_mesh_swings_legs_when_walking() {
         ),
     ];
     for (name, base) in instances {
-        let resting = entity_model_textured_mesh(&[base], &atlas);
-        let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
-        let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+        let still_instance = base.with_walk_animation(2.5, 0.0);
+        let walking_instance = base.with_walk_animation(0.0, 1.0);
+        let resting_meshes = entity_model_textured_meshes(&[base], &atlas);
+        let still_meshes = entity_model_textured_meshes(&[still_instance], &atlas);
+        let walking_meshes = entity_model_textured_meshes(&[walking_instance], &atlas);
+        assert_skeleton_submissions_match_vanilla(&resting_meshes, base);
+        assert_skeleton_submissions_match_vanilla(&still_meshes, still_instance);
+        assert_skeleton_submissions_match_vanilla(&walking_meshes, walking_instance);
+        let resting = &resting_meshes.cutout;
+        let still = &still_meshes.cutout;
+        let walking = &walking_meshes.cutout;
 
         assert_eq!(
             resting.vertices, still.vertices,
@@ -1056,9 +1076,17 @@ fn skeleton_textured_mesh_swings_arms_when_walking() {
     };
     let (atlas, _) = build_entity_model_texture_atlas(&skeleton_texture_images()).unwrap();
     let base = EntityModelInstance::skeleton(96, [0.0, 64.0, 0.0], 0.0);
-    let resting = entity_model_textured_mesh(&[base], &atlas);
-    let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
-    let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+    let still_instance = base.with_walk_animation(2.5, 0.0);
+    let walking_instance = base.with_walk_animation(0.0, 1.0);
+    let resting_meshes = entity_model_textured_meshes(&[base], &atlas);
+    let still_meshes = entity_model_textured_meshes(&[still_instance], &atlas);
+    let walking_meshes = entity_model_textured_meshes(&[walking_instance], &atlas);
+    assert_skeleton_submissions_match_vanilla(&resting_meshes, base);
+    assert_skeleton_submissions_match_vanilla(&still_meshes, still_instance);
+    assert_skeleton_submissions_match_vanilla(&walking_meshes, walking_instance);
+    let resting = &resting_meshes.cutout;
+    let still = &still_meshes.cutout;
+    let walking = &walking_meshes.cutout;
 
     assert_eq!(
         resting.vertices, still.vertices,
@@ -1094,8 +1122,13 @@ fn skeleton_textured_arms_idle_bob_as_age_advances() {
     // the head and body ([0, 72)) and the legs ([120, 168)) stay byte-identical across ages.
     let (atlas, _) = build_entity_model_texture_atlas(&skeleton_texture_images()).unwrap();
     let base = EntityModelInstance::skeleton(97, [0.0, 64.0, 0.0], 0.0);
-    let early = entity_model_textured_mesh(&[base], &atlas);
-    let later = entity_model_textured_mesh(&[base.with_age_in_ticks(27.3)], &atlas);
+    let later_instance = base.with_age_in_ticks(27.3);
+    let early_meshes = entity_model_textured_meshes(&[base], &atlas);
+    let later_meshes = entity_model_textured_meshes(&[later_instance], &atlas);
+    assert_skeleton_submissions_match_vanilla(&early_meshes, base);
+    assert_skeleton_submissions_match_vanilla(&later_meshes, later_instance);
+    let early = &early_meshes.cutout;
+    let later = &later_meshes.cutout;
     assert_eq!(early.vertices.len(), later.vertices.len());
     assert_eq!(
         early.vertices[0..72],
@@ -1229,11 +1262,13 @@ fn skeleton_bow_aim_moves_only_the_arms_in_the_textured_mesh() {
     // gated on both flags so a skeleton missing either renders the resting mesh.
     let (atlas, _) = build_entity_model_texture_atlas(&skeleton_texture_images()).unwrap();
     let base = EntityModelInstance::skeleton(98, [0.0, 64.0, 0.0], 0.0).with_head_look(20.0, -10.0);
-    let resting = entity_model_textured_mesh(&[base], &atlas);
-    let aiming = entity_model_textured_mesh(
-        &[base.with_is_aggressive(true).with_main_hand_holds_bow(true)],
-        &atlas,
-    );
+    let aiming_instance = base.with_is_aggressive(true).with_main_hand_holds_bow(true);
+    let resting_meshes = entity_model_textured_meshes(&[base], &atlas);
+    let aiming_meshes = entity_model_textured_meshes(&[aiming_instance], &atlas);
+    assert_skeleton_submissions_match_vanilla(&resting_meshes, base);
+    assert_skeleton_submissions_match_vanilla(&aiming_meshes, aiming_instance);
+    let resting = &resting_meshes.cutout;
+    let aiming = &aiming_meshes.cutout;
 
     assert_eq!(resting.vertices.len(), aiming.vertices.len());
     assert_eq!(
@@ -1254,7 +1289,10 @@ fn skeleton_bow_aim_moves_only_the_arms_in_the_textured_mesh() {
 
     // Aggression without a bow melees instead — it re-poses the arms ([72, 120)) but not the
     // head/body or legs (a different pose from the bow aim; see the melee test).
-    let meleeing = entity_model_textured_mesh(&[base.with_is_aggressive(true)], &atlas);
+    let meleeing_instance = base.with_is_aggressive(true);
+    let meleeing_meshes = entity_model_textured_meshes(&[meleeing_instance], &atlas);
+    assert_skeleton_submissions_match_vanilla(&meleeing_meshes, meleeing_instance);
+    let meleeing = &meleeing_meshes.cutout;
     assert_ne!(
         resting.vertices[72..120],
         meleeing.vertices[72..120],
@@ -1271,9 +1309,11 @@ fn skeleton_bow_aim_moves_only_the_arms_in_the_textured_mesh() {
         "the melee leaves the legs"
     );
     // A holstered bow with no aggression neither aims nor melees.
+    let holstered_instance = base.with_main_hand_holds_bow(true);
+    let holstered_meshes = entity_model_textured_meshes(&[holstered_instance], &atlas);
+    assert_skeleton_submissions_match_vanilla(&holstered_meshes, holstered_instance);
     assert_eq!(
-        resting.vertices,
-        entity_model_textured_mesh(&[base.with_main_hand_holds_bow(true)], &atlas).vertices,
+        resting.vertices, holstered_meshes.cutout.vertices,
         "a holstered bow does not aim"
     );
 }
@@ -1291,11 +1331,13 @@ fn stray_clothing_overlay_tracks_the_aiming_arms() {
         SkeletonModelFamily::Stray,
     )
     .with_head_look(20.0, -10.0);
-    let resting = entity_model_textured_mesh(&[base], &atlas);
-    let aiming = entity_model_textured_mesh(
-        &[base.with_is_aggressive(true).with_main_hand_holds_bow(true)],
-        &atlas,
-    );
+    let aiming_instance = base.with_is_aggressive(true).with_main_hand_holds_bow(true);
+    let resting_meshes = entity_model_textured_meshes(&[base], &atlas);
+    let aiming_meshes = entity_model_textured_meshes(&[aiming_instance], &atlas);
+    assert_skeleton_submissions_match_vanilla(&resting_meshes, base);
+    assert_skeleton_submissions_match_vanilla(&aiming_meshes, aiming_instance);
+    let resting = &resting_meshes.cutout;
+    let aiming = &aiming_meshes.cutout;
     assert_eq!(resting.vertices.len(), aiming.vertices.len());
     assert_ne!(
         resting.vertices, aiming.vertices,
@@ -1316,4 +1358,49 @@ fn skeleton_texture_images() -> Vec<EntityModelTextureImage> {
             ],
         })
         .collect()
+}
+
+fn assert_skeleton_submissions_match_vanilla(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    let family = match instance.kind {
+        EntityModelKind::Skeleton => None,
+        EntityModelKind::SkeletonVariant { family } => Some(family),
+        _ => panic!("expected skeleton instance"),
+    };
+    assert_skeleton_folded_meshes_are_cutout_only(meshes);
+    let passes = skeleton_textured_layer_passes(family);
+    assert_eq!(meshes.submissions.len(), passes.len());
+    let expected_transform = if matches!(family, Some(SkeletonModelFamily::WitherSkeleton)) {
+        wither_skeleton_model_root_transform(instance)
+    } else {
+        entity_model_root_transform(instance)
+    };
+    for (submit, pass) in meshes.submissions.iter().zip(passes.iter()) {
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(submit.render_type, pass.render_type);
+        assert_eq!(submit.texture, pass.texture);
+        assert_eq!(submit.tint, pass.tint);
+        assert_eq!(submit.transform, expected_transform);
+        assert_eq!(
+            (submit.order, submit.submit_sequence),
+            (pass.order, pass.submit_sequence)
+        );
+    }
+}
+
+fn assert_skeleton_folded_meshes_are_cutout_only(meshes: &EntityModelTexturedMeshes) {
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_cutout.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_translucent.vertices.is_empty());
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_translucent
+        .vertices
+        .is_empty());
+    assert!(meshes.scroll.vertices.is_empty());
+    assert!(meshes.scroll_additive.vertices.is_empty());
 }
