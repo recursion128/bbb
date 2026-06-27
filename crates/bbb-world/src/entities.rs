@@ -387,6 +387,12 @@ pub struct EntityModelSourceState {
     /// invisible-entity behavior when paired with an invisible shared flag.
     #[serde(default = "entity_model_source_default_true")]
     pub invisible_to_player: bool,
+    /// Vanilla `EntityRenderState.appearsGlowing()` / client-side
+    /// `Entity.isCurrentlyGlowing()`: synced shared-flags bit 6. This lets
+    /// `LivingEntityRenderer.getRenderType` use the outline render type for an
+    /// invisible entity that is otherwise hidden from this client.
+    #[serde(default)]
+    pub appears_glowing: bool,
     /// Vanilla `Mob.isAggressive()` (`DATA_MOB_FLAGS_ID & 4`): whether the mob is in its
     /// aggressive AI state, which deepens the held-out `animateZombieArms` arm drop
     /// (`-π / 1.5` aggressive vs `-π / 2.25` calm). Projected only for the zombie-model

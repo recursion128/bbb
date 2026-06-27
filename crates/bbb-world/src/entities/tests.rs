@@ -1014,6 +1014,34 @@ fn entity_model_sources_project_invisible_to_player_for_spectator_viewer() {
 }
 
 #[test]
+fn entity_model_sources_project_glowing_shared_flag() {
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
+    const ENTITY_SHARED_FLAG_GLOWING: i8 = 1 << 6;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        37,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 37,
+        values: vec![protocol_byte_data(
+            ENTITY_SHARED_FLAGS_DATA_ID,
+            ENTITY_SHARED_FLAG_GLOWING,
+        )],
+    }));
+
+    let sources = store.entity_model_sources_at_partial_tick(1.0);
+    let chicken = sources
+        .iter()
+        .find(|source| source.entity_id == 37)
+        .unwrap();
+    assert!(chicken.appears_glowing);
+    assert!(!chicken.invisible_to_player);
+}
+
+#[test]
 fn entity_model_sources_project_worn_armor_materials() {
     use std::collections::BTreeMap;
     const VANILLA_ENTITY_TYPE_ZOMBIE_ID: i32 = 150;

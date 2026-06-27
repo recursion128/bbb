@@ -67,6 +67,8 @@ const VANILLA_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
 /// Vanilla `Entity.DATA_SHARED_FLAGS_ID` id 0 bit 5 (`Entity.isInvisible()`).
 const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
 const ENTITY_SHARED_FLAG_INVISIBLE: i8 = 1 << 5;
+/// Vanilla `Entity.DATA_SHARED_FLAGS_ID` id 0 bit 6 (`Entity.isCurrentlyGlowing()` on the client).
+const ENTITY_SHARED_FLAG_GLOWING: i8 = 1 << 6;
 
 /// Vanilla 26.1 `EntityType.PIG` registry id, used to gate `PigRenderState.saddle`.
 const VANILLA_ENTITY_TYPE_PIG_ID: i32 = 100;
@@ -845,6 +847,11 @@ impl EntityStore {
             .unwrap_or(0)
             & ENTITY_SHARED_FLAG_INVISIBLE
             != 0;
+        let appears_glowing = self
+            .metadata_byte(id, ENTITY_SHARED_FLAGS_DATA_ID, 0)
+            .unwrap_or(0)
+            & ENTITY_SHARED_FLAG_GLOWING
+            != 0;
         // Vanilla `Mob.isAggressive()` (`DATA_MOB_FLAGS_ID & 4`): the zombie-model family
         // consumes it (their held-out `animateZombieArms` arm drop deepens when aggressive),
         // the piglin/brute drive `ATTACKING_WITH_MELEE_WEAPON` (raise + swing a melee weapon)
@@ -1096,6 +1103,7 @@ impl EntityStore {
             wither_y_head_rots,
             is_fully_frozen,
             invisible_to_player,
+            appears_glowing,
             is_aggressive,
             villager_unhappy,
             enderman_carrying,

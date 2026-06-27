@@ -350,9 +350,14 @@ When an agent does any of the following, update this file in the same slice:
       `entityTranslucentCullItemTarget` with the vanilla `0x26ffffff`
       force-transparent alpha while invisible-gated layers still skip. World/native
       projection now clears `isInvisibleToPlayer` for spectator viewers, matching
-      `Entity.isInvisibleTo(player)`'s spectator branch; same-team friendly-invisible
-      visibility, colored-path force-transparent output, and glowing-outline cases
-      remain deferred under the `outlineColor` slot.
+      `Entity.isInvisibleTo(player)`'s spectator branch. The shared glowing bit
+      (`Entity.DATA_SHARED_FLAGS_ID` bit 6 / client `isCurrentlyGlowing()`) is now
+      projected as `appears_glowing`; an invisible living textured base that is still
+      invisible to this client records vanilla `RenderTypes.outline(texture)` submission
+      metadata for the base body while non-base invisible layers still skip. Same-team
+      friendly-invisible visibility, colored-path force-transparent output, outline
+      color extraction, and GPU outline presentation remain deferred under the
+      `outlineColor` slot.
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
       proportions applied in model `setupAnim`, distinct from the now-projected
@@ -997,7 +1002,8 @@ When an agent does any of the following, update this file in the same slice:
       preserve entity light and clear the white overlay column like vanilla
       `renderColoredCutoutModel(... getOverlayCoords(state, 0.0F))`
   - Finish remaining sheep presentation parity:
-    - implement invisible glowing outline wool rendering
+    - implement folded/GPU invisible glowing outline wool rendering; base outline
+      submission metadata is now recorded
     - implement colored-path force-transparent output and remaining base-model
       outline handling
   - Finish wolf presentation parity:
@@ -1615,8 +1621,9 @@ When an agent does any of the following, update this file in the same slice:
       the texture-backed invisible-but-visible-to-client base body branch
       (`entityTranslucentCullItemTarget`, `38/255` alpha, base order `(0,0)`)
       while wool/undercoat layers remain skipped by `state.isInvisible`;
-      invisible glowing outline wool rendering, colored-path force-transparent /
-      outline handling, and remaining render-state extraction remain unsupported
+      folded/GPU invisible glowing outline wool rendering, colored-path force-transparent /
+      outline handling, and remaining render-state extraction remain unsupported; base outline
+      submission metadata is now recorded from the shared glowing flag
     - wolf entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AdultWolfModel`, `BabyWolfModel`, and `WolfRenderer`,
       including nested real-head and tail parts plus baked baby
@@ -4157,7 +4164,7 @@ When an agent does any of the following, update this file in the same slice:
     variants, equipment, skins, animation, lighting, custom/datapack cow/pig
     variant asset presentation, sheep
     head-look-pitch presentation,
-    wolf colored force-transparent / outline presentation,
+    wolf colored force-transparent / GPU outline presentation,
     boat/raft paddle animation, damage roll, bubble wobble, and water-mask
     presentation,
     horse animation, donkey/mule animation presentation,

@@ -168,6 +168,7 @@ pub(super) struct EntityModelTexturedMeshes {
     current_submission_light: [f32; 2],
     current_submission_overlay: [f32; 2],
     current_force_transparent: bool,
+    current_outline_only: bool,
 }
 
 impl EntityModelTexturedMeshes {
@@ -186,6 +187,7 @@ impl EntityModelTexturedMeshes {
             current_submission_light: ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
             current_submission_overlay: ENTITY_VERTEX_NO_OVERLAY,
             current_force_transparent: false,
+            current_outline_only: false,
         }
     }
 
@@ -200,7 +202,9 @@ impl EntityModelTexturedMeshes {
             EntityModelLayerRenderBucket::Scroll | EntityModelLayerRenderBucket::AdditiveScroll => {
                 panic!("scroll render types are not emitted into textured mesh buckets")
             }
-            EntityModelLayerRenderBucket::DepthOnly | EntityModelLayerRenderBucket::GlintOnly => {
+            EntityModelLayerRenderBucket::OutlineOnly
+            | EntityModelLayerRenderBucket::DepthOnly
+            | EntityModelLayerRenderBucket::GlintOnly => {
                 panic!("non-color render types are not emitted into textured mesh buckets")
             }
         }
@@ -216,6 +220,7 @@ impl EntityModelTexturedMeshes {
             EntityModelLayerRenderBucket::Eyes
             | EntityModelLayerRenderBucket::Scroll
             | EntityModelLayerRenderBucket::AdditiveScroll
+            | EntityModelLayerRenderBucket::OutlineOnly
             | EntityModelLayerRenderBucket::DepthOnly
             | EntityModelLayerRenderBucket::GlintOnly => {
                 panic!("unsupported dynamic player skin render type")
@@ -235,6 +240,7 @@ impl EntityModelTexturedMeshes {
             EntityModelLayerRenderBucket::Eyes
             | EntityModelLayerRenderBucket::Scroll
             | EntityModelLayerRenderBucket::AdditiveScroll
+            | EntityModelLayerRenderBucket::OutlineOnly
             | EntityModelLayerRenderBucket::DepthOnly
             | EntityModelLayerRenderBucket::GlintOnly => {
                 panic!("unsupported dynamic player texture render type")
@@ -247,6 +253,9 @@ impl EntityModelTexturedMeshes {
         self.current_submission_overlay = instance.render_state.overlay_coords();
         self.current_force_transparent =
             instance.render_state.invisible && !instance.render_state.invisible_to_player;
+        self.current_outline_only = instance.render_state.invisible
+            && instance.render_state.invisible_to_player
+            && instance.render_state.appears_glowing;
     }
 
     fn record_submission(
@@ -366,7 +375,10 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
 ) -> EntityModelTexturedMeshes {
     let mut meshes = EntityModelTexturedMeshes::new();
     for instance in instances {
-        if instance.render_state.invisible && instance.render_state.invisible_to_player {
+        if instance.render_state.invisible
+            && instance.render_state.invisible_to_player
+            && !instance.render_state.appears_glowing
+        {
             continue;
         }
         meshes.set_current_submission_state(*instance);
@@ -433,7 +445,7 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
                 _ => {}
             }
         }
-        if meshes.current_force_transparent {
+        if meshes.current_force_transparent || meshes.current_outline_only {
             continue;
         }
         // The charged-creeper and powered-wither energy swirls are additive scrolling overlays layered
@@ -740,6 +752,9 @@ fn render_textured_submission(
     emit: impl FnOnce(&mut EntityModelTexturedMesh, EntityModelTextureAtlasEntry),
 ) {
     let submission = meshes.record_submission(submit);
+    if submit.render_type.mesh_bucket() == EntityModelLayerRenderBucket::OutlineOnly {
+        return;
+    }
     if let Some(entry) = entity_model_texture_atlas_entry(atlas, submit.texture) {
         let mesh = meshes.mesh_mut(submit.render_type);
         let start = mesh.vertices.len();
@@ -852,7 +867,7 @@ fn render_textured_root_pass(
     pass: EntityModelLayerPass,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    if meshes.current_force_transparent && !layer_pass_is_base(pass) {
+    if layer_pass_hidden_by_invisible(meshes, pass) {
         return;
     }
     let submit = textured_layer_submission(meshes, pass, transform);
@@ -913,7 +928,9 @@ fn textured_layer_submission(
     pass: EntityModelLayerPass,
     transform: Mat4,
 ) -> EntityModelSubmissionEmit {
-    let (render_type, tint) = if meshes.current_force_transparent && layer_pass_is_base(pass) {
+    let (render_type, tint) = if meshes.current_outline_only && layer_pass_is_base(pass) {
+        (EntityModelLayerRenderType::Outline, pass.tint)
+    } else if meshes.current_force_transparent && layer_pass_is_base(pass) {
         let mut tint = pass.tint;
         tint[3] *= 38.0 / 255.0;
         let render_type = if pass.kind == EntityModelLayerKind::ArmorStandBase
@@ -949,6 +966,13 @@ fn textured_layer_submission(
 
 fn layer_pass_is_base(pass: EntityModelLayerPass) -> bool {
     pass.order == 0 && pass.submit_sequence == 0
+}
+
+fn layer_pass_hidden_by_invisible(
+    meshes: &EntityModelTexturedMeshes,
+    pass: EntityModelLayerPass,
+) -> bool {
+    (meshes.current_force_transparent || meshes.current_outline_only) && !layer_pass_is_base(pass)
 }
 
 fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
@@ -1040,7 +1064,7 @@ pub(in crate::entity_models) fn render_textured_layers<M: EntityModel>(
         match pass.visibility {
             // A part-subset emissive overlay (vanilla `retainExactParts`): render only its named parts.
             layers::EntityModelLayerVisibility::RetainedParts(parts) => {
-                if meshes.current_force_transparent && !layer_pass_is_base(pass) {
+                if layer_pass_hidden_by_invisible(meshes, pass) {
                     continue;
                 }
                 let submit = textured_layer_submission(meshes, pass, transform);
@@ -2929,7 +2953,7 @@ fn emit_equine_textured_layer_pass(
     if pass.tint[3] <= 1.0e-5 {
         return;
     }
-    if meshes.current_force_transparent && !layer_pass_is_base(pass) {
+    if layer_pass_hidden_by_invisible(meshes, pass) {
         return;
     }
     let submit = textured_layer_submission(meshes, pass, transform);
@@ -3033,7 +3057,7 @@ fn emit_donkey_textured_model(
     let pass = passes[0];
     if baby {
         let transform = entity_model_root_transform(instance);
-        if meshes.current_force_transparent && !layer_pass_is_base(pass) {
+        if layer_pass_hidden_by_invisible(meshes, pass) {
             return;
         }
         let submit = textured_layer_submission(meshes, pass, transform);

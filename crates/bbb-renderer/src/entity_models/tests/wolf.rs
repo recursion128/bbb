@@ -83,6 +83,35 @@ fn wolf_textured_mesh_uses_vanilla_uvs_and_collar_tint() {
     assert_eq!(invisible_tame.cutout.cutout_faces, 0);
     assert!(invisible_tame.cutout.vertices.is_empty());
 
+    // Vanilla `LivingEntityRenderer.getRenderType`: an invisible wolf that is still invisible to
+    // this client but `appearsGlowing()` submits only the base body with `RenderTypes.outline`.
+    // The current backend records the outline submission and leaves GPU outline presentation
+    // deferred, so no folded geometry is emitted here.
+    let glowing_invisible = invisible
+        .with_appears_glowing(true)
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_has_red_overlay(true);
+    let glowing = entity_model_textured_meshes(&[glowing_invisible], &atlas);
+    assert_eq!(glowing.submissions.len(), 1);
+    let submit = glowing.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::Outline);
+    assert_eq!(submit.render_type.vanilla_name(), "outline");
+    assert_eq!(submit.texture, WOLF_TAME_TEXTURE_REF);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        submit.transform,
+        entity_model_root_transform(glowing_invisible)
+    );
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert_eq!(submit.light, glowing_invisible.render_state.shader_light());
+    assert_eq!(
+        submit.overlay,
+        glowing_invisible.render_state.overlay_coords()
+    );
+    assert!(glowing.cutout.vertices.is_empty());
+    assert!(glowing.translucent.vertices.is_empty());
+    assert!(glowing.eyes.vertices.is_empty());
+
     // Vanilla `LivingEntityRenderer.getRenderType`: an invisible wolf that remains visible to this
     // client submits only the base body as `entityTranslucentCullItemTarget` with the
     // force-transparent `0x26ffffff` alpha. `WolfCollarLayer` still gates on `state.isInvisible`, so

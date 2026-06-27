@@ -133,6 +133,11 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             EntityModelLayerRenderBucket::Translucent,
         ),
         (
+            EntityModelLayerRenderType::Outline,
+            "outline",
+            EntityModelLayerRenderBucket::OutlineOnly,
+        ),
+        (
             EntityModelLayerRenderType::EntityGlint,
             "entityGlint",
             EntityModelLayerRenderBucket::GlintOnly,

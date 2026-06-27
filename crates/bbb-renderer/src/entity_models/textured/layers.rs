@@ -181,6 +181,9 @@ pub(in crate::entity_models) enum EntityModelLayerRenderType {
     /// Vanilla `RenderTypes.entityTranslucentCullItemTarget(texture)`, used by
     /// `LivingEntityRenderer.getRenderType` for invisible entities still visible to this client.
     EntityTranslucentCullItemTarget,
+    /// Vanilla `RenderTypes.outline(texture)`, used by `LivingEntityRenderer.getRenderType` when an
+    /// invisible entity still appears glowing.
+    Outline,
     /// Vanilla `RenderTypes.entityGlint()` item foil overlay.
     EntityGlint,
     /// Vanilla eyes/emissive render type (`EyesLayer` / translucent emissive overlays).
@@ -202,13 +205,14 @@ pub(in crate::entity_models) enum EntityModelLayerRenderBucket {
     Eyes,
     Scroll,
     AdditiveScroll,
+    OutlineOnly,
     DepthOnly,
     GlintOnly,
 }
 
 impl EntityModelLayerRenderType {
     #[cfg(test)]
-    pub(in crate::entity_models) const ALL: [Self; 14] = [
+    pub(in crate::entity_models) const ALL: [Self; 15] = [
         Self::EntitySolid,
         Self::ArmorCutoutNoCull,
         Self::ArmorTranslucent,
@@ -217,6 +221,7 @@ impl EntityModelLayerRenderType {
         Self::EntityCutoutZOffset,
         Self::EntityTranslucent,
         Self::EntityTranslucentCullItemTarget,
+        Self::Outline,
         Self::EntityGlint,
         Self::Eyes,
         Self::BreezeWind,
@@ -235,6 +240,7 @@ impl EntityModelLayerRenderType {
             Self::ArmorTranslucent
             | Self::EntityTranslucent
             | Self::EntityTranslucentCullItemTarget => EntityModelLayerRenderBucket::Translucent,
+            Self::Outline => EntityModelLayerRenderBucket::OutlineOnly,
             Self::EntityGlint => EntityModelLayerRenderBucket::GlintOnly,
             Self::Eyes => EntityModelLayerRenderBucket::Eyes,
             Self::BreezeWind | Self::EndCrystalBeam => EntityModelLayerRenderBucket::Scroll,
@@ -254,6 +260,7 @@ impl EntityModelLayerRenderType {
             Self::EntityCutoutZOffset => "entityCutoutZOffset",
             Self::EntityTranslucent => "entityTranslucent",
             Self::EntityTranslucentCullItemTarget => "entityTranslucentCullItemTarget",
+            Self::Outline => "outline",
             Self::EntityGlint => "entityGlint",
             Self::Eyes => "eyes",
             Self::BreezeWind => "breezeWind",

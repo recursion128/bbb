@@ -862,6 +862,11 @@ entity_render_state! {
     /// non-spectator hidden branch, then override this to false for the vanilla
     /// spectator/self-visible translucent branch.
     (with_invisible_to_player) invisible_to_player: bool = false;
+    /// Vanilla `EntityRenderState.appearsGlowing()` / client-side
+    /// `Entity.isCurrentlyGlowing()`: when an invisible living entity is still
+    /// invisible to this client, `LivingEntityRenderer.getRenderType` submits the
+    /// base model with `RenderTypes.outline(texture)` instead of dropping it.
+    (with_appears_glowing) appears_glowing: bool = false;
     /// Vanilla `WolfRenderState.tailAngle` (`Wolf.getTailAngle()`): the wolf tail's
     /// `xRot`. An angry wolf returns `1.5393804`; a tame wolf droops its tail with
     /// damage, `(0.55 - (maxHealth - health) / maxHealth * 0.4) * π` (tame `maxHealth`
@@ -2373,6 +2378,7 @@ mod tests {
                 elytra_rot_z: ELYTRA_DEFAULT_Z_ROT,
                 invisible: false,
                 invisible_to_player: false,
+                appears_glowing: false,
                 wolf_tail_angle: std::f32::consts::PI / 5.0,
                 wolf_sitting: false,
                 wolf_wet_shade: 1.0,
