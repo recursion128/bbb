@@ -2,6 +2,8 @@ use super::{PartPose, PART_POSE_ZERO, SHULKER_HEAD, SHULKER_SHELL};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_SHULKER: &str = "minecraft:shulker#main";
+
 // Vanilla 26.1 `ShulkerModel.createBodyLayer` (atlas 64×64). The mesh root holds three sibling
 // parts: the 16×12×16 lid and the 16×8×16 base (both at `offset(0, 24, 0)`), and the 6×6×6 head at
 // `offset(0, 12, 0)`. The closed rest pose equals this bind pose — `ShulkerModel.setupAnim` sets the

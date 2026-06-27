@@ -2,6 +2,8 @@ use super::{apply_head_look, PartPose, PARROT_BEAK, PARROT_BODY, PART_POSE_ZERO}
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_PARROT: &str = "minecraft:parrot#main";
+
 // Vanilla 26.1 `ParrotModel.createBodyLayer` (atlas 32×32). The mesh root holds seven sibling parts
 // (body, tail, the two wings, head, and the two legs); the head parents the upper-head block, the
 // two beak halves, and the crest feather. Most parts carry a baked rest rotation (the wings are

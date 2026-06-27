@@ -93,6 +93,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     SheepWoolUndercoat,
     SkeletonBase,
     SkeletonClothing,
+    ShulkerBase,
     ShulkerBulletBase,
     ShulkerBulletShell,
     SlimeBase,
@@ -1259,37 +1260,47 @@ pub(in crate::entity_models) fn tadpole_textured_layer_passes() -> Vec<EntityMod
 pub(in crate::entity_models) fn creaking_textured_layer_passes(
     eyes_glowing: bool,
 ) -> Vec<EntityModelLayerPass> {
-    let mut passes = vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::EntityCutout,
-        CREAKING_TEXTURE_REF,
-        [1.0, 1.0, 1.0, 1.0],
-    )
-    .with_kind(EntityModelLayerKind::CreakingBase)
-    .with_order(0, 0)];
-    // Vanilla `CreakingRenderer`'s `LivingEntityEmissiveLayer`: an active creaking re-renders the whole
-    // model with the emissive `creaking_eyes.png` in the eyes render type (alpha `1.0` when glowing).
+    const CREAKING_EYES_PARTS: &[&str] = &["head"];
+
+    let mut passes = vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::CreakingBase,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: MODEL_LAYER_CREAKING,
+        texture: CREAKING_TEXTURE_REF,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }];
+    // Vanilla `CreakingRenderer`'s `LivingEntityEmissiveLayer`: an active creaking re-renders the
+    // `createEyesLayer` head subset with `creaking_eyes.png` in the eyes render type (alpha `1.0`
+    // when glowing).
     if eyes_glowing {
-        passes.push(
-            EntityModelLayerPass::base(
-                EntityModelLayerRenderType::Eyes,
-                CREAKING_EYES_TEXTURE_REF,
-                [1.0, 1.0, 1.0, 1.0],
-            )
-            .with_kind(EntityModelLayerKind::CreakingEyes)
-            .with_order(1, 1),
-        );
+        passes.push(EntityModelLayerPass {
+            kind: EntityModelLayerKind::CreakingEyes,
+            render_type: EntityModelLayerRenderType::Eyes,
+            model_layer: MODEL_LAYER_CREAKING_EYES,
+            texture: CREAKING_EYES_TEXTURE_REF,
+            visibility: EntityModelLayerVisibility::RetainedParts(CREAKING_EYES_PARTS),
+            tint: [1.0, 1.0, 1.0, 1.0],
+            order: 1,
+            submit_sequence: 1,
+        });
     }
     passes
 }
 
 pub(in crate::entity_models) fn sniffer_textured_layer_passes() -> Vec<EntityModelLayerPass> {
-    vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::EntityCutout,
-        SNIFFER_TEXTURE_REF,
-        [1.0, 1.0, 1.0, 1.0],
-    )
-    .with_kind(EntityModelLayerKind::SnifferBase)
-    .with_order(0, 0)]
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::SnifferBase,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: MODEL_LAYER_SNIFFER,
+        texture: SNIFFER_TEXTURE_REF,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
 }
 
 pub(in crate::entity_models) fn parrot_textured_layer_passes(
@@ -1297,13 +1308,16 @@ pub(in crate::entity_models) fn parrot_textured_layer_passes(
 ) -> Vec<EntityModelLayerPass> {
     // The five parrot colours share one model and differ only by texture
     // (`ParrotRenderer.getVariantTexture`).
-    vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::EntityCutout,
-        parrot_texture_ref(variant),
-        [1.0, 1.0, 1.0, 1.0],
-    )
-    .with_kind(EntityModelLayerKind::ParrotBase)
-    .with_order(0, 0)]
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::ParrotBase,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: MODEL_LAYER_PARROT,
+        texture: parrot_texture_ref(variant),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
 }
 
 pub(in crate::entity_models) fn shulker_textured_layer_passes(
@@ -1311,11 +1325,16 @@ pub(in crate::entity_models) fn shulker_textured_layer_passes(
 ) -> Vec<EntityModelLayerPass> {
     // `ShulkerRenderer.getTextureLocation`: the default `shulker.png` when uncolored, else the dyed
     // `shulker_<color>.png`.
-    vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::EntityCutoutZOffset,
-        shulker_texture_ref(color),
-        [1.0, 1.0, 1.0, 1.0],
-    )]
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::ShulkerBase,
+        render_type: EntityModelLayerRenderType::EntityCutoutZOffset,
+        model_layer: MODEL_LAYER_SHULKER,
+        texture: shulker_texture_ref(color),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
 }
 
 pub(in crate::entity_models) fn ender_dragon_textured_layer_passes() -> Vec<EntityModelLayerPass> {

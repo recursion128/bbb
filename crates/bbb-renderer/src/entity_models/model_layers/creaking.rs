@@ -7,6 +7,9 @@ use super::{PartPose, CREAKING_BARK, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_CREAKING: &str = "minecraft:creaking#main";
+pub(in crate::entity_models) const MODEL_LAYER_CREAKING_EYES: &str = "minecraft:creaking#eyes";
+
 // Vanilla 26.1 `CreakingModel.createBodyLayer` (atlas 64×64). The mesh root holds one `root` part
 // at `offset(0, 24, 0)` parenting `upper_body` and the two legs; `upper_body` (an empty pivot)
 // parents the head (with its two antler/branch planes), the body, and the two arms. `setupAnim`
@@ -18,7 +21,7 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 // one-shots ([`CREAKING_ATTACK`] event-driven, [`CREAKING_INVULNERABLE`] event-driven,
 // [`CREAKING_DEATH`] driven by the synced `isTearingDown()`) then apply additively over their
 // projected elapsed seconds, exactly like vanilla `setupAnim`. The emissive eyes layer
-// (`createEyesLayer`, the `head` part only) reuses the identical head UVs and is deferred.
+// (`createEyesLayer`, the `head` part only) reuses the identical head UVs.
 
 // `head`: the 6×10×6 skull, the 6×3×6 brow, and two 9×14×0 antler/branch planes.
 pub(in crate::entity_models) const CREAKING_HEAD_CUBES: [ModelCube; 4] = [

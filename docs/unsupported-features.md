@@ -3068,11 +3068,14 @@ When an agent does any of the following, update this file in the same slice:
       now bound on the textured path
       (`CREAKING_TEXTURE_REF`), together with the emissive eyes overlay
       (`CREAKING_EYES_TEXTURE_REF`, vanilla `CreakingRenderer`'s `LivingEntityEmissiveLayer`): an
-      eyes-render-type pass re-rendering the whole model at vanilla `order(1)`, gated on
-      `eyes_glowing` projected from the synced `IS_ACTIVE` flag (17). Tests pin the base
+      eyes-render-type pass over vanilla `CreakingModel.createEyesLayer()`'s retained `head` subset at
+      vanilla `order(1)`, gated on `eyes_glowing` projected from the synced `IS_ACTIVE` flag (17).
+      `creaking_textured_layer_passes` now records vanilla `ModelLayers.CREAKING`
+      (`minecraft:creaking#main`) for the base and `ModelLayers.CREAKING_EYES`
+      (`minecraft:creaking#eyes`) for the head-only emissive layer. Tests pin the base
       `CreakingBase` `entityCutout` order 0 submission and the `CreakingEyes` eyes order 1
-      submission, including base entity light plus hurt/white overlay and the emissive eyes pass's
-      entity light plus
+      submission, including the retained head visibility, base entity light plus hurt/white overlay,
+      and the emissive eyes pass's entity light plus
       `getOverlayCoords(state, 0.0F)` red-row/zero-white overlay, before checking folded
       cutout/eyes geometry; missing-atlas coverage proves the eyes submission is still recorded without
       `creaking_eyes.png` while only folded emissive geometry is suppressed. Only the tearing-down
@@ -3111,7 +3114,8 @@ When an agent does any of the following, update this file in the same slice:
       (`BABY_TRANSFORM`/`SNIFFER_BABY_FALL`) stays deferred. The adult base texture is now bound on the
       textured path (`SNIFFER_TEXTURE_REF`), the primary now-wired path, with explicit submission
       metadata pinned for the `SnifferBase` pass identity, vanilla `entityCutout` render type/name,
-      white tint, root transform, `(order, submit_sequence) == (0, 0)`, and the
+      vanilla `ModelLayers.SNIFFER` (`minecraft:sniffer#main`), white tint, root transform,
+      `(order, submit_sequence) == (0, 0)`, and the
       `AgeableMobRenderer` / `LivingEntityRenderer` `lightCoords` plus hurt/white overlay metadata, with
       folded cutout vertices inheriting that metadata.
       The colored debug path stays as a fallback (it approximates the body with one brown tint and the
@@ -3325,7 +3329,8 @@ When an agent does any of the following, update this file in the same slice:
       selects the per-colour texture (`parrot_red_blue` / `_blue` / `_green` / `_yellow_blue` / `parrot_grey.png`),
       matching `ParrotRenderer.getVariantTexture`. The five textured variant regressions now pin the
       explicit `ParrotBase` submission identity, vanilla `entityCutout` render type/name, white tint,
-      root transform, `(order, submit_sequence) == (0, 0)`, and the `MobRenderer` / `LivingEntityRenderer`
+      vanilla `ModelLayers.PARROT` (`minecraft:parrot#main`), root transform,
+      `(order, submit_sequence) == (0, 0)`, and the `MobRenderer` / `LivingEntityRenderer`
       `lightCoords` plus hurt/white overlay metadata, with folded cutout vertices inheriting that metadata.
     - shulker entities as renderer-owned vanilla 26.1 `ShulkerModel.createBodyLayer()` geometry on the
       textured path: the native entity scene (`entity_scene.rs`) projects vanilla type id `112` to
@@ -3348,8 +3353,9 @@ When an agent does any of the following, update this file in the same slice:
       `Shulker.getColor()` (0..=15 → the dye, the default byte 16 → `null`) selects the texture, matching
       `ShulkerRenderer.getTextureLocation` (the uncolored `shulker.png` plus the sixteen `shulker_<color>.png`)
       — seventeen textures. The textured regression now pins the vanilla `ShulkerModel`
-      `entityCutoutZOffset` base submission's texture, white tint, root/attach-face transform,
-      entity light, hurt/white overlay, and `order(0)`, including folded cutout vertex metadata;
+      `entityCutoutZOffset` base submission's `ShulkerBase` identity, `ModelLayers.SHULKER`
+      (`minecraft:shulker#main`), texture, white tint, root/attach-face transform, entity light,
+      hurt/white overlay, and `order(0)`, including folded cutout vertex metadata;
       missing-atlas coverage pins that a red wall shulker still records the `entityCutoutZOffset`
       submit before folded cutout geometry is suppressed
     - wither entities as renderer-owned vanilla 26.1

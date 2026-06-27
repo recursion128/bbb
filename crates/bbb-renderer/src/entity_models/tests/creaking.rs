@@ -268,18 +268,31 @@ fn creaking_textured_render_matches_vanilla_renderer() {
     let dormant = creaking_textured_layer_passes(false);
     assert_eq!(dormant.len(), 1);
     assert_eq!(dormant[0].kind, EntityModelLayerKind::CreakingBase);
+    assert_eq!(dormant[0].model_layer, MODEL_LAYER_CREAKING);
     assert_eq!(
         dormant[0].render_type,
         EntityModelLayerRenderType::EntityCutout
     );
+    assert_eq!(dormant[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(dormant[0].texture, CREAKING_TEXTURE_REF);
+    assert_eq!(dormant[0].visibility, EntityModelLayerVisibility::All);
+    assert_eq!(dormant[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((dormant[0].order, dormant[0].submit_sequence), (0, 0));
     // An active creaking adds the emissive `creaking_eyes.png` eyes overlay.
     let glowing = creaking_textured_layer_passes(true);
     assert_eq!(glowing.len(), 2);
     assert_eq!(glowing[0].kind, EntityModelLayerKind::CreakingBase);
+    assert_eq!(glowing[0].model_layer, MODEL_LAYER_CREAKING);
     assert_eq!(glowing[1].kind, EntityModelLayerKind::CreakingEyes);
+    assert_eq!(glowing[1].model_layer, MODEL_LAYER_CREAKING_EYES);
     assert_eq!(glowing[1].render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(glowing[1].render_type.vanilla_name(), "eyes");
     assert_eq!(glowing[1].texture, CREAKING_EYES_TEXTURE_REF);
+    assert_eq!(
+        glowing[1].visibility,
+        EntityModelLayerVisibility::RetainedParts(&["head"])
+    );
+    assert_eq!(glowing[1].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((glowing[1].order, glowing[1].submit_sequence), (1, 1));
     assert_eq!(
         EntityModelKind::Creaking { eyes_glowing: true }.vanilla_texture_ref(),
@@ -338,7 +351,11 @@ fn creaking_textured_render_matches_vanilla_renderer() {
     let mesh = &meshes.cutout;
 
     assert!(!mesh.vertices.is_empty());
-    assert_eq!(meshes.eyes.vertices.len(), mesh.vertices.len());
+    assert_eq!(meshes.eyes.vertices.len(), CREAKING_HEAD_CUBES.len() * 24);
+    assert!(
+        meshes.eyes.vertices.len() < mesh.vertices.len(),
+        "vanilla CreakingModel.createEyesLayer retains only the head subtree"
+    );
     assert!(mesh
         .vertices
         .iter()

@@ -8,6 +8,8 @@ use super::{PartPose, PART_POSE_ZERO, SNIFFER_BROWN, SNIFFER_NOSE};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
+pub(in crate::entity_models) const MODEL_LAYER_SNIFFER: &str = "minecraft:sniffer#main";
+
 // Vanilla 26.1 `SnifferModel.createBodyLayer` (atlas 192×192). The mesh root holds one `bone`
 // part at `offset(0, 5, 0)` parenting the body and the six legs; `body` parents the head, which
 // parents the two ears, the nose, and the lower beak. `setupAnim` sets `head.xRot/yRot` from the

@@ -299,7 +299,9 @@ fn sniffer_textured_render_matches_vanilla_renderer() {
     );
     assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(passes[0].kind, EntityModelLayerKind::SnifferBase);
+    assert_eq!(passes[0].model_layer, MODEL_LAYER_SNIFFER);
     assert_eq!(passes[0].texture, SNIFFER_TEXTURE_REF);
+    assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
     assert_eq!(
