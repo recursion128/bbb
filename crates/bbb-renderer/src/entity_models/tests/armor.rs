@@ -254,7 +254,12 @@ fn armored_zombie_emits_inflated_armor_pieces() {
         armored.submissions[0].render_type,
         EntityModelLayerRenderType::EntityCutout
     );
+    assert_eq!(
+        armored.submissions[0].render_type.vanilla_name(),
+        "entityCutout"
+    );
     assert_eq!(armored.submissions[0].texture, ZOMBIE_TEXTURE_REF);
+    assert_eq!(armored.submissions[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         (
             armored.submissions[0].order,
@@ -271,6 +276,7 @@ fn armored_zombie_emits_inflated_armor_pieces() {
         armored_instance.render_state.overlay_coords()
     );
     let expected_transform = entity_model_root_transform(armored_instance);
+    assert_eq!(armored.submissions[0].transform, expected_transform);
     for (submit, texture, sequence) in [
         (armored.submissions[1], ARMOR_IRON_HUMANOID_TEXTURE_REF, 1),
         (armored.submissions[2], ARMOR_IRON_LEGGINGS_TEXTURE_REF, 2),
@@ -281,6 +287,7 @@ fn armored_zombie_emits_inflated_armor_pieces() {
             submit.render_type,
             EntityModelLayerRenderType::ArmorCutoutNoCull
         );
+        assert_eq!(submit.render_type.vanilla_name(), "armorCutoutNoCull");
         assert_eq!(submit.texture, texture);
         assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
         assert_eq!((submit.order, submit.submit_sequence), (1, sequence));
@@ -288,6 +295,24 @@ fn armored_zombie_emits_inflated_armor_pieces() {
         assert_eq!(submit.light, armored_instance.render_state.shader_light());
         assert_eq!(submit.overlay, [0.0, 10.0]);
     }
+
+    // Folded cutout geometry is appended in the same order as the explicit vanilla submissions:
+    // base, chest, legs, feet, head.
+    let mut vertex_start = 0;
+    for (submit, vertex_count) in [
+        (armored.submissions[0], bare_cutout),
+        (armored.submissions[1], 72),
+        (armored.submissions[2], 72),
+        (armored.submissions[3], 48),
+        (armored.submissions[4], 48),
+    ] {
+        let vertex_end = vertex_start + vertex_count;
+        assert!(armored.cutout.vertices[vertex_start..vertex_end]
+            .iter()
+            .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
+        vertex_start = vertex_end;
+    }
+    assert_eq!(vertex_start, armored.cutout.vertices.len());
 
     // The armor is inflated (`CubeDeformation 1.0` / `0.5`), so it floats just outside the body: the
     // armored cutout reaches wider in X than the bare body.

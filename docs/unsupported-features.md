@@ -1954,7 +1954,9 @@ When an agent does any of the following, update this file in the same slice:
       `retainExactParts` part sets and `CubeDeformation`s. Each piece is draped on the host humanoid's
       already-posed limbs via `ModelPart::copy_child_poses_from` (vanilla `HumanoidModel.copyPropertiesTo`),
       so the armor inherits the host `setup_anim` without re-running it, and is drawn into the cutout pass
-      in the vanilla submit order (chest, legs, feet, head). All eight equipment-asset materials
+      in the vanilla submit order (chest, legs, feet, head) as `armorCutoutNoCull`
+      submissions at `order(1)` with entity light plus `OverlayTexture.NO_OVERLAY`;
+      folded armor vertex segments inherit the matching submission light/overlay. All eight equipment-asset materials
       (`ArmorMaterials.<MAT>` → `EquipmentAssets.<MAT>`: leather, copper, chainmail, iron, gold, diamond,
       turtle_scute, netherite) resolve to their `textures/entity/equipment/humanoid/<asset>.png`
       (head/chest/feet) and `humanoid_leggings/<asset>.png` (legs) textures, stitched into the entity
