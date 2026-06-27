@@ -3560,7 +3560,9 @@ When an agent does any of the following, update this file in the same slice:
       an emissive `EyesLayer` re-rendering the whole model with
       `textures/entity/phantom/phantom_eyes.png` in the eyes render type at `order(1)`
       / `submit_sequence = 1`, with the same transform, entity light, white tint, and
-      `OverlayTexture.NO_OVERLAY`. Broader lighting presentation remains unsupported
+      `OverlayTexture.NO_OVERLAY`; missing-atlas coverage proves the eyes submission is
+      still recorded without `phantom_eyes.png` while only folded emissive geometry is
+      suppressed. Broader lighting presentation remains unsupported
     - pufferfish entities as renderer-owned vanilla 26.1
       `PufferfishSmallModel`/`PufferfishMidModel`/`PufferfishBigModel.createBodyLayer()`
       geometry: the small (6-cube), medium (11-cube), and big (13-cube) body layers

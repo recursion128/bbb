@@ -263,6 +263,28 @@ fn phantom_eyes_textured_mesh_uses_parent_model_geometry_and_eyes_render_type() 
 }
 
 #[test]
+fn phantom_eyes_submission_survives_missing_texture_atlas_entry() {
+    // Vanilla `PhantomEyesLayer` records an order(1) eyes submit after the base body; missing
+    // eyes texture data suppresses only the folded emissive eyes geometry.
+    let images: Vec<_> = phantom_texture_images()
+        .into_iter()
+        .filter(|image| image.texture != PHANTOM_EYES_TEXTURE_REF)
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let instance = EntityModelInstance::phantom(311, [0.0, 64.0, 0.0], 0.0, 2)
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.65)
+        .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_phantom_submissions(&meshes, instance, 2);
+    assert!(!meshes.cutout.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.eyes.indices.is_empty());
+}
+
+#[test]
 fn phantom_wings_flap_as_age_in_ticks_advances() {
     // Vanilla runs setupAnim every frame: the wings and tail flap by flapTime while the body
     // and head hold still. The body is the first cube (vertices [0, 24)).
