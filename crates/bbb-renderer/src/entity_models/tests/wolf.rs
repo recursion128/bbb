@@ -730,6 +730,54 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
 }
 
 #[test]
+fn wolf_armor_crack_submission_survives_missing_texture_atlas_entry() {
+    // Vanilla `WolfArmorLayer.maybeRenderCracks` submits `armorTranslucent` with no overlay after
+    // the armor layers; a missing crack texture suppresses only the folded translucent geometry.
+    let images: Vec<_> = wolf_armor_texture_images()
+        .into_iter()
+        .filter(|image| image.texture != WOLF_ARMOR_CRACKINESS_MEDIUM_TEXTURE_REF)
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let dye = 0x0033_66CC;
+    let wolf = EntityModelInstance::wolf_state(
+        308,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        true,
+        false,
+        false,
+        Some(EntityDyeColor::Blue),
+    )
+    .with_wolf_body_armor(Some(EntityArmorMaterial::ArmadilloScute))
+    .with_wolf_body_armor_dye(Some(dye))
+    .with_wolf_body_armor_crackiness(Some(WolfArmorCrackiness::Medium))
+    .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[wolf], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 5);
+    let cracks = meshes.submissions[4];
+    assert_eq!(cracks.texture, WOLF_ARMOR_CRACKINESS_MEDIUM_TEXTURE_REF);
+    assert_eq!(
+        cracks.render_type,
+        EntityModelLayerRenderType::ArmorTranslucent
+    );
+    assert_eq!(cracks.render_type.vanilla_name(), "armorTranslucent");
+    assert_eq!(cracks.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(cracks.transform, entity_model_root_transform(wolf));
+    assert_eq!((cracks.order, cracks.submit_sequence), (3, 4));
+    assert_eq!(cracks.light, wolf.render_state.shader_light());
+    assert_eq!(cracks.overlay, [0.0, 10.0]);
+
+    assert!(!meshes.cutout.vertices.is_empty());
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+}
+
+#[test]
 fn wolf_textured_meshes_apply_head_look() {
     let (atlas, _) = build_entity_model_texture_atlas(&wolf_texture_images()).unwrap();
     for base in [
