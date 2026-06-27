@@ -252,6 +252,11 @@ fn pig_textured_layer_passes_match_vanilla_renderer_model_choice() {
     let temperate = pig_textured_layer_passes(PigModelVariant::Temperate, false);
     assert_eq!(temperate.len(), 1);
     assert_eq!(temperate[0].kind, EntityModelLayerKind::PigBase);
+    assert_eq!(
+        temperate[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(temperate[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(temperate[0].model_layer, MODEL_LAYER_PIG);
     assert_eq!(temperate[0].texture, PIG_TEMPERATE_TEXTURE_REF);
     assert_eq!(temperate[0].tint, [1.0, 1.0, 1.0, 1.0]);
@@ -338,20 +343,24 @@ fn entity_texture_atlas_stitches_official_pig_png_slots() {
 #[test]
 fn pig_textured_mesh_uses_vanilla_uvs_tints_and_variant_textures() {
     let (atlas, _) = build_entity_model_texture_atlas(&pig_texture_images()).unwrap();
-    let mesh = entity_model_textured_mesh(
-        &[
-            EntityModelInstance::pig(
-                501,
-                [0.0, 64.0, 0.0],
-                0.0,
-                PigModelVariant::Temperate,
-                false,
-            ),
-            EntityModelInstance::pig(502, [1.0, 64.0, 0.0], 0.0, PigModelVariant::Cold, false),
-            EntityModelInstance::pig(503, [2.0, 64.0, 0.0], 0.0, PigModelVariant::Warm, true),
-        ],
-        &atlas,
-    );
+    let instances = [
+        EntityModelInstance::pig(
+            501,
+            [0.0, 64.0, 0.0],
+            0.0,
+            PigModelVariant::Temperate,
+            false,
+        ),
+        EntityModelInstance::pig(502, [1.0, 64.0, 0.0], 0.0, PigModelVariant::Cold, false),
+        EntityModelInstance::pig(503, [2.0, 64.0, 0.0], 0.0, PigModelVariant::Warm, true),
+    ];
+    let meshes = entity_model_textured_meshes(&instances, &atlas);
+    assert_pig_only_uses_cutout_buckets(&meshes);
+    assert_eq!(meshes.submissions.len(), instances.len());
+    for (index, instance) in instances.into_iter().enumerate() {
+        assert_pig_base_submission_at(&meshes, index, instance);
+    }
+    let mesh = &meshes.cutout;
 
     assert_eq!(mesh.cutout_faces, 132);
     assert_eq!(mesh.vertices.len(), 528);
@@ -385,13 +394,22 @@ fn pig_saddle_layer_renders_for_adults_only() {
     let bare_meshes = entity_model_textured_meshes(&[adult], &atlas);
     let saddled_instance = adult.with_pig_saddle(true);
     let saddled_meshes = entity_model_textured_meshes(&[saddled_instance], &atlas);
+    assert_pig_only_uses_cutout_buckets(&bare_meshes);
+    assert_eq!(bare_meshes.submissions.len(), 1);
+    assert_pig_base_submission_at(&bare_meshes, 0, adult);
+    assert_pig_only_uses_cutout_buckets(&saddled_meshes);
+    assert_eq!(saddled_meshes.submissions.len(), 2);
+    assert_pig_base_submission_at(&saddled_meshes, 0, saddled_instance);
     let bare = &bare_meshes.cutout;
     let saddled = &saddled_meshes.cutout;
-    assert_eq!(saddled_meshes.submissions.len(), 2);
     let saddle_submit = saddled_meshes.submissions[1];
     assert_eq!(
         saddle_submit.render_type,
         EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(
+        saddle_submit.render_type.vanilla_name(),
+        "armorCutoutNoCull"
     );
     assert_eq!(saddle_submit.texture, PIG_SADDLE_TEXTURE_REF);
     assert_eq!(saddle_submit.tint, [1.0, 1.0, 1.0, 1.0]);
@@ -408,13 +426,14 @@ fn pig_saddle_layer_renders_for_adults_only() {
     assert!(saddle_min[0] < bare_min[0]);
     assert!(saddle_max[0] > bare_max[0]);
 
-    let baby = entity_model_textured_mesh(
-        &[
-            EntityModelInstance::pig(523, [0.0, 64.0, 0.0], 0.0, PigModelVariant::Temperate, true)
-                .with_pig_saddle(true),
-        ],
-        &atlas,
-    );
+    let baby_instance =
+        EntityModelInstance::pig(523, [0.0, 64.0, 0.0], 0.0, PigModelVariant::Temperate, true)
+            .with_pig_saddle(true);
+    let baby_meshes = entity_model_textured_meshes(&[baby_instance], &atlas);
+    assert_pig_only_uses_cutout_buckets(&baby_meshes);
+    assert_eq!(baby_meshes.submissions.len(), 1);
+    assert_pig_base_submission_at(&baby_meshes, 0, baby_instance);
+    let baby = &baby_meshes.cutout;
     assert_eq!(baby.cutout_faces, 42);
     assert_eq!(baby.vertices.len(), 168);
 }
@@ -429,15 +448,26 @@ fn pig_textured_mesh_applies_head_look() {
         PigModelVariant::Temperate,
         false,
     );
-    let resting = entity_model_textured_mesh(&[base], &atlas);
-    let yawed = entity_model_textured_mesh(&[base.with_head_look(55.0, 0.0)], &atlas);
-    let pitched = entity_model_textured_mesh(&[base.with_head_look(0.0, -25.0)], &atlas);
+    let yawed_instance = base.with_head_look(55.0, 0.0);
+    let pitched_instance = base.with_head_look(0.0, -25.0);
+    let resting = entity_model_textured_meshes(&[base], &atlas);
+    let yawed = entity_model_textured_meshes(&[yawed_instance], &atlas);
+    let pitched = entity_model_textured_meshes(&[pitched_instance], &atlas);
+    assert_pig_only_uses_cutout_buckets(&resting);
+    assert_pig_only_uses_cutout_buckets(&yawed);
+    assert_pig_only_uses_cutout_buckets(&pitched);
+    assert_eq!(resting.submissions.len(), 1);
+    assert_eq!(yawed.submissions.len(), 1);
+    assert_eq!(pitched.submissions.len(), 1);
+    assert_pig_base_submission_at(&resting, 0, base);
+    assert_pig_base_submission_at(&yawed, 0, yawed_instance);
+    assert_pig_base_submission_at(&pitched, 0, pitched_instance);
 
     // Head look turns the textured head part without adding or dropping vertices.
-    assert_eq!(resting.vertices.len(), yawed.vertices.len());
-    assert_ne!(resting.vertices, yawed.vertices);
-    assert_ne!(resting.vertices, pitched.vertices);
-    assert_ne!(yawed.vertices, pitched.vertices);
+    assert_eq!(resting.cutout.vertices.len(), yawed.cutout.vertices.len());
+    assert_ne!(resting.cutout.vertices, yawed.cutout.vertices);
+    assert_ne!(resting.cutout.vertices, pitched.cutout.vertices);
+    assert_ne!(yawed.cutout.vertices, pitched.cutout.vertices);
 }
 
 #[test]
@@ -489,26 +519,34 @@ fn pig_textured_mesh_swings_its_legs_when_walking() {
         (PigModelVariant::Temperate, true),
     ] {
         let base = EntityModelInstance::pig(511, [0.0, 64.0, 0.0], 0.0, variant, baby);
-        let resting = entity_model_textured_mesh(&[base], &atlas);
-        let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
-        let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+        let still_instance = base.with_walk_animation(2.5, 0.0);
+        let walking_instance = base.with_walk_animation(0.0, 1.0);
+        let resting = entity_model_textured_meshes(&[base], &atlas);
+        let still = entity_model_textured_meshes(&[still_instance], &atlas);
+        let walking = entity_model_textured_meshes(&[walking_instance], &atlas);
+        assert_pig_only_uses_cutout_buckets(&resting);
+        assert_pig_only_uses_cutout_buckets(&still);
+        assert_pig_only_uses_cutout_buckets(&walking);
+        assert_pig_base_submission_at(&resting, 0, base);
+        assert_pig_base_submission_at(&still, 0, still_instance);
+        assert_pig_base_submission_at(&walking, 0, walking_instance);
 
         assert_eq!(
-            resting.vertices, still.vertices,
+            resting.cutout.vertices, still.cutout.vertices,
             "{variant:?} baby={baby}: a standing pig is inert"
         );
         assert_eq!(
-            resting.vertices.len(),
-            walking.vertices.len(),
+            resting.cutout.vertices.len(),
+            walking.cutout.vertices.len(),
             "{variant:?} baby={baby}: leg swing keeps the vertex count"
         );
         assert_ne!(
-            resting.vertices, walking.vertices,
+            resting.cutout.vertices, walking.cutout.vertices,
             "{variant:?} baby={baby}: a walking pig differs"
         );
 
-        let (rest_min, rest_max) = textured_mesh_extents(&resting);
-        let (walk_min, walk_max) = textured_mesh_extents(&walking);
+        let (rest_min, rest_max) = textured_mesh_extents(&resting.cutout);
+        let (walk_min, walk_max) = textured_mesh_extents(&walking.cutout);
         assert!(
             (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
             "{variant:?} baby={baby}: a walking pig's feet should lift off the ground"
@@ -517,6 +555,48 @@ fn pig_textured_mesh_swings_its_legs_when_walking() {
             (walk_max[2] - walk_min[2]) > (rest_max[2] - rest_min[2]) + 0.02,
             "{variant:?} baby={baby}: a walking pig's legs should splay along Z"
         );
+    }
+}
+
+fn assert_pig_only_uses_cutout_buckets(meshes: &EntityModelTexturedMeshes) {
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_cutout.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_translucent.vertices.is_empty());
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_translucent
+        .vertices
+        .is_empty());
+    assert!(meshes.scroll.vertices.is_empty());
+    assert!(meshes.scroll_additive.vertices.is_empty());
+}
+
+fn assert_pig_base_submission_at(
+    meshes: &EntityModelTexturedMeshes,
+    index: usize,
+    instance: EntityModelInstance,
+) {
+    let submit = meshes.submissions[index];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.texture, pig_base_texture_ref(instance));
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.transform, entity_model_root_transform(instance));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+}
+
+fn pig_base_texture_ref(instance: EntityModelInstance) -> EntityModelTextureRef {
+    match instance.kind {
+        EntityModelKind::Pig { variant, baby } => match (variant, baby) {
+            (PigModelVariant::Temperate, false) => PIG_TEMPERATE_TEXTURE_REF,
+            (PigModelVariant::Temperate, true) => PIG_TEMPERATE_BABY_TEXTURE_REF,
+            (PigModelVariant::Warm, false) => PIG_WARM_TEXTURE_REF,
+            (PigModelVariant::Warm, true) => PIG_WARM_BABY_TEXTURE_REF,
+            (PigModelVariant::Cold, false) => PIG_COLD_TEXTURE_REF,
+            (PigModelVariant::Cold, true) => PIG_COLD_BABY_TEXTURE_REF,
+        },
+        other => panic!("unexpected pig test kind: {other:?}"),
     }
 }
 
