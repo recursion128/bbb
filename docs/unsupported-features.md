@@ -2730,8 +2730,13 @@ When an agent does any of the following, update this file in the same slice:
       rotation/position swirls and the `JUMP`/`INHALE` `wind_body`/`wind_bottom` `SCALE` pulses (folded
       onto the reset scale, vanilla `ModelPart.offsetScale`), so the wind body moves with the base body.
       The colored debug path keeps the base body only, consistent with every other scrolling overlay
-      (the energy swirls, the guardian beam). Renderer tests pin the wind geometry, the eyes pass, and
-      the wind body folding into the scroll mesh and U-scrolling past the looped idle. Breeze is now
+      (the energy swirls, the guardian beam). Renderer tests pin the wind geometry, the eyes pass,
+      the wind body folding into the scroll mesh and U-scrolling past the looped idle, plus vanilla
+      submission metadata: base `entityTranslucent` keeps entity light plus hurt/white overlay, while
+      `BreezeEyesLayer` and `BreezeWindLayer` preserve entity light and force `OverlayTexture.NO_OVERLAY`
+      before folded eyes vertices inherit their submit metadata; the folded scroll mesh still stores
+      scroll-local UV/tint only, so per-vertex scroll light/overlay presentation remains a later GPU path
+      detail. Breeze is now
       fully aligned with vanilla 26.1
     - dolphin entities are wired end to end on both render paths off the real vanilla 26.1
       `DolphinModel`: the native entity scene (`entity_scene.rs`) projects vanilla type id `35` to

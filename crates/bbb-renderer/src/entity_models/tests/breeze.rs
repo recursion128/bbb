@@ -211,7 +211,10 @@ fn breeze_textured_mesh_uses_vanilla_geometry_and_animates() {
     // The breeze base body draws into the translucent mesh (vanilla `RenderTypes::entityTranslucent`).
     // Head (two cubes) plus three rods → 5 cubes / 30 faces / 120 vertices, nothing on the cutout
     // pass, white tint.
-    let base = EntityModelInstance::breeze(960, [0.0, 64.0, 0.0], 0.0);
+    let base = EntityModelInstance::breeze(960, [0.0, 64.0, 0.0], 0.0)
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[base], &atlas);
     let body_submit = meshes
         .submissions
@@ -222,6 +225,13 @@ fn breeze_textured_mesh_uses_vanilla_geometry_and_animates() {
         body_submit.render_type,
         EntityModelLayerRenderType::EntityTranslucent
     );
+    assert_eq!(body_submit.render_type.vanilla_name(), "entityTranslucent");
+    assert_eq!(body_submit.texture, BREEZE_TEXTURE_REF);
+    assert_eq!(body_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(body_submit.transform, entity_model_root_transform(base));
+    assert_eq!(body_submit.light, base.render_state.shader_light());
+    assert_eq!(body_submit.overlay, base.render_state.overlay_coords());
+    assert_ne!(body_submit.overlay, [0.0, 10.0]);
     assert_eq!(body_submit.order, 0);
     assert_eq!(body_submit.submit_sequence, 0);
     assert!(meshes.cutout.vertices.is_empty());
@@ -231,7 +241,9 @@ fn breeze_textured_mesh_uses_vanilla_geometry_and_animates() {
         .translucent
         .vertices
         .iter()
-        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]
+            && vertex.light == body_submit.light
+            && vertex.overlay == body_submit.overlay));
 
     // Vanilla `BreezeEyesLayer`'s always-on emissive glow re-renders the same head+rods geometry into
     // the eyes mesh with `breeze_eyes.png` (transparent except the head's eye UVs).
@@ -241,12 +253,22 @@ fn breeze_textured_mesh_uses_vanilla_geometry_and_animates() {
         .find(|submit| submit.texture == BREEZE_EYES_TEXTURE_REF)
         .expect("breeze emits a breezeEyes submit");
     assert_eq!(eyes_submit.render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(eyes_submit.render_type.vanilla_name(), "eyes");
+    assert_eq!(eyes_submit.texture, BREEZE_EYES_TEXTURE_REF);
     assert_eq!(eyes_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(eyes_submit.light, body_submit.light);
+    assert_eq!(eyes_submit.overlay, [0.0, 10.0]);
+    assert_ne!(eyes_submit.overlay, body_submit.overlay);
     assert_eq!(eyes_submit.order, 1);
     assert_eq!(eyes_submit.submit_sequence, 2);
     assert_eq!(eyes_submit.transform, entity_model_root_transform(base));
     assert_eq!(meshes.eyes.cutout_faces, 30);
     assert_eq!(meshes.eyes.vertices.len(), 120);
+    assert!(meshes
+        .eyes
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == eyes_submit.light && vertex.overlay == eyes_submit.overlay));
 
     // The looping IDLE re-poses both meshes with age and loops every 40 ticks.
     let later = entity_model_textured_meshes(&[base.with_age_in_ticks(7.0)], &atlas);
