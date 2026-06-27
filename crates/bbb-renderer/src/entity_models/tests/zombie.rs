@@ -1,5 +1,13 @@
 use super::*;
 
+use crate::entity_models::catalog::{
+    zombie_villager_level_texture_ref, zombie_villager_profession_texture_ref,
+    zombie_villager_type_texture_ref,
+};
+use crate::entity_models::colored::{
+    drowned_model_root_transform, entity_model_root_transform,
+    mesh_transformer_scaled_model_root_transform, HUSK_SCALE,
+};
 use crate::entity_models::model::{EntityModel, ModelCube};
 
 #[test]
@@ -843,7 +851,9 @@ fn zombie_textured_mesh_matches_colored_geometry_and_legs_swing() {
     for baby in [false, true] {
         let instances = [EntityModelInstance::zombie(55, [0.0, 64.0, 0.0], 0.0, baby)];
         let colored = entity_model_mesh(&instances);
-        let textured = entity_model_textured_mesh(&instances, &atlas);
+        let textured_meshes = entity_model_textured_meshes(&instances, &atlas);
+        assert_zombie_family_submissions_match_vanilla(&textured_meshes, instances[0]);
+        let textured = &textured_meshes.cutout;
         // The textured zombie shares the colored geometry exactly: same cube count and bounds.
         assert_eq!(textured.cutout_faces, colored.opaque_faces, "baby={baby}");
         assert_eq!(textured.vertices.len(), colored.vertices.len());
@@ -861,7 +871,9 @@ fn zombie_textured_mesh_matches_colored_geometry_and_legs_swing() {
         let walking = [instances[0]
             .with_walk_animation(2.0, 1.0)
             .with_age_in_ticks(8.0)];
-        let textured_walk = entity_model_textured_mesh(&walking, &atlas);
+        let textured_walk_meshes = entity_model_textured_meshes(&walking, &atlas);
+        assert_zombie_family_submissions_match_vanilla(&textured_walk_meshes, walking[0]);
+        let textured_walk = &textured_walk_meshes.cutout;
         assert_ne!(
             textured.vertices, textured_walk.vertices,
             "legs swing (baby={baby})"
@@ -934,7 +946,9 @@ fn husk_textured_mesh_matches_colored_geometry_and_legs_swing() {
             baby,
         )];
         let colored = entity_model_mesh(&instances);
-        let textured = entity_model_textured_mesh(&instances, &atlas);
+        let textured_meshes = entity_model_textured_meshes(&instances, &atlas);
+        assert_zombie_family_submissions_match_vanilla(&textured_meshes, instances[0]);
+        let textured = &textured_meshes.cutout;
         // The textured husk shares the colored geometry exactly, including the adult's 1.0625
         // root scale (`huskScale`): same cube count and bounds.
         assert_eq!(textured.cutout_faces, colored.opaque_faces, "baby={baby}");
@@ -953,7 +967,9 @@ fn husk_textured_mesh_matches_colored_geometry_and_legs_swing() {
         let walking = [instances[0]
             .with_walk_animation(2.0, 1.0)
             .with_age_in_ticks(8.0)];
-        let textured_walk = entity_model_textured_mesh(&walking, &atlas);
+        let textured_walk_meshes = entity_model_textured_meshes(&walking, &atlas);
+        assert_zombie_family_submissions_match_vanilla(&textured_walk_meshes, walking[0]);
+        let textured_walk = &textured_walk_meshes.cutout;
         assert_ne!(
             textured.vertices, textured_walk.vertices,
             "legs swing (baby={baby})"
@@ -1075,7 +1091,9 @@ fn drowned_textured_mesh_matches_colored_geometry_and_legs_swing() {
             baby,
         )];
         let colored = entity_model_mesh(&instances);
-        let textured = entity_model_textured_mesh(&instances, &atlas);
+        let textured_meshes = entity_model_textured_meshes(&instances, &atlas);
+        assert_zombie_family_submissions_match_vanilla(&textured_meshes, instances[0]);
+        let textured = &textured_meshes.cutout;
         // The textured drowned shares the colored geometry exactly (drowned only changes the left
         // arm/leg UVs, not their geometry): same cube count and bounds.
         assert_eq!(textured.cutout_faces, colored.opaque_faces, "baby={baby}");
@@ -1094,7 +1112,9 @@ fn drowned_textured_mesh_matches_colored_geometry_and_legs_swing() {
         let walking = [instances[0]
             .with_walk_animation(2.0, 1.0)
             .with_age_in_ticks(8.0)];
-        let textured_walk = entity_model_textured_mesh(&walking, &atlas);
+        let textured_walk_meshes = entity_model_textured_meshes(&walking, &atlas);
+        assert_zombie_family_submissions_match_vanilla(&textured_walk_meshes, walking[0]);
+        let textured_walk = &textured_walk_meshes.cutout;
         assert_ne!(
             textured.vertices, textured_walk.vertices,
             "legs swing (baby={baby})"
@@ -1115,8 +1135,13 @@ fn drowned_textured_mesh_applies_swim_amount_pose_and_body_pitch() {
     .with_head_look(0.0, 25.0)
     .with_age_in_ticks(10.0)
     .with_bounding_box_height(1.95);
-    let dry = entity_model_textured_mesh(&[base], &atlas);
-    let swimming = entity_model_textured_mesh(&[base.with_swim_amount(0.5)], &atlas);
+    let dry_meshes = entity_model_textured_meshes(&[base], &atlas);
+    assert_zombie_family_submissions_match_vanilla(&dry_meshes, base);
+    let dry = &dry_meshes.cutout;
+    let swimming_instance = base.with_swim_amount(0.5);
+    let swimming_meshes = entity_model_textured_meshes(&[swimming_instance], &atlas);
+    assert_zombie_family_submissions_match_vanilla(&swimming_meshes, swimming_instance);
+    let swimming = &swimming_meshes.cutout;
     assert_eq!(dry.cutout_faces, swimming.cutout_faces);
     assert_eq!(dry.vertices.len(), swimming.vertices.len());
     assert_ne!(
@@ -1128,17 +1153,19 @@ fn drowned_textured_mesh_applies_swim_amount_pose_and_body_pitch() {
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
 
-    let colored_swim = entity_model_mesh(&[base.with_swim_amount(0.5)]);
+    let colored_swim = entity_model_mesh(&[swimming_instance]);
     let (cmin, cmax) = mesh_extents(&colored_swim);
     let (tmin, tmax) = textured_mesh_extents(&swimming);
     assert_close3(tmin, cmin);
     assert_close3(tmax, cmax);
 
-    let pivoted = entity_model_textured_mesh(&[base.with_swim_amount(0.5)], &atlas);
-    let foot_pivot = entity_model_textured_mesh(
-        &[base.with_swim_amount(0.5).with_bounding_box_height(0.0)],
-        &atlas,
-    );
+    let pivoted_meshes = entity_model_textured_meshes(&[swimming_instance], &atlas);
+    assert_zombie_family_submissions_match_vanilla(&pivoted_meshes, swimming_instance);
+    let pivoted = &pivoted_meshes.cutout;
+    let foot_pivot_instance = swimming_instance.with_bounding_box_height(0.0);
+    let foot_pivot_meshes = entity_model_textured_meshes(&[foot_pivot_instance], &atlas);
+    assert_zombie_family_submissions_match_vanilla(&foot_pivot_meshes, foot_pivot_instance);
+    let foot_pivot = &foot_pivot_meshes.cutout;
     assert_ne!(
         pivoted.vertices, foot_pivot.vertices,
         "DrownedRenderer.setupRotations uses boundingBoxHeight / 2 as the swim pitch pivot"
@@ -1179,22 +1206,12 @@ fn drowned_outer_layer_overlays_the_inflated_white_shell() {
         ZombieVariantModelFamily::Drowned,
         false,
     )];
-    let base = entity_model_textured_mesh(&instances, &base_only);
-    let outer = entity_model_textured_mesh(&instances, &with_outer);
+    let base_meshes = entity_model_textured_meshes(&instances, &base_only);
+    assert_zombie_family_submissions_match_vanilla(&base_meshes, instances[0]);
+    let base = &base_meshes.cutout;
     let outer_meshes = entity_model_textured_meshes(&instances, &with_outer);
-
-    assert_eq!(outer_meshes.submissions.len(), 2);
-    assert_eq!(outer_meshes.submissions[0].texture, DROWNED_TEXTURE_REF);
-    assert_eq!(outer_meshes.submissions[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(outer_meshes.submissions[0].order, 0);
-    assert_eq!(outer_meshes.submissions[0].submit_sequence, 0);
-    assert_eq!(
-        outer_meshes.submissions[1].texture,
-        DROWNED_OUTER_LAYER_TEXTURE_REF
-    );
-    assert_eq!(outer_meshes.submissions[1].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(outer_meshes.submissions[1].order, 1);
-    assert_eq!(outer_meshes.submissions[1].submit_sequence, 1);
+    assert_zombie_family_submissions_match_vanilla(&outer_meshes, instances[0]);
+    let outer = &outer_meshes.cutout;
 
     // The outer adds exactly the inflated humanoid shell (7 boxes * 6 faces).
     assert_eq!(outer.cutout_faces, base.cutout_faces + 42);
@@ -1220,7 +1237,9 @@ fn drowned_outer_layer_overlays_the_inflated_white_shell() {
     let walking = [instances[0]
         .with_walk_animation(2.0, 1.0)
         .with_age_in_ticks(8.0)];
-    let outer_walk = entity_model_textured_mesh(&walking, &with_outer);
+    let outer_walk_meshes = entity_model_textured_meshes(&walking, &with_outer);
+    assert_zombie_family_submissions_match_vanilla(&outer_walk_meshes, walking[0]);
+    let outer_walk = &outer_walk_meshes.cutout;
     assert_ne!(
         outer.vertices, outer_walk.vertices,
         "outer shell tracks the limbs"
@@ -1236,8 +1255,12 @@ fn drowned_outer_layer_overlays_the_inflated_white_shell() {
         ZombieVariantModelFamily::Drowned,
         true,
     )];
-    let baby_base = entity_model_textured_mesh(&baby, &base_only);
-    let baby_outer = entity_model_textured_mesh(&baby, &with_outer);
+    let baby_base_meshes = entity_model_textured_meshes(&baby, &base_only);
+    assert_zombie_family_submissions_match_vanilla(&baby_base_meshes, baby[0]);
+    let baby_base = &baby_base_meshes.cutout;
+    let baby_outer_meshes = entity_model_textured_meshes(&baby, &with_outer);
+    assert_zombie_family_submissions_match_vanilla(&baby_outer_meshes, baby[0]);
+    let baby_outer = &baby_outer_meshes.cutout;
     assert_eq!(baby_outer.cutout_faces, baby_base.cutout_faces + 42);
     assert!(baby_outer
         .vertices
@@ -1365,7 +1388,9 @@ fn zombie_villager_textured_mesh_matches_colored_geometry_and_legs_swing() {
             baby,
         )];
         let colored = entity_model_mesh(&instances);
-        let textured = entity_model_textured_mesh(&instances, &atlas);
+        let textured_meshes = entity_model_textured_meshes(&instances, &atlas);
+        assert_zombie_family_submissions_match_vanilla(&textured_meshes, instances[0]);
+        let textured = &textured_meshes.cutout;
         // The textured zombie villager shares the colored geometry exactly.
         assert_eq!(textured.cutout_faces, colored.opaque_faces, "baby={baby}");
         assert_eq!(textured.vertices.len(), colored.vertices.len());
@@ -1382,7 +1407,9 @@ fn zombie_villager_textured_mesh_matches_colored_geometry_and_legs_swing() {
         let walking = [instances[0]
             .with_walk_animation(2.0, 1.0)
             .with_age_in_ticks(8.0)];
-        let textured_walk = entity_model_textured_mesh(&walking, &atlas);
+        let textured_walk_meshes = entity_model_textured_meshes(&walking, &atlas);
+        assert_zombie_family_submissions_match_vanilla(&textured_walk_meshes, walking[0]);
+        let textured_walk = &textured_walk_meshes.cutout;
         assert_ne!(
             textured.vertices, textured_walk.vertices,
             "legs swing (baby={baby})"
@@ -1446,11 +1473,123 @@ fn zombie_villager_profession_layers_render_with_zombie_textures_and_no_hat_rule
         ),
     ] {
         assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
         assert_eq!(submit.texture, texture);
         assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
         assert_eq!((submit.order, submit.submit_sequence), (order, sequence));
         assert_eq!(submit.transform, expected_transform);
     }
+}
+
+fn assert_zombie_family_submissions_match_vanilla(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    assert_zombie_family_folded_meshes_are_cutout_only(meshes);
+    let (base_passes, expected_transform, villager_data) = match instance.kind {
+        EntityModelKind::Zombie { baby } => (
+            zombie_textured_layer_passes(baby),
+            entity_model_root_transform(instance),
+            None,
+        ),
+        EntityModelKind::ZombieVariant {
+            family: ZombieVariantModelFamily::Husk,
+            baby,
+        } => (
+            husk_textured_layer_passes(baby),
+            if baby {
+                entity_model_root_transform(instance)
+            } else {
+                mesh_transformer_scaled_model_root_transform(instance, HUSK_SCALE)
+            },
+            None,
+        ),
+        EntityModelKind::ZombieVariant {
+            family: ZombieVariantModelFamily::Drowned,
+            baby,
+        } => (
+            drowned_textured_layer_passes(baby),
+            drowned_model_root_transform(instance),
+            None,
+        ),
+        EntityModelKind::ZombieVariant {
+            family: ZombieVariantModelFamily::ZombieVillager,
+            baby,
+        } => (
+            zombie_villager_textured_layer_passes(baby),
+            entity_model_root_transform(instance),
+            Some((baby, instance.render_state.villager_model_data)),
+        ),
+        _ => panic!("expected zombie-family instance"),
+    };
+
+    let mut expected = Vec::new();
+    expected.extend(base_passes.iter().map(|pass| {
+        (
+            pass.render_type,
+            pass.texture,
+            pass.tint,
+            pass.order,
+            pass.submit_sequence,
+        )
+    }));
+    if let Some((baby, data)) = villager_data {
+        expected.push((
+            EntityModelLayerRenderType::EntityCutout,
+            zombie_villager_type_texture_ref(data.villager_type, baby),
+            [1.0, 1.0, 1.0, 1.0],
+            1,
+            1,
+        ));
+        if !baby {
+            if let Some(texture) = zombie_villager_profession_texture_ref(data.profession) {
+                expected.push((
+                    EntityModelLayerRenderType::EntityCutout,
+                    texture,
+                    [1.0, 1.0, 1.0, 1.0],
+                    2,
+                    2,
+                ));
+                if data.profession.renders_level_badge() {
+                    expected.push((
+                        EntityModelLayerRenderType::EntityCutout,
+                        zombie_villager_level_texture_ref(data.level),
+                        [1.0, 1.0, 1.0, 1.0],
+                        3,
+                        3,
+                    ));
+                }
+            }
+        }
+    }
+
+    assert_eq!(meshes.submissions.len(), expected.len());
+    for (submit, (render_type, texture, tint, order, sequence)) in
+        meshes.submissions.iter().zip(expected)
+    {
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(submit.render_type, render_type);
+        assert_eq!(submit.texture, texture);
+        assert_eq!(submit.tint, tint);
+        assert_eq!(submit.transform, expected_transform);
+        assert_eq!((submit.order, submit.submit_sequence), (order, sequence));
+    }
+}
+
+fn assert_zombie_family_folded_meshes_are_cutout_only(meshes: &EntityModelTexturedMeshes) {
+    assert!(!meshes.cutout.vertices.is_empty());
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_cutout.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_translucent.vertices.is_empty());
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_translucent
+        .vertices
+        .is_empty());
+    assert!(meshes.scroll.vertices.is_empty());
+    assert!(meshes.scroll_additive.vertices.is_empty());
 }
 
 fn zombie_villager_texture_images() -> Vec<EntityModelTextureImage> {

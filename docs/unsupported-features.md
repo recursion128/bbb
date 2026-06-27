@@ -2013,7 +2013,14 @@ When an agent does any of the following, update this file in the same slice:
       `VillagerProfessionLayer` parity, reading `VillagerData` at entity-data id
       `20`, using the zombie-villager overlay textures, baby type robes, level
       badges for non-`NONE`/`NITWIT` adult professions, and vanilla no-hat model
-      selection; the piglin
+      selection; textured zombie-family regressions now route through
+      `entity_model_textured_meshes`, pinning zombie/husk/drowned/zombie-villager
+      base submissions plus the drowned outer layer and zombie-villager data
+      overlays as vanilla `entityCutout` submits with selected textures, white
+      tint, root transforms (`entity_model_root_transform`, adult husk
+      `huskScale`, drowned swim pivot), and explicit `(order, submit_sequence)`
+      metadata before folded cutout geometry, tint, transform, and animation
+      checks; the piglin
       dance/attack/crossbow-hold/crossbow-charge/admiring arm poses ARE all implemented
       (see the piglin note);
       the zombie-arm attack swing IS implemented (the
