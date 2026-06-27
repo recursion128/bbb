@@ -3432,7 +3432,8 @@ When an agent does any of the following, update this file in the same slice:
       explicit submission metadata for vanilla `entityCutout`, white tint, light coords,
       `OverlayTexture.NO_OVERLAY`, the renderer root transform, and `(order, submit_sequence) == (0, 0)`.
       Folded cutout vertices now inherit that submission light and no-overlay metadata rather than the
-      instance's hurt/white overlay coordinates.
+      instance's hurt/white overlay coordinates; missing-atlas coverage pins that the submission is still
+      recorded before folded cutout geometry is suppressed.
       The colored debug path stays as a fallback (it renders the cross
       with one tint)
     - shulker bullet entities as renderer-owned vanilla 26.1 `ShulkerBulletModel.createBodyLayer()` geometry

@@ -126,3 +126,37 @@ fn llama_spit_textured_render_matches_vanilla_renderer() {
         .iter()
         .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
 }
+
+#[test]
+fn llama_spit_submission_survives_missing_texture_atlas_entry() {
+    // The shared projectile dispatch is submission-first: the vanilla `llama_spit.png` submit is
+    // recorded before atlas lookup, and missing texture data suppresses only folded geometry.
+    let base_len =
+        usize::try_from(ZOMBIE_TEXTURE_REF.size[0] * ZOMBIE_TEXTURE_REF.size[1] * 4).unwrap();
+    let images = vec![EntityModelTextureImage::new(
+        ZOMBIE_TEXTURE_REF,
+        vec![0u8; base_len],
+    )];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let instance = EntityModelInstance::llama_spit(792, [2.0, 65.0, -4.0], 35.0)
+        .with_head_look(0.0, -12.0)
+        .with_light_coords((7_u32 << 4) | (9_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.texture, LLAMA_SPIT_TEXTURE_REF);
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.transform, llama_spit_model_root_transform(instance));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, [0.0, 10.0]);
+    assert!(meshes.cutout.vertices.is_empty());
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+}
