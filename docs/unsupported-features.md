@@ -3486,8 +3486,14 @@ When an agent does any of the following, update this file in the same slice:
       `AnimationState`, so it stays deferred, as does the `AgeableMobRenderer` baby render scale (`0.7`).
       The base texture is now bound on the textured path (`NAUTILUS_TEXTURE_REF` /
       `NAUTILUS_BABY_TEXTURE_REF`), the primary now-wired path; the zombie coral variant plus adult
-      saddle/body-armor overlays are wired. The colored debug path stays as a
-      fallback (it renders a tan shell over a pale body)
+      saddle/body-armor overlays are wired. Textured nautilus/zombie-nautilus regressions now route
+      through `entity_model_textured_meshes` and pin vanilla submission metadata before folded cutout
+      geometry checks: living/zombie/coral base passes are `entityCutout`, selected texture, white tint,
+      `entity_model_root_transform`, and `(order, submit_sequence) == (0, 0)`; adult living nautilus and
+      all zombie-nautilus saddle/body-armor equipment layers are `armorCutoutNoCull` with white tint and
+      the same transform at `(0, 1)`, with saddle advancing to `(0, 2)` when a valid body-armor layer is
+      also present. Baby living nautilus remain base-only because vanilla `SimpleEquipmentLayer` has no
+      baby model. The colored debug path stays as a fallback (it renders a tan shell over a pale body)
     - fox entities (adult and baby) as renderer-owned vanilla 26.1 `AdultFoxModel.createBodyLayer()` /
       `BabyFoxModel.createBodyLayer()` geometry on the textured path: the native entity scene
       (`entity_scene.rs`) now splits vanilla type id `54` out of the cat/ocelot/fox wolf-shaped quadruped
