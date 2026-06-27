@@ -310,6 +310,14 @@ entity_render_state! {
     /// lerped per-frame age that drives continuous idle animations (e.g. the
     /// `AbstractPiglinModel` ear flap). `0.0` until the entity scene projects it.
     (with_age_in_ticks) age_in_ticks: f32 = 0.0;
+    /// Vanilla `BoatRenderState.rowingTimeLeft`: left-paddle rowing time from
+    /// `AbstractBoat.getRowingTime(0, partialTick)`, consumed by
+    /// `AbstractBoatModel.animatePaddle`. `0.0` for non-boats and inactive left paddles.
+    (with_boat_rowing_time_left) boat_rowing_time_left: f32 = 0.0;
+    /// Vanilla `BoatRenderState.rowingTimeRight`: right-paddle rowing time from
+    /// `AbstractBoat.getRowingTime(1, partialTick)`, consumed by
+    /// `AbstractBoatModel.animatePaddle`. `0.0` for non-boats and inactive right paddles.
+    (with_boat_rowing_time_right) boat_rowing_time_right: f32 = 0.0;
     /// Vanilla `Mob.isAggressive()` (`DATA_MOB_FLAGS_ID & 4`): deepens the held-out
     /// `animateZombieArms` arm drop for the zombie-model family (`-π / 1.5` aggressive vs
     /// `-π / 2.25` calm). `false` for every calm or non-zombie-family entity.
@@ -2285,6 +2293,8 @@ mod tests {
                 attack_anim: 0.0,
                 attack_arm_off_hand: false,
                 age_in_ticks: 0.0,
+                boat_rowing_time_left: 0.0,
+                boat_rowing_time_right: 0.0,
                 is_aggressive: false,
                 main_hand_holds_bow: false,
                 main_hand_swing_is_stab: false,

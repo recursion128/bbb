@@ -956,6 +956,75 @@ fn entity_model_sources_project_narrow_render_state_from_model_targets() {
 }
 
 #[test]
+fn entity_model_sources_project_boat_rowing_times_from_paddles_and_passengers() {
+    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    const BOAT_PADDLE_LEFT_DATA_ID: u8 = 8;
+    const BOAT_PADDLE_RIGHT_DATA_ID: u8 = 9;
+    const ADVANCE: f32 = std::f32::consts::PI / 8.0;
+
+    let assert_close = |actual: f32, expected: f32, label: &str| {
+        assert!(
+            (actual - expected).abs() < 1.0e-6,
+            "{label}: expected {expected}, got {actual}"
+        );
+    };
+    let rowing = |store: &WorldStore, partial_tick: f32| -> (f32, f32) {
+        let source = store
+            .entity_model_sources_at_partial_tick(partial_tick)
+            .into_iter()
+            .find(|source| source.entity_id == 20)
+            .expect("boat source");
+        (source.boat_rowing_time_left, source.boat_rowing_time_right)
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        99,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 20,
+        values: vec![protocol_bool_data(BOAT_PADDLE_LEFT_DATA_ID, true)],
+    }));
+
+    store.advance_entity_client_animations(1);
+    assert_eq!(rowing(&store, 1.0), (0.0, 0.0));
+
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 20,
+        passenger_ids: vec![99],
+    }));
+    store.advance_entity_client_animations(1);
+    assert_close(rowing(&store, 0.0).0, 0.0, "left start");
+    assert_close(rowing(&store, 0.5).0, ADVANCE * 0.5, "left mid");
+    assert_close(rowing(&store, 1.0).0, ADVANCE, "left end");
+    assert_eq!(rowing(&store, 1.0).1, 0.0);
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 20,
+        values: vec![
+            protocol_bool_data(BOAT_PADDLE_LEFT_DATA_ID, true),
+            protocol_bool_data(BOAT_PADDLE_RIGHT_DATA_ID, true),
+        ],
+    }));
+    store.advance_entity_client_animations(1);
+    assert_close(rowing(&store, 1.0).0, ADVANCE * 2.0, "left second tick");
+    assert_close(rowing(&store, 1.0).1, ADVANCE, "right first tick");
+
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 20,
+        passenger_ids: vec![],
+    }));
+    store.advance_entity_client_animations(1);
+    assert_eq!(rowing(&store, 1.0), (0.0, 0.0));
+}
+
+#[test]
 fn entity_model_sources_project_invisible_to_player_for_spectator_viewer() {
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;

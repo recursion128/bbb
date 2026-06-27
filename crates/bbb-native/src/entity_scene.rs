@@ -1360,6 +1360,8 @@ fn entity_model_instance(
         .with_attack_anim(source.attack_anim)
         .with_attack_arm_off_hand(source.attack_arm_off_hand)
         .with_age_in_ticks(source.age_ticks as f32 + entity_partial_tick)
+        .with_boat_rowing_time_left(source.boat_rowing_time_left)
+        .with_boat_rowing_time_right(source.boat_rowing_time_right)
         .with_is_aggressive(source.is_aggressive)
         .with_main_hand_holds_bow(main_hand_holds_bow)
         .with_main_hand_swing_is_stab(main_hand_swing_is_stab)
@@ -4827,6 +4829,46 @@ mod tests {
             )],
         }));
         assert_eq!(auto_spin(&world, 87, 0.5), None);
+    }
+
+    #[test]
+    fn entity_model_instances_project_boat_rowing_times() {
+        const BOAT_PADDLE_LEFT_DATA_ID: u8 = 8;
+        const BOAT_PADDLE_RIGHT_DATA_ID: u8 = 9;
+        const ADVANCE: f32 = std::f32::consts::PI / 8.0;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            90,
+            VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            91,
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            [2.0, 64.0, -2.0],
+        ));
+        assert!(world.apply_set_passengers(SetPassengers {
+            vehicle_id: 90,
+            passenger_ids: vec![91],
+        }));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 90,
+            values: vec![
+                protocol_bool_data(BOAT_PADDLE_LEFT_DATA_ID, true),
+                protocol_bool_data(BOAT_PADDLE_RIGHT_DATA_ID, true),
+            ],
+        }));
+
+        world.advance_entity_client_animations(2);
+        let render_state = entity_model_instances_from_world_at_partial_tick(&world, None, 0.5)
+            .into_iter()
+            .find(|instance| instance.entity_id == 90)
+            .unwrap()
+            .render_state;
+
+        assert!((render_state.boat_rowing_time_left - ADVANCE * 1.5).abs() < 1.0e-6);
+        assert!((render_state.boat_rowing_time_right - ADVANCE * 1.5).abs() < 1.0e-6);
     }
 
     #[test]

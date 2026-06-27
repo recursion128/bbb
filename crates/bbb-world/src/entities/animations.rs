@@ -8,9 +8,16 @@ use super::dragon::{
     EnderDragonAnimationState, ENDER_DRAGON_PHASE_DATA_ID, ENDER_DRAGON_PHASE_HOVERING_ID,
     VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
 };
-use super::{EntityTransform, EntityVec3};
+use super::{is_vanilla_boat_type, EntityTransform, EntityVec3};
 
 const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+/// Vanilla `AbstractBoat.DATA_ID_PADDLE_LEFT` / `DATA_ID_PADDLE_RIGHT`: the first
+/// two boat synced accessors after base `Entity` ids `0..=7`.
+const ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID: u8 = 8;
+const ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID: u8 = 9;
+/// Vanilla `AbstractBoat.tick` advances each active `paddlePositions[side]` by
+/// `PI / 8` per client tick, otherwise resetting it to zero.
+const BOAT_PADDLE_ADVANCE_PER_TICK: f32 = std::f32::consts::PI / 8.0;
 /// Vanilla `EntityType.ARROW` / `EntityType.SPECTRAL_ARROW`: both extend
 /// `AbstractArrow` and share the same client-side `shakeTime` impact wobble.
 const VANILLA_ENTITY_TYPE_ARROW_ID: i32 = 6;
@@ -382,6 +389,8 @@ pub struct EntityClientAnimationState {
     #[serde(default)]
     pub age_ticks: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub boat: Option<BoatPaddleAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub arrow_shake: Option<ArrowShakeAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub polar_bear_standing: Option<PolarBearStandingAnimationState>,
@@ -478,6 +487,51 @@ pub struct EntityClientAnimationState {
     pub breeze: Option<BreezeAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub walk_animation: Option<WalkAnimationState>,
+}
+
+/// Vanilla `AbstractBoat.paddlePositions`: client-side rowing accumulators for
+/// the left and right paddles. `AbstractBoatRenderer.extractRenderState` projects
+/// these through `getRowingTime(side, partialTick)` before `AbstractBoatModel`
+/// turns them into paddle rotations.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+pub struct BoatPaddleAnimationState {
+    pub left: f32,
+    pub right: f32,
+}
+
+impl BoatPaddleAnimationState {
+    fn advance_client_tick(&mut self, left_active: bool, right_active: bool) {
+        self.left = advance_boat_paddle(self.left, left_active);
+        self.right = advance_boat_paddle(self.right, right_active);
+    }
+
+    fn rowing_times(self, partial_tick: f32, left_active: bool, right_active: bool) -> [f32; 2] {
+        [
+            boat_rowing_time(self.left, partial_tick, left_active),
+            boat_rowing_time(self.right, partial_tick, right_active),
+        ]
+    }
+
+    fn is_settled(self) -> bool {
+        self.left == 0.0 && self.right == 0.0
+    }
+}
+
+fn advance_boat_paddle(position: f32, active: bool) -> f32 {
+    if active {
+        position + BOAT_PADDLE_ADVANCE_PER_TICK
+    } else {
+        0.0
+    }
+}
+
+fn boat_rowing_time(position: f32, partial_tick: f32, active: bool) -> f32 {
+    if active {
+        let start = position - BOAT_PADDLE_ADVANCE_PER_TICK;
+        start + partial_tick.clamp(0.0, 1.0) * (position - start)
+    } else {
+        0.0
+    }
 }
 
 /// Canonical client-side arrow impact wobble, mirroring vanilla
@@ -4041,6 +4095,21 @@ impl EntityClientAnimationState {
             .map_or(0.0, |state| state.shake(partial_tick))
     }
 
+    /// Vanilla `AbstractBoat.getRowingTime(side, partialTick)`: lerps the
+    /// per-side paddle accumulator for a boat that still has an active paddle
+    /// state and a controlling passenger. Returns `[left, right]`, or zeros for a
+    /// boat at rest and every non-boat entity.
+    pub fn boat_rowing_times(
+        &self,
+        partial_tick: f32,
+        left_active: bool,
+        right_active: bool,
+    ) -> [f32; 2] {
+        self.boat.map_or([0.0; 2], |state| {
+            state.rowing_times(partial_tick, left_active, right_active)
+        })
+    }
+
     /// Vanilla `WitherRenderState.xHeadRots/yHeadRots`: current side-head
     /// rotations copied from `WitherBoss.xRotHeads/yRotHeads`. The arrays are
     /// `[right_head, left_head]`; every non-wither keeps the zeroed default.
@@ -4369,6 +4438,10 @@ impl EntityClientAnimationState {
         // The synced `Wolf.DATA_INTERESTED_ID` boolean (`isInterested()`), read from metadata in the
         // tick loop ([`wolf_is_interested`]). It drives the wolf's client-side interested-angle ease.
         wolf_is_interested: bool,
+        // Vanilla `AbstractBoat.getPaddleState(side)`: synced left/right paddle
+        // booleans gated by the presence of a controlling passenger.
+        boat_paddle_left: bool,
+        boat_paddle_right: bool,
         // Vanilla `Entity.isSwimming()` for player cape bob suppression.
         is_swimming: bool,
     ) {
@@ -4728,6 +4801,17 @@ impl EntityClientAnimationState {
                 // !isPassenger()`. A parrot with no synced ground flag defaults to
                 // on-ground (wings still), the safe common case.
                 .advance_client_tick(transform.on_ground.unwrap_or(true), is_passenger),
+            _ if is_vanilla_boat_type(entity_type_id) => {
+                if self.boat.is_some() || boat_paddle_left || boat_paddle_right {
+                    let boat = self
+                        .boat
+                        .get_or_insert_with(BoatPaddleAnimationState::default);
+                    boat.advance_client_tick(boat_paddle_left, boat_paddle_right);
+                    if boat.is_settled() {
+                        self.boat = None;
+                    }
+                }
+            }
             _ => {}
         }
         // Vanilla `LivingEntity.calculateEntityAnimation` runs every client tick
@@ -4894,6 +4978,18 @@ impl WorldStore {
         self.entities
             .advance_client_animations(ticks, &in_water_by_id);
     }
+}
+
+pub(crate) fn boat_paddle_states(
+    data_values: &[EntityDataValue],
+    has_controlling_passenger: bool,
+) -> [bool; 2] {
+    [
+        has_controlling_passenger
+            && entity_data_bool(data_values, ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID, false),
+        has_controlling_passenger
+            && entity_data_bool(data_values, ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID, false),
+    ]
 }
 
 fn entity_data_bool(data_values: &[EntityDataValue], data_id: u8, default: bool) -> bool {

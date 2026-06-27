@@ -539,6 +539,30 @@ const RAFT_COMMON_NAMES: [&str; 3] = ["bottom", "left_paddle", "right_paddle"];
 /// order: the chest `bottom`, `lid`, and `lock`.
 const BOAT_CHEST_NAMES: [&str; 3] = ["chest_bottom", "chest_lid", "chest_lock"];
 
+fn boat_paddle_lerp(delta: f32, start: f32, end: f32) -> f32 {
+    start + delta.clamp(0.0, 1.0) * (end - start)
+}
+
+/// Vanilla `AbstractBoatModel.animatePaddle`: converts `BoatRenderState.rowingTime*`
+/// into a paddle `xRot` plus side-specific `yRot`.
+pub(in crate::entity_models) fn boat_paddle_rotations(rowing_time: f32, side: usize) -> [f32; 2] {
+    let x_rot = boat_paddle_lerp(
+        ((-rowing_time).sin() + 1.0) / 2.0,
+        -std::f32::consts::PI / 3.0,
+        -std::f32::consts::PI / 12.0,
+    );
+    let y_rot = boat_paddle_lerp(
+        ((-rowing_time + 1.0).sin() + 1.0) / 2.0,
+        -std::f32::consts::PI / 4.0,
+        std::f32::consts::PI / 4.0,
+    );
+    if side == 1 {
+        [x_rot, std::f32::consts::PI - y_rot]
+    } else {
+        [x_rot, y_rot]
+    }
+}
+
 /// Selects the colored common / chest part lists, their vanilla child names, and the matching textured
 /// combined tree for a boat or raft, with or without a chest. The bamboo family is the raft; every other
 /// family is the plain boat. The textured chest trees ([`BOAT_CHEST_TEXTURED_PARTS`] /
@@ -598,9 +622,9 @@ fn boat_part_trees(
 /// synthetic root as named children ([`BOAT_COMMON_NAMES`] / [`RAFT_COMMON_NAMES`] + [`BOAT_CHEST_NAMES`]);
 /// each unified cube takes its geometry/color from the colored part and its UV from the matching textured
 /// part, so one tree drives both render paths. The two hull sides share the colored `BOAT_SIDE` box but
-/// carry distinct left/right UVs. `new` selects the boat / raft / chest tree; the boat has no per-frame
-/// animation (the vanilla paddle swing is deferred entity-side state), so `setup_anim` is a no-op. The
-/// colored fallback uses the baked wood color; the textured path uses the per-family boat texture.
+/// carry distinct left/right UVs. `new` selects the boat / raft / chest tree; `setup_anim` mirrors
+/// vanilla `AbstractBoatModel.animatePaddle` using world-projected rowing times. The colored fallback
+/// uses the baked wood color; the textured path uses the per-family boat texture.
 pub(in crate::entity_models) struct BoatModel {
     root: ModelPart,
 }
@@ -651,8 +675,15 @@ impl EntityModel for BoatModel {
         &mut self.root
     }
 
-    fn setup_anim(&mut self, _instance: &EntityModelInstance) {
-        // The boat renders at its bind pose; the vanilla `BoatModel.setupAnim` paddle swing (driven by
-        // the un-projected `rowingTime`) is deferred entity-side state.
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let left = boat_paddle_rotations(instance.render_state.boat_rowing_time_left, 0);
+        let left_paddle = self.root.child_mut("left_paddle");
+        left_paddle.pose.rotation[0] = left[0];
+        left_paddle.pose.rotation[1] = left[1];
+
+        let right = boat_paddle_rotations(instance.render_state.boat_rowing_time_right, 1);
+        let right_paddle = self.root.child_mut("right_paddle");
+        right_paddle.pose.rotation[0] = right[0];
+        right_paddle.pose.rotation[1] = right[1];
     }
 }

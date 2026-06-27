@@ -479,3 +479,78 @@ fn boat_textured_mesh_uses_vanilla_uvs_tints_and_root_transform() {
     assert!(max[0] - min[0] > 9.0);
     assert!(max[2] - min[2] > 1.0);
 }
+
+#[test]
+fn boat_paddles_use_vanilla_rowing_time_rotations() {
+    let assert_close = |actual: f32, expected: f32| {
+        assert!(
+            (actual - expected).abs() < 1.0e-6,
+            "expected {expected}, got {actual}"
+        );
+    };
+    let left_rest = boat_paddle_rotations(0.0, 0);
+    assert_close(left_rest[0], -5.0 * std::f32::consts::PI / 24.0);
+
+    let left_mid = boat_paddle_rotations(1.0, 0);
+    let right_mid = boat_paddle_rotations(1.0, 1);
+    assert_close(left_mid[1], 0.0);
+    assert_close(right_mid[0], left_mid[0]);
+    assert_close(right_mid[1], std::f32::consts::PI);
+
+    let image = EntityModelTextureImage::new(
+        BOAT_OAK_TEXTURE_REF,
+        vec![
+            7;
+            usize::try_from(BOAT_OAK_TEXTURE_REF.size[0] * BOAT_OAK_TEXTURE_REF.size[1] * 4)
+                .unwrap()
+        ],
+    );
+    let (atlas, _) = build_entity_model_texture_atlas(&[image]).unwrap();
+    let rest = EntityModelInstance::boat(301, [0.0, 64.0, 0.0], 0.0, BoatModelFamily::Oak, false)
+        .with_light_coords((5_u32 << 4) | (9_u32 << 20))
+        .with_has_red_overlay(true)
+        .with_white_overlay_progress(0.6);
+    let rowing = rest
+        .with_boat_rowing_time_left(std::f32::consts::PI / 8.0)
+        .with_boat_rowing_time_right(std::f32::consts::PI / 4.0);
+
+    let rest_meshes = entity_model_textured_meshes(&[rest], &atlas);
+    let rowing_meshes = entity_model_textured_meshes(&[rowing], &atlas);
+    assert_eq!(rest_meshes.submissions.len(), 2);
+    assert_eq!(rowing_meshes.submissions.len(), 2);
+    let base = rowing_meshes.submissions[0];
+    assert_eq!(base.texture, BOAT_OAK_TEXTURE_REF);
+    assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(base.transform, boat_model_root_transform(rowing));
+    assert_eq!(base.light, rowing.render_state.shader_light());
+    assert_eq!(base.overlay, [0.0, 10.0]);
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+    let water_mask = rowing_meshes.submissions[1];
+    assert_eq!(
+        water_mask.render_type,
+        EntityModelLayerRenderType::WaterMask
+    );
+    assert_eq!(water_mask.render_type.vanilla_name(), "waterMask");
+    assert_eq!(water_mask.texture, BOAT_OAK_TEXTURE_REF);
+    assert_eq!(water_mask.transform, base.transform);
+    assert_eq!(water_mask.light, base.light);
+    assert_eq!(water_mask.overlay, [0.0, 10.0]);
+    assert_eq!((water_mask.order, water_mask.submit_sequence), (0, 1));
+
+    assert_eq!(rest_meshes.cutout.vertices.len(), 216);
+    assert_eq!(rowing_meshes.cutout.vertices.len(), 216);
+    assert_eq!(
+        &rest_meshes.cutout.vertices[..120],
+        &rowing_meshes.cutout.vertices[..120]
+    );
+    assert_ne!(
+        &rest_meshes.cutout.vertices[120..168],
+        &rowing_meshes.cutout.vertices[120..168]
+    );
+    assert_ne!(
+        &rest_meshes.cutout.vertices[168..216],
+        &rowing_meshes.cutout.vertices[168..216]
+    );
+}

@@ -4184,8 +4184,9 @@ When an agent does any of the following, update this file in the same slice:
     variant asset presentation, sheep
     head-look-pitch presentation,
     wolf colored force-transparent / GPU outline presentation,
-    boat/raft paddle animation, damage roll, bubble wobble, and water-mask
-    presentation,
+    boat/raft damage roll, bubble wobble, underwater state, water-mask
+    presentation, and lighting (paddle rowing animation is projected through
+    metadata/passenger-gated rowing times and rendered on the boat/raft model),
     horse animation, donkey/mule animation presentation,
     undead horse animation presentation, and remaining non-base-equine presentation,
     villager live/dynamic profiled-player skin presentation (crossed-arms

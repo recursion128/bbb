@@ -31,9 +31,9 @@ use super::{
     VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_UPSIDE_DOWN_NAMES,
 };
 use crate::entities::animations::{
-    allay_is_dancing, axolotl_is_playing_dead, camel_is_dashing, creaking_can_move,
-    creaking_is_tearing_down, entity_animation_uses_in_water, entity_is_fall_flying,
-    guardian_attack_duration, guardian_attack_target_id, guardian_is_moving,
+    allay_is_dancing, axolotl_is_playing_dead, boat_paddle_states, camel_is_dashing,
+    creaking_can_move, creaking_is_tearing_down, entity_animation_uses_in_water,
+    entity_is_fall_flying, guardian_attack_duration, guardian_attack_target_id, guardian_is_moving,
     is_guardian_entity_type, piglin_is_charging_crossbow, pillager_is_charging_crossbow,
     player_is_using_item, warden_heartbeat_delay, wither_side_head_target_ids,
     wither_side_head_target_rotation, wolf_is_interested, WitherHeadTargetRotations,
@@ -1057,6 +1057,14 @@ impl EntityStore {
         let is_passenger = mount
             .as_ref()
             .is_some_and(|mount| mount.vehicle_id.is_some());
+        let boat_paddles = mount.as_ref().map_or([false; 2], |mount| {
+            boat_paddle_states(&metadata.data_values, !mount.passengers.is_empty())
+        });
+        let boat_rowing_times = client_animations.animations.boat_rowing_times(
+            partial_ticks,
+            boat_paddles[0],
+            boat_paddles[1],
+        );
         let (wither_x_head_rots, wither_y_head_rots) = if vanilla_is_wither(identity.entity_type_id)
         {
             client_animations.animations.wither_head_rotations()
@@ -1099,6 +1107,8 @@ impl EntityStore {
             arrow_shake: client_animations.animations.arrow_shake(partial_ticks),
             is_passenger,
             age_ticks: client_animations.animations.age_ticks,
+            boat_rowing_time_left: boat_rowing_times[0],
+            boat_rowing_time_right: boat_rowing_times[1],
             wither_x_head_rots,
             wither_y_head_rots,
             is_fully_frozen,
@@ -2151,6 +2161,8 @@ impl EntityStore {
                     piglin_is_charging_crossbow(&metadata.data_values);
                 let player_is_using_item = player_is_using_item(&metadata.data_values);
                 let wolf_is_interested = wolf_is_interested(&metadata.data_values);
+                let boat_paddles =
+                    boat_paddle_states(&metadata.data_values, !mount.passengers.is_empty());
                 animations.animations.advance_client_tick(
                     identity.entity_type_id,
                     identity.id,
@@ -2172,6 +2184,8 @@ impl EntityStore {
                     piglin_is_charging_crossbow,
                     player_is_using_item,
                     wolf_is_interested,
+                    boat_paddles[0],
+                    boat_paddles[1],
                     is_swimming,
                 );
             }

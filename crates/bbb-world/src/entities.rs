@@ -376,6 +376,18 @@ pub struct EntityModelSourceState {
     pub is_passenger: bool,
     #[serde(default)]
     pub age_ticks: u32,
+    /// Vanilla `BoatRenderState.rowingTimeLeft` / `AbstractBoat.getRowingTime(0,
+    /// partialTick)`: the left paddle swing accumulator projected from synced
+    /// paddle metadata plus the controlling-passenger gate. `0.0` for non-boats
+    /// and boats whose left paddle is inactive.
+    #[serde(default)]
+    pub boat_rowing_time_left: f32,
+    /// Vanilla `BoatRenderState.rowingTimeRight` / `AbstractBoat.getRowingTime(1,
+    /// partialTick)`: the right paddle swing accumulator projected from synced
+    /// paddle metadata plus the controlling-passenger gate. `0.0` for non-boats
+    /// and boats whose right paddle is inactive.
+    #[serde(default)]
+    pub boat_rowing_time_right: f32,
     /// Vanilla `LivingEntityRenderState.isFullyFrozen` (`Entity.isFullyFrozen`,
     /// `ticksFrozen >= 140`): a living entity frozen solid in powder snow, whose
     /// body the renderer shakes (`LivingEntityRenderer.isShaking`). `false` for
