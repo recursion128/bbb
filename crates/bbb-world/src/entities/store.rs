@@ -1192,6 +1192,7 @@ impl EntityStore {
             player_cape_flap,
             player_cape_lean,
             player_cape_lean2,
+            show_extra_ears: false,
             is_auto_spin_attack,
             is_using_item,
             use_item_off_hand,

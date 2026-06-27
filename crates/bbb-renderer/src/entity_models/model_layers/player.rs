@@ -4,8 +4,8 @@ use super::{
     apply_humanoid_block_pose, apply_humanoid_bow_pose, apply_humanoid_brush_pose,
     apply_humanoid_crouch_named, apply_humanoid_item_hold_pose, apply_humanoid_spyglass_pose,
     apply_humanoid_stab_attack_animation, apply_humanoid_throw_trident_pose,
-    apply_humanoid_toot_horn_pose, apply_humanoid_walk, PartPose, CROSSBOW_CHARGE_DURATION_TICKS,
-    PART_POSE_ZERO, PLAYER_BLUE,
+    apply_humanoid_toot_horn_pose, apply_humanoid_walk, humanoid_crouch_head_pose, PartPose,
+    CROSSBOW_CHARGE_DURATION_TICKS, PART_POSE_ZERO, PLAYER_BLUE,
 };
 use crate::entity_models::catalog::PlayerModelPartVisibility;
 use crate::entity_models::instances::EntityModelInstance;
@@ -13,6 +13,8 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 pub(in crate::entity_models) const MODEL_LAYER_PLAYER: &str = "minecraft:player#main";
 pub(in crate::entity_models) const MODEL_LAYER_PLAYER_SLIM: &str = "minecraft:player_slim#main";
+#[cfg(test)]
+pub(in crate::entity_models) const MODEL_LAYER_PLAYER_EARS: &str = "minecraft:player#ears";
 
 // Vanilla 26.1 PlayerModel.createMesh(CubeDeformation.NONE, slim). Each cube carries both render
 // paths' data: the colored debug tint and the textured uv_size/texOffs/mirror. Each base part nests
@@ -33,6 +35,15 @@ pub(in crate::entity_models) const PLAYER_HAT: [ModelCube; 1] = [ModelCube::new(
     PLAYER_BLUE,
     [8.0, 8.0, 8.0],
     [32.0, 0.0],
+    false,
+)];
+
+pub(in crate::entity_models) const PLAYER_EAR: [ModelCube; 1] = [ModelCube::new(
+    [-4.0, -7.0, -2.0],
+    [8.0, 8.0, 3.0],
+    PLAYER_BLUE,
+    [6.0, 6.0, 1.0],
+    [24.0, 0.0],
     false,
 )];
 
@@ -257,6 +268,42 @@ fn player_tree(slim: bool) -> ModelPart {
     ModelPart::new(PART_POSE_ZERO, Vec::new(), children)
 }
 
+fn player_ears_tree() -> ModelPart {
+    ModelPart::new(
+        PART_POSE_ZERO,
+        Vec::new(),
+        vec![(
+            "head",
+            ModelPart::new(
+                PART_POSE_ZERO,
+                Vec::new(),
+                vec![
+                    (
+                        "left_ear",
+                        ModelPart::leaf(
+                            PartPose {
+                                offset: [-6.0, -6.0, 0.0],
+                                rotation: [0.0, 0.0, 0.0],
+                            },
+                            PLAYER_EAR.to_vec(),
+                        ),
+                    ),
+                    (
+                        "right_ear",
+                        ModelPart::leaf(
+                            PartPose {
+                                offset: [6.0, -6.0, 0.0],
+                                rotation: [0.0, 0.0, 0.0],
+                            },
+                            PLAYER_EAR.to_vec(),
+                        ),
+                    ),
+                ],
+            ),
+        )],
+    )
+}
+
 /// Mutable player model, mirroring vanilla `PlayerModel extends HumanoidModel`. The unified tree is
 /// built for the `slim`/wide arm model with the vanilla child names; each of the six base parts (head,
 /// body, arms, legs) carries one skin overlay child (hat/jacket/sleeve/pants). `setup_anim` looks the
@@ -427,6 +474,39 @@ impl EntityModel for PlayerModel {
                 render_state.head_pitch,
                 1.0,
             );
+        }
+    }
+}
+
+/// Vanilla `PlayerEarsModel.createEarsLayer`: a cleared player mesh with only the
+/// head part and the two inflated `left_ear` / `right_ear` children.
+pub(in crate::entity_models) struct PlayerEarsModel {
+    root: ModelPart,
+}
+
+impl PlayerEarsModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: player_ears_tree(),
+        }
+    }
+}
+
+impl EntityModel for PlayerEarsModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        let render_state = &instance.render_state;
+        let head = self.root.child_mut("head");
+        apply_head_look(head, render_state.head_yaw, render_state.head_pitch);
+        if render_state.is_crouching {
+            head.pose = humanoid_crouch_head_pose(head.pose);
         }
     }
 }

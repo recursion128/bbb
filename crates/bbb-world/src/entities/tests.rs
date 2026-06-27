@@ -3919,6 +3919,64 @@ fn entity_model_sources_project_player_upside_down() {
 }
 
 #[test]
+fn entity_model_sources_project_player_extra_ears_from_profile_name() {
+    // Vanilla `AbstractClientPlayer.showExtraEars` is an exact, lowercase
+    // GameProfile-name check for `"deadmau5"`; it is not driven by custom names.
+    const CHICKEN_TYPE_ID: i32 = 26;
+    let show_extra_ears = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .show_extra_ears
+    };
+    let add_player = |store: &mut WorldStore, id: i32, uuid: Uuid| {
+        let mut add = protocol_add_entity_with_type(id, VANILLA_ENTITY_TYPE_PLAYER_ID);
+        add.uuid = uuid;
+        store.apply_add_entity(add);
+    };
+    let add_profile = |store: &mut WorldStore, uuid: Uuid, name: &str| {
+        store.apply_player_info_update(ProtocolPlayerInfoUpdate {
+            actions: vec![ProtocolPlayerInfoAction::AddPlayer],
+            entries: vec![ProtocolPlayerInfoEntry {
+                profile_id: uuid,
+                profile: Some(ProtocolGameProfile {
+                    uuid,
+                    name: name.to_string(),
+                    properties: Vec::new(),
+                }),
+                listed: true,
+                latency: 0,
+                game_mode: ProtocolGameType::Survival,
+                display_name: None,
+                show_hat: true,
+                list_order: 0,
+                chat_session: None,
+            }],
+        });
+    };
+
+    let mut store = WorldStore::new();
+    let deadmau5_uuid = Uuid::from_u128(0xCCCC_CCCC_CCCC_CCCC_CCCC_CCCC_CCCC_CCCC);
+    add_player(&mut store, 93, deadmau5_uuid);
+    assert!(!show_extra_ears(&store, 93));
+
+    add_profile(&mut store, deadmau5_uuid, "deadmau5");
+    assert!(show_extra_ears(&store, 93));
+
+    let mixed_case_uuid = Uuid::from_u128(0xDDDD_DDDD_DDDD_DDDD_DDDD_DDDD_DDDD_DDDD);
+    add_player(&mut store, 94, mixed_case_uuid);
+    add_profile(&mut store, mixed_case_uuid, "Deadmau5");
+    assert!(!show_extra_ears(&store, 94));
+
+    let mut chicken = protocol_add_entity_with_type(95, CHICKEN_TYPE_ID);
+    chicken.uuid = deadmau5_uuid;
+    store.apply_add_entity(chicken);
+    assert!(!show_extra_ears(&store, 95));
+}
+
+#[test]
 fn sleeping_bed_yaw_and_offset_matches_vanilla() {
     let eye = 2.0_f32;
     let ho = eye - 0.1;

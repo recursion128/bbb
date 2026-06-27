@@ -48,11 +48,11 @@ use super::{
         wolf_body_armor_texture_layers, BreezeWindModel, CamelModel, CreeperModel,
         CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel, CustomHeadSkullModel,
         DrownedOuterModel, ElytraModel, HoglinModel, HumanoidArmorSlot, HumanoidBabyArmorKind,
-        LlamaModel, NautilusModel, PigModel, PiglinModel, PlayerModel, SheepFurModel, SheepModel,
-        ShulkerBulletModel, SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel,
-        SpinAttackEffectModel, SquidModel, StriderModel, TropicalFishModel,
-        TropicalFishPatternModel, VillagerModel, WindChargeModel, WitherModel, WolfModel,
-        ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
+        LlamaModel, NautilusModel, PigModel, PiglinModel, PlayerEarsModel, PlayerModel,
+        SheepFurModel, SheepModel, ShulkerBulletModel, SkeletonClothingModel, SkeletonModel,
+        SlimeModel, SlimeOuterModel, SpinAttackEffectModel, SquidModel, StriderModel,
+        TropicalFishModel, TropicalFishPatternModel, VillagerModel, WindChargeModel, WitherModel,
+        WolfModel, ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
         ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_DONKEY_SADDLE_PARTS_TEXTURED,
         ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED, ADULT_HORSE_ARMOR_PARTS_TEXTURED,
         ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
@@ -82,6 +82,11 @@ const PLAYER_CAPE_CUBE: TexturedModelCubeDesc = TexturedModelCubeDesc {
     tex: [0.0, 0.0],
     mirror: false,
 };
+const PLAYER_EARS_LAYER_SUBMIT_SEQUENCE: u32 = 1;
+const PLAYER_CAPE_LAYER_SUBMIT_SEQUENCE: u32 = 2;
+const PLAYER_WINGS_LAYER_SUBMIT_SEQUENCE: u32 = 3;
+const NON_PLAYER_WINGS_LAYER_SUBMIT_SEQUENCE: u32 = 2;
+const PLAYER_SPIN_ATTACK_EFFECT_LAYER_SUBMIT_SEQUENCE: u32 = 4;
 
 mod layers;
 #[cfg(test)]
@@ -527,6 +532,9 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         emit_end_crystal_beam(&mut meshes, *instance, atlas);
         // The ender-dragon healing beam reuses the same vanilla custom-geometry submit after body+eyes.
         emit_ender_dragon_beam(&mut meshes, *instance, atlas);
+        // AvatarRenderer registers Deadmau5EarsLayer before CapeLayer; it shares the player's body
+        // skin and renders only for the exact profile-name easter egg while the player is visible.
+        emit_player_extra_ears_layer(&mut meshes, *instance, atlas, dynamic_player_skin_atlas);
         emit_player_cape_layer(&mut meshes, *instance, dynamic_player_texture_atlas);
         // Worn armor is a cutout overlay draped on the host humanoid pose; it runs regardless of
         // `handled` and folds into the cutout pass before the shared light/overlay fill below.
@@ -539,8 +547,8 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         // a ready profile elytra/cape texture.
         emit_wings_layer(&mut meshes, *instance, atlas, dynamic_player_texture_atlas);
         // AvatarRenderer registers SpinAttackEffectLayer after WingsLayer/ParrotOnShoulderLayer; the
-        // parrot layer is still unsupported, so keep the riptide visual as the next same-order player
-        // submission after wings.
+        // parrot layer is still unsupported, so keep the riptide visual in the next player layer slot
+        // after wings.
         emit_player_spin_attack_effect_layer(&mut meshes, *instance, atlas);
         // The pig saddle is a simple equipment overlay over the adult pig body.
         emit_pig_saddle_layer(&mut meshes, *instance, atlas);
@@ -3038,6 +3046,73 @@ fn emit_player_textured_model(
     );
 }
 
+fn emit_player_extra_ears_layer(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+    dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
+) {
+    let EntityModelKind::Player { skin, .. } = instance.kind else {
+        return;
+    };
+    if !instance.render_state.show_extra_ears || instance.render_state.invisible {
+        return;
+    }
+
+    let transform = player_model_root_transform(instance);
+    let mut model = PlayerEarsModel::new();
+    model.prepare(&instance);
+    let texture = default_player_skin_texture_ref(skin.fallback());
+    let submit = EntityModelSubmissionEmit::new(
+        EntityModelLayerRenderType::EntitySolid,
+        texture,
+        [1.0, 1.0, 1.0, 1.0],
+        transform,
+        0,
+        PLAYER_EARS_LAYER_SUBMIT_SEQUENCE,
+    )
+    .with_overlay([0.0, meshes.current_submission_overlay[1]]);
+
+    let submit = if let EntityPlayerSkin::Dynamic(dynamic_player_skin) = skin {
+        let submit = submit.with_dynamic_player_skin(dynamic_player_skin);
+        if dynamic_player_skin.status == EntityDynamicPlayerSkinStatus::Ready {
+            if let Some(entry) = dynamic_player_skin_atlas_entry(
+                dynamic_player_skin_atlas,
+                dynamic_player_skin.handle,
+            ) {
+                render_textured_dynamic_player_skin_submission(
+                    meshes,
+                    submit,
+                    entry,
+                    |mesh, entry| {
+                        model.root().render_textured(
+                            mesh,
+                            submit.transform,
+                            submit.texture,
+                            entry.uv,
+                            submit.tint,
+                        );
+                    },
+                );
+                return;
+            }
+        }
+        submit
+    } else {
+        submit
+    };
+
+    render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+        model.root().render_textured(
+            mesh,
+            submit.transform,
+            submit.texture,
+            entry.uv,
+            submit.tint,
+        );
+    });
+}
+
 fn emit_player_cape_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -3082,7 +3157,7 @@ fn emit_player_cape_layer(
         tint,
         layer_transform,
         0,
-        1,
+        PLAYER_CAPE_LAYER_SUBMIT_SEQUENCE,
     )
     .with_dynamic_player_texture(cape_texture);
     render_textured_dynamic_player_texture_submission(meshes, submit, entry, |mesh, entry| {
@@ -3128,6 +3203,7 @@ fn emit_wings_layer(
     let Some((transform, baby)) = wings_layer_transform_and_baby(instance) else {
         return;
     };
+    let submit_sequence = wings_layer_submit_sequence(instance);
 
     let mut model = ElytraModel::new(baby);
     model.prepare(&instance);
@@ -3145,7 +3221,7 @@ fn emit_wings_layer(
             tint,
             transform,
             0,
-            2,
+            submit_sequence,
         )
         .with_dynamic_player_texture(profile_texture);
         render_textured_dynamic_player_texture_submission(meshes, submit, entry, |mesh, entry| {
@@ -3166,7 +3242,7 @@ fn emit_wings_layer(
         tint,
         transform,
         0,
-        2,
+        submit_sequence,
     );
     render_textured_submission(meshes, submit, atlas, |mesh, entry| {
         model.root().render_textured(
@@ -3198,7 +3274,7 @@ fn emit_player_spin_attack_effect_layer(
         [1.0, 1.0, 1.0, 1.0],
         player_model_root_transform(instance),
         0,
-        3,
+        PLAYER_SPIN_ATTACK_EFFECT_LAYER_SUBMIT_SEQUENCE,
     );
     render_textured_submission(meshes, submit, atlas, |mesh, entry| {
         model.root().render_textured(
@@ -3248,6 +3324,14 @@ fn wings_layer_transform_and_baby(instance: EntityModelInstance) -> Option<(Mat4
         _ => return None,
     };
     Some((root * Mat4::from_translation(Vec3::Z * 0.125), baby))
+}
+
+fn wings_layer_submit_sequence(instance: EntityModelInstance) -> u32 {
+    if matches!(instance.kind, EntityModelKind::Player { .. }) {
+        PLAYER_WINGS_LAYER_SUBMIT_SEQUENCE
+    } else {
+        NON_PLAYER_WINGS_LAYER_SUBMIT_SEQUENCE
+    }
 }
 
 fn player_wings_profile_texture(

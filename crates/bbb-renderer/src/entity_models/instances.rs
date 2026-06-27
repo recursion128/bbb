@@ -358,6 +358,10 @@ entity_render_state! {
     /// Vanilla `AvatarRenderState.skin.elytra()` as a downloaded profile texture. Projected for
     /// `WingsLayer`; the cape layer does not consume it.
     (with_player_elytra_texture) player_elytra_texture: Option<EntityDynamicPlayerTexture> = None;
+    /// Vanilla `AvatarRenderState.showExtraEars`: the exact lowercase `deadmau5` profile-name
+    /// easter egg that enables `Deadmau5EarsLayer`. The layer also requires the player not to be
+    /// invisible.
+    (with_show_extra_ears) show_extra_ears: bool = false;
     /// First renderable WINGS equipment layer from `HumanoidRenderState.chestEquipment`'s equipment
     /// asset (vanilla `WingsLayer` -> `EquipmentLayerRenderer.renderLayers(WINGS, ..., order=0)`).
     /// The native side resolves the pack layer texture to a renderer atlas texture and preserves
@@ -2257,6 +2261,7 @@ mod tests {
                 player_off_hand_item_pose: false,
                 player_cape_texture: None,
                 player_elytra_texture: None,
+                show_extra_ears: false,
                 chest_wings_layer: None,
                 chest_equipment_has_wings: false,
                 chest_equipment_has_humanoid: false,

@@ -663,6 +663,11 @@ pub struct EntityModelSourceState {
     /// `-20..=20`. `0.0` for non-player entities.
     #[serde(default)]
     pub player_cape_lean2: f32,
+    /// Vanilla `AvatarRenderState.showExtraEars`: the exact lowercase `deadmau5`
+    /// profile-name easter egg from `AbstractClientPlayer.showExtraEars`. Projected
+    /// only for real player entities; mannequins and non-players stay false.
+    #[serde(default)]
+    pub show_extra_ears: bool,
     /// Vanilla `LivingEntityRenderState.isAutoSpinAttack`
     /// (`LivingEntity.isAutoSpinAttack`, `DATA_LIVING_ENTITY_FLAGS & 4`): a living
     /// entity mid riptide-trident spin, which the renderer flips onto the spin
@@ -1549,6 +1554,7 @@ impl WorldStore {
                 if !source.is_upside_down && self.resolve_player_upside_down(target.entity_id) {
                     source.is_upside_down = true;
                 }
+                source.show_extra_ears = self.resolve_player_extra_ears(target.entity_id);
                 Some(source)
             })
             .collect()
@@ -1577,6 +1583,19 @@ impl WorldStore {
             && self.player_info_entry(profile_id).is_some_and(|entry| {
                 VANILLA_UPSIDE_DOWN_NAMES.contains(&entry.profile.name.as_str())
             })
+    }
+
+    /// Resolves vanilla `AbstractClientPlayer.showExtraEars`: only a real player
+    /// whose GameProfile name is exactly lowercase `deadmau5` enables
+    /// `Deadmau5EarsLayer`.
+    fn resolve_player_extra_ears(&self, entity_id: i32) -> bool {
+        let Some(identity) = self.entities.identity(entity_id) else {
+            return false;
+        };
+        identity.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
+            && self
+                .player_info_entry(identity.uuid)
+                .is_some_and(|entry| entry.profile.name == "deadmau5")
     }
 
     /// Resolves the vanilla `LivingEntityRenderer` sleeping bed orientation and head

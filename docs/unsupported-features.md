@@ -1449,7 +1449,7 @@ When an agent does any of the following, update this file in the same slice:
       both arms every frame on top of the swing so even a standing player's arms move
       with `ageInTicks`) — all applied once to the shared
       visibility-filtered part array (colored and textured); true
-      `RenderTypes.entityTranslucent` alpha blending, ears, armor/equipment, held items,
+      `RenderTypes.entityTranslucent` alpha blending, armor/equipment, held items,
       shoulder parrots,
       arrows/stingers, spectator visibility, the elytra flying offsets, name
       display, the held-item/attack/swim arm poses, and the elytra
@@ -1466,7 +1466,11 @@ When an agent does any of the following, update this file in the same slice:
       `(order, submit_sequence) == (0, 0)` plus vanilla `LivingEntityRenderer`
       `lightCoords` and hurt/white overlay metadata before folded cutout checks for UVs,
       folded vertex light/overlay inheritance, overlay part visibility, head-look,
-      walk swing, idle arm bob, and crouch. Player profile
+      walk swing, idle arm bob, and crouch. Deadmau5 ears are implemented from the
+      exact lowercase player-info GameProfile name `"deadmau5"` through
+      `Deadmau5EarsLayer` / `PlayerEarsModel`: visible players submit an
+      `entitySolid` same-skin layer with zero-white overlay at player same-order
+      sequence 1, including ready dynamic player skin atlas support. Player profile
       cape presentation is covered by the
       dynamic `entitySolid` cape layer, and WingsLayer/elytra presentation plus
       elytra animation-state projection are covered for vanilla elytra equipment

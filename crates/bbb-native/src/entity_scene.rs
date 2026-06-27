@@ -1367,6 +1367,7 @@ fn entity_model_instance(
         .with_player_off_hand_item_pose(player_off_hand_item_pose)
         .with_player_cape_texture(player_cape_texture)
         .with_player_elytra_texture(player_elytra_texture)
+        .with_show_extra_ears(source.show_extra_ears)
         .with_chest_wings_layer(chest_wings_layer)
         .with_chest_equipment_has_wings(chest_equipment_has_wings)
         .with_chest_equipment_has_humanoid(chest_equipment_has_humanoid)
@@ -8769,6 +8770,73 @@ mod tests {
         assert_ne!(cape.handle, 0);
         assert_ne!(elytra.handle, 0);
         assert_ne!(cape.handle, elytra.handle);
+    }
+
+    #[test]
+    fn entity_model_instances_forward_player_extra_ears_from_world_source() {
+        let mut world = WorldStore::new();
+        let deadmau5_uuid = Uuid::from_u128(0xCCCC_CCCC_CCCC_CCCC_CCCC_CCCC_CCCC_CCCC);
+        let mixed_case_uuid = Uuid::from_u128(0xDDDD_DDDD_DDDD_DDDD_DDDD_DDDD_DDDD_DDDD);
+        world.apply_add_entity(protocol_add_entity_with_uuid(
+            1554,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            deadmau5_uuid,
+            [1.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity_with_uuid(
+            1555,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            mixed_case_uuid,
+            [2.0, 64.0, -2.0],
+        ));
+        world.apply_player_info_update(PlayerInfoUpdate {
+            actions: vec![PlayerInfoAction::AddPlayer],
+            entries: vec![
+                PlayerInfoEntry {
+                    profile_id: deadmau5_uuid,
+                    profile: Some(GameProfile {
+                        uuid: deadmau5_uuid,
+                        name: "deadmau5".to_string(),
+                        properties: Vec::new(),
+                    }),
+                    listed: true,
+                    latency: 0,
+                    game_mode: GameType::Survival,
+                    display_name: None,
+                    show_hat: true,
+                    list_order: 0,
+                    chat_session: None,
+                },
+                PlayerInfoEntry {
+                    profile_id: mixed_case_uuid,
+                    profile: Some(GameProfile {
+                        uuid: mixed_case_uuid,
+                        name: "Deadmau5".to_string(),
+                        properties: Vec::new(),
+                    }),
+                    listed: true,
+                    latency: 0,
+                    game_mode: GameType::Survival,
+                    display_name: None,
+                    show_hat: true,
+                    list_order: 0,
+                    chat_session: None,
+                },
+            ],
+        });
+
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
+        let deadmau5 = instances
+            .iter()
+            .find(|instance| instance.entity_id == 1554)
+            .expect("deadmau5 player instance");
+        let mixed_case = instances
+            .iter()
+            .find(|instance| instance.entity_id == 1555)
+            .expect("mixed-case player instance");
+
+        assert!(deadmau5.render_state.show_extra_ears);
+        assert!(!mixed_case.render_state.show_extra_ears);
     }
 
     #[test]
