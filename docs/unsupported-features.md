@@ -1043,8 +1043,9 @@ When an agent does any of the following, update this file in the same slice:
       submission after body+eyes, and then fold the shared eight-quad prism
       into the scroll bucket.
       Uniform layer passes, Creaking base+eyes submits, Warden retained
-      emissive layers, Breeze base/eyes/wind, Shulker bullet's two submits,
-      WindCharge `breezeWind`, charged-creeper / wither `energySwirl`,
+      emissive layers, Breeze base/eyes/wind, Shulker color/default base
+      submits, Shulker bullet's two submits, WindCharge `breezeWind`,
+      charged-creeper / wither `energySwirl`,
       humanoid armor `armorCutoutNoCull`, horse/donkey/undead-horse
       base+saddle/body-armor submits, horse markings, villager
       profession/type/level overlays, custom-head skull submissions, player

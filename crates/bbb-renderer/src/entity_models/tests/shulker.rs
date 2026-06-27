@@ -231,15 +231,23 @@ fn shulker_textured_render_matches_vanilla_renderer() {
         })
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::shulker(
-            900,
-            [0.0, 64.0, 0.0],
-            0.0,
-            None,
-        )],
-        &atlas,
+    let default = EntityModelInstance::shulker(900, [0.0, 64.0, 0.0], 0.0, None);
+    let meshes = entity_model_textured_meshes(&[default], &atlas);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.texture, shulker_texture_ref(None));
+    assert_eq!(
+        submit.render_type,
+        EntityModelLayerRenderType::EntityCutoutZOffset
     );
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutoutZOffset");
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.transform, shulker_model_root_transform(default));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    let mesh = &meshes.cutout;
+
     assert!(!mesh.vertices.is_empty());
     assert!(mesh
         .vertices
