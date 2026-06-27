@@ -336,7 +336,14 @@ fn guardian_textured_render_matches_vanilla_renderer() {
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
     for elder in [false, true] {
-        let instance = EntityModelInstance::guardian(990, [0.0, 64.0, 0.0], 0.0, elder);
+        let instance = EntityModelInstance::guardian(990, [0.0, 64.0, 0.0], 0.0, elder)
+            .with_light_coords(if elder {
+                (6_u32 << 4) | (10_u32 << 20)
+            } else {
+                (5_u32 << 4) | (11_u32 << 20)
+            })
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true);
         let meshes = entity_model_textured_meshes(&[instance], &atlas);
         assert!(meshes.translucent.vertices.is_empty());
         assert!(meshes.eyes.vertices.is_empty());
@@ -360,6 +367,9 @@ fn guardian_textured_render_matches_vanilla_renderer() {
                 if elder { GUARDIAN_ELDER_SCALE } else { 1.0 }
             )
         );
+        assert_eq!(submit.light, instance.render_state.shader_light());
+        assert_eq!(submit.overlay, instance.render_state.overlay_coords());
+        assert_ne!(submit.overlay, [0.0, 10.0]);
         assert_eq!((submit.order, submit.submit_sequence), (0, 0));
         let mesh = &meshes.cutout;
 
@@ -371,6 +381,10 @@ fn guardian_textured_render_matches_vanilla_renderer() {
             .vertices
             .iter()
             .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+        assert!(mesh
+            .vertices
+            .iter()
+            .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
     }
 }
 

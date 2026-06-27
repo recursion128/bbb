@@ -2780,6 +2780,10 @@ When an agent does any of the following, update this file in the same slice:
       renderer tests pinning the three speed branches and the off-bind tail sway. The starting tail
       phase is `0.0` (vanilla seeds it with a per-spawn `random.nextFloat()`, which is
       non-deterministic — only the starting phase is approximated; the sway dynamics are exact). The
+      textured guardian/elder base submission now pins vanilla `LivingEntityRenderer.submit`
+      metadata for texture, `entityCutout` render type, white tint, root/elder-scale transform,
+      entity light, hurt/white overlay, and `order(0)`, and folded cutout vertices inherit that
+      base submit metadata. The
       spike WITHDRAWAL is now reproduced too: the same `Guardian.aiStep` eases
       `clientSideSpikesAnimation` (spawn `0`) IN WATER toward `0` while `isMoving()` (by `0.25`, the
       spikes retract as it swims) or toward `1` while idle (by `0.06`, the spikes fully extend), driven
