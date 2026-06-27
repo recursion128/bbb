@@ -335,6 +335,11 @@ fn armor_stand_marker_render_type_follows_vanilla_visibility_branch() {
     assert_eq!(submit.overlay, visible_marker.render_state.overlay_coords());
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
     assert!(!visible.cutout.vertices.is_empty());
+    assert!(visible
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
     assert!(visible.translucent.vertices.is_empty());
 
     let hidden_invisible = visible_marker.with_invisible(true);
@@ -372,6 +377,11 @@ fn armor_stand_marker_render_type_follows_vanilla_visibility_branch() {
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
     assert!(self_visible.cutout.vertices.is_empty());
     assert!(!self_visible.translucent.vertices.is_empty());
+    assert!(self_visible
+        .translucent
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
 }
 
 fn armor_stand_texture_images() -> Vec<EntityModelTextureImage> {

@@ -2395,8 +2395,9 @@ When an agent does any of the following, update this file in the same slice:
       `ArmorStandRenderer.getRenderType`
       (`entityCutout` while visible, no submission when hidden, and
       `entityTranslucent` with the vanilla force-transparent alpha when invisible
-      but visible to this client). Armor/equipment, hurt wiggle, and animation
-      interpolation remain unsupported
+      but visible to this client), including inherited `LivingEntityRenderer`
+      light/overlay metadata on the folded cutout/translucent vertices.
+      Armor/equipment, hurt wiggle, and animation interpolation remain unsupported
     - slime entities as renderer-owned vanilla 26.1 `SlimeModel` inner
       `ModelLayers.SLIME` geometry plus outer `ModelLayers.SLIME_OUTER`
       geometry, official `textures/entity/slime/slime.png` texture reference,
