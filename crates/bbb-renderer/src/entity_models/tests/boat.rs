@@ -1,5 +1,7 @@
 use super::*;
 
+use crate::entity_models::colored::boat_model_root_transform;
+
 #[test]
 fn boat_model_parts_match_vanilla_26_1_layers() {
     assert_eq!(BOAT_COMMON_PARTS.len(), 7);
@@ -219,6 +221,11 @@ fn boat_textured_layer_passes_match_vanilla_renderer_model_layers() {
     let oak_boat = boat_textured_layer_passes(BoatModelFamily::Oak, false);
     assert_eq!(oak_boat.len(), 1);
     assert_eq!(oak_boat[0].kind, EntityModelLayerKind::BoatBase);
+    assert_eq!(
+        oak_boat[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(oak_boat[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(oak_boat[0].model_layer, MODEL_LAYER_OAK_BOAT);
     assert_eq!(oak_boat[0].texture, BOAT_OAK_TEXTURE_REF);
     assert_eq!(oak_boat[0].tint, [1.0, 1.0, 1.0, 1.0]);
@@ -382,15 +389,38 @@ fn boat_textured_mesh_uses_vanilla_uvs_tints_and_root_transform() {
     })
     .collect::<Vec<_>>();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let mesh = entity_model_textured_mesh(
-        &[
-            EntityModelInstance::boat(201, [0.0, 64.0, 0.0], 0.0, BoatModelFamily::Oak, false),
-            EntityModelInstance::boat(202, [3.0, 64.0, 0.0], 0.0, BoatModelFamily::Oak, true),
-            EntityModelInstance::boat(203, [6.0, 64.0, 0.0], 0.0, BoatModelFamily::Bamboo, false),
-            EntityModelInstance::boat(204, [9.0, 64.0, 0.0], 0.0, BoatModelFamily::Bamboo, true),
-        ],
-        &atlas,
-    );
+    let instances = [
+        EntityModelInstance::boat(201, [0.0, 64.0, 0.0], 0.0, BoatModelFamily::Oak, false),
+        EntityModelInstance::boat(202, [3.0, 64.0, 0.0], 0.0, BoatModelFamily::Oak, true),
+        EntityModelInstance::boat(203, [6.0, 64.0, 0.0], 0.0, BoatModelFamily::Bamboo, false),
+        EntityModelInstance::boat(204, [9.0, 64.0, 0.0], 0.0, BoatModelFamily::Bamboo, true),
+    ];
+    let meshes = entity_model_textured_meshes(&instances, &atlas);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert_eq!(meshes.submissions.len(), 4);
+    for (index, (submit, texture)) in meshes
+        .submissions
+        .iter()
+        .zip([
+            BOAT_OAK_TEXTURE_REF,
+            CHEST_BOAT_OAK_TEXTURE_REF,
+            BOAT_BAMBOO_TEXTURE_REF,
+            CHEST_BOAT_BAMBOO_TEXTURE_REF,
+        ])
+        .enumerate()
+    {
+        assert_eq!(submit.texture, texture);
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(
+            submit.transform,
+            boat_model_root_transform(instances[index])
+        );
+        assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    }
+    let mesh = &meshes.cutout;
 
     assert_eq!(atlas.width, 128);
     assert_eq!(atlas.height, 384);
@@ -405,7 +435,7 @@ fn boat_textured_mesh_uses_vanilla_uvs_tints_and_root_transform() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
-    let (min, max) = textured_mesh_extents(&mesh);
+    let (min, max) = textured_mesh_extents(mesh);
     assert!(max[0] - min[0] > 9.0);
     assert!(max[2] - min[2] > 1.0);
 }

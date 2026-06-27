@@ -1419,7 +1419,10 @@ When an agent does any of the following, update this file in the same slice:
       per-wood/per-bamboo texture references, and the vanilla boat root
       translate/rotate/scale/rotate renderer transform, texture-backed base
       layer pass emission, boat/chest-boat/raft/chest-raft model-layer
-      selection, and official PNG atlas upload/bind/sample path; paddle rowing
+      selection, and official PNG atlas upload/bind/sample path. Tests now pin
+      explicit base submission metadata for vanilla `entityCutout`, selected
+      texture, white tint, `boat_model_root_transform`, and
+      `(order, submit_sequence) == (0, 0)`; paddle rowing
       animation, hurt/damage roll, bubble wobble, underwater state and water
       mask submission, and lighting remain unsupported
     - chicken entities as renderer-owned vanilla 26.1
