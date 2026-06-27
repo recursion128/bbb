@@ -1563,9 +1563,12 @@ When an agent does any of the following, update this file in the same slice:
       light, base hurt/white overlay versus wool/undercoat zero-white overlay,
       and the vanilla `SubmitNodeCollector.order` / sequence split (base
       `(0,0)`, adult wool `(0,2)`, adult undercoat `(1,1)`, baby wool `(1,2)`)
-      before folded UV/light/overlay/visibility/eat-head/walk geometry checks,
-      vanilla shared-flags invisibility gating for non-glowing wool and
-      undercoat layer passes, and the vanilla
+      before folded UV/light/overlay/visibility/eat-head/walk geometry checks.
+      Missing-atlas coverage now proves adult wool, adult undercoat, and baby
+      wool submissions are still recorded without their wool textures while
+      only folded wool/undercoat geometry is suppressed, before vanilla
+      shared-flags invisibility gating for non-glowing wool and undercoat layer
+      passes, and the vanilla
       `SheepModel`/`SheepFurModel.setupAnim` eat-grass head pose (`head.y +=
       headEatPositionScale * 9.0 * ageScale`, `head.xRot = headEatAngleScale`)
       projected from entity event `10` and the canonical `eatAnimationTick`

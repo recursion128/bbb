@@ -756,6 +756,104 @@ fn sheep_textured_mesh_uses_vanilla_uvs_tints_and_layer_visibility() {
 }
 
 #[test]
+fn sheep_wool_submissions_survive_missing_texture_atlas_entries() {
+    // Vanilla adds undercoat before wool, but `SubmitNodeCollector.order` sorts adult wool with the
+    // base order and adult undercoat after it; missing atlas data suppresses only folded layer geometry.
+    let images = [SHEEP_TEXTURE_REF, SHEEP_BABY_TEXTURE_REF]
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect::<Vec<_>>();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+
+    for instance in [
+        sheep_submission_probe(EntityModelInstance::sheep_wool(
+            306,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            false,
+            SheepWoolColor::Red,
+        )),
+        sheep_submission_probe(EntityModelInstance::sheep_wool(
+            307,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+            false,
+            SheepWoolColor::Black,
+        )),
+    ] {
+        let meshes = entity_model_textured_meshes(&[instance], &atlas);
+        assert_sheep_folded_meshes_are_cutout_only(&meshes);
+        let EntityModelKind::Sheep {
+            baby,
+            sheared,
+            wool_color,
+            jeb,
+            age_ticks,
+        } = instance.kind
+        else {
+            panic!("expected sheep instance");
+        };
+        let passes = sheep_textured_layer_passes(baby, sheared, wool_color, jeb, age_ticks);
+        assert_eq!(meshes.submissions.len(), passes.len());
+        assert!(
+            passes.len() > 1,
+            "the case must include a missing wool layer"
+        );
+
+        let base_overlay = instance.render_state.overlay_coords();
+        let zero_white_overlay = [0.0, base_overlay[1]];
+        for (submit, pass) in meshes
+            .submissions
+            .iter()
+            .copied()
+            .zip(passes.iter().copied())
+        {
+            assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+            assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+            assert_eq!(submit.texture, pass.texture);
+            assert_eq!(submit.tint, pass.tint);
+            assert_eq!(submit.transform, entity_model_root_transform(instance));
+            assert_eq!(submit.light, instance.render_state.shader_light());
+            let expected_overlay = match pass.kind {
+                EntityModelLayerKind::SheepWool | EntityModelLayerKind::SheepWoolUndercoat => {
+                    zero_white_overlay
+                }
+                _ => base_overlay,
+            };
+            assert_eq!(submit.overlay, expected_overlay);
+            assert_eq!(
+                (submit.order, submit.submit_sequence),
+                (pass.order, pass.submit_sequence)
+            );
+        }
+
+        let base_submit = meshes.submissions[0];
+        assert!(
+            !meshes.cutout.vertices.is_empty(),
+            "missing sheep wool textures keep the base mesh"
+        );
+        assert!(meshes
+            .cutout
+            .vertices
+            .iter()
+            .all(|vertex| vertex.tint == base_submit.tint
+                && vertex.light == base_submit.light
+                && vertex.overlay == base_submit.overlay));
+        assert!(meshes
+            .cutout
+            .vertices
+            .iter()
+            .all(|vertex| vertex.overlay != zero_white_overlay));
+    }
+}
+
+#[test]
 fn sheep_head_eat_position_scale_matches_vanilla_curve() {
     // Vanilla Sheep.getHeadEatPositionScale(partialTick): ramp up over ticks
     // 40..36, plateau at 1.0 over 36..4, ramp down over 4..0.
