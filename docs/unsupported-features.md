@@ -3384,8 +3384,10 @@ When an agent does any of the following, update this file in the same slice:
       Tests now pin explicit submission metadata for vanilla `entityCutoutCull`, white tint,
       light coords, `OverlayTexture.NO_OVERLAY`, `arrow_model_root_transform`, and
       `(order, submit_sequence) == (0, 0)`, with folded cutout vertices inheriting that
-      light/no-overlay metadata before checking the folded
-      shake-posed mesh. The colored debug path stays as a fallback (it renders the shaft cross and the head
+      light/no-overlay metadata before checking the folded shake-posed mesh; missing-atlas
+      coverage pins that the spectral-arrow `entityCutoutCull` submit is still recorded before
+      folded cutout geometry is suppressed.
+      The colored debug path stays as a fallback (it renders the shaft cross and the head
       with two tints)
     - thrown trident entities as renderer-owned vanilla 26.1 `TridentModel.createLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `135` to the new
