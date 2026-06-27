@@ -854,7 +854,8 @@ entity_render_state! {
     /// (Invisibility effect / `setInvisible`) draws no normal body. The textured
     /// path hides the model when [`Self::invisible_to_player`] is true, and uses
     /// `entityTranslucentCullItemTarget` for the base body when the entity is
-    /// invisible but still visible to this client. Glowing outline remains deferred.
+    /// invisible but still visible to this client. Invisible glowing submissions
+    /// record outline metadata while folded/GPU outline presentation remains deferred.
     () invisible: bool = false;
     /// Vanilla `LivingEntityRenderState.isInvisibleToPlayer`: `state.isInvisible
     /// && entity.isInvisibleTo(minecraft.player)`, so visible entities default to

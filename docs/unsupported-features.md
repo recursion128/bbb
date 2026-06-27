@@ -356,10 +356,12 @@ When an agent does any of the following, update this file in the same slice:
       invisible to this client records vanilla `RenderTypes.outline(texture)` submission
       metadata for the base body, and the vanilla-specific invisible-glowing
       sheep wool and slime outer overlay submissions are also recorded as
-      `RenderTypes.outline(...)` while other invisible-gated non-base layers still
-      skip. Same-team friendly-invisible visibility, colored-path force-transparent
-      output, outline color extraction, and GPU outline presentation remain deferred
-      under the `outlineColor` slot.
+      `RenderTypes.outline(...)`; snow-golem carved-pumpkin and mooshroom mushroom
+      block attachments now record outline-only metadata for their vanilla
+      `submitOnlyOutline` path while skipping ordinary block-quad baking. Other
+      invisible-gated non-base layers still skip. Same-team friendly-invisible
+      visibility, colored-path force-transparent output, outline color extraction,
+      and GPU outline presentation remain deferred under the `outlineColor` slot.
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
       proportions applied in model `setupAnim`, distinct from the now-projected
@@ -2406,7 +2408,8 @@ When an agent does any of the following, update this file in the same slice:
       block-model catalog, and the renderer-owned head attachment transform mirrors
       vanilla's head-bone transform plus `translate(0,-0.34375,0)`, `rotateY(180°)`,
       `scale(0.625,-0.625,-0.625)`, `translate(-0.5,-0.5,-0.5)`. The invisible-glowing
-      outline-only variant remains covered by the broader deferred entity-outline path
+      `submitOnlyOutline` path now records outline-only attachment metadata and suppresses
+      ordinary block-quad baking while GPU outline presentation remains deferred
     - copper golem entities as renderer-owned vanilla 26.1
       `CopperGolemModel.createBodyLayer()` geometry, including the mesh-root
       `(0,24,0)` transform, body/head/arm/leg cuboids, the deformed head and
@@ -4058,7 +4061,8 @@ When an agent does any of the following, update this file in the same slice:
       entity-attached block-model path: red mooshrooms resolve `Blocks.RED_MUSHROOM.defaultBlockState()`,
       brown mooshrooms resolve `Blocks.BROWN_MUSHROOM.defaultBlockState()`, the two back mushrooms use
       vanilla's hardcoded entity-frame transforms, and the head mushroom follows the posed cow head bone.
-      The invisible-glowing outline-only variant remains under the broader deferred entity-outline path.
+      The invisible-glowing `submitOnlyOutline` variant now records outline-only attachment metadata
+      and suppresses ordinary block-quad baking while GPU outline presentation remains deferred.
       The colored debug path stays as a fallback (it shows the cow-brown body tint)
     - panda entities (adult and baby) as renderer-owned vanilla 26.1 `PandaModel.createBodyLayer()` /
       `BabyPandaModel.createBodyLayer()` geometry on the colored path: the native entity scene

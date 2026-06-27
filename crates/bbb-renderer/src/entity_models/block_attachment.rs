@@ -106,7 +106,7 @@ pub fn mooshroom_mushroom_block_transforms(
     else {
         return None;
     };
-    if instance.render_state.invisible {
+    if instance.render_state.invisible && !instance.render_state.appears_glowing {
         return None;
     }
 
@@ -144,7 +144,7 @@ pub fn mooshroom_mushroom_block_transforms(
 pub fn snow_golem_head_block_transform(instance: &EntityModelInstance) -> Option<Mat4> {
     if !matches!(instance.kind, EntityModelKind::SnowGolem)
         || !instance.render_state.snow_golem_pumpkin
-        || instance.render_state.invisible
+        || (instance.render_state.invisible && !instance.render_state.appears_glowing)
     {
         return None;
     }
@@ -328,8 +328,10 @@ mod tests {
         assert_eq!(transforms.len(), 3);
 
         assert!(mooshroom_mushroom_block_transforms(&mooshroom(true)).is_none());
+        let invisible = mooshroom(false).with_invisible(true);
+        assert!(mooshroom_mushroom_block_transforms(&invisible).is_none());
         assert!(
-            mooshroom_mushroom_block_transforms(&mooshroom(false).with_invisible(true)).is_none()
+            mooshroom_mushroom_block_transforms(&invisible.with_appears_glowing(true)).is_some()
         );
         assert!(mooshroom_mushroom_block_transforms(&snow_golem()).is_none());
     }
@@ -360,6 +362,7 @@ mod tests {
 
         let invisible = snow_golem().with_invisible(true);
         assert!(snow_golem_head_block_transform(&invisible).is_none());
+        assert!(snow_golem_head_block_transform(&invisible.with_appears_glowing(true)).is_some());
 
         let creeper =
             EntityModelInstance::new(100, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0)

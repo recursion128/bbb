@@ -66,6 +66,7 @@ struct EntityBlockAttachment {
     block_id: Cow<'static, str>,
     properties: BTreeMap<String, String>,
     transform: Mat4,
+    outline_only: bool,
 }
 
 /// Bakes entity-attached block-model layers that sample the blocks atlas. This is the block-model
@@ -84,6 +85,9 @@ pub(crate) fn entity_block_models(
 
     let mut meshes = Vec::new();
     for attachment in attachments {
+        if attachment.outline_only {
+            continue;
+        }
         let Some(quads) =
             terrain_textures.block_item_quads(attachment.block_id.as_ref(), &attachment.properties)
         else {
@@ -108,6 +112,7 @@ fn entity_block_attachments(
                 block_id: Cow::Borrowed(CARVED_PUMPKIN_BLOCK_ID),
                 properties: carved_pumpkin_default_properties(),
                 transform,
+                outline_only: entity_block_attachment_outline_only(instance),
             });
         }
         if let Some(transform) = iron_golem_flower_block_transform(instance) {
@@ -115,6 +120,7 @@ fn entity_block_attachments(
                 block_id: Cow::Borrowed(POPPY_BLOCK_ID),
                 properties: poppy_default_properties(),
                 transform,
+                outline_only: false,
             });
         }
         if let Some(transform) = enderman_carried_block_transform(instance) {
@@ -123,6 +129,7 @@ fn entity_block_attachments(
                     block_id: Cow::Owned(block_state.name),
                     properties: block_state.properties,
                     transform,
+                    outline_only: false,
                 });
             }
         }
@@ -132,6 +139,7 @@ fn entity_block_attachments(
                     block_id: Cow::Borrowed(mooshroom_mushroom_block_id(variant)),
                     properties: mooshroom_mushroom_default_properties(),
                     transform,
+                    outline_only: entity_block_attachment_outline_only(instance),
                 });
             }
         }
@@ -142,6 +150,10 @@ fn entity_block_attachments(
         }
     }
     attachments
+}
+
+fn entity_block_attachment_outline_only(instance: &EntityModelInstance) -> bool {
+    instance.render_state.invisible && instance.render_state.appears_glowing
 }
 
 fn copper_golem_antenna_block_attachment(
@@ -166,6 +178,7 @@ fn copper_golem_antenna_block_attachment_from_stack(
         block_id: Cow::Owned(block_id.to_string()),
         properties: stack.component_patch.block_state_properties.clone(),
         transform,
+        outline_only: false,
     })
 }
 
@@ -1089,6 +1102,9 @@ mod tests {
         );
 
         assert_eq!(attachments.len(), 5);
+        assert!(attachments
+            .iter()
+            .all(|attachment| !attachment.outline_only));
         assert_eq!(attachments[0].block_id.as_ref(), CARVED_PUMPKIN_BLOCK_ID);
         assert_eq!(
             attachments[0].properties,
@@ -1097,6 +1113,35 @@ mod tests {
         assert_eq!(attachments[1].block_id.as_ref(), POPPY_BLOCK_ID);
         assert_eq!(attachments[1].properties, poppy_default_properties());
         for attachment in &attachments[2..] {
+            assert_eq!(attachment.block_id.as_ref(), RED_MUSHROOM_BLOCK_ID);
+            assert_eq!(
+                attachment.properties,
+                mooshroom_mushroom_default_properties()
+            );
+        }
+    }
+
+    #[test]
+    fn entity_block_attachments_record_invisible_glowing_outline_only_layers() {
+        let world = WorldStore::new();
+        let snow_golem = EntityModelInstance::snow_golem(121, [0.0, 64.0, 0.0], 0.0)
+            .with_snow_golem_pumpkin(true)
+            .with_invisible(true)
+            .with_appears_glowing(true);
+        let mooshroom = EntityModelInstance::mooshroom(86, [3.0, 64.0, 0.0], 0.0, false)
+            .with_invisible(true)
+            .with_appears_glowing(true);
+
+        let attachments = entity_block_attachments(&[snow_golem, mooshroom], &world, None);
+
+        assert_eq!(attachments.len(), 4);
+        assert!(attachments.iter().all(|attachment| attachment.outline_only));
+        assert_eq!(attachments[0].block_id.as_ref(), CARVED_PUMPKIN_BLOCK_ID);
+        assert_eq!(
+            attachments[0].properties,
+            carved_pumpkin_default_properties()
+        );
+        for attachment in &attachments[1..] {
             assert_eq!(attachment.block_id.as_ref(), RED_MUSHROOM_BLOCK_ID);
             assert_eq!(
                 attachment.properties,
