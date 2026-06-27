@@ -2168,14 +2168,17 @@ When an agent does any of the following, update this file in the same slice:
       metadata for `entityCutout` then `eyes`, white tint, spider/cave-spider root
       transforms, `spider.png` or `cave_spider.png`, `spider_eyes.png`, and
       `(order, submit_sequence) == (0, 0)` then `(1, 1)`, plus a
-      `RenderTypes.eyes`-style translucent/depth-write-disabled GPU path, and the
+      `RenderTypes.eyes`-style translucent/depth-write-disabled GPU path. Tests
+      now also pin base entity light plus hurt/white overlay and `SpiderEyesLayer`
+      entity light plus `OverlayTexture.NO_OVERLAY` on both submissions and
+      folded buckets. The
       vanilla `SpiderModel.setupAnim` head-look yaw/pitch on the head part and the
       vanilla `SpiderModel.setupAnim` eight-leg walk swing (`spider_leg_swing_pose`:
       each leg sweeps `yRot += -(cos(animationPos*2 + phase) * 0.4) * speed` and steps
       `zRot += |sin(animationPos + phase) * 0.4| * speed`, right legs `+`/left legs `-`,
       per-pair phases `0`/`π`/`π/2`/`3π/2`, legs at `[3..=10]`) on both render paths and
       passes (colored and textured, both spider and cave spider); death
-      flip and lighting remain unsupported
+      flip and broader lighting presentation remain unsupported
     - enderman entities as renderer-owned vanilla 26.1
       `EndermanModel.createBodyLayer()` geometry, including its
       `HumanoidModel.createMesh(CubeDeformation.NONE, -14.0F)` offsets,

@@ -253,7 +253,10 @@ fn entity_texture_atlas_stitches_official_spider_png_slots() {
 fn spider_textured_mesh_uses_vanilla_uvs_tints_and_cave_scale() {
     let (atlas, _) = build_entity_model_texture_atlas(&spider_texture_images()).unwrap();
 
-    let spider_instance = EntityModelInstance::spider(912, [0.0, 64.0, 0.0], 0.0);
+    let spider_instance = EntityModelInstance::spider(912, [0.0, 64.0, 0.0], 0.0)
+        .with_light_coords((6_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let spider_meshes = entity_model_textured_meshes(&[spider_instance], &atlas);
     assert_spider_submissions_match_vanilla(&spider_meshes, spider_instance);
     let spider = &spider_meshes.cutout;
@@ -269,7 +272,10 @@ fn spider_textured_mesh_uses_vanilla_uvs_tints_and_cave_scale() {
     assert_close3(min, [-1.0282283, 64.0193, -0.9375]);
     assert_close3(max, [1.0282283, 64.8135, 0.7696068]);
 
-    let cave_instance = EntityModelInstance::cave_spider(913, [0.0, 64.0, 0.0], 0.0);
+    let cave_instance = EntityModelInstance::cave_spider(913, [0.0, 64.0, 0.0], 0.0)
+        .with_light_coords((6_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let cave_meshes = entity_model_textured_meshes(&[cave_instance], &atlas);
     assert_spider_submissions_match_vanilla(&cave_meshes, cave_instance);
     let cave = &cave_meshes.cutout;
@@ -559,6 +565,8 @@ fn assert_spider_submissions_match_vanilla(
     assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(base.transform, expected_transform);
     assert_eq!((base.order, base.submit_sequence), (0, 0));
+    assert_eq!(base.light, instance.render_state.shader_light());
+    assert_eq!(base.overlay, instance.render_state.overlay_coords());
 
     let eyes = meshes.submissions[1];
     assert_eq!(eyes.render_type, EntityModelLayerRenderType::Eyes);
@@ -567,4 +575,19 @@ fn assert_spider_submissions_match_vanilla(
     assert_eq!(eyes.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(eyes.transform, expected_transform);
     assert_eq!((eyes.order, eyes.submit_sequence), (1, 1));
+    assert_eq!(eyes.light, instance.render_state.shader_light());
+    assert_eq!(eyes.overlay, [0.0, 10.0]);
+    if instance.render_state.overlay_coords() != [0.0, 10.0] {
+        assert_ne!(eyes.overlay, instance.render_state.overlay_coords());
+    }
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == base.light && vertex.overlay == base.overlay));
+    assert!(meshes
+        .eyes
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == eyes.light && vertex.overlay == eyes.overlay));
 }
