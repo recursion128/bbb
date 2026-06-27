@@ -588,14 +588,14 @@ fn entity_texture_atlas_stitches_official_sheep_png_slots() {
 #[test]
 fn sheep_textured_mesh_uses_vanilla_uvs_tints_and_layer_visibility() {
     let (atlas, _) = build_entity_model_texture_atlas(&sheep_texture_images()).unwrap();
-    let red_instance = EntityModelInstance::sheep_wool(
+    let red_instance = sheep_submission_probe(EntityModelInstance::sheep_wool(
         301,
         [0.0, 64.0, 0.0],
         0.0,
         false,
         false,
         SheepWoolColor::Red,
-    );
+    ));
     let meshes = entity_model_textured_meshes(&[red_instance], &atlas);
     assert_sheep_submissions_match_vanilla(&meshes, red_instance);
     let mesh = &meshes.cutout;
@@ -615,29 +615,47 @@ fn sheep_textured_mesh_uses_vanilla_uvs_tints_and_layer_visibility() {
         sheep_wool_layer_color(SheepWoolColor::Red)
     );
     assert_close2(mesh.vertices[288].uv, [14.0 / 64.0, 0.4]);
+    let red_base_overlay = red_instance.render_state.overlay_coords();
+    let red_wool_overlay = [0.0, red_base_overlay[1]];
+    assert_ne!(red_base_overlay, red_wool_overlay);
+    assert_eq!(
+        mesh.vertices[0].light,
+        red_instance.render_state.shader_light()
+    );
+    assert_eq!(
+        mesh.vertices[144].light,
+        red_instance.render_state.shader_light()
+    );
+    assert_eq!(
+        mesh.vertices[288].light,
+        red_instance.render_state.shader_light()
+    );
+    assert_eq!(mesh.vertices[0].overlay, red_base_overlay);
+    assert_eq!(mesh.vertices[144].overlay, red_wool_overlay);
+    assert_eq!(mesh.vertices[288].overlay, red_wool_overlay);
 
-    let sheared_instance = EntityModelInstance::sheep_wool(
+    let sheared_instance = sheep_submission_probe(EntityModelInstance::sheep_wool(
         302,
         [0.0, 64.0, 0.0],
         0.0,
         false,
         true,
         SheepWoolColor::Red,
-    );
+    ));
     let sheared_meshes = entity_model_textured_meshes(&[sheared_instance], &atlas);
     assert_sheep_submissions_match_vanilla(&sheared_meshes, sheared_instance);
     let sheared = &sheared_meshes.cutout;
     assert_eq!(sheared.cutout_faces, 72);
     assert_eq!(sheared.vertices.len(), 288);
 
-    let sheared_baby_instance = EntityModelInstance::sheep_wool(
+    let sheared_baby_instance = sheep_submission_probe(EntityModelInstance::sheep_wool(
         303,
         [0.0, 64.0, 0.0],
         0.0,
         true,
         true,
         SheepWoolColor::Black,
-    );
+    ));
     let sheared_baby_meshes = entity_model_textured_meshes(&[sheared_baby_instance], &atlas);
     assert_sheep_submissions_match_vanilla(&sheared_baby_meshes, sheared_baby_instance);
     let sheared_baby = &sheared_baby_meshes.cutout;
@@ -647,7 +665,7 @@ fn sheep_textured_mesh_uses_vanilla_uvs_tints_and_layer_visibility() {
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
 
-    let jeb_white_instance = EntityModelInstance::sheep_render_state(
+    let jeb_white_instance = sheep_submission_probe(EntityModelInstance::sheep_render_state(
         304,
         [0.0, 64.0, 0.0],
         0.0,
@@ -657,7 +675,7 @@ fn sheep_textured_mesh_uses_vanilla_uvs_tints_and_layer_visibility() {
         false,
         true,
         12.5,
-    );
+    ));
     let jeb_white_meshes = entity_model_textured_meshes(&[jeb_white_instance], &atlas);
     assert_sheep_submissions_match_vanilla(&jeb_white_meshes, jeb_white_instance);
     let jeb_white = &jeb_white_meshes.cutout;
@@ -1092,18 +1110,79 @@ fn assert_sheep_submissions_match_vanilla(
     };
     let passes = sheep_textured_layer_passes(baby, sheared, wool_color, jeb, age_ticks);
     assert_eq!(meshes.submissions.len(), passes.len());
-    for (submit, pass) in meshes.submissions.iter().copied().zip(passes) {
+    let base_overlay = instance.render_state.overlay_coords();
+    let zero_white_overlay = [0.0, base_overlay[1]];
+    let has_zero_white_overlay = passes.iter().any(|pass| {
+        matches!(
+            pass.kind,
+            EntityModelLayerKind::SheepWool | EntityModelLayerKind::SheepWoolUndercoat
+        )
+    });
+    for (submit, pass) in meshes
+        .submissions
+        .iter()
+        .copied()
+        .zip(passes.iter().copied())
+    {
         assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
         assert_eq!(submit.render_type, pass.render_type);
         assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
         assert_eq!(submit.texture, pass.texture);
         assert_eq!(submit.tint, pass.tint);
         assert_eq!(submit.transform, entity_model_root_transform(instance));
+        assert_eq!(submit.light, instance.render_state.shader_light());
+        let expected_overlay = match pass.kind {
+            EntityModelLayerKind::SheepWool | EntityModelLayerKind::SheepWoolUndercoat => {
+                zero_white_overlay
+            }
+            _ => base_overlay,
+        };
+        assert_eq!(submit.overlay, expected_overlay);
+        if matches!(
+            pass.kind,
+            EntityModelLayerKind::SheepWool | EntityModelLayerKind::SheepWoolUndercoat
+        ) && expected_overlay != base_overlay
+        {
+            assert_ne!(submit.overlay, base_overlay);
+        }
         assert_eq!(
             (submit.order, submit.submit_sequence),
             (pass.order, pass.submit_sequence)
         );
     }
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == instance.render_state.shader_light()));
+    if has_zero_white_overlay && zero_white_overlay != base_overlay {
+        assert!(meshes
+            .cutout
+            .vertices
+            .iter()
+            .any(|vertex| vertex.overlay == base_overlay));
+        assert!(meshes
+            .cutout
+            .vertices
+            .iter()
+            .any(|vertex| vertex.overlay == zero_white_overlay));
+        assert!(meshes.cutout.vertices.iter().all(|vertex| {
+            vertex.overlay == base_overlay || vertex.overlay == zero_white_overlay
+        }));
+    } else {
+        assert!(meshes
+            .cutout
+            .vertices
+            .iter()
+            .all(|vertex| vertex.overlay == base_overlay));
+    }
+}
+
+fn sheep_submission_probe(instance: EntityModelInstance) -> EntityModelInstance {
+    instance
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true)
 }
 
 fn assert_sheep_folded_meshes_are_cutout_only(meshes: &EntityModelTexturedMeshes) {

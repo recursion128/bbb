@@ -981,10 +981,11 @@ When an agent does any of the following, update this file in the same slice:
     - eat-grass head animation from entity event `10`, projected from the
       canonical `Sheep.eatAnimationTick` countdown and renderer partial tick
       into the base, wool, and undercoat head part pose
+    - texture-backed sheep base submissions preserve entity light plus the full
+      hurt/white `OverlayTexture`, while wool and undercoat layer submissions
+      preserve entity light and clear the white overlay column like vanilla
+      `renderColoredCutoutModel(... getOverlayCoords(state, 0.0F))`
   - Finish remaining sheep presentation parity:
-    - extend the texture-backed sheep path with the white `OverlayTexture`
-      progress (packed lighting and the hurt red overlay are now applied to every
-      textured entity pass)
     - implement invisible glowing outline wool rendering
     - implement colored-path force-transparent output and remaining base-model
       outline handling
@@ -1552,12 +1553,14 @@ When an agent does any of the following, update this file in the same slice:
       color projection, custom-name `jeb_` color cycling from entity metadata
       and renderer age ticks. Texture-backed tests now pin explicit submission
       metadata for the vanilla `entityCutout` base, wool, and undercoat submits:
-      selected adult/baby texture, wool or `jeb_` tint, root transform, and the
-      vanilla `SubmitNodeCollector.order` / sequence split (base `(0,0)`, adult
-      wool `(0,2)`, adult undercoat `(1,1)`, baby wool `(1,1)`) before folded
-      UV/visibility/eat-head/walk geometry checks, vanilla shared-flags
-      invisibility gating for non-glowing wool and undercoat layer passes, and
-      the vanilla `SheepModel`/`SheepFurModel.setupAnim` eat-grass head pose (`head.y +=
+      selected adult/baby texture, wool or `jeb_` tint, root transform, entity
+      light, base hurt/white overlay versus wool/undercoat zero-white overlay,
+      and the vanilla `SubmitNodeCollector.order` / sequence split (base
+      `(0,0)`, adult wool `(0,2)`, adult undercoat `(1,1)`, baby wool `(1,2)`)
+      before folded UV/light/overlay/visibility/eat-head/walk geometry checks,
+      vanilla shared-flags invisibility gating for non-glowing wool and
+      undercoat layer passes, and the vanilla
+      `SheepModel`/`SheepFurModel.setupAnim` eat-grass head pose (`head.y +=
       headEatPositionScale * 9.0 * ageScale`, `head.xRot = headEatAngleScale`)
       projected from entity event `10` and the canonical `eatAnimationTick`
       countdown into the base, wool, and undercoat head part, including the

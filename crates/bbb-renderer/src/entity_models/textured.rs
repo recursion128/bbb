@@ -554,7 +554,7 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         // Living and zombie nautilus saddles use the adult NautilusSaddleModel tree.
         emit_nautilus_saddle_layer(&mut meshes, *instance, atlas);
         // VillagerProfessionLayer overlays (biome type, profession, level badge) are cutout layers
-        // over the base villager or zombie-villager model and share the same light/overlay fill.
+        // over the base villager or zombie-villager model with shared light and zero-white overlay.
         emit_villager_profession_layers(&mut meshes, *instance, atlas);
     }
     meshes
@@ -1136,6 +1136,8 @@ fn layer_pass_uses_zero_white_overlay(pass: EntityModelLayerPass) -> bool {
             | EntityModelLayerKind::IronGolemCrackiness
             | EntityModelLayerKind::DrownedOuter
             | EntityModelLayerKind::SkeletonClothing
+            | EntityModelLayerKind::SheepWool
+            | EntityModelLayerKind::SheepWoolUndercoat
             | EntityModelLayerKind::SlimeOuter
             | EntityModelLayerKind::TropicalFishPattern
             | EntityModelLayerKind::WardenBioluminescent
