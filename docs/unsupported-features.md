@@ -1050,8 +1050,8 @@ When an agent does any of the following, update this file in the same slice:
       profession/type/level overlays, custom-head skull submissions, player
       profile cape plus player WINGS/elytra submissions, armor stand
       visibility/scale base submits, axolotl color/age base submits,
-      pufferfish puff-state base submits, and the Guardian beam / End Crystal
-      body+beam paths are covered by source-verified
+      panda gene/age base submits, pufferfish puff-state base submits, and the
+      Guardian beam / End Crystal body+beam paths are covered by source-verified
       texture/render-type/tint/transform/order tests, including the Guardian
       beam missing-atlas case where submission metadata survives while folded
       geometry is suppressed.
