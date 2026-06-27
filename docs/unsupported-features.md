@@ -1789,8 +1789,9 @@ When an agent does any of the following, update this file in the same slice:
       use `trader_llama_baby.png` while ignoring body-item carpets. The decor overlay
       records vanilla `EquipmentLayerRenderer` submission metadata (`armorCutoutNoCull`,
       `order(1)`, submit sequence 1, white tint, base transform) before folding into
-      the cutout bucket. Lighting remains unsupported (the llama spit projectile is
-      now modeled on the colored path — see the llama spit entry below)
+      the cutout bucket. Lighting remains unsupported for the llama base/decor
+      entity submissions; the llama spit projectile is covered separately below
+      with object-renderer no-overlay submission metadata
     - goat entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `GoatModel`, `BabyGoatModel`, and `GoatRenderer`,
       including `ModelLayers.GOAT` / `GOAT_BABY`, official adult/baby texture
@@ -3336,6 +3337,8 @@ When an agent does any of the following, update this file in the same slice:
       texture is now bound on the textured path (`LLAMA_SPIT_TEXTURE_REF`), the primary now-wired path, with
       explicit submission metadata for vanilla `entityCutout`, white tint, light coords,
       `OverlayTexture.NO_OVERLAY`, the renderer root transform, and `(order, submit_sequence) == (0, 0)`.
+      Folded cutout vertices now inherit that submission light and no-overlay metadata rather than the
+      instance's hurt/white overlay coordinates.
       The colored debug path stays as a fallback (it renders the cross
       with one tint)
     - shulker bullet entities as renderer-owned vanilla 26.1 `ShulkerBulletModel.createBodyLayer()` geometry
