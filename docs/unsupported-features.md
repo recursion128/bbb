@@ -3181,7 +3181,9 @@ When an agent does any of the following, update this file in the same slice:
       variants are now bound on the textured path: the native scene reads `DATA_COLOR_ID` (18, byte) and
       `Shulker.getColor()` (0..=15 → the dye, the default byte 16 → `null`) selects the texture, matching
       `ShulkerRenderer.getTextureLocation` (the uncolored `shulker.png` plus the sixteen `shulker_<color>.png`)
-      — seventeen textures
+      — seventeen textures. The textured regression now pins the vanilla `ShulkerModel`
+      `entityCutoutZOffset` base submission's texture, white tint, root/attach-face transform,
+      entity light, hurt/white overlay, and `order(0)`, including folded cutout vertex metadata
     - wither entities as renderer-owned vanilla 26.1
       `WitherBossModel.createBodyLayer(CubeDeformation.NONE)` geometry on both the colored and textured
       paths: the native

@@ -231,7 +231,10 @@ fn shulker_textured_render_matches_vanilla_renderer() {
         })
         .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let default = EntityModelInstance::shulker(900, [0.0, 64.0, 0.0], 0.0, None);
+    let default = EntityModelInstance::shulker(900, [0.0, 64.0, 0.0], 0.0, None)
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[default], &atlas);
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
@@ -245,6 +248,9 @@ fn shulker_textured_render_matches_vanilla_renderer() {
     assert_eq!(submit.render_type.vanilla_name(), "entityCutoutZOffset");
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(submit.transform, shulker_model_root_transform(default));
+    assert_eq!(submit.light, default.render_state.shader_light());
+    assert_eq!(submit.overlay, default.render_state.overlay_coords());
+    assert_ne!(submit.overlay, [0.0, 10.0]);
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
     let mesh = &meshes.cutout;
 
@@ -252,11 +258,16 @@ fn shulker_textured_render_matches_vanilla_renderer() {
     assert!(mesh
         .vertices
         .iter()
-        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]
+            && vertex.light == submit.light
+            && vertex.overlay == submit.overlay));
 
     let north =
         EntityModelInstance::shulker(901, [0.0, 64.0, 0.0], 15.0, Some(EntityDyeColor::Red))
-            .with_shulker_attach_face(EntityAttachmentFace::North);
+            .with_shulker_attach_face(EntityAttachmentFace::North)
+            .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[north], &atlas);
     assert_eq!(meshes.submissions.len(), 1);
     let submit = meshes.submissions[0];
@@ -270,6 +281,14 @@ fn shulker_textured_render_matches_vanilla_renderer() {
     );
     assert_eq!(submit.render_type.vanilla_name(), "entityCutoutZOffset");
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.light, north.render_state.shader_light());
+    assert_eq!(submit.overlay, north.render_state.overlay_coords());
+    assert_ne!(submit.overlay, [0.0, 10.0]);
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
     assert_eq!(submit.transform, shulker_model_root_transform(north));
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
 }
