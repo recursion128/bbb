@@ -277,24 +277,24 @@ fn nautilus_exposes_stable_model_key() {
 
 #[test]
 fn nautilus_textured_render_matches_vanilla_renderer() {
+    let adult_pass = nautilus_textured_layer_passes(false)[0];
+    assert_eq!(adult_pass.kind, EntityModelLayerKind::NautilusBase);
+    assert_eq!(adult_pass.model_layer, MODEL_LAYER_NAUTILUS);
+    assert_eq!(adult_pass.texture, NAUTILUS_TEXTURE_REF);
     assert_eq!(
-        nautilus_textured_layer_passes(false)[0].texture,
-        NAUTILUS_TEXTURE_REF
-    );
-    assert_eq!(
-        nautilus_textured_layer_passes(true)[0].texture,
-        NAUTILUS_BABY_TEXTURE_REF
-    );
-    assert_eq!(
-        nautilus_textured_layer_passes(false)[0].render_type,
+        adult_pass.render_type,
         EntityModelLayerRenderType::EntityCutout
     );
-    assert_eq!(
-        nautilus_textured_layer_passes(false)[0]
-            .render_type
-            .vanilla_name(),
-        "entityCutout"
-    );
+    assert_eq!(adult_pass.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(adult_pass.visibility, EntityModelLayerVisibility::All);
+    assert_eq!(adult_pass.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((adult_pass.order, adult_pass.submit_sequence), (0, 0));
+
+    let baby_pass = nautilus_textured_layer_passes(true)[0];
+    assert_eq!(baby_pass.kind, EntityModelLayerKind::NautilusBase);
+    assert_eq!(baby_pass.model_layer, MODEL_LAYER_NAUTILUS_BABY);
+    assert_eq!(baby_pass.texture, NAUTILUS_BABY_TEXTURE_REF);
+    assert_eq!((baby_pass.order, baby_pass.submit_sequence), (0, 0));
     assert_eq!(
         EntityModelKind::Nautilus { baby: false }.vanilla_texture_ref(),
         Some(NAUTILUS_TEXTURE_REF)
@@ -775,12 +775,17 @@ fn zombie_nautilus_uses_its_own_texture_over_the_shared_adult_body() {
     );
     let passes = zombie_nautilus_textured_layer_passes(false);
     assert_eq!(passes.len(), 1);
+    assert_eq!(passes[0].kind, EntityModelLayerKind::ZombieNautilusBase);
+    assert_eq!(passes[0].model_layer, MODEL_LAYER_ZOMBIE_NAUTILUS);
     assert_eq!(passes[0].texture, ZOMBIE_NAUTILUS_TEXTURE_REF);
     assert_eq!(
         passes[0].render_type,
         EntityModelLayerRenderType::EntityCutout
     );
     assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
+    assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
+    assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
     assert!(entity_model_texture_refs().contains(&ZOMBIE_NAUTILUS_TEXTURE_REF));
 
     let images: Vec<EntityModelTextureImage> = [NAUTILUS_TEXTURE_REF, ZOMBIE_NAUTILUS_TEXTURE_REF]
@@ -841,16 +846,12 @@ fn zombie_nautilus_warm_variant_adds_the_coral_cluster() {
         EntityModelKind::ZombieNautilus { coral: true }.vanilla_texture_ref(),
         Some(ZOMBIE_NAUTILUS_CORAL_TEXTURE_REF)
     );
-    assert_eq!(
-        zombie_nautilus_textured_layer_passes(true)[0].texture,
-        ZOMBIE_NAUTILUS_CORAL_TEXTURE_REF
-    );
-    assert_eq!(
-        zombie_nautilus_textured_layer_passes(true)[0]
-            .render_type
-            .vanilla_name(),
-        "entityCutout"
-    );
+    let coral_pass = zombie_nautilus_textured_layer_passes(true)[0];
+    assert_eq!(coral_pass.kind, EntityModelLayerKind::ZombieNautilusBase);
+    assert_eq!(coral_pass.model_layer, MODEL_LAYER_ZOMBIE_NAUTILUS_CORAL);
+    assert_eq!(coral_pass.texture, ZOMBIE_NAUTILUS_CORAL_TEXTURE_REF);
+    assert_eq!(coral_pass.render_type.vanilla_name(), "entityCutout");
+    assert_eq!((coral_pass.order, coral_pass.submit_sequence), (0, 0));
     assert!(entity_model_texture_refs().contains(&ZOMBIE_NAUTILUS_CORAL_TEXTURE_REF));
 
     let images: Vec<EntityModelTextureImage> = [

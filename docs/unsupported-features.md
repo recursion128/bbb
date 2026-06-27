@@ -3880,7 +3880,9 @@ When an agent does any of the following, update this file in the same slice:
       `NAUTILUS_BABY_TEXTURE_REF`), the primary now-wired path; the zombie coral variant plus adult
       saddle/body-armor overlays are wired. Textured nautilus/zombie-nautilus regressions now route
       through `entity_model_textured_meshes` and pin vanilla submission metadata before folded cutout
-      geometry checks: living/zombie/coral base passes are `entityCutout`, selected texture, white tint,
+      geometry checks: living/baby/zombie/coral base passes are explicit `EntityModelLayerPass`
+      metadata with vanilla `ModelLayers.NAUTILUS` / `NAUTILUS_BABY` / `ZOMBIE_NAUTILUS` /
+      `ZOMBIE_NAUTILUS_CORAL`, `entityCutout`, selected texture, white tint,
       `entity_model_root_transform`, light, hurt/white overlay, and `(order, submit_sequence) == (0, 0)`;
       adult living nautilus and
       all zombie-nautilus saddle/body-armor equipment layers are `equipment_layer_pass`-generated

@@ -75,6 +75,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     LlamaBase,
     LlamaDecor,
     MooshroomBase,
+    NautilusBase,
     NautilusBodyArmor,
     NautilusSaddle,
     PandaBase,
@@ -104,6 +105,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     MinecartBase,
     ParrotBase,
     ZombieBase,
+    ZombieNautilusBase,
     HuskBase,
     DrownedBase,
     DrownedOuter,
@@ -1347,15 +1349,24 @@ pub(in crate::entity_models) fn ender_dragon_textured_layer_passes() -> Vec<Enti
 pub(in crate::entity_models) fn nautilus_textured_layer_passes(
     baby: bool,
 ) -> Vec<EntityModelLayerPass> {
-    vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::EntityCutout,
-        if baby {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::NautilusBase,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: if baby {
+            MODEL_LAYER_NAUTILUS_BABY
+        } else {
+            MODEL_LAYER_NAUTILUS
+        },
+        texture: if baby {
             NAUTILUS_BABY_TEXTURE_REF
         } else {
             NAUTILUS_TEXTURE_REF
         },
-        [1.0, 1.0, 1.0, 1.0],
-    )]
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
 }
 
 pub(in crate::entity_models) fn zombie_nautilus_textured_layer_passes(
@@ -1364,15 +1375,24 @@ pub(in crate::entity_models) fn zombie_nautilus_textured_layer_passes(
     // Vanilla `ZombieNautilusRenderer`: the `NORMAL` variant textures the shared adult `NautilusModel`
     // body with `zombie_nautilus.png`; the `WARM` variant textures the `ZombieNautilusCoralModel` with
     // `zombie_nautilus_coral.png`.
-    vec![EntityModelLayerPass::base(
-        EntityModelLayerRenderType::EntityCutout,
-        if coral {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::ZombieNautilusBase,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: if coral {
+            MODEL_LAYER_ZOMBIE_NAUTILUS_CORAL
+        } else {
+            MODEL_LAYER_ZOMBIE_NAUTILUS
+        },
+        texture: if coral {
             ZOMBIE_NAUTILUS_CORAL_TEXTURE_REF
         } else {
             ZOMBIE_NAUTILUS_TEXTURE_REF
         },
-        [1.0, 1.0, 1.0, 1.0],
-    )]
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }]
 }
 
 pub(in crate::entity_models) fn panda_textured_layer_passes(
