@@ -3404,7 +3404,9 @@ When an agent does any of the following, update this file in the same slice:
       presentation remains deferred. The base submission explicitly records vanilla `order(0)`,
       `entityCutout`, white tint, texture, light coords, `OverlayTexture.NO_OVERLAY`, and the
       flight-orientation transform, with folded cutout vertices inheriting that base
-      light/no-overlay metadata. The colored debug path stays as a fallback (it
+      light/no-overlay metadata. Missing-atlas coverage now pins that a foiled trident still records
+      both the order-0 base `entityCutout` submit and the order-1 `entityGlint` submit before folded
+      base geometry is suppressed. The colored debug path stays as a fallback (it
       renders the pole/base in teal and the spikes lighter)
     - wither skull entities as renderer-owned vanilla 26.1 `WitherSkullRenderer.createSkullLayer()`
       (`SkullModel`) geometry on the colored path: the native entity scene (`entity_scene.rs`) projects

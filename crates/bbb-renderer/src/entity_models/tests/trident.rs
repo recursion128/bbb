@@ -92,6 +92,7 @@ fn trident_layer_passes_and_texture_ref_match_vanilla_renderer() {
         passes[0].render_type,
         EntityModelLayerRenderType::EntityCutout
     );
+    assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(passes[0].texture, TRIDENT_TEXTURE_REF);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
@@ -174,6 +175,7 @@ fn foiled_trident_records_vanilla_entity_glint_submission() {
 
     let base = meshes.submissions[0];
     assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(base.render_type.vanilla_name(), "entityCutout");
     assert_eq!(base.texture, TRIDENT_TEXTURE_REF);
     assert_eq!((base.order, base.submit_sequence), (0, 0));
 
@@ -195,6 +197,54 @@ fn foiled_trident_records_vanilla_entity_glint_submission() {
         .vertices
         .iter()
         .all(|vertex| vertex.light == base.light && vertex.overlay == base.overlay));
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.scroll.vertices.is_empty());
+    assert!(meshes.scroll_additive.vertices.is_empty());
+}
+
+#[test]
+fn foiled_trident_submissions_survive_missing_texture_atlas_entry() {
+    // `ThrownTridentRenderer.submit` explicitly records order(0) base and order(1) foil submits;
+    // missing atlas data suppresses only the folded cutout geometry.
+    let base_len =
+        usize::try_from(ZOMBIE_TEXTURE_REF.size[0] * ZOMBIE_TEXTURE_REF.size[1] * 4).unwrap();
+    let images = vec![EntityModelTextureImage::new(
+        ZOMBIE_TEXTURE_REF,
+        vec![0u8; base_len],
+    )];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let instance = EntityModelInstance::trident(1350, [1.0, 64.0, -2.0], 37.0)
+        .with_head_look(0.0, -18.0)
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true)
+        .with_trident_foil(true);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 2);
+    let base = meshes.submissions[0];
+    assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(base.texture, TRIDENT_TEXTURE_REF);
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(base.transform, trident_model_root_transform(instance));
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+    assert_eq!(base.light, instance.render_state.shader_light());
+    assert_eq!(base.overlay, [0.0, 10.0]);
+
+    let glint = meshes.submissions[1];
+    assert_eq!(glint.render_type, EntityModelLayerRenderType::EntityGlint);
+    assert_eq!(glint.render_type.vanilla_name(), "entityGlint");
+    assert_eq!(glint.texture, ENCHANTED_GLINT_ITEM_TEXTURE_REF);
+    assert_eq!(glint.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(glint.transform, trident_model_root_transform(instance));
+    assert_eq!((glint.order, glint.submit_sequence), (1, 1));
+    assert_eq!(glint.light, instance.render_state.shader_light());
+    assert_eq!(glint.overlay, [0.0, 10.0]);
+
+    assert!(meshes.cutout.vertices.is_empty());
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
     assert!(meshes.scroll.vertices.is_empty());
