@@ -3226,7 +3226,9 @@ When an agent does any of the following, update this file in the same slice:
       `ShulkerRenderer.getTextureLocation` (the uncolored `shulker.png` plus the sixteen `shulker_<color>.png`)
       — seventeen textures. The textured regression now pins the vanilla `ShulkerModel`
       `entityCutoutZOffset` base submission's texture, white tint, root/attach-face transform,
-      entity light, hurt/white overlay, and `order(0)`, including folded cutout vertex metadata
+      entity light, hurt/white overlay, and `order(0)`, including folded cutout vertex metadata;
+      missing-atlas coverage pins that a red wall shulker still records the `entityCutoutZOffset`
+      submit before folded cutout geometry is suppressed
     - wither entities as renderer-owned vanilla 26.1
       `WitherBossModel.createBodyLayer(CubeDeformation.NONE)` geometry on both the colored and textured
       paths: the native

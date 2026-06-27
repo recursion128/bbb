@@ -199,6 +199,7 @@ fn shulker_textured_render_matches_vanilla_renderer() {
             passes[0].render_type,
             EntityModelLayerRenderType::EntityCutoutZOffset
         );
+        assert_eq!(passes[0].render_type.vanilla_name(), "entityCutoutZOffset");
         assert_eq!(passes[0].texture, texture);
         assert_eq!(
             EntityModelKind::Shulker { color }.vanilla_texture_ref(),
@@ -291,4 +292,46 @@ fn shulker_textured_render_matches_vanilla_renderer() {
         .vertices
         .iter()
         .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
+}
+
+#[test]
+fn shulker_submission_survives_missing_texture_atlas_entry() {
+    // Vanilla `ShulkerModel` uses `entityCutoutZOffset`; the submit is recorded before atlas lookup,
+    // and missing texture data suppresses only folded cutout geometry.
+    let base_len =
+        usize::try_from(ZOMBIE_TEXTURE_REF.size[0] * ZOMBIE_TEXTURE_REF.size[1] * 4).unwrap();
+    let images = vec![EntityModelTextureImage::new(
+        ZOMBIE_TEXTURE_REF,
+        vec![0u8; base_len],
+    )];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let instance =
+        EntityModelInstance::shulker(901, [0.0, 64.0, 0.0], 15.0, Some(EntityDyeColor::Red))
+            .with_shulker_attach_face(EntityAttachmentFace::North)
+            .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(
+        submit.texture,
+        shulker_texture_ref(Some(EntityDyeColor::Red))
+    );
+    assert_eq!(
+        submit.render_type,
+        EntityModelLayerRenderType::EntityCutoutZOffset
+    );
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutoutZOffset");
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(submit.transform, shulker_model_root_transform(instance));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, instance.render_state.overlay_coords());
+    assert_ne!(submit.overlay, [0.0, 10.0]);
+    assert!(meshes.cutout.vertices.is_empty());
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
 }
