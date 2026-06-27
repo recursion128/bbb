@@ -287,10 +287,28 @@ fn entity_texture_atlas_stitches_official_slime_png_slots() {
 #[test]
 fn slime_and_magma_cube_textured_meshes_use_vanilla_submissions_uvs_and_layer_buckets() {
     let (atlas, _) = build_entity_model_texture_atlas(&slime_texture_images()).unwrap();
-    let slime_instance = EntityModelInstance::slime(117, [0.0, 64.0, 0.0], 0.0, 1);
+    let slime_instance = EntityModelInstance::slime(117, [0.0, 64.0, 0.0], 0.0, 1)
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let slime = entity_model_textured_meshes(&[slime_instance], &atlas);
 
     assert_slime_submissions_match_vanilla(&slime, slime_instance);
+    let slime_base = slime.submissions[0];
+    let slime_outer = slime.submissions[1];
+    assert_eq!(slime_base.light, slime_instance.render_state.shader_light());
+    assert_eq!(
+        slime_base.overlay,
+        slime_instance.render_state.overlay_coords()
+    );
+    assert_ne!(slime_base.overlay, [0.0, 10.0]);
+    assert_eq!(slime_outer.light, slime_base.light);
+    assert_eq!(
+        slime_outer.overlay,
+        [0.0, slime_instance.render_state.overlay_coords()[1]]
+    );
+    assert_ne!(slime_outer.overlay, slime_base.overlay);
+    assert_ne!(slime_outer.overlay, [0.0, 10.0]);
     assert_eq!(slime.cutout.cutout_faces, 24);
     assert_eq!(slime.cutout.vertices.len(), 96);
     assert_eq!(slime.cutout.indices.len(), 144);
@@ -306,13 +324,36 @@ fn slime_and_magma_cube_textured_meshes_use_vanilla_submissions_uvs_and_layer_bu
         .iter()
         .chain(slime.translucent.vertices.iter())
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    assert!(slime
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == slime_base.light && vertex.overlay == slime_base.overlay));
+    assert!(slime
+        .translucent
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == slime_outer.light && vertex.overlay == slime_outer.overlay));
     let (slime_outer_min, slime_outer_max) = textured_mesh_extents(&slime.translucent);
     assert_close3(slime_outer_min, [-0.24975, 64.0, -0.24975]);
     assert_close3(slime_outer_max, [0.24975, 64.4995, 0.24975]);
 
-    let magma_instance = EntityModelInstance::magma_cube(80, [0.0, 64.0, 0.0], 0.0, 3);
+    let magma_instance = EntityModelInstance::magma_cube(80, [0.0, 64.0, 0.0], 0.0, 3)
+        .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let magma = entity_model_textured_meshes(&[magma_instance], &atlas);
     assert_magma_cube_submission_matches_vanilla(&magma, magma_instance);
+    let magma_submit = magma.submissions[0];
+    assert_eq!(
+        magma_submit.light,
+        magma_instance.render_state.shader_light()
+    );
+    assert_eq!(
+        magma_submit.overlay,
+        magma_instance.render_state.overlay_coords()
+    );
+    assert_ne!(magma_submit.overlay, [0.0, 10.0]);
     assert_eq!(magma.cutout.cutout_faces, 54);
     assert_eq!(magma.cutout.vertices.len(), 216);
     assert_eq!(magma.cutout.indices.len(), 324);
@@ -324,6 +365,14 @@ fn slime_and_magma_cube_textured_meshes_use_vanilla_submissions_uvs_and_layer_bu
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    assert!(
+        magma
+            .cutout
+            .vertices
+            .iter()
+            .all(|vertex| vertex.light == magma_submit.light
+                && vertex.overlay == magma_submit.overlay)
+    );
     let (magma_min, magma_max) = textured_mesh_extents(&magma.cutout);
     assert_close3(magma_min, [-0.75, 64.003, -0.75]);
     assert_close3(magma_max, [0.75, 65.503, 0.75]);

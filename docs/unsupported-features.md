@@ -2385,11 +2385,12 @@ When an agent does any of the following, update this file in the same slice:
       `[w, 1/w, w] * size`), texture-backed base and outer layer pass emission,
       the `SlimeOuterLayer` submit order `1`, explicit submission metadata for
       the base `entityCutout` and outer `entityTranslucent` passes (texture,
-      white tint, slime root transform, and `(order, submit_sequence)`), and an
-      alpha-blended translucent GPU bucket; invisible glowing outline rendering,
-      particle/audio coupling,
-      lighting, overlay, crumbling, and full render-graph sorting parity remain
-      unsupported
+      white tint, slime root transform, `LivingEntityRenderer` light plus body hurt/white overlay for
+      the base, `getOverlayCoords(state, 0.0F)` zero-white overlay for the outer layer, and
+      `(order, submit_sequence)`) with folded cutout/translucent vertices inheriting the matching
+      metadata, and an alpha-blended translucent GPU bucket; invisible glowing outline rendering,
+      particle/audio coupling, broader lighting presentation, crumbling, and full render-graph
+      sorting parity remain unsupported
     - magma cube entities as renderer-owned vanilla 26.1
       `MagmaCubeModel.createBodyLayer()` segment/inside-cube geometry, official
       `textures/entity/slime/magmacube.png` texture reference, renderer
@@ -2398,10 +2399,11 @@ When an agent does any of the following, update this file in the same slice:
       body stretch and the `LavaSlimeModel.setupAnim` per-segment vertical spread
       (`cubeN.y = -(4 - N) * max(0, squish) * 1.7`), texture-backed base layer
       pass emission with explicit submission metadata for vanilla `entityCutout`,
-      selected texture, white tint, magma-cube root transform, and `(0, 0)`, and
-      official PNG atlas upload/bind/sample path; the full-bright block light
+      selected texture, white tint, magma-cube root transform, `LivingEntityRenderer` light plus
+      hurt/white overlay, and `(0, 0)`, with folded cutout vertices inheriting the matching metadata,
+      and official PNG atlas upload/bind/sample path; the full-bright block light
       (`MagmaCubeRenderer.getBlockLightLevel = 15`) IS now applied (`entity_light_coords`).
-      Particle/audio coupling, lighting, overlay, crumbling, and
+      Particle/audio coupling, broader lighting presentation, crumbling, and
       full render-graph sorting parity remain unsupported
     - ghast entities as renderer-owned vanilla 26.1 `GhastModel.createBodyLayer()`
       geometry: the 16x16x16 body at y 17.6 plus the nine tentacles at y 24.6,
