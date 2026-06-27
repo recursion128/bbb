@@ -2446,12 +2446,13 @@ When an agent does any of the following, update this file in the same slice:
       reference, texture-backed base layer pass emission (vanilla `SilverfishModel`
       calls `EntityModel`'s default `RenderTypes::entityCutout`) while preserving
       explicit submission metadata for texture, white tint, unit root transform, and
-      `order(0)`, official PNG atlas upload/bind/sample path, and the vanilla
+      `order(0)`, plus `MobRenderer` / `LivingEntityRenderer` light plus hurt/white
+      overlay metadata, official PNG atlas upload/bind/sample path, and the vanilla
       `SilverfishModel.setupAnim` segment wiggle (`segment.yRot = cos(phase) * π *
       0.05 * (1 + |i - 2|)`, `segment.x = sin(phase) * π * 0.2 * |i - 2|`, `phase =
       ageInTicks * 0.9 + i * 0.15 * π`, with the overlay layers copying segments
-      2/4/1, driven by the projected `ageInTicks`, on both render paths). Lighting and
-      overlay remain unsupported
+      2/4/1, driven by the projected `ageInTicks`, on both render paths). Broader
+      lighting presentation remains unsupported
     - vex entities are wired end to end on both render paths: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `138` to the real `VexModel`, replacing
       the former placeholder box. Renderer-owned vanilla 26.1 `VexModel.createBodyLayer()`
