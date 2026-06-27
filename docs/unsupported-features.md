@@ -2470,7 +2470,8 @@ When an agent does any of the following, update this file in the same slice:
       white tint, slime root transform, `LivingEntityRenderer` light plus body hurt/white overlay for
       the base, `getOverlayCoords(state, 0.0F)` zero-white overlay for the outer layer, and
       `(order, submit_sequence)`) with folded cutout/translucent vertices inheriting the matching
-      metadata, and an alpha-blended translucent GPU bucket; invisible glowing outline rendering,
+      metadata, shared dispatch ownership instead of a residual textured emit helper, and an
+      alpha-blended translucent GPU bucket; invisible glowing outline rendering,
       particle/audio coupling, broader lighting presentation, crumbling, and full render-graph
       sorting parity remain unsupported
     - magma cube entities as renderer-owned vanilla 26.1

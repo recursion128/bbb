@@ -50,9 +50,9 @@ use super::{
         DrownedOuterModel, ElytraModel, HoglinModel, HumanoidArmorSlot, HumanoidBabyArmorKind,
         LlamaModel, NautilusModel, PigModel, PiglinModel, PlayerEarsModel, PlayerModel,
         SheepFurModel, SheepModel, ShulkerBulletModel, SkeletonClothingModel, SkeletonModel,
-        SlimeModel, SlimeOuterModel, SpinAttackEffectModel, SquidModel, StriderModel,
-        TropicalFishModel, TropicalFishPatternModel, VillagerModel, WindChargeModel, WitherModel,
-        WolfModel, ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
+        SpinAttackEffectModel, SquidModel, StriderModel, TropicalFishModel,
+        TropicalFishPatternModel, VillagerModel, WindChargeModel, WitherModel, WolfModel,
+        ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
         ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_DONKEY_SADDLE_PARTS_TEXTURED,
         ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED, ADULT_HORSE_ARMOR_PARTS_TEXTURED,
         ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
@@ -70,8 +70,8 @@ use super::{
         WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF,
         ZOMBIE_HORSE_SADDLE_TEXTURE_REF, ZOMBIE_TEXTURE_REF,
     },
-    player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
-    tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
+    player_model_root_transform, squid_model_root_transform, tropical_fish_model_root_transform,
+    wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 use glam::{Mat4, Quat, Vec3};
 
@@ -422,9 +422,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
                         pattern_color,
                         atlas,
                     );
-                }
-                EntityModelKind::Slime { size } => {
-                    emit_slime_textured_model(&mut meshes, *instance, size, atlas);
                 }
                 EntityModelKind::ZombieVariant {
                     family: ZombieVariantModelFamily::Husk,
@@ -2689,31 +2686,6 @@ fn emit_llama_decor_layer(
         1,
         atlas,
     );
-}
-
-fn emit_slime_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    size: i32,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `SlimeModel` (inner body, cutout) and `SlimeOuterModel` (shell, translucent) trees
-    // drive both render paths; both `setup_anim`s are no-ops (vanilla's squish stretch lives in the
-    // renderer `scale`, applied by `slime_model_root_transform`, not in `setupAnim`). Each pass routes
-    // to the inner or outer root in the pre-sorted layer order.
-    let transform = slime_model_root_transform(instance, size);
-    let mut inner = SlimeModel::new();
-    inner.prepare(&instance);
-    let mut outer = SlimeOuterModel::new();
-    outer.prepare(&instance);
-    for pass in slime_textured_layer_passes() {
-        let root = if pass.kind == layers::EntityModelLayerKind::SlimeOuter {
-            outer.root()
-        } else {
-            inner.root()
-        };
-        render_textured_root_pass(meshes, root, transform, pass, atlas);
-    }
 }
 
 fn emit_husk_textured_model(

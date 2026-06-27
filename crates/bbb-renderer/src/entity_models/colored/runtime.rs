@@ -19,9 +19,9 @@ use super::selection::{
 use super::transforms::{
     drowned_model_root_transform, end_crystal_model_root_transform, entity_model_root_transform,
     mesh_transformer_scaled_model_root_transform, player_model_root_transform,
-    scaled_model_root_transform, shulker_bullet_model_root_transform, slime_model_root_transform,
-    squid_model_root_transform, tropical_fish_model_root_transform,
-    wind_charge_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
+    scaled_model_root_transform, shulker_bullet_model_root_transform, squid_model_root_transform,
+    tropical_fish_model_root_transform, wind_charge_model_root_transform,
+    wither_skeleton_model_root_transform, HUSK_SCALE,
 };
 
 #[cfg(test)]
@@ -72,11 +72,6 @@ fn entity_model_mesh_with_options(
                 }
                 EntityModelKind::Humanoid { family, baby } => {
                     emit_humanoid_model(&mut mesh, *instance, family, baby)
-                }
-                EntityModelKind::Slime { size } => {
-                    if !skip_texture_backed_entities {
-                        emit_slime_model(&mut mesh, *instance, size);
-                    }
                 }
                 EntityModelKind::WindCharge => {
                     // The wind charge's textured render is the scrolling `breezeWind` overlay; this
@@ -226,16 +221,6 @@ fn entity_model_mesh_with_options(
         );
     }
     mesh
-}
-
-fn emit_slime_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {
-    // The unified `SlimeModel` (inner body) and `SlimeOuterModel` (translucent shell) trees drive both
-    // render paths; both `setup_anim`s are no-ops (vanilla's squish stretch lives in the renderer
-    // `scale`, applied here by `slime_model_root_transform`, not in `setupAnim`). The colored fallback
-    // draws both layers under one transform, reproducing the combined slime mesh.
-    let transform = slime_model_root_transform(instance, size);
-    SlimeModel::new().prepare_and_render(mesh, &instance, transform);
-    SlimeOuterModel::new().prepare_and_render(mesh, &instance, transform);
 }
 
 fn emit_end_crystal_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

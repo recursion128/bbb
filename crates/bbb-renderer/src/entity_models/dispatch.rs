@@ -1,10 +1,10 @@
 //! Shared per-entity model/transform selection for the "uniform" entities — those whose BOTH the
-//! colored and the textured render is fully described by `(one model, one root transform, its
-//! textured layer passes)`. The two render loops (colored [`super::colored`] and textured
+//! colored and the textured render is fully described by a small fixed set of model/root-transform/
+//! textured-layer-pass tuples. The two render loops (colored [`super::colored`] and textured
 //! [`super::textured`]) used to each carry their own `match instance.kind` arm picking the model and
 //! transform; [`dispatch_uniform_entity_model`] is now the single source of truth for that selection,
 //! emitting through whichever [`EntityModelSink`] (colored or textured) the caller supplies. Entities
-//! whose two paths diverge (recolor, two model trees, family helpers, part visibility, single-pass
+//! whose two paths diverge (recolor, family helpers, part visibility, single-pass
 //! `render_textured_pass` emits, bespoke hand-walks, …) stay out of here and keep their own per-path
 //! residual arm.
 
@@ -20,8 +20,8 @@ use super::colored::{
     magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
     panda_model_root_transform, phantom_model_root_transform, polar_bear_model_root_transform,
     pufferfish_model_root_transform, salmon_model_root_transform, shulker_model_root_transform,
-    trident_model_root_transform, villager_adult_model_root_transform, wither_model_root_transform,
-    wither_skull_model_root_transform, GIANT_SCALE,
+    slime_model_root_transform, trident_model_root_transform, villager_adult_model_root_transform,
+    wither_model_root_transform, wither_skull_model_root_transform, GIANT_SCALE,
 };
 use super::geometry::{part_pose_transform, EntityModelMesh};
 use super::instances::EntityModelInstance;
@@ -34,10 +34,10 @@ use super::model_layers::{
     GoatModel, GuardianModel, HappyGhastModel, IllagerModel, IronGolemModel, LeashKnotModel,
     LlamaSpitModel, MagmaCubeModel, MinecartModel, NautilusModel, PandaModel, ParrotModel,
     PhantomModel, PigModel, PolarBearModel, PufferfishModel, RabbitModel, RavagerModel,
-    SalmonModel, ShulkerModel, SilverfishModel, SnifferModel, SnowGolemModel, SpiderModel,
-    StriderModel, TadpoleModel, TridentModel, TurtleModel, VexModel, VillagerModel,
-    WanderingTraderModel, WardenModel, WitchModel, WitherModel, WitherSkullModel, WolfModel,
-    ZombieModel, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF,
+    SalmonModel, ShulkerModel, SilverfishModel, SlimeModel, SlimeOuterModel, SnifferModel,
+    SnowGolemModel, SpiderModel, StriderModel, TadpoleModel, TridentModel, TurtleModel, VexModel,
+    VillagerModel, WanderingTraderModel, WardenModel, WitchModel, WitherModel, WitherSkullModel,
+    WolfModel, ZombieModel, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF,
     BREEZE_EYES_TEXTURE_REF, BREEZE_TEXTURE_REF, COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF,
     DOLPHIN_TEXTURE_REF, FELINE_CAT_SCALE, GUARDIAN_ELDER_SCALE, PUFFERFISH_TEXTURE_REF,
     TURTLE_BABY_TEXTURE_REF, TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF,
@@ -59,7 +59,7 @@ use super::textured::{
     parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
     polar_bear_textured_layer_passes, rabbit_textured_layer_passes, ravager_textured_layer_passes,
     render_textured_layers, salmon_textured_layer_passes, shulker_textured_layer_passes,
-    silverfish_textured_layer_passes, sniffer_textured_layer_passes,
+    silverfish_textured_layer_passes, slime_textured_layer_passes, sniffer_textured_layer_passes,
     snow_golem_textured_layer_passes, spider_textured_layer_passes, tadpole_textured_layer_passes,
     trident_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, warden_textured_layer_passes,
@@ -69,10 +69,10 @@ use super::textured::{
     EntityModelLayerRenderType, EntityModelTexturedMeshes,
 };
 
-/// A render-path-agnostic sink for a "uniform" entity (one model under one root transform, with its
-/// textured layer passes). [`dispatch_uniform_entity_model`] drives this; the colored implementation
-/// renders the cube tree (ignoring `passes`), the textured implementation walks `passes`. `passes` is
-/// empty for colored-only entities, which therefore emit nothing on the textured path.
+/// A render-path-agnostic sink for each model/root-transform/layer-pass tuple in a uniform entity.
+/// [`dispatch_uniform_entity_model`] drives this; the colored implementation renders the cube tree
+/// (ignoring `passes`), the textured implementation walks `passes`. `passes` is empty for
+/// colored-only entities, which therefore emit nothing on the textured path.
 pub(in crate::entity_models) trait EntityModelSink {
     fn model<M: EntityModel>(
         &mut self,
@@ -134,7 +134,7 @@ impl EntityModelSink for TexturedSink<'_> {
 }
 
 /// Emits `instance` through `sink` if it is a "uniform" entity — one whose BOTH colored and textured
-/// rendering is fully described by `(one model, one root transform, its textured layer passes)`.
+/// rendering is fully described by a fixed sequence of model/root-transform/layer-pass tuples.
 /// Returns `true` if emitted, `false` for bespoke entities (the caller then renders them through its
 /// own path-specific residual arm). This is the single source of truth for uniform entities'
 /// model/transform selection, replacing the duplicated arms in the two render matches.
@@ -168,6 +168,12 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &magma_cube_textured_layer_passes(),
         ),
+        EntityModelKind::Slime { size } => {
+            let transform = slime_model_root_transform(*instance, size);
+            let passes = slime_textured_layer_passes();
+            sink.model(SlimeModel::new(), transform, instance, &passes[0..1]);
+            sink.model(SlimeOuterModel::new(), transform, instance, &passes[1..2]);
+        }
         EntityModelKind::Ghast { charging } => sink.model(
             GhastModel::new(),
             ghast_model_root_transform(*instance),
