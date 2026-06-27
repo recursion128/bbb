@@ -2478,14 +2478,15 @@ When an agent does any of the following, update this file in the same slice:
       `vex_right_hand_item_non_empty` / `vex_left_hand_item_non_empty`. The textured base layer
       draws into the translucent mesh
       (`RenderTypes::entityTranslucent`) while preserving explicit `entityTranslucent`
-      submission metadata for texture, white tint, root transform, and `order(0)`;
-      it is hand-emitted through the same animated body→arm/wing hierarchy as the colored path,
+      submission metadata for texture, white tint, root transform, `order(0)`, the projected
+      full-bright block-light input, and hurt/white overlay metadata before folding; it uses the
+      same animated body→arm/wing hierarchy as the colored path,
       and the `isCharging` texture swap IS now applied
       (`VexRenderer.getTextureLocation`: `EntityModelKind::Vex { charging }` selects
       `textures/entity/illager/vex_charging.png` over `vex.png`, the same 32×32 model, driven by the
       already-projected `charging` bit). The constant full-bright `getBlockLightLevel` (→ 15) glow IS now applied
-      (`entity_light_coords` forces the packed block light to 15 for the vex type). Lighting and overlay
-      remain unsupported
+      (`entity_light_coords` forces the packed block light to 15 for the vex type). Broader lighting
+      presentation remains unsupported
     - allay entities are wired end to end on both render paths: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `2` to the real `AllayModel`, replacing
       the former placeholder box. Renderer-owned vanilla 26.1 `AllayModel.createBodyLayer()`

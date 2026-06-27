@@ -232,7 +232,10 @@ fn vex_textured_mesh_uses_vanilla_geometry_and_animates() {
     // Vanilla `VexModel` constructs with `RenderTypes::entityTranslucent`. The backend folds that into
     // the translucent mesh, but the submission must keep the vanilla render type, selected texture,
     // tint, transform, and default collector order.
-    let base = EntityModelInstance::vex(950, [0.0, 64.0, 0.0], 0.0);
+    let base = EntityModelInstance::vex(950, [0.0, 64.0, 0.0], 0.0)
+        .with_light_coords((15_u32 << 4) | (8_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[base], &atlas);
     assert_eq!(meshes.submissions.len(), 1);
     let submit = meshes.submissions[0];
@@ -245,6 +248,8 @@ fn vex_textured_mesh_uses_vanilla_geometry_and_animates() {
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(submit.transform, entity_model_root_transform(base));
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert_eq!(submit.light, base.render_state.shader_light());
+    assert_eq!(submit.overlay, base.render_state.overlay_coords());
 
     // Seven cubes → 42 faces / 168 vertices, with nothing on the cutout or eyes passes.
     assert!(meshes.cutout.vertices.is_empty());
@@ -257,6 +262,14 @@ fn vex_textured_mesh_uses_vanilla_geometry_and_animates() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    assert!(meshes
+        .translucent
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == base.render_state.shader_light()
+            && vertex.overlay == base.render_state.overlay_coords()));
+    assert_eq!(base.render_state.shader_light(), [1.0, 8.0 / 15.0]);
+    assert_ne!(base.render_state.overlay_coords(), [0.0, 10.0]);
 
     // The head re-poses with the projected look yaw/pitch.
     let looking = entity_model_textured_meshes(&[base.with_head_look(40.0, -25.0)], &atlas);
@@ -286,13 +299,19 @@ fn vex_charging_dispatch_swaps_to_the_charging_texture() {
         .collect::<Vec<_>>();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
 
-    let idle = EntityModelInstance::vex(960, [0.0, 64.0, 0.0], 0.0);
+    let idle = EntityModelInstance::vex(960, [0.0, 64.0, 0.0], 0.0)
+        .with_light_coords((15_u32 << 4) | (8_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let charging = EntityModelInstance::new(
         961,
         EntityModelKind::Vex { charging: true },
         [0.0, 64.0, 0.0],
         0.0,
-    );
+    )
+    .with_light_coords((15_u32 << 4) | (8_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let idle_mesh = entity_model_textured_meshes(&[idle], &atlas);
     let charging_mesh = entity_model_textured_meshes(&[charging], &atlas);
     assert_eq!(idle_mesh.submissions.len(), 1);
@@ -307,10 +326,26 @@ fn vex_charging_dispatch_swaps_to_the_charging_texture() {
     );
     assert_eq!(idle_mesh.submissions[0].texture, VEX_TEXTURE_REF);
     assert_eq!(
+        idle_mesh.submissions[0].light,
+        idle.render_state.shader_light()
+    );
+    assert_eq!(
+        idle_mesh.submissions[0].overlay,
+        idle.render_state.overlay_coords()
+    );
+    assert_eq!(
         charging_mesh.submissions[0].texture,
         VEX_CHARGING_TEXTURE_REF
     );
     assert_eq!(charging_mesh.submissions[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        charging_mesh.submissions[0].light,
+        charging.render_state.shader_light()
+    );
+    assert_eq!(
+        charging_mesh.submissions[0].overlay,
+        charging.render_state.overlay_coords()
+    );
     assert_eq!(
         (
             charging_mesh.submissions[0].order,
