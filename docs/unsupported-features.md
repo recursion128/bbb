@@ -3467,15 +3467,15 @@ When an agent does any of the following, update this file in the same slice:
       render path over the procedural ring, and the official PNG atlas
       upload/bind/sample path (colored and textured). Renderer tests now also pin the generated
       squid submissions' vanilla `entityCutout` render type, selected texture, white tint,
-      root transform, and `order(0)` metadata rather than only counting folded mesh vertices,
-      including the tentacle-sweep textured regression path.
+      root transform, `order(0)`, light, and hurt/white overlay metadata rather than only
+      counting folded mesh vertices, including the tentacle-sweep textured regression path.
       The `GlowSquidRenderer.getBlockLightLevel`
       darken-ticks light boost IS now applied (`entity_light_coords` reads the synced
       `DATA_DARK_TICKS_REMAINING` int at index 18 and boosts the packed block light to
       `max(block, (int)clampedLerp(1 − darkTicks/10, 0, 15))` — full bright while undamaged, dimming for
       ~100 ticks after a hurt and ramping back over the final 10). Note 26.1 has NO separate glow-squid
-      emissive overlay/texture; the glow is purely this block-light override. Lighting and overlay remain
-      unsupported. The `Squid.aiStep` swim integration IS now projected client-side
+      emissive overlay/texture; the glow is purely this block-light override. Broader lighting
+      presentation remains unsupported. The `Squid.aiStep` swim integration IS now projected client-side
       (a `SquidAnimationState` accumulator in `entities/animations.rs`: `tentacleSpeed`
       seeded from the entity id via the Java `Random` LCG, the `tentacleMovement`
       half-cycle clamped at `2π` with the server event-`19` reset, `tentacleAngle =
