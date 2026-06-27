@@ -2187,7 +2187,10 @@ When an agent does any of the following, update this file in the same slice:
       `entity_model_root_transform` otherwise), and explicit `(order, submit_sequence)`
       pairs `(0, 0)` / `(1, 1)`, plus vanilla entity light and the body full
       hurt/white overlay versus `SkeletonClothingLayer` zero-white overlay split before
-      folded cutout geometry checks. Skeleton-family
+      folded cutout geometry checks. Missing-atlas coverage now proves stray and
+      bogged clothing overlay submissions are still recorded without their
+      overlay textures while only folded overlay geometry is suppressed.
+      Skeleton-family
       armor is covered by `emit_worn_humanoid_armor`
       for skeleton, stray, parched, wither skeleton, and bogged
     - creeper entities as renderer-owned vanilla 26.1

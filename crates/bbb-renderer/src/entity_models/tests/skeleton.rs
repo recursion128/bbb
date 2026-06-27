@@ -569,6 +569,87 @@ fn skeleton_textured_mesh_uses_vanilla_uvs_tints_and_variant_geometry() {
 }
 
 #[test]
+fn skeleton_clothing_submissions_survive_missing_texture_atlas_entries() {
+    // Vanilla `SkeletonClothingLayer.submit` records the clothing overlay at order 1 after the
+    // base skeleton body; missing atlas data suppresses only folded overlay geometry.
+    let (atlas, _) = build_entity_model_texture_atlas(&skeleton_texture_images_for(&[
+        STRAY_TEXTURE_REF,
+        BOGGED_TEXTURE_REF,
+    ]))
+    .unwrap();
+
+    for (instance, family, expected_base_vertices) in [
+        (
+            skeleton_submission_probe(EntityModelInstance::skeleton_variant(
+                129,
+                [0.0, 64.0, 0.0],
+                0.0,
+                SkeletonModelFamily::Stray,
+            )),
+            SkeletonModelFamily::Stray,
+            168,
+        ),
+        (
+            skeleton_submission_probe(EntityModelInstance::skeleton_variant(
+                18,
+                [2.0, 64.0, 0.0],
+                0.0,
+                SkeletonModelFamily::Bogged { sheared: false },
+            )),
+            SkeletonModelFamily::Bogged { sheared: false },
+            312,
+        ),
+    ] {
+        let meshes = entity_model_textured_meshes(&[instance], &atlas);
+        assert_skeleton_folded_meshes_are_cutout_only(&meshes);
+        assert_eq!(meshes.cutout.vertices.len(), expected_base_vertices);
+        let passes = skeleton_textured_layer_passes(Some(family));
+        assert_eq!(passes.len(), 2);
+        assert!(matches!(
+            passes[1].kind,
+            EntityModelLayerKind::SkeletonClothing
+        ));
+        assert_eq!(meshes.submissions.len(), passes.len());
+
+        let base_overlay = instance.render_state.overlay_coords();
+        let clothing_overlay = [0.0, base_overlay[1]];
+        for (submit, pass) in meshes
+            .submissions
+            .iter()
+            .copied()
+            .zip(passes.iter().copied())
+        {
+            assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+            assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+            assert_eq!(submit.texture, pass.texture);
+            assert_eq!(submit.tint, pass.tint);
+            assert_eq!(submit.transform, entity_model_root_transform(instance));
+            assert_eq!(submit.light, instance.render_state.shader_light());
+            let expected_overlay = match pass.kind {
+                EntityModelLayerKind::SkeletonClothing => clothing_overlay,
+                _ => base_overlay,
+            };
+            assert_eq!(submit.overlay, expected_overlay);
+            assert_eq!(
+                (submit.order, submit.submit_sequence),
+                (pass.order, pass.submit_sequence)
+            );
+        }
+
+        assert!(meshes.cutout.vertices.iter().all(|vertex| {
+            vertex.tint == [1.0, 1.0, 1.0, 1.0]
+                && vertex.light == instance.render_state.shader_light()
+                && vertex.overlay == base_overlay
+        }));
+        assert!(meshes
+            .cutout
+            .vertices
+            .iter()
+            .all(|vertex| vertex.overlay != clothing_overlay));
+    }
+}
+
+#[test]
 fn skeleton_textured_mesh_applies_head_look() {
     let (atlas, _) = build_entity_model_texture_atlas(&skeleton_texture_images()).unwrap();
 
@@ -1347,7 +1428,11 @@ fn stray_clothing_overlay_tracks_the_aiming_arms() {
 }
 
 fn skeleton_texture_images() -> Vec<EntityModelTextureImage> {
-    skeleton_entity_texture_refs()
+    skeleton_texture_images_for(skeleton_entity_texture_refs())
+}
+
+fn skeleton_texture_images_for(textures: &[EntityModelTextureRef]) -> Vec<EntityModelTextureImage> {
+    textures
         .iter()
         .copied()
         .enumerate()
