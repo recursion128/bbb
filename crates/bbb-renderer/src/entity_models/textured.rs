@@ -33,7 +33,8 @@ use super::{
         append_scrolled_textured_mesh, emit_textured_model_cube, emit_textured_model_parts,
         fill_entity_textured_light, fill_entity_textured_overlay, part_pose_transform,
         EntityModelScrollMesh, EntityModelScrollVertex, EntityModelTexturedMesh, PartPose,
-        TexturedModelCubeDesc, TexturedModelPartDesc,
+        TexturedModelCubeDesc, TexturedModelPartDesc, ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
+        ENTITY_VERTEX_NO_OVERLAY,
     },
     instances::EntityModelInstance,
     mesh_transformer_scaled_model_root_transform,
@@ -124,6 +125,8 @@ pub(super) struct EntityModelRenderSubmission {
     pub(super) dynamic_player_texture: Option<EntityDynamicPlayerTexture>,
     pub(super) tint: [f32; 4],
     pub(super) transform: Mat4,
+    pub(super) light: [f32; 2],
+    pub(super) overlay: [f32; 2],
     pub(super) order: i32,
     pub(super) submit_sequence: u32,
 }
@@ -145,9 +148,11 @@ pub(super) struct EntityModelTexturedMeshes {
     /// Additive scrolling overlay (vanilla `energySwirl` — the charged-creeper / wither glow).
     pub(super) scroll_additive: EntityModelScrollMesh,
     /// Vanilla-shaped submit metadata for textured entity models. The current backend still folds
-    /// compatible submits into shared meshes, but this preserves render type, order, tint, texture and
-    /// transform so residual emits can migrate to explicit submissions one by one.
+    /// compatible submits into shared meshes, but this preserves render type, order, tint, texture,
+    /// transform, light, and overlay so residual emits can migrate to explicit submissions one by one.
     pub(super) submissions: Vec<EntityModelRenderSubmission>,
+    current_submission_light: [f32; 2],
+    current_submission_overlay: [f32; 2],
 }
 
 impl EntityModelTexturedMeshes {
@@ -163,6 +168,8 @@ impl EntityModelTexturedMeshes {
             scroll: EntityModelScrollMesh::new(),
             scroll_additive: EntityModelScrollMesh::new(),
             submissions: Vec::new(),
+            current_submission_light: ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
+            current_submission_overlay: ENTITY_VERTEX_NO_OVERLAY,
         }
     }
 
@@ -212,8 +219,16 @@ impl EntityModelTexturedMeshes {
         }
     }
 
+    fn set_current_submission_state(&mut self, instance: EntityModelInstance) {
+        self.current_submission_light = instance.render_state.shader_light();
+        self.current_submission_overlay = instance.render_state.overlay_coords();
+    }
+
     fn record_submission(&mut self, submit: EntityModelSubmissionEmit) {
-        self.submissions.push(submit.into());
+        let mut submission = EntityModelRenderSubmission::from(submit);
+        submission.light = self.current_submission_light;
+        submission.overlay = self.current_submission_overlay;
+        self.submissions.push(submission);
     }
 }
 
@@ -270,6 +285,8 @@ impl From<EntityModelSubmissionEmit> for EntityModelRenderSubmission {
             dynamic_player_texture: submit.dynamic_player_texture,
             tint: submit.tint,
             transform: submit.transform,
+            light: ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
+            overlay: ENTITY_VERTEX_NO_OVERLAY,
             order: submit.order,
             submit_sequence: submit.submit_sequence,
         }
@@ -309,6 +326,7 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         if instance.render_state.invisible {
             continue;
         }
+        meshes.set_current_submission_state(*instance);
         let cutout_start = meshes.cutout.vertices.len();
         let translucent_start = meshes.translucent.vertices.len();
         let eyes_start = meshes.eyes.vertices.len();

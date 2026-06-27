@@ -1020,9 +1020,10 @@ When an agent does any of the following, update this file in the same slice:
       `entityCutout`, `entityCutoutCull`,
       `entityCutoutZOffset`, `entityTranslucent`, `Eyes`,
       `breezeWind`, `energySwirl`, and `end_crystal_beam`; `order` mirrors
-      `SubmitNodeCollector.order(n)`; and `submit_sequence` preserves
-      same-order layer order while the GPU backend still folds compatible
-      submits into shared meshes. The render-type expression is pinned by
+      `SubmitNodeCollector.order(n)`; `submit_sequence` preserves
+      same-order layer order; and `light` / `overlay` preserve the per-entity
+      `submitModel(... lightCoords, overlayCoords, ...)` inputs while the GPU
+      backend still folds compatible submits into shared meshes. The render-type expression is pinned by
       vanilla-name and mesh-bucket tests, so `entityCutout`,
       `entityCutoutCull`, `entityCutoutZOffset`, `Eyes`, `breezeWind`, and
       `energySwirl` stay distinct at the submission boundary even when the
@@ -3418,8 +3419,8 @@ When an agent does any of the following, update this file in the same slice:
       base layer pass emission (vanilla `CodModel` calls `EntityModel`'s default
       `RenderTypes::entityCutout`; the top fin keeps its negative `texOffs(20, -6)` V
       origin) while preserving explicit submission metadata for texture, white tint,
-      water/beached root transform, and `order(0)`, and the official PNG atlas
-      upload/bind/sample path (colored and textured). Lighting and overlay remain unsupported
+      water/beached root transform, per-entity light/overlay coords, and `order(0)`, and the official PNG atlas
+      upload/bind/sample path (colored and textured). Full vanilla lighting/gamma parity remains deferred
     - salmon entities are wired end to end: the native entity scene (`entity_scene.rs`)
       projects vanilla type id `110` to the real `SalmonModel`, decoding the synced
       `Salmon.Variant` size (`DATA_TYPE`, index 17, ids `0/1/2` clamped, default MEDIUM)

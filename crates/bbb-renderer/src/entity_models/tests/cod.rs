@@ -138,7 +138,8 @@ fn cod_textured_mesh_uses_vanilla_geometry_and_animates() {
     let (atlas, _) = build_entity_model_texture_atlas(&cod_texture_images()).unwrap();
     // Vanilla `CodModel` calls `EntityModel(root)`, so the base submit uses the default
     // `entityCutout` render type. The backend folds it into the cutout mesh, but the submission
-    // keeps the vanilla texture, render type, tint, transform, and default collector order.
+    // keeps the vanilla texture, render type, tint, transform, light, overlay, and default
+    // collector order.
     let base = EntityModelInstance::cod(910, [0.0, 64.0, 0.0], 0.0).with_in_water(true);
     let still_meshes = entity_model_textured_meshes(&[base], &atlas);
     assert_cod_base_submission(&still_meshes, base, true);
@@ -162,6 +163,31 @@ fn cod_textured_mesh_uses_vanilla_geometry_and_animates() {
     let beached = entity_model_textured_meshes(&[beached_instance], &atlas);
     assert_cod_base_submission(&beached, beached_instance, false);
     assert_ne!(still_meshes.cutout.vertices, beached.cutout.vertices);
+}
+
+#[test]
+fn cod_submission_preserves_light_and_overlay_metadata() {
+    let (atlas, _) = build_entity_model_texture_atlas(&cod_texture_images()).unwrap();
+    // Vanilla `LivingEntityRenderer.submit` forwards `state.lightCoords` and
+    // `getOverlayCoords(state, whiteOverlayProgress)` into `submitModel`; keep that metadata at the
+    // submission boundary instead of only filling the folded mesh vertices.
+    let light_coords = (7_u32 << 4) | (12_u32 << 20);
+    let instance = EntityModelInstance::cod(911, [0.0, 64.0, 0.0], 0.0)
+        .with_in_water(true)
+        .with_light_coords(light_coords)
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    assert_cod_base_submission(&meshes, instance, true);
+
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.light, [7.0_f32 / 15.0, 12.0_f32 / 15.0]);
+    assert_eq!(submit.overlay, [12.0, 3.0]);
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
 }
 
 fn cod_texture_images() -> Vec<EntityModelTextureImage> {
@@ -190,5 +216,7 @@ fn assert_cod_base_submission(
         submit.transform,
         cod_model_root_transform(instance, in_water)
     );
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, instance.render_state.overlay_coords());
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
 }
