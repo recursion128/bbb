@@ -55,18 +55,19 @@ use super::{
         ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
         ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
         ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
-        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF,
-        CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF,
-        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF,
+        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, BREEZE_EYES_TEXTURE_REF,
+        BREEZE_WIND_TEXTURE_REF, CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF,
+        CREEPER_ARMOR_TEXTURE_REF, CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF,
+        ENDERMAN_EYES_TEXTURE_REF, ENDER_DRAGON_EYES_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF,
         END_CRYSTAL_BEAM_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, END_CRYSTAL_TEXTURE_REF,
         GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
         LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
-        PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF,
-        PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
+        PHANTOM_EYES_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF,
+        PIG_SADDLE_TEXTURE_REF, PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
         SHULKER_BULLET_TEXTURE_REF, SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF,
-        STANDARD_OUTER_ARMOR_DEFORMATION, STRIDER_SADDLE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF,
-        WITHER_ARMOR_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
-        ZOMBIE_TEXTURE_REF,
+        SPIDER_EYES_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION, STRIDER_SADDLE_TEXTURE_REF,
+        WIND_CHARGE_TEXTURE_REF, WITHER_ARMOR_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF,
+        ZOMBIE_HORSE_SADDLE_TEXTURE_REF, ZOMBIE_TEXTURE_REF,
     },
     player_model_root_transform, slime_model_root_transform, squid_model_root_transform,
     tropical_fish_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
@@ -936,14 +937,7 @@ fn render_textured_root_pass(
     pass: EntityModelLayerPass,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    let submit = EntityModelSubmissionEmit::new(
-        pass.render_type,
-        pass.texture,
-        pass.tint,
-        transform,
-        pass.order,
-        pass.submit_sequence,
-    );
+    let submit = textured_layer_submission(pass, transform);
     render_textured_submission(meshes, submit, atlas, |mesh, entry| {
         root.render_textured(
             mesh,
@@ -953,6 +947,33 @@ fn render_textured_root_pass(
             submit.tint,
         );
     });
+}
+
+fn textured_layer_submission(
+    pass: EntityModelLayerPass,
+    transform: Mat4,
+) -> EntityModelSubmissionEmit {
+    let submit = EntityModelSubmissionEmit::new(
+        pass.render_type,
+        pass.texture,
+        pass.tint,
+        transform,
+        pass.order,
+        pass.submit_sequence,
+    );
+    if layer_pass_uses_no_overlay(pass) {
+        submit.with_overlay(ENTITY_VERTEX_NO_OVERLAY)
+    } else {
+        submit
+    }
+}
+
+fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
+    pass.texture == BREEZE_EYES_TEXTURE_REF
+        || pass.texture == ENDERMAN_EYES_TEXTURE_REF
+        || pass.texture == ENDER_DRAGON_EYES_TEXTURE_REF
+        || pass.texture == PHANTOM_EYES_TEXTURE_REF
+        || pass.texture == SPIDER_EYES_TEXTURE_REF
 }
 
 /// Render a model's full textured layer-pass list (already prepared) into `meshes`.
@@ -971,14 +992,7 @@ pub(in crate::entity_models) fn render_textured_layers<M: EntityModel>(
         match pass.visibility {
             // A part-subset emissive overlay (vanilla `retainExactParts`): render only its named parts.
             layers::EntityModelLayerVisibility::RetainedParts(parts) => {
-                let submit = EntityModelSubmissionEmit::new(
-                    pass.render_type,
-                    pass.texture,
-                    pass.tint,
-                    transform,
-                    pass.order,
-                    pass.submit_sequence,
-                );
+                let submit = textured_layer_submission(pass, transform);
                 render_textured_submission(meshes, submit, atlas, |mesh, entry| {
                     model.root().render_textured_retained(
                         mesh,
@@ -992,17 +1006,7 @@ pub(in crate::entity_models) fn render_textured_layers<M: EntityModel>(
                 });
             }
             // `All` (and the player-parts case, whose subset is pre-applied to the tree) render whole.
-            _ => render_textured_pass_ordered(
-                meshes,
-                model,
-                transform,
-                pass.render_type,
-                pass.texture,
-                pass.tint,
-                pass.order,
-                pass.submit_sequence,
-                atlas,
-            ),
+            _ => render_textured_root_pass(meshes, model.root(), transform, pass, atlas),
         }
     }
 }

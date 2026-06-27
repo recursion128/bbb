@@ -640,6 +640,27 @@ fn enderman_textured_mesh_drops_its_head_when_creepy() {
     );
 }
 
+#[test]
+fn enderman_eyes_submission_uses_no_overlay_metadata() {
+    // Vanilla `EyesLayer.submit` forwards the entity light but always uses
+    // `OverlayTexture.NO_OVERLAY`, even when the base body is hurt or white-flashing.
+    let (atlas, _) = build_entity_model_texture_atlas(&enderman_texture_images()).unwrap();
+    let light_coords = (6_u32 << 4) | (10_u32 << 20);
+    let instance = EntityModelInstance::enderman(268, [0.0, 64.0, 0.0], 0.0)
+        .with_light_coords(light_coords)
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    assert_enderman_submissions_match_vanilla(&meshes, instance);
+
+    let base = meshes.submissions[0];
+    let eyes = meshes.submissions[1];
+    assert_eq!(base.overlay, [12.0, 3.0]);
+    assert_eq!(eyes.light, base.light);
+    assert_eq!(eyes.overlay, [0.0, 10.0]);
+    assert_ne!(eyes.overlay, base.overlay);
+}
+
 fn assert_enderman_submissions_match_vanilla(
     meshes: &EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -656,6 +677,12 @@ fn assert_enderman_submissions_match_vanilla(
         assert_eq!(submit.texture, pass.texture);
         assert_eq!(submit.tint, pass.tint);
         assert_eq!(submit.transform, entity_model_root_transform(instance));
+        assert_eq!(submit.light, instance.render_state.shader_light());
+        if pass.texture == ENDERMAN_EYES_TEXTURE_REF {
+            assert_eq!(submit.overlay, [0.0, 10.0]);
+        } else {
+            assert_eq!(submit.overlay, instance.render_state.overlay_coords());
+        }
         assert_eq!(
             (submit.order, submit.submit_sequence),
             (pass.order, pass.submit_sequence)

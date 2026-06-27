@@ -1021,8 +1021,9 @@ When an agent does any of the following, update this file in the same slice:
       `entityCutoutZOffset`, `entityTranslucent`, `Eyes`,
       `breezeWind`, `energySwirl`, and `end_crystal_beam`; `order` mirrors
       `SubmitNodeCollector.order(n)`; `submit_sequence` preserves
-      same-order layer order; and `light` / `overlay` preserve the per-entity
-      `submitModel(... lightCoords, overlayCoords, ...)` inputs while the GPU
+      same-order layer order; and `light` / `overlay` preserve per-submit
+      `submitModel(... lightCoords, overlayCoords, ...)` inputs, including
+      explicit `OverlayTexture.NO_OVERLAY` overrides for vanilla eyes/energy-swirl layers, while the GPU
       backend still folds compatible submits into shared meshes. The render-type expression is pinned by
       vanilla-name and mesh-bucket tests, so `entityCutout`,
       `entityCutoutCull`, `entityCutoutZOffset`, `Eyes`, `breezeWind`, and
@@ -2151,7 +2152,9 @@ When an agent does any of the following, update this file in the same slice:
       submissions before folded geometry checks: base `entityCutout`
       `enderman.png` at `(order, submit_sequence) == (0, 0)` and eyes
       `RenderTypes.eyes` / `enderman_eyes.png` at `(1, 1)`, both with white
-      tint and `entity_model_root_transform`; the held block's own block-model
+      tint, `entity_model_root_transform`, and matching entity light, while the
+      eyes submit now preserves vanilla `OverlayTexture.NO_OVERLAY` even when the
+      base body carries hurt/white overlay; the held block's own block-model
       render is implemented through `CarriedBlockLayer`'s vanilla root
       transform, while the creepy render jitter and lighting remain unsupported
     - iron golem entities as renderer-owned vanilla 26.1
