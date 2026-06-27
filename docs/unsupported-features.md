@@ -3780,10 +3780,11 @@ When an agent does any of the following, update this file in the same slice:
       path, and the static `MinecartModel` (no `setupAnim`) shared by both render
       paths. Tests now pin explicit submission metadata for vanilla `entityCutout`,
       white tint, `entity_model_root_transform`, `minecraft:minecart#main`, and
-      `(order, submit_sequence) == (0, 0)`. The `AbstractMinecartRenderer` rail-follow transform (along-track
+      `(order, submit_sequence) == (0, 0)`, including entity light coords and
+      vanilla `OverlayTexture.NO_OVERLAY`. The `AbstractMinecartRenderer` rail-follow transform (along-track
       position lerp, slope tilt, hover, the TNT/spawner `displayOffset` and 0.75x
       block-content scale), the chest/furnace/hopper/command-block/TNT/spawner content
-      models, lighting, and overlay remain unsupported
+      models, and lighting remain unsupported
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder

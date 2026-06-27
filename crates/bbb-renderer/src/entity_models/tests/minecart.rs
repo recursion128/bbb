@@ -78,7 +78,10 @@ fn minecart_mesh_uses_vanilla_body_layer_geometry() {
 #[test]
 fn minecart_textured_mesh_matches_colored_geometry_and_vanilla_uvs() {
     let (atlas, _) = build_entity_model_texture_atlas(&minecart_texture_images()).unwrap();
-    let instance = EntityModelInstance::minecart(1, [0.0, 64.0, 0.0], 0.0);
+    let instance = EntityModelInstance::minecart(1, [0.0, 64.0, 0.0], 0.0)
+        .with_light_coords((6_u32 << 4) | (13_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
@@ -89,6 +92,9 @@ fn minecart_textured_mesh_matches_colored_geometry_and_vanilla_uvs() {
     assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(submit.transform, entity_model_root_transform(instance));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, [0.0, 10.0]);
+    assert_ne!(submit.overlay, instance.render_state.overlay_coords());
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
     let textured = &meshes.cutout;
     assert_eq!(textured.cutout_faces, 30);
