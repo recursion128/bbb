@@ -998,10 +998,10 @@ When an agent does any of the following, update this file in the same slice:
       rusty/woods/chestnut/striped) × wild/tame/angry × adult/baby
       (`bee[...]`→`wolf_<coat>[_tame|_angry][_baby].png`), the 48 new biome faces
       joining the master atlas array (→359)
-    - add armor, head-shake/begging tilt, colored-path force-transparent /
-      outline presentation, the white overlay, and remaining
-      render-state extraction parity (sitting/head/tail/walk pose, wet shade
-      tint, water-shake roll pose, packed lighting, and the hurt red overlay are now applied)
+    - finish colored-path force-transparent / outline presentation and remaining
+      render-state extraction parity (armor, sitting/head/tail/walk pose, wet shade
+      tint, water-shake roll pose, packed lighting, white overlay, and the hurt
+      red overlay are now applied)
   - Implement vanilla dropped-item follow-up rendering:
     - ground-context model rendering
     - bobbing
@@ -1622,7 +1622,9 @@ When an agent does any of the following, update this file in the same slice:
       route through `entity_model_textured_meshes`, pinning selected wild/tame/angry/variant
       base textures, adult/baby collar textures, armor/crack textures, `entityCutout` /
       `armorCutoutNoCull` / `armorTranslucent` render type names, tints, `entity_model_root_transform`,
-      light/overlay metadata, and explicit `(order, submit_sequence)` before folded cutout/translucent geometry checks,
+      base entity light plus hurt/white overlay versus collar/armor/crack
+      `OverlayTexture.NO_OVERLAY`, and explicit `(order, submit_sequence)` before
+      folded cutout/translucent light/overlay geometry checks,
       including the texture-backed invisible-but-visible-to-client base body
       branch (`entityTranslucentCullItemTarget`, `38/255` alpha, base order
       `(0,0)`) while the collar layer remains skipped by `state.isInvisible`.

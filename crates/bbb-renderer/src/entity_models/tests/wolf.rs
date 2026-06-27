@@ -13,7 +13,7 @@ const ADULT_WOLF_TAIL_POSE: PartPose = PartPose {
 #[test]
 fn wolf_textured_mesh_uses_vanilla_uvs_and_collar_tint() {
     let (atlas, _) = build_entity_model_texture_atlas(&wolf_texture_images()).unwrap();
-    let wolf = EntityModelInstance::wolf_state(
+    let wolf = wolf_submission_probe(EntityModelInstance::wolf_state(
         305,
         [0.0, 64.0, 0.0],
         0.0,
@@ -22,7 +22,7 @@ fn wolf_textured_mesh_uses_vanilla_uvs_and_collar_tint() {
         false,
         false,
         Some(EntityDyeColor::Blue),
-    );
+    ));
     let meshes = entity_model_textured_meshes(&[wolf], &atlas);
     assert_wolf_submissions_match_vanilla(&meshes, wolf);
     let mesh = &meshes.cutout;
@@ -37,6 +37,14 @@ fn wolf_textured_mesh_uses_vanilla_uvs_and_collar_tint() {
     assert_eq!(
         mesh.vertices[264].tint,
         EntityDyeColor::Blue.texture_diffuse_color()
+    );
+    assert_eq!(mesh.vertices[0].light, wolf.render_state.shader_light());
+    assert_eq!(mesh.vertices[264].light, wolf.render_state.shader_light());
+    assert_eq!(mesh.vertices[0].overlay, wolf.render_state.overlay_coords());
+    assert_eq!(mesh.vertices[264].overlay, [0.0, 10.0]);
+    assert_ne!(
+        mesh.vertices[264].overlay,
+        wolf.render_state.overlay_coords()
     );
 
     let untamed = EntityModelInstance::wolf_state(
@@ -1530,6 +1538,7 @@ fn assert_wolf_submissions_match_vanilla(
                 pass.tint,
                 pass.order,
                 pass.submit_sequence,
+                matches!(pass.kind, EntityModelLayerKind::WolfCollar),
             )
         }),
     );
@@ -1551,6 +1560,7 @@ fn assert_wolf_submissions_match_vanilla(
                         tint,
                         1 + layer_index as i32,
                         submit_sequence,
+                        true,
                     ));
                     submit_sequence += 1;
                 }
@@ -1561,6 +1571,7 @@ fn assert_wolf_submissions_match_vanilla(
                         [1.0, 1.0, 1.0, 1.0],
                         3,
                         submit_sequence,
+                        true,
                     ));
                 }
             }
@@ -1569,7 +1580,8 @@ fn assert_wolf_submissions_match_vanilla(
 
     assert_eq!(meshes.submissions.len(), expected.len());
     let expected_transform = entity_model_root_transform(instance);
-    for (submit, (render_type, texture, tint, order, sequence)) in
+    let base_overlay = instance.render_state.overlay_coords();
+    for (submit, (render_type, texture, tint, order, sequence, no_overlay)) in
         meshes.submissions.iter().zip(expected.iter())
     {
         assert_eq!(submit.render_type, *render_type);
@@ -1584,12 +1596,51 @@ fn assert_wolf_submissions_match_vanilla(
         assert_eq!(submit.tint, *tint);
         assert_eq!(submit.transform, expected_transform);
         assert_eq!((submit.order, submit.submit_sequence), (*order, *sequence));
+        assert_eq!(submit.light, instance.render_state.shader_light());
+        let expected_overlay = if *no_overlay {
+            [0.0, 10.0]
+        } else {
+            base_overlay
+        };
+        assert_eq!(submit.overlay, expected_overlay);
+        if *no_overlay && expected_overlay != base_overlay {
+            assert_ne!(submit.overlay, base_overlay);
+        }
     }
 
-    let expects_translucent = expected.iter().any(|(render_type, _, _, _, _)| {
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == instance.render_state.shader_light()));
+    if expected
+        .iter()
+        .any(|(_, _, _, _, _, no_overlay)| *no_overlay)
+    {
+        assert!(meshes
+            .cutout
+            .vertices
+            .iter()
+            .all(|vertex| { vertex.overlay == base_overlay || vertex.overlay == [0.0, 10.0] }));
+    } else {
+        assert!(meshes
+            .cutout
+            .vertices
+            .iter()
+            .all(|vertex| vertex.overlay == base_overlay));
+    }
+
+    let expects_translucent = expected.iter().any(|(render_type, _, _, _, _, _)| {
         *render_type == EntityModelLayerRenderType::ArmorTranslucent
     });
     assert_wolf_folded_meshes_match_submission_buckets(meshes, expects_translucent);
+}
+
+fn wolf_submission_probe(instance: EntityModelInstance) -> EntityModelInstance {
+    instance
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true)
 }
 
 fn wolf_expected_armor_layer_tint(dyeable: bool, dye: Option<u32>) -> Option<[f32; 4]> {
