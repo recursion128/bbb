@@ -46,6 +46,34 @@ fn y_extent(positions: &[[f32; 3]]) -> f32 {
     max_y - min_y
 }
 
+fn assert_elytra_vertices_have_vanilla_metadata(
+    meshes: &EntityModelTexturedMeshes,
+    atlas: &EntityModelTextureAtlasLayout,
+    instance: EntityModelInstance,
+) {
+    let entry = atlas
+        .entries
+        .iter()
+        .find(|entry| entry.texture == ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF)
+        .expect("elytra atlas entry");
+    let vertices: Vec<_> = meshes
+        .cutout
+        .vertices
+        .iter()
+        .filter(|vertex| {
+            vertex.uv[0] >= entry.uv.min[0]
+                && vertex.uv[0] <= entry.uv.max[0]
+                && vertex.uv[1] >= entry.uv.min[1]
+                && vertex.uv[1] <= entry.uv.max[1]
+        })
+        .collect();
+    assert_eq!(vertices.len(), 48);
+    assert!(vertices.iter().all(|vertex| {
+        vertex.light == instance.render_state.shader_light() && vertex.overlay == [0.0, 10.0]
+    }));
+    assert_ne!(instance.render_state.overlay_coords(), [0.0, 10.0]);
+}
+
 #[test]
 fn non_player_humanoid_wings_layer_uses_static_equipment_texture_submission() {
     // Vanilla `HumanoidMobRenderer` adds `WingsLayer` to humanoid mobs. The profile
@@ -69,7 +97,10 @@ fn non_player_humanoid_wings_layer_uses_static_equipment_texture_submission() {
             use_player_texture: true,
         }))
         .with_chest_equipment_has_wings(true)
-        .with_player_elytra_texture(Some(profile_elytra));
+        .with_player_elytra_texture(Some(profile_elytra))
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
 
     let meshes = entity_model_textured_meshes_with_dynamic_textures(
         &[instance],
@@ -87,15 +118,19 @@ fn non_player_humanoid_wings_layer_uses_static_equipment_texture_submission() {
         wings_submit.render_type,
         EntityModelLayerRenderType::ArmorCutoutNoCull
     );
+    assert_eq!(wings_submit.render_type.vanilla_name(), "armorCutoutNoCull");
     assert_eq!(wings_submit.dynamic_player_texture, None);
     assert_eq!(wings_submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         wings_submit.transform,
         entity_model_root_transform(instance) * Mat4::from_translation(Vec3::Z * 0.125)
     );
+    assert_eq!(wings_submit.light, instance.render_state.shader_light());
+    assert_eq!(wings_submit.overlay, [0.0, 10.0]);
     assert_eq!((wings_submit.order, wings_submit.submit_sequence), (0, 2));
     assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
     assert_eq!(elytra_vertex_positions(&meshes, &atlas).len(), 48);
+    assert_elytra_vertices_have_vanilla_metadata(&meshes, &atlas, instance);
 }
 
 #[test]
@@ -117,7 +152,10 @@ fn small_armor_stand_wings_layer_uses_baby_elytra_model() {
         DEFAULT_ARMOR_STAND_MODEL_POSE,
     )
     .with_chest_wings_layer(layer)
-    .with_chest_equipment_has_wings(true);
+    .with_chest_equipment_has_wings(true)
+    .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
     let small = EntityModelInstance::armor_stand(
         83,
         [0.0, 64.0, 0.0],
@@ -128,7 +166,10 @@ fn small_armor_stand_wings_layer_uses_baby_elytra_model() {
         DEFAULT_ARMOR_STAND_MODEL_POSE,
     )
     .with_chest_wings_layer(layer)
-    .with_chest_equipment_has_wings(true);
+    .with_chest_equipment_has_wings(true)
+    .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
 
     let adult_meshes =
         entity_model_textured_meshes_with_dynamic_textures(&[adult], &atlas, None, None);
@@ -139,6 +180,8 @@ fn small_armor_stand_wings_layer_uses_baby_elytra_model() {
 
     assert_eq!(adult_positions.len(), 48);
     assert_eq!(small_positions.len(), 48);
+    assert_elytra_vertices_have_vanilla_metadata(&adult_meshes, &atlas, adult);
+    assert_elytra_vertices_have_vanilla_metadata(&small_meshes, &atlas, small);
     assert!(
         (y_extent(&adult_positions) * 0.5 - y_extent(&small_positions)).abs() < 1.0e-5,
         "small armor stand elytra should use the half-scale baby layer"
@@ -160,10 +203,16 @@ fn baby_zombie_wings_layer_uses_baby_elytra_model() {
     });
     let adult = EntityModelInstance::zombie(84, [0.0, 64.0, 0.0], 0.0, false)
         .with_chest_wings_layer(layer)
-        .with_chest_equipment_has_wings(true);
+        .with_chest_equipment_has_wings(true)
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let baby = EntityModelInstance::zombie(85, [0.0, 64.0, 0.0], 0.0, true)
         .with_chest_wings_layer(layer)
-        .with_chest_equipment_has_wings(true);
+        .with_chest_equipment_has_wings(true)
+        .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
 
     let adult_meshes =
         entity_model_textured_meshes_with_dynamic_textures(&[adult], &atlas, None, None);
@@ -174,6 +223,8 @@ fn baby_zombie_wings_layer_uses_baby_elytra_model() {
 
     assert_eq!(adult_positions.len(), 48);
     assert_eq!(baby_positions.len(), 48);
+    assert_elytra_vertices_have_vanilla_metadata(&adult_meshes, &atlas, adult);
+    assert_elytra_vertices_have_vanilla_metadata(&baby_meshes, &atlas, baby);
     assert!(
         (y_extent(&adult_positions) * 0.5 - y_extent(&baby_positions)).abs() < 1.0e-5,
         "baby zombie elytra should use the half-scale baby layer"

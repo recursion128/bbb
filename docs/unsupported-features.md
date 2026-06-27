@@ -1367,7 +1367,9 @@ When an agent does any of the following, update this file in the same slice:
         vanilla `LivingEntity.elytraAnimationState` rotX/Y/Z into the renderer,
         and the same WINGS path now covers humanoid mobs, armor stands (small
         armor stands select the baby layer through `ArmorStand.isBaby()`), and
-        baby humanoid mob `ELYTRA_BABY` geometry. Player cloak interpolation is
+        baby humanoid mob `ELYTRA_BABY` geometry; their static equipment wings
+        submissions now also pin entity light plus `OverlayTexture.NO_OVERLAY`,
+        with folded elytra vertices inheriting that metadata. Player cloak interpolation is
         now also covered: world tracks the vanilla `ClientAvatarState` cloak
         lag, partial lerps it, applies `AvatarRenderer.extractCapeState`
         flap/lean/lean2 clamps and fall-flying lean suppression, and native
