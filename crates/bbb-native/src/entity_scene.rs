@@ -1323,6 +1323,7 @@ fn entity_model_instance(
         .with_head_look(net_head_yaw, head_pitch)
         .with_arrow_shake(source.arrow_shake)
         .with_invisible(entity_invisible(&source.data_values))
+        .with_invisible_to_player(source.invisible_to_player)
         .with_polar_bear_stand_scale(source.polar_bear_stand_scale)
         .with_light_coords(light_coords)
         .with_has_red_overlay(source.has_red_overlay)
@@ -10221,6 +10222,34 @@ mod tests {
         );
         // The shared invisible flag is now projected uniformly into the render state.
         assert!(instances[0].render_state.invisible);
+        assert!(instances[0].render_state.invisible_to_player);
+    }
+
+    #[test]
+    fn entity_model_instances_project_spectator_visible_invisible_sheep_from_world() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            113,
+            VANILLA_ENTITY_TYPE_SHEEP_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 113,
+            values: vec![
+                protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_INVISIBLE),
+                protocol_byte_data(SHEEP_WOOL_DATA_ID, 14),
+            ],
+        }));
+        world.apply_game_event(bbb_protocol::packets::GameEvent {
+            event_id: 3,
+            param: 3.0,
+        });
+
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 0.25);
+
+        assert_eq!(instances.len(), 1);
+        assert!(instances[0].render_state.invisible);
+        assert!(!instances[0].render_state.invisible_to_player);
     }
 
     #[test]
@@ -11619,6 +11648,7 @@ mod tests {
         );
         // The shared invisible flag is now projected uniformly into the render state.
         assert!(instances[0].render_state.invisible);
+        assert!(instances[0].render_state.invisible_to_player);
     }
 
     #[test]

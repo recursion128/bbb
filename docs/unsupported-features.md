@@ -348,9 +348,11 @@ When an agent does any of the following, update this file in the same slice:
       self-check in the overlay layers. The texture-backed
       `isInvisible && !isInvisibleToPlayer` branch now records the base body as
       `entityTranslucentCullItemTarget` with the vanilla `0x26ffffff`
-      force-transparent alpha while invisible-gated layers still skip. Colored-path
-      force-transparent output and glowing-outline cases remain deferred under the
-      `outlineColor` slot.
+      force-transparent alpha while invisible-gated layers still skip. World/native
+      projection now clears `isInvisibleToPlayer` for spectator viewers, matching
+      `Entity.isInvisibleTo(player)`'s spectator branch; same-team friendly-invisible
+      visibility, colored-path force-transparent output, and glowing-outline cases
+      remain deferred under the `outlineColor` slot.
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
       proportions applied in model `setupAnim`, distinct from the now-projected

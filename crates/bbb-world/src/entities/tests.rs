@@ -9,19 +9,19 @@ use bbb_protocol::packets::{
     EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
     EntityEvent as ProtocolEntityEvent, EntityMove as ProtocolEntityMove,
     EntityPositionSync as ProtocolEntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
-    GameProfile as ProtocolGameProfile, GameType as ProtocolGameType,
-    HurtAnimation as ProtocolHurtAnimation, InteractionHand, ItemStackSummary,
-    ItemStackSummary as ProtocolItemStackSummary, MinecartStep as ProtocolMinecartStep,
-    MoveMinecartAlongTrack as ProtocolMoveMinecartAlongTrack, MoveVehicle as ProtocolMoveVehicle,
-    PlayLogin as ProtocolPlayLogin, PlayerInfoAction as ProtocolPlayerInfoAction,
-    PlayerInfoEntry as ProtocolPlayerInfoEntry, PlayerInfoUpdate as ProtocolPlayerInfoUpdate,
-    RemoveEntities as ProtocolRemoveEntities, RotateHead as ProtocolRotateHead,
-    SetEntityData as ProtocolSetEntityData, SetEntityLink as ProtocolSetEntityLink,
-    SetEntityMotion as ProtocolSetEntityMotion, SetEquipment as ProtocolSetEquipment,
-    SetPassengers as ProtocolSetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
-    TakeItemEntity as ProtocolTakeItemEntity, TeleportEntity as ProtocolTeleportEntity,
-    UpdateAttributes as ProtocolUpdateAttributes, Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_Y,
-    PLAYER_RELATIVE_X,
+    GameEvent as ProtocolGameEvent, GameProfile as ProtocolGameProfile,
+    GameType as ProtocolGameType, HurtAnimation as ProtocolHurtAnimation, InteractionHand,
+    ItemStackSummary, ItemStackSummary as ProtocolItemStackSummary,
+    MinecartStep as ProtocolMinecartStep, MoveMinecartAlongTrack as ProtocolMoveMinecartAlongTrack,
+    MoveVehicle as ProtocolMoveVehicle, PlayLogin as ProtocolPlayLogin,
+    PlayerInfoAction as ProtocolPlayerInfoAction, PlayerInfoEntry as ProtocolPlayerInfoEntry,
+    PlayerInfoUpdate as ProtocolPlayerInfoUpdate, RemoveEntities as ProtocolRemoveEntities,
+    RotateHead as ProtocolRotateHead, SetEntityData as ProtocolSetEntityData,
+    SetEntityLink as ProtocolSetEntityLink, SetEntityMotion as ProtocolSetEntityMotion,
+    SetEquipment as ProtocolSetEquipment, SetPassengers as ProtocolSetPassengers,
+    SetPlayerInventory as ProtocolSetPlayerInventory, TakeItemEntity as ProtocolTakeItemEntity,
+    TeleportEntity as ProtocolTeleportEntity, UpdateAttributes as ProtocolUpdateAttributes,
+    Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_X,
 };
 
 #[test]
@@ -950,6 +950,67 @@ fn entity_model_sources_project_narrow_render_state_from_pick_targets() {
     store.advance_entity_client_animations(3);
     let sources = store.entity_model_sources_at_partial_tick(0.5);
     assert_eq!(sources[0].age_ticks, 3);
+}
+
+#[test]
+fn entity_model_sources_project_invisible_to_player_for_spectator_viewer() {
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
+    const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
+    const ENTITY_SHARED_FLAG_INVISIBLE: i8 = 1 << 5;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        35,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 35,
+        values: vec![protocol_byte_data(
+            ENTITY_SHARED_FLAGS_DATA_ID,
+            ENTITY_SHARED_FLAG_INVISIBLE,
+        )],
+    }));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        36,
+        VANILLA_ENTITY_TYPE_MINECART_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 36,
+        values: vec![protocol_byte_data(
+            ENTITY_SHARED_FLAGS_DATA_ID,
+            ENTITY_SHARED_FLAG_INVISIBLE,
+        )],
+    }));
+
+    let survival = store.entity_model_sources_at_partial_tick(1.0);
+    let survival_chicken = survival
+        .iter()
+        .find(|source| source.entity_id == 35)
+        .unwrap();
+    let survival_minecart = survival
+        .iter()
+        .find(|source| source.entity_id == 36)
+        .unwrap();
+    assert!(survival_chicken.invisible_to_player);
+    assert!(survival_minecart.invisible_to_player);
+
+    store.apply_game_event(ProtocolGameEvent {
+        event_id: 3,
+        param: 3.0,
+    });
+
+    let spectator = store.entity_model_sources_at_partial_tick(1.0);
+    let spectator_chicken = spectator
+        .iter()
+        .find(|source| source.entity_id == 35)
+        .unwrap();
+    let spectator_minecart = spectator
+        .iter()
+        .find(|source| source.entity_id == 36)
+        .unwrap();
+    assert!(!spectator_chicken.invisible_to_player);
+    assert!(spectator_minecart.invisible_to_player);
 }
 
 #[test]
@@ -11124,6 +11185,14 @@ fn protocol_bool_data(data_id: u8, value: bool) -> ProtocolEntityDataValue {
         data_id,
         serializer_id: 8,
         value: EntityDataValueKind::Boolean(value),
+    }
+}
+
+fn protocol_byte_data(data_id: u8, value: i8) -> ProtocolEntityDataValue {
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id: 0,
+        value: EntityDataValueKind::Byte(value),
     }
 }
 

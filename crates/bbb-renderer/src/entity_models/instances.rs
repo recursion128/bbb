@@ -845,12 +845,13 @@ entity_render_state! {
     /// path hides the model when [`Self::invisible_to_player`] is true, and uses
     /// `entityTranslucentCullItemTarget` for the base body when the entity is
     /// invisible but still visible to this client. Glowing outline remains deferred.
-    (with_invisible) invisible: bool = false;
-    /// Vanilla `LivingEntityRenderState.isInvisibleToPlayer`: true when the entity
-    /// is invisible to the local player. Defaults true so existing `with_invisible(true)`
-    /// tests keep the non-spectator fully-hidden branch; set false for the vanilla
+    () invisible: bool = false;
+    /// Vanilla `LivingEntityRenderState.isInvisibleToPlayer`: `state.isInvisible
+    /// && entity.isInvisibleTo(minecraft.player)`, so visible entities default to
+    /// false. Use [`EntityModelInstance::with_invisible`] for the ordinary
+    /// non-spectator hidden branch, then override this to false for the vanilla
     /// spectator/self-visible translucent branch.
-    (with_invisible_to_player) invisible_to_player: bool = true;
+    (with_invisible_to_player) invisible_to_player: bool = false;
     /// Vanilla `WolfRenderState.tailAngle` (`Wolf.getTailAngle()`): the wolf tail's
     /// `xRot`. An angry wolf returns `1.5393804`; a tame wolf droops its tail with
     /// damage, `(0.55 - (maxHealth - health) / maxHealth * 0.4) * π` (tame `maxHealth`
@@ -1040,6 +1041,18 @@ impl EntityRenderState {
     pub(in crate::entity_models) fn overlay_coords(&self) -> [f32; 2] {
         let u = (self.white_overlay_progress.clamp(0.0, 1.0) * 15.0).floor();
         [u, if self.has_red_overlay { 3.0 } else { 10.0 }]
+    }
+}
+
+impl EntityModelInstance {
+    /// Sets the vanilla `LivingEntityRenderState.isInvisible` flag. A true value
+    /// also selects the ordinary non-spectator `isInvisibleToPlayer` baseline;
+    /// callers can then set `with_invisible_to_player(false)` for spectator/self-visible
+    /// translucent rendering.
+    pub fn with_invisible(mut self, invisible: bool) -> Self {
+        self.render_state.invisible = invisible;
+        self.render_state.invisible_to_player = invisible;
+        self
     }
 }
 
@@ -2323,7 +2336,7 @@ mod tests {
                 elytra_rot_y: ELYTRA_DEFAULT_Y_ROT,
                 elytra_rot_z: ELYTRA_DEFAULT_Z_ROT,
                 invisible: false,
-                invisible_to_player: true,
+                invisible_to_player: false,
                 wolf_tail_angle: std::f32::consts::PI / 5.0,
                 wolf_sitting: false,
                 wolf_wet_shade: 1.0,

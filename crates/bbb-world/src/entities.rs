@@ -31,8 +31,8 @@ pub(crate) use components::{
     EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
     EntityMobEffects, EntityMount, EntityTransform, EntityTransientEvents,
 };
-use dimensions::vanilla_client_position_for_entity_data;
 pub use dimensions::EntityPickBoundsState;
+use dimensions::{vanilla_client_position_for_entity_data, vanilla_living_entity_type};
 pub use dragon::{DragonFlightHistorySample, DragonFlightHistoryState, EnderDragonAnimationState};
 use movement::entity_vec3;
 use projectiles::initial_hurting_projectile_state;
@@ -373,6 +373,13 @@ pub struct EntityModelSourceState {
     /// non-living entities and any entity that is not frozen solid.
     #[serde(default)]
     pub is_fully_frozen: bool,
+    /// Vanilla `LivingEntityRenderState.isInvisibleToPlayer`: `state.isInvisible
+    /// && entity.isInvisibleTo(minecraft.player)`. This is `false` for spectator
+    /// viewers (and later same-team viewers that can see friendly invisibles);
+    /// deserialized legacy rows default to `true` to preserve the old hidden
+    /// invisible-entity behavior when paired with an invisible shared flag.
+    #[serde(default = "entity_model_source_default_true")]
+    pub invisible_to_player: bool,
     /// Vanilla `Mob.isAggressive()` (`DATA_MOB_FLAGS_ID & 4`): whether the mob is in its
     /// aggressive AI state, which deepens the held-out `animateZombieArms` arm drop
     /// (`-π / 1.5` aggressive vs `-π / 2.25` calm). Projected only for the zombie-model
@@ -1493,6 +1500,15 @@ impl WorldStore {
                 source.light = self
                     .sample_block_light(entity_light_block_pos(target.position))
                     .unwrap_or(ENTITY_LIGHT_PROBE_FULL_BRIGHT);
+                if source.invisible_to_player
+                    && self.local_player_is_spectator()
+                    && vanilla_living_entity_type(source.entity_type_id)
+                {
+                    // Vanilla `Entity.isInvisibleTo(player)`: spectator viewers can see invisible
+                    // entities, so `LivingEntityRenderState.isInvisibleToPlayer` is false and the
+                    // living renderer takes the force-transparent branch instead of the hidden branch.
+                    source.invisible_to_player = false;
+                }
                 // Vanilla `LivingEntityRenderState.isInWater = entity.isInWater()`: project
                 // the `wasTouchingWater` overlap from the entity's interpolated world AABB
                 // (`position + EntityDimensions`) against the chunk fluid state.
