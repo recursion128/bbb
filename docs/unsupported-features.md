@@ -1758,7 +1758,9 @@ When an agent does any of the following, update this file in the same slice:
       `entityTranslucent` `horse_markings_whitedots.png` submission before only
       the folded markings geometry is suppressed, and that a saddled horse still records the
       `armorCutoutNoCull` `horse_saddle/saddle.png` submission before only the
-      folded saddle geometry is suppressed.
+      folded saddle geometry is suppressed. Missing-atlas coverage now also pins
+      that an adult iron horse body-armor submission is still recorded before
+      only the folded armor geometry is suppressed.
       The ridden/eat/stand/mouth poses, the tail's `ageInTicks` yRot wag, and broader lighting presentation remain
       unsupported
     - camel and camel_husk entities as renderer-owned vanilla 26.1 body-layer

@@ -2018,6 +2018,50 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
 }
 
 #[test]
+fn horse_body_armor_submission_survives_missing_texture_atlas_entry() {
+    let (atlas, _) =
+        build_entity_model_texture_atlas(&texture_images(&[HORSE_WHITE_TEXTURE_REF])).unwrap();
+    let horse = EntityModelInstance::horse(186, [0.0, 64.0, 0.0], 0.0, false)
+        .with_light_coords((4_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true)
+        .with_equine_body_armor(Some(EntityArmorMaterial::Iron));
+
+    let meshes = entity_model_textured_meshes(&[horse], &atlas);
+    assert_equine_submissions_match_vanilla(&meshes, horse);
+    assert_eq!(meshes.submissions.len(), 2);
+    assert_eq!(meshes.cutout.vertices.len(), 288);
+
+    let base = meshes.submissions[0];
+    let armor = meshes.submissions[1];
+    assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(base.texture, HORSE_WHITE_TEXTURE_REF);
+    assert_eq!(
+        base.transform,
+        mesh_transformer_scaled_model_root_transform(horse, HORSE_SCALE)
+    );
+    assert_eq!(
+        armor.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(armor.render_type.vanilla_name(), "armorCutoutNoCull");
+    assert_eq!(armor.texture, HORSE_BODY_IRON_TEXTURE_REF);
+    assert_eq!(armor.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(armor.transform, base.transform);
+    assert_eq!(armor.light, horse.render_state.shader_light());
+    assert_eq!(armor.overlay, [0.0, 10.0]);
+    assert_eq!((armor.order, armor.submit_sequence), (2, 2));
+
+    assert_textured_vertices_match_submission(&meshes.cutout.vertices, base);
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.overlay != armor.overlay));
+}
+
+#[test]
 fn equine_saddle_layer_uses_family_specific_models_and_textures() {
     let (atlas, _) = build_entity_model_texture_atlas(&texture_images(&[
         DONKEY_TEXTURE_REF,
