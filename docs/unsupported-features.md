@@ -2126,7 +2126,10 @@ When an agent does any of the following, update this file in the same slice:
       metadata, plus `LivingEntityRenderer` entity light and the base full
       hurt/white overlay versus `DrownedOuterLayer` / `VillagerProfessionLayer`
       zero-white overlay split before folded cutout geometry, tint, transform, and
-      animation checks; the piglin
+      animation checks; missing-atlas coverage now proves zombie-villager adult
+      type/profession/level overlays and baby type overlays still record their
+      vanilla `entityCutout` submissions while only folded overlay geometry is
+      suppressed; the piglin
       dance/attack/crossbow-hold/crossbow-charge/admiring arm poses ARE all implemented
       (see the piglin note);
       the zombie-arm attack swing IS implemented (the

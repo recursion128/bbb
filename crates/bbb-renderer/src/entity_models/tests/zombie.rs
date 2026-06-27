@@ -1532,6 +1532,144 @@ fn zombie_villager_profession_layers_render_with_zombie_textures_and_no_hat_rule
     }
 }
 
+#[test]
+fn zombie_villager_profession_submissions_survive_missing_texture_atlas_entries() {
+    // Vanilla `ZombieVillagerRenderer` installs `VillagerProfessionLayer` with the
+    // `zombie_villager` texture path, so type/profession/level submits keep the same orders.
+    let (atlas, _) = build_entity_model_texture_atlas(&texture_images(&[
+        ZOMBIE_VILLAGER_TEXTURE_REF,
+        ZOMBIE_VILLAGER_BABY_TEXTURE_REF,
+    ]))
+    .unwrap();
+
+    let adult = zombie_submission_probe(
+        EntityModelInstance::zombie_variant(
+            405,
+            [0.0, 64.0, 0.0],
+            0.0,
+            ZombieVariantModelFamily::ZombieVillager,
+            false,
+        )
+        .with_villager_model_data(VillagerModelData::new(
+            VillagerModelType::Snow,
+            VillagerModelProfession::Farmer,
+            4,
+        )),
+    );
+    let adult_meshes = entity_model_textured_meshes(&[adult], &atlas);
+    assert_zombie_family_folded_meshes_are_cutout_only(&adult_meshes);
+    assert_eq!(adult_meshes.submissions.len(), 4);
+    assert_eq!(adult_meshes.cutout.vertices.len(), 240);
+    let adult_base_overlay = adult.render_state.overlay_coords();
+    let adult_layer_overlay = [0.0, adult_base_overlay[1]];
+    let adult_transform = entity_model_root_transform(adult);
+    for (submit, texture, order, sequence, overlay) in [
+        (
+            adult_meshes.submissions[0],
+            ZOMBIE_VILLAGER_TEXTURE_REF,
+            0,
+            0,
+            adult_base_overlay,
+        ),
+        (
+            adult_meshes.submissions[1],
+            zombie_villager_type_texture_ref(VillagerModelType::Snow, false),
+            1,
+            1,
+            adult_layer_overlay,
+        ),
+        (
+            adult_meshes.submissions[2],
+            zombie_villager_profession_texture_ref(VillagerModelProfession::Farmer).unwrap(),
+            2,
+            2,
+            adult_layer_overlay,
+        ),
+        (
+            adult_meshes.submissions[3],
+            zombie_villager_level_texture_ref(4),
+            3,
+            3,
+            adult_layer_overlay,
+        ),
+    ] {
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(submit.texture, texture);
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(submit.transform, adult_transform);
+        assert_eq!(submit.light, adult.render_state.shader_light());
+        assert_eq!(submit.overlay, overlay);
+        assert_eq!((submit.order, submit.submit_sequence), (order, sequence));
+    }
+    assert!(adult_meshes.cutout.vertices.iter().all(|vertex| {
+        vertex.tint == [1.0, 1.0, 1.0, 1.0]
+            && vertex.light == adult.render_state.shader_light()
+            && vertex.overlay == adult_base_overlay
+    }));
+    assert!(adult_meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.overlay != adult_layer_overlay));
+
+    let baby = zombie_submission_probe(
+        EntityModelInstance::zombie_variant(
+            406,
+            [2.0, 64.0, 0.0],
+            0.0,
+            ZombieVariantModelFamily::ZombieVillager,
+            true,
+        )
+        .with_villager_model_data(VillagerModelData::new(
+            VillagerModelType::Plains,
+            VillagerModelProfession::Mason,
+            5,
+        )),
+    );
+    let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
+    assert_zombie_family_folded_meshes_are_cutout_only(&baby_meshes);
+    assert_eq!(baby_meshes.submissions.len(), 2);
+    assert_eq!(baby_meshes.cutout.vertices.len(), 240);
+    let baby_base_overlay = baby.render_state.overlay_coords();
+    let baby_layer_overlay = [0.0, baby_base_overlay[1]];
+    for (submit, texture, order, sequence, overlay) in [
+        (
+            baby_meshes.submissions[0],
+            ZOMBIE_VILLAGER_BABY_TEXTURE_REF,
+            0,
+            0,
+            baby_base_overlay,
+        ),
+        (
+            baby_meshes.submissions[1],
+            zombie_villager_type_texture_ref(VillagerModelType::Plains, true),
+            1,
+            1,
+            baby_layer_overlay,
+        ),
+    ] {
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(submit.texture, texture);
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(submit.transform, entity_model_root_transform(baby));
+        assert_eq!(submit.light, baby.render_state.shader_light());
+        assert_eq!(submit.overlay, overlay);
+        assert_eq!((submit.order, submit.submit_sequence), (order, sequence));
+    }
+    assert!(baby_meshes.cutout.vertices.iter().all(|vertex| {
+        vertex.tint == [1.0, 1.0, 1.0, 1.0]
+            && vertex.light == baby.render_state.shader_light()
+            && vertex.overlay == baby_base_overlay
+    }));
+    assert!(baby_meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.overlay != baby_layer_overlay));
+}
+
 fn zombie_submission_probe(instance: EntityModelInstance) -> EntityModelInstance {
     instance
         .with_light_coords((7_u32 << 4) | (9_u32 << 20))
