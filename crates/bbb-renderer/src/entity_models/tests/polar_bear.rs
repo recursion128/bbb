@@ -1,5 +1,6 @@
 use super::*;
 
+use crate::entity_models::colored::polar_bear_model_root_transform;
 use crate::entity_models::model::ModelCube;
 
 #[test]
@@ -124,6 +125,7 @@ fn polar_bear_textured_layer_passes_match_vanilla_renderer_model_choice() {
         adult[0].render_type,
         EntityModelLayerRenderType::EntityCutout
     );
+    assert_eq!(adult[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(adult[0].model_layer, MODEL_LAYER_POLAR_BEAR);
     assert_eq!(adult[0].texture, POLAR_BEAR_TEXTURE_REF);
     assert_eq!(adult[0].visibility, EntityModelLayerVisibility::All);
@@ -137,6 +139,7 @@ fn polar_bear_textured_layer_passes_match_vanilla_renderer_model_choice() {
         baby[0].render_type,
         EntityModelLayerRenderType::EntityCutout
     );
+    assert_eq!(baby[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(baby[0].model_layer, MODEL_LAYER_POLAR_BEAR_BABY);
     assert_eq!(baby[0].texture, POLAR_BEAR_BABY_TEXTURE_REF);
     assert_eq!(baby[0].visibility, EntityModelLayerVisibility::All);
@@ -201,28 +204,34 @@ fn entity_texture_atlas_stitches_official_polar_bear_png_slots() {
 fn polar_bear_textured_mesh_uses_vanilla_uvs_tints_and_scale() {
     let (atlas, _) = build_entity_model_texture_atlas(&polar_bear_texture_images()).unwrap();
     let adult = EntityModelInstance::polar_bear(212, [0.0, 64.0, 0.0], 0.0, false);
-    let adult_mesh = entity_model_textured_mesh(&[adult], &atlas);
-    assert_eq!(adult_mesh.cutout_faces, 60);
-    assert_eq!(adult_mesh.vertices.len(), 240);
-    assert_eq!(adult_mesh.indices.len(), 360);
-    assert_close2(adult_mesh.vertices[0].uv, [14.0 / 128.0, 0.0]);
-    assert_eq!(adult_mesh.vertices[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    let (adult_textured_min, adult_textured_max) = textured_mesh_extents(&adult_mesh);
+    let adult_meshes = entity_model_textured_meshes(&[adult], &atlas);
+    assert_polar_bear_submissions_match_vanilla(&adult_meshes, adult);
+    assert_eq!(adult_meshes.cutout.cutout_faces, 60);
+    assert_eq!(adult_meshes.cutout.vertices.len(), 240);
+    assert_eq!(adult_meshes.cutout.indices.len(), 360);
+    assert_close2(adult_meshes.cutout.vertices[0].uv, [14.0 / 128.0, 0.0]);
+    assert_eq!(adult_meshes.cutout.vertices[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    let (adult_textured_min, adult_textured_max) = textured_mesh_extents(&adult_meshes.cutout);
     let (adult_colored_min, adult_colored_max) = mesh_extents(&entity_model_mesh(&[adult]));
     assert_close3(adult_textured_min, adult_colored_min);
     assert_close3(adult_textured_max, adult_colored_max);
 
     let baby = EntityModelInstance::polar_bear(213, [0.0, 64.0, 0.0], 0.0, true);
-    let baby_mesh = entity_model_textured_mesh(&[baby], &atlas);
-    assert_eq!(baby_mesh.cutout_faces, 54);
-    assert_eq!(baby_mesh.vertices.len(), 216);
-    assert_eq!(baby_mesh.indices.len(), 324);
-    assert_close2(baby_mesh.vertices[0].uv, [20.0 / 128.0, 73.0 / 128.0]);
-    assert!(baby_mesh
+    let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
+    assert_polar_bear_submissions_match_vanilla(&baby_meshes, baby);
+    assert_eq!(baby_meshes.cutout.cutout_faces, 54);
+    assert_eq!(baby_meshes.cutout.vertices.len(), 216);
+    assert_eq!(baby_meshes.cutout.indices.len(), 324);
+    assert_close2(
+        baby_meshes.cutout.vertices[0].uv,
+        [20.0 / 128.0, 73.0 / 128.0],
+    );
+    assert!(baby_meshes
+        .cutout
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
-    let (baby_textured_min, baby_textured_max) = textured_mesh_extents(&baby_mesh);
+    let (baby_textured_min, baby_textured_max) = textured_mesh_extents(&baby_meshes.cutout);
     let (baby_colored_min, baby_colored_max) = mesh_extents(&entity_model_mesh(&[baby]));
     assert_close3(baby_textured_min, baby_colored_min);
     assert_close3(baby_textured_max, baby_colored_max);
@@ -235,39 +244,54 @@ fn polar_bear_textured_meshes_apply_head_look() {
     // Adult head is part 0 (4 cubes = first 96 vertices); body and legs follow and
     // must stay put under a head look.
     let adult = EntityModelInstance::polar_bear(214, [0.0, 64.0, 0.0], 0.0, false);
-    let resting = entity_model_textured_mesh(&[adult], &atlas);
-    let yawed = entity_model_textured_mesh(&[adult.with_head_look(50.0, 0.0)], &atlas);
-    let pitched = entity_model_textured_mesh(&[adult.with_head_look(0.0, -20.0)], &atlas);
-    assert_eq!(resting.vertices.len(), yawed.vertices.len());
-    assert_ne!(resting.vertices[0..96], yawed.vertices[0..96]);
-    assert_eq!(resting.vertices[96..], yawed.vertices[96..]);
-    assert_ne!(yawed.vertices[0..96], pitched.vertices[0..96]);
+    let yawed_adult = adult.with_head_look(50.0, 0.0);
+    let pitched_adult = adult.with_head_look(0.0, -20.0);
+    let resting = entity_model_textured_meshes(&[adult], &atlas);
+    let yawed = entity_model_textured_meshes(&[yawed_adult], &atlas);
+    let pitched = entity_model_textured_meshes(&[pitched_adult], &atlas);
+    assert_polar_bear_submissions_match_vanilla(&resting, adult);
+    assert_polar_bear_submissions_match_vanilla(&yawed, yawed_adult);
+    assert_polar_bear_submissions_match_vanilla(&pitched, pitched_adult);
+    assert_eq!(resting.cutout.vertices.len(), yawed.cutout.vertices.len());
+    assert_ne!(resting.cutout.vertices[0..96], yawed.cutout.vertices[0..96]);
+    assert_eq!(resting.cutout.vertices[96..], yawed.cutout.vertices[96..]);
+    assert_ne!(yawed.cutout.vertices[0..96], pitched.cutout.vertices[0..96]);
 
     // Baby lists the body first (1 cube = first 24 vertices); head is index 1.
     let baby = EntityModelInstance::polar_bear(215, [0.0, 64.0, 0.0], 0.0, true);
-    let baby_resting = entity_model_textured_mesh(&[baby], &atlas);
-    let baby_looking = entity_model_textured_mesh(&[baby.with_head_look(50.0, -20.0)], &atlas);
-    assert_ne!(baby_resting.vertices, baby_looking.vertices);
-    assert_eq!(baby_resting.vertices[0..24], baby_looking.vertices[0..24]);
+    let baby_looking_instance = baby.with_head_look(50.0, -20.0);
+    let baby_resting = entity_model_textured_meshes(&[baby], &atlas);
+    let baby_looking = entity_model_textured_meshes(&[baby_looking_instance], &atlas);
+    assert_polar_bear_submissions_match_vanilla(&baby_resting, baby);
+    assert_polar_bear_submissions_match_vanilla(&baby_looking, baby_looking_instance);
+    assert_ne!(baby_resting.cutout.vertices, baby_looking.cutout.vertices);
+    assert_eq!(
+        baby_resting.cutout.vertices[0..24],
+        baby_looking.cutout.vertices[0..24]
+    );
 
     // While rearing, the head look still applies, composed on top of the standing
     // pose and distinct from a flat (non-standing) look.
     let standing = EntityModelInstance::polar_bear_standing(216, [0.0, 64.0, 0.0], 0.0, false, 1.0);
-    let standing_resting = entity_model_textured_mesh(&[standing], &atlas);
-    let standing_looking =
-        entity_model_textured_mesh(&[standing.with_head_look(50.0, -20.0)], &atlas);
-    let flat_looking = entity_model_textured_mesh(&[adult.with_head_look(50.0, -20.0)], &atlas);
+    let standing_looking_instance = standing.with_head_look(50.0, -20.0);
+    let flat_looking_instance = adult.with_head_look(50.0, -20.0);
+    let standing_resting = entity_model_textured_meshes(&[standing], &atlas);
+    let standing_looking = entity_model_textured_meshes(&[standing_looking_instance], &atlas);
+    let flat_looking = entity_model_textured_meshes(&[flat_looking_instance], &atlas);
+    assert_polar_bear_submissions_match_vanilla(&standing_resting, standing);
+    assert_polar_bear_submissions_match_vanilla(&standing_looking, standing_looking_instance);
+    assert_polar_bear_submissions_match_vanilla(&flat_looking, flat_looking_instance);
     assert_ne!(
-        standing_resting.vertices[0..96],
-        standing_looking.vertices[0..96]
+        standing_resting.cutout.vertices[0..96],
+        standing_looking.cutout.vertices[0..96]
     );
     assert_eq!(
-        standing_resting.vertices[96..],
-        standing_looking.vertices[96..]
+        standing_resting.cutout.vertices[96..],
+        standing_looking.cutout.vertices[96..]
     );
     assert_ne!(
-        standing_looking.vertices[0..96],
-        flat_looking.vertices[0..96]
+        standing_looking.cutout.vertices[0..96],
+        flat_looking.cutout.vertices[0..96]
     );
 }
 
@@ -505,33 +529,82 @@ fn polar_bear_textured_mesh_swings_legs_when_walking() {
             false,
         ),
     ] {
-        let resting = entity_model_textured_mesh(&[base], &atlas);
-        let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
-        let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+        let still_instance = base.with_walk_animation(2.5, 0.0);
+        let walking_instance = base.with_walk_animation(0.0, 1.0);
+        let resting = entity_model_textured_meshes(&[base], &atlas);
+        let still = entity_model_textured_meshes(&[still_instance], &atlas);
+        let walking = entity_model_textured_meshes(&[walking_instance], &atlas);
+        assert_polar_bear_submissions_match_vanilla(&resting, base);
+        assert_polar_bear_submissions_match_vanilla(&still, still_instance);
+        assert_polar_bear_submissions_match_vanilla(&walking, walking_instance);
 
         assert_eq!(
-            resting.vertices, still.vertices,
+            resting.cutout.vertices, still.cutout.vertices,
             "{name}: a standing polar bear is inert"
         );
         assert_eq!(
-            resting.vertices.len(),
-            walking.vertices.len(),
+            resting.cutout.vertices.len(),
+            walking.cutout.vertices.len(),
             "{name}: leg swing keeps the vertex count"
         );
         assert_ne!(
-            resting.vertices, walking.vertices,
+            resting.cutout.vertices, walking.cutout.vertices,
             "{name}: a walking polar bear differs"
         );
 
         if adult_size {
-            let (rest_min, rest_max) = textured_mesh_extents(&resting);
-            let (walk_min, walk_max) = textured_mesh_extents(&walking);
+            let (rest_min, rest_max) = textured_mesh_extents(&resting.cutout);
+            let (walk_min, walk_max) = textured_mesh_extents(&walking.cutout);
             assert!(
                 (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
                 "{name}: a walking polar bear's feet should lift off the ground"
             );
         }
     }
+}
+
+fn assert_polar_bear_submissions_match_vanilla(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    assert_polar_bear_folded_meshes_are_cutout_only(meshes);
+    let baby = match instance.kind {
+        EntityModelKind::PolarBear { baby } => baby,
+        _ => panic!("expected polar bear instance"),
+    };
+    let passes = polar_bear_textured_layer_passes(baby);
+    assert_eq!(meshes.submissions.len(), passes.len());
+    for (submit, pass) in meshes.submissions.iter().copied().zip(passes) {
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.render_type, pass.render_type);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(submit.texture, pass.texture);
+        assert_eq!(submit.tint, pass.tint);
+        let expected_transform = if baby {
+            entity_model_root_transform(instance)
+        } else {
+            polar_bear_model_root_transform(instance)
+        };
+        assert_eq!(submit.transform, expected_transform);
+        assert_eq!(
+            (submit.order, submit.submit_sequence),
+            (pass.order, pass.submit_sequence)
+        );
+    }
+}
+
+fn assert_polar_bear_folded_meshes_are_cutout_only(meshes: &EntityModelTexturedMeshes) {
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_cutout.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_translucent.vertices.is_empty());
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_translucent
+        .vertices
+        .is_empty());
+    assert!(meshes.scroll.vertices.is_empty());
+    assert!(meshes.scroll_additive.vertices.is_empty());
 }
 
 fn polar_bear_texture_images() -> Vec<EntityModelTextureImage> {

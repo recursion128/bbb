@@ -1764,7 +1764,12 @@ When an agent does any of the following, update this file in the same slice:
       swing applied before the standing-rear deltas (`head.xRot += standScale *
       π * 0.15`, front-leg rear offset layered on top of the walk) on adult/baby
       colored and textured models, matching vanilla's `super.setupAnim`-then-rear
-      order; lighting remains unsupported
+      order. The textured polar bear regressions now pin the vanilla base
+      submission metadata before folded geometry checks: adult `polarbear.png`
+      uses `entityCutout`, white tint, `polar_bear_model_root_transform`
+      (`MeshTransformer.scaling(1.2F)`), and `(order, submit_sequence) == (0, 0)`;
+      baby `polarbear_baby.png` uses `entityCutout`, white tint,
+      `entity_model_root_transform`, and `(0, 0)`; lighting remains unsupported
     - hoglin and zoglin entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `HoglinModel`, `BabyHoglinModel`,
       `AbstractHoglinRenderer`, `HoglinRenderer`, and `ZoglinRenderer`,
