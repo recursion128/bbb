@@ -467,6 +467,64 @@ fn pig_saddle_layer_renders_for_adults_only() {
 }
 
 #[test]
+fn pig_saddle_submission_survives_missing_texture_atlas_entry() {
+    // Vanilla `PigRenderer` routes the saddle item through `SimpleEquipmentLayer`, which submits
+    // `PIG_SADDLE` equipment before texture atlas data is resolved; missing texture data suppresses
+    // only the folded saddle geometry.
+    let (atlas, _) = build_entity_model_texture_atlas(&pig_texture_images()).unwrap();
+    let adult = EntityModelInstance::pig(
+        524,
+        [0.0, 64.0, 0.0],
+        0.0,
+        PigModelVariant::Temperate,
+        false,
+    )
+    .with_light_coords((4_u32 << 4) | (11_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
+    let bare_meshes = entity_model_textured_meshes(&[adult], &atlas);
+    let saddled_instance = adult.with_pig_saddle(true);
+    let saddled_meshes = entity_model_textured_meshes(&[saddled_instance], &atlas);
+
+    assert_pig_only_uses_cutout_buckets(&bare_meshes);
+    assert_pig_only_uses_cutout_buckets(&saddled_meshes);
+    assert_eq!(bare_meshes.submissions.len(), 1);
+    assert_pig_base_submission_at(&bare_meshes, 0, adult);
+    assert_eq!(saddled_meshes.submissions.len(), 2);
+    assert_pig_base_submission_at(&saddled_meshes, 0, saddled_instance);
+    let saddle_submit = saddled_meshes.submissions[1];
+    assert_eq!(
+        saddle_submit.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(
+        saddle_submit.render_type.vanilla_name(),
+        "armorCutoutNoCull"
+    );
+    assert_eq!(saddle_submit.texture, PIG_SADDLE_TEXTURE_REF);
+    assert_eq!(saddle_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        saddle_submit.transform,
+        entity_model_root_transform(saddled_instance)
+    );
+    assert_eq!((saddle_submit.order, saddle_submit.submit_sequence), (0, 1));
+    assert_eq!(
+        saddle_submit.light,
+        saddled_instance.render_state.shader_light()
+    );
+    assert_eq!(saddle_submit.overlay, [0.0, 10.0]);
+    assert_ne!(
+        saddle_submit.overlay,
+        saddled_instance.render_state.overlay_coords()
+    );
+    assert_eq!(
+        saddled_meshes.cutout.cutout_faces,
+        bare_meshes.cutout.cutout_faces
+    );
+    assert_eq!(saddled_meshes.cutout.vertices, bare_meshes.cutout.vertices);
+}
+
+#[test]
 fn pig_textured_mesh_applies_head_look() {
     let (atlas, _) = build_entity_model_texture_atlas(&pig_texture_images()).unwrap();
     let base = EntityModelInstance::pig(

@@ -1525,7 +1525,8 @@ When an agent does any of the following, update this file in the same slice:
       `textures/entity/equipment/pig_saddle/saddle.png`, with submission metadata
       for vanilla `armorCutoutNoCull`, white tint, `entity_model_root_transform`, and
       `(order, submit_sequence) == (0, 1)`, preserving entity light while forcing the vanilla equipment
-      `OverlayTexture.NO_OVERLAY`; baby pigs intentionally
+      `OverlayTexture.NO_OVERLAY`; missing saddle atlas data now preserves that
+      submission while suppressing only the folded saddle geometry; baby pigs intentionally
       skip it because vanilla provides no baby saddle model. Boost/ridden
       animation, variant sound metadata, custom/datapack pig variant asset
       decoding, and broader lighting presentation remain unsupported
