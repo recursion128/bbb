@@ -1832,7 +1832,9 @@ When an agent does any of the following, update this file in the same slice:
       uses `entityCutout`, white tint, `polar_bear_model_root_transform`
       (`MeshTransformer.scaling(1.2F)`), and `(order, submit_sequence) == (0, 0)`;
       baby `polarbear_baby.png` uses `entityCutout`, white tint,
-      `entity_model_root_transform`, and `(0, 0)`; lighting remains unsupported
+      `entity_model_root_transform`, `(0, 0)`, vanilla entity light, and
+      hurt/white overlay coords, with folded cutout vertices inheriting the
+      submission metadata
     - hoglin and zoglin entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `HoglinModel`, `BabyHoglinModel`,
       `AbstractHoglinRenderer`, `HoglinRenderer`, and `ZoglinRenderer`,

@@ -203,7 +203,10 @@ fn entity_texture_atlas_stitches_official_polar_bear_png_slots() {
 #[test]
 fn polar_bear_textured_mesh_uses_vanilla_uvs_tints_and_scale() {
     let (atlas, _) = build_entity_model_texture_atlas(&polar_bear_texture_images()).unwrap();
-    let adult = EntityModelInstance::polar_bear(212, [0.0, 64.0, 0.0], 0.0, false);
+    let adult = EntityModelInstance::polar_bear(212, [0.0, 64.0, 0.0], 0.0, false)
+        .with_light_coords((6_u32 << 4) | (13_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let adult_meshes = entity_model_textured_meshes(&[adult], &atlas);
     assert_polar_bear_submissions_match_vanilla(&adult_meshes, adult);
     assert_eq!(adult_meshes.cutout.cutout_faces, 60);
@@ -216,7 +219,10 @@ fn polar_bear_textured_mesh_uses_vanilla_uvs_tints_and_scale() {
     assert_close3(adult_textured_min, adult_colored_min);
     assert_close3(adult_textured_max, adult_colored_max);
 
-    let baby = EntityModelInstance::polar_bear(213, [0.0, 64.0, 0.0], 0.0, true);
+    let baby = EntityModelInstance::polar_bear(213, [0.0, 64.0, 0.0], 0.0, true)
+        .with_light_coords((6_u32 << 4) | (13_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
     assert_polar_bear_submissions_match_vanilla(&baby_meshes, baby);
     assert_eq!(baby_meshes.cutout.cutout_faces, 54);
@@ -590,7 +596,12 @@ fn assert_polar_bear_submissions_match_vanilla(
             (submit.order, submit.submit_sequence),
             (pass.order, pass.submit_sequence)
         );
+        assert_eq!(submit.light, instance.render_state.shader_light());
+        assert_eq!(submit.overlay, instance.render_state.overlay_coords());
     }
+    assert!(meshes.cutout.vertices.iter().all(|vertex| vertex.light
+        == instance.render_state.shader_light()
+        && vertex.overlay == instance.render_state.overlay_coords()));
 }
 
 fn assert_polar_bear_folded_meshes_are_cutout_only(meshes: &EntityModelTexturedMeshes) {
