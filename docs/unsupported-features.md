@@ -2170,7 +2170,10 @@ When an agent does any of the following, update this file in the same slice:
       mirrored left-shoulder child, legs `texOffs(0, 22)`, and the uncrossed
       pillager arms `texOffs(40, 46)`) over its own
       `textures/entity/illager/{evoker,illusioner,pillager,vindicator}.png`, with
-      official PNG atlas upload/bind/sample and the vanilla `IllagerModel.setupAnim`
+      explicit base submission metadata for vanilla `entityCutout`, the selected
+      renderer texture, white tint, `villager_adult_model_root_transform`, and
+      `(order, submit_sequence) == (0, 0)`, official PNG atlas upload/bind/sample,
+      and the vanilla `IllagerModel.setupAnim`
       head-look yaw/pitch plus the half-amplitude leg swing (and the pillager's
       `HumanoidModel` arm swing on its separate arms) on both render paths. The
       standard `ItemInHandLayer` is covered by the shared humanoid held-item

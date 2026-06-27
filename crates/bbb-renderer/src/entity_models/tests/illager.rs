@@ -1,5 +1,6 @@
 use super::*;
 
+use crate::entity_models::colored::villager_adult_model_root_transform;
 use crate::entity_models::model::{EntityModel, ModelCube};
 
 #[test]
@@ -555,8 +556,11 @@ fn illager_textured_layer_passes_match_vanilla_renderer() {
             passes[0].render_type,
             EntityModelLayerRenderType::EntityCutout
         );
+        assert_eq!(passes[0].render_type.vanilla_name(), "entityCutout");
         assert_eq!(passes[0].model_layer, model_layer);
         assert_eq!(passes[0].texture, texture);
+        assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
         assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
         assert!(entity_model_texture_refs().contains(&texture));
     }
@@ -588,7 +592,9 @@ fn illager_textured_mesh_matches_colored_geometry_and_swings() {
             family,
         )];
         let colored = entity_model_mesh(&instances);
-        let textured = entity_model_textured_mesh(&instances, &atlas);
+        let textured_meshes = entity_model_textured_meshes(&instances, &atlas);
+        assert_illager_base_submission_matches_vanilla(&textured_meshes, instances[0]);
+        let textured = &textured_meshes.cutout;
         // The textured illager shares the colored geometry exactly (VILLAGER_LIKE_SCALE root).
         assert_eq!(textured.cutout_faces, colored.opaque_faces, "{family:?}");
         assert_eq!(
@@ -607,45 +613,98 @@ fn illager_textured_mesh_matches_colored_geometry_and_swings() {
 
         // Walking re-poses the legs on both render paths.
         let walking = [instances[0].with_walk_animation(0.0, 1.0)];
-        let textured_walk = entity_model_textured_mesh(&walking, &atlas);
-        assert_ne!(textured.vertices, textured_walk.vertices, "{family:?} legs");
+        let textured_walk = entity_model_textured_meshes(&walking, &atlas);
+        assert_illager_base_submission_matches_vanilla(&textured_walk, walking[0]);
+        assert_ne!(
+            textured.vertices, textured_walk.cutout.vertices,
+            "{family:?} legs"
+        );
     }
 
     // The pillager swings its visible separate arms; the crossed-arm families hold still.
     let pillager =
         EntityModelInstance::illager(103, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Pillager);
-    let pillager_rest = entity_model_textured_mesh(&[pillager], &atlas);
-    let pillager_walk =
-        entity_model_textured_mesh(&[pillager.with_walk_animation(0.0, 1.0)], &atlas);
-    assert_eq!(pillager_rest.vertices.len(), 192);
+    let pillager_walk_instance = pillager.with_walk_animation(0.0, 1.0);
+    let pillager_rest = entity_model_textured_meshes(&[pillager], &atlas);
+    let pillager_walk = entity_model_textured_meshes(&[pillager_walk_instance], &atlas);
+    assert_illager_base_submission_matches_vanilla(&pillager_rest, pillager);
+    assert_illager_base_submission_matches_vanilla(&pillager_walk, pillager_walk_instance);
+    assert_eq!(pillager_rest.cutout.vertices.len(), 192);
     assert_ne!(
-        pillager_rest.vertices[144..192],
-        pillager_walk.vertices[144..192],
+        pillager_rest.cutout.vertices[144..192],
+        pillager_walk.cutout.vertices[144..192],
         "the textured pillager swings its separate arms"
     );
 
     let evoker =
         EntityModelInstance::illager(46, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Evoker);
-    let evoker_rest = entity_model_textured_mesh(&[evoker], &atlas);
-    let evoker_walk = entity_model_textured_mesh(&[evoker.with_walk_animation(0.0, 1.0)], &atlas);
-    assert_eq!(evoker_rest.vertices.len(), 216);
+    let evoker_walk_instance = evoker.with_walk_animation(0.0, 1.0);
+    let evoker_rest = entity_model_textured_meshes(&[evoker], &atlas);
+    let evoker_walk = entity_model_textured_meshes(&[evoker_walk_instance], &atlas);
+    assert_illager_base_submission_matches_vanilla(&evoker_rest, evoker);
+    assert_illager_base_submission_matches_vanilla(&evoker_walk, evoker_walk_instance);
+    assert_eq!(evoker_rest.cutout.vertices.len(), 216);
     assert_eq!(
-        evoker_rest.vertices[96..168],
-        evoker_walk.vertices[96..168],
+        evoker_rest.cutout.vertices[96..168],
+        evoker_walk.cutout.vertices[96..168],
         "the textured crossed arms part stays still when walking"
     );
 
     // The textured spellcasting evoker swaps to the uncrossed layout (216 → 192 verts), matching
     // the colored path; an idle illusioner keeps its hat (216 verts when casting).
-    let evoker_cast = entity_model_textured_mesh(&[evoker.with_illager_spellcasting(true)], &atlas);
-    assert_eq!(evoker_cast.cutout_faces, 48);
-    assert_eq!(evoker_cast.vertices.len(), 192);
-    assert_ne!(evoker_rest.vertices, evoker_cast.vertices);
+    let evoker_cast_instance = evoker.with_illager_spellcasting(true);
+    let evoker_cast = entity_model_textured_meshes(&[evoker_cast_instance], &atlas);
+    assert_illager_base_submission_matches_vanilla(&evoker_cast, evoker_cast_instance);
+    assert_eq!(evoker_cast.cutout.cutout_faces, 48);
+    assert_eq!(evoker_cast.cutout.vertices.len(), 192);
+    assert_ne!(evoker_rest.cutout.vertices, evoker_cast.cutout.vertices);
     let illusioner =
         EntityModelInstance::illager(68, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Illusioner);
-    let illusioner_cast =
-        entity_model_textured_mesh(&[illusioner.with_illager_spellcasting(true)], &atlas);
-    assert_eq!(illusioner_cast.vertices.len(), 216);
+    let illusioner_cast_instance = illusioner.with_illager_spellcasting(true);
+    let illusioner_cast = entity_model_textured_meshes(&[illusioner_cast_instance], &atlas);
+    assert_illager_base_submission_matches_vanilla(&illusioner_cast, illusioner_cast_instance);
+    assert_eq!(illusioner_cast.cutout.vertices.len(), 216);
+}
+
+fn assert_illager_base_submission_matches_vanilla(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_cutout.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_translucent.vertices.is_empty());
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_translucent
+        .vertices
+        .is_empty());
+    assert!(meshes.scroll.vertices.is_empty());
+    assert!(meshes.scroll_additive.vertices.is_empty());
+    assert_eq!(meshes.submissions.len(), 1);
+
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(submit.texture, illager_base_texture_ref(instance));
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        submit.transform,
+        villager_adult_model_root_transform(instance)
+    );
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+}
+
+fn illager_base_texture_ref(instance: EntityModelInstance) -> EntityModelTextureRef {
+    match instance.kind {
+        EntityModelKind::Illager { family } => match family {
+            IllagerModelFamily::Evoker => EVOKER_TEXTURE_REF,
+            IllagerModelFamily::Illusioner => ILLUSIONER_TEXTURE_REF,
+            IllagerModelFamily::Pillager => PILLAGER_TEXTURE_REF,
+            IllagerModelFamily::Vindicator => VINDICATOR_TEXTURE_REF,
+        },
+        other => panic!("unexpected illager test kind: {other:?}"),
+    }
 }
 
 fn illager_texture_images() -> Vec<EntityModelTextureImage> {
