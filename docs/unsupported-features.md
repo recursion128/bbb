@@ -1740,7 +1740,11 @@ When an agent does any of the following, update this file in the same slice:
       `Goat.getRammingXHeadRot()` (`lowerHeadTick/20 · (baby ? 52.5° : 30°) · π/180`, the baby
       scale resolved in the native layer) drives `GoatModel.setupAnim`'s `if rammingXHeadRot != 0
       { head.xRot = rammingXHeadRot }` head-down tilt, overwriting the head-look pitch during a
-      ram; only the screaming-goat sounds remain unsupported
+      ram. The textured goat regressions now pin the vanilla base submission metadata for both
+      adult and baby paths: `entityCutout`, selected adult/baby texture, white tint,
+      `entity_model_root_transform`, and `(order, submit_sequence) == (0, 0)` before checking
+      folded UVs, horn visibility, head look, and leg swing; only the screaming-goat sounds remain
+      unsupported
     - polar bear entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `PolarBearModel`, `BabyPolarBearModel`, and
       `PolarBearRenderer`, including `ModelLayers.POLAR_BEAR` /

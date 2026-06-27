@@ -164,6 +164,7 @@ fn goat_textured_layer_passes_match_vanilla_renderer_model_choice() {
         adult[0].render_type,
         EntityModelLayerRenderType::EntityCutout
     );
+    assert_eq!(adult[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(adult[0].model_layer, MODEL_LAYER_GOAT);
     assert_eq!(adult[0].texture, GOAT_TEXTURE_REF);
     assert_eq!(adult[0].visibility, EntityModelLayerVisibility::All);
@@ -177,6 +178,7 @@ fn goat_textured_layer_passes_match_vanilla_renderer_model_choice() {
         baby[0].render_type,
         EntityModelLayerRenderType::EntityCutout
     );
+    assert_eq!(baby[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(baby[0].model_layer, MODEL_LAYER_GOAT_BABY);
     assert_eq!(baby[0].texture, GOAT_BABY_TEXTURE_REF);
     assert_eq!(baby[0].visibility, EntityModelLayerVisibility::All);
@@ -244,65 +246,55 @@ fn entity_texture_atlas_stitches_official_goat_png_slots() {
 fn goat_textured_mesh_uses_vanilla_uvs_tints_and_horn_visibility() {
     let (atlas, _) = build_entity_model_texture_atlas(&goat_texture_images()).unwrap();
     let adult = EntityModelInstance::goat(401, [0.0, 64.0, 0.0], 0.0, false, true, true);
-    let adult_mesh = entity_model_textured_mesh(&[adult], &atlas);
+    let adult_meshes = entity_model_textured_meshes(&[adult], &atlas);
+    assert_goat_submissions_match_vanilla(&adult_meshes, adult);
+    let adult_mesh = &adult_meshes.cutout;
     assert_eq!(adult_mesh.cutout_faces, 72);
     assert_eq!(adult_mesh.vertices.len(), 288);
     assert_eq!(adult_mesh.indices.len(), 432);
     assert_close2(adult_mesh.vertices[0].uv, [6.0 / 64.0, 61.0 / 128.0]);
     assert_eq!(adult_mesh.vertices[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    let (adult_textured_min, adult_textured_max) = textured_mesh_extents(&adult_mesh);
+    let (adult_textured_min, adult_textured_max) = textured_mesh_extents(adult_mesh);
     let (adult_colored_min, adult_colored_max) = mesh_extents(&entity_model_mesh(&[adult]));
     assert_close3(adult_textured_min, adult_colored_min);
     assert_close3(adult_textured_max, adult_colored_max);
 
-    let adult_left_horn_only = entity_model_textured_mesh(
-        &[EntityModelInstance::goat(
-            402,
-            [0.0, 64.0, 0.0],
-            0.0,
-            false,
-            true,
-            false,
-        )],
-        &atlas,
+    let adult_left_horn_only_instance =
+        EntityModelInstance::goat(402, [0.0, 64.0, 0.0], 0.0, false, true, false);
+    let adult_left_horn_only_meshes =
+        entity_model_textured_meshes(&[adult_left_horn_only_instance], &atlas);
+    assert_goat_submissions_match_vanilla(
+        &adult_left_horn_only_meshes,
+        adult_left_horn_only_instance,
     );
+    let adult_left_horn_only = &adult_left_horn_only_meshes.cutout;
     assert_eq!(adult_left_horn_only.cutout_faces, 66);
     assert_eq!(adult_left_horn_only.vertices.len(), 264);
 
-    let adult_no_horns = entity_model_textured_mesh(
-        &[EntityModelInstance::goat(
-            403,
-            [0.0, 64.0, 0.0],
-            0.0,
-            false,
-            false,
-            false,
-        )],
-        &atlas,
-    );
+    let adult_no_horns_instance =
+        EntityModelInstance::goat(403, [0.0, 64.0, 0.0], 0.0, false, false, false);
+    let adult_no_horns_meshes = entity_model_textured_meshes(&[adult_no_horns_instance], &atlas);
+    assert_goat_submissions_match_vanilla(&adult_no_horns_meshes, adult_no_horns_instance);
+    let adult_no_horns = &adult_no_horns_meshes.cutout;
     assert_eq!(adult_no_horns.cutout_faces, 60);
     assert_eq!(adult_no_horns.vertices.len(), 240);
 
     let baby = EntityModelInstance::goat(404, [0.0, 64.0, 0.0], 0.0, true, true, true);
-    let baby_mesh = entity_model_textured_mesh(&[baby], &atlas);
+    let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
+    assert_goat_submissions_match_vanilla(&baby_meshes, baby);
+    let baby_mesh = &baby_meshes.cutout;
     assert_eq!(baby_mesh.cutout_faces, 72);
     assert_close2(baby_mesh.vertices[0].uv, [33.0 / 64.0, 76.0 / 128.0]);
-    let (baby_textured_min, baby_textured_max) = textured_mesh_extents(&baby_mesh);
+    let (baby_textured_min, baby_textured_max) = textured_mesh_extents(baby_mesh);
     let (baby_colored_min, baby_colored_max) = mesh_extents(&entity_model_mesh(&[baby]));
     assert_close3(baby_textured_min, baby_colored_min);
     assert_close3(baby_textured_max, baby_colored_max);
 
-    let baby_no_horns = entity_model_textured_mesh(
-        &[EntityModelInstance::goat(
-            405,
-            [0.0, 64.0, 0.0],
-            0.0,
-            true,
-            false,
-            false,
-        )],
-        &atlas,
-    );
+    let baby_no_horns_instance =
+        EntityModelInstance::goat(405, [0.0, 64.0, 0.0], 0.0, true, false, false);
+    let baby_no_horns_meshes = entity_model_textured_meshes(&[baby_no_horns_instance], &atlas);
+    assert_goat_submissions_match_vanilla(&baby_no_horns_meshes, baby_no_horns_instance);
+    let baby_no_horns = &baby_no_horns_meshes.cutout;
     assert_eq!(baby_no_horns.cutout_faces, 60);
     assert!(baby_no_horns
         .vertices
@@ -317,12 +309,25 @@ fn goat_textured_meshes_apply_head_look() {
         EntityModelInstance::goat(440, [0.0, 64.0, 0.0], 0.0, false, true, true),
         EntityModelInstance::goat(441, [0.0, 64.0, 0.0], 0.0, true, true, true),
     ] {
-        let resting = entity_model_textured_mesh(&[base], &atlas);
-        let yawed = entity_model_textured_mesh(&[base.with_head_look(45.0, 0.0)], &atlas);
-        let pitched = entity_model_textured_mesh(&[base.with_head_look(0.0, -20.0)], &atlas);
-        assert_eq!(resting.vertices.len(), yawed.vertices.len());
-        assert_ne!(resting.vertices, yawed.vertices, "{:?}", base.kind);
-        assert_ne!(yawed.vertices, pitched.vertices, "{:?}", base.kind);
+        let yawed_instance = base.with_head_look(45.0, 0.0);
+        let pitched_instance = base.with_head_look(0.0, -20.0);
+        let resting = entity_model_textured_meshes(&[base], &atlas);
+        let yawed = entity_model_textured_meshes(&[yawed_instance], &atlas);
+        let pitched = entity_model_textured_meshes(&[pitched_instance], &atlas);
+        assert_goat_submissions_match_vanilla(&resting, base);
+        assert_goat_submissions_match_vanilla(&yawed, yawed_instance);
+        assert_goat_submissions_match_vanilla(&pitched, pitched_instance);
+        assert_eq!(resting.cutout.vertices.len(), yawed.cutout.vertices.len());
+        assert_ne!(
+            resting.cutout.vertices, yawed.cutout.vertices,
+            "{:?}",
+            base.kind
+        );
+        assert_ne!(
+            yawed.cutout.vertices, pitched.cutout.vertices,
+            "{:?}",
+            base.kind
+        );
     }
 }
 
@@ -387,33 +392,77 @@ fn goat_textured_mesh_swings_legs_when_walking() {
             false,
         ),
     ] {
-        let resting = entity_model_textured_mesh(&[base], &atlas);
-        let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
-        let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+        let still_instance = base.with_walk_animation(2.5, 0.0);
+        let walking_instance = base.with_walk_animation(0.0, 1.0);
+        let resting = entity_model_textured_meshes(&[base], &atlas);
+        let still = entity_model_textured_meshes(&[still_instance], &atlas);
+        let walking = entity_model_textured_meshes(&[walking_instance], &atlas);
+        assert_goat_submissions_match_vanilla(&resting, base);
+        assert_goat_submissions_match_vanilla(&still, still_instance);
+        assert_goat_submissions_match_vanilla(&walking, walking_instance);
 
         assert_eq!(
-            resting.vertices, still.vertices,
+            resting.cutout.vertices, still.cutout.vertices,
             "{name}: a standing goat is inert"
         );
         assert_eq!(
-            resting.vertices.len(),
-            walking.vertices.len(),
+            resting.cutout.vertices.len(),
+            walking.cutout.vertices.len(),
             "{name}: leg swing keeps the vertex count"
         );
         assert_ne!(
-            resting.vertices, walking.vertices,
+            resting.cutout.vertices, walking.cutout.vertices,
             "{name}: a walking goat differs"
         );
 
         if adult_size {
-            let (rest_min, rest_max) = textured_mesh_extents(&resting);
-            let (walk_min, walk_max) = textured_mesh_extents(&walking);
+            let (rest_min, rest_max) = textured_mesh_extents(&resting.cutout);
+            let (walk_min, walk_max) = textured_mesh_extents(&walking.cutout);
             assert!(
                 (walk_max[1] - walk_min[1]) < (rest_max[1] - rest_min[1]) - 0.02,
                 "{name}: a walking goat's feet should lift off the ground"
             );
         }
     }
+}
+
+fn assert_goat_submissions_match_vanilla(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    assert_goat_folded_meshes_are_cutout_only(meshes);
+    let baby = match instance.kind {
+        EntityModelKind::Goat { baby, .. } => baby,
+        _ => panic!("expected goat instance"),
+    };
+    let passes = goat_textured_layer_passes(baby);
+    assert_eq!(meshes.submissions.len(), passes.len());
+    for (submit, pass) in meshes.submissions.iter().copied().zip(passes) {
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.render_type, pass.render_type);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(submit.texture, pass.texture);
+        assert_eq!(submit.tint, pass.tint);
+        assert_eq!(submit.transform, entity_model_root_transform(instance));
+        assert_eq!(
+            (submit.order, submit.submit_sequence),
+            (pass.order, pass.submit_sequence)
+        );
+    }
+}
+
+fn assert_goat_folded_meshes_are_cutout_only(meshes: &EntityModelTexturedMeshes) {
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_cutout.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_translucent.vertices.is_empty());
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_translucent
+        .vertices
+        .is_empty());
+    assert!(meshes.scroll.vertices.is_empty());
+    assert!(meshes.scroll_additive.vertices.is_empty());
 }
 
 fn goat_texture_images() -> Vec<EntityModelTextureImage> {
