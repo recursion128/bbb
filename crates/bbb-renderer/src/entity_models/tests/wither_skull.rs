@@ -77,6 +77,7 @@ fn wither_skull_textured_render_matches_vanilla_renderer() {
         normal_pass.render_type,
         EntityModelLayerRenderType::EntityTranslucent
     );
+    assert_eq!(normal_pass.render_type.vanilla_name(), "entityTranslucent");
     assert_eq!(normal_pass.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((normal_pass.order, normal_pass.submit_sequence), (0, 0));
     let dangerous_pass = wither_skull_textured_layer_passes(true)[0];
@@ -84,6 +85,10 @@ fn wither_skull_textured_render_matches_vanilla_renderer() {
     assert_eq!(
         dangerous_pass.render_type,
         EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(
+        dangerous_pass.render_type.vanilla_name(),
+        "entityTranslucent"
     );
     assert_eq!(dangerous_pass.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
@@ -154,6 +159,10 @@ fn wither_skull_textured_render_matches_vanilla_renderer() {
         dangerous_submit.render_type,
         EntityModelLayerRenderType::EntityTranslucent
     );
+    assert_eq!(
+        dangerous_submit.render_type.vanilla_name(),
+        "entityTranslucent"
+    );
     assert_eq!(dangerous_submit.texture, WITHER_INVULNERABLE_TEXTURE_REF);
     assert_eq!(dangerous_submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
@@ -193,6 +202,47 @@ fn wither_skull_textured_render_matches_vanilla_renderer() {
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]
             && vertex.light == dangerous_submit.light
             && vertex.overlay == dangerous_submit.overlay));
+}
+
+#[test]
+fn wither_skull_submission_survives_missing_texture_atlas_entry() {
+    // Vanilla `WitherSkullRenderer.submit` records the dangerous-skull translucent submit before
+    // atlas lookup; missing texture data suppresses only the folded translucent geometry.
+    let base_len =
+        usize::try_from(ZOMBIE_TEXTURE_REF.size[0] * ZOMBIE_TEXTURE_REF.size[1] * 4).unwrap();
+    let images = vec![EntityModelTextureImage::new(
+        ZOMBIE_TEXTURE_REF,
+        vec![0u8; base_len],
+    )];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let instance =
+        EntityModelInstance::wither_skull_with_dangerous(820, [1.0, 64.0, -2.0], 37.0, true)
+            .with_head_look(0.0, -18.0)
+            .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+            .with_white_overlay_progress(0.8)
+            .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(
+        submit.render_type,
+        EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(submit.render_type.vanilla_name(), "entityTranslucent");
+    assert_eq!(submit.texture, WITHER_INVULNERABLE_TEXTURE_REF);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        submit.transform,
+        wither_skull_model_root_transform(instance)
+    );
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, [0.0, 10.0]);
+    assert!(meshes.cutout.vertices.is_empty());
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
 }
 
 #[test]

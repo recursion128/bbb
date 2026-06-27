@@ -3425,7 +3425,9 @@ When an agent does any of the following, update this file in the same slice:
       explicit `order(0)`, `entityTranslucent`, white tint, texture, light coords,
       `OverlayTexture.NO_OVERLAY`, and transform submission metadata, while the Wither boss base test
       proves the same shared `wither.png` / `wither_invulnerable.png` texture refs still preserve body
-      overlay when submitted by `WitherBossRenderer`.
+      overlay when submitted by `WitherBossRenderer`; missing-atlas coverage pins that the dangerous
+      skull's `entityTranslucent` / `wither_invulnerable.png` submit is still recorded before folded
+      translucent geometry is suppressed.
     - llama spit entities as renderer-owned vanilla 26.1 `LlamaSpitModel.createBodyLayer()` geometry on the
       colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `79` to the new
       `EntityModelKind::LlamaSpit`, replacing the former placeholder bounds box. The static `main` part is
