@@ -2604,10 +2604,11 @@ When an agent does any of the following, update this file in the same slice:
       `LivingEntityRenderer.setupRotations`. The textured base layer draws the
       `textures/entity/turtle/turtle.png` / `turtle_baby.png` atlas references into the cutout
       mesh while preserving explicit submission metadata for texture, white tint, root/egg-drop
-      transform, and `order(0)`, plus the vanilla render type split: adult
-      `AdultTurtleModel` uses `RenderTypes::entityCutout`, while baby `BabyTurtleModel` uses
-      `RenderTypes::entityCutoutCull`. Both are hand-emitted through the same animated
-      head/body/leg hierarchy as the colored path. When the adult turtle carries an egg, the
+      transform, entity light, hurt/white overlay, and `order(0)`, plus the vanilla render type
+      split: adult `AdultTurtleModel` uses `RenderTypes::entityCutout`, while baby
+      `BabyTurtleModel` uses `RenderTypes::entityCutoutCull`. Both are hand-emitted through the
+      same animated head/body/leg hierarchy as the colored path, and folded cutout vertices inherit
+      the base submission's light/overlay metadata. When the adult turtle carries an egg, the
       `egg_belly` overlay shell (`AdultTurtleModel`'s `texOffs(70, 33)` 9×18×1 plane at the body
       pose) is drawn on both paths and the whole model is shifted by `this.root.y--`, gated on the
       synced `Turtle.HAS_EGG` boolean (data id 18) and cleared for babies (`hasEgg = !isBaby() &&

@@ -161,7 +161,11 @@ fn turtle_baby_ignores_has_egg() {
 fn turtle_textured_egg_belly_shows_when_carrying_an_egg() {
     let (atlas, _) = build_entity_model_texture_atlas(&turtle_texture_images()).unwrap();
 
-    let plain = EntityModelInstance::turtle(752, [0.0, 64.0, 0.0], 0.0, false).with_on_ground(true);
+    let plain = EntityModelInstance::turtle(752, [0.0, 64.0, 0.0], 0.0, false)
+        .with_on_ground(true)
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let egg = plain.with_turtle_has_egg(true);
     let plain_meshes = entity_model_textured_meshes(&[plain], &atlas);
     let egg_meshes = entity_model_textured_meshes(&[egg], &atlas);
@@ -175,6 +179,9 @@ fn turtle_textured_egg_belly_shows_when_carrying_an_egg() {
     assert_eq!(plain_submit.texture, TURTLE_TEXTURE_REF);
     assert_eq!(plain_submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(plain_submit.transform, entity_model_root_transform(plain));
+    assert_eq!(plain_submit.light, plain.render_state.shader_light());
+    assert_eq!(plain_submit.overlay, plain.render_state.overlay_coords());
+    assert_ne!(plain_submit.overlay, [0.0, 10.0]);
     assert_eq!((plain_submit.order, plain_submit.submit_sequence), (0, 0));
 
     assert_eq!(egg_meshes.submissions.len(), 1);
@@ -190,6 +197,8 @@ fn turtle_textured_egg_belly_shows_when_carrying_an_egg() {
         egg_submit.transform,
         entity_model_root_transform(egg) * part_pose_transform(TURTLE_EGG_ROOT_DROP_POSE)
     );
+    assert_eq!(egg_submit.light, egg.render_state.shader_light());
+    assert_eq!(egg_submit.overlay, egg.render_state.overlay_coords());
     assert_eq!((egg_submit.order, egg_submit.submit_sequence), (0, 0));
     assert_ne!(plain_submit.transform, egg_submit.transform);
 
@@ -203,6 +212,19 @@ fn turtle_textured_egg_belly_shows_when_carrying_an_egg() {
         plain_meshes.cutout.vertices.len() + 24
     );
     assert_eq!(egg_meshes.cutout.vertices.len(), 192);
+    assert!(
+        plain_meshes
+            .cutout
+            .vertices
+            .iter()
+            .all(|vertex| vertex.light == plain_submit.light
+                && vertex.overlay == plain_submit.overlay)
+    );
+    assert!(egg_meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == egg_submit.light && vertex.overlay == egg_submit.overlay));
     assert!(egg_meshes.translucent.vertices.is_empty());
     assert!(egg_meshes.eyes.vertices.is_empty());
 }
@@ -441,7 +463,11 @@ fn turtle_textured_mesh_uses_vanilla_geometry_and_animates() {
 
     // Adult renders into the cutout mesh (default `RenderTypes::entityCutout`). Seven cubes →
     // 42 faces / 168 vertices, with nothing on the translucent or eyes passes.
-    let adult = EntityModelInstance::turtle(750, [0.0, 64.0, 0.0], 0.0, false).with_on_ground(true);
+    let adult = EntityModelInstance::turtle(750, [0.0, 64.0, 0.0], 0.0, false)
+        .with_on_ground(true)
+        .with_light_coords((5_u32 << 4) | (11_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[adult], &atlas);
     assert_eq!(meshes.submissions.len(), 1);
     let adult_submit = meshes.submissions[0];
@@ -455,6 +481,9 @@ fn turtle_textured_mesh_uses_vanilla_geometry_and_animates() {
     assert_eq!(adult_submit.order, 0);
     assert_eq!(adult_submit.submit_sequence, 0);
     assert_eq!(adult_submit.transform, entity_model_root_transform(adult));
+    assert_eq!(adult_submit.light, adult.render_state.shader_light());
+    assert_eq!(adult_submit.overlay, adult.render_state.overlay_coords());
+    assert_ne!(adult_submit.overlay, [0.0, 10.0]);
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
     assert_eq!(meshes.cutout.cutout_faces, 42);
@@ -464,10 +493,21 @@ fn turtle_textured_mesh_uses_vanilla_geometry_and_animates() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    assert!(
+        meshes
+            .cutout
+            .vertices
+            .iter()
+            .all(|vertex| vertex.light == adult_submit.light
+                && vertex.overlay == adult_submit.overlay)
+    );
 
     // Baby is the smaller model and uses vanilla `BabyTurtleModel`'s `entityCutoutCull` render type:
     // six cubes → 36 faces / 144 vertices.
-    let baby = EntityModelInstance::turtle(751, [0.0, 64.0, 0.0], 0.0, true);
+    let baby = EntityModelInstance::turtle(751, [0.0, 64.0, 0.0], 0.0, true)
+        .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
     let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
     assert_eq!(baby_meshes.submissions.len(), 1);
     let baby_submit = baby_meshes.submissions[0];
@@ -481,7 +521,15 @@ fn turtle_textured_mesh_uses_vanilla_geometry_and_animates() {
     assert_eq!(baby_submit.order, 0);
     assert_eq!(baby_submit.submit_sequence, 0);
     assert_eq!(baby_submit.transform, entity_model_root_transform(baby));
+    assert_eq!(baby_submit.light, baby.render_state.shader_light());
+    assert_eq!(baby_submit.overlay, baby.render_state.overlay_coords());
+    assert_ne!(baby_submit.overlay, [0.0, 10.0]);
     assert_eq!(baby_meshes.cutout.vertices.len(), 144);
+    assert!(baby_meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == baby_submit.light && vertex.overlay == baby_submit.overlay));
 
     // The head tracks the look, and the land walk differs from the water paddle.
     let looking = entity_model_textured_meshes(&[adult.with_head_look(40.0, -20.0)], &atlas);
