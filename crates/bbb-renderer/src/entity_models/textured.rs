@@ -68,7 +68,6 @@ const PLAYER_CAPE_CUBE: TexturedModelCubeDesc = TexturedModelCubeDesc {
     tex: [0.0, 0.0],
     mirror: false,
 };
-const PLAYER_CAPE_LAYER_SUBMIT_SEQUENCE: u32 = 2;
 const PLAYER_WINGS_LAYER_SUBMIT_SEQUENCE: u32 = 3;
 const NON_PLAYER_WINGS_LAYER_SUBMIT_SEQUENCE: u32 = 2;
 
@@ -92,13 +91,14 @@ pub(super) use layers::{
     llama_textured_layer_passes, magma_cube_textured_layer_passes, minecart_textured_layer_passes,
     mooshroom_textured_layer_passes, nautilus_textured_layer_passes, panda_textured_layer_passes,
     parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
-    piglin_textured_layer_passes, player_extra_ears_layer_pass_with_texture,
-    player_spin_attack_effect_layer_pass, player_textured_layer_passes_with_texture,
-    polar_bear_textured_layer_passes, rabbit_textured_layer_passes, ravager_textured_layer_passes,
-    salmon_textured_layer_passes, sheep_textured_layer_passes, shulker_textured_layer_passes,
-    silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
-    sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
-    squid_textured_layer_passes, tadpole_textured_layer_passes, trident_textured_layer_passes,
+    piglin_textured_layer_passes, player_cape_layer_pass,
+    player_extra_ears_layer_pass_with_texture, player_spin_attack_effect_layer_pass,
+    player_textured_layer_passes_with_texture, polar_bear_textured_layer_passes,
+    rabbit_textured_layer_passes, ravager_textured_layer_passes, salmon_textured_layer_passes,
+    sheep_textured_layer_passes, shulker_textured_layer_passes, silverfish_textured_layer_passes,
+    skeleton_textured_layer_passes, slime_textured_layer_passes, sniffer_textured_layer_passes,
+    snow_golem_textured_layer_passes, spider_textured_layer_passes, squid_textured_layer_passes,
+    tadpole_textured_layer_passes, trident_textured_layer_passes,
     tropical_fish_textured_layer_passes, undead_horse_textured_layer_passes,
     villager_data_textured_layer_passes, villager_textured_layer_passes, villager_type_hat_visible,
     wandering_trader_textured_layer_passes, warden_textured_layer_passes,
@@ -954,6 +954,7 @@ fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
             | EntityModelLayerKind::LlamaSpitBase
             | EntityModelLayerKind::MinecartBase
             | EntityModelLayerKind::PhantomEyes
+            | EntityModelLayerKind::PlayerCape
             | EntityModelLayerKind::PlayerSpinAttackEffect
             | EntityModelLayerKind::ShulkerBulletBase
             | EntityModelLayerKind::ShulkerBulletShell
@@ -2672,24 +2673,17 @@ fn emit_player_cape_layer(
             rotation: [0.0, std::f32::consts::PI, 0.0],
         })
         * player_cape_animation_transform(&instance);
-    let tint = [1.0, 1.0, 1.0, 1.0];
-    let submit = no_overlay_submission(
-        EntityModelLayerRenderType::EntitySolid,
-        PLAYER_PROFILE_CAPE_TEXTURE_REF,
-        tint,
-        layer_transform,
-        0,
-        PLAYER_CAPE_LAYER_SUBMIT_SEQUENCE,
-    )
-    .with_dynamic_player_texture(cape_texture);
+    let pass = player_cape_layer_pass();
+    let submit = textured_layer_submission(meshes, pass, layer_transform)
+        .with_dynamic_player_texture(cape_texture);
     render_textured_dynamic_player_texture_submission(meshes, submit, entry, |mesh, entry| {
         emit_textured_model_cube(
             mesh,
             cape_transform,
             PLAYER_CAPE_CUBE,
-            PLAYER_PROFILE_CAPE_TEXTURE_REF,
+            submit.texture,
             entry.uv,
-            tint,
+            submit.tint,
         );
     });
 }

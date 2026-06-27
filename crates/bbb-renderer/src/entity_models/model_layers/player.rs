@@ -14,6 +14,7 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 pub(in crate::entity_models) const MODEL_LAYER_PLAYER: &str = "minecraft:player#main";
 pub(in crate::entity_models) const MODEL_LAYER_PLAYER_SLIM: &str = "minecraft:player_slim#main";
 pub(in crate::entity_models) const MODEL_LAYER_PLAYER_EARS: &str = "minecraft:player#ears";
+pub(in crate::entity_models) const MODEL_LAYER_PLAYER_CAPE: &str = "minecraft:player#cape";
 
 // Vanilla 26.1 PlayerModel.createMesh(CubeDeformation.NONE, slim). Each cube carries both render
 // paths' data: the colored debug tint and the textured uv_size/texOffs/mirror. Each base part nests

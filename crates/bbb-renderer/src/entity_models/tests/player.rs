@@ -791,6 +791,15 @@ fn dynamic_player_texture_submission_falls_back_to_static_atlas_when_not_uploade
 
 #[test]
 fn player_cape_layer_uses_dynamic_profile_texture_atlas_submission() {
+    let pass = player_cape_layer_pass();
+    assert_eq!(pass.kind, EntityModelLayerKind::PlayerCape);
+    assert_eq!(pass.model_layer, MODEL_LAYER_PLAYER_CAPE);
+    assert_eq!(pass.render_type, EntityModelLayerRenderType::EntitySolid);
+    assert_eq!(pass.render_type.vanilla_name(), "entitySolid");
+    assert_eq!(pass.texture, PLAYER_PROFILE_CAPE_TEXTURE_REF);
+    assert_eq!(pass.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((pass.order, pass.submit_sequence), (0, 2));
+
     let (static_atlas, _) =
         build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
     let cape_texture = EntityDynamicPlayerTexture {

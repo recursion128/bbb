@@ -1365,7 +1365,8 @@ When an agent does any of the following, update this file in the same slice:
         now covered for player entities: native projects the PlayerInfo cape URL as an
         `EntityDynamicPlayerTextureKind::Cape`, and renderer emits the cape
         layer only when the cape model part is visible and the dynamic atlas
-        entry is ready. That submission records vanilla `entitySolid`, the
+        entry is ready. That submission now consumes `player_cape_layer_pass`
+        with vanilla `ModelLayers.PLAYER_CAPE`, recording `entitySolid`, the
         dynamic cape handle, white tint, root transform, default order 0 plus
         the layer submit sequence, and vanilla `OverlayTexture.NO_OVERLAY`;
         missing atlas entries wait instead of drawing stale geometry. Pack/native
@@ -1483,7 +1484,8 @@ When an agent does any of the following, update this file in the same slice:
       sequence 1, now through `player_extra_ears_layer_pass_with_texture` with vanilla
       `ModelLayers.PLAYER_EARS`, including ready dynamic player skin atlas support. Player profile
       cape presentation is covered by the
-      dynamic `entitySolid` cape layer, and WingsLayer/elytra presentation plus
+      dynamic `entitySolid` cape layer through `player_cape_layer_pass` with vanilla
+      `ModelLayers.PLAYER_CAPE`, and WingsLayer/elytra presentation plus
       elytra animation-state projection are covered for vanilla elytra equipment
       on players, humanoid mobs, armor stands, and baby humanoid mobs; player
       cloak interpolation now feeds the cape flap/lean/lean2 values)
