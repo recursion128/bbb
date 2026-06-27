@@ -112,8 +112,16 @@ fn shulker_bullet_textured_render_matches_vanilla_renderer() {
         EntityModelLayerRenderType::EntityCutout
     );
     assert_eq!(
+        meshes.submissions[0].render_type.vanilla_name(),
+        "entityCutout"
+    );
+    assert_eq!(
         meshes.submissions[1].render_type,
         EntityModelLayerRenderType::EntityTranslucent
+    );
+    assert_eq!(
+        meshes.submissions[1].render_type.vanilla_name(),
+        "entityTranslucent"
     );
     assert_eq!(meshes.submissions[0].texture, SHULKER_BULLET_TEXTURE_REF);
     assert_eq!(meshes.submissions[1].texture, SHULKER_BULLET_TEXTURE_REF);
@@ -141,6 +149,10 @@ fn shulker_bullet_textured_render_matches_vanilla_renderer() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    assert!(mesh.vertices.iter().all(|vertex| {
+        vertex.light == meshes.submissions[0].light
+            && vertex.overlay == meshes.submissions[0].overlay
+    }));
     assert_eq!(meshes.translucent.vertices.len(), 72);
     assert_eq!(meshes.translucent.indices.len(), 108);
     assert!(meshes
@@ -148,6 +160,10 @@ fn shulker_bullet_textured_render_matches_vanilla_renderer() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 38.0 / 255.0]));
+    assert!(meshes.translucent.vertices.iter().all(|vertex| {
+        vertex.light == meshes.submissions[1].light
+            && vertex.overlay == meshes.submissions[1].overlay
+    }));
 
     let (base_min, base_max) = textured_mesh_extents(&meshes.cutout);
     let (shell_min, shell_max) = textured_mesh_extents(&meshes.translucent);

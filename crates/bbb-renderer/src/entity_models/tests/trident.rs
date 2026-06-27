@@ -146,6 +146,10 @@ fn trident_textured_mesh_uses_vanilla_uvs_and_geometry() {
     assert_eq!(mesh.cutout_faces, 30);
     assert_eq!(mesh.vertices.len(), 120);
     assert_eq!(mesh.indices.len(), 180);
+    assert!(mesh
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
 }
 
 #[test]
@@ -186,6 +190,11 @@ fn foiled_trident_records_vanilla_entity_glint_submission() {
 
     assert_eq!(meshes.cutout.cutout_faces, 30);
     assert_eq!(meshes.cutout.vertices.len(), 120);
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == base.light && vertex.overlay == base.overlay));
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
     assert!(meshes.scroll.vertices.is_empty());
