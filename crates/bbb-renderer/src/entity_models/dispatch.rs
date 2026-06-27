@@ -10,7 +10,9 @@
 
 use glam::{Mat4, Vec3};
 
-use super::catalog::{CowModelVariant, EntityModelKind, EntityModelTextureAtlasLayout};
+use super::catalog::{
+    CowModelVariant, EntityModelKind, EntityModelTextureAtlasLayout, SkeletonModelFamily,
+};
 use super::colored::{
     arrow_model_root_transform, boat_model_root_transform, cave_spider_model_root_transform,
     cod_model_root_transform, creeper_model_root_transform, ender_dragon_model_root_transform,
@@ -22,7 +24,7 @@ use super::colored::{
     pufferfish_model_root_transform, salmon_model_root_transform,
     shulker_bullet_model_root_transform, shulker_model_root_transform, slime_model_root_transform,
     trident_model_root_transform, villager_adult_model_root_transform, wither_model_root_transform,
-    wither_skull_model_root_transform, GIANT_SCALE,
+    wither_skeleton_model_root_transform, wither_skull_model_root_transform, GIANT_SCALE,
 };
 use super::geometry::{part_pose_transform, EntityModelMesh};
 use super::instances::EntityModelInstance;
@@ -35,14 +37,15 @@ use super::model_layers::{
     GoatModel, GuardianModel, HappyGhastModel, IllagerModel, IronGolemModel, LeashKnotModel,
     LlamaSpitModel, MagmaCubeModel, MinecartModel, NautilusModel, PandaModel, ParrotModel,
     PhantomModel, PigModel, PolarBearModel, PufferfishModel, RabbitModel, RavagerModel,
-    SalmonModel, ShulkerBulletModel, ShulkerModel, SilverfishModel, SlimeModel, SlimeOuterModel,
-    SnifferModel, SnowGolemModel, SpiderModel, StriderModel, TadpoleModel, TridentModel,
-    TurtleModel, VexModel, VillagerModel, WanderingTraderModel, WardenModel, WitchModel,
-    WitherModel, WitherSkullModel, WolfModel, ZombieModel, ALLAY_TEXTURE_REF,
-    ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF, BREEZE_EYES_TEXTURE_REF, BREEZE_TEXTURE_REF,
-    COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF, FELINE_CAT_SCALE,
-    GUARDIAN_ELDER_SCALE, PUFFERFISH_TEXTURE_REF, TURTLE_BABY_TEXTURE_REF,
-    TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF, VEX_CHARGING_TEXTURE_REF, VEX_TEXTURE_REF,
+    SalmonModel, ShulkerBulletModel, ShulkerModel, SilverfishModel, SkeletonClothingModel,
+    SkeletonModel, SlimeModel, SlimeOuterModel, SnifferModel, SnowGolemModel, SpiderModel,
+    StriderModel, TadpoleModel, TridentModel, TurtleModel, VexModel, VillagerModel,
+    WanderingTraderModel, WardenModel, WitchModel, WitherModel, WitherSkullModel, WolfModel,
+    ZombieModel, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF,
+    BREEZE_EYES_TEXTURE_REF, BREEZE_TEXTURE_REF, COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF,
+    DOLPHIN_TEXTURE_REF, FELINE_CAT_SCALE, GUARDIAN_ELDER_SCALE, PUFFERFISH_TEXTURE_REF,
+    TURTLE_BABY_TEXTURE_REF, TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF,
+    VEX_CHARGING_TEXTURE_REF, VEX_TEXTURE_REF, WITHER_SKELETON_DARK,
 };
 use super::textured::{
     armadillo_textured_layer_passes, arrow_textured_layer_passes, axolotl_textured_layer_passes,
@@ -60,9 +63,10 @@ use super::textured::{
     parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
     polar_bear_textured_layer_passes, rabbit_textured_layer_passes, ravager_textured_layer_passes,
     render_textured_layers, salmon_textured_layer_passes, shulker_bullet_textured_layer_passes,
-    shulker_textured_layer_passes, silverfish_textured_layer_passes, slime_textured_layer_passes,
-    sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
-    tadpole_textured_layer_passes, trident_textured_layer_passes, villager_textured_layer_passes,
+    shulker_textured_layer_passes, silverfish_textured_layer_passes,
+    skeleton_textured_layer_passes, slime_textured_layer_passes, sniffer_textured_layer_passes,
+    snow_golem_textured_layer_passes, spider_textured_layer_passes, tadpole_textured_layer_passes,
+    trident_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, warden_textured_layer_passes,
     witch_textured_layer_passes, wither_skull_textured_layer_passes, wither_textured_layer_passes,
     wolf_textured_layer_passes, zombie_nautilus_textured_layer_passes,
@@ -91,6 +95,17 @@ pub(in crate::entity_models) trait EntityModelSink {
         transform: Mat4,
         instance: &EntityModelInstance,
         passes: &[EntityModelLayerPass],
+    ) {
+        self.model(model, transform, instance, passes);
+    }
+
+    fn model_with_colored_override<M: EntityModel>(
+        &mut self,
+        model: M,
+        transform: Mat4,
+        instance: &EntityModelInstance,
+        passes: &[EntityModelLayerPass],
+        _color: [f32; 4],
     ) {
         self.model(model, transform, instance, passes);
     }
@@ -125,6 +140,20 @@ impl EntityModelSink for ColoredSink<'_> {
         _instance: &EntityModelInstance,
         _passes: &[EntityModelLayerPass],
     ) {
+    }
+
+    fn model_with_colored_override<M: EntityModel>(
+        &mut self,
+        mut model: M,
+        transform: Mat4,
+        instance: &EntityModelInstance,
+        passes: &[EntityModelLayerPass],
+        color: [f32; 4],
+    ) {
+        if self.skip_texture_backed && !passes.is_empty() {
+            return;
+        }
+        model.prepare_and_render_with_color(self.mesh, instance, transform, color);
     }
 }
 
@@ -211,6 +240,43 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                 instance,
                 &passes[1..2],
             );
+        }
+        EntityModelKind::Skeleton => {
+            let transform = entity_model_root_transform(*instance);
+            let passes = skeleton_textured_layer_passes(None);
+            sink.model(SkeletonModel::new(None), transform, instance, &passes[0..1]);
+        }
+        EntityModelKind::SkeletonVariant { family } => {
+            let transform = if matches!(family, SkeletonModelFamily::WitherSkeleton) {
+                wither_skeleton_model_root_transform(*instance)
+            } else {
+                entity_model_root_transform(*instance)
+            };
+            let passes = skeleton_textured_layer_passes(Some(family));
+            if matches!(family, SkeletonModelFamily::WitherSkeleton) {
+                sink.model_with_colored_override(
+                    SkeletonModel::new(Some(family)),
+                    transform,
+                    instance,
+                    &passes[0..1],
+                    WITHER_SKELETON_DARK,
+                );
+            } else {
+                sink.model(
+                    SkeletonModel::new(Some(family)),
+                    transform,
+                    instance,
+                    &passes[0..1],
+                );
+            }
+            if passes.len() > 1 {
+                sink.textured_only_model(
+                    SkeletonClothingModel::new(Some(family)),
+                    transform,
+                    instance,
+                    &passes[1..2],
+                );
+            }
         }
         EntityModelKind::Ghast { charging } => sink.model(
             GhastModel::new(),

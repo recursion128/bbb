@@ -49,21 +49,21 @@ use super::{
         CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel, CustomHeadSkullModel,
         DrownedOuterModel, ElytraModel, HoglinModel, HumanoidArmorSlot, HumanoidBabyArmorKind,
         LlamaModel, NautilusModel, PigModel, PiglinModel, PlayerEarsModel, PlayerModel,
-        SheepFurModel, SheepModel, SkeletonClothingModel, SkeletonModel, SpinAttackEffectModel,
-        SquidModel, StriderModel, TropicalFishModel, TropicalFishPatternModel, VillagerModel,
-        WindChargeModel, WitherModel, WolfModel, ZombieModel, ZombieVariantModel,
-        ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
-        ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
-        ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
-        ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
-        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF,
-        CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF,
-        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENCHANTED_GLINT_ITEM_TEXTURE_REF,
-        ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_BEAM_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS,
-        END_CRYSTAL_TEXTURE_REF, GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
-        LLAMA_BODY_TRADER_BABY_TEXTURE_REF, LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF,
-        NAUTILUS_SADDLE_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF,
-        PIG_SADDLE_TEXTURE_REF, PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
+        SheepFurModel, SheepModel, SkeletonModel, SpinAttackEffectModel, SquidModel, StriderModel,
+        TropicalFishModel, TropicalFishPatternModel, VillagerModel, WindChargeModel, WitherModel,
+        WolfModel, ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
+        ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_DONKEY_SADDLE_PARTS_TEXTURED,
+        ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED, ADULT_HORSE_ARMOR_PARTS_TEXTURED,
+        ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
+        ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
+        BABY_HORSE_PARTS_TEXTURED, BREEZE_WIND_TEXTURE_REF, CAMEL_HUSK_SADDLE_TEXTURE_REF,
+        CAMEL_SADDLE_TEXTURE_REF, CREEPER_ARMOR_TEXTURE_REF, CREEPER_TEXTURE_REF,
+        DONKEY_SADDLE_TEXTURE_REF, ENCHANTED_GLINT_ITEM_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF,
+        END_CRYSTAL_BEAM_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, END_CRYSTAL_TEXTURE_REF,
+        GUARDIAN_BEAM_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
+        LLAMA_BODY_TRADER_TEXTURE_REF, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
+        PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF,
+        PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
         SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION,
         STRIDER_SADDLE_TEXTURE_REF, TRIDENT_RIPTIDE_TEXTURE_REF, WIND_CHARGE_TEXTURE_REF,
         WITHER_ARMOR_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
@@ -469,12 +469,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
                         age_ticks,
                         atlas,
                     );
-                }
-                EntityModelKind::Skeleton => {
-                    emit_skeleton_textured_model(&mut meshes, *instance, None, atlas);
-                }
-                EntityModelKind::SkeletonVariant { family } => {
-                    emit_skeleton_textured_model(&mut meshes, *instance, Some(family), atlas);
                 }
                 EntityModelKind::Horse { baby, markings, .. } => {
                     emit_horse_textured_model(&mut meshes, *instance, baby, markings, atlas);
@@ -3645,34 +3639,6 @@ fn emit_undead_horse_textured_model(
         instance,
         atlas,
     );
-}
-
-fn emit_skeleton_textured_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    family: Option<SkeletonModelFamily>,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    // The unified `SkeletonModel` tree (selected by family) drives both render paths; `setup_anim` runs
-    // the shared humanoid head look + arm/leg walk swing. The base body draws in the cutout pass; the
-    // stray frost / bogged mushroom overlay is a second cutout pass driven by a textured-only
-    // `SkeletonClothingModel` posed by the SAME animator, so it tracks the limbs.
-    let transform = if matches!(family, Some(SkeletonModelFamily::WitherSkeleton)) {
-        wither_skeleton_model_root_transform(instance)
-    } else {
-        entity_model_root_transform(instance)
-    };
-    let mut base = SkeletonModel::new(family);
-    base.prepare(&instance);
-    for pass in skeleton_textured_layer_passes(family) {
-        if matches!(pass.kind, EntityModelLayerKind::SkeletonClothing) {
-            let mut clothing = SkeletonClothingModel::new(family);
-            clothing.prepare(&instance);
-            render_textured_root_pass(meshes, clothing.root(), transform, pass, atlas);
-        } else {
-            render_textured_root_pass(meshes, base.root(), transform, pass, atlas);
-        }
-    }
 }
 
 fn entity_model_texture_atlas_entry(

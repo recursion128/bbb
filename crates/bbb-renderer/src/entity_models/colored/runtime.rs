@@ -20,7 +20,7 @@ use super::transforms::{
     drowned_model_root_transform, end_crystal_model_root_transform, entity_model_root_transform,
     mesh_transformer_scaled_model_root_transform, player_model_root_transform,
     scaled_model_root_transform, squid_model_root_transform, tropical_fish_model_root_transform,
-    wind_charge_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
+    wind_charge_model_root_transform, HUSK_SCALE,
 };
 
 #[cfg(test)]
@@ -108,20 +108,6 @@ fn entity_model_mesh_with_options(
                 EntityModelKind::Hoglin { family, baby } => {
                     if !skip_texture_backed_entities {
                         emit_hoglin_model(&mut mesh, *instance, family, baby)
-                    }
-                }
-                EntityModelKind::Skeleton => {
-                    if !skip_texture_backed_entities {
-                        SkeletonModel::new(None).prepare_and_render(
-                            &mut mesh,
-                            instance,
-                            entity_model_root_transform(*instance),
-                        );
-                    }
-                }
-                EntityModelKind::SkeletonVariant { family } => {
-                    if !skip_texture_backed_entities {
-                        emit_skeleton_variant_model(&mut mesh, *instance, family)
                     }
                 }
                 EntityModelKind::Sheep {
@@ -439,28 +425,6 @@ fn emit_hoglin_model(
         entity_model_root_transform(instance),
         hoglin_model_color(family),
     );
-}
-
-fn emit_skeleton_variant_model(
-    mesh: &mut EntityModelMesh,
-    instance: EntityModelInstance,
-    family: SkeletonModelFamily,
-) {
-    // The unified `SkeletonModel` tree (selected by family) drives both render paths; `setup_anim` runs
-    // the shared humanoid head look + arm/leg walk swing. The clothing / mushroom overlay is a
-    // textured-only pass, so the colored fallback renders only the base body. The wither skeleton reuses
-    // the plain mesh with the dark tint and its own root transform.
-    let mut model = SkeletonModel::new(Some(family));
-    if family == SkeletonModelFamily::WitherSkeleton {
-        model.prepare_and_render_with_color(
-            mesh,
-            &instance,
-            wither_skeleton_model_root_transform(instance),
-            WITHER_SKELETON_DARK,
-        );
-    } else {
-        model.prepare_and_render(mesh, &instance, entity_model_root_transform(instance));
-    }
 }
 
 /// Applies the vanilla `QuadrupedModel.setupAnim` leg swing

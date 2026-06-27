@@ -2200,7 +2200,9 @@ When an agent does any of the following, update this file in the same slice:
       `isAggressive && !isHoldingBow` raising both arms to `-π/2` and chopping with
       the projected `attack_anim` (the right arm yawing in, the left out), over the
       shared `setupAttackAnimation` body twist, on the base body and the clothing
-      overlay alike. Textured skeleton-family regressions now route through
+      overlay alike. Shared dispatch now owns the skeleton-family base submissions
+      and the Stray/Bogged textured-only clothing overlay instead of a residual textured
+      emit helper. Textured skeleton-family regressions now route through
       `entity_model_textured_meshes`, pinning base and Stray/Bogged clothing submissions'
       selected textures, `entityCutout` render type, white tint, root transform
       (`wither_skeleton_model_root_transform` for wither skeleton, generic
