@@ -1709,13 +1709,15 @@ When an agent does any of the following, update this file in the same slice:
       layer is implemented from `EquipmentSlot.SADDLE`, using vanilla `HORSE_SADDLE`,
       `EquineSaddleModel.createSaddleLayer()` with `livingHorseScale=1.1`, the family-specific
       `textures/entity/equipment/horse_saddle/saddle.png`, and ridden-only bridle line
-      visibility from passenger state; baby horses intentionally skip it because vanilla
+      visibility from passenger state; its submission is now generated from `equipment_layer_pass`
+      with vanilla `ModelLayers.HORSE_SADDLE`. Baby horses intentionally skip it because vanilla
       supplies no baby saddle model. The adult horse body-armor equipment layer is also
       implemented from `EquipmentSlot.BODY`, using vanilla `HORSE_BODY`,
       `HorseModel(ModelLayers.HORSE_ARMOR)` with `AbstractEquineModel.createBodyMesh(CubeDeformation(0.1F))`
       plus `livingHorseScale=1.1`, and the official
       `textures/entity/equipment/horse_body/{leather,leather_overlay,copper,iron,gold,diamond,netherite}.png`
-      textures; leather uses the dyeable base layer plus white overlay, and baby horses skip it
+      textures; leather uses the dyeable base layer plus white overlay, submissions are generated
+      from `equipment_layer_pass` with vanilla `ModelLayers.HORSE_ARMOR`, and baby horses skip it
       because vanilla supplies no baby armor model. The ridden/eat/stand/mouth poses, the
       tail's `ageInTicks` yRot wag, and the in-water leg-frequency scaling remain unsupported
     - donkey and mule entities as renderer-owned vanilla 26.1 adult/baby
@@ -1745,7 +1747,8 @@ When an agent does any of the following, update this file in the same slice:
       `DONKEY_SADDLE` / `MULE_SADDLE`, `DonkeyModel.createSaddleLayer(0.87F/0.92F)`, the
       family-specific `textures/entity/equipment/{donkey_saddle,mule_saddle}/saddle.png`,
       ridden-only bridle line visibility from passenger state, entity light, and
-      `OverlayTexture.NO_OVERLAY`, while the base `entityCutout` submits keep
+      `OverlayTexture.NO_OVERLAY`; their submissions are generated from `equipment_layer_pass`
+      with vanilla `ModelLayers.DONKEY_SADDLE` / `MULE_SADDLE`, while the base `entityCutout` submits keep
       vanilla entity light plus hurt/white overlay coords. Folded cutout vertices
       inherit the corresponding base or saddle submission metadata; baby donkey/mule entities
       intentionally skip the layer because vanilla supplies no baby saddle model. The baby leg
@@ -1771,18 +1774,21 @@ When an agent does any of the following, update this file in the same slice:
       adult saddle layers are implemented from `EquipmentSlot.SADDLE`, using vanilla
       `SKELETON_HORSE_SADDLE` / `ZOMBIE_HORSE_SADDLE`, `EquineSaddleModel.createSaddleLayer()`,
       the family-specific `textures/entity/equipment/{skeleton_horse_saddle,zombie_horse_saddle}/saddle.png`,
-      and ridden-only bridle line visibility from passenger state; baby undead horses skip
+      and ridden-only bridle line visibility from passenger state; their submissions are generated from
+      `equipment_layer_pass` with vanilla `ModelLayers.SKELETON_HORSE_SADDLE` /
+      `ZOMBIE_HORSE_SADDLE`. Baby undead horses skip
       the layer because vanilla supplies no baby saddle model. The zombie-horse body-armor layer
       is implemented from `EquipmentSlot.BODY`, using vanilla `HORSE_BODY`,
       `HorseModel(ModelLayers.UNDEAD_HORSE_ARMOR)` with the unscaled horse armor mesh and the
-      same `horse_body` equipment textures; skeleton horses intentionally do not project horse
+      same `horse_body` equipment textures; submissions are generated from `equipment_layer_pass`
+      with vanilla `ModelLayers.UNDEAD_HORSE_ARMOR`; skeleton horses intentionally do not project horse
       armor because vanilla `EntityTypeTags.CAN_WEAR_HORSE_ARMOR` includes only horse and
       zombie_horse. Textured equine regressions now route through
       `entity_model_textured_meshes`, pinning horse/donkey/mule/skeleton-horse/
       zombie-horse base submissions, `HorseMarkingLayer` translucent overlays,
       equine saddle layers, and horse/zombie-horse body armor layers with vanilla
       render types (`entityCutout`, `entityTranslucent`, `armorCutoutNoCull`),
-      selected textures, white or leather-dye tint, root transforms (horse
+      selected textures, model-layer metadata, white or leather-dye tint, root transforms (horse
       `livingHorseScale`, donkey/mule scale, undead unscaled), and explicit
       `SubmitNodeCollector.order` / submit-sequence metadata; horse and undead-horse
       base submits now also pin vanilla entity light plus hurt/white overlay,

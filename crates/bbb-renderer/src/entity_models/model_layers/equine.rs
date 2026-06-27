@@ -16,6 +16,16 @@ pub(in crate::entity_models) const MODEL_LAYER_SKELETON_HORSE_BABY: &str =
 pub(in crate::entity_models) const MODEL_LAYER_ZOMBIE_HORSE: &str = "minecraft:zombie_horse#main";
 pub(in crate::entity_models) const MODEL_LAYER_ZOMBIE_HORSE_BABY: &str =
     "minecraft:zombie_horse_baby#main";
+pub(in crate::entity_models) const MODEL_LAYER_HORSE_ARMOR: &str = "minecraft:horse_armor#main";
+pub(in crate::entity_models) const MODEL_LAYER_HORSE_SADDLE: &str = "minecraft:horse#saddle";
+pub(in crate::entity_models) const MODEL_LAYER_DONKEY_SADDLE: &str = "minecraft:donkey#saddle";
+pub(in crate::entity_models) const MODEL_LAYER_MULE_SADDLE: &str = "minecraft:mule#saddle";
+pub(in crate::entity_models) const MODEL_LAYER_SKELETON_HORSE_SADDLE: &str =
+    "minecraft:skeleton_horse#saddle";
+pub(in crate::entity_models) const MODEL_LAYER_UNDEAD_HORSE_ARMOR: &str =
+    "minecraft:undead_horse_armor#main";
+pub(in crate::entity_models) const MODEL_LAYER_ZOMBIE_HORSE_SADDLE: &str =
+    "minecraft:zombie_horse#saddle";
 
 pub(in crate::entity_models) const ADULT_HORSE_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-5.05, -8.05, -17.05],

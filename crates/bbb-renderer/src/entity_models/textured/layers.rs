@@ -68,6 +68,8 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     GoatBase,
     EndCrystalBase,
     EndCrystalBeam,
+    EquineBodyArmor,
+    EquineSaddle,
     HoglinBase,
     LlamaSpitBase,
     LlamaBase,

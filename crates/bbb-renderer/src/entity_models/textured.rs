@@ -64,14 +64,16 @@ use super::{
         HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIFIED_PIGLIN,
         HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIFIED_PIGLIN_BABY, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
         LLAMA_BODY_TRADER_TEXTURE_REF, MODEL_LAYER_CAMEL_HUSK_SADDLE, MODEL_LAYER_CAMEL_SADDLE,
-        MODEL_LAYER_LLAMA_BABY_DECOR, MODEL_LAYER_LLAMA_DECOR, MODEL_LAYER_NAUTILUS_ARMOR,
-        MODEL_LAYER_NAUTILUS_SADDLE, MODEL_LAYER_PIG_SADDLE, MODEL_LAYER_STRIDER_SADDLE,
-        MODEL_LAYER_WOLF_ARMOR, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
-        PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF,
-        PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
-        SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION,
-        STRIDER_SADDLE_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
-        ZOMBIE_TEXTURE_REF,
+        MODEL_LAYER_DONKEY_SADDLE, MODEL_LAYER_HORSE_ARMOR, MODEL_LAYER_HORSE_SADDLE,
+        MODEL_LAYER_LLAMA_BABY_DECOR, MODEL_LAYER_LLAMA_DECOR, MODEL_LAYER_MULE_SADDLE,
+        MODEL_LAYER_NAUTILUS_ARMOR, MODEL_LAYER_NAUTILUS_SADDLE, MODEL_LAYER_PIG_SADDLE,
+        MODEL_LAYER_SKELETON_HORSE_SADDLE, MODEL_LAYER_STRIDER_SADDLE,
+        MODEL_LAYER_UNDEAD_HORSE_ARMOR, MODEL_LAYER_WOLF_ARMOR, MODEL_LAYER_ZOMBIE_HORSE_SADDLE,
+        MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION,
+        PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF, PLAYER_PROFILE_CAPE_TEXTURE_REF,
+        PLAYER_PROFILE_ELYTRA_TEXTURE_REF, SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF,
+        STANDARD_OUTER_ARMOR_DEFORMATION, STRIDER_SADDLE_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF,
+        ZOMBIE_HORSE_SADDLE_TEXTURE_REF, ZOMBIE_TEXTURE_REF,
     },
     player_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
 };
@@ -963,6 +965,8 @@ fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
             | EntityModelLayerKind::EndCrystalBase
             | EntityModelLayerKind::EnderDragonEyes
             | EntityModelLayerKind::EndermanEyes
+            | EntityModelLayerKind::EquineBodyArmor
+            | EntityModelLayerKind::EquineSaddle
             | EntityModelLayerKind::EvokerFangsBase
             | EntityModelLayerKind::HumanoidArmor
             | EntityModelLayerKind::LeashKnotBase
@@ -2053,9 +2057,10 @@ fn emit_equine_saddle_layer(
     }
 
     let ridden = instance.render_state.equine_saddle_ridden;
-    let (parts, transform, texture, order, submit_sequence): (
+    let (parts, transform, model_layer, texture, order, submit_sequence): (
         &[TexturedModelPartDesc],
         Mat4,
+        &'static str,
         EntityModelTextureRef,
         i32,
         u32,
@@ -2074,6 +2079,7 @@ fn emit_equine_saddle_layer(
                     &ADULT_HORSE_SADDLE_PARTS_TEXTURED
                 },
                 mesh_transformer_scaled_model_root_transform(instance, HORSE_SCALE),
+                MODEL_LAYER_HORSE_SADDLE,
                 HORSE_SADDLE_TEXTURE_REF,
                 2,
                 2 + body_layer_count as u32,
@@ -2092,6 +2098,10 @@ fn emit_equine_saddle_layer(
                 DonkeyModelFamily::Donkey => DONKEY_SADDLE_TEXTURE_REF,
                 DonkeyModelFamily::Mule => MULE_SADDLE_TEXTURE_REF,
             };
+            let model_layer = match family {
+                DonkeyModelFamily::Donkey => MODEL_LAYER_DONKEY_SADDLE,
+                DonkeyModelFamily::Mule => MODEL_LAYER_MULE_SADDLE,
+            };
             (
                 if ridden {
                     &ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED
@@ -2099,6 +2109,7 @@ fn emit_equine_saddle_layer(
                     &ADULT_DONKEY_SADDLE_PARTS_TEXTURED
                 },
                 mesh_transformer_scaled_model_root_transform(instance, scale),
+                model_layer,
                 texture,
                 0,
                 1,
@@ -2111,6 +2122,10 @@ fn emit_equine_saddle_layer(
             let texture = match family {
                 UndeadHorseModelFamily::Skeleton => SKELETON_HORSE_SADDLE_TEXTURE_REF,
                 UndeadHorseModelFamily::Zombie => ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
+            };
+            let model_layer = match family {
+                UndeadHorseModelFamily::Skeleton => MODEL_LAYER_SKELETON_HORSE_SADDLE,
+                UndeadHorseModelFamily::Zombie => MODEL_LAYER_ZOMBIE_HORSE_SADDLE,
             };
             let body_layer_count = match family {
                 UndeadHorseModelFamily::Zombie => instance
@@ -2128,6 +2143,7 @@ fn emit_equine_saddle_layer(
                     &ADULT_HORSE_SADDLE_PARTS_TEXTURED
                 },
                 entity_model_root_transform(instance),
+                model_layer,
                 texture,
                 0,
                 1 + body_layer_count as u32,
@@ -2136,6 +2152,15 @@ fn emit_equine_saddle_layer(
         _ => return,
     };
 
+    let pass = equipment_layer_pass(
+        EntityModelLayerKind::EquineSaddle,
+        EntityModelLayerRenderType::ArmorCutoutNoCull,
+        model_layer,
+        texture,
+        [1.0, 1.0, 1.0, 1.0],
+        order,
+        submit_sequence,
+    );
     emit_equine_textured_submission(
         meshes,
         parts,
@@ -2143,14 +2168,7 @@ fn emit_equine_saddle_layer(
         1,
         0.0,
         1.0,
-        no_overlay_submission(
-            EntityModelLayerRenderType::ArmorCutoutNoCull,
-            texture,
-            [1.0, 1.0, 1.0, 1.0],
-            transform,
-            order,
-            submit_sequence,
-        ),
+        no_overlay_layer_submission(pass, transform),
         instance,
         atlas,
     );
@@ -2172,16 +2190,22 @@ fn emit_equine_body_armor_layer(
     let Some(layers) = horse_body_armor_texture_layers(material) else {
         return;
     };
-    let (transform, order, first_submit_sequence) = match instance.kind {
+    let (transform, model_layer, order, first_submit_sequence) = match instance.kind {
         EntityModelKind::Horse { baby: false, .. } => (
             mesh_transformer_scaled_model_root_transform(instance, HORSE_SCALE),
+            MODEL_LAYER_HORSE_ARMOR,
             2,
             2,
         ),
         EntityModelKind::UndeadHorse {
             family: UndeadHorseModelFamily::Zombie,
             baby: false,
-        } => (entity_model_root_transform(instance), 0, 1),
+        } => (
+            entity_model_root_transform(instance),
+            MODEL_LAYER_UNDEAD_HORSE_ARMOR,
+            0,
+            1,
+        ),
         _ => return,
     };
 
@@ -2194,6 +2218,15 @@ fn emit_equine_body_armor_layer(
         } else {
             [1.0, 1.0, 1.0, 1.0]
         };
+        let pass = equipment_layer_pass(
+            EntityModelLayerKind::EquineBodyArmor,
+            EntityModelLayerRenderType::ArmorCutoutNoCull,
+            model_layer,
+            layer.texture,
+            tint,
+            order + layer_index as i32,
+            first_submit_sequence + layer_index as u32,
+        );
         emit_equine_textured_submission(
             meshes,
             &ADULT_HORSE_ARMOR_PARTS_TEXTURED,
@@ -2201,14 +2234,7 @@ fn emit_equine_body_armor_layer(
             1,
             0.0,
             1.0,
-            no_overlay_submission(
-                EntityModelLayerRenderType::ArmorCutoutNoCull,
-                layer.texture,
-                tint,
-                transform,
-                order + layer_index as i32,
-                first_submit_sequence + layer_index as u32,
-            ),
+            no_overlay_layer_submission(pass, transform),
             instance,
             atlas,
         );
