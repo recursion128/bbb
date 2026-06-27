@@ -1505,9 +1505,14 @@ When an agent does any of the following, update this file in the same slice:
       official base/wool/undercoat texture references, texture-backed base,
       wool, and undercoat layer passes, metadata-driven sheared state, and dye
       color projection, custom-name `jeb_` color cycling from entity metadata
-      and renderer age ticks, vanilla shared-flags invisibility gating for
-      non-glowing wool and undercoat layer passes, and the vanilla
-      `SheepModel`/`SheepFurModel.setupAnim` eat-grass head pose (`head.y +=
+      and renderer age ticks. Texture-backed tests now pin explicit submission
+      metadata for the vanilla `entityCutout` base, wool, and undercoat submits:
+      selected adult/baby texture, wool or `jeb_` tint, root transform, and the
+      vanilla `SubmitNodeCollector.order` / sequence split (base `(0,0)`, adult
+      wool `(0,2)`, adult undercoat `(1,1)`, baby wool `(1,1)`) before folded
+      UV/visibility/eat-head/walk geometry checks, vanilla shared-flags
+      invisibility gating for non-glowing wool and undercoat layer passes, and
+      the vanilla `SheepModel`/`SheepFurModel.setupAnim` eat-grass head pose (`head.y +=
       headEatPositionScale * 9.0 * ageScale`, `head.xRot = headEatAngleScale`)
       projected from entity event `10` and the canonical `eatAnimationTick`
       countdown into the base, wool, and undercoat head part, including the

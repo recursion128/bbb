@@ -427,6 +427,12 @@ fn sheep_textured_layer_passes_match_vanilla_renderer_layers() {
         ]
     );
     assert_eq!(adult_red[0].model_layer, MODEL_LAYER_SHEEP);
+    assert!(adult_red
+        .iter()
+        .all(|pass| pass.render_type == EntityModelLayerRenderType::EntityCutout));
+    assert!(adult_red
+        .iter()
+        .all(|pass| pass.render_type.vanilla_name() == "entityCutout"));
     assert_eq!(adult_red[0].texture, SHEEP_TEXTURE_REF);
     assert_eq!(adult_red[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((adult_red[0].order, adult_red[0].submit_sequence), (0, 0));
@@ -582,17 +588,17 @@ fn entity_texture_atlas_stitches_official_sheep_png_slots() {
 #[test]
 fn sheep_textured_mesh_uses_vanilla_uvs_tints_and_layer_visibility() {
     let (atlas, _) = build_entity_model_texture_atlas(&sheep_texture_images()).unwrap();
-    let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::sheep_wool(
-            301,
-            [0.0, 64.0, 0.0],
-            0.0,
-            false,
-            false,
-            SheepWoolColor::Red,
-        )],
-        &atlas,
+    let red_instance = EntityModelInstance::sheep_wool(
+        301,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+        SheepWoolColor::Red,
     );
+    let meshes = entity_model_textured_meshes(&[red_instance], &atlas);
+    assert_sheep_submissions_match_vanilla(&meshes, red_instance);
+    let mesh = &meshes.cutout;
 
     assert_eq!(mesh.cutout_faces, 108);
     assert_eq!(mesh.vertices.len(), 432);
@@ -610,51 +616,51 @@ fn sheep_textured_mesh_uses_vanilla_uvs_tints_and_layer_visibility() {
     );
     assert_close2(mesh.vertices[288].uv, [14.0 / 64.0, 0.4]);
 
-    let sheared = entity_model_textured_mesh(
-        &[EntityModelInstance::sheep_wool(
-            302,
-            [0.0, 64.0, 0.0],
-            0.0,
-            false,
-            true,
-            SheepWoolColor::Red,
-        )],
-        &atlas,
+    let sheared_instance = EntityModelInstance::sheep_wool(
+        302,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        true,
+        SheepWoolColor::Red,
     );
+    let sheared_meshes = entity_model_textured_meshes(&[sheared_instance], &atlas);
+    assert_sheep_submissions_match_vanilla(&sheared_meshes, sheared_instance);
+    let sheared = &sheared_meshes.cutout;
     assert_eq!(sheared.cutout_faces, 72);
     assert_eq!(sheared.vertices.len(), 288);
 
-    let sheared_baby = entity_model_textured_mesh(
-        &[EntityModelInstance::sheep_wool(
-            303,
-            [0.0, 64.0, 0.0],
-            0.0,
-            true,
-            true,
-            SheepWoolColor::Black,
-        )],
-        &atlas,
+    let sheared_baby_instance = EntityModelInstance::sheep_wool(
+        303,
+        [0.0, 64.0, 0.0],
+        0.0,
+        true,
+        true,
+        SheepWoolColor::Black,
     );
+    let sheared_baby_meshes = entity_model_textured_meshes(&[sheared_baby_instance], &atlas);
+    assert_sheep_submissions_match_vanilla(&sheared_baby_meshes, sheared_baby_instance);
+    let sheared_baby = &sheared_baby_meshes.cutout;
     assert_eq!(sheared_baby.cutout_faces, 36);
     assert!(sheared_baby
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
 
-    let jeb_white = entity_model_textured_mesh(
-        &[EntityModelInstance::sheep_render_state(
-            304,
-            [0.0, 64.0, 0.0],
-            0.0,
-            false,
-            false,
-            SheepWoolColor::White,
-            false,
-            true,
-            12.5,
-        )],
-        &atlas,
+    let jeb_white_instance = EntityModelInstance::sheep_render_state(
+        304,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+        SheepWoolColor::White,
+        false,
+        true,
+        12.5,
     );
+    let jeb_white_meshes = entity_model_textured_meshes(&[jeb_white_instance], &atlas);
+    assert_sheep_submissions_match_vanilla(&jeb_white_meshes, jeb_white_instance);
+    let jeb_white = &jeb_white_meshes.cutout;
     assert_eq!(jeb_white.cutout_faces, 108);
     assert_eq!(jeb_white.vertices.len(), 432);
     assert_eq!(
@@ -668,22 +674,22 @@ fn sheep_textured_mesh_uses_vanilla_uvs_tints_and_layer_visibility() {
 
     // An invisible sheep renders nothing: the unified `render_state.invisible` skips the whole
     // model in both paths, so no body and no wool/undercoat layer is emitted.
-    let invisible_red = entity_model_textured_mesh(
-        &[EntityModelInstance::sheep_render_state(
-            305,
-            [0.0, 64.0, 0.0],
-            0.0,
-            false,
-            false,
-            SheepWoolColor::Red,
-            true,
-            false,
-            0.0,
-        )],
-        &atlas,
+    let invisible_red_instance = EntityModelInstance::sheep_render_state(
+        305,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+        SheepWoolColor::Red,
+        true,
+        false,
+        0.0,
     );
-    assert_eq!(invisible_red.cutout_faces, 0);
-    assert!(invisible_red.vertices.is_empty());
+    let invisible_red = entity_model_textured_meshes(&[invisible_red_instance], &atlas);
+    assert_sheep_folded_meshes_are_cutout_only(&invisible_red);
+    assert!(invisible_red.submissions.is_empty());
+    assert_eq!(invisible_red.cutout.cutout_faces, 0);
+    assert!(invisible_red.cutout.vertices.is_empty());
 }
 
 #[test]
@@ -838,53 +844,51 @@ fn sheep_head_pose_matches_vanilla_setup_anim() {
 #[test]
 fn sheep_textured_mesh_applies_eating_head_pose_to_all_layers() {
     let (atlas, _) = build_entity_model_texture_atlas(&sheep_texture_images()).unwrap();
-    let resting = entity_model_textured_mesh(
-        &[EntityModelInstance::sheep_wool(
-            401,
-            [0.0, 64.0, 0.0],
-            0.0,
-            false,
-            false,
-            SheepWoolColor::Red,
-        )],
-        &atlas,
+    let resting_instance = EntityModelInstance::sheep_wool(
+        401,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+        SheepWoolColor::Red,
     );
+    let resting = entity_model_textured_meshes(&[resting_instance], &atlas);
+    assert_sheep_submissions_match_vanilla(&resting, resting_instance);
     // Tick 20: full head dip (positionScale 1.0) plus the plateau oscillation.
-    let eating = entity_model_textured_mesh(
-        &[EntityModelInstance::sheep_eating(
-            401,
-            [0.0, 64.0, 0.0],
-            0.0,
-            false,
-            false,
-            SheepWoolColor::Red,
-            20,
-            0.0,
-        )],
-        &atlas,
+    let eating_instance = EntityModelInstance::sheep_eating(
+        401,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+        SheepWoolColor::Red,
+        20,
+        0.0,
     );
+    let eating = entity_model_textured_meshes(&[eating_instance], &atlas);
+    assert_sheep_submissions_match_vanilla(&eating, eating_instance);
 
     // Base, wool, and undercoat each contribute 144 vertices; the head cube is
     // the first 24 vertices of each pass.
-    assert_eq!(resting.vertices.len(), 432);
-    assert_eq!(eating.vertices.len(), 432);
+    assert_eq!(resting.cutout.vertices.len(), 432);
+    assert_eq!(eating.cutout.vertices.len(), 432);
     for pass_start in [0usize, 144, 288] {
         let head = pass_start..pass_start + 24;
         let body_and_legs = pass_start + 24..pass_start + 144;
         assert_ne!(
-            resting.vertices[head.clone()],
-            eating.vertices[head.clone()],
+            resting.cutout.vertices[head.clone()],
+            eating.cutout.vertices[head.clone()],
             "head animates in pass at {pass_start}"
         );
         assert_eq!(
-            resting.vertices[body_and_legs.clone()],
-            eating.vertices[body_and_legs],
+            resting.cutout.vertices[body_and_legs.clone()],
+            eating.cutout.vertices[body_and_legs],
             "body and legs stay put in pass at {pass_start}"
         );
         // The root transform flips Y, so a larger model head.y dips the head down.
         assert!(
-            average_textured_y(&eating.vertices[head.clone()])
-                < average_textured_y(&resting.vertices[head]),
+            average_textured_y(&eating.cutout.vertices[head.clone()])
+                < average_textured_y(&resting.cutout.vertices[head]),
             "head dips downward in pass at {pass_start}"
         );
     }
@@ -905,28 +909,33 @@ fn sheep_textured_mesh_swings_legs_when_walking() {
         false,
         SheepWoolColor::Red,
     );
-    let resting = entity_model_textured_mesh(&[base], &atlas);
-    let still = entity_model_textured_mesh(&[base.with_walk_animation(2.5, 0.0)], &atlas);
-    let walking = entity_model_textured_mesh(&[base.with_walk_animation(0.0, 1.0)], &atlas);
+    let still_instance = base.with_walk_animation(2.5, 0.0);
+    let walking_instance = base.with_walk_animation(0.0, 1.0);
+    let resting = entity_model_textured_meshes(&[base], &atlas);
+    let still = entity_model_textured_meshes(&[still_instance], &atlas);
+    let walking = entity_model_textured_meshes(&[walking_instance], &atlas);
+    assert_sheep_submissions_match_vanilla(&resting, base);
+    assert_sheep_submissions_match_vanilla(&still, still_instance);
+    assert_sheep_submissions_match_vanilla(&walking, walking_instance);
 
     assert_eq!(
-        resting.vertices, still.vertices,
+        resting.cutout.vertices, still.cutout.vertices,
         "a standing sheep is inert"
     );
-    assert_eq!(resting.vertices.len(), walking.vertices.len());
+    assert_eq!(resting.cutout.vertices.len(), walking.cutout.vertices.len());
     // Base, wool, and undercoat each contribute 144 vertices; the head cube is the
     // first 24, the body and legs the remaining 120.
     for pass_start in [0usize, 144, 288] {
         let head = pass_start..pass_start + 24;
         let body_and_legs = pass_start + 24..pass_start + 144;
         assert_eq!(
-            resting.vertices[head.clone()],
-            walking.vertices[head],
+            resting.cutout.vertices[head.clone()],
+            walking.cutout.vertices[head],
             "head is unaffected by the leg swing in pass at {pass_start}"
         );
         assert_ne!(
-            resting.vertices[body_and_legs.clone()],
-            walking.vertices[body_and_legs],
+            resting.cutout.vertices[body_and_legs.clone()],
+            walking.cutout.vertices[body_and_legs],
             "legs swing in pass at {pass_start}"
         );
     }
@@ -1019,6 +1028,51 @@ fn sheep_colored_mesh_applies_head_look_to_head_only() {
     assert_eq!(resting.vertices[24..144], pitched.vertices[24..144]);
     // Yaw and pitch are distinct head rotations.
     assert_ne!(yawed.vertices[0..24], pitched.vertices[0..24]);
+}
+
+fn assert_sheep_submissions_match_vanilla(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    assert_sheep_folded_meshes_are_cutout_only(meshes);
+    let EntityModelKind::Sheep {
+        baby,
+        sheared,
+        wool_color,
+        jeb,
+        age_ticks,
+    } = instance.kind
+    else {
+        panic!("expected sheep instance");
+    };
+    let passes = sheep_textured_layer_passes(baby, sheared, wool_color, jeb, age_ticks);
+    assert_eq!(meshes.submissions.len(), passes.len());
+    for (submit, pass) in meshes.submissions.iter().copied().zip(passes) {
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.render_type, pass.render_type);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(submit.texture, pass.texture);
+        assert_eq!(submit.tint, pass.tint);
+        assert_eq!(submit.transform, entity_model_root_transform(instance));
+        assert_eq!(
+            (submit.order, submit.submit_sequence),
+            (pass.order, pass.submit_sequence)
+        );
+    }
+}
+
+fn assert_sheep_folded_meshes_are_cutout_only(meshes: &EntityModelTexturedMeshes) {
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_cutout.vertices.is_empty());
+    assert!(meshes.dynamic_player_skin_translucent.vertices.is_empty());
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_translucent
+        .vertices
+        .is_empty());
+    assert!(meshes.scroll.vertices.is_empty());
+    assert!(meshes.scroll_additive.vertices.is_empty());
 }
 
 fn average_textured_y(vertices: &[EntityModelTexturedVertex]) -> f32 {
