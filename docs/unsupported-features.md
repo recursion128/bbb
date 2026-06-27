@@ -1924,7 +1924,10 @@ When an agent does any of the following, update this file in the same slice:
       `entity_model_root_transform`, and `(order, submit_sequence) == (0, 0)`;
       type, profession, and level overlays use `entityCutout`, white tint, the
       same transform, and vanilla `VillagerProfessionLayer` orders `(1, 1)`,
-      `(2, 2)`, and `(3, 3)`. Wandering trader textured regressions pin its
+      `(2, 2)`, and `(3, 3)`, preserving entity light while clearing the white
+      overlay column via `getOverlayCoords(state, 0.0F)`. Base villager and
+      wandering trader submissions preserve entity light plus full hurt/white
+      overlay. Wandering trader textured regressions pin its
       single `wandering_trader.png` base submission with
       `villager_adult_model_root_transform` and `(0, 0)`. Crossed-arms
       item layer is implemented for adult/baby villagers and wandering traders
@@ -1933,8 +1936,7 @@ When an agent does any of the following, update this file in the same slice:
       and static skeleton/wither-skeleton/zombie/creeper skulls plus
       profileless default-player heads, profiled default-skin player heads,
       dynamic profiled-player heads, dragon heads, and piglin heads render
-      through the skull branch; lighting and wandering trader baby presentation
-      remain unsupported
+      through the skull branch; wandering trader baby presentation remains unsupported
     - worn humanoid armor as a renderer-owned vanilla 26.1 `HumanoidArmorLayer` overlay (framework
       slice 1, renderer-side): the inflated `HumanoidArmorModel`
       (`HumanoidModel.createBaseArmorMesh` / `createArmorMeshSet`) is built per equipment slot as a
@@ -2088,8 +2090,10 @@ When an agent does any of the following, update this file in the same slice:
       overlays as vanilla `entityCutout` submits with selected textures, white
       tint, root transforms (`entity_model_root_transform`, adult husk
       `huskScale`, drowned swim pivot), and explicit `(order, submit_sequence)`
-      metadata before folded cutout geometry, tint, transform, and animation
-      checks; the piglin
+      metadata, plus `LivingEntityRenderer` entity light and the base full
+      hurt/white overlay versus `DrownedOuterLayer` / `VillagerProfessionLayer`
+      zero-white overlay split before folded cutout geometry, tint, transform, and
+      animation checks; the piglin
       dance/attack/crossbow-hold/crossbow-charge/admiring arm poses ARE all implemented
       (see the piglin note);
       the zombie-arm attack swing IS implemented (the

@@ -849,7 +849,12 @@ fn zombie_textured_layer_passes_match_vanilla_renderer() {
 fn zombie_textured_mesh_matches_colored_geometry_and_legs_swing() {
     let (atlas, _) = build_entity_model_texture_atlas(&zombie_texture_images()).unwrap();
     for baby in [false, true] {
-        let instances = [EntityModelInstance::zombie(55, [0.0, 64.0, 0.0], 0.0, baby)];
+        let instances = [zombie_submission_probe(EntityModelInstance::zombie(
+            55,
+            [0.0, 64.0, 0.0],
+            0.0,
+            baby,
+        ))];
         let colored = entity_model_mesh(&instances);
         let textured_meshes = entity_model_textured_meshes(&instances, &atlas);
         assert_zombie_family_submissions_match_vanilla(&textured_meshes, instances[0]);
@@ -938,12 +943,14 @@ fn husk_textured_layer_passes_match_vanilla_renderer() {
 fn husk_textured_mesh_matches_colored_geometry_and_legs_swing() {
     let (atlas, _) = build_entity_model_texture_atlas(&husk_texture_images()).unwrap();
     for baby in [false, true] {
-        let instances = [EntityModelInstance::zombie_variant(
-            56,
-            [0.0, 64.0, 0.0],
-            0.0,
-            ZombieVariantModelFamily::Husk,
-            baby,
+        let instances = [zombie_submission_probe(
+            EntityModelInstance::zombie_variant(
+                56,
+                [0.0, 64.0, 0.0],
+                0.0,
+                ZombieVariantModelFamily::Husk,
+                baby,
+            ),
         )];
         let colored = entity_model_mesh(&instances);
         let textured_meshes = entity_model_textured_meshes(&instances, &atlas);
@@ -1083,12 +1090,14 @@ fn drowned_textured_layer_passes_match_vanilla_renderer() {
 fn drowned_textured_mesh_matches_colored_geometry_and_legs_swing() {
     let (atlas, _) = build_entity_model_texture_atlas(&drowned_texture_images()).unwrap();
     for baby in [false, true] {
-        let instances = [EntityModelInstance::zombie_variant(
-            57,
-            [0.0, 64.0, 0.0],
-            0.0,
-            ZombieVariantModelFamily::Drowned,
-            baby,
+        let instances = [zombie_submission_probe(
+            EntityModelInstance::zombie_variant(
+                57,
+                [0.0, 64.0, 0.0],
+                0.0,
+                ZombieVariantModelFamily::Drowned,
+                baby,
+            ),
         )];
         let colored = entity_model_mesh(&instances);
         let textured_meshes = entity_model_textured_meshes(&instances, &atlas);
@@ -1199,12 +1208,14 @@ fn drowned_outer_layer_overlays_the_inflated_white_shell() {
     let (with_outer, _) = build_entity_model_texture_atlas(&images).unwrap();
     let (base_only, _) = build_entity_model_texture_atlas(&drowned_texture_images()).unwrap();
 
-    let instances = [EntityModelInstance::zombie_variant(
-        57,
-        [0.0, 64.0, 0.0],
-        0.0,
-        ZombieVariantModelFamily::Drowned,
-        false,
+    let instances = [zombie_submission_probe(
+        EntityModelInstance::zombie_variant(
+            57,
+            [0.0, 64.0, 0.0],
+            0.0,
+            ZombieVariantModelFamily::Drowned,
+            false,
+        ),
     )];
     let base_meshes = entity_model_textured_meshes(&instances, &base_only);
     assert_zombie_family_submissions_match_vanilla(&base_meshes, instances[0]);
@@ -1212,6 +1223,17 @@ fn drowned_outer_layer_overlays_the_inflated_white_shell() {
     let outer_meshes = entity_model_textured_meshes(&instances, &with_outer);
     assert_zombie_family_submissions_match_vanilla(&outer_meshes, instances[0]);
     let outer = &outer_meshes.cutout;
+    let body_overlay = instances[0].render_state.overlay_coords();
+    let layer_overlay = [0.0, body_overlay[1]];
+    assert_ne!(body_overlay, layer_overlay);
+    assert!(outer
+        .vertices
+        .iter()
+        .any(|vertex| vertex.overlay == body_overlay));
+    assert!(outer
+        .vertices
+        .iter()
+        .any(|vertex| vertex.overlay == layer_overlay));
 
     // The outer adds exactly the inflated humanoid shell (7 boxes * 6 faces).
     assert_eq!(outer.cutout_faces, base.cutout_faces + 42);
@@ -1248,12 +1270,14 @@ fn drowned_outer_layer_overlays_the_inflated_white_shell() {
     // The baby drowned carries its own distinct outer shell (`BabyDrownedModel.createBodyLayer(0.25)`),
     // which adds the same seven inflated boxes (42 faces) over the baby body and tracks it past the
     // base baby body in every direction.
-    let baby = [EntityModelInstance::zombie_variant(
-        58,
-        [0.0, 64.0, 0.0],
-        0.0,
-        ZombieVariantModelFamily::Drowned,
-        true,
+    let baby = [zombie_submission_probe(
+        EntityModelInstance::zombie_variant(
+            58,
+            [0.0, 64.0, 0.0],
+            0.0,
+            ZombieVariantModelFamily::Drowned,
+            true,
+        ),
     )];
     let baby_base_meshes = entity_model_textured_meshes(&baby, &base_only);
     assert_zombie_family_submissions_match_vanilla(&baby_base_meshes, baby[0]);
@@ -1261,6 +1285,17 @@ fn drowned_outer_layer_overlays_the_inflated_white_shell() {
     let baby_outer_meshes = entity_model_textured_meshes(&baby, &with_outer);
     assert_zombie_family_submissions_match_vanilla(&baby_outer_meshes, baby[0]);
     let baby_outer = &baby_outer_meshes.cutout;
+    let baby_body_overlay = baby[0].render_state.overlay_coords();
+    let baby_layer_overlay = [0.0, baby_body_overlay[1]];
+    assert_ne!(baby_body_overlay, baby_layer_overlay);
+    assert!(baby_outer
+        .vertices
+        .iter()
+        .any(|vertex| vertex.overlay == baby_body_overlay));
+    assert!(baby_outer
+        .vertices
+        .iter()
+        .any(|vertex| vertex.overlay == baby_layer_overlay));
     assert_eq!(baby_outer.cutout_faces, baby_base.cutout_faces + 42);
     assert!(baby_outer
         .vertices
@@ -1380,12 +1415,14 @@ fn zombie_villager_textured_layer_passes_match_vanilla_renderer() {
 fn zombie_villager_textured_mesh_matches_colored_geometry_and_legs_swing() {
     let (atlas, _) = build_entity_model_texture_atlas(&zombie_villager_texture_images()).unwrap();
     for baby in [false, true] {
-        let instances = [EntityModelInstance::zombie_variant(
-            58,
-            [0.0, 64.0, 0.0],
-            0.0,
-            ZombieVariantModelFamily::ZombieVillager,
-            baby,
+        let instances = [zombie_submission_probe(
+            EntityModelInstance::zombie_variant(
+                58,
+                [0.0, 64.0, 0.0],
+                0.0,
+                ZombieVariantModelFamily::ZombieVillager,
+                baby,
+            ),
         )];
         let colored = entity_model_mesh(&instances);
         let textured_meshes = entity_model_textured_meshes(&instances, &atlas);
@@ -1426,18 +1463,20 @@ fn zombie_villager_profession_layers_render_with_zombie_textures_and_no_hat_rule
         ZOMBIE_VILLAGER_LEVEL_TEXTURE_REFS[3],
     ];
     let (atlas, _) = build_entity_model_texture_atlas(&texture_images(&textures)).unwrap();
-    let instance = EntityModelInstance::zombie_variant(
-        404,
-        [0.0, 64.0, 0.0],
-        0.0,
-        ZombieVariantModelFamily::ZombieVillager,
-        false,
-    )
-    .with_villager_model_data(VillagerModelData::new(
-        VillagerModelType::Snow,
-        VillagerModelProfession::Farmer,
-        4,
-    ));
+    let instance = zombie_submission_probe(
+        EntityModelInstance::zombie_variant(
+            404,
+            [0.0, 64.0, 0.0],
+            0.0,
+            ZombieVariantModelFamily::ZombieVillager,
+            false,
+        )
+        .with_villager_model_data(VillagerModelData::new(
+            VillagerModelType::Snow,
+            VillagerModelProfession::Farmer,
+            4,
+        )),
+    );
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
     let mesh = &meshes.cutout;
 
@@ -1450,6 +1489,18 @@ fn zombie_villager_profession_layers_render_with_zombie_textures_and_no_hat_rule
     assert_close2(mesh.vertices[672].uv, [16.0 / 64.0, 3.0 / 4.0]);
 
     assert_eq!(meshes.submissions.len(), 4);
+    assert_zombie_family_submissions_match_vanilla(&meshes, instance);
+    let body_overlay = instance.render_state.overlay_coords();
+    let layer_overlay = [0.0, body_overlay[1]];
+    assert_ne!(body_overlay, layer_overlay);
+    assert!(mesh
+        .vertices
+        .iter()
+        .any(|vertex| vertex.overlay == body_overlay));
+    assert!(mesh
+        .vertices
+        .iter()
+        .any(|vertex| vertex.overlay == layer_overlay));
     let expected_transform = entity_model_root_transform(instance);
     for (submit, texture, order, sequence) in [
         (meshes.submissions[0], ZOMBIE_VILLAGER_TEXTURE_REF, 0, 0),
@@ -1479,6 +1530,13 @@ fn zombie_villager_profession_layers_render_with_zombie_textures_and_no_hat_rule
         assert_eq!((submit.order, submit.submit_sequence), (order, sequence));
         assert_eq!(submit.transform, expected_transform);
     }
+}
+
+fn zombie_submission_probe(instance: EntityModelInstance) -> EntityModelInstance {
+    instance
+        .with_light_coords((7_u32 << 4) | (9_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true)
 }
 
 fn assert_zombie_family_submissions_match_vanilla(
@@ -1531,6 +1589,7 @@ fn assert_zombie_family_submissions_match_vanilla(
             pass.tint,
             pass.order,
             pass.submit_sequence,
+            matches!(pass.kind, EntityModelLayerKind::DrownedOuter),
         )
     }));
     if let Some((baby, data)) = villager_data {
@@ -1540,6 +1599,7 @@ fn assert_zombie_family_submissions_match_vanilla(
             [1.0, 1.0, 1.0, 1.0],
             1,
             1,
+            true,
         ));
         if !baby {
             if let Some(texture) = zombie_villager_profession_texture_ref(data.profession) {
@@ -1549,6 +1609,7 @@ fn assert_zombie_family_submissions_match_vanilla(
                     [1.0, 1.0, 1.0, 1.0],
                     2,
                     2,
+                    true,
                 ));
                 if data.profession.renders_level_badge() {
                     expected.push((
@@ -1557,6 +1618,7 @@ fn assert_zombie_family_submissions_match_vanilla(
                         [1.0, 1.0, 1.0, 1.0],
                         3,
                         3,
+                        true,
                     ));
                 }
             }
@@ -1564,7 +1626,10 @@ fn assert_zombie_family_submissions_match_vanilla(
     }
 
     assert_eq!(meshes.submissions.len(), expected.len());
-    for (submit, (render_type, texture, tint, order, sequence)) in
+    let base_overlay = instance.render_state.overlay_coords();
+    let zero_white_overlay = [0.0, base_overlay[1]];
+    let has_zero_white_overlay = expected.iter().any(|expected| expected.5);
+    for (submit, (render_type, texture, tint, order, sequence, zero_white_overlay_submit)) in
         meshes.submissions.iter().zip(expected)
     {
         assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
@@ -1574,6 +1639,37 @@ fn assert_zombie_family_submissions_match_vanilla(
         assert_eq!(submit.tint, tint);
         assert_eq!(submit.transform, expected_transform);
         assert_eq!((submit.order, submit.submit_sequence), (order, sequence));
+        assert_eq!(submit.light, instance.render_state.shader_light());
+        let expected_overlay = if zero_white_overlay_submit {
+            zero_white_overlay
+        } else {
+            base_overlay
+        };
+        assert_eq!(submit.overlay, expected_overlay);
+        if zero_white_overlay_submit && expected_overlay != base_overlay {
+            assert_ne!(submit.overlay, base_overlay);
+        }
+    }
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.light == instance.render_state.shader_light()));
+    if has_zero_white_overlay && zero_white_overlay != base_overlay {
+        assert!(meshes
+            .cutout
+            .vertices
+            .iter()
+            .any(|vertex| vertex.overlay == base_overlay));
+        assert!(meshes.cutout.vertices.iter().all(|vertex| {
+            vertex.overlay == base_overlay || vertex.overlay == zero_white_overlay
+        }));
+    } else {
+        assert!(meshes
+            .cutout
+            .vertices
+            .iter()
+            .all(|vertex| vertex.overlay == base_overlay));
     }
 }
 

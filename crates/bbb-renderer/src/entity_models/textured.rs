@@ -1134,6 +1134,7 @@ fn layer_pass_uses_zero_white_overlay(pass: EntityModelLayerPass) -> bool {
         EntityModelLayerKind::CopperGolemEyes
             | EntityModelLayerKind::CreakingEyes
             | EntityModelLayerKind::IronGolemCrackiness
+            | EntityModelLayerKind::DrownedOuter
             | EntityModelLayerKind::SkeletonClothing
             | EntityModelLayerKind::SlimeOuter
             | EntityModelLayerKind::TropicalFishPattern
@@ -2911,7 +2912,8 @@ fn emit_villager_profession_layer(
         transform,
         order,
         submit_sequence,
-    );
+    )
+    .with_overlay([0.0, meshes.current_submission_overlay[1]]);
     render_textured_submission(meshes, submit, atlas, |mesh, entry| {
         if no_hat {
             root.render_textured_excluding(
