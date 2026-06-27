@@ -2979,7 +2979,9 @@ When an agent does any of the following, update this file in the same slice:
       limb swing, and the held-out `animateZombieArms` resting arm pose match the zombie (`GiantZombieModel
       extends ZombieModel`, the giant extracts the same `ZombieRenderState`). The base texture is now bound
       on the textured path (the giant binds the zombie texture via the shared `zombie_textured_layer_passes`),
-      the primary now-wired path. The vanilla extra layers are now wired too: `ItemInHandLayer` uses the
+      the primary now-wired path, with explicit submission metadata for vanilla `entityCutout`, white tint,
+      `mesh_transformer_scaled_model_root_transform(..., 6.0)`, zombie base layer key, and
+      `(order, submit_sequence) == (0, 0)`. The vanilla extra layers are now wired too: `ItemInHandLayer` uses the
       renderer-owned hand attach transform from the same 6.0-scaled zombie model so native bakes main/off
       hands through the standard third-person item contexts, and `HumanoidArmorLayer` rebuilds the scaled
       host pose, draping standard adult humanoid armor as `armorCutoutNoCull` submissions at order `1`
