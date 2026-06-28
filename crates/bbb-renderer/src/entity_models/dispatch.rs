@@ -416,6 +416,9 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
     sink: &mut S,
 ) -> bool {
     match instance.kind {
+        EntityModelKind::NoRender => {
+            // Vanilla `NoopRenderer` entities submit no model.
+        }
         EntityModelKind::Player { skin, parts } => sink.player_model(skin, parts, instance),
         EntityModelKind::Horse {
             variant,

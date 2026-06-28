@@ -407,22 +407,13 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
             continue;
         }
         meshes.set_current_submission_state(*instance);
-        let handled = {
+        {
             let mut sink = TexturedSink {
                 meshes: &mut meshes,
                 atlas,
                 dynamic_player_skin_atlas,
             };
-            dispatch_uniform_entity_model(instance, &mut sink)
-        };
-        if !handled {
-            // Only the bespoke textured emits remain here — the recolor / two-tree / family / part-vis /
-            // single-pass entities that the shared dispatch leaves out. Colored-only uniform kinds emit no
-            // textured geometry (their dispatch call walks an empty pass list, a no-op), so they must NOT
-            // appear here; every kind without a textured arm falls into `_ => {}`.
-            match instance.kind {
-                _ => {}
-            }
+            dispatch_uniform_entity_model(instance, &mut sink);
         }
         if meshes.current_force_transparent || meshes.current_outline_only {
             // Keep vanilla layer exceptions for invisible bodies while preserving the existing gate

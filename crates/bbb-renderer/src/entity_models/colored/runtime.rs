@@ -48,16 +48,12 @@ fn entity_model_mesh_with_options(
         if !handled {
             // Only the bespoke entities remain here — those whose colored and textured paths diverge
             // (recolor, two model trees, family helpers, part visibility, single-pass `render_textured_pass`
-            // emits, bespoke hand-walks) and the colored-only nontrivial / placeholder / no-render kinds.
+            // emits, bespoke hand-walks) and the colored-only nontrivial / placeholder kinds.
             // The uniform kinds are emitted by `dispatch_uniform_entity_model` above and are unreachable
             // here, so the match ends with `_ => {}`.
             match instance.kind {
                 EntityModelKind::Humanoid { family, baby } => {
                     emit_humanoid_model(&mut mesh, *instance, family, baby)
-                }
-                EntityModelKind::NoRender => {
-                    // Vanilla `NoopRenderer` entities (area effect cloud, marker, interaction) render no
-                    // model, so this arm emits nothing — exact parity with vanilla.
                 }
                 EntityModelKind::Quadruped { family, baby } => {
                     emit_quadruped_model(&mut mesh, *instance, family, baby)
