@@ -382,6 +382,57 @@ fn armor_stand_marker_render_type_follows_vanilla_visibility_branch() {
         .vertices
         .iter()
         .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
+
+    let glowing_hidden_marker = hidden_invisible.with_outline_color(0xff44_88cc);
+    let glowing_hidden_marker_meshes =
+        entity_model_textured_meshes(&[glowing_hidden_marker], &atlas);
+    assert!(
+        glowing_hidden_marker_meshes.submissions.is_empty(),
+        "ArmorStandRenderer.getRenderType ignores appearGlowing for marker stands when not force-transparent"
+    );
+    assert!(glowing_hidden_marker_meshes.cutout.vertices.is_empty());
+    assert!(glowing_hidden_marker_meshes.translucent.vertices.is_empty());
+    assert!(glowing_hidden_marker_meshes.eyes.vertices.is_empty());
+}
+
+#[test]
+fn non_marker_armor_stand_uses_living_invisible_outline_branch() {
+    let (atlas, _) = build_entity_model_texture_atlas(&armor_stand_texture_images()).unwrap();
+    let hidden_glowing = EntityModelInstance::armor_stand_with_marker(
+        10,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+        true,
+        true,
+        DEFAULT_ARMOR_STAND_MODEL_POSE,
+    )
+    .with_invisible(true)
+    .with_outline_color(0xff22_aa66)
+    .with_light_coords((3_u32 << 4) | (12_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[hidden_glowing], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.texture, ARMOR_STAND_TEXTURE_REF);
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::Outline);
+    assert_eq!(submit.render_type.vanilla_name(), "outline");
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        submit.transform,
+        entity_model_root_transform(hidden_glowing)
+    );
+    assert_eq!(submit.light, hidden_glowing.render_state.shader_light());
+    assert_eq!(submit.overlay, hidden_glowing.render_state.overlay_coords());
+    assert_eq!(submit.outline_color, 0xff22_aa66);
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert!(meshes.cutout.vertices.is_empty());
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
 }
 
 fn armor_stand_texture_images() -> Vec<EntityModelTextureImage> {

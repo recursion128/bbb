@@ -660,6 +660,9 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             show_base_plate,
             pose,
         } => {
+            let marker_hidden = marker
+                && instance.render_state.invisible
+                && instance.render_state.invisible_to_player;
             let marker_force_transparent = marker
                 && instance.render_state.invisible
                 && !instance.render_state.invisible_to_player;
@@ -668,24 +671,26 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             } else {
                 EntityModelLayerRenderType::EntityCutout
             };
+            let base_pass = [EntityModelLayerPass {
+                kind: EntityModelLayerKind::ArmorStandBase,
+                render_type,
+                model_layer: if small {
+                    MODEL_LAYER_ARMOR_STAND_SMALL
+                } else {
+                    MODEL_LAYER_ARMOR_STAND
+                },
+                texture: ARMOR_STAND_TEXTURE_REF,
+                visibility: EntityModelLayerVisibility::All,
+                tint: [1.0, 1.0, 1.0, 1.0],
+                order: 0,
+                submit_sequence: 0,
+            }];
+            let base_passes: &[EntityModelLayerPass] = if marker_hidden { &[] } else { &base_pass };
             sink.model(
                 ArmorStandModel::new(small, show_arms, show_base_plate, pose),
                 entity_model_root_transform(*instance),
                 instance,
-                &[EntityModelLayerPass {
-                    kind: EntityModelLayerKind::ArmorStandBase,
-                    render_type,
-                    model_layer: if small {
-                        MODEL_LAYER_ARMOR_STAND_SMALL
-                    } else {
-                        MODEL_LAYER_ARMOR_STAND
-                    },
-                    texture: ARMOR_STAND_TEXTURE_REF,
-                    visibility: EntityModelLayerVisibility::All,
-                    tint: [1.0, 1.0, 1.0, 1.0],
-                    order: 0,
-                    submit_sequence: 0,
-                }],
+                base_passes,
             )
         }
         EntityModelKind::Vex { charging } => sink.model(

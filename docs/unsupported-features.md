@@ -2553,8 +2553,12 @@ When an agent does any of the following, update this file in the same slice:
       `ArmorStandRenderer.getRenderType`
       (`entityCutout` while visible, no submission when hidden, and
       `entityTranslucent` with the vanilla force-transparent alpha when invisible
-      but visible to this client), including inherited `LivingEntityRenderer`
-      light/overlay metadata on the folded cutout/translucent vertices.
+      but visible to this client). The marker override also ignores
+      `appearGlowing` for hidden-to-player marker stands, so they record no base
+      outline submission, while non-marker invisible-glowing armor stands still
+      use the inherited living `RenderTypes.outline(texture)` branch. Both paths
+      preserve inherited `LivingEntityRenderer` light/overlay/outline-color
+      metadata on their submissions and folded vertices where geometry is emitted.
       Armor/equipment, hurt wiggle, and animation interpolation remain unsupported
     - slime entities as renderer-owned vanilla 26.1 `SlimeModel` inner
       `ModelLayers.SLIME` geometry plus outer `ModelLayers.SLIME_OUTER`
