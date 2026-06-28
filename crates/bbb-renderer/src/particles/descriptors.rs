@@ -18,6 +18,7 @@ pub(crate) struct ParticleDescriptor {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ParticleLifetimeDescriptor {
     BaseParticle,
+    Fixed(u32),
     Rising,
     PlayerCloud,
     BaseAshSmoke {
@@ -42,6 +43,11 @@ pub(crate) enum ParticleSpriteSelection {
 pub(crate) enum ParticleVisualDescriptor {
     BaseSingleQuad,
     PlayerCloud,
+    SingleQuadScaled {
+        scale: f32,
+        color: ParticleColorDescriptor,
+        quad_size_curve: ParticleQuadSizeCurve,
+    },
     Flame {
         scale: f32,
     },
@@ -80,6 +86,7 @@ pub(crate) enum ParticleQuadSizeCurve {
 pub(crate) enum ParticleInitialVelocityDescriptor {
     Command,
     ParticleConstructorScaled { scale: f64 },
+    ParticleConstructorZeroScaledWithYOffset { scale: f64, y_offset: f64 },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -141,6 +148,25 @@ impl ParticleDescriptor {
                     speed_up_when_y_motion_is_blocked: false,
                 }
             }
+            "minecraft:heart" => Self {
+                provider: "HeartParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::Fixed(16),
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 1.5,
+                    color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                    quad_size_curve: ParticleQuadSizeCurve::GrowToBase,
+                },
+                initial_velocity:
+                    ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledWithYOffset {
+                        scale: 0.01,
+                        y_offset: 0.1,
+                    },
+                friction: 0.86,
+                gravity: 0.0,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: true,
+            },
             "minecraft:small_flame" => Self {
                 provider: "FlameParticle.SmallFlameProvider",
                 lifetime: ParticleLifetimeDescriptor::Rising,
@@ -355,6 +381,15 @@ impl ParticleVisualDescriptor {
                     ParticleQuadSizeCurve::GrowToBase,
                 )
             }
+            Self::SingleQuadScaled {
+                scale,
+                color,
+                quad_size_curve,
+            } => ParticleVisualState::new(
+                base_quad_size * scale,
+                color.sample(random),
+                quad_size_curve,
+            ),
             Self::Flame { scale } => ParticleVisualState::new(
                 base_quad_size * scale,
                 WHITE_PARTICLE_COLOR,
@@ -420,6 +455,22 @@ impl ParticleInitialVelocityDescriptor {
                     z / length * speed * 0.4 * scale,
                 ]
             }
+            Self::ParticleConstructorZeroScaledWithYOffset { scale, y_offset } => {
+                let x = random_signed_velocity(random);
+                let y = random_signed_velocity(random);
+                let z = random_signed_velocity(random);
+                let speed =
+                    (f64::from(random.next_f32()) + f64::from(random.next_f32()) + 1.0) * 0.15;
+                let length = (x * x + y * y + z * z).sqrt();
+                if length == 0.0 {
+                    return [0.0, y_offset, 0.0];
+                }
+                [
+                    x / length * speed * 0.4 * scale,
+                    y / length * speed * 0.4 * scale + y_offset,
+                    z / length * speed * 0.4 * scale,
+                ]
+            }
         }
     }
 }
@@ -456,6 +507,7 @@ impl ParticleLifetimeDescriptor {
     pub(crate) fn sample(self, random: &mut ParticleRandom) -> u32 {
         match self {
             Self::BaseParticle => (4.0 / (random.next_f64() * 0.9 + 0.1)) as u32,
+            Self::Fixed(lifetime) => lifetime,
             Self::Rising => (8.0 / (random.next_f64() * 0.8 + 0.2)) as u32 + 4,
             Self::PlayerCloud => {
                 let base_lifetime = (8.0 / (random.next_f64() * 0.8 + 0.3)) as u32;
@@ -614,6 +666,28 @@ mod tests {
             0.0,
             false,
             false,
+        );
+        assert_descriptor(
+            "minecraft:heart",
+            "HeartParticle.Provider",
+            ParticleLifetimeDescriptor::Fixed(16),
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::SingleQuadScaled {
+                scale: 1.5,
+                color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                quad_size_curve: ParticleQuadSizeCurve::GrowToBase,
+            },
+            0.86,
+            0.0,
+            false,
+            true,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:heart").initial_velocity,
+            ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledWithYOffset {
+                scale: 0.01,
+                y_offset: 0.1
+            }
         );
         assert_descriptor(
             "minecraft:small_flame",
@@ -837,6 +911,17 @@ mod tests {
         assert_eq!(cloud.color[3], 1.0);
         assert_eq!(cloud.quad_size_curve, ParticleQuadSizeCurve::GrowToBase);
 
+        let mut heart_random = ParticleRandom::new(17);
+        let heart = ParticleVisualDescriptor::SingleQuadScaled {
+            scale: 1.5,
+            color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+            quad_size_curve: ParticleQuadSizeCurve::GrowToBase,
+        }
+        .sample(&mut heart_random);
+        assert_range_f32(heart.base_quad_size, 0.15, 0.3);
+        assert_eq!(heart.color, WHITE_PARTICLE_COLOR);
+        assert_eq!(heart.quad_size_curve, ParticleQuadSizeCurve::GrowToBase);
+
         let mut dragon_random = ParticleRandom::new(12);
         let dragon_breath = ParticleVisualDescriptor::BaseAshSmoke {
             scale: 1.0,
@@ -934,6 +1019,17 @@ mod tests {
         assert_range_f64(velocity[1], -0.002, 0.006);
         assert_range_f64(velocity[2], -0.004, 0.004);
         assert_ne!(velocity, [0.0, 0.0, 0.0]);
+
+        let mut heart_random = ParticleRandom::new(18);
+        let heart_velocity =
+            ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledWithYOffset {
+                scale: 0.01,
+                y_offset: 0.1,
+            }
+            .sample([8.0, 8.0, 8.0], &mut heart_random);
+        assert_range_f64(heart_velocity[0], -0.002, 0.002);
+        assert_range_f64(heart_velocity[1], 0.098, 0.102);
+        assert_range_f64(heart_velocity[2], -0.002, 0.002);
     }
 
     #[test]

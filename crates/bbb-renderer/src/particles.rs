@@ -979,6 +979,21 @@ mod tests {
         assert_eq!(cloud.color[0], cloud.color[1]);
         assert_eq!(cloud.color[1], cloud.color[2]);
 
+        let mut heart_random = ParticleRandom::new(51);
+        let heart = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:heart", 1.0),
+            &mut heart_random,
+        );
+        assert_eq!(heart.provider, "HeartParticle.Provider");
+        assert_eq!(heart.lifetime_ticks, 16);
+        assert_eq!(heart.quad_size_curve, ParticleQuadSizeCurve::GrowToBase);
+        assert_range_f32(heart.base_quad_size, 0.15, 0.3);
+        assert_eq!(heart.color, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(heart.friction, 0.86);
+        assert!(!heart.has_physics);
+        assert!(heart.speed_up_when_y_motion_is_blocked);
+        assert_range_f64(heart.velocity[1], 0.098, 0.102);
+
         let mut dragon_random = ParticleRandom::new(46);
         let dragon_breath = ParticleInstance::from_spawn_command(
             spawn_command("minecraft:dragon_breath", 1.0),
@@ -1247,6 +1262,13 @@ mod tests {
     }
 
     fn assert_range_f32(actual: f32, min: f32, max: f32) {
+        assert!(
+            actual >= min && actual <= max,
+            "expected {actual} to be in {min}..={max}"
+        );
+    }
+
+    fn assert_range_f64(actual: f64, min: f64, max: f64) {
         assert!(
             actual >= min && actual <= max,
             "expected {actual} to be in {min}..={max}"
