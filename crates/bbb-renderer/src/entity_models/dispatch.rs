@@ -87,10 +87,11 @@ use super::textured::{
     piglin_textured_layer_passes, polar_bear_textured_layer_passes, rabbit_textured_layer_passes,
     ravager_textured_layer_passes, render_boat_water_mask_submission,
     render_breeze_wind_scroll_model, render_camel_saddle_layer,
-    render_charged_creeper_energy_swirl, render_donkey_textured_layers, render_end_crystal_beam,
-    render_end_crystal_textured_layers, render_ender_dragon_beam, render_equine_body_armor_layer,
-    render_equine_saddle_layer, render_guardian_beam, render_horse_textured_layers,
-    render_llama_decor_layer, render_nautilus_body_armor_layer, render_nautilus_saddle_layer,
+    render_charged_creeper_energy_swirl, render_custom_head_skull_layer,
+    render_donkey_textured_layers, render_end_crystal_beam, render_end_crystal_textured_layers,
+    render_ender_dragon_beam, render_equine_body_armor_layer, render_equine_saddle_layer,
+    render_guardian_beam, render_horse_textured_layers, render_llama_decor_layer,
+    render_nautilus_body_armor_layer, render_nautilus_saddle_layer,
     render_no_overlay_scrolled_textured_layers, render_pig_saddle_layer, render_player_cape_layer,
     render_player_extra_ears_layer, render_player_parrot_on_shoulder_layer,
     render_player_spin_attack_effect_layer, render_player_textured_layers,
@@ -313,6 +314,8 @@ pub(in crate::entity_models) trait EntityModelSink {
     );
 
     fn player_post_wings_layers(&mut self, _instance: &EntityModelInstance) {}
+
+    fn custom_head_skull_layer(&mut self, _instance: &EntityModelInstance) {}
 
     fn wings_layer(&mut self, _instance: &EntityModelInstance) {}
 
@@ -754,6 +757,15 @@ impl EntityModelSink for TexturedSink<'_> {
     fn player_post_wings_layers(&mut self, instance: &EntityModelInstance) {
         render_player_parrot_on_shoulder_layer(self.meshes, *instance, self.atlas);
         render_player_spin_attack_effect_layer(self.meshes, *instance, self.atlas);
+    }
+
+    fn custom_head_skull_layer(&mut self, instance: &EntityModelInstance) {
+        render_custom_head_skull_layer(
+            self.meshes,
+            *instance,
+            self.atlas,
+            self.dynamic_player_skin_atlas,
+        );
     }
 
     fn wings_layer(&mut self, instance: &EntityModelInstance) {
@@ -1680,6 +1692,27 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
         _ => return false,
     }
     true
+}
+
+/// Dispatch-owned layers whose current textured append point is after the worn armor helper.
+pub(in crate::entity_models) fn dispatch_post_armor_entity_layers<S: EntityModelSink>(
+    instance: &EntityModelInstance,
+    sink: &mut S,
+) {
+    match instance.kind {
+        EntityModelKind::Player { .. }
+        | EntityModelKind::Zombie { .. }
+        | EntityModelKind::ZombieVariant { .. }
+        | EntityModelKind::Piglin { .. }
+        | EntityModelKind::Skeleton
+        | EntityModelKind::SkeletonVariant { .. }
+        | EntityModelKind::Illager { .. }
+        | EntityModelKind::Villager { .. }
+        | EntityModelKind::WanderingTrader
+        | EntityModelKind::ArmorStand { .. }
+        | EntityModelKind::CopperGolem { .. } => sink.custom_head_skull_layer(instance),
+        _ => {}
+    }
 }
 
 /// Dispatch-owned layers that vanilla registers immediately after `CustomHeadLayer`.

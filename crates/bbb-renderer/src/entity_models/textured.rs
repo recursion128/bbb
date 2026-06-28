@@ -5,8 +5,9 @@ use super::colored::{
     GIANT_SCALE, HORSE_SCALE,
 };
 use super::dispatch::{
-    dispatch_late_entity_layers, dispatch_post_custom_head_entity_layers,
-    dispatch_post_wings_entity_layers, dispatch_uniform_entity_model, TexturedSink,
+    dispatch_late_entity_layers, dispatch_post_armor_entity_layers,
+    dispatch_post_custom_head_entity_layers, dispatch_post_wings_entity_layers,
+    dispatch_uniform_entity_model, TexturedSink,
 };
 use super::held_item::custom_head_skull_transform;
 use super::model::{EntityModel, ModelPart};
@@ -439,13 +440,9 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         // Worn armor is a cutout overlay draped on the host humanoid pose; it runs regardless of
         // `handled` and folds into the cutout pass before the shared light/overlay fill below.
         emit_worn_humanoid_armor(&mut meshes, *instance, atlas);
-        // Skull block items in the head slot use vanilla `CustomHeadLayer`'s skull branch: a static
-        // `SkullModel` mob head attached to the host head, not the generic item-model HEAD display path.
-        emit_custom_head_skull_layer(&mut meshes, *instance, atlas, dynamic_player_skin_atlas);
-        // CustomHeadLayer is followed by WingsLayer for humanoid mobs / armor stands and by the
-        // player-only shoulder parrot and riptide-spin layers after WingsLayer. Dispatch owns those
-        // layer submissions; the outer loop calls the hooks here to preserve vanilla append order
-        // relative to generic layers.
+        // CustomHeadLayer skulls run after the current armor helper and before WingsLayer. Dispatch
+        // owns those and the later player/villager layer submissions while this loop preserves the
+        // vanilla append points relative to the remaining generic helpers.
         {
             let mut sink = TexturedSink {
                 meshes: &mut meshes,
@@ -453,6 +450,7 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
                 dynamic_player_skin_atlas,
                 dynamic_player_texture_atlas,
             };
+            dispatch_post_armor_entity_layers(instance, &mut sink);
             dispatch_post_custom_head_entity_layers(instance, &mut sink);
             dispatch_post_wings_entity_layers(instance, &mut sink);
             dispatch_late_entity_layers(instance, &mut sink);
@@ -1700,13 +1698,13 @@ fn emit_invisible_living_layers_without_invisible_gate(
     dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) {
     emit_worn_humanoid_armor(meshes, instance, atlas);
-    emit_custom_head_skull_layer(meshes, instance, atlas, dynamic_player_skin_atlas);
     let mut sink = TexturedSink {
         meshes,
         atlas,
         dynamic_player_skin_atlas,
         dynamic_player_texture_atlas,
     };
+    dispatch_post_armor_entity_layers(&instance, &mut sink);
     dispatch_post_custom_head_entity_layers(&instance, &mut sink);
 }
 
@@ -1991,7 +1989,7 @@ fn emit_worn_humanoid_armor(
     }
 }
 
-fn emit_custom_head_skull_layer(
+pub(in crate::entity_models) fn render_custom_head_skull_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,

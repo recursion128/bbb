@@ -1330,7 +1330,10 @@ When an agent does any of the following, update this file in the same slice:
         and `(order, submit_sequence) == (0, 0)` before folded
         cutout/translucent/dynamic geometry checks; missing-atlas coverage now
         proves static skull submissions survive without folded stale skull
-        geometry. Native resolves these skull
+        geometry. The skull branch now runs through a dispatch-owned post-armor
+        hook instead of a direct post-base helper call, preserving the current
+        armor -> CustomHead skull -> Wings append point while narrowing residual
+        helper ownership. Native resolves these skull
         block items from the item
         registry into `EntityRenderState.custom_head_skull`. A `player_head`
         whose stack has no active `DataComponents.PROFILE` component is
@@ -2630,8 +2633,9 @@ When an agent does any of the following, update this file in the same slice:
       texture-backed submissions through the marker hidden/glowing no-base path
       and inherited living invisible branches, preserving vanilla texture,
       render type, transform, light, no-overlay, outline-color, order, and
-      submit-sequence metadata; WingsLayer uses the same dispatch-owned
-      post-CustomHead hook in these invisible branches as in the visible path.
+      submit-sequence metadata; the CustomHead skull branch uses the same
+      dispatch-owned post-armor hook in these invisible branches as in the visible
+      path, and WingsLayer uses the same dispatch-owned post-CustomHead hook.
       The native item-model pass is now covered for
       marker hidden/glowing armor-stand held items and generic non-skull
       `CustomHeadLayer` HEAD items as well: `held_item_models` still bakes the
