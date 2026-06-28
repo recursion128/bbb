@@ -393,9 +393,10 @@ pub(in crate::entity_models) fn parrot_tail_swing_pose(
 
 /// Mutable parrot model, mirroring vanilla `ParrotModel`. Its seven named sibling parts hang off a
 /// synthetic root, each built from the baked geometry (carrying both the colored tint and the textured
-/// UV). `setup_anim` derives the pose from `parrot_party`/`parrot_sitting`/`on_ground`, sets the head
-/// look, then runs the per-pose `prepare` + `setupAnim` math — the PARTY dance, the SITTING perch,
-/// the STANDING leg walk swing plus bob/wing-flap, or the FLYING leg pitch plus bob/wing-flap.
+/// UV). `setup_anim` derives the pose from `parrot_party`/`parrot_sitting`/`parrot_on_shoulder`/
+/// `on_ground`, sets the head look, then runs the per-pose `prepare` + `setupAnim` math — the PARTY
+/// dance, the SITTING perch, the ON_SHOULDER shared bob/wing block, the STANDING leg walk swing plus
+/// bob/wing-flap, or the FLYING leg pitch plus bob/wing-flap.
 pub(in crate::entity_models) struct ParrotModel {
     root: ModelPart,
 }
@@ -418,12 +419,13 @@ impl EntityModel for ParrotModel {
     }
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
-        // Vanilla `ParrotModel.getPose(entity)`: PARTY wins over SITTING, then FLYING is selected
-        // from `isFlying() = !onGround()`. ON_SHOULDER is still not projected.
+        // Vanilla `ParrotModel.getPose(entity)`: PARTY wins over SITTING, `ParrotOnShoulderLayer`
+        // supplies ON_SHOULDER directly, then FLYING is selected from `isFlying() = !onGround()`.
         let render_state = &instance.render_state;
         let party = render_state.parrot_party;
         let sitting = !party && render_state.parrot_sitting;
-        let flying = !party && !sitting && !render_state.on_ground;
+        let on_shoulder = !party && !sitting && render_state.parrot_on_shoulder;
+        let flying = !party && !sitting && !on_shoulder && !render_state.on_ground;
 
         // Vanilla `prepare(pose)` runs before the head look in `setupAnim`'s body, but it only
         // translates parts or adjusts legs; PARTY later overwrites head x/y look rotations exactly
@@ -446,9 +448,9 @@ impl EntityModel for ParrotModel {
             render_state.head_pitch,
         );
 
-        // The per-pose switch. SITTING breaks immediately (its pose is entirely in `prepare`). STANDING
-        // adds the leg walk swing, then falls through to the shared bob/wing-flap block; FLYING runs
-        // only that block (no leg walk swing).
+        // The per-pose switch. SITTING breaks immediately (its pose is entirely in `prepare`).
+        // STANDING adds the leg walk swing, then falls through to the shared bob/wing-flap block;
+        // FLYING and ON_SHOULDER run only that shared block.
         if party {
             apply_parrot_party_pose(
                 &mut self.root,
@@ -462,7 +464,7 @@ impl EntityModel for ParrotModel {
         }
         let walk_pos = render_state.walk_animation_pos;
         let walk_speed = render_state.walk_animation_speed;
-        if !flying {
+        if !flying && !on_shoulder {
             // STANDING leg walk swing, added onto the baked leg pitch.
             for name in PARROT_LEG_NAMES {
                 let leg = self.root.child_mut(name);

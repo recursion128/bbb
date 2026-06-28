@@ -18,7 +18,7 @@ use super::{
         EntityDynamicPlayerTexture, EntityDynamicPlayerTextureAtlasLayout,
         EntityEquipmentLayerTexture, EntityModelKind, EntityModelTextureAtlasEntry,
         EntityModelTextureAtlasLayout, EntityModelTextureRef, EntityModelUvRect, EntityPlayerSkin,
-        HorseColorVariant, HorseMarkings, LlamaModelFamily, PiglinModelFamily,
+        HorseColorVariant, HorseMarkings, LlamaModelFamily, ParrotModelVariant, PiglinModelFamily,
         PlayerModelPartVisibility, SkeletonModelFamily, UndeadHorseModelFamily, VillagerModelData,
         ZombieVariantModelFamily,
     },
@@ -41,9 +41,9 @@ use super::{
         wolf_body_armor_texture_layers, BreezeWindModel, CamelModel, CreeperModel,
         CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel, CustomHeadSkullModel, ElytraModel,
         HumanoidArmorModelLayerSet, HumanoidArmorSlot, HumanoidBabyArmorKind, LlamaModel,
-        NautilusModel, PigModel, PiglinModel, PlayerEarsModel, PlayerModel, SkeletonModel,
-        SpinAttackEffectModel, StriderModel, VillagerModel, WindChargeModel, WitherModel,
-        WolfModel, ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
+        NautilusModel, ParrotModel, PigModel, PiglinModel, PlayerEarsModel, PlayerModel,
+        SkeletonModel, SpinAttackEffectModel, StriderModel, VillagerModel, WindChargeModel,
+        WitherModel, WolfModel, ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
         ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_DONKEY_SADDLE_PARTS_TEXTURED,
         ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED, ADULT_HORSE_ARMOR_PARTS_TEXTURED,
         ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
@@ -113,13 +113,13 @@ pub(super) use layers::{
     mooshroom_textured_layer_passes, nautilus_textured_layer_passes, panda_textured_layer_passes,
     parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
     piglin_textured_layer_passes, player_cape_layer_pass,
-    player_extra_ears_layer_pass_with_texture, player_spin_attack_effect_layer_pass,
-    player_textured_layer_passes_with_texture, polar_bear_textured_layer_passes,
-    rabbit_textured_layer_passes, ravager_textured_layer_passes, salmon_textured_layer_passes,
-    sheep_textured_layer_passes, shulker_textured_layer_passes, silverfish_textured_layer_passes,
-    skeleton_textured_layer_passes, slime_textured_layer_passes, sniffer_textured_layer_passes,
-    snow_golem_textured_layer_passes, spider_textured_layer_passes, squid_textured_layer_passes,
-    tadpole_textured_layer_passes, trident_textured_layer_passes,
+    player_extra_ears_layer_pass_with_texture, player_parrot_on_shoulder_layer_pass,
+    player_spin_attack_effect_layer_pass, player_textured_layer_passes_with_texture,
+    polar_bear_textured_layer_passes, rabbit_textured_layer_passes, ravager_textured_layer_passes,
+    salmon_textured_layer_passes, sheep_textured_layer_passes, shulker_textured_layer_passes,
+    silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
+    sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
+    squid_textured_layer_passes, tadpole_textured_layer_passes, trident_textured_layer_passes,
     tropical_fish_textured_layer_passes, undead_horse_textured_layer_passes,
     villager_data_textured_layer_passes, villager_textured_layer_passes, villager_type_hat_visible,
     wandering_trader_textured_layer_passes, warden_textured_layer_passes,
@@ -494,9 +494,10 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         // humanoid mobs, and armor stands. Only players can replace the equipment texture with
         // a ready profile elytra/cape texture.
         emit_wings_layer(&mut meshes, *instance, atlas, dynamic_player_texture_atlas);
-        // AvatarRenderer registers SpinAttackEffectLayer after WingsLayer/ParrotOnShoulderLayer; the
-        // parrot layer is still unsupported, so keep the riptide visual in the next player layer slot
-        // after wings.
+        // AvatarRenderer registers ParrotOnShoulderLayer after WingsLayer and before the riptide
+        // spin-attack visual.
+        emit_player_parrot_on_shoulder_layer(&mut meshes, *instance, atlas);
+        // SpinAttackEffectLayer is the next player layer after both shoulder-parrot submits.
         emit_player_spin_attack_effect_layer(&mut meshes, *instance, atlas);
         // The pig saddle is a simple equipment overlay over the adult pig body.
         emit_pig_saddle_layer(&mut meshes, *instance, atlas);
@@ -1047,6 +1048,8 @@ fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
             | EntityModelLayerKind::PhantomEyes
             | EntityModelLayerKind::PigSaddle
             | EntityModelLayerKind::PlayerCape
+            | EntityModelLayerKind::PlayerLeftShoulderParrot
+            | EntityModelLayerKind::PlayerRightShoulderParrot
             | EntityModelLayerKind::PlayerSpinAttackEffect
             | EntityModelLayerKind::ShulkerBulletBase
             | EntityModelLayerKind::ShulkerBulletShell
@@ -2864,6 +2867,74 @@ fn emit_player_spin_attack_effect_layer(
             submit.tint,
         );
     });
+}
+
+fn emit_player_parrot_on_shoulder_layer(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    if !matches!(instance.kind, EntityModelKind::Player { .. }) {
+        return;
+    }
+    if let Some(variant) = instance.render_state.player_left_shoulder_parrot {
+        emit_player_parrot_on_shoulder_submission(meshes, instance, atlas, variant, true);
+    }
+    if let Some(variant) = instance.render_state.player_right_shoulder_parrot {
+        emit_player_parrot_on_shoulder_submission(meshes, instance, atlas, variant, false);
+    }
+}
+
+fn emit_player_parrot_on_shoulder_submission(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+    variant: ParrotModelVariant,
+    is_left: bool,
+) {
+    let pass = player_parrot_on_shoulder_layer_pass(variant, is_left);
+    if layer_pass_hidden_by_invisible(meshes, pass) {
+        return;
+    }
+
+    let parrot_instance =
+        EntityModelInstance::parrot(instance.entity_id, instance.position, 0.0, variant)
+            .with_parrot_on_shoulder(true)
+            .with_head_look(
+                instance.render_state.head_yaw,
+                instance.render_state.head_pitch,
+            )
+            .with_walk_animation(
+                instance.render_state.walk_animation_pos,
+                instance.render_state.walk_animation_speed,
+            )
+            .with_age_in_ticks(instance.render_state.age_in_ticks);
+    let mut model = ParrotModel::new();
+    model.prepare(&parrot_instance);
+    let transform = player_shoulder_parrot_transform(instance, is_left);
+    let submit = textured_layer_submission(meshes, pass, transform);
+    render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+        model.root().render_textured(
+            mesh,
+            submit.transform,
+            submit.texture,
+            entry.uv,
+            submit.tint,
+        );
+    });
+}
+
+fn player_shoulder_parrot_transform(instance: EntityModelInstance, is_left: bool) -> Mat4 {
+    player_model_root_transform(instance)
+        * Mat4::from_translation(Vec3::new(
+            if is_left { 0.4 } else { -0.4 },
+            if instance.render_state.is_crouching {
+                -1.3
+            } else {
+                -1.5
+            },
+            0.0,
+        ))
 }
 
 fn wings_layer_transform_and_baby(instance: EntityModelInstance) -> Option<(Mat4, bool)> {

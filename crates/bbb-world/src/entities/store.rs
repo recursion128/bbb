@@ -276,6 +276,13 @@ const END_CRYSTAL_BEAM_TARGET_DATA_ID: u8 = 8;
 /// Vanilla `Avatar.DATA_PLAYER_MODE_CUSTOMISATION` data id (16): the byte of shown
 /// player model parts, read by the player upside-down check for the cape part.
 const VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID: u8 = 16;
+/// Vanilla `Player.DATA_SHOULDER_PARROT_LEFT` data id (19): an `OPTIONAL_UNSIGNED_INT`
+/// storing the left-shoulder `Parrot.Variant` id. The wire value is already decoded by
+/// `bbb-protocol` as `None` for zero or `Some(id)` for value minus one.
+const VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID: u8 = 19;
+/// Vanilla `Player.DATA_SHOULDER_PARROT_RIGHT` data id (20): the mirrored right-shoulder
+/// `OPTIONAL_UNSIGNED_INT` variant id.
+const VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID: u8 = 20;
 
 /// Vanilla `PlayerModelPart.CAPE` mask (`1 << 0`): the cape-shown bit that gates
 /// `AvatarRenderer.isEntityUpsideDown` to `isPlayerUpsideDown`.
@@ -485,6 +492,22 @@ impl EntityStore {
                     _ => None,
                 })
                 .unwrap_or(default),
+        )
+    }
+
+    fn metadata_optional_unsigned_int(&self, id: i32, data_id: u8) -> Option<Option<i32>> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        Some(
+            metadata
+                .data_values
+                .iter()
+                .find(|value| value.data_id == data_id)
+                .and_then(|value| match &value.value {
+                    EntityDataValueKind::OptionalUnsignedInt(value) => Some(*value),
+                    _ => None,
+                })
+                .unwrap_or(None),
         )
     }
 
@@ -1045,6 +1068,23 @@ impl EntityStore {
             } else {
                 (0.0, 0.0, 0.0)
             };
+        let (player_left_shoulder_parrot, player_right_shoulder_parrot) =
+            if identity.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
+                (
+                    self.metadata_optional_unsigned_int(
+                        id,
+                        VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID,
+                    )
+                    .unwrap_or(None),
+                    self.metadata_optional_unsigned_int(
+                        id,
+                        VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
+                    )
+                    .unwrap_or(None),
+                )
+            } else {
+                (None, None)
+            };
         let is_baby = vanilla_is_baby(identity.entity_type_id, &metadata.data_values);
         let is_panda = identity.entity_type_id == VANILLA_ENTITY_TYPE_PANDA_ID;
         let panda_roll_amount = if is_panda && !is_baby {
@@ -1222,6 +1262,8 @@ impl EntityStore {
             player_cape_flap,
             player_cape_lean,
             player_cape_lean2,
+            player_left_shoulder_parrot,
+            player_right_shoulder_parrot,
             show_extra_ears: false,
             is_auto_spin_attack,
             is_using_item,

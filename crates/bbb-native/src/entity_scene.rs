@@ -1390,6 +1390,16 @@ fn entity_model_instance(
         .with_player_cape_flap(source.player_cape_flap)
         .with_player_cape_lean(source.player_cape_lean)
         .with_player_cape_lean2(source.player_cape_lean2)
+        .with_player_left_shoulder_parrot(
+            source
+                .player_left_shoulder_parrot
+                .map(ParrotModelVariant::from_id),
+        )
+        .with_player_right_shoulder_parrot(
+            source
+                .player_right_shoulder_parrot
+                .map(ParrotModelVariant::from_id),
+        )
         .with_use_item_off_hand(source.use_item_off_hand)
         .with_main_hand_holds_crossbow(main_hand_holds_crossbow)
         .with_illager_main_hand_empty(illager_main_hand_empty)
@@ -9028,6 +9038,49 @@ mod tests {
     }
 
     #[test]
+    fn entity_model_instances_forward_player_shoulder_parrots_from_world_source() {
+        // Vanilla Player shoulder parrots are `OPTIONAL_UNSIGNED_INT` metadata ids 19/20. World keeps
+        // the raw `Parrot.Variant` ids; native maps them to renderer `ParrotModelVariant`s.
+        const PLAYER_SHOULDER_PARROT_LEFT_DATA_ID: u8 = 19;
+        const PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID: u8 = 20;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            1556,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [0.0, 64.0, 0.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 1556,
+            values: vec![
+                protocol_optional_unsigned_int_data(PLAYER_SHOULDER_PARROT_LEFT_DATA_ID, Some(4),),
+                protocol_optional_unsigned_int_data(PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID, Some(1),),
+            ],
+        }));
+
+        let source = world
+            .entity_model_sources_at_partial_tick(1.0)
+            .into_iter()
+            .find(|source| source.entity_id == 1556)
+            .unwrap();
+        let instance = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0)
+            .into_iter()
+            .find(|instance| instance.entity_id == 1556)
+            .unwrap();
+
+        assert_eq!(source.player_left_shoulder_parrot, Some(4));
+        assert_eq!(source.player_right_shoulder_parrot, Some(1));
+        assert_eq!(
+            instance.render_state.player_left_shoulder_parrot,
+            Some(ParrotModelVariant::Gray)
+        );
+        assert_eq!(
+            instance.render_state.player_right_shoulder_parrot,
+            Some(ParrotModelVariant::Blue)
+        );
+    }
+
+    #[test]
     fn entity_model_instances_project_chest_equipment_layers() {
         const CHESTPLATE_ID: i32 = 0;
         const ELYTRA_ID: i32 = 1;
@@ -12973,6 +13026,14 @@ mod tests {
             data_id,
             serializer_id: 1,
             value: EntityDataValueKind::Int(value),
+        }
+    }
+
+    fn protocol_optional_unsigned_int_data(data_id: u8, value: Option<i32>) -> EntityDataValue {
+        EntityDataValue {
+            data_id,
+            serializer_id: 19,
+            value: EntityDataValueKind::OptionalUnsignedInt(value),
         }
     }
 

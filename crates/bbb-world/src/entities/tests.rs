@@ -4457,6 +4457,63 @@ fn sleeping_bed_yaw_and_offset_matches_vanilla() {
 }
 
 #[test]
+fn entity_model_sources_project_player_shoulder_parrots_from_optional_unsigned_int() {
+    // Vanilla `Player.DATA_SHOULDER_PARROT_LEFT/RIGHT` are `OPTIONAL_UNSIGNED_INT` accessors after
+    // Player absorption/score: ids 19 and 20. The decoded value is the `Parrot.Variant` id.
+    const PLAYER_SHOULDER_PARROT_LEFT_DATA_ID: u8 = 19;
+    const PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID: u8 = 20;
+    const CHICKEN_TYPE_ID: i32 = 26;
+
+    let shoulders = |store: &WorldStore, id: i32| {
+        let source = store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap();
+        (
+            source.player_left_shoulder_parrot,
+            source.player_right_shoulder_parrot,
+        )
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        101,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(102, CHICKEN_TYPE_ID));
+
+    assert_eq!(shoulders(&store, 101), (None, None));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 101,
+        values: vec![
+            protocol_optional_unsigned_int_data(PLAYER_SHOULDER_PARROT_LEFT_DATA_ID, Some(4)),
+            protocol_optional_unsigned_int_data(PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID, Some(1)),
+        ],
+    }));
+    assert_eq!(shoulders(&store, 101), (Some(4), Some(1)));
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 101,
+        values: vec![protocol_optional_unsigned_int_data(
+            PLAYER_SHOULDER_PARROT_LEFT_DATA_ID,
+            None,
+        )],
+    }));
+    assert_eq!(shoulders(&store, 101), (None, Some(1)));
+
+    // Non-player entities ignore the same data ids even if the metadata packet carries them.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 102,
+        values: vec![
+            protocol_optional_unsigned_int_data(PLAYER_SHOULDER_PARROT_LEFT_DATA_ID, Some(2)),
+            protocol_optional_unsigned_int_data(PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID, Some(3)),
+        ],
+    }));
+    assert_eq!(shoulders(&store, 102), (None, None));
+}
+
+#[test]
 fn entity_model_sources_gate_sleeping_pose_on_living_entities() {
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
@@ -11855,6 +11912,14 @@ fn protocol_int_data(data_id: u8, value: i32) -> ProtocolEntityDataValue {
         data_id,
         serializer_id: 1,
         value: EntityDataValueKind::Int(value),
+    }
+}
+
+fn protocol_optional_unsigned_int_data(data_id: u8, value: Option<i32>) -> ProtocolEntityDataValue {
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id: 19,
+        value: EntityDataValueKind::OptionalUnsignedInt(value),
     }
 }
 

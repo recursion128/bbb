@@ -1482,7 +1482,6 @@ When an agent does any of the following, update this file in the same slice:
       with `ageInTicks`) — all applied once to the shared
       visibility-filtered part array (colored and textured); true
       `RenderTypes.entityTranslucent` alpha blending, armor/equipment, held items,
-      shoulder parrots,
       arrows/stingers, spectator visibility, the elytra flying offsets, name
       display, the held-item/attack/swim arm poses, and the elytra
       `speedValue` poses remain unsupported; the `HumanoidModel` crouch
@@ -1512,7 +1511,15 @@ When an agent does any of the following, update this file in the same slice:
       `wings_layer_pass` with vanilla `ModelLayers.ELYTRA` / `ModelLayers.ELYTRA_BABY` plus
       elytra animation-state projection are covered for vanilla elytra equipment
       on players, humanoid mobs, armor stands, and baby humanoid mobs; player
-      cloak interpolation now feeds the cape flap/lean/lean2 values)
+      cloak interpolation now feeds the cape flap/lean/lean2 values. Player shoulder
+      parrots are now projected from `Player.DATA_SHOULDER_PARROT_LEFT/RIGHT`
+      metadata ids `19`/`20` (`OPTIONAL_UNSIGNED_INT`) into `AvatarRenderState`
+      equivalents; `ParrotOnShoulderLayer` is represented as explicit left/right
+      same-order submissions after `WingsLayer` and before riptide spin, using
+      vanilla `ModelLayers.PARROT`, `ParrotRenderer.getVariantTexture`, `entityCutout`,
+      white tint, player light, `OverlayTexture.NO_OVERLAY`, transforms
+      `translate(±0.4, isCrouching ? -1.3 : -1.5, 0)`, and sequences `4` / `5`.
+      The riptide `SpinAttackEffectLayer` therefore moves to sequence `6`.)
     - wooden boat, chest boat, bamboo raft, and bamboo chest raft entities as
       renderer-owned vanilla 26.1 `BoatModel` / `RaftModel` body-layer
       geometry from `BoatModel`, `RaftModel`, `BoatRenderer`, `RaftRenderer`,
@@ -3369,8 +3376,11 @@ When an agent does any of the following, update this file in the same slice:
       swing. PARTY mirrors vanilla `prepare(PARTY)` plus the switch branch: the legs splay to `zRot = ∓π/9`,
       head/body/wings/tail move by `cos(ageInTicks)` / `sin(ageInTicks)`, the head rolls by
       `sin(ageInTicks)·0.4`, and the wings still consume `parrot_flap_angle`; PARTY overrides both sitting and
-      the normal head look. Still deferred: the ON_SHOULDER pose (needs the shoulder-riding render path) — a
-      shoulder parrot falls back to STANDING/FLYING. The five `Parrot.Variant` colors (red_blue / blue / green / yellow_blue / gray) are
+      the normal head look. The ON_SHOULDER pose is now projected through the player shoulder layer:
+      it copies the player age/walk/head-look state into a temporary parrot render state, skips both
+      STANDING leg walk and FLYING leg pitch, but still runs the shared head-look, tail swing,
+      bob/wing block with `parrot_flap_angle` (normally `0` for a shoulder rider). The five
+      `Parrot.Variant` colors (red_blue / blue / green / yellow_blue / gray) are
       bound on the textured path: the native scene reads the synced `DATA_VARIANT_ID` (20, int — after
       `AgeableMob.AGE_LOCKED` at 17 and the two `TamableAnimal` accessors at 18/19) and `Parrot.Variant.byId`
       selects the per-colour texture (`parrot_red_blue` / `_blue` / `_green` / `_yellow_blue` / `parrot_grey.png`),

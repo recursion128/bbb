@@ -339,6 +339,66 @@ fn parrot_walk_swing_moves_only_the_legs_and_tail() {
 }
 
 #[test]
+fn parrot_on_shoulder_pose_skips_standing_leg_walk_and_flying_leg_pitch() {
+    // Vanilla `ParrotOnShoulderLayer` supplies `ParrotModel.Pose.ON_SHOULDER`: the pose shares the
+    // bob/wing/tail block with STANDING/FLYING, but it neither runs STANDING's leg walk swing nor
+    // FLYING's `prepare(FLYING)` leg pitch.
+    let resting = entity_model_mesh(&[EntityModelInstance::parrot(
+        996,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ParrotModelVariant::RedBlue,
+    )
+    .with_on_ground(true)]);
+    let standing_walk = entity_model_mesh(&[EntityModelInstance::parrot(
+        997,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ParrotModelVariant::RedBlue,
+    )
+    .with_on_ground(true)
+    .with_walk_animation(2.0, 1.0)]);
+    let flying_walk = entity_model_mesh(&[EntityModelInstance::parrot(
+        998,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ParrotModelVariant::RedBlue,
+    )
+    .with_on_ground(false)
+    .with_walk_animation(2.0, 1.0)]);
+    let shoulder_walk = entity_model_mesh(&[EntityModelInstance::parrot(
+        999,
+        [0.0, 64.0, 0.0],
+        0.0,
+        ParrotModelVariant::RedBlue,
+    )
+    .with_parrot_on_shoulder(true)
+    .with_walk_animation(2.0, 1.0)]);
+
+    assert_eq!(standing_walk.vertices.len(), shoulder_walk.vertices.len());
+    assert_eq!(
+        standing_walk.vertices[0..216],
+        shoulder_walk.vertices[0..216],
+        "ON_SHOULDER keeps STANDING's body/tail/wings/head shared block, including tail swing"
+    );
+    assert_eq!(
+        resting.vertices[216..264],
+        shoulder_walk.vertices[216..264],
+        "ON_SHOULDER skips STANDING's leg walk swing"
+    );
+    assert_ne!(
+        standing_walk.vertices[216..264],
+        shoulder_walk.vertices[216..264],
+        "walking STANDING legs differ from ON_SHOULDER legs"
+    );
+    assert_ne!(
+        flying_walk.vertices[216..264],
+        shoulder_walk.vertices[216..264],
+        "FLYING pitches both legs back, while ON_SHOULDER does not"
+    );
+}
+
+#[test]
 fn parrot_flaps_its_wings_when_airborne() {
     // Vanilla `ParrotModel.setupAnim` STANDING/FLYING fall-through: `leftWing.zRot = -0.0873 -
     // flapAngle`, `rightWing.zRot = 0.0873 + flapAngle`, plus the `flapAngle * 0.3` body/wing/leg bob.

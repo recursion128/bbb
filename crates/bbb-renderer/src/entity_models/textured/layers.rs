@@ -90,6 +90,8 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     PlayerBase,
     PlayerCape,
     PlayerExtraEars,
+    PlayerLeftShoulderParrot,
+    PlayerRightShoulderParrot,
     PlayerSpinAttackEffect,
     Wings,
     SheepBase,
@@ -2068,6 +2070,26 @@ pub(in crate::entity_models) fn wings_layer_pass(
     }
 }
 
+pub(in crate::entity_models) fn player_parrot_on_shoulder_layer_pass(
+    variant: ParrotModelVariant,
+    is_left: bool,
+) -> EntityModelLayerPass {
+    EntityModelLayerPass {
+        kind: if is_left {
+            EntityModelLayerKind::PlayerLeftShoulderParrot
+        } else {
+            EntityModelLayerKind::PlayerRightShoulderParrot
+        },
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: MODEL_LAYER_PARROT,
+        texture: parrot_texture_ref(variant),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: if is_left { 4 } else { 5 },
+    }
+}
+
 pub(in crate::entity_models) fn player_spin_attack_effect_layer_pass() -> EntityModelLayerPass {
     EntityModelLayerPass {
         kind: EntityModelLayerKind::PlayerSpinAttackEffect,
@@ -2077,7 +2099,7 @@ pub(in crate::entity_models) fn player_spin_attack_effect_layer_pass() -> Entity
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         order: 0,
-        submit_sequence: 4,
+        submit_sequence: 6,
     }
 }
 

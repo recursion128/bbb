@@ -384,6 +384,15 @@ entity_render_state! {
     /// Vanilla `AvatarRenderState.skin.elytra()` as a downloaded profile texture. Projected for
     /// `WingsLayer`; the cape layer does not consume it.
     (with_player_elytra_texture) player_elytra_texture: Option<EntityDynamicPlayerTexture> = None;
+    /// Vanilla `AvatarRenderState.parrotOnLeftShoulder`, projected from
+    /// `Player.DATA_SHOULDER_PARROT_LEFT`: when present, `ParrotOnShoulderLayer` submits a parrot
+    /// model at `(0.4, isCrouching ? -1.3 : -1.5, 0)` in the player's pose stack, textured by this
+    /// variant and posed as `ParrotModel.Pose.ON_SHOULDER`.
+    (with_player_left_shoulder_parrot) player_left_shoulder_parrot: Option<ParrotModelVariant> = None;
+    /// Vanilla `AvatarRenderState.parrotOnRightShoulder`, projected from
+    /// `Player.DATA_SHOULDER_PARROT_RIGHT`: same render path as the left shoulder, mirrored to
+    /// `x = -0.4`.
+    (with_player_right_shoulder_parrot) player_right_shoulder_parrot: Option<ParrotModelVariant> = None;
     /// Vanilla `AvatarRenderState.showExtraEars`: the exact lowercase `deadmau5` profile-name
     /// easter egg that enables `Deadmau5EarsLayer`. The layer also requires the player not to be
     /// invisible.
@@ -934,6 +943,10 @@ entity_render_state! {
     /// bobs the head/body/wings/tail around the jukebox dance pose. `false` for a
     /// non-partying parrot and every non-parrot entity.
     (with_parrot_party) parrot_party: bool = false;
+    /// Vanilla `ParrotRenderState.pose == ON_SHOULDER`: used only by `ParrotOnShoulderLayer`, which
+    /// skips the normal STANDING leg walk and FLYING leg pitch but still applies the shared
+    /// head-look, bob, tail swing, and wing rest/flap block. `false` for normal parrot entities.
+    (with_parrot_on_shoulder) parrot_on_shoulder: bool = false;
     /// Vanilla `TurtleRenderState.hasEgg` (`!isBaby() && Turtle.hasEgg()`, the synced `HAS_EGG`
     /// boolean): a gravid adult turtle, whose `AdultTurtleModel.setupAnim` shows the `egg_belly`
     /// overlay cube and drops the whole model `root.y--` by one unit. `false` for a turtle
@@ -2330,6 +2343,8 @@ mod tests {
                 player_off_hand_item_pose: false,
                 player_cape_texture: None,
                 player_elytra_texture: None,
+                player_left_shoulder_parrot: None,
+                player_right_shoulder_parrot: None,
                 show_extra_ears: false,
                 chest_wings_layer: None,
                 chest_equipment_has_wings: false,
@@ -2451,6 +2466,7 @@ mod tests {
                 wolf_head_roll_angle: 0.0,
                 parrot_sitting: false,
                 parrot_party: false,
+                parrot_on_shoulder: false,
                 turtle_has_egg: false,
                 turtle_laying_egg: false,
                 end_crystal_shows_bottom: true,

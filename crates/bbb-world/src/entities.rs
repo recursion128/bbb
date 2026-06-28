@@ -712,6 +712,17 @@ pub struct EntityModelSourceState {
     /// `-20..=20`. `0.0` for non-player entities.
     #[serde(default)]
     pub player_cape_lean2: f32,
+    /// Vanilla `AvatarRenderState.parrotOnLeftShoulder`, decoded from Player metadata id 19
+    /// (`DATA_SHOULDER_PARROT_LEFT`, `OPTIONAL_UNSIGNED_INT`): the parrot variant id placed on the
+    /// left shoulder, or `None` when that shoulder is empty. Non-player entities always project
+    /// `None`.
+    #[serde(default)]
+    pub player_left_shoulder_parrot: Option<i32>,
+    /// Vanilla `AvatarRenderState.parrotOnRightShoulder`, decoded from Player metadata id 20
+    /// (`DATA_SHOULDER_PARROT_RIGHT`, `OPTIONAL_UNSIGNED_INT`): the mirrored right-shoulder parrot
+    /// variant id, or `None`.
+    #[serde(default)]
+    pub player_right_shoulder_parrot: Option<i32>,
     /// Vanilla `AvatarRenderState.showExtraEars`: the exact lowercase `deadmau5`
     /// profile-name easter egg from `AbstractClientPlayer.showExtraEars`. Projected
     /// only for real player entities; mannequins and non-players stay false.

@@ -507,7 +507,7 @@ fn player_spin_attack_effect_records_vanilla_submission_and_geometry() {
     assert_eq!(pass.render_type.vanilla_name(), "entityCutout");
     assert_eq!(pass.texture, TRIDENT_RIPTIDE_TEXTURE_REF);
     assert_eq!(pass.tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!((pass.order, pass.submit_sequence), (0, 4));
+    assert_eq!((pass.order, pass.submit_sequence), (0, 6));
 
     let (atlas, _) = build_entity_model_texture_atlas(&steve_and_riptide_texture_images()).unwrap();
     let instance = EntityModelInstance::player_with_skin(
@@ -558,7 +558,7 @@ fn player_spin_attack_effect_records_vanilla_submission_and_geometry() {
     assert_eq!(spin_submit.light, body_submit.light);
     assert_eq!(spin_submit.overlay, [0.0, 10.0]);
     assert_ne!(spin_submit.overlay, body_submit.overlay);
-    assert_eq!((spin_submit.order, spin_submit.submit_sequence), (0, 4));
+    assert_eq!((spin_submit.order, spin_submit.submit_sequence), (0, 6));
 
     let riptide_entry = atlas
         .entries
@@ -628,13 +628,212 @@ fn player_spin_attack_submission_survives_missing_texture_atlas_entry() {
     assert_eq!(spin_submit.transform, player_model_root_transform(instance));
     assert_eq!(spin_submit.light, body_submit.light);
     assert_eq!(spin_submit.overlay, [0.0, 10.0]);
-    assert_eq!((spin_submit.order, spin_submit.submit_sequence), (0, 4));
+    assert_eq!((spin_submit.order, spin_submit.submit_sequence), (0, 6));
     assert_eq!(meshes.cutout.vertices.len(), 288);
     assert!(meshes
         .cutout
         .vertices
         .iter()
         .all(|vertex| vertex.overlay == body_submit.overlay));
+}
+
+#[test]
+fn player_parrot_on_shoulder_layer_records_vanilla_submissions_and_geometry() {
+    // Vanilla `AvatarRenderer` registers `ParrotOnShoulderLayer` after `WingsLayer` and before
+    // `SpinAttackEffectLayer`. The layer submits left then right shoulder parrots with
+    // `ParrotRenderer.getVariantTexture`, `entityCutout`, player light/outline, and NO_OVERLAY.
+    let left_pass = player_parrot_on_shoulder_layer_pass(ParrotModelVariant::Blue, true);
+    assert_eq!(
+        left_pass.kind,
+        EntityModelLayerKind::PlayerLeftShoulderParrot
+    );
+    assert_eq!(left_pass.model_layer, MODEL_LAYER_PARROT);
+    assert_eq!(
+        left_pass.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(left_pass.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(
+        left_pass.texture,
+        parrot_texture_ref(ParrotModelVariant::Blue)
+    );
+    assert_eq!(left_pass.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((left_pass.order, left_pass.submit_sequence), (0, 4));
+
+    let right_pass = player_parrot_on_shoulder_layer_pass(ParrotModelVariant::Gray, false);
+    assert_eq!(
+        right_pass.kind,
+        EntityModelLayerKind::PlayerRightShoulderParrot
+    );
+    assert_eq!(
+        right_pass.texture,
+        parrot_texture_ref(ParrotModelVariant::Gray)
+    );
+    assert_eq!((right_pass.order, right_pass.submit_sequence), (0, 5));
+
+    let (atlas, _) = build_entity_model_texture_atlas(&steve_and_parrot_texture_images()).unwrap();
+    let instance = EntityModelInstance::player_with_skin(
+        56,
+        [2.0, 65.0, -3.0],
+        35.0,
+        EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_head_look(18.0, -12.0)
+    .with_walk_animation(2.0, 0.7)
+    .with_age_in_ticks(3.5)
+    .with_light_coords((7_u32 << 4) | (9_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true)
+    .with_player_left_shoulder_parrot(Some(ParrotModelVariant::Blue))
+    .with_player_right_shoulder_parrot(Some(ParrotModelVariant::Gray));
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    let body_submit = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == PLAYER_WIDE_STEVE_TEXTURE_REF)
+        .expect("player body submission");
+    assert_eq!((body_submit.order, body_submit.submit_sequence), (0, 0));
+    assert_eq!(body_submit.overlay, instance.render_state.overlay_coords());
+
+    let left_submit = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == parrot_texture_ref(ParrotModelVariant::Blue))
+        .expect("left shoulder parrot submission");
+    assert_eq!(
+        left_submit.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(left_submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(left_submit.dynamic_player_skin, None);
+    assert_eq!(left_submit.dynamic_player_texture, None);
+    assert_eq!(left_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        left_submit.transform,
+        player_model_root_transform(instance) * Mat4::from_translation(Vec3::new(0.4, -1.5, 0.0))
+    );
+    assert_eq!(left_submit.light, body_submit.light);
+    assert_eq!(left_submit.overlay, [0.0, 10.0]);
+    assert_ne!(left_submit.overlay, body_submit.overlay);
+    assert_eq!((left_submit.order, left_submit.submit_sequence), (0, 4));
+
+    let right_submit = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == parrot_texture_ref(ParrotModelVariant::Gray))
+        .expect("right shoulder parrot submission");
+    assert_eq!(
+        right_submit.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(right_submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(right_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        right_submit.transform,
+        player_model_root_transform(instance) * Mat4::from_translation(Vec3::new(-0.4, -1.5, 0.0))
+    );
+    assert_eq!(right_submit.light, body_submit.light);
+    assert_eq!(right_submit.overlay, [0.0, 10.0]);
+    assert_eq!((right_submit.order, right_submit.submit_sequence), (0, 5));
+
+    for (variant, submit) in [
+        (ParrotModelVariant::Blue, left_submit),
+        (ParrotModelVariant::Gray, right_submit),
+    ] {
+        let entry = atlas
+            .entries
+            .iter()
+            .find(|entry| entry.texture == parrot_texture_ref(variant))
+            .expect("parrot atlas entry");
+        let parrot_vertices: Vec<_> = meshes
+            .cutout
+            .vertices
+            .iter()
+            .filter(|vertex| {
+                vertex.uv[0] >= entry.uv.min[0]
+                    && vertex.uv[0] <= entry.uv.max[0]
+                    && vertex.uv[1] >= entry.uv.min[1]
+                    && vertex.uv[1] <= entry.uv.max[1]
+            })
+            .collect();
+        assert_eq!(parrot_vertices.len(), 264);
+        assert!(parrot_vertices.iter().all(|vertex| {
+            vertex.tint == submit.tint
+                && vertex.light == submit.light
+                && vertex.overlay == submit.overlay
+        }));
+    }
+    assert_eq!(meshes.cutout.vertices.len(), 288 + 264 * 2);
+}
+
+#[test]
+fn player_parrot_on_shoulder_layer_uses_crouching_y_offset() {
+    let (atlas, _) = build_entity_model_texture_atlas(&steve_and_parrot_texture_images()).unwrap();
+    let instance = EntityModelInstance::player_with_skin(
+        57,
+        [0.0, 64.0, 0.0],
+        0.0,
+        EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_is_crouching(true)
+    .with_player_left_shoulder_parrot(Some(ParrotModelVariant::Green));
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    let submit = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == parrot_texture_ref(ParrotModelVariant::Green))
+        .expect("left shoulder parrot submission");
+    assert_eq!(
+        submit.transform,
+        player_model_root_transform(instance) * Mat4::from_translation(Vec3::new(0.4, -1.3, 0.0))
+    );
+    assert_eq!((submit.order, submit.submit_sequence), (0, 4));
+}
+
+#[test]
+fn player_shoulder_parrot_submission_survives_missing_texture_atlas_entry() {
+    // Missing stitched parrot texture data suppresses only the folded parrot geometry; vanilla still
+    // records the submit node with texture/render type/order metadata.
+    let (atlas, _) = build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
+    assert!(!atlas
+        .entries
+        .iter()
+        .any(|entry| entry.texture == parrot_texture_ref(ParrotModelVariant::YellowBlue)));
+    let instance = EntityModelInstance::player_with_skin(
+        58,
+        [0.0, 64.0, 0.0],
+        0.0,
+        EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_player_left_shoulder_parrot(Some(ParrotModelVariant::YellowBlue));
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    let shoulder_submit = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == parrot_texture_ref(ParrotModelVariant::YellowBlue))
+        .expect("left shoulder parrot submission");
+    assert_eq!(
+        shoulder_submit.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(shoulder_submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(shoulder_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        shoulder_submit.transform,
+        player_model_root_transform(instance) * Mat4::from_translation(Vec3::new(0.4, -1.5, 0.0))
+    );
+    assert_eq!(
+        (shoulder_submit.order, shoulder_submit.submit_sequence),
+        (0, 4)
+    );
+    assert_eq!(meshes.cutout.vertices.len(), 288);
 }
 
 #[test]
@@ -2506,6 +2705,18 @@ fn steve_and_riptide_texture_images() -> Vec<EntityModelTextureImage> {
         EntityModelTextureImage::new(texture, vec![index as u8; len])
     })
     .collect()
+}
+
+fn steve_and_parrot_texture_images() -> Vec<EntityModelTextureImage> {
+    [PLAYER_WIDE_STEVE_TEXTURE_REF, PLAYER_SLIM_STEVE_TEXTURE_REF]
+        .into_iter()
+        .chain(parrot_entity_texture_refs().iter().copied())
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(texture, vec![index as u8; len])
+        })
+        .collect()
 }
 
 fn assert_player_submissions_match_vanilla(
