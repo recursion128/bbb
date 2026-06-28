@@ -376,7 +376,9 @@ When an agent does any of the following, update this file in the same slice:
     resource fallback, P2/P3 terrain or item presentation, P0 visual outline
     target/composite, P0 visual dynamic lighting / darkness-adjusted gamma /
     diffuse, or later GPU state
-    fidelity. None remains a narrow CPU submission graph blocker.
+    fidelity. None remains a narrow CPU submission graph blocker. The latest
+    `rg residual` / `rg fallback` / `rg unsupported` rerun counts are tracked in
+    `goal.md`.
   - Replace proxies with full extraction from canonical world and pack data:
     - entity bounds
     - dropped-item icons (3D block/item model renderer in progress — see the
