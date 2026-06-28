@@ -330,7 +330,7 @@ impl ParticleRuntimeState {
 impl ParticleInstance {
     fn from_spawn_command(command: ParticleSpawnCommand, random: &mut ParticleRandom) -> Self {
         let descriptor = ParticleDescriptor::for_particle(&command.particle_id);
-        let position = descriptor.initial_position(command.position);
+        let position = descriptor.initial_position(command.position, random);
         let velocity = descriptor.initial_velocity.sample(command.velocity, random);
         let (current_sprite_index, current_sprite_id) =
             select_initial_sprite(&command.sprite_ids, descriptor.sprite_selection, random);
@@ -970,6 +970,39 @@ mod tests {
         assert_close_f32(small_flame.base_quad_size, flame.base_quad_size * 0.5);
         assert_eq!(flame.color, [1.0, 1.0, 1.0, 1.0]);
         assert_eq!(flame.quad_size_curve, ParticleQuadSizeCurve::Flame);
+
+        let mut soul_random = ParticleRandom::new(68);
+        let mut soul_command = spawn_command("minecraft:soul", 1.0);
+        soul_command.position = [1.0, 2.0, 3.0];
+        soul_command.velocity = [1.0, 2.0, 3.0];
+        let soul = ParticleInstance::from_spawn_command(soul_command, &mut soul_random);
+        assert_eq!(soul.provider, "SoulParticle.Provider");
+        assert_eq!(soul.sprite_selection, ParticleSpriteSelection::Age);
+        assert_range_f32(soul.base_quad_size, 0.15, 0.3);
+        assert_eq!(soul.color, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(soul.quad_size_curve, ParticleQuadSizeCurve::Constant);
+        assert!((12..=44).contains(&soul.lifetime_ticks));
+        assert_eq!(soul.friction, 0.96);
+        assert_eq!(soul.gravity, 0.0);
+        assert!(soul.has_physics);
+        assert!(!soul.speed_up_when_y_motion_is_blocked);
+        assert_range_f64(soul.position[0], 0.95, 1.05);
+        assert_range_f64(soul.position[1], 1.95, 2.05);
+        assert_range_f64(soul.position[2], 2.95, 3.05);
+        assert_range_f64(soul.velocity[0], 0.998, 1.002);
+        assert_range_f64(soul.velocity[1], 2.0, 2.003);
+        assert_range_f64(soul.velocity[2], 2.998, 3.002);
+
+        let mut sculk_soul_random = ParticleRandom::new(69);
+        let sculk_soul = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:sculk_soul", 1.0),
+            &mut sculk_soul_random,
+        );
+        assert_eq!(sculk_soul.provider, "SoulParticle.EmissiveProvider");
+        assert_eq!(sculk_soul.sprite_selection, ParticleSpriteSelection::Age);
+        assert_eq!(sculk_soul.color, [1.0, 1.0, 1.0, 1.0]);
+        assert!((12..=44).contains(&sculk_soul.lifetime_ticks));
+        assert!(sculk_soul.has_physics);
 
         let mut cloud_random = ParticleRandom::new(43);
         let cloud = ParticleInstance::from_spawn_command(

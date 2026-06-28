@@ -124,6 +124,7 @@ pub(crate) enum ParticleInitialVelocityDescriptor {
     CommandAxisScaled {
         scale: [f64; 3],
     },
+    RisingParticle,
     ParticleConstructorScaled {
         scale: f64,
     },
@@ -347,6 +348,25 @@ impl ParticleDescriptor {
                     speed_up_when_y_motion_is_blocked: false,
                 }
             }
+            "minecraft:soul" | "minecraft:sculk_soul" => Self {
+                provider: if particle_id == "minecraft:sculk_soul" {
+                    "SoulParticle.EmissiveProvider"
+                } else {
+                    "SoulParticle.Provider"
+                },
+                lifetime: ParticleLifetimeDescriptor::Rising,
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 1.5,
+                    color: ParticleColorDescriptor::FixedRgba([1.0, 1.0, 1.0, 1.0]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::RisingParticle,
+                friction: 0.96,
+                gravity: 0.0,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
             "minecraft:glow" => Self {
                 provider: "GlowParticle.GlowSquidProvider",
                 lifetime: ParticleLifetimeDescriptor::EightOverRandom,
@@ -692,12 +712,21 @@ impl ParticleDescriptor {
         }
     }
 
-    pub(crate) fn initial_position(self, command_position: [f64; 3]) -> [f64; 3] {
+    pub(crate) fn initial_position(
+        self,
+        command_position: [f64; 3],
+        random: &mut ParticleRandom,
+    ) -> [f64; 3] {
         match self.provider {
             "HeartParticle.AngryVillagerProvider" => [
                 command_position[0],
                 command_position[1] + 0.5,
                 command_position[2],
+            ],
+            "SoulParticle.Provider" | "SoulParticle.EmissiveProvider" => [
+                command_position[0] + random_centered_offset(random, 0.05),
+                command_position[1] + random_centered_offset(random, 0.05),
+                command_position[2] + random_centered_offset(random, 0.05),
             ],
             _ => command_position,
         }
@@ -835,6 +864,28 @@ impl ParticleInitialVelocityDescriptor {
                 command_velocity[1] * scale[1],
                 command_velocity[2] * scale[2],
             ],
+            Self::RisingParticle => {
+                let x = command_velocity[0] + random_signed_velocity(random);
+                let y = command_velocity[1] + random_signed_velocity(random);
+                let z = command_velocity[2] + random_signed_velocity(random);
+                let speed =
+                    (f64::from(random.next_f32()) + f64::from(random.next_f32()) + 1.0) * 0.15;
+                let length = (x * x + y * y + z * z).sqrt();
+                let random_velocity = if length == 0.0 {
+                    [0.0, 0.1, 0.0]
+                } else {
+                    [
+                        x / length * speed * 0.4,
+                        y / length * speed * 0.4 + 0.1,
+                        z / length * speed * 0.4,
+                    ]
+                };
+                [
+                    random_velocity[0] * 0.01 + command_velocity[0],
+                    random_velocity[1] * 0.01 + command_velocity[1],
+                    random_velocity[2] * 0.01 + command_velocity[2],
+                ]
+            }
             Self::ParticleConstructorScaled { scale } => {
                 let x = command_velocity[0] + random_signed_velocity(random);
                 let y = command_velocity[1] + random_signed_velocity(random);
@@ -1114,6 +1165,10 @@ fn random_signed_unit(random: &mut ParticleRandom) -> f64 {
     f64::from(random.next_f32()) * 2.0 - 1.0
 }
 
+fn random_centered_offset(random: &mut ParticleRandom, scale: f64) -> f64 {
+    (f64::from(random.next_f32()) - f64::from(random.next_f32())) * scale
+}
+
 fn sample_random_horizontal_y_velocity(
     command_velocity: [f64; 3],
     random: &mut ParticleRandom,
@@ -1173,7 +1228,7 @@ mod tests {
             }
         );
         assert_eq!(
-            angry_villager.initial_position([1.0, 2.0, 3.0]),
+            angry_villager.initial_position([1.0, 2.0, 3.0], &mut ParticleRandom::new(1)),
             [1.0, 2.5, 3.0]
         );
 
@@ -1371,6 +1426,49 @@ mod tests {
             false,
             false,
         );
+        assert_descriptor(
+            "minecraft:soul",
+            "SoulParticle.Provider",
+            ParticleLifetimeDescriptor::Rising,
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::SingleQuadScaled {
+                scale: 1.5,
+                color: ParticleColorDescriptor::FixedRgba([1.0, 1.0, 1.0, 1.0]),
+                quad_size_curve: ParticleQuadSizeCurve::Constant,
+            },
+            0.96,
+            0.0,
+            true,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:soul").initial_velocity,
+            ParticleInitialVelocityDescriptor::RisingParticle
+        );
+        assert_descriptor(
+            "minecraft:sculk_soul",
+            "SoulParticle.EmissiveProvider",
+            ParticleLifetimeDescriptor::Rising,
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::SingleQuadScaled {
+                scale: 1.5,
+                color: ParticleColorDescriptor::FixedRgba([1.0, 1.0, 1.0, 1.0]),
+                quad_size_curve: ParticleQuadSizeCurve::Constant,
+            },
+            0.96,
+            0.0,
+            true,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:sculk_soul").initial_velocity,
+            ParticleInitialVelocityDescriptor::RisingParticle
+        );
+        let soul_position = ParticleDescriptor::for_particle("minecraft:soul")
+            .initial_position([1.0, 2.0, 3.0], &mut ParticleRandom::new(35));
+        assert_range_f64(soul_position[0], 0.95, 1.05);
+        assert_range_f64(soul_position[1], 1.95, 2.05);
+        assert_range_f64(soul_position[2], 2.95, 3.05);
         assert_descriptor(
             "minecraft:heart",
             "HeartParticle.Provider",
@@ -1774,6 +1872,17 @@ mod tests {
         assert_eq!(flame.color, WHITE_PARTICLE_COLOR);
         assert_eq!(flame.quad_size_curve, ParticleQuadSizeCurve::Flame);
 
+        let mut soul_random = ParticleRandom::new(35);
+        let soul = ParticleVisualDescriptor::SingleQuadScaled {
+            scale: 1.5,
+            color: ParticleColorDescriptor::FixedRgba([1.0, 1.0, 1.0, 1.0]),
+            quad_size_curve: ParticleQuadSizeCurve::Constant,
+        }
+        .sample_for_command(&mut soul_random, [0.0, 0.0, 0.0]);
+        assert_range_f32(soul.base_quad_size, 0.15, 0.3);
+        assert_eq!(soul.color, WHITE_PARTICLE_COLOR);
+        assert_eq!(soul.quad_size_curve, ParticleQuadSizeCurve::Constant);
+
         let mut cloud_random = ParticleRandom::new(8);
         let cloud = ParticleVisualDescriptor::PlayerCloud
             .sample_for_command(&mut cloud_random, [0.0, 0.0, 0.0]);
@@ -2053,6 +2162,12 @@ mod tests {
         assert_close_f64(axis_scaled[0], 0.01);
         assert_close_f64(axis_scaled[1], 0.03);
         assert_close_f64(axis_scaled[2], 0.02);
+
+        let rising_velocity = ParticleInitialVelocityDescriptor::RisingParticle
+            .sample([1.0, 2.0, 3.0], &mut ParticleRandom::new(34));
+        assert_range_f64(rising_velocity[0], 0.998, 1.002);
+        assert_range_f64(rising_velocity[1], 2.000, 2.003);
+        assert_range_f64(rising_velocity[2], 2.998, 3.002);
 
         let mut crit_random = ParticleRandom::new(24);
         let crit_velocity =

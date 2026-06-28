@@ -275,6 +275,12 @@ When an agent does any of the following, update this file in the same slice:
         quad-size scale, `8 / (random * 0.8 + 0.2)` lifetime, `0.96`
         friction, no physics, and blocked-y speed-up metadata; the same smooth
         glow emission curve remains deferred
+      - `SoulParticle.Provider` and `EmissiveProvider` use vanilla
+        `RisingParticle` position jitter, `constructor * 0.01 + aux` velocity,
+        `alpha=1`, `1.5` quad-size scale, age sprite selection, rising lifetime,
+        `0.96` friction, gravity `0`, and physics metadata; `EmissiveProvider`
+        full-bright block light remains deferred until per-particle light coords
+        are represented
     - Uploads a stitched official particle atlas when assets are available.
     - Draws active particles as camera-facing textured billboards.
   - Follow-up work in the plan:
