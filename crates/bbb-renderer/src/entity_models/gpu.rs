@@ -655,6 +655,11 @@ impl Renderer {
                 meshes.eyes,
                 "bbb-entity-model-eyes",
             );
+            self.entity_model_outline_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
+                &self.device,
+                meshes.outline,
+                "bbb-entity-model-outline",
+            );
             self.entity_model_translucent_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
                 &self.device,
                 meshes.translucent,
@@ -698,6 +703,7 @@ impl Renderer {
             self.entity_model_textured_mesh = None;
             self.entity_model_translucent_mesh = None;
             self.entity_model_eyes_mesh = None;
+            self.entity_model_outline_mesh = None;
             self.entity_dynamic_player_skin_cutout_mesh = None;
             self.entity_dynamic_player_skin_translucent_mesh = None;
             self.entity_dynamic_player_texture_cutout_mesh = None;
@@ -714,6 +720,9 @@ impl Renderer {
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_eyes_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_model_outline_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_dynamic_player_skin_cutout_mesh

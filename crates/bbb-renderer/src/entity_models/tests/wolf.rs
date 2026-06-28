@@ -86,8 +86,9 @@ fn wolf_textured_mesh_uses_vanilla_uvs_and_collar_tint() {
 
     // Vanilla `LivingEntityRenderer.getRenderType`: an invisible wolf that is still invisible to
     // this client but `appearsGlowing()` submits only the base body with `RenderTypes.outline`.
-    // The current backend records the outline submission and leaves GPU outline presentation
-    // deferred, so no folded geometry is emitted here.
+    // The folded outline bucket uses `outlineColor` for vertex tint, matching
+    // `OutlineBufferSource.EntityOutlineGenerator`; the submission still records the original
+    // model tint.
     let glowing_invisible = invisible
         .with_appears_glowing(true)
         .with_light_coords((5_u32 << 4) | (11_u32 << 20))
@@ -117,7 +118,7 @@ fn wolf_textured_mesh_uses_vanilla_uvs_and_collar_tint() {
     assert_eq!(glowing.outline.vertices.len(), 264);
     assert_eq!(glowing.outline.indices.len(), 396);
     assert!(glowing.outline.vertices.iter().all(|vertex| {
-        vertex.tint == submit.tint
+        vertex.tint == [1.0, 1.0, 1.0, 1.0]
             && vertex.light == submit.light
             && vertex.overlay == submit.overlay
     }));
@@ -1037,8 +1038,14 @@ fn invisible_wolf_body_armor_keeps_vanilla_layer_submissions() {
     assert_eq!(glowing.outline.cutout_faces, 66);
     assert_eq!(glowing.outline.vertices.len(), 264);
     assert_eq!(glowing.outline.indices.len(), 396);
+    let outline_tint = [
+        0x33 as f32 / 255.0,
+        0x66 as f32 / 255.0,
+        0xcc as f32 / 255.0,
+        1.0,
+    ];
     assert!(glowing.outline.vertices.iter().all(|vertex| {
-        vertex.tint == outline.tint
+        vertex.tint == outline_tint
             && vertex.light == outline.light
             && vertex.overlay == outline.overlay
     }));

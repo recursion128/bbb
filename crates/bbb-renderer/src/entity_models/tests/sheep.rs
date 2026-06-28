@@ -807,9 +807,10 @@ fn sheep_textured_mesh_uses_vanilla_uvs_tints_and_layer_visibility() {
     assert_eq!(glowing.outline.cutout_faces, 72);
     assert_eq!(glowing.outline.vertices.len(), 288);
     assert_eq!(glowing.outline.indices.len(), 432);
+    let outline_tint = [0x55 as f32 / 255.0, 1.0, 0x55 as f32 / 255.0, 1.0];
     for (submit, range) in [(base, 0..144), (wool, 144..288)] {
         assert!(glowing.outline.vertices[range].iter().all(|vertex| {
-            vertex.tint == submit.tint
+            vertex.tint == outline_tint
                 && vertex.light == submit.light
                 && vertex.overlay == submit.overlay
         }));

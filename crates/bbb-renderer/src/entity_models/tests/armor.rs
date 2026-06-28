@@ -528,7 +528,7 @@ fn invisible_glowing_zombie_keeps_humanoid_armor_layer_submissions() {
     assert_eq!(
         meshes.cutout.vertices.len(),
         240,
-        "outline-only base records metadata only, while armorCutoutNoCull equipment still folds"
+        "outline-only base folds into the outline bucket, while armorCutoutNoCull equipment still folds"
     );
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
@@ -607,7 +607,7 @@ fn invisible_glowing_armor_stand_keeps_armor_layer_submissions() {
     assert_eq!(
         meshes.cutout.vertices.len(),
         240,
-        "outline-only base records metadata only, while armorCutoutNoCull equipment still folds"
+        "outline-only base folds into the outline bucket, while armorCutoutNoCull equipment still folds"
     );
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());

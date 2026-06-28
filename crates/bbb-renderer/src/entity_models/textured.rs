@@ -156,9 +156,9 @@ pub(super) struct EntityModelTexturedMeshes {
     pub(super) cutout: EntityModelTexturedMesh,
     pub(super) translucent: EntityModelTexturedMesh,
     pub(super) eyes: EntityModelTexturedMesh,
-    /// CPU-retained geometry for vanilla `RenderTypes.outline(...)` submissions. This preserves the
-    /// exact model geometry and metadata while GPU outline presentation remains a separate renderer
-    /// pass.
+    /// CPU-retained geometry for vanilla `RenderTypes.outline(...)` submissions. Submission metadata
+    /// preserves the original model tint, while the folded vertices carry `outlineColor` like
+    /// vanilla's `OutlineBufferSource.EntityOutlineGenerator`.
     pub(super) outline: EntityModelTexturedMesh,
     /// Ready remote player skins are rendered through a dedicated atlas, preserving their vanilla
     /// cutout/translucent render type while swapping only the texture source.
@@ -735,6 +735,21 @@ fn fill_textured_submission_vertices(
 ) {
     fill_entity_textured_light(mesh, start, submission.light);
     fill_entity_textured_overlay(mesh, start, submission.overlay);
+    if submission.render_type == EntityModelLayerRenderType::Outline {
+        let outline_tint = argb_to_tint(submission.outline_color);
+        for vertex in &mut mesh.vertices[start..] {
+            vertex.tint = outline_tint;
+        }
+    }
+}
+
+fn argb_to_tint(argb: u32) -> [f32; 4] {
+    [
+        ((argb >> 16) & 0xFF) as f32 / 255.0,
+        ((argb >> 8) & 0xFF) as f32 / 255.0,
+        (argb & 0xFF) as f32 / 255.0,
+        ((argb >> 24) & 0xFF) as f32 / 255.0,
+    ]
 }
 
 fn scroll_mesh_mut(

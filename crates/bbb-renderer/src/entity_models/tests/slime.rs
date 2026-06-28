@@ -339,8 +339,8 @@ fn slime_and_magma_cube_textured_meshes_use_vanilla_submissions_uvs_and_layer_bu
     assert_close3(slime_outer_max, [0.24975, 64.4995, 0.24975]);
 
     // Vanilla `SlimeOuterLayer`: an invisible slime that appears glowing keeps both the base body
-    // outline and the order-1 outer shell outline, while folded GPU outline presentation remains
-    // deferred in the current backend.
+    // outline and the order-1 outer shell outline. The folded outline bucket uses `outlineColor`
+    // for vertex tint while submissions keep the original model tint.
     let glowing_invisible_slime = slime_instance
         .with_invisible(true)
         .with_appears_glowing(true);

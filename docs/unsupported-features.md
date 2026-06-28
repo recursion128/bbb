@@ -343,19 +343,20 @@ When an agent does any of the following, update this file in the same slice:
     geometry is outside the textured submission path. Historical residual wording
     below is retained as evidence of migration slices, not as a current P0 blocker.
     Remaining colored fallback geometry belongs to non-textured debug/parity work,
-    while GPU bucket folding, outline presentation, render-graph sorting, and
-    more exact lighting remain separate P0 pipeline/visual follow-ups.
+    while GPU bucket folding, vanilla outline-target compositing, render-graph
+    sorting, and more exact lighting remain separate P0 pipeline/visual
+    follow-ups.
   - P0 pipeline closeout also treats the remaining GPU-path fine-grained state as
     explicitly deferred follow-up, not as a blocker for the CPU submission graph:
     the backend currently folds compatible submissions into atlas buckets
-    (`cutout`, `translucent`, `eyes`, dynamic profile texture buckets, scroll /
-    additive scroll, and CPU-retained outline geometry). Later GPU work should
+    (`cutout`, `translucent`, `eyes`, static-atlas outline, dynamic profile
+    texture buckets, scroll / additive scroll). Later GPU work should
     preserve per-submission draw order across buckets, split currently-coalesced
     render-type state such as `entityCutout*`, `entitySolid`,
     `armorCutoutNoCull`, `entityTranslucent*`, `Eyes`, `waterMask`, and glint /
-    scroll variants into equivalent pipeline state, present outline geometry with
-    `outlineColor`, and reconcile full render-graph sorting plus LightTexture /
-    gamma / diffuse visual parity.
+    scroll variants into equivalent pipeline state, complete vanilla outline
+    target/composite behaviour, and reconcile full render-graph sorting plus
+    LightTexture / gamma / diffuse visual parity.
   - Replace proxies with full extraction from canonical world and pack data:
     - entity bounds
     - dropped-item icons (3D block/item model renderer in progress — see the
@@ -521,9 +522,11 @@ When an agent does any of the following, update this file in the same slice:
       visible, hidden, and hidden-glowing states. `CapeLayer` remains suppressed
       for invisible players because vanilla explicitly gates it on
       `!state.isInvisible`. Texture-backed static-atlas outline submissions now
-      also retain CPU-side folded outline geometry when the texture is present.
-      Colored-path force-transparent output and GPU outline presentation remain
-      deferred under the `outlineColor` slot.
+      also retain CPU-side folded outline geometry when the texture is present,
+      upload it as a GPU resident outline bucket, and tint folded outline vertices
+      from `outlineColor` while preserving the original model tint in submission
+      metadata. Colored-path force-transparent output and vanilla outline-target
+      compositing remain deferred under the visual follow-up slots.
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
       proportions applied in model `setupAnim`, distinct from the now-projected
@@ -1167,8 +1170,9 @@ When an agent does any of the following, update this file in the same slice:
       preserve entity light and clear the white overlay column like vanilla
       `renderColoredCutoutModel(... getOverlayCoords(state, 0.0F))`
   - Finish remaining sheep presentation parity:
-    - implement GPU invisible glowing outline presentation; base and wool outline
-      submission metadata plus CPU-side folded outline geometry are now recorded
+    - finish vanilla outline-target/final-composite presentation; base and wool
+      outline submission metadata plus `outlineColor`-tinted GPU outline bucket
+      geometry are now recorded for the texture-backed static-atlas path
     - implement colored-path force-transparent output and remaining base-model
       outline handling
   - Finish wolf presentation parity:
@@ -1852,10 +1856,12 @@ When an agent does any of the following, update this file in the same slice:
       submissions (adult wool order `(0,2)`, baby wool order `(1,2)`) with
       `outlineColor` metadata while `SheepWoolUndercoatLayer` still skips. The
       renderer now retains CPU-side folded outline geometry for the base plus
-      wool passes with each submission's tint/light/overlay metadata. GPU
-      invisible glowing outline presentation, colored-path force-transparent /
-      outline handling, and remaining render-state extraction remain
-      unsupported; outline submission metadata is recorded from the shared
+      wool passes; folded outline vertices are tinted from `outlineColor` and
+      uploaded through the static-atlas outline GPU bucket while submission
+      metadata still preserves the original model tint/light/overlay. Vanilla
+      outline-target/final-composite presentation, colored-path
+      force-transparent / outline handling, and remaining render-state extraction
+      remain unsupported; outline submission metadata is recorded from the shared
       glowing flag and scoreboard team color
     - wolf entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AdultWolfModel`, `BabyWolfModel`, and `WolfRenderer`,
@@ -1928,10 +1934,11 @@ When an agent does any of the following, update this file in the same slice:
       missing-atlas coverage pins that this force-transparent base submit is still recorded when
       `wolf_tame.png` is absent, suppressing only folded translucent geometry.
       Invisible-glowing wolf base outline submissions now also retain CPU-side
-      folded outline geometry with the submission tint/light/overlay metadata,
-      including the armor-equipped invisible exception path. Colored-path
-      force-transparent / GPU outline presentation, glint/foil, and remaining
-      render-state extraction remain unsupported
+      folded outline geometry with `outlineColor`-tinted vertices and submission
+      tint/light/overlay metadata, including the armor-equipped invisible
+      exception path, and that outline bucket is uploaded for the static-atlas GPU
+      path. Colored-path force-transparent / vanilla outline-target compositing,
+      glint/foil, and remaining render-state extraction remain unsupported
     - base horse entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AbstractEquineModel.createBodyMesh(CubeDeformation.NONE)`,
       `BabyHorseModel.createBabyMesh(CubeDeformation.NONE)`, `HorseModel`, and
@@ -2840,9 +2847,10 @@ When an agent does any of the following, update this file in the same slice:
       metadata, shared dispatch ownership instead of a residual textured emit helper, and an
       alpha-blended translucent GPU bucket. Invisible glowing slime now records the
       vanilla base and order-1 `SlimeOuterLayer` outline submissions with
-      `outlineColor` metadata while folded/GPU outline presentation remains
-      deferred; particle/audio coupling, broader lighting
-      presentation, crumbling, and full render-graph sorting parity remain unsupported
+      `outlineColor` metadata and static-atlas GPU outline bucket geometry;
+      vanilla outline-target compositing, particle/audio coupling, broader
+      lighting presentation, crumbling, and full render-graph sorting parity
+      remain unsupported
     - magma cube entities as renderer-owned vanilla 26.1
       `MagmaCubeModel.createBodyLayer()` segment/inside-cube geometry, official
       `textures/entity/slime/magmacube.png` texture reference, renderer
@@ -4502,7 +4510,7 @@ When an agent does any of the following, update this file in the same slice:
     variants, equipment, skins, animation, lighting, custom/datapack cow/pig
     variant asset presentation, sheep
     head-look-pitch presentation,
-    wolf colored force-transparent / GPU outline presentation,
+    wolf colored force-transparent / vanilla outline-target compositing,
     boat/raft water-mask presentation and lighting (paddle rowing animation,
     hurt/damage roll, bubble wobble, underwater state, and above-water water-mask
     gating are projected and rendered),

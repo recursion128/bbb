@@ -165,6 +165,18 @@ impl Renderer {
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
                 entity_model_draw_calls += 1;
             }
+            if let (Some(mesh), Some(atlas)) = (
+                &self.entity_model_outline_mesh,
+                &self.entity_model_texture_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_eyes_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                entity_model_draw_calls += 1;
+            }
             // The scrolling overlays draw last, over the already-shaded entity bodies: the translucent
             // `breezeWind` (wind charge) then the additive `energySwirl` (charged-creeper / wither glow).
             if let (Some(mesh), Some(atlas)) = (
