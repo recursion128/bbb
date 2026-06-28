@@ -22,6 +22,7 @@ const DEFAULT_MAX_PENDING_PARTICLE_SPAWNS: usize = 16_384;
 const DEFAULT_MAX_ACTIVE_PARTICLE_INSTANCES: usize = 16_384;
 const DEFAULT_PARTICLE_QUAD_SIZE: f32 = 0.2;
 const DEFAULT_PARTICLE_RENDER_PARTIAL_TICK: f32 = 0.5;
+const DEFAULT_PARTICLE_LIGHT: [f32; 2] = [1.0, 1.0];
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ParticleSpawnCommand {
@@ -91,6 +92,8 @@ pub(crate) struct ParticleInstance {
     pub(crate) base_quad_size: f32,
     #[serde(default = "default_particle_color")]
     pub(crate) color: [f32; 4],
+    #[serde(default = "default_particle_light")]
+    pub(crate) light: [f32; 2],
     #[serde(default)]
     pub(crate) quad_size_curve: ParticleQuadSizeCurve,
     pub(crate) provider: String,
@@ -150,6 +153,10 @@ fn default_particle_quad_size() -> f32 {
 
 fn default_particle_color() -> [f32; 4] {
     [1.0, 1.0, 1.0, 1.0]
+}
+
+fn default_particle_light() -> [f32; 2] {
+    DEFAULT_PARTICLE_LIGHT
 }
 
 impl Default for ParticleRuntimeState {
@@ -319,6 +326,15 @@ impl ParticleRuntimeState {
         }
     }
 
+    fn refresh_lights<F>(&mut self, mut light_at_position: F)
+    where
+        F: FnMut([f64; 3]) -> [f32; 2],
+    {
+        for instance in &mut self.active_instances {
+            instance.light = sanitize_particle_light(light_at_position(instance.position));
+        }
+    }
+
     #[cfg(test)]
     pub(crate) fn pending_spawns(&self) -> &VecDeque<ParticleSpawnCommand> {
         &self.pending_spawns
@@ -353,6 +369,7 @@ impl ParticleInstance {
             lifetime_ticks: descriptor.lifetime.sample(random),
             base_quad_size: visual.base_quad_size,
             color: visual.color,
+            light: DEFAULT_PARTICLE_LIGHT,
             quad_size_curve: visual.quad_size_curve,
             provider: descriptor.provider.to_string(),
             friction: descriptor.friction,
@@ -493,6 +510,14 @@ impl Renderer {
         self.counters.dropped_active_particle_instances = summary.total_dropped_active_instances;
     }
 
+    pub fn refresh_particle_lights<F>(&mut self, mut light_at_position: F)
+    where
+        F: FnMut([f64; 3]) -> [f32; 2],
+    {
+        self.particles
+            .refresh_lights(|position| light_at_position(position));
+    }
+
     pub(crate) fn collect_particle_vertices(&self) -> Vec<ParticleVertex> {
         let Some(pose) = self.camera_pose else {
             return Vec::new();
@@ -580,21 +605,42 @@ fn particle_instance_vertices(
     let tint = instance.color;
 
     [
-        particle_vertex(bottom_left, [uv.min[0], uv.max[1]], tint),
-        particle_vertex(bottom_right, [uv.max[0], uv.max[1]], tint),
-        particle_vertex(top_right, [uv.max[0], uv.min[1]], tint),
-        particle_vertex(bottom_left, [uv.min[0], uv.max[1]], tint),
-        particle_vertex(top_right, [uv.max[0], uv.min[1]], tint),
-        particle_vertex(top_left, [uv.min[0], uv.min[1]], tint),
+        particle_vertex(bottom_left, [uv.min[0], uv.max[1]], tint, instance.light),
+        particle_vertex(bottom_right, [uv.max[0], uv.max[1]], tint, instance.light),
+        particle_vertex(top_right, [uv.max[0], uv.min[1]], tint, instance.light),
+        particle_vertex(bottom_left, [uv.min[0], uv.max[1]], tint, instance.light),
+        particle_vertex(top_right, [uv.max[0], uv.min[1]], tint, instance.light),
+        particle_vertex(top_left, [uv.min[0], uv.min[1]], tint, instance.light),
     ]
 }
 
-fn particle_vertex(position: Vec3, uv: [f32; 2], color: [f32; 4]) -> ParticleVertex {
+fn particle_vertex(
+    position: Vec3,
+    uv: [f32; 2],
+    color: [f32; 4],
+    light: [f32; 2],
+) -> ParticleVertex {
     ParticleVertex {
         position: position.to_array(),
         uv,
         color,
+        light,
     }
+}
+
+fn sanitize_particle_light(light: [f32; 2]) -> [f32; 2] {
+    [
+        if light[0].is_finite() {
+            light[0].clamp(0.0, 1.0)
+        } else {
+            DEFAULT_PARTICLE_LIGHT[0]
+        },
+        if light[1].is_finite() {
+            light[1].clamp(0.0, 1.0)
+        } else {
+            DEFAULT_PARTICLE_LIGHT[1]
+        },
+    ]
 }
 
 #[cfg(test)]
@@ -1765,12 +1811,38 @@ mod tests {
     }
 
     #[test]
+    fn particle_runtime_refreshes_active_lights_from_world_positions() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut first = test_instance_with_lifetime("minecraft:cloud", 20);
+        first.position = [1.25, 2.0, 3.75];
+        let mut second = test_instance_with_lifetime("minecraft:smoke", 20);
+        second.position = [-2.0, 9.5, 0.25];
+        particles.active_instances.push_back(first);
+        particles.active_instances.push_back(second);
+
+        particles.refresh_lights(|position| {
+            if position[0] < 0.0 {
+                [1.25, f32::NAN]
+            } else {
+                [4.0 / 15.0, 11.0 / 15.0]
+            }
+        });
+
+        assert_eq!(
+            particles.active_instances()[0].light,
+            [4.0 / 15.0, 11.0 / 15.0]
+        );
+        assert_eq!(particles.active_instances()[1].light, [1.0, 1.0]);
+    }
+
+    #[test]
     fn particle_billboard_vertices_emit_camera_facing_textured_quad() {
         let mut instance = test_instance_with_lifetime("minecraft:cloud", 20);
         instance.position = [1.0, 2.0, 3.0];
         instance.current_sprite_id = Some("minecraft:generic_0".to_string());
         instance.base_quad_size = 0.4;
         instance.color = [0.25, 0.5, 0.75, 0.8];
+        instance.light = [0.4, 0.8];
         let sprite_uvs = BTreeMap::from([(
             "minecraft:generic_0".to_string(),
             ParticleUvRect {
@@ -1792,12 +1864,15 @@ mod tests {
         assert_close3_f32(vertices[0].position, [0.8, 1.8, 3.0]);
         assert_eq!(vertices[0].uv, [0.25, 0.375]);
         assert_eq!(vertices[0].color, [0.25, 0.5, 0.75, 0.8]);
+        assert_eq!(vertices[0].light, [0.4, 0.8]);
         assert_close3_f32(vertices[2].position, [1.2, 2.2, 3.0]);
         assert_eq!(vertices[2].uv, [0.5, 0.125]);
         assert_eq!(vertices[2].color, [0.25, 0.5, 0.75, 0.8]);
+        assert_eq!(vertices[2].light, [0.4, 0.8]);
         assert_close3_f32(vertices[5].position, [0.8, 2.2, 3.0]);
         assert_eq!(vertices[5].uv, [0.25, 0.125]);
         assert_eq!(vertices[5].color, [0.25, 0.5, 0.75, 0.8]);
+        assert_eq!(vertices[5].light, [0.4, 0.8]);
     }
 
     #[test]
@@ -1832,6 +1907,7 @@ mod tests {
             lifetime_ticks,
             base_quad_size: DEFAULT_PARTICLE_QUAD_SIZE,
             color: [1.0, 1.0, 1.0, 1.0],
+            light: DEFAULT_PARTICLE_LIGHT,
             quad_size_curve: ParticleQuadSizeCurve::Constant,
             provider: descriptor.provider.to_string(),
             friction: descriptor.friction,

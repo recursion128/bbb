@@ -303,28 +303,29 @@ When an agent does any of the following, update this file in the same slice:
         `RisingParticle` position jitter, `constructor * 0.01 + aux` velocity,
         `alpha=1`, `1.5` quad-size scale, age sprite selection, rising lifetime,
         `0.96` friction, gravity `0`, and physics metadata; `EmissiveProvider`
-        full-bright block light remains deferred until per-particle light coords
-        are represented
+        full-bright block override remains deferred until provider-specific
+        particle light curves are represented
       - `HugeExplosionParticle.Provider` (`minecraft:explosion`) uses vanilla
         xAux-derived quad size, random gray tint, age sprite selection,
         `6 + random.nextInt(4)` lifetime, static zero velocity in the current
-        CPU model, and base physics metadata; full-bright block light remains
-        deferred until per-particle light coords are represented
+        CPU model, and base physics metadata; full-bright block override remains
+        deferred until provider-specific particle light curves are represented
       - `SonicBoomParticle.Provider` uses vanilla fixed `1.5` quad size,
         random gray tint inherited from `HugeExplosionParticle`, age sprite
         selection, fixed lifetime `16`, static zero velocity in the current CPU
-        model, and base physics metadata; full-bright block light remains
-        deferred until per-particle light coords are represented
+        model, and base physics metadata; full-bright block override remains
+        deferred until provider-specific particle light curves are represented
       - `GustParticle.Provider` and `SmallProvider` use vanilla fixed quad
         sizes (`1.0` and scaled `0.15`), age sprite selection,
         `12 + random.nextInt(4)` lifetime, static zero velocity in the current
-        CPU model, and base physics metadata; full-bright block light remains
-        deferred until per-particle light coords are represented
+        CPU model, and base physics metadata; full-bright block override remains
+        deferred until provider-specific particle light curves are represented
       - `SculkChargePopParticle.Provider` uses vanilla command velocity,
         `alpha=1`, base quad size, age sprite selection,
         `6 + random.nextInt(4)` lifetime, `0.96` friction, and no-physics
-        metadata; full-bright block light and translucent particle layer remain
-        deferred until per-particle light/render-layer state is represented
+        metadata; full-bright provider light override and translucent particle
+        layer remain deferred until provider-specific light/render-layer state
+        is represented
     - Uploads a stitched official particle atlas when assets are available.
     - Draws active particles as camera-facing textured billboards.
   - Follow-up work in the plan:
@@ -661,9 +662,9 @@ When an agent does any of the following, update this file in the same slice:
     and `BrightnessFactor` `notGamma` mix instead of the earlier
     `max(block, sky * 0.95)` scalar approximation. Remaining lighting gaps:
     cloud and celestial sky renderer presentation, the real dynamic 16x16
-    LightTexture texture pass and particle paths that still lack explicit light
-    coords, smooth/AO entity light, GUI / entity-in-UI lighting variants, and
-    the colored debug fallback's baked-shade approximation. The item-model
+    LightTexture texture pass, provider-specific particle light emission
+    overrides, smooth/AO entity light, GUI / entity-in-UI lighting variants,
+    and the colored debug fallback's baked-shade approximation. The item-model
     shader now consumes submitted item stack light coords through the same
     `LightmapInfo` RGB combination, so vanilla item entity / thrown item submit
     paths that reach `ItemStackRenderState.submit(..., lightCoords, ...)` no
@@ -672,6 +673,12 @@ When an agent does any of the following, update this file in the same slice:
     entity light probe through `WorldStore`, keep the vanilla full-bright
     fallback for missing chunk light, and pass shader-space `[block, sky]`
     light into the item model or item-entity shader.
+    Particle quads now follow the default vanilla `Particle.getLightCoords`
+    path by sampling block+sky light at `BlockPos.containing(x, y, z)`,
+    falling back to full-bright `15728640` when chunk light is missing, and
+    passing shader-space `[block, sky]` into the particle shader's `LightmapInfo`
+    RGB combination. Provider-specific overrides such as smooth glow/flame
+    block emission remain a diffuse precision follow-up.
     Water-vision fog color brightening is covered in the native clear-color and
     fog-environment path.
   - The hurt red damage overlay is implemented end to end as a real overlay pass,
@@ -4748,8 +4755,8 @@ When an agent does any of the following, update this file in the same slice:
       - particle descriptors map `AttackSweepParticle.Provider` to xAux-derived
         quad size, random gray tint, fixed lifetime `4`, age sprites, vanilla
         zero-aux `Particle` constructor velocity sampling, and its no-motion
-        tick path. Full-bright light coords remain deferred until per-particle
-        light state is represented.
+        tick path. Full-bright provider light override remains deferred until
+        provider-specific light state is represented.
       - particle descriptors map `SuspendedParticle.UnderwaterProvider` to
         vanilla `y - 0.125` initial position, random sprite selection, fixed
         blue tint, `SingleQuadParticle` quad-size sampling times `0.2..0.8`,
@@ -4758,14 +4765,14 @@ When an agent does any of the following, update this file in the same slice:
       - particle descriptors map `SculkChargeParticle.Provider` to command
         velocity, alpha `1.0`, `1.5` quad-size scaling, age sprites,
         `8..=19` lifetime, friction `0.96`, and no-physics metadata. Roll
-        option, full-bright light coords, and the translucent particle layer
-        remain deferred until those per-particle states are represented.
+        option, full-bright provider light override, and the translucent particle
+        layer remain deferred until those provider-specific states are represented.
       - particle descriptors map `EndRodParticle.Provider` to command velocity,
         `0.75` quad-size scaling, age sprites, `60..=71` lifetime, friction
-        `0.91`, and gravity `0.0125`. Fade color, full-bright light coords,
-        the translucent particle layer, and the EndRod-specific collision-free
-        `move` override remain deferred until those per-particle states are
-        represented.
+        `0.91`, and gravity `0.0125`. Fade color, full-bright provider light
+        override, the translucent particle layer, and the EndRod-specific
+        collision-free `move` override remain deferred until those
+        provider-specific states are represented.
       - particle descriptors map `LavaParticle.Provider` to random sprite
         selection, constructor-random horizontal velocity damped by `0.8`,
         random upward velocity `0.05..0.45`, `0.2..2.2` quad-size scaling,
@@ -4784,8 +4791,9 @@ When an agent does any of the following, update this file in the same slice:
         `GlowInkProvider` to age sprites, fixed `0.5` quad size, black /
         glow-ink tint, command velocity, `6/(random*.8+.2)` lifetime, friction
         `0.92`, zero gravity, and no-physics metadata. Alpha fade, in-air
-        downward drift, full-bright light coords, and the translucent particle
-        layer remain deferred until those per-particle states are represented.
+        downward drift, full-bright provider light override, and the translucent
+        particle layer remain deferred until those provider-specific states are
+        represented.
       - particle descriptors map `SimpleVerticalParticle.PauseMobGrowthProvider`
         and `ResetMobGrowthProvider` to random sprites, random `0.5..1.1`
         quad-size scaling, fixed lifetime `8`, command velocity with

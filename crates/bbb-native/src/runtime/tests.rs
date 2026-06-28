@@ -73,6 +73,35 @@ fn camera_pose_uses_local_player_eye_height() {
 }
 
 #[test]
+fn particle_light_block_pos_uses_block_pos_containing_floor() {
+    assert_eq!(
+        particle_light_block_pos([1.99, 64.0, -0.01]),
+        BlockPos { x: 1, y: 64, z: -1 }
+    );
+}
+
+#[test]
+fn particle_light_for_world_samples_chunk_light_or_full_bright_fallback() {
+    let missing = WorldStore::new();
+    assert_eq!(
+        particle_light_for_world(&missing, [0.5, 1.0, 0.5]),
+        [1.0, 1.0]
+    );
+
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.insert_decoded_chunk(empty_lightmap_test_chunk_with_sky_light(
+        world.dimension(),
+        42,
+        9,
+    ));
+
+    assert_eq!(
+        particle_light_for_world(&world, [0.5, 1.25, 0.5]),
+        [0.0, 9.0 / 15.0]
+    );
+}
+
+#[test]
 fn entity_animation_partial_tick_tracks_time_since_last_client_tick() {
     let now = Instant::now();
     let mut ticks = ClientAnimationTickState::default();

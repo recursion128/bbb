@@ -24,7 +24,7 @@ use bbb_renderer::{
 use bbb_world::{
     BlockPos, BookScreenState, ContainerState, MerchantOfferState, MerchantOffersState,
     MobEffectState, MountArmorSlotKind, MountInventoryKind, TerrainFluidKind, TerrainFluidState,
-    WorldLevelInfo, WorldStore, WorldWeatherState,
+    TerrainLight, WorldLevelInfo, WorldStore, WorldWeatherState,
 };
 use tokio::sync::mpsc;
 
@@ -98,6 +98,7 @@ const VANILLA_RAIN_FOG_SMOOTHING_PER_TICK: f32 = 0.2;
 const VANILLA_GAUSSIAN_SAMPLE_KERNEL: [f64; 7] = [0.0, 1.0, 4.0, 6.0, 4.0, 1.0, 0.0];
 const VANILLA_SKY_FLASH_SKY_COLOR: i32 = argb_color(255, 204, 204, 255);
 const VANILLA_SKY_FLASH_SKY_COLOR_ALPHA: f32 = 0.22;
+const VANILLA_PARTICLE_MISSING_CHUNK_LIGHT: TerrainLight = TerrainLight { sky: 15, block: 15 };
 const VANILLA_WORLD_CLOCK_THE_END_ID: i32 = 1;
 const VANILLA_END_FLASH_INTERVAL_TICKS: i64 = 600;
 const VANILLA_END_FLASH_MAX_OFFSET_TICKS: i32 = 200;
@@ -1446,6 +1447,7 @@ pub(crate) fn pump_network_and_terrain(
     advance_block_destruction_render_ticks(world, running_ticks);
     world.advance_item_cooldowns(advanced_ticks);
     renderer.advance_particles(advanced_ticks);
+    renderer.refresh_particle_lights(|position| particle_light_for_world(world, position));
     advance_player_input(input, world, net_counters, net_commands, now);
     let audio_events_for_destroy = audio_events
         .as_mut()
@@ -1571,6 +1573,24 @@ pub(crate) fn pump_network_and_terrain(
         &audio_counters,
         world,
     )
+}
+
+fn particle_light_for_world(world: &WorldStore, position: [f64; 3]) -> [f32; 2] {
+    let light = world
+        .sample_block_light(particle_light_block_pos(position))
+        .unwrap_or(VANILLA_PARTICLE_MISSING_CHUNK_LIGHT);
+    [
+        light.block.min(15) as f32 / 15.0,
+        light.sky.min(15) as f32 / 15.0,
+    ]
+}
+
+fn particle_light_block_pos(position: [f64; 3]) -> BlockPos {
+    BlockPos {
+        x: position[0].floor() as i32,
+        y: position[1].floor() as i32,
+        z: position[2].floor() as i32,
+    }
 }
 
 fn advance_block_destruction_render_ticks(world: &mut WorldStore, running_ticks: u32) -> usize {
