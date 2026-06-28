@@ -25,6 +25,11 @@ pub(crate) enum ParticleLifetimeDescriptor {
         max_lifetime: u32,
         scale_tenths: u32,
     },
+    BaseAshSmokeDivided {
+        max_lifetime: u32,
+        scale_tenths: u32,
+        divisor: u32,
+    },
     RandomInclusive {
         min: u32,
         max: u32,
@@ -63,8 +68,18 @@ pub(crate) enum ParticleVisualDescriptor {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum ParticleColorDescriptor {
-    RandomGray { max: f32 },
-    RandomRgbRange { min: [f32; 3], max: [f32; 3] },
+    RandomGray {
+        max: f32,
+    },
+    RandomRgbRange {
+        min: [f32; 3],
+        max: [f32; 3],
+    },
+    FixedRgbRandomAlpha {
+        rgb: [f32; 3],
+        min_alpha: f32,
+        max_alpha: f32,
+    },
     FixedRgb([f32; 3]),
 }
 
@@ -152,6 +167,31 @@ impl ParticleDescriptor {
                 friction: 0.96,
                 gravity: 0.0,
                 has_physics: false,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:dolphin" => Self {
+                provider: "SuspendedTownParticle.DolphinSpeedProvider",
+                lifetime: ParticleLifetimeDescriptor::BaseAshSmokeDivided {
+                    max_lifetime: 20,
+                    scale_tenths: 10,
+                    divisor: 2,
+                },
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SuspendedTown {
+                    color: SuspendedTownColorDescriptor::Override(
+                        ParticleColorDescriptor::FixedRgbRandomAlpha {
+                            rgb: [0.3, 0.5, 1.0],
+                            min_alpha: 0.3,
+                            max_alpha: 1.0,
+                        },
+                    ),
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::ParticleConstructorScaled {
+                    scale: 0.02,
+                },
+                friction: 0.99,
+                gravity: 0.0,
+                has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
             "minecraft:flame" | "minecraft:soul_fire_flame" | "minecraft:copper_fire_flame" => {
@@ -518,6 +558,11 @@ impl ParticleColorDescriptor {
                 sample_range(random, min[2], max[2]),
                 1.0,
             ],
+            Self::FixedRgbRandomAlpha {
+                rgb: [red, green, blue],
+                min_alpha,
+                max_alpha,
+            } => [red, green, blue, sample_range(random, min_alpha, max_alpha)],
             Self::FixedRgb([red, green, blue]) => [red, green, blue, 1.0],
         }
     }
@@ -549,6 +594,16 @@ impl ParticleLifetimeDescriptor {
             } => {
                 let scale = f64::from(scale_tenths) / 10.0;
                 ((f64::from(max_lifetime) / (random.next_f64() * 0.8 + 0.2) * scale) as u32).max(1)
+            }
+            Self::BaseAshSmokeDivided {
+                max_lifetime,
+                scale_tenths,
+                divisor,
+            } => {
+                let scale = f64::from(scale_tenths) / 10.0;
+                let lifetime =
+                    (f64::from(max_lifetime) / (random.next_f64() * 0.8 + 0.2) * scale) as u32;
+                lifetime.max(1) / divisor.max(1)
             }
             Self::RandomInclusive { min, max } => {
                 let span = max.saturating_sub(min).saturating_add(1);
@@ -713,6 +768,33 @@ mod tests {
             0.0,
             false,
             false,
+        );
+        assert_descriptor(
+            "minecraft:dolphin",
+            "SuspendedTownParticle.DolphinSpeedProvider",
+            ParticleLifetimeDescriptor::BaseAshSmokeDivided {
+                max_lifetime: 20,
+                scale_tenths: 10,
+                divisor: 2,
+            },
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::SuspendedTown {
+                color: SuspendedTownColorDescriptor::Override(
+                    ParticleColorDescriptor::FixedRgbRandomAlpha {
+                        rgb: [0.3, 0.5, 1.0],
+                        min_alpha: 0.3,
+                        max_alpha: 1.0,
+                    },
+                ),
+            },
+            0.99,
+            0.0,
+            true,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:dolphin").initial_velocity,
+            ParticleInitialVelocityDescriptor::ParticleConstructorScaled { scale: 0.02 }
         );
         assert_descriptor(
             "minecraft:flame",
@@ -1006,6 +1088,24 @@ mod tests {
             ParticleQuadSizeCurve::GrowToBase
         );
 
+        let mut dolphin_random = ParticleRandom::new(19);
+        let dolphin = ParticleVisualDescriptor::SuspendedTown {
+            color: SuspendedTownColorDescriptor::Override(
+                ParticleColorDescriptor::FixedRgbRandomAlpha {
+                    rgb: [0.3, 0.5, 1.0],
+                    min_alpha: 0.3,
+                    max_alpha: 1.0,
+                },
+            ),
+        }
+        .sample(&mut dolphin_random);
+        assert_range_f32(dolphin.base_quad_size, 0.05, 0.22);
+        assert_close_f32(dolphin.color[0], 0.3);
+        assert_close_f32(dolphin.color[1], 0.5);
+        assert_close_f32(dolphin.color[2], 1.0);
+        assert_range_f32(dolphin.color[3], 0.3, 1.0);
+        assert_eq!(dolphin.quad_size_curve, ParticleQuadSizeCurve::Constant);
+
         let mut happy_villager_random = ParticleRandom::new(13);
         let happy_villager = ParticleVisualDescriptor::SuspendedTown {
             color: SuspendedTownColorDescriptor::Override(ParticleColorDescriptor::FixedRgb([
@@ -1097,6 +1197,17 @@ mod tests {
             let lifetime =
                 ParticleLifetimeDescriptor::RandomInclusive { min: 3, max: 7 }.sample(&mut random);
             assert!((3..=7).contains(&lifetime));
+        }
+
+        let mut random = ParticleRandom::new(20);
+        for _ in 0..32 {
+            let lifetime = ParticleLifetimeDescriptor::BaseAshSmokeDivided {
+                max_lifetime: 20,
+                scale_tenths: 10,
+                divisor: 2,
+            }
+            .sample(&mut random);
+            assert!((10..=50).contains(&lifetime));
         }
     }
 

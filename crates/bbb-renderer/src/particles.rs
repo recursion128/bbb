@@ -1031,6 +1031,24 @@ mod tests {
         assert_eq!(dragon_breath.gravity, 0.0);
         assert!(!dragon_breath.has_physics);
 
+        let mut dolphin_random = ParticleRandom::new(53);
+        let dolphin = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:dolphin", 1.0),
+            &mut dolphin_random,
+        );
+        assert_eq!(
+            dolphin.provider,
+            "SuspendedTownParticle.DolphinSpeedProvider"
+        );
+        assert!((10..=50).contains(&dolphin.lifetime_ticks));
+        assert_close_f32(dolphin.color[0], 0.3);
+        assert_close_f32(dolphin.color[1], 0.5);
+        assert_close_f32(dolphin.color[2], 1.0);
+        assert_range_f32(dolphin.color[3], 0.3, 1.0);
+        assert_eq!(dolphin.friction, 0.99);
+        assert!(dolphin.has_physics);
+        assert_ne!(dolphin.velocity, [0.0, 0.0, 0.0]);
+
         let mut happy_villager_random = ParticleRandom::new(47);
         let happy_villager = ParticleInstance::from_spawn_command(
             spawn_command("minecraft:happy_villager", 1.0),
