@@ -3659,7 +3659,8 @@ When an agent does any of the following, update this file in the same slice:
       textured path (`TRIDENT_TEXTURE_REF`), the primary now-wired path. `trident_textured_layer_passes`
       now records vanilla `ModelLayers.TRIDENT` for both the order-0 base `entityCutout` submit and the
       synced `ID_FOIL` order-1 `entityGlint` submit with `textures/misc/enchanted_glint_item.png`, white
-      tint, same flight transform, light coords, and `OverlayTexture.NO_OVERLAY`; GPU glint presentation
+      tint, same flight transform, light coords, and `OverlayTexture.NO_OVERLAY`; the shared trident
+      dispatch sink now records the vanilla base -> foil generation order while GPU glint presentation
       remains deferred. The base submission explicitly records vanilla `order(0)`, `entityCutout`,
       white tint, texture, light coords, `OverlayTexture.NO_OVERLAY`, and the
       flight-orientation transform, with folded cutout vertices inheriting that base

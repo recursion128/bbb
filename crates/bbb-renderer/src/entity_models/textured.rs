@@ -428,9 +428,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
             );
             continue;
         }
-        // ThrownTridentRenderer submits the foil overlay at order 1 when the synced trident item has
-        // foil. Keep the glint as explicit metadata while GPU glint presentation remains deferred.
-        emit_trident_foil_submission(&mut meshes, *instance);
         // The guardian attack beam is a world-space billboarded prism from the guardian eye to its
         // target; it folds into the scroll (tiled) pass and runs regardless of `handled`.
         emit_guardian_beam(&mut meshes, *instance, atlas);
@@ -803,10 +800,13 @@ pub(in crate::entity_models) fn render_boat_water_mask_submission(
     meshes.record_submission(submit);
 }
 
-fn emit_trident_foil_submission(
+pub(in crate::entity_models) fn render_trident_foil_submission(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
 ) {
+    if meshes.current_force_transparent || meshes.current_outline_only {
+        return;
+    }
     if !matches!(instance.kind, EntityModelKind::Trident) || !instance.render_state.trident_foil {
         return;
     }

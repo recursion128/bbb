@@ -89,12 +89,13 @@ use super::textured::{
     render_breeze_wind_scroll_model, render_charged_creeper_energy_swirl,
     render_donkey_textured_layers, render_end_crystal_textured_layers,
     render_horse_textured_layers, render_no_overlay_scrolled_textured_layers,
-    render_player_textured_layers, render_textured_layers, render_undead_horse_textured_layers,
-    render_wither_energy_swirl, salmon_textured_layer_passes, sheep_textured_layer_passes,
-    shulker_bullet_textured_layer_passes, shulker_textured_layer_passes,
-    silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
-    sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
-    squid_textured_layer_passes, tadpole_textured_layer_passes, trident_textured_layer_passes,
+    render_player_textured_layers, render_textured_layers, render_trident_foil_submission,
+    render_undead_horse_textured_layers, render_wither_energy_swirl, salmon_textured_layer_passes,
+    sheep_textured_layer_passes, shulker_bullet_textured_layer_passes,
+    shulker_textured_layer_passes, silverfish_textured_layer_passes,
+    skeleton_textured_layer_passes, slime_textured_layer_passes, sniffer_textured_layer_passes,
+    snow_golem_textured_layer_passes, spider_textured_layer_passes, squid_textured_layer_passes,
+    tadpole_textured_layer_passes, trident_textured_layer_passes,
     tropical_fish_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, warden_textured_layer_passes,
     wind_charge_textured_layer_passes, witch_textured_layer_passes,
@@ -191,6 +192,8 @@ pub(in crate::entity_models) trait EntityModelSink {
     fn boat_model(&mut self, family: BoatModelFamily, chest: bool, instance: &EntityModelInstance);
 
     fn breeze_model(&mut self, instance: &EntityModelInstance);
+
+    fn trident_model(&mut self, instance: &EntityModelInstance);
 
     fn creeper_model(&mut self, instance: &EntityModelInstance);
 
@@ -325,6 +328,17 @@ impl EntityModelSink for ColoredSink<'_> {
         self.model(
             BreezeModel::new(),
             entity_model_root_transform(*instance),
+            instance,
+            &body_passes,
+        );
+    }
+
+    fn trident_model(&mut self, instance: &EntityModelInstance) {
+        let passes = trident_textured_layer_passes();
+        let body_passes = [passes[0]];
+        self.model(
+            TridentModel::new(),
+            trident_model_root_transform(*instance),
             instance,
             &body_passes,
         );
@@ -480,6 +494,18 @@ impl EntityModelSink for TexturedSink<'_> {
         render_textured_layers(self.meshes, &model, transform, [passes[0]], self.atlas);
         render_breeze_wind_scroll_model(self.meshes, *instance, self.atlas);
         render_textured_layers(self.meshes, &model, transform, [passes[2]], self.atlas);
+    }
+
+    fn trident_model(&mut self, instance: &EntityModelInstance) {
+        let passes = trident_textured_layer_passes();
+        let body_passes = [passes[0]];
+        self.model(
+            TridentModel::new(),
+            trident_model_root_transform(*instance),
+            instance,
+            &body_passes,
+        );
+        render_trident_foil_submission(self.meshes, *instance);
     }
 
     fn creeper_model(&mut self, instance: &EntityModelInstance) {
@@ -1297,16 +1323,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &arrow_textured_layer_passes(texture),
         ),
-        EntityModelKind::Trident => {
-            let passes = trident_textured_layer_passes();
-            let body_passes = [passes[0]];
-            sink.model(
-                TridentModel::new(),
-                trident_model_root_transform(*instance),
-                instance,
-                &body_passes,
-            )
-        }
+        EntityModelKind::Trident => sink.trident_model(instance),
         EntityModelKind::WindCharge => {
             // Vanilla `WindChargeRenderer.xOffset(t) = t * 0.03`, passed to `breezeWind(...) % 1`.
             let u_offset = (instance.render_state.age_in_ticks * 0.03).rem_euclid(1.0);
