@@ -1280,6 +1280,33 @@ mod tests {
         assert_eq!(snowflake.gravity, 0.225);
         assert!(snowflake.has_physics);
 
+        let mut squid_ink_random = ParticleRandom::new(57);
+        let mut squid_ink_command = spawn_command("minecraft:squid_ink", 1.0);
+        squid_ink_command.velocity = [1.0, 2.0, 3.0];
+        let squid_ink =
+            ParticleInstance::from_spawn_command(squid_ink_command, &mut squid_ink_random);
+        assert_eq!(squid_ink.provider, "SquidInkParticle.Provider");
+        assert_eq!(squid_ink.sprite_selection, ParticleSpriteSelection::Age);
+        assert_close_f32(squid_ink.base_quad_size, 0.5);
+        assert_eq!(squid_ink.color, [0.0, 0.0, 0.0, 1.0]);
+        assert_eq!(squid_ink.quad_size_curve, ParticleQuadSizeCurve::Constant);
+        assert!((6..=30).contains(&squid_ink.lifetime_ticks));
+        assert_eq!(squid_ink.velocity, [1.0, 2.0, 3.0]);
+        assert_eq!(squid_ink.friction, 0.92);
+        assert_eq!(squid_ink.gravity, 0.0);
+        assert!(!squid_ink.has_physics);
+
+        let mut glow_ink_random = ParticleRandom::new(58);
+        let glow_ink = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:glow_squid_ink", 1.0),
+            &mut glow_ink_random,
+        );
+        assert_eq!(glow_ink.provider, "SquidInkParticle.GlowInkProvider");
+        assert_close_f32(glow_ink.base_quad_size, 0.5);
+        assert_eq!(glow_ink.color, [0.2, 0.8, 0.6, 1.0]);
+        assert!((6..=30).contains(&glow_ink.lifetime_ticks));
+        assert!(!glow_ink.has_physics);
+
         let mut note_random = ParticleRandom::new(54);
         let mut note_command = spawn_command("minecraft:note", 1.0);
         note_command.velocity = [0.0, 0.0, 0.0];

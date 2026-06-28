@@ -248,6 +248,12 @@ When an agent does any of the following, update this file in the same slice:
         `1.0` friction, `0.225` gravity, and physics metadata; its extra
         post-tick x/z/y damping and opaque particle layer remain deferred until
         those per-particle states are represented
+      - `SquidInkParticle.Provider` and `GlowInkProvider` age sprite selection,
+        fixed `0.5` quad size, black / glow-ink tint, command velocity,
+        `6 / (random * 0.8 + 0.2)` lifetime, `0.92` friction, zero gravity, and
+        no-physics metadata; alpha fade, in-air downward drift, full-bright
+        light coords, and the translucent particle layer remain deferred until
+        those per-particle states are represented
       - `PlayerCloudParticle.Provider` vanilla constructor-random initial
         speed plus command velocity, and `SneezeProvider` fixed green tint /
         alpha override on the player-cloud curve
@@ -4594,6 +4600,12 @@ When an agent does any of the following, update this file in the same slice:
         and physics metadata. Extra post-tick x/z/y damping and the opaque
         particle layer remain deferred until those per-particle states are
         represented.
+      - particle descriptors map `SquidInkParticle.Provider` and
+        `GlowInkProvider` to age sprites, fixed `0.5` quad size, black /
+        glow-ink tint, command velocity, `6/(random*.8+.2)` lifetime, friction
+        `0.92`, zero gravity, and no-physics metadata. Alpha fade, in-air
+        downward drift, full-bright light coords, and the translucent particle
+        layer remain deferred until those per-particle states are represented.
     - native dispatcher and offline probe recording/playback for
       `LevelEventHandler` portal travel local ambience:
       - event `1032`

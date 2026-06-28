@@ -39,6 +39,7 @@ pub(crate) enum ParticleLifetimeDescriptor {
         divisor: u32,
     },
     Crit,
+    SixOverRandom,
     EightOverRandom,
     SixteenOverRandom,
     SixteenOverRandomPlusTwo,
@@ -316,6 +317,28 @@ impl ParticleDescriptor {
                 friction: 1.0,
                 gravity: 0.225,
                 has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:squid_ink" | "minecraft:glow_squid_ink" => Self {
+                provider: if particle_id == "minecraft:glow_squid_ink" {
+                    "SquidInkParticle.GlowInkProvider"
+                } else {
+                    "SquidInkParticle.Provider"
+                },
+                lifetime: ParticleLifetimeDescriptor::SixOverRandom,
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::FixedQuad {
+                    size: 0.5,
+                    color: if particle_id == "minecraft:glow_squid_ink" {
+                        ParticleColorDescriptor::FixedRgba([0.2, 0.8, 0.6, 1.0])
+                    } else {
+                        ParticleColorDescriptor::FixedRgba([0.0, 0.0, 0.0, 1.0])
+                    },
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
+                friction: 0.92,
+                gravity: 0.0,
+                has_physics: false,
                 speed_up_when_y_motion_is_blocked: false,
             },
             "minecraft:crit" => Self {
@@ -1347,6 +1370,7 @@ impl ParticleLifetimeDescriptor {
                 lifetime.max(1) / divisor.max(1)
             }
             Self::Crit => ((6.0 / (random.next_f32() * 0.8 + 0.6)) as u32).max(1),
+            Self::SixOverRandom => ((6.0 / (random.next_f32() * 0.8 + 0.2)) as u32).max(1),
             Self::EightOverRandom => ((8.0 / (random.next_f32() * 0.8 + 0.2)) as u32).max(1),
             Self::SixteenOverRandom => ((16.0 / (random.next_f32() * 0.8 + 0.2)) as u32).max(1),
             Self::SixteenOverRandomPlusTwo => {
@@ -1700,6 +1724,42 @@ mod tests {
                 command_scale: 1.0,
                 random_range: 0.05,
             }
+        );
+        assert_descriptor(
+            "minecraft:squid_ink",
+            "SquidInkParticle.Provider",
+            ParticleLifetimeDescriptor::SixOverRandom,
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::FixedQuad {
+                size: 0.5,
+                color: ParticleColorDescriptor::FixedRgba([0.0, 0.0, 0.0, 1.0]),
+            },
+            0.92,
+            0.0,
+            false,
+            false,
+        );
+        assert_descriptor(
+            "minecraft:glow_squid_ink",
+            "SquidInkParticle.GlowInkProvider",
+            ParticleLifetimeDescriptor::SixOverRandom,
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::FixedQuad {
+                size: 0.5,
+                color: ParticleColorDescriptor::FixedRgba([0.2, 0.8, 0.6, 1.0]),
+            },
+            0.92,
+            0.0,
+            false,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:squid_ink").initial_velocity,
+            ParticleInitialVelocityDescriptor::Command
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:glow_squid_ink").initial_velocity,
+            ParticleInitialVelocityDescriptor::Command
         );
         assert_descriptor(
             "minecraft:crit",
@@ -2932,6 +2992,12 @@ mod tests {
         for _ in 0..32 {
             let lifetime = ParticleLifetimeDescriptor::Crit.sample(&mut random);
             assert!((4..=10).contains(&lifetime));
+        }
+
+        let mut random = ParticleRandom::new(46);
+        for _ in 0..32 {
+            let lifetime = ParticleLifetimeDescriptor::SixOverRandom.sample(&mut random);
+            assert!((6..=30).contains(&lifetime));
         }
 
         let mut random = ParticleRandom::new(28);
