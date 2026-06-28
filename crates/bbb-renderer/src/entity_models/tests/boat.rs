@@ -248,17 +248,17 @@ fn boat_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(oak_chest_boat[1].texture, CHEST_BOAT_OAK_TEXTURE_REF);
 
     let bamboo_raft = boat_textured_layer_passes(BoatModelFamily::Bamboo, false);
+    assert_eq!(bamboo_raft.len(), 1);
     assert_eq!(bamboo_raft[0].model_layer, MODEL_LAYER_BAMBOO_RAFT);
     assert_eq!(bamboo_raft[0].texture, BOAT_BAMBOO_TEXTURE_REF);
-    assert_eq!(bamboo_raft[1].texture, BOAT_BAMBOO_TEXTURE_REF);
 
     let bamboo_chest_raft = boat_textured_layer_passes(BoatModelFamily::Bamboo, true);
+    assert_eq!(bamboo_chest_raft.len(), 1);
     assert_eq!(
         bamboo_chest_raft[0].model_layer,
         MODEL_LAYER_BAMBOO_CHEST_RAFT
     );
     assert_eq!(bamboo_chest_raft[0].texture, CHEST_BOAT_BAMBOO_TEXTURE_REF);
-    assert_eq!(bamboo_chest_raft[1].texture, CHEST_BOAT_BAMBOO_TEXTURE_REF);
 }
 
 #[test]
@@ -417,7 +417,63 @@ fn boat_textured_mesh_uses_vanilla_uvs_tints_and_root_transform() {
     let meshes = entity_model_textured_meshes(&instances, &atlas);
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
-    assert_eq!(meshes.submissions.len(), 8);
+    assert_eq!(
+        meshes
+            .submissions
+            .iter()
+            .map(|submit| (
+                submit.texture,
+                submit.render_type,
+                submit.order,
+                submit.submit_sequence
+            ))
+            .collect::<Vec<_>>(),
+        vec![
+            (
+                BOAT_OAK_TEXTURE_REF,
+                EntityModelLayerRenderType::EntityCutout,
+                0,
+                0,
+            ),
+            (
+                BOAT_OAK_TEXTURE_REF,
+                EntityModelLayerRenderType::WaterMask,
+                0,
+                1,
+            ),
+            (
+                CHEST_BOAT_OAK_TEXTURE_REF,
+                EntityModelLayerRenderType::EntityCutout,
+                0,
+                0,
+            ),
+            (
+                CHEST_BOAT_OAK_TEXTURE_REF,
+                EntityModelLayerRenderType::WaterMask,
+                0,
+                1,
+            ),
+            (
+                BOAT_BAMBOO_TEXTURE_REF,
+                EntityModelLayerRenderType::EntityCutout,
+                0,
+                0,
+            ),
+            (
+                CHEST_BOAT_BAMBOO_TEXTURE_REF,
+                EntityModelLayerRenderType::EntityCutout,
+                0,
+                0,
+            ),
+        ]
+    );
+    let base_submissions = meshes
+        .submissions
+        .iter()
+        .copied()
+        .filter(|submit| submit.render_type == EntityModelLayerRenderType::EntityCutout)
+        .collect::<Vec<_>>();
+    assert_eq!(base_submissions.len(), 4);
     for (index, texture) in [
         BOAT_OAK_TEXTURE_REF,
         CHEST_BOAT_OAK_TEXTURE_REF,
@@ -427,7 +483,7 @@ fn boat_textured_mesh_uses_vanilla_uvs_tints_and_root_transform() {
     .into_iter()
     .enumerate()
     {
-        let base = meshes.submissions[index * 2];
+        let base = base_submissions[index];
         assert_eq!(base.texture, texture);
         assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
         assert_eq!(base.render_type.vanilla_name(), "entityCutout");
@@ -437,13 +493,19 @@ fn boat_textured_mesh_uses_vanilla_uvs_tints_and_root_transform() {
         assert_eq!(base.overlay, [0.0, 10.0]);
         assert_ne!(base.overlay, instances[index].render_state.overlay_coords());
         assert_eq!((base.order, base.submit_sequence), (0, 0));
-
-        let water_mask = meshes.submissions[index * 2 + 1];
-        assert_eq!(water_mask.texture, texture);
-        assert_eq!(
-            water_mask.render_type,
-            EntityModelLayerRenderType::WaterMask
-        );
+    }
+    let water_mask_submissions = meshes
+        .submissions
+        .iter()
+        .copied()
+        .filter(|submit| submit.render_type == EntityModelLayerRenderType::WaterMask)
+        .collect::<Vec<_>>();
+    assert_eq!(water_mask_submissions.len(), 2);
+    for (water_mask, base) in water_mask_submissions
+        .iter()
+        .zip(base_submissions.iter().take(2))
+    {
+        assert_eq!(water_mask.texture, base.texture);
         assert_eq!(water_mask.render_type.vanilla_name(), "waterMask");
         assert_eq!(water_mask.tint, [1.0, 1.0, 1.0, 1.0]);
         assert_eq!(water_mask.transform, base.transform);
@@ -462,7 +524,7 @@ fn boat_textured_mesh_uses_vanilla_uvs_tints_and_root_transform() {
         .into_iter()
         .enumerate()
     {
-        let base = meshes.submissions[index * 2];
+        let base = base_submissions[index];
         assert!(mesh.vertices[start..end]
             .iter()
             .all(|vertex| vertex.light == base.light && vertex.overlay == base.overlay));

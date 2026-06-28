@@ -1550,10 +1550,12 @@ When an agent does any of the following, update this file in the same slice:
       explicit base submission metadata for vanilla `entityCutout`, selected
       texture, white tint, `boat_model_root_transform`, and
       `(order, submit_sequence) == (0, 0)`, with renderer light plus
-      `OverlayTexture.NO_OVERLAY` inherited by folded cutout vertices; `boat_textured_layer_passes`
-      now also records the above-water `ModelLayers.BOAT_WATER_PATCH` submit as vanilla `waterMask`
-      metadata at `(0, 1)` with the same texture/transform/light and `OverlayTexture.NO_OVERLAY`, but its
-      depth-only GPU presentation is still deferred. Paddle rowing animation is
+      `OverlayTexture.NO_OVERLAY` inherited by folded cutout vertices; the shared boat dispatch sink
+      now also records `BoatRenderer.submitTypeAdditions`' above-water
+      `ModelLayers.BOAT_WATER_PATCH` submit as vanilla `waterMask` metadata at `(0, 1)` with the same
+      texture/transform/light and `OverlayTexture.NO_OVERLAY`. Bamboo raft / chest raft route through
+      vanilla `RaftRenderer`, which does not override `submitTypeAdditions`, so they now record only the
+      base submit. Water-mask depth-only GPU presentation is still deferred. Paddle rowing animation is
       projected from `AbstractBoat` metadata ids 11/12 plus the controlling-passenger
       gate and rendered through `AbstractBoatModel.animatePaddle`; hurt/damage roll
       is projected from `VehicleEntity` metadata ids 8/9/10 and folded into the boat
@@ -1561,8 +1563,8 @@ When an agent does any of the following, update this file in the same slice:
       id 13 into the vanilla multiplier/angle tick state and folded into the boat root
       transform with the renderer-side underwater gate. Underwater state is projected
       from the vanilla boat top-slice water-surface test and now gates both bubble wobble
-      and above-water `waterMask` submission. Water-mask GPU presentation and lighting
-      remain unsupported
+      and wooden boat / chest boat above-water `waterMask` submission. Water-mask GPU
+      presentation and lighting remain unsupported
     - chicken entities as renderer-owned vanilla 26.1
       `AdultChickenModel`, `ColdChickenModel`, and `BabyChickenModel` body-layer
       geometry from `ChickenModel`, `ChickenRenderer`, `ChickenVariants`, and

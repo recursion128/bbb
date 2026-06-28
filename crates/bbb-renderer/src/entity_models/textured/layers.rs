@@ -300,18 +300,18 @@ pub(in crate::entity_models) fn boat_textured_layer_passes(
     chest: bool,
 ) -> Vec<EntityModelLayerPass> {
     let texture = boat_texture_ref(family, chest);
-    vec![
-        EntityModelLayerPass {
-            kind: EntityModelLayerKind::BoatBase,
-            render_type: EntityModelLayerRenderType::EntityCutout,
-            model_layer: boat_model_layer(family, chest),
-            texture,
-            visibility: EntityModelLayerVisibility::All,
-            tint: [1.0, 1.0, 1.0, 1.0],
-            order: 0,
-            submit_sequence: 0,
-        },
-        EntityModelLayerPass {
+    let mut passes = vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::BoatBase,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: boat_model_layer(family, chest),
+        texture,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }];
+    if family != BoatModelFamily::Bamboo {
+        passes.push(EntityModelLayerPass {
             kind: EntityModelLayerKind::BoatWaterMask,
             render_type: EntityModelLayerRenderType::WaterMask,
             model_layer: MODEL_LAYER_BOAT_WATER_PATCH,
@@ -320,8 +320,9 @@ pub(in crate::entity_models) fn boat_textured_layer_passes(
             tint: [1.0, 1.0, 1.0, 1.0],
             order: 0,
             submit_sequence: 1,
-        },
-    ]
+        });
+    }
+    passes
 }
 
 pub(in crate::entity_models) fn breeze_textured_layer_passes() -> Vec<EntityModelLayerPass> {

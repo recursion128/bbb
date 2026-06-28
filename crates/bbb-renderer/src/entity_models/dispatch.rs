@@ -14,10 +14,11 @@
 use glam::{Mat4, Vec3};
 
 use super::catalog::{
-    CamelModelFamily, CowModelVariant, DonkeyModelFamily, EntityDynamicPlayerSkinAtlasLayout,
-    EntityModelKind, EntityModelTextureAtlasLayout, EntityPlayerSkin, HorseColorVariant,
-    HorseMarkings, PiglinModelFamily, PlayerModelPartVisibility, SkeletonModelFamily,
-    UndeadHorseModelFamily, ZombieVariantModelFamily,
+    BoatModelFamily, CamelModelFamily, CowModelVariant, DonkeyModelFamily,
+    EntityDynamicPlayerSkinAtlasLayout, EntityModelKind, EntityModelTextureAtlasLayout,
+    EntityPlayerSkin, HorseColorVariant, HorseMarkings, PiglinModelFamily,
+    PlayerModelPartVisibility, SkeletonModelFamily, UndeadHorseModelFamily,
+    ZombieVariantModelFamily,
 };
 use super::colored::{
     arrow_model_root_transform, boat_model_root_transform, camel_model_color,
@@ -84,12 +85,12 @@ use super::textured::{
     mooshroom_textured_layer_passes, nautilus_textured_layer_passes, panda_textured_layer_passes,
     parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
     piglin_textured_layer_passes, polar_bear_textured_layer_passes, rabbit_textured_layer_passes,
-    ravager_textured_layer_passes, render_breeze_wind_scroll_model,
-    render_charged_creeper_energy_swirl, render_donkey_textured_layers,
-    render_end_crystal_textured_layers, render_horse_textured_layers,
-    render_no_overlay_scrolled_textured_layers, render_player_textured_layers,
-    render_textured_layers, render_undead_horse_textured_layers, render_wither_energy_swirl,
-    salmon_textured_layer_passes, sheep_textured_layer_passes,
+    ravager_textured_layer_passes, render_boat_water_mask_submission,
+    render_breeze_wind_scroll_model, render_charged_creeper_energy_swirl,
+    render_donkey_textured_layers, render_end_crystal_textured_layers,
+    render_horse_textured_layers, render_no_overlay_scrolled_textured_layers,
+    render_player_textured_layers, render_textured_layers, render_undead_horse_textured_layers,
+    render_wither_energy_swirl, salmon_textured_layer_passes, sheep_textured_layer_passes,
     shulker_bullet_textured_layer_passes, shulker_textured_layer_passes,
     silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
     sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
@@ -186,6 +187,8 @@ pub(in crate::entity_models) trait EntityModelSink {
         baby: bool,
         instance: &EntityModelInstance,
     );
+
+    fn boat_model(&mut self, family: BoatModelFamily, chest: bool, instance: &EntityModelInstance);
 
     fn breeze_model(&mut self, instance: &EntityModelInstance);
 
@@ -303,6 +306,17 @@ impl EntityModelSink for ColoredSink<'_> {
             return;
         }
         emit_undead_horse_model(self.mesh, *instance, family, baby);
+    }
+
+    fn boat_model(&mut self, family: BoatModelFamily, chest: bool, instance: &EntityModelInstance) {
+        let passes = boat_textured_layer_passes(family, chest);
+        let body_passes = [passes[0]];
+        self.model(
+            BoatModel::new(family, chest),
+            boat_model_root_transform(*instance),
+            instance,
+            &body_passes,
+        );
     }
 
     fn breeze_model(&mut self, instance: &EntityModelInstance) {
@@ -444,6 +458,18 @@ impl EntityModelSink for TexturedSink<'_> {
         instance: &EntityModelInstance,
     ) {
         render_undead_horse_textured_layers(self.meshes, instance, family, baby, self.atlas);
+    }
+
+    fn boat_model(&mut self, family: BoatModelFamily, chest: bool, instance: &EntityModelInstance) {
+        let passes = boat_textured_layer_passes(family, chest);
+        let body_passes = [passes[0]];
+        self.model(
+            BoatModel::new(family, chest),
+            boat_model_root_transform(*instance),
+            instance,
+            &body_passes,
+        );
+        render_boat_water_mask_submission(self.meshes, *instance);
     }
 
     fn breeze_model(&mut self, instance: &EntityModelInstance) {
@@ -912,16 +938,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                 &wolf_textured_layer_passes(baby, tame, angry, collar_color, variant, wet_shade),
             )
         }
-        EntityModelKind::Boat { family, chest } => {
-            let passes = boat_textured_layer_passes(family, chest);
-            let body_passes = [passes[0]];
-            sink.model(
-                BoatModel::new(family, chest),
-                boat_model_root_transform(*instance),
-                instance,
-                &body_passes,
-            )
-        }
+        EntityModelKind::Boat { family, chest } => sink.boat_model(family, chest, instance),
         EntityModelKind::Spider => sink.model(
             SpiderModel::new(),
             entity_model_root_transform(*instance),

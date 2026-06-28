@@ -428,9 +428,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
             );
             continue;
         }
-        // BoatRenderer submits the water patch after the base boat model. Keep it as explicit
-        // submission metadata; the current backend does not yet have a depth-only water-mask pass.
-        emit_boat_water_mask_submission(&mut meshes, *instance);
         // ThrownTridentRenderer submits the foil overlay at order 1 when the synced trident item has
         // foil. Keep the glint as explicit metadata while GPU glint presentation remains deferred.
         emit_trident_foil_submission(&mut meshes, *instance);
@@ -782,22 +779,26 @@ fn scroll_bucket_mut(
     }
 }
 
-fn emit_boat_water_mask_submission(
+pub(in crate::entity_models) fn render_boat_water_mask_submission(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
 ) {
+    if meshes.current_force_transparent || meshes.current_outline_only {
+        return;
+    }
     let EntityModelKind::Boat { family, chest } = instance.kind else {
         return;
     };
-    // Vanilla `BoatRenderer.submitTypeAdditions`: when the boat is not underwater, submit the
-    // `ModelLayers.BOAT_WATER_PATCH` depth-only `RenderTypes.waterMask()` model with the same texture
-    // and pose stack as the base boat. GPU presentation remains deferred, but the submission gate
-    // now follows the projected `BoatRenderState.isUnderWater`.
+    // Vanilla `BoatRenderer.submitTypeAdditions`: wooden boats and chest boats submit the
+    // `ModelLayers.BOAT_WATER_PATCH` depth-only `RenderTypes.waterMask()` model when not underwater.
+    // Bamboo rafts use `RaftRenderer`, which does not override `submitTypeAdditions`.
     if instance.render_state.boat_underwater {
         return;
     }
     let passes = boat_textured_layer_passes(family, chest);
-    let pass = passes[1];
+    let Some(pass) = passes.get(1).copied() else {
+        return;
+    };
     let submit = no_overlay_layer_submission(pass, boat_model_root_transform(instance));
     meshes.record_submission(submit);
 }
