@@ -1963,7 +1963,8 @@ When an agent does any of the following, update this file in the same slice:
       records vanilla `EquipmentLayerRenderer` submission metadata generated from
       `equipment_layer_pass` (`ModelLayers.LLAMA_DECOR` / `LLAMA_BABY_DECOR`,
       `armorCutoutNoCull`, `order(1)`, submit sequence 1, white tint, base transform, entity light, and
-      `OverlayTexture.NO_OVERLAY`) before folding into the cutout bucket. The base
+      `OverlayTexture.NO_OVERLAY`) before folding into the cutout bucket. The decor submit now
+      comes from the shared Llama dispatch sink rather than a post-base helper. The base
       `entityCutout` submission now also pins vanilla `LivingEntityRenderer`
       light plus hurt/white overlay metadata, and folded cutout vertices inherit
       the corresponding base or decor submission metadata. Missing-atlas coverage

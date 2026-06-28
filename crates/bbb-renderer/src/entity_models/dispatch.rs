@@ -17,8 +17,8 @@ use super::catalog::{
     BoatModelFamily, CamelModelFamily, CowModelVariant, DonkeyModelFamily,
     EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerTextureAtlasLayout, EntityModelKind,
     EntityModelTextureAtlasLayout, EntityPlayerSkin, HorseColorVariant, HorseMarkings,
-    PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, SkeletonModelFamily,
-    UndeadHorseModelFamily, ZombieVariantModelFamily,
+    LlamaModelFamily, LlamaVariant, PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility,
+    SkeletonModelFamily, UndeadHorseModelFamily, ZombieVariantModelFamily,
 };
 use super::colored::{
     arrow_model_root_transform, boat_model_root_transform, camel_model_color,
@@ -90,14 +90,15 @@ use super::textured::{
     render_charged_creeper_energy_swirl, render_donkey_textured_layers, render_end_crystal_beam,
     render_end_crystal_textured_layers, render_ender_dragon_beam, render_equine_body_armor_layer,
     render_equine_saddle_layer, render_guardian_beam, render_horse_textured_layers,
-    render_no_overlay_scrolled_textured_layers, render_pig_saddle_layer, render_player_cape_layer,
-    render_player_extra_ears_layer, render_player_textured_layers, render_strider_saddle_layer,
-    render_textured_layers, render_trident_foil_submission, render_undead_horse_textured_layers,
-    render_wither_energy_swirl, salmon_textured_layer_passes, sheep_textured_layer_passes,
-    shulker_bullet_textured_layer_passes, shulker_textured_layer_passes,
-    silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
-    sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
-    squid_textured_layer_passes, tadpole_textured_layer_passes, trident_textured_layer_passes,
+    render_llama_decor_layer, render_no_overlay_scrolled_textured_layers, render_pig_saddle_layer,
+    render_player_cape_layer, render_player_extra_ears_layer, render_player_textured_layers,
+    render_strider_saddle_layer, render_textured_layers, render_trident_foil_submission,
+    render_undead_horse_textured_layers, render_wither_energy_swirl, salmon_textured_layer_passes,
+    sheep_textured_layer_passes, shulker_bullet_textured_layer_passes,
+    shulker_textured_layer_passes, silverfish_textured_layer_passes,
+    skeleton_textured_layer_passes, slime_textured_layer_passes, sniffer_textured_layer_passes,
+    snow_golem_textured_layer_passes, spider_textured_layer_passes, squid_textured_layer_passes,
+    tadpole_textured_layer_passes, trident_textured_layer_passes,
     tropical_fish_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, warden_textured_layer_passes,
     wind_charge_textured_layer_passes, witch_textured_layer_passes,
@@ -236,6 +237,23 @@ pub(in crate::entity_models) trait EntityModelSink {
         } else {
             self.model(CamelModel::new(family, baby), transform, instance, &passes);
         }
+    }
+
+    fn llama_model(
+        &mut self,
+        family: LlamaModelFamily,
+        variant: LlamaVariant,
+        baby: bool,
+        has_chest: bool,
+        instance: &EntityModelInstance,
+    ) {
+        self.model_with_colored_override(
+            LlamaModel::new(baby, has_chest),
+            entity_model_root_transform(*instance),
+            instance,
+            &llama_textured_layer_passes(variant, baby, has_chest),
+            llama_model_color(family, variant),
+        );
     }
 
     fn player_model(
@@ -576,6 +594,24 @@ impl EntityModelSink for TexturedSink<'_> {
         render_camel_saddle_layer(self.meshes, *instance, self.atlas);
     }
 
+    fn llama_model(
+        &mut self,
+        family: LlamaModelFamily,
+        variant: LlamaVariant,
+        baby: bool,
+        has_chest: bool,
+        instance: &EntityModelInstance,
+    ) {
+        self.model_with_colored_override(
+            LlamaModel::new(baby, has_chest),
+            entity_model_root_transform(*instance),
+            instance,
+            &llama_textured_layer_passes(variant, baby, has_chest),
+            llama_model_color(family, variant),
+        );
+        render_llama_decor_layer(self.meshes, *instance, self.atlas);
+    }
+
     fn player_model(
         &mut self,
         skin: EntityPlayerSkin,
@@ -782,17 +818,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             variant,
             baby,
             has_chest,
-        } => {
-            let transform = entity_model_root_transform(*instance);
-            let passes = llama_textured_layer_passes(variant, baby, has_chest);
-            sink.model_with_colored_override(
-                LlamaModel::new(baby, has_chest),
-                transform,
-                instance,
-                &passes,
-                llama_model_color(family, variant),
-            );
-        }
+        } => sink.llama_model(family, variant, baby, has_chest, instance),
         EntityModelKind::Squid { glow, baby } => {
             let transform = squid_model_root_transform(*instance, baby);
             let passes = squid_textured_layer_passes(glow, baby);

@@ -446,8 +446,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         emit_player_spin_attack_effect_layer(&mut meshes, *instance, atlas);
         // Wolf body armor uses the adult WOLF_ARMOR equipment layer and optional damage cracks.
         emit_wolf_body_armor_layer(&mut meshes, *instance, atlas);
-        // LlamaDecorLayer appends adult carpet or trader-llama body decor after the base body.
-        emit_llama_decor_layer(&mut meshes, *instance, atlas);
         // Living and zombie nautilus body armor uses the adult NautilusArmorModel tree.
         emit_nautilus_body_armor_layer(&mut meshes, *instance, atlas);
         // Living and zombie nautilus saddles use the adult NautilusSaddleModel tree.
@@ -2555,11 +2553,14 @@ fn emit_nautilus_body_armor_layer(
     render_textured_no_overlay_layer_pass(meshes, &model, transform, pass, atlas);
 }
 
-fn emit_llama_decor_layer(
+pub(in crate::entity_models) fn render_llama_decor_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    if meshes.current_force_transparent || meshes.current_outline_only {
+        return;
+    }
     let EntityModelKind::Llama {
         family,
         baby,
