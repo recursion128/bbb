@@ -506,7 +506,10 @@ When an agent does any of the following, update this file in the same slice:
       separately. The texture-backed
       `isInvisible && !isInvisibleToPlayer` branch now records the base body as
       `entityTranslucentCullItemTarget` with the vanilla `0x26ffffff`
-      force-transparent alpha while invisible-gated layers still skip. World/native
+      force-transparent alpha while invisible-gated layers still skip. The
+      colored fallback mesh path now also preserves the same self-visible invisible
+      `38/255` alpha on its alpha-blended path while hidden invisible instances
+      still skip. World/native
       projection now clears `isInvisibleToPlayer` for spectator viewers, matching
       `Entity.isInvisibleTo(player)`'s spectator branch. The shared glowing bit
       (`Entity.DATA_SHARED_FLAGS_ID` bit 6 / client `isCurrentlyGlowing()`) is now
@@ -540,8 +543,9 @@ When an agent does any of the following, update this file in the same slice:
       also retain CPU-side folded outline geometry when the texture is present,
       upload it as a GPU resident outline bucket, and tint folded outline vertices
       from `outlineColor` while preserving the original model tint in submission
-      metadata. Colored-path force-transparent output and vanilla outline-target
-      compositing remain deferred under the visual follow-up slots.
+      metadata. Colored-path force-transparent output now uses the vanilla
+      `0x26ffffff` alpha on the colored runtime path; vanilla outline-target
+      compositing remains deferred under the visual follow-up slots.
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
       proportions applied in model `setupAnim`, distinct from the now-projected
@@ -1188,8 +1192,7 @@ When an agent does any of the following, update this file in the same slice:
     - finish vanilla outline-target/final-composite presentation; base and wool
       outline submission metadata plus `outlineColor`-tinted GPU outline bucket
       geometry are now recorded for the texture-backed static-atlas path
-    - implement colored-path force-transparent output and remaining base-model
-      outline handling
+    - implement remaining colored-path/base-model outline handling
   - Finish wolf presentation parity:
     - registry-driven wolf variants are DONE: the synced `Wolf.DATA_VARIANT_ID`
       (index 23) `Holder<WolfVariant>` is resolved (dynamic `wolf_variant`
@@ -1199,10 +1202,10 @@ When an agent does any of the following, update this file in the same slice:
       rusty/woods/chestnut/striped) × wild/tame/angry × adult/baby
       (`bee[...]`→`wolf_<coat>[_tame|_angry][_baby].png`), the 48 new biome faces
       joining the master atlas array (→359)
-    - finish colored-path force-transparent / outline presentation and remaining
-      render-state extraction parity (armor, sitting/head/tail/walk pose, wet shade
-      tint, water-shake roll pose, packed lighting, white overlay, and the hurt
-      red overlay are now applied)
+    - finish colored-path outline presentation and remaining render-state
+      extraction parity (armor, sitting/head/tail/walk pose, wet shade tint,
+      water-shake roll pose, packed lighting, white overlay, force-transparent
+      alpha, and the hurt red overlay are now applied)
   - Implement vanilla dropped-item follow-up rendering:
     - ground-context model rendering
     - bobbing
@@ -1873,11 +1876,12 @@ When an agent does any of the following, update this file in the same slice:
       renderer now retains CPU-side folded outline geometry for the base plus
       wool passes; folded outline vertices are tinted from `outlineColor` and
       uploaded through the static-atlas outline GPU bucket while submission
-      metadata still preserves the original model tint/light/overlay. Vanilla
-      outline-target/final-composite presentation, colored-path
-      force-transparent / outline handling, and remaining render-state extraction
-      remain unsupported; outline submission metadata is recorded from the shared
-      glowing flag and scoreboard team color
+      metadata still preserves the original model tint/light/overlay. Colored
+      fallback force-transparent output now preserves the vanilla `38/255` alpha;
+      vanilla outline-target/final-composite presentation, colored-path outline
+      handling, and remaining render-state extraction remain unsupported; outline
+      submission metadata is recorded from the shared glowing flag and scoreboard
+      team color
     - wolf entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AdultWolfModel`, `BabyWolfModel`, and `WolfRenderer`,
       including nested real-head and tail parts plus baked baby
@@ -1952,8 +1956,9 @@ When an agent does any of the following, update this file in the same slice:
       folded outline geometry with `outlineColor`-tinted vertices and submission
       tint/light/overlay metadata, including the armor-equipped invisible
       exception path, and that outline bucket is uploaded for the static-atlas GPU
-      path. Colored-path force-transparent / vanilla outline-target compositing,
-      glint/foil, and remaining render-state extraction remain unsupported
+      path. Colored-path force-transparent output now preserves the vanilla
+      `38/255` alpha; vanilla outline-target compositing, glint/foil, colored-path
+      outline, and remaining render-state extraction remain unsupported
     - base horse entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AbstractEquineModel.createBodyMesh(CubeDeformation.NONE)`,
       `BabyHorseModel.createBabyMesh(CubeDeformation.NONE)`, `HorseModel`, and
@@ -4532,7 +4537,7 @@ When an agent does any of the following, update this file in the same slice:
     variants, equipment, skins, animation, lighting, custom/datapack cow/pig
     variant asset presentation, sheep
     head-look-pitch presentation,
-    wolf colored force-transparent / vanilla outline-target compositing,
+    wolf vanilla outline-target compositing and colored-path outline,
     boat/raft water-mask presentation and lighting (paddle rowing animation,
     hurt/damage roll, bubble wobble, underwater state, and above-water water-mask
     gating are projected and rendered),

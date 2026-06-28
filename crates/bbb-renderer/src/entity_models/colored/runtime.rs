@@ -15,6 +15,8 @@ use super::transforms::{
     mesh_transformer_scaled_model_root_transform, scaled_model_root_transform, HUSK_SCALE,
 };
 
+const FORCE_TRANSPARENT_ENTITY_ALPHA: f32 = 38.0 / 255.0;
+
 #[cfg(test)]
 pub(in crate::entity_models) fn entity_model_mesh(
     instances: &[EntityModelInstance],
@@ -34,10 +36,12 @@ fn entity_model_mesh_with_options(
 ) -> EntityModelMesh {
     let mut mesh = EntityModelMesh::new();
     for instance in instances {
-        if instance.render_state.invisible {
+        let force_transparent =
+            instance.render_state.invisible && !instance.render_state.invisible_to_player;
+        if instance.render_state.invisible && !force_transparent {
             continue;
         }
-        let light_start = mesh.vertices.len();
+        let vertex_start = mesh.vertices.len();
         let handled = {
             let mut sink = ColoredSink {
                 mesh: &mut mesh,
@@ -64,12 +68,19 @@ fn entity_model_mesh_with_options(
                 _ => {}
             }
         }
-        fill_entity_model_light(&mut mesh, light_start, instance.render_state.shader_light());
+        fill_entity_model_light(
+            &mut mesh,
+            vertex_start,
+            instance.render_state.shader_light(),
+        );
         fill_entity_model_overlay(
             &mut mesh,
-            light_start,
+            vertex_start,
             instance.render_state.overlay_coords(),
         );
+        if force_transparent {
+            multiply_entity_model_alpha(&mut mesh, vertex_start, FORCE_TRANSPARENT_ENTITY_ALPHA);
+        }
     }
     mesh
 }

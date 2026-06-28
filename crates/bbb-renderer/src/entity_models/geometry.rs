@@ -214,6 +214,13 @@ pub(super) fn fill_entity_model_overlay(
     }
 }
 
+/// Multiplies the alpha on every colored vertex appended since `start`.
+pub(super) fn multiply_entity_model_alpha(mesh: &mut EntityModelMesh, start: usize, alpha: f32) {
+    for vertex in &mut mesh.vertices[start..] {
+        vertex.color[3] *= alpha;
+    }
+}
+
 /// Textured/eyes/translucent counterpart of [`fill_entity_model_overlay`].
 pub(super) fn fill_entity_textured_overlay(
     mesh: &mut EntityModelTexturedMesh,

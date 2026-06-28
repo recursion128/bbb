@@ -1142,6 +1142,40 @@ fn entity_mesh_fills_per_instance_hurt_overlay() {
 }
 
 #[test]
+fn colored_runtime_mesh_applies_vanilla_force_transparent_alpha() {
+    // Vanilla `LivingEntityRenderer.submit` uses the force-transparent branch
+    // when `!isBodyVisible && !isInvisibleToPlayer`, multiplying the model tint
+    // by `0x26ffffff` and submitting `entityTranslucentCullItemTarget`.
+    let hidden = EntityModelInstance::placeholder(1, [0.0, 0.0, 0.0], 0.0, "hidden", 1.0, 1.0, 1.0)
+        .with_invisible(true);
+    assert!(entity_model_colored_runtime_mesh(&[hidden])
+        .vertices
+        .is_empty());
+
+    let self_visible =
+        EntityModelInstance::placeholder(2, [0.0, 0.0, 0.0], 0.0, "self_visible", 1.0, 1.0, 1.0)
+            .with_invisible(true)
+            .with_invisible_to_player(false)
+            .with_light_coords((6_u32 << 4) | (8_u32 << 20))
+            .with_has_red_overlay(true);
+    let mesh = entity_model_colored_runtime_mesh(&[self_visible]);
+    assert!(!mesh.vertices.is_empty());
+    for vertex in &mesh.vertices {
+        assert_eq!(vertex.color[3], 38.0 / 255.0);
+        assert_eq!(vertex.light, [6.0 / 15.0, 8.0 / 15.0]);
+        assert_eq!(vertex.overlay, [0.0, 3.0]);
+    }
+
+    let visible =
+        EntityModelInstance::placeholder(3, [0.0, 0.0, 0.0], 0.0, "visible", 1.0, 1.0, 1.0);
+    let visible_mesh = entity_model_colored_runtime_mesh(&[visible]);
+    assert!(visible_mesh
+        .vertices
+        .iter()
+        .all(|vertex| vertex.color[3] == 1.0));
+}
+
+#[test]
 fn entity_model_vertex_layout_matches_shader_inputs() {
     let layout = entity_model_vertex_layout();
 
