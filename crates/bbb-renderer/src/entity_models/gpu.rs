@@ -73,7 +73,7 @@ pub(crate) struct EntityDynamicPlayerTextureAtlasGpu {
 
 pub(super) const ENTITY_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 4] =
     wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4, 2 => Float32x2, 3 => Float32x2];
-pub(super) const ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2, 4 => Float32x2];
+pub(super) const ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 6] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2, 4 => Float32x2, 5 => Float32x3];
 pub(super) const ENTITY_MODEL_SCROLL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x2, 3 => Float32x2, 4 => Float32x4, 5 => Float32x2, 6 => Float32x2];
 
 pub(super) const ENTITY_MODEL_SHADER: &str = r#"
@@ -152,6 +152,7 @@ struct VertexIn {
     @location(2) tint: vec4<f32>,
     @location(3) light: vec2<f32>,
     @location(4) overlay: vec2<f32>,
+    @location(5) normal: vec3<f32>,
 };
 
 struct VertexOut {
@@ -160,6 +161,7 @@ struct VertexOut {
     @location(1) tint: vec4<f32>,
     @location(2) light: vec2<f32>,
     @location(3) overlay: vec2<f32>,
+    @location(4) normal: vec3<f32>,
 };
 
 fn lightmap_brightness(level: f32) -> f32 {
@@ -172,6 +174,13 @@ fn packed_lightmap_shade(light: vec2<f32>) -> f32 {
     return clamp(block_brightness + sky_brightness, 0.0, 1.0);
 }
 
+fn diffuse_light(normal: vec3<f32>) -> f32 {
+    let light0 = normalize(vec3<f32>(0.2, 1.0, -0.7));
+    let light1 = normalize(vec3<f32>(-0.2, 1.0, 0.7));
+    let light_value = max(vec2<f32>(0.0), vec2<f32>(dot(light0, normal), dot(light1, normal)));
+    return min(1.0, (light_value.x + light_value.y) * 0.6 + 0.4);
+}
+
 @vertex
 fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
@@ -180,6 +189,7 @@ fn vs_main(input: VertexIn) -> VertexOut {
     out.tint = input.tint;
     out.light = input.light;
     out.overlay = input.overlay;
+    out.normal = normalize(input.normal);
     return out;
 }
 
@@ -197,7 +207,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         rgb = mix(vec3<f32>(1.0, 1.0, 1.0), rgb, overlay_alpha);
     }
     let shade = packed_lightmap_shade(input.light);
-    return vec4<f32>(rgb * shade, texel.a);
+    return vec4<f32>(rgb * diffuse_light(input.normal) * shade, texel.a);
 }
 "#;
 

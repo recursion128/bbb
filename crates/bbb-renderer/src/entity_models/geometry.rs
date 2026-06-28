@@ -31,6 +31,7 @@ pub(super) struct EntityModelTexturedVertex {
     pub(super) tint: [f32; 4],
     pub(super) light: [f32; 2],
     pub(super) overlay: [f32; 2],
+    pub(super) normal: [f32; 3],
 }
 
 pub(super) struct EntityModelMesh {
@@ -459,6 +460,7 @@ fn emit_textured_model_cube_from_min_max(
         mesh,
         [l1, l0, t0, t1].map(|corner| transform.transform_point3(corner)),
         [u1, v0, u2, v1],
+        transform_entity_normal(transform, cube.mirror, [-1.0, 0.0, 0.0], [0.0, -1.0, 0.0]),
         texture,
         uv_rect,
         tint,
@@ -468,6 +470,7 @@ fn emit_textured_model_cube_from_min_max(
         mesh,
         [t2, t3, l3, l2].map(|corner| transform.transform_point3(corner)),
         [u2, v1, u22, v0],
+        transform_entity_normal(transform, cube.mirror, [-1.0, 0.0, 0.0], [0.0, 1.0, 0.0]),
         texture,
         uv_rect,
         tint,
@@ -477,6 +480,7 @@ fn emit_textured_model_cube_from_min_max(
         mesh,
         [t0, l0, l3, t3].map(|corner| transform.transform_point3(corner)),
         [u0, v1, u1, v2],
+        transform_entity_normal(transform, cube.mirror, [1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]),
         texture,
         uv_rect,
         tint,
@@ -486,6 +490,7 @@ fn emit_textured_model_cube_from_min_max(
         mesh,
         [t1, t0, t3, t2].map(|corner| transform.transform_point3(corner)),
         [u1, v1, u2, v2],
+        transform_entity_normal(transform, cube.mirror, [-1.0, 0.0, 0.0], [0.0, 0.0, -1.0]),
         texture,
         uv_rect,
         tint,
@@ -495,6 +500,7 @@ fn emit_textured_model_cube_from_min_max(
         mesh,
         [l1, t1, t2, l2].map(|corner| transform.transform_point3(corner)),
         [u2, v1, u3, v2],
+        transform_entity_normal(transform, cube.mirror, [-1.0, 0.0, 0.0], [1.0, 0.0, 0.0]),
         texture,
         uv_rect,
         tint,
@@ -504,6 +510,7 @@ fn emit_textured_model_cube_from_min_max(
         mesh,
         [l0, l1, l2, l3].map(|corner| transform.transform_point3(corner)),
         [u3, v1, u4, v2],
+        transform_entity_normal(transform, cube.mirror, [-1.0, 0.0, 0.0], [0.0, 0.0, 1.0]),
         texture,
         uv_rect,
         tint,
@@ -515,6 +522,7 @@ fn emit_textured_model_polygon(
     mesh: &mut EntityModelTexturedMesh,
     corners: [Vec3; 4],
     texture_uv: [f32; 4],
+    normal: [f32; 3],
     texture: EntityModelTextureRef,
     uv_rect: EntityModelUvRect,
     tint: [f32; 4],
@@ -539,10 +547,27 @@ fn emit_textured_model_polygon(
             tint,
             light: ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
             overlay: ENTITY_VERTEX_NO_OVERLAY,
+            normal,
         }));
     mesh.indices
         .extend([base, base + 1, base + 2, base, base + 2, base + 3]);
     mesh.cutout_faces += 1;
+}
+
+fn transform_entity_normal(
+    transform: Mat4,
+    mirror: bool,
+    mirror_axis: [f32; 3],
+    normal: [f32; 3],
+) -> [f32; 3] {
+    let mut normal = Vec3::from_array(normal);
+    if mirror && normal.dot(Vec3::from_array(mirror_axis)).abs() > 0.0 {
+        normal = -normal;
+    }
+    transform
+        .transform_vector3(normal)
+        .normalize_or_zero()
+        .to_array()
 }
 
 fn atlas_uv(

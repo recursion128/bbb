@@ -70,10 +70,24 @@ fn cow_textured_mesh_uses_vanilla_uvs_tints_and_variant_textures() {
     assert_eq!(mesh.indices.len(), 1080);
     assert_close2(mesh.vertices[0].uv, [14.0 / 64.0, 0.0]);
     assert_eq!(mesh.vertices[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_close3(mesh.vertices[0].normal, [0.0, 1.0, 0.0]);
     assert_close2(mesh.vertices[240].uv, [14.0 / 64.0, 256.0 / 384.0]);
     assert_eq!(mesh.vertices[240].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_close2(mesh.vertices[504].uv, [11.0 / 64.0, 210.0 / 384.0]);
     assert_eq!(mesh.vertices[504].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert!(mesh.vertices.iter().all(|vertex| {
+        let [x, y, z] = vertex.normal;
+        ((x * x + y * y + z * z) - 1.0).abs() < 1.0e-4
+    }));
+    assert!(mesh.vertices.iter().any(|vertex| vertex.normal[1] > 0.99));
+    assert!(mesh
+        .vertices
+        .iter()
+        .any(|vertex| vertex.normal[0].abs() > 0.99));
+    assert!(mesh
+        .vertices
+        .iter()
+        .any(|vertex| vertex.normal[2].abs() > 0.99));
     assert!(mesh.vertices.iter().all(|vertex| vertex.light
         == instances[0].render_state.shader_light()
         && vertex.overlay == instances[0].render_state.overlay_coords()));

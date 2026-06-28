@@ -537,7 +537,7 @@ fn entity_textured_shader_samples_bound_texture_and_discards_alpha() {
     assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("discard"));
     assert_eq!(
         ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES,
-        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2, 4 => Float32x2]
+        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2, 4 => Float32x2, 5 => Float32x3]
     );
 }
 
@@ -549,7 +549,18 @@ fn entity_textured_shader_applies_packed_light_lightmap() {
     assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("level / (4.0 - 3.0 * level)"));
     assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("lightmap_brightness(light.x) * 1.4"));
     assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("block_brightness + sky_brightness"));
-    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("rgb * shade"));
+    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("rgb * diffuse_light(input.normal) * shade"));
+}
+
+#[test]
+fn entity_textured_shader_applies_vanilla_level_diffuse_lighting() {
+    // Vanilla entity.vsh calls minecraft_mix_light with Lighting.setupLevel's
+    // default light directions, MINECRAFT_LIGHT_POWER 0.6 and ambient 0.4.
+    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("@location(5) normal: vec3<f32>"));
+    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("vec3<f32>(0.2, 1.0, -0.7)"));
+    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("vec3<f32>(-0.2, 1.0, 0.7)"));
+    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("(light_value.x + light_value.y) * 0.6 + 0.4"));
+    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("diffuse_light(input.normal) * shade"));
 }
 
 #[test]
@@ -598,7 +609,7 @@ fn entity_eyes_shader_samples_bound_texture_without_alpha_cutout() {
     assert!(!ENTITY_MODEL_EYES_SHADER.contains("discard"));
     assert_eq!(
         ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES,
-        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2, 4 => Float32x2]
+        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2, 4 => Float32x2, 5 => Float32x3]
     );
     // Eyes stay emissive: the lightmap shade must not dim them.
     assert!(!ENTITY_MODEL_EYES_SHADER.contains("lightmap_brightness"));
