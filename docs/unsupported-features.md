@@ -2571,9 +2571,11 @@ When an agent does any of the following, update this file in the same slice:
       texture-backed submissions through the marker hidden/glowing no-base path
       and inherited living invisible branches, preserving vanilla texture,
       render type, transform, light, no-overlay, outline-color, order, and
-      submit-sequence metadata. Held-item item-model pass and generic non-skull
-      custom-head item invisible-layer combinations, hurt wiggle, and animation
-      interpolation remain unsupported
+      submit-sequence metadata. The native item-model pass is now covered for
+      marker hidden/glowing armor-stand held items and generic non-skull
+      `CustomHeadLayer` HEAD items as well: `held_item_models` still bakes the
+      main-hand and HEAD item meshes when the base body records no submission.
+      Hurt wiggle and animation interpolation remain unsupported
     - slime entities as renderer-owned vanilla 26.1 `SlimeModel` inner
       `ModelLayers.SLIME` geometry plus outer `ModelLayers.SLIME_OUTER`
       geometry, official `textures/entity/slime/slime.png` texture reference,

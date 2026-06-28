@@ -967,9 +967,11 @@ impl LegacyRandom {
 mod tests {
     use super::*;
     use bbb_protocol::packets::{
-        AddEntity, DataComponentPatchSummary, EntityDataValue, EntityDataValueKind, SetEntityData,
-        Vec3d,
+        AddEntity, DataComponentPatchSummary, EntityDataValue, EntityDataValueKind,
+        EquipmentSlotUpdate, SetEntityData, SetEquipment, Vec3d,
     };
+    use std::path::{Path, PathBuf};
+    use std::time::{SystemTime, UNIX_EPOCH};
     use uuid::Uuid;
 
     const VANILLA_ENTITY_TYPE_ENDERMAN_ID: i32 = 41;
@@ -1324,6 +1326,59 @@ mod tests {
     }
 
     #[test]
+    fn armor_stand_invisible_marker_keeps_held_and_custom_head_item_models() {
+        // Vanilla `LivingEntityRenderer.submit` still runs armor-stand `ItemInHandLayer` and the
+        // generic item branch of `CustomHeadLayer` when the marker base body has no render type.
+        let root = unique_item_model_temp_dir("armor-stand-invisible-held-items");
+        write_flat_item_runtime_fixture(&root, &["hand_item", "head_item"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let mut world = WorldStore::new();
+        const ENTITY_ID: i32 = 601;
+        const ARMOR_STAND_ENTITY_TYPE_ID: i32 = 5;
+        world.apply_add_entity(protocol_add_entity(ENTITY_ID, ARMOR_STAND_ENTITY_TYPE_ID));
+        assert!(world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::MainHand, 0)));
+        assert!(world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::Head, 1)));
+
+        let visible = EntityModelInstance::armor_stand_with_marker(
+            ENTITY_ID,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            true,
+            true,
+            true,
+            bbb_renderer::DEFAULT_ARMOR_STAND_MODEL_POSE,
+        );
+        let hidden_glowing = visible.with_invisible(true).with_outline_color(0xff55_aa11);
+        let terrain_textures = TerrainTextureState::default();
+
+        let visible_models =
+            held_item_models(&[visible], &world, Some(&item_runtime), &terrain_textures);
+        let hidden_models = held_item_models(
+            &[hidden_glowing],
+            &world,
+            Some(&item_runtime),
+            &terrain_textures,
+        );
+
+        assert!(visible_models.block_meshes.is_empty());
+        assert!(hidden_models.block_meshes.is_empty());
+        assert_eq!(visible_models.flat_meshes.len(), 2);
+        assert_eq!(hidden_models.flat_meshes.len(), 2);
+        assert!(visible_models
+            .flat_meshes
+            .iter()
+            .all(|mesh| !mesh.is_empty()));
+        assert!(hidden_models
+            .flat_meshes
+            .iter()
+            .all(|mesh| !mesh.is_empty()));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn cluster_count_drives_geometry_and_is_non_empty() {
         let quads = unit_block_quads();
         // One copy and four copies both produce geometry; the four-copy mesh holds four times as much.
@@ -1397,5 +1452,144 @@ mod tests {
         let right_dir = right.transform_vector3(Vec3::X);
         let left_dir = left.transform_vector3(Vec3::X);
         assert!((left_dir - Vec3::new(right_dir.x, -right_dir.y, -right_dir.z)).length() < 1e-6);
+    }
+
+    fn equipment(entity_id: i32, slot: EquipmentSlot, item_id: i32) -> SetEquipment {
+        SetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot,
+                item: ItemStackSummary {
+                    item_id: Some(item_id),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            }],
+        }
+    }
+
+    fn write_flat_item_runtime_fixture(root: &Path, item_ids: &[&str]) {
+        let assets = item_model_assets_dir(root);
+        write_item_atlases(&assets);
+        write_item_registry_source(root, item_ids);
+        for (index, item_id) in item_ids.iter().enumerate() {
+            write_json(
+                &assets.join("items").join(format!("{item_id}.json")),
+                &format!(
+                    r#"{{
+                    "model": {{
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/{item_id}"
+                    }}
+                }}"#
+                ),
+            );
+            write_flat_item_model_and_texture(
+                &assets,
+                item_id,
+                &[(64 + index * 40) as u8, 80, 120, 255],
+            );
+        }
+    }
+
+    fn item_model_assets_dir(root: &Path) -> PathBuf {
+        root.join("sources")
+            .join(bbb_pack::MC_VERSION)
+            .join("assets")
+            .join("minecraft")
+    }
+
+    fn write_item_atlases(assets: &Path) {
+        write_json(
+            &assets.join("atlases").join("items.json"),
+            r#"{
+                "sources": [
+                    {
+                        "type": "minecraft:directory",
+                        "prefix": "item/",
+                        "source": "item"
+                    }
+                ]
+            }"#,
+        );
+        write_json(
+            &assets.join("atlases").join("blocks.json"),
+            r#"{
+                "sources": [
+                    {
+                        "type": "minecraft:directory",
+                        "prefix": "block/",
+                        "source": "block"
+                    }
+                ]
+            }"#,
+        );
+    }
+
+    fn write_item_registry_source(root: &Path, item_ids: &[&str]) {
+        let declarations = item_ids
+            .iter()
+            .map(|item_id| {
+                let constant = item_id.to_ascii_uppercase();
+                format!("public static final Item {constant} = registerItem(\"{item_id}\");")
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        write_json(
+            &root
+                .join("sources")
+                .join(bbb_pack::MC_VERSION)
+                .join("net")
+                .join("minecraft")
+                .join("world")
+                .join("item")
+                .join("Items.java"),
+            &format!(
+                r#"public class Items {{
+                {declarations}
+            }}"#,
+            ),
+        );
+    }
+
+    fn write_flat_item_model_and_texture(assets: &Path, model_id: &str, rgba: &[u8]) {
+        write_json(
+            &assets
+                .join("models")
+                .join("item")
+                .join(format!("{model_id}.json")),
+            &format!(
+                r#"{{
+                "textures": {{
+                    "layer0": "minecraft:item/{model_id}"
+                }}
+            }}"#
+            ),
+        );
+        write_test_rgba_png(
+            &assets
+                .join("textures")
+                .join("item")
+                .join(format!("{model_id}.png")),
+            rgba,
+        );
+    }
+
+    fn write_json(path: &Path, contents: &str) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, contents).unwrap();
+    }
+
+    fn write_test_rgba_png(path: &Path, rgba: &[u8]) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        image::save_buffer(path, rgba, 1, 1, image::ColorType::Rgba8).unwrap();
+    }
+
+    fn unique_item_model_temp_dir(label: &str) -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!("bbb-native-item-models-{label}-{nanos}"))
     }
 }
