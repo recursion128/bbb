@@ -84,15 +84,15 @@ use super::textured::{
     mooshroom_textured_layer_passes, nautilus_textured_layer_passes, panda_textured_layer_passes,
     parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
     piglin_textured_layer_passes, polar_bear_textured_layer_passes, rabbit_textured_layer_passes,
-    ravager_textured_layer_passes, render_donkey_textured_layers,
-    render_end_crystal_textured_layers, render_horse_textured_layers,
-    render_no_overlay_scrolled_textured_layers, render_player_textured_layers,
-    render_textured_layers, render_undead_horse_textured_layers, salmon_textured_layer_passes,
-    sheep_textured_layer_passes, shulker_bullet_textured_layer_passes,
-    shulker_textured_layer_passes, silverfish_textured_layer_passes,
-    skeleton_textured_layer_passes, slime_textured_layer_passes, sniffer_textured_layer_passes,
-    snow_golem_textured_layer_passes, spider_textured_layer_passes, squid_textured_layer_passes,
-    tadpole_textured_layer_passes, trident_textured_layer_passes,
+    ravager_textured_layer_passes, render_charged_creeper_energy_swirl,
+    render_donkey_textured_layers, render_end_crystal_textured_layers,
+    render_horse_textured_layers, render_no_overlay_scrolled_textured_layers,
+    render_player_textured_layers, render_textured_layers, render_undead_horse_textured_layers,
+    render_wither_energy_swirl, salmon_textured_layer_passes, sheep_textured_layer_passes,
+    shulker_bullet_textured_layer_passes, shulker_textured_layer_passes,
+    silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
+    sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
+    squid_textured_layer_passes, tadpole_textured_layer_passes, trident_textured_layer_passes,
     tropical_fish_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, warden_textured_layer_passes,
     wind_charge_textured_layer_passes, witch_textured_layer_passes,
@@ -185,6 +185,10 @@ pub(in crate::entity_models) trait EntityModelSink {
         baby: bool,
         instance: &EntityModelInstance,
     );
+
+    fn creeper_model(&mut self, instance: &EntityModelInstance);
+
+    fn wither_model(&mut self, instance: &EntityModelInstance);
 }
 
 /// The colored sink: render the posed cube tree into the colored mesh. Texture-backed entities (those
@@ -297,6 +301,28 @@ impl EntityModelSink for ColoredSink<'_> {
         }
         emit_undead_horse_model(self.mesh, *instance, family, baby);
     }
+
+    fn creeper_model(&mut self, instance: &EntityModelInstance) {
+        let passes = creeper_textured_layer_passes();
+        let body_passes = [passes[0]];
+        self.model(
+            CreeperModel::new(),
+            creeper_model_root_transform(*instance),
+            instance,
+            &body_passes,
+        );
+    }
+
+    fn wither_model(&mut self, instance: &EntityModelInstance) {
+        let passes = wither_textured_layer_passes(instance.render_state.wither_invulnerable_ticks);
+        let body_passes = [passes[0]];
+        self.model(
+            WitherModel::new(),
+            wither_model_root_transform(*instance),
+            instance,
+            &body_passes,
+        );
+    }
 }
 
 /// The textured sink: walk the entity's textured layer passes over the posed tree. Colored-only
@@ -404,6 +430,30 @@ impl EntityModelSink for TexturedSink<'_> {
         instance: &EntityModelInstance,
     ) {
         render_undead_horse_textured_layers(self.meshes, instance, family, baby, self.atlas);
+    }
+
+    fn creeper_model(&mut self, instance: &EntityModelInstance) {
+        let passes = creeper_textured_layer_passes();
+        let body_passes = [passes[0]];
+        self.model(
+            CreeperModel::new(),
+            creeper_model_root_transform(*instance),
+            instance,
+            &body_passes,
+        );
+        render_charged_creeper_energy_swirl(self.meshes, *instance, self.atlas);
+    }
+
+    fn wither_model(&mut self, instance: &EntityModelInstance) {
+        let passes = wither_textured_layer_passes(instance.render_state.wither_invulnerable_ticks);
+        let body_passes = [passes[0]];
+        self.model(
+            WitherModel::new(),
+            wither_model_root_transform(*instance),
+            instance,
+            &body_passes,
+        );
+        render_wither_energy_swirl(self.meshes, *instance, self.atlas);
     }
 }
 
@@ -729,16 +779,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &ravager_textured_layer_passes(),
         ),
-        EntityModelKind::Creeper => {
-            let passes = creeper_textured_layer_passes();
-            let body_passes = [passes[0]];
-            sink.model(
-                CreeperModel::new(),
-                creeper_model_root_transform(*instance),
-                instance,
-                &body_passes,
-            )
-        }
+        EntityModelKind::Creeper => sink.creeper_model(instance),
         EntityModelKind::IronGolem { crackiness } => sink.model(
             IronGolemModel::new(),
             iron_golem_model_root_transform(*instance),
@@ -1197,17 +1238,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &shulker_textured_layer_passes(color),
         ),
-        EntityModelKind::Wither => {
-            let passes =
-                wither_textured_layer_passes(instance.render_state.wither_invulnerable_ticks);
-            let body_passes = [passes[0]];
-            sink.model(
-                WitherModel::new(),
-                wither_model_root_transform(*instance),
-                instance,
-                &body_passes,
-            )
-        }
+        EntityModelKind::Wither => sink.wither_model(instance),
         EntityModelKind::Giant => sink.model(
             ZombieModel::new(false),
             mesh_transformer_scaled_model_root_transform(*instance, GIANT_SCALE),

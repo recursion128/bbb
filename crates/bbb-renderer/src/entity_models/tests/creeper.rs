@@ -247,7 +247,7 @@ fn charged_creeper_emits_scrolling_energy_swirl() {
 
 #[test]
 fn charged_creeper_energy_swirl_submission_survives_missing_armor_atlas_entry() {
-    // `EnergySwirlLayer` is a residual overlay, but it must still produce its vanilla submission before
+    // `EnergySwirlLayer` is dispatch-owned, but it must still produce its vanilla submission before
     // the backend tries to fold the scrolled geometry into the additive mesh bucket.
     let len =
         usize::try_from(CREEPER_TEXTURE_REF.size[0] * CREEPER_TEXTURE_REF.size[1] * 4).unwrap();

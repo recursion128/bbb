@@ -20,7 +20,7 @@ pub(in crate::entity_models) const MODEL_LAYER_WITHER_ARMOR: &str = "minecraft:w
 // (`WitherBossRenderer.getTextureLocation`, see [`super::super::wither_model_root_transform`] and
 // `wither_textured_layer_passes`); the `WITHER_ARMOR` powered energy-swirl overlay (`wither_armor.png`,
 // the same `EnergySwirlLayer` as the charged creeper) is the inflated [`WitherModel::new_armor`] tree,
-// emitted by `emit_wither_energy_swirl`. Each cube carries the colored debug tint and the textured
+// emitted by the dispatch-owned energy-swirl helper. Each cube carries the colored debug tint and the textured
 // `uv_size` / `texOffs`.
 
 // `shoulders`: the 20×3×3 bar, texOffs(0,16).

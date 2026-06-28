@@ -428,11 +428,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
             );
             continue;
         }
-        // The charged-creeper and powered-wither energy swirls are additive scrolling overlays layered
-        // on top of the base model (already emitted by the shared dispatch), so they run regardless of
-        // `handled`.
-        emit_charged_creeper_energy_swirl(&mut meshes, *instance, atlas);
-        emit_wither_energy_swirl(&mut meshes, *instance, atlas);
         // The breeze's swirling wind body is a translucent scrolling overlay (vanilla `BreezeWindLayer`)
         // layered on top of the base body (already emitted by the shared dispatch), so it likewise runs
         // regardless of `handled`.
@@ -1187,11 +1182,14 @@ fn emit_breeze_wind_scroll_model(
 /// render type — `creeper_armor.png` scrolling on both axes by `xOffset(ageInTicks) % 1 =
 /// (ageInTicks · 0.01) % 1`, tinted by the vanilla `0xFF808080` half-grey. Folded into the additive
 /// scroll mesh the same way the wind charge folds into the translucent one.
-fn emit_charged_creeper_energy_swirl(
+pub(in crate::entity_models) fn render_charged_creeper_energy_swirl(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    if meshes.current_force_transparent || meshes.current_outline_only {
+        return;
+    }
     if !instance.render_state.creeper_powered || !matches!(instance.kind, EntityModelKind::Creeper)
     {
         return;
@@ -1223,11 +1221,14 @@ fn emit_charged_creeper_energy_swirl(
 /// render type — `wither_armor.png` tinted by the vanilla `0xFF808080` half-grey. Unlike the creeper's
 /// linear scroll, the wither's `xOffset(t) = cos(t · 0.02) · 3` oscillates the U coordinate while V
 /// scrolls linearly at `t · 0.01`; both are taken `% 1.0`. Folded into the same additive scroll mesh.
-fn emit_wither_energy_swirl(
+pub(in crate::entity_models) fn render_wither_energy_swirl(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    if meshes.current_force_transparent || meshes.current_outline_only {
+        return;
+    }
     if !instance.render_state.wither_powered || !matches!(instance.kind, EntityModelKind::Wither) {
         return;
     }

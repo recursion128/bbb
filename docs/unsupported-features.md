@@ -575,8 +575,8 @@ When an agent does any of the following, update this file in the same slice:
     `BlendFunction.ADDITIVE`, emissive, `ALPHA_CUTOUT 0.1` — the same shader-side `fract` atlas-wrap as
     the wind charge's `breezeWind`, just additively blended. `creeper_textured_layer_passes` now records
     both vanilla `ModelLayers.CREEPER` and `ModelLayers.CREEPER_ARMOR`, with base `entityCutout` and armor
-    `energySwirl` texture/render-type/tint/order metadata; the base dispatch consumes only the body pass,
-    while the charged overlay helper consumes the armor pass and still gates it on `isPowered`. The
+    `energySwirl` texture/render-type/tint/order metadata; the shared dispatch sink consumes the body
+    pass and, when `isPowered`, its texture sink records and folds the armor `EnergySwirlLayer` pass. The
     `HumanoidModel` leg swing (`humanoid_leg_swing_pose`: the right leg, part offset
     `x < 0`, in phase and the left leg out of phase, since both legs sit at `z = 0`) is
     consumed by the zombie family (`ZombieModel` / shared-dispatch `ZombieVariantModel` —
@@ -1095,10 +1095,10 @@ When an agent does any of the following, update this file in the same slice:
       passes that vanilla gates on `state.isInvisible` still do not submit.
       WindCharge `breezeWind` scroll submits now run through the shared dispatch sink rather than a
       residual textured arm, preserving vanilla order-0 submission metadata and folding through the
-      shared scrolled helper only after atlas lookup. Breeze wind and `energySwirl` overlay helpers
-      likewise use explicit layer-pass metadata through the pass-backed no-overlay emitter before the
-      scroll helper, with missing-atlas tests pinning that submission metadata is recorded before
-      folded geometry is suppressed; Guardian
+      shared scrolled helper only after atlas lookup. Breeze wind and Creeper/Wither `energySwirl`
+      overlay submissions likewise use explicit layer-pass metadata through dispatch-owned sinks and
+      the pass-backed no-overlay emitter before the scroll helper, with missing-atlas tests pinning that
+      submission metadata is recorded before folded geometry is suppressed; Guardian
       attack beams now consume explicit `GuardianBeam` pass metadata through the same pass-backed emitter before
       recording vanilla `entityCutout` submissions and folding their tiled custom geometry into the scroll bucket through the
       custom scroll-geometry submission helper; End Crystal
@@ -3499,8 +3499,9 @@ When an agent does any of the following, update this file in the same slice:
       from the creeper's linear scroll) and V by `ageInTicks · 0.01 % 1`, sharing the same per-fragment
       `fract` atlas-wrap scroll pipeline as the charged creeper. `wither_textured_layer_passes` now records
       vanilla `ModelLayers.WITHER` and `ModelLayers.WITHER_ARMOR`, with base `entityCutout` and armor
-      `energySwirl` texture/render-type/tint/order metadata; dispatch consumes only the body pass, while
-      the powered overlay helper consumes the armor pass and still gates it on `isPowered`. Its submission
+      `energySwirl` texture/render-type/tint/order metadata; the shared dispatch sink consumes the body
+      pass and, when `isPowered`, its texture sink records and folds the armor `EnergySwirlLayer` pass.
+      Its submission
       preserves per-entity light and vanilla `OverlayTexture.NO_OVERLAY`, and missing-atlas coverage now
       pins that the order-1 `energySwirl` submission survives when `wither_armor.png` is absent while only
       folded additive scroll geometry is suppressed. The remaining `WitherBossModel.setupAnim`
