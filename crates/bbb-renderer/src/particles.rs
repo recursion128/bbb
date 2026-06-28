@@ -1385,6 +1385,32 @@ mod tests {
         assert_eq!(explosion.velocity, [0.0, 0.0, 0.0]);
         assert_eq!(explosion.friction, 0.98);
         assert!(explosion.has_physics);
+
+        let mut gust_random = ParticleRandom::new(71);
+        let mut gust_command = spawn_command("minecraft:gust", 1.0);
+        gust_command.velocity = [1.0, 2.0, 3.0];
+        let gust = ParticleInstance::from_spawn_command(gust_command, &mut gust_random);
+        assert_eq!(gust.provider, "GustParticle.Provider");
+        assert_eq!(gust.sprite_selection, ParticleSpriteSelection::Age);
+        assert_close_f32(gust.base_quad_size, 1.0);
+        assert_eq!(gust.color, [1.0, 1.0, 1.0, 1.0]);
+        assert!((12..=15).contains(&gust.lifetime_ticks));
+        assert_eq!(gust.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(gust.friction, 0.98);
+        assert!(gust.has_physics);
+
+        let mut small_gust_random = ParticleRandom::new(72);
+        let small_gust = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:small_gust", 1.0),
+            &mut small_gust_random,
+        );
+        assert_eq!(small_gust.provider, "GustParticle.SmallProvider");
+        assert_eq!(small_gust.sprite_selection, ParticleSpriteSelection::Age);
+        assert_close_f32(small_gust.base_quad_size, 0.15);
+        assert_eq!(small_gust.color, [1.0, 1.0, 1.0, 1.0]);
+        assert!((12..=15).contains(&small_gust.lifetime_ticks));
+        assert_eq!(small_gust.velocity, [0.0, 0.0, 0.0]);
+        assert!(small_gust.has_physics);
     }
 
     #[test]

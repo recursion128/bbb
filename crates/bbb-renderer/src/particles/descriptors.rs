@@ -68,6 +68,10 @@ pub(crate) enum ParticleVisualDescriptor {
     Flame {
         scale: f32,
     },
+    FixedQuad {
+        size: f32,
+        color: ParticleColorDescriptor,
+    },
     HugeExplosion,
     BaseAshSmoke {
         scale: f32,
@@ -317,6 +321,34 @@ impl ParticleDescriptor {
                 lifetime: ParticleLifetimeDescriptor::RandomInclusive { min: 6, max: 9 },
                 sprite_selection: ParticleSpriteSelection::Age,
                 visual: ParticleVisualDescriptor::HugeExplosion,
+                initial_velocity: ParticleInitialVelocityDescriptor::Zero,
+                friction: 0.98,
+                gravity: 0.0,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:gust" => Self {
+                provider: "GustParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::RandomInclusive { min: 12, max: 15 },
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::FixedQuad {
+                    size: 1.0,
+                    color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Zero,
+                friction: 0.98,
+                gravity: 0.0,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:small_gust" => Self {
+                provider: "GustParticle.SmallProvider",
+                lifetime: ParticleLifetimeDescriptor::RandomInclusive { min: 12, max: 15 },
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::FixedQuad {
+                    size: 0.15,
+                    color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                },
                 initial_velocity: ParticleInitialVelocityDescriptor::Zero,
                 friction: 0.98,
                 gravity: 0.0,
@@ -819,6 +851,11 @@ impl ParticleVisualDescriptor {
                 base_quad_size * scale,
                 WHITE_PARTICLE_COLOR,
                 ParticleQuadSizeCurve::Flame,
+            ),
+            Self::FixedQuad { size, color } => ParticleVisualState::new(
+                size,
+                color.sample(random),
+                ParticleQuadSizeCurve::Constant,
             ),
             Self::HugeExplosion => {
                 let color = random.next_f32() * 0.6 + 0.4;
@@ -1427,6 +1464,42 @@ mod tests {
             ParticleInitialVelocityDescriptor::Zero
         );
         assert_descriptor(
+            "minecraft:gust",
+            "GustParticle.Provider",
+            ParticleLifetimeDescriptor::RandomInclusive { min: 12, max: 15 },
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::FixedQuad {
+                size: 1.0,
+                color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+            },
+            0.98,
+            0.0,
+            true,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:gust").initial_velocity,
+            ParticleInitialVelocityDescriptor::Zero
+        );
+        assert_descriptor(
+            "minecraft:small_gust",
+            "GustParticle.SmallProvider",
+            ParticleLifetimeDescriptor::RandomInclusive { min: 12, max: 15 },
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::FixedQuad {
+                size: 0.15,
+                color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+            },
+            0.98,
+            0.0,
+            true,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:small_gust").initial_velocity,
+            ParticleInitialVelocityDescriptor::Zero
+        );
+        assert_descriptor(
             "minecraft:dolphin",
             "SuspendedTownParticle.DolphinSpeedProvider",
             ParticleLifetimeDescriptor::BaseAshSmokeDivided {
@@ -1919,6 +1992,26 @@ mod tests {
         assert_eq!(explosion.color[1], explosion.color[2]);
         assert_eq!(explosion.color[3], 1.0);
         assert_eq!(explosion.quad_size_curve, ParticleQuadSizeCurve::Constant);
+
+        let mut gust_random = ParticleRandom::new(37);
+        let gust = ParticleVisualDescriptor::FixedQuad {
+            size: 1.0,
+            color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+        }
+        .sample_for_command(&mut gust_random, [9.0, 9.0, 9.0]);
+        assert_close_f32(gust.base_quad_size, 1.0);
+        assert_eq!(gust.color, WHITE_PARTICLE_COLOR);
+        assert_eq!(gust.quad_size_curve, ParticleQuadSizeCurve::Constant);
+
+        let mut small_gust_random = ParticleRandom::new(38);
+        let small_gust = ParticleVisualDescriptor::FixedQuad {
+            size: 0.15,
+            color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+        }
+        .sample_for_command(&mut small_gust_random, [9.0, 9.0, 9.0]);
+        assert_close_f32(small_gust.base_quad_size, 0.15);
+        assert_eq!(small_gust.color, WHITE_PARTICLE_COLOR);
+        assert_eq!(small_gust.quad_size_curve, ParticleQuadSizeCurve::Constant);
 
         let mut soul_random = ParticleRandom::new(35);
         let soul = ParticleVisualDescriptor::SingleQuadScaled {
