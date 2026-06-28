@@ -421,37 +421,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
             // textured geometry (their dispatch call walks an empty pass list, a no-op), so they must NOT
             // appear here; every kind without a textured arm falls into `_ => {}`.
             match instance.kind {
-                EntityModelKind::Horse {
-                    variant,
-                    baby,
-                    markings,
-                } => {
-                    emit_horse_textured_model(
-                        &mut meshes,
-                        *instance,
-                        variant,
-                        baby,
-                        markings,
-                        atlas,
-                    );
-                }
-                EntityModelKind::Donkey {
-                    family,
-                    baby,
-                    has_chest,
-                } => {
-                    emit_donkey_textured_model(
-                        &mut meshes,
-                        *instance,
-                        family,
-                        baby,
-                        has_chest,
-                        atlas,
-                    );
-                }
-                EntityModelKind::UndeadHorse { family, baby } => {
-                    emit_undead_horse_textured_model(&mut meshes, *instance, family, baby, atlas);
-                }
                 _ => {}
             }
         }
@@ -3289,9 +3258,9 @@ fn emit_equine_textured_posed(
 /// (legs/head/tail nested under the body) whose `setupAnim` forces `xRot = -30°`, so it emits STATIC
 /// (unscaled, no equine posing — matching the colored baby path); its empty chest children make
 /// `hasChest` immaterial.
-fn emit_donkey_textured_model(
+pub(in crate::entity_models) fn render_donkey_textured_layers(
     meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
+    instance: &EntityModelInstance,
     family: DonkeyModelFamily,
     baby: bool,
     has_chest: bool,
@@ -3300,7 +3269,7 @@ fn emit_donkey_textured_model(
     let passes = donkey_textured_layer_passes(family, baby, has_chest);
     let pass = passes[0];
     if baby {
-        let transform = entity_model_root_transform(instance);
+        let transform = entity_model_root_transform(*instance);
         if layer_pass_hidden_by_invisible(meshes, pass) {
             return;
         }
@@ -3328,7 +3297,7 @@ fn emit_donkey_textured_model(
         DonkeyModelFamily::Donkey => 0.87,
         DonkeyModelFamily::Mule => 0.92,
     };
-    let transform = mesh_transformer_scaled_model_root_transform(instance, scale);
+    let transform = mesh_transformer_scaled_model_root_transform(*instance, scale);
     emit_equine_textured_layer_pass(
         meshes,
         parts,
@@ -3338,7 +3307,7 @@ fn emit_donkey_textured_model(
         1.0,
         pass,
         transform,
-        instance,
+        *instance,
         atlas,
     );
 }
@@ -3351,9 +3320,9 @@ fn emit_donkey_textured_model(
 /// lift are the shared `AbstractEquineModel.setupAnim` default-branch poses (the same as the undead
 /// horse), driven on the textured path here. The variant chooses the base coat, the markings the overlay;
 /// both ride the same `HorseModel` pose, so the overlay tracks the body for free.
-fn emit_horse_textured_model(
+pub(in crate::entity_models) fn render_horse_textured_layers(
     meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
+    instance: &EntityModelInstance,
     variant: HorseColorVariant,
     baby: bool,
     markings: HorseMarkings,
@@ -3373,7 +3342,7 @@ fn emit_horse_textured_model(
             5,
             -std::f32::consts::FRAC_PI_2,
             0.5,
-            entity_model_root_transform(instance),
+            entity_model_root_transform(*instance),
         )
     } else {
         (
@@ -3382,7 +3351,7 @@ fn emit_horse_textured_model(
             1,
             0.0,
             1.0,
-            mesh_transformer_scaled_model_root_transform(instance, HORSE_SCALE),
+            mesh_transformer_scaled_model_root_transform(*instance, HORSE_SCALE),
         )
     };
     let passes = horse_textured_layer_passes(variant, baby, markings);
@@ -3395,7 +3364,7 @@ fn emit_horse_textured_model(
         age_scale,
         passes[0],
         transform,
-        instance,
+        *instance,
         atlas,
     );
     // `HorseMarkingLayer`: a translucent white overlay of the SAME posed model, drawn after the base
@@ -3411,7 +3380,7 @@ fn emit_horse_textured_model(
             age_scale,
             pass,
             transform,
-            instance,
+            *instance,
             atlas,
         );
     }
@@ -3425,9 +3394,9 @@ fn emit_horse_textured_model(
 /// neck `1`, `getTailXRotOffset = 0`, `ageScale = 1`); the baby uses `BabyHorseModel.createBabyLayer`,
 /// which re-parents the parts (legs `[1, 2, 3, 4]`, neck `5`) and overrides `getTailXRotOffset = −π/2`,
 /// `ageScale = 0.5`. The ridden/eat/stand poses and the tail's `ageInTicks` yRot wag are deferred.
-fn emit_undead_horse_textured_model(
+pub(in crate::entity_models) fn render_undead_horse_textured_layers(
     meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
+    instance: &EntityModelInstance,
     family: UndeadHorseModelFamily,
     baby: bool,
     atlas: &EntityModelTextureAtlasLayout,
@@ -3458,8 +3427,8 @@ fn emit_undead_horse_textured_model(
         tail_x_rot_offset,
         age_scale,
         passes[0],
-        entity_model_root_transform(instance),
-        instance,
+        entity_model_root_transform(*instance),
+        *instance,
         atlas,
     );
 }

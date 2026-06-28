@@ -9,7 +9,6 @@ use super::super::geometry::*;
 use super::super::instances::EntityModelInstance;
 use super::super::model::EntityModel;
 use super::super::model_layers::*;
-use super::mounts::{emit_donkey_model, emit_horse_model, emit_undead_horse_model};
 use super::selection::{humanoid_model_color, quadruped_model_color};
 use super::transforms::{
     drowned_model_root_transform, entity_model_root_transform,
@@ -59,31 +58,6 @@ fn entity_model_mesh_with_options(
                 EntityModelKind::NoRender => {
                     // Vanilla `NoopRenderer` entities (area effect cloud, marker, interaction) render no
                     // model, so this arm emits nothing — exact parity with vanilla.
-                }
-                EntityModelKind::Horse { baby, .. } => {
-                    // The living horse now renders through the textured path (per-coat texture); the
-                    // colored emit is the full-mesh fallback only (skipped in the runtime mesh).
-                    if !skip_texture_backed_entities {
-                        emit_horse_model(&mut mesh, *instance, baby);
-                    }
-                }
-                EntityModelKind::Donkey {
-                    family,
-                    baby,
-                    has_chest,
-                } => {
-                    // The donkey/mule (adult and baby) now renders through the textured path; the
-                    // colored emit is the full-mesh fallback only.
-                    if !skip_texture_backed_entities {
-                        emit_donkey_model(&mut mesh, *instance, family, baby, has_chest);
-                    }
-                }
-                EntityModelKind::UndeadHorse { family, baby } => {
-                    // The skeleton/zombie horse now renders through the textured path; the colored
-                    // emit is the full-mesh fallback only (skipped in the texture-backed runtime mesh).
-                    if !skip_texture_backed_entities {
-                        emit_undead_horse_model(&mut mesh, *instance, family, baby);
-                    }
                 }
                 EntityModelKind::Quadruped { family, baby } => {
                     emit_quadruped_model(&mut mesh, *instance, family, baby)

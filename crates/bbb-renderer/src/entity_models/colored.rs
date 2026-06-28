@@ -3,6 +3,9 @@ mod runtime;
 mod selection;
 mod transforms;
 
+pub(in crate::entity_models) use mounts::{
+    emit_donkey_model, emit_horse_model, emit_undead_horse_model,
+};
 pub(in crate::entity_models) use selection::{
     camel_model_color, hoglin_model_color, llama_model_color, piglin_model_color,
 };

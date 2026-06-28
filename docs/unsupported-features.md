@@ -1868,12 +1868,14 @@ When an agent does any of the following, update this file in the same slice:
       that an adult iron horse body-armor submission is still recorded before
       only the folded armor geometry is suppressed.
       Horse, donkey/mule, and undead-horse base submissions plus the horse
-      markings overlay now come from explicit equine `EntityModelLayerPass`
-      lists (`horse_textured_layer_passes`, `donkey_textured_layer_passes`,
-      `undead_horse_textured_layer_passes`) with vanilla `ModelLayers.*`
-      metadata, texture refs, render type names, white tint, and
-      `(order, submit_sequence)` pinned before the custom equine hand-walk folds
-      geometry. A self-visible invisible marked horse now uses the shared
+      markings overlay now come from the shared dispatch sink rather than
+      colored/textured residual arms. The textured sink consumes explicit equine
+      `EntityModelLayerPass` lists (`horse_textured_layer_passes`,
+      `donkey_textured_layer_passes`, `undead_horse_textured_layer_passes`) with
+      vanilla `ModelLayers.*` metadata, texture refs, render type names, white
+      tint, and `(order, submit_sequence)` pinned before the custom equine
+      hand-walk folds geometry. Saddle/body-armor equipment layers remain
+      post-base helpers in vanilla layer order. A self-visible invisible marked horse now uses the shared
       force-transparent base submission path (`entityTranslucentCullItemTarget`,
       `38/255` alpha) and skips the `HorseMarkingLayer`, matching vanilla's
       `!state.isInvisible` layer gate.

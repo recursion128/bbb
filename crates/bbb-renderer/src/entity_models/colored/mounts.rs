@@ -141,7 +141,7 @@ fn emit_equine_posed(
     }
 }
 
-pub(super) fn emit_horse_model(
+pub(in crate::entity_models) fn emit_horse_model(
     mesh: &mut EntityModelMesh,
     instance: EntityModelInstance,
     baby: bool,
@@ -188,7 +188,7 @@ pub(super) fn emit_horse_model(
     );
 }
 
-pub(super) fn emit_donkey_model(
+pub(in crate::entity_models) fn emit_donkey_model(
     mesh: &mut EntityModelMesh,
     instance: EntityModelInstance,
     family: DonkeyModelFamily,
@@ -231,7 +231,7 @@ pub(super) fn emit_donkey_model(
     }
 }
 
-pub(super) fn emit_undead_horse_model(
+pub(in crate::entity_models) fn emit_undead_horse_model(
     mesh: &mut EntityModelMesh,
     instance: EntityModelInstance,
     family: UndeadHorseModelFamily,

@@ -1,39 +1,41 @@
-//! Shared per-entity model/transform selection for the "uniform" entities — those whose BOTH the
-//! colored and the textured render is fully described by a small fixed set of model/root-transform/
-//! textured-layer-pass tuples. The two render loops (colored [`super::colored`] and textured
-//! [`super::textured`]) used to each carry their own `match instance.kind` arm picking the model and
-//! transform; [`dispatch_uniform_entity_model`] is now the single source of truth for that selection,
-//! emitting through whichever [`EntityModelSink`] (colored or textured) the caller supplies. Entities
-//! whose two paths still diverge in model structure, part visibility, single-pass `render_textured_pass`
-//! emits, bespoke hand-walks, or custom layer walkers stay out of here and keep their own per-path
-//! residual arm. Scroll render types can still be dispatched when the model/root/pass tuple is
-//! otherwise uniform; the textured sink folds them into scroll buckets after recording submission
-//! metadata.
+//! Shared per-entity model/transform selection for dispatch-owned entities. Most entries are
+//! "uniform" entities whose colored and textured renders are fully described by a small fixed set of
+//! model/root-transform/textured-layer-pass tuples; a few specialized entries use sink methods when
+//! the colored fallback and textured submission generation intentionally diverge. The two render loops
+//! (colored [`super::colored`] and textured [`super::textured`]) used to each carry their own
+//! `match instance.kind` arm picking the model and transform; [`dispatch_uniform_entity_model`] is now
+//! the single source of truth for that selection, emitting through whichever [`EntityModelSink`]
+//! (colored or textured) the caller supplies. Entities whose two paths still diverge in model
+//! structure, part visibility, single-pass `render_textured_pass` emits, bespoke hand-walks, or custom
+//! layer walkers stay out of here and keep their own per-path residual arm. Scroll render types can
+//! still be dispatched when the model/root/pass tuple is otherwise uniform; the textured sink folds
+//! them into scroll buckets after recording submission metadata.
 
 use glam::{Mat4, Vec3};
 
 use super::catalog::{
-    CamelModelFamily, CowModelVariant, EntityDynamicPlayerSkinAtlasLayout, EntityModelKind,
-    EntityModelTextureAtlasLayout, EntityPlayerSkin, PiglinModelFamily, PlayerModelPartVisibility,
-    SkeletonModelFamily, ZombieVariantModelFamily,
+    CamelModelFamily, CowModelVariant, DonkeyModelFamily, EntityDynamicPlayerSkinAtlasLayout,
+    EntityModelKind, EntityModelTextureAtlasLayout, EntityPlayerSkin, HorseColorVariant,
+    HorseMarkings, PiglinModelFamily, PlayerModelPartVisibility, SkeletonModelFamily,
+    UndeadHorseModelFamily, ZombieVariantModelFamily,
 };
 use super::colored::{
     arrow_model_root_transform, boat_model_root_transform, camel_model_color,
     cave_spider_model_root_transform, cod_model_root_transform, creeper_model_root_transform,
-    end_crystal_model_root_transform, ender_dragon_model_root_transform,
-    entity_model_root_transform, evoker_fangs_model_root_transform, fox_model_root_transform,
-    ghast_model_root_transform, happy_ghast_model_root_transform, hoglin_model_color,
-    iron_golem_model_root_transform, leash_knot_model_root_transform, llama_model_color,
-    llama_spit_model_root_transform, magma_cube_model_root_transform,
-    mesh_transformer_scaled_model_root_transform, panda_model_root_transform,
-    phantom_model_root_transform, piglin_model_color, player_model_root_transform,
-    polar_bear_model_root_transform, pufferfish_model_root_transform, salmon_model_root_transform,
-    shulker_bullet_model_root_transform, shulker_model_root_transform, slime_model_root_transform,
-    squid_model_root_transform, trident_model_root_transform, tropical_fish_model_root_transform,
-    villager_adult_model_root_transform, wind_charge_model_root_transform,
-    wither_model_root_transform, wither_skeleton_model_root_transform,
-    wither_skull_model_root_transform, zombie_variant_color, zombie_variant_root_transform,
-    GIANT_SCALE,
+    emit_donkey_model, emit_horse_model, emit_undead_horse_model, end_crystal_model_root_transform,
+    ender_dragon_model_root_transform, entity_model_root_transform,
+    evoker_fangs_model_root_transform, fox_model_root_transform, ghast_model_root_transform,
+    happy_ghast_model_root_transform, hoglin_model_color, iron_golem_model_root_transform,
+    leash_knot_model_root_transform, llama_model_color, llama_spit_model_root_transform,
+    magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
+    panda_model_root_transform, phantom_model_root_transform, piglin_model_color,
+    player_model_root_transform, polar_bear_model_root_transform, pufferfish_model_root_transform,
+    salmon_model_root_transform, shulker_bullet_model_root_transform, shulker_model_root_transform,
+    slime_model_root_transform, squid_model_root_transform, trident_model_root_transform,
+    tropical_fish_model_root_transform, villager_adult_model_root_transform,
+    wind_charge_model_root_transform, wither_model_root_transform,
+    wither_skeleton_model_root_transform, wither_skull_model_root_transform, zombie_variant_color,
+    zombie_variant_root_transform, GIANT_SCALE,
 };
 use super::geometry::{
     emit_model_cube, emit_model_part, part_pose_transform, EntityModelMesh, PartPose,
@@ -82,13 +84,15 @@ use super::textured::{
     mooshroom_textured_layer_passes, nautilus_textured_layer_passes, panda_textured_layer_passes,
     parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
     piglin_textured_layer_passes, polar_bear_textured_layer_passes, rabbit_textured_layer_passes,
-    ravager_textured_layer_passes, render_end_crystal_textured_layers,
+    ravager_textured_layer_passes, render_donkey_textured_layers,
+    render_end_crystal_textured_layers, render_horse_textured_layers,
     render_no_overlay_scrolled_textured_layers, render_player_textured_layers,
-    render_textured_layers, salmon_textured_layer_passes, sheep_textured_layer_passes,
-    shulker_bullet_textured_layer_passes, shulker_textured_layer_passes,
-    silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
-    sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
-    squid_textured_layer_passes, tadpole_textured_layer_passes, trident_textured_layer_passes,
+    render_textured_layers, render_undead_horse_textured_layers, salmon_textured_layer_passes,
+    sheep_textured_layer_passes, shulker_bullet_textured_layer_passes,
+    shulker_textured_layer_passes, silverfish_textured_layer_passes,
+    skeleton_textured_layer_passes, slime_textured_layer_passes, sniffer_textured_layer_passes,
+    snow_golem_textured_layer_passes, spider_textured_layer_passes, squid_textured_layer_passes,
+    tadpole_textured_layer_passes, trident_textured_layer_passes,
     tropical_fish_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, warden_textured_layer_passes,
     wind_charge_textured_layer_passes, witch_textured_layer_passes,
@@ -156,6 +160,29 @@ pub(in crate::entity_models) trait EntityModelSink {
         &mut self,
         skin: EntityPlayerSkin,
         parts: PlayerModelPartVisibility,
+        instance: &EntityModelInstance,
+    );
+
+    fn horse_model(
+        &mut self,
+        variant: HorseColorVariant,
+        baby: bool,
+        markings: HorseMarkings,
+        instance: &EntityModelInstance,
+    );
+
+    fn donkey_model(
+        &mut self,
+        family: DonkeyModelFamily,
+        baby: bool,
+        has_chest: bool,
+        instance: &EntityModelInstance,
+    );
+
+    fn undead_horse_model(
+        &mut self,
+        family: UndeadHorseModelFamily,
+        baby: bool,
         instance: &EntityModelInstance,
     );
 }
@@ -231,6 +258,44 @@ impl EntityModelSink for ColoredSink<'_> {
             instance,
             player_model_root_transform(*instance),
         );
+    }
+
+    fn horse_model(
+        &mut self,
+        _variant: HorseColorVariant,
+        baby: bool,
+        _markings: HorseMarkings,
+        instance: &EntityModelInstance,
+    ) {
+        if self.skip_texture_backed {
+            return;
+        }
+        emit_horse_model(self.mesh, *instance, baby);
+    }
+
+    fn donkey_model(
+        &mut self,
+        family: DonkeyModelFamily,
+        baby: bool,
+        has_chest: bool,
+        instance: &EntityModelInstance,
+    ) {
+        if self.skip_texture_backed {
+            return;
+        }
+        emit_donkey_model(self.mesh, *instance, family, baby, has_chest);
+    }
+
+    fn undead_horse_model(
+        &mut self,
+        family: UndeadHorseModelFamily,
+        baby: bool,
+        instance: &EntityModelInstance,
+    ) {
+        if self.skip_texture_backed {
+            return;
+        }
+        emit_undead_horse_model(self.mesh, *instance, family, baby);
     }
 }
 
@@ -311,19 +376,60 @@ impl EntityModelSink for TexturedSink<'_> {
             self.dynamic_player_skin_atlas,
         );
     }
+
+    fn horse_model(
+        &mut self,
+        variant: HorseColorVariant,
+        baby: bool,
+        markings: HorseMarkings,
+        instance: &EntityModelInstance,
+    ) {
+        render_horse_textured_layers(self.meshes, instance, variant, baby, markings, self.atlas);
+    }
+
+    fn donkey_model(
+        &mut self,
+        family: DonkeyModelFamily,
+        baby: bool,
+        has_chest: bool,
+        instance: &EntityModelInstance,
+    ) {
+        render_donkey_textured_layers(self.meshes, instance, family, baby, has_chest, self.atlas);
+    }
+
+    fn undead_horse_model(
+        &mut self,
+        family: UndeadHorseModelFamily,
+        baby: bool,
+        instance: &EntityModelInstance,
+    ) {
+        render_undead_horse_textured_layers(self.meshes, instance, family, baby, self.atlas);
+    }
 }
 
-/// Emits `instance` through `sink` if it is a "uniform" entity — one whose BOTH colored and textured
-/// rendering is fully described by a fixed sequence of model/root-transform/layer-pass tuples.
-/// Returns `true` if emitted, `false` for bespoke entities (the caller then renders them through its
-/// own path-specific residual arm). This is the single source of truth for uniform entities'
-/// model/transform selection, replacing the duplicated arms in the two render matches.
+/// Emits `instance` through `sink` if its base submission is dispatch-owned. Returns `true` if emitted,
+/// `false` for bespoke entities (the caller then renders them through its own path-specific residual
+/// arm). This is the single source of truth for dispatch-owned model/transform selection, replacing
+/// the duplicated arms in the two render matches.
 pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink>(
     instance: &EntityModelInstance,
     sink: &mut S,
 ) -> bool {
     match instance.kind {
         EntityModelKind::Player { skin, parts } => sink.player_model(skin, parts, instance),
+        EntityModelKind::Horse {
+            variant,
+            baby,
+            markings,
+        } => sink.horse_model(variant, baby, markings, instance),
+        EntityModelKind::Donkey {
+            family,
+            baby,
+            has_chest,
+        } => sink.donkey_model(family, baby, has_chest, instance),
+        EntityModelKind::UndeadHorse { family, baby } => {
+            sink.undead_horse_model(family, baby, instance)
+        }
         // ---- Both-uniform (colored + textured), passes from a `*_textured_layer_passes` fn ----
         EntityModelKind::Chicken { variant, baby } => sink.model(
             ChickenModel::new(variant, baby),
