@@ -379,7 +379,8 @@ When an agent does any of the following, update this file in the same slice:
       ordinary humanoid main-hand items plus generic non-skull HEAD items in
       visible, hidden, and hidden-glowing states. `CapeLayer` remains suppressed
       for invisible players because vanilla explicitly gates it on
-      `!state.isInvisible`.
+      `!state.isInvisible`. Texture-backed static-atlas outline submissions now
+      also retain CPU-side folded outline geometry when the texture is present.
       Colored-path force-transparent output and GPU outline presentation remain
       deferred under the `outlineColor` slot.
     - deferred slots to add with their own slices, each carrying real vanilla
@@ -1026,8 +1027,8 @@ When an agent does any of the following, update this file in the same slice:
       preserve entity light and clear the white overlay column like vanilla
       `renderColoredCutoutModel(... getOverlayCoords(state, 0.0F))`
   - Finish remaining sheep presentation parity:
-    - implement folded/GPU invisible glowing outline wool rendering; base and wool
-      outline submission metadata is now recorded
+    - implement GPU invisible glowing outline presentation; base and wool outline
+      submission metadata plus CPU-side folded outline geometry are now recorded
     - implement colored-path force-transparent output and remaining base-model
       outline handling
   - Finish wolf presentation parity:
@@ -1661,11 +1662,13 @@ When an agent does any of the following, update this file in the same slice:
       while wool/undercoat layers remain skipped by `state.isInvisible`; invisible
       glowing sheep now records vanilla base and `SheepWoolLayer` wool outline
       submissions (adult wool order `(0,2)`, baby wool order `(1,2)`) with
-      `outlineColor` metadata while `SheepWoolUndercoatLayer` still skips.
-      Folded/GPU invisible glowing outline
-      wool rendering, colored-path force-transparent / outline handling, and
-      remaining render-state extraction remain unsupported; outline submission
-      metadata is now recorded from the shared glowing flag and scoreboard team color
+      `outlineColor` metadata while `SheepWoolUndercoatLayer` still skips. The
+      renderer now retains CPU-side folded outline geometry for the base plus
+      wool passes with each submission's tint/light/overlay metadata. GPU
+      invisible glowing outline presentation, colored-path force-transparent /
+      outline handling, and remaining render-state extraction remain
+      unsupported; outline submission metadata is recorded from the shared
+      glowing flag and scoreboard team color
     - wolf entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AdultWolfModel`, `BabyWolfModel`, and `WolfRenderer`,
       including nested real-head and tail parts plus baked baby
@@ -1733,8 +1736,11 @@ When an agent does any of the following, update this file in the same slice:
       exception while the collar layer remains skipped by `state.isInvisible`;
       missing-atlas coverage pins that this force-transparent base submit is still recorded when
       `wolf_tame.png` is absent, suppressing only folded translucent geometry.
-      Colored-path force-transparent / outline presentation, glint/foil, and
-      remaining render-state extraction remain unsupported
+      Invisible-glowing wolf base outline submissions now also retain CPU-side
+      folded outline geometry with the submission tint/light/overlay metadata,
+      including the armor-equipped invisible exception path. Colored-path
+      force-transparent / GPU outline presentation, glint/foil, and remaining
+      render-state extraction remain unsupported
     - base horse entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AbstractEquineModel.createBodyMesh(CubeDeformation.NONE)`,
       `BabyHorseModel.createBabyMesh(CubeDeformation.NONE)`, `HorseModel`, and

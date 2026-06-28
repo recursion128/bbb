@@ -151,6 +151,10 @@ pub(super) struct EntityModelTexturedMeshes {
     pub(super) cutout: EntityModelTexturedMesh,
     pub(super) translucent: EntityModelTexturedMesh,
     pub(super) eyes: EntityModelTexturedMesh,
+    /// CPU-retained geometry for vanilla `RenderTypes.outline(...)` submissions. This preserves the
+    /// exact model geometry and metadata while GPU outline presentation remains a separate renderer
+    /// pass.
+    pub(super) outline: EntityModelTexturedMesh,
     /// Ready remote player skins are rendered through a dedicated atlas, preserving their vanilla
     /// cutout/translucent render type while swapping only the texture source.
     pub(super) dynamic_player_skin_cutout: EntityModelTexturedMesh,
@@ -180,6 +184,7 @@ impl EntityModelTexturedMeshes {
             cutout: EntityModelTexturedMesh::new(),
             translucent: EntityModelTexturedMesh::new(),
             eyes: EntityModelTexturedMesh::new(),
+            outline: EntityModelTexturedMesh::new(),
             dynamic_player_skin_cutout: EntityModelTexturedMesh::new(),
             dynamic_player_skin_translucent: EntityModelTexturedMesh::new(),
             dynamic_player_texture_cutout: EntityModelTexturedMesh::new(),
@@ -203,12 +208,11 @@ impl EntityModelTexturedMeshes {
             EntityModelLayerRenderBucket::Cutout => &mut self.cutout,
             EntityModelLayerRenderBucket::Translucent => &mut self.translucent,
             EntityModelLayerRenderBucket::Eyes => &mut self.eyes,
+            EntityModelLayerRenderBucket::OutlineOnly => &mut self.outline,
             EntityModelLayerRenderBucket::Scroll | EntityModelLayerRenderBucket::AdditiveScroll => {
                 panic!("scroll render types are not emitted into textured mesh buckets")
             }
-            EntityModelLayerRenderBucket::OutlineOnly
-            | EntityModelLayerRenderBucket::DepthOnly
-            | EntityModelLayerRenderBucket::GlintOnly => {
+            EntityModelLayerRenderBucket::DepthOnly | EntityModelLayerRenderBucket::GlintOnly => {
                 panic!("non-color render types are not emitted into textured mesh buckets")
             }
         }
@@ -785,9 +789,6 @@ fn render_textured_submission(
     emit: impl FnOnce(&mut EntityModelTexturedMesh, EntityModelTextureAtlasEntry),
 ) {
     let submission = meshes.record_submission(submit);
-    if submit.render_type.mesh_bucket() == EntityModelLayerRenderBucket::OutlineOnly {
-        return;
-    }
     if let Some(entry) = entity_model_texture_atlas_entry(atlas, submit.texture) {
         let mesh = meshes.mesh_mut(submit.render_type);
         let start = mesh.vertices.len();

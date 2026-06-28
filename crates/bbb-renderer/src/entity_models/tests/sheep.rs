@@ -804,6 +804,16 @@ fn sheep_textured_mesh_uses_vanilla_uvs_tints_and_layer_visibility() {
     assert!(glowing.cutout.vertices.is_empty());
     assert!(glowing.translucent.vertices.is_empty());
     assert!(glowing.eyes.vertices.is_empty());
+    assert_eq!(glowing.outline.cutout_faces, 72);
+    assert_eq!(glowing.outline.vertices.len(), 288);
+    assert_eq!(glowing.outline.indices.len(), 432);
+    for (submit, range) in [(base, 0..144), (wool, 144..288)] {
+        assert!(glowing.outline.vertices[range].iter().all(|vertex| {
+            vertex.tint == submit.tint
+                && vertex.light == submit.light
+                && vertex.overlay == submit.overlay
+        }));
+    }
 }
 
 #[test]
@@ -1337,6 +1347,7 @@ fn sheep_submission_probe(instance: EntityModelInstance) -> EntityModelInstance 
 fn assert_sheep_folded_meshes_are_cutout_only(meshes: &EntityModelTexturedMeshes) {
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.outline.vertices.is_empty());
     assert!(meshes.dynamic_player_skin_cutout.vertices.is_empty());
     assert!(meshes.dynamic_player_skin_translucent.vertices.is_empty());
     assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());

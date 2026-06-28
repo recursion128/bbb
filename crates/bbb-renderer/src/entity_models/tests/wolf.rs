@@ -113,6 +113,14 @@ fn wolf_textured_mesh_uses_vanilla_uvs_and_collar_tint() {
     assert!(glowing.cutout.vertices.is_empty());
     assert!(glowing.translucent.vertices.is_empty());
     assert!(glowing.eyes.vertices.is_empty());
+    assert_eq!(glowing.outline.cutout_faces, 66);
+    assert_eq!(glowing.outline.vertices.len(), 264);
+    assert_eq!(glowing.outline.indices.len(), 396);
+    assert!(glowing.outline.vertices.iter().all(|vertex| {
+        vertex.tint == submit.tint
+            && vertex.light == submit.light
+            && vertex.overlay == submit.overlay
+    }));
 
     // Vanilla `LivingEntityRenderer.getRenderType`: an invisible wolf that remains visible to this
     // client submits only the base body as `entityTranslucentCullItemTarget` with the
@@ -1037,6 +1045,14 @@ fn invisible_wolf_body_armor_keeps_vanilla_layer_submissions() {
         glowing_hidden.render_state.overlay_coords()
     );
     assert_eq!(outline.outline_color, 0xff33_66cc);
+    assert_eq!(glowing.outline.cutout_faces, 66);
+    assert_eq!(glowing.outline.vertices.len(), 264);
+    assert_eq!(glowing.outline.indices.len(), 396);
+    assert!(glowing.outline.vertices.iter().all(|vertex| {
+        vertex.tint == outline.tint
+            && vertex.light == outline.light
+            && vertex.overlay == outline.overlay
+    }));
     assert_wolf_armor_submissions_for_invisible_state(
         &glowing.submissions,
         1,
@@ -2042,6 +2058,7 @@ fn assert_wolf_folded_meshes_match_submission_buckets(
         assert!(meshes.translucent.vertices.is_empty());
     }
     assert!(meshes.eyes.vertices.is_empty());
+    assert!(meshes.outline.vertices.is_empty());
     assert!(meshes.dynamic_player_skin_cutout.vertices.is_empty());
     assert!(meshes.dynamic_player_skin_translucent.vertices.is_empty());
     assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
