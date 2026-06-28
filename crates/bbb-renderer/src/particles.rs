@@ -1342,6 +1342,42 @@ mod tests {
         assert_range_f64(spell.velocity[1], 0.0, 0.06);
         assert_range_f64(spell.velocity[2].abs(), 0.0, 0.008);
 
+        let mut pause_random = ParticleRandom::new(59);
+        let mut pause_command = spawn_command("minecraft:pause_mob_growth", 1.0);
+        pause_command.velocity = [1.0, 2.0, 3.0];
+        let pause_growth = ParticleInstance::from_spawn_command(pause_command, &mut pause_random);
+        assert_eq!(
+            pause_growth.provider,
+            "SimpleVerticalParticle.PauseMobGrowthProvider"
+        );
+        assert_eq!(
+            pause_growth.sprite_selection,
+            ParticleSpriteSelection::Random
+        );
+        assert_range_f32(pause_growth.base_quad_size, 0.05, 0.22);
+        assert_eq!(pause_growth.color, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(
+            pause_growth.quad_size_curve,
+            ParticleQuadSizeCurve::Constant
+        );
+        assert_eq!(pause_growth.lifetime_ticks, 8);
+        assert_eq!(pause_growth.velocity, [1.0, 1.97, 3.0]);
+        assert_eq!(pause_growth.friction, 0.98);
+        assert_eq!(pause_growth.gravity, 0.0);
+        assert!(pause_growth.has_physics);
+
+        let mut reset_random = ParticleRandom::new(60);
+        let mut reset_command = spawn_command("minecraft:reset_mob_growth", 1.0);
+        reset_command.velocity = [1.0, 2.0, 3.0];
+        let reset_growth = ParticleInstance::from_spawn_command(reset_command, &mut reset_random);
+        assert_eq!(
+            reset_growth.provider,
+            "SimpleVerticalParticle.ResetMobGrowthProvider"
+        );
+        assert_eq!(reset_growth.lifetime_ticks, 8);
+        assert_eq!(reset_growth.velocity, [1.0, 2.03, 3.0]);
+        assert!(reset_growth.has_physics);
+
         let mut witch_random = ParticleRandom::new(62);
         let witch = ParticleInstance::from_spawn_command(
             spawn_command("minecraft:witch", 1.0),

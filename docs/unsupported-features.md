@@ -254,6 +254,12 @@ When an agent does any of the following, update this file in the same slice:
         no-physics metadata; alpha fade, in-air downward drift, full-bright
         light coords, and the translucent particle layer remain deferred until
         those per-particle states are represented
+      - `SimpleVerticalParticle.PauseMobGrowthProvider` and
+        `ResetMobGrowthProvider` random sprite selection, random `0.5..1.1`
+        quad-size scaling, fixed lifetime `8`, command velocity with
+        `-0.03` / `+0.03` y offset, default `0.98` friction, zero gravity, and
+        physics metadata; the opaque particle layer remains deferred until that
+        per-particle render-layer state is represented
       - `PlayerCloudParticle.Provider` vanilla constructor-random initial
         speed plus command velocity, and `SneezeProvider` fixed green tint /
         alpha override on the player-cloud curve
@@ -4606,6 +4612,12 @@ When an agent does any of the following, update this file in the same slice:
         `0.92`, zero gravity, and no-physics metadata. Alpha fade, in-air
         downward drift, full-bright light coords, and the translucent particle
         layer remain deferred until those per-particle states are represented.
+      - particle descriptors map `SimpleVerticalParticle.PauseMobGrowthProvider`
+        and `ResetMobGrowthProvider` to random sprites, random `0.5..1.1`
+        quad-size scaling, fixed lifetime `8`, command velocity with
+        `-0.03` / `+0.03` y offset, default `0.98` friction, zero gravity, and
+        physics metadata. The opaque particle layer remains deferred until that
+        per-particle render-layer state is represented.
     - native dispatcher and offline probe recording/playback for
       `LevelEventHandler` portal travel local ambience:
       - event `1032`

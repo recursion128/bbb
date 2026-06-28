@@ -153,6 +153,9 @@ pub(crate) enum ParticleInitialVelocityDescriptor {
     CommandAxisScaled {
         scale: [f64; 3],
     },
+    CommandWithYOffset {
+        y_offset: f64,
+    },
     RisingParticle,
     ParticleConstructorScaled {
         scale: f64,
@@ -709,6 +712,32 @@ impl ParticleDescriptor {
                 has_physics: false,
                 speed_up_when_y_motion_is_blocked: true,
             },
+            "minecraft:pause_mob_growth" | "minecraft:reset_mob_growth" => Self {
+                provider: if particle_id == "minecraft:reset_mob_growth" {
+                    "SimpleVerticalParticle.ResetMobGrowthProvider"
+                } else {
+                    "SimpleVerticalParticle.PauseMobGrowthProvider"
+                },
+                lifetime: ParticleLifetimeDescriptor::Fixed(8),
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SingleQuadRandomScaled {
+                    min_scale: 0.5,
+                    max_scale: 1.1,
+                    color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::CommandWithYOffset {
+                    y_offset: if particle_id == "minecraft:reset_mob_growth" {
+                        0.03
+                    } else {
+                        -0.03
+                    },
+                },
+                friction: 0.98,
+                gravity: 0.0,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
             "minecraft:witch" => Self {
                 provider: "SpellParticle.WitchProvider",
                 lifetime: ParticleLifetimeDescriptor::EightOverRandom,
@@ -1157,6 +1186,11 @@ impl ParticleInitialVelocityDescriptor {
                 command_velocity[0] * scale[0],
                 command_velocity[1] * scale[1],
                 command_velocity[2] * scale[2],
+            ],
+            Self::CommandWithYOffset { y_offset } => [
+                command_velocity[0],
+                command_velocity[1] + y_offset,
+                command_velocity[2],
             ],
             Self::RisingParticle => {
                 let x = command_velocity[0] + random_signed_velocity(random);
@@ -2228,6 +2262,46 @@ mod tests {
             );
         }
         assert_descriptor(
+            "minecraft:pause_mob_growth",
+            "SimpleVerticalParticle.PauseMobGrowthProvider",
+            ParticleLifetimeDescriptor::Fixed(8),
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::SingleQuadRandomScaled {
+                min_scale: 0.5,
+                max_scale: 1.1,
+                color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                quad_size_curve: ParticleQuadSizeCurve::Constant,
+            },
+            0.98,
+            0.0,
+            true,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:pause_mob_growth").initial_velocity,
+            ParticleInitialVelocityDescriptor::CommandWithYOffset { y_offset: -0.03 }
+        );
+        assert_descriptor(
+            "minecraft:reset_mob_growth",
+            "SimpleVerticalParticle.ResetMobGrowthProvider",
+            ParticleLifetimeDescriptor::Fixed(8),
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::SingleQuadRandomScaled {
+                min_scale: 0.5,
+                max_scale: 1.1,
+                color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                quad_size_curve: ParticleQuadSizeCurve::Constant,
+            },
+            0.98,
+            0.0,
+            true,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:reset_mob_growth").initial_velocity,
+            ParticleInitialVelocityDescriptor::CommandWithYOffset { y_offset: 0.03 }
+        );
+        assert_descriptor(
             "minecraft:witch",
             "SpellParticle.WitchProvider",
             ParticleLifetimeDescriptor::EightOverRandom,
@@ -2869,6 +2943,11 @@ mod tests {
         assert_range_f64(cloud_velocity[0], 0.98, 1.02);
         assert_range_f64(cloud_velocity[1], 1.99, 2.03);
         assert_range_f64(cloud_velocity[2], 2.98, 3.02);
+
+        let vertical_velocity =
+            ParticleInitialVelocityDescriptor::CommandWithYOffset { y_offset: -0.03 }
+                .sample([1.0, 2.0, 3.0], &mut ParticleRandom::new(47));
+        assert_eq!(vertical_velocity, [1.0, 1.97, 3.0]);
 
         let mut bubble_random = ParticleRandom::new(27);
         let bubble_velocity = ParticleInitialVelocityDescriptor::CommandScaledPlusRandom {
