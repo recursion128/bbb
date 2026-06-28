@@ -6,8 +6,8 @@ use super::colored::{
 };
 use super::dispatch::{
     dispatch_late_entity_layers, dispatch_post_armor_entity_layers,
-    dispatch_post_custom_head_entity_layers, dispatch_post_wings_entity_layers,
-    dispatch_uniform_entity_model, TexturedSink,
+    dispatch_post_base_entity_layers, dispatch_post_custom_head_entity_layers,
+    dispatch_post_wings_entity_layers, dispatch_uniform_entity_model, TexturedSink,
 };
 use super::held_item::custom_head_skull_transform;
 use super::model::{EntityModel, ModelPart};
@@ -437,12 +437,9 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
             );
             continue;
         }
-        // Worn armor is a cutout overlay draped on the host humanoid pose; it runs regardless of
-        // `handled` and folds into the cutout pass before the shared light/overlay fill below.
-        emit_worn_humanoid_armor(&mut meshes, *instance, atlas);
-        // CustomHeadLayer skulls run after the current armor helper and before WingsLayer. Dispatch
-        // owns those and the later player/villager layer submissions while this loop preserves the
-        // vanilla append points relative to the remaining generic helpers.
+        // HumanoidArmorLayer, CustomHeadLayer skulls, WingsLayer, player-only late layers, and
+        // villager profession overlays are now dispatch-owned while this loop preserves their
+        // current vanilla append points relative to any remaining generic helpers.
         {
             let mut sink = TexturedSink {
                 meshes: &mut meshes,
@@ -450,6 +447,7 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
                 dynamic_player_skin_atlas,
                 dynamic_player_texture_atlas,
             };
+            dispatch_post_base_entity_layers(instance, &mut sink);
             dispatch_post_armor_entity_layers(instance, &mut sink);
             dispatch_post_custom_head_entity_layers(instance, &mut sink);
             dispatch_post_wings_entity_layers(instance, &mut sink);
@@ -1697,13 +1695,13 @@ fn emit_invisible_living_layers_without_invisible_gate(
     dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
     dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) {
-    emit_worn_humanoid_armor(meshes, instance, atlas);
     let mut sink = TexturedSink {
         meshes,
         atlas,
         dynamic_player_skin_atlas,
         dynamic_player_texture_atlas,
     };
+    dispatch_post_base_entity_layers(&instance, &mut sink);
     dispatch_post_armor_entity_layers(&instance, &mut sink);
     dispatch_post_custom_head_entity_layers(&instance, &mut sink);
 }
@@ -1717,7 +1715,7 @@ fn emit_invisible_living_layers_without_invisible_gate(
 /// family (skeleton, stray, wither/normal/bogged), the player, the adult piglin family (piglin,
 /// piglin brute, zombified piglin), and baby piglin / zombified-piglin armor models. DEFERRED:
 /// enchant-glint, armor-trim, and any remaining mob-specific armor models.
-fn emit_worn_humanoid_armor(
+pub(in crate::entity_models) fn render_worn_humanoid_armor(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,

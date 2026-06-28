@@ -2152,7 +2152,10 @@ When an agent does any of the following, update this file in the same slice:
       (`ArmorMaterials.<MAT>` → `EquipmentAssets.<MAT>`: leather, copper, chainmail, iron, gold, diamond,
       turtle_scute, netherite) resolve to their `textures/entity/equipment/humanoid/<asset>.png`
       (head/chest/feet) and `humanoid_leggings/<asset>.png` (legs) textures, stitched into the entity
-      atlas. The humanoid armor wearers are covered (`emit_worn_humanoid_armor` dispatch): the zombie
+      atlas. HumanoidArmorLayer submissions now run through a dispatch-owned
+      post-base hook rather than direct post-base helper calls, including the
+      invisible branch where vanilla still runs ungated layers. The humanoid armor
+      wearers are covered by that dispatch hook: the zombie
       family (zombie, husk with `HUSK_SCALE`, drowned, zombie villager), the skeleton family (skeleton,
       stray, parched, wither skeleton, bogged), the player, and the piglin family (piglin, piglin brute,
       zombified piglin) —
@@ -2371,8 +2374,8 @@ When an agent does any of the following, update this file in the same slice:
       bogged clothing overlay submissions are still recorded without their
       overlay textures while only folded overlay geometry is suppressed.
       Skeleton-family
-      armor is covered by `emit_worn_humanoid_armor`
-      for skeleton, stray, parched, wither skeleton, and bogged
+      armor is covered by the dispatch-owned HumanoidArmorLayer hook for
+      skeleton, stray, parched, wither skeleton, and bogged
     - creeper entities as renderer-owned vanilla 26.1
       `CreeperModel.createBodyLayer(CubeDeformation.NONE)` geometry, with the
       official `textures/entity/creeper/creeper.png` texture reference,

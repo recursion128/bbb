@@ -97,12 +97,12 @@ use super::textured::{
     render_player_spin_attack_effect_layer, render_player_textured_layers,
     render_strider_saddle_layer, render_textured_layers, render_trident_foil_submission,
     render_undead_horse_textured_layers, render_villager_profession_layers, render_wings_layer,
-    render_wither_energy_swirl, render_wolf_body_armor_layer, salmon_textured_layer_passes,
-    sheep_textured_layer_passes, shulker_bullet_textured_layer_passes,
-    shulker_textured_layer_passes, silverfish_textured_layer_passes,
-    skeleton_textured_layer_passes, slime_textured_layer_passes, sniffer_textured_layer_passes,
-    snow_golem_textured_layer_passes, spider_textured_layer_passes, squid_textured_layer_passes,
-    tadpole_textured_layer_passes, trident_textured_layer_passes,
+    render_wither_energy_swirl, render_wolf_body_armor_layer, render_worn_humanoid_armor,
+    salmon_textured_layer_passes, sheep_textured_layer_passes,
+    shulker_bullet_textured_layer_passes, shulker_textured_layer_passes,
+    silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
+    sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
+    squid_textured_layer_passes, tadpole_textured_layer_passes, trident_textured_layer_passes,
     tropical_fish_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, warden_textured_layer_passes,
     wind_charge_textured_layer_passes, witch_textured_layer_passes,
@@ -314,6 +314,8 @@ pub(in crate::entity_models) trait EntityModelSink {
     );
 
     fn player_post_wings_layers(&mut self, _instance: &EntityModelInstance) {}
+
+    fn worn_humanoid_armor(&mut self, _instance: &EntityModelInstance) {}
 
     fn custom_head_skull_layer(&mut self, _instance: &EntityModelInstance) {}
 
@@ -757,6 +759,10 @@ impl EntityModelSink for TexturedSink<'_> {
     fn player_post_wings_layers(&mut self, instance: &EntityModelInstance) {
         render_player_parrot_on_shoulder_layer(self.meshes, *instance, self.atlas);
         render_player_spin_attack_effect_layer(self.meshes, *instance, self.atlas);
+    }
+
+    fn worn_humanoid_armor(&mut self, instance: &EntityModelInstance) {
+        render_worn_humanoid_armor(self.meshes, *instance, self.atlas);
     }
 
     fn custom_head_skull_layer(&mut self, instance: &EntityModelInstance) {
@@ -1692,6 +1698,24 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
         _ => return false,
     }
     true
+}
+
+/// Dispatch-owned layers whose current textured append point is immediately after the base model.
+pub(in crate::entity_models) fn dispatch_post_base_entity_layers<S: EntityModelSink>(
+    instance: &EntityModelInstance,
+    sink: &mut S,
+) {
+    match instance.kind {
+        EntityModelKind::ArmorStand { .. }
+        | EntityModelKind::Zombie { .. }
+        | EntityModelKind::Giant
+        | EntityModelKind::ZombieVariant { .. }
+        | EntityModelKind::Skeleton
+        | EntityModelKind::SkeletonVariant { .. }
+        | EntityModelKind::Player { .. }
+        | EntityModelKind::Piglin { .. } => sink.worn_humanoid_armor(instance),
+        _ => {}
+    }
 }
 
 /// Dispatch-owned layers whose current textured append point is after the worn armor helper.
