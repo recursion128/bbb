@@ -1243,12 +1243,14 @@ When an agent does any of the following, update this file in the same slice:
         `item_frames` bakes the border by transcribing `block/template_item_frame`
         or `block/template_item_frame_map` (four `birch_planks` bars + the
         `item_frame` / `glow_item_frame` back panel) into the blocks atlas via
-        the existing `Boxes` item-bake path, and the framed item to block/flat
-        quads with its `FIXED` display transform. The facing wall orients the
-        model (`Rx(xRot)·Ry(yRot)`), ordinary items are pushed `0.4375` out and
-        spun by rotation at scale `0.5`; invisible item frames mirror vanilla by
-        clearing the frame model (no wooden border) and translating contents to
-        `0.5` instead. Glow item-frame lighting follows vanilla
+        item-baked free-form quads, preserving vanilla fractional model depths
+        (`template_item_frame` back panel `from.z = 15.5`; every
+        `template_item_frame_map` element `from.z = 15.001`), and the framed item
+        to block/flat quads with its `FIXED` display transform. The facing wall
+        orients the model (`Rx(xRot)·Ry(yRot)`), ordinary items are pushed
+        `0.4375` out and spun by rotation at scale `0.5`; invisible item frames
+        mirror vanilla by clearing the frame model (no wooden border) and
+        translating contents to `0.5` instead. Glow item-frame lighting follows vanilla
         `ItemFrameRenderer`: the border/model light raises block light to at
         least `GLOW_FRAME_BRIGHTNESS = 5`, framed item contents use the
         full-bright `15728880` light coords, and filled maps use the distinct
@@ -1271,9 +1273,7 @@ When an agent does any of the following, update this file in the same slice:
         clamp (`25 / width`, max `6/9`), `textures/font/ascii.png` glyph atlas,
         `RenderTypes.text`, white tint, decoration label transform, light
         coords, and `order=1` submit sequence. If map data is absent, the frame
-        falls back to the ordinary `FIXED` item model. Still deferred: the
-        fractional frame depths (`15.5` / `15.001`) are still rounded to `15` in
-        the hand-written border boxes.
+        falls back to the ordinary `FIXED` item model.
       - fourth consumer DONE (HUD 3D inventory icons): each hotbar slot holding
         a block item renders its block model as a 3D icon (vanilla 3D inventory
         item rendering) instead of the flat 2D sprite. Native

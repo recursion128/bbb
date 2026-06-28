@@ -935,13 +935,28 @@ fn block_model_box_with_face_texture(
 fn item_frame_border_bakes_the_five_template_elements() {
     // Vanilla `block/template_item_frame`: a back panel (north + south faces) plus four wood bars —
     // the bottom and top bars show all six faces, the left and right bars omit their up/down faces.
-    // 2 + 6 + 6 + 4 + 4 = 22 quads. The whole border sits in the back `0..=16` slab (z >= 15).
+    // 2 + 6 + 6 + 4 + 4 = 22 quads. The wood bars sit at z=15..16, while the
+    // back panel preserves vanilla's fractional `from.z = 15.5`.
     let textures = TerrainTextureState::default();
     let quads = textures.item_frame_border_quads(false, false);
     assert_eq!(quads.len(), 22);
-    assert!(quads
+    let back_panel = quads
         .iter()
-        .all(|quad| quad.corners.iter().all(|corner| corner[2] >= 15.0 - 1e-6)));
+        .filter(|quad| quad_x_bounds(quad) == (3.0, 13.0) && quad_y_bounds(quad) == (3.0, 13.0))
+        .collect::<Vec<_>>();
+    assert_eq!(back_panel.len(), 2);
+    assert_eq!(
+        quad_z_bounds(back_panel[0])
+            .0
+            .min(quad_z_bounds(back_panel[1]).0),
+        15.5
+    );
+    assert_eq!(
+        quad_z_bounds(back_panel[0])
+            .1
+            .max(quad_z_bounds(back_panel[1]).1),
+        16.0
+    );
     // The bars span the full 2..=14 frame footprint in X and Y.
     let min_x = quads
         .iter()
@@ -980,4 +995,41 @@ fn item_frame_map_border_uses_the_full_template_footprint() {
         .fold(f32::NEG_INFINITY, f32::max);
     assert_eq!((min_x, max_x), (0.0, 16.0));
     assert_eq!((min_y, max_y), (0.0, 16.0));
+    let min_z = quads
+        .iter()
+        .flat_map(|quad| quad.corners.iter().map(|corner| corner[2]))
+        .fold(f32::INFINITY, f32::min);
+    let max_z = quads
+        .iter()
+        .flat_map(|quad| quad.corners.iter().map(|corner| corner[2]))
+        .fold(f32::NEG_INFINITY, f32::max);
+    assert!((min_z - 15.001).abs() < 1e-6);
+    assert_eq!(max_z, 16.0);
+}
+
+fn quad_x_bounds(quad: &bbb_renderer::ItemModelQuad) -> (f32, f32) {
+    quad.corners
+        .iter()
+        .map(|corner| corner[0])
+        .fold((f32::INFINITY, f32::NEG_INFINITY), |(min, max), x| {
+            (min.min(x), max.max(x))
+        })
+}
+
+fn quad_y_bounds(quad: &bbb_renderer::ItemModelQuad) -> (f32, f32) {
+    quad.corners
+        .iter()
+        .map(|corner| corner[1])
+        .fold((f32::INFINITY, f32::NEG_INFINITY), |(min, max), y| {
+            (min.min(y), max.max(y))
+        })
+}
+
+fn quad_z_bounds(quad: &bbb_renderer::ItemModelQuad) -> (f32, f32) {
+    quad.corners
+        .iter()
+        .map(|corner| corner[2])
+        .fold((f32::INFINITY, f32::NEG_INFINITY), |(min, max), z| {
+            (min.min(z), max.max(z))
+        })
 }

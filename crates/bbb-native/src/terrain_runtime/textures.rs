@@ -7,7 +7,7 @@ use bbb_pack::{
     PackRoots, SpriteImage, TerrainColorMaps,
 };
 use bbb_renderer::terrain::{
-    TerrainBox, TerrainCross, TerrainFace, TerrainFluidKind, TerrainQuad, TerrainRenderShape,
+    TerrainCross, TerrainFace, TerrainFluidKind, TerrainQuad, TerrainRenderShape,
     TerrainTextureAtlas, TerrainTint, TerrainTransparency, TerrainUvRect,
 };
 
@@ -400,8 +400,7 @@ impl TerrainTextureState {
     /// The 3D item-frame border (vanilla `block/item_frame` / `block/glow_item_frame`, or the
     /// `*_map` variants): four `birch_planks` wood bars plus a `back` panel showing the `item_frame` /
     /// `glow_item_frame` texture, baked over the blocks atlas into item-model quads in `0..=16` model
-    /// space. Fractional `15.5` / `15.001` depths are rounded to `15` so the hand-written box path stays
-    /// integer-shaped; the resulting wall-side offset is visually negligible.
+    /// space while preserving the vanilla templates' fractional `15.5` / `15.001` depths.
     pub(crate) fn item_frame_border_quads(
         &self,
         glow: bool,
@@ -424,12 +423,11 @@ impl TerrainTextureState {
         wood: u32,
         back: u32,
     ) -> Vec<bbb_renderer::ItemModelQuad> {
-        // FACES order: Down, Up, North, South, West, East.
-        let boxes = vec![
-            // Back panel (rounded 15.5 -> 15): north + south faces, the `back` texture.
-            frame_border_box(
-                [3, 3, 15],
-                [13, 13, 16],
+        let quads = [
+            // Back panel: north + south faces, the `back` texture.
+            frame_border_box_quads(
+                [3.0, 3.0, 15.5],
+                [13.0, 13.0, 16.0],
                 [false, false, true, true, false, false],
                 [
                     [0, 0, 16, 16],
@@ -442,9 +440,9 @@ impl TerrainTextureState {
                 [back; 6],
             ),
             // Bottom wood bar.
-            frame_border_box(
-                [2, 2, 15],
-                [14, 3, 16],
+            frame_border_box_quads(
+                [2.0, 2.0, 15.0],
+                [14.0, 3.0, 16.0],
                 [true; 6],
                 [
                     [2, 0, 14, 1],
@@ -457,9 +455,9 @@ impl TerrainTextureState {
                 [wood; 6],
             ),
             // Top wood bar.
-            frame_border_box(
-                [2, 13, 15],
-                [14, 14, 16],
+            frame_border_box_quads(
+                [2.0, 13.0, 15.0],
+                [14.0, 14.0, 16.0],
                 [true; 6],
                 [
                     [2, 0, 14, 1],
@@ -472,9 +470,9 @@ impl TerrainTextureState {
                 [wood; 6],
             ),
             // Left wood bar (no up/down faces).
-            frame_border_box(
-                [2, 3, 15],
-                [3, 13, 16],
+            frame_border_box_quads(
+                [2.0, 3.0, 15.0],
+                [3.0, 13.0, 16.0],
                 [false, false, true, true, true, true],
                 [
                     [0, 0, 16, 16],
@@ -487,9 +485,9 @@ impl TerrainTextureState {
                 [wood; 6],
             ),
             // Right wood bar (no up/down faces).
-            frame_border_box(
-                [13, 3, 15],
-                [14, 13, 16],
+            frame_border_box_quads(
+                [13.0, 3.0, 15.0],
+                [14.0, 13.0, 16.0],
                 [false, false, true, true, true, true],
                 [
                     [0, 0, 16, 16],
@@ -501,9 +499,12 @@ impl TerrainTextureState {
                 ],
                 [wood; 6],
             ),
-        ];
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
         bbb_renderer::terrain::bake_block_item_quads(
-            &TerrainRenderShape::Boxes(boxes),
+            &TerrainRenderShape::Quads(quads),
             [self.fallback_index; 6],
             [TerrainTint::WHITE; 6],
             &self.atlas,
@@ -515,11 +516,10 @@ impl TerrainTextureState {
         wood: u32,
         back: u32,
     ) -> Vec<bbb_renderer::ItemModelQuad> {
-        // FACES order: Down, Up, North, South, West, East.
-        let boxes = vec![
-            frame_border_box(
-                [1, 1, 15],
-                [15, 15, 16],
+        let quads = [
+            frame_border_box_quads(
+                [1.0, 1.0, 15.001],
+                [15.0, 15.0, 16.0],
                 [false, false, true, true, false, false],
                 [
                     [0, 0, 16, 16],
@@ -531,9 +531,9 @@ impl TerrainTextureState {
                 ],
                 [back; 6],
             ),
-            frame_border_box(
-                [0, 0, 15],
-                [16, 1, 16],
+            frame_border_box_quads(
+                [0.0, 0.0, 15.001],
+                [16.0, 1.0, 16.0],
                 [true; 6],
                 [
                     [0, 0, 16, 1],
@@ -545,9 +545,9 @@ impl TerrainTextureState {
                 ],
                 [wood; 6],
             ),
-            frame_border_box(
-                [0, 15, 15],
-                [16, 16, 16],
+            frame_border_box_quads(
+                [0.0, 15.0, 15.001],
+                [16.0, 16.0, 16.0],
                 [true; 6],
                 [
                     [0, 0, 16, 1],
@@ -559,9 +559,9 @@ impl TerrainTextureState {
                 ],
                 [wood; 6],
             ),
-            frame_border_box(
-                [0, 1, 15],
-                [1, 15, 16],
+            frame_border_box_quads(
+                [0.0, 1.0, 15.001],
+                [1.0, 15.0, 16.0],
                 [false, false, true, true, true, true],
                 [
                     [0, 0, 16, 16],
@@ -573,9 +573,9 @@ impl TerrainTextureState {
                 ],
                 [wood; 6],
             ),
-            frame_border_box(
-                [15, 1, 15],
-                [16, 15, 16],
+            frame_border_box_quads(
+                [15.0, 1.0, 15.001],
+                [16.0, 15.0, 16.0],
                 [false, false, true, true, true, true],
                 [
                     [0, 0, 16, 16],
@@ -587,9 +587,12 @@ impl TerrainTextureState {
                 ],
                 [wood; 6],
             ),
-        ];
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
         bbb_renderer::terrain::bake_block_item_quads(
-            &TerrainRenderShape::Boxes(boxes),
+            &TerrainRenderShape::Quads(quads),
             [self.fallback_index; 6],
             [TerrainTint::WHITE; 6],
             &self.atlas,
@@ -1244,27 +1247,104 @@ fn all_terrain_face_cull() -> [Option<TerrainFace>; 6] {
     TerrainFace::ALL.map(Some)
 }
 
-/// One element of the item-frame border model: an opaque, shaded, unculled box whose present faces map
-/// their `0..=16` UV crop into the named atlas texture.
-fn frame_border_box(
-    from: [u8; 3],
-    to: [u8; 3],
+/// One element of the item-frame border model: opaque, shaded, unculled quads whose present faces map
+/// their `0..=16` UV crop into the named atlas texture. This path keeps the vanilla model templates'
+/// fractional Z depths without broadening the integer `TerrainBox` representation used by normal blocks.
+fn frame_border_box_quads(
+    from: [f32; 3],
+    to: [f32; 3],
     face_present: [bool; 6],
     face_uvs: [[u8; 4]; 6],
     texture_indices: [u32; 6],
-) -> TerrainBox {
-    TerrainBox {
-        from,
-        to,
-        face_present,
-        face_uvs,
-        face_uv_rotations: [0; 6],
-        face_shade: [true; 6],
-        face_light_emission: [0; 6],
-        face_cull: [None; 6],
-        texture_indices,
-        tint: [TerrainTint::WHITE; 6],
-        face_transparency: [TerrainTransparency::OPAQUE; 6],
+) -> Vec<TerrainQuad> {
+    TerrainFace::ALL
+        .into_iter()
+        .filter_map(|face| {
+            let index = terrain_face_index(face);
+            face_present[index].then_some(TerrainQuad {
+                corners: frame_border_face_corners(face, from, to),
+                normal: terrain_face_normal(face),
+                uvs: frame_border_face_uvs(face_uvs[index]),
+                cull: Some(face),
+                texture_index: texture_indices[index],
+                tint: TerrainTint::WHITE,
+                transparency: TerrainTransparency::OPAQUE,
+                shade: true,
+                light_emission: 0,
+            })
+        })
+        .collect()
+}
+
+fn frame_border_face_corners(face: TerrainFace, min: [f32; 3], max: [f32; 3]) -> [[f32; 3]; 4] {
+    match face {
+        TerrainFace::Down => [
+            [min[0], min[1], max[2]],
+            [max[0], min[1], max[2]],
+            [max[0], min[1], min[2]],
+            [min[0], min[1], min[2]],
+        ],
+        TerrainFace::Up => [
+            [min[0], max[1], min[2]],
+            [max[0], max[1], min[2]],
+            [max[0], max[1], max[2]],
+            [min[0], max[1], max[2]],
+        ],
+        TerrainFace::North => [
+            [max[0], min[1], min[2]],
+            [max[0], max[1], min[2]],
+            [min[0], max[1], min[2]],
+            [min[0], min[1], min[2]],
+        ],
+        TerrainFace::South => [
+            [min[0], min[1], max[2]],
+            [min[0], max[1], max[2]],
+            [max[0], max[1], max[2]],
+            [max[0], min[1], max[2]],
+        ],
+        TerrainFace::West => [
+            [min[0], min[1], min[2]],
+            [min[0], max[1], min[2]],
+            [min[0], max[1], max[2]],
+            [min[0], min[1], max[2]],
+        ],
+        TerrainFace::East => [
+            [max[0], min[1], max[2]],
+            [max[0], max[1], max[2]],
+            [max[0], max[1], min[2]],
+            [max[0], min[1], min[2]],
+        ],
+    }
+}
+
+fn frame_border_face_uvs(uv: [u8; 4]) -> [[f32; 2]; 4] {
+    [
+        [uv[0] as f32 / 16.0, uv[1] as f32 / 16.0],
+        [uv[2] as f32 / 16.0, uv[1] as f32 / 16.0],
+        [uv[2] as f32 / 16.0, uv[3] as f32 / 16.0],
+        [uv[0] as f32 / 16.0, uv[3] as f32 / 16.0],
+    ]
+}
+
+fn terrain_face_normal(face: TerrainFace) -> [f32; 3] {
+    match face {
+        TerrainFace::Down => [0.0, -1.0, 0.0],
+        TerrainFace::Up => [0.0, 1.0, 0.0],
+        TerrainFace::North => [0.0, 0.0, -1.0],
+        TerrainFace::South => [0.0, 0.0, 1.0],
+        TerrainFace::West => [-1.0, 0.0, 0.0],
+        TerrainFace::East => [1.0, 0.0, 0.0],
+    }
+}
+
+fn terrain_face_index(face: TerrainFace) -> usize {
+    match face {
+        TerrainFace::Down => 0,
+        TerrainFace::Up => 1,
+        TerrainFace::North => 2,
+        TerrainFace::South => 3,
+        TerrainFace::West => 4,
+        TerrainFace::East => 5,
     }
 }
 
