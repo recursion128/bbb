@@ -431,8 +431,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         // The guardian attack beam is a world-space billboarded prism from the guardian eye to its
         // target; it folds into the scroll (tiled) pass and runs regardless of `handled`.
         emit_guardian_beam(&mut meshes, *instance, atlas);
-        // The ender-dragon healing beam reuses the same vanilla custom-geometry submit after body+eyes.
-        emit_ender_dragon_beam(&mut meshes, *instance, atlas);
         // AvatarRenderer registers Deadmau5EarsLayer before CapeLayer; it shares the player's body
         // skin and renders only for the exact profile-name easter egg while the player is visible.
         emit_player_extra_ears_layer(&mut meshes, *instance, atlas, dynamic_player_skin_atlas);
@@ -1425,12 +1423,15 @@ pub(in crate::entity_models) fn render_end_crystal_beam(
 /// `EnderDragonRenderState.beamOffset` calls the same `submitCrystalBeams` helper from the dragon's
 /// entity-origin pose. Unlike an end crystal, the dragon does not pre-translate by the offset and does
 /// not invert the delta; its `beamOffset` already points from the dragon to the bobbed crystal.
-fn emit_ender_dragon_beam(
+pub(in crate::entity_models) fn render_ender_dragon_beam(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     if !matches!(instance.kind, EntityModelKind::EnderDragon) {
+        return;
+    }
+    if meshes.current_force_transparent || meshes.current_outline_only {
         return;
     }
     let Some(beam) = instance.render_state.ender_dragon_beam else {

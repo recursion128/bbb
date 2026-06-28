@@ -88,14 +88,14 @@ use super::textured::{
     ravager_textured_layer_passes, render_boat_water_mask_submission,
     render_breeze_wind_scroll_model, render_charged_creeper_energy_swirl,
     render_donkey_textured_layers, render_end_crystal_beam, render_end_crystal_textured_layers,
-    render_horse_textured_layers, render_no_overlay_scrolled_textured_layers,
-    render_player_textured_layers, render_textured_layers, render_trident_foil_submission,
-    render_undead_horse_textured_layers, render_wither_energy_swirl, salmon_textured_layer_passes,
-    sheep_textured_layer_passes, shulker_bullet_textured_layer_passes,
-    shulker_textured_layer_passes, silverfish_textured_layer_passes,
-    skeleton_textured_layer_passes, slime_textured_layer_passes, sniffer_textured_layer_passes,
-    snow_golem_textured_layer_passes, spider_textured_layer_passes, squid_textured_layer_passes,
-    tadpole_textured_layer_passes, trident_textured_layer_passes,
+    render_ender_dragon_beam, render_horse_textured_layers,
+    render_no_overlay_scrolled_textured_layers, render_player_textured_layers,
+    render_textured_layers, render_trident_foil_submission, render_undead_horse_textured_layers,
+    render_wither_energy_swirl, salmon_textured_layer_passes, sheep_textured_layer_passes,
+    shulker_bullet_textured_layer_passes, shulker_textured_layer_passes,
+    silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
+    sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
+    squid_textured_layer_passes, tadpole_textured_layer_passes, trident_textured_layer_passes,
     tropical_fish_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, warden_textured_layer_passes,
     wind_charge_textured_layer_passes, witch_textured_layer_passes,
@@ -158,6 +158,16 @@ pub(in crate::entity_models) trait EntityModelSink {
         instance: &EntityModelInstance,
         passes: &[EntityModelLayerPass],
     );
+
+    fn ender_dragon_model(&mut self, instance: &EntityModelInstance) {
+        let passes = ender_dragon_textured_layer_passes();
+        self.model(
+            EnderDragonModel::new(),
+            ender_dragon_model_root_transform(*instance),
+            instance,
+            &passes[0..2],
+        );
+    }
 
     fn player_model(
         &mut self,
@@ -428,6 +438,17 @@ impl EntityModelSink for TexturedSink<'_> {
             self.atlas,
         );
         render_end_crystal_beam(self.meshes, *instance, self.atlas);
+    }
+
+    fn ender_dragon_model(&mut self, instance: &EntityModelInstance) {
+        let passes = ender_dragon_textured_layer_passes();
+        self.model(
+            EnderDragonModel::new(),
+            ender_dragon_model_root_transform(*instance),
+            instance,
+            &passes[0..2],
+        );
+        render_ender_dragon_beam(self.meshes, *instance, self.atlas);
     }
 
     fn player_model(
@@ -1357,17 +1378,9 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &wither_skull_textured_layer_passes(dangerous),
         ),
-        // The shulker bullet is not uniform: vanilla renders the base model, then re-submits the same
-        // posed model as a larger translucent shell. Colored/textured residual arms handle that split.
-        EntityModelKind::EnderDragon => {
-            let passes = ender_dragon_textured_layer_passes();
-            sink.model(
-                EnderDragonModel::new(),
-                ender_dragon_model_root_transform(*instance),
-                instance,
-                &passes[0..2],
-            )
-        }
+        // EnderDragonRenderer submits body+eyes, then optional nearest-crystal healing-beam custom
+        // geometry; the textured sink owns that full sequence.
+        EntityModelKind::EnderDragon => sink.ender_dragon_model(instance),
         EntityModelKind::Mooshroom { baby, variant } => sink.model(
             CowModel::new(CowModelVariant::Temperate, baby),
             entity_model_root_transform(*instance),

@@ -1110,10 +1110,9 @@ When an agent does any of the following, update this file in the same slice:
       metadata for crystals with a beam target before recording vanilla `end_crystal_beam`
       submissions and folding their tiled prism geometry into the scroll
       bucket with preserved light / no-overlay metadata. Ender dragon nearest-crystal healing beams
-      now project the
-      bobbed crystal `beamOffset`, consume explicit `EnderDragonBeam` pass metadata through that emitter,
-      record the same vanilla `end_crystal_beam` submission after body+eyes, and then fold the
-      shared eight-quad prism
+      now run through the shared EnderDragon dispatch sink after body+eyes, project the bobbed
+      crystal `beamOffset`, consume explicit `EnderDragonBeam` pass metadata, record the same
+      vanilla `end_crystal_beam` submission, and then fold the shared eight-quad prism
       into the scroll bucket with preserved light / no-overlay metadata.
       Uniform layer passes, Creaking base+eyes submits, Warden retained
       emissive layers, Breeze base/eyes/wind, Shulker color/default base
@@ -3782,11 +3781,11 @@ When an agent does any of the following, update this file in the same slice:
       `dragon_eyes.png` even when the folded emissive geometry is suppressed. The nearest-crystal healing beam is
       now source-projected from the
       closest tracked end crystal intersecting the vanilla
-      inflated search box, includes the `EndCrystalRenderer.getY` bob in `beamOffset`, and consumes
-      explicit `EnderDragonBeam` pass metadata before recording
-      `RenderTypes.endCrystalBeam(end_crystal_beam.png)` after body+eyes with preserved light and
-      `OverlayTexture.NO_OVERLAY` before folding the shared prism geometry into the scroll mesh with
-      matching vertex metadata; missing-atlas coverage pins that the beam
+      inflated search box, includes the `EndCrystalRenderer.getY` bob in `beamOffset`, and the
+      shared EnderDragon dispatch sink consumes explicit `EnderDragonBeam` pass metadata after
+      body+eyes before recording `RenderTypes.endCrystalBeam(end_crystal_beam.png)` with
+      preserved light and `OverlayTexture.NO_OVERLAY` before folding the shared prism geometry
+      into the scroll mesh with matching vertex metadata; missing-atlas coverage pins that the beam
       submission survives when `end_crystal_beam.png` is absent while only
       folded scroll geometry is suppressed. The base body keeps the projected vanilla red overlay input; the eyes and
       healing beam record no-overlay submits. The dying-dissolve render type stays deferred. The colored
