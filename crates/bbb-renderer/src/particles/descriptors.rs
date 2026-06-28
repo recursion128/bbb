@@ -40,6 +40,7 @@ pub(crate) enum ParticleLifetimeDescriptor {
     },
     Crit,
     EightOverRandom,
+    SixteenOverRandom,
     FortyOverRandom,
     RandomInclusive {
         min: u32,
@@ -168,6 +169,7 @@ pub(crate) enum ParticleInitialVelocityDescriptor {
     },
     Spell,
     GlowSquid,
+    Lava,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -510,6 +512,22 @@ impl ParticleDescriptor {
                     speed_up_when_y_motion_is_blocked: false,
                 }
             }
+            "minecraft:lava" => Self {
+                provider: "LavaParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::SixteenOverRandom,
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SingleQuadRandomScaled {
+                    min_scale: 0.2,
+                    max_scale: 2.2,
+                    color: ParticleColorDescriptor::FixedRgba([1.0, 1.0, 1.0, 1.0]),
+                    quad_size_curve: ParticleQuadSizeCurve::Flame,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Lava,
+                friction: 0.999,
+                gravity: 0.75,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
             "minecraft:soul" | "minecraft:sculk_soul" => Self {
                 provider: if particle_id == "minecraft:sculk_soul" {
                     "SoulParticle.EmissiveProvider"
@@ -1213,6 +1231,24 @@ impl ParticleInitialVelocityDescriptor {
             Self::Spell | Self::GlowSquid => {
                 sample_random_horizontal_y_velocity(command_velocity, random)
             }
+            Self::Lava => {
+                let x = random_signed_velocity(random);
+                let y = random_signed_velocity(random);
+                let z = random_signed_velocity(random);
+                let speed =
+                    (f64::from(random.next_f32()) + f64::from(random.next_f32()) + 1.0) * 0.15;
+                let length = (x * x + y * y + z * z).sqrt();
+                let [x, _, z] = if length == 0.0 {
+                    [0.0, 0.1, 0.0]
+                } else {
+                    [
+                        x / length * speed * 0.4,
+                        y / length * speed * 0.4 + 0.1,
+                        z / length * speed * 0.4,
+                    ]
+                };
+                [x * 0.8, f64::from(random.next_f32()) * 0.4 + 0.05, z * 0.8]
+            }
         }
     }
 }
@@ -1288,6 +1324,7 @@ impl ParticleLifetimeDescriptor {
             }
             Self::Crit => ((6.0 / (random.next_f32() * 0.8 + 0.6)) as u32).max(1),
             Self::EightOverRandom => ((8.0 / (random.next_f32() * 0.8 + 0.2)) as u32).max(1),
+            Self::SixteenOverRandom => ((16.0 / (random.next_f32() * 0.8 + 0.2)) as u32).max(1),
             Self::FortyOverRandom => ((40.0 / (random.next_f32() * 0.8 + 0.2)) as u32).max(1),
             Self::RandomInclusive { min, max } => {
                 let span = max.saturating_sub(min).saturating_add(1);
@@ -1867,6 +1904,26 @@ mod tests {
             false,
         );
         assert_descriptor(
+            "minecraft:lava",
+            "LavaParticle.Provider",
+            ParticleLifetimeDescriptor::SixteenOverRandom,
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::SingleQuadRandomScaled {
+                min_scale: 0.2,
+                max_scale: 2.2,
+                color: ParticleColorDescriptor::FixedRgba([1.0, 1.0, 1.0, 1.0]),
+                quad_size_curve: ParticleQuadSizeCurve::Flame,
+            },
+            0.999,
+            0.75,
+            true,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:lava").initial_velocity,
+            ParticleInitialVelocityDescriptor::Lava
+        );
+        assert_descriptor(
             "minecraft:soul",
             "SoulParticle.Provider",
             ParticleLifetimeDescriptor::Rising,
@@ -2366,6 +2423,18 @@ mod tests {
         assert_eq!(flame.color, WHITE_PARTICLE_COLOR);
         assert_eq!(flame.quad_size_curve, ParticleQuadSizeCurve::Flame);
 
+        let mut lava_random = ParticleRandom::new(44);
+        let lava = ParticleVisualDescriptor::SingleQuadRandomScaled {
+            min_scale: 0.2,
+            max_scale: 2.2,
+            color: ParticleColorDescriptor::FixedRgba([1.0, 1.0, 1.0, 1.0]),
+            quad_size_curve: ParticleQuadSizeCurve::Flame,
+        }
+        .sample_for_command(&mut lava_random, [0.0, 0.0, 0.0]);
+        assert_range_f32(lava.base_quad_size, 0.02, 0.44);
+        assert_eq!(lava.color, WHITE_PARTICLE_COLOR);
+        assert_eq!(lava.quad_size_curve, ParticleQuadSizeCurve::Flame);
+
         let mut explosion_random = ParticleRandom::new(36);
         let explosion = ParticleVisualDescriptor::HugeExplosion
             .sample_for_command(&mut explosion_random, [0.5, 0.0, 0.0]);
@@ -2778,6 +2847,13 @@ mod tests {
         assert_range_f64(still_glow_velocity[2].abs(), 0.0, 0.008);
         assert_close_f64(still_glow_velocity[0], moving_glow_velocity[0] * 0.1);
         assert_close_f64(still_glow_velocity[2], moving_glow_velocity[2] * 0.1);
+
+        let mut lava_random = ParticleRandom::new(44);
+        let lava_velocity =
+            ParticleInitialVelocityDescriptor::Lava.sample([9.0, 9.0, 9.0], &mut lava_random);
+        assert_range_f64(lava_velocity[0], -0.15, 0.15);
+        assert_range_f64(lava_velocity[1], 0.05, 0.45);
+        assert_range_f64(lava_velocity[2], -0.15, 0.15);
     }
 
     #[test]
@@ -2810,6 +2886,12 @@ mod tests {
         for _ in 0..32 {
             let lifetime = ParticleLifetimeDescriptor::EightOverRandom.sample(&mut random);
             assert!((8..=40).contains(&lifetime));
+        }
+
+        let mut random = ParticleRandom::new(44);
+        for _ in 0..32 {
+            let lifetime = ParticleLifetimeDescriptor::SixteenOverRandom.sample(&mut random);
+            assert!((16..=80).contains(&lifetime));
         }
 
         let mut random = ParticleRandom::new(29);

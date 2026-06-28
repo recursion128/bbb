@@ -1024,6 +1024,24 @@ mod tests {
         assert_eq!(flame.color, [1.0, 1.0, 1.0, 1.0]);
         assert_eq!(flame.quad_size_curve, ParticleQuadSizeCurve::Flame);
 
+        let mut lava_random = ParticleRandom::new(44);
+        let lava = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:lava", 1.0),
+            &mut lava_random,
+        );
+        assert_eq!(lava.provider, "LavaParticle.Provider");
+        assert_eq!(lava.sprite_selection, ParticleSpriteSelection::Random);
+        assert_range_f32(lava.base_quad_size, 0.02, 0.44);
+        assert_eq!(lava.color, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(lava.quad_size_curve, ParticleQuadSizeCurve::Flame);
+        assert!((16..=80).contains(&lava.lifetime_ticks));
+        assert_range_f64(lava.velocity[0], -0.15, 0.15);
+        assert_range_f64(lava.velocity[1], 0.05, 0.45);
+        assert_range_f64(lava.velocity[2], -0.15, 0.15);
+        assert_eq!(lava.friction, 0.999);
+        assert_eq!(lava.gravity, 0.75);
+        assert!(lava.has_physics);
+
         let mut soul_random = ParticleRandom::new(68);
         let mut soul_command = spawn_command("minecraft:soul", 1.0);
         soul_command.position = [1.0, 2.0, 3.0];

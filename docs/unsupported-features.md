@@ -236,6 +236,12 @@ When an agent does any of the following, update this file in the same slice:
       - `NoteParticle.Provider` command-x hue color formula, fixed lifetime,
         grow-to-base size curve, 1.5 quad-size scale, initial y-speed offset,
         friction, and blocked-y speed-up metadata
+      - `LavaParticle.Provider` random sprite selection, constructor-random
+        horizontal velocity damped by `0.8`, random upward velocity
+        `0.05..0.45`, `0.2..2.2` quad-size scaling, shrinking size curve,
+        `16 / (random * 0.8 + 0.2)` lifetime, `0.999` friction, `0.75`
+        gravity, and physics metadata; full-bright block light and child smoke
+        emission remain deferred until those per-particle states are represented
       - `PlayerCloudParticle.Provider` vanilla constructor-random initial
         speed plus command velocity, and `SneezeProvider` fixed green tint /
         alpha override on the player-cloud curve
@@ -4567,6 +4573,13 @@ When an agent does any of the following, update this file in the same slice:
         `0.91`, and gravity `0.0125`. Fade color, full-bright light coords,
         the translucent particle layer, and the EndRod-specific collision-free
         `move` override remain deferred until those per-particle states are
+        represented.
+      - particle descriptors map `LavaParticle.Provider` to random sprite
+        selection, constructor-random horizontal velocity damped by `0.8`,
+        random upward velocity `0.05..0.45`, `0.2..2.2` quad-size scaling,
+        shrinking size curve, `16/(random*.8+.2)` lifetime, friction `0.999`,
+        gravity `0.75`, and physics metadata. Full-bright block light and
+        child smoke emission remain deferred until those per-particle states are
         represented.
     - native dispatcher and offline probe recording/playback for
       `LevelEventHandler` portal travel local ambience:
