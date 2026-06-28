@@ -71,6 +71,7 @@ const VANILLA_WEATHER_THUNDER_ALPHA: f32 = 0.52734375;
 const VANILLA_WEATHER_RAIN_SKY_LIGHT_COLOR: i32 = argb_color(79, 122, 122, 255);
 const VANILLA_WEATHER_THUNDER_SKY_LIGHT_COLOR: i32 = argb_color(134, 122, 122, 255);
 const VANILLA_OVERWORLD_SKY_COLOR: [u8; 3] = [0x78, 0xa7, 0xff];
+const VANILLA_GAUSSIAN_SAMPLE_KERNEL: [f64; 7] = [0.0, 1.0, 4.0, 6.0, 4.0, 1.0, 0.0];
 const VANILLA_SKY_FLASH_SKY_COLOR: i32 = argb_color(255, 204, 204, 255);
 const VANILLA_SKY_FLASH_SKY_COLOR_ALPHA: f32 = 0.22;
 const VANILLA_WORLD_CLOCK_THE_END_ID: i32 = 1;
@@ -3962,21 +3963,131 @@ fn camera_biome_sky_color(
     camera_pose: Option<CameraPose>,
 ) -> Option<[u8; 3]> {
     let camera = camera_pose?;
-    let camera_pos = BlockPos {
-        x: floor_to_block_coord(camera.position[0]),
-        y: floor_to_block_coord(camera.position[1] + camera.eye_height),
-        z: floor_to_block_coord(camera.position[2]),
+    let eye = [
+        camera.position[0],
+        camera.position[1] + camera.eye_height,
+        camera.position[2],
+    ];
+    gaussian_biome_sky_color(world, terrain_textures, eye)
+}
+
+fn gaussian_biome_sky_color(
+    world: &WorldStore,
+    terrain_textures: &TerrainTextureState,
+    eye: [f32; 3],
+) -> Option<[u8; 3]> {
+    if !eye.into_iter().all(f32::is_finite) {
+        return None;
+    }
+
+    let position = [
+        f64::from(eye[0]) * 0.25 - 0.5,
+        f64::from(eye[1]) * 0.25 - 0.5,
+        f64::from(eye[2]) * 0.25 - 0.5,
+    ];
+    let integral = [
+        position[0].floor() as i32,
+        position[1].floor() as i32,
+        position[2].floor() as i32,
+    ];
+    let relative = [
+        position[0] - f64::from(integral[0]),
+        position[1] - f64::from(integral[1]),
+        position[2] - f64::from(integral[2]),
+    ];
+    let mut samples: Vec<([u8; 3], f64)> = Vec::new();
+
+    for z in 0..6 {
+        let weight_z = gaussian_axis_weight(z, relative[2]);
+        let sample_z = integral[2] - 2 + z as i32;
+        for x in 0..6 {
+            let weight_x = gaussian_axis_weight(x, relative[0]);
+            let sample_x = integral[0] - 2 + x as i32;
+            for y in 0..6 {
+                let weight_y = gaussian_axis_weight(y, relative[1]);
+                let sample_y = integral[1] - 2 + y as i32;
+                let weight = weight_x * weight_y * weight_z;
+                if weight <= 0.0 {
+                    continue;
+                }
+                let Some(color) =
+                    biome_sky_color_at_quart(world, terrain_textures, sample_x, sample_y, sample_z)
+                else {
+                    continue;
+                };
+                accumulate_weighted_sky_color(&mut samples, color, weight);
+            }
+        }
+    }
+
+    lerp_weighted_sky_colors(&samples)
+}
+
+fn gaussian_axis_weight(index: usize, relative: f64) -> f64 {
+    let start = VANILLA_GAUSSIAN_SAMPLE_KERNEL[index + 1];
+    let end = VANILLA_GAUSSIAN_SAMPLE_KERNEL[index];
+    start + relative * (end - start)
+}
+
+fn biome_sky_color_at_quart(
+    world: &WorldStore,
+    terrain_textures: &TerrainTextureState,
+    quart_x: i32,
+    quart_y: i32,
+    quart_z: i32,
+) -> Option<[u8; 3]> {
+    let pos = BlockPos {
+        x: quart_x.saturating_mul(4),
+        y: quart_y.saturating_mul(4),
+        z: quart_z.saturating_mul(4),
     };
-    let biome_id = world.probe_block(camera_pos)?.biome_id;
+    let biome_id = world.probe_block(pos)?.biome_id;
     terrain_textures.biome_sky_color(biome_id)
 }
 
-fn floor_to_block_coord(value: f32) -> i32 {
-    if value.is_finite() {
-        value.floor().clamp(i32::MIN as f32, i32::MAX as f32) as i32
+fn accumulate_weighted_sky_color(samples: &mut Vec<([u8; 3], f64)>, color: [u8; 3], weight: f64) {
+    if let Some((_, sample_weight)) = samples
+        .iter_mut()
+        .find(|(sample_color, _)| *sample_color == color)
+    {
+        *sample_weight += weight;
     } else {
-        0
+        samples.push((color, weight));
     }
+}
+
+fn lerp_weighted_sky_colors(samples: &[([u8; 3], f64)]) -> Option<[u8; 3]> {
+    let mut total_weight = 0.0;
+    let mut result = None;
+    for (color, weight) in samples {
+        if *weight <= 0.0 {
+            continue;
+        }
+        total_weight += weight;
+        let color = rgb_u8_to_argb(*color);
+        result = Some(match result {
+            Some(result) => argb_srgb_lerp((*weight / total_weight) as f32, result, color),
+            None => color,
+        });
+    }
+    result.map(rgb_u8_from_argb)
+}
+
+fn rgb_u8_to_argb(color: [u8; 3]) -> i32 {
+    argb_color(
+        255,
+        i32::from(color[0]),
+        i32::from(color[1]),
+        i32::from(color[2]),
+    )
+}
+
+fn rgb_u8_from_argb(color: i32) -> [u8; 3] {
+    [
+        argb_red(color) as u8,
+        argb_green(color) as u8,
+        argb_blue(color) as u8,
+    ]
 }
 
 fn clear_color_with_sky_flash(clear: ClearColor) -> ClearColor {

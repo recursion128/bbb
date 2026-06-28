@@ -295,6 +295,29 @@ fn clear_color_samples_camera_biome_sky_color_attribute() {
 }
 
 #[test]
+fn camera_biome_sky_color_uses_vanilla_gaussian_spatial_weights() {
+    let mut world = world_with_dimension_height(0, "minecraft:overworld", 64);
+    world.set_local_player_pose(local_player_pose(
+        [8.0, 32.0 - f64::from(CameraPose::STANDING_EYE_HEIGHT), 8.0],
+        0.0,
+        0.0,
+    ));
+    world.insert_decoded_chunk(empty_lightmap_test_chunk_with_biomes(
+        world.dimension(),
+        split_x_biome_container(10, 20),
+    ));
+    let textures = TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
+        biome_profile(10, [0, 0, 0]),
+        biome_profile(20, [100, 200, 250]),
+    ]));
+
+    let sky_color =
+        camera_biome_sky_color(&world, &textures, camera_pose_from_world(&world)).unwrap();
+
+    assert_eq!(sky_color, [50, 100, 125]);
+}
+
+#[test]
 fn lightmap_tick_state_applies_end_flash_sky_factor_from_end_clock() {
     let mut world = world_with_dimension(2, "minecraft:the_end");
     set_world_end_clock_time(&mut world, 1_486);
@@ -692,10 +715,11 @@ fn server_container_open_releases_held_movement() {
 }
 
 fn world_with_dimension(dimension_type_id: i32, dimension: &str) -> WorldStore {
-    let mut world = WorldStore::with_dimension(WorldDimension {
-        min_y: 0,
-        height: 16,
-    });
+    world_with_dimension_height(dimension_type_id, dimension, 16)
+}
+
+fn world_with_dimension_height(dimension_type_id: i32, dimension: &str, height: i32) -> WorldStore {
+    let mut world = WorldStore::with_dimension(WorldDimension { min_y: 0, height });
     world.apply_login(&PlayLogin {
         player_id: 42,
         hardcore: false,
@@ -841,6 +865,16 @@ fn empty_lightmap_test_chunk(dimension: WorldDimension) -> ChunkColumn {
 }
 
 fn empty_lightmap_test_chunk_with_biome(dimension: WorldDimension, biome_id: i32) -> ChunkColumn {
+    empty_lightmap_test_chunk_with_biomes(
+        dimension,
+        single_value_container(PaletteDomain::Biomes, 64, biome_id),
+    )
+}
+
+fn empty_lightmap_test_chunk_with_biomes(
+    dimension: WorldDimension,
+    biomes: PalettedContainerData,
+) -> ChunkColumn {
     let section_count = usize::try_from(dimension.height.div_euclid(16)).unwrap();
     ChunkColumn {
         pos: ChunkPos { x: 0, z: 0 },
@@ -851,11 +885,33 @@ fn empty_lightmap_test_chunk_with_biome(dimension: WorldDimension, biome_id: i32
                 non_empty_block_count: 0,
                 fluid_count: 0,
                 block_states: single_value_container(PaletteDomain::BlockStates, 4096, 0),
-                biomes: single_value_container(PaletteDomain::Biomes, 64, biome_id),
+                biomes: biomes.clone(),
             })
             .collect(),
         block_entities: Vec::new(),
         light: LightData::default(),
+    }
+}
+
+fn split_x_biome_container(left_biome_id: i32, right_biome_id: i32) -> PalettedContainerData {
+    let mut packed = 0u64;
+    for y in 0..4 {
+        for z in 0..4 {
+            for x in 0..4 {
+                if x >= 2 {
+                    let index = ((y as usize) << 4) | ((z as usize) << 2) | x as usize;
+                    packed |= 1 << index;
+                }
+            }
+        }
+    }
+    PalettedContainerData {
+        domain: PaletteDomain::Biomes,
+        bits_per_entry: 1,
+        palette_kind: PaletteKind::Local,
+        palette_global_ids: vec![left_biome_id, right_biome_id],
+        packed_data: vec![packed as i64],
+        entry_count: 64,
     }
 }
 
