@@ -12,7 +12,7 @@ use super::super::model_layers::*;
 use super::mounts::{emit_donkey_model, emit_horse_model, emit_undead_horse_model};
 use super::selection::{humanoid_model_color, quadruped_model_color};
 use super::transforms::{
-    drowned_model_root_transform, end_crystal_model_root_transform, entity_model_root_transform,
+    drowned_model_root_transform, entity_model_root_transform,
     mesh_transformer_scaled_model_root_transform, player_model_root_transform,
     scaled_model_root_transform, HUSK_SCALE,
 };
@@ -66,13 +66,6 @@ fn entity_model_mesh_with_options(
                 EntityModelKind::Humanoid { family, baby } => {
                     emit_humanoid_model(&mut mesh, *instance, family, baby)
                 }
-                EntityModelKind::EndCrystal => {
-                    // The end crystal is texture-backed now; keep the colored fallback mesh for legacy /
-                    // missing-atlas callers, but skip it in the runtime colored path.
-                    if !skip_texture_backed_entities {
-                        emit_end_crystal_model(&mut mesh, *instance);
-                    }
-                }
                 EntityModelKind::NoRender => {
                     // Vanilla `NoopRenderer` entities (area effect cloud, marker, interaction) render no
                     // model, so this arm emits nothing — exact parity with vanilla.
@@ -119,44 +112,6 @@ fn entity_model_mesh_with_options(
         );
     }
     mesh
-}
-
-fn emit_end_crystal_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
-    // Vanilla `EndCrystalModel` is the base slab plus the concentric glass/core stack (the per-part
-    // `withScale` baked into the cube dimensions). `setupAnim` hides the base slab
-    // (`END_CRYSTAL_PARTS[0]`) when `!showsBottom`, bobs the glass stack by `getY(age)·8` pixels, and
-    // counter-spins the nested glass: `outer_glass` by `Ry(age·3°)·TILT`, then `inner_glass` and the
-    // core `cube` by `TILT·Ry(age·3°)` (inheriting the outer rotation through the hierarchy). The
-    // renderer flattens the glass stack, so the nested spin is hand-walked here off the shared,
-    // bobbing `(0, 24, 0)` centre. Emitted at the static `EndCrystalRenderer` transform (`scale(2.0)`
-    // + `translate(0, -0.5, 0)`, no living flip).
-    let root = end_crystal_model_root_transform(instance);
-    if instance.render_state.end_crystal_shows_bottom {
-        emit_model_part(mesh, &END_CRYSTAL_PARTS[0], root);
-    }
-
-    let age = instance.render_state.age_in_ticks;
-    let bob = end_crystal_bob_y(age);
-    let (q_outer, q_inner) = end_crystal_glass_quaternions(age);
-    // The shared glass centre, bobbing on Y (offset in model-pixels; `part_pose_transform` applies
-    // the model-unit scale). All three glass parts sit at this centre with no rotation in the layer.
-    let centre = root
-        * part_pose_transform(PartPose {
-            offset: [0.0, 24.0 + bob, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        });
-    let outer_t = centre * Mat4::from_quat(q_outer);
-    let inner_t = outer_t * Mat4::from_quat(q_inner);
-    let core_t = inner_t * Mat4::from_quat(q_inner);
-    for cube in END_CRYSTAL_PARTS[1].cubes {
-        emit_model_cube(mesh, outer_t, *cube);
-    }
-    for cube in END_CRYSTAL_PARTS[2].cubes {
-        emit_model_cube(mesh, inner_t, *cube);
-    }
-    for cube in END_CRYSTAL_PARTS[3].cubes {
-        emit_model_cube(mesh, core_t, *cube);
-    }
 }
 
 fn emit_humanoid_model(

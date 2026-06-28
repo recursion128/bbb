@@ -1101,8 +1101,9 @@ When an agent does any of the following, update this file in the same slice:
       attack beams now consume explicit `GuardianBeam` pass metadata through the same pass-backed emitter before
       recording vanilla `entityCutout` submissions and folding their tiled custom geometry into the scroll bucket through the
       custom scroll-geometry submission helper; End Crystal
-      now creates its vanilla `entityCutout` submission before the residual
-      bob/spin geometry is folded through the standard submission helper, and
+      body submits now run through the shared dispatch sink rather than a residual textured arm,
+      recording the vanilla `entityCutout(end_crystal.png)` submission before the bob/spin hand-walk
+      folds geometry through the standard submission helper, and
       crystals with a beam target now consume explicit `EndCrystalBeam` pass metadata through the pass-backed emitter before
       recording vanilla `end_crystal_beam` submissions and folding their tiled prism geometry into the scroll
       bucket with preserved light / no-overlay metadata. Ender dragon nearest-crystal healing beams
@@ -3556,9 +3557,9 @@ When an agent does any of the following, update this file in the same slice:
       `textures/entity/end_crystal/end_crystal.png` as the vanilla default `entityCutout` submit with
       vanilla render-type name coverage, collector order `0`, sequence `0`, white tint, vanilla light coords,
       `OverlayTexture.NO_OVERLAY`, and the same `scale(2)·translate(0,-0.5,0)` root
-      transform. The body submit metadata now comes from `end_crystal_textured_layer_passes`
-      with the vanilla `ModelLayers.END_CRYSTAL` key before the bespoke bob/spin hand-walk folds
-      geometry, with folded cutout vertices inheriting that metadata; missing-atlas coverage pins that the
+      transform. The body submit metadata now comes from the shared dispatch sink consuming
+      `end_crystal_textured_layer_passes` with the vanilla `ModelLayers.END_CRYSTAL` key before the
+      bob/spin hand-walk folds geometry, with folded cutout vertices inheriting that metadata; missing-atlas coverage pins that the
       submission is still recorded before folded cutout geometry is suppressed. The colored debug path stays as the
       missing-atlas fallback with separate glass/core/base tints. The `EndCrystal.DATA_BEAM_TARGET` custom
       beam is now wired too: world projects

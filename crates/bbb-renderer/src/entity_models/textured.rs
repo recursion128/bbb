@@ -1,8 +1,8 @@
 use super::catalog::EntityDynamicPlayerTextureAtlasEntry;
 use super::colored::{
     boat_model_root_transform, creeper_model_root_transform, drowned_model_root_transform,
-    end_crystal_model_root_transform, trident_model_root_transform,
-    villager_adult_model_root_transform, wither_model_root_transform, GIANT_SCALE, HORSE_SCALE,
+    trident_model_root_transform, villager_adult_model_root_transform, wither_model_root_transform,
+    GIANT_SCALE, HORSE_SCALE,
 };
 use super::dispatch::{dispatch_uniform_entity_model, TexturedSink};
 use super::held_item::custom_head_skull_transform;
@@ -420,9 +420,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
             // textured geometry (their dispatch call walks an empty pass list, a no-op), so they must NOT
             // appear here; every kind without a textured arm falls into `_ => {}`.
             match instance.kind {
-                EntityModelKind::EndCrystal => {
-                    emit_end_crystal_textured_model(&mut meshes, *instance, atlas);
-                }
                 EntityModelKind::Player { skin, parts } => {
                     emit_player_textured_model(
                         &mut meshes,
@@ -572,47 +569,70 @@ pub(super) fn dynamic_player_texture_test_meshes(
 /// Vanilla `EndCrystalRenderer.submit`: render `EndCrystalModel` with `end_crystal.png` after the
 /// renderer root transform (`scale(2)` + `translate(0,-0.5,0)`). The optional `DATA_BEAM_TARGET`
 /// custom geometry is submitted separately by [`emit_end_crystal_beam`].
-fn emit_end_crystal_textured_model(
+pub(in crate::entity_models) fn render_end_crystal_textured_layers(
     meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
+    transform: Mat4,
+    instance: &EntityModelInstance,
+    passes: impl IntoIterator<Item = EntityModelLayerPass>,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
-    let root = end_crystal_model_root_transform(instance);
-    let passes = end_crystal_textured_layer_passes();
-    let submit = textured_layer_submission(meshes, passes[0], root);
-    render_textured_submission(meshes, submit, atlas, |mesh, entry| {
-        if instance.render_state.end_crystal_shows_bottom {
-            emit_textured_model_parts(
-                mesh,
-                &END_CRYSTAL_TEXTURED_PARTS[..1],
-                submit.transform,
-                submit.texture,
-                entry.uv,
-                submit.tint,
-            );
-        }
+    for pass in passes {
+        let submit = textured_layer_submission(meshes, pass, transform);
+        render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+            if instance.render_state.end_crystal_shows_bottom {
+                emit_textured_model_parts(
+                    mesh,
+                    &END_CRYSTAL_TEXTURED_PARTS[..1],
+                    submit.transform,
+                    submit.texture,
+                    entry.uv,
+                    submit.tint,
+                );
+            }
 
-        let age = instance.render_state.age_in_ticks;
-        let bob = end_crystal_bob_y(age);
-        let (q_outer, q_inner) = end_crystal_glass_quaternions(age);
-        let centre = submit.transform
-            * part_pose_transform(PartPose {
-                offset: [0.0, 24.0 + bob, 0.0],
-                rotation: [0.0, 0.0, 0.0],
-            });
-        let outer_t = centre * Mat4::from_quat(q_outer);
-        let inner_t = outer_t * Mat4::from_quat(q_inner);
-        let core_t = inner_t * Mat4::from_quat(q_inner);
-        for cube in END_CRYSTAL_TEXTURED_PARTS[1].cubes {
-            emit_textured_model_cube(mesh, outer_t, *cube, submit.texture, entry.uv, submit.tint);
-        }
-        for cube in END_CRYSTAL_TEXTURED_PARTS[2].cubes {
-            emit_textured_model_cube(mesh, inner_t, *cube, submit.texture, entry.uv, submit.tint);
-        }
-        for cube in END_CRYSTAL_TEXTURED_PARTS[3].cubes {
-            emit_textured_model_cube(mesh, core_t, *cube, submit.texture, entry.uv, submit.tint);
-        }
-    });
+            let age = instance.render_state.age_in_ticks;
+            let bob = end_crystal_bob_y(age);
+            let (q_outer, q_inner) = end_crystal_glass_quaternions(age);
+            let centre = submit.transform
+                * part_pose_transform(PartPose {
+                    offset: [0.0, 24.0 + bob, 0.0],
+                    rotation: [0.0, 0.0, 0.0],
+                });
+            let outer_t = centre * Mat4::from_quat(q_outer);
+            let inner_t = outer_t * Mat4::from_quat(q_inner);
+            let core_t = inner_t * Mat4::from_quat(q_inner);
+            for cube in END_CRYSTAL_TEXTURED_PARTS[1].cubes {
+                emit_textured_model_cube(
+                    mesh,
+                    outer_t,
+                    *cube,
+                    submit.texture,
+                    entry.uv,
+                    submit.tint,
+                );
+            }
+            for cube in END_CRYSTAL_TEXTURED_PARTS[2].cubes {
+                emit_textured_model_cube(
+                    mesh,
+                    inner_t,
+                    *cube,
+                    submit.texture,
+                    entry.uv,
+                    submit.tint,
+                );
+            }
+            for cube in END_CRYSTAL_TEXTURED_PARTS[3].cubes {
+                emit_textured_model_cube(
+                    mesh,
+                    core_t,
+                    *cube,
+                    submit.texture,
+                    entry.uv,
+                    submit.tint,
+                );
+            }
+        });
+    }
 }
 
 fn render_textured_pass_with_dynamic_player_skin<M: EntityModel>(

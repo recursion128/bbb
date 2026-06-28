@@ -19,13 +19,14 @@ use super::catalog::{
 use super::colored::{
     arrow_model_root_transform, boat_model_root_transform, camel_model_color,
     cave_spider_model_root_transform, cod_model_root_transform, creeper_model_root_transform,
-    ender_dragon_model_root_transform, entity_model_root_transform,
-    evoker_fangs_model_root_transform, fox_model_root_transform, ghast_model_root_transform,
-    happy_ghast_model_root_transform, hoglin_model_color, iron_golem_model_root_transform,
-    leash_knot_model_root_transform, llama_model_color, llama_spit_model_root_transform,
-    magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
-    panda_model_root_transform, phantom_model_root_transform, piglin_model_color,
-    polar_bear_model_root_transform, pufferfish_model_root_transform, salmon_model_root_transform,
+    end_crystal_model_root_transform, ender_dragon_model_root_transform,
+    entity_model_root_transform, evoker_fangs_model_root_transform, fox_model_root_transform,
+    ghast_model_root_transform, happy_ghast_model_root_transform, hoglin_model_color,
+    iron_golem_model_root_transform, leash_knot_model_root_transform, llama_model_color,
+    llama_spit_model_root_transform, magma_cube_model_root_transform,
+    mesh_transformer_scaled_model_root_transform, panda_model_root_transform,
+    phantom_model_root_transform, piglin_model_color, polar_bear_model_root_transform,
+    pufferfish_model_root_transform, salmon_model_root_transform,
     shulker_bullet_model_root_transform, shulker_model_root_transform, slime_model_root_transform,
     squid_model_root_transform, trident_model_root_transform, tropical_fish_model_root_transform,
     villager_adult_model_root_transform, wind_charge_model_root_transform,
@@ -33,7 +34,9 @@ use super::colored::{
     wither_skull_model_root_transform, zombie_variant_color, zombie_variant_root_transform,
     GIANT_SCALE,
 };
-use super::geometry::{part_pose_transform, EntityModelMesh};
+use super::geometry::{
+    emit_model_cube, emit_model_part, part_pose_transform, EntityModelMesh, PartPose,
+};
 use super::instances::EntityModelInstance;
 use super::model::EntityModel;
 use super::model_layers::{
@@ -52,7 +55,7 @@ use super::model_layers::{
     WanderingTraderModel, WardenModel, WindChargeModel, WitchModel, WitherModel, WitherSkullModel,
     WolfModel, ZombieModel, ZombieVariantModel, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF,
     BAT_TEXTURE_REF, COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF,
-    FELINE_CAT_SCALE, GLOW_SQUID_TEAL, GUARDIAN_ELDER_SCALE, MODEL_LAYER_ALLAY,
+    END_CRYSTAL_PARTS, FELINE_CAT_SCALE, GLOW_SQUID_TEAL, GUARDIAN_ELDER_SCALE, MODEL_LAYER_ALLAY,
     MODEL_LAYER_ARMOR_STAND, MODEL_LAYER_ARMOR_STAND_SMALL, MODEL_LAYER_BAT, MODEL_LAYER_BEE,
     MODEL_LAYER_BEE_BABY, MODEL_LAYER_COD, MODEL_LAYER_DOLPHIN, MODEL_LAYER_DOLPHIN_BABY,
     MODEL_LAYER_PUFFERFISH_BIG, MODEL_LAYER_PUFFERFISH_MEDIUM, MODEL_LAYER_PUFFERFISH_SMALL,
@@ -66,20 +69,21 @@ use super::textured::{
     blaze_textured_layer_passes, boat_textured_layer_passes, breeze_textured_layer_passes,
     camel_textured_layer_passes, chicken_textured_layer_passes, copper_golem_textured_layer_passes,
     cow_textured_layer_passes, creaking_textured_layer_passes, creeper_textured_layer_passes,
-    drowned_textured_layer_passes, ender_dragon_textured_layer_passes,
-    enderman_textured_layer_passes, endermite_textured_layer_passes,
-    evoker_fangs_textured_layer_passes, feline_textured_layer_passes, fox_textured_layer_passes,
-    frog_textured_layer_passes, ghast_textured_layer_passes, goat_textured_layer_passes,
-    guardian_textured_layer_passes, happy_ghast_textured_layer_passes,
-    hoglin_textured_layer_passes, husk_textured_layer_passes, illager_textured_layer_passes,
-    iron_golem_textured_layer_passes, leash_knot_textured_layer_passes,
-    llama_spit_textured_layer_passes, llama_textured_layer_passes,
-    magma_cube_textured_layer_passes, minecart_textured_layer_passes,
+    drowned_textured_layer_passes, end_crystal_textured_layer_passes,
+    ender_dragon_textured_layer_passes, enderman_textured_layer_passes,
+    endermite_textured_layer_passes, evoker_fangs_textured_layer_passes,
+    feline_textured_layer_passes, fox_textured_layer_passes, frog_textured_layer_passes,
+    ghast_textured_layer_passes, goat_textured_layer_passes, guardian_textured_layer_passes,
+    happy_ghast_textured_layer_passes, hoglin_textured_layer_passes, husk_textured_layer_passes,
+    illager_textured_layer_passes, iron_golem_textured_layer_passes,
+    leash_knot_textured_layer_passes, llama_spit_textured_layer_passes,
+    llama_textured_layer_passes, magma_cube_textured_layer_passes, minecart_textured_layer_passes,
     mooshroom_textured_layer_passes, nautilus_textured_layer_passes, panda_textured_layer_passes,
     parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
     piglin_textured_layer_passes, polar_bear_textured_layer_passes, rabbit_textured_layer_passes,
-    ravager_textured_layer_passes, render_no_overlay_scrolled_textured_layers,
-    render_textured_layers, salmon_textured_layer_passes, sheep_textured_layer_passes,
+    ravager_textured_layer_passes, render_end_crystal_textured_layers,
+    render_no_overlay_scrolled_textured_layers, render_textured_layers,
+    salmon_textured_layer_passes, sheep_textured_layer_passes,
     shulker_bullet_textured_layer_passes, shulker_textured_layer_passes,
     silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
     sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
@@ -139,6 +143,13 @@ pub(in crate::entity_models) trait EntityModelSink {
     ) {
         self.model(model, transform, instance, passes);
     }
+
+    fn end_crystal_model(
+        &mut self,
+        transform: Mat4,
+        instance: &EntityModelInstance,
+        passes: &[EntityModelLayerPass],
+    );
 }
 
 /// The colored sink: render the posed cube tree into the colored mesh. Texture-backed entities (those
@@ -185,6 +196,18 @@ impl EntityModelSink for ColoredSink<'_> {
         }
         model.prepare_and_render_with_color(self.mesh, instance, transform, color);
     }
+
+    fn end_crystal_model(
+        &mut self,
+        transform: Mat4,
+        instance: &EntityModelInstance,
+        passes: &[EntityModelLayerPass],
+    ) {
+        if self.skip_texture_backed && !passes.is_empty() {
+            return;
+        }
+        render_colored_end_crystal_model(self.mesh, instance, transform);
+    }
 }
 
 /// The textured sink: walk the entity's textured layer passes over the posed tree. Colored-only
@@ -229,6 +252,21 @@ impl EntityModelSink for TexturedSink<'_> {
             passes.iter().cloned(),
             self.atlas,
             uv_offset,
+        );
+    }
+
+    fn end_crystal_model(
+        &mut self,
+        transform: Mat4,
+        instance: &EntityModelInstance,
+        passes: &[EntityModelLayerPass],
+    ) {
+        render_end_crystal_textured_layers(
+            self.meshes,
+            transform,
+            instance,
+            passes.iter().cloned(),
+            self.atlas,
         );
     }
 }
@@ -1065,6 +1103,15 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                 [u_offset, 0.0],
             )
         }
+        EntityModelKind::EndCrystal => {
+            let passes = end_crystal_textured_layer_passes();
+            let body_passes = [passes[0]];
+            sink.end_crystal_model(
+                end_crystal_model_root_transform(*instance),
+                instance,
+                &body_passes,
+            )
+        }
         EntityModelKind::LlamaSpit => sink.model(
             LlamaSpitModel::new(),
             llama_spit_model_root_transform(*instance),
@@ -1158,4 +1205,38 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
         _ => return false,
     }
     true
+}
+
+fn render_colored_end_crystal_model(
+    mesh: &mut EntityModelMesh,
+    instance: &EntityModelInstance,
+    transform: Mat4,
+) {
+    // Vanilla `EndCrystalModel.setupAnim`: `base.visible = showsBottom`, the glass stack bobs by
+    // `EndCrystalRenderer.getY(age) * 8` model pixels, and the nested glass/core rotate by the two
+    // quaternions captured in `end_crystal_glass_quaternions`.
+    if instance.render_state.end_crystal_shows_bottom {
+        emit_model_part(mesh, &END_CRYSTAL_PARTS[0], transform);
+    }
+
+    let age = instance.render_state.age_in_ticks;
+    let bob = super::model_layers::end_crystal_bob_y(age);
+    let (q_outer, q_inner) = super::model_layers::end_crystal_glass_quaternions(age);
+    let centre = transform
+        * part_pose_transform(PartPose {
+            offset: [0.0, 24.0 + bob, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        });
+    let outer_t = centre * Mat4::from_quat(q_outer);
+    let inner_t = outer_t * Mat4::from_quat(q_inner);
+    let core_t = inner_t * Mat4::from_quat(q_inner);
+    for cube in END_CRYSTAL_PARTS[1].cubes {
+        emit_model_cube(mesh, outer_t, *cube);
+    }
+    for cube in END_CRYSTAL_PARTS[2].cubes {
+        emit_model_cube(mesh, inner_t, *cube);
+    }
+    for cube in END_CRYSTAL_PARTS[3].cubes {
+        emit_model_cube(mesh, core_t, *cube);
+    }
 }

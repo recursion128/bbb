@@ -172,8 +172,9 @@ fn end_crystal_textured_submit_matches_vanilla_renderer() {
 
 #[test]
 fn end_crystal_body_submission_survives_missing_texture_atlas_entry() {
-    // The bespoke EndCrystalRenderer body arm is submission-first: the vanilla `end_crystal.png`
-    // submit is recorded before atlas lookup, and missing texture data suppresses only folded geometry.
+    // The dispatch-owned EndCrystalRenderer body submit is submission-first: the vanilla
+    // `end_crystal.png` submit is recorded before atlas lookup, and missing texture data suppresses
+    // only folded geometry.
     let images = vec![blank_texture(END_CRYSTAL_BEAM_TEXTURE_REF)];
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
     let instance = EntityModelInstance::end_crystal(452, [2.0, 65.0, -4.0], 0.0)
