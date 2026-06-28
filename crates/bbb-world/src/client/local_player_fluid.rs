@@ -411,6 +411,23 @@ mod tests {
     }
 
     #[test]
+    fn local_player_eye_in_water_query_uses_current_world_fluid() {
+        let mut world = empty_world();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 0.0, 0.5),
+            ..LocalPlayerPoseState::default()
+        });
+        assert!(!world.local_player_eye_in_water());
+
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 1, z: 0 },
+            SOURCE_WATER_BLOCK_STATE_ID,
+        );
+        assert!(world.local_player_eye_in_water());
+    }
+
+    #[test]
     fn local_player_fluid_contact_uses_canonical_eye_height() {
         let mut world = empty_world();
         set_block(

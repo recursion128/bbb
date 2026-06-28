@@ -10,6 +10,7 @@ use bbb_protocol::packets::{
 };
 use serde::{Deserialize, Serialize};
 
+use super::local_player_fluid::local_player_eye_in_water;
 use super::local_player_movement::{
     apply_local_player_input_look, integrate_local_player_input_pose_with_world_effects,
     local_player_effective_sprint,
@@ -424,6 +425,10 @@ impl WorldStore {
 
     pub fn local_player_effective_sprint(&self, input: LocalPlayerInputState) -> bool {
         local_player_effective_sprint(self, input)
+    }
+
+    pub fn local_player_eye_in_water(&self) -> bool {
+        local_player_eye_in_water(self)
     }
 
     pub fn advance_local_player_look_input(

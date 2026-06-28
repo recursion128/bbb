@@ -5,12 +5,15 @@ use std::{
 };
 
 use bbb_protocol::packets::{
-    BlockPos as ProtocolBlockPos, CommonPlayerSpawnInfo, DialogHolder, InteractionHand,
-    MerchantOffer, MerchantOffers, MobEffectFlags, OpenBook, OpenSignEditor, PlayLogin,
-    RemoveMobEffect, SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog, UpdateMobEffect,
-    WrittenBookContentSummary,
+    BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate, CommonPlayerSpawnInfo,
+    DialogHolder, InteractionHand, MerchantOffer, MerchantOffers, MobEffectFlags, OpenBook,
+    OpenSignEditor, PlayLogin, RemoveMobEffect, SetPlayerInventory as ProtocolSetPlayerInventory,
+    ShowDialog, UpdateMobEffect, WrittenBookContentSummary,
 };
-use bbb_world::LocalPlayerPoseState;
+use bbb_world::{
+    BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, LocalPlayerPoseState,
+    PaletteDomain, PaletteKind, PalettedContainerData, WorldDimension,
+};
 use tokio::sync::mpsc;
 use winit::{
     event::{ElementState, MouseButton},
@@ -21,6 +24,7 @@ const TOOLTIP_TEST_WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const TOOLTIP_TEST_AQUA: [f32; 4] = [85.0 / 255.0, 1.0, 1.0, 1.0];
 const TOOLTIP_TEST_DARK_PURPLE: [f32; 4] = [170.0 / 255.0, 0.0, 170.0 / 255.0, 1.0];
 const VANILLA_26_1_PLAYER_ENTITY_TYPE_ID: i32 = 155;
+const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
 
 fn tooltip_line(text: &str, tint: [f32; 4]) -> HudInventoryTooltipLine {
     HudInventoryTooltipLine {
@@ -287,6 +291,99 @@ fn lightmap_tick_state_advances_night_vision_duration_before_sampling() {
 }
 
 #[test]
+fn lightmap_tick_state_uses_conduit_water_vision_without_night_vision() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    attach_lightmap_local_player(&mut world, 42);
+    world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));
+    world.insert_decoded_chunk(empty_lightmap_test_chunk(world.dimension()));
+    set_lightmap_test_block(
+        &mut world,
+        BlockPos { x: 0, y: 1, z: 0 },
+        SOURCE_WATER_BLOCK_STATE_ID,
+    );
+    assert!(world.apply_update_mob_effect(mob_effect(
+        42,
+        VANILLA_MOB_EFFECT_CONDUIT_POWER_ID,
+        260,
+    )));
+    let mut lightmap = LightmapTickState::with_seed_and_brightness(0, 0.8);
+
+    lightmap.advance_for_world(0, &world);
+    assert_eq!(
+        lightmap.environment_for_world(&world).night_vision_factor,
+        0.0
+    );
+
+    lightmap.advance_for_world(1, &world);
+    let environment = lightmap.environment_for_world(&world);
+    assert!((environment.night_vision_factor - 0.006).abs() < 1e-6);
+
+    lightmap.advance_for_world(99, &world);
+    let environment = lightmap.environment_for_world(&world);
+    assert!((environment.night_vision_factor - 0.6).abs() < 1e-6);
+}
+
+#[test]
+fn lightmap_tick_state_prefers_night_vision_over_conduit_water_vision() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    attach_lightmap_local_player(&mut world, 42);
+    world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));
+    world.insert_decoded_chunk(empty_lightmap_test_chunk(world.dimension()));
+    set_lightmap_test_block(
+        &mut world,
+        BlockPos { x: 0, y: 1, z: 0 },
+        SOURCE_WATER_BLOCK_STATE_ID,
+    );
+    assert!(world.apply_update_mob_effect(mob_effect(
+        42,
+        VANILLA_MOB_EFFECT_CONDUIT_POWER_ID,
+        260,
+    )));
+    assert!(world.apply_update_mob_effect(mob_effect(42, VANILLA_MOB_EFFECT_NIGHT_VISION_ID, 240,)));
+    let mut lightmap = LightmapTickState::with_seed_and_brightness(0, 0.8);
+
+    lightmap.advance_for_world(100, &world);
+    let expected = 0.7
+        + ((140.0 - VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK) * std::f32::consts::PI * 0.2).sin() * 0.3;
+    let environment = lightmap.environment_for_world(&world);
+    assert!((environment.night_vision_factor - expected).abs() < 1e-6);
+    assert!((environment.night_vision_factor - 0.6).abs() > 0.01);
+}
+
+#[test]
+fn lightmap_tick_state_water_vision_fades_out_when_eye_leaves_water() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    attach_lightmap_local_player(&mut world, 42);
+    world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));
+    world.insert_decoded_chunk(empty_lightmap_test_chunk(world.dimension()));
+    set_lightmap_test_block(
+        &mut world,
+        BlockPos { x: 0, y: 1, z: 0 },
+        SOURCE_WATER_BLOCK_STATE_ID,
+    );
+    assert!(world.apply_update_mob_effect(mob_effect(
+        42,
+        VANILLA_MOB_EFFECT_CONDUIT_POWER_ID,
+        260,
+    )));
+    let mut lightmap = LightmapTickState::with_seed_and_brightness(0, 0.8);
+    lightmap.advance_for_world(100, &world);
+    assert!((lightmap.environment_for_world(&world).night_vision_factor - 0.6).abs() < 1e-6);
+
+    world.set_local_player_pose(local_player_pose([0.5, 4.0, 0.5], 0.0, 0.0));
+    lightmap.advance_for_world(1, &world);
+    assert_eq!(
+        lightmap.environment_for_world(&world).night_vision_factor,
+        0.0
+    );
+
+    world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));
+    lightmap.advance_for_world(1, &world);
+    let environment = lightmap.environment_for_world(&world);
+    assert!((environment.night_vision_factor - 0.546).abs() < 1e-6);
+}
+
+#[test]
 fn lightmap_environment_without_local_player_effects_keeps_base_factors() {
     let world = world_with_dimension(0, "minecraft:overworld");
     let environment = lightmap_environment_for_world_at_tick(
@@ -343,7 +440,10 @@ fn server_container_open_releases_held_movement() {
 }
 
 fn world_with_dimension(dimension_type_id: i32, dimension: &str) -> WorldStore {
-    let mut world = WorldStore::new();
+    let mut world = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
     world.apply_login(&PlayLogin {
         player_id: 42,
         hardcore: false,
@@ -417,6 +517,51 @@ fn mob_effect_with_blend(
             blend,
         },
     }
+}
+
+fn empty_lightmap_test_chunk(dimension: WorldDimension) -> ChunkColumn {
+    let section_count = usize::try_from(dimension.height.div_euclid(16)).unwrap();
+    ChunkColumn {
+        pos: ChunkPos { x: 0, z: 0 },
+        state: ChunkState::Decoded,
+        heightmaps: Vec::new(),
+        sections: (0..section_count)
+            .map(|_| ChunkSection {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: single_value_container(PaletteDomain::BlockStates, 4096, 0),
+                biomes: single_value_container(PaletteDomain::Biomes, 64, 0),
+            })
+            .collect(),
+        block_entities: Vec::new(),
+        light: LightData::default(),
+    }
+}
+
+fn single_value_container(
+    domain: PaletteDomain,
+    entry_count: usize,
+    global_id: i32,
+) -> PalettedContainerData {
+    PalettedContainerData {
+        domain,
+        bits_per_entry: 0,
+        palette_kind: PaletteKind::SingleValue,
+        palette_global_ids: vec![global_id],
+        packed_data: Vec::new(),
+        entry_count,
+    }
+}
+
+fn set_lightmap_test_block(world: &mut WorldStore, pos: BlockPos, block_state_id: i32) {
+    assert!(world.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: pos.x,
+            y: pos.y,
+            z: pos.z,
+        },
+        block_state_id,
+    }));
 }
 
 fn assert_close3(actual: [f32; 3], expected: [f32; 3]) {

@@ -587,7 +587,8 @@ When an agent does any of the following, update this file in the same slice:
     `night_vision` / `darkness` mob effects into `NightVisionFactor`,
     `DarknessScale`, and the darkness-adjusted `BrightnessFactor`; the native
     lightmap runtime also mirrors vanilla client duration ticking and darkness
-    `MobEffectInstance.BlendState` fade-in/out. The Nether uses
+    `MobEffectInstance.BlendState` fade-in/out, plus `LocalPlayer.getWaterVision`
+    for the conduit-power night-vision branch. The Nether uses
     `SkyFactor = 0`, `Timelines.NIGHT_SKY_LIGHT_COLOR`, and ambient
     `0x302821`; the End uses `SkyFactor = 0`, sky light `0xAC60CD`, and
     ambient `0x3F473F`; Overworld variants use ambient `0x0A0A0A`. The block
@@ -595,9 +596,8 @@ When an agent does any of the following, update this file in the same slice:
     `LightmapRenderStateExtractor.tick()` formula and the shaders read
     `blockLightFlicker + 1.4`. Remaining lighting gaps: full camera
     `EnvironmentAttributes` extraction for timeline/weather/biome/spatial
-    modifiers, smooth/AO entity light, conduit power's water-vision night-vision
-    branch, GUI / entity-in-UI lighting variants, and the colored debug fallback's
-    baked-shade approximation.
+    modifiers, smooth/AO entity light, GUI / entity-in-UI lighting variants, and
+    the colored debug fallback's baked-shade approximation.
   - The hurt red damage overlay is implemented end to end as a real overlay pass,
     not a tint: `LivingEntity.hurtTime` is tracked client-side (set to
     `hurtDuration` = 10 by `apply_hurt_animation`/`apply_damage_event`, decremented

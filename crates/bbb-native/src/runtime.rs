@@ -63,10 +63,16 @@ const VANILLA_END_SKY_LIGHT_COLOR: [f32; 3] = rgb24(-5_480_243);
 const VANILLA_END_AMBIENT_LIGHT_COLOR: [f32; 3] = rgb24(-12_630_209);
 const VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK: f32 = 1.0;
 const VANILLA_MOB_EFFECT_NIGHT_VISION_ID: i32 = 15;
+const VANILLA_MOB_EFFECT_CONDUIT_POWER_ID: i32 = 28;
 const VANILLA_MOB_EFFECT_DARKNESS_ID: i32 = 32;
 const VANILLA_NIGHT_VISION_FULL_STRENGTH_TICKS: i32 = 200;
 const VANILLA_DARKNESS_BLEND_OUT_ADVANCE_TICKS: i32 = 22;
 const VANILLA_DARKNESS_EFFECT_SCALE_OPTION: f32 = 1.0;
+const VANILLA_WATER_VISION_MAX_TICKS: i32 = 600;
+const VANILLA_WATER_VISION_FAST_RAMP_TICKS: f32 = 100.0;
+const VANILLA_WATER_VISION_SLOW_RAMP_TICKS: f32 = 500.0;
+const VANILLA_WATER_VISION_FAST_WEIGHT: f32 = 0.6;
+const VANILLA_WATER_VISION_SLOW_WEIGHT: f32 = 0.39999998;
 const CRAFTER_GRID_SLOT_COUNT: i16 = 9;
 const CRAFTER_POWERED_DATA_ID: i16 = 9;
 const CRAFTER_DISABLED_SLOT_SPRITE_SIZE: u32 = 18;
@@ -285,6 +291,7 @@ pub(crate) struct LightmapTickState {
     client_tick_count: u64,
     night_vision_effect: LightmapEffectDurationState,
     darkness_effect: LightmapEffectBlendState,
+    water_vision_time: i32,
 }
 
 impl Default for LightmapTickState {
@@ -296,6 +303,7 @@ impl Default for LightmapTickState {
             client_tick_count: 0,
             night_vision_effect: LightmapEffectDurationState::default(),
             darkness_effect: LightmapEffectBlendState::default(),
+            water_vision_time: 0,
         }
     }
 }
@@ -317,6 +325,7 @@ impl LightmapTickState {
             client_tick_count: 0,
             night_vision_effect: LightmapEffectDurationState::default(),
             darkness_effect: LightmapEffectBlendState::default(),
+            water_vision_time: 0,
         }
     }
 
@@ -329,6 +338,7 @@ impl LightmapTickState {
             client_tick_count: 0,
             night_vision_effect: LightmapEffectDurationState::default(),
             darkness_effect: LightmapEffectBlendState::default(),
+            water_vision_time: 0,
         }
     }
 
@@ -353,6 +363,7 @@ impl LightmapTickState {
             self.tick();
             self.night_vision_effect.tick_duration();
             self.darkness_effect.tick();
+            self.tick_water_vision(world);
         }
         self.client_tick_count = self.client_tick_count.saturating_add(ticks as u64);
         self.block_factor()
@@ -368,6 +379,8 @@ impl LightmapTickState {
             self.darkness_effect
                 .factor(VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK),
             self.night_vision_effect.effect(),
+            local_player_effect(world, VANILLA_MOB_EFFECT_CONDUIT_POWER_ID),
+            self.water_vision(world),
         )
     }
 
@@ -383,6 +396,41 @@ impl LightmapTickState {
 
     fn block_factor(&self) -> f32 {
         self.block_light_flicker + VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR
+    }
+
+    fn tick_water_vision(&mut self, world: &WorldStore) {
+        if world.local_player_eye_in_water() {
+            let speed = if world.local_player_is_spectator() {
+                10
+            } else {
+                1
+            };
+            self.water_vision_time =
+                (self.water_vision_time + speed).clamp(0, VANILLA_WATER_VISION_MAX_TICKS);
+        } else if self.water_vision_time > 0 {
+            self.water_vision_time =
+                (self.water_vision_time - 10).clamp(0, VANILLA_WATER_VISION_MAX_TICKS);
+        }
+    }
+
+    fn water_vision(&self, world: &WorldStore) -> f32 {
+        if !world.local_player_eye_in_water() {
+            return 0.0;
+        }
+        if self.water_vision_time >= VANILLA_WATER_VISION_MAX_TICKS {
+            return 1.0;
+        }
+
+        let water_vision_time = self.water_vision_time as f32;
+        let fast = (water_vision_time / VANILLA_WATER_VISION_FAST_RAMP_TICKS).clamp(0.0, 1.0);
+        let slow = if self.water_vision_time < VANILLA_WATER_VISION_FAST_RAMP_TICKS as i32 {
+            0.0
+        } else {
+            ((water_vision_time - VANILLA_WATER_VISION_FAST_RAMP_TICKS)
+                / VANILLA_WATER_VISION_SLOW_RAMP_TICKS)
+                .clamp(0.0, 1.0)
+        };
+        fast * VANILLA_WATER_VISION_FAST_WEIGHT + slow * VANILLA_WATER_VISION_SLOW_WEIGHT
     }
 }
 
@@ -428,6 +476,7 @@ fn lightmap_environment_for_world_at_tick(
         .map(vanilla_darkness_effect_factor)
         .unwrap_or(0.0);
     let night_vision_effect = local_player_effect(world, VANILLA_MOB_EFFECT_NIGHT_VISION_ID);
+    let conduit_power_effect = local_player_effect(world, VANILLA_MOB_EFFECT_CONDUIT_POWER_ID);
     lightmap_environment_for_world_with_effects(
         world,
         brightness_factor,
@@ -436,6 +485,8 @@ fn lightmap_environment_for_world_at_tick(
         partial_tick,
         darkness_effect_factor,
         night_vision_effect,
+        conduit_power_effect,
+        0.0,
     )
 }
 
@@ -447,6 +498,8 @@ fn lightmap_environment_for_world_with_effects(
     partial_tick: f32,
     darkness_effect_factor: f32,
     night_vision_effect: Option<MobEffectState>,
+    conduit_power_effect: Option<MobEffectState>,
+    water_vision: f32,
 ) -> LightmapEnvironment {
     let mut environment = world
         .level_info()
@@ -458,6 +511,8 @@ fn lightmap_environment_for_world_with_effects(
         partial_tick,
         darkness_effect_factor,
         night_vision_effect,
+        conduit_power_effect,
+        water_vision,
     );
     environment.brightness_factor = effects.brightness_factor;
     environment.darkness_scale = effects.darkness_scale;
@@ -589,6 +644,8 @@ fn local_player_lightmap_effects(
     partial_tick: f32,
     darkness_effect_factor: f32,
     night_vision_effect: Option<MobEffectState>,
+    conduit_power_effect: Option<MobEffectState>,
+    water_vision: f32,
 ) -> LocalPlayerLightmapEffects {
     let partial_tick = sanitize_lightmap_partial_tick(partial_tick);
     let base_brightness = sanitize_lightmap_brightness_factor(brightness_factor);
@@ -597,9 +654,14 @@ fn local_player_lightmap_effects(
     let brightness_factor = (base_brightness - darkness_modifier).max(0.0);
     let darkness_scale = vanilla_darkness_scale(camera_tick_count, darkness_modifier, partial_tick)
         * VANILLA_DARKNESS_EFFECT_SCALE_OPTION;
-    let night_vision_factor = night_vision_effect
-        .map(|effect| vanilla_night_vision_scale(effect, partial_tick))
-        .unwrap_or(0.0);
+    let water_vision = water_vision.clamp(0.0, 1.0);
+    let night_vision_factor = if let Some(effect) = night_vision_effect {
+        vanilla_night_vision_scale(effect, partial_tick)
+    } else if water_vision > 0.0 && conduit_power_effect.is_some() {
+        water_vision
+    } else {
+        0.0
+    };
 
     LocalPlayerLightmapEffects {
         brightness_factor,
