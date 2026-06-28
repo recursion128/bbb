@@ -256,9 +256,7 @@ fn clear_color_applies_client_sky_flash_color_layer() {
     let expected = clear_color_with_sky_flash(baseline);
 
     assert_clear_color_close(flashed, expected);
-    assert!(flashed.r > baseline.r);
-    assert!(flashed.g > baseline.g);
-    assert!(flashed.b >= baseline.b);
+    assert_ne!(flashed, baseline);
 }
 
 #[test]
@@ -274,48 +272,100 @@ fn clear_color_hides_client_sky_flash_when_option_is_enabled() {
 }
 
 #[test]
-fn clear_color_uses_vanilla_dimension_sky_color_without_camera_biome() {
+fn clear_color_uses_vanilla_dimension_fog_and_sky_color_without_camera_biome() {
     let mut overworld = world_with_dimension(0, "minecraft:overworld");
     set_world_day_time(&mut overworld, 6_000);
     assert_clear_color_close(
         clear_color_for_world(&overworld, false),
-        clear_color_for_day_time_with_sky_color(6_000, 0.0, 0.0, Some(VANILLA_OVERWORLD_SKY_COLOR)),
+        clear_color_for_day_time(6_000, 0.0, 0.0),
     );
 
     let mut nether = world_with_dimension(1, "minecraft:the_nether");
     set_world_day_time(&mut nether, 6_000);
     assert_clear_color_close(
         clear_color_for_world(&nether, false),
-        clear_color_for_day_time_with_sky_color(6_000, 0.0, 0.0, Some([0, 0, 0])),
+        clear_color_for_day_time_with_environment_colors(
+            6_000,
+            0.0,
+            0.0,
+            None,
+            Some([0, 0, 0]),
+            VanillaLightmapDimensionKind::Nether,
+        ),
     );
 
     let mut end = world_with_dimension(2, "minecraft:the_end");
     set_world_day_time(&mut end, 6_000);
     assert_clear_color_close(
         clear_color_for_world(&end, false),
-        clear_color_for_day_time_with_sky_color(6_000, 0.0, 0.0, Some([0, 0, 0])),
+        clear_color_for_day_time_with_environment_colors(
+            6_000,
+            0.0,
+            0.0,
+            Some(VANILLA_END_FOG_COLOR),
+            Some([0, 0, 0]),
+            VanillaLightmapDimensionKind::End,
+        ),
     );
 }
 
 #[test]
-fn clear_color_samples_camera_biome_sky_color_attribute() {
+fn clear_color_samples_camera_biome_fog_and_sky_color_attributes() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
     set_world_day_time(&mut world, 6_000);
     world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));
     world.insert_decoded_chunk(empty_lightmap_test_chunk_with_biome(world.dimension(), 42));
-    let textures =
-        TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([biome_profile(
+    let textures = TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
+        biome_profile_with_environment(
             42,
-            [0x10, 0x20, 0x30],
-        )]));
+            Some([0x10, 0x20, 0x30]),
+            Some([0x80, 0x40, 0x20]),
+            None,
+        ),
+    ]));
 
     let clear =
         clear_color_for_world_at_camera(&world, &textures, camera_pose_from_world(&world), false);
-    let expected =
-        clear_color_for_day_time_with_sky_color(6_000, 0.0, 0.0, Some([0x10, 0x20, 0x30]));
+    let expected = clear_color_for_day_time_with_environment_colors(
+        6_000,
+        0.0,
+        0.0,
+        Some([0x80, 0x40, 0x20]),
+        Some([0x10, 0x20, 0x30]),
+        VanillaLightmapDimensionKind::Overworld,
+    );
 
     assert_clear_color_close(clear, expected);
-    assert!(clear.b < clear_color_for_world(&world, false).b);
+    assert_ne!(clear, clear_color_for_world(&world, false));
+}
+
+#[test]
+fn clear_color_samples_camera_biome_water_fog_when_eye_is_in_water() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, 6_000);
+    world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));
+    world.insert_decoded_chunk(empty_lightmap_test_chunk_with_biome(world.dimension(), 42));
+    set_lightmap_test_block(
+        &mut world,
+        BlockPos { x: 0, y: 1, z: 0 },
+        SOURCE_WATER_BLOCK_STATE_ID,
+    );
+    let textures = TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
+        biome_profile_with_environment(42, None, None, Some([0x02, 0x20, 0x44])),
+    ]));
+
+    let clear =
+        clear_color_for_world_at_camera(&world, &textures, camera_pose_from_world(&world), false);
+
+    assert_eq!(
+        clear,
+        clear_color_from_argb(rgb_u8_to_argb([0x02, 0x20, 0x44]))
+    );
+
+    world.set_sky_flash_time(2);
+    let flashed =
+        clear_color_for_world_at_camera(&world, &textures, camera_pose_from_world(&world), false);
+    assert_eq!(flashed, clear);
 }
 
 #[test]
@@ -339,6 +389,31 @@ fn camera_biome_sky_color_uses_vanilla_gaussian_spatial_weights() {
         camera_biome_sky_color(&world, &textures, camera_pose_from_world(&world)).unwrap();
 
     assert_eq!(sky_color, [50, 100, 125]);
+}
+
+#[test]
+fn camera_biome_fog_and_water_fog_use_vanilla_gaussian_spatial_weights() {
+    let mut world = world_with_dimension_height(0, "minecraft:overworld", 64);
+    world.set_local_player_pose(local_player_pose(
+        [8.0, 32.0 - f64::from(CameraPose::STANDING_EYE_HEIGHT), 8.0],
+        0.0,
+        0.0,
+    ));
+    world.insert_decoded_chunk(empty_lightmap_test_chunk_with_biomes(
+        world.dimension(),
+        split_x_biome_container(10, 20),
+    ));
+    let textures = TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
+        biome_profile_with_environment(10, None, Some([10, 20, 30]), Some([1, 2, 3])),
+        biome_profile_with_environment(20, None, Some([110, 220, 230]), Some([101, 202, 203])),
+    ]));
+
+    let camera_pose = camera_pose_from_world(&world);
+    let fog_color = camera_biome_fog_color(&world, &textures, camera_pose).unwrap();
+    let water_fog_color = camera_biome_water_fog_color(&world, &textures, camera_pose).unwrap();
+
+    assert_eq!(fog_color, [60, 120, 130]);
+    assert_eq!(water_fog_color, [51, 102, 103]);
 }
 
 #[test]
@@ -940,6 +1015,15 @@ fn split_x_biome_container(left_biome_id: i32, right_biome_id: i32) -> PalettedC
 }
 
 fn biome_profile(id: i32, sky_color: [u8; 3]) -> BiomeColorProfile {
+    biome_profile_with_environment(id, Some(sky_color), None, None)
+}
+
+fn biome_profile_with_environment(
+    id: i32,
+    sky_color: Option<[u8; 3]>,
+    fog_color: Option<[u8; 3]>,
+    water_fog_color: Option<[u8; 3]>,
+) -> BiomeColorProfile {
     BiomeColorProfile {
         id,
         name: format!("minecraft:test_biome_{id}"),
@@ -949,9 +1033,9 @@ fn biome_profile(id: i32, sky_color: [u8; 3]) -> BiomeColorProfile {
         foliage_color: None,
         dry_foliage_color: None,
         water_color: None,
-        fog_color: None,
-        sky_color: Some(sky_color),
-        water_fog_color: None,
+        fog_color,
+        sky_color,
+        water_fog_color,
         grass_color_modifier: GrassColorModifier::None,
     }
 }

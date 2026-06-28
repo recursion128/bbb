@@ -22,8 +22,8 @@ use bbb_renderer::{
 };
 use bbb_world::{
     BlockPos, BookScreenState, ContainerState, MerchantOfferState, MerchantOffersState,
-    MobEffectState, MountArmorSlotKind, MountInventoryKind, WorldLevelInfo, WorldStore,
-    WorldWeatherState,
+    MobEffectState, MountArmorSlotKind, MountInventoryKind, TerrainFluidKind, TerrainFluidState,
+    WorldLevelInfo, WorldStore, WorldWeatherState,
 };
 use tokio::sync::mpsc;
 
@@ -71,6 +71,15 @@ const VANILLA_WEATHER_THUNDER_ALPHA: f32 = 0.52734375;
 const VANILLA_WEATHER_RAIN_SKY_LIGHT_COLOR: i32 = argb_color(79, 122, 122, 255);
 const VANILLA_WEATHER_THUNDER_SKY_LIGHT_COLOR: i32 = argb_color(134, 122, 122, 255);
 const VANILLA_OVERWORLD_SKY_COLOR: [u8; 3] = [0x78, 0xa7, 0xff];
+const VANILLA_OVERWORLD_FOG_COLOR: [u8; 3] = [0xc0, 0xd8, 0xff];
+const VANILLA_END_FOG_COLOR: [u8; 3] = [0x18, 0x13, 0x18];
+const VANILLA_DEFAULT_WATER_FOG_COLOR: [u8; 3] = [0x05, 0x05, 0x33];
+const VANILLA_TIMELINE_NIGHT_SKY_COLOR_MULTIPLIER: i32 = argb_color(255, 0, 0, 0);
+const VANILLA_TIMELINE_NIGHT_FOG_COLOR_MULTIPLIER: i32 = argb_color(255, 15, 15, 22);
+const VANILLA_WEATHER_RAIN_FOG_COLOR_MULTIPLIER: i32 = argb_color(255, 127, 127, 153);
+const VANILLA_WEATHER_THUNDER_FOG_COLOR_MULTIPLIER: i32 = argb_color(255, 63, 63, 76);
+const VANILLA_ATMOSPHERIC_FOG_RENDER_DISTANCE_CHUNKS: f32 = 12.0;
+const VANILLA_DEFAULT_SKY_FOG_END_DISTANCE: f32 = 512.0;
 const VANILLA_GAUSSIAN_SAMPLE_KERNEL: [f64; 7] = [0.0, 1.0, 4.0, 6.0, 4.0, 1.0, 0.0];
 const VANILLA_SKY_FLASH_SKY_COLOR: i32 = argb_color(255, 204, 204, 255);
 const VANILLA_SKY_FLASH_SKY_COLOR_ALPHA: f32 = 0.22;
@@ -89,6 +98,18 @@ const VANILLA_OVERWORLD_SKY_LIGHT_COLOR_KEYFRAMES: [(i64, i32); 4] = [
 ];
 const VANILLA_OVERWORLD_SKY_LIGHT_FACTOR_KEYFRAMES: [(i64, f32); 4] =
     [(730, 1.0), (11_270, 1.0), (13_140, 0.24), (22_860, 0.24)];
+const VANILLA_OVERWORLD_SKY_COLOR_MULTIPLIER_KEYFRAMES: [(i64, i32); 4] = [
+    (133, -1),
+    (11_867, -1),
+    (13_670, VANILLA_TIMELINE_NIGHT_SKY_COLOR_MULTIPLIER),
+    (22_330, VANILLA_TIMELINE_NIGHT_SKY_COLOR_MULTIPLIER),
+];
+const VANILLA_OVERWORLD_FOG_COLOR_MULTIPLIER_KEYFRAMES: [(i64, i32); 4] = [
+    (133, -1),
+    (11_867, -1),
+    (13_670, VANILLA_TIMELINE_NIGHT_FOG_COLOR_MULTIPLIER),
+    (22_330, VANILLA_TIMELINE_NIGHT_FOG_COLOR_MULTIPLIER),
+];
 const VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK: f32 = 1.0;
 const VANILLA_MOB_EFFECT_NIGHT_VISION_ID: i32 = 15;
 const VANILLA_MOB_EFFECT_CONDUIT_POWER_ID: i32 = 28;
@@ -3890,8 +3911,34 @@ fn advance_entity_client_animations(
     advanced_ticks
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+struct CameraEnvironmentColors {
+    sky_color: Option<[u8; 3]>,
+    fog_color: Option<[u8; 3]>,
+    water_fog_color: Option<[u8; 3]>,
+    fog_type: CameraFogType,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+enum CameraFogType {
+    #[default]
+    Atmospheric,
+    Water,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BiomeRgbAttribute {
+    Sky,
+    Fog,
+    WaterFog,
+}
+
 pub(crate) fn clear_color_for_world(world: &WorldStore, hide_lightning_flash: bool) -> ClearColor {
-    clear_color_for_world_with_sky_color(world, None, hide_lightning_flash)
+    clear_color_for_world_with_environment_colors(
+        world,
+        CameraEnvironmentColors::default(),
+        hide_lightning_flash,
+    )
 }
 
 fn clear_color_for_world_at_camera(
@@ -3900,41 +3947,68 @@ fn clear_color_for_world_at_camera(
     camera_pose: Option<CameraPose>,
     hide_lightning_flash: bool,
 ) -> ClearColor {
-    clear_color_for_world_with_sky_color(
+    clear_color_for_world_with_environment_colors(
         world,
-        camera_biome_sky_color(world, terrain_textures, camera_pose),
+        camera_environment_colors(world, terrain_textures, camera_pose),
         hide_lightning_flash,
     )
 }
 
-fn clear_color_for_world_with_sky_color(
+fn clear_color_for_world_with_environment_colors(
     world: &WorldStore,
-    sky_color: Option<[u8; 3]>,
+    colors: CameraEnvironmentColors,
     hide_lightning_flash: bool,
 ) -> ClearColor {
     let day_time = world.world_time().map(|time| time.day_time).unwrap_or(6000);
     let weather = world.weather();
     let rain = weather.rain_level.clamp(0.0, 1.0) as f64;
     let thunder = weather.thunder_level.clamp(0.0, 1.0) as f64;
-    let clear = clear_color_for_day_time_with_sky_color(
-        day_time,
-        rain,
-        thunder,
-        sky_color.or_else(|| dimension_sky_color_for_world(world)),
-    );
-    if hide_lightning_flash || world.sky_flash_time() == 0 {
+    let dimension_kind = world
+        .level_info()
+        .map(vanilla_lightmap_dimension_kind)
+        .unwrap_or(VanillaLightmapDimensionKind::Overworld);
+    let clear = match colors.fog_type {
+        CameraFogType::Atmospheric => clear_color_for_day_time_with_environment_colors(
+            day_time,
+            rain,
+            thunder,
+            colors
+                .fog_color
+                .or_else(|| dimension_fog_color_for_kind(dimension_kind)),
+            colors
+                .sky_color
+                .or_else(|| dimension_sky_color_for_kind(dimension_kind)),
+            dimension_kind,
+        ),
+        CameraFogType::Water => clear_color_from_argb(rgb_u8_to_argb(
+            colors
+                .water_fog_color
+                .unwrap_or(VANILLA_DEFAULT_WATER_FOG_COLOR),
+        )),
+    };
+    if hide_lightning_flash
+        || world.sky_flash_time() == 0
+        || colors.fog_type != CameraFogType::Atmospheric
+    {
         clear
     } else {
         clear_color_with_sky_flash(clear)
     }
 }
 
-fn dimension_sky_color_for_world(world: &WorldStore) -> Option<[u8; 3]> {
-    let level = world.level_info()?;
-    match vanilla_lightmap_dimension_kind(level) {
+fn dimension_sky_color_for_kind(kind: VanillaLightmapDimensionKind) -> Option<[u8; 3]> {
+    match kind {
         VanillaLightmapDimensionKind::Overworld => Some(VANILLA_OVERWORLD_SKY_COLOR),
         VanillaLightmapDimensionKind::Nether | VanillaLightmapDimensionKind::End => Some([0, 0, 0]),
         VanillaLightmapDimensionKind::Other => None,
+    }
+}
+
+fn dimension_fog_color_for_kind(kind: VanillaLightmapDimensionKind) -> Option<[u8; 3]> {
+    match kind {
+        VanillaLightmapDimensionKind::Overworld => Some(VANILLA_OVERWORLD_FOG_COLOR),
+        VanillaLightmapDimensionKind::End => Some(VANILLA_END_FOG_COLOR),
+        VanillaLightmapDimensionKind::Nether | VanillaLightmapDimensionKind::Other => None,
     }
 }
 
@@ -3943,32 +4017,124 @@ pub(crate) fn clear_color_for_day_time(
     rain_level: f64,
     thunder_level: f64,
 ) -> ClearColor {
-    clear_color_for_day_time_with_sky_color(day_time, rain_level, thunder_level, None)
+    clear_color_for_day_time_with_environment_colors(
+        day_time,
+        rain_level,
+        thunder_level,
+        Some(VANILLA_OVERWORLD_FOG_COLOR),
+        Some(VANILLA_OVERWORLD_SKY_COLOR),
+        VanillaLightmapDimensionKind::Overworld,
+    )
 }
 
-fn clear_color_for_day_time_with_sky_color(
+fn clear_color_for_day_time_with_environment_colors(
     day_time: i64,
     rain_level: f64,
     thunder_level: f64,
+    fog_color: Option<[u8; 3]>,
     sky_color: Option<[u8; 3]>,
+    dimension_kind: VanillaLightmapDimensionKind,
 ) -> ClearColor {
-    let phase = day_time.rem_euclid(24_000) as f64 / 24_000.0;
-    let noon_aligned = (phase - 0.25) * std::f64::consts::TAU;
-    let daylight = ((noon_aligned.cos() + 1.0) * 0.5).powf(0.65);
-    let weather_dim = (1.0 - rain_level * 0.25 - thunder_level * 0.45).clamp(0.25, 1.0);
-    let night = [0.015, 0.025, 0.055];
-    let sky_color = sky_color.unwrap_or(VANILLA_OVERWORLD_SKY_COLOR);
-    let day = [
-        sky_color[0] as f64 / 255.0,
-        sky_color[1] as f64 / 255.0,
-        sky_color[2] as f64 / 255.0,
-    ];
-    ClearColor {
-        r: (night[0] + (day[0] - night[0]) * daylight) * weather_dim,
-        g: (night[1] + (day[1] - night[1]) * daylight) * weather_dim,
-        b: (night[2] + (day[2] - night[2]) * daylight) * weather_dim,
-        a: 1.0,
+    let mut fog_color = rgb_u8_to_argb(fog_color.unwrap_or([0, 0, 0]));
+    let mut sky_color = rgb_u8_to_argb(sky_color.unwrap_or([0, 0, 0]));
+    if dimension_kind == VanillaLightmapDimensionKind::Overworld {
+        fog_color = argb_multiply(
+            fog_color,
+            sample_periodic_argb_keyframes(
+                day_time,
+                &VANILLA_OVERWORLD_FOG_COLOR_MULTIPLIER_KEYFRAMES,
+                VANILLA_LIGHTMAP_DAY_PERIOD_TICKS,
+            ),
+        );
+        sky_color = argb_multiply(
+            sky_color,
+            sample_periodic_argb_keyframes(
+                day_time,
+                &VANILLA_OVERWORLD_SKY_COLOR_MULTIPLIER_KEYFRAMES,
+                VANILLA_LIGHTMAP_DAY_PERIOD_TICKS,
+            ),
+        );
     }
+    fog_color = apply_weather_fog_color_layers(fog_color, rain_level, thunder_level);
+    sky_color = apply_atmospheric_sky_weather_darken(sky_color, rain_level, thunder_level);
+    atmospheric_clear_color(fog_color, sky_color)
+}
+
+fn apply_weather_fog_color_layers(color: i32, rain_level: f64, thunder_level: f64) -> i32 {
+    let thunder_level = sanitize_weather_color_level(thunder_level);
+    let rain_level = (sanitize_weather_color_level(rain_level) - thunder_level).max(0.0);
+    let color =
+        apply_weather_fog_color_layer(color, rain_level, VANILLA_WEATHER_RAIN_FOG_COLOR_MULTIPLIER);
+    apply_weather_fog_color_layer(
+        color,
+        thunder_level,
+        VANILLA_WEATHER_THUNDER_FOG_COLOR_MULTIPLIER,
+    )
+}
+
+fn apply_weather_fog_color_layer(color: i32, level: f32, multiplier: i32) -> i32 {
+    if level <= 0.0 {
+        return color;
+    }
+    argb_srgb_lerp(level, color, argb_multiply(color, multiplier))
+}
+
+fn apply_atmospheric_sky_weather_darken(color: i32, rain_level: f64, thunder_level: f64) -> i32 {
+    let rain_level = sanitize_weather_color_level(rain_level);
+    let thunder_level = sanitize_weather_color_level(thunder_level);
+    let mut color = color;
+    if rain_level > 0.0 {
+        color = argb_scale_rgb(
+            color,
+            1.0 - rain_level * 0.5,
+            1.0 - rain_level * 0.5,
+            1.0 - rain_level * 0.4,
+        );
+    }
+    if thunder_level > 0.0 {
+        color = argb_scale_rgb(
+            color,
+            1.0 - thunder_level * 0.5,
+            1.0 - thunder_level * 0.5,
+            1.0 - thunder_level * 0.5,
+        );
+    }
+    color
+}
+
+fn atmospheric_clear_color(fog_color: i32, sky_color: i32) -> ClearColor {
+    let sky_fog_end = (VANILLA_DEFAULT_SKY_FOG_END_DISTANCE / 16.0)
+        .min(VANILLA_ATMOSPHERIC_FOG_RENDER_DISTANCE_CHUNKS);
+    let sky_color_mix = clamped_lerp(sky_fog_end / 32.0, 0.25, 1.0);
+    let sky_color_mix = 1.0 - sky_color_mix.powf(0.25);
+    clear_color_from_argb(argb_srgb_lerp(sky_color_mix, fog_color, sky_color))
+}
+
+fn sanitize_weather_color_level(level: f64) -> f32 {
+    if level.is_finite() {
+        level.clamp(0.0, 1.0) as f32
+    } else {
+        0.0
+    }
+}
+
+fn clamped_lerp(factor: f32, min: f32, max: f32) -> f32 {
+    if factor < 0.0 {
+        min
+    } else if factor > 1.0 {
+        max
+    } else {
+        min + factor * (max - min)
+    }
+}
+
+fn argb_scale_rgb(color: i32, red: f32, green: f32, blue: f32) -> i32 {
+    argb_color(
+        argb_alpha(color),
+        ((argb_red(color) as f32 * red) as i32).clamp(0, 255),
+        ((argb_green(color) as f32 * green) as i32).clamp(0, 255),
+        ((argb_blue(color) as f32 * blue) as i32).clamp(0, 255),
+    )
 }
 
 fn camera_biome_sky_color(
@@ -3976,19 +4142,83 @@ fn camera_biome_sky_color(
     terrain_textures: &TerrainTextureState,
     camera_pose: Option<CameraPose>,
 ) -> Option<[u8; 3]> {
-    let camera = camera_pose?;
-    let eye = [
+    camera_biome_rgb_color(world, terrain_textures, camera_pose, BiomeRgbAttribute::Sky)
+}
+
+fn camera_biome_fog_color(
+    world: &WorldStore,
+    terrain_textures: &TerrainTextureState,
+    camera_pose: Option<CameraPose>,
+) -> Option<[u8; 3]> {
+    camera_biome_rgb_color(world, terrain_textures, camera_pose, BiomeRgbAttribute::Fog)
+}
+
+fn camera_biome_water_fog_color(
+    world: &WorldStore,
+    terrain_textures: &TerrainTextureState,
+    camera_pose: Option<CameraPose>,
+) -> Option<[u8; 3]> {
+    camera_biome_rgb_color(
+        world,
+        terrain_textures,
+        camera_pose,
+        BiomeRgbAttribute::WaterFog,
+    )
+}
+
+fn camera_environment_colors(
+    world: &WorldStore,
+    terrain_textures: &TerrainTextureState,
+    camera_pose: Option<CameraPose>,
+) -> CameraEnvironmentColors {
+    let Some(camera) = camera_pose else {
+        return CameraEnvironmentColors::default();
+    };
+    let eye = camera_eye_position(camera);
+    CameraEnvironmentColors {
+        sky_color: gaussian_biome_rgb_color(world, terrain_textures, eye, BiomeRgbAttribute::Sky),
+        fog_color: gaussian_biome_rgb_color(world, terrain_textures, eye, BiomeRgbAttribute::Fog),
+        water_fog_color: gaussian_biome_rgb_color(
+            world,
+            terrain_textures,
+            eye,
+            BiomeRgbAttribute::WaterFog,
+        ),
+        fog_type: if camera_eye_in_water(world, eye) {
+            CameraFogType::Water
+        } else {
+            CameraFogType::Atmospheric
+        },
+    }
+}
+
+fn camera_biome_rgb_color(
+    world: &WorldStore,
+    terrain_textures: &TerrainTextureState,
+    camera_pose: Option<CameraPose>,
+    attribute: BiomeRgbAttribute,
+) -> Option<[u8; 3]> {
+    gaussian_biome_rgb_color(
+        world,
+        terrain_textures,
+        camera_eye_position(camera_pose?),
+        attribute,
+    )
+}
+
+fn camera_eye_position(camera: CameraPose) -> [f32; 3] {
+    [
         camera.position[0],
         camera.position[1] + camera.eye_height,
         camera.position[2],
-    ];
-    gaussian_biome_sky_color(world, terrain_textures, eye)
+    ]
 }
 
-fn gaussian_biome_sky_color(
+fn gaussian_biome_rgb_color(
     world: &WorldStore,
     terrain_textures: &TerrainTextureState,
     eye: [f32; 3],
+    attribute: BiomeRgbAttribute,
 ) -> Option<[u8; 3]> {
     if !eye.into_iter().all(f32::is_finite) {
         return None;
@@ -4024,17 +4254,22 @@ fn gaussian_biome_sky_color(
                 if weight <= 0.0 {
                     continue;
                 }
-                let Some(color) =
-                    biome_sky_color_at_quart(world, terrain_textures, sample_x, sample_y, sample_z)
-                else {
+                let Some(color) = biome_rgb_color_at_quart(
+                    world,
+                    terrain_textures,
+                    sample_x,
+                    sample_y,
+                    sample_z,
+                    attribute,
+                ) else {
                     continue;
                 };
-                accumulate_weighted_sky_color(&mut samples, color, weight);
+                accumulate_weighted_rgb_color(&mut samples, color, weight);
             }
         }
     }
 
-    lerp_weighted_sky_colors(&samples)
+    lerp_weighted_rgb_colors(&samples)
 }
 
 fn gaussian_axis_weight(index: usize, relative: f64) -> f64 {
@@ -4043,12 +4278,13 @@ fn gaussian_axis_weight(index: usize, relative: f64) -> f64 {
     start + relative * (end - start)
 }
 
-fn biome_sky_color_at_quart(
+fn biome_rgb_color_at_quart(
     world: &WorldStore,
     terrain_textures: &TerrainTextureState,
     quart_x: i32,
     quart_y: i32,
     quart_z: i32,
+    attribute: BiomeRgbAttribute,
 ) -> Option<[u8; 3]> {
     let pos = BlockPos {
         x: quart_x.saturating_mul(4),
@@ -4056,10 +4292,14 @@ fn biome_sky_color_at_quart(
         z: quart_z.saturating_mul(4),
     };
     let biome_id = world.probe_block(pos)?.biome_id;
-    terrain_textures.biome_sky_color(biome_id)
+    match attribute {
+        BiomeRgbAttribute::Sky => terrain_textures.biome_sky_color(biome_id),
+        BiomeRgbAttribute::Fog => terrain_textures.biome_fog_color(biome_id),
+        BiomeRgbAttribute::WaterFog => terrain_textures.biome_water_fog_color(biome_id),
+    }
 }
 
-fn accumulate_weighted_sky_color(samples: &mut Vec<([u8; 3], f64)>, color: [u8; 3], weight: f64) {
+fn accumulate_weighted_rgb_color(samples: &mut Vec<([u8; 3], f64)>, color: [u8; 3], weight: f64) {
     if let Some((_, sample_weight)) = samples
         .iter_mut()
         .find(|(sample_color, _)| *sample_color == color)
@@ -4070,7 +4310,7 @@ fn accumulate_weighted_sky_color(samples: &mut Vec<([u8; 3], f64)>, color: [u8; 
     }
 }
 
-fn lerp_weighted_sky_colors(samples: &[([u8; 3], f64)]) -> Option<[u8; 3]> {
+fn lerp_weighted_rgb_colors(samples: &[([u8; 3], f64)]) -> Option<[u8; 3]> {
     let mut total_weight = 0.0;
     let mut result = None;
     for (color, weight) in samples {
@@ -4085,6 +4325,40 @@ fn lerp_weighted_sky_colors(samples: &[([u8; 3], f64)]) -> Option<[u8; 3]> {
         });
     }
     result.map(rgb_u8_from_argb)
+}
+
+fn camera_eye_in_water(world: &WorldStore, eye: [f32; 3]) -> bool {
+    if !eye.into_iter().all(f32::is_finite) {
+        return false;
+    }
+    let pos = BlockPos {
+        x: eye[0].floor() as i32,
+        y: eye[1].floor() as i32,
+        z: eye[2].floor() as i32,
+    };
+    let Some(fluid) = world.probe_block(pos).and_then(|block| block.fluid) else {
+        return false;
+    };
+    fluid.kind == TerrainFluidKind::Water
+        && f64::from(eye[1]) < f64::from(pos.y) + camera_fluid_height_at(world, pos, fluid)
+}
+
+fn camera_fluid_height_at(world: &WorldStore, pos: BlockPos, fluid: TerrainFluidState) -> f64 {
+    let same_fluid_above = pos.y.checked_add(1).is_some_and(|above_y| {
+        world
+            .probe_block(BlockPos {
+                x: pos.x,
+                y: above_y,
+                z: pos.z,
+            })
+            .and_then(|block| block.fluid)
+            .is_some_and(|above| above.kind == fluid.kind)
+    });
+    if same_fluid_above {
+        1.0
+    } else {
+        fluid.own_height()
+    }
 }
 
 fn rgb_u8_to_argb(color: [u8; 3]) -> i32 {

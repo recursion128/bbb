@@ -290,6 +290,14 @@ impl TerrainTextureState {
         self.biome_profile(biome_id)?.sky_color
     }
 
+    pub(crate) fn biome_fog_color(&self, biome_id: Option<i32>) -> Option<[u8; 3]> {
+        self.biome_profile(biome_id)?.fog_color
+    }
+
+    pub(crate) fn biome_water_fog_color(&self, biome_id: Option<i32>) -> Option<[u8; 3]> {
+        self.biome_profile(biome_id)?.water_fog_color
+    }
+
     #[cfg(test)]
     pub(crate) fn with_biome_colors_for_tests(biome_colors: BiomeColorCatalog) -> Self {
         let mut state = Self::default();
