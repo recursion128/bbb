@@ -4552,6 +4552,11 @@ When an agent does any of the following, update this file in the same slice:
         zero-aux `Particle` constructor velocity sampling, and its no-motion
         tick path. Full-bright light coords remain deferred until per-particle
         light state is represented.
+      - particle descriptors map `SuspendedParticle.UnderwaterProvider` to
+        vanilla `y - 0.125` initial position, random sprite selection, fixed
+        blue tint, `SingleQuadParticle` quad-size sampling times `0.2..0.8`,
+        `8/(random*.8+.2)` lifetime, zero velocity, friction `1.0`, and
+        no-physics metadata.
     - native dispatcher and offline probe recording/playback for
       `LevelEventHandler` portal travel local ambience:
       - event `1032`

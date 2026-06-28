@@ -65,6 +65,12 @@ pub(crate) enum ParticleVisualDescriptor {
     Bubble,
     Note,
     AttackSweep,
+    SingleQuadRandomScaled {
+        min_scale: f32,
+        max_scale: f32,
+        color: ParticleColorDescriptor,
+        quad_size_curve: ParticleQuadSizeCurve,
+    },
     SingleQuadScaled {
         scale: f32,
         color: ParticleColorDescriptor,
@@ -246,6 +252,22 @@ impl ParticleDescriptor {
                 friction: 0.98,
                 gravity: 0.0,
                 has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:underwater" => Self {
+                provider: "SuspendedParticle.UnderwaterProvider",
+                lifetime: ParticleLifetimeDescriptor::EightOverRandom,
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SingleQuadRandomScaled {
+                    min_scale: 0.2,
+                    max_scale: 0.8,
+                    color: ParticleColorDescriptor::FixedRgb([0.4, 0.4, 0.7]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Zero,
+                friction: 1.0,
+                gravity: 0.0,
+                has_physics: false,
                 speed_up_when_y_motion_is_blocked: false,
             },
             "minecraft:cloud" => Self {
@@ -855,6 +877,11 @@ impl ParticleDescriptor {
                 command_position[1] + random_centered_offset(random, 0.05),
                 command_position[2] + random_centered_offset(random, 0.05),
             ],
+            "SuspendedParticle.UnderwaterProvider" => [
+                command_position[0],
+                command_position[1] - 0.125,
+                command_position[2],
+            ],
             _ => command_position,
         }
     }
@@ -914,6 +941,19 @@ impl ParticleVisualDescriptor {
                     size,
                     [color, color, color, 1.0],
                     ParticleQuadSizeCurve::Constant,
+                )
+            }
+            Self::SingleQuadRandomScaled {
+                min_scale,
+                max_scale,
+                color,
+                quad_size_curve,
+            } => {
+                let scale = sample_range(random, min_scale, max_scale);
+                ParticleVisualState::new(
+                    base_quad_size * scale,
+                    color.sample(random),
+                    quad_size_curve,
                 )
             }
             Self::SingleQuadScaled {
@@ -1486,6 +1526,31 @@ mod tests {
         assert_eq!(
             sweep_attack.tick_motion(),
             ParticleTickMotionDescriptor::NoMotion
+        );
+        assert_descriptor(
+            "minecraft:underwater",
+            "SuspendedParticle.UnderwaterProvider",
+            ParticleLifetimeDescriptor::EightOverRandom,
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::SingleQuadRandomScaled {
+                min_scale: 0.2,
+                max_scale: 0.8,
+                color: ParticleColorDescriptor::FixedRgb([0.4, 0.4, 0.7]),
+                quad_size_curve: ParticleQuadSizeCurve::Constant,
+            },
+            1.0,
+            0.0,
+            false,
+            false,
+        );
+        let underwater = ParticleDescriptor::for_particle("minecraft:underwater");
+        assert_eq!(
+            underwater.initial_velocity,
+            ParticleInitialVelocityDescriptor::Zero
+        );
+        assert_eq!(
+            underwater.initial_position([1.0, 2.0, 3.0], &mut ParticleRandom::new(1)),
+            [1.0, 1.875, 3.0]
         );
 
         assert_descriptor(
@@ -2203,6 +2268,18 @@ mod tests {
         assert_range_f32(single_quad.base_quad_size, 0.1, 0.2);
         assert_eq!(single_quad.color, WHITE_PARTICLE_COLOR);
         assert_eq!(single_quad.quad_size_curve, ParticleQuadSizeCurve::Constant);
+
+        let mut underwater_random = ParticleRandom::new(43);
+        let underwater = ParticleVisualDescriptor::SingleQuadRandomScaled {
+            min_scale: 0.2,
+            max_scale: 0.8,
+            color: ParticleColorDescriptor::FixedRgb([0.4, 0.4, 0.7]),
+            quad_size_curve: ParticleQuadSizeCurve::Constant,
+        }
+        .sample_for_command(&mut underwater_random, [0.0, 0.0, 0.0]);
+        assert_range_f32(underwater.base_quad_size, 0.02, 0.16);
+        assert_eq!(underwater.color, [0.4, 0.4, 0.7, 1.0]);
+        assert_eq!(underwater.quad_size_curve, ParticleQuadSizeCurve::Constant);
 
         let mut sweep_random = ParticleRandom::new(42);
         let sweep = ParticleVisualDescriptor::AttackSweep

@@ -1143,6 +1143,29 @@ mod tests {
         assert_ne!(sweep.velocity, [0.0, 0.0, 0.0]);
         assert_eq!(sweep.tick_motion, ParticleTickMotionDescriptor::NoMotion);
 
+        let mut underwater_random = ParticleRandom::new(77);
+        let underwater = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:underwater", 1.0),
+            &mut underwater_random,
+        );
+        assert_eq!(underwater.provider, "SuspendedParticle.UnderwaterProvider");
+        assert_eq!(underwater.sprite_selection, ParticleSpriteSelection::Random);
+        assert_eq!(underwater.current_sprite_index, Some(0));
+        assert_eq!(
+            underwater.current_sprite_id.as_deref(),
+            Some("minecraft:generic_0")
+        );
+        assert_eq!(underwater.previous_position, [1.0, -0.125, 0.0]);
+        assert_eq!(underwater.position, [1.0, -0.125, 0.0]);
+        assert_eq!(underwater.quad_size_curve, ParticleQuadSizeCurve::Constant);
+        assert_range_f32(underwater.base_quad_size, 0.02, 0.16);
+        assert_eq!(underwater.color, [0.4, 0.4, 0.7, 1.0]);
+        assert!((8..=40).contains(&underwater.lifetime_ticks));
+        assert_eq!(underwater.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(underwater.friction, 1.0);
+        assert_eq!(underwater.gravity, 0.0);
+        assert!(!underwater.has_physics);
+
         let mut glow_random = ParticleRandom::new(67);
         let mut glow_command = spawn_command("minecraft:glow", 1.0);
         glow_command.velocity = [0.0, 1.0, 0.0];
