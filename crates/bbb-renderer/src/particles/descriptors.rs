@@ -24,6 +24,10 @@ pub(crate) enum ParticleLifetimeDescriptor {
         max_lifetime: u32,
         scale_tenths: u32,
     },
+    RandomInclusive {
+        min: u32,
+        max: u32,
+    },
     Explode,
 }
 
@@ -245,6 +249,21 @@ impl ParticleDescriptor {
                 has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
+            "minecraft:composter" => Self {
+                provider: "SuspendedTownParticle.ComposterFillProvider",
+                lifetime: ParticleLifetimeDescriptor::RandomInclusive { min: 3, max: 7 },
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SuspendedTown {
+                    color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::ParticleConstructorScaled {
+                    scale: 0.02,
+                },
+                friction: 0.99,
+                gravity: 0.0,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
             "minecraft:poof" => Self {
                 provider: "ExplodeParticle.Provider",
                 lifetime: ParticleLifetimeDescriptor::Explode,
@@ -391,6 +410,10 @@ impl ParticleLifetimeDescriptor {
             } => {
                 let scale = f64::from(scale_tenths) / 10.0;
                 ((f64::from(max_lifetime) / (random.next_f64() * 0.8 + 0.2) * scale) as u32).max(1)
+            }
+            Self::RandomInclusive { min, max } => {
+                let span = max.saturating_sub(min).saturating_add(1);
+                min + random.next_index(span as usize).unwrap_or(0) as u32
             }
             Self::Explode => (16.0 / (random.next_f64() * 0.8 + 0.2)) as u32 + 2,
         }
@@ -652,6 +675,23 @@ mod tests {
             ParticleInitialVelocityDescriptor::ParticleConstructorScaled { scale: 0.02 }
         );
         assert_descriptor(
+            "minecraft:composter",
+            "SuspendedTownParticle.ComposterFillProvider",
+            ParticleLifetimeDescriptor::RandomInclusive { min: 3, max: 7 },
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::SuspendedTown {
+                color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+            },
+            0.99,
+            0.0,
+            true,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:composter").initial_velocity,
+            ParticleInitialVelocityDescriptor::ParticleConstructorScaled { scale: 0.02 }
+        );
+        assert_descriptor(
             "minecraft:poof",
             "ExplodeParticle.Provider",
             ParticleLifetimeDescriptor::Explode,
@@ -777,6 +817,16 @@ mod tests {
         assert_range_f64(velocity[1], -0.002, 0.006);
         assert_range_f64(velocity[2], -0.004, 0.004);
         assert_ne!(velocity, [0.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn random_inclusive_lifetime_samples_configured_range() {
+        let mut random = ParticleRandom::new(15);
+        for _ in 0..32 {
+            let lifetime =
+                ParticleLifetimeDescriptor::RandomInclusive { min: 3, max: 7 }.sample(&mut random);
+            assert!((3..=7).contains(&lifetime));
+        }
     }
 
     fn assert_descriptor(

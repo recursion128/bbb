@@ -1021,6 +1021,20 @@ mod tests {
         assert!(happy_villager.has_physics);
         assert_ne!(happy_villager.velocity, [0.0, 0.0, 0.0]);
 
+        let mut composter_random = ParticleRandom::new(48);
+        let composter = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:composter", 1.0),
+            &mut composter_random,
+        );
+        assert_eq!(
+            composter.provider,
+            "SuspendedTownParticle.ComposterFillProvider"
+        );
+        assert!((3..=7).contains(&composter.lifetime_ticks));
+        assert_eq!(composter.quad_size_curve, ParticleQuadSizeCurve::Constant);
+        assert_eq!(composter.color, [1.0, 1.0, 1.0, 1.0]);
+        assert_ne!(composter.velocity, [0.0, 0.0, 0.0]);
+
         let mut smoke_random = ParticleRandom::new(44);
         let smoke = ParticleInstance::from_spawn_command(
             spawn_command("minecraft:white_smoke", 1.0),
