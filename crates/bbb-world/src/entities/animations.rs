@@ -87,10 +87,8 @@ const PANDA_FLAG_ON_BACK: i8 = 0x10;
 const PANDA_AMOUNT_RISE_PER_TICK: f32 = 0.15;
 const PANDA_AMOUNT_FALL_PER_TICK: f32 = 0.19;
 const PANDA_ROLL_COUNTER_MAX: i32 = 32;
-/// Entities whose `updateWalkAnimation` override (`Camel`, `Creaking`, `Frog`)
-/// replaces the base distance→speed mapping. `Camel` additionally gates on
-/// pose/jump/dash animation states the client does not yet fully track, so its limb
-/// swing is deferred rather than approximated with the base mapping.
+/// Entities whose `updateWalkAnimation` override (`Camel`, `Creaking`, `Frog`) replaces the base
+/// distance→speed mapping.
 const VANILLA_ENTITY_TYPE_CAMEL_ID: i32 = 19;
 pub(crate) const VANILLA_ENTITY_TYPE_CREAKING_ID: i32 = 31;
 const VANILLA_ENTITY_TYPE_FROG_ID: i32 = 55;
@@ -2598,6 +2596,7 @@ impl WalkAnimationState {
         is_alive: bool,
         is_baby: bool,
         frog_jump_started: bool,
+        camel_walk_active: bool,
     ) {
         let distance = match self.previous_feet_position {
             Some(previous) => {
@@ -2619,8 +2618,13 @@ impl WalkAnimationState {
             self.stop();
             return;
         }
-        let target_speed = walk_update_target_speed(entity_type_id, distance, frog_jump_started);
-        self.update(target_speed, 0.4, if is_baby { 3.0 } else { 1.0 });
+        let (target_speed, factor) = walk_update_target_speed(
+            entity_type_id,
+            distance,
+            frog_jump_started,
+            camel_walk_active,
+        );
+        self.update(target_speed, factor, if is_baby { 3.0 } else { 1.0 });
     }
 
     /// Vanilla `WalkAnimationState.position(partialTicks)`: `(position - speed * (1
@@ -2651,25 +2655,26 @@ fn is_flying_animal(entity_type_id: i32) -> bool {
     )
 }
 
-/// Whether an entity's `updateWalkAnimation` override is not yet modelled, so its
-/// limb swing is deferred rather than driven with the base distance→speed mapping.
-/// `Camel` additionally gates on pose/jump/dash animation states the client does not
-/// fully track; the `Creaking` and `Frog` overrides are driven here.
-fn walk_animation_override_is_deferred(entity_type_id: i32) -> bool {
-    matches!(entity_type_id, VANILLA_ENTITY_TYPE_CAMEL_ID)
-}
-
 /// Vanilla `updateWalkAnimation`'s per-entity distance→target-speed mapping, fed to
 /// `WalkAnimationState.update`. The base `LivingEntity` clamps `distance · 4` to `1.0`; `Creaking`
 /// overrides it to `distance · 25` clamped to `3.0` (a faster, higher-amplitude gait that ramps the
 /// limb-swing position ~3× quicker). `Frog.updateWalkAnimation` uses `distance · 25` clamped to `1.0`,
-/// but forces the target to `0` while `jumpAnimationState.isStarted()`.
-fn walk_update_target_speed(entity_type_id: i32, distance: f32, frog_jump_started: bool) -> f32 {
+/// but forces the target to `0` while `jumpAnimationState.isStarted()`. `Camel.updateWalkAnimation`
+/// uses `distance · 6` clamped to `1.0` with a slower `0.2` easing factor, and targets `0` when the
+/// camel is not standing or the dash animation is active.
+fn walk_update_target_speed(
+    entity_type_id: i32,
+    distance: f32,
+    frog_jump_started: bool,
+    camel_walk_active: bool,
+) -> (f32, f32) {
     match entity_type_id {
-        VANILLA_ENTITY_TYPE_CREAKING_ID => (distance * 25.0).min(3.0),
-        VANILLA_ENTITY_TYPE_FROG_ID if frog_jump_started => 0.0,
-        VANILLA_ENTITY_TYPE_FROG_ID => (distance * 25.0).min(1.0),
-        _ => (distance * 4.0).min(1.0),
+        VANILLA_ENTITY_TYPE_CAMEL_ID if camel_walk_active => ((distance * 6.0).min(1.0), 0.2),
+        VANILLA_ENTITY_TYPE_CAMEL_ID => (0.0, 0.2),
+        VANILLA_ENTITY_TYPE_CREAKING_ID => ((distance * 25.0).min(3.0), 0.4),
+        VANILLA_ENTITY_TYPE_FROG_ID if frog_jump_started => (0.0, 0.4),
+        VANILLA_ENTITY_TYPE_FROG_ID => ((distance * 25.0).min(1.0), 0.4),
+        _ => ((distance * 4.0).min(1.0), 0.4),
     }
 }
 
@@ -4819,6 +4824,9 @@ impl EntityClientAnimationState {
         // Vanilla `WitherBoss.aiStep` side-head targets, pre-resolved by `EntityStore` because the
         // tick needs other entities' current positions and eye heights. `None` for non-withers.
         wither_head_targets: Option<[WitherHeadTargetRotations; 2]>,
+        // Vanilla `Camel.updateWalkAnimation` checks `getPose() == Pose.STANDING`; read from
+        // `DATA_POSE` in the tick loop. `false` for entities that do not consume it.
+        camel_is_standing: bool,
         // The synced `Camel.DASH` boolean (`isDashing()`), read from the entity metadata in the tick
         // loop ([`camel_is_dashing`]). `false` for entities that do not consume it.
         camel_is_dashing: bool,
@@ -5267,11 +5275,9 @@ impl EntityClientAnimationState {
         }
         // Vanilla `LivingEntity.calculateEntityAnimation` runs every client tick
         // (`aiStep`, or `RemotePlayer.tick`) for every living entity, feeding the
-        // per-tick travel to the limb-swing accumulator. Entities whose
-        // `updateWalkAnimation` override is not yet modelled are left deferred.
-        if vanilla_living_entity_type(entity_type_id)
-            && !walk_animation_override_is_deferred(entity_type_id)
-        {
+        // per-tick travel to the limb-swing accumulator, using each modelled entity override's
+        // distance mapping and gate.
+        if vanilla_living_entity_type(entity_type_id) {
             // Vanilla `isAlive() = getHealth() > 0`: the client death animation
             // state is present exactly while the entity is dead/dying.
             let is_alive = self.death.is_none();
@@ -5280,6 +5286,7 @@ impl EntityClientAnimationState {
                 .frog_jump
                 .as_ref()
                 .is_some_and(|jump| jump.start_age.is_some());
+            let camel_walk_active = camel_is_standing && !camel_is_dashing;
             self.walk_animation
                 .get_or_insert_with(WalkAnimationState::default)
                 .advance_client_tick(
@@ -5290,6 +5297,7 @@ impl EntityClientAnimationState {
                     is_alive,
                     is_baby,
                     frog_jump_started,
+                    camel_walk_active,
                 );
         }
     }

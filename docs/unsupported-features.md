@@ -810,15 +810,13 @@ When an agent does any of the following, update this file in the same slice:
     1.5393804`, overriding the rest droop even when standing), driven by the `isAngry`
     render state, in both the colored and textured paths. `isSitting`, tame
     `tail.xRot = tailAngle` health droop, and the `shakeOffWater` water-shake roll are now
-    projected and applied on both render paths. Deferred:
-    (1) the
-    `Camel`/`Frog` `updateWalkAnimation` overrides use different
-    distance→speed mappings AND gate on pose/jump animation states the client does not
-    fully track yet (the camel dash/idle and frog jump/swim-idle/croak/tongue triggered
-    animations ARE now driven), so their
-    distance→speed walk input is left at the base mapping rather than the override. The
-    `Creaking` override is pure (`min(distance · 25, 3)`, factor `0.4`) and IS now driven —
-    its limb swing ramps ~3× faster than the base mapping (`walk_update_target_speed`); (2) the base
+    projected and applied on both render paths. Animation parity notes and remaining gaps:
+    (1) the `Camel`, `Creaking`, and `Frog` `updateWalkAnimation` overrides are now driven through
+    `walk_update_target_speed`: camel uses vanilla's `Pose.STANDING && !dashAnimationState.isStarted()`
+    gate, `min(distance · 6, 1)` target speed, `0.2` update factor, and zero target while sitting or
+    dashing; creaking uses `min(distance · 25, 3)`, factor `0.4`; frog uses `min(distance · 25, 1)`,
+    factor `0.4`, and zero target while the jump animation is started. Their remaining gaps are tied
+    to renderer presentation rather than distance→speed walk input; (2) the base
     `HumanoidModel.setupAnim` arm swing is implemented for the player, the skeleton
     family, and the non-zombified piglin family
     (`humanoid_arm_swing_pose`/`humanoid_arm_swing_parts`, arms at `[2, 3]`, the
@@ -1989,7 +1987,9 @@ When an agent does any of the following, update this file in the same slice:
       deterministic local client timer with the vanilla `random.nextInt(40) + 80` restart cadence,
       forwarded through native as `camel_idle_seconds`, and consumed by `CamelModel.setupAnim` to
       add the official tail/head/ear keyframes while preserving texture/render-type/tint/transform/
-      light/overlay/order metadata. The body-anchor sit/stand y-offset
+      light/overlay/order metadata. Camel `updateWalkAnimation` is also projected with the vanilla
+      standing-and-not-dashing gate, `min(distance * 6, 1)` target speed, `0.2` walk update factor,
+      zero target while sitting/dashing, and the existing baby position scale. The body-anchor sit/stand y-offset
       (`Camel.getBodyAnchorAnimationYOffset`) and broader lighting presentation remain unsupported
     - llama and trader llama entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `LlamaModel`, `BabyLlamaModel`, and

@@ -74,6 +74,8 @@ const ENTITY_SHARED_FLAG_GLOWING: i8 = 1 << 6;
 const VANILLA_ENTITY_TYPE_PIG_ID: i32 = 100;
 /// Vanilla 26.1 `EntityType.WOLF` registry id, used to gate `WolfArmorLayer`.
 const VANILLA_ENTITY_TYPE_WOLF_ID: i32 = 148;
+/// Vanilla `Pose.STANDING` ordinal, used by camel walk-animation gating.
+const VANILLA_POSE_STANDING_ID: i32 = 0;
 /// Vanilla `Pose.SWIMMING` ordinal, used by player cape bob suppression.
 const VANILLA_POSE_SWIMMING_ID: i32 = 3;
 /// Vanilla `Shulker.DATA_ATTACH_FACE_ID` (Direction), declared before peek and color metadata.
@@ -2223,6 +2225,8 @@ impl EntityStore {
                 let warden_heartbeat_delay = warden_heartbeat_delay(&metadata.data_values);
                 let guardian_attack_target_id = guardian_attack_target_id(&metadata.data_values);
                 let wither_head_targets = wither_head_targets_by_id.get(&identity.id).copied();
+                let camel_is_standing =
+                    entity_data_pose(&metadata.data_values) == VANILLA_POSE_STANDING_ID;
                 let camel_is_dashing = camel_is_dashing(&metadata.data_values);
                 let allay_is_dancing = allay_is_dancing(&metadata.data_values);
                 let axolotl_is_playing_dead = axolotl_is_playing_dead(&metadata.data_values);
@@ -2249,6 +2253,7 @@ impl EntityStore {
                     warden_heartbeat_delay,
                     guardian_attack_target_id,
                     wither_head_targets,
+                    camel_is_standing,
                     camel_is_dashing,
                     allay_is_dancing,
                     axolotl_is_playing_dead,

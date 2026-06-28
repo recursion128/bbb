@@ -7263,22 +7263,24 @@ fn entity_model_sources_walk_animation_stops_for_passengers_and_the_dead() {
 }
 
 #[test]
-fn entity_model_sources_defer_walk_animation_for_overridden_entities() {
-    // Camel/Frog override `updateWalkAnimation` and additionally gate on pose/jump
-    // animation states the client does not yet model, so their limb swing stays
-    // deferred (zero) while an ordinary cow with the base mapping animates from the
-    // same movement. (The `Creaking` override is pure and IS now driven — see
-    // `creaking_walk_uses_the_vanilla_distance_to_speed_override`.)
+fn camel_walk_animation_uses_vanilla_update_override_and_gates() {
+    // Vanilla `Camel.updateWalkAnimation`: while standing and not dashing,
+    // `targetSpeed = min(distance * 6, 1)` and `WalkAnimationState.update(..., factor = 0.2)`.
+    // Non-standing or dashing camels target zero. This differs from the base cow mapping
+    // (`min(distance * 4, 1)`, factor 0.4) for the same movement.
     const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
     const VANILLA_ENTITY_TYPE_CAMEL_ID: i32 = 19;
+    const CAMEL_DASH_DATA_ID: u8 = 19;
+    const POSE_STANDING: i32 = 0;
+    const POSE_SITTING: i32 = 10;
 
-    let walk_position = |store: &WorldStore, id: i32| -> f32 {
-        store
+    let walk = |store: &WorldStore, id: i32| -> (f32, f32) {
+        let source = store
             .entity_model_sources_at_partial_tick(1.0)
             .into_iter()
             .find(|source| source.entity_id == id)
-            .unwrap()
-            .walk_animation_position
+            .unwrap();
+        (source.walk_animation_position, source.walk_animation_speed)
     };
     let move_one_step = |store: &mut WorldStore, id: i32| {
         for x in [0.0, 0.5] {
@@ -7300,22 +7302,49 @@ fn entity_model_sources_defer_walk_animation_for_overridden_entities() {
         }
     };
 
-    let mut store = WorldStore::new();
-    store.apply_add_entity(protocol_add_entity_with_type(
-        80,
-        VANILLA_ENTITY_TYPE_COW_ID,
-    ));
-    store.apply_add_entity(protocol_add_entity_with_type(
-        81,
-        VANILLA_ENTITY_TYPE_CAMEL_ID,
-    ));
-    move_one_step(&mut store, 80);
-    move_one_step(&mut store, 81);
-    assert!(
-        walk_position(&store, 80) > 0.0,
-        "the cow's limb swing animates"
+    let run_case = |entity_type_id: i32, values: Vec<ProtocolEntityDataValue>| {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(protocol_add_entity_with_type(80, entity_type_id));
+        if !values.is_empty() {
+            assert!(store.apply_set_entity_data(ProtocolSetEntityData { id: 80, values }));
+        }
+        move_one_step(&mut store, 80);
+        walk(&store, 80)
+    };
+
+    assert_eq!(
+        run_case(VANILLA_ENTITY_TYPE_COW_ID, Vec::new()),
+        (0.4, 0.4),
+        "the cow uses the base LivingEntity updateWalkAnimation mapping"
     );
-    assert_eq!(walk_position(&store, 81), 0.0, "the camel stays deferred");
+    assert_eq!(
+        run_case(
+            VANILLA_ENTITY_TYPE_CAMEL_ID,
+            vec![protocol_pose_data(6, POSE_STANDING)]
+        ),
+        (0.2, 0.2),
+        "the standing camel uses the vanilla camel factor 0.2 override"
+    );
+    assert_eq!(
+        run_case(
+            VANILLA_ENTITY_TYPE_CAMEL_ID,
+            vec![protocol_pose_data(6, POSE_SITTING)]
+        ),
+        (0.0, 0.0),
+        "a sitting camel targets zero walk speed"
+    );
+    assert_eq!(
+        run_case(
+            VANILLA_ENTITY_TYPE_CAMEL_ID,
+            vec![ProtocolEntityDataValue {
+                data_id: CAMEL_DASH_DATA_ID,
+                serializer_id: 8,
+                value: EntityDataValueKind::Boolean(true),
+            }]
+        ),
+        (0.0, 0.0),
+        "a dashing camel targets zero walk speed"
+    );
 }
 
 #[test]
