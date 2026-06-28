@@ -1953,6 +1953,7 @@ impl EntityStore {
             items.push(ItemEntityStackState {
                 entity_id: identity.id,
                 position: transform.position,
+                light: super::ENTITY_LIGHT_PROBE_FULL_BRIGHT,
                 stack: stack.clone(),
             });
         }

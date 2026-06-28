@@ -10507,6 +10507,7 @@ fn item_entity_stacks_filters_and_preserves_protocol_order() {
         }
     );
     assert_eq!(items[0].stack, item_stack(42, 3));
+    assert_eq!(items[0].light, ENTITY_LIGHT_PROBE_FULL_BRIGHT);
     assert_eq!(
         items[1].position,
         EntityVec3 {
@@ -10516,6 +10517,7 @@ fn item_entity_stacks_filters_and_preserves_protocol_order() {
         }
     );
     assert_eq!(items[1].stack, item_stack(51, 2));
+    assert_eq!(items[1].light, ENTITY_LIGHT_PROBE_FULL_BRIGHT);
 }
 
 #[test]

@@ -208,6 +208,8 @@ pub struct EntityVec3 {
 pub struct ItemEntityStackState {
     pub entity_id: i32,
     pub position: EntityVec3,
+    #[serde(default = "entity_model_source_full_bright_light")]
+    pub light: TerrainLight,
     pub stack: ProtocolItemStackSummary,
 }
 
@@ -1802,7 +1804,7 @@ impl WorldStore {
     }
 
     pub fn item_entity_stacks(&self) -> Vec<ItemEntityStackState> {
-        self.entities.item_entity_stacks()
+        self.item_stacks_with_sampled_light(self.entities.item_entity_stacks())
     }
 
     /// The render state of every item-frame / glow-item-frame entity (center, facing, sampled light, item
@@ -1840,7 +1842,19 @@ impl WorldStore {
     /// `ThrownItemRenderer` draws as an item sprite share the dropped item's data layout, so this feeds
     /// the same billboard path. The caller (which owns the vanilla type ids) passes the projectile set.
     pub fn item_stacks_for_entity_types(&self, type_ids: &[i32]) -> Vec<ItemEntityStackState> {
-        self.entities.item_stacks_for_entity_types(type_ids)
+        self.item_stacks_with_sampled_light(self.entities.item_stacks_for_entity_types(type_ids))
+    }
+
+    fn item_stacks_with_sampled_light(
+        &self,
+        mut items: Vec<ItemEntityStackState>,
+    ) -> Vec<ItemEntityStackState> {
+        for item in &mut items {
+            item.light = self
+                .sample_block_light(entity_light_block_pos(item.position))
+                .unwrap_or(ENTITY_LIGHT_PROBE_FULL_BRIGHT);
+        }
+        items
     }
 
     pub fn local_player_id(&self) -> Option<i32> {

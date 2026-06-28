@@ -661,14 +661,17 @@ When an agent does any of the following, update this file in the same slice:
     and `BrightnessFactor` `notGamma` mix instead of the earlier
     `max(block, sky * 0.95)` scalar approximation. Remaining lighting gaps:
     cloud and celestial sky renderer presentation, the real dynamic 16x16
-    LightTexture texture pass and particle / legacy item-entity sprite paths
-    that still lack explicit light coords, smooth/AO entity light,
-    GUI / entity-in-UI lighting variants, and the colored debug fallback's
-    baked-shade approximation. The item-model shader now consumes submitted
-    item stack light coords through the same `LightmapInfo` RGB combination,
-    so vanilla item entity / thrown item submit paths that reach
-    `ItemStackRenderState.submit(..., lightCoords, ...)` no longer use the old
-    scalar light approximation.
+    LightTexture texture pass and particle paths that still lack explicit light
+    coords, smooth/AO entity light, GUI / entity-in-UI lighting variants, and
+    the colored debug fallback's baked-shade approximation. The item-model
+    shader now consumes submitted item stack light coords through the same
+    `LightmapInfo` RGB combination, so vanilla item entity / thrown item submit
+    paths that reach `ItemStackRenderState.submit(..., lightCoords, ...)` no
+    longer use the old scalar light approximation. The dropped-item 3D model
+    path and the legacy item-entity / thrown-item billboard path now sample the
+    entity light probe through `WorldStore`, keep the vanilla full-bright
+    fallback for missing chunk light, and pass shader-space `[block, sky]`
+    light into the item model or item-entity shader.
     Water-vision fog color brightening is covered in the native clear-color and
     fog-environment path.
   - The hurt red damage overlay is implemented end to end as a real overlay pass,

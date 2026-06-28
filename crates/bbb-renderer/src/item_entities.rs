@@ -7,6 +7,7 @@ use crate::{gpu::DEPTH_FORMAT, Renderer};
 
 const ITEM_ENTITY_BILLBOARD_SIZE: f32 = 0.5;
 const ITEM_ENTITY_TINT_WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
+const ITEM_ENTITY_FULL_BRIGHT_LIGHT: [f32; 2] = [1.0, 1.0];
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ItemEntityUvRect {
@@ -33,6 +34,8 @@ pub struct ItemEntityBillboard {
     /// sprite scale (the dropped item and the unit-scale `ThrownItemRenderer` projectiles use `1.0`; the
     /// large fireball uses `3.0`, the small fireball `0.75`).
     pub scale: f32,
+    /// Shader-space `[block, sky]` light sampled from vanilla `EntityRenderState.lightCoords`.
+    pub light: [f32; 2],
     pub layers: Vec<ItemEntityBillboardLayer>,
 }
 
@@ -41,6 +44,7 @@ impl ItemEntityBillboard {
         Self {
             position,
             scale: 1.0,
+            light: ITEM_ENTITY_FULL_BRIGHT_LIGHT,
             layers: vec![ItemEntityBillboardLayer::new(uv, ITEM_ENTITY_TINT_WHITE)],
         }
     }
@@ -59,10 +63,11 @@ pub(crate) struct ItemEntityVertex {
     pub(crate) position: [f32; 3],
     pub(crate) uv: [f32; 2],
     pub(crate) color: [f32; 4],
+    pub(crate) light: [f32; 2],
 }
 
-const ITEM_ENTITY_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 3] =
-    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4];
+const ITEM_ENTITY_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 4] =
+    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2];
 
 const ITEM_ENTITY_SHADER: &str = r#"
 struct Camera {
@@ -92,14 +97,16 @@ struct VertexIn {
     @location(0) position: vec3<f32>,
     @location(1) uv: vec2<f32>,
     @location(2) color: vec4<f32>,
+    @location(3) light: vec2<f32>,
 };
 
 struct VertexOut {
     @builtin(position) position: vec4<f32>,
     @location(0) uv: vec2<f32>,
     @location(1) color: vec4<f32>,
-    @location(2) spherical_distance: f32,
-    @location(3) cylindrical_distance: f32,
+    @location(2) light: vec2<f32>,
+    @location(3) spherical_distance: f32,
+    @location(4) cylindrical_distance: f32,
 };
 
 fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
@@ -120,12 +127,55 @@ fn apply_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f3
     return vec4<f32>(mix(color.rgb, camera.fog_color.rgb, fog_value * camera.fog_color.a), color.a);
 }
 
+fn lightmap_brightness(level: f32) -> f32 {
+    return level / (4.0 - 3.0 * level);
+}
+
+fn parabolic_mix_factor(level: f32) -> f32 {
+    let centered = 2.0 * level - 1.0;
+    return centered * centered;
+}
+
+fn not_gamma(color: vec3<f32>) -> vec3<f32> {
+    let max_component = max(max(color.x, color.y), color.z);
+    if (max_component <= 0.0) {
+        return color;
+    }
+    let max_inverted = 1.0 - max_component;
+    let max_scaled = 1.0 - max_inverted * max_inverted * max_inverted * max_inverted;
+    return color * (max_scaled / max_component);
+}
+
+fn apply_lightmap_brightness(color: vec3<f32>) -> vec3<f32> {
+    let clamped = clamp(color, vec3<f32>(0.0), vec3<f32>(1.0));
+    let not_gamma_color = not_gamma(clamped);
+    return mix(clamped, not_gamma_color, camera.lightmap_effects.y);
+}
+
+fn packed_lightmap_color(light: vec2<f32>) -> vec3<f32> {
+    let block_brightness = lightmap_brightness(light.x) * camera.lightmap_factors.y;
+    let sky_brightness = lightmap_brightness(light.y) * camera.lightmap_factors.x;
+    let night_vision_color = camera.night_vision_color.rgb * camera.lightmap_factors.z;
+    var color = max(camera.ambient_color.rgb, night_vision_color);
+    color += camera.sky_light_color.rgb * sky_brightness;
+    let block_light_color = mix(
+        camera.block_light_tint.rgb,
+        vec3<f32>(1.0),
+        0.9 * parabolic_mix_factor(light.x),
+    );
+    color += block_light_color * block_brightness;
+    color = mix(color, color * vec3<f32>(0.7, 0.6, 0.6), camera.lightmap_effects.x);
+    color -= vec3<f32>(camera.lightmap_factors.w);
+    return apply_lightmap_brightness(color);
+}
+
 @vertex
 fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
     out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
     out.uv = input.uv;
     out.color = input.color;
+    out.light = input.light;
     let fog_pos = input.position - camera.camera_position.xyz;
     out.spherical_distance = length(fog_pos);
     out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
@@ -138,7 +188,8 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     if texel.a <= 0.01 {
         discard;
     }
-    return apply_fog(texel, input.spherical_distance, input.cylindrical_distance);
+    let light_color = packed_lightmap_color(input.light);
+    return apply_fog(vec4<f32>(texel.rgb * light_color, texel.a), input.spherical_distance, input.cylindrical_distance);
 }
 "#;
 
@@ -366,6 +417,7 @@ fn sanitize_item_entity_billboard(billboard: ItemEntityBillboard) -> Option<Item
     (!layers.is_empty()).then_some(ItemEntityBillboard {
         position: billboard.position,
         scale,
+        light: sanitize_item_entity_light(billboard.light),
         layers,
     })
 }
@@ -394,6 +446,21 @@ fn sanitize_item_entity_uv_rect(rect: ItemEntityUvRect) -> Option<ItemEntityUvRe
         min: [min_x.min(max_x), min_y.min(max_y)],
         max: [min_x.max(max_x), min_y.max(max_y)],
     })
+}
+
+fn sanitize_item_entity_light(light: [f32; 2]) -> [f32; 2] {
+    [
+        if light[0].is_finite() {
+            light[0].clamp(0.0, 1.0)
+        } else {
+            ITEM_ENTITY_FULL_BRIGHT_LIGHT[0]
+        },
+        if light[1].is_finite() {
+            light[1].clamp(0.0, 1.0)
+        } else {
+            ITEM_ENTITY_FULL_BRIGHT_LIGHT[1]
+        },
+    ]
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -442,6 +509,7 @@ fn item_entity_billboard_vertices(
             vertices.extend(item_entity_layer_vertices(
                 billboard.position,
                 layer,
+                billboard.light,
                 axes,
                 size,
             ));
@@ -453,6 +521,7 @@ fn item_entity_billboard_vertices(
 fn item_entity_layer_vertices(
     position: [f32; 3],
     layer: &ItemEntityBillboardLayer,
+    light: [f32; 2],
     axes: ItemEntityBillboardAxes,
     size: f32,
 ) -> [ItemEntityVertex; 6] {
@@ -468,20 +537,26 @@ fn item_entity_layer_vertices(
     let tint = layer.tint;
 
     [
-        item_entity_vertex(bottom_left, [uv.min[0], uv.max[1]], tint),
-        item_entity_vertex(bottom_right, [uv.max[0], uv.max[1]], tint),
-        item_entity_vertex(top_right, [uv.max[0], uv.min[1]], tint),
-        item_entity_vertex(bottom_left, [uv.min[0], uv.max[1]], tint),
-        item_entity_vertex(top_right, [uv.max[0], uv.min[1]], tint),
-        item_entity_vertex(top_left, [uv.min[0], uv.min[1]], tint),
+        item_entity_vertex(bottom_left, [uv.min[0], uv.max[1]], tint, light),
+        item_entity_vertex(bottom_right, [uv.max[0], uv.max[1]], tint, light),
+        item_entity_vertex(top_right, [uv.max[0], uv.min[1]], tint, light),
+        item_entity_vertex(bottom_left, [uv.min[0], uv.max[1]], tint, light),
+        item_entity_vertex(top_right, [uv.max[0], uv.min[1]], tint, light),
+        item_entity_vertex(top_left, [uv.min[0], uv.min[1]], tint, light),
     ]
 }
 
-fn item_entity_vertex(position: Vec3, uv: [f32; 2], color: [f32; 4]) -> ItemEntityVertex {
+fn item_entity_vertex(
+    position: Vec3,
+    uv: [f32; 2],
+    color: [f32; 4],
+    light: [f32; 2],
+) -> ItemEntityVertex {
     ItemEntityVertex {
         position: position.to_array(),
         uv,
         color,
+        light,
     }
 }
 
@@ -507,6 +582,7 @@ mod tests {
         let billboard = ItemEntityBillboard {
             position: [1.0, 2.0, 3.0],
             scale: 3.0,
+            light: [1.25, f32::NAN],
             layers: vec![
                 ItemEntityBillboardLayer::new(
                     ItemEntityUvRect {
@@ -530,6 +606,7 @@ mod tests {
             Some(ItemEntityBillboard {
                 position: [1.0, 2.0, 3.0],
                 scale: 3.0,
+                light: [1.0, 1.0],
                 layers: vec![ItemEntityBillboardLayer::new(
                     ItemEntityUvRect {
                         min: [0.2, 0.0],
@@ -547,6 +624,7 @@ mod tests {
             let billboard = ItemEntityBillboard {
                 position: [0.0, 0.0, 0.0],
                 scale: bad_scale,
+                light: ITEM_ENTITY_FULL_BRIGHT_LIGHT,
                 layers: vec![ItemEntityBillboardLayer::new(
                     ItemEntityUvRect {
                         min: [0.0, 0.0],
@@ -568,6 +646,7 @@ mod tests {
         let billboards = [ItemEntityBillboard {
             position: [1.0, 2.0, 3.0],
             scale: 1.0,
+            light: [0.4, 0.8],
             layers: vec![
                 ItemEntityBillboardLayer::new(
                     ItemEntityUvRect {
@@ -599,12 +678,15 @@ mod tests {
         assert_close3_f32(vertices[0].position, [0.8, 1.8, 3.0]);
         assert_eq!(vertices[0].uv, [0.25, 0.375]);
         assert_eq!(vertices[0].color, [0.25, 0.5, 0.75, 0.8]);
+        assert_eq!(vertices[0].light, [0.4, 0.8]);
         assert_close3_f32(vertices[2].position, [1.2, 2.2, 3.0]);
         assert_eq!(vertices[2].uv, [0.5, 0.125]);
         assert_eq!(vertices[2].color, [0.25, 0.5, 0.75, 0.8]);
+        assert_eq!(vertices[2].light, [0.4, 0.8]);
         assert_close3_f32(vertices[11].position, [0.8, 2.2, 3.0]);
         assert_eq!(vertices[11].uv, [0.5, 0.5]);
         assert_eq!(vertices[11].color, ITEM_ENTITY_TINT_WHITE);
+        assert_eq!(vertices[11].light, [0.4, 0.8]);
     }
 
     #[test]
@@ -614,6 +696,7 @@ mod tests {
         let make = |scale: f32| ItemEntityBillboard {
             position: [0.0, 0.0, 0.0],
             scale,
+            light: ITEM_ENTITY_FULL_BRIGHT_LIGHT,
             layers: vec![ItemEntityBillboardLayer::new(
                 ItemEntityUvRect {
                     min: [0.0, 0.0],
@@ -632,6 +715,29 @@ mod tests {
         // Bottom-left corner: half-size 0.25 at unit scale, 0.75 at ×3.
         assert_close3_f32(unit[0].position, [-0.25, -0.25, 0.0]);
         assert_close3_f32(triple[0].position, [-0.75, -0.75, 0.0]);
+    }
+
+    #[test]
+    fn item_entity_shader_applies_submitted_lightmap() {
+        assert_eq!(ITEM_ENTITY_VERTEX_ATTRIBUTES.len(), 4);
+        assert_eq!(ITEM_ENTITY_VERTEX_ATTRIBUTES[3].shader_location, 3);
+        assert_eq!(
+            ITEM_ENTITY_VERTEX_ATTRIBUTES[3].format,
+            wgpu::VertexFormat::Float32x2
+        );
+        assert!(ITEM_ENTITY_SHADER.contains("@location(3) light: vec2<f32>"));
+        assert!(ITEM_ENTITY_SHADER.contains("level / (4.0 - 3.0 * level)"));
+        assert!(
+            ITEM_ENTITY_SHADER.contains("lightmap_brightness(light.x) * camera.lightmap_factors.y")
+        );
+        assert!(
+            ITEM_ENTITY_SHADER.contains("lightmap_brightness(light.y) * camera.lightmap_factors.x")
+        );
+        assert!(ITEM_ENTITY_SHADER.contains("camera.block_light_tint.rgb"));
+        assert!(
+            ITEM_ENTITY_SHADER.contains("mix(clamped, not_gamma_color, camera.lightmap_effects.y)")
+        );
+        assert!(ITEM_ENTITY_SHADER.contains("texel.rgb * light_color"));
     }
 
     fn assert_close3_f32(actual: [f32; 3], expected: [f32; 3]) {

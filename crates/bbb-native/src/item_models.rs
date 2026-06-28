@@ -22,7 +22,7 @@ use bbb_renderer::{
     villager_crossed_arms_item_transform, witch_held_item_transform, EntityModelInstance,
     ItemModelMesh, ItemModelQuad, MooshroomVariant,
 };
-use bbb_world::WorldStore;
+use bbb_world::{TerrainLight, WorldStore};
 use glam::{Mat4, Vec3};
 
 use crate::item_runtime::NativeItemRuntime;
@@ -260,6 +260,7 @@ pub(crate) fn dropped_item_models(
                         age_ticks,
                         state.entity_id,
                         &ground(BLOCK_GROUND_FALLBACK),
+                        shader_light(state.light),
                         count,
                         seed,
                     ));
@@ -287,6 +288,7 @@ pub(crate) fn dropped_item_models(
             age_ticks,
             state.entity_id,
             &ground(GENERATED_GROUND_FALLBACK),
+            shader_light(state.light),
             count,
             seed,
         ));
@@ -833,6 +835,7 @@ fn stacked_item_mesh(
     age_ticks: f32,
     entity_id: i32,
     ground: &BlockModelDisplayTransform,
+    light: [f32; 2],
     count: usize,
     seed: i64,
 ) -> ItemModelMesh {
@@ -843,8 +846,24 @@ fn stacked_item_mesh(
     let min_offset_y = -min_y + 1.0 / 16.0;
     let base = base_transform(position, age_ticks, entity_id, min_offset_y);
     let mut mesh = ItemModelMesh::new();
-    append_cluster(&mut mesh, quads, base, ground_matrix, count, seed, depth);
+    append_cluster(
+        &mut mesh,
+        quads,
+        base,
+        ground_matrix,
+        light,
+        count,
+        seed,
+        depth,
+    );
     mesh
+}
+
+fn shader_light(light: TerrainLight) -> [f32; 2] {
+    [
+        light.block.min(15) as f32 / 15.0,
+        light.sky.min(15) as f32 / 15.0,
+    ]
 }
 
 /// The entity-level transform shared by every copy: `T(pos, +bob + minOffsetY) · Ry(spin)` (vanilla
@@ -892,33 +911,35 @@ fn append_cluster(
     quads: &[ItemModelQuad],
     base: Mat4,
     ground: Mat4,
+    light: [f32; 2],
     count: usize,
     seed: i64,
     depth: f32,
 ) {
     let mut random = LegacyRandom::new(seed);
     if depth > FLAT_ITEM_DEPTH_THRESHOLD {
-        mesh.append_quads(quads, base * ground);
+        mesh.append_quads_with_light(quads, base * ground, light);
         for _ in 1..count {
             let xo = (random.next_float() * 2.0 - 1.0) * 0.15;
             let yo = (random.next_float() * 2.0 - 1.0) * 0.15;
             let zo = (random.next_float() * 2.0 - 1.0) * 0.15;
             let offset = Mat4::from_translation(Vec3::new(xo, yo, zo));
-            mesh.append_quads(quads, base * offset * ground);
+            mesh.append_quads_with_light(quads, base * offset * ground, light);
         }
     } else {
         let offset_z = depth * 1.5;
         let mut z = -(offset_z * (count as f32 - 1.0) / 2.0);
-        mesh.append_quads(
+        mesh.append_quads_with_light(
             quads,
             base * Mat4::from_translation(Vec3::new(0.0, 0.0, z)) * ground,
+            light,
         );
         z += offset_z;
         for _ in 1..count {
             let xo = (random.next_float() * 2.0 - 1.0) * 0.15 * 0.5;
             let yo = (random.next_float() * 2.0 - 1.0) * 0.15 * 0.5;
             let offset = Mat4::from_translation(Vec3::new(xo, yo, z));
-            mesh.append_quads(quads, base * offset * ground);
+            mesh.append_quads_with_light(quads, base * offset * ground, light);
             z += offset_z;
         }
     }
@@ -1428,6 +1449,7 @@ mod tests {
             0.0,
             0,
             &BLOCK_GROUND_FALLBACK,
+            [4.0 / 15.0, 11.0 / 15.0],
             1,
             7,
         );
@@ -1437,6 +1459,7 @@ mod tests {
             0.0,
             0,
             &BLOCK_GROUND_FALLBACK,
+            [4.0 / 15.0, 11.0 / 15.0],
             4,
             7,
         );

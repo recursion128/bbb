@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use bbb_renderer::{ItemEntityBillboard, ItemEntityBillboardLayer, ItemEntityUvRect};
-use bbb_world::{ItemEntityStackState, WorldStore};
+use bbb_world::{ItemEntityStackState, TerrainLight, WorldStore};
 
 use crate::entity_scene::THROWN_ITEM_PROJECTILE_BILLBOARDS;
 use crate::item_runtime::{ItemAtlasIcon, ItemAtlasIconLayer, ItemAtlasUvRect, NativeItemRuntime};
@@ -69,12 +69,20 @@ fn item_entity_billboard_from_icon(
             state.position.z as f32,
         ],
         scale,
+        light: shader_light(state.light),
         layers: icon
             .layers
             .into_iter()
             .map(item_entity_billboard_layer)
             .collect(),
     }
+}
+
+fn shader_light(light: TerrainLight) -> [f32; 2] {
+    [
+        light.block.min(15) as f32 / 15.0,
+        light.sky.min(15) as f32 / 15.0,
+    ]
 }
 
 fn item_entity_billboard_layer(layer: ItemAtlasIconLayer) -> ItemEntityBillboardLayer {
@@ -111,6 +119,7 @@ mod tests {
                 y: 64.0,
                 z: -2.25,
             },
+            light: TerrainLight { sky: 12, block: 5 },
             stack: ItemStackSummary {
                 item_id: Some(42),
                 count: 3,
@@ -146,6 +155,7 @@ mod tests {
         // The dropped item is lifted 0.25 above its ground position.
         assert_eq!(billboard.position, [1.5, 64.25, -2.25]);
         assert_eq!(billboard.scale, 1.0);
+        assert_eq!(billboard.light, [5.0 / 15.0, 12.0 / 15.0]);
         assert_eq!(billboard.layers.len(), 2);
         assert_eq!(
             billboard.layers[0],
@@ -180,6 +190,7 @@ mod tests {
                 y: 70.5,
                 z: -4.0,
             },
+            light: TerrainLight { sky: 7, block: 15 },
             stack: ItemStackSummary {
                 item_id: Some(11),
                 count: 1,
@@ -205,6 +216,7 @@ mod tests {
 
         assert_eq!(billboard.position, [2.0, 70.5, -4.0]);
         assert_eq!(billboard.scale, 3.0);
+        assert_eq!(billboard.light, [1.0, 7.0 / 15.0]);
         assert_eq!(billboard.layers.len(), 1);
     }
 }
