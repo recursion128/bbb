@@ -399,6 +399,21 @@ impl ParticleDescriptor {
                 has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
+            "minecraft:sculk_charge" => Self {
+                provider: "SculkChargeParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::RandomInclusive { min: 8, max: 19 },
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 1.5,
+                    color: ParticleColorDescriptor::FixedRgba([1.0, 1.0, 1.0, 1.0]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
+                friction: 0.96,
+                gravity: 0.0,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: false,
+            },
             "minecraft:sculk_charge_pop" => Self {
                 provider: "SculkChargePopParticle.Provider",
                 lifetime: ParticleLifetimeDescriptor::RandomInclusive { min: 6, max: 9 },
@@ -1704,6 +1719,25 @@ mod tests {
         assert_eq!(
             ParticleDescriptor::for_particle("minecraft:sonic_boom").initial_velocity,
             ParticleInitialVelocityDescriptor::Zero
+        );
+        assert_descriptor(
+            "minecraft:sculk_charge",
+            "SculkChargeParticle.Provider",
+            ParticleLifetimeDescriptor::RandomInclusive { min: 8, max: 19 },
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::SingleQuadScaled {
+                scale: 1.5,
+                color: ParticleColorDescriptor::FixedRgba([1.0, 1.0, 1.0, 1.0]),
+                quad_size_curve: ParticleQuadSizeCurve::Constant,
+            },
+            0.96,
+            0.0,
+            false,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:sculk_charge").initial_velocity,
+            ParticleInitialVelocityDescriptor::Command
         );
         assert_descriptor(
             "minecraft:sculk_charge_pop",

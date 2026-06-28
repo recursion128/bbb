@@ -1517,6 +1517,25 @@ mod tests {
         assert_eq!(sonic_boom.friction, 0.98);
         assert!(sonic_boom.has_physics);
 
+        let mut sculk_charge_random = ParticleRandom::new(78);
+        let mut sculk_charge_command = spawn_command("minecraft:sculk_charge", 1.0);
+        sculk_charge_command.velocity = [1.0, 2.0, 3.0];
+        let sculk_charge =
+            ParticleInstance::from_spawn_command(sculk_charge_command, &mut sculk_charge_random);
+        assert_eq!(sculk_charge.provider, "SculkChargeParticle.Provider");
+        assert_eq!(sculk_charge.sprite_selection, ParticleSpriteSelection::Age);
+        assert_range_f32(sculk_charge.base_quad_size, 0.15, 0.3);
+        assert_eq!(sculk_charge.color, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(
+            sculk_charge.quad_size_curve,
+            ParticleQuadSizeCurve::Constant
+        );
+        assert!((8..=19).contains(&sculk_charge.lifetime_ticks));
+        assert_eq!(sculk_charge.velocity, [1.0, 2.0, 3.0]);
+        assert_eq!(sculk_charge.friction, 0.96);
+        assert_eq!(sculk_charge.gravity, 0.0);
+        assert!(!sculk_charge.has_physics);
+
         let mut sculk_charge_pop_random = ParticleRandom::new(74);
         let mut sculk_charge_pop_command = spawn_command("minecraft:sculk_charge_pop", 1.0);
         sculk_charge_pop_command.velocity = [1.0, 2.0, 3.0];

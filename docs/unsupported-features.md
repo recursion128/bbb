@@ -4557,6 +4557,11 @@ When an agent does any of the following, update this file in the same slice:
         blue tint, `SingleQuadParticle` quad-size sampling times `0.2..0.8`,
         `8/(random*.8+.2)` lifetime, zero velocity, friction `1.0`, and
         no-physics metadata.
+      - particle descriptors map `SculkChargeParticle.Provider` to command
+        velocity, alpha `1.0`, `1.5` quad-size scaling, age sprites,
+        `8..=19` lifetime, friction `0.96`, and no-physics metadata. Roll
+        option, full-bright light coords, and the translucent particle layer
+        remain deferred until those per-particle states are represented.
     - native dispatcher and offline probe recording/playback for
       `LevelEventHandler` portal travel local ambience:
       - event `1032`
