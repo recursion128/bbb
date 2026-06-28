@@ -16,11 +16,13 @@ use bbb_renderer::{
     HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryItem,
     HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground, HudInventoryTextLabel,
     HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar,
-    HudItemIcon, HudUvRect, HUD_HOTBAR_SLOTS, VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
+    HudItemIcon, HudUvRect, LightmapEnvironment, HUD_HOTBAR_SLOTS,
+    VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
+    VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
 };
 use bbb_world::{
     BookScreenState, ContainerState, MerchantOfferState, MerchantOffersState, MountArmorSlotKind,
-    MountInventoryKind, WorldStore,
+    MountInventoryKind, WorldLevelInfo, WorldStore,
 };
 use tokio::sync::mpsc;
 
@@ -54,6 +56,11 @@ mod control_requests;
 mod events;
 
 const CLIENT_ENTITY_ANIMATION_TICK_INTERVAL: Duration = Duration::from_millis(50);
+const VANILLA_OVERWORLD_AMBIENT_LIGHT_COLOR: [f32; 3] = rgb24(-16_119_286);
+const VANILLA_NETHER_SKY_LIGHT_COLOR: [f32; 3] = [122.0 / 255.0, 122.0 / 255.0, 1.0];
+const VANILLA_NETHER_AMBIENT_LIGHT_COLOR: [f32; 3] = rgb24(-13_621_215);
+const VANILLA_END_SKY_LIGHT_COLOR: [f32; 3] = rgb24(-5_480_243);
+const VANILLA_END_AMBIENT_LIGHT_COLOR: [f32; 3] = rgb24(-12_630_209);
 const CRAFTER_GRID_SLOT_COUNT: i16 = 9;
 const CRAFTER_POWERED_DATA_ID: i16 = 9;
 const CRAFTER_DISABLED_SLOT_SPRITE_SIZE: u32 = 18;
@@ -268,6 +275,7 @@ impl ClientAnimationTickState {
 pub(crate) struct LightmapTickState {
     random: LevelEventSoundRandomState,
     block_light_flicker: f32,
+    brightness_factor: f32,
 }
 
 impl Default for LightmapTickState {
@@ -275,16 +283,34 @@ impl Default for LightmapTickState {
         Self {
             random: LevelEventSoundRandomState::default(),
             block_light_flicker: 0.0,
+            brightness_factor: VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
         }
     }
 }
 
 impl LightmapTickState {
+    pub(crate) fn with_brightness_factor(brightness_factor: f32) -> Self {
+        Self {
+            brightness_factor: sanitize_lightmap_brightness_factor(brightness_factor),
+            ..Self::default()
+        }
+    }
+
     #[cfg(test)]
     fn with_seed(seed: i64) -> Self {
         Self {
             random: LevelEventSoundRandomState::with_seed(seed),
             block_light_flicker: 0.0,
+            brightness_factor: VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
+        }
+    }
+
+    #[cfg(test)]
+    fn with_seed_and_brightness(seed: i64, brightness_factor: f32) -> Self {
+        Self {
+            random: LevelEventSoundRandomState::with_seed(seed),
+            block_light_flicker: 0.0,
+            brightness_factor: sanitize_lightmap_brightness_factor(brightness_factor),
         }
     }
 
@@ -293,6 +319,14 @@ impl LightmapTickState {
             self.tick();
         }
         self.block_factor()
+    }
+
+    fn environment_for_world(&self, world: &WorldStore) -> LightmapEnvironment {
+        lightmap_environment_for_world(
+            world,
+            self.brightness_factor,
+            self.block_light_flicker + VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
+        )
     }
 
     fn tick(&mut self) {
@@ -308,6 +342,67 @@ impl LightmapTickState {
     fn block_factor(&self) -> f32 {
         self.block_light_flicker + VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR
     }
+}
+
+const fn rgb24(color: i32) -> [f32; 3] {
+    let rgb = color as u32;
+    [
+        ((rgb >> 16) & 0xff) as f32 / 255.0,
+        ((rgb >> 8) & 0xff) as f32 / 255.0,
+        (rgb & 0xff) as f32 / 255.0,
+    ]
+}
+
+fn sanitize_lightmap_brightness_factor(factor: f32) -> f32 {
+    if factor.is_finite() {
+        factor.clamp(0.0, 1.0)
+    } else {
+        VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR
+    }
+}
+
+fn lightmap_environment_for_world(
+    world: &WorldStore,
+    brightness_factor: f32,
+    block_factor: f32,
+) -> LightmapEnvironment {
+    let mut environment = world
+        .level_info()
+        .map(dimension_lightmap_environment)
+        .unwrap_or_default();
+    environment.brightness_factor = sanitize_lightmap_brightness_factor(brightness_factor);
+    environment.block_factor = block_factor;
+    environment.sanitized()
+}
+
+fn dimension_lightmap_environment(level: &WorldLevelInfo) -> LightmapEnvironment {
+    let mut environment = LightmapEnvironment::default();
+    let dimension = level.dimension.as_str();
+    let dimension_type = level.dimension_type_name.as_deref();
+    match (level.dimension_type_id, dimension, dimension_type) {
+        (1, _, _) | (_, "minecraft:the_nether", _) | (_, _, Some("minecraft:the_nether")) => {
+            environment.sky_factor = 0.0;
+            environment.sky_light_color = VANILLA_NETHER_SKY_LIGHT_COLOR;
+            environment.ambient_color = VANILLA_NETHER_AMBIENT_LIGHT_COLOR;
+        }
+        (2, _, _) | (_, "minecraft:the_end", _) | (_, _, Some("minecraft:the_end")) => {
+            environment.sky_factor = 0.0;
+            environment.sky_light_color = VANILLA_END_SKY_LIGHT_COLOR;
+            environment.ambient_color = VANILLA_END_AMBIENT_LIGHT_COLOR;
+        }
+        (0, _, _)
+        | (3, _, _)
+        | (_, "minecraft:overworld", _)
+        | (_, "minecraft:overworld_caves", _)
+        | (_, _, Some("minecraft:overworld"))
+        | (_, _, Some("minecraft:overworld_caves")) => {
+            environment.sky_factor = VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR;
+            environment.sky_light_color = VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR;
+            environment.ambient_color = VANILLA_OVERWORLD_AMBIENT_LIGHT_COLOR;
+        }
+        _ => {}
+    }
+    environment
 }
 
 pub(crate) fn snapshot_is_running(snapshot: &SharedSnapshot) -> bool {
@@ -391,9 +486,9 @@ pub(crate) fn pump_network_and_terrain(
     let advanced_ticks = advance_entity_client_animations(world, client_animation_ticks, now);
     let entity_partial_tick = client_animation_ticks.entity_partial_tick(now);
     if advanced_ticks > 0 {
-        let block_factor = lightmap_ticks.advance(advanced_ticks);
-        renderer.set_lightmap_block_factor(block_factor);
+        lightmap_ticks.advance(advanced_ticks);
     }
+    renderer.set_lightmap_environment(lightmap_ticks.environment_for_world(world));
     advance_block_destruction_render_ticks(world, advanced_ticks);
     world.advance_item_cooldowns(advanced_ticks);
     renderer.advance_particles(advanced_ticks);

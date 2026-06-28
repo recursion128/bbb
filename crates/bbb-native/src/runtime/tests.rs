@@ -5,9 +5,9 @@ use std::{
 };
 
 use bbb_protocol::packets::{
-    BlockPos as ProtocolBlockPos, DialogHolder, InteractionHand, MerchantOffer, MerchantOffers,
-    OpenBook, OpenSignEditor, SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog,
-    WrittenBookContentSummary,
+    BlockPos as ProtocolBlockPos, CommonPlayerSpawnInfo, DialogHolder, InteractionHand,
+    MerchantOffer, MerchantOffers, OpenBook, OpenSignEditor, PlayLogin,
+    SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog, WrittenBookContentSummary,
 };
 use bbb_world::LocalPlayerPoseState;
 use tokio::sync::mpsc;
@@ -104,6 +104,60 @@ fn lightmap_tick_state_matches_vanilla_block_light_flicker_formula() {
 }
 
 #[test]
+fn lightmap_environment_uses_vanilla_dimension_attributes() {
+    let overworld = world_with_dimension(0, "minecraft:overworld");
+    let overworld_environment = lightmap_environment_for_world(&overworld, 0.75, 1.25);
+    assert_eq!(overworld_environment.sky_factor, 1.0);
+    assert_close3(
+        overworld_environment.sky_light_color,
+        VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
+    );
+    assert_close3(overworld_environment.ambient_color, [10.0 / 255.0; 3]);
+    assert_eq!(overworld_environment.brightness_factor, 0.75);
+    assert_eq!(overworld_environment.block_factor, 1.25);
+
+    let nether = world_with_dimension(1, "minecraft:the_nether");
+    let nether_environment = lightmap_environment_for_world(&nether, 0.5, 1.4);
+    assert_eq!(nether_environment.sky_factor, 0.0);
+    assert_close3(
+        nether_environment.sky_light_color,
+        [122.0 / 255.0, 122.0 / 255.0, 1.0],
+    );
+    assert_close3(
+        nether_environment.ambient_color,
+        [48.0 / 255.0, 40.0 / 255.0, 33.0 / 255.0],
+    );
+
+    let end = world_with_dimension(2, "minecraft:the_end");
+    let end_environment = lightmap_environment_for_world(&end, 0.5, 1.4);
+    assert_eq!(end_environment.sky_factor, 0.0);
+    assert_close3(
+        end_environment.sky_light_color,
+        [172.0 / 255.0, 96.0 / 255.0, 205.0 / 255.0],
+    );
+    assert_close3(
+        end_environment.ambient_color,
+        [63.0 / 255.0, 71.0 / 255.0, 63.0 / 255.0],
+    );
+}
+
+#[test]
+fn lightmap_tick_state_environment_preserves_gamma_and_flicker() {
+    let world = world_with_dimension(1, "minecraft:the_nether");
+    let mut lightmap = LightmapTickState::with_seed_and_brightness(0, 0.8);
+    let block_factor = lightmap.advance(1);
+    let environment = lightmap.environment_for_world(&world);
+
+    assert_eq!(environment.brightness_factor, 0.8);
+    assert!((environment.block_factor - block_factor).abs() < 1e-6);
+    assert_eq!(environment.sky_factor, 0.0);
+    assert_close3(
+        environment.ambient_color,
+        [48.0 / 255.0, 40.0 / 255.0, 33.0 / 255.0],
+    );
+}
+
+#[test]
 fn server_container_open_releases_held_movement() {
     let (tx, mut rx) = mpsc::channel(4);
     let commands = Some(tx);
@@ -140,6 +194,45 @@ fn server_container_open_releases_held_movement() {
         NetCommand::PlayerInput(bbb_protocol::packets::PlayerInput::default())
     );
     assert!(rx.try_recv().is_err());
+}
+
+fn world_with_dimension(dimension_type_id: i32, dimension: &str) -> WorldStore {
+    let mut world = WorldStore::new();
+    world.apply_login(&PlayLogin {
+        player_id: 42,
+        hardcore: false,
+        levels: vec![
+            "minecraft:overworld".to_string(),
+            "minecraft:the_nether".to_string(),
+            "minecraft:the_end".to_string(),
+        ],
+        max_players: 20,
+        chunk_radius: 8,
+        simulation_distance: 6,
+        reduced_debug_info: false,
+        show_death_screen: true,
+        do_limited_crafting: false,
+        common_spawn_info: CommonPlayerSpawnInfo {
+            dimension_type_id,
+            dimension: dimension.to_string(),
+            seed: 12345,
+            game_type: 0,
+            previous_game_type: -1,
+            is_debug: false,
+            is_flat: false,
+            last_death_location: None,
+            portal_cooldown: 0,
+            sea_level: 63,
+        },
+        enforces_secure_chat: true,
+    });
+    world
+}
+
+fn assert_close3(actual: [f32; 3], expected: [f32; 3]) {
+    for (actual, expected) in actual.into_iter().zip(expected) {
+        assert!((actual - expected).abs() < 1e-6);
+    }
 }
 
 #[test]
