@@ -622,7 +622,12 @@ When an agent does any of the following, update this file in the same slice:
     Water camera clearing uses `WATER_FOG_COLOR` plus the vanilla
     `LocalPlayer.getWaterVision()` brightening formula, and water fog
     visibility ends use biome `WATER_FOG_END_DISTANCE` modifiers before the
-    vanilla water-vision multiplier. Lightning sky flash does not tint water
+    vanilla water-vision multiplier. The local 26.1 data-backed visual inputs
+    that feed the current lightmap/fog clear path are now covered for
+    dimension defaults, Overworld timeline/weather, lightning flash, local
+    effects, and camera biome sky/fog/water-fog/water-fog-end values; vanilla
+    biome JSON does not currently provide `BLOCK_LIGHT_TINT` or
+    `NIGHT_VISION_COLOR` overrides. Lightning sky flash does not tint water
     fog. The startup
     `--hide-lightning-flash` option suppresses both lightmap and atmospheric
     clear-color sky flash layers. Native also tracks the vanilla atmospheric
@@ -637,18 +642,20 @@ When an agent does any of the following, update this file in the same slice:
     selection world shaders compute spherical/cylindrical camera distance and
     apply fog in the vanilla `apply_fog` shape. The startup `--render-distance`
     option defaults to `12` chunks, accepts `2..=32`, and drives the
-    render-distance fog span. Remaining non-SKY environment modifiers, sky /
-    cloud mesh presentation that consumes those visibility ends, and full sky
-    mesh / atmosphere presentation are still broader visual gaps. Overworld
-    variants use ambient `0x0A0A0A`. The block flicker path still advances
+    render-distance fog span. Remaining visual gaps are sky / cloud mesh
+    presentation that consumes these visibility ends, the day timeline's
+    cloud/star/moon/sun mesh state, full sky mesh / atmosphere presentation,
+    and later custom-pack EnvironmentAttribute generalization when a concrete
+    renderer surface exists. Overworld variants use ambient `0x0A0A0A`. The
+    block flicker path still advances
     `blockLightFlicker` with the
     `LightmapRenderStateExtractor.tick()` formula and the shaders read
     `blockLightFlicker + 1.4`. Remaining lighting gaps: full sky renderer
-    presentation, sky/cloud mesh presentation, any non-SKY biome
-    modifiers that need a renderer surface, smooth/AO entity light, GUI /
-    entity-in-UI lighting variants, and the colored debug fallback's baked-shade
-    approximation. Water-vision fog color brightening is covered in the native
-    clear-color and fog-environment path.
+    presentation, sky/cloud mesh presentation, dynamic LightTexture / diffuse
+    visual precision, smooth/AO entity light, GUI / entity-in-UI lighting
+    variants, and the colored debug fallback's baked-shade approximation.
+    Water-vision fog color brightening is covered in the native clear-color and
+    fog-environment path.
   - The hurt red damage overlay is implemented end to end as a real overlay pass,
     not a tint: `LivingEntity.hurtTime` is tracked client-side (set to
     `hurtDuration` = 10 by `apply_hurt_animation`/`apply_damage_event`, decremented
