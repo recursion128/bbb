@@ -1255,12 +1255,22 @@ pub(in crate::entity_models) fn creaking_textured_layer_passes(
     passes
 }
 
-pub(in crate::entity_models) fn sniffer_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+pub(in crate::entity_models) fn sniffer_textured_layer_passes(
+    baby: bool,
+) -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::SnifferBase,
         render_type: EntityModelLayerRenderType::EntityCutout,
-        model_layer: MODEL_LAYER_SNIFFER,
-        texture: SNIFFER_TEXTURE_REF,
+        model_layer: if baby {
+            MODEL_LAYER_SNIFFER_BABY
+        } else {
+            MODEL_LAYER_SNIFFER
+        },
+        texture: if baby {
+            SNIFFLET_TEXTURE_REF
+        } else {
+            SNIFFER_TEXTURE_REF
+        },
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         order: 0,

@@ -51,6 +51,50 @@ fn sniffer_geometry_matches_vanilla_26_1_body_layer() {
 }
 
 #[test]
+fn snifflet_geometry_matches_vanilla_26_1_baby_body_layer() {
+    // Vanilla `SniffletModel.createBodyLayer` (atlas 128x128), registered as
+    // `ModelLayers.SNIFFER_BABY`; `SnifferRenderer` still constructs `SnifferModel` over this layer.
+    assert_eq!(MODEL_LAYER_SNIFFER_BABY, "minecraft:sniffer_baby#main");
+    assert_eq!(SNIFFLET_BONE_POSE.offset, [0.0, 24.0, 0.0]);
+    assert_eq!(SNIFFLET_BODY_POSE.offset, [6.0, -3.0, -9.5]);
+    assert_eq!(SNIFFLET_BODY_CUBES.len(), 3);
+    assert_eq!(SNIFFLET_BODY_CUBES[0].min, [-13.25, -14.25, -0.75]);
+    assert_eq!(SNIFFLET_BODY_CUBES[0].size, [14.5, 14.5, 20.5]);
+    assert_eq!(SNIFFLET_BODY_CUBES[0].tex, [0.0, 35.0]);
+    assert_eq!(SNIFFLET_BODY_CUBES[1].min, [-13.0, -14.0, -0.5]);
+    assert_eq!(SNIFFLET_BODY_CUBES[1].size, [14.0, 15.0, 20.0]);
+    assert_eq!(SNIFFLET_BODY_CUBES[2].size, [14.0, 0.0, 20.0]);
+
+    assert_eq!(SNIFFLET_HEAD_POSE.offset, [-6.0, -4.75, 0.0]);
+    assert_eq!(SNIFFLET_HEAD_CUBES.len(), 2);
+    assert_eq!(SNIFFLET_HEAD_CUBES[0].size, [10.0, 9.0, 9.0]);
+    assert_eq!(SNIFFLET_HEAD_CUBES[0].tex, [68.0, 20.0]);
+    assert_eq!(SNIFFLET_LEFT_EAR_POSE.offset, [5.0, -4.25, -1.5]);
+    assert_eq!(SNIFFLET_LEFT_EAR_CUBES[0].size, [1.0, 11.0, 3.0]);
+    assert_eq!(SNIFFLET_LEFT_EAR_CUBES[0].tex, [104.0, 38.0]);
+    assert_eq!(SNIFFLET_RIGHT_EAR_POSE.offset, [-5.0, -4.25, -1.5]);
+    assert_eq!(SNIFFLET_RIGHT_EAR_CUBES[0].tex, [96.0, 38.0]);
+    assert_eq!(SNIFFLET_NOSE_POSE.offset, [0.0, -1.25, -9.5]);
+    assert_eq!(SNIFFLET_NOSE_CUBES[0].size, [10.0, 3.0, 4.0]);
+    assert_eq!(SNIFFLET_NOSE_CUBES[0].tex, [68.0, 47.0]);
+    assert_eq!(SNIFFLET_LOWER_BEAK_POSE.offset, [0.0, 1.25, -9.5]);
+    assert_eq!(SNIFFLET_LOWER_BEAK_CUBES[0].size, [10.0, 5.0, 4.0]);
+    assert_eq!(SNIFFLET_LOWER_BEAK_CUBES[0].tex, [68.0, 38.0]);
+
+    assert_eq!(SNIFFLET_RIGHT_FRONT_LEG_POSE.offset, [-4.0, -4.0, -7.0]);
+    assert_eq!(SNIFFLET_RIGHT_MID_LEG_POSE.offset, [-4.0, -4.0, 0.0]);
+    assert_eq!(SNIFFLET_RIGHT_HIND_LEG_POSE.offset, [-4.0, -4.0, 7.0]);
+    assert_eq!(SNIFFLET_LEFT_FRONT_LEG_POSE.offset, [4.0, -4.0, -7.0]);
+    assert_eq!(SNIFFLET_LEFT_MID_LEG_POSE.offset, [4.0, -4.0, 0.0]);
+    assert_eq!(SNIFFLET_LEFT_HIND_LEG_POSE.offset, [4.0, -4.0, 7.0]);
+    assert_eq!(SNIFFLET_RIGHT_FRONT_LEG_CUBES[0].size, [4.0, 5.0, 4.0]);
+    assert_eq!(SNIFFLET_RIGHT_FRONT_LEG_CUBES[0].tex, [0.0, 69.0]);
+    assert_eq!(SNIFFLET_RIGHT_HIND_LEG_CUBES[0].tex, [0.0, 87.0]);
+    assert_eq!(SNIFFLET_LEFT_FRONT_LEG_CUBES[0].tex, [16.0, 69.0]);
+    assert_eq!(SNIFFLET_LEFT_HIND_LEG_CUBES[0].tex, [16.0, 87.0]);
+}
+
+#[test]
 fn sniffer_mesh_uses_vanilla_body_layer_geometry() {
     // 15 cubes → 90 faces / 360 vertices / 540 indices; the nose carries its own pink tint.
     let sniffer = entity_model_mesh(&[EntityModelInstance::sniffer(930, [0.0, 64.0, 0.0], 0.0)]);
@@ -62,6 +106,26 @@ fn sniffer_mesh_uses_vanilla_body_layer_geometry() {
         .iter()
         .any(|vertex| vertex.color == shade_color(SNIFFER_BROWN, 1.0)));
     assert!(sniffer
+        .vertices
+        .iter()
+        .any(|vertex| vertex.color == shade_color(SNIFFER_NOSE, 1.0)));
+}
+
+#[test]
+fn snifflet_mesh_uses_vanilla_baby_body_layer_geometry() {
+    // 15 baby-layer cubes under the same part names as the adult sniffer. The cube count is the
+    // same, but the baked layer dimensions/offsets come from `SniffletModel.createBodyLayer`.
+    let adult = entity_model_mesh(&[EntityModelInstance::sniffer(930, [0.0, 64.0, 0.0], 0.0)]);
+    let baby = entity_model_mesh(&[EntityModelInstance::snifflet(945, [0.0, 64.0, 0.0], 0.0)]);
+    assert_eq!(baby.opaque_faces, 90);
+    assert_eq!(baby.vertices.len(), 360);
+    assert_eq!(baby.indices.len(), 540);
+    assert_ne!(adult.vertices, baby.vertices);
+    assert!(baby
+        .vertices
+        .iter()
+        .any(|vertex| vertex.color == shade_color(SNIFFER_BROWN, 1.0)));
+    assert!(baby
         .vertices
         .iter()
         .any(|vertex| vertex.color == shade_color(SNIFFER_NOSE, 1.0)));
@@ -291,8 +355,10 @@ fn sniffer_state_animation_re_poses_off_the_walk_pose() {
 
 #[test]
 fn sniffer_textured_render_matches_vanilla_renderer() {
-    let passes = sniffer_textured_layer_passes();
+    let passes = sniffer_textured_layer_passes(false);
+    let baby_passes = sniffer_textured_layer_passes(true);
     assert_eq!(passes.len(), 1);
+    assert_eq!(baby_passes.len(), 1);
     assert_eq!(
         passes[0].render_type,
         EntityModelLayerRenderType::EntityCutout
@@ -304,15 +370,37 @@ fn sniffer_textured_render_matches_vanilla_renderer() {
     assert_eq!(passes[0].visibility, EntityModelLayerVisibility::All);
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
+    assert_eq!(baby_passes[0].render_type, passes[0].render_type);
+    assert_eq!(baby_passes[0].render_type.vanilla_name(), "entityCutout");
+    assert_eq!(baby_passes[0].kind, EntityModelLayerKind::SnifferBase);
+    assert_eq!(baby_passes[0].model_layer, MODEL_LAYER_SNIFFER_BABY);
+    assert_eq!(baby_passes[0].texture, SNIFFLET_TEXTURE_REF);
+    assert_eq!(baby_passes[0].visibility, EntityModelLayerVisibility::All);
+    assert_eq!(baby_passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
-        EntityModelKind::Sniffer.vanilla_texture_ref(),
+        (baby_passes[0].order, baby_passes[0].submit_sequence),
+        (0, 0)
+    );
+    assert_eq!(
+        (EntityModelKind::Sniffer { baby: false }).vanilla_texture_ref(),
         Some(EntityModelTextureRef {
             path: "textures/entity/sniffer/sniffer.png",
             size: [192, 192],
         })
     );
+    assert_eq!(
+        (EntityModelKind::Sniffer { baby: true }).vanilla_texture_ref(),
+        Some(EntityModelTextureRef {
+            path: "textures/entity/sniffer/snifflet.png",
+            size: [128, 128],
+        })
+    );
     assert!(entity_model_texture_refs().contains(&SNIFFER_TEXTURE_REF));
-    assert_eq!(sniffer_entity_texture_refs(), &[SNIFFER_TEXTURE_REF]);
+    assert!(entity_model_texture_refs().contains(&SNIFFLET_TEXTURE_REF));
+    assert_eq!(
+        sniffer_entity_texture_refs(),
+        &[SNIFFER_TEXTURE_REF, SNIFFLET_TEXTURE_REF]
+    );
 
     let images: Vec<EntityModelTextureImage> = sniffer_entity_texture_refs()
         .iter()
@@ -352,4 +440,29 @@ fn sniffer_textured_render_matches_vanilla_renderer() {
         .vertices
         .iter()
         .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
+
+    let baby_instance = EntityModelInstance::snifflet(901, [0.0, 64.0, 0.0], 0.0)
+        .with_light_coords((2_u32 << 4) | (9_u32 << 20));
+    let baby_meshes = entity_model_textured_meshes(&[baby_instance], &atlas);
+    assert_eq!(baby_meshes.submissions.len(), 1);
+    let baby_submit = baby_meshes.submissions[0];
+    assert_eq!(
+        baby_submit.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(baby_submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(baby_submit.texture, SNIFFLET_TEXTURE_REF);
+    assert_eq!(baby_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        baby_submit.transform,
+        entity_model_root_transform(baby_instance)
+    );
+    assert_eq!((baby_submit.order, baby_submit.submit_sequence), (0, 0));
+    assert_eq!(baby_submit.light, baby_instance.render_state.shader_light());
+    assert_eq!(
+        baby_submit.overlay,
+        baby_instance.render_state.overlay_coords()
+    );
+    assert!(!baby_meshes.cutout.vertices.is_empty());
+    assert_ne!(meshes.cutout.vertices, baby_meshes.cutout.vertices);
 }

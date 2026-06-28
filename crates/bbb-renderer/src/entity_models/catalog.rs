@@ -372,9 +372,12 @@ pub enum EntityModelKind {
     Creaking {
         eyes_glowing: bool,
     },
-    /// `SnifferModel` at its `createBodyLayer` rest pose. The head look, search/walk, and the
-    /// dig / long-sniff / stand-up / happy / scenting keyframe animations are deferred.
-    Sniffer,
+    /// `SnifferModel` on the adult `ModelLayers.SNIFFER` or baby `ModelLayers.SNIFFER_BABY` baked
+    /// layer. Vanilla `SnifferRenderer` uses `snifflet.png` for babies while still applying
+    /// `SnifferModel.setupAnim` to the baby layer tree.
+    Sniffer {
+        baby: bool,
+    },
     /// `WardenModel` at its `createBodyLayer` rest pose. The head look, walk, idle wobble,
     /// tendril sway, the attack / sonic-boom / digging / emerge / roar / sniff keyframe
     /// animations, and the four emissive overlay layers are deferred.

@@ -1572,7 +1572,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 547] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 548] = [
     PLAYER_SLIM_ALEX_TEXTURE_REF,
     PLAYER_SLIM_ARI_TEXTURE_REF,
     PLAYER_SLIM_EFE_TEXTURE_REF,
@@ -1765,6 +1765,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     CREAKING_TEXTURE_REF,
     CREAKING_EYES_TEXTURE_REF,
     SNIFFER_TEXTURE_REF,
+    SNIFFLET_TEXTURE_REF,
     PARROT_RED_BLUE_TEXTURE_REF,
     PARROT_BLUE_TEXTURE_REF,
     PARROT_GREEN_TEXTURE_REF,
@@ -3157,8 +3158,14 @@ pub(in crate::entity_models) const SNIFFER_TEXTURE_REF: EntityModelTextureRef =
         size: [192, 192],
     };
 
-pub(in crate::entity_models) const SNIFFER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
-    [SNIFFER_TEXTURE_REF];
+pub(in crate::entity_models) const SNIFFLET_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/sniffer/snifflet.png",
+        size: [128, 128],
+    };
+
+pub(in crate::entity_models) const SNIFFER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
+    [SNIFFER_TEXTURE_REF, SNIFFLET_TEXTURE_REF];
 
 pub fn sniffer_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &SNIFFER_ENTITY_TEXTURE_REFS

@@ -1885,7 +1885,9 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_COW_ID => cow_model_kind(data_values, cow_variants),
         VANILLA_ENTITY_TYPE_MOOSHROOM_ID => mooshroom_model_kind(data_values),
         VANILLA_ENTITY_TYPE_PANDA_ID => panda_model_kind(data_values),
-        VANILLA_ENTITY_TYPE_SNIFFER_ID => EntityModelKind::Sniffer,
+        VANILLA_ENTITY_TYPE_SNIFFER_ID => EntityModelKind::Sniffer {
+            baby: ageable_baby(data_values),
+        },
         VANILLA_ENTITY_TYPE_RAVAGER_ID => EntityModelKind::Ravager,
         VANILLA_ENTITY_TYPE_HOGLIN_ID => EntityModelKind::Hoglin {
             family: HoglinModelFamily::Hoglin,
@@ -10746,12 +10748,19 @@ mod tests {
     #[test]
     fn entity_model_kind_maps_sniffer_to_real_model() {
         // The sniffer was approximated by the cow quadruped model; it now resolves to the real
-        // `SnifferModel` at its rest pose. The head look, search/walk, and the dig / long-sniff /
-        // stand-up / happy / scenting keyframe animations are deferred entity-side state, so no
-        // synced data is read.
+        // `SnifferModel` on the adult `ModelLayers.SNIFFER` or baby `ModelLayers.SNIFFER_BABY`
+        // baked layer. Vanilla keys the baby renderer off `AgeableMob.DATA_BABY_ID` (index 16) and
+        // uses `snifflet.png` while still constructing a `SnifferModel`.
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_SNIFFER_ID, &[]),
-            EntityModelKind::Sniffer
+            EntityModelKind::Sniffer { baby: false }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_SNIFFER_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::Sniffer { baby: true }
         );
     }
 

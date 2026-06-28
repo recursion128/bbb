@@ -1519,7 +1519,21 @@ impl EntityModelInstance {
     }
 
     pub fn sniffer(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
-        Self::new(entity_id, EntityModelKind::Sniffer, position, y_rot)
+        Self::new(
+            entity_id,
+            EntityModelKind::Sniffer { baby: false },
+            position,
+            y_rot,
+        )
+    }
+
+    pub fn snifflet(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Sniffer { baby: true },
+            position,
+            y_rot,
+        )
     }
 
     pub fn warden(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {

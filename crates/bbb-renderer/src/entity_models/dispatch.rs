@@ -1550,11 +1550,11 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &creaking_textured_layer_passes(eyes_glowing),
         ),
-        EntityModelKind::Sniffer => sink.model(
-            SnifferModel::new(),
+        EntityModelKind::Sniffer { baby } => sink.model(
+            SnifferModel::new(baby),
             entity_model_root_transform(*instance),
             instance,
-            &sniffer_textured_layer_passes(),
+            &sniffer_textured_layer_passes(baby),
         ),
         EntityModelKind::Warden => sink.model(
             WardenModel::new(),

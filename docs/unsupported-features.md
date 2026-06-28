@@ -3279,14 +3279,20 @@ When an agent does any of the following, update this file in the same slice:
       `DATA_STATE == SEARCHING`, projected as `sniffer_is_searching` — the "un-synced" label was wrong;
       it is the same enum the one-shots read) swaps the looping 2.0 s `SNIFFER_SNIFF_SEARCH` in for the
       base `SNIFFER_WALK` under the same `applyWalk(..., 9, 100)`, adding a head-down shift and a `nose`
-      SCALE puff over the eleven animated bones. Only the baby-transform
-      (`BABY_TRANSFORM`/`SNIFFER_BABY_FALL`) stays deferred. The adult base texture is now bound on the
-      textured path (`SNIFFER_TEXTURE_REF`), the primary now-wired path, with explicit submission
-      metadata pinned for the `SnifferBase` pass identity, vanilla `entityCutout` render type/name,
-      vanilla `ModelLayers.SNIFFER` (`minecraft:sniffer#main`), white tint, root transform,
-      `(order, submit_sequence) == (0, 0)`, and the
-      `AgeableMobRenderer` / `LivingEntityRenderer` `lightCoords` plus hurt/white overlay metadata, with
-      folded cutout vertices inheriting that metadata.
+      SCALE puff over the eleven animated bones. The `AgeableMobRenderer` adult/baby model dispatch is
+      now reproduced: `AgeableMob.DATA_BABY_ID` selects vanilla `ModelLayers.SNIFFER` +
+      `sniffer.png` or `ModelLayers.SNIFFER_BABY` + `snifflet.png`; the baby layer geometry is
+      transcribed from `SniffletModel.createBodyLayer()` but is still driven by `SnifferModel`, matching
+      `SnifferRenderer`'s `new SnifferModel(context.bakeLayer(ModelLayers.SNIFFER_BABY))` path. The
+      standalone `SniffletModel.setupAnim` static baby transform (`BABY_TRANSFORM` /
+      `SNIFFER_BABY_FALL`) is not consumed by vanilla `SnifferRenderer` and stays out of this
+      renderer-parity path. The adult and baby base textures are now bound on the textured path
+      (`SNIFFER_TEXTURE_REF` / `SNIFFLET_TEXTURE_REF`), the primary now-wired path, with explicit
+      submission metadata pinned for the `SnifferBase` pass identity, vanilla `entityCutout` render
+      type/name, vanilla model layers (`minecraft:sniffer#main` / `minecraft:sniffer_baby#main`),
+      white tint, root transform, `(order, submit_sequence) == (0, 0)`, and the `AgeableMobRenderer` /
+      `LivingEntityRenderer` `lightCoords` plus hurt/white overlay metadata, with folded cutout vertices
+      inheriting that metadata.
       The colored debug path stays as a fallback (it approximates the body with one brown tint and the
       nose pad with a pink tint)
     - warden entities as renderer-owned vanilla 26.1 `WardenModel.createBodyLayer()` geometry on the
