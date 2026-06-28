@@ -242,6 +242,23 @@ fn lightmap_tick_state_does_not_use_overworld_clock_for_end_flash() {
 }
 
 #[test]
+fn lightmap_tick_state_hides_end_flash_when_option_is_enabled() {
+    let mut world = world_with_dimension(2, "minecraft:the_end");
+    set_world_end_clock_time(&mut world, 1_486);
+    let mut lightmap =
+        LightmapTickState::with_brightness_factor_and_hide_lightning_flash(0.5, true);
+
+    lightmap.advance_for_world(1, &world);
+    let environment = lightmap.environment_for_world(&world);
+
+    assert_eq!(environment.sky_factor, 0.0);
+    assert_close3(
+        environment.sky_light_color,
+        [172.0 / 255.0, 96.0 / 255.0, 205.0 / 255.0],
+    );
+}
+
+#[test]
 fn lightmap_tick_state_divides_end_flash_sky_factor_for_boss_world_fog() {
     let mut world = world_with_dimension(2, "minecraft:the_end");
     set_world_end_clock_time(&mut world, 1_486);

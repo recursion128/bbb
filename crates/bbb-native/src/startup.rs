@@ -79,6 +79,8 @@ pub(crate) struct Args {
         value_parser = parse_client_gamma
     )]
     pub(crate) client_gamma: f32,
+    #[arg(long = "hide-lightning-flash")]
+    pub(crate) hide_lightning_flash: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -371,6 +373,15 @@ mod tests {
 
         let err = Args::try_parse_from(["bbb-native", "--client-gamma", "NaN"]).unwrap_err();
         assert!(err.to_string().contains("must be finite"));
+    }
+
+    #[test]
+    fn args_accept_hide_lightning_flash_startup_option() {
+        let default_args = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert!(!default_args.hide_lightning_flash);
+
+        let args = Args::try_parse_from(["bbb-native", "--hide-lightning-flash"]).unwrap();
+        assert!(args.hide_lightning_flash);
     }
 
     #[test]

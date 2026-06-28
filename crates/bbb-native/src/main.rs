@@ -280,7 +280,10 @@ fn main() -> Result<()> {
     let exit_after_screenshot = args.exit_after_screenshot;
     let mut terrain_upload = TerrainUploadState::default();
     let mut client_animation_ticks = ClientAnimationTickState::default();
-    let mut lightmap_ticks = LightmapTickState::with_brightness_factor(args.client_gamma);
+    let mut lightmap_ticks = LightmapTickState::with_brightness_factor_and_hide_lightning_flash(
+        args.client_gamma,
+        args.hide_lightning_flash,
+    );
     let mut level_event_sound_random = LevelEventSoundRandomState::default();
     let mut net_disconnect_requested = false;
     let mut code_of_conduct_overlay = CodeOfConductOverlayState::default();

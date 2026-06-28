@@ -318,6 +318,7 @@ pub(crate) struct LightmapTickState {
     end_flash_state: EndFlashLightmapState,
     boss_overlay_world_darkening: f32,
     boss_overlay_world_darkening_previous_frame: f32,
+    hide_lightning_flash: bool,
 }
 
 impl Default for LightmapTickState {
@@ -333,14 +334,19 @@ impl Default for LightmapTickState {
             end_flash_state: EndFlashLightmapState::default(),
             boss_overlay_world_darkening: 0.0,
             boss_overlay_world_darkening_previous_frame: 0.0,
+            hide_lightning_flash: false,
         }
     }
 }
 
 impl LightmapTickState {
-    pub(crate) fn with_brightness_factor(brightness_factor: f32) -> Self {
+    pub(crate) fn with_brightness_factor_and_hide_lightning_flash(
+        brightness_factor: f32,
+        hide_lightning_flash: bool,
+    ) -> Self {
         Self {
             brightness_factor: sanitize_lightmap_brightness_factor(brightness_factor),
+            hide_lightning_flash,
             ..Self::default()
         }
     }
@@ -358,6 +364,7 @@ impl LightmapTickState {
             end_flash_state: EndFlashLightmapState::default(),
             boss_overlay_world_darkening: 0.0,
             boss_overlay_world_darkening_previous_frame: 0.0,
+            hide_lightning_flash: false,
         }
     }
 
@@ -374,6 +381,7 @@ impl LightmapTickState {
             end_flash_state: EndFlashLightmapState::default(),
             boss_overlay_world_darkening: 0.0,
             boss_overlay_world_darkening_previous_frame: 0.0,
+            hide_lightning_flash: false,
         }
     }
 
@@ -487,6 +495,10 @@ impl LightmapTickState {
     }
 
     fn end_flash_sky_factor(&self, world: &WorldStore) -> f32 {
+        if self.hide_lightning_flash {
+            return 0.0;
+        }
+
         if world.level_info().map(vanilla_lightmap_dimension_kind)
             == Some(VanillaLightmapDimensionKind::End)
         {
