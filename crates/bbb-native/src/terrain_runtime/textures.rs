@@ -397,19 +397,33 @@ impl TerrainTextureState {
         ))
     }
 
-    /// The 3D item-frame border (vanilla `block/item_frame` / `block/glow_item_frame`, parent
-    /// `block/template_item_frame`): four `birch_planks` wood bars plus a `back` panel showing the
-    /// `item_frame` / `glow_item_frame` texture, baked over the blocks atlas into item-model quads in
-    /// `0..=16` model space. The back panel's `15.5` depth is rounded to `15` so all five elements bake
-    /// through the integer-box path (a `0.03`-block difference on the wall-side backing). The map-frame
-    /// border (`template_item_frame_map`, a full back) is not yet distinguished.
-    pub(crate) fn item_frame_border_quads(&self, glow: bool) -> Vec<bbb_renderer::ItemModelQuad> {
+    /// The 3D item-frame border (vanilla `block/item_frame` / `block/glow_item_frame`, or the
+    /// `*_map` variants): four `birch_planks` wood bars plus a `back` panel showing the `item_frame` /
+    /// `glow_item_frame` texture, baked over the blocks atlas into item-model quads in `0..=16` model
+    /// space. Fractional `15.5` / `15.001` depths are rounded to `15` so the hand-written box path stays
+    /// integer-shaped; the resulting wall-side offset is visually negligible.
+    pub(crate) fn item_frame_border_quads(
+        &self,
+        glow: bool,
+        map: bool,
+    ) -> Vec<bbb_renderer::ItemModelQuad> {
         let wood = self.texture_index("minecraft:block/birch_planks");
         let back = self.texture_index(if glow {
             "minecraft:block/glow_item_frame"
         } else {
             "minecraft:block/item_frame"
         });
+        if map {
+            return self.item_frame_map_border_quads(wood, back);
+        }
+        self.item_frame_normal_border_quads(wood, back)
+    }
+
+    fn item_frame_normal_border_quads(
+        &self,
+        wood: u32,
+        back: u32,
+    ) -> Vec<bbb_renderer::ItemModelQuad> {
         // FACES order: Down, Up, North, South, West, East.
         let boxes = vec![
             // Back panel (rounded 15.5 -> 15): north + south faces, the `back` texture.
@@ -484,6 +498,92 @@ impl TerrainTextureState {
                     [13, 3, 14, 13],
                     [15, 3, 16, 13],
                     [0, 3, 1, 13],
+                ],
+                [wood; 6],
+            ),
+        ];
+        bbb_renderer::terrain::bake_block_item_quads(
+            &TerrainRenderShape::Boxes(boxes),
+            [self.fallback_index; 6],
+            [TerrainTint::WHITE; 6],
+            &self.atlas,
+        )
+    }
+
+    fn item_frame_map_border_quads(
+        &self,
+        wood: u32,
+        back: u32,
+    ) -> Vec<bbb_renderer::ItemModelQuad> {
+        // FACES order: Down, Up, North, South, West, East.
+        let boxes = vec![
+            frame_border_box(
+                [1, 1, 15],
+                [15, 15, 16],
+                [false, false, true, true, false, false],
+                [
+                    [0, 0, 16, 16],
+                    [0, 0, 16, 16],
+                    [1, 1, 15, 15],
+                    [1, 1, 15, 15],
+                    [0, 0, 16, 16],
+                    [0, 0, 16, 16],
+                ],
+                [back; 6],
+            ),
+            frame_border_box(
+                [0, 0, 15],
+                [16, 1, 16],
+                [true; 6],
+                [
+                    [0, 0, 16, 1],
+                    [0, 15, 16, 16],
+                    [0, 15, 16, 16],
+                    [0, 15, 16, 16],
+                    [15, 15, 16, 16],
+                    [0, 15, 1, 16],
+                ],
+                [wood; 6],
+            ),
+            frame_border_box(
+                [0, 15, 15],
+                [16, 16, 16],
+                [true; 6],
+                [
+                    [0, 0, 16, 1],
+                    [0, 15, 16, 16],
+                    [0, 0, 16, 1],
+                    [0, 0, 16, 1],
+                    [15, 0, 16, 1],
+                    [0, 0, 1, 1],
+                ],
+                [wood; 6],
+            ),
+            frame_border_box(
+                [0, 1, 15],
+                [1, 15, 16],
+                [false, false, true, true, true, true],
+                [
+                    [0, 0, 16, 16],
+                    [0, 0, 16, 16],
+                    [15, 1, 16, 15],
+                    [0, 1, 1, 15],
+                    [15, 1, 16, 15],
+                    [0, 1, 1, 15],
+                ],
+                [wood; 6],
+            ),
+            frame_border_box(
+                [15, 1, 15],
+                [16, 15, 16],
+                [false, false, true, true, true, true],
+                [
+                    [0, 0, 16, 16],
+                    [0, 0, 16, 16],
+                    [0, 1, 1, 15],
+                    [15, 1, 16, 15],
+                    [15, 1, 16, 15],
+                    [0, 1, 1, 15],
                 ],
                 [wood; 6],
             ),

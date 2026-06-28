@@ -1238,22 +1238,30 @@ When an agent does any of the following, update this file in the same slice:
         `ItemFrameRenderer`), replacing the placeholder bounds box (now
         `NoRender`). `WorldStore::item_frame_render_states` exposes each frame's
         wall-mounted center, facing wall, sampled renderer light, `0..=7` item
-        rotation, glow flag, framed item, and map flag (from `DATA_DIRECTION` /
-        `DATA_ITEM` / `DATA_ROTATION`). Native `item_frames` bakes the border by transcribing
-        `block/template_item_frame` (four `birch_planks` bars + the
+        rotation, glow flag, invisible flag, framed item, and framed `map_id`
+        (from `DATA_DIRECTION` / `DATA_ITEM` / `DATA_ROTATION`). Native
+        `item_frames` bakes the border by transcribing `block/template_item_frame`
+        or `block/template_item_frame_map` (four `birch_planks` bars + the
         `item_frame` / `glow_item_frame` back panel) into the blocks atlas via
         the existing `Boxes` item-bake path, and the framed item to block/flat
         quads with its `FIXED` display transform. The facing wall orients the
-        model (`Rx(xRot)·Ry(yRot)`), the item is pushed `0.4375` out and spun by
-        its rotation at scale `0.5`; invisible item frames now mirror vanilla by
+        model (`Rx(xRot)·Ry(yRot)`), ordinary items are pushed `0.4375` out and
+        spun by rotation at scale `0.5`; invisible item frames mirror vanilla by
         clearing the frame model (no wooden border) and translating contents to
         `0.5` instead. Glow item-frame lighting follows vanilla
         `ItemFrameRenderer`: the border/model light raises block light to at
-        least `GLOW_FRAME_BRIGHTNESS = 5`, while framed item contents use the
-        full-bright `15728880` light coords; there is no separate emissive
-        texture/pass. Deferred: the filled-map full-frame render (a map frame
-        shows only its border) and the back panel's `15.5` depth is rounded to
-        `15`.
+        least `GLOW_FRAME_BRIGHTNESS = 5`, framed item contents use the
+        full-bright `15728880` light coords, and filled maps use the distinct
+        glow-map `15728850` light coords. Filled maps now follow vanilla's
+        `state.mapId != null` gate: when the framed stack has `map_id` and
+        canonical `MapItemData` exists, bbb renders a full-frame decoded map
+        surface with `rotation % 4 * 2`, `Rz(180)`, `scale(1/128)`,
+        `translate(-64,-64,-1)`, vanilla `MapColor.getColorFromPackedId`
+        scaling, and the map-frame border; if map data is absent, the frame
+        falls back to the ordinary `FIXED` item model. Still deferred:
+        `MapRenderer` decoration sprites / name text and a true dynamic
+        texture-backed map submission; the fractional frame depths (`15.5` /
+        `15.001`) are still rounded to `15` in the hand-written border boxes.
       - fourth consumer DONE (HUD 3D inventory icons): each hotbar slot holding
         a block item renders its block model as a 3D icon (vanilla 3D inventory
         item rendering) instead of the flat 2D sprite. Native

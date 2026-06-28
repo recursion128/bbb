@@ -937,7 +937,7 @@ fn item_frame_border_bakes_the_five_template_elements() {
     // the bottom and top bars show all six faces, the left and right bars omit their up/down faces.
     // 2 + 6 + 6 + 4 + 4 = 22 quads. The whole border sits in the back `0..=16` slab (z >= 15).
     let textures = TerrainTextureState::default();
-    let quads = textures.item_frame_border_quads(false);
+    let quads = textures.item_frame_border_quads(false, false);
     assert_eq!(quads.len(), 22);
     assert!(quads
         .iter()
@@ -953,4 +953,31 @@ fn item_frame_border_bakes_the_five_template_elements() {
         .fold(f32::NEG_INFINITY, f32::max);
     assert_eq!(min_x, 2.0);
     assert_eq!(max_x, 14.0);
+}
+
+#[test]
+fn item_frame_map_border_uses_the_full_template_footprint() {
+    // Vanilla `block/template_item_frame_map`: the same five elements as the normal frame, but the bars
+    // span the full 0..=16 footprint and the back panel spans 1..=15 for the full-frame map render.
+    let textures = TerrainTextureState::default();
+    let quads = textures.item_frame_border_quads(false, true);
+    assert_eq!(quads.len(), 22);
+    let min_x = quads
+        .iter()
+        .flat_map(|quad| quad.corners.iter().map(|corner| corner[0]))
+        .fold(f32::INFINITY, f32::min);
+    let max_x = quads
+        .iter()
+        .flat_map(|quad| quad.corners.iter().map(|corner| corner[0]))
+        .fold(f32::NEG_INFINITY, f32::max);
+    let min_y = quads
+        .iter()
+        .flat_map(|quad| quad.corners.iter().map(|corner| corner[1]))
+        .fold(f32::INFINITY, f32::min);
+    let max_y = quads
+        .iter()
+        .flat_map(|quad| quad.corners.iter().map(|corner| corner[1]))
+        .fold(f32::NEG_INFINITY, f32::max);
+    assert_eq!((min_x, max_x), (0.0, 16.0));
+    assert_eq!((min_y, max_y), (0.0, 16.0));
 }

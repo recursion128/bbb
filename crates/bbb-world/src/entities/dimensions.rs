@@ -8,7 +8,7 @@ use super::{EntityClientAnimationState, EntityVec3};
 mod block_attached;
 
 pub(crate) use block_attached::{
-    item_frame_facing, item_frame_holds_map, item_frame_item, item_frame_rotation,
+    item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
 };
 
 pub(crate) const ITEM_FRAME_ENTITY_TYPE_IDS: [i32; 2] = [

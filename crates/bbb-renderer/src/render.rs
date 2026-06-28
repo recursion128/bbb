@@ -305,6 +305,12 @@ impl Renderer {
             pipeline_switches += 1;
             item_model_draw_calls += 1;
         }
+        let (map_vertices, map_indices) = self.collect_item_frame_map_geometry();
+        if !map_indices.is_empty() {
+            self.draw_item_frame_map_geometry(&mut encoder, &view, &map_vertices, &map_indices);
+            pipeline_switches += 1;
+            item_model_draw_calls += 1;
+        }
         let (flat_item_vertices, flat_item_indices) = self.collect_flat_item_model_geometry();
         if !flat_item_indices.is_empty() {
             if let Some(atlas) = &self.item_entity_atlas {
@@ -623,6 +629,55 @@ impl Renderer {
         });
         pass.set_pipeline(&self.item_model_pipeline);
         pass.set_bind_group(0, bind_group, &[]);
+        pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+        pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        pass.draw_indexed(0..indices.len() as u32, 0, 0..1);
+    }
+
+    fn draw_item_frame_map_geometry(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        view: &wgpu::TextureView,
+        vertices: &[crate::item_models::ItemFrameMapVertex],
+        indices: &[u32],
+    ) {
+        let vertex_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("bbb-item-frame-map-vertices"),
+                contents: bytemuck::cast_slice(vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
+        let index_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("bbb-item-frame-map-indices"),
+                contents: bytemuck::cast_slice(indices),
+                usage: wgpu::BufferUsages::INDEX,
+            });
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("bbb-native-item-frame-map-pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.depth.view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&self.item_frame_map_pipeline);
+        pass.set_bind_group(0, &self.terrain_bind_group, &[]);
         pass.set_vertex_buffer(0, vertex_buffer.slice(..));
         pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         pass.draw_indexed(0..indices.len() as u32, 0, 0..1);

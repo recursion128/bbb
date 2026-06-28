@@ -225,8 +225,7 @@ pub enum ItemFrameFacing {
 /// Everything needed to render one item-frame entity (vanilla `ItemFrameRenderState`): the resolved
 /// wall-mounted center, the facing wall, the sampled entity-renderer light, the `0..=7` item rotation,
 /// whether it is a glow frame, whether the entity is invisible, the framed item (`None` for an empty
-/// frame), and whether that item is a filled map (which vanilla renders as a full-frame map rather than a
-/// `0.5`-scaled item).
+/// frame), and the framed map id (which vanilla renders as a full-frame map only when map data exists).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ItemFrameRenderState {
     pub entity_id: i32,
@@ -239,7 +238,8 @@ pub struct ItemFrameRenderState {
     #[serde(default)]
     pub invisible: bool,
     pub item: Option<ProtocolItemStackSummary>,
-    pub has_map: bool,
+    #[serde(default)]
+    pub map_id: Option<i32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1792,7 +1792,7 @@ impl WorldStore {
     }
 
     /// The render state of every item-frame / glow-item-frame entity (center, facing, sampled light, item
-    /// rotation, glow/invisible flags, framed item, map flag). Drives the 3D item-frame render (vanilla
+    /// rotation, glow/invisible flags, framed item, map id). Drives the 3D item-frame render (vanilla
     /// `ItemFrameRenderer`).
     pub fn item_frame_render_states(&self) -> Vec<ItemFrameRenderState> {
         let mut states = self.entities.item_frame_render_states();

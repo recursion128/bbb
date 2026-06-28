@@ -166,29 +166,50 @@ pub(crate) fn item_frame_item(data_values: &[EntityDataValue]) -> Option<&ItemSt
         })
 }
 
-/// Whether the frame holds a filled map (vanilla renders it as a full-frame map).
-pub(crate) fn item_frame_holds_map(data_values: &[EntityDataValue]) -> bool {
-    item_frame_has_framed_map(data_values)
-}
-
 fn item_frame_has_framed_map(data_values: &[EntityDataValue]) -> bool {
     data_values
         .iter()
         .find(|value| value.data_id == ITEM_FRAME_DATA_ITEM_ID)
         .and_then(|value| match &value.value {
-            EntityDataValueKind::ItemStack(item) => Some(item_stack_has_map_id(item)),
+            EntityDataValueKind::ItemStack(item) => Some(item_stack_has_map_component(item)),
             _ => None,
         })
         .unwrap_or(false)
 }
 
-fn item_stack_has_map_id(item: &ItemStackSummary) -> bool {
-    item.component_patch
-        .added_type_ids
+pub(crate) fn item_frame_map_id(data_values: &[EntityDataValue]) -> Option<i32> {
+    data_values
+        .iter()
+        .find(|value| value.data_id == ITEM_FRAME_DATA_ITEM_ID)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::ItemStack(item) => item_stack_map_id(item),
+            _ => None,
+        })
+}
+
+fn item_stack_map_id(item: &ItemStackSummary) -> Option<i32> {
+    if item
+        .component_patch
+        .removed_type_ids
         .contains(&MAP_ID_DATA_COMPONENT_TYPE_ID)
-        && !item
+    {
+        return None;
+    }
+    item.component_patch.map_id
+}
+
+fn item_stack_has_map_component(item: &ItemStackSummary) -> bool {
+    if item
+        .component_patch
+        .removed_type_ids
+        .contains(&MAP_ID_DATA_COMPONENT_TYPE_ID)
+    {
+        return false;
+    }
+    item.component_patch.map_id.is_some()
+        || item
             .component_patch
-            .removed_type_ids
+            .added_type_ids
             .contains(&MAP_ID_DATA_COMPONENT_TYPE_ID)
 }
 
@@ -296,6 +317,7 @@ mod tests {
         let mut component_patch = DataComponentPatchSummary::default();
         if map {
             component_patch.added_type_ids = vec![MAP_ID_DATA_COMPONENT_TYPE_ID];
+            component_patch.map_id = Some(7);
         }
         ItemStackSummary {
             item_id,
@@ -363,14 +385,20 @@ mod tests {
     }
 
     #[test]
-    fn holds_map_detects_the_map_id_component() {
-        assert!(item_frame_holds_map(&[datum(
-            ITEM_FRAME_DATA_ITEM_ID,
-            EntityDataValueKind::ItemStack(item(Some(2), 1, true))
-        )]));
-        assert!(!item_frame_holds_map(&[datum(
-            ITEM_FRAME_DATA_ITEM_ID,
-            EntityDataValueKind::ItemStack(item(Some(2), 1, false))
-        )]));
+    fn map_id_detects_the_map_id_component() {
+        assert_eq!(
+            item_frame_map_id(&[datum(
+                ITEM_FRAME_DATA_ITEM_ID,
+                EntityDataValueKind::ItemStack(item(Some(2), 1, true))
+            )]),
+            Some(7)
+        );
+        assert_eq!(
+            item_frame_map_id(&[datum(
+                ITEM_FRAME_DATA_ITEM_ID,
+                EntityDataValueKind::ItemStack(item(Some(2), 1, false))
+            )]),
+            None
+        );
     }
 }

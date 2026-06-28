@@ -40,15 +40,14 @@ use crate::entities::animations::{
     VANILLA_ENTITY_TYPE_CREAKING_ID,
 };
 use crate::entities::dimensions::{
-    entity_data_pose, item_frame_facing, item_frame_holds_map, item_frame_item,
-    item_frame_rotation, vanilla_client_position_for_entity_data,
-    vanilla_eye_height_for_entity_data, vanilla_illager_aggressive_arm_pose_family,
-    vanilla_is_baby, vanilla_is_bat, vanilla_is_bee, vanilla_is_enderman, vanilla_is_fox,
-    vanilla_is_vex, vanilla_is_wither, vanilla_living_entity_type,
-    vanilla_model_source_bounds_for_entity_data, vanilla_pick_bounds_for_entity_data,
-    vanilla_piglin_melee_attack_family, vanilla_render_scale, vanilla_zombie_model_family,
-    ENTITY_DATA_POSE_ID, ITEM_FRAME_ENTITY_TYPE_IDS, VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
-    VANILLA_POSE_CROUCHING_ID, VANILLA_POSE_SLEEPING_ID,
+    entity_data_pose, item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
+    vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
+    vanilla_illager_aggressive_arm_pose_family, vanilla_is_baby, vanilla_is_bat, vanilla_is_bee,
+    vanilla_is_enderman, vanilla_is_fox, vanilla_is_vex, vanilla_is_wither,
+    vanilla_living_entity_type, vanilla_model_source_bounds_for_entity_data,
+    vanilla_pick_bounds_for_entity_data, vanilla_piglin_melee_attack_family, vanilla_render_scale,
+    vanilla_zombie_model_family, ENTITY_DATA_POSE_ID, ITEM_FRAME_ENTITY_TYPE_IDS,
+    VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID, VANILLA_POSE_CROUCHING_ID, VANILLA_POSE_SLEEPING_ID,
 };
 use crate::entities::dragon::{
     ender_dragon_part_pick_targets_at_partial_tick, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
@@ -1839,8 +1838,8 @@ impl EntityStore {
     }
 
     /// The render state of every item-frame / glow-item-frame entity: its resolved wall center, the
-    /// facing wall, the `0..=7` item rotation, glow/invisible flags, the framed item, and whether that
-    /// item is a filled map. Drives the 3D item-frame render (vanilla `ItemFrameRenderer`).
+    /// facing wall, the `0..=7` item rotation, glow/invisible flags, the framed item, and framed map id.
+    /// Drives the 3D item-frame render (vanilla `ItemFrameRenderer`).
     pub(crate) fn item_frame_render_states(&self) -> Vec<ItemFrameRenderState> {
         let mut frames = Vec::new();
         for id in &self.order {
@@ -1872,7 +1871,7 @@ impl EntityStore {
                     & ENTITY_SHARED_FLAG_INVISIBLE
                     != 0,
                 item: item_frame_item(&metadata.data_values).cloned(),
-                has_map: item_frame_holds_map(&metadata.data_values),
+                map_id: item_frame_map_id(&metadata.data_values),
             });
         }
         frames

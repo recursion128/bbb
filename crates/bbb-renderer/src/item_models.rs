@@ -110,6 +110,51 @@ impl ItemModelMesh {
     }
 }
 
+/// A colored vertex for an item-frame map surface. Vanilla renders maps through a dynamic 128x128
+/// texture; this mesh carries the already-decoded map colors until the backend grows dynamic map
+/// texture submissions.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct ItemFrameMapVertex {
+    pub position: [f32; 3],
+    pub color: [f32; 4],
+    pub light: [f32; 2],
+}
+
+/// A baked item-frame map surface: colored indexed triangles in world space.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct ItemFrameMapMesh {
+    pub vertices: Vec<ItemFrameMapVertex>,
+    pub indices: Vec<u32>,
+}
+
+impl ItemFrameMapMesh {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.indices.is_empty()
+    }
+
+    pub fn append_colored_quad(
+        &mut self,
+        corners: [[f32; 3]; 4],
+        color: [f32; 4],
+        light: [f32; 2],
+    ) {
+        let base = u32::try_from(self.vertices.len()).expect("map vertex count fits in u32");
+        self.vertices
+            .extend(corners.into_iter().map(|position| ItemFrameMapVertex {
+                position,
+                color,
+                light,
+            }));
+        self.indices
+            .extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+    }
+}
+
 /// Bakes a single model's `quads` into a fresh mesh under `transform`. Convenience over
 /// [`ItemModelMesh::append_quads`] for the common one-model case.
 pub fn bake_item_model_mesh(quads: &[ItemModelQuad], transform: Mat4) -> ItemModelMesh {
@@ -143,6 +188,19 @@ pub(crate) fn merge_item_model_meshes(
     (vertices, indices)
 }
 
+pub(crate) fn merge_item_frame_map_meshes(
+    meshes: &[ItemFrameMapMesh],
+) -> (Vec<ItemFrameMapVertex>, Vec<u32>) {
+    let mut vertices = Vec::new();
+    let mut indices = Vec::new();
+    for mesh in meshes {
+        let base = u32::try_from(vertices.len()).expect("map vertex count fits in u32");
+        vertices.extend_from_slice(&mesh.vertices);
+        indices.extend(mesh.indices.iter().map(|index| index + base));
+    }
+    (vertices, indices)
+}
+
 impl Renderer {
     /// Sets the baked **block-item** model meshes to draw this frame — those whose UVs are absolute into
     /// the blocks atlas (the same atlas terrain samples). Each mesh is already in world space with
@@ -158,6 +216,12 @@ impl Renderer {
     /// that atlas has been uploaded; otherwise skipped.
     pub fn set_flat_item_model_meshes(&mut self, meshes: Vec<ItemModelMesh>) {
         self.flat_item_model_meshes = meshes;
+    }
+
+    /// Sets this frame's decoded item-frame map surfaces. These are drawn with a color-only pipeline,
+    /// matching vanilla's `MapTextureManager` pixels after `MapColor.getColorFromPackedId`.
+    pub fn set_item_frame_map_meshes(&mut self, meshes: Vec<ItemFrameMapMesh>) {
+        self.item_frame_map_meshes = meshes;
     }
 
     /// Sets this frame's 3D block items for the hotbar slots (`None` for an empty slot or a flat item,
@@ -177,6 +241,114 @@ impl Renderer {
     pub(crate) fn collect_flat_item_model_geometry(&self) -> (Vec<ItemModelVertex>, Vec<u32>) {
         merge_item_model_meshes(&self.flat_item_model_meshes)
     }
+
+    pub(crate) fn collect_item_frame_map_geometry(&self) -> (Vec<ItemFrameMapVertex>, Vec<u32>) {
+        merge_item_frame_map_meshes(&self.item_frame_map_meshes)
+    }
+}
+
+const ITEM_FRAME_MAP_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 3] =
+    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4, 2 => Float32x2];
+
+fn item_frame_map_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
+    wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<ItemFrameMapVertex>() as wgpu::BufferAddress,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &ITEM_FRAME_MAP_VERTEX_ATTRIBUTES,
+    }
+}
+
+const ITEM_FRAME_MAP_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+    @location(1) color: vec4<f32>,
+    @location(2) light: vec2<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) color: vec4<f32>,
+    @location(1) light: vec2<f32>,
+};
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
+    out.color = input.color;
+    out.light = input.light;
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    if input.color.a <= 0.01 {
+        discard;
+    }
+    let light_level = max(input.light.x, input.light.y * 0.95);
+    let shade = 0.16 + light_level * 0.84;
+    return vec4<f32>(input.color.rgb * shade, input.color.a);
+}
+"#;
+
+pub(crate) fn create_item_frame_map_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    camera_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("bbb-item-frame-map-shader"),
+        source: wgpu::ShaderSource::Wgsl(ITEM_FRAME_MAP_SHADER.into()),
+    });
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-item-frame-map-pipeline-layout"),
+        bind_group_layouts: &[camera_bind_group_layout],
+        push_constant_ranges: &[],
+    });
+
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("bbb-item-frame-map-pipeline"),
+        layout: Some(&layout),
+        vertex: wgpu::VertexState {
+            module: &shader,
+            entry_point: "vs_main",
+            buffers: &[item_frame_map_vertex_layout()],
+        },
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: None,
+            polygon_mode: wgpu::PolygonMode::Fill,
+            unclipped_depth: false,
+            conservative: false,
+        },
+        depth_stencil: Some(wgpu::DepthStencilState {
+            format: DEPTH_FORMAT,
+            depth_write_enabled: true,
+            depth_compare: wgpu::CompareFunction::LessEqual,
+            stencil: wgpu::StencilState::default(),
+            bias: wgpu::DepthBiasState::default(),
+        }),
+        multisample: wgpu::MultisampleState::default(),
+        fragment: Some(wgpu::FragmentState {
+            module: &shader,
+            entry_point: "fs_main",
+            targets: &[Some(wgpu::ColorTargetState {
+                format,
+                blend: None,
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        multiview: None,
+    })
 }
 
 const ITEM_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 4] =

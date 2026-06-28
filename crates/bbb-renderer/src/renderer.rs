@@ -28,7 +28,9 @@ use crate::{
         HUD_HOTBAR_SLOTS,
     },
     item_entities::{create_item_entity_pipeline, ItemEntityAtlasGpu, ItemEntityBillboard},
-    item_models::{create_item_model_pipeline, ItemModelMesh},
+    item_models::{
+        create_item_frame_map_pipeline, create_item_model_pipeline, ItemFrameMapMesh, ItemModelMesh,
+    },
     particles::{create_particle_pipeline, ParticleAtlasGpu, ParticleRuntimeState},
     player_skin::{DynamicPlayerSkinImage, DynamicPlayerTextureImage},
     selection::{
@@ -59,6 +61,7 @@ pub struct Renderer {
     pub(super) particle_pipeline: wgpu::RenderPipeline,
     pub(super) item_entity_pipeline: wgpu::RenderPipeline,
     pub(super) item_model_pipeline: wgpu::RenderPipeline,
+    pub(super) item_frame_map_pipeline: wgpu::RenderPipeline,
     pub(super) selection_pipeline: wgpu::RenderPipeline,
     pub(super) hud_pipeline: wgpu::RenderPipeline,
     pub(super) hud_bind_group_layout: wgpu::BindGroupLayout,
@@ -99,6 +102,7 @@ pub struct Renderer {
     pub(super) item_entity_billboards: Vec<ItemEntityBillboard>,
     pub(super) block_item_model_meshes: Vec<ItemModelMesh>,
     pub(super) flat_item_model_meshes: Vec<ItemModelMesh>,
+    pub(super) item_frame_map_meshes: Vec<ItemFrameMapMesh>,
     pub(super) selection_outline: Option<SelectionOutlineGpu>,
     pub(super) entity_scene_outline: Option<SelectionOutlineGpu>,
     pub(super) entity_target_outline: Option<SelectionOutlineGpu>,
@@ -343,6 +347,8 @@ impl Renderer {
             create_item_entity_pipeline(&device, format, &terrain_bind_group_layout);
         let item_model_pipeline =
             create_item_model_pipeline(&device, format, &terrain_bind_group_layout);
+        let item_frame_map_pipeline =
+            create_item_frame_map_pipeline(&device, format, &terrain_bind_group_layout);
         let selection_pipeline =
             create_selection_pipeline(&device, format, &terrain_bind_group_layout);
         let hud_pipeline = create_hud_pipeline(&device, format, &hud_bind_group_layout);
@@ -380,6 +386,7 @@ impl Renderer {
             particle_pipeline,
             item_entity_pipeline,
             item_model_pipeline,
+            item_frame_map_pipeline,
             selection_pipeline,
             hud_pipeline,
             hud_bind_group_layout,
@@ -420,6 +427,7 @@ impl Renderer {
             item_entity_billboards: Vec::new(),
             block_item_model_meshes: Vec::new(),
             flat_item_model_meshes: Vec::new(),
+            item_frame_map_meshes: Vec::new(),
             selection_outline: None,
             entity_scene_outline: None,
             entity_target_outline: None,

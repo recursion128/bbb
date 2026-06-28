@@ -64,8 +64,8 @@ pub use crate::hud::{
 };
 pub use crate::item_entities::{ItemEntityBillboard, ItemEntityBillboardLayer, ItemEntityUvRect};
 pub use crate::item_models::{
-    bake_item_model_mesh, bake_item_model_mesh_with_light, HudBlockItemModel, ItemModelMesh,
-    ItemModelQuad, ITEM_MODEL_FULL_BRIGHT_LIGHT,
+    bake_item_model_mesh, bake_item_model_mesh_with_light, HudBlockItemModel, ItemFrameMapMesh,
+    ItemFrameMapVertex, ItemModelMesh, ItemModelQuad, ITEM_MODEL_FULL_BRIGHT_LIGHT,
 };
 pub use crate::particles::{
     ParticleSpawnBatch, ParticleSpawnCommand, ParticleSpriteUv, ParticleUvRect,
