@@ -1343,11 +1343,13 @@ pub(crate) fn pump_network_and_terrain(
     let running_ticks = world.consume_running_render_ticks(advanced_ticks);
     world.advance_client_time(running_ticks);
     lightmap_ticks.advance_for_world(advanced_ticks, world);
+    let water_vision = lightmap_ticks.water_vision(world);
     renderer.set_lightmap_environment(lightmap_ticks.environment_for_world(world));
-    renderer.set_clear_color(clear_color_for_world_at_camera(
+    renderer.set_clear_color(clear_color_for_world_at_camera_with_water_vision(
         world,
         terrain_textures,
         camera_pose_from_world(world),
+        water_vision,
         hide_lightning_flash,
     ));
     renderer.set_fog_environment(fog_environment_for_world_at_camera(
@@ -1355,7 +1357,7 @@ pub(crate) fn pump_network_and_terrain(
         terrain_textures,
         camera_pose_from_world(world),
         render_distance_chunks,
-        lightmap_ticks.water_vision(world),
+        water_vision,
         hide_lightning_flash,
     ));
     world.advance_sky_flash_time(advanced_ticks);
@@ -3969,9 +3971,38 @@ fn clear_color_for_world_at_camera(
     )
 }
 
+fn clear_color_for_world_at_camera_with_water_vision(
+    world: &WorldStore,
+    terrain_textures: &TerrainTextureState,
+    camera_pose: Option<CameraPose>,
+    water_vision: f32,
+    hide_lightning_flash: bool,
+) -> ClearColor {
+    clear_color_for_world_with_environment_colors_and_water_vision(
+        world,
+        camera_environment_colors(world, terrain_textures, camera_pose),
+        water_vision,
+        hide_lightning_flash,
+    )
+}
+
 fn clear_color_for_world_with_environment_colors(
     world: &WorldStore,
     colors: CameraEnvironmentColors,
+    hide_lightning_flash: bool,
+) -> ClearColor {
+    clear_color_for_world_with_environment_colors_and_water_vision(
+        world,
+        colors,
+        0.0,
+        hide_lightning_flash,
+    )
+}
+
+fn clear_color_for_world_with_environment_colors_and_water_vision(
+    world: &WorldStore,
+    colors: CameraEnvironmentColors,
+    water_vision: f32,
     hide_lightning_flash: bool,
 ) -> ClearColor {
     let day_time = world.world_time().map(|time| time.day_time).unwrap_or(6000);
@@ -3995,10 +4026,13 @@ fn clear_color_for_world_with_environment_colors(
                 .or_else(|| dimension_sky_color_for_kind(dimension_kind)),
             dimension_kind,
         ),
-        CameraFogType::Water => clear_color_from_argb(rgb_u8_to_argb(
-            colors
-                .water_fog_color
-                .unwrap_or(VANILLA_DEFAULT_WATER_FOG_COLOR),
+        CameraFogType::Water => clear_color_from_argb(apply_fog_brightening(
+            rgb_u8_to_argb(
+                colors
+                    .water_fog_color
+                    .unwrap_or(VANILLA_DEFAULT_WATER_FOG_COLOR),
+            ),
+            water_vision,
         )),
     };
     if hide_lightning_flash
@@ -4035,8 +4069,12 @@ fn fog_environment_for_world_with_environment_colors(
     water_vision: f32,
     hide_lightning_flash: bool,
 ) -> FogEnvironment {
-    let fog_color =
-        clear_color_for_world_with_environment_colors(world, colors, hide_lightning_flash);
+    let fog_color = clear_color_for_world_with_environment_colors_and_water_vision(
+        world,
+        colors,
+        water_vision,
+        hide_lightning_flash,
+    );
     let color = [
         fog_color.r as f32,
         fog_color.g as f32,
@@ -4190,6 +4228,27 @@ fn apply_atmospheric_sky_weather_darken(color: i32, rain_level: f64, thunder_lev
         );
     }
     color
+}
+
+fn apply_fog_brightening(color: i32, brighten_factor: f32) -> i32 {
+    if argb_red(color) == 0 || argb_green(color) == 0 || argb_blue(color) == 0 {
+        return color;
+    }
+    let brighten_factor = brighten_factor.clamp(0.0, 1.0);
+    if brighten_factor <= 0.0 {
+        return color;
+    }
+
+    let red = argb_red(color) as f32 / 255.0;
+    let green = argb_green(color) as f32 / 255.0;
+    let blue = argb_blue(color) as f32 / 255.0;
+    let target_scale = 1.0 / red.max(green).max(blue);
+    argb_color(
+        argb_alpha(color),
+        argb_channel_from_unit(red + (red * target_scale - red) * brighten_factor),
+        argb_channel_from_unit(green + (green * target_scale - green) * brighten_factor),
+        argb_channel_from_unit(blue + (blue * target_scale - blue) * brighten_factor),
+    )
 }
 
 fn atmospheric_clear_color(fog_color: i32, sky_color: i32) -> ClearColor {

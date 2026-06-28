@@ -369,6 +369,35 @@ fn clear_color_samples_camera_biome_water_fog_when_eye_is_in_water() {
 }
 
 #[test]
+fn clear_color_brightens_water_fog_with_vanilla_water_vision() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, 6_000);
+    world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));
+    world.insert_decoded_chunk(empty_lightmap_test_chunk_with_biome(world.dimension(), 42));
+    set_lightmap_test_block(
+        &mut world,
+        BlockPos { x: 0, y: 1, z: 0 },
+        SOURCE_WATER_BLOCK_STATE_ID,
+    );
+    let textures = TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
+        biome_profile_with_environment(42, None, None, Some([0x02, 0x20, 0x44])),
+    ]));
+
+    let clear = clear_color_for_world_at_camera_with_water_vision(
+        &world,
+        &textures,
+        camera_pose_from_world(&world),
+        0.5,
+        false,
+    );
+
+    assert_eq!(
+        clear,
+        clear_color_from_argb(rgb_u8_to_argb([0x04, 0x4b, 0xa1]))
+    );
+}
+
+#[test]
 fn fog_environment_uses_vanilla_render_distance_range_and_dimension_fog_distances() {
     let mut overworld = world_with_dimension(0, "minecraft:overworld");
     set_world_day_time(&mut overworld, 6_000);
@@ -451,7 +480,7 @@ fn fog_environment_uses_water_fog_distances_when_eye_is_in_water() {
     assert_fog_environment_close(
         fog,
         FogEnvironment::world(
-            clear_color_to_fog_color(clear_color_from_argb(rgb_u8_to_argb([0x02, 0x20, 0x44]))),
+            clear_color_to_fog_color(clear_color_from_argb(rgb_u8_to_argb([0x04, 0x4b, 0xa1]))),
             VANILLA_DEFAULT_WATER_FOG_START_DISTANCE,
             VANILLA_DEFAULT_WATER_FOG_END_DISTANCE * 0.5,
             12,
