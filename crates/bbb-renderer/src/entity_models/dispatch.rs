@@ -15,9 +15,9 @@ use glam::{Mat4, Vec3};
 
 use super::catalog::{
     BoatModelFamily, CamelModelFamily, CowModelVariant, DonkeyModelFamily,
-    EntityDynamicPlayerSkinAtlasLayout, EntityModelKind, EntityModelTextureAtlasLayout,
-    EntityPlayerSkin, HorseColorVariant, HorseMarkings, PiglinModelFamily,
-    PlayerModelPartVisibility, SkeletonModelFamily, UndeadHorseModelFamily,
+    EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerTextureAtlasLayout, EntityModelKind,
+    EntityModelTextureAtlasLayout, EntityPlayerSkin, HorseColorVariant, HorseMarkings,
+    PiglinModelFamily, PlayerModelPartVisibility, SkeletonModelFamily, UndeadHorseModelFamily,
     ZombieVariantModelFamily,
 };
 use super::colored::{
@@ -89,8 +89,9 @@ use super::textured::{
     render_breeze_wind_scroll_model, render_charged_creeper_energy_swirl,
     render_donkey_textured_layers, render_end_crystal_beam, render_end_crystal_textured_layers,
     render_ender_dragon_beam, render_guardian_beam, render_horse_textured_layers,
-    render_no_overlay_scrolled_textured_layers, render_player_textured_layers,
-    render_textured_layers, render_trident_foil_submission, render_undead_horse_textured_layers,
+    render_no_overlay_scrolled_textured_layers, render_player_cape_layer,
+    render_player_extra_ears_layer, render_player_textured_layers, render_textured_layers,
+    render_trident_foil_submission, render_undead_horse_textured_layers,
     render_wither_energy_swirl, salmon_textured_layer_passes, sheep_textured_layer_passes,
     shulker_bullet_textured_layer_passes, shulker_textured_layer_passes,
     silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
@@ -396,6 +397,8 @@ pub(in crate::entity_models) struct TexturedSink<'a> {
     pub(in crate::entity_models) atlas: &'a EntityModelTextureAtlasLayout,
     pub(in crate::entity_models) dynamic_player_skin_atlas:
         Option<&'a EntityDynamicPlayerSkinAtlasLayout>,
+    pub(in crate::entity_models) dynamic_player_texture_atlas:
+        Option<&'a EntityDynamicPlayerTextureAtlasLayout>,
 }
 
 impl EntityModelSink for TexturedSink<'_> {
@@ -488,6 +491,13 @@ impl EntityModelSink for TexturedSink<'_> {
             self.atlas,
             self.dynamic_player_skin_atlas,
         );
+        render_player_extra_ears_layer(
+            self.meshes,
+            *instance,
+            self.atlas,
+            self.dynamic_player_skin_atlas,
+        );
+        render_player_cape_layer(self.meshes, *instance, self.dynamic_player_texture_atlas);
     }
 
     fn horse_model(

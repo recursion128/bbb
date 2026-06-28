@@ -412,6 +412,7 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
                 meshes: &mut meshes,
                 atlas,
                 dynamic_player_skin_atlas,
+                dynamic_player_texture_atlas,
             };
             dispatch_uniform_entity_model(instance, &mut sink);
         }
@@ -428,10 +429,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
             );
             continue;
         }
-        // AvatarRenderer registers Deadmau5EarsLayer before CapeLayer; it shares the player's body
-        // skin and renders only for the exact profile-name easter egg while the player is visible.
-        emit_player_extra_ears_layer(&mut meshes, *instance, atlas, dynamic_player_skin_atlas);
-        emit_player_cape_layer(&mut meshes, *instance, dynamic_player_texture_atlas);
         // Worn armor is a cutout overlay draped on the host humanoid pose; it runs regardless of
         // `handled` and folds into the cutout pass before the shared light/overlay fill below.
         emit_worn_humanoid_armor(&mut meshes, *instance, atlas);
@@ -2751,7 +2748,7 @@ pub(in crate::entity_models) fn render_player_textured_layers(
     );
 }
 
-fn emit_player_extra_ears_layer(
+pub(in crate::entity_models) fn render_player_extra_ears_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
@@ -2761,6 +2758,9 @@ fn emit_player_extra_ears_layer(
         return;
     };
     if !instance.render_state.show_extra_ears || instance.render_state.invisible {
+        return;
+    }
+    if meshes.current_force_transparent || meshes.current_outline_only {
         return;
     }
 
@@ -2811,7 +2811,7 @@ fn emit_player_extra_ears_layer(
     });
 }
 
-fn emit_player_cape_layer(
+pub(in crate::entity_models) fn render_player_cape_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
@@ -2820,6 +2820,9 @@ fn emit_player_cape_layer(
         return;
     };
     if !parts.cape {
+        return;
+    }
+    if meshes.current_force_transparent || meshes.current_outline_only {
         return;
     }
     if instance.render_state.chest_equipment_has_wings {

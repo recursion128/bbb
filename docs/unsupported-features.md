@@ -1405,11 +1405,12 @@ When an agent does any of the following, update this file in the same slice:
         when the dynamic entry is absent. Profile `CapeLayer` presentation is
         now covered for player entities: native projects the PlayerInfo cape URL as an
         `EntityDynamicPlayerTextureKind::Cape`, and renderer emits the cape
-        layer only when the cape model part is visible and the dynamic atlas
-        entry is ready. That submission now consumes `player_cape_layer_pass`
-        with vanilla `ModelLayers.PLAYER_CAPE`, recording `entitySolid`, the
-        dynamic cape handle, white tint, root transform, default order 0 plus
-        the layer submit sequence, and vanilla `OverlayTexture.NO_OVERLAY`;
+        layer through the shared player dispatch sink only when the cape model
+        part is visible and the dynamic atlas entry is ready. That submission now
+        consumes `player_cape_layer_pass` with vanilla `ModelLayers.PLAYER_CAPE`,
+        recording `entitySolid`, the dynamic cape handle, white tint, root
+        transform, default order 0 plus the layer submit sequence, and vanilla
+        `OverlayTexture.NO_OVERLAY`;
         missing atlas entries wait instead of drawing stale geometry. Pack/native
         now preserve item equippable asset ids and query equipment asset layers,
         so the cape is suppressed for chest WINGS equipment and nudged by the
@@ -1521,12 +1522,12 @@ When an agent does any of the following, update this file in the same slice:
       selecting the ready dynamic skin atlas. Deadmau5 ears are implemented from the
       exact lowercase player-info GameProfile name `"deadmau5"` through
       `Deadmau5EarsLayer` / `PlayerEarsModel`: visible players submit an
-      `entitySolid` same-skin layer with zero-white overlay at player same-order
-      sequence 1, now through `player_extra_ears_layer_pass_with_texture` with vanilla
-      `ModelLayers.PLAYER_EARS`, including ready dynamic player skin atlas support. Player profile
-      cape presentation is covered by the
-      dynamic `entitySolid` cape layer through `player_cape_layer_pass` with vanilla
-      `ModelLayers.PLAYER_CAPE`, and WingsLayer/elytra presentation now consumes
+      `entitySolid` same-skin layer from the shared player dispatch sink with zero-white overlay
+      at player same-order sequence 1, now through `player_extra_ears_layer_pass_with_texture`
+      with vanilla `ModelLayers.PLAYER_EARS`, including ready dynamic player skin atlas support.
+      Player profile cape presentation is covered by the
+      dynamic `entitySolid` cape layer from the same dispatch sink through `player_cape_layer_pass`
+      with vanilla `ModelLayers.PLAYER_CAPE`, and WingsLayer/elytra presentation now consumes
       `wings_layer_pass` with vanilla `ModelLayers.ELYTRA` / `ModelLayers.ELYTRA_BABY` plus
       elytra animation-state projection are covered for vanilla elytra equipment
       on players, humanoid mobs, armor stands, and baby humanoid mobs; player
