@@ -87,7 +87,7 @@ use super::textured::{
     piglin_textured_layer_passes, polar_bear_textured_layer_passes, rabbit_textured_layer_passes,
     ravager_textured_layer_passes, render_boat_water_mask_submission,
     render_breeze_wind_scroll_model, render_charged_creeper_energy_swirl,
-    render_donkey_textured_layers, render_end_crystal_textured_layers,
+    render_donkey_textured_layers, render_end_crystal_beam, render_end_crystal_textured_layers,
     render_horse_textured_layers, render_no_overlay_scrolled_textured_layers,
     render_player_textured_layers, render_textured_layers, render_trident_foil_submission,
     render_undead_horse_textured_layers, render_wither_energy_swirl, salmon_textured_layer_passes,
@@ -427,6 +427,7 @@ impl EntityModelSink for TexturedSink<'_> {
             passes.iter().cloned(),
             self.atlas,
         );
+        render_end_crystal_beam(self.meshes, *instance, self.atlas);
     }
 
     fn player_model(

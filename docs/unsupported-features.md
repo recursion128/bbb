@@ -1103,11 +1103,12 @@ When an agent does any of the following, update this file in the same slice:
       attack beams now consume explicit `GuardianBeam` pass metadata through the same pass-backed emitter before
       recording vanilla `entityCutout` submissions and folding their tiled custom geometry into the scroll bucket through the
       custom scroll-geometry submission helper; End Crystal
-      body submits now run through the shared dispatch sink rather than a residual textured arm,
-      recording the vanilla `entityCutout(end_crystal.png)` submission before the bob/spin hand-walk
-      folds geometry through the standard submission helper, and
-      crystals with a beam target now consume explicit `EndCrystalBeam` pass metadata through the pass-backed emitter before
-      recording vanilla `end_crystal_beam` submissions and folding their tiled prism geometry into the scroll
+      body and healing-beam submits now run through the shared EndCrystal dispatch sink rather
+      than residual/post-base helper ownership, recording the vanilla
+      `entityCutout(end_crystal.png)` submission before the bob/spin hand-walk folds geometry
+      through the standard submission helper, then consuming explicit `EndCrystalBeam` pass
+      metadata for crystals with a beam target before recording vanilla `end_crystal_beam`
+      submissions and folding their tiled prism geometry into the scroll
       bucket with preserved light / no-overlay metadata. Ender dragon nearest-crystal healing beams
       now project the
       bobbed crystal `beamOffset`, consume explicit `EnderDragonBeam` pass metadata through that emitter,
@@ -3573,12 +3574,12 @@ When an agent does any of the following, update this file in the same slice:
       beam is now wired too: world projects
       `EndCrystal.DATA_BEAM_TARGET` (Optional<BlockPos> data id 8) as
       `Vec3.atCenterOf(target) - entity.getPosition(partialTicks)`, native forwards it as
-      `EndCrystalRenderState.beamOffset`, and the renderer consumes explicit `EndCrystalBeam` pass
-      metadata before recording
-      `RenderTypes.endCrystalBeam(textures/entity/end_crystal/end_crystal_beam.png)` at order `0`,
-      sequence `1` with vanilla light coords and `OverlayTexture.NO_OVERLAY` before folding the
-      eight-quad black/white prism into the tiled scroll mesh with matching vertex light/no-overlay
-      metadata; missing-atlas coverage pins that the beam submission survives when
+      `EndCrystalRenderState.beamOffset`, and the shared EndCrystal dispatch sink consumes
+      explicit `EndCrystalBeam` pass metadata after the body submit before recording
+      `RenderTypes.endCrystalBeam(textures/entity/end_crystal/end_crystal_beam.png)` at order
+      `0`, sequence `1` with vanilla light coords and `OverlayTexture.NO_OVERLAY` before
+      folding the eight-quad black/white prism into the tiled scroll mesh with matching vertex
+      light/no-overlay metadata; missing-atlas coverage pins that the beam submission survives when
       `end_crystal_beam.png` is absent while only folded scroll geometry is suppressed.
     - evoker fangs entities as renderer-owned vanilla 26.1 `EvokerFangsModel.createBodyLayer()` geometry on
       the colored path: the native entity scene (`entity_scene.rs`) projects vanilla type id `47` to the new

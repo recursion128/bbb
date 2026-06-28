@@ -431,8 +431,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         // The guardian attack beam is a world-space billboarded prism from the guardian eye to its
         // target; it folds into the scroll (tiled) pass and runs regardless of `handled`.
         emit_guardian_beam(&mut meshes, *instance, atlas);
-        // The end-crystal healing beam is custom world-space geometry submitted after the model body.
-        emit_end_crystal_beam(&mut meshes, *instance, atlas);
         // The ender-dragon healing beam reuses the same vanilla custom-geometry submit after body+eyes.
         emit_ender_dragon_beam(&mut meshes, *instance, atlas);
         // AvatarRenderer registers Deadmau5EarsLayer before CapeLayer; it shares the player's body
@@ -504,7 +502,7 @@ pub(super) fn dynamic_player_texture_test_meshes(
 
 /// Vanilla `EndCrystalRenderer.submit`: render `EndCrystalModel` with `end_crystal.png` after the
 /// renderer root transform (`scale(2)` + `translate(0,-0.5,0)`). The optional `DATA_BEAM_TARGET`
-/// custom geometry is submitted separately by [`emit_end_crystal_beam`].
+/// custom geometry is submitted separately by [`render_end_crystal_beam`].
 pub(in crate::entity_models) fn render_end_crystal_textured_layers(
     meshes: &mut EntityModelTexturedMeshes,
     transform: Mat4,
@@ -1389,12 +1387,15 @@ fn emit_guardian_beam(
 /// target offset, then the shared helper translates up by two units, rotates local +Z toward the
 /// crystal→beam-target delta (including the crystal bob), and submits eight prism quads with black
 /// inner vertices, white outer vertices, and a vertically tiled `end_crystal_beam.png` texture.
-fn emit_end_crystal_beam(
+pub(in crate::entity_models) fn render_end_crystal_beam(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     if !matches!(instance.kind, EntityModelKind::EndCrystal) {
+        return;
+    }
+    if meshes.current_force_transparent || meshes.current_outline_only {
         return;
     }
     let Some(beam) = instance.render_state.end_crystal_beam else {
