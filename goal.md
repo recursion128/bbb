@@ -156,7 +156,7 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。
   阻塞狭义 pipeline closeout；colored fallback self-visible invisible
   force-transparent alpha、hidden-glowing outline color，以及 texture-backed
   visible-glowing static-atlas outline bucket copy 已按 vanilla 分支输出并纳入测试。
-  本次重跑 audit 计数：`rg residual` 46 行、`rg fallback` 518 行、
+  本次重跑 audit 计数：`rg residual` 46 行、`rg fallback` 522 行、
   `rg unsupported` 163 行；命中已按上述分类落账。
 - 2026-06-28 closeout gate：狭义 pipeline checklist 在最终文档状态下通过
   `cargo fmt --all --check`、`git diff --check`、
