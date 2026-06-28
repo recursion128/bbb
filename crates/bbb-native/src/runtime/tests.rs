@@ -210,6 +210,41 @@ fn lightmap_environment_applies_overworld_weather_layers_after_timeline() {
 }
 
 #[test]
+fn lightmap_environment_applies_client_sky_flash_layer_after_timeline() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, 18_000);
+    let baseline_environment = lightmap_environment_for_world(&world, 0.5, 1.4);
+    assert!(baseline_environment.sky_factor < 1.0);
+
+    world.set_sky_flash_time(2);
+    let mut lightmap =
+        LightmapTickState::with_brightness_factor_and_hide_lightning_flash(0.5, false);
+    lightmap.advance_for_world(0, &world);
+    let environment = lightmap.environment_for_world(&world);
+
+    assert_eq!(environment.sky_factor, 1.0);
+    assert_close3(
+        environment.sky_light_color,
+        baseline_environment.sky_light_color,
+    );
+}
+
+#[test]
+fn lightmap_environment_hides_client_sky_flash_when_option_is_enabled() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, 18_000);
+    let baseline_environment = lightmap_environment_for_world(&world, 0.5, 1.4);
+    world.set_sky_flash_time(2);
+    let mut lightmap =
+        LightmapTickState::with_brightness_factor_and_hide_lightning_flash(0.5, true);
+
+    lightmap.advance_for_world(0, &world);
+    let environment = lightmap.environment_for_world(&world);
+
+    assert!((environment.sky_factor - baseline_environment.sky_factor).abs() < 1e-6);
+}
+
+#[test]
 fn lightmap_tick_state_applies_end_flash_sky_factor_from_end_clock() {
     let mut world = world_with_dimension(2, "minecraft:the_end");
     set_world_end_clock_time(&mut world, 1_486);

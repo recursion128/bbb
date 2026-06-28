@@ -440,6 +440,26 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
 }
 
 #[test]
+fn lightning_bolt_add_entity_triggers_client_sky_flash() {
+    let mut store = WorldStore::new();
+
+    store.apply_add_entity(protocol_add_entity_with_type(
+        123,
+        VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID,
+    ));
+
+    assert_eq!(store.sky_flash_time(), 2);
+    store.advance_sky_flash_time(1);
+    assert_eq!(store.sky_flash_time(), 1);
+
+    store.apply_add_entity(protocol_add_entity_with_type(
+        124,
+        VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID,
+    ));
+    assert_eq!(store.sky_flash_time(), 2);
+}
+
+#[test]
 fn equipment_item_queries_non_hand_slots_and_skips_empty_stacks() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity(123));

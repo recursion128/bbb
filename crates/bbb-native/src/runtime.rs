@@ -428,6 +428,7 @@ impl LightmapTickState {
             self.water_vision(world),
             self.end_flash_sky_factor(world),
             self.boss_overlay_world_darkening(VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK),
+            self.sky_flash_visible(world),
         )
     }
 
@@ -514,6 +515,10 @@ impl LightmapTickState {
         } else {
             0.0
         }
+    }
+
+    fn sky_flash_visible(&self, world: &WorldStore) -> bool {
+        !self.hide_lightning_flash && world.sky_flash_time() > 0
     }
 
     fn tick_boss_overlay_world_darkening(&mut self, world: &WorldStore) {
@@ -821,6 +826,7 @@ fn lightmap_environment_for_world_at_tick(
         0.0,
         0.0,
         0.0,
+        world.sky_flash_time() > 0,
     )
 }
 
@@ -836,6 +842,7 @@ fn lightmap_environment_for_world_with_effects(
     water_vision: f32,
     end_flash_sky_factor: f32,
     boss_overlay_world_darkening: f32,
+    sky_flash_visible: bool,
 ) -> LightmapEnvironment {
     let mut environment = lightmap_environment_attributes_for_world(world);
     environment.sky_factor += end_flash_sky_factor;
@@ -853,6 +860,9 @@ fn lightmap_environment_for_world_with_effects(
     environment.darkness_scale = effects.darkness_scale;
     environment.night_vision_factor = effects.night_vision_factor;
     environment.block_factor = block_factor;
+    if sky_flash_visible {
+        environment.sky_factor = 1.0;
+    }
     environment.sanitized()
 }
 
@@ -1300,6 +1310,7 @@ pub(crate) fn pump_network_and_terrain(
     world.advance_client_time(running_ticks);
     lightmap_ticks.advance_for_world(advanced_ticks, world);
     renderer.set_lightmap_environment(lightmap_ticks.environment_for_world(world));
+    world.advance_sky_flash_time(advanced_ticks);
     advance_block_destruction_render_ticks(world, running_ticks);
     world.advance_item_cooldowns(advanced_ticks);
     renderer.advance_particles(advanced_ticks);

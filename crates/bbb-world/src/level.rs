@@ -270,6 +270,19 @@ impl WorldStore {
             .unwrap_or(time.game_time);
     }
 
+    pub fn set_sky_flash_time(&mut self, ticks: i32) {
+        self.sky_flash_time = ticks.max(0);
+    }
+
+    pub fn trigger_sky_flash(&mut self) {
+        self.set_sky_flash_time(2);
+    }
+
+    pub fn advance_sky_flash_time(&mut self, ticks: u32) {
+        let ticks = i32::try_from(ticks).unwrap_or(i32::MAX);
+        self.sky_flash_time = self.sky_flash_time.saturating_sub(ticks).max(0);
+    }
+
     pub fn clear_client_level(&mut self) {
         self.dimension = WorldDimension::default();
         self.level = None;
@@ -277,6 +290,7 @@ impl WorldStore {
         self.world_border = crate::WorldBorderState::default();
         self.world_time = None;
         self.weather = crate::WorldWeatherState::default();
+        self.sky_flash_time = 0;
         self.ticking = crate::WorldTickingState::default();
         self.chunk_view = crate::ChunkViewState::default();
         self.last_block_changed_ack = None;
@@ -429,6 +443,10 @@ impl WorldStore {
 
     pub fn weather(&self) -> WorldWeatherState {
         self.weather
+    }
+
+    pub fn sky_flash_time(&self) -> i32 {
+        self.sky_flash_time
     }
 
     pub fn ticking(&self) -> WorldTickingState {
@@ -973,6 +991,28 @@ mod tests {
                 rate: 0.0,
             }]
         );
+    }
+
+    #[test]
+    fn sky_flash_time_decrements_on_client_ticks_and_clears_with_level() {
+        let mut store = WorldStore::new();
+
+        store.set_sky_flash_time(2);
+        assert_eq!(store.sky_flash_time(), 2);
+
+        store.advance_sky_flash_time(1);
+        assert_eq!(store.sky_flash_time(), 1);
+
+        store.advance_sky_flash_time(10);
+        assert_eq!(store.sky_flash_time(), 0);
+
+        store.set_sky_flash_time(-1);
+        assert_eq!(store.sky_flash_time(), 0);
+
+        store.trigger_sky_flash();
+        assert_eq!(store.sky_flash_time(), 2);
+        store.clear_client_level();
+        assert_eq!(store.sky_flash_time(), 0);
     }
 
     #[test]

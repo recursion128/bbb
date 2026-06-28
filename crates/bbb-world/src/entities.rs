@@ -67,6 +67,7 @@ pub(crate) const VANILLA_ENTITY_TYPE_HORSE_ID: i32 = 66;
 pub(crate) const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
 pub(crate) const VANILLA_ENTITY_TYPE_JUNGLE_BOAT_ID: i32 = 74;
 pub(crate) const VANILLA_ENTITY_TYPE_JUNGLE_CHEST_BOAT_ID: i32 = 75;
+pub(crate) const VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID: i32 = 77;
 pub(crate) const VANILLA_ENTITY_TYPE_LLAMA_ID: i32 = 78;
 pub(crate) const VANILLA_ENTITY_TYPE_MANGROVE_BOAT_ID: i32 = 81;
 pub(crate) const VANILLA_ENTITY_TYPE_MANGROVE_CHEST_BOAT_ID: i32 = 82;
@@ -1456,6 +1457,9 @@ impl WorldStore {
         };
 
         self.entities.insert_or_replace(entity);
+        if packet.entity_type_id == VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID {
+            self.trigger_sky_flash();
+        }
         self.update_entity_count();
         self.update_active_mob_effect_count();
     }

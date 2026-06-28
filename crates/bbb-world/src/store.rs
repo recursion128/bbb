@@ -28,6 +28,8 @@ pub struct WorldStore {
     #[serde(default)]
     pub(crate) weather: crate::WorldWeatherState,
     #[serde(default)]
+    pub(crate) sky_flash_time: i32,
+    #[serde(default)]
     pub(crate) ticking: crate::WorldTickingState,
     pub(crate) registries: RegistrySet,
     pub(crate) chunks: Vec<ChunkColumn>,

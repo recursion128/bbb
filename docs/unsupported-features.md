@@ -592,7 +592,8 @@ When an agent does any of the following, update this file in the same slice:
     `BossHealthOverlay` now drive `BossOverlayWorldDarkeningFactor` with the
     vanilla `+0.05` / `-0.0125` tick state, and `createWorldFog` divides End
     flash `SkyFactor` by 3. The startup `--hide-lightning-flash` option mirrors
-    vanilla `Options.hideLightningFlash` for the lightmap End flash boost.
+    vanilla `Options.hideLightningFlash` for the lightmap End flash boost and
+    the client lightning sky-flash `SKY_LIGHT_FACTOR` override.
     Canonical world time now locally advances `ClockNetworkState` like vanilla
     `ClientClockManager.tick(gameTime)`, so running THE_END default clocks use
     `partialTick + gameTimeDelta * rate` for End flash extrapolation while
@@ -604,7 +605,10 @@ When an agent does any of the following, update this file in the same slice:
     `Timelines.NIGHT_SKY_LIGHT_COLOR`, and ambient `0x302821`; the End uses
     base `SkyFactor = 0`, sky light `0xAC60CD`, and ambient `0x3F473F`, with
     synced THE_END world-clock `EndFlashState` boosts folded into `SkyFactor`;
-    Overworld variants use ambient `0x0A0A0A`. The block flicker path still advances
+    lightning bolt spawns now feed the vanilla 2 tick client `skyFlashTime` and
+    force `SKY_LIGHT_FACTOR = 1.0` while visible. The `SKY_COLOR` lightning tint
+    remains a sky / clear-color presentation gap rather than a lightmap shader
+    input. Overworld variants use ambient `0x0A0A0A`. The block flicker path still advances
     `blockLightFlicker` with the
     `LightmapRenderStateExtractor.tick()` formula and the shaders read
     `blockLightFlicker + 1.4`. Remaining lighting gaps: full camera
