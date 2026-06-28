@@ -358,7 +358,9 @@ When an agent does any of the following, update this file in the same slice:
     `armorCutoutNoCull`, `entityTranslucent*`, `Eyes`, `waterMask`, and glint /
     scroll variants into equivalent pipeline state, complete vanilla outline
     target/composite behaviour, and reconcile full render-graph sorting plus
-    LightTexture / gamma / diffuse visual parity.
+    full LightTexture / gamma / diffuse visual parity. The scroll GPU path
+    already separates vanilla `breezeWind` as lightmap-lit from emissive
+    additive `energySwirl`.
   - P0 pipeline closeout treats texture-backed / dispatch-owned submission and
     RenderType/order/missing-atlas/dynamic-texture coverage as complete for the
     narrow pipeline scope: entity model tests assert `submit_sequence` across 78
@@ -2608,8 +2610,7 @@ When an agent does any of the following, update this file in the same slice:
       with `creeper_armor.png`, `energySwirl`, the vanilla half-grey tint, and
       the same creeper root transform, preserving the per-entity light and
       vanilla `OverlayTexture.NO_OVERLAY` before folding the inflated armor
-      model into the additive scroll mesh with matching vertex metadata; full
-      scroll-mesh lighting presentation parity remains deferred
+      model into the emissive additive scroll mesh with matching vertex metadata
     - base spider entities as renderer-owned vanilla 26.1
       `SpiderModel.createSpiderBodyLayer()` geometry, with
       `ModelLayers.SPIDER`, the official
@@ -4011,9 +4012,11 @@ When an agent does any of the following, update this file in the same slice:
       folded into a dedicated scroll mesh (`EntityModelScrollVertex`) whose per-vertex local UV carries the
       baked per-instance U offset and the texture's atlas sub-rect, and `ENTITY_MODEL_SCROLL_SHADER` does
       `atlas_uv = uv_rect_min + fract(local_uv)·uv_rect_size` (the per-fragment `fract` recreating the `REPEAT`
-      seam) with the `0.1` alpha cutout, translucent-blended and depth-writing. The one simplification is
-      lighting: vanilla `breezeWind` is lightmap-lit with `NO_CARDINAL_LIGHTING`, while the scroll shader is
-      full-bright (a glowing projectile reads the same in practice). The wind charge records this through
+      seam) with the `0.1` alpha cutout, translucent-blended and depth-writing.
+      Vanilla `breezeWind` is lightmap-lit with `NO_CARDINAL_LIGHTING`, so the
+      scroll shader now applies the submitted block/sky light through the same
+      vanilla-shaped `Lightmap.getBrightness` curve used by the vanilla lightmap;
+      additive `energySwirl` remains on its own emissive scroll shader. The wind charge records this through
       `wind_charge_textured_layer_passes` as a `breezeWind` submit with vanilla
       `ModelLayers.WIND_CHARGE`, texture ref, render-type name coverage, white tint, collector
       order `0`, and vanilla `OverlayTexture.NO_OVERLAY`, with folded

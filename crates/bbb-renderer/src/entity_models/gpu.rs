@@ -224,11 +224,80 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 }
 "#;
 
-// The scrolling-overlay shader (vanilla `breezeWind` / `energySwirl`): an emissive, full-bright
-// texture-matrix scroll. Because the texture lives in the shared atlas, the per-fragment `fract` of the
-// (offset-baked) local UV reproduces the `GL_REPEAT` seam, then maps back into the atlas sub-rect. The
-// vanilla `ALPHA_CUTOUT 0.1` discard is applied; `NO_CARDINAL_LIGHTING` is modelled as full-bright.
+// The scrolling-overlay shader for vanilla `breezeWind`: texture-matrix scroll, lightmap-lit, no overlay,
+// and no cardinal lighting. Because the texture lives in the shared atlas, the per-fragment `fract` of
+// the (offset-baked) local UV reproduces the `GL_REPEAT` seam, then maps back into the atlas sub-rect.
+// The vanilla `ALPHA_CUTOUT 0.1` discard is applied.
 pub(super) const ENTITY_MODEL_SCROLL_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+
+@group(0) @binding(1)
+var entity_texture_atlas: texture_2d<f32>;
+
+@group(0) @binding(2)
+var entity_sampler: sampler;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+    @location(1) local_uv: vec2<f32>,
+    @location(2) uv_rect_min: vec2<f32>,
+    @location(3) uv_rect_size: vec2<f32>,
+    @location(4) tint: vec4<f32>,
+    @location(5) light: vec2<f32>,
+    @location(6) overlay: vec2<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) local_uv: vec2<f32>,
+    @location(1) uv_rect_min: vec2<f32>,
+    @location(2) uv_rect_size: vec2<f32>,
+    @location(3) tint: vec4<f32>,
+    @location(4) light: vec2<f32>,
+};
+
+fn lightmap_brightness(level: f32) -> f32 {
+    return level / (4.0 - 3.0 * level);
+}
+
+fn packed_lightmap_shade(light: vec2<f32>) -> f32 {
+    let block_brightness = lightmap_brightness(light.x) * 1.4;
+    let sky_brightness = lightmap_brightness(light.y);
+    return clamp(block_brightness + sky_brightness, 0.0, 1.0);
+}
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
+    out.local_uv = input.local_uv;
+    out.uv_rect_min = input.uv_rect_min;
+    out.uv_rect_size = input.uv_rect_size;
+    out.tint = input.tint;
+    out.light = input.light;
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let atlas_uv = input.uv_rect_min + fract(input.local_uv) * input.uv_rect_size;
+    let texel = textureSample(entity_texture_atlas, entity_sampler, atlas_uv) * input.tint;
+    if texel.a <= 0.1 {
+        discard;
+    }
+    let shade = packed_lightmap_shade(input.light);
+    return vec4<f32>(texel.rgb * shade, texel.a);
+}
+"#;
+
+// The additive scrolling-overlay shader for vanilla `energySwirl`: texture-matrix scroll, alpha cutout,
+// additive blend, and emissive `NO_OVERLAY` / `NO_CARDINAL_LIGHTING` rendering.
+pub(super) const ENTITY_MODEL_SCROLL_EMISSIVE_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
 };
@@ -399,7 +468,7 @@ const ENTITY_MODEL_ADDITIVE_BLEND: wgpu::BlendState = wgpu::BlendState {
 };
 
 /// The scrolling-overlay pipeline for vanilla `breezeWind` (the wind charge): translucent
-/// (`BlendFunction.TRANSLUCENT`), depth-writing, cull off.
+/// (`BlendFunction.TRANSLUCENT`), lightmap-lit, depth-writing, cull off.
 pub(crate) fn create_entity_model_scroll_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
@@ -410,13 +479,13 @@ pub(crate) fn create_entity_model_scroll_pipeline(
         format,
         bind_group_layout,
         "bbb-entity-model-scroll",
+        ENTITY_MODEL_SCROLL_SHADER,
         wgpu::BlendState::ALPHA_BLENDING,
     )
 }
 
 /// The scrolling-overlay pipeline for vanilla `energySwirl` (the charged-creeper / wither glow):
-/// additive ([`ENTITY_MODEL_ADDITIVE_BLEND`]), depth-writing, cull off. Same shader / vertex layout as
-/// the translucent variant — only the blend differs.
+/// additive ([`ENTITY_MODEL_ADDITIVE_BLEND`]), emissive, depth-writing, cull off.
 pub(crate) fn create_entity_model_scroll_additive_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
@@ -427,18 +496,19 @@ pub(crate) fn create_entity_model_scroll_additive_pipeline(
         format,
         bind_group_layout,
         "bbb-entity-model-scroll-additive",
+        ENTITY_MODEL_SCROLL_EMISSIVE_SHADER,
         ENTITY_MODEL_ADDITIVE_BLEND,
     )
 }
 
 /// Builds a scrolling-overlay pipeline (its own scroll vertex layout + [`ENTITY_MODEL_SCROLL_SHADER`],
-/// depth-writing, cull off) with the given blend. The translucent (`breezeWind`) and additive
-/// (`energySwirl`) variants differ only in `blend`.
+/// depth-writing, cull off) with the given blend and shader.
 fn create_entity_model_scroll_pipeline_with_blend(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
     label_prefix: &str,
+    shader_source: &str,
     blend: wgpu::BlendState,
 ) -> wgpu::RenderPipeline {
     let shader_label = format!("{label_prefix}-shader");
@@ -446,7 +516,7 @@ fn create_entity_model_scroll_pipeline_with_blend(
     let pipeline_label = format!("{label_prefix}-pipeline");
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some(shader_label.as_str()),
-        source: wgpu::ShaderSource::Wgsl(ENTITY_MODEL_SCROLL_SHADER.into()),
+        source: wgpu::ShaderSource::Wgsl(shader_source.into()),
     });
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some(pipeline_layout_label.as_str()),

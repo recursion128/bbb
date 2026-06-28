@@ -572,6 +572,22 @@ fn entity_shaders_apply_vanilla_overlay_texture_mix() {
 }
 
 #[test]
+fn entity_scroll_shaders_split_breeze_wind_lightmap_from_energy_swirl_emissive() {
+    // Vanilla RenderPipelines.BREEZE_WIND uses the entity shader with
+    // NO_OVERLAY + NO_CARDINAL_LIGHTING, but still samples the lightmap.
+    assert!(ENTITY_MODEL_SCROLL_SHADER.contains("@location(4) light: vec2<f32>"));
+    assert!(ENTITY_MODEL_SCROLL_SHADER.contains("lightmap_brightness"));
+    assert!(ENTITY_MODEL_SCROLL_SHADER.contains("block_brightness + sky_brightness"));
+    assert!(ENTITY_MODEL_SCROLL_SHADER.contains("texel.rgb * shade"));
+
+    // Vanilla RenderPipelines.ENERGY_SWIRL defines EMISSIVE + NO_OVERLAY +
+    // NO_CARDINAL_LIGHTING, so the additive scroll shader remains full-bright.
+    assert!(ENTITY_MODEL_SCROLL_EMISSIVE_SHADER.contains("return texel;"));
+    assert!(!ENTITY_MODEL_SCROLL_EMISSIVE_SHADER.contains("lightmap_brightness"));
+    assert!(!ENTITY_MODEL_SCROLL_EMISSIVE_SHADER.contains("texel.rgb * shade"));
+}
+
+#[test]
 fn entity_eyes_shader_samples_bound_texture_without_alpha_cutout() {
     assert!(ENTITY_MODEL_EYES_SHADER
         .contains("textureSample(entity_texture_atlas, entity_sampler, input.uv)"));
