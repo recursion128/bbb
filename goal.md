@@ -394,7 +394,7 @@ blocker。
   也不再把 clear color 向 `SKY_COLOR` flash tint 混合。
 - [x] world/native 已接入 vanilla lightning sky flash 的 lightmap 部分：
   `LightningBolt` spawn 触发 2 tick `skyFlashTime`，native 在当前 frame
-  生成 `LightmapEnvironment` 后按 client tick 递减；未隐藏时按
+  生成 lightmap / clear-color frame environment 后按 client tick 递减；未隐藏时按
   `ClientLevel.addEnvironmentAttributeLayers` 的 time-based layer 将
   `SKY_LIGHT_FACTOR` 覆盖为 1.0，并把 renderer clear color 按
   `ARGB.srgbLerp(0.22, skyColor, 0xCCCCFF)` 形状混向 vanilla sky flash

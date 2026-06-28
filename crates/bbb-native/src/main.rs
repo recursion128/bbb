@@ -51,9 +51,9 @@ use input::{
 use item_runtime::NativeItemRuntime;
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
-    clear_color_for_world, publish_snapshot, pump_network_and_terrain, request_net_disconnect,
-    snapshot_is_running, take_control_screenshot, ClientAnimationTickState,
-    LevelEventSoundRandomState, LightmapTickState,
+    publish_snapshot, pump_network_and_terrain, request_net_disconnect, snapshot_is_running,
+    take_control_screenshot, ClientAnimationTickState, LevelEventSoundRandomState,
+    LightmapTickState,
 };
 use skin_runtime::default_player_skin_cache_dir;
 use startup::{
@@ -535,12 +535,11 @@ fn main() -> Result<()> {
                         item_runtime.as_ref(),
                         &snapshot,
                         Some(&mut code_of_conduct_acceptance),
+                        args.hide_lightning_flash,
                     ) {
                         target.exit();
                         return;
                     }
-                    renderer
-                        .set_clear_color(clear_color_for_world(&world, args.hide_lightning_flash));
                     code_of_conduct_overlay.update_renderer(
                         &mut renderer,
                         &world,
@@ -661,6 +660,7 @@ fn main() -> Result<()> {
                     item_runtime.as_ref(),
                     &snapshot,
                     Some(&mut code_of_conduct_acceptance),
+                    args.hide_lightning_flash,
                 ) {
                     target.exit();
                     return;

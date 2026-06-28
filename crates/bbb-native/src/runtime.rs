@@ -1275,6 +1275,7 @@ pub(crate) fn pump_network_and_terrain(
     item_runtime: Option<&NativeItemRuntime>,
     snapshot: &SharedSnapshot,
     code_of_conduct: Option<&mut CodeOfConductAcceptance>,
+    hide_lightning_flash: bool,
 ) -> bool {
     let mut audio_events = audio_events;
     let mut particle_events = particle_events;
@@ -1312,6 +1313,7 @@ pub(crate) fn pump_network_and_terrain(
     world.advance_client_time(running_ticks);
     lightmap_ticks.advance_for_world(advanced_ticks, world);
     renderer.set_lightmap_environment(lightmap_ticks.environment_for_world(world));
+    renderer.set_clear_color(clear_color_for_world(world, hide_lightning_flash));
     world.advance_sky_flash_time(advanced_ticks);
     advance_block_destruction_render_ticks(world, running_ticks);
     world.advance_item_cooldowns(advanced_ticks);
