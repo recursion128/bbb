@@ -450,8 +450,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         emit_equine_body_armor_layer(&mut meshes, *instance, atlas);
         // Horse/donkey/mule/undead-horse saddles use the shared EquineSaddleModel tree.
         emit_equine_saddle_layer(&mut meshes, *instance, atlas);
-        // Camel and camel-husk saddles use the adult CamelSaddleModel tree.
-        emit_camel_saddle_layer(&mut meshes, *instance, atlas);
         // LlamaDecorLayer appends adult carpet or trader-llama body decor after the base body.
         emit_llama_decor_layer(&mut meshes, *instance, atlas);
         // Living and zombie nautilus body armor uses the adult NautilusArmorModel tree.
@@ -2440,7 +2438,7 @@ pub(in crate::entity_models) fn render_strider_saddle_layer(
 /// renders `CamelSaddleModel(ModelLayers.CAMEL*_SADDLE)` with the family-specific equipment texture.
 /// The layer has no baby model, so baby camels skip it; camel husks are adult-only and always use the
 /// adult saddle model.
-fn emit_camel_saddle_layer(
+pub(in crate::entity_models) fn render_camel_saddle_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
@@ -2460,6 +2458,9 @@ fn emit_camel_saddle_layer(
         } => (MODEL_LAYER_CAMEL_HUSK_SADDLE, CAMEL_HUSK_SADDLE_TEXTURE_REF),
         _ => return,
     };
+    if meshes.current_force_transparent || meshes.current_outline_only {
+        return;
+    }
 
     let transform = entity_model_root_transform(instance);
     let mut model = CamelModel::new_saddle();

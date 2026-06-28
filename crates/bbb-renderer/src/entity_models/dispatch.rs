@@ -86,12 +86,13 @@ use super::textured::{
     parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
     piglin_textured_layer_passes, polar_bear_textured_layer_passes, rabbit_textured_layer_passes,
     ravager_textured_layer_passes, render_boat_water_mask_submission,
-    render_breeze_wind_scroll_model, render_charged_creeper_energy_swirl,
-    render_donkey_textured_layers, render_end_crystal_beam, render_end_crystal_textured_layers,
-    render_ender_dragon_beam, render_guardian_beam, render_horse_textured_layers,
-    render_no_overlay_scrolled_textured_layers, render_pig_saddle_layer, render_player_cape_layer,
-    render_player_extra_ears_layer, render_player_textured_layers, render_strider_saddle_layer,
-    render_textured_layers, render_trident_foil_submission, render_undead_horse_textured_layers,
+    render_breeze_wind_scroll_model, render_camel_saddle_layer,
+    render_charged_creeper_energy_swirl, render_donkey_textured_layers, render_end_crystal_beam,
+    render_end_crystal_textured_layers, render_ender_dragon_beam, render_guardian_beam,
+    render_horse_textured_layers, render_no_overlay_scrolled_textured_layers,
+    render_pig_saddle_layer, render_player_cape_layer, render_player_extra_ears_layer,
+    render_player_textured_layers, render_strider_saddle_layer, render_textured_layers,
+    render_trident_foil_submission, render_undead_horse_textured_layers,
     render_wither_energy_swirl, salmon_textured_layer_passes, sheep_textured_layer_passes,
     shulker_bullet_textured_layer_passes, shulker_textured_layer_passes,
     silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
@@ -214,6 +215,27 @@ pub(in crate::entity_models) trait EntityModelSink {
             instance,
             &[strider_base_layer_pass(baby, cold)],
         );
+    }
+
+    fn camel_model(
+        &mut self,
+        family: CamelModelFamily,
+        baby: bool,
+        instance: &EntityModelInstance,
+    ) {
+        let transform = entity_model_root_transform(*instance);
+        let passes = camel_textured_layer_passes(family, baby);
+        if matches!(family, CamelModelFamily::CamelHusk) {
+            self.model_with_colored_override(
+                CamelModel::new(family, baby),
+                transform,
+                instance,
+                &passes,
+                camel_model_color(family),
+            );
+        } else {
+            self.model(CamelModel::new(family, baby), transform, instance, &passes);
+        }
     }
 
     fn player_model(
@@ -532,6 +554,28 @@ impl EntityModelSink for TexturedSink<'_> {
         render_strider_saddle_layer(self.meshes, *instance, self.atlas);
     }
 
+    fn camel_model(
+        &mut self,
+        family: CamelModelFamily,
+        baby: bool,
+        instance: &EntityModelInstance,
+    ) {
+        let transform = entity_model_root_transform(*instance);
+        let passes = camel_textured_layer_passes(family, baby);
+        if matches!(family, CamelModelFamily::CamelHusk) {
+            self.model_with_colored_override(
+                CamelModel::new(family, baby),
+                transform,
+                instance,
+                &passes,
+                camel_model_color(family),
+            );
+        } else {
+            self.model(CamelModel::new(family, baby), transform, instance, &passes);
+        }
+        render_camel_saddle_layer(self.meshes, *instance, self.atlas);
+    }
+
     fn player_model(
         &mut self,
         skin: EntityPlayerSkin,
@@ -727,21 +771,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             sink.model(SlimeModel::new(), transform, instance, &passes[0..1]);
             sink.model(SlimeOuterModel::new(), transform, instance, &passes[1..2]);
         }
-        EntityModelKind::Camel { family, baby } => {
-            let transform = entity_model_root_transform(*instance);
-            let passes = camel_textured_layer_passes(family, baby);
-            if matches!(family, CamelModelFamily::CamelHusk) {
-                sink.model_with_colored_override(
-                    CamelModel::new(family, baby),
-                    transform,
-                    instance,
-                    &passes,
-                    camel_model_color(family),
-                );
-            } else {
-                sink.model(CamelModel::new(family, baby), transform, instance, &passes);
-            }
-        }
+        EntityModelKind::Camel { family, baby } => sink.camel_model(family, baby, instance),
         EntityModelKind::Llama {
             family,
             variant,
