@@ -274,6 +274,30 @@ fn clear_color_hides_client_sky_flash_when_option_is_enabled() {
 }
 
 #[test]
+fn clear_color_uses_vanilla_dimension_sky_color_without_camera_biome() {
+    let mut overworld = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut overworld, 6_000);
+    assert_clear_color_close(
+        clear_color_for_world(&overworld, false),
+        clear_color_for_day_time_with_sky_color(6_000, 0.0, 0.0, Some(VANILLA_OVERWORLD_SKY_COLOR)),
+    );
+
+    let mut nether = world_with_dimension(1, "minecraft:the_nether");
+    set_world_day_time(&mut nether, 6_000);
+    assert_clear_color_close(
+        clear_color_for_world(&nether, false),
+        clear_color_for_day_time_with_sky_color(6_000, 0.0, 0.0, Some([0, 0, 0])),
+    );
+
+    let mut end = world_with_dimension(2, "minecraft:the_end");
+    set_world_day_time(&mut end, 6_000);
+    assert_clear_color_close(
+        clear_color_for_world(&end, false),
+        clear_color_for_day_time_with_sky_color(6_000, 0.0, 0.0, Some([0, 0, 0])),
+    );
+}
+
+#[test]
 fn clear_color_samples_camera_biome_sky_color_attribute() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
     set_world_day_time(&mut world, 6_000);

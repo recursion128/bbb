@@ -610,10 +610,11 @@ When an agent does any of the following, update this file in the same slice:
     biome JSON top-level `attributes` for `visual/sky_color`, `fog_color`, and
     `water_fog_color`, and the clear-color frame path uses the camera eye
     position plus the vanilla `EnvironmentAttributeProbe` Gaussian kernel over
-    stored quart biome cells to sample `SKY_COLOR` before the existing
-    day/weather approximation and vanilla `0.22` sky-flash lerp toward
-    `0xCCCCFF`; the startup `--hide-lightning-flash` option suppresses both
-    lightmap and clear-color sky flash layers. Full sky mesh / atmosphere presentation is
+    stored quart biome cells to sample `SKY_COLOR`, falling back to vanilla
+    dimension `SKY_COLOR` (Overworld `#78a7ff`, End/Nether default black) before
+    the existing day/weather approximation and vanilla `0.22` sky-flash lerp
+    toward `0xCCCCFF`; the startup `--hide-lightning-flash` option suppresses
+    both lightmap and clear-color sky flash layers. Full sky mesh / atmosphere presentation is
     still a broader visual gap. Overworld variants use ambient `0x0A0A0A`. The
     block flicker path still advances `blockLightFlicker` with the
     `LightmapRenderStateExtractor.tick()` formula and the shaders read

@@ -3916,11 +3916,25 @@ fn clear_color_for_world_with_sky_color(
     let weather = world.weather();
     let rain = weather.rain_level.clamp(0.0, 1.0) as f64;
     let thunder = weather.thunder_level.clamp(0.0, 1.0) as f64;
-    let clear = clear_color_for_day_time_with_sky_color(day_time, rain, thunder, sky_color);
+    let clear = clear_color_for_day_time_with_sky_color(
+        day_time,
+        rain,
+        thunder,
+        sky_color.or_else(|| dimension_sky_color_for_world(world)),
+    );
     if hide_lightning_flash || world.sky_flash_time() == 0 {
         clear
     } else {
         clear_color_with_sky_flash(clear)
+    }
+}
+
+fn dimension_sky_color_for_world(world: &WorldStore) -> Option<[u8; 3]> {
+    let level = world.level_info()?;
+    match vanilla_lightmap_dimension_kind(level) {
+        VanillaLightmapDimensionKind::Overworld => Some(VANILLA_OVERWORLD_SKY_COLOR),
+        VanillaLightmapDimensionKind::Nether | VanillaLightmapDimensionKind::End => Some([0, 0, 0]),
+        VanillaLightmapDimensionKind::Other => None,
     }
 }
 
