@@ -544,23 +544,30 @@ fn entity_textured_shader_samples_bound_texture_and_discards_alpha() {
 #[test]
 fn entity_textured_shader_applies_packed_light_lightmap() {
     // Mirrors the vanilla Lightmap base RGB curve for the submitted packed
-    // block/sky light with the default block-light tint and vanilla
-    // BrightnessFactor gamma mix, while leaving dynamic environment tint/effects
-    // as deferred GPU state.
+    // block/sky light with vanilla LightmapInfo environment color fields and
+    // effect factors.
     assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("level / (4.0 - 3.0 * level)"));
-    assert!(
-        ENTITY_MODEL_TEXTURED_SHADER.contains("lightmap_brightness(light.x) * camera.lightmap.y")
-    );
-    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("vec3<f32>(1.0, 216.0 / 255.0, 140.0 / 255.0)"));
-    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("0.9 * parabolic_mix_factor(light.x)"));
     assert!(ENTITY_MODEL_TEXTURED_SHADER
-        .contains("vec3<f32>(sky_brightness) + block_light_color * block_brightness"));
+        .contains("lightmap_brightness(light.x) * camera.lightmap_factors.y"));
+    assert!(ENTITY_MODEL_TEXTURED_SHADER
+        .contains("lightmap_brightness(light.y) * camera.lightmap_factors.x"));
+    assert!(ENTITY_MODEL_TEXTURED_SHADER
+        .contains("camera.night_vision_color.rgb * camera.lightmap_factors.z"));
+    assert!(
+        ENTITY_MODEL_TEXTURED_SHADER.contains("max(camera.ambient_color.rgb, night_vision_color)")
+    );
+    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("camera.sky_light_color.rgb * sky_brightness"));
+    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("camera.block_light_tint.rgb"));
+    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("0.9 * parabolic_mix_factor(light.x)"));
+    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("color += block_light_color * block_brightness"));
+    assert!(ENTITY_MODEL_TEXTURED_SHADER
+        .contains("mix(color, color * vec3<f32>(0.7, 0.6, 0.6), camera.lightmap_effects.x)"));
+    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("color -= vec3<f32>(camera.lightmap_factors.w)"));
     assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("fn not_gamma(color: vec3<f32>) -> vec3<f32>"));
     assert!(ENTITY_MODEL_TEXTURED_SHADER
         .contains("1.0 - max_inverted * max_inverted * max_inverted * max_inverted"));
-    assert!(
-        ENTITY_MODEL_TEXTURED_SHADER.contains("mix(clamped, not_gamma_color, camera.lightmap.x)")
-    );
+    assert!(ENTITY_MODEL_TEXTURED_SHADER
+        .contains("mix(clamped, not_gamma_color, camera.lightmap_effects.y)"));
     assert!(
         ENTITY_MODEL_TEXTURED_SHADER.contains("rgb * diffuse_light(input.normal) * light_color")
     );
@@ -580,10 +587,25 @@ fn entity_textured_shader_applies_vanilla_level_diffuse_lighting() {
 #[test]
 fn entity_colored_shader_applies_packed_light_lightmap() {
     assert!(ENTITY_MODEL_SHADER.contains("level / (4.0 - 3.0 * level)"));
-    assert!(ENTITY_MODEL_SHADER.contains("lightmap_brightness(light.x) * camera.lightmap.y"));
-    assert!(ENTITY_MODEL_SHADER.contains("vec3<f32>(1.0, 216.0 / 255.0, 140.0 / 255.0)"));
+    assert!(
+        ENTITY_MODEL_SHADER.contains("lightmap_brightness(light.x) * camera.lightmap_factors.y")
+    );
+    assert!(
+        ENTITY_MODEL_SHADER.contains("lightmap_brightness(light.y) * camera.lightmap_factors.x")
+    );
+    assert!(
+        ENTITY_MODEL_SHADER.contains("camera.night_vision_color.rgb * camera.lightmap_factors.z")
+    );
+    assert!(ENTITY_MODEL_SHADER.contains("max(camera.ambient_color.rgb, night_vision_color)"));
+    assert!(ENTITY_MODEL_SHADER.contains("camera.sky_light_color.rgb * sky_brightness"));
+    assert!(ENTITY_MODEL_SHADER.contains("camera.block_light_tint.rgb"));
     assert!(ENTITY_MODEL_SHADER.contains("0.9 * parabolic_mix_factor(light.x)"));
-    assert!(ENTITY_MODEL_SHADER.contains("mix(clamped, not_gamma_color, camera.lightmap.x)"));
+    assert!(ENTITY_MODEL_SHADER
+        .contains("mix(color, color * vec3<f32>(0.7, 0.6, 0.6), camera.lightmap_effects.x)"));
+    assert!(ENTITY_MODEL_SHADER.contains("color -= vec3<f32>(camera.lightmap_factors.w)"));
+    assert!(
+        ENTITY_MODEL_SHADER.contains("mix(clamped, not_gamma_color, camera.lightmap_effects.y)")
+    );
     assert!(ENTITY_MODEL_SHADER.contains("rgb * light_color"));
     assert!(ENTITY_MODEL_SHADER.contains("input.color.rgb"));
 }
@@ -608,9 +630,13 @@ fn entity_scroll_shaders_split_breeze_wind_lightmap_from_energy_swirl_emissive()
     // NO_OVERLAY + NO_CARDINAL_LIGHTING, but still samples the lightmap.
     assert!(ENTITY_MODEL_SCROLL_SHADER.contains("@location(4) light: vec2<f32>"));
     assert!(ENTITY_MODEL_SCROLL_SHADER.contains("lightmap_brightness"));
-    assert!(ENTITY_MODEL_SCROLL_SHADER.contains("lightmap_brightness(light.x) * camera.lightmap.y"));
-    assert!(ENTITY_MODEL_SCROLL_SHADER.contains("vec3<f32>(1.0, 216.0 / 255.0, 140.0 / 255.0)"));
-    assert!(ENTITY_MODEL_SCROLL_SHADER.contains("mix(clamped, not_gamma_color, camera.lightmap.x)"));
+    assert!(ENTITY_MODEL_SCROLL_SHADER
+        .contains("lightmap_brightness(light.x) * camera.lightmap_factors.y"));
+    assert!(ENTITY_MODEL_SCROLL_SHADER
+        .contains("lightmap_brightness(light.y) * camera.lightmap_factors.x"));
+    assert!(ENTITY_MODEL_SCROLL_SHADER.contains("camera.block_light_tint.rgb"));
+    assert!(ENTITY_MODEL_SCROLL_SHADER
+        .contains("mix(clamped, not_gamma_color, camera.lightmap_effects.y)"));
     assert!(ENTITY_MODEL_SCROLL_SHADER.contains("texel.rgb * light_color"));
 
     // Vanilla RenderPipelines.ENERGY_SWIRL defines EMISSIVE + NO_OVERLAY +

@@ -79,7 +79,12 @@ pub(super) const ENTITY_MODEL_SCROLL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 
 pub(super) const ENTITY_MODEL_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
-    lightmap: vec4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
 };
 
 @group(0) @binding(0)
@@ -121,19 +126,23 @@ fn not_gamma(color: vec3<f32>) -> vec3<f32> {
 fn apply_lightmap_brightness(color: vec3<f32>) -> vec3<f32> {
     let clamped = clamp(color, vec3<f32>(0.0), vec3<f32>(1.0));
     let not_gamma_color = not_gamma(clamped);
-    return mix(clamped, not_gamma_color, camera.lightmap.x);
+    return mix(clamped, not_gamma_color, camera.lightmap_effects.y);
 }
 
 fn packed_lightmap_color(light: vec2<f32>) -> vec3<f32> {
-    let block_brightness = lightmap_brightness(light.x) * camera.lightmap.y;
-    let sky_brightness = lightmap_brightness(light.y);
-    let block_light_tint = vec3<f32>(1.0, 216.0 / 255.0, 140.0 / 255.0);
+    let block_brightness = lightmap_brightness(light.x) * camera.lightmap_factors.y;
+    let sky_brightness = lightmap_brightness(light.y) * camera.lightmap_factors.x;
+    let night_vision_color = camera.night_vision_color.rgb * camera.lightmap_factors.z;
+    var color = max(camera.ambient_color.rgb, night_vision_color);
+    color += camera.sky_light_color.rgb * sky_brightness;
     let block_light_color = mix(
-        block_light_tint,
+        camera.block_light_tint.rgb,
         vec3<f32>(1.0),
         0.9 * parabolic_mix_factor(light.x),
     );
-    let color = vec3<f32>(sky_brightness) + block_light_color * block_brightness;
+    color += block_light_color * block_brightness;
+    color = mix(color, color * vec3<f32>(0.7, 0.6, 0.6), camera.lightmap_effects.x);
+    color -= vec3<f32>(camera.lightmap_factors.w);
     return apply_lightmap_brightness(color);
 }
 
@@ -164,7 +173,12 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 pub(super) const ENTITY_MODEL_TEXTURED_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
-    lightmap: vec4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
 };
 
 @group(0) @binding(0)
@@ -216,19 +230,23 @@ fn not_gamma(color: vec3<f32>) -> vec3<f32> {
 fn apply_lightmap_brightness(color: vec3<f32>) -> vec3<f32> {
     let clamped = clamp(color, vec3<f32>(0.0), vec3<f32>(1.0));
     let not_gamma_color = not_gamma(clamped);
-    return mix(clamped, not_gamma_color, camera.lightmap.x);
+    return mix(clamped, not_gamma_color, camera.lightmap_effects.y);
 }
 
 fn packed_lightmap_color(light: vec2<f32>) -> vec3<f32> {
-    let block_brightness = lightmap_brightness(light.x) * camera.lightmap.y;
-    let sky_brightness = lightmap_brightness(light.y);
-    let block_light_tint = vec3<f32>(1.0, 216.0 / 255.0, 140.0 / 255.0);
+    let block_brightness = lightmap_brightness(light.x) * camera.lightmap_factors.y;
+    let sky_brightness = lightmap_brightness(light.y) * camera.lightmap_factors.x;
+    let night_vision_color = camera.night_vision_color.rgb * camera.lightmap_factors.z;
+    var color = max(camera.ambient_color.rgb, night_vision_color);
+    color += camera.sky_light_color.rgb * sky_brightness;
     let block_light_color = mix(
-        block_light_tint,
+        camera.block_light_tint.rgb,
         vec3<f32>(1.0),
         0.9 * parabolic_mix_factor(light.x),
     );
-    let color = vec3<f32>(sky_brightness) + block_light_color * block_brightness;
+    color += block_light_color * block_brightness;
+    color = mix(color, color * vec3<f32>(0.7, 0.6, 0.6), camera.lightmap_effects.x);
+    color -= vec3<f32>(camera.lightmap_factors.w);
     return apply_lightmap_brightness(color);
 }
 
@@ -272,7 +290,12 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 pub(super) const ENTITY_MODEL_EYES_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
-    lightmap: vec4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
 };
 
 @group(0) @binding(0)
@@ -371,19 +394,23 @@ fn not_gamma(color: vec3<f32>) -> vec3<f32> {
 fn apply_lightmap_brightness(color: vec3<f32>) -> vec3<f32> {
     let clamped = clamp(color, vec3<f32>(0.0), vec3<f32>(1.0));
     let not_gamma_color = not_gamma(clamped);
-    return mix(clamped, not_gamma_color, camera.lightmap.x);
+    return mix(clamped, not_gamma_color, camera.lightmap_effects.y);
 }
 
 fn packed_lightmap_color(light: vec2<f32>) -> vec3<f32> {
-    let block_brightness = lightmap_brightness(light.x) * camera.lightmap.y;
-    let sky_brightness = lightmap_brightness(light.y);
-    let block_light_tint = vec3<f32>(1.0, 216.0 / 255.0, 140.0 / 255.0);
+    let block_brightness = lightmap_brightness(light.x) * camera.lightmap_factors.y;
+    let sky_brightness = lightmap_brightness(light.y) * camera.lightmap_factors.x;
+    let night_vision_color = camera.night_vision_color.rgb * camera.lightmap_factors.z;
+    var color = max(camera.ambient_color.rgb, night_vision_color);
+    color += camera.sky_light_color.rgb * sky_brightness;
     let block_light_color = mix(
-        block_light_tint,
+        camera.block_light_tint.rgb,
         vec3<f32>(1.0),
         0.9 * parabolic_mix_factor(light.x),
     );
-    let color = vec3<f32>(sky_brightness) + block_light_color * block_brightness;
+    color += block_light_color * block_brightness;
+    color = mix(color, color * vec3<f32>(0.7, 0.6, 0.6), camera.lightmap_effects.x);
+    color -= vec3<f32>(camera.lightmap_factors.w);
     return apply_lightmap_brightness(color);
 }
 

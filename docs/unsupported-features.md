@@ -573,20 +573,22 @@ When an agent does any of the following, update this file in the same slice:
     `Lighting.setupLevel` default diffuse directions with `0.6` light power and
     `0.4` ambient; normal transforms use vanilla `PoseStack.Pose` normal-matrix
     semantics, i.e. pose inverse-transpose plus normalization. The colored,
-    textured, and `breezeWind` entity shaders now also use the vanilla
-    `lightmap.fsh` default RGB base: block light is tinted with the default
-    `0xFFD88C` block-light color and parabolic mix, sky light is default white,
-    and ambient is default black. These lightmap-lit entity paths also apply the
-    vanilla `LightmapInfo.BrightnessFactor` `notGamma` mix, driven by the
-    startup-only `bbb-native --client-gamma` option whose default `0.5` matches
-    vanilla `Options.gamma`. The block-light multiplier is now the vanilla
-    `LightmapInfo.BlockFactor`: native 20Hz client ticks advance
-    `blockLightFlicker` with the `LightmapRenderStateExtractor.tick()` formula
-    and the shaders read `blockLightFlicker + 1.4`. Remaining lighting gaps:
-    smooth/AO entity light, dynamic environment colors, darkness / night-vision
-    curves and the darkness-driven brightness modifier of the real vanilla
-    `Lightmap`, Nether / UI lighting variants, and the colored debug fallback's
-    baked-shade approximation.
+    textured, and `breezeWind` entity shaders now also use a vanilla-shaped
+    `LightmapInfo` uniform expression: block light uses `BlockLightTint`
+    (`0xFFD88C` by default) plus the parabolic mix, sky light is multiplied by
+    `SkyFactor` and `SkyLightColor`, ambient is maxed against
+    `NightVisionColor * NightVisionFactor`, boss-overlay darkening and
+    `DarknessScale` are applied before the vanilla `BrightnessFactor`
+    `notGamma` mix. `bbb-renderer` exposes `LightmapEnvironment` for these
+    fields. Native currently drives the startup-only
+    `bbb-native --client-gamma` brightness factor and the vanilla
+    `LightmapInfo.BlockFactor`: 20Hz client ticks advance `blockLightFlicker`
+    with the `LightmapRenderStateExtractor.tick()` formula and the shaders read
+    `blockLightFlicker + 1.4`. Remaining lighting gaps: world/native extraction
+    of camera `EnvironmentAttributes` into `LightmapEnvironment`, smooth/AO
+    entity light, darkness / night-vision curves and the darkness-driven
+    brightness modifier of the real vanilla `Lightmap`, Nether / UI lighting
+    variants, and the colored debug fallback's baked-shade approximation.
   - The hurt red damage overlay is implemented end to end as a real overlay pass,
     not a tint: `LivingEntity.hurtTime` is tracked client-side (set to
     `hurtDuration` = 10 by `apply_hurt_animation`/`apply_damage_event`, decremented

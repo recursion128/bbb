@@ -1,7 +1,9 @@
 pub use crate::block_destroy::BlockDestroyOverlay;
 pub use crate::camera::{
-    CameraPose, ClearColor, VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
-    VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
+    CameraPose, ClearColor, LightmapEnvironment, VANILLA_DEFAULT_LIGHTMAP_AMBIENT_COLOR,
+    VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BLOCK_LIGHT_TINT,
+    VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR, VANILLA_DEFAULT_LIGHTMAP_NIGHT_VISION_COLOR,
+    VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
 };
 pub use crate::entity_models::{
     allay_entity_texture_refs, armadillo_entity_texture_refs, armor_stand_entity_texture_refs,

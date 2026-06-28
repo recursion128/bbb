@@ -11,6 +11,80 @@ pub const VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR: f32 = 0.5;
 /// `blockLightFlicker + 1.4F`; before the first client tick the flicker term is
 /// zero.
 pub const VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR: f32 = 1.4;
+/// Vanilla `EnvironmentAttributes.SKY_LIGHT_FACTOR` default.
+pub const VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR: f32 = 1.0;
+/// Vanilla `EnvironmentAttributes.BLOCK_LIGHT_TINT` default (`0xFFD88C`).
+pub const VANILLA_DEFAULT_LIGHTMAP_BLOCK_LIGHT_TINT: [f32; 3] = [1.0, 216.0 / 255.0, 140.0 / 255.0];
+/// Vanilla `EnvironmentAttributes.SKY_LIGHT_COLOR` default (`0xFFFFFF`).
+pub const VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR: [f32; 3] = [1.0, 1.0, 1.0];
+/// Vanilla `EnvironmentAttributes.AMBIENT_LIGHT_COLOR` default (`0x000000`).
+pub const VANILLA_DEFAULT_LIGHTMAP_AMBIENT_COLOR: [f32; 3] = [0.0, 0.0, 0.0];
+/// Vanilla `EnvironmentAttributes.NIGHT_VISION_COLOR` default (`0x999999`).
+pub const VANILLA_DEFAULT_LIGHTMAP_NIGHT_VISION_COLOR: [f32; 3] =
+    [153.0 / 255.0, 153.0 / 255.0, 153.0 / 255.0];
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LightmapEnvironment {
+    pub sky_factor: f32,
+    pub block_factor: f32,
+    pub night_vision_factor: f32,
+    pub darkness_scale: f32,
+    pub boss_overlay_world_darkening: f32,
+    pub brightness_factor: f32,
+    pub block_light_tint: [f32; 3],
+    pub sky_light_color: [f32; 3],
+    pub ambient_color: [f32; 3],
+    pub night_vision_color: [f32; 3],
+}
+
+impl Default for LightmapEnvironment {
+    fn default() -> Self {
+        Self {
+            sky_factor: VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR,
+            block_factor: VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
+            night_vision_factor: 0.0,
+            darkness_scale: 0.0,
+            boss_overlay_world_darkening: 0.0,
+            brightness_factor: VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
+            block_light_tint: VANILLA_DEFAULT_LIGHTMAP_BLOCK_LIGHT_TINT,
+            sky_light_color: VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
+            ambient_color: VANILLA_DEFAULT_LIGHTMAP_AMBIENT_COLOR,
+            night_vision_color: VANILLA_DEFAULT_LIGHTMAP_NIGHT_VISION_COLOR,
+        }
+    }
+}
+
+impl LightmapEnvironment {
+    pub fn sanitized(self) -> Self {
+        Self {
+            sky_factor: sanitize_unit_factor(self.sky_factor, VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR),
+            block_factor: sanitize_lightmap_block_factor(self.block_factor),
+            night_vision_factor: sanitize_unit_factor(self.night_vision_factor, 0.0),
+            darkness_scale: sanitize_unit_factor(self.darkness_scale, 0.0),
+            boss_overlay_world_darkening: sanitize_unit_factor(
+                self.boss_overlay_world_darkening,
+                0.0,
+            ),
+            brightness_factor: sanitize_lightmap_brightness_factor(self.brightness_factor),
+            block_light_tint: sanitize_rgb01(
+                self.block_light_tint,
+                VANILLA_DEFAULT_LIGHTMAP_BLOCK_LIGHT_TINT,
+            ),
+            sky_light_color: sanitize_rgb01(
+                self.sky_light_color,
+                VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
+            ),
+            ambient_color: sanitize_rgb01(
+                self.ambient_color,
+                VANILLA_DEFAULT_LIGHTMAP_AMBIENT_COLOR,
+            ),
+            night_vision_color: sanitize_rgb01(
+                self.night_vision_color,
+                VANILLA_DEFAULT_LIGHTMAP_NIGHT_VISION_COLOR,
+            ),
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct ClearColor {
@@ -58,22 +132,23 @@ impl CameraPose {
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct CameraUniform {
     view_proj: [[f32; 4]; 4],
-    /// Extra renderer-global fragment state. `.x` is vanilla
-    /// `LightmapInfo.BrightnessFactor`; `.y` is `LightmapInfo.BlockFactor`;
-    /// remaining lanes are reserved for future Lightmap UBO fields.
-    lightmap: [f32; 4],
+    /// Vanilla `LightmapInfo` scalar factors:
+    /// `[SkyFactor, BlockFactor, NightVisionFactor, DarknessScale]`.
+    lightmap_factors: [f32; 4],
+    /// Vanilla `LightmapInfo` effect factors:
+    /// `[BossOverlayWorldDarkeningFactor, BrightnessFactor, _, _]`.
+    lightmap_effects: [f32; 4],
+    block_light_tint: [f32; 4],
+    sky_light_color: [f32; 4],
+    ambient_color: [f32; 4],
+    night_vision_color: [f32; 4],
 }
 
 impl CameraUniform {
     pub(crate) fn identity() -> Self {
         Self {
             view_proj: Mat4::IDENTITY.to_cols_array_2d(),
-            lightmap: [
-                VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
-                VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
-                0.0,
-                0.0,
-            ],
+            ..Self::from_lightmap_environment(LightmapEnvironment::default())
         }
     }
 
@@ -131,24 +206,76 @@ impl CameraUniform {
         }
     }
 
+    #[cfg(test)]
     pub(crate) fn with_lightmap_brightness_factor(mut self, factor: f32) -> Self {
-        self.lightmap[0] = sanitize_lightmap_brightness_factor(factor);
+        self.lightmap_effects[1] = sanitize_lightmap_brightness_factor(factor);
         self
     }
 
+    #[cfg(test)]
     pub(crate) fn with_lightmap_block_factor(mut self, factor: f32) -> Self {
-        self.lightmap[1] = sanitize_lightmap_block_factor(factor);
+        self.lightmap_factors[1] = sanitize_lightmap_block_factor(factor);
+        self
+    }
+
+    pub(crate) fn with_lightmap_environment(mut self, environment: LightmapEnvironment) -> Self {
+        let lightmap = Self::from_lightmap_environment(environment);
+        self.lightmap_factors = lightmap.lightmap_factors;
+        self.lightmap_effects = lightmap.lightmap_effects;
+        self.block_light_tint = lightmap.block_light_tint;
+        self.sky_light_color = lightmap.sky_light_color;
+        self.ambient_color = lightmap.ambient_color;
+        self.night_vision_color = lightmap.night_vision_color;
         self
     }
 
     #[cfg(test)]
     pub(crate) fn lightmap_brightness_factor(self) -> f32 {
-        self.lightmap[0]
+        self.lightmap_effects[1]
     }
 
     #[cfg(test)]
     pub(crate) fn lightmap_block_factor(self) -> f32 {
-        self.lightmap[1]
+        self.lightmap_factors[1]
+    }
+
+    #[cfg(test)]
+    pub(crate) fn lightmap_environment(self) -> LightmapEnvironment {
+        LightmapEnvironment {
+            sky_factor: self.lightmap_factors[0],
+            block_factor: self.lightmap_factors[1],
+            night_vision_factor: self.lightmap_factors[2],
+            darkness_scale: self.lightmap_factors[3],
+            boss_overlay_world_darkening: self.lightmap_effects[0],
+            brightness_factor: self.lightmap_effects[1],
+            block_light_tint: self.block_light_tint[0..3].try_into().unwrap(),
+            sky_light_color: self.sky_light_color[0..3].try_into().unwrap(),
+            ambient_color: self.ambient_color[0..3].try_into().unwrap(),
+            night_vision_color: self.night_vision_color[0..3].try_into().unwrap(),
+        }
+    }
+
+    fn from_lightmap_environment(environment: LightmapEnvironment) -> Self {
+        let environment = environment.sanitized();
+        Self {
+            view_proj: Mat4::IDENTITY.to_cols_array_2d(),
+            lightmap_factors: [
+                environment.sky_factor,
+                environment.block_factor,
+                environment.night_vision_factor,
+                environment.darkness_scale,
+            ],
+            lightmap_effects: [
+                environment.boss_overlay_world_darkening,
+                environment.brightness_factor,
+                0.0,
+                0.0,
+            ],
+            block_light_tint: rgb_to_vec4(environment.block_light_tint),
+            sky_light_color: rgb_to_vec4(environment.sky_light_color),
+            ambient_color: rgb_to_vec4(environment.ambient_color),
+            night_vision_color: rgb_to_vec4(environment.night_vision_color),
+        }
     }
 }
 
@@ -166,6 +293,26 @@ pub(crate) fn sanitize_lightmap_block_factor(factor: f32) -> f32 {
     } else {
         VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR
     }
+}
+
+fn sanitize_unit_factor(factor: f32, fallback: f32) -> f32 {
+    if factor.is_finite() {
+        factor.clamp(0.0, 1.0)
+    } else {
+        fallback
+    }
+}
+
+fn sanitize_rgb01(color: [f32; 3], fallback: [f32; 3]) -> [f32; 3] {
+    [
+        sanitize_unit_factor(color[0], fallback[0]),
+        sanitize_unit_factor(color[1], fallback[1]),
+        sanitize_unit_factor(color[2], fallback[2]),
+    ]
+}
+
+fn rgb_to_vec4(color: [f32; 3]) -> [f32; 4] {
+    [color[0], color[1], color[2], 0.0]
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -191,6 +338,39 @@ mod tests {
         assert_eq!(
             CameraUniform::gui_ortho(320.0, 240.0).lightmap_brightness_factor(),
             VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR
+        );
+    }
+
+    #[test]
+    fn camera_uniform_defaults_to_vanilla_lightmap_environment() {
+        let environment = CameraUniform::identity().lightmap_environment();
+        assert_eq!(environment.sky_factor, VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR);
+        assert_eq!(
+            environment.block_factor,
+            VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR
+        );
+        assert_eq!(environment.night_vision_factor, 0.0);
+        assert_eq!(environment.darkness_scale, 0.0);
+        assert_eq!(environment.boss_overlay_world_darkening, 0.0);
+        assert_eq!(
+            environment.brightness_factor,
+            VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR
+        );
+        assert_eq!(
+            environment.block_light_tint,
+            VANILLA_DEFAULT_LIGHTMAP_BLOCK_LIGHT_TINT
+        );
+        assert_eq!(
+            environment.sky_light_color,
+            VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR
+        );
+        assert_eq!(
+            environment.ambient_color,
+            VANILLA_DEFAULT_LIGHTMAP_AMBIENT_COLOR
+        );
+        assert_eq!(
+            environment.night_vision_color,
+            VANILLA_DEFAULT_LIGHTMAP_NIGHT_VISION_COLOR
         );
     }
 
@@ -235,6 +415,48 @@ mod tests {
                 .with_lightmap_block_factor(f32::NAN)
                 .lightmap_block_factor(),
             VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR
+        );
+    }
+
+    #[test]
+    fn camera_uniform_sanitizes_lightmap_environment() {
+        let environment = LightmapEnvironment {
+            sky_factor: 1.5,
+            block_factor: -2.0,
+            night_vision_factor: f32::NAN,
+            darkness_scale: 0.25,
+            boss_overlay_world_darkening: -0.5,
+            brightness_factor: f32::INFINITY,
+            block_light_tint: [1.2, -0.2, f32::NAN],
+            sky_light_color: [0.25, 2.0, 0.75],
+            ambient_color: [f32::NAN, 0.5, -1.0],
+            night_vision_color: [0.2, f32::INFINITY, 1.5],
+        };
+        let sanitized = CameraUniform::identity()
+            .with_lightmap_environment(environment)
+            .lightmap_environment();
+
+        assert_eq!(sanitized.sky_factor, 1.0);
+        assert_eq!(sanitized.block_factor, 0.0);
+        assert_eq!(sanitized.night_vision_factor, 0.0);
+        assert_eq!(sanitized.darkness_scale, 0.25);
+        assert_eq!(sanitized.boss_overlay_world_darkening, 0.0);
+        assert_eq!(
+            sanitized.brightness_factor,
+            VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR
+        );
+        assert_eq!(
+            sanitized.block_light_tint,
+            [1.0, 0.0, VANILLA_DEFAULT_LIGHTMAP_BLOCK_LIGHT_TINT[2]]
+        );
+        assert_eq!(sanitized.sky_light_color, [0.25, 1.0, 0.75]);
+        assert_eq!(
+            sanitized.ambient_color,
+            [VANILLA_DEFAULT_LIGHTMAP_AMBIENT_COLOR[0], 0.5, 0.0]
+        );
+        assert_eq!(
+            sanitized.night_vision_color,
+            [0.2, VANILLA_DEFAULT_LIGHTMAP_NIGHT_VISION_COLOR[1], 1.0]
         );
     }
 }
