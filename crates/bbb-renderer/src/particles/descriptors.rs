@@ -48,6 +48,9 @@ pub(crate) enum ParticleSpriteSelection {
 pub(crate) enum ParticleVisualDescriptor {
     BaseSingleQuad,
     PlayerCloud,
+    PlayerCloudTint {
+        color: ParticleColorDescriptor,
+    },
     Note,
     SingleQuadScaled {
         scale: f32,
@@ -81,6 +84,7 @@ pub(crate) enum ParticleColorDescriptor {
         min_alpha: f32,
         max_alpha: f32,
     },
+    FixedRgba([f32; 4]),
     FixedRgb([f32; 3]),
 }
 
@@ -102,6 +106,7 @@ pub(crate) enum ParticleQuadSizeCurve {
 pub(crate) enum ParticleInitialVelocityDescriptor {
     Command,
     ParticleConstructorScaled { scale: f64 },
+    ParticleConstructorZeroScaledPlusCommand { scale: f64 },
     ParticleConstructorZeroScaledWithYOffset { scale: f64, y_offset: f64 },
 }
 
@@ -144,7 +149,26 @@ impl ParticleDescriptor {
                 lifetime: ParticleLifetimeDescriptor::PlayerCloud,
                 sprite_selection: ParticleSpriteSelection::Age,
                 visual: ParticleVisualDescriptor::PlayerCloud,
-                initial_velocity: ParticleInitialVelocityDescriptor::Command,
+                initial_velocity:
+                    ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusCommand {
+                        scale: 0.1,
+                    },
+                friction: 0.96,
+                gravity: 0.0,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:sneeze" => Self {
+                provider: "PlayerCloudParticle.SneezeProvider",
+                lifetime: ParticleLifetimeDescriptor::PlayerCloud,
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::PlayerCloudTint {
+                    color: ParticleColorDescriptor::FixedRgba([0.22, 1.0, 0.53, 0.4]),
+                },
+                initial_velocity:
+                    ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusCommand {
+                        scale: 0.1,
+                    },
                 friction: 0.96,
                 gravity: 0.0,
                 has_physics: false,
@@ -471,6 +495,11 @@ impl ParticleVisualDescriptor {
                     ParticleQuadSizeCurve::GrowToBase,
                 )
             }
+            Self::PlayerCloudTint { color } => ParticleVisualState::new(
+                base_quad_size * 1.875,
+                color.sample(random),
+                ParticleQuadSizeCurve::GrowToBase,
+            ),
             Self::Note => ParticleVisualState::new(
                 base_quad_size * 1.5,
                 note_color(command_velocity[0] as f32),
@@ -550,6 +579,26 @@ impl ParticleInitialVelocityDescriptor {
                     z / length * speed * 0.4 * scale,
                 ]
             }
+            Self::ParticleConstructorZeroScaledPlusCommand { scale } => {
+                let x = random_signed_velocity(random);
+                let y = random_signed_velocity(random);
+                let z = random_signed_velocity(random);
+                let speed =
+                    (f64::from(random.next_f32()) + f64::from(random.next_f32()) + 1.0) * 0.15;
+                let length = (x * x + y * y + z * z).sqrt();
+                if length == 0.0 {
+                    return [
+                        command_velocity[0],
+                        command_velocity[1] + 0.1 * scale,
+                        command_velocity[2],
+                    ];
+                }
+                [
+                    command_velocity[0] + x / length * speed * 0.4 * scale,
+                    command_velocity[1] + (y / length * speed * 0.4 + 0.1) * scale,
+                    command_velocity[2] + z / length * speed * 0.4 * scale,
+                ]
+            }
             Self::ParticleConstructorZeroScaledWithYOffset { scale, y_offset } => {
                 let x = random_signed_velocity(random);
                 let y = random_signed_velocity(random);
@@ -588,6 +637,7 @@ impl ParticleColorDescriptor {
                 min_alpha,
                 max_alpha,
             } => [red, green, blue, sample_range(random, min_alpha, max_alpha)],
+            Self::FixedRgba(rgba) => rgba,
             Self::FixedRgb([red, green, blue]) => [red, green, blue, 1.0],
         }
     }
@@ -789,6 +839,31 @@ mod tests {
             0.0,
             false,
             false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:cloud").initial_velocity,
+            ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusCommand {
+                scale: 0.1
+            }
+        );
+        assert_descriptor(
+            "minecraft:sneeze",
+            "PlayerCloudParticle.SneezeProvider",
+            ParticleLifetimeDescriptor::PlayerCloud,
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::PlayerCloudTint {
+                color: ParticleColorDescriptor::FixedRgba([0.22, 1.0, 0.53, 0.4]),
+            },
+            0.96,
+            0.0,
+            false,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:sneeze").initial_velocity,
+            ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusCommand {
+                scale: 0.1
+            }
         );
         assert_descriptor(
             "minecraft:dragon_breath",
@@ -1112,6 +1187,18 @@ mod tests {
         assert_eq!(cloud.color[3], 1.0);
         assert_eq!(cloud.quad_size_curve, ParticleQuadSizeCurve::GrowToBase);
 
+        let mut sneeze_random = ParticleRandom::new(22);
+        let sneeze = ParticleVisualDescriptor::PlayerCloudTint {
+            color: ParticleColorDescriptor::FixedRgba([0.22, 1.0, 0.53, 0.4]),
+        }
+        .sample_for_command(&mut sneeze_random, [0.0, 0.0, 0.0]);
+        assert_range_f32(sneeze.base_quad_size, 0.1875, 0.375);
+        assert_close_f32(sneeze.color[0], 0.22);
+        assert_close_f32(sneeze.color[1], 1.0);
+        assert_close_f32(sneeze.color[2], 0.53);
+        assert_close_f32(sneeze.color[3], 0.4);
+        assert_eq!(sneeze.quad_size_curve, ParticleQuadSizeCurve::GrowToBase);
+
         let mut note_random = ParticleRandom::new(21);
         let note =
             ParticleVisualDescriptor::Note.sample_for_command(&mut note_random, [0.0, 0.0, 0.0]);
@@ -1260,6 +1347,16 @@ mod tests {
         assert_range_f64(heart_velocity[0], -0.002, 0.002);
         assert_range_f64(heart_velocity[1], 0.098, 0.102);
         assert_range_f64(heart_velocity[2], -0.002, 0.002);
+
+        let mut cloud_random = ParticleRandom::new(23);
+        let cloud_velocity =
+            ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusCommand {
+                scale: 0.1,
+            }
+            .sample([1.0, 2.0, 3.0], &mut cloud_random);
+        assert_range_f64(cloud_velocity[0], 0.98, 1.02);
+        assert_range_f64(cloud_velocity[1], 1.99, 2.03);
+        assert_range_f64(cloud_velocity[2], 2.98, 3.02);
     }
 
     #[test]

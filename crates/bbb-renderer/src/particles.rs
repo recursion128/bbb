@@ -981,6 +981,20 @@ mod tests {
         assert_range_f32(cloud.color[0], 0.7, 1.0);
         assert_eq!(cloud.color[0], cloud.color[1]);
         assert_eq!(cloud.color[1], cloud.color[2]);
+        assert_ne!(cloud.velocity, [0.0, 0.0, 0.0]);
+
+        let mut sneeze_random = ParticleRandom::new(55);
+        let sneeze = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:sneeze", 1.0),
+            &mut sneeze_random,
+        );
+        assert_eq!(sneeze.provider, "PlayerCloudParticle.SneezeProvider");
+        assert_eq!(sneeze.quad_size_curve, ParticleQuadSizeCurve::GrowToBase);
+        assert_range_f32(sneeze.base_quad_size, 0.1875, 0.375);
+        assert_eq!(sneeze.color, [0.22, 1.0, 0.53, 0.4]);
+        assert_eq!(sneeze.friction, 0.96);
+        assert!(!sneeze.has_physics);
+        assert_ne!(sneeze.velocity, [0.0, 0.0, 0.0]);
 
         let mut note_random = ParticleRandom::new(54);
         let mut note_command = spawn_command("minecraft:note", 1.0);

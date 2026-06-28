@@ -236,6 +236,9 @@ When an agent does any of the following, update this file in the same slice:
       - `NoteParticle.Provider` command-x hue color formula, fixed lifetime,
         grow-to-base size curve, 1.5 quad-size scale, initial y-speed offset,
         friction, and blocked-y speed-up metadata
+      - `PlayerCloudParticle.Provider` vanilla constructor-random initial
+        speed plus command velocity, and `SneezeProvider` fixed green tint /
+        alpha override on the player-cloud curve
     - Uploads a stitched official particle atlas when assets are available.
     - Draws active particles as camera-facing textured billboards.
   - Follow-up work in the plan:
