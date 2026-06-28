@@ -2111,7 +2111,9 @@ When an agent does any of the following, update this file in the same slice:
       overlay column via `getOverlayCoords(state, 0.0F)`. Missing-atlas coverage
       now proves adult type/profession/level overlays and baby type overlays
       still record their vanilla `entityCutout` submissions while only folded
-      overlay geometry is suppressed. Base villager and wandering trader
+      overlay geometry is suppressed. Villager type/profession/level overlay
+      submits now run through a dispatch-owned late-layer hook rather than a
+      direct post-base helper call. Base villager and wandering trader
       submissions preserve entity light plus full hurt/white overlay. Wandering
       trader textured regressions pin its
       single `wandering_trader.png` base submission with
@@ -2295,7 +2297,9 @@ When an agent does any of the following, update this file in the same slice:
       textures while only folded outer-shell geometry is suppressed, and proves
       zombie-villager adult type/profession/level overlays and baby type
       overlays still record their vanilla `entityCutout` submissions while only
-      folded overlay geometry is suppressed; the piglin
+      folded overlay geometry is suppressed. Zombie-villager profession overlays
+      now share the dispatch-owned late-layer hook with villagers instead of a
+      direct post-base helper call; the piglin
       dance/attack/crossbow-hold/crossbow-charge/admiring arm poses ARE all implemented
       (see the piglin note);
       the zombie-arm attack swing IS implemented (the

@@ -95,12 +95,13 @@ use super::textured::{
     render_player_extra_ears_layer, render_player_parrot_on_shoulder_layer,
     render_player_spin_attack_effect_layer, render_player_textured_layers,
     render_strider_saddle_layer, render_textured_layers, render_trident_foil_submission,
-    render_undead_horse_textured_layers, render_wither_energy_swirl, render_wolf_body_armor_layer,
-    salmon_textured_layer_passes, sheep_textured_layer_passes,
-    shulker_bullet_textured_layer_passes, shulker_textured_layer_passes,
-    silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
-    sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
-    squid_textured_layer_passes, tadpole_textured_layer_passes, trident_textured_layer_passes,
+    render_undead_horse_textured_layers, render_villager_profession_layers,
+    render_wither_energy_swirl, render_wolf_body_armor_layer, salmon_textured_layer_passes,
+    sheep_textured_layer_passes, shulker_bullet_textured_layer_passes,
+    shulker_textured_layer_passes, silverfish_textured_layer_passes,
+    skeleton_textured_layer_passes, slime_textured_layer_passes, sniffer_textured_layer_passes,
+    snow_golem_textured_layer_passes, spider_textured_layer_passes, squid_textured_layer_passes,
+    tadpole_textured_layer_passes, trident_textured_layer_passes,
     tropical_fish_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, warden_textured_layer_passes,
     wind_charge_textured_layer_passes, witch_textured_layer_passes,
@@ -312,6 +313,8 @@ pub(in crate::entity_models) trait EntityModelSink {
     );
 
     fn player_post_wings_layers(&mut self, _instance: &EntityModelInstance) {}
+
+    fn villager_profession_layers(&mut self, _instance: &EntityModelInstance) {}
 
     fn horse_model(
         &mut self,
@@ -749,6 +752,10 @@ impl EntityModelSink for TexturedSink<'_> {
     fn player_post_wings_layers(&mut self, instance: &EntityModelInstance) {
         render_player_parrot_on_shoulder_layer(self.meshes, *instance, self.atlas);
         render_player_spin_attack_effect_layer(self.meshes, *instance, self.atlas);
+    }
+
+    fn villager_profession_layers(&mut self, instance: &EntityModelInstance) {
+        render_villager_profession_layers(self.meshes, *instance, self.atlas);
     }
 
     fn horse_model(
@@ -1675,6 +1682,22 @@ pub(in crate::entity_models) fn dispatch_post_wings_entity_layers<S: EntityModel
 ) {
     if matches!(instance.kind, EntityModelKind::Player { .. }) {
         sink.player_post_wings_layers(instance);
+    }
+}
+
+/// Dispatch-owned late layers whose vanilla append point is after the generic post-base helpers that
+/// still live in the textured loop.
+pub(in crate::entity_models) fn dispatch_late_entity_layers<S: EntityModelSink>(
+    instance: &EntityModelInstance,
+    sink: &mut S,
+) {
+    match instance.kind {
+        EntityModelKind::Villager { .. }
+        | EntityModelKind::ZombieVariant {
+            family: ZombieVariantModelFamily::ZombieVillager,
+            ..
+        } => sink.villager_profession_layers(instance),
+        _ => {}
     }
 }
 

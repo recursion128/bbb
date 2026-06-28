@@ -5,7 +5,8 @@ use super::colored::{
     GIANT_SCALE, HORSE_SCALE,
 };
 use super::dispatch::{
-    dispatch_post_wings_entity_layers, dispatch_uniform_entity_model, TexturedSink,
+    dispatch_late_entity_layers, dispatch_post_wings_entity_layers, dispatch_uniform_entity_model,
+    TexturedSink,
 };
 use super::held_item::custom_head_skull_transform;
 use super::model::{EntityModel, ModelPart};
@@ -456,10 +457,8 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
                 dynamic_player_texture_atlas,
             };
             dispatch_post_wings_entity_layers(instance, &mut sink);
+            dispatch_late_entity_layers(instance, &mut sink);
         }
-        // VillagerProfessionLayer overlays (biome type, profession, level badge) are cutout layers
-        // over the base villager or zombie-villager model with shared light and zero-white overlay.
-        emit_villager_profession_layers(&mut meshes, *instance, atlas);
     }
     meshes
 }
@@ -2607,7 +2606,7 @@ pub(in crate::entity_models) fn render_llama_decor_layer(
 
 const VILLAGER_NO_HAT_EXCLUDED_PARTS: [&str; 2] = ["hat", "hat_rim"];
 
-fn emit_villager_profession_layers(
+pub(in crate::entity_models) fn render_villager_profession_layers(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
