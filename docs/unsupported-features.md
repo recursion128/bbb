@@ -296,6 +296,11 @@ When an agent does any of the following, update this file in the same slice:
         `12 + random.nextInt(4)` lifetime, static zero velocity in the current
         CPU model, and base physics metadata; full-bright block light remains
         deferred until per-particle light coords are represented
+      - `SculkChargePopParticle.Provider` uses vanilla command velocity,
+        `alpha=1`, base quad size, age sprite selection,
+        `6 + random.nextInt(4)` lifetime, `0.96` friction, and no-physics
+        metadata; full-bright block light and translucent particle layer remain
+        deferred until per-particle light/render-layer state is represented
     - Uploads a stitched official particle atlas when assets are available.
     - Draws active particles as camera-facing textured billboards.
   - Follow-up work in the plan:
