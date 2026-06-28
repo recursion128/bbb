@@ -17,8 +17,8 @@ use super::catalog::{
     BoatModelFamily, CamelModelFamily, CowModelVariant, DonkeyModelFamily,
     EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerTextureAtlasLayout, EntityModelKind,
     EntityModelTextureAtlasLayout, EntityPlayerSkin, HorseColorVariant, HorseMarkings,
-    PiglinModelFamily, PlayerModelPartVisibility, SkeletonModelFamily, UndeadHorseModelFamily,
-    ZombieVariantModelFamily,
+    PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility, SkeletonModelFamily,
+    UndeadHorseModelFamily, ZombieVariantModelFamily,
 };
 use super::colored::{
     arrow_model_root_transform, boat_model_root_transform, camel_model_color,
@@ -89,7 +89,7 @@ use super::textured::{
     render_breeze_wind_scroll_model, render_charged_creeper_energy_swirl,
     render_donkey_textured_layers, render_end_crystal_beam, render_end_crystal_textured_layers,
     render_ender_dragon_beam, render_guardian_beam, render_horse_textured_layers,
-    render_no_overlay_scrolled_textured_layers, render_player_cape_layer,
+    render_no_overlay_scrolled_textured_layers, render_pig_saddle_layer, render_player_cape_layer,
     render_player_extra_ears_layer, render_player_textured_layers, render_textured_layers,
     render_trident_foil_submission, render_undead_horse_textured_layers,
     render_wither_energy_swirl, salmon_textured_layer_passes, sheep_textured_layer_passes,
@@ -178,6 +178,15 @@ pub(in crate::entity_models) trait EntityModelSink {
             mesh_transformer_scaled_model_root_transform(*instance, scale),
             instance,
             &passes[0..1],
+        );
+    }
+
+    fn pig_model(&mut self, variant: PigModelVariant, baby: bool, instance: &EntityModelInstance) {
+        self.model(
+            PigModel::new(variant, baby),
+            entity_model_root_transform(*instance),
+            instance,
+            &pig_textured_layer_passes(variant, baby),
         );
     }
 
@@ -477,6 +486,16 @@ impl EntityModelSink for TexturedSink<'_> {
         render_guardian_beam(self.meshes, *instance, self.atlas);
     }
 
+    fn pig_model(&mut self, variant: PigModelVariant, baby: bool, instance: &EntityModelInstance) {
+        self.model(
+            PigModel::new(variant, baby),
+            entity_model_root_transform(*instance),
+            instance,
+            &pig_textured_layer_passes(variant, baby),
+        );
+        render_pig_saddle_layer(self.meshes, *instance, self.atlas);
+    }
+
     fn player_model(
         &mut self,
         skin: EntityPlayerSkin,
@@ -621,12 +640,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &chicken_textured_layer_passes(variant, baby),
         ),
-        EntityModelKind::Pig { variant, baby } => sink.model(
-            PigModel::new(variant, baby),
-            entity_model_root_transform(*instance),
-            instance,
-            &pig_textured_layer_passes(variant, baby),
-        ),
+        EntityModelKind::Pig { variant, baby } => sink.pig_model(variant, baby, instance),
         EntityModelKind::Cow { variant, baby } => sink.model(
             CowModel::new(variant, baby),
             entity_model_root_transform(*instance),

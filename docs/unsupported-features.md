@@ -1611,10 +1611,11 @@ When an agent does any of the following, update this file in the same slice:
       The adult pig saddle equipment layer is implemented from `EquipmentSlot.SADDLE`
       through the default item equipment-slot map, using vanilla `PIG_SADDLE` /
       `PigModel.createBodyLayer(CubeDeformation(0.5F))` and
-      `textures/entity/equipment/pig_saddle/saddle.png`, with submission metadata
-      generated from `equipment_layer_pass` for vanilla `ModelLayers.PIG_SADDLE`,
-      `armorCutoutNoCull`, white tint, `entity_model_root_transform`, and
-      `(order, submit_sequence) == (0, 1)`, preserving entity light while forcing the vanilla equipment
+      `textures/entity/equipment/pig_saddle/saddle.png`, now generated through the shared Pig
+      dispatch sink after the base submit, with submission metadata from `equipment_layer_pass`
+      for vanilla `ModelLayers.PIG_SADDLE`, `armorCutoutNoCull`, white tint,
+      `entity_model_root_transform`, and `(order, submit_sequence) == (0, 1)`,
+      preserving entity light while forcing the vanilla equipment
       `OverlayTexture.NO_OVERLAY`; missing saddle atlas data now preserves that
       submission while suppressing only the folded saddle geometry; baby pigs intentionally
       skip it because vanilla provides no baby saddle model. Boost/ridden

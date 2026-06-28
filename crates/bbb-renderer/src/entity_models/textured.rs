@@ -444,8 +444,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         emit_player_parrot_on_shoulder_layer(&mut meshes, *instance, atlas);
         // SpinAttackEffectLayer is the next player layer after both shoulder-parrot submits.
         emit_player_spin_attack_effect_layer(&mut meshes, *instance, atlas);
-        // The pig saddle is a simple equipment overlay over the adult pig body.
-        emit_pig_saddle_layer(&mut meshes, *instance, atlas);
         // Wolf body armor uses the adult WOLF_ARMOR equipment layer and optional damage cracks.
         emit_wolf_body_armor_layer(&mut meshes, *instance, atlas);
         // Horse/zombie-horse body armor uses the adult HORSE_BODY equipment layer.
@@ -2089,7 +2087,7 @@ fn custom_head_skull_texture_ref(skull: EntityCustomHeadSkull) -> EntityModelTex
 /// saddle item, render an adult `PigModel.createBodyLayer(CubeDeformation(0.5F))` over the base pig
 /// with the `pig_saddle/saddle.png` equipment texture. The vanilla layer has no baby model, so baby
 /// pigs skip it even if the slot is filled.
-fn emit_pig_saddle_layer(
+pub(in crate::entity_models) fn render_pig_saddle_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
@@ -2098,6 +2096,9 @@ fn emit_pig_saddle_layer(
         return;
     }
     if !matches!(instance.kind, EntityModelKind::Pig { baby: false, .. }) {
+        return;
+    }
+    if meshes.current_force_transparent || meshes.current_outline_only {
         return;
     }
 
