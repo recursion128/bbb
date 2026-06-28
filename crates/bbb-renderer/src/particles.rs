@@ -983,6 +983,22 @@ mod tests {
         assert_eq!(cloud.color[1], cloud.color[2]);
         assert_ne!(cloud.velocity, [0.0, 0.0, 0.0]);
 
+        let mut bubble_random = ParticleRandom::new(59);
+        let mut bubble_command = spawn_command("minecraft:bubble", 1.0);
+        bubble_command.velocity = [1.0, 2.0, 3.0];
+        let bubble = ParticleInstance::from_spawn_command(bubble_command, &mut bubble_random);
+        assert_eq!(bubble.provider, "BubbleParticle.Provider");
+        assert_eq!(bubble.quad_size_curve, ParticleQuadSizeCurve::Constant);
+        assert_range_f32(bubble.base_quad_size, 0.02, 0.16);
+        assert_eq!(bubble.color, [1.0, 1.0, 1.0, 1.0]);
+        assert!((8..=40).contains(&bubble.lifetime_ticks));
+        assert_eq!(bubble.friction, 0.85);
+        assert_eq!(bubble.gravity, -0.05);
+        assert!(bubble.has_physics);
+        assert_range_f64(bubble.velocity[0], 0.18, 0.22);
+        assert_range_f64(bubble.velocity[1], 0.38, 0.42);
+        assert_range_f64(bubble.velocity[2], 0.58, 0.62);
+
         let mut sneeze_random = ParticleRandom::new(55);
         let sneeze = ParticleInstance::from_spawn_command(
             spawn_command("minecraft:sneeze", 1.0),

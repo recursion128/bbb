@@ -31,6 +31,7 @@ pub(crate) enum ParticleLifetimeDescriptor {
         divisor: u32,
     },
     Crit,
+    EightOverRandom,
     RandomInclusive {
         min: u32,
         max: u32,
@@ -52,6 +53,7 @@ pub(crate) enum ParticleVisualDescriptor {
     PlayerCloudTint {
         color: ParticleColorDescriptor,
     },
+    Bubble,
     Note,
     SingleQuadScaled {
         scale: f32,
@@ -109,6 +111,10 @@ pub(crate) enum ParticleQuadSizeCurve {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum ParticleInitialVelocityDescriptor {
     Command,
+    CommandScaledPlusRandom {
+        command_scale: f64,
+        random_range: f64,
+    },
     ParticleConstructorScaled {
         scale: f64,
     },
@@ -159,6 +165,20 @@ impl ParticleDescriptor {
                 gravity: 0.0,
                 has_physics: false,
                 speed_up_when_y_motion_is_blocked: true,
+            },
+            "minecraft:bubble" => Self {
+                provider: "BubbleParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::EightOverRandom,
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::Bubble,
+                initial_velocity: ParticleInitialVelocityDescriptor::CommandScaledPlusRandom {
+                    command_scale: 0.2,
+                    random_range: 0.02,
+                },
+                friction: 0.85,
+                gravity: -0.05,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
             },
             "minecraft:cloud" => Self {
                 provider: "PlayerCloudParticle.Provider",
@@ -570,6 +590,14 @@ impl ParticleVisualDescriptor {
                 color.sample(random),
                 ParticleQuadSizeCurve::GrowToBase,
             ),
+            Self::Bubble => {
+                let scale = random.next_f32() * 0.6 + 0.2;
+                ParticleVisualState::new(
+                    base_quad_size * scale,
+                    WHITE_PARTICLE_COLOR,
+                    ParticleQuadSizeCurve::Constant,
+                )
+            }
             Self::Note => ParticleVisualState::new(
                 base_quad_size * 1.5,
                 note_color(command_velocity[0] as f32),
@@ -646,6 +674,14 @@ impl ParticleInitialVelocityDescriptor {
     ) -> [f64; 3] {
         match self {
             Self::Command => command_velocity,
+            Self::CommandScaledPlusRandom {
+                command_scale,
+                random_range,
+            } => [
+                command_velocity[0] * command_scale + random_signed_unit(random) * random_range,
+                command_velocity[1] * command_scale + random_signed_unit(random) * random_range,
+                command_velocity[2] * command_scale + random_signed_unit(random) * random_range,
+            ],
             Self::ParticleConstructorScaled { scale } => {
                 let x = command_velocity[0] + random_signed_velocity(random);
                 let y = command_velocity[1] + random_signed_velocity(random);
@@ -791,6 +827,7 @@ impl ParticleLifetimeDescriptor {
                 lifetime.max(1) / divisor.max(1)
             }
             Self::Crit => ((6.0 / (random.next_f32() * 0.8 + 0.6)) as u32).max(1),
+            Self::EightOverRandom => ((8.0 / (random.next_f32() * 0.8 + 0.2)) as u32).max(1),
             Self::RandomInclusive { min, max } => {
                 let span = max.saturating_sub(min).saturating_add(1);
                 min + random.next_index(span as usize).unwrap_or(0) as u32
@@ -905,7 +942,11 @@ fn note_color_component(color: f32, offset: f32) -> f32 {
 }
 
 fn random_signed_velocity(random: &mut ParticleRandom) -> f64 {
-    (f64::from(random.next_f32()) * 2.0 - 1.0) * 0.4
+    random_signed_unit(random) * 0.4
+}
+
+fn random_signed_unit(random: &mut ParticleRandom) -> f64 {
+    f64::from(random.next_f32()) * 2.0 - 1.0
 }
 
 #[cfg(test)]
@@ -940,6 +981,25 @@ mod tests {
         assert_eq!(
             angry_villager.initial_position([1.0, 2.0, 3.0]),
             [1.0, 2.5, 3.0]
+        );
+
+        assert_descriptor(
+            "minecraft:bubble",
+            "BubbleParticle.Provider",
+            ParticleLifetimeDescriptor::EightOverRandom,
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::Bubble,
+            0.85,
+            -0.05,
+            true,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:bubble").initial_velocity,
+            ParticleInitialVelocityDescriptor::CommandScaledPlusRandom {
+                command_scale: 0.2,
+                random_range: 0.02,
+            }
         );
 
         assert_descriptor(
@@ -1363,6 +1423,13 @@ mod tests {
         assert_eq!(cloud.color[3], 1.0);
         assert_eq!(cloud.quad_size_curve, ParticleQuadSizeCurve::GrowToBase);
 
+        let mut bubble_random = ParticleRandom::new(27);
+        let bubble = ParticleVisualDescriptor::Bubble
+            .sample_for_command(&mut bubble_random, [0.0, 0.0, 0.0]);
+        assert_range_f32(bubble.base_quad_size, 0.02, 0.16);
+        assert_eq!(bubble.color, WHITE_PARTICLE_COLOR);
+        assert_eq!(bubble.quad_size_curve, ParticleQuadSizeCurve::Constant);
+
         let mut sneeze_random = ParticleRandom::new(22);
         let sneeze = ParticleVisualDescriptor::PlayerCloudTint {
             color: ParticleColorDescriptor::FixedRgba([0.22, 1.0, 0.53, 0.4]),
@@ -1560,6 +1627,16 @@ mod tests {
         assert_range_f64(cloud_velocity[1], 1.99, 2.03);
         assert_range_f64(cloud_velocity[2], 2.98, 3.02);
 
+        let mut bubble_random = ParticleRandom::new(27);
+        let bubble_velocity = ParticleInitialVelocityDescriptor::CommandScaledPlusRandom {
+            command_scale: 0.2,
+            random_range: 0.02,
+        }
+        .sample([1.0, 2.0, 3.0], &mut bubble_random);
+        assert_range_f64(bubble_velocity[0], 0.18, 0.22);
+        assert_range_f64(bubble_velocity[1], 0.38, 0.42);
+        assert_range_f64(bubble_velocity[2], 0.58, 0.62);
+
         let mut crit_random = ParticleRandom::new(24);
         let crit_velocity =
             ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusScaledCommand {
@@ -1609,6 +1686,12 @@ mod tests {
         for _ in 0..32 {
             let lifetime = ParticleLifetimeDescriptor::Crit.sample(&mut random);
             assert!((4..=10).contains(&lifetime));
+        }
+
+        let mut random = ParticleRandom::new(28);
+        for _ in 0..32 {
+            let lifetime = ParticleLifetimeDescriptor::EightOverRandom.sample(&mut random);
+            assert!((8..=40).contains(&lifetime));
         }
     }
 

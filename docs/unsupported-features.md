@@ -245,6 +245,10 @@ When an agent does any of the following, update this file in the same slice:
         crit lifetime or fixed damage lifetime, grow-to-base size curve,
         initial random gray / magic color multipliers, `0.7` friction, `0.5`
         gravity, and no-physics metadata
+      - `BubbleParticle.Provider` command velocity scaled by `0.2` plus
+        random `+-0.02` velocity, random `0.2..0.8` quad-size scaling,
+        `8 / (random * 0.8 + 0.2)` lifetime, `0.85` friction, and upward
+        `+0.002` y-velocity tick behavior represented as negative gravity
     - Uploads a stitched official particle atlas when assets are available.
     - Draws active particles as camera-facing textured billboards.
   - Follow-up work in the plan:
