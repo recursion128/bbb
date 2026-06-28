@@ -577,8 +577,11 @@ When an agent does any of the following, update this file in the same slice:
     and ambient is default black. These lightmap-lit entity paths also apply the
     vanilla `LightmapInfo.BrightnessFactor` `notGamma` mix, driven by the
     startup-only `bbb-native --client-gamma` option whose default `0.5` matches
-    vanilla `Options.gamma`. Remaining lighting gaps: smooth/AO entity light,
-    dynamic environment colors, block-light flicker, darkness / night-vision
+    vanilla `Options.gamma`. The block-light multiplier is now the vanilla
+    `LightmapInfo.BlockFactor`: native 20Hz client ticks advance
+    `blockLightFlicker` with the `LightmapRenderStateExtractor.tick()` formula
+    and the shaders read `blockLightFlicker + 1.4`. Remaining lighting gaps:
+    smooth/AO entity light, dynamic environment colors, darkness / night-vision
     curves and the darkness-driven brightness modifier of the real vanilla
     `Lightmap`, Nether / UI lighting variants, and the colored debug fallback's
     baked-shade approximation.

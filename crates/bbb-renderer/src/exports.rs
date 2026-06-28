@@ -1,5 +1,8 @@
 pub use crate::block_destroy::BlockDestroyOverlay;
-pub use crate::camera::{CameraPose, ClearColor, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR};
+pub use crate::camera::{
+    CameraPose, ClearColor, VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
+    VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
+};
 pub use crate::entity_models::{
     allay_entity_texture_refs, armadillo_entity_texture_refs, armor_stand_entity_texture_refs,
     arrow_entity_texture_refs, axolotl_entity_texture_refs, bat_entity_texture_refs,

@@ -548,7 +548,9 @@ fn entity_textured_shader_applies_packed_light_lightmap() {
     // BrightnessFactor gamma mix, while leaving dynamic environment tint/effects
     // as deferred GPU state.
     assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("level / (4.0 - 3.0 * level)"));
-    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("lightmap_brightness(light.x) * 1.4"));
+    assert!(
+        ENTITY_MODEL_TEXTURED_SHADER.contains("lightmap_brightness(light.x) * camera.lightmap.y")
+    );
     assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("vec3<f32>(1.0, 216.0 / 255.0, 140.0 / 255.0)"));
     assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("0.9 * parabolic_mix_factor(light.x)"));
     assert!(ENTITY_MODEL_TEXTURED_SHADER
@@ -578,7 +580,7 @@ fn entity_textured_shader_applies_vanilla_level_diffuse_lighting() {
 #[test]
 fn entity_colored_shader_applies_packed_light_lightmap() {
     assert!(ENTITY_MODEL_SHADER.contains("level / (4.0 - 3.0 * level)"));
-    assert!(ENTITY_MODEL_SHADER.contains("lightmap_brightness(light.x) * 1.4"));
+    assert!(ENTITY_MODEL_SHADER.contains("lightmap_brightness(light.x) * camera.lightmap.y"));
     assert!(ENTITY_MODEL_SHADER.contains("vec3<f32>(1.0, 216.0 / 255.0, 140.0 / 255.0)"));
     assert!(ENTITY_MODEL_SHADER.contains("0.9 * parabolic_mix_factor(light.x)"));
     assert!(ENTITY_MODEL_SHADER.contains("mix(clamped, not_gamma_color, camera.lightmap.x)"));
@@ -606,7 +608,7 @@ fn entity_scroll_shaders_split_breeze_wind_lightmap_from_energy_swirl_emissive()
     // NO_OVERLAY + NO_CARDINAL_LIGHTING, but still samples the lightmap.
     assert!(ENTITY_MODEL_SCROLL_SHADER.contains("@location(4) light: vec2<f32>"));
     assert!(ENTITY_MODEL_SCROLL_SHADER.contains("lightmap_brightness"));
-    assert!(ENTITY_MODEL_SCROLL_SHADER.contains("lightmap_brightness(light.x) * 1.4"));
+    assert!(ENTITY_MODEL_SCROLL_SHADER.contains("lightmap_brightness(light.x) * camera.lightmap.y"));
     assert!(ENTITY_MODEL_SCROLL_SHADER.contains("vec3<f32>(1.0, 216.0 / 255.0, 140.0 / 255.0)"));
     assert!(ENTITY_MODEL_SCROLL_SHADER.contains("mix(clamped, not_gamma_color, camera.lightmap.x)"));
     assert!(ENTITY_MODEL_SCROLL_SHADER.contains("texel.rgb * light_color"));

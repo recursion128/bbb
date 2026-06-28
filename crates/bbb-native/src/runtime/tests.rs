@@ -80,6 +80,30 @@ fn entity_animation_partial_tick_tracks_time_since_last_client_tick() {
 }
 
 #[test]
+fn lightmap_tick_state_matches_vanilla_block_light_flicker_formula() {
+    let mut lightmap = LightmapTickState::with_seed(0);
+    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+
+    let first_delta = (expected_random.next_float() - expected_random.next_float())
+        * expected_random.next_float()
+        * expected_random.next_float()
+        * 0.1;
+    let first_flicker = first_delta * 0.9;
+    let first_factor = lightmap.advance(1);
+    assert!((first_factor - (VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR + first_flicker)).abs() < 1e-6);
+
+    let second_delta = (expected_random.next_float() - expected_random.next_float())
+        * expected_random.next_float()
+        * expected_random.next_float()
+        * 0.1;
+    let second_flicker = (first_flicker + second_delta) * 0.9;
+    let second_factor = lightmap.advance(1);
+    assert!(
+        (second_factor - (VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR + second_flicker)).abs() < 1e-6
+    );
+}
+
+#[test]
 fn server_container_open_releases_held_movement() {
     let (tx, mut rx) = mpsc::channel(4);
     let commands = Some(tx);

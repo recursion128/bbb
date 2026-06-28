@@ -125,7 +125,7 @@ fn apply_lightmap_brightness(color: vec3<f32>) -> vec3<f32> {
 }
 
 fn packed_lightmap_color(light: vec2<f32>) -> vec3<f32> {
-    let block_brightness = lightmap_brightness(light.x) * 1.4;
+    let block_brightness = lightmap_brightness(light.x) * camera.lightmap.y;
     let sky_brightness = lightmap_brightness(light.y);
     let block_light_tint = vec3<f32>(1.0, 216.0 / 255.0, 140.0 / 255.0);
     let block_light_color = mix(
@@ -220,7 +220,7 @@ fn apply_lightmap_brightness(color: vec3<f32>) -> vec3<f32> {
 }
 
 fn packed_lightmap_color(light: vec2<f32>) -> vec3<f32> {
-    let block_brightness = lightmap_brightness(light.x) * 1.4;
+    let block_brightness = lightmap_brightness(light.x) * camera.lightmap.y;
     let sky_brightness = lightmap_brightness(light.y);
     let block_light_tint = vec3<f32>(1.0, 216.0 / 255.0, 140.0 / 255.0);
     let block_light_color = mix(
@@ -375,7 +375,7 @@ fn apply_lightmap_brightness(color: vec3<f32>) -> vec3<f32> {
 }
 
 fn packed_lightmap_color(light: vec2<f32>) -> vec3<f32> {
-    let block_brightness = lightmap_brightness(light.x) * 1.4;
+    let block_brightness = lightmap_brightness(light.x) * camera.lightmap.y;
     let sky_brightness = lightmap_brightness(light.y);
     let block_light_tint = vec3<f32>(1.0, 216.0 / 255.0, 140.0 / 255.0);
     let block_light_color = mix(

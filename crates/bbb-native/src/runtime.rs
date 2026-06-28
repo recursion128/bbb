@@ -16,7 +16,7 @@ use bbb_renderer::{
     HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryItem,
     HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground, HudInventoryTextLabel,
     HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar,
-    HudItemIcon, HudUvRect, HUD_HOTBAR_SLOTS,
+    HudItemIcon, HudUvRect, HUD_HOTBAR_SLOTS, VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
 };
 use bbb_world::{
     BookScreenState, ContainerState, MerchantOfferState, MerchantOffersState, MountArmorSlotKind,
@@ -264,6 +264,52 @@ impl ClientAnimationTickState {
     }
 }
 
+#[derive(Debug)]
+pub(crate) struct LightmapTickState {
+    random: LevelEventSoundRandomState,
+    block_light_flicker: f32,
+}
+
+impl Default for LightmapTickState {
+    fn default() -> Self {
+        Self {
+            random: LevelEventSoundRandomState::default(),
+            block_light_flicker: 0.0,
+        }
+    }
+}
+
+impl LightmapTickState {
+    #[cfg(test)]
+    fn with_seed(seed: i64) -> Self {
+        Self {
+            random: LevelEventSoundRandomState::with_seed(seed),
+            block_light_flicker: 0.0,
+        }
+    }
+
+    fn advance(&mut self, ticks: u32) -> f32 {
+        for _ in 0..ticks {
+            self.tick();
+        }
+        self.block_factor()
+    }
+
+    fn tick(&mut self) {
+        // Vanilla `LightmapRenderStateExtractor.tick`: the random source is a
+        // LegacyRandomSource from `RandomSource.create()`.
+        let delta = (self.random.next_float() - self.random.next_float())
+            * self.random.next_float()
+            * self.random.next_float()
+            * 0.1;
+        self.block_light_flicker = (self.block_light_flicker + delta) * 0.9;
+    }
+
+    fn block_factor(&self) -> f32 {
+        self.block_light_flicker + VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR
+    }
+}
+
 pub(crate) fn snapshot_is_running(snapshot: &SharedSnapshot) -> bool {
     snapshot
         .read()
@@ -304,6 +350,7 @@ pub(crate) fn pump_network_and_terrain(
     renderer: &mut bbb_renderer::Renderer,
     net_counters: &mut NetCounters,
     client_animation_ticks: &mut ClientAnimationTickState,
+    lightmap_ticks: &mut LightmapTickState,
     level_event_sound_random: &mut LevelEventSoundRandomState,
     terrain_upload: &mut TerrainUploadState,
     terrain_textures: &TerrainTextureState,
@@ -343,6 +390,10 @@ pub(crate) fn pump_network_and_terrain(
     let now = Instant::now();
     let advanced_ticks = advance_entity_client_animations(world, client_animation_ticks, now);
     let entity_partial_tick = client_animation_ticks.entity_partial_tick(now);
+    if advanced_ticks > 0 {
+        let block_factor = lightmap_ticks.advance(advanced_ticks);
+        renderer.set_lightmap_block_factor(block_factor);
+    }
     advance_block_destruction_render_ticks(world, advanced_ticks);
     world.advance_item_cooldowns(advanced_ticks);
     renderer.advance_particles(advanced_ticks);

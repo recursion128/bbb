@@ -7,6 +7,10 @@ use crate::terrain;
 /// this option as `LightmapRenderState.brightness` before darkness effects are
 /// applied.
 pub const VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR: f32 = 0.5;
+/// Vanilla `LightmapRenderStateExtractor.extract`: `blockFactor` is
+/// `blockLightFlicker + 1.4F`; before the first client tick the flicker term is
+/// zero.
+pub const VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR: f32 = 1.4;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct ClearColor {
@@ -55,8 +59,8 @@ impl CameraPose {
 pub(crate) struct CameraUniform {
     view_proj: [[f32; 4]; 4],
     /// Extra renderer-global fragment state. `.x` is vanilla
-    /// `LightmapInfo.BrightnessFactor`; remaining lanes are reserved for the
-    /// future Lightmap UBO fields.
+    /// `LightmapInfo.BrightnessFactor`; `.y` is `LightmapInfo.BlockFactor`;
+    /// remaining lanes are reserved for future Lightmap UBO fields.
     lightmap: [f32; 4],
 }
 
@@ -64,7 +68,12 @@ impl CameraUniform {
     pub(crate) fn identity() -> Self {
         Self {
             view_proj: Mat4::IDENTITY.to_cols_array_2d(),
-            lightmap: [VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR, 0.0, 0.0, 0.0],
+            lightmap: [
+                VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
+                VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
+                0.0,
+                0.0,
+            ],
         }
     }
 
@@ -127,9 +136,19 @@ impl CameraUniform {
         self
     }
 
+    pub(crate) fn with_lightmap_block_factor(mut self, factor: f32) -> Self {
+        self.lightmap[1] = sanitize_lightmap_block_factor(factor);
+        self
+    }
+
     #[cfg(test)]
     pub(crate) fn lightmap_brightness_factor(self) -> f32 {
         self.lightmap[0]
+    }
+
+    #[cfg(test)]
+    pub(crate) fn lightmap_block_factor(self) -> f32 {
+        self.lightmap[1]
     }
 }
 
@@ -138,6 +157,14 @@ pub(crate) fn sanitize_lightmap_brightness_factor(factor: f32) -> f32 {
         factor.clamp(0.0, 1.0)
     } else {
         VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR
+    }
+}
+
+pub(crate) fn sanitize_lightmap_block_factor(factor: f32) -> f32 {
+    if factor.is_finite() {
+        factor.max(0.0)
+    } else {
+        VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR
     }
 }
 
@@ -156,6 +183,10 @@ mod tests {
         assert_eq!(
             CameraUniform::identity().lightmap_brightness_factor(),
             VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR
+        );
+        assert_eq!(
+            CameraUniform::identity().lightmap_block_factor(),
+            VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR
         );
         assert_eq!(
             CameraUniform::gui_ortho(320.0, 240.0).lightmap_brightness_factor(),
@@ -182,6 +213,28 @@ mod tests {
                 .with_lightmap_brightness_factor(f32::NAN)
                 .lightmap_brightness_factor(),
             VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR
+        );
+    }
+
+    #[test]
+    fn camera_uniform_clamps_lightmap_block_factor() {
+        assert_eq!(
+            CameraUniform::identity()
+                .with_lightmap_block_factor(-1.0)
+                .lightmap_block_factor(),
+            0.0
+        );
+        assert_eq!(
+            CameraUniform::identity()
+                .with_lightmap_block_factor(1.25)
+                .lightmap_block_factor(),
+            1.25
+        );
+        assert_eq!(
+            CameraUniform::identity()
+                .with_lightmap_block_factor(f32::NAN)
+                .lightmap_block_factor(),
+            VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR
         );
     }
 }

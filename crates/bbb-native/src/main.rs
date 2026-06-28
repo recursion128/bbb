@@ -53,7 +53,7 @@ use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
     clear_color_for_world, publish_snapshot, pump_network_and_terrain, request_net_disconnect,
     snapshot_is_running, take_control_screenshot, ClientAnimationTickState,
-    LevelEventSoundRandomState,
+    LevelEventSoundRandomState, LightmapTickState,
 };
 use skin_runtime::default_player_skin_cache_dir;
 use startup::{
@@ -280,6 +280,7 @@ fn main() -> Result<()> {
     let exit_after_screenshot = args.exit_after_screenshot;
     let mut terrain_upload = TerrainUploadState::default();
     let mut client_animation_ticks = ClientAnimationTickState::default();
+    let mut lightmap_ticks = LightmapTickState::default();
     let mut level_event_sound_random = LevelEventSoundRandomState::default();
     let mut net_disconnect_requested = false;
     let mut code_of_conduct_overlay = CodeOfConductOverlayState::default();
@@ -524,6 +525,7 @@ fn main() -> Result<()> {
                         &mut renderer,
                         &mut net_counters,
                         &mut client_animation_ticks,
+                        &mut lightmap_ticks,
                         &mut level_event_sound_random,
                         &mut terrain_upload,
                         &terrain_textures,
@@ -648,6 +650,7 @@ fn main() -> Result<()> {
                     &mut renderer,
                     &mut net_counters,
                     &mut client_animation_ticks,
+                    &mut lightmap_ticks,
                     &mut level_event_sound_random,
                     &mut terrain_upload,
                     &terrain_textures,
