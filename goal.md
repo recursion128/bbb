@@ -81,9 +81,9 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。
 
 - [x] residual emit 路径审计清零；或每个 remaining residual 命中都明确归属到
   非 P0 parity（例如 colored-only debug fallback、历史文档、注释）。
-- [ ] texture-backed / dispatch-owned submission 路径无主要遗漏；新增 renderer 或
+- [x] texture-backed / dispatch-owned submission 路径无主要遗漏；新增 renderer 或
   layer 不再绕过 submission 直接写 texture-backed mesh。
-- [ ] RenderType / `order` / `submit_sequence` / missing-atlas /
+- [x] RenderType / `order` / `submit_sequence` / missing-atlas /
   dynamic texture 状态覆盖完整，且测试优先断言 submission metadata，而不是只看
   顶点数量。
 - [x] light / overlay / outline 的 pipeline 表达完成；剩余 gamma、diffuse、
@@ -123,6 +123,14 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。
   剩余差异是 vanilla 独立 `OUTLINE_TARGET` / outline 后处理合成、colored-path
   force-transparent / outline、以及可见 glowing entity 的完整 final outline
   presentation，归入 P0 visual / 后续，不再阻塞狭义 pipeline 表达。
+- 2026-06-28 submission coverage audit：`rg` 复核显示 texture-backed 写入入口
+  集中在 dispatch sink 调用的 `render_textured_submission` /
+  dynamic-player submission helpers，先记录 `EntityModelRenderSubmission` 再按
+  atlas availability 折叠 mesh；`entity_models/dispatch.rs` 的剩余命中是
+  sink-owned `render_textured_layers` 调用和“无 residual mesh-emitting arm”
+  注释。测试覆盖面已达到 closeout 口径：78 个 entity model 测试文件断言
+  `submit_sequence`，7 个覆盖 missing-atlas / pending-upload submission-first
+  行为，25 个覆盖 dynamic player skin / profile texture 状态。
 - GPU path deferred inventory：CPU submission graph 已保留 texture / render type /
   tint / transform / light / overlay / outlineColor / `order` /
   `submit_sequence`；后端仍按 bucket 折叠 draw。后续不阻塞狭义 pipeline

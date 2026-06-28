@@ -357,6 +357,15 @@ When an agent does any of the following, update this file in the same slice:
     scroll variants into equivalent pipeline state, complete vanilla outline
     target/composite behaviour, and reconcile full render-graph sorting plus
     LightTexture / gamma / diffuse visual parity.
+  - P0 pipeline closeout treats texture-backed / dispatch-owned submission and
+    RenderType/order/missing-atlas/dynamic-texture coverage as complete for the
+    narrow pipeline scope: entity model tests assert `submit_sequence` across 78
+    files, cover missing-atlas / pending-upload submission-first behavior in 7
+    files, and cover dynamic player skin/profile texture states in 25 files.
+    The executable texture-backed mesh writes route through
+    `render_textured_submission` or the dynamic-player submission helpers after
+    recording `EntityModelRenderSubmission`; direct hits in `dispatch.rs` are
+    sink-owned `render_textured_layers` calls, not residual emit bypasses.
   - Replace proxies with full extraction from canonical world and pack data:
     - entity bounds
     - dropped-item icons (3D block/item model renderer in progress — see the
