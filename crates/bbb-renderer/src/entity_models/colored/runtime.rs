@@ -14,7 +14,7 @@ use super::selection::{humanoid_model_color, quadruped_model_color};
 use super::transforms::{
     drowned_model_root_transform, end_crystal_model_root_transform, entity_model_root_transform,
     mesh_transformer_scaled_model_root_transform, player_model_root_transform,
-    scaled_model_root_transform, wind_charge_model_root_transform, HUSK_SCALE,
+    scaled_model_root_transform, HUSK_SCALE,
 };
 
 #[cfg(test)]
@@ -65,17 +65,6 @@ fn entity_model_mesh_with_options(
                 }
                 EntityModelKind::Humanoid { family, baby } => {
                     emit_humanoid_model(&mut mesh, *instance, family, baby)
-                }
-                EntityModelKind::WindCharge => {
-                    // The wind charge's textured render is the scrolling `breezeWind` overlay; this
-                    // colored fallback renders the plain `WindChargeModel` tree when textures are absent.
-                    if !skip_texture_backed_entities {
-                        WindChargeModel::new().prepare_and_render(
-                            &mut mesh,
-                            instance,
-                            wind_charge_model_root_transform(*instance),
-                        );
-                    }
                 }
                 EntityModelKind::EndCrystal => {
                     // The end crystal is texture-backed now; keep the colored fallback mesh for legacy /

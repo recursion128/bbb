@@ -187,8 +187,9 @@ fn wind_charge_textured_render_matches_vanilla_renderer() {
 
 #[test]
 fn wind_charge_breeze_wind_submission_survives_missing_texture_atlas_entry() {
-    // Residual scroll emits are submission-first: the vanilla `breezeWind(wind_charge.png)` submit is
-    // recorded before atlas lookup, and missing texture data suppresses only the folded scroll mesh.
+    // Dispatch-owned scroll submissions are submission-first: the vanilla
+    // `breezeWind(wind_charge.png)` submit is recorded before atlas lookup, and missing texture data
+    // suppresses only the folded scroll mesh.
     let base_len =
         usize::try_from(ZOMBIE_TEXTURE_REF.size[0] * ZOMBIE_TEXTURE_REF.size[1] * 4).unwrap();
     let images = vec![EntityModelTextureImage::new(

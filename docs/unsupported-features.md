@@ -1092,11 +1092,12 @@ When an agent does any of the following, update this file in the same slice:
       override their base submission to `entityTranslucentCullItemTarget` with
       the vanilla `38/255` alpha before folding into the translucent mesh; layer
       passes that vanilla gates on `state.isInvisible` still do not submit.
-      `breezeWind` / `energySwirl` residual emits now use a shared scrolled
-      submission helper before folding into the scroll mesh buckets, with
-      WindCharge, Breeze wind, charged Creeper armor, and powered Wither armor submits consuming
-      explicit layer-pass metadata through the pass-backed no-overlay emitter before the scroll helper and missing-atlas tests pinning that
-      submission metadata is recorded before folded geometry is suppressed; Guardian
+      WindCharge `breezeWind` scroll submits now run through the shared dispatch sink rather than a
+      residual textured arm, preserving vanilla order-0 submission metadata and folding through the
+      shared scrolled helper only after atlas lookup. Breeze wind and `energySwirl` overlay helpers
+      likewise use explicit layer-pass metadata through the pass-backed no-overlay emitter before the
+      scroll helper, with missing-atlas tests pinning that submission metadata is recorded before
+      folded geometry is suppressed; Guardian
       attack beams now consume explicit `GuardianBeam` pass metadata through the same pass-backed emitter before
       recording vanilla `entityCutout` submissions and folding their tiled custom geometry into the scroll bucket through the
       custom scroll-geometry submission helper; End Crystal
@@ -3713,7 +3714,7 @@ When an agent does any of the following, update this file in the same slice:
       instead of a residual textured emit helper; the colored debug path stays as a fallback (it renders
       the three slabs with one tint)
     - wind charge and breeze wind charge entities as renderer-owned vanilla 26.1
-      `WindChargeModel.createBodyLayer()` geometry on the colored path: the native entity scene
+      `WindChargeModel.createBodyLayer()` geometry through shared dispatch: the native entity scene
       (`entity_scene.rs`) projects vanilla type ids `143` (wind charge) and `18` (breeze wind charge) — both
       registered to `WindChargeRenderer` in vanilla — to the new `EntityModelKind::WindCharge`, replacing the
       former placeholder bounds boxes. The hierarchy is emitted directly (atlas 64×32): the `bone`
@@ -3726,8 +3727,9 @@ When an agent does any of the following, update this file in the same slice:
       rendered through the scrolling `breezeWind` overlay (`WIND_CHARGE_TEXTURE_REF`) — vanilla
       `WindChargeRenderer` draws it with `RenderTypes.breezeWind(texture, xOffset(ageInTicks) % 1, 0)`, a
       texture-matrix `OffsetTextureTransform` (`xOffset(t) = t·0.03`) over a `GL_REPEAT` texture, translucent
-      and `ALPHA_CUTOUT 0.1`. Because our textures share one atlas (no per-texture `REPEAT`), a new scrolling
-      pipeline reproduces the scroll in the shader: the model is rendered once with the normal atlas UVs, then
+      and `ALPHA_CUTOUT 0.1`. Because our textures share one atlas (no per-texture `REPEAT`), the textured
+      sink now consumes the dispatch-owned `WindChargeModel` / `WIND_CHARGE` pass tuple and reproduces the
+      scroll in the shader: the model is rendered once with the normal atlas UVs, then
       folded into a dedicated scroll mesh (`EntityModelScrollVertex`) whose per-vertex local UV carries the
       baked per-instance U offset and the texture's atlas sub-rect, and `ENTITY_MODEL_SCROLL_SHADER` does
       `atlas_uv = uv_rect_min + fract(local_uv)·uv_rect_size` (the per-fragment `fract` recreating the `REPEAT`

@@ -2,8 +2,7 @@ use super::catalog::EntityDynamicPlayerTextureAtlasEntry;
 use super::colored::{
     boat_model_root_transform, creeper_model_root_transform, drowned_model_root_transform,
     end_crystal_model_root_transform, trident_model_root_transform,
-    villager_adult_model_root_transform, wind_charge_model_root_transform,
-    wither_model_root_transform, GIANT_SCALE, HORSE_SCALE,
+    villager_adult_model_root_transform, wither_model_root_transform, GIANT_SCALE, HORSE_SCALE,
 };
 use super::dispatch::{dispatch_uniform_entity_model, TexturedSink};
 use super::held_item::custom_head_skull_transform;
@@ -42,8 +41,8 @@ use super::{
         CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel, CustomHeadSkullModel, ElytraModel,
         HumanoidArmorModelLayerSet, HumanoidArmorSlot, HumanoidBabyArmorKind, LlamaModel,
         NautilusModel, ParrotModel, PigModel, PiglinModel, PlayerEarsModel, PlayerModel,
-        SkeletonModel, SpinAttackEffectModel, StriderModel, VillagerModel, WindChargeModel,
-        WitherModel, WolfModel, ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
+        SkeletonModel, SpinAttackEffectModel, StriderModel, VillagerModel, WitherModel, WolfModel,
+        ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
         ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_DONKEY_SADDLE_PARTS_TEXTURED,
         ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED, ADULT_HORSE_ARMOR_PARTS_TEXTURED,
         ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
@@ -421,9 +420,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
             // textured geometry (their dispatch call walks an empty pass list, a no-op), so they must NOT
             // appear here; every kind without a textured arm falls into `_ => {}`.
             match instance.kind {
-                EntityModelKind::WindCharge => {
-                    emit_wind_charge_scroll_model(&mut meshes, *instance, atlas);
-                }
                 EntityModelKind::EndCrystal => {
                     emit_end_crystal_textured_model(&mut meshes, *instance, atlas);
                 }
@@ -879,6 +875,28 @@ fn render_scrolled_textured_submission(
     );
 }
 
+pub(in crate::entity_models) fn render_no_overlay_scrolled_textured_layers<M: EntityModel>(
+    meshes: &mut EntityModelTexturedMeshes,
+    model: &M,
+    transform: Mat4,
+    passes: impl IntoIterator<Item = EntityModelLayerPass>,
+    atlas: &EntityModelTextureAtlasLayout,
+    uv_offset: [f32; 2],
+) {
+    for pass in passes {
+        let submit = no_overlay_layer_submission(pass, transform);
+        render_scrolled_textured_submission(meshes, submit, atlas, uv_offset, |mesh, entry| {
+            model.root().render_textured(
+                mesh,
+                submit.transform,
+                submit.texture,
+                entry.uv,
+                submit.tint,
+            );
+        });
+    }
+}
+
 fn render_scroll_geometry_submission(
     meshes: &mut EntityModelTexturedMeshes,
     submit: EntityModelSubmissionEmit,
@@ -1155,36 +1173,6 @@ pub(in crate::entity_models) fn render_textured_layers<M: EntityModel>(
             _ => render_textured_root_pass(meshes, model.root(), transform, pass, atlas),
         }
     }
-}
-
-/// The wind charge's scrolling `breezeWind` overlay (vanilla `WindChargeRenderer`): the whole
-/// `WindChargeModel` rendered with the `breezeWind` render type, whose texture matrix scrolls the U
-/// coordinate by `xOffset(ageInTicks) % 1 = (ageInTicks · 0.03) % 1` (V fixed at `0`). We render the
-/// model once with the normal atlas UVs into a scratch mesh, then fold it into the scrolling-overlay
-/// mesh, baking the per-instance U offset and carrying the atlas sub-rect for the shader's `fract` wrap.
-fn emit_wind_charge_scroll_model(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    let transform = wind_charge_model_root_transform(instance);
-    let passes = wind_charge_textured_layer_passes();
-    let pass = passes[0];
-    let submit = no_overlay_layer_submission(pass, transform);
-    let mut model = WindChargeModel::new();
-    model.prepare(&instance);
-    // Vanilla `WindChargeRenderer.xOffset(t) = t · 0.03`, taken `% 1.0`; `ageInTicks ≥ 0` so the Java
-    // float modulo is `rem_euclid`. V does not scroll.
-    let u_offset = (instance.render_state.age_in_ticks * 0.03).rem_euclid(1.0);
-    render_scrolled_textured_submission(meshes, submit, atlas, [u_offset, 0.0], |mesh, entry| {
-        model.root().render_textured(
-            mesh,
-            submit.transform,
-            submit.texture,
-            entry.uv,
-            submit.tint,
-        );
-    });
 }
 
 /// The breeze's swirling wind body (vanilla `BreezeWindLayer`): the SEPARATE [`BreezeWindModel`] (the

@@ -6,7 +6,9 @@
 //! emitting through whichever [`EntityModelSink`] (colored or textured) the caller supplies. Entities
 //! whose two paths still diverge in model structure, part visibility, single-pass `render_textured_pass`
 //! emits, bespoke hand-walks, or custom layer walkers stay out of here and keep their own per-path
-//! residual arm.
+//! residual arm. Scroll render types can still be dispatched when the model/root/pass tuple is
+//! otherwise uniform; the textured sink folds them into scroll buckets after recording submission
+//! metadata.
 
 use glam::{Mat4, Vec3};
 
@@ -26,9 +28,10 @@ use super::colored::{
     polar_bear_model_root_transform, pufferfish_model_root_transform, salmon_model_root_transform,
     shulker_bullet_model_root_transform, shulker_model_root_transform, slime_model_root_transform,
     squid_model_root_transform, trident_model_root_transform, tropical_fish_model_root_transform,
-    villager_adult_model_root_transform, wither_model_root_transform,
-    wither_skeleton_model_root_transform, wither_skull_model_root_transform, zombie_variant_color,
-    zombie_variant_root_transform, GIANT_SCALE,
+    villager_adult_model_root_transform, wind_charge_model_root_transform,
+    wither_model_root_transform, wither_skeleton_model_root_transform,
+    wither_skull_model_root_transform, zombie_variant_color, zombie_variant_root_transform,
+    GIANT_SCALE,
 };
 use super::geometry::{part_pose_transform, EntityModelMesh};
 use super::instances::EntityModelInstance;
@@ -46,16 +49,17 @@ use super::model_layers::{
     SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SnifferModel,
     SnowGolemModel, SpiderModel, SquidModel, StriderModel, TadpoleModel, TridentModel,
     TropicalFishModel, TropicalFishPatternModel, TurtleModel, VexModel, VillagerModel,
-    WanderingTraderModel, WardenModel, WitchModel, WitherModel, WitherSkullModel, WolfModel,
-    ZombieModel, ZombieVariantModel, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF,
-    COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF, FELINE_CAT_SCALE,
-    GLOW_SQUID_TEAL, GUARDIAN_ELDER_SCALE, MODEL_LAYER_ALLAY, MODEL_LAYER_ARMOR_STAND,
-    MODEL_LAYER_ARMOR_STAND_SMALL, MODEL_LAYER_BAT, MODEL_LAYER_BEE, MODEL_LAYER_BEE_BABY,
-    MODEL_LAYER_COD, MODEL_LAYER_DOLPHIN, MODEL_LAYER_DOLPHIN_BABY, MODEL_LAYER_PUFFERFISH_BIG,
-    MODEL_LAYER_PUFFERFISH_MEDIUM, MODEL_LAYER_PUFFERFISH_SMALL, MODEL_LAYER_STRIDER,
-    MODEL_LAYER_STRIDER_BABY, MODEL_LAYER_TURTLE, MODEL_LAYER_TURTLE_BABY, MODEL_LAYER_VEX,
-    PUFFERFISH_TEXTURE_REF, SQUID_BLUE, TURTLE_BABY_TEXTURE_REF, TURTLE_EGG_ROOT_DROP_POSE,
-    TURTLE_TEXTURE_REF, VEX_CHARGING_TEXTURE_REF, VEX_TEXTURE_REF, WITHER_SKELETON_DARK,
+    WanderingTraderModel, WardenModel, WindChargeModel, WitchModel, WitherModel, WitherSkullModel,
+    WolfModel, ZombieModel, ZombieVariantModel, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF,
+    BAT_TEXTURE_REF, COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF,
+    FELINE_CAT_SCALE, GLOW_SQUID_TEAL, GUARDIAN_ELDER_SCALE, MODEL_LAYER_ALLAY,
+    MODEL_LAYER_ARMOR_STAND, MODEL_LAYER_ARMOR_STAND_SMALL, MODEL_LAYER_BAT, MODEL_LAYER_BEE,
+    MODEL_LAYER_BEE_BABY, MODEL_LAYER_COD, MODEL_LAYER_DOLPHIN, MODEL_LAYER_DOLPHIN_BABY,
+    MODEL_LAYER_PUFFERFISH_BIG, MODEL_LAYER_PUFFERFISH_MEDIUM, MODEL_LAYER_PUFFERFISH_SMALL,
+    MODEL_LAYER_STRIDER, MODEL_LAYER_STRIDER_BABY, MODEL_LAYER_TURTLE, MODEL_LAYER_TURTLE_BABY,
+    MODEL_LAYER_VEX, PUFFERFISH_TEXTURE_REF, SQUID_BLUE, TURTLE_BABY_TEXTURE_REF,
+    TURTLE_EGG_ROOT_DROP_POSE, TURTLE_TEXTURE_REF, VEX_CHARGING_TEXTURE_REF, VEX_TEXTURE_REF,
+    WITHER_SKELETON_DARK,
 };
 use super::textured::{
     armadillo_textured_layer_passes, arrow_textured_layer_passes, axolotl_textured_layer_passes,
@@ -74,19 +78,19 @@ use super::textured::{
     mooshroom_textured_layer_passes, nautilus_textured_layer_passes, panda_textured_layer_passes,
     parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
     piglin_textured_layer_passes, polar_bear_textured_layer_passes, rabbit_textured_layer_passes,
-    ravager_textured_layer_passes, render_textured_layers, salmon_textured_layer_passes,
-    sheep_textured_layer_passes, shulker_bullet_textured_layer_passes,
-    shulker_textured_layer_passes, silverfish_textured_layer_passes,
-    skeleton_textured_layer_passes, slime_textured_layer_passes, sniffer_textured_layer_passes,
-    snow_golem_textured_layer_passes, spider_textured_layer_passes, squid_textured_layer_passes,
-    tadpole_textured_layer_passes, trident_textured_layer_passes,
+    ravager_textured_layer_passes, render_no_overlay_scrolled_textured_layers,
+    render_textured_layers, salmon_textured_layer_passes, sheep_textured_layer_passes,
+    shulker_bullet_textured_layer_passes, shulker_textured_layer_passes,
+    silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
+    sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
+    squid_textured_layer_passes, tadpole_textured_layer_passes, trident_textured_layer_passes,
     tropical_fish_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, warden_textured_layer_passes,
-    witch_textured_layer_passes, wither_skull_textured_layer_passes, wither_textured_layer_passes,
-    wolf_textured_layer_passes, zombie_nautilus_textured_layer_passes,
-    zombie_textured_layer_passes, zombie_villager_textured_layer_passes, EntityModelLayerKind,
-    EntityModelLayerPass, EntityModelLayerRenderType, EntityModelLayerVisibility,
-    EntityModelTexturedMeshes,
+    wind_charge_textured_layer_passes, witch_textured_layer_passes,
+    wither_skull_textured_layer_passes, wither_textured_layer_passes, wolf_textured_layer_passes,
+    zombie_nautilus_textured_layer_passes, zombie_textured_layer_passes,
+    zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerPass,
+    EntityModelLayerRenderType, EntityModelLayerVisibility, EntityModelTexturedMeshes,
 };
 
 /// A render-path-agnostic sink for each model/root-transform/layer-pass tuple in a uniform entity.
@@ -121,6 +125,17 @@ pub(in crate::entity_models) trait EntityModelSink {
         instance: &EntityModelInstance,
         passes: &[EntityModelLayerPass],
         _color: [f32; 4],
+    ) {
+        self.model(model, transform, instance, passes);
+    }
+
+    fn no_overlay_scrolled_model<M: EntityModel>(
+        &mut self,
+        model: M,
+        transform: Mat4,
+        instance: &EntityModelInstance,
+        passes: &[EntityModelLayerPass],
+        _uv_offset: [f32; 2],
     ) {
         self.model(model, transform, instance, passes);
     }
@@ -195,6 +210,25 @@ impl EntityModelSink for TexturedSink<'_> {
             transform,
             passes.iter().cloned(),
             self.atlas,
+        );
+    }
+
+    fn no_overlay_scrolled_model<M: EntityModel>(
+        &mut self,
+        mut model: M,
+        transform: Mat4,
+        instance: &EntityModelInstance,
+        passes: &[EntityModelLayerPass],
+        uv_offset: [f32; 2],
+    ) {
+        model.prepare(instance);
+        render_no_overlay_scrolled_textured_layers(
+            self.meshes,
+            &model,
+            transform,
+            passes.iter().cloned(),
+            self.atlas,
+            uv_offset,
         );
     }
 }
@@ -1020,6 +1054,17 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                 &body_passes,
             )
         }
+        EntityModelKind::WindCharge => {
+            // Vanilla `WindChargeRenderer.xOffset(t) = t * 0.03`, passed to `breezeWind(...) % 1`.
+            let u_offset = (instance.render_state.age_in_ticks * 0.03).rem_euclid(1.0);
+            sink.no_overlay_scrolled_model(
+                WindChargeModel::new(),
+                wind_charge_model_root_transform(*instance),
+                instance,
+                &wind_charge_textured_layer_passes(),
+                [u_offset, 0.0],
+            )
+        }
         EntityModelKind::LlamaSpit => sink.model(
             LlamaSpitModel::new(),
             llama_spit_model_root_transform(*instance),
@@ -1034,8 +1079,6 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
         ),
         // The shulker bullet is not uniform: vanilla renders the base model, then re-submits the same
         // posed model as a larger translucent shell. Colored/textured residual arms handle that split.
-        // The wind charge is NOT uniform: its textured render is the scrolling `breezeWind` overlay
-        // ([`emit_wind_charge_scroll_model`]), so it is handled by the colored + textured residual arms.
         EntityModelKind::EnderDragon => {
             let passes = ender_dragon_textured_layer_passes();
             sink.model(
