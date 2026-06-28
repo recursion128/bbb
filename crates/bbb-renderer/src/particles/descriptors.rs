@@ -131,6 +131,7 @@ pub(crate) enum ParticleInitialVelocityDescriptor {
         scale: f64,
         y_offset: f64,
     },
+    Spell,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -353,6 +354,21 @@ impl ParticleDescriptor {
                     },
                 friction: 0.86,
                 gravity: 0.0,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: true,
+            },
+            "minecraft:infested" | "minecraft:raid_omen" | "minecraft:trial_omen" => Self {
+                provider: "SpellParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::EightOverRandom,
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 0.75,
+                    color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Spell,
+                friction: 0.96,
+                gravity: -0.1,
                 has_physics: false,
                 speed_up_when_y_motion_is_blocked: true,
             },
@@ -775,6 +791,32 @@ impl ParticleInitialVelocityDescriptor {
                     y / length * speed * 0.4 * scale + y_offset,
                     z / length * speed * 0.4 * scale,
                 ]
+            }
+            Self::Spell => {
+                let x = 0.5 - random.next_f64();
+                let y = command_velocity[1];
+                let z = 0.5 - random.next_f64();
+                let x = x + random_signed_velocity(random);
+                let y = y + random_signed_velocity(random);
+                let z = z + random_signed_velocity(random);
+                let speed =
+                    (f64::from(random.next_f32()) + f64::from(random.next_f32()) + 1.0) * 0.15;
+                let length = (x * x + y * y + z * z).sqrt();
+                let mut velocity = if length == 0.0 {
+                    [0.0, 0.1, 0.0]
+                } else {
+                    [
+                        x / length * speed * 0.4,
+                        y / length * speed * 0.4 + 0.1,
+                        z / length * speed * 0.4,
+                    ]
+                };
+                velocity[1] *= 0.2;
+                if command_velocity[0] == 0.0 && command_velocity[2] == 0.0 {
+                    velocity[0] *= 0.1;
+                    velocity[2] *= 0.1;
+                }
+                velocity
             }
         }
     }
@@ -1215,6 +1257,31 @@ mod tests {
                 y_offset: 0.1
             }
         );
+        for particle_id in [
+            "minecraft:infested",
+            "minecraft:raid_omen",
+            "minecraft:trial_omen",
+        ] {
+            assert_descriptor(
+                particle_id,
+                "SpellParticle.Provider",
+                ParticleLifetimeDescriptor::EightOverRandom,
+                ParticleSpriteSelection::Age,
+                ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 0.75,
+                    color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                0.96,
+                -0.1,
+                false,
+                true,
+            );
+            assert_eq!(
+                ParticleDescriptor::for_particle(particle_id).initial_velocity,
+                ParticleInitialVelocityDescriptor::Spell
+            );
+        }
         assert_descriptor(
             "minecraft:small_flame",
             "FlameParticle.SmallFlameProvider",
@@ -1694,6 +1761,18 @@ mod tests {
         assert_range_f64(damage_velocity[0], -0.012, 0.012);
         assert_range_f64(damage_velocity[1], 0.40, 0.43);
         assert_range_f64(damage_velocity[2], -0.012, 0.012);
+
+        let mut still_spell_random = ParticleRandom::new(30);
+        let still_spell_velocity = ParticleInitialVelocityDescriptor::Spell
+            .sample([0.0, 1.0, 0.0], &mut still_spell_random);
+        let mut moving_spell_random = ParticleRandom::new(30);
+        let moving_spell_velocity = ParticleInitialVelocityDescriptor::Spell
+            .sample([1.0, 1.0, 0.0], &mut moving_spell_random);
+        assert_range_f64(still_spell_velocity[0].abs(), 0.0, 0.008);
+        assert_range_f64(still_spell_velocity[1], 0.0, 0.06);
+        assert_range_f64(still_spell_velocity[2].abs(), 0.0, 0.008);
+        assert_close_f64(still_spell_velocity[0], moving_spell_velocity[0] * 0.1);
+        assert_close_f64(still_spell_velocity[2], moving_spell_velocity[2] * 0.1);
     }
 
     #[test]
@@ -1763,6 +1842,13 @@ mod tests {
     fn assert_close_f32(actual: f32, expected: f32) {
         assert!(
             (actual - expected).abs() < 1.0e-6,
+            "expected {expected}, got {actual}"
+        );
+    }
+
+    fn assert_close_f64(actual: f64, expected: f64) {
+        assert!(
+            (actual - expected).abs() < 1.0e-9,
             "expected {expected}, got {actual}"
         );
     }

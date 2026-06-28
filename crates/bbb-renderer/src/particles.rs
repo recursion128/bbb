@@ -1048,6 +1048,24 @@ mod tests {
         assert!(note.speed_up_when_y_motion_is_blocked);
         assert_range_f64(note.velocity[1], 0.198, 0.202);
 
+        let mut spell_random = ParticleRandom::new(61);
+        let mut spell_command = spawn_command("minecraft:infested", 1.0);
+        spell_command.velocity = [0.0, 1.0, 0.0];
+        let spell = ParticleInstance::from_spawn_command(spell_command, &mut spell_random);
+        assert_eq!(spell.provider, "SpellParticle.Provider");
+        assert_eq!(spell.sprite_selection, ParticleSpriteSelection::Age);
+        assert_eq!(spell.quad_size_curve, ParticleQuadSizeCurve::Constant);
+        assert_range_f32(spell.base_quad_size, 0.075, 0.15);
+        assert_eq!(spell.color, [1.0, 1.0, 1.0, 1.0]);
+        assert!((8..=40).contains(&spell.lifetime_ticks));
+        assert_eq!(spell.friction, 0.96);
+        assert_eq!(spell.gravity, -0.1);
+        assert!(!spell.has_physics);
+        assert!(spell.speed_up_when_y_motion_is_blocked);
+        assert_range_f64(spell.velocity[0].abs(), 0.0, 0.008);
+        assert_range_f64(spell.velocity[1], 0.0, 0.06);
+        assert_range_f64(spell.velocity[2].abs(), 0.0, 0.008);
+
         let mut crit_random = ParticleRandom::new(56);
         let mut crit_command = spawn_command("minecraft:crit", 1.0);
         crit_command.velocity = [0.5, 0.25, -0.5];

@@ -253,6 +253,13 @@ When an agent does any of the following, update this file in the same slice:
         quad-size formulas while using `40 / (random * 0.8 + 0.2)` lifetime,
         `-0.125` gravity, and `0.85` friction; water-fluid removal remains
         deferred with broader particle collision/physics work
+      - Simple `SpellParticle.Provider` particles (`infested`, `raid_omen`,
+        `trial_omen`) use the vanilla random horizontal constructor velocity,
+        y-velocity scaling, still-horizontal x/z dampening, age sprite
+        selection, `0.75` quad-size scale, `8 / (random * 0.8 + 0.2)`
+        lifetime, `0.96` friction, `-0.1` gravity, no physics, and
+        blocked-y speed-up metadata; option-colored spell providers remain
+        deferred until particle option payloads are represented
     - Uploads a stitched official particle atlas when assets are available.
     - Draws active particles as camera-facing textured billboards.
   - Follow-up work in the plan:
