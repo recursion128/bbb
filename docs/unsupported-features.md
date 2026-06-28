@@ -1434,6 +1434,9 @@ When an agent does any of the following, update this file in the same slice:
         WINGS branches now also pin entity light plus no-overlay metadata on both
         the submission and folded dynamic texture vertices. World/native also project
         vanilla `LivingEntity.elytraAnimationState` rotX/Y/Z into the renderer,
+        and renderer WingsLayer submissions now run through a dispatch-owned
+        post-CustomHead hook instead of a direct post-base helper call,
+        preserving vanilla CustomHead -> Wings append order.
         and the same WINGS path now covers humanoid mobs, armor stands (small
         armor stands select the baby layer through `ArmorStand.isBaby()`), and
         baby humanoid mob `ELYTRA_BABY` geometry; their static equipment wings
@@ -1537,7 +1540,9 @@ When an agent does any of the following, update this file in the same slice:
       `wings_layer_pass` with vanilla `ModelLayers.ELYTRA` / `ModelLayers.ELYTRA_BABY` plus
       elytra animation-state projection are covered for vanilla elytra equipment
       on players, humanoid mobs, armor stands, and baby humanoid mobs; player
-      cloak interpolation now feeds the cape flap/lean/lean2 values. Player shoulder
+      cloak interpolation now feeds the cape flap/lean/lean2 values. WingsLayer
+      submissions now run through a dispatch-owned post-CustomHead hook rather
+      than a direct post-base helper call. Player shoulder
       parrots are now projected from `Player.DATA_SHOULDER_PARROT_LEFT/RIGHT`
       metadata ids `19`/`20` (`OPTIONAL_UNSIGNED_INT`) into `AvatarRenderState`
       equivalents; `ParrotOnShoulderLayer` is represented as explicit left/right
@@ -2625,7 +2630,9 @@ When an agent does any of the following, update this file in the same slice:
       texture-backed submissions through the marker hidden/glowing no-base path
       and inherited living invisible branches, preserving vanilla texture,
       render type, transform, light, no-overlay, outline-color, order, and
-      submit-sequence metadata. The native item-model pass is now covered for
+      submit-sequence metadata; WingsLayer uses the same dispatch-owned
+      post-CustomHead hook in these invisible branches as in the visible path.
+      The native item-model pass is now covered for
       marker hidden/glowing armor-stand held items and generic non-skull
       `CustomHeadLayer` HEAD items as well: `held_item_models` still bakes the
       main-hand and HEAD item meshes when the base body records no submission.
