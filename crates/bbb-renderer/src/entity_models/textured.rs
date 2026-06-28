@@ -450,8 +450,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         emit_equine_body_armor_layer(&mut meshes, *instance, atlas);
         // Horse/donkey/mule/undead-horse saddles use the shared EquineSaddleModel tree.
         emit_equine_saddle_layer(&mut meshes, *instance, atlas);
-        // Strider saddles reuse the adult strider body layer with the strider equipment texture.
-        emit_strider_saddle_layer(&mut meshes, *instance, atlas);
         // Camel and camel-husk saddles use the adult CamelSaddleModel tree.
         emit_camel_saddle_layer(&mut meshes, *instance, atlas);
         // LlamaDecorLayer appends adult carpet or trader-llama body decor after the base body.
@@ -2408,7 +2406,7 @@ fn emit_equine_body_armor_layer(
 /// Vanilla `StriderRenderer` `SimpleEquipmentLayer(STRIDER_SADDLE)`: a non-empty saddle item renders
 /// `AdultStriderModel(ModelLayers.STRIDER_SADDLE)` with `strider_saddle/saddle.png`. The layer has no
 /// baby model, so baby striders skip it.
-fn emit_strider_saddle_layer(
+pub(in crate::entity_models) fn render_strider_saddle_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
@@ -2417,6 +2415,9 @@ fn emit_strider_saddle_layer(
         return;
     }
     if !matches!(instance.kind, EntityModelKind::Strider { baby: false, .. }) {
+        return;
+    }
+    if meshes.current_force_transparent || meshes.current_outline_only {
         return;
     }
 

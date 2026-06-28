@@ -90,8 +90,8 @@ use super::textured::{
     render_donkey_textured_layers, render_end_crystal_beam, render_end_crystal_textured_layers,
     render_ender_dragon_beam, render_guardian_beam, render_horse_textured_layers,
     render_no_overlay_scrolled_textured_layers, render_pig_saddle_layer, render_player_cape_layer,
-    render_player_extra_ears_layer, render_player_textured_layers, render_textured_layers,
-    render_trident_foil_submission, render_undead_horse_textured_layers,
+    render_player_extra_ears_layer, render_player_textured_layers, render_strider_saddle_layer,
+    render_textured_layers, render_trident_foil_submission, render_undead_horse_textured_layers,
     render_wither_energy_swirl, salmon_textured_layer_passes, sheep_textured_layer_passes,
     shulker_bullet_textured_layer_passes, shulker_textured_layer_passes,
     silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
@@ -105,6 +105,23 @@ use super::textured::{
     zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerPass,
     EntityModelLayerRenderType, EntityModelLayerVisibility, EntityModelTexturedMeshes,
 };
+
+fn strider_base_layer_pass(baby: bool, cold: bool) -> EntityModelLayerPass {
+    EntityModelLayerPass {
+        kind: EntityModelLayerKind::StriderBase,
+        render_type: EntityModelLayerRenderType::EntityCutout,
+        model_layer: if baby {
+            MODEL_LAYER_STRIDER_BABY
+        } else {
+            MODEL_LAYER_STRIDER
+        },
+        texture: strider_texture_ref(baby, cold),
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        order: 0,
+        submit_sequence: 0,
+    }
+}
 
 /// A render-path-agnostic sink for each model/root-transform/layer-pass tuple in a uniform entity.
 /// [`dispatch_uniform_entity_model`] drives this; the colored implementation renders the cube tree
@@ -187,6 +204,15 @@ pub(in crate::entity_models) trait EntityModelSink {
             entity_model_root_transform(*instance),
             instance,
             &pig_textured_layer_passes(variant, baby),
+        );
+    }
+
+    fn strider_model(&mut self, baby: bool, cold: bool, instance: &EntityModelInstance) {
+        self.model(
+            StriderModel::new(baby),
+            entity_model_root_transform(*instance),
+            instance,
+            &[strider_base_layer_pass(baby, cold)],
         );
     }
 
@@ -494,6 +520,16 @@ impl EntityModelSink for TexturedSink<'_> {
             &pig_textured_layer_passes(variant, baby),
         );
         render_pig_saddle_layer(self.meshes, *instance, self.atlas);
+    }
+
+    fn strider_model(&mut self, baby: bool, cold: bool, instance: &EntityModelInstance) {
+        self.model(
+            StriderModel::new(baby),
+            entity_model_root_transform(*instance),
+            instance,
+            &[strider_base_layer_pass(baby, cold)],
+        );
+        render_strider_saddle_layer(self.meshes, *instance, self.atlas);
     }
 
     fn player_model(
@@ -1128,25 +1164,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                 submit_sequence: 0,
             }],
         ),
-        EntityModelKind::Strider { baby, cold } => sink.model(
-            StriderModel::new(baby),
-            entity_model_root_transform(*instance),
-            instance,
-            &[EntityModelLayerPass {
-                kind: EntityModelLayerKind::StriderBase,
-                render_type: EntityModelLayerRenderType::EntityCutout,
-                model_layer: if baby {
-                    MODEL_LAYER_STRIDER_BABY
-                } else {
-                    MODEL_LAYER_STRIDER
-                },
-                texture: strider_texture_ref(baby, cold),
-                visibility: EntityModelLayerVisibility::All,
-                tint: [1.0, 1.0, 1.0, 1.0],
-                order: 0,
-                submit_sequence: 0,
-            }],
-        ),
+        EntityModelKind::Strider { baby, cold } => sink.strider_model(baby, cold, instance),
         EntityModelKind::Bat => sink.model(
             BatModel::new(),
             entity_model_root_transform(*instance),
