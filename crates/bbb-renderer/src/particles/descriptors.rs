@@ -20,6 +20,7 @@ pub(crate) enum ParticleTickMotionDescriptor {
     #[default]
     DefaultParticleTick,
     DirectGravityNoFriction,
+    NoMotion,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -63,6 +64,7 @@ pub(crate) enum ParticleVisualDescriptor {
     },
     Bubble,
     Note,
+    AttackSweep,
     SingleQuadScaled {
         scale: f32,
         color: ParticleColorDescriptor,
@@ -145,6 +147,7 @@ pub(crate) enum ParticleInitialVelocityDescriptor {
     ParticleConstructorScaled {
         scale: f64,
     },
+    ParticleConstructorZero,
     ParticleConstructorZeroScaledPlusCommand {
         scale: f64,
     },
@@ -231,6 +234,17 @@ impl ParticleDescriptor {
                 initial_velocity: ParticleInitialVelocityDescriptor::Command,
                 friction: 0.98,
                 gravity: 0.008,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:sweep_attack" => Self {
+                provider: "AttackSweepParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::Fixed(4),
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::AttackSweep,
+                initial_velocity: ParticleInitialVelocityDescriptor::ParticleConstructorZero,
+                friction: 0.98,
+                gravity: 0.0,
                 has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
@@ -848,6 +862,7 @@ impl ParticleDescriptor {
     pub(crate) fn tick_motion(self) -> ParticleTickMotionDescriptor {
         match self.provider {
             "BubblePopParticle.Provider" => ParticleTickMotionDescriptor::DirectGravityNoFriction,
+            "AttackSweepParticle.Provider" => ParticleTickMotionDescriptor::NoMotion,
             _ => ParticleTickMotionDescriptor::DefaultParticleTick,
         }
     }
@@ -892,6 +907,15 @@ impl ParticleVisualDescriptor {
                 note_color(command_velocity[0] as f32),
                 ParticleQuadSizeCurve::GrowToBase,
             ),
+            Self::AttackSweep => {
+                let color = random.next_f32() * 0.6 + 0.4;
+                let size = 1.0 - command_velocity[0] as f32 * 0.5;
+                ParticleVisualState::new(
+                    size,
+                    [color, color, color, 1.0],
+                    ParticleQuadSizeCurve::Constant,
+                )
+            }
             Self::SingleQuadScaled {
                 scale,
                 color,
@@ -1035,6 +1059,22 @@ impl ParticleInitialVelocityDescriptor {
                     x / length * speed * 0.4 * scale,
                     (y / length * speed * 0.4 + 0.1) * scale,
                     z / length * speed * 0.4 * scale,
+                ]
+            }
+            Self::ParticleConstructorZero => {
+                let x = random_signed_velocity(random);
+                let y = random_signed_velocity(random);
+                let z = random_signed_velocity(random);
+                let speed =
+                    (f64::from(random.next_f32()) + f64::from(random.next_f32()) + 1.0) * 0.15;
+                let length = (x * x + y * y + z * z).sqrt();
+                if length == 0.0 {
+                    return [0.0, 0.1, 0.0];
+                }
+                [
+                    x / length * speed * 0.4,
+                    y / length * speed * 0.4 + 0.1,
+                    z / length * speed * 0.4,
                 ]
             }
             Self::ParticleConstructorZeroScaledPlusCommand { scale } => {
@@ -1426,6 +1466,26 @@ mod tests {
         assert_eq!(
             bubble_pop.tick_motion(),
             ParticleTickMotionDescriptor::DirectGravityNoFriction
+        );
+        assert_descriptor(
+            "minecraft:sweep_attack",
+            "AttackSweepParticle.Provider",
+            ParticleLifetimeDescriptor::Fixed(4),
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::AttackSweep,
+            0.98,
+            0.0,
+            true,
+            false,
+        );
+        let sweep_attack = ParticleDescriptor::for_particle("minecraft:sweep_attack");
+        assert_eq!(
+            sweep_attack.initial_velocity,
+            ParticleInitialVelocityDescriptor::ParticleConstructorZero
+        );
+        assert_eq!(
+            sweep_attack.tick_motion(),
+            ParticleTickMotionDescriptor::NoMotion
         );
 
         assert_descriptor(
@@ -2144,6 +2204,16 @@ mod tests {
         assert_eq!(single_quad.color, WHITE_PARTICLE_COLOR);
         assert_eq!(single_quad.quad_size_curve, ParticleQuadSizeCurve::Constant);
 
+        let mut sweep_random = ParticleRandom::new(42);
+        let sweep = ParticleVisualDescriptor::AttackSweep
+            .sample_for_command(&mut sweep_random, [0.5, 0.0, 0.0]);
+        assert_close_f32(sweep.base_quad_size, 0.75);
+        assert_range_f32(sweep.color[0], 0.4, 1.0);
+        assert_eq!(sweep.color[0], sweep.color[1]);
+        assert_eq!(sweep.color[1], sweep.color[2]);
+        assert_eq!(sweep.color[3], 1.0);
+        assert_eq!(sweep.quad_size_curve, ParticleQuadSizeCurve::Constant);
+
         let mut small_flame_random = ParticleRandom::new(7);
         let small_flame = ParticleVisualDescriptor::Flame { scale: 0.5 }
             .sample_for_command(&mut small_flame_random, [0.0, 0.0, 0.0]);
@@ -2483,6 +2553,14 @@ mod tests {
         assert_range_f64(bubble_velocity[0], 0.18, 0.22);
         assert_range_f64(bubble_velocity[1], 0.38, 0.42);
         assert_range_f64(bubble_velocity[2], 0.58, 0.62);
+
+        let mut zero_constructor_random = ParticleRandom::new(40);
+        let zero_constructor_velocity = ParticleInitialVelocityDescriptor::ParticleConstructorZero
+            .sample([9.0, 9.0, 9.0], &mut zero_constructor_random);
+        assert_ne!(zero_constructor_velocity, [0.0, 0.0, 0.0]);
+        assert_range_f64(zero_constructor_velocity[0], -0.2, 0.2);
+        assert_range_f64(zero_constructor_velocity[1], 0.0, 0.25);
+        assert_range_f64(zero_constructor_velocity[2], -0.2, 0.2);
 
         let mut explode_random = ParticleRandom::new(41);
         let explode_velocity = ParticleInitialVelocityDescriptor::CommandScaledPlusRandom {

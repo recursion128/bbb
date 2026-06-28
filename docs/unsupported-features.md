@@ -4547,6 +4547,11 @@ When an agent does any of the following, update this file in the same slice:
         `4`, age sprites, command velocity, default `SingleQuadParticle` white
         tint / quad-size sampling, gravity `0.008`, and its custom tick path
         that subtracts full gravity without applying default friction.
+      - particle descriptors map `AttackSweepParticle.Provider` to xAux-derived
+        quad size, random gray tint, fixed lifetime `4`, age sprites, vanilla
+        zero-aux `Particle` constructor velocity sampling, and its no-motion
+        tick path. Full-bright light coords remain deferred until per-particle
+        light state is represented.
     - native dispatcher and offline probe recording/playback for
       `LevelEventHandler` portal travel local ambience:
       - event `1032`

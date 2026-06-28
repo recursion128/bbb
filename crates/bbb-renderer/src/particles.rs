@@ -405,6 +405,7 @@ impl ParticleInstance {
                 self.position[1] += self.velocity[1];
                 self.position[2] += self.velocity[2];
             }
+            ParticleTickMotionDescriptor::NoMotion => {}
         }
     }
 
@@ -785,6 +786,25 @@ mod tests {
     }
 
     #[test]
+    fn particle_runtime_no_motion_tick_preserves_attack_sweep_position_and_velocity() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:sweep_attack", 20);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.previous_position = [0.0, 0.0, 0.0];
+        instance.velocity = [0.5, 0.25, -0.5];
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.expired_instances, 0);
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 1);
+        assert_close3(instance.previous_position, [1.0, 2.0, 3.0]);
+        assert_close3(instance.position, [1.0, 2.0, 3.0]);
+        assert_close3(instance.velocity, [0.5, 0.25, -0.5]);
+    }
+
+    #[test]
     fn particle_runtime_moves_particles_even_when_physics_is_disabled() {
         let mut particles = ParticleRuntimeState::with_capacities(4, 4);
         let mut instance = test_instance_with_lifetime("minecraft:flame", 20);
@@ -1103,6 +1123,25 @@ mod tests {
             bubble_pop.tick_motion,
             ParticleTickMotionDescriptor::DirectGravityNoFriction
         );
+
+        let mut sweep_random = ParticleRandom::new(76);
+        let mut sweep_command = spawn_command("minecraft:sweep_attack", 1.0);
+        sweep_command.velocity = [0.5, 0.0, 0.0];
+        let sweep = ParticleInstance::from_spawn_command(sweep_command, &mut sweep_random);
+        assert_eq!(sweep.provider, "AttackSweepParticle.Provider");
+        assert_eq!(sweep.sprite_selection, ParticleSpriteSelection::Age);
+        assert_eq!(sweep.quad_size_curve, ParticleQuadSizeCurve::Constant);
+        assert_close_f32(sweep.base_quad_size, 0.75);
+        assert_range_f32(sweep.color[0], 0.4, 1.0);
+        assert_eq!(sweep.color[0], sweep.color[1]);
+        assert_eq!(sweep.color[1], sweep.color[2]);
+        assert_eq!(sweep.color[3], 1.0);
+        assert_eq!(sweep.lifetime_ticks, 4);
+        assert_eq!(sweep.friction, 0.98);
+        assert_eq!(sweep.gravity, 0.0);
+        assert!(sweep.has_physics);
+        assert_ne!(sweep.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(sweep.tick_motion, ParticleTickMotionDescriptor::NoMotion);
 
         let mut glow_random = ParticleRandom::new(67);
         let mut glow_command = spawn_command("minecraft:glow", 1.0);
