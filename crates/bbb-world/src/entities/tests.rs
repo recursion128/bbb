@@ -2505,10 +2505,18 @@ fn entity_model_sources_project_llama_body_decor_from_body_slot() {
 fn entity_model_sources_project_in_water_from_world_fluid() {
     // Vanilla `LivingEntityRenderState.isInWater = entity.isInWater()`: the scene projects
     // the `wasTouchingWater` overlap of the entity's world AABB against the chunk fluid
-    // state. A cod (0.5 × 0.3 box) submerged in a water source block is in water; the same
-    // cod in air is not.
+    // state. A cod (0.5 × 0.3 box) and a horse (whose `AbstractEquineModel.setupAnim`
+    // slows the leg phase in water) submerged in source water are in water; the same
+    // entities in air are not.
     const VANILLA_ENTITY_TYPE_COD_ID: i32 = 27;
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
+    let source_by_id = |store: &WorldStore, entity_id| {
+        store
+            .entity_model_sources_at_partial_tick(1.0)
+            .into_iter()
+            .find(|source| source.entity_id == entity_id)
+            .expect("entity source")
+    };
 
     let mut store = WorldStore::with_dimension(crate::WorldDimension {
         min_y: 0,
@@ -2534,20 +2542,52 @@ fn entity_model_sources_project_in_water_from_world_fluid() {
         y_head_rot: 0.0,
         data: 99,
     });
+    store.apply_add_entity(ProtocolAddEntity {
+        id: 52,
+        uuid: default_entity_uuid(),
+        entity_type_id: VANILLA_ENTITY_TYPE_HORSE_ID,
+        position: ProtocolVec3d {
+            x: 8.5,
+            y: 2.0,
+            z: 10.5,
+        },
+        delta_movement: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 99,
+    });
 
-    let dry = store.entity_model_sources_at_partial_tick(1.0);
-    assert_eq!(dry.len(), 1);
-    assert!(!dry[0].in_water, "a cod in air is not in water");
+    assert!(
+        !source_by_id(&store, 50).in_water,
+        "a cod in air is not in water"
+    );
+    assert!(
+        !source_by_id(&store, 52).in_water,
+        "a horse in air is not in water"
+    );
 
     assert!(store.apply_block_update(ProtocolBlockUpdate {
         pos: ProtocolBlockPos { x: 8, y: 2, z: 8 },
         block_state_id: SOURCE_WATER_BLOCK_STATE_ID,
     }));
-    let wet = store.entity_model_sources_at_partial_tick(1.0);
-    assert_eq!(wet.len(), 1);
-    assert!(wet[0].in_water, "a cod inside a water column is in water");
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos { x: 8, y: 2, z: 10 },
+        block_state_id: SOURCE_WATER_BLOCK_STATE_ID,
+    }));
+    let wet_cod = source_by_id(&store, 50);
+    let wet_horse = source_by_id(&store, 52);
+    assert!(wet_cod.in_water, "a cod inside a water column is in water");
     assert!(
-        !wet[0].boat_underwater,
+        wet_horse.in_water,
+        "a horse inside a water column is in water"
+    );
+    assert!(
+        !wet_cod.boat_underwater && !wet_horse.boat_underwater,
         "non-boat entities keep the boat-only underwater flag unset"
     );
 }

@@ -325,7 +325,9 @@ When an agent does any of the following, update this file in the same slice:
       `[2, 3, 4, 5]` adult / `[4, 5, 6, 7]` with-chest / `[1, 2, 3, 4]` baby, colored and
       textured paths), and the equines (`AbstractEquineModel` horse/donkey/mule/skeleton-horse/
       zombie-horse, the front-`0.8`/hind-`0.5` gait, legs `[2, 3, 4, 5]` adult /
-      `[1, 2, 3, 4]` baby horse and nested baby donkey/mule body children, plus the
+      `[1, 2, 3, 4]` baby horse and nested baby donkey/mule body children, including the
+      vanilla `waterMultiplier = isInWater ? 0.2 : 1.0` leg-phase slowdown from projected
+      `in_water`, plus the
       neck head look/bob — yaw clamped to ±20°, pitch onto the π/6 tilt, and a
       `cos(pos * 0.8) * 0.15 * speed` walk bob — at `head_parts`
       `1` adult / `5` baby horse; baby donkey/mule keep the superclass yaw clamp but
@@ -1797,7 +1799,8 @@ When an agent does any of the following, update this file in the same slice:
       because vanilla supplies no baby armor model. The tail yRot wag is renderer-supported from
       explicit `EquineRenderState.animateTail` (`tail.yRot = cos(ageInTicks * 0.7)`), while source
       projection of vanilla's client-random `AbstractHorse.tailCounter` remains deferred. The
-      ridden/eat/stand/mouth poses and the in-water leg-frequency scaling remain unsupported
+      in-water leg-frequency multiplier is supported from projected `in_water` (`isInWater()`
+      -> `waterMultiplier = 0.2`). The ridden/eat/stand/mouth poses remain unsupported
     - donkey and mule entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `DonkeyModel`, `BabyDonkeyModel`, and
       `DonkeyRenderer`. The ADULT donkey/mule now renders on the **textured
