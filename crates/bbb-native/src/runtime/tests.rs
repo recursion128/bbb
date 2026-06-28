@@ -30,6 +30,7 @@ const TOOLTIP_TEST_AQUA: [f32; 4] = [85.0 / 255.0, 1.0, 1.0, 1.0];
 const TOOLTIP_TEST_DARK_PURPLE: [f32; 4] = [170.0 / 255.0, 0.0, 170.0 / 255.0, 1.0];
 const VANILLA_26_1_PLAYER_ENTITY_TYPE_ID: i32 = 155;
 const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
+const TEST_LIGHT_ARRAY_BYTES: usize = 2048;
 
 fn tooltip_line(text: &str, tint: [f32; 4]) -> HudInventoryTooltipLine {
     HudInventoryTooltipLine {
@@ -208,6 +209,57 @@ fn lightmap_environment_applies_overworld_weather_layers_after_timeline() {
         dry_thunder_environment.sky_light_color,
         VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
     );
+}
+
+#[test]
+fn lightmap_tick_state_smooths_rain_fog_multiplier_like_vanilla_atmospheric_fog() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));
+    world.insert_decoded_chunk(empty_lightmap_test_chunk_with_sky_light(
+        world.dimension(),
+        0,
+        15,
+    ));
+    set_world_weather(&mut world, 1.0, 0.0);
+
+    let mut lightmap = LightmapTickState::with_seed(0);
+    lightmap.advance_for_world(1, &world);
+    assert!((lightmap.rain_fog_multiplier() - 0.2).abs() < 1e-6);
+
+    lightmap.advance_for_world(1, &world);
+    assert!((lightmap.rain_fog_multiplier() - 0.36).abs() < 1e-6);
+
+    set_world_weather(&mut world, 0.0, 0.0);
+    lightmap.advance_for_world(1, &world);
+    assert!((lightmap.rain_fog_multiplier() - 0.288).abs() < 1e-6);
+}
+
+#[test]
+fn lightmap_tick_state_gates_rain_fog_multiplier_by_camera_sky_light() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));
+    world.insert_decoded_chunk(empty_lightmap_test_chunk_with_sky_light(
+        world.dimension(),
+        0,
+        8,
+    ));
+    assert_eq!(
+        camera_block_position(&world),
+        Some(BlockPos { x: 0, y: 1, z: 0 })
+    );
+    assert_eq!(
+        world
+            .sample_block_light(BlockPos { x: 0, y: 1, z: 0 })
+            .unwrap()
+            .sky,
+        8
+    );
+    set_world_weather(&mut world, 1.0, 0.0);
+
+    let mut lightmap = LightmapTickState::with_seed(0);
+    lightmap.advance_for_world(1, &world);
+
+    assert_eq!(lightmap.rain_fog_multiplier(), 0.0);
 }
 
 #[test]
@@ -407,6 +459,7 @@ fn fog_environment_uses_vanilla_render_distance_range_and_dimension_fog_distance
         camera_pose_from_world(&overworld),
         12,
         0.0,
+        0.0,
         false,
     );
     assert_fog_environment_close(
@@ -429,6 +482,7 @@ fn fog_environment_uses_vanilla_render_distance_range_and_dimension_fog_distance
         camera_pose_from_world(&nether),
         20,
         0.0,
+        0.0,
         false,
     );
     assert_eq!(fog.environmental_start, VANILLA_NETHER_FOG_START_DISTANCE);
@@ -436,6 +490,30 @@ fn fog_environment_uses_vanilla_render_distance_range_and_dimension_fog_distance
     assert_eq!(fog.render_distance_start, 288.0);
     assert_eq!(fog.render_distance_end, 320.0);
     assert_eq!(fog.sky_end, 320.0);
+    assert_eq!(fog.cloud_end, VANILLA_DEFAULT_CLOUD_FOG_END_DISTANCE);
+}
+
+#[test]
+fn fog_environment_applies_vanilla_rain_fog_distance_multiplier() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, 6_000);
+
+    let fog = fog_environment_for_world_at_camera(
+        &world,
+        &TerrainTextureState::default(),
+        camera_pose_from_world(&world),
+        12,
+        0.0,
+        0.5,
+        false,
+    );
+
+    assert_eq!(fog.environmental_start, -80.0);
+    assert_eq!(fog.environmental_end, 896.0);
+    assert_eq!(
+        fog.sky_end,
+        VANILLA_DEFAULT_SKY_FOG_END_DISTANCE.min(12.0 * 16.0)
+    );
     assert_eq!(fog.cloud_end, VANILLA_DEFAULT_CLOUD_FOG_END_DISTANCE);
 }
 
@@ -449,6 +527,7 @@ fn fog_environment_clamps_atmospheric_distance_for_boss_world_fog() {
         &TerrainTextureState::default(),
         camera_pose_from_world(&world),
         12,
+        0.0,
         0.0,
         false,
     );
@@ -480,6 +559,7 @@ fn fog_environment_uses_water_fog_distances_when_eye_is_in_water() {
         camera_pose_from_world(&world),
         12,
         0.5,
+        0.0,
         false,
     );
 
@@ -1098,6 +1178,26 @@ fn empty_lightmap_test_chunk_with_biome(dimension: WorldDimension, biome_id: i32
     )
 }
 
+fn empty_lightmap_test_chunk_with_sky_light(
+    dimension: WorldDimension,
+    biome_id: i32,
+    sky_light: u8,
+) -> ChunkColumn {
+    let mut chunk = empty_lightmap_test_chunk_with_biome(dimension, biome_id);
+    let mut sky = vec![0; TEST_LIGHT_ARRAY_BYTES];
+    set_test_light_nibble(&mut sky, section_block_index(0, 1, 0), sky_light);
+    let light_section_index = 0 - (dimension.min_section_y() - 1);
+    chunk.light = LightData {
+        sky_y_mask: single_bit_mask(usize::try_from(light_section_index).unwrap()),
+        block_y_mask: Vec::new(),
+        empty_sky_y_mask: Vec::new(),
+        empty_block_y_mask: Vec::new(),
+        sky_updates: vec![sky],
+        block_updates: Vec::new(),
+    };
+    chunk
+}
+
 fn empty_lightmap_test_chunk_with_biomes(
     dimension: WorldDimension,
     biomes: PalettedContainerData,
@@ -1192,6 +1292,22 @@ fn set_lightmap_test_block(world: &mut WorldStore, pos: BlockPos, block_state_id
         },
         block_state_id,
     }));
+}
+
+fn section_block_index(x: u8, y: u8, z: u8) -> usize {
+    ((y as usize) << 8) | ((z as usize) << 4) | x as usize
+}
+
+fn single_bit_mask(bit: usize) -> Vec<i64> {
+    let mut words = vec![0; bit / 64 + 1];
+    words[bit / 64] = (1u64 << (bit % 64)) as i64;
+    words
+}
+
+fn set_test_light_nibble(layer: &mut [u8], nibble_index: usize, value: u8) {
+    let byte = layer.get_mut(nibble_index / 2).unwrap();
+    let shift = (nibble_index % 2) * 4;
+    *byte = (*byte & !(0x0f << shift)) | ((value & 0x0f) << shift);
 }
 
 fn assert_close3(actual: [f32; 3], expected: [f32; 3]) {

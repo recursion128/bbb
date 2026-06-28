@@ -89,6 +89,11 @@ const VANILLA_DEFAULT_CLOUD_FOG_END_DISTANCE: f32 = 2048.0;
 const VANILLA_DEFAULT_CLOUD_RANGE_CHUNKS: f32 = 128.0;
 const VANILLA_DEFAULT_WATER_FOG_START_DISTANCE: f32 = -8.0;
 const VANILLA_DEFAULT_WATER_FOG_END_DISTANCE: f32 = 96.0;
+const VANILLA_RAIN_FOG_MIN_SKY_LIGHT: f32 = 8.0;
+const VANILLA_RAIN_FOG_SKY_LIGHT_RANGE: f32 = 7.0;
+const VANILLA_RAIN_FOG_START_OFFSET: f32 = -160.0;
+const VANILLA_RAIN_FOG_END_OFFSET: f32 = -256.0;
+const VANILLA_RAIN_FOG_SMOOTHING_PER_TICK: f32 = 0.2;
 const VANILLA_GAUSSIAN_SAMPLE_KERNEL: [f64; 7] = [0.0, 1.0, 4.0, 6.0, 4.0, 1.0, 0.0];
 const VANILLA_SKY_FLASH_SKY_COLOR: i32 = argb_color(255, 204, 204, 255);
 const VANILLA_SKY_FLASH_SKY_COLOR_ALPHA: f32 = 0.22;
@@ -353,6 +358,7 @@ pub(crate) struct LightmapTickState {
     end_flash_state: EndFlashLightmapState,
     boss_overlay_world_darkening: f32,
     boss_overlay_world_darkening_previous_frame: f32,
+    rain_fog_multiplier: f32,
     hide_lightning_flash: bool,
 }
 
@@ -369,6 +375,7 @@ impl Default for LightmapTickState {
             end_flash_state: EndFlashLightmapState::default(),
             boss_overlay_world_darkening: 0.0,
             boss_overlay_world_darkening_previous_frame: 0.0,
+            rain_fog_multiplier: 0.0,
             hide_lightning_flash: false,
         }
     }
@@ -399,6 +406,7 @@ impl LightmapTickState {
             end_flash_state: EndFlashLightmapState::default(),
             boss_overlay_world_darkening: 0.0,
             boss_overlay_world_darkening_previous_frame: 0.0,
+            rain_fog_multiplier: 0.0,
             hide_lightning_flash: false,
         }
     }
@@ -416,6 +424,7 @@ impl LightmapTickState {
             end_flash_state: EndFlashLightmapState::default(),
             boss_overlay_world_darkening: 0.0,
             boss_overlay_world_darkening_previous_frame: 0.0,
+            rain_fog_multiplier: 0.0,
             hide_lightning_flash: false,
         }
     }
@@ -444,6 +453,7 @@ impl LightmapTickState {
             self.tick_water_vision(world);
             self.tick_end_flash(world);
             self.tick_boss_overlay_world_darkening(world);
+            self.tick_rain_fog(world);
         }
         self.client_tick_count = self.client_tick_count.saturating_add(ticks as u64);
         self.block_factor()
@@ -573,6 +583,16 @@ impl LightmapTickState {
         self.boss_overlay_world_darkening_previous_frame
             + (self.boss_overlay_world_darkening - self.boss_overlay_world_darkening_previous_frame)
                 * partial_tick
+    }
+
+    fn tick_rain_fog(&mut self, world: &WorldStore) {
+        let target = atmospheric_rain_fog_target_multiplier(world);
+        self.rain_fog_multiplier +=
+            (target - self.rain_fog_multiplier) * VANILLA_RAIN_FOG_SMOOTHING_PER_TICK;
+    }
+
+    fn rain_fog_multiplier(&self) -> f32 {
+        self.rain_fog_multiplier.clamp(0.0, 1.0)
     }
 }
 
@@ -1347,6 +1367,7 @@ pub(crate) fn pump_network_and_terrain(
     world.advance_client_time(running_ticks);
     lightmap_ticks.advance_for_world(advanced_ticks, world);
     let water_vision = lightmap_ticks.water_vision(world);
+    let rain_fog_multiplier = lightmap_ticks.rain_fog_multiplier();
     renderer.set_lightmap_environment(lightmap_ticks.environment_for_world(world));
     renderer.set_clear_color(clear_color_for_world_at_camera_with_water_vision(
         world,
@@ -1361,6 +1382,7 @@ pub(crate) fn pump_network_and_terrain(
         camera_pose_from_world(world),
         render_distance_chunks,
         water_vision,
+        rain_fog_multiplier,
         hide_lightning_flash,
     ));
     world.advance_sky_flash_time(advanced_ticks);
@@ -4054,6 +4076,7 @@ fn fog_environment_for_world_at_camera(
     camera_pose: Option<CameraPose>,
     render_distance_chunks: u32,
     water_vision: f32,
+    rain_fog_multiplier: f32,
     hide_lightning_flash: bool,
 ) -> FogEnvironment {
     fog_environment_for_world_with_environment_colors(
@@ -4061,6 +4084,7 @@ fn fog_environment_for_world_at_camera(
         camera_environment_colors(world, terrain_textures, camera_pose),
         render_distance_chunks,
         water_vision,
+        rain_fog_multiplier,
         hide_lightning_flash,
     )
 }
@@ -4070,6 +4094,7 @@ fn fog_environment_for_world_with_environment_colors(
     colors: CameraEnvironmentColors,
     render_distance_chunks: u32,
     water_vision: f32,
+    rain_fog_multiplier: f32,
     hide_lightning_flash: bool,
 ) -> FogEnvironment {
     let fog_color = clear_color_for_world_with_environment_colors_and_water_vision(
@@ -4094,6 +4119,11 @@ fn fog_environment_for_world_with_environment_colors(
                 atmospheric_fog_distance_for_dimension(dimension_kind);
             let mut sky_end = atmospheric_sky_fog_end(render_distance_chunks);
             let mut cloud_end = atmospheric_cloud_fog_end();
+            apply_atmospheric_rain_fog_distance(
+                &mut environmental_start,
+                &mut environmental_end,
+                rain_fog_multiplier,
+            );
             if world.boss_overlay_should_create_world_fog() {
                 environmental_start = environmental_start.min(VANILLA_NETHER_FOG_START_DISTANCE);
                 environmental_end = environmental_end.min(VANILLA_NETHER_FOG_END_DISTANCE);
@@ -4152,6 +4182,48 @@ fn atmospheric_fog_distance_for_dimension(kind: VanillaLightmapDimensionKind) ->
             VANILLA_DEFAULT_FOG_END_DISTANCE,
         ),
     }
+}
+
+fn apply_atmospheric_rain_fog_distance(
+    environmental_start: &mut f32,
+    environmental_end: &mut f32,
+    rain_fog_multiplier: f32,
+) {
+    let rain_fog_multiplier = rain_fog_multiplier.clamp(0.0, 1.0);
+    if rain_fog_multiplier <= 0.0 {
+        return;
+    }
+
+    *environmental_start += VANILLA_RAIN_FOG_START_OFFSET * rain_fog_multiplier;
+    let min_rain_fog_end = VANILLA_NETHER_FOG_END_DISTANCE.min(*environmental_end);
+    *environmental_end = min_rain_fog_end
+        .max(*environmental_end + VANILLA_RAIN_FOG_END_OFFSET * rain_fog_multiplier);
+}
+
+fn atmospheric_rain_fog_target_multiplier(world: &WorldStore) -> f32 {
+    if world.level_info().map(vanilla_lightmap_dimension_kind)
+        != Some(VanillaLightmapDimensionKind::Overworld)
+    {
+        return 0.0;
+    }
+
+    let rain_level = sanitize_weather_lightmap_level(world.weather().rain_level);
+    if rain_level <= 0.0 {
+        return 0.0;
+    }
+
+    let Some(block_pos) = camera_block_position(world) else {
+        return 0.0;
+    };
+    let sky_light = world
+        .sample_block_light(block_pos)
+        .map(|light| light.sky)
+        .unwrap_or(15) as f32;
+    let sky_light_multiplier = ((sky_light - VANILLA_RAIN_FOG_MIN_SKY_LIGHT)
+        / VANILLA_RAIN_FOG_SKY_LIGHT_RANGE)
+        .clamp(0.0, 1.0);
+
+    rain_level * sky_light_multiplier
 }
 
 fn dimension_sky_color_for_kind(kind: VanillaLightmapDimensionKind) -> Option<[u8; 3]> {
@@ -4391,6 +4463,18 @@ fn camera_eye_position(camera: CameraPose) -> [f32; 3] {
         camera.position[1] + camera.eye_height,
         camera.position[2],
     ]
+}
+
+fn camera_block_position(world: &WorldStore) -> Option<BlockPos> {
+    let eye = camera_eye_position(camera_pose_from_world(world)?);
+    if !eye.into_iter().all(f32::is_finite) {
+        return None;
+    }
+    Some(BlockPos {
+        x: eye[0].floor() as i32,
+        y: eye[1].floor() as i32,
+        z: eye[2].floor() as i32,
+    })
 }
 
 fn gaussian_biome_rgb_color(
