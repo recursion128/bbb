@@ -29,6 +29,7 @@ impl Renderer {
         let mut cutout_draw_calls = 0;
         let mut translucent_draw_calls = 0;
         let mut block_destroy_overlay_draw_calls = 0;
+        let mut sky_draw_calls = 0;
         let mut entity_model_draw_calls = 0;
         let mut particle_draw_calls = 0;
         let mut item_entity_draw_calls = 0;
@@ -60,6 +61,15 @@ impl Renderer {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
+
+            if let Some(sky_disc) = &self.sky_disc {
+                pass.set_pipeline(&self.sky_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+                pass.set_vertex_buffer(0, sky_disc.vertex_buffer.slice(..));
+                pass.draw(0..sky_disc.vertex_count, 0..1);
+                sky_draw_calls += 1;
+            }
 
             if !self.terrain_opaque.is_empty() {
                 pass.set_pipeline(&self.terrain_pipeline);
@@ -607,6 +617,7 @@ impl Renderer {
         self.counters.cutout_draw_calls = cutout_draw_calls;
         self.counters.translucent_draw_calls = translucent_draw_calls;
         self.counters.block_destroy_overlay_draw_calls = block_destroy_overlay_draw_calls;
+        self.counters.sky_draw_calls = sky_draw_calls;
         self.counters.particle_draw_calls = particle_draw_calls;
         self.counters.item_entity_draw_calls = item_entity_draw_calls;
         self.counters.selection_draw_calls = selection_draw_calls;
@@ -617,6 +628,7 @@ impl Renderer {
             + cutout_draw_calls
             + translucent_draw_calls
             + block_destroy_overlay_draw_calls
+            + sky_draw_calls
             + entity_model_draw_calls
             + particle_draw_calls
             + item_entity_draw_calls

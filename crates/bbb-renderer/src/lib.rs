@@ -13,6 +13,7 @@ mod render;
 mod renderer;
 mod screenshot;
 mod selection;
+mod sky;
 
 pub mod terrain;
 

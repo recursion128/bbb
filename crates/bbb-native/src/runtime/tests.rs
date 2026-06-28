@@ -421,6 +421,72 @@ fn clear_color_samples_camera_biome_fog_and_sky_color_attributes() {
 }
 
 #[test]
+fn sky_environment_samples_camera_biome_sky_color_for_sky_disc() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, 6_000);
+    world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));
+    world.insert_decoded_chunk(empty_lightmap_test_chunk_with_biome(world.dimension(), 42));
+    let textures = TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
+        biome_profile_with_environment(42, Some([0x10, 0x20, 0x30]), None, None),
+    ]));
+
+    let sky = sky_environment_for_world_at_camera(
+        &world,
+        &textures,
+        camera_pose_from_world(&world),
+        false,
+    );
+
+    assert_close3(
+        [sky.color[0], sky.color[1], sky.color[2]],
+        [
+            0x10 as f32 / 255.0,
+            0x20 as f32 / 255.0,
+            0x30 as f32 / 255.0,
+        ],
+    );
+    assert_eq!(sky.color[3], 1.0);
+}
+
+#[test]
+fn sky_environment_applies_client_sky_flash_layer_and_dimension_gate() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, 6_000);
+    world.set_sky_flash_time(2);
+    let textures = TerrainTextureState::default();
+
+    let flashed = sky_environment_for_world_at_camera(
+        &world,
+        &textures,
+        camera_pose_from_world(&world),
+        false,
+    );
+    let hidden = sky_environment_for_world_at_camera(
+        &world,
+        &textures,
+        camera_pose_from_world(&world),
+        true,
+    );
+    let expected = rgb24(argb_srgb_lerp(
+        VANILLA_SKY_FLASH_SKY_COLOR_ALPHA,
+        rgb_u8_to_argb(VANILLA_OVERWORLD_SKY_COLOR),
+        VANILLA_SKY_FLASH_SKY_COLOR,
+    ));
+
+    assert_close3(
+        [flashed.color[0], flashed.color[1], flashed.color[2]],
+        expected,
+    );
+    assert_ne!(flashed, hidden);
+
+    let end = world_with_dimension(2, "minecraft:the_end");
+    assert_eq!(
+        sky_environment_for_world_at_camera(&end, &textures, camera_pose_from_world(&end), false),
+        SkyEnvironment::disabled()
+    );
+}
+
+#[test]
 fn clear_color_mixes_sunrise_sunset_color_when_camera_faces_sun() {
     let day_time = 71;
     let mut world = world_with_dimension(0, "minecraft:overworld");

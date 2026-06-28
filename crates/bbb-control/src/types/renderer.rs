@@ -12,6 +12,8 @@ pub struct RendererCounters {
     #[serde(default)]
     pub block_destroy_overlay_draw_calls: u64,
     #[serde(default)]
+    pub sky_draw_calls: u64,
+    #[serde(default)]
     pub particle_draw_calls: u64,
     #[serde(default)]
     pub item_entity_draw_calls: u64,

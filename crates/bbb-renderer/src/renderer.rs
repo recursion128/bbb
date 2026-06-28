@@ -42,6 +42,7 @@ use crate::{
         create_selection_outline_gpu, create_selection_pipeline, SelectionOutline,
         SelectionOutlineGpu,
     },
+    sky::{create_sky_disc_gpu, create_sky_pipeline, SkyDiscGpu, SkyEnvironment},
     terrain,
 };
 
@@ -67,6 +68,7 @@ pub struct Renderer {
     pub(super) item_entity_pipeline: wgpu::RenderPipeline,
     pub(super) item_model_pipeline: wgpu::RenderPipeline,
     pub(super) selection_pipeline: wgpu::RenderPipeline,
+    pub(super) sky_pipeline: wgpu::RenderPipeline,
     pub(super) hud_pipeline: wgpu::RenderPipeline,
     pub(super) hud_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) hud_white_pixel: HudSpriteGpu,
@@ -86,6 +88,8 @@ pub struct Renderer {
     pub(super) camera_pose: Option<CameraPose>,
     pub(super) lightmap_environment: LightmapEnvironment,
     pub(super) fog_environment: FogEnvironment,
+    pub(super) sky_environment: SkyEnvironment,
+    pub(super) sky_disc: Option<SkyDiscGpu>,
     pub(super) block_destroy_overlays: Option<BlockDestroyOverlaysGpu>,
     pub(super) entity_model_mesh: Option<EntityModelMeshGpu>,
     pub(super) entity_model_textured_mesh: Option<EntityModelTexturedMeshGpu>,
@@ -361,6 +365,7 @@ impl Renderer {
             create_item_model_pipeline(&device, format, &terrain_bind_group_layout);
         let selection_pipeline =
             create_selection_pipeline(&device, format, &terrain_bind_group_layout);
+        let sky_pipeline = create_sky_pipeline(&device, format, &terrain_bind_group_layout);
         let hud_pipeline = create_hud_pipeline(&device, format, &hud_bind_group_layout);
         let hud_white_pixel = create_hud_sprite_gpu(
             &device,
@@ -397,6 +402,7 @@ impl Renderer {
             item_entity_pipeline,
             item_model_pipeline,
             selection_pipeline,
+            sky_pipeline,
             hud_pipeline,
             hud_bind_group_layout,
             hud_white_pixel,
@@ -416,6 +422,8 @@ impl Renderer {
             camera_pose: None,
             lightmap_environment: LightmapEnvironment::default(),
             fog_environment: FogEnvironment::default(),
+            sky_environment: SkyEnvironment::default(),
+            sky_disc: None,
             block_destroy_overlays: None,
             entity_model_mesh: None,
             entity_model_textured_mesh: None,
@@ -892,6 +900,15 @@ impl Renderer {
     pub fn set_fog_environment(&mut self, environment: FogEnvironment) {
         self.fog_environment = environment.sanitized();
         self.update_camera();
+    }
+
+    pub fn set_sky_environment(&mut self, environment: SkyEnvironment) {
+        let environment = environment.sanitized();
+        if self.sky_environment == environment {
+            return;
+        }
+        self.sky_environment = environment;
+        self.sky_disc = create_sky_disc_gpu(&self.device, environment);
     }
 
     fn scene_bounds(&self) -> Option<TerrainBounds> {

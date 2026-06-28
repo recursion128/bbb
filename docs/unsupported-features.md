@@ -642,18 +642,23 @@ When an agent does any of the following, update this file in the same slice:
     selection world shaders compute spherical/cylindrical camera distance and
     apply fog in the vanilla `apply_fog` shape. The startup `--render-distance`
     option defaults to `12` chunks, accepts `2..=32`, and drives the
-    render-distance fog span. Remaining visual gaps are sky / cloud mesh
-    presentation that consumes these visibility ends, the day timeline's
-    cloud/star/moon/sun mesh state, full sky mesh / atmosphere presentation,
+    render-distance fog span. The renderer now also has a camera-centered top
+    sky-disc pass matching vanilla `SkyRenderer.renderSkyDisc(state.skyColor)`:
+    the disc uses the vanilla 512 radius / y=16 shape triangulated from the
+    official 10-vertex fan, and native drives its `SKY_COLOR` from
+    dimension/biome sky color, the Overworld day multiplier, weather darken,
+    and the client lightning sky-flash layer. Remaining visual gaps are cloud
+    mesh presentation that consumes these visibility ends, the day timeline's
+    cloud/star/moon/sun mesh state, End sky, fuller atmosphere presentation,
     and later custom-pack EnvironmentAttribute generalization when a concrete
     renderer surface exists. Overworld variants use ambient `0x0A0A0A`. The
     block flicker path still advances
     `blockLightFlicker` with the
     `LightmapRenderStateExtractor.tick()` formula and the shaders read
-    `blockLightFlicker + 1.4`. Remaining lighting gaps: full sky renderer
-    presentation, sky/cloud mesh presentation, dynamic LightTexture / diffuse
-    visual precision, smooth/AO entity light, GUI / entity-in-UI lighting
-    variants, and the colored debug fallback's baked-shade approximation.
+    `blockLightFlicker + 1.4`. Remaining lighting gaps: cloud and celestial sky
+    renderer presentation, dynamic LightTexture / diffuse visual precision,
+    smooth/AO entity light, GUI / entity-in-UI lighting variants, and the
+    colored debug fallback's baked-shade approximation.
     Water-vision fog color brightening is covered in the native clear-color and
     fog-environment path.
   - The hurt red damage overlay is implemented end to end as a real overlay pass,
@@ -1318,6 +1323,7 @@ When an agent does any of the following, update this file in the same slice:
     - interaction feedback
 - Evidence / boundary:
   - Renderer draws:
+    - vanilla-shaped top sky disc from `SKY_COLOR`
     - terrain
     - HUD
     - particles

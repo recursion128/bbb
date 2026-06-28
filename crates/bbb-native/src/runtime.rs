@@ -16,7 +16,7 @@ use bbb_renderer::{
     HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryItem,
     HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground, HudInventoryTextLabel,
     HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar,
-    HudItemIcon, HudUvRect, LightmapEnvironment, HUD_HOTBAR_SLOTS,
+    HudItemIcon, HudUvRect, LightmapEnvironment, SkyEnvironment, HUD_HOTBAR_SLOTS,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
     VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
@@ -1434,6 +1434,12 @@ pub(crate) fn pump_network_and_terrain(
         render_distance_chunks,
         water_vision,
         rain_fog_multiplier,
+        hide_lightning_flash,
+    ));
+    renderer.set_sky_environment(sky_environment_for_world_at_camera(
+        world,
+        terrain_textures,
+        camera_pose_from_world(world),
         hide_lightning_flash,
     ));
     world.advance_sky_flash_time(advanced_ticks);
@@ -4151,6 +4157,78 @@ fn clear_color_for_world_with_environment_colors_and_water_vision(
     } else {
         clear_color_with_sky_flash(clear)
     }
+}
+
+fn sky_environment_for_world_at_camera(
+    world: &WorldStore,
+    terrain_textures: &TerrainTextureState,
+    camera_pose: Option<CameraPose>,
+    hide_lightning_flash: bool,
+) -> SkyEnvironment {
+    sky_environment_for_world_with_environment_colors(
+        world,
+        camera_environment_colors(world, terrain_textures, camera_pose),
+        hide_lightning_flash,
+    )
+}
+
+fn sky_environment_for_world_with_environment_colors(
+    world: &WorldStore,
+    colors: CameraEnvironmentColors,
+    hide_lightning_flash: bool,
+) -> SkyEnvironment {
+    let dimension_kind = world
+        .level_info()
+        .map(vanilla_lightmap_dimension_kind)
+        .unwrap_or(VanillaLightmapDimensionKind::Overworld);
+    if dimension_kind != VanillaLightmapDimensionKind::Overworld {
+        return SkyEnvironment::disabled();
+    }
+
+    SkyEnvironment::from_rgb(rgb24(sky_disc_color_for_world_with_environment_colors(
+        world,
+        colors,
+        dimension_kind,
+        hide_lightning_flash,
+    )))
+}
+
+fn sky_disc_color_for_world_with_environment_colors(
+    world: &WorldStore,
+    colors: CameraEnvironmentColors,
+    dimension_kind: VanillaLightmapDimensionKind,
+    hide_lightning_flash: bool,
+) -> i32 {
+    let day_time = world.world_time().map(|time| time.day_time).unwrap_or(6000);
+    let weather = world.weather();
+    let rain = weather.rain_level.clamp(0.0, 1.0) as f64;
+    let thunder = weather.thunder_level.clamp(0.0, 1.0) as f64;
+    let mut sky_color = rgb_u8_to_argb(
+        colors
+            .sky_color
+            .or_else(|| dimension_sky_color_for_kind(dimension_kind))
+            .unwrap_or([0, 0, 0]),
+    );
+
+    if dimension_kind == VanillaLightmapDimensionKind::Overworld {
+        sky_color = argb_multiply(
+            sky_color,
+            sample_periodic_argb_keyframes(
+                day_time,
+                &VANILLA_OVERWORLD_SKY_COLOR_MULTIPLIER_KEYFRAMES,
+                VANILLA_LIGHTMAP_DAY_PERIOD_TICKS,
+            ),
+        );
+    }
+    sky_color = apply_atmospheric_sky_weather_darken(sky_color, rain, thunder);
+    if !hide_lightning_flash && world.sky_flash_time() > 0 {
+        sky_color = argb_srgb_lerp(
+            VANILLA_SKY_FLASH_SKY_COLOR_ALPHA,
+            sky_color,
+            VANILLA_SKY_FLASH_SKY_COLOR,
+        );
+    }
+    sky_color
 }
 
 fn fog_environment_for_world_at_camera(
