@@ -69,6 +69,11 @@ const VANILLA_WEATHER_RAIN_ALPHA: f32 = 0.3125;
 const VANILLA_WEATHER_THUNDER_ALPHA: f32 = 0.52734375;
 const VANILLA_WEATHER_RAIN_SKY_LIGHT_COLOR: i32 = argb_color(79, 122, 122, 255);
 const VANILLA_WEATHER_THUNDER_SKY_LIGHT_COLOR: i32 = argb_color(134, 122, 122, 255);
+const VANILLA_WORLD_CLOCK_THE_END_ID: i32 = 1;
+const VANILLA_END_FLASH_INTERVAL_TICKS: i64 = 600;
+const VANILLA_END_FLASH_MAX_OFFSET_TICKS: i32 = 200;
+const VANILLA_END_FLASH_MIN_DURATION_TICKS: i32 = 100;
+const VANILLA_END_FLASH_MAX_DURATION_TICKS: i32 = 380;
 const VANILLA_OVERWORLD_SKY_LIGHT_COLOR_KEYFRAMES: [(i64, i32); 4] = [
     (730, -1),
     (11_270, -1),
@@ -308,6 +313,7 @@ pub(crate) struct LightmapTickState {
     night_vision_effect: LightmapEffectDurationState,
     darkness_effect: LightmapEffectBlendState,
     water_vision_time: i32,
+    end_flash_state: EndFlashLightmapState,
 }
 
 impl Default for LightmapTickState {
@@ -320,6 +326,7 @@ impl Default for LightmapTickState {
             night_vision_effect: LightmapEffectDurationState::default(),
             darkness_effect: LightmapEffectBlendState::default(),
             water_vision_time: 0,
+            end_flash_state: EndFlashLightmapState::default(),
         }
     }
 }
@@ -342,6 +349,7 @@ impl LightmapTickState {
             night_vision_effect: LightmapEffectDurationState::default(),
             darkness_effect: LightmapEffectBlendState::default(),
             water_vision_time: 0,
+            end_flash_state: EndFlashLightmapState::default(),
         }
     }
 
@@ -355,6 +363,7 @@ impl LightmapTickState {
             night_vision_effect: LightmapEffectDurationState::default(),
             darkness_effect: LightmapEffectBlendState::default(),
             water_vision_time: 0,
+            end_flash_state: EndFlashLightmapState::default(),
         }
     }
 
@@ -380,6 +389,7 @@ impl LightmapTickState {
             self.night_vision_effect.tick_duration();
             self.darkness_effect.tick();
             self.tick_water_vision(world);
+            self.tick_end_flash(world);
         }
         self.client_tick_count = self.client_tick_count.saturating_add(ticks as u64);
         self.block_factor()
@@ -397,6 +407,7 @@ impl LightmapTickState {
             self.night_vision_effect.effect(),
             local_player_effect(world, VANILLA_MOB_EFFECT_CONDUIT_POWER_ID),
             self.water_vision(world),
+            self.end_flash_sky_factor(world),
         )
     }
 
@@ -447,6 +458,88 @@ impl LightmapTickState {
                 .clamp(0.0, 1.0)
         };
         fast * VANILLA_WATER_VISION_FAST_WEIGHT + slow * VANILLA_WATER_VISION_SLOW_WEIGHT
+    }
+
+    fn tick_end_flash(&mut self, world: &WorldStore) {
+        if world.level_info().map(vanilla_lightmap_dimension_kind)
+            != Some(VanillaLightmapDimensionKind::End)
+        {
+            self.end_flash_state = EndFlashLightmapState::default();
+            return;
+        }
+
+        self.end_flash_state.tick(world_clock_total_ticks(
+            world,
+            VANILLA_WORLD_CLOCK_THE_END_ID,
+        ));
+    }
+
+    fn end_flash_sky_factor(&self, world: &WorldStore) -> f32 {
+        if world.level_info().map(vanilla_lightmap_dimension_kind)
+            == Some(VanillaLightmapDimensionKind::End)
+        {
+            self.end_flash_state
+                .intensity(VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK)
+        } else {
+            0.0
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+struct EndFlashLightmapState {
+    flash_seed: i64,
+    offset: i32,
+    duration: i32,
+    intensity: f32,
+    old_intensity: f32,
+}
+
+impl EndFlashLightmapState {
+    fn tick(&mut self, clock_time: i64) {
+        self.calculate_flash_parameters(clock_time);
+        self.old_intensity = self.intensity;
+        self.intensity = self.calculate_intensity(clock_time);
+    }
+
+    fn calculate_flash_parameters(&mut self, clock_time: i64) {
+        let new_seed = clock_time / VANILLA_END_FLASH_INTERVAL_TICKS;
+        if new_seed == self.flash_seed {
+            return;
+        }
+
+        let mut random = LevelEventSoundRandomState::with_seed(new_seed);
+        random.next_float();
+        self.offset = random_between_inclusive(&mut random, 0, VANILLA_END_FLASH_MAX_OFFSET_TICKS);
+        let max_duration = VANILLA_END_FLASH_MAX_DURATION_TICKS.min(600 - self.offset);
+        self.duration = random_between_inclusive(
+            &mut random,
+            VANILLA_END_FLASH_MIN_DURATION_TICKS,
+            max_duration,
+        );
+        self.flash_seed = new_seed;
+    }
+
+    fn calculate_intensity(&self, clock_time: i64) -> f32 {
+        if self.duration <= 0 {
+            return 0.0;
+        }
+
+        let clock_time_within_interval = clock_time % VANILLA_END_FLASH_INTERVAL_TICKS;
+        let offset = i64::from(self.offset);
+        let duration = i64::from(self.duration);
+        if clock_time_within_interval >= offset && clock_time_within_interval <= offset + duration {
+            ((clock_time_within_interval - offset) as f32 * std::f32::consts::PI
+                / self.duration as f32)
+                .sin()
+        } else {
+            0.0
+        }
+    }
+
+    fn intensity(&self, partial_tick: f32) -> f32 {
+        let partial_tick = sanitize_lightmap_partial_tick(partial_tick);
+        self.old_intensity + (self.intensity - self.old_intensity) * partial_tick
     }
 }
 
@@ -676,6 +769,7 @@ fn lightmap_environment_for_world_at_tick(
         night_vision_effect,
         conduit_power_effect,
         0.0,
+        0.0,
     )
 }
 
@@ -689,8 +783,10 @@ fn lightmap_environment_for_world_with_effects(
     night_vision_effect: Option<MobEffectState>,
     conduit_power_effect: Option<MobEffectState>,
     water_vision: f32,
+    end_flash_sky_factor: f32,
 ) -> LightmapEnvironment {
     let mut environment = lightmap_environment_attributes_for_world(world);
+    environment.sky_factor += end_flash_sky_factor;
     let effects = local_player_lightmap_effects(
         brightness_factor,
         camera_tick_count,
@@ -994,6 +1090,26 @@ fn sanitize_weather_lightmap_level(level: f32) -> f32 {
     } else {
         0.0
     }
+}
+
+fn world_clock_total_ticks(world: &WorldStore, clock_id: i32) -> i64 {
+    world
+        .world_time()
+        .and_then(|time| {
+            time.clock_updates
+                .iter()
+                .find(|clock| clock.clock_id == clock_id)
+                .map(|clock| clock.total_ticks)
+        })
+        .unwrap_or(0)
+}
+
+fn random_between_inclusive(
+    random: &mut LevelEventSoundRandomState,
+    min: i32,
+    max_inclusive: i32,
+) -> i32 {
+    random.next_int_bound(max_inclusive - min + 1) + min
 }
 
 fn dimension_lightmap_environment(level: &WorldLevelInfo) -> LightmapEnvironment {

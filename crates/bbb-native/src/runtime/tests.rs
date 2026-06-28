@@ -208,6 +208,38 @@ fn lightmap_environment_applies_overworld_weather_layers_after_timeline() {
 }
 
 #[test]
+fn lightmap_tick_state_applies_end_flash_sky_factor_from_end_clock() {
+    let mut world = world_with_dimension(2, "minecraft:the_end");
+    set_world_end_clock_time(&mut world, 1_486);
+    let mut lightmap = LightmapTickState::with_seed_and_brightness(0, 0.5);
+
+    lightmap.advance_for_world(1, &world);
+    let environment = lightmap.environment_for_world(&world);
+
+    assert!((environment.sky_factor - 1.0).abs() < 1e-6);
+    assert_close3(
+        environment.sky_light_color,
+        [172.0 / 255.0, 96.0 / 255.0, 205.0 / 255.0],
+    );
+    assert_close3(
+        environment.ambient_color,
+        [63.0 / 255.0, 71.0 / 255.0, 63.0 / 255.0],
+    );
+}
+
+#[test]
+fn lightmap_tick_state_does_not_use_overworld_clock_for_end_flash() {
+    let mut world = world_with_dimension(2, "minecraft:the_end");
+    set_world_day_time(&mut world, 1_486);
+    let mut lightmap = LightmapTickState::with_seed_and_brightness(0, 0.5);
+
+    lightmap.advance_for_world(1, &world);
+    let environment = lightmap.environment_for_world(&world);
+
+    assert_eq!(environment.sky_factor, 0.0);
+}
+
+#[test]
 fn lightmap_tick_state_environment_preserves_gamma_and_flicker() {
     let world = world_with_dimension(1, "minecraft:the_nether");
     let mut lightmap = LightmapTickState::with_seed_and_brightness(0, 0.8);
@@ -541,6 +573,18 @@ fn set_world_day_time(world: &mut WorldStore, day_time: i64) {
         clock_updates: vec![ProtocolClockUpdate {
             clock_id: 0,
             total_ticks: day_time,
+            partial_tick: 0.0,
+            rate: 1.0,
+        }],
+    });
+}
+
+fn set_world_end_clock_time(world: &mut WorldStore, total_ticks: i64) {
+    world.apply_world_time(PlayTime {
+        game_time: total_ticks,
+        clock_updates: vec![ProtocolClockUpdate {
+            clock_id: 1,
+            total_ticks,
             partial_tick: 0.0,
             rate: 1.0,
         }],
