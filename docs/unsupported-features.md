@@ -263,6 +263,12 @@ When an agent does any of the following, update this file in the same slice:
       - `SpellParticle.WitchProvider` reuses the simple spell motion/lifetime
         metadata and applies the vanilla shared random magenta brightness
         (`0.35..0.85` for red and blue, zero green)
+      - `GlowParticle.WaxOnProvider`, `WaxOffProvider`, `ScrapeProvider`, and
+        `ElectricSparkProvider` use vanilla command-scaled velocity,
+        fixed or random-choice tint, age sprite selection, `0.75` quad-size
+        scale, provider lifetime ranges, `0.96` friction, no physics, and
+        blocked-y speed-up metadata; `GlowParticle.getLightCoords` smooth
+        emission remains deferred until particle light curves are represented
     - Uploads a stitched official particle atlas when assets are available.
     - Draws active particles as camera-facing textured billboards.
   - Follow-up work in the plan:

@@ -1018,6 +1018,55 @@ mod tests {
         assert_range_f64(column_bubble.velocity[1], 0.38, 0.42);
         assert_range_f64(column_bubble.velocity[2], 0.58, 0.62);
 
+        let mut electric_random = ParticleRandom::new(63);
+        let mut electric_command = spawn_command("minecraft:electric_spark", 1.0);
+        electric_command.velocity = [2.0, 3.0, 4.0];
+        let electric = ParticleInstance::from_spawn_command(electric_command, &mut electric_random);
+        assert_eq!(electric.provider, "GlowParticle.ElectricSparkProvider");
+        assert_eq!(electric.sprite_selection, ParticleSpriteSelection::Age);
+        assert_range_f32(electric.base_quad_size, 0.075, 0.15);
+        assert_eq!(electric.color, [1.0, 0.9, 1.0, 1.0]);
+        assert!((2..=3).contains(&electric.lifetime_ticks));
+        assert_eq!(electric.friction, 0.96);
+        assert!(!electric.has_physics);
+        assert!(electric.speed_up_when_y_motion_is_blocked);
+        assert_range_f64(electric.velocity[0], 0.499, 0.501);
+        assert_range_f64(electric.velocity[1], 0.749, 0.751);
+        assert_range_f64(electric.velocity[2], 0.999, 1.001);
+
+        let mut scrape_random = ParticleRandom::new(64);
+        let mut scrape_command = spawn_command("minecraft:scrape", 1.0);
+        scrape_command.velocity = [2.0, 3.0, 4.0];
+        let scrape = ParticleInstance::from_spawn_command(scrape_command, &mut scrape_random);
+        assert_eq!(scrape.provider, "GlowParticle.ScrapeProvider");
+        assert!(scrape.color == [0.29, 0.58, 0.51, 1.0] || scrape.color == [0.43, 0.77, 0.62, 1.0]);
+        assert!((10..=39).contains(&scrape.lifetime_ticks));
+        assert_range_f64(scrape.velocity[0], 0.019, 0.021);
+        assert_range_f64(scrape.velocity[1], 0.029, 0.031);
+        assert_range_f64(scrape.velocity[2], 0.039, 0.041);
+
+        let mut wax_on_random = ParticleRandom::new(65);
+        let mut wax_on_command = spawn_command("minecraft:wax_on", 1.0);
+        wax_on_command.velocity = [2.0, 3.0, 4.0];
+        let wax_on = ParticleInstance::from_spawn_command(wax_on_command, &mut wax_on_random);
+        assert_eq!(wax_on.provider, "GlowParticle.WaxOnProvider");
+        assert_eq!(wax_on.color, [0.91, 0.55, 0.08, 1.0]);
+        assert!((10..=39).contains(&wax_on.lifetime_ticks));
+        assert_range_f64(wax_on.velocity[0], 0.009, 0.011);
+        assert_range_f64(wax_on.velocity[1], 0.029, 0.031);
+        assert_range_f64(wax_on.velocity[2], 0.019, 0.021);
+
+        let mut wax_off_random = ParticleRandom::new(66);
+        let mut wax_off_command = spawn_command("minecraft:wax_off", 1.0);
+        wax_off_command.velocity = [2.0, 3.0, 4.0];
+        let wax_off = ParticleInstance::from_spawn_command(wax_off_command, &mut wax_off_random);
+        assert_eq!(wax_off.provider, "GlowParticle.WaxOffProvider");
+        assert_eq!(wax_off.color, [1.0, 0.9, 1.0, 1.0]);
+        assert!((10..=39).contains(&wax_off.lifetime_ticks));
+        assert_range_f64(wax_off.velocity[0], 0.009, 0.011);
+        assert_range_f64(wax_off.velocity[1], 0.029, 0.031);
+        assert_range_f64(wax_off.velocity[2], 0.019, 0.021);
+
         let mut sneeze_random = ParticleRandom::new(55);
         let sneeze = ParticleInstance::from_spawn_command(
             spawn_command("minecraft:sneeze", 1.0),

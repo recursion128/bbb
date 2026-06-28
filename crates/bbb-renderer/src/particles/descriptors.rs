@@ -92,6 +92,10 @@ pub(crate) enum ParticleColorDescriptor {
         min_alpha: f32,
         max_alpha: f32,
     },
+    FixedRgbChoice {
+        first: [f32; 3],
+        second: [f32; 3],
+    },
     FixedRgba([f32; 4]),
     FixedRgb([f32; 3]),
 }
@@ -116,6 +120,9 @@ pub(crate) enum ParticleInitialVelocityDescriptor {
     CommandScaledPlusRandom {
         command_scale: f64,
         random_range: f64,
+    },
+    CommandAxisScaled {
+        scale: [f64; 3],
     },
     ParticleConstructorScaled {
         scale: f64,
@@ -339,6 +346,77 @@ impl ParticleDescriptor {
                     speed_up_when_y_motion_is_blocked: false,
                 }
             }
+            "minecraft:electric_spark" => Self {
+                provider: "GlowParticle.ElectricSparkProvider",
+                lifetime: ParticleLifetimeDescriptor::RandomInclusive { min: 2, max: 3 },
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 0.75,
+                    color: ParticleColorDescriptor::FixedRgb([1.0, 0.9, 1.0]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::CommandAxisScaled {
+                    scale: [0.25, 0.25, 0.25],
+                },
+                friction: 0.96,
+                gravity: 0.0,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: true,
+            },
+            "minecraft:scrape" => Self {
+                provider: "GlowParticle.ScrapeProvider",
+                lifetime: ParticleLifetimeDescriptor::RandomInclusive { min: 10, max: 39 },
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 0.75,
+                    color: ParticleColorDescriptor::FixedRgbChoice {
+                        first: [0.29, 0.58, 0.51],
+                        second: [0.43, 0.77, 0.62],
+                    },
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::CommandAxisScaled {
+                    scale: [0.01, 0.01, 0.01],
+                },
+                friction: 0.96,
+                gravity: 0.0,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: true,
+            },
+            "minecraft:wax_off" => Self {
+                provider: "GlowParticle.WaxOffProvider",
+                lifetime: ParticleLifetimeDescriptor::RandomInclusive { min: 10, max: 39 },
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 0.75,
+                    color: ParticleColorDescriptor::FixedRgb([1.0, 0.9, 1.0]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::CommandAxisScaled {
+                    scale: [0.005, 0.01, 0.005],
+                },
+                friction: 0.96,
+                gravity: 0.0,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: true,
+            },
+            "minecraft:wax_on" => Self {
+                provider: "GlowParticle.WaxOnProvider",
+                lifetime: ParticleLifetimeDescriptor::RandomInclusive { min: 10, max: 39 },
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 0.75,
+                    color: ParticleColorDescriptor::FixedRgb([0.91, 0.55, 0.08]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::CommandAxisScaled {
+                    scale: [0.005, 0.01, 0.005],
+                },
+                friction: 0.96,
+                gravity: 0.0,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: true,
+            },
             "minecraft:heart" => Self {
                 provider: "HeartParticle.Provider",
                 lifetime: ParticleLifetimeDescriptor::Fixed(16),
@@ -733,6 +811,11 @@ impl ParticleInitialVelocityDescriptor {
                 command_velocity[1] * command_scale + random_signed_unit(random) * random_range,
                 command_velocity[2] * command_scale + random_signed_unit(random) * random_range,
             ],
+            Self::CommandAxisScaled { scale } => [
+                command_velocity[0] * scale[0],
+                command_velocity[1] * scale[1],
+                command_velocity[2] * scale[2],
+            ],
             Self::ParticleConstructorScaled { scale } => {
                 let x = command_velocity[0] + random_signed_velocity(random);
                 let y = command_velocity[1] + random_signed_velocity(random);
@@ -860,6 +943,10 @@ impl ParticleColorDescriptor {
                 min_alpha,
                 max_alpha,
             } => [red, green, blue, sample_range(random, min_alpha, max_alpha)],
+            Self::FixedRgbChoice { first, second } => {
+                let [red, green, blue] = if random.next_bool() { first } else { second };
+                [red, green, blue, 1.0]
+            }
             Self::FixedRgba(rgba) => rgba,
             Self::FixedRgb([red, green, blue]) => [red, green, blue, 1.0],
         }
@@ -969,6 +1056,10 @@ impl ParticleRandom {
 
     fn next_f32(&mut self) -> f32 {
         self.next_bits(24) as f32 / (1_u32 << 24) as f32
+    }
+
+    fn next_bool(&mut self) -> bool {
+        self.next_bits(1) != 0
     }
 
     fn next_index(&mut self, len: usize) -> Option<usize> {
@@ -1275,6 +1366,93 @@ mod tests {
             ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledWithYOffset {
                 scale: 0.01,
                 y_offset: 0.1
+            }
+        );
+        assert_descriptor(
+            "minecraft:electric_spark",
+            "GlowParticle.ElectricSparkProvider",
+            ParticleLifetimeDescriptor::RandomInclusive { min: 2, max: 3 },
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::SingleQuadScaled {
+                scale: 0.75,
+                color: ParticleColorDescriptor::FixedRgb([1.0, 0.9, 1.0]),
+                quad_size_curve: ParticleQuadSizeCurve::Constant,
+            },
+            0.96,
+            0.0,
+            false,
+            true,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:electric_spark").initial_velocity,
+            ParticleInitialVelocityDescriptor::CommandAxisScaled {
+                scale: [0.25, 0.25, 0.25],
+            }
+        );
+        assert_descriptor(
+            "minecraft:scrape",
+            "GlowParticle.ScrapeProvider",
+            ParticleLifetimeDescriptor::RandomInclusive { min: 10, max: 39 },
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::SingleQuadScaled {
+                scale: 0.75,
+                color: ParticleColorDescriptor::FixedRgbChoice {
+                    first: [0.29, 0.58, 0.51],
+                    second: [0.43, 0.77, 0.62],
+                },
+                quad_size_curve: ParticleQuadSizeCurve::Constant,
+            },
+            0.96,
+            0.0,
+            false,
+            true,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:scrape").initial_velocity,
+            ParticleInitialVelocityDescriptor::CommandAxisScaled {
+                scale: [0.01, 0.01, 0.01],
+            }
+        );
+        assert_descriptor(
+            "minecraft:wax_off",
+            "GlowParticle.WaxOffProvider",
+            ParticleLifetimeDescriptor::RandomInclusive { min: 10, max: 39 },
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::SingleQuadScaled {
+                scale: 0.75,
+                color: ParticleColorDescriptor::FixedRgb([1.0, 0.9, 1.0]),
+                quad_size_curve: ParticleQuadSizeCurve::Constant,
+            },
+            0.96,
+            0.0,
+            false,
+            true,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:wax_off").initial_velocity,
+            ParticleInitialVelocityDescriptor::CommandAxisScaled {
+                scale: [0.005, 0.01, 0.005],
+            }
+        );
+        assert_descriptor(
+            "minecraft:wax_on",
+            "GlowParticle.WaxOnProvider",
+            ParticleLifetimeDescriptor::RandomInclusive { min: 10, max: 39 },
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::SingleQuadScaled {
+                scale: 0.75,
+                color: ParticleColorDescriptor::FixedRgb([0.91, 0.55, 0.08]),
+                quad_size_curve: ParticleQuadSizeCurve::Constant,
+            },
+            0.96,
+            0.0,
+            false,
+            true,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:wax_on").initial_velocity,
+            ParticleInitialVelocityDescriptor::CommandAxisScaled {
+                scale: [0.005, 0.01, 0.005],
             }
         );
         for particle_id in [
@@ -1598,6 +1776,30 @@ mod tests {
         assert_eq!(witch.color[3], 1.0);
         assert_eq!(witch.quad_size_curve, ParticleQuadSizeCurve::Constant);
 
+        let mut wax_on_random = ParticleRandom::new(32);
+        let wax_on = ParticleVisualDescriptor::SingleQuadScaled {
+            scale: 0.75,
+            color: ParticleColorDescriptor::FixedRgb([0.91, 0.55, 0.08]),
+            quad_size_curve: ParticleQuadSizeCurve::Constant,
+        }
+        .sample_for_command(&mut wax_on_random, [0.0, 0.0, 0.0]);
+        assert_range_f32(wax_on.base_quad_size, 0.075, 0.15);
+        assert_eq!(wax_on.color, [0.91, 0.55, 0.08, 1.0]);
+        assert_eq!(wax_on.quad_size_curve, ParticleQuadSizeCurve::Constant);
+
+        let mut scrape_random = ParticleRandom::new(33);
+        let scrape = ParticleVisualDescriptor::SingleQuadScaled {
+            scale: 0.75,
+            color: ParticleColorDescriptor::FixedRgbChoice {
+                first: [0.29, 0.58, 0.51],
+                second: [0.43, 0.77, 0.62],
+            },
+            quad_size_curve: ParticleQuadSizeCurve::Constant,
+        }
+        .sample_for_command(&mut scrape_random, [0.0, 0.0, 0.0]);
+        assert!(scrape.color == [0.29, 0.58, 0.51, 1.0] || scrape.color == [0.43, 0.77, 0.62, 1.0]);
+        assert_eq!(scrape.quad_size_curve, ParticleQuadSizeCurve::Constant);
+
         let mut crit_random = ParticleRandom::new(24);
         let crit = ParticleVisualDescriptor::Crit {
             color_scale: CRIT_COLOR_SCALE,
@@ -1782,6 +1984,14 @@ mod tests {
         assert_range_f64(bubble_velocity[0], 0.18, 0.22);
         assert_range_f64(bubble_velocity[1], 0.38, 0.42);
         assert_range_f64(bubble_velocity[2], 0.58, 0.62);
+
+        let axis_scaled = ParticleInitialVelocityDescriptor::CommandAxisScaled {
+            scale: [0.005, 0.01, 0.005],
+        }
+        .sample([2.0, 3.0, 4.0], &mut ParticleRandom::new(29));
+        assert_close_f64(axis_scaled[0], 0.01);
+        assert_close_f64(axis_scaled[1], 0.03);
+        assert_close_f64(axis_scaled[2], 0.02);
 
         let mut crit_random = ParticleRandom::new(24);
         let crit_velocity =
