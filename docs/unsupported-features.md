@@ -345,8 +345,9 @@ When an agent does any of the following, update this file in the same slice:
       `AbstractEquineModel.setupAnim` head/body/leg transforms on colored/textured
       paths; the camel's
       dash-entangled gait (the colored and textured
-      `CAMEL_WALK` / `CAMEL_BABY_WALK`, the sit-down / seated / stand-up transitions, and the looping
-      `CAMEL_DASH` gallop are now reproduced; only `CAMEL_IDLE` stays deferred). The remaining
+      `CAMEL_WALK` / `CAMEL_BABY_WALK`, the sit-down / seated / stand-up transitions, the looping
+      `CAMEL_DASH` gallop, and the client-random non-looping `CAMEL_IDLE` keyframe are now
+      reproduced). The remaining
       slices consume them
       in the other model families' `setupAnim` (fish; other birds; etc., plus
       the `HumanoidModel`/illager/villager arm and ear/nose poses); the snow golem has no
@@ -813,8 +814,8 @@ When an agent does any of the following, update this file in the same slice:
     (1) the
     `Camel`/`Frog` `updateWalkAnimation` overrides use different
     distance→speed mappings AND gate on pose/jump animation states the client does not
-    fully track yet (the camel dash and frog jump/swim-idle/croak/tongue triggered
-    animations ARE now driven, but the camel idle remains deferred), so their
+    fully track yet (the camel dash/idle and frog jump/swim-idle/croak/tongue triggered
+    animations ARE now driven), so their
     distance→speed walk input is left at the base mapping rather than the override. The
     `Creaking` override is pure (`min(distance · 25, 3)`, factor `0.4`) and IS now driven —
     its limb swing ramps ~3× faster than the base mapping (`walk_update_target_speed`); (2) the base
@@ -1984,10 +1985,12 @@ When an agent does any of the following, update this file in the same slice:
       supplies no baby saddle model. Camel `jumpCooldown` is now world/native projected from the
       synced `DASH` rising edge as `max(Camel.getJumpCooldown() - partialTicks, 0)` and consumed by
       `CamelModel.applyHeadRotation` as the vanilla post-dash extra upward head pitch
-      (`45 * jumpCooldown / 55`, clamped to 70 degrees). The camel
-      `CAMEL_IDLE` keyframe animation (driven by a client-side `random.nextInt(40) + 80` timer, not
-      derivable from synced state), the body-anchor sit/stand y-offset
-      (`Camel.getBodyAnchorAnimationYOffset`), and broader lighting presentation remain unsupported
+      (`45 * jumpCooldown / 55`, clamped to 70 degrees). Camel `CAMEL_IDLE` is now driven by a
+      deterministic local client timer with the vanilla `random.nextInt(40) + 80` restart cadence,
+      forwarded through native as `camel_idle_seconds`, and consumed by `CamelModel.setupAnim` to
+      add the official tail/head/ear keyframes while preserving texture/render-type/tint/transform/
+      light/overlay/order metadata. The body-anchor sit/stand y-offset
+      (`Camel.getBodyAnchorAnimationYOffset`) and broader lighting presentation remain unsupported
     - llama and trader llama entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `LlamaModel`, `BabyLlamaModel`, and
       `LlamaRenderer`, including `ModelLayers.LLAMA` / `LLAMA_BABY` (the trader

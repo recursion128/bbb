@@ -1147,3 +1147,73 @@ fn camel_dash_seconds_add_the_gallop_pose() {
         "dash pitches the body up 5°: {rest_body_pitch} -> {dash_body_pitch}"
     );
 }
+
+#[test]
+fn camel_idle_seconds_add_the_vanilla_idle_pose_without_changing_submission_metadata() {
+    use crate::entity_models::model::EntityModel;
+
+    // Vanilla `CamelAnimation.CAMEL_IDLE` is a non-looping 4.0 s keyframe that nudges the tail/head
+    // and flaps the ears when `Camel.setupAnimationStates` restarts `idleAnimationState`.
+    assert!(!CAMEL_IDLE.looping);
+    assert_eq!(CAMEL_IDLE.length_seconds, 4.0);
+    assert_eq!(CAMEL_IDLE.bones.len(), 4);
+
+    let base =
+        EntityModelInstance::camel(701, [0.0, 64.0, 0.0], 0.0, CamelModelFamily::Camel, false);
+
+    let mut resting = CamelModel::new(CamelModelFamily::Camel, false);
+    resting.prepare(&base);
+    let rest_tail_yaw = resting
+        .root_mut()
+        .child_mut("body")
+        .child_mut("tail")
+        .pose
+        .rotation[1];
+    let rest_head_pitch = resting
+        .root_mut()
+        .child_mut("body")
+        .child_mut("head")
+        .pose
+        .rotation[0];
+
+    let mut tail_idle = CamelModel::new(CamelModelFamily::Camel, false);
+    tail_idle.prepare(&base.with_camel_idle_seconds(1.0));
+    let idle_tail_yaw = tail_idle
+        .root_mut()
+        .child_mut("body")
+        .child_mut("tail")
+        .pose
+        .rotation[1];
+    assert!(
+        (idle_tail_yaw - rest_tail_yaw - 0.43523_f32.to_radians()).abs() < 1.0e-5,
+        "idle t=1.0 adds the vanilla tail yaw: {rest_tail_yaw} -> {idle_tail_yaw}"
+    );
+
+    let mut head_idle = CamelModel::new(CamelModelFamily::Camel, false);
+    head_idle.prepare(&base.with_camel_idle_seconds(2.0));
+    let idle_head_pitch = head_idle
+        .root_mut()
+        .child_mut("body")
+        .child_mut("head")
+        .pose
+        .rotation[0];
+    assert!(
+        (idle_head_pitch - rest_head_pitch - (-2.5_f32).to_radians()).abs() < 1.0e-5,
+        "idle t=2.0 dips the head by -2.5°: {rest_head_pitch} -> {idle_head_pitch}"
+    );
+
+    let (atlas, _) = build_entity_model_texture_atlas(&camel_texture_images()).unwrap();
+    let resting_meshes = entity_model_textured_meshes(&[base], &atlas);
+    let idle_instance = base.with_camel_idle_seconds(1.0);
+    let idle_meshes = entity_model_textured_meshes(&[idle_instance], &atlas);
+    assert_camel_submissions_match_vanilla(&resting_meshes, base);
+    assert_camel_submissions_match_vanilla(&idle_meshes, idle_instance);
+    assert_eq!(
+        resting_meshes.submissions, idle_meshes.submissions,
+        "CAMEL_IDLE changes only folded geometry, not texture/render-type/tint/transform/light/overlay/order metadata"
+    );
+    assert_ne!(
+        resting_meshes.cutout.vertices, idle_meshes.cutout.vertices,
+        "CAMEL_IDLE must re-pose the textured folded geometry"
+    );
+}

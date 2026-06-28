@@ -534,6 +534,11 @@ entity_render_state! {
     /// `dashAnimation.apply(...)` ADDITIVELY (last, over the walk pose). `-1.0` (the stopped-animation
     /// sentinel) for every other entity and a camel that is not dashing.
     (with_camel_dash_seconds) camel_dash_seconds: f32 = -1.0;
+    /// Vanilla `Camel.idleAnimationState` elapsed seconds (the 4.0 s non-looping `CAMEL_IDLE`),
+    /// restarted by `Camel.setupAnimationStates()` every `random.nextInt(40) + 80` client ticks.
+    /// `CamelModel.setupAnim` applies it ADDITIVELY onto the walk/sit/stand pose. `-1.0` for every
+    /// other entity and for a camel whose client idle state has not started ticking yet.
+    (with_camel_idle_seconds) camel_idle_seconds: f32 = -1.0;
     /// Vanilla `CamelRenderState.jumpCooldown`: `max(Camel.getJumpCooldown() - partialTicks, 0)`.
     /// `CamelModel.applyHeadRotation` converts it into an extra upward head pitch during the
     /// post-dash cooldown. `0.0` for every non-camel and a camel whose dash cooldown has expired.
@@ -2390,6 +2395,7 @@ mod tests {
                 camel_sit_pose_seconds: -1.0,
                 camel_standup_seconds: -1.0,
                 camel_dash_seconds: -1.0,
+                camel_idle_seconds: -1.0,
                 camel_jump_cooldown: 0.0,
                 frog_croak_seconds: -1.0,
                 frog_tongue_seconds: -1.0,

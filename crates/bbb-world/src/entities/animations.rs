@@ -388,6 +388,10 @@ const EVOKER_FANGS_LIFE_TICKS: i32 = 22;
 /// the synced dash flag rises, and `Camel.tick` decrements it each client tick. The renderer consumes
 /// `max(dashCooldown - partialTicks, 0)` as `CamelRenderState.jumpCooldown`.
 const CAMEL_DASH_COOLDOWN_TICKS: i32 = 55;
+/// Vanilla `Camel.setupAnimationStates`: `idleAnimationTimeout = random.nextInt(40) + 80`, then
+/// `idleAnimationState.start(tickCount)`. `CAMEL_IDLE` itself is the 4.0 s non-looping keyframe.
+const CAMEL_IDLE_TIMEOUT_RANDOM_BOUND: i32 = 40;
+const CAMEL_IDLE_TIMEOUT_BASE_TICKS: i32 = 80;
 
 /// Vanilla `Creaking.handleEntityEvent`: event `4` sets `attackAnimationRemainingTicks = 15` (the
 /// lunge), event `66` sets `invulnerabilityAnimationRemainingTicks = 8` (the heart-bound stagger).
@@ -447,6 +451,8 @@ pub struct EntityClientAnimationState {
     /// to the looping `CAMEL_DASH` gallop.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub camel_dash: Option<KeyframeAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub camel_idle: Option<CamelIdleAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub camel_dash_cooldown: Option<CamelDashCooldownState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1138,6 +1144,42 @@ impl KeyframeAnimationState {
     fn elapsed_seconds(self, age_ticks: u32, partial_tick: f32) -> Option<f32> {
         self.start_age
             .map(|start| ((age_ticks - start) as f32 + partial_tick) / 20.0)
+    }
+}
+
+/// Vanilla `Camel.idleAnimationTimeout` plus `idleAnimationState`. The exact client RNG seed is not
+/// protocol-visible, so bbb uses the same deterministic Java LCG shape used for equine tail idle
+/// starts, seeded from the entity id while preserving vanilla's `nextInt(40) + 80` interval and
+/// unconditional `AnimationState.start(tickCount)` restart.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CamelIdleAnimationState {
+    random_seed: u64,
+    timeout_ticks: i32,
+    animation: KeyframeAnimationState,
+}
+
+impl CamelIdleAnimationState {
+    fn new(entity_id: i32) -> Self {
+        Self {
+            random_seed: java_random_seed(i64::from(entity_id).wrapping_add(0xCAFE)),
+            timeout_ticks: 0,
+            animation: KeyframeAnimationState { start_age: None },
+        }
+    }
+
+    fn advance_client_tick(&mut self, age_ticks: u32) {
+        if self.timeout_ticks <= 0 {
+            self.timeout_ticks =
+                java_random_next_int_bound(&mut self.random_seed, CAMEL_IDLE_TIMEOUT_RANDOM_BOUND)
+                    + CAMEL_IDLE_TIMEOUT_BASE_TICKS;
+            self.animation.start_age = Some(age_ticks);
+        } else {
+            self.timeout_ticks -= 1;
+        }
+    }
+
+    fn elapsed_seconds(self, age_ticks: u32, partial_tick: f32) -> Option<f32> {
+        self.animation.elapsed_seconds(age_ticks, partial_tick)
     }
 }
 
@@ -4265,6 +4307,15 @@ impl EntityClientAnimationState {
             .unwrap_or(-1.0)
     }
 
+    /// Vanilla `Camel.idleAnimationState` elapsed seconds. `Camel.setupAnimationStates` restarts it
+    /// every `random.nextInt(40) + 80` client ticks and never stops it, so a ticking camel always
+    /// returns a non-negative sample while non-camels use the stopped-animation sentinel.
+    pub fn camel_idle_seconds(&self, partial_tick: f32) -> f32 {
+        self.camel_idle
+            .and_then(|state| state.elapsed_seconds(self.age_ticks, partial_tick))
+            .unwrap_or(-1.0)
+    }
+
     /// Vanilla `CamelRenderState.jumpCooldown` =
     /// `max(Camel.getJumpCooldown() - partialTicks, 0)`. The cooldown is seeded from the synced
     /// `DASH` rising edge and decremented each client tick, matching `Camel.tick`.
@@ -5085,6 +5136,9 @@ impl EntityClientAnimationState {
                     .animate_when(in_water && !walk_is_moving, self.age_ticks);
             }
             VANILLA_ENTITY_TYPE_CAMEL_ID => {
+                self.camel_idle
+                    .get_or_insert_with(|| CamelIdleAnimationState::new(entity_id))
+                    .advance_client_tick(self.age_ticks);
                 // Vanilla `Camel.setupAnimationStates`: `dashAnimationState.animateWhen(isDashing(),
                 // tickCount)` — the synced `DASH` boolean starts the looping gallop on its rising edge.
                 // (Vanilla also `stop()`s it while visually sitting, but a sitting camel never has DASH

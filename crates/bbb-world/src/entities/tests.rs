@@ -10884,6 +10884,14 @@ fn camel_dash_flag_drives_the_dash_animation_timer() {
             .unwrap()
             .camel_jump_cooldown
     };
+    let idle_seconds = |store: &WorldStore, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 90)
+            .unwrap()
+            .camel_idle_seconds
+    };
     let set_dashing = |store: &mut WorldStore, dashing: bool| {
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
             id: 90,
@@ -10898,9 +10906,14 @@ fn camel_dash_flag_drives_the_dash_animation_timer() {
     // A non-dashing camel projects the stopped-animation sentinel.
     assert_eq!(dash_seconds(&store, 1.0), -1.0);
     assert_eq!(jump_cooldown(&store, 1.0), 0.0);
+    assert_eq!(idle_seconds(&store, 1.0), -1.0);
     store.advance_entity_client_animations(3);
     assert_eq!(dash_seconds(&store, 1.0), -1.0);
     assert_eq!(jump_cooldown(&store, 1.0), 0.0);
+    assert!(
+        (idle_seconds(&store, 1.0) - 0.15).abs() < 1.0e-6,
+        "Camel.setupAnimationStates starts CAMEL_IDLE on the first ticking client frame"
+    );
 
     // Vanilla `Camel.setupAnimationStates`: the synced DASH rising edge starts `dashAnimationState`,
     // and the elapsed seconds climb from there (1 tick = 0.05 s). Vanilla

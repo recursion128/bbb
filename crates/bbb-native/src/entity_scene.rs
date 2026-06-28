@@ -1445,6 +1445,7 @@ fn entity_model_instance(
         .with_camel_sit_pose_seconds(camel_sit.sit_pose_seconds)
         .with_camel_standup_seconds(camel_sit.standup_seconds)
         .with_camel_dash_seconds(source.camel_dash_seconds)
+        .with_camel_idle_seconds(source.camel_idle_seconds)
         .with_camel_jump_cooldown(source.camel_jump_cooldown)
         .with_vex_charging(source.vex_charging)
         .with_vex_right_hand_item_non_empty(vex_right_hand_item_non_empty)
@@ -2815,8 +2816,8 @@ impl CamelSitState {
 ///   - `sit` and `standup` start at the pose-change tick, so their elapsed is `getPoseTime`;
 ///   - `sitPose` starts when the 40-tick sit-down window ends, so its elapsed is
 ///     `getPoseTime - 40`.
-/// The `dash` (rising-edge driven) and `idle` (client random-timer driven) animations are not
-/// projection-derivable and stay deferred. Non-camel entities return [`CamelSitState::STOPPED`].
+/// The `dash` (rising-edge driven) and `idle` (client random-timer driven) animations are projected
+/// by the world client-animation state. Non-camel entities return [`CamelSitState::STOPPED`].
 fn camel_sit_state(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
@@ -4311,13 +4312,14 @@ mod tests {
                 .map(|instance| {
                     (
                         instance.render_state.camel_dash_seconds,
+                        instance.render_state.camel_idle_seconds,
                         instance.render_state.camel_jump_cooldown,
                     )
                 })
         };
 
         // A non-dashing camel projects the stopped-animation sentinel.
-        assert_eq!(dash(&world), Some((-1.0, 0.0)));
+        assert_eq!(dash(&world), Some((-1.0, -1.0, 0.0)));
 
         // Vanilla `Camel.setupAnimationStates`: the synced `DASH` boolean starts `dashAnimationState`,
         // and the elapsed seconds flow through EntityModelSourceState into the renderer EntityRenderState
@@ -4332,8 +4334,12 @@ mod tests {
             progress.0 >= 0.0,
             "the projected dash timer drives CamelModel.setupAnim: {progress:?}"
         );
+        assert!(
+            (progress.1 - 0.1).abs() < 1.0e-6,
+            "the projected idle timer drives CamelModel.setupAnim: {progress:?}"
+        );
         assert_eq!(
-            progress.1, 52.0,
+            progress.2, 52.0,
             "the projected dash cooldown drives CamelModel.applyHeadRotation"
         );
     }

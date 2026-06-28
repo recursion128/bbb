@@ -1119,6 +1119,69 @@ pub(in crate::entity_models) const CAMEL_DASH: AnimationDefinition = AnimationDe
     bones: &CAMEL_DASH_BONES_ANIM,
 };
 
+// ----- `CamelAnimation.CAMEL_IDLE` (length 4.0s, NOT looping) -----
+
+const CAMEL_IDLE_TAIL_ROT: [Keyframe; 4] = [
+    keyframe(0.0, degree_vec(5.0, 0.0, 0.0), CATMULLROM),
+    keyframe(1.0, degree_vec(4.98107, 0.43523, -4.98107), CATMULLROM),
+    keyframe(3.0, degree_vec(4.9872, -0.29424, 3.36745), CATMULLROM),
+    keyframe(4.0, degree_vec(5.0, 0.0, 0.0), CATMULLROM),
+];
+const CAMEL_IDLE_HEAD_ROT: [Keyframe; 3] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+    keyframe(2.0, degree_vec(-2.5, 0.0, 0.0), CATMULLROM),
+    keyframe(4.0, degree_vec(0.0, 0.0, 0.0), CATMULLROM),
+];
+const CAMEL_IDLE_LEFT_EAR_ROT: [Keyframe; 5] = [
+    keyframe(2.5, degree_vec(0.0, 0.0, -45.0), CATMULLROM),
+    keyframe(2.625, degree_vec(0.0, 0.0, 22.5), CATMULLROM),
+    keyframe(2.75, degree_vec(0.0, 0.0, -45.0), CATMULLROM),
+    keyframe(2.875, degree_vec(0.0, 0.0, 22.5), CATMULLROM),
+    keyframe(3.0, degree_vec(0.0, 0.0, -45.0), CATMULLROM),
+];
+const CAMEL_IDLE_RIGHT_EAR_ROT: [Keyframe; 5] = [
+    keyframe(2.5, degree_vec(0.0, 0.0, 45.0), CATMULLROM),
+    keyframe(2.625, degree_vec(0.0, 0.0, -22.5), CATMULLROM),
+    keyframe(2.75, degree_vec(0.0, 0.0, 45.0), CATMULLROM),
+    keyframe(2.875, degree_vec(0.0, 0.0, -22.5), CATMULLROM),
+    keyframe(3.0, degree_vec(0.0, 0.0, 45.0), CATMULLROM),
+];
+
+const CAMEL_IDLE_TAIL_CHANNELS: [AnimationChannel; 1] = [rot(&CAMEL_IDLE_TAIL_ROT)];
+const CAMEL_IDLE_HEAD_CHANNELS: [AnimationChannel; 1] = [rot(&CAMEL_IDLE_HEAD_ROT)];
+const CAMEL_IDLE_LEFT_EAR_CHANNELS: [AnimationChannel; 1] = [rot(&CAMEL_IDLE_LEFT_EAR_ROT)];
+const CAMEL_IDLE_RIGHT_EAR_CHANNELS: [AnimationChannel; 1] = [rot(&CAMEL_IDLE_RIGHT_EAR_ROT)];
+
+const CAMEL_IDLE_BONES_ANIM: [BoneAnimation; 4] = [
+    BoneAnimation {
+        bone: "tail",
+        channels: &CAMEL_IDLE_TAIL_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "head",
+        channels: &CAMEL_IDLE_HEAD_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_ear",
+        channels: &CAMEL_IDLE_LEFT_EAR_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_ear",
+        channels: &CAMEL_IDLE_RIGHT_EAR_CHANNELS,
+    },
+];
+
+/// Vanilla `CamelAnimation.CAMEL_IDLE`: the 4.0 s non-looping idle keyframe restarted by
+/// `Camel.setupAnimationStates` from a client-random timeout. It additively nudges the tail/head and
+/// ear rotations, then holds the last sampled frame until the next restart.
+pub(in crate::entity_models) const CAMEL_IDLE: AnimationDefinition = AnimationDefinition {
+    length_seconds: 4.0,
+    looping: false,
+    bones: &CAMEL_IDLE_BONES_ANIM,
+};
+
+const CAMEL_IDLE_SWING_BONES: [&str; 3] = ["tail", "left_ear", "right_ear"];
+
 /// The nine bones `CAMEL_DASH` animates (every bone except the whole-model `root`), in vanilla
 /// `addAnimation` order. `setup_anim` walks these to add the dash pose onto the walk pose.
 const CAMEL_DASH_BONES: [&str; 9] = [
@@ -1378,7 +1441,6 @@ impl EntityModel for CamelModel {
         // (`sitAnimation.apply(...)`, `sitPoseAnimation.apply(...)`, `standupAnimation.apply(...)`),
         // each only while its projected elapsed seconds are `>= 0`; a non-looping def clamps past its
         // length to the resting final frame. The active definitions, paired with their sample seconds.
-        // (`idle` stays deferred — see `docs/unsupported-features.md`.)
         let sit_stand: [(&AnimationDefinition, f32); 3] = [
             (&CAMEL_SIT, instance.render_state.camel_sit_seconds),
             (
@@ -1405,6 +1467,14 @@ impl EntityModel for CamelModel {
             }
             (position, rotation)
         };
+        let idle_offsets = |bone: &str| {
+            let idle_seconds = instance.render_state.camel_idle_seconds;
+            if idle_seconds < 0.0 {
+                return ([0.0_f32; 3], [0.0_f32; 3]);
+            }
+            let elapsed = keyframe_elapsed_seconds(&CAMEL_IDLE, idle_seconds);
+            sample_bone_offsets(&CAMEL_IDLE, bone, elapsed, 1.0)
+        };
 
         // `root` rolls the whole model: no bind offset/rotation, so the z-sway applies at the entity
         // root. The synthetic root part carries it. (The sit/stand animations do not touch `root`.)
@@ -1417,6 +1487,7 @@ impl EntityModel for CamelModel {
         let (body_sit_pos, body_sit_rot) = sit_stand_offsets("body");
         let (head_walk_pos, head_walk_rot) = sample("head");
         let (head_sit_pos, head_sit_rot) = sit_stand_offsets("head");
+        let (head_idle_pos, head_idle_rot) = idle_offsets("head");
         let body = self.root.child_mut("body");
         let body_bind = body.pose;
         body.pose = keyframe_animated_pose(
@@ -1439,14 +1510,14 @@ impl EntityModel for CamelModel {
         let head_bind = head.pose;
         head.pose = PartPose {
             offset: [
-                head_bind.offset[0] + head_walk_pos[0] + head_sit_pos[0],
-                head_bind.offset[1] + head_walk_pos[1] + head_sit_pos[1],
-                head_bind.offset[2] + head_walk_pos[2] + head_sit_pos[2],
+                head_bind.offset[0] + head_walk_pos[0] + head_sit_pos[0] + head_idle_pos[0],
+                head_bind.offset[1] + head_walk_pos[1] + head_sit_pos[1] + head_idle_pos[1],
+                head_bind.offset[2] + head_walk_pos[2] + head_sit_pos[2] + head_idle_pos[2],
             ],
             rotation: [
-                head_pitch.to_radians() + head_walk_rot[0] + head_sit_rot[0],
-                head_yaw.to_radians() + head_walk_rot[1] + head_sit_rot[1],
-                head_bind.rotation[2] + head_walk_rot[2] + head_sit_rot[2],
+                head_pitch.to_radians() + head_walk_rot[0] + head_sit_rot[0] + head_idle_rot[0],
+                head_yaw.to_radians() + head_walk_rot[1] + head_sit_rot[1] + head_idle_rot[1],
+                head_bind.rotation[2] + head_walk_rot[2] + head_sit_rot[2] + head_idle_rot[2],
             ],
         };
 
@@ -1471,6 +1542,16 @@ impl EntityModel for CamelModel {
             }
             .child_mut(bone);
             part.pose = keyframe_animated_pose(part.pose, sit_pos, sit_rot);
+        }
+        for bone in CAMEL_IDLE_SWING_BONES {
+            let (idle_pos, idle_rot) = idle_offsets(bone);
+            let part = match bone {
+                "left_ear" | "right_ear" => self.root.child_mut("body").child_mut("head"),
+                "tail" => self.root.child_mut("body"),
+                _ => &mut self.root,
+            }
+            .child_mut(bone);
+            part.pose = keyframe_animated_pose(part.pose, idle_pos, idle_rot);
         }
 
         // Vanilla `CamelModel.setupAnim` applies `dashAnimation.apply(dashAnimationState, ageInTicks)`

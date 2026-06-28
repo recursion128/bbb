@@ -1209,6 +1209,11 @@ impl EntityStore {
             camel_dash_seconds: client_animations
                 .animations
                 .camel_dash_seconds(partial_ticks),
+            // Vanilla `Camel.idleAnimationState`: client-random timeout-driven idle keyframe elapsed
+            // seconds, or `-1.0` for every non-camel.
+            camel_idle_seconds: client_animations
+                .animations
+                .camel_idle_seconds(partial_ticks),
             camel_jump_cooldown: client_animations
                 .animations
                 .camel_jump_cooldown(partial_ticks),

@@ -546,6 +546,12 @@ pub struct EntityModelSourceState {
     /// stopped-animation sentinel) for a non-dashing camel and every other entity.
     #[serde(default = "entity_model_source_default_neg_one")]
     pub camel_dash_seconds: f32,
+    /// Vanilla camel idle timing (`CamelRenderState.idleAnimationState`): elapsed seconds since
+    /// `Camel.setupAnimationStates` last restarted the non-looping 4.0 s `CAMEL_IDLE` keyframe from
+    /// its `random.nextInt(40) + 80` timeout. Projected only for a ticking camel and `-1.0` for
+    /// every other entity.
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub camel_idle_seconds: f32,
     /// Vanilla `CamelRenderState.jumpCooldown` (`max(Camel.getJumpCooldown() - partialTicks, 0)`):
     /// a post-dash cooldown counter that adds extra upward head pitch in `CamelModel.applyHeadRotation`.
     /// Projected only for the camel and `0.0` for every other entity or an expired cooldown.
