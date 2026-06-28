@@ -1176,6 +1176,41 @@ fn colored_runtime_mesh_applies_vanilla_force_transparent_alpha() {
 }
 
 #[test]
+fn colored_runtime_mesh_applies_vanilla_outline_color_for_hidden_glowing() {
+    // Vanilla `LivingEntityRenderer.getRenderType` returns `RenderTypes.outline`
+    // only when the body is invisible to this client and `appearsGlowing()`.
+    let hidden_glowing =
+        EntityModelInstance::placeholder(1, [0.0, 0.0, 0.0], 0.0, "hidden_glowing", 1.0, 1.0, 1.0)
+            .with_invisible(true)
+            .with_outline_color(0xff33_66cc)
+            .with_light_coords((3_u32 << 4) | (12_u32 << 20))
+            .with_has_red_overlay(true);
+    let mesh = entity_model_colored_runtime_mesh(&[hidden_glowing]);
+    assert!(!mesh.vertices.is_empty());
+    let outline_tint = [
+        0x33 as f32 / 255.0,
+        0x66 as f32 / 255.0,
+        0xcc as f32 / 255.0,
+        1.0,
+    ];
+    for vertex in &mesh.vertices {
+        assert_eq!(vertex.color, outline_tint);
+        assert_eq!(vertex.light, [3.0 / 15.0, 12.0 / 15.0]);
+        assert_eq!(vertex.overlay, [0.0, 3.0]);
+    }
+
+    let visible_glowing =
+        EntityModelInstance::placeholder(2, [0.0, 0.0, 0.0], 0.0, "visible_glowing", 1.0, 1.0, 1.0)
+            .with_outline_color(0xff33_66cc);
+    let visible_mesh = entity_model_colored_runtime_mesh(&[visible_glowing]);
+    assert!(!visible_mesh.vertices.is_empty());
+    assert!(visible_mesh
+        .vertices
+        .iter()
+        .all(|vertex| vertex.color != outline_tint));
+}
+
+#[test]
 fn entity_model_vertex_layout_matches_shader_inputs() {
     let layout = entity_model_vertex_layout();
 

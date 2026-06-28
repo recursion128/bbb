@@ -509,7 +509,8 @@ When an agent does any of the following, update this file in the same slice:
       force-transparent alpha while invisible-gated layers still skip. The
       colored fallback mesh path now also preserves the same self-visible invisible
       `38/255` alpha on its alpha-blended path while hidden invisible instances
-      still skip. World/native
+      still skip, and hidden glowing colored fallback meshes use `outlineColor`
+      as their vertex tint. World/native
       projection now clears `isInvisibleToPlayer` for spectator viewers, matching
       `Entity.isInvisibleTo(player)`'s spectator branch. The shared glowing bit
       (`Entity.DATA_SHARED_FLAGS_ID` bit 6 / client `isCurrentlyGlowing()`) is now
@@ -544,8 +545,9 @@ When an agent does any of the following, update this file in the same slice:
       upload it as a GPU resident outline bucket, and tint folded outline vertices
       from `outlineColor` while preserving the original model tint in submission
       metadata. Colored-path force-transparent output now uses the vanilla
-      `0x26ffffff` alpha on the colored runtime path; vanilla outline-target
-      compositing remains deferred under the visual follow-up slots.
+      `0x26ffffff` alpha on the colored runtime path, and colored hidden-glowing
+      outline output uses `outlineColor`; vanilla outline-target compositing
+      remains deferred under the visual follow-up slots.
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
       proportions applied in model `setupAnim`, distinct from the now-projected
@@ -1192,7 +1194,7 @@ When an agent does any of the following, update this file in the same slice:
     - finish vanilla outline-target/final-composite presentation; base and wool
       outline submission metadata plus `outlineColor`-tinted GPU outline bucket
       geometry are now recorded for the texture-backed static-atlas path
-    - implement remaining colored-path/base-model outline handling
+    - implement remaining vanilla outline-target/final-composite handling
   - Finish wolf presentation parity:
     - registry-driven wolf variants are DONE: the synced `Wolf.DATA_VARIANT_ID`
       (index 23) `Holder<WolfVariant>` is resolved (dynamic `wolf_variant`
@@ -1202,10 +1204,11 @@ When an agent does any of the following, update this file in the same slice:
       rusty/woods/chestnut/striped) × wild/tame/angry × adult/baby
       (`bee[...]`→`wolf_<coat>[_tame|_angry][_baby].png`), the 48 new biome faces
       joining the master atlas array (→359)
-    - finish colored-path outline presentation and remaining render-state
-      extraction parity (armor, sitting/head/tail/walk pose, wet shade tint,
-      water-shake roll pose, packed lighting, white overlay, force-transparent
-      alpha, and the hurt red overlay are now applied)
+    - finish vanilla outline-target/final-composite presentation and remaining
+      render-state extraction parity (armor, sitting/head/tail/walk pose, wet
+      shade tint, water-shake roll pose, packed lighting, white overlay,
+      force-transparent alpha, hidden-glowing outline color, and the hurt red
+      overlay are now applied)
   - Implement vanilla dropped-item follow-up rendering:
     - ground-context model rendering
     - bobbing
@@ -1878,10 +1881,10 @@ When an agent does any of the following, update this file in the same slice:
       uploaded through the static-atlas outline GPU bucket while submission
       metadata still preserves the original model tint/light/overlay. Colored
       fallback force-transparent output now preserves the vanilla `38/255` alpha;
-      vanilla outline-target/final-composite presentation, colored-path outline
-      handling, and remaining render-state extraction remain unsupported; outline
-      submission metadata is recorded from the shared glowing flag and scoreboard
-      team color
+      colored hidden-glowing fallback uses the vanilla `outlineColor` tint; vanilla
+      outline-target/final-composite presentation and remaining render-state
+      extraction remain unsupported; outline submission metadata is recorded from
+      the shared glowing flag and scoreboard team color
     - wolf entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AdultWolfModel`, `BabyWolfModel`, and `WolfRenderer`,
       including nested real-head and tail parts plus baked baby
@@ -1957,8 +1960,9 @@ When an agent does any of the following, update this file in the same slice:
       tint/light/overlay metadata, including the armor-equipped invisible
       exception path, and that outline bucket is uploaded for the static-atlas GPU
       path. Colored-path force-transparent output now preserves the vanilla
-      `38/255` alpha; vanilla outline-target compositing, glint/foil, colored-path
-      outline, and remaining render-state extraction remain unsupported
+      `38/255` alpha; colored hidden-glowing fallback uses the vanilla
+      `outlineColor` tint; vanilla outline-target compositing, glint/foil, and
+      remaining render-state extraction remain unsupported
     - base horse entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AbstractEquineModel.createBodyMesh(CubeDeformation.NONE)`,
       `BabyHorseModel.createBabyMesh(CubeDeformation.NONE)`, `HorseModel`, and
@@ -4537,7 +4541,7 @@ When an agent does any of the following, update this file in the same slice:
     variants, equipment, skins, animation, lighting, custom/datapack cow/pig
     variant asset presentation, sheep
     head-look-pitch presentation,
-    wolf vanilla outline-target compositing and colored-path outline,
+    wolf vanilla outline-target compositing,
     boat/raft water-mask presentation and lighting (paddle rowing animation,
     hurt/damage roll, bubble wobble, underwater state, and above-water water-mask
     gating are projected and rendered),

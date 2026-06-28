@@ -221,6 +221,22 @@ pub(super) fn multiply_entity_model_alpha(mesh: &mut EntityModelMesh, start: usi
     }
 }
 
+/// Overwrites the color on every colored vertex appended since `start`.
+pub(super) fn fill_entity_model_color(mesh: &mut EntityModelMesh, start: usize, color: [f32; 4]) {
+    for vertex in &mut mesh.vertices[start..] {
+        vertex.color = color;
+    }
+}
+
+pub(super) fn argb_to_tint(argb: u32) -> [f32; 4] {
+    [
+        ((argb >> 16) & 0xFF) as f32 / 255.0,
+        ((argb >> 8) & 0xFF) as f32 / 255.0,
+        (argb & 0xFF) as f32 / 255.0,
+        ((argb >> 24) & 0xFF) as f32 / 255.0,
+    ]
+}
+
 /// Textured/eyes/translucent counterpart of [`fill_entity_model_overlay`].
 pub(super) fn fill_entity_textured_overlay(
     mesh: &mut EntityModelTexturedMesh,

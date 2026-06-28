@@ -28,11 +28,11 @@ use super::{
     },
     entity_model_root_transform,
     geometry::{
-        append_scrolled_textured_mesh, emit_textured_model_cube, emit_textured_model_parts,
-        fill_entity_textured_light, fill_entity_textured_overlay, part_pose_transform,
-        EntityModelScrollMesh, EntityModelScrollVertex, EntityModelTexturedMesh, PartPose,
-        TexturedModelCubeDesc, TexturedModelPartDesc, ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
-        ENTITY_VERTEX_NO_OVERLAY,
+        append_scrolled_textured_mesh, argb_to_tint, emit_textured_model_cube,
+        emit_textured_model_parts, fill_entity_textured_light, fill_entity_textured_overlay,
+        part_pose_transform, EntityModelScrollMesh, EntityModelScrollVertex,
+        EntityModelTexturedMesh, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
+        ENTITY_VERTEX_FULL_BRIGHT_LIGHT, ENTITY_VERTEX_NO_OVERLAY,
     },
     instances::EntityModelInstance,
     mesh_transformer_scaled_model_root_transform,
@@ -741,15 +741,6 @@ fn fill_textured_submission_vertices(
             vertex.tint = outline_tint;
         }
     }
-}
-
-fn argb_to_tint(argb: u32) -> [f32; 4] {
-    [
-        ((argb >> 16) & 0xFF) as f32 / 255.0,
-        ((argb >> 8) & 0xFF) as f32 / 255.0,
-        (argb & 0xFF) as f32 / 255.0,
-        ((argb >> 24) & 0xFF) as f32 / 255.0,
-    ]
 }
 
 fn scroll_mesh_mut(

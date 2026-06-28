@@ -38,7 +38,10 @@ fn entity_model_mesh_with_options(
     for instance in instances {
         let force_transparent =
             instance.render_state.invisible && !instance.render_state.invisible_to_player;
-        if instance.render_state.invisible && !force_transparent {
+        let outline_only = instance.render_state.invisible
+            && instance.render_state.invisible_to_player
+            && instance.render_state.appears_glowing;
+        if instance.render_state.invisible && !force_transparent && !outline_only {
             continue;
         }
         let vertex_start = mesh.vertices.len();
@@ -80,6 +83,12 @@ fn entity_model_mesh_with_options(
         );
         if force_transparent {
             multiply_entity_model_alpha(&mut mesh, vertex_start, FORCE_TRANSPARENT_ENTITY_ALPHA);
+        } else if outline_only {
+            fill_entity_model_color(
+                &mut mesh,
+                vertex_start,
+                argb_to_tint(instance.render_state.outline_color),
+            );
         }
     }
     mesh
