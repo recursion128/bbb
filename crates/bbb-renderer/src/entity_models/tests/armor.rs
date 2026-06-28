@@ -8,6 +8,17 @@ fn iron_armor_atlas() -> EntityModelTextureAtlasLayout {
     refs.push(ARMOR_IRON_HUMANOID_TEXTURE_REF);
     refs.push(ARMOR_IRON_LEGGINGS_TEXTURE_REF);
     refs.push(ARMOR_IRON_BABY_HUMANOID_TEXTURE_REF);
+    build_atlas_for_refs(&refs)
+}
+
+fn armor_stand_iron_armor_atlas() -> EntityModelTextureAtlasLayout {
+    let mut refs: Vec<EntityModelTextureRef> = armor_stand_entity_texture_refs().to_vec();
+    refs.push(ARMOR_IRON_HUMANOID_TEXTURE_REF);
+    refs.push(ARMOR_IRON_LEGGINGS_TEXTURE_REF);
+    build_atlas_for_refs(&refs)
+}
+
+fn build_atlas_for_refs(refs: &[EntityModelTextureRef]) -> EntityModelTextureAtlasLayout {
     let images: Vec<EntityModelTextureImage> = refs
         .iter()
         .enumerate()
@@ -125,6 +136,40 @@ fn humanoid_armor_layer_pass_records_vanilla_model_layer_metadata() {
         ]
     );
     assert_eq!((dyed_helmet.order, dyed_helmet.submit_sequence), (1, 4));
+}
+
+#[test]
+fn armor_stand_armor_layer_pass_records_vanilla_model_layers() {
+    // Vanilla `ArmorStandRenderer` registers `HumanoidArmorLayer` with
+    // `ModelLayers.ARMOR_STAND_ARMOR` plus `ARMOR_STAND_SMALL_ARMOR`.
+    let chest = humanoid_armor_layer_pass(
+        HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND,
+        HumanoidArmorSlot::Chest,
+        EntityArmorMaterial::Iron,
+        ARMOR_IRON_HUMANOID_TEXTURE_REF,
+        None,
+        1,
+    );
+    assert_eq!(chest.kind, EntityModelLayerKind::HumanoidArmor);
+    assert_eq!(chest.model_layer, "minecraft:armor_stand#chestplate");
+    assert_eq!(chest.render_type.vanilla_name(), "armorCutoutNoCull");
+    assert_eq!(chest.texture, ARMOR_IRON_HUMANOID_TEXTURE_REF);
+    assert_eq!((chest.order, chest.submit_sequence), (1, 1));
+
+    let small_legs = humanoid_armor_layer_pass(
+        HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND_SMALL,
+        HumanoidArmorSlot::Legs,
+        EntityArmorMaterial::Iron,
+        ARMOR_IRON_LEGGINGS_TEXTURE_REF,
+        None,
+        2,
+    );
+    assert_eq!(
+        small_legs.model_layer,
+        "minecraft:armor_stand_small#leggings"
+    );
+    assert_eq!(small_legs.texture, ARMOR_IRON_LEGGINGS_TEXTURE_REF);
+    assert_eq!((small_legs.order, small_legs.submit_sequence), (1, 2));
 }
 
 #[test]
@@ -388,6 +433,251 @@ fn armored_zombie_emits_inflated_armor_pieces() {
         armored_x_max > bare_x_max,
         "inflated armor extends beyond the body ({armored_x_max} vs {bare_x_max})"
     );
+}
+
+#[test]
+fn full_armor_stand_armor_submissions_match_vanilla_layer_order() {
+    let atlas = armor_stand_iron_armor_atlas();
+    let armored_instance = EntityModelInstance::armor_stand(
+        472,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        true,
+        true,
+        DEFAULT_ARMOR_STAND_MODEL_POSE,
+    )
+    .with_light_coords((4_u32 << 4) | (12_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true)
+    .with_head_armor(Some(EntityArmorMaterial::Iron))
+    .with_chest_armor(Some(EntityArmorMaterial::Iron))
+    .with_legs_armor(Some(EntityArmorMaterial::Iron))
+    .with_feet_armor(Some(EntityArmorMaterial::Iron));
+
+    let meshes = entity_model_textured_meshes(&[armored_instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 5);
+    let base = meshes.submissions[0];
+    assert_eq!(base.texture, ARMOR_STAND_TEXTURE_REF);
+    assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        base.transform,
+        entity_model_root_transform(armored_instance)
+    );
+    assert_eq!(base.light, armored_instance.render_state.shader_light());
+    assert_eq!(base.overlay, armored_instance.render_state.overlay_coords());
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+
+    assert_full_iron_armor_stand_submissions(&meshes, armored_instance, 1, 0);
+    assert_eq!(meshes.cutout.vertices.len(), 480);
+}
+
+#[test]
+fn invisible_glowing_armor_stand_keeps_armor_layer_submissions() {
+    let atlas = armor_stand_iron_armor_atlas();
+    let hidden_glowing = EntityModelInstance::armor_stand(
+        473,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        true,
+        true,
+        DEFAULT_ARMOR_STAND_MODEL_POSE,
+    )
+    .with_head_armor(Some(EntityArmorMaterial::Iron))
+    .with_chest_armor(Some(EntityArmorMaterial::Iron))
+    .with_legs_armor(Some(EntityArmorMaterial::Iron))
+    .with_feet_armor(Some(EntityArmorMaterial::Iron))
+    .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true)
+    .with_invisible(true)
+    .with_outline_color(0xff66_aa33);
+
+    let meshes = entity_model_textured_meshes(&[hidden_glowing], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 5);
+    let base = meshes.submissions[0];
+    assert_eq!(base.texture, ARMOR_STAND_TEXTURE_REF);
+    assert_eq!(base.render_type.vanilla_name(), "outline");
+    assert_eq!(base.outline_color, 0xff66_aa33);
+    assert_eq!(base.overlay, hidden_glowing.render_state.overlay_coords());
+    assert_full_iron_armor_stand_submissions(&meshes, hidden_glowing, 1, 0xff66_aa33);
+    assert_eq!(
+        meshes.cutout.vertices.len(),
+        240,
+        "outline-only base records metadata only, while armorCutoutNoCull equipment still folds"
+    );
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+}
+
+#[test]
+fn marker_invisible_glowing_armor_stand_keeps_armor_without_base_submission() {
+    let atlas = armor_stand_iron_armor_atlas();
+    let marker_hidden_glowing = EntityModelInstance::armor_stand_with_marker(
+        474,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        true,
+        true,
+        true,
+        DEFAULT_ARMOR_STAND_MODEL_POSE,
+    )
+    .with_head_armor(Some(EntityArmorMaterial::Iron))
+    .with_chest_armor(Some(EntityArmorMaterial::Iron))
+    .with_legs_armor(Some(EntityArmorMaterial::Iron))
+    .with_feet_armor(Some(EntityArmorMaterial::Iron))
+    .with_light_coords((7_u32 << 4) | (9_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true)
+    .with_invisible(true)
+    .with_outline_color(0xff22_88cc);
+
+    let meshes = entity_model_textured_meshes(&[marker_hidden_glowing], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 4);
+    assert!(!meshes
+        .submissions
+        .iter()
+        .any(|submit| submit.texture == ARMOR_STAND_TEXTURE_REF));
+    assert_full_iron_armor_stand_submissions(&meshes, marker_hidden_glowing, 0, 0xff22_88cc);
+    assert_eq!(
+        meshes.cutout.vertices.len(),
+        240,
+        "marker hidden base records no submission, but vanilla still runs HumanoidArmorLayer"
+    );
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+}
+
+#[test]
+fn small_armor_stand_armor_uses_small_model_scale_with_adult_textures() {
+    let atlas = armor_stand_iron_armor_atlas();
+    let full = EntityModelInstance::armor_stand(
+        475,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        true,
+        true,
+        DEFAULT_ARMOR_STAND_MODEL_POSE,
+    )
+    .with_head_armor(Some(EntityArmorMaterial::Iron))
+    .with_chest_armor(Some(EntityArmorMaterial::Iron))
+    .with_legs_armor(Some(EntityArmorMaterial::Iron))
+    .with_feet_armor(Some(EntityArmorMaterial::Iron));
+    let small = EntityModelInstance::armor_stand(
+        476,
+        [0.0, 64.0, 0.0],
+        0.0,
+        true,
+        true,
+        true,
+        DEFAULT_ARMOR_STAND_MODEL_POSE,
+    )
+    .with_head_armor(Some(EntityArmorMaterial::Iron))
+    .with_chest_armor(Some(EntityArmorMaterial::Iron))
+    .with_legs_armor(Some(EntityArmorMaterial::Iron))
+    .with_feet_armor(Some(EntityArmorMaterial::Iron));
+
+    let full_meshes = entity_model_textured_meshes(&[full], &atlas);
+    let small_meshes = entity_model_textured_meshes(&[small], &atlas);
+    assert_full_iron_armor_stand_submissions(&full_meshes, full, 1, 0);
+    assert_full_iron_armor_stand_submissions(&small_meshes, small, 1, 0);
+
+    let full_positions = armor_stand_armor_vertex_positions(&full_meshes, &atlas);
+    let small_positions = armor_stand_armor_vertex_positions(&small_meshes, &atlas);
+    assert_eq!(full_positions.len(), 240);
+    assert_eq!(small_positions.len(), 240);
+    assert!(
+        y_extent(&small_positions) < y_extent(&full_positions) * 0.8,
+        "ARMOR_STAND_SMALL_ARMOR applies HumanoidModel.BABY_TRANSFORMER while keeping adult equipment textures"
+    );
+}
+
+fn assert_full_iron_armor_stand_submissions(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    start_index: usize,
+    expected_outline_color: u32,
+) {
+    let expected_transform = entity_model_root_transform(instance);
+    for (submit, texture, sequence) in [
+        (
+            meshes.submissions[start_index],
+            ARMOR_IRON_HUMANOID_TEXTURE_REF,
+            1,
+        ),
+        (
+            meshes.submissions[start_index + 1],
+            ARMOR_IRON_LEGGINGS_TEXTURE_REF,
+            2,
+        ),
+        (
+            meshes.submissions[start_index + 2],
+            ARMOR_IRON_HUMANOID_TEXTURE_REF,
+            3,
+        ),
+        (
+            meshes.submissions[start_index + 3],
+            ARMOR_IRON_HUMANOID_TEXTURE_REF,
+            4,
+        ),
+    ] {
+        assert_eq!(
+            submit.render_type,
+            EntityModelLayerRenderType::ArmorCutoutNoCull
+        );
+        assert_eq!(submit.render_type.vanilla_name(), "armorCutoutNoCull");
+        assert_eq!(submit.texture, texture);
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(submit.transform, expected_transform);
+        assert_eq!(submit.light, instance.render_state.shader_light());
+        assert_eq!(submit.overlay, [0.0, 10.0]);
+        assert_eq!(submit.outline_color, expected_outline_color);
+        assert_eq!((submit.order, submit.submit_sequence), (1, sequence));
+    }
+}
+
+fn armor_stand_armor_vertex_positions(
+    meshes: &EntityModelTexturedMeshes,
+    atlas: &EntityModelTextureAtlasLayout,
+) -> Vec<[f32; 3]> {
+    let armor_entries: Vec<_> = atlas
+        .entries
+        .iter()
+        .filter(|entry| {
+            entry.texture == ARMOR_IRON_HUMANOID_TEXTURE_REF
+                || entry.texture == ARMOR_IRON_LEGGINGS_TEXTURE_REF
+        })
+        .collect();
+    meshes
+        .cutout
+        .vertices
+        .iter()
+        .filter(|vertex| {
+            armor_entries.iter().any(|entry| {
+                vertex.uv[0] >= entry.uv.min[0]
+                    && vertex.uv[0] <= entry.uv.max[0]
+                    && vertex.uv[1] >= entry.uv.min[1]
+                    && vertex.uv[1] <= entry.uv.max[1]
+            })
+        })
+        .map(|vertex| vertex.position)
+        .collect()
+}
+
+fn y_extent(positions: &[[f32; 3]]) -> f32 {
+    let (min_y, max_y) = positions
+        .iter()
+        .fold((f32::INFINITY, f32::NEG_INFINITY), |(min_y, max_y), pos| {
+            (min_y.min(pos[1]), max_y.max(pos[1]))
+        });
+    max_y - min_y
 }
 
 #[test]

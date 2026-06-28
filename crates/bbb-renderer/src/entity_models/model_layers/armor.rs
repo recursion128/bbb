@@ -74,6 +74,29 @@ const fn armor_cube(
     armor_cube_deformed(min, size, tex, mirror, [g, g, g])
 }
 
+const fn scale_vec3(v: [f32; 3], scale: f32) -> [f32; 3] {
+    [v[0] * scale, v[1] * scale, v[2] * scale]
+}
+
+const fn armor_cube_scaled(
+    min: [f32; 3],
+    size: [f32; 3],
+    tex: [f32; 2],
+    mirror: bool,
+    g: f32,
+    scale: f32,
+) -> ModelCube {
+    let cube = armor_cube(min, size, tex, mirror, g);
+    ModelCube::new(
+        scale_vec3(cube.min, scale),
+        scale_vec3(cube.size, scale),
+        cube.color,
+        cube.uv_size,
+        cube.tex,
+        cube.mirror,
+    )
+}
+
 const fn extend_deformation(g: [f32; 3], factor: f32) -> [f32; 3] {
     [g[0] + factor, g[1] + factor, g[2] + factor]
 }
@@ -136,6 +159,36 @@ const RIGHT_LEG_POSE: PartPose = PartPose {
 };
 const LEFT_LEG_POSE: PartPose = PartPose {
     offset: [1.9, 12.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+
+// Vanilla `ModelLayers.ARMOR_STAND_SMALL_ARMOR` applies `HumanoidModel.BABY_TRANSFORMER`
+// to the armor-stand armor meshes. This renderer bakes that scale into cube geometry so
+// it can keep using pose-copying from the small armor-stand host model.
+const SMALL_ARMOR_STAND_HEAD_SCALE: f32 = 0.75;
+const SMALL_ARMOR_STAND_BODY_SCALE: f32 = 0.5;
+const SMALL_ARMOR_STAND_HEAD_POSE: PartPose = PartPose {
+    offset: [0.0, 12.75, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+const SMALL_ARMOR_STAND_BODY_POSE: PartPose = PartPose {
+    offset: [0.0, 12.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+const SMALL_ARMOR_STAND_RIGHT_ARM_POSE: PartPose = PartPose {
+    offset: [-2.5, 13.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+const SMALL_ARMOR_STAND_LEFT_ARM_POSE: PartPose = PartPose {
+    offset: [2.5, 13.0, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+const SMALL_ARMOR_STAND_RIGHT_LEG_POSE: PartPose = PartPose {
+    offset: [-0.95, 17.5, 0.0],
+    rotation: [0.0, 0.0, 0.0],
+};
+const SMALL_ARMOR_STAND_LEFT_LEG_POSE: PartPose = PartPose {
+    offset: [0.95, 17.5, 0.0],
     rotation: [0.0, 0.0, 0.0],
 };
 
@@ -227,6 +280,20 @@ impl HumanoidArmorModelLayerSet {
     }
 }
 
+pub(in crate::entity_models) const HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND:
+    HumanoidArmorModelLayerSet = HumanoidArmorModelLayerSet {
+    helmet: "minecraft:armor_stand#helmet",
+    chestplate: "minecraft:armor_stand#chestplate",
+    leggings: "minecraft:armor_stand#leggings",
+    boots: "minecraft:armor_stand#boots",
+};
+pub(in crate::entity_models) const HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND_SMALL:
+    HumanoidArmorModelLayerSet = HumanoidArmorModelLayerSet {
+    helmet: "minecraft:armor_stand_small#helmet",
+    chestplate: "minecraft:armor_stand_small#chestplate",
+    leggings: "minecraft:armor_stand_small#leggings",
+    boots: "minecraft:armor_stand_small#boots",
+};
 pub(in crate::entity_models) const HUMANOID_ARMOR_MODEL_LAYERS_BOGGED: HumanoidArmorModelLayerSet =
     HumanoidArmorModelLayerSet {
         helmet: "minecraft:bogged#helmet",
@@ -526,6 +593,165 @@ impl HumanoidArmorSlot {
                             [0.0, 16.0],
                             true,
                             outer - 0.1,
+                        )],
+                    ),
+                ),
+            ],
+        };
+        ModelPart::new(PART_POSE_ZERO, Vec::new(), children)
+    }
+
+    pub(in crate::entity_models) fn build_armor_stand_tree(
+        self,
+        small: bool,
+        outer: f32,
+    ) -> ModelPart {
+        if !small {
+            return self.build_tree(outer);
+        }
+        let children: Vec<(&'static str, ModelPart)> = match self {
+            Self::Head => vec![(
+                "head",
+                ModelPart::new(
+                    SMALL_ARMOR_STAND_HEAD_POSE,
+                    vec![armor_cube_scaled(
+                        HEAD_MIN,
+                        HEAD_SIZE,
+                        [0.0, 0.0],
+                        false,
+                        outer,
+                        SMALL_ARMOR_STAND_HEAD_SCALE,
+                    )],
+                    vec![(
+                        "hat",
+                        ModelPart::leaf(
+                            PART_POSE_ZERO,
+                            vec![armor_cube_scaled(
+                                HEAD_MIN,
+                                HEAD_SIZE,
+                                [32.0, 0.0],
+                                false,
+                                outer + 0.5,
+                                SMALL_ARMOR_STAND_HEAD_SCALE,
+                            )],
+                        ),
+                    )],
+                ),
+            )],
+            Self::Chest => vec![
+                (
+                    "body",
+                    ModelPart::leaf(
+                        SMALL_ARMOR_STAND_BODY_POSE,
+                        vec![armor_cube_scaled(
+                            BODY_MIN,
+                            BODY_SIZE,
+                            [16.0, 16.0],
+                            false,
+                            outer,
+                            SMALL_ARMOR_STAND_BODY_SCALE,
+                        )],
+                    ),
+                ),
+                (
+                    "right_arm",
+                    ModelPart::leaf(
+                        SMALL_ARMOR_STAND_RIGHT_ARM_POSE,
+                        vec![armor_cube_scaled(
+                            RIGHT_ARM_MIN,
+                            ARM_SIZE,
+                            [40.0, 16.0],
+                            false,
+                            outer,
+                            SMALL_ARMOR_STAND_BODY_SCALE,
+                        )],
+                    ),
+                ),
+                (
+                    "left_arm",
+                    ModelPart::leaf(
+                        SMALL_ARMOR_STAND_LEFT_ARM_POSE,
+                        vec![armor_cube_scaled(
+                            LEFT_ARM_MIN,
+                            ARM_SIZE,
+                            [40.0, 16.0],
+                            true,
+                            outer,
+                            SMALL_ARMOR_STAND_BODY_SCALE,
+                        )],
+                    ),
+                ),
+            ],
+            Self::Legs => vec![
+                (
+                    "body",
+                    ModelPart::leaf(
+                        SMALL_ARMOR_STAND_BODY_POSE,
+                        vec![armor_cube_scaled(
+                            BODY_MIN,
+                            BODY_SIZE,
+                            [16.0, 16.0],
+                            false,
+                            INNER_ARMOR_DEFORMATION,
+                            SMALL_ARMOR_STAND_BODY_SCALE,
+                        )],
+                    ),
+                ),
+                (
+                    "right_leg",
+                    ModelPart::leaf(
+                        SMALL_ARMOR_STAND_RIGHT_LEG_POSE,
+                        vec![armor_cube_scaled(
+                            LEG_MIN,
+                            LEG_SIZE,
+                            [0.0, 16.0],
+                            false,
+                            INNER_ARMOR_DEFORMATION - 0.1,
+                            SMALL_ARMOR_STAND_BODY_SCALE,
+                        )],
+                    ),
+                ),
+                (
+                    "left_leg",
+                    ModelPart::leaf(
+                        SMALL_ARMOR_STAND_LEFT_LEG_POSE,
+                        vec![armor_cube_scaled(
+                            LEG_MIN,
+                            LEG_SIZE,
+                            [0.0, 16.0],
+                            true,
+                            INNER_ARMOR_DEFORMATION - 0.1,
+                            SMALL_ARMOR_STAND_BODY_SCALE,
+                        )],
+                    ),
+                ),
+            ],
+            Self::Feet => vec![
+                (
+                    "right_leg",
+                    ModelPart::leaf(
+                        SMALL_ARMOR_STAND_RIGHT_LEG_POSE,
+                        vec![armor_cube_scaled(
+                            LEG_MIN,
+                            LEG_SIZE,
+                            [0.0, 16.0],
+                            false,
+                            outer - 0.1,
+                            SMALL_ARMOR_STAND_BODY_SCALE,
+                        )],
+                    ),
+                ),
+                (
+                    "left_leg",
+                    ModelPart::leaf(
+                        SMALL_ARMOR_STAND_LEFT_LEG_POSE,
+                        vec![armor_cube_scaled(
+                            LEG_MIN,
+                            LEG_SIZE,
+                            [0.0, 16.0],
+                            true,
+                            outer - 0.1,
+                            SMALL_ARMOR_STAND_BODY_SCALE,
                         )],
                     ),
                 ),

@@ -38,7 +38,7 @@ use super::{
         equine_leg_swing_pose, equine_tail_swing_pose, head_look_at_rest,
         horse_body_armor_texture_layers, limb_swing_at_rest, llama_body_decor_texture_ref,
         nautilus_body_armor_texture_ref, wolf_armor_crackiness_texture_ref,
-        wolf_body_armor_texture_layers, BreezeWindModel, CamelModel, CreeperModel,
+        wolf_body_armor_texture_layers, ArmorStandModel, BreezeWindModel, CamelModel, CreeperModel,
         CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel, CustomHeadSkullModel, ElytraModel,
         HumanoidArmorModelLayerSet, HumanoidArmorSlot, HumanoidBabyArmorKind, LlamaModel,
         NautilusModel, ParrotModel, PigModel, PiglinModel, PlayerEarsModel, PlayerModel,
@@ -50,16 +50,17 @@ use super::{
         ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
         BABY_HORSE_PARTS_TEXTURED, CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF,
         CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF,
-        END_CRYSTAL_TEXTURED_PARTS, HORSE_SADDLE_TEXTURE_REF, HUMANOID_ARMOR_MODEL_LAYERS_BOGGED,
-        HUMANOID_ARMOR_MODEL_LAYERS_DROWNED, HUMANOID_ARMOR_MODEL_LAYERS_DROWNED_BABY,
-        HUMANOID_ARMOR_MODEL_LAYERS_GIANT, HUMANOID_ARMOR_MODEL_LAYERS_HUSK,
-        HUMANOID_ARMOR_MODEL_LAYERS_HUSK_BABY, HUMANOID_ARMOR_MODEL_LAYERS_PARCHED,
-        HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN, HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BABY,
-        HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BRUTE, HUMANOID_ARMOR_MODEL_LAYERS_PLAYER,
-        HUMANOID_ARMOR_MODEL_LAYERS_PLAYER_SLIM, HUMANOID_ARMOR_MODEL_LAYERS_SKELETON,
-        HUMANOID_ARMOR_MODEL_LAYERS_STRAY, HUMANOID_ARMOR_MODEL_LAYERS_WITHER_SKELETON,
-        HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE, HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_BABY,
-        HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_VILLAGER,
+        END_CRYSTAL_TEXTURED_PARTS, HORSE_SADDLE_TEXTURE_REF,
+        HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND, HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND_SMALL,
+        HUMANOID_ARMOR_MODEL_LAYERS_BOGGED, HUMANOID_ARMOR_MODEL_LAYERS_DROWNED,
+        HUMANOID_ARMOR_MODEL_LAYERS_DROWNED_BABY, HUMANOID_ARMOR_MODEL_LAYERS_GIANT,
+        HUMANOID_ARMOR_MODEL_LAYERS_HUSK, HUMANOID_ARMOR_MODEL_LAYERS_HUSK_BABY,
+        HUMANOID_ARMOR_MODEL_LAYERS_PARCHED, HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN,
+        HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BABY, HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BRUTE,
+        HUMANOID_ARMOR_MODEL_LAYERS_PLAYER, HUMANOID_ARMOR_MODEL_LAYERS_PLAYER_SLIM,
+        HUMANOID_ARMOR_MODEL_LAYERS_SKELETON, HUMANOID_ARMOR_MODEL_LAYERS_STRAY,
+        HUMANOID_ARMOR_MODEL_LAYERS_WITHER_SKELETON, HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE,
+        HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_BABY, HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_VILLAGER,
         HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_VILLAGER_BABY,
         HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIFIED_PIGLIN,
         HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIFIED_PIGLIN_BABY, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
@@ -394,6 +395,7 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
             // type. Most layers gate on `state.isInvisible`; `WolfArmorLayer` does not, so adult
             // invisible wolves keep their body-armor equipment/crack submissions.
             emit_wolf_body_armor_layer(&mut meshes, *instance, atlas);
+            emit_worn_armor_stand_armor(&mut meshes, *instance, atlas);
             continue;
         }
         meshes.set_current_submission_state(*instance);
@@ -464,6 +466,7 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
             // Keep the vanilla layer exception above for invisible wolves while preserving the
             // existing gate for the other post-base helpers.
             emit_wolf_body_armor_layer(&mut meshes, *instance, atlas);
+            emit_worn_armor_stand_armor(&mut meshes, *instance, atlas);
             continue;
         }
         // The charged-creeper and powered-wither energy swirls are additive scrolling overlays layered
@@ -1635,6 +1638,94 @@ fn emit_humanoid_armor(
     }
 }
 
+fn emit_worn_armor_stand_armor(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let EntityModelKind::ArmorStand {
+        small,
+        show_arms,
+        show_base_plate,
+        pose,
+        ..
+    } = instance.kind
+    else {
+        return;
+    };
+    let render_state = &instance.render_state;
+    if render_state.head_armor.is_none()
+        && render_state.chest_armor.is_none()
+        && render_state.legs_armor.is_none()
+        && render_state.feet_armor.is_none()
+    {
+        return;
+    }
+    let mut host = ArmorStandModel::new(small, show_arms, show_base_plate, pose);
+    host.prepare(&instance);
+    let transform = entity_model_root_transform(instance);
+    let armor_model_layers = if small {
+        HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND_SMALL
+    } else {
+        HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND
+    };
+    for (slot, material, dye) in [
+        (
+            HumanoidArmorSlot::Chest,
+            render_state.chest_armor,
+            render_state.chest_armor_dye,
+        ),
+        (
+            HumanoidArmorSlot::Legs,
+            render_state.legs_armor,
+            render_state.legs_armor_dye,
+        ),
+        (
+            HumanoidArmorSlot::Feet,
+            render_state.feet_armor,
+            render_state.feet_armor_dye,
+        ),
+        (
+            HumanoidArmorSlot::Head,
+            render_state.head_armor,
+            render_state.head_armor_dye,
+        ),
+    ] {
+        let Some(material) = material else {
+            continue;
+        };
+        let Some(texture) = armor_slot_texture_for_layer(material, slot, false) else {
+            continue;
+        };
+        let submit_sequence = match slot {
+            HumanoidArmorSlot::Chest => 1,
+            HumanoidArmorSlot::Legs => 2,
+            HumanoidArmorSlot::Feet => 3,
+            HumanoidArmorSlot::Head => 4,
+        };
+        let mut tree = slot.build_armor_stand_tree(small, STANDARD_OUTER_ARMOR_DEFORMATION);
+        tree.copy_child_poses_from(host.root(), slot.part_names());
+        let pass = humanoid_armor_layer_pass(
+            armor_model_layers,
+            slot,
+            material,
+            texture,
+            dye,
+            submit_sequence,
+        );
+        let submit = textured_layer_submission(meshes, pass, transform);
+        render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+            tree.render_textured(
+                mesh,
+                submit.transform,
+                submit.texture,
+                entry.uv,
+                submit.tint,
+            );
+        });
+    }
+}
+
 /// Worn armor for the humanoid armor wearers (vanilla `HumanoidModel.createArmorMeshSet`, `INNER 0.5`
 /// / `OUTER 1.0`, the standard baby zombie/husk/drowned `createBabyArmorMeshSet`, or the piglin
 /// family's `OUTER 1.02`). The base body is emitted by the shared dispatch / bespoke emits; here we
@@ -1658,6 +1749,9 @@ fn emit_worn_humanoid_armor(
         return;
     }
     match instance.kind {
+        EntityModelKind::ArmorStand { .. } => {
+            emit_worn_armor_stand_armor(meshes, instance, atlas);
+        }
         EntityModelKind::Zombie { baby: false } => {
             let mut host = ZombieModel::new(false);
             host.prepare(&instance);

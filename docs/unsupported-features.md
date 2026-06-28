@@ -2559,7 +2559,16 @@ When an agent does any of the following, update this file in the same slice:
       use the inherited living `RenderTypes.outline(texture)` branch. Both paths
       preserve inherited `LivingEntityRenderer` light/overlay/outline-color
       metadata on their submissions and folded vertices where geometry is emitted.
-      Armor/equipment, hurt wiggle, and animation interpolation remain unsupported
+      `HumanoidArmorLayer` now submits full and small armor-stand armor with the
+      vanilla `ModelLayers.ARMOR_STAND_ARMOR` / `ARMOR_STAND_SMALL_ARMOR`
+      helmet/chestplate/leggings/boots model-layer metadata, adult humanoid /
+      leggings equipment textures, `armorCutoutNoCull`, no-overlay semantics,
+      order-1 chest/legs/feet/head submit sequences, small-stand
+      `HumanoidModel.BABY_TRANSFORMER` scaling, and the vanilla invisible-layer
+      behavior where hidden glowing marker stands still keep armor submissions
+      even though their base body records no submission. Held-item, wings, and
+      custom-head invisible-layer combinations, hurt wiggle, and animation
+      interpolation remain unsupported
     - slime entities as renderer-owned vanilla 26.1 `SlimeModel` inner
       `ModelLayers.SLIME` geometry plus outer `ModelLayers.SLIME_OUTER`
       geometry, official `textures/entity/slime/slime.png` texture reference,
