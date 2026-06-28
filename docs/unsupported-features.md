@@ -1245,13 +1245,15 @@ When an agent does any of the following, update this file in the same slice:
         the existing `Boxes` item-bake path, and the framed item to block/flat
         quads with its `FIXED` display transform. The facing wall orients the
         model (`Rx(xRot)·Ry(yRot)`), the item is pushed `0.4375` out and spun by
-        its rotation at scale `0.5`. Glow item-frame lighting now follows vanilla
-        `ItemFrameRenderer`: the border/model light raises block light to at least
-        `GLOW_FRAME_BRIGHTNESS = 5`, while framed item contents use the full-bright
-        `15728880` light coords; there is no separate emissive texture/pass.
-        Deferred: the filled-map full-frame render (a map frame shows only its
-        border) and the `0.5`-vs-`0.4375` invisible offset; the back panel's
-        `15.5` depth is rounded to `15`.
+        its rotation at scale `0.5`; invisible item frames now mirror vanilla by
+        clearing the frame model (no wooden border) and translating contents to
+        `0.5` instead. Glow item-frame lighting follows vanilla
+        `ItemFrameRenderer`: the border/model light raises block light to at
+        least `GLOW_FRAME_BRIGHTNESS = 5`, while framed item contents use the
+        full-bright `15728880` light coords; there is no separate emissive
+        texture/pass. Deferred: the filled-map full-frame render (a map frame
+        shows only its border) and the back panel's `15.5` depth is rounded to
+        `15`.
       - fourth consumer DONE (HUD 3D inventory icons): each hotbar slot holding
         a block item renders its block model as a 3D icon (vanilla 3D inventory
         item rendering) instead of the flat 2D sprite. Native

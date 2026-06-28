@@ -1839,8 +1839,8 @@ impl EntityStore {
     }
 
     /// The render state of every item-frame / glow-item-frame entity: its resolved wall center, the
-    /// facing wall, the `0..=7` item rotation, the glow flag, the framed item, and whether that item is a
-    /// filled map. Drives the 3D item-frame render (vanilla `ItemFrameRenderer`).
+    /// facing wall, the `0..=7` item rotation, glow/invisible flags, the framed item, and whether that
+    /// item is a filled map. Drives the 3D item-frame render (vanilla `ItemFrameRenderer`).
     pub(crate) fn item_frame_render_states(&self) -> Vec<ItemFrameRenderState> {
         let mut frames = Vec::new();
         for id in &self.order {
@@ -1866,6 +1866,11 @@ impl EntityStore {
                 light: super::ENTITY_LIGHT_PROBE_FULL_BRIGHT,
                 rotation: item_frame_rotation(&metadata.data_values),
                 glow: identity.entity_type_id == VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
+                invisible: self
+                    .metadata_byte(identity.id, ENTITY_SHARED_FLAGS_DATA_ID, 0)
+                    .unwrap_or(0)
+                    & ENTITY_SHARED_FLAG_INVISIBLE
+                    != 0,
                 item: item_frame_item(&metadata.data_values).cloned(),
                 has_map: item_frame_holds_map(&metadata.data_values),
             });
