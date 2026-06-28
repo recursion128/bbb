@@ -13,8 +13,9 @@
 use glam::{Mat4, Vec3};
 
 use super::catalog::{
-    CamelModelFamily, CowModelVariant, EntityModelKind, EntityModelTextureAtlasLayout,
-    PiglinModelFamily, SkeletonModelFamily, ZombieVariantModelFamily,
+    CamelModelFamily, CowModelVariant, EntityDynamicPlayerSkinAtlasLayout, EntityModelKind,
+    EntityModelTextureAtlasLayout, EntityPlayerSkin, PiglinModelFamily, PlayerModelPartVisibility,
+    SkeletonModelFamily, ZombieVariantModelFamily,
 };
 use super::colored::{
     arrow_model_root_transform, boat_model_root_transform, camel_model_color,
@@ -25,8 +26,8 @@ use super::colored::{
     iron_golem_model_root_transform, leash_knot_model_root_transform, llama_model_color,
     llama_spit_model_root_transform, magma_cube_model_root_transform,
     mesh_transformer_scaled_model_root_transform, panda_model_root_transform,
-    phantom_model_root_transform, piglin_model_color, polar_bear_model_root_transform,
-    pufferfish_model_root_transform, salmon_model_root_transform,
+    phantom_model_root_transform, piglin_model_color, player_model_root_transform,
+    polar_bear_model_root_transform, pufferfish_model_root_transform, salmon_model_root_transform,
     shulker_bullet_model_root_transform, shulker_model_root_transform, slime_model_root_transform,
     squid_model_root_transform, trident_model_root_transform, tropical_fish_model_root_transform,
     villager_adult_model_root_transform, wind_charge_model_root_transform,
@@ -47,8 +48,8 @@ use super::model_layers::{
     FelineModel, FoxModel, FrogModel, GhastModel, GoatModel, GuardianModel, HappyGhastModel,
     HoglinModel, IllagerModel, IronGolemModel, LeashKnotModel, LlamaModel, LlamaSpitModel,
     MagmaCubeModel, MinecartModel, NautilusModel, PandaModel, ParrotModel, PhantomModel, PigModel,
-    PiglinModel, PolarBearModel, PufferfishModel, RabbitModel, RavagerModel, SalmonModel,
-    SheepFurModel, SheepModel, ShulkerBulletModel, ShulkerModel, SilverfishModel,
+    PiglinModel, PlayerModel, PolarBearModel, PufferfishModel, RabbitModel, RavagerModel,
+    SalmonModel, SheepFurModel, SheepModel, ShulkerBulletModel, ShulkerModel, SilverfishModel,
     SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SnifferModel,
     SnowGolemModel, SpiderModel, SquidModel, StriderModel, TadpoleModel, TridentModel,
     TropicalFishModel, TropicalFishPatternModel, TurtleModel, VexModel, VillagerModel,
@@ -82,8 +83,8 @@ use super::textured::{
     parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
     piglin_textured_layer_passes, polar_bear_textured_layer_passes, rabbit_textured_layer_passes,
     ravager_textured_layer_passes, render_end_crystal_textured_layers,
-    render_no_overlay_scrolled_textured_layers, render_textured_layers,
-    salmon_textured_layer_passes, sheep_textured_layer_passes,
+    render_no_overlay_scrolled_textured_layers, render_player_textured_layers,
+    render_textured_layers, salmon_textured_layer_passes, sheep_textured_layer_passes,
     shulker_bullet_textured_layer_passes, shulker_textured_layer_passes,
     silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
     sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
@@ -150,6 +151,13 @@ pub(in crate::entity_models) trait EntityModelSink {
         instance: &EntityModelInstance,
         passes: &[EntityModelLayerPass],
     );
+
+    fn player_model(
+        &mut self,
+        skin: EntityPlayerSkin,
+        parts: PlayerModelPartVisibility,
+        instance: &EntityModelInstance,
+    );
 }
 
 /// The colored sink: render the posed cube tree into the colored mesh. Texture-backed entities (those
@@ -208,6 +216,22 @@ impl EntityModelSink for ColoredSink<'_> {
         }
         render_colored_end_crystal_model(self.mesh, instance, transform);
     }
+
+    fn player_model(
+        &mut self,
+        skin: EntityPlayerSkin,
+        _parts: PlayerModelPartVisibility,
+        instance: &EntityModelInstance,
+    ) {
+        if self.skip_texture_backed {
+            return;
+        }
+        PlayerModel::new(skin.is_slim()).prepare_and_render(
+            self.mesh,
+            instance,
+            player_model_root_transform(*instance),
+        );
+    }
 }
 
 /// The textured sink: walk the entity's textured layer passes over the posed tree. Colored-only
@@ -216,6 +240,8 @@ impl EntityModelSink for ColoredSink<'_> {
 pub(in crate::entity_models) struct TexturedSink<'a> {
     pub(in crate::entity_models) meshes: &'a mut EntityModelTexturedMeshes,
     pub(in crate::entity_models) atlas: &'a EntityModelTextureAtlasLayout,
+    pub(in crate::entity_models) dynamic_player_skin_atlas:
+        Option<&'a EntityDynamicPlayerSkinAtlasLayout>,
 }
 
 impl EntityModelSink for TexturedSink<'_> {
@@ -269,6 +295,22 @@ impl EntityModelSink for TexturedSink<'_> {
             self.atlas,
         );
     }
+
+    fn player_model(
+        &mut self,
+        skin: EntityPlayerSkin,
+        parts: PlayerModelPartVisibility,
+        instance: &EntityModelInstance,
+    ) {
+        render_player_textured_layers(
+            self.meshes,
+            instance,
+            skin,
+            parts,
+            self.atlas,
+            self.dynamic_player_skin_atlas,
+        );
+    }
 }
 
 /// Emits `instance` through `sink` if it is a "uniform" entity — one whose BOTH colored and textured
@@ -281,6 +323,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
     sink: &mut S,
 ) -> bool {
     match instance.kind {
+        EntityModelKind::Player { skin, parts } => sink.player_model(skin, parts, instance),
         // ---- Both-uniform (colored + textured), passes from a `*_textured_layer_passes` fn ----
         EntityModelKind::Chicken { variant, baby } => sink.model(
             ChickenModel::new(variant, baby),

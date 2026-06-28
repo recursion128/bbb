@@ -411,6 +411,7 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
             let mut sink = TexturedSink {
                 meshes: &mut meshes,
                 atlas,
+                dynamic_player_skin_atlas,
             };
             dispatch_uniform_entity_model(instance, &mut sink)
         };
@@ -420,16 +421,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
             // textured geometry (their dispatch call walks an empty pass list, a no-op), so they must NOT
             // appear here; every kind without a textured arm falls into `_ => {}`.
             match instance.kind {
-                EntityModelKind::Player { skin, parts } => {
-                    emit_player_textured_model(
-                        &mut meshes,
-                        *instance,
-                        skin,
-                        parts,
-                        atlas,
-                        dynamic_player_skin_atlas,
-                    );
-                }
                 EntityModelKind::Horse {
                     variant,
                     baby,
@@ -2753,9 +2744,9 @@ fn emit_villager_profession_layer(
     });
 }
 
-fn emit_player_textured_model(
+pub(in crate::entity_models) fn render_player_textured_layers(
     meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
+    instance: &EntityModelInstance,
     skin: EntityPlayerSkin,
     parts: PlayerModelPartVisibility,
     atlas: &EntityModelTextureAtlasLayout,
@@ -2766,10 +2757,10 @@ fn emit_player_textured_model(
     // six skin overlay parts (hat/jacket/sleeves/pants) are toggled by the player's part visibility
     // after `prepare` (the colored fallback shows every overlay). Held-item/attack/swim arm poses still
     // defer; the profile cape and WingsLayer emit as separate layers after the base body.
-    let transform = player_model_root_transform(instance);
+    let transform = player_model_root_transform(*instance);
     let slim = skin.is_slim();
     let mut model = PlayerModel::new(slim);
-    model.prepare(&instance);
+    model.prepare(instance);
     model.apply_part_visibility(parts);
     let texture = default_player_skin_texture_ref(skin.fallback());
     if let EntityPlayerSkin::Dynamic(dynamic_player_skin) = skin {

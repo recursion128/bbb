@@ -13,8 +13,7 @@ use super::mounts::{emit_donkey_model, emit_horse_model, emit_undead_horse_model
 use super::selection::{humanoid_model_color, quadruped_model_color};
 use super::transforms::{
     drowned_model_root_transform, entity_model_root_transform,
-    mesh_transformer_scaled_model_root_transform, player_model_root_transform,
-    scaled_model_root_transform, HUSK_SCALE,
+    mesh_transformer_scaled_model_root_transform, scaled_model_root_transform, HUSK_SCALE,
 };
 
 #[cfg(test)]
@@ -54,15 +53,6 @@ fn entity_model_mesh_with_options(
             // The uniform kinds are emitted by `dispatch_uniform_entity_model` above and are unreachable
             // here, so the match ends with `_ => {}`.
             match instance.kind {
-                EntityModelKind::Player { skin, .. } => {
-                    if !skip_texture_backed_entities {
-                        PlayerModel::new(skin.is_slim()).prepare_and_render(
-                            &mut mesh,
-                            instance,
-                            player_model_root_transform(*instance),
-                        );
-                    }
-                }
                 EntityModelKind::Humanoid { family, baby } => {
                     emit_humanoid_model(&mut mesh, *instance, family, baby)
                 }

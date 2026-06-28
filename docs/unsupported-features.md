@@ -689,11 +689,12 @@ When an agent does any of the following, update this file in the same slice:
     shares the same `half_amplitude_leg_swing_pose`: `VillagerModel` and
     `WitchModel` are also `EntityModel` (not `HumanoidModel`) with the identical `* 0.5`
     formula and no riding branch, with legs at `[3, 4]` (adult villager/witch/trader)
-    or `[1, 2]` (baby villager). The player model
-    (`emit_player_model` colored and `emit_player_textured_model` — remote players, wide
-    and slim) consumes the `HumanoidModel` legs unchanged (`PlayerModel.setupAnim` only
-    toggles part visibility before `super.setupAnim`; the pants children ride the leg
-    parts and the visibility-filtered part array keeps the legs at `[4, 5]`). The player
+    or `[1, 2]` (baby villager). The player model base now submits through the shared
+    dispatch sink (colored fallback plus `render_player_textured_layers` for remote
+    players, wide and slim) and consumes the `HumanoidModel` legs unchanged
+    (`PlayerModel.setupAnim` only toggles part visibility before `super.setupAnim`; the
+    pants children ride the leg parts and the visibility-filtered part array keeps the
+    legs at `[4, 5]`). The player
     also runs the **melee attack swing** (`HumanoidModel.setupAttackAnimation`, the default
     WHACK): the `ClientboundAnimate` packet (action `0` main / `3` off hand) arms a 6-tick
     `LivingEntity.swing` ramp — a new client-tick `AttackSwingAnimationState` advancing
