@@ -6,8 +6,9 @@ use std::{
 
 use bbb_protocol::packets::{
     BlockPos as ProtocolBlockPos, CommonPlayerSpawnInfo, DialogHolder, InteractionHand,
-    MerchantOffer, MerchantOffers, OpenBook, OpenSignEditor, PlayLogin,
-    SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog, WrittenBookContentSummary,
+    MerchantOffer, MerchantOffers, MobEffectFlags, OpenBook, OpenSignEditor, PlayLogin,
+    SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog, UpdateMobEffect,
+    WrittenBookContentSummary,
 };
 use bbb_world::LocalPlayerPoseState;
 use tokio::sync::mpsc;
@@ -19,6 +20,7 @@ use winit::{
 const TOOLTIP_TEST_WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const TOOLTIP_TEST_AQUA: [f32; 4] = [85.0 / 255.0, 1.0, 1.0, 1.0];
 const TOOLTIP_TEST_DARK_PURPLE: [f32; 4] = [170.0 / 255.0, 0.0, 170.0 / 255.0, 1.0];
+const VANILLA_26_1_PLAYER_ENTITY_TYPE_ID: i32 = 155;
 
 fn tooltip_line(text: &str, tint: [f32; 4]) -> HudInventoryTooltipLine {
     HudInventoryTooltipLine {
@@ -158,6 +160,75 @@ fn lightmap_tick_state_environment_preserves_gamma_and_flicker() {
 }
 
 #[test]
+fn lightmap_environment_projects_local_player_night_vision() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    attach_lightmap_local_player(&mut world, 42);
+    assert!(world.apply_update_mob_effect(mob_effect(42, VANILLA_MOB_EFFECT_NIGHT_VISION_ID, 240,)));
+
+    let environment = lightmap_environment_for_world_at_tick(
+        &world,
+        0.7,
+        1.4,
+        0,
+        VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK,
+    );
+    assert_eq!(environment.night_vision_factor, 1.0);
+    assert_eq!(environment.brightness_factor, 0.7);
+
+    assert!(world.apply_update_mob_effect(mob_effect(42, VANILLA_MOB_EFFECT_NIGHT_VISION_ID, 40,)));
+    let environment = lightmap_environment_for_world_at_tick(
+        &world,
+        0.7,
+        1.4,
+        0,
+        VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK,
+    );
+    let expected = 0.7
+        + ((40.0 - VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK) * std::f32::consts::PI * 0.2).sin() * 0.3;
+    assert!((environment.night_vision_factor - expected).abs() < 1e-6);
+}
+
+#[test]
+fn lightmap_environment_projects_local_player_darkness() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    attach_lightmap_local_player(&mut world, 42);
+    assert!(world.apply_update_mob_effect(mob_effect(42, VANILLA_MOB_EFFECT_DARKNESS_ID, 260,)));
+
+    let environment = lightmap_environment_for_world_at_tick(
+        &world,
+        0.8,
+        1.4,
+        10,
+        VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK,
+    );
+
+    assert_eq!(environment.brightness_factor, 0.0);
+    let expected_darkness =
+        (((10.0 - VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK) * std::f32::consts::PI * 0.025).cos()
+            * 0.45)
+            .max(0.0);
+    assert!((environment.darkness_scale - expected_darkness).abs() < 1e-6);
+    assert_eq!(environment.night_vision_factor, 0.0);
+}
+
+#[test]
+fn lightmap_environment_without_local_player_effects_keeps_base_factors() {
+    let world = world_with_dimension(0, "minecraft:overworld");
+    let environment = lightmap_environment_for_world_at_tick(
+        &world,
+        0.8,
+        1.35,
+        10,
+        VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK,
+    );
+
+    assert_eq!(environment.brightness_factor, 0.8);
+    assert_eq!(environment.block_factor, 1.35);
+    assert_eq!(environment.darkness_scale, 0.0);
+    assert_eq!(environment.night_vision_factor, 0.0);
+}
+
+#[test]
 fn server_container_open_releases_held_movement() {
     let (tx, mut rx) = mpsc::channel(4);
     let commands = Some(tx);
@@ -227,6 +298,40 @@ fn world_with_dimension(dimension_type_id: i32, dimension: &str) -> WorldStore {
         enforces_secure_chat: true,
     });
     world
+}
+
+fn attach_lightmap_local_player(world: &mut WorldStore, id: i32) {
+    world.apply_add_entity(bbb_protocol::packets::AddEntity {
+        id,
+        uuid: uuid::Uuid::from_u128(id as u128),
+        entity_type_id: VANILLA_26_1_PLAYER_ENTITY_TYPE_ID,
+        position: bbb_protocol::packets::Vec3d {
+            x: 0.0,
+            y: 64.0,
+            z: 0.0,
+        },
+        delta_movement: bbb_protocol::packets::Vec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+}
+
+fn mob_effect(entity_id: i32, effect_id: i32, duration_ticks: i32) -> UpdateMobEffect {
+    UpdateMobEffect {
+        entity_id,
+        effect_id,
+        amplifier: 0,
+        duration_ticks,
+        flags: MobEffectFlags {
+            raw: 0b0110,
+            ambient: false,
+            visible: true,
+            show_icon: true,
+            blend: false,
+        },
+    }
 }
 
 fn assert_close3(actual: [f32; 3], expected: [f32; 3]) {

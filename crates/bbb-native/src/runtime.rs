@@ -21,8 +21,8 @@ use bbb_renderer::{
     VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
 };
 use bbb_world::{
-    BookScreenState, ContainerState, MerchantOfferState, MerchantOffersState, MountArmorSlotKind,
-    MountInventoryKind, WorldLevelInfo, WorldStore,
+    BookScreenState, ContainerState, MerchantOfferState, MerchantOffersState, MobEffectState,
+    MountArmorSlotKind, MountInventoryKind, WorldLevelInfo, WorldStore,
 };
 use tokio::sync::mpsc;
 
@@ -61,6 +61,12 @@ const VANILLA_NETHER_SKY_LIGHT_COLOR: [f32; 3] = [122.0 / 255.0, 122.0 / 255.0, 
 const VANILLA_NETHER_AMBIENT_LIGHT_COLOR: [f32; 3] = rgb24(-13_621_215);
 const VANILLA_END_SKY_LIGHT_COLOR: [f32; 3] = rgb24(-5_480_243);
 const VANILLA_END_AMBIENT_LIGHT_COLOR: [f32; 3] = rgb24(-12_630_209);
+const VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK: f32 = 1.0;
+const VANILLA_MOB_EFFECT_NIGHT_VISION_ID: i32 = 15;
+const VANILLA_MOB_EFFECT_DARKNESS_ID: i32 = 32;
+const VANILLA_NIGHT_VISION_FULL_STRENGTH_TICKS: i32 = 200;
+const VANILLA_DARKNESS_BLEND_OUT_ADVANCE_TICKS: i32 = 22;
+const VANILLA_DARKNESS_EFFECT_SCALE_OPTION: f32 = 1.0;
 const CRAFTER_GRID_SLOT_COUNT: i16 = 9;
 const CRAFTER_POWERED_DATA_ID: i16 = 9;
 const CRAFTER_DISABLED_SLOT_SPRITE_SIZE: u32 = 18;
@@ -276,6 +282,7 @@ pub(crate) struct LightmapTickState {
     random: LevelEventSoundRandomState,
     block_light_flicker: f32,
     brightness_factor: f32,
+    client_tick_count: u64,
 }
 
 impl Default for LightmapTickState {
@@ -284,6 +291,7 @@ impl Default for LightmapTickState {
             random: LevelEventSoundRandomState::default(),
             block_light_flicker: 0.0,
             brightness_factor: VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
+            client_tick_count: 0,
         }
     }
 }
@@ -302,6 +310,7 @@ impl LightmapTickState {
             random: LevelEventSoundRandomState::with_seed(seed),
             block_light_flicker: 0.0,
             brightness_factor: VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
+            client_tick_count: 0,
         }
     }
 
@@ -311,6 +320,7 @@ impl LightmapTickState {
             random: LevelEventSoundRandomState::with_seed(seed),
             block_light_flicker: 0.0,
             brightness_factor: sanitize_lightmap_brightness_factor(brightness_factor),
+            client_tick_count: 0,
         }
     }
 
@@ -318,14 +328,17 @@ impl LightmapTickState {
         for _ in 0..ticks {
             self.tick();
         }
+        self.client_tick_count = self.client_tick_count.saturating_add(ticks as u64);
         self.block_factor()
     }
 
     fn environment_for_world(&self, world: &WorldStore) -> LightmapEnvironment {
-        lightmap_environment_for_world(
+        lightmap_environment_for_world_at_tick(
             world,
             self.brightness_factor,
             self.block_light_flicker + VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
+            self.client_tick_count,
+            VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK,
         )
     }
 
@@ -366,13 +379,107 @@ fn lightmap_environment_for_world(
     brightness_factor: f32,
     block_factor: f32,
 ) -> LightmapEnvironment {
+    lightmap_environment_for_world_at_tick(
+        world,
+        brightness_factor,
+        block_factor,
+        0,
+        VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK,
+    )
+}
+
+fn lightmap_environment_for_world_at_tick(
+    world: &WorldStore,
+    brightness_factor: f32,
+    block_factor: f32,
+    camera_tick_count: u64,
+    partial_tick: f32,
+) -> LightmapEnvironment {
     let mut environment = world
         .level_info()
         .map(dimension_lightmap_environment)
         .unwrap_or_default();
-    environment.brightness_factor = sanitize_lightmap_brightness_factor(brightness_factor);
+    let effects =
+        local_player_lightmap_effects(world, brightness_factor, camera_tick_count, partial_tick);
+    environment.brightness_factor = effects.brightness_factor;
+    environment.darkness_scale = effects.darkness_scale;
+    environment.night_vision_factor = effects.night_vision_factor;
     environment.block_factor = block_factor;
     environment.sanitized()
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct LocalPlayerLightmapEffects {
+    brightness_factor: f32,
+    darkness_scale: f32,
+    night_vision_factor: f32,
+}
+
+fn local_player_lightmap_effects(
+    world: &WorldStore,
+    brightness_factor: f32,
+    camera_tick_count: u64,
+    partial_tick: f32,
+) -> LocalPlayerLightmapEffects {
+    let partial_tick = sanitize_lightmap_partial_tick(partial_tick);
+    let base_brightness = sanitize_lightmap_brightness_factor(brightness_factor);
+    let darkness_modifier = local_player_effect(world, VANILLA_MOB_EFFECT_DARKNESS_ID)
+        .map(vanilla_darkness_effect_factor)
+        .unwrap_or(0.0)
+        * VANILLA_DARKNESS_EFFECT_SCALE_OPTION;
+    let brightness_factor = (base_brightness - darkness_modifier).max(0.0);
+    let darkness_scale = vanilla_darkness_scale(camera_tick_count, darkness_modifier, partial_tick)
+        * VANILLA_DARKNESS_EFFECT_SCALE_OPTION;
+    let night_vision_factor = local_player_effect(world, VANILLA_MOB_EFFECT_NIGHT_VISION_ID)
+        .map(|effect| vanilla_night_vision_scale(effect, partial_tick))
+        .unwrap_or(0.0);
+
+    LocalPlayerLightmapEffects {
+        brightness_factor,
+        darkness_scale,
+        night_vision_factor,
+    }
+}
+
+fn local_player_effect(world: &WorldStore, effect_id: i32) -> Option<MobEffectState> {
+    world
+        .local_player_id()
+        .and_then(|player_id| world.entity_effect(player_id, effect_id))
+}
+
+fn vanilla_night_vision_scale(effect: MobEffectState, partial_tick: f32) -> f32 {
+    if !mob_effect_ends_within(effect, VANILLA_NIGHT_VISION_FULL_STRENGTH_TICKS) {
+        1.0
+    } else {
+        0.7 + ((effect.duration_ticks as f32 - partial_tick) * std::f32::consts::PI * 0.2).sin()
+            * 0.3
+    }
+}
+
+fn vanilla_darkness_effect_factor(effect: MobEffectState) -> f32 {
+    if mob_effect_ends_within(effect, VANILLA_DARKNESS_BLEND_OUT_ADVANCE_TICKS) {
+        0.0
+    } else {
+        1.0
+    }
+}
+
+fn vanilla_darkness_scale(camera_tick_count: u64, darkness_gamma: f32, partial_tick: f32) -> f32 {
+    let darkness = 0.45 * darkness_gamma;
+    (((camera_tick_count as f32 - partial_tick) * std::f32::consts::PI * 0.025).cos() * darkness)
+        .max(0.0)
+}
+
+fn mob_effect_ends_within(effect: MobEffectState, ticks: i32) -> bool {
+    effect.duration_ticks != -1 && effect.duration_ticks <= ticks
+}
+
+fn sanitize_lightmap_partial_tick(partial_tick: f32) -> f32 {
+    if partial_tick.is_finite() {
+        partial_tick.clamp(0.0, 1.0)
+    } else {
+        VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK
+    }
 }
 
 fn dimension_lightmap_environment(level: &WorldLevelInfo) -> LightmapEnvironment {
