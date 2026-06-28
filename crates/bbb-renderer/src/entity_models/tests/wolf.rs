@@ -789,27 +789,7 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
         meshes.submissions[0].overlay,
         wolf.render_state.overlay_coords()
     );
-    assert_eq!(meshes.submissions[1].texture, WOLF_COLLAR_TEXTURE_REF);
-    assert_eq!(
-        meshes.submissions[1].render_type,
-        EntityModelLayerRenderType::EntityCutout
-    );
-    assert_eq!(
-        meshes.submissions[1].tint,
-        EntityDyeColor::Blue.texture_diffuse_color()
-    );
-    assert_eq!(
-        (
-            meshes.submissions[1].order,
-            meshes.submissions[1].submit_sequence
-        ),
-        (1, 1)
-    );
-    assert_eq!(meshes.submissions[1].light, meshes.submissions[0].light);
-    assert_eq!(meshes.submissions[1].overlay, [0.0, 10.0]);
-    assert_ne!(meshes.submissions[1].overlay, meshes.submissions[0].overlay);
-
-    let armor_base = meshes.submissions[2];
+    let armor_base = meshes.submissions[1];
     assert_eq!(armor_base.texture, WOLF_BODY_ARMADILLO_SCUTE_TEXTURE_REF);
     assert_eq!(
         armor_base.render_type,
@@ -817,12 +797,12 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
     );
     assert_eq!(armor_base.render_type.vanilla_name(), "armorCutoutNoCull");
     assert_eq!(armor_base.tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!((armor_base.order, armor_base.submit_sequence), (1, 2));
+    assert_eq!((armor_base.order, armor_base.submit_sequence), (1, 1));
     assert_eq!(armor_base.transform, meshes.submissions[0].transform);
     assert_eq!(armor_base.light, meshes.submissions[0].light);
     assert_eq!(armor_base.overlay, [0.0, 10.0]);
 
-    let armor_overlay = meshes.submissions[3];
+    let armor_overlay = meshes.submissions[2];
     assert_eq!(
         armor_overlay.texture,
         WOLF_BODY_ARMADILLO_SCUTE_OVERLAY_TEXTURE_REF
@@ -832,12 +812,12 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
         EntityModelLayerRenderType::ArmorCutoutNoCull
     );
     assert_eq!(armor_overlay.tint, dyed_tint);
-    assert_eq!((armor_overlay.order, armor_overlay.submit_sequence), (2, 3));
+    assert_eq!((armor_overlay.order, armor_overlay.submit_sequence), (2, 2));
     assert_eq!(armor_overlay.transform, meshes.submissions[0].transform);
     assert_eq!(armor_overlay.light, meshes.submissions[0].light);
     assert_eq!(armor_overlay.overlay, [0.0, 10.0]);
 
-    let cracks = meshes.submissions[4];
+    let cracks = meshes.submissions[3];
     assert_eq!(cracks.texture, WOLF_ARMOR_CRACKINESS_MEDIUM_TEXTURE_REF);
     assert_eq!(
         cracks.render_type,
@@ -845,7 +825,7 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
     );
     assert_eq!(cracks.render_type.vanilla_name(), "armorTranslucent");
     assert_eq!(cracks.tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!((cracks.order, cracks.submit_sequence), (3, 4));
+    assert_eq!((cracks.order, cracks.submit_sequence), (0, 3));
     assert_eq!(cracks.transform, meshes.submissions[0].transform);
     assert_eq!(cracks.light, meshes.submissions[0].light);
     assert_eq!(cracks.overlay, [0.0, 10.0]);
@@ -853,6 +833,14 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
         !meshes.translucent.vertices.is_empty(),
         "armorTranslucent cracks should emit into the translucent bucket"
     );
+    let collar = meshes.submissions[4];
+    assert_eq!(collar.texture, WOLF_COLLAR_TEXTURE_REF);
+    assert_eq!(collar.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(collar.tint, EntityDyeColor::Blue.texture_diffuse_color());
+    assert_eq!((collar.order, collar.submit_sequence), (1, 4));
+    assert_eq!(collar.light, meshes.submissions[0].light);
+    assert_eq!(collar.overlay, [0.0, 10.0]);
+    assert_ne!(collar.overlay, meshes.submissions[0].overlay);
 
     let undyed = entity_model_textured_meshes(
         &[EntityModelInstance::wolf_state(
@@ -906,7 +894,8 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
 #[test]
 fn wolf_armor_crack_submission_survives_missing_texture_atlas_entry() {
     // Vanilla `WolfArmorLayer.maybeRenderCracks` submits `armorTranslucent` with no overlay after
-    // the armor layers; a missing crack texture suppresses only the folded translucent geometry.
+    // the armor layers through the root collector's order 0; a missing crack texture suppresses only
+    // the folded translucent geometry.
     let images: Vec<_> = wolf_armor_texture_images()
         .into_iter()
         .filter(|image| image.texture != WOLF_ARMOR_CRACKINESS_MEDIUM_TEXTURE_REF)
@@ -933,7 +922,7 @@ fn wolf_armor_crack_submission_survives_missing_texture_atlas_entry() {
     let meshes = entity_model_textured_meshes(&[wolf], &atlas);
 
     assert_eq!(meshes.submissions.len(), 5);
-    let cracks = meshes.submissions[4];
+    let cracks = meshes.submissions[3];
     assert_eq!(cracks.texture, WOLF_ARMOR_CRACKINESS_MEDIUM_TEXTURE_REF);
     assert_eq!(
         cracks.render_type,
@@ -942,7 +931,7 @@ fn wolf_armor_crack_submission_survives_missing_texture_atlas_entry() {
     assert_eq!(cracks.render_type.vanilla_name(), "armorTranslucent");
     assert_eq!(cracks.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(cracks.transform, entity_model_root_transform(wolf));
-    assert_eq!((cracks.order, cracks.submit_sequence), (3, 4));
+    assert_eq!((cracks.order, cracks.submit_sequence), (0, 3));
     assert_eq!(cracks.light, wolf.render_state.shader_light());
     assert_eq!(cracks.overlay, [0.0, 10.0]);
 
@@ -990,7 +979,7 @@ fn invisible_wolf_body_armor_keeps_vanilla_layer_submissions() {
     assert_wolf_armor_submissions_for_invisible_state(
         &hidden.submissions,
         0,
-        1,
+        0,
         invisible,
         dyed_tint,
     );
@@ -1854,32 +1843,28 @@ fn assert_wolf_submissions_match_vanilla(
         panic!("expected wolf instance");
     };
     let mut expected = Vec::new();
-    expected.extend(
-        wolf_textured_layer_passes(
-            baby,
-            tame,
-            angry,
-            collar_color,
-            variant,
-            instance.render_state.wolf_wet_shade,
-        )
-        .iter()
-        .map(|pass| {
-            (
-                pass.render_type,
-                pass.texture,
-                pass.tint,
-                pass.order,
-                pass.submit_sequence,
-                matches!(pass.kind, EntityModelLayerKind::WolfCollar),
-            )
-        }),
+    let passes = wolf_textured_layer_passes(
+        baby,
+        tame,
+        angry,
+        collar_color,
+        variant,
+        instance.render_state.wolf_wet_shade,
     );
+    let base_pass = passes[0];
+    expected.push((
+        base_pass.render_type,
+        base_pass.texture,
+        base_pass.tint,
+        base_pass.order,
+        base_pass.submit_sequence,
+        false,
+    ));
 
+    let mut next_submit_sequence = 1;
     if !baby {
         if let Some(material) = instance.render_state.wolf_body_armor {
             if let Some(layers) = wolf_body_armor_texture_layers(material) {
-                let mut submit_sequence: u32 = if tame && collar_color.is_some() { 2 } else { 1 };
                 for (layer_index, layer) in layers.iter().enumerate() {
                     let Some(tint) = wolf_expected_armor_layer_tint(
                         layer.dyeable,
@@ -1892,23 +1877,34 @@ fn assert_wolf_submissions_match_vanilla(
                         layer.texture,
                         tint,
                         1 + layer_index as i32,
-                        submit_sequence,
+                        next_submit_sequence,
                         true,
                     ));
-                    submit_sequence += 1;
+                    next_submit_sequence += 1;
                 }
                 if let Some(crackiness) = instance.render_state.wolf_body_armor_crackiness {
                     expected.push((
                         EntityModelLayerRenderType::ArmorTranslucent,
                         wolf_armor_crackiness_texture_ref(crackiness),
                         [1.0, 1.0, 1.0, 1.0],
-                        3,
-                        submit_sequence,
+                        0,
+                        next_submit_sequence,
                         true,
                     ));
+                    next_submit_sequence += 1;
                 }
             }
         }
+    }
+    if let Some(collar_pass) = passes.get(1) {
+        expected.push((
+            collar_pass.render_type,
+            collar_pass.texture,
+            collar_pass.tint,
+            collar_pass.order,
+            next_submit_sequence,
+            true,
+        ));
     }
 
     assert_eq!(meshes.submissions.len(), expected.len());
@@ -1997,7 +1993,7 @@ fn assert_wolf_armor_submissions_for_invisible_state(
             EntityModelLayerRenderType::ArmorTranslucent,
             WOLF_ARMOR_CRACKINESS_HIGH_TEXTURE_REF,
             [1.0, 1.0, 1.0, 1.0],
-            3,
+            0,
             first_sequence + 2,
         ),
     ];

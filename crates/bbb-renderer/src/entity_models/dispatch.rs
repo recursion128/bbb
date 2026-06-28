@@ -14,11 +14,11 @@
 use glam::{Mat4, Vec3};
 
 use super::catalog::{
-    BoatModelFamily, CamelModelFamily, CowModelVariant, DonkeyModelFamily,
+    BoatModelFamily, CamelModelFamily, CowModelVariant, DonkeyModelFamily, EntityDyeColor,
     EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerTextureAtlasLayout, EntityModelKind,
     EntityModelTextureAtlasLayout, EntityPlayerSkin, HorseColorVariant, HorseMarkings,
     LlamaModelFamily, LlamaVariant, PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility,
-    SkeletonModelFamily, UndeadHorseModelFamily, ZombieVariantModelFamily,
+    SkeletonModelFamily, UndeadHorseModelFamily, WolfModelVariant, ZombieVariantModelFamily,
 };
 use super::colored::{
     arrow_model_root_transform, boat_model_root_transform, camel_model_color,
@@ -94,11 +94,12 @@ use super::textured::{
     render_no_overlay_scrolled_textured_layers, render_pig_saddle_layer, render_player_cape_layer,
     render_player_extra_ears_layer, render_player_textured_layers, render_strider_saddle_layer,
     render_textured_layers, render_trident_foil_submission, render_undead_horse_textured_layers,
-    render_wither_energy_swirl, salmon_textured_layer_passes, sheep_textured_layer_passes,
-    shulker_bullet_textured_layer_passes, shulker_textured_layer_passes,
-    silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
-    sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
-    squid_textured_layer_passes, tadpole_textured_layer_passes, trident_textured_layer_passes,
+    render_wither_energy_swirl, render_wolf_body_armor_layer, salmon_textured_layer_passes,
+    sheep_textured_layer_passes, shulker_bullet_textured_layer_passes,
+    shulker_textured_layer_passes, silverfish_textured_layer_passes,
+    skeleton_textured_layer_passes, slime_textured_layer_passes, sniffer_textured_layer_passes,
+    snow_golem_textured_layer_passes, spider_textured_layer_passes, squid_textured_layer_passes,
+    tadpole_textured_layer_passes, trident_textured_layer_passes,
     tropical_fish_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, warden_textured_layer_passes,
     wind_charge_textured_layer_passes, witch_textured_layer_passes,
@@ -275,6 +276,30 @@ pub(in crate::entity_models) trait EntityModelSink {
             entity_model_root_transform(*instance),
             instance,
             &zombie_nautilus_textured_layer_passes(coral),
+        );
+    }
+
+    fn wolf_model(
+        &mut self,
+        baby: bool,
+        tame: bool,
+        angry: bool,
+        collar_color: Option<EntityDyeColor>,
+        variant: WolfModelVariant,
+        instance: &EntityModelInstance,
+    ) {
+        self.model(
+            WolfModel::new(baby, angry),
+            entity_model_root_transform(*instance),
+            instance,
+            &wolf_textured_layer_passes(
+                baby,
+                tame,
+                angry,
+                collar_color,
+                variant,
+                instance.render_state.wolf_wet_shade,
+            ),
         );
     }
 
@@ -658,6 +683,41 @@ impl EntityModelSink for TexturedSink<'_> {
         );
         render_nautilus_body_armor_layer(self.meshes, *instance, self.atlas);
         render_nautilus_saddle_layer(self.meshes, *instance, self.atlas);
+    }
+
+    fn wolf_model(
+        &mut self,
+        baby: bool,
+        tame: bool,
+        angry: bool,
+        collar_color: Option<EntityDyeColor>,
+        variant: WolfModelVariant,
+        instance: &EntityModelInstance,
+    ) {
+        let transform = entity_model_root_transform(*instance);
+        let passes = wolf_textured_layer_passes(
+            baby,
+            tame,
+            angry,
+            collar_color,
+            variant,
+            instance.render_state.wolf_wet_shade,
+        );
+        if self.meshes.current_invisible_base_only() {
+            self.model(WolfModel::new(baby, angry), transform, instance, &passes);
+            return;
+        }
+
+        let mut model = WolfModel::new(baby, angry);
+        model.prepare(instance);
+        render_textured_layers(self.meshes, &model, transform, [passes[0]], self.atlas);
+        let next_submit_sequence =
+            render_wolf_body_armor_layer(self.meshes, *instance, self.atlas, 1);
+        if let Some(collar_pass) = passes.get(1) {
+            let mut collar_pass = *collar_pass;
+            collar_pass.submit_sequence = next_submit_sequence;
+            render_textured_layers(self.meshes, &model, transform, [collar_pass], self.atlas);
+        }
     }
 
     fn player_model(
@@ -1169,15 +1229,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             angry,
             collar_color,
             variant,
-        } => {
-            let wet_shade = instance.render_state.wolf_wet_shade;
-            sink.model(
-                WolfModel::new(baby, angry),
-                entity_model_root_transform(*instance),
-                instance,
-                &wolf_textured_layer_passes(baby, tame, angry, collar_color, variant, wet_shade),
-            )
-        }
+        } => sink.wolf_model(baby, tame, angry, collar_color, variant, instance),
         EntityModelKind::Boat { family, chest } => sink.boat_model(family, chest, instance),
         EntityModelKind::Spider => sink.model(
             SpiderModel::new(),

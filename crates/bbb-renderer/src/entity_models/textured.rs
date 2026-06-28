@@ -266,6 +266,10 @@ impl EntityModelTexturedMeshes {
             && instance.render_state.appears_glowing;
     }
 
+    pub(in crate::entity_models) fn current_invisible_base_only(&self) -> bool {
+        self.current_force_transparent || self.current_outline_only
+    }
+
     fn record_submission(
         &mut self,
         submit: EntityModelSubmissionEmit,
@@ -396,7 +400,7 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
             meshes.set_current_submission_state(*instance);
             // Vanilla `LivingEntityRenderer` still runs layers when the base body has no render
             // type. Keep only the layers whose own submit path has no `state.isInvisible` gate.
-            emit_wolf_body_armor_layer(&mut meshes, *instance, atlas);
+            render_wolf_body_armor_layer(&mut meshes, *instance, atlas, 0);
             emit_invisible_living_layers_without_invisible_gate(
                 &mut meshes,
                 *instance,
@@ -419,7 +423,7 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         if meshes.current_force_transparent || meshes.current_outline_only {
             // Keep vanilla layer exceptions for invisible bodies while preserving the existing gate
             // for invisible-gated helpers such as player capes and ears.
-            emit_wolf_body_armor_layer(&mut meshes, *instance, atlas);
+            render_wolf_body_armor_layer(&mut meshes, *instance, atlas, 1);
             emit_invisible_living_layers_without_invisible_gate(
                 &mut meshes,
                 *instance,
@@ -444,8 +448,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         emit_player_parrot_on_shoulder_layer(&mut meshes, *instance, atlas);
         // SpinAttackEffectLayer is the next player layer after both shoulder-parrot submits.
         emit_player_spin_attack_effect_layer(&mut meshes, *instance, atlas);
-        // Wolf body armor uses the adult WOLF_ARMOR equipment layer and optional damage cracks.
-        emit_wolf_body_armor_layer(&mut meshes, *instance, atlas);
         // VillagerProfessionLayer overlays (biome type, profession, level badge) are cutout layers
         // over the base villager or zombie-villager model with shared light and zero-white overlay.
         emit_villager_profession_layers(&mut meshes, *instance, atlas);
@@ -2107,25 +2109,26 @@ pub(in crate::entity_models) fn render_pig_saddle_layer(
 /// asset over `AdultWolfModel(ModelLayers.WOLF_ARMOR)`, baked with `CubeDeformation(0.2)`. The
 /// armadillo-scute asset has a white base layer plus a dye-only overlay; damaged armor then adds an
 /// `armorTranslucent` crack texture.
-fn emit_wolf_body_armor_layer(
+pub(in crate::entity_models) fn render_wolf_body_armor_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
-) {
+    first_submit_sequence: u32,
+) -> u32 {
     let Some(material) = instance.render_state.wolf_body_armor else {
-        return;
+        return first_submit_sequence;
     };
     if !matches!(instance.kind, EntityModelKind::Wolf { baby: false, .. }) {
-        return;
+        return first_submit_sequence;
     }
     let Some(layers) = wolf_body_armor_texture_layers(material) else {
-        return;
+        return first_submit_sequence;
     };
 
     let transform = entity_model_root_transform(instance);
     let mut model = WolfModel::armor(wolf_is_angry(instance.kind));
     model.prepare(&instance);
-    let mut submit_sequence = if wolf_collar_submits(instance) { 2 } else { 1 };
+    let mut submit_sequence = first_submit_sequence;
     for (layer_index, layer) in layers.iter().enumerate() {
         let Some(tint) =
             wolf_body_armor_layer_tint(layer.dyeable, instance.render_state.wolf_body_armor_dye)
@@ -2152,11 +2155,13 @@ fn emit_wolf_body_armor_layer(
             MODEL_LAYER_WOLF_ARMOR,
             wolf_armor_crackiness_texture_ref(crackiness),
             [1.0, 1.0, 1.0, 1.0],
-            3,
+            0,
             submit_sequence,
         );
         render_textured_no_overlay_layer_pass(meshes, &model, transform, pass, atlas);
+        submit_sequence += 1;
     }
+    submit_sequence
 }
 
 fn wolf_body_armor_layer_tint(dyeable: bool, dye: Option<u32>) -> Option<[f32; 4]> {
@@ -2178,20 +2183,6 @@ fn opaque_wolf_armor_rgb_to_tint(rgb: u32) -> [f32; 4] {
 
 fn wolf_is_angry(kind: EntityModelKind) -> bool {
     matches!(kind, EntityModelKind::Wolf { angry: true, .. })
-}
-
-fn wolf_collar_submits(instance: EntityModelInstance) -> bool {
-    if instance.render_state.invisible {
-        return false;
-    }
-    matches!(
-        instance.kind,
-        EntityModelKind::Wolf {
-            tame: true,
-            collar_color: Some(_),
-            ..
-        }
-    )
 }
 
 /// Vanilla `SimpleEquipmentLayer` over `EquineSaddleModel` for horse, donkey, mule, skeleton-horse,

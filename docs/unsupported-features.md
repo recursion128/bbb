@@ -1721,10 +1721,11 @@ When an agent does any of the following, update this file in the same slice:
       (`WolfArmorLayer`: `ModelLayers.WOLF_ARMOR` with `CubeDeformation(0.2)`,
       body-slot `wolf_armor` resolved through the `armadillo_scute` equipment
       asset, the `wolf_body` base and dyeable overlay layers as
-      `equipment_layer_pass`-generated `armorCutoutNoCull` submissions at orders `1`/`2`, undyed overlay
-      suppression, all wolf armor/collar submissions preserving vanilla
-      `OverlayTexture.NO_OVERLAY`, and the low/medium/high durability crack overlays as
-      `equipment_layer_pass`-generated `armorTranslucent` submissions at order `3`; unlike
+      Wolf-dispatch-owned `equipment_layer_pass`-generated `armorCutoutNoCull`
+      submissions at orders `1`/`2`, undyed overlay suppression, all wolf
+      armor/collar submissions preserving vanilla `OverlayTexture.NO_OVERLAY`,
+      and the low/medium/high durability crack overlays as Wolf-dispatch-owned
+      `armorTranslucent` submissions through the root collector order `0`; unlike
       `WolfCollarLayer`, vanilla `WolfArmorLayer` does not check `state.isInvisible`, so hidden
       invisible wolves still submit armor/crack layers, self-visible invisible wolves submit the
       force-transparent base plus armor/cracks, and invisible-glowing wolves submit the base outline
