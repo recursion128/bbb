@@ -140,6 +140,7 @@ pub(crate) enum ParticleInitialVelocityDescriptor {
         y_offset: f64,
     },
     Spell,
+    GlowSquid,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -346,6 +347,24 @@ impl ParticleDescriptor {
                     speed_up_when_y_motion_is_blocked: false,
                 }
             }
+            "minecraft:glow" => Self {
+                provider: "GlowParticle.GlowSquidProvider",
+                lifetime: ParticleLifetimeDescriptor::EightOverRandom,
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 0.75,
+                    color: ParticleColorDescriptor::FixedRgbChoice {
+                        first: [0.6, 1.0, 0.8],
+                        second: [0.08, 0.4, 0.4],
+                    },
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::GlowSquid,
+                friction: 0.96,
+                gravity: 0.0,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: true,
+            },
             "minecraft:electric_spark" => Self {
                 provider: "GlowParticle.ElectricSparkProvider",
                 lifetime: ParticleLifetimeDescriptor::RandomInclusive { min: 2, max: 3 },
@@ -895,31 +914,8 @@ impl ParticleInitialVelocityDescriptor {
                     z / length * speed * 0.4 * scale,
                 ]
             }
-            Self::Spell => {
-                let x = 0.5 - random.next_f64();
-                let y = command_velocity[1];
-                let z = 0.5 - random.next_f64();
-                let x = x + random_signed_velocity(random);
-                let y = y + random_signed_velocity(random);
-                let z = z + random_signed_velocity(random);
-                let speed =
-                    (f64::from(random.next_f32()) + f64::from(random.next_f32()) + 1.0) * 0.15;
-                let length = (x * x + y * y + z * z).sqrt();
-                let mut velocity = if length == 0.0 {
-                    [0.0, 0.1, 0.0]
-                } else {
-                    [
-                        x / length * speed * 0.4,
-                        y / length * speed * 0.4 + 0.1,
-                        z / length * speed * 0.4,
-                    ]
-                };
-                velocity[1] *= 0.2;
-                if command_velocity[0] == 0.0 && command_velocity[2] == 0.0 {
-                    velocity[0] *= 0.1;
-                    velocity[2] *= 0.1;
-                }
-                velocity
+            Self::Spell | Self::GlowSquid => {
+                sample_random_horizontal_y_velocity(command_velocity, random)
             }
         }
     }
@@ -1116,6 +1112,35 @@ fn random_signed_velocity(random: &mut ParticleRandom) -> f64 {
 
 fn random_signed_unit(random: &mut ParticleRandom) -> f64 {
     f64::from(random.next_f32()) * 2.0 - 1.0
+}
+
+fn sample_random_horizontal_y_velocity(
+    command_velocity: [f64; 3],
+    random: &mut ParticleRandom,
+) -> [f64; 3] {
+    let x = 0.5 - random.next_f64();
+    let y = command_velocity[1];
+    let z = 0.5 - random.next_f64();
+    let x = x + random_signed_velocity(random);
+    let y = y + random_signed_velocity(random);
+    let z = z + random_signed_velocity(random);
+    let speed = (f64::from(random.next_f32()) + f64::from(random.next_f32()) + 1.0) * 0.15;
+    let length = (x * x + y * y + z * z).sqrt();
+    let mut velocity = if length == 0.0 {
+        [0.0, 0.1, 0.0]
+    } else {
+        [
+            x / length * speed * 0.4,
+            y / length * speed * 0.4 + 0.1,
+            z / length * speed * 0.4,
+        ]
+    };
+    velocity[1] *= 0.2;
+    if command_velocity[0] == 0.0 && command_velocity[2] == 0.0 {
+        velocity[0] *= 0.1;
+        velocity[2] *= 0.1;
+    }
+    velocity
 }
 
 #[cfg(test)]
@@ -1367,6 +1392,28 @@ mod tests {
                 scale: 0.01,
                 y_offset: 0.1
             }
+        );
+        assert_descriptor(
+            "minecraft:glow",
+            "GlowParticle.GlowSquidProvider",
+            ParticleLifetimeDescriptor::EightOverRandom,
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::SingleQuadScaled {
+                scale: 0.75,
+                color: ParticleColorDescriptor::FixedRgbChoice {
+                    first: [0.6, 1.0, 0.8],
+                    second: [0.08, 0.4, 0.4],
+                },
+                quad_size_curve: ParticleQuadSizeCurve::Constant,
+            },
+            0.96,
+            0.0,
+            false,
+            true,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:glow").initial_velocity,
+            ParticleInitialVelocityDescriptor::GlowSquid
         );
         assert_descriptor(
             "minecraft:electric_spark",
@@ -1776,6 +1823,20 @@ mod tests {
         assert_eq!(witch.color[3], 1.0);
         assert_eq!(witch.quad_size_curve, ParticleQuadSizeCurve::Constant);
 
+        let mut glow_random = ParticleRandom::new(34);
+        let glow = ParticleVisualDescriptor::SingleQuadScaled {
+            scale: 0.75,
+            color: ParticleColorDescriptor::FixedRgbChoice {
+                first: [0.6, 1.0, 0.8],
+                second: [0.08, 0.4, 0.4],
+            },
+            quad_size_curve: ParticleQuadSizeCurve::Constant,
+        }
+        .sample_for_command(&mut glow_random, [0.0, 0.0, 0.0]);
+        assert_range_f32(glow.base_quad_size, 0.075, 0.15);
+        assert!(glow.color == [0.6, 1.0, 0.8, 1.0] || glow.color == [0.08, 0.4, 0.4, 1.0]);
+        assert_eq!(glow.quad_size_curve, ParticleQuadSizeCurve::Constant);
+
         let mut wax_on_random = ParticleRandom::new(32);
         let wax_on = ParticleVisualDescriptor::SingleQuadScaled {
             scale: 0.75,
@@ -2028,6 +2089,18 @@ mod tests {
         assert_range_f64(still_spell_velocity[2].abs(), 0.0, 0.008);
         assert_close_f64(still_spell_velocity[0], moving_spell_velocity[0] * 0.1);
         assert_close_f64(still_spell_velocity[2], moving_spell_velocity[2] * 0.1);
+
+        let mut still_glow_random = ParticleRandom::new(31);
+        let still_glow_velocity = ParticleInitialVelocityDescriptor::GlowSquid
+            .sample([0.0, 1.0, 0.0], &mut still_glow_random);
+        let mut moving_glow_random = ParticleRandom::new(31);
+        let moving_glow_velocity = ParticleInitialVelocityDescriptor::GlowSquid
+            .sample([1.0, 1.0, 0.0], &mut moving_glow_random);
+        assert_range_f64(still_glow_velocity[0].abs(), 0.0, 0.008);
+        assert_range_f64(still_glow_velocity[1], 0.0, 0.06);
+        assert_range_f64(still_glow_velocity[2].abs(), 0.0, 0.008);
+        assert_close_f64(still_glow_velocity[0], moving_glow_velocity[0] * 0.1);
+        assert_close_f64(still_glow_velocity[2], moving_glow_velocity[2] * 0.1);
     }
 
     #[test]

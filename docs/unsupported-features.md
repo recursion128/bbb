@@ -269,6 +269,12 @@ When an agent does any of the following, update this file in the same slice:
         scale, provider lifetime ranges, `0.96` friction, no physics, and
         blocked-y speed-up metadata; `GlowParticle.getLightCoords` smooth
         emission remains deferred until particle light curves are represented
+      - `GlowParticle.GlowSquidProvider` uses vanilla random horizontal plus
+        `yAux` constructor velocity, still-horizontal command x/z dampening,
+        random-choice cyan/green tint, age sprite selection, `0.75`
+        quad-size scale, `8 / (random * 0.8 + 0.2)` lifetime, `0.96`
+        friction, no physics, and blocked-y speed-up metadata; the same smooth
+        glow emission curve remains deferred
     - Uploads a stitched official particle atlas when assets are available.
     - Draws active particles as camera-facing textured billboards.
   - Follow-up work in the plan:

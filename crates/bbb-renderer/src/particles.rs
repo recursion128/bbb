@@ -1018,6 +1018,22 @@ mod tests {
         assert_range_f64(column_bubble.velocity[1], 0.38, 0.42);
         assert_range_f64(column_bubble.velocity[2], 0.58, 0.62);
 
+        let mut glow_random = ParticleRandom::new(67);
+        let mut glow_command = spawn_command("minecraft:glow", 1.0);
+        glow_command.velocity = [0.0, 1.0, 0.0];
+        let glow = ParticleInstance::from_spawn_command(glow_command, &mut glow_random);
+        assert_eq!(glow.provider, "GlowParticle.GlowSquidProvider");
+        assert_eq!(glow.sprite_selection, ParticleSpriteSelection::Age);
+        assert_range_f32(glow.base_quad_size, 0.075, 0.15);
+        assert!(glow.color == [0.6, 1.0, 0.8, 1.0] || glow.color == [0.08, 0.4, 0.4, 1.0]);
+        assert!((8..=40).contains(&glow.lifetime_ticks));
+        assert_eq!(glow.friction, 0.96);
+        assert!(!glow.has_physics);
+        assert!(glow.speed_up_when_y_motion_is_blocked);
+        assert_range_f64(glow.velocity[0].abs(), 0.0, 0.02);
+        assert_range_f64(glow.velocity[1], 0.015, 0.08);
+        assert_range_f64(glow.velocity[2].abs(), 0.0, 0.02);
+
         let mut electric_random = ParticleRandom::new(63);
         let mut electric_command = spawn_command("minecraft:electric_spark", 1.0);
         electric_command.velocity = [2.0, 3.0, 4.0];
