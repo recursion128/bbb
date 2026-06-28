@@ -384,6 +384,10 @@ const HOGLIN_ATTACK_TICKS: i32 = 10;
 /// `getAnimationProgress` ramp built from `lifeTicks` drives `EvokerFangsModel.setupAnim`.
 const EVOKER_FANGS_ATTACK_EVENT_ID: i8 = 4;
 const EVOKER_FANGS_LIFE_TICKS: i32 = 22;
+/// Vanilla `Camel.DASH_COOLDOWN_TICKS`: `onSyncedDataUpdated(DASH)` seeds `dashCooldown` to 55 when
+/// the synced dash flag rises, and `Camel.tick` decrements it each client tick. The renderer consumes
+/// `max(dashCooldown - partialTicks, 0)` as `CamelRenderState.jumpCooldown`.
+const CAMEL_DASH_COOLDOWN_TICKS: i32 = 55;
 
 /// Vanilla `Creaking.handleEntityEvent`: event `4` sets `attackAnimationRemainingTicks = 15` (the
 /// lunge), event `66` sets `invulnerabilityAnimationRemainingTicks = 8` (the heart-bound stagger).
@@ -443,6 +447,8 @@ pub struct EntityClientAnimationState {
     /// to the looping `CAMEL_DASH` gallop.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub camel_dash: Option<KeyframeAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub camel_dash_cooldown: Option<CamelDashCooldownState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sniffer: Option<SnifferAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1132,6 +1138,32 @@ impl KeyframeAnimationState {
     fn elapsed_seconds(self, age_ticks: u32, partial_tick: f32) -> Option<f32> {
         self.start_age
             .map(|start| ((age_ticks - start) as f32 + partial_tick) / 20.0)
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CamelDashCooldownState {
+    cooldown_ticks: i32,
+    was_dashing: bool,
+}
+
+impl CamelDashCooldownState {
+    fn advance_client_tick(&mut self, is_dashing: bool) {
+        if is_dashing && !self.was_dashing && self.cooldown_ticks == 0 {
+            self.cooldown_ticks = CAMEL_DASH_COOLDOWN_TICKS;
+        }
+        self.was_dashing = is_dashing;
+        if self.cooldown_ticks > 0 {
+            self.cooldown_ticks -= 1;
+        }
+    }
+
+    fn jump_cooldown(self, partial_tick: f32) -> f32 {
+        (self.cooldown_ticks as f32 - partial_tick).max(0.0)
+    }
+
+    fn is_settled(self) -> bool {
+        self.cooldown_ticks == 0 && !self.was_dashing
     }
 }
 
@@ -4233,6 +4265,15 @@ impl EntityClientAnimationState {
             .unwrap_or(-1.0)
     }
 
+    /// Vanilla `CamelRenderState.jumpCooldown` =
+    /// `max(Camel.getJumpCooldown() - partialTicks, 0)`. The cooldown is seeded from the synced
+    /// `DASH` rising edge and decremented each client tick, matching `Camel.tick`.
+    pub fn camel_jump_cooldown(self, partial_tick: f32) -> f32 {
+        self.camel_dash_cooldown
+            .map(|state| state.jump_cooldown(partial_tick))
+            .unwrap_or(0.0)
+    }
+
     /// Vanilla `AllayRenderState.isDancing` (`Allay.isDancing()`): gates `AllayModel.setupAnim`'s dance
     /// branch (the body spin and head/body sway) against the plain head-look branch. `false` for every
     /// non-allay entity and an allay that is not dancing.
@@ -5052,6 +5093,13 @@ impl EntityClientAnimationState {
                 self.camel_dash
                     .get_or_insert_with(|| KeyframeAnimationState { start_age: None })
                     .animate_when(camel_is_dashing, self.age_ticks);
+                let cooldown = self
+                    .camel_dash_cooldown
+                    .get_or_insert_with(Default::default);
+                cooldown.advance_client_tick(camel_is_dashing);
+                if cooldown.is_settled() {
+                    self.camel_dash_cooldown = None;
+                }
             }
             VANILLA_ENTITY_TYPE_ALLAY_ID => {
                 // Vanilla `Allay.tick`: while the synced `DATA_DANCING` flag is set, advance the dance

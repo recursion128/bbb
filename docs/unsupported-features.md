@@ -1822,8 +1822,9 @@ When an agent does any of the following, update this file in the same slice:
       (`tail.yRot = cos(ageInTicks * 0.7)`). The
       in-water leg-frequency multiplier is supported from projected `in_water` (`isInWater()`
       -> `waterMultiplier = 0.2`). The eat/stand/mouth event poses are supported from
-      world/native-projected `eatAnimation` / `standAnimation` / `feedingAnimation`;
-      ridden / boost / jump-cooldown equine presentation remains unsupported
+      world/native-projected `eatAnimation` / `standAnimation` / `feedingAnimation`; saddle
+      ridden bridle-line visibility is already projected from passenger state. Remaining boost
+      and broader lighting presentation stays unsupported
     - donkey and mule entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `DonkeyModel`, `BabyDonkeyModel`, and
       `DonkeyRenderer`. The ADULT donkey/mule now renders on the **textured
@@ -1863,8 +1864,8 @@ When an agent does any of the following, update this file in the same slice:
       explicit `EquineRenderState.animateTail` using the same local Java LCG timing as the horse path.
       The shared eat/stand/mouth event poses are world/native projected into
       `EquineRenderState` and consumed by the adult and nested baby donkey/mule
-      `setupAnim` paths; ridden / boost / jump-cooldown and broader lighting
-      presentation remain unsupported
+      `setupAnim` paths; saddle ridden bridle-line visibility is already projected from
+      passenger state. Remaining boost and broader lighting presentation stays unsupported
     - skeleton horse and zombie horse entities as renderer-owned vanilla 26.1
       adult/baby body-layer geometry from `AbstractEquineModel`,
       `BabyHorseModel`, `HorseModel`, and `UndeadHorseRenderer`, now rendered on
@@ -1933,7 +1934,8 @@ When an agent does any of the following, update this file in the same slice:
       `nextInt(200)` start and 8-tick lifetime with a deterministic local Java LCG.
       The renderer also consumes world/native-projected eat/stand/mouth event pose
       floats for the shared `AbstractEquineModel.setupAnim` head/body/leg transforms;
-      ridden / boost / jump-cooldown and broader lighting presentation remain unsupported
+      saddle ridden bridle-line visibility is already projected from passenger state. Remaining
+      boost and broader lighting presentation stays unsupported
     - camel and camel_husk entities as renderer-owned vanilla 26.1 body-layer
       geometry from `AdultCamelModel`, `BabyCamelModel`, `CamelRenderer`, and
       `CamelHuskRenderer`, including `ModelLayers.CAMEL` / `CAMEL_BABY` (the camel
@@ -1979,12 +1981,13 @@ When an agent does any of the following, update this file in the same slice:
       metadata; missing-atlas coverage pins that the adult camel saddle submission is still
       recorded without `camel_saddle/saddle.png` while only folded saddle geometry is
       suppressed. Baby camels intentionally skip this layer because vanilla
-      supplies no baby saddle model. The camel
+      supplies no baby saddle model. Camel `jumpCooldown` is now world/native projected from the
+      synced `DASH` rising edge as `max(Camel.getJumpCooldown() - partialTicks, 0)` and consumed by
+      `CamelModel.applyHeadRotation` as the vanilla post-dash extra upward head pitch
+      (`45 * jumpCooldown / 55`, clamped to 70 degrees). The camel
       `CAMEL_IDLE` keyframe animation (driven by a client-side `random.nextInt(40) + 80` timer, not
       derivable from synced state), the body-anchor sit/stand y-offset
-      (`Camel.getBodyAnchorAnimationYOffset`), and the `jumpCooldown`
-      extra-pitch head boost (needs the un-projected jump-cooldown state) remain
-      unsupported
+      (`Camel.getBodyAnchorAnimationYOffset`), and broader lighting presentation remain unsupported
     - llama and trader llama entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `LlamaModel`, `BabyLlamaModel`, and
       `LlamaRenderer`, including `ModelLayers.LLAMA` / `LLAMA_BABY` (the trader
@@ -4337,7 +4340,7 @@ When an agent does any of the following, update this file in the same slice:
     boat/raft water-mask presentation and lighting (paddle rowing animation,
     hurt/damage roll, bubble wobble, underwater state, and above-water water-mask
     gating are projected and rendered),
-    remaining equine ridden / boost / jump-cooldown presentation,
+    remaining equine boost / broader large-model lighting presentation,
     and remaining non-base-equine presentation,
     villager live/dynamic profiled-player skin presentation (crossed-arms
     held items, generic non-skull head items, static mob skulls, profileless

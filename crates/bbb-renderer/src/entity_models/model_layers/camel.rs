@@ -173,19 +173,20 @@ pub(in crate::entity_models) const BABY_CAMEL_LEFT_HIND_LEG_POSE: PartPose = pos
 pub(in crate::entity_models) const BABY_CAMEL_RIGHT_HIND_LEG_POSE: PartPose =
     pose([-3.0, 11.5, 5.5]);
 
-/// Vanilla `CamelModel.applyHeadRotation`: the net head look clamped to `yRot ∈ [-30, 30]` and
-/// `xRot ∈ [-25, 45]` (a camel turns its long neck only so far) before `head.yRot/xRot` are set from
-/// the clamped degrees. Returns the clamped `(yaw, pitch)` in degrees. The transient `jumpCooldown`
-/// extra-pitch boost (`45 * jumpCooldown / 55`, re-clamped to `70`) needs the un-projected
-/// `jumpCooldown` render state and is deferred.
+/// Vanilla `CamelModel.applyHeadRotation`: the net head look clamps to `yRot ∈ [-30, 30]` and
+/// `xRot ∈ [-25, 45]`, then the post-dash `jumpCooldown` adds `45 * cooldown / 55` pitch before
+/// a second `[-25, 70]` clamp. Returns the clamped `(yaw, pitch)` in degrees.
 pub(in crate::entity_models) fn camel_clamped_head_look(
     head_yaw_deg: f32,
     head_pitch_deg: f32,
+    jump_cooldown: f32,
 ) -> (f32, f32) {
-    (
-        head_yaw_deg.clamp(-30.0, 30.0),
-        head_pitch_deg.clamp(-25.0, 45.0),
-    )
+    let yaw = head_yaw_deg.clamp(-30.0, 30.0);
+    let mut pitch = head_pitch_deg.clamp(-25.0, 45.0);
+    if jump_cooldown > 0.0 {
+        pitch = (pitch + 45.0 * jump_cooldown / 55.0).clamp(-25.0, 70.0);
+    }
+    (yaw, pitch)
 }
 
 // Vanilla 26.1 `ModelLayers.CAMEL` / `CAMEL_BABY` (`CamelRenderer`,
@@ -1362,6 +1363,7 @@ impl EntityModel for CamelModel {
         let (head_yaw, head_pitch) = camel_clamped_head_look(
             instance.render_state.head_yaw,
             instance.render_state.head_pitch,
+            instance.render_state.camel_jump_cooldown,
         );
         let (seconds, scale) = keyframe_walk_sample(
             walk,
@@ -1376,7 +1378,7 @@ impl EntityModel for CamelModel {
         // (`sitAnimation.apply(...)`, `sitPoseAnimation.apply(...)`, `standupAnimation.apply(...)`),
         // each only while its projected elapsed seconds are `>= 0`; a non-looping def clamps past its
         // length to the resting final frame. The active definitions, paired with their sample seconds.
-        // (`dash` and `idle` stay deferred — see `docs/unsupported-features.md`.)
+        // (`idle` stays deferred — see `docs/unsupported-features.md`.)
         let sit_stand: [(&AnimationDefinition, f32); 3] = [
             (&CAMEL_SIT, instance.render_state.camel_sit_seconds),
             (

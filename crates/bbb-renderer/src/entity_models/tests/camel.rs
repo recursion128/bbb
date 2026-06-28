@@ -861,11 +861,45 @@ fn camel_baby_walk_moves_the_model_and_composes_with_the_look() {
 #[test]
 fn camel_head_look_clamps_to_vanilla_range() {
     // Vanilla `CamelModel.applyHeadRotation`: `yRot = clamp(yRot, -30, 30)`,
-    // `xRot = clamp(xRot, -25, 45)`, in degrees. Inside the range the angle passes through.
-    assert_eq!(camel_clamped_head_look(0.0, 0.0), (0.0, 0.0));
-    assert_eq!(camel_clamped_head_look(12.0, 20.0), (12.0, 20.0));
-    assert_eq!(camel_clamped_head_look(50.0, 60.0), (30.0, 45.0));
-    assert_eq!(camel_clamped_head_look(-50.0, -60.0), (-30.0, -25.0));
+    // `xRot = clamp(xRot, -25, 45)`, then post-dash `jumpCooldown` adds
+    // `45 * cooldown / 55` and clamps pitch to 70.
+    assert_eq!(camel_clamped_head_look(0.0, 0.0, 0.0), (0.0, 0.0));
+    assert_eq!(camel_clamped_head_look(12.0, 20.0, 0.0), (12.0, 20.0));
+    assert_eq!(camel_clamped_head_look(50.0, 60.0, 0.0), (30.0, 45.0));
+    assert_eq!(camel_clamped_head_look(-50.0, -60.0, 0.0), (-30.0, -25.0));
+    assert_eq!(camel_clamped_head_look(12.0, 20.0, 55.0), (12.0, 65.0));
+    assert_eq!(camel_clamped_head_look(12.0, 45.0, 55.0), (12.0, 70.0));
+}
+
+#[test]
+fn camel_jump_cooldown_adds_vanilla_head_pitch_boost() {
+    use crate::entity_models::model::EntityModel;
+
+    let base =
+        EntityModelInstance::camel(711, [0.0, 64.0, 0.0], 0.0, CamelModelFamily::Camel, false)
+            .with_head_look(0.0, 20.0);
+    let mut resting = CamelModel::new(CamelModelFamily::Camel, false);
+    resting.prepare(&base);
+    let rest_head_pitch = resting
+        .root_mut()
+        .child_mut("body")
+        .child_mut("head")
+        .pose
+        .rotation[0];
+
+    let mut cooling_down = CamelModel::new(CamelModelFamily::Camel, false);
+    cooling_down.prepare(&base.with_camel_jump_cooldown(55.0));
+    let boosted_head_pitch = cooling_down
+        .root_mut()
+        .child_mut("body")
+        .child_mut("head")
+        .pose
+        .rotation[0];
+
+    assert!(
+        (boosted_head_pitch - rest_head_pitch - 45.0_f32.to_radians()).abs() < 1.0e-5,
+        "jumpCooldown=55 adds 45 degrees of head pitch: {rest_head_pitch} -> {boosted_head_pitch}"
+    );
 }
 
 #[test]

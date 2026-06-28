@@ -10876,6 +10876,14 @@ fn camel_dash_flag_drives_the_dash_animation_timer() {
             .unwrap()
             .camel_dash_seconds
     };
+    let jump_cooldown = |store: &WorldStore, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 90)
+            .unwrap()
+            .camel_jump_cooldown
+    };
     let set_dashing = |store: &mut WorldStore, dashing: bool| {
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
             id: 90,
@@ -10889,11 +10897,15 @@ fn camel_dash_flag_drives_the_dash_animation_timer() {
 
     // A non-dashing camel projects the stopped-animation sentinel.
     assert_eq!(dash_seconds(&store, 1.0), -1.0);
+    assert_eq!(jump_cooldown(&store, 1.0), 0.0);
     store.advance_entity_client_animations(3);
     assert_eq!(dash_seconds(&store, 1.0), -1.0);
+    assert_eq!(jump_cooldown(&store, 1.0), 0.0);
 
     // Vanilla `Camel.setupAnimationStates`: the synced DASH rising edge starts `dashAnimationState`,
-    // and the elapsed seconds climb from there (1 tick = 0.05 s).
+    // and the elapsed seconds climb from there (1 tick = 0.05 s). Vanilla
+    // `Camel.onSyncedDataUpdated(DASH)` also seeds `dashCooldown = 55`; the following tick decrements
+    // it before `CamelRenderer.getJumpCooldown` subtracts `partialTicks`.
     set_dashing(&mut store, true);
     store.advance_entity_client_animations(1);
     let after_one = dash_seconds(&store, 1.0);
@@ -10901,14 +10913,17 @@ fn camel_dash_flag_drives_the_dash_animation_timer() {
         after_one >= 0.0,
         "a dashing camel starts the dash timer: {after_one}"
     );
+    assert_eq!(jump_cooldown(&store, 1.0), 53.0);
     store.advance_entity_client_animations(2);
     let after_three = dash_seconds(&store, 1.0);
     assert!(
         after_three > after_one,
         "the dash timer keeps climbing: {after_one} -> {after_three}"
     );
+    assert_eq!(jump_cooldown(&store, 1.0), 51.0);
 
-    // Clearing the DASH flag stops the animation (back to the sentinel).
+    // Clearing the DASH flag stops the animation (back to the sentinel) but the cooldown keeps
+    // counting down, just like the client-side `Camel.tick` field.
     set_dashing(&mut store, false);
     store.advance_entity_client_animations(1);
     assert_eq!(
@@ -10916,6 +10931,9 @@ fn camel_dash_flag_drives_the_dash_animation_timer() {
         -1.0,
         "clearing DASH stops the dash animation"
     );
+    assert_eq!(jump_cooldown(&store, 1.0), 50.0);
+    store.advance_entity_client_animations(50);
+    assert_eq!(jump_cooldown(&store, 1.0), 0.0);
 }
 
 #[test]

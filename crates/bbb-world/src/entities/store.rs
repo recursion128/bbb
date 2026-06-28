@@ -1209,6 +1209,9 @@ impl EntityStore {
             camel_dash_seconds: client_animations
                 .animations
                 .camel_dash_seconds(partial_ticks),
+            camel_jump_cooldown: client_animations
+                .animations
+                .camel_jump_cooldown(partial_ticks),
             sniffer_animation_id,
             sniffer_animation_seconds,
             // Vanilla `Sniffer.isSearching()`: gates the renderer's swap of the base walk for the

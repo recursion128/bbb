@@ -1445,6 +1445,7 @@ fn entity_model_instance(
         .with_camel_sit_pose_seconds(camel_sit.sit_pose_seconds)
         .with_camel_standup_seconds(camel_sit.standup_seconds)
         .with_camel_dash_seconds(source.camel_dash_seconds)
+        .with_camel_jump_cooldown(source.camel_jump_cooldown)
         .with_vex_charging(source.vex_charging)
         .with_vex_right_hand_item_non_empty(vex_right_hand_item_non_empty)
         .with_vex_left_hand_item_non_empty(vex_left_hand_item_non_empty)
@@ -4307,11 +4308,16 @@ mod tests {
             entity_model_instances_from_world_at_partial_tick(world, None, 1.0)
                 .iter()
                 .find(|instance| instance.entity_id == 99)
-                .map(|instance| instance.render_state.camel_dash_seconds)
+                .map(|instance| {
+                    (
+                        instance.render_state.camel_dash_seconds,
+                        instance.render_state.camel_jump_cooldown,
+                    )
+                })
         };
 
         // A non-dashing camel projects the stopped-animation sentinel.
-        assert_eq!(dash(&world), Some(-1.0));
+        assert_eq!(dash(&world), Some((-1.0, 0.0)));
 
         // Vanilla `Camel.setupAnimationStates`: the synced `DASH` boolean starts `dashAnimationState`,
         // and the elapsed seconds flow through EntityModelSourceState into the renderer EntityRenderState
@@ -4323,8 +4329,12 @@ mod tests {
         world.advance_entity_client_animations(2);
         let progress = dash(&world).expect("the dashing camel projects an instance");
         assert!(
-            progress >= 0.0,
-            "the projected dash timer drives CamelModel.setupAnim: {progress}"
+            progress.0 >= 0.0,
+            "the projected dash timer drives CamelModel.setupAnim: {progress:?}"
+        );
+        assert_eq!(
+            progress.1, 52.0,
+            "the projected dash cooldown drives CamelModel.applyHeadRotation"
         );
     }
 

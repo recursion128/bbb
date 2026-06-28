@@ -534,6 +534,10 @@ entity_render_state! {
     /// `dashAnimation.apply(...)` ADDITIVELY (last, over the walk pose). `-1.0` (the stopped-animation
     /// sentinel) for every other entity and a camel that is not dashing.
     (with_camel_dash_seconds) camel_dash_seconds: f32 = -1.0;
+    /// Vanilla `CamelRenderState.jumpCooldown`: `max(Camel.getJumpCooldown() - partialTicks, 0)`.
+    /// `CamelModel.applyHeadRotation` converts it into an extra upward head pitch during the
+    /// post-dash cooldown. `0.0` for every non-camel and a camel whose dash cooldown has expired.
+    (with_camel_jump_cooldown) camel_jump_cooldown: f32 = 0.0;
     /// Vanilla frog croak timing (`FrogRenderState.croakAnimationState` driven by the synced
     /// `Pose.CROAKING`): the elapsed seconds since the croak started, projected for
     /// `FrogModel.setupAnim`, which shows the `croaking_body` pouch (`croakAnimationState.isStarted`)
@@ -2386,6 +2390,7 @@ mod tests {
                 camel_sit_pose_seconds: -1.0,
                 camel_standup_seconds: -1.0,
                 camel_dash_seconds: -1.0,
+                camel_jump_cooldown: 0.0,
                 frog_croak_seconds: -1.0,
                 frog_tongue_seconds: -1.0,
                 frog_jump_seconds: -1.0,

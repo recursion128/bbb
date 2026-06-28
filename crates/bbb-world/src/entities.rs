@@ -546,6 +546,11 @@ pub struct EntityModelSourceState {
     /// stopped-animation sentinel) for a non-dashing camel and every other entity.
     #[serde(default = "entity_model_source_default_neg_one")]
     pub camel_dash_seconds: f32,
+    /// Vanilla `CamelRenderState.jumpCooldown` (`max(Camel.getJumpCooldown() - partialTicks, 0)`):
+    /// a post-dash cooldown counter that adds extra upward head pitch in `CamelModel.applyHeadRotation`.
+    /// Projected only for the camel and `0.0` for every other entity or an expired cooldown.
+    #[serde(default)]
+    pub camel_jump_cooldown: f32,
     /// Vanilla sniffer animation selector (`Sniffer.onSyncedDataUpdated`'s one-shot `AnimationState`s
     /// driven by the synced `DATA_STATE`): the active `Sniffer.State` ordinal whose triggered
     /// keyframe is playing (`FEELING_HAPPY`/`SCENTING`/`SNIFFING`/`DIGGING`/`RISING`), which
