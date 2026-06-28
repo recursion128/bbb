@@ -543,17 +543,20 @@ fn entity_textured_shader_samples_bound_texture_and_discards_alpha() {
 
 #[test]
 fn entity_textured_shader_applies_packed_light_lightmap() {
-    // Mirrors the terrain lightmap: max(block, sky * 0.95) scaled into
-    // 0.16..=1.0 and multiplied into the texel rgb (alpha untouched).
-    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("max(input.light.x, input.light.y * 0.95)"));
-    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("0.16 + light_level * 0.84"));
+    // Mirrors the vanilla Lightmap brightness curve for the submitted packed
+    // block/sky light, while leaving full environment tint/gamma as deferred
+    // GPU state.
+    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("level / (4.0 - 3.0 * level)"));
+    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("lightmap_brightness(light.x) * 1.4"));
+    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("block_brightness + sky_brightness"));
     assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("rgb * shade"));
 }
 
 #[test]
 fn entity_colored_shader_applies_packed_light_lightmap() {
-    assert!(ENTITY_MODEL_SHADER.contains("max(input.light.x, input.light.y * 0.95)"));
-    assert!(ENTITY_MODEL_SHADER.contains("0.16 + light_level * 0.84"));
+    assert!(ENTITY_MODEL_SHADER.contains("level / (4.0 - 3.0 * level)"));
+    assert!(ENTITY_MODEL_SHADER.contains("lightmap_brightness(light.x) * 1.4"));
+    assert!(ENTITY_MODEL_SHADER.contains("block_brightness + sky_brightness"));
     assert!(ENTITY_MODEL_SHADER.contains("input.color.rgb"));
 }
 
@@ -577,6 +580,7 @@ fn entity_scroll_shaders_split_breeze_wind_lightmap_from_energy_swirl_emissive()
     // NO_OVERLAY + NO_CARDINAL_LIGHTING, but still samples the lightmap.
     assert!(ENTITY_MODEL_SCROLL_SHADER.contains("@location(4) light: vec2<f32>"));
     assert!(ENTITY_MODEL_SCROLL_SHADER.contains("lightmap_brightness"));
+    assert!(ENTITY_MODEL_SCROLL_SHADER.contains("lightmap_brightness(light.x) * 1.4"));
     assert!(ENTITY_MODEL_SCROLL_SHADER.contains("block_brightness + sky_brightness"));
     assert!(ENTITY_MODEL_SCROLL_SHADER.contains("texel.rgb * shade"));
 
@@ -597,7 +601,7 @@ fn entity_eyes_shader_samples_bound_texture_without_alpha_cutout() {
         wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2, 4 => Float32x2]
     );
     // Eyes stay emissive: the lightmap shade must not dim them.
-    assert!(!ENTITY_MODEL_EYES_SHADER.contains("light_level"));
+    assert!(!ENTITY_MODEL_EYES_SHADER.contains("lightmap_brightness"));
 }
 
 #[test]

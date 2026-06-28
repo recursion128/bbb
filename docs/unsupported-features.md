@@ -562,11 +562,12 @@ When an agent does any of the following, update this file in the same slice:
     entity's floored light-probe block position (vanilla
     `EntityRenderer.getPackedLightCoords`), the native scene packs it into
     `EntityRenderState.lightCoords` with the on-fire block-light override, and
-    the colored and textured entity shaders apply the same per-vertex lightmap as
-    terrain (`max(block, sky * 0.95)` scaled into `0.16..=1.0`); the eyes pass
-    stays emissive. Remaining lighting gaps: smooth/AO entity light, the colored
-    block-light tint and gamma curve of the real vanilla `LightTexture`, and
-    directional `Lighting.setupLevel` diffuse shading.
+    the colored and textured entity shaders apply the submitted block/sky light
+    through vanilla `Lightmap.getBrightness`-shaped curves before multiplying
+    the fragment color; the eyes pass stays emissive. Remaining lighting gaps:
+    smooth/AO entity light, the colored block-light tint, environment colors,
+    gamma, flicker / darkness / night-vision curves of the real vanilla
+    `LightTexture`, and directional `Lighting.setupLevel` diffuse shading.
   - The hurt red damage overlay is implemented end to end as a real overlay pass,
     not a tint: `LivingEntity.hurtTime` is tracked client-side (set to
     `hurtDuration` = 10 by `apply_hurt_animation`/`apply_damage_event`, decremented

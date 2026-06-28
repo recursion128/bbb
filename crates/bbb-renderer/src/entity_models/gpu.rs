@@ -98,6 +98,16 @@ struct VertexOut {
     @location(2) overlay: vec2<f32>,
 };
 
+fn lightmap_brightness(level: f32) -> f32 {
+    return level / (4.0 - 3.0 * level);
+}
+
+fn packed_lightmap_shade(light: vec2<f32>) -> f32 {
+    let block_brightness = lightmap_brightness(light.x) * 1.4;
+    let sky_brightness = lightmap_brightness(light.y);
+    return clamp(block_brightness + sky_brightness, 0.0, 1.0);
+}
+
 @vertex
 fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
@@ -117,8 +127,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         let overlay_alpha = 1.0 - input.overlay.x / 15.0 * 0.75;
         rgb = mix(vec3<f32>(1.0, 1.0, 1.0), rgb, overlay_alpha);
     }
-    let light_level = max(input.light.x, input.light.y * 0.95);
-    let shade = 0.16 + light_level * 0.84;
+    let shade = packed_lightmap_shade(input.light);
     return vec4<f32>(rgb * shade, input.color.a);
 }
 "#;
@@ -153,6 +162,16 @@ struct VertexOut {
     @location(3) overlay: vec2<f32>,
 };
 
+fn lightmap_brightness(level: f32) -> f32 {
+    return level / (4.0 - 3.0 * level);
+}
+
+fn packed_lightmap_shade(light: vec2<f32>) -> f32 {
+    let block_brightness = lightmap_brightness(light.x) * 1.4;
+    let sky_brightness = lightmap_brightness(light.y);
+    return clamp(block_brightness + sky_brightness, 0.0, 1.0);
+}
+
 @vertex
 fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
@@ -177,8 +196,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         let overlay_alpha = 1.0 - input.overlay.x / 15.0 * 0.75;
         rgb = mix(vec3<f32>(1.0, 1.0, 1.0), rgb, overlay_alpha);
     }
-    let light_level = max(input.light.x, input.light.y * 0.95);
-    let shade = 0.16 + light_level * 0.84;
+    let shade = packed_lightmap_shade(input.light);
     return vec4<f32>(rgb * shade, texel.a);
 }
 "#;
