@@ -1177,6 +1177,17 @@ fn equine_tail_swing_pose_matches_vanilla_formula() {
     assert!((baby_donkey_walking.rotation[0] - (-FRAC_PI_4 + FRAC_PI_6 + 0.75)).abs() < 1e-6);
     assert!((baby_donkey_walking.offset[1] - (baby_donkey_base.offset[1] + 0.5)).abs() < 1e-6);
     assert!((baby_donkey_walking.offset[2] - (baby_donkey_base.offset[2] + 1.0)).abs() < 1e-6);
+
+    // The full tail pose adds vanilla `animateTail`: yRot is `cos(ageInTicks * 0.7)` while
+    // active and is reset to 0 otherwise.
+    let wagging = equine_tail_pose(base, 0.0, 0.0, 1.0, true, 0.0);
+    assert_eq!(wagging.rotation[1], 1.0);
+    let age = 2.5_f32;
+    let walking_wag = equine_tail_pose(base, 0.0, 1.0, 1.0, true, age);
+    assert!((walking_wag.rotation[0] - (FRAC_PI_6 + 0.75)).abs() < 1e-6);
+    assert!((walking_wag.rotation[1] - (age * 0.7).cos()).abs() < 1e-6);
+    let not_wagging = equine_tail_pose(base, 0.0, 0.0, 1.0, false, age);
+    assert_eq!(not_wagging.rotation[1], 0.0);
 }
 
 #[test]
@@ -1230,6 +1241,56 @@ fn adult_equine_swings_its_tail_when_walking() {
             rest.vertices[24..48],
             walking.vertices[24..48],
             "{:?} the tail lifts with the gait",
+            base.kind
+        );
+    }
+}
+
+#[test]
+fn equine_wags_its_tail_when_animate_tail_is_projected() {
+    // Vanilla `AbstractHorseRenderer.extractRenderState` maps `tailCounter > 0` to
+    // `EquineRenderState.animateTail`; the model then sets `tail.yRot = cos(ageInTicks * 0.7)`.
+    // At age 0 the yRot is 1 radian, so only the tail block changes while the body and later
+    // parts keep their standing pose.
+    for base in [
+        EntityModelInstance::horse(155, [0.0, 64.0, 0.0], 0.0, false),
+        EntityModelInstance::horse(156, [0.0, 64.0, 0.0], 0.0, true),
+        EntityModelInstance::donkey(
+            157,
+            [0.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Donkey,
+            false,
+            false,
+        ),
+        EntityModelInstance::donkey(
+            158,
+            [0.0, 64.0, 0.0],
+            0.0,
+            DonkeyModelFamily::Mule,
+            true,
+            false,
+        ),
+    ] {
+        let rest = entity_model_mesh(&[base]);
+        let wagging =
+            entity_model_mesh(&[base.with_equine_animate_tail(true).with_age_in_ticks(0.0)]);
+        assert_eq!(
+            rest.vertices[0..24],
+            wagging.vertices[0..24],
+            "{:?} body stays put during tail wag",
+            base.kind
+        );
+        assert_ne!(
+            rest.vertices[24..48],
+            wagging.vertices[24..48],
+            "{:?} tail yRot wag changes the tail block",
+            base.kind
+        );
+        assert_eq!(
+            rest.vertices[48..],
+            wagging.vertices[48..],
+            "{:?} non-tail parts stay put during tail wag",
             base.kind
         );
     }
@@ -1557,6 +1618,49 @@ fn horse_textured_swings_legs_when_walking() {
         still.vertices, walking.vertices,
         "the walking horse re-poses on the textured path"
     );
+}
+
+#[test]
+fn horse_textured_tail_wag_preserves_submission_metadata() {
+    // Vanilla maps `AbstractHorse.tailCounter > 0` to `EquineRenderState.animateTail`, but
+    // the draw still stays the same single base `HorseRenderer` submit; only the tail part's
+    // yRot changes in `AbstractEquineModel.setupAnim`.
+    let (atlas, _) = build_entity_model_texture_atlas(&horse_texture_images()).unwrap();
+    let rest_instance = EntityModelInstance::horse_with_variant(
+        168,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        HorseColorVariant::White,
+    )
+    .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
+    let wagging_instance = rest_instance
+        .with_equine_animate_tail(true)
+        .with_age_in_ticks(0.0);
+    let rest = entity_model_textured_meshes(&[rest_instance], &atlas);
+    let wagging = entity_model_textured_meshes(&[wagging_instance], &atlas);
+
+    assert_equine_submissions_match_vanilla(&rest, rest_instance);
+    assert_equine_submissions_match_vanilla(&wagging, wagging_instance);
+    assert_eq!(rest.submissions.len(), 1);
+    assert_eq!(wagging.submissions.len(), 1);
+    let rest_submit = rest.submissions[0];
+    let wag_submit = wagging.submissions[0];
+    assert_eq!(wag_submit.render_type, rest_submit.render_type);
+    assert_eq!(wag_submit.texture, HORSE_WHITE_TEXTURE_REF);
+    assert_eq!(wag_submit.tint, rest_submit.tint);
+    assert_eq!((wag_submit.order, wag_submit.submit_sequence), (0, 0));
+    assert_eq!(wag_submit.transform, rest_submit.transform);
+    assert_textured_vertices_match_submission(&wagging.cutout.vertices, wag_submit);
+
+    assert_eq!(rest.cutout.vertices[0..24], wagging.cutout.vertices[0..24]);
+    assert_ne!(
+        rest.cutout.vertices[24..48],
+        wagging.cutout.vertices[24..48]
+    );
+    assert_eq!(rest.cutout.vertices[48..], wagging.cutout.vertices[48..]);
 }
 
 #[test]

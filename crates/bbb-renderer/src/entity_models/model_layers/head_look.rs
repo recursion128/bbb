@@ -1376,8 +1376,8 @@ pub(in crate::entity_models) fn baby_donkey_head_pose(
 /// and a baby donkey/mule tail parent renders at `−π/4 + π/6 = −π/12`. The tail base
 /// also translates `y += walkAnimationSpeed * ageScale` and `z += walkAnimationSpeed *
 /// 2 * ageScale`, where `ageScale` is `getAgeScale()` (`1.0` for adults, `0.5` for babies).
-/// The `tail.yRot` wag (`cos(ageInTicks * 0.7)` under `animateTail`) needs `ageInTicks` the
-/// client does not track and is deferred, so `yRot`/`zRot` are preserved here.
+/// The `tail.yRot` wag (`cos(ageInTicks * 0.7)` under `animateTail`) is layered by
+/// [`equine_tail_pose`].
 pub(in crate::entity_models) fn equine_tail_swing_pose(
     base: PartPose,
     tail_x_rot_offset: f32,
@@ -1396,6 +1396,26 @@ pub(in crate::entity_models) fn equine_tail_swing_pose(
             base.rotation[2],
         ],
     }
+}
+
+/// Vanilla `AbstractEquineModel.setupAnim` tail pose including the optional `animateTail`
+/// yRot wag. The xRot/offset walk lift is [`equine_tail_swing_pose`]; after that vanilla
+/// sets `tail.yRot = cos(ageInTicks * 0.7)` while `animateTail` is true, otherwise `0`.
+pub(in crate::entity_models) fn equine_tail_pose(
+    base: PartPose,
+    tail_x_rot_offset: f32,
+    walk_animation_speed: f32,
+    age_scale: f32,
+    animate_tail: bool,
+    age_in_ticks: f32,
+) -> PartPose {
+    let mut pose = equine_tail_swing_pose(base, tail_x_rot_offset, walk_animation_speed, age_scale);
+    pose.rotation[1] = if animate_tail {
+        (age_in_ticks * 0.7).cos()
+    } else {
+        0.0
+    };
+    pose
 }
 
 /// Vanilla `SnowGolemModel.setupAnim` upper-body twist: the middle snow ball turns a

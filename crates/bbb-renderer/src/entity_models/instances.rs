@@ -709,6 +709,10 @@ entity_render_state! {
     /// Vanilla `EquineRenderState.isRidden`: the equine saddle layer shows its two bridle line parts
     /// only while the entity is a vehicle. `false` for unridden equines and every non-equine entity.
     (with_equine_saddle_ridden) equine_saddle_ridden: bool = false;
+    /// Vanilla `EquineRenderState.animateTail`: when true, `AbstractEquineModel.setupAnim` wags the
+    /// tail around yRot as `cos(ageInTicks * 0.7)`. The world-side vanilla `tailCounter` source is
+    /// client-random and may remain false until projected explicitly.
+    (with_equine_animate_tail) equine_animate_tail: bool = false;
     /// Vanilla `EquineRenderState.bodyArmorItem`: an adult horse / zombie horse body equipment item
     /// whose equipment asset provides a `HORSE_BODY` layer. Leather horse armor is dyeable and carries
     /// its optional dye through [`Self::equine_body_armor_dye`]. Babies skip it because vanilla
@@ -2413,6 +2417,7 @@ mod tests {
                 pig_saddle: false,
                 equine_saddle: false,
                 equine_saddle_ridden: false,
+                equine_animate_tail: false,
                 equine_body_armor: None,
                 equine_body_armor_dye: None,
                 wolf_body_armor: None,

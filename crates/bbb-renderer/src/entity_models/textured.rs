@@ -35,8 +35,8 @@ use super::{
         armor_layer_tint, armor_slot_texture_for_layer, baby_donkey_head_pose,
         default_player_skin_texture_ref, end_crystal_bob_y, end_crystal_get_y,
         end_crystal_glass_quaternions, equine_head_look_pose, equine_leg_swing_pose,
-        equine_tail_swing_pose, head_look_at_rest, horse_body_armor_texture_layers,
-        limb_swing_at_rest, llama_body_decor_texture_ref, nautilus_body_armor_texture_ref,
+        equine_tail_pose, head_look_at_rest, horse_body_armor_texture_layers, limb_swing_at_rest,
+        llama_body_decor_texture_ref, nautilus_body_armor_texture_ref,
         wolf_armor_crackiness_texture_ref, wolf_body_armor_texture_layers, ArmorStandModel,
         BreezeWindModel, CamelModel, CreeperModel, CustomHeadDragonSkullModel,
         CustomHeadPiglinSkullModel, CustomHeadSkullModel, ElytraModel, HumanoidArmorModelLayerSet,
@@ -3118,7 +3118,7 @@ const BABY_AGE_SCALE: f32 = 0.5;
 /// Textured counterpart of `colored::mounts::emit_equine_posed`: applies the vanilla
 /// `AbstractEquineModel.setupAnim` default-branch poses — the walking leg swing on the four parts at
 /// `leg_indices`, the head look/bob on the `head_parts` (neck) at `head_parts_index`, and the tail walk
-/// lift (`tail_x_rot_offset` = `getTailXRotOffset()`, `age_scale` = `getAgeScale()`) on the body's tail
+/// lift/wag (`tail_x_rot_offset` = `getTailXRotOffset()`, `age_scale` = `getAgeScale()`) on the body's tail
 /// child — to a [`TexturedModelPartDesc`] tree, emitting into `mesh` against one `texture`/`uv_rect`/
 /// `tint`. The static tree is walked unchanged only when the gait, head look, and tail are all at rest;
 /// otherwise the body subtree is hand-emitted so the `&'static` tail child can take the swung pose. The
@@ -3208,8 +3208,14 @@ fn emit_equine_textured_posed(
     let legs_resting = limb_swing_at_rest(limb_swing_amount);
 
     let tail_rest = parts[EQUINE_BODY_PART_INDEX].children[EQUINE_TAIL_CHILD_INDEX].pose;
-    let posed_tail =
-        equine_tail_swing_pose(tail_rest, tail_x_rot_offset, limb_swing_amount, age_scale);
+    let posed_tail = equine_tail_pose(
+        tail_rest,
+        tail_x_rot_offset,
+        limb_swing_amount,
+        age_scale,
+        instance.render_state.equine_animate_tail,
+        instance.render_state.age_in_ticks,
+    );
     let tail_resting = posed_tail == tail_rest;
 
     if legs_resting && head_look_at_rest(head_yaw, head_pitch) && tail_resting {
@@ -3282,11 +3288,13 @@ fn emit_baby_donkey_textured_posed(
         body_children[BABY_DONKEY_BODY_CHILD_HEAD_PARTS_INDEX].pose,
         head_yaw,
     );
-    body_children[EQUINE_TAIL_CHILD_INDEX].pose = equine_tail_swing_pose(
+    body_children[EQUINE_TAIL_CHILD_INDEX].pose = equine_tail_pose(
         body_children[EQUINE_TAIL_CHILD_INDEX].pose,
         BABY_DONKEY_TAIL_X_ROT_OFFSET,
         limb_swing_amount,
         BABY_AGE_SCALE,
+        instance.render_state.equine_animate_tail,
+        instance.render_state.age_in_ticks,
     );
 
     let body_transform = transform * part_pose_transform(body.pose);
@@ -3440,7 +3448,7 @@ pub(in crate::entity_models) fn render_horse_textured_layers(
 /// color, carries the look). The adult layer uses `HorseModel.createBodyLayer` (legs `[2, 3, 4, 5]`,
 /// neck `1`, `getTailXRotOffset = 0`, `ageScale = 1`); the baby uses `BabyHorseModel.createBabyLayer`,
 /// which re-parents the parts (legs `[1, 2, 3, 4]`, neck `5`) and overrides `getTailXRotOffset = −π/2`,
-/// `ageScale = 0.5`. The ridden/eat/stand poses and the tail's `ageInTicks` yRot wag are deferred.
+/// `ageScale = 0.5`, and the projected `animateTail` yRot wag. The ridden/eat/stand poses are deferred.
 pub(in crate::entity_models) fn render_undead_horse_textured_layers(
     meshes: &mut EntityModelTexturedMeshes,
     instance: &EntityModelInstance,

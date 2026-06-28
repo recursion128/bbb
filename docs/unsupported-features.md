@@ -334,11 +334,12 @@ When an agent does any of the following, update this file in the same slice:
       getTailXRotOffset() + π/6 + speed * 0.75` with the `y += speed * ageScale` /
       `z += speed * 2 * ageScale` shift (body tail child, body subtree hand-emitted; the
       baby horse `getTailXRotOffset = −π/2` and baby donkey/mule `−π/4` also override
-      layer rest angles and use `ageScale = 0.5`), colored path; the camel's
+      layer rest angles and use `ageScale = 0.5`), plus renderer-side projected
+      `animateTail` tail yRot (`tail.yRot = cos(ageInTicks * 0.7)`, while source projection
+      of vanilla's client-random `tailCounter` remains deferred), colored/textured paths; the camel's
       dash-entangled gait (the colored and textured
       `CAMEL_WALK` / `CAMEL_BABY_WALK`, the sit-down / seated / stand-up transitions, and the looping
-      `CAMEL_DASH` gallop are now reproduced; only `CAMEL_IDLE` stays deferred), and the tail's `ageInTicks` yRot
-      wag stay deferred). The remaining
+      `CAMEL_DASH` gallop are now reproduced; only `CAMEL_IDLE` stays deferred). The remaining
       slices consume them
       in the other model families' `setupAnim` (fish; other birds; etc., plus
       the `HumanoidModel`/illager/villager arm and ear/nose poses); the snow golem has no
@@ -1793,8 +1794,10 @@ When an agent does any of the following, update this file in the same slice:
       `textures/entity/equipment/horse_body/{leather,leather_overlay,copper,iron,gold,diamond,netherite}.png`
       textures; leather uses the dyeable base layer plus white overlay, submissions are generated
       from `equipment_layer_pass` with vanilla `ModelLayers.HORSE_ARMOR`, and baby horses skip it
-      because vanilla supplies no baby armor model. The ridden/eat/stand/mouth poses, the
-      tail's `ageInTicks` yRot wag, and the in-water leg-frequency scaling remain unsupported
+      because vanilla supplies no baby armor model. The tail yRot wag is renderer-supported from
+      explicit `EquineRenderState.animateTail` (`tail.yRot = cos(ageInTicks * 0.7)`), while source
+      projection of vanilla's client-random `AbstractHorse.tailCounter` remains deferred. The
+      ridden/eat/stand/mouth poses and the in-water leg-frequency scaling remain unsupported
     - donkey and mule entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `DonkeyModel`, `BabyDonkeyModel`, and
       `DonkeyRenderer`. The ADULT donkey/mule now renders on the **textured
@@ -1829,9 +1832,10 @@ When an agent does any of the following, update this file in the same slice:
       with vanilla `ModelLayers.DONKEY_SADDLE` / `MULE_SADDLE`, while the base `entityCutout` submits keep
       vanilla entity light plus hurt/white overlay coords. Folded cutout vertices
       inherit the corresponding base or saddle submission metadata; baby donkey/mule entities
-      intentionally skip the layer because vanilla supplies no baby saddle model. The
-      ridden/eat/stand/mouth poses, the tail's `ageInTicks` yRot wag, and broader lighting
-      presentation remain unsupported
+      intentionally skip the layer because vanilla supplies no baby saddle model. The shared equine
+      tail yRot wag is renderer-supported from explicit `EquineRenderState.animateTail`, while source
+      projection of vanilla's client-random `AbstractHorse.tailCounter` remains deferred. The
+      ridden/eat/stand/mouth poses and broader lighting presentation remain unsupported
     - skeleton horse and zombie horse entities as renderer-owned vanilla 26.1
       adult/baby body-layer geometry from `AbstractEquineModel`,
       `BabyHorseModel`, `HorseModel`, and `UndeadHorseRenderer`, now rendered on
@@ -1895,8 +1899,10 @@ When an agent does any of the following, update this file in the same slice:
       force-transparent base submission path (`entityTranslucentCullItemTarget`,
       `38/255` alpha) and skips the `HorseMarkingLayer`, matching vanilla's
       `!state.isInvisible` layer gate.
-      The ridden/eat/stand/mouth poses, the tail's `ageInTicks` yRot wag, and broader lighting presentation remain
-      unsupported
+      The renderer consumes explicit `animateTail` for the shared tail yRot wag
+      (`tail.yRot = cos(ageInTicks * 0.7)`); projecting vanilla's client-random `tailCounter`
+      into that render state remains deferred. The ridden/eat/stand/mouth poses and broader
+      lighting presentation remain unsupported
     - camel and camel_husk entities as renderer-owned vanilla 26.1 body-layer
       geometry from `AdultCamelModel`, `BabyCamelModel`, `CamelRenderer`, and
       `CamelHuskRenderer`, including `ModelLayers.CAMEL` / `CAMEL_BABY` (the camel

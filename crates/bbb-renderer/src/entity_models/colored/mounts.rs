@@ -7,7 +7,7 @@ use super::super::geometry::{
 };
 use super::super::instances::EntityModelInstance;
 use super::super::model_layers::{
-    baby_donkey_head_pose, equine_head_look_pose, equine_leg_swing_pose, equine_tail_swing_pose,
+    baby_donkey_head_pose, equine_head_look_pose, equine_leg_swing_pose, equine_tail_pose,
     head_look_at_rest, limb_swing_at_rest, ADULT_DONKEY_PARTS, ADULT_DONKEY_PARTS_WITH_CHEST,
     ADULT_HORSE_PARTS, BABY_DONKEY_PARTS, BABY_HORSE_PARTS,
 };
@@ -62,8 +62,8 @@ use super::transforms::{
 /// Emits an equine body layer, applying the vanilla `AbstractEquineModel.setupAnim`
 /// default-branch poses: the walking leg swing ([`equine_leg_swing_pose`]) on the four
 /// parts at `leg_indices`, the head look/bob ([`equine_head_look_pose`]) on the
-/// `head_parts` (neck) at `head_parts_index`, and the tail walk lift
-/// ([`equine_tail_swing_pose`], with `tail_x_rot_offset` = `getTailXRotOffset()` and
+/// `head_parts` (neck) at `head_parts_index`, and the tail walk lift / optional wag
+/// ([`equine_tail_pose`], with `tail_x_rot_offset` = `getTailXRotOffset()` and
 /// `age_scale` = `getAgeScale()`) on the body's tail child. `color` picks the uniform-color
 /// path (donkey/mule/undead horse) or the per-cube colored path (horse). The static parts
 /// are reused unchanged only when the gait, head look, and tail are all at rest; otherwise
@@ -91,8 +91,14 @@ fn emit_equine_posed(
     // frame; for a baby horse the rest angle is even overridden, so the tail must be
     // re-posed whenever the result differs from the static pose.
     let tail_rest = parts[EQUINE_BODY_PART_INDEX].children[EQUINE_TAIL_CHILD_INDEX].pose;
-    let posed_tail =
-        equine_tail_swing_pose(tail_rest, tail_x_rot_offset, limb_swing_amount, age_scale);
+    let posed_tail = equine_tail_pose(
+        tail_rest,
+        tail_x_rot_offset,
+        limb_swing_amount,
+        age_scale,
+        instance.render_state.equine_animate_tail,
+        instance.render_state.age_in_ticks,
+    );
     let tail_resting = posed_tail == tail_rest;
 
     if legs_resting && head_look_at_rest(head_yaw, head_pitch) && tail_resting {
@@ -176,11 +182,13 @@ fn emit_baby_donkey_posed(
         body_children[BABY_DONKEY_BODY_CHILD_HEAD_PARTS_INDEX].pose,
         head_yaw,
     );
-    body_children[EQUINE_TAIL_CHILD_INDEX].pose = equine_tail_swing_pose(
+    body_children[EQUINE_TAIL_CHILD_INDEX].pose = equine_tail_pose(
         body_children[EQUINE_TAIL_CHILD_INDEX].pose,
         BABY_DONKEY_TAIL_X_ROT_OFFSET,
         limb_swing_amount,
         BABY_AGE_SCALE,
+        instance.render_state.equine_animate_tail,
+        instance.render_state.age_in_ticks,
     );
 
     let body_transform = transform * part_pose_transform(body.pose);
@@ -198,8 +206,8 @@ pub(in crate::entity_models) fn emit_horse_model(
     // Vanilla `HorseModel extends AbstractEquineModel`: the four legs swing with the
     // equine gait (front amplitude 0.8, hind 0.5), the neck (`head_parts`) takes the head
     // look/bob (yaw clamped to ±20°, pitch onto the π/6 tilt, plus a walk bob), and the
-    // tail lifts with the gait (baby horse `getTailXRotOffset = −π/2`, `ageScale = 0.5`).
-    // The ridden/eat/stand poses and the tail's `ageInTicks` yRot wag are deferred.
+    // tail lifts with the gait (baby horse `getTailXRotOffset = −π/2`, `ageScale = 0.5`)
+    // and wags on yRot when `animateTail` is projected. The ridden/eat/stand poses are deferred.
     emit_equine_posed(
         mesh,
         if baby {
