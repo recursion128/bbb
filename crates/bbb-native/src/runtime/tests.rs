@@ -4,7 +4,10 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use bbb_pack::{BiomeColorCatalog, BiomeColorProfile, GrassColorModifier};
+use bbb_pack::{
+    BiomeColorCatalog, BiomeColorProfile, FloatAttributeModifier, FloatAttributeModifierKind,
+    GrassColorModifier,
+};
 use bbb_protocol::packets::ClockUpdate as ProtocolClockUpdate;
 use bbb_protocol::packets::{
     BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate, BossBarColor, BossBarOverlay,
@@ -692,6 +695,44 @@ fn fog_environment_uses_water_fog_distances_when_eye_is_in_water() {
             VANILLA_DEFAULT_WATER_FOG_END_DISTANCE * 0.5,
         ),
     );
+}
+
+#[test]
+fn fog_environment_applies_biome_water_fog_end_distance_modifier() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, 6_000);
+    world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));
+    world.insert_decoded_chunk(empty_lightmap_test_chunk_with_biome(world.dimension(), 42));
+    set_lightmap_test_block(
+        &mut world,
+        BlockPos { x: 0, y: 1, z: 0 },
+        SOURCE_WATER_BLOCK_STATE_ID,
+    );
+    let textures = TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
+        biome_profile_with_water_fog_end_distance(
+            42,
+            FloatAttributeModifier {
+                modifier: FloatAttributeModifierKind::Multiply,
+                argument: 0.85,
+            },
+        ),
+    ]));
+
+    let fog = fog_environment_for_world_at_camera(
+        &world,
+        &textures,
+        camera_pose_from_world(&world),
+        12,
+        0.5,
+        0.0,
+        false,
+    );
+    let expected_end = VANILLA_DEFAULT_WATER_FOG_END_DISTANCE * 0.85 * 0.5;
+
+    assert!((fog.environmental_start - VANILLA_DEFAULT_WATER_FOG_START_DISTANCE).abs() < 1e-6);
+    assert!((fog.environmental_end - expected_end).abs() < 1e-5);
+    assert!((fog.sky_end - expected_end).abs() < 1e-5);
+    assert!((fog.cloud_end - expected_end).abs() < 1e-5);
 }
 
 #[test]
@@ -1383,7 +1424,18 @@ fn biome_profile_with_environment(
         fog_color,
         sky_color,
         water_fog_color,
+        water_fog_end_distance: None,
         grass_color_modifier: GrassColorModifier::None,
+    }
+}
+
+fn biome_profile_with_water_fog_end_distance(
+    id: i32,
+    water_fog_end_distance: FloatAttributeModifier,
+) -> BiomeColorProfile {
+    BiomeColorProfile {
+        water_fog_end_distance: Some(water_fog_end_distance),
+        ..biome_profile_with_environment(id, None, None, None)
     }
 }
 

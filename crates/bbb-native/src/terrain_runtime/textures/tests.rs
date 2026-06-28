@@ -776,6 +776,7 @@ fn block_tint_uses_loaded_biome_color_profiles() {
         fog_color: None,
         sky_color: None,
         water_fog_color: None,
+        water_fog_end_distance: None,
         grass_color_modifier: GrassColorModifier::None,
     }]));
 
@@ -842,6 +843,7 @@ fn biome_climate_changes_colormap_sample() {
         fog_color: None,
         sky_color: None,
         water_fog_color: None,
+        water_fog_end_distance: None,
         grass_color_modifier: GrassColorModifier::None,
     }]));
 

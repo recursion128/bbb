@@ -298,6 +298,21 @@ impl TerrainTextureState {
         self.biome_profile(biome_id)?.water_fog_color
     }
 
+    pub(crate) fn biome_water_fog_end_distance(
+        &self,
+        biome_id: Option<i32>,
+        base_distance: f32,
+    ) -> Option<f32> {
+        let profile = self.biome_profile(biome_id)?;
+        Some(
+            profile
+                .water_fog_end_distance
+                .map(|modifier| modifier.apply(base_distance))
+                .unwrap_or(base_distance)
+                .max(0.0),
+        )
+    }
+
     pub(crate) fn biome_has_precipitation(&self, biome_id: Option<i32>) -> Option<bool> {
         Some(self.biome_profile(biome_id)?.has_precipitation)
     }

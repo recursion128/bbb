@@ -607,8 +607,9 @@ When an agent does any of the following, update this file in the same slice:
     synced THE_END world-clock `EndFlashState` boosts folded into `SkyFactor`;
     lightning bolt spawns now feed the vanilla 2 tick client `skyFlashTime` and
     force `SKY_LIGHT_FACTOR = 1.0` while visible; native also parses vanilla
-    biome JSON top-level `attributes` for `visual/sky_color`, `fog_color`, and
-    `water_fog_color`, and the clear-color frame path uses the camera eye
+    biome JSON top-level `attributes` for `visual/sky_color`, `fog_color`,
+    `water_fog_color`, and `water_fog_end_distance`, and the clear-color /
+    water-fog frame path uses the camera eye
     position plus the vanilla `EnvironmentAttributeProbe` Gaussian kernel over
     stored quart biome cells to sample `SKY_COLOR`, `FOG_COLOR`, and
     `WATER_FOG_COLOR`. Atmospheric clearing now follows the vanilla
@@ -619,8 +620,10 @@ When an agent does any of the following, update this file in the same slice:
     and falling back to dimension fog/sky colors (Overworld fog `#c0d8ff` /
     sky `#78a7ff`, End fog `#181318` / sky black, Nether sky default black).
     Water camera clearing uses `WATER_FOG_COLOR` plus the vanilla
-    `LocalPlayer.getWaterVision()` brightening formula, and lightning sky flash
-    does not tint water fog. The startup
+    `LocalPlayer.getWaterVision()` brightening formula, and water fog
+    visibility ends use biome `WATER_FOG_END_DISTANCE` modifiers before the
+    vanilla water-vision multiplier. Lightning sky flash does not tint water
+    fog. The startup
     `--hide-lightning-flash` option suppresses both lightmap and atmospheric
     clear-color sky flash layers. Native also tracks the vanilla atmospheric
     `rainFogMultiplier` shape for Overworld rain: 0.2/tick smoothing, the camera
@@ -628,8 +631,8 @@ When an agent does any of the following, update this file in the same slice:
     `-160` / `-256` environmental start/end offsets. Renderer camera uniforms
     now include vanilla-shaped fog color, environmental and render-distance
     ranges, plus `FogData.skyEnd` / `cloudEnd`; native generates the atmospheric
-    defaults, boss-world-fog clamp, and water-fog visibility ends from the
-    vanilla environment classes.
+    defaults, boss-world-fog clamp, and biome-modified water-fog visibility
+    ends from the vanilla environment classes.
     Terrain, entity, item-model, item-entity, particle, block-destroy, and
     selection world shaders compute spherical/cylindrical camera distance and
     apply fog in the vanilla `apply_fog` shape. The startup `--render-distance`

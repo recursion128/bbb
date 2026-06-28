@@ -33,6 +33,76 @@ fn raw_rgb_attribute(
         .transpose()
 }
 
+fn raw_float_attribute_modifier(
+    attributes: &BTreeMap<String, serde_json::Value>,
+    key: &str,
+) -> Result<Option<FloatAttributeModifier>> {
+    let Some(value) = attributes.get(key) else {
+        return Ok(None);
+    };
+    if let Some(argument) = value.as_f64() {
+        return Ok(Some(FloatAttributeModifier::override_value(finite_f32(
+            argument, key,
+        )?)));
+    }
+    let raw: RawFloatAttributeModifier = serde_json::from_value(value.clone())
+        .with_context(|| format!("parse float environment attribute {key}"))?;
+    Ok(Some(FloatAttributeModifier {
+        modifier: raw.modifier,
+        argument: finite_f32(f64::from(raw.argument), key)?,
+    }))
+}
+
+fn finite_f32(value: f64, key: &str) -> Result<f32> {
+    if !value.is_finite() || value < f64::from(f32::MIN) || value > f64::from(f32::MAX) {
+        bail!("float environment attribute {key} must be finite f32");
+    }
+    Ok(value as f32)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct FloatAttributeModifier {
+    pub modifier: FloatAttributeModifierKind,
+    pub argument: f32,
+}
+
+impl FloatAttributeModifier {
+    pub fn override_value(argument: f32) -> Self {
+        Self {
+            modifier: FloatAttributeModifierKind::Override,
+            argument,
+        }
+    }
+
+    pub fn apply(self, base: f32) -> f32 {
+        match self.modifier {
+            FloatAttributeModifierKind::Override => self.argument,
+            FloatAttributeModifierKind::Add => base + self.argument,
+            FloatAttributeModifierKind::Subtract => base - self.argument,
+            FloatAttributeModifierKind::Multiply => base * self.argument,
+            FloatAttributeModifierKind::Minimum => base.min(self.argument),
+            FloatAttributeModifierKind::Maximum => base.max(self.argument),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FloatAttributeModifierKind {
+    Override,
+    Add,
+    Subtract,
+    Multiply,
+    Minimum,
+    Maximum,
+}
+
+#[derive(Debug, Deserialize)]
+struct RawFloatAttributeModifier {
+    modifier: FloatAttributeModifierKind,
+    argument: f32,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ColorMapImage {
     pub width: u32,
@@ -174,6 +244,7 @@ pub struct BiomeColorProfile {
     pub fog_color: Option<[u8; 3]>,
     pub sky_color: Option<[u8; 3]>,
     pub water_fog_color: Option<[u8; 3]>,
+    pub water_fog_end_distance: Option<FloatAttributeModifier>,
     pub grass_color_modifier: GrassColorModifier,
 }
 
@@ -214,6 +285,10 @@ impl BiomeColorProfile {
             water_fog_color: raw_rgb_attribute(
                 &raw.attributes,
                 "minecraft:visual/water_fog_color",
+            )?,
+            water_fog_end_distance: raw_float_attribute_modifier(
+                &raw.attributes,
+                "minecraft:visual/water_fog_end_distance",
             )?,
             grass_color_modifier: raw.effects.grass_color_modifier.unwrap_or_default(),
         })

@@ -1087,6 +1087,12 @@ mod tests {
         write_json(
             &biome_dir.join("swamp.json"),
             r##"{
+              "attributes": {
+                "minecraft:visual/water_fog_end_distance": {
+                  "argument": 0.85,
+                  "modifier": "multiply"
+                }
+              },
               "temperature": 0.8,
               "downfall": 0.9,
               "has_precipitation": true,
@@ -1116,6 +1122,11 @@ mod tests {
         assert_eq!(swamp.foliage_color, Some([0x6a, 0x70, 0x39]));
         assert_eq!(swamp.dry_foliage_color, Some([0x7b, 0x53, 0x34]));
         assert_eq!(swamp.water_color, Some([0x61, 0x7b, 0x64]));
+        let swamp_water_fog_end = swamp
+            .water_fog_end_distance
+            .map(|modifier| modifier.apply(96.0))
+            .unwrap();
+        assert!((swamp_water_fog_end - 81.6).abs() < 1e-5);
         assert_eq!(swamp.grass_color_modifier, GrassColorModifier::Swamp);
         assert!(catalog.profile(0).is_none());
 

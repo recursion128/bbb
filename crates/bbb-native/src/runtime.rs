@@ -4009,6 +4009,7 @@ struct CameraEnvironmentColors {
     sky_color: Option<[u8; 3]>,
     fog_color: Option<[u8; 3]>,
     water_fog_color: Option<[u8; 3]>,
+    water_fog_end_distance: Option<f32>,
     camera_forward: Option<[f32; 3]>,
     fog_type: CameraFogType,
 }
@@ -4025,6 +4026,11 @@ enum BiomeRgbAttribute {
     Sky,
     Fog,
     WaterFog,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BiomeFloatAttribute {
+    WaterFogEndDistance,
 }
 
 pub(crate) fn clear_color_for_world(world: &WorldStore, hide_lightning_flash: bool) -> ClearColor {
@@ -4218,7 +4224,10 @@ fn fog_environment_for_world_with_environment_colors(
             )
         }
         CameraFogType::Water => {
-            let environmental_end = VANILLA_DEFAULT_WATER_FOG_END_DISTANCE * water_vision.max(0.25);
+            let environmental_end = colors
+                .water_fog_end_distance
+                .unwrap_or(VANILLA_DEFAULT_WATER_FOG_END_DISTANCE)
+                * water_vision.max(0.25);
             FogEnvironment::world_with_visibility_ends(
                 color,
                 VANILLA_DEFAULT_WATER_FOG_START_DISTANCE,
@@ -4615,6 +4624,13 @@ fn camera_environment_colors(
             eye,
             BiomeRgbAttribute::WaterFog,
         ),
+        water_fog_end_distance: gaussian_biome_float_attribute(
+            world,
+            terrain_textures,
+            eye,
+            BiomeFloatAttribute::WaterFogEndDistance,
+            VANILLA_DEFAULT_WATER_FOG_END_DISTANCE,
+        ),
         camera_forward: Some(camera_forward_vector(camera)),
         fog_type: if camera_eye_in_water(world, eye) {
             CameraFogType::Water
@@ -4736,6 +4752,68 @@ fn gaussian_biome_rgb_color(
     lerp_weighted_rgb_colors(&samples)
 }
 
+fn gaussian_biome_float_attribute(
+    world: &WorldStore,
+    terrain_textures: &TerrainTextureState,
+    eye: [f32; 3],
+    attribute: BiomeFloatAttribute,
+    base_value: f32,
+) -> Option<f32> {
+    if !eye.into_iter().all(f32::is_finite) {
+        return None;
+    }
+
+    let position = [
+        f64::from(eye[0]) * 0.25 - 0.5,
+        f64::from(eye[1]) * 0.25 - 0.5,
+        f64::from(eye[2]) * 0.25 - 0.5,
+    ];
+    let integral = [
+        position[0].floor() as i32,
+        position[1].floor() as i32,
+        position[2].floor() as i32,
+    ];
+    let relative = [
+        position[0] - f64::from(integral[0]),
+        position[1] - f64::from(integral[1]),
+        position[2] - f64::from(integral[2]),
+    ];
+    let mut weighted_sum = 0.0;
+    let mut total_weight = 0.0;
+
+    for z in 0..6 {
+        let weight_z = gaussian_axis_weight(z, relative[2]);
+        let sample_z = integral[2] - 2 + z as i32;
+        for x in 0..6 {
+            let weight_x = gaussian_axis_weight(x, relative[0]);
+            let sample_x = integral[0] - 2 + x as i32;
+            for y in 0..6 {
+                let weight_y = gaussian_axis_weight(y, relative[1]);
+                let sample_y = integral[1] - 2 + y as i32;
+                let weight = weight_x * weight_y * weight_z;
+                if weight <= 0.0 {
+                    continue;
+                }
+                let Some(value) = biome_float_attribute_at_quart(
+                    world,
+                    terrain_textures,
+                    sample_x,
+                    sample_y,
+                    sample_z,
+                    attribute,
+                    base_value,
+                ) else {
+                    continue;
+                };
+                weighted_sum += f64::from(value) * weight;
+                total_weight += weight;
+            }
+        }
+    }
+
+    (total_weight > 0.0).then_some((weighted_sum / total_weight) as f32)
+}
+
 fn gaussian_axis_weight(index: usize, relative: f64) -> f64 {
     let start = VANILLA_GAUSSIAN_SAMPLE_KERNEL[index + 1];
     let end = VANILLA_GAUSSIAN_SAMPLE_KERNEL[index];
@@ -4760,6 +4838,28 @@ fn biome_rgb_color_at_quart(
         BiomeRgbAttribute::Sky => terrain_textures.biome_sky_color(biome_id),
         BiomeRgbAttribute::Fog => terrain_textures.biome_fog_color(biome_id),
         BiomeRgbAttribute::WaterFog => terrain_textures.biome_water_fog_color(biome_id),
+    }
+}
+
+fn biome_float_attribute_at_quart(
+    world: &WorldStore,
+    terrain_textures: &TerrainTextureState,
+    quart_x: i32,
+    quart_y: i32,
+    quart_z: i32,
+    attribute: BiomeFloatAttribute,
+    base_value: f32,
+) -> Option<f32> {
+    let pos = BlockPos {
+        x: quart_x.saturating_mul(4),
+        y: quart_y.saturating_mul(4),
+        z: quart_z.saturating_mul(4),
+    };
+    let biome_id = world.probe_block(pos)?.biome_id;
+    match attribute {
+        BiomeFloatAttribute::WaterFogEndDistance => {
+            terrain_textures.biome_water_fog_end_distance(biome_id, base_value)
+        }
     }
 }
 
