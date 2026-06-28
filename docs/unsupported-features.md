@@ -655,10 +655,15 @@ When an agent does any of the following, update this file in the same slice:
     block flicker path still advances
     `blockLightFlicker` with the
     `LightmapRenderStateExtractor.tick()` formula and the shaders read
-    `blockLightFlicker + 1.4`. Remaining lighting gaps: cloud and celestial sky
-    renderer presentation, dynamic LightTexture / diffuse visual precision,
-    smooth/AO entity light, GUI / entity-in-UI lighting variants, and the
-    colored debug fallback's baked-shade approximation.
+    `blockLightFlicker + 1.4`. The terrain/world shader now consumes the same
+    `LightmapInfo` environment fields with the vanilla `Lightmap.getBrightness`
+    curve, block-light parabolic tint mix, boss darkening, darkness subtraction,
+    and `BrightnessFactor` `notGamma` mix instead of the earlier
+    `max(block, sky * 0.95)` scalar approximation. Remaining lighting gaps:
+    cloud and celestial sky renderer presentation, the real dynamic 16x16
+    LightTexture texture pass and non-terrain world/item/particle diffuse visual
+    precision, smooth/AO entity light, GUI / entity-in-UI lighting variants, and
+    the colored debug fallback's baked-shade approximation.
     Water-vision fog color brightening is covered in the native clear-color and
     fog-environment path.
   - The hurt red damage overlay is implemented end to end as a real overlay pass,
