@@ -1463,6 +1463,7 @@ fn entity_model_instance(
         .with_pig_saddle(source.pig_saddle)
         .with_equine_saddle(source.equine_saddle)
         .with_equine_saddle_ridden(source.equine_saddle_ridden)
+        .with_equine_animate_tail(source.equine_animate_tail)
         .with_equine_body_armor(armor_material(source.equine_body_armor))
         .with_equine_body_armor_dye(armor_dye(source.equine_body_armor_dye))
         .with_wolf_body_armor(armor_material(source.wolf_body_armor))
@@ -8229,6 +8230,49 @@ mod tests {
             passenger_ids: vec![112],
         }));
         assert_eq!(equine_saddle(&world, 111), (true, true));
+    }
+
+    #[test]
+    fn entity_model_instance_projects_equine_tail_counter_from_source() {
+        // Vanilla `AbstractHorseRenderer.extractRenderState` maps `tailCounter > 0`
+        // to `EquineRenderState.animateTail`; the world layer owns the client-side
+        // random counter and native must preserve that bool in the renderer state.
+        let source: EntityModelSourceState = serde_json::from_value(serde_json::json!({
+            "entity_id": 113,
+            "entity_type_id": VANILLA_ENTITY_TYPE_HORSE_ID,
+            "position": { "x": 1.0, "y": 64.0, "z": -3.0 },
+            "y_rot": 0.0,
+            "equine_animate_tail": true,
+            "data_values": []
+        }))
+        .unwrap();
+
+        let instance = entity_model_instance(
+            source,
+            &WorldStore::new(),
+            None,
+            0,
+            1.0,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(
+            instance.kind,
+            EntityModelKind::Horse {
+                baby: false,
+                variant: HorseColorVariant::White,
+                markings: HorseMarkings::None,
+            }
+        );
+        assert!(instance.render_state.equine_animate_tail);
     }
 
     #[test]

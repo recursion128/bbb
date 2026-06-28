@@ -710,8 +710,8 @@ entity_render_state! {
     /// only while the entity is a vehicle. `false` for unridden equines and every non-equine entity.
     (with_equine_saddle_ridden) equine_saddle_ridden: bool = false;
     /// Vanilla `EquineRenderState.animateTail`: when true, `AbstractEquineModel.setupAnim` wags the
-    /// tail around yRot as `cos(ageInTicks * 0.7)`. The world-side vanilla `tailCounter` source is
-    /// client-random and may remain false until projected explicitly.
+    /// tail around yRot as `cos(ageInTicks * 0.7)`. World/native projects this from
+    /// `AbstractHorse.tailCounter > 0`; the exact vanilla client RNG seed is not protocol-visible.
     (with_equine_animate_tail) equine_animate_tail: bool = false;
     /// Vanilla `EquineRenderState.bodyArmorItem`: an adult horse / zombie horse body equipment item
     /// whose equipment asset provides a `HORSE_BODY` layer. Leather horse armor is dyeable and carries

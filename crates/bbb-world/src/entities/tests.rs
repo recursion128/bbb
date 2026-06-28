@@ -1769,6 +1769,48 @@ fn entity_model_sources_project_equine_saddle_and_ridden_state() {
 }
 
 #[test]
+fn entity_model_sources_project_equine_tail_counter() {
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        66,
+        VANILLA_ENTITY_TYPE_HORSE_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        67,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+
+    let animate_tail = |store: &WorldStore, entity_id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == entity_id)
+            .unwrap()
+            .equine_animate_tail
+    };
+
+    // Vanilla `AbstractHorse.aiStep` may start `tailCounter` with `random.nextInt(200) == 0`,
+    // and `AbstractHorse.tick` clears it after `++tailCounter > 8`. The exact vanilla client seed
+    // is not protocol-visible; bbb uses a deterministic Java LCG seeded by entity id. For entity id
+    // 66, the first local `nextInt(200) == 0` occurs on tick 37.
+    assert!(!animate_tail(&store, 66));
+    store.advance_entity_client_animations(36);
+    assert!(!animate_tail(&store, 66));
+    store.advance_entity_client_animations(1);
+    assert!(animate_tail(&store, 66));
+    store.advance_entity_client_animations(6);
+    assert!(animate_tail(&store, 66));
+    store.advance_entity_client_animations(1);
+    assert!(!animate_tail(&store, 66));
+
+    // Non-equines do not allocate or project the equine tail counter.
+    store.advance_entity_client_animations(37);
+    assert!(!animate_tail(&store, 67));
+}
+
+#[test]
 fn entity_model_sources_project_strider_saddle_and_ridden_state() {
     use crate::ItemEquipmentSlot;
     use std::collections::BTreeMap;

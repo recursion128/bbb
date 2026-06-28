@@ -1496,6 +1496,7 @@ impl EntityStore {
             pig_saddle: pig_saddle(),
             equine_saddle,
             equine_saddle_ridden,
+            equine_animate_tail: client_animations.animations.equine_animate_tail(),
             equine_body_armor: horse_body_armor,
             equine_body_armor_dye: horse_body_armor_dye,
             strider_ridden,

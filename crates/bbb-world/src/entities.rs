@@ -1129,6 +1129,10 @@ pub struct EntityModelSourceState {
     /// makes `EquineSaddleModel` show the two bridle line parts.
     #[serde(default)]
     pub equine_saddle_ridden: bool,
+    /// Vanilla `EquineRenderState.animateTail` (`AbstractHorse.tailCounter > 0`): true while the
+    /// client-side random idle tail counter is active, driving `tail.yRot = cos(ageInTicks * 0.7)`.
+    #[serde(default)]
+    pub equine_animate_tail: bool,
     /// Vanilla `EquineRenderState.bodyArmorItem`: the horse armor material from an adult horse /
     /// zombie horse body equipment item whose equipment asset has a `horse_body` layer. Baby horses
     /// skip it because `SimpleEquipmentLayer` supplies no baby armor model; skeleton horses are

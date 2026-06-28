@@ -63,8 +63,13 @@ const WITHER_TARGET_C_DATA_ID: u8 = 18;
 /// (`calculateEntityAnimation(this instanceof FlyingAnimal)`), so the limb-swing
 /// distance includes the vertical component.
 const VANILLA_ENTITY_TYPE_BEE_ID: i32 = 11;
+const VANILLA_ENTITY_TYPE_DONKEY_ID: i32 = 36;
+const VANILLA_ENTITY_TYPE_HORSE_ID: i32 = 66;
+const VANILLA_ENTITY_TYPE_MULE_ID: i32 = 87;
 const VANILLA_ENTITY_TYPE_PARROT_ID: i32 = 98;
 const VANILLA_ENTITY_TYPE_PANDA_ID: i32 = 96;
+const VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID: i32 = 116;
+const VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID: i32 = 151;
 /// Vanilla `Panda.DATA_ID_FLAGS`, the panda's synced flags byte after unhappy/sneeze/eat/gene data.
 const PANDA_FLAGS_DATA_ID: u8 = 23;
 /// Vanilla `Panda.isRolling()` / `isSitting()` / `isOnBack()` masks within `DATA_ID_FLAGS`.
@@ -487,6 +492,8 @@ pub struct EntityClientAnimationState {
     pub axolotl: Option<AxolotlAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parrot_flap: Option<ParrotFlapAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub equine_tail: Option<EquineTailAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub guardian_tail: Option<GuardianTailAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2764,19 +2771,78 @@ impl WardenHeartAnimationState {
     }
 }
 
+const JAVA_RANDOM_MULTIPLIER: u64 = 0x5DEEC_E66D;
+const JAVA_RANDOM_ADDEND: u64 = 0xB;
+const JAVA_RANDOM_MASK: u64 = (1_u64 << 48) - 1;
+
+fn java_random_seed(seed: i64) -> u64 {
+    ((seed as u64) ^ JAVA_RANDOM_MULTIPLIER) & JAVA_RANDOM_MASK
+}
+
+fn java_random_next_bits(state: &mut u64, bits: u32) -> u32 {
+    *state = state
+        .wrapping_mul(JAVA_RANDOM_MULTIPLIER)
+        .wrapping_add(JAVA_RANDOM_ADDEND)
+        & JAVA_RANDOM_MASK;
+    (*state >> (48 - bits)) as u32
+}
+
+fn java_random_next_int_bound(state: &mut u64, bound: i32) -> i32 {
+    debug_assert!(bound > 0);
+    if (bound & (bound - 1)) == 0 {
+        return ((i64::from(bound) * i64::from(java_random_next_bits(state, 31))) >> 31) as i32;
+    }
+
+    loop {
+        let bits = java_random_next_bits(state, 31) as i32;
+        let value = bits % bound;
+        if bits.wrapping_sub(value).wrapping_add(bound - 1) >= 0 {
+            return value;
+        }
+    }
+}
+
+/// Vanilla `AbstractHorse.tailCounter`, with the random idle start driven from a repo-local
+/// deterministic Java LCG. The exact vanilla client RNG seed is not sent over the protocol, but the
+/// `nextInt(200)` distribution and `tailCounter` lifetime mirror `AbstractHorse.aiStep` / `tick`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EquineTailAnimationState {
+    random_seed: u64,
+    tail_counter: u8,
+}
+
+impl EquineTailAnimationState {
+    fn new(entity_id: i32) -> Self {
+        Self {
+            random_seed: java_random_seed(i64::from(entity_id)),
+            tail_counter: 0,
+        }
+    }
+
+    fn advance_client_tick(&mut self) {
+        if java_random_next_int_bound(&mut self.random_seed, 200) == 0 {
+            self.tail_counter = 1;
+        }
+        if self.tail_counter > 0 {
+            self.tail_counter += 1;
+            if self.tail_counter > 8 {
+                self.tail_counter = 0;
+            }
+        }
+    }
+
+    fn animate_tail(self) -> bool {
+        self.tail_counter > 0
+    }
+}
+
 /// Java `java.util.Random` LCG `setSeed(seed)` then `nextFloat()`, used to seed
 /// `Squid.tentacleSpeed` from the entity id deterministically on the client.
 /// Replicates the multiplier/addend/mask of `LevelEventSoundRandomState` (the
 /// audio module's Java-compatible LCG) so the value matches vanilla exactly.
 fn java_random_first_next_float(seed: i64) -> f32 {
-    const MULTIPLIER: u64 = 0x5DEEC_E66D;
-    const ADDEND: u64 = 0xB;
-    const MASK: u64 = (1_u64 << 48) - 1;
-    // `setSeed(seed)`.
-    let mut state = ((seed as u64) ^ MULTIPLIER) & MASK;
-    // `next(24)`.
-    state = state.wrapping_mul(MULTIPLIER).wrapping_add(ADDEND) & MASK;
-    let bits = (state >> (48 - 24)) as u32;
+    let mut state = java_random_seed(seed);
+    let bits = java_random_next_bits(&mut state, 24);
     // `nextFloat() = next(24) / (1 << 24)`.
     bits as f32 / (1_u32 << 24) as f32
 }
@@ -3704,6 +3770,13 @@ impl EntityClientAnimationState {
     /// projection. Returns `0` when the sheep is not currently eating.
     pub fn sheep_eat_animation_tick(&self) -> i32 {
         self.sheep_eat.map_or(0, |state| state.eat_animation_tick)
+    }
+
+    /// Vanilla `EquineRenderState.animateTail` (`AbstractHorse.tailCounter > 0`), exposed for
+    /// renderer tail yRot projection. Returns `false` for non-equine entities and idle equines.
+    pub fn equine_animate_tail(&self) -> bool {
+        self.equine_tail
+            .is_some_and(EquineTailAnimationState::animate_tail)
     }
 
     /// Vanilla `Goat.lowerHeadTick` (the `0..=20` ram counter), exposed for the native layer to derive
@@ -4792,6 +4865,14 @@ impl EntityClientAnimationState {
                     SquidAnimationState::new_with_y_body_rot(entity_id, transform.y_head_rot)
                 })
                 .advance_client_tick(transform.delta_movement, in_water),
+            VANILLA_ENTITY_TYPE_HORSE_ID
+            | VANILLA_ENTITY_TYPE_DONKEY_ID
+            | VANILLA_ENTITY_TYPE_MULE_ID
+            | VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID
+            | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID => self
+                .equine_tail
+                .get_or_insert_with(|| EquineTailAnimationState::new(entity_id))
+                .advance_client_tick(),
             VANILLA_ENTITY_TYPE_GUARDIAN_ID | VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID => {
                 // Vanilla `Guardian.aiStep` reads `isInWater()` (the world fact
                 // threaded in) and the synced `isMoving()` flag (`DATA_ID_MOVING`).

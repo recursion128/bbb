@@ -336,9 +336,10 @@ When an agent does any of the following, update this file in the same slice:
       getTailXRotOffset() + π/6 + speed * 0.75` with the `y += speed * ageScale` /
       `z += speed * 2 * ageScale` shift (body tail child, body subtree hand-emitted; the
       baby horse `getTailXRotOffset = −π/2` and baby donkey/mule `−π/4` also override
-      layer rest angles and use `ageScale = 0.5`), plus renderer-side projected
-      `animateTail` tail yRot (`tail.yRot = cos(ageInTicks * 0.7)`, while source projection
-      of vanilla's client-random `tailCounter` remains deferred), colored/textured paths; the camel's
+      layer rest angles and use `ageScale = 0.5`), plus `AbstractHorse.tailCounter` source projection
+      (local Java LCG `nextInt(200)` start, `++tailCounter > 8` clear; exact vanilla client seed is not
+      protocol-visible) into renderer-side `animateTail` tail yRot (`tail.yRot =
+      cos(ageInTicks * 0.7)`), colored/textured paths; the camel's
       dash-entangled gait (the colored and textured
       `CAMEL_WALK` / `CAMEL_BABY_WALK`, the sit-down / seated / stand-up transitions, and the looping
       `CAMEL_DASH` gallop are now reproduced; only `CAMEL_IDLE` stays deferred). The remaining
@@ -1810,9 +1811,11 @@ When an agent does any of the following, update this file in the same slice:
       `textures/entity/equipment/horse_body/{leather,leather_overlay,copper,iron,gold,diamond,netherite}.png`
       textures; leather uses the dyeable base layer plus white overlay, submissions are generated
       from `equipment_layer_pass` with vanilla `ModelLayers.HORSE_ARMOR`, and baby horses skip it
-      because vanilla supplies no baby armor model. The tail yRot wag is renderer-supported from
-      explicit `EquineRenderState.animateTail` (`tail.yRot = cos(ageInTicks * 0.7)`), while source
-      projection of vanilla's client-random `AbstractHorse.tailCounter` remains deferred. The
+      because vanilla supplies no baby armor model. The tail yRot wag is now world/native projected
+      from the client-side `AbstractHorse.tailCounter` (`random.nextInt(200)` start,
+      `++tailCounter > 8` clear; exact vanilla client seed is not protocol-visible and bbb uses a
+      deterministic local Java LCG), then consumed as `EquineRenderState.animateTail`
+      (`tail.yRot = cos(ageInTicks * 0.7)`). The
       in-water leg-frequency multiplier is supported from projected `in_water` (`isInWater()`
       -> `waterMultiplier = 0.2`). The ridden/eat/stand/mouth poses remain unsupported
     - donkey and mule entities as renderer-owned vanilla 26.1 adult/baby
@@ -1850,8 +1853,9 @@ When an agent does any of the following, update this file in the same slice:
       vanilla entity light plus hurt/white overlay coords. Folded cutout vertices
       inherit the corresponding base or saddle submission metadata; baby donkey/mule entities
       intentionally skip the layer because vanilla supplies no baby saddle model. The shared equine
-      tail yRot wag is renderer-supported from explicit `EquineRenderState.animateTail`, while source
-      projection of vanilla's client-random `AbstractHorse.tailCounter` remains deferred. The
+      tail yRot wag is world/native projected from the client-side `AbstractHorse.tailCounter` into
+      explicit `EquineRenderState.animateTail` using the same local Java LCG timing as the horse path.
+      The
       ridden/eat/stand/mouth poses and broader lighting presentation remain unsupported
     - skeleton horse and zombie horse entities as renderer-owned vanilla 26.1
       adult/baby body-layer geometry from `AbstractEquineModel`,
@@ -1916,9 +1920,9 @@ When an agent does any of the following, update this file in the same slice:
       force-transparent base submission path (`entityTranslucentCullItemTarget`,
       `38/255` alpha) and skips the `HorseMarkingLayer`, matching vanilla's
       `!state.isInvisible` layer gate.
-      The renderer consumes explicit `animateTail` for the shared tail yRot wag
-      (`tail.yRot = cos(ageInTicks * 0.7)`); projecting vanilla's client-random `tailCounter`
-      into that render state remains deferred. The ridden/eat/stand/mouth poses and broader
+      The renderer consumes world/native-projected `animateTail` for the shared tail yRot wag
+      (`tail.yRot = cos(ageInTicks * 0.7)`); the projection mirrors `AbstractHorse.tailCounter`
+      `nextInt(200)` start and 8-tick lifetime with a deterministic local Java LCG. The ridden/eat/stand/mouth poses and broader
       lighting presentation remain unsupported
     - camel and camel_husk entities as renderer-owned vanilla 26.1 body-layer
       geometry from `AdultCamelModel`, `BabyCamelModel`, `CamelRenderer`, and
