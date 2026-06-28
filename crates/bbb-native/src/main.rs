@@ -13,6 +13,7 @@ use winit::{
     window::{CursorGrabMode, Window},
 };
 
+mod ascii_font;
 mod audio_runtime;
 mod biome_tint;
 mod block_outline;

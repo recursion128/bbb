@@ -11,8 +11,9 @@ use std::collections::BTreeMap;
 use bbb_pack::BlockModelDisplayContext;
 use bbb_renderer::{
     bake_generated_item_quads, bake_item_frame_map_decoration_surface, bake_item_frame_map_surface,
-    bake_item_model_mesh_with_light, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
-    ItemFrameMapSurface, ItemFrameMapTexture, ItemModelMesh, ItemModelQuad,
+    bake_item_frame_map_text_surface, bake_item_model_mesh_with_light,
+    ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapSurface,
+    ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, ItemModelQuad,
     ITEM_MODEL_FULL_BRIGHT_LIGHT,
 };
 use bbb_world::{ItemFrameFacing, MapItemState, TerrainLight, WorldStore};
@@ -55,6 +56,7 @@ pub(crate) struct ItemFrameModels {
     pub map_surfaces: Vec<ItemFrameMapSurface>,
     pub map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
     pub map_decoration_surfaces: Vec<ItemFrameMapDecorationSurface>,
+    pub map_text_surfaces: Vec<ItemFrameMapTextSurface>,
 }
 
 /// Bakes every item-frame / glow-item-frame entity into its wooden border plus framed item (vanilla
@@ -73,6 +75,7 @@ pub(crate) fn item_frame_models(
     let mut map_textures = BTreeMap::new();
     let mut map_surfaces = Vec::new();
     let mut map_decoration_surfaces = Vec::new();
+    let mut map_text_surfaces = Vec::new();
 
     for state in world.item_frame_render_states() {
         let center = Vec3::new(
@@ -111,6 +114,7 @@ pub(crate) fn item_frame_models(
                 map_light,
             ));
             let mut visible_decoration_index = 0;
+            let mut text_submit_sequence = 0;
             for decoration in &map.decorations {
                 if let Some(surface) = bake_item_frame_map_decoration_surface(
                     decoration.type_id,
@@ -123,6 +127,26 @@ pub(crate) fn item_frame_models(
                     visible_decoration_index + 1,
                 ) {
                     map_decoration_surfaces.push(surface);
+                    if let (Some(name), Some(item_runtime)) =
+                        (decoration.name.as_ref(), item_runtime)
+                    {
+                        if let Some(glyphs) = item_runtime.map_text_glyphs() {
+                            if let Some(text_surface) = bake_item_frame_map_text_surface(
+                                decoration.type_id,
+                                name.as_str(),
+                                decoration.x,
+                                decoration.y,
+                                visible_decoration_index,
+                                map_transform,
+                                map_light,
+                                text_submit_sequence,
+                                glyphs,
+                            ) {
+                                map_text_surfaces.push(text_surface);
+                                text_submit_sequence += 1;
+                            }
+                        }
+                    }
                     visible_decoration_index += 1;
                 }
             }
@@ -201,6 +225,7 @@ pub(crate) fn item_frame_models(
         map_surfaces,
         map_decoration_textures,
         map_decoration_surfaces,
+        map_text_surfaces,
     }
 }
 
@@ -525,10 +550,13 @@ mod tests {
             }),
         }));
 
-        let models = item_frame_models(&world, None, &TerrainTextureState::default());
+        let item_runtime = NativeItemRuntime::empty_for_test();
+        let models =
+            item_frame_models(&world, Some(&item_runtime), &TerrainTextureState::default());
         assert_eq!(models.map_surfaces.len(), 1);
         assert!(models.map_decoration_textures.is_empty());
         assert_eq!(models.map_decoration_surfaces.len(), 2);
+        assert_eq!(models.map_text_surfaces.len(), 1);
 
         let state = &world.item_frame_render_states()[0];
         let center = Vec3::new(
@@ -587,6 +615,43 @@ mod tests {
             (0, 2)
         );
         assert_eq!(target.submission.decoration_index, 1);
+
+        let label = &models.map_text_surfaces[0];
+        let label_width = 30.0;
+        let label_scale = 6.0 / 9.0;
+        assert_eq!(label.vertex_count(), 20);
+        assert_eq!(label.index_count(), 30);
+        assert_eq!(label.submission.type_id, 1);
+        assert_eq!(label.submission.text, "Frame");
+        assert_eq!(
+            label.submission.render_type,
+            bbb_renderer::ItemFrameMapRenderType::Text
+        );
+        assert_eq!(label.submission.render_type.vanilla_name(), "text");
+        assert_eq!(
+            label.submission.texture.vanilla_path(),
+            "minecraft:textures/font/ascii.png"
+        );
+        assert_eq!(label.submission.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(label.submission.light, map_light);
+        assert_eq!(
+            (label.submission.order, label.submission.submit_sequence),
+            (1, 0)
+        );
+        assert_eq!(label.submission.decoration_index, 0);
+        assert_eq!(label.submission.width, label_width);
+        assert_eq!(label.submission.scale, label_scale);
+        assert_eq!(
+            label.submission.transform,
+            map_transform
+                * Mat4::from_translation(Vec3::new(
+                    -20.0 / 2.0 + 64.0 - label_width * label_scale / 2.0,
+                    30.0 / 2.0 + 64.0 + 4.0,
+                    -0.025
+                ))
+                * Mat4::from_scale(Vec3::new(label_scale, label_scale, -1.0))
+                * Mat4::from_translation(Vec3::new(0.0, 0.0, 0.1))
+        );
     }
 
     #[test]

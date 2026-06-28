@@ -25,8 +25,8 @@ use bbb_renderer::{
     DynamicPlayerSkinImage, DynamicPlayerTextureImage, EntityCustomHeadSkull,
     EntityDefaultPlayerSkin, EntityDynamicPlayerSkin, EntityDynamicPlayerSkinStatus,
     EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind, EntityEquipmentLayerTexture,
-    EntityModelTextureRef, EntityPlayerSkin, EntityPlayerSkinModel, ItemFrameMapDecorationTexture,
-    ItemSpriteRect, SpriteAlphaMask,
+    EntityModelTextureRef, EntityPlayerSkin, EntityPlayerSkinModel, HudAsciiGlyph, HudUvRect,
+    ItemFrameMapDecorationTexture, ItemSpriteRect, SpriteAlphaMask, HUD_ASCII_GLYPH_COUNT,
 };
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, ItemAttackRange as WorldItemAttackRange,
@@ -54,6 +54,8 @@ pub(crate) use profile_skin::default_player_skin_for_profile_id;
 use profile_skin::ProfileSkinCache;
 use profile_skin::{entity_player_skin_model, profile_default_player_skin, profile_texture_handle};
 
+use crate::ascii_font::{hud_ascii_atlas_from_image, load_ascii_font_texture};
+
 const FIREWORK_ROCKET_ITEM_ID: &str = "minecraft:firework_rocket";
 const ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/equipment/wings/elytra.png",
@@ -73,6 +75,26 @@ fn load_map_decoration_textures(roots: &PackRoots) -> Result<Vec<ItemFrameMapDec
         })
         .collect();
     Ok(textures)
+}
+
+fn load_map_text_glyphs(roots: &PackRoots) -> Result<[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT]> {
+    let ascii_font = load_ascii_font_texture(roots)?;
+    Ok(hud_ascii_atlas_from_image(&ascii_font)?.glyphs)
+}
+
+#[cfg(test)]
+fn test_map_text_glyphs() -> [HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT] {
+    let mut glyphs = [HudAsciiGlyph {
+        uv: HudUvRect {
+            min: [0.0, 0.0],
+            max: [1.0, 1.0],
+        },
+        width: 6,
+        height: 8,
+        advance: 6,
+    }; HUD_ASCII_GLYPH_COUNT];
+    glyphs[(b' ' - b' ') as usize].advance = 4;
+    glyphs
 }
 
 const ITEM_ATLAS_MAX_WIDTH: u32 = 4096;
@@ -307,6 +329,7 @@ pub(crate) struct NativeItemRuntime {
     equipment_assets: EquipmentAssetCatalog,
     language: LanguageCatalog,
     map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
+    map_text_glyphs: Option<[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT]>,
     textures: ItemTextureState,
     profile_resolutions: RefCell<Option<AsyncProfileResolutionRuntime>>,
     dynamic_skins: RefCell<Option<AsyncDynamicPlayerSkinRuntime>>,
@@ -401,6 +424,13 @@ impl NativeItemRuntime {
                 err
             })
             .unwrap_or_default();
+        let map_text_glyphs = load_map_text_glyphs(roots)
+            .context("load map label font metrics")
+            .map_err(|err| {
+                tracing::warn!(?err, "continuing without native map label text");
+                err
+            })
+            .ok();
         Self::from_loaded(
             item_models,
             cuboid_models,
@@ -414,6 +444,7 @@ impl NativeItemRuntime {
             equipment_assets,
             language,
             map_decoration_textures,
+            map_text_glyphs,
             roots.resource_stack(),
         )
     }
@@ -431,6 +462,7 @@ impl NativeItemRuntime {
         equipment_assets: EquipmentAssetCatalog,
         language: LanguageCatalog,
         map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
+        map_text_glyphs: Option<[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT]>,
         profile_texture_resources: PackResourceStack,
     ) -> Result<Self> {
         let mut texture_ids = BTreeSet::new();
@@ -511,6 +543,7 @@ impl NativeItemRuntime {
             equipment_assets,
             language,
             map_decoration_textures,
+            map_text_glyphs,
             textures,
             profile_resolutions: RefCell::default(),
             dynamic_skins: RefCell::default(),
@@ -542,6 +575,7 @@ impl NativeItemRuntime {
             equipment_assets: EquipmentAssetCatalog::default(),
             language: LanguageCatalog::from_json_bytes(b"{}").expect("empty test language"),
             map_decoration_textures: Vec::new(),
+            map_text_glyphs: Some(test_map_text_glyphs()),
             textures: ItemTextureState::from_images(vec![missing])
                 .expect("test item texture atlas is valid"),
             profile_resolutions: RefCell::default(),
@@ -575,6 +609,10 @@ impl NativeItemRuntime {
 
     pub(crate) fn map_decoration_textures(&self) -> &[ItemFrameMapDecorationTexture] {
         &self.map_decoration_textures
+    }
+
+    pub(crate) fn map_text_glyphs(&self) -> Option<&[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT]> {
+        self.map_text_glyphs.as_ref()
     }
 
     pub(crate) fn item_max_stack_sizes_by_protocol_id(&self) -> BTreeMap<i32, i32> {

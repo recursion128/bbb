@@ -4,7 +4,9 @@ use std::collections::BTreeMap;
 
 use glam::{Mat4, Vec3};
 
-use crate::Renderer;
+use crate::{
+    HudAsciiGlyph, Renderer, HUD_ASCII_FIRST_GLYPH, HUD_ASCII_GLYPH_COUNT, HUD_ASCII_LAST_GLYPH,
+};
 
 use super::{ItemModelMesh, ItemModelVertex};
 
@@ -12,6 +14,8 @@ const ITEM_FRAME_MAP_SIZE: u32 = 128;
 const ITEM_FRAME_MAP_RGBA_LEN: usize =
     ITEM_FRAME_MAP_SIZE as usize * ITEM_FRAME_MAP_SIZE as usize * 4;
 const ITEM_FRAME_MAP_DECORATION_ATLAS_PATH: &str = "minecraft:textures/atlas/map_decorations.png";
+const ITEM_FRAME_MAP_TEXT_FONT_PATH: &str = "minecraft:textures/font/ascii.png";
+const ITEM_FRAME_MAP_TEXT_REPLACEMENT_GLYPH: u8 = b'?';
 
 /// Decoded RGBA pixels for vanilla's dynamic `minecraft:map/<id>` texture. The renderer packs these
 /// 128x128 textures into a per-frame map atlas and draws item-frame maps as textured quads, matching
@@ -104,6 +108,31 @@ pub struct ItemFrameMapDecorationSubmission {
     pub decoration_index: u32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ItemFrameMapTextTextureRef;
+
+impl ItemFrameMapTextTextureRef {
+    pub fn vanilla_path(self) -> &'static str {
+        ITEM_FRAME_MAP_TEXT_FONT_PATH
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ItemFrameMapTextSubmission {
+    pub type_id: i32,
+    pub text: String,
+    pub render_type: ItemFrameMapRenderType,
+    pub texture: ItemFrameMapTextTextureRef,
+    pub tint: [f32; 4],
+    pub transform: Mat4,
+    pub light: [f32; 2],
+    pub order: u32,
+    pub submit_sequence: u32,
+    pub decoration_index: u32,
+    pub width: f32,
+    pub scale: f32,
+}
+
 /// The base map surface submit for an item frame. `mesh` is the single vanilla `MapRenderer` quad in
 /// world space with local 0..1 UVs; the renderer remaps those UVs to the dynamic map atlas at draw time.
 #[derive(Debug, Clone, PartialEq)]
@@ -132,6 +161,28 @@ impl ItemFrameMapSurface {
 pub struct ItemFrameMapDecorationSurface {
     pub submission: ItemFrameMapDecorationSubmission,
     mesh: ItemModelMesh,
+}
+
+/// A vanilla `MapRenderer` decoration name text submit for an item-frame map. `mesh` contains one
+/// textured quad per glyph in world space and samples the vanilla ASCII font atlas uploaded by native.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ItemFrameMapTextSurface {
+    pub submission: ItemFrameMapTextSubmission,
+    mesh: ItemModelMesh,
+}
+
+impl ItemFrameMapTextSurface {
+    pub fn is_empty(&self) -> bool {
+        self.mesh.is_empty()
+    }
+
+    pub fn vertex_count(&self) -> usize {
+        self.mesh.vertices.len()
+    }
+
+    pub fn index_count(&self) -> usize {
+        self.mesh.indices.len()
+    }
 }
 
 impl ItemFrameMapDecorationSurface {
@@ -191,6 +242,13 @@ pub(crate) struct ItemFrameMapDecorationAtlasGpu {
     _sampler: wgpu::Sampler,
     pub(crate) bind_group: wgpu::BindGroup,
     pub(crate) layout: ItemFrameMapDecorationAtlasLayout,
+}
+
+pub(crate) struct ItemFrameMapTextFontAtlasGpu {
+    _texture: wgpu::Texture,
+    _view: wgpu::TextureView,
+    _sampler: wgpu::Sampler,
+    pub(crate) bind_group: wgpu::BindGroup,
 }
 
 const ITEM_FRAME_MAP_DECORATION_TYPES: &[(i32, &str, bool)] = &[
@@ -356,6 +414,122 @@ pub fn bake_item_frame_map_decoration_surface(
     })
 }
 
+/// Bakes one item-frame-visible vanilla `MapRenderer` decoration name submit. `MapRenderer.render`
+/// submits these labels through `submitNodeCollector.order(1).submitText(...)` after the order-0
+/// base map and decoration sprite submissions. The width and clamp mirror vanilla `Font.width` plus
+/// `Mth.clamp(25.0F / width, 0.0F, 6.0F / 9.0F)` for the currently supported ASCII font atlas.
+pub fn bake_item_frame_map_text_surface(
+    type_id: i32,
+    text: impl Into<String>,
+    x: i8,
+    y: i8,
+    decoration_index: u32,
+    map_transform: Mat4,
+    light: [f32; 2],
+    submit_sequence: u32,
+    glyphs: &[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT],
+) -> Option<ItemFrameMapTextSurface> {
+    let decoration_type = item_frame_map_decoration_type(type_id)?;
+    if !decoration_type.render_on_frame {
+        return None;
+    }
+    let text = text.into();
+    let width = item_frame_map_text_width(&text, glyphs)? as f32;
+    let scale = (25.0 / width).clamp(0.0, 6.0 / 9.0);
+    let transform = map_transform
+        * Mat4::from_translation(Vec3::new(
+            f32::from(x) / 2.0 + 64.0 - width * scale / 2.0,
+            f32::from(y) / 2.0 + 64.0 + 4.0,
+            -0.025,
+        ))
+        * Mat4::from_scale(Vec3::new(scale, scale, -1.0))
+        * Mat4::from_translation(Vec3::new(0.0, 0.0, 0.1));
+
+    let mut mesh = ItemModelMesh::new();
+    let mut pen_x = 0.0;
+    for ch in text.chars() {
+        let glyph = item_frame_map_text_glyph(ch, glyphs);
+        if glyph.width > 0 && glyph.height > 0 {
+            let x0 = pen_x;
+            let x1 = pen_x + glyph.width as f32;
+            let y0 = 0.0;
+            let y1 = glyph.height as f32;
+            let corners = [
+                transform
+                    .transform_point3(Vec3::new(x0, y0, 0.0))
+                    .to_array(),
+                transform
+                    .transform_point3(Vec3::new(x1, y0, 0.0))
+                    .to_array(),
+                transform
+                    .transform_point3(Vec3::new(x1, y1, 0.0))
+                    .to_array(),
+                transform
+                    .transform_point3(Vec3::new(x0, y1, 0.0))
+                    .to_array(),
+            ];
+            mesh.append_raw_textured_quad(
+                corners,
+                [
+                    [glyph.uv.min[0], glyph.uv.min[1]],
+                    [glyph.uv.max[0], glyph.uv.min[1]],
+                    [glyph.uv.max[0], glyph.uv.max[1]],
+                    [glyph.uv.min[0], glyph.uv.max[1]],
+                ],
+                [1.0, 1.0, 1.0, 1.0],
+                light,
+            );
+        }
+        pen_x += glyph.advance as f32;
+    }
+
+    Some(ItemFrameMapTextSurface {
+        submission: ItemFrameMapTextSubmission {
+            type_id,
+            text,
+            render_type: ItemFrameMapRenderType::Text,
+            texture: ItemFrameMapTextTextureRef,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            transform,
+            light,
+            order: 1,
+            submit_sequence,
+            decoration_index,
+            width,
+            scale,
+        },
+        mesh,
+    })
+}
+
+pub fn item_frame_map_text_width(
+    text: &str,
+    glyphs: &[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT],
+) -> Option<u32> {
+    let mut width = 0u32;
+    for ch in text.chars() {
+        width = width.checked_add(item_frame_map_text_glyph(ch, glyphs).advance)?;
+    }
+    (width > 0).then_some(width)
+}
+
+fn item_frame_map_text_glyph(
+    ch: char,
+    glyphs: &[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT],
+) -> HudAsciiGlyph {
+    let byte = if ch.is_ascii() {
+        ch as u8
+    } else {
+        ITEM_FRAME_MAP_TEXT_REPLACEMENT_GLYPH
+    };
+    let byte = if (HUD_ASCII_FIRST_GLYPH..=HUD_ASCII_LAST_GLYPH).contains(&byte) {
+        byte
+    } else {
+        ITEM_FRAME_MAP_TEXT_REPLACEMENT_GLYPH
+    };
+    glyphs[(byte - HUD_ASCII_FIRST_GLYPH) as usize]
+}
+
 pub(crate) fn merge_item_frame_map_surfaces(
     surfaces: &[ItemFrameMapSurface],
     atlas: &ItemFrameMapAtlasLayout,
@@ -371,6 +545,20 @@ pub(crate) fn merge_item_frame_map_surfaces(
             vertex.uv = rect.map(vertex.uv);
             vertex
         }));
+        indices.extend(surface.mesh.indices.iter().map(|index| index + base));
+    }
+    (vertices, indices)
+}
+
+pub(crate) fn merge_item_frame_map_text_surfaces(
+    surfaces: &[ItemFrameMapTextSurface],
+) -> (Vec<ItemModelVertex>, Vec<u32>) {
+    let mut vertices = Vec::new();
+    let mut indices = Vec::new();
+    for surface in surfaces {
+        let base =
+            u32::try_from(vertices.len()).expect("item-frame map text vertex count fits in u32");
+        vertices.extend(surface.mesh.vertices.iter().copied());
         indices.extend(surface.mesh.indices.iter().map(|index| index + base));
     }
     (vertices, indices)
@@ -469,6 +657,32 @@ impl Renderer {
             };
     }
 
+    /// Uploads the vanilla ASCII font atlas for world-space item-frame map label text. Native also uses
+    /// the same glyph metrics when baking the text submissions, so width-based label placement and UVs
+    /// stay in sync.
+    pub fn upload_item_frame_map_text_font(&mut self, width: u32, height: u32, rgba: &[u8]) {
+        self.item_frame_map_text_font_atlas = create_item_frame_map_text_font_atlas_gpu(
+            &self.device,
+            &self.queue,
+            &self.terrain_bind_group_layout,
+            &self.camera_buffer,
+            width,
+            height,
+            rgba,
+        );
+    }
+
+    pub fn set_item_frame_map_text_surfaces(&mut self, surfaces: Vec<ItemFrameMapTextSurface>) {
+        self.item_frame_map_text_surfaces = if self.item_frame_map_text_font_atlas.is_some() {
+            surfaces
+                .into_iter()
+                .filter(|surface| !surface.is_empty())
+                .collect()
+        } else {
+            Vec::new()
+        };
+    }
+
     pub(crate) fn collect_item_frame_map_geometry(&self) -> (Vec<ItemModelVertex>, Vec<u32>) {
         let Some(atlas) = &self.item_frame_map_atlas else {
             return (Vec::new(), Vec::new());
@@ -486,6 +700,13 @@ impl Renderer {
             &self.item_frame_map_decoration_surfaces,
             &atlas.layout,
         )
+    }
+
+    pub(crate) fn collect_item_frame_map_text_geometry(&self) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        if self.item_frame_map_text_font_atlas.is_none() {
+            return (Vec::new(), Vec::new());
+        }
+        merge_item_frame_map_text_surfaces(&self.item_frame_map_text_surfaces)
     }
 }
 
@@ -745,6 +966,92 @@ fn create_item_frame_map_decoration_atlas_gpu(
     }
 }
 
+fn create_item_frame_map_text_font_atlas_gpu(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    camera_buffer: &wgpu::Buffer,
+    width: u32,
+    height: u32,
+    rgba: &[u8],
+) -> Option<ItemFrameMapTextFontAtlasGpu> {
+    let expected_len = width
+        .checked_mul(height)
+        .and_then(|pixels| pixels.checked_mul(4))
+        .and_then(|len| usize::try_from(len).ok());
+    if width == 0 || height == 0 || expected_len != Some(rgba.len()) {
+        return None;
+    }
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("bbb-item-frame-map-text-font-atlas-texture"),
+        size: wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8UnormSrgb,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    queue.write_texture(
+        wgpu::ImageCopyTexture {
+            texture: &texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        rgba,
+        wgpu::ImageDataLayout {
+            offset: 0,
+            bytes_per_row: Some(width * 4),
+            rows_per_image: Some(height),
+        },
+        wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+    );
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("bbb-item-frame-map-text-font-atlas-sampler"),
+        address_mode_u: wgpu::AddressMode::ClampToEdge,
+        address_mode_v: wgpu::AddressMode::ClampToEdge,
+        address_mode_w: wgpu::AddressMode::ClampToEdge,
+        mag_filter: wgpu::FilterMode::Nearest,
+        min_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::FilterMode::Nearest,
+        ..Default::default()
+    });
+    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("bbb-item-frame-map-text-font-atlas-bind-group"),
+        layout: bind_group_layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: camera_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(&view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::Sampler(&sampler),
+            },
+        ],
+    });
+    Some(ItemFrameMapTextFontAtlasGpu {
+        _texture: texture,
+        _view: view,
+        _sampler: sampler,
+        bind_group,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -903,6 +1210,92 @@ mod tests {
     }
 
     #[test]
+    fn item_frame_map_text_surface_uses_vanilla_order_one_text_submission() {
+        let glyphs = test_map_text_glyphs();
+        let map_transform = Mat4::from_translation(Vec3::new(1.0, 2.0, 3.0));
+        let light = [7.0 / 15.0, 12.0 / 15.0];
+        let surface = bake_item_frame_map_text_surface(
+            1,
+            "Frame",
+            -20,
+            30,
+            0,
+            map_transform,
+            light,
+            0,
+            &glyphs,
+        )
+        .expect("frame-visible decoration name text");
+
+        let width = 30.0;
+        let scale = 6.0 / 9.0;
+        let expected_transform = map_transform
+            * Mat4::from_translation(Vec3::new(
+                -20.0 / 2.0 + 64.0 - width * scale / 2.0,
+                30.0 / 2.0 + 64.0 + 4.0,
+                -0.025,
+            ))
+            * Mat4::from_scale(Vec3::new(scale, scale, -1.0))
+            * Mat4::from_translation(Vec3::new(0.0, 0.0, 0.1));
+
+        assert_eq!(surface.vertex_count(), 20);
+        assert_eq!(surface.index_count(), 30);
+        assert_eq!(surface.submission.type_id, 1);
+        assert_eq!(surface.submission.text, "Frame");
+        assert_eq!(surface.submission.render_type, ItemFrameMapRenderType::Text);
+        assert_eq!(surface.submission.render_type.vanilla_name(), "text");
+        assert_eq!(
+            surface.submission.texture.vanilla_path(),
+            "minecraft:textures/font/ascii.png"
+        );
+        assert_eq!(surface.submission.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(surface.submission.transform, expected_transform);
+        assert_eq!(surface.submission.light, light);
+        assert_eq!(
+            (surface.submission.order, surface.submission.submit_sequence),
+            (1, 0)
+        );
+        assert_eq!(surface.submission.decoration_index, 0);
+        assert_eq!(surface.submission.width, width);
+        assert_eq!(surface.submission.scale, scale);
+        assert_eq!(
+            surface.mesh.vertices[0].position,
+            expected_transform
+                .transform_point3(Vec3::new(0.0, 0.0, 0.0))
+                .to_array()
+        );
+        assert!(surface
+            .mesh
+            .vertices
+            .iter()
+            .all(|vertex| vertex.color == [1.0, 1.0, 1.0, 1.0] && vertex.light == light));
+
+        assert!(
+            bake_item_frame_map_text_surface(
+                0,
+                "Hidden",
+                0,
+                0,
+                0,
+                map_transform,
+                light,
+                0,
+                &glyphs
+            )
+            .is_none(),
+            "player marker has showOnItemFrame=false in vanilla"
+        );
+    }
+
+    #[test]
+    fn item_frame_map_text_width_uses_ascii_replacement_fallback() {
+        let glyphs = test_map_text_glyphs();
+        assert_eq!(item_frame_map_text_width("A A", &glyphs), Some(16));
+        assert_eq!(item_frame_map_text_width("钻", &glyphs), Some(5));
+        assert_eq!(item_frame_map_text_width("", &glyphs), None);
+    }
+
+    #[test]
     fn item_frame_map_decoration_atlas_remaps_sprite_uvs() {
         let (atlas, rgba) = build_item_frame_map_decoration_atlas(&[
             ItemFrameMapDecorationTexture {
@@ -948,5 +1341,20 @@ mod tests {
         assert_eq!(vertices.len(), 4);
         assert_eq!(vertices[0].uv, [0.0, 0.0]);
         assert_eq!(vertices[2].uv, [1.0, 0.5]);
+    }
+
+    fn test_map_text_glyphs() -> [HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT] {
+        let mut glyphs = [HudAsciiGlyph {
+            uv: crate::HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            width: 6,
+            height: 8,
+            advance: 6,
+        }; HUD_ASCII_GLYPH_COUNT];
+        glyphs[(b' ' - HUD_ASCII_FIRST_GLYPH) as usize].advance = 4;
+        glyphs[(b'?' - HUD_ASCII_FIRST_GLYPH) as usize].advance = 5;
+        glyphs
     }
 }

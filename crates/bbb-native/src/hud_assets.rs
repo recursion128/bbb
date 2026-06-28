@@ -2,14 +2,10 @@ use std::collections::HashMap;
 
 use anyhow::{bail, Context, Result};
 use bbb_pack::{PackRoots, ResourceLocation, SpriteImage};
-use bbb_renderer::{
-    HudAsciiGlyph, HudDigitGlyph, HudUvRect, HUD_ASCII_FIRST_GLYPH, HUD_ASCII_GLYPH_COUNT,
-};
 
-const ASCII_FONT_GRID_COLUMNS: u32 = 16;
-const ASCII_FONT_GRID_ROWS: u32 = 16;
-const ASCII_DIGIT_ROW: u32 = 3;
-const HUD_DIGIT_COUNT: u32 = 10;
+use crate::ascii_font::{
+    hud_ascii_atlas_from_image, hud_ascii_digit_atlas_from_image, load_ascii_font_texture,
+};
 
 pub(crate) fn load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: Option<&PackRoots>) {
     let Some(roots) = roots else {
@@ -708,7 +704,7 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
     renderer.upload_hud_food_full(food_full.width, food_full.height, &food_full.rgba)?;
     let food_half = hud_sprite(&sprites, "hud/food_half")?;
     renderer.upload_hud_food_half(food_half.width, food_half.height, &food_half.rgba)?;
-    let ascii_font = hud_ascii_font_texture(roots)?;
+    let ascii_font = load_ascii_font_texture(roots)?;
     let digit_atlas = hud_ascii_digit_atlas_from_image(&ascii_font)?;
     renderer.upload_hud_digit_atlas(
         digit_atlas.width,
@@ -723,6 +719,11 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         &ascii_atlas.rgba,
         ascii_atlas.glyphs,
     )?;
+    renderer.upload_item_frame_map_text_font(
+        ascii_atlas.width,
+        ascii_atlas.height,
+        &ascii_atlas.rgba,
+    );
     tracing::info!(
         crosshair = ?(crosshair.width, crosshair.height),
         hotbar = ?(hotbar.width, hotbar.height),
@@ -778,208 +779,6 @@ fn gui_texture(roots: &PackRoots, path: &str, id: &str) -> Result<SpriteImage> {
     SpriteImage::from_png_file(id, resource.path)
 }
 
-#[derive(Debug, Clone, PartialEq)]
-struct HudDigitAtlasImage {
-    width: u32,
-    height: u32,
-    rgba: Vec<u8>,
-    glyphs: [HudDigitGlyph; 10],
-}
-
-#[derive(Debug, Clone, PartialEq)]
-struct HudAsciiAtlasImage {
-    width: u32,
-    height: u32,
-    rgba: Vec<u8>,
-    glyphs: [HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT],
-}
-
-fn hud_ascii_font_texture(roots: &PackRoots) -> Result<SpriteImage> {
-    gui_texture(
-        roots,
-        "textures/font/ascii.png",
-        "minecraft:textures/font/ascii",
-    )
-}
-
-fn hud_ascii_digit_atlas_from_image(image: &SpriteImage) -> Result<HudDigitAtlasImage> {
-    let glyph_width = image.width / ASCII_FONT_GRID_COLUMNS;
-    let glyph_height = image.height / ASCII_FONT_GRID_ROWS;
-    if glyph_width == 0 || glyph_height == 0 {
-        bail!("ascii font texture must contain a non-empty 16x16 glyph grid");
-    }
-
-    let width = HUD_DIGIT_COUNT * glyph_width;
-    let height = glyph_height;
-    let mut rgba = vec![0; rgba_len(width, height)?];
-    let mut glyphs = [HudDigitGlyph::default(); 10];
-
-    for digit in 0..HUD_DIGIT_COUNT {
-        let src_x = digit * glyph_width;
-        let src_y = ASCII_DIGIT_ROW * glyph_height;
-        let dst_x = digit * glyph_width;
-        copy_ascii_glyph(
-            image,
-            &mut rgba,
-            width,
-            dst_x,
-            src_x,
-            src_y,
-            glyph_width,
-            glyph_height,
-        )?;
-        let advance = ascii_glyph_actual_width(image, src_x, src_y, glyph_width, glyph_height) + 1;
-        glyphs[digit as usize] = HudDigitGlyph {
-            uv: HudUvRect {
-                min: [dst_x as f32 / width as f32, 0.0],
-                max: [(dst_x + glyph_width) as f32 / width as f32, 1.0],
-            },
-            width: glyph_width,
-            height: glyph_height,
-            advance,
-        };
-    }
-
-    Ok(HudDigitAtlasImage {
-        width,
-        height,
-        rgba,
-        glyphs,
-    })
-}
-
-fn hud_ascii_atlas_from_image(image: &SpriteImage) -> Result<HudAsciiAtlasImage> {
-    let glyph_width = image.width / ASCII_FONT_GRID_COLUMNS;
-    let glyph_height = image.height / ASCII_FONT_GRID_ROWS;
-    if glyph_width == 0 || glyph_height == 0 {
-        bail!("ascii font texture must contain a non-empty 16x16 glyph grid");
-    }
-
-    let glyph_count = u32::try_from(HUD_ASCII_GLYPH_COUNT).context("ASCII glyph count overflow")?;
-    let width = glyph_count
-        .checked_mul(glyph_width)
-        .context("ASCII atlas width overflow")?;
-    let height = glyph_height;
-    let mut rgba = vec![0; rgba_len(width, height)?];
-    let mut glyphs = [HudAsciiGlyph::default(); HUD_ASCII_GLYPH_COUNT];
-
-    for index in 0..HUD_ASCII_GLYPH_COUNT {
-        let byte = HUD_ASCII_FIRST_GLYPH
-            .checked_add(u8::try_from(index).context("ASCII glyph index overflow")?)
-            .context("ASCII glyph byte overflow")?;
-        let src_index = u32::from(byte);
-        let src_x = (src_index % ASCII_FONT_GRID_COLUMNS) * glyph_width;
-        let src_y = (src_index / ASCII_FONT_GRID_COLUMNS) * glyph_height;
-        let dst_x = u32::try_from(index)
-            .context("ASCII glyph destination index overflow")?
-            .checked_mul(glyph_width)
-            .context("ASCII glyph destination x overflow")?;
-        copy_ascii_glyph(
-            image,
-            &mut rgba,
-            width,
-            dst_x,
-            src_x,
-            src_y,
-            glyph_width,
-            glyph_height,
-        )?;
-        let advance = ascii_glyph_advance(image, src_x, src_y, glyph_width, glyph_height, byte);
-        glyphs[index] = HudAsciiGlyph {
-            uv: HudUvRect {
-                min: [dst_x as f32 / width as f32, 0.0],
-                max: [(dst_x + glyph_width) as f32 / width as f32, 1.0],
-            },
-            width: glyph_width,
-            height: glyph_height,
-            advance,
-        };
-    }
-
-    Ok(HudAsciiAtlasImage {
-        width,
-        height,
-        rgba,
-        glyphs,
-    })
-}
-
-fn copy_ascii_glyph(
-    image: &SpriteImage,
-    dst: &mut [u8],
-    dst_width: u32,
-    dst_x: u32,
-    src_x: u32,
-    src_y: u32,
-    glyph_width: u32,
-    glyph_height: u32,
-) -> Result<()> {
-    for y in 0..glyph_height {
-        for x in 0..glyph_width {
-            let src_offset = rgba_offset(image.width, src_x + x, src_y + y)?;
-            let dst_offset = rgba_offset(dst_width, dst_x + x, y)?;
-            copy_rgba_pixel(&image.rgba, src_offset, dst, dst_offset)?;
-        }
-    }
-    Ok(())
-}
-
-fn copy_rgba_pixel(
-    src_rgba: &[u8],
-    src_offset: usize,
-    dst_rgba: &mut [u8],
-    dst_offset: usize,
-) -> Result<()> {
-    let src_end = src_offset
-        .checked_add(4)
-        .filter(|end| *end <= src_rgba.len())
-        .context("ascii font source pixel is outside image")?;
-    let dst_end = dst_offset
-        .checked_add(4)
-        .filter(|end| *end <= dst_rgba.len())
-        .context("ascii atlas destination pixel is outside image")?;
-    dst_rgba[dst_offset..dst_end].copy_from_slice(&src_rgba[src_offset..src_end]);
-    Ok(())
-}
-
-fn ascii_glyph_advance(
-    image: &SpriteImage,
-    src_x: u32,
-    src_y: u32,
-    glyph_width: u32,
-    glyph_height: u32,
-    byte: u8,
-) -> u32 {
-    if byte == b' ' {
-        return 4u32.min(glyph_width).max(1);
-    }
-    ascii_glyph_actual_width(image, src_x, src_y, glyph_width, glyph_height) + 1
-}
-
-fn ascii_glyph_actual_width(
-    image: &SpriteImage,
-    src_x: u32,
-    src_y: u32,
-    glyph_width: u32,
-    glyph_height: u32,
-) -> u32 {
-    for x in (0..glyph_width).rev() {
-        for y in 0..glyph_height {
-            if ascii_font_pixel_visible(image, src_x + x, src_y + y) {
-                return x + 1;
-            }
-        }
-    }
-    0
-}
-
-fn ascii_font_pixel_visible(image: &SpriteImage, x: u32, y: u32) -> bool {
-    rgba_offset(image.width, x, y)
-        .ok()
-        .and_then(|offset| image.rgba.get(offset..offset + 4))
-        .is_some_and(|pixel| pixel[3] != 0 || pixel[0] != 0 || pixel[1] != 0 || pixel[2] != 0)
-}
-
 fn rgba_len(width: u32, height: u32) -> Result<usize> {
     usize::try_from(width)
         .ok()
@@ -1007,6 +806,7 @@ fn rgba_offset(width: u32, x: u32, y: u32) -> Result<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_renderer::HUD_ASCII_FIRST_GLYPH;
 
     #[test]
     fn hud_sprite_uses_vanilla_gui_atlas_ids() {

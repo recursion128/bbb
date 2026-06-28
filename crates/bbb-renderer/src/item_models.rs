@@ -18,12 +18,16 @@ use crate::{gpu::DEPTH_FORMAT, Renderer};
 mod map;
 pub use map::{
     bake_item_frame_map_decoration_surface, bake_item_frame_map_surface,
-    item_frame_map_decoration_type, ItemFrameMapDecorationSubmission,
-    ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapDecorationTextureRef,
-    ItemFrameMapDecorationType, ItemFrameMapRenderType, ItemFrameMapSubmission,
-    ItemFrameMapSurface, ItemFrameMapTexture, ItemFrameMapTextureRef,
+    bake_item_frame_map_text_surface, item_frame_map_decoration_type, item_frame_map_text_width,
+    ItemFrameMapDecorationSubmission, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
+    ItemFrameMapDecorationTextureRef, ItemFrameMapDecorationType, ItemFrameMapRenderType,
+    ItemFrameMapSubmission, ItemFrameMapSurface, ItemFrameMapTextSubmission,
+    ItemFrameMapTextSurface, ItemFrameMapTextTextureRef, ItemFrameMapTexture,
+    ItemFrameMapTextureRef,
 };
-pub(crate) use map::{ItemFrameMapAtlasGpu, ItemFrameMapDecorationAtlasGpu};
+pub(crate) use map::{
+    ItemFrameMapAtlasGpu, ItemFrameMapDecorationAtlasGpu, ItemFrameMapTextFontAtlasGpu,
+};
 
 /// Vanilla model space is `0..=16`; the unit cube is that divided by 16.
 const MODEL_SPACE_SCALE: f32 = 1.0 / 16.0;

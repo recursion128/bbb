@@ -64,12 +64,14 @@ pub use crate::hud::{
 };
 pub use crate::item_entities::{ItemEntityBillboard, ItemEntityBillboardLayer, ItemEntityUvRect};
 pub use crate::item_models::{
-    bake_item_frame_map_decoration_surface, bake_item_frame_map_surface, bake_item_model_mesh,
-    bake_item_model_mesh_with_light, item_frame_map_decoration_type, HudBlockItemModel,
+    bake_item_frame_map_decoration_surface, bake_item_frame_map_surface,
+    bake_item_frame_map_text_surface, bake_item_model_mesh, bake_item_model_mesh_with_light,
+    item_frame_map_decoration_type, item_frame_map_text_width, HudBlockItemModel,
     ItemFrameMapDecorationSubmission, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
     ItemFrameMapDecorationTextureRef, ItemFrameMapDecorationType, ItemFrameMapRenderType,
-    ItemFrameMapSubmission, ItemFrameMapSurface, ItemFrameMapTexture, ItemFrameMapTextureRef,
-    ItemModelMesh, ItemModelQuad, ITEM_MODEL_FULL_BRIGHT_LIGHT,
+    ItemFrameMapSubmission, ItemFrameMapSurface, ItemFrameMapTextSubmission,
+    ItemFrameMapTextSurface, ItemFrameMapTextTextureRef, ItemFrameMapTexture,
+    ItemFrameMapTextureRef, ItemModelMesh, ItemModelQuad, ITEM_MODEL_FULL_BRIGHT_LIGHT,
 };
 pub use crate::particles::{
     ParticleSpawnBatch, ParticleSpawnCommand, ParticleSpriteUv, ParticleUvRect,

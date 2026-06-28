@@ -1266,10 +1266,14 @@ When an agent does any of the following, update this file in the same slice:
         / `showOnItemFrame` gate, `textures/atlas/map_decorations.png` sprite
         atlas, `RenderTypes.text`, white tint, decoration transform, light
         coords, `order=0`, and same-order submit sequence after the base map
-        quad. If map data is absent, the frame falls back to the ordinary
-        `FIXED` item model. Still deferred: `MapRenderer` decoration name text;
-        the fractional frame depths (`15.5` / `15.001`) are still rounded to
-        `15` in the hand-written border boxes.
+        quad. `MapRenderer` decoration name text now uses the same item-frame
+        `showOnlyFrame` / `showOnItemFrame` gate, vanilla `Font.width` scale
+        clamp (`25 / width`, max `6/9`), `textures/font/ascii.png` glyph atlas,
+        `RenderTypes.text`, white tint, decoration label transform, light
+        coords, and `order=1` submit sequence. If map data is absent, the frame
+        falls back to the ordinary `FIXED` item model. Still deferred: the
+        fractional frame depths (`15.5` / `15.001`) are still rounded to `15` in
+        the hand-written border boxes.
       - fourth consumer DONE (HUD 3D inventory icons): each hotbar slot holding
         a block item renders its block model as a 3D icon (vanilla 3D inventory
         item rendering) instead of the flat 2D sprite. Native
