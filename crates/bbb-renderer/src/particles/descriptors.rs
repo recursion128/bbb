@@ -32,6 +32,7 @@ pub(crate) enum ParticleLifetimeDescriptor {
     },
     Crit,
     EightOverRandom,
+    FortyOverRandom,
     RandomInclusive {
         min: u32,
         max: u32,
@@ -177,6 +178,20 @@ impl ParticleDescriptor {
                 },
                 friction: 0.85,
                 gravity: -0.05,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:bubble_column_up" => Self {
+                provider: "BubbleColumnUpParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::FortyOverRandom,
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::Bubble,
+                initial_velocity: ParticleInitialVelocityDescriptor::CommandScaledPlusRandom {
+                    command_scale: 0.2,
+                    random_range: 0.02,
+                },
+                friction: 0.85,
+                gravity: -0.125,
                 has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
@@ -828,6 +843,7 @@ impl ParticleLifetimeDescriptor {
             }
             Self::Crit => ((6.0 / (random.next_f32() * 0.8 + 0.6)) as u32).max(1),
             Self::EightOverRandom => ((8.0 / (random.next_f32() * 0.8 + 0.2)) as u32).max(1),
+            Self::FortyOverRandom => ((40.0 / (random.next_f32() * 0.8 + 0.2)) as u32).max(1),
             Self::RandomInclusive { min, max } => {
                 let span = max.saturating_sub(min).saturating_add(1);
                 min + random.next_index(span as usize).unwrap_or(0) as u32
@@ -996,6 +1012,24 @@ mod tests {
         );
         assert_eq!(
             ParticleDescriptor::for_particle("minecraft:bubble").initial_velocity,
+            ParticleInitialVelocityDescriptor::CommandScaledPlusRandom {
+                command_scale: 0.2,
+                random_range: 0.02,
+            }
+        );
+        assert_descriptor(
+            "minecraft:bubble_column_up",
+            "BubbleColumnUpParticle.Provider",
+            ParticleLifetimeDescriptor::FortyOverRandom,
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::Bubble,
+            0.85,
+            -0.125,
+            true,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:bubble_column_up").initial_velocity,
             ParticleInitialVelocityDescriptor::CommandScaledPlusRandom {
                 command_scale: 0.2,
                 random_range: 0.02,
@@ -1692,6 +1726,12 @@ mod tests {
         for _ in 0..32 {
             let lifetime = ParticleLifetimeDescriptor::EightOverRandom.sample(&mut random);
             assert!((8..=40).contains(&lifetime));
+        }
+
+        let mut random = ParticleRandom::new(29);
+        for _ in 0..32 {
+            let lifetime = ParticleLifetimeDescriptor::FortyOverRandom.sample(&mut random);
+            assert!((40..=200).contains(&lifetime));
         }
     }
 

@@ -999,6 +999,25 @@ mod tests {
         assert_range_f64(bubble.velocity[1], 0.38, 0.42);
         assert_range_f64(bubble.velocity[2], 0.58, 0.62);
 
+        let mut column_bubble_random = ParticleRandom::new(60);
+        let mut column_bubble_command = spawn_command("minecraft:bubble_column_up", 1.0);
+        column_bubble_command.velocity = [1.0, 2.0, 3.0];
+        let column_bubble =
+            ParticleInstance::from_spawn_command(column_bubble_command, &mut column_bubble_random);
+        assert_eq!(column_bubble.provider, "BubbleColumnUpParticle.Provider");
+        assert_eq!(
+            column_bubble.quad_size_curve,
+            ParticleQuadSizeCurve::Constant
+        );
+        assert_range_f32(column_bubble.base_quad_size, 0.02, 0.16);
+        assert!((40..=200).contains(&column_bubble.lifetime_ticks));
+        assert_eq!(column_bubble.friction, 0.85);
+        assert_eq!(column_bubble.gravity, -0.125);
+        assert!(column_bubble.has_physics);
+        assert_range_f64(column_bubble.velocity[0], 0.18, 0.22);
+        assert_range_f64(column_bubble.velocity[1], 0.38, 0.42);
+        assert_range_f64(column_bubble.velocity[2], 0.58, 0.62);
+
         let mut sneeze_random = ParticleRandom::new(55);
         let sneeze = ParticleInstance::from_spawn_command(
             spawn_command("minecraft:sneeze", 1.0),

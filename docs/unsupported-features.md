@@ -249,6 +249,10 @@ When an agent does any of the following, update this file in the same slice:
         random `+-0.02` velocity, random `0.2..0.8` quad-size scaling,
         `8 / (random * 0.8 + 0.2)` lifetime, `0.85` friction, and upward
         `+0.002` y-velocity tick behavior represented as negative gravity
+      - `BubbleColumnUpParticle.Provider` shares the bubble velocity and
+        quad-size formulas while using `40 / (random * 0.8 + 0.2)` lifetime,
+        `-0.125` gravity, and `0.85` friction; water-fluid removal remains
+        deferred with broader particle collision/physics work
     - Uploads a stitched official particle atlas when assets are available.
     - Draws active particles as camera-facing textured billboards.
   - Follow-up work in the plan:
