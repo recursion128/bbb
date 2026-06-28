@@ -344,8 +344,8 @@ When an agent does any of the following, update this file in the same slice:
     below is retained as evidence of migration slices, not as a current P0 blocker.
     Remaining colored fallback geometry belongs to non-textured debug/parity work,
     while GPU bucket folding, vanilla outline-target compositing, render-graph
-    sorting, and more exact lighting remain separate P0 pipeline/visual
-    follow-ups.
+    sorting, and more exact lighting remain separate P0 visual or later
+    presentation follow-ups, not narrow pipeline blockers.
   - P0 pipeline closeout also treats the remaining GPU-path fine-grained state as
     explicitly deferred follow-up, not as a blocker for the CPU submission graph:
     the backend currently folds compatible submissions into atlas buckets
@@ -366,6 +366,12 @@ When an agent does any of the following, update this file in the same slice:
     `render_textured_submission` or the dynamic-player submission helpers after
     recording `EntityModelRenderSubmission`; direct hits in `dispatch.rs` are
     sink-owned `render_textured_layers` calls, not residual emit bypasses.
+  - P0 pipeline closeout stale-ledger audit is complete for submission /
+    render-type / residual / fallback / outline / lighting wording. Remaining
+    hits are classified as history, non-textured debug fallback, P3 dynamic
+    resource fallback, P2/P3 terrain or item presentation, P0 visual outline
+    target/composite, P0 visual lighting/gamma/diffuse, or later GPU state
+    fidelity. None remains a narrow CPU submission graph blocker.
   - Replace proxies with full extraction from canonical world and pack data:
     - entity bounds
     - dropped-item icons (3D block/item model renderer in progress — see the
