@@ -713,6 +713,15 @@ entity_render_state! {
     /// tail around yRot as `cos(ageInTicks * 0.7)`. World/native projects this from
     /// `AbstractHorse.tailCounter > 0`; the exact vanilla client RNG seed is not protocol-visible.
     (with_equine_animate_tail) equine_animate_tail: bool = false;
+    /// Vanilla `EquineRenderState.eatAnimation` (`AbstractHorse.getEatAnim(partialTick)`): lowers and
+    /// offsets equine head parts while the horse-family entity is eating grass.
+    (with_equine_eat_animation) equine_eat_animation: f32 = 0.0;
+    /// Vanilla `EquineRenderState.standAnimation` (`AbstractHorse.getStandAnim(partialTick)`): blends
+    /// the horse-family body, head, and legs into the rearing pose.
+    (with_equine_stand_animation) equine_stand_animation: f32 = 0.0;
+    /// Vanilla `EquineRenderState.feedingAnimation` (`AbstractHorse.getMouthAnim(partialTick)`): adds
+    /// the small open-mouth head bob in the non-standing/non-eating branch.
+    (with_equine_feeding_animation) equine_feeding_animation: f32 = 0.0;
     /// Vanilla `EquineRenderState.bodyArmorItem`: an adult horse / zombie horse body equipment item
     /// whose equipment asset provides a `HORSE_BODY` layer. Leather horse armor is dyeable and carries
     /// its optional dye through [`Self::equine_body_armor_dye`]. Babies skip it because vanilla
@@ -2418,6 +2427,9 @@ mod tests {
                 equine_saddle: false,
                 equine_saddle_ridden: false,
                 equine_animate_tail: false,
+                equine_eat_animation: 0.0,
+                equine_stand_animation: 0.0,
+                equine_feeding_animation: 0.0,
                 equine_body_armor: None,
                 equine_body_armor_dye: None,
                 wolf_body_armor: None,

@@ -70,6 +70,13 @@ const VANILLA_ENTITY_TYPE_PARROT_ID: i32 = 98;
 const VANILLA_ENTITY_TYPE_PANDA_ID: i32 = 96;
 const VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID: i32 = 116;
 const VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID: i32 = 151;
+/// Vanilla `AbstractHorse.DATA_ID_FLAGS` (id 18): the shared equine flags byte after
+/// `AgeableMob`'s two accessors. `AbstractHorse.tick` eases render-state eat / stand / mouth
+/// amounts toward these bits every client tick.
+const ABSTRACT_HORSE_FLAGS_DATA_ID: u8 = 18;
+const ABSTRACT_HORSE_FLAG_EATING: i8 = 0x10;
+const ABSTRACT_HORSE_FLAG_STANDING: i8 = 0x20;
+const ABSTRACT_HORSE_FLAG_OPEN_MOUTH: i8 = 0x40;
 /// Vanilla `Panda.DATA_ID_FLAGS`, the panda's synced flags byte after unhappy/sneeze/eat/gene data.
 const PANDA_FLAGS_DATA_ID: u8 = 23;
 /// Vanilla `Panda.isRolling()` / `isSitting()` / `isOnBack()` masks within `DATA_ID_FLAGS`.
@@ -494,6 +501,8 @@ pub struct EntityClientAnimationState {
     pub parrot_flap: Option<ParrotFlapAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub equine_tail: Option<EquineTailAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub equine_pose: Option<EquinePoseAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub guardian_tail: Option<GuardianTailAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2836,6 +2845,96 @@ impl EquineTailAnimationState {
     }
 }
 
+/// Vanilla `AbstractHorse.eatAnim` / `standAnim` / `mouthAnim` client accumulators. The targets are
+/// the synced `AbstractHorse.DATA_ID_FLAGS` bits; the client eases the three floats every tick and
+/// `AbstractHorseRenderer.extractRenderState` exposes their partial-tick lerps.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct EquinePoseAnimationState {
+    target_eating: bool,
+    target_standing: bool,
+    target_open_mouth: bool,
+    previous_eat_animation: f32,
+    current_eat_animation: f32,
+    previous_stand_animation: f32,
+    current_stand_animation: f32,
+    previous_mouth_animation: f32,
+    current_mouth_animation: f32,
+}
+
+impl EquinePoseAnimationState {
+    fn from_flags(eating: bool, standing: bool, open_mouth: bool) -> Self {
+        Self {
+            target_eating: eating,
+            target_standing: standing,
+            target_open_mouth: open_mouth,
+            previous_eat_animation: 0.0,
+            current_eat_animation: 0.0,
+            previous_stand_animation: 0.0,
+            current_stand_animation: 0.0,
+            previous_mouth_animation: 0.0,
+            current_mouth_animation: 0.0,
+        }
+    }
+
+    fn set_flags(&mut self, eating: bool, standing: bool, open_mouth: bool) {
+        self.target_eating = eating;
+        self.target_standing = standing;
+        self.target_open_mouth = open_mouth;
+    }
+
+    fn advance_client_tick(&mut self) {
+        self.previous_eat_animation = self.current_eat_animation;
+        if self.target_eating {
+            self.current_eat_animation += (1.0 - self.current_eat_animation) * 0.4 + 0.05;
+            self.current_eat_animation = self.current_eat_animation.min(1.0);
+        } else {
+            self.current_eat_animation += (0.0 - self.current_eat_animation) * 0.4 - 0.05;
+            self.current_eat_animation = self.current_eat_animation.max(0.0);
+        }
+
+        self.previous_stand_animation = self.current_stand_animation;
+        if self.target_standing {
+            self.current_eat_animation = 0.0;
+            self.previous_eat_animation = self.current_eat_animation;
+            self.current_stand_animation += (1.0 - self.current_stand_animation) * 0.4 + 0.05;
+            self.current_stand_animation = self.current_stand_animation.min(1.0);
+        } else {
+            self.current_stand_animation += (0.8
+                * self.current_stand_animation
+                * self.current_stand_animation
+                * self.current_stand_animation
+                - self.current_stand_animation)
+                * 0.6
+                - 0.05;
+            self.current_stand_animation = self.current_stand_animation.max(0.0);
+        }
+
+        self.previous_mouth_animation = self.current_mouth_animation;
+        if self.target_open_mouth {
+            self.current_mouth_animation += (1.0 - self.current_mouth_animation) * 0.7 + 0.05;
+            self.current_mouth_animation = self.current_mouth_animation.min(1.0);
+        } else {
+            self.current_mouth_animation += (0.0 - self.current_mouth_animation) * 0.7 - 0.05;
+            self.current_mouth_animation = self.current_mouth_animation.max(0.0);
+        }
+    }
+
+    fn eat_animation(self, partial_tick: f32) -> f32 {
+        self.previous_eat_animation
+            + partial_tick * (self.current_eat_animation - self.previous_eat_animation)
+    }
+
+    fn stand_animation(self, partial_tick: f32) -> f32 {
+        self.previous_stand_animation
+            + partial_tick * (self.current_stand_animation - self.previous_stand_animation)
+    }
+
+    fn mouth_animation(self, partial_tick: f32) -> f32 {
+        self.previous_mouth_animation
+            + partial_tick * (self.current_mouth_animation - self.previous_mouth_animation)
+    }
+}
+
 /// Java `java.util.Random` LCG `setSeed(seed)` then `nextFloat()`, used to seed
 /// `Squid.tentacleSpeed` from the entity id deterministically on the client.
 /// Replicates the multiplier/addend/mask of `LevelEventSoundRandomState` (the
@@ -3485,6 +3584,16 @@ impl EntityClientAnimationState {
                     });
                 }
             }
+            entity_type_id if vanilla_equine_type(entity_type_id) => {
+                let (eating, standing, open_mouth) = equine_pose_flags(data_values);
+                if let Some(pose) = self.equine_pose.as_mut() {
+                    pose.set_flags(eating, standing, open_mouth);
+                } else if eating || standing || open_mouth {
+                    self.equine_pose = Some(EquinePoseAnimationState::from_flags(
+                        eating, standing, open_mouth,
+                    ));
+                }
+            }
             VANILLA_ENTITY_TYPE_FROG_ID => {
                 // Vanilla `Frog.onSyncedDataUpdated`: when `DATA_POSE` changes, the croak animation
                 // is `animateWhen(pose == CROAKING, tickCount)` and the jump animation is started
@@ -3777,6 +3886,28 @@ impl EntityClientAnimationState {
     pub fn equine_animate_tail(&self) -> bool {
         self.equine_tail
             .is_some_and(EquineTailAnimationState::animate_tail)
+    }
+
+    /// Vanilla `EquineRenderState.eatAnimation` (`AbstractHorse.getEatAnim(partialTick)`), driven by
+    /// the synced `AbstractHorse.DATA_ID_FLAGS` eating bit. Returns `0.0` for non-equines and idle
+    /// equines.
+    pub fn equine_eat_animation(&self, partial_tick: f32) -> f32 {
+        self.equine_pose
+            .map_or(0.0, |state| state.eat_animation(partial_tick))
+    }
+
+    /// Vanilla `EquineRenderState.standAnimation` (`AbstractHorse.getStandAnim(partialTick)`), driven
+    /// by the synced standing bit. Returns `0.0` for non-equines and all-fours equines.
+    pub fn equine_stand_animation(&self, partial_tick: f32) -> f32 {
+        self.equine_pose
+            .map_or(0.0, |state| state.stand_animation(partial_tick))
+    }
+
+    /// Vanilla `EquineRenderState.feedingAnimation` (`AbstractHorse.getMouthAnim(partialTick)`),
+    /// driven by the synced open-mouth bit. Returns `0.0` for non-equines and closed-mouth equines.
+    pub fn equine_feeding_animation(&self, partial_tick: f32) -> f32 {
+        self.equine_pose
+            .map_or(0.0, |state| state.mouth_animation(partial_tick))
     }
 
     /// Vanilla `Goat.lowerHeadTick` (the `0..=20` ram counter), exposed for the native layer to derive
@@ -4869,10 +5000,14 @@ impl EntityClientAnimationState {
             | VANILLA_ENTITY_TYPE_DONKEY_ID
             | VANILLA_ENTITY_TYPE_MULE_ID
             | VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID
-            | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID => self
-                .equine_tail
-                .get_or_insert_with(|| EquineTailAnimationState::new(entity_id))
-                .advance_client_tick(),
+            | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID => {
+                self.equine_tail
+                    .get_or_insert_with(|| EquineTailAnimationState::new(entity_id))
+                    .advance_client_tick();
+                if let Some(pose) = self.equine_pose.as_mut() {
+                    pose.advance_client_tick();
+                }
+            }
             VANILLA_ENTITY_TYPE_GUARDIAN_ID | VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID => {
                 // Vanilla `Guardian.aiStep` reads `isInWater()` (the world fact
                 // threaded in) and the synced `isMoving()` flag (`DATA_ID_MOVING`).
@@ -5236,6 +5371,26 @@ fn panda_pose_flags(data_values: &[EntityDataValue]) -> (bool, bool, bool) {
         flags & PANDA_FLAG_SITTING != 0,
         flags & PANDA_FLAG_ON_BACK != 0,
         flags & PANDA_FLAG_ROLLING != 0,
+    )
+}
+
+fn vanilla_equine_type(entity_type_id: i32) -> bool {
+    matches!(
+        entity_type_id,
+        VANILLA_ENTITY_TYPE_HORSE_ID
+            | VANILLA_ENTITY_TYPE_DONKEY_ID
+            | VANILLA_ENTITY_TYPE_MULE_ID
+            | VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID
+            | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID
+    )
+}
+
+fn equine_pose_flags(data_values: &[EntityDataValue]) -> (bool, bool, bool) {
+    let flags = entity_data_byte(data_values, ABSTRACT_HORSE_FLAGS_DATA_ID, 0);
+    (
+        flags & ABSTRACT_HORSE_FLAG_EATING != 0,
+        flags & ABSTRACT_HORSE_FLAG_STANDING != 0,
+        flags & ABSTRACT_HORSE_FLAG_OPEN_MOUTH != 0,
     )
 }
 

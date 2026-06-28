@@ -37,24 +37,25 @@ use super::{
     instances::EntityModelInstance,
     mesh_transformer_scaled_model_root_transform,
     model_layers::{
-        armor_layer_tint, armor_slot_texture_for_layer, baby_donkey_head_pose,
-        default_player_skin_texture_ref, end_crystal_bob_y, end_crystal_get_y,
-        end_crystal_glass_quaternions, equine_head_look_pose, equine_leg_swing_pose,
-        equine_tail_pose, head_look_at_rest, horse_body_armor_texture_layers, limb_swing_at_rest,
-        llama_body_decor_texture_ref, nautilus_body_armor_texture_ref,
-        wolf_armor_crackiness_texture_ref, wolf_body_armor_texture_layers, ArmorStandModel,
-        BreezeWindModel, CamelModel, CreeperModel, CustomHeadDragonSkullModel,
-        CustomHeadPiglinSkullModel, CustomHeadSkullModel, ElytraModel, HumanoidArmorModelLayerSet,
-        HumanoidArmorSlot, HumanoidBabyArmorKind, LlamaModel, NautilusModel, ParrotModel, PigModel,
-        PiglinModel, PlayerEarsModel, PlayerModel, SkeletonModel, SpinAttackEffectModel,
-        StriderModel, VillagerModel, WitherModel, WolfModel, ZombieModel, ZombieVariantModel,
-        ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
-        ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
-        ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
-        ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
-        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, CAMEL_HUSK_SADDLE_TEXTURE_REF,
-        CAMEL_SADDLE_TEXTURE_REF, CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF,
-        ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, HORSE_SADDLE_TEXTURE_REF,
+        armor_layer_tint, armor_slot_texture_for_layer, default_player_skin_texture_ref,
+        end_crystal_bob_y, end_crystal_get_y, end_crystal_glass_quaternions, equine_body_pose,
+        equine_head_pose, equine_leg_pose, equine_tail_pose, head_look_at_rest,
+        horse_body_armor_texture_layers, limb_swing_at_rest, llama_body_decor_texture_ref,
+        nautilus_body_armor_texture_ref, wolf_armor_crackiness_texture_ref,
+        wolf_body_armor_texture_layers, ArmorStandModel, BreezeWindModel, CamelModel, CreeperModel,
+        CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel, CustomHeadSkullModel, ElytraModel,
+        EquineAnimationPose, HumanoidArmorModelLayerSet, HumanoidArmorSlot, HumanoidBabyArmorKind,
+        LlamaModel, NautilusModel, ParrotModel, PigModel, PiglinModel, PlayerEarsModel,
+        PlayerModel, SkeletonModel, SpinAttackEffectModel, StriderModel, VillagerModel,
+        WitherModel, WolfModel, ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
+        ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_DONKEY_SADDLE_PARTS_TEXTURED,
+        ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED, ADULT_HORSE_ARMOR_PARTS_TEXTURED,
+        ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
+        ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
+        BABY_HORSE_PARTS_TEXTURED, CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF,
+        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF,
+        END_CRYSTAL_TEXTURED_PARTS, EQUINE_BABY_DONKEY_LEG_STAND_CONFIG,
+        EQUINE_STANDARD_LEG_STAND_CONFIG, HORSE_SADDLE_TEXTURE_REF,
         HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND, HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND_SMALL,
         HUMANOID_ARMOR_MODEL_LAYERS_BOGGED, HUMANOID_ARMOR_MODEL_LAYERS_DROWNED,
         HUMANOID_ARMOR_MODEL_LAYERS_DROWNED_BABY, HUMANOID_ARMOR_MODEL_LAYERS_GIANT,
@@ -3191,10 +3192,20 @@ fn emit_equine_textured_posed(
 ) {
     let limb_swing = instance.render_state.walk_animation_pos;
     let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let in_water = instance.render_state.in_water;
     let head_yaw = instance.render_state.head_yaw;
     let head_pitch = instance.render_state.head_pitch;
     let legs_resting = limb_swing_at_rest(limb_swing_amount);
+    let animation = EquineAnimationPose {
+        head_yaw_deg: head_yaw,
+        head_pitch_deg: head_pitch,
+        walk_animation_pos: limb_swing,
+        walk_animation_speed: limb_swing_amount,
+        in_water: instance.render_state.in_water,
+        age_in_ticks: instance.render_state.age_in_ticks,
+        eat_animation: instance.render_state.equine_eat_animation,
+        stand_animation: instance.render_state.equine_stand_animation,
+        feeding_animation: instance.render_state.equine_feeding_animation,
+    };
 
     let tail_rest = parts[EQUINE_BODY_PART_INDEX].children[EQUINE_TAIL_CHILD_INDEX].pose;
     let posed_tail = equine_tail_pose(
@@ -3207,25 +3218,32 @@ fn emit_equine_textured_posed(
     );
     let tail_resting = posed_tail == tail_rest;
 
-    if legs_resting && head_look_at_rest(head_yaw, head_pitch) && tail_resting {
+    if legs_resting
+        && head_look_at_rest(head_yaw, head_pitch)
+        && tail_resting
+        && animation.event_pose_at_rest()
+    {
         emit_textured_model_parts(mesh, parts, transform, texture, uv_rect, tint);
         return;
     }
 
     let mut posed = parts.to_vec();
-    if !legs_resting {
+    posed[EQUINE_BODY_PART_INDEX].pose =
+        equine_body_pose(posed[EQUINE_BODY_PART_INDEX].pose, animation);
+    if !legs_resting || animation.stand_animation != 0.0 {
+        let left_front_offset = posed[leg_indices[2]].pose.offset;
+        let left_hind_y = posed[leg_indices[0]].pose.offset[1];
         for index in leg_indices {
-            posed[index].pose =
-                equine_leg_swing_pose(posed[index].pose, limb_swing, limb_swing_amount, in_water);
+            posed[index].pose = equine_leg_pose(
+                posed[index].pose,
+                animation,
+                EQUINE_STANDARD_LEG_STAND_CONFIG,
+                left_front_offset,
+                left_hind_y,
+            );
         }
     }
-    posed[head_parts_index].pose = equine_head_look_pose(
-        posed[head_parts_index].pose,
-        head_yaw,
-        head_pitch,
-        limb_swing,
-        limb_swing_amount,
-    );
+    posed[head_parts_index].pose = equine_head_pose(posed[head_parts_index].pose, animation, false);
 
     // Hand-emit the body subtree so the tail (a `&'static` child) can take the swung pose, then the
     // remaining parts (neck + legs) in depth-first order via the `[1..]` slice.
@@ -3257,25 +3275,44 @@ fn emit_baby_donkey_textured_posed(
 ) {
     let limb_swing = instance.render_state.walk_animation_pos;
     let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let in_water = instance.render_state.in_water;
     let head_yaw = instance.render_state.head_yaw;
     let legs_resting = limb_swing_at_rest(limb_swing_amount);
+    let animation = EquineAnimationPose {
+        head_yaw_deg: head_yaw,
+        head_pitch_deg: 0.0,
+        walk_animation_pos: limb_swing,
+        walk_animation_speed: limb_swing_amount,
+        in_water: instance.render_state.in_water,
+        age_in_ticks: instance.render_state.age_in_ticks,
+        eat_animation: instance.render_state.equine_eat_animation,
+        stand_animation: instance.render_state.equine_stand_animation,
+        feeding_animation: instance.render_state.equine_feeding_animation,
+    };
 
     let body = &BABY_DONKEY_PARTS_TEXTURED[EQUINE_BODY_PART_INDEX];
+    let body_pose = equine_body_pose(body.pose, animation);
     let mut body_children = body.children.to_vec();
-    if !legs_resting {
+    if !legs_resting || animation.stand_animation != 0.0 {
+        let left_front_offset = body_children[BABY_DONKEY_BODY_CHILD_LEG_INDICES[2]]
+            .pose
+            .offset;
+        let left_hind_y = body_children[BABY_DONKEY_BODY_CHILD_LEG_INDICES[0]]
+            .pose
+            .offset[1];
         for index in BABY_DONKEY_BODY_CHILD_LEG_INDICES {
-            body_children[index].pose = equine_leg_swing_pose(
+            body_children[index].pose = equine_leg_pose(
                 body_children[index].pose,
-                limb_swing,
-                limb_swing_amount,
-                in_water,
+                animation,
+                EQUINE_BABY_DONKEY_LEG_STAND_CONFIG,
+                left_front_offset,
+                left_hind_y,
             );
         }
     }
-    body_children[BABY_DONKEY_BODY_CHILD_HEAD_PARTS_INDEX].pose = baby_donkey_head_pose(
+    body_children[BABY_DONKEY_BODY_CHILD_HEAD_PARTS_INDEX].pose = equine_head_pose(
         body_children[BABY_DONKEY_BODY_CHILD_HEAD_PARTS_INDEX].pose,
-        head_yaw,
+        animation,
+        true,
     );
     body_children[EQUINE_TAIL_CHILD_INDEX].pose = equine_tail_pose(
         body_children[EQUINE_TAIL_CHILD_INDEX].pose,
@@ -3286,7 +3323,7 @@ fn emit_baby_donkey_textured_posed(
         instance.render_state.age_in_ticks,
     );
 
-    let body_transform = transform * part_pose_transform(body.pose);
+    let body_transform = transform * part_pose_transform(body_pose);
     for &cube in body.cubes {
         emit_textured_model_cube(mesh, body_transform, cube, texture, uv_rect, tint);
     }

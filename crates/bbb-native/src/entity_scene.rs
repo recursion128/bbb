@@ -1464,6 +1464,9 @@ fn entity_model_instance(
         .with_equine_saddle(source.equine_saddle)
         .with_equine_saddle_ridden(source.equine_saddle_ridden)
         .with_equine_animate_tail(source.equine_animate_tail)
+        .with_equine_eat_animation(source.equine_eat_animation)
+        .with_equine_stand_animation(source.equine_stand_animation)
+        .with_equine_feeding_animation(source.equine_feeding_animation)
         .with_equine_body_armor(armor_material(source.equine_body_armor))
         .with_equine_body_armor_dye(armor_dye(source.equine_body_armor_dye))
         .with_wolf_body_armor(armor_material(source.wolf_body_armor))
@@ -8273,6 +8276,45 @@ mod tests {
             }
         );
         assert!(instance.render_state.equine_animate_tail);
+    }
+
+    #[test]
+    fn entity_model_instance_projects_equine_pose_animations_from_source() {
+        // Vanilla `AbstractHorseRenderer.extractRenderState` forwards the partial-lerped
+        // eat / stand / mouth animation floats to `EquineRenderState`; native preserves
+        // the world-owned source projection.
+        let source: EntityModelSourceState = serde_json::from_value(serde_json::json!({
+            "entity_id": 114,
+            "entity_type_id": VANILLA_ENTITY_TYPE_HORSE_ID,
+            "position": { "x": 1.0, "y": 64.0, "z": -3.0 },
+            "y_rot": 0.0,
+            "equine_eat_animation": 0.25,
+            "equine_stand_animation": 0.5,
+            "equine_feeding_animation": 0.75,
+            "data_values": []
+        }))
+        .unwrap();
+
+        let instance = entity_model_instance(
+            source,
+            &WorldStore::new(),
+            None,
+            0,
+            1.0,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(instance.render_state.equine_eat_animation, 0.25);
+        assert_eq!(instance.render_state.equine_stand_animation, 0.5);
+        assert_eq!(instance.render_state.equine_feeding_animation, 0.75);
     }
 
     #[test]

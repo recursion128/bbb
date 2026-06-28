@@ -339,7 +339,11 @@ When an agent does any of the following, update this file in the same slice:
       layer rest angles and use `ageScale = 0.5`), plus `AbstractHorse.tailCounter` source projection
       (local Java LCG `nextInt(200)` start, `++tailCounter > 8` clear; exact vanilla client seed is not
       protocol-visible) into renderer-side `animateTail` tail yRot (`tail.yRot =
-      cos(ageInTicks * 0.7)`), colored/textured paths; the camel's
+      cos(ageInTicks * 0.7)`), and the equine event-pose floats
+      (`eatAnimation`, `standAnimation`, `feedingAnimation`) from
+      `AbstractHorse.DATA_ID_FLAGS` eating/standing/open-mouth easing into
+      `AbstractEquineModel.setupAnim` head/body/leg transforms on colored/textured
+      paths; the camel's
       dash-entangled gait (the colored and textured
       `CAMEL_WALK` / `CAMEL_BABY_WALK`, the sit-down / seated / stand-up transitions, and the looping
       `CAMEL_DASH` gallop are now reproduced; only `CAMEL_IDLE` stays deferred). The remaining
@@ -1817,7 +1821,9 @@ When an agent does any of the following, update this file in the same slice:
       deterministic local Java LCG), then consumed as `EquineRenderState.animateTail`
       (`tail.yRot = cos(ageInTicks * 0.7)`). The
       in-water leg-frequency multiplier is supported from projected `in_water` (`isInWater()`
-      -> `waterMultiplier = 0.2`). The ridden/eat/stand/mouth poses remain unsupported
+      -> `waterMultiplier = 0.2`). The eat/stand/mouth event poses are supported from
+      world/native-projected `eatAnimation` / `standAnimation` / `feedingAnimation`;
+      ridden / boost / jump-cooldown equine presentation remains unsupported
     - donkey and mule entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `DonkeyModel`, `BabyDonkeyModel`, and
       `DonkeyRenderer`. The ADULT donkey/mule now renders on the **textured
@@ -1855,8 +1861,10 @@ When an agent does any of the following, update this file in the same slice:
       intentionally skip the layer because vanilla supplies no baby saddle model. The shared equine
       tail yRot wag is world/native projected from the client-side `AbstractHorse.tailCounter` into
       explicit `EquineRenderState.animateTail` using the same local Java LCG timing as the horse path.
-      The
-      ridden/eat/stand/mouth poses and broader lighting presentation remain unsupported
+      The shared eat/stand/mouth event poses are world/native projected into
+      `EquineRenderState` and consumed by the adult and nested baby donkey/mule
+      `setupAnim` paths; ridden / boost / jump-cooldown and broader lighting
+      presentation remain unsupported
     - skeleton horse and zombie horse entities as renderer-owned vanilla 26.1
       adult/baby body-layer geometry from `AbstractEquineModel`,
       `BabyHorseModel`, `HorseModel`, and `UndeadHorseRenderer`, now rendered on
@@ -1922,8 +1930,10 @@ When an agent does any of the following, update this file in the same slice:
       `!state.isInvisible` layer gate.
       The renderer consumes world/native-projected `animateTail` for the shared tail yRot wag
       (`tail.yRot = cos(ageInTicks * 0.7)`); the projection mirrors `AbstractHorse.tailCounter`
-      `nextInt(200)` start and 8-tick lifetime with a deterministic local Java LCG. The ridden/eat/stand/mouth poses and broader
-      lighting presentation remain unsupported
+      `nextInt(200)` start and 8-tick lifetime with a deterministic local Java LCG.
+      The renderer also consumes world/native-projected eat/stand/mouth event pose
+      floats for the shared `AbstractEquineModel.setupAnim` head/body/leg transforms;
+      ridden / boost / jump-cooldown and broader lighting presentation remain unsupported
     - camel and camel_husk entities as renderer-owned vanilla 26.1 body-layer
       geometry from `AdultCamelModel`, `BabyCamelModel`, `CamelRenderer`, and
       `CamelHuskRenderer`, including `ModelLayers.CAMEL` / `CAMEL_BABY` (the camel
@@ -4325,8 +4335,8 @@ When an agent does any of the following, update this file in the same slice:
     boat/raft water-mask presentation and lighting (paddle rowing animation,
     hurt/damage roll, bubble wobble, underwater state, and above-water water-mask
     gating are projected and rendered),
-    horse animation, donkey/mule animation presentation,
-    undead horse animation presentation, and remaining non-base-equine presentation,
+    remaining equine ridden / boost / jump-cooldown presentation,
+    and remaining non-base-equine presentation,
     villager live/dynamic profiled-player skin presentation (crossed-arms
     held items, generic non-skull head items, static mob skulls, profileless
     default-player heads, profiled default-skin player heads, dragon heads, and piglin heads are implemented),

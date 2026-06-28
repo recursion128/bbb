@@ -7,9 +7,10 @@ use super::super::geometry::{
 };
 use super::super::instances::EntityModelInstance;
 use super::super::model_layers::{
-    baby_donkey_head_pose, equine_head_look_pose, equine_leg_swing_pose, equine_tail_pose,
-    head_look_at_rest, limb_swing_at_rest, ADULT_DONKEY_PARTS, ADULT_DONKEY_PARTS_WITH_CHEST,
-    ADULT_HORSE_PARTS, BABY_DONKEY_PARTS, BABY_HORSE_PARTS,
+    equine_body_pose, equine_head_pose, equine_leg_pose, equine_tail_pose, head_look_at_rest,
+    limb_swing_at_rest, EquineAnimationPose, ADULT_DONKEY_PARTS, ADULT_DONKEY_PARTS_WITH_CHEST,
+    ADULT_HORSE_PARTS, BABY_DONKEY_PARTS, BABY_HORSE_PARTS, EQUINE_BABY_DONKEY_LEG_STAND_CONFIG,
+    EQUINE_STANDARD_LEG_STAND_CONFIG,
 };
 
 /// The four leg part indices in the adult equine body layers: body and neck at `0`/`1`,
@@ -82,10 +83,20 @@ fn emit_equine_posed(
 ) {
     let limb_swing = instance.render_state.walk_animation_pos;
     let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let in_water = instance.render_state.in_water;
     let head_yaw = instance.render_state.head_yaw;
     let head_pitch = instance.render_state.head_pitch;
     let legs_resting = limb_swing_at_rest(limb_swing_amount);
+    let animation = EquineAnimationPose {
+        head_yaw_deg: head_yaw,
+        head_pitch_deg: head_pitch,
+        walk_animation_pos: limb_swing,
+        walk_animation_speed: limb_swing_amount,
+        in_water: instance.render_state.in_water,
+        age_in_ticks: instance.render_state.age_in_ticks,
+        eat_animation: instance.render_state.equine_eat_animation,
+        stand_animation: instance.render_state.equine_stand_animation,
+        feeding_animation: instance.render_state.equine_feeding_animation,
+    };
 
     // The tail is the body's first child. Vanilla `setupAnim` rewrites its pose every
     // frame; for a baby horse the rest angle is even overridden, so the tail must be
@@ -101,7 +112,11 @@ fn emit_equine_posed(
     );
     let tail_resting = posed_tail == tail_rest;
 
-    if legs_resting && head_look_at_rest(head_yaw, head_pitch) && tail_resting {
+    if legs_resting
+        && head_look_at_rest(head_yaw, head_pitch)
+        && tail_resting
+        && animation.event_pose_at_rest()
+    {
         match color {
             Some(color) => emit_model_parts_with_color(mesh, parts, transform, color),
             None => emit_model_parts(mesh, parts, transform),
@@ -110,19 +125,22 @@ fn emit_equine_posed(
     }
 
     let mut posed = parts.to_vec();
-    if !legs_resting {
+    posed[EQUINE_BODY_PART_INDEX].pose =
+        equine_body_pose(posed[EQUINE_BODY_PART_INDEX].pose, animation);
+    if !legs_resting || animation.stand_animation != 0.0 {
+        let left_front_offset = posed[leg_indices[2]].pose.offset;
+        let left_hind_y = posed[leg_indices[0]].pose.offset[1];
         for index in leg_indices {
-            posed[index].pose =
-                equine_leg_swing_pose(posed[index].pose, limb_swing, limb_swing_amount, in_water);
+            posed[index].pose = equine_leg_pose(
+                posed[index].pose,
+                animation,
+                EQUINE_STANDARD_LEG_STAND_CONFIG,
+                left_front_offset,
+                left_hind_y,
+            );
         }
     }
-    posed[head_parts_index].pose = equine_head_look_pose(
-        posed[head_parts_index].pose,
-        head_yaw,
-        head_pitch,
-        limb_swing,
-        limb_swing_amount,
-    );
+    posed[head_parts_index].pose = equine_head_pose(posed[head_parts_index].pose, animation, false);
 
     // Hand-emit the body subtree so the tail (a `&'static` child) can take the swung pose:
     // the body's own cubes at the body transform, then its children with the tail re-posed.
@@ -162,25 +180,44 @@ fn emit_baby_donkey_posed(
 ) {
     let limb_swing = instance.render_state.walk_animation_pos;
     let limb_swing_amount = instance.render_state.walk_animation_speed;
-    let in_water = instance.render_state.in_water;
     let head_yaw = instance.render_state.head_yaw;
     let legs_resting = limb_swing_at_rest(limb_swing_amount);
+    let animation = EquineAnimationPose {
+        head_yaw_deg: head_yaw,
+        head_pitch_deg: 0.0,
+        walk_animation_pos: limb_swing,
+        walk_animation_speed: limb_swing_amount,
+        in_water: instance.render_state.in_water,
+        age_in_ticks: instance.render_state.age_in_ticks,
+        eat_animation: instance.render_state.equine_eat_animation,
+        stand_animation: instance.render_state.equine_stand_animation,
+        feeding_animation: instance.render_state.equine_feeding_animation,
+    };
 
     let body = &BABY_DONKEY_PARTS[EQUINE_BODY_PART_INDEX];
+    let body_pose = equine_body_pose(body.pose, animation);
     let mut body_children = body.children.to_vec();
-    if !legs_resting {
+    if !legs_resting || animation.stand_animation != 0.0 {
+        let left_front_offset = body_children[BABY_DONKEY_BODY_CHILD_LEG_INDICES[2]]
+            .pose
+            .offset;
+        let left_hind_y = body_children[BABY_DONKEY_BODY_CHILD_LEG_INDICES[0]]
+            .pose
+            .offset[1];
         for index in BABY_DONKEY_BODY_CHILD_LEG_INDICES {
-            body_children[index].pose = equine_leg_swing_pose(
+            body_children[index].pose = equine_leg_pose(
                 body_children[index].pose,
-                limb_swing,
-                limb_swing_amount,
-                in_water,
+                animation,
+                EQUINE_BABY_DONKEY_LEG_STAND_CONFIG,
+                left_front_offset,
+                left_hind_y,
             );
         }
     }
-    body_children[BABY_DONKEY_BODY_CHILD_HEAD_PARTS_INDEX].pose = baby_donkey_head_pose(
+    body_children[BABY_DONKEY_BODY_CHILD_HEAD_PARTS_INDEX].pose = equine_head_pose(
         body_children[BABY_DONKEY_BODY_CHILD_HEAD_PARTS_INDEX].pose,
-        head_yaw,
+        animation,
+        true,
     );
     body_children[EQUINE_TAIL_CHILD_INDEX].pose = equine_tail_pose(
         body_children[EQUINE_TAIL_CHILD_INDEX].pose,
@@ -191,7 +228,7 @@ fn emit_baby_donkey_posed(
         instance.render_state.age_in_ticks,
     );
 
-    let body_transform = transform * part_pose_transform(body.pose);
+    let body_transform = transform * part_pose_transform(body_pose);
     for &cube in body.cubes {
         emit_model_cube_with_color(mesh, body_transform, cube, color);
     }

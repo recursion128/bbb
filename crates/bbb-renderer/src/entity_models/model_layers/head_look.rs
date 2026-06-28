@@ -1277,39 +1277,169 @@ pub(in crate::entity_models) fn spider_leg_swing_roles() -> [(&'static str, f32,
 }
 
 /// Vanilla `AbstractEquineModel.setupAnim` walking leg swing (the non-standing branch).
+fn lerp_f32(delta: f32, start: f32, end: f32) -> f32 {
+    start + delta * (end - start)
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(in crate::entity_models) struct EquineAnimationPose {
+    pub head_yaw_deg: f32,
+    pub head_pitch_deg: f32,
+    pub walk_animation_pos: f32,
+    pub walk_animation_speed: f32,
+    pub in_water: bool,
+    pub age_in_ticks: f32,
+    pub eat_animation: f32,
+    pub stand_animation: f32,
+    pub feeding_animation: f32,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(in crate::entity_models) struct EquineLegStandConfig {
+    pub leg_stand_angle: f32,
+    pub leg_standing_y_offset: f32,
+    pub leg_standing_z_offset: f32,
+    pub leg_standing_x_rot_offset: f32,
+    pub baby_donkey_hind_y: bool,
+}
+
+pub(in crate::entity_models) const EQUINE_STANDARD_LEG_STAND_CONFIG: EquineLegStandConfig =
+    EquineLegStandConfig {
+        leg_stand_angle: std::f32::consts::PI / 12.0,
+        leg_standing_y_offset: 12.0,
+        leg_standing_z_offset: 4.0,
+        leg_standing_x_rot_offset: -std::f32::consts::FRAC_PI_3,
+        baby_donkey_hind_y: false,
+    };
+
+pub(in crate::entity_models) const EQUINE_BABY_DONKEY_LEG_STAND_CONFIG: EquineLegStandConfig =
+    EquineLegStandConfig {
+        leg_stand_angle: std::f32::consts::FRAC_PI_3,
+        leg_standing_y_offset: 1.0,
+        leg_standing_z_offset: 0.5,
+        leg_standing_x_rot_offset: 0.0,
+        baby_donkey_hind_y: true,
+    };
+
+impl EquineAnimationPose {
+    fn head_rot_x_rad(self) -> f32 {
+        let mut head_rot_x = self.head_pitch_deg.to_radians();
+        if self.walk_animation_speed > 0.2 {
+            head_rot_x += (self.walk_animation_pos * 0.8).cos() * 0.15 * self.walk_animation_speed;
+        }
+        head_rot_x
+    }
+
+    fn leg_anim(self) -> f32 {
+        let water_multiplier = if self.in_water { 0.2 } else { 1.0 };
+        (water_multiplier * self.walk_animation_pos * 0.6662 + std::f32::consts::PI).cos()
+    }
+
+    pub(in crate::entity_models) fn event_pose_at_rest(self) -> bool {
+        self.eat_animation == 0.0 && self.stand_animation == 0.0 && self.feeding_animation == 0.0
+    }
+}
+
+/// Vanilla `AbstractEquineModel.setupAnim` body rearing pose:
+/// `body.xRot = standing * -π/4 + (1 - standing) * body.xRot`.
+pub(in crate::entity_models) fn equine_body_pose(
+    base: PartPose,
+    animation: EquineAnimationPose,
+) -> PartPose {
+    let standing = animation.stand_animation;
+    PartPose {
+        offset: base.offset,
+        rotation: [
+            standing * -std::f32::consts::FRAC_PI_4 + (1.0 - standing) * base.rotation[0],
+            base.rotation[1],
+            base.rotation[2],
+        ],
+    }
+}
+
 /// With `legAnim = cos(waterMultiplier * walkAnimationPos * 0.6662 + π) * walkAnimationSpeed`,
 /// the front legs swing `±0.8 * legAnim` and the hind legs `±0.5 * legAnim` — a horse-specific
 /// gait (front amplitude `0.8`, hind `0.5`) rather than the uniform `1.4`
-/// `QuadrupedModel` swing. The signs are front-left `+0.8`, front-right `-0.8`,
-/// hind-left `-0.5`, hind-right `+0.5`: the front legs have `z < 0` and the left legs
-/// `x > 0`, so the sign is `+` when `(x > 0) == (z < 0)`. The base leg pose carries no
-/// `xRot`, so it is set (not accumulated). Vanilla scales the swing frequency by
-/// `waterMultiplier = isInWater ? 0.2 : 1.0` (a slower paddle in water), which the renderer
-/// reproduces from the projected `in_water`. The standing/eating/feeding poses are still
-/// deferred (they depend on state the client does not yet track). The head look/bob is
-/// applied separately by [`equine_head_look_pose`] and the tail walk lift by
-/// [`equine_tail_swing_pose`].
+/// `QuadrupedModel` swing. The standing pose layers the vanilla rearing offsets and `ageInTicks`
+/// leg bob on top of that walk gait.
+pub(in crate::entity_models) fn equine_leg_pose(
+    base: PartPose,
+    animation: EquineAnimationPose,
+    stand_config: EquineLegStandConfig,
+    left_front_rest_offset: [f32; 3],
+    left_hind_rest_y: f32,
+) -> PartPose {
+    let standing = animation.stand_animation;
+    let i_standing = 1.0 - standing;
+    let leg_anim = animation.leg_anim();
+    let leg_x_rot_anim = leg_anim * 0.8 * animation.walk_animation_speed;
+    let [x, _, z] = base.offset;
+    let left = x > 0.0;
+    let front = z < 0.0;
+    let mut offset = base.offset;
+    if front {
+        offset[1] = left_front_rest_offset[1] - stand_config.leg_standing_y_offset * standing;
+        offset[2] = left_front_rest_offset[2] + stand_config.leg_standing_z_offset * standing;
+    } else if stand_config.baby_donkey_hind_y {
+        let left_y = lerp_f32(standing, left_hind_rest_y, -0.3);
+        offset[1] = if left {
+            left_y
+        } else {
+            lerp_f32(standing, left_y, -0.3)
+        };
+    }
+
+    let stand_angle = stand_config.leg_stand_angle * standing;
+    let bob_value = (animation.age_in_ticks * 0.6 + std::f32::consts::PI).cos();
+    let x_rot = if front {
+        let standing_rot = if left {
+            stand_config.leg_standing_x_rot_offset + bob_value
+        } else {
+            stand_config.leg_standing_x_rot_offset - bob_value
+        };
+        standing_rot * standing
+            + (if left {
+                leg_x_rot_anim
+            } else {
+                -leg_x_rot_anim
+            }) * i_standing
+    } else if left {
+        stand_angle - leg_anim * 0.5 * animation.walk_animation_speed * i_standing
+    } else {
+        stand_angle + leg_anim * 0.5 * animation.walk_animation_speed * i_standing
+    };
+
+    PartPose {
+        offset,
+        rotation: [x_rot, base.rotation[1], base.rotation[2]],
+    }
+}
+
+/// Default-branch wrapper for callers/tests that only need the walking gait.
+#[cfg(test)]
 pub(in crate::entity_models) fn equine_leg_swing_pose(
     base: PartPose,
     walk_animation_pos: f32,
     walk_animation_speed: f32,
     in_water: bool,
 ) -> PartPose {
-    let water_multiplier = if in_water { 0.2 } else { 1.0 };
-    let leg_anim = (water_multiplier * walk_animation_pos * 0.6662 + std::f32::consts::PI).cos()
-        * walk_animation_speed;
-    let [x, _, z] = base.offset;
-    let front = z < 0.0;
-    let amplitude = if front { 0.8 } else { 0.5 };
-    let sign = if (x > 0.0) == front { 1.0 } else { -1.0 };
-    PartPose {
-        offset: base.offset,
-        rotation: [
-            sign * amplitude * leg_anim,
-            base.rotation[1],
-            base.rotation[2],
-        ],
-    }
+    equine_leg_pose(
+        base,
+        EquineAnimationPose {
+            head_yaw_deg: 0.0,
+            head_pitch_deg: 0.0,
+            walk_animation_pos,
+            walk_animation_speed,
+            in_water,
+            age_in_ticks: 0.0,
+            eat_animation: 0.0,
+            stand_animation: 0.0,
+            feeding_animation: 0.0,
+        },
+        EQUINE_STANDARD_LEG_STAND_CONFIG,
+        base.offset,
+        base.offset[1],
+    )
 }
 
 /// Vanilla `AbstractEquineModel.setupAnim` head (`head_parts`) look, in its default
@@ -1323,9 +1453,8 @@ pub(in crate::entity_models) fn equine_leg_swing_pose(
 /// the rest pose. `HorseModel`/`BabyHorseModel` and the adult `DonkeyModel`/mule take this
 /// unchanged; baby donkey/mule use [`baby_donkey_head_pose`] instead because
 /// `BabyDonkeyModel.setupAnim` forces `state.xRot = -30°` before recomputing
-/// `head_parts.xRot`. The ridden/stand/eat/feed poses are still deferred (the in-water
-/// gait frequency is applied by [`equine_leg_swing_pose`]). The tail walk lift is applied
-/// by [`equine_tail_swing_pose`]; only its `ageInTicks`-driven `yRot` wag stays deferred.
+/// `head_parts.xRot`. The event-pose variant is [`equine_head_pose`].
+#[cfg(test)]
 pub(in crate::entity_models) fn equine_head_look_pose(
     base: PartPose,
     head_yaw_deg: f32,
@@ -1333,18 +1462,67 @@ pub(in crate::entity_models) fn equine_head_look_pose(
     walk_animation_pos: f32,
     walk_animation_speed: f32,
 ) -> PartPose {
-    let clamped_yaw = head_yaw_deg.clamp(-20.0, 20.0);
-    let mut head_rot_x = head_pitch_deg.to_radians();
-    if walk_animation_speed > 0.2 {
-        head_rot_x += (walk_animation_pos * 0.8).cos() * 0.15 * walk_animation_speed;
-    }
+    equine_head_pose(
+        base,
+        EquineAnimationPose {
+            head_yaw_deg,
+            head_pitch_deg,
+            walk_animation_pos,
+            walk_animation_speed,
+            in_water: false,
+            age_in_ticks: 0.0,
+            eat_animation: 0.0,
+            stand_animation: 0.0,
+            feeding_animation: 0.0,
+        },
+        false,
+    )
+}
+
+/// Vanilla `AbstractEquineModel.setupAnim` head (`head_parts`) pose, including
+/// eat/stand/feed event animation and the subclass placement override used by
+/// `BabyDonkeyModel`.
+pub(in crate::entity_models) fn equine_head_pose(
+    base: PartPose,
+    animation: EquineAnimationPose,
+    baby_donkey: bool,
+) -> PartPose {
+    let clamped_yaw = animation.head_yaw_deg.clamp(-20.0, 20.0);
+    let head_rot_x = if baby_donkey {
+        -std::f32::consts::FRAC_PI_6
+    } else {
+        animation.head_rot_x_rad()
+    };
+    let eating = animation.eat_animation;
+    let standing = animation.stand_animation;
+    let idle_factor = 1.0 - eating.max(standing);
+    let feeding_bob = animation.feeding_animation * animation.age_in_ticks.sin() * 0.05;
+    let eating_angle = if baby_donkey {
+        std::f32::consts::FRAC_PI_2
+    } else {
+        2.1816616
+    };
+    let base_head_angle = idle_factor * (std::f32::consts::FRAC_PI_6 + head_rot_x + feeding_bob);
+    let x_rot = standing * (std::f32::consts::PI / 12.0 + head_rot_x)
+        + eating * (eating_angle + animation.age_in_ticks.sin() * 0.05)
+        + base_head_angle;
+    let y_rot = standing * clamped_yaw.to_radians() + idle_factor * clamped_yaw.to_radians();
+    let offset = if baby_donkey {
+        [
+            base.offset[0],
+            lerp_f32(eating, base.offset[1], -1.2),
+            lerp_f32(standing, base.offset[2], -3.6),
+        ]
+    } else {
+        [
+            base.offset[0],
+            base.offset[1] + lerp_f32(eating, lerp_f32(standing, 0.0, -8.0), 7.0),
+            lerp_f32(standing, base.offset[2], -4.0),
+        ]
+    };
     PartPose {
-        offset: base.offset,
-        rotation: [
-            std::f32::consts::FRAC_PI_6 + head_rot_x,
-            clamped_yaw.to_radians(),
-            base.rotation[2],
-        ],
+        offset,
+        rotation: [x_rot, y_rot, base.rotation[2]],
     }
 }
 
@@ -1353,18 +1531,26 @@ pub(in crate::entity_models) fn equine_head_look_pose(
 /// and apply yaw, then forces `state.xRot = -30°` and recomputes xRot:
 /// `π/6 + (-π/6) = 0`. That means baby donkey/mule ignore projected pitch and walk bob
 /// for this branch while still keeping the ±20° clamped yaw from the superclass.
+#[cfg(test)]
 pub(in crate::entity_models) fn baby_donkey_head_pose(
     base: PartPose,
     head_yaw_deg: f32,
 ) -> PartPose {
-    PartPose {
-        offset: base.offset,
-        rotation: [
-            0.0,
-            head_yaw_deg.clamp(-20.0, 20.0).to_radians(),
-            base.rotation[2],
-        ],
-    }
+    equine_head_pose(
+        base,
+        EquineAnimationPose {
+            head_yaw_deg,
+            head_pitch_deg: 0.0,
+            walk_animation_pos: 0.0,
+            walk_animation_speed: 0.0,
+            in_water: false,
+            age_in_ticks: 0.0,
+            eat_animation: 0.0,
+            stand_animation: 0.0,
+            feeding_animation: 0.0,
+        },
+        true,
+    )
 }
 
 /// Vanilla `AbstractEquineModel.setupAnim` tail walk animation (the default branch). The

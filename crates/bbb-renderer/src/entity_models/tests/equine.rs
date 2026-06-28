@@ -1114,6 +1114,86 @@ fn baby_donkey_head_pose_matches_vanilla_override() {
 }
 
 #[test]
+fn equine_head_pose_blends_vanilla_eat_stand_and_feed_amounts() {
+    use std::f32::consts::{FRAC_PI_6, PI};
+
+    let base = ADULT_HORSE_PARTS[1].pose;
+    let age = 1.2_f32;
+    let animation = EquineAnimationPose {
+        head_yaw_deg: 45.0,
+        head_pitch_deg: 10.0,
+        walk_animation_pos: 0.0,
+        walk_animation_speed: 0.0,
+        in_water: false,
+        age_in_ticks: age,
+        eat_animation: 0.5,
+        stand_animation: 0.25,
+        feeding_animation: 0.4,
+    };
+    let pose = equine_head_pose(base, animation, false);
+
+    let head_rot_x = 10.0_f32.to_radians();
+    let idle = 1.0 - 0.5_f32.max(0.25);
+    let expected_x = 0.25 * (PI / 12.0 + head_rot_x)
+        + 0.5 * (2.1816616 + age.sin() * 0.05)
+        + idle * (FRAC_PI_6 + head_rot_x + 0.4 * age.sin() * 0.05);
+    assert!((pose.rotation[0] - expected_x).abs() < 1e-6);
+    assert!((pose.rotation[1] - (0.25 + idle) * 20.0_f32.to_radians()).abs() < 1e-6);
+    assert!((pose.offset[1] - (base.offset[1] + 2.5)).abs() < 1e-6);
+    assert!((pose.offset[2] - -10.0).abs() < 1e-6);
+}
+
+#[test]
+fn equine_standing_pose_matches_vanilla_body_and_leg_offsets() {
+    use std::f32::consts::{FRAC_PI_3, FRAC_PI_4, PI};
+
+    let animation = EquineAnimationPose {
+        head_yaw_deg: 0.0,
+        head_pitch_deg: 0.0,
+        walk_animation_pos: 0.0,
+        walk_animation_speed: 0.0,
+        in_water: false,
+        age_in_ticks: 0.0,
+        eat_animation: 0.0,
+        stand_animation: 1.0,
+        feeding_animation: 0.0,
+    };
+    let body = equine_body_pose(ADULT_HORSE_PARTS[0].pose, animation);
+    assert!((body.rotation[0] - -FRAC_PI_4).abs() < 1e-6);
+
+    let left_front_offset = ADULT_HORSE_PARTS[4].pose.offset;
+    let left_hind_y = ADULT_HORSE_PARTS[2].pose.offset[1];
+    let left_front = equine_leg_pose(
+        ADULT_HORSE_PARTS[4].pose,
+        animation,
+        EQUINE_STANDARD_LEG_STAND_CONFIG,
+        left_front_offset,
+        left_hind_y,
+    );
+    let right_front = equine_leg_pose(
+        ADULT_HORSE_PARTS[5].pose,
+        animation,
+        EQUINE_STANDARD_LEG_STAND_CONFIG,
+        left_front_offset,
+        left_hind_y,
+    );
+    let left_hind = equine_leg_pose(
+        ADULT_HORSE_PARTS[2].pose,
+        animation,
+        EQUINE_STANDARD_LEG_STAND_CONFIG,
+        left_front_offset,
+        left_hind_y,
+    );
+    assert_eq!(left_front.offset[1], 2.0);
+    assert_eq!(left_front.offset[2], -6.0);
+    assert_eq!(right_front.offset[1], 2.0);
+    assert_eq!(right_front.offset[2], -6.0);
+    assert!((left_front.rotation[0] - (-FRAC_PI_3 - 1.0)).abs() < 1e-6);
+    assert!((right_front.rotation[0] - (-FRAC_PI_3 + 1.0)).abs() < 1e-6);
+    assert!((left_hind.rotation[0] - (PI / 12.0)).abs() < 1e-6);
+}
+
+#[test]
 fn equine_tail_swing_pose_matches_vanilla_formula() {
     use std::f32::consts::{FRAC_PI_2, FRAC_PI_4, FRAC_PI_6};
 
@@ -1661,6 +1741,74 @@ fn horse_textured_tail_wag_preserves_submission_metadata() {
         wagging.cutout.vertices[24..48]
     );
     assert_eq!(rest.cutout.vertices[48..], wagging.cutout.vertices[48..]);
+}
+
+#[test]
+fn horse_textured_event_pose_preserves_submission_metadata() {
+    // Vanilla keeps the same `HorseRenderer` base submit while `AbstractEquineModel.setupAnim`
+    // consumes `eatAnimation`, `standAnimation`, and `feedingAnimation`; only the folded model
+    // part transforms change.
+    let (atlas, _) = build_entity_model_texture_atlas(&horse_texture_images()).unwrap();
+    let rest_instance = EntityModelInstance::horse_with_variant(
+        169,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        HorseColorVariant::White,
+    )
+    .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true);
+    let eating_instance = rest_instance
+        .with_equine_eat_animation(0.8)
+        .with_equine_feeding_animation(0.5)
+        .with_age_in_ticks(2.0);
+    let standing_instance = rest_instance
+        .with_equine_stand_animation(0.8)
+        .with_age_in_ticks(2.0);
+
+    let rest = entity_model_textured_meshes(&[rest_instance], &atlas);
+    let eating = entity_model_textured_meshes(&[eating_instance], &atlas);
+    let standing = entity_model_textured_meshes(&[standing_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&rest, rest_instance);
+    assert_equine_submissions_match_vanilla(&eating, eating_instance);
+    assert_equine_submissions_match_vanilla(&standing, standing_instance);
+
+    for meshes in [&eating, &standing] {
+        assert_eq!(meshes.submissions.len(), 1);
+        let submit = meshes.submissions[0];
+        assert_eq!(submit.render_type, rest.submissions[0].render_type);
+        assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+        assert_eq!(submit.texture, HORSE_WHITE_TEXTURE_REF);
+        assert_eq!(submit.tint, rest.submissions[0].tint);
+        assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+        assert_eq!(submit.transform, rest.submissions[0].transform);
+        assert_textured_vertices_match_submission(&meshes.cutout.vertices, submit);
+    }
+
+    assert_eq!(rest.cutout.vertices[0..48], eating.cutout.vertices[0..48]);
+    assert_ne!(
+        rest.cutout.vertices[48..192],
+        eating.cutout.vertices[48..192],
+        "eating/feeding changes the head-parts transform"
+    );
+    assert_eq!(rest.cutout.vertices[192..], eating.cutout.vertices[192..]);
+
+    assert_ne!(
+        rest.cutout.vertices[0..24],
+        standing.cutout.vertices[0..24],
+        "standing rears the body"
+    );
+    assert_ne!(
+        rest.cutout.vertices[48..192],
+        standing.cutout.vertices[48..192],
+        "standing changes the head-parts transform"
+    );
+    assert_ne!(
+        rest.cutout.vertices[192..],
+        standing.cutout.vertices[192..],
+        "standing changes the leg transforms"
+    );
 }
 
 #[test]

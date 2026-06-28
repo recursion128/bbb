@@ -1497,6 +1497,15 @@ impl EntityStore {
             equine_saddle,
             equine_saddle_ridden,
             equine_animate_tail: client_animations.animations.equine_animate_tail(),
+            equine_eat_animation: client_animations
+                .animations
+                .equine_eat_animation(partial_ticks),
+            equine_stand_animation: client_animations
+                .animations
+                .equine_stand_animation(partial_ticks),
+            equine_feeding_animation: client_animations
+                .animations
+                .equine_feeding_animation(partial_ticks),
             equine_body_armor: horse_body_armor,
             equine_body_armor_dye: horse_body_armor_dye,
             strider_ridden,

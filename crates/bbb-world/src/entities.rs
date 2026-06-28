@@ -1133,6 +1133,18 @@ pub struct EntityModelSourceState {
     /// client-side random idle tail counter is active, driving `tail.yRot = cos(ageInTicks * 0.7)`.
     #[serde(default)]
     pub equine_animate_tail: bool,
+    /// Vanilla `EquineRenderState.eatAnimation`: the partial-tick lerped `AbstractHorse.eatAnim`
+    /// amount, driven by the synced eating flag and consumed by the equine head placement.
+    #[serde(default)]
+    pub equine_eat_animation: f32,
+    /// Vanilla `EquineRenderState.standAnimation`: the partial-tick lerped `AbstractHorse.standAnim`
+    /// amount, driving the rearing body, head, and leg placement.
+    #[serde(default)]
+    pub equine_stand_animation: f32,
+    /// Vanilla `EquineRenderState.feedingAnimation`: the partial-tick lerped `AbstractHorse.mouthAnim`
+    /// amount, adding the subtle open-mouth head bob while the horse is otherwise idle.
+    #[serde(default)]
+    pub equine_feeding_animation: f32,
     /// Vanilla `EquineRenderState.bodyArmorItem`: the horse armor material from an adult horse /
     /// zombie horse body equipment item whose equipment asset has a `horse_body` layer. Baby horses
     /// skip it because `SimpleEquipmentLayer` supplies no baby armor model; skeleton horses are

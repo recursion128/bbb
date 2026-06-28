@@ -1811,6 +1811,78 @@ fn entity_model_sources_project_equine_tail_counter() {
 }
 
 #[test]
+fn entity_model_sources_project_equine_pose_animations_from_flags() {
+    const ABSTRACT_HORSE_FLAGS_DATA_ID: u8 = 18;
+    const FLAG_EATING: i8 = 0x10;
+    const FLAG_STANDING: i8 = 0x20;
+    const FLAG_OPEN_MOUTH: i8 = 0x40;
+
+    let assert_close = |actual: f32, expected: f32, label: &str| {
+        assert!(
+            (actual - expected).abs() < 1.0e-6,
+            "{label}: expected {expected}, got {actual}"
+        );
+    };
+    let pose = |store: &WorldStore, partial_tick: f32| {
+        let source = store
+            .entity_model_sources_at_partial_tick(partial_tick)
+            .into_iter()
+            .find(|source| source.entity_id == 68)
+            .expect("horse source");
+        (
+            source.equine_eat_animation,
+            source.equine_stand_animation,
+            source.equine_feeding_animation,
+        )
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        68,
+        VANILLA_ENTITY_TYPE_HORSE_ID,
+    ));
+    assert_eq!(pose(&store, 1.0), (0.0, 0.0, 0.0));
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 68,
+        values: vec![protocol_byte_data(
+            ABSTRACT_HORSE_FLAGS_DATA_ID,
+            FLAG_EATING | FLAG_OPEN_MOUTH,
+        )],
+    }));
+    assert_eq!(pose(&store, 1.0), (0.0, 0.0, 0.0));
+    store.advance_entity_client_animations(1);
+    assert_close(pose(&store, 0.5).0, 0.225, "eat partial");
+    assert_close(pose(&store, 1.0).0, 0.45, "eat rise");
+    assert_eq!(pose(&store, 1.0).1, 0.0);
+    assert_close(pose(&store, 1.0).2, 0.75, "mouth rise");
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 68,
+        values: vec![protocol_byte_data(
+            ABSTRACT_HORSE_FLAGS_DATA_ID,
+            FLAG_STANDING | FLAG_OPEN_MOUTH,
+        )],
+    }));
+    store.advance_entity_client_animations(1);
+    assert_eq!(
+        pose(&store, 1.0).0,
+        0.0,
+        "vanilla clears eatAnim while standing"
+    );
+    assert_close(pose(&store, 1.0).1, 0.45, "stand rise");
+    assert_close(pose(&store, 1.0).2, 0.975, "mouth second rise");
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 68,
+        values: vec![protocol_byte_data(ABSTRACT_HORSE_FLAGS_DATA_ID, 0)],
+    }));
+    store.advance_entity_client_animations(1);
+    assert_close(pose(&store, 1.0).1, 0.17374, "stand cubic falloff");
+    assert_close(pose(&store, 1.0).2, 0.2425, "mouth falloff");
+}
+
+#[test]
 fn entity_model_sources_project_strider_saddle_and_ridden_state() {
     use crate::ItemEquipmentSlot;
     use std::collections::BTreeMap;
