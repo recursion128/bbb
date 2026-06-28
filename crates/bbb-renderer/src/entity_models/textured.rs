@@ -428,9 +428,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
             );
             continue;
         }
-        // The guardian attack beam is a world-space billboarded prism from the guardian eye to its
-        // target; it folds into the scroll (tiled) pass and runs regardless of `handled`.
-        emit_guardian_beam(&mut meshes, *instance, atlas);
         // AvatarRenderer registers Deadmau5EarsLayer before CapeLayer; it shares the player's body
         // skin and renders only for the exact profile-name easter egg while the player is visible.
         emit_player_extra_ears_layer(&mut meshes, *instance, atlas, dynamic_player_skin_atlas);
@@ -1268,11 +1265,17 @@ pub(in crate::entity_models) fn render_wither_energy_swirl(
 /// (fract-wrap) pass. Built in a world-aligned frame (`translate(pos) · translate(0, eyeHeight, 0) ·
 /// rotY(yRot) · rotX(xRot)`, no body yaw / model flip), mirroring vanilla where the beam draws after
 /// `super.submit` has popped the model's `setupRotations` back to the entity-origin frame.
-fn emit_guardian_beam(
+pub(in crate::entity_models) fn render_guardian_beam(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    if !matches!(instance.kind, EntityModelKind::Guardian { .. }) {
+        return;
+    }
+    if meshes.current_force_transparent || meshes.current_outline_only {
+        return;
+    }
     let Some(beam) = instance.render_state.guardian_beam else {
         return;
     };

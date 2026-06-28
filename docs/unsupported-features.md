@@ -1100,9 +1100,10 @@ When an agent does any of the following, update this file in the same slice:
       dispatch-owned sinks and the pass-backed no-overlay emitter before the scroll helper, with
       missing-atlas tests pinning that submission metadata is recorded before folded geometry is
       suppressed; Guardian
-      attack beams now consume explicit `GuardianBeam` pass metadata through the same pass-backed emitter before
-      recording vanilla `entityCutout` submissions and folding their tiled custom geometry into the scroll bucket through the
-      custom scroll-geometry submission helper; End Crystal
+      attack beams now run through the shared Guardian dispatch sink after the base submit, consume
+      explicit `GuardianBeam` pass metadata before recording vanilla `entityCutout` submissions,
+      and fold their tiled custom geometry into the scroll bucket through the custom
+      scroll-geometry submission helper; End Crystal
       body and healing-beam submits now run through the shared EndCrystal dispatch sink rather
       than residual/post-base helper ownership, recording the vanilla
       `entityCutout(end_crystal.png)` submission before the bob/spin hand-walk folds geometry
@@ -3051,15 +3052,15 @@ When an agent does any of the following, update this file in the same slice:
       random.nextFloat()` each tick) is the one piece deferred — its unseeded client RNG is not
       reconstructable, so the value is held steady out of water rather than faked (a flopping/dying
       guardian edge case). The eye target tracking (`lookAtPosition`/`lookDirection`/`eyePosition`) still
-      reads entity-side state not yet projected. The `GuardianRenderer` attack beam GEOMETRY is now built (renderer slice,
-      `emit_guardian_beam`): when the `guardian_beam` render state is set, the vanilla `renderBeam`
+      reads entity-side state not yet projected. The `GuardianRenderer` attack beam GEOMETRY is now built through the
+      shared Guardian dispatch sink: when the `guardian_beam` render state is set, the vanilla `renderBeam`
       12-vertex twisted prism (two crossed inner-radius `0.2` strips + a `0.282` twisting top cap, spun
       by `rot = attackTime · 0.05 · -1.5`, tinted by the `colorScale = attackScale²` ramp) is drawn in a
       world-aligned frame (`translate(pos) · translate(0, eyeHeight, 0) · rotY(yRot) · rotX(xRot)`,
       orienting local +Y onto the world `eye_to_target` vector — no body yaw, matching vanilla where the
       beam draws after `super.submit` pops `setupRotations`), folded into the scroll (fract-wrap) pass so
-      `guardian_beam.png` tiles vertically over `length · 2.5`; the submission now consumes explicit
-      `GuardianBeam` pass metadata and pins the vanilla `entityCutout` render-type name, texture,
+      `guardian_beam.png` tiles vertically over `length · 2.5`; the dispatch-owned submission consumes
+      explicit `GuardianBeam` pass metadata after the base submit and pins the vanilla `entityCutout` render-type name, texture,
       attack-scale tint, order `(0, 1)`, beam transform,
       `setLight(15728880)` full-bright, and `OverlayTexture.NO_OVERLAY` instead of inheriting entity
       hurt/white overlay or sampled entity light, including a missing-atlas regression where only the

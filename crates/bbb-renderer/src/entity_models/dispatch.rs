@@ -88,7 +88,7 @@ use super::textured::{
     ravager_textured_layer_passes, render_boat_water_mask_submission,
     render_breeze_wind_scroll_model, render_charged_creeper_energy_swirl,
     render_donkey_textured_layers, render_end_crystal_beam, render_end_crystal_textured_layers,
-    render_ender_dragon_beam, render_horse_textured_layers,
+    render_ender_dragon_beam, render_guardian_beam, render_horse_textured_layers,
     render_no_overlay_scrolled_textured_layers, render_player_textured_layers,
     render_textured_layers, render_trident_foil_submission, render_undead_horse_textured_layers,
     render_wither_energy_swirl, salmon_textured_layer_passes, sheep_textured_layer_passes,
@@ -166,6 +166,17 @@ pub(in crate::entity_models) trait EntityModelSink {
             ender_dragon_model_root_transform(*instance),
             instance,
             &passes[0..2],
+        );
+    }
+
+    fn guardian_model(&mut self, elder: bool, instance: &EntityModelInstance) {
+        let scale = if elder { GUARDIAN_ELDER_SCALE } else { 1.0 };
+        let passes = guardian_textured_layer_passes(elder);
+        self.model(
+            GuardianModel::new(),
+            mesh_transformer_scaled_model_root_transform(*instance, scale),
+            instance,
+            &passes[0..1],
         );
     }
 
@@ -449,6 +460,18 @@ impl EntityModelSink for TexturedSink<'_> {
             &passes[0..2],
         );
         render_ender_dragon_beam(self.meshes, *instance, self.atlas);
+    }
+
+    fn guardian_model(&mut self, elder: bool, instance: &EntityModelInstance) {
+        let scale = if elder { GUARDIAN_ELDER_SCALE } else { 1.0 };
+        let passes = guardian_textured_layer_passes(elder);
+        self.model(
+            GuardianModel::new(),
+            mesh_transformer_scaled_model_root_transform(*instance, scale),
+            instance,
+            &passes[0..1],
+        );
+        render_guardian_beam(self.meshes, *instance, self.atlas);
     }
 
     fn player_model(
@@ -1250,16 +1273,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
         }
 
         // ---- Colored-only uniform (no textured arm): empty passes, textured side is a no-op ----
-        EntityModelKind::Guardian { elder } => {
-            let scale = if elder { GUARDIAN_ELDER_SCALE } else { 1.0 };
-            let passes = guardian_textured_layer_passes(elder);
-            sink.model(
-                GuardianModel::new(),
-                mesh_transformer_scaled_model_root_transform(*instance, scale),
-                instance,
-                &passes[0..1],
-            )
-        }
+        EntityModelKind::Guardian { elder } => sink.guardian_model(elder, instance),
         EntityModelKind::Frog { variant } => sink.model(
             FrogModel::new(),
             entity_model_root_transform(*instance),
