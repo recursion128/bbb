@@ -220,6 +220,9 @@ When an agent does any of the following, update this file in the same slice:
       - age-size
       - `DragonBreathParticle.Provider` purple color range, 0.75 size scale,
         grow-to-base size curve, lifetime, friction, and no-physics metadata
+      - `SuspendedTownParticle.HappyVillagerProvider` random sprite selection,
+        white tint, suspended-town size scaling, provider initial-speed
+        transform, lifetime, and friction metadata
     - Uploads a stitched official particle atlas when assets are available.
     - Draws active particles as camera-facing textured billboards.
   - Follow-up work in the plan:

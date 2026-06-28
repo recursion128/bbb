@@ -8,6 +8,7 @@ pub(crate) struct ParticleDescriptor {
     pub(crate) lifetime: ParticleLifetimeDescriptor,
     pub(crate) sprite_selection: ParticleSpriteSelection,
     pub(crate) visual: ParticleVisualDescriptor,
+    pub(crate) initial_velocity: ParticleInitialVelocityDescriptor,
     pub(crate) friction: f32,
     pub(crate) gravity: f32,
     pub(crate) has_physics: bool,
@@ -44,6 +45,9 @@ pub(crate) enum ParticleVisualDescriptor {
         scale: f32,
         color: ParticleColorDescriptor,
     },
+    SuspendedTown {
+        color: ParticleColorDescriptor,
+    },
     Explode,
 }
 
@@ -60,6 +64,12 @@ pub(crate) enum ParticleQuadSizeCurve {
     Constant,
     GrowToBase,
     Flame,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) enum ParticleInitialVelocityDescriptor {
+    Command,
+    ParticleConstructorScaled { scale: f64 },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -82,6 +92,7 @@ impl ParticleDescriptor {
                 lifetime: ParticleLifetimeDescriptor::PlayerCloud,
                 sprite_selection: ParticleSpriteSelection::Age,
                 visual: ParticleVisualDescriptor::PlayerCloud,
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
                 friction: 0.96,
                 gravity: 0.0,
                 has_physics: false,
@@ -101,6 +112,7 @@ impl ParticleDescriptor {
                         max: DRAGON_BREATH_COLOR_MAX,
                     },
                 },
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
                 friction: 0.96,
                 gravity: 0.0,
                 has_physics: false,
@@ -112,6 +124,7 @@ impl ParticleDescriptor {
                     lifetime: ParticleLifetimeDescriptor::Rising,
                     sprite_selection: ParticleSpriteSelection::Random,
                     visual: ParticleVisualDescriptor::Flame { scale: 1.0 },
+                    initial_velocity: ParticleInitialVelocityDescriptor::Command,
                     friction: 0.96,
                     gravity: 0.0,
                     has_physics: false,
@@ -123,6 +136,7 @@ impl ParticleDescriptor {
                 lifetime: ParticleLifetimeDescriptor::Rising,
                 sprite_selection: ParticleSpriteSelection::Random,
                 visual: ParticleVisualDescriptor::Flame { scale: 0.5 },
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
                 friction: 0.96,
                 gravity: 0.0,
                 has_physics: false,
@@ -139,6 +153,7 @@ impl ParticleDescriptor {
                     scale: 2.5,
                     color: ParticleColorDescriptor::RandomGray { max: 0.3 },
                 },
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
                 friction: 0.96,
                 gravity: -0.1,
                 has_physics: true,
@@ -155,6 +170,7 @@ impl ParticleDescriptor {
                     scale: 1.0,
                     color: ParticleColorDescriptor::RandomGray { max: 0.3 },
                 },
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
                 friction: 0.96,
                 gravity: -0.1,
                 has_physics: true,
@@ -171,6 +187,7 @@ impl ParticleDescriptor {
                     scale: 1.0,
                     color: ParticleColorDescriptor::FixedRgb(WHITE_ASH_SMOKE_RGB),
                 },
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
                 friction: 0.96,
                 gravity: -0.1,
                 has_physics: true,
@@ -187,6 +204,7 @@ impl ParticleDescriptor {
                     scale: 1.0,
                     color: ParticleColorDescriptor::RandomGray { max: 0.5 },
                 },
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
                 friction: 0.96,
                 gravity: 0.1,
                 has_physics: false,
@@ -203,16 +221,36 @@ impl ParticleDescriptor {
                     scale: 1.0,
                     color: ParticleColorDescriptor::FixedRgb(WHITE_ASH_SMOKE_RGB),
                 },
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
                 friction: 0.96,
                 gravity: 0.0125,
                 has_physics: false,
                 speed_up_when_y_motion_is_blocked: true,
+            },
+            "minecraft:happy_villager" => Self {
+                provider: "SuspendedTownParticle.HappyVillagerProvider",
+                lifetime: ParticleLifetimeDescriptor::BaseAshSmoke {
+                    max_lifetime: 20,
+                    scale_tenths: 10,
+                },
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SuspendedTown {
+                    color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::ParticleConstructorScaled {
+                    scale: 0.02,
+                },
+                friction: 0.99,
+                gravity: 0.0,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
             },
             "minecraft:poof" => Self {
                 provider: "ExplodeParticle.Provider",
                 lifetime: ParticleLifetimeDescriptor::Explode,
                 sprite_selection: ParticleSpriteSelection::Age,
                 visual: ParticleVisualDescriptor::Explode,
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
                 friction: 0.9,
                 gravity: -0.1,
                 has_physics: true,
@@ -223,6 +261,7 @@ impl ParticleDescriptor {
                 lifetime: ParticleLifetimeDescriptor::BaseParticle,
                 sprite_selection: ParticleSpriteSelection::First,
                 visual: ParticleVisualDescriptor::BaseSingleQuad,
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
                 friction: 0.98,
                 gravity: 0.0,
                 has_physics: true,
@@ -259,6 +298,15 @@ impl ParticleVisualDescriptor {
                 color.sample(random),
                 ParticleQuadSizeCurve::GrowToBase,
             ),
+            Self::SuspendedTown { color } => {
+                let _base_tint = random.next_f32() * 0.1 + 0.2;
+                let scale = random.next_f32() * 0.6 + 0.5;
+                ParticleVisualState::new(
+                    base_quad_size * scale,
+                    color.sample(random),
+                    ParticleQuadSizeCurve::Constant,
+                )
+            }
             Self::Explode => {
                 let color = random.next_f32() * 0.3 + 0.7;
                 let base_quad_size = 0.1 * (random.next_f32() * random.next_f32() * 6.0 + 1.0);
@@ -267,6 +315,34 @@ impl ParticleVisualDescriptor {
                     [color, color, color, 1.0],
                     ParticleQuadSizeCurve::Constant,
                 )
+            }
+        }
+    }
+}
+
+impl ParticleInitialVelocityDescriptor {
+    pub(crate) fn sample(
+        self,
+        command_velocity: [f64; 3],
+        random: &mut ParticleRandom,
+    ) -> [f64; 3] {
+        match self {
+            Self::Command => command_velocity,
+            Self::ParticleConstructorScaled { scale } => {
+                let x = command_velocity[0] + random_signed_velocity(random);
+                let y = command_velocity[1] + random_signed_velocity(random);
+                let z = command_velocity[2] + random_signed_velocity(random);
+                let speed =
+                    (f64::from(random.next_f32()) + f64::from(random.next_f32()) + 1.0) * 0.15;
+                let length = (x * x + y * y + z * z).sqrt();
+                if length == 0.0 {
+                    return [0.0, 0.1 * scale, 0.0];
+                }
+                [
+                    x / length * speed * 0.4 * scale,
+                    (y / length * speed * 0.4 + 0.1) * scale,
+                    z / length * speed * 0.4 * scale,
+                ]
             }
         }
     }
@@ -405,6 +481,10 @@ fn sample_single_quad_size(random: &mut ParticleRandom) -> f32 {
 
 fn sample_range(random: &mut ParticleRandom, min: f32, max: f32) -> f32 {
     min + random.next_f32() * (max - min)
+}
+
+fn random_signed_velocity(random: &mut ParticleRandom) -> f64 {
+    (f64::from(random.next_f32()) * 2.0 - 1.0) * 0.4
 }
 
 #[cfg(test)]
@@ -552,6 +632,26 @@ mod tests {
             true,
         );
         assert_descriptor(
+            "minecraft:happy_villager",
+            "SuspendedTownParticle.HappyVillagerProvider",
+            ParticleLifetimeDescriptor::BaseAshSmoke {
+                max_lifetime: 20,
+                scale_tenths: 10,
+            },
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::SuspendedTown {
+                color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+            },
+            0.99,
+            0.0,
+            true,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:happy_villager").initial_velocity,
+            ParticleInitialVelocityDescriptor::ParticleConstructorScaled { scale: 0.02 }
+        );
+        assert_descriptor(
             "minecraft:poof",
             "ExplodeParticle.Provider",
             ParticleLifetimeDescriptor::Explode,
@@ -620,6 +720,18 @@ mod tests {
             ParticleQuadSizeCurve::GrowToBase
         );
 
+        let mut happy_villager_random = ParticleRandom::new(13);
+        let happy_villager = ParticleVisualDescriptor::SuspendedTown {
+            color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+        }
+        .sample(&mut happy_villager_random);
+        assert_range_f32(happy_villager.base_quad_size, 0.05, 0.22);
+        assert_eq!(happy_villager.color, WHITE_PARTICLE_COLOR);
+        assert_eq!(
+            happy_villager.quad_size_curve,
+            ParticleQuadSizeCurve::Constant
+        );
+
         let mut smoke_random = ParticleRandom::new(9);
         let smoke = ParticleVisualDescriptor::BaseAshSmoke {
             scale: 2.5,
@@ -655,6 +767,18 @@ mod tests {
         assert_eq!(poof.quad_size_curve, ParticleQuadSizeCurve::Constant);
     }
 
+    #[test]
+    fn initial_velocity_descriptor_matches_vanilla_particle_constructor_scaling() {
+        let mut random = ParticleRandom::new(14);
+        let velocity = ParticleInitialVelocityDescriptor::ParticleConstructorScaled { scale: 0.02 }
+            .sample([0.0, 0.0, 0.0], &mut random);
+
+        assert_range_f64(velocity[0], -0.004, 0.004);
+        assert_range_f64(velocity[1], -0.002, 0.006);
+        assert_range_f64(velocity[2], -0.004, 0.004);
+        assert_ne!(velocity, [0.0, 0.0, 0.0]);
+    }
+
     fn assert_descriptor(
         particle_id: &str,
         provider: &'static str,
@@ -688,6 +812,13 @@ mod tests {
     }
 
     fn assert_range_f32(actual: f32, min: f32, max: f32) {
+        assert!(
+            actual >= min && actual <= max,
+            "expected {actual} to be in {min}..={max}"
+        );
+    }
+
+    fn assert_range_f64(actual: f64, min: f64, max: f64) {
         assert!(
             actual >= min && actual <= max,
             "expected {actual} to be in {min}..={max}"

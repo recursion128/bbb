@@ -330,6 +330,7 @@ impl ParticleRuntimeState {
 impl ParticleInstance {
     fn from_spawn_command(command: ParticleSpawnCommand, random: &mut ParticleRandom) -> Self {
         let descriptor = ParticleDescriptor::for_particle(&command.particle_id);
+        let velocity = descriptor.initial_velocity.sample(command.velocity, random);
         let (current_sprite_index, current_sprite_id) =
             select_initial_sprite(&command.sprite_ids, descriptor.sprite_selection, random);
         let visual = descriptor.visual.sample(random);
@@ -341,7 +342,7 @@ impl ParticleInstance {
             current_sprite_index,
             previous_position: command.position,
             position: command.position,
-            velocity: command.velocity,
+            velocity,
             age_ticks: 0,
             lifetime_ticks: descriptor.lifetime.sample(random),
             base_quad_size: visual.base_quad_size,
@@ -995,6 +996,30 @@ mod tests {
         assert_eq!(dragon_breath.friction, 0.96);
         assert_eq!(dragon_breath.gravity, 0.0);
         assert!(!dragon_breath.has_physics);
+
+        let mut happy_villager_random = ParticleRandom::new(47);
+        let happy_villager = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:happy_villager", 1.0),
+            &mut happy_villager_random,
+        );
+        assert_eq!(
+            happy_villager.provider,
+            "SuspendedTownParticle.HappyVillagerProvider"
+        );
+        assert_eq!(
+            happy_villager.sprite_selection,
+            ParticleSpriteSelection::Random
+        );
+        assert_eq!(
+            happy_villager.quad_size_curve,
+            ParticleQuadSizeCurve::Constant
+        );
+        assert_range_f32(happy_villager.base_quad_size, 0.05, 0.22);
+        assert_eq!(happy_villager.color, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(happy_villager.friction, 0.99);
+        assert_eq!(happy_villager.gravity, 0.0);
+        assert!(happy_villager.has_physics);
+        assert_ne!(happy_villager.velocity, [0.0, 0.0, 0.0]);
 
         let mut smoke_random = ParticleRandom::new(44);
         let smoke = ParticleInstance::from_spawn_command(
