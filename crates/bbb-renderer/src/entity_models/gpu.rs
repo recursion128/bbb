@@ -102,10 +102,22 @@ fn lightmap_brightness(level: f32) -> f32 {
     return level / (4.0 - 3.0 * level);
 }
 
-fn packed_lightmap_shade(light: vec2<f32>) -> f32 {
+fn parabolic_mix_factor(level: f32) -> f32 {
+    let centered = 2.0 * level - 1.0;
+    return centered * centered;
+}
+
+fn packed_lightmap_color(light: vec2<f32>) -> vec3<f32> {
     let block_brightness = lightmap_brightness(light.x) * 1.4;
     let sky_brightness = lightmap_brightness(light.y);
-    return clamp(block_brightness + sky_brightness, 0.0, 1.0);
+    let block_light_tint = vec3<f32>(1.0, 216.0 / 255.0, 140.0 / 255.0);
+    let block_light_color = mix(
+        block_light_tint,
+        vec3<f32>(1.0),
+        0.9 * parabolic_mix_factor(light.x),
+    );
+    let color = vec3<f32>(sky_brightness) + block_light_color * block_brightness;
+    return clamp(color, vec3<f32>(0.0), vec3<f32>(1.0));
 }
 
 @vertex
@@ -127,8 +139,8 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         let overlay_alpha = 1.0 - input.overlay.x / 15.0 * 0.75;
         rgb = mix(vec3<f32>(1.0, 1.0, 1.0), rgb, overlay_alpha);
     }
-    let shade = packed_lightmap_shade(input.light);
-    return vec4<f32>(rgb * shade, input.color.a);
+    let light_color = packed_lightmap_color(input.light);
+    return vec4<f32>(rgb * light_color, input.color.a);
 }
 "#;
 
@@ -168,10 +180,22 @@ fn lightmap_brightness(level: f32) -> f32 {
     return level / (4.0 - 3.0 * level);
 }
 
-fn packed_lightmap_shade(light: vec2<f32>) -> f32 {
+fn parabolic_mix_factor(level: f32) -> f32 {
+    let centered = 2.0 * level - 1.0;
+    return centered * centered;
+}
+
+fn packed_lightmap_color(light: vec2<f32>) -> vec3<f32> {
     let block_brightness = lightmap_brightness(light.x) * 1.4;
     let sky_brightness = lightmap_brightness(light.y);
-    return clamp(block_brightness + sky_brightness, 0.0, 1.0);
+    let block_light_tint = vec3<f32>(1.0, 216.0 / 255.0, 140.0 / 255.0);
+    let block_light_color = mix(
+        block_light_tint,
+        vec3<f32>(1.0),
+        0.9 * parabolic_mix_factor(light.x),
+    );
+    let color = vec3<f32>(sky_brightness) + block_light_color * block_brightness;
+    return clamp(color, vec3<f32>(0.0), vec3<f32>(1.0));
 }
 
 fn diffuse_light(normal: vec3<f32>) -> f32 {
@@ -206,8 +230,8 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         let overlay_alpha = 1.0 - input.overlay.x / 15.0 * 0.75;
         rgb = mix(vec3<f32>(1.0, 1.0, 1.0), rgb, overlay_alpha);
     }
-    let shade = packed_lightmap_shade(input.light);
-    return vec4<f32>(rgb * diffuse_light(input.normal) * shade, texel.a);
+    let light_color = packed_lightmap_color(input.light);
+    return vec4<f32>(rgb * diffuse_light(input.normal) * light_color, texel.a);
 }
 "#;
 
@@ -293,10 +317,22 @@ fn lightmap_brightness(level: f32) -> f32 {
     return level / (4.0 - 3.0 * level);
 }
 
-fn packed_lightmap_shade(light: vec2<f32>) -> f32 {
+fn parabolic_mix_factor(level: f32) -> f32 {
+    let centered = 2.0 * level - 1.0;
+    return centered * centered;
+}
+
+fn packed_lightmap_color(light: vec2<f32>) -> vec3<f32> {
     let block_brightness = lightmap_brightness(light.x) * 1.4;
     let sky_brightness = lightmap_brightness(light.y);
-    return clamp(block_brightness + sky_brightness, 0.0, 1.0);
+    let block_light_tint = vec3<f32>(1.0, 216.0 / 255.0, 140.0 / 255.0);
+    let block_light_color = mix(
+        block_light_tint,
+        vec3<f32>(1.0),
+        0.9 * parabolic_mix_factor(light.x),
+    );
+    let color = vec3<f32>(sky_brightness) + block_light_color * block_brightness;
+    return clamp(color, vec3<f32>(0.0), vec3<f32>(1.0));
 }
 
 @vertex
@@ -318,8 +354,8 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     if texel.a <= 0.1 {
         discard;
     }
-    let shade = packed_lightmap_shade(input.light);
-    return vec4<f32>(texel.rgb * shade, texel.a);
+    let light_color = packed_lightmap_color(input.light);
+    return vec4<f32>(texel.rgb * light_color, texel.a);
 }
 "#;
 

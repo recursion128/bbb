@@ -351,6 +351,10 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。
   (`0.6` power + `0.4` ambient)；colored debug fallback 仍保留 baked shade。
 - [x] texture-backed entity normal 已按 vanilla `PoseStack.Pose`
   normal matrix（pose inverse-transpose + normalize）变换，覆盖非等比缩放精度。
+- [x] colored/textured/`breezeWind` entity shader 已从标量 lightmap shade 改为
+  vanilla `lightmap.fsh` 默认 RGB 组合：block light 使用 `0xFFD88C` tint +
+  parabolic mix，sky light 使用默认 white，ambient 默认 black；gamma / dynamic
+  environment attrs 仍 deferred。
 - [x] `breezeWind` scroll GPU path 已按 vanilla `NO_CARDINAL_LIGHTING` +
   lightmap-lit 语义使用 submitted block/sky light；`energySwirl` 拆到独立
   emissive additive scroll shader。
@@ -360,7 +364,7 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。
 
 目标：让实体和物品不仅绑定正确纹理，还在 vanilla 光照与 overlay 语义下呈现。
 
-- 补齐 vanilla `LightTexture` 的环境颜色、gamma、block-light tint 与动态
+- 补齐 vanilla `Lightmap` 的动态环境颜色、gamma 与动态
   flicker / darkness / night-vision 曲线。
 - 补齐实体 smooth / AO 风格采样差异。
 - 补齐 Nether level lighting、GUI/entity-in-UI lighting variants，以及 colored
