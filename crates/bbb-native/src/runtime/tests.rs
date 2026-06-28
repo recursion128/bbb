@@ -6,9 +6,11 @@ use std::{
 
 use bbb_protocol::packets::ClockUpdate as ProtocolClockUpdate;
 use bbb_protocol::packets::{
-    BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate, CommonPlayerSpawnInfo,
-    DialogHolder, GameEvent as ProtocolGameEvent, InteractionHand, MerchantOffer, MerchantOffers,
-    MobEffectFlags, OpenBook, OpenSignEditor, PlayLogin, PlayTime, RemoveMobEffect,
+    BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate, BossBarColor, BossBarOverlay,
+    BossEvent as ProtocolBossEvent, BossEventFlags as ProtocolBossEventFlags,
+    BossEventOperation as ProtocolBossEventOperation, CommonPlayerSpawnInfo, DialogHolder,
+    GameEvent as ProtocolGameEvent, InteractionHand, MerchantOffer, MerchantOffers, MobEffectFlags,
+    OpenBook, OpenSignEditor, PlayLogin, PlayTime, RemoveMobEffect,
     SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog, UpdateMobEffect,
     WrittenBookContentSummary,
 };
@@ -237,6 +239,41 @@ fn lightmap_tick_state_does_not_use_overworld_clock_for_end_flash() {
     let environment = lightmap.environment_for_world(&world);
 
     assert_eq!(environment.sky_factor, 0.0);
+}
+
+#[test]
+fn lightmap_tick_state_divides_end_flash_sky_factor_for_boss_world_fog() {
+    let mut world = world_with_dimension(2, "minecraft:the_end");
+    set_world_end_clock_time(&mut world, 1_486);
+    add_boss_bar(&mut world, false, true);
+    let mut lightmap = LightmapTickState::with_seed_and_brightness(0, 0.5);
+
+    lightmap.advance_for_world(1, &world);
+    let environment = lightmap.environment_for_world(&world);
+
+    assert!((environment.sky_factor - (1.0 / 3.0)).abs() < 1e-6);
+    assert_eq!(environment.boss_overlay_world_darkening, 0.0);
+}
+
+#[test]
+fn lightmap_tick_state_projects_boss_overlay_world_darkening() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, 6_000);
+    add_boss_bar(&mut world, true, false);
+    let mut lightmap = LightmapTickState::with_seed_and_brightness(0, 0.5);
+
+    lightmap.advance_for_world(1, &world);
+    let environment = lightmap.environment_for_world(&world);
+    assert!((environment.boss_overlay_world_darkening - 0.05).abs() < 1e-6);
+
+    lightmap.advance_for_world(19, &world);
+    let environment = lightmap.environment_for_world(&world);
+    assert_eq!(environment.boss_overlay_world_darkening, 1.0);
+
+    clear_boss_overlay_properties(&mut world);
+    lightmap.advance_for_world(1, &world);
+    let environment = lightmap.environment_for_world(&world);
+    assert!((environment.boss_overlay_world_darkening - 0.9875).abs() < 1e-6);
 }
 
 #[test]
@@ -600,6 +637,36 @@ fn set_world_weather(world: &mut WorldStore, rain_level: f32, thunder_level: f32
         event_id: 8,
         param: thunder_level,
     });
+}
+
+fn add_boss_bar(world: &mut WorldStore, darken_screen: bool, create_world_fog: bool) {
+    assert!(world.apply_boss_event(ProtocolBossEvent {
+        id: uuid::Uuid::from_u128(1),
+        operation: ProtocolBossEventOperation::Add {
+            name: "Boss".to_string(),
+            progress: 1.0,
+            color: BossBarColor::Purple,
+            overlay: BossBarOverlay::Progress,
+            flags: ProtocolBossEventFlags {
+                darken_screen,
+                play_music: false,
+                create_world_fog,
+            },
+        },
+    }));
+}
+
+fn clear_boss_overlay_properties(world: &mut WorldStore) {
+    assert!(world.apply_boss_event(ProtocolBossEvent {
+        id: uuid::Uuid::from_u128(1),
+        operation: ProtocolBossEventOperation::UpdateProperties {
+            flags: ProtocolBossEventFlags {
+                darken_screen: false,
+                play_music: false,
+                create_world_fog: false,
+            },
+        },
+    }));
 }
 
 fn attach_lightmap_local_player(world: &mut WorldStore, id: i32) {

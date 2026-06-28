@@ -588,10 +588,13 @@ When an agent does any of the following, update this file in the same slice:
     `DarknessScale`, and the darkness-adjusted `BrightnessFactor`; the native
     lightmap runtime also mirrors vanilla client duration ticking and darkness
     `MobEffectInstance.BlendState` fade-in/out, plus `LocalPlayer.getWaterVision`
-    for the conduit-power night-vision branch. Overworld lightmap sky light now
-    follows the vanilla `Timelines.OVERWORLD_DAY` `SKY_LIGHT_FACTOR` /
-    `SKY_LIGHT_COLOR` keyframes and the `WeatherAttributes.RAIN` / `THUNDER`
-    alpha-blend layers. The Nether uses `SkyFactor = 0`,
+    for the conduit-power night-vision branch. Boss overlay flags from
+    `BossHealthOverlay` now drive `BossOverlayWorldDarkeningFactor` with the
+    vanilla `+0.05` / `-0.0125` tick state, and `createWorldFog` divides End
+    flash `SkyFactor` by 3. Overworld lightmap sky light now follows the
+    vanilla `Timelines.OVERWORLD_DAY` `SKY_LIGHT_FACTOR` / `SKY_LIGHT_COLOR`
+    keyframes and the `WeatherAttributes.RAIN` / `THUNDER` alpha-blend layers.
+    The Nether uses `SkyFactor = 0`,
     `Timelines.NIGHT_SKY_LIGHT_COLOR`, and ambient `0x302821`; the End uses
     base `SkyFactor = 0`, sky light `0xAC60CD`, and ambient `0x3F473F`, with
     synced THE_END world-clock `EndFlashState` boosts folded into `SkyFactor`;
@@ -600,10 +603,9 @@ When an agent does any of the following, update this file in the same slice:
     `LightmapRenderStateExtractor.tick()` formula and the shaders read
     `blockLightFlicker + 1.4`. Remaining lighting gaps: full camera
     `EnvironmentAttributes` extraction for biome/spatial modifiers, End flash
-    boss-overlay world-fog `/3` / hide-lightning option / local clock
-    extrapolation combinations, smooth/AO entity light, GUI / entity-in-UI
-    lighting variants, and the colored debug fallback's baked-shade
-    approximation.
+    hide-lightning option / local clock extrapolation combinations, smooth/AO
+    entity light, GUI / entity-in-UI lighting variants, and the colored debug
+    fallback's baked-shade approximation.
   - The hurt red damage overlay is implemented end to end as a real overlay pass,
     not a tint: `LivingEntity.hurtTime` is tracked client-side (set to
     `hurtDuration` = 10 by `apply_hurt_animation`/`apply_damage_event`, decremented

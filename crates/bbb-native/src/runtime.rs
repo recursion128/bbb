@@ -74,6 +74,8 @@ const VANILLA_END_FLASH_INTERVAL_TICKS: i64 = 600;
 const VANILLA_END_FLASH_MAX_OFFSET_TICKS: i32 = 200;
 const VANILLA_END_FLASH_MIN_DURATION_TICKS: i32 = 100;
 const VANILLA_END_FLASH_MAX_DURATION_TICKS: i32 = 380;
+const VANILLA_BOSS_OVERLAY_DARKEN_IN_STEP: f32 = 0.05;
+const VANILLA_BOSS_OVERLAY_DARKEN_OUT_STEP: f32 = 0.0125;
 const VANILLA_OVERWORLD_SKY_LIGHT_COLOR_KEYFRAMES: [(i64, i32); 4] = [
     (730, -1),
     (11_270, -1),
@@ -314,6 +316,8 @@ pub(crate) struct LightmapTickState {
     darkness_effect: LightmapEffectBlendState,
     water_vision_time: i32,
     end_flash_state: EndFlashLightmapState,
+    boss_overlay_world_darkening: f32,
+    boss_overlay_world_darkening_previous_frame: f32,
 }
 
 impl Default for LightmapTickState {
@@ -327,6 +331,8 @@ impl Default for LightmapTickState {
             darkness_effect: LightmapEffectBlendState::default(),
             water_vision_time: 0,
             end_flash_state: EndFlashLightmapState::default(),
+            boss_overlay_world_darkening: 0.0,
+            boss_overlay_world_darkening_previous_frame: 0.0,
         }
     }
 }
@@ -350,6 +356,8 @@ impl LightmapTickState {
             darkness_effect: LightmapEffectBlendState::default(),
             water_vision_time: 0,
             end_flash_state: EndFlashLightmapState::default(),
+            boss_overlay_world_darkening: 0.0,
+            boss_overlay_world_darkening_previous_frame: 0.0,
         }
     }
 
@@ -364,6 +372,8 @@ impl LightmapTickState {
             darkness_effect: LightmapEffectBlendState::default(),
             water_vision_time: 0,
             end_flash_state: EndFlashLightmapState::default(),
+            boss_overlay_world_darkening: 0.0,
+            boss_overlay_world_darkening_previous_frame: 0.0,
         }
     }
 
@@ -390,6 +400,7 @@ impl LightmapTickState {
             self.darkness_effect.tick();
             self.tick_water_vision(world);
             self.tick_end_flash(world);
+            self.tick_boss_overlay_world_darkening(world);
         }
         self.client_tick_count = self.client_tick_count.saturating_add(ticks as u64);
         self.block_factor()
@@ -408,6 +419,7 @@ impl LightmapTickState {
             local_player_effect(world, VANILLA_MOB_EFFECT_CONDUIT_POWER_ID),
             self.water_vision(world),
             self.end_flash_sky_factor(world),
+            self.boss_overlay_world_darkening(VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK),
         )
     }
 
@@ -478,11 +490,37 @@ impl LightmapTickState {
         if world.level_info().map(vanilla_lightmap_dimension_kind)
             == Some(VanillaLightmapDimensionKind::End)
         {
-            self.end_flash_state
+            let intensity = self
+                .end_flash_state
                 .intensity(VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK)
+                .clamp(0.0, 1.0);
+            if world.boss_overlay_should_create_world_fog() {
+                intensity / 3.0
+            } else {
+                intensity
+            }
         } else {
             0.0
         }
+    }
+
+    fn tick_boss_overlay_world_darkening(&mut self, world: &WorldStore) {
+        self.boss_overlay_world_darkening_previous_frame = self.boss_overlay_world_darkening;
+        if world.boss_overlay_should_darken_screen() {
+            self.boss_overlay_world_darkening += VANILLA_BOSS_OVERLAY_DARKEN_IN_STEP;
+            if self.boss_overlay_world_darkening > 1.0 {
+                self.boss_overlay_world_darkening = 1.0;
+            }
+        } else if self.boss_overlay_world_darkening > 0.0 {
+            self.boss_overlay_world_darkening -= VANILLA_BOSS_OVERLAY_DARKEN_OUT_STEP;
+        }
+    }
+
+    fn boss_overlay_world_darkening(&self, partial_tick: f32) -> f32 {
+        let partial_tick = sanitize_lightmap_partial_tick(partial_tick);
+        self.boss_overlay_world_darkening_previous_frame
+            + (self.boss_overlay_world_darkening - self.boss_overlay_world_darkening_previous_frame)
+                * partial_tick
     }
 }
 
@@ -770,6 +808,7 @@ fn lightmap_environment_for_world_at_tick(
         conduit_power_effect,
         0.0,
         0.0,
+        0.0,
     )
 }
 
@@ -784,9 +823,11 @@ fn lightmap_environment_for_world_with_effects(
     conduit_power_effect: Option<MobEffectState>,
     water_vision: f32,
     end_flash_sky_factor: f32,
+    boss_overlay_world_darkening: f32,
 ) -> LightmapEnvironment {
     let mut environment = lightmap_environment_attributes_for_world(world);
     environment.sky_factor += end_flash_sky_factor;
+    environment.boss_overlay_world_darkening = boss_overlay_world_darkening;
     let effects = local_player_lightmap_effects(
         brightness_factor,
         camera_tick_count,

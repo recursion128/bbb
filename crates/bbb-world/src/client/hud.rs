@@ -265,6 +265,20 @@ impl WorldStore {
         &self.client_hud.boss_bars
     }
 
+    pub fn boss_overlay_should_darken_screen(&self) -> bool {
+        self.client_hud
+            .boss_bars
+            .values()
+            .any(|bar| bar.darken_screen)
+    }
+
+    pub fn boss_overlay_should_create_world_fog(&self) -> bool {
+        self.client_hud
+            .boss_bars
+            .values()
+            .any(|bar| bar.create_world_fog)
+    }
+
     pub fn tab_list(&self) -> &TabListState {
         &self.client_hud.tab_list
     }
@@ -436,6 +450,67 @@ mod tests {
         assert_eq!(store.counters().boss_event_packets, 7);
         assert_eq!(store.counters().boss_bars_tracked, 0);
         assert_eq!(store.counters().boss_events_ignored, 1);
+    }
+
+    #[test]
+    fn boss_overlay_queries_fold_any_active_boss_bar_property() {
+        let mut store = WorldStore::new();
+        let darkening_id = Uuid::from_u128(1);
+        let fog_id = Uuid::from_u128(2);
+
+        assert!(!store.boss_overlay_should_darken_screen());
+        assert!(!store.boss_overlay_should_create_world_fog());
+
+        assert!(store.apply_boss_event(ProtocolBossEvent {
+            id: darkening_id,
+            operation: ProtocolBossEventOperation::Add {
+                name: "Dark".to_string(),
+                progress: 1.0,
+                color: ProtocolBossBarColor::Purple,
+                overlay: ProtocolBossBarOverlay::Progress,
+                flags: ProtocolBossEventFlags {
+                    darken_screen: true,
+                    play_music: false,
+                    create_world_fog: false,
+                },
+            },
+        }));
+        assert!(store.apply_boss_event(ProtocolBossEvent {
+            id: fog_id,
+            operation: ProtocolBossEventOperation::Add {
+                name: "Fog".to_string(),
+                progress: 1.0,
+                color: ProtocolBossBarColor::Red,
+                overlay: ProtocolBossBarOverlay::Progress,
+                flags: ProtocolBossEventFlags {
+                    darken_screen: false,
+                    play_music: false,
+                    create_world_fog: true,
+                },
+            },
+        }));
+
+        assert!(store.boss_overlay_should_darken_screen());
+        assert!(store.boss_overlay_should_create_world_fog());
+
+        assert!(store.apply_boss_event(ProtocolBossEvent {
+            id: darkening_id,
+            operation: ProtocolBossEventOperation::UpdateProperties {
+                flags: ProtocolBossEventFlags {
+                    darken_screen: false,
+                    play_music: false,
+                    create_world_fog: false,
+                },
+            },
+        }));
+        assert!(!store.boss_overlay_should_darken_screen());
+        assert!(store.boss_overlay_should_create_world_fog());
+
+        assert!(store.apply_boss_event(ProtocolBossEvent {
+            id: fog_id,
+            operation: ProtocolBossEventOperation::Remove,
+        }));
+        assert!(!store.boss_overlay_should_create_world_fog());
     }
 
     #[test]
