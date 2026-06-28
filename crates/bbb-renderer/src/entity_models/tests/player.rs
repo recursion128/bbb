@@ -1096,6 +1096,52 @@ fn player_cape_layer_waits_for_dynamic_profile_texture_upload() {
 }
 
 #[test]
+fn player_cape_layer_is_suppressed_when_player_is_invisible() {
+    // Vanilla `CapeLayer.submit` gates on `!state.isInvisible`, even when the player is self-visible
+    // through the force-transparent base-body path.
+    let (static_atlas, _) =
+        build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
+    let cape_texture = EntityDynamicPlayerTexture {
+        handle: 7105,
+        kind: EntityDynamicPlayerTextureKind::Cape,
+    };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicPlayerTextureImage {
+        handle: cape_texture.handle,
+        size: [64, 32],
+        rgba: vec![0x99; 64 * 32 * 4],
+    }])
+    .unwrap()
+    .0;
+    let instance = EntityModelInstance::player_with_skin(
+        49,
+        [0.0, 64.0, 0.0],
+        0.0,
+        EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_player_cape_texture(Some(cape_texture))
+    .with_invisible(true)
+    .with_invisible_to_player(false);
+
+    let meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[instance],
+        &static_atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+
+    assert!(meshes
+        .submissions
+        .iter()
+        .all(|submit| submit.dynamic_player_texture != Some(cape_texture)));
+    assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_translucent
+        .vertices
+        .is_empty());
+}
+
+#[test]
 fn player_cape_layer_is_suppressed_by_wings_chest_equipment() {
     let (static_atlas, _) =
         build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();

@@ -1379,6 +1379,46 @@ mod tests {
     }
 
     #[test]
+    fn humanoid_invisible_keeps_held_and_custom_head_item_models() {
+        // Vanilla `ItemInHandLayer` and the generic item branch of `CustomHeadLayer` have no
+        // `state.isInvisible` gate, so ordinary humanoid mobs keep both item-model attachments.
+        let root = unique_item_model_temp_dir("zombie-invisible-held-items");
+        write_flat_item_runtime_fixture(&root, &["hand_item", "head_item"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let mut world = WorldStore::new();
+        const ENTITY_ID: i32 = 602;
+        const ZOMBIE_ENTITY_TYPE_ID: i32 = 150;
+        world.apply_add_entity(protocol_add_entity(ENTITY_ID, ZOMBIE_ENTITY_TYPE_ID));
+        assert!(world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::MainHand, 0)));
+        assert!(world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::Head, 1)));
+
+        let visible = EntityModelInstance::zombie(ENTITY_ID, [0.0, 64.0, 0.0], 0.0, false);
+        let hidden = visible.with_invisible(true);
+        let hidden_glowing = visible.with_invisible(true).with_outline_color(0xff55_aa11);
+        let terrain_textures = TerrainTextureState::default();
+
+        let visible_models =
+            held_item_models(&[visible], &world, Some(&item_runtime), &terrain_textures);
+        let hidden_models =
+            held_item_models(&[hidden], &world, Some(&item_runtime), &terrain_textures);
+        let glowing_models = held_item_models(
+            &[hidden_glowing],
+            &world,
+            Some(&item_runtime),
+            &terrain_textures,
+        );
+
+        for models in [&visible_models, &hidden_models, &glowing_models] {
+            assert!(models.block_meshes.is_empty());
+            assert_eq!(models.flat_meshes.len(), 2);
+            assert!(models.flat_meshes.iter().all(|mesh| !mesh.is_empty()));
+        }
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn cluster_count_drives_geometry_and_is_non_empty() {
         let quads = unit_block_quads();
         // One copy and four copies both produce geometry; the four-copy mesh holds four times as much.

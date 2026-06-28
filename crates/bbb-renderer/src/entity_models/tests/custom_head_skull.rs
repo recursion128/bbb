@@ -263,6 +263,43 @@ fn marker_hidden_glowing_armor_stand_keeps_custom_head_skull_without_base_submis
 }
 
 #[test]
+fn hidden_zombie_keeps_custom_head_skull_without_base_submission() {
+    // Vanilla `CustomHeadLayer` has no `state.isInvisible` gate, so the skull branch still submits
+    // when an invisible humanoid mob's base body render type is null.
+    let atlas = atlas_with_many(&[ZOMBIE_TEXTURE_REF, SKELETON_TEXTURE_REF]);
+    let instance = EntityModelInstance::zombie(919, [0.0, 64.0, 0.0], 0.0, false)
+        .with_custom_head_skull(Some(EntityCustomHeadSkull::Skeleton))
+        .with_light_coords((7_u32 << 4) | (9_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true)
+        .with_invisible(true);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 1);
+    assert!(!meshes
+        .submissions
+        .iter()
+        .any(|submit| submit.texture == ZOMBIE_TEXTURE_REF));
+    assert_skull_submission(
+        &instance,
+        &meshes,
+        EntityModelLayerRenderType::EntityCutoutZOffset,
+        SKELETON_TEXTURE_REF,
+    );
+    assert_eq!(meshes.cutout.vertices.len(), 24);
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]
+            && vertex.light == instance.render_state.shader_light()
+            && vertex.overlay == [0.0, 10.0]));
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+}
+
+#[test]
 fn custom_head_skull_layer_renders_profileless_player_head_with_default_skin() {
     let atlas = atlas_with(PLAYER_SLIM_STEVE_TEXTURE_REF);
     assert_skull_layer_pass(

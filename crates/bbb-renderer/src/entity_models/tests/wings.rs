@@ -354,6 +354,111 @@ fn marker_hidden_glowing_armor_stand_keeps_wings_layer_without_base_submission()
 }
 
 #[test]
+fn hidden_zombie_keeps_wings_layer_without_base_submission() {
+    // Vanilla `WingsLayer` has no `state.isInvisible` gate, so an invisible humanoid mob keeps the
+    // WINGS equipment layer even when the base body render type is null.
+    let atlas = atlas_for(&[ZOMBIE_TEXTURE_REF, ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF]);
+    let layer = Some(EntityEquipmentLayerTexture {
+        texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
+        use_player_texture: true,
+    });
+    let instance = EntityModelInstance::zombie(88, [1.0, 64.0, -2.0], 25.0, false)
+        .with_chest_wings_layer(layer)
+        .with_chest_equipment_has_wings(true)
+        .with_light_coords((7_u32 << 4) | (9_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true)
+        .with_invisible(true);
+
+    let meshes =
+        entity_model_textured_meshes_with_dynamic_textures(&[instance], &atlas, None, None);
+
+    assert_eq!(meshes.submissions.len(), 1);
+    assert!(!meshes
+        .submissions
+        .iter()
+        .any(|submit| submit.texture == ZOMBIE_TEXTURE_REF));
+    let submit = meshes.submissions[0];
+    assert_eq!(
+        submit.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(submit.render_type.vanilla_name(), "armorCutoutNoCull");
+    assert_eq!(submit.texture, ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF);
+    assert_eq!(submit.dynamic_player_texture, None);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        submit.transform,
+        entity_model_root_transform(instance) * Mat4::from_translation(Vec3::Z * 0.125)
+    );
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, [0.0, 10.0]);
+    assert_eq!(submit.outline_color, 0);
+    assert_eq!((submit.order, submit.submit_sequence), (0, 2));
+    assert_eq!(elytra_vertex_positions(&meshes, &atlas).len(), 48);
+    assert_elytra_vertices_have_vanilla_metadata(&meshes, &atlas, instance);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+}
+
+#[test]
+fn hidden_player_keeps_wings_layer_without_base_submission() {
+    // Player `WingsLayer` is also ungated by `state.isInvisible`; hidden players keep the elytra
+    // equipment submission with the player-specific submit sequence.
+    let atlas = atlas_for(&[
+        PLAYER_WIDE_STEVE_TEXTURE_REF,
+        ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
+    ]);
+    let layer = Some(EntityEquipmentLayerTexture {
+        texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
+        use_player_texture: true,
+    });
+    let instance = EntityModelInstance::player_with_skin(
+        89,
+        [1.0, 64.0, -2.0],
+        25.0,
+        EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_chest_wings_layer(layer)
+    .with_chest_equipment_has_wings(true)
+    .with_light_coords((7_u32 << 4) | (9_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true)
+    .with_invisible(true);
+
+    let meshes =
+        entity_model_textured_meshes_with_dynamic_textures(&[instance], &atlas, None, None);
+
+    assert_eq!(meshes.submissions.len(), 1);
+    assert!(!meshes
+        .submissions
+        .iter()
+        .any(|submit| submit.texture == PLAYER_WIDE_STEVE_TEXTURE_REF));
+    let submit = meshes.submissions[0];
+    assert_eq!(
+        submit.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(submit.render_type.vanilla_name(), "armorCutoutNoCull");
+    assert_eq!(submit.texture, ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF);
+    assert_eq!(submit.dynamic_player_texture, None);
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        submit.transform,
+        player_model_root_transform(instance) * Mat4::from_translation(Vec3::Z * 0.125)
+    );
+    assert_eq!(submit.light, instance.render_state.shader_light());
+    assert_eq!(submit.overlay, [0.0, 10.0]);
+    assert_eq!(submit.outline_color, 0);
+    assert_eq!((submit.order, submit.submit_sequence), (0, 3));
+    assert_eq!(elytra_vertex_positions(&meshes, &atlas).len(), 48);
+    assert_elytra_vertices_have_vanilla_metadata(&meshes, &atlas, instance);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+}
+
+#[test]
 fn baby_zombie_wings_layer_uses_baby_elytra_model() {
     // Vanilla `WingsLayer` is attached by `HumanoidMobRenderer`, and its model
     // choice keys off `HumanoidRenderState.isBaby`.

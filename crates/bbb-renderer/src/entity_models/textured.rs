@@ -392,10 +392,9 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         {
             meshes.set_current_submission_state(*instance);
             // Vanilla `LivingEntityRenderer` still runs layers when the base body has no render
-            // type. Most layers gate on `state.isInvisible`; `WolfArmorLayer` does not, so adult
-            // invisible wolves keep their body-armor equipment/crack submissions.
+            // type. Keep only the layers whose own submit path has no `state.isInvisible` gate.
             emit_wolf_body_armor_layer(&mut meshes, *instance, atlas);
-            emit_armor_stand_invisible_layers(
+            emit_invisible_living_layers_without_invisible_gate(
                 &mut meshes,
                 *instance,
                 atlas,
@@ -469,10 +468,10 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
             }
         }
         if meshes.current_force_transparent || meshes.current_outline_only {
-            // Keep the vanilla layer exception above for invisible wolves while preserving the
-            // existing gate for the other post-base helpers.
+            // Keep vanilla layer exceptions for invisible bodies while preserving the existing gate
+            // for invisible-gated helpers such as player capes and ears.
             emit_wolf_body_armor_layer(&mut meshes, *instance, atlas);
-            emit_armor_stand_invisible_layers(
+            emit_invisible_living_layers_without_invisible_gate(
                 &mut meshes,
                 *instance,
                 atlas,
@@ -1738,17 +1737,14 @@ fn emit_worn_armor_stand_armor(
     }
 }
 
-fn emit_armor_stand_invisible_layers(
+fn emit_invisible_living_layers_without_invisible_gate(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
     dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
     dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) {
-    if !matches!(instance.kind, EntityModelKind::ArmorStand { .. }) {
-        return;
-    }
-    emit_worn_armor_stand_armor(meshes, instance, atlas);
+    emit_worn_humanoid_armor(meshes, instance, atlas);
     emit_custom_head_skull_layer(meshes, instance, atlas, dynamic_player_skin_atlas);
     emit_wings_layer(meshes, instance, atlas, dynamic_player_texture_atlas);
 }

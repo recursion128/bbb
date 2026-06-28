@@ -436,6 +436,105 @@ fn armored_zombie_emits_inflated_armor_pieces() {
 }
 
 #[test]
+fn hidden_zombie_keeps_humanoid_armor_without_base_submission() {
+    // Vanilla `LivingEntityRenderer.submit` still invokes `HumanoidArmorLayer` when the invisible
+    // base render type is null; `HumanoidArmorLayer` itself has no `state.isInvisible` gate.
+    let atlas = iron_armor_atlas();
+    let hidden = EntityModelInstance::zombie(72, [0.0, 64.0, 0.0], 0.0, false)
+        .with_head_armor(Some(EntityArmorMaterial::Iron))
+        .with_chest_armor(Some(EntityArmorMaterial::Iron))
+        .with_legs_armor(Some(EntityArmorMaterial::Iron))
+        .with_feet_armor(Some(EntityArmorMaterial::Iron))
+        .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true)
+        .with_invisible(true);
+
+    let meshes = entity_model_textured_meshes(&[hidden], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 4);
+    assert!(!meshes
+        .submissions
+        .iter()
+        .any(|submit| submit.texture == ZOMBIE_TEXTURE_REF));
+    assert_full_iron_zombie_armor_submissions(&meshes, hidden, 0, 0);
+    assert_eq!(
+        meshes.cutout.vertices.len(),
+        240,
+        "hidden base records no submission, but vanilla still runs HumanoidArmorLayer"
+    );
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+}
+
+#[test]
+fn hidden_player_keeps_humanoid_armor_without_base_submission() {
+    // Player renderers use the same ungated `HumanoidArmorLayer`; the hidden base must not suppress
+    // player armor submissions.
+    let atlas = iron_armor_atlas();
+    let hidden = EntityModelInstance::player_with_skin(
+        74,
+        [0.0, 64.0, 0.0],
+        0.0,
+        EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_head_armor(Some(EntityArmorMaterial::Iron))
+    .with_chest_armor(Some(EntityArmorMaterial::Iron))
+    .with_legs_armor(Some(EntityArmorMaterial::Iron))
+    .with_feet_armor(Some(EntityArmorMaterial::Iron))
+    .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true)
+    .with_invisible(true);
+
+    let meshes = entity_model_textured_meshes(&[hidden], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 4);
+    assert_full_iron_player_armor_submissions(&meshes, hidden, 0, 0);
+    assert_eq!(meshes.cutout.vertices.len(), 240);
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+}
+
+#[test]
+fn invisible_glowing_zombie_keeps_humanoid_armor_layer_submissions() {
+    let atlas = iron_armor_atlas();
+    let hidden_glowing = EntityModelInstance::zombie(73, [0.0, 64.0, 0.0], 0.0, false)
+        .with_head_armor(Some(EntityArmorMaterial::Iron))
+        .with_chest_armor(Some(EntityArmorMaterial::Iron))
+        .with_legs_armor(Some(EntityArmorMaterial::Iron))
+        .with_feet_armor(Some(EntityArmorMaterial::Iron))
+        .with_light_coords((7_u32 << 4) | (9_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true)
+        .with_invisible(true)
+        .with_outline_color(0xff11_44cc);
+
+    let meshes = entity_model_textured_meshes(&[hidden_glowing], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 5);
+    let base = meshes.submissions[0];
+    assert_eq!(base.texture, ZOMBIE_TEXTURE_REF);
+    assert_eq!(base.render_type, EntityModelLayerRenderType::Outline);
+    assert_eq!(base.render_type.vanilla_name(), "outline");
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(base.transform, entity_model_root_transform(hidden_glowing));
+    assert_eq!(base.light, hidden_glowing.render_state.shader_light());
+    assert_eq!(base.overlay, hidden_glowing.render_state.overlay_coords());
+    assert_eq!(base.outline_color, 0xff11_44cc);
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+    assert_full_iron_zombie_armor_submissions(&meshes, hidden_glowing, 1, 0xff11_44cc);
+    assert_eq!(
+        meshes.cutout.vertices.len(),
+        240,
+        "outline-only base records metadata only, while armorCutoutNoCull equipment still folds"
+    );
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+}
+
+#[test]
 fn full_armor_stand_armor_submissions_match_vanilla_layer_order() {
     let atlas = armor_stand_iron_armor_atlas();
     let armored_instance = EntityModelInstance::armor_stand(
@@ -597,6 +696,94 @@ fn small_armor_stand_armor_uses_small_model_scale_with_adult_textures() {
         y_extent(&small_positions) < y_extent(&full_positions) * 0.8,
         "ARMOR_STAND_SMALL_ARMOR applies HumanoidModel.BABY_TRANSFORMER while keeping adult equipment textures"
     );
+}
+
+fn assert_full_iron_zombie_armor_submissions(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    start_index: usize,
+    expected_outline_color: u32,
+) {
+    let expected_transform = entity_model_root_transform(instance);
+    for (submit, texture, sequence) in [
+        (
+            meshes.submissions[start_index],
+            ARMOR_IRON_HUMANOID_TEXTURE_REF,
+            1,
+        ),
+        (
+            meshes.submissions[start_index + 1],
+            ARMOR_IRON_LEGGINGS_TEXTURE_REF,
+            2,
+        ),
+        (
+            meshes.submissions[start_index + 2],
+            ARMOR_IRON_HUMANOID_TEXTURE_REF,
+            3,
+        ),
+        (
+            meshes.submissions[start_index + 3],
+            ARMOR_IRON_HUMANOID_TEXTURE_REF,
+            4,
+        ),
+    ] {
+        assert_eq!(
+            submit.render_type,
+            EntityModelLayerRenderType::ArmorCutoutNoCull
+        );
+        assert_eq!(submit.render_type.vanilla_name(), "armorCutoutNoCull");
+        assert_eq!(submit.texture, texture);
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(submit.transform, expected_transform);
+        assert_eq!(submit.light, instance.render_state.shader_light());
+        assert_eq!(submit.overlay, [0.0, 10.0]);
+        assert_eq!(submit.outline_color, expected_outline_color);
+        assert_eq!((submit.order, submit.submit_sequence), (1, sequence));
+    }
+}
+
+fn assert_full_iron_player_armor_submissions(
+    meshes: &EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    start_index: usize,
+    expected_outline_color: u32,
+) {
+    let expected_transform = player_model_root_transform(instance);
+    for (submit, texture, sequence) in [
+        (
+            meshes.submissions[start_index],
+            ARMOR_IRON_HUMANOID_TEXTURE_REF,
+            1,
+        ),
+        (
+            meshes.submissions[start_index + 1],
+            ARMOR_IRON_LEGGINGS_TEXTURE_REF,
+            2,
+        ),
+        (
+            meshes.submissions[start_index + 2],
+            ARMOR_IRON_HUMANOID_TEXTURE_REF,
+            3,
+        ),
+        (
+            meshes.submissions[start_index + 3],
+            ARMOR_IRON_HUMANOID_TEXTURE_REF,
+            4,
+        ),
+    ] {
+        assert_eq!(
+            submit.render_type,
+            EntityModelLayerRenderType::ArmorCutoutNoCull
+        );
+        assert_eq!(submit.render_type.vanilla_name(), "armorCutoutNoCull");
+        assert_eq!(submit.texture, texture);
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(submit.transform, expected_transform);
+        assert_eq!(submit.light, instance.render_state.shader_light());
+        assert_eq!(submit.overlay, [0.0, 10.0]);
+        assert_eq!(submit.outline_color, expected_outline_color);
+        assert_eq!((submit.order, submit.submit_sequence), (1, sequence));
+    }
 }
 
 fn assert_full_iron_armor_stand_submissions(

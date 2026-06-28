@@ -371,7 +371,15 @@ When an agent does any of the following, update this file in the same slice:
       adult `WolfArmorLayer` exception now keeps its armor equipment/crack
       submissions in hidden, self-visible translucent, and glowing-outline
       invisible states because vanilla does not gate that layer on
-      `state.isInvisible`.
+      `state.isInvisible`. Texture-backed player/humanoid invisible branches now
+      likewise keep vanilla ungated `HumanoidArmorLayer`, `WingsLayer`, and
+      `CustomHeadLayer` skull submissions in hidden no-base and glowing-outline
+      states, preserving texture/render-type/tint/transform/light/no-overlay/
+      outline-color/order metadata; the native item-model pass also keeps
+      ordinary humanoid main-hand items plus generic non-skull HEAD items in
+      visible, hidden, and hidden-glowing states. `CapeLayer` remains suppressed
+      for invisible players because vanilla explicitly gates it on
+      `!state.isInvisible`.
       Colored-path force-transparent output and GPU outline presentation remain
       deferred under the `outlineColor` slot.
     - deferred slots to add with their own slices, each carrying real vanilla
