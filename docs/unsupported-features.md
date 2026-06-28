@@ -568,10 +568,12 @@ When an agent does any of the following, update this file in the same slice:
     vertices now also carry per-face normals equivalent to vanilla
     `ModelPart.Polygon.normal`, and the textured shader applies vanilla
     `Lighting.setupLevel` default diffuse directions with `0.6` light power and
-    `0.4` ambient. Remaining lighting gaps: smooth/AO entity light, the colored
-    block-light tint, environment colors, gamma, flicker / darkness /
-    night-vision curves of the real vanilla `LightTexture`, Nether / UI lighting
-    variants, and the colored debug fallback's baked-shade approximation.
+    `0.4` ambient; normal transforms use vanilla `PoseStack.Pose` normal-matrix
+    semantics, i.e. pose inverse-transpose plus normalization. Remaining lighting
+    gaps: smooth/AO entity light, the colored block-light tint, environment
+    colors, gamma, flicker / darkness / night-vision curves of the real vanilla
+    `LightTexture`, Nether / UI lighting variants, and the colored debug
+    fallback's baked-shade approximation.
   - The hurt red damage overlay is implemented end to end as a real overlay pass,
     not a tint: `LivingEntity.hurtTime` is tracked client-side (set to
     `hurtDuration` = 10 by `apply_hurt_animation`/`apply_damage_event`, decremented

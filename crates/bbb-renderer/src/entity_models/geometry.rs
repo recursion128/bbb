@@ -565,6 +565,8 @@ fn transform_entity_normal(
         normal = -normal;
     }
     transform
+        .inverse()
+        .transpose()
         .transform_vector3(normal)
         .normalize_or_zero()
         .to_array()

@@ -1,4 +1,6 @@
-use glam::Mat4;
+use glam::{Mat4, Vec3};
+
+use super::assert_close3;
 
 use crate::entity_models::geometry::{
     EntityModelMesh, EntityModelTexturedMesh, PartPose, PART_POSE_ZERO,
@@ -102,4 +104,34 @@ fn model_part_render_textured_drives_the_same_posed_tree() {
     let mut hidden_mesh = EntityModelTexturedMesh::new();
     part.render_textured(&mut hidden_mesh, Mat4::IDENTITY, texture, uv_rect, tint);
     assert!(hidden_mesh.vertices.is_empty());
+}
+
+#[test]
+fn model_part_render_textured_uses_vanilla_normal_matrix_for_normals() {
+    // Vanilla `PoseStack.Pose` transforms cube face normals through the normal
+    // matrix, i.e. the inverse-transpose of the pose matrix, then normalizes.
+    let texture = EntityModelTextureRef {
+        path: "test",
+        size: [16, 16],
+    };
+    let uv_rect = EntityModelUvRect {
+        min: [0.0, 0.0],
+        max: [1.0, 1.0],
+    };
+    let transform = Mat4::from_scale(Vec3::new(2.0, 0.5, 1.0))
+        * Mat4::from_rotation_z(std::f32::consts::FRAC_PI_4);
+    let part = ModelPart::leaf(PART_POSE_ZERO, unit_cube());
+
+    let mut mesh = EntityModelTexturedMesh::new();
+    part.render_textured(&mut mesh, transform, texture, uv_rect, [1.0; 4]);
+
+    assert_close3(mesh.vertices[0].normal, [0.24253564, -0.9701425, 0.0]);
+    let ordinary_vector_normal = transform
+        .transform_vector3(Vec3::new(0.0, -1.0, 0.0))
+        .normalize_or_zero()
+        .to_array();
+    assert!(
+        (mesh.vertices[0].normal[0] - ordinary_vector_normal[0]).abs() > 0.5,
+        "normal must use inverse-transpose, not ordinary vector transform"
+    );
 }

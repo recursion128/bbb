@@ -349,6 +349,8 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。
 - [x] texture-backed entity vertices 已携带 vanilla `ModelPart.Polygon.normal`
   等价的面法线，textured shader 已使用 `Lighting.setupLevel` 默认方向光
   (`0.6` power + `0.4` ambient)；colored debug fallback 仍保留 baked shade。
+- [x] texture-backed entity normal 已按 vanilla `PoseStack.Pose`
+  normal matrix（pose inverse-transpose + normalize）变换，覆盖非等比缩放精度。
 - [x] `breezeWind` scroll GPU path 已按 vanilla `NO_CARDINAL_LIGHTING` +
   lightmap-lit 语义使用 submitted block/sky light；`energySwirl` 拆到独立
   emissive additive scroll shader。
@@ -362,7 +364,7 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。
   flicker / darkness / night-vision 曲线。
 - 补齐实体 smooth / AO 风格采样差异。
 - 补齐 Nether level lighting、GUI/entity-in-UI lighting variants，以及 colored
-  debug fallback 与完整 normal-matrix 精度。
+  debug fallback。
 - 将 white overlay progress、hurt/red overlay、freeze/flash 等 overlay 行为统一到所有相关 layer。
 - 补齐 base-model invisible handling：
   - invisible 自身视角
