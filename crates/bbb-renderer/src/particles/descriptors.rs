@@ -292,6 +292,26 @@ impl ParticleDescriptor {
                 has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
+            "minecraft:egg_crack" => Self {
+                provider: "SuspendedTownParticle.EggCrackProvider",
+                lifetime: ParticleLifetimeDescriptor::BaseAshSmoke {
+                    max_lifetime: 20,
+                    scale_tenths: 10,
+                },
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SuspendedTown {
+                    color: SuspendedTownColorDescriptor::Override(
+                        ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                    ),
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::ParticleConstructorScaled {
+                    scale: 0.02,
+                },
+                friction: 0.99,
+                gravity: 0.0,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
             "minecraft:poof" => Self {
                 provider: "ExplodeParticle.Provider",
                 lifetime: ParticleLifetimeDescriptor::Explode,
@@ -750,6 +770,28 @@ mod tests {
         );
         assert_eq!(
             ParticleDescriptor::for_particle("minecraft:mycelium").initial_velocity,
+            ParticleInitialVelocityDescriptor::ParticleConstructorScaled { scale: 0.02 }
+        );
+        assert_descriptor(
+            "minecraft:egg_crack",
+            "SuspendedTownParticle.EggCrackProvider",
+            ParticleLifetimeDescriptor::BaseAshSmoke {
+                max_lifetime: 20,
+                scale_tenths: 10,
+            },
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::SuspendedTown {
+                color: SuspendedTownColorDescriptor::Override(ParticleColorDescriptor::FixedRgb([
+                    1.0, 1.0, 1.0,
+                ])),
+            },
+            0.99,
+            0.0,
+            true,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:egg_crack").initial_velocity,
             ParticleInitialVelocityDescriptor::ParticleConstructorScaled { scale: 0.02 }
         );
         assert_descriptor(

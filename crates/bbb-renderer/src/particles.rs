@@ -1047,6 +1047,16 @@ mod tests {
         assert_eq!(mycelium.quad_size_curve, ParticleQuadSizeCurve::Constant);
         assert_ne!(mycelium.velocity, [0.0, 0.0, 0.0]);
 
+        let mut egg_crack_random = ParticleRandom::new(50);
+        let egg_crack = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:egg_crack", 1.0),
+            &mut egg_crack_random,
+        );
+        assert_eq!(egg_crack.provider, "SuspendedTownParticle.EggCrackProvider");
+        assert_eq!(egg_crack.color, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(egg_crack.quad_size_curve, ParticleQuadSizeCurve::Constant);
+        assert_ne!(egg_crack.velocity, [0.0, 0.0, 0.0]);
+
         let mut smoke_random = ParticleRandom::new(44);
         let smoke = ParticleInstance::from_spawn_command(
             spawn_command("minecraft:white_smoke", 1.0),
