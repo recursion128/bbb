@@ -929,6 +929,11 @@ entity_render_state! {
     /// (`xRot += π/2`), pitches the tail (`xRot += π/6`), and tucks the wings (`zRot = ±0.0873`).
     /// `false` for a standing parrot and every non-parrot entity.
     (with_parrot_sitting) parrot_sitting: bool = false;
+    /// Vanilla `ParrotRenderState.pose == PARTY` (`Parrot.isPartyParrot()`): PARTY
+    /// overrides sitting/flying in `ParrotModel.getPose`, zeros the head look, and
+    /// bobs the head/body/wings/tail around the jukebox dance pose. `false` for a
+    /// non-partying parrot and every non-parrot entity.
+    (with_parrot_party) parrot_party: bool = false;
     /// Vanilla `TurtleRenderState.hasEgg` (`!isBaby() && Turtle.hasEgg()`, the synced `HAS_EGG`
     /// boolean): a gravid adult turtle, whose `AdultTurtleModel.setupAnim` shows the `egg_belly`
     /// overlay cube and drops the whole model `root.y--` by one unit. `false` for a turtle
@@ -2445,6 +2450,7 @@ mod tests {
                 wolf_shake_anim: 0.0,
                 wolf_head_roll_angle: 0.0,
                 parrot_sitting: false,
+                parrot_party: false,
                 turtle_has_egg: false,
                 turtle_laying_egg: false,
                 end_crystal_shows_bottom: true,

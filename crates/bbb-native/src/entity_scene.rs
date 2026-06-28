@@ -1482,6 +1482,7 @@ fn entity_model_instance(
         .with_wolf_shake_anim(source.wolf_shake_anim)
         .with_wolf_head_roll_angle(source.wolf_head_roll_angle)
         .with_parrot_sitting(parrot_sitting(source.entity_type_id, &source.data_values))
+        .with_parrot_party(source.parrot_party)
         .with_illager_spellcasting(illager_spellcasting(
             source.entity_type_id,
             &source.data_values,
@@ -12129,6 +12130,50 @@ mod tests {
             )],
         }));
         assert!(!parrot_sitting(&world, 151));
+    }
+
+    #[test]
+    fn entity_model_instances_preserve_parrot_party_from_world_source() {
+        // Vanilla `ParrotRenderer.extractRenderState` copies `ParrotModel.getPose(entity)`, where
+        // `isPartyParrot()` wins over sitting/flying. The world layer owns the jukebox proximity
+        // projection, so native must preserve `parrot_party` when building `EntityRenderState`.
+        let source: EntityModelSourceState = serde_json::from_value(serde_json::json!({
+            "entity_id": 152,
+            "entity_type_id": VANILLA_ENTITY_TYPE_PARROT_ID,
+            "position": { "x": 1.0, "y": 64.0, "z": -2.0 },
+            "y_rot": 0.0,
+            "parrot_party": true,
+            "data_values": []
+        }))
+        .unwrap();
+
+        let instance = entity_model_instance(
+            source,
+            &WorldStore::new(),
+            None,
+            0,
+            1.0,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(
+            instance.kind,
+            EntityModelKind::Parrot {
+                variant: ParrotModelVariant::RedBlue,
+            }
+        );
+        assert!(
+            instance.render_state.parrot_party,
+            "native preserves the world-projected ParrotRenderState PARTY pose"
+        );
     }
 
     #[test]

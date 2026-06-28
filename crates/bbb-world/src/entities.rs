@@ -78,6 +78,7 @@ pub(crate) const VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID: i32 = 90;
 pub(crate) const VANILLA_ENTITY_TYPE_PALE_OAK_BOAT_ID: i32 = 94;
 pub(crate) const VANILLA_ENTITY_TYPE_PALE_OAK_CHEST_BOAT_ID: i32 = 95;
 pub(crate) const VANILLA_ENTITY_TYPE_PANDA_ID: i32 = 96;
+pub(crate) const VANILLA_ENTITY_TYPE_PARROT_ID: i32 = 98;
 pub(crate) const VANILLA_ENTITY_TYPE_SHULKER_ID: i32 = 112;
 pub(crate) const VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID: i32 = 116;
 pub(crate) const VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID: i32 = 118;
@@ -1076,6 +1077,12 @@ pub struct EntityModelSourceState {
     /// grounded/still parrot and every non-parrot entity.
     #[serde(default)]
     pub parrot_flap_angle: f32,
+    /// Vanilla `ParrotRenderState.pose == PARTY` (`Parrot.isPartyParrot()`): true
+    /// while the parrot has been notified about a playing jukebox and remains
+    /// within `BlockPos.closerToCenterThan(entity.position(), 3.46)`. The renderer
+    /// consumes this before sitting/flying, matching `ParrotModel.getPose`.
+    #[serde(default)]
+    pub parrot_party: bool,
     /// Vanilla `HumanoidArmorLayer` worn armor, the equipment-asset material per armor slot, resolved
     /// from the entity's `SetEquipment` items against the item registry. `None` leaves the slot bare.
     /// Only humanoid armor-wearers carry these; the renderer drapes the matching inflated armor piece.
@@ -1606,6 +1613,12 @@ impl WorldStore {
                     source.boat_underwater =
                         crate::fluid::world_aabb_boat_underwater(self, aabb_min, aabb_max);
                 }
+                if source.entity_type_id == VANILLA_ENTITY_TYPE_PARROT_ID {
+                    // Vanilla `LevelEventHandler.playJukeboxSong` notifies nearby living entities,
+                    // and `Parrot.aiStep` keeps PARTY only while its jukebox block position is within
+                    // `BlockPos.closerToCenterThan(entity.position(), 3.46)`.
+                    source.parrot_party = self.parrot_party_near_playing_jukebox(target.position);
+                }
                 if source.is_sleeping {
                     if let Some((yaw, offset)) = self.resolve_sleeping_bed(target.entity_id) {
                         source.sleeping_bed_yaw = Some(yaw);
@@ -1633,6 +1646,17 @@ impl WorldStore {
             .team_color_rgb_for_scoreboard_name(&scoreboard_name)
             .unwrap_or(VANILLA_DEFAULT_ENTITY_OUTLINE_RGB);
         VANILLA_OPAQUE_ALPHA | rgb
+    }
+
+    fn parrot_party_near_playing_jukebox(&self, position: EntityVec3) -> bool {
+        const VANILLA_PARROT_PARTY_JUKEBOX_DISTANCE: f64 = 3.46;
+        self.playing_jukebox_songs().iter().any(|song| {
+            block_pos_closer_to_center_than(
+                song.pos,
+                position,
+                VANILLA_PARROT_PARTY_JUKEBOX_DISTANCE,
+            )
+        })
     }
 
     fn local_player_can_see_friendly_invisible(&self, source: &EntityModelSourceState) -> bool {
@@ -1831,6 +1855,15 @@ fn entity_light_block_pos(position: EntityVec3) -> BlockPos {
         y: position.y.floor() as i32,
         z: position.z.floor() as i32,
     }
+}
+
+fn block_pos_closer_to_center_than(pos: BlockPos, point: EntityVec3, distance: f64) -> bool {
+    // Vanilla `Vec3i.closerToCenterThan`: strict squared-distance comparison from
+    // the block center `(x + 0.5, y + 0.5, z + 0.5)`.
+    let dx = f64::from(pos.x) + 0.5 - point.x;
+    let dy = f64::from(pos.y) + 0.5 - point.y;
+    let dz = f64::from(pos.z) + 0.5 - point.z;
+    dx * dx + dy * dy + dz * dz < distance * distance
 }
 
 fn item_entity_stack_mut(

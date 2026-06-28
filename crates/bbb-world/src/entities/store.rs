@@ -1437,6 +1437,7 @@ impl EntityStore {
             parrot_flap_angle: client_animations
                 .animations
                 .parrot_flap_angle(partial_ticks),
+            parrot_party: false,
             // Vanilla `HumanoidArmorLayer`: the worn armor item in each armor slot resolved to its
             // equipment-asset material against the item registry map (threaded from the WorldStore).
             head_armor: armor_material(ProtocolEquipmentSlot::Head),

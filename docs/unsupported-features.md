@@ -3347,14 +3347,15 @@ When an agent does any of the following, update this file in the same slice:
       every part raises `y += 1.9`, the legs fold `xRot += π/2`, the tail pitches `xRot += π/6`, and the wings
       tuck to `zRot = ±0.0873` (the `setupAnim` SITTING branch adds nothing more). The head look is now
       reproduced: `setupAnim` sets `head.xRot/yRot` from the projected `head_pitch/head_yaw` before the
-      per-pose switch, so the top-level head part (and its beak/crest children) turn at both projected poses
-      (STANDING and SITTING); only the un-projected PARTY pose would overwrite it. The STANDING walk swing is
+      per-pose switch, so the top-level head part (and its beak/crest children) turn at projected normal poses
+      (STANDING and SITTING); the PARTY branch now correctly overwrites head x/y look to zero. The STANDING walk swing is
       reproduced too: the legs add `xRot += cos(walkAnimationPos·0.6662 [+π])·1.4·walkAnimationSpeed` (left in
       phase, right out) and the tail adds `xRot += cos(walkAnimationPos·0.6662)·0.3·walkAnimationSpeed` onto
       their baked pitch, gated off the projected `walk_animation_pos/speed` and skipped while sitting (the
-      vanilla SITTING branch breaks before it). The wing flap and FLYING pose are now projected too:
-      `ParrotModel.getPose` is derived in the renderer from `parrot_sitting` + the synced `on_ground` flag
-      (SITTING when sitting, else FLYING when airborne since `isFlying() = !onGround()`, else STANDING). A
+      vanilla SITTING branch breaks before it). The PARTY, wing flap, and FLYING poses are now projected too:
+      `ParrotModel.getPose` is derived in the renderer from `parrot_party`, `parrot_sitting`, and the synced `on_ground` flag
+      (PARTY while a playing jukebox is within `BlockPos.closerToCenterThan(entity.position(), 3.46)`, else
+      SITTING when sitting, else FLYING when airborne since `isFlying() = !onGround()`, else STANDING). A
       `ParrotFlapAnimationState` client accumulator mirrors `Parrot.calculateFlapping` — per tick
       `flapSpeed += (!onGround() && !isPassenger() ? 4 : -1)·0.3` clamped `[0,1]`, `flapping` re-seeds to `1`
       whenever airborne then decays `·0.9`, and `flap += flapping·2` (`flapping` initializes to `1.0`); it is
@@ -3365,9 +3366,11 @@ When an agent does any of the following, update this file in the same slice:
       `rightWing.zRot = 0.0873 + flapAngle`) and the body/head/tail/wing/leg bob (`y += flapAngle·0.3`); a
       grounded parrot has `flapSpeed → 0`, so the wings settle to `zRot = ±0.0873` and the bob vanishes.
       `prepare(FLYING)` additionally pitches both legs `xRot += 2π/9`, and FLYING skips the STANDING leg walk
-      swing. Still deferred: the PARTY pose (needs the un-projected `isPartyParrot()` jukebox-proximity state)
-      and the ON_SHOULDER pose (needs the shoulder-riding render path) — a party/shoulder parrot falls back to
-      STANDING/FLYING. The five `Parrot.Variant` colors (red_blue / blue / green / yellow_blue / gray) are now
+      swing. PARTY mirrors vanilla `prepare(PARTY)` plus the switch branch: the legs splay to `zRot = ∓π/9`,
+      head/body/wings/tail move by `cos(ageInTicks)` / `sin(ageInTicks)`, the head rolls by
+      `sin(ageInTicks)·0.4`, and the wings still consume `parrot_flap_angle`; PARTY overrides both sitting and
+      the normal head look. Still deferred: the ON_SHOULDER pose (needs the shoulder-riding render path) — a
+      shoulder parrot falls back to STANDING/FLYING. The five `Parrot.Variant` colors (red_blue / blue / green / yellow_blue / gray) are
       bound on the textured path: the native scene reads the synced `DATA_VARIANT_ID` (20, int — after
       `AgeableMob.AGE_LOCKED` at 17 and the two `TamableAnimal` accessors at 18/19) and `Parrot.Variant.byId`
       selects the per-colour texture (`parrot_red_blue` / `_blue` / `_green` / `_yellow_blue` / `parrot_grey.png`),
@@ -3375,7 +3378,9 @@ When an agent does any of the following, update this file in the same slice:
       explicit `ParrotBase` submission identity, vanilla `entityCutout` render type/name, white tint,
       vanilla `ModelLayers.PARROT` (`minecraft:parrot#main`), root transform,
       `(order, submit_sequence) == (0, 0)`, and the `MobRenderer` / `LivingEntityRenderer`
-      `lightCoords` plus hurt/white overlay metadata, with folded cutout vertices inheriting that metadata.
+      `lightCoords` plus hurt/white overlay metadata, with folded cutout vertices inheriting that metadata. The
+      PARTY regression additionally pins that the dance changes folded geometry while preserving that same
+      texture/render-type/tint/root-transform/light/overlay/order submission metadata.
     - shulker entities as renderer-owned vanilla 26.1 `ShulkerModel.createBodyLayer()` geometry on the
       textured path: the native entity scene (`entity_scene.rs`) projects vanilla type id `112` to
       `EntityModelKind::Shulker { color }`, replacing the former placeholder bounds box. The hierarchy is emitted

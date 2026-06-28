@@ -111,6 +111,69 @@ fn parrot_sitting_pose_matches_vanilla_prepare() {
 }
 
 #[test]
+fn parrot_party_pose_matches_vanilla_prepare_and_setup_anim() {
+    use std::f32::consts::PI;
+
+    let age = 1.25_f32;
+    let flap = 0.6_f32;
+    let x_pos = age.cos();
+    let y_pos = age.sin();
+    let mut party = ParrotModel::new();
+    party.prepare(
+        &EntityModelInstance::parrot(989, [0.0, 64.0, 0.0], 0.0, ParrotModelVariant::RedBlue)
+            .with_parrot_party(true)
+            .with_parrot_sitting(true)
+            .with_head_look(40.0, -25.0)
+            .with_age_in_ticks(age)
+            .with_parrot_flap_angle(flap),
+    );
+    let root = party.root_mut();
+
+    // `ParrotModel.getPose` checks PARTY before SITTING, so the sitting y-offset/fold never applies.
+    assert_eq!(
+        root.child_mut("left_leg").pose.offset,
+        PARROT_LEFT_LEG_POSE.offset
+    );
+    assert_eq!(
+        root.child_mut("right_leg").pose.offset,
+        PARROT_RIGHT_LEG_POSE.offset
+    );
+    assert!((root.child_mut("left_leg").pose.rotation[2] - (-PI / 9.0)).abs() < 1.0e-6);
+    assert!((root.child_mut("right_leg").pose.rotation[2] - (PI / 9.0)).abs() < 1.0e-6);
+
+    // PARTY overwrites the head look (`xRot/yRot = 0`) and rolls the head by `sin(age) * 0.4`.
+    let head = root.child_mut("head");
+    assert!((head.pose.offset[0] - (PARROT_HEAD_POSE.offset[0] + x_pos)).abs() < 1.0e-6);
+    assert!((head.pose.offset[1] - (PARROT_HEAD_POSE.offset[1] + y_pos)).abs() < 1.0e-6);
+    assert_eq!(head.pose.rotation[0], 0.0);
+    assert_eq!(head.pose.rotation[1], 0.0);
+    assert!((head.pose.rotation[2] - y_pos * 0.4).abs() < 1.0e-6);
+
+    let body = root.child_mut("body");
+    assert!((body.pose.offset[0] - (PARROT_BODY_POSE.offset[0] + x_pos)).abs() < 1.0e-6);
+    assert!((body.pose.offset[1] - (PARROT_BODY_POSE.offset[1] + y_pos)).abs() < 1.0e-6);
+
+    let left_wing = root.child_mut("left_wing");
+    assert!((left_wing.pose.offset[0] - (PARROT_LEFT_WING_POSE.offset[0] + x_pos)).abs() < 1.0e-6);
+    assert!((left_wing.pose.offset[1] - (PARROT_LEFT_WING_POSE.offset[1] + y_pos)).abs() < 1.0e-6);
+    assert!((left_wing.pose.rotation[2] - (-0.0873 - flap)).abs() < 1.0e-6);
+
+    let right_wing = root.child_mut("right_wing");
+    assert!(
+        (right_wing.pose.offset[0] - (PARROT_RIGHT_WING_POSE.offset[0] + x_pos)).abs() < 1.0e-6
+    );
+    assert!(
+        (right_wing.pose.offset[1] - (PARROT_RIGHT_WING_POSE.offset[1] + y_pos)).abs() < 1.0e-6
+    );
+    assert!((right_wing.pose.rotation[2] - (0.0873 + flap)).abs() < 1.0e-6);
+
+    let tail = root.child_mut("tail");
+    assert!((tail.pose.offset[0] - (PARROT_TAIL_POSE.offset[0] + x_pos)).abs() < 1.0e-6);
+    assert!((tail.pose.offset[1] - (PARROT_TAIL_POSE.offset[1] + y_pos)).abs() < 1.0e-6);
+    assert_eq!(tail.pose.rotation, PARROT_TAIL_POSE.rotation);
+}
+
+#[test]
 fn parrot_head_look_turns_only_the_head_subtree() {
     // Vanilla `ParrotModel.setupAnim` sets `head.xRot/yRot` from the look angles before the
     // per-pose switch, so the head and its beak/crest children turn while the body, tail, wings,
@@ -512,4 +575,43 @@ fn parrot_textured_render_matches_vanilla_renderer() {
             .iter()
             .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
     }
+
+    let party_instance =
+        EntityModelInstance::parrot(901, [1.0, 64.0, -2.0], 15.0, ParrotModelVariant::RedBlue)
+            .with_parrot_party(true)
+            .with_parrot_sitting(true)
+            .with_head_look(30.0, -20.0)
+            .with_age_in_ticks(1.25)
+            .with_parrot_flap_angle(0.6)
+            .with_light_coords((4_u32 << 4) | (11_u32 << 20));
+    let party = entity_model_textured_meshes(&[party_instance], &atlas);
+    assert_eq!(party.submissions.len(), 1);
+    let submit = party.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(
+        submit.texture,
+        parrot_texture_ref(ParrotModelVariant::RedBlue)
+    );
+    assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        submit.transform,
+        entity_model_root_transform(party_instance)
+    );
+    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert_eq!(submit.light, party_instance.render_state.shader_light());
+    assert_eq!(submit.overlay, party_instance.render_state.overlay_coords());
+
+    let standing_instance =
+        EntityModelInstance::parrot(902, [1.0, 64.0, -2.0], 15.0, ParrotModelVariant::RedBlue)
+            .with_on_ground(true)
+            .with_age_in_ticks(1.25)
+            .with_parrot_flap_angle(0.6)
+            .with_light_coords((4_u32 << 4) | (11_u32 << 20));
+    let standing = entity_model_textured_meshes(&[standing_instance], &atlas);
+    assert_eq!(party.cutout.vertices.len(), standing.cutout.vertices.len());
+    assert_ne!(
+        party.cutout.vertices, standing.cutout.vertices,
+        "PARTY changes the posed parrot geometry without changing vanilla base submission metadata"
+    );
 }

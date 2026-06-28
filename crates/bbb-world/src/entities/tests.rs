@@ -12,10 +12,11 @@ use bbb_protocol::packets::{
     GameEvent as ProtocolGameEvent, GameProfile as ProtocolGameProfile,
     GameType as ProtocolGameType, HurtAnimation as ProtocolHurtAnimation, InteractionHand,
     ItemStackSummary, ItemStackSummary as ProtocolItemStackSummary,
-    MinecartStep as ProtocolMinecartStep, MoveMinecartAlongTrack as ProtocolMoveMinecartAlongTrack,
-    MoveVehicle as ProtocolMoveVehicle, PlayLogin as ProtocolPlayLogin,
-    PlayerInfoAction as ProtocolPlayerInfoAction, PlayerInfoEntry as ProtocolPlayerInfoEntry,
-    PlayerInfoUpdate as ProtocolPlayerInfoUpdate, PlayerTeamMethod as ProtocolPlayerTeamMethod,
+    LevelEvent as ProtocolLevelEvent, MinecartStep as ProtocolMinecartStep,
+    MoveMinecartAlongTrack as ProtocolMoveMinecartAlongTrack, MoveVehicle as ProtocolMoveVehicle,
+    PlayLogin as ProtocolPlayLogin, PlayerInfoAction as ProtocolPlayerInfoAction,
+    PlayerInfoEntry as ProtocolPlayerInfoEntry, PlayerInfoUpdate as ProtocolPlayerInfoUpdate,
+    PlayerTeamMethod as ProtocolPlayerTeamMethod,
     PlayerTeamParameters as ProtocolPlayerTeamParameters, RemoveEntities as ProtocolRemoveEntities,
     RotateHead as ProtocolRotateHead, SetEntityData as ProtocolSetEntityData,
     SetEntityLink as ProtocolSetEntityLink, SetEntityMotion as ProtocolSetEntityMotion,
@@ -5825,6 +5826,102 @@ fn entity_model_sources_project_parrot_wing_flap() {
     assert_ne!(
         at_zero, at_one,
         "the projected flap angle changes across the partial tick: {at_zero} vs {at_one}"
+    );
+}
+
+#[test]
+fn entity_model_sources_project_parrot_party_from_playing_jukebox() {
+    const VANILLA_ENTITY_TYPE_COD_ID: i32 = 27;
+    const VANILLA_ENTITY_TYPE_PARROT_ID: i32 = 98;
+
+    let jukebox = ProtocolBlockPos { x: 1, y: 64, z: -2 };
+    let parrot_party = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(1.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .parrot_party
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        91,
+        VANILLA_ENTITY_TYPE_PARROT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        92,
+        VANILLA_ENTITY_TYPE_COD_ID,
+    ));
+
+    assert!(!parrot_party(&store, 91));
+
+    // Vanilla `LevelEventHandler.playJukeboxSong` notifies nearby living entities, and
+    // `Parrot.aiStep` keeps PARTY while `BlockPos.closerToCenterThan(entity.position(), 3.46)`.
+    store.apply_level_event(ProtocolLevelEvent {
+        event_type: 1010,
+        pos: jukebox,
+        data: 12,
+        global: false,
+    });
+    assert!(parrot_party(&store, 91));
+    assert!(
+        !parrot_party(&store, 92),
+        "the same active jukebox does not mark non-parrot sources as PARTY"
+    );
+
+    assert!(
+        store.apply_entity_position_sync(ProtocolEntityPositionSync {
+            id: 91,
+            position: ProtocolVec3d {
+                x: 6.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            y_rot: 0.0,
+            x_rot: 0.0,
+            on_ground: true,
+        })
+    );
+    assert!(
+        !parrot_party(&store, 91),
+        "moving outside the vanilla 3.46 block-center radius clears PARTY"
+    );
+
+    assert!(
+        store.apply_entity_position_sync(ProtocolEntityPositionSync {
+            id: 91,
+            position: ProtocolVec3d {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            y_rot: 0.0,
+            x_rot: 0.0,
+            on_ground: true,
+        })
+    );
+    assert!(parrot_party(&store, 91));
+
+    store.apply_level_event(ProtocolLevelEvent {
+        event_type: 1011,
+        pos: jukebox,
+        data: 0,
+        global: false,
+    });
+    assert!(
+        !parrot_party(&store, 91),
+        "the stop event removes the active jukebox song and clears PARTY"
     );
 }
 
