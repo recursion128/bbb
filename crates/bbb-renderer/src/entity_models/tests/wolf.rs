@@ -1035,19 +1035,24 @@ fn invisible_wolf_body_armor_keeps_vanilla_layer_submissions() {
         glowing_hidden.render_state.overlay_coords()
     );
     assert_eq!(outline.outline_color, 0xff33_66cc);
-    assert_eq!(glowing.outline.cutout_faces, 66);
-    assert_eq!(glowing.outline.vertices.len(), 264);
-    assert_eq!(glowing.outline.indices.len(), 396);
+    assert_eq!(glowing.outline.cutout_faces, 264);
+    assert_eq!(glowing.outline.vertices.len(), 1056);
+    assert_eq!(glowing.outline.indices.len(), 1584);
     let outline_tint = [
         0x33 as f32 / 255.0,
         0x66 as f32 / 255.0,
         0xcc as f32 / 255.0,
         1.0,
     ];
-    assert!(glowing.outline.vertices.iter().all(|vertex| {
+    assert!(glowing.outline.vertices[0..264].iter().all(|vertex| {
         vertex.tint == outline_tint
             && vertex.light == outline.light
             && vertex.overlay == outline.overlay
+    }));
+    assert!(glowing.outline.vertices[264..].iter().all(|vertex| {
+        vertex.tint == outline_tint
+            && vertex.light == outline.light
+            && vertex.overlay == [0.0, 10.0]
     }));
     assert_wolf_armor_submissions_for_invisible_state(
         &glowing.submissions,

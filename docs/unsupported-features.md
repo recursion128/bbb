@@ -343,14 +343,16 @@ When an agent does any of the following, update this file in the same slice:
     geometry is outside the textured submission path. Historical residual wording
     below is retained as evidence of migration slices, not as a current P0 blocker.
     Remaining colored fallback geometry belongs to non-textured debug/parity work,
-    while GPU bucket folding, vanilla outline-target compositing, render-graph
-    sorting, and more exact lighting remain separate P0 visual or later
-    presentation follow-ups, not narrow pipeline blockers.
+    while vanilla outline-target compositing, render-graph sorting, and more exact
+    lighting remain separate P0 visual or later presentation follow-ups, not narrow
+    pipeline blockers.
   - P0 pipeline closeout also treats the remaining GPU-path fine-grained state as
     explicitly deferred follow-up, not as a blocker for the CPU submission graph:
     the backend currently folds compatible submissions into atlas buckets
     (`cutout`, `translucent`, `eyes`, static-atlas outline, dynamic profile
-    texture buckets, scroll / additive scroll). Later GPU work should
+    texture buckets, scroll / additive scroll), and static-atlas `AFFECTS_OUTLINE`
+    submissions with a non-zero outline color are now also copied into the outline
+    bucket. Later GPU work should
     preserve per-submission draw order across buckets, split currently-coalesced
     render-type state such as `entityCutout*`, `entitySolid`,
     `armorCutoutNoCull`, `entityTranslucent*`, `Eyes`, `waterMask`, and glint /
@@ -540,11 +542,12 @@ When an agent does any of the following, update this file in the same slice:
       ordinary humanoid main-hand items plus generic non-skull HEAD items in
       visible, hidden, and hidden-glowing states. `CapeLayer` remains suppressed
       for invisible players because vanilla explicitly gates it on
-      `!state.isInvisible`. Texture-backed static-atlas outline submissions now
-      also retain CPU-side folded outline geometry when the texture is present,
-      upload it as a GPU resident outline bucket, and tint folded outline vertices
-      from `outlineColor` while preserving the original model tint in submission
-      metadata. Colored-path force-transparent output now uses the vanilla
+      `!state.isInvisible`. Texture-backed static-atlas outline submissions and
+      visible glowing `AFFECTS_OUTLINE` submissions now retain CPU-side folded
+      outline geometry when the texture is present, upload it as a GPU resident
+      outline bucket, and tint folded outline vertices from `outlineColor` while
+      preserving the original model tint in submission metadata. Colored-path
+      force-transparent output now uses the vanilla
       `0x26ffffff` alpha on the colored runtime path, and colored hidden-glowing
       outline output uses `outlineColor`; vanilla outline-target compositing
       remains deferred under the visual follow-up slots.
@@ -1193,7 +1196,8 @@ When an agent does any of the following, update this file in the same slice:
   - Finish remaining sheep presentation parity:
     - finish vanilla outline-target/final-composite presentation; base and wool
       outline submission metadata plus `outlineColor`-tinted GPU outline bucket
-      geometry are now recorded for the texture-backed static-atlas path
+      geometry are now recorded for the texture-backed static-atlas path, including
+      visible glowing `AFFECTS_OUTLINE` submits
     - implement remaining vanilla outline-target/final-composite handling
   - Finish wolf presentation parity:
     - registry-driven wolf variants are DONE: the synced `Wolf.DATA_VARIANT_ID`

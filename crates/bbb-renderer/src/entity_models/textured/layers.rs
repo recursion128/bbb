@@ -251,6 +251,20 @@ impl EntityModelLayerRenderType {
         }
     }
 
+    pub(in crate::entity_models) const fn affects_outline(self) -> bool {
+        matches!(
+            self,
+            Self::EntitySolid
+                | Self::ArmorCutoutNoCull
+                | Self::ArmorTranslucent
+                | Self::EntityCutout
+                | Self::EntityCutoutCull
+                | Self::EntityCutoutZOffset
+                | Self::EntityTranslucent
+                | Self::EntityTranslucentCullItemTarget
+        )
+    }
+
     #[cfg(test)]
     pub(in crate::entity_models) const fn vanilla_name(self) -> &'static str {
         match self {

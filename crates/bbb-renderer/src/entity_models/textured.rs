@@ -31,8 +31,8 @@ use super::{
         append_scrolled_textured_mesh, argb_to_tint, emit_textured_model_cube,
         emit_textured_model_parts, fill_entity_textured_light, fill_entity_textured_overlay,
         part_pose_transform, EntityModelScrollMesh, EntityModelScrollVertex,
-        EntityModelTexturedMesh, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
-        ENTITY_VERTEX_FULL_BRIGHT_LIGHT, ENTITY_VERTEX_NO_OVERLAY,
+        EntityModelTexturedMesh, EntityModelTexturedVertex, PartPose, TexturedModelCubeDesc,
+        TexturedModelPartDesc, ENTITY_VERTEX_FULL_BRIGHT_LIGHT, ENTITY_VERTEX_NO_OVERLAY,
     },
     instances::EntityModelInstance,
     mesh_transformer_scaled_model_root_transform,
@@ -721,11 +721,74 @@ fn render_textured_submission(
 ) {
     let submission = meshes.record_submission(submit);
     if let Some(entry) = entity_model_texture_atlas_entry(atlas, submit.texture) {
-        let mesh = meshes.mesh_mut(submit.render_type);
-        let start = mesh.vertices.len();
-        emit(mesh, entry);
-        fill_textured_submission_vertices(mesh, start, submission);
+        let outline_copy = {
+            let mesh = meshes.mesh_mut(submit.render_type);
+            let vertex_start = mesh.vertices.len();
+            let index_start = mesh.indices.len();
+            let face_start = mesh.cutout_faces;
+            emit(mesh, entry);
+            fill_textured_submission_vertices(mesh, vertex_start, submission);
+            if submission_writes_outline_buffer(submission) {
+                Some(outline_copy_from_submission(
+                    mesh,
+                    vertex_start,
+                    index_start,
+                    face_start,
+                    submission.outline_color,
+                ))
+            } else {
+                None
+            }
+        };
+        if let Some((vertices, indices, cutout_faces)) = outline_copy {
+            append_textured_outline_copy(&mut meshes.outline, vertices, indices, cutout_faces);
+        }
     }
+}
+
+fn submission_writes_outline_buffer(submission: EntityModelRenderSubmission) -> bool {
+    submission.outline_color != 0 && submission.render_type.affects_outline()
+}
+
+fn outline_copy_from_submission(
+    mesh: &EntityModelTexturedMesh,
+    vertex_start: usize,
+    index_start: usize,
+    face_start: usize,
+    outline_color: u32,
+) -> (Vec<EntityModelTexturedVertex>, Vec<u32>, usize) {
+    let outline_tint = argb_to_tint(outline_color);
+    let vertices = mesh.vertices[vertex_start..]
+        .iter()
+        .map(|vertex| {
+            let mut vertex = *vertex;
+            vertex.tint = outline_tint;
+            vertex
+        })
+        .collect();
+    let base = u32::try_from(vertex_start).expect("textured vertex start fits in u32");
+    let indices = mesh.indices[index_start..]
+        .iter()
+        .map(|index| {
+            debug_assert!(*index >= base);
+            index - base
+        })
+        .collect();
+    (vertices, indices, mesh.cutout_faces - face_start)
+}
+
+fn append_textured_outline_copy(
+    outline: &mut EntityModelTexturedMesh,
+    vertices: Vec<EntityModelTexturedVertex>,
+    indices: Vec<u32>,
+    cutout_faces: usize,
+) {
+    let base = u32::try_from(outline.vertices.len()).expect("outline vertex count fits in u32");
+    outline.vertices.extend(vertices);
+    outline
+        .indices
+        .extend(indices.into_iter().map(|index| index + base));
+    outline.cutout_faces += cutout_faces;
 }
 
 fn fill_textured_submission_vertices(

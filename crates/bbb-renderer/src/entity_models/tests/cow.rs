@@ -84,6 +84,46 @@ fn cow_textured_mesh_uses_vanilla_uvs_tints_and_variant_textures() {
 }
 
 #[test]
+fn visible_glowing_cow_folds_vanilla_outline_buffer_copy() {
+    let (atlas, _) = build_entity_model_texture_atlas(&cow_texture_images()).unwrap();
+    let cow = EntityModelInstance::cow_variant(
+        604,
+        [0.0, 64.0, 0.0],
+        0.0,
+        CowModelVariant::Temperate,
+        false,
+    )
+    .with_outline_color(0xff33_66cc)
+    .with_light_coords((4_u32 << 4) | (12_u32 << 20))
+    .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[cow], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 1);
+    let submit = meshes.submissions[0];
+    assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
+    assert!(submit.render_type.affects_outline());
+    assert_eq!(submit.texture, COW_TEMPERATE_TEXTURE_REF);
+    assert_eq!(submit.outline_color, 0xff33_66cc);
+    assert_eq!(meshes.cutout.vertices.len(), 240);
+    assert_eq!(meshes.outline.vertices.len(), meshes.cutout.vertices.len());
+    assert_eq!(meshes.outline.indices.len(), meshes.cutout.indices.len());
+    assert_eq!(meshes.outline.cutout_faces, meshes.cutout.cutout_faces);
+    let outline_tint = [
+        0x33 as f32 / 255.0,
+        0x66 as f32 / 255.0,
+        0xcc as f32 / 255.0,
+        1.0,
+    ];
+    assert!(meshes.outline.vertices.iter().all(|vertex| {
+        vertex.tint == outline_tint
+            && vertex.light == submit.light
+            && vertex.overlay == submit.overlay
+    }));
+}
+
+#[test]
 fn cow_adult_model_parts_match_vanilla_26_1_body_layer() {
     // The unified cubes carry both render paths' geometry: the colored debug tint and the textured
     // `uv_size`/`texOffs`/`mirror`.
