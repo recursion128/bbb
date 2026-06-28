@@ -19,6 +19,7 @@ use bbb_renderer::{
     HudItemIcon, HudUvRect, LightmapEnvironment, HUD_HOTBAR_SLOTS,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
     VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
+    VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_world::{
     BlockPos, BookScreenState, ContainerState, MerchantOfferState, MerchantOffersState,
@@ -84,6 +85,8 @@ const VANILLA_DEFAULT_FOG_END_DISTANCE: f32 = 1024.0;
 const VANILLA_NETHER_FOG_START_DISTANCE: f32 = 10.0;
 const VANILLA_NETHER_FOG_END_DISTANCE: f32 = 96.0;
 const VANILLA_DEFAULT_SKY_FOG_END_DISTANCE: f32 = 512.0;
+const VANILLA_DEFAULT_CLOUD_FOG_END_DISTANCE: f32 = 2048.0;
+const VANILLA_DEFAULT_CLOUD_RANGE_CHUNKS: f32 = 128.0;
 const VANILLA_DEFAULT_WATER_FOG_START_DISTANCE: f32 = -8.0;
 const VANILLA_DEFAULT_WATER_FOG_END_DISTANCE: f32 = 96.0;
 const VANILLA_GAUSSIAN_SAMPLE_KERNEL: [f64; 7] = [0.0, 1.0, 4.0, 6.0, 4.0, 1.0, 0.0];
@@ -4089,24 +4092,51 @@ fn fog_environment_for_world_with_environment_colors(
                 .unwrap_or(VanillaLightmapDimensionKind::Overworld);
             let (mut environmental_start, mut environmental_end) =
                 atmospheric_fog_distance_for_dimension(dimension_kind);
+            let mut sky_end = atmospheric_sky_fog_end(render_distance_chunks);
+            let mut cloud_end = atmospheric_cloud_fog_end();
             if world.boss_overlay_should_create_world_fog() {
                 environmental_start = environmental_start.min(VANILLA_NETHER_FOG_START_DISTANCE);
                 environmental_end = environmental_end.min(VANILLA_NETHER_FOG_END_DISTANCE);
+                sky_end = environmental_end;
+                cloud_end = environmental_end;
             }
-            FogEnvironment::world(
+            FogEnvironment::world_with_visibility_ends(
                 color,
                 environmental_start,
                 environmental_end,
                 render_distance_chunks,
+                sky_end,
+                cloud_end,
             )
         }
-        CameraFogType::Water => FogEnvironment::world(
-            color,
-            VANILLA_DEFAULT_WATER_FOG_START_DISTANCE,
-            VANILLA_DEFAULT_WATER_FOG_END_DISTANCE * water_vision.max(0.25),
-            render_distance_chunks,
-        ),
+        CameraFogType::Water => {
+            let environmental_end = VANILLA_DEFAULT_WATER_FOG_END_DISTANCE * water_vision.max(0.25);
+            FogEnvironment::world_with_visibility_ends(
+                color,
+                VANILLA_DEFAULT_WATER_FOG_START_DISTANCE,
+                environmental_end,
+                render_distance_chunks,
+                environmental_end,
+                environmental_end,
+            )
+        }
     }
+}
+
+fn atmospheric_sky_fog_end(render_distance_chunks: u32) -> f32 {
+    vanilla_render_distance_blocks(render_distance_chunks).min(VANILLA_DEFAULT_SKY_FOG_END_DISTANCE)
+}
+
+fn atmospheric_cloud_fog_end() -> f32 {
+    (VANILLA_DEFAULT_CLOUD_RANGE_CHUNKS * 16.0).min(VANILLA_DEFAULT_CLOUD_FOG_END_DISTANCE)
+}
+
+fn vanilla_render_distance_blocks(render_distance_chunks: u32) -> f32 {
+    render_distance_chunks.clamp(
+        VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
+        VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
+    ) as f32
+        * 16.0
 }
 
 fn atmospheric_fog_distance_for_dimension(kind: VanillaLightmapDimensionKind) -> (f32, f32) {

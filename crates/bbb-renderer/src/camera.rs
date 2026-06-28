@@ -101,6 +101,8 @@ pub struct FogEnvironment {
     pub environmental_end: f32,
     pub render_distance_start: f32,
     pub render_distance_end: f32,
+    pub sky_end: f32,
+    pub cloud_end: f32,
 }
 
 impl Default for FogEnvironment {
@@ -117,6 +119,8 @@ impl FogEnvironment {
             environmental_end: 0.0,
             render_distance_start: 0.0,
             render_distance_end: 0.0,
+            sky_end: 0.0,
+            cloud_end: 0.0,
         }
     }
 
@@ -126,6 +130,24 @@ impl FogEnvironment {
         environmental_end: f32,
         render_distance_chunks: u32,
     ) -> Self {
+        Self::world_with_visibility_ends(
+            color,
+            environmental_start,
+            environmental_end,
+            render_distance_chunks,
+            environmental_end,
+            environmental_end,
+        )
+    }
+
+    pub fn world_with_visibility_ends(
+        color: [f32; 4],
+        environmental_start: f32,
+        environmental_end: f32,
+        render_distance_chunks: u32,
+        sky_end: f32,
+        cloud_end: f32,
+    ) -> Self {
         let (render_distance_start, render_distance_end) =
             vanilla_render_distance_fog_range(render_distance_chunks);
         Self {
@@ -134,6 +156,8 @@ impl FogEnvironment {
             environmental_end,
             render_distance_start,
             render_distance_end,
+            sky_end,
+            cloud_end,
         }
         .sanitized()
     }
@@ -150,6 +174,8 @@ impl FogEnvironment {
             environmental_end: sanitize_fog_distance(self.environmental_end, 0.0),
             render_distance_start: sanitize_fog_distance(self.render_distance_start, 0.0),
             render_distance_end: sanitize_fog_distance(self.render_distance_end, 0.0),
+            sky_end: sanitize_fog_distance(self.sky_end, 0.0),
+            cloud_end: sanitize_fog_distance(self.cloud_end, 0.0),
         }
     }
 }
@@ -225,6 +251,9 @@ pub(crate) struct CameraUniform {
     /// Vanilla fog distances:
     /// `[EnvironmentalStart, EnvironmentalEnd, RenderDistanceStart, RenderDistanceEnd]`.
     fog_distances: [f32; 4],
+    /// Vanilla `FogData` sky/cloud end distances:
+    /// `[SkyEnd, CloudEnd, _, _]`.
+    fog_visibility_ends: [f32; 4],
 }
 
 impl CameraUniform {
@@ -323,6 +352,7 @@ impl CameraUniform {
             environment.render_distance_start,
             environment.render_distance_end,
         ];
+        self.fog_visibility_ends = [environment.sky_end, environment.cloud_end, 0.0, 0.0];
         self
     }
 
@@ -365,6 +395,8 @@ impl CameraUniform {
             environmental_end: self.fog_distances[1],
             render_distance_start: self.fog_distances[2],
             render_distance_end: self.fog_distances[3],
+            sky_end: self.fog_visibility_ends[0],
+            cloud_end: self.fog_visibility_ends[1],
         }
     }
 
@@ -395,6 +427,12 @@ impl CameraUniform {
                 FogEnvironment::disabled().environmental_end,
                 FogEnvironment::disabled().render_distance_start,
                 FogEnvironment::disabled().render_distance_end,
+            ],
+            fog_visibility_ends: [
+                FogEnvironment::disabled().sky_end,
+                FogEnvironment::disabled().cloud_end,
+                0.0,
+                0.0,
             ],
         }
     }
@@ -536,7 +574,14 @@ mod tests {
 
     #[test]
     fn camera_uniform_stores_fog_environment() {
-        let fog = FogEnvironment::world([0.25, 0.5, 0.75, 1.0], -8.0, 96.0, 12);
+        let fog = FogEnvironment::world_with_visibility_ends(
+            [0.25, 0.5, 0.75, 1.0],
+            -8.0,
+            96.0,
+            12,
+            192.0,
+            2048.0,
+        );
 
         assert_eq!(
             CameraUniform::identity()
@@ -647,6 +692,8 @@ mod tests {
             environmental_end: f32::INFINITY,
             render_distance_start: -16.0,
             render_distance_end: 128.0,
+            sky_end: f32::NAN,
+            cloud_end: 2048.0,
         };
 
         assert_eq!(
@@ -659,6 +706,8 @@ mod tests {
                 environmental_end: 0.0,
                 render_distance_start: -16.0,
                 render_distance_end: 128.0,
+                sky_end: 0.0,
+                cloud_end: 2048.0,
             }
         );
     }

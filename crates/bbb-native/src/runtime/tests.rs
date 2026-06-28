@@ -411,11 +411,13 @@ fn fog_environment_uses_vanilla_render_distance_range_and_dimension_fog_distance
     );
     assert_fog_environment_close(
         fog,
-        FogEnvironment::world(
+        FogEnvironment::world_with_visibility_ends(
             clear_color_to_fog_color(clear_color_for_world(&overworld, false)),
             VANILLA_DEFAULT_FOG_START_DISTANCE,
             VANILLA_DEFAULT_FOG_END_DISTANCE,
             12,
+            VANILLA_DEFAULT_SKY_FOG_END_DISTANCE.min(12.0 * 16.0),
+            VANILLA_DEFAULT_CLOUD_FOG_END_DISTANCE,
         ),
     );
 
@@ -433,6 +435,8 @@ fn fog_environment_uses_vanilla_render_distance_range_and_dimension_fog_distance
     assert_eq!(fog.environmental_end, VANILLA_NETHER_FOG_END_DISTANCE);
     assert_eq!(fog.render_distance_start, 288.0);
     assert_eq!(fog.render_distance_end, 320.0);
+    assert_eq!(fog.sky_end, 320.0);
+    assert_eq!(fog.cloud_end, VANILLA_DEFAULT_CLOUD_FOG_END_DISTANCE);
 }
 
 #[test]
@@ -451,6 +455,8 @@ fn fog_environment_clamps_atmospheric_distance_for_boss_world_fog() {
 
     assert_eq!(fog.environmental_start, VANILLA_DEFAULT_FOG_START_DISTANCE);
     assert_eq!(fog.environmental_end, VANILLA_NETHER_FOG_END_DISTANCE);
+    assert_eq!(fog.sky_end, VANILLA_NETHER_FOG_END_DISTANCE);
+    assert_eq!(fog.cloud_end, VANILLA_NETHER_FOG_END_DISTANCE);
 }
 
 #[test]
@@ -479,11 +485,13 @@ fn fog_environment_uses_water_fog_distances_when_eye_is_in_water() {
 
     assert_fog_environment_close(
         fog,
-        FogEnvironment::world(
+        FogEnvironment::world_with_visibility_ends(
             clear_color_to_fog_color(clear_color_from_argb(rgb_u8_to_argb([0x04, 0x4b, 0xa1]))),
             VANILLA_DEFAULT_WATER_FOG_START_DISTANCE,
             VANILLA_DEFAULT_WATER_FOG_END_DISTANCE * 0.5,
             12,
+            VANILLA_DEFAULT_WATER_FOG_END_DISTANCE * 0.5,
+            VANILLA_DEFAULT_WATER_FOG_END_DISTANCE * 0.5,
         ),
     );
 }
@@ -1216,6 +1224,8 @@ fn assert_fog_environment_close(actual: FogEnvironment, expected: FogEnvironment
     assert!((actual.environmental_end - expected.environmental_end).abs() < 1e-6);
     assert!((actual.render_distance_start - expected.render_distance_start).abs() < 1e-6);
     assert!((actual.render_distance_end - expected.render_distance_end).abs() < 1e-6);
+    assert!((actual.sky_end - expected.sky_end).abs() < 1e-6);
+    assert!((actual.cloud_end - expected.cloud_end).abs() < 1e-6);
 }
 
 #[test]

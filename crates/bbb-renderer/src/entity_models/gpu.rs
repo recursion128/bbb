@@ -88,6 +88,7 @@ struct Camera {
     camera_position: vec4<f32>,
     fog_color: vec4<f32>,
     fog_distances: vec4<f32>,
+    fog_visibility_ends: vec4<f32>,
 };
 
 @group(0) @binding(0)
@@ -208,6 +209,7 @@ struct Camera {
     camera_position: vec4<f32>,
     fog_color: vec4<f32>,
     fog_distances: vec4<f32>,
+    fog_visibility_ends: vec4<f32>,
 };
 
 @group(0) @binding(0)
@@ -351,6 +353,7 @@ struct Camera {
     camera_position: vec4<f32>,
     fog_color: vec4<f32>,
     fog_distances: vec4<f32>,
+    fog_visibility_ends: vec4<f32>,
 };
 
 @group(0) @binding(0)
@@ -429,6 +432,7 @@ struct Camera {
     camera_position: vec4<f32>,
     fog_color: vec4<f32>,
     fog_distances: vec4<f32>,
+    fog_visibility_ends: vec4<f32>,
 };
 
 @group(0) @binding(0)
@@ -562,6 +566,7 @@ struct Camera {
     camera_position: vec4<f32>,
     fog_color: vec4<f32>,
     fog_distances: vec4<f32>,
+    fog_visibility_ends: vec4<f32>,
 };
 
 @group(0) @binding(0)

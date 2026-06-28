@@ -621,19 +621,22 @@ When an agent does any of the following, update this file in the same slice:
     lightning sky flash does not tint water fog. The startup
     `--hide-lightning-flash` option suppresses both lightmap and atmospheric
     clear-color sky flash layers. Renderer camera uniforms now include
-    vanilla-shaped fog color plus environmental and render-distance ranges;
-    terrain, entity, item-model, item-entity, particle, block-destroy, and
+    vanilla-shaped fog color, environmental and render-distance ranges, plus
+    `FogData.skyEnd` / `cloudEnd`; native generates the atmospheric defaults,
+    boss-world-fog clamp, and water-fog visibility ends from the vanilla
+    environment classes.
+    Terrain, entity, item-model, item-entity, particle, block-destroy, and
     selection world shaders compute spherical/cylindrical camera distance and
     apply fog in the vanilla `apply_fog` shape. The startup `--render-distance`
     option defaults to `12` chunks, accepts `2..=32`, and drives the
     render-distance fog span. Remaining non-SKY environment modifiers, sky /
-    cloud fog end presentation, and full sky mesh / atmosphere presentation are
-    still broader visual gaps. Overworld
+    cloud mesh presentation that consumes those visibility ends, and full sky
+    mesh / atmosphere presentation are still broader visual gaps. Overworld
     variants use ambient `0x0A0A0A`. The block flicker path still advances
     `blockLightFlicker` with the
     `LightmapRenderStateExtractor.tick()` formula and the shaders read
     `blockLightFlicker + 1.4`. Remaining lighting gaps: full sky renderer
-    presentation, sky/cloud fog presentation, any non-SKY biome
+    presentation, sky/cloud mesh presentation, any non-SKY biome
     modifiers that need a renderer surface, smooth/AO entity light, GUI /
     entity-in-UI lighting variants, and the colored debug fallback's baked-shade
     approximation. Water-vision fog color brightening is covered in the native
