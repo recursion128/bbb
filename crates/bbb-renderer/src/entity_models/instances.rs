@@ -331,8 +331,7 @@ entity_render_state! {
     /// is not underwater.
     (with_boat_bubble_angle) boat_bubble_angle: f32 = 0.0;
     /// Vanilla `BoatRenderState.isUnderWater`: gates bubble wobble and the
-    /// above-water water-mask submit. Full world projection is still separate;
-    /// callers can set this explicitly when they know the boat status.
+    /// above-water water-mask submit.
     (with_boat_underwater) boat_underwater: bool = false;
     /// Vanilla `Mob.isAggressive()` (`DATA_MOB_FLAGS_ID & 4`): deepens the held-out
     /// `animateZombieArms` arm drop for the zombie-model family (`-π / 1.5` aggressive vs

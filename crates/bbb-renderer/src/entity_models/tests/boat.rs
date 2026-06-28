@@ -481,6 +481,52 @@ fn boat_textured_mesh_uses_vanilla_uvs_tints_and_root_transform() {
 }
 
 #[test]
+fn boat_underwater_skips_water_mask_submission_and_bubble_roll() {
+    let image = EntityModelTextureImage::new(
+        BOAT_OAK_TEXTURE_REF,
+        vec![
+            7;
+            usize::try_from(BOAT_OAK_TEXTURE_REF.size[0] * BOAT_OAK_TEXTURE_REF.size[1] * 4)
+                .unwrap()
+        ],
+    );
+    let (atlas, _) = build_entity_model_texture_atlas(&[image]).unwrap();
+    let underwater =
+        EntityModelInstance::boat(205, [0.0, 64.0, 0.0], 30.0, BoatModelFamily::Oak, false)
+            .with_boat_bubble_angle(6.0)
+            .with_boat_underwater(true)
+            .with_light_coords((3_u32 << 4) | (11_u32 << 20))
+            .with_has_red_overlay(true)
+            .with_white_overlay_progress(0.4);
+
+    let meshes = entity_model_textured_meshes(&[underwater], &atlas);
+    assert_eq!(
+        meshes.submissions.len(),
+        1,
+        "BoatRenderer.submitTypeAdditions skips waterMask when state.isUnderWater"
+    );
+    let base = meshes.submissions[0];
+    assert_eq!(base.texture, BOAT_OAK_TEXTURE_REF);
+    assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!(base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(base.transform, boat_model_root_transform(underwater));
+    assert_eq!(
+        base.transform,
+        boat_model_root_transform(underwater.with_boat_bubble_angle(0.0)),
+        "state.isUnderWater also suppresses the bubble-column root wobble"
+    );
+    assert_eq!(base.light, underwater.render_state.shader_light());
+    assert_eq!(base.overlay, [0.0, 10.0]);
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+    assert_eq!(meshes.cutout.vertices.len(), 216);
+    assert!(meshes
+        .submissions
+        .iter()
+        .all(|submission| submission.render_type != EntityModelLayerRenderType::WaterMask));
+}
+
+#[test]
 fn boat_paddles_use_vanilla_rowing_time_rotations() {
     let assert_close = |actual: f32, expected: f32| {
         assert!(

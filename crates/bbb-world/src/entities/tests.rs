@@ -2545,6 +2545,71 @@ fn entity_model_sources_project_in_water_from_world_fluid() {
     let wet = store.entity_model_sources_at_partial_tick(1.0);
     assert_eq!(wet.len(), 1);
     assert!(wet[0].in_water, "a cod inside a water column is in water");
+    assert!(
+        !wet[0].boat_underwater,
+        "non-boat entities keep the boat-only underwater flag unset"
+    );
+}
+
+#[test]
+fn entity_model_sources_project_boat_underwater_from_top_fluid() {
+    // Vanilla `AbstractBoat.isUnderWater()` is a top-slice test: bottom contact with
+    // water is not enough, but water whose surface is above the boat AABB top sets
+    // `BoatRenderState.isUnderWater` for bubble and water-mask gating.
+    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
+    const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
+
+    let mut store = WorldStore::with_dimension(crate::WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store.insert_decoded_chunk(empty_test_chunk());
+    store.apply_add_entity(ProtocolAddEntity {
+        id: 51,
+        uuid: default_entity_uuid(),
+        entity_type_id: VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+        position: ProtocolVec3d {
+            x: 8.5,
+            y: 2.0,
+            z: 8.5,
+        },
+        delta_movement: ProtocolVec3d {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 99,
+    });
+
+    let underwater = |store: &WorldStore| {
+        store
+            .entity_model_sources_at_partial_tick(1.0)
+            .into_iter()
+            .find(|source| source.entity_id == 51)
+            .expect("boat source")
+            .boat_underwater
+    };
+
+    assert!(!underwater(&store), "a boat in air is not underwater");
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos { x: 8, y: 1, z: 8 },
+        block_state_id: SOURCE_WATER_BLOCK_STATE_ID,
+    }));
+    assert!(
+        !underwater(&store),
+        "water below the boat top does not satisfy AbstractBoat.isUnderWater"
+    );
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos { x: 8, y: 2, z: 8 },
+        block_state_id: SOURCE_WATER_BLOCK_STATE_ID,
+    }));
+    assert!(
+        underwater(&store),
+        "a source water surface above the boat top sets BoatRenderState.isUnderWater"
+    );
 }
 
 #[test]

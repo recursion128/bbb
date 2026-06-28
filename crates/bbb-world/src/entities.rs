@@ -404,6 +404,11 @@ pub struct EntityModelSourceState {
     /// the bubble-column wobble angle in degrees, before the renderer's underwater gate.
     #[serde(default)]
     pub boat_bubble_angle: f32,
+    /// Vanilla `BoatRenderState.isUnderWater` (`AbstractBoat.isUnderWater()`): true
+    /// when the water surface is strictly above the boat AABB top. It gates the
+    /// bubble-column wobble and the above-water water-mask submission.
+    #[serde(default)]
+    pub boat_underwater: bool,
     /// Vanilla `LivingEntityRenderState.isFullyFrozen` (`Entity.isFullyFrozen`,
     /// `ticksFrozen >= 140`): a living entity frozen solid in powder snow, whose
     /// body the renderer shakes (`LivingEntityRenderer.isShaking`). `false` for
@@ -1594,6 +1599,13 @@ impl WorldStore {
                     target.position.z + f64::from(target.bounds.max[2]),
                 ];
                 source.in_water = crate::fluid::world_aabb_in_water(self, aabb_min, aabb_max);
+                if is_vanilla_boat_type(source.entity_type_id) {
+                    // Vanilla `AbstractBoatRenderer.extractRenderState`: `state.isUnderWater`
+                    // comes from `AbstractBoat.isUnderWater()`, which is a top-slice water
+                    // surface test, not the broader `Entity.isInWater()` overlap above.
+                    source.boat_underwater =
+                        crate::fluid::world_aabb_boat_underwater(self, aabb_min, aabb_max);
+                }
                 if source.is_sleeping {
                     if let Some((yaw, offset)) = self.resolve_sleeping_bed(target.entity_id) {
                         source.sleeping_bed_yaw = Some(yaw);

@@ -809,8 +809,11 @@ fn emit_boat_water_mask_submission(
     };
     // Vanilla `BoatRenderer.submitTypeAdditions`: when the boat is not underwater, submit the
     // `ModelLayers.BOAT_WATER_PATCH` depth-only `RenderTypes.waterMask()` model with the same texture
-    // and pose stack as the base boat. bbb does not yet project `BoatRenderState.isUnderWater`, so the
-    // default visible-above-water path records the submission while GPU presentation remains deferred.
+    // and pose stack as the base boat. GPU presentation remains deferred, but the submission gate
+    // now follows the projected `BoatRenderState.isUnderWater`.
+    if instance.render_state.boat_underwater {
+        return;
+    }
     let passes = boat_textured_layer_passes(family, chest);
     let pass = passes[1];
     let submit = no_overlay_layer_submission(pass, boat_model_root_transform(instance));

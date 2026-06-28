@@ -1119,6 +1119,7 @@ impl EntityStore {
             boat_hurt_dir,
             boat_damage_time,
             boat_bubble_angle,
+            boat_underwater: false,
             wither_x_head_rots,
             wither_y_head_rots,
             is_fully_frozen,

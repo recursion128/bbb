@@ -75,6 +75,40 @@ pub(crate) fn world_aabb_in_water(world: &WorldStore, min: [f64; 3], max: [f64; 
     false
 }
 
+/// Vanilla `AbstractBoat.isUnderwater()`: scan only the thin slice at the boat AABB top
+/// (`aabb.maxY .. aabb.maxY + 0.001`) and report underwater when the water surface is
+/// strictly above that top. The source-vs-flowing distinction controls boat physics status
+/// in vanilla, but the render state only needs the boolean `isUnderWater` gate.
+pub(crate) fn world_aabb_boat_underwater(world: &WorldStore, min: [f64; 3], max: [f64; 3]) -> bool {
+    let top_y = max[1] + 0.001;
+    let min_x = min[0].floor() as i32;
+    let max_x = max[0].ceil() as i32;
+    let min_y = max[1].floor() as i32;
+    let max_y = top_y.ceil() as i32;
+    let min_z = min[2].floor() as i32;
+    let max_z = max[2].ceil() as i32;
+
+    for y in min_y..max_y {
+        for z in min_z..max_z {
+            for x in min_x..max_x {
+                let pos = BlockPos { x, y, z };
+                let Some(fluid) = world.probe_block(pos).and_then(|block| block.fluid) else {
+                    continue;
+                };
+                if fluid.kind != TerrainFluidKind::Water {
+                    continue;
+                }
+                let fluid_top = f64::from(y) + fluid_height_at(world, pos, fluid);
+                if top_y < fluid_top {
+                    return true;
+                }
+            }
+        }
+    }
+
+    false
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -151,6 +185,49 @@ mod tests {
             &world,
             [0.25, 0.5, 0.25],
             [0.75, 0.9, 0.75]
+        ));
+    }
+
+    #[test]
+    fn world_aabb_boat_underwater_true_when_top_is_below_water_surface() {
+        // `AbstractBoat.isUnderwater` compares `aabb.maxY + 0.001` with the water surface
+        // in the top slice of the boat AABB. A source block whose top is y=2 covers a boat
+        // whose top is just under that surface.
+        let mut world = empty_world();
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 1, z: 0 },
+            SOURCE_WATER_BLOCK_STATE_ID,
+        );
+        assert!(world_aabb_boat_underwater(
+            &world,
+            [0.25, 1.0, 0.25],
+            [0.75, 1.8, 0.75]
+        ));
+    }
+
+    #[test]
+    fn world_aabb_boat_underwater_false_when_only_bottom_touches_water() {
+        let mut world = empty_world();
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 0, z: 0 },
+            SOURCE_WATER_BLOCK_STATE_ID,
+        );
+        assert!(!world_aabb_boat_underwater(
+            &world,
+            [0.25, 0.5, 0.25],
+            [0.75, 1.1, 0.75]
+        ));
+    }
+
+    #[test]
+    fn world_aabb_boat_underwater_false_in_air() {
+        let world = empty_world();
+        assert!(!world_aabb_boat_underwater(
+            &world,
+            [0.25, 1.0, 0.25],
+            [0.75, 1.8, 0.75]
         ));
     }
 

@@ -1366,6 +1366,7 @@ fn entity_model_instance(
         .with_boat_hurt_dir(source.boat_hurt_dir)
         .with_boat_damage_time(source.boat_damage_time)
         .with_boat_bubble_angle(source.boat_bubble_angle)
+        .with_boat_underwater(source.boat_underwater)
         .with_is_aggressive(source.is_aggressive)
         .with_main_hand_holds_bow(main_hand_holds_bow)
         .with_main_hand_swing_is_stab(main_hand_swing_is_stab)
@@ -4889,6 +4890,50 @@ mod tests {
         let expected_bubble_angle =
             first_bubble_angle + (second_bubble_angle - first_bubble_angle) * 0.5;
         assert!((render_state.boat_bubble_angle - expected_bubble_angle).abs() < 1.0e-6);
+    }
+
+    #[test]
+    fn entity_model_instance_projects_boat_underwater_from_source() {
+        // Vanilla `AbstractBoatRenderer.extractRenderState` copies `AbstractBoat.isUnderWater()`
+        // into `BoatRenderState.isUnderWater`; the world layer owns that fluid projection and
+        // native must preserve it when building the renderer instance.
+        let source: EntityModelSourceState = serde_json::from_value(serde_json::json!({
+            "entity_id": 92,
+            "entity_type_id": VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+            "position": { "x": 1.0, "y": 64.0, "z": -2.0 },
+            "y_rot": 0.0,
+            "boat_bubble_angle": 6.0,
+            "boat_underwater": true,
+            "data_values": []
+        }))
+        .unwrap();
+
+        let instance = entity_model_instance(
+            source,
+            &WorldStore::new(),
+            None,
+            0,
+            1.0,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(
+            instance.kind,
+            EntityModelKind::Boat {
+                family: BoatModelFamily::Oak,
+                chest: false,
+            }
+        );
+        assert_eq!(instance.render_state.boat_bubble_angle, 6.0);
+        assert!(instance.render_state.boat_underwater);
     }
 
     #[test]
