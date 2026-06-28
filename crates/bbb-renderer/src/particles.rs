@@ -1262,6 +1262,24 @@ mod tests {
         assert!(!sneeze.has_physics);
         assert_ne!(sneeze.velocity, [0.0, 0.0, 0.0]);
 
+        let mut snowflake_random = ParticleRandom::new(56);
+        let mut snowflake_command = spawn_command("minecraft:snowflake", 1.0);
+        snowflake_command.velocity = [1.0, 2.0, 3.0];
+        let snowflake =
+            ParticleInstance::from_spawn_command(snowflake_command, &mut snowflake_random);
+        assert_eq!(snowflake.provider, "SnowflakeParticle.Provider");
+        assert_eq!(snowflake.sprite_selection, ParticleSpriteSelection::Age);
+        assert_range_f32(snowflake.base_quad_size, 0.1, 0.2);
+        assert_eq!(snowflake.color, [0.923, 0.964, 0.999, 1.0]);
+        assert_eq!(snowflake.quad_size_curve, ParticleQuadSizeCurve::Constant);
+        assert!((18..=82).contains(&snowflake.lifetime_ticks));
+        assert_range_f64(snowflake.velocity[0], 0.95, 1.05);
+        assert_range_f64(snowflake.velocity[1], 1.95, 2.05);
+        assert_range_f64(snowflake.velocity[2], 2.95, 3.05);
+        assert_eq!(snowflake.friction, 1.0);
+        assert_eq!(snowflake.gravity, 0.225);
+        assert!(snowflake.has_physics);
+
         let mut note_random = ParticleRandom::new(54);
         let mut note_command = spawn_command("minecraft:note", 1.0);
         note_command.velocity = [0.0, 0.0, 0.0];

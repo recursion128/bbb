@@ -242,6 +242,12 @@ When an agent does any of the following, update this file in the same slice:
         `16 / (random * 0.8 + 0.2)` lifetime, `0.999` friction, `0.75`
         gravity, and physics metadata; full-bright block light and child smoke
         emission remain deferred until those per-particle states are represented
+      - `SnowflakeParticle.Provider` age sprite selection, fixed pale-blue tint,
+        `0.1 * (random * random + 1.0)` quad size, command velocity plus
+        random `+-0.05` per axis, `16 / (random * 0.8 + 0.2) + 2` lifetime,
+        `1.0` friction, `0.225` gravity, and physics metadata; its extra
+        post-tick x/z/y damping and opaque particle layer remain deferred until
+        those per-particle states are represented
       - `PlayerCloudParticle.Provider` vanilla constructor-random initial
         speed plus command velocity, and `SneezeProvider` fixed green tint /
         alpha override on the player-cloud curve
@@ -4580,6 +4586,13 @@ When an agent does any of the following, update this file in the same slice:
         shrinking size curve, `16/(random*.8+.2)` lifetime, friction `0.999`,
         gravity `0.75`, and physics metadata. Full-bright block light and
         child smoke emission remain deferred until those per-particle states are
+        represented.
+      - particle descriptors map `SnowflakeParticle.Provider` to age sprites,
+        fixed pale-blue tint, `0.1 * (random * random + 1.0)` quad size,
+        command velocity plus random `+-0.05` per axis,
+        `16/(random*.8+.2)+2` lifetime, friction `1.0`, gravity `0.225`,
+        and physics metadata. Extra post-tick x/z/y damping and the opaque
+        particle layer remain deferred until those per-particle states are
         represented.
     - native dispatcher and offline probe recording/playback for
       `LevelEventHandler` portal travel local ambience:

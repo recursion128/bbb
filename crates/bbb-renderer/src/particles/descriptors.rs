@@ -41,6 +41,7 @@ pub(crate) enum ParticleLifetimeDescriptor {
     Crit,
     EightOverRandom,
     SixteenOverRandom,
+    SixteenOverRandomPlusTwo,
     FortyOverRandom,
     RandomInclusive {
         min: u32,
@@ -84,6 +85,7 @@ pub(crate) enum ParticleVisualDescriptor {
     Flame {
         scale: f32,
     },
+    Snowflake,
     FixedQuad {
         size: f32,
         color: ParticleColorDescriptor,
@@ -300,6 +302,20 @@ impl ParticleDescriptor {
                 friction: 0.96,
                 gravity: 0.0,
                 has_physics: false,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:snowflake" => Self {
+                provider: "SnowflakeParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::SixteenOverRandomPlusTwo,
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::Snowflake,
+                initial_velocity: ParticleInitialVelocityDescriptor::CommandScaledPlusRandom {
+                    command_scale: 1.0,
+                    random_range: 0.05,
+                },
+                friction: 1.0,
+                gravity: 0.225,
+                has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
             "minecraft:crit" => Self {
@@ -1039,6 +1055,14 @@ impl ParticleVisualDescriptor {
                 WHITE_PARTICLE_COLOR,
                 ParticleQuadSizeCurve::Flame,
             ),
+            Self::Snowflake => {
+                let size = 0.1 * (random.next_f32() * random.next_f32() + 1.0);
+                ParticleVisualState::new(
+                    size,
+                    [0.923, 0.964, 0.999, 1.0],
+                    ParticleQuadSizeCurve::Constant,
+                )
+            }
             Self::FixedQuad { size, color } => ParticleVisualState::new(
                 size,
                 color.sample(random),
@@ -1325,6 +1349,9 @@ impl ParticleLifetimeDescriptor {
             Self::Crit => ((6.0 / (random.next_f32() * 0.8 + 0.6)) as u32).max(1),
             Self::EightOverRandom => ((8.0 / (random.next_f32() * 0.8 + 0.2)) as u32).max(1),
             Self::SixteenOverRandom => ((16.0 / (random.next_f32() * 0.8 + 0.2)) as u32).max(1),
+            Self::SixteenOverRandomPlusTwo => {
+                ((16.0 / (random.next_f32() * 0.8 + 0.2)) as u32 + 2).max(1)
+            }
             Self::FortyOverRandom => ((40.0 / (random.next_f32() * 0.8 + 0.2)) as u32).max(1),
             Self::RandomInclusive { min, max } => {
                 let span = max.saturating_sub(min).saturating_add(1);
@@ -1654,6 +1681,24 @@ mod tests {
             ParticleDescriptor::for_particle("minecraft:sneeze").initial_velocity,
             ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusCommand {
                 scale: 0.1
+            }
+        );
+        assert_descriptor(
+            "minecraft:snowflake",
+            "SnowflakeParticle.Provider",
+            ParticleLifetimeDescriptor::SixteenOverRandomPlusTwo,
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::Snowflake,
+            1.0,
+            0.225,
+            true,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:snowflake").initial_velocity,
+            ParticleInitialVelocityDescriptor::CommandScaledPlusRandom {
+                command_scale: 1.0,
+                random_range: 0.05,
             }
         );
         assert_descriptor(
@@ -2435,6 +2480,13 @@ mod tests {
         assert_eq!(lava.color, WHITE_PARTICLE_COLOR);
         assert_eq!(lava.quad_size_curve, ParticleQuadSizeCurve::Flame);
 
+        let mut snowflake_random = ParticleRandom::new(45);
+        let snowflake =
+            ParticleVisualDescriptor::Snowflake.sample_for_command(&mut snowflake_random, [0.0; 3]);
+        assert_range_f32(snowflake.base_quad_size, 0.1, 0.2);
+        assert_eq!(snowflake.color, [0.923, 0.964, 0.999, 1.0]);
+        assert_eq!(snowflake.quad_size_curve, ParticleQuadSizeCurve::Constant);
+
         let mut explosion_random = ParticleRandom::new(36);
         let explosion = ParticleVisualDescriptor::HugeExplosion
             .sample_for_command(&mut explosion_random, [0.5, 0.0, 0.0]);
@@ -2892,6 +2944,12 @@ mod tests {
         for _ in 0..32 {
             let lifetime = ParticleLifetimeDescriptor::SixteenOverRandom.sample(&mut random);
             assert!((16..=80).contains(&lifetime));
+        }
+
+        let mut random = ParticleRandom::new(45);
+        for _ in 0..32 {
+            let lifetime = ParticleLifetimeDescriptor::SixteenOverRandomPlusTwo.sample(&mut random);
+            assert!((18..=82).contains(&lifetime));
         }
 
         let mut random = ParticleRandom::new(29);
