@@ -343,9 +343,10 @@ When an agent does any of the following, update this file in the same slice:
     - `isInvisible` is now projected uniformly into `EntityRenderState.invisible`
       for every entity (vanilla `LivingEntityRenderer.isBodyVisible`): a
       normally-invisible entity (Invisibility effect / `setInvisible`) skips the
-      whole model — no body and no layers — for a client that cannot see it,
-      matching vanilla's null body `getRenderType` plus the `isInvisible`
-      self-check in the overlay layers. The texture-backed
+      base body for a client that cannot see it, matching vanilla's null body
+      `getRenderType`; non-base layers then follow their own vanilla gates, so
+      invisible-gated layers skip while layer-specific exceptions are tested
+      separately. The texture-backed
       `isInvisible && !isInvisibleToPlayer` branch now records the base body as
       `entityTranslucentCullItemTarget` with the vanilla `0x26ffffff`
       force-transparent alpha while invisible-gated layers still skip. World/native
@@ -366,7 +367,11 @@ When an agent does any of the following, update this file in the same slice:
       Same-team friendly-invisible visibility now follows `PlayerTeam` option
       bit 2 (`canSeeFriendlyInvisibles`) for the local player's team, clearing
       `isInvisibleToPlayer` for living entities that vanilla would render
-      translucent. Other invisible-gated non-base layers still skip.
+      translucent. Other invisible-gated non-base layers still skip, while the
+      adult `WolfArmorLayer` exception now keeps its armor equipment/crack
+      submissions in hidden, self-visible translucent, and glowing-outline
+      invisible states because vanilla does not gate that layer on
+      `state.isInvisible`.
       Colored-path force-transparent output and GPU outline presentation remain
       deferred under the `outlineColor` slot.
     - deferred slots to add with their own slices, each carrying real vanilla
@@ -1699,7 +1704,11 @@ When an agent does any of the following, update this file in the same slice:
       `equipment_layer_pass`-generated `armorCutoutNoCull` submissions at orders `1`/`2`, undyed overlay
       suppression, all wolf armor/collar submissions preserving vanilla
       `OverlayTexture.NO_OVERLAY`, and the low/medium/high durability crack overlays as
-      `equipment_layer_pass`-generated `armorTranslucent` submissions at order `3`). Textured wolf UV, head-look, leg-swing,
+      `equipment_layer_pass`-generated `armorTranslucent` submissions at order `3`; unlike
+      `WolfCollarLayer`, vanilla `WolfArmorLayer` does not check `state.isInvisible`, so hidden
+      invisible wolves still submit armor/crack layers, self-visible invisible wolves submit the
+      force-transparent base plus armor/cracks, and invisible-glowing wolves submit the base outline
+      plus armor/cracks). Textured wolf UV, head-look, leg-swing,
       tail-wag, tail-droop, sitting, angry-tail, wet-shade, collar, and armor regressions now
       route through `entity_model_textured_meshes`, pinning selected wild/tame/angry/variant
       base textures, adult/baby collar textures, armor/crack textures, `entityCutout` /
@@ -1710,9 +1719,10 @@ When an agent does any of the following, update this file in the same slice:
       adult/baby collar submits are still recorded without `wolf_collar*.png`, suppressing only
       folded collar geometry, and that the medium-damage `armorTranslucent` crack submit is still
       recorded after the base armor layers when only the crack texture is absent, suppressing only
-      folded translucent crack geometry, including the texture-backed invisible-but-visible-to-client base body
-      branch (`entityTranslucentCullItemTarget`, `38/255` alpha, base order
-      `(0,0)`) while the collar layer remains skipped by `state.isInvisible`;
+      folded translucent crack geometry, including the texture-backed invisible states:
+      the invisible-but-visible-to-client base body branch (`entityTranslucentCullItemTarget`,
+      `38/255` alpha, base order `(0,0)`) and the hidden/glowing wolf-armor layer
+      exception while the collar layer remains skipped by `state.isInvisible`;
       missing-atlas coverage pins that this force-transparent base submit is still recorded when
       `wolf_tame.png` is absent, suppressing only folded translucent geometry.
       Colored-path force-transparent / outline presentation, glint/foil, and

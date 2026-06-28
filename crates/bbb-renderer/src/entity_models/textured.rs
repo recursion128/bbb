@@ -389,6 +389,11 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
             && instance.render_state.invisible_to_player
             && !instance.render_state.appears_glowing
         {
+            meshes.set_current_submission_state(*instance);
+            // Vanilla `LivingEntityRenderer` still runs layers when the base body has no render
+            // type. Most layers gate on `state.isInvisible`; `WolfArmorLayer` does not, so adult
+            // invisible wolves keep their body-armor equipment/crack submissions.
+            emit_wolf_body_armor_layer(&mut meshes, *instance, atlas);
             continue;
         }
         meshes.set_current_submission_state(*instance);
@@ -456,6 +461,9 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
             }
         }
         if meshes.current_force_transparent || meshes.current_outline_only {
+            // Keep the vanilla layer exception above for invisible wolves while preserving the
+            // existing gate for the other post-base helpers.
+            emit_wolf_body_armor_layer(&mut meshes, *instance, atlas);
             continue;
         }
         // The charged-creeper and powered-wither energy swirls are additive scrolling overlays layered
@@ -2050,7 +2058,7 @@ fn emit_wolf_body_armor_layer(
     let transform = entity_model_root_transform(instance);
     let mut model = WolfModel::armor(wolf_is_angry(instance.kind));
     model.prepare(&instance);
-    let mut submit_sequence = if wolf_has_collar(instance.kind) { 2 } else { 1 };
+    let mut submit_sequence = if wolf_collar_submits(instance) { 2 } else { 1 };
     for (layer_index, layer) in layers.iter().enumerate() {
         let Some(tint) =
             wolf_body_armor_layer_tint(layer.dyeable, instance.render_state.wolf_body_armor_dye)
@@ -2105,9 +2113,12 @@ fn wolf_is_angry(kind: EntityModelKind) -> bool {
     matches!(kind, EntityModelKind::Wolf { angry: true, .. })
 }
 
-fn wolf_has_collar(kind: EntityModelKind) -> bool {
+fn wolf_collar_submits(instance: EntityModelInstance) -> bool {
+    if instance.render_state.invisible {
+        return false;
+    }
     matches!(
-        kind,
+        instance.kind,
         EntityModelKind::Wolf {
             tame: true,
             collar_color: Some(_),

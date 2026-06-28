@@ -2,6 +2,7 @@ use super::*;
 
 use crate::entity_models::model::EntityModel;
 use crate::entity_models::model::ModelCube;
+use crate::entity_models::textured::EntityModelRenderSubmission;
 
 // The adult wolf tail bind pose, mirrored from the model file so the tail pose-math tests can run
 // without the deleted `ADULT_WOLF_PARTS` const tree. The layer rests the tail at the π/5 wild droop.
@@ -78,8 +79,8 @@ fn wolf_textured_mesh_uses_vanilla_uvs_and_collar_tint() {
     );
     let invisible_tame = entity_model_textured_meshes(&[invisible], &atlas);
     assert_wolf_submissions_match_vanilla(&invisible_tame, invisible);
-    // An invisible wolf renders nothing: the unified `render_state.invisible` skips the whole
-    // model in both paths, so no body and no collar layer is emitted.
+    // An invisible wolf without body armor renders nothing: the base body has no render type and
+    // `WolfCollarLayer` gates on `state.isInvisible`.
     assert_eq!(invisible_tame.cutout.cutout_faces, 0);
     assert!(invisible_tame.cutout.vertices.is_empty());
 
@@ -940,6 +941,109 @@ fn wolf_armor_crack_submission_survives_missing_texture_atlas_entry() {
     assert!(!meshes.cutout.vertices.is_empty());
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
+}
+
+#[test]
+fn invisible_wolf_body_armor_keeps_vanilla_layer_submissions() {
+    // Vanilla `WolfArmorLayer` does not gate on `state.isInvisible`, unlike `WolfCollarLayer`.
+    // Therefore an invisible adult wolf with body armor keeps the armor equipment/crack submissions:
+    // hidden-to-player wolves have no base/collar submit, self-visible wolves add only the translucent
+    // base, and glowing hidden wolves add only the base outline.
+    let (atlas, _) = build_entity_model_texture_atlas(&wolf_armor_texture_images()).unwrap();
+    let dye = 0x00AA_5500;
+    let dyed_tint = [0xAA as f32 / 255.0, 0x55 as f32 / 255.0, 0.0, 1.0];
+    let invisible = EntityModelInstance::wolf_state(
+        320,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        true,
+        false,
+        true,
+        Some(EntityDyeColor::Blue),
+    )
+    .with_wolf_body_armor(Some(EntityArmorMaterial::ArmadilloScute))
+    .with_wolf_body_armor_dye(Some(dye))
+    .with_wolf_body_armor_crackiness(Some(WolfArmorCrackiness::High))
+    .with_light_coords((4_u32 << 4) | (13_u32 << 20))
+    .with_white_overlay_progress(0.75)
+    .with_has_red_overlay(true);
+
+    let hidden = entity_model_textured_meshes(&[invisible], &atlas);
+    assert_eq!(hidden.submissions.len(), 3);
+    assert!(!hidden
+        .submissions
+        .iter()
+        .any(|submit| submit.texture == WOLF_TAME_TEXTURE_REF));
+    assert!(!hidden
+        .submissions
+        .iter()
+        .any(|submit| submit.texture == WOLF_COLLAR_TEXTURE_REF));
+    assert_wolf_armor_submissions_for_invisible_state(
+        &hidden.submissions,
+        0,
+        1,
+        invisible,
+        dyed_tint,
+    );
+    assert!(hidden.cutout.vertices.iter().all(|vertex| {
+        vertex.overlay == [0.0, 10.0] && vertex.light == invisible.render_state.shader_light()
+    }));
+    assert!(!hidden.cutout.vertices.is_empty());
+    assert!(!hidden.translucent.vertices.is_empty());
+
+    let self_visible = invisible.with_invisible_to_player(false);
+    let self_visible_meshes = entity_model_textured_meshes(&[self_visible], &atlas);
+    assert_eq!(self_visible_meshes.submissions.len(), 4);
+    let base = self_visible_meshes.submissions[0];
+    assert_eq!(
+        base.render_type,
+        EntityModelLayerRenderType::EntityTranslucentCullItemTarget
+    );
+    assert_eq!(
+        base.render_type.vanilla_name(),
+        "entityTranslucentCullItemTarget"
+    );
+    assert_eq!(base.texture, WOLF_TAME_TEXTURE_REF);
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 38.0 / 255.0]);
+    assert_eq!(base.transform, entity_model_root_transform(self_visible));
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+    assert_eq!(base.light, self_visible.render_state.shader_light());
+    assert_eq!(base.overlay, self_visible.render_state.overlay_coords());
+    assert_wolf_armor_submissions_for_invisible_state(
+        &self_visible_meshes.submissions,
+        1,
+        1,
+        self_visible,
+        dyed_tint,
+    );
+
+    let glowing_hidden = invisible.with_outline_color(0xff33_66cc);
+    let glowing = entity_model_textured_meshes(&[glowing_hidden], &atlas);
+    assert_eq!(glowing.submissions.len(), 4);
+    let outline = glowing.submissions[0];
+    assert_eq!(outline.render_type, EntityModelLayerRenderType::Outline);
+    assert_eq!(outline.render_type.vanilla_name(), "outline");
+    assert_eq!(outline.texture, WOLF_TAME_TEXTURE_REF);
+    assert_eq!(outline.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        outline.transform,
+        entity_model_root_transform(glowing_hidden)
+    );
+    assert_eq!((outline.order, outline.submit_sequence), (0, 0));
+    assert_eq!(outline.light, glowing_hidden.render_state.shader_light());
+    assert_eq!(
+        outline.overlay,
+        glowing_hidden.render_state.overlay_coords()
+    );
+    assert_eq!(outline.outline_color, 0xff33_66cc);
+    assert_wolf_armor_submissions_for_invisible_state(
+        &glowing.submissions,
+        1,
+        1,
+        glowing_hidden,
+        dyed_tint,
+    );
 }
 
 #[test]
@@ -1847,6 +1951,59 @@ fn assert_wolf_submissions_match_vanilla(
         *render_type == EntityModelLayerRenderType::ArmorTranslucent
     });
     assert_wolf_folded_meshes_match_submission_buckets(meshes, expects_translucent);
+}
+
+fn assert_wolf_armor_submissions_for_invisible_state(
+    submissions: &[EntityModelRenderSubmission],
+    start: usize,
+    first_sequence: u32,
+    instance: EntityModelInstance,
+    dyed_tint: [f32; 4],
+) {
+    let transform = entity_model_root_transform(instance);
+    let light = instance.render_state.shader_light();
+    let expected = [
+        (
+            EntityModelLayerRenderType::ArmorCutoutNoCull,
+            WOLF_BODY_ARMADILLO_SCUTE_TEXTURE_REF,
+            [1.0, 1.0, 1.0, 1.0],
+            1,
+            first_sequence,
+        ),
+        (
+            EntityModelLayerRenderType::ArmorCutoutNoCull,
+            WOLF_BODY_ARMADILLO_SCUTE_OVERLAY_TEXTURE_REF,
+            dyed_tint,
+            2,
+            first_sequence + 1,
+        ),
+        (
+            EntityModelLayerRenderType::ArmorTranslucent,
+            WOLF_ARMOR_CRACKINESS_HIGH_TEXTURE_REF,
+            [1.0, 1.0, 1.0, 1.0],
+            3,
+            first_sequence + 2,
+        ),
+    ];
+    for (index, (render_type, texture, tint, order, sequence)) in expected.iter().enumerate() {
+        let submit = submissions[start + index];
+        assert_eq!(submit.render_type, *render_type);
+        assert_eq!(
+            submit.render_type.vanilla_name(),
+            match render_type {
+                EntityModelLayerRenderType::ArmorCutoutNoCull => "armorCutoutNoCull",
+                EntityModelLayerRenderType::ArmorTranslucent => "armorTranslucent",
+                _ => panic!("unexpected wolf armor render type"),
+            }
+        );
+        assert_eq!(submit.texture, *texture);
+        assert_eq!(submit.tint, *tint);
+        assert_eq!(submit.transform, transform);
+        assert_eq!((submit.order, submit.submit_sequence), (*order, *sequence));
+        assert_eq!(submit.light, light);
+        assert_eq!(submit.overlay, [0.0, 10.0]);
+        assert_eq!(submit.outline_color, instance.render_state.outline_color);
+    }
 }
 
 fn wolf_submission_probe(instance: EntityModelInstance) -> EntityModelInstance {
