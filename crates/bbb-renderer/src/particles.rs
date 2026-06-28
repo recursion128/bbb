@@ -1386,6 +1386,22 @@ mod tests {
         assert_eq!(explosion.friction, 0.98);
         assert!(explosion.has_physics);
 
+        let mut sonic_boom_random = ParticleRandom::new(73);
+        let mut sonic_boom_command = spawn_command("minecraft:sonic_boom", 1.0);
+        sonic_boom_command.velocity = [1.0, 2.0, 3.0];
+        let sonic_boom =
+            ParticleInstance::from_spawn_command(sonic_boom_command, &mut sonic_boom_random);
+        assert_eq!(sonic_boom.provider, "SonicBoomParticle.Provider");
+        assert_eq!(sonic_boom.sprite_selection, ParticleSpriteSelection::Age);
+        assert_close_f32(sonic_boom.base_quad_size, 1.5);
+        assert_range_f32(sonic_boom.color[0], 0.4, 1.0);
+        assert_eq!(sonic_boom.color[0], sonic_boom.color[1]);
+        assert_eq!(sonic_boom.color[1], sonic_boom.color[2]);
+        assert_eq!(sonic_boom.lifetime_ticks, 16);
+        assert_eq!(sonic_boom.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(sonic_boom.friction, 0.98);
+        assert!(sonic_boom.has_physics);
+
         let mut gust_random = ParticleRandom::new(71);
         let mut gust_command = spawn_command("minecraft:gust", 1.0);
         gust_command.velocity = [1.0, 2.0, 3.0];

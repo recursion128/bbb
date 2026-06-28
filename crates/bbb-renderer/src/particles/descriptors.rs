@@ -88,6 +88,10 @@ pub(crate) enum ParticleColorDescriptor {
     RandomGray {
         max: f32,
     },
+    RandomGrayRange {
+        min: f32,
+        max: f32,
+    },
     RandomRgbRange {
         min: [f32; 3],
         max: [f32; 3],
@@ -321,6 +325,20 @@ impl ParticleDescriptor {
                 lifetime: ParticleLifetimeDescriptor::RandomInclusive { min: 6, max: 9 },
                 sprite_selection: ParticleSpriteSelection::Age,
                 visual: ParticleVisualDescriptor::HugeExplosion,
+                initial_velocity: ParticleInitialVelocityDescriptor::Zero,
+                friction: 0.98,
+                gravity: 0.0,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:sonic_boom" => Self {
+                provider: "SonicBoomParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::Fixed(16),
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::FixedQuad {
+                    size: 1.5,
+                    color: ParticleColorDescriptor::RandomGrayRange { min: 0.4, max: 1.0 },
+                },
                 initial_velocity: ParticleInitialVelocityDescriptor::Zero,
                 friction: 0.98,
                 gravity: 0.0,
@@ -1039,6 +1057,10 @@ impl ParticleColorDescriptor {
                 let color = random.next_f32() * max;
                 [color, color, color, 1.0]
             }
+            Self::RandomGrayRange { min, max } => {
+                let color = sample_range(random, min, max);
+                [color, color, color, 1.0]
+            }
             Self::RandomRgbRange { min, max } => [
                 sample_range(random, min[0], max[0]),
                 sample_range(random, min[1], max[1]),
@@ -1461,6 +1483,24 @@ mod tests {
         );
         assert_eq!(
             ParticleDescriptor::for_particle("minecraft:explosion").initial_velocity,
+            ParticleInitialVelocityDescriptor::Zero
+        );
+        assert_descriptor(
+            "minecraft:sonic_boom",
+            "SonicBoomParticle.Provider",
+            ParticleLifetimeDescriptor::Fixed(16),
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::FixedQuad {
+                size: 1.5,
+                color: ParticleColorDescriptor::RandomGrayRange { min: 0.4, max: 1.0 },
+            },
+            0.98,
+            0.0,
+            true,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:sonic_boom").initial_velocity,
             ParticleInitialVelocityDescriptor::Zero
         );
         assert_descriptor(
@@ -1992,6 +2032,19 @@ mod tests {
         assert_eq!(explosion.color[1], explosion.color[2]);
         assert_eq!(explosion.color[3], 1.0);
         assert_eq!(explosion.quad_size_curve, ParticleQuadSizeCurve::Constant);
+
+        let mut sonic_boom_random = ParticleRandom::new(39);
+        let sonic_boom = ParticleVisualDescriptor::FixedQuad {
+            size: 1.5,
+            color: ParticleColorDescriptor::RandomGrayRange { min: 0.4, max: 1.0 },
+        }
+        .sample_for_command(&mut sonic_boom_random, [9.0, 9.0, 9.0]);
+        assert_close_f32(sonic_boom.base_quad_size, 1.5);
+        assert_range_f32(sonic_boom.color[0], 0.4, 1.0);
+        assert_eq!(sonic_boom.color[0], sonic_boom.color[1]);
+        assert_eq!(sonic_boom.color[1], sonic_boom.color[2]);
+        assert_eq!(sonic_boom.color[3], 1.0);
+        assert_eq!(sonic_boom.quad_size_curve, ParticleQuadSizeCurve::Constant);
 
         let mut gust_random = ParticleRandom::new(37);
         let gust = ParticleVisualDescriptor::FixedQuad {
