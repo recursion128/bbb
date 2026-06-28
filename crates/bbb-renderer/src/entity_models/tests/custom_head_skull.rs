@@ -58,6 +58,7 @@ fn assert_skull_submission(
     assert_eq!(submit.transform, expected_transform);
     assert_eq!(submit.light, instance.render_state.shader_light());
     assert_eq!(submit.overlay, [0.0, 10.0]);
+    assert_eq!(submit.outline_color, instance.render_state.outline_color);
 }
 
 fn assert_skull_layer_pass(
@@ -210,6 +211,53 @@ fn custom_head_static_skull_submission_survives_missing_texture_atlas_entry() {
         .vertices
         .iter()
         .all(|vertex| vertex.overlay != [0.0, 10.0]));
+    assert!(meshes.translucent.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+}
+
+#[test]
+fn marker_hidden_glowing_armor_stand_keeps_custom_head_skull_without_base_submission() {
+    // Vanilla runs `CustomHeadLayer` even when a marker armor stand's hidden/glowing base has no
+    // render type, so the skull branch still submits `SkullBlockRenderer.submitSkull`.
+    let atlas = atlas_with_many(&[ARMOR_STAND_TEXTURE_REF, SKELETON_TEXTURE_REF]);
+    let instance = EntityModelInstance::armor_stand_with_marker(
+        918,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        true,
+        true,
+        true,
+        DEFAULT_ARMOR_STAND_MODEL_POSE,
+    )
+    .with_custom_head_skull(Some(EntityCustomHeadSkull::Skeleton))
+    .with_light_coords((7_u32 << 4) | (9_u32 << 20))
+    .with_white_overlay_progress(0.8)
+    .with_has_red_overlay(true)
+    .with_invisible(true)
+    .with_outline_color(0xff33_77cc);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 1);
+    assert!(!meshes
+        .submissions
+        .iter()
+        .any(|submit| submit.texture == ARMOR_STAND_TEXTURE_REF));
+    assert_skull_submission(
+        &instance,
+        &meshes,
+        EntityModelLayerRenderType::EntityCutoutZOffset,
+        SKELETON_TEXTURE_REF,
+    );
+    assert_eq!(meshes.cutout.vertices.len(), 24);
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]
+            && vertex.light == instance.render_state.shader_light()
+            && vertex.overlay == [0.0, 10.0]));
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
 }

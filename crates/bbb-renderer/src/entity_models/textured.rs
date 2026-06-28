@@ -395,7 +395,13 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
             // type. Most layers gate on `state.isInvisible`; `WolfArmorLayer` does not, so adult
             // invisible wolves keep their body-armor equipment/crack submissions.
             emit_wolf_body_armor_layer(&mut meshes, *instance, atlas);
-            emit_worn_armor_stand_armor(&mut meshes, *instance, atlas);
+            emit_armor_stand_invisible_layers(
+                &mut meshes,
+                *instance,
+                atlas,
+                dynamic_player_skin_atlas,
+                dynamic_player_texture_atlas,
+            );
             continue;
         }
         meshes.set_current_submission_state(*instance);
@@ -466,7 +472,13 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
             // Keep the vanilla layer exception above for invisible wolves while preserving the
             // existing gate for the other post-base helpers.
             emit_wolf_body_armor_layer(&mut meshes, *instance, atlas);
-            emit_worn_armor_stand_armor(&mut meshes, *instance, atlas);
+            emit_armor_stand_invisible_layers(
+                &mut meshes,
+                *instance,
+                atlas,
+                dynamic_player_skin_atlas,
+                dynamic_player_texture_atlas,
+            );
             continue;
         }
         // The charged-creeper and powered-wither energy swirls are additive scrolling overlays layered
@@ -1724,6 +1736,21 @@ fn emit_worn_armor_stand_armor(
             );
         });
     }
+}
+
+fn emit_armor_stand_invisible_layers(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+    dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
+    dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+) {
+    if !matches!(instance.kind, EntityModelKind::ArmorStand { .. }) {
+        return;
+    }
+    emit_worn_armor_stand_armor(meshes, instance, atlas);
+    emit_custom_head_skull_layer(meshes, instance, atlas, dynamic_player_skin_atlas);
+    emit_wings_layer(meshes, instance, atlas, dynamic_player_texture_atlas);
 }
 
 /// Worn armor for the humanoid armor wearers (vanilla `HumanoidModel.createArmorMeshSet`, `INNER 0.5`

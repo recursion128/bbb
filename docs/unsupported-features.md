@@ -2566,8 +2566,13 @@ When an agent does any of the following, update this file in the same slice:
       order-1 chest/legs/feet/head submit sequences, small-stand
       `HumanoidModel.BABY_TRANSFORMER` scaling, and the vanilla invisible-layer
       behavior where hidden glowing marker stands still keep armor submissions
-      even though their base body records no submission. Held-item, wings, and
-      custom-head invisible-layer combinations, hurt wiggle, and animation
+      even though their base body records no submission. Armor-stand
+      `WingsLayer` and the skull branch of `CustomHeadLayer` now also keep their
+      texture-backed submissions through the marker hidden/glowing no-base path
+      and inherited living invisible branches, preserving vanilla texture,
+      render type, transform, light, no-overlay, outline-color, order, and
+      submit-sequence metadata. Held-item item-model pass and generic non-skull
+      custom-head item invisible-layer combinations, hurt wiggle, and animation
       interpolation remain unsupported
     - slime entities as renderer-owned vanilla 26.1 `SlimeModel` inner
       `ModelLayers.SLIME` geometry plus outer `ModelLayers.SLIME_OUTER`
