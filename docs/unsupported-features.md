@@ -1261,11 +1261,15 @@ When an agent does any of the following, update this file in the same slice:
         `MapTextureManager.prepareMapTexture` / `MapRenderer.render` by uploading
         a 128x128 dynamic `minecraft:map/<id>` texture, submitting a single
         `RenderTypes.text` quad with white tint, UV `0..1`, light coords, and
-        `order=0` / `submit_sequence=0`; if map data is absent, the frame falls
-        back to the ordinary `FIXED` item model. Still deferred:
-        `MapRenderer` decoration sprites / name text; the fractional frame
-        depths (`15.5` / `15.001`) are still rounded to `15` in the
-        hand-written border boxes.
+        `order=0` / `submit_sequence=0`. `MapRenderer` decoration sprites now
+        use the vanilla `MapDecorationTypes` registry-id order, `showOnlyFrame`
+        / `showOnItemFrame` gate, `textures/atlas/map_decorations.png` sprite
+        atlas, `RenderTypes.text`, white tint, decoration transform, light
+        coords, `order=0`, and same-order submit sequence after the base map
+        quad. If map data is absent, the frame falls back to the ordinary
+        `FIXED` item model. Still deferred: `MapRenderer` decoration name text;
+        the fractional frame depths (`15.5` / `15.001`) are still rounded to
+        `15` in the hand-written border boxes.
       - fourth consumer DONE (HUD 3D inventory icons): each hotbar slot holding
         a block item renders its block model as a 3D icon (vanilla 3D inventory
         item rendering) instead of the flat 2D sprite. Native

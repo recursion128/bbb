@@ -10,7 +10,8 @@ use std::collections::BTreeMap;
 
 use bbb_pack::BlockModelDisplayContext;
 use bbb_renderer::{
-    bake_generated_item_quads, bake_item_frame_map_surface, bake_item_model_mesh_with_light,
+    bake_generated_item_quads, bake_item_frame_map_decoration_surface, bake_item_frame_map_surface,
+    bake_item_model_mesh_with_light, ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture,
     ItemFrameMapSurface, ItemFrameMapTexture, ItemModelMesh, ItemModelQuad,
     ITEM_MODEL_FULL_BRIGHT_LIGHT,
 };
@@ -52,6 +53,8 @@ pub(crate) struct ItemFrameModels {
     pub flat_meshes: Vec<ItemModelMesh>,
     pub map_textures: Vec<ItemFrameMapTexture>,
     pub map_surfaces: Vec<ItemFrameMapSurface>,
+    pub map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
+    pub map_decoration_surfaces: Vec<ItemFrameMapDecorationSurface>,
 }
 
 /// Bakes every item-frame / glow-item-frame entity into its wooden border plus framed item (vanilla
@@ -69,6 +72,7 @@ pub(crate) fn item_frame_models(
     let mut flat_meshes = Vec::new();
     let mut map_textures = BTreeMap::new();
     let mut map_surfaces = Vec::new();
+    let mut map_decoration_surfaces = Vec::new();
 
     for state in world.item_frame_render_states() {
         let center = Vec3::new(
@@ -99,11 +103,29 @@ pub(crate) fn item_frame_models(
             map_textures
                 .entry(map.id)
                 .or_insert_with(|| item_frame_map_texture(map));
+            let map_transform = item_frame_map_transform(base, state.invisible, state.rotation);
+            let map_light = item_frame_map_light(state.glow, state.light);
             map_surfaces.push(bake_item_frame_map_surface(
                 map.id,
-                item_frame_map_transform(base, state.invisible, state.rotation),
-                item_frame_map_light(state.glow, state.light),
+                map_transform,
+                map_light,
             ));
+            let mut visible_decoration_index = 0;
+            for decoration in &map.decorations {
+                if let Some(surface) = bake_item_frame_map_decoration_surface(
+                    decoration.type_id,
+                    decoration.x,
+                    decoration.y,
+                    decoration.rot,
+                    visible_decoration_index,
+                    map_transform,
+                    map_light,
+                    visible_decoration_index + 1,
+                ) {
+                    map_decoration_surfaces.push(surface);
+                    visible_decoration_index += 1;
+                }
+            }
             continue;
         }
 
@@ -163,11 +185,22 @@ pub(crate) fn item_frame_models(
         ));
     }
 
+    let map_decoration_textures = if map_decoration_surfaces.is_empty() {
+        Vec::new()
+    } else {
+        item_runtime
+            .map(NativeItemRuntime::map_decoration_textures)
+            .unwrap_or_default()
+            .to_vec()
+    };
+
     ItemFrameModels {
         block_meshes,
         flat_meshes,
         map_textures: map_textures.into_values().collect(),
         map_surfaces,
+        map_decoration_textures,
+        map_decoration_surfaces,
     }
 }
 
@@ -446,6 +479,114 @@ mod tests {
             surface.submission.transform,
             item_frame_map_transform(base, false, 5)
         );
+    }
+
+    #[test]
+    fn filled_map_frame_renders_frame_visible_decoration_sprites() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(712, VANILLA_ENTITY_TYPE_ITEM_FRAME_ID));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 712,
+            values: vec![protocol_item_data(map_stack(42, 8))],
+        }));
+        assert!(world.apply_map_item_data(MapItemData {
+            map_id: 8,
+            scale: 0,
+            locked: false,
+            decorations: Some(vec![
+                bbb_protocol::packets::MapDecoration {
+                    type_id: 0,
+                    x: 0,
+                    y: 0,
+                    rot: 0,
+                    name: Some("player marker is hidden on frames".to_string()),
+                },
+                bbb_protocol::packets::MapDecoration {
+                    type_id: 1,
+                    x: -20,
+                    y: 30,
+                    rot: 7,
+                    name: Some("Frame".to_string()),
+                },
+                bbb_protocol::packets::MapDecoration {
+                    type_id: 4,
+                    x: 40,
+                    y: -10,
+                    rot: 15,
+                    name: None,
+                },
+            ]),
+            color_patch: Some(MapColorPatch {
+                start_x: 0,
+                start_y: 0,
+                width: 1,
+                height: 1,
+                colors: vec![(1 << 2) | 2],
+            }),
+        }));
+
+        let models = item_frame_models(&world, None, &TerrainTextureState::default());
+        assert_eq!(models.map_surfaces.len(), 1);
+        assert!(models.map_decoration_textures.is_empty());
+        assert_eq!(models.map_decoration_surfaces.len(), 2);
+
+        let state = &world.item_frame_render_states()[0];
+        let center = Vec3::new(
+            state.center.x as f32,
+            state.center.y as f32,
+            state.center.z as f32,
+        );
+        let (x_rot, y_rot) = frame_face_rotation(state.facing);
+        let base = Mat4::from_translation(center)
+            * Mat4::from_rotation_x(x_rot.to_radians())
+            * Mat4::from_rotation_y(y_rot.to_radians());
+        let map_transform = item_frame_map_transform(base, false, 0);
+        let map_light = item_frame_map_light(false, state.light);
+
+        let frame = &models.map_decoration_surfaces[0];
+        assert_eq!(frame.vertex_count(), 4);
+        assert_eq!(frame.index_count(), 6);
+        assert_eq!(frame.submission.type_id, 1);
+        assert_eq!(
+            frame.submission.render_type,
+            bbb_renderer::ItemFrameMapRenderType::Text
+        );
+        assert_eq!(frame.submission.render_type.vanilla_name(), "text");
+        assert_eq!(
+            frame.submission.texture.vanilla_atlas_path(),
+            "minecraft:textures/atlas/map_decorations.png"
+        );
+        assert_eq!(
+            frame.submission.texture.vanilla_sprite_id(),
+            "minecraft:frame"
+        );
+        assert_eq!(frame.submission.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(frame.submission.light, map_light);
+        assert_eq!(
+            (frame.submission.order, frame.submission.submit_sequence),
+            (0, 1)
+        );
+        assert_eq!(frame.submission.decoration_index, 0);
+        assert_eq!(
+            frame.submission.transform,
+            map_transform
+                * Mat4::from_translation(Vec3::new(-20.0 / 2.0 + 64.0, 30.0 / 2.0 + 64.0, -0.02))
+                * Mat4::from_rotation_z((7.0_f32 * 360.0 / 16.0).to_radians())
+                * Mat4::from_scale(Vec3::new(4.0, 4.0, 3.0))
+                * Mat4::from_translation(Vec3::new(-0.125, 0.125, 0.0))
+        );
+
+        let target = &models.map_decoration_surfaces[1];
+        assert_eq!(target.submission.type_id, 4);
+        assert_eq!(
+            target.submission.texture.vanilla_sprite_id(),
+            "minecraft:target_x"
+        );
+        assert_eq!(
+            (target.submission.order, target.submission.submit_sequence),
+            (0, 2)
+        );
+        assert_eq!(target.submission.decoration_index, 1);
     }
 
     #[test]

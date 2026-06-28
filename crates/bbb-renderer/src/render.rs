@@ -319,6 +319,21 @@ impl Renderer {
                 item_model_draw_calls += 1;
             }
         }
+        let (map_decoration_vertices, map_decoration_indices) =
+            self.collect_item_frame_map_decoration_geometry();
+        if !map_decoration_indices.is_empty() {
+            if let Some(atlas) = &self.item_frame_map_decoration_atlas {
+                self.draw_item_model_geometry(
+                    &mut encoder,
+                    &view,
+                    &map_decoration_vertices,
+                    &map_decoration_indices,
+                    &atlas.bind_group,
+                );
+                pipeline_switches += 1;
+                item_model_draw_calls += 1;
+            }
+        }
         let (flat_item_vertices, flat_item_indices) = self.collect_flat_item_model_geometry();
         if !flat_item_indices.is_empty() {
             if let Some(atlas) = &self.item_entity_atlas {

@@ -25,8 +25,8 @@ use bbb_renderer::{
     DynamicPlayerSkinImage, DynamicPlayerTextureImage, EntityCustomHeadSkull,
     EntityDefaultPlayerSkin, EntityDynamicPlayerSkin, EntityDynamicPlayerSkinStatus,
     EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind, EntityEquipmentLayerTexture,
-    EntityModelTextureRef, EntityPlayerSkin, EntityPlayerSkinModel, ItemSpriteRect,
-    SpriteAlphaMask,
+    EntityModelTextureRef, EntityPlayerSkin, EntityPlayerSkinModel, ItemFrameMapDecorationTexture,
+    ItemSpriteRect, SpriteAlphaMask,
 };
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, ItemAttackRange as WorldItemAttackRange,
@@ -59,6 +59,21 @@ const ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF: EntityModelTextureRef = EntityModelTex
     path: "textures/entity/equipment/wings/elytra.png",
     size: [64, 32],
 };
+
+fn load_map_decoration_textures(roots: &PackRoots) -> Result<Vec<ItemFrameMapDecorationTexture>> {
+    let textures = roots
+        .load_atlas_texture_images("map_decorations")?
+        .into_iter()
+        .filter(|image| image.id != "minecraft:missingno")
+        .map(|image| ItemFrameMapDecorationTexture {
+            sprite_id: image.id,
+            width: image.width,
+            height: image.height,
+            rgba: image.rgba,
+        })
+        .collect();
+    Ok(textures)
+}
 
 const ITEM_ATLAS_MAX_WIDTH: u32 = 4096;
 const ITEM_GENERATED_MAX_LAYERS: usize = 5;
@@ -291,6 +306,7 @@ pub(crate) struct NativeItemRuntime {
     registry: Option<ItemRegistryCatalog>,
     equipment_assets: EquipmentAssetCatalog,
     language: LanguageCatalog,
+    map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
     textures: ItemTextureState,
     profile_resolutions: RefCell<Option<AsyncProfileResolutionRuntime>>,
     dynamic_skins: RefCell<Option<AsyncDynamicPlayerSkinRuntime>>,
@@ -378,6 +394,13 @@ impl NativeItemRuntime {
         let language = roots
             .load_client_language_catalog(language_code)
             .context("load item tooltip language catalog")?;
+        let map_decoration_textures = load_map_decoration_textures(roots)
+            .context("load map decoration textures")
+            .map_err(|err| {
+                tracing::warn!(?err, "continuing without native map decoration textures");
+                err
+            })
+            .unwrap_or_default();
         Self::from_loaded(
             item_models,
             cuboid_models,
@@ -390,6 +413,7 @@ impl NativeItemRuntime {
             recipe_specific_crafting_remainder_item_ids,
             equipment_assets,
             language,
+            map_decoration_textures,
             roots.resource_stack(),
         )
     }
@@ -406,6 +430,7 @@ impl NativeItemRuntime {
         recipe_specific_crafting_remainder_item_ids: BTreeSet<i32>,
         equipment_assets: EquipmentAssetCatalog,
         language: LanguageCatalog,
+        map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
         profile_texture_resources: PackResourceStack,
     ) -> Result<Self> {
         let mut texture_ids = BTreeSet::new();
@@ -485,6 +510,7 @@ impl NativeItemRuntime {
             registry,
             equipment_assets,
             language,
+            map_decoration_textures,
             textures,
             profile_resolutions: RefCell::default(),
             dynamic_skins: RefCell::default(),
@@ -515,6 +541,7 @@ impl NativeItemRuntime {
             registry: None,
             equipment_assets: EquipmentAssetCatalog::default(),
             language: LanguageCatalog::from_json_bytes(b"{}").expect("empty test language"),
+            map_decoration_textures: Vec::new(),
             textures: ItemTextureState::from_images(vec![missing])
                 .expect("test item texture atlas is valid"),
             profile_resolutions: RefCell::default(),
@@ -544,6 +571,10 @@ impl NativeItemRuntime {
 
     pub(crate) fn item_registry_count(&self) -> usize {
         self.item_registry_count
+    }
+
+    pub(crate) fn map_decoration_textures(&self) -> &[ItemFrameMapDecorationTexture] {
+        &self.map_decoration_textures
     }
 
     pub(crate) fn item_max_stack_sizes_by_protocol_id(&self) -> BTreeMap<i32, i32> {
