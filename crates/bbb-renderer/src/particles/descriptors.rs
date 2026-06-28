@@ -50,7 +50,7 @@ pub(crate) enum ParticleVisualDescriptor {
         color: ParticleColorDescriptor,
     },
     SuspendedTown {
-        color: ParticleColorDescriptor,
+        color: SuspendedTownColorDescriptor,
     },
     Explode,
 }
@@ -60,6 +60,12 @@ pub(crate) enum ParticleColorDescriptor {
     RandomGray { max: f32 },
     RandomRgbRange { min: [f32; 3], max: [f32; 3] },
     FixedRgb([f32; 3]),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) enum SuspendedTownColorDescriptor {
+    BaseGray,
+    Override(ParticleColorDescriptor),
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -239,7 +245,9 @@ impl ParticleDescriptor {
                 },
                 sprite_selection: ParticleSpriteSelection::Random,
                 visual: ParticleVisualDescriptor::SuspendedTown {
-                    color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                    color: SuspendedTownColorDescriptor::Override(
+                        ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                    ),
                 },
                 initial_velocity: ParticleInitialVelocityDescriptor::ParticleConstructorScaled {
                     scale: 0.02,
@@ -254,7 +262,27 @@ impl ParticleDescriptor {
                 lifetime: ParticleLifetimeDescriptor::RandomInclusive { min: 3, max: 7 },
                 sprite_selection: ParticleSpriteSelection::Random,
                 visual: ParticleVisualDescriptor::SuspendedTown {
-                    color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                    color: SuspendedTownColorDescriptor::Override(
+                        ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                    ),
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::ParticleConstructorScaled {
+                    scale: 0.02,
+                },
+                friction: 0.99,
+                gravity: 0.0,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:mycelium" => Self {
+                provider: "SuspendedTownParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::BaseAshSmoke {
+                    max_lifetime: 20,
+                    scale_tenths: 10,
+                },
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SuspendedTown {
+                    color: SuspendedTownColorDescriptor::BaseGray,
                 },
                 initial_velocity: ParticleInitialVelocityDescriptor::ParticleConstructorScaled {
                     scale: 0.02,
@@ -318,11 +346,11 @@ impl ParticleVisualDescriptor {
                 ParticleQuadSizeCurve::GrowToBase,
             ),
             Self::SuspendedTown { color } => {
-                let _base_tint = random.next_f32() * 0.1 + 0.2;
+                let base_tint = random.next_f32() * 0.1 + 0.2;
                 let scale = random.next_f32() * 0.6 + 0.5;
                 ParticleVisualState::new(
                     base_quad_size * scale,
-                    color.sample(random),
+                    color.sample(base_tint, random),
                     ParticleQuadSizeCurve::Constant,
                 )
             }
@@ -335,6 +363,15 @@ impl ParticleVisualDescriptor {
                     ParticleQuadSizeCurve::Constant,
                 )
             }
+        }
+    }
+}
+
+impl SuspendedTownColorDescriptor {
+    fn sample(self, base_tint: f32, random: &mut ParticleRandom) -> [f32; 4] {
+        match self {
+            Self::BaseGray => [base_tint, base_tint, base_tint, 1.0],
+            Self::Override(color) => color.sample(random),
         }
     }
 }
@@ -663,7 +700,9 @@ mod tests {
             },
             ParticleSpriteSelection::Random,
             ParticleVisualDescriptor::SuspendedTown {
-                color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                color: SuspendedTownColorDescriptor::Override(ParticleColorDescriptor::FixedRgb([
+                    1.0, 1.0, 1.0,
+                ])),
             },
             0.99,
             0.0,
@@ -680,7 +719,9 @@ mod tests {
             ParticleLifetimeDescriptor::RandomInclusive { min: 3, max: 7 },
             ParticleSpriteSelection::Random,
             ParticleVisualDescriptor::SuspendedTown {
-                color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                color: SuspendedTownColorDescriptor::Override(ParticleColorDescriptor::FixedRgb([
+                    1.0, 1.0, 1.0,
+                ])),
             },
             0.99,
             0.0,
@@ -689,6 +730,26 @@ mod tests {
         );
         assert_eq!(
             ParticleDescriptor::for_particle("minecraft:composter").initial_velocity,
+            ParticleInitialVelocityDescriptor::ParticleConstructorScaled { scale: 0.02 }
+        );
+        assert_descriptor(
+            "minecraft:mycelium",
+            "SuspendedTownParticle.Provider",
+            ParticleLifetimeDescriptor::BaseAshSmoke {
+                max_lifetime: 20,
+                scale_tenths: 10,
+            },
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::SuspendedTown {
+                color: SuspendedTownColorDescriptor::BaseGray,
+            },
+            0.99,
+            0.0,
+            true,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:mycelium").initial_velocity,
             ParticleInitialVelocityDescriptor::ParticleConstructorScaled { scale: 0.02 }
         );
         assert_descriptor(
@@ -762,7 +823,9 @@ mod tests {
 
         let mut happy_villager_random = ParticleRandom::new(13);
         let happy_villager = ParticleVisualDescriptor::SuspendedTown {
-            color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+            color: SuspendedTownColorDescriptor::Override(ParticleColorDescriptor::FixedRgb([
+                1.0, 1.0, 1.0,
+            ])),
         }
         .sample(&mut happy_villager_random);
         assert_range_f32(happy_villager.base_quad_size, 0.05, 0.22);
@@ -771,6 +834,18 @@ mod tests {
             happy_villager.quad_size_curve,
             ParticleQuadSizeCurve::Constant
         );
+
+        let mut mycelium_random = ParticleRandom::new(16);
+        let mycelium = ParticleVisualDescriptor::SuspendedTown {
+            color: SuspendedTownColorDescriptor::BaseGray,
+        }
+        .sample(&mut mycelium_random);
+        assert_range_f32(mycelium.base_quad_size, 0.05, 0.22);
+        assert_range_f32(mycelium.color[0], 0.2, 0.3);
+        assert_eq!(mycelium.color[0], mycelium.color[1]);
+        assert_eq!(mycelium.color[1], mycelium.color[2]);
+        assert_eq!(mycelium.color[3], 1.0);
+        assert_eq!(mycelium.quad_size_curve, ParticleQuadSizeCurve::Constant);
 
         let mut smoke_random = ParticleRandom::new(9);
         let smoke = ParticleVisualDescriptor::BaseAshSmoke {

@@ -1035,6 +1035,18 @@ mod tests {
         assert_eq!(composter.color, [1.0, 1.0, 1.0, 1.0]);
         assert_ne!(composter.velocity, [0.0, 0.0, 0.0]);
 
+        let mut mycelium_random = ParticleRandom::new(49);
+        let mycelium = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:mycelium", 1.0),
+            &mut mycelium_random,
+        );
+        assert_eq!(mycelium.provider, "SuspendedTownParticle.Provider");
+        assert_range_f32(mycelium.color[0], 0.2, 0.3);
+        assert_eq!(mycelium.color[0], mycelium.color[1]);
+        assert_eq!(mycelium.color[1], mycelium.color[2]);
+        assert_eq!(mycelium.quad_size_curve, ParticleQuadSizeCurve::Constant);
+        assert_ne!(mycelium.velocity, [0.0, 0.0, 0.0]);
+
         let mut smoke_random = ParticleRandom::new(44);
         let smoke = ParticleInstance::from_spawn_command(
             spawn_command("minecraft:white_smoke", 1.0),
