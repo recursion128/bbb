@@ -79,7 +79,7 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。
 
 硬 checklist：
 
-- [ ] residual emit 路径审计清零；或每个 remaining residual 命中都明确归属到
+- [x] residual emit 路径审计清零；或每个 remaining residual 命中都明确归属到
   非 P0 parity（例如 colored-only debug fallback、历史文档、注释）。
 - [ ] texture-backed / dispatch-owned submission 路径无主要遗漏；新增 renderer 或
   layer 不再绕过 submission 直接写 texture-backed mesh。
@@ -103,8 +103,10 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。
   mesh-emitting arm；命中主要是 `goal.md` / `docs/unsupported-features.md`
   历史说明，以及 `entity_models/dispatch.rs` 的“textured path has no residual
   mesh-emitting arm”说明；`entity_models/textured.rs` 的旧 residual 迁移注释已
-  清理为 explicit submission audit 注释。后续 closeout slice 应把
-  `docs/unsupported-features.md` 中 stale 文案归类/清理到 checklist 第一项。
+  清理为 explicit submission audit 注释。`docs/unsupported-features.md` 已在
+  `Renderer Scene Parity` 下把历史 residual wording 归类为迁移证据，而不是
+  当前 P0 blocker；colored-only fallback/debug geometry 归属非 texture-backed
+  submission parity。
 - `rg fallback`：大量命中是合法资源/协议/item/terrain fallback。P0 pipeline
   相关剩余项是 colored-only `Humanoid` / `Quadruped` / `Placeholder` debug
   fallback；它们不属于 texture-backed submission parity。动态 profile fallback

@@ -336,6 +336,15 @@ When an agent does any of the following, update this file in the same slice:
 - Owner: `bbb-renderer` + `bbb-native` + `bbb-pack` + `bbb-world`
 - Status: `partial`
 - Next action:
+  - P0 pipeline closeout now treats texture-backed residual emit as audited:
+    `rg residual` has no remaining executable texture-backed residual mesh-emitting
+    arm. Code hits are limited to `entity_models/dispatch.rs` documenting that
+    the textured path has no residual arm and that colored-only fallback/debug
+    geometry is outside the textured submission path. Historical residual wording
+    below is retained as evidence of migration slices, not as a current P0 blocker.
+    Remaining colored fallback geometry belongs to non-textured debug/parity work,
+    while GPU bucket folding, outline presentation, render-graph sorting, and
+    more exact lighting remain separate P0 pipeline/visual follow-ups.
   - Replace proxies with full extraction from canonical world and pack data:
     - entity bounds
     - dropped-item icons (3D block/item model renderer in progress — see the
