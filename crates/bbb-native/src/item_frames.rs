@@ -8,8 +8,11 @@
 use std::collections::BTreeMap;
 
 use bbb_pack::BlockModelDisplayContext;
-use bbb_renderer::{bake_generated_item_quads, bake_item_model_mesh, ItemModelMesh, ItemModelQuad};
-use bbb_world::{ItemFrameFacing, WorldStore};
+use bbb_renderer::{
+    bake_generated_item_quads, bake_item_model_mesh_with_light, ItemModelMesh, ItemModelQuad,
+    ITEM_MODEL_FULL_BRIGHT_LIGHT,
+};
+use bbb_world::{ItemFrameFacing, TerrainLight, WorldStore};
 use glam::{Mat4, Vec3};
 
 use crate::item_models::display_matrix;
@@ -55,7 +58,11 @@ pub(crate) fn item_frame_models(
         let border = terrain_textures.item_frame_border_quads(state.glow);
         if !border.is_empty() {
             let border_transform = base * Mat4::from_translation(Vec3::splat(-0.5));
-            block_meshes.push(bake_item_model_mesh(&border, border_transform));
+            block_meshes.push(bake_item_model_mesh_with_light(
+                &border,
+                border_transform,
+                item_frame_border_light(state.glow, state.light),
+            ));
         }
 
         // Framed item (deferred for filled maps, which render the full-frame map instead).
@@ -80,12 +87,17 @@ pub(crate) fn item_frame_models(
             * Mat4::from_rotation_z((state.rotation as f32 * 360.0 / 8.0).to_radians())
             * Mat4::from_scale(Vec3::splat(0.5))
             * display_matrix(&fixed, false);
+        let item_light = item_frame_contents_light(state.glow, state.light);
 
         // Block path.
         if let Some(resource_id) = item_runtime.item_resource_id(item_id) {
             if let Some(quads) = terrain_textures.block_item_quads(resource_id, &BTreeMap::new()) {
                 if !quads.is_empty() {
-                    block_meshes.push(bake_item_model_mesh(&quads, item_transform));
+                    block_meshes.push(bake_item_model_mesh_with_light(
+                        &quads,
+                        item_transform,
+                        item_light,
+                    ));
                     continue;
                 }
             }
@@ -103,7 +115,11 @@ pub(crate) fn item_frame_models(
         if quads.is_empty() {
             continue;
         }
-        flat_meshes.push(bake_item_model_mesh(&quads, item_transform));
+        flat_meshes.push(bake_item_model_mesh_with_light(
+            &quads,
+            item_transform,
+            item_light,
+        ));
     }
 
     ItemFrameModels {
@@ -125,6 +141,34 @@ fn frame_face_rotation(facing: ItemFrameFacing) -> (f32, f32) {
         ItemFrameFacing::West => (0.0, 90.0),
         ItemFrameFacing::East => (0.0, -90.0),
     }
+}
+
+fn item_frame_border_light(glow: bool, light: TerrainLight) -> [f32; 2] {
+    let block = if glow {
+        light.block.max(5)
+    } else {
+        light.block
+    };
+    shader_light(TerrainLight {
+        sky: light.sky,
+        block,
+    })
+}
+
+fn item_frame_contents_light(glow: bool, light: TerrainLight) -> [f32; 2] {
+    if glow {
+        // Vanilla `ItemFrameRenderer.getLightCoords(true, 15728880, state.lightCoords)`.
+        ITEM_MODEL_FULL_BRIGHT_LIGHT
+    } else {
+        shader_light(light)
+    }
+}
+
+fn shader_light(light: TerrainLight) -> [f32; 2] {
+    [
+        f32::from(light.block.min(15)) / 15.0,
+        f32::from(light.sky.min(15)) / 15.0,
+    ]
 }
 
 #[cfg(test)]
@@ -160,5 +204,31 @@ mod tests {
             );
             assert!((center.z - ITEM_FRAME_ITEM_DEPTH).abs() < 1e-6);
         }
+    }
+
+    #[test]
+    fn glow_item_frame_uses_vanilla_border_and_contents_light() {
+        let dark = TerrainLight { sky: 0, block: 0 };
+        let torch = TerrainLight { sky: 3, block: 7 };
+
+        // Vanilla `ItemFrameRenderer.getBlockLightLevel`: glow frames raise the border/model
+        // `state.lightCoords` block component to at least 5, preserving sky light.
+        assert_eq!(item_frame_border_light(false, dark), [0.0, 0.0]);
+        assert_eq!(item_frame_border_light(true, dark), [5.0 / 15.0, 0.0]);
+        assert_eq!(
+            item_frame_border_light(true, torch),
+            [7.0 / 15.0, 3.0 / 15.0]
+        );
+
+        // Vanilla `getLightCoords(state.isGlowFrame, 15728880, state.lightCoords)` makes the framed item
+        // fully bright for glow item frames, but leaves normal item frames at `state.lightCoords`.
+        assert_eq!(
+            item_frame_contents_light(false, torch),
+            [7.0 / 15.0, 3.0 / 15.0]
+        );
+        assert_eq!(
+            item_frame_contents_light(true, torch),
+            ITEM_MODEL_FULL_BRIGHT_LIGHT
+        );
     }
 }

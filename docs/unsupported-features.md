@@ -1237,17 +1237,21 @@ When an agent does any of the following, update this file in the same slice:
         entity renders as the 3D wooden border plus the framed item (vanilla
         `ItemFrameRenderer`), replacing the placeholder bounds box (now
         `NoRender`). `WorldStore::item_frame_render_states` exposes each frame's
-        wall-mounted center, facing wall, `0..=7` item rotation, glow flag,
-        framed item, and map flag (from `DATA_DIRECTION` / `DATA_ITEM` /
-        `DATA_ROTATION`). Native `item_frames` bakes the border by transcribing
+        wall-mounted center, facing wall, sampled renderer light, `0..=7` item
+        rotation, glow flag, framed item, and map flag (from `DATA_DIRECTION` /
+        `DATA_ITEM` / `DATA_ROTATION`). Native `item_frames` bakes the border by transcribing
         `block/template_item_frame` (four `birch_planks` bars + the
         `item_frame` / `glow_item_frame` back panel) into the blocks atlas via
         the existing `Boxes` item-bake path, and the framed item to block/flat
         quads with its `FIXED` display transform. The facing wall orients the
         model (`Rx(xRot)·Ry(yRot)`), the item is pushed `0.4375` out and spun by
-        its rotation at scale `0.5`. Deferred: the filled-map full-frame render
-        (a map frame shows only its border) and the `0.5`-vs-`0.4375` invisible
-        offset; the back panel's `15.5` depth is rounded to `15`.
+        its rotation at scale `0.5`. Glow item-frame lighting now follows vanilla
+        `ItemFrameRenderer`: the border/model light raises block light to at least
+        `GLOW_FRAME_BRIGHTNESS = 5`, while framed item contents use the full-bright
+        `15728880` light coords; there is no separate emissive texture/pass.
+        Deferred: the filled-map full-frame render (a map frame shows only its
+        border) and the `0.5`-vs-`0.4375` invisible offset; the back panel's
+        `15.5` depth is rounded to `15`.
       - fourth consumer DONE (HUD 3D inventory icons): each hotbar slot holding
         a block item renders its block model as a 3D icon (vanilla 3D inventory
         item rendering) instead of the flat 2D sprite. Native

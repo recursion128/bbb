@@ -7,8 +7,9 @@
 //! coordinates, the same units `from`/`to` use), normalized to the `0..1` unit cube at bake time so the
 //! caller's `transform` places the model in world / GUI / hand space exactly like vanilla's display
 //! transforms. `uvs` are atlas-absolute into the shared block/item atlas. `tint` is the per-face color
-//! (biome/dye tint, or white) and `shade` is the directional face-shade multiplier (vanilla
-//! `Direction.getShade` with ambient occlusion off); the baked vertex color is `tint × shade`.
+//! (biome/dye tint, or white), `shade` is the directional face-shade multiplier (vanilla
+//! `Direction.getShade` with ambient occlusion off), and `light` is the packed block/sky light projected
+//! to shader-space. The baked vertex color is `tint × shade`; the shader applies light.
 
 use glam::{Mat4, Vec3};
 
@@ -16,6 +17,10 @@ use crate::{gpu::DEPTH_FORMAT, Renderer};
 
 /// Vanilla model space is `0..=16`; the unit cube is that divided by 16.
 const MODEL_SPACE_SCALE: f32 = 1.0 / 16.0;
+
+/// Shader-space full-bright light: block 15 and sky 15. Existing generic item-model consumers use this
+/// unless they explicitly carry vanilla `lightCoords` from an entity renderer.
+pub const ITEM_MODEL_FULL_BRIGHT_LIGHT: [f32; 2] = [1.0, 1.0];
 
 /// One textured quad of a baked block/item model: four corners wound counter-clockwise (front face),
 /// in vanilla `0..=16` model space, with atlas-absolute UVs.
@@ -39,13 +44,15 @@ pub struct HudBlockItemModel {
 }
 
 /// A baked block/item model vertex: the model-space position normalized to the unit cube and pushed
-/// through the caller's `transform`, the atlas-absolute UV, and the `tint × shade` color.
+/// through the caller's `transform`, the atlas-absolute UV, the `tint × shade` color, and shader-space
+/// block/sky light.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct ItemModelVertex {
     pub(crate) position: [f32; 3],
     pub(crate) uv: [f32; 2],
     pub(crate) color: [f32; 4],
+    pub(crate) light: [f32; 2],
 }
 
 /// A baked block/item model mesh: an indexed triangle list ready for the item-model pipeline.
@@ -64,11 +71,23 @@ impl ItemModelMesh {
         self.indices.is_empty()
     }
 
+    /// Appends `quads` at full brightness. Use [`append_quads_with_light`](Self::append_quads_with_light)
+    /// when the caller carries vanilla entity-renderer light coords.
+    pub fn append_quads(&mut self, quads: &[ItemModelQuad], transform: Mat4) {
+        self.append_quads_with_light(quads, transform, ITEM_MODEL_FULL_BRIGHT_LIGHT);
+    }
+
     /// Appends `quads` to the mesh, normalizing each corner from vanilla `0..=16` model space to the unit
     /// cube and applying `transform` (the model→target-space matrix: world placement, GUI projection, or
     /// the hand attach transform). Each quad becomes two triangles wound from its four corners; the
-    /// vertex color is the quad's `tint` scaled by its directional `shade` (alpha preserved).
-    pub fn append_quads(&mut self, quads: &[ItemModelQuad], transform: Mat4) {
+    /// vertex color is the quad's `tint` scaled by its directional `shade` (alpha preserved), and every
+    /// vertex carries the caller-provided shader-space block/sky light.
+    pub fn append_quads_with_light(
+        &mut self,
+        quads: &[ItemModelQuad],
+        transform: Mat4,
+        light: [f32; 2],
+    ) {
         for quad in quads {
             let base =
                 u32::try_from(self.vertices.len()).expect("item-model vertex count fits in u32");
@@ -81,6 +100,7 @@ impl ItemModelMesh {
                     position,
                     uv: *uv,
                     color,
+                    light,
                 });
             }
             // Two triangles (0,1,2)+(0,2,3) over the CCW quad corners.
@@ -93,8 +113,18 @@ impl ItemModelMesh {
 /// Bakes a single model's `quads` into a fresh mesh under `transform`. Convenience over
 /// [`ItemModelMesh::append_quads`] for the common one-model case.
 pub fn bake_item_model_mesh(quads: &[ItemModelQuad], transform: Mat4) -> ItemModelMesh {
+    bake_item_model_mesh_with_light(quads, transform, ITEM_MODEL_FULL_BRIGHT_LIGHT)
+}
+
+/// Bakes a single model's `quads` into a fresh mesh under `transform`, carrying explicit shader-space
+/// block/sky light.
+pub fn bake_item_model_mesh_with_light(
+    quads: &[ItemModelQuad],
+    transform: Mat4,
+    light: [f32; 2],
+) -> ItemModelMesh {
     let mut mesh = ItemModelMesh::new();
-    mesh.append_quads(quads, transform);
+    mesh.append_quads_with_light(quads, transform, light);
     mesh
 }
 
@@ -149,8 +179,8 @@ impl Renderer {
     }
 }
 
-const ITEM_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 3] =
-    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4];
+const ITEM_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 4] =
+    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2];
 
 fn item_model_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
     wgpu::VertexBufferLayout {
@@ -161,9 +191,10 @@ fn item_model_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
 }
 
 /// Item-model shader: samples the shared block/item atlas (bound exactly like the terrain pass —
-/// `view_proj` uniform `@0`, atlas texture `@1`, sampler `@2`) and multiplies by the baked vertex color
-/// (the per-face `tint × Direction.getShade`). Alpha cutout: transparent texels are discarded, so the
-/// thin generated-item slab and partial block faces read cleanly against the depth buffer.
+/// `view_proj` uniform `@0`, atlas texture `@1`, sampler `@2`), multiplies by the baked vertex color
+/// (the per-face `tint × Direction.getShade`), then applies the same simple block/sky light factor used
+/// by entity models. Alpha cutout: transparent texels are discarded, so the thin generated-item slab and
+/// partial block faces read cleanly against the depth buffer.
 const ITEM_MODEL_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
@@ -182,12 +213,14 @@ struct VertexIn {
     @location(0) position: vec3<f32>,
     @location(1) uv: vec2<f32>,
     @location(2) color: vec4<f32>,
+    @location(3) light: vec2<f32>,
 };
 
 struct VertexOut {
     @builtin(position) position: vec4<f32>,
     @location(0) uv: vec2<f32>,
     @location(1) color: vec4<f32>,
+    @location(2) light: vec2<f32>,
 };
 
 @vertex
@@ -196,6 +229,7 @@ fn vs_main(input: VertexIn) -> VertexOut {
     out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
     out.uv = input.uv;
     out.color = input.color;
+    out.light = input.light;
     return out;
 }
 
@@ -205,7 +239,9 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     if texel.a <= 0.01 {
         discard;
     }
-    return texel;
+    let light_level = max(input.light.x, input.light.y * 0.95);
+    let shade = 0.16 + light_level * 0.84;
+    return vec4<f32>(texel.rgb * shade, texel.a);
 }
 "#;
 
@@ -294,6 +330,10 @@ mod tests {
         assert_eq!(mesh.vertices[0].position, [0.0, 0.0, 1.0]);
         assert_eq!(mesh.vertices[2].position, [1.0, 1.0, 1.0]);
         assert_eq!(mesh.vertices[1].uv, [1.0, 1.0]);
+        assert!(mesh
+            .vertices
+            .iter()
+            .all(|vertex| vertex.light == ITEM_MODEL_FULL_BRIGHT_LIGHT));
     }
 
     #[test]
@@ -301,6 +341,17 @@ mod tests {
         let mesh = bake_item_model_mesh(&[unit_quad(0.6, [1.0, 0.5, 0.25, 1.0])], Mat4::IDENTITY);
         // Vanilla applies `Direction.getShade` to the RGB only; alpha stays put.
         assert_eq!(mesh.vertices[0].color, [0.6, 0.3, 0.15, 1.0]);
+    }
+
+    #[test]
+    fn explicit_light_is_carried_by_every_vertex() {
+        let light = [5.0 / 15.0, 9.0 / 15.0];
+        let mesh = bake_item_model_mesh_with_light(
+            &[unit_quad(1.0, [1.0, 1.0, 1.0, 1.0])],
+            Mat4::IDENTITY,
+            light,
+        );
+        assert!(mesh.vertices.iter().all(|vertex| vertex.light == light));
     }
 
     #[test]
@@ -336,5 +387,13 @@ mod tests {
         assert_eq!(mesh.vertices.len(), 8);
         // The second quad's triangles are rebased onto its own vertices.
         assert_eq!(mesh.indices, vec![0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7]);
+    }
+
+    #[test]
+    fn item_model_shader_applies_vertex_light_after_sampling() {
+        assert!(ITEM_MODEL_SHADER.contains("@location(3) light: vec2<f32>"));
+        assert!(ITEM_MODEL_SHADER
+            .contains("let light_level = max(input.light.x, input.light.y * 0.95);"));
+        assert!(ITEM_MODEL_SHADER.contains("return vec4<f32>(texel.rgb * shade, texel.a);"));
     }
 }

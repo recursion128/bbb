@@ -223,14 +223,16 @@ pub enum ItemFrameFacing {
 }
 
 /// Everything needed to render one item-frame entity (vanilla `ItemFrameRenderState`): the resolved
-/// wall-mounted center, the facing wall, the `0..=7` item rotation, whether it is a glow frame, the
-/// framed item (`None` for an empty frame), and whether that item is a filled map (which vanilla renders
-/// as a full-frame map rather than a `0.5`-scaled item).
+/// wall-mounted center, the facing wall, the sampled entity-renderer light, the `0..=7` item rotation,
+/// whether it is a glow frame, the framed item (`None` for an empty frame), and whether that item is a
+/// filled map (which vanilla renders as a full-frame map rather than a `0.5`-scaled item).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ItemFrameRenderState {
     pub entity_id: i32,
     pub center: EntityVec3,
     pub facing: ItemFrameFacing,
+    #[serde(default = "entity_model_source_full_bright_light")]
+    pub light: TerrainLight,
     pub rotation: u8,
     pub glow: bool,
     pub item: Option<ProtocolItemStackSummary>,
@@ -1786,10 +1788,17 @@ impl WorldStore {
         self.entities.item_entity_stacks()
     }
 
-    /// The render state of every item-frame / glow-item-frame entity (center, facing, item rotation,
-    /// glow flag, framed item, map flag). Drives the 3D item-frame render (vanilla `ItemFrameRenderer`).
+    /// The render state of every item-frame / glow-item-frame entity (center, facing, sampled light, item
+    /// rotation, glow flag, framed item, map flag). Drives the 3D item-frame render (vanilla
+    /// `ItemFrameRenderer`).
     pub fn item_frame_render_states(&self) -> Vec<ItemFrameRenderState> {
-        self.entities.item_frame_render_states()
+        let mut states = self.entities.item_frame_render_states();
+        for state in &mut states {
+            state.light = self
+                .sample_block_light(entity_light_block_pos(state.center))
+                .unwrap_or(ENTITY_LIGHT_PROBE_FULL_BRIGHT);
+        }
+        states
     }
 
     /// The item a humanoid entity holds in its main (`off_hand = false`) or off hand, or `None` for an

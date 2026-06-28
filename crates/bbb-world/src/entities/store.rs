@@ -1863,6 +1863,7 @@ impl EntityStore {
                 entity_id: identity.id,
                 center: transform.position,
                 facing: item_frame_facing(identity.data, &metadata.data_values),
+                light: super::ENTITY_LIGHT_PROBE_FULL_BRIGHT,
                 rotation: item_frame_rotation(&metadata.data_values),
                 glow: identity.entity_type_id == VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
                 item: item_frame_item(&metadata.data_values).cloned(),

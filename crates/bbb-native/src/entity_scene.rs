@@ -1730,6 +1730,11 @@ fn entity_light_coords(
     ) {
         block = 15;
     }
+    // Vanilla `ItemFrameRenderer.getBlockLightLevel`: glow item frames keep their surrounding light, but
+    // raise the block component to at least `GLOW_FRAME_BRIGHTNESS = 5`.
+    if entity_type_id == VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID {
+        block = block.max(5);
+    }
     // Vanilla `GlowSquidRenderer.getBlockLightLevel`: a bioluminescent boost
     // `max(blockLight, (int)clampedLerp(1 − darkTicks/10, 0, 15))`. Undamaged (`darkTicks == 0`) it is fully
     // bright (`15`); a hurt drops `darkTicks` to `100` (dark), and it ramps back to full over the final 10
@@ -7523,6 +7528,25 @@ mod tests {
         ] {
             assert_eq!(entity_light_coords(full_bright, &[], dark), 15 << 4);
         }
+
+        // Vanilla `ItemFrameRenderer`: normal item frames use the sampled light; glow item frames clamp
+        // only the block component to at least `GLOW_FRAME_BRIGHTNESS = 5`.
+        assert_eq!(
+            entity_light_coords(VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, &[], dark),
+            0
+        );
+        assert_eq!(
+            entity_light_coords(VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID, &[], dark),
+            5 << 4
+        );
+        assert_eq!(
+            entity_light_coords(
+                VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
+                &[],
+                TerrainLight { sky: 3, block: 7 }
+            ),
+            (7 << 4) | (3 << 20)
+        );
 
         // Vanilla `GlowSquidRenderer.getBlockLightLevel` = max(super, (int)clampedLerp(1 - darkTicks/10, 0,
         // 15)). Undamaged (no DARK_TICKS data, so 0) -> fully bright 15.
