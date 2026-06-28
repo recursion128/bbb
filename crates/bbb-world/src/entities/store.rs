@@ -1065,6 +1065,9 @@ impl EntityStore {
             boat_paddles[0],
             boat_paddles[1],
         );
+        let (boat_hurt_time, boat_hurt_dir, boat_damage_time) = client_animations
+            .animations
+            .boat_damage_state(partial_ticks);
         let (wither_x_head_rots, wither_y_head_rots) = if vanilla_is_wither(identity.entity_type_id)
         {
             client_animations.animations.wither_head_rotations()
@@ -1109,6 +1112,9 @@ impl EntityStore {
             age_ticks: client_animations.animations.age_ticks,
             boat_rowing_time_left: boat_rowing_times[0],
             boat_rowing_time_right: boat_rowing_times[1],
+            boat_hurt_time,
+            boat_hurt_dir,
+            boat_damage_time,
             wither_x_head_rots,
             wither_y_head_rots,
             is_fully_frozen,

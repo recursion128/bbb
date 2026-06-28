@@ -11,10 +11,15 @@ use super::dragon::{
 use super::{is_vanilla_boat_type, EntityTransform, EntityVec3};
 
 const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
-/// Vanilla `AbstractBoat.DATA_ID_PADDLE_LEFT` / `DATA_ID_PADDLE_RIGHT`: the first
-/// two boat synced accessors after base `Entity` ids `0..=7`.
-const ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID: u8 = 8;
-const ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID: u8 = 9;
+/// Vanilla `VehicleEntity.DATA_ID_HURT` / `DATA_ID_HURTDIR` / `DATA_ID_DAMAGE`:
+/// the vehicle damage-roll accessors after base `Entity` ids `0..=7`.
+const VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
+const VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
+const VEHICLE_DAMAGE_DATA_ID: u8 = 10;
+/// Vanilla `AbstractBoat.DATA_ID_PADDLE_LEFT` / `DATA_ID_PADDLE_RIGHT`: boat accessors after
+/// base `Entity` ids `0..=7` plus `VehicleEntity` ids `8..=10`.
+const ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID: u8 = 11;
+const ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID: u8 = 12;
 /// Vanilla `AbstractBoat.tick` advances each active `paddlePositions[side]` by
 /// `PI / 8` per client tick, otherwise resetting it to zero.
 const BOAT_PADDLE_ADVANCE_PER_TICK: f32 = std::f32::consts::PI / 8.0;
@@ -389,6 +394,8 @@ pub struct EntityClientAnimationState {
     #[serde(default)]
     pub age_ticks: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub boat_damage: Option<BoatDamageAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub boat: Option<BoatPaddleAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub arrow_shake: Option<ArrowShakeAnimationState>,
@@ -487,6 +494,47 @@ pub struct EntityClientAnimationState {
     pub breeze: Option<BreezeAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub walk_animation: Option<WalkAnimationState>,
+}
+
+/// Vanilla `VehicleEntity` hurt-roll state as consumed by `AbstractBoatRenderer`:
+/// `hurtTime`, `hurtDir`, and `damage` are synced data values that the client boat
+/// decrements every tick before rendering.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct BoatDamageAnimationState {
+    pub hurt_time: i32,
+    pub hurt_dir: i32,
+    pub damage: f32,
+}
+
+impl BoatDamageAnimationState {
+    fn from_metadata(data_values: &[EntityDataValue]) -> Self {
+        Self {
+            hurt_time: entity_data_int(data_values, VEHICLE_HURT_TIME_DATA_ID, 0),
+            hurt_dir: entity_data_int(data_values, VEHICLE_HURT_DIR_DATA_ID, 1),
+            damage: entity_data_float(data_values, VEHICLE_DAMAGE_DATA_ID).unwrap_or(0.0),
+        }
+    }
+
+    fn advance_client_tick(&mut self) {
+        if self.hurt_time > 0 {
+            self.hurt_time -= 1;
+        }
+        if self.damage > 0.0 {
+            self.damage = (self.damage - 1.0).max(0.0);
+        }
+    }
+
+    fn render_state(self, partial_tick: f32) -> (f32, i32, f32) {
+        (
+            self.hurt_time as f32 - partial_tick,
+            self.hurt_dir,
+            (self.damage - partial_tick).max(0.0),
+        )
+    }
+
+    fn is_settled(self) -> bool {
+        self.hurt_time <= 0 && self.damage <= 0.0
+    }
 }
 
 /// Vanilla `AbstractBoat.paddlePositions`: client-side rowing accumulators for
@@ -3215,6 +3263,21 @@ impl EntityClientAnimationState {
         {
             self.arrow_shake = Some(ArrowShakeAnimationState::started());
         }
+        if is_vanilla_boat_type(entity_type_id)
+            && updated_values.iter().any(|value| {
+                matches!(
+                    value.data_id,
+                    VEHICLE_HURT_TIME_DATA_ID | VEHICLE_HURT_DIR_DATA_ID | VEHICLE_DAMAGE_DATA_ID
+                )
+            })
+        {
+            let damage = BoatDamageAnimationState::from_metadata(data_values);
+            if damage.is_settled() {
+                self.boat_damage = None;
+            } else {
+                self.boat_damage = Some(damage);
+            }
+        }
     }
 
     pub(crate) fn sync_targets_from_metadata(
@@ -4110,6 +4173,14 @@ impl EntityClientAnimationState {
         })
     }
 
+    /// Vanilla `BoatRenderState.hurtTime/hurtDir/damageTime`: the client-decayed
+    /// `VehicleEntity` damage-roll values, with `damageTime` clamped at zero after
+    /// subtracting partial tick.
+    pub fn boat_damage_state(&self, partial_tick: f32) -> (f32, i32, f32) {
+        self.boat_damage
+            .map_or((0.0, 1, 0.0), |state| state.render_state(partial_tick))
+    }
+
     /// Vanilla `WitherRenderState.xHeadRots/yHeadRots`: current side-head
     /// rotations copied from `WitherBoss.xRotHeads/yRotHeads`. The arrays are
     /// `[right_head, left_head]`; every non-wither keeps the zeroed default.
@@ -4802,6 +4873,12 @@ impl EntityClientAnimationState {
                 // on-ground (wings still), the safe common case.
                 .advance_client_tick(transform.on_ground.unwrap_or(true), is_passenger),
             _ if is_vanilla_boat_type(entity_type_id) => {
+                if let Some(damage) = self.boat_damage.as_mut() {
+                    damage.advance_client_tick();
+                    if damage.is_settled() {
+                        self.boat_damage = None;
+                    }
+                }
                 if self.boat.is_some() || boat_paddle_left || boat_paddle_right {
                     let boat = self
                         .boat

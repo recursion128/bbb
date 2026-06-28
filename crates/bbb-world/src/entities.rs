@@ -388,6 +388,18 @@ pub struct EntityModelSourceState {
     /// and boats whose right paddle is inactive.
     #[serde(default)]
     pub boat_rowing_time_right: f32,
+    /// Vanilla `BoatRenderState.hurtTime` (`VehicleEntity.getHurtTime() -
+    /// partialTick`): positive while the boat rolls from recent damage.
+    #[serde(default)]
+    pub boat_hurt_time: f32,
+    /// Vanilla `BoatRenderState.hurtDir` (`VehicleEntity.getHurtDir()`): damage
+    /// roll direction, defaulting to `1`.
+    #[serde(default = "entity_model_source_default_one_i32")]
+    pub boat_hurt_dir: i32,
+    /// Vanilla `BoatRenderState.damageTime` (`max(VehicleEntity.getDamage() -
+    /// partialTick, 0)`): damage magnitude used with hurt time to scale the roll.
+    #[serde(default)]
+    pub boat_damage_time: f32,
     /// Vanilla `LivingEntityRenderState.isFullyFrozen` (`Entity.isFullyFrozen`,
     /// `ticksFrozen >= 140`): a living entity frozen solid in powder snow, whose
     /// body the renderer shakes (`LivingEntityRenderer.isShaking`). `false` for
@@ -1300,6 +1312,10 @@ fn entity_model_source_default_elytra_rot_z() -> f32 {
 
 fn entity_model_source_default_true() -> bool {
     true
+}
+
+fn entity_model_source_default_one_i32() -> i32 {
+    1
 }
 
 /// The stopped-animation sentinel for the frog croak (`-1.0`, meaning "not croaking") used when an

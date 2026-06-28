@@ -959,8 +959,8 @@ fn entity_model_sources_project_narrow_render_state_from_model_targets() {
 fn entity_model_sources_project_boat_rowing_times_from_paddles_and_passengers() {
     const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
-    const BOAT_PADDLE_LEFT_DATA_ID: u8 = 8;
-    const BOAT_PADDLE_RIGHT_DATA_ID: u8 = 9;
+    const BOAT_PADDLE_LEFT_DATA_ID: u8 = 11;
+    const BOAT_PADDLE_RIGHT_DATA_ID: u8 = 12;
     const ADVANCE: f32 = std::f32::consts::PI / 8.0;
 
     let assert_close = |actual: f32, expected: f32, label: &str| {
@@ -1022,6 +1022,75 @@ fn entity_model_sources_project_boat_rowing_times_from_paddles_and_passengers() 
     }));
     store.advance_entity_client_animations(1);
     assert_eq!(rowing(&store, 1.0), (0.0, 0.0));
+}
+
+#[test]
+fn entity_model_sources_project_boat_damage_roll_from_vehicle_metadata() {
+    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
+    const VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
+    const VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
+    const VEHICLE_DAMAGE_DATA_ID: u8 = 10;
+    const BOAT_PADDLE_LEFT_DATA_ID: u8 = 11;
+
+    let assert_close = |actual: f32, expected: f32, label: &str| {
+        assert!(
+            (actual - expected).abs() < 1.0e-6,
+            "{label}: expected {expected}, got {actual}"
+        );
+    };
+    let damage = |store: &WorldStore, partial_tick: f32| -> (f32, i32, f32) {
+        let source = store
+            .entity_model_sources_at_partial_tick(partial_tick)
+            .into_iter()
+            .find(|source| source.entity_id == 21)
+            .expect("boat source");
+        (
+            source.boat_hurt_time,
+            source.boat_hurt_dir,
+            source.boat_damage_time,
+        )
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        21,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 21,
+        values: vec![
+            protocol_int_data(VEHICLE_HURT_TIME_DATA_ID, 10),
+            protocol_int_data(VEHICLE_HURT_DIR_DATA_ID, -1),
+            protocol_float_data(VEHICLE_DAMAGE_DATA_ID, 20.0),
+        ],
+    }));
+
+    let initial = damage(&store, 0.5);
+    assert_close(initial.0, 9.5, "initial hurt time");
+    assert_eq!(initial.1, -1);
+    assert_close(initial.2, 19.5, "initial damage time");
+
+    store.advance_entity_client_animations(1);
+    let ticked = damage(&store, 0.5);
+    assert_close(ticked.0, 8.5, "ticked hurt time");
+    assert_eq!(ticked.1, -1);
+    assert_close(ticked.2, 18.5, "ticked damage time");
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 21,
+        values: vec![protocol_bool_data(BOAT_PADDLE_LEFT_DATA_ID, true)],
+    }));
+    let after_paddle_update = damage(&store, 0.5);
+    assert_close(after_paddle_update.0, 8.5, "paddle update keeps hurt time");
+    assert_eq!(after_paddle_update.1, -1);
+    assert_close(
+        after_paddle_update.2,
+        18.5,
+        "paddle update keeps damage time",
+    );
+
+    store.advance_entity_client_animations(20);
+    assert_eq!(damage(&store, 1.0), (0.0, 1, 0.0));
 }
 
 #[test]
@@ -11572,6 +11641,14 @@ fn protocol_int_data(data_id: u8, value: i32) -> ProtocolEntityDataValue {
         data_id,
         serializer_id: 1,
         value: EntityDataValueKind::Int(value),
+    }
+}
+
+fn protocol_float_data(data_id: u8, value: f32) -> ProtocolEntityDataValue {
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id: 3,
+        value: EntityDataValueKind::Float(value),
     }
 }
 

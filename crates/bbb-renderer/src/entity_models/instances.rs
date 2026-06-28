@@ -318,6 +318,14 @@ entity_render_state! {
     /// `AbstractBoat.getRowingTime(1, partialTick)`, consumed by
     /// `AbstractBoatModel.animatePaddle`. `0.0` for non-boats and inactive right paddles.
     (with_boat_rowing_time_right) boat_rowing_time_right: f32 = 0.0;
+    /// Vanilla `BoatRenderState.hurtTime`: `VehicleEntity.getHurtTime() - partialTick`, positive
+    /// while the boat rolls from damage.
+    (with_boat_hurt_time) boat_hurt_time: f32 = 0.0;
+    /// Vanilla `BoatRenderState.hurtDir`: the signed roll direction from `VehicleEntity.getHurtDir()`.
+    (with_boat_hurt_dir) boat_hurt_dir: i32 = 1;
+    /// Vanilla `BoatRenderState.damageTime`: `max(VehicleEntity.getDamage() - partialTick, 0)`, scaling
+    /// the damage roll amount.
+    (with_boat_damage_time) boat_damage_time: f32 = 0.0;
     /// Vanilla `Mob.isAggressive()` (`DATA_MOB_FLAGS_ID & 4`): deepens the held-out
     /// `animateZombieArms` arm drop for the zombie-model family (`-π / 1.5` aggressive vs
     /// `-π / 2.25` calm). `false` for every calm or non-zombie-family entity.
@@ -2295,6 +2303,9 @@ mod tests {
                 age_in_ticks: 0.0,
                 boat_rowing_time_left: 0.0,
                 boat_rowing_time_right: 0.0,
+                boat_hurt_time: 0.0,
+                boat_hurt_dir: 1,
+                boat_damage_time: 0.0,
                 is_aggressive: false,
                 main_hand_holds_bow: false,
                 main_hand_swing_is_stab: false,

@@ -34,4 +34,4 @@ pub(super) use transforms::{
     wither_skull_model_root_transform, GIANT_SCALE, HORSE_SCALE, HUSK_SCALE,
 };
 #[cfg(test)]
-pub(super) use transforms::{death_fall_factor, entity_flip_degrees};
+pub(super) use transforms::{boat_damage_roll_degrees, death_fall_factor, entity_flip_degrees};

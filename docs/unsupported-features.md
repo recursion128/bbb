@@ -1528,9 +1528,12 @@ When an agent does any of the following, update this file in the same slice:
       `OverlayTexture.NO_OVERLAY` inherited by folded cutout vertices; `boat_textured_layer_passes`
       now also records the above-water `ModelLayers.BOAT_WATER_PATCH` submit as vanilla `waterMask`
       metadata at `(0, 1)` with the same texture/transform/light and `OverlayTexture.NO_OVERLAY`, but its
-      depth-only GPU presentation is still deferred. Paddle rowing
-      animation, hurt/damage roll, bubble wobble, underwater state and water
-      mask presentation, and lighting remain unsupported
+      depth-only GPU presentation is still deferred. Paddle rowing animation is
+      projected from `AbstractBoat` metadata ids 11/12 plus the controlling-passenger
+      gate and rendered through `AbstractBoatModel.animatePaddle`; hurt/damage roll
+      is projected from `VehicleEntity` metadata ids 8/9/10 and folded into the boat
+      root transform. Bubble wobble, underwater state, water-mask presentation, and
+      lighting remain unsupported
     - chicken entities as renderer-owned vanilla 26.1
       `AdultChickenModel`, `ColdChickenModel`, and `BabyChickenModel` body-layer
       geometry from `ChickenModel`, `ChickenRenderer`, `ChickenVariants`, and
@@ -4184,9 +4187,9 @@ When an agent does any of the following, update this file in the same slice:
     variant asset presentation, sheep
     head-look-pitch presentation,
     wolf colored force-transparent / GPU outline presentation,
-    boat/raft damage roll, bubble wobble, underwater state, water-mask
-    presentation, and lighting (paddle rowing animation is projected through
-    metadata/passenger-gated rowing times and rendered on the boat/raft model),
+    boat/raft bubble wobble, underwater state, water-mask presentation, and
+    lighting (paddle rowing animation and hurt/damage roll are projected and
+    rendered),
     horse animation, donkey/mule animation presentation,
     undead horse animation presentation, and remaining non-base-equine presentation,
     villager live/dynamic profiled-player skin presentation (crossed-arms

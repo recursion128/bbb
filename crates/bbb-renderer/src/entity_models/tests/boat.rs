@@ -554,3 +554,44 @@ fn boat_paddles_use_vanilla_rowing_time_rotations() {
         &rowing_meshes.cutout.vertices[168..216]
     );
 }
+
+#[test]
+fn boat_damage_roll_uses_vanilla_root_transform_order() {
+    let assert_close = |actual: f32, expected: f32| {
+        assert!(
+            (actual - expected).abs() < 1.0e-6,
+            "expected {expected}, got {actual}"
+        );
+    };
+    let assert_close_transform = |actual: Mat4, expected: Mat4| {
+        for (actual, expected) in actual
+            .to_cols_array()
+            .into_iter()
+            .zip(expected.to_cols_array())
+        {
+            assert!(
+                (actual - expected).abs() < 1.0e-5,
+                "expected {expected}, got {actual}"
+            );
+        }
+    };
+
+    let damaged =
+        EntityModelInstance::boat(302, [1.0, 64.0, -2.0], 35.0, BoatModelFamily::Oak, false)
+            .with_boat_hurt_time(7.5)
+            .with_boat_hurt_dir(-1)
+            .with_boat_damage_time(17.5);
+    let roll = 7.5_f32.sin() * 7.5 * 17.5 / 10.0 * -1.0;
+    assert_close(boat_damage_roll_degrees(damaged), roll);
+
+    let expected = Mat4::from_translation(Vec3::from_array(damaged.position))
+        * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))
+        * Mat4::from_rotation_y((180.0_f32 - damaged.render_state.body_rot).to_radians())
+        * Mat4::from_rotation_x(roll.to_radians())
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+        * Mat4::from_rotation_y(std::f32::consts::FRAC_PI_2);
+    assert_close_transform(boat_model_root_transform(damaged), expected);
+
+    let settled = damaged.with_boat_hurt_time(0.0);
+    assert_close(boat_damage_roll_degrees(settled), 0.0);
+}

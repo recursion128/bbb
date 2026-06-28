@@ -556,8 +556,19 @@ pub(in crate::entity_models) fn boat_model_root_transform(instance: EntityModelI
     Mat4::from_translation(Vec3::from_array(instance.position))
         * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))
         * Mat4::from_rotation_y((180.0 - instance.render_state.body_rot).to_radians())
+        * Mat4::from_rotation_x(boat_damage_roll_degrees(instance).to_radians())
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
         * Mat4::from_rotation_y(std::f32::consts::FRAC_PI_2)
+}
+
+pub(in crate::entity_models) fn boat_damage_roll_degrees(instance: EntityModelInstance) -> f32 {
+    let hurt = instance.render_state.boat_hurt_time;
+    if hurt > 0.0 {
+        hurt.sin() * hurt * instance.render_state.boat_damage_time / 10.0
+            * instance.render_state.boat_hurt_dir as f32
+    } else {
+        0.0
+    }
 }
 
 pub(in crate::entity_models) fn slime_model_root_transform(
