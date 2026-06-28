@@ -418,6 +418,97 @@ fn clear_color_samples_camera_biome_fog_and_sky_color_attributes() {
 }
 
 #[test]
+fn clear_color_mixes_sunrise_sunset_color_when_camera_faces_sun() {
+    let day_time = 71;
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, day_time);
+    world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 270.0, 0.0));
+
+    let clear = clear_color_for_world_at_camera_with_render_distance(
+        &world,
+        &TerrainTextureState::default(),
+        camera_pose_from_world(&world),
+        12,
+        false,
+    );
+
+    let fog_color = argb_multiply(
+        rgb_u8_to_argb(VANILLA_OVERWORLD_FOG_COLOR),
+        sample_periodic_argb_keyframes(
+            day_time,
+            &VANILLA_OVERWORLD_FOG_COLOR_MULTIPLIER_KEYFRAMES,
+            VANILLA_LIGHTMAP_DAY_PERIOD_TICKS,
+        ),
+    );
+    let sky_color = argb_multiply(
+        rgb_u8_to_argb(VANILLA_OVERWORLD_SKY_COLOR),
+        sample_periodic_argb_keyframes(
+            day_time,
+            &VANILLA_OVERWORLD_SKY_COLOR_MULTIPLIER_KEYFRAMES,
+            VANILLA_LIGHTMAP_DAY_PERIOD_TICKS,
+        ),
+    );
+    let sunrise_color = sample_periodic_argb_keyframes(
+        day_time,
+        &VANILLA_OVERWORLD_SUNRISE_SUNSET_COLOR_KEYFRAMES,
+        VANILLA_LIGHTMAP_DAY_PERIOD_TICKS,
+    );
+    let looking_at_sun = camera_forward_vector(camera_pose_from_world(&world).unwrap())[0];
+    let expected = atmospheric_clear_color(
+        argb_srgb_lerp(
+            looking_at_sun * argb_alpha(sunrise_color) as f32 / 255.0,
+            fog_color,
+            argb_opaque(sunrise_color),
+        ),
+        sky_color,
+        12,
+    );
+    let baseline = clear_color_for_day_time(day_time, 0.0, 0.0);
+
+    assert_clear_color_close(clear, expected);
+    assert_ne!(clear, baseline);
+}
+
+#[test]
+fn clear_color_skips_sunrise_sunset_when_not_facing_sun_or_render_distance_is_low() {
+    let day_time = 71;
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, day_time);
+    world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 90.0, 0.0));
+
+    let away = clear_color_for_world_at_camera_with_render_distance(
+        &world,
+        &TerrainTextureState::default(),
+        camera_pose_from_world(&world),
+        12,
+        false,
+    );
+    let away_baseline = clear_color_for_day_time(day_time, 0.0, 0.0);
+
+    world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 270.0, 0.0));
+    let low_render_distance = clear_color_for_world_at_camera_with_render_distance(
+        &world,
+        &TerrainTextureState::default(),
+        camera_pose_from_world(&world),
+        3,
+        false,
+    );
+    let low_render_distance_baseline = clear_color_for_day_time_with_environment_colors_and_camera(
+        day_time,
+        0.0,
+        0.0,
+        Some(VANILLA_OVERWORLD_FOG_COLOR),
+        Some(VANILLA_OVERWORLD_SKY_COLOR),
+        VanillaLightmapDimensionKind::Overworld,
+        None,
+        3,
+    );
+
+    assert_clear_color_close(away, away_baseline);
+    assert_clear_color_close(low_render_distance, low_render_distance_baseline);
+}
+
+#[test]
 fn clear_color_samples_camera_biome_water_fog_when_eye_is_in_water() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
     set_world_day_time(&mut world, 6_000);
@@ -465,6 +556,7 @@ fn clear_color_brightens_water_fog_with_vanilla_water_vision() {
         &world,
         &textures,
         camera_pose_from_world(&world),
+        VANILLA_ATMOSPHERIC_FOG_RENDER_DISTANCE_CHUNKS as u32,
         0.5,
         false,
     );

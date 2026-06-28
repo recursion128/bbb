@@ -614,11 +614,13 @@ When an agent does any of the following, update this file in the same slice:
     `WATER_FOG_COLOR`. Atmospheric clearing now follows the vanilla
     `LevelRenderer` / `FogRenderer` shape by clearing from `FOG_COLOR`, mixing
     in `SKY_COLOR`, applying Overworld day fog/sky multipliers plus rain/thunder
-    fog and sky-darken modifiers, and falling back to dimension fog/sky colors
-    (Overworld fog `#c0d8ff` / sky `#78a7ff`, End fog `#181318` / sky black,
-    Nether sky default black). Water camera clearing uses `WATER_FOG_COLOR`
-    plus the vanilla `LocalPlayer.getWaterVision()` brightening formula, and
-    lightning sky flash does not tint water fog. The startup
+    fog and sky-darken modifiers, applying `SUNRISE_SUNSET_COLOR` /
+    `SUN_ANGLE` fog tint when the camera faces the sun at render distance >= 4,
+    and falling back to dimension fog/sky colors (Overworld fog `#c0d8ff` /
+    sky `#78a7ff`, End fog `#181318` / sky black, Nether sky default black).
+    Water camera clearing uses `WATER_FOG_COLOR` plus the vanilla
+    `LocalPlayer.getWaterVision()` brightening formula, and lightning sky flash
+    does not tint water fog. The startup
     `--hide-lightning-flash` option suppresses both lightmap and atmospheric
     clear-color sky flash layers. Native also tracks the vanilla atmospheric
     `rainFogMultiplier` shape for Overworld rain: 0.2/tick smoothing, the camera

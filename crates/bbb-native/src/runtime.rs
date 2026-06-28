@@ -80,6 +80,7 @@ const VANILLA_TIMELINE_NIGHT_FOG_COLOR_MULTIPLIER: i32 = argb_color(255, 15, 15,
 const VANILLA_WEATHER_RAIN_FOG_COLOR_MULTIPLIER: i32 = argb_color(255, 127, 127, 153);
 const VANILLA_WEATHER_THUNDER_FOG_COLOR_MULTIPLIER: i32 = argb_color(255, 63, 63, 76);
 const VANILLA_ATMOSPHERIC_FOG_RENDER_DISTANCE_CHUNKS: f32 = 12.0;
+const VANILLA_SUNRISE_SUNSET_MIN_RENDER_DISTANCE_CHUNKS: u32 = 4;
 const VANILLA_DEFAULT_FOG_START_DISTANCE: f32 = 0.0;
 const VANILLA_DEFAULT_FOG_END_DISTANCE: f32 = 1024.0;
 const VANILLA_NETHER_FOG_START_DISTANCE: f32 = 10.0;
@@ -123,6 +124,40 @@ const VANILLA_OVERWORLD_FOG_COLOR_MULTIPLIER_KEYFRAMES: [(i64, i32); 4] = [
     (11_867, -1),
     (13_670, VANILLA_TIMELINE_NIGHT_FOG_COLOR_MULTIPLIER),
     (22_330, VANILLA_TIMELINE_NIGHT_FOG_COLOR_MULTIPLIER),
+];
+const VANILLA_OVERWORLD_SUNRISE_SUNSET_COLOR_KEYFRAMES: [(i64, i32); 32] = [
+    (71, 1_609_540_403),
+    (310, 703_969_843),
+    (565, 117_167_155),
+    (730, 16_770_355),
+    (11_270, 16_770_355),
+    (11_397, 83_679_283),
+    (11_522, 268_028_723),
+    (11_690, 703_969_843),
+    (11_929, 1_609_540_403),
+    (12_243, -1_310_226_637),
+    (12_358, -857_440_717),
+    (12_512, -371_166_669),
+    (12_613, -153_261_261),
+    (12_732, -19_242_189),
+    (12_841, -19_440_589),
+    (13_035, -321_760_973),
+    (13_252, -1_043_577_037),
+    (13_775, 918_435_635),
+    (13_888, 532_362_547),
+    (14_039, 163_001_139),
+    (14_192, 11_744_051),
+    (21_807, 11_678_515),
+    (21_961, 163_001_139),
+    (22_112, 532_362_547),
+    (22_225, 918_435_635),
+    (22_748, -1_043_577_037),
+    (22_965, -321_760_973),
+    (23_159, -19_440_589),
+    (23_272, -19_242_189),
+    (23_488, -371_166_669),
+    (23_642, -857_440_717),
+    (23_757, -1_310_226_637),
 ];
 const VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK: f32 = 1.0;
 const VANILLA_MOB_EFFECT_NIGHT_VISION_ID: i32 = 15;
@@ -706,6 +741,10 @@ fn argb_green(color: i32) -> i32 {
 
 fn argb_blue(color: i32) -> i32 {
     ((color as u32) & 0xff) as i32
+}
+
+fn argb_opaque(color: i32) -> i32 {
+    argb_color(255, argb_red(color), argb_green(color), argb_blue(color))
 }
 
 fn argb_lerp_int(alpha: f32, from: i32, to: i32) -> i32 {
@@ -1384,6 +1423,7 @@ pub(crate) fn pump_network_and_terrain(
         world,
         terrain_textures,
         camera_pose_from_world(world),
+        render_distance_chunks,
         water_vision,
         hide_lightning_flash,
     ));
@@ -3964,11 +4004,12 @@ fn advance_entity_client_animations(
     advanced_ticks
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 struct CameraEnvironmentColors {
     sky_color: Option<[u8; 3]>,
     fog_color: Option<[u8; 3]>,
     water_fog_color: Option<[u8; 3]>,
+    camera_forward: Option<[f32; 3]>,
     fog_type: CameraFogType,
 }
 
@@ -3990,6 +4031,7 @@ pub(crate) fn clear_color_for_world(world: &WorldStore, hide_lightning_flash: bo
     clear_color_for_world_with_environment_colors(
         world,
         CameraEnvironmentColors::default(),
+        VANILLA_ATMOSPHERIC_FOG_RENDER_DISTANCE_CHUNKS as u32,
         hide_lightning_flash,
     )
 }
@@ -4000,9 +4042,26 @@ fn clear_color_for_world_at_camera(
     camera_pose: Option<CameraPose>,
     hide_lightning_flash: bool,
 ) -> ClearColor {
+    clear_color_for_world_at_camera_with_render_distance(
+        world,
+        terrain_textures,
+        camera_pose,
+        VANILLA_ATMOSPHERIC_FOG_RENDER_DISTANCE_CHUNKS as u32,
+        hide_lightning_flash,
+    )
+}
+
+fn clear_color_for_world_at_camera_with_render_distance(
+    world: &WorldStore,
+    terrain_textures: &TerrainTextureState,
+    camera_pose: Option<CameraPose>,
+    render_distance_chunks: u32,
+    hide_lightning_flash: bool,
+) -> ClearColor {
     clear_color_for_world_with_environment_colors(
         world,
         camera_environment_colors(world, terrain_textures, camera_pose),
+        render_distance_chunks,
         hide_lightning_flash,
     )
 }
@@ -4011,12 +4070,14 @@ fn clear_color_for_world_at_camera_with_water_vision(
     world: &WorldStore,
     terrain_textures: &TerrainTextureState,
     camera_pose: Option<CameraPose>,
+    render_distance_chunks: u32,
     water_vision: f32,
     hide_lightning_flash: bool,
 ) -> ClearColor {
     clear_color_for_world_with_environment_colors_and_water_vision(
         world,
         camera_environment_colors(world, terrain_textures, camera_pose),
+        render_distance_chunks,
         water_vision,
         hide_lightning_flash,
     )
@@ -4025,11 +4086,13 @@ fn clear_color_for_world_at_camera_with_water_vision(
 fn clear_color_for_world_with_environment_colors(
     world: &WorldStore,
     colors: CameraEnvironmentColors,
+    render_distance_chunks: u32,
     hide_lightning_flash: bool,
 ) -> ClearColor {
     clear_color_for_world_with_environment_colors_and_water_vision(
         world,
         colors,
+        render_distance_chunks,
         0.0,
         hide_lightning_flash,
     )
@@ -4038,6 +4101,7 @@ fn clear_color_for_world_with_environment_colors(
 fn clear_color_for_world_with_environment_colors_and_water_vision(
     world: &WorldStore,
     colors: CameraEnvironmentColors,
+    render_distance_chunks: u32,
     water_vision: f32,
     hide_lightning_flash: bool,
 ) -> ClearColor {
@@ -4050,7 +4114,7 @@ fn clear_color_for_world_with_environment_colors_and_water_vision(
         .map(vanilla_lightmap_dimension_kind)
         .unwrap_or(VanillaLightmapDimensionKind::Overworld);
     let clear = match colors.fog_type {
-        CameraFogType::Atmospheric => clear_color_for_day_time_with_environment_colors(
+        CameraFogType::Atmospheric => clear_color_for_day_time_with_environment_colors_and_camera(
             day_time,
             rain,
             thunder,
@@ -4061,6 +4125,8 @@ fn clear_color_for_world_with_environment_colors_and_water_vision(
                 .sky_color
                 .or_else(|| dimension_sky_color_for_kind(dimension_kind)),
             dimension_kind,
+            colors.camera_forward,
+            render_distance_chunks,
         ),
         CameraFogType::Water => clear_color_from_argb(apply_fog_brightening(
             rgb_u8_to_argb(
@@ -4111,6 +4177,7 @@ fn fog_environment_for_world_with_environment_colors(
     let fog_color = clear_color_for_world_with_environment_colors_and_water_vision(
         world,
         colors,
+        render_distance_chunks,
         water_vision,
         hide_lightning_flash,
     );
@@ -4285,6 +4352,28 @@ fn clear_color_for_day_time_with_environment_colors(
     sky_color: Option<[u8; 3]>,
     dimension_kind: VanillaLightmapDimensionKind,
 ) -> ClearColor {
+    clear_color_for_day_time_with_environment_colors_and_camera(
+        day_time,
+        rain_level,
+        thunder_level,
+        fog_color,
+        sky_color,
+        dimension_kind,
+        None,
+        VANILLA_ATMOSPHERIC_FOG_RENDER_DISTANCE_CHUNKS as u32,
+    )
+}
+
+fn clear_color_for_day_time_with_environment_colors_and_camera(
+    day_time: i64,
+    rain_level: f64,
+    thunder_level: f64,
+    fog_color: Option<[u8; 3]>,
+    sky_color: Option<[u8; 3]>,
+    dimension_kind: VanillaLightmapDimensionKind,
+    camera_forward: Option<[f32; 3]>,
+    render_distance_chunks: u32,
+) -> ClearColor {
     let mut fog_color = rgb_u8_to_argb(fog_color.unwrap_or([0, 0, 0]));
     let mut sky_color = rgb_u8_to_argb(sky_color.unwrap_or([0, 0, 0]));
     if dimension_kind == VanillaLightmapDimensionKind::Overworld {
@@ -4306,8 +4395,17 @@ fn clear_color_for_day_time_with_environment_colors(
         );
     }
     fog_color = apply_weather_fog_color_layers(fog_color, rain_level, thunder_level);
+    fog_color = apply_sunrise_sunset_fog_color(
+        fog_color,
+        day_time,
+        rain_level,
+        thunder_level,
+        camera_forward,
+        render_distance_chunks,
+        dimension_kind,
+    );
     sky_color = apply_atmospheric_sky_weather_darken(sky_color, rain_level, thunder_level);
-    atmospheric_clear_color(fog_color, sky_color)
+    atmospheric_clear_color(fog_color, sky_color, render_distance_chunks)
 }
 
 fn apply_weather_fog_color_layers(color: i32, rain_level: f64, thunder_level: f64) -> i32 {
@@ -4327,6 +4425,64 @@ fn apply_weather_fog_color_layer(color: i32, level: f32, multiplier: i32) -> i32
         return color;
     }
     argb_srgb_lerp(level, color, argb_multiply(color, multiplier))
+}
+
+fn apply_sunrise_sunset_fog_color(
+    fog_color: i32,
+    day_time: i64,
+    rain_level: f64,
+    thunder_level: f64,
+    camera_forward: Option<[f32; 3]>,
+    render_distance_chunks: u32,
+    dimension_kind: VanillaLightmapDimensionKind,
+) -> i32 {
+    if dimension_kind != VanillaLightmapDimensionKind::Overworld
+        || render_distance_chunks < VANILLA_SUNRISE_SUNSET_MIN_RENDER_DISTANCE_CHUNKS
+    {
+        return fog_color;
+    }
+
+    let Some(camera_forward) = camera_forward else {
+        return fog_color;
+    };
+    let sun_angle = overworld_sun_angle(day_time).to_radians();
+    let sun_x = if sun_angle.sin() > 0.0 { -1.0 } else { 1.0 };
+    let looking_at_sun = camera_forward[0] * sun_x;
+    if looking_at_sun <= 0.0 {
+        return fog_color;
+    }
+
+    let mut sunrise_color = sample_periodic_argb_keyframes(
+        day_time,
+        &VANILLA_OVERWORLD_SUNRISE_SUNSET_COLOR_KEYFRAMES,
+        VANILLA_LIGHTMAP_DAY_PERIOD_TICKS,
+    );
+    sunrise_color =
+        apply_weather_sunrise_sunset_color_layers(sunrise_color, rain_level, thunder_level);
+    let alpha = argb_alpha(sunrise_color) as f32 / 255.0;
+    if alpha <= 0.0 {
+        return fog_color;
+    }
+
+    argb_srgb_lerp(
+        looking_at_sun * alpha,
+        fog_color,
+        argb_opaque(sunrise_color),
+    )
+}
+
+fn apply_weather_sunrise_sunset_color_layers(
+    color: i32,
+    rain_level: f64,
+    thunder_level: f64,
+) -> i32 {
+    apply_weather_fog_color_layers(color, rain_level, thunder_level)
+}
+
+fn overworld_sun_angle(day_time: i64) -> f32 {
+    ((day_time - VANILLA_LIGHTMAP_DEFAULT_DAY_TIME) as f32 * 360.0
+        / VANILLA_LIGHTMAP_DAY_PERIOD_TICKS as f32)
+        .rem_euclid(360.0)
 }
 
 fn apply_atmospheric_sky_weather_darken(color: i32, rain_level: f64, thunder_level: f64) -> i32 {
@@ -4373,9 +4529,13 @@ fn apply_fog_brightening(color: i32, brighten_factor: f32) -> i32 {
     )
 }
 
-fn atmospheric_clear_color(fog_color: i32, sky_color: i32) -> ClearColor {
-    let sky_fog_end = (VANILLA_DEFAULT_SKY_FOG_END_DISTANCE / 16.0)
-        .min(VANILLA_ATMOSPHERIC_FOG_RENDER_DISTANCE_CHUNKS);
+fn atmospheric_clear_color(
+    fog_color: i32,
+    sky_color: i32,
+    render_distance_chunks: u32,
+) -> ClearColor {
+    let sky_fog_end =
+        (VANILLA_DEFAULT_SKY_FOG_END_DISTANCE / 16.0).min(render_distance_chunks as f32);
     let sky_color_mix = clamped_lerp(sky_fog_end / 32.0, 0.25, 1.0);
     let sky_color_mix = 1.0 - sky_color_mix.powf(0.25);
     clear_color_from_argb(argb_srgb_lerp(sky_color_mix, fog_color, sky_color))
@@ -4455,6 +4615,7 @@ fn camera_environment_colors(
             eye,
             BiomeRgbAttribute::WaterFog,
         ),
+        camera_forward: Some(camera_forward_vector(camera)),
         fog_type: if camera_eye_in_water(world, eye) {
             CameraFogType::Water
         } else {
@@ -4483,6 +4644,13 @@ fn camera_eye_position(camera: CameraPose) -> [f32; 3] {
         camera.position[1] + camera.eye_height,
         camera.position[2],
     ]
+}
+
+fn camera_forward_vector(camera: CameraPose) -> [f32; 3] {
+    let yaw = camera.y_rot.to_radians();
+    let pitch = camera.x_rot.to_radians();
+    let cos_pitch = pitch.cos();
+    [-yaw.sin() * cos_pitch, -pitch.sin(), yaw.cos() * cos_pitch]
 }
 
 fn camera_block_position(world: &WorldStore) -> Option<BlockPos> {
