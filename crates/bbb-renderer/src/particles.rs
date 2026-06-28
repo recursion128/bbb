@@ -1368,6 +1368,23 @@ mod tests {
         assert_eq!(poof.quad_size_curve, ParticleQuadSizeCurve::Constant);
         assert_range_f32(poof.base_quad_size, 0.1, 0.7);
         assert_range_f32(poof.color[0], 0.7, 1.0);
+
+        let mut explosion_random = ParticleRandom::new(70);
+        let mut explosion_command = spawn_command("minecraft:explosion", 1.0);
+        explosion_command.velocity = [0.5, 2.0, 3.0];
+        let explosion =
+            ParticleInstance::from_spawn_command(explosion_command, &mut explosion_random);
+        assert_eq!(explosion.provider, "HugeExplosionParticle.Provider");
+        assert_eq!(explosion.sprite_selection, ParticleSpriteSelection::Age);
+        assert_close_f32(explosion.base_quad_size, 1.5);
+        assert_range_f32(explosion.color[0], 0.4, 1.0);
+        assert_eq!(explosion.color[0], explosion.color[1]);
+        assert_eq!(explosion.color[1], explosion.color[2]);
+        assert_eq!(explosion.color[3], 1.0);
+        assert!((6..=9).contains(&explosion.lifetime_ticks));
+        assert_eq!(explosion.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(explosion.friction, 0.98);
+        assert!(explosion.has_physics);
     }
 
     #[test]

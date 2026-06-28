@@ -68,6 +68,7 @@ pub(crate) enum ParticleVisualDescriptor {
     Flame {
         scale: f32,
     },
+    HugeExplosion,
     BaseAshSmoke {
         scale: f32,
         color: ParticleColorDescriptor,
@@ -116,6 +117,7 @@ pub(crate) enum ParticleQuadSizeCurve {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum ParticleInitialVelocityDescriptor {
+    Zero,
     Command,
     CommandScaledPlusRandom {
         command_scale: f64,
@@ -308,6 +310,17 @@ impl ParticleDescriptor {
                 friction: 0.96,
                 gravity: 0.0,
                 has_physics: false,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:explosion" => Self {
+                provider: "HugeExplosionParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::RandomInclusive { min: 6, max: 9 },
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::HugeExplosion,
+                initial_velocity: ParticleInitialVelocityDescriptor::Zero,
+                friction: 0.98,
+                gravity: 0.0,
+                has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
             "minecraft:dolphin" => Self {
@@ -807,6 +820,15 @@ impl ParticleVisualDescriptor {
                 WHITE_PARTICLE_COLOR,
                 ParticleQuadSizeCurve::Flame,
             ),
+            Self::HugeExplosion => {
+                let color = random.next_f32() * 0.6 + 0.4;
+                let size = 2.0 * (1.0 - command_velocity[0] as f32 * 0.5);
+                ParticleVisualState::new(
+                    size,
+                    [color, color, color, 1.0],
+                    ParticleQuadSizeCurve::Constant,
+                )
+            }
             Self::BaseAshSmoke { scale, color } => ParticleVisualState::new(
                 base_quad_size * 0.75 * scale,
                 color.sample(random),
@@ -850,6 +872,7 @@ impl ParticleInitialVelocityDescriptor {
         random: &mut ParticleRandom,
     ) -> [f64; 3] {
         match self {
+            Self::Zero => [0.0, 0.0, 0.0],
             Self::Command => command_velocity,
             Self::CommandScaledPlusRandom {
                 command_scale,
@@ -1389,6 +1412,21 @@ mod tests {
             false,
         );
         assert_descriptor(
+            "minecraft:explosion",
+            "HugeExplosionParticle.Provider",
+            ParticleLifetimeDescriptor::RandomInclusive { min: 6, max: 9 },
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::HugeExplosion,
+            0.98,
+            0.0,
+            true,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:explosion").initial_velocity,
+            ParticleInitialVelocityDescriptor::Zero
+        );
+        assert_descriptor(
             "minecraft:dolphin",
             "SuspendedTownParticle.DolphinSpeedProvider",
             ParticleLifetimeDescriptor::BaseAshSmokeDivided {
@@ -1872,6 +1910,16 @@ mod tests {
         assert_eq!(flame.color, WHITE_PARTICLE_COLOR);
         assert_eq!(flame.quad_size_curve, ParticleQuadSizeCurve::Flame);
 
+        let mut explosion_random = ParticleRandom::new(36);
+        let explosion = ParticleVisualDescriptor::HugeExplosion
+            .sample_for_command(&mut explosion_random, [0.5, 0.0, 0.0]);
+        assert_close_f32(explosion.base_quad_size, 1.5);
+        assert_range_f32(explosion.color[0], 0.4, 1.0);
+        assert_eq!(explosion.color[0], explosion.color[1]);
+        assert_eq!(explosion.color[1], explosion.color[2]);
+        assert_eq!(explosion.color[3], 1.0);
+        assert_eq!(explosion.quad_size_curve, ParticleQuadSizeCurve::Constant);
+
         let mut soul_random = ParticleRandom::new(35);
         let soul = ParticleVisualDescriptor::SingleQuadScaled {
             scale: 1.5,
@@ -2115,6 +2163,10 @@ mod tests {
 
     #[test]
     fn initial_velocity_descriptor_matches_vanilla_particle_constructor_scaling() {
+        let zero_velocity = ParticleInitialVelocityDescriptor::Zero
+            .sample([1.0, 2.0, 3.0], &mut ParticleRandom::new(36));
+        assert_eq!(zero_velocity, [0.0, 0.0, 0.0]);
+
         let mut random = ParticleRandom::new(14);
         let velocity = ParticleInitialVelocityDescriptor::ParticleConstructorScaled { scale: 0.02 }
             .sample([0.0, 0.0, 0.0], &mut random);

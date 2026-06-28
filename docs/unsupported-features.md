@@ -281,6 +281,11 @@ When an agent does any of the following, update this file in the same slice:
         `0.96` friction, gravity `0`, and physics metadata; `EmissiveProvider`
         full-bright block light remains deferred until per-particle light coords
         are represented
+      - `HugeExplosionParticle.Provider` (`minecraft:explosion`) uses vanilla
+        xAux-derived quad size, random gray tint, age sprite selection,
+        `6 + random.nextInt(4)` lifetime, static zero velocity in the current
+        CPU model, and base physics metadata; full-bright block light remains
+        deferred until per-particle light coords are represented
     - Uploads a stitched official particle atlas when assets are available.
     - Draws active particles as camera-facing textured billboards.
   - Follow-up work in the plan:
