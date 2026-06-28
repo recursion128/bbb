@@ -345,6 +345,17 @@ When an agent does any of the following, update this file in the same slice:
     Remaining colored fallback geometry belongs to non-textured debug/parity work,
     while GPU bucket folding, outline presentation, render-graph sorting, and
     more exact lighting remain separate P0 pipeline/visual follow-ups.
+  - P0 pipeline closeout also treats the remaining GPU-path fine-grained state as
+    explicitly deferred follow-up, not as a blocker for the CPU submission graph:
+    the backend currently folds compatible submissions into atlas buckets
+    (`cutout`, `translucent`, `eyes`, dynamic profile texture buckets, scroll /
+    additive scroll, and CPU-retained outline geometry). Later GPU work should
+    preserve per-submission draw order across buckets, split currently-coalesced
+    render-type state such as `entityCutout*`, `entitySolid`,
+    `armorCutoutNoCull`, `entityTranslucent*`, `Eyes`, `waterMask`, and glint /
+    scroll variants into equivalent pipeline state, present outline geometry with
+    `outlineColor`, and reconcile full render-graph sorting plus LightTexture /
+    gamma / diffuse visual parity.
   - Replace proxies with full extraction from canonical world and pack data:
     - entity bounds
     - dropped-item icons (3D block/item model renderer in progress — see the

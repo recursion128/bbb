@@ -88,7 +88,7 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。
   顶点数量。
 - [ ] light / overlay / outline 的 pipeline 表达完成；剩余 gamma、diffuse、
   outline 呈现等视觉误差拆到 P0 visual 或后续 P1/P2。
-- [ ] GPU path 剩余更细粒度状态明确列为后续，不阻塞狭义 pipeline 完成。
+- [x] GPU path 剩余更细粒度状态明确列为后续，不阻塞狭义 pipeline 完成。
 - [ ] `docs/unsupported-features.md` 中 submission / render type / residual /
   fallback / outline / lighting 相关 stale 项已审计并归档到上述分类。
 - [ ] closeout gate 固定通过：
@@ -116,6 +116,14 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。
   broader `LightTexture` / gamma / diffuse parity，以及 light / overlay / outline
   metadata 到 GPU presentation 的细粒度状态拆分。粒子 provider、terrain、HUD、
   first-person、GUI 明细不进入本 closeout，除非直接阻塞上述 checklist。
+- GPU path deferred inventory：CPU submission graph 已保留 texture / render type /
+  tint / transform / light / overlay / outlineColor / `order` /
+  `submit_sequence`；后端仍按 bucket 折叠 draw。后续不阻塞狭义 pipeline
+  closeout 的 GPU 工作包括按 submission 或等价 render state 绘制、拆分
+  `entityCutout*` / `entitySolid` / `armorCutoutNoCull` /
+  `entityTranslucent*` / `Eyes` / `waterMask` / glint / scroll 等 pipeline state、
+  用 `outlineColor` 呈现 outline geometry、full render-graph sorting，以及
+  `LightTexture` / gamma / diffuse 视觉精度。
 
 ### [ ] P0：提交图与 RenderType 语义（状态：进行中）
 
@@ -263,9 +271,11 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。
   - explicit `order`
   - same-order `submit_sequence`
   - 必要时再断言折叠后 mesh 的 UV / 顶点 / bounds
-- 后端当前仍会把兼容 submission 折叠进 `cutout` / `translucent` / `eyes` / scroll buckets。
-  这会隐藏官方提交图差异；后续应逐步让 GPU path 能按 submission 或等价 render state
-  保留更细粒度排序和状态。
+- 后端当前仍会把兼容 submission 折叠进 `cutout` / `translucent` / `eyes` /
+  dynamic profile texture / scroll / additive scroll buckets，并将 outline
+  geometry CPU-side retained。CPU submission metadata 已可审计官方提交图；
+  GPU path 后续应逐步按 submission 或等价 render state 保留更细粒度排序和状态，
+  但这已归档为 GPU follow-up，不阻塞狭义 pipeline closeout。
 - 继续补齐官方 render type 状态，而不退化成粗 bucket：
   - `entityCutout`
   - `entityCutoutCull`
