@@ -84,11 +84,12 @@ use super::textured::{
     mooshroom_textured_layer_passes, nautilus_textured_layer_passes, panda_textured_layer_passes,
     parrot_textured_layer_passes, phantom_textured_layer_passes, pig_textured_layer_passes,
     piglin_textured_layer_passes, polar_bear_textured_layer_passes, rabbit_textured_layer_passes,
-    ravager_textured_layer_passes, render_charged_creeper_energy_swirl,
-    render_donkey_textured_layers, render_end_crystal_textured_layers,
-    render_horse_textured_layers, render_no_overlay_scrolled_textured_layers,
-    render_player_textured_layers, render_textured_layers, render_undead_horse_textured_layers,
-    render_wither_energy_swirl, salmon_textured_layer_passes, sheep_textured_layer_passes,
+    ravager_textured_layer_passes, render_breeze_wind_scroll_model,
+    render_charged_creeper_energy_swirl, render_donkey_textured_layers,
+    render_end_crystal_textured_layers, render_horse_textured_layers,
+    render_no_overlay_scrolled_textured_layers, render_player_textured_layers,
+    render_textured_layers, render_undead_horse_textured_layers, render_wither_energy_swirl,
+    salmon_textured_layer_passes, sheep_textured_layer_passes,
     shulker_bullet_textured_layer_passes, shulker_textured_layer_passes,
     silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
     sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
@@ -185,6 +186,8 @@ pub(in crate::entity_models) trait EntityModelSink {
         baby: bool,
         instance: &EntityModelInstance,
     );
+
+    fn breeze_model(&mut self, instance: &EntityModelInstance);
 
     fn creeper_model(&mut self, instance: &EntityModelInstance);
 
@@ -300,6 +303,17 @@ impl EntityModelSink for ColoredSink<'_> {
             return;
         }
         emit_undead_horse_model(self.mesh, *instance, family, baby);
+    }
+
+    fn breeze_model(&mut self, instance: &EntityModelInstance) {
+        let passes = breeze_textured_layer_passes();
+        let body_passes = [passes[0]];
+        self.model(
+            BreezeModel::new(),
+            entity_model_root_transform(*instance),
+            instance,
+            &body_passes,
+        );
     }
 
     fn creeper_model(&mut self, instance: &EntityModelInstance) {
@@ -430,6 +444,16 @@ impl EntityModelSink for TexturedSink<'_> {
         instance: &EntityModelInstance,
     ) {
         render_undead_horse_textured_layers(self.meshes, instance, family, baby, self.atlas);
+    }
+
+    fn breeze_model(&mut self, instance: &EntityModelInstance) {
+        let passes = breeze_textured_layer_passes();
+        let transform = entity_model_root_transform(*instance);
+        let mut model = BreezeModel::new();
+        model.prepare(instance);
+        render_textured_layers(self.meshes, &model, transform, [passes[0]], self.atlas);
+        render_breeze_wind_scroll_model(self.meshes, *instance, self.atlas);
+        render_textured_layers(self.meshes, &model, transform, [passes[2]], self.atlas);
     }
 
     fn creeper_model(&mut self, instance: &EntityModelInstance) {
@@ -1052,16 +1076,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                 }],
             )
         }
-        EntityModelKind::Breeze => {
-            let passes = breeze_textured_layer_passes();
-            let body_passes = [passes[0], passes[2]];
-            sink.model(
-                BreezeModel::new(),
-                entity_model_root_transform(*instance),
-                instance,
-                &body_passes,
-            )
-        }
+        EntityModelKind::Breeze => sink.breeze_model(instance),
         EntityModelKind::Cod => {
             let in_water = instance.render_state.in_water;
             sink.model(

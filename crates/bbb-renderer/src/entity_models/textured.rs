@@ -428,10 +428,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
             );
             continue;
         }
-        // The breeze's swirling wind body is a translucent scrolling overlay (vanilla `BreezeWindLayer`)
-        // layered on top of the base body (already emitted by the shared dispatch), so it likewise runs
-        // regardless of `handled`.
-        emit_breeze_wind_scroll_model(&mut meshes, *instance, atlas);
         // BoatRenderer submits the water patch after the base boat model. Keep it as explicit
         // submission metadata; the current backend does not yet have a depth-only water-mask pass.
         emit_boat_water_mask_submission(&mut meshes, *instance);
@@ -1148,11 +1144,14 @@ pub(in crate::entity_models) fn render_textured_layers<M: EntityModel>(
 /// atlas UVs into a scratch mesh — its `setup_anim` applies the same idle sway + action swirls/pulses
 /// as the base body so the two layers move together — then fold it into the translucent scrolling
 /// overlay mesh, baking the per-instance U offset and carrying the atlas sub-rect for the shader wrap.
-fn emit_breeze_wind_scroll_model(
+pub(in crate::entity_models) fn render_breeze_wind_scroll_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    if meshes.current_force_transparent || meshes.current_outline_only {
+        return;
+    }
     if !matches!(instance.kind, EntityModelKind::Breeze) {
         return;
     }

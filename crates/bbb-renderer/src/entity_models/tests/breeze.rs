@@ -367,6 +367,18 @@ fn breeze_wind_body_folds_into_scrolling_overlay() {
     assert_eq!(wind_submit.light, body_submit.light);
     assert_eq!(wind_submit.overlay, [0.0, 10.0]);
     assert_ne!(wind_submit.overlay, body_submit.overlay);
+    assert_eq!(
+        meshes
+            .submissions
+            .iter()
+            .map(|submit| (submit.texture, submit.order, submit.submit_sequence))
+            .collect::<Vec<_>>(),
+        vec![
+            (BREEZE_TEXTURE_REF, 0, 0),
+            (BREEZE_WIND_TEXTURE_REF, 1, 1),
+            (BREEZE_EYES_TEXTURE_REF, 1, 2),
+        ]
+    );
     assert_eq!(meshes.scroll.vertices.len(), 168);
     assert_eq!(meshes.scroll.indices.len(), 42 * 6);
     assert!(meshes
