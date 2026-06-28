@@ -50,6 +50,7 @@ pub(crate) enum ParticleVisualDescriptor {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum ParticleColorDescriptor {
     RandomGray { max: f32 },
+    RandomRgbRange { min: [f32; 3], max: [f32; 3] },
     FixedRgb([f32; 3]),
 }
 
@@ -81,6 +82,25 @@ impl ParticleDescriptor {
                 lifetime: ParticleLifetimeDescriptor::PlayerCloud,
                 sprite_selection: ParticleSpriteSelection::Age,
                 visual: ParticleVisualDescriptor::PlayerCloud,
+                friction: 0.96,
+                gravity: 0.0,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:dragon_breath" => Self {
+                provider: "DragonBreathParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::BaseAshSmoke {
+                    max_lifetime: 20,
+                    scale_tenths: 10,
+                },
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::BaseAshSmoke {
+                    scale: 1.0,
+                    color: ParticleColorDescriptor::RandomRgbRange {
+                        min: DRAGON_BREATH_COLOR_MIN,
+                        max: DRAGON_BREATH_COLOR_MAX,
+                    },
+                },
                 friction: 0.96,
                 gravity: 0.0,
                 has_physics: false,
@@ -259,6 +279,12 @@ impl ParticleColorDescriptor {
                 let color = random.next_f32() * max;
                 [color, color, color, 1.0]
             }
+            Self::RandomRgbRange { min, max } => [
+                sample_range(random, min[0], max[0]),
+                sample_range(random, min[1], max[1]),
+                sample_range(random, min[2], max[2]),
+                1.0,
+            ],
             Self::FixedRgb([red, green, blue]) => [red, green, blue, 1.0],
         }
     }
@@ -331,6 +357,8 @@ const RANDOM_INCREMENT: u64 = 11;
 const RANDOM_MASK: u64 = (1_u64 << 48) - 1;
 const WHITE_PARTICLE_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const WHITE_ASH_SMOKE_RGB: [f32; 3] = [186.0 / 255.0, 177.0 / 255.0, 194.0 / 255.0];
+const DRAGON_BREATH_COLOR_MIN: [f32; 3] = [0.717_647_1, 0.0, 0.823_529_4];
+const DRAGON_BREATH_COLOR_MAX: [f32; 3] = [0.874_509_8, 0.0, 0.976_470_6];
 
 impl ParticleRandom {
     pub(crate) fn new(seed: i64) -> Self {
@@ -375,6 +403,10 @@ fn sample_single_quad_size(random: &mut ParticleRandom) -> f32 {
     0.1 * (random.next_f32() * 0.5 + 0.5) * 2.0
 }
 
+fn sample_range(random: &mut ParticleRandom, min: f32, max: f32) -> f32 {
+    min + random.next_f32() * (max - min)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -387,6 +419,26 @@ mod tests {
             ParticleLifetimeDescriptor::PlayerCloud,
             ParticleSpriteSelection::Age,
             ParticleVisualDescriptor::PlayerCloud,
+            0.96,
+            0.0,
+            false,
+            false,
+        );
+        assert_descriptor(
+            "minecraft:dragon_breath",
+            "DragonBreathParticle.Provider",
+            ParticleLifetimeDescriptor::BaseAshSmoke {
+                max_lifetime: 20,
+                scale_tenths: 10,
+            },
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::BaseAshSmoke {
+                scale: 1.0,
+                color: ParticleColorDescriptor::RandomRgbRange {
+                    min: DRAGON_BREATH_COLOR_MIN,
+                    max: DRAGON_BREATH_COLOR_MAX,
+                },
+            },
             0.96,
             0.0,
             false,
@@ -541,6 +593,32 @@ mod tests {
         assert_eq!(cloud.color[1], cloud.color[2]);
         assert_eq!(cloud.color[3], 1.0);
         assert_eq!(cloud.quad_size_curve, ParticleQuadSizeCurve::GrowToBase);
+
+        let mut dragon_random = ParticleRandom::new(12);
+        let dragon_breath = ParticleVisualDescriptor::BaseAshSmoke {
+            scale: 1.0,
+            color: ParticleColorDescriptor::RandomRgbRange {
+                min: DRAGON_BREATH_COLOR_MIN,
+                max: DRAGON_BREATH_COLOR_MAX,
+            },
+        }
+        .sample(&mut dragon_random);
+        assert_range_f32(dragon_breath.base_quad_size, 0.075, 0.15);
+        assert_range_f32(
+            dragon_breath.color[0],
+            DRAGON_BREATH_COLOR_MIN[0],
+            DRAGON_BREATH_COLOR_MAX[0],
+        );
+        assert_eq!(dragon_breath.color[1], 0.0);
+        assert_range_f32(
+            dragon_breath.color[2],
+            DRAGON_BREATH_COLOR_MIN[2],
+            DRAGON_BREATH_COLOR_MAX[2],
+        );
+        assert_eq!(
+            dragon_breath.quad_size_curve,
+            ParticleQuadSizeCurve::GrowToBase
+        );
 
         let mut smoke_random = ParticleRandom::new(9);
         let smoke = ParticleVisualDescriptor::BaseAshSmoke {

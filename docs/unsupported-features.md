@@ -167,8 +167,8 @@ When an agent does any of the following, update this file in the same slice:
     - atlas mip animation
     - terrain/item particle option rendering
     - remaining level-event particle effects beyond the currently covered
-      simple smoke/white-smoke/flame/explosion/cloud/block-face/trial-spawner
-      side effects
+      simple smoke/white-smoke/flame/dragon-breath/explosion/cloud/block-face/
+      trial-spawner side effects
   - Preserve missing definition/sprite diagnostics.
 - Evidence / boundary:
   - Current runtime:
@@ -186,6 +186,8 @@ When an agent does any of the following, update this file in the same slice:
         particles
       - event `2004`: twenty paired `minecraft:smoke` and `minecraft:flame`
         particles around the block center
+      - event `2006`: 200 vanilla-positioned `minecraft:dragon_breath`
+        particles with `PowerParticleOption`-shaped velocities
       - event `2008`: one centered `minecraft:explosion` particle
       - event `2009`: eight `minecraft:cloud` particles above the block
       - event `3000`: one always-visible centered
@@ -216,6 +218,8 @@ When an agent does any of the following, update this file in the same slice:
       - size
       - color
       - age-size
+      - `DragonBreathParticle.Provider` purple color range, 0.75 size scale,
+        grow-to-base size curve, lifetime, friction, and no-physics metadata
     - Uploads a stitched official particle atlas when assets are available.
     - Draws active particles as camera-facing textured billboards.
   - Follow-up work in the plan:
@@ -1613,8 +1617,10 @@ When an agent does any of the following, update this file in the same slice:
       id 13 into the vanilla multiplier/angle tick state and folded into the boat root
       transform with the renderer-side underwater gate. Underwater state is projected
       from the vanilla boat top-slice water-surface test and now gates both bubble wobble
-      and wooden boat / chest boat above-water `waterMask` submission. Water-mask GPU
-      presentation and lighting remain unsupported
+      and wooden boat / chest boat above-water `waterMask` submission. Boat /
+      raft base and wooden boat water-mask submissions now preserve the vanilla
+      `state.lightCoords` plus `OverlayTexture.NO_OVERLAY`; only water-mask
+      depth-only GPU presentation remains deferred.
     - chicken entities as renderer-owned vanilla 26.1
       `AdultChickenModel`, `ColdChickenModel`, and `BabyChickenModel` body-layer
       geometry from `ChickenModel`, `ChickenRenderer`, `ChickenVariants`, and

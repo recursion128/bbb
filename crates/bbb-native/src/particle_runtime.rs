@@ -303,6 +303,7 @@ impl ParticleCommandResolver {
                 }
                 batch
             }
+            DRAGON_FIREBALL_EXPLODE_LEVEL_EVENT => self.dragon_breath_particle_batch(event, random),
             EXPLOSION_LEVEL_EVENT => self.simple_particle_batch(
                 EXPLOSION_PARTICLE_TYPE_ID,
                 vec![(
@@ -493,6 +494,49 @@ impl ParticleCommandResolver {
                     false,
                 ));
             }
+        }
+
+        batch
+    }
+
+    fn dragon_breath_particle_batch(
+        &self,
+        event: &LevelEvent,
+        random: &mut LevelEventSoundRandomState,
+    ) -> ParticleSpawnBatch {
+        let template = match self.simple_particle_template(DRAGON_BREATH_PARTICLE_TYPE_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+
+        for _ in 0..200 {
+            let dist = random.next_float() * 4.0;
+            let angle = random.next_float() * std::f32::consts::TAU;
+            let velocity_x = f64::from(angle.cos() * dist);
+            let velocity_y = 0.01 + random.next_double() * 0.5;
+            let velocity_z = f64::from(angle.sin() * dist);
+            let position = Vec3d {
+                x: f64::from(event.pos.x) + velocity_x * 0.1,
+                y: f64::from(event.pos.y) + 0.3,
+                z: f64::from(event.pos.z) + velocity_z * 0.1,
+            };
+            // `PowerParticleOption.create(..., dist)` calls `Particle.setPower(dist)`
+            // after the provider creates DragonBreathParticle.
+            let powered_velocity = Vec3d {
+                x: velocity_x * f64::from(dist),
+                y: (velocity_y - 0.1) * f64::from(dist) + 0.1,
+                z: velocity_z * f64::from(dist),
+            };
+            batch.commands.push(self.command_from_template(
+                &template,
+                position,
+                powered_velocity,
+                false,
+            ));
         }
 
         batch
@@ -1001,6 +1045,7 @@ const REDSTONE_TORCH_BURNOUT_LEVEL_EVENT: i32 = 1502;
 const END_PORTAL_FRAME_FILL_LEVEL_EVENT: i32 = 1503;
 const DISPENSER_SMOKE_LEVEL_EVENT: i32 = 2000;
 const BLAZE_SMOKE_LEVEL_EVENT: i32 = 2004;
+const DRAGON_FIREBALL_EXPLODE_LEVEL_EVENT: i32 = 2006;
 const EXPLOSION_LEVEL_EVENT: i32 = 2008;
 const SPLASH_CLOUD_LEVEL_EVENT: i32 = 2009;
 const DISPENSER_WHITE_SMOKE_LEVEL_EVENT: i32 = 2010;
@@ -1020,6 +1065,7 @@ const TRIAL_SPAWNER_DETECT_PLAYER_OMINOUS_LEVEL_EVENT: i32 = 3019;
 const TRIAL_SPAWNER_OMINOUS_ACTIVATE_LEVEL_EVENT: i32 = 3020;
 const TRIAL_SPAWNER_SPAWN_ITEM_LEVEL_EVENT: i32 = 3021;
 const CLOUD_PARTICLE_TYPE_ID: i32 = 4;
+const DRAGON_BREATH_PARTICLE_TYPE_ID: i32 = 8;
 const EXPLOSION_EMITTER_PARTICLE_TYPE_ID: i32 = 22;
 const EXPLOSION_PARTICLE_TYPE_ID: i32 = 23;
 const FLAME_PARTICLE_TYPE_ID: i32 = 32;
@@ -1311,6 +1357,28 @@ mod tests {
                 -2.225_165_149_299_783_7,
             ],
             [0.0, 0.0, 0.0],
+            false,
+        );
+
+        let mut dragon_breath_random = LevelEventSoundRandomState::with_seed(0);
+        let dragon_breath = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 2006,
+                ..level_event_packet(2006)
+            },
+            &mut dragon_breath_random,
+        );
+        assert_eq!(dragon_breath.len(), 200);
+        assert_particle_command(
+            &dragon_breath.commands[0],
+            8,
+            "minecraft:dragon_breath",
+            [10.143_172_562_122_345, 64.3, -3.254_934_978_485_107_6],
+            [
+                4.186_181_081_614_109,
+                0.188_500_336_334_049_33,
+                -7.453_970_007_633_87,
+            ],
             false,
         );
 
@@ -1814,6 +1882,7 @@ mod tests {
             &[
                 "generic_7",
                 "generic_6",
+                "dragon_breath_0",
                 "flame",
                 "soul_fire_flame",
                 "explosion_emitter_0",
@@ -1862,6 +1931,14 @@ mod tests {
             r#"{
               "textures": [
                 "minecraft:flame"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("dragon_breath.json"),
+            r#"{
+              "textures": [
+                "minecraft:dragon_breath_0"
               ]
             }"#,
         );

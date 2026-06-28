@@ -978,6 +978,24 @@ mod tests {
         assert_eq!(cloud.color[0], cloud.color[1]);
         assert_eq!(cloud.color[1], cloud.color[2]);
 
+        let mut dragon_random = ParticleRandom::new(46);
+        let dragon_breath = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:dragon_breath", 1.0),
+            &mut dragon_random,
+        );
+        assert_eq!(dragon_breath.provider, "DragonBreathParticle.Provider");
+        assert_eq!(
+            dragon_breath.quad_size_curve,
+            ParticleQuadSizeCurve::GrowToBase
+        );
+        assert_range_f32(dragon_breath.base_quad_size, 0.075, 0.15);
+        assert_range_f32(dragon_breath.color[0], 0.717_647_1, 0.874_509_8);
+        assert_close_f32(dragon_breath.color[1], 0.0);
+        assert_range_f32(dragon_breath.color[2], 0.823_529_4, 0.976_470_6);
+        assert_eq!(dragon_breath.friction, 0.96);
+        assert_eq!(dragon_breath.gravity, 0.0);
+        assert!(!dragon_breath.has_physics);
+
         let mut smoke_random = ParticleRandom::new(44);
         let smoke = ParticleInstance::from_spawn_command(
             spawn_command("minecraft:white_smoke", 1.0),
