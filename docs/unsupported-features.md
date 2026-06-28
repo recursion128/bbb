@@ -1545,7 +1545,11 @@ When an agent does any of the following, update this file in the same slice:
       vanilla `ModelLayers.PARROT`, `ParrotRenderer.getVariantTexture`, `entityCutout`,
       white tint, player light, `OverlayTexture.NO_OVERLAY`, transforms
       `translate(±0.4, isCrouching ? -1.3 : -1.5, 0)`, and sequences `4` / `5`.
-      The riptide `SpinAttackEffectLayer` therefore moves to sequence `6`.)
+      The riptide `SpinAttackEffectLayer` therefore moves to sequence `6`.
+      Those player-only post-Wings submissions now run through the shared dispatch/sink
+      boundary rather than direct post-base helper calls, preserving the vanilla
+      `WingsLayer` -> `ParrotOnShoulderLayer` -> `SpinAttackEffectLayer` append point
+      while narrowing the residual helper list.)
     - wooden boat, chest boat, bamboo raft, and bamboo chest raft entities as
       renderer-owned vanilla 26.1 `BoatModel` / `RaftModel` body-layer
       geometry from `BoatModel`, `RaftModel`, `BoatRenderer`, `RaftRenderer`,

@@ -92,14 +92,15 @@ use super::textured::{
     render_equine_saddle_layer, render_guardian_beam, render_horse_textured_layers,
     render_llama_decor_layer, render_nautilus_body_armor_layer, render_nautilus_saddle_layer,
     render_no_overlay_scrolled_textured_layers, render_pig_saddle_layer, render_player_cape_layer,
-    render_player_extra_ears_layer, render_player_textured_layers, render_strider_saddle_layer,
-    render_textured_layers, render_trident_foil_submission, render_undead_horse_textured_layers,
-    render_wither_energy_swirl, render_wolf_body_armor_layer, salmon_textured_layer_passes,
-    sheep_textured_layer_passes, shulker_bullet_textured_layer_passes,
-    shulker_textured_layer_passes, silverfish_textured_layer_passes,
-    skeleton_textured_layer_passes, slime_textured_layer_passes, sniffer_textured_layer_passes,
-    snow_golem_textured_layer_passes, spider_textured_layer_passes, squid_textured_layer_passes,
-    tadpole_textured_layer_passes, trident_textured_layer_passes,
+    render_player_extra_ears_layer, render_player_parrot_on_shoulder_layer,
+    render_player_spin_attack_effect_layer, render_player_textured_layers,
+    render_strider_saddle_layer, render_textured_layers, render_trident_foil_submission,
+    render_undead_horse_textured_layers, render_wither_energy_swirl, render_wolf_body_armor_layer,
+    salmon_textured_layer_passes, sheep_textured_layer_passes,
+    shulker_bullet_textured_layer_passes, shulker_textured_layer_passes,
+    silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
+    sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
+    squid_textured_layer_passes, tadpole_textured_layer_passes, trident_textured_layer_passes,
     tropical_fish_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, warden_textured_layer_passes,
     wind_charge_textured_layer_passes, witch_textured_layer_passes,
@@ -309,6 +310,8 @@ pub(in crate::entity_models) trait EntityModelSink {
         parts: PlayerModelPartVisibility,
         instance: &EntityModelInstance,
     );
+
+    fn player_post_wings_layers(&mut self, _instance: &EntityModelInstance) {}
 
     fn horse_model(
         &mut self,
@@ -741,6 +744,11 @@ impl EntityModelSink for TexturedSink<'_> {
             self.dynamic_player_skin_atlas,
         );
         render_player_cape_layer(self.meshes, *instance, self.dynamic_player_texture_atlas);
+    }
+
+    fn player_post_wings_layers(&mut self, instance: &EntityModelInstance) {
+        render_player_parrot_on_shoulder_layer(self.meshes, *instance, self.atlas);
+        render_player_spin_attack_effect_layer(self.meshes, *instance, self.atlas);
     }
 
     fn horse_model(
@@ -1654,6 +1662,20 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
         _ => return false,
     }
     true
+}
+
+/// Dispatch-owned player layers that vanilla registers after `WingsLayer`.
+///
+/// These run from the textured post-base loop at the same point the old helper calls did, so
+/// submission append order stays `WingsLayer` -> `ParrotOnShoulderLayer` -> `SpinAttackEffectLayer`
+/// while the player-specific layer ownership moves into the shared dispatch/sink boundary.
+pub(in crate::entity_models) fn dispatch_post_wings_entity_layers<S: EntityModelSink>(
+    instance: &EntityModelInstance,
+    sink: &mut S,
+) {
+    if matches!(instance.kind, EntityModelKind::Player { .. }) {
+        sink.player_post_wings_layers(instance);
+    }
 }
 
 fn render_colored_end_crystal_model(

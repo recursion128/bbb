@@ -4,7 +4,9 @@ use super::colored::{
     trident_model_root_transform, villager_adult_model_root_transform, wither_model_root_transform,
     GIANT_SCALE, HORSE_SCALE,
 };
-use super::dispatch::{dispatch_uniform_entity_model, TexturedSink};
+use super::dispatch::{
+    dispatch_post_wings_entity_layers, dispatch_uniform_entity_model, TexturedSink,
+};
 use super::held_item::custom_head_skull_transform;
 use super::model::{EntityModel, ModelPart};
 #[cfg(test)]
@@ -444,10 +446,17 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         // a ready profile elytra/cape texture.
         emit_wings_layer(&mut meshes, *instance, atlas, dynamic_player_texture_atlas);
         // AvatarRenderer registers ParrotOnShoulderLayer after WingsLayer and before the riptide
-        // spin-attack visual.
-        emit_player_parrot_on_shoulder_layer(&mut meshes, *instance, atlas);
-        // SpinAttackEffectLayer is the next player layer after both shoulder-parrot submits.
-        emit_player_spin_attack_effect_layer(&mut meshes, *instance, atlas);
+        // spin-attack visual. Dispatch owns those player-specific submissions; the outer loop calls
+        // the post-wings hook here to preserve vanilla append order relative to generic layers.
+        {
+            let mut sink = TexturedSink {
+                meshes: &mut meshes,
+                atlas,
+                dynamic_player_skin_atlas,
+                dynamic_player_texture_atlas,
+            };
+            dispatch_post_wings_entity_layers(instance, &mut sink);
+        }
         // VillagerProfessionLayer overlays (biome type, profession, level badge) are cutout layers
         // over the base villager or zombie-villager model with shared light and zero-white overlay.
         emit_villager_profession_layers(&mut meshes, *instance, atlas);
@@ -2939,7 +2948,7 @@ fn emit_wings_layer(
     });
 }
 
-fn emit_player_spin_attack_effect_layer(
+pub(in crate::entity_models) fn render_player_spin_attack_effect_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
@@ -2965,7 +2974,7 @@ fn emit_player_spin_attack_effect_layer(
     });
 }
 
-fn emit_player_parrot_on_shoulder_layer(
+pub(in crate::entity_models) fn render_player_parrot_on_shoulder_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
