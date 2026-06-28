@@ -230,6 +230,27 @@ fn lightmap_tick_state_applies_end_flash_sky_factor_from_end_clock() {
 }
 
 #[test]
+fn lightmap_tick_state_uses_locally_advanced_end_clock() {
+    let mut world = world_with_dimension(2, "minecraft:the_end");
+    world.apply_world_time(PlayTime {
+        game_time: 100,
+        clock_updates: vec![ProtocolClockUpdate {
+            clock_id: 1,
+            total_ticks: 1_485,
+            partial_tick: 0.75,
+            rate: 0.5,
+        }],
+    });
+    world.advance_client_time(1);
+    let mut lightmap = LightmapTickState::with_seed_and_brightness(0, 0.5);
+
+    lightmap.advance_for_world(1, &world);
+    let environment = lightmap.environment_for_world(&world);
+
+    assert!((environment.sky_factor - 1.0).abs() < 1e-6);
+}
+
+#[test]
 fn lightmap_tick_state_does_not_use_overworld_clock_for_end_flash() {
     let mut world = world_with_dimension(2, "minecraft:the_end");
     set_world_day_time(&mut world, 1_486);
@@ -3934,11 +3955,19 @@ fn block_destroy_render_ticks_respect_frozen_world_ticking_state() {
         frozen: true,
     });
 
-    assert_eq!(advance_block_destruction_render_ticks(&mut world, 420), 0);
+    let running_ticks = world.consume_running_render_ticks(420);
+    assert_eq!(
+        advance_block_destruction_render_ticks(&mut world, running_ticks),
+        0
+    );
     assert_eq!(world.block_destructions().len(), 1);
 
     world.apply_ticking_step(bbb_protocol::packets::TickingStep { tick_steps: 420 });
-    assert_eq!(advance_block_destruction_render_ticks(&mut world, 420), 1);
+    let running_ticks = world.consume_running_render_ticks(420);
+    assert_eq!(
+        advance_block_destruction_render_ticks(&mut world, running_ticks),
+        1
+    );
     assert!(world.block_destructions().is_empty());
     assert_eq!(world.ticking().frozen_ticks_to_run, 0);
 }

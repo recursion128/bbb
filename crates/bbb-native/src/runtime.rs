@@ -1296,9 +1296,11 @@ pub(crate) fn pump_network_and_terrain(
     let now = Instant::now();
     let advanced_ticks = advance_entity_client_animations(world, client_animation_ticks, now);
     let entity_partial_tick = client_animation_ticks.entity_partial_tick(now);
+    let running_ticks = world.consume_running_render_ticks(advanced_ticks);
+    world.advance_client_time(running_ticks);
     lightmap_ticks.advance_for_world(advanced_ticks, world);
     renderer.set_lightmap_environment(lightmap_ticks.environment_for_world(world));
-    advance_block_destruction_render_ticks(world, advanced_ticks);
+    advance_block_destruction_render_ticks(world, running_ticks);
     world.advance_item_cooldowns(advanced_ticks);
     renderer.advance_particles(advanced_ticks);
     advance_player_input(input, world, net_counters, net_commands, now);
@@ -1428,8 +1430,7 @@ pub(crate) fn pump_network_and_terrain(
     )
 }
 
-fn advance_block_destruction_render_ticks(world: &mut WorldStore, advanced_ticks: u32) -> usize {
-    let running_ticks = world.consume_running_render_ticks(advanced_ticks);
+fn advance_block_destruction_render_ticks(world: &mut WorldStore, running_ticks: u32) -> usize {
     world.advance_block_destruction_render_ticks(running_ticks)
 }
 

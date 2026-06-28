@@ -249,6 +249,27 @@ impl WorldStore {
         }
     }
 
+    pub fn advance_client_time(&mut self, ticks: u32) {
+        if ticks == 0 {
+            return;
+        }
+
+        let Some(time) = self.world_time.as_mut() else {
+            return;
+        };
+
+        let game_time_delta = i64::from(ticks);
+        time.game_time = time.game_time.saturating_add(game_time_delta);
+        for clock in &mut time.clock_updates {
+            advance_client_clock(clock, game_time_delta);
+        }
+        time.day_time = time
+            .clock_updates
+            .first()
+            .map(|clock| clock.total_ticks)
+            .unwrap_or(time.game_time);
+    }
+
     pub fn clear_client_level(&mut self) {
         self.dimension = WorldDimension::default();
         self.level = None;
@@ -471,6 +492,18 @@ fn canonical_game_type_id(id: i32) -> i32 {
     } else {
         0
     }
+}
+
+fn advance_client_clock(clock: &mut ClockUpdateState, game_time_delta: i64) {
+    if game_time_delta == 0 {
+        return;
+    }
+
+    let new_partial_ticks =
+        f64::from(clock.partial_tick) + (game_time_delta as f64) * f64::from(clock.rate);
+    let full_ticks = new_partial_ticks.floor() as i64;
+    clock.partial_tick = (new_partial_ticks - full_ticks as f64) as f32;
+    clock.total_ticks = clock.total_ticks.saturating_add(full_ticks);
 }
 
 fn positive_tick_steps(tick_steps: i32) -> u32 {
@@ -866,6 +899,80 @@ mod tests {
         assert_eq!(counters.game_event_packets, 2);
         assert_eq!(counters.ticking_state_packets, 1);
         assert_eq!(counters.ticking_step_packets, 1);
+    }
+
+    #[test]
+    fn advance_client_time_ticks_game_time_and_clock_instances_like_vanilla() {
+        let mut store = WorldStore::new();
+        store.apply_world_time(ProtocolPlayTime {
+            game_time: 100,
+            clock_updates: vec![
+                ProtocolClockUpdate {
+                    clock_id: 1,
+                    total_ticks: 1_485,
+                    partial_tick: 0.75,
+                    rate: 0.5,
+                },
+                ProtocolClockUpdate {
+                    clock_id: 2,
+                    total_ticks: 10,
+                    partial_tick: 0.25,
+                    rate: 2.25,
+                },
+            ],
+        });
+
+        store.advance_client_time(1);
+
+        let time = store.world_time().unwrap();
+        assert_eq!(time.game_time, 101);
+        assert_eq!(time.day_time, 1_486);
+        assert_eq!(
+            time.clock_updates,
+            vec![
+                ClockUpdateState {
+                    clock_id: 1,
+                    total_ticks: 1_486,
+                    partial_tick: 0.25,
+                    rate: 0.5,
+                },
+                ClockUpdateState {
+                    clock_id: 2,
+                    total_ticks: 12,
+                    partial_tick: 0.5,
+                    rate: 2.25,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn advance_client_time_preserves_paused_clock_updates() {
+        let mut store = WorldStore::new();
+        store.apply_world_time(ProtocolPlayTime {
+            game_time: 100,
+            clock_updates: vec![ProtocolClockUpdate {
+                clock_id: 1,
+                total_ticks: 1_485,
+                partial_tick: 0.75,
+                rate: 0.0,
+            }],
+        });
+
+        store.advance_client_time(4);
+
+        let time = store.world_time().unwrap();
+        assert_eq!(time.game_time, 104);
+        assert_eq!(time.day_time, 1_485);
+        assert_eq!(
+            time.clock_updates,
+            vec![ClockUpdateState {
+                clock_id: 1,
+                total_ticks: 1_485,
+                partial_tick: 0.75,
+                rate: 0.0,
+            }]
+        );
     }
 
     #[test]
