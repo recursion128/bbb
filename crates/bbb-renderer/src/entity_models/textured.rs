@@ -446,10 +446,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         emit_player_spin_attack_effect_layer(&mut meshes, *instance, atlas);
         // Wolf body armor uses the adult WOLF_ARMOR equipment layer and optional damage cracks.
         emit_wolf_body_armor_layer(&mut meshes, *instance, atlas);
-        // Horse/zombie-horse body armor uses the adult HORSE_BODY equipment layer.
-        emit_equine_body_armor_layer(&mut meshes, *instance, atlas);
-        // Horse/donkey/mule/undead-horse saddles use the shared EquineSaddleModel tree.
-        emit_equine_saddle_layer(&mut meshes, *instance, atlas);
         // LlamaDecorLayer appends adult carpet or trader-llama body decor after the base body.
         emit_llama_decor_layer(&mut meshes, *instance, atlas);
         // Living and zombie nautilus body armor uses the adult NautilusArmorModel tree.
@@ -2207,12 +2203,15 @@ fn wolf_collar_submits(instance: EntityModelInstance) -> bool {
 /// Vanilla `SimpleEquipmentLayer` over `EquineSaddleModel` for horse, donkey, mule, skeleton-horse,
 /// and zombie-horse saddles. The layer has no baby model, so baby equines skip it. The two bridle line
 /// parts are visible only while `EquineRenderState.isRidden` is true.
-fn emit_equine_saddle_layer(
+pub(in crate::entity_models) fn render_equine_saddle_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     if !instance.render_state.equine_saddle {
+        return;
+    }
+    if meshes.current_force_transparent || meshes.current_outline_only {
         return;
     }
 
@@ -2339,11 +2338,14 @@ fn emit_equine_saddle_layer(
 /// horse armor model inherits the 1.1 `livingHorseScale`; the zombie horse armor model is unscaled.
 /// Vanilla supplies no baby model. Skeleton horses use the same renderer class but the vanilla
 /// `CAN_WEAR_HORSE_ARMOR` tag excludes them, so the world projection never sets this layer for them.
-fn emit_equine_body_armor_layer(
+pub(in crate::entity_models) fn render_equine_body_armor_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    if meshes.current_force_transparent || meshes.current_outline_only {
+        return;
+    }
     let Some(material) = instance.render_state.equine_body_armor else {
         return;
     };

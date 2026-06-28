@@ -88,11 +88,11 @@ use super::textured::{
     ravager_textured_layer_passes, render_boat_water_mask_submission,
     render_breeze_wind_scroll_model, render_camel_saddle_layer,
     render_charged_creeper_energy_swirl, render_donkey_textured_layers, render_end_crystal_beam,
-    render_end_crystal_textured_layers, render_ender_dragon_beam, render_guardian_beam,
-    render_horse_textured_layers, render_no_overlay_scrolled_textured_layers,
-    render_pig_saddle_layer, render_player_cape_layer, render_player_extra_ears_layer,
-    render_player_textured_layers, render_strider_saddle_layer, render_textured_layers,
-    render_trident_foil_submission, render_undead_horse_textured_layers,
+    render_end_crystal_textured_layers, render_ender_dragon_beam, render_equine_body_armor_layer,
+    render_equine_saddle_layer, render_guardian_beam, render_horse_textured_layers,
+    render_no_overlay_scrolled_textured_layers, render_pig_saddle_layer, render_player_cape_layer,
+    render_player_extra_ears_layer, render_player_textured_layers, render_strider_saddle_layer,
+    render_textured_layers, render_trident_foil_submission, render_undead_horse_textured_layers,
     render_wither_energy_swirl, salmon_textured_layer_passes, sheep_textured_layer_passes,
     shulker_bullet_textured_layer_passes, shulker_textured_layer_passes,
     silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
@@ -607,6 +607,8 @@ impl EntityModelSink for TexturedSink<'_> {
         instance: &EntityModelInstance,
     ) {
         render_horse_textured_layers(self.meshes, instance, variant, baby, markings, self.atlas);
+        render_equine_body_armor_layer(self.meshes, *instance, self.atlas);
+        render_equine_saddle_layer(self.meshes, *instance, self.atlas);
     }
 
     fn donkey_model(
@@ -617,6 +619,7 @@ impl EntityModelSink for TexturedSink<'_> {
         instance: &EntityModelInstance,
     ) {
         render_donkey_textured_layers(self.meshes, instance, family, baby, has_chest, self.atlas);
+        render_equine_saddle_layer(self.meshes, *instance, self.atlas);
     }
 
     fn undead_horse_model(
@@ -626,6 +629,8 @@ impl EntityModelSink for TexturedSink<'_> {
         instance: &EntityModelInstance,
     ) {
         render_undead_horse_textured_layers(self.meshes, instance, family, baby, self.atlas);
+        render_equine_body_armor_layer(self.meshes, *instance, self.atlas);
+        render_equine_saddle_layer(self.meshes, *instance, self.atlas);
     }
 
     fn boat_model(&mut self, family: BoatModelFamily, chest: bool, instance: &EntityModelInstance) {

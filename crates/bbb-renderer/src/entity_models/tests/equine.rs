@@ -1907,6 +1907,7 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
         HORSE_WHITE_BABY_TEXTURE_REF,
         ZOMBIE_HORSE_TEXTURE_REF,
         SKELETON_HORSE_TEXTURE_REF,
+        HORSE_SADDLE_TEXTURE_REF,
         HORSE_BODY_IRON_TEXTURE_REF,
         HORSE_BODY_LEATHER_TEXTURE_REF,
         HORSE_BODY_LEATHER_OVERLAY_TEXTURE_REF,
@@ -1969,6 +1970,53 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
     assert!(first_armor_vertex[0] <= iron_uv.max[0]);
     assert!(first_armor_vertex[1] >= iron_uv.min[1]);
     assert!(first_armor_vertex[1] <= iron_uv.max[1]);
+
+    let armored_saddled = horse
+        .with_equine_body_armor(Some(EntityArmorMaterial::Iron))
+        .with_equine_saddle(true);
+    let armored_saddled_meshes = entity_model_textured_meshes(&[armored_saddled], &atlas);
+    assert_equine_submissions_match_vanilla(&armored_saddled_meshes, armored_saddled);
+    assert_eq!(armored_saddled_meshes.submissions.len(), 3);
+    assert_eq!(
+        armored_saddled_meshes.submissions[1].texture,
+        HORSE_BODY_IRON_TEXTURE_REF
+    );
+    assert_eq!(
+        (
+            armored_saddled_meshes.submissions[1].order,
+            armored_saddled_meshes.submissions[1].submit_sequence
+        ),
+        (2, 2),
+        "vanilla submits body armor before the same-order saddle layer"
+    );
+    assert_eq!(
+        armored_saddled_meshes.submissions[2].texture,
+        HORSE_SADDLE_TEXTURE_REF
+    );
+    assert_eq!(
+        (
+            armored_saddled_meshes.submissions[2].order,
+            armored_saddled_meshes.submissions[2].submit_sequence
+        ),
+        (2, 3),
+        "saddle sequence advances after the body armor layer"
+    );
+    assert_eq!(
+        armored_saddled_meshes.cutout.vertices.len() - iron.vertices.len(),
+        408
+    );
+    assert_textured_vertices_match_submission(
+        &armored_saddled_meshes.cutout.vertices[..288],
+        armored_saddled_meshes.submissions[0],
+    );
+    assert_textured_vertices_match_submission(
+        &armored_saddled_meshes.cutout.vertices[288..576],
+        armored_saddled_meshes.submissions[1],
+    );
+    assert_textured_vertices_match_submission(
+        &armored_saddled_meshes.cutout.vertices[576..],
+        armored_saddled_meshes.submissions[2],
+    );
 
     let dye = 0x0033_66CC;
     let dyed_tint = [
