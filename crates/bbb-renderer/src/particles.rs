@@ -330,6 +330,7 @@ impl ParticleRuntimeState {
 impl ParticleInstance {
     fn from_spawn_command(command: ParticleSpawnCommand, random: &mut ParticleRandom) -> Self {
         let descriptor = ParticleDescriptor::for_particle(&command.particle_id);
+        let position = descriptor.initial_position(command.position);
         let velocity = descriptor.initial_velocity.sample(command.velocity, random);
         let (current_sprite_index, current_sprite_id) =
             select_initial_sprite(&command.sprite_ids, descriptor.sprite_selection, random);
@@ -340,8 +341,8 @@ impl ParticleInstance {
             sprite_ids: command.sprite_ids,
             current_sprite_id,
             current_sprite_index,
-            previous_position: command.position,
-            position: command.position,
+            previous_position: position,
+            position,
             velocity,
             age_ticks: 0,
             lifetime_ticks: descriptor.lifetime.sample(random),
@@ -978,6 +979,24 @@ mod tests {
         assert_range_f32(cloud.color[0], 0.7, 1.0);
         assert_eq!(cloud.color[0], cloud.color[1]);
         assert_eq!(cloud.color[1], cloud.color[2]);
+
+        let mut angry_villager_random = ParticleRandom::new(52);
+        let angry_villager = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:angry_villager", 1.0),
+            &mut angry_villager_random,
+        );
+        assert_eq!(
+            angry_villager.provider,
+            "HeartParticle.AngryVillagerProvider"
+        );
+        assert_eq!(angry_villager.previous_position, [1.0, 0.5, 0.0]);
+        assert_eq!(angry_villager.position, [1.0, 0.5, 0.0]);
+        assert_eq!(angry_villager.lifetime_ticks, 16);
+        assert_eq!(
+            angry_villager.quad_size_curve,
+            ParticleQuadSizeCurve::GrowToBase
+        );
+        assert_eq!(angry_villager.color, [1.0, 1.0, 1.0, 1.0]);
 
         let mut heart_random = ParticleRandom::new(51);
         let heart = ParticleInstance::from_spawn_command(

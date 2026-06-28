@@ -104,6 +104,25 @@ pub(crate) struct ParticleRandom {
 impl ParticleDescriptor {
     pub(crate) fn for_particle(particle_id: &str) -> Self {
         match particle_id {
+            "minecraft:angry_villager" => Self {
+                provider: "HeartParticle.AngryVillagerProvider",
+                lifetime: ParticleLifetimeDescriptor::Fixed(16),
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 1.5,
+                    color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                    quad_size_curve: ParticleQuadSizeCurve::GrowToBase,
+                },
+                initial_velocity:
+                    ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledWithYOffset {
+                        scale: 0.01,
+                        y_offset: 0.1,
+                    },
+                friction: 0.86,
+                gravity: 0.0,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: true,
+            },
             "minecraft:cloud" => Self {
                 provider: "PlayerCloudParticle.Provider",
                 lifetime: ParticleLifetimeDescriptor::PlayerCloud,
@@ -360,6 +379,17 @@ impl ParticleDescriptor {
                 has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
+        }
+    }
+
+    pub(crate) fn initial_position(self, command_position: [f64; 3]) -> [f64; 3] {
+        match self.provider {
+            "HeartParticle.AngryVillagerProvider" => [
+                command_position[0],
+                command_position[1] + 0.5,
+                command_position[2],
+            ],
+            _ => command_position,
         }
     }
 }
@@ -625,6 +655,34 @@ mod tests {
 
     #[test]
     fn particle_descriptor_maps_core_vanilla_providers_and_physics_flags() {
+        assert_descriptor(
+            "minecraft:angry_villager",
+            "HeartParticle.AngryVillagerProvider",
+            ParticleLifetimeDescriptor::Fixed(16),
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::SingleQuadScaled {
+                scale: 1.5,
+                color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                quad_size_curve: ParticleQuadSizeCurve::GrowToBase,
+            },
+            0.86,
+            0.0,
+            false,
+            true,
+        );
+        let angry_villager = ParticleDescriptor::for_particle("minecraft:angry_villager");
+        assert_eq!(
+            angry_villager.initial_velocity,
+            ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledWithYOffset {
+                scale: 0.01,
+                y_offset: 0.1
+            }
+        );
+        assert_eq!(
+            angry_villager.initial_position([1.0, 2.0, 3.0]),
+            [1.0, 2.5, 3.0]
+        );
+
         assert_descriptor(
             "minecraft:cloud",
             "PlayerCloudParticle.Provider",

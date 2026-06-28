@@ -228,6 +228,8 @@ When an agent does any of the following, update this file in the same slice:
       - `HeartParticle.Provider` random sprite selection, fixed lifetime,
         grow-to-base size curve, 1.5 quad-size scale, initial y-speed offset,
         friction, no-physics, and blocked-y speed-up metadata
+      - `HeartParticle.AngryVillagerProvider` inherits heart behavior and
+        applies the vanilla initial `y + 0.5` provider position offset
     - Uploads a stitched official particle atlas when assets are available.
     - Draws active particles as camera-facing textured billboards.
   - Follow-up work in the plan:
