@@ -584,13 +584,15 @@ pub enum EntityModelKind {
     /// (`cat = false`) and the cat (`cat = true`). The adult cat scales the shared adult mesh 0.8 (via
     /// `AdultCatModel.CAT_TRANSFORMER` in the root transform); the ocelot and both babies are unscaled.
     /// `baby` selects the flatter `BabyFelineModel` layout. The shared `setupAnim` head look is
-    /// reproduced, plus the adult's standing `tail2` droop (`xRot = 1.7278761` — the baby's `tail2` is
-    /// cubeless, so vanilla's identical assignment is invisible). The bespoke walk leg swing / tail
-    /// wobble and every feline pose (`isCrouching`, `isSprinting`, `isSitting`, `lieDownAmount`,
-    /// `relaxStateOneAmount`) read un-projected `FelineRenderState` state and stay deferred. The textured
-    /// path binds the cat-breed texture (`cat_variant`, the eleven `CatVariant`s) for cats and the
-    /// `ocelot` texture for ocelots (`cat_variant` is ignored when `!cat`). `collar` is the tame cat's
-    /// dyed collar overlay (`CatCollarLayer`, `Some` only for a tame cat — the ocelot never has one).
+    /// reproduced, plus the bespoke walk leg swing and the adult lower-tail droop/wobble (`tail2.xRot =
+    /// 1.7278761 + (π/4)·cos(walkAnimationPos)·walkAnimationSpeed` in the non-crouching,
+    /// non-sprinting branch; the baby's `tail2` is cubeless, so vanilla's identical assignment is
+    /// invisible). The remaining feline poses (`isCrouching`, `isSprinting`, `isSitting`,
+    /// `lieDownAmount`, `relaxStateOneAmount`) read un-projected `FelineRenderState` state and stay
+    /// deferred. The textured path binds the cat-breed texture (`cat_variant`, the eleven `CatVariant`s)
+    /// for cats and the `ocelot` texture for ocelots (`cat_variant` is ignored when `!cat`). `collar`
+    /// is the tame cat's dyed collar overlay (`CatCollarLayer`, `Some` only for a tame cat — the ocelot
+    /// never has one).
     Feline {
         cat: bool,
         baby: bool,

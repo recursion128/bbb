@@ -18,8 +18,8 @@ pub(in crate::entity_models) const MODEL_LAYER_OCELOT_BABY: &str = "minecraft:oc
 // while not sitting, drops the lower tail to `tail2.xRot = 1.7278761` plus the `(π/4)·cos(pos)·speed`
 // walk wobble. The `isCrouching` / `isSprinting` / `isSitting` / `lieDownAmount` / `relaxStateOneAmount`
 // poses stay deferred, all reading un-projected `FelineRenderState` fields (so the renderer commits to
-// the non-sprinting, non-crouching gait branch for both the legs and the tail wobble). The cat breed /
-// ocelot textures and the cat collar layer are deferred, so the colored debug path renders one tan
+// the non-sprinting, non-crouching gait branch for both the legs and the tail wobble). The textured path
+// binds cat/ocelot textures and the tame-cat collar layer; the colored debug path remains a single tan
 // tint. Cat/ocelot use a plain `MobRenderer`.
 
 /// Vanilla `AdultCatModel.CAT_TRANSFORMER = MeshTransformer.scaling(0.8)`: the cat layer is the shared
