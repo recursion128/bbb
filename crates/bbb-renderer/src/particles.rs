@@ -1013,6 +1013,44 @@ mod tests {
         assert!(note.speed_up_when_y_motion_is_blocked);
         assert_range_f64(note.velocity[1], 0.198, 0.202);
 
+        let mut crit_random = ParticleRandom::new(56);
+        let mut crit_command = spawn_command("minecraft:crit", 1.0);
+        crit_command.velocity = [0.5, 0.25, -0.5];
+        let crit = ParticleInstance::from_spawn_command(crit_command, &mut crit_random);
+        assert_eq!(crit.provider, "CritParticle.Provider");
+        assert_eq!(crit.quad_size_curve, ParticleQuadSizeCurve::GrowToBase);
+        assert_range_f32(crit.base_quad_size, 0.075, 0.15);
+        assert_range_f32(crit.color[0], 0.6, 0.9);
+        assert_close_f32(crit.color[1], crit.color[0] * 0.96);
+        assert_close_f32(crit.color[2], crit.color[0] * 0.9);
+        assert_eq!(crit.color[3], 1.0);
+        assert!((4..=10).contains(&crit.lifetime_ticks));
+        assert_eq!(crit.friction, 0.7);
+        assert_eq!(crit.gravity, 0.5);
+        assert!(!crit.has_physics);
+        assert_range_f64(crit.velocity[0], 0.19, 0.21);
+        assert_range_f64(crit.velocity[1], 0.10, 0.12);
+        assert_range_f64(crit.velocity[2], -0.21, -0.19);
+
+        let mut damage_random = ParticleRandom::new(57);
+        let mut damage_command = spawn_command("minecraft:damage_indicator", 1.0);
+        damage_command.velocity = [0.0, 0.0, 0.0];
+        let damage = ParticleInstance::from_spawn_command(damage_command, &mut damage_random);
+        assert_eq!(damage.provider, "CritParticle.DamageIndicatorProvider");
+        assert_eq!(damage.lifetime_ticks, 20);
+        assert_range_f64(damage.velocity[1], 0.40, 0.43);
+
+        let mut magic_random = ParticleRandom::new(58);
+        let magic = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:enchanted_hit", 1.0),
+            &mut magic_random,
+        );
+        assert_eq!(magic.provider, "CritParticle.MagicProvider");
+        assert_range_f32(magic.color[0], 0.18, 0.27);
+        assert!(magic.color[1] > magic.color[0]);
+        assert!(magic.color[2] > magic.color[1]);
+        assert!((4..=10).contains(&magic.lifetime_ticks));
+
         let mut angry_villager_random = ParticleRandom::new(52);
         let angry_villager = ParticleInstance::from_spawn_command(
             spawn_command("minecraft:angry_villager", 1.0),

@@ -30,6 +30,7 @@ pub(crate) enum ParticleLifetimeDescriptor {
         scale_tenths: u32,
         divisor: u32,
     },
+    Crit,
     RandomInclusive {
         min: u32,
         max: u32,
@@ -56,6 +57,9 @@ pub(crate) enum ParticleVisualDescriptor {
         scale: f32,
         color: ParticleColorDescriptor,
         quad_size_curve: ParticleQuadSizeCurve,
+    },
+    Crit {
+        color_scale: [f32; 3],
     },
     Flame {
         scale: f32,
@@ -105,9 +109,21 @@ pub(crate) enum ParticleQuadSizeCurve {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum ParticleInitialVelocityDescriptor {
     Command,
-    ParticleConstructorScaled { scale: f64 },
-    ParticleConstructorZeroScaledPlusCommand { scale: f64 },
-    ParticleConstructorZeroScaledWithYOffset { scale: f64, y_offset: f64 },
+    ParticleConstructorScaled {
+        scale: f64,
+    },
+    ParticleConstructorZeroScaledPlusCommand {
+        scale: f64,
+    },
+    ParticleConstructorZeroScaledPlusScaledCommand {
+        random_scale: f64,
+        command_scale: f64,
+        command_y_offset: f64,
+    },
+    ParticleConstructorZeroScaledWithYOffset {
+        scale: f64,
+        y_offset: f64,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -171,6 +187,60 @@ impl ParticleDescriptor {
                     },
                 friction: 0.96,
                 gravity: 0.0,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:crit" => Self {
+                provider: "CritParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::Crit,
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::Crit {
+                    color_scale: CRIT_COLOR_SCALE,
+                },
+                initial_velocity:
+                    ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusScaledCommand {
+                        random_scale: 0.1,
+                        command_scale: 0.4,
+                        command_y_offset: 0.0,
+                    },
+                friction: 0.7,
+                gravity: 0.5,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:damage_indicator" => Self {
+                provider: "CritParticle.DamageIndicatorProvider",
+                lifetime: ParticleLifetimeDescriptor::Fixed(20),
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::Crit {
+                    color_scale: CRIT_COLOR_SCALE,
+                },
+                initial_velocity:
+                    ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusScaledCommand {
+                        random_scale: 0.1,
+                        command_scale: 0.4,
+                        command_y_offset: 1.0,
+                    },
+                friction: 0.7,
+                gravity: 0.5,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:enchanted_hit" => Self {
+                provider: "CritParticle.MagicProvider",
+                lifetime: ParticleLifetimeDescriptor::Crit,
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::Crit {
+                    color_scale: MAGIC_CRIT_COLOR_SCALE,
+                },
+                initial_velocity:
+                    ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusScaledCommand {
+                        random_scale: 0.1,
+                        command_scale: 0.4,
+                        command_y_offset: 0.0,
+                    },
+                friction: 0.7,
+                gravity: 0.5,
                 has_physics: false,
                 speed_up_when_y_motion_is_blocked: false,
             },
@@ -514,6 +584,19 @@ impl ParticleVisualDescriptor {
                 color.sample(random),
                 quad_size_curve,
             ),
+            Self::Crit { color_scale } => {
+                let color = random.next_f32() * 0.3 + 0.6;
+                ParticleVisualState::new(
+                    base_quad_size * 0.75,
+                    [
+                        color * color_scale[0],
+                        color * color_scale[1],
+                        color * color_scale[2],
+                        1.0,
+                    ],
+                    ParticleQuadSizeCurve::GrowToBase,
+                )
+            }
             Self::Flame { scale } => ParticleVisualState::new(
                 base_quad_size * scale,
                 WHITE_PARTICLE_COLOR,
@@ -599,6 +682,33 @@ impl ParticleInitialVelocityDescriptor {
                     command_velocity[2] + z / length * speed * 0.4 * scale,
                 ]
             }
+            Self::ParticleConstructorZeroScaledPlusScaledCommand {
+                random_scale,
+                command_scale,
+                command_y_offset,
+            } => {
+                let x = random_signed_velocity(random);
+                let y = random_signed_velocity(random);
+                let z = random_signed_velocity(random);
+                let speed =
+                    (f64::from(random.next_f32()) + f64::from(random.next_f32()) + 1.0) * 0.15;
+                let length = (x * x + y * y + z * z).sqrt();
+                let random_velocity = if length == 0.0 {
+                    [0.0, 0.1, 0.0]
+                } else {
+                    [
+                        x / length * speed * 0.4,
+                        y / length * speed * 0.4 + 0.1,
+                        z / length * speed * 0.4,
+                    ]
+                };
+                [
+                    random_velocity[0] * random_scale + command_velocity[0] * command_scale,
+                    random_velocity[1] * random_scale
+                        + (command_velocity[1] + command_y_offset) * command_scale,
+                    random_velocity[2] * random_scale + command_velocity[2] * command_scale,
+                ]
+            }
             Self::ParticleConstructorZeroScaledWithYOffset { scale, y_offset } => {
                 let x = random_signed_velocity(random);
                 let y = random_signed_velocity(random);
@@ -680,6 +790,7 @@ impl ParticleLifetimeDescriptor {
                     (f64::from(max_lifetime) / (random.next_f64() * 0.8 + 0.2) * scale) as u32;
                 lifetime.max(1) / divisor.max(1)
             }
+            Self::Crit => ((6.0 / (random.next_f32() * 0.8 + 0.6)) as u32).max(1),
             Self::RandomInclusive { min, max } => {
                 let span = max.saturating_sub(min).saturating_add(1);
                 min + random.next_index(span as usize).unwrap_or(0) as u32
@@ -727,6 +838,8 @@ const WHITE_PARTICLE_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const WHITE_ASH_SMOKE_RGB: [f32; 3] = [186.0 / 255.0, 177.0 / 255.0, 194.0 / 255.0];
 const DRAGON_BREATH_COLOR_MIN: [f32; 3] = [0.717_647_1, 0.0, 0.823_529_4];
 const DRAGON_BREATH_COLOR_MAX: [f32; 3] = [0.874_509_8, 0.0, 0.976_470_6];
+const CRIT_COLOR_SCALE: [f32; 3] = [1.0, 0.96, 0.9];
+const MAGIC_CRIT_COLOR_SCALE: [f32; 3] = [0.3, 0.768, 0.9];
 
 impl ParticleRandom {
     pub(crate) fn new(seed: i64) -> Self {
@@ -863,6 +976,69 @@ mod tests {
             ParticleDescriptor::for_particle("minecraft:sneeze").initial_velocity,
             ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusCommand {
                 scale: 0.1
+            }
+        );
+        assert_descriptor(
+            "minecraft:crit",
+            "CritParticle.Provider",
+            ParticleLifetimeDescriptor::Crit,
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::Crit {
+                color_scale: CRIT_COLOR_SCALE,
+            },
+            0.7,
+            0.5,
+            false,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:crit").initial_velocity,
+            ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusScaledCommand {
+                random_scale: 0.1,
+                command_scale: 0.4,
+                command_y_offset: 0.0,
+            }
+        );
+        assert_descriptor(
+            "minecraft:damage_indicator",
+            "CritParticle.DamageIndicatorProvider",
+            ParticleLifetimeDescriptor::Fixed(20),
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::Crit {
+                color_scale: CRIT_COLOR_SCALE,
+            },
+            0.7,
+            0.5,
+            false,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:damage_indicator").initial_velocity,
+            ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusScaledCommand {
+                random_scale: 0.1,
+                command_scale: 0.4,
+                command_y_offset: 1.0,
+            }
+        );
+        assert_descriptor(
+            "minecraft:enchanted_hit",
+            "CritParticle.MagicProvider",
+            ParticleLifetimeDescriptor::Crit,
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::Crit {
+                color_scale: MAGIC_CRIT_COLOR_SCALE,
+            },
+            0.7,
+            0.5,
+            false,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:enchanted_hit").initial_velocity,
+            ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusScaledCommand {
+                random_scale: 0.1,
+                command_scale: 0.4,
+                command_y_offset: 0.0,
             }
         );
         assert_descriptor(
@@ -1209,6 +1385,32 @@ mod tests {
         assert_eq!(note.color[3], 1.0);
         assert_eq!(note.quad_size_curve, ParticleQuadSizeCurve::GrowToBase);
 
+        let mut crit_random = ParticleRandom::new(24);
+        let crit = ParticleVisualDescriptor::Crit {
+            color_scale: CRIT_COLOR_SCALE,
+        }
+        .sample_for_command(&mut crit_random, [0.0, 0.0, 0.0]);
+        assert_range_f32(crit.base_quad_size, 0.075, 0.15);
+        assert_range_f32(crit.color[0], 0.6, 0.9);
+        assert_close_f32(crit.color[1], crit.color[0] * 0.96);
+        assert_close_f32(crit.color[2], crit.color[0] * 0.9);
+        assert_eq!(crit.color[3], 1.0);
+        assert_eq!(crit.quad_size_curve, ParticleQuadSizeCurve::GrowToBase);
+
+        let mut magic_crit_random = ParticleRandom::new(24);
+        let magic_crit = ParticleVisualDescriptor::Crit {
+            color_scale: MAGIC_CRIT_COLOR_SCALE,
+        }
+        .sample_for_command(&mut magic_crit_random, [0.0, 0.0, 0.0]);
+        assert_close_f32(magic_crit.base_quad_size, crit.base_quad_size);
+        assert_close_f32(magic_crit.color[0], crit.color[0] * 0.3);
+        assert_close_f32(magic_crit.color[1], crit.color[1] * 0.8);
+        assert_close_f32(magic_crit.color[2], crit.color[2]);
+        assert_eq!(
+            magic_crit.quad_size_curve,
+            ParticleQuadSizeCurve::GrowToBase
+        );
+
         let mut heart_random = ParticleRandom::new(17);
         let heart = ParticleVisualDescriptor::SingleQuadScaled {
             scale: 1.5,
@@ -1357,6 +1559,30 @@ mod tests {
         assert_range_f64(cloud_velocity[0], 0.98, 1.02);
         assert_range_f64(cloud_velocity[1], 1.99, 2.03);
         assert_range_f64(cloud_velocity[2], 2.98, 3.02);
+
+        let mut crit_random = ParticleRandom::new(24);
+        let crit_velocity =
+            ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusScaledCommand {
+                random_scale: 0.1,
+                command_scale: 0.4,
+                command_y_offset: 0.0,
+            }
+            .sample([0.5, 0.25, -0.5], &mut crit_random);
+        assert_range_f64(crit_velocity[0], 0.19, 0.21);
+        assert_range_f64(crit_velocity[1], 0.10, 0.12);
+        assert_range_f64(crit_velocity[2], -0.21, -0.19);
+
+        let mut damage_random = ParticleRandom::new(25);
+        let damage_velocity =
+            ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledPlusScaledCommand {
+                random_scale: 0.1,
+                command_scale: 0.4,
+                command_y_offset: 1.0,
+            }
+            .sample([0.0, 0.0, 0.0], &mut damage_random);
+        assert_range_f64(damage_velocity[0], -0.012, 0.012);
+        assert_range_f64(damage_velocity[1], 0.40, 0.43);
+        assert_range_f64(damage_velocity[2], -0.012, 0.012);
     }
 
     #[test]
@@ -1377,6 +1603,12 @@ mod tests {
             }
             .sample(&mut random);
             assert!((10..=50).contains(&lifetime));
+        }
+
+        let mut random = ParticleRandom::new(26);
+        for _ in 0..32 {
+            let lifetime = ParticleLifetimeDescriptor::Crit.sample(&mut random);
+            assert!((4..=10).contains(&lifetime));
         }
     }
 

@@ -239,6 +239,12 @@ When an agent does any of the following, update this file in the same slice:
       - `PlayerCloudParticle.Provider` vanilla constructor-random initial
         speed plus command velocity, and `SneezeProvider` fixed green tint /
         alpha override on the player-cloud curve
+      - `CritParticle.Provider`, `DamageIndicatorProvider`, and
+        `MagicProvider` constructor-random initial speed scaled by `0.1` plus
+        `0.4` command velocity, the damage-indicator `yAux + 1.0` offset,
+        crit lifetime or fixed damage lifetime, grow-to-base size curve,
+        initial random gray / magic color multipliers, `0.7` friction, `0.5`
+        gravity, and no-physics metadata
     - Uploads a stitched official particle atlas when assets are available.
     - Draws active particles as camera-facing textured billboards.
   - Follow-up work in the plan:
