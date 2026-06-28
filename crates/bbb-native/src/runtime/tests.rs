@@ -245,6 +245,34 @@ fn lightmap_environment_hides_client_sky_flash_when_option_is_enabled() {
 }
 
 #[test]
+fn clear_color_applies_client_sky_flash_color_layer() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, 6_000);
+    let baseline = clear_color_for_world(&world, false);
+
+    world.set_sky_flash_time(2);
+    let flashed = clear_color_for_world(&world, false);
+    let expected = clear_color_with_sky_flash(baseline);
+
+    assert_clear_color_close(flashed, expected);
+    assert!(flashed.r > baseline.r);
+    assert!(flashed.g > baseline.g);
+    assert!(flashed.b > baseline.b);
+}
+
+#[test]
+fn clear_color_hides_client_sky_flash_when_option_is_enabled() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, 6_000);
+    let baseline = clear_color_for_world(&world, false);
+
+    world.set_sky_flash_time(2);
+    let hidden = clear_color_for_world(&world, true);
+
+    assert_eq!(hidden, baseline);
+}
+
+#[test]
 fn lightmap_tick_state_applies_end_flash_sky_factor_from_end_clock() {
     let mut world = world_with_dimension(2, "minecraft:the_end");
     set_world_end_clock_time(&mut world, 1_486);
@@ -835,6 +863,13 @@ fn assert_close3(actual: [f32; 3], expected: [f32; 3]) {
     for (actual, expected) in actual.into_iter().zip(expected) {
         assert!((actual - expected).abs() < 1e-6);
     }
+}
+
+fn assert_clear_color_close(actual: ClearColor, expected: ClearColor) {
+    assert!((actual.r - expected.r).abs() < 1e-6);
+    assert!((actual.g - expected.g).abs() < 1e-6);
+    assert!((actual.b - expected.b).abs() < 1e-6);
+    assert!((actual.a - expected.a).abs() < 1e-6);
 }
 
 #[test]

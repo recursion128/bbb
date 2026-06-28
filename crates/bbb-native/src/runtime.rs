@@ -69,6 +69,8 @@ const VANILLA_WEATHER_RAIN_ALPHA: f32 = 0.3125;
 const VANILLA_WEATHER_THUNDER_ALPHA: f32 = 0.52734375;
 const VANILLA_WEATHER_RAIN_SKY_LIGHT_COLOR: i32 = argb_color(79, 122, 122, 255);
 const VANILLA_WEATHER_THUNDER_SKY_LIGHT_COLOR: i32 = argb_color(134, 122, 122, 255);
+const VANILLA_SKY_FLASH_SKY_COLOR: i32 = argb_color(255, 204, 204, 255);
+const VANILLA_SKY_FLASH_SKY_COLOR_ALPHA: f32 = 0.22;
 const VANILLA_WORLD_CLOCK_THE_END_ID: i32 = 1;
 const VANILLA_END_FLASH_INTERVAL_TICKS: i64 = 600;
 const VANILLA_END_FLASH_MAX_OFFSET_TICKS: i32 = 200;
@@ -3878,12 +3880,17 @@ fn advance_entity_client_animations(
     advanced_ticks
 }
 
-pub(crate) fn clear_color_for_world(world: &WorldStore) -> ClearColor {
+pub(crate) fn clear_color_for_world(world: &WorldStore, hide_lightning_flash: bool) -> ClearColor {
     let day_time = world.world_time().map(|time| time.day_time).unwrap_or(6000);
     let weather = world.weather();
     let rain = weather.rain_level.clamp(0.0, 1.0) as f64;
     let thunder = weather.thunder_level.clamp(0.0, 1.0) as f64;
-    clear_color_for_day_time(day_time, rain, thunder)
+    let clear = clear_color_for_day_time(day_time, rain, thunder);
+    if hide_lightning_flash || world.sky_flash_time() == 0 {
+        clear
+    } else {
+        clear_color_with_sky_flash(clear)
+    }
 }
 
 fn clear_color_for_day_time(day_time: i64, rain_level: f64, thunder_level: f64) -> ClearColor {
@@ -3898,6 +3905,32 @@ fn clear_color_for_day_time(day_time: i64, rain_level: f64, thunder_level: f64) 
         g: (night[1] + (day[1] - night[1]) * daylight) * weather_dim,
         b: (night[2] + (day[2] - night[2]) * daylight) * weather_dim,
         a: 1.0,
+    }
+}
+
+fn clear_color_with_sky_flash(clear: ClearColor) -> ClearColor {
+    clear_color_from_argb(argb_srgb_lerp(
+        VANILLA_SKY_FLASH_SKY_COLOR_ALPHA,
+        clear_color_to_argb(clear),
+        VANILLA_SKY_FLASH_SKY_COLOR,
+    ))
+}
+
+fn clear_color_to_argb(clear: ClearColor) -> i32 {
+    argb_color(
+        255,
+        argb_channel_from_unit(clear.r as f32),
+        argb_channel_from_unit(clear.g as f32),
+        argb_channel_from_unit(clear.b as f32),
+    )
+}
+
+fn clear_color_from_argb(color: i32) -> ClearColor {
+    ClearColor {
+        r: argb_red(color) as f64 / 255.0,
+        g: argb_green(color) as f64 / 255.0,
+        b: argb_blue(color) as f64 / 255.0,
+        a: argb_alpha(color) as f64 / 255.0,
     }
 }
 

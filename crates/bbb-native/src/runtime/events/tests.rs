@@ -5164,7 +5164,7 @@ fn world_time_and_weather_update_world_counters_and_clear_color() {
     assert_eq!(world.counters().ticking_state_packets, 1);
     assert_eq!(world.counters().ticking_step_packets, 1);
 
-    let world_color = clear_color_for_world(&world);
+    let world_color = clear_color_for_world(&world, false);
     let expected_world_color = clear_color_for_day_time(6000, 0.5, 0.0);
     assert_eq!(world_color, expected_world_color);
 

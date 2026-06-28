@@ -606,9 +606,10 @@ When an agent does any of the following, update this file in the same slice:
     base `SkyFactor = 0`, sky light `0xAC60CD`, and ambient `0x3F473F`, with
     synced THE_END world-clock `EndFlashState` boosts folded into `SkyFactor`;
     lightning bolt spawns now feed the vanilla 2 tick client `skyFlashTime` and
-    force `SKY_LIGHT_FACTOR = 1.0` while visible. The `SKY_COLOR` lightning tint
-    remains a sky / clear-color presentation gap rather than a lightmap shader
-    input. Overworld variants use ambient `0x0A0A0A`. The block flicker path still advances
+    force `SKY_LIGHT_FACTOR = 1.0` while visible; the native clear color now
+    mirrors the vanilla `SKY_COLOR` flash layer by lerping `0.22` toward
+    `0xCCCCFF`, with `--hide-lightning-flash` suppressing both. Full sky mesh /
+    atmosphere presentation is still a broader visual gap. Overworld variants use ambient `0x0A0A0A`. The block flicker path still advances
     `blockLightFlicker` with the
     `LightmapRenderStateExtractor.tick()` formula and the shaders read
     `blockLightFlicker + 1.4`. Remaining lighting gaps: full camera

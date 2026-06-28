@@ -539,7 +539,8 @@ fn main() -> Result<()> {
                         target.exit();
                         return;
                     }
-                    renderer.set_clear_color(clear_color_for_world(&world));
+                    renderer
+                        .set_clear_color(clear_color_for_world(&world, args.hide_lightning_flash));
                     code_of_conduct_overlay.update_renderer(
                         &mut renderer,
                         &world,
