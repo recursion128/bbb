@@ -640,8 +640,9 @@ fn entity_scroll_shaders_split_breeze_wind_lightmap_from_energy_swirl_emissive()
     assert!(ENTITY_MODEL_SCROLL_SHADER.contains("texel.rgb * light_color"));
 
     // Vanilla RenderPipelines.ENERGY_SWIRL defines EMISSIVE + NO_OVERLAY +
-    // NO_CARDINAL_LIGHTING, so the additive scroll shader remains full-bright.
-    assert!(ENTITY_MODEL_SCROLL_EMISSIVE_SHADER.contains("return texel;"));
+    // NO_CARDINAL_LIGHTING, so the additive scroll shader skips lightmap while
+    // still applying the shared fog UBO like the entity fragment shader.
+    assert!(ENTITY_MODEL_SCROLL_EMISSIVE_SHADER.contains("return apply_fog(texel"));
     assert!(!ENTITY_MODEL_SCROLL_EMISSIVE_SHADER.contains("lightmap_brightness"));
     assert!(!ENTITY_MODEL_SCROLL_EMISSIVE_SHADER.contains("not_gamma"));
     assert!(!ENTITY_MODEL_SCROLL_EMISSIVE_SHADER.contains("texel.rgb * light_color"));

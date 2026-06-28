@@ -535,6 +535,7 @@ fn main() -> Result<()> {
                         item_runtime.as_ref(),
                         &snapshot,
                         Some(&mut code_of_conduct_acceptance),
+                        args.render_distance_chunks,
                         args.hide_lightning_flash,
                     ) {
                         target.exit();
@@ -660,6 +661,7 @@ fn main() -> Result<()> {
                     item_runtime.as_ref(),
                     &snapshot,
                     Some(&mut code_of_conduct_acceptance),
+                    args.render_distance_chunks,
                     args.hide_lightning_flash,
                 ) {
                     target.exit();

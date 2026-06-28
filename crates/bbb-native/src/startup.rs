@@ -8,7 +8,10 @@ use bbb_platform::WindowConfig;
 use bbb_protocol::packets::{
     ClientChatVisibility, ClientInformation, ClientMainHand, ClientParticleStatus,
 };
-use bbb_renderer::VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR;
+use bbb_renderer::{
+    VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR, VANILLA_DEFAULT_RENDER_DISTANCE_CHUNKS,
+    VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
+};
 use clap::{ArgAction, Parser, ValueEnum};
 use tokio::{runtime::Runtime, sync::mpsc};
 use winit::{
@@ -73,6 +76,12 @@ pub(crate) struct Args {
     pub(crate) client_allow_server_listing: bool,
     #[arg(long = "client-particles", value_enum, default_value = "all")]
     pub(crate) client_particles: ClientParticleStatusArg,
+    #[arg(
+        long = "render-distance",
+        default_value_t = VANILLA_DEFAULT_RENDER_DISTANCE_CHUNKS,
+        value_parser = parse_render_distance
+    )]
+    pub(crate) render_distance_chunks: u32,
     #[arg(
         long = "client-gamma",
         default_value_t = VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
@@ -244,6 +253,19 @@ fn parse_client_gamma(value: &str) -> std::result::Result<f32, String> {
     Ok(gamma)
 }
 
+fn parse_render_distance(value: &str) -> std::result::Result<u32, String> {
+    let chunks = value
+        .parse::<u32>()
+        .map_err(|_| format!("render distance must be an integer chunk count: {value}"))?;
+    if (VANILLA_MIN_RENDER_DISTANCE_CHUNKS..=VANILLA_MAX_RENDER_DISTANCE_CHUNKS).contains(&chunks) {
+        Ok(chunks)
+    } else {
+        Err(format!(
+            "render distance must be between {VANILLA_MIN_RENDER_DISTANCE_CHUNKS} and {VANILLA_MAX_RENDER_DISTANCE_CHUNKS} chunks"
+        ))
+    }
+}
+
 pub(crate) fn start_control_api(
     runtime: &Runtime,
     addr: Option<SocketAddr>,
@@ -364,6 +386,30 @@ mod tests {
 
         let args = Args::try_parse_from(["bbb-native", "--client-gamma", "0.75"]).unwrap();
         assert_eq!(args.client_gamma, 0.75);
+    }
+
+    #[test]
+    fn args_accept_render_distance_startup_option() {
+        let default_args = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert_eq!(
+            default_args.render_distance_chunks,
+            VANILLA_DEFAULT_RENDER_DISTANCE_CHUNKS
+        );
+
+        let args = Args::try_parse_from(["bbb-native", "--render-distance", "20"]).unwrap();
+        assert_eq!(args.render_distance_chunks, 20);
+    }
+
+    #[test]
+    fn args_reject_render_distance_outside_vanilla_range() {
+        let err = Args::try_parse_from(["bbb-native", "--render-distance", "1"]).unwrap_err();
+        assert!(err.to_string().contains("between 2 and 32"));
+
+        let err = Args::try_parse_from(["bbb-native", "--render-distance", "33"]).unwrap_err();
+        assert!(err.to_string().contains("between 2 and 32"));
+
+        let err = Args::try_parse_from(["bbb-native", "--render-distance", "NaN"]).unwrap_err();
+        assert!(err.to_string().contains("integer chunk count"));
     }
 
     #[test]

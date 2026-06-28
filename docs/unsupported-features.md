@@ -619,17 +619,23 @@ When an agent does any of the following, update this file in the same slice:
     Nether sky default black). Water camera clearing uses `WATER_FOG_COLOR`
     directly, and lightning sky flash does not tint water fog. The startup
     `--hide-lightning-flash` option suppresses both lightmap and atmospheric
-    clear-color sky flash layers. Full shader-distance fog UBO, render-distance
-    driven fog ranges, remaining non-SKY environment modifiers, full sky mesh /
-    atmosphere presentation, and water-vision fog brightening are still broader
-    visual gaps. Overworld variants use ambient `0x0A0A0A`. The block flicker
-    path still advances `blockLightFlicker` with the
+    clear-color sky flash layers. Renderer camera uniforms now include
+    vanilla-shaped fog color plus environmental and render-distance ranges;
+    terrain, entity, item-model, item-entity, particle, block-destroy, and
+    selection world shaders compute spherical/cylindrical camera distance and
+    apply fog in the vanilla `apply_fog` shape. The startup `--render-distance`
+    option defaults to `12` chunks, accepts `2..=32`, and drives the
+    render-distance fog span. Remaining non-SKY environment modifiers, sky /
+    cloud fog end presentation, full sky mesh / atmosphere presentation, and
+    water-vision fog brightening are still broader visual gaps. Overworld
+    variants use ambient `0x0A0A0A`. The block flicker path still advances
+    `blockLightFlicker` with the
     `LightmapRenderStateExtractor.tick()` formula and the shaders read
-    `blockLightFlicker + 1.4`. Remaining lighting gaps: shader-distance fog UBO
-    / render-distance driven fog ranges, full sky renderer presentation, any
-    non-SKY biome modifiers that need a renderer surface, smooth/AO entity
-    light, GUI / entity-in-UI lighting variants, and the colored debug
-    fallback's baked-shade approximation.
+    `blockLightFlicker + 1.4`. Remaining lighting gaps: full sky renderer
+    presentation, sky/cloud/water-vision fog presentation, any non-SKY biome
+    modifiers that need a renderer surface, smooth/AO entity light, GUI /
+    entity-in-UI lighting variants, and the colored debug fallback's baked-shade
+    approximation.
   - The hurt red damage overlay is implemented end to end as a real overlay pass,
     not a tint: `LivingEntity.hurtTime` is tracked client-side (set to
     `hurtDuration` = 10 by `apply_hurt_animation`/`apply_damage_event`, decremented

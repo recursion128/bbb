@@ -10,7 +10,7 @@ use crate::{
     },
     camera::{
         sanitize_lightmap_block_factor, sanitize_lightmap_brightness_factor, CameraPose,
-        CameraUniform, ClearColor, LightmapEnvironment, TerrainBounds,
+        CameraUniform, ClearColor, FogEnvironment, LightmapEnvironment, TerrainBounds,
     },
     entity_models::{
         create_entity_model_eyes_pipeline, create_entity_model_pipeline,
@@ -85,6 +85,7 @@ pub struct Renderer {
     pub(super) entity_model_bounds: Option<TerrainBounds>,
     pub(super) camera_pose: Option<CameraPose>,
     pub(super) lightmap_environment: LightmapEnvironment,
+    pub(super) fog_environment: FogEnvironment,
     pub(super) block_destroy_overlays: Option<BlockDestroyOverlaysGpu>,
     pub(super) entity_model_mesh: Option<EntityModelMeshGpu>,
     pub(super) entity_model_textured_mesh: Option<EntityModelTexturedMeshGpu>,
@@ -414,6 +415,7 @@ impl Renderer {
             entity_model_bounds: None,
             camera_pose: None,
             lightmap_environment: LightmapEnvironment::default(),
+            fog_environment: FogEnvironment::default(),
             block_destroy_overlays: None,
             entity_model_mesh: None,
             entity_model_textured_mesh: None,
@@ -862,6 +864,7 @@ impl Renderer {
                 .unwrap_or_else(CameraUniform::identity)
         }
         .with_lightmap_environment(self.lightmap_environment);
+        let uniform = uniform.with_fog_environment(self.fog_environment);
         self.queue
             .write_buffer(&self.camera_buffer, 0, bytemuck::bytes_of(&uniform));
         // The GUI item pass projects 3D inventory icons with a screen-space ortho (separate buffer so it
@@ -883,6 +886,11 @@ impl Renderer {
 
     pub fn set_lightmap_environment(&mut self, environment: LightmapEnvironment) {
         self.lightmap_environment = environment.sanitized();
+        self.update_camera();
+    }
+
+    pub fn set_fog_environment(&mut self, environment: FogEnvironment) {
+        self.fog_environment = environment.sanitized();
         self.update_camera();
     }
 

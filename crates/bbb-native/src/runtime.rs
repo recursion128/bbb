@@ -12,7 +12,7 @@ use bbb_protocol::{
     packets::{ItemCostSummary, ItemStackSummary, MapPostProcessingSummary, SlotDisplaySummary},
 };
 use bbb_renderer::{
-    BlockDestroyOverlay, CameraPose, ClearColor, HudBlockItemModel, HudIconLayer,
+    BlockDestroyOverlay, CameraPose, ClearColor, FogEnvironment, HudBlockItemModel, HudIconLayer,
     HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryItem,
     HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground, HudInventoryTextLabel,
     HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar,
@@ -79,7 +79,13 @@ const VANILLA_TIMELINE_NIGHT_FOG_COLOR_MULTIPLIER: i32 = argb_color(255, 15, 15,
 const VANILLA_WEATHER_RAIN_FOG_COLOR_MULTIPLIER: i32 = argb_color(255, 127, 127, 153);
 const VANILLA_WEATHER_THUNDER_FOG_COLOR_MULTIPLIER: i32 = argb_color(255, 63, 63, 76);
 const VANILLA_ATMOSPHERIC_FOG_RENDER_DISTANCE_CHUNKS: f32 = 12.0;
+const VANILLA_DEFAULT_FOG_START_DISTANCE: f32 = 0.0;
+const VANILLA_DEFAULT_FOG_END_DISTANCE: f32 = 1024.0;
+const VANILLA_NETHER_FOG_START_DISTANCE: f32 = 10.0;
+const VANILLA_NETHER_FOG_END_DISTANCE: f32 = 96.0;
 const VANILLA_DEFAULT_SKY_FOG_END_DISTANCE: f32 = 512.0;
+const VANILLA_DEFAULT_WATER_FOG_START_DISTANCE: f32 = -8.0;
+const VANILLA_DEFAULT_WATER_FOG_END_DISTANCE: f32 = 96.0;
 const VANILLA_GAUSSIAN_SAMPLE_KERNEL: [f64; 7] = [0.0, 1.0, 4.0, 6.0, 4.0, 1.0, 0.0];
 const VANILLA_SKY_FLASH_SKY_COLOR: i32 = argb_color(255, 204, 204, 255);
 const VANILLA_SKY_FLASH_SKY_COLOR_ALPHA: f32 = 0.22;
@@ -1299,6 +1305,7 @@ pub(crate) fn pump_network_and_terrain(
     item_runtime: Option<&NativeItemRuntime>,
     snapshot: &SharedSnapshot,
     code_of_conduct: Option<&mut CodeOfConductAcceptance>,
+    render_distance_chunks: u32,
     hide_lightning_flash: bool,
 ) -> bool {
     let mut audio_events = audio_events;
@@ -1341,6 +1348,14 @@ pub(crate) fn pump_network_and_terrain(
         world,
         terrain_textures,
         camera_pose_from_world(world),
+        hide_lightning_flash,
+    ));
+    renderer.set_fog_environment(fog_environment_for_world_at_camera(
+        world,
+        terrain_textures,
+        camera_pose_from_world(world),
+        render_distance_chunks,
+        lightmap_ticks.water_vision(world),
         hide_lightning_flash,
     ));
     world.advance_sky_flash_time(advanced_ticks);
@@ -3993,6 +4008,81 @@ fn clear_color_for_world_with_environment_colors(
         clear
     } else {
         clear_color_with_sky_flash(clear)
+    }
+}
+
+fn fog_environment_for_world_at_camera(
+    world: &WorldStore,
+    terrain_textures: &TerrainTextureState,
+    camera_pose: Option<CameraPose>,
+    render_distance_chunks: u32,
+    water_vision: f32,
+    hide_lightning_flash: bool,
+) -> FogEnvironment {
+    fog_environment_for_world_with_environment_colors(
+        world,
+        camera_environment_colors(world, terrain_textures, camera_pose),
+        render_distance_chunks,
+        water_vision,
+        hide_lightning_flash,
+    )
+}
+
+fn fog_environment_for_world_with_environment_colors(
+    world: &WorldStore,
+    colors: CameraEnvironmentColors,
+    render_distance_chunks: u32,
+    water_vision: f32,
+    hide_lightning_flash: bool,
+) -> FogEnvironment {
+    let fog_color =
+        clear_color_for_world_with_environment_colors(world, colors, hide_lightning_flash);
+    let color = [
+        fog_color.r as f32,
+        fog_color.g as f32,
+        fog_color.b as f32,
+        fog_color.a as f32,
+    ];
+    match colors.fog_type {
+        CameraFogType::Atmospheric => {
+            let dimension_kind = world
+                .level_info()
+                .map(vanilla_lightmap_dimension_kind)
+                .unwrap_or(VanillaLightmapDimensionKind::Overworld);
+            let (mut environmental_start, mut environmental_end) =
+                atmospheric_fog_distance_for_dimension(dimension_kind);
+            if world.boss_overlay_should_create_world_fog() {
+                environmental_start = environmental_start.min(VANILLA_NETHER_FOG_START_DISTANCE);
+                environmental_end = environmental_end.min(VANILLA_NETHER_FOG_END_DISTANCE);
+            }
+            FogEnvironment::world(
+                color,
+                environmental_start,
+                environmental_end,
+                render_distance_chunks,
+            )
+        }
+        CameraFogType::Water => FogEnvironment::world(
+            color,
+            VANILLA_DEFAULT_WATER_FOG_START_DISTANCE,
+            VANILLA_DEFAULT_WATER_FOG_END_DISTANCE * water_vision.max(0.25),
+            render_distance_chunks,
+        ),
+    }
+}
+
+fn atmospheric_fog_distance_for_dimension(kind: VanillaLightmapDimensionKind) -> (f32, f32) {
+    match kind {
+        VanillaLightmapDimensionKind::Nether => (
+            VANILLA_NETHER_FOG_START_DISTANCE,
+            VANILLA_NETHER_FOG_END_DISTANCE,
+        ),
+        VanillaLightmapDimensionKind::Overworld
+        | VanillaLightmapDimensionKind::End
+        | VanillaLightmapDimensionKind::Other => (
+            VANILLA_DEFAULT_FOG_START_DISTANCE,
+            VANILLA_DEFAULT_FOG_END_DISTANCE,
+        ),
     }
 }
 

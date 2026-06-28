@@ -22,6 +22,14 @@ pub const VANILLA_DEFAULT_LIGHTMAP_AMBIENT_COLOR: [f32; 3] = [0.0, 0.0, 0.0];
 /// Vanilla `EnvironmentAttributes.NIGHT_VISION_COLOR` default (`0x999999`).
 pub const VANILLA_DEFAULT_LIGHTMAP_NIGHT_VISION_COLOR: [f32; 3] =
     [153.0 / 255.0, 153.0 / 255.0, 153.0 / 255.0];
+/// Vanilla `Options.renderDistance` default.
+pub const VANILLA_DEFAULT_RENDER_DISTANCE_CHUNKS: u32 = 12;
+/// Vanilla `Options.renderDistance` lower bound.
+pub const VANILLA_MIN_RENDER_DISTANCE_CHUNKS: u32 = 2;
+/// Vanilla's high-memory `Options.renderDistance` upper bound. The official
+/// client uses 16 on smaller heaps; bbb exposes the high-memory cap as an
+/// explicit startup option.
+pub const VANILLA_MAX_RENDER_DISTANCE_CHUNKS: u32 = 32;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LightmapEnvironment {
@@ -86,6 +94,76 @@ impl LightmapEnvironment {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct FogEnvironment {
+    pub color: [f32; 4],
+    pub environmental_start: f32,
+    pub environmental_end: f32,
+    pub render_distance_start: f32,
+    pub render_distance_end: f32,
+}
+
+impl Default for FogEnvironment {
+    fn default() -> Self {
+        Self::disabled()
+    }
+}
+
+impl FogEnvironment {
+    pub fn disabled() -> Self {
+        Self {
+            color: [0.0, 0.0, 0.0, 0.0],
+            environmental_start: 0.0,
+            environmental_end: 0.0,
+            render_distance_start: 0.0,
+            render_distance_end: 0.0,
+        }
+    }
+
+    pub fn world(
+        color: [f32; 4],
+        environmental_start: f32,
+        environmental_end: f32,
+        render_distance_chunks: u32,
+    ) -> Self {
+        let (render_distance_start, render_distance_end) =
+            vanilla_render_distance_fog_range(render_distance_chunks);
+        Self {
+            color,
+            environmental_start,
+            environmental_end,
+            render_distance_start,
+            render_distance_end,
+        }
+        .sanitized()
+    }
+
+    pub fn sanitized(self) -> Self {
+        Self {
+            color: [
+                sanitize_unit_factor(self.color[0], 0.0),
+                sanitize_unit_factor(self.color[1], 0.0),
+                sanitize_unit_factor(self.color[2], 0.0),
+                sanitize_unit_factor(self.color[3], 0.0),
+            ],
+            environmental_start: sanitize_fog_distance(self.environmental_start, 0.0),
+            environmental_end: sanitize_fog_distance(self.environmental_end, 0.0),
+            render_distance_start: sanitize_fog_distance(self.render_distance_start, 0.0),
+            render_distance_end: sanitize_fog_distance(self.render_distance_end, 0.0),
+        }
+    }
+}
+
+pub fn vanilla_render_distance_fog_range(render_distance_chunks: u32) -> (f32, f32) {
+    let chunks = render_distance_chunks.clamp(
+        VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
+        VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
+    ) as f32;
+    let render_distance_blocks = chunks * 16.0;
+    let span = (render_distance_blocks / 10.0).clamp(4.0, 64.0);
+    (render_distance_blocks - span, render_distance_blocks)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct ClearColor {
     pub r: f64,
@@ -142,6 +220,11 @@ pub(crate) struct CameraUniform {
     sky_light_color: [f32; 4],
     ambient_color: [f32; 4],
     night_vision_color: [f32; 4],
+    camera_position: [f32; 4],
+    fog_color: [f32; 4],
+    /// Vanilla fog distances:
+    /// `[EnvironmentalStart, EnvironmentalEnd, RenderDistanceStart, RenderDistanceEnd]`.
+    fog_distances: [f32; 4],
 }
 
 impl CameraUniform {
@@ -180,6 +263,7 @@ impl CameraUniform {
 
         Self {
             view_proj: (projection * view).to_cols_array_2d(),
+            camera_position: vec3_to_vec4(eye),
             ..Self::identity()
         }
     }
@@ -202,6 +286,7 @@ impl CameraUniform {
 
         Self {
             view_proj: (projection * view).to_cols_array_2d(),
+            camera_position: vec3_to_vec4(eye),
             ..Self::identity()
         }
     }
@@ -226,6 +311,18 @@ impl CameraUniform {
         self.sky_light_color = lightmap.sky_light_color;
         self.ambient_color = lightmap.ambient_color;
         self.night_vision_color = lightmap.night_vision_color;
+        self
+    }
+
+    pub(crate) fn with_fog_environment(mut self, environment: FogEnvironment) -> Self {
+        let environment = environment.sanitized();
+        self.fog_color = environment.color;
+        self.fog_distances = [
+            environment.environmental_start,
+            environment.environmental_end,
+            environment.render_distance_start,
+            environment.render_distance_end,
+        ];
         self
     }
 
@@ -255,6 +352,22 @@ impl CameraUniform {
         }
     }
 
+    #[cfg(test)]
+    pub(crate) fn camera_position(self) -> [f32; 3] {
+        self.camera_position[0..3].try_into().unwrap()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn fog_environment(self) -> FogEnvironment {
+        FogEnvironment {
+            color: self.fog_color,
+            environmental_start: self.fog_distances[0],
+            environmental_end: self.fog_distances[1],
+            render_distance_start: self.fog_distances[2],
+            render_distance_end: self.fog_distances[3],
+        }
+    }
+
     fn from_lightmap_environment(environment: LightmapEnvironment) -> Self {
         let environment = environment.sanitized();
         Self {
@@ -275,6 +388,14 @@ impl CameraUniform {
             sky_light_color: rgb_to_vec4(environment.sky_light_color),
             ambient_color: rgb_to_vec4(environment.ambient_color),
             night_vision_color: rgb_to_vec4(environment.night_vision_color),
+            camera_position: [0.0, 0.0, 0.0, 0.0],
+            fog_color: FogEnvironment::disabled().color,
+            fog_distances: [
+                FogEnvironment::disabled().environmental_start,
+                FogEnvironment::disabled().environmental_end,
+                FogEnvironment::disabled().render_distance_start,
+                FogEnvironment::disabled().render_distance_end,
+            ],
         }
     }
 }
@@ -311,8 +432,20 @@ fn sanitize_rgb01(color: [f32; 3], fallback: [f32; 3]) -> [f32; 3] {
     ]
 }
 
+fn sanitize_fog_distance(value: f32, fallback: f32) -> f32 {
+    if value.is_finite() {
+        value
+    } else {
+        fallback
+    }
+}
+
 fn rgb_to_vec4(color: [f32; 3]) -> [f32; 4] {
     [color[0], color[1], color[2], 0.0]
+}
+
+fn vec3_to_vec4(value: Vec3) -> [f32; 4] {
+    [value.x, value.y, value.z, 0.0]
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -372,6 +505,52 @@ mod tests {
             environment.night_vision_color,
             VANILLA_DEFAULT_LIGHTMAP_NIGHT_VISION_COLOR
         );
+    }
+
+    #[test]
+    fn camera_uniform_defaults_to_disabled_fog_environment() {
+        assert_eq!(
+            CameraUniform::identity().fog_environment(),
+            FogEnvironment::disabled()
+        );
+        assert_eq!(
+            CameraUniform::gui_ortho(320.0, 240.0).fog_environment(),
+            FogEnvironment::disabled()
+        );
+    }
+
+    #[test]
+    fn camera_uniform_stores_camera_position_for_world_projections() {
+        let pose = CameraPose {
+            position: [10.0, 64.0, -5.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        };
+
+        assert_eq!(
+            CameraUniform::from_pose(pose, 16.0 / 9.0).camera_position(),
+            [10.0, 65.62, -5.0]
+        );
+    }
+
+    #[test]
+    fn camera_uniform_stores_fog_environment() {
+        let fog = FogEnvironment::world([0.25, 0.5, 0.75, 1.0], -8.0, 96.0, 12);
+
+        assert_eq!(
+            CameraUniform::identity()
+                .with_fog_environment(fog)
+                .fog_environment(),
+            fog
+        );
+    }
+
+    #[test]
+    fn vanilla_render_distance_fog_range_matches_fog_renderer_span() {
+        assert_eq!(vanilla_render_distance_fog_range(2), (28.0, 32.0));
+        assert_eq!(vanilla_render_distance_fog_range(12), (172.8, 192.0));
+        assert_eq!(vanilla_render_distance_fog_range(32), (460.8, 512.0));
     }
 
     #[test]
@@ -457,6 +636,30 @@ mod tests {
         assert_eq!(
             sanitized.night_vision_color,
             [0.2, VANILLA_DEFAULT_LIGHTMAP_NIGHT_VISION_COLOR[1], 1.0]
+        );
+    }
+
+    #[test]
+    fn camera_uniform_sanitizes_fog_environment() {
+        let fog = FogEnvironment {
+            color: [1.25, -1.0, f32::NAN, 2.0],
+            environmental_start: f32::NAN,
+            environmental_end: f32::INFINITY,
+            render_distance_start: -16.0,
+            render_distance_end: 128.0,
+        };
+
+        assert_eq!(
+            CameraUniform::identity()
+                .with_fog_environment(fog)
+                .fog_environment(),
+            FogEnvironment {
+                color: [1.0, 0.0, 0.0, 1.0],
+                environmental_start: 0.0,
+                environmental_end: 0.0,
+                render_distance_start: -16.0,
+                render_distance_end: 128.0,
+            }
         );
     }
 }

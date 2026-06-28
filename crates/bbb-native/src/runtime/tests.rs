@@ -369,6 +369,97 @@ fn clear_color_samples_camera_biome_water_fog_when_eye_is_in_water() {
 }
 
 #[test]
+fn fog_environment_uses_vanilla_render_distance_range_and_dimension_fog_distances() {
+    let mut overworld = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut overworld, 6_000);
+    let fog = fog_environment_for_world_at_camera(
+        &overworld,
+        &TerrainTextureState::default(),
+        camera_pose_from_world(&overworld),
+        12,
+        0.0,
+        false,
+    );
+    assert_fog_environment_close(
+        fog,
+        FogEnvironment::world(
+            clear_color_to_fog_color(clear_color_for_world(&overworld, false)),
+            VANILLA_DEFAULT_FOG_START_DISTANCE,
+            VANILLA_DEFAULT_FOG_END_DISTANCE,
+            12,
+        ),
+    );
+
+    let mut nether = world_with_dimension(1, "minecraft:the_nether");
+    set_world_day_time(&mut nether, 6_000);
+    let fog = fog_environment_for_world_at_camera(
+        &nether,
+        &TerrainTextureState::default(),
+        camera_pose_from_world(&nether),
+        20,
+        0.0,
+        false,
+    );
+    assert_eq!(fog.environmental_start, VANILLA_NETHER_FOG_START_DISTANCE);
+    assert_eq!(fog.environmental_end, VANILLA_NETHER_FOG_END_DISTANCE);
+    assert_eq!(fog.render_distance_start, 288.0);
+    assert_eq!(fog.render_distance_end, 320.0);
+}
+
+#[test]
+fn fog_environment_clamps_atmospheric_distance_for_boss_world_fog() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    add_boss_bar(&mut world, false, true);
+
+    let fog = fog_environment_for_world_at_camera(
+        &world,
+        &TerrainTextureState::default(),
+        camera_pose_from_world(&world),
+        12,
+        0.0,
+        false,
+    );
+
+    assert_eq!(fog.environmental_start, VANILLA_DEFAULT_FOG_START_DISTANCE);
+    assert_eq!(fog.environmental_end, VANILLA_NETHER_FOG_END_DISTANCE);
+}
+
+#[test]
+fn fog_environment_uses_water_fog_distances_when_eye_is_in_water() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, 6_000);
+    world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));
+    world.insert_decoded_chunk(empty_lightmap_test_chunk_with_biome(world.dimension(), 42));
+    set_lightmap_test_block(
+        &mut world,
+        BlockPos { x: 0, y: 1, z: 0 },
+        SOURCE_WATER_BLOCK_STATE_ID,
+    );
+    let textures = TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
+        biome_profile_with_environment(42, None, None, Some([0x02, 0x20, 0x44])),
+    ]));
+
+    let fog = fog_environment_for_world_at_camera(
+        &world,
+        &textures,
+        camera_pose_from_world(&world),
+        12,
+        0.5,
+        false,
+    );
+
+    assert_fog_environment_close(
+        fog,
+        FogEnvironment::world(
+            clear_color_to_fog_color(clear_color_from_argb(rgb_u8_to_argb([0x02, 0x20, 0x44]))),
+            VANILLA_DEFAULT_WATER_FOG_START_DISTANCE,
+            VANILLA_DEFAULT_WATER_FOG_END_DISTANCE * 0.5,
+            12,
+        ),
+    );
+}
+
+#[test]
 fn camera_biome_sky_color_uses_vanilla_gaussian_spatial_weights() {
     let mut world = world_with_dimension_height(0, "minecraft:overworld", 64);
     world.set_local_player_pose(local_player_pose(
@@ -1077,6 +1168,25 @@ fn assert_clear_color_close(actual: ClearColor, expected: ClearColor) {
     assert!((actual.g - expected.g).abs() < 1e-6);
     assert!((actual.b - expected.b).abs() < 1e-6);
     assert!((actual.a - expected.a).abs() < 1e-6);
+}
+
+fn clear_color_to_fog_color(clear: ClearColor) -> [f32; 4] {
+    [
+        clear.r as f32,
+        clear.g as f32,
+        clear.b as f32,
+        clear.a as f32,
+    ]
+}
+
+fn assert_fog_environment_close(actual: FogEnvironment, expected: FogEnvironment) {
+    for (actual, expected) in actual.color.iter().zip(expected.color.iter()) {
+        assert!((*actual - *expected).abs() < 1e-6);
+    }
+    assert!((actual.environmental_start - expected.environmental_start).abs() < 1e-6);
+    assert!((actual.environmental_end - expected.environmental_end).abs() < 1e-6);
+    assert!((actual.render_distance_start - expected.render_distance_start).abs() < 1e-6);
+    assert!((actual.render_distance_end - expected.render_distance_end).abs() < 1e-6);
 }
 
 #[test]

@@ -85,6 +85,9 @@ struct Camera {
     sky_light_color: vec4<f32>,
     ambient_color: vec4<f32>,
     night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
 };
 
 @group(0) @binding(0)
@@ -102,6 +105,8 @@ struct VertexOut {
     @location(0) color: vec4<f32>,
     @location(1) light: vec2<f32>,
     @location(2) overlay: vec2<f32>,
+    @location(3) spherical_distance: f32,
+    @location(4) cylindrical_distance: f32,
 };
 
 fn lightmap_brightness(level: f32) -> f32 {
@@ -146,6 +151,24 @@ fn packed_lightmap_color(light: vec2<f32>) -> vec3<f32> {
     return apply_lightmap_brightness(color);
 }
 
+fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
+    if (vertex_distance <= fog_start) {
+        return 0.0;
+    }
+    if (vertex_distance >= fog_end) {
+        return 1.0;
+    }
+    return (vertex_distance - fog_start) / (fog_end - fog_start);
+}
+
+fn apply_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f32) -> vec4<f32> {
+    let fog_value = max(
+        linear_fog_value(spherical_distance, camera.fog_distances.x, camera.fog_distances.y),
+        linear_fog_value(cylindrical_distance, camera.fog_distances.z, camera.fog_distances.w),
+    );
+    return vec4<f32>(mix(color.rgb, camera.fog_color.rgb, fog_value * camera.fog_color.a), color.a);
+}
+
 @vertex
 fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
@@ -153,6 +176,9 @@ fn vs_main(input: VertexIn) -> VertexOut {
     out.color = input.color;
     out.light = input.light;
     out.overlay = input.overlay;
+    let fog_pos = input.position - camera.camera_position.xyz;
+    out.spherical_distance = length(fog_pos);
+    out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
     return out;
 }
 
@@ -166,7 +192,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         rgb = mix(vec3<f32>(1.0, 1.0, 1.0), rgb, overlay_alpha);
     }
     let light_color = packed_lightmap_color(input.light);
-    return vec4<f32>(rgb * light_color, input.color.a);
+    return apply_fog(vec4<f32>(rgb * light_color, input.color.a), input.spherical_distance, input.cylindrical_distance);
 }
 "#;
 
@@ -179,6 +205,9 @@ struct Camera {
     sky_light_color: vec4<f32>,
     ambient_color: vec4<f32>,
     night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
 };
 
 @group(0) @binding(0)
@@ -206,6 +235,8 @@ struct VertexOut {
     @location(2) light: vec2<f32>,
     @location(3) overlay: vec2<f32>,
     @location(4) normal: vec3<f32>,
+    @location(5) spherical_distance: f32,
+    @location(6) cylindrical_distance: f32,
 };
 
 fn lightmap_brightness(level: f32) -> f32 {
@@ -257,6 +288,24 @@ fn diffuse_light(normal: vec3<f32>) -> f32 {
     return min(1.0, (light_value.x + light_value.y) * 0.6 + 0.4);
 }
 
+fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
+    if (vertex_distance <= fog_start) {
+        return 0.0;
+    }
+    if (vertex_distance >= fog_end) {
+        return 1.0;
+    }
+    return (vertex_distance - fog_start) / (fog_end - fog_start);
+}
+
+fn apply_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f32) -> vec4<f32> {
+    let fog_value = max(
+        linear_fog_value(spherical_distance, camera.fog_distances.x, camera.fog_distances.y),
+        linear_fog_value(cylindrical_distance, camera.fog_distances.z, camera.fog_distances.w),
+    );
+    return vec4<f32>(mix(color.rgb, camera.fog_color.rgb, fog_value * camera.fog_color.a), color.a);
+}
+
 @vertex
 fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
@@ -266,6 +315,9 @@ fn vs_main(input: VertexIn) -> VertexOut {
     out.light = input.light;
     out.overlay = input.overlay;
     out.normal = normalize(input.normal);
+    let fog_pos = input.position - camera.camera_position.xyz;
+    out.spherical_distance = length(fog_pos);
+    out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
     return out;
 }
 
@@ -283,7 +335,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         rgb = mix(vec3<f32>(1.0, 1.0, 1.0), rgb, overlay_alpha);
     }
     let light_color = packed_lightmap_color(input.light);
-    return vec4<f32>(rgb * diffuse_light(input.normal) * light_color, texel.a);
+    return apply_fog(vec4<f32>(rgb * diffuse_light(input.normal) * light_color, texel.a), input.spherical_distance, input.cylindrical_distance);
 }
 "#;
 
@@ -296,6 +348,9 @@ struct Camera {
     sky_light_color: vec4<f32>,
     ambient_color: vec4<f32>,
     night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
 };
 
 @group(0) @binding(0)
@@ -317,7 +372,27 @@ struct VertexOut {
     @builtin(position) position: vec4<f32>,
     @location(0) uv: vec2<f32>,
     @location(1) tint: vec4<f32>,
+    @location(2) spherical_distance: f32,
+    @location(3) cylindrical_distance: f32,
 };
+
+fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
+    if (vertex_distance <= fog_start) {
+        return 0.0;
+    }
+    if (vertex_distance >= fog_end) {
+        return 1.0;
+    }
+    return (vertex_distance - fog_start) / (fog_end - fog_start);
+}
+
+fn apply_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f32) -> vec4<f32> {
+    let fog_value = max(
+        linear_fog_value(spherical_distance, camera.fog_distances.x, camera.fog_distances.y),
+        linear_fog_value(cylindrical_distance, camera.fog_distances.z, camera.fog_distances.w),
+    );
+    return vec4<f32>(mix(color.rgb, camera.fog_color.rgb, fog_value * camera.fog_color.a), color.a);
+}
 
 @vertex
 fn vs_main(input: VertexIn) -> VertexOut {
@@ -325,12 +400,16 @@ fn vs_main(input: VertexIn) -> VertexOut {
     out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
     out.uv = input.uv;
     out.tint = input.tint;
+    let fog_pos = input.position - camera.camera_position.xyz;
+    out.spherical_distance = length(fog_pos);
+    out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
     return out;
 }
 
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
-    return textureSample(entity_texture_atlas, entity_sampler, input.uv) * input.tint;
+    let texel = textureSample(entity_texture_atlas, entity_sampler, input.uv) * input.tint;
+    return apply_fog(texel, input.spherical_distance, input.cylindrical_distance);
 }
 "#;
 
@@ -341,7 +420,15 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 pub(super) const ENTITY_MODEL_SCROLL_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
-    lightmap: vec4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
 };
 
 @group(0) @binding(0)
@@ -370,6 +457,8 @@ struct VertexOut {
     @location(2) uv_rect_size: vec2<f32>,
     @location(3) tint: vec4<f32>,
     @location(4) light: vec2<f32>,
+    @location(5) spherical_distance: f32,
+    @location(6) cylindrical_distance: f32,
 };
 
 fn lightmap_brightness(level: f32) -> f32 {
@@ -414,6 +503,24 @@ fn packed_lightmap_color(light: vec2<f32>) -> vec3<f32> {
     return apply_lightmap_brightness(color);
 }
 
+fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
+    if (vertex_distance <= fog_start) {
+        return 0.0;
+    }
+    if (vertex_distance >= fog_end) {
+        return 1.0;
+    }
+    return (vertex_distance - fog_start) / (fog_end - fog_start);
+}
+
+fn apply_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f32) -> vec4<f32> {
+    let fog_value = max(
+        linear_fog_value(spherical_distance, camera.fog_distances.x, camera.fog_distances.y),
+        linear_fog_value(cylindrical_distance, camera.fog_distances.z, camera.fog_distances.w),
+    );
+    return vec4<f32>(mix(color.rgb, camera.fog_color.rgb, fog_value * camera.fog_color.a), color.a);
+}
+
 @vertex
 fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
@@ -423,6 +530,9 @@ fn vs_main(input: VertexIn) -> VertexOut {
     out.uv_rect_size = input.uv_rect_size;
     out.tint = input.tint;
     out.light = input.light;
+    let fog_pos = input.position - camera.camera_position.xyz;
+    out.spherical_distance = length(fog_pos);
+    out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
     return out;
 }
 
@@ -434,7 +544,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         discard;
     }
     let light_color = packed_lightmap_color(input.light);
-    return vec4<f32>(texel.rgb * light_color, texel.a);
+    return apply_fog(vec4<f32>(texel.rgb * light_color, texel.a), input.spherical_distance, input.cylindrical_distance);
 }
 "#;
 
@@ -443,6 +553,15 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 pub(super) const ENTITY_MODEL_SCROLL_EMISSIVE_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
 };
 
 @group(0) @binding(0)
@@ -470,7 +589,27 @@ struct VertexOut {
     @location(1) uv_rect_min: vec2<f32>,
     @location(2) uv_rect_size: vec2<f32>,
     @location(3) tint: vec4<f32>,
+    @location(4) spherical_distance: f32,
+    @location(5) cylindrical_distance: f32,
 };
+
+fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
+    if (vertex_distance <= fog_start) {
+        return 0.0;
+    }
+    if (vertex_distance >= fog_end) {
+        return 1.0;
+    }
+    return (vertex_distance - fog_start) / (fog_end - fog_start);
+}
+
+fn apply_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f32) -> vec4<f32> {
+    let fog_value = max(
+        linear_fog_value(spherical_distance, camera.fog_distances.x, camera.fog_distances.y),
+        linear_fog_value(cylindrical_distance, camera.fog_distances.z, camera.fog_distances.w),
+    );
+    return vec4<f32>(mix(color.rgb, camera.fog_color.rgb, fog_value * camera.fog_color.a), color.a);
+}
 
 @vertex
 fn vs_main(input: VertexIn) -> VertexOut {
@@ -480,6 +619,9 @@ fn vs_main(input: VertexIn) -> VertexOut {
     out.uv_rect_min = input.uv_rect_min;
     out.uv_rect_size = input.uv_rect_size;
     out.tint = input.tint;
+    let fog_pos = input.position - camera.camera_position.xyz;
+    out.spherical_distance = length(fog_pos);
+    out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
     return out;
 }
 
@@ -490,7 +632,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     if texel.a <= 0.1 {
         discard;
     }
-    return texel;
+    return apply_fog(texel, input.spherical_distance, input.cylindrical_distance);
 }
 "#;
 

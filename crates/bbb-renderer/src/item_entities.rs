@@ -67,6 +67,15 @@ const ITEM_ENTITY_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 3] =
 const ITEM_ENTITY_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
 };
 
 @group(0) @binding(0)
@@ -88,7 +97,27 @@ struct VertexOut {
     @builtin(position) position: vec4<f32>,
     @location(0) uv: vec2<f32>,
     @location(1) color: vec4<f32>,
+    @location(2) spherical_distance: f32,
+    @location(3) cylindrical_distance: f32,
 };
+
+fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
+    if (vertex_distance <= fog_start) {
+        return 0.0;
+    }
+    if (vertex_distance >= fog_end) {
+        return 1.0;
+    }
+    return (vertex_distance - fog_start) / (fog_end - fog_start);
+}
+
+fn apply_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f32) -> vec4<f32> {
+    let fog_value = max(
+        linear_fog_value(spherical_distance, camera.fog_distances.x, camera.fog_distances.y),
+        linear_fog_value(cylindrical_distance, camera.fog_distances.z, camera.fog_distances.w),
+    );
+    return vec4<f32>(mix(color.rgb, camera.fog_color.rgb, fog_value * camera.fog_color.a), color.a);
+}
 
 @vertex
 fn vs_main(input: VertexIn) -> VertexOut {
@@ -96,6 +125,9 @@ fn vs_main(input: VertexIn) -> VertexOut {
     out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
     out.uv = input.uv;
     out.color = input.color;
+    let fog_pos = input.position - camera.camera_position.xyz;
+    out.spherical_distance = length(fog_pos);
+    out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
     return out;
 }
 
@@ -105,7 +137,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     if texel.a <= 0.01 {
         discard;
     }
-    return texel;
+    return apply_fog(texel, input.spherical_distance, input.cylindrical_distance);
 }
 "#;
 
