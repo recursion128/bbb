@@ -5,9 +5,10 @@ use super::colored::{
     GIANT_SCALE, HORSE_SCALE,
 };
 use super::dispatch::{
-    dispatch_late_entity_layers, dispatch_post_armor_entity_layers,
-    dispatch_post_base_entity_layers, dispatch_post_custom_head_entity_layers,
-    dispatch_post_wings_entity_layers, dispatch_uniform_entity_model, TexturedSink,
+    dispatch_invisible_living_ungated_layers, dispatch_late_entity_layers,
+    dispatch_post_armor_entity_layers, dispatch_post_base_entity_layers,
+    dispatch_post_custom_head_entity_layers, dispatch_post_wings_entity_layers,
+    dispatch_uniform_entity_model, TexturedSink,
 };
 use super::held_item::custom_head_skull_transform;
 use super::model::{EntityModel, ModelPart};
@@ -404,14 +405,13 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
             meshes.set_current_submission_state(*instance);
             // Vanilla `LivingEntityRenderer` still runs layers when the base body has no render
             // type. Keep only the layers whose own submit path has no `state.isInvisible` gate.
-            render_wolf_body_armor_layer(&mut meshes, *instance, atlas, 0);
-            emit_invisible_living_layers_without_invisible_gate(
-                &mut meshes,
-                *instance,
+            let mut sink = TexturedSink {
+                meshes: &mut meshes,
                 atlas,
                 dynamic_player_skin_atlas,
                 dynamic_player_texture_atlas,
-            );
+            };
+            dispatch_invisible_living_ungated_layers(instance, &mut sink, 0);
             continue;
         }
         meshes.set_current_submission_state(*instance);
@@ -427,14 +427,13 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         if meshes.current_force_transparent || meshes.current_outline_only {
             // Keep vanilla layer exceptions for invisible bodies while preserving the existing gate
             // for invisible-gated helpers such as player capes and ears.
-            render_wolf_body_armor_layer(&mut meshes, *instance, atlas, 1);
-            emit_invisible_living_layers_without_invisible_gate(
-                &mut meshes,
-                *instance,
+            let mut sink = TexturedSink {
+                meshes: &mut meshes,
                 atlas,
                 dynamic_player_skin_atlas,
                 dynamic_player_texture_atlas,
-            );
+            };
+            dispatch_invisible_living_ungated_layers(instance, &mut sink, 1);
             continue;
         }
         // HumanoidArmorLayer, CustomHeadLayer skulls, WingsLayer, player-only late layers, and
@@ -1686,24 +1685,6 @@ fn emit_worn_armor_stand_armor(
             );
         });
     }
-}
-
-fn emit_invisible_living_layers_without_invisible_gate(
-    meshes: &mut EntityModelTexturedMeshes,
-    instance: EntityModelInstance,
-    atlas: &EntityModelTextureAtlasLayout,
-    dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
-    dynamic_player_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
-) {
-    let mut sink = TexturedSink {
-        meshes,
-        atlas,
-        dynamic_player_skin_atlas,
-        dynamic_player_texture_atlas,
-    };
-    dispatch_post_base_entity_layers(&instance, &mut sink);
-    dispatch_post_armor_entity_layers(&instance, &mut sink);
-    dispatch_post_custom_head_entity_layers(&instance, &mut sink);
 }
 
 /// Worn armor for the humanoid armor wearers (vanilla `HumanoidModel.createArmorMeshSet`, `INNER 0.5`

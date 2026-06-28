@@ -1761,7 +1761,9 @@ When an agent does any of the following, update this file in the same slice:
       folded translucent crack geometry, including the texture-backed invisible states:
       the invisible-but-visible-to-client base body branch (`entityTranslucentCullItemTarget`,
       `38/255` alpha, base order `(0,0)`) and the hidden/glowing wolf-armor layer
-      exception while the collar layer remains skipped by `state.isInvisible`;
+      exception, now routed through the dispatch-owned invisible ungated layer
+      hook rather than a textured-loop direct helper call, while the collar
+      layer remains skipped by `state.isInvisible`;
       missing-atlas coverage pins that this force-transparent base submit is still recorded when
       `wolf_tame.png` is absent, suppressing only folded translucent geometry.
       Invisible-glowing wolf base outline submissions now also retain CPU-side
@@ -3845,7 +3847,8 @@ When an agent does any of the following, update this file in the same slice:
       debug box where vanilla draws nothing. These three are therefore deliberately unsupported *as
       models* (there is no vanilla model to render), and the native scene no longer projects placeholder
       bounds for them. The textured renderer no longer carries an empty per-kind residual match after
-      the shared dispatch pass; remaining custom submissions are explicit post-base layer helpers
+      the shared dispatch pass; remaining custom submissions are explicit dispatch hooks or post-base
+      layer helpers
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

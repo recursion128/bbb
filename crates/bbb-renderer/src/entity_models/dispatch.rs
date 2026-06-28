@@ -315,6 +315,14 @@ pub(in crate::entity_models) trait EntityModelSink {
 
     fn player_post_wings_layers(&mut self, _instance: &EntityModelInstance) {}
 
+    fn wolf_body_armor_layer(
+        &mut self,
+        _instance: &EntityModelInstance,
+        submit_sequence_start: u32,
+    ) -> u32 {
+        submit_sequence_start
+    }
+
     fn worn_humanoid_armor(&mut self, _instance: &EntityModelInstance) {}
 
     fn custom_head_skull_layer(&mut self, _instance: &EntityModelInstance) {}
@@ -759,6 +767,14 @@ impl EntityModelSink for TexturedSink<'_> {
     fn player_post_wings_layers(&mut self, instance: &EntityModelInstance) {
         render_player_parrot_on_shoulder_layer(self.meshes, *instance, self.atlas);
         render_player_spin_attack_effect_layer(self.meshes, *instance, self.atlas);
+    }
+
+    fn wolf_body_armor_layer(
+        &mut self,
+        instance: &EntityModelInstance,
+        submit_sequence_start: u32,
+    ) -> u32 {
+        render_wolf_body_armor_layer(self.meshes, *instance, self.atlas, submit_sequence_start)
     }
 
     fn worn_humanoid_armor(&mut self, instance: &EntityModelInstance) {
@@ -1716,6 +1732,21 @@ pub(in crate::entity_models) fn dispatch_post_base_entity_layers<S: EntityModelS
         | EntityModelKind::Piglin { .. } => sink.worn_humanoid_armor(instance),
         _ => {}
     }
+}
+
+/// Dispatch-owned invisible living layers whose own submit paths do not gate on
+/// `state.isInvisible`, matching vanilla's layer loop after a null base render type.
+pub(in crate::entity_models) fn dispatch_invisible_living_ungated_layers<S: EntityModelSink>(
+    instance: &EntityModelInstance,
+    sink: &mut S,
+    wolf_submit_sequence_start: u32,
+) {
+    if matches!(instance.kind, EntityModelKind::Wolf { .. }) {
+        sink.wolf_body_armor_layer(instance, wolf_submit_sequence_start);
+    }
+    dispatch_post_base_entity_layers(instance, sink);
+    dispatch_post_armor_entity_layers(instance, sink);
+    dispatch_post_custom_head_entity_layers(instance, sink);
 }
 
 /// Dispatch-owned layers whose current textured append point is after the worn armor helper.
