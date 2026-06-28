@@ -344,9 +344,9 @@ When an agent does any of the following, update this file in the same slice:
     geometry is outside the textured submission path. Historical residual wording
     below is retained as evidence of migration slices, not as a current P0 blocker.
     Remaining colored fallback geometry belongs to non-textured debug/parity work,
-    while vanilla outline-target compositing, render-graph sorting, and more exact
-    lighting remain separate P0 visual or later presentation follow-ups, not narrow
-    pipeline blockers.
+    while vanilla outline-target compositing, remaining target/post-chain
+    render-graph sorting, and more exact lighting remain separate P0 visual or
+    later presentation follow-ups, not narrow pipeline blockers.
   - P0 pipeline closeout also treats the remaining GPU-path fine-grained state as
     explicitly deferred follow-up, not as a blocker for the CPU submission graph:
     the backend currently folds compatible submissions into atlas buckets
@@ -358,10 +358,18 @@ When an agent does any of the following, update this file in the same slice:
     render-type state such as `entityCutout*`, `entitySolid`,
     `armorCutoutNoCull`, `entityTranslucent*`, `Eyes`, `waterMask`, and glint /
     scroll variants into equivalent pipeline state, complete vanilla outline
-    target/composite behaviour, and reconcile full render-graph sorting plus
+    target/composite behaviour, and reconcile remaining target/post-chain
+    render-graph sorting plus
     full dynamic LightTexture / darkness-adjusted gamma / diffuse visual parity. The scroll GPU path
     already separates vanilla `breezeWind` as lightmap-lit from emissive
     additive `energySwirl`.
+  - P0 visual render-order slice: vanilla 26.1 `ChunkSectionLayerGroup.OPAQUE`
+    is `SOLID` followed by `CUTOUT`, and `LevelRenderer.addMainPass` renders
+    that opaque group before feature submissions. The renderer world pass now
+    draws local solid and cutout terrain in that order before entity/model draws.
+    Remaining render-graph parity still needs vanilla target separation and
+    post-chain composition for translucent / item-entity / particle / weather /
+    cloud / outline paths.
   - P0 pipeline closeout treats texture-backed / dispatch-owned submission and
     RenderType/order/missing-atlas/dynamic-texture coverage as complete for the
     narrow pipeline scope: entity model tests assert `submit_sequence` across 78

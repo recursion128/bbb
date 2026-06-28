@@ -5,6 +5,17 @@ use wgpu::util::DeviceExt;
 
 use crate::Renderer;
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum TerrainOpaqueGroupLayer {
+    Solid,
+    Cutout,
+}
+
+const TERRAIN_OPAQUE_GROUP_LAYERS: &[TerrainOpaqueGroupLayer] = &[
+    TerrainOpaqueGroupLayer::Solid,
+    TerrainOpaqueGroupLayer::Cutout,
+];
+
 impl Renderer {
     pub fn render(&mut self, screenshot: Option<&Path>) -> Result<()> {
         let frame = match self.surface.get_current_texture() {
@@ -41,7 +52,7 @@ impl Renderer {
         let mut pipeline_switches = 0;
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("bbb-native-terrain-opaque-pass"),
+                label: Some("bbb-native-terrain-opaque-group-pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
                     resolve_target: None,
@@ -71,15 +82,42 @@ impl Renderer {
                 sky_draw_calls += 1;
             }
 
-            if !self.terrain_opaque.is_empty() {
-                pass.set_pipeline(&self.terrain_pipeline);
-                pipeline_switches += 1;
-                pass.set_bind_group(0, &self.terrain_bind_group, &[]);
-                for mesh in &self.terrain_opaque {
-                    pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-                    pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-                    pass.draw_indexed(0..mesh.index_count as u32, 0, 0..1);
-                    opaque_draw_calls += 1;
+            // Vanilla 26.1 renders ChunkSectionLayerGroup.OPAQUE as SOLID then CUTOUT
+            // before feature submissions; keep both terrain layers ahead of entity draws.
+            for terrain_layer in TERRAIN_OPAQUE_GROUP_LAYERS {
+                match terrain_layer {
+                    TerrainOpaqueGroupLayer::Solid => {
+                        if !self.terrain_opaque.is_empty() {
+                            pass.set_pipeline(&self.terrain_pipeline);
+                            pipeline_switches += 1;
+                            pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+                            for mesh in &self.terrain_opaque {
+                                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                                pass.set_index_buffer(
+                                    mesh.index_buffer.slice(..),
+                                    wgpu::IndexFormat::Uint32,
+                                );
+                                pass.draw_indexed(0..mesh.index_count as u32, 0, 0..1);
+                                opaque_draw_calls += 1;
+                            }
+                        }
+                    }
+                    TerrainOpaqueGroupLayer::Cutout => {
+                        if !self.terrain_cutout.is_empty() {
+                            pass.set_pipeline(&self.terrain_pipeline);
+                            pipeline_switches += 1;
+                            pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+                            for mesh in &self.terrain_cutout {
+                                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                                pass.set_index_buffer(
+                                    mesh.index_buffer.slice(..),
+                                    wgpu::IndexFormat::Uint32,
+                                );
+                                pass.draw_indexed(0..mesh.index_count as u32, 0, 0..1);
+                                cutout_draw_calls += 1;
+                            }
+                        }
+                    }
                 }
             }
             if let Some(mesh) = &self.entity_model_mesh {
@@ -212,39 +250,6 @@ impl Renderer {
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
                 entity_model_draw_calls += 1;
-            }
-        }
-
-        if !self.terrain_cutout.is_empty() {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("bbb-native-terrain-cutout-pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.depth.view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    }),
-                    stencil_ops: None,
-                }),
-                occlusion_query_set: None,
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.terrain_pipeline);
-            pipeline_switches += 1;
-            pass.set_bind_group(0, &self.terrain_bind_group, &[]);
-            for mesh in &self.terrain_cutout {
-                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..mesh.index_count as u32, 0, 0..1);
-                cutout_draw_calls += 1;
             }
         }
 
@@ -693,5 +698,23 @@ impl Renderer {
         pass.set_vertex_buffer(0, vertex_buffer.slice(..));
         pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         pass.draw_indexed(0..indices.len() as u32, 0, 0..1);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{TerrainOpaqueGroupLayer, TERRAIN_OPAQUE_GROUP_LAYERS};
+
+    #[test]
+    fn terrain_opaque_group_follows_vanilla_chunk_layer_order() {
+        // Vanilla 26.1 ChunkSectionLayerGroup.OPAQUE is SOLID followed by CUTOUT;
+        // LevelRenderer renders that group before feature submissions.
+        assert_eq!(
+            TERRAIN_OPAQUE_GROUP_LAYERS,
+            &[
+                TerrainOpaqueGroupLayer::Solid,
+                TerrainOpaqueGroupLayer::Cutout,
+            ]
+        );
     }
 }
