@@ -253,6 +253,7 @@ fn main() -> Result<()> {
     spawn_frame_tick(&event_loop);
 
     let mut renderer = pollster::block_on(bbb_renderer::Renderer::new(&window))?;
+    renderer.set_lightmap_brightness_factor(args.client_gamma);
     let terrain_textures = load_terrain_textures(&mut renderer, pack_roots.as_ref());
     load_hud_textures(&mut renderer, pack_roots.as_ref());
     load_entity_model_textures(&mut renderer, pack_roots.as_ref());

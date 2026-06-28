@@ -358,7 +358,7 @@ When an agent does any of the following, update this file in the same slice:
     `armorCutoutNoCull`, `entityTranslucent*`, `Eyes`, `waterMask`, and glint /
     scroll variants into equivalent pipeline state, complete vanilla outline
     target/composite behaviour, and reconcile full render-graph sorting plus
-    full LightTexture / gamma / diffuse visual parity. The scroll GPU path
+    full dynamic LightTexture / darkness-adjusted gamma / diffuse visual parity. The scroll GPU path
     already separates vanilla `breezeWind` as lightmap-lit from emissive
     additive `energySwirl`.
   - P0 pipeline closeout treats texture-backed / dispatch-owned submission and
@@ -374,7 +374,8 @@ When an agent does any of the following, update this file in the same slice:
     render-type / residual / fallback / outline / lighting wording. Remaining
     hits are classified as history, non-textured debug fallback, P3 dynamic
     resource fallback, P2/P3 terrain or item presentation, P0 visual outline
-    target/composite, P0 visual lighting/gamma/diffuse, or later GPU state
+    target/composite, P0 visual dynamic lighting / darkness-adjusted gamma /
+    diffuse, or later GPU state
     fidelity. None remains a narrow CPU submission graph blocker.
   - Replace proxies with full extraction from canonical world and pack data:
     - entity bounds
@@ -573,10 +574,14 @@ When an agent does any of the following, update this file in the same slice:
     textured, and `breezeWind` entity shaders now also use the vanilla
     `lightmap.fsh` default RGB base: block light is tinted with the default
     `0xFFD88C` block-light color and parabolic mix, sky light is default white,
-    and ambient is default black. Remaining lighting gaps: smooth/AO entity
-    light, dynamic environment colors, gamma, flicker / darkness / night-vision
-    curves of the real vanilla `Lightmap`, Nether / UI lighting variants, and
-    the colored debug fallback's baked-shade approximation.
+    and ambient is default black. These lightmap-lit entity paths also apply the
+    vanilla `LightmapInfo.BrightnessFactor` `notGamma` mix, driven by the
+    startup-only `bbb-native --client-gamma` option whose default `0.5` matches
+    vanilla `Options.gamma`. Remaining lighting gaps: smooth/AO entity light,
+    dynamic environment colors, block-light flicker, darkness / night-vision
+    curves and the darkness-driven brightness modifier of the real vanilla
+    `Lightmap`, Nether / UI lighting variants, and the colored debug fallback's
+    baked-shade approximation.
   - The hurt red damage overlay is implemented end to end as a real overlay pass,
     not a tint: `LivingEntity.hurtTime` is tracked client-side (set to
     `hurtDuration` = 10 by `apply_hurt_animation`/`apply_damage_event`, decremented
@@ -4181,7 +4186,7 @@ When an agent does any of the following, update this file in the same slice:
       `RenderTypes::entityCutout`; the top fin keeps its negative `texOffs(20, -6)` V
       origin) while preserving explicit submission metadata for `ModelLayers.COD`, texture, white tint,
       water/beached root transform, per-entity light/overlay coords, and `order(0)`, and the official PNG atlas
-      upload/bind/sample path (colored and textured). Full vanilla lighting/gamma parity remains deferred
+      upload/bind/sample path (colored and textured). Full vanilla dynamic lighting parity remains deferred
     - salmon entities are wired end to end: the native entity scene (`entity_scene.rs`)
       projects vanilla type id `110` to the real `SalmonModel`, decoding the synced
       `Salmon.Variant` size (`DATA_TYPE`, index 17, ids `0/1/2` clamped, default MEDIUM)

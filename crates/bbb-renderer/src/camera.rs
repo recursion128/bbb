@@ -3,6 +3,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::terrain;
 
+/// Vanilla `Options.gamma` default. `LightmapRenderStateExtractor` forwards
+/// this option as `LightmapRenderState.brightness` before darkness effects are
+/// applied.
+pub const VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR: f32 = 0.5;
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct ClearColor {
     pub r: f64,
@@ -49,12 +54,17 @@ impl CameraPose {
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct CameraUniform {
     view_proj: [[f32; 4]; 4],
+    /// Extra renderer-global fragment state. `.x` is vanilla
+    /// `LightmapInfo.BrightnessFactor`; remaining lanes are reserved for the
+    /// future Lightmap UBO fields.
+    lightmap: [f32; 4],
 }
 
 impl CameraUniform {
     pub(crate) fn identity() -> Self {
         Self {
             view_proj: Mat4::IDENTITY.to_cols_array_2d(),
+            lightmap: [VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR, 0.0, 0.0, 0.0],
         }
     }
 
@@ -67,6 +77,7 @@ impl CameraUniform {
             Mat4::orthographic_rh(0.0, width.max(1.0), height.max(1.0), 0.0, -1000.0, 1000.0);
         Self {
             view_proj: projection.to_cols_array_2d(),
+            ..Self::identity()
         }
     }
 
@@ -85,6 +96,7 @@ impl CameraUniform {
 
         Self {
             view_proj: (projection * view).to_cols_array_2d(),
+            ..Self::identity()
         }
     }
 
@@ -106,7 +118,26 @@ impl CameraUniform {
 
         Self {
             view_proj: (projection * view).to_cols_array_2d(),
+            ..Self::identity()
         }
+    }
+
+    pub(crate) fn with_lightmap_brightness_factor(mut self, factor: f32) -> Self {
+        self.lightmap[0] = sanitize_lightmap_brightness_factor(factor);
+        self
+    }
+
+    #[cfg(test)]
+    pub(crate) fn lightmap_brightness_factor(self) -> f32 {
+        self.lightmap[0]
+    }
+}
+
+pub(crate) fn sanitize_lightmap_brightness_factor(factor: f32) -> f32 {
+    if factor.is_finite() {
+        factor.clamp(0.0, 1.0)
+    } else {
+        VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR
     }
 }
 
@@ -114,6 +145,45 @@ impl CameraUniform {
 pub(crate) struct TerrainBounds {
     min: Vec3,
     max: Vec3,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn camera_uniform_defaults_to_vanilla_lightmap_brightness_factor() {
+        assert_eq!(
+            CameraUniform::identity().lightmap_brightness_factor(),
+            VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR
+        );
+        assert_eq!(
+            CameraUniform::gui_ortho(320.0, 240.0).lightmap_brightness_factor(),
+            VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR
+        );
+    }
+
+    #[test]
+    fn camera_uniform_clamps_lightmap_brightness_factor() {
+        assert_eq!(
+            CameraUniform::identity()
+                .with_lightmap_brightness_factor(-1.0)
+                .lightmap_brightness_factor(),
+            0.0
+        );
+        assert_eq!(
+            CameraUniform::identity()
+                .with_lightmap_brightness_factor(2.0)
+                .lightmap_brightness_factor(),
+            1.0
+        );
+        assert_eq!(
+            CameraUniform::identity()
+                .with_lightmap_brightness_factor(f32::NAN)
+                .lightmap_brightness_factor(),
+            VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR
+        );
+    }
 }
 
 impl TerrainBounds {

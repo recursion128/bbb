@@ -79,6 +79,7 @@ pub(super) const ENTITY_MODEL_SCROLL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 
 pub(super) const ENTITY_MODEL_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
+    lightmap: vec4<f32>,
 };
 
 @group(0) @binding(0)
@@ -107,6 +108,22 @@ fn parabolic_mix_factor(level: f32) -> f32 {
     return centered * centered;
 }
 
+fn not_gamma(color: vec3<f32>) -> vec3<f32> {
+    let max_component = max(max(color.x, color.y), color.z);
+    if (max_component <= 0.0) {
+        return color;
+    }
+    let max_inverted = 1.0 - max_component;
+    let max_scaled = 1.0 - max_inverted * max_inverted * max_inverted * max_inverted;
+    return color * (max_scaled / max_component);
+}
+
+fn apply_lightmap_brightness(color: vec3<f32>) -> vec3<f32> {
+    let clamped = clamp(color, vec3<f32>(0.0), vec3<f32>(1.0));
+    let not_gamma_color = not_gamma(clamped);
+    return mix(clamped, not_gamma_color, camera.lightmap.x);
+}
+
 fn packed_lightmap_color(light: vec2<f32>) -> vec3<f32> {
     let block_brightness = lightmap_brightness(light.x) * 1.4;
     let sky_brightness = lightmap_brightness(light.y);
@@ -117,7 +134,7 @@ fn packed_lightmap_color(light: vec2<f32>) -> vec3<f32> {
         0.9 * parabolic_mix_factor(light.x),
     );
     let color = vec3<f32>(sky_brightness) + block_light_color * block_brightness;
-    return clamp(color, vec3<f32>(0.0), vec3<f32>(1.0));
+    return apply_lightmap_brightness(color);
 }
 
 @vertex
@@ -147,6 +164,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 pub(super) const ENTITY_MODEL_TEXTURED_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
+    lightmap: vec4<f32>,
 };
 
 @group(0) @binding(0)
@@ -185,6 +203,22 @@ fn parabolic_mix_factor(level: f32) -> f32 {
     return centered * centered;
 }
 
+fn not_gamma(color: vec3<f32>) -> vec3<f32> {
+    let max_component = max(max(color.x, color.y), color.z);
+    if (max_component <= 0.0) {
+        return color;
+    }
+    let max_inverted = 1.0 - max_component;
+    let max_scaled = 1.0 - max_inverted * max_inverted * max_inverted * max_inverted;
+    return color * (max_scaled / max_component);
+}
+
+fn apply_lightmap_brightness(color: vec3<f32>) -> vec3<f32> {
+    let clamped = clamp(color, vec3<f32>(0.0), vec3<f32>(1.0));
+    let not_gamma_color = not_gamma(clamped);
+    return mix(clamped, not_gamma_color, camera.lightmap.x);
+}
+
 fn packed_lightmap_color(light: vec2<f32>) -> vec3<f32> {
     let block_brightness = lightmap_brightness(light.x) * 1.4;
     let sky_brightness = lightmap_brightness(light.y);
@@ -195,7 +229,7 @@ fn packed_lightmap_color(light: vec2<f32>) -> vec3<f32> {
         0.9 * parabolic_mix_factor(light.x),
     );
     let color = vec3<f32>(sky_brightness) + block_light_color * block_brightness;
-    return clamp(color, vec3<f32>(0.0), vec3<f32>(1.0));
+    return apply_lightmap_brightness(color);
 }
 
 fn diffuse_light(normal: vec3<f32>) -> f32 {
@@ -238,6 +272,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 pub(super) const ENTITY_MODEL_EYES_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
+    lightmap: vec4<f32>,
 };
 
 @group(0) @binding(0)
@@ -283,6 +318,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 pub(super) const ENTITY_MODEL_SCROLL_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
+    lightmap: vec4<f32>,
 };
 
 @group(0) @binding(0)
@@ -322,6 +358,22 @@ fn parabolic_mix_factor(level: f32) -> f32 {
     return centered * centered;
 }
 
+fn not_gamma(color: vec3<f32>) -> vec3<f32> {
+    let max_component = max(max(color.x, color.y), color.z);
+    if (max_component <= 0.0) {
+        return color;
+    }
+    let max_inverted = 1.0 - max_component;
+    let max_scaled = 1.0 - max_inverted * max_inverted * max_inverted * max_inverted;
+    return color * (max_scaled / max_component);
+}
+
+fn apply_lightmap_brightness(color: vec3<f32>) -> vec3<f32> {
+    let clamped = clamp(color, vec3<f32>(0.0), vec3<f32>(1.0));
+    let not_gamma_color = not_gamma(clamped);
+    return mix(clamped, not_gamma_color, camera.lightmap.x);
+}
+
 fn packed_lightmap_color(light: vec2<f32>) -> vec3<f32> {
     let block_brightness = lightmap_brightness(light.x) * 1.4;
     let sky_brightness = lightmap_brightness(light.y);
@@ -332,7 +384,7 @@ fn packed_lightmap_color(light: vec2<f32>) -> vec3<f32> {
         0.9 * parabolic_mix_factor(light.x),
     );
     let color = vec3<f32>(sky_brightness) + block_light_color * block_brightness;
-    return clamp(color, vec3<f32>(0.0), vec3<f32>(1.0));
+    return apply_lightmap_brightness(color);
 }
 
 @vertex

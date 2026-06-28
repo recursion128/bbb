@@ -8,7 +8,10 @@ use crate::{
         create_block_destroy_overlays_gpu, create_block_destroy_pipeline, BlockDestroyOverlay,
         BlockDestroyOverlaysGpu,
     },
-    camera::{CameraPose, CameraUniform, ClearColor, TerrainBounds},
+    camera::{
+        sanitize_lightmap_brightness_factor, CameraPose, CameraUniform, ClearColor, TerrainBounds,
+        VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
+    },
     entity_models::{
         create_entity_model_eyes_pipeline, create_entity_model_pipeline,
         create_entity_model_scroll_additive_pipeline, create_entity_model_scroll_pipeline,
@@ -81,6 +84,7 @@ pub struct Renderer {
     pub(super) terrain_bounds: Option<TerrainBounds>,
     pub(super) entity_model_bounds: Option<TerrainBounds>,
     pub(super) camera_pose: Option<CameraPose>,
+    pub(super) lightmap_brightness_factor: f32,
     pub(super) block_destroy_overlays: Option<BlockDestroyOverlaysGpu>,
     pub(super) entity_model_mesh: Option<EntityModelMeshGpu>,
     pub(super) entity_model_textured_mesh: Option<EntityModelTexturedMeshGpu>,
@@ -409,6 +413,7 @@ impl Renderer {
             terrain_bounds: None,
             entity_model_bounds: None,
             camera_pose: None,
+            lightmap_brightness_factor: VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
             block_destroy_overlays: None,
             entity_model_mesh: None,
             entity_model_textured_mesh: None,
@@ -855,7 +860,8 @@ impl Renderer {
             self.scene_bounds()
                 .map(|bounds| CameraUniform::from_bounds(bounds, aspect))
                 .unwrap_or_else(CameraUniform::identity)
-        };
+        }
+        .with_lightmap_brightness_factor(self.lightmap_brightness_factor);
         self.queue
             .write_buffer(&self.camera_buffer, 0, bytemuck::bytes_of(&uniform));
         // The GUI item pass projects 3D inventory icons with a screen-space ortho (separate buffer so it
@@ -863,6 +869,11 @@ impl Renderer {
         let gui = CameraUniform::gui_ortho(self.config.width as f32, self.config.height as f32);
         self.queue
             .write_buffer(&self.gui_item_camera_buffer, 0, bytemuck::bytes_of(&gui));
+    }
+
+    pub fn set_lightmap_brightness_factor(&mut self, factor: f32) {
+        self.lightmap_brightness_factor = sanitize_lightmap_brightness_factor(factor);
+        self.update_camera();
     }
 
     fn scene_bounds(&self) -> Option<TerrainBounds> {

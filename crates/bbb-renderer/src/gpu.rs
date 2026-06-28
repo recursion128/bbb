@@ -8,6 +8,7 @@ use crate::{camera::CameraUniform, terrain};
 pub(super) const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
 
 const TERRAIN_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 8] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x2, 4 => Float32x3, 5 => Float32, 6 => Float32, 7 => Sint32];
+const CAMERA_BIND_GROUP_VISIBILITY: wgpu::ShaderStages = wgpu::ShaderStages::VERTEX_FRAGMENT;
 
 const TERRAIN_SHADER: &str = r#"
 struct Camera {
@@ -114,7 +115,7 @@ pub(super) fn create_terrain_bind_group_layout(device: &wgpu::Device) -> wgpu::B
         entries: &[
             wgpu::BindGroupLayoutEntry {
                 binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX,
+                visibility: CAMERA_BIND_GROUP_VISIBILITY,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,
@@ -490,6 +491,14 @@ mod tests {
         assert!(TERRAIN_SHADER.contains("@location(6) ambient_occlusion: f32"));
         assert!(TERRAIN_SHADER.contains("* input.shade * input.ambient_occlusion"));
         assert!(!TERRAIN_SHADER.contains("light_dir"));
+    }
+
+    #[test]
+    fn shared_camera_bind_group_is_visible_to_entity_fragments() {
+        assert_eq!(
+            CAMERA_BIND_GROUP_VISIBILITY,
+            wgpu::ShaderStages::VERTEX_FRAGMENT
+        );
     }
 
     #[test]

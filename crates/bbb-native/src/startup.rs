@@ -8,6 +8,7 @@ use bbb_platform::WindowConfig;
 use bbb_protocol::packets::{
     ClientChatVisibility, ClientInformation, ClientMainHand, ClientParticleStatus,
 };
+use bbb_renderer::VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR;
 use clap::{ArgAction, Parser, ValueEnum};
 use tokio::{runtime::Runtime, sync::mpsc};
 use winit::{
@@ -72,6 +73,12 @@ pub(crate) struct Args {
     pub(crate) client_allow_server_listing: bool,
     #[arg(long = "client-particles", value_enum, default_value = "all")]
     pub(crate) client_particles: ClientParticleStatusArg,
+    #[arg(
+        long = "client-gamma",
+        default_value_t = VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
+        value_parser = parse_client_gamma
+    )]
+    pub(crate) client_gamma: f32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -222,6 +229,19 @@ pub(crate) fn client_information_from_args(args: &Args) -> Result<ClientInformat
     })
 }
 
+fn parse_client_gamma(value: &str) -> std::result::Result<f32, String> {
+    let gamma = value
+        .parse::<f32>()
+        .map_err(|err| format!("client gamma must be a number: {err}"))?;
+    if !gamma.is_finite() {
+        return Err("client gamma must be finite".to_string());
+    }
+    if !(0.0..=1.0).contains(&gamma) {
+        return Err("client gamma must be between 0.0 and 1.0".to_string());
+    }
+    Ok(gamma)
+}
+
 pub(crate) fn start_control_api(
     runtime: &Runtime,
     addr: Option<SocketAddr>,
@@ -330,6 +350,27 @@ mod tests {
         assert!(information.text_filtering_enabled);
         assert!(information.allows_listing);
         assert_eq!(information.particle_status, ClientParticleStatus::Minimal);
+    }
+
+    #[test]
+    fn args_accept_client_gamma_startup_option() {
+        let default_args = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert_eq!(
+            default_args.client_gamma,
+            VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR
+        );
+
+        let args = Args::try_parse_from(["bbb-native", "--client-gamma", "0.75"]).unwrap();
+        assert_eq!(args.client_gamma, 0.75);
+    }
+
+    #[test]
+    fn args_reject_client_gamma_outside_unit_range() {
+        let err = Args::try_parse_from(["bbb-native", "--client-gamma", "1.25"]).unwrap_err();
+        assert!(err.to_string().contains("between 0.0 and 1.0"));
+
+        let err = Args::try_parse_from(["bbb-native", "--client-gamma", "NaN"]).unwrap_err();
+        assert!(err.to_string().contains("must be finite"));
     }
 
     #[test]
