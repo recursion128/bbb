@@ -61,6 +61,7 @@ pub(crate) enum ParticleVisualDescriptor {
         color: ParticleColorDescriptor,
         quad_size_curve: ParticleQuadSizeCurve,
     },
+    WitchSpell,
     Crit {
         color_scale: [f32; 3],
     },
@@ -372,6 +373,17 @@ impl ParticleDescriptor {
                 has_physics: false,
                 speed_up_when_y_motion_is_blocked: true,
             },
+            "minecraft:witch" => Self {
+                provider: "SpellParticle.WitchProvider",
+                lifetime: ParticleLifetimeDescriptor::EightOverRandom,
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::WitchSpell,
+                initial_velocity: ParticleInitialVelocityDescriptor::Spell,
+                friction: 0.96,
+                gravity: -0.1,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: true,
+            },
             "minecraft:small_flame" => Self {
                 provider: "FlameParticle.SmallFlameProvider",
                 lifetime: ParticleLifetimeDescriptor::Rising,
@@ -643,6 +655,14 @@ impl ParticleVisualDescriptor {
                 color.sample(random),
                 quad_size_curve,
             ),
+            Self::WitchSpell => {
+                let brightness = random.next_f32() * 0.5 + 0.35;
+                ParticleVisualState::new(
+                    base_quad_size * 0.75,
+                    [brightness, 0.0, brightness, 1.0],
+                    ParticleQuadSizeCurve::Constant,
+                )
+            }
             Self::Crit { color_scale } => {
                 let color = random.next_f32() * 0.3 + 0.6;
                 ParticleVisualState::new(
@@ -1283,6 +1303,21 @@ mod tests {
             );
         }
         assert_descriptor(
+            "minecraft:witch",
+            "SpellParticle.WitchProvider",
+            ParticleLifetimeDescriptor::EightOverRandom,
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::WitchSpell,
+            0.96,
+            -0.1,
+            false,
+            true,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:witch").initial_velocity,
+            ParticleInitialVelocityDescriptor::Spell
+        );
+        assert_descriptor(
             "minecraft:small_flame",
             "FlameParticle.SmallFlameProvider",
             ParticleLifetimeDescriptor::Rising,
@@ -1552,6 +1587,16 @@ mod tests {
         assert_close_f32(note.color[2], 0.0);
         assert_eq!(note.color[3], 1.0);
         assert_eq!(note.quad_size_curve, ParticleQuadSizeCurve::GrowToBase);
+
+        let mut witch_random = ParticleRandom::new(31);
+        let witch = ParticleVisualDescriptor::WitchSpell
+            .sample_for_command(&mut witch_random, [0.0, 0.0, 0.0]);
+        assert_range_f32(witch.base_quad_size, 0.075, 0.15);
+        assert_range_f32(witch.color[0], 0.35, 0.85);
+        assert_close_f32(witch.color[1], 0.0);
+        assert_close_f32(witch.color[2], witch.color[0]);
+        assert_eq!(witch.color[3], 1.0);
+        assert_eq!(witch.quad_size_curve, ParticleQuadSizeCurve::Constant);
 
         let mut crit_random = ParticleRandom::new(24);
         let crit = ParticleVisualDescriptor::Crit {

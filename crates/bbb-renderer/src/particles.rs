@@ -1066,6 +1066,25 @@ mod tests {
         assert_range_f64(spell.velocity[1], 0.0, 0.06);
         assert_range_f64(spell.velocity[2].abs(), 0.0, 0.008);
 
+        let mut witch_random = ParticleRandom::new(62);
+        let witch = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:witch", 1.0),
+            &mut witch_random,
+        );
+        assert_eq!(witch.provider, "SpellParticle.WitchProvider");
+        assert_eq!(witch.sprite_selection, ParticleSpriteSelection::Age);
+        assert_eq!(witch.quad_size_curve, ParticleQuadSizeCurve::Constant);
+        assert_range_f32(witch.base_quad_size, 0.075, 0.15);
+        assert_range_f32(witch.color[0], 0.35, 0.85);
+        assert_eq!(witch.color[1], 0.0);
+        assert_eq!(witch.color[2], witch.color[0]);
+        assert_eq!(witch.color[3], 1.0);
+        assert!((8..=40).contains(&witch.lifetime_ticks));
+        assert_eq!(witch.friction, 0.96);
+        assert_eq!(witch.gravity, -0.1);
+        assert!(!witch.has_physics);
+        assert!(witch.speed_up_when_y_motion_is_blocked);
+
         let mut crit_random = ParticleRandom::new(56);
         let mut crit_command = spawn_command("minecraft:crit", 1.0);
         crit_command.velocity = [0.5, 0.25, -0.5];
