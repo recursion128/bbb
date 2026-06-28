@@ -10,8 +10,9 @@ use std::collections::BTreeMap;
 
 use bbb_pack::BlockModelDisplayContext;
 use bbb_renderer::{
-    bake_generated_item_quads, bake_item_model_mesh_with_light, ItemFrameMapMesh, ItemModelMesh,
-    ItemModelQuad, ITEM_MODEL_FULL_BRIGHT_LIGHT,
+    bake_generated_item_quads, bake_item_frame_map_surface, bake_item_model_mesh_with_light,
+    ItemFrameMapSurface, ItemFrameMapTexture, ItemModelMesh, ItemModelQuad,
+    ITEM_MODEL_FULL_BRIGHT_LIGHT,
 };
 use bbb_world::{ItemFrameFacing, MapItemState, TerrainLight, WorldStore};
 use glam::{Mat4, Vec3};
@@ -26,6 +27,7 @@ const VISIBLE_ITEM_FRAME_ITEM_DEPTH: f32 = 0.4375;
 /// Invisible item frames clear the frame model and translate the contents to `0.5` instead.
 const INVISIBLE_ITEM_FRAME_ITEM_DEPTH: f32 = 0.5;
 const MAP_SIZE: usize = 128;
+#[cfg(test)]
 const MAP_Z_OFFSET: f32 = -0.01;
 const MAP_UNIT_SCALE: f32 = 1.0 / MAP_SIZE as f32;
 const GLOW_FRAME_MAP_LIGHT_COORDS: u32 = 15_728_850;
@@ -44,11 +46,12 @@ const MAP_MATERIAL_COLORS: [u32; 64] = [
 const MAP_BRIGHTNESS_MODIFIERS: [u32; 4] = [180, 220, 255, 135];
 
 /// The baked item-frame meshes for this frame, split by atlas (the border + block items sample the blocks
-/// atlas; flat items sample the item atlas).
+/// atlas; flat items sample the item atlas; filled maps sample a dynamic `minecraft:map/<id>` texture).
 pub(crate) struct ItemFrameModels {
     pub block_meshes: Vec<ItemModelMesh>,
     pub flat_meshes: Vec<ItemModelMesh>,
-    pub map_meshes: Vec<ItemFrameMapMesh>,
+    pub map_textures: Vec<ItemFrameMapTexture>,
+    pub map_surfaces: Vec<ItemFrameMapSurface>,
 }
 
 /// Bakes every item-frame / glow-item-frame entity into its wooden border plus framed item (vanilla
@@ -64,7 +67,8 @@ pub(crate) fn item_frame_models(
 ) -> ItemFrameModels {
     let mut block_meshes = Vec::new();
     let mut flat_meshes = Vec::new();
-    let mut map_meshes = Vec::new();
+    let mut map_textures = BTreeMap::new();
+    let mut map_surfaces = Vec::new();
 
     for state in world.item_frame_render_states() {
         let center = Vec3::new(
@@ -92,8 +96,11 @@ pub(crate) fn item_frame_models(
         }
 
         if let Some(map) = map {
-            map_meshes.push(item_frame_map_mesh(
-                map,
+            map_textures
+                .entry(map.id)
+                .or_insert_with(|| item_frame_map_texture(map));
+            map_surfaces.push(bake_item_frame_map_surface(
+                map.id,
                 item_frame_map_transform(base, state.invisible, state.rotation),
                 item_frame_map_light(state.glow, state.light),
             ));
@@ -159,7 +166,8 @@ pub(crate) fn item_frame_models(
     ItemFrameModels {
         block_meshes,
         flat_meshes,
-        map_meshes,
+        map_textures: map_textures.into_values().collect(),
+        map_surfaces,
     }
 }
 
@@ -195,60 +203,30 @@ fn item_frame_map_transform(base: Mat4, invisible: bool, rotation: u8) -> Mat4 {
         * Mat4::from_translation(Vec3::new(-64.0, -64.0, -1.0))
 }
 
-fn item_frame_map_mesh(map: &MapItemState, transform: Mat4, light: [f32; 2]) -> ItemFrameMapMesh {
-    let mut mesh = ItemFrameMapMesh::new();
-    for y in 0..MAP_SIZE {
-        let mut x = 0;
-        while x < MAP_SIZE {
-            let packed = map.colors.get(x + y * MAP_SIZE).copied().unwrap_or(0);
-            let color = map_color_rgba(packed);
-            let mut end = x + 1;
-            while end < MAP_SIZE
-                && map.colors.get(end + y * MAP_SIZE).copied().unwrap_or(0) == packed
-            {
-                end += 1;
-            }
-            if color[3] > 0.0 {
-                mesh.append_colored_quad(map_run_corners(transform, x, end, y), color, light);
-            }
-            x = end;
-        }
+fn item_frame_map_texture(map: &MapItemState) -> ItemFrameMapTexture {
+    let mut rgba = Vec::with_capacity(MAP_SIZE * MAP_SIZE * 4);
+    for index in 0..MAP_SIZE * MAP_SIZE {
+        rgba.extend_from_slice(&map_color_rgba8(
+            map.colors.get(index).copied().unwrap_or(0),
+        ));
     }
-    mesh
+    ItemFrameMapTexture {
+        map_id: map.id,
+        rgba,
+    }
 }
 
-fn map_run_corners(transform: Mat4, start_x: usize, end_x: usize, y: usize) -> [[f32; 3]; 4] {
-    let x0 = start_x as f32;
-    let x1 = end_x as f32;
-    let y0 = y as f32;
-    let y1 = y as f32 + 1.0;
-    [
-        transform
-            .transform_point3(Vec3::new(x0, y1, MAP_Z_OFFSET))
-            .to_array(),
-        transform
-            .transform_point3(Vec3::new(x1, y1, MAP_Z_OFFSET))
-            .to_array(),
-        transform
-            .transform_point3(Vec3::new(x1, y0, MAP_Z_OFFSET))
-            .to_array(),
-        transform
-            .transform_point3(Vec3::new(x0, y0, MAP_Z_OFFSET))
-            .to_array(),
-    ]
-}
-
-fn map_color_rgba(packed: u8) -> [f32; 4] {
+fn map_color_rgba8(packed: u8) -> [u8; 4] {
     let material_id = usize::from(packed >> 2);
     let base = MAP_MATERIAL_COLORS.get(material_id).copied().unwrap_or(0);
     if base == 0 {
-        return [0.0, 0.0, 0.0, 0.0];
+        return [0, 0, 0, 0];
     }
     let modifier = MAP_BRIGHTNESS_MODIFIERS[usize::from(packed & 3)];
     let r = ((base >> 16) & 0xFF) * modifier / 255;
     let g = ((base >> 8) & 0xFF) * modifier / 255;
     let b = (base & 0xFF) * modifier / 255;
-    [r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0, 1.0]
+    [r as u8, g as u8, b as u8, 255]
 }
 
 fn item_frame_border_light(glow: bool, light: TerrainLight) -> [f32; 2] {
@@ -355,7 +333,8 @@ mod tests {
         let visible = item_frame_models(&world, None, &TerrainTextureState::default());
         assert_eq!(visible.block_meshes.len(), 1);
         assert!(visible.flat_meshes.is_empty());
-        assert!(visible.map_meshes.is_empty());
+        assert!(visible.map_textures.is_empty());
+        assert!(visible.map_surfaces.is_empty());
         assert!(!world.item_frame_render_states()[0].invisible);
 
         assert!(world.apply_set_entity_data(SetEntityData {
@@ -368,7 +347,8 @@ mod tests {
         let hidden = item_frame_models(&world, None, &TerrainTextureState::default());
         assert!(hidden.block_meshes.is_empty());
         assert!(hidden.flat_meshes.is_empty());
-        assert!(hidden.map_meshes.is_empty());
+        assert!(hidden.map_textures.is_empty());
+        assert!(hidden.map_surfaces.is_empty());
         assert!(world.item_frame_render_states()[0].invisible);
     }
 
@@ -389,9 +369,10 @@ mod tests {
         assert_eq!(models.block_meshes.len(), 1);
         assert!(models.flat_meshes.is_empty());
         assert!(
-            models.map_meshes.is_empty(),
+            models.map_surfaces.is_empty(),
             "vanilla leaves state.mapId null until level map data exists"
         );
+        assert!(models.map_textures.is_empty());
     }
 
     #[test]
@@ -423,36 +404,57 @@ mod tests {
         let models = item_frame_models(&world, None, &TerrainTextureState::default());
         assert_eq!(models.block_meshes.len(), 1);
         assert!(models.flat_meshes.is_empty());
-        assert_eq!(models.map_meshes.len(), 1);
-        let mesh = &models.map_meshes[0];
-        assert!(!mesh.is_empty());
-        assert_eq!(mesh.vertices[0].color, map_color_rgba(packed_grass_high));
+        assert_eq!(models.map_textures.len(), 1);
+        assert_eq!(models.map_textures[0].map_id, 7);
+        assert_eq!(models.map_textures[0].rgba.len(), MAP_SIZE * MAP_SIZE * 4);
         assert_eq!(
-            mesh.vertices[0].light,
+            &models.map_textures[0].rgba[0..4],
+            &map_color_rgba8(packed_grass_high)
+        );
+        assert_eq!(models.map_surfaces.len(), 1);
+        let surface = &models.map_surfaces[0];
+        assert!(!surface.is_empty());
+        assert_eq!(surface.vertex_count(), 4);
+        assert_eq!(surface.index_count(), 6);
+        assert_eq!(surface.submission.map_id, 7);
+        assert_eq!(
+            surface.submission.render_type,
+            bbb_renderer::ItemFrameMapRenderType::Text
+        );
+        assert_eq!(surface.submission.render_type.vanilla_name(), "text");
+        assert_eq!(surface.submission.texture.vanilla_path(), "minecraft:map/7");
+        assert_eq!(surface.submission.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(
+            (surface.submission.order, surface.submission.submit_sequence),
+            (0, 0)
+        );
+        assert_eq!(
+            surface.submission.light,
             item_frame_map_light(false, world.item_frame_render_states()[0].light)
         );
-        // Uniform rows are coalesced into one run each: 128 quads, not 16k pixel quads.
-        assert_eq!(mesh.indices.len(), 128 * 6);
+        let state = &world.item_frame_render_states()[0];
+        let center = Vec3::new(
+            state.center.x as f32,
+            state.center.y as f32,
+            state.center.z as f32,
+        );
+        let (x_rot, y_rot) = frame_face_rotation(state.facing);
+        let base = Mat4::from_translation(center)
+            * Mat4::from_rotation_x(x_rot.to_radians())
+            * Mat4::from_rotation_y(y_rot.to_radians());
+        assert_eq!(
+            surface.submission.transform,
+            item_frame_map_transform(base, false, 5)
+        );
     }
 
     #[test]
     fn map_color_rgba_matches_vanilla_map_color_scaling() {
         // Vanilla `MapColor.GRASS` is 0x7fb238. Brightness HIGH (id 2) leaves it unscaled.
-        assert_eq!(
-            map_color_rgba((1 << 2) | 2),
-            [
-                0x7f as f32 / 255.0,
-                0xb2 as f32 / 255.0,
-                0x38 as f32 / 255.0,
-                1.0,
-            ]
-        );
+        assert_eq!(map_color_rgba8((1 << 2) | 2), [0x7f, 0xb2, 0x38, 255]);
         // Brightness NORMAL (id 1) uses ARGB.scaleRGB(color, 220), i.e. integer channel * 220 / 255.
-        assert_eq!(
-            map_color_rgba((1 << 2) | 1),
-            [109.0 / 255.0, 153.0 / 255.0, 48.0 / 255.0, 1.0]
-        );
-        assert_eq!(map_color_rgba(0), [0.0, 0.0, 0.0, 0.0]);
+        assert_eq!(map_color_rgba8((1 << 2) | 1), [109, 153, 48, 255]);
+        assert_eq!(map_color_rgba8(0), [0, 0, 0, 0]);
     }
 
     #[test]

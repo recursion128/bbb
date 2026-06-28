@@ -432,7 +432,10 @@ pub(crate) fn pump_network_and_terrain(
     flat_item_meshes.extend(item_frame_models.flat_meshes);
     renderer.set_block_item_model_meshes(block_item_meshes);
     renderer.set_flat_item_model_meshes(flat_item_meshes);
-    renderer.set_item_frame_map_meshes(item_frame_models.map_meshes);
+    renderer.set_item_frame_map_surfaces(
+        item_frame_models.map_textures,
+        item_frame_models.map_surfaces,
+    );
     renderer.set_entity_model_instances(entity_instances);
     let camera_pose = camera_pose_from_world(world);
     renderer.set_camera_pose(camera_pose);

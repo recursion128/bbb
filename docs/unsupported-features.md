@@ -1254,14 +1254,18 @@ When an agent does any of the following, update this file in the same slice:
         full-bright `15728880` light coords, and filled maps use the distinct
         glow-map `15728850` light coords. Filled maps now follow vanilla's
         `state.mapId != null` gate: when the framed stack has `map_id` and
-        canonical `MapItemData` exists, bbb renders a full-frame decoded map
-        surface with `rotation % 4 * 2`, `Rz(180)`, `scale(1/128)`,
+        canonical `MapItemData` exists, bbb renders a full-frame map surface
+        with `rotation % 4 * 2`, `Rz(180)`, `scale(1/128)`,
         `translate(-64,-64,-1)`, vanilla `MapColor.getColorFromPackedId`
-        scaling, and the map-frame border; if map data is absent, the frame
-        falls back to the ordinary `FIXED` item model. Still deferred:
-        `MapRenderer` decoration sprites / name text and a true dynamic
-        texture-backed map submission; the fractional frame depths (`15.5` /
-        `15.001`) are still rounded to `15` in the hand-written border boxes.
+        scaling, and the map-frame border. The base map surface now mirrors
+        `MapTextureManager.prepareMapTexture` / `MapRenderer.render` by uploading
+        a 128x128 dynamic `minecraft:map/<id>` texture, submitting a single
+        `RenderTypes.text` quad with white tint, UV `0..1`, light coords, and
+        `order=0` / `submit_sequence=0`; if map data is absent, the frame falls
+        back to the ordinary `FIXED` item model. Still deferred:
+        `MapRenderer` decoration sprites / name text; the fractional frame
+        depths (`15.5` / `15.001`) are still rounded to `15` in the
+        hand-written border boxes.
       - fourth consumer DONE (HUD 3D inventory icons): each hotbar slot holding
         a block item renders its block model as a 3D icon (vanilla 3D inventory
         item rendering) instead of the flat 2D sprite. Native
