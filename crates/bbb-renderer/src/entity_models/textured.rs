@@ -174,7 +174,8 @@ pub(super) struct EntityModelTexturedMeshes {
     pub(super) scroll_additive: EntityModelScrollMesh,
     /// Vanilla-shaped submit metadata for textured entity models. The current backend still folds
     /// compatible submits into shared meshes, but this preserves render type, order, tint, texture,
-    /// transform, light, and overlay so residual emits can migrate to explicit submissions one by one.
+    /// transform, light, and overlay so the folded GPU buckets can be audited against explicit
+    /// submissions.
     pub(super) submissions: Vec<EntityModelRenderSubmission>,
     current_submission_light: [f32; 2],
     current_submission_overlay: [f32; 2],
