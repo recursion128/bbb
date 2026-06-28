@@ -1071,6 +1071,11 @@ mod tests {
         write_json(
             &biome_dir.join("plains.json"),
             r##"{
+              "attributes": {
+                "minecraft:visual/fog_color": "#c0d8ff",
+                "minecraft:visual/sky_color": "#78a7ff",
+                "minecraft:visual/water_fog_color": "#050533"
+              },
               "temperature": 0.8,
               "downfall": 0.4,
               "effects": {
@@ -1099,6 +1104,9 @@ mod tests {
         assert_eq!(plains.temperature, 0.8);
         assert_eq!(plains.downfall, 0.4);
         assert_eq!(plains.water_color, Some([0x12, 0x34, 0x56]));
+        assert_eq!(plains.fog_color, Some([0xc0, 0xd8, 0xff]));
+        assert_eq!(plains.sky_color, Some([0x78, 0xa7, 0xff]));
+        assert_eq!(plains.water_fog_color, Some([0x05, 0x05, 0x33]));
 
         let swamp = catalog.profile(6).unwrap();
         assert_eq!(swamp.name, "minecraft:swamp");

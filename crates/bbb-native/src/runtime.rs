@@ -21,8 +21,9 @@ use bbb_renderer::{
     VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
 };
 use bbb_world::{
-    BookScreenState, ContainerState, MerchantOfferState, MerchantOffersState, MobEffectState,
-    MountArmorSlotKind, MountInventoryKind, WorldLevelInfo, WorldStore, WorldWeatherState,
+    BlockPos, BookScreenState, ContainerState, MerchantOfferState, MerchantOffersState,
+    MobEffectState, MountArmorSlotKind, MountInventoryKind, WorldLevelInfo, WorldStore,
+    WorldWeatherState,
 };
 use tokio::sync::mpsc;
 
@@ -69,6 +70,7 @@ const VANILLA_WEATHER_RAIN_ALPHA: f32 = 0.3125;
 const VANILLA_WEATHER_THUNDER_ALPHA: f32 = 0.52734375;
 const VANILLA_WEATHER_RAIN_SKY_LIGHT_COLOR: i32 = argb_color(79, 122, 122, 255);
 const VANILLA_WEATHER_THUNDER_SKY_LIGHT_COLOR: i32 = argb_color(134, 122, 122, 255);
+const VANILLA_OVERWORLD_SKY_COLOR: [u8; 3] = [0x78, 0xa7, 0xff];
 const VANILLA_SKY_FLASH_SKY_COLOR: i32 = argb_color(255, 204, 204, 255);
 const VANILLA_SKY_FLASH_SKY_COLOR_ALPHA: f32 = 0.22;
 const VANILLA_WORLD_CLOCK_THE_END_ID: i32 = 1;
@@ -1313,7 +1315,12 @@ pub(crate) fn pump_network_and_terrain(
     world.advance_client_time(running_ticks);
     lightmap_ticks.advance_for_world(advanced_ticks, world);
     renderer.set_lightmap_environment(lightmap_ticks.environment_for_world(world));
-    renderer.set_clear_color(clear_color_for_world(world, hide_lightning_flash));
+    renderer.set_clear_color(clear_color_for_world_at_camera(
+        world,
+        terrain_textures,
+        camera_pose_from_world(world),
+        hide_lightning_flash,
+    ));
     world.advance_sky_flash_time(advanced_ticks);
     advance_block_destruction_render_ticks(world, running_ticks);
     world.advance_item_cooldowns(advanced_ticks);
@@ -3883,11 +3890,32 @@ fn advance_entity_client_animations(
 }
 
 pub(crate) fn clear_color_for_world(world: &WorldStore, hide_lightning_flash: bool) -> ClearColor {
+    clear_color_for_world_with_sky_color(world, None, hide_lightning_flash)
+}
+
+fn clear_color_for_world_at_camera(
+    world: &WorldStore,
+    terrain_textures: &TerrainTextureState,
+    camera_pose: Option<CameraPose>,
+    hide_lightning_flash: bool,
+) -> ClearColor {
+    clear_color_for_world_with_sky_color(
+        world,
+        camera_biome_sky_color(world, terrain_textures, camera_pose),
+        hide_lightning_flash,
+    )
+}
+
+fn clear_color_for_world_with_sky_color(
+    world: &WorldStore,
+    sky_color: Option<[u8; 3]>,
+    hide_lightning_flash: bool,
+) -> ClearColor {
     let day_time = world.world_time().map(|time| time.day_time).unwrap_or(6000);
     let weather = world.weather();
     let rain = weather.rain_level.clamp(0.0, 1.0) as f64;
     let thunder = weather.thunder_level.clamp(0.0, 1.0) as f64;
-    let clear = clear_color_for_day_time(day_time, rain, thunder);
+    let clear = clear_color_for_day_time_with_sky_color(day_time, rain, thunder, sky_color);
     if hide_lightning_flash || world.sky_flash_time() == 0 {
         clear
     } else {
@@ -3895,18 +3923,59 @@ pub(crate) fn clear_color_for_world(world: &WorldStore, hide_lightning_flash: bo
     }
 }
 
-fn clear_color_for_day_time(day_time: i64, rain_level: f64, thunder_level: f64) -> ClearColor {
+pub(crate) fn clear_color_for_day_time(
+    day_time: i64,
+    rain_level: f64,
+    thunder_level: f64,
+) -> ClearColor {
+    clear_color_for_day_time_with_sky_color(day_time, rain_level, thunder_level, None)
+}
+
+fn clear_color_for_day_time_with_sky_color(
+    day_time: i64,
+    rain_level: f64,
+    thunder_level: f64,
+    sky_color: Option<[u8; 3]>,
+) -> ClearColor {
     let phase = day_time.rem_euclid(24_000) as f64 / 24_000.0;
     let noon_aligned = (phase - 0.25) * std::f64::consts::TAU;
     let daylight = ((noon_aligned.cos() + 1.0) * 0.5).powf(0.65);
     let weather_dim = (1.0 - rain_level * 0.25 - thunder_level * 0.45).clamp(0.25, 1.0);
     let night = [0.015, 0.025, 0.055];
-    let day = [0.50, 0.72, 0.95];
+    let sky_color = sky_color.unwrap_or(VANILLA_OVERWORLD_SKY_COLOR);
+    let day = [
+        sky_color[0] as f64 / 255.0,
+        sky_color[1] as f64 / 255.0,
+        sky_color[2] as f64 / 255.0,
+    ];
     ClearColor {
         r: (night[0] + (day[0] - night[0]) * daylight) * weather_dim,
         g: (night[1] + (day[1] - night[1]) * daylight) * weather_dim,
         b: (night[2] + (day[2] - night[2]) * daylight) * weather_dim,
         a: 1.0,
+    }
+}
+
+fn camera_biome_sky_color(
+    world: &WorldStore,
+    terrain_textures: &TerrainTextureState,
+    camera_pose: Option<CameraPose>,
+) -> Option<[u8; 3]> {
+    let camera = camera_pose?;
+    let camera_pos = BlockPos {
+        x: floor_to_block_coord(camera.position[0]),
+        y: floor_to_block_coord(camera.position[1] + camera.eye_height),
+        z: floor_to_block_coord(camera.position[2]),
+    };
+    let biome_id = world.probe_block(camera_pos)?.biome_id;
+    terrain_textures.biome_sky_color(biome_id)
+}
+
+fn floor_to_block_coord(value: f32) -> i32 {
+    if value.is_finite() {
+        value.floor().clamp(i32::MIN as f32, i32::MAX as f32) as i32
+    } else {
+        0
     }
 }
 

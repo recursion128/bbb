@@ -606,16 +606,21 @@ When an agent does any of the following, update this file in the same slice:
     base `SkyFactor = 0`, sky light `0xAC60CD`, and ambient `0x3F473F`, with
     synced THE_END world-clock `EndFlashState` boosts folded into `SkyFactor`;
     lightning bolt spawns now feed the vanilla 2 tick client `skyFlashTime` and
-    force `SKY_LIGHT_FACTOR = 1.0` while visible; the native clear color now
-    mirrors the vanilla `SKY_COLOR` flash layer by lerping `0.22` toward
-    `0xCCCCFF`, with `--hide-lightning-flash` suppressing both. Full sky mesh /
-    atmosphere presentation is still a broader visual gap. Overworld variants use ambient `0x0A0A0A`. The block flicker path still advances
-    `blockLightFlicker` with the
+    force `SKY_LIGHT_FACTOR = 1.0` while visible; native also parses vanilla
+    biome JSON top-level `attributes` for `visual/sky_color`, `fog_color`, and
+    `water_fog_color`, and the clear-color frame path uses the camera eye
+    block's biome `SKY_COLOR` as its base before the existing day/weather
+    approximation and vanilla `0.22` sky-flash lerp toward `0xCCCCFF`; the
+    startup `--hide-lightning-flash` option suppresses both lightmap and
+    clear-color sky flash layers. Full sky mesh / atmosphere presentation is
+    still a broader visual gap. Overworld variants use ambient `0x0A0A0A`. The
+    block flicker path still advances `blockLightFlicker` with the
     `LightmapRenderStateExtractor.tick()` formula and the shaders read
-    `blockLightFlicker + 1.4`. Remaining lighting gaps: full camera
-    `EnvironmentAttributes` extraction for biome/spatial modifiers, smooth/AO
-    entity light, GUI / entity-in-UI lighting variants, and the colored debug
-    fallback's baked-shade approximation.
+    `blockLightFlicker + 1.4`. Remaining lighting gaps: vanilla
+    `EnvironmentAttributeProbe` Gaussian spatial interpolation, fog/water-fog
+    and full sky renderer presentation, any non-SKY biome modifiers that need a
+    renderer surface, smooth/AO entity light, GUI / entity-in-UI lighting
+    variants, and the colored debug fallback's baked-shade approximation.
   - The hurt red damage overlay is implemented end to end as a real overlay pass,
     not a tint: `LivingEntity.hurtTime` is tracked client-side (set to
     `hurtDuration` = 10 by `apply_hurt_animation`/`apply_damage_event`, decremented

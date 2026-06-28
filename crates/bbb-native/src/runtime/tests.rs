@@ -4,6 +4,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use bbb_pack::{BiomeColorCatalog, BiomeColorProfile, GrassColorModifier};
 use bbb_protocol::packets::ClockUpdate as ProtocolClockUpdate;
 use bbb_protocol::packets::{
     BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate, BossBarColor, BossBarOverlay,
@@ -257,7 +258,7 @@ fn clear_color_applies_client_sky_flash_color_layer() {
     assert_clear_color_close(flashed, expected);
     assert!(flashed.r > baseline.r);
     assert!(flashed.g > baseline.g);
-    assert!(flashed.b > baseline.b);
+    assert!(flashed.b >= baseline.b);
 }
 
 #[test]
@@ -270,6 +271,27 @@ fn clear_color_hides_client_sky_flash_when_option_is_enabled() {
     let hidden = clear_color_for_world(&world, true);
 
     assert_eq!(hidden, baseline);
+}
+
+#[test]
+fn clear_color_samples_camera_biome_sky_color_attribute() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, 6_000);
+    world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));
+    world.insert_decoded_chunk(empty_lightmap_test_chunk_with_biome(world.dimension(), 42));
+    let textures =
+        TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([biome_profile(
+            42,
+            [0x10, 0x20, 0x30],
+        )]));
+
+    let clear =
+        clear_color_for_world_at_camera(&world, &textures, camera_pose_from_world(&world), false);
+    let expected =
+        clear_color_for_day_time_with_sky_color(6_000, 0.0, 0.0, Some([0x10, 0x20, 0x30]));
+
+    assert_clear_color_close(clear, expected);
+    assert!(clear.b < clear_color_for_world(&world, false).b);
 }
 
 #[test]
@@ -815,6 +837,10 @@ fn mob_effect_with_blend(
 }
 
 fn empty_lightmap_test_chunk(dimension: WorldDimension) -> ChunkColumn {
+    empty_lightmap_test_chunk_with_biome(dimension, 0)
+}
+
+fn empty_lightmap_test_chunk_with_biome(dimension: WorldDimension, biome_id: i32) -> ChunkColumn {
     let section_count = usize::try_from(dimension.height.div_euclid(16)).unwrap();
     ChunkColumn {
         pos: ChunkPos { x: 0, z: 0 },
@@ -825,11 +851,28 @@ fn empty_lightmap_test_chunk(dimension: WorldDimension) -> ChunkColumn {
                 non_empty_block_count: 0,
                 fluid_count: 0,
                 block_states: single_value_container(PaletteDomain::BlockStates, 4096, 0),
-                biomes: single_value_container(PaletteDomain::Biomes, 64, 0),
+                biomes: single_value_container(PaletteDomain::Biomes, 64, biome_id),
             })
             .collect(),
         block_entities: Vec::new(),
         light: LightData::default(),
+    }
+}
+
+fn biome_profile(id: i32, sky_color: [u8; 3]) -> BiomeColorProfile {
+    BiomeColorProfile {
+        id,
+        name: format!("minecraft:test_biome_{id}"),
+        temperature: 0.8,
+        downfall: 0.4,
+        grass_color: None,
+        foliage_color: None,
+        dry_foliage_color: None,
+        water_color: None,
+        fog_color: None,
+        sky_color: Some(sky_color),
+        water_fog_color: None,
+        grass_color_modifier: GrassColorModifier::None,
     }
 }
 

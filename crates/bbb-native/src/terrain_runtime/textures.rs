@@ -286,6 +286,17 @@ impl TerrainTextureState {
         (texture_indices, tint)
     }
 
+    pub(crate) fn biome_sky_color(&self, biome_id: Option<i32>) -> Option<[u8; 3]> {
+        self.biome_profile(biome_id)?.sky_color
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_biome_colors_for_tests(biome_colors: BiomeColorCatalog) -> Self {
+        let mut state = Self::default();
+        state.biome_colors = Some(biome_colors);
+        state
+    }
+
     pub(super) fn block_render_data(
         &self,
         block_name: Option<&str>,

@@ -22,6 +22,17 @@ fn parse_hex_rgb(color: &str) -> Result<[u8; 3]> {
     ])
 }
 
+fn raw_rgb_attribute(
+    attributes: &BTreeMap<String, serde_json::Value>,
+    key: &str,
+) -> Result<Option<[u8; 3]>> {
+    attributes
+        .get(key)
+        .and_then(serde_json::Value::as_str)
+        .map(parse_hex_rgb)
+        .transpose()
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ColorMapImage {
     pub width: u32,
@@ -159,6 +170,9 @@ pub struct BiomeColorProfile {
     pub foliage_color: Option<[u8; 3]>,
     pub dry_foliage_color: Option<[u8; 3]>,
     pub water_color: Option<[u8; 3]>,
+    pub fog_color: Option<[u8; 3]>,
+    pub sky_color: Option<[u8; 3]>,
+    pub water_fog_color: Option<[u8; 3]>,
     pub grass_color_modifier: GrassColorModifier,
 }
 
@@ -193,6 +207,12 @@ impl BiomeColorProfile {
                 .as_deref()
                 .map(parse_hex_rgb)
                 .transpose()?,
+            fog_color: raw_rgb_attribute(&raw.attributes, "minecraft:visual/fog_color")?,
+            sky_color: raw_rgb_attribute(&raw.attributes, "minecraft:visual/sky_color")?,
+            water_fog_color: raw_rgb_attribute(
+                &raw.attributes,
+                "minecraft:visual/water_fog_color",
+            )?,
             grass_color_modifier: raw.effects.grass_color_modifier.unwrap_or_default(),
         })
     }
@@ -211,6 +231,8 @@ pub enum GrassColorModifier {
 struct RawBiomeColorProfile {
     temperature: f32,
     downfall: f32,
+    #[serde(default)]
+    attributes: BTreeMap<String, serde_json::Value>,
     #[serde(default)]
     effects: RawBiomeColorEffects,
 }

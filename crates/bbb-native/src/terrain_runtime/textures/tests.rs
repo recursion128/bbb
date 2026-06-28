@@ -772,6 +772,9 @@ fn block_tint_uses_loaded_biome_color_profiles() {
         foliage_color: Some([4, 5, 6]),
         dry_foliage_color: Some([7, 8, 9]),
         water_color: Some([10, 11, 12]),
+        fog_color: None,
+        sky_color: None,
+        water_fog_color: None,
         grass_color_modifier: GrassColorModifier::None,
     }]));
 
@@ -834,6 +837,9 @@ fn biome_climate_changes_colormap_sample() {
         foliage_color: None,
         dry_foliage_color: None,
         water_color: None,
+        fog_color: None,
+        sky_color: None,
+        water_fog_color: None,
         grass_color_modifier: GrassColorModifier::None,
     }]));
 
