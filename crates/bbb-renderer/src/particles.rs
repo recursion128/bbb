@@ -334,7 +334,9 @@ impl ParticleInstance {
         let velocity = descriptor.initial_velocity.sample(command.velocity, random);
         let (current_sprite_index, current_sprite_id) =
             select_initial_sprite(&command.sprite_ids, descriptor.sprite_selection, random);
-        let visual = descriptor.visual.sample(random);
+        let visual = descriptor
+            .visual
+            .sample_for_command(random, command.velocity);
         Self {
             particle_type_id: command.particle_type_id,
             particle_id: command.particle_id,
@@ -979,6 +981,23 @@ mod tests {
         assert_range_f32(cloud.color[0], 0.7, 1.0);
         assert_eq!(cloud.color[0], cloud.color[1]);
         assert_eq!(cloud.color[1], cloud.color[2]);
+
+        let mut note_random = ParticleRandom::new(54);
+        let mut note_command = spawn_command("minecraft:note", 1.0);
+        note_command.velocity = [0.0, 0.0, 0.0];
+        let note = ParticleInstance::from_spawn_command(note_command, &mut note_random);
+        assert_eq!(note.provider, "NoteParticle.Provider");
+        assert_eq!(note.lifetime_ticks, 6);
+        assert_eq!(note.quad_size_curve, ParticleQuadSizeCurve::GrowToBase);
+        assert_range_f32(note.base_quad_size, 0.15, 0.3);
+        assert_close_f32(note.color[0], 0.35);
+        assert_close_f32(note.color[1], 0.912_916_5);
+        assert_close_f32(note.color[2], 0.0);
+        assert_eq!(note.color[3], 1.0);
+        assert_eq!(note.friction, 0.66);
+        assert!(note.has_physics);
+        assert!(note.speed_up_when_y_motion_is_blocked);
+        assert_range_f64(note.velocity[1], 0.198, 0.202);
 
         let mut angry_villager_random = ParticleRandom::new(52);
         let angry_villager = ParticleInstance::from_spawn_command(

@@ -48,6 +48,7 @@ pub(crate) enum ParticleSpriteSelection {
 pub(crate) enum ParticleVisualDescriptor {
     BaseSingleQuad,
     PlayerCloud,
+    Note,
     SingleQuadScaled {
         scale: f32,
         color: ParticleColorDescriptor,
@@ -377,6 +378,21 @@ impl ParticleDescriptor {
                 has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
+            "minecraft:note" => Self {
+                provider: "NoteParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::Fixed(6),
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::Note,
+                initial_velocity:
+                    ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledWithYOffset {
+                        scale: 0.01,
+                        y_offset: 0.2,
+                    },
+                friction: 0.66,
+                gravity: 0.0,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: true,
+            },
             "minecraft:egg_crack" => Self {
                 provider: "SuspendedTownParticle.EggCrackProvider",
                 lifetime: ParticleLifetimeDescriptor::BaseAshSmoke {
@@ -435,7 +451,11 @@ impl ParticleDescriptor {
 }
 
 impl ParticleVisualDescriptor {
-    pub(crate) fn sample(self, random: &mut ParticleRandom) -> ParticleVisualState {
+    pub(crate) fn sample_for_command(
+        self,
+        random: &mut ParticleRandom,
+        command_velocity: [f64; 3],
+    ) -> ParticleVisualState {
         let base_quad_size = sample_single_quad_size(random);
         match self {
             Self::BaseSingleQuad => ParticleVisualState::new(
@@ -451,6 +471,11 @@ impl ParticleVisualDescriptor {
                     ParticleQuadSizeCurve::GrowToBase,
                 )
             }
+            Self::Note => ParticleVisualState::new(
+                base_quad_size * 1.5,
+                note_color(command_velocity[0] as f32),
+                ParticleQuadSizeCurve::GrowToBase,
+            ),
             Self::SingleQuadScaled {
                 scale,
                 color,
@@ -698,6 +723,22 @@ fn sample_single_quad_size(random: &mut ParticleRandom) -> f32 {
 
 fn sample_range(random: &mut ParticleRandom, min: f32, max: f32) -> f32 {
     min + random.next_f32() * (max - min)
+}
+
+fn note_color(color: f32) -> [f32; 4] {
+    [
+        note_color_component(color, 0.0),
+        note_color_component(color, 1.0 / 3.0),
+        note_color_component(color, 2.0 / 3.0),
+        1.0,
+    ]
+}
+
+fn note_color_component(color: f32, offset: f32) -> f32 {
+    ((color + offset) * std::f32::consts::TAU)
+        .sin()
+        .mul_add(0.65, 0.35)
+        .max(0.0)
 }
 
 fn random_signed_velocity(random: &mut ParticleRandom) -> f64 {
@@ -987,6 +1028,24 @@ mod tests {
             ParticleInitialVelocityDescriptor::ParticleConstructorScaled { scale: 0.02 }
         );
         assert_descriptor(
+            "minecraft:note",
+            "NoteParticle.Provider",
+            ParticleLifetimeDescriptor::Fixed(6),
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::Note,
+            0.66,
+            0.0,
+            true,
+            true,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:note").initial_velocity,
+            ParticleInitialVelocityDescriptor::ParticleConstructorZeroScaledWithYOffset {
+                scale: 0.01,
+                y_offset: 0.2
+            }
+        );
+        assert_descriptor(
             "minecraft:egg_crack",
             "SuspendedTownParticle.EggCrackProvider",
             ParticleLifetimeDescriptor::BaseAshSmoke {
@@ -1034,16 +1093,18 @@ mod tests {
     #[test]
     fn visual_descriptors_sample_vanilla_shaped_size_color_and_curves() {
         let mut flame_random = ParticleRandom::new(7);
-        let flame = ParticleVisualDescriptor::Flame { scale: 1.0 }.sample(&mut flame_random);
+        let flame = ParticleVisualDescriptor::Flame { scale: 1.0 }
+            .sample_for_command(&mut flame_random, [0.0, 0.0, 0.0]);
         let mut small_flame_random = ParticleRandom::new(7);
-        let small_flame =
-            ParticleVisualDescriptor::Flame { scale: 0.5 }.sample(&mut small_flame_random);
+        let small_flame = ParticleVisualDescriptor::Flame { scale: 0.5 }
+            .sample_for_command(&mut small_flame_random, [0.0, 0.0, 0.0]);
         assert_close_f32(small_flame.base_quad_size, flame.base_quad_size * 0.5);
         assert_eq!(flame.color, WHITE_PARTICLE_COLOR);
         assert_eq!(flame.quad_size_curve, ParticleQuadSizeCurve::Flame);
 
         let mut cloud_random = ParticleRandom::new(8);
-        let cloud = ParticleVisualDescriptor::PlayerCloud.sample(&mut cloud_random);
+        let cloud = ParticleVisualDescriptor::PlayerCloud
+            .sample_for_command(&mut cloud_random, [0.0, 0.0, 0.0]);
         assert_range_f32(cloud.base_quad_size, 0.1875, 0.375);
         assert_range_f32(cloud.color[0], 0.7, 1.0);
         assert_eq!(cloud.color[0], cloud.color[1]);
@@ -1051,13 +1112,23 @@ mod tests {
         assert_eq!(cloud.color[3], 1.0);
         assert_eq!(cloud.quad_size_curve, ParticleQuadSizeCurve::GrowToBase);
 
+        let mut note_random = ParticleRandom::new(21);
+        let note =
+            ParticleVisualDescriptor::Note.sample_for_command(&mut note_random, [0.0, 0.0, 0.0]);
+        assert_range_f32(note.base_quad_size, 0.15, 0.3);
+        assert_close_f32(note.color[0], 0.35);
+        assert_close_f32(note.color[1], 0.912_916_5);
+        assert_close_f32(note.color[2], 0.0);
+        assert_eq!(note.color[3], 1.0);
+        assert_eq!(note.quad_size_curve, ParticleQuadSizeCurve::GrowToBase);
+
         let mut heart_random = ParticleRandom::new(17);
         let heart = ParticleVisualDescriptor::SingleQuadScaled {
             scale: 1.5,
             color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
             quad_size_curve: ParticleQuadSizeCurve::GrowToBase,
         }
-        .sample(&mut heart_random);
+        .sample_for_command(&mut heart_random, [0.0, 0.0, 0.0]);
         assert_range_f32(heart.base_quad_size, 0.15, 0.3);
         assert_eq!(heart.color, WHITE_PARTICLE_COLOR);
         assert_eq!(heart.quad_size_curve, ParticleQuadSizeCurve::GrowToBase);
@@ -1070,7 +1141,7 @@ mod tests {
                 max: DRAGON_BREATH_COLOR_MAX,
             },
         }
-        .sample(&mut dragon_random);
+        .sample_for_command(&mut dragon_random, [0.0, 0.0, 0.0]);
         assert_range_f32(dragon_breath.base_quad_size, 0.075, 0.15);
         assert_range_f32(
             dragon_breath.color[0],
@@ -1098,7 +1169,7 @@ mod tests {
                 },
             ),
         }
-        .sample(&mut dolphin_random);
+        .sample_for_command(&mut dolphin_random, [0.0, 0.0, 0.0]);
         assert_range_f32(dolphin.base_quad_size, 0.05, 0.22);
         assert_close_f32(dolphin.color[0], 0.3);
         assert_close_f32(dolphin.color[1], 0.5);
@@ -1112,7 +1183,7 @@ mod tests {
                 1.0, 1.0, 1.0,
             ])),
         }
-        .sample(&mut happy_villager_random);
+        .sample_for_command(&mut happy_villager_random, [0.0, 0.0, 0.0]);
         assert_range_f32(happy_villager.base_quad_size, 0.05, 0.22);
         assert_eq!(happy_villager.color, WHITE_PARTICLE_COLOR);
         assert_eq!(
@@ -1124,7 +1195,7 @@ mod tests {
         let mycelium = ParticleVisualDescriptor::SuspendedTown {
             color: SuspendedTownColorDescriptor::BaseGray,
         }
-        .sample(&mut mycelium_random);
+        .sample_for_command(&mut mycelium_random, [0.0, 0.0, 0.0]);
         assert_range_f32(mycelium.base_quad_size, 0.05, 0.22);
         assert_range_f32(mycelium.color[0], 0.2, 0.3);
         assert_eq!(mycelium.color[0], mycelium.color[1]);
@@ -1137,7 +1208,7 @@ mod tests {
             scale: 2.5,
             color: ParticleColorDescriptor::RandomGray { max: 0.3 },
         }
-        .sample(&mut smoke_random);
+        .sample_for_command(&mut smoke_random, [0.0, 0.0, 0.0]);
         assert_range_f32(smoke.base_quad_size, 0.1875, 0.375);
         assert_range_f32(smoke.color[0], 0.0, 0.3);
         assert_eq!(smoke.color[0], smoke.color[1]);
@@ -1149,7 +1220,7 @@ mod tests {
             scale: 1.0,
             color: ParticleColorDescriptor::FixedRgb(WHITE_ASH_SMOKE_RGB),
         }
-        .sample(&mut white_smoke_random);
+        .sample_for_command(&mut white_smoke_random, [0.0, 0.0, 0.0]);
         assert_eq!(
             white_smoke.color,
             [
@@ -1161,7 +1232,8 @@ mod tests {
         );
 
         let mut poof_random = ParticleRandom::new(11);
-        let poof = ParticleVisualDescriptor::Explode.sample(&mut poof_random);
+        let poof =
+            ParticleVisualDescriptor::Explode.sample_for_command(&mut poof_random, [0.0, 0.0, 0.0]);
         assert_range_f32(poof.base_quad_size, 0.1, 0.7);
         assert_range_f32(poof.color[0], 0.7, 1.0);
         assert_eq!(poof.quad_size_curve, ParticleQuadSizeCurve::Constant);
