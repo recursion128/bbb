@@ -453,10 +453,20 @@ impl LightmapTickState {
             self.tick_water_vision(world);
             self.tick_end_flash(world);
             self.tick_boss_overlay_world_darkening(world);
-            self.tick_rain_fog(world);
         }
         self.client_tick_count = self.client_tick_count.saturating_add(ticks as u64);
         self.block_factor()
+    }
+
+    fn advance_rain_fog_for_world(
+        &mut self,
+        ticks: u32,
+        world: &WorldStore,
+        terrain_textures: &TerrainTextureState,
+    ) {
+        for _ in 0..ticks {
+            self.tick_rain_fog(world, terrain_textures);
+        }
     }
 
     fn environment_for_world(&self, world: &WorldStore) -> LightmapEnvironment {
@@ -585,8 +595,8 @@ impl LightmapTickState {
                 * partial_tick
     }
 
-    fn tick_rain_fog(&mut self, world: &WorldStore) {
-        let target = atmospheric_rain_fog_target_multiplier(world);
+    fn tick_rain_fog(&mut self, world: &WorldStore, terrain_textures: &TerrainTextureState) {
+        let target = atmospheric_rain_fog_target_multiplier(world, terrain_textures);
         self.rain_fog_multiplier +=
             (target - self.rain_fog_multiplier) * VANILLA_RAIN_FOG_SMOOTHING_PER_TICK;
     }
@@ -1366,6 +1376,7 @@ pub(crate) fn pump_network_and_terrain(
     let running_ticks = world.consume_running_render_ticks(advanced_ticks);
     world.advance_client_time(running_ticks);
     lightmap_ticks.advance_for_world(advanced_ticks, world);
+    lightmap_ticks.advance_rain_fog_for_world(advanced_ticks, world, terrain_textures);
     let water_vision = lightmap_ticks.water_vision(world);
     let rain_fog_multiplier = lightmap_ticks.rain_fog_multiplier();
     renderer.set_lightmap_environment(lightmap_ticks.environment_for_world(world));
@@ -4200,7 +4211,10 @@ fn apply_atmospheric_rain_fog_distance(
         .max(*environmental_end + VANILLA_RAIN_FOG_END_OFFSET * rain_fog_multiplier);
 }
 
-fn atmospheric_rain_fog_target_multiplier(world: &WorldStore) -> f32 {
+fn atmospheric_rain_fog_target_multiplier(
+    world: &WorldStore,
+    terrain_textures: &TerrainTextureState,
+) -> f32 {
     if world.level_info().map(vanilla_lightmap_dimension_kind)
         != Some(VanillaLightmapDimensionKind::Overworld)
     {
@@ -4222,8 +4236,14 @@ fn atmospheric_rain_fog_target_multiplier(world: &WorldStore) -> f32 {
     let sky_light_multiplier = ((sky_light - VANILLA_RAIN_FOG_MIN_SKY_LIGHT)
         / VANILLA_RAIN_FOG_SKY_LIGHT_RANGE)
         .clamp(0.0, 1.0);
+    let precipitation_multiplier =
+        if camera_biome_has_precipitation(world, terrain_textures, block_pos) {
+            1.0
+        } else {
+            0.5
+        };
 
-    rain_level * sky_light_multiplier
+    rain_level * sky_light_multiplier * precipitation_multiplier
 }
 
 fn dimension_sky_color_for_kind(kind: VanillaLightmapDimensionKind) -> Option<[u8; 3]> {
@@ -4475,6 +4495,19 @@ fn camera_block_position(world: &WorldStore) -> Option<BlockPos> {
         y: eye[1].floor() as i32,
         z: eye[2].floor() as i32,
     })
+}
+
+fn camera_biome_has_precipitation(
+    world: &WorldStore,
+    terrain_textures: &TerrainTextureState,
+    block_pos: BlockPos,
+) -> bool {
+    let biome_id = world
+        .probe_block(block_pos)
+        .and_then(|block| block.biome_id);
+    terrain_textures
+        .biome_has_precipitation(biome_id)
+        .unwrap_or(true)
 }
 
 fn gaussian_biome_rgb_color(

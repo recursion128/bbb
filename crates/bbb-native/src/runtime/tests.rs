@@ -220,17 +220,20 @@ fn lightmap_tick_state_smooths_rain_fog_multiplier_like_vanilla_atmospheric_fog(
         0,
         15,
     ));
+    let textures = TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
+        biome_profile_with_precipitation(0, true),
+    ]));
     set_world_weather(&mut world, 1.0, 0.0);
 
     let mut lightmap = LightmapTickState::with_seed(0);
-    lightmap.advance_for_world(1, &world);
+    lightmap.advance_rain_fog_for_world(1, &world, &textures);
     assert!((lightmap.rain_fog_multiplier() - 0.2).abs() < 1e-6);
 
-    lightmap.advance_for_world(1, &world);
+    lightmap.advance_rain_fog_for_world(1, &world, &textures);
     assert!((lightmap.rain_fog_multiplier() - 0.36).abs() < 1e-6);
 
     set_world_weather(&mut world, 0.0, 0.0);
-    lightmap.advance_for_world(1, &world);
+    lightmap.advance_rain_fog_for_world(1, &world, &textures);
     assert!((lightmap.rain_fog_multiplier() - 0.288).abs() < 1e-6);
 }
 
@@ -254,12 +257,35 @@ fn lightmap_tick_state_gates_rain_fog_multiplier_by_camera_sky_light() {
             .sky,
         8
     );
+    let textures = TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
+        biome_profile_with_precipitation(0, true),
+    ]));
     set_world_weather(&mut world, 1.0, 0.0);
 
     let mut lightmap = LightmapTickState::with_seed(0);
-    lightmap.advance_for_world(1, &world);
+    lightmap.advance_rain_fog_for_world(1, &world, &textures);
 
     assert_eq!(lightmap.rain_fog_multiplier(), 0.0);
+}
+
+#[test]
+fn lightmap_tick_state_halves_rain_fog_target_when_camera_biome_has_no_precipitation() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));
+    world.insert_decoded_chunk(empty_lightmap_test_chunk_with_sky_light(
+        world.dimension(),
+        42,
+        15,
+    ));
+    let textures = TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
+        biome_profile_with_precipitation(42, false),
+    ]));
+    set_world_weather(&mut world, 1.0, 0.0);
+
+    let mut lightmap = LightmapTickState::with_seed(0);
+    lightmap.advance_rain_fog_for_world(1, &world, &textures);
+
+    assert!((lightmap.rain_fog_multiplier() - 0.1).abs() < 1e-6);
 }
 
 #[test]
@@ -1257,6 +1283,7 @@ fn biome_profile_with_environment(
         name: format!("minecraft:test_biome_{id}"),
         temperature: 0.8,
         downfall: 0.4,
+        has_precipitation: true,
         grass_color: None,
         foliage_color: None,
         dry_foliage_color: None,
@@ -1265,6 +1292,13 @@ fn biome_profile_with_environment(
         sky_color,
         water_fog_color,
         grass_color_modifier: GrassColorModifier::None,
+    }
+}
+
+fn biome_profile_with_precipitation(id: i32, has_precipitation: bool) -> BiomeColorProfile {
+    BiomeColorProfile {
+        has_precipitation,
+        ..biome_profile_with_environment(id, None, None, None)
     }
 }
 

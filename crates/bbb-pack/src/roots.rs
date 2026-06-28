@@ -1078,6 +1078,7 @@ mod tests {
               },
               "temperature": 0.8,
               "downfall": 0.4,
+              "has_precipitation": true,
               "effects": {
                 "water_color": "#123456"
               }
@@ -1088,6 +1089,7 @@ mod tests {
             r##"{
               "temperature": 0.8,
               "downfall": 0.9,
+              "has_precipitation": true,
               "effects": {
                 "dry_foliage_color": "#7b5334",
                 "foliage_color": "#6a7039",
@@ -1103,6 +1105,7 @@ mod tests {
         assert_eq!(plains.name, "minecraft:plains");
         assert_eq!(plains.temperature, 0.8);
         assert_eq!(plains.downfall, 0.4);
+        assert!(plains.has_precipitation);
         assert_eq!(plains.water_color, Some([0x12, 0x34, 0x56]));
         assert_eq!(plains.fog_color, Some([0xc0, 0xd8, 0xff]));
         assert_eq!(plains.sky_color, Some([0x78, 0xa7, 0xff]));
@@ -1140,6 +1143,7 @@ mod tests {
             r##"{
               "temperature": 0.8,
               "downfall": 0.4,
+              "has_precipitation": true,
               "effects": {
                 "water_color": "#123456"
               }
@@ -1150,6 +1154,7 @@ mod tests {
             r##"{
               "temperature": 0.8,
               "downfall": 0.9,
+              "has_precipitation": true,
               "effects": {
                 "water_color": "#617b64"
               }
@@ -1160,6 +1165,7 @@ mod tests {
             r##"{
               "temperature": 0.7,
               "downfall": 0.3,
+              "has_precipitation": false,
               "effects": {
                 "water_color": "#abcdef",
                 "grass_color": "#010203"
@@ -1176,6 +1182,7 @@ mod tests {
 
         assert_eq!(plains.temperature, 0.7);
         assert_eq!(plains.downfall, 0.3);
+        assert!(!plains.has_precipitation);
         assert_eq!(plains.water_color, Some([0xab, 0xcd, 0xef]));
         assert_eq!(plains.grass_color, Some([1, 2, 3]));
         assert_eq!(swamp.water_color, Some([0x61, 0x7b, 0x64]));

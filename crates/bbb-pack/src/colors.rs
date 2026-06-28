@@ -166,6 +166,7 @@ pub struct BiomeColorProfile {
     pub name: String,
     pub temperature: f32,
     pub downfall: f32,
+    pub has_precipitation: bool,
     pub grass_color: Option<[u8; 3]>,
     pub foliage_color: Option<[u8; 3]>,
     pub dry_foliage_color: Option<[u8; 3]>,
@@ -183,6 +184,7 @@ impl BiomeColorProfile {
             name,
             temperature: raw.temperature,
             downfall: raw.downfall,
+            has_precipitation: raw.has_precipitation,
             grass_color: raw
                 .effects
                 .grass_color
@@ -231,6 +233,7 @@ pub enum GrassColorModifier {
 struct RawBiomeColorProfile {
     temperature: f32,
     downfall: f32,
+    has_precipitation: bool,
     #[serde(default)]
     attributes: BTreeMap<String, serde_json::Value>,
     #[serde(default)]

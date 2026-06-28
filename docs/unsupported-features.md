@@ -621,21 +621,21 @@ When an agent does any of the following, update this file in the same slice:
     lightning sky flash does not tint water fog. The startup
     `--hide-lightning-flash` option suppresses both lightmap and atmospheric
     clear-color sky flash layers. Native also tracks the vanilla atmospheric
-    `rainFogMultiplier` shape for exposed Overworld rain: 0.2/tick smoothing,
-    the camera sky-light gate, and the `-160` / `-256` environmental
-    start/end offsets. Renderer camera uniforms now include vanilla-shaped fog
-    color, environmental and render-distance ranges, plus `FogData.skyEnd` /
-    `cloudEnd`; native generates the atmospheric defaults, boss-world-fog
-    clamp, and water-fog visibility ends from the vanilla environment classes.
+    `rainFogMultiplier` shape for Overworld rain: 0.2/tick smoothing, the camera
+    sky-light gate, biome `has_precipitation` 1.0/0.5 target multiplier, and the
+    `-160` / `-256` environmental start/end offsets. Renderer camera uniforms
+    now include vanilla-shaped fog color, environmental and render-distance
+    ranges, plus `FogData.skyEnd` / `cloudEnd`; native generates the atmospheric
+    defaults, boss-world-fog clamp, and water-fog visibility ends from the
+    vanilla environment classes.
     Terrain, entity, item-model, item-entity, particle, block-destroy, and
     selection world shaders compute spherical/cylindrical camera distance and
     apply fog in the vanilla `apply_fog` shape. The startup `--render-distance`
     option defaults to `12` chunks, accepts `2..=32`, and drives the
-    render-distance fog span. Remaining non-SKY environment modifiers, precise
-    biome precipitation scaling for the rain-fog target, sky / cloud mesh
-    presentation that consumes those visibility ends, and full sky mesh /
-    atmosphere presentation are still broader visual gaps. Overworld variants
-    use ambient `0x0A0A0A`. The block flicker path still advances
+    render-distance fog span. Remaining non-SKY environment modifiers, sky /
+    cloud mesh presentation that consumes those visibility ends, and full sky
+    mesh / atmosphere presentation are still broader visual gaps. Overworld
+    variants use ambient `0x0A0A0A`. The block flicker path still advances
     `blockLightFlicker` with the
     `LightmapRenderStateExtractor.tick()` formula and the shaders read
     `blockLightFlicker + 1.4`. Remaining lighting gaps: full sky renderer
