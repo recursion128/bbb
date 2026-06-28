@@ -34,6 +34,7 @@ mod particle_runtime;
 mod profile_resolver;
 mod runtime;
 mod skin_runtime;
+mod sky_assets;
 mod startup;
 mod terrain_runtime;
 
@@ -56,6 +57,7 @@ use runtime::{
     LightmapTickState,
 };
 use skin_runtime::default_player_skin_cache_dir;
+use sky_assets::load_sky_textures;
 use startup::{
     build_window, create_event_loop, init_tracing, load_pack_roots, parse_args,
     run_probe_if_requested, spawn_frame_tick, start_control_api, start_network_if_requested,
@@ -257,6 +259,7 @@ fn main() -> Result<()> {
     let terrain_textures = load_terrain_textures(&mut renderer, pack_roots.as_ref());
     load_hud_textures(&mut renderer, pack_roots.as_ref());
     load_entity_model_textures(&mut renderer, pack_roots.as_ref());
+    load_sky_textures(&mut renderer, pack_roots.as_ref());
     if let Some(particles) = &particle_runtime {
         if let Err(err) = particles.upload_particle_atlas(&mut renderer) {
             tracing::warn!(?err, "continuing without native particle atlas");

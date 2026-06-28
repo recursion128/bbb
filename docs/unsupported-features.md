@@ -659,9 +659,13 @@ When an agent does any of the following, update this file in the same slice:
     and the client lightning sky-flash layer. The same sky mesh now appends
     the vanilla `SkyRenderer.renderSunriseAndSunset` fan: 16 ring steps, center
     alpha 1, ring alpha 0, `SUNRISE_SUNSET_COLOR`, and `SUN_ANGLE` orientation,
-    expanded to triangle-list vertices for wgpu. Remaining visual gaps are
-    cloud mesh presentation that consumes these visibility ends, the day
-    timeline's cloud/star/moon/sun textured celestial mesh state, End sky,
+    expanded to triangle-list vertices for wgpu. The renderer also presents
+    End skyboxes from vanilla `SkyRenderer.buildEndSky`: 6 `POSITION_TEX_COLOR`
+    quad faces expanded to triangle-list vertices, `0..16` UV repeat sampling,
+    `0x282828` vertex color, and the official
+    `textures/environment/end_sky.png` loaded from the resource stack. Remaining
+    visual gaps are cloud mesh presentation that consumes these visibility ends,
+    the day timeline's cloud/star/moon/sun textured celestial mesh state,
     fuller atmosphere presentation, and later custom-pack EnvironmentAttribute
     generalization when a concrete renderer surface exists. Overworld variants use ambient `0x0A0A0A`. The
     block flicker path still advances
@@ -673,7 +677,7 @@ When an agent does any of the following, update this file in the same slice:
     and `BrightnessFactor` `notGamma` mix instead of the earlier
     `max(block, sky * 0.95)` scalar approximation. Remaining lighting gaps:
     cloud and remaining celestial sky renderer presentation (textured sun/moon,
-    stars, End sky), the real dynamic 16x16 LightTexture texture pass, provider-specific particle light emission
+    stars), the real dynamic 16x16 LightTexture texture pass, provider-specific particle light emission
     overrides, smooth/AO entity light, GUI / entity-in-UI lighting variants,
     and the colored debug fallback's baked-shade approximation. The item-model
     shader now consumes submitted item stack light coords through the same

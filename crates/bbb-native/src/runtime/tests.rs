@@ -508,11 +508,32 @@ fn sky_environment_applies_client_sky_flash_layer_and_dimension_gate() {
     );
     assert_ne!(flashed, hidden);
 
-    let end = world_with_dimension(2, "minecraft:the_end");
+    let nether = world_with_dimension(1, "minecraft:the_nether");
     assert_eq!(
-        sky_environment_for_world_at_camera(&end, &textures, camera_pose_from_world(&end), false),
+        sky_environment_for_world_at_camera(
+            &nether,
+            &textures,
+            camera_pose_from_world(&nether),
+            false
+        ),
         SkyEnvironment::disabled()
     );
+}
+
+#[test]
+fn sky_environment_projects_end_skybox_state() {
+    let end = world_with_dimension(2, "minecraft:the_end");
+
+    let sky = sky_environment_for_world_at_camera(
+        &end,
+        &TerrainTextureState::default(),
+        camera_pose_from_world(&end),
+        false,
+    );
+
+    assert!(sky.end_sky_visible());
+    assert!(!sky.is_visible());
+    assert_eq!(sky.sunrise_sunset_color[3], 0.0);
 }
 
 #[test]

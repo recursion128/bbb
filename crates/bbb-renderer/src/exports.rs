@@ -89,4 +89,4 @@ pub use crate::player_skin::{
 };
 pub use crate::renderer::Renderer;
 pub use crate::selection::{SelectionBox, SelectionOutline};
-pub use crate::sky::SkyEnvironment;
+pub use crate::sky::{SkyEnvironment, SkyboxKind};

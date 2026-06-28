@@ -42,7 +42,11 @@ use crate::{
         create_selection_outline_gpu, create_selection_pipeline, SelectionOutline,
         SelectionOutlineGpu,
     },
-    sky::{create_sky_disc_gpu, create_sky_pipeline, SkyDiscGpu, SkyEnvironment},
+    sky::{
+        create_end_sky_bind_group_layout, create_end_sky_gpu, create_end_sky_pipeline,
+        create_end_sky_texture_gpu, create_sky_disc_gpu, create_sky_pipeline, EndSkyGpu,
+        EndSkyTextureGpu, SkyDiscGpu, SkyEnvironment,
+    },
     terrain,
 };
 
@@ -69,6 +73,8 @@ pub struct Renderer {
     pub(super) item_model_pipeline: wgpu::RenderPipeline,
     pub(super) selection_pipeline: wgpu::RenderPipeline,
     pub(super) sky_pipeline: wgpu::RenderPipeline,
+    pub(super) end_sky_pipeline: wgpu::RenderPipeline,
+    pub(super) end_sky_texture_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) hud_pipeline: wgpu::RenderPipeline,
     pub(super) hud_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) hud_white_pixel: HudSpriteGpu,
@@ -90,6 +96,8 @@ pub struct Renderer {
     pub(super) fog_environment: FogEnvironment,
     pub(super) sky_environment: SkyEnvironment,
     pub(super) sky_disc: Option<SkyDiscGpu>,
+    pub(super) end_sky_mesh: EndSkyGpu,
+    pub(super) end_sky_texture: Option<EndSkyTextureGpu>,
     pub(super) block_destroy_overlays: Option<BlockDestroyOverlaysGpu>,
     pub(super) entity_model_mesh: Option<EntityModelMeshGpu>,
     pub(super) entity_model_textured_mesh: Option<EntityModelTexturedMeshGpu>,
@@ -366,6 +374,14 @@ impl Renderer {
         let selection_pipeline =
             create_selection_pipeline(&device, format, &terrain_bind_group_layout);
         let sky_pipeline = create_sky_pipeline(&device, format, &terrain_bind_group_layout);
+        let end_sky_texture_bind_group_layout = create_end_sky_bind_group_layout(&device);
+        let end_sky_pipeline = create_end_sky_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &end_sky_texture_bind_group_layout,
+        );
+        let end_sky_mesh = create_end_sky_gpu(&device);
         let hud_pipeline = create_hud_pipeline(&device, format, &hud_bind_group_layout);
         let hud_white_pixel = create_hud_sprite_gpu(
             &device,
@@ -403,6 +419,8 @@ impl Renderer {
             item_model_pipeline,
             selection_pipeline,
             sky_pipeline,
+            end_sky_pipeline,
+            end_sky_texture_bind_group_layout,
             hud_pipeline,
             hud_bind_group_layout,
             hud_white_pixel,
@@ -424,6 +442,8 @@ impl Renderer {
             fog_environment: FogEnvironment::default(),
             sky_environment: SkyEnvironment::default(),
             sky_disc: None,
+            end_sky_mesh,
+            end_sky_texture: None,
             block_destroy_overlays: None,
             entity_model_mesh: None,
             entity_model_textured_mesh: None,
@@ -909,6 +929,18 @@ impl Renderer {
         }
         self.sky_environment = environment;
         self.sky_disc = create_sky_disc_gpu(&self.device, environment);
+    }
+
+    pub fn upload_end_sky_texture(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+        self.end_sky_texture = Some(create_end_sky_texture_gpu(
+            &self.device,
+            &self.queue,
+            &self.end_sky_texture_bind_group_layout,
+            width,
+            height,
+            rgba,
+        )?);
+        Ok(())
     }
 
     fn scene_bounds(&self) -> Option<TerrainBounds> {

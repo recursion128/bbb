@@ -73,7 +73,17 @@ impl Renderer {
                 timestamp_writes: None,
             });
 
-            if let Some(sky_disc) = &self.sky_disc {
+            if self.sky_environment.end_sky_visible() {
+                if let Some(end_sky_texture) = &self.end_sky_texture {
+                    pass.set_pipeline(&self.end_sky_pipeline);
+                    pipeline_switches += 1;
+                    pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+                    pass.set_bind_group(1, &end_sky_texture.bind_group, &[]);
+                    pass.set_vertex_buffer(0, self.end_sky_mesh.vertex_buffer.slice(..));
+                    pass.draw(0..self.end_sky_mesh.vertex_count, 0..1);
+                    sky_draw_calls += 1;
+                }
+            } else if let Some(sky_disc) = &self.sky_disc {
                 pass.set_pipeline(&self.sky_pipeline);
                 pipeline_switches += 1;
                 pass.set_bind_group(0, &self.terrain_bind_group, &[]);

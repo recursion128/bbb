@@ -4211,6 +4211,9 @@ fn sky_environment_for_world_with_environment_colors(
         .level_info()
         .map(vanilla_lightmap_dimension_kind)
         .unwrap_or(VanillaLightmapDimensionKind::Overworld);
+    if dimension_kind == VanillaLightmapDimensionKind::End {
+        return SkyEnvironment::end();
+    }
     if dimension_kind != VanillaLightmapDimensionKind::Overworld {
         return SkyEnvironment::disabled();
     }
