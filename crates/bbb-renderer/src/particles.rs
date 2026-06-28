@@ -1387,6 +1387,21 @@ mod tests {
         assert_eq!(dragon_breath.gravity, 0.0);
         assert!(!dragon_breath.has_physics);
 
+        let mut end_rod_random = ParticleRandom::new(79);
+        let mut end_rod_command = spawn_command("minecraft:end_rod", 1.0);
+        end_rod_command.velocity = [1.0, 2.0, 3.0];
+        let end_rod = ParticleInstance::from_spawn_command(end_rod_command, &mut end_rod_random);
+        assert_eq!(end_rod.provider, "EndRodParticle.Provider");
+        assert_eq!(end_rod.sprite_selection, ParticleSpriteSelection::Age);
+        assert_range_f32(end_rod.base_quad_size, 0.075, 0.15);
+        assert_eq!(end_rod.color, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(end_rod.quad_size_curve, ParticleQuadSizeCurve::Constant);
+        assert!((60..=71).contains(&end_rod.lifetime_ticks));
+        assert_eq!(end_rod.velocity, [1.0, 2.0, 3.0]);
+        assert_eq!(end_rod.friction, 0.91);
+        assert_eq!(end_rod.gravity, 0.0125);
+        assert!(end_rod.has_physics);
+
         let mut dolphin_random = ParticleRandom::new(53);
         let dolphin = ParticleInstance::from_spawn_command(
             spawn_command("minecraft:dolphin", 1.0),

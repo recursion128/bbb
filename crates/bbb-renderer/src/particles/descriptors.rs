@@ -374,6 +374,21 @@ impl ParticleDescriptor {
                 has_physics: false,
                 speed_up_when_y_motion_is_blocked: false,
             },
+            "minecraft:end_rod" => Self {
+                provider: "EndRodParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::RandomInclusive { min: 60, max: 71 },
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 0.75,
+                    color: ParticleColorDescriptor::FixedRgba([1.0, 1.0, 1.0, 1.0]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
+                friction: 0.91,
+                gravity: 0.0125,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
             "minecraft:explosion" => Self {
                 provider: "HugeExplosionParticle.Provider",
                 lifetime: ParticleLifetimeDescriptor::RandomInclusive { min: 6, max: 9 },
@@ -1686,6 +1701,25 @@ mod tests {
             0.0,
             false,
             false,
+        );
+        assert_descriptor(
+            "minecraft:end_rod",
+            "EndRodParticle.Provider",
+            ParticleLifetimeDescriptor::RandomInclusive { min: 60, max: 71 },
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::SingleQuadScaled {
+                scale: 0.75,
+                color: ParticleColorDescriptor::FixedRgba([1.0, 1.0, 1.0, 1.0]),
+                quad_size_curve: ParticleQuadSizeCurve::Constant,
+            },
+            0.91,
+            0.0125,
+            true,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:end_rod").initial_velocity,
+            ParticleInitialVelocityDescriptor::Command
         );
         assert_descriptor(
             "minecraft:explosion",

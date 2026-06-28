@@ -4562,6 +4562,12 @@ When an agent does any of the following, update this file in the same slice:
         `8..=19` lifetime, friction `0.96`, and no-physics metadata. Roll
         option, full-bright light coords, and the translucent particle layer
         remain deferred until those per-particle states are represented.
+      - particle descriptors map `EndRodParticle.Provider` to command velocity,
+        `0.75` quad-size scaling, age sprites, `60..=71` lifetime, friction
+        `0.91`, and gravity `0.0125`. Fade color, full-bright light coords,
+        the translucent particle layer, and the EndRod-specific collision-free
+        `move` override remain deferred until those per-particle states are
+        represented.
     - native dispatcher and offline probe recording/playback for
       `LevelEventHandler` portal travel local ambience:
       - event `1032`
