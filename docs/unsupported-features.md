@@ -4538,6 +4538,11 @@ When an agent does any of the following, update this file in the same slice:
         - volume `1.0`
         - pitch `(nextFloat - nextFloat) * 0.2 + 1.0`
         - `distanceDelay=true`
+      - particle descriptors map `SpitParticle.Provider` to the
+        `ExplodeParticle` random gray tint, age sprite, quad-size and lifetime
+        formulas while overriding gravity to `0.5`; `ExplodeParticle.Provider`
+        / `minecraft:poof` uses vanilla `command + +/-0.05` velocity and
+        `0.9` friction.
     - native dispatcher and offline probe recording/playback for
       `LevelEventHandler` portal travel local ambience:
       - event `1032`

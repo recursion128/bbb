@@ -770,9 +770,26 @@ impl ParticleDescriptor {
                 lifetime: ParticleLifetimeDescriptor::Explode,
                 sprite_selection: ParticleSpriteSelection::Age,
                 visual: ParticleVisualDescriptor::Explode,
-                initial_velocity: ParticleInitialVelocityDescriptor::Command,
+                initial_velocity: ParticleInitialVelocityDescriptor::CommandScaledPlusRandom {
+                    command_scale: 1.0,
+                    random_range: 0.05,
+                },
                 friction: 0.9,
                 gravity: -0.1,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:spit" => Self {
+                provider: "SpitParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::Explode,
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::Explode,
+                initial_velocity: ParticleInitialVelocityDescriptor::CommandScaledPlusRandom {
+                    command_scale: 1.0,
+                    random_range: 0.05,
+                },
+                friction: 0.9,
+                gravity: 0.5,
                 has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
@@ -2033,6 +2050,31 @@ mod tests {
             true,
             false,
         );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:poof").initial_velocity,
+            ParticleInitialVelocityDescriptor::CommandScaledPlusRandom {
+                command_scale: 1.0,
+                random_range: 0.05,
+            }
+        );
+        assert_descriptor(
+            "minecraft:spit",
+            "SpitParticle.Provider",
+            ParticleLifetimeDescriptor::Explode,
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::Explode,
+            0.9,
+            0.5,
+            true,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:spit").initial_velocity,
+            ParticleInitialVelocityDescriptor::CommandScaledPlusRandom {
+                command_scale: 1.0,
+                random_range: 0.05,
+            }
+        );
     }
 
     #[test]
@@ -2338,6 +2380,9 @@ mod tests {
             ParticleVisualDescriptor::Explode.sample_for_command(&mut poof_random, [0.0, 0.0, 0.0]);
         assert_range_f32(poof.base_quad_size, 0.1, 0.7);
         assert_range_f32(poof.color[0], 0.7, 1.0);
+        assert_eq!(poof.color[0], poof.color[1]);
+        assert_eq!(poof.color[1], poof.color[2]);
+        assert_eq!(poof.color[3], 1.0);
         assert_eq!(poof.quad_size_curve, ParticleQuadSizeCurve::Constant);
     }
 
@@ -2386,6 +2431,16 @@ mod tests {
         assert_range_f64(bubble_velocity[0], 0.18, 0.22);
         assert_range_f64(bubble_velocity[1], 0.38, 0.42);
         assert_range_f64(bubble_velocity[2], 0.58, 0.62);
+
+        let mut explode_random = ParticleRandom::new(41);
+        let explode_velocity = ParticleInitialVelocityDescriptor::CommandScaledPlusRandom {
+            command_scale: 1.0,
+            random_range: 0.05,
+        }
+        .sample([1.0, 2.0, 3.0], &mut explode_random);
+        assert_range_f64(explode_velocity[0], 0.95, 1.05);
+        assert_range_f64(explode_velocity[1], 1.95, 2.05);
+        assert_range_f64(explode_velocity[2], 2.95, 3.05);
 
         let axis_scaled = ParticleInitialVelocityDescriptor::CommandAxisScaled {
             scale: [0.005, 0.01, 0.005],
@@ -2486,6 +2541,12 @@ mod tests {
         for _ in 0..32 {
             let lifetime = ParticleLifetimeDescriptor::FortyOverRandom.sample(&mut random);
             assert!((40..=200).contains(&lifetime));
+        }
+
+        let mut random = ParticleRandom::new(41);
+        for _ in 0..32 {
+            let lifetime = ParticleLifetimeDescriptor::Explode.sample(&mut random);
+            assert!((18..=82).contains(&lifetime));
         }
     }
 
