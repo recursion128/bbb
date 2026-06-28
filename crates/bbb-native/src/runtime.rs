@@ -283,6 +283,8 @@ pub(crate) struct LightmapTickState {
     block_light_flicker: f32,
     brightness_factor: f32,
     client_tick_count: u64,
+    night_vision_effect: LightmapEffectDurationState,
+    darkness_effect: LightmapEffectBlendState,
 }
 
 impl Default for LightmapTickState {
@@ -292,6 +294,8 @@ impl Default for LightmapTickState {
             block_light_flicker: 0.0,
             brightness_factor: VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
             client_tick_count: 0,
+            night_vision_effect: LightmapEffectDurationState::default(),
+            darkness_effect: LightmapEffectBlendState::default(),
         }
     }
 }
@@ -311,6 +315,8 @@ impl LightmapTickState {
             block_light_flicker: 0.0,
             brightness_factor: VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
             client_tick_count: 0,
+            night_vision_effect: LightmapEffectDurationState::default(),
+            darkness_effect: LightmapEffectBlendState::default(),
         }
     }
 
@@ -321,6 +327,8 @@ impl LightmapTickState {
             block_light_flicker: 0.0,
             brightness_factor: sanitize_lightmap_brightness_factor(brightness_factor),
             client_tick_count: 0,
+            night_vision_effect: LightmapEffectDurationState::default(),
+            darkness_effect: LightmapEffectBlendState::default(),
         }
     }
 
@@ -332,13 +340,34 @@ impl LightmapTickState {
         self.block_factor()
     }
 
+    fn advance_for_world(&mut self, ticks: u32, world: &WorldStore) -> f32 {
+        self.night_vision_effect.sync(local_player_effect_snapshot(
+            world,
+            VANILLA_MOB_EFFECT_NIGHT_VISION_ID,
+        ));
+        self.darkness_effect.sync(local_player_effect_snapshot(
+            world,
+            VANILLA_MOB_EFFECT_DARKNESS_ID,
+        ));
+        for _ in 0..ticks {
+            self.tick();
+            self.night_vision_effect.tick_duration();
+            self.darkness_effect.tick();
+        }
+        self.client_tick_count = self.client_tick_count.saturating_add(ticks as u64);
+        self.block_factor()
+    }
+
     fn environment_for_world(&self, world: &WorldStore) -> LightmapEnvironment {
-        lightmap_environment_for_world_at_tick(
+        lightmap_environment_for_world_with_effects(
             world,
             self.brightness_factor,
             self.block_light_flicker + VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
             self.client_tick_count,
             VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK,
+            self.darkness_effect
+                .factor(VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK),
+            self.night_vision_effect.effect(),
         )
     }
 
@@ -395,17 +424,156 @@ fn lightmap_environment_for_world_at_tick(
     camera_tick_count: u64,
     partial_tick: f32,
 ) -> LightmapEnvironment {
+    let darkness_effect_factor = local_player_effect(world, VANILLA_MOB_EFFECT_DARKNESS_ID)
+        .map(vanilla_darkness_effect_factor)
+        .unwrap_or(0.0);
+    let night_vision_effect = local_player_effect(world, VANILLA_MOB_EFFECT_NIGHT_VISION_ID);
+    lightmap_environment_for_world_with_effects(
+        world,
+        brightness_factor,
+        block_factor,
+        camera_tick_count,
+        partial_tick,
+        darkness_effect_factor,
+        night_vision_effect,
+    )
+}
+
+fn lightmap_environment_for_world_with_effects(
+    world: &WorldStore,
+    brightness_factor: f32,
+    block_factor: f32,
+    camera_tick_count: u64,
+    partial_tick: f32,
+    darkness_effect_factor: f32,
+    night_vision_effect: Option<MobEffectState>,
+) -> LightmapEnvironment {
     let mut environment = world
         .level_info()
         .map(dimension_lightmap_environment)
         .unwrap_or_default();
-    let effects =
-        local_player_lightmap_effects(world, brightness_factor, camera_tick_count, partial_tick);
+    let effects = local_player_lightmap_effects(
+        brightness_factor,
+        camera_tick_count,
+        partial_tick,
+        darkness_effect_factor,
+        night_vision_effect,
+    );
     environment.brightness_factor = effects.brightness_factor;
     environment.darkness_scale = effects.darkness_scale;
     environment.night_vision_factor = effects.night_vision_factor;
     environment.block_factor = block_factor;
     environment.sanitized()
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct LocalPlayerMobEffectSnapshot {
+    entity_id: i32,
+    effect: MobEffectState,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LightmapEffectSync {
+    Unchanged,
+    Added(MobEffectState),
+    Updated,
+    Removed,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+struct LightmapEffectDurationState {
+    subject: Option<(i32, i32)>,
+    observed_effect: Option<MobEffectState>,
+    active_effect: Option<MobEffectState>,
+}
+
+impl LightmapEffectDurationState {
+    fn sync(&mut self, snapshot: Option<LocalPlayerMobEffectSnapshot>) -> LightmapEffectSync {
+        let Some(snapshot) = snapshot else {
+            if self.active_effect.is_none() {
+                return LightmapEffectSync::Unchanged;
+            }
+            self.subject = None;
+            self.observed_effect = None;
+            self.active_effect = None;
+            return LightmapEffectSync::Removed;
+        };
+
+        let subject = (snapshot.entity_id, snapshot.effect.effect_id);
+        let is_new_subject = self.subject != Some(subject);
+        if is_new_subject {
+            self.subject = Some(subject);
+            self.observed_effect = Some(snapshot.effect);
+            self.active_effect = Some(snapshot.effect);
+            return LightmapEffectSync::Added(snapshot.effect);
+        }
+
+        if self.observed_effect != Some(snapshot.effect) {
+            self.observed_effect = Some(snapshot.effect);
+            self.active_effect = Some(snapshot.effect);
+            return LightmapEffectSync::Updated;
+        }
+
+        LightmapEffectSync::Unchanged
+    }
+
+    fn tick_duration(&mut self) {
+        let Some(effect) = &mut self.active_effect else {
+            return;
+        };
+        if effect.duration_ticks != -1 && effect.duration_ticks > 0 {
+            effect.duration_ticks -= 1;
+        }
+    }
+
+    fn effect(&self) -> Option<MobEffectState> {
+        self.active_effect
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+struct LightmapEffectBlendState {
+    duration: LightmapEffectDurationState,
+    factor: f32,
+    factor_previous_frame: f32,
+}
+
+impl LightmapEffectBlendState {
+    fn sync(&mut self, snapshot: Option<LocalPlayerMobEffectSnapshot>) {
+        match self.duration.sync(snapshot) {
+            LightmapEffectSync::Added(effect) => {
+                let factor = if effect.blend {
+                    0.0
+                } else {
+                    vanilla_darkness_effect_factor(effect)
+                };
+                self.factor = factor;
+                self.factor_previous_frame = factor;
+            }
+            LightmapEffectSync::Removed => {
+                self.factor = 0.0;
+                self.factor_previous_frame = 0.0;
+            }
+            LightmapEffectSync::Updated | LightmapEffectSync::Unchanged => {}
+        }
+    }
+
+    fn tick(&mut self) {
+        self.duration.tick_duration();
+        self.factor_previous_frame = self.factor;
+        let target = self
+            .duration
+            .effect()
+            .map(vanilla_darkness_effect_factor)
+            .unwrap_or(0.0);
+        let max_delta = 1.0 / VANILLA_DARKNESS_BLEND_OUT_ADVANCE_TICKS as f32;
+        self.factor += (target - self.factor).clamp(-max_delta, max_delta);
+    }
+
+    fn factor(&self, partial_tick: f32) -> f32 {
+        let partial_tick = sanitize_lightmap_partial_tick(partial_tick);
+        self.factor_previous_frame + (self.factor - self.factor_previous_frame) * partial_tick
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -416,21 +584,20 @@ struct LocalPlayerLightmapEffects {
 }
 
 fn local_player_lightmap_effects(
-    world: &WorldStore,
     brightness_factor: f32,
     camera_tick_count: u64,
     partial_tick: f32,
+    darkness_effect_factor: f32,
+    night_vision_effect: Option<MobEffectState>,
 ) -> LocalPlayerLightmapEffects {
     let partial_tick = sanitize_lightmap_partial_tick(partial_tick);
     let base_brightness = sanitize_lightmap_brightness_factor(brightness_factor);
-    let darkness_modifier = local_player_effect(world, VANILLA_MOB_EFFECT_DARKNESS_ID)
-        .map(vanilla_darkness_effect_factor)
-        .unwrap_or(0.0)
-        * VANILLA_DARKNESS_EFFECT_SCALE_OPTION;
+    let darkness_modifier =
+        darkness_effect_factor.clamp(0.0, 1.0) * VANILLA_DARKNESS_EFFECT_SCALE_OPTION;
     let brightness_factor = (base_brightness - darkness_modifier).max(0.0);
     let darkness_scale = vanilla_darkness_scale(camera_tick_count, darkness_modifier, partial_tick)
         * VANILLA_DARKNESS_EFFECT_SCALE_OPTION;
-    let night_vision_factor = local_player_effect(world, VANILLA_MOB_EFFECT_NIGHT_VISION_ID)
+    let night_vision_factor = night_vision_effect
         .map(|effect| vanilla_night_vision_scale(effect, partial_tick))
         .unwrap_or(0.0);
 
@@ -439,6 +606,17 @@ fn local_player_lightmap_effects(
         darkness_scale,
         night_vision_factor,
     }
+}
+
+fn local_player_effect_snapshot(
+    world: &WorldStore,
+    effect_id: i32,
+) -> Option<LocalPlayerMobEffectSnapshot> {
+    let entity_id = world.local_player_id()?;
+    Some(LocalPlayerMobEffectSnapshot {
+        entity_id,
+        effect: world.entity_effect(entity_id, effect_id)?,
+    })
 }
 
 fn local_player_effect(world: &WorldStore, effect_id: i32) -> Option<MobEffectState> {
@@ -592,9 +770,7 @@ pub(crate) fn pump_network_and_terrain(
     let now = Instant::now();
     let advanced_ticks = advance_entity_client_animations(world, client_animation_ticks, now);
     let entity_partial_tick = client_animation_ticks.entity_partial_tick(now);
-    if advanced_ticks > 0 {
-        lightmap_ticks.advance(advanced_ticks);
-    }
+    lightmap_ticks.advance_for_world(advanced_ticks, world);
     renderer.set_lightmap_environment(lightmap_ticks.environment_for_world(world));
     advance_block_destruction_render_ticks(world, advanced_ticks);
     world.advance_item_cooldowns(advanced_ticks);

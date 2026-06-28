@@ -7,7 +7,7 @@ use std::{
 use bbb_protocol::packets::{
     BlockPos as ProtocolBlockPos, CommonPlayerSpawnInfo, DialogHolder, InteractionHand,
     MerchantOffer, MerchantOffers, MobEffectFlags, OpenBook, OpenSignEditor, PlayLogin,
-    SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog, UpdateMobEffect,
+    RemoveMobEffect, SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog, UpdateMobEffect,
     WrittenBookContentSummary,
 };
 use bbb_world::LocalPlayerPoseState;
@@ -212,6 +212,81 @@ fn lightmap_environment_projects_local_player_darkness() {
 }
 
 #[test]
+fn lightmap_tick_state_blends_local_player_darkness_like_vanilla() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    attach_lightmap_local_player(&mut world, 42);
+    assert!(world.apply_update_mob_effect(mob_effect_with_blend(
+        42,
+        VANILLA_MOB_EFFECT_DARKNESS_ID,
+        260,
+        true,
+    )));
+    let mut lightmap = LightmapTickState::with_seed_and_brightness(0, 0.8);
+
+    lightmap.advance_for_world(0, &world);
+    let environment = lightmap.environment_for_world(&world);
+    assert_eq!(environment.brightness_factor, 0.8);
+    assert_eq!(environment.darkness_scale, 0.0);
+
+    lightmap.advance_for_world(1, &world);
+    let environment = lightmap.environment_for_world(&world);
+    let first_tick_factor = 1.0 / VANILLA_DARKNESS_BLEND_OUT_ADVANCE_TICKS as f32;
+    assert!((environment.brightness_factor - (0.8 - first_tick_factor)).abs() < 1e-6);
+    assert!((environment.darkness_scale - 0.45 * first_tick_factor).abs() < 1e-6);
+
+    lightmap.advance_for_world(21, &world);
+    let environment = lightmap.environment_for_world(&world);
+    assert_eq!(environment.brightness_factor, 0.0);
+    let expected_darkness =
+        (((22.0 - VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK) * std::f32::consts::PI * 0.025).cos()
+            * 0.45)
+            .max(0.0);
+    assert!((environment.darkness_scale - expected_darkness).abs() < 1e-6);
+}
+
+#[test]
+fn lightmap_tick_state_applies_and_removes_non_blending_darkness_immediately() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    attach_lightmap_local_player(&mut world, 42);
+    assert!(world.apply_update_mob_effect(mob_effect(42, VANILLA_MOB_EFFECT_DARKNESS_ID, 260,)));
+    let mut lightmap = LightmapTickState::with_seed_and_brightness(0, 0.8);
+
+    lightmap.advance_for_world(0, &world);
+    let environment = lightmap.environment_for_world(&world);
+    assert_eq!(environment.brightness_factor, 0.0);
+    assert!(environment.darkness_scale > 0.0);
+
+    assert!(world.apply_remove_mob_effect(RemoveMobEffect {
+        entity_id: 42,
+        effect_id: VANILLA_MOB_EFFECT_DARKNESS_ID,
+    }));
+    lightmap.advance_for_world(0, &world);
+    let environment = lightmap.environment_for_world(&world);
+    assert_eq!(environment.brightness_factor, 0.8);
+    assert_eq!(environment.darkness_scale, 0.0);
+}
+
+#[test]
+fn lightmap_tick_state_advances_night_vision_duration_before_sampling() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    attach_lightmap_local_player(&mut world, 42);
+    assert!(world.apply_update_mob_effect(mob_effect(42, VANILLA_MOB_EFFECT_NIGHT_VISION_ID, 201,)));
+    let mut lightmap = LightmapTickState::with_seed_and_brightness(0, 0.8);
+
+    lightmap.advance_for_world(0, &world);
+    assert_eq!(
+        lightmap.environment_for_world(&world).night_vision_factor,
+        1.0
+    );
+
+    lightmap.advance_for_world(1, &world);
+    let environment = lightmap.environment_for_world(&world);
+    let expected = 0.7
+        + ((200.0 - VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK) * std::f32::consts::PI * 0.2).sin() * 0.3;
+    assert!((environment.night_vision_factor - expected).abs() < 1e-6);
+}
+
+#[test]
 fn lightmap_environment_without_local_player_effects_keeps_base_factors() {
     let world = world_with_dimension(0, "minecraft:overworld");
     let environment = lightmap_environment_for_world_at_tick(
@@ -319,17 +394,27 @@ fn attach_lightmap_local_player(world: &mut WorldStore, id: i32) {
 }
 
 fn mob_effect(entity_id: i32, effect_id: i32, duration_ticks: i32) -> UpdateMobEffect {
+    mob_effect_with_blend(entity_id, effect_id, duration_ticks, false)
+}
+
+fn mob_effect_with_blend(
+    entity_id: i32,
+    effect_id: i32,
+    duration_ticks: i32,
+    blend: bool,
+) -> UpdateMobEffect {
+    let raw = if blend { 0b1110 } else { 0b0110 };
     UpdateMobEffect {
         entity_id,
         effect_id,
         amplifier: 0,
         duration_ticks,
         flags: MobEffectFlags {
-            raw: 0b0110,
+            raw,
             ambient: false,
             visible: true,
             show_icon: true,
-            blend: false,
+            blend,
         },
     }
 }
