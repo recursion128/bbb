@@ -11,7 +11,8 @@ mod gpu;
 
 use descriptors::{
     select_initial_sprite, sprite_index_for_age, ParticleDescriptor, ParticleQuadSizeCurve,
-    ParticleRandom, ParticleSpriteSelection, DEFAULT_PARTICLE_RANDOM_SEED,
+    ParticleRandom, ParticleSpriteSelection, ParticleTickMotionDescriptor,
+    DEFAULT_PARTICLE_RANDOM_SEED,
 };
 pub(super) use gpu::{
     create_particle_atlas_gpu, create_particle_pipeline, ParticleAtlasGpu, ParticleVertex,
@@ -97,6 +98,8 @@ pub(crate) struct ParticleInstance {
     pub(crate) gravity: f32,
     pub(crate) has_physics: bool,
     pub(crate) speed_up_when_y_motion_is_blocked: bool,
+    #[serde(default)]
+    pub(crate) tick_motion: ParticleTickMotionDescriptor,
     pub(crate) sprite_selection: ParticleSpriteSelection,
     pub(crate) override_limiter: bool,
     pub(crate) always_show: bool,
@@ -356,6 +359,7 @@ impl ParticleInstance {
             gravity: descriptor.gravity,
             has_physics: descriptor.has_physics,
             speed_up_when_y_motion_is_blocked: descriptor.speed_up_when_y_motion_is_blocked,
+            tick_motion: descriptor.tick_motion(),
             sprite_selection: descriptor.sprite_selection,
             override_limiter: command.override_limiter,
             always_show: command.always_show,
@@ -384,14 +388,24 @@ impl ParticleInstance {
 
     fn tick_motion_without_collision(&mut self) {
         self.previous_position = self.position;
-        self.velocity[1] -= 0.04 * f64::from(self.gravity);
-        self.position[0] += self.velocity[0];
-        self.position[1] += self.velocity[1];
-        self.position[2] += self.velocity[2];
-        let friction = f64::from(self.friction);
-        self.velocity[0] *= friction;
-        self.velocity[1] *= friction;
-        self.velocity[2] *= friction;
+        match self.tick_motion {
+            ParticleTickMotionDescriptor::DefaultParticleTick => {
+                self.velocity[1] -= 0.04 * f64::from(self.gravity);
+                self.position[0] += self.velocity[0];
+                self.position[1] += self.velocity[1];
+                self.position[2] += self.velocity[2];
+                let friction = f64::from(self.friction);
+                self.velocity[0] *= friction;
+                self.velocity[1] *= friction;
+                self.velocity[2] *= friction;
+            }
+            ParticleTickMotionDescriptor::DirectGravityNoFriction => {
+                self.velocity[1] -= f64::from(self.gravity);
+                self.position[0] += self.velocity[0];
+                self.position[1] += self.velocity[1];
+                self.position[2] += self.velocity[2];
+            }
+        }
     }
 
     fn update_sprite_from_age(&mut self) {
@@ -752,6 +766,25 @@ mod tests {
     }
 
     #[test]
+    fn particle_runtime_bubble_pop_subtracts_full_gravity_without_friction() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:bubble_pop", 20);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.5, 0.25, -0.5];
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.expired_instances, 0);
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 1);
+        assert_close3(instance.previous_position, [1.0, 2.0, 3.0]);
+        assert_close3(instance.position, [1.5, 2.242, 2.5]);
+        assert_close3(instance.velocity, [0.5, 0.242, -0.5]);
+    }
+
+    #[test]
     fn particle_runtime_moves_particles_even_when_physics_is_disabled() {
         let mut particles = ParticleRuntimeState::with_capacities(4, 4);
         let mut instance = test_instance_with_lifetime("minecraft:flame", 20);
@@ -1050,6 +1083,26 @@ mod tests {
         assert_range_f64(column_bubble.velocity[0], 0.18, 0.22);
         assert_range_f64(column_bubble.velocity[1], 0.38, 0.42);
         assert_range_f64(column_bubble.velocity[2], 0.58, 0.62);
+
+        let mut bubble_pop_random = ParticleRandom::new(75);
+        let mut bubble_pop_command = spawn_command("minecraft:bubble_pop", 1.0);
+        bubble_pop_command.velocity = [1.0, 2.0, 3.0];
+        let bubble_pop =
+            ParticleInstance::from_spawn_command(bubble_pop_command, &mut bubble_pop_random);
+        assert_eq!(bubble_pop.provider, "BubblePopParticle.Provider");
+        assert_eq!(bubble_pop.sprite_selection, ParticleSpriteSelection::Age);
+        assert_eq!(bubble_pop.quad_size_curve, ParticleQuadSizeCurve::Constant);
+        assert_range_f32(bubble_pop.base_quad_size, 0.1, 0.2);
+        assert_eq!(bubble_pop.color, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(bubble_pop.lifetime_ticks, 4);
+        assert_eq!(bubble_pop.friction, 0.98);
+        assert_eq!(bubble_pop.gravity, 0.008);
+        assert!(bubble_pop.has_physics);
+        assert_eq!(bubble_pop.velocity, [1.0, 2.0, 3.0]);
+        assert_eq!(
+            bubble_pop.tick_motion,
+            ParticleTickMotionDescriptor::DirectGravityNoFriction
+        );
 
         let mut glow_random = ParticleRandom::new(67);
         let mut glow_command = spawn_command("minecraft:glow", 1.0);
@@ -1590,6 +1643,7 @@ mod tests {
             gravity: descriptor.gravity,
             has_physics: descriptor.has_physics,
             speed_up_when_y_motion_is_blocked: descriptor.speed_up_when_y_motion_is_blocked,
+            tick_motion: descriptor.tick_motion(),
             sprite_selection: descriptor.sprite_selection,
             override_limiter: false,
             always_show: false,

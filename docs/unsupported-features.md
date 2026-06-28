@@ -4543,6 +4543,10 @@ When an agent does any of the following, update this file in the same slice:
         formulas while overriding gravity to `0.5`; `ExplodeParticle.Provider`
         / `minecraft:poof` uses vanilla `command + +/-0.05` velocity and
         `0.9` friction.
+      - particle descriptors map `BubblePopParticle.Provider` to fixed lifetime
+        `4`, age sprites, command velocity, default `SingleQuadParticle` white
+        tint / quad-size sampling, gravity `0.008`, and its custom tick path
+        that subtracts full gravity without applying default friction.
     - native dispatcher and offline probe recording/playback for
       `LevelEventHandler` portal travel local ambience:
       - event `1032`

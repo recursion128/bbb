@@ -15,6 +15,13 @@ pub(crate) struct ParticleDescriptor {
     pub(crate) speed_up_when_y_motion_is_blocked: bool,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum ParticleTickMotionDescriptor {
+    #[default]
+    DefaultParticleTick,
+    DirectGravityNoFriction,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ParticleLifetimeDescriptor {
     BaseParticle,
@@ -213,6 +220,17 @@ impl ParticleDescriptor {
                 },
                 friction: 0.85,
                 gravity: -0.125,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:bubble_pop" => Self {
+                provider: "BubblePopParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::Fixed(4),
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::BaseSingleQuad,
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
+                friction: 0.98,
+                gravity: 0.008,
                 has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
@@ -826,6 +844,13 @@ impl ParticleDescriptor {
             _ => command_position,
         }
     }
+
+    pub(crate) fn tick_motion(self) -> ParticleTickMotionDescriptor {
+        match self.provider {
+            "BubblePopParticle.Provider" => ParticleTickMotionDescriptor::DirectGravityNoFriction,
+            _ => ParticleTickMotionDescriptor::DefaultParticleTick,
+        }
+    }
 }
 
 impl ParticleVisualDescriptor {
@@ -1381,6 +1406,26 @@ mod tests {
                 command_scale: 0.2,
                 random_range: 0.02,
             }
+        );
+        assert_descriptor(
+            "minecraft:bubble_pop",
+            "BubblePopParticle.Provider",
+            ParticleLifetimeDescriptor::Fixed(4),
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::BaseSingleQuad,
+            0.98,
+            0.008,
+            true,
+            false,
+        );
+        let bubble_pop = ParticleDescriptor::for_particle("minecraft:bubble_pop");
+        assert_eq!(
+            bubble_pop.initial_velocity,
+            ParticleInitialVelocityDescriptor::Command
+        );
+        assert_eq!(
+            bubble_pop.tick_motion(),
+            ParticleTickMotionDescriptor::DirectGravityNoFriction
         );
 
         assert_descriptor(
@@ -2092,6 +2137,13 @@ mod tests {
         let mut flame_random = ParticleRandom::new(7);
         let flame = ParticleVisualDescriptor::Flame { scale: 1.0 }
             .sample_for_command(&mut flame_random, [0.0, 0.0, 0.0]);
+        let mut single_quad_random = ParticleRandom::new(6);
+        let single_quad = ParticleVisualDescriptor::BaseSingleQuad
+            .sample_for_command(&mut single_quad_random, [0.0, 0.0, 0.0]);
+        assert_range_f32(single_quad.base_quad_size, 0.1, 0.2);
+        assert_eq!(single_quad.color, WHITE_PARTICLE_COLOR);
+        assert_eq!(single_quad.quad_size_curve, ParticleQuadSizeCurve::Constant);
+
         let mut small_flame_random = ParticleRandom::new(7);
         let small_flame = ParticleVisualDescriptor::Flame { scale: 0.5 }
             .sample_for_command(&mut small_flame_random, [0.0, 0.0, 0.0]);
