@@ -400,6 +400,10 @@ pub struct EntityModelSourceState {
     /// partialTick, 0)`): damage magnitude used with hurt time to scale the roll.
     #[serde(default)]
     pub boat_damage_time: f32,
+    /// Vanilla `BoatRenderState.bubbleAngle` (`AbstractBoat.getBubbleAngle(partialTick)`):
+    /// the bubble-column wobble angle in degrees, before the renderer's underwater gate.
+    #[serde(default)]
+    pub boat_bubble_angle: f32,
     /// Vanilla `LivingEntityRenderState.isFullyFrozen` (`Entity.isFullyFrozen`,
     /// `ticksFrozen >= 140`): a living entity frozen solid in powder snow, whose
     /// body the renderer shakes (`LivingEntityRenderer.isShaking`). `false` for

@@ -557,6 +557,7 @@ pub(in crate::entity_models) fn boat_model_root_transform(instance: EntityModelI
         * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))
         * Mat4::from_rotation_y((180.0 - instance.render_state.body_rot).to_radians())
         * Mat4::from_rotation_x(boat_damage_roll_degrees(instance).to_radians())
+        * boat_bubble_transform(instance)
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
         * Mat4::from_rotation_y(std::f32::consts::FRAC_PI_2)
 }
@@ -568,6 +569,18 @@ pub(in crate::entity_models) fn boat_damage_roll_degrees(instance: EntityModelIn
             * instance.render_state.boat_hurt_dir as f32
     } else {
         0.0
+    }
+}
+
+pub(in crate::entity_models) fn boat_bubble_transform(instance: EntityModelInstance) -> Mat4 {
+    let angle = instance.render_state.boat_bubble_angle;
+    if instance.render_state.boat_underwater || angle == 0.0 {
+        Mat4::IDENTITY
+    } else {
+        Mat4::from_quat(glam::Quat::from_axis_angle(
+            Vec3::new(1.0, 0.0, 1.0).normalize(),
+            angle.to_radians(),
+        ))
     }
 }
 

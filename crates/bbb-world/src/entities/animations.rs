@@ -20,6 +20,7 @@ const VEHICLE_DAMAGE_DATA_ID: u8 = 10;
 /// base `Entity` ids `0..=7` plus `VehicleEntity` ids `8..=10`.
 const ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID: u8 = 11;
 const ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID: u8 = 12;
+const ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID: u8 = 13;
 /// Vanilla `AbstractBoat.tick` advances each active `paddlePositions[side]` by
 /// `PI / 8` per client tick, otherwise resetting it to zero.
 const BOAT_PADDLE_ADVANCE_PER_TICK: f32 = std::f32::consts::PI / 8.0;
@@ -396,6 +397,8 @@ pub struct EntityClientAnimationState {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub boat_damage: Option<BoatDamageAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub boat_bubble: Option<BoatBubbleAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub boat: Option<BoatPaddleAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub arrow_shake: Option<ArrowShakeAnimationState>,
@@ -534,6 +537,40 @@ impl BoatDamageAnimationState {
 
     fn is_settled(self) -> bool {
         self.hurt_time <= 0 && self.damage <= 0.0
+    }
+}
+
+/// Vanilla `AbstractBoat` bubble-column wobble state: the client keeps a
+/// multiplier and previous/current angles, increasing the multiplier while
+/// synced `bubbleTime > 0` and easing it back to zero otherwise.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+pub struct BoatBubbleAnimationState {
+    pub multiplier: f32,
+    pub previous_angle: f32,
+    pub current_angle: f32,
+}
+
+impl BoatBubbleAnimationState {
+    fn advance_client_tick(&mut self, age_ticks: u32, bubble_time: i32) {
+        if bubble_time > 0 {
+            self.multiplier += 0.05;
+        } else {
+            self.multiplier -= 0.1;
+        }
+        self.multiplier = self.multiplier.clamp(0.0, 1.0);
+        self.previous_angle = self.current_angle;
+        self.current_angle = 10.0 * (0.5 * age_ticks as f32).sin() * self.multiplier;
+    }
+
+    fn angle(self, partial_tick: f32) -> f32 {
+        self.previous_angle + partial_tick * (self.current_angle - self.previous_angle)
+    }
+
+    fn is_settled(self, bubble_time: i32) -> bool {
+        bubble_time <= 0
+            && self.multiplier == 0.0
+            && self.previous_angle == 0.0
+            && self.current_angle == 0.0
     }
 }
 
@@ -4181,6 +4218,13 @@ impl EntityClientAnimationState {
             .map_or((0.0, 1, 0.0), |state| state.render_state(partial_tick))
     }
 
+    /// Vanilla `BoatRenderState.bubbleAngle` (`AbstractBoat.getBubbleAngle(partialTick)`):
+    /// the partial-lerped bubble-column wobble angle in degrees.
+    pub fn boat_bubble_angle(&self, partial_tick: f32) -> f32 {
+        self.boat_bubble
+            .map_or(0.0, |state| state.angle(partial_tick))
+    }
+
     /// Vanilla `WitherRenderState.xHeadRots/yHeadRots`: current side-head
     /// rotations copied from `WitherBoss.xRotHeads/yRotHeads`. The arrays are
     /// `[right_head, left_head]`; every non-wither keeps the zeroed default.
@@ -4513,6 +4557,9 @@ impl EntityClientAnimationState {
         // booleans gated by the presence of a controlling passenger.
         boat_paddle_left: bool,
         boat_paddle_right: bool,
+        // Vanilla `AbstractBoat.DATA_ID_BUBBLE_TIME`, read each client tick by
+        // `tickBubbleColumn()` to ease the wobble multiplier.
+        boat_bubble_time: i32,
         // Vanilla `Entity.isSwimming()` for player cape bob suppression.
         is_swimming: bool,
     ) {
@@ -4879,6 +4926,15 @@ impl EntityClientAnimationState {
                         self.boat_damage = None;
                     }
                 }
+                if self.boat_bubble.is_some() || boat_bubble_time > 0 {
+                    let bubble = self
+                        .boat_bubble
+                        .get_or_insert_with(BoatBubbleAnimationState::default);
+                    bubble.advance_client_tick(self.age_ticks, boat_bubble_time);
+                    if bubble.is_settled(boat_bubble_time) {
+                        self.boat_bubble = None;
+                    }
+                }
                 if self.boat.is_some() || boat_paddle_left || boat_paddle_right {
                     let boat = self
                         .boat
@@ -5067,6 +5123,10 @@ pub(crate) fn boat_paddle_states(
         has_controlling_passenger
             && entity_data_bool(data_values, ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID, false),
     ]
+}
+
+pub(crate) fn boat_bubble_time(data_values: &[EntityDataValue]) -> i32 {
+    entity_data_int(data_values, ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID, 0)
 }
 
 fn entity_data_bool(data_values: &[EntityDataValue], data_id: u8, default: bool) -> bool {

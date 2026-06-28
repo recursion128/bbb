@@ -556,7 +556,7 @@ fn boat_paddles_use_vanilla_rowing_time_rotations() {
 }
 
 #[test]
-fn boat_damage_roll_uses_vanilla_root_transform_order() {
+fn boat_damage_and_bubble_roll_use_vanilla_root_transform_order() {
     let assert_close = |actual: f32, expected: f32| {
         assert!(
             (actual - expected).abs() < 1.0e-6,
@@ -591,6 +591,20 @@ fn boat_damage_roll_uses_vanilla_root_transform_order() {
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
         * Mat4::from_rotation_y(std::f32::consts::FRAC_PI_2);
     assert_close_transform(boat_model_root_transform(damaged), expected);
+
+    let bubbling = damaged.with_boat_bubble_angle(6.0);
+    let expected_bubbling = Mat4::from_translation(Vec3::from_array(bubbling.position))
+        * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))
+        * Mat4::from_rotation_y((180.0_f32 - bubbling.render_state.body_rot).to_radians())
+        * Mat4::from_rotation_x(roll.to_radians())
+        * boat_bubble_transform(bubbling)
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+        * Mat4::from_rotation_y(std::f32::consts::FRAC_PI_2);
+    assert_close_transform(boat_model_root_transform(bubbling), expected_bubbling);
+
+    let underwater = bubbling.with_boat_underwater(true);
+    assert_close_transform(boat_bubble_transform(underwater), Mat4::IDENTITY);
+    assert_close_transform(boat_model_root_transform(underwater), expected);
 
     let settled = damaged.with_boat_hurt_time(0.0);
     assert_close(boat_damage_roll_degrees(settled), 0.0);

@@ -1532,8 +1532,10 @@ When an agent does any of the following, update this file in the same slice:
       projected from `AbstractBoat` metadata ids 11/12 plus the controlling-passenger
       gate and rendered through `AbstractBoatModel.animatePaddle`; hurt/damage roll
       is projected from `VehicleEntity` metadata ids 8/9/10 and folded into the boat
-      root transform. Bubble wobble, underwater state, water-mask presentation, and
-      lighting remain unsupported
+      root transform. Bubble wobble is projected from `AbstractBoat.DATA_ID_BUBBLE_TIME`
+      id 13 into the vanilla multiplier/angle tick state and folded into the boat root
+      transform with the renderer-side underwater gate. Underwater state, water-mask
+      presentation, and lighting remain unsupported
     - chicken entities as renderer-owned vanilla 26.1
       `AdultChickenModel`, `ColdChickenModel`, and `BabyChickenModel` body-layer
       geometry from `ChickenModel`, `ChickenRenderer`, `ChickenVariants`, and
@@ -4187,9 +4189,8 @@ When an agent does any of the following, update this file in the same slice:
     variant asset presentation, sheep
     head-look-pitch presentation,
     wolf colored force-transparent / GPU outline presentation,
-    boat/raft bubble wobble, underwater state, water-mask presentation, and
-    lighting (paddle rowing animation and hurt/damage roll are projected and
-    rendered),
+    boat/raft underwater state, water-mask presentation, and lighting (paddle rowing
+    animation, hurt/damage roll, and bubble wobble are projected and rendered),
     horse animation, donkey/mule animation presentation,
     undead horse animation presentation, and remaining non-base-equine presentation,
     villager live/dynamic profiled-player skin presentation (crossed-arms

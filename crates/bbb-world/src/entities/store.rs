@@ -31,8 +31,8 @@ use super::{
     VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_UPSIDE_DOWN_NAMES,
 };
 use crate::entities::animations::{
-    allay_is_dancing, axolotl_is_playing_dead, boat_paddle_states, camel_is_dashing,
-    creaking_can_move, creaking_is_tearing_down, entity_animation_uses_in_water,
+    allay_is_dancing, axolotl_is_playing_dead, boat_bubble_time, boat_paddle_states,
+    camel_is_dashing, creaking_can_move, creaking_is_tearing_down, entity_animation_uses_in_water,
     entity_is_fall_flying, guardian_attack_duration, guardian_attack_target_id, guardian_is_moving,
     is_guardian_entity_type, piglin_is_charging_crossbow, pillager_is_charging_crossbow,
     player_is_using_item, warden_heartbeat_delay, wither_side_head_target_ids,
@@ -1068,6 +1068,9 @@ impl EntityStore {
         let (boat_hurt_time, boat_hurt_dir, boat_damage_time) = client_animations
             .animations
             .boat_damage_state(partial_ticks);
+        let boat_bubble_angle = client_animations
+            .animations
+            .boat_bubble_angle(partial_ticks);
         let (wither_x_head_rots, wither_y_head_rots) = if vanilla_is_wither(identity.entity_type_id)
         {
             client_animations.animations.wither_head_rotations()
@@ -1115,6 +1118,7 @@ impl EntityStore {
             boat_hurt_time,
             boat_hurt_dir,
             boat_damage_time,
+            boat_bubble_angle,
             wither_x_head_rots,
             wither_y_head_rots,
             is_fully_frozen,
@@ -2169,6 +2173,7 @@ impl EntityStore {
                 let wolf_is_interested = wolf_is_interested(&metadata.data_values);
                 let boat_paddles =
                     boat_paddle_states(&metadata.data_values, !mount.passengers.is_empty());
+                let boat_bubble_time_value = boat_bubble_time(&metadata.data_values);
                 animations.animations.advance_client_tick(
                     identity.entity_type_id,
                     identity.id,
@@ -2192,6 +2197,7 @@ impl EntityStore {
                     wolf_is_interested,
                     boat_paddles[0],
                     boat_paddles[1],
+                    boat_bubble_time_value,
                     is_swimming,
                 );
             }

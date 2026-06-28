@@ -326,6 +326,14 @@ entity_render_state! {
     /// Vanilla `BoatRenderState.damageTime`: `max(VehicleEntity.getDamage() - partialTick, 0)`, scaling
     /// the damage roll amount.
     (with_boat_damage_time) boat_damage_time: f32 = 0.0;
+    /// Vanilla `BoatRenderState.bubbleAngle`: the partial-lerped bubble-column
+    /// wobble angle in degrees. The boat renderer applies it only while the boat
+    /// is not underwater.
+    (with_boat_bubble_angle) boat_bubble_angle: f32 = 0.0;
+    /// Vanilla `BoatRenderState.isUnderWater`: gates bubble wobble and the
+    /// above-water water-mask submit. Full world projection is still separate;
+    /// callers can set this explicitly when they know the boat status.
+    (with_boat_underwater) boat_underwater: bool = false;
     /// Vanilla `Mob.isAggressive()` (`DATA_MOB_FLAGS_ID & 4`): deepens the held-out
     /// `animateZombieArms` arm drop for the zombie-model family (`-π / 1.5` aggressive vs
     /// `-π / 2.25` calm). `false` for every calm or non-zombie-family entity.
@@ -2306,6 +2314,8 @@ mod tests {
                 boat_hurt_time: 0.0,
                 boat_hurt_dir: 1,
                 boat_damage_time: 0.0,
+                boat_bubble_angle: 0.0,
+                boat_underwater: false,
                 is_aggressive: false,
                 main_hand_holds_bow: false,
                 main_hand_swing_is_stab: false,

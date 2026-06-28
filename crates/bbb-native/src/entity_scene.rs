@@ -1365,6 +1365,7 @@ fn entity_model_instance(
         .with_boat_hurt_time(source.boat_hurt_time)
         .with_boat_hurt_dir(source.boat_hurt_dir)
         .with_boat_damage_time(source.boat_damage_time)
+        .with_boat_bubble_angle(source.boat_bubble_angle)
         .with_is_aggressive(source.is_aggressive)
         .with_main_hand_holds_bow(main_hand_holds_bow)
         .with_main_hand_swing_is_stab(main_hand_swing_is_stab)
@@ -4841,6 +4842,7 @@ mod tests {
         const VEHICLE_DAMAGE_DATA_ID: u8 = 10;
         const BOAT_PADDLE_LEFT_DATA_ID: u8 = 11;
         const BOAT_PADDLE_RIGHT_DATA_ID: u8 = 12;
+        const BOAT_BUBBLE_TIME_DATA_ID: u8 = 13;
         const ADVANCE: f32 = std::f32::consts::PI / 8.0;
 
         let mut world = WorldStore::new();
@@ -4866,6 +4868,7 @@ mod tests {
                 protocol_float_data(VEHICLE_DAMAGE_DATA_ID, 20.0),
                 protocol_bool_data(BOAT_PADDLE_LEFT_DATA_ID, true),
                 protocol_bool_data(BOAT_PADDLE_RIGHT_DATA_ID, true),
+                protocol_int_data(BOAT_BUBBLE_TIME_DATA_ID, 60),
             ],
         }));
 
@@ -4881,6 +4884,11 @@ mod tests {
         assert!((render_state.boat_hurt_time - 7.5).abs() < 1.0e-6);
         assert_eq!(render_state.boat_hurt_dir, -1);
         assert!((render_state.boat_damage_time - 17.5).abs() < 1.0e-6);
+        let first_bubble_angle = 10.0 * (0.5_f32).sin() * 0.05;
+        let second_bubble_angle = 10.0 * (1.0_f32).sin() * 0.1;
+        let expected_bubble_angle =
+            first_bubble_angle + (second_bubble_angle - first_bubble_angle) * 0.5;
+        assert!((render_state.boat_bubble_angle - expected_bubble_angle).abs() < 1.0e-6);
     }
 
     #[test]

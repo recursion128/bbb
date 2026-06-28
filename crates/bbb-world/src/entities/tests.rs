@@ -1094,6 +1094,58 @@ fn entity_model_sources_project_boat_damage_roll_from_vehicle_metadata() {
 }
 
 #[test]
+fn entity_model_sources_project_boat_bubble_angle_from_bubble_time() {
+    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
+    const BOAT_BUBBLE_TIME_DATA_ID: u8 = 13;
+
+    let assert_close = |actual: f32, expected: f32, label: &str| {
+        assert!(
+            (actual - expected).abs() < 1.0e-6,
+            "{label}: expected {expected}, got {actual}"
+        );
+    };
+    let bubble = |store: &WorldStore, partial_tick: f32| -> f32 {
+        store
+            .entity_model_sources_at_partial_tick(partial_tick)
+            .into_iter()
+            .find(|source| source.entity_id == 22)
+            .expect("boat source")
+            .boat_bubble_angle
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        22,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    assert_eq!(bubble(&store, 1.0), 0.0);
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 22,
+        values: vec![protocol_int_data(BOAT_BUBBLE_TIME_DATA_ID, 60)],
+    }));
+    store.advance_entity_client_animations(1);
+    let first_angle = 10.0 * (0.5_f32).sin() * 0.05;
+    assert_close(bubble(&store, 0.0), 0.0, "first tick previous angle");
+    assert_close(bubble(&store, 1.0), first_angle, "first tick current angle");
+
+    store.advance_entity_client_animations(1);
+    let second_angle = 10.0 * (1.0_f32).sin() * 0.1;
+    assert_close(
+        bubble(&store, 0.5),
+        first_angle + (second_angle - first_angle) * 0.5,
+        "second tick partial angle",
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 22,
+        values: vec![protocol_int_data(BOAT_BUBBLE_TIME_DATA_ID, 0)],
+    }));
+    store.advance_entity_client_animations(1);
+    assert_close(bubble(&store, 1.0), 0.0, "cleared bubble angle");
+}
+
+#[test]
 fn entity_model_sources_project_invisible_to_player_for_spectator_viewer() {
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
