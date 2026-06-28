@@ -575,6 +575,7 @@ fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
         NAUTILUS_BABY_TEXTURE_REF,
         ZOMBIE_NAUTILUS_TEXTURE_REF,
         ZOMBIE_NAUTILUS_CORAL_TEXTURE_REF,
+        NAUTILUS_SADDLE_TEXTURE_REF,
         NAUTILUS_BODY_IRON_TEXTURE_REF,
         NAUTILUS_BODY_NETHERITE_TEXTURE_REF,
     ]
@@ -633,6 +634,65 @@ fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
     assert!(first_armor_vertex[0] <= iron_uv.max[0]);
     assert!(first_armor_vertex[1] >= iron_uv.min[1]);
     assert!(first_armor_vertex[1] <= iron_uv.max[1]);
+
+    let armored_saddled_instance = adult
+        .with_nautilus_body_armor(Some(EntityArmorMaterial::Iron))
+        .with_nautilus_saddle(true);
+    let armored_saddled_meshes = entity_model_textured_meshes(&[armored_saddled_instance], &atlas);
+    assert_nautilus_submissions_match_vanilla(&armored_saddled_meshes, armored_saddled_instance);
+    assert_eq!(armored_saddled_meshes.submissions.len(), 3);
+    assert_eq!(
+        armored_saddled_meshes.submissions[1].texture,
+        NAUTILUS_BODY_IRON_TEXTURE_REF
+    );
+    assert_eq!(
+        (
+            armored_saddled_meshes.submissions[1].order,
+            armored_saddled_meshes.submissions[1].submit_sequence
+        ),
+        (0, 1),
+        "vanilla submits nautilus body armor before the saddle layer"
+    );
+    assert_eq!(
+        armored_saddled_meshes.submissions[2].texture,
+        NAUTILUS_SADDLE_TEXTURE_REF
+    );
+    assert_eq!(
+        (
+            armored_saddled_meshes.submissions[2].order,
+            armored_saddled_meshes.submissions[2].submit_sequence
+        ),
+        (0, 2),
+        "saddle sequence advances after body armor"
+    );
+    assert_eq!(
+        armored_saddled_meshes.cutout.vertices.len() - armored.vertices.len(),
+        144
+    );
+    assert!(
+        armored_saddled_meshes.cutout.vertices[..bare.vertices.len()]
+            .iter()
+            .all(
+                |vertex| vertex.light == armored_saddled_meshes.submissions[0].light
+                    && vertex.overlay == armored_saddled_meshes.submissions[0].overlay
+            )
+    );
+    assert!(
+        armored_saddled_meshes.cutout.vertices[bare.vertices.len()..armored.vertices.len()]
+            .iter()
+            .all(
+                |vertex| vertex.light == armored_saddled_meshes.submissions[1].light
+                    && vertex.overlay == armored_saddled_meshes.submissions[1].overlay
+            )
+    );
+    assert!(
+        armored_saddled_meshes.cutout.vertices[armored.vertices.len()..]
+            .iter()
+            .all(
+                |vertex| vertex.light == armored_saddled_meshes.submissions[2].light
+                    && vertex.overlay == armored_saddled_meshes.submissions[2].overlay
+            )
+    );
 
     let invalid_material_instance =
         adult.with_nautilus_body_armor(Some(EntityArmorMaterial::Chainmail));

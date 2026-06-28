@@ -446,10 +446,6 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures(
         emit_player_spin_attack_effect_layer(&mut meshes, *instance, atlas);
         // Wolf body armor uses the adult WOLF_ARMOR equipment layer and optional damage cracks.
         emit_wolf_body_armor_layer(&mut meshes, *instance, atlas);
-        // Living and zombie nautilus body armor uses the adult NautilusArmorModel tree.
-        emit_nautilus_body_armor_layer(&mut meshes, *instance, atlas);
-        // Living and zombie nautilus saddles use the adult NautilusSaddleModel tree.
-        emit_nautilus_saddle_layer(&mut meshes, *instance, atlas);
         // VillagerProfessionLayer overlays (biome type, profession, level badge) are cutout layers
         // over the base villager or zombie-villager model with shared light and zero-white overlay.
         emit_villager_profession_layers(&mut meshes, *instance, atlas);
@@ -2480,12 +2476,15 @@ pub(in crate::entity_models) fn render_camel_saddle_layer(
 /// Vanilla `NautilusRenderer` / `ZombieNautilusRenderer` `SimpleEquipmentLayer(NAUTILUS_SADDLE)`:
 /// a non-empty saddle item renders `NautilusSaddleModel(ModelLayers.NAUTILUS_SADDLE)` over adult
 /// living nautilus and zombie nautilus. The layer has no baby model, so baby living nautilus skip it.
-fn emit_nautilus_saddle_layer(
+pub(in crate::entity_models) fn render_nautilus_saddle_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     if !instance.render_state.nautilus_saddle {
+        return;
+    }
+    if meshes.current_force_transparent || meshes.current_outline_only {
         return;
     }
     if !matches!(
@@ -2520,11 +2519,14 @@ fn emit_nautilus_saddle_layer(
 /// a non-empty nautilus body armor item renders `NautilusArmorModel(ModelLayers.NAUTILUS_ARMOR)` over
 /// adult living nautilus and zombie nautilus. The layer has no baby model, so baby living nautilus
 /// skip it.
-fn emit_nautilus_body_armor_layer(
+pub(in crate::entity_models) fn render_nautilus_body_armor_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    if meshes.current_force_transparent || meshes.current_outline_only {
+        return;
+    }
     let Some(material) = instance.render_state.nautilus_body_armor else {
         return;
     };

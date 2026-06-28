@@ -4030,7 +4030,10 @@ When an agent does any of the following, update this file in the same slice:
       all zombie-nautilus saddle/body-armor equipment layers are `equipment_layer_pass`-generated
       `armorCutoutNoCull` submissions for vanilla `ModelLayers.NAUTILUS_SADDLE` / `NAUTILUS_ARMOR`
       with white tint and the same transform, entity light, and `OverlayTexture.NO_OVERLAY` at `(0, 1)`,
-      with saddle advancing to `(0, 2)` when a valid body-armor layer is also present. Baby living nautilus remain base-only
+      with saddle advancing to `(0, 2)` when a valid body-armor layer is also present. These equipment
+      submits now run through the shared Nautilus / ZombieNautilus dispatch sink rather than post-base
+      helpers, and a regression pins the body-armor-before-saddle sequence when both layers are present.
+      Baby living nautilus remain base-only
       because vanilla `SimpleEquipmentLayer` has no
       baby model. The colored debug path stays as a fallback (it renders a tan shell over a pale body)
     - fox entities (adult and baby) as renderer-owned vanilla 26.1 `AdultFoxModel.createBodyLayer()` /
