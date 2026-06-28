@@ -4,11 +4,13 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use bbb_protocol::packets::ClockUpdate as ProtocolClockUpdate;
 use bbb_protocol::packets::{
     BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate, CommonPlayerSpawnInfo,
-    DialogHolder, InteractionHand, MerchantOffer, MerchantOffers, MobEffectFlags, OpenBook,
-    OpenSignEditor, PlayLogin, RemoveMobEffect, SetPlayerInventory as ProtocolSetPlayerInventory,
-    ShowDialog, UpdateMobEffect, WrittenBookContentSummary,
+    DialogHolder, GameEvent as ProtocolGameEvent, InteractionHand, MerchantOffer, MerchantOffers,
+    MobEffectFlags, OpenBook, OpenSignEditor, PlayLogin, PlayTime, RemoveMobEffect,
+    SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog, UpdateMobEffect,
+    WrittenBookContentSummary,
 };
 use bbb_world::{
     BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, LocalPlayerPoseState,
@@ -144,6 +146,64 @@ fn lightmap_environment_uses_vanilla_dimension_attributes() {
     assert_close3(
         end_environment.ambient_color,
         [63.0 / 255.0, 71.0 / 255.0, 63.0 / 255.0],
+    );
+}
+
+#[test]
+fn lightmap_environment_uses_overworld_day_timeline_sky_light_attributes() {
+    let mut overworld = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut overworld, 18_000);
+    let night_environment = lightmap_environment_for_world(&overworld, 0.5, 1.4);
+    assert_eq!(night_environment.sky_factor, 0.24);
+    assert_close3(
+        night_environment.sky_light_color,
+        [122.0 / 255.0, 122.0 / 255.0, 1.0],
+    );
+
+    set_world_day_time(&mut overworld, 6_000);
+    let noon_environment = lightmap_environment_for_world(&overworld, 0.5, 1.4);
+    assert_eq!(noon_environment.sky_factor, 1.0);
+    assert_close3(
+        noon_environment.sky_light_color,
+        VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
+    );
+
+    let mut nether = world_with_dimension(1, "minecraft:the_nether");
+    set_world_day_time(&mut nether, 18_000);
+    let nether_environment = lightmap_environment_for_world(&nether, 0.5, 1.4);
+    assert_eq!(nether_environment.sky_factor, 0.0);
+    assert_close3(
+        nether_environment.sky_light_color,
+        [122.0 / 255.0, 122.0 / 255.0, 1.0],
+    );
+}
+
+#[test]
+fn lightmap_environment_applies_overworld_weather_layers_after_timeline() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, 6_000);
+    set_world_weather(&mut world, 1.0, 0.0);
+    let rain_environment = lightmap_environment_for_world(&world, 0.5, 1.4);
+    assert!((rain_environment.sky_factor - 0.7625).abs() < 1e-6);
+    assert_close3(
+        rain_environment.sky_light_color,
+        [213.0 / 255.0, 213.0 / 255.0, 1.0],
+    );
+
+    set_world_weather(&mut world, 1.0, 1.0);
+    let thunder_environment = lightmap_environment_for_world(&world, 0.5, 1.4);
+    assert!((thunder_environment.sky_factor - 0.5992187).abs() < 1e-6);
+    assert_close3(
+        thunder_environment.sky_light_color,
+        [185.0 / 255.0, 185.0 / 255.0, 1.0],
+    );
+
+    set_world_weather(&mut world, 0.0, 1.0);
+    let dry_thunder_environment = lightmap_environment_for_world(&world, 0.5, 1.4);
+    assert_eq!(dry_thunder_environment.sky_factor, 1.0);
+    assert_close3(
+        dry_thunder_environment.sky_light_color,
+        VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
     );
 }
 
@@ -473,6 +533,29 @@ fn world_with_dimension(dimension_type_id: i32, dimension: &str) -> WorldStore {
         enforces_secure_chat: true,
     });
     world
+}
+
+fn set_world_day_time(world: &mut WorldStore, day_time: i64) {
+    world.apply_world_time(PlayTime {
+        game_time: day_time,
+        clock_updates: vec![ProtocolClockUpdate {
+            clock_id: 0,
+            total_ticks: day_time,
+            partial_tick: 0.0,
+            rate: 1.0,
+        }],
+    });
+}
+
+fn set_world_weather(world: &mut WorldStore, rain_level: f32, thunder_level: f32) {
+    world.apply_game_event(ProtocolGameEvent {
+        event_id: 7,
+        param: rain_level,
+    });
+    world.apply_game_event(ProtocolGameEvent {
+        event_id: 8,
+        param: thunder_level,
+    });
 }
 
 fn attach_lightmap_local_player(world: &mut WorldStore, id: i32) {

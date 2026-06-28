@@ -22,7 +22,7 @@ use bbb_renderer::{
 };
 use bbb_world::{
     BookScreenState, ContainerState, MerchantOfferState, MerchantOffersState, MobEffectState,
-    MountArmorSlotKind, MountInventoryKind, WorldLevelInfo, WorldStore,
+    MountArmorSlotKind, MountInventoryKind, WorldLevelInfo, WorldStore, WorldWeatherState,
 };
 use tokio::sync::mpsc;
 
@@ -61,6 +61,22 @@ const VANILLA_NETHER_SKY_LIGHT_COLOR: [f32; 3] = [122.0 / 255.0, 122.0 / 255.0, 
 const VANILLA_NETHER_AMBIENT_LIGHT_COLOR: [f32; 3] = rgb24(-13_621_215);
 const VANILLA_END_SKY_LIGHT_COLOR: [f32; 3] = rgb24(-5_480_243);
 const VANILLA_END_AMBIENT_LIGHT_COLOR: [f32; 3] = rgb24(-12_630_209);
+const VANILLA_LIGHTMAP_DEFAULT_DAY_TIME: i64 = 6_000;
+const VANILLA_LIGHTMAP_DAY_PERIOD_TICKS: i64 = 24_000;
+const VANILLA_TIMELINE_NIGHT_SKY_LIGHT_COLOR: i32 = argb_color(255, 122, 122, 255);
+const VANILLA_WEATHER_SKY_LIGHT_FACTOR: f32 = 0.24;
+const VANILLA_WEATHER_RAIN_ALPHA: f32 = 0.3125;
+const VANILLA_WEATHER_THUNDER_ALPHA: f32 = 0.52734375;
+const VANILLA_WEATHER_RAIN_SKY_LIGHT_COLOR: i32 = argb_color(79, 122, 122, 255);
+const VANILLA_WEATHER_THUNDER_SKY_LIGHT_COLOR: i32 = argb_color(134, 122, 122, 255);
+const VANILLA_OVERWORLD_SKY_LIGHT_COLOR_KEYFRAMES: [(i64, i32); 4] = [
+    (730, -1),
+    (11_270, -1),
+    (13_140, VANILLA_TIMELINE_NIGHT_SKY_LIGHT_COLOR),
+    (22_860, VANILLA_TIMELINE_NIGHT_SKY_LIGHT_COLOR),
+];
+const VANILLA_OVERWORLD_SKY_LIGHT_FACTOR_KEYFRAMES: [(i64, f32); 4] =
+    [(730, 1.0), (11_270, 1.0), (13_140, 0.24), (22_860, 0.24)];
 const VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK: f32 = 1.0;
 const VANILLA_MOB_EFFECT_NIGHT_VISION_ID: i32 = 15;
 const VANILLA_MOB_EFFECT_CONDUIT_POWER_ID: i32 = 28;
@@ -443,6 +459,179 @@ const fn rgb24(color: i32) -> [f32; 3] {
     ]
 }
 
+const fn argb_color(alpha: i32, red: i32, green: i32, blue: i32) -> i32 {
+    ((((alpha & 0xff) as u32) << 24)
+        | (((red & 0xff) as u32) << 16)
+        | (((green & 0xff) as u32) << 8)
+        | ((blue & 0xff) as u32)) as i32
+}
+
+fn rgb01_to_argb(color: [f32; 3]) -> i32 {
+    argb_color(
+        255,
+        argb_channel_from_unit(color[0]),
+        argb_channel_from_unit(color[1]),
+        argb_channel_from_unit(color[2]),
+    )
+}
+
+fn argb_channel_from_unit(value: f32) -> i32 {
+    (value.clamp(0.0, 1.0) * 255.0).floor() as i32
+}
+
+fn argb_alpha(color: i32) -> i32 {
+    ((color as u32) >> 24) as i32
+}
+
+fn argb_red(color: i32) -> i32 {
+    (((color as u32) >> 16) & 0xff) as i32
+}
+
+fn argb_green(color: i32) -> i32 {
+    (((color as u32) >> 8) & 0xff) as i32
+}
+
+fn argb_blue(color: i32) -> i32 {
+    ((color as u32) & 0xff) as i32
+}
+
+fn argb_lerp_int(alpha: f32, from: i32, to: i32) -> i32 {
+    from + (alpha * (to - from) as f32).floor() as i32
+}
+
+fn argb_srgb_lerp(alpha: f32, from: i32, to: i32) -> i32 {
+    argb_color(
+        argb_lerp_int(alpha, argb_alpha(from), argb_alpha(to)),
+        argb_lerp_int(alpha, argb_red(from), argb_red(to)),
+        argb_lerp_int(alpha, argb_green(from), argb_green(to)),
+        argb_lerp_int(alpha, argb_blue(from), argb_blue(to)),
+    )
+}
+
+fn argb_multiply(lhs: i32, rhs: i32) -> i32 {
+    if lhs == -1 {
+        rhs
+    } else if rhs == -1 {
+        lhs
+    } else {
+        argb_color(
+            argb_alpha(lhs) * argb_alpha(rhs) / 255,
+            argb_red(lhs) * argb_red(rhs) / 255,
+            argb_green(lhs) * argb_green(rhs) / 255,
+            argb_blue(lhs) * argb_blue(rhs) / 255,
+        )
+    }
+}
+
+fn argb_alpha_blend(destination: i32, source: i32) -> i32 {
+    let destination_alpha = argb_alpha(destination);
+    let source_alpha = argb_alpha(source);
+    if source_alpha == 255 {
+        return source;
+    }
+    if source_alpha == 0 {
+        return destination;
+    }
+
+    let alpha = source_alpha + destination_alpha * (255 - source_alpha) / 255;
+    argb_color(
+        alpha,
+        argb_alpha_blend_channel(alpha, source_alpha, argb_red(destination), argb_red(source)),
+        argb_alpha_blend_channel(
+            alpha,
+            source_alpha,
+            argb_green(destination),
+            argb_green(source),
+        ),
+        argb_alpha_blend_channel(
+            alpha,
+            source_alpha,
+            argb_blue(destination),
+            argb_blue(source),
+        ),
+    )
+}
+
+fn argb_alpha_blend_channel(
+    result_alpha: i32,
+    source_alpha: i32,
+    destination: i32,
+    source: i32,
+) -> i32 {
+    (source * source_alpha + destination * (result_alpha - source_alpha)) / result_alpha
+}
+
+fn sample_periodic_float_keyframes(day_time: i64, keyframes: &[(i64, f32)], period: i64) -> f32 {
+    sample_periodic_keyframes(day_time, keyframes, period, |alpha, from, to| {
+        from + alpha * (to - from)
+    })
+}
+
+fn sample_periodic_argb_keyframes(day_time: i64, keyframes: &[(i64, i32)], period: i64) -> i32 {
+    sample_periodic_keyframes(day_time, keyframes, period, argb_srgb_lerp)
+}
+
+fn sample_periodic_keyframes<T: Copy>(
+    day_time: i64,
+    keyframes: &[(i64, T)],
+    period: i64,
+    lerp: impl Fn(f32, T, T) -> T,
+) -> T {
+    debug_assert!(!keyframes.is_empty());
+    if keyframes.len() == 1 {
+        return keyframes[0].1;
+    }
+
+    let sample_tick = day_time.rem_euclid(period);
+    let first = keyframes[0];
+    let last = keyframes[keyframes.len() - 1];
+    if sample_tick < first.0 {
+        return sample_keyframe_segment(
+            sample_tick,
+            last.0 - period,
+            last.1,
+            first.0,
+            first.1,
+            &lerp,
+        );
+    }
+
+    for window in keyframes.windows(2) {
+        let from = window[0];
+        let to = window[1];
+        if sample_tick < to.0 {
+            return sample_keyframe_segment(sample_tick, from.0, from.1, to.0, to.1, &lerp);
+        }
+    }
+
+    sample_keyframe_segment(
+        sample_tick,
+        last.0,
+        last.1,
+        first.0 + period,
+        first.1,
+        &lerp,
+    )
+}
+
+fn sample_keyframe_segment<T: Copy>(
+    sample_tick: i64,
+    from_tick: i64,
+    from_value: T,
+    to_tick: i64,
+    to_value: T,
+    lerp: &impl Fn(f32, T, T) -> T,
+) -> T {
+    if sample_tick <= from_tick {
+        return from_value;
+    }
+    if sample_tick >= to_tick {
+        return to_value;
+    }
+    let alpha = (sample_tick - from_tick) as f32 / (to_tick - from_tick) as f32;
+    lerp(alpha, from_value, to_value)
+}
+
 fn sanitize_lightmap_brightness_factor(factor: f32) -> f32 {
     if factor.is_finite() {
         factor.clamp(0.0, 1.0)
@@ -501,10 +690,7 @@ fn lightmap_environment_for_world_with_effects(
     conduit_power_effect: Option<MobEffectState>,
     water_vision: f32,
 ) -> LightmapEnvironment {
-    let mut environment = world
-        .level_info()
-        .map(dimension_lightmap_environment)
-        .unwrap_or_default();
+    let mut environment = lightmap_environment_attributes_for_world(world);
     let effects = local_player_lightmap_effects(
         brightness_factor,
         camera_tick_count,
@@ -722,34 +908,143 @@ fn sanitize_lightmap_partial_tick(partial_tick: f32) -> f32 {
     }
 }
 
+fn lightmap_environment_attributes_for_world(world: &WorldStore) -> LightmapEnvironment {
+    let Some(level) = world.level_info() else {
+        return LightmapEnvironment::default();
+    };
+
+    let mut environment = dimension_lightmap_environment(level);
+    if vanilla_lightmap_dimension_kind(level) == VanillaLightmapDimensionKind::Overworld {
+        let day_time = world
+            .world_time()
+            .map(|time| time.day_time)
+            .unwrap_or(VANILLA_LIGHTMAP_DEFAULT_DAY_TIME);
+        apply_overworld_timeline_lightmap_environment(&mut environment, day_time);
+        apply_weather_lightmap_environment(&mut environment, world.weather());
+    }
+    environment
+}
+
+fn apply_overworld_timeline_lightmap_environment(
+    environment: &mut LightmapEnvironment,
+    day_time: i64,
+) {
+    let sky_factor = sample_periodic_float_keyframes(
+        day_time,
+        &VANILLA_OVERWORLD_SKY_LIGHT_FACTOR_KEYFRAMES,
+        VANILLA_LIGHTMAP_DAY_PERIOD_TICKS,
+    );
+    let sky_light_color = sample_periodic_argb_keyframes(
+        day_time,
+        &VANILLA_OVERWORLD_SKY_LIGHT_COLOR_KEYFRAMES,
+        VANILLA_LIGHTMAP_DAY_PERIOD_TICKS,
+    );
+    environment.sky_factor *= sky_factor;
+    environment.sky_light_color = rgb24(argb_multiply(
+        rgb01_to_argb(environment.sky_light_color),
+        sky_light_color,
+    ));
+}
+
+fn apply_weather_lightmap_environment(
+    environment: &mut LightmapEnvironment,
+    weather: WorldWeatherState,
+) {
+    let rain_level = sanitize_weather_lightmap_level(weather.rain_level);
+    let thunder_level =
+        (sanitize_weather_lightmap_level(weather.thunder_level) * rain_level).clamp(0.0, 1.0);
+    let rain_level = (rain_level - thunder_level).max(0.0);
+
+    apply_weather_lightmap_layer(
+        environment,
+        rain_level,
+        VANILLA_WEATHER_RAIN_ALPHA,
+        VANILLA_WEATHER_RAIN_SKY_LIGHT_COLOR,
+    );
+    apply_weather_lightmap_layer(
+        environment,
+        thunder_level,
+        VANILLA_WEATHER_THUNDER_ALPHA,
+        VANILLA_WEATHER_THUNDER_SKY_LIGHT_COLOR,
+    );
+}
+
+fn apply_weather_lightmap_layer(
+    environment: &mut LightmapEnvironment,
+    level: f32,
+    alpha: f32,
+    sky_light_color: i32,
+) {
+    if level <= 0.0 {
+        return;
+    }
+
+    let modified_sky_factor = environment.sky_factor
+        + alpha * (VANILLA_WEATHER_SKY_LIGHT_FACTOR - environment.sky_factor);
+    environment.sky_factor += level * (modified_sky_factor - environment.sky_factor);
+
+    let base_color = rgb01_to_argb(environment.sky_light_color);
+    let modified_color = argb_alpha_blend(base_color, sky_light_color);
+    environment.sky_light_color = rgb24(argb_srgb_lerp(level, base_color, modified_color));
+}
+
+fn sanitize_weather_lightmap_level(level: f32) -> f32 {
+    if level.is_finite() {
+        level.clamp(0.0, 1.0)
+    } else {
+        0.0
+    }
+}
+
 fn dimension_lightmap_environment(level: &WorldLevelInfo) -> LightmapEnvironment {
     let mut environment = LightmapEnvironment::default();
-    let dimension = level.dimension.as_str();
-    let dimension_type = level.dimension_type_name.as_deref();
-    match (level.dimension_type_id, dimension, dimension_type) {
-        (1, _, _) | (_, "minecraft:the_nether", _) | (_, _, Some("minecraft:the_nether")) => {
+    match vanilla_lightmap_dimension_kind(level) {
+        VanillaLightmapDimensionKind::Nether => {
             environment.sky_factor = 0.0;
             environment.sky_light_color = VANILLA_NETHER_SKY_LIGHT_COLOR;
             environment.ambient_color = VANILLA_NETHER_AMBIENT_LIGHT_COLOR;
         }
-        (2, _, _) | (_, "minecraft:the_end", _) | (_, _, Some("minecraft:the_end")) => {
+        VanillaLightmapDimensionKind::End => {
             environment.sky_factor = 0.0;
             environment.sky_light_color = VANILLA_END_SKY_LIGHT_COLOR;
             environment.ambient_color = VANILLA_END_AMBIENT_LIGHT_COLOR;
+        }
+        VanillaLightmapDimensionKind::Overworld => {
+            environment.sky_factor = VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR;
+            environment.sky_light_color = VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR;
+            environment.ambient_color = VANILLA_OVERWORLD_AMBIENT_LIGHT_COLOR;
+        }
+        VanillaLightmapDimensionKind::Other => {}
+    }
+    environment
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum VanillaLightmapDimensionKind {
+    Overworld,
+    Nether,
+    End,
+    Other,
+}
+
+fn vanilla_lightmap_dimension_kind(level: &WorldLevelInfo) -> VanillaLightmapDimensionKind {
+    let dimension = level.dimension.as_str();
+    let dimension_type = level.dimension_type_name.as_deref();
+    match (level.dimension_type_id, dimension, dimension_type) {
+        (1, _, _) | (_, "minecraft:the_nether", _) | (_, _, Some("minecraft:the_nether")) => {
+            VanillaLightmapDimensionKind::Nether
+        }
+        (2, _, _) | (_, "minecraft:the_end", _) | (_, _, Some("minecraft:the_end")) => {
+            VanillaLightmapDimensionKind::End
         }
         (0, _, _)
         | (3, _, _)
         | (_, "minecraft:overworld", _)
         | (_, "minecraft:overworld_caves", _)
         | (_, _, Some("minecraft:overworld"))
-        | (_, _, Some("minecraft:overworld_caves")) => {
-            environment.sky_factor = VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR;
-            environment.sky_light_color = VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR;
-            environment.ambient_color = VANILLA_OVERWORLD_AMBIENT_LIGHT_COLOR;
-        }
-        _ => {}
+        | (_, _, Some("minecraft:overworld_caves")) => VanillaLightmapDimensionKind::Overworld,
+        _ => VanillaLightmapDimensionKind::Other,
     }
-    environment
 }
 
 pub(crate) fn snapshot_is_running(snapshot: &SharedSnapshot) -> bool {
