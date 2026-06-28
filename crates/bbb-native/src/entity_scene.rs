@@ -1432,6 +1432,8 @@ fn entity_model_instance(
         .with_fox_is_sitting(source.fox_is_sitting)
         .with_fox_is_pouncing(source.fox_is_pouncing)
         .with_fox_is_faceplanted(source.fox_is_faceplanted)
+        .with_feline_is_crouching(source.feline_is_crouching)
+        .with_feline_is_sprinting(source.feline_is_sprinting)
         .with_witch_holding_item(witch_holding_item)
         .with_witch_holding_potion(witch_holding_potion)
         .with_copper_golem_holding_item(copper_golem_holding_item)
@@ -11942,6 +11944,86 @@ mod tests {
                 1.0,
             )
         );
+    }
+
+    #[test]
+    fn entity_model_instances_project_feline_crouch_and_sprint_from_world() {
+        // Vanilla `CatRenderer` / `OcelotRenderer.extractRenderState` copy `Entity.isCrouching()`
+        // (Pose.CROUCHING, ordinal 5) and `Entity.isSprinting()` (shared flags bit 3).
+        const ENTITY_DATA_POSE_ID: u8 = 6;
+        const ENTITY_SHARED_FLAG_SPRINTING: i8 = 1 << 3;
+        const POSE_STANDING: i32 = 0;
+        const POSE_CROUCHING: i32 = 5;
+        const POSE_SERIALIZER_ID: i32 = 20;
+
+        let pose_data = |pose| EntityDataValue {
+            data_id: ENTITY_DATA_POSE_ID,
+            serializer_id: POSE_SERIALIZER_ID,
+            value: EntityDataValueKind::Pose(pose),
+        };
+        let feline_state = |world: &WorldStore, id: i32| {
+            let instance = entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap();
+            (
+                instance.render_state.feline_is_crouching,
+                instance.render_state.feline_is_sprinting,
+            )
+        };
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            43,
+            VANILLA_ENTITY_TYPE_CAT_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            44,
+            VANILLA_ENTITY_TYPE_OCELOT_ID,
+            [3.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            45,
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            [5.0, 64.0, -2.0],
+        ));
+
+        assert_eq!(feline_state(&world, 43), (false, false));
+        assert_eq!(feline_state(&world, 44), (false, false));
+
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 43,
+            values: vec![
+                pose_data(POSE_CROUCHING),
+                protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_SPRINTING),
+            ],
+        }));
+        assert_eq!(feline_state(&world, 43), (true, true));
+
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 44,
+            values: vec![pose_data(POSE_CROUCHING)],
+        }));
+        assert_eq!(feline_state(&world, 44), (true, false));
+
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 45,
+            values: vec![
+                pose_data(POSE_CROUCHING),
+                protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_SPRINTING),
+            ],
+        }));
+        assert_eq!(feline_state(&world, 45), (false, false));
+
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 43,
+            values: vec![
+                pose_data(POSE_STANDING),
+                protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, 0),
+            ],
+        }));
+        assert_eq!(feline_state(&world, 43), (false, false));
     }
 
     #[test]

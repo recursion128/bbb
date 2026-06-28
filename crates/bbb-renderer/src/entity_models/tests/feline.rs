@@ -1,6 +1,13 @@
 use super::*;
 use crate::entity_models::model::EntityModel;
 
+fn assert_close(actual: f32, expected: f32) {
+    assert!(
+        (actual - expected).abs() < 1.0e-6,
+        "expected {actual} to be close to {expected}"
+    );
+}
+
 #[test]
 fn feline_geometry_matches_vanilla_26_1_body_layer() {
     // Vanilla `AdultFelineModel.createBodyMesh(NONE)` (atlas 64×32): eight flat named root parts —
@@ -368,6 +375,177 @@ fn feline_lower_tail_wobbles_with_the_gait() {
     );
     let still_tail2 = model.root_mut().child_mut("tail2").pose.rotation[0];
     assert!((still_tail2 - 1.7278761).abs() < 1.0e-6);
+}
+
+#[test]
+fn feline_crouch_pose_matches_vanilla_branch() {
+    // Vanilla `AdultFelineModel.setupAnim` crouch branch moves body/head/tail pivots first, then the
+    // non-sprinting not-sitting branch overwrites `tail2.xRot` with the crouch wobble amplitude.
+    let pos = 3.0_f32;
+    let speed = 0.8_f32;
+    let mut model = FelineModel::new(false);
+    model.prepare(
+        &EntityModelInstance::feline(
+            534,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            false,
+            CatModelVariant::Black,
+            None,
+        )
+        .with_feline_is_crouching(true)
+        .with_walk_animation(pos, speed),
+    );
+
+    assert_close3(
+        model.root_mut().child_mut("body").pose.offset,
+        [0.0, 13.0, -10.0],
+    );
+    assert_close3(
+        model.root_mut().child_mut("head").pose.offset,
+        [0.0, 17.0, -9.0],
+    );
+    assert_close3(
+        model.root_mut().child_mut("tail1").pose.offset,
+        [0.0, 16.0, 8.0],
+    );
+    assert_close(
+        model.root_mut().child_mut("tail1").pose.rotation[0],
+        std::f32::consts::FRAC_PI_2,
+    );
+    assert_close3(
+        model.root_mut().child_mut("tail2").pose.offset,
+        [0.0, 16.0, 16.0],
+    );
+    assert_close(
+        model.root_mut().child_mut("tail2").pose.rotation[0],
+        1.7278761 + 0.47123894 * pos.cos() * speed,
+    );
+
+    let phase = pos * 0.6662;
+    assert_close(
+        model.root_mut().child_mut("left_hind_leg").pose.rotation[0],
+        phase.cos() * speed,
+    );
+    assert_close(
+        model.root_mut().child_mut("right_front_leg").pose.rotation[0],
+        phase.cos() * speed,
+    );
+    assert_close(
+        model.root_mut().child_mut("right_hind_leg").pose.rotation[0],
+        (phase + std::f32::consts::PI).cos() * speed,
+    );
+    assert_close(
+        model.root_mut().child_mut("left_front_leg").pose.rotation[0],
+        (phase + std::f32::consts::PI).cos() * speed,
+    );
+}
+
+#[test]
+fn feline_sprint_pose_matches_vanilla_branch() {
+    // Vanilla sprinting puts `tail2` on `tail1.y`, advances the lower tail forward, uses the sprint
+    // tail amplitude (`π/10`), and offsets the right-hind/left-front leg phases by `0.3`.
+    let pos = 3.0_f32;
+    let speed = 0.8_f32;
+    let mut model = FelineModel::new(false);
+    model.prepare(
+        &EntityModelInstance::feline(
+            535,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            false,
+            CatModelVariant::Black,
+            None,
+        )
+        .with_feline_is_sprinting(true)
+        .with_walk_animation(pos, speed),
+    );
+
+    assert_close3(
+        model.root_mut().child_mut("tail1").pose.offset,
+        [0.0, 15.0, 8.0],
+    );
+    assert_close(
+        model.root_mut().child_mut("tail1").pose.rotation[0],
+        std::f32::consts::FRAC_PI_2,
+    );
+    assert_close3(
+        model.root_mut().child_mut("tail2").pose.offset,
+        [0.0, 15.0, 16.0],
+    );
+    assert_close(
+        model.root_mut().child_mut("tail2").pose.rotation[0],
+        1.7278761 + (std::f32::consts::PI / 10.0) * pos.cos() * speed,
+    );
+
+    let phase = pos * 0.6662;
+    assert_close(
+        model.root_mut().child_mut("left_hind_leg").pose.rotation[0],
+        phase.cos() * speed,
+    );
+    assert_close(
+        model.root_mut().child_mut("right_hind_leg").pose.rotation[0],
+        (phase + 0.3).cos() * speed,
+    );
+    assert_close(
+        model.root_mut().child_mut("left_front_leg").pose.rotation[0],
+        (phase + std::f32::consts::PI + 0.3).cos() * speed,
+    );
+    assert_close(
+        model.root_mut().child_mut("right_front_leg").pose.rotation[0],
+        (phase + std::f32::consts::PI).cos() * speed,
+    );
+}
+
+#[test]
+fn baby_feline_crouch_and_sprint_pose_the_visible_tail() {
+    // `BabyFelineModel` shares the crouch/sprint setup with the adult, but its lower `tail2` is a
+    // cubeless pivot. Pin the visible `tail1` offsets/rotations so the branch still has observable
+    // coverage on baby cats and ocelots.
+    let mut model = FelineModel::new(true);
+    model.prepare(
+        &EntityModelInstance::feline(
+            536,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            true,
+            CatModelVariant::Black,
+            None,
+        )
+        .with_feline_is_crouching(true),
+    );
+    assert_close3(
+        model.root_mut().child_mut("tail1").pose.offset,
+        [0.0, 20.107, 3.9151],
+    );
+    assert_close(
+        model.root_mut().child_mut("tail1").pose.rotation[0],
+        std::f32::consts::FRAC_PI_2,
+    );
+
+    model.prepare(
+        &EntityModelInstance::feline(
+            537,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            true,
+            CatModelVariant::Black,
+            None,
+        )
+        .with_feline_is_sprinting(true),
+    );
+    assert_close3(
+        model.root_mut().child_mut("tail1").pose.offset,
+        [0.0, 19.107, 3.9151],
+    );
+    assert_close(
+        model.root_mut().child_mut("tail1").pose.rotation[0],
+        std::f32::consts::FRAC_PI_2,
+    );
 }
 
 #[test]

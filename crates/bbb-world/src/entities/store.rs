@@ -42,9 +42,9 @@ use crate::entities::animations::{
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
     vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
-    vanilla_illager_aggressive_arm_pose_family, vanilla_is_baby, vanilla_is_bat, vanilla_is_bee,
-    vanilla_is_enderman, vanilla_is_fox, vanilla_is_vex, vanilla_is_wither,
-    vanilla_living_entity_type, vanilla_model_source_bounds_for_entity_data,
+    vanilla_feline_family, vanilla_illager_aggressive_arm_pose_family, vanilla_is_baby,
+    vanilla_is_bat, vanilla_is_bee, vanilla_is_enderman, vanilla_is_fox, vanilla_is_vex,
+    vanilla_is_wither, vanilla_living_entity_type, vanilla_model_source_bounds_for_entity_data,
     vanilla_pick_bounds_for_entity_data, vanilla_piglin_melee_attack_family, vanilla_render_scale,
     vanilla_zombie_model_family, ENTITY_DATA_POSE_ID, ITEM_FRAME_ENTITY_TYPE_IDS,
     VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID, VANILLA_POSE_CROUCHING_ID, VANILLA_POSE_SLEEPING_ID,
@@ -65,6 +65,8 @@ const ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID: u8 = 18;
 const VANILLA_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
 /// Vanilla `Entity.DATA_SHARED_FLAGS_ID` id 0 bit 5 (`Entity.isInvisible()`).
 const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
+/// Vanilla `Entity.DATA_SHARED_FLAGS_ID` id 0 bit 3 (`Entity.isSprinting()`).
+const ENTITY_SHARED_FLAG_SPRINTING: i8 = 1 << 3;
 const ENTITY_SHARED_FLAG_INVISIBLE: i8 = 1 << 5;
 /// Vanilla `Entity.DATA_SHARED_FLAGS_ID` id 0 bit 6 (`Entity.isCurrentlyGlowing()` on the client).
 const ENTITY_SHARED_FLAG_GLOWING: i8 = 1 << 6;
@@ -957,6 +959,18 @@ impl EntityStore {
         let fox_is_sitting = fox_flags & FOX_FLAG_SITTING != 0;
         let fox_is_pouncing = fox_flags & FOX_FLAG_POUNCING != 0;
         let fox_is_faceplanted = fox_flags & FOX_FLAG_FACEPLANTED != 0;
+        let is_feline = vanilla_feline_family(identity.entity_type_id);
+        // Vanilla `CatRenderer` / `OcelotRenderer.extractRenderState` copies
+        // `Entity.isCrouching()` and `Entity.isSprinting()` into `FelineRenderState`. The former is the
+        // synced `Pose.CROUCHING`; the latter is shared entity flags bit 3.
+        let feline_is_crouching =
+            is_feline && entity_data_pose(&metadata.data_values) == VANILLA_POSE_CROUCHING_ID;
+        let feline_is_sprinting = is_feline
+            && self
+                .metadata_byte(id, ENTITY_SHARED_FLAGS_DATA_ID, 0)
+                .unwrap_or(0)
+                & ENTITY_SHARED_FLAG_SPRINTING
+                != 0;
         // Vanilla `VexModel.setupAnim` levels the body (`xRot = 0`) and raises both arms
         // (`setArmsCharging`) while `Vex.isCharging` (`DATA_FLAGS_ID & 1`). Only the vex
         // defines that flags byte, so the projection is gated to it and defaults to idle.
@@ -1258,6 +1272,8 @@ impl EntityStore {
             fox_is_sitting,
             fox_is_pouncing,
             fox_is_faceplanted,
+            feline_is_crouching,
+            feline_is_sprinting,
             vex_charging,
             wither_invulnerable_ticks,
             is_crouching,

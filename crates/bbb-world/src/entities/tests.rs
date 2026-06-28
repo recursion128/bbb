@@ -4116,6 +4116,85 @@ fn entity_model_sources_gate_crouch_pose_on_the_player() {
 }
 
 #[test]
+fn entity_model_sources_project_feline_crouch_and_sprint() {
+    const VANILLA_ENTITY_TYPE_CAT_ID: i32 = 21;
+    const VANILLA_ENTITY_TYPE_OCELOT_ID: i32 = 91;
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
+    const ENTITY_SHARED_FLAG_SPRINTING: i8 = 1 << 3;
+    const POSE_STANDING: i32 = 0;
+    const POSE_CROUCHING: i32 = 5;
+
+    let state = |store: &WorldStore, id: i32| {
+        let source = store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap();
+        (source.feline_is_crouching, source.feline_is_sprinting)
+    };
+    let set_data = |store: &mut WorldStore, id: i32, values: Vec<ProtocolEntityDataValue>| {
+        store.apply_set_entity_data(ProtocolSetEntityData { id, values })
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        76,
+        VANILLA_ENTITY_TYPE_CAT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        77,
+        VANILLA_ENTITY_TYPE_OCELOT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        78,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    assert_eq!(state(&store, 76), (false, false));
+    assert_eq!(state(&store, 77), (false, false));
+
+    assert!(set_data(
+        &mut store,
+        76,
+        vec![
+            protocol_pose_data(super::dimensions::ENTITY_DATA_POSE_ID, POSE_CROUCHING),
+            protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_SPRINTING),
+        ],
+    ));
+    assert_eq!(state(&store, 76), (true, true));
+
+    assert!(set_data(
+        &mut store,
+        77,
+        vec![protocol_pose_data(
+            super::dimensions::ENTITY_DATA_POSE_ID,
+            POSE_CROUCHING,
+        )],
+    ));
+    assert_eq!(state(&store, 77), (true, false));
+
+    assert!(set_data(
+        &mut store,
+        78,
+        vec![
+            protocol_pose_data(super::dimensions::ENTITY_DATA_POSE_ID, POSE_CROUCHING),
+            protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_SPRINTING),
+        ],
+    ));
+    assert_eq!(state(&store, 78), (false, false));
+
+    assert!(set_data(
+        &mut store,
+        76,
+        vec![
+            protocol_pose_data(super::dimensions::ENTITY_DATA_POSE_ID, POSE_STANDING),
+            protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, 0),
+        ],
+    ));
+    assert_eq!(state(&store, 76), (false, false));
+}
+
+#[test]
 fn entity_model_sources_project_elytra_animation_state() {
     const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
     const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;

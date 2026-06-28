@@ -4360,13 +4360,17 @@ When an agent does any of the following, update this file in the same slice:
       look. The bespoke feline walk leg swing is now reproduced too (each leg `xRot = cos(pos·0.6662
       [+π])·1.0·speed` at the shorter `1.0` amplitude, keyed by leg NAME to the MIRROR of the
       `QuadrupedModel` diagonal — left-hind/right-front in phase — consuming the projected
-      `walk_animation_pos/speed`, on both adult and baby). The adult lower-tail walk wobble is also
-      reproduced for the non-crouching/non-sprinting branch:
-      `tail2.xRot = 1.7278761 + (π/4)·cos(walkAnimationPos)·walkAnimationSpeed`; tests pin rest,
-      moving, advanced-position, and zero-speed samples. The rest stays deferred: the
-      `isCrouching` / `isSprinting` / `isSitting` / `lieDownAmount` / `relaxStateOneAmount` poses,
-      all reading un-projected `FelineRenderState` fields, as does the `AgeableMobRenderer` `0.4` baby
-      render scale. The textured path is now wired: `Cat.DATA_VARIANT_ID` (20, `Holder<CatVariant>`) is
+      `walk_animation_pos/speed`, on both adult and baby). Cat/ocelot crouch and sprint render-state
+      extraction is now projected as well: `CatRenderer` / `OcelotRenderer.extractRenderState` copy
+      `Entity.isCrouching()` from synced `Pose.CROUCHING` and `Entity.isSprinting()` from shared flags
+      bit 3. The renderer now applies the vanilla crouch body/head/tail offsets, the sprint
+      `tail2.y = tail1.y` / forward-tail setup, the sprint leg phase offsets (`right_hind +0.3`,
+      `left_front +π+0.3`, `right_front +π`), and the branch-specific adult lower-tail wobble
+      amplitudes: standing `π/4`, crouch `0.47123894`, and sprint `π/10`, all on top of
+      `tail2.xRot = 1.7278761`. Tests pin rest, moving, advanced-position, zero-speed, crouch, sprint,
+      and baby visible-tail samples. The rest stays deferred: `isSitting`, `lieDownAmount`,
+      `lieDownAmountTail`, `relaxStateOneAmount`, and `CatRenderer.setupRotations` lie-down
+      roll/translate. The textured path is now wired: `Cat.DATA_VARIANT_ID` (20, `Holder<CatVariant>`) is
       projected — via the registry-holder mapping shared with chicken/cow/pig/frog — onto one of the eleven
       vanilla breeds (tabby/black/red/siamese/british_shorthair/calico/persian/ragdoll/white/jellie/all_black),
       falling back to the bootstrap order (tabby=0..all_black=10, default BLACK) before the dynamic
@@ -4385,8 +4389,8 @@ When an agent does any of the following, update this file in the same slice:
       `CatCollarLayer` entity light with zero-white overlay via
       `getOverlayCoords(state, 0.0F)`, including folded cutout vertex metadata. Missing-atlas coverage
       proves adult/baby collar submissions are still recorded without `cat_collar*.png` while only
-      folded collar geometry is suppressed. Nothing on the cat base/collar path stays deferred
-      (only the feline pose animations above remain)
+      folded collar geometry is suppressed. Nothing on the cat base/collar path stays deferred; remaining
+      feline parity is limited to the sitting / lie-down / relax pose family above.
     - mooshroom entities (adult and baby) as renderer-owned vanilla 26.1 cow-body geometry on the colored
       path: the native entity scene (`entity_scene.rs`) now maps vanilla type id `86` (adult and baby) to
       the new `EntityModelKind::Mooshroom` (`baby` selecting the layout), replacing the generic six-cube

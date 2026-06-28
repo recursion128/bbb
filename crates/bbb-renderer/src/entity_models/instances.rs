@@ -635,6 +635,14 @@ entity_render_state! {
     /// `false` for every other entity and for an upright fox. The `FoxRenderer.setupRotations`
     /// body-pitch flip is a deferred renderer concern.
     (with_fox_is_faceplanted) fox_is_faceplanted: bool = false;
+    /// Vanilla `FelineRenderState.isCrouching` (`Entity.isCrouching()`, pose `CROUCHING`): a stalking
+    /// cat or ocelot lowers its body/head and uses the crouch lower-tail wobble amplitude. `false` for
+    /// non-felines and upright felines.
+    (with_feline_is_crouching) feline_is_crouching: bool = false;
+    /// Vanilla `FelineRenderState.isSprinting` (`Entity.isSprinting()`, shared flags bit 3): a sprinting
+    /// cat or ocelot uses sprint leg phase offsets and the sprint lower-tail wobble amplitude. `false`
+    /// for non-felines and non-sprinting felines.
+    (with_feline_is_sprinting) feline_is_sprinting: bool = false;
     /// Vanilla `WitchRenderState.isHoldingItem`: true when the witch's main hand is non-empty. The model
     /// pins the nose to the drinking pose (`nose.setPos(0, 1, -1.5)`, `xRot = -0.9`) before item layers
     /// read the nose transform. `false` for every other entity and for an empty-handed witch.
@@ -2430,6 +2438,8 @@ mod tests {
                 fox_is_sitting: false,
                 fox_is_pouncing: false,
                 fox_is_faceplanted: false,
+                feline_is_crouching: false,
+                feline_is_sprinting: false,
                 witch_holding_item: false,
                 witch_holding_potion: false,
                 copper_golem_holding_item: false,

@@ -819,6 +819,15 @@ pub(crate) fn vanilla_is_fox(entity_type_id: i32) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_FOX_ID
 }
 
+/// Whether the entity renders through vanilla `AbstractFelineModel`: cat and ocelot both feed
+/// `FelineRenderState.isCrouching` / `isSprinting` into the same pose branches.
+pub(crate) fn vanilla_feline_family(entity_type_id: i32) -> bool {
+    matches!(
+        entity_type_id,
+        VANILLA_ENTITY_TYPE_CAT_ID | VANILLA_ENTITY_TYPE_OCELOT_ID
+    )
+}
+
 /// Whether the entity is rendered with the vanilla `EndermanModel`. Its `setupAnim`
 /// poses the arms forward to hold a block (`!carriedBlock.isEmpty()`) and drops the
 /// head/raises the hat when staring at a player (`isCreepy`), so the carried-block and

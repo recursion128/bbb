@@ -13,14 +13,13 @@ pub(in crate::entity_models) const MODEL_LAYER_OCELOT_BABY: &str = "minecraft:oc
 // ocelot (`ModelLayers.OCELOT`, unscaled) and the cat (`ModelLayers.CAT`, the same mesh scaled 0.8 by
 // `AdultCatModel.CAT_TRANSFORMER` — applied in the root transform). Eight root parts: the `head`
 // (skull, nose, two ears), the pitched `body`, the two tail segments, and the four legs. The base
-// `AdultFelineModel.setupAnim` sets `head.xRot/yRot` from the look, swings the four legs with the
-// gait (its own mirrored phase + amplitude-1.0 formula, distinct from the `QuadrupedModel` rule), and,
-// while not sitting, drops the lower tail to `tail2.xRot = 1.7278761` plus the `(π/4)·cos(pos)·speed`
-// walk wobble. The `isCrouching` / `isSprinting` / `isSitting` / `lieDownAmount` / `relaxStateOneAmount`
-// poses stay deferred, all reading un-projected `FelineRenderState` fields (so the renderer commits to
-// the non-sprinting, non-crouching gait branch for both the legs and the tail wobble). The textured path
-// binds cat/ocelot textures and the tame-cat collar layer; the colored debug path remains a single tan
-// tint. Cat/ocelot use a plain `MobRenderer`.
+// `AdultFelineModel.setupAnim` sets `head.xRot/yRot` from the look, applies crouch/sprint body-tail
+// offsets, swings the four legs with its own mirrored phase + amplitude-1.0 formula, and, while not
+// sitting, drops the lower tail to `tail2.xRot = 1.7278761` plus the branch-specific
+// `cos(pos)·speed` wobble (`π/4`, crouch `0.47123894`, sprint `π/10`). `isSitting`, `lieDownAmount`,
+// `lieDownAmountTail`, and `relaxStateOneAmount` stay deferred. The textured path binds cat/ocelot
+// textures and the tame-cat collar layer; the colored debug path remains a single tan tint.
+// Cat/ocelot use a plain `MobRenderer`.
 
 /// Vanilla `AdultCatModel.CAT_TRANSFORMER = MeshTransformer.scaling(0.8)`: the cat layer is the shared
 /// feline mesh scaled 0.8. The ocelot layer is unscaled.
@@ -407,27 +406,37 @@ fn baby_feline_root() -> ModelPart {
 /// speed) the wobble term collapses to zero, so this is the resting `tail2` pitch — a real change
 /// from the `0` bind rotation.
 const FELINE_TAIL2_REST_X_ROT: f32 = 1.7278761;
+const FELINE_TAIL2_CROUCH_WOBBLE_AMPLITUDE: f32 = 0.47123894;
 
-/// Vanilla `AdultFelineModel.setupAnim` lower-tail walk wobble (the not-sitting, not-sprinting,
-/// not-crouching branch): `tail2.xRot = 1.7278761 + (π/4)·cos(walkAnimationPos)·walkAnimationSpeed`.
+/// Vanilla `AdultFelineModel.setupAnim` lower-tail walk wobble while not sitting:
+/// `tail2.xRot = 1.7278761 + amplitude·cos(walkAnimationPos)·walkAnimationSpeed`.
 /// The base droop [`FELINE_TAIL2_REST_X_ROT`] is the same constant the [`setup_anim`] standing droop
-/// applies; the wobble adds a `±π/4`-amplitude sway on top, a pure function of the projected
-/// `walk_animation_pos`/`walk_animation_speed`. The renderer commits to the non-sprinting,
-/// non-crouching gait branch (matching [`apply_feline_leg_swing`]), so this uses the `π/4` amplitude
-/// (the `0.47123894` crouch and `π/10` sprint amplitudes need un-projected feline state). At rest the
-/// `cos·speed` term is zero, leaving the standing droop unchanged.
-fn feline_tail2_wobble_x_rot(walk_animation_pos: f32, walk_animation_speed: f32) -> f32 {
-    FELINE_TAIL2_REST_X_ROT
-        + std::f32::consts::FRAC_PI_4 * walk_animation_pos.cos() * walk_animation_speed
+/// applies; the wobble is a pure function of the projected `walk_animation_pos` /
+/// `walk_animation_speed`. The standing, crouch, and sprint branches keep the same base droop and only
+/// swap the wobble amplitude (`π/4`, `0.47123894`, and `π/10`).
+fn feline_tail2_wobble_x_rot(
+    walk_animation_pos: f32,
+    walk_animation_speed: f32,
+    is_crouching: bool,
+    is_sprinting: bool,
+) -> f32 {
+    let amplitude = if is_sprinting {
+        std::f32::consts::PI / 10.0
+    } else if is_crouching {
+        FELINE_TAIL2_CROUCH_WOBBLE_AMPLITUDE
+    } else {
+        std::f32::consts::FRAC_PI_4
+    };
+    FELINE_TAIL2_REST_X_ROT + amplitude * walk_animation_pos.cos() * walk_animation_speed
 }
 
 /// Mutable feline model, mirroring vanilla `AdultFelineModel` / `BabyFelineModel` (ocelot and cat
 /// share each). The named root parts hang off a synthetic root, built from the baked geometry;
 /// the adult cat's 0.8 scale lives in the root transform ([`FELINE_CAT_SCALE`], applied by the
 /// runtime — the babies are unscaled). `setup_anim` runs the head look
-/// ([`apply_head_look`] on `child_mut("head")`), swings the legs with the gait, and, for the adult,
-/// drops and wobbles the lower tail via `child_mut("tail2")`; the sitting/crouching/sprinting and
-/// lie-down feline poses stay deferred.
+/// ([`apply_head_look`] on `child_mut("head")`), applies the crouch/sprint tail-body setup, swings the
+/// legs with the gait, and, for the adult, drops and wobbles the lower tail via `child_mut("tail2")`;
+/// sitting and lie-down feline poses stay deferred.
 pub(in crate::entity_models) struct FelineModel {
     root: ModelPart,
     baby: bool,
@@ -456,18 +465,51 @@ fn apply_feline_leg_swing(
     root: &mut ModelPart,
     walk_animation_pos: f32,
     walk_animation_speed: f32,
+    is_sprinting: bool,
 ) {
     if limb_swing_at_rest(walk_animation_speed) {
         return;
     }
     let phase = walk_animation_pos * 0.6662;
-    for (name, phase_offset) in [
-        ("left_hind_leg", 0.0),
-        ("right_front_leg", 0.0),
-        ("right_hind_leg", std::f32::consts::PI),
-        ("left_front_leg", std::f32::consts::PI),
-    ] {
+    let phases = if is_sprinting {
+        [
+            ("left_hind_leg", 0.0),
+            ("right_hind_leg", 0.3),
+            ("left_front_leg", std::f32::consts::PI + 0.3),
+            ("right_front_leg", std::f32::consts::PI),
+        ]
+    } else {
+        [
+            ("left_hind_leg", 0.0),
+            ("right_hind_leg", std::f32::consts::PI),
+            ("left_front_leg", std::f32::consts::PI),
+            ("right_front_leg", 0.0),
+        ]
+    };
+    for (name, phase_offset) in phases {
         root.child_mut(name).pose.rotation[0] = (phase + phase_offset).cos() * walk_animation_speed;
+    }
+}
+
+fn apply_feline_crouch_or_sprint_pose(
+    root: &mut ModelPart,
+    is_crouching: bool,
+    is_sprinting: bool,
+) {
+    if is_crouching {
+        root.child_mut("body").pose.offset[1] += 1.0;
+        root.child_mut("head").pose.offset[1] += 2.0;
+        root.child_mut("tail1").pose.offset[1] += 1.0;
+        root.child_mut("tail2").pose.offset[1] -= 4.0;
+        root.child_mut("tail2").pose.offset[2] += 2.0;
+        root.child_mut("tail1").pose.rotation[0] = std::f32::consts::FRAC_PI_2;
+        root.child_mut("tail2").pose.rotation[0] = std::f32::consts::FRAC_PI_2;
+    } else if is_sprinting {
+        let tail1_y = root.child_mut("tail1").pose.offset[1];
+        root.child_mut("tail2").pose.offset[1] = tail1_y;
+        root.child_mut("tail2").pose.offset[2] += 2.0;
+        root.child_mut("tail1").pose.rotation[0] = std::f32::consts::FRAC_PI_2;
+        root.child_mut("tail2").pose.rotation[0] = std::f32::consts::FRAC_PI_2;
     }
 }
 
@@ -482,27 +524,35 @@ impl EntityModel for FelineModel {
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
         let render_state = &instance.render_state;
+        apply_feline_crouch_or_sprint_pose(
+            &mut self.root,
+            render_state.feline_is_crouching,
+            render_state.feline_is_sprinting,
+        );
         apply_head_look(
             self.root.child_mut("head"),
             render_state.head_yaw,
             render_state.head_pitch,
         );
-        // Vanilla's not-sitting branch drops the lower tail to `1.7278761` and then adds a walk
-        // wobble `(π/4)·cos(pos)·speed` (the non-sprinting, non-crouching gait the leg swing also
-        // commits to). At rest the wobble collapses to zero, leaving the standing droop. The baby's
-        // `tail2` is cubeless, so vanilla's identical assignment there is invisible — we skip it.
+        // Vanilla's not-sitting branch drops the lower tail to `1.7278761` and then adds the
+        // branch-specific standing/crouch/sprint wobble. At rest the wobble collapses to zero, leaving
+        // the standing droop. The baby's `tail2` is cubeless, so vanilla's identical assignment there is
+        // invisible; we skip it.
         if !self.baby {
             self.root.child_mut("tail2").pose.rotation[0] = feline_tail2_wobble_x_rot(
                 render_state.walk_animation_pos,
                 render_state.walk_animation_speed,
+                render_state.feline_is_crouching,
+                render_state.feline_is_sprinting,
             );
         }
         // The four legs sweep with the gait (the sitting / crouching / sprinting branches that alter it
-        // are deferred, so the swing applies whenever the feline is moving).
+        // are now covered for crouch/sprint; sitting stays deferred).
         apply_feline_leg_swing(
             &mut self.root,
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,
+            render_state.feline_is_sprinting,
         );
     }
 }

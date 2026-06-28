@@ -643,6 +643,16 @@ pub struct EntityModelSourceState {
     /// deferred.
     #[serde(default)]
     pub fox_is_faceplanted: bool,
+    /// Vanilla `FelineRenderState.isCrouching` (`Entity.isCrouching()`, pose `CROUCHING`): a stalking
+    /// cat or ocelot lowers the body/head and switches the lower-tail walk wobble amplitude.
+    /// `false` for non-felines and upright felines.
+    #[serde(default)]
+    pub feline_is_crouching: bool,
+    /// Vanilla `FelineRenderState.isSprinting` (`Entity.isSprinting()`, shared flags bit 3): a sprinting
+    /// cat or ocelot uses the sprint leg phase offsets and lower-tail amplitude. `false` for non-felines
+    /// and non-sprinting felines.
+    #[serde(default)]
+    pub feline_is_sprinting: bool,
     /// Vanilla `WolfRenderState.wetShade` (`Wolf.getWetShade(partialTick)`): the base-model
     /// grayscale tint multiplier returned by `WolfRenderer.getModelTint`. A wet wolf starts at
     /// `0.75`, then brightens with the shake/drying timer; `1.0` for a dry wolf and every non-wolf.
