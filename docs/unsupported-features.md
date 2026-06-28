@@ -325,14 +325,17 @@ When an agent does any of the following, update this file in the same slice:
       `[2, 3, 4, 5]` adult / `[4, 5, 6, 7]` with-chest / `[1, 2, 3, 4]` baby, colored and
       textured paths), and the equines (`AbstractEquineModel` horse/donkey/mule/skeleton-horse/
       zombie-horse, the front-`0.8`/hind-`0.5` gait, legs `[2, 3, 4, 5]` adult /
-      `[1, 2, 3, 4]` baby horse, plus the neck head look/bob — yaw clamped to ±20°, pitch
-      onto the π/6 tilt, and a `cos(pos * 0.8) * 0.15 * speed` walk bob — at `head_parts`
-      `1` adult / `5` baby horse, and the tail walk lift `tail.xRot =
+      `[1, 2, 3, 4]` baby horse and nested baby donkey/mule body children, plus the
+      neck head look/bob — yaw clamped to ±20°, pitch onto the π/6 tilt, and a
+      `cos(pos * 0.8) * 0.15 * speed` walk bob — at `head_parts`
+      `1` adult / `5` baby horse; baby donkey/mule keep the superclass yaw clamp but
+      force default `head_parts.xRot = 0` after `BabyDonkeyModel.setupAnim` sets
+      `state.xRot = -30°`; and the tail walk lift `tail.xRot =
       getTailXRotOffset() + π/6 + speed * 0.75` with the `y += speed * ageScale` /
       `z += speed * 2 * ageScale` shift (body tail child, body subtree hand-emitted; the
-      baby horse `getTailXRotOffset = −π/2` also overrides the layer rest angle and
-      `ageScale = 0.5`), colored path; the baby donkey/mule nested legs and forced
-      head pitch, the camel's dash-entangled gait (the colored and textured
+      baby horse `getTailXRotOffset = −π/2` and baby donkey/mule `−π/4` also override
+      layer rest angles and use `ageScale = 0.5`), colored path; the camel's
+      dash-entangled gait (the colored and textured
       `CAMEL_WALK` / `CAMEL_BABY_WALK`, the sit-down / seated / stand-up transitions, and the looping
       `CAMEL_DASH` gallop are now reproduced; only `CAMEL_IDLE` stays deferred), and the tail's `ageInTicks` yRot
       wag stay deferred). The remaining
@@ -1812,9 +1815,12 @@ When an agent does any of the following, update this file in the same slice:
       **textured path** now: vanilla `BabyDonkeyModel.createBabyLayer()` is a
       distinct re-parented mesh (10 cubes nested under the body, with per-leg and
       per-ear `texOffs` and a mirrored right ear) on the `donkey` / `mule` 64×64
-      textures, emitted STATIC and unscaled — its `setupAnim` forces `xRot = -30°`,
-      so the equine gait/head/tail posing is deferred (matching the colored baby
-      path), and the empty chest children make `hasChest` immaterial. The adult donkey/mule
+      textures, unscaled, with nested legs `[1, 2, 3, 4]` taking the equine gait,
+      nested `head_parts` at child `5` keeping the ±20° yaw clamp while forcing default
+      xRot to `0` after `state.xRot = -30°`, and the tail parent at child `0` using
+      `getTailXRotOffset = −π/4` plus baby `ageScale = 0.5` on both the textured base
+      body and the colored full-mesh fallback; the empty chest children make `hasChest`
+      immaterial. The adult donkey/mule
       saddle equipment layers are implemented from `EquipmentSlot.SADDLE`, using vanilla
       `DONKEY_SADDLE` / `MULE_SADDLE`, `DonkeyModel.createSaddleLayer(0.87F/0.92F)`, the
       family-specific `textures/entity/equipment/{donkey_saddle,mule_saddle}/saddle.png`,
@@ -1823,9 +1829,9 @@ When an agent does any of the following, update this file in the same slice:
       with vanilla `ModelLayers.DONKEY_SADDLE` / `MULE_SADDLE`, while the base `entityCutout` submits keep
       vanilla entity light plus hurt/white overlay coords. Folded cutout vertices
       inherit the corresponding base or saddle submission metadata; baby donkey/mule entities
-      intentionally skip the layer because vanilla supplies no baby saddle model. The baby leg
-      swing / head look / tail, the ridden/eat/stand/mouth poses, the tail's `ageInTicks`
-      yRot wag, and broader lighting presentation remain unsupported
+      intentionally skip the layer because vanilla supplies no baby saddle model. The
+      ridden/eat/stand/mouth poses, the tail's `ageInTicks` yRot wag, and broader lighting
+      presentation remain unsupported
     - skeleton horse and zombie horse entities as renderer-owned vanilla 26.1
       adult/baby body-layer geometry from `AbstractEquineModel`,
       `BabyHorseModel`, `HorseModel`, and `UndeadHorseRenderer`, now rendered on

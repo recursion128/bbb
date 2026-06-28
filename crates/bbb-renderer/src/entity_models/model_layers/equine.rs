@@ -1752,12 +1752,12 @@ pub(in crate::entity_models) const BABY_DONKEY_PARTS: [ModelPartDesc; 1] = [Mode
 }];
 
 // Textured baby donkey / mule. Vanilla `BabyDonkeyModel.createBabyLayer()` (64×64) is a DISTINCT
-// re-parented mesh (legs / head_parts / tail nested UNDER the body), NOT the horse cubes, and its
-// `setupAnim` forces `xRot = −30°` — so it emits STATIC on both paths (the equine gait / head look /
-// tail lift is deferred). The four legs and two ears carry DIFFERENT texOffs (and the right ear is
-// mirrored), so each gets its own textured cube. The tree mirrors the colored `BABY_DONKEY_*`
-// structure 1:1 (identical `min`/`size`, poses referenced from the colored consts). Donkey/mule share
-// the geometry and differ only by texture.
+// re-parented mesh (legs / head_parts / tail nested UNDER the body), NOT the horse cubes. Its
+// `setupAnim` forces `xRot = −30°`, so the renderer applies a baby-specific nested-body pose path
+// instead of the generic top-level equine pose walker. The four legs and two ears carry DIFFERENT
+// texOffs (and the right ear is mirrored), so each gets its own textured cube. The tree mirrors the
+// colored `BABY_DONKEY_*` structure 1:1 (identical `min`/`size`, poses referenced from the colored
+// consts). Donkey/mule share the geometry and differ only by texture.
 pub(in crate::entity_models) const BABY_DONKEY_BODY_TEXTURED: [TexturedModelCubeDesc; 1] =
     [TexturedModelCubeDesc {
         min: [-5.0, -3.0, -7.0],

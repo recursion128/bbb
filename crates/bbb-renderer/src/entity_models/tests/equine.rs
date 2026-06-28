@@ -1096,8 +1096,26 @@ fn equine_head_look_pose_clamps_yaw_and_tilts_pitch() {
 }
 
 #[test]
+fn baby_donkey_head_pose_matches_vanilla_override() {
+    // `BabyDonkeyModel.setupAnim` calls the superclass first (preserving the ±20° clamped
+    // yRot), then forces `state.xRot = -30°` and recomputes the default branch xRot as
+    // `π/6 + -π/6 = 0`. The nested baby-donkey `head_parts` body child starts at xRot 0.
+    let base = BABY_DONKEY_BODY_CHILDREN[5].pose;
+    assert_eq!(base.rotation, [0.0, 0.0, 0.0]);
+
+    let look = baby_donkey_head_pose(base, 45.0);
+    assert_eq!(look.offset, base.offset);
+    assert_eq!(look.rotation[0], 0.0);
+    assert!((look.rotation[1] - 20.0_f32.to_radians()).abs() < 1e-6);
+    assert_eq!(look.rotation[2], base.rotation[2]);
+
+    let look = baby_donkey_head_pose(base, -50.0);
+    assert!((look.rotation[1] - (-20.0_f32).to_radians()).abs() < 1e-6);
+}
+
+#[test]
 fn equine_tail_swing_pose_matches_vanilla_formula() {
-    use std::f32::consts::{FRAC_PI_2, FRAC_PI_6};
+    use std::f32::consts::{FRAC_PI_2, FRAC_PI_4, FRAC_PI_6};
 
     // Vanilla `AbstractEquineModel.setupAnim` tail animation (default branch):
     //   tail.xRot = getTailXRotOffset() + π/6 + speed * 0.75
@@ -1146,6 +1164,19 @@ fn equine_tail_swing_pose_matches_vanilla_formula() {
     assert!((baby_walking.rotation[0] - (-FRAC_PI_2 + FRAC_PI_6 + 0.75)).abs() < 1e-6);
     assert!((baby_walking.offset[1] - (baby_base.offset[1] + 0.5)).abs() < 1e-6);
     assert!((baby_walking.offset[2] - (baby_base.offset[2] + 1.0)).abs() < 1e-6);
+
+    // Baby donkey/mule: `BabyDonkeyModel` passes the parent "tail" part into
+    // `AbstractEquineModel`; the child `tail_r1` keeps its baked -0.7418 xRot. The parent
+    // still gets the vanilla `getTailXRotOffset = −π/4` override at rest and ageScale 0.5.
+    let baby_donkey_base = BABY_DONKEY_BODY_CHILDREN[0].pose;
+    assert_eq!(baby_donkey_base.rotation[0], 0.0);
+    let baby_donkey_rest = equine_tail_swing_pose(baby_donkey_base, -FRAC_PI_4, 0.0, 0.5);
+    assert!((baby_donkey_rest.rotation[0] - (-FRAC_PI_4 + FRAC_PI_6)).abs() < 1e-6);
+    assert_ne!(baby_donkey_rest.rotation[0], baby_donkey_base.rotation[0]);
+    let baby_donkey_walking = equine_tail_swing_pose(baby_donkey_base, -FRAC_PI_4, 1.0, 0.5);
+    assert!((baby_donkey_walking.rotation[0] - (-FRAC_PI_4 + FRAC_PI_6 + 0.75)).abs() < 1e-6);
+    assert!((baby_donkey_walking.offset[1] - (baby_donkey_base.offset[1] + 0.5)).abs() < 1e-6);
+    assert!((baby_donkey_walking.offset[2] - (baby_donkey_base.offset[2] + 1.0)).abs() < 1e-6);
 }
 
 #[test]
@@ -1240,11 +1271,11 @@ fn baby_horse_swings_and_overrides_its_tail() {
 }
 
 #[test]
-fn baby_donkey_leg_swing_is_deferred() {
-    // The baby donkey/mule layer re-parents its legs under the body
-    // (`BabyDonkeyModel.createBabyLayer`) and overrides `setupAnim` (forcing `xRot = -30°`),
-    // unlike the top-level adult layout, so its leg swing, head look, and tail lift are all
-    // deferred: a walking baby donkey is unchanged for now.
+fn baby_donkey_swings_nested_legs_and_overrides_tail() {
+    // The baby donkey/mule layer re-parents legs, head_parts, and tail under the body
+    // (`BabyDonkeyModel.createBabyLayer`). Vanilla still runs `AbstractEquineModel.setupAnim`
+    // over those nested fields, then forces the default head xRot back to 0. In depth-first
+    // emission: body [0,24), tail_r1 [24,48), legs [48,144), and head/ears [144,240).
     for base in [
         EntityModelInstance::donkey(
             36,
@@ -1266,8 +1297,41 @@ fn baby_donkey_leg_swing_is_deferred() {
         let rest = entity_model_mesh(&[base]);
         let walking = entity_model_mesh(&[base.with_walk_animation(0.0, 1.0)]);
         assert_eq!(
-            rest.vertices, walking.vertices,
-            "{:?} baby leg swing deferred",
+            rest.vertices[0..24],
+            walking.vertices[0..24],
+            "{:?} baby body cube stays put",
+            base.kind
+        );
+        assert_ne!(
+            rest.vertices[24..48],
+            walking.vertices[24..48],
+            "{:?} baby tail lifts when walking",
+            base.kind
+        );
+        assert_ne!(
+            rest.vertices[48..144],
+            walking.vertices[48..144],
+            "{:?} baby nested legs swing when walking",
+            base.kind
+        );
+        assert_eq!(
+            rest.vertices[144..240],
+            walking.vertices[144..240],
+            "{:?} baby head ignores the equine walk bob after the forced -30 degree pitch",
+            base.kind
+        );
+
+        let looking = entity_model_mesh(&[base.with_head_look(45.0, -25.0)]);
+        assert_eq!(
+            rest.vertices[0..144],
+            looking.vertices[0..144],
+            "{:?} baby body/tail/legs stay put for head look",
+            base.kind
+        );
+        assert_ne!(
+            rest.vertices[144..240],
+            looking.vertices[144..240],
+            "{:?} baby head keeps the superclass clamped yaw",
             base.kind
         );
     }
@@ -2410,7 +2474,7 @@ fn donkey_textured_mesh_matches_vanilla_adult_geometry() {
     // (donkey ears + side chests), so the adult donkey/mule render on the textured path: 12 cubes
     // (72 faces / 288 vertices) without chest, 14 (84 / 336) with. The textured body occupies the same
     // space as the colored fallback (same 0.87 donkey scale), and the mule shares the geometry at the
-    // larger 0.92 scale. The baby donkey/mule stays colored (deferred), exercised separately.
+    // larger 0.92 scale. The baby donkey/mule re-parented mesh is exercised separately.
     let (atlas, _) = build_entity_model_texture_atlas(&donkey_texture_images()).unwrap();
 
     let donkey_instance = EntityModelInstance::donkey(
@@ -2501,9 +2565,9 @@ fn donkey_textured_mesh_matches_vanilla_adult_geometry() {
 #[test]
 fn donkey_textured_baby_matches_vanilla_baby_geometry() {
     // Vanilla `BabyDonkeyModel.createBabyLayer()` is a distinct re-parented mesh (10 cubes, 60 faces /
-    // 240 vertices), emitted STATIC (its `setupAnim` forces `xRot = -30°`, so no equine posing). The
-    // textured baby occupies the same space as its colored baby fallback (both unscaled), and the empty
-    // chest children make `hasChest` immaterial.
+    // 240 vertices). Its `setupAnim` reuses the equine nested leg/tail fields, then forces the default
+    // head xRot to 0; the textured baby occupies the same space as its colored baby fallback (both
+    // unscaled), and the empty chest children make `hasChest` immaterial.
     let (atlas, _) = build_entity_model_texture_atlas(&donkey_texture_images()).unwrap();
     let baby_instance = EntityModelInstance::donkey(
         165,
@@ -2518,6 +2582,19 @@ fn donkey_textured_baby_matches_vanilla_baby_geometry() {
     let baby = &baby_meshes.cutout;
     assert_eq!(baby.cutout_faces, 60);
     assert_eq!(baby.vertices.len(), 240);
+    let baby_submit = baby_meshes.submissions[0];
+    assert_eq!(
+        baby_submit.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(baby_submit.texture, DONKEY_BABY_TEXTURE_REF);
+    assert_eq!(baby_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((baby_submit.order, baby_submit.submit_sequence), (0, 0));
+    assert_eq!(
+        baby_submit.transform,
+        entity_model_root_transform(baby_instance)
+    );
+    assert_textured_vertices_match_submission(&baby.vertices, baby_submit);
     let colored = entity_model_mesh(&[EntityModelInstance::donkey(
         166,
         [0.0, 64.0, 0.0],
@@ -2530,6 +2607,31 @@ fn donkey_textured_baby_matches_vanilla_baby_geometry() {
     let (c_min, c_max) = mesh_extents(&colored);
     assert_close3(t_min, c_min);
     assert_close3(t_max, c_max);
+
+    let walking_instance = baby_instance.with_walk_animation(0.0, 1.0);
+    let walking_meshes = entity_model_textured_meshes(&[walking_instance], &atlas);
+    assert_equine_submissions_match_vanilla(&walking_meshes, walking_instance);
+    let walking_submit = walking_meshes.submissions[0];
+    assert_eq!(walking_submit.render_type, baby_submit.render_type);
+    assert_eq!(walking_submit.texture, baby_submit.texture);
+    assert_eq!(walking_submit.tint, baby_submit.tint);
+    assert_eq!(
+        (walking_submit.order, walking_submit.submit_sequence),
+        (baby_submit.order, baby_submit.submit_sequence)
+    );
+    assert_eq!(walking_submit.transform, baby_submit.transform);
+    assert_textured_vertices_match_submission(&walking_meshes.cutout.vertices, walking_submit);
+    assert_eq!(walking_meshes.cutout.vertices.len(), baby.vertices.len());
+    assert_eq!(
+        baby.vertices[0..24],
+        walking_meshes.cutout.vertices[0..24],
+        "the textured baby body cube stays put"
+    );
+    assert_ne!(
+        baby.vertices[24..144],
+        walking_meshes.cutout.vertices[24..144],
+        "the textured baby tail and nested legs re-pose when walking"
+    );
 
     // `hasChest` does not change the baby (its chest children are empty).
     let baby_chest_instance = EntityModelInstance::donkey(

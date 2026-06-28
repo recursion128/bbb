@@ -7,9 +7,9 @@ use super::super::geometry::{
 };
 use super::super::instances::EntityModelInstance;
 use super::super::model_layers::{
-    equine_head_look_pose, equine_leg_swing_pose, equine_tail_swing_pose, head_look_at_rest,
-    limb_swing_at_rest, ADULT_DONKEY_PARTS, ADULT_DONKEY_PARTS_WITH_CHEST, ADULT_HORSE_PARTS,
-    BABY_DONKEY_PARTS, BABY_HORSE_PARTS,
+    baby_donkey_head_pose, equine_head_look_pose, equine_leg_swing_pose, equine_tail_swing_pose,
+    head_look_at_rest, limb_swing_at_rest, ADULT_DONKEY_PARTS, ADULT_DONKEY_PARTS_WITH_CHEST,
+    ADULT_HORSE_PARTS, BABY_DONKEY_PARTS, BABY_HORSE_PARTS,
 };
 
 /// The four leg part indices in the adult equine body layers: body and neck at `0`/`1`,
@@ -30,6 +30,12 @@ const BABY_HORSE_LEG_PART_INDICES: [usize; 4] = [1, 2, 3, 4];
 /// lists the body and four legs first, so the neck/head is last at `5`.
 const BABY_HORSE_HEAD_PART_INDEX: usize = 5;
 
+/// The baby donkey/mule layer nests legs, head_parts, and tail under the body. These child
+/// indices mirror `BabyDonkeyModel.createBabyLayer`: tail at `0`, legs at `[1..=4]`, and
+/// `head_parts` at `5`.
+const BABY_DONKEY_BODY_CHILD_LEG_INDICES: [usize; 4] = [1, 2, 3, 4];
+const BABY_DONKEY_BODY_CHILD_HEAD_PARTS_INDEX: usize = 5;
+
 /// The body part index in every equine body layer (adult/baby horse, donkey/mule with or
 /// without chest): the body is always listed first.
 const EQUINE_BODY_PART_INDEX: usize = 0;
@@ -38,10 +44,11 @@ const EQUINE_BODY_PART_INDEX: usize = 0;
 /// body's first child (chests, when present, follow it).
 const EQUINE_TAIL_CHILD_INDEX: usize = 0;
 
-/// `AbstractEquineModel.getTailXRotOffset()` for the adult horse/donkey/mule (`0`) and the
-/// baby horse (`−π/2`). The baby donkey/mule (`−π/4`) is handled on its deferred path.
+/// `AbstractEquineModel.getTailXRotOffset()` for the adult horse/donkey/mule (`0`), the
+/// baby horse (`−π/2`), and the baby donkey/mule (`−π/4`).
 const ADULT_EQUINE_TAIL_X_ROT_OFFSET: f32 = 0.0;
 const BABY_HORSE_TAIL_X_ROT_OFFSET: f32 = -std::f32::consts::FRAC_PI_2;
+const BABY_DONKEY_TAIL_X_ROT_OFFSET: f32 = -std::f32::consts::FRAC_PI_4;
 
 /// `LivingEntity.getAgeScale()`: `1.0` for adults, `0.5` for babies. The equine tail's
 /// walk translation scales by this.
@@ -141,6 +148,48 @@ fn emit_equine_posed(
     }
 }
 
+fn emit_baby_donkey_posed(
+    mesh: &mut EntityModelMesh,
+    transform: Mat4,
+    color: [f32; 4],
+    instance: EntityModelInstance,
+) {
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let in_water = instance.render_state.in_water;
+    let head_yaw = instance.render_state.head_yaw;
+    let legs_resting = limb_swing_at_rest(limb_swing_amount);
+
+    let body = &BABY_DONKEY_PARTS[EQUINE_BODY_PART_INDEX];
+    let mut body_children = body.children.to_vec();
+    if !legs_resting {
+        for index in BABY_DONKEY_BODY_CHILD_LEG_INDICES {
+            body_children[index].pose = equine_leg_swing_pose(
+                body_children[index].pose,
+                limb_swing,
+                limb_swing_amount,
+                in_water,
+            );
+        }
+    }
+    body_children[BABY_DONKEY_BODY_CHILD_HEAD_PARTS_INDEX].pose = baby_donkey_head_pose(
+        body_children[BABY_DONKEY_BODY_CHILD_HEAD_PARTS_INDEX].pose,
+        head_yaw,
+    );
+    body_children[EQUINE_TAIL_CHILD_INDEX].pose = equine_tail_swing_pose(
+        body_children[EQUINE_TAIL_CHILD_INDEX].pose,
+        BABY_DONKEY_TAIL_X_ROT_OFFSET,
+        limb_swing_amount,
+        BABY_AGE_SCALE,
+    );
+
+    let body_transform = transform * part_pose_transform(body.pose);
+    for &cube in body.cubes {
+        emit_model_cube_with_color(mesh, body_transform, cube, color);
+    }
+    emit_model_parts_with_color(mesh, &body_children, body_transform, color);
+}
+
 pub(in crate::entity_models) fn emit_horse_model(
     mesh: &mut EntityModelMesh,
     instance: EntityModelInstance,
@@ -210,12 +259,13 @@ pub(in crate::entity_models) fn emit_donkey_model(
     let color = donkey_model_color(family);
     // The adult donkey/mule uses the clean `AbstractEquineModel.setupAnim` (it only adds
     // chest visibility), so it takes the equine leg swing (legs at [2, 3, 4, 5]), the head
-    // look/bob (neck at 1), and the tail walk lift. The baby donkey/mule overrides
-    // `setupAnim` (forcing `xRot = -30°`) and re-parents its legs under the body
-    // (`BabyDonkeyModel.createBabyLayer`), so its leg swing, head look, and tail are
-    // deferred.
+    // look/bob (neck at 1), and the tail walk lift. The baby donkey/mule re-parents its
+    // legs/head/tail under the body (`BabyDonkeyModel.createBabyLayer`) and overrides
+    // `setupAnim` by forcing `xRot = -30°`, so it needs a nested-body pose path: legs swing
+    // as equine legs, yaw is still clamped on `head_parts`, xRot is reset to 0 in the
+    // default branch, and the tail parent uses `getTailXRotOffset = -π/4`.
     if baby {
-        emit_model_parts_with_color(mesh, parts, transform, color);
+        emit_baby_donkey_posed(mesh, transform, color, instance);
     } else {
         emit_equine_posed(
             mesh,

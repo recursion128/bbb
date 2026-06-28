@@ -32,24 +32,24 @@ use super::{
     instances::EntityModelInstance,
     mesh_transformer_scaled_model_root_transform,
     model_layers::{
-        armor_layer_tint, armor_slot_texture_for_layer, default_player_skin_texture_ref,
-        end_crystal_bob_y, end_crystal_get_y, end_crystal_glass_quaternions, equine_head_look_pose,
-        equine_leg_swing_pose, equine_tail_swing_pose, head_look_at_rest,
-        horse_body_armor_texture_layers, limb_swing_at_rest, llama_body_decor_texture_ref,
-        nautilus_body_armor_texture_ref, wolf_armor_crackiness_texture_ref,
-        wolf_body_armor_texture_layers, ArmorStandModel, BreezeWindModel, CamelModel, CreeperModel,
-        CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel, CustomHeadSkullModel, ElytraModel,
-        HumanoidArmorModelLayerSet, HumanoidArmorSlot, HumanoidBabyArmorKind, LlamaModel,
-        NautilusModel, ParrotModel, PigModel, PiglinModel, PlayerEarsModel, PlayerModel,
-        SkeletonModel, SpinAttackEffectModel, StriderModel, VillagerModel, WitherModel, WolfModel,
-        ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
-        ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_DONKEY_SADDLE_PARTS_TEXTURED,
-        ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED, ADULT_HORSE_ARMOR_PARTS_TEXTURED,
-        ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
-        ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
-        BABY_HORSE_PARTS_TEXTURED, CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF,
-        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF,
-        END_CRYSTAL_TEXTURED_PARTS, HORSE_SADDLE_TEXTURE_REF,
+        armor_layer_tint, armor_slot_texture_for_layer, baby_donkey_head_pose,
+        default_player_skin_texture_ref, end_crystal_bob_y, end_crystal_get_y,
+        end_crystal_glass_quaternions, equine_head_look_pose, equine_leg_swing_pose,
+        equine_tail_swing_pose, head_look_at_rest, horse_body_armor_texture_layers,
+        limb_swing_at_rest, llama_body_decor_texture_ref, nautilus_body_armor_texture_ref,
+        wolf_armor_crackiness_texture_ref, wolf_body_armor_texture_layers, ArmorStandModel,
+        BreezeWindModel, CamelModel, CreeperModel, CustomHeadDragonSkullModel,
+        CustomHeadPiglinSkullModel, CustomHeadSkullModel, ElytraModel, HumanoidArmorModelLayerSet,
+        HumanoidArmorSlot, HumanoidBabyArmorKind, LlamaModel, NautilusModel, ParrotModel, PigModel,
+        PiglinModel, PlayerEarsModel, PlayerModel, SkeletonModel, SpinAttackEffectModel,
+        StriderModel, VillagerModel, WitherModel, WolfModel, ZombieModel, ZombieVariantModel,
+        ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
+        ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
+        ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
+        ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
+        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, CAMEL_HUSK_SADDLE_TEXTURE_REF,
+        CAMEL_SADDLE_TEXTURE_REF, CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF,
+        ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, HORSE_SADDLE_TEXTURE_REF,
         HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND, HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND_SMALL,
         HUMANOID_ARMOR_MODEL_LAYERS_BOGGED, HUMANOID_ARMOR_MODEL_LAYERS_DROWNED,
         HUMANOID_ARMOR_MODEL_LAYERS_DROWNED_BABY, HUMANOID_ARMOR_MODEL_LAYERS_GIANT,
@@ -3110,6 +3110,10 @@ fn player_profile_wings_texture_ref(texture: EntityDynamicPlayerTexture) -> Enti
 /// mirror it for the textured path and are pinned identical by the textured-vs-colored rest test.)
 const EQUINE_BODY_PART_INDEX: usize = 0;
 const EQUINE_TAIL_CHILD_INDEX: usize = 0;
+const BABY_DONKEY_BODY_CHILD_LEG_INDICES: [usize; 4] = [1, 2, 3, 4];
+const BABY_DONKEY_BODY_CHILD_HEAD_PARTS_INDEX: usize = 5;
+const BABY_DONKEY_TAIL_X_ROT_OFFSET: f32 = -std::f32::consts::FRAC_PI_4;
+const BABY_AGE_SCALE: f32 = 0.5;
 
 /// Textured counterpart of `colored::mounts::emit_equine_posed`: applies the vanilla
 /// `AbstractEquineModel.setupAnim` default-branch poses — the walking leg swing on the four parts at
@@ -3248,15 +3252,59 @@ fn emit_equine_textured_posed(
     );
 }
 
+fn emit_baby_donkey_textured_posed(
+    mesh: &mut EntityModelTexturedMesh,
+    transform: Mat4,
+    texture: EntityModelTextureRef,
+    uv_rect: EntityModelUvRect,
+    tint: [f32; 4],
+    instance: EntityModelInstance,
+) {
+    let limb_swing = instance.render_state.walk_animation_pos;
+    let limb_swing_amount = instance.render_state.walk_animation_speed;
+    let in_water = instance.render_state.in_water;
+    let head_yaw = instance.render_state.head_yaw;
+    let legs_resting = limb_swing_at_rest(limb_swing_amount);
+
+    let body = &BABY_DONKEY_PARTS_TEXTURED[EQUINE_BODY_PART_INDEX];
+    let mut body_children = body.children.to_vec();
+    if !legs_resting {
+        for index in BABY_DONKEY_BODY_CHILD_LEG_INDICES {
+            body_children[index].pose = equine_leg_swing_pose(
+                body_children[index].pose,
+                limb_swing,
+                limb_swing_amount,
+                in_water,
+            );
+        }
+    }
+    body_children[BABY_DONKEY_BODY_CHILD_HEAD_PARTS_INDEX].pose = baby_donkey_head_pose(
+        body_children[BABY_DONKEY_BODY_CHILD_HEAD_PARTS_INDEX].pose,
+        head_yaw,
+    );
+    body_children[EQUINE_TAIL_CHILD_INDEX].pose = equine_tail_swing_pose(
+        body_children[EQUINE_TAIL_CHILD_INDEX].pose,
+        BABY_DONKEY_TAIL_X_ROT_OFFSET,
+        limb_swing_amount,
+        BABY_AGE_SCALE,
+    );
+
+    let body_transform = transform * part_pose_transform(body.pose);
+    for &cube in body.cubes {
+        emit_textured_model_cube(mesh, body_transform, cube, texture, uv_rect, tint);
+    }
+    emit_textured_model_parts(mesh, &body_children, body_transform, texture, uv_rect, tint);
+}
+
 /// The textured donkey / mule base layer. Vanilla `DonkeyModel` is the shared
 /// `AbstractEquineModel.createBodyMesh` with `modifyMesh` (bigger ears replacing the horse ears, plus the
 /// two side chest boxes shown when `hasChest`), on the 64×64 `donkey.png` / `mule.png` at the
 /// `DonkeyModel.DONKEY_SCALE` 0.87 / `MULE_SCALE` 0.92 mesh-transformer scale. The ADULT takes the same
 /// equine leg swing / head look/bob / tail walk lift as the horse (`AbstractEquineModel.setupAnim`), so
 /// it rides `emit_equine_textured_posed`. The BABY is the distinct re-parented `BabyDonkeyModel` mesh
-/// (legs/head/tail nested under the body) whose `setupAnim` forces `xRot = -30°`, so it emits STATIC
-/// (unscaled, no equine posing — matching the colored baby path); its empty chest children make
-/// `hasChest` immaterial.
+/// (legs/head/tail nested under the body) whose `setupAnim` forces `xRot = -30°` and uses
+/// `getTailXRotOffset = -π/4`, so it rides a baby-specific nested-body pose path (unscaled, matching the
+/// colored baby path); its empty chest children make `hasChest` immaterial.
 pub(in crate::entity_models) fn render_donkey_textured_layers(
     meshes: &mut EntityModelTexturedMeshes,
     instance: &EntityModelInstance,
@@ -3274,13 +3322,13 @@ pub(in crate::entity_models) fn render_donkey_textured_layers(
         }
         let submit = textured_layer_submission(meshes, pass, transform);
         render_textured_submission(meshes, submit, atlas, |mesh, entry| {
-            emit_textured_model_parts(
+            emit_baby_donkey_textured_posed(
                 mesh,
-                &BABY_DONKEY_PARTS_TEXTURED,
                 transform,
                 submit.texture,
                 entry.uv,
                 submit.tint,
+                *instance,
             );
         });
         return;

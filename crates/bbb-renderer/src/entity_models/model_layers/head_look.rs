@@ -1321,10 +1321,11 @@ pub(in crate::entity_models) fn equine_leg_swing_pose(
 /// walkAnimationSpeed` folded in when `walkAnimationSpeed > 0.2`. The rest `head_parts`
 /// xRot is exactly that `π/6` tilt, so at a level head and no fast gait the pose equals
 /// the rest pose. `HorseModel`/`BabyHorseModel` and the adult `DonkeyModel`/mule take this
-/// unchanged; the baby donkey/mule (which forces `xRot = -30°`) and the ridden/stand/eat/feed
-/// poses are deferred (the in-water gait frequency is applied by [`equine_leg_swing_pose`]).
-/// The tail walk lift is applied by [`equine_tail_swing_pose`]; only its `ageInTicks`-driven
-/// `yRot` wag stays deferred.
+/// unchanged; baby donkey/mule use [`baby_donkey_head_pose`] instead because
+/// `BabyDonkeyModel.setupAnim` forces `state.xRot = -30°` before recomputing
+/// `head_parts.xRot`. The ridden/stand/eat/feed poses are still deferred (the in-water
+/// gait frequency is applied by [`equine_leg_swing_pose`]). The tail walk lift is applied
+/// by [`equine_tail_swing_pose`]; only its `ageInTicks`-driven `yRot` wag stays deferred.
 pub(in crate::entity_models) fn equine_head_look_pose(
     base: PartPose,
     head_yaw_deg: f32,
@@ -1347,14 +1348,34 @@ pub(in crate::entity_models) fn equine_head_look_pose(
     }
 }
 
+/// Vanilla `BabyDonkeyModel.setupAnim` head (`head_parts`) pose in the default
+/// non-standing/non-eating/non-feeding branch. It first lets `AbstractEquineModel` clamp
+/// and apply yaw, then forces `state.xRot = -30°` and recomputes xRot:
+/// `π/6 + (-π/6) = 0`. That means baby donkey/mule ignore projected pitch and walk bob
+/// for this branch while still keeping the ±20° clamped yaw from the superclass.
+pub(in crate::entity_models) fn baby_donkey_head_pose(
+    base: PartPose,
+    head_yaw_deg: f32,
+) -> PartPose {
+    PartPose {
+        offset: base.offset,
+        rotation: [
+            0.0,
+            head_yaw_deg.clamp(-20.0, 20.0).to_radians(),
+            base.rotation[2],
+        ],
+    }
+}
+
 /// Vanilla `AbstractEquineModel.setupAnim` tail walk animation (the default branch). The
 /// tail's `xRot` is *set* to `getTailXRotOffset() + π/6 + walkAnimationSpeed * 0.75`, so a
 /// running equine lifts its tail. The per-model `getTailXRotOffset` (`0` for the adult
-/// horse/donkey/mule, `−π/2` for the baby horse) also overrides the baby layer's wider
-/// rest angle: vanilla runs `setupAnim` every frame, so a standing baby horse renders its
-/// tail at `−π/2 + π/6 = −1.0472`, not the layer's `−0.7418`. The tail base also
-/// translates `y += walkAnimationSpeed * ageScale` and `z += walkAnimationSpeed * 2 *
-/// ageScale`, where `ageScale` is `getAgeScale()` (`1.0` for adults, `0.5` for babies).
+/// horse/donkey/mule, `−π/2` for the baby horse, `−π/4` for the baby donkey/mule) also
+/// overrides baby layer rest angles: vanilla runs `setupAnim` every frame, so a standing
+/// baby horse renders its tail at `−π/2 + π/6 = −1.0472`, not the layer's `−0.7418`,
+/// and a baby donkey/mule tail parent renders at `−π/4 + π/6 = −π/12`. The tail base
+/// also translates `y += walkAnimationSpeed * ageScale` and `z += walkAnimationSpeed *
+/// 2 * ageScale`, where `ageScale` is `getAgeScale()` (`1.0` for adults, `0.5` for babies).
 /// The `tail.yRot` wag (`cos(ageInTicks * 0.7)` under `animateTail`) needs `ageInTicks` the
 /// client does not track and is deferred, so `yRot`/`zRot` are preserved here.
 pub(in crate::entity_models) fn equine_tail_swing_pose(
