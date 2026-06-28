@@ -3861,8 +3861,10 @@ When an agent does any of the following, update this file in the same slice:
       debug box where vanilla draws nothing. These three are therefore deliberately unsupported *as
       models* (there is no vanilla model to render), and the native scene no longer projects placeholder
       bounds for them. The textured renderer no longer carries an empty per-kind residual match after
-      the shared dispatch pass; remaining custom submissions are explicit dispatch hooks or post-base
-      layer helpers
+      the shared dispatch pass; texture-backed residual / bespoke layer helpers have converged to
+      explicit dispatch-owned submission hooks. The only non-dispatch fallback left is the colored
+      debug geometry for `Humanoid` / `Quadruped` / `Placeholder`, which is outside the textured
+      submission path
     - phantom entities as renderer-owned vanilla 26.1
       `PhantomModel.createBodyLayer()` geometry: the nested body (parenting the tail
       chain, the two mirrored wing chains, and the head) on a 64x64 texture, with the

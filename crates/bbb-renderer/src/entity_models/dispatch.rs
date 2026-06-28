@@ -6,10 +6,11 @@
 //! `match instance.kind` arm picking the model and transform; [`dispatch_uniform_entity_model`] is now
 //! the single source of truth for that selection, emitting through whichever [`EntityModelSink`]
 //! (colored or textured) the caller supplies. Entities whose two paths still diverge in model
-//! structure, part visibility, single-pass `render_textured_pass` emits, bespoke hand-walks, or custom
-//! layer walkers stay out of here and keep their own per-path residual arm. Scroll render types can
-//! still be dispatched when the model/root/pass tuple is otherwise uniform; the textured sink folds
-//! them into scroll buckets after recording submission metadata.
+//! structure, part visibility, or colored-only debug placeholders still return `false` for the colored
+//! fallback path. The textured path treats dispatch as the authoritative submission source and has no
+//! residual mesh-emitting arm. Scroll render types can still be dispatched when the
+//! model/root/pass tuple is otherwise uniform; the textured sink folds them into scroll buckets after
+//! recording submission metadata.
 
 use glam::{Mat4, Vec3};
 
@@ -897,9 +898,9 @@ impl EntityModelSink for TexturedSink<'_> {
 }
 
 /// Emits `instance` through `sink` if its base submission is dispatch-owned. Returns `true` if emitted,
-/// `false` for bespoke entities (the caller then renders them through its own path-specific residual
-/// arm). This is the single source of truth for dispatch-owned model/transform selection, replacing
-/// the duplicated arms in the two render matches.
+/// `false` for the colored-only fallback kinds (`Humanoid`, `Quadruped`, `Placeholder`). This is the
+/// single source of truth for texture-backed model/transform selection, replacing the duplicated arms
+/// in the colored and textured render matches.
 pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink>(
     instance: &EntityModelInstance,
     sink: &mut S,
@@ -1710,7 +1711,8 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             )
         }
 
-        // Everything else is bespoke: leave it for the caller's per-path residual arm.
+        // Everything else is colored-only fallback/debug geometry; the textured path has no residual
+        // mesh-emitting arm.
         _ => return false,
     }
     true
