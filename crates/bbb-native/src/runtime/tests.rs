@@ -516,6 +516,34 @@ fn sky_environment_applies_client_sky_flash_layer_and_dimension_gate() {
 }
 
 #[test]
+fn sky_environment_projects_sunrise_sunset_render_state() {
+    let day_time = 71;
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, day_time);
+    set_world_weather(&mut world, 0.25, 0.5);
+
+    let sky = sky_environment_for_world_at_camera(
+        &world,
+        &TerrainTextureState::default(),
+        camera_pose_from_world(&world),
+        false,
+    );
+    let sunrise_color = apply_weather_sunrise_sunset_color_layers(
+        sample_periodic_argb_keyframes(
+            day_time,
+            &VANILLA_OVERWORLD_SUNRISE_SUNSET_COLOR_KEYFRAMES,
+            VANILLA_LIGHTMAP_DAY_PERIOD_TICKS,
+        ),
+        0.25,
+        0.5,
+    );
+
+    assert_close4(sky.sunrise_sunset_color, rgba32(sunrise_color));
+    assert!(sky.sunrise_sunset_color[3] > 0.0);
+    assert!((sky.sun_angle_radians - overworld_sun_angle(day_time).to_radians()).abs() < 1e-6);
+}
+
+#[test]
 fn clear_color_mixes_sunrise_sunset_color_when_camera_faces_sun() {
     let day_time = 71;
     let mut world = world_with_dimension(0, "minecraft:overworld");
@@ -1584,6 +1612,12 @@ fn set_test_light_nibble(layer: &mut [u8], nibble_index: usize, value: u8) {
 }
 
 fn assert_close3(actual: [f32; 3], expected: [f32; 3]) {
+    for (actual, expected) in actual.into_iter().zip(expected) {
+        assert!((actual - expected).abs() < 1e-6);
+    }
+}
+
+fn assert_close4(actual: [f32; 4], expected: [f32; 4]) {
     for (actual, expected) in actual.into_iter().zip(expected) {
         assert!((actual - expected).abs() < 1e-6);
     }

@@ -708,6 +708,16 @@ const fn rgb24(color: i32) -> [f32; 3] {
     ]
 }
 
+const fn rgba32(color: i32) -> [f32; 4] {
+    let argb = color as u32;
+    [
+        ((argb >> 16) & 0xff) as f32 / 255.0,
+        ((argb >> 8) & 0xff) as f32 / 255.0,
+        (argb & 0xff) as f32 / 255.0,
+        ((argb >> 24) & 0xff) as f32 / 255.0,
+    ]
+}
+
 const fn argb_color(alpha: i32, red: i32, green: i32, blue: i32) -> i32 {
     ((((alpha & 0xff) as u32) << 24)
         | (((red & 0xff) as u32) << 16)
@@ -4205,12 +4215,30 @@ fn sky_environment_for_world_with_environment_colors(
         return SkyEnvironment::disabled();
     }
 
+    let day_time = world.world_time().map(|time| time.day_time).unwrap_or(6000);
+    let weather = world.weather();
+    let rain = weather.rain_level.clamp(0.0, 1.0) as f64;
+    let thunder = weather.thunder_level.clamp(0.0, 1.0) as f64;
+    let sunrise_sunset_color = apply_weather_sunrise_sunset_color_layers(
+        sample_periodic_argb_keyframes(
+            day_time,
+            &VANILLA_OVERWORLD_SUNRISE_SUNSET_COLOR_KEYFRAMES,
+            VANILLA_LIGHTMAP_DAY_PERIOD_TICKS,
+        ),
+        rain,
+        thunder,
+    );
+
     SkyEnvironment::from_rgb(rgb24(sky_disc_color_for_world_with_environment_colors(
         world,
         colors,
         dimension_kind,
         hide_lightning_flash,
     )))
+    .with_sunrise_sunset(
+        rgba32(sunrise_sunset_color),
+        overworld_sun_angle(day_time).to_radians(),
+    )
 }
 
 fn sky_disc_color_for_world_with_environment_colors(

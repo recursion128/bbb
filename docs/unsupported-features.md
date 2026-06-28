@@ -656,11 +656,14 @@ When an agent does any of the following, update this file in the same slice:
     the disc uses the vanilla 512 radius / y=16 shape triangulated from the
     official 10-vertex fan, and native drives its `SKY_COLOR` from
     dimension/biome sky color, the Overworld day multiplier, weather darken,
-    and the client lightning sky-flash layer. Remaining visual gaps are cloud
-    mesh presentation that consumes these visibility ends, the day timeline's
-    cloud/star/moon/sun mesh state, End sky, fuller atmosphere presentation,
-    and later custom-pack EnvironmentAttribute generalization when a concrete
-    renderer surface exists. Overworld variants use ambient `0x0A0A0A`. The
+    and the client lightning sky-flash layer. The same sky mesh now appends
+    the vanilla `SkyRenderer.renderSunriseAndSunset` fan: 16 ring steps, center
+    alpha 1, ring alpha 0, `SUNRISE_SUNSET_COLOR`, and `SUN_ANGLE` orientation,
+    expanded to triangle-list vertices for wgpu. Remaining visual gaps are
+    cloud mesh presentation that consumes these visibility ends, the day
+    timeline's cloud/star/moon/sun textured celestial mesh state, End sky,
+    fuller atmosphere presentation, and later custom-pack EnvironmentAttribute
+    generalization when a concrete renderer surface exists. Overworld variants use ambient `0x0A0A0A`. The
     block flicker path still advances
     `blockLightFlicker` with the
     `LightmapRenderStateExtractor.tick()` formula and the shaders read
@@ -669,8 +672,8 @@ When an agent does any of the following, update this file in the same slice:
     curve, block-light parabolic tint mix, boss darkening, darkness subtraction,
     and `BrightnessFactor` `notGamma` mix instead of the earlier
     `max(block, sky * 0.95)` scalar approximation. Remaining lighting gaps:
-    cloud and celestial sky renderer presentation, the real dynamic 16x16
-    LightTexture texture pass, provider-specific particle light emission
+    cloud and remaining celestial sky renderer presentation (textured sun/moon,
+    stars, End sky), the real dynamic 16x16 LightTexture texture pass, provider-specific particle light emission
     overrides, smooth/AO entity light, GUI / entity-in-UI lighting variants,
     and the colored debug fallback's baked-shade approximation. The item-model
     shader now consumes submitted item stack light coords through the same
@@ -1352,6 +1355,7 @@ When an agent does any of the following, update this file in the same slice:
 - Evidence / boundary:
   - Renderer draws:
     - vanilla-shaped top sky disc from `SKY_COLOR`
+    - vanilla-shaped sunrise/sunset fan from `SUNRISE_SUNSET_COLOR` / `SUN_ANGLE`
     - terrain
     - HUD
     - particles
