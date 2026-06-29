@@ -1810,7 +1810,9 @@ When an agent does any of the following, update this file in the same slice:
         `MapTextureManager.prepareMapTexture` / `MapRenderer.render` by uploading
         a 128x128 dynamic `minecraft:map/<id>` texture, submitting a single
         `RenderTypes.text` quad with white tint, UV `0..1`, light coords, and
-        `order=0` / `submit_sequence=0`. `MapRenderer` decoration sprites now
+        `order=0` / `submit_sequence=0`; malformed map RGBA payloads and
+        surfaces whose dynamic map texture is absent are skipped instead of
+        folding stale map geometry. `MapRenderer` decoration sprites now
         use the vanilla `MapDecorationTypes` registry-id order, `showOnlyFrame`
         / `showOnItemFrame` gate, `textures/atlas/map_decorations.png` sprite
         atlas, `RenderTypes.text`, white tint, decoration transform, light
