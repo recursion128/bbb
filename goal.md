@@ -335,6 +335,15 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。当前 checkl
   main-target translucent feature phase 内，在 blended entity feature pass 后、
   translucent terrain target pass 前绘制；剩余 render-graph ordering 不再把
   crumbling phase 当作未完成项。
+- [x] 2026-06-29 world item-model feature phase slice：vanilla
+  `FeatureRenderDispatcher.renderSolidFeatures()` 在 main-depth copy 前调用
+  `ItemFeatureRenderer.renderSolid()`，`renderTranslucentFeatures()` 在 depth copy
+  后调用 `ItemFeatureRenderer.renderTranslucent()`，二者都属于 world feature。
+  renderer 现在把已有 block/flat item-model 与 item-frame map batches 前移到
+  main target，在 translucent/itemEntity/particles depth copies 和 translucent
+  terrain target pass 之前绘制；GUI item icons 仍保持 transparency combine 后的
+  HUD pass。剩余 render-graph ordering 收窄为按 item submit 的 solid /
+  translucent split、per-submit feature 距离排序，以及 block/text/name ordering。
 
 ### [x] P0：提交图与 RenderType 语义（状态：狭义 pipeline 已完成）
 
