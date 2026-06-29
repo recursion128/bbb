@@ -1543,6 +1543,9 @@ blocker。
 
 - [x] player skin/cape/elytra profile dynamic textures 已具备 decode、cache、
   upload、atlas sampling、loading/ready/failed fallback 路径。
+- [x] `PlayerSkin.Patch` resource body/cape/elytra texture override 已覆盖
+  pack-resource ready upload、远程 URL 抑制、missing/failed cache 和不画 stale
+  texture 的 fallback 行为。
 
 仍在推进：
 

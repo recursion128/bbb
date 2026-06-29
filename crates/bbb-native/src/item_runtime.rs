@@ -3618,6 +3618,113 @@ mod tests {
     }
 
     #[test]
+    fn player_profile_resource_texture_patch_failure_does_not_use_remote_or_stale_texture() {
+        let root = unique_temp_dir("item-runtime-profile-resource-texture-failure");
+        let assets = assets_dir(&root);
+        let cape_texture_path = "minecraft:textures/entity/player/cape/missing.png";
+        let elytra_texture_path = "minecraft:textures/entity/player/elytra/missing.png";
+        let mut runtime = NativeItemRuntime::empty_for_test();
+        runtime.profile_texture_resources =
+            PackResourceStack::from_roots([root.join("sources").join(bbb_pack::MC_VERSION)]);
+        let texture_download_calls = Arc::new(AtomicUsize::new(0));
+        runtime.enable_player_texture_downloads_for_test(AsyncDynamicPlayerTextureRuntime::new(
+            root.join("profile-texture-cache"),
+            TestSkinPngFetcher {
+                bytes: player_profile_texture_png_bytes(),
+                calls: texture_download_calls.clone(),
+            },
+        ));
+        let profile = ResolvableProfileSummary {
+            kind: bbb_protocol::packets::ResolvableProfileKindSummary::Partial,
+            uuid: Some(uuid::Uuid::from_u128(0)),
+            name: None,
+            properties: Vec::new(),
+            profile_textures: Some(bbb_protocol::packets::ProfileTexturesSummary {
+                skin: None,
+                cape: Some(bbb_protocol::packets::ProfileTextureSummary {
+                    url: "https://textures.minecraft.net/texture/remote-cape".to_string(),
+                }),
+                elytra: Some(bbb_protocol::packets::ProfileTextureSummary {
+                    url: "https://textures.minecraft.net/texture/remote-elytra".to_string(),
+                }),
+            }),
+            skin_patch: bbb_protocol::packets::PlayerSkinPatchSummary {
+                body: None,
+                cape: Some(ResourceTextureSummary {
+                    asset_id: "minecraft:entity/player/cape/missing".to_string(),
+                    texture_path: cape_texture_path.to_string(),
+                }),
+                elytra: Some(ResourceTextureSummary {
+                    asset_id: "minecraft:entity/player/elytra/missing".to_string(),
+                    texture_path: elytra_texture_path.to_string(),
+                }),
+                model: None,
+            },
+        };
+
+        assert_eq!(
+            runtime
+                .player_profile_texture_for_profile(&profile, EntityDynamicPlayerTextureKind::Cape),
+            None
+        );
+        assert_eq!(
+            runtime.player_profile_texture_for_profile(
+                &profile,
+                EntityDynamicPlayerTextureKind::Elytra
+            ),
+            None
+        );
+        assert!(runtime
+            .drain_dynamic_player_texture_download_results()
+            .is_empty());
+        assert_eq!(runtime.downloaded_player_texture_count(), 0);
+        assert_eq!(texture_download_calls.load(Ordering::Relaxed), 0);
+
+        write_test_rgba_png(
+            &assets
+                .join("textures")
+                .join("entity")
+                .join("player")
+                .join("cape")
+                .join("missing.png"),
+            1,
+            1,
+            &[1, 2, 3, 255],
+        );
+        write_test_rgba_png(
+            &assets
+                .join("textures")
+                .join("entity")
+                .join("player")
+                .join("elytra")
+                .join("missing.png"),
+            1,
+            1,
+            &[4, 5, 6, 255],
+        );
+
+        assert_eq!(
+            runtime
+                .player_profile_texture_for_profile(&profile, EntityDynamicPlayerTextureKind::Cape),
+            None
+        );
+        assert_eq!(
+            runtime.player_profile_texture_for_profile(
+                &profile,
+                EntityDynamicPlayerTextureKind::Elytra
+            ),
+            None
+        );
+        assert!(runtime
+            .drain_dynamic_player_texture_download_results()
+            .is_empty());
+        assert_eq!(runtime.downloaded_player_texture_count(), 0);
+        assert_eq!(texture_download_calls.load(Ordering::Relaxed), 0);
+
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
     fn player_profile_resource_texture_patch_loads_local_body_skin() {
         let root = unique_temp_dir("item-runtime-profile-resource-body-skin");
         let assets = assets_dir(&root);

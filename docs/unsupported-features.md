@@ -1973,7 +1973,11 @@ When an agent does any of the following, update this file in the same slice:
         native resolves the patch `texture_path` through the pack resource
         stack, decodes body skins into the dynamic player-skin upload path,
         decodes cape/elytra PNGs without skin post-processing, and avoids the
-        remote profile URL download for overridden textures. Renderer can now
+        remote profile URL download for overridden textures. Missing or failed
+        cape/elytra resource-texture patches are cached as failed, emit no upload
+        result, do not fall back to the remote profile URL replaced by the patch,
+        and keep subsequent calls from drawing a stale dynamic texture before an
+        explicit reload. Renderer can now
         record dynamic player texture submissions and draw cutout/translucent dynamic
         profile-texture buckets bound to that atlas, with static-atlas fallback
         when the dynamic entry is absent. Profile `CapeLayer` presentation is
