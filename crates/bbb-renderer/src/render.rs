@@ -23,6 +23,7 @@ const ENTITY_OUTLINE_BLUR_VERTICAL_PASS_LABEL: &str =
     "bbb-native-entity-outline-blur-vertical-pass";
 const ENTITY_OUTLINE_BLIT_PASS_LABEL: &str = "bbb-native-entity-outline-blit-pass";
 const ENTITY_OUTLINE_COMPOSITE_PASS_LABEL: &str = "bbb-native-entity-outline-composite-pass";
+const CLOUDS_PASS_LABEL: &str = "bbb-native-clouds-pass";
 
 impl Renderer {
     pub fn render(&mut self, screenshot: Option<&Path>) -> Result<()> {
@@ -119,18 +120,6 @@ impl Renderer {
                     pass.set_vertex_buffer(0, stars.vertex_buffer.slice(..));
                     pass.draw(0..stars.vertex_count, 0..1);
                     sky_draw_calls += 1;
-                }
-
-                if let Some(clouds) = &self.clouds {
-                    if self.fog_environment.cloud_end > 0.0 {
-                        pass.set_pipeline(&self.cloud_pipeline);
-                        pipeline_switches += 1;
-                        pass.set_bind_group(0, &self.terrain_bind_group, &[]);
-                        pass.set_bind_group(1, &self.cloud_bind_group, &[]);
-                        pass.set_vertex_buffer(0, clouds.vertex_buffer.slice(..));
-                        pass.draw(0..clouds.vertex_count, 0..1);
-                        sky_draw_calls += 1;
-                    }
                 }
             }
 
@@ -449,6 +438,39 @@ impl Renderer {
             pass.set_bind_group(0, &self.entity_outline_target.bind_group, &[]);
             pass.draw(0..3, 0..1);
             outline_composite_draw_calls += 1;
+        }
+
+        if let Some(clouds) = &self.clouds {
+            if self.fog_environment.cloud_end > 0.0 {
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some(CLOUDS_PASS_LABEL),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                        view: &self.depth.view,
+                        depth_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: wgpu::StoreOp::Store,
+                        }),
+                        stencil_ops: None,
+                    }),
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&self.cloud_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+                pass.set_bind_group(1, &self.cloud_bind_group, &[]);
+                pass.set_vertex_buffer(0, clouds.vertex_buffer.slice(..));
+                pass.draw(0..clouds.vertex_count, 0..1);
+                sky_draw_calls += 1;
+            }
         }
 
         if !self.terrain_translucent.is_empty() {
@@ -918,29 +940,40 @@ mod tests {
     }
 
     #[test]
-    fn cloud_presentation_draws_after_sky_and_before_terrain_opaque_group() {
+    fn cloud_presentation_draws_after_main_and_outline_before_later_translucent_passes() {
         let source = include_str!("render.rs");
         let sky = source
             .find("pass.set_pipeline(&self.sky_pipeline)")
             .expect("sky pipeline is drawn");
-        let stars = source
-            .find("pass.set_pipeline(&self.star_pipeline)")
-            .expect("star pipeline is drawn");
-        let clouds = source
-            .find("pass.set_pipeline(&self.cloud_pipeline)")
-            .expect("cloud pipeline is drawn");
         let terrain = source
             .find("for terrain_layer in TERRAIN_OPAQUE_GROUP_LAYERS")
             .expect("terrain opaque group is drawn");
+        let outline_composite = source
+            .find("label: Some(ENTITY_OUTLINE_COMPOSITE_PASS_LABEL)")
+            .expect("entity outline composite pass label is used");
+        let clouds = source
+            .find("label: Some(CLOUDS_PASS_LABEL)")
+            .expect("cloud pass label is used");
+        let cloud_pipeline = source[clouds..]
+            .find("pass.set_pipeline(&self.cloud_pipeline)")
+            .map(|index| clouds + index)
+            .expect("cloud pipeline is drawn in the cloud pass");
+        let translucent = source
+            .find("label: Some(\"bbb-native-terrain-translucent-pass\")")
+            .expect("terrain translucent pass label is used");
 
         assert!(sky < clouds, "clouds draw after the top sky disc");
         assert!(
-            stars < clouds,
-            "clouds draw after celestial/star sky overlays"
+            terrain < clouds,
+            "clouds draw after the main terrain/entity pass"
         );
         assert!(
-            clouds < terrain,
-            "basic cloud presentation draws before terrain opaque group until full clouds target sorting lands"
+            outline_composite < clouds,
+            "clouds draw after the entity outline post-chain like vanilla LevelRenderer"
+        );
+        assert!(
+            clouds < cloud_pipeline && cloud_pipeline < translucent,
+            "clouds draw in a dedicated pass before later translucent world passes"
         );
     }
 

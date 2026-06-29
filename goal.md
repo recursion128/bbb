@@ -233,9 +233,11 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。当前 checkl
   `LevelRenderer.addMainPass` 在 feature submissions 前调用
   `renderGroup(OPAQUE, ...)`。renderer 首个 world pass 现在按
   `SOLID -> CUTOUT` 绘制 terrain opaque group，再进入 entity/model feature
-  draws，并用单元测试钉住该顺序。剩余 P0 visual render-graph 工作仍包括
-  translucent / item_entity / particle / weather / clouds targets、vanilla
-  transparency post chain，以及更细粒度 feature/terrain
+  draws，并用单元测试钉住该顺序。renderer clouds 现在也从主 pass 分离为
+  显式 `bbb-native-clouds-pass`，位于 main / entity-outline 后且早于后续
+  translucent world passes，并用单元测试钉住该顺序。剩余 P0 visual
+  render-graph 工作仍包括 translucent / item_entity / particle / weather /
+  clouds targets、vanilla transparency post chain，以及更细粒度 feature/terrain
   target sorting。
 
 ### [x] P0：提交图与 RenderType 语义（状态：狭义 pipeline 已完成）
@@ -460,7 +462,8 @@ blocker。
   `CloudStatus.FANCY` 的 extruded cloud cell mesh，包含 top/bottom camera gates、
   side empty-neighbor gates、interior faces 和 face tints；native 已把
   Overworld day timeline 和 rain/thunder weather `CLOUD_COLOR` modifier 投影到
-  cloud environment；clouds target / transparency post-chain 和 custom
+  cloud environment；renderer 已把 clouds draw 分离到 main / entity-outline
+  之后的显式 pass；clouds target / transparency post-chain 和 custom
   EnvironmentAttribute 泛化仍归 P0 visual / P3 后续。
 - [x] colored/textured/`breezeWind` entity shader 已把 vanilla `LightmapInfo`
   环境颜色/效果字段提升为 renderer uniform：`SkyFactor`、
@@ -606,8 +609,8 @@ blocker。
   `WATER_FOG_END_DISTANCE` 已接入，未发现 `BLOCK_LIGHT_TINT` /
   `NIGHT_VISION_COLOR` 的 vanilla biome JSON 数据源。cloud sky mesh presentation
   已有基础 `cloudEnd` fade、`clouds.png` flat cell mesh 和 vanilla movement /
-  camera cell offset 和 fancy/extruded mesh；剩余优先看 clouds target /
-  transparency post-chain，而不是
+  camera cell offset、fancy/extruded mesh 和显式 clouds pass 顺序；剩余优先看
+  clouds target / transparency post-chain，而不是
   泛化补空属性；sun/moon/stars celestial presentation 已覆盖。
 - 补齐实体 smooth / AO 风格采样差异。
 - 补齐 GUI/entity-in-UI lighting variants，以及 colored debug fallback；Nether /
@@ -621,8 +624,8 @@ blocker。
   item-entity billboard 与默认 particle lightCoords 的 `LightmapInfo` RGB 组合已覆盖，
   End skybox 基础纹理立方体、sun/moon/stars celestial、基础 cloud mesh
   `cloudEnd` fade、`clouds.png` flat cell mesh 和 vanilla movement / camera cell
-  offset、fancy/extruded mesh 与 day-timeline/weather cloud color 已覆盖，后续只剩
-  clouds target / transparency post-chain、真实
+  offset、fancy/extruded mesh、day-timeline/weather cloud color 与显式 clouds
+  pass 顺序已覆盖，后续只剩 clouds target / transparency post-chain、真实
   dynamic LightTexture texture pass、provider-specific particle light emission
   曲线的 diffuse 精度，以及有实际数据源的
   custom pack 属性泛化。

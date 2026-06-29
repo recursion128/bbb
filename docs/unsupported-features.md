@@ -385,6 +385,9 @@ When an agent does any of the following, update this file in the same slice:
     is `SOLID` followed by `CUTOUT`, and `LevelRenderer.addMainPass` renders
     that opaque group before feature submissions. The renderer world pass now
     draws local solid and cutout terrain in that order before entity/model draws.
+    Clouds now draw in an explicit pass after the main pass / entity-outline
+    post-chain position and before later translucent world passes, matching the
+    vanilla `LevelRenderer` high-level order more closely.
     Remaining render-graph parity still needs vanilla target separation and
     post-chain composition for translucent / item-entity / particle / weather /
     cloud paths; outline now has a dedicated target/composite.
@@ -404,8 +407,10 @@ When an agent does any of the following, update this file in the same slice:
     extruded cloud cell faces with vanilla top/bottom camera gates, side-face
     empty-neighbor checks, interior faces, and face color tints. Native now
     projects Overworld day-timeline and rain/thunder weather `CLOUD_COLOR`
-    modifiers into the cloud environment. Remaining cloud parity is dedicated
-    clouds target and vanilla transparency post-chain sorting.
+    modifiers into the cloud environment. The renderer cloud draw is now a
+    dedicated pass after main/entity-outline ordering and before later
+    translucent world passes. Remaining cloud parity is dedicated clouds target
+    and vanilla transparency post-chain sorting.
   - P0 pipeline closeout treats texture-backed / dispatch-owned submission and
     RenderType/order/missing-atlas/dynamic-texture coverage as complete for the
     narrow pipeline scope: entity model tests assert `submit_sequence` across 78
@@ -707,8 +712,9 @@ When an agent does any of the following, update this file in the same slice:
     `gameTime` movement and camera cell offset; the renderer also defaults to
     vanilla fancy/extruded cloud cells with face tint and camera-position face
     gates, and native projects vanilla day-timeline plus rain/thunder
-    `CLOUD_COLOR` modifiers. Remaining visual gaps are clouds target /
-    transparency post-chain sorting,
+    `CLOUD_COLOR` modifiers. The renderer now separates clouds into their own
+    pass after main/entity-outline ordering. Remaining visual gaps are clouds
+    target / transparency post-chain sorting,
     fuller atmosphere presentation, and later custom-pack EnvironmentAttribute
     generalization when a concrete renderer surface exists. Sun/moon presentation
     is now covered by the vanilla `CELESTIAL` overlay blend, the
