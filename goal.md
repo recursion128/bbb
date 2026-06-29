@@ -1138,7 +1138,11 @@ blocker。
 - Chicken / pig / cow variant livestock：
   - [x] 旧的 broader lighting wording 已收窄：base（以及 pig saddle）
     submission light/overlay metadata 已由 renderer tests pin 住；剩余只保留
-    variant sound、custom/datapack variant assets 和 pig boost/ridden animation。
+    variant sound 和 custom/datapack variant assets。
+  - [x] pig boost/ridden renderer 归属审计：vanilla `PigRenderState` 只有
+    saddle/variant，`PigRenderer.extractRenderState` 不投影 boost/ridden pose；
+    `ItemBasedSteering` / `Pig.tickRidden` 属移动控制后续，不作为 P1 renderer
+    animation blocker。
 - Pufferfish / squid / cod / salmon：
   - [x] 旧的 broader/full-dynamic lighting wording 已收窄：base submission
     light/overlay metadata 和 glow-squid block-light override 已由 renderer

@@ -2194,8 +2194,10 @@ When an agent does any of the following, update this file in the same slice:
       preserving entity light while forcing the vanilla equipment
       `OverlayTexture.NO_OVERLAY`; missing saddle atlas data now preserves that
       submission while suppressing only the folded saddle geometry; baby pigs intentionally
-      skip it because vanilla provides no baby saddle model. Boost/ridden
-      animation, variant sound metadata, and custom/datapack pig variant asset
+      skip it because vanilla provides no baby saddle model. Vanilla `PigRenderState`
+      carries saddle and variant only; pig boost/ridden speed lives in
+      `ItemBasedSteering` / `Pig.tickRidden` movement control, not a renderer pose
+      branch. Variant sound metadata and custom/datapack pig variant asset
       decoding remain unsupported; the old broader-lighting wording is stale
       because base and saddle submission light/overlay metadata is covered here
       and global LightTexture / gamma parity is tracked by the completed P0
