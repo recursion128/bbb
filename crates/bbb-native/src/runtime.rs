@@ -4529,6 +4529,9 @@ fn weather_cold_enough_to_snow(base_temperature: f32, pos: BlockPos, sea_level: 
 }
 
 fn weather_motion_blocking_height(world: &WorldStore, x: i32, z: i32) -> Option<i32> {
+    if let Some(height) = world.sample_motion_blocking_height(x, z) {
+        return Some(height);
+    }
     let dimension = world.dimension();
     let top_y = dimension.min_y + dimension.height - 1;
     for y in (dimension.min_y..=top_y).rev() {

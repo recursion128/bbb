@@ -245,6 +245,76 @@ fn samples_block_light_at_world_position_and_reports_unloaded() {
 }
 
 #[test]
+fn samples_motion_blocking_height_from_chunk_heightmap() {
+    let dimension = WorldDimension {
+        min_y: 0,
+        height: 16,
+    };
+    let mut packet = synthetic_local_palette_chunk_packet();
+    packet.chunk_data.heightmaps = vec![motion_blocking_heightmap(dimension, &[(2, 3, 2)])];
+    let mut store = WorldStore::with_dimension(dimension);
+    store.insert_level_chunk_with_light(packet).unwrap();
+
+    // Chunk (2, -3) local (2, 3) maps to world column (34, -45).
+    assert_eq!(store.sample_motion_blocking_height(34, -45), Some(2));
+    assert_eq!(store.sample_motion_blocking_height(9999, 9999), None);
+}
+
+#[test]
+fn motion_blocking_height_ignores_missing_or_malformed_heightmap() {
+    let dimension = WorldDimension {
+        min_y: 0,
+        height: 16,
+    };
+    let mut wrong_kind = synthetic_local_palette_chunk_packet();
+    wrong_kind.chunk_data.heightmaps = vec![ChunkHeightmapData {
+        kind_id: 1,
+        data: motion_blocking_heightmap(dimension, &[(2, 3, 2)]).data,
+    }];
+    let mut store = WorldStore::with_dimension(dimension);
+    store.insert_level_chunk_with_light(wrong_kind).unwrap();
+    assert_eq!(store.sample_motion_blocking_height(34, -45), None);
+
+    let mut malformed = synthetic_local_palette_chunk_packet();
+    malformed.chunk_data.heightmaps = vec![ChunkHeightmapData {
+        kind_id: 4,
+        data: vec![0],
+    }];
+    let mut store = WorldStore::with_dimension(dimension);
+    store.insert_level_chunk_with_light(malformed).unwrap();
+    assert_eq!(store.sample_motion_blocking_height(34, -45), None);
+}
+
+#[test]
+fn block_update_maintains_motion_blocking_heightmap() {
+    let dimension = WorldDimension {
+        min_y: 0,
+        height: 16,
+    };
+    let mut packet = synthetic_local_palette_chunk_packet();
+    packet.chunk_data.heightmaps = vec![motion_blocking_heightmap(dimension, &[(2, 3, 2)])];
+    let mut store = WorldStore::with_dimension(dimension);
+    store.insert_level_chunk_with_light(packet).unwrap();
+    let pos = ProtocolBlockPos {
+        x: 34,
+        y: 1,
+        z: -45,
+    };
+
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos,
+        block_state_id: 0,
+    }));
+    assert_eq!(store.sample_motion_blocking_height(34, -45), Some(1));
+
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos { y: 3, ..pos },
+        block_state_id: 9,
+    }));
+    assert_eq!(store.sample_motion_blocking_height(34, -45), Some(4));
+}
+
+#[test]
 fn light_update_for_missing_chunk_is_counted_but_not_applied() {
     let mut store = WorldStore::new();
 
@@ -1019,6 +1089,30 @@ fn synthetic_local_palette_chunk_packet() -> LevelChunkWithLight {
         },
         light_data: light_update_data(&[], &[], &[], &[], Vec::new(), Vec::new()),
     }
+}
+
+fn motion_blocking_heightmap(
+    dimension: WorldDimension,
+    entries: &[(u8, u8, i32)],
+) -> ChunkHeightmapData {
+    let bits = heightmap_bits_for_dimension(dimension);
+    let mut values = vec![0u64; 16 * 16];
+    for &(local_x, local_z, first_available) in entries {
+        let index = usize::from(local_x) + usize::from(local_z) * 16;
+        values[index] = u64::try_from(first_available - dimension.min_y).unwrap();
+    }
+    ChunkHeightmapData {
+        kind_id: 4,
+        data: pack_fixed_values(&values, bits)
+            .into_iter()
+            .map(|value| value as i64)
+            .collect(),
+    }
+}
+
+fn heightmap_bits_for_dimension(dimension: WorldDimension) -> usize {
+    let value = u64::try_from(dimension.height).unwrap() + 1;
+    (u64::BITS - (value - 1).leading_zeros()).max(1) as usize
 }
 
 fn write_local_block_palette(out: &mut Encoder) {

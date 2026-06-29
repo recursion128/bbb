@@ -439,9 +439,11 @@ When an agent does any of the following, update this file in the same slice:
     modifiers into the cloud environment. The renderer cloud draw is now a
     dedicated pass after main/entity-outline ordering, writes a clouds
     color/depth target, and participates in the Main+Translucent+ItemEntity+Particles+Weather+Clouds
-    transparency combine. Remaining cloud/weather parity is the full vanilla
-    transparency post-chain depth sorting plus weather `MOTION_BLOCKING`
-    heightmap / temperature-noise precipitation extraction precision.
+    transparency combine. Weather now reads vanilla `MOTION_BLOCKING`
+    heightmaps from chunk packet data for rain/snow column bounds and keeps that
+    heightmap updated for block changes. Remaining cloud/weather parity is the
+    full vanilla transparency post-chain depth sorting plus temperature-noise
+    precipitation extraction precision.
   - P0 pipeline closeout treats texture-backed / dispatch-owned submission and
     RenderType/order/missing-atlas/dynamic-texture coverage as complete for the
     narrow pipeline scope: entity model tests assert `submit_sequence` across 78
@@ -752,9 +754,10 @@ When an agent does any of the following, update this file in the same slice:
     matching vanilla's world-before-GUI render shape. Rain/snow weather columns
     now draw through vanilla environment textures, `PARTICLE` vertex layout,
     LightTexture sampling, rain/snow index ranges, and the weather target.
+    Weather column bounds now use chunk-packet `MOTION_BLOCKING` heightmaps
+    and block-update maintenance before falling back to the old scan path.
     Remaining visual gaps are full transparency post-chain depth sorting,
-    weather `MOTION_BLOCKING` heightmap / temperature-noise precipitation
-    extraction precision, fuller atmosphere presentation, and later custom-pack EnvironmentAttribute
+    temperature-noise precipitation extraction precision, fuller atmosphere presentation, and later custom-pack EnvironmentAttribute
     generalization when a concrete renderer surface exists. Sun/moon presentation
     is now covered by the vanilla `CELESTIAL` overlay blend, the
     `environment/celestial` atlas source, `SUN_ANGLE` / `MOON_ANGLE`, and the

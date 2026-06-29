@@ -19,8 +19,8 @@ use bbb_protocol::packets::{
     WrittenBookContentSummary,
 };
 use bbb_world::{
-    BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, LocalPlayerPoseState,
-    PaletteDomain, PaletteKind, PalettedContainerData, WorldDimension,
+    BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, HeightmapData, LightData,
+    LocalPlayerPoseState, PaletteDomain, PaletteKind, PalettedContainerData, WorldDimension,
 };
 use tokio::sync::mpsc;
 use winit::{
@@ -719,6 +719,39 @@ fn weather_render_state_projects_overworld_rain_columns_from_world_weather() {
     assert_eq!(center.top_y, 15);
     assert_eq!(center.u_offset, 0.0);
     assert!(center.v_offset.is_finite());
+}
+
+#[test]
+fn weather_render_state_uses_motion_blocking_heightmap_for_column_bounds() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.set_local_player_pose(local_player_pose([0.5, 4.0, 0.5], 0.0, 0.0));
+    set_world_day_time(&mut world, 96);
+    set_world_weather(&mut world, 1.0, 0.0);
+    let mut chunk = empty_lightmap_test_chunk_with_biome(world.dimension(), 42);
+    chunk.heightmaps = vec![test_motion_blocking_heightmap(
+        world.dimension(),
+        &[(0, 0, 8)],
+    )];
+    world.insert_decoded_chunk(chunk);
+    let terrain_textures =
+        TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
+            biome_profile_with_weather(42, 0.8, true),
+        ]));
+
+    let state = weather_render_state_for_world(
+        &world,
+        &terrain_textures,
+        camera_pose_from_world(&world),
+        0.25,
+    );
+
+    let center = state
+        .rain_columns
+        .iter()
+        .find(|column| column.x == 0 && column.z == 0)
+        .expect("center column uses the loaded precipitating biome");
+    assert_eq!(center.bottom_y, 8);
+    assert_eq!(center.top_y, 15);
 }
 
 #[test]
@@ -1817,6 +1850,42 @@ fn single_value_container(
         packed_data: Vec::new(),
         entry_count,
     }
+}
+
+fn test_motion_blocking_heightmap(
+    dimension: WorldDimension,
+    entries: &[(u8, u8, i32)],
+) -> HeightmapData {
+    let bits = test_heightmap_bits_for_dimension(dimension);
+    let mut values = vec![0u64; 16 * 16];
+    for &(local_x, local_z, first_available) in entries {
+        let index = usize::from(local_x) + usize::from(local_z) * 16;
+        values[index] = u64::try_from(first_available - dimension.min_y).unwrap();
+    }
+    HeightmapData {
+        kind_id: 4,
+        data: pack_test_fixed_values(&values, bits)
+            .into_iter()
+            .map(|value| value as i64)
+            .collect(),
+    }
+}
+
+fn test_heightmap_bits_for_dimension(dimension: WorldDimension) -> usize {
+    let value = u64::try_from(dimension.height).unwrap() + 1;
+    (u64::BITS - (value - 1).leading_zeros()).max(1) as usize
+}
+
+fn pack_test_fixed_values(values: &[u64], bits_per_entry: usize) -> Vec<u64> {
+    let values_per_long = 64 / bits_per_entry;
+    let mut packed = vec![0; values.len().div_ceil(values_per_long)];
+    let mask = (1u64 << bits_per_entry) - 1;
+    for (index, value) in values.iter().copied().enumerate() {
+        let cell_index = index / values_per_long;
+        let bit_index = (index - cell_index * values_per_long) * bits_per_entry;
+        packed[cell_index] |= (value & mask) << bit_index;
+    }
+    packed
 }
 
 fn set_lightmap_test_block(world: &mut WorldStore, pos: BlockPos, block_state_id: i32) {
