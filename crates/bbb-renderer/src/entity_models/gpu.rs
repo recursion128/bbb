@@ -416,6 +416,53 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 }
 "#;
 
+// Vanilla `core/rendertype_outline`: texture alpha is only a mask; the outline colour comes from the
+// `OutlineBufferSource` vertex color, and the output alpha is the default `ColorModulator.a` (1.0).
+pub(super) const ENTITY_MODEL_OUTLINE_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+
+@group(0) @binding(1)
+var entity_texture_atlas: texture_2d<f32>;
+
+@group(0) @binding(2)
+var entity_sampler: sampler;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) tint: vec4<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+    @location(1) tint: vec4<f32>,
+};
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
+    out.uv = input.uv;
+    out.tint = input.tint;
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let texel = textureSample(entity_texture_atlas, entity_sampler, input.uv);
+    if (texel.a == 0.0) {
+        discard;
+    }
+    return vec4<f32>(input.tint.rgb, 1.0);
+}
+"#;
+
 // The scrolling-overlay shader for vanilla `breezeWind`: texture-matrix scroll, lightmap-lit, no overlay,
 // and no cardinal lighting. Because the texture lives in the shared atlas, the per-fragment `fract` of
 // the (offset-baked) local UV reproduces the `GL_REPEAT` seam, then maps back into the atlas sub-rect.
@@ -736,8 +783,8 @@ pub(crate) fn create_entity_model_outline_pipeline(
         format,
         bind_group_layout,
         "bbb-entity-model-outline",
-        ENTITY_MODEL_EYES_SHADER,
-        Some(wgpu::BlendState::ALPHA_BLENDING),
+        ENTITY_MODEL_OUTLINE_SHADER,
+        ENTITY_MODEL_OUTLINE_BLEND,
         true,
     )
 }
@@ -772,6 +819,8 @@ const ENTITY_MODEL_ADDITIVE_BLEND: wgpu::BlendState = wgpu::BlendState {
         operation: wgpu::BlendOperation::Add,
     },
 };
+
+const ENTITY_MODEL_OUTLINE_BLEND: Option<wgpu::BlendState> = None;
 
 /// The scrolling-overlay pipeline for vanilla `breezeWind` (the wind charge): translucent
 /// (`BlendFunction.TRANSLUCENT`), lightmap-lit, depth-writing, cull off.
@@ -1780,4 +1829,35 @@ fn create_entity_model_scroll_mesh_gpu_from_mesh(
         index_count: mesh.indices.len() as u32,
         bounds,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ENTITY_MODEL_OUTLINE_BLEND, ENTITY_MODEL_OUTLINE_SHADER};
+
+    #[test]
+    fn entity_model_outline_shader_matches_vanilla_rendertype_outline_shape() {
+        assert!(
+            ENTITY_MODEL_OUTLINE_SHADER.contains("if (texel.a == 0.0)"),
+            "vanilla rendertype_outline uses texture alpha only as a zero-alpha discard mask"
+        );
+        assert!(
+            ENTITY_MODEL_OUTLINE_SHADER.contains("return vec4<f32>(input.tint.rgb, 1.0)"),
+            "outline target output should be the submitted outline colour with default ColorModulator alpha"
+        );
+        assert!(
+            !ENTITY_MODEL_OUTLINE_SHADER.contains("lightmap")
+                && !ENTITY_MODEL_OUTLINE_SHADER.contains("overlay")
+                && !ENTITY_MODEL_OUTLINE_SHADER.contains("apply_fog"),
+            "vanilla rendertype_outline does not apply lightmap, overlay, or fog"
+        );
+    }
+
+    #[test]
+    fn entity_model_outline_pipeline_uses_replace_blend() {
+        assert_eq!(
+            ENTITY_MODEL_OUTLINE_BLEND, None,
+            "vanilla OUTLINE_SNIPPET declares no color-target blend state"
+        );
+    }
 }
