@@ -120,6 +120,17 @@ impl Renderer {
                     pass.draw(0..stars.vertex_count, 0..1);
                     sky_draw_calls += 1;
                 }
+
+                if let Some(clouds) = &self.clouds {
+                    if self.fog_environment.cloud_end > 0.0 {
+                        pass.set_pipeline(&self.cloud_pipeline);
+                        pipeline_switches += 1;
+                        pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+                        pass.set_vertex_buffer(0, clouds.vertex_buffer.slice(..));
+                        pass.draw(0..clouds.vertex_count, 0..1);
+                        sky_draw_calls += 1;
+                    }
+                }
             }
 
             // Vanilla 26.1 renders ChunkSectionLayerGroup.OPAQUE as SOLID then CUTOUT
@@ -902,6 +913,33 @@ mod tests {
                 TerrainOpaqueGroupLayer::Solid,
                 TerrainOpaqueGroupLayer::Cutout,
             ]
+        );
+    }
+
+    #[test]
+    fn cloud_presentation_draws_after_sky_and_before_terrain_opaque_group() {
+        let source = include_str!("render.rs");
+        let sky = source
+            .find("pass.set_pipeline(&self.sky_pipeline)")
+            .expect("sky pipeline is drawn");
+        let stars = source
+            .find("pass.set_pipeline(&self.star_pipeline)")
+            .expect("star pipeline is drawn");
+        let clouds = source
+            .find("pass.set_pipeline(&self.cloud_pipeline)")
+            .expect("cloud pipeline is drawn");
+        let terrain = source
+            .find("for terrain_layer in TERRAIN_OPAQUE_GROUP_LAYERS")
+            .expect("terrain opaque group is drawn");
+
+        assert!(sky < clouds, "clouds draw after the top sky disc");
+        assert!(
+            stars < clouds,
+            "clouds draw after celestial/star sky overlays"
+        );
+        assert!(
+            clouds < terrain,
+            "basic cloud presentation draws before terrain opaque group until full clouds target sorting lands"
         );
     }
 

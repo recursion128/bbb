@@ -12,6 +12,7 @@ use crate::{
         sanitize_lightmap_block_factor, sanitize_lightmap_brightness_factor, CameraPose,
         CameraUniform, ClearColor, FogEnvironment, LightmapEnvironment, TerrainBounds,
     },
+    clouds::{create_cloud_gpu, create_cloud_pipeline, CloudEnvironment, CloudGpu},
     entity_models::{
         create_entity_model_eyes_pipeline, create_entity_model_outline_cull_pipeline,
         create_entity_model_outline_pipeline, create_entity_model_pipeline,
@@ -97,6 +98,7 @@ pub struct Renderer {
     pub(super) end_sky_texture_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) celestial_pipeline: wgpu::RenderPipeline,
     pub(super) celestial_bind_group_layout: wgpu::BindGroupLayout,
+    pub(super) cloud_pipeline: wgpu::RenderPipeline,
     pub(super) hud_pipeline: wgpu::RenderPipeline,
     pub(super) hud_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) hud_white_pixel: HudSpriteGpu,
@@ -117,12 +119,14 @@ pub struct Renderer {
     pub(super) lightmap_environment: LightmapEnvironment,
     pub(super) fog_environment: FogEnvironment,
     pub(super) sky_environment: SkyEnvironment,
+    pub(super) cloud_environment: CloudEnvironment,
     pub(super) sky_disc: Option<SkyDiscGpu>,
     pub(super) end_sky_mesh: EndSkyGpu,
     pub(super) end_sky_texture: Option<EndSkyTextureGpu>,
     pub(super) sky_celestials: Option<CelestialGpu>,
     pub(super) sky_stars: Option<StarGpu>,
     pub(super) celestial_atlas: Option<CelestialAtlasGpu>,
+    pub(super) clouds: Option<CloudGpu>,
     pub(super) block_destroy_overlays: Option<BlockDestroyOverlaysGpu>,
     pub(super) entity_model_mesh: Option<EntityModelMeshGpu>,
     pub(super) entity_model_textured_mesh: Option<EntityModelTexturedMeshGpu>,
@@ -451,6 +455,7 @@ impl Renderer {
             &terrain_bind_group_layout,
             &celestial_bind_group_layout,
         );
+        let cloud_pipeline = create_cloud_pipeline(&device, format, &terrain_bind_group_layout);
         let hud_pipeline = create_hud_pipeline(&device, format, &hud_bind_group_layout);
         let hud_white_pixel = create_hud_sprite_gpu(
             &device,
@@ -502,6 +507,7 @@ impl Renderer {
             end_sky_texture_bind_group_layout,
             celestial_pipeline,
             celestial_bind_group_layout,
+            cloud_pipeline,
             hud_pipeline,
             hud_bind_group_layout,
             hud_white_pixel,
@@ -522,12 +528,14 @@ impl Renderer {
             lightmap_environment: LightmapEnvironment::default(),
             fog_environment: FogEnvironment::default(),
             sky_environment: SkyEnvironment::default(),
+            cloud_environment: CloudEnvironment::default(),
             sky_disc: None,
             end_sky_mesh,
             end_sky_texture: None,
             sky_celestials: None,
             sky_stars: None,
             celestial_atlas: None,
+            clouds: None,
             block_destroy_overlays: None,
             entity_model_mesh: None,
             entity_model_textured_mesh: None,
@@ -1026,6 +1034,15 @@ impl Renderer {
             .as_ref()
             .and_then(|atlas| create_celestial_gpu(&self.device, environment, atlas));
         self.sky_stars = create_star_gpu(&self.device, environment);
+    }
+
+    pub fn set_cloud_environment(&mut self, environment: CloudEnvironment) {
+        let environment = environment.sanitized();
+        if self.cloud_environment == environment {
+            return;
+        }
+        self.cloud_environment = environment;
+        self.clouds = create_cloud_gpu(&self.device, environment);
     }
 
     pub fn upload_end_sky_texture(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {

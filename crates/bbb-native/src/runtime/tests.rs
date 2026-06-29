@@ -620,6 +620,27 @@ fn sky_environment_projects_vanilla_star_brightness_with_weather_layers() {
 }
 
 #[test]
+fn cloud_environment_projects_vanilla_overworld_defaults_and_dimension_gate() {
+    let overworld = world_with_dimension(0, "minecraft:overworld");
+    let nether = world_with_dimension(1, "minecraft:the_nether");
+    let end = world_with_dimension(2, "minecraft:the_end");
+
+    let clouds = cloud_environment_for_world(&overworld);
+
+    assert_eq!(clouds.color, VANILLA_DEFAULT_CLOUD_COLOR);
+    assert_eq!(clouds.height, VANILLA_DEFAULT_CLOUD_HEIGHT);
+    assert!(clouds.is_visible());
+    assert_eq!(
+        cloud_environment_for_world(&nether),
+        CloudEnvironment::disabled()
+    );
+    assert_eq!(
+        cloud_environment_for_world(&end),
+        CloudEnvironment::disabled()
+    );
+}
+
+#[test]
 fn clear_color_mixes_sunrise_sunset_color_when_camera_faces_sun() {
     let day_time = 71;
     let mut world = world_with_dimension(0, "minecraft:overworld");

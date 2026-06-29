@@ -388,6 +388,16 @@ When an agent does any of the following, update this file in the same slice:
     Remaining render-graph parity still needs vanilla target separation and
     post-chain composition for translucent / item-entity / particle / weather /
     cloud paths; outline now has a dedicated target/composite.
+  - P0 cloud presentation slice: vanilla 26.1 `CloudRenderer` uses
+    `EnvironmentAttributes.CLOUD_COLOR` / `CLOUD_HEIGHT` and the
+    `rendertype_clouds` fragment alpha fade
+    `1 - linear_fog_value(vertexDistance, 0, FogCloudsEnd)`. The renderer now
+    has a camera-centered basic cloud mesh driven by vanilla default
+    `CLOUD_COLOR` / `CLOUD_HEIGHT`; native gates it to Overworld dimensions, and
+    the cloud shader consumes `FogData.cloudEnd` through
+    `camera.fog_visibility_ends.y`. Remaining cloud parity is the real
+    `clouds.png` cell/fancy mesh, day-timeline/cloud color modifiers,
+    dedicated clouds target, and vanilla transparency post-chain sorting.
   - P0 pipeline closeout treats texture-backed / dispatch-owned submission and
     RenderType/order/missing-atlas/dynamic-texture coverage as complete for the
     narrow pipeline scope: entity model tests assert `submit_sequence` across 78
@@ -682,9 +692,11 @@ When an agent does any of the following, update this file in the same slice:
     End skyboxes from vanilla `SkyRenderer.buildEndSky`: 6 `POSITION_TEX_COLOR`
     quad faces expanded to triangle-list vertices, `0..16` UV repeat sampling,
     `0x282828` vertex color, and the official
-    `textures/environment/end_sky.png` loaded from the resource stack. Remaining
-    visual gaps are cloud mesh presentation that consumes these visibility ends,
-    the day timeline's cloud mesh state,
+    `textures/environment/end_sky.png` loaded from the resource stack. Basic
+    cloud mesh presentation now consumes these visibility ends with vanilla
+    default `CLOUD_COLOR` / `CLOUD_HEIGHT`; remaining visual gaps are the real
+    `clouds.png` cell/fancy mesh, the day timeline's cloud color state,
+    clouds target / transparency post-chain sorting,
     fuller atmosphere presentation, and later custom-pack EnvironmentAttribute
     generalization when a concrete renderer surface exists. Sun/moon presentation
     is now covered by the vanilla `CELESTIAL` overlay blend, the
@@ -701,7 +713,8 @@ When an agent does any of the following, update this file in the same slice:
     curve, block-light parabolic tint mix, boss darkening, darkness subtraction,
     and `BrightnessFactor` `notGamma` mix instead of the earlier
     `max(block, sky * 0.95)` scalar approximation. Remaining lighting gaps:
-    cloud sky renderer presentation, the real dynamic 16x16 LightTexture texture pass, provider-specific particle light emission
+    real `clouds.png` cloud cell/fancy presentation plus clouds target sorting,
+    the real dynamic 16x16 LightTexture texture pass, provider-specific particle light emission
     overrides, smooth/AO entity light, GUI / entity-in-UI lighting variants,
     and the colored debug fallback's baked-shade approximation. The item-model
     shader now consumes submitted item stack light coords through the same

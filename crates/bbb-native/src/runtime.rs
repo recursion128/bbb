@@ -12,11 +12,12 @@ use bbb_protocol::{
     packets::{ItemCostSummary, ItemStackSummary, MapPostProcessingSummary, SlotDisplaySummary},
 };
 use bbb_renderer::{
-    BlockDestroyOverlay, CameraPose, ClearColor, FogEnvironment, HudBlockItemModel, HudIconLayer,
-    HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryItem,
-    HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground, HudInventoryTextLabel,
-    HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar,
-    HudItemIcon, HudUvRect, LightmapEnvironment, SkyEnvironment, SkyMoonPhase, HUD_HOTBAR_SLOTS,
+    BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment, FogEnvironment,
+    HudBlockItemModel, HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
+    HudInventoryItem, HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
+    HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
+    HudItemDurabilityBar, HudItemIcon, HudUvRect, LightmapEnvironment, SkyEnvironment,
+    SkyMoonPhase, HUD_HOTBAR_SLOTS, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
     VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
@@ -1467,6 +1468,7 @@ pub(crate) fn pump_network_and_terrain(
         camera_pose_from_world(world),
         hide_lightning_flash,
     ));
+    renderer.set_cloud_environment(cloud_environment_for_world(world));
     world.advance_sky_flash_time(advanced_ticks);
     advance_block_destruction_render_ticks(world, running_ticks);
     world.advance_item_cooldowns(advanced_ticks);
@@ -4273,6 +4275,21 @@ fn sky_environment_for_world_with_environment_colors(
             weather.thunder_level.clamp(0.0, 1.0),
         ),
     )
+}
+
+fn cloud_environment_for_world(world: &WorldStore) -> CloudEnvironment {
+    let dimension_kind = world
+        .level_info()
+        .map(vanilla_lightmap_dimension_kind)
+        .unwrap_or(VanillaLightmapDimensionKind::Overworld);
+    if dimension_kind == VanillaLightmapDimensionKind::Overworld {
+        CloudEnvironment::with_color_and_height(
+            VANILLA_DEFAULT_CLOUD_COLOR,
+            VANILLA_DEFAULT_CLOUD_HEIGHT,
+        )
+    } else {
+        CloudEnvironment::disabled()
+    }
 }
 
 fn sky_disc_color_for_world_with_environment_colors(

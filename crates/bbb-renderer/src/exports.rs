@@ -7,6 +7,9 @@ pub use crate::camera::{
     VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR, VANILLA_DEFAULT_RENDER_DISTANCE_CHUNKS,
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
+pub use crate::clouds::{
+    CloudEnvironment, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
+};
 pub use crate::entity_models::{
     allay_entity_texture_refs, armadillo_entity_texture_refs, armor_stand_entity_texture_refs,
     arrow_entity_texture_refs, axolotl_entity_texture_refs, bat_entity_texture_refs,
