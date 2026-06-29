@@ -400,10 +400,9 @@ When an agent does any of the following, update this file in the same slice:
   - P0 pipeline closeout stale-ledger audit is complete for submission /
     render-type / residual / fallback / outline / lighting wording. Remaining
     hits are classified as history, non-textured debug fallback, P3 dynamic
-    resource fallback, P2/P3 terrain or item presentation, P0 visual outline
-    P0 visual dynamic lighting /
-    darkness-adjusted gamma / diffuse, or later GPU state
-    fidelity. None remains a narrow CPU submission graph blocker. The latest
+    resource fallback, P2/P3 terrain or item presentation, P0 visual dynamic
+    lighting / darkness-adjusted gamma / diffuse, or later GPU state fidelity.
+    None remains a narrow CPU submission graph blocker. The latest
     `rg residual` / `rg fallback` / `rg unsupported` rerun counts, including the
     post-hide-lightning workflow audit, are tracked in `goal.md`.
   - Replace proxies with full extraction from canonical world and pack data:
