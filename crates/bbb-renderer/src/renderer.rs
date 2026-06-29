@@ -487,8 +487,12 @@ impl Renderer {
             &terrain_bind_group_layout,
             &lightmap_sample_bind_group_layout,
         );
-        let item_model_pipeline =
-            create_item_model_pipeline(&device, format, &terrain_bind_group_layout);
+        let item_model_pipeline = create_item_model_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+        );
         let selection_pipeline =
             create_selection_pipeline(&device, format, &terrain_bind_group_layout);
         let entity_outline_bind_group_layout = create_entity_outline_bind_group_layout(&device);

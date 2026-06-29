@@ -991,6 +991,7 @@ impl Renderer {
                 });
                 pass.set_pipeline(&self.item_model_pipeline);
                 pass.set_bind_group(0, &self.gui_item_bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, vertex_buffer.slice(..));
                 pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..gui_item_mesh.indices.len() as u32, 0, 0..1);
@@ -1094,6 +1095,7 @@ impl Renderer {
         });
         pass.set_pipeline(&self.item_model_pipeline);
         pass.set_bind_group(0, bind_group, &[]);
+        pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
         pass.set_vertex_buffer(0, vertex_buffer.slice(..));
         pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         pass.draw_indexed(0..indices.len() as u32, 0, 0..1);
@@ -1250,6 +1252,62 @@ mod tests {
             !source[eyes..eyes_draw]
                 .contains("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])"),
             "emissive eyes do not explicitly sample the dynamic lightmap"
+        );
+    }
+
+    #[test]
+    fn item_model_draws_sample_dynamic_lightmap_texture() {
+        let source = include_str!("render.rs");
+        let helper = source
+            .find("fn draw_item_model_geometry(")
+            .expect("item-model helper is present");
+        let world_pipeline = source[helper..]
+            .find("pass.set_pipeline(&self.item_model_pipeline)")
+            .map(|index| helper + index)
+            .expect("world item-model pipeline is selected");
+        let world_atlas = source[world_pipeline..]
+            .find("pass.set_bind_group(0, bind_group, &[])")
+            .map(|index| world_pipeline + index)
+            .expect("world item-model atlas bind group is bound");
+        let world_lightmap = source[world_atlas..]
+            .find("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])")
+            .map(|index| world_atlas + index)
+            .expect("world item-model lightmap bind group is bound");
+        let world_draw = source[world_lightmap..]
+            .find("pass.draw_indexed")
+            .map(|index| world_lightmap + index)
+            .expect("world item-model draw follows bind groups");
+
+        assert!(
+            world_pipeline < world_atlas
+                && world_atlas < world_lightmap
+                && world_lightmap < world_draw,
+            "world item-model draws bind the renderer-owned LightTexture before drawing"
+        );
+
+        let hud_pass = source
+            .find("label: Some(\"bbb-native-hud-item-pass\")")
+            .expect("HUD item-model pass is present");
+        let hud_pipeline = source[hud_pass..]
+            .find("pass.set_pipeline(&self.item_model_pipeline)")
+            .map(|index| hud_pass + index)
+            .expect("HUD item-model pipeline is selected");
+        let hud_atlas = source[hud_pipeline..]
+            .find("pass.set_bind_group(0, &self.gui_item_bind_group, &[])")
+            .map(|index| hud_pipeline + index)
+            .expect("HUD item-model atlas bind group is bound");
+        let hud_lightmap = source[hud_atlas..]
+            .find("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])")
+            .map(|index| hud_atlas + index)
+            .expect("HUD item-model lightmap bind group is bound");
+        let hud_draw = source[hud_lightmap..]
+            .find("pass.draw_indexed")
+            .map(|index| hud_lightmap + index)
+            .expect("HUD item-model draw follows bind groups");
+
+        assert!(
+            hud_pipeline < hud_atlas && hud_atlas < hud_lightmap && hud_lightmap < hud_draw,
+            "HUD 3D block item draws bind the renderer-owned LightTexture before drawing"
         );
     }
 

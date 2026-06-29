@@ -2660,12 +2660,16 @@ mod tests {
     fn hud_block_item_renders_visible_pixels_in_its_slot() {
         use wgpu::util::DeviceExt;
 
-        use crate::camera::CameraUniform;
+        use crate::camera::{CameraUniform, LightmapEnvironment};
         use crate::gpu::{
             create_camera_buffer, create_depth_target, create_terrain_atlas_gpu,
             create_terrain_bind_group, create_terrain_bind_group_layout,
         };
         use crate::item_models::{bake_item_model_mesh, create_item_model_pipeline, ItemModelQuad};
+        use crate::lightmap::{
+            create_lightmap_bind_group_layout, create_lightmap_gpu,
+            create_lightmap_sample_bind_group_layout,
+        };
         use glam::{Mat4, Vec3, Vec4};
 
         const WIDTH: u32 = 320;
@@ -2711,7 +2715,21 @@ mod tests {
         );
         let bind_group =
             create_terrain_bind_group(&device, &bind_group_layout, &camera_buffer, &atlas);
-        let pipeline = create_item_model_pipeline(&device, COLOR_FORMAT, &bind_group_layout);
+        let lightmap_bind_group_layout = create_lightmap_bind_group_layout(&device);
+        let lightmap_sample_bind_group_layout = create_lightmap_sample_bind_group_layout(&device);
+        let lightmap = create_lightmap_gpu(
+            &device,
+            &queue,
+            &lightmap_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+            LightmapEnvironment::default(),
+        );
+        let pipeline = create_item_model_pipeline(
+            &device,
+            COLOR_FORMAT,
+            &bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+        );
 
         // Bake one full-slot front-facing quad at hotbar slot 4, centered in the slot exactly as vanilla's
         // display transform centers the model (`gui_display = T(-0.5)`), so its pixels fill the slot rect.
@@ -2809,6 +2827,7 @@ mod tests {
             });
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
+            pass.set_bind_group(1, &lightmap.sample_bind_group, &[]);
             pass.set_vertex_buffer(0, vertex_buffer.slice(..));
             pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
             pass.draw_indexed(0..mesh.indices.len() as u32, 0, 0..1);
