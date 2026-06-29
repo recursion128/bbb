@@ -475,8 +475,12 @@ impl Renderer {
             format,
             &terrain_bind_group_layout,
         );
-        let particle_pipeline =
-            create_particle_pipeline(&device, format, &terrain_bind_group_layout);
+        let particle_pipeline = create_particle_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+        );
         let item_entity_pipeline =
             create_item_entity_pipeline(&device, format, &terrain_bind_group_layout);
         let item_model_pipeline =

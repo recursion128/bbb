@@ -48,6 +48,12 @@ var particle_atlas: texture_2d<f32>;
 @group(0) @binding(2)
 var particle_sampler: sampler;
 
+@group(1) @binding(0)
+var lightmap_texture: texture_2d<f32>;
+
+@group(1) @binding(1)
+var lightmap_sampler: sampler;
+
 struct VertexIn {
     @location(0) position: vec3<f32>,
     @location(1) uv: vec2<f32>,
@@ -82,46 +88,13 @@ fn apply_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f3
     return vec4<f32>(mix(color.rgb, camera.fog_color.rgb, fog_value * camera.fog_color.a), color.a);
 }
 
-fn lightmap_brightness(level: f32) -> f32 {
-    return level / (4.0 - 3.0 * level);
-}
-
-fn parabolic_mix_factor(level: f32) -> f32 {
-    let centered = 2.0 * level - 1.0;
-    return centered * centered;
-}
-
-fn not_gamma(color: vec3<f32>) -> vec3<f32> {
-    let max_component = max(max(color.x, color.y), color.z);
-    if (max_component <= 0.0) {
-        return color;
-    }
-    let max_inverted = 1.0 - max_component;
-    let max_scaled = 1.0 - max_inverted * max_inverted * max_inverted * max_inverted;
-    return color * (max_scaled / max_component);
-}
-
-fn apply_lightmap_brightness(color: vec3<f32>) -> vec3<f32> {
-    let clamped = clamp(color, vec3<f32>(0.0), vec3<f32>(1.0));
-    let not_gamma_color = not_gamma(clamped);
-    return mix(clamped, not_gamma_color, camera.lightmap_effects.y);
-}
-
-fn packed_lightmap_color(light: vec2<f32>) -> vec3<f32> {
-    let block_brightness = lightmap_brightness(light.x) * camera.lightmap_factors.y;
-    let sky_brightness = lightmap_brightness(light.y) * camera.lightmap_factors.x;
-    let night_vision_color = camera.night_vision_color.rgb * camera.lightmap_factors.z;
-    var color = max(camera.ambient_color.rgb, night_vision_color);
-    color += camera.sky_light_color.rgb * sky_brightness;
-    let block_light_color = mix(
-        camera.block_light_tint.rgb,
-        vec3<f32>(1.0),
-        0.9 * parabolic_mix_factor(light.x),
+fn sample_lightmap(light: vec2<f32>) -> vec3<f32> {
+    let uv = clamp(
+        light * (15.0 / 16.0) + vec2<f32>(0.5 / 16.0),
+        vec2<f32>(0.5 / 16.0),
+        vec2<f32>(15.5 / 16.0),
     );
-    color += block_light_color * block_brightness;
-    color = mix(color, color * vec3<f32>(0.7, 0.6, 0.6), camera.lightmap_effects.x);
-    color -= vec3<f32>(camera.lightmap_factors.w);
-    return apply_lightmap_brightness(color);
+    return textureSample(lightmap_texture, lightmap_sampler, uv).rgb;
 }
 
 @vertex
@@ -143,7 +116,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     if texel.a <= 0.01 {
         discard;
     }
-    let light_color = packed_lightmap_color(input.light);
+    let light_color = sample_lightmap(input.light);
     return apply_fog(vec4<f32>(texel.rgb * light_color, texel.a), input.spherical_distance, input.cylindrical_distance);
 }
 "#;
@@ -152,6 +125,7 @@ pub(crate) fn create_particle_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("bbb-particle-shader"),
@@ -159,7 +133,7 @@ pub(crate) fn create_particle_pipeline(
     });
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-particle-pipeline-layout"),
-        bind_group_layouts: &[bind_group_layout],
+        bind_group_layouts: &[bind_group_layout, lightmap_bind_group_layout],
         push_constant_ranges: &[],
     });
 
@@ -333,10 +307,18 @@ mod tests {
             wgpu::VertexFormat::Float32x2
         );
         assert!(PARTICLE_SHADER.contains("@location(3) light: vec2<f32>"));
-        assert!(PARTICLE_SHADER.contains("level / (4.0 - 3.0 * level)"));
-        assert!(PARTICLE_SHADER.contains("lightmap_brightness(light.x)"));
-        assert!(PARTICLE_SHADER.contains("lightmap_brightness(light.y)"));
-        assert!(PARTICLE_SHADER.contains("camera.block_light_tint.rgb"));
+        assert!(PARTICLE_SHADER.contains("@group(1) @binding(0)"));
+        assert!(PARTICLE_SHADER.contains("var lightmap_texture: texture_2d<f32>"));
+        assert!(PARTICLE_SHADER.contains("@group(1) @binding(1)"));
+        assert!(PARTICLE_SHADER.contains("var lightmap_sampler: sampler"));
+        assert!(PARTICLE_SHADER.contains("fn sample_lightmap(light: vec2<f32>) -> vec3<f32>"));
+        assert!(PARTICLE_SHADER.contains("light * (15.0 / 16.0) + vec2<f32>(0.5 / 16.0)"));
+        assert!(
+            PARTICLE_SHADER.contains("textureSample(lightmap_texture, lightmap_sampler, uv).rgb")
+        );
+        assert!(PARTICLE_SHADER.contains("let light_color = sample_lightmap(input.light)"));
         assert!(PARTICLE_SHADER.contains("texel.rgb * light_color"));
+        assert!(!PARTICLE_SHADER.contains("fn lightmap_brightness"));
+        assert!(!PARTICLE_SHADER.contains("camera.lightmap_factors.y"));
     }
 }

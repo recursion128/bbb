@@ -759,12 +759,12 @@ When an agent does any of the following, update this file in the same slice:
     vanilla-shaped dynamic LightTexture foundation:
     a 16x16 `RGBA8` texture, standalone `LightmapInfo` uniform buffer, and a
     `pipeline/lightmap`-shaped full-screen triangle pass that ports
-    `core/lightmap.fsh`; remaining item/particle shaders still compute the same
-    formula from camera uniforms until later P0 visual slices bind and sample
-    that texture as `Sampler2`. The terrain/world shader and lit entity shaders
-    now sample that renderer-owned dynamic LightTexture using the vanilla
-    `sample_lightmap` texel-center shape for submitted `[block/15, sky/15]`
-    coords. The block flicker path still advances
+    `core/lightmap.fsh`; remaining item-model / item-entity shaders still
+    compute the same formula from camera uniforms until later P0 visual slices
+    bind and sample that texture as `Sampler2`. The terrain/world, lit entity,
+    and particle shaders now sample that renderer-owned dynamic LightTexture
+    using the vanilla `sample_lightmap` texel-center shape for submitted
+    `[block/15, sky/15]` coords. The block flicker path still advances
     `blockLightFlicker` with the
     `LightmapRenderStateExtractor.tick()` formula and the shaders read
     `blockLightFlicker + 1.4`; those factors feed the dynamic LightTexture pass
@@ -773,7 +773,7 @@ When an agent does any of the following, update this file in the same slice:
     `max(block, sky * 0.95)` scalar approximation. Remaining lighting gaps:
     full transparency target sorting after the newly added renderer-owned main
     color target / Main+Translucent+ItemEntity+Particles+Weather+Clouds combine foundation, routing the main
-    item/particle shaders from uniform-computed lightmap colors to the
+    item-model / item-entity shaders from uniform-computed lightmap colors to the
     renderer-owned dynamic LightTexture sampler, provider-specific particle light emission overrides,
     smooth/AO entity light, GUI / entity-in-UI lighting variants, and the
     colored debug fallback's baked-shade approximation. The item-model
@@ -788,9 +788,10 @@ When an agent does any of the following, update this file in the same slice:
     Particle quads now follow the default vanilla `Particle.getLightCoords`
     path by sampling block+sky light at `BlockPos.containing(x, y, z)`,
     falling back to full-bright `15728640` when chunk light is missing, and
-    passing shader-space `[block, sky]` into the particle shader's `LightmapInfo`
-    RGB combination. Provider-specific overrides such as smooth glow/flame
-    block emission remain a diffuse precision follow-up.
+    passing shader-space `[block, sky]` into the particle shader. The particle
+    shader now samples the renderer-owned dynamic LightTexture; provider-specific
+    overrides such as smooth glow/flame block emission remain a diffuse
+    precision follow-up.
     Water-vision fog color brightening is covered in the native clear-color and
     fog-environment path.
   - The hurt red damage overlay is implemented end to end as a real overlay pass,

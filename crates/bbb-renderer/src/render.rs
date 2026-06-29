@@ -837,6 +837,7 @@ impl Renderer {
                 pass.set_pipeline(&self.particle_pipeline);
                 pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, vertex_buffer.slice(..));
                 pass.draw(0..particle_vertices.len() as u32, 0..1);
                 particle_draw_calls += 1;
@@ -1462,13 +1463,25 @@ mod tests {
             .find("pass.set_pipeline(&self.particle_pipeline)")
             .map(|index| target + index)
             .expect("particle pipeline is drawn into the target");
+        let particle_atlas = source[particle_pipeline..]
+            .find("pass.set_bind_group(0, &atlas.bind_group, &[])")
+            .map(|index| particle_pipeline + index)
+            .expect("particle atlas bind group is bound before draw");
+        let particle_lightmap = source[particle_atlas..]
+            .find("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])")
+            .map(|index| particle_atlas + index)
+            .expect("particle lightmap bind group is bound before draw");
         let combine = source
             .find("label: Some(TRANSPARENCY_COMBINE_PASS_LABEL)")
             .expect("transparency combine pass label is used");
 
         assert!(
-            copy_depth < target && target < particle_pipeline && particle_pipeline < combine,
+            copy_depth < target && target < particle_pipeline && particle_lightmap < combine,
             "particle target copies main depth, clears transparent, draws particles, then transparency combine consumes it"
+        );
+        assert!(
+            particle_pipeline < particle_atlas && particle_atlas < particle_lightmap,
+            "particles bind the renderer-owned LightTexture before drawing"
         );
         assert!(
             source[copy_depth..target].contains("texture: &self.depth._texture")
