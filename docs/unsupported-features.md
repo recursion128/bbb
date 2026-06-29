@@ -361,10 +361,8 @@ When an agent does any of the following, update this file in the same slice:
     dynamic player-skin, and dynamic profile-texture atlases within their target.
     Later GPU work should split remaining currently-coalesced render-type state
     such as no-cull `entityCutout*`, `armorCutoutNoCull`, `Eyes`, `waterMask`,
-    and glint / scroll variants into equivalent pipeline state, and reconcile
-    remaining transparency target/resource polish beyond the final-target/blit
-    shape plus dynamic LightTexture /
-    darkness-adjusted gamma / diffuse visual parity. The scroll GPU path already separates
+    and glint / scroll variants into equivalent pipeline state, plus dynamic
+    LightTexture / darkness-adjusted gamma / diffuse visual parity. The scroll GPU path already separates
     vanilla `breezeWind` as lightmap-lit from emissive additive `energySwirl`.
   - Entity outline target writes now use a dedicated vanilla-shaped
     `core/rendertype_outline` shader: texture alpha is only a zero-alpha discard
@@ -876,11 +874,11 @@ When an agent does any of the following, update this file in the same slice:
     `blockLightFlicker + 1.4`; those factors feed the dynamic LightTexture pass
     instead of terrain recomputing the formula inline. The terrain/world shader
     no longer uses the earlier
-    `max(block, sky * 0.95)` scalar approximation. Remaining lighting gaps:
-    remaining transparency target/resource polish after the renderer-owned main
-    color target / Main+Translucent+ItemEntity+Particles+Weather+Clouds combine
-    and internal-final/blit foundation, smooth/AO entity light, and the colored debug fallback's
-    baked-shade approximation. GUI flat / entity-in-UI lighting variants are now
+    `max(block, sky * 0.95)` scalar approximation. Transparency target/resource
+    shape is now covered through the renderer-owned main color target,
+    Main+Translucent+ItemEntity+Particles+Weather+Clouds combine, and
+    internal-final/blit foundation. Remaining lighting gaps: smooth/AO entity
+    light and the colored debug fallback's baked-shade approximation. GUI flat / entity-in-UI lighting variants are now
     classified as P1 GUI surface work because the camera uniform already carries
     the required `Lighting.Entry` expressions and no corresponding GUI
     submission surface exists yet. The texture-backed entity shaders
@@ -3235,8 +3233,7 @@ When an agent does any of the following, update this file in the same slice:
       alpha-blended translucent GPU bucket. Invisible glowing slime now records the
       vanilla base and order-1 `SlimeOuterLayer` outline submissions with
       `outlineColor` metadata and static-atlas GPU outline bucket geometry; particle/audio coupling, broader
-      lighting presentation, crumbling, and finer transparency target/resource
-      polish remain unsupported
+      lighting presentation, and crumbling remain unsupported
     - magma cube entities as renderer-owned vanilla 26.1
       `MagmaCubeModel.createBodyLayer()` segment/inside-cube geometry, official
       `textures/entity/slime/magmacube.png` texture reference, renderer
@@ -3249,8 +3246,7 @@ When an agent does any of the following, update this file in the same slice:
       hurt/white overlay, and `(0, 0)`, with folded cutout vertices inheriting the matching metadata,
       and official PNG atlas upload/bind/sample path; the full-bright block light
       (`MagmaCubeRenderer.getBlockLightLevel = 15`) IS now applied (`entity_light_coords`).
-      Particle/audio coupling, broader lighting presentation, crumbling, and
-      finer transparency target/resource polish remain unsupported
+      Particle/audio coupling, broader lighting presentation, and crumbling remain unsupported
     - ghast entities as renderer-owned vanilla 26.1 `GhastModel.createBodyLayer()`
       geometry: the 16x16x16 body at y 17.6 plus the nine tentacles at y 24.6,
       whose lengths are the fixed-seed `RandomSource(1660L)` (`nextInt(7) + 8`,
