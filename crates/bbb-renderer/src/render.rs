@@ -24,6 +24,7 @@ const ENTITY_OUTLINE_BLUR_VERTICAL_PASS_LABEL: &str =
 const ENTITY_OUTLINE_BLIT_PASS_LABEL: &str = "bbb-native-entity-outline-blit-pass";
 const ENTITY_OUTLINE_COMPOSITE_PASS_LABEL: &str = "bbb-native-entity-outline-composite-pass";
 const CLOUDS_PASS_LABEL: &str = "bbb-native-clouds-pass";
+const ENTITY_TRANSLUCENT_FEATURE_PASS_LABEL: &str = "bbb-native-entity-translucent-feature-pass";
 const TRANSLUCENT_TARGET_PASS_LABEL: &str = "bbb-native-translucent-target-pass";
 const ITEM_ENTITY_TARGET_PASS_LABEL: &str = "bbb-native-item-entity-target-pass";
 const PARTICLE_TARGET_PASS_LABEL: &str = "bbb-native-particle-target-pass";
@@ -252,84 +253,6 @@ impl Renderer {
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
                 entity_model_draw_calls += 1;
             }
-            if let (Some(mesh), Some(atlas)) = (
-                &self.entity_model_translucent_mesh,
-                &self.entity_model_texture_atlas,
-            ) {
-                pass.set_pipeline(&self.entity_model_translucent_pipeline);
-                pipeline_switches += 1;
-                pass.set_bind_group(0, &atlas.bind_group, &[]);
-                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
-                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                entity_model_draw_calls += 1;
-            }
-            if let (Some(mesh), Some(atlas)) = (
-                &self.entity_dynamic_player_skin_translucent_mesh,
-                &self.entity_dynamic_player_skin_atlas,
-            ) {
-                pass.set_pipeline(&self.entity_model_translucent_pipeline);
-                pipeline_switches += 1;
-                pass.set_bind_group(0, &atlas.bind_group, &[]);
-                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
-                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                entity_model_draw_calls += 1;
-            }
-            if let (Some(mesh), Some(atlas)) = (
-                &self.entity_dynamic_player_texture_translucent_mesh,
-                &self.entity_dynamic_player_texture_atlas,
-            ) {
-                pass.set_pipeline(&self.entity_model_translucent_pipeline);
-                pipeline_switches += 1;
-                pass.set_bind_group(0, &atlas.bind_group, &[]);
-                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
-                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                entity_model_draw_calls += 1;
-            }
-            if let (Some(mesh), Some(atlas)) = (
-                &self.entity_model_eyes_mesh,
-                &self.entity_model_texture_atlas,
-            ) {
-                pass.set_pipeline(&self.entity_model_eyes_pipeline);
-                pipeline_switches += 1;
-                pass.set_bind_group(0, &atlas.bind_group, &[]);
-                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                entity_model_draw_calls += 1;
-            }
-            // The scrolling overlays draw last, over the already-shaded entity bodies: the translucent
-            // `breezeWind` (wind charge) then the additive `energySwirl` (charged-creeper / wither glow).
-            if let (Some(mesh), Some(atlas)) = (
-                &self.entity_model_scroll_mesh,
-                &self.entity_model_texture_atlas,
-            ) {
-                pass.set_pipeline(&self.entity_model_scroll_pipeline);
-                pipeline_switches += 1;
-                pass.set_bind_group(0, &atlas.bind_group, &[]);
-                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
-                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                entity_model_draw_calls += 1;
-            }
-            if let (Some(mesh), Some(atlas)) = (
-                &self.entity_model_scroll_additive_mesh,
-                &self.entity_model_texture_atlas,
-            ) {
-                pass.set_pipeline(&self.entity_model_scroll_additive_pipeline);
-                pipeline_switches += 1;
-                pass.set_bind_group(0, &atlas.bind_group, &[]);
-                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                entity_model_draw_calls += 1;
-            }
         }
 
         if self.entity_model_texture_atlas.is_some()
@@ -545,6 +468,75 @@ impl Renderer {
             },
         );
 
+        encoder.copy_texture_to_texture(
+            wgpu::ImageCopyTexture {
+                texture: &self.depth._texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::DepthOnly,
+            },
+            wgpu::ImageCopyTexture {
+                texture: &self.item_entity_target.depth._texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::DepthOnly,
+            },
+            wgpu::Extent3d {
+                width: self.config.width.max(1),
+                height: self.config.height.max(1),
+                depth_or_array_layers: 1,
+            },
+        );
+
+        encoder.copy_texture_to_texture(
+            wgpu::ImageCopyTexture {
+                texture: &self.depth._texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::DepthOnly,
+            },
+            wgpu::ImageCopyTexture {
+                texture: &self.particle_target.depth._texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::DepthOnly,
+            },
+            wgpu::Extent3d {
+                width: self.config.width.max(1),
+                height: self.config.height.max(1),
+                depth_or_array_layers: 1,
+            },
+        );
+
+        if self.has_entity_translucent_features() {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some(ENTITY_TRANSLUCENT_FEATURE_PASS_LABEL),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: main_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.depth.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            self.draw_entity_translucent_features(
+                &mut pass,
+                &mut pipeline_switches,
+                &mut entity_model_draw_calls,
+            );
+        }
+
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(TRANSLUCENT_TARGET_PASS_LABEL),
@@ -699,25 +691,6 @@ impl Renderer {
             } else {
                 None
             };
-        encoder.copy_texture_to_texture(
-            wgpu::ImageCopyTexture {
-                texture: &self.depth._texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::DepthOnly,
-            },
-            wgpu::ImageCopyTexture {
-                texture: &self.item_entity_target.depth._texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::DepthOnly,
-            },
-            wgpu::Extent3d {
-                width: self.config.width.max(1),
-                height: self.config.height.max(1),
-                depth_or_array_layers: 1,
-            },
-        );
 
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -815,26 +788,6 @@ impl Renderer {
                         });
                 (vertex_buffer, index_buffer)
             });
-        encoder.copy_texture_to_texture(
-            wgpu::ImageCopyTexture {
-                texture: &self.depth._texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::DepthOnly,
-            },
-            wgpu::ImageCopyTexture {
-                texture: &self.particle_target.depth._texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::DepthOnly,
-            },
-            wgpu::Extent3d {
-                width: self.config.width.max(1),
-                height: self.config.height.max(1),
-                depth_or_array_layers: 1,
-            },
-        );
-
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(PARTICLE_TARGET_PASS_LABEL),
@@ -1150,11 +1103,118 @@ impl Renderer {
         pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         pass.draw_indexed(0..indices.len() as u32, 0, 0..1);
     }
+
+    fn has_entity_translucent_features(&self) -> bool {
+        (self.entity_model_texture_atlas.is_some()
+            && (self.entity_model_translucent_mesh.is_some()
+                || self.entity_model_eyes_mesh.is_some()
+                || self.entity_model_scroll_mesh.is_some()
+                || self.entity_model_scroll_additive_mesh.is_some()))
+            || (self.entity_dynamic_player_skin_atlas.is_some()
+                && self.entity_dynamic_player_skin_translucent_mesh.is_some())
+            || (self.entity_dynamic_player_texture_atlas.is_some()
+                && self
+                    .entity_dynamic_player_texture_translucent_mesh
+                    .is_some())
+    }
+
+    fn draw_entity_translucent_features<'a>(
+        &'a self,
+        pass: &mut wgpu::RenderPass<'a>,
+        pipeline_switches: &mut u64,
+        entity_model_draw_calls: &mut u64,
+    ) {
+        if let (Some(mesh), Some(atlas)) = (
+            &self.entity_model_translucent_mesh,
+            &self.entity_model_texture_atlas,
+        ) {
+            pass.set_pipeline(&self.entity_model_translucent_pipeline);
+            *pipeline_switches += 1;
+            pass.set_bind_group(0, &atlas.bind_group, &[]);
+            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+            pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+            *entity_model_draw_calls += 1;
+        }
+        if let (Some(mesh), Some(atlas)) = (
+            &self.entity_dynamic_player_skin_translucent_mesh,
+            &self.entity_dynamic_player_skin_atlas,
+        ) {
+            pass.set_pipeline(&self.entity_model_translucent_pipeline);
+            *pipeline_switches += 1;
+            pass.set_bind_group(0, &atlas.bind_group, &[]);
+            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+            pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+            *entity_model_draw_calls += 1;
+        }
+        if let (Some(mesh), Some(atlas)) = (
+            &self.entity_dynamic_player_texture_translucent_mesh,
+            &self.entity_dynamic_player_texture_atlas,
+        ) {
+            pass.set_pipeline(&self.entity_model_translucent_pipeline);
+            *pipeline_switches += 1;
+            pass.set_bind_group(0, &atlas.bind_group, &[]);
+            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+            pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+            *entity_model_draw_calls += 1;
+        }
+        if let (Some(mesh), Some(atlas)) = (
+            &self.entity_model_eyes_mesh,
+            &self.entity_model_texture_atlas,
+        ) {
+            pass.set_pipeline(&self.entity_model_eyes_pipeline);
+            *pipeline_switches += 1;
+            pass.set_bind_group(0, &atlas.bind_group, &[]);
+            pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+            *entity_model_draw_calls += 1;
+        }
+        if let (Some(mesh), Some(atlas)) = (
+            &self.entity_model_scroll_mesh,
+            &self.entity_model_texture_atlas,
+        ) {
+            pass.set_pipeline(&self.entity_model_scroll_pipeline);
+            *pipeline_switches += 1;
+            pass.set_bind_group(0, &atlas.bind_group, &[]);
+            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+            pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+            *entity_model_draw_calls += 1;
+        }
+        if let (Some(mesh), Some(atlas)) = (
+            &self.entity_model_scroll_additive_mesh,
+            &self.entity_model_texture_atlas,
+        ) {
+            pass.set_pipeline(&self.entity_model_scroll_additive_pipeline);
+            *pipeline_switches += 1;
+            pass.set_bind_group(0, &atlas.bind_group, &[]);
+            pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+            *entity_model_draw_calls += 1;
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{TerrainOpaqueGroupLayer, TERRAIN_OPAQUE_GROUP_LAYERS};
+
+    fn depth_copy_to(source: &str, target_depth_texture: &str) -> usize {
+        let target_depth = source
+            .find(target_depth_texture)
+            .unwrap_or_else(|| panic!("{target_depth_texture} depth copy destination"));
+        source[..target_depth]
+            .rfind("encoder.copy_texture_to_texture")
+            .expect("main depth copy starts before target depth destination")
+    }
 
     #[test]
     fn terrain_opaque_group_follows_vanilla_chunk_layer_order() {
@@ -1392,6 +1452,9 @@ mod tests {
         let weather_target = source
             .find("label: Some(WEATHER_TARGET_PASS_LABEL)")
             .expect("weather target pass label is used");
+        let entity_translucent_features = source
+            .find("label: Some(ENTITY_TRANSLUCENT_FEATURE_PASS_LABEL)")
+            .expect("entity translucent feature pass label is used");
         let combine = source
             .find("label: Some(TRANSPARENCY_COMBINE_PASS_LABEL)")
             .expect("transparency combine pass label is used");
@@ -1413,7 +1476,9 @@ mod tests {
             "cloud mesh draws into the dedicated clouds pass before later world passes"
         );
         assert!(
-            translucent < item_entity_target
+            clouds < entity_translucent_features
+                && entity_translucent_features < translucent
+                && translucent < item_entity_target
                 && item_entity_target < particle_target
                 && particle_target < weather_target
                 && weather_target < combine
@@ -1471,9 +1536,7 @@ mod tests {
     #[test]
     fn translucent_target_copies_main_depth_and_clears_color_before_draws() {
         let source = include_str!("render.rs");
-        let copy_depth = source
-            .find("encoder.copy_texture_to_texture")
-            .expect("main depth is copied before translucent target rendering");
+        let copy_depth = depth_copy_to(source, "texture: &self.translucent_target.depth._texture");
         let target = source
             .find("label: Some(TRANSLUCENT_TARGET_PASS_LABEL)")
             .expect("translucent target pass label is used");
@@ -1502,18 +1565,66 @@ mod tests {
     }
 
     #[test]
-    fn item_entity_target_copies_main_depth_and_collects_item_and_line_draws_before_particles() {
+    fn entity_translucent_features_draw_after_depth_copies_and_before_translucent_terrain() {
         let source = include_str!("render.rs");
+        let copy_translucent =
+            depth_copy_to(source, "texture: &self.translucent_target.depth._texture");
+        let copy_item_entity =
+            depth_copy_to(source, "texture: &self.item_entity_target.depth._texture");
+        let copy_particles = depth_copy_to(source, "texture: &self.particle_target.depth._texture");
+        let entity_pass = source
+            .find("label: Some(ENTITY_TRANSLUCENT_FEATURE_PASS_LABEL)")
+            .expect("entity translucent feature pass label is used");
+        let draw_features = source[entity_pass..]
+            .find("self.draw_entity_translucent_features(")
+            .map(|index| entity_pass + index)
+            .expect("entity translucent feature helper is called from the pass");
         let translucent_target = source
             .find("label: Some(TRANSLUCENT_TARGET_PASS_LABEL)")
             .expect("translucent target pass label is used");
+
+        assert!(
+            copy_translucent < copy_item_entity
+                && copy_item_entity < copy_particles
+                && copy_particles < entity_pass
+                && entity_pass < draw_features
+                && draw_features < translucent_target,
+            "vanilla LevelRenderer copies target depths before renderTranslucentFeatures, which draw before translucent terrain"
+        );
+        assert!(
+            source[entity_pass..translucent_target].contains("view: main_view"),
+            "entity translucent features write the renderer-owned main color target"
+        );
+        assert!(
+            source[entity_pass..translucent_target].contains("view: &self.depth.view"),
+            "entity translucent features depth-test against the renderer-owned main depth target"
+        );
+        let helper = source
+            .find("fn draw_entity_translucent_features")
+            .expect("entity translucent feature helper is present");
+        for pipeline in [
+            "pass.set_pipeline(&self.entity_model_translucent_pipeline)",
+            "pass.set_pipeline(&self.entity_model_eyes_pipeline)",
+            "pass.set_pipeline(&self.entity_model_scroll_pipeline)",
+            "pass.set_pipeline(&self.entity_model_scroll_additive_pipeline)",
+        ] {
+            assert!(
+                source[helper..].contains(pipeline),
+                "{pipeline} is emitted through the translucent feature helper"
+            );
+        }
+    }
+
+    #[test]
+    fn item_entity_target_copies_main_depth_and_collects_item_and_line_draws_before_particles() {
+        let source = include_str!("render.rs");
+        let entity_translucent_features = source
+            .find("label: Some(ENTITY_TRANSLUCENT_FEATURE_PASS_LABEL)")
+            .expect("entity translucent feature pass label is used");
         let target = source
             .find("label: Some(ITEM_ENTITY_TARGET_PASS_LABEL)")
             .expect("item-entity target pass label is used");
-        let copy_depth = source[translucent_target..target]
-            .rfind("encoder.copy_texture_to_texture")
-            .map(|index| translucent_target + index)
-            .expect("main depth is copied into item_entity target depth");
+        let copy_depth = depth_copy_to(source, "texture: &self.item_entity_target.depth._texture");
         let item_pipeline = source[target..]
             .find("pass.set_pipeline(&self.item_entity_pipeline)")
             .map(|index| target + index)
@@ -1538,7 +1649,8 @@ mod tests {
             .expect("transparency combine pass label is used");
 
         assert!(
-            copy_depth < target
+            copy_depth < entity_translucent_features
+                && entity_translucent_features < target
                 && target < item_pipeline
                 && item_lightmap < selection_pipeline
                 && selection_pipeline < particle
@@ -1550,8 +1662,9 @@ mod tests {
             "item-entity billboards bind the renderer-owned LightTexture before drawing"
         );
         assert!(
-            source[copy_depth..target].contains("texture: &self.depth._texture")
-                && source[copy_depth..target]
+            source[copy_depth..entity_translucent_features]
+                .contains("texture: &self.depth._texture")
+                && source[copy_depth..entity_translucent_features]
                     .contains("texture: &self.item_entity_target.depth._texture"),
             "item_entity target depth is copied from the renderer-owned main depth texture"
         );
@@ -1570,16 +1683,13 @@ mod tests {
     #[test]
     fn particle_target_copies_main_depth_and_clears_before_combine() {
         let source = include_str!("render.rs");
-        let item_entity_target = source
-            .find("label: Some(ITEM_ENTITY_TARGET_PASS_LABEL)")
-            .expect("item-entity target pass label is used");
+        let entity_translucent_features = source
+            .find("label: Some(ENTITY_TRANSLUCENT_FEATURE_PASS_LABEL)")
+            .expect("entity translucent feature pass label is used");
         let target = source
             .find("label: Some(PARTICLE_TARGET_PASS_LABEL)")
             .expect("particle target pass label is used");
-        let copy_depth = source[item_entity_target..target]
-            .rfind("encoder.copy_texture_to_texture")
-            .map(|index| item_entity_target + index)
-            .expect("main depth is copied into particle target depth");
+        let copy_depth = depth_copy_to(source, "texture: &self.particle_target.depth._texture");
         let particle_pipeline = source[target..]
             .find("pass.set_pipeline(&self.particle_pipeline)")
             .map(|index| target + index)
@@ -1597,7 +1707,10 @@ mod tests {
             .expect("transparency combine pass label is used");
 
         assert!(
-            copy_depth < target && target < particle_pipeline && particle_lightmap < combine,
+            copy_depth < entity_translucent_features
+                && entity_translucent_features < target
+                && target < particle_pipeline
+                && particle_lightmap < combine,
             "particle target copies main depth, clears transparent, draws particles, then transparency combine consumes it"
         );
         assert!(
@@ -1605,8 +1718,9 @@ mod tests {
             "particles bind the renderer-owned LightTexture before drawing"
         );
         assert!(
-            source[copy_depth..target].contains("texture: &self.depth._texture")
-                && source[copy_depth..target]
+            source[copy_depth..entity_translucent_features]
+                .contains("texture: &self.depth._texture")
+                && source[copy_depth..entity_translucent_features]
                     .contains("texture: &self.particle_target.depth._texture"),
             "particle target depth is copied from the renderer-owned main depth texture"
         );

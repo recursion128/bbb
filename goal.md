@@ -272,8 +272,8 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。当前 checkl
   item-entity billboard 和 selection/line geometry 写入该 target；final
   transparency combine 已扩展为 Main+Translucent+ItemEntity+Particles+Weather+Clouds 的
   vanilla-shaped depth insertion / premultiplied blend。剩余 P0 visual
-  render-graph 工作仍包括 weather target 后续细化，
-  以及更细粒度 feature/terrain target sorting。
+  render-graph 工作仍包括 per-submit feature 距离排序、block/text/name/crumbling
+  ordering、weather/lightning target 细节，以及更细粒度 terrain target sorting。
 - 2026-06-29 particle target slice：vanilla 26.1 `LevelTargetBundle` 把
   `minecraft:particles` 列为 sorting target；`LevelRenderer.addMainPass` 在透明
   features 前对 `particleTarget` 执行 `copyDepthFrom(mainTarget)`，且
@@ -295,7 +295,8 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。当前 checkl
   2026-06-29 rain/snow draw slice 已补上 renderer/native weather column draw
   surface：vanilla environment texture upload、`PARTICLE` vertex layout、
   `Sampler2` LightTexture、rain 后 snow draw order 和 `WEATHER_TARGET` pass 写入
-  均已测试覆盖；剩余 P0 visual 是更细粒度 feature/terrain target sorting。
+  均已测试覆盖；剩余 P0 visual 是更细粒度 per-submit feature / terrain
+  target sorting。
 - 2026-06-29 weather `MOTION_BLOCKING` heightmap slice：vanilla
   `Heightmap.Types.MOTION_BLOCKING` id=4、raw `SimpleBitStorage` 存储
   `height - minY`、索引 `x + z * 16`。`WorldStore` 现在从 chunk packet
@@ -317,6 +318,16 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。当前 checkl
 - 2026-06-29 terrain translucent camera-resort slice：renderer resident
   translucent mesh 现在保留 quad 0/2 顶点中心；`set_camera_pose` 变化时按当前
   camera eye 重建 vanilla `0,1,2,2,3,0` index order 并写回 index buffer。
+- [x] 2026-06-29 main-target translucent feature phase slice：vanilla
+  `LevelRenderer.addMainPass` 在 `renderTranslucentFeatures` 前对
+  translucent/itemEntity/particles targets 执行 main-depth copy；
+  `ModelFeatureRenderer.Storage` 将 blended model submits 归入 translucent list。
+  renderer 现在把已有 `entityTranslucent`、dynamic-player translucent、`eyes`、
+  `breezeWind`、`energySwirl` GPU buckets 从 opaque-group pass 移到独立
+  main-target translucent feature pass，在这些 depth copies 之后、translucent
+  terrain target pass 之前绘制。剩余 render-graph 工作收窄为 per-submit
+  距离排序、block/text/name/crumbling feature ordering、weather/lightning target
+  细节等，不重新打开狭义 pipeline closeout。
 
 ### [x] P0：提交图与 RenderType 语义（状态：狭义 pipeline 已完成）
 

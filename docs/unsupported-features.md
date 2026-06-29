@@ -419,9 +419,14 @@ When an agent does any of the following, update this file in the same slice:
     Terrain translucent upload-time quad sorting now follows vanilla
     `MeshData.sortQuads` centroid distance order, and camera changes rebuild
     the resident translucent index buffer from the stored quad centroids.
-    Remaining render-graph parity still needs finer feature/terrain target
-    sorting across the now present translucent / itemEntity / particles / weather / cloud targets;
-    outline now has a dedicated target/composite.
+    Existing blended entity-model buckets (`entityTranslucent`, dynamic-player
+    translucent skins, `eyes`, `breezeWind`, and `energySwirl`) now draw in a
+    main-target translucent feature pass after the vanilla-shaped
+    translucent/itemEntity/particles depth copies and before translucent
+    terrain. Remaining render-graph parity still needs finer per-submit feature
+    distance sorting and target ordering across block/text/name/crumbling,
+    terrain, itemEntity, particles, weather, and clouds; outline now has a
+    dedicated target/composite.
   - P0 cloud presentation slice: vanilla 26.1 `CloudRenderer` uses
     `EnvironmentAttributes.CLOUD_COLOR` / `CLOUD_HEIGHT` and the
     `rendertype_clouds` fragment alpha fade
