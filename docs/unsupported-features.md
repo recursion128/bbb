@@ -548,7 +548,17 @@ When an agent does any of the following, update this file in the same slice:
     `rg fallback` / `rg unsupported` rerun counts, including the post-P0
     execution audit and the P0 pipeline flow-reset audit, are tracked in
     `goal.md`; unverified P1 detail WIP is kept outside the narrow closeout
-    unless a rerun proves it directly blocks the hard checklist.
+    unless a rerun proves it directly blocks the hard checklist. The
+    2026-06-29 narrow pipeline reset audit found a clean worktree and recorded
+    pre-edit counts of `rg residual` 63, `rg fallback` 554, and `rg unsupported`
+    167. Code-side residual hits remain dispatch comments only; renderer
+    fallback hits remain terrain atlas, colored debug, profile/default skin,
+    camera sanitize, wgpu adapter, HUD/map/test, or other non-narrow-pipeline
+    paths; renderer unsupported hits remain screenshot surface-format bail and
+    dynamic-player texture render-type defensive panics, with the rest in
+    pack/protocol/net/native diagnostics. The narrow P0 pipeline checklist stays
+    closed; particle provider, terrain, HUD, first-person, GUI, and open-ended
+    entity detail work remain paused unless they directly reopen that checklist.
   - Replace proxies with full extraction from canonical world and pack data:
     - entity bounds
     - dropped-item icons (3D block/item model renderer in progress — see the
