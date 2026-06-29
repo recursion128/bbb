@@ -8,8 +8,9 @@
 //! caller's `transform` places the model in world / GUI / hand space exactly like vanilla's display
 //! transforms. `uvs` are atlas-absolute into the shared block/item atlas. `tint` is the per-face color
 //! (biome/dye tint, or white), `shade` is the directional face-shade multiplier (vanilla
-//! `Direction.getShade` with ambient occlusion off), and `light` is the packed block/sky light projected
-//! to shader-space. The baked vertex color is `tint × shade`; the shader applies light.
+//! `Direction.getShade` with ambient occlusion off), `light` is the packed block/sky light projected to
+//! shader-space, and `overlay` is the submitted vanilla `OverlayTexture` coordinate. The baked vertex
+//! color is `tint × shade`; the shader applies light and overlay.
 
 use glam::{Mat4, Vec3};
 
@@ -36,6 +37,9 @@ const MODEL_SPACE_SCALE: f32 = 1.0 / 16.0;
 /// unless they explicitly carry vanilla `lightCoords` from an entity renderer.
 pub const ITEM_MODEL_FULL_BRIGHT_LIGHT: [f32; 2] = [1.0, 1.0];
 
+/// Shader-space no-overlay coordinate: vanilla `OverlayTexture.NO_OVERLAY = pack(0, 10)`.
+pub const ITEM_MODEL_NO_OVERLAY: [f32; 2] = [0.0, 10.0];
+
 /// One textured quad of a baked block/item model: four corners wound counter-clockwise (front face),
 /// in vanilla `0..=16` model space, with atlas-absolute UVs.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -60,8 +64,8 @@ pub struct HudBlockItemModel {
 }
 
 /// A baked block/item model vertex: the model-space position normalized to the unit cube and pushed
-/// through the caller's `transform`, the atlas-absolute UV, the `tint × shade` color, and shader-space
-/// block/sky light.
+/// through the caller's `transform`, the atlas-absolute UV, the `tint × shade` color, shader-space
+/// block/sky light, and vanilla overlay coordinate.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct ItemModelVertex {
@@ -69,6 +73,7 @@ pub(crate) struct ItemModelVertex {
     pub(crate) uv: [f32; 2],
     pub(crate) color: [f32; 4],
     pub(crate) light: [f32; 2],
+    pub(crate) overlay: [f32; 2],
 }
 
 /// A baked block/item model mesh: an indexed triangle list ready for the item-model pipeline.
@@ -104,12 +109,25 @@ impl ItemModelMesh {
     /// cube and applying `transform` (the model→target-space matrix: world placement, GUI projection, or
     /// the hand attach transform). Each quad becomes two triangles wound from its four corners; the
     /// vertex color is the quad's `tint` scaled by its directional `shade` (alpha preserved), and every
-    /// vertex carries the caller-provided shader-space block/sky light.
+    /// vertex carries the caller-provided shader-space block/sky light plus `OverlayTexture.NO_OVERLAY`.
     pub fn append_quads_with_light(
         &mut self,
         quads: &[ItemModelQuad],
         transform: Mat4,
         light: [f32; 2],
+    ) {
+        self.append_quads_with_light_and_overlay(quads, transform, light, ITEM_MODEL_NO_OVERLAY);
+    }
+
+    /// Appends `quads` with explicit vanilla `lightCoords` and `overlayCoords`, matching
+    /// `ItemStackRenderState.submit(..., lightCoords, overlayCoords, ...)` and
+    /// `ItemFeatureRenderer`'s `QuadInstance.setOverlayCoords(submit.overlayCoords())`.
+    pub fn append_quads_with_light_and_overlay(
+        &mut self,
+        quads: &[ItemModelQuad],
+        transform: Mat4,
+        light: [f32; 2],
+        overlay: [f32; 2],
     ) {
         for quad in quads {
             let base =
@@ -124,6 +142,7 @@ impl ItemModelMesh {
                     uv: *uv,
                     color,
                     light,
+                    overlay,
                 });
             }
             // Two triangles (0,1,2)+(0,2,3) over the CCW quad corners.
@@ -146,6 +165,7 @@ impl ItemModelMesh {
                 uv,
                 color,
                 light,
+                overlay: ITEM_MODEL_NO_OVERLAY,
             });
         }
         self.indices
@@ -172,8 +192,19 @@ pub fn bake_item_model_mesh_with_light(
     transform: Mat4,
     light: [f32; 2],
 ) -> ItemModelMesh {
+    bake_item_model_mesh_with_light_and_overlay(quads, transform, light, ITEM_MODEL_NO_OVERLAY)
+}
+
+/// Bakes a single model's `quads` into a fresh mesh under `transform`, carrying explicit shader-space
+/// block/sky light and vanilla overlay coordinates.
+pub fn bake_item_model_mesh_with_light_and_overlay(
+    quads: &[ItemModelQuad],
+    transform: Mat4,
+    light: [f32; 2],
+    overlay: [f32; 2],
+) -> ItemModelMesh {
     let mut mesh = ItemModelMesh::new();
-    mesh.append_quads_with_light(quads, transform, light);
+    mesh.append_quads_with_light_and_overlay(quads, transform, light, overlay);
     mesh
 }
 
@@ -184,18 +215,33 @@ pub fn bake_item_model_meshes_with_light(
     transform: Mat4,
     light: [f32; 2],
 ) -> ItemModelMeshSet {
+    bake_item_model_meshes_with_light_and_overlay(quads, transform, light, ITEM_MODEL_NO_OVERLAY)
+}
+
+/// Bakes a model into the same solid/translucent split with explicit shader-space block/sky light and
+/// vanilla overlay coordinates.
+pub fn bake_item_model_meshes_with_light_and_overlay(
+    quads: &[ItemModelQuad],
+    transform: Mat4,
+    light: [f32; 2],
+    overlay: [f32; 2],
+) -> ItemModelMeshSet {
     let mut meshes = ItemModelMeshSet::default();
     for quad in quads {
         if quad.translucent {
-            meshes.translucent.append_quads_with_light(
+            meshes.translucent.append_quads_with_light_and_overlay(
                 std::slice::from_ref(quad),
                 transform,
                 light,
+                overlay,
             );
         } else {
-            meshes
-                .solid
-                .append_quads_with_light(std::slice::from_ref(quad), transform, light);
+            meshes.solid.append_quads_with_light_and_overlay(
+                std::slice::from_ref(quad),
+                transform,
+                light,
+                overlay,
+            );
         }
     }
     meshes
@@ -276,8 +322,13 @@ impl Renderer {
     }
 }
 
-const ITEM_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 4] =
-    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2];
+const ITEM_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![
+    0 => Float32x3,
+    1 => Float32x2,
+    2 => Float32x4,
+    3 => Float32x2,
+    4 => Float32x2
+];
 
 fn item_model_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
     wgpu::VertexBufferLayout {
@@ -289,9 +340,10 @@ fn item_model_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
 
 /// Item-model shader: samples the shared block/item atlas (bound exactly like the terrain pass —
 /// `view_proj` uniform `@0`, atlas texture `@1`, sampler `@2`), multiplies by the baked vertex color
-/// (the per-face `tint × Direction.getShade`), then samples the renderer-owned dynamic LightTexture using
-/// the submitted block/sky light. Alpha cutout: transparent texels are discarded, so the thin generated-item
-/// slab and partial block faces read cleanly against the depth buffer.
+/// (the per-face `tint × Direction.getShade`), samples the renderer-owned dynamic LightTexture using the
+/// submitted block/sky light, then applies vanilla-shaped `OverlayTexture` red/white mixing. Alpha
+/// cutout: transparent texels are discarded, so the thin generated-item slab and partial block faces read
+/// cleanly against the depth buffer.
 const ITEM_MODEL_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
@@ -327,6 +379,7 @@ struct VertexIn {
     @location(1) uv: vec2<f32>,
     @location(2) color: vec4<f32>,
     @location(3) light: vec2<f32>,
+    @location(4) overlay: vec2<f32>,
 };
 
 struct VertexOut {
@@ -334,8 +387,9 @@ struct VertexOut {
     @location(0) uv: vec2<f32>,
     @location(1) color: vec4<f32>,
     @location(2) light: vec2<f32>,
-    @location(3) spherical_distance: f32,
-    @location(4) cylindrical_distance: f32,
+    @location(3) overlay: vec2<f32>,
+    @location(4) spherical_distance: f32,
+    @location(5) cylindrical_distance: f32,
 };
 
 fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
@@ -365,6 +419,14 @@ fn sample_lightmap(light: vec2<f32>) -> vec3<f32> {
     return textureSample(lightmap_texture, lightmap_sampler, uv).rgb;
 }
 
+fn apply_overlay(rgb: vec3<f32>, overlay: vec2<f32>) -> vec3<f32> {
+    if (overlay.y < 8.0) {
+        return mix(vec3<f32>(1.0, 0.0, 0.0), rgb, 179.0 / 255.0);
+    }
+    let overlay_alpha = 1.0 - overlay.x / 15.0 * 0.75;
+    return mix(vec3<f32>(1.0, 1.0, 1.0), rgb, overlay_alpha);
+}
+
 @vertex
 fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
@@ -372,6 +434,7 @@ fn vs_main(input: VertexIn) -> VertexOut {
     out.uv = input.uv;
     out.color = input.color;
     out.light = input.light;
+    out.overlay = input.overlay;
     let fog_pos = input.position - camera.camera_position.xyz;
     out.spherical_distance = length(fog_pos);
     out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
@@ -385,7 +448,8 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         discard;
     }
     let light_color = sample_lightmap(input.light);
-    return apply_fog(vec4<f32>(texel.rgb * light_color, texel.a), input.spherical_distance, input.cylindrical_distance);
+    let overlay_rgb = apply_overlay(texel.rgb, input.overlay);
+    return apply_fog(vec4<f32>(overlay_rgb * light_color, texel.a), input.spherical_distance, input.cylindrical_distance);
 }
 "#;
 
@@ -516,6 +580,10 @@ mod tests {
             .vertices
             .iter()
             .all(|vertex| vertex.light == ITEM_MODEL_FULL_BRIGHT_LIGHT));
+        assert!(mesh
+            .vertices
+            .iter()
+            .all(|vertex| vertex.overlay == ITEM_MODEL_NO_OVERLAY));
     }
 
     #[test]
@@ -537,15 +605,29 @@ mod tests {
     }
 
     #[test]
+    fn explicit_overlay_is_carried_by_every_vertex() {
+        let overlay = [9.0, 3.0];
+        let mesh = bake_item_model_mesh_with_light_and_overlay(
+            &[unit_quad(1.0, [1.0, 1.0, 1.0, 1.0])],
+            Mat4::IDENTITY,
+            [5.0 / 15.0, 9.0 / 15.0],
+            overlay,
+        );
+        assert!(mesh.vertices.iter().all(|vertex| vertex.overlay == overlay));
+    }
+
+    #[test]
     fn mesh_set_splits_translucent_quads_for_vanilla_item_feature_phase() {
         let mut solid = unit_quad(1.0, [1.0, 1.0, 1.0, 1.0]);
         solid.translucent = false;
         let mut translucent = unit_quad(0.8, [0.5, 0.75, 1.0, 0.6]);
         translucent.translucent = true;
-        let meshes = bake_item_model_meshes_with_light(
+        let overlay = [4.0, 10.0];
+        let meshes = bake_item_model_meshes_with_light_and_overlay(
             &[solid, translucent],
             Mat4::IDENTITY,
             [4.0 / 15.0, 12.0 / 15.0],
+            overlay,
         );
 
         assert_eq!(meshes.solid.vertices.len(), 4);
@@ -553,6 +635,12 @@ mod tests {
         assert_eq!(meshes.translucent.vertices.len(), 4);
         assert_eq!(meshes.translucent.indices, vec![0, 1, 2, 0, 2, 3]);
         assert_eq!(meshes.translucent.vertices[0].color, [0.4, 0.6, 0.8, 0.6]);
+        assert!(meshes
+            .solid
+            .vertices
+            .iter()
+            .chain(meshes.translucent.vertices.iter())
+            .all(|vertex| vertex.overlay == overlay));
     }
 
     #[test]
@@ -593,6 +681,7 @@ mod tests {
     #[test]
     fn item_model_shader_samples_dynamic_lightmap_texture() {
         assert!(ITEM_MODEL_SHADER.contains("@location(3) light: vec2<f32>"));
+        assert!(ITEM_MODEL_SHADER.contains("@location(4) overlay: vec2<f32>"));
         assert!(ITEM_MODEL_SHADER.contains("@group(1) @binding(0)"));
         assert!(ITEM_MODEL_SHADER.contains("var lightmap_texture: texture_2d<f32>"));
         assert!(ITEM_MODEL_SHADER.contains("@group(1) @binding(1)"));
@@ -603,9 +692,23 @@ mod tests {
             ITEM_MODEL_SHADER.contains("textureSample(lightmap_texture, lightmap_sampler, uv).rgb")
         );
         assert!(ITEM_MODEL_SHADER.contains("let light_color = sample_lightmap(input.light)"));
-        assert!(ITEM_MODEL_SHADER.contains("texel.rgb * light_color"));
+        assert!(ITEM_MODEL_SHADER.contains("overlay_rgb * light_color"));
         assert!(!ITEM_MODEL_SHADER.contains("fn lightmap_brightness"));
         assert!(!ITEM_MODEL_SHADER.contains("camera.lightmap_factors.y"));
         assert!(!ITEM_MODEL_SHADER.contains("max(input.light.x, input.light.y * 0.95)"));
+    }
+
+    #[test]
+    fn item_model_shader_applies_vanilla_overlay_texture_mix() {
+        assert!(ITEM_MODEL_SHADER
+            .contains("fn apply_overlay(rgb: vec3<f32>, overlay: vec2<f32>) -> vec3<f32>"));
+        assert!(ITEM_MODEL_SHADER.contains("if (overlay.y < 8.0)"));
+        assert!(ITEM_MODEL_SHADER.contains("mix(vec3<f32>(1.0, 0.0, 0.0), rgb, 179.0 / 255.0)"));
+        assert!(ITEM_MODEL_SHADER.contains("1.0 - overlay.x / 15.0 * 0.75"));
+        assert!(ITEM_MODEL_SHADER.contains("mix(vec3<f32>(1.0, 1.0, 1.0), rgb, overlay_alpha)"));
+        assert!(
+            ITEM_MODEL_SHADER.contains("let overlay_rgb = apply_overlay(texel.rgb, input.overlay)")
+        );
+        assert!(ITEM_MODEL_SHADER.contains("overlay_rgb * light_color"));
     }
 }
