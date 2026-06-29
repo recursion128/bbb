@@ -1220,7 +1220,10 @@ blocker。
     offset、sprint `tail2.y = tail1.y`、sprint leg `0.3` 相位和 branch-specific
     tail wobble amplitude 已测试）
   - boost 等 remaining renderer 状态
-  - lighting 与 overlay
+  - [x] lighting 与 overlay：horse/donkey/mule/undead-horse/camel/llama/goat/
+    hoglin/ravager base/layer submission light、hurt/white overlay 或
+    no-overlay metadata 已由 renderer tests pin 住；剩余 boost、camel body-anchor
+    y-offset、roar/particle/sound/converting shake 等不是大型模型 lighting blocker
 - Humanoid / illager / piglin / skeleton family：
   - remaining arm poses
   - use-item sway

@@ -4986,14 +4986,12 @@ When an agent does any of the following, update this file in the same slice:
       named placeholder bounds for remaining entity types
   - Backend GPU resources stay outside `WorldStore`.
   - Full entity presentation remains phase 6 work, including texture assets,
-    variants, equipment, skins, animation, lighting, custom/datapack cow/pig
-    variant asset presentation, sheep
-    head-look-pitch presentation,
-    wolf remaining render-state presentation,
-    boat/raft water-mask presentation and lighting (paddle rowing animation,
-    hurt/damage roll, bubble wobble, underwater state, and above-water water-mask
-    gating are projected and rendered),
-    remaining equine boost / broader large-model lighting presentation,
+    variants, equipment, skins, animation, custom/datapack cow/pig
+    variant asset presentation,
+    boat/raft water-mask depth-only presentation (paddle rowing animation,
+    hurt/damage roll, bubble wobble, underwater state, above-water water-mask
+    gating, and base/water-mask lighting are projected and rendered),
+    remaining equine boost and camel body-anchor y-offset presentation,
     and remaining non-base-equine presentation,
     villager live/dynamic profiled-player skin presentation (crossed-arms
     held items, generic non-skull head items, static mob skulls, profileless
