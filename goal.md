@@ -295,8 +295,8 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。当前 checkl
   2026-06-29 rain/snow draw slice 已补上 renderer/native weather column draw
   surface：vanilla environment texture upload、`PARTICLE` vertex layout、
   `Sampler2` LightTexture、rain 后 snow draw order 和 `WEATHER_TARGET` pass 写入
-  均已测试覆盖；剩余 P0 visual 是完整 vanilla transparency post chain /
-  camera-move translucent resort，以及更细粒度 feature/terrain target sorting。
+  均已测试覆盖；剩余 P0 visual 是 camera-move translucent resort，
+  以及更细粒度 feature/terrain target sorting。
 - 2026-06-29 weather `MOTION_BLOCKING` heightmap slice：vanilla
   `Heightmap.Types.MOTION_BLOCKING` id=4、raw `SimpleBitStorage` 存储
   `height - minY`、索引 `x + z * 16`。`WorldStore` 现在从 chunk packet
