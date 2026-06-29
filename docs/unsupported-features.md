@@ -4487,7 +4487,11 @@ When an agent does any of the following, update this file in the same slice:
       into the scroll mesh with matching vertex metadata; missing-atlas coverage pins that the beam
       submission survives when `end_crystal_beam.png` is absent while only
       folded scroll geometry is suppressed. The base body keeps the projected vanilla red overlay input; the eyes and
-      healing beam record no-overlay submits. The dying-dissolve render type stays deferred. The colored
+      healing beam record no-overlay submits. The Guardian / EndCrystal / EnderDragon beam
+      submissions and the Creeper / Wither `energySwirl` plus dragon-eyes emissive paths are no
+      longer listed as remaining beam/emissive audit items; their UV/scroll/additive/emissive and
+      missing-atlas submission-first behavior is covered by source-pinned renderer tests. The
+      dying-dissolve render type stays deferred. The colored
       debug path stays as a fallback (it renders the body dark and the wing membranes a lighter tint)
     - area effect cloud, marker, and interaction entities now resolve to `EntityModelKind::NoRender`,
       which is a dispatch-owned no-submit path and emits no geometry — exact parity with vanilla, whose

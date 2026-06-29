@@ -1230,8 +1230,15 @@ blocker。
   - attack / crossbow / spell / celebrate / riding 组合冲突
   - armor / held item / custom head / wings 的 layer order 交互
 - Boss / beam / emissive 类：
-  - Ender Dragon / End Crystal / Guardian beam 已有路径继续收紧到 submission/order/render state 级别
-  - 检查 remaining beam UV、scroll、additive、emissive、missing-atlas 行为
+  - [x] Ender Dragon / End Crystal / Guardian beam submission/order/render-state：
+    beam target / offset projection、`end_crystal_beam` 或 `guardian_beam`
+    texture、render type、light、no-overlay、order / submit_sequence 和 custom
+    prism geometry 已由 renderer/world/native tests pin 住
+  - [x] beam UV / scroll / additive / emissive / missing-atlas audit：
+    Guardian beam V tiling 与 world-target orientation、EndCrystal/EnderDragon
+    tiled prism、Creeper/Wither `energySwirl` scroll、Dragon eyes emissive pass、
+    missing-atlas submission-first 行为均已有测试覆盖；EnderDragon dying-dissolve
+    render type 等非 beam/emissive checklist 项继续留作 P1 视觉后续
 
 完成标准：
 
