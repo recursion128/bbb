@@ -1017,7 +1017,11 @@ impl Renderer {
         }
         self.camera_pose = pose;
         self.resort_translucent_terrain_for_camera();
-        self.update_camera();
+        if self.entity_model_texture_atlas.is_some() && !self.entity_model_instances.is_empty() {
+            self.rebuild_entity_model_meshes();
+        } else {
+            self.update_camera();
+        }
     }
 
     pub fn set_clear_color(&mut self, clear: ClearColor) {
@@ -1239,7 +1243,7 @@ impl Renderer {
             .then(|| {
                 TerrainTranslucentSortState::from_vertices(
                     &mesh.vertices,
-                    self.terrain_sort_camera_position(),
+                    self.camera_sort_position(),
                 )
             })
             .flatten();
@@ -1282,7 +1286,7 @@ impl Renderer {
         })
     }
 
-    fn terrain_sort_camera_position(&self) -> Option<[f32; 3]> {
+    pub(crate) fn camera_sort_position(&self) -> Option<[f32; 3]> {
         self.camera_pose.map(|pose| {
             [
                 pose.position[0],
@@ -1293,7 +1297,7 @@ impl Renderer {
     }
 
     fn resort_translucent_terrain_for_camera(&mut self) {
-        let Some(camera_position) = self.terrain_sort_camera_position() else {
+        let Some(camera_position) = self.camera_sort_position() else {
             return;
         };
         let queue = &self.queue;

@@ -98,12 +98,14 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             EntityModelLayerRenderBucket::Cutout,
             true,
             true,
+            false,
         ),
         (
             EntityModelLayerRenderType::ArmorCutoutNoCull,
             "armorCutoutNoCull",
             EntityModelLayerRenderBucket::Cutout,
             true,
+            false,
             false,
         ),
         (
@@ -112,12 +114,14 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             EntityModelLayerRenderBucket::Translucent,
             true,
             false,
+            true,
         ),
         (
             EntityModelLayerRenderType::EntityCutout,
             "entityCutout",
             EntityModelLayerRenderBucket::Cutout,
             true,
+            false,
             false,
         ),
         (
@@ -126,12 +130,14 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             EntityModelLayerRenderBucket::Cutout,
             true,
             true,
+            false,
         ),
         (
             EntityModelLayerRenderType::EntityCutoutZOffset,
             "entityCutoutZOffset",
             EntityModelLayerRenderBucket::Cutout,
             true,
+            false,
             false,
         ),
         (
@@ -140,11 +146,13 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             EntityModelLayerRenderBucket::Translucent,
             true,
             false,
+            true,
         ),
         (
             EntityModelLayerRenderType::EntityTranslucentCullItemTarget,
             "entityTranslucentCullItemTarget",
             EntityModelLayerRenderBucket::ItemEntityTranslucent,
+            true,
             true,
             true,
         ),
@@ -154,6 +162,7 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             EntityModelLayerRenderBucket::OutlineOnly,
             false,
             false,
+            false,
         ),
         (
             EntityModelLayerRenderType::EntityGlint,
@@ -161,6 +170,7 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             EntityModelLayerRenderBucket::GlintOnly,
             false,
             false,
+            true,
         ),
         (
             EntityModelLayerRenderType::Eyes,
@@ -168,6 +178,7 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             EntityModelLayerRenderBucket::Eyes,
             false,
             false,
+            true,
         ),
         (
             EntityModelLayerRenderType::BreezeWind,
@@ -175,6 +186,7 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             EntityModelLayerRenderBucket::Scroll,
             false,
             false,
+            true,
         ),
         (
             EntityModelLayerRenderType::EnergySwirl,
@@ -182,11 +194,13 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             EntityModelLayerRenderBucket::AdditiveScroll,
             false,
             false,
+            true,
         ),
         (
             EntityModelLayerRenderType::EndCrystalBeam,
             "end_crystal_beam",
             EntityModelLayerRenderBucket::Scroll,
+            false,
             false,
             false,
         ),
@@ -196,16 +210,90 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             EntityModelLayerRenderBucket::DepthOnly,
             false,
             false,
+            false,
         ),
     ];
 
     assert_eq!(cases.len(), EntityModelLayerRenderType::ALL.len());
-    for (render_type, vanilla_name, bucket, affects_outline, outline_cull) in cases {
+    for (render_type, vanilla_name, bucket, affects_outline, outline_cull, has_blending) in cases {
         assert_eq!(render_type.vanilla_name(), vanilla_name);
         assert_eq!(render_type.mesh_bucket(), bucket);
         assert_eq!(render_type.affects_outline(), affects_outline);
         assert_eq!(render_type.outline_cull(), outline_cull);
+        assert_eq!(render_type.has_blending(), has_blending);
     }
+}
+
+#[test]
+fn texture_backed_blended_model_uploads_sort_by_order_then_camera_distance() {
+    let near = EntityModelInstance::sheep(701, [2.0, 64.0, 0.0], 0.0, false)
+        .with_invisible(true)
+        .with_invisible_to_player(false);
+    let far = EntityModelInstance::sheep(702, [10.0, 64.0, 0.0], 0.0, false)
+        .with_invisible(true)
+        .with_invisible_to_player(false);
+    let images: Vec<_> = sheep_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = (texture.size[0] * texture.size[1] * 4) as usize;
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+
+    let near_only = entity_model_textured_meshes_with_dynamic_textures_for_camera(
+        &[near],
+        &atlas,
+        None,
+        None,
+        Some([0.0, 64.0, 0.0]),
+    );
+    let far_only = entity_model_textured_meshes_with_dynamic_textures_for_camera(
+        &[far],
+        &atlas,
+        None,
+        None,
+        Some([0.0, 64.0, 0.0]),
+    );
+    assert_eq!(
+        near_only.item_entity_translucent.vertices.len(),
+        far_only.item_entity_translucent.vertices.len()
+    );
+
+    let sorted_from_origin = entity_model_textured_meshes_with_dynamic_textures_for_camera(
+        &[near, far],
+        &atlas,
+        None,
+        None,
+        Some([0.0, 64.0, 0.0]),
+    );
+    assert_eq!(sorted_from_origin.submissions.len(), 2);
+    assert_eq!(
+        sorted_from_origin.submissions[0]
+            .transform
+            .transform_point3(Vec3::ZERO)
+            .x,
+        near.position[0]
+    );
+    let far_vertex_count = far_only.item_entity_translucent.vertices.len();
+    assert_eq!(
+        &sorted_from_origin.item_entity_translucent.vertices[..far_vertex_count],
+        far_only.item_entity_translucent.vertices.as_slice()
+    );
+
+    let sorted_from_positive_x = entity_model_textured_meshes_with_dynamic_textures_for_camera(
+        &[near, far],
+        &atlas,
+        None,
+        None,
+        Some([20.0, 64.0, 0.0]),
+    );
+    let near_vertex_count = near_only.item_entity_translucent.vertices.len();
+    assert_eq!(
+        &sorted_from_positive_x.item_entity_translucent.vertices[..near_vertex_count],
+        near_only.item_entity_translucent.vertices.as_slice()
+    );
 }
 
 #[test]

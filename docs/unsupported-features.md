@@ -449,12 +449,15 @@ When an agent does any of the following, update this file in the same slice:
     terrain; the outline post-chain/composite work follows the complete
     target-backed main pass and precedes clouds, weather, and transparency
     combine, matching the vanilla frame-graph position of the `entity_outline`
-    post chain.
+    post chain. Texture-backed blended model submissions now queue per-submission
+    upload ranges and flush by vanilla `SubmitNodeStorage` order, camera-distance
+    descending, and stable submit insertion; camera pose changes rebuild those
+    upload buffers from the current eye-position.
     Flat/generated item material translucency metadata is still deferred to item
     presentation because that material source is not modeled yet; it is no longer
     a narrow render-pipeline path blocker. Remaining render-graph parity still
-    needs per-submit feature distance sorting and target ordering across
-    block/text/name plus finer target-resource polish; outline now has a
+    needs target ordering across block/text/name, cross-atlas/cross-target
+    translucent feature polish, and finer target-resource polish; outline now has a
     dedicated target/composite at the right post-chain position, clouds now
     follow particles and the outline chain before weather/combine, and lightning
     is no longer missing weather-target geometry.

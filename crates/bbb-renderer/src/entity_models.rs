@@ -93,7 +93,7 @@ pub use model_layers::{
     wither_entity_texture_refs, wither_skull_entity_texture_refs, wolf_entity_texture_refs,
     zombie_entity_texture_refs, zombie_villager_entity_texture_refs, SheepHeadEatPose,
 };
-use textured::entity_model_textured_meshes_with_dynamic_textures;
+use textured::entity_model_textured_meshes_with_dynamic_textures_for_camera;
 #[cfg(test)]
 use textured::{
     armadillo_textured_layer_passes, arrow_textured_layer_passes, axolotl_textured_layer_passes,
@@ -134,7 +134,8 @@ use textured::{
 #[cfg(test)]
 use textured::{
     dynamic_player_texture_test_meshes, entity_model_textured_meshes,
-    entity_model_textured_meshes_with_dynamic_skins, EntityModelTexturedMeshes,
+    entity_model_textured_meshes_with_dynamic_skins,
+    entity_model_textured_meshes_with_dynamic_textures, EntityModelTexturedMeshes,
 };
 
 #[cfg(test)]

@@ -18,7 +18,8 @@ use super::{
         EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureImage,
         EntityModelUvRect,
     },
-    entity_model_colored_runtime_mesh, entity_model_textured_meshes_with_dynamic_textures,
+    entity_model_colored_runtime_mesh,
+    entity_model_textured_meshes_with_dynamic_textures_for_camera,
     geometry::{
         EntityModelScrollMesh, EntityModelScrollVertex, EntityModelTexturedMesh,
         EntityModelTexturedVertex, EntityModelVertex,
@@ -1036,7 +1037,7 @@ impl Renderer {
         self.rebuild_entity_model_meshes();
     }
 
-    fn rebuild_entity_model_meshes(&mut self) {
+    pub(crate) fn rebuild_entity_model_meshes(&mut self) {
         self.entity_model_mesh =
             create_entity_model_mesh_gpu(&self.device, self.entity_model_instances.clone());
         if let Some(atlas) = &self.entity_model_texture_atlas {
@@ -1048,11 +1049,12 @@ impl Renderer {
                 .entity_dynamic_player_texture_atlas
                 .as_ref()
                 .map(|atlas| &atlas.layout);
-            let meshes = entity_model_textured_meshes_with_dynamic_textures(
+            let meshes = entity_model_textured_meshes_with_dynamic_textures_for_camera(
                 &self.entity_model_instances,
                 &atlas.layout,
                 dynamic_player_skin_atlas,
                 dynamic_player_texture_atlas,
+                self.camera_sort_position(),
             );
             self.entity_model_textured_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
                 &self.device,

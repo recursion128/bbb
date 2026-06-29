@@ -269,6 +269,19 @@ impl EntityModelLayerRenderType {
         )
     }
 
+    pub(in crate::entity_models) const fn has_blending(self) -> bool {
+        matches!(
+            self,
+            Self::ArmorTranslucent
+                | Self::EntityTranslucent
+                | Self::EntityTranslucentCullItemTarget
+                | Self::EntityGlint
+                | Self::Eyes
+                | Self::BreezeWind
+                | Self::EnergySwirl
+        )
+    }
+
     pub(in crate::entity_models) const fn outline_cull(self) -> bool {
         matches!(
             self,
