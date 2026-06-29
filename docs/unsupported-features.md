@@ -3536,7 +3536,14 @@ When an agent does any of the following, update this file in the same slice:
       `holdingAnimationProgress = lerp(prev, current, partialTick) / 5`, and the renderer scales the
       arm roll toward zero while adding the `±0.27925268` arm yaw plus the
       `lerp(flyingFactor, -π/3, -1.134464)` arm pitch. The actual Allay `ItemInHandLayer` item
-      submission remains part of broader item-layer parity rather than this arm-pose slice. The
+      submission IS now covered through the shared item-model pass: renderer exposes
+      `allay_hand_attach_transform`, mirroring vanilla `AllayModel.translateToHand`
+      (`root -> body`, fixed `(0, 1, 3)/16` offset, `right_arm.xRot`, `scale(0.7)`, and the final
+      `(+1, 0, 0)/16` offset) plus `ItemInHandLayer`'s `Rx(-90°)`, `Ry(180°)`, and adult
+      left/right hand offset; native then bakes main/off hand stacks with
+      `thirdperson_righthand` / `thirdperson_lefthand` display contexts. Focused tests pin the matrix
+      shape and verify main/off hand item-model meshes are produced and move with
+      `holdingAnimationProgress`. The
       constant full-bright `getBlockLightLevel` (→ 15) glow IS now applied (`entity_light_coords`
       forces the packed block light to 15 for the allay type), and renderer texture comments now point
       at that native light-coords source instead of treating it as unimplemented.

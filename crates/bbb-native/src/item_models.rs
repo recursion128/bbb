@@ -14,14 +14,14 @@ use std::{
 use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
 use bbb_protocol::packets::{EquipmentSlot, ItemStackSummary};
 use bbb_renderer::{
-    bake_generated_item_quads, bake_item_model_mesh_with_light, bake_item_model_meshes_with_light,
-    copper_golem_antenna_block_transform, copper_golem_hand_attach_transform,
-    custom_head_item_transform, dolphin_carried_item_transform, enderman_carried_block_transform,
-    fox_held_item_transform, humanoid_hand_attach_transform, iron_golem_flower_block_transform,
-    mooshroom_mushroom_block_transforms, panda_held_item_transform,
-    snow_golem_head_block_transform, villager_crossed_arms_item_transform,
-    witch_held_item_transform, EntityModelInstance, ItemModelMesh, ItemModelMeshSet, ItemModelQuad,
-    MooshroomVariant, ITEM_MODEL_FULL_BRIGHT_LIGHT,
+    allay_hand_attach_transform, bake_generated_item_quads, bake_item_model_mesh_with_light,
+    bake_item_model_meshes_with_light, copper_golem_antenna_block_transform,
+    copper_golem_hand_attach_transform, custom_head_item_transform, dolphin_carried_item_transform,
+    enderman_carried_block_transform, fox_held_item_transform, humanoid_hand_attach_transform,
+    iron_golem_flower_block_transform, mooshroom_mushroom_block_transforms,
+    panda_held_item_transform, snow_golem_head_block_transform,
+    villager_crossed_arms_item_transform, witch_held_item_transform, EntityModelInstance,
+    ItemModelMesh, ItemModelMeshSet, ItemModelQuad, MooshroomVariant, ITEM_MODEL_FULL_BRIGHT_LIGHT,
 };
 use bbb_world::{TerrainLight, WorldStore};
 use glam::{Mat4, Vec3};
@@ -401,8 +401,9 @@ pub(crate) struct HeldItemModels {
 
 /// Bakes the third-person main- and off-hand held items for every humanoid entity that holds one
 /// (players and the weapon-holding mobs — zombies, giants, skeletons, piglins, illagers; vanilla
-/// `ItemInHandLayer`). The hand attach transform comes from the renderer's posed humanoid model; native
-/// resolves the item to quads (block or flat) and applies the item's third-person display transform.
+/// `ItemInHandLayer`) plus non-humanoid `ArmedModel` users such as allays and copper golems. The hand
+/// attach transform comes from the renderer's posed model; native resolves the item to quads (block or
+/// flat) and applies the item's third-person display transform.
 pub(crate) fn held_item_models(
     instances: &[EntityModelInstance],
     world: &WorldStore,
@@ -478,6 +479,16 @@ pub(crate) fn held_item_models(
             &mut flat_translucent_meshes,
         );
         bake_copper_golem_held_items(
+            instance,
+            world,
+            item_runtime,
+            terrain_textures,
+            &mut block_meshes,
+            &mut block_translucent_meshes,
+            &mut flat_meshes,
+            &mut flat_translucent_meshes,
+        );
+        bake_allay_held_items(
             instance,
             world,
             item_runtime,
@@ -700,6 +711,50 @@ fn bake_copper_golem_held_items(
             continue;
         };
         let Some(hand) = copper_golem_hand_attach_transform(instance, left_hand) else {
+            continue;
+        };
+        let context = if left_hand {
+            BlockModelDisplayContext::ThirdPersonLeftHand
+        } else {
+            BlockModelDisplayContext::ThirdPersonRightHand
+        };
+        bake_item_stack_at_transform(
+            &stack,
+            hand,
+            context,
+            left_hand,
+            BLOCK_THIRD_PERSON_FALLBACK,
+            GENERATED_THIRD_PERSON_FALLBACK,
+            item_runtime,
+            terrain_textures,
+            block_meshes,
+            block_translucent_meshes,
+            flat_meshes,
+            flat_translucent_meshes,
+        );
+    }
+}
+
+/// Bakes an allay's standard `ItemInHandLayer` hand items. Vanilla uses
+/// `ArmedEntityRenderState.extractArmedEntityRenderState`, so the right/left item states use
+/// third-person right/left hand contexts even though `AllayModel.translateToHand` itself ignores the
+/// arm parameter before the shared layer offset.
+#[allow(clippy::too_many_arguments)]
+fn bake_allay_held_items(
+    instance: &EntityModelInstance,
+    world: &WorldStore,
+    item_runtime: &NativeItemRuntime,
+    terrain_textures: &TerrainTextureState,
+    block_meshes: &mut Vec<ItemModelMesh>,
+    block_translucent_meshes: &mut Vec<ItemModelMesh>,
+    flat_meshes: &mut Vec<ItemModelMesh>,
+    flat_translucent_meshes: &mut Vec<ItemModelMesh>,
+) {
+    for left_hand in [false, true] {
+        let Some(stack) = world.held_item(instance.entity_id, left_hand) else {
+            continue;
+        };
+        let Some(hand) = allay_hand_attach_transform(instance, left_hand) else {
             continue;
         };
         let context = if left_hand {
@@ -1577,6 +1632,46 @@ mod tests {
             assert_eq!(models.flat_meshes.len(), 2);
             assert!(models.flat_meshes.iter().all(|mesh| !mesh.is_empty()));
         }
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn allay_item_in_hand_layer_bakes_main_and_offhand_items() {
+        // Vanilla `AllayRenderer` adds the standard `ItemInHandLayer`. Its `AllayModel.translateToHand`
+        // supplies a special allay hand transform, but the item states still use the ordinary third-person
+        // right/left hand display contexts from `ArmedEntityRenderState`.
+        let root = unique_item_model_temp_dir("allay-held-items");
+        write_flat_item_runtime_fixture(&root, &["main_item", "off_item"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let mut world = WorldStore::new();
+        const ENTITY_ID: i32 = 603;
+        const ALLAY_ENTITY_TYPE_ID: i32 = 2;
+        world.apply_add_entity(protocol_add_entity(ENTITY_ID, ALLAY_ENTITY_TYPE_ID));
+        assert!(world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::MainHand, 0)));
+        assert!(world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::OffHand, 1)));
+
+        let base =
+            EntityModelInstance::allay(ENTITY_ID, [0.0, 64.0, 0.0], 0.0).with_age_in_ticks(7.0);
+        let holding = base.with_allay_holding_item_progress(1.0);
+        let terrain_textures = TerrainTextureState::default();
+
+        let idle_models = held_item_models(&[base], &world, Some(&item_runtime), &terrain_textures);
+        let holding_models =
+            held_item_models(&[holding], &world, Some(&item_runtime), &terrain_textures);
+
+        for models in [&idle_models, &holding_models] {
+            assert!(models.block_meshes.is_empty());
+            assert!(models.block_translucent_meshes.is_empty());
+            assert_eq!(models.flat_meshes.len(), 2);
+            assert!(models.flat_translucent_meshes.is_empty());
+            assert!(models.flat_meshes.iter().all(|mesh| !mesh.is_empty()));
+        }
+        assert_ne!(
+            idle_models.flat_meshes[0], holding_models.flat_meshes[0],
+            "holdingAnimationProgress feeds AllayModel.translateToHand through right_arm.xRot"
+        );
 
         std::fs::remove_dir_all(root).unwrap();
     }

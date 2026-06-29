@@ -14,9 +14,9 @@ use super::colored::{
 };
 use super::model::EntityModel;
 use super::model_layers::{
-    ArmorStandModel, CopperGolemModel, FoxModel, IllagerModel, PiglinModel, PlayerModel,
-    SkeletonModel, VillagerModel, WanderingTraderModel, WitchModel, ZombieModel,
-    ZombieVariantModel,
+    allay_arm_holding_x_rot, AllayModel, ArmorStandModel, CopperGolemModel, FoxModel, IllagerModel,
+    PiglinModel, PlayerModel, SkeletonModel, VillagerModel, WanderingTraderModel, WitchModel,
+    ZombieModel, ZombieVariantModel,
 };
 use super::{EntityModelInstance, EntityModelKind, SkeletonModelFamily};
 
@@ -114,6 +114,41 @@ pub fn copper_golem_hand_attach_transform(
         arm_world
             * Mat4::from_rotation_y(hand_y_rot)
             * Mat4::from_translation(Vec3::new(0.0, 0.0, 0.125))
+            * Mat4::from_rotation_x(-FRAC_PI_2)
+            * Mat4::from_rotation_y(PI)
+            * Mat4::from_translation(Vec3::new(sign / 16.0, 2.0 / 16.0, -10.0 / 16.0)),
+    )
+}
+
+/// The model->world transform used by vanilla `AllayModel.translateToHand` plus
+/// `ItemInHandLayer.submitArmWithItem`. Unlike humanoids, the allay ignores the `arm` parameter in
+/// `translateToHand`: both hand item states first walk `root -> body`, offset forward/up, rotate only
+/// by `right_arm.xRot`, scale to `0.7`, and then the standard ItemInHandLayer left/right offset splits
+/// the submitted item.
+pub fn allay_hand_attach_transform(
+    instance: &EntityModelInstance,
+    left_hand: bool,
+) -> Option<Mat4> {
+    let EntityModelKind::Allay = instance.kind else {
+        return None;
+    };
+
+    let mut model = AllayModel::new();
+    model.prepare(instance);
+    let body = entity_model_root_transform(*instance)
+        * model
+            .root()
+            .try_descendant_attach_transform(&["root", "body"])?;
+    let arm_x = allay_arm_holding_x_rot(
+        instance.render_state.walk_animation_speed,
+        instance.render_state.allay_holding_item_progress,
+    );
+    let sign = if left_hand { -1.0 } else { 1.0 };
+    Some(
+        body * Mat4::from_translation(Vec3::new(0.0, 1.0 / 16.0, 3.0 / 16.0))
+            * Mat4::from_rotation_x(arm_x)
+            * Mat4::from_scale(Vec3::splat(0.7))
+            * Mat4::from_translation(Vec3::new(1.0 / 16.0, 0.0, 0.0))
             * Mat4::from_rotation_x(-FRAC_PI_2)
             * Mat4::from_rotation_y(PI)
             * Mat4::from_translation(Vec3::new(sign / 16.0, 2.0 / 16.0, -10.0 / 16.0)),
@@ -958,6 +993,75 @@ mod tests {
             left.transform_point3(Vec3::ZERO),
             "left and right hands use mirrored vanilla hand rotations"
         );
+    }
+
+    #[test]
+    fn allay_hand_attach_matches_vanilla_translate_to_hand_shape() {
+        // Vanilla `AllayModel.translateToHand` walks only `root -> body`, then applies a fixed
+        // `(0, 1, 3)/16` offset, `right_arm.xRot`, `scale(0.7)`, and `(+1, 0, 0)/16` before the standard
+        // `ItemInHandLayer` rotation and adult hand offset.
+        let base = EntityModelInstance::allay(37, [0.0, 64.0, 0.0], 0.0)
+            .with_age_in_ticks(9.0)
+            .with_walk_animation(0.2, 0.3)
+            .with_allay_holding_item_progress(1.0);
+        let actual = allay_hand_attach_transform(&base, false).unwrap();
+
+        let mut model = AllayModel::new();
+        model.prepare(&base);
+        let body = entity_model_root_transform(base)
+            * model
+                .root()
+                .try_descendant_attach_transform(&["root", "body"])
+                .unwrap();
+        let expected = body
+            * Mat4::from_translation(Vec3::new(0.0, 1.0 / 16.0, 3.0 / 16.0))
+            * Mat4::from_rotation_x(allay_arm_holding_x_rot(
+                base.render_state.walk_animation_speed,
+                base.render_state.allay_holding_item_progress,
+            ))
+            * Mat4::from_scale(Vec3::splat(0.7))
+            * Mat4::from_translation(Vec3::new(1.0 / 16.0, 0.0, 0.0))
+            * Mat4::from_rotation_x(-FRAC_PI_2)
+            * Mat4::from_rotation_y(PI)
+            * Mat4::from_translation(Vec3::new(1.0 / 16.0, 2.0 / 16.0, -10.0 / 16.0));
+
+        assert!(
+            (actual.transform_point3(Vec3::ZERO) - expected.transform_point3(Vec3::ZERO)).length()
+                < 1.0e-6
+        );
+        assert!(
+            (actual.transform_vector3(Vec3::X) - expected.transform_vector3(Vec3::X)).length()
+                < 1.0e-6
+        );
+    }
+
+    #[test]
+    fn allay_hand_attach_uses_right_arm_xrot_and_layer_side_offset() {
+        let base = EntityModelInstance::allay(38, [0.0, 64.0, 0.0], 0.0)
+            .with_age_in_ticks(4.0)
+            .with_walk_animation(0.0, 0.0);
+        let empty_right = allay_hand_attach_transform(&base, false).unwrap();
+        let holding_right =
+            allay_hand_attach_transform(&base.with_allay_holding_item_progress(1.0), false)
+                .unwrap();
+        let holding_left =
+            allay_hand_attach_transform(&base.with_allay_holding_item_progress(1.0), true).unwrap();
+
+        assert_ne!(
+            empty_right.transform_point3(Vec3::ZERO),
+            holding_right.transform_point3(Vec3::ZERO),
+            "holdingAnimationProgress changes right_arm.xRot and moves the submitted item"
+        );
+        assert_ne!(
+            holding_right.transform_point3(Vec3::ZERO),
+            holding_left.transform_point3(Vec3::ZERO),
+            "ItemInHandLayer's final left/right offset splits the allay hand item"
+        );
+        assert!(allay_hand_attach_transform(
+            &EntityModelInstance::new(39, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0),
+            false
+        )
+        .is_none());
     }
 
     #[test]
