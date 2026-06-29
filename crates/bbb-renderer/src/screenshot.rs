@@ -10,8 +10,39 @@ pub(super) struct PendingScreenshot {
     height: u32,
     padded_bytes_per_row: u32,
     unpadded_bytes_per_row: u32,
-    format: wgpu::TextureFormat,
+    pixel_format: ScreenshotPixelFormat,
     path: std::path::PathBuf,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ScreenshotPixelFormat {
+    Bgra8,
+    Rgba8,
+}
+
+impl ScreenshotPixelFormat {
+    fn from_texture_format(format: wgpu::TextureFormat) -> Result<Self> {
+        match format {
+            wgpu::TextureFormat::Bgra8Unorm | wgpu::TextureFormat::Bgra8UnormSrgb => {
+                Ok(Self::Bgra8)
+            }
+            wgpu::TextureFormat::Rgba8Unorm | wgpu::TextureFormat::Rgba8UnormSrgb => {
+                Ok(Self::Rgba8)
+            }
+            other => bail!("unsupported screenshot surface format {other:?}"),
+        }
+    }
+
+    fn append_row_as_rgba(self, row: &[u8], rgba: &mut Vec<u8>) {
+        match self {
+            Self::Bgra8 => {
+                for px in row.chunks_exact(4) {
+                    rgba.extend_from_slice(&[px[2], px[1], px[0], px[3]]);
+                }
+            }
+            Self::Rgba8 => rgba.extend_from_slice(row),
+        }
+    }
 }
 
 impl Renderer {
@@ -25,6 +56,7 @@ impl Renderer {
         let height = self.config.height;
         let bytes_per_pixel = 4u32;
         let unpadded_bytes_per_row = width * bytes_per_pixel;
+        let pixel_format = ScreenshotPixelFormat::from_texture_format(self.config.format)?;
         let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
         let padded_bytes_per_row = unpadded_bytes_per_row.div_ceil(align) * align;
         let buffer_size = padded_bytes_per_row as u64 * height as u64;
@@ -63,7 +95,7 @@ impl Renderer {
             height,
             padded_bytes_per_row,
             unpadded_bytes_per_row,
-            format: self.config.format,
+            pixel_format,
             path: path.to_path_buf(),
         })
     }
@@ -86,17 +118,7 @@ impl Renderer {
             .take(pending.height as usize)
         {
             let row = &row[..pending.unpadded_bytes_per_row as usize];
-            match pending.format {
-                wgpu::TextureFormat::Bgra8Unorm | wgpu::TextureFormat::Bgra8UnormSrgb => {
-                    for px in row.chunks_exact(4) {
-                        rgba.extend_from_slice(&[px[2], px[1], px[0], px[3]]);
-                    }
-                }
-                wgpu::TextureFormat::Rgba8Unorm | wgpu::TextureFormat::Rgba8UnormSrgb => {
-                    rgba.extend_from_slice(row);
-                }
-                other => bail!("unsupported screenshot surface format {other:?}"),
-            }
+            pending.pixel_format.append_row_as_rgba(row, &mut rgba);
         }
         drop(mapped);
         pending.buffer.unmap();
@@ -112,5 +134,73 @@ impl Renderer {
             image::ColorType::Rgba8,
         )?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn screenshot_readback_accepts_renderer_chosen_surface_formats() {
+        assert_eq!(
+            ScreenshotPixelFormat::from_texture_format(wgpu::TextureFormat::Bgra8Unorm).unwrap(),
+            ScreenshotPixelFormat::Bgra8
+        );
+        assert_eq!(
+            ScreenshotPixelFormat::from_texture_format(wgpu::TextureFormat::Bgra8UnormSrgb)
+                .unwrap(),
+            ScreenshotPixelFormat::Bgra8
+        );
+        assert_eq!(
+            ScreenshotPixelFormat::from_texture_format(wgpu::TextureFormat::Rgba8Unorm).unwrap(),
+            ScreenshotPixelFormat::Rgba8
+        );
+        assert_eq!(
+            ScreenshotPixelFormat::from_texture_format(wgpu::TextureFormat::Rgba8UnormSrgb)
+                .unwrap(),
+            ScreenshotPixelFormat::Rgba8
+        );
+    }
+
+    #[test]
+    fn screenshot_readback_rejects_non_color_surface_formats() {
+        let err = ScreenshotPixelFormat::from_texture_format(wgpu::TextureFormat::Depth24Plus)
+            .unwrap_err();
+        assert!(err
+            .to_string()
+            .contains("unsupported screenshot surface format"));
+    }
+
+    #[test]
+    fn screenshot_readback_converts_bgra_rows_to_rgba() {
+        let mut rgba = Vec::new();
+        ScreenshotPixelFormat::Bgra8.append_row_as_rgba(
+            &[
+                10, 20, 30, 40, //
+                50, 60, 70, 80,
+            ],
+            &mut rgba,
+        );
+
+        assert_eq!(
+            rgba,
+            vec![
+                30, 20, 10, 40, //
+                70, 60, 50, 80,
+            ]
+        );
+    }
+
+    #[test]
+    fn screenshot_readback_preserves_rgba_rows() {
+        let row = vec![
+            1, 2, 3, 4, //
+            5, 6, 7, 8,
+        ];
+        let mut rgba = Vec::new();
+        ScreenshotPixelFormat::Rgba8.append_row_as_rgba(&row, &mut rgba);
+
+        assert_eq!(rgba, row);
     }
 }
