@@ -97,29 +97,34 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             "entitySolid",
             EntityModelLayerRenderBucket::Cutout,
             true,
+            true,
         ),
         (
             EntityModelLayerRenderType::ArmorCutoutNoCull,
             "armorCutoutNoCull",
             EntityModelLayerRenderBucket::Cutout,
             true,
+            false,
         ),
         (
             EntityModelLayerRenderType::ArmorTranslucent,
             "armorTranslucent",
             EntityModelLayerRenderBucket::Translucent,
             true,
+            false,
         ),
         (
             EntityModelLayerRenderType::EntityCutout,
             "entityCutout",
             EntityModelLayerRenderBucket::Cutout,
             true,
+            false,
         ),
         (
             EntityModelLayerRenderType::EntityCutoutCull,
             "entityCutoutCull",
             EntityModelLayerRenderBucket::Cutout,
+            true,
             true,
         ),
         (
@@ -127,17 +132,20 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             "entityCutoutZOffset",
             EntityModelLayerRenderBucket::Cutout,
             true,
+            false,
         ),
         (
             EntityModelLayerRenderType::EntityTranslucent,
             "entityTranslucent",
             EntityModelLayerRenderBucket::Translucent,
             true,
+            false,
         ),
         (
             EntityModelLayerRenderType::EntityTranslucentCullItemTarget,
             "entityTranslucentCullItemTarget",
             EntityModelLayerRenderBucket::Translucent,
+            true,
             true,
         ),
         (
@@ -145,11 +153,13 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             "outline",
             EntityModelLayerRenderBucket::OutlineOnly,
             false,
+            false,
         ),
         (
             EntityModelLayerRenderType::EntityGlint,
             "entityGlint",
             EntityModelLayerRenderBucket::GlintOnly,
+            false,
             false,
         ),
         (
@@ -157,11 +167,13 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             "eyes",
             EntityModelLayerRenderBucket::Eyes,
             false,
+            false,
         ),
         (
             EntityModelLayerRenderType::BreezeWind,
             "breezeWind",
             EntityModelLayerRenderBucket::Scroll,
+            false,
             false,
         ),
         (
@@ -169,11 +181,13 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             "energySwirl",
             EntityModelLayerRenderBucket::AdditiveScroll,
             false,
+            false,
         ),
         (
             EntityModelLayerRenderType::EndCrystalBeam,
             "end_crystal_beam",
             EntityModelLayerRenderBucket::Scroll,
+            false,
             false,
         ),
         (
@@ -181,14 +195,16 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             "waterMask",
             EntityModelLayerRenderBucket::DepthOnly,
             false,
+            false,
         ),
     ];
 
     assert_eq!(cases.len(), EntityModelLayerRenderType::ALL.len());
-    for (render_type, vanilla_name, bucket, affects_outline) in cases {
+    for (render_type, vanilla_name, bucket, affects_outline, outline_cull) in cases {
         assert_eq!(render_type.vanilla_name(), vanilla_name);
         assert_eq!(render_type.mesh_bucket(), bucket);
         assert_eq!(render_type.affects_outline(), affects_outline);
+        assert_eq!(render_type.outline_cull(), outline_cull);
     }
 }
 

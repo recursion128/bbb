@@ -182,6 +182,53 @@ fn arrow_textured_render_matches_vanilla_renderer() {
 }
 
 #[test]
+fn glowing_arrow_outline_copy_uses_source_cull_bucket() {
+    // Vanilla `RenderType.outline()` forwards `state.pipeline.isCull()`, so an
+    // `entityCutoutCull` arrow outline derives `OUTLINE_CULL`.
+    let len =
+        usize::try_from(ARROW_TIPPED_TEXTURE_REF.size[0] * ARROW_TIPPED_TEXTURE_REF.size[1] * 4)
+            .unwrap();
+    let images = vec![EntityModelTextureImage::new(
+        ARROW_TIPPED_TEXTURE_REF,
+        vec![0u8; len],
+    )];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let instance =
+        EntityModelInstance::arrow(60, [0.0, 64.0, 0.0], 35.0, ArrowModelTexture::Tipped)
+            .with_outline_color(0xff33_66cc);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    let submit = meshes.submissions[0];
+
+    assert_eq!(
+        submit.render_type,
+        EntityModelLayerRenderType::EntityCutoutCull
+    );
+    assert!(submit.render_type.outline_cull());
+    assert!(meshes.outline.vertices.is_empty());
+    assert_eq!(
+        meshes.outline_cull.vertices.len(),
+        meshes.cutout.vertices.len()
+    );
+    assert_eq!(
+        meshes.outline_cull.indices.len(),
+        meshes.cutout.indices.len()
+    );
+    assert_eq!(meshes.outline_cull.cutout_faces, meshes.cutout.cutout_faces);
+    let outline_tint = [
+        0x33 as f32 / 255.0,
+        0x66 as f32 / 255.0,
+        0xcc as f32 / 255.0,
+        1.0,
+    ];
+    assert!(meshes
+        .outline_cull
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == outline_tint));
+}
+
+#[test]
 fn arrow_submission_survives_missing_texture_atlas_entry() {
     // Vanilla `ArrowRenderer.submit` records the `entityCutoutCull` submit before atlas lookup;
     // missing texture data suppresses only the folded geometry.

@@ -275,10 +275,14 @@ impl Renderer {
             }
         }
 
-        if let (Some(mesh), Some(atlas)) = (
-            &self.entity_model_outline_mesh,
-            &self.entity_model_texture_atlas,
-        ) {
+        if self.entity_model_texture_atlas.is_some()
+            && (self.entity_model_outline_mesh.is_some()
+                || self.entity_model_outline_cull_mesh.is_some())
+        {
+            let atlas = self
+                .entity_model_texture_atlas
+                .as_ref()
+                .expect("outline meshes require the static entity atlas");
             {
                 let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some(ENTITY_OUTLINE_TARGET_PASS_LABEL),
@@ -301,13 +305,23 @@ impl Renderer {
                     occlusion_query_set: None,
                     timestamp_writes: None,
                 });
-                pass.set_pipeline(&self.entity_model_outline_pipeline);
-                pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
-                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                entity_model_draw_calls += 1;
+                if let Some(mesh) = &self.entity_model_outline_mesh {
+                    pass.set_pipeline(&self.entity_model_outline_pipeline);
+                    pipeline_switches += 1;
+                    pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                    pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                    entity_model_draw_calls += 1;
+                }
+                if let Some(mesh) = &self.entity_model_outline_cull_mesh {
+                    pass.set_pipeline(&self.entity_model_outline_cull_pipeline);
+                    pipeline_switches += 1;
+                    pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                    pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                    entity_model_draw_calls += 1;
+                }
             }
 
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {

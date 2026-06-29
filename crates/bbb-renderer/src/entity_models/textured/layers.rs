@@ -265,6 +265,13 @@ impl EntityModelLayerRenderType {
         )
     }
 
+    pub(in crate::entity_models) const fn outline_cull(self) -> bool {
+        matches!(
+            self,
+            Self::EntitySolid | Self::EntityCutoutCull | Self::EntityTranslucentCullItemTarget
+        )
+    }
+
     #[cfg(test)]
     pub(in crate::entity_models) const fn vanilla_name(self) -> &'static str {
         match self {

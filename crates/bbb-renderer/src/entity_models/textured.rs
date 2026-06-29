@@ -158,8 +158,12 @@ pub(super) struct EntityModelTexturedMeshes {
     pub(super) eyes: EntityModelTexturedMesh,
     /// CPU-retained geometry for vanilla `RenderTypes.outline(...)` submissions. Submission metadata
     /// preserves the original model tint, while the folded vertices carry `outlineColor` like
-    /// vanilla's `OutlineBufferSource.EntityOutlineGenerator`.
+    /// vanilla's `OutlineBufferSource.EntityOutlineGenerator`. This bucket is for vanilla
+    /// `OUTLINE_NO_CULL`.
     pub(super) outline: EntityModelTexturedMesh,
+    /// CPU-retained outline copies derived from source render types whose vanilla pipeline has
+    /// culling enabled. Vanilla `RenderType.outline()` forwards `state.pipeline.isCull()`.
+    pub(super) outline_cull: EntityModelTexturedMesh,
     /// Ready remote player skins are rendered through a dedicated atlas, preserving their vanilla
     /// cutout/translucent render type while swapping only the texture source.
     pub(super) dynamic_player_skin_cutout: EntityModelTexturedMesh,
@@ -191,6 +195,7 @@ impl EntityModelTexturedMeshes {
             translucent: EntityModelTexturedMesh::new(),
             eyes: EntityModelTexturedMesh::new(),
             outline: EntityModelTexturedMesh::new(),
+            outline_cull: EntityModelTexturedMesh::new(),
             dynamic_player_skin_cutout: EntityModelTexturedMesh::new(),
             dynamic_player_skin_translucent: EntityModelTexturedMesh::new(),
             dynamic_player_texture_cutout: EntityModelTexturedMesh::new(),
@@ -741,7 +746,12 @@ fn render_textured_submission(
             }
         };
         if let Some((vertices, indices, cutout_faces)) = outline_copy {
-            append_textured_outline_copy(&mut meshes.outline, vertices, indices, cutout_faces);
+            let outline = if submission.render_type.outline_cull() {
+                &mut meshes.outline_cull
+            } else {
+                &mut meshes.outline
+            };
+            append_textured_outline_copy(outline, vertices, indices, cutout_faces);
         }
     }
 }

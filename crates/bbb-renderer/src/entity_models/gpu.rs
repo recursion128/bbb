@@ -754,6 +754,7 @@ pub(crate) fn create_entity_model_textured_pipeline(
         ENTITY_MODEL_TEXTURED_SHADER,
         Some(wgpu::BlendState::REPLACE),
         true,
+        None,
     )
 }
 
@@ -770,6 +771,7 @@ pub(crate) fn create_entity_model_eyes_pipeline(
         ENTITY_MODEL_EYES_SHADER,
         Some(wgpu::BlendState::ALPHA_BLENDING),
         false,
+        None,
     )
 }
 
@@ -778,14 +780,45 @@ pub(crate) fn create_entity_model_outline_pipeline(
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
-    create_entity_model_textured_pipeline_with_depth(
+    create_entity_model_outline_pipeline_with_cull(
         device,
         format,
         bind_group_layout,
         "bbb-entity-model-outline",
+        ENTITY_MODEL_OUTLINE_NO_CULL_MODE,
+    )
+}
+
+pub(crate) fn create_entity_model_outline_cull_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_entity_model_outline_pipeline_with_cull(
+        device,
+        format,
+        bind_group_layout,
+        "bbb-entity-model-outline-cull",
+        ENTITY_MODEL_OUTLINE_CULL_MODE,
+    )
+}
+
+fn create_entity_model_outline_pipeline_with_cull(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    label_prefix: &str,
+    cull_mode: Option<wgpu::Face>,
+) -> wgpu::RenderPipeline {
+    create_entity_model_textured_pipeline_with_depth(
+        device,
+        format,
+        bind_group_layout,
+        label_prefix,
         ENTITY_MODEL_OUTLINE_SHADER,
         ENTITY_MODEL_OUTLINE_BLEND,
         true,
+        cull_mode,
     )
 }
 
@@ -802,6 +835,7 @@ pub(crate) fn create_entity_model_translucent_pipeline(
         ENTITY_MODEL_TEXTURED_SHADER,
         Some(wgpu::BlendState::ALPHA_BLENDING),
         true,
+        None,
     )
 }
 
@@ -821,6 +855,8 @@ const ENTITY_MODEL_ADDITIVE_BLEND: wgpu::BlendState = wgpu::BlendState {
 };
 
 const ENTITY_MODEL_OUTLINE_BLEND: Option<wgpu::BlendState> = None;
+const ENTITY_MODEL_OUTLINE_NO_CULL_MODE: Option<wgpu::Face> = None;
+const ENTITY_MODEL_OUTLINE_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
 
 /// The scrolling-overlay pipeline for vanilla `breezeWind` (the wind charge): translucent
 /// (`BlendFunction.TRANSLUCENT`), lightmap-lit, depth-writing, cull off.
@@ -925,6 +961,7 @@ fn create_entity_model_textured_pipeline_with_depth(
     shader_source: &str,
     blend: Option<wgpu::BlendState>,
     depth_write_enabled: bool,
+    cull_mode: Option<wgpu::Face>,
 ) -> wgpu::RenderPipeline {
     let shader_label = format!("{label_prefix}-shader");
     let pipeline_layout_label = format!("{label_prefix}-pipeline-layout");
@@ -951,7 +988,7 @@ fn create_entity_model_textured_pipeline_with_depth(
             topology: wgpu::PrimitiveTopology::TriangleList,
             strip_index_format: None,
             front_face: wgpu::FrontFace::Ccw,
-            cull_mode: None,
+            cull_mode,
             polygon_mode: wgpu::PolygonMode::Fill,
             unclipped_depth: false,
             conservative: false,
@@ -1085,6 +1122,11 @@ impl Renderer {
                 meshes.outline,
                 "bbb-entity-model-outline",
             );
+            self.entity_model_outline_cull_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
+                &self.device,
+                meshes.outline_cull,
+                "bbb-entity-model-outline-cull",
+            );
             self.entity_model_translucent_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
                 &self.device,
                 meshes.translucent,
@@ -1129,6 +1171,7 @@ impl Renderer {
             self.entity_model_translucent_mesh = None;
             self.entity_model_eyes_mesh = None;
             self.entity_model_outline_mesh = None;
+            self.entity_model_outline_cull_mesh = None;
             self.entity_dynamic_player_skin_cutout_mesh = None;
             self.entity_dynamic_player_skin_translucent_mesh = None;
             self.entity_dynamic_player_texture_cutout_mesh = None;
@@ -1148,6 +1191,9 @@ impl Renderer {
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_outline_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_model_outline_cull_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_dynamic_player_skin_cutout_mesh
@@ -1833,7 +1879,10 @@ fn create_entity_model_scroll_mesh_gpu_from_mesh(
 
 #[cfg(test)]
 mod tests {
-    use super::{ENTITY_MODEL_OUTLINE_BLEND, ENTITY_MODEL_OUTLINE_SHADER};
+    use super::{
+        ENTITY_MODEL_OUTLINE_BLEND, ENTITY_MODEL_OUTLINE_CULL_MODE,
+        ENTITY_MODEL_OUTLINE_NO_CULL_MODE, ENTITY_MODEL_OUTLINE_SHADER,
+    };
 
     #[test]
     fn entity_model_outline_shader_matches_vanilla_rendertype_outline_shape() {
@@ -1859,5 +1908,11 @@ mod tests {
             ENTITY_MODEL_OUTLINE_BLEND, None,
             "vanilla OUTLINE_SNIPPET declares no color-target blend state"
         );
+    }
+
+    #[test]
+    fn entity_model_outline_pipelines_represent_vanilla_cull_modes() {
+        assert_eq!(ENTITY_MODEL_OUTLINE_NO_CULL_MODE, None);
+        assert_eq!(ENTITY_MODEL_OUTLINE_CULL_MODE, Some(wgpu::Face::Back));
     }
 }
