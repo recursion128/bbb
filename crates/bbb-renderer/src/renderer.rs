@@ -1573,8 +1573,62 @@ fn choose_format(formats: &[wgpu::TextureFormat]) -> Result<wgpu::TextureFormat>
 
 #[cfg(test)]
 mod tests {
-    use super::TerrainTranslucentSortState;
+    use super::{choose_format, TerrainTranslucentSortState};
     use crate::terrain::TerrainVertex;
+
+    #[test]
+    fn choose_format_prefers_srgb_surface_formats_for_screenshot_readback() {
+        assert_eq!(
+            choose_format(&[
+                wgpu::TextureFormat::Rgba8Unorm,
+                wgpu::TextureFormat::Bgra8UnormSrgb,
+                wgpu::TextureFormat::Rgba16Float,
+            ])
+            .unwrap(),
+            wgpu::TextureFormat::Bgra8UnormSrgb
+        );
+        assert_eq!(
+            choose_format(&[
+                wgpu::TextureFormat::Rgba8Unorm,
+                wgpu::TextureFormat::Rgba8UnormSrgb,
+            ])
+            .unwrap(),
+            wgpu::TextureFormat::Rgba8UnormSrgb
+        );
+    }
+
+    #[test]
+    fn choose_format_falls_back_to_unorm_screenshot_readback_formats() {
+        assert_eq!(
+            choose_format(&[
+                wgpu::TextureFormat::Rgba16Float,
+                wgpu::TextureFormat::Bgra8Unorm,
+            ])
+            .unwrap(),
+            wgpu::TextureFormat::Bgra8Unorm
+        );
+        assert_eq!(
+            choose_format(&[
+                wgpu::TextureFormat::Depth24Plus,
+                wgpu::TextureFormat::Rgba8Unorm,
+            ])
+            .unwrap(),
+            wgpu::TextureFormat::Rgba8Unorm
+        );
+    }
+
+    #[test]
+    fn choose_format_rejects_non_screenshot_readback_formats() {
+        let err = choose_format(&[
+            wgpu::TextureFormat::Rgba16Float,
+            wgpu::TextureFormat::Depth24Plus,
+        ])
+        .unwrap_err();
+
+        assert!(err
+            .to_string()
+            .contains("surface does not expose an RGBA/BGRA 8-bit format"));
+    }
 
     #[test]
     fn translucent_sort_state_rebuilds_vanilla_indices_after_camera_move() {

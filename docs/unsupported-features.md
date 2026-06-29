@@ -1597,7 +1597,10 @@ When an agent does any of the following, update this file in the same slice:
     the renderer-chosen BGRA/RGBA 8-bit formats map to an explicit readback
     pixel-format enum, BGRA rows are converted to RGBA before PNG encoding, RGBA
     rows are preserved, and deterministic unit tests cover both conversion
-    branches plus the unsupported-format diagnostic.
+    branches plus the unsupported-format diagnostic. Surface format selection is
+    covered as well: the renderer prefers the sRGB BGRA/RGBA 8-bit formats,
+    falls back to the unorm BGRA/RGBA variants, and rejects non-readback formats
+    before a screenshot can be requested.
   - Renderer draws:
     - vanilla-shaped top sky disc from `SKY_COLOR`
     - vanilla-shaped sunrise/sunset fan from `SUNRISE_SUNSET_COLOR` / `SUN_ANGLE`
