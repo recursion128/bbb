@@ -4671,8 +4671,8 @@ When an agent does any of the following, update this file in the same slice:
       selected `tropical_{a,b}_pattern_*.png` while only folded pattern geometry is suppressed. Only the colored
       debug path omits the
       pattern overlay (a cutout texture whose shape comes from the texture alpha cannot be
-      approximated by a solid-color box); its lighting/overlay remain the standard deferred
-      entity lighting
+      approximated by a solid-color box); textured base/pattern light and overlay metadata
+      are covered
     - nautilus and zombie-nautilus entities as renderer-owned vanilla 26.1
       `NautilusModel.createBodyMesh()` / `createBabyBodyLayer()` geometry on the colored path: the native
       entity scene (`entity_scene.rs`) now splits vanilla type ids `88` (nautilus) and the zombie nautilus

@@ -1143,6 +1143,11 @@ blocker。
   - [x] 旧的 broader/full-dynamic lighting wording 已收窄：base submission
     light/overlay metadata 和 glow-squid block-light override 已由 renderer
     tests pin 住；全局 LightTexture / gamma 归已完成 P0 lighting pipeline。
+- Tropical fish：
+  - [x] 旧的 colored debug lighting/overlay wording 已收窄：textured base 与
+    pattern submissions 的 light/overlay/order metadata 已由 renderer tests pin
+    住；colored debug path 仅省略 texture-shaped pattern overlay，不保留为
+    pipeline blocker。
 - Spider / slime / magma cube / ghast / blaze / endermite / silverfish / vex /
   allay / phantom：
   - [x] 剩余 exact broader lighting wording 已收窄：base、eyes、outer-layer
