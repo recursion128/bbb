@@ -360,7 +360,7 @@ When an agent does any of the following, update this file in the same slice:
     Later GPU work should split remaining currently-coalesced render-type state
     such as no-cull `entityCutout*`, `armorCutoutNoCull`, `Eyes`, `waterMask`,
     and glint / scroll variants into equivalent pipeline state, and reconcile
-    finer transparency target sorting plus full dynamic LightTexture /
+    finer transparency target/resource polish plus remaining dynamic LightTexture /
     darkness-adjusted gamma / diffuse visual parity. The scroll GPU path already separates
     vanilla `breezeWind` as lightmap-lit from emissive additive `energySwirl`.
   - Entity outline target writes now use a dedicated vanilla-shaped
@@ -870,10 +870,13 @@ When an agent does any of the following, update this file in the same slice:
     instead of terrain recomputing the formula inline. The terrain/world shader
     no longer uses the earlier
     `max(block, sky * 0.95)` scalar approximation. Remaining lighting gaps:
-    finer transparency target sorting after the renderer-owned main color target /
-    Main+Translucent+ItemEntity+Particles+Weather+Clouds combine foundation,
-    smooth/AO entity light, GUI flat / entity-in-UI lighting variants, and the colored
-    debug fallback's baked-shade approximation. The texture-backed entity shaders
+    finer transparency target/resource polish after the renderer-owned main color
+    target / Main+Translucent+ItemEntity+Particles+Weather+Clouds combine
+    foundation, smooth/AO entity light, and the colored debug fallback's
+    baked-shade approximation. GUI flat / entity-in-UI lighting variants are now
+    classified as P1 GUI surface work because the camera uniform already carries
+    the required `Lighting.Entry` expressions and no corresponding GUI
+    submission surface exists yet. The texture-backed entity shaders
     and item-model shader now read vanilla `Lighting.Entry` Light0/Light1
     directions from the camera uniform. World entity and world item-model draws
     use LEVEL default/nether directions, and GUI 3D block-item draws use ITEMS_3D.
@@ -884,9 +887,9 @@ When an agent does any of the following, update this file in the same slice:
     item entity / thrown item submit paths that reach
     `ItemStackRenderState.submit(..., lightCoords, ...)` no longer use the old
     scalar light approximation or CPU-baked `Direction.getShade` RGB. The
-    ITEMS_FLAT and ENTITY_IN_UI have
-    pipeline-state expression but wait for the corresponding GUI flat /
-    entity-in-UI item/entity submission surfaces. The dropped-item 3D model
+    ITEMS_FLAT and ENTITY_IN_UI have pipeline-state expression but wait for the
+    corresponding P1 GUI flat / entity-in-UI item/entity submission surfaces.
+    The dropped-item 3D model
     path and the legacy item-entity / thrown-item billboard path now sample the
     entity light probe through `WorldStore`, keep the vanilla full-bright
     fallback for missing chunk light, and pass shader-space `[block, sky]`
@@ -2023,8 +2026,8 @@ When an agent does any of the following, update this file in the same slice:
         renderer now carries vanilla `Lighting.Entry` light directions in the
         camera uniform; world item-model and texture-backed entity draws use
         LEVEL default/nether directions, and GUI 3D block-item draws use
-        ITEMS_3D. Remaining lighting surface work is GUI flat and
-        entity-in-UI item/entity contexts.
+        ITEMS_3D. Remaining GUI flat and entity-in-UI item/entity lighting
+        contexts are deferred to P1 GUI surface work.
     - thrown-item projectiles (egg, snowball, ender pearl, eye of ender, splash/lingering potion,
       experience bottle, large fireball, small fireball) as camera-facing item-icon billboards on the
       same path: vanilla's `ThrownItemRenderer` draws each as the item sprite of its carried
@@ -3225,8 +3228,8 @@ When an agent does any of the following, update this file in the same slice:
       alpha-blended translucent GPU bucket. Invisible glowing slime now records the
       vanilla base and order-1 `SlimeOuterLayer` outline submissions with
       `outlineColor` metadata and static-atlas GPU outline bucket geometry; particle/audio coupling, broader
-      lighting presentation, crumbling, and full render-graph sorting parity
-      remain unsupported
+      lighting presentation, crumbling, and finer transparency target/resource
+      polish remain unsupported
     - magma cube entities as renderer-owned vanilla 26.1
       `MagmaCubeModel.createBodyLayer()` segment/inside-cube geometry, official
       `textures/entity/slime/magmacube.png` texture reference, renderer
@@ -3240,7 +3243,7 @@ When an agent does any of the following, update this file in the same slice:
       and official PNG atlas upload/bind/sample path; the full-bright block light
       (`MagmaCubeRenderer.getBlockLightLevel = 15`) IS now applied (`entity_light_coords`).
       Particle/audio coupling, broader lighting presentation, crumbling, and
-      full render-graph sorting parity remain unsupported
+      finer transparency target/resource polish remain unsupported
     - ghast entities as renderer-owned vanilla 26.1 `GhastModel.createBodyLayer()`
       geometry: the 16x16x16 body at y 17.6 plus the nine tentacles at y 24.6,
       whose lengths are the fixed-seed `RandomSource(1660L)` (`nextInt(7) + 8`,
