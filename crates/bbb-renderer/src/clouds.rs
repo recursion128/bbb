@@ -1,3 +1,4 @@
+use anyhow::{anyhow, bail, Result};
 use wgpu::util::DeviceExt;
 
 use crate::gpu::DEPTH_FORMAT;
@@ -5,7 +6,9 @@ use crate::gpu::DEPTH_FORMAT;
 pub const VANILLA_DEFAULT_CLOUD_COLOR: [f32; 4] = [0.8, 0.8, 0.8, 1.0];
 pub const VANILLA_DEFAULT_CLOUD_HEIGHT: f32 = 192.33;
 
+const CLOUD_CELL_SIZE_IN_BLOCKS: f32 = 12.0;
 const CLOUD_PRESENTATION_HALF_EXTENT: f32 = 2048.0;
+const VANILLA_CLOUD_EMPTY_ALPHA_THRESHOLD: u8 = 10;
 
 const CLOUD_SHADER: &str = r#"
 struct Camera {
@@ -120,11 +123,25 @@ impl CloudEnvironment {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CloudTextureImage {
+    pub width: u32,
+    pub height: u32,
+    pub rgba: Vec<u8>,
+}
+
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 struct CloudVertex {
     position: [f32; 3],
     color: [f32; 4],
+}
+
+#[derive(Debug)]
+pub(super) struct CloudTextureData {
+    width: usize,
+    height: usize,
+    non_empty_cells: Vec<bool>,
 }
 
 pub(super) struct CloudGpu {
@@ -187,8 +204,9 @@ pub(super) fn create_cloud_pipeline(
 pub(super) fn create_cloud_gpu(
     device: &wgpu::Device,
     environment: CloudEnvironment,
+    texture: Option<&CloudTextureData>,
 ) -> Option<CloudGpu> {
-    let vertices = cloud_vertices(environment);
+    let vertices = cloud_vertices(environment, texture);
     if vertices.is_empty() {
         return None;
     }
@@ -203,12 +221,43 @@ pub(super) fn create_cloud_gpu(
     })
 }
 
-fn cloud_vertices(environment: CloudEnvironment) -> Vec<CloudVertex> {
+pub(super) fn create_cloud_texture_data(image: &CloudTextureImage) -> Result<CloudTextureData> {
+    validate_cloud_texture_image(image)?;
+    let cell_count = (image.width as usize)
+        .checked_mul(image.height as usize)
+        .ok_or_else(|| anyhow!("cloud texture cell count overflow"))?;
+    let mut non_empty_cells = Vec::with_capacity(cell_count);
+    for pixel in image.rgba.chunks_exact(4) {
+        non_empty_cells.push(pixel[3] >= VANILLA_CLOUD_EMPTY_ALPHA_THRESHOLD);
+    }
+    Ok(CloudTextureData {
+        width: image.width as usize,
+        height: image.height as usize,
+        non_empty_cells,
+    })
+}
+
+fn cloud_vertices(
+    environment: CloudEnvironment,
+    texture: Option<&CloudTextureData>,
+) -> Vec<CloudVertex> {
     let environment = environment.sanitized();
     if !environment.is_visible() {
         return Vec::new();
     }
 
+    if let Some(texture) = texture {
+        return flat_cloud_cell_vertices(
+            environment,
+            texture,
+            vanilla_cloud_radius_cells(CLOUD_PRESENTATION_HALF_EXTENT),
+        );
+    }
+
+    basic_cloud_plane_vertices(environment)
+}
+
+fn basic_cloud_plane_vertices(environment: CloudEnvironment) -> Vec<CloudVertex> {
     let y = environment.height;
     let extent = CLOUD_PRESENTATION_HALF_EXTENT;
     let quad = [
@@ -232,6 +281,115 @@ fn cloud_vertices(environment: CloudEnvironment) -> Vec<CloudVertex> {
     vec![quad[0], quad[1], quad[2], quad[0], quad[2], quad[3]]
 }
 
+fn flat_cloud_cell_vertices(
+    environment: CloudEnvironment,
+    texture: &CloudTextureData,
+    radius_cells: i32,
+) -> Vec<CloudVertex> {
+    let radius_cells = radius_cells.max(0);
+    let mut vertices = Vec::new();
+    for ring in 0..=2 * radius_cells {
+        for relative_cell_x in -ring..=ring {
+            let relative_cell_z = ring - relative_cell_x.abs();
+            if relative_cell_z >= 0
+                && relative_cell_z <= radius_cells
+                && relative_cell_x * relative_cell_x + relative_cell_z * relative_cell_z
+                    <= radius_cells * radius_cells
+            {
+                if relative_cell_z != 0 {
+                    append_flat_cloud_cell_if_non_empty(
+                        &mut vertices,
+                        environment,
+                        texture,
+                        relative_cell_x,
+                        -relative_cell_z,
+                    );
+                }
+                append_flat_cloud_cell_if_non_empty(
+                    &mut vertices,
+                    environment,
+                    texture,
+                    relative_cell_x,
+                    relative_cell_z,
+                );
+            }
+        }
+    }
+    vertices
+}
+
+fn append_flat_cloud_cell_if_non_empty(
+    vertices: &mut Vec<CloudVertex>,
+    environment: CloudEnvironment,
+    texture: &CloudTextureData,
+    relative_cell_x: i32,
+    relative_cell_z: i32,
+) {
+    if !texture.is_non_empty(relative_cell_x, relative_cell_z) {
+        return;
+    }
+    let x0 = relative_cell_x as f32 * CLOUD_CELL_SIZE_IN_BLOCKS;
+    let z0 = relative_cell_z as f32 * CLOUD_CELL_SIZE_IN_BLOCKS;
+    let x1 = x0 + CLOUD_CELL_SIZE_IN_BLOCKS;
+    let z1 = z0 + CLOUD_CELL_SIZE_IN_BLOCKS;
+    let y = environment.height;
+    let quad = [
+        CloudVertex {
+            position: [x1, y, z0],
+            color: environment.color,
+        },
+        CloudVertex {
+            position: [x1, y, z1],
+            color: environment.color,
+        },
+        CloudVertex {
+            position: [x0, y, z1],
+            color: environment.color,
+        },
+        CloudVertex {
+            position: [x0, y, z0],
+            color: environment.color,
+        },
+    ];
+    vertices.extend([quad[0], quad[1], quad[2], quad[0], quad[2], quad[3]]);
+}
+
+impl CloudTextureData {
+    fn is_non_empty(&self, cell_x: i32, cell_z: i32) -> bool {
+        let x = cell_x.rem_euclid(self.width as i32) as usize;
+        let z = cell_z.rem_euclid(self.height as i32) as usize;
+        self.non_empty_cells[x + z * self.width]
+    }
+}
+
+fn vanilla_cloud_radius_cells(radius_blocks: f32) -> i32 {
+    (radius_blocks / CLOUD_CELL_SIZE_IN_BLOCKS).ceil() as i32
+}
+
+fn validate_cloud_texture_image(image: &CloudTextureImage) -> Result<()> {
+    if image.width == 0 || image.height == 0 {
+        bail!(
+            "cloud texture dimensions must be non-zero, got {}x{}",
+            image.width,
+            image.height
+        );
+    }
+    let expected = (image.width as usize)
+        .checked_mul(image.height as usize)
+        .and_then(|pixels| pixels.checked_mul(4))
+        .ok_or_else(|| anyhow!("cloud texture byte count overflow"))?;
+    if image.rgba.len() != expected {
+        bail!(
+            "cloud texture has {} RGBA bytes, expected {} for {}x{}",
+            image.rgba.len(),
+            expected,
+            image.width,
+            image.height
+        );
+    }
+    Ok(())
+}
+
 fn sanitize_unit(value: f32) -> f32 {
     if value.is_finite() {
         value.clamp(0.0, 1.0)
@@ -251,8 +409,11 @@ fn sanitize_height(value: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::{
-        cloud_vertices, CloudEnvironment, CLOUD_PRESENTATION_HALF_EXTENT, CLOUD_SHADER,
-        VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
+        basic_cloud_plane_vertices, cloud_vertices, create_cloud_texture_data,
+        flat_cloud_cell_vertices, vanilla_cloud_radius_cells, CloudEnvironment, CloudTextureImage,
+        CLOUD_CELL_SIZE_IN_BLOCKS, CLOUD_PRESENTATION_HALF_EXTENT, CLOUD_SHADER,
+        VANILLA_CLOUD_EMPTY_ALPHA_THRESHOLD, VANILLA_DEFAULT_CLOUD_COLOR,
+        VANILLA_DEFAULT_CLOUD_HEIGHT,
     };
 
     #[test]
@@ -266,7 +427,7 @@ mod tests {
 
     #[test]
     fn cloud_vertices_build_camera_centered_vanilla_height_plane() {
-        let vertices = cloud_vertices(CloudEnvironment::overworld_default());
+        let vertices = cloud_vertices(CloudEnvironment::overworld_default(), None);
 
         assert_eq!(vertices.len(), 6);
         assert_eq!(
@@ -290,12 +451,159 @@ mod tests {
 
     #[test]
     fn cloud_vertices_skip_alpha_zero_environment() {
-        assert!(cloud_vertices(CloudEnvironment::disabled()).is_empty());
-        assert!(cloud_vertices(CloudEnvironment::with_color_and_height(
-            [1.0, 1.0, 1.0, 0.0],
-            VANILLA_DEFAULT_CLOUD_HEIGHT,
-        ))
+        assert!(cloud_vertices(CloudEnvironment::disabled(), None).is_empty());
+        assert!(cloud_vertices(
+            CloudEnvironment::with_color_and_height(
+                [1.0, 1.0, 1.0, 0.0],
+                VANILLA_DEFAULT_CLOUD_HEIGHT,
+            ),
+            None
+        )
         .is_empty());
+    }
+
+    #[test]
+    fn cloud_texture_data_uses_vanilla_alpha_empty_threshold() {
+        let data = create_cloud_texture_data(&CloudTextureImage {
+            width: 2,
+            height: 1,
+            rgba: vec![
+                0,
+                0,
+                0,
+                VANILLA_CLOUD_EMPTY_ALPHA_THRESHOLD - 1,
+                0,
+                0,
+                0,
+                VANILLA_CLOUD_EMPTY_ALPHA_THRESHOLD,
+            ],
+        })
+        .unwrap();
+
+        assert!(!data.is_non_empty(0, 0));
+        assert!(data.is_non_empty(1, 0));
+        assert!(data.is_non_empty(-1, 0));
+    }
+
+    #[test]
+    fn flat_cloud_cell_vertices_use_uploaded_cloud_texture_cells() {
+        let texture = create_cloud_texture_data(&CloudTextureImage {
+            width: 2,
+            height: 2,
+            rgba: vec![
+                0, 0, 0, 255, 0, 0, 0, 0, //
+                0, 0, 0, 0, 0, 0, 0, 0,
+            ],
+        })
+        .unwrap();
+        let vertices = flat_cloud_cell_vertices(CloudEnvironment::overworld_default(), &texture, 1);
+
+        assert_eq!(vertices.len(), 6);
+        assert_eq!(
+            vertices[0].position,
+            [CLOUD_CELL_SIZE_IN_BLOCKS, VANILLA_DEFAULT_CLOUD_HEIGHT, 0.0]
+        );
+        assert_eq!(
+            vertices[2].position,
+            [0.0, VANILLA_DEFAULT_CLOUD_HEIGHT, CLOUD_CELL_SIZE_IN_BLOCKS]
+        );
+        assert_eq!(vertices[0].color, VANILLA_DEFAULT_CLOUD_COLOR);
+    }
+
+    #[test]
+    fn cloud_vertices_falls_back_to_basic_plane_without_cloud_texture() {
+        assert_eq!(
+            cloud_vertices(CloudEnvironment::overworld_default(), None),
+            basic_cloud_plane_vertices(CloudEnvironment::overworld_default())
+        );
+    }
+
+    #[test]
+    fn vanilla_cloud_radius_matches_cloud_renderer_cell_size() {
+        assert_eq!(
+            vanilla_cloud_radius_cells(CLOUD_PRESENTATION_HALF_EXTENT),
+            (CLOUD_PRESENTATION_HALF_EXTENT / CLOUD_CELL_SIZE_IN_BLOCKS).ceil() as i32
+        );
+    }
+
+    #[test]
+    fn cloud_texture_rejects_invalid_rgba_dimensions() {
+        let err = create_cloud_texture_data(&CloudTextureImage {
+            width: 1,
+            height: 1,
+            rgba: vec![0, 0, 0],
+        })
+        .unwrap_err();
+
+        assert!(err.to_string().contains("expected 4 for 1x1"));
+        assert!(create_cloud_texture_data(&CloudTextureImage {
+            width: 0,
+            height: 1,
+            rgba: Vec::new(),
+        })
+        .is_err());
+    }
+
+    #[test]
+    fn cloud_vertices_skip_when_uploaded_texture_has_no_cells() {
+        let texture = create_cloud_texture_data(&CloudTextureImage {
+            width: 1,
+            height: 1,
+            rgba: vec![1, 1, 1, VANILLA_CLOUD_EMPTY_ALPHA_THRESHOLD - 1],
+        })
+        .unwrap();
+
+        assert!(cloud_vertices(CloudEnvironment::overworld_default(), Some(&texture)).is_empty());
+    }
+
+    #[test]
+    fn cloud_vertices_skip_alpha_zero_environment_with_texture() {
+        let texture = create_cloud_texture_data(&CloudTextureImage {
+            width: 1,
+            height: 1,
+            rgba: vec![0, 0, 0, 255],
+        })
+        .unwrap();
+        assert!(cloud_vertices(
+            CloudEnvironment::with_color_and_height(
+                [1.0, 1.0, 1.0, 0.0],
+                VANILLA_DEFAULT_CLOUD_HEIGHT,
+            ),
+            Some(&texture)
+        )
+        .is_empty());
+    }
+
+    #[test]
+    fn cloud_vertices_keep_basic_plane_extent_constant() {
+        let vertices = basic_cloud_plane_vertices(CloudEnvironment::overworld_default());
+
+        assert_eq!(
+            vertices[0].position,
+            [
+                -CLOUD_PRESENTATION_HALF_EXTENT,
+                VANILLA_DEFAULT_CLOUD_HEIGHT,
+                -CLOUD_PRESENTATION_HALF_EXTENT,
+            ]
+        );
+    }
+
+    #[test]
+    fn cloud_vertices_do_not_use_texture_color_for_flat_cells() {
+        let texture = create_cloud_texture_data(&CloudTextureImage {
+            width: 1,
+            height: 1,
+            rgba: vec![255, 0, 0, 255],
+        })
+        .unwrap();
+        let environment = CloudEnvironment::with_color_and_height(
+            [0.25, 0.5, 0.75, 1.0],
+            VANILLA_DEFAULT_CLOUD_HEIGHT,
+        );
+        let vertices = flat_cloud_cell_vertices(environment, &texture, 0);
+
+        assert_eq!(vertices.len(), 6);
+        assert_eq!(vertices[0].color, environment.color);
     }
 
     #[test]

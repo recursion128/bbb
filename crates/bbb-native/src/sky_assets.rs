@@ -1,8 +1,9 @@
 use anyhow::{Context, Result};
 use bbb_pack::{PackRoots, ResourceLocation, SpriteImage};
-use bbb_renderer::{CelestialTextureImage, CelestialTextureKind};
+use bbb_renderer::{CelestialTextureImage, CelestialTextureKind, CloudTextureImage};
 
 const END_SKY_TEXTURE: &str = "textures/environment/end_sky.png";
+const CLOUD_TEXTURE: &str = "textures/environment/clouds.png";
 const CELESTIAL_TEXTURES: &[(CelestialTextureKind, &str, &str)] = &[
     (
         CelestialTextureKind::Sun,
@@ -67,6 +68,9 @@ pub(crate) fn load_sky_textures(renderer: &mut bbb_renderer::Renderer, roots: Op
             "continuing without vanilla sun/moon celestial textures"
         );
     }
+    if let Err(err) = try_load_cloud_texture(renderer, roots) {
+        tracing::warn!(?err, "continuing without vanilla cloud texture");
+    }
 }
 
 fn try_load_end_sky_texture(
@@ -89,6 +93,13 @@ fn try_load_celestial_textures(
     Ok(())
 }
 
+fn try_load_cloud_texture(renderer: &mut bbb_renderer::Renderer, roots: &PackRoots) -> Result<()> {
+    let image = load_cloud_image(roots)?;
+    renderer.upload_cloud_texture(&image)?;
+    tracing::info!("loaded vanilla cloud texture");
+    Ok(())
+}
+
 fn load_end_sky_image(roots: &PackRoots) -> Result<SpriteImage> {
     let location = ResourceLocation::parse(END_SKY_TEXTURE)?;
     let resource = roots
@@ -96,6 +107,20 @@ fn load_end_sky_image(roots: &PackRoots) -> Result<SpriteImage> {
         .get_resource(&location)
         .with_context(|| format!("missing End sky texture minecraft:{END_SKY_TEXTURE}"))?;
     SpriteImage::from_png_file("minecraft:textures/environment/end_sky", resource.path)
+}
+
+fn load_cloud_image(roots: &PackRoots) -> Result<CloudTextureImage> {
+    let location = ResourceLocation::parse(CLOUD_TEXTURE)?;
+    let resource = roots
+        .resource_stack()
+        .get_resource(&location)
+        .with_context(|| format!("missing cloud texture minecraft:{CLOUD_TEXTURE}"))?;
+    let image = SpriteImage::from_png_file("minecraft:textures/environment/clouds", resource.path)?;
+    Ok(CloudTextureImage {
+        width: image.width,
+        height: image.height,
+        rgba: image.rgba,
+    })
 }
 
 fn load_celestial_images(roots: &PackRoots) -> Result<Vec<CelestialTextureImage>> {
@@ -185,6 +210,28 @@ mod tests {
         assert!(images
             .iter()
             .all(|image| (image.width, image.height) == (8, 8)));
+        std::fs::remove_dir_all(temp).unwrap();
+    }
+
+    #[test]
+    fn loads_vanilla_cloud_texture_from_resource_stack() {
+        let temp = unique_temp_dir("bbb-cloud-texture");
+        let sources = temp.join("sources").join("26.1");
+        let texture_path = sources.join("assets").join("minecraft").join(CLOUD_TEXTURE);
+        std::fs::create_dir_all(texture_path.parent().unwrap()).unwrap();
+        write_png(&texture_path, 4, 2);
+        let roots = PackRoots {
+            mc_code_root: temp.clone(),
+            sources_dir: sources,
+            assets_dir: temp.join("unused-assets"),
+            generated_assets_dir: None,
+            resource_pack_dirs: Vec::new(),
+        };
+
+        let image = load_cloud_image(&roots).unwrap();
+
+        assert_eq!((image.width, image.height), (4, 2));
+        assert_eq!(image.rgba.len(), 4 * 2 * 4);
         std::fs::remove_dir_all(temp).unwrap();
     }
 

@@ -12,7 +12,10 @@ use crate::{
         sanitize_lightmap_block_factor, sanitize_lightmap_brightness_factor, CameraPose,
         CameraUniform, ClearColor, FogEnvironment, LightmapEnvironment, TerrainBounds,
     },
-    clouds::{create_cloud_gpu, create_cloud_pipeline, CloudEnvironment, CloudGpu},
+    clouds::{
+        create_cloud_gpu, create_cloud_pipeline, create_cloud_texture_data, CloudEnvironment,
+        CloudGpu, CloudTextureData, CloudTextureImage,
+    },
     entity_models::{
         create_entity_model_eyes_pipeline, create_entity_model_outline_cull_pipeline,
         create_entity_model_outline_pipeline, create_entity_model_pipeline,
@@ -126,6 +129,7 @@ pub struct Renderer {
     pub(super) sky_celestials: Option<CelestialGpu>,
     pub(super) sky_stars: Option<StarGpu>,
     pub(super) celestial_atlas: Option<CelestialAtlasGpu>,
+    pub(super) cloud_texture: Option<CloudTextureData>,
     pub(super) clouds: Option<CloudGpu>,
     pub(super) block_destroy_overlays: Option<BlockDestroyOverlaysGpu>,
     pub(super) entity_model_mesh: Option<EntityModelMeshGpu>,
@@ -535,6 +539,7 @@ impl Renderer {
             sky_celestials: None,
             sky_stars: None,
             celestial_atlas: None,
+            cloud_texture: None,
             clouds: None,
             block_destroy_overlays: None,
             entity_model_mesh: None,
@@ -1042,7 +1047,7 @@ impl Renderer {
             return;
         }
         self.cloud_environment = environment;
-        self.clouds = create_cloud_gpu(&self.device, environment);
+        self.clouds = create_cloud_gpu(&self.device, environment, self.cloud_texture.as_ref());
     }
 
     pub fn upload_end_sky_texture(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
@@ -1068,6 +1073,16 @@ impl Renderer {
             .celestial_atlas
             .as_ref()
             .and_then(|atlas| create_celestial_gpu(&self.device, self.sky_environment, atlas));
+        Ok(())
+    }
+
+    pub fn upload_cloud_texture(&mut self, image: &CloudTextureImage) -> Result<()> {
+        self.cloud_texture = Some(create_cloud_texture_data(image)?);
+        self.clouds = create_cloud_gpu(
+            &self.device,
+            self.cloud_environment,
+            self.cloud_texture.as_ref(),
+        );
         Ok(())
     }
 
