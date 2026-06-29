@@ -546,7 +546,9 @@ When an agent does any of the following, update this file in the same slice:
     closed the remaining P0 visual lighting blocker, so none remains a narrow
     CPU submission graph or P0 visual blocker. The latest `rg residual` /
     `rg fallback` / `rg unsupported` rerun counts, including the post-P0
-    execution audit, are tracked in `goal.md`.
+    execution audit and the P0 pipeline flow-reset audit, are tracked in
+    `goal.md`; unverified P1 detail WIP is kept outside the narrow closeout
+    unless a rerun proves it directly blocks the hard checklist.
   - Replace proxies with full extraction from canonical world and pack data:
     - entity bounds
     - dropped-item icons (3D block/item model renderer in progress — see the
