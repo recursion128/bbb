@@ -1485,6 +1485,9 @@ impl EntityStore {
             allay_spinning_progress: client_animations
                 .animations
                 .allay_spinning_progress(partial_ticks),
+            allay_holding_item_progress: client_animations
+                .animations
+                .allay_holding_item_progress(partial_ticks),
             // Vanilla `{Illager,Piglin}RenderState.ticksUsingItem` for the `CROSSBOW_CHARGE` draw,
             // reconstructed from the shared charge counter (the pillager and the regular piglin both draw
             // crossbows). `0.0` for anything not mid-draw (the renderer only reads it while charging).
@@ -2236,13 +2239,16 @@ impl EntityStore {
     ) {
         let wither_head_targets_by_id = self.wither_head_targets_by_id();
         for _ in 0..ticks {
-            for (_, (identity, transform, mount, metadata, animations)) in self.ecs.query_mut::<(
-                &EntityIdentity,
-                &EntityTransform,
-                &EntityMount,
-                &EntityMetadata,
-                &mut EntityClientAnimations,
-            )>() {
+            for (_, (identity, transform, mount, metadata, equipment, animations)) in
+                self.ecs.query_mut::<(
+                    &EntityIdentity,
+                    &EntityTransform,
+                    &EntityMount,
+                    &EntityMetadata,
+                    Option<&EntityEquipment>,
+                    &mut EntityClientAnimations,
+                )>()
+            {
                 // Vanilla `LivingEntity.calculateEntityAnimation` gates the limb
                 // swing on `!isPassenger()` and scales the position by `3` for a
                 // baby (`updateWalkAnimation`).
@@ -2265,6 +2271,12 @@ impl EntityStore {
                     entity_data_pose(&metadata.data_values) == VANILLA_POSE_STANDING_ID;
                 let camel_is_dashing = camel_is_dashing(&metadata.data_values);
                 let allay_is_dancing = allay_is_dancing(&metadata.data_values);
+                let allay_has_item_in_hand = equipment.is_some_and(|equipment| {
+                    equipment.equipment.iter().any(|update| {
+                        update.slot == ProtocolEquipmentSlot::MainHand
+                            && update.item.item_id.is_some()
+                    })
+                });
                 let axolotl_is_playing_dead = axolotl_is_playing_dead(&metadata.data_values);
                 let creaking_is_tearing_down = creaking_is_tearing_down(&metadata.data_values);
                 let pillager_is_charging_crossbow =
@@ -2292,6 +2304,7 @@ impl EntityStore {
                     camel_is_standing,
                     camel_is_dashing,
                     allay_is_dancing,
+                    allay_has_item_in_hand,
                     axolotl_is_playing_dead,
                     creaking_is_tearing_down,
                     pillager_is_charging_crossbow,

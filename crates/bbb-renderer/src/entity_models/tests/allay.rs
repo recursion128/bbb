@@ -108,6 +108,23 @@ fn allay_setup_anim_constants_and_curves_match_vanilla() {
     assert!((allay_arm_idle_bob_amount(age, 0.0) - expected_arm).abs() < 1.0e-6);
     // While flying the arm bob collapses to the rest angle.
     assert!((allay_arm_idle_bob_amount(age, 0.3) - 0.436_332_32).abs() < 1.0e-6);
+
+    // `holdingAnimationProgress` scales the idle arm bob out and raises/turns both arms inward:
+    // `armFlyingRotX = holding * lerp(flyingFactor, -π/3, -1.134464)` and
+    // `arm.yRot = ±0.27925268 * holding`.
+    assert!((ALLAY_HELD_ITEM_ARM_Y_ROT - 0.279_252_68).abs() < 1.0e-6);
+    assert!(
+        (allay_arm_z_rot_amount(age, 0.0, 1.0) - ALLAY_REST_ANGLE).abs() < 1.0e-6,
+        "full holding progress suppresses the idle bob amplitude"
+    );
+    assert!(
+        (allay_arm_holding_x_rot(0.0, 1.0) + std::f32::consts::FRAC_PI_3).abs() < 1.0e-6,
+        "idle allays raise arms to -π/3"
+    );
+    assert!(
+        (allay_arm_holding_x_rot(0.3, 1.0) - ALLAY_MAX_HAND_HOLDING_ITEM_X_ROT).abs() < 1.0e-6,
+        "flying allays use the deeper held-item arm pitch"
+    );
 }
 
 #[test]
@@ -144,6 +161,21 @@ fn allay_wings_and_arms_animate_with_age() {
     let flapping = entity_model_mesh(&[base.with_age_in_ticks(7.0)]);
     assert_eq!(still.vertices.len(), flapping.vertices.len());
     assert_ne!(still.vertices, flapping.vertices, "the wings flap with age");
+}
+
+#[test]
+fn allay_holding_item_progress_poses_both_arms() {
+    // Vanilla `AllayModel.setupAnim` uses `holdingAnimationProgress` to pitch both
+    // arms up, turn them inward, and reduce the empty-hand idle arm bob. Same age
+    // and walk state, so only the held-item arm blend changes the mesh.
+    let base = EntityModelInstance::allay(805, [0.0, 64.0, 0.0], 0.0).with_age_in_ticks(9.0);
+    let empty_handed = entity_model_mesh(&[base]);
+    let holding = entity_model_mesh(&[base.with_allay_holding_item_progress(1.0)]);
+    assert_eq!(empty_handed.vertices.len(), holding.vertices.len());
+    assert_ne!(
+        empty_handed.vertices, holding.vertices,
+        "holdingAnimationProgress raises and turns the allay arms"
+    );
 }
 
 #[test]

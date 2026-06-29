@@ -504,6 +504,8 @@ pub struct EntityClientAnimationState {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub allay_dance: Option<AllayDanceAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub allay_holding_item: Option<AllayHoldingItemAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub crossbow_charge: Option<CrossbowChargeAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub axolotl: Option<AxolotlAnimationState>,
@@ -2074,6 +2076,47 @@ impl AllayDanceAnimationState {
         (self.spinning_animation_ticks0
             + (self.spinning_animation_ticks - self.spinning_animation_ticks0) * partial_tick)
             / 15.0
+    }
+}
+
+/// Canonical client-side allay held-item accumulator, mirroring vanilla `Allay`
+/// (`holdingItemAnimationTicks` / `holdingItemAnimationTicks0`). The client raises
+/// the counter toward `5` while `hasItemInHand()` is true and lowers it toward `0`
+/// otherwise; `AllayModel.setupAnim` consumes the lerped `0..1` progress for both
+/// arm rotations.
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
+pub struct AllayHoldingItemAnimationState {
+    /// Vanilla `Allay.holdingItemAnimationTicks`.
+    #[serde(default)]
+    pub holding_item_animation_ticks: f32,
+    /// Vanilla `Allay.holdingItemAnimationTicks0` (the previous-tick counter, the lerp endpoint).
+    #[serde(default)]
+    pub holding_item_animation_ticks0: f32,
+}
+
+impl AllayHoldingItemAnimationState {
+    /// Advances one client tick of `Allay.tick`'s held-item accumulator.
+    fn advance_client_tick(&mut self, has_item_in_hand: bool) {
+        self.holding_item_animation_ticks0 = self.holding_item_animation_ticks;
+        if has_item_in_hand {
+            self.holding_item_animation_ticks =
+                (self.holding_item_animation_ticks + 1.0).clamp(0.0, 5.0);
+        } else {
+            self.holding_item_animation_ticks =
+                (self.holding_item_animation_ticks - 1.0).clamp(0.0, 5.0);
+        }
+    }
+
+    fn is_settled(&self) -> bool {
+        self.holding_item_animation_ticks == 0.0 && self.holding_item_animation_ticks0 == 0.0
+    }
+
+    /// Vanilla `Allay.getHoldingItemAnimationProgress(partialTick)`.
+    fn holding_item_progress(&self, partial_tick: f32) -> f32 {
+        (self.holding_item_animation_ticks0
+            + (self.holding_item_animation_ticks - self.holding_item_animation_ticks0)
+                * partial_tick)
+            / 5.0
     }
 }
 
@@ -4351,6 +4394,14 @@ impl EntityClientAnimationState {
             .map_or(0.0, |state| state.spinning_progress(partial_tick))
     }
 
+    /// Vanilla `AllayRenderState.holdingAnimationProgress`
+    /// (`Allay.getHoldingItemAnimationProgress(partialTick)`): the `0..1` arm-raise
+    /// blend driven by whether the synced main hand is non-empty.
+    pub fn allay_holding_item_progress(&self, partial_tick: f32) -> f32 {
+        self.allay_holding_item
+            .map_or(0.0, |state| state.holding_item_progress(partial_tick))
+    }
+
     /// Vanilla `IllagerRenderState.ticksUsingItem` (`getTicksUsingItem(partialTicks)`) for the pillager's
     /// `CROSSBOW_CHARGE` draw, reconstructed from the charge counter. `0.0` for a pillager that is not
     /// charging and every other entity.
@@ -4833,6 +4884,9 @@ impl EntityClientAnimationState {
         // The synced `Allay.DATA_DANCING` boolean (`isDancing()`), read from the entity metadata in the
         // tick loop ([`allay_is_dancing`]). `false` for entities that do not consume it.
         allay_is_dancing: bool,
+        // Vanilla `Allay.hasItemInHand()`, resolved from synced main-hand equipment before the tick.
+        // `false` for entities that do not consume it.
+        allay_has_item_in_hand: bool,
         // The synced `Axolotl.DATA_PLAYING_DEAD` boolean (`isPlayingDead()`), read from the entity
         // metadata in the tick loop ([`axolotl_is_playing_dead`]). `false` for entities that do not
         // consume it.
@@ -5169,6 +5223,13 @@ impl EntityClientAnimationState {
                 self.allay_dance
                     .get_or_insert_with(AllayDanceAnimationState::default)
                     .advance_client_tick(allay_is_dancing);
+                let holding_item = self
+                    .allay_holding_item
+                    .get_or_insert_with(AllayHoldingItemAnimationState::default);
+                holding_item.advance_client_tick(allay_has_item_in_hand);
+                if holding_item.is_settled() {
+                    self.allay_holding_item = None;
+                }
             }
             VANILLA_ENTITY_TYPE_PILLAGER_ID => {
                 // Vanilla `Pillager` `CROSSBOW_CHARGE`: while `isChargingCrossbow()` is set, count up the

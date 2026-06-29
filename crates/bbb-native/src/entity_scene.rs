@@ -1599,6 +1599,7 @@ fn entity_model_instance(
         .with_allay_dancing(source.allay_dancing)
         .with_allay_spinning(source.allay_spinning)
         .with_allay_spinning_progress(source.allay_spinning_progress)
+        .with_allay_holding_item_progress(source.allay_holding_item_progress)
         .with_axolotl_playing_dead_factor(source.axolotl_playing_dead_factor)
         .with_axolotl_in_water_factor(source.axolotl_in_water_factor)
         .with_axolotl_on_ground_factor(source.axolotl_on_ground_factor)
@@ -4480,6 +4481,44 @@ mod tests {
         assert!(
             progress > 0.0,
             "the projected spin ramp drives the body spin: {progress}"
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_allay_holding_item_progress_from_world() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            97,
+            VANILLA_ENTITY_TYPE_ALLAY_ID,
+            [1.0, 64.0, -2.0],
+        ));
+
+        let holding_progress = |world: &WorldStore, partial: f32| {
+            entity_model_instances_from_world_at_partial_tick(world, None, partial)
+                .iter()
+                .find(|instance| instance.entity_id == 97)
+                .map(|instance| instance.render_state.allay_holding_item_progress)
+        };
+
+        assert_eq!(holding_progress(&world, 1.0), Some(0.0));
+        assert!(world.apply_set_equipment(SetEquipment {
+            entity_id: 97,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::MainHand,
+                item: ItemStackSummary {
+                    item_id: Some(42),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            }],
+        }));
+        world.advance_entity_client_animations(3);
+
+        let progress = holding_progress(&world, 1.0)
+            .expect("the allay projects a renderer instance after ticking");
+        assert!(
+            (progress - 0.6).abs() < 1.0e-6,
+            "native forwards Allay.getHoldingItemAnimationProgress into EntityModelRenderState: {progress}"
         );
     }
 

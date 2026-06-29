@@ -1089,6 +1089,13 @@ pub struct EntityModelSourceState {
     /// every other entity.
     #[serde(default)]
     pub allay_spinning_progress: f32,
+    /// Vanilla `AllayRenderState.holdingAnimationProgress`
+    /// (`Allay.getHoldingItemAnimationProgress(partialTick)`): a `0..1` client-side
+    /// ease-in/out driven by whether the allay has a non-empty main-hand item. The
+    /// model uses it to raise and turn both arms for the held item. `0.0` for an
+    /// empty-handed allay and every other entity.
+    #[serde(default)]
+    pub allay_holding_item_progress: f32,
     /// Vanilla `{Illager,Piglin}RenderState.ticksUsingItem` for the `CROSSBOW_CHARGE` draw — the
     /// reconstructed `getTicksUsingItem()` (ticks since the synced charging flag rose, + partial). The
     /// `animateCrossbowCharge` pose lerps `ticksUsingItem / maxChargeDuration` over it. Shared by the

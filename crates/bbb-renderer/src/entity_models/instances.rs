@@ -1090,6 +1090,11 @@ entity_render_state! {
     /// that cross-fades the body sway (`root.zRot`/`head` tilt scaled by `1 - progress`)
     /// into the spin. `0.0` for a non-spinning allay and every other entity.
     (with_allay_spinning_progress) allay_spinning_progress: f32 = 0.0;
+    /// Vanilla `AllayRenderState.holdingAnimationProgress`
+    /// (`Allay.getHoldingItemAnimationProgress(partialTick)`): the `0..1`
+    /// held-item arm blend that raises both arms and turns them inward. `0.0` for
+    /// an empty-handed allay and every other entity.
+    (with_allay_holding_item_progress) allay_holding_item_progress: f32 = 0.0;
     /// Vanilla `AxolotlRenderState.playingDeadFactor` (`Axolotl.playingDeadAnimator.getFactor`): the
     /// `0..1` eased blend `AdultAxolotlModel.setupPlayDeadAnimation` scales its limp-on-its-side pose
     /// by. `0.0` (awake) for every non-axolotl entity.
@@ -2558,6 +2563,7 @@ mod tests {
                 allay_dancing: false,
                 allay_spinning: false,
                 allay_spinning_progress: 0.0,
+                allay_holding_item_progress: 0.0,
                 axolotl_playing_dead_factor: 0.0,
                 axolotl_in_water_factor: 0.0,
                 axolotl_on_ground_factor: 0.0,

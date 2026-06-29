@@ -114,6 +114,15 @@ pub(in crate::entity_models) const ALLAY_WING_Y_ROT_BASE: f32 = std::f32::consts
 pub(in crate::entity_models) const ALLAY_REST_ANGLE: f32 = 0.436_332_32;
 /// Vanilla `AllayModel.setupAnim` flying body tilt `flyingFactor·π/4`.
 pub(in crate::entity_models) const ALLAY_BODY_FLYING_X_ROT: f32 = std::f32::consts::FRAC_PI_4;
+/// Vanilla `AllayModel.setupAnim` held-item arm yaw factor:
+/// `rightArm.yRot = 0.27925268·holding`, `leftArm.yRot = -0.27925268·holding`.
+pub(in crate::entity_models) const ALLAY_HELD_ITEM_ARM_Y_ROT: f32 = 0.279_252_68;
+/// Vanilla `AllayModel.setupAnim` minimum held-item arm pitch while idle:
+/// `Mth.lerp(flyingFactor, -π/3, -1.134464)`.
+pub(in crate::entity_models) const ALLAY_MIN_HAND_HOLDING_ITEM_X_ROT: f32 =
+    -std::f32::consts::FRAC_PI_3;
+/// Vanilla `AllayModel.setupAnim` maximum held-item arm pitch while flying.
+pub(in crate::entity_models) const ALLAY_MAX_HAND_HOLDING_ITEM_X_ROT: f32 = -1.134_464;
 
 /// Vanilla `AllayModel.setupAnim`: `flyingFactor = min(walkAnimationSpeed / 0.3, 1)`.
 pub(in crate::entity_models) fn allay_flying_factor(walk_animation_speed: f32) -> f32 {
@@ -153,13 +162,22 @@ pub(in crate::entity_models) fn allay_root_y(age_in_ticks: f32, walk_animation_s
     ALLAY_ROOT_BASE_Y + allay_idle_bob_speed(age_in_ticks).cos() * 0.25 * idle_bob_factor
 }
 
-/// Vanilla `AllayModel.setupAnim` non-holding arm idle roll: `armIdleBobAmount = 0.43633232 -
-/// cos(idleBobSpeed + 3π/2)·π·0.075·(1 - flyingFactor)`, with `leftArm.zRot = -amount` and
-/// `rightArm.zRot = amount`. The held-item factor (which would scale this to zero and add the
-/// `±0.27925268` arm yaw) is deferred entity-side state, so this assumes `holdingItem = 0`.
+/// Vanilla `AllayModel.setupAnim` empty-handed arm idle roll.
+#[cfg(test)]
 pub(in crate::entity_models) fn allay_arm_idle_bob_amount(
     age_in_ticks: f32,
     walk_animation_speed: f32,
+) -> f32 {
+    allay_arm_z_rot_amount(age_in_ticks, walk_animation_speed, 0.0)
+}
+
+/// Vanilla `AllayModel.setupAnim` arm roll:
+/// `armIdleBobAmount = 0.43633232 - cos(idleBobSpeed + 3π/2)·π·0.075·(1 - flyingFactor)·(1 -
+/// holdingItemFactor)`, with `leftArm.zRot = -amount` and `rightArm.zRot = amount`.
+pub(in crate::entity_models) fn allay_arm_z_rot_amount(
+    age_in_ticks: f32,
+    walk_animation_speed: f32,
+    holding_item_progress: f32,
 ) -> f32 {
     let idle_bob_factor = 1.0 - allay_flying_factor(walk_animation_speed);
     ALLAY_REST_ANGLE
@@ -167,6 +185,20 @@ pub(in crate::entity_models) fn allay_arm_idle_bob_amount(
             * std::f32::consts::PI
             * 0.075
             * idle_bob_factor
+            * (1.0 - holding_item_progress)
+}
+
+/// Vanilla `AllayModel.setupAnim` held-item arm pitch:
+/// `holdingItemFactor * Mth.lerp(flyingFactor, -π/3, -1.134464)`.
+pub(in crate::entity_models) fn allay_arm_holding_x_rot(
+    walk_animation_speed: f32,
+    holding_item_progress: f32,
+) -> f32 {
+    let flying_factor = allay_flying_factor(walk_animation_speed);
+    holding_item_progress
+        * (ALLAY_MIN_HAND_HOLDING_ITEM_X_ROT
+            + (ALLAY_MAX_HAND_HOLDING_ITEM_X_ROT - ALLAY_MIN_HAND_HOLDING_ITEM_X_ROT)
+                * flying_factor)
 }
 
 /// Vanilla `AllayModel.setupAnim` dance phase: `danceSpeed = ageInTicks·8° + walkAnimationSpeed`
@@ -183,16 +215,17 @@ const ALLAY_ROOT_POSE: PartPose = PartPose {
 };
 
 /// Applies the vanilla `AllayModel.setupAnim` pose to the unified tree: the `root` bob, the head
-/// look (or the dance head tilt + body sway/spin), the body flying tilt, the arm idle bob, and the
-/// wing flap. The held-item arms are deferred entity-side state, so this is the empty-handed pose.
-/// Every value is set absolutely each frame, reproducing the hand-walked emit exactly.
+/// look (or the dance head tilt + body sway/spin), the body flying tilt, the held-item arm blend, and
+/// the wing flap. Every value is set absolutely each frame, reproducing the hand-walked emit exactly.
 fn apply_allay_anim(root: &mut ModelPart, instance: &EntityModelInstance) {
     let age = instance.render_state.age_in_ticks;
     let walk_pos = instance.render_state.walk_animation_pos;
     let walk_speed = instance.render_state.walk_animation_speed;
     let head_pitch = instance.render_state.head_pitch.to_radians();
     let head_yaw = instance.render_state.head_yaw.to_radians();
-    let arm_bob = allay_arm_idle_bob_amount(age, walk_speed);
+    let holding_item_progress = instance.render_state.allay_holding_item_progress;
+    let arm_x = allay_arm_holding_x_rot(walk_speed, holding_item_progress);
+    let arm_z = allay_arm_z_rot_amount(age, walk_speed, holding_item_progress);
     let wing_x = allay_wing_rest_x_rot(walk_speed);
     let flap = allay_wing_flap_amount(age, walk_pos, walk_speed);
 
@@ -229,8 +262,16 @@ fn apply_allay_anim(root: &mut ModelPart, instance: &EntityModelInstance) {
 
     let body = allay_root.child_mut("body");
     body.pose.rotation = [allay_body_x_rot(walk_speed), 0.0, 0.0];
-    body.child_mut("right_arm").pose.rotation = [0.0, 0.0, arm_bob];
-    body.child_mut("left_arm").pose.rotation = [0.0, 0.0, -arm_bob];
+    body.child_mut("right_arm").pose.rotation = [
+        arm_x,
+        ALLAY_HELD_ITEM_ARM_Y_ROT * holding_item_progress,
+        arm_z,
+    ];
+    body.child_mut("left_arm").pose.rotation = [
+        arm_x,
+        -ALLAY_HELD_ITEM_ARM_Y_ROT * holding_item_progress,
+        -arm_z,
+    ];
     body.child_mut("right_wing").pose.rotation = [wing_x, -ALLAY_WING_Y_ROT_BASE + flap, 0.0];
     body.child_mut("left_wing").pose.rotation = [wing_x, ALLAY_WING_Y_ROT_BASE - flap, 0.0];
 }

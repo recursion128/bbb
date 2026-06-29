@@ -1188,8 +1188,10 @@ blocker。
   allay / phantom：
   - [x] 剩余 exact broader lighting wording 已收窄：base、eyes、outer-layer
     light/overlay metadata，以及 magma/blaze/vex/allay full-bright block-light
-    override 已由 renderer tests pin 住；剩余保留 death flip、particle/audio、
-    crumbling、allay held-item arm poses 等非 lighting 项。
+    override 已由 renderer tests pin 住；Allay `holdingAnimationProgress`
+    手臂姿态已由 world/native/renderer tests 覆盖；剩余保留 death flip、
+    particle/audio、crumbling、Allay 实际 `ItemInHandLayer` item submission 等
+    非 lighting 项。
 - Enderman：
   - [x] 旧的 broad lighting wording 已收窄：base `entityCutout` 与 eyes
     `RenderTypes.eyes` submission light/overlay metadata 已由 renderer tests

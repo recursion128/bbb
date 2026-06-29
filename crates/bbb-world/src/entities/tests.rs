@@ -11244,6 +11244,57 @@ fn allay_dancing_flag_drives_the_dance_spin_state() {
 }
 
 #[test]
+fn allay_main_hand_equipment_drives_holding_item_progress() {
+    const VANILLA_ENTITY_TYPE_ALLAY_ID: i32 = 2;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        92,
+        VANILLA_ENTITY_TYPE_ALLAY_ID,
+    ));
+
+    let holding_progress = |store: &WorldStore, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 92)
+            .unwrap()
+            .allay_holding_item_progress
+    };
+    let set_main_hand = |store: &mut WorldStore, item: ItemStackSummary| {
+        assert!(store.apply_set_equipment(ProtocolSetEquipment {
+            entity_id: 92,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::MainHand,
+                item,
+            }],
+        }));
+    };
+
+    // Vanilla `Allay.tick`: empty-handed allays keep `holdingItemAnimationTicks`
+    // settled at 0, so the projected render-state progress is inert.
+    assert_eq!(holding_progress(&store, 1.0), 0.0);
+    store.advance_entity_client_animations(2);
+    assert_eq!(holding_progress(&store, 1.0), 0.0);
+
+    // A non-empty main hand raises the held-item counter by 1 per client tick and
+    // `getHoldingItemAnimationProgress(partialTick)` divides the lerp by 5.
+    set_main_hand(&mut store, item_stack(42, 1));
+    store.advance_entity_client_animations(1);
+    assert!((holding_progress(&store, 0.5) - 0.1).abs() < 1.0e-6);
+    assert!((holding_progress(&store, 1.0) - 0.2).abs() < 1.0e-6);
+    store.advance_entity_client_animations(4);
+    assert!((holding_progress(&store, 1.0) - 1.0).abs() < 1.0e-6);
+
+    // Clearing the main hand eases the arms back down before the idle state is dropped.
+    set_main_hand(&mut store, ItemStackSummary::empty());
+    store.advance_entity_client_animations(1);
+    assert!((holding_progress(&store, 1.0) - 0.8).abs() < 1.0e-6);
+    store.advance_entity_client_animations(4);
+    assert_eq!(holding_progress(&store, 1.0), 0.0);
+}
+
+#[test]
 fn pillager_charging_crossbow_flag_drives_the_use_item_tick_counter() {
     const VANILLA_ENTITY_TYPE_PILLAGER_ID: i32 = 103;
     const PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID: u8 = 17;

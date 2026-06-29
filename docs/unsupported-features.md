@@ -3475,13 +3475,16 @@ When an agent does any of the following, update this file in the same slice:
       (`RenderTypes::entityTranslucent`) while preserving explicit `entityTranslucent`
       submission metadata for `ModelLayers.ALLAY`, texture, white tint, root transform, `order(0)`, the projected
       full-bright block-light input, and hurt/white overlay metadata before folding; it uses the
-      same animated body→arm/wing hierarchy as the colored path.
-      The held-item arm poses (`holdingAnimationProgress` scaling
-      the arm roll to zero and adding the `±0.27925268` arm yaw plus the flying-lerped arm pitch
-      and held item) remain unsupported; the constant full-bright `getBlockLightLevel` (→ 15) glow IS
-      now applied (`entity_light_coords` forces the packed block light to 15 for the allay type), and
-      renderer texture comments now point at that native light-coords source instead of treating it as
-      unimplemented.
+      same animated body→arm/wing hierarchy as the colored path. The held-item arm poses are now
+      applied: world reconstructs vanilla `holdingItemAnimationTicks` / `holdingItemAnimationTicks0`
+      from the synced non-empty main-hand equipment, native forwards
+      `holdingAnimationProgress = lerp(prev, current, partialTick) / 5`, and the renderer scales the
+      arm roll toward zero while adding the `±0.27925268` arm yaw plus the
+      `lerp(flyingFactor, -π/3, -1.134464)` arm pitch. The actual Allay `ItemInHandLayer` item
+      submission remains part of broader item-layer parity rather than this arm-pose slice. The
+      constant full-bright `getBlockLightLevel` (→ 15) glow IS now applied (`entity_light_coords`
+      forces the packed block light to 15 for the allay type), and renderer texture comments now point
+      at that native light-coords source instead of treating it as unimplemented.
       The old broader-lighting wording is stale because the base submission
       light/overlay metadata and full-bright block-light override are covered
       here, and global LightTexture / gamma parity is tracked by the completed
