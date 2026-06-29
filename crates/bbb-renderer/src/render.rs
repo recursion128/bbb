@@ -265,6 +265,80 @@ impl Renderer {
             }
         }
 
+        // Vanilla solid item features are part of FeatureRenderDispatcher.renderSolidFeatures()
+        // inside the main pass: after model/model-part features, before later outline/cloud passes,
+        // before target depth copies, and before translucent terrain. GUI item icons use the later HUD
+        // item pass instead.
+        let (block_item_vertices, block_item_indices) = self.collect_block_item_model_geometry();
+        if !block_item_indices.is_empty() {
+            self.draw_item_model_geometry(
+                &mut encoder,
+                main_view,
+                &block_item_vertices,
+                &block_item_indices,
+                &self.terrain_bind_group,
+            );
+            pipeline_switches += 1;
+            item_model_draw_calls += 1;
+        }
+        let (map_vertices, map_indices) = self.collect_item_frame_map_geometry();
+        if !map_indices.is_empty() {
+            if let Some(atlas) = &self.item_frame_map_atlas {
+                self.draw_item_model_geometry(
+                    &mut encoder,
+                    main_view,
+                    &map_vertices,
+                    &map_indices,
+                    &atlas.bind_group,
+                );
+                pipeline_switches += 1;
+                item_model_draw_calls += 1;
+            }
+        }
+        let (map_decoration_vertices, map_decoration_indices) =
+            self.collect_item_frame_map_decoration_geometry();
+        if !map_decoration_indices.is_empty() {
+            if let Some(atlas) = &self.item_frame_map_decoration_atlas {
+                self.draw_item_model_geometry(
+                    &mut encoder,
+                    main_view,
+                    &map_decoration_vertices,
+                    &map_decoration_indices,
+                    &atlas.bind_group,
+                );
+                pipeline_switches += 1;
+                item_model_draw_calls += 1;
+            }
+        }
+        let (map_text_vertices, map_text_indices) = self.collect_item_frame_map_text_geometry();
+        if !map_text_indices.is_empty() {
+            if let Some(atlas) = &self.item_frame_map_text_font_atlas {
+                self.draw_item_model_geometry(
+                    &mut encoder,
+                    main_view,
+                    &map_text_vertices,
+                    &map_text_indices,
+                    &atlas.bind_group,
+                );
+                pipeline_switches += 1;
+                item_model_draw_calls += 1;
+            }
+        }
+        let (flat_item_vertices, flat_item_indices) = self.collect_flat_item_model_geometry();
+        if !flat_item_indices.is_empty() {
+            if let Some(atlas) = &self.item_entity_atlas {
+                self.draw_item_model_geometry(
+                    &mut encoder,
+                    main_view,
+                    &flat_item_vertices,
+                    &flat_item_indices,
+                    &atlas.bind_group,
+                );
+                pipeline_switches += 1;
+                item_model_draw_calls += 1;
+            }
+        }
+
         if self.entity_model_texture_atlas.is_some()
             && (self.entity_model_outline_mesh.is_some()
                 || self.entity_model_outline_cull_mesh.is_some())
@@ -455,78 +529,6 @@ impl Renderer {
                     pass.draw(0..clouds.vertex_count, 0..1);
                     sky_draw_calls += 1;
                 }
-            }
-        }
-
-        // Vanilla item features participate in the main world pass before translucent target depth
-        // copies and before translucent terrain. GUI item icons use the later HUD item pass instead.
-        let (block_item_vertices, block_item_indices) = self.collect_block_item_model_geometry();
-        if !block_item_indices.is_empty() {
-            self.draw_item_model_geometry(
-                &mut encoder,
-                main_view,
-                &block_item_vertices,
-                &block_item_indices,
-                &self.terrain_bind_group,
-            );
-            pipeline_switches += 1;
-            item_model_draw_calls += 1;
-        }
-        let (map_vertices, map_indices) = self.collect_item_frame_map_geometry();
-        if !map_indices.is_empty() {
-            if let Some(atlas) = &self.item_frame_map_atlas {
-                self.draw_item_model_geometry(
-                    &mut encoder,
-                    main_view,
-                    &map_vertices,
-                    &map_indices,
-                    &atlas.bind_group,
-                );
-                pipeline_switches += 1;
-                item_model_draw_calls += 1;
-            }
-        }
-        let (map_decoration_vertices, map_decoration_indices) =
-            self.collect_item_frame_map_decoration_geometry();
-        if !map_decoration_indices.is_empty() {
-            if let Some(atlas) = &self.item_frame_map_decoration_atlas {
-                self.draw_item_model_geometry(
-                    &mut encoder,
-                    main_view,
-                    &map_decoration_vertices,
-                    &map_decoration_indices,
-                    &atlas.bind_group,
-                );
-                pipeline_switches += 1;
-                item_model_draw_calls += 1;
-            }
-        }
-        let (map_text_vertices, map_text_indices) = self.collect_item_frame_map_text_geometry();
-        if !map_text_indices.is_empty() {
-            if let Some(atlas) = &self.item_frame_map_text_font_atlas {
-                self.draw_item_model_geometry(
-                    &mut encoder,
-                    main_view,
-                    &map_text_vertices,
-                    &map_text_indices,
-                    &atlas.bind_group,
-                );
-                pipeline_switches += 1;
-                item_model_draw_calls += 1;
-            }
-        }
-        let (flat_item_vertices, flat_item_indices) = self.collect_flat_item_model_geometry();
-        if !flat_item_indices.is_empty() {
-            if let Some(atlas) = &self.item_entity_atlas {
-                self.draw_item_model_geometry(
-                    &mut encoder,
-                    main_view,
-                    &flat_item_vertices,
-                    &flat_item_indices,
-                    &atlas.bind_group,
-                );
-                pipeline_switches += 1;
-                item_model_draw_calls += 1;
             }
         }
 
@@ -1590,6 +1592,12 @@ mod tests {
             .expect("solid world item-model draw helper is called");
         let copy_translucent =
             depth_copy_to(source, "texture: &self.translucent_target.depth._texture");
+        let outline_composite = source
+            .find("label: Some(ENTITY_OUTLINE_COMPOSITE_PASS_LABEL)")
+            .expect("entity outline composite pass label is used");
+        let clouds = source
+            .find("label: Some(CLOUDS_PASS_LABEL)")
+            .expect("cloud pass label is used");
         let entity_translucent_features = source
             .find("label: Some(ENTITY_TRANSLUCENT_FEATURE_PASS_LABEL)")
             .expect("entity translucent feature pass label is used");
@@ -1605,10 +1613,12 @@ mod tests {
 
         assert!(
             world_item_models < world_item_draw
-                && world_item_draw < copy_translucent
+                && world_item_draw < outline_composite
+                && outline_composite < clouds
+                && clouds < copy_translucent
                 && copy_translucent < entity_translucent_features
                 && entity_translucent_features < translucent_target,
-            "vanilla ItemFeatureRenderer solid output contributes to main depth before translucent target copies and translucent terrain"
+            "vanilla ItemFeatureRenderer solid output contributes to main depth before outline/cloud post passes, target depth copies, and translucent terrain"
         );
         assert!(
             source[world_item_draw..copy_translucent].contains("main_view"),

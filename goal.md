@@ -376,6 +376,15 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。当前 checkl
   收窄为 per-submit feature 距离排序、block/text/name ordering、target sorting
   polish；flat/generated item material translucency metadata 因当前未建模材质来源
   归后续 item presentation。
+- [x] 2026-06-29 solid item feature main-pass ordering slice：vanilla
+  `LevelRenderer.addMainPass` 在 `renderSolidFeatures()` 后才进入
+  entity-outline post-chain、clouds、translucent target depth copies 和
+  translucent terrain；`FeatureRenderDispatcher.renderSolidFeatures()` 内 item
+  features 位于 model/model-part/flame/leash 之后、block/custom/particle
+  solid features 之前。renderer 现在把 solid block/flat item-model 与 item-frame
+  map batches 放到 entity outline post-chain 和 cloud pass 之前，继续保持在
+  target depth copies 之前；剩余 render-graph ordering 仍为 per-submit feature
+  距离排序、block/text/name ordering、target sorting polish。
 
 ### [x] P0：提交图与 RenderType 语义（状态：狭义 pipeline 已完成）
 

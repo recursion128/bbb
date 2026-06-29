@@ -436,6 +436,11 @@ When an agent does any of the following, update this file in the same slice:
     models stay on the main target, while translucent block/flat item-model
     buckets draw through an alpha-blended item-model pipeline in
     `OutputTarget.ITEM_ENTITY_TARGET` before billboard items and particles.
+    Solid block/flat item-model and item-frame map batches now sit in the main
+    pass before entity-outline post-chain work, clouds, target depth copies, and
+    translucent terrain, matching `LevelRenderer.addMainPass` calling
+    `FeatureRenderDispatcher.renderSolidFeatures()` before later frame-graph
+    passes.
     Flat/generated item material translucency metadata is still deferred to item
     presentation because that material source is not modeled yet; it is no longer
     a narrow render-pipeline path blocker. Remaining render-graph parity still
