@@ -72,10 +72,12 @@ use crate::{
     terrain,
     transparency::{
         create_item_entity_target, create_main_target, create_particle_target,
-        create_translucent_target, create_transparency_combine_bind_group,
+        create_translucent_target, create_transparency_blit_bind_group_layout,
+        create_transparency_blit_pipeline, create_transparency_combine_bind_group,
         create_transparency_combine_bind_group_layout, create_transparency_combine_pipeline,
-        create_weather_target, ItemEntityTarget, MainTarget, ParticleTarget, TranslucentTarget,
-        TransparencyCombineBindGroup, WeatherTarget,
+        create_transparency_final_target, create_weather_target, ItemEntityTarget, MainTarget,
+        ParticleTarget, TranslucentTarget, TransparencyCombineBindGroup, TransparencyFinalTarget,
+        WeatherTarget,
     },
     weather::{
         create_lightning_pipeline, create_weather_pipeline, create_weather_texture_gpu,
@@ -99,6 +101,9 @@ pub struct Renderer {
     pub(super) transparency_combine_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) transparency_combine_bind_group: TransparencyCombineBindGroup,
     pub(super) transparency_combine_pipeline: wgpu::RenderPipeline,
+    pub(super) transparency_blit_bind_group_layout: wgpu::BindGroupLayout,
+    pub(super) transparency_blit_pipeline: wgpu::RenderPipeline,
+    pub(super) transparency_final_target: TransparencyFinalTarget,
     pub(super) depth: DepthTarget,
     pub(super) terrain_pipeline: wgpu::RenderPipeline,
     pub(super) terrain_translucent_pipeline: wgpu::RenderPipeline,
@@ -692,6 +697,20 @@ impl Renderer {
             format,
             &transparency_combine_bind_group_layout,
         );
+        let transparency_blit_bind_group_layout =
+            create_transparency_blit_bind_group_layout(&device);
+        let transparency_final_target = create_transparency_final_target(
+            &device,
+            &transparency_blit_bind_group_layout,
+            format,
+            config.width,
+            config.height,
+        );
+        let transparency_blit_pipeline = create_transparency_blit_pipeline(
+            &device,
+            format,
+            &transparency_blit_bind_group_layout,
+        );
         let cloud_pipeline = create_cloud_pipeline(
             &device,
             format,
@@ -728,6 +747,9 @@ impl Renderer {
             transparency_combine_bind_group_layout,
             transparency_combine_bind_group,
             transparency_combine_pipeline,
+            transparency_blit_bind_group_layout,
+            transparency_blit_pipeline,
+            transparency_final_target,
             depth,
             terrain_pipeline,
             terrain_translucent_pipeline,
@@ -1010,6 +1032,13 @@ impl Renderer {
         );
         self.weather_target = create_weather_target(
             &self.device,
+            self.config.format,
+            self.config.width,
+            self.config.height,
+        );
+        self.transparency_final_target = create_transparency_final_target(
+            &self.device,
+            &self.transparency_blit_bind_group_layout,
             self.config.format,
             self.config.width,
             self.config.height,

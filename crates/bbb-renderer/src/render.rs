@@ -39,6 +39,7 @@ const PARTICLE_TARGET_PASS_LABEL: &str = "bbb-native-particle-target-pass";
 const WEATHER_TARGET_PASS_LABEL: &str = "bbb-native-weather-target-pass";
 const LIGHTMAP_PASS_LABEL: &str = "bbb-native-lightmap-pass";
 const TRANSPARENCY_COMBINE_PASS_LABEL: &str = "bbb-native-transparency-combine-pass";
+const TRANSPARENCY_BLIT_PASS_LABEL: &str = "bbb-native-transparency-blit-pass";
 
 struct ItemModelFrameBuffers {
     vertex_buffer: wgpu::Buffer,
@@ -79,6 +80,7 @@ impl Renderer {
         let mut entity_model_draw_calls = 0;
         let mut outline_composite_draw_calls = 0;
         let mut transparency_combine_draw_calls = 0;
+        let mut transparency_blit_draw_calls = 0;
         let mut particle_draw_calls = 0;
         let mut weather_draw_calls = 0;
         let mut item_entity_draw_calls = 0;
@@ -1044,7 +1046,7 @@ impl Renderer {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(TRANSPARENCY_COMBINE_PASS_LABEL),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &surface_view,
+                    view: &self.transparency_final_target.view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
@@ -1060,6 +1062,28 @@ impl Renderer {
             pass.set_bind_group(0, &self.transparency_combine_bind_group.bind_group, &[]);
             pass.draw(0..3, 0..1);
             transparency_combine_draw_calls += 1;
+        }
+
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some(TRANSPARENCY_BLIT_PASS_LABEL),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &surface_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.transparency_blit_pipeline);
+            pipeline_switches += 1;
+            pass.set_bind_group(0, &self.transparency_final_target.bind_group, &[]);
+            pass.draw(0..3, 0..1);
+            transparency_blit_draw_calls += 1;
         }
 
         {
@@ -1186,6 +1210,7 @@ impl Renderer {
             + entity_model_draw_calls
             + outline_composite_draw_calls
             + transparency_combine_draw_calls
+            + transparency_blit_draw_calls
             + particle_draw_calls
             + weather_draw_calls
             + item_entity_draw_calls
@@ -2549,7 +2574,8 @@ mod tests {
     }
 
     #[test]
-    fn transparency_combine_writes_surface_before_hud_and_screenshot_readback() {
+    fn transparency_combine_writes_internal_final_then_blits_surface_before_hud_and_screenshot_readback(
+    ) {
         let source = include_str!("render.rs");
         let main_view = source
             .find("let main_view = &self.main_target.view")
@@ -2560,6 +2586,9 @@ mod tests {
         let combine = source
             .find("label: Some(TRANSPARENCY_COMBINE_PASS_LABEL)")
             .expect("transparency combine pass label is used");
+        let blit = source
+            .find("label: Some(TRANSPARENCY_BLIT_PASS_LABEL)")
+            .expect("transparency blit pass label is used");
         let hud_pass = source
             .find("label: Some(\"bbb-native-hud-pass\")")
             .expect("hud pass label is used");
@@ -2576,25 +2605,47 @@ mod tests {
         );
         assert!(
             !source[..combine].contains("view: &surface_view"),
-            "surface view is not a render target until the transparency combine pass"
+            "surface view is not a render target before the transparency chain starts"
         );
         assert!(
             source[terrain_pass..combine].contains("view: main_view"),
             "main content passes use the renderer-owned main target"
         );
         assert!(
-            source[combine..hud_pass].contains("view: &surface_view"),
-            "transparency combine writes the swapchain surface before HUD rendering"
+            source[combine..blit].contains("view: &self.transparency_final_target.view"),
+            "transparency combine writes the vanilla-shaped internal final target"
         );
         assert!(
-            source[combine..hud_pass].contains(
+            source[combine..blit].contains(
                 "pass.set_bind_group(0, &self.transparency_combine_bind_group.bind_group, &[])"
             ),
             "transparency combine samples the renderer-owned target bundle"
         );
         assert!(
-            combine < hud_pass && hud_pass < hud_item_pass && hud_item_pass < screenshot_copy,
-            "HUD and GUI item passes draw on the surface after transparency combine"
+            source[combine..blit]
+                .contains("pass.set_pipeline(&self.transparency_combine_pipeline)"),
+            "combine uses the transparency shader before the blit pass"
+        );
+        assert!(
+            !source[..blit].contains("view: &surface_view"),
+            "surface view is not a render target until the vanilla transparency final blit"
+        );
+        assert!(
+            source[blit..hud_pass].contains("view: &surface_view"),
+            "transparency blit writes the swapchain surface before HUD rendering"
+        );
+        assert!(
+            source[blit..hud_pass].contains(
+                "pass.set_bind_group(0, &self.transparency_final_target.bind_group, &[])"
+            ),
+            "transparency blit samples the internal final target"
+        );
+        assert!(
+            combine < blit
+                && blit < hud_pass
+                && hud_pass < hud_item_pass
+                && hud_item_pass < screenshot_copy,
+            "HUD and GUI item passes draw on the surface after transparency final blit"
         );
         assert!(
             source[hud_pass..screenshot_copy].contains("view: &surface_view"),

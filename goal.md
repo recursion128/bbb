@@ -301,9 +301,22 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。当前 checkl
   effect，并在 GUI 前 clear main depth。renderer tests 已覆盖 main target
   ownership、translucent/itemEntity/particles/weather/clouds target combine、
   entity_outline target + post-chain 顺序、clouds -> weather -> combine、HUD
-  在 transparency combine 后写 surface。`docs/unsupported-features.md`
+  在 transparency chain 之后写 surface。`docs/unsupported-features.md`
   中“remaining target/post-chain sorting”已收窄为 finer transparency target
   sorting；major target/post-chain order 不再列为剩余 P0 blocker。
+  Gate：`cargo fmt --all --check`、`git diff --check`、
+  `CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace`、
+  renderer/world/pack/native `RUSTFLAGS='-D warnings'` 检查均通过；native
+  wrapper 输出 `cargo_status=0`，`/tmp/bbb-native-test.log` 的 `^warning`
+  计数为 `0`。
+- 2026-06-29 transparency final-target/blit slice：vanilla
+  `assets/minecraft/post_effect/transparency.json` 先用
+  `post/transparency.fsh` 输出 internal `final` target，再用 `post/blit`
+  写回 main target。renderer 现在增加 renderer-owned
+  `transparency_final_target`、nearest blit sampler 和
+  `bbb-native-transparency-blit-pass`：combine pass 只写 internal final，
+  blit pass 再写 surface，HUD、GUI item 与 screenshot readback 仍位于 blit
+  之后。测试钉住 final target、blit bind group 和 pass 顺序。
   Gate：`cargo fmt --all --check`、`git diff --check`、
   `CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace`、
   renderer/world/pack/native `RUSTFLAGS='-D warnings'` 检查均通过；native

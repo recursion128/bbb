@@ -340,8 +340,10 @@ When an agent does any of the following, update this file in the same slice:
     below is retained as evidence of migration slices, not as a current P0 blocker.
     Remaining colored fallback geometry belongs to non-textured debug/parity work.
     The major target/post-chain render-graph order is now covered for
-    main/translucent/itemEntity/particles/weather/clouds/entity_outline; remaining
-    target sorting is finer transparency parity, not a narrow pipeline blocker.
+    main/translucent/itemEntity/particles/weather/clouds/entity_outline, and the
+    transparency chain now uses a vanilla-shaped internal `final` target plus a
+    blit pass before HUD/screenshot readback; remaining target sorting is finer
+    transparency parity, not a narrow pipeline blocker.
   - P0 pipeline closeout also treats the remaining GPU-path fine-grained state as
     explicitly deferred follow-up, not as a blocker for the CPU submission graph:
     the backend currently folds compatible submissions into atlas buckets
@@ -360,7 +362,8 @@ When an agent does any of the following, update this file in the same slice:
     Later GPU work should split remaining currently-coalesced render-type state
     such as no-cull `entityCutout*`, `armorCutoutNoCull`, `Eyes`, `waterMask`,
     and glint / scroll variants into equivalent pipeline state, and reconcile
-    finer transparency target/resource polish plus remaining dynamic LightTexture /
+    remaining transparency target/resource polish beyond the final-target/blit
+    shape plus dynamic LightTexture /
     darkness-adjusted gamma / diffuse visual parity. The scroll GPU path already separates
     vanilla `breezeWind` as lightmap-lit from emissive additive `energySwirl`.
   - Entity outline target writes now use a dedicated vanilla-shaped
@@ -837,8 +840,9 @@ When an agent does any of the following, update this file in the same slice:
     pass after the complete target-backed main pass and entity-outline post-chain,
     and composites a renderer-owned clouds target. The main scene now also resolves
     through a renderer-owned
-    main color target; the final transparency combine samples
-    Main+Translucent+ItemEntity+Particles+Weather+Clouds before HUD and GUI-item passes draw on the surface,
+    main color target; the transparency chain samples
+    Main+Translucent+ItemEntity+Particles+Weather+Clouds into an internal
+    final target, then blits to the surface before HUD and GUI-item passes,
     matching vanilla's world-before-GUI render shape. Rain/snow weather columns
     now draw through vanilla environment textures, `PARTICLE` vertex layout,
     LightTexture sampling, rain/snow index ranges, and the weather target.
@@ -870,9 +874,9 @@ When an agent does any of the following, update this file in the same slice:
     instead of terrain recomputing the formula inline. The terrain/world shader
     no longer uses the earlier
     `max(block, sky * 0.95)` scalar approximation. Remaining lighting gaps:
-    finer transparency target/resource polish after the renderer-owned main color
-    target / Main+Translucent+ItemEntity+Particles+Weather+Clouds combine
-    foundation, smooth/AO entity light, and the colored debug fallback's
+    remaining transparency target/resource polish after the renderer-owned main
+    color target / Main+Translucent+ItemEntity+Particles+Weather+Clouds combine
+    and internal-final/blit foundation, smooth/AO entity light, and the colored debug fallback's
     baked-shade approximation. GUI flat / entity-in-UI lighting variants are now
     classified as P1 GUI surface work because the camera uniform already carries
     the required `Lighting.Entry` expressions and no corresponding GUI

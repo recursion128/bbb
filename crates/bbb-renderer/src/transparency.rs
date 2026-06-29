@@ -156,6 +156,38 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 }
 "#;
 
+pub(super) const TRANSPARENCY_BLIT_SHADER: &str = r#"
+@group(0) @binding(0)
+var final_texture: texture_2d<f32>;
+
+@group(0) @binding(1)
+var final_sampler: sampler;
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+};
+
+@vertex
+fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOut {
+    var position = vec2<f32>(-1.0, -1.0);
+    if (vertex_index == 1u) {
+        position = vec2<f32>(3.0, -1.0);
+    } else if (vertex_index == 2u) {
+        position = vec2<f32>(-1.0, 3.0);
+    }
+    var out: VertexOut;
+    out.position = vec4<f32>(position, 0.0, 1.0);
+    out.uv = vec2<f32>(position.x * 0.5 + 0.5, 0.5 - position.y * 0.5);
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    return textureSample(final_texture, final_sampler, input.uv);
+}
+"#;
+
 pub(super) struct MainTarget {
     pub(super) _texture: wgpu::Texture,
     pub(super) view: wgpu::TextureView,
@@ -185,8 +217,41 @@ pub(super) struct WeatherTarget {
     pub(super) depth: DepthTarget,
 }
 
+pub(super) struct TransparencyFinalTarget {
+    pub(super) _texture: wgpu::Texture,
+    pub(super) view: wgpu::TextureView,
+    pub(super) _sampler: wgpu::Sampler,
+    pub(super) bind_group: wgpu::BindGroup,
+}
+
 pub(super) struct TransparencyCombineBindGroup {
     pub(super) bind_group: wgpu::BindGroup,
+}
+
+pub(super) fn create_transparency_blit_bind_group_layout(
+    device: &wgpu::Device,
+) -> wgpu::BindGroupLayout {
+    device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("bbb-transparency-blit-bind-group-layout"),
+        entries: &[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    multisampled: false,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            },
+        ],
+    })
 }
 
 pub(super) fn create_transparency_combine_bind_group_layout(
@@ -344,6 +409,61 @@ pub(super) fn create_main_target(
     MainTarget {
         _texture: texture,
         view,
+    }
+}
+
+pub(super) fn create_transparency_final_target(
+    device: &wgpu::Device,
+    layout: &wgpu::BindGroupLayout,
+    format: wgpu::TextureFormat,
+    width: u32,
+    height: u32,
+) -> TransparencyFinalTarget {
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("bbb-transparency-final-target-color"),
+        size: wgpu::Extent3d {
+            width: width.max(1),
+            height: height.max(1),
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+        view_formats: &[],
+    });
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("bbb-transparency-final-sampler"),
+        address_mode_u: wgpu::AddressMode::ClampToEdge,
+        address_mode_v: wgpu::AddressMode::ClampToEdge,
+        address_mode_w: wgpu::AddressMode::ClampToEdge,
+        mag_filter: wgpu::FilterMode::Nearest,
+        min_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::FilterMode::Nearest,
+        ..Default::default()
+    });
+    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("bbb-transparency-final-bind-group"),
+        layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(&view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::Sampler(&sampler),
+            },
+        ],
+    });
+
+    TransparencyFinalTarget {
+        _texture: texture,
+        view,
+        _sampler: sampler,
+        bind_group,
     }
 }
 
@@ -633,18 +753,54 @@ pub(super) fn create_transparency_combine_pipeline(
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
+    create_transparency_fullscreen_pipeline(
+        device,
+        format,
+        bind_group_layout,
+        "bbb-transparency-combine-shader",
+        "bbb-transparency-combine-pipeline-layout",
+        "bbb-transparency-combine-pipeline",
+        TRANSPARENCY_COMBINE_SHADER,
+    )
+}
+
+pub(super) fn create_transparency_blit_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_transparency_fullscreen_pipeline(
+        device,
+        format,
+        bind_group_layout,
+        "bbb-transparency-blit-shader",
+        "bbb-transparency-blit-pipeline-layout",
+        "bbb-transparency-blit-pipeline",
+        TRANSPARENCY_BLIT_SHADER,
+    )
+}
+
+fn create_transparency_fullscreen_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    shader_label: &str,
+    pipeline_layout_label: &str,
+    pipeline_label: &str,
+    shader_source: &str,
+) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("bbb-transparency-combine-shader"),
-        source: wgpu::ShaderSource::Wgsl(TRANSPARENCY_COMBINE_SHADER.into()),
+        label: Some(shader_label),
+        source: wgpu::ShaderSource::Wgsl(shader_source.into()),
     });
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("bbb-transparency-combine-pipeline-layout"),
+        label: Some(pipeline_layout_label),
         bind_group_layouts: &[bind_group_layout],
         push_constant_ranges: &[],
     });
 
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("bbb-transparency-combine-pipeline"),
+        label: Some(pipeline_label),
         layout: Some(&layout),
         vertex: wgpu::VertexState {
             module: &shader,
@@ -678,8 +834,9 @@ pub(super) fn create_transparency_combine_pipeline(
 #[cfg(test)]
 mod tests {
     use super::{
+        create_transparency_blit_bind_group_layout, create_transparency_blit_pipeline,
         create_transparency_combine_bind_group_layout, create_transparency_combine_pipeline,
-        TRANSPARENCY_COMBINE_SHADER,
+        TRANSPARENCY_BLIT_SHADER, TRANSPARENCY_COMBINE_SHADER,
     };
 
     fn request_test_device() -> Option<wgpu::Device> {
@@ -799,12 +956,34 @@ mod tests {
     }
 
     #[test]
+    fn transparency_blit_shader_samples_internal_final_target() {
+        assert!(
+            TRANSPARENCY_BLIT_SHADER.contains("var final_texture: texture_2d<f32>"),
+            "vanilla transparency.json writes an internal final target before blitting to main"
+        );
+        assert!(TRANSPARENCY_BLIT_SHADER.contains("textureSample(final_texture"));
+    }
+
+    #[test]
     fn transparency_combine_pipeline_validates_wgsl_on_wgpu_device() {
         let Some(device) = request_test_device() else {
             return;
         };
         let bind_group_layout = create_transparency_combine_bind_group_layout(&device);
         let _pipeline = create_transparency_combine_pipeline(
+            &device,
+            wgpu::TextureFormat::Rgba8Unorm,
+            &bind_group_layout,
+        );
+    }
+
+    #[test]
+    fn transparency_blit_pipeline_validates_wgsl_on_wgpu_device() {
+        let Some(device) = request_test_device() else {
+            return;
+        };
+        let bind_group_layout = create_transparency_blit_bind_group_layout(&device);
+        let _pipeline = create_transparency_blit_pipeline(
             &device,
             wgpu::TextureFormat::Rgba8Unorm,
             &bind_group_layout,
