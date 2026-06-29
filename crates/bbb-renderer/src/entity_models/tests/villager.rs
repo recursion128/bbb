@@ -269,6 +269,8 @@ fn villager_textured_layer_passes_match_vanilla_renderer_model_layers() {
         trader[0].render_type,
         EntityModelLayerRenderType::EntityCutout
     );
+    // Vanilla `WanderingTraderRenderer` bakes only `ModelLayers.WANDERING_TRADER`
+    // and does not register a baby model/texture pair.
     assert_eq!(trader[0].render_type.vanilla_name(), "entityCutout");
     assert_eq!(trader[0].model_layer, MODEL_LAYER_WANDERING_TRADER);
     assert_eq!(trader[0].texture, WANDERING_TRADER_TEXTURE_REF);

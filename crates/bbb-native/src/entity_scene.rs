@@ -1865,6 +1865,10 @@ fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_VILLAGER_ID => EntityModelKind::Villager {
             baby: ageable_baby(data_values),
         },
+        // Vanilla `WanderingTraderRenderer` is a plain `MobRenderer` with
+        // `VillagerModel(ModelLayers.WANDERING_TRADER)`, not an `AgeableMobRenderer`.
+        // The inherited AgeableMob baby flag therefore does not select a baby
+        // villager layer or texture.
         VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID => EntityModelKind::WanderingTrader,
         VANILLA_ENTITY_TYPE_EVOKER_ID => EntityModelKind::Illager {
             family: IllagerModelFamily::Evoker,
@@ -11359,6 +11363,13 @@ mod tests {
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, &[]),
+            EntityModelKind::WanderingTrader
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
             EntityModelKind::WanderingTrader
         );
     }

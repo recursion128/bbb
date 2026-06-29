@@ -2711,7 +2711,13 @@ When an agent does any of the following, update this file in the same slice:
       and static skeleton/wither-skeleton/zombie/creeper skulls plus
       profileless default-player heads, profiled default-skin player heads,
       dynamic profiled-player heads, dragon heads, and piglin heads render
-      through the skull branch via `custom_head_skull_layer_pass`; wandering trader baby presentation remains unsupported
+      through the skull branch via `custom_head_skull_layer_pass`. Vanilla
+      `WanderingTraderRenderer` is a plain `MobRenderer` that always uses
+      `ModelLayers.WANDERING_TRADER` plus
+      `textures/entity/wandering_trader/wandering_trader.png`, so the inherited
+      `AgeableMob.DATA_BABY_ID` does not select a baby trader model/texture; the
+      native projection now pins that baby metadata still maps to
+      `EntityModelKind::WanderingTrader`
     - worn humanoid armor as a renderer-owned vanilla 26.1 `HumanoidArmorLayer` overlay (framework
       slice 1, renderer-side): the inflated `HumanoidArmorModel`
       (`HumanoidModel.createBaseArmorMesh` / `createArmorMeshSet`) is built per equipment slot as a
