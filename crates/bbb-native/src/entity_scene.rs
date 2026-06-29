@@ -1365,6 +1365,9 @@ fn entity_model_instance(
         .with_boat_hurt_time(source.boat_hurt_time)
         .with_boat_hurt_dir(source.boat_hurt_dir)
         .with_boat_damage_time(source.boat_damage_time)
+        .with_minecart_hurt_time(source.boat_hurt_time)
+        .with_minecart_hurt_dir(source.boat_hurt_dir)
+        .with_minecart_damage_time(source.boat_damage_time)
         .with_boat_bubble_angle(source.boat_bubble_angle)
         .with_boat_underwater(source.boat_underwater)
         .with_is_aggressive(source.is_aggressive)
@@ -4977,6 +4980,39 @@ mod tests {
         let expected_bubble_angle =
             first_bubble_angle + (second_bubble_angle - first_bubble_angle) * 0.5;
         assert!((render_state.boat_bubble_angle - expected_bubble_angle).abs() < 1.0e-6);
+    }
+
+    #[test]
+    fn entity_model_instances_project_minecart_damage_times() {
+        const VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
+        const VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
+        const VEHICLE_DAMAGE_DATA_ID: u8 = 10;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            93,
+            VANILLA_ENTITY_TYPE_MINECART_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 93,
+            values: vec![
+                protocol_int_data(VEHICLE_HURT_TIME_DATA_ID, 10),
+                protocol_int_data(VEHICLE_HURT_DIR_DATA_ID, -1),
+                protocol_float_data(VEHICLE_DAMAGE_DATA_ID, 20.0),
+            ],
+        }));
+
+        world.advance_entity_client_animations(2);
+        let render_state = entity_model_instances_from_world_at_partial_tick(&world, None, 0.5)
+            .into_iter()
+            .find(|instance| instance.entity_id == 93)
+            .unwrap()
+            .render_state;
+
+        assert!((render_state.minecart_hurt_time - 7.5).abs() < 1.0e-6);
+        assert_eq!(render_state.minecart_hurt_dir, -1);
+        assert!((render_state.minecart_damage_time - 17.5).abs() < 1.0e-6);
     }
 
     #[test]

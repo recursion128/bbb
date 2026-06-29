@@ -135,6 +135,23 @@ pub(crate) fn is_vanilla_boat_type(entity_type_id: i32) -> bool {
     )
 }
 
+pub(crate) fn is_vanilla_minecart_type(entity_type_id: i32) -> bool {
+    matches!(
+        entity_type_id,
+        VANILLA_ENTITY_TYPE_CHEST_MINECART_ID
+            | VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID
+            | VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID
+            | VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID
+            | VANILLA_ENTITY_TYPE_MINECART_ID
+            | VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID
+            | VANILLA_ENTITY_TYPE_TNT_MINECART_ID
+    )
+}
+
+pub(crate) fn is_vanilla_vehicle_entity_type(entity_type_id: i32) -> bool {
+    is_vanilla_boat_type(entity_type_id) || is_vanilla_minecart_type(entity_type_id)
+}
+
 pub(crate) fn is_vanilla_abstract_horse_type(entity_type_id: i32) -> bool {
     matches!(
         entity_type_id,
@@ -397,16 +414,17 @@ pub struct EntityModelSourceState {
     /// and boats whose right paddle is inactive.
     #[serde(default)]
     pub boat_rowing_time_right: f32,
-    /// Vanilla `BoatRenderState.hurtTime` (`VehicleEntity.getHurtTime() -
-    /// partialTick`): positive while the boat rolls from recent damage.
+    /// Vanilla shared `VehicleEntity.getHurtTime() - partialTick`: positive while a boat or
+    /// minecart rolls from recent damage. The field keeps its historical `boat_*` name because
+    /// boats were the first renderer consumer.
     #[serde(default)]
     pub boat_hurt_time: f32,
-    /// Vanilla `BoatRenderState.hurtDir` (`VehicleEntity.getHurtDir()`): damage
-    /// roll direction, defaulting to `1`.
+    /// Vanilla shared `VehicleEntity.getHurtDir()`: boat/minecart damage roll direction,
+    /// defaulting to `1`.
     #[serde(default = "entity_model_source_default_one_i32")]
     pub boat_hurt_dir: i32,
-    /// Vanilla `BoatRenderState.damageTime` (`max(VehicleEntity.getDamage() -
-    /// partialTick, 0)`): damage magnitude used with hurt time to scale the roll.
+    /// Vanilla shared `max(VehicleEntity.getDamage() - partialTick, 0)`: boat/minecart damage
+    /// magnitude used with hurt time to scale the roll.
     #[serde(default)]
     pub boat_damage_time: f32,
     /// Vanilla `BoatRenderState.bubbleAngle` (`AbstractBoat.getBubbleAngle(partialTick)`):

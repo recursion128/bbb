@@ -8,7 +8,7 @@ use super::dragon::{
     EnderDragonAnimationState, ENDER_DRAGON_PHASE_DATA_ID, ENDER_DRAGON_PHASE_HOVERING_ID,
     VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
 };
-use super::{is_vanilla_boat_type, EntityTransform, EntityVec3};
+use super::{is_vanilla_boat_type, is_vanilla_vehicle_entity_type, EntityTransform, EntityVec3};
 
 const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
 /// Vanilla `VehicleEntity.DATA_ID_HURT` / `DATA_ID_HURTDIR` / `DATA_ID_DAMAGE`:
@@ -527,9 +527,9 @@ pub struct EntityClientAnimationState {
     pub walk_animation: Option<WalkAnimationState>,
 }
 
-/// Vanilla `VehicleEntity` hurt-roll state as consumed by `AbstractBoatRenderer`:
-/// `hurtTime`, `hurtDir`, and `damage` are synced data values that the client boat
-/// decrements every tick before rendering.
+/// Vanilla `VehicleEntity` hurt-roll state as consumed by `AbstractBoatRenderer` and
+/// `AbstractMinecartRenderer`: `hurtTime`, `hurtDir`, and `damage` are synced data values that the
+/// client decrements every tick before rendering.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct BoatDamageAnimationState {
     pub hurt_time: i32,
@@ -3587,7 +3587,7 @@ impl EntityClientAnimationState {
         {
             self.arrow_shake = Some(ArrowShakeAnimationState::started());
         }
-        if is_vanilla_boat_type(entity_type_id)
+        if is_vanilla_vehicle_entity_type(entity_type_id)
             && updated_values.iter().any(|value| {
                 matches!(
                     value.data_id,
@@ -5306,29 +5306,31 @@ impl EntityClientAnimationState {
                 // !isPassenger()`. A parrot with no synced ground flag defaults to
                 // on-ground (wings still), the safe common case.
                 .advance_client_tick(transform.on_ground.unwrap_or(true), is_passenger),
-            _ if is_vanilla_boat_type(entity_type_id) => {
+            _ if is_vanilla_vehicle_entity_type(entity_type_id) => {
                 if let Some(damage) = self.boat_damage.as_mut() {
                     damage.advance_client_tick();
                     if damage.is_settled() {
                         self.boat_damage = None;
                     }
                 }
-                if self.boat_bubble.is_some() || boat_bubble_time > 0 {
-                    let bubble = self
-                        .boat_bubble
-                        .get_or_insert_with(BoatBubbleAnimationState::default);
-                    bubble.advance_client_tick(self.age_ticks, boat_bubble_time);
-                    if bubble.is_settled(boat_bubble_time) {
-                        self.boat_bubble = None;
+                if is_vanilla_boat_type(entity_type_id) {
+                    if self.boat_bubble.is_some() || boat_bubble_time > 0 {
+                        let bubble = self
+                            .boat_bubble
+                            .get_or_insert_with(BoatBubbleAnimationState::default);
+                        bubble.advance_client_tick(self.age_ticks, boat_bubble_time);
+                        if bubble.is_settled(boat_bubble_time) {
+                            self.boat_bubble = None;
+                        }
                     }
-                }
-                if self.boat.is_some() || boat_paddle_left || boat_paddle_right {
-                    let boat = self
-                        .boat
-                        .get_or_insert_with(BoatPaddleAnimationState::default);
-                    boat.advance_client_tick(boat_paddle_left, boat_paddle_right);
-                    if boat.is_settled() {
-                        self.boat = None;
+                    if self.boat.is_some() || boat_paddle_left || boat_paddle_right {
+                        let boat = self
+                            .boat
+                            .get_or_insert_with(BoatPaddleAnimationState::default);
+                        boat.advance_client_tick(boat_paddle_left, boat_paddle_right);
+                        if boat.is_settled() {
+                            self.boat = None;
+                        }
                     }
                 }
             }

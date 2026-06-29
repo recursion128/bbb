@@ -1244,10 +1244,14 @@ blocker。
     `translate(0, 0.375, 0)`、`Ry(180 - yRot)`、`Rz(-xRot)` 和
     `scale(-1, -1, 1)`；tests pin 固定 id jitter、root transform 顺序、
     submission transform / render type / tint / light / overlay / order。
+  - [x] hurt roll：`VehicleEntity` metadata 8/9/10 现在对 minecart 同步并按
+    vanilla `sin(hurtTime) * hurtTime * damageTime / 10 * hurtDir` 插入
+    `AbstractMinecartRenderer.submit` 的 root transform；world/native/renderer
+    tests 覆盖 metadata 衰减、render-state 投影和 transform 顺序。
   - [ ] rail-follow `posOnRail` / `frontPos` / `backPos` 平移与坡度 pitch、
-    NewMinecartBehavior `renderPos`/newRender root、hurt roll、display block
-    transform/content/light hookup 仍作为 P1 Minecart 剩余项，非狭义 P0
-    pipeline blocker。
+    NewMinecartBehavior `renderPos`/newRender root、display block transform /
+    content / light hookup 仍作为 P1 Minecart 剩余项，非狭义 P0 pipeline
+    blocker。
 - Boat / raft：
   - [x] paddle rowing animation（world metadata/passenger gate -> native render state -> renderer paddle pose）
   - [x] hurt/damage roll（VehicleEntity metadata -> native render state -> boat root transform）

@@ -645,10 +645,16 @@ pub(in crate::entity_models) fn boat_model_root_transform(instance: EntityModelI
 }
 
 pub(in crate::entity_models) fn boat_damage_roll_degrees(instance: EntityModelInstance) -> f32 {
-    let hurt = instance.render_state.boat_hurt_time;
+    vehicle_damage_roll_degrees(
+        instance.render_state.boat_hurt_time,
+        instance.render_state.boat_damage_time,
+        instance.render_state.boat_hurt_dir,
+    )
+}
+
+fn vehicle_damage_roll_degrees(hurt: f32, damage_time: f32, hurt_dir: i32) -> f32 {
     if hurt > 0.0 {
-        hurt.sin() * hurt * instance.render_state.boat_damage_time / 10.0
-            * instance.render_state.boat_hurt_dir as f32
+        hurt.sin() * hurt * damage_time / 10.0 * hurt_dir as f32
     } else {
         0.0
     }
@@ -669,8 +675,8 @@ pub(in crate::entity_models) fn boat_bubble_transform(instance: EntityModelInsta
 /// Vanilla `AbstractMinecartRenderer.submit` old-render path without rail sample data: the renderer
 /// applies the deterministic per-id hover jitter, lifts the cart by `0.375`, rotates by
 /// `Axis.YP.rotationDegrees(180 - yRot)` then `Axis.ZP.rotationDegrees(-xRot)`, and finally flips
-/// the model with `scale(-1, -1, 1)`. Rail-follow position lerp/slope, new-render lerp, hurt roll,
-/// and display-block contents remain explicit follow-up gaps.
+/// the model with `scale(-1, -1, 1)`. Rail-follow position lerp/slope, new-render lerp, and
+/// display-block contents remain explicit follow-up gaps.
 pub(in crate::entity_models) fn minecart_model_root_transform(
     instance: EntityModelInstance,
 ) -> Mat4 {
@@ -680,7 +686,19 @@ pub(in crate::entity_models) fn minecart_model_root_transform(
         * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))
         * Mat4::from_rotation_y((180.0 - instance.render_state.body_rot).to_radians())
         * Mat4::from_rotation_z((-instance.render_state.head_pitch).to_radians())
+        * Mat4::from_rotation_x(minecart_damage_roll_degrees(instance).to_radians())
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+}
+
+/// Vanilla `AbstractMinecartRenderer.submit` damage roll:
+/// `sin(hurtTime) * hurtTime * damageTime / 10 * hurtDir`, applied after the old/new render
+/// transform and before display-block contents and the final model flip.
+pub(in crate::entity_models) fn minecart_damage_roll_degrees(instance: EntityModelInstance) -> f32 {
+    vehicle_damage_roll_degrees(
+        instance.render_state.minecart_hurt_time,
+        instance.render_state.minecart_damage_time,
+        instance.render_state.minecart_hurt_dir,
+    )
 }
 
 /// Vanilla `AbstractMinecartRenderer.extractRenderState` offsetSeed and submit-time jitter:

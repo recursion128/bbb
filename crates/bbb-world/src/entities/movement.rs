@@ -9,12 +9,7 @@ use bbb_protocol::packets::{
 
 use crate::WorldStore;
 
-use super::{
-    EntityVec3, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
-    VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
-    VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
-    VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
-};
+use super::{is_vanilla_minecart_type, EntityVec3};
 
 impl WorldStore {
     pub fn apply_entity_position_sync(&mut self, packet: ProtocolEntityPositionSync) -> bool {
@@ -140,19 +135,6 @@ pub(super) struct EntityMoveRotation {
     pub(super) delta_movement: EntityVec3,
     pub(super) y_rot: f32,
     pub(super) x_rot: f32,
-}
-
-fn is_vanilla_minecart_type(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_CHEST_MINECART_ID
-            | VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID
-            | VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID
-            | VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID
-            | VANILLA_ENTITY_TYPE_MINECART_ID
-            | VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID
-            | VANILLA_ENTITY_TYPE_TNT_MINECART_ID
-    )
 }
 
 pub(super) fn entity_vec3(vec: ProtocolVec3d) -> EntityVec3 {

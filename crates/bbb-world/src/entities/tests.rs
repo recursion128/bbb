@@ -1115,6 +1115,47 @@ fn entity_model_sources_project_boat_damage_roll_from_vehicle_metadata() {
 }
 
 #[test]
+fn entity_model_sources_project_minecart_damage_roll_from_vehicle_metadata() {
+    const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
+    const VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
+    const VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
+    const VEHICLE_DAMAGE_DATA_ID: u8 = 10;
+
+    let damage = |store: &WorldStore, partial_tick: f32| -> (f32, i32, f32) {
+        let source = store
+            .entity_model_sources_at_partial_tick(partial_tick)
+            .into_iter()
+            .find(|source| source.entity_id == 22)
+            .expect("minecart source");
+        (
+            source.boat_hurt_time,
+            source.boat_hurt_dir,
+            source.boat_damage_time,
+        )
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        22,
+        VANILLA_ENTITY_TYPE_MINECART_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 22,
+        values: vec![
+            protocol_int_data(VEHICLE_HURT_TIME_DATA_ID, 10),
+            protocol_int_data(VEHICLE_HURT_DIR_DATA_ID, -1),
+            protocol_float_data(VEHICLE_DAMAGE_DATA_ID, 20.0),
+        ],
+    }));
+
+    assert_eq!(damage(&store, 0.5), (9.5, -1, 19.5));
+    store.advance_entity_client_animations(1);
+    assert_eq!(damage(&store, 0.5), (8.5, -1, 18.5));
+    store.advance_entity_client_animations(20);
+    assert_eq!(damage(&store, 1.0), (0.0, 1, 0.0));
+}
+
+#[test]
 fn entity_model_sources_project_boat_bubble_angle_from_bubble_time() {
     const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
     const BOAT_BUBBLE_TIME_DATA_ID: u8 = 13;

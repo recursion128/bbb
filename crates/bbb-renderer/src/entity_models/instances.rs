@@ -326,6 +326,15 @@ entity_render_state! {
     /// Vanilla `BoatRenderState.damageTime`: `max(VehicleEntity.getDamage() - partialTick, 0)`, scaling
     /// the damage roll amount.
     (with_boat_damage_time) boat_damage_time: f32 = 0.0;
+    /// Vanilla `MinecartRenderState.hurtTime`: `VehicleEntity.getHurtTime() - partialTick`, positive
+    /// while the minecart rolls from damage.
+    (with_minecart_hurt_time) minecart_hurt_time: f32 = 0.0;
+    /// Vanilla `MinecartRenderState.hurtDir`: the signed roll direction from
+    /// `VehicleEntity.getHurtDir()`.
+    (with_minecart_hurt_dir) minecart_hurt_dir: i32 = 1;
+    /// Vanilla `MinecartRenderState.damageTime`: `max(VehicleEntity.getDamage() - partialTick, 0)`,
+    /// scaling the damage roll amount.
+    (with_minecart_damage_time) minecart_damage_time: f32 = 0.0;
     /// Vanilla `BoatRenderState.bubbleAngle`: the partial-lerped bubble-column
     /// wobble angle in degrees. The boat renderer applies it only while the boat
     /// is not underwater.
@@ -2391,6 +2400,9 @@ mod tests {
                 boat_hurt_time: 0.0,
                 boat_hurt_dir: 1,
                 boat_damage_time: 0.0,
+                minecart_hurt_time: 0.0,
+                minecart_hurt_dir: 1,
+                minecart_damage_time: 0.0,
                 boat_bubble_angle: 0.0,
                 boat_underwater: false,
                 is_aggressive: false,

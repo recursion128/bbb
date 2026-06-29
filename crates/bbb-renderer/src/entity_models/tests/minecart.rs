@@ -117,6 +117,29 @@ fn minecart_root_transform_matches_vanilla_old_render_without_rail() {
 }
 
 #[test]
+fn minecart_hurt_roll_matches_vanilla_vehicle_damage_formula() {
+    let damaged = EntityModelInstance::minecart(41, [2.0, 64.0, -3.0], 45.0)
+        .with_head_look(0.0, -10.0)
+        .with_minecart_hurt_time(7.5)
+        .with_minecart_hurt_dir(-1)
+        .with_minecart_damage_time(17.5);
+    let roll = 7.5_f32.sin() * 7.5 * 17.5 / 10.0 * -1.0;
+    assert!((minecart_damage_roll_degrees(damaged) - roll).abs() < 1.0e-6);
+
+    let expected = Mat4::from_translation(Vec3::from_array(damaged.position))
+        * Mat4::from_translation(Vec3::from_array([-0.00175, 0.00175, 0.00025]))
+        * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))
+        * Mat4::from_rotation_y((180.0_f32 - damaged.render_state.body_rot).to_radians())
+        * Mat4::from_rotation_z((-damaged.render_state.head_pitch).to_radians())
+        * Mat4::from_rotation_x(roll.to_radians())
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0));
+    assert_close_transform(minecart_model_root_transform(damaged), expected);
+
+    let settled = damaged.with_minecart_hurt_time(0.0);
+    assert_eq!(minecart_damage_roll_degrees(settled), 0.0);
+}
+
+#[test]
 fn minecart_textured_mesh_matches_colored_geometry_and_vanilla_uvs() {
     let (atlas, _) = build_entity_model_texture_atlas(&minecart_texture_images()).unwrap();
     let instance = EntityModelInstance::minecart(1, [0.0, 64.0, 0.0], 0.0)

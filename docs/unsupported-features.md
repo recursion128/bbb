@@ -5060,12 +5060,13 @@ When an agent does any of the following, update this file in the same slice:
       folded cutout vertices inheriting that metadata. The base oldRender/no-rail root
       transform now follows `AbstractMinecartRenderer.submit` for per-id `offsetSeed`
       hover jitter, `translate(0, 0.375, 0)`, `Ry(180 - yRot)`, `Rz(-xRot)`, and
-      `scale(-1, -1, 1)`. Rail-follow `posOnRail` / `frontPos` / `backPos`
-      along-track translation and slope pitch, NewMinecartBehavior `renderPos` /
-      newRender root, hurt roll, the TNT/spawner `displayOffset` and 0.75x
-      block-content scale, the chest/furnace/hopper/command-block/TNT/spawner content
-      models, and their block-content light hookup remain unsupported; the minecart
-      body submission light/overlay metadata is covered
+      `scale(-1, -1, 1)`, including the `VehicleEntity` metadata-driven hurt roll
+      inserted before the final flip. Rail-follow `posOnRail` / `frontPos` /
+      `backPos` along-track translation and slope pitch, NewMinecartBehavior
+      `renderPos` / newRender root, the TNT/spawner `displayOffset` and 0.75x
+      block-content scale, the chest/furnace/hopper/command-block/TNT/spawner
+      content models, and their block-content light hookup remain unsupported; the
+      minecart body submission light/overlay metadata is covered
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder
