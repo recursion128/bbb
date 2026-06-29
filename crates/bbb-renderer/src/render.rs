@@ -26,6 +26,7 @@ const ENTITY_OUTLINE_COMPOSITE_PASS_LABEL: &str = "bbb-native-entity-outline-com
 const CLOUDS_PASS_LABEL: &str = "bbb-native-clouds-pass";
 const TRANSLUCENT_TARGET_PASS_LABEL: &str = "bbb-native-translucent-target-pass";
 const ITEM_ENTITY_TARGET_PASS_LABEL: &str = "bbb-native-item-entity-target-pass";
+const PARTICLE_TARGET_PASS_LABEL: &str = "bbb-native-particle-target-pass";
 const TRANSPARENCY_COMBINE_PASS_LABEL: &str = "bbb-native-transparency-combine-pass";
 
 impl Renderer {
@@ -45,6 +46,7 @@ impl Renderer {
         let main_view = &self.main_target.view;
         let translucent_view = &self.translucent_target.view;
         let item_entity_view = &self.item_entity_target.view;
+        let particle_view = &self.particle_target.view;
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -733,40 +735,68 @@ impl Renderer {
         }
 
         let particle_vertices = self.collect_particle_vertices();
-        if let Some(atlas) = &self.particle_atlas {
-            if !particle_vertices.is_empty() {
-                let particle_vertex_buffer =
+        let particle_vertex_buffer =
+            if self.particle_atlas.is_some() && !particle_vertices.is_empty() {
+                Some(
                     self.device
                         .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                             label: Some("bbb-particle-frame-vertices"),
                             contents: bytemuck::cast_slice(&particle_vertices),
                             usage: wgpu::BufferUsages::VERTEX,
-                        });
-                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some("bbb-native-particle-pass"),
-                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: main_view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Load,
-                            store: wgpu::StoreOp::Store,
-                        },
-                    })],
-                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                        view: &self.depth.view,
-                        depth_ops: Some(wgpu::Operations {
-                            load: wgpu::LoadOp::Load,
-                            store: wgpu::StoreOp::Store,
                         }),
-                        stencil_ops: None,
+                )
+            } else {
+                None
+            };
+        encoder.copy_texture_to_texture(
+            wgpu::ImageCopyTexture {
+                texture: &self.depth._texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::DepthOnly,
+            },
+            wgpu::ImageCopyTexture {
+                texture: &self.particle_target.depth._texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::DepthOnly,
+            },
+            wgpu::Extent3d {
+                width: self.config.width.max(1),
+                height: self.config.height.max(1),
+                depth_or_array_layers: 1,
+            },
+        );
+
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some(PARTICLE_TARGET_PASS_LABEL),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: particle_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.particle_target.depth.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
                     }),
-                    occlusion_query_set: None,
-                    timestamp_writes: None,
-                });
+                    stencil_ops: None,
+                }),
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            if let (Some(atlas), Some(vertex_buffer)) =
+                (&self.particle_atlas, &particle_vertex_buffer)
+            {
                 pass.set_pipeline(&self.particle_pipeline);
                 pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
-                pass.set_vertex_buffer(0, particle_vertex_buffer.slice(..));
+                pass.set_vertex_buffer(0, vertex_buffer.slice(..));
                 pass.draw(0..particle_vertices.len() as u32, 0..1);
                 particle_draw_calls += 1;
             }
@@ -1021,12 +1051,15 @@ mod tests {
         let translucent = source
             .find("label: Some(TRANSLUCENT_TARGET_PASS_LABEL)")
             .expect("translucent target pass label is used");
-        let combine = source
-            .find("label: Some(TRANSPARENCY_COMBINE_PASS_LABEL)")
-            .expect("transparency combine pass label is used");
         let item_entity_target = source
             .find("label: Some(ITEM_ENTITY_TARGET_PASS_LABEL)")
             .expect("item-entity target pass label is used");
+        let particle_target = source
+            .find("label: Some(PARTICLE_TARGET_PASS_LABEL)")
+            .expect("particle target pass label is used");
+        let combine = source
+            .find("label: Some(TRANSPARENCY_COMBINE_PASS_LABEL)")
+            .expect("transparency combine pass label is used");
         let hud = source
             .find("label: Some(\"bbb-native-hud-pass\")")
             .expect("HUD pass label is used");
@@ -1045,8 +1078,11 @@ mod tests {
             "cloud mesh draws into the dedicated clouds pass before later world passes"
         );
         assert!(
-            translucent < item_entity_target && item_entity_target < combine && combine < hud,
-            "cloud target is consumed by the transparency combine after world passes and before HUD"
+            translucent < item_entity_target
+                && item_entity_target < particle_target
+                && particle_target < combine
+                && combine < hud,
+            "cloud target is consumed by the transparency combine after target-backed world passes and before HUD"
         );
         assert!(
             source[clouds..combine].contains("view: &self.cloud_target.view"),
@@ -1071,6 +1107,14 @@ mod tests {
         assert!(
             source[clouds..combine].contains("view: &self.item_entity_target.depth.view"),
             "item-entity geometry writes the renderer-owned item_entity depth target"
+        );
+        assert!(
+            source[clouds..combine].contains("view: particle_view"),
+            "particle geometry writes the renderer-owned particles color target"
+        );
+        assert!(
+            source[clouds..combine].contains("view: &self.particle_target.depth.view"),
+            "particle geometry writes the renderer-owned particles depth target"
         );
         assert!(
             source[combine..hud].contains(
@@ -1135,8 +1179,8 @@ mod tests {
             .map(|index| target + index)
             .expect("selection line pipeline is drawn into the item-entity target");
         let particle = source
-            .find("label: Some(\"bbb-native-particle-pass\")")
-            .expect("particle pass label is used");
+            .find("label: Some(PARTICLE_TARGET_PASS_LABEL)")
+            .expect("particle target pass label is used");
         let combine = source
             .find("label: Some(TRANSPARENCY_COMBINE_PASS_LABEL)")
             .expect("transparency combine pass label is used");
@@ -1164,6 +1208,49 @@ mod tests {
             source[target..particle].contains("view: item_entity_view")
                 && source[target..particle].contains("view: &self.item_entity_target.depth.view"),
             "item and line geometry render into the item_entity color/depth target"
+        );
+    }
+
+    #[test]
+    fn particle_target_copies_main_depth_and_clears_before_combine() {
+        let source = include_str!("render.rs");
+        let item_entity_target = source
+            .find("label: Some(ITEM_ENTITY_TARGET_PASS_LABEL)")
+            .expect("item-entity target pass label is used");
+        let target = source
+            .find("label: Some(PARTICLE_TARGET_PASS_LABEL)")
+            .expect("particle target pass label is used");
+        let copy_depth = source[item_entity_target..target]
+            .rfind("encoder.copy_texture_to_texture")
+            .map(|index| item_entity_target + index)
+            .expect("main depth is copied into particle target depth");
+        let particle_pipeline = source[target..]
+            .find("pass.set_pipeline(&self.particle_pipeline)")
+            .map(|index| target + index)
+            .expect("particle pipeline is drawn into the target");
+        let combine = source
+            .find("label: Some(TRANSPARENCY_COMBINE_PASS_LABEL)")
+            .expect("transparency combine pass label is used");
+
+        assert!(
+            copy_depth < target && target < particle_pipeline && particle_pipeline < combine,
+            "particle target copies main depth, clears transparent, draws particles, then transparency combine consumes it"
+        );
+        assert!(
+            source[copy_depth..target].contains("texture: &self.depth._texture")
+                && source[copy_depth..target]
+                    .contains("texture: &self.particle_target.depth._texture"),
+            "particle target depth is copied from the renderer-owned main depth texture"
+        );
+        assert!(
+            source[target..particle_pipeline]
+                .contains("load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)"),
+            "particle target color is cleared every frame so missing particle draws do not reuse stale color"
+        );
+        assert!(
+            source[target..combine].contains("view: particle_view")
+                && source[target..combine].contains("view: &self.particle_target.depth.view"),
+            "particle geometry renders into the particles color/depth target"
         );
     }
 

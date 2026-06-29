@@ -395,27 +395,29 @@ When an agent does any of the following, update this file in the same slice:
     geometry now write a renderer-owned itemEntity color/depth target after the
     same main-depth copy, matching vanilla `OutputTarget.ITEM_ENTITY_TARGET`
     users such as `item_translucent`, `entity_translucent_cull_item_target`,
-    `glint_translucent`, `LINES`, and `LINES_TRANSLUCENT`. The final
-    transparency combine pass samples main, translucent, itemEntity, and clouds
-    color/depth and applies the same depth insertion plus premultiplied layer
-    blend shape as vanilla
+    `glint_translucent`, `LINES`, and `LINES_TRANSLUCENT`. Active particle
+    billboards now write a renderer-owned particles color/depth target after the
+    same main-depth copy, matching vanilla `PARTICLES_TARGET`. The final
+    transparency combine pass samples main, translucent, itemEntity, particles,
+    and clouds color/depth and applies the same depth insertion plus
+    premultiplied layer blend shape as vanilla
     `post/transparency.fsh`.
     The main scene now writes a renderer-owned `main` color target first and
     performs a final fullscreen blit to the swapchain/screenshot frame, matching
     the prerequisite shape for vanilla `transparency.json` sampling
     `minecraft:main` color. HUD and GUI-item passes now draw on the surface
     after that transparency combine, so they are no longer part of the future world
-    transparency combine. Main, translucent, itemEntity, and clouds depth
+    transparency combine. Main, translucent, itemEntity, particles, and clouds depth
     targets now include texture binding usage for `MainDepth` /
-    `TranslucentDepth` / `ItemEntityDepth` / `CloudsDepth` inputs;
-    main/translucent/itemEntity depth also carries copy usage for the vanilla
-    depth-copy step. Remaining work still needs separate particle / weather
-    sorting targets, their depth inputs, and extending the depth-sorted
+    `TranslucentDepth` / `ItemEntityDepth` / `ParticlesDepth` /
+    `CloudsDepth` inputs; main/translucent/itemEntity/particles depth also
+    carries copy usage for the vanilla depth-copy step. Remaining work still
+    needs a separate weather sorting target, its depth input, and extending the depth-sorted
     transparency shader combine beyond the currently covered
-    Main+Translucent+ItemEntity+Clouds set.
+    Main+Translucent+ItemEntity+Particles+Clouds set.
     Remaining render-graph parity still needs the full vanilla transparency
-    shader's depth-sorted composition across particle / weather targets and the
-    already-present translucent / itemEntity / cloud targets; outline now has a
+    shader's depth-sorted composition across the weather target and the
+    already-present translucent / itemEntity / particles / cloud targets; outline now has a
     dedicated target/composite.
   - P0 cloud presentation slice: vanilla 26.1 `CloudRenderer` uses
     `EnvironmentAttributes.CLOUD_COLOR` / `CLOUD_HEIGHT` and the
@@ -435,9 +437,9 @@ When an agent does any of the following, update this file in the same slice:
     projects Overworld day-timeline and rain/thunder weather `CLOUD_COLOR`
     modifiers into the cloud environment. The renderer cloud draw is now a
     dedicated pass after main/entity-outline ordering, writes a clouds
-    color/depth target, and participates in the Main+Translucent+ItemEntity+Clouds
+    color/depth target, and participates in the Main+Translucent+ItemEntity+Particles+Clouds
     transparency combine. Remaining cloud parity is the full vanilla
-    transparency post-chain depth sorting with the particle / weather sorting
+    transparency post-chain depth sorting with the weather sorting
     targets.
   - P0 pipeline closeout treats texture-backed / dispatch-owned submission and
     RenderType/order/missing-atlas/dynamic-texture coverage as complete for the
@@ -744,10 +746,10 @@ When an agent does any of the following, update this file in the same slice:
     pass after main/entity-outline ordering and composites a renderer-owned
     clouds target. The main scene now also resolves through a renderer-owned
     main color target; the final transparency combine samples
-    Main+Translucent+ItemEntity+Clouds before HUD and GUI-item passes draw on the surface,
+    Main+Translucent+ItemEntity+Particles+Clouds before HUD and GUI-item passes draw on the surface,
     matching vanilla's world-before-GUI render shape. Remaining visual gaps are
-    full transparency post-chain depth sorting with particle / weather targets
-    and their depth inputs, fuller
+    full transparency post-chain depth sorting with the weather target
+    and its depth input, fuller
     atmosphere presentation, and later custom-pack EnvironmentAttribute
     generalization when a concrete renderer surface exists. Sun/moon presentation
     is now covered by the vanilla `CELESTIAL` overlay blend, the
@@ -765,7 +767,7 @@ When an agent does any of the following, update this file in the same slice:
     and `BrightnessFactor` `notGamma` mix instead of the earlier
     `max(block, sky * 0.95)` scalar approximation. Remaining lighting gaps:
     full transparency target sorting after the newly added renderer-owned main
-    color target / Main+Translucent+ItemEntity+Clouds combine foundation, the real dynamic 16x16 LightTexture
+    color target / Main+Translucent+ItemEntity+Particles+Clouds combine foundation, the real dynamic 16x16 LightTexture
     texture pass, provider-specific particle light emission overrides,
     smooth/AO entity light, GUI / entity-in-UI lighting variants, and the
     colored debug fallback's baked-shade approximation. The item-model
