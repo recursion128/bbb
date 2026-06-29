@@ -2,7 +2,7 @@ use anyhow::{anyhow, bail, Result};
 use wgpu::util::DeviceExt;
 
 use crate::camera::CameraPose;
-use crate::gpu::{DepthTarget, DEPTH_FORMAT};
+use crate::gpu::{DepthTarget, DEPTH_FORMAT, DEPTH_TARGET_USAGE};
 
 pub const VANILLA_DEFAULT_CLOUD_COLOR: [f32; 4] = [0.8, 0.8, 0.8, 1.0];
 pub const VANILLA_DEFAULT_CLOUD_HEIGHT: f32 = 192.33;
@@ -503,7 +503,7 @@ fn create_cloud_depth_target(device: &wgpu::Device, width: u32, height: u32) -> 
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: DEPTH_FORMAT,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        usage: DEPTH_TARGET_USAGE,
         view_formats: &[],
     });
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -1178,7 +1178,7 @@ mod tests {
         CLOUD_BOTTOM_FACE_TINT, CLOUD_CELL_SIZE_IN_BLOCKS, CLOUD_COMPOSITE_BLEND,
         CLOUD_COMPOSITE_SHADER, CLOUD_FANCY_HEIGHT_IN_BLOCKS, CLOUD_NORTH_SOUTH_FACE_TINT,
         CLOUD_PRESENTATION_HALF_EXTENT, CLOUD_SHADER, CLOUD_TOP_FACE_TINT, CLOUD_Z_OFFSET_BLOCKS,
-        VANILLA_CLOUD_EMPTY_ALPHA_THRESHOLD, VANILLA_DEFAULT_CLOUD_COLOR,
+        DEPTH_TARGET_USAGE, VANILLA_CLOUD_EMPTY_ALPHA_THRESHOLD, VANILLA_DEFAULT_CLOUD_COLOR,
         VANILLA_DEFAULT_CLOUD_HEIGHT,
     };
 
@@ -1204,6 +1204,18 @@ mod tests {
 
         assert!(source.contains("depth_write_enabled: true"));
         assert!(source.contains("depth_compare: wgpu::CompareFunction::LessEqual"));
+    }
+
+    #[test]
+    fn cloud_depth_target_is_bindable_for_transparency_clouds_depth_input() {
+        let source = include_str!("clouds.rs");
+
+        assert!(DEPTH_TARGET_USAGE.contains(wgpu::TextureUsages::RENDER_ATTACHMENT));
+        assert!(DEPTH_TARGET_USAGE.contains(wgpu::TextureUsages::TEXTURE_BINDING));
+        assert!(
+            source.contains("usage: DEPTH_TARGET_USAGE"),
+            "cloud target depth must be sampleable by the future CloudsDepth transparency input"
+        );
     }
 
     #[test]

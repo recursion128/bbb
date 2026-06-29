@@ -242,9 +242,10 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。当前 checkl
   swapchain/screenshot frame；HUD / GUI item pass 已移到 final blit 后直接写
   surface，避免未来 transparency post-chain 把 HUD 当成 `minecraft:main`
   world layer 参与排序。这是 vanilla `transparency.json` 采样 `minecraft:main`
-  color 的前置基础。
+  color 的前置基础；main/cloud depth targets 已带 `TEXTURE_BINDING`
+  usage，作为后续 `MainDepth` / `CloudsDepth` 输入的 target 能力基础。
   剩余 P0 visual render-graph 工作仍包括 translucent / item_entity / particle /
-  weather targets、`MainDepth`/sorting target depth 采样、完整 vanilla
+  weather targets、sorting target depth 采样、完整 vanilla
   transparency post chain / depth sorting，以及更细粒度 feature/terrain
   target sorting。
 

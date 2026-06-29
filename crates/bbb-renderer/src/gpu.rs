@@ -6,6 +6,8 @@ use wgpu::util::DeviceExt;
 use crate::{camera::CameraUniform, terrain};
 
 pub(super) const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
+pub(super) const DEPTH_TARGET_USAGE: wgpu::TextureUsages =
+    wgpu::TextureUsages::RENDER_ATTACHMENT.union(wgpu::TextureUsages::TEXTURE_BINDING);
 
 const TERRAIN_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 8] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x2, 4 => Float32x3, 5 => Float32, 6 => Float32, 7 => Sint32];
 const CAMERA_BIND_GROUP_VISIBILITY: wgpu::ShaderStages = wgpu::ShaderStages::VERTEX_FRAGMENT;
@@ -184,7 +186,7 @@ pub(super) fn create_depth_target(device: &wgpu::Device, width: u32, height: u32
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: DEPTH_FORMAT,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        usage: DEPTH_TARGET_USAGE,
         view_formats: &[],
     });
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -568,6 +570,17 @@ mod tests {
         assert_eq!(
             TERRAIN_VERTEX_ATTRIBUTES[7].format,
             wgpu::VertexFormat::Sint32
+        );
+    }
+
+    #[test]
+    fn depth_targets_are_bindable_for_vanilla_transparency_depth_inputs() {
+        assert!(DEPTH_TARGET_USAGE.contains(wgpu::TextureUsages::RENDER_ATTACHMENT));
+        assert!(DEPTH_TARGET_USAGE.contains(wgpu::TextureUsages::TEXTURE_BINDING));
+        assert_eq!(
+            DEPTH_FORMAT.sample_type(None, None),
+            Some(wgpu::TextureSampleType::Depth),
+            "transparency post-chain samples MainDepth and sorting-target depth textures"
         );
     }
 
