@@ -1169,6 +1169,10 @@ blocker。
   - [x] camel `jumpCooldown` head boost（`DASH` rising edge -> cooldown -> `CamelModel.applyHeadRotation` extra pitch）
   - [x] camel `CAMEL_IDLE` keyframe（local `random.nextInt(40) + 80` cadence -> native render state -> tail/head/ear idle pose）
   - [x] camel `updateWalkAnimation` override（`Pose.STANDING && !DASH` -> `min(distance * 6, 1)`, factor `0.2`; sitting/dashing target `0`）
+  - [x] horse / donkey / mule / undead horse / camel 旧的 broader lighting
+    wording 已收窄：base、markings、saddle、body-armor submission light/overlay
+    metadata 已由 renderer tests pin 住；剩余保留 boost 和 camel body-anchor
+    y-offset。
   - [x] sniffer baby layer/texture dispatch（`AgeableMob.DATA_BABY_ID` -> `ModelLayers.SNIFFER_BABY` / `snifflet.png`，仍按 vanilla `SnifferRenderer` 使用 `SnifferModel` 驱动 baby layer）
   - [x] feline lower-tail walk wobble（`AdultFelineModel.setupAnim` 非 crouch/sprint
     分支的 `tail2.xRot = 1.7278761 + (π/4)·cos(walkAnimationPos)·walkAnimationSpeed`；

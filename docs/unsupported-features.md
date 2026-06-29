@@ -2387,7 +2387,10 @@ When an agent does any of the following, update this file in the same slice:
       -> `waterMultiplier = 0.2`). The eat/stand/mouth event poses are supported from
       world/native-projected `eatAnimation` / `standAnimation` / `feedingAnimation`; saddle
       ridden bridle-line visibility is already projected from passenger state. Remaining boost
-      and broader lighting presentation stays unsupported
+      stays unsupported; the old broader-lighting wording is stale because base,
+      markings, saddle, and body-armor submission light/overlay metadata is
+      covered here and global LightTexture / gamma parity is tracked by the
+      completed P0 lighting pipeline
     - donkey and mule entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `DonkeyModel`, `BabyDonkeyModel`, and
       `DonkeyRenderer`. The ADULT donkey/mule now renders on the **textured
@@ -2428,7 +2431,10 @@ When an agent does any of the following, update this file in the same slice:
       The shared eat/stand/mouth event poses are world/native projected into
       `EquineRenderState` and consumed by the adult and nested baby donkey/mule
       `setupAnim` paths; saddle ridden bridle-line visibility is already projected from
-      passenger state. Remaining boost and broader lighting presentation stays unsupported
+      passenger state. Remaining boost stays unsupported; the old broader-lighting
+      wording is stale because base and saddle submission light/overlay metadata
+      is covered here and global LightTexture / gamma parity is tracked by the
+      completed P0 lighting pipeline
     - skeleton horse and zombie horse entities as renderer-owned vanilla 26.1
       adult/baby body-layer geometry from `AbstractEquineModel`,
       `BabyHorseModel`, `HorseModel`, and `UndeadHorseRenderer`, now rendered on
@@ -2498,7 +2504,10 @@ When an agent does any of the following, update this file in the same slice:
       The renderer also consumes world/native-projected eat/stand/mouth event pose
       floats for the shared `AbstractEquineModel.setupAnim` head/body/leg transforms;
       saddle ridden bridle-line visibility is already projected from passenger state. Remaining
-      boost and broader lighting presentation stays unsupported
+      boost stays unsupported; the old broader-lighting wording is stale because
+      base, saddle, and zombie-horse body-armor submission light/overlay metadata
+      is covered here and global LightTexture / gamma parity is tracked by the
+      completed P0 lighting pipeline
     - camel and camel_husk entities as renderer-owned vanilla 26.1 body-layer
       geometry from `AdultCamelModel`, `BabyCamelModel`, `CamelRenderer`, and
       `CamelHuskRenderer`, including `ModelLayers.CAMEL` / `CAMEL_BABY` (the camel
@@ -2554,7 +2563,10 @@ When an agent does any of the following, update this file in the same slice:
       light/overlay/order metadata. Camel `updateWalkAnimation` is also projected with the vanilla
       standing-and-not-dashing gate, `min(distance * 6, 1)` target speed, `0.2` walk update factor,
       zero target while sitting/dashing, and the existing baby position scale. The body-anchor sit/stand y-offset
-      (`Camel.getBodyAnchorAnimationYOffset`) and broader lighting presentation remain unsupported
+      (`Camel.getBodyAnchorAnimationYOffset`) remains unsupported; the old
+      broader-lighting wording is stale because base and saddle submission
+      light/overlay metadata is covered here and global LightTexture / gamma
+      parity is tracked by the completed P0 lighting pipeline
     - llama and trader llama entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `LlamaModel`, `BabyLlamaModel`, and
       `LlamaRenderer`, including `ModelLayers.LLAMA` / `LLAMA_BABY` (the trader
