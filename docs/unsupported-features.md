@@ -402,9 +402,10 @@ When an agent does any of the following, update this file in the same slice:
     (`cellX` / `cellZ` mesh key plus `xInCell` / `zInCell` uniform offset).
     The renderer now defaults to vanilla `CloudStatus.FANCY` and builds the
     extruded cloud cell faces with vanilla top/bottom camera gates, side-face
-    empty-neighbor checks, interior faces, and face color tints. Remaining
-    cloud parity is day-timeline/cloud color modifiers, dedicated clouds target,
-    and vanilla transparency post-chain sorting.
+    empty-neighbor checks, interior faces, and face color tints. Native now
+    projects Overworld day-timeline and rain/thunder weather `CLOUD_COLOR`
+    modifiers into the cloud environment. Remaining cloud parity is dedicated
+    clouds target and vanilla transparency post-chain sorting.
   - P0 pipeline closeout treats texture-backed / dispatch-owned submission and
     RenderType/order/missing-atlas/dynamic-texture coverage as complete for the
     narrow pipeline scope: entity model tests assert `submit_sequence` across 78
@@ -705,8 +706,9 @@ When an agent does any of the following, update this file in the same slice:
     `textures/environment/clouds.png` for flat cloud cell geometry with vanilla
     `gameTime` movement and camera cell offset; the renderer also defaults to
     vanilla fancy/extruded cloud cells with face tint and camera-position face
-    gates. Remaining visual gaps are the day timeline's cloud color state,
-    clouds target / transparency post-chain sorting,
+    gates, and native projects vanilla day-timeline plus rain/thunder
+    `CLOUD_COLOR` modifiers. Remaining visual gaps are clouds target /
+    transparency post-chain sorting,
     fuller atmosphere presentation, and later custom-pack EnvironmentAttribute
     generalization when a concrete renderer surface exists. Sun/moon presentation
     is now covered by the vanilla `CELESTIAL` overlay blend, the

@@ -641,6 +641,37 @@ fn cloud_environment_projects_vanilla_overworld_defaults_and_dimension_gate() {
 }
 
 #[test]
+fn cloud_environment_applies_overworld_day_timeline_cloud_color() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, 18_000);
+
+    let clouds = cloud_environment_for_world(&world);
+
+    assert_close4(
+        clouds.color,
+        [20.0 / 255.0, 20.0 / 255.0, 30.0 / 255.0, 1.0],
+    );
+    assert_ne!(clouds.color, VANILLA_DEFAULT_CLOUD_COLOR);
+}
+
+#[test]
+fn cloud_environment_applies_vanilla_weather_cloud_color_layers() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, 6_000);
+    set_world_weather(&mut world, 1.0, 0.0);
+    assert_close4(
+        cloud_environment_for_world(&world).color,
+        [126.0 / 255.0, 126.0 / 255.0, 126.0 / 255.0, 1.0],
+    );
+
+    set_world_weather(&mut world, 1.0, 1.0);
+    assert_close4(
+        cloud_environment_for_world(&world).color,
+        [30.0 / 255.0, 30.0 / 255.0, 30.0 / 255.0, 1.0],
+    );
+}
+
+#[test]
 fn cloud_frame_projects_world_game_time_and_camera_eye_position() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
     set_world_day_time(&mut world, 1234);

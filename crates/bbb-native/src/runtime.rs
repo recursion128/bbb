@@ -78,8 +78,13 @@ const VANILLA_END_FOG_COLOR: [u8; 3] = [0x18, 0x13, 0x18];
 const VANILLA_DEFAULT_WATER_FOG_COLOR: [u8; 3] = [0x05, 0x05, 0x33];
 const VANILLA_TIMELINE_NIGHT_SKY_COLOR_MULTIPLIER: i32 = argb_color(255, 0, 0, 0);
 const VANILLA_TIMELINE_NIGHT_FOG_COLOR_MULTIPLIER: i32 = argb_color(255, 15, 15, 22);
+const VANILLA_TIMELINE_NIGHT_CLOUD_COLOR_MULTIPLIER: i32 = argb_color(255, 25, 25, 38);
 const VANILLA_WEATHER_RAIN_FOG_COLOR_MULTIPLIER: i32 = argb_color(255, 127, 127, 153);
 const VANILLA_WEATHER_THUNDER_FOG_COLOR_MULTIPLIER: i32 = argb_color(255, 63, 63, 76);
+const VANILLA_WEATHER_RAIN_CLOUD_GRAY_BRIGHTNESS: f32 = 0.24;
+const VANILLA_WEATHER_RAIN_CLOUD_GRAY_FACTOR: f32 = 0.5;
+const VANILLA_WEATHER_THUNDER_CLOUD_GRAY_BRIGHTNESS: f32 = 0.095;
+const VANILLA_WEATHER_THUNDER_CLOUD_GRAY_FACTOR: f32 = 0.94;
 const VANILLA_ATMOSPHERIC_FOG_RENDER_DISTANCE_CHUNKS: f32 = 12.0;
 const VANILLA_SUNRISE_SUNSET_MIN_RENDER_DISTANCE_CHUNKS: u32 = 4;
 const VANILLA_DEFAULT_FOG_START_DISTANCE: f32 = 0.0;
@@ -126,6 +131,12 @@ const VANILLA_OVERWORLD_FOG_COLOR_MULTIPLIER_KEYFRAMES: [(i64, i32); 4] = [
     (11_867, -1),
     (13_670, VANILLA_TIMELINE_NIGHT_FOG_COLOR_MULTIPLIER),
     (22_330, VANILLA_TIMELINE_NIGHT_FOG_COLOR_MULTIPLIER),
+];
+const VANILLA_OVERWORLD_CLOUD_COLOR_MULTIPLIER_KEYFRAMES: [(i64, i32); 4] = [
+    (133, -1),
+    (11_867, -1),
+    (13_670, VANILLA_TIMELINE_NIGHT_CLOUD_COLOR_MULTIPLIER),
+    (22_330, VANILLA_TIMELINE_NIGHT_CLOUD_COLOR_MULTIPLIER),
 ];
 const VANILLA_OVERWORLD_SUNRISE_SUNSET_COLOR_KEYFRAMES: [(i64, i32); 32] = [
     (71, 1_609_540_403),
@@ -749,6 +760,15 @@ fn rgb01_to_argb(color: [f32; 3]) -> i32 {
     )
 }
 
+fn rgba01_to_argb(color: [f32; 4]) -> i32 {
+    argb_color(
+        argb_channel_from_unit(color[3]),
+        argb_channel_from_unit(color[0]),
+        argb_channel_from_unit(color[1]),
+        argb_channel_from_unit(color[2]),
+    )
+}
+
 fn argb_channel_from_unit(value: f32) -> i32 {
     (value.clamp(0.0, 1.0) * 255.0).floor() as i32
 }
@@ -837,6 +857,13 @@ fn argb_alpha_blend_channel(
     source: i32,
 ) -> i32 {
     (source * source_alpha + destination * (result_alpha - source_alpha)) / result_alpha
+}
+
+fn argb_greyscale(color: i32) -> i32 {
+    let greyscale = (argb_red(color) as f32 * 0.3
+        + argb_green(color) as f32 * 0.59
+        + argb_blue(color) as f32 * 0.11) as i32;
+    argb_color(argb_alpha(color), greyscale, greyscale, greyscale)
 }
 
 fn sample_periodic_float_keyframes(day_time: i64, keyframes: &[(i64, f32)], period: i64) -> f32 {
@@ -4288,13 +4315,62 @@ fn cloud_environment_for_world(world: &WorldStore) -> CloudEnvironment {
         .map(vanilla_lightmap_dimension_kind)
         .unwrap_or(VanillaLightmapDimensionKind::Overworld);
     if dimension_kind == VanillaLightmapDimensionKind::Overworld {
-        CloudEnvironment::with_color_and_height(
-            VANILLA_DEFAULT_CLOUD_COLOR,
-            VANILLA_DEFAULT_CLOUD_HEIGHT,
-        )
+        let day_time = world
+            .world_time()
+            .map(|time| time.day_time)
+            .unwrap_or(VANILLA_LIGHTMAP_DEFAULT_DAY_TIME);
+        let weather = world.weather();
+        let cloud_color = apply_weather_cloud_color_layers(
+            argb_multiply(
+                rgba01_to_argb(VANILLA_DEFAULT_CLOUD_COLOR),
+                sample_periodic_argb_keyframes(
+                    day_time,
+                    &VANILLA_OVERWORLD_CLOUD_COLOR_MULTIPLIER_KEYFRAMES,
+                    VANILLA_LIGHTMAP_DAY_PERIOD_TICKS,
+                ),
+            ),
+            weather.rain_level as f64,
+            weather.thunder_level as f64,
+        );
+        CloudEnvironment::with_color_and_height(rgba32(cloud_color), VANILLA_DEFAULT_CLOUD_HEIGHT)
     } else {
         CloudEnvironment::disabled()
     }
+}
+
+fn apply_weather_cloud_color_layers(color: i32, rain_level: f64, thunder_level: f64) -> i32 {
+    let thunder_level = sanitize_weather_color_level(thunder_level);
+    let rain_level = (sanitize_weather_color_level(rain_level) - thunder_level).max(0.0);
+    let color = apply_weather_cloud_color_layer(
+        color,
+        rain_level,
+        VANILLA_WEATHER_RAIN_CLOUD_GRAY_BRIGHTNESS,
+        VANILLA_WEATHER_RAIN_CLOUD_GRAY_FACTOR,
+    );
+    apply_weather_cloud_color_layer(
+        color,
+        thunder_level,
+        VANILLA_WEATHER_THUNDER_CLOUD_GRAY_BRIGHTNESS,
+        VANILLA_WEATHER_THUNDER_CLOUD_GRAY_FACTOR,
+    )
+}
+
+fn apply_weather_cloud_color_layer(
+    color: i32,
+    level: f32,
+    gray_brightness: f32,
+    gray_factor: f32,
+) -> i32 {
+    if level <= 0.0 {
+        return color;
+    }
+    let gray = argb_scale_rgb(
+        argb_greyscale(color),
+        gray_brightness,
+        gray_brightness,
+        gray_brightness,
+    );
+    argb_srgb_lerp(level, color, argb_srgb_lerp(gray_factor, color, gray))
 }
 
 fn cloud_frame_for_world(
