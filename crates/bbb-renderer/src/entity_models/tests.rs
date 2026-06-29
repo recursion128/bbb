@@ -282,6 +282,25 @@ fn texture_backed_blended_model_uploads_sort_by_order_then_camera_distance() {
         &sorted_from_origin.item_entity_translucent_cull.vertices[..far_vertex_count],
         far_only.item_entity_translucent_cull.vertices.as_slice()
     );
+    assert_eq!(sorted_from_origin.sorted_item_entity_draws.len(), 2);
+    assert_eq!(
+        sorted_from_origin.sorted_item_entity_draws[0],
+        EntityModelTexturedDrawRange {
+            atlas: EntityModelTexturedDrawAtlas::Static,
+            surface_cull: true,
+            index_start: 0,
+            index_count: far_only.item_entity_translucent_cull.indices.len() as u32,
+        }
+    );
+    assert_eq!(
+        sorted_from_origin.sorted_item_entity_draws[1],
+        EntityModelTexturedDrawRange {
+            atlas: EntityModelTexturedDrawAtlas::Static,
+            surface_cull: true,
+            index_start: far_only.item_entity_translucent_cull.indices.len() as u32,
+            index_count: near_only.item_entity_translucent_cull.indices.len() as u32,
+        }
+    );
 
     let sorted_from_positive_x = entity_model_textured_meshes_with_dynamic_textures_for_camera(
         &[near, far],
@@ -295,6 +314,90 @@ fn texture_backed_blended_model_uploads_sort_by_order_then_camera_distance() {
         &sorted_from_positive_x.item_entity_translucent_cull.vertices[..near_vertex_count],
         near_only.item_entity_translucent_cull.vertices.as_slice()
     );
+    assert_eq!(
+        sorted_from_positive_x.sorted_item_entity_draws[0].index_count,
+        near_only.item_entity_translucent_cull.indices.len() as u32
+    );
+}
+
+#[test]
+fn texture_backed_blended_draw_plan_preserves_cross_atlas_distance_order() {
+    // Vanilla ModelFeatureRenderer stores every hasBlending() model submit in one list and sorts the
+    // list by camera distance before drawing, independent of the texture atlas that backs the submit.
+    let static_head = EntityModelInstance::player_with_parts(
+        801,
+        [2.0, 64.0, 0.0],
+        0.0,
+        false,
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_custom_head_skull(Some(EntityCustomHeadSkull::Player(
+        EntityPlayerSkin::ProfiledDefault(EntityDefaultPlayerSkin::WideSteve),
+    )));
+    let dynamic_skin = EntityDynamicPlayerSkin {
+        handle: 8802,
+        fallback: EntityDefaultPlayerSkin::WideSteve,
+        model: EntityPlayerSkinModel::Wide,
+        status: EntityDynamicPlayerSkinStatus::Ready,
+    };
+    let dynamic_head = EntityModelInstance::player_with_parts(
+        802,
+        [10.0, 64.0, 0.0],
+        0.0,
+        false,
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_custom_head_skull(Some(EntityCustomHeadSkull::Player(
+        EntityPlayerSkin::Dynamic(dynamic_skin),
+    )));
+    let len = (PLAYER_WIDE_STEVE_TEXTURE_REF.size[0] * PLAYER_WIDE_STEVE_TEXTURE_REF.size[1] * 4)
+        as usize;
+    let (atlas, _) = build_entity_model_texture_atlas(&[EntityModelTextureImage::new(
+        PLAYER_WIDE_STEVE_TEXTURE_REF,
+        vec![0x66; len],
+    )])
+    .unwrap();
+    let (dynamic_atlas, _) =
+        build_dynamic_player_skin_atlas(&[crate::player_skin::DynamicPlayerSkinImage {
+            handle: dynamic_skin.handle,
+            rgba: vec![0xdd; 64 * 64 * 4],
+        }])
+        .unwrap();
+
+    let meshes = entity_model_textured_meshes_with_dynamic_textures_for_camera(
+        &[static_head, dynamic_head],
+        &atlas,
+        Some(&dynamic_atlas),
+        None,
+        Some([0.0, 64.0, 0.0]),
+    );
+
+    assert_eq!(meshes.sorted_translucent_draws.len(), 2);
+    assert_eq!(
+        meshes
+            .sorted_translucent_draws
+            .iter()
+            .map(|draw| draw.atlas)
+            .collect::<Vec<_>>(),
+        vec![
+            EntityModelTexturedDrawAtlas::DynamicPlayerSkin,
+            EntityModelTexturedDrawAtlas::Static
+        ]
+    );
+    assert!(meshes
+        .sorted_translucent_draws
+        .iter()
+        .all(|draw| !draw.surface_cull));
+    assert_eq!(
+        meshes.sorted_translucent_draws[0].index_count,
+        meshes.dynamic_player_skin_translucent.indices.len() as u32
+    );
+    assert_eq!(
+        meshes.sorted_translucent_draws[1].index_count,
+        meshes.translucent.indices.len() as u32
+    );
+    assert_eq!(meshes.sorted_translucent_draws[0].index_start, 0);
+    assert_eq!(meshes.sorted_translucent_draws[1].index_start, 0);
 }
 
 #[test]

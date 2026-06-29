@@ -173,6 +173,21 @@ enum PendingSortedTexturedTarget {
     DynamicPlayerTexture(EntityModelLayerRenderType),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum EntityModelTexturedDrawAtlas {
+    Static,
+    DynamicPlayerSkin,
+    DynamicPlayerTexture,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct EntityModelTexturedDrawRange {
+    pub(crate) atlas: EntityModelTexturedDrawAtlas,
+    pub(crate) surface_cull: bool,
+    pub(crate) index_start: u32,
+    pub(crate) index_count: u32,
+}
+
 struct PendingSortedScrollUpload {
     bucket: EntityModelLayerRenderBucket,
     sort_key: EntityModelSubmitSortKey,
@@ -217,6 +232,8 @@ pub(super) struct EntityModelTexturedMeshes {
     /// transform, light, and overlay so the folded GPU buckets can be audited against explicit
     /// submissions.
     pub(super) submissions: Vec<EntityModelRenderSubmission>,
+    pub(super) sorted_translucent_draws: Vec<EntityModelTexturedDrawRange>,
+    pub(super) sorted_item_entity_draws: Vec<EntityModelTexturedDrawRange>,
     pending_sorted_textured_uploads: Vec<PendingSortedTexturedUpload>,
     pending_sorted_scroll_uploads: Vec<PendingSortedScrollUpload>,
     sort_camera_position: Option<[f32; 3]>,
@@ -251,6 +268,8 @@ impl EntityModelTexturedMeshes {
             scroll: EntityModelScrollMesh::new(),
             scroll_additive: EntityModelScrollMesh::new(),
             submissions: Vec::new(),
+            sorted_translucent_draws: Vec::new(),
+            sorted_item_entity_draws: Vec::new(),
             pending_sorted_textured_uploads: Vec::new(),
             pending_sorted_scroll_uploads: Vec::new(),
             sort_camera_position,
@@ -421,22 +440,49 @@ impl EntityModelTexturedMeshes {
         self.pending_sorted_textured_uploads
             .sort_by(|left, right| compare_submit_sort_key(left.sort_key, right.sort_key));
         for upload in std::mem::take(&mut self.pending_sorted_textured_uploads) {
-            match upload.target {
-                PendingSortedTexturedTarget::Static(render_type) => {
-                    append_textured_mesh(self.mesh_mut(render_type), upload.mesh);
-                }
-                PendingSortedTexturedTarget::DynamicPlayerSkin(render_type) => {
+            let render_type = match upload.target {
+                PendingSortedTexturedTarget::Static(render_type)
+                | PendingSortedTexturedTarget::DynamicPlayerSkin(render_type)
+                | PendingSortedTexturedTarget::DynamicPlayerTexture(render_type) => render_type,
+            };
+            let bucket = render_type.mesh_bucket();
+            let surface_cull = render_type.surface_cull();
+            let index_count = u32::try_from(upload.mesh.indices.len())
+                .expect("sorted textured index count fits in u32");
+            let (atlas, index_start) = match upload.target {
+                PendingSortedTexturedTarget::Static(render_type) => (
+                    EntityModelTexturedDrawAtlas::Static,
+                    append_textured_mesh(self.mesh_mut(render_type), upload.mesh),
+                ),
+                PendingSortedTexturedTarget::DynamicPlayerSkin(render_type) => (
+                    EntityModelTexturedDrawAtlas::DynamicPlayerSkin,
                     append_textured_mesh(
                         self.dynamic_player_skin_mesh_mut(render_type),
                         upload.mesh,
-                    );
-                }
-                PendingSortedTexturedTarget::DynamicPlayerTexture(render_type) => {
+                    ),
+                ),
+                PendingSortedTexturedTarget::DynamicPlayerTexture(render_type) => (
+                    EntityModelTexturedDrawAtlas::DynamicPlayerTexture,
                     append_textured_mesh(
                         self.dynamic_player_texture_mesh_mut(render_type),
                         upload.mesh,
-                    );
+                    ),
+                ),
+            };
+            let draw = EntityModelTexturedDrawRange {
+                atlas,
+                surface_cull,
+                index_start,
+                index_count,
+            };
+            match bucket {
+                EntityModelLayerRenderBucket::Translucent if index_count > 0 => {
+                    self.sorted_translucent_draws.push(draw);
                 }
+                EntityModelLayerRenderBucket::ItemEntityTranslucent if index_count > 0 => {
+                    self.sorted_item_entity_draws.push(draw);
+                }
+                _ => {}
             }
         }
 
@@ -992,12 +1038,17 @@ fn render_textured_submission(
     }
 }
 
-fn append_textured_mesh(dest: &mut EntityModelTexturedMesh, source: EntityModelTexturedMesh) {
+fn append_textured_mesh(
+    dest: &mut EntityModelTexturedMesh,
+    source: EntityModelTexturedMesh,
+) -> u32 {
+    let index_start = u32::try_from(dest.indices.len()).expect("textured index count fits in u32");
     let base = u32::try_from(dest.vertices.len()).expect("textured vertex count fits in u32");
     dest.vertices.extend(source.vertices);
     dest.indices
         .extend(source.indices.into_iter().map(|index| index + base));
     dest.cutout_faces += source.cutout_faces;
+    index_start
 }
 
 fn append_scroll_mesh(dest: &mut EntityModelScrollMesh, source: EntityModelScrollMesh) {

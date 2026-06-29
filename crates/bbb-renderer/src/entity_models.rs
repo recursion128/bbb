@@ -139,6 +139,7 @@ use textured::{
     entity_model_textured_meshes_with_dynamic_skins,
     entity_model_textured_meshes_with_dynamic_textures, EntityModelTexturedMeshes,
 };
+pub(crate) use textured::{EntityModelTexturedDrawAtlas, EntityModelTexturedDrawRange};
 
 #[cfg(test)]
 mod tests;

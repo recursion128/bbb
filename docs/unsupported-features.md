@@ -353,11 +353,14 @@ When an agent does any of the following, update this file in the same slice:
     vanilla cull-on entity render types (`entitySolid`, `entityCutoutCull`, and
     `entityTranslucentCullItemTarget`) into static and dynamic texture cull
     buckets drawn with back-face culling and a separate no-`PER_FACE_LIGHTING`
-    single-normal diffuse shader. Later GPU work should preserve
-    per-submission draw order across buckets, split remaining currently-coalesced
-    render-type state such as no-cull `entityCutout*`, `armorCutoutNoCull`,
-    `entityTranslucent*`, `Eyes`, `waterMask`, and glint / scroll variants into
-    equivalent pipeline state, and reconcile remaining target/post-chain
+    single-normal diffuse shader. Surface blended submissions now also keep a
+    GPU draw plan of sorted index ranges, so `entityTranslucent` and
+    `entityTranslucentCullItemTarget` draw in vanilla order across static,
+    dynamic player-skin, and dynamic profile-texture atlases within their target.
+    Later GPU work should split remaining currently-coalesced render-type state
+    such as no-cull `entityCutout*`, `armorCutoutNoCull`, `Eyes`, `waterMask`,
+    and glint / scroll variants into equivalent pipeline state, and reconcile
+    remaining target/post-chain
     render-graph sorting plus full dynamic LightTexture / darkness-adjusted
     gamma / diffuse visual parity. The scroll GPU path already separates
     vanilla `breezeWind` as lightmap-lit from emissive additive `energySwirl`.
@@ -460,7 +463,10 @@ When an agent does any of the following, update this file in the same slice:
     combine, matching the vanilla frame-graph position of the `entity_outline`
     post chain. Texture-backed blended model submissions now queue per-submission
     upload ranges and flush by vanilla `SubmitNodeStorage` order, camera-distance
-    descending, and stable submit insertion; camera pose changes rebuild those
+    descending, and stable submit insertion; main-target `entityTranslucent` and
+    itemEntity-target `entityTranslucentCullItemTarget` surface buckets now draw
+    those sorted submissions as per-range GPU draws across static, dynamic
+    player-skin, and dynamic profile-texture atlases. Camera pose changes rebuild those
     upload buffers from the current eye-position. Item-frame map decoration name
     labels now follow vanilla `MapRenderer` order-1 text submission placement:
     they draw in the main-target translucent feature phase after blended entity
@@ -482,8 +488,8 @@ When an agent does any of the following, update this file in the same slice:
     Flat/generated item material translucency metadata is still deferred to item
     presentation because that material source is not modeled yet; it is no longer
     a narrow render-pipeline path blocker. Remaining render-graph parity still
-    needs target ordering across block/text/name, cross-atlas/cross-target
-    translucent feature polish, and finer target-resource polish; outline now has a
+    needs target ordering across block/text/name and cross-target translucent
+    feature polish plus finer target-resource polish; outline now has a
     dedicated target/composite at the right post-chain position, clouds now
     follow particles and the outline chain before weather/combine, and lightning
     is no longer missing weather-target geometry.

@@ -4,6 +4,9 @@ use anyhow::Result;
 use wgpu::util::DeviceExt;
 
 use crate::{
+    entity_models::{
+        EntityModelTexturedDrawAtlas, EntityModelTexturedDrawRange, EntityModelTexturedMeshGpu,
+    },
     lightmap::write_lightmap_uniform,
     weather::{build_lightning_mesh, build_weather_mesh},
     Renderer,
@@ -1304,6 +1307,19 @@ impl Renderer {
         pipeline_switches: &mut u64,
         entity_model_draw_calls: &mut u64,
     ) {
+        if !self.entity_model_sorted_item_entity_draws.is_empty() {
+            for draw in &self.entity_model_sorted_item_entity_draws {
+                self.draw_entity_textured_range(
+                    pass,
+                    *draw,
+                    true,
+                    pipeline_switches,
+                    entity_model_draw_calls,
+                );
+            }
+            return;
+        }
+
         if let (Some(mesh), Some(atlas)) = (
             &self.entity_model_item_entity_translucent_mesh,
             &self.entity_model_texture_atlas,
@@ -1384,50 +1400,155 @@ impl Renderer {
         }
     }
 
+    fn draw_entity_textured_range<'a>(
+        &'a self,
+        pass: &mut wgpu::RenderPass<'a>,
+        draw: EntityModelTexturedDrawRange,
+        item_entity_target: bool,
+        pipeline_switches: &mut u64,
+        entity_model_draw_calls: &mut u64,
+    ) {
+        let Some((mesh, bind_group)) =
+            self.entity_textured_range_resources(draw, item_entity_target)
+        else {
+            return;
+        };
+        let index_end = draw.index_start.saturating_add(draw.index_count);
+        if draw.index_count == 0 || index_end > mesh.index_count {
+            return;
+        }
+
+        if draw.surface_cull {
+            pass.set_pipeline(&self.entity_model_translucent_cull_pipeline);
+        } else {
+            pass.set_pipeline(&self.entity_model_translucent_pipeline);
+        }
+        *pipeline_switches += 1;
+        pass.set_bind_group(0, bind_group, &[]);
+        pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+        pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+        pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        pass.draw_indexed(draw.index_start..index_end, 0, 0..1);
+        *entity_model_draw_calls += 1;
+    }
+
+    fn entity_textured_range_resources<'a>(
+        &'a self,
+        draw: EntityModelTexturedDrawRange,
+        item_entity_target: bool,
+    ) -> Option<(&'a EntityModelTexturedMeshGpu, &'a wgpu::BindGroup)> {
+        match (draw.atlas, item_entity_target, draw.surface_cull) {
+            (EntityModelTexturedDrawAtlas::Static, false, false) => Some((
+                self.entity_model_translucent_mesh.as_ref()?,
+                &self.entity_model_texture_atlas.as_ref()?.bind_group,
+            )),
+            (EntityModelTexturedDrawAtlas::DynamicPlayerSkin, false, false) => Some((
+                self.entity_dynamic_player_skin_translucent_mesh.as_ref()?,
+                &self.entity_dynamic_player_skin_atlas.as_ref()?.bind_group,
+            )),
+            (EntityModelTexturedDrawAtlas::DynamicPlayerTexture, false, false) => Some((
+                self.entity_dynamic_player_texture_translucent_mesh
+                    .as_ref()?,
+                &self
+                    .entity_dynamic_player_texture_atlas
+                    .as_ref()?
+                    .bind_group,
+            )),
+            (EntityModelTexturedDrawAtlas::Static, true, false) => Some((
+                self.entity_model_item_entity_translucent_mesh.as_ref()?,
+                &self.entity_model_texture_atlas.as_ref()?.bind_group,
+            )),
+            (EntityModelTexturedDrawAtlas::Static, true, true) => Some((
+                self.entity_model_item_entity_translucent_cull_mesh
+                    .as_ref()?,
+                &self.entity_model_texture_atlas.as_ref()?.bind_group,
+            )),
+            (EntityModelTexturedDrawAtlas::DynamicPlayerSkin, true, false) => Some((
+                self.entity_dynamic_player_skin_item_entity_translucent_mesh
+                    .as_ref()?,
+                &self.entity_dynamic_player_skin_atlas.as_ref()?.bind_group,
+            )),
+            (EntityModelTexturedDrawAtlas::DynamicPlayerSkin, true, true) => Some((
+                self.entity_dynamic_player_skin_item_entity_translucent_cull_mesh
+                    .as_ref()?,
+                &self.entity_dynamic_player_skin_atlas.as_ref()?.bind_group,
+            )),
+            (EntityModelTexturedDrawAtlas::DynamicPlayerTexture, true, false) => Some((
+                self.entity_dynamic_player_texture_item_entity_translucent_mesh
+                    .as_ref()?,
+                &self
+                    .entity_dynamic_player_texture_atlas
+                    .as_ref()?
+                    .bind_group,
+            )),
+            (EntityModelTexturedDrawAtlas::DynamicPlayerTexture, true, true) => Some((
+                self.entity_dynamic_player_texture_item_entity_translucent_cull_mesh
+                    .as_ref()?,
+                &self
+                    .entity_dynamic_player_texture_atlas
+                    .as_ref()?
+                    .bind_group,
+            )),
+            _ => None,
+        }
+    }
+
     fn draw_entity_translucent_features<'a>(
         &'a self,
         pass: &mut wgpu::RenderPass<'a>,
         pipeline_switches: &mut u64,
         entity_model_draw_calls: &mut u64,
     ) {
-        if let (Some(mesh), Some(atlas)) = (
-            &self.entity_model_translucent_mesh,
-            &self.entity_model_texture_atlas,
-        ) {
-            pass.set_pipeline(&self.entity_model_translucent_pipeline);
-            *pipeline_switches += 1;
-            pass.set_bind_group(0, &atlas.bind_group, &[]);
-            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
-            pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-            pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-            *entity_model_draw_calls += 1;
-        }
-        if let (Some(mesh), Some(atlas)) = (
-            &self.entity_dynamic_player_skin_translucent_mesh,
-            &self.entity_dynamic_player_skin_atlas,
-        ) {
-            pass.set_pipeline(&self.entity_model_translucent_pipeline);
-            *pipeline_switches += 1;
-            pass.set_bind_group(0, &atlas.bind_group, &[]);
-            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
-            pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-            pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-            *entity_model_draw_calls += 1;
-        }
-        if let (Some(mesh), Some(atlas)) = (
-            &self.entity_dynamic_player_texture_translucent_mesh,
-            &self.entity_dynamic_player_texture_atlas,
-        ) {
-            pass.set_pipeline(&self.entity_model_translucent_pipeline);
-            *pipeline_switches += 1;
-            pass.set_bind_group(0, &atlas.bind_group, &[]);
-            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
-            pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-            pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-            *entity_model_draw_calls += 1;
+        if self.entity_model_sorted_translucent_draws.is_empty() {
+            if let (Some(mesh), Some(atlas)) = (
+                &self.entity_model_translucent_mesh,
+                &self.entity_model_texture_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_translucent_pipeline);
+                *pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                *entity_model_draw_calls += 1;
+            }
+            if let (Some(mesh), Some(atlas)) = (
+                &self.entity_dynamic_player_skin_translucent_mesh,
+                &self.entity_dynamic_player_skin_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_translucent_pipeline);
+                *pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                *entity_model_draw_calls += 1;
+            }
+            if let (Some(mesh), Some(atlas)) = (
+                &self.entity_dynamic_player_texture_translucent_mesh,
+                &self.entity_dynamic_player_texture_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_translucent_pipeline);
+                *pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                *entity_model_draw_calls += 1;
+            }
+        } else {
+            for draw in &self.entity_model_sorted_translucent_draws {
+                self.draw_entity_textured_range(
+                    pass,
+                    *draw,
+                    false,
+                    pipeline_switches,
+                    entity_model_draw_calls,
+                );
+            }
         }
         if let (Some(mesh), Some(atlas)) = (
             &self.entity_model_eyes_mesh,
@@ -2235,6 +2356,42 @@ mod tests {
         assert!(
             !source[main_helper..tests_mod].contains("entity_model_item_entity_translucent_mesh"),
             "main-target translucent feature helper must not draw ITEM_ENTITY_TARGET render types"
+        );
+    }
+
+    #[test]
+    fn texture_backed_blended_draw_plan_uses_sorted_index_ranges() {
+        let source = include_str!("render.rs");
+        let item_helper = source
+            .find("fn draw_entity_item_entity_target_features")
+            .expect("item_entity target feature helper is present");
+        let range_helper = source
+            .find("fn draw_entity_textured_range")
+            .expect("textured range draw helper is present");
+        let main_helper = source
+            .find("fn draw_entity_translucent_features")
+            .expect("main translucent feature helper is present");
+        let tests_mod = source
+            .find("#[cfg(test)]")
+            .expect("render tests module is present");
+
+        assert!(
+            source[item_helper..range_helper]
+                .contains("self.entity_model_sorted_item_entity_draws"),
+            "itemEntity target blended surface draws consume the sorted itemEntity draw plan"
+        );
+        assert!(
+            source[range_helper..main_helper]
+                .contains("pass.draw_indexed(draw.index_start..index_end, 0, 0..1)"),
+            "sorted blended surface draws must draw only the submission range, not the whole atlas bucket"
+        );
+        assert!(
+            source[main_helper..tests_mod].contains("self.entity_model_sorted_translucent_draws"),
+            "main translucent blended surface draws consume the sorted translucent draw plan"
+        );
+        assert!(
+            source[main_helper..tests_mod].contains("self.draw_entity_textured_range("),
+            "main translucent helper dispatches sorted draw-plan ranges"
         );
     }
 
