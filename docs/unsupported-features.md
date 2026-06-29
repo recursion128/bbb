@@ -374,10 +374,12 @@ When an agent does any of the following, update this file in the same slice:
     `entity_outline -> swap`, and final blit writes `swap -> entity_outline`
     before `ENTITY_OUTLINE_BLIT` composites to the main target. The sobel shader
     uses vanilla alpha-diff edge detection and the blur shader uses radius `2.0`
-    with bilinear sampling. The outline post-chain now runs after the complete
-    target-backed main-pass work and before clouds/weather/transparency; remaining
-    outline work is finer target-resource polish, not a missing kernel or broad
-    post-chain timing gap.
+    with bilinear sampling. The outline target write now stays in the main-pass
+    resource scope after translucent features / crumbling and before translucent
+    terrain, while the outline post-chain runs after the complete target-backed
+    main-pass work and before clouds/weather/transparency; remaining outline work
+    is finer target-resource polish, not a missing kernel or broad post-chain
+    timing gap.
   - P0 visual render-order slice: vanilla 26.1 `ChunkSectionLayerGroup.OPAQUE`
     is `SOLID` followed by `CUTOUT`, and `LevelRenderer.addMainPass` renders
     that opaque group before feature submissions. The renderer world pass now
@@ -442,10 +444,12 @@ When an agent does any of the following, update this file in the same slice:
     pass before target depth copies, translucent target work, entity-outline
     post-chain work, and clouds, matching `LevelRenderer.addMainPass` calling
     `FeatureRenderDispatcher.renderSolidFeatures()` before the later main-pass
-    and frame-graph phases. Entity outline target/post-chain/composite work now
-    follows the complete target-backed main pass and precedes clouds, weather,
-    and transparency combine, matching the vanilla frame-graph position of the
-    `entity_outline` post chain.
+    and frame-graph phases. Entity outline target writes now stay in the main-pass
+    resource scope after translucent features / crumbling and before translucent
+    terrain; the outline post-chain/composite work follows the complete
+    target-backed main pass and precedes clouds, weather, and transparency
+    combine, matching the vanilla frame-graph position of the `entity_outline`
+    post chain.
     Flat/generated item material translucency metadata is still deferred to item
     presentation because that material source is not modeled yet; it is no longer
     a narrow render-pipeline path blocker. Remaining render-graph parity still

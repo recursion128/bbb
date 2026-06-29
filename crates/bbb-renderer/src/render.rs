@@ -399,6 +399,10 @@ impl Renderer {
             },
         );
 
+        let has_entity_outline_meshes = self.entity_model_texture_atlas.is_some()
+            && (self.entity_model_outline_mesh.is_some()
+                || self.entity_model_outline_cull_mesh.is_some());
+
         if self.has_entity_translucent_features() {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(ENTITY_TRANSLUCENT_FEATURE_PASS_LABEL),
@@ -457,6 +461,51 @@ impl Renderer {
             pass.set_index_buffer(overlays.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
             pass.draw_indexed(0..overlays.index_count, 0, 0..1);
             block_destroy_overlay_draw_calls += 1;
+        }
+
+        if has_entity_outline_meshes {
+            let atlas = self
+                .entity_model_texture_atlas
+                .as_ref()
+                .expect("outline meshes require the static entity atlas");
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some(ENTITY_OUTLINE_TARGET_PASS_LABEL),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &self.entity_outline_target.view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.entity_outline_target.depth.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            pass.set_bind_group(0, &atlas.bind_group, &[]);
+            if let Some(mesh) = &self.entity_model_outline_mesh {
+                pass.set_pipeline(&self.entity_model_outline_pipeline);
+                pipeline_switches += 1;
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                entity_model_draw_calls += 1;
+            }
+            if let Some(mesh) = &self.entity_model_outline_cull_mesh {
+                pass.set_pipeline(&self.entity_model_outline_cull_pipeline);
+                pipeline_switches += 1;
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                entity_model_draw_calls += 1;
+            }
         }
 
         {
@@ -698,55 +747,7 @@ impl Renderer {
             }
         }
 
-        if self.entity_model_texture_atlas.is_some()
-            && (self.entity_model_outline_mesh.is_some()
-                || self.entity_model_outline_cull_mesh.is_some())
-        {
-            let atlas = self
-                .entity_model_texture_atlas
-                .as_ref()
-                .expect("outline meshes require the static entity atlas");
-            {
-                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some(ENTITY_OUTLINE_TARGET_PASS_LABEL),
-                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: &self.entity_outline_target.view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                            store: wgpu::StoreOp::Store,
-                        },
-                    })],
-                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                        view: &self.entity_outline_target.depth.view,
-                        depth_ops: Some(wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(1.0),
-                            store: wgpu::StoreOp::Store,
-                        }),
-                        stencil_ops: None,
-                    }),
-                    occlusion_query_set: None,
-                    timestamp_writes: None,
-                });
-                pass.set_bind_group(0, &atlas.bind_group, &[]);
-                if let Some(mesh) = &self.entity_model_outline_mesh {
-                    pass.set_pipeline(&self.entity_model_outline_pipeline);
-                    pipeline_switches += 1;
-                    pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-                    pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-                    pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                    entity_model_draw_calls += 1;
-                }
-                if let Some(mesh) = &self.entity_model_outline_cull_mesh {
-                    pass.set_pipeline(&self.entity_model_outline_cull_pipeline);
-                    pipeline_switches += 1;
-                    pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-                    pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-                    pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-                    entity_model_draw_calls += 1;
-                }
-            }
-
+        if has_entity_outline_meshes {
             {
                 let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some(ENTITY_OUTLINE_SOBEL_PASS_LABEL),
@@ -2260,11 +2261,10 @@ mod tests {
     }
 
     #[test]
-    fn entity_outline_target_composites_after_complete_main_pass_before_clouds() {
-        // Vanilla LevelRenderer adds the entity_outline post chain immediately after addMainPass
-        // and before clouds, weather, and transparency. Keep bbb's current target write plus
-        // post-chain after the target-backed main-pass work until the renderer splits target
-        // writes into the main pass resource scope.
+    fn entity_outline_target_stays_in_main_pass_and_post_chain_runs_before_clouds() {
+        // Vanilla LevelRenderer writes the entity_outline target from addMainPass, then adds
+        // the entity_outline post chain immediately after addMainPass and before clouds,
+        // weather, and transparency.
         let source = include_str!("render.rs");
         let target = source
             .find("label: Some(ENTITY_OUTLINE_TARGET_PASS_LABEL)")
@@ -2287,6 +2287,12 @@ mod tests {
         let particle = source
             .find("label: Some(PARTICLE_TARGET_PASS_LABEL)")
             .expect("particle target pass label is used");
+        let entity_translucent_features = source
+            .find("label: Some(ENTITY_TRANSLUCENT_FEATURE_PASS_LABEL)")
+            .expect("entity translucent feature pass label is used");
+        let block_destroy = source
+            .find("label: Some(\"bbb-native-block-destroy-overlay-pass\")")
+            .expect("block destroy overlay pass label is used");
         let clouds = source
             .find("label: Some(CLOUDS_PASS_LABEL)")
             .expect("cloud pass label is used");
@@ -2308,12 +2314,15 @@ mod tests {
             "outline target and post-chain passes follow vanilla entity_outline.json order"
         );
         assert!(
-            translucent < particle
-                && particle < target
+            entity_translucent_features < block_destroy
+                && block_destroy < target
+                && target < translucent
+                && translucent < particle
+                && particle < sobel
                 && composite < clouds
                 && clouds < weather
                 && weather < combine,
-            "outline post-chain runs after the complete target-backed main pass and before vanilla cloud/weather/transparency passes"
+            "outline target write stays in the main pass while the post-chain runs before vanilla cloud/weather/transparency passes"
         );
     }
 }

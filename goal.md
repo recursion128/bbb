@@ -399,10 +399,17 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。当前 checkl
   `LevelRenderer` 先完成完整 `addMainPass`（含 depth copies、
   `renderTranslucentFeatures()`、translucent terrain 和
   `renderTranslucentParticles()`），再添加 `entity_outline` post chain，之后才是
-  clouds、weather 和 transparency chain。renderer 现在把当前合并的
-  entity-outline target write / sobel / blur / blit / composite 移到 particle
-  target 之后、clouds 之前；剩余 target ordering 收窄为 per-submit feature
-  距离排序、block/text/name ordering 和更细 target resource polish。
+  clouds、weather 和 transparency chain。renderer 已把 outline post-chain 移到
+  particle target 之后、clouds 之前。
+- [x] 2026-06-29 entity outline target resource-scope slice：vanilla
+  `LevelRenderer.addMainPass` 在 main pass 内 clear `entity_outline` target，并在
+  `renderTranslucentFeatures()` / `crumblingBufferSource.endBatch()` 之后调用
+  `outlineBufferSource().endOutlineBatch()`；只有 sobel / blur / blit post-chain
+  位于完整 `addMainPass` 之后。renderer 现在把 `ENTITY_OUTLINE_TARGET` 写入放在
+  entity translucent feature / block-destroy phase 之后、translucent target
+  之前，sobel / blur / blit / composite 仍保持在 particle target 之后、clouds
+  之前；剩余 target ordering 收窄为 per-submit feature 距离排序、
+  block/text/name ordering 和更细 target resource polish。
 
 ### [x] P0：提交图与 RenderType 语义（状态：狭义 pipeline 已完成）
 
