@@ -1155,6 +1155,11 @@ blocker。
     pin 住；held-block root transform 已接 `CarriedBlockLayer` 对应路径，剩余
     per-entity carried-block light hookup 归 entity-attached block-model follow-up，
     creepy render jitter 仍为 P1 renderer 行为。
+- Minecart：
+  - [x] 旧的 broad lighting wording 已收窄：minecart body `entityCutout`
+    submission light/overlay metadata 已由 renderer tests pin 住；剩余只随
+    rail-follow transform 与 chest/furnace/hopper/command-block/TNT/spawner
+    内容模型的 block-content light hookup 继续跟踪。
 - Boat / raft：
   - [x] paddle rowing animation（world metadata/passenger gate -> native render state -> renderer paddle pose）
   - [x] hurt/damage roll（VehicleEntity metadata -> native render state -> boat root transform）
