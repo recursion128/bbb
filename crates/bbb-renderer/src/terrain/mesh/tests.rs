@@ -1,8 +1,9 @@
 use super::super::{
     build_opaque_chunk_mesh, build_opaque_terrain_meshes, build_opaque_terrain_meshes_with_atlas,
-    build_terrain_mesh_layers_with_atlas, build_terrain_meshes_with_atlas, TerrainBox,
-    TerrainCross, TerrainFace, TerrainFluid, TerrainFluidKind, TerrainLight, TerrainMesh,
-    TerrainQuad, TerrainTint, TerrainTransparency, TerrainUvRect, TerrainVertex,
+    build_terrain_mesh_layers_with_atlas, build_terrain_mesh_layers_with_atlas_and_camera,
+    build_terrain_meshes_with_atlas, TerrainBox, TerrainCross, TerrainFace, TerrainFluid,
+    TerrainFluidKind, TerrainLight, TerrainMesh, TerrainQuad, TerrainTint, TerrainTransparency,
+    TerrainUvRect, TerrainVertex,
 };
 use super::*;
 
@@ -1019,6 +1020,55 @@ fn forced_translucent_cube_faces_emit_in_translucent_layer() {
     assert_eq!(layers.opaque[0].opaque_faces, 5);
     assert_eq!(layers.translucent[0].translucent_faces, 1);
     assert_eq!(layers.cutout[0].vertices.len(), 0);
+}
+
+#[test]
+fn translucent_layer_sorts_quad_indices_by_distance_from_camera_like_vanilla() {
+    let near = TerrainQuad {
+        corners: [
+            [0.0, 0.0, 0.0],
+            [16.0, 0.0, 0.0],
+            [16.0, 16.0, 0.0],
+            [0.0, 16.0, 0.0],
+        ],
+        normal: [0.0, 0.0, -1.0],
+        uvs: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+        cull: None,
+        texture_index: 0,
+        tint: TerrainTint::WHITE,
+        transparency: TerrainTransparency::TRANSLUCENT,
+        shade: true,
+        light_emission: 0,
+    };
+    let far = TerrainQuad {
+        corners: [
+            [0.0, 0.0, 16.0],
+            [16.0, 0.0, 16.0],
+            [16.0, 16.0, 16.0],
+            [0.0, 16.0, 16.0],
+        ],
+        normal: [0.0, 0.0, 1.0],
+        ..near
+    };
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] = TerrainCell::with_shape(
+        7,
+        TerrainMaterialClass::Opaque,
+        0,
+        TerrainRenderShape::Quads(vec![near, far]),
+    );
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let layers = build_terrain_mesh_layers_with_atlas_and_camera(
+        &[snapshot],
+        &TerrainTextureAtlas::unit(),
+        [1.5, 0.5, -4.0],
+    );
+
+    assert_eq!(
+        layers.translucent[0].indices,
+        vec![4, 5, 6, 6, 7, 4, 0, 1, 2, 2, 3, 0]
+    );
 }
 
 #[test]

@@ -520,6 +520,14 @@ pub fn build_terrain_mesh_layers_with_atlas(
     snapshots: &[TerrainChunkSnapshot],
     atlas: &TerrainTextureAtlas,
 ) -> TerrainMeshLayers {
+    build_terrain_mesh_layers_with_atlas_and_camera(snapshots, atlas, [0.0, 0.0, 0.0])
+}
+
+pub fn build_terrain_mesh_layers_with_atlas_and_camera(
+    snapshots: &[TerrainChunkSnapshot],
+    atlas: &TerrainTextureAtlas,
+    camera_position: [f32; 3],
+) -> TerrainMeshLayers {
     let lookup = mesh::TerrainChunkLookup::new(snapshots);
     let source_sections = snapshots
         .iter()
@@ -550,12 +558,14 @@ pub fn build_terrain_mesh_layers_with_atlas(
     let translucent = snapshots
         .iter()
         .map(|snapshot| {
-            mesh::build_chunk_mesh_with_lookup(
+            let mut mesh = mesh::build_chunk_mesh_with_lookup(
                 snapshot,
                 &lookup,
                 atlas,
                 mesh::TerrainMeshMode::TranslucentOnly,
-            )
+            );
+            mesh::sort_translucent_quads_by_distance(&mut mesh, camera_position);
+            mesh
         })
         .collect();
 

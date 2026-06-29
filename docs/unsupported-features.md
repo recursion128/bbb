@@ -416,9 +416,10 @@ When an agent does any of the following, update this file in the same slice:
     `OutputTarget.WEATHER_TARGET` with vanilla environment textures,
     `DefaultVertexFormat.PARTICLE`-shaped vertex data, dynamic `Sampler2`
     LightTexture sampling, and rain-before-snow draw order.
-    Remaining render-graph parity still needs the full vanilla transparency
-    post-chain shape and finer feature/terrain target sorting across the now
-    present translucent / itemEntity / particles / weather / cloud targets;
+    Terrain translucent upload-time quad sorting now follows vanilla
+    `MeshData.sortQuads` centroid distance order. Remaining render-graph parity
+    still needs camera-move translucent resort and finer feature/terrain target
+    sorting across the now present translucent / itemEntity / particles / weather / cloud targets;
     outline now has a dedicated target/composite.
   - P0 cloud presentation slice: vanilla 26.1 `CloudRenderer` uses
     `EnvironmentAttributes.CLOUD_COLOR` / `CLOUD_HEIGHT` and the
@@ -443,8 +444,8 @@ When an agent does any of the following, update this file in the same slice:
     heightmaps from chunk packet data for rain/snow column bounds and keeps that
     heightmap updated for block changes. Weather precipitation now applies the
     vanilla height-adjustment `TEMPERATURE_NOISE` and the `frozen` biome
-    `temperature_modifier`. Remaining cloud/weather parity is the full vanilla
-    transparency post-chain depth sorting.
+    `temperature_modifier`. Remaining cloud/weather parity is camera-move
+    translucent resort plus finer transparency target sorting.
   - P0 pipeline closeout treats texture-backed / dispatch-owned submission and
     RenderType/order/missing-atlas/dynamic-texture coverage as complete for the
     narrow pipeline scope: entity model tests assert `submit_sequence` across 78
@@ -759,7 +760,7 @@ When an agent does any of the following, update this file in the same slice:
     and block-update maintenance before falling back to the old scan path.
     Weather precipitation now applies vanilla height temperature noise plus the
     frozen-ocean temperature modifier.
-    Remaining visual gaps are full transparency post-chain depth sorting,
+    Remaining visual gaps are camera-move translucent resort / finer target sorting,
     fuller atmosphere presentation, and later custom-pack EnvironmentAttribute
     generalization when a concrete renderer surface exists. Sun/moon presentation
     is now covered by the vanilla `CELESTIAL` overlay blend, the
@@ -781,8 +782,9 @@ When an agent does any of the following, update this file in the same slice:
     instead of terrain recomputing the formula inline. The terrain/world shader
     no longer uses the earlier
     `max(block, sky * 0.95)` scalar approximation. Remaining lighting gaps:
-    full transparency target sorting after the newly added renderer-owned main
-    color target / Main+Translucent+ItemEntity+Particles+Weather+Clouds combine foundation,
+    camera-move translucent resort and finer transparency target sorting after the
+    renderer-owned main color target /
+    Main+Translucent+ItemEntity+Particles+Weather+Clouds combine foundation,
     provider-specific particle light emission overrides,
     smooth/AO entity light, GUI / entity-in-UI lighting variants, and the
     colored debug fallback's baked-shade approximation. The item-model

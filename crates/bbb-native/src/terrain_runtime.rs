@@ -1,10 +1,12 @@
 use std::time::{Duration, Instant};
 
 use bbb_renderer::terrain::{
-    build_terrain_mesh_layers_with_atlas, TerrainCell, TerrainChunkSnapshot, TerrainFluid,
-    TerrainFluidKind, TerrainLight, TerrainMaterialClass, TerrainTint,
+    build_terrain_mesh_layers_with_atlas_and_camera, TerrainCell, TerrainChunkSnapshot,
+    TerrainFluid, TerrainFluidKind, TerrainLight, TerrainMaterialClass, TerrainTint,
 };
 use bbb_world::{ChunkPos, WorldStore};
+
+use crate::camera_pose::camera_pose_from_world;
 
 mod textures;
 pub(crate) use textures::{load_terrain_textures, BlockRenderPosition, TerrainTextureState};
@@ -136,7 +138,20 @@ pub(crate) fn maybe_upload_decoded_terrain(
         .into_iter()
         .map(|snapshot| convert_terrain_snapshot(snapshot, textures))
         .collect();
-    let meshes = build_terrain_mesh_layers_with_atlas(&renderer_snapshots, &textures.atlas);
+    let camera_position = camera_pose_from_world(world)
+        .map(|pose| {
+            [
+                pose.position[0],
+                pose.position[1] + pose.eye_height,
+                pose.position[2],
+            ]
+        })
+        .unwrap_or([0.0, 0.0, 0.0]);
+    let meshes = build_terrain_mesh_layers_with_atlas_and_camera(
+        &renderer_snapshots,
+        &textures.atlas,
+        camera_position,
+    );
 
     renderer.upload_terrain_mesh_layers(meshes);
     upload.decoded_chunks = world_counters.chunks_decoded;

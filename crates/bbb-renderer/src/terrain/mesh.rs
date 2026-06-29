@@ -274,6 +274,48 @@ pub(super) fn build_chunk_mesh_with_lookup(
     mesh
 }
 
+pub(super) fn sort_translucent_quads_by_distance(
+    mesh: &mut TerrainMesh,
+    camera_position: [f32; 3],
+) {
+    debug_assert_eq!(mesh.vertices.len() % 4, 0);
+    if mesh.vertices.len() % 4 != 0 {
+        return;
+    }
+
+    let mut quad_distances: Vec<_> = mesh
+        .vertices
+        .chunks_exact(4)
+        .enumerate()
+        .map(|(quad_index, quad)| {
+            let centroid = [
+                (quad[0].position[0] + quad[2].position[0]) * 0.5,
+                (quad[0].position[1] + quad[2].position[1]) * 0.5,
+                (quad[0].position[2] + quad[2].position[2]) * 0.5,
+            ];
+            let dx = centroid[0] - camera_position[0];
+            let dy = centroid[1] - camera_position[1];
+            let dz = centroid[2] - camera_position[2];
+            (quad_index, dx * dx + dy * dy + dz * dz)
+        })
+        .collect();
+    quad_distances.sort_by(
+        |(left_index, left_distance), (right_index, right_distance)| {
+            right_distance
+                .total_cmp(left_distance)
+                .then_with(|| left_index.cmp(right_index))
+        },
+    );
+
+    mesh.indices.clear();
+    mesh.indices.reserve(quad_distances.len() * 6);
+    for (quad_index, _) in quad_distances {
+        let base = (quad_index * 4) as u32;
+        mesh.indices
+            .extend_from_slice(&[base, base + 1, base + 2, base + 2, base + 3, base]);
+    }
+}
+
 fn has_texture_layer_overrides(cell: &TerrainCell) -> bool {
     cell.face_transparency
         .iter()
