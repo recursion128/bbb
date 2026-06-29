@@ -1,7 +1,8 @@
 use std::sync::OnceLock;
 
-use bbb_pack::{BiomeColorProfile, GrassColorModifier};
+use bbb_pack::{BiomeColorProfile, BiomeTemperatureModifier, GrassColorModifier};
 use bbb_renderer::terrain::TerrainTint;
+use bbb_world::BlockPos;
 
 use crate::terrain_runtime::BlockRenderPosition;
 
@@ -9,6 +10,8 @@ const SWAMP_GRASS_DARK: [u8; 3] = [0x4c, 0x76, 0x3c];
 const SWAMP_GRASS_LIGHT: [u8; 3] = [0x6a, 0x70, 0x39];
 
 static BIOME_INFO_NOISE: OnceLock<SimplexNoise> = OnceLock::new();
+static TEMPERATURE_NOISE: OnceLock<SimplexNoise> = OnceLock::new();
+static FROZEN_TEMPERATURE_NOISE: OnceLock<PerlinSimplexNoise> = OnceLock::new();
 
 pub(crate) fn terrain_tint_from_rgb(rgb: [u8; 3]) -> TerrainTint {
     TerrainTint::from_rgb_u8(rgb[0], rgb[1], rgb[2])
@@ -48,9 +51,66 @@ pub(crate) fn apply_grass_color_modifier(
 }
 
 fn biome_info_noise(x: f64, z: f64) -> f64 {
+    biome_info_noise_raw(x * 0.0225, z * 0.0225)
+}
+
+pub(crate) fn biome_height_adjusted_temperature(
+    base_temperature: f32,
+    temperature_modifier: BiomeTemperatureModifier,
+    pos: BlockPos,
+    sea_level: i32,
+) -> f32 {
+    let adjusted_temperature =
+        biome_modified_temperature(base_temperature, temperature_modifier, pos);
+    let snow_level = sea_level + 17;
+    if pos.y > snow_level {
+        let noise = (biome_temperature_noise(pos.x, pos.z) * 8.0) as f32;
+        adjusted_temperature - (noise + (pos.y - snow_level) as f32) * 0.05 / 40.0
+    } else {
+        adjusted_temperature
+    }
+}
+
+fn biome_modified_temperature(
+    base_temperature: f32,
+    temperature_modifier: BiomeTemperatureModifier,
+    pos: BlockPos,
+) -> f32 {
+    match temperature_modifier {
+        BiomeTemperatureModifier::None => base_temperature,
+        BiomeTemperatureModifier::Frozen => {
+            let ground_value_large_variation = frozen_temperature_noise(pos.x, pos.z) * 7.0;
+            let ground_value_edge_variation =
+                biome_info_noise_raw(pos.x as f64 * 0.2, pos.z as f64 * 0.2);
+            let ice_patches = ground_value_large_variation + ground_value_edge_variation;
+            if ice_patches < 0.3 {
+                let ground_value_small_variation =
+                    biome_info_noise_raw(pos.x as f64 * 0.09, pos.z as f64 * 0.09);
+                if ground_value_small_variation < 0.8 {
+                    return 0.2;
+                }
+            }
+            base_temperature
+        }
+    }
+}
+
+fn biome_temperature_noise(x: i32, z: i32) -> f64 {
+    TEMPERATURE_NOISE
+        .get_or_init(|| SimplexNoise::new(LegacyRandomSource::new(1234)))
+        .get_value(x as f64 / 8.0, z as f64 / 8.0)
+}
+
+fn frozen_temperature_noise(x: i32, z: i32) -> f64 {
+    FROZEN_TEMPERATURE_NOISE
+        .get_or_init(|| PerlinSimplexNoise::new(LegacyRandomSource::new(3456), &[-2, -1, 0]))
+        .get_value(x as f64 * 0.05, z as f64 * 0.05)
+}
+
+fn biome_info_noise_raw(x: f64, z: f64) -> f64 {
     BIOME_INFO_NOISE
         .get_or_init(|| SimplexNoise::new(LegacyRandomSource::new(2345)))
-        .get_value(x * 0.0225, z * 0.0225)
+        .get_value(x, z)
 }
 
 #[derive(Debug, Clone)]
@@ -102,6 +162,75 @@ impl LegacyRandomSource {
         let lower = i64::from(self.next(27));
         (((upper << 27) + lower) as f64) * 1.110223e-16
     }
+
+    fn consume_count(&mut self, rounds: usize) {
+        for _ in 0..rounds {
+            self.next(32);
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct PerlinSimplexNoise {
+    noise_levels: Vec<Option<SimplexNoise>>,
+    highest_freq_input_factor: f64,
+    highest_freq_value_factor: f64,
+}
+
+impl PerlinSimplexNoise {
+    fn new(mut random: LegacyRandomSource, octave_set: &[i32]) -> Self {
+        assert!(!octave_set.is_empty(), "octave set must not be empty");
+        let first_octave = *octave_set.iter().min().unwrap();
+        let last_octave = *octave_set.iter().max().unwrap();
+        assert_eq!(
+            last_octave, 0,
+            "biome temperature PerlinSimplexNoise expects zero as the highest octave"
+        );
+        let low_freq_octaves = -first_octave;
+        let high_freq_octaves = last_octave;
+        let octaves = usize::try_from(low_freq_octaves + high_freq_octaves + 1).unwrap();
+        assert!(octaves >= 1, "octave count must be positive");
+
+        let zero_octave = SimplexNoise::from_random(&mut random);
+        let zero_octave_index = usize::try_from(high_freq_octaves).unwrap();
+        let mut noise_levels = vec![None; octaves];
+        if octave_set.contains(&0) {
+            noise_levels[zero_octave_index] = Some(zero_octave);
+        }
+
+        for (i, slot) in noise_levels
+            .iter_mut()
+            .enumerate()
+            .skip(zero_octave_index + 1)
+        {
+            let octave = high_freq_octaves - i as i32;
+            if octave_set.contains(&octave) {
+                *slot = Some(SimplexNoise::from_random(&mut random));
+            } else {
+                random.consume_count(262);
+            }
+        }
+
+        Self {
+            noise_levels,
+            highest_freq_input_factor: 2.0_f64.powi(high_freq_octaves),
+            highest_freq_value_factor: 1.0 / (2.0_f64.powi(octaves as i32) - 1.0),
+        }
+    }
+
+    fn get_value(&self, x: f64, y: f64) -> f64 {
+        let mut value = 0.0;
+        let mut factor = self.highest_freq_input_factor;
+        let mut value_factor = self.highest_freq_value_factor;
+        for noise_level in &self.noise_levels {
+            if let Some(noise_level) = noise_level {
+                value += noise_level.get_value(x * factor, y * factor) * value_factor;
+            }
+            factor /= 2.0;
+            value_factor *= 2.0;
+        }
+        value
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -132,6 +261,10 @@ impl SimplexNoise {
     const G2: f64 = 0.211_324_865_405_187_13;
 
     fn new(mut random: LegacyRandomSource) -> Self {
+        Self::from_random(&mut random)
+    }
+
+    fn from_random(random: &mut LegacyRandomSource) -> Self {
         let _xo = random.next_double() * 256.0;
         let _yo = random.next_double() * 256.0;
         let _zo = random.next_double() * 256.0;
@@ -243,6 +376,39 @@ mod tests {
         assert_eq!(biome_info_noise(0.0, 0.0), 0.0);
         let dark_sample = biome_info_noise(-496.0, -512.0);
         assert!((dark_sample - -0.102_904_227_905_454_12).abs() < 1.0e-12);
+    }
+
+    #[test]
+    fn temperature_noise_matches_vanilla_seed_samples() {
+        assert_eq!(biome_temperature_noise(0, 0), 0.0);
+        let sample = biome_temperature_noise(16, 16);
+        assert!((sample - -0.498_924_790_550_414_5).abs() < 1.0e-12);
+    }
+
+    #[test]
+    fn height_adjusted_temperature_uses_noise_and_frozen_modifier() {
+        let rain_position = BlockPos {
+            x: -512,
+            y: 81,
+            z: -511,
+        };
+        assert!(
+            biome_height_adjusted_temperature(
+                0.149,
+                BiomeTemperatureModifier::None,
+                rain_position,
+                63,
+            ) >= 0.15
+        );
+        assert_eq!(
+            biome_height_adjusted_temperature(
+                0.0,
+                BiomeTemperatureModifier::Frozen,
+                BlockPos { x: 0, y: 64, z: 0 },
+                63,
+            ),
+            0.2
+        );
     }
 
     #[test]

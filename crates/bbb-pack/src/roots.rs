@@ -1094,6 +1094,7 @@ mod tests {
                 }
               },
               "temperature": 0.8,
+              "temperature_modifier": "frozen",
               "downfall": 0.9,
               "has_precipitation": true,
               "effects": {
@@ -1119,6 +1120,10 @@ mod tests {
 
         let swamp = catalog.profile(6).unwrap();
         assert_eq!(swamp.name, "minecraft:swamp");
+        assert_eq!(
+            swamp.temperature_modifier,
+            crate::colors::BiomeTemperatureModifier::Frozen
+        );
         assert_eq!(swamp.foliage_color, Some([0x6a, 0x70, 0x39]));
         assert_eq!(swamp.dry_foliage_color, Some([0x7b, 0x53, 0x34]));
         assert_eq!(swamp.water_color, Some([0x61, 0x7b, 0x64]));

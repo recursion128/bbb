@@ -5,8 +5,8 @@ use std::{
 };
 
 use bbb_pack::{
-    BiomeColorCatalog, BiomeColorProfile, FloatAttributeModifier, FloatAttributeModifierKind,
-    GrassColorModifier,
+    BiomeColorCatalog, BiomeColorProfile, BiomeTemperatureModifier, FloatAttributeModifier,
+    FloatAttributeModifierKind, GrassColorModifier,
 };
 use bbb_protocol::packets::ClockUpdate as ProtocolClockUpdate;
 use bbb_protocol::packets::{
@@ -772,6 +772,39 @@ fn weather_precipitation_uses_cold_biome_for_snow_and_brightens_snow_light() {
     assert_eq!(column.light, [4.0 / 15.0, 9.0 / 15.0]);
     assert!(column.u_offset.is_finite());
     assert!(column.v_offset.is_finite());
+}
+
+#[test]
+fn weather_precipitation_uses_temperature_noise_and_frozen_modifier() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.insert_decoded_chunk(empty_lightmap_test_chunk_with_biome(world.dimension(), 7));
+    let terrain_textures =
+        TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
+            biome_profile_with_weather(7, 0.149, true),
+        ]));
+
+    assert_eq!(
+        weather_precipitation_at(
+            &world,
+            &terrain_textures,
+            BlockPos {
+                x: -512,
+                y: 81,
+                z: -511,
+            },
+            63,
+        ),
+        Some(WeatherPrecipitation::Rain)
+    );
+
+    let frozen_textures =
+        TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
+            biome_profile_with_temperature_modifier(7, 0.0, BiomeTemperatureModifier::Frozen),
+        ]));
+    assert_eq!(
+        weather_precipitation_at(&world, &frozen_textures, BlockPos { x: 0, y: 64, z: 0 }, 63,),
+        Some(WeatherPrecipitation::Rain)
+    );
 }
 
 #[test]
@@ -1794,6 +1827,7 @@ fn biome_profile_with_environment(
         id,
         name: format!("minecraft:test_biome_{id}"),
         temperature: 0.8,
+        temperature_modifier: BiomeTemperatureModifier::None,
         downfall: 0.4,
         has_precipitation: true,
         grass_color: None,
@@ -1833,6 +1867,18 @@ fn biome_profile_with_weather(
     BiomeColorProfile {
         temperature,
         has_precipitation,
+        ..biome_profile_with_environment(id, None, None, None)
+    }
+}
+
+fn biome_profile_with_temperature_modifier(
+    id: i32,
+    temperature: f32,
+    temperature_modifier: BiomeTemperatureModifier,
+) -> BiomeColorProfile {
+    BiomeColorProfile {
+        temperature,
+        temperature_modifier,
         ..biome_profile_with_environment(id, None, None, None)
     }
 }

@@ -32,6 +32,7 @@ use tokio::sync::mpsc;
 
 use crate::{
     audio_runtime::AudioEventSink,
+    biome_tint::biome_height_adjusted_temperature,
     camera_pose::camera_pose_from_world,
     code_of_conduct::CodeOfConductAcceptance,
     crosshair::{entity_target_outline_from_camera_at_partial_tick, selection_outline_from_camera},
@@ -4511,20 +4512,24 @@ fn weather_precipitation_at(
         return None;
     }
     let temperature = terrain_textures.biome_temperature(biome_id).unwrap_or(0.5);
-    if weather_cold_enough_to_snow(temperature, pos, sea_level) {
+    let temperature_modifier = terrain_textures
+        .biome_temperature_modifier(biome_id)
+        .unwrap_or_default();
+    if weather_cold_enough_to_snow(temperature, temperature_modifier, pos, sea_level) {
         Some(WeatherPrecipitation::Snow)
     } else {
         Some(WeatherPrecipitation::Rain)
     }
 }
 
-fn weather_cold_enough_to_snow(base_temperature: f32, pos: BlockPos, sea_level: i32) -> bool {
-    let snow_level = sea_level + 17;
-    let adjusted_temperature = if pos.y > snow_level {
-        base_temperature - (pos.y - snow_level) as f32 * 0.05 / 40.0
-    } else {
-        base_temperature
-    };
+fn weather_cold_enough_to_snow(
+    base_temperature: f32,
+    temperature_modifier: bbb_pack::BiomeTemperatureModifier,
+    pos: BlockPos,
+    sea_level: i32,
+) -> bool {
+    let adjusted_temperature =
+        biome_height_adjusted_temperature(base_temperature, temperature_modifier, pos, sea_level);
     adjusted_temperature < VANILLA_WEATHER_SNOW_TEMPERATURE_THRESHOLD
 }
 

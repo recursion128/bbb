@@ -235,6 +235,7 @@ pub struct BiomeColorProfile {
     pub id: i32,
     pub name: String,
     pub temperature: f32,
+    pub temperature_modifier: BiomeTemperatureModifier,
     pub downfall: f32,
     pub has_precipitation: bool,
     pub grass_color: Option<[u8; 3]>,
@@ -254,6 +255,7 @@ impl BiomeColorProfile {
             id,
             name,
             temperature: raw.temperature,
+            temperature_modifier: raw.temperature_modifier.unwrap_or_default(),
             downfall: raw.downfall,
             has_precipitation: raw.has_precipitation,
             grass_color: raw
@@ -297,6 +299,14 @@ impl BiomeColorProfile {
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+pub enum BiomeTemperatureModifier {
+    #[default]
+    None,
+    Frozen,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum GrassColorModifier {
     #[default]
     None,
@@ -307,6 +317,7 @@ pub enum GrassColorModifier {
 #[derive(Debug, Deserialize)]
 struct RawBiomeColorProfile {
     temperature: f32,
+    temperature_modifier: Option<BiomeTemperatureModifier>,
     downfall: f32,
     has_precipitation: bool,
     #[serde(default)]

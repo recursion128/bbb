@@ -3,8 +3,8 @@ use std::collections::{BTreeMap, HashMap};
 use anyhow::Result;
 use bbb_pack::{
     AtlasLayout, AtlasMipImage, AtlasPacker, BiomeColorCatalog, BiomeColorProfile,
-    BlockFaceTextures, BlockModelCatalog, BlockModelFace, BlockModelShape, GrassColorModifier,
-    PackRoots, SpriteImage, TerrainColorMaps,
+    BiomeTemperatureModifier, BlockFaceTextures, BlockModelCatalog, BlockModelFace,
+    BlockModelShape, GrassColorModifier, PackRoots, SpriteImage, TerrainColorMaps,
 };
 use bbb_renderer::terrain::{
     TerrainCross, TerrainFace, TerrainFluidKind, TerrainQuad, TerrainRenderShape,
@@ -319,6 +319,13 @@ impl TerrainTextureState {
 
     pub(crate) fn biome_temperature(&self, biome_id: Option<i32>) -> Option<f32> {
         Some(self.biome_profile(biome_id)?.temperature)
+    }
+
+    pub(crate) fn biome_temperature_modifier(
+        &self,
+        biome_id: Option<i32>,
+    ) -> Option<BiomeTemperatureModifier> {
+        Some(self.biome_profile(biome_id)?.temperature_modifier)
     }
 
     #[cfg(test)]

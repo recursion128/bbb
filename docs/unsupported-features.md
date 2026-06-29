@@ -441,9 +441,10 @@ When an agent does any of the following, update this file in the same slice:
     color/depth target, and participates in the Main+Translucent+ItemEntity+Particles+Weather+Clouds
     transparency combine. Weather now reads vanilla `MOTION_BLOCKING`
     heightmaps from chunk packet data for rain/snow column bounds and keeps that
-    heightmap updated for block changes. Remaining cloud/weather parity is the
-    full vanilla transparency post-chain depth sorting plus temperature-noise
-    precipitation extraction precision.
+    heightmap updated for block changes. Weather precipitation now applies the
+    vanilla height-adjustment `TEMPERATURE_NOISE` and the `frozen` biome
+    `temperature_modifier`. Remaining cloud/weather parity is the full vanilla
+    transparency post-chain depth sorting.
   - P0 pipeline closeout treats texture-backed / dispatch-owned submission and
     RenderType/order/missing-atlas/dynamic-texture coverage as complete for the
     narrow pipeline scope: entity model tests assert `submit_sequence` across 78
@@ -756,8 +757,10 @@ When an agent does any of the following, update this file in the same slice:
     LightTexture sampling, rain/snow index ranges, and the weather target.
     Weather column bounds now use chunk-packet `MOTION_BLOCKING` heightmaps
     and block-update maintenance before falling back to the old scan path.
+    Weather precipitation now applies vanilla height temperature noise plus the
+    frozen-ocean temperature modifier.
     Remaining visual gaps are full transparency post-chain depth sorting,
-    temperature-noise precipitation extraction precision, fuller atmosphere presentation, and later custom-pack EnvironmentAttribute
+    fuller atmosphere presentation, and later custom-pack EnvironmentAttribute
     generalization when a concrete renderer surface exists. Sun/moon presentation
     is now covered by the vanilla `CELESTIAL` overlay blend, the
     `environment/celestial` atlas source, `SUN_ANGLE` / `MOON_ANGLE`, and the
