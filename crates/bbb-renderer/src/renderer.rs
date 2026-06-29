@@ -13,8 +13,10 @@ use crate::{
         CameraUniform, ClearColor, FogEnvironment, LightmapEnvironment, TerrainBounds,
     },
     clouds::{
-        create_cloud_gpu, create_cloud_pipeline, create_cloud_texture_data, CloudEnvironment,
-        CloudGpu, CloudTextureData, CloudTextureImage,
+        cloud_mesh_key, create_cloud_bind_group, create_cloud_bind_group_layout, create_cloud_gpu,
+        create_cloud_pipeline, create_cloud_texture_data, create_cloud_uniform_buffer,
+        write_cloud_uniform, CloudEnvironment, CloudFrame, CloudGpu, CloudTextureData,
+        CloudTextureImage,
     },
     entity_models::{
         create_entity_model_eyes_pipeline, create_entity_model_outline_cull_pipeline,
@@ -102,6 +104,8 @@ pub struct Renderer {
     pub(super) celestial_pipeline: wgpu::RenderPipeline,
     pub(super) celestial_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) cloud_pipeline: wgpu::RenderPipeline,
+    pub(super) cloud_bind_group: wgpu::BindGroup,
+    pub(super) cloud_uniform_buffer: wgpu::Buffer,
     pub(super) hud_pipeline: wgpu::RenderPipeline,
     pub(super) hud_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) hud_white_pixel: HudSpriteGpu,
@@ -123,6 +127,7 @@ pub struct Renderer {
     pub(super) fog_environment: FogEnvironment,
     pub(super) sky_environment: SkyEnvironment,
     pub(super) cloud_environment: CloudEnvironment,
+    pub(super) cloud_frame: CloudFrame,
     pub(super) sky_disc: Option<SkyDiscGpu>,
     pub(super) end_sky_mesh: EndSkyGpu,
     pub(super) end_sky_texture: Option<EndSkyTextureGpu>,
@@ -459,7 +464,16 @@ impl Renderer {
             &terrain_bind_group_layout,
             &celestial_bind_group_layout,
         );
-        let cloud_pipeline = create_cloud_pipeline(&device, format, &terrain_bind_group_layout);
+        let cloud_bind_group_layout = create_cloud_bind_group_layout(&device);
+        let cloud_uniform_buffer = create_cloud_uniform_buffer(&device);
+        let cloud_bind_group =
+            create_cloud_bind_group(&device, &cloud_bind_group_layout, &cloud_uniform_buffer);
+        let cloud_pipeline = create_cloud_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &cloud_bind_group_layout,
+        );
         let hud_pipeline = create_hud_pipeline(&device, format, &hud_bind_group_layout);
         let hud_white_pixel = create_hud_sprite_gpu(
             &device,
@@ -512,6 +526,8 @@ impl Renderer {
             celestial_pipeline,
             celestial_bind_group_layout,
             cloud_pipeline,
+            cloud_bind_group,
+            cloud_uniform_buffer,
             hud_pipeline,
             hud_bind_group_layout,
             hud_white_pixel,
@@ -533,6 +549,7 @@ impl Renderer {
             fog_environment: FogEnvironment::default(),
             sky_environment: SkyEnvironment::default(),
             cloud_environment: CloudEnvironment::default(),
+            cloud_frame: CloudFrame::default(),
             sky_disc: None,
             end_sky_mesh,
             end_sky_texture: None,
@@ -1047,7 +1064,21 @@ impl Renderer {
             return;
         }
         self.cloud_environment = environment;
-        self.clouds = create_cloud_gpu(&self.device, environment, self.cloud_texture.as_ref());
+        self.rebuild_clouds();
+    }
+
+    pub fn set_cloud_frame(&mut self, frame: CloudFrame) {
+        let frame = frame.sanitized();
+        if self.cloud_frame == frame {
+            return;
+        }
+        let old_mesh_key = self.clouds.as_ref().and_then(|clouds| clouds.mesh_key);
+        self.cloud_frame = frame;
+        if cloud_mesh_key(self.cloud_texture.as_ref(), frame) != old_mesh_key {
+            self.rebuild_clouds();
+        } else {
+            self.write_cloud_uniform();
+        }
     }
 
     pub fn upload_end_sky_texture(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
@@ -1078,12 +1109,27 @@ impl Renderer {
 
     pub fn upload_cloud_texture(&mut self, image: &CloudTextureImage) -> Result<()> {
         self.cloud_texture = Some(create_cloud_texture_data(image)?);
+        self.rebuild_clouds();
+        Ok(())
+    }
+
+    fn rebuild_clouds(&mut self) {
         self.clouds = create_cloud_gpu(
             &self.device,
             self.cloud_environment,
             self.cloud_texture.as_ref(),
+            self.cloud_frame,
         );
-        Ok(())
+        self.write_cloud_uniform();
+    }
+
+    fn write_cloud_uniform(&self) {
+        write_cloud_uniform(
+            &self.queue,
+            &self.cloud_uniform_buffer,
+            self.cloud_frame,
+            self.cloud_texture.as_ref(),
+        );
     }
 
     fn scene_bounds(&self) -> Option<TerrainBounds> {

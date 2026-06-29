@@ -12,7 +12,7 @@ use bbb_protocol::{
     packets::{ItemCostSummary, ItemStackSummary, MapPostProcessingSummary, SlotDisplaySummary},
 };
 use bbb_renderer::{
-    BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment, FogEnvironment,
+    BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment, CloudFrame, FogEnvironment,
     HudBlockItemModel, HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
     HudInventoryItem, HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
     HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
@@ -1572,6 +1572,11 @@ pub(crate) fn pump_network_and_terrain(
     renderer.set_entity_model_instances(entity_instances);
     let camera_pose = camera_pose_from_world(world);
     renderer.set_camera_pose(camera_pose);
+    renderer.set_cloud_frame(cloud_frame_for_world(
+        world,
+        camera_pose,
+        entity_partial_tick,
+    ));
     renderer.set_selection_outline(selection_outline_from_camera(world, camera_pose));
     renderer.set_entity_scene_outline(entity_scene_outline_from_world_at_partial_tick(
         world,
@@ -4290,6 +4295,17 @@ fn cloud_environment_for_world(world: &WorldStore) -> CloudEnvironment {
     } else {
         CloudEnvironment::disabled()
     }
+}
+
+fn cloud_frame_for_world(
+    world: &WorldStore,
+    camera_pose: Option<CameraPose>,
+    partial_tick: f32,
+) -> CloudFrame {
+    let game_time = world.world_time().map(|time| time.game_time).unwrap_or(0);
+    camera_pose
+        .map(|pose| CloudFrame::from_camera_pose(pose, game_time, partial_tick))
+        .unwrap_or_else(|| CloudFrame::at_camera_position([0.0, 0.0, 0.0], game_time, partial_tick))
 }
 
 fn sky_disc_color_for_world_with_environment_colors(

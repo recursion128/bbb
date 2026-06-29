@@ -641,6 +641,19 @@ fn cloud_environment_projects_vanilla_overworld_defaults_and_dimension_gate() {
 }
 
 #[test]
+fn cloud_frame_projects_world_game_time_and_camera_eye_position() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, 1234);
+    world.set_local_player_pose(local_player_pose([10.0, 64.0, -5.0], 90.0, -10.0));
+    let camera_pose = camera_pose_from_world(&world);
+    let frame = cloud_frame_for_world(&world, camera_pose, 0.25);
+
+    assert_eq!(frame.camera_position, [10.0, 65.62, -5.0]);
+    assert_eq!(frame.game_time, 1234);
+    assert_eq!(frame.partial_tick, 0.25);
+}
+
+#[test]
 fn clear_color_mixes_sunrise_sunset_color_when_camera_faces_sun() {
     let day_time = 71;
     let mut world = world_with_dimension(0, "minecraft:overworld");

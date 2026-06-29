@@ -126,6 +126,7 @@ impl Renderer {
                         pass.set_pipeline(&self.cloud_pipeline);
                         pipeline_switches += 1;
                         pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+                        pass.set_bind_group(1, &self.cloud_bind_group, &[]);
                         pass.set_vertex_buffer(0, clouds.vertex_buffer.slice(..));
                         pass.draw(0..clouds.vertex_count, 0..1);
                         sky_draw_calls += 1;
@@ -940,6 +941,26 @@ mod tests {
         assert!(
             clouds < terrain,
             "basic cloud presentation draws before terrain opaque group until full clouds target sorting lands"
+        );
+    }
+
+    #[test]
+    fn cloud_presentation_binds_cloud_offset_uniform() {
+        let source = include_str!("render.rs");
+        let clouds = source
+            .find("pass.set_pipeline(&self.cloud_pipeline)")
+            .expect("cloud pipeline is drawn");
+        let cloud_uniform = source
+            .find("pass.set_bind_group(1, &self.cloud_bind_group, &[])")
+            .expect("cloud offset bind group is bound");
+        let cloud_draw = source[cloud_uniform..]
+            .find("pass.draw(0..clouds.vertex_count, 0..1)")
+            .map(|index| cloud_uniform + index)
+            .expect("cloud mesh is drawn");
+
+        assert!(
+            clouds < cloud_uniform && cloud_uniform < cloud_draw,
+            "cloud offset uniform is bound after selecting the cloud pipeline and before drawing"
         );
     }
 
