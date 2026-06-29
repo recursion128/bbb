@@ -3060,7 +3060,9 @@ When an agent does any of the following, update this file in the same slice:
       `enderman_eyes.png` submit when only the base enderman texture is atlas-backed,
       suppressing only folded eyes geometry. The held block's own
       block-model render is implemented through `CarriedBlockLayer`'s vanilla root
-      transform, while the creepy render jitter and lighting remain unsupported
+      transform. Enderman base/eyes light and overlay metadata are covered; the
+      carried-block per-entity light hookup remains an entity-attached block-model
+      follow-up, and the creepy render jitter remains unsupported
     - iron golem entities as renderer-owned vanilla 26.1
       `IronGolemModel.createBodyLayer()` geometry, including its 128x128 body
       layer, baked `CubeDeformation(0.5F)` lower-body cube, and the official

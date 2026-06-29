@@ -1149,6 +1149,12 @@ blocker。
     light/overlay metadata，以及 magma/blaze/vex/allay full-bright block-light
     override 已由 renderer tests pin 住；剩余保留 death flip、particle/audio、
     crumbling、allay held-item arm poses 等非 lighting 项。
+- Enderman：
+  - [x] 旧的 broad lighting wording 已收窄：base `entityCutout` 与 eyes
+    `RenderTypes.eyes` submission light/overlay metadata 已由 renderer tests
+    pin 住；held-block root transform 已接 `CarriedBlockLayer` 对应路径，剩余
+    per-entity carried-block light hookup 归 entity-attached block-model follow-up，
+    creepy render jitter 仍为 P1 renderer 行为。
 - Boat / raft：
   - [x] paddle rowing animation（world metadata/passenger gate -> native render state -> renderer paddle pose）
   - [x] hurt/damage roll（VehicleEntity metadata -> native render state -> boat root transform）
