@@ -524,8 +524,10 @@ When an agent does any of the following, update this file in the same slice:
     heightmaps from chunk packet data for rain/snow column bounds and keeps that
     heightmap updated for block changes. Weather precipitation now applies the
     vanilla height-adjustment `TEMPERATURE_NOISE` and the `frozen` biome
-    `temperature_modifier`. Remaining cloud/weather parity is finer transparency
-    target sorting; the major clouds -> weather -> transparency-chain order is
+    `temperature_modifier`. The follow-up transparency target/resource closeout
+    covered the finer target-sorting/resource wording for narrow P0; remaining
+    cloud/weather work is ordinary P1/P2 visual parity rather than a P0 pipeline
+    blocker, and the major clouds -> weather -> transparency-chain order is
     already tested against vanilla `LevelRenderer`.
   - P0 pipeline closeout treats texture-backed / dispatch-owned submission and
     RenderType/order/missing-atlas/dynamic-texture coverage as complete for the
@@ -539,12 +541,12 @@ When an agent does any of the following, update this file in the same slice:
   - P0 pipeline closeout stale-ledger audit is complete for submission /
     render-type / residual / fallback / outline / lighting wording. Remaining
     hits are classified as history, non-textured debug fallback, P3 dynamic
-    resource fallback, P2/P3 terrain or item presentation, P0 visual dynamic
-    lighting / darkness-adjusted gamma / diffuse, or later GPU state fidelity.
-    None remains a narrow CPU submission graph blocker. The latest
-    `rg residual` / `rg fallback` / `rg unsupported` rerun counts, including the
-    post-hide-lightning and post-item-entity workflow audits, are tracked in
-    `goal.md`.
+    resource fallback, P2/P3 terrain or item presentation, or later GPU state
+    fidelity. The later colored fallback normal-diffuse / entity smooth-AO audit
+    closed the remaining P0 visual lighting blocker, so none remains a narrow
+    CPU submission graph or P0 visual blocker. The latest `rg residual` /
+    `rg fallback` / `rg unsupported` rerun counts, including the post-P0
+    execution audit, are tracked in `goal.md`.
   - Replace proxies with full extraction from canonical world and pack data:
     - entity bounds
     - dropped-item icons (3D block/item model renderer in progress — see the
