@@ -16,9 +16,9 @@ use bbb_renderer::{
     HudBlockItemModel, HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
     HudInventoryItem, HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
     HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
-    HudItemDurabilityBar, HudItemIcon, HudUvRect, LightmapEnvironment, SkyEnvironment,
-    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, HUD_HOTBAR_SLOTS,
-    VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
+    HudItemDurabilityBar, HudItemIcon, HudUvRect, LightmapEnvironment, LightningBoltRenderState,
+    SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
+    HUD_HOTBAR_SLOTS, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
     VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
@@ -76,6 +76,7 @@ const VANILLA_WEATHER_RAIN_SKY_LIGHT_COLOR: i32 = argb_color(79, 122, 122, 255);
 const VANILLA_WEATHER_THUNDER_SKY_LIGHT_COLOR: i32 = argb_color(134, 122, 122, 255);
 const VANILLA_WEATHER_RENDER_RADIUS: u32 = 10;
 const VANILLA_WEATHER_SNOW_TEMPERATURE_THRESHOLD: f32 = 0.15;
+const VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID: i32 = 77;
 const VANILLA_OVERWORLD_SKY_COLOR: [u8; 3] = [0x78, 0xa7, 0xff];
 const VANILLA_OVERWORLD_FOG_COLOR: [u8; 3] = [0xc0, 0xd8, 0xff];
 const VANILLA_END_FOG_COLOR: [u8; 3] = [0x18, 0x13, 0x18];
@@ -4409,23 +4410,28 @@ fn weather_render_state_for_world(
     let Some(camera_pose) = camera_pose else {
         return WeatherRenderState::default();
     };
-    if !world_can_have_weather(world) {
-        return WeatherRenderState::default();
-    }
-    let rain_level = world.weather().rain_level.clamp(0.0, 1.0);
-    if rain_level <= 0.0 {
-        return WeatherRenderState::default();
-    }
-
     let camera_position = camera_eye_position(camera_pose);
     if !camera_position.into_iter().all(f32::is_finite) {
         return WeatherRenderState::default();
     }
+    let lightning_bolts = lightning_bolts_for_world(world);
+    if !world_can_have_weather(world) {
+        return WeatherRenderState::with_lightning(
+            WeatherFrame::default(),
+            Vec::new(),
+            Vec::new(),
+            lightning_bolts,
+        );
+    }
+    let rain_level = world.weather().rain_level.clamp(0.0, 1.0);
     let frame = WeatherFrame::at_camera_position(
         camera_position,
         VANILLA_WEATHER_RENDER_RADIUS,
         rain_level,
     );
+    if rain_level <= 0.0 {
+        return WeatherRenderState::with_lightning(frame, Vec::new(), Vec::new(), lightning_bolts);
+    }
     let camera_block_x = camera_position[0].floor() as i32;
     let camera_block_y = camera_position[1].floor() as i32;
     let camera_block_z = camera_position[2].floor() as i32;
@@ -4489,7 +4495,35 @@ fn weather_render_state_for_world(
         }
     }
 
-    WeatherRenderState::new(frame, rain_columns, snow_columns)
+    WeatherRenderState::with_lightning(frame, rain_columns, snow_columns, lightning_bolts)
+}
+
+fn lightning_bolts_for_world(world: &WorldStore) -> Vec<LightningBoltRenderState> {
+    world
+        .entity_transforms()
+        .into_iter()
+        .filter(|entity| entity.entity_type_id == VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID)
+        .filter_map(|entity| {
+            let position = [
+                entity.position.x as f32,
+                entity.position.y as f32,
+                entity.position.z as f32,
+            ];
+            position
+                .into_iter()
+                .all(f32::is_finite)
+                .then(|| LightningBoltRenderState {
+                    position,
+                    seed: lightning_bolt_seed(entity.uuid),
+                })
+        })
+        .collect()
+}
+
+fn lightning_bolt_seed(uuid: uuid::Uuid) -> i64 {
+    // Vanilla keeps LightningBolt.seed client-local and does not sync it in AddEntity.
+    let bytes = uuid.as_u128().to_le_bytes();
+    i64::from_le_bytes(bytes[..8].try_into().expect("uuid lower 64 bits"))
 }
 
 fn world_can_have_weather(world: &WorldStore) -> bool {

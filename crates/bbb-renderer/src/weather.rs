@@ -11,6 +11,10 @@ const WEATHER_TABLE_SIZE: usize = 32;
 const WEATHER_TABLE_HALF: i32 = 16;
 const RAIN_MAX_ALPHA: f32 = 1.0;
 const SNOW_MAX_ALPHA: f32 = 0.8;
+const LIGHTNING_COLOR: [f32; 4] = [0.45, 0.45, 0.5, 0.3];
+const LIGHTNING_RANDOM_MULTIPLIER: u64 = 25_214_903_917;
+const LIGHTNING_RANDOM_INCREMENT: u64 = 11;
+const LIGHTNING_RANDOM_MASK: u64 = (1_u64 << 48) - 1;
 
 pub(crate) struct WeatherTextureGpu {
     _texture: wgpu::Texture,
@@ -51,11 +55,18 @@ pub struct WeatherColumn {
     pub light: [f32; 2],
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LightningBoltRenderState {
+    pub position: [f32; 3],
+    pub seed: i64,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct WeatherRenderState {
     pub frame: WeatherFrame,
     pub rain_columns: Vec<WeatherColumn>,
     pub snow_columns: Vec<WeatherColumn>,
+    pub lightning_bolts: Vec<LightningBoltRenderState>,
 }
 
 #[repr(C)]
@@ -67,6 +78,13 @@ pub(crate) struct WeatherVertex {
     pub(crate) light: [f32; 2],
 }
 
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+pub(crate) struct LightningVertex {
+    pub(crate) position: [f32; 3],
+    pub(crate) color: [f32; 4],
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct WeatherMesh {
     pub(crate) vertices: Vec<WeatherVertex>,
@@ -75,8 +93,28 @@ pub(crate) struct WeatherMesh {
     pub(crate) snow_indices: Range<u32>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct LightningMesh {
+    pub(crate) vertices: Vec<LightningVertex>,
+    pub(crate) indices: Vec<u32>,
+}
+
 const WEATHER_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 4] =
     wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2];
+const LIGHTNING_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 2] =
+    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4];
+const LIGHTNING_BLEND: wgpu::BlendState = wgpu::BlendState {
+    color: wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::SrcAlpha,
+        dst_factor: wgpu::BlendFactor::One,
+        operation: wgpu::BlendOperation::Add,
+    },
+    alpha: wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::SrcAlpha,
+        dst_factor: wgpu::BlendFactor::One,
+        operation: wgpu::BlendOperation::Add,
+    },
+};
 
 pub(crate) const WEATHER_SHADER: &str = r#"
 struct Camera {
@@ -175,6 +213,70 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 }
 "#;
 
+pub(crate) const LIGHTNING_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
+    fog_visibility_ends: vec4<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+    @location(1) color: vec4<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) color: vec4<f32>,
+    @location(1) spherical_distance: f32,
+    @location(2) cylindrical_distance: f32,
+};
+
+fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
+    if (vertex_distance <= fog_start) {
+        return 0.0;
+    }
+    if (vertex_distance >= fog_end) {
+        return 1.0;
+    }
+    return (vertex_distance - fog_start) / (fog_end - fog_start);
+}
+
+fn total_fog_value(spherical_distance: f32, cylindrical_distance: f32) -> f32 {
+    return max(
+        linear_fog_value(spherical_distance, camera.fog_distances.x, camera.fog_distances.y),
+        linear_fog_value(cylindrical_distance, camera.fog_distances.z, camera.fog_distances.w),
+    ) * camera.fog_color.a;
+}
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
+    let fog_pos = input.position - camera.camera_position.xyz;
+    out.spherical_distance = length(fog_pos);
+    out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
+    out.color = input.color;
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    return input.color * (1.0 - total_fog_value(input.spherical_distance, input.cylindrical_distance));
+}
+"#;
+
 impl Default for WeatherFrame {
     fn default() -> Self {
         Self {
@@ -191,6 +293,7 @@ impl Default for WeatherRenderState {
             frame: WeatherFrame::default(),
             rain_columns: Vec::new(),
             snow_columns: Vec::new(),
+            lightning_bolts: Vec::new(),
         }
     }
 }
@@ -237,17 +340,28 @@ impl WeatherRenderState {
         rain_columns: Vec<WeatherColumn>,
         snow_columns: Vec<WeatherColumn>,
     ) -> Self {
+        Self::with_lightning(frame, rain_columns, snow_columns, Vec::new())
+    }
+
+    pub fn with_lightning(
+        frame: WeatherFrame,
+        rain_columns: Vec<WeatherColumn>,
+        snow_columns: Vec<WeatherColumn>,
+        lightning_bolts: Vec<LightningBoltRenderState>,
+    ) -> Self {
         Self {
             frame,
             rain_columns,
             snow_columns,
+            lightning_bolts,
         }
     }
 
     pub fn is_empty(&self) -> bool {
-        self.frame.intensity <= 0.0
-            || self.frame.radius == 0
-            || (self.rain_columns.is_empty() && self.snow_columns.is_empty())
+        self.lightning_bolts.is_empty()
+            && (self.frame.intensity <= 0.0
+                || self.frame.radius == 0
+                || (self.rain_columns.is_empty() && self.snow_columns.is_empty()))
     }
 
     pub fn rain_column_count(&self) -> usize {
@@ -256,6 +370,10 @@ impl WeatherRenderState {
 
     pub fn snow_column_count(&self) -> usize {
         self.snow_columns.len()
+    }
+
+    pub fn lightning_bolt_count(&self) -> usize {
+        self.lightning_bolts.len()
     }
 }
 
@@ -306,6 +424,59 @@ pub(crate) fn create_weather_pipeline(
             targets: &[Some(wgpu::ColorTargetState {
                 format,
                 blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        multiview: None,
+    })
+}
+
+pub(crate) fn create_lightning_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    camera_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("bbb-lightning-shader"),
+        source: wgpu::ShaderSource::Wgsl(LIGHTNING_SHADER.into()),
+    });
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-lightning-pipeline-layout"),
+        bind_group_layouts: &[camera_bind_group_layout],
+        push_constant_ranges: &[],
+    });
+
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("bbb-lightning-pipeline"),
+        layout: Some(&layout),
+        vertex: wgpu::VertexState {
+            module: &shader,
+            entry_point: "vs_main",
+            buffers: &[lightning_vertex_layout()],
+        },
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: None,
+            polygon_mode: wgpu::PolygonMode::Fill,
+            unclipped_depth: false,
+            conservative: false,
+        },
+        depth_stencil: Some(wgpu::DepthStencilState {
+            format: DEPTH_FORMAT,
+            depth_write_enabled: true,
+            depth_compare: wgpu::CompareFunction::LessEqual,
+            stencil: wgpu::StencilState::default(),
+            bias: wgpu::DepthBiasState::default(),
+        }),
+        multisample: wgpu::MultisampleState::default(),
+        fragment: Some(wgpu::FragmentState {
+            module: &shader,
+            entry_point: "fs_main",
+            targets: &[Some(wgpu::ColorTargetState {
+                format,
+                blend: Some(LIGHTNING_BLEND),
                 write_mask: wgpu::ColorWrites::ALL,
             })],
         }),
@@ -402,7 +573,10 @@ pub(crate) fn create_weather_texture_gpu(
 }
 
 pub(crate) fn build_weather_mesh(state: &WeatherRenderState) -> Option<WeatherMesh> {
-    if state.is_empty() {
+    if state.frame.intensity <= 0.0
+        || state.frame.radius == 0
+        || (state.rain_columns.is_empty() && state.snow_columns.is_empty())
+    {
         return None;
     }
 
@@ -436,6 +610,20 @@ pub(crate) fn build_weather_mesh(state: &WeatherRenderState) -> Option<WeatherMe
         rain_indices: 0..rain_index_count,
         snow_indices: rain_index_count..total_index_count,
     })
+}
+
+pub(crate) fn build_lightning_mesh(state: &WeatherRenderState) -> Option<LightningMesh> {
+    if state.lightning_bolts.is_empty() {
+        return None;
+    }
+
+    let mut vertices = Vec::new();
+    let mut indices = Vec::new();
+    for bolt in &state.lightning_bolts {
+        append_lightning_bolt(&mut vertices, &mut indices, *bolt);
+    }
+
+    (!indices.is_empty()).then_some(LightningMesh { vertices, indices })
 }
 
 fn append_columns(
@@ -484,6 +672,168 @@ fn append_columns(
             weather_vertex([x0, y0, z0], [u0, v1], color, column.light),
         ]);
         indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+    }
+}
+
+fn append_lightning_bolt(
+    vertices: &mut Vec<LightningVertex>,
+    indices: &mut Vec<u32>,
+    bolt: LightningBoltRenderState,
+) {
+    let mut x_offsets = [0.0_f32; 8];
+    let mut z_offsets = [0.0_f32; 8];
+    let mut x_offset = 0.0_f32;
+    let mut z_offset = 0.0_f32;
+    let mut random = LightningRandom::new(bolt.seed);
+
+    for h in (0..8).rev() {
+        x_offsets[h] = x_offset;
+        z_offsets[h] = z_offset;
+        x_offset += (random.next_int_bound(11) - 5) as f32;
+        z_offset += (random.next_int_bound(11) - 5) as f32;
+    }
+
+    let final_x_offset = x_offset;
+    let final_z_offset = z_offset;
+    for r in 0..4 {
+        let mut branch_random = LightningRandom::new(bolt.seed);
+        for p in 0..3 {
+            let mut start_h = 7_i32;
+            let mut end_h = 0_i32;
+            if p > 0 {
+                start_h = 7 - p;
+                end_h = start_h - 2;
+            }
+
+            let mut x0 = x_offsets[start_h as usize] - final_x_offset;
+            let mut z0 = z_offsets[start_h as usize] - final_z_offset;
+            for h in (end_h..=start_h).rev() {
+                let x1 = x0;
+                let z1 = z0;
+                if p == 0 {
+                    x0 += (branch_random.next_int_bound(11) - 5) as f32;
+                    z0 += (branch_random.next_int_bound(11) - 5) as f32;
+                } else {
+                    x0 += (branch_random.next_int_bound(31) - 15) as f32;
+                    z0 += (branch_random.next_int_bound(31) - 15) as f32;
+                }
+
+                let mut radius_top = 0.1 + r as f32 * 0.2;
+                if p == 0 {
+                    radius_top *= h as f32 * 0.1 + 1.0;
+                }
+                let mut radius_bottom = 0.1 + r as f32 * 0.2;
+                if p == 0 {
+                    radius_bottom *= (h as f32 - 1.0) * 0.1 + 1.0;
+                }
+
+                append_lightning_quad(
+                    vertices,
+                    indices,
+                    bolt.position,
+                    x0,
+                    z0,
+                    h,
+                    x1,
+                    z1,
+                    radius_top,
+                    radius_bottom,
+                    [false, false, true, false],
+                );
+                append_lightning_quad(
+                    vertices,
+                    indices,
+                    bolt.position,
+                    x0,
+                    z0,
+                    h,
+                    x1,
+                    z1,
+                    radius_top,
+                    radius_bottom,
+                    [true, false, true, true],
+                );
+                append_lightning_quad(
+                    vertices,
+                    indices,
+                    bolt.position,
+                    x0,
+                    z0,
+                    h,
+                    x1,
+                    z1,
+                    radius_top,
+                    radius_bottom,
+                    [true, true, false, true],
+                );
+                append_lightning_quad(
+                    vertices,
+                    indices,
+                    bolt.position,
+                    x0,
+                    z0,
+                    h,
+                    x1,
+                    z1,
+                    radius_top,
+                    radius_bottom,
+                    [false, true, false, false],
+                );
+            }
+        }
+    }
+}
+
+fn append_lightning_quad(
+    vertices: &mut Vec<LightningVertex>,
+    indices: &mut Vec<u32>,
+    origin: [f32; 3],
+    x0: f32,
+    z0: f32,
+    h: i32,
+    x1: f32,
+    z1: f32,
+    radius_top: f32,
+    radius_bottom: f32,
+    flags: [bool; 4],
+) {
+    let [px1, pz1, px2, pz2] = flags;
+    let y0 = h as f32 * 16.0;
+    let y1 = (h + 1) as f32 * 16.0;
+    let base = vertices.len() as u32;
+    vertices.extend_from_slice(&[
+        lightning_vertex(
+            origin,
+            x0 + if px1 { radius_bottom } else { -radius_bottom },
+            y0,
+            z0 + if pz1 { radius_bottom } else { -radius_bottom },
+        ),
+        lightning_vertex(
+            origin,
+            x1 + if px1 { radius_top } else { -radius_top },
+            y1,
+            z1 + if pz1 { radius_top } else { -radius_top },
+        ),
+        lightning_vertex(
+            origin,
+            x1 + if px2 { radius_top } else { -radius_top },
+            y1,
+            z1 + if pz2 { radius_top } else { -radius_top },
+        ),
+        lightning_vertex(
+            origin,
+            x0 + if px2 { radius_bottom } else { -radius_bottom },
+            y0,
+            z0 + if pz2 { radius_bottom } else { -radius_bottom },
+        ),
+    ]);
+    indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+}
+
+fn lightning_vertex(origin: [f32; 3], x: f32, y: f32, z: f32) -> LightningVertex {
+    LightningVertex {
+        position: [origin[0] + x, origin[1] + y, origin[2] + z],
+        color: LIGHTNING_COLOR,
     }
 }
 
@@ -569,6 +919,51 @@ fn weather_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
     }
 }
 
+fn lightning_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
+    wgpu::VertexBufferLayout {
+        array_stride: mem::size_of::<LightningVertex>() as wgpu::BufferAddress,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &LIGHTNING_VERTEX_ATTRIBUTES,
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct LightningRandom {
+    seed: u64,
+}
+
+impl LightningRandom {
+    fn new(seed: i64) -> Self {
+        Self {
+            seed: ((seed as u64) ^ LIGHTNING_RANDOM_MULTIPLIER) & LIGHTNING_RANDOM_MASK,
+        }
+    }
+
+    fn next_int_bound(&mut self, bound: i32) -> i32 {
+        assert!(bound > 0, "bound must be positive");
+        if (bound & (bound - 1)) == 0 {
+            return ((i64::from(bound) * i64::from(self.next_bits(31))) >> 31) as i32;
+        }
+
+        loop {
+            let sample = self.next_bits(31) as i32;
+            let modulo = sample % bound;
+            if sample.wrapping_sub(modulo).wrapping_add(bound - 1) >= 0 {
+                return modulo;
+            }
+        }
+    }
+
+    fn next_bits(&mut self, bits: u32) -> u32 {
+        self.seed = self
+            .seed
+            .wrapping_mul(LIGHTNING_RANDOM_MULTIPLIER)
+            .wrapping_add(LIGHTNING_RANDOM_INCREMENT)
+            & LIGHTNING_RANDOM_MASK;
+        (self.seed >> (48 - bits)) as u32
+    }
+}
+
 fn sanitize_unit(value: f32) -> f32 {
     if value.is_finite() {
         value.clamp(0.0, 1.0)
@@ -641,6 +1036,31 @@ mod tests {
     }
 
     #[test]
+    fn lightning_pipeline_matches_vanilla_position_color_weather_target_state() {
+        assert_eq!(LIGHTNING_VERTEX_ATTRIBUTES.len(), 2);
+        assert_eq!(
+            LIGHTNING_VERTEX_ATTRIBUTES[0].format,
+            wgpu::VertexFormat::Float32x3
+        );
+        assert_eq!(
+            LIGHTNING_VERTEX_ATTRIBUTES[1].format,
+            wgpu::VertexFormat::Float32x4
+        );
+        assert_eq!(
+            LIGHTNING_BLEND.color.src_factor,
+            wgpu::BlendFactor::SrcAlpha
+        );
+        assert_eq!(LIGHTNING_BLEND.color.dst_factor, wgpu::BlendFactor::One);
+        assert_eq!(
+            LIGHTNING_BLEND.alpha.src_factor,
+            wgpu::BlendFactor::SrcAlpha
+        );
+        assert_eq!(LIGHTNING_BLEND.alpha.dst_factor, wgpu::BlendFactor::One);
+        assert!(LIGHTNING_SHADER.contains("var<uniform> camera: Camera"));
+        assert!(LIGHTNING_SHADER.contains("input.color * (1.0 - total_fog_value"));
+    }
+
+    #[test]
     fn weather_mesh_emits_rain_then_snow_with_vanilla_column_math() {
         let frame = WeatherFrame::at_camera_position([0.25, 64.5, 0.25], 10, 0.5);
         let rain = WeatherColumn::new(2, 0, 60, 70, 0.0, 1.25, [0.2, 0.8]);
@@ -672,6 +1092,60 @@ mod tests {
         assert_eq!(snow_vertices[3].position, [1.0, 61.0, 2.5]);
         assert_close(snow_vertices[0].color[3], 0.392_312_5);
         assert_eq!(snow_vertices[0].light, [0.6, 1.0]);
+    }
+
+    #[test]
+    fn lightning_mesh_uses_vanilla_seeded_quad_pattern() {
+        let state = WeatherRenderState::with_lightning(
+            WeatherFrame::default(),
+            Vec::new(),
+            Vec::new(),
+            vec![LightningBoltRenderState {
+                position: [1.0, 2.0, 3.0],
+                seed: 0,
+            }],
+        );
+        let mesh = build_lightning_mesh(&state).expect("lightning mesh should be present");
+
+        assert_eq!(mesh.vertices.len(), 896);
+        assert_eq!(mesh.indices.len(), 1344);
+        assert_eq!(&mesh.indices[..6], &[0, 1, 2, 0, 2, 3]);
+        assert_eq!(mesh.vertices[0].position, [11.84, 114.0, 16.84]);
+        assert_eq!(mesh.vertices[1].position, [16.83, 130.0, 15.83]);
+        assert_eq!(mesh.vertices[2].position, [17.17, 130.0, 15.83]);
+        assert_eq!(mesh.vertices[0].color, [0.45, 0.45, 0.5, 0.3]);
+        assert_close(
+            mesh.vertices
+                .iter()
+                .map(|vertex| vertex.position[1])
+                .fold(f32::INFINITY, f32::min),
+            2.0,
+        );
+        assert_close(
+            mesh.vertices
+                .iter()
+                .map(|vertex| vertex.position[1])
+                .fold(f32::NEG_INFINITY, f32::max),
+            130.0,
+        );
+    }
+
+    #[test]
+    fn lightning_keeps_weather_render_state_non_empty_without_precipitation() {
+        let state = WeatherRenderState::with_lightning(
+            WeatherFrame::default(),
+            Vec::new(),
+            Vec::new(),
+            vec![LightningBoltRenderState {
+                position: [0.0, 64.0, 0.0],
+                seed: 1,
+            }],
+        );
+
+        assert!(!state.is_empty());
+        assert_eq!(state.lightning_bolt_count(), 1);
+        assert!(build_weather_mesh(&state).is_none());
+        assert!(build_lightning_mesh(&state).is_some());
     }
 
     #[test]

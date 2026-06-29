@@ -415,7 +415,11 @@ When an agent does any of the following, update this file in the same slice:
     step. The renderer now draws rain/snow weather columns into
     `OutputTarget.WEATHER_TARGET` with vanilla environment textures,
     `DefaultVertexFormat.PARTICLE`-shaped vertex data, dynamic `Sampler2`
-    LightTexture sampling, and rain-before-snow draw order.
+    LightTexture sampling, and rain-before-snow draw order. Lightning bolts now
+    render as vanilla-shaped `RenderTypes.lightning()` / `POSITION_COLOR` quad
+    geometry into the weather target with `BlendFunction.LIGHTNING`-shaped
+    additive blending and default depth state; native projects active lightning
+    bolt entities into that weather state instead of the old placeholder box.
     Terrain translucent upload-time quad sorting now follows vanilla
     `MeshData.sortQuads` centroid distance order, and camera changes rebuild
     the resident translucent index buffer from the stored quad centroids.
@@ -432,7 +436,8 @@ When an agent does any of the following, update this file in the same slice:
     render-graph parity still needs finer item-submit solid/translucent split,
     per-submit feature distance sorting, and target ordering across
     block/text/name, terrain, itemEntity, particles, weather, and clouds; outline
-    now has a dedicated target/composite.
+    now has a dedicated target/composite, and lightning is no longer missing
+    weather-target geometry.
   - P0 cloud presentation slice: vanilla 26.1 `CloudRenderer` uses
     `EnvironmentAttributes.CLOUD_COLOR` / `CLOUD_HEIGHT` and the
     `rendertype_clouds` fragment alpha fade
@@ -771,7 +776,9 @@ When an agent does any of the following, update this file in the same slice:
     Weather column bounds now use chunk-packet `MOTION_BLOCKING` heightmaps
     and block-update maintenance before falling back to the old scan path.
     Weather precipitation now applies vanilla height temperature noise plus the
-    frozen-ocean temperature modifier.
+    frozen-ocean temperature modifier. Lightning bolt entities now draw
+    weather-target `RenderTypes.lightning()` geometry rather than the old
+    placeholder bounds.
     Remaining visual gaps are finer target sorting, fuller atmosphere presentation,
     and later custom-pack EnvironmentAttribute
     generalization when a concrete renderer surface exists. Sun/moon presentation

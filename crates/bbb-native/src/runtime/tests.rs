@@ -833,6 +833,37 @@ fn weather_render_state_is_empty_without_rain_or_weather_dimension() {
 }
 
 #[test]
+fn weather_render_state_projects_lightning_bolts_without_rain() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.set_local_player_pose(local_player_pose([0.5, 4.0, 0.5], 0.0, 0.0));
+    let mut lightning = test_add_entity(77, VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID);
+    lightning.uuid = uuid::Uuid::from_u128(0x1234_5678_9abc_def0);
+    lightning.position = bbb_protocol::packets::Vec3d {
+        x: 8.0,
+        y: 65.0,
+        z: -3.0,
+    };
+    world.apply_add_entity(lightning);
+
+    let state = weather_render_state_for_world(
+        &world,
+        &TerrainTextureState::default(),
+        camera_pose_from_world(&world),
+        0.0,
+    );
+
+    assert!(!state.is_empty());
+    assert_eq!(state.rain_column_count(), 0);
+    assert_eq!(state.snow_column_count(), 0);
+    assert_eq!(state.lightning_bolt_count(), 1);
+    assert_eq!(state.lightning_bolts[0].position, [8.0, 65.0, -3.0]);
+    assert_eq!(
+        state.lightning_bolts[0].seed,
+        lightning_bolt_seed(uuid::Uuid::from_u128(0x1234_5678_9abc_def0))
+    );
+}
+
+#[test]
 fn clear_color_mixes_sunrise_sunset_color_when_camera_faces_sun() {
     let day_time = 71;
     let mut world = world_with_dimension(0, "minecraft:overworld");

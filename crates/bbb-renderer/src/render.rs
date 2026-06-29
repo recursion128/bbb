@@ -3,7 +3,11 @@ use std::path::Path;
 use anyhow::Result;
 use wgpu::util::DeviceExt;
 
-use crate::{lightmap::write_lightmap_uniform, weather::build_weather_mesh, Renderer};
+use crate::{
+    lightmap::write_lightmap_uniform,
+    weather::{build_lightning_mesh, build_weather_mesh},
+    Renderer,
+};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum TerrainOpaqueGroupLayer {
@@ -787,6 +791,24 @@ impl Renderer {
                         });
                 (vertex_buffer, index_buffer)
             });
+        let lightning_mesh = build_lightning_mesh(&self.weather_render_state);
+        let lightning_buffers = lightning_mesh.as_ref().map(|mesh| {
+            let vertex_buffer = self
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("bbb-lightning-frame-vertices"),
+                    contents: bytemuck::cast_slice(&mesh.vertices),
+                    usage: wgpu::BufferUsages::VERTEX,
+                });
+            let index_buffer = self
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("bbb-lightning-frame-indices"),
+                    contents: bytemuck::cast_slice(&mesh.indices),
+                    usage: wgpu::BufferUsages::INDEX,
+                });
+            (vertex_buffer, index_buffer)
+        });
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(PARTICLE_TARGET_PASS_LABEL),
@@ -864,6 +886,17 @@ impl Renderer {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
+            if let (Some(mesh), Some((vertex_buffer, index_buffer))) =
+                (&lightning_mesh, &lightning_buffers)
+            {
+                pass.set_pipeline(&self.lightning_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+                pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.indices.len() as u32, 0, 0..1);
+                weather_draw_calls += 1;
+            }
             if let (Some(mesh), Some((vertex_buffer, index_buffer))) =
                 (&weather_mesh, &weather_buffers)
             {
@@ -1881,6 +1914,34 @@ mod tests {
             source[target..combine]
                 .contains("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])"),
             "weather geometry samples the renderer-owned dynamic LightTexture"
+        );
+    }
+
+    #[test]
+    fn lightning_draws_into_weather_target_before_rain_snow_and_combine() {
+        let source = include_str!("render.rs");
+        let target = source
+            .find("label: Some(WEATHER_TARGET_PASS_LABEL)")
+            .expect("weather target pass label is used");
+        let lightning = source[target..]
+            .find("pass.set_pipeline(&self.lightning_pipeline)")
+            .map(|index| target + index)
+            .expect("weather target pass draws lightning pipeline");
+        let weather = source[target..]
+            .find("pass.set_pipeline(&self.weather_pipeline)")
+            .map(|index| target + index)
+            .expect("weather target pass draws rain/snow pipeline");
+        let combine = source
+            .find("label: Some(TRANSPARENCY_COMBINE_PASS_LABEL)")
+            .expect("transparency combine pass label is used");
+
+        assert!(
+            target < lightning && lightning < weather && weather < combine,
+            "vanilla RenderTypes.lightning writes WEATHER_TARGET before WeatherEffectRenderer rain/snow and transparency combine"
+        );
+        assert!(
+            source[lightning..weather].contains("pass.set_bind_group(0, &self.terrain_bind_group"),
+            "lightning uses the renderer camera bind group and no weather texture"
         );
     }
 

@@ -76,8 +76,8 @@ use crate::{
         TransparencyCombineBindGroup, WeatherTarget,
     },
     weather::{
-        create_weather_pipeline, create_weather_texture_gpu, WeatherRenderState, WeatherTextureGpu,
-        WeatherTextureImage, WeatherTextureKind,
+        create_lightning_pipeline, create_weather_pipeline, create_weather_texture_gpu,
+        WeatherRenderState, WeatherTextureGpu, WeatherTextureImage, WeatherTextureKind,
     },
 };
 
@@ -111,6 +111,7 @@ pub struct Renderer {
     pub(super) entity_model_scroll_additive_pipeline: wgpu::RenderPipeline,
     pub(super) particle_pipeline: wgpu::RenderPipeline,
     pub(super) weather_pipeline: wgpu::RenderPipeline,
+    pub(super) lightning_pipeline: wgpu::RenderPipeline,
     pub(super) item_entity_pipeline: wgpu::RenderPipeline,
     pub(super) item_model_pipeline: wgpu::RenderPipeline,
     pub(super) selection_pipeline: wgpu::RenderPipeline,
@@ -564,6 +565,8 @@ impl Renderer {
             &terrain_bind_group_layout,
             &lightmap_sample_bind_group_layout,
         );
+        let lightning_pipeline =
+            create_lightning_pipeline(&device, format, &terrain_bind_group_layout);
         let item_entity_pipeline = create_item_entity_pipeline(
             &device,
             format,
@@ -699,6 +702,7 @@ impl Renderer {
             entity_model_scroll_additive_pipeline,
             particle_pipeline,
             weather_pipeline,
+            lightning_pipeline,
             item_entity_pipeline,
             item_model_pipeline,
             selection_pipeline,

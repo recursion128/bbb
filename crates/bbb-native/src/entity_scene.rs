@@ -2067,9 +2067,8 @@ fn entity_model_kind_with_time_and_registries(
         }
         VANILLA_ENTITY_TYPE_ITEM_FRAME_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_LEASH_KNOT_ID => EntityModelKind::LeashKnot,
-        VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID => {
-            placeholder("todo_lightning_bolt_bounds", 0.5, 2.0, 0.5)
-        }
+        // Lightning bolts render as custom `RenderTypes.lightning()` geometry on the weather target.
+        VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID => EntityModelKind::LlamaSpit,
         VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID => EntityModelKind::MagmaCube {
             size: slime_size(data_values),
@@ -9436,6 +9435,14 @@ mod tests {
                 "vanilla type id {entity_type_id} fell through to unknown renderer entity model fallback"
             );
         }
+    }
+
+    #[test]
+    fn lightning_bolt_uses_weather_target_renderer_not_entity_placeholder() {
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID, &[]),
+            EntityModelKind::NoRender
+        );
     }
 
     #[test]
