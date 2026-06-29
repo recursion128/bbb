@@ -3030,7 +3030,9 @@ When an agent does any of the following, update this file in the same slice:
       `zRot += |sin(animationPos + phase) * 0.4| * speed`, right legs `+`/left legs `-`,
       per-pair phases `0`/`π`/`π/2`/`3π/2`, legs at `[3..=10]`) on both render paths and
       passes (colored and textured, both spider and cave spider); death
-      flip and broader lighting presentation remain unsupported
+      flip remains unsupported. The old broader-lighting wording is stale because
+      base and eyes submission light/overlay metadata is covered here and global
+      LightTexture / gamma parity is tracked by the completed P0 lighting pipeline
     - enderman entities as renderer-owned vanilla 26.1
       `EndermanModel.createBodyLayer()` geometry, including its
       `HumanoidModel.createMesh(CubeDeformation.NONE, -14.0F)` offsets,
@@ -3267,8 +3269,11 @@ When an agent does any of the following, update this file in the same slice:
       metadata, shared dispatch ownership instead of a residual textured emit helper, and an
       alpha-blended translucent GPU bucket. Invisible glowing slime now records the
       vanilla base and order-1 `SlimeOuterLayer` outline submissions with
-      `outlineColor` metadata and static-atlas GPU outline bucket geometry; particle/audio coupling, broader
-      lighting presentation, and crumbling remain unsupported
+      `outlineColor` metadata and static-atlas GPU outline bucket geometry;
+      particle/audio coupling and crumbling remain unsupported. The old
+      broader-lighting wording is stale because base/outer submission
+      light/overlay metadata is covered here and global LightTexture / gamma
+      parity is tracked by the completed P0 lighting pipeline
     - magma cube entities as renderer-owned vanilla 26.1
       `MagmaCubeModel.createBodyLayer()` segment/inside-cube geometry, official
       `textures/entity/slime/magmacube.png` texture reference, renderer
@@ -3281,7 +3286,11 @@ When an agent does any of the following, update this file in the same slice:
       hurt/white overlay, and `(0, 0)`, with folded cutout vertices inheriting the matching metadata,
       and official PNG atlas upload/bind/sample path; the full-bright block light
       (`MagmaCubeRenderer.getBlockLightLevel = 15`) IS now applied (`entity_light_coords`).
-      Particle/audio coupling, broader lighting presentation, and crumbling remain unsupported
+      Particle/audio coupling and crumbling remain unsupported. The old
+      broader-lighting wording is stale because the base submission
+      light/overlay metadata and full-bright block-light override are covered
+      here, and global LightTexture / gamma parity is tracked by the completed
+      P0 lighting pipeline
     - ghast entities as renderer-owned vanilla 26.1 `GhastModel.createBodyLayer()`
       geometry: the 16x16x16 body at y 17.6 plus the nine tentacles at y 24.6,
       whose lengths are the fixed-seed `RandomSource(1660L)` (`nextInt(7) + 8`,
@@ -3298,7 +3307,10 @@ When an agent does any of the following, update this file in the same slice:
       both render paths), and the vanilla `GhastRenderer.getTextureLocation`
       `isCharging` texture swap (`ghast.png` → `ghast_shooting.png`), driven by
       the projected `Ghast.DATA_IS_CHARGING` synced boolean (index 16, since
-      `Ghast extends Mob` directly). Broader lighting presentation remains unsupported
+      `Ghast extends Mob` directly). The old broader-lighting wording is stale
+      because the base submission light/overlay metadata is covered here and
+      global LightTexture / gamma parity is tracked by the completed P0 lighting
+      pipeline
     - happy ghast entities as renderer-owned vanilla 26.1
       `HappyGhastModel.createBodyLayer(false, NONE)` geometry: the 16x16x16 body at
       y 16 plus the nine tentacles parented under the body (world-space y 23) with
@@ -3331,8 +3343,11 @@ When an agent does any of the following, update this file in the same slice:
       the projected `ageInTicks`), and the shared head look (`head.yRot/xRot` from the
       net look angles), on both render paths. The `BlazeRenderer` full-bright block
       light (`getBlockLightLevel = 15`) IS now applied (in `entity_light_coords`,
-      forcing the packed block light to 15 for the blaze type); broader lighting
-      presentation remains unsupported
+      forcing the packed block light to 15 for the blaze type); the old
+      broader-lighting wording is stale because the base submission
+      light/overlay metadata and full-bright block-light override are covered
+      here, and global LightTexture / gamma parity is tracked by the completed
+      P0 lighting pipeline
     - endermite entities as renderer-owned vanilla 26.1
       `EndermiteModel.createBodyLayer()` geometry: the four nested chitin segments
       from `BODY_SIZES`/`BODY_TEXS` (each `addBox(-sx/2, 0, -sz/2, sx, sy, sz)` posed
@@ -3347,7 +3362,9 @@ When an agent does any of the following, update this file in the same slice:
       segment wiggle (`segment.yRot = cos(phase) * π * 0.01 * (1 + |i - 2|)`,
       `segment.x = sin(phase) * π * 0.1 * |i - 2|`, `phase = ageInTicks * 0.9 + i *
       0.15 * π`, driven by the projected `ageInTicks`, on both render paths).
-      Broader lighting presentation remains unsupported
+      The old broader-lighting wording is stale because the base submission
+      light/overlay metadata is covered here and global LightTexture / gamma
+      parity is tracked by the completed P0 lighting pipeline
     - silverfish entities as renderer-owned vanilla 26.1
       `SilverfishModel.createBodyLayer()` geometry: the seven nested body segments
       from `BODY_SIZES`/`BODY_TEXS` plus the three wider overlay layers riding
@@ -3363,8 +3380,10 @@ When an agent does any of the following, update this file in the same slice:
       `SilverfishModel.setupAnim` segment wiggle (`segment.yRot = cos(phase) * π *
       0.05 * (1 + |i - 2|)`, `segment.x = sin(phase) * π * 0.2 * |i - 2|`, `phase =
       ageInTicks * 0.9 + i * 0.15 * π`, with the overlay layers copying segments
-      2/4/1, driven by the projected `ageInTicks`, on both render paths). Broader
-      lighting presentation remains unsupported
+      2/4/1, driven by the projected `ageInTicks`, on both render paths). The old
+      broader-lighting wording is stale because the base submission
+      light/overlay metadata is covered here and global LightTexture / gamma
+      parity is tracked by the completed P0 lighting pipeline
     - vex entities are wired end to end on both render paths: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `138` to the real `VexModel`, replacing
       the former placeholder box. Renderer-owned vanilla 26.1 `VexModel.createBodyLayer()`
@@ -3397,7 +3416,10 @@ When an agent does any of the following, update this file in the same slice:
       already-projected `charging` bit). The constant full-bright `getBlockLightLevel` (→ 15) glow IS now applied
       (`entity_light_coords` forces the packed block light to 15 for the vex type); stale renderer
       comments that still described this glow as deferred have been aligned with that native
-      light-coords source. Broader lighting presentation remains unsupported
+      light-coords source. The old broader-lighting wording is stale because the
+      base submission light/overlay metadata and full-bright block-light override
+      are covered here, and global LightTexture / gamma parity is tracked by the
+      completed P0 lighting pipeline
     - allay entities are wired end to end on both render paths: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `2` to the real `AllayModel`, replacing
       the former placeholder box. Renderer-owned vanilla 26.1 `AllayModel.createBodyLayer()`
@@ -3433,7 +3455,10 @@ When an agent does any of the following, update this file in the same slice:
       now applied (`entity_light_coords` forces the packed block light to 15 for the allay type), and
       renderer texture comments now point at that native light-coords source instead of treating it as
       unimplemented.
-      Broader lighting presentation remains unsupported
+      The old broader-lighting wording is stale because the base submission
+      light/overlay metadata and full-bright block-light override are covered
+      here, and global LightTexture / gamma parity is tracked by the completed
+      P0 lighting pipeline
     - strider entities are wired end to end on both render paths: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `129` to the real `AdultStriderModel` /
       `BabyStriderModel`, replacing the former horse-quadruped fallback, keyed off the synced
@@ -4484,7 +4509,9 @@ When an agent does any of the following, update this file in the same slice:
       / `submit_sequence = 1`, with the same transform, entity light, white tint, and
       `OverlayTexture.NO_OVERLAY`; missing-atlas coverage proves the eyes submission is
       still recorded without `phantom_eyes.png` while only folded emissive geometry is
-      suppressed. Broader lighting presentation remains unsupported
+      suppressed. The old broader-lighting wording is stale because base and eyes
+      submission light/overlay metadata is covered here and global LightTexture /
+      gamma parity is tracked by the completed P0 lighting pipeline
     - pufferfish entities as renderer-owned vanilla 26.1
       `PufferfishSmallModel`/`PufferfishMidModel`/`PufferfishBigModel.createBodyLayer()`
       geometry: the small (6-cube), medium (11-cube), and big (13-cube) body layers

@@ -1143,6 +1143,12 @@ blocker。
   - [x] 旧的 broader/full-dynamic lighting wording 已收窄：base submission
     light/overlay metadata 和 glow-squid block-light override 已由 renderer
     tests pin 住；全局 LightTexture / gamma 归已完成 P0 lighting pipeline。
+- Spider / slime / magma cube / ghast / blaze / endermite / silverfish / vex /
+  allay / phantom：
+  - [x] 剩余 exact broader lighting wording 已收窄：base、eyes、outer-layer
+    light/overlay metadata，以及 magma/blaze/vex/allay full-bright block-light
+    override 已由 renderer tests pin 住；剩余保留 death flip、particle/audio、
+    crumbling、allay held-item arm poses 等非 lighting 项。
 - Boat / raft：
   - [x] paddle rowing animation（world metadata/passenger gate -> native render state -> renderer paddle pose）
   - [x] hurt/damage roll（VehicleEntity metadata -> native render state -> boat root transform）
