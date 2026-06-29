@@ -562,6 +562,22 @@ fn sky_environment_projects_sunrise_sunset_render_state() {
     assert_close4(sky.sunrise_sunset_color, rgba32(sunrise_color));
     assert!(sky.sunrise_sunset_color[3] > 0.0);
     assert!((sky.sun_angle_radians - overworld_sun_angle(day_time).to_radians()).abs() < 1e-6);
+    assert!((sky.moon_angle_radians - overworld_moon_angle(day_time).to_radians()).abs() < 1e-6);
+    assert!((sky.rain_brightness - 0.75).abs() < 1e-6);
+    assert_eq!(sky.moon_phase, SkyMoonPhase::FullMoon);
+}
+
+#[test]
+fn sky_environment_projects_vanilla_moon_phase_cycle() {
+    assert_eq!(overworld_moon_phase(0), SkyMoonPhase::FullMoon);
+    assert_eq!(overworld_moon_phase(24_000), SkyMoonPhase::WaningGibbous);
+    assert_eq!(overworld_moon_phase(48_000), SkyMoonPhase::ThirdQuarter);
+    assert_eq!(overworld_moon_phase(72_000), SkyMoonPhase::WaningCrescent);
+    assert_eq!(overworld_moon_phase(96_000), SkyMoonPhase::NewMoon);
+    assert_eq!(overworld_moon_phase(120_000), SkyMoonPhase::WaxingCrescent);
+    assert_eq!(overworld_moon_phase(144_000), SkyMoonPhase::FirstQuarter);
+    assert_eq!(overworld_moon_phase(168_000), SkyMoonPhase::WaxingGibbous);
+    assert_eq!(overworld_moon_phase(192_000), SkyMoonPhase::FullMoon);
 }
 
 #[test]

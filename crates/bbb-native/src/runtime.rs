@@ -16,7 +16,7 @@ use bbb_renderer::{
     HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryItem,
     HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground, HudInventoryTextLabel,
     HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar,
-    HudItemIcon, HudUvRect, LightmapEnvironment, SkyEnvironment, HUD_HOTBAR_SLOTS,
+    HudItemIcon, HudUvRect, LightmapEnvironment, SkyEnvironment, SkyMoonPhase, HUD_HOTBAR_SLOTS,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
     VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
@@ -4242,6 +4242,11 @@ fn sky_environment_for_world_with_environment_colors(
         rgba32(sunrise_sunset_color),
         overworld_sun_angle(day_time).to_radians(),
     )
+    .with_celestial_state(
+        overworld_moon_angle(day_time).to_radians(),
+        1.0 - weather.rain_level.clamp(0.0, 1.0),
+        overworld_moon_phase(day_time),
+    )
 }
 
 fn sky_disc_color_for_world_with_environment_colors(
@@ -4621,6 +4626,17 @@ fn overworld_sun_angle(day_time: i64) -> f32 {
     ((day_time - VANILLA_LIGHTMAP_DEFAULT_DAY_TIME) as f32 * 360.0
         / VANILLA_LIGHTMAP_DAY_PERIOD_TICKS as f32)
         .rem_euclid(360.0)
+}
+
+fn overworld_moon_angle(day_time: i64) -> f32 {
+    (overworld_sun_angle(day_time) + 180.0).rem_euclid(360.0)
+}
+
+fn overworld_moon_phase(day_time: i64) -> SkyMoonPhase {
+    let phase = day_time
+        .rem_euclid(VANILLA_LIGHTMAP_DAY_PERIOD_TICKS * SkyMoonPhase::ALL.len() as i64)
+        / VANILLA_LIGHTMAP_DAY_PERIOD_TICKS;
+    SkyMoonPhase::from_vanilla_index(phase as usize)
 }
 
 fn apply_atmospheric_sky_weather_darken(color: i32, rain_level: f64, thunder_level: f64) -> i32 {

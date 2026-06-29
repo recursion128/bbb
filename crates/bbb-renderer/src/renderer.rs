@@ -43,8 +43,10 @@ use crate::{
         SelectionOutlineGpu,
     },
     sky::{
-        create_end_sky_bind_group_layout, create_end_sky_gpu, create_end_sky_pipeline,
-        create_end_sky_texture_gpu, create_sky_disc_gpu, create_sky_pipeline, EndSkyGpu,
+        create_celestial_atlas_gpu, create_celestial_bind_group_layout, create_celestial_gpu,
+        create_celestial_pipeline, create_end_sky_bind_group_layout, create_end_sky_gpu,
+        create_end_sky_pipeline, create_end_sky_texture_gpu, create_sky_disc_gpu,
+        create_sky_pipeline, CelestialAtlasGpu, CelestialGpu, CelestialTextureImage, EndSkyGpu,
         EndSkyTextureGpu, SkyDiscGpu, SkyEnvironment,
     },
     terrain,
@@ -75,6 +77,8 @@ pub struct Renderer {
     pub(super) sky_pipeline: wgpu::RenderPipeline,
     pub(super) end_sky_pipeline: wgpu::RenderPipeline,
     pub(super) end_sky_texture_bind_group_layout: wgpu::BindGroupLayout,
+    pub(super) celestial_pipeline: wgpu::RenderPipeline,
+    pub(super) celestial_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) hud_pipeline: wgpu::RenderPipeline,
     pub(super) hud_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) hud_white_pixel: HudSpriteGpu,
@@ -98,6 +102,8 @@ pub struct Renderer {
     pub(super) sky_disc: Option<SkyDiscGpu>,
     pub(super) end_sky_mesh: EndSkyGpu,
     pub(super) end_sky_texture: Option<EndSkyTextureGpu>,
+    pub(super) sky_celestials: Option<CelestialGpu>,
+    pub(super) celestial_atlas: Option<CelestialAtlasGpu>,
     pub(super) block_destroy_overlays: Option<BlockDestroyOverlaysGpu>,
     pub(super) entity_model_mesh: Option<EntityModelMeshGpu>,
     pub(super) entity_model_textured_mesh: Option<EntityModelTexturedMeshGpu>,
@@ -382,6 +388,13 @@ impl Renderer {
             &end_sky_texture_bind_group_layout,
         );
         let end_sky_mesh = create_end_sky_gpu(&device);
+        let celestial_bind_group_layout = create_celestial_bind_group_layout(&device);
+        let celestial_pipeline = create_celestial_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &celestial_bind_group_layout,
+        );
         let hud_pipeline = create_hud_pipeline(&device, format, &hud_bind_group_layout);
         let hud_white_pixel = create_hud_sprite_gpu(
             &device,
@@ -421,6 +434,8 @@ impl Renderer {
             sky_pipeline,
             end_sky_pipeline,
             end_sky_texture_bind_group_layout,
+            celestial_pipeline,
+            celestial_bind_group_layout,
             hud_pipeline,
             hud_bind_group_layout,
             hud_white_pixel,
@@ -444,6 +459,8 @@ impl Renderer {
             sky_disc: None,
             end_sky_mesh,
             end_sky_texture: None,
+            sky_celestials: None,
+            celestial_atlas: None,
             block_destroy_overlays: None,
             entity_model_mesh: None,
             entity_model_textured_mesh: None,
@@ -929,6 +946,10 @@ impl Renderer {
         }
         self.sky_environment = environment;
         self.sky_disc = create_sky_disc_gpu(&self.device, environment);
+        self.sky_celestials = self
+            .celestial_atlas
+            .as_ref()
+            .and_then(|atlas| create_celestial_gpu(&self.device, environment, atlas));
     }
 
     pub fn upload_end_sky_texture(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
@@ -940,6 +961,20 @@ impl Renderer {
             height,
             rgba,
         )?);
+        Ok(())
+    }
+
+    pub fn upload_celestial_textures(&mut self, images: &[CelestialTextureImage]) -> Result<()> {
+        self.celestial_atlas = Some(create_celestial_atlas_gpu(
+            &self.device,
+            &self.queue,
+            &self.celestial_bind_group_layout,
+            images,
+        )?);
+        self.sky_celestials = self
+            .celestial_atlas
+            .as_ref()
+            .and_then(|atlas| create_celestial_gpu(&self.device, self.sky_environment, atlas));
         Ok(())
     }
 

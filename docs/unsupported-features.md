@@ -665,9 +665,12 @@ When an agent does any of the following, update this file in the same slice:
     `0x282828` vertex color, and the official
     `textures/environment/end_sky.png` loaded from the resource stack. Remaining
     visual gaps are cloud mesh presentation that consumes these visibility ends,
-    the day timeline's cloud/star/moon/sun textured celestial mesh state,
+    the day timeline's cloud/star mesh state,
     fuller atmosphere presentation, and later custom-pack EnvironmentAttribute
-    generalization when a concrete renderer surface exists. Overworld variants use ambient `0x0A0A0A`. The
+    generalization when a concrete renderer surface exists. Sun/moon presentation
+    is now covered by the vanilla `CELESTIAL` overlay blend, the
+    `environment/celestial` atlas source, `SUN_ANGLE` / `MOON_ANGLE`, and the
+    8-phase `MOON_PHASE` order. Overworld variants use ambient `0x0A0A0A`. The
     block flicker path still advances
     `blockLightFlicker` with the
     `LightmapRenderStateExtractor.tick()` formula and the shaders read
@@ -676,8 +679,8 @@ When an agent does any of the following, update this file in the same slice:
     curve, block-light parabolic tint mix, boss darkening, darkness subtraction,
     and `BrightnessFactor` `notGamma` mix instead of the earlier
     `max(block, sky * 0.95)` scalar approximation. Remaining lighting gaps:
-    cloud and remaining celestial sky renderer presentation (textured sun/moon,
-    stars), the real dynamic 16x16 LightTexture texture pass, provider-specific particle light emission
+    cloud and remaining celestial sky renderer presentation (stars), the real
+    dynamic 16x16 LightTexture texture pass, provider-specific particle light emission
     overrides, smooth/AO entity light, GUI / entity-in-UI lighting variants,
     and the colored debug fallback's baked-shade approximation. The item-model
     shader now consumes submitted item stack light coords through the same

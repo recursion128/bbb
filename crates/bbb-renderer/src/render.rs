@@ -90,6 +90,18 @@ impl Renderer {
                 pass.set_vertex_buffer(0, sky_disc.vertex_buffer.slice(..));
                 pass.draw(0..sky_disc.vertex_count, 0..1);
                 sky_draw_calls += 1;
+
+                if let (Some(celestial_atlas), Some(celestials)) =
+                    (&self.celestial_atlas, &self.sky_celestials)
+                {
+                    pass.set_pipeline(&self.celestial_pipeline);
+                    pipeline_switches += 1;
+                    pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+                    pass.set_bind_group(1, &celestial_atlas.bind_group, &[]);
+                    pass.set_vertex_buffer(0, celestials.vertex_buffer.slice(..));
+                    pass.draw(0..celestials.vertex_count, 0..1);
+                    sky_draw_calls += 1;
+                }
             }
 
             // Vanilla 26.1 renders ChunkSectionLayerGroup.OPAQUE as SOLID then CUTOUT

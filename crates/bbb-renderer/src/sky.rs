@@ -13,6 +13,23 @@ const SUNRISE_ALPHA_EPSILON: f32 = 0.001;
 const END_SKY_HALF_EXTENT: f32 = 100.0;
 const END_SKY_UV_REPEAT: f32 = 16.0;
 const END_SKY_VERTEX_COLOR: [f32; 4] = [40.0 / 255.0, 40.0 / 255.0, 40.0 / 255.0, 1.0];
+const CELESTIAL_HEIGHT: f32 = 100.0;
+const CELESTIAL_SUN_SIZE: f32 = 30.0;
+const CELESTIAL_MOON_SIZE: f32 = 20.0;
+const CELESTIAL_TEXTURE_COUNT: usize = 9;
+
+const SKY_OVERLAY_BLEND: wgpu::BlendState = wgpu::BlendState {
+    color: wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::SrcAlpha,
+        dst_factor: wgpu::BlendFactor::One,
+        operation: wgpu::BlendOperation::Add,
+    },
+    alpha: wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::One,
+        dst_factor: wgpu::BlendFactor::Zero,
+        operation: wgpu::BlendOperation::Add,
+    },
+};
 
 const SKY_SHADER: &str = r#"
 struct Camera {
@@ -57,7 +74,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 }
 "#;
 
-const END_SKY_SHADER: &str = r#"
+const SKY_TEXTURED_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
     lightmap_factors: vec4<f32>,
@@ -75,9 +92,9 @@ struct Camera {
 @group(0) @binding(0)
 var<uniform> camera: Camera;
 @group(1) @binding(0)
-var end_sky_texture: texture_2d<f32>;
+var sky_texture: texture_2d<f32>;
 @group(1) @binding(1)
-var end_sky_sampler: sampler;
+var sky_sampler: sampler;
 
 struct VertexIn {
     @location(0) position: vec3<f32>,
@@ -103,7 +120,7 @@ fn vs_main(input: VertexIn) -> VertexOut {
 
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
-    let texel = textureSample(end_sky_texture, end_sky_sampler, input.uv) * input.color;
+    let texel = textureSample(sky_texture, sky_sampler, input.uv) * input.color;
     if texel.a <= 0.0 {
         discard;
     }
@@ -118,12 +135,119 @@ pub enum SkyboxKind {
     End,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SkyMoonPhase {
+    FullMoon,
+    WaningGibbous,
+    ThirdQuarter,
+    WaningCrescent,
+    NewMoon,
+    WaxingCrescent,
+    FirstQuarter,
+    WaxingGibbous,
+}
+
+impl SkyMoonPhase {
+    pub const ALL: [Self; 8] = [
+        Self::FullMoon,
+        Self::WaningGibbous,
+        Self::ThirdQuarter,
+        Self::WaningCrescent,
+        Self::NewMoon,
+        Self::WaxingCrescent,
+        Self::FirstQuarter,
+        Self::WaxingGibbous,
+    ];
+
+    pub fn from_vanilla_index(index: usize) -> Self {
+        Self::ALL[index % Self::ALL.len()]
+    }
+
+    pub fn vanilla_index(self) -> usize {
+        match self {
+            Self::FullMoon => 0,
+            Self::WaningGibbous => 1,
+            Self::ThirdQuarter => 2,
+            Self::WaningCrescent => 3,
+            Self::NewMoon => 4,
+            Self::WaxingCrescent => 5,
+            Self::FirstQuarter => 6,
+            Self::WaxingGibbous => 7,
+        }
+    }
+
+    fn texture_kind(self) -> CelestialTextureKind {
+        match self {
+            Self::FullMoon => CelestialTextureKind::MoonFull,
+            Self::WaningGibbous => CelestialTextureKind::MoonWaningGibbous,
+            Self::ThirdQuarter => CelestialTextureKind::MoonThirdQuarter,
+            Self::WaningCrescent => CelestialTextureKind::MoonWaningCrescent,
+            Self::NewMoon => CelestialTextureKind::MoonNew,
+            Self::WaxingCrescent => CelestialTextureKind::MoonWaxingCrescent,
+            Self::FirstQuarter => CelestialTextureKind::MoonFirstQuarter,
+            Self::WaxingGibbous => CelestialTextureKind::MoonWaxingGibbous,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CelestialTextureKind {
+    Sun,
+    MoonFull,
+    MoonWaningGibbous,
+    MoonThirdQuarter,
+    MoonWaningCrescent,
+    MoonNew,
+    MoonWaxingCrescent,
+    MoonFirstQuarter,
+    MoonWaxingGibbous,
+}
+
+impl CelestialTextureKind {
+    pub const ALL: [Self; CELESTIAL_TEXTURE_COUNT] = [
+        Self::Sun,
+        Self::MoonFull,
+        Self::MoonWaningGibbous,
+        Self::MoonThirdQuarter,
+        Self::MoonWaningCrescent,
+        Self::MoonNew,
+        Self::MoonWaxingCrescent,
+        Self::MoonFirstQuarter,
+        Self::MoonWaxingGibbous,
+    ];
+
+    fn index(self) -> usize {
+        match self {
+            Self::Sun => 0,
+            Self::MoonFull => 1,
+            Self::MoonWaningGibbous => 2,
+            Self::MoonThirdQuarter => 3,
+            Self::MoonWaningCrescent => 4,
+            Self::MoonNew => 5,
+            Self::MoonWaxingCrescent => 6,
+            Self::MoonFirstQuarter => 7,
+            Self::MoonWaxingGibbous => 8,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CelestialTextureImage {
+    pub kind: CelestialTextureKind,
+    pub width: u32,
+    pub height: u32,
+    pub rgba: Vec<u8>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SkyEnvironment {
     pub skybox: SkyboxKind,
     pub color: [f32; 4],
     pub sunrise_sunset_color: [f32; 4],
     pub sun_angle_radians: f32,
+    pub moon_angle_radians: f32,
+    pub rain_brightness: f32,
+    pub moon_phase: SkyMoonPhase,
 }
 
 impl Default for SkyEnvironment {
@@ -139,6 +263,9 @@ impl SkyEnvironment {
             color: [0.0, 0.0, 0.0, 0.0],
             sunrise_sunset_color: [0.0, 0.0, 0.0, 0.0],
             sun_angle_radians: 0.0,
+            moon_angle_radians: std::f32::consts::PI,
+            rain_brightness: 0.0,
+            moon_phase: SkyMoonPhase::FullMoon,
         }
     }
 
@@ -148,6 +275,9 @@ impl SkyEnvironment {
             color: [0.0, 0.0, 0.0, 0.0],
             sunrise_sunset_color: [0.0, 0.0, 0.0, 0.0],
             sun_angle_radians: 0.0,
+            moon_angle_radians: std::f32::consts::PI,
+            rain_brightness: 0.0,
+            moon_phase: SkyMoonPhase::FullMoon,
         }
     }
 
@@ -157,6 +287,9 @@ impl SkyEnvironment {
             color: [color[0], color[1], color[2], 1.0],
             sunrise_sunset_color: [0.0, 0.0, 0.0, 0.0],
             sun_angle_radians: 0.0,
+            moon_angle_radians: std::f32::consts::PI,
+            rain_brightness: 1.0,
+            moon_phase: SkyMoonPhase::FullMoon,
         }
         .sanitized()
     }
@@ -164,6 +297,18 @@ impl SkyEnvironment {
     pub fn with_sunrise_sunset(mut self, color: [f32; 4], sun_angle_radians: f32) -> Self {
         self.sunrise_sunset_color = color;
         self.sun_angle_radians = sun_angle_radians;
+        self.sanitized()
+    }
+
+    pub fn with_celestial_state(
+        mut self,
+        moon_angle_radians: f32,
+        rain_brightness: f32,
+        moon_phase: SkyMoonPhase,
+    ) -> Self {
+        self.moon_angle_radians = moon_angle_radians;
+        self.rain_brightness = rain_brightness;
+        self.moon_phase = moon_phase;
         self.sanitized()
     }
 
@@ -183,6 +328,9 @@ impl SkyEnvironment {
                 sanitize_unit(self.sunrise_sunset_color[3]),
             ],
             sun_angle_radians: sanitize_radians(self.sun_angle_radians),
+            moon_angle_radians: sanitize_radians(self.moon_angle_radians),
+            rain_brightness: sanitize_unit(self.rain_brightness),
+            moon_phase: self.moon_phase,
         }
     }
 
@@ -200,6 +348,11 @@ impl SkyEnvironment {
     pub fn end_sky_visible(self) -> bool {
         self.sanitized().skybox == SkyboxKind::End
     }
+
+    pub fn celestials_visible(self) -> bool {
+        let environment = self.sanitized();
+        environment.skybox == SkyboxKind::Overworld && environment.rain_brightness > 0.0
+    }
 }
 
 #[repr(C)]
@@ -211,7 +364,7 @@ struct SkyVertex {
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-struct EndSkyVertex {
+struct SkyTexturedVertex {
     position: [f32; 3],
     uv: [f32; 2],
     color: [f32; 4],
@@ -232,6 +385,27 @@ pub(super) struct EndSkyTextureGpu {
     pub(super) _view: wgpu::TextureView,
     pub(super) _sampler: wgpu::Sampler,
     pub(super) bind_group: wgpu::BindGroup,
+}
+
+pub(super) struct CelestialGpu {
+    pub(super) vertex_buffer: wgpu::Buffer,
+    pub(super) vertex_count: u32,
+}
+
+pub(super) struct CelestialAtlasGpu {
+    pub(super) _texture: wgpu::Texture,
+    pub(super) _view: wgpu::TextureView,
+    pub(super) _sampler: wgpu::Sampler,
+    pub(super) bind_group: wgpu::BindGroup,
+    uvs: [Option<SkyTextureUvRect>; CELESTIAL_TEXTURE_COUNT],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct SkyTextureUvRect {
+    u0: f32,
+    v0: f32,
+    u1: f32,
+    v1: f32,
 }
 
 pub(super) fn create_sky_pipeline(
@@ -310,6 +484,30 @@ pub(super) fn create_end_sky_bind_group_layout(device: &wgpu::Device) -> wgpu::B
     })
 }
 
+pub(super) fn create_celestial_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+    device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("bbb-celestial-texture-bind-group-layout"),
+        entries: &[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    multisampled: false,
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            },
+        ],
+    })
+}
+
 pub(super) fn create_end_sky_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
@@ -318,7 +516,7 @@ pub(super) fn create_end_sky_pipeline(
 ) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("bbb-end-sky-shader"),
-        source: wgpu::ShaderSource::Wgsl(END_SKY_SHADER.into()),
+        source: wgpu::ShaderSource::Wgsl(SKY_TEXTURED_SHADER.into()),
     });
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-end-sky-pipeline-layout"),
@@ -332,7 +530,7 @@ pub(super) fn create_end_sky_pipeline(
             module: &shader,
             entry_point: "vs_main",
             buffers: &[wgpu::VertexBufferLayout {
-                array_stride: std::mem::size_of::<EndSkyVertex>() as wgpu::BufferAddress,
+                array_stride: std::mem::size_of::<SkyTexturedVertex>() as wgpu::BufferAddress,
                 step_mode: wgpu::VertexStepMode::Vertex,
                 attributes: &wgpu::vertex_attr_array![
                     0 => Float32x3,
@@ -347,6 +545,63 @@ pub(super) fn create_end_sky_pipeline(
             targets: &[Some(wgpu::ColorTargetState {
                 format,
                 blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            cull_mode: None,
+            ..Default::default()
+        },
+        depth_stencil: Some(wgpu::DepthStencilState {
+            format: DEPTH_FORMAT,
+            depth_write_enabled: false,
+            depth_compare: wgpu::CompareFunction::Always,
+            stencil: wgpu::StencilState::default(),
+            bias: wgpu::DepthBiasState::default(),
+        }),
+        multisample: wgpu::MultisampleState::default(),
+        multiview: None,
+    })
+}
+
+pub(super) fn create_celestial_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    camera_bind_group_layout: &wgpu::BindGroupLayout,
+    texture_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("bbb-celestial-shader"),
+        source: wgpu::ShaderSource::Wgsl(SKY_TEXTURED_SHADER.into()),
+    });
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-celestial-pipeline-layout"),
+        bind_group_layouts: &[camera_bind_group_layout, texture_bind_group_layout],
+        push_constant_ranges: &[],
+    });
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("bbb-celestial-pipeline"),
+        layout: Some(&layout),
+        vertex: wgpu::VertexState {
+            module: &shader,
+            entry_point: "vs_main",
+            buffers: &[wgpu::VertexBufferLayout {
+                array_stride: std::mem::size_of::<SkyTexturedVertex>() as wgpu::BufferAddress,
+                step_mode: wgpu::VertexStepMode::Vertex,
+                attributes: &wgpu::vertex_attr_array![
+                    0 => Float32x3,
+                    1 => Float32x2,
+                    2 => Float32x4
+                ],
+            }],
+        },
+        fragment: Some(wgpu::FragmentState {
+            module: &shader,
+            entry_point: "fs_main",
+            targets: &[Some(wgpu::ColorTargetState {
+                format,
+                blend: Some(SKY_OVERLAY_BLEND),
                 write_mask: wgpu::ColorWrites::ALL,
             })],
         }),
@@ -398,6 +653,26 @@ pub(super) fn create_end_sky_gpu(device: &wgpu::Device) -> EndSkyGpu {
         vertex_buffer,
         vertex_count: vertices.len() as u32,
     }
+}
+
+pub(super) fn create_celestial_gpu(
+    device: &wgpu::Device,
+    environment: SkyEnvironment,
+    atlas: &CelestialAtlasGpu,
+) -> Option<CelestialGpu> {
+    let vertices = celestial_vertices(environment, &atlas.uvs);
+    if vertices.is_empty() {
+        return None;
+    }
+    let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("bbb-celestial-vertices"),
+        contents: bytemuck::cast_slice(&vertices),
+        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+    });
+    Some(CelestialGpu {
+        vertex_buffer,
+        vertex_count: vertices.len() as u32,
+    })
 }
 
 pub(super) fn create_end_sky_texture_gpu(
@@ -476,6 +751,81 @@ pub(super) fn create_end_sky_texture_gpu(
     })
 }
 
+pub(super) fn create_celestial_atlas_gpu(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    layout: &wgpu::BindGroupLayout,
+    images: &[CelestialTextureImage],
+) -> Result<CelestialAtlasGpu> {
+    let atlas = pack_celestial_atlas(images)?;
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("bbb-celestial-atlas"),
+        size: wgpu::Extent3d {
+            width: atlas.width,
+            height: atlas.height,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8UnormSrgb,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    queue.write_texture(
+        wgpu::ImageCopyTexture {
+            texture: &texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        &atlas.rgba,
+        wgpu::ImageDataLayout {
+            offset: 0,
+            bytes_per_row: Some(atlas.width * 4),
+            rows_per_image: Some(atlas.height),
+        },
+        wgpu::Extent3d {
+            width: atlas.width,
+            height: atlas.height,
+            depth_or_array_layers: 1,
+        },
+    );
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("bbb-celestial-sampler"),
+        address_mode_u: wgpu::AddressMode::ClampToEdge,
+        address_mode_v: wgpu::AddressMode::ClampToEdge,
+        address_mode_w: wgpu::AddressMode::ClampToEdge,
+        mag_filter: wgpu::FilterMode::Nearest,
+        min_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::FilterMode::Nearest,
+        ..Default::default()
+    });
+    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("bbb-celestial-texture-bind-group"),
+        layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(&view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::Sampler(&sampler),
+            },
+        ],
+    });
+
+    Ok(CelestialAtlasGpu {
+        _texture: texture,
+        _view: view,
+        _sampler: sampler,
+        bind_group,
+        uvs: atlas.uvs,
+    })
+}
+
 fn sky_vertices(environment: SkyEnvironment) -> Vec<SkyVertex> {
     let mut vertices = Vec::new();
     if environment.is_visible() {
@@ -488,7 +838,7 @@ fn sky_vertices(environment: SkyEnvironment) -> Vec<SkyVertex> {
     vertices
 }
 
-fn end_sky_vertices() -> Vec<EndSkyVertex> {
+fn end_sky_vertices() -> Vec<SkyTexturedVertex> {
     let mut vertices = Vec::with_capacity(6 * 6);
     for face in 0..6 {
         let quad = end_sky_face_vertices(face);
@@ -497,7 +847,7 @@ fn end_sky_vertices() -> Vec<EndSkyVertex> {
     vertices
 }
 
-fn end_sky_face_vertices(face: usize) -> [EndSkyVertex; 4] {
+fn end_sky_face_vertices(face: usize) -> [SkyTexturedVertex; 4] {
     let positions = [
         [
             -END_SKY_HALF_EXTENT,
@@ -527,11 +877,95 @@ fn end_sky_face_vertices(face: usize) -> [EndSkyVertex; 4] {
         [END_SKY_UV_REPEAT, 0.0],
     ];
 
-    std::array::from_fn(|index| EndSkyVertex {
+    std::array::from_fn(|index| SkyTexturedVertex {
         position: rotate_end_sky_face(face, positions[index]),
         uv: uvs[index],
         color: END_SKY_VERTEX_COLOR,
     })
+}
+
+fn celestial_vertices(
+    environment: SkyEnvironment,
+    uvs: &[Option<SkyTextureUvRect>; CELESTIAL_TEXTURE_COUNT],
+) -> Vec<SkyTexturedVertex> {
+    let environment = environment.sanitized();
+    if !environment.celestials_visible() {
+        return Vec::new();
+    }
+
+    let Some(sun_uv) = uvs[CelestialTextureKind::Sun.index()] else {
+        return Vec::new();
+    };
+    let Some(moon_uv) = uvs[environment.moon_phase.texture_kind().index()] else {
+        return Vec::new();
+    };
+
+    let mut vertices = Vec::with_capacity(12);
+    vertices.extend(celestial_quad_vertices(
+        CELESTIAL_SUN_SIZE,
+        environment.sun_angle_radians,
+        sun_uv,
+        CelestialUvOrientation::Sun,
+        environment.rain_brightness,
+    ));
+    vertices.extend(celestial_quad_vertices(
+        CELESTIAL_MOON_SIZE,
+        environment.moon_angle_radians,
+        moon_uv,
+        CelestialUvOrientation::Moon,
+        environment.rain_brightness,
+    ));
+    vertices
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CelestialUvOrientation {
+    Sun,
+    Moon,
+}
+
+fn celestial_quad_vertices(
+    size: f32,
+    angle_radians: f32,
+    uv_rect: SkyTextureUvRect,
+    orientation: CelestialUvOrientation,
+    alpha: f32,
+) -> [SkyTexturedVertex; 6] {
+    let base_positions = [
+        [-1.0, 0.0, -1.0],
+        [1.0, 0.0, -1.0],
+        [1.0, 0.0, 1.0],
+        [-1.0, 0.0, 1.0],
+    ];
+    let uvs = match orientation {
+        CelestialUvOrientation::Sun => [
+            [uv_rect.u0, uv_rect.v0],
+            [uv_rect.u1, uv_rect.v0],
+            [uv_rect.u1, uv_rect.v1],
+            [uv_rect.u0, uv_rect.v1],
+        ],
+        CelestialUvOrientation::Moon => [
+            [uv_rect.u1, uv_rect.v1],
+            [uv_rect.u0, uv_rect.v1],
+            [uv_rect.u0, uv_rect.v0],
+            [uv_rect.u1, uv_rect.v0],
+        ],
+    };
+    let quad: [SkyTexturedVertex; 4] = std::array::from_fn(|index| SkyTexturedVertex {
+        position: celestial_position(base_positions[index], size, angle_radians),
+        uv: uvs[index],
+        color: [1.0, 1.0, 1.0, alpha],
+    });
+    [quad[0], quad[1], quad[2], quad[0], quad[2], quad[3]]
+}
+
+fn celestial_position(position: [f32; 3], size: f32, angle_radians: f32) -> [f32; 3] {
+    let local = [
+        position[0] * size,
+        CELESTIAL_HEIGHT + position[1],
+        position[2] * size,
+    ];
+    rotate_y(rotate_x(local, angle_radians), -std::f32::consts::FRAC_PI_2)
 }
 
 fn rotate_end_sky_face(face: usize, position: [f32; 3]) -> [f32; 3] {
@@ -549,6 +983,12 @@ fn rotate_x([x, y, z]: [f32; 3], radians: f32) -> [f32; 3] {
     let sin = radians.sin();
     let cos = radians.cos();
     [x, y * cos - z * sin, y * sin + z * cos]
+}
+
+fn rotate_y([x, y, z]: [f32; 3], radians: f32) -> [f32; 3] {
+    let sin = radians.sin();
+    let cos = radians.cos();
+    [x * cos + z * sin, y, -x * sin + z * cos]
 }
 
 fn rotate_z([x, y, z]: [f32; 3], radians: f32) -> [f32; 3] {
@@ -701,6 +1141,131 @@ fn validate_end_sky_rgba(width: u32, height: u32, rgba: &[u8]) -> Result<()> {
     Ok(())
 }
 
+#[derive(Debug)]
+struct PackedCelestialAtlas {
+    width: u32,
+    height: u32,
+    rgba: Vec<u8>,
+    uvs: [Option<SkyTextureUvRect>; CELESTIAL_TEXTURE_COUNT],
+}
+
+fn pack_celestial_atlas(images: &[CelestialTextureImage]) -> Result<PackedCelestialAtlas> {
+    let images_by_kind = validate_celestial_texture_images(images)?;
+    let atlas_width = images_by_kind
+        .iter()
+        .flatten()
+        .try_fold(0_u32, |width, image| {
+            width
+                .checked_add(image.width)
+                .ok_or_else(|| anyhow!("celestial atlas width overflow"))
+        })?;
+    let atlas_height = images_by_kind
+        .iter()
+        .flatten()
+        .map(|image| image.height)
+        .max()
+        .unwrap_or(0);
+    let atlas_len = usize::try_from(atlas_width)
+        .ok()
+        .and_then(|width| {
+            usize::try_from(atlas_height)
+                .ok()
+                .and_then(|height| width.checked_mul(height))
+        })
+        .and_then(|pixels| pixels.checked_mul(4))
+        .ok_or_else(|| anyhow!("celestial atlas size overflow"))?;
+    let mut rgba = vec![0; atlas_len];
+    let mut uvs = [None; CELESTIAL_TEXTURE_COUNT];
+    let mut x_offset = 0_u32;
+
+    for image in images_by_kind.iter().flatten() {
+        copy_celestial_image_into_atlas(&mut rgba, atlas_width, image, x_offset)?;
+        uvs[image.kind.index()] = Some(SkyTextureUvRect {
+            u0: x_offset as f32 / atlas_width as f32,
+            v0: 0.0,
+            u1: (x_offset + image.width) as f32 / atlas_width as f32,
+            v1: image.height as f32 / atlas_height as f32,
+        });
+        x_offset += image.width;
+    }
+
+    Ok(PackedCelestialAtlas {
+        width: atlas_width,
+        height: atlas_height,
+        rgba,
+        uvs,
+    })
+}
+
+fn validate_celestial_texture_images(
+    images: &[CelestialTextureImage],
+) -> Result<[Option<&CelestialTextureImage>; CELESTIAL_TEXTURE_COUNT]> {
+    let mut images_by_kind = [None; CELESTIAL_TEXTURE_COUNT];
+    for image in images {
+        validate_celestial_texture_image(image)?;
+        let slot = &mut images_by_kind[image.kind.index()];
+        if slot.is_some() {
+            bail!("duplicate celestial texture {:?}", image.kind);
+        }
+        *slot = Some(image);
+    }
+    for kind in CelestialTextureKind::ALL {
+        if images_by_kind[kind.index()].is_none() {
+            bail!("missing celestial texture {:?}", kind);
+        }
+    }
+    Ok(images_by_kind)
+}
+
+fn validate_celestial_texture_image(image: &CelestialTextureImage) -> Result<()> {
+    if image.width == 0 || image.height == 0 {
+        bail!(
+            "celestial texture {:?} dimensions must be non-zero",
+            image.kind
+        );
+    }
+    let expected_len = usize::try_from(image.width)
+        .ok()
+        .and_then(|width| {
+            usize::try_from(image.height)
+                .ok()
+                .and_then(|height| width.checked_mul(height))
+        })
+        .and_then(|pixels| pixels.checked_mul(4))
+        .ok_or_else(|| anyhow!("celestial texture {:?} size overflow", image.kind))?;
+    if image.rgba.len() != expected_len {
+        bail!(
+            "celestial texture {:?} has {} RGBA bytes, expected {} for {}x{}",
+            image.kind,
+            image.rgba.len(),
+            expected_len,
+            image.width,
+            image.height
+        );
+    }
+    Ok(())
+}
+
+fn copy_celestial_image_into_atlas(
+    atlas_rgba: &mut [u8],
+    atlas_width: u32,
+    image: &CelestialTextureImage,
+    x_offset: u32,
+) -> Result<()> {
+    let atlas_width = usize::try_from(atlas_width)?;
+    let x_offset = usize::try_from(x_offset)?;
+    let image_width = usize::try_from(image.width)?;
+    let image_height = usize::try_from(image.height)?;
+    for y in 0..image_height {
+        let src_start = y * image_width * 4;
+        let src_end = src_start + image_width * 4;
+        let dst_start = (y * atlas_width + x_offset) * 4;
+        let dst_end = dst_start + image_width * 4;
+        atlas_rgba[dst_start..dst_end].copy_from_slice(&image.rgba[src_start..src_end]);
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -712,12 +1277,18 @@ mod tests {
             color: [1.5, -1.0, f32::NAN, 2.0],
             sunrise_sunset_color: [-1.0, 0.5, 2.0, f32::NAN],
             sun_angle_radians: f32::INFINITY,
+            moon_angle_radians: f32::NEG_INFINITY,
+            rain_brightness: 2.0,
+            moon_phase: SkyMoonPhase::WaxingGibbous,
         }
         .sanitized();
 
         assert_eq!(environment.color, [1.0, 0.0, 0.0, 1.0]);
         assert_eq!(environment.sunrise_sunset_color, [0.0, 0.5, 1.0, 0.0]);
         assert_eq!(environment.sun_angle_radians, 0.0);
+        assert_eq!(environment.moon_angle_radians, 0.0);
+        assert_eq!(environment.rain_brightness, 1.0);
+        assert_eq!(environment.moon_phase, SkyMoonPhase::WaxingGibbous);
         assert!(environment.is_visible());
         assert!(!SkyEnvironment::disabled().is_visible());
         assert!(SkyEnvironment::end().end_sky_visible());
@@ -810,6 +1381,123 @@ mod tests {
     }
 
     #[test]
+    fn sky_moon_phase_indices_follow_vanilla_order() {
+        assert_eq!(SkyMoonPhase::FullMoon.vanilla_index(), 0);
+        assert_eq!(SkyMoonPhase::WaningGibbous.vanilla_index(), 1);
+        assert_eq!(SkyMoonPhase::ThirdQuarter.vanilla_index(), 2);
+        assert_eq!(SkyMoonPhase::WaningCrescent.vanilla_index(), 3);
+        assert_eq!(SkyMoonPhase::NewMoon.vanilla_index(), 4);
+        assert_eq!(SkyMoonPhase::WaxingCrescent.vanilla_index(), 5);
+        assert_eq!(SkyMoonPhase::FirstQuarter.vanilla_index(), 6);
+        assert_eq!(SkyMoonPhase::WaxingGibbous.vanilla_index(), 7);
+        assert_eq!(
+            SkyMoonPhase::from_vanilla_index(9),
+            SkyMoonPhase::WaningGibbous
+        );
+    }
+
+    #[test]
+    fn celestial_vertices_match_vanilla_sun_quad_transform_and_uvs() {
+        let mut uvs = [None; CELESTIAL_TEXTURE_COUNT];
+        uvs[CelestialTextureKind::Sun.index()] = Some(SkyTextureUvRect {
+            u0: 0.0,
+            v0: 0.0,
+            u1: 0.25,
+            v1: 0.5,
+        });
+        uvs[CelestialTextureKind::MoonFull.index()] = Some(SkyTextureUvRect {
+            u0: 0.25,
+            v0: 0.0,
+            u1: 0.5,
+            v1: 0.5,
+        });
+        let environment = SkyEnvironment::from_rgb([0.25, 0.5, 0.75])
+            .with_sunrise_sunset([0.0, 0.0, 0.0, 0.0], 0.0)
+            .with_celestial_state(0.0, 0.5, SkyMoonPhase::FullMoon);
+
+        let vertices = celestial_vertices(environment, &uvs);
+
+        assert_eq!(vertices.len(), 12);
+        assert_close3(vertices[0].position, [30.0, 100.0, -30.0]);
+        assert_close3(vertices[1].position, [30.0, 100.0, 30.0]);
+        assert_close3(vertices[2].position, [-30.0, 100.0, 30.0]);
+        assert_close2(vertices[0].uv, [0.0, 0.0]);
+        assert_close2(vertices[1].uv, [0.25, 0.0]);
+        assert_close2(vertices[2].uv, [0.25, 0.5]);
+        assert_eq!(vertices[0].color, [1.0, 1.0, 1.0, 0.5]);
+    }
+
+    #[test]
+    fn celestial_vertices_match_vanilla_moon_phase_uv_order_and_size() {
+        let mut uvs = [None; CELESTIAL_TEXTURE_COUNT];
+        uvs[CelestialTextureKind::Sun.index()] = Some(SkyTextureUvRect {
+            u0: 0.0,
+            v0: 0.0,
+            u1: 0.25,
+            v1: 0.5,
+        });
+        uvs[CelestialTextureKind::MoonWaningGibbous.index()] = Some(SkyTextureUvRect {
+            u0: 0.25,
+            v0: 0.0,
+            u1: 0.5,
+            v1: 0.5,
+        });
+        let environment = SkyEnvironment::from_rgb([0.25, 0.5, 0.75]).with_celestial_state(
+            0.0,
+            0.25,
+            SkyMoonPhase::WaningGibbous,
+        );
+
+        let vertices = celestial_vertices(environment, &uvs);
+
+        assert_eq!(vertices.len(), 12);
+        assert_close3(vertices[6].position, [20.0, 100.0, -20.0]);
+        assert_close3(vertices[7].position, [20.0, 100.0, 20.0]);
+        assert_close3(vertices[8].position, [-20.0, 100.0, 20.0]);
+        assert_close2(vertices[6].uv, [0.5, 0.5]);
+        assert_close2(vertices[7].uv, [0.25, 0.5]);
+        assert_close2(vertices[8].uv, [0.25, 0.0]);
+        assert_eq!(vertices[6].color, [1.0, 1.0, 1.0, 0.25]);
+    }
+
+    #[test]
+    fn celestial_vertices_skip_when_required_sprite_uv_is_missing() {
+        let uvs = [None; CELESTIAL_TEXTURE_COUNT];
+        let environment = SkyEnvironment::from_rgb([0.25, 0.5, 0.75]);
+
+        assert!(celestial_vertices(environment, &uvs).is_empty());
+    }
+
+    #[test]
+    fn celestial_atlas_requires_each_vanilla_sprite_once() {
+        let mut images = test_celestial_images();
+        images.pop();
+
+        let err = pack_celestial_atlas(&images).unwrap_err();
+
+        assert!(err.to_string().contains("missing celestial texture"));
+
+        let mut duplicate = test_celestial_images();
+        duplicate.push(celestial_image(CelestialTextureKind::Sun, 1, 1, 99));
+        let err = pack_celestial_atlas(&duplicate).unwrap_err();
+        assert!(err.to_string().contains("duplicate celestial texture Sun"));
+    }
+
+    #[test]
+    fn celestial_atlas_packs_sprites_in_vanilla_phase_order() {
+        let atlas = pack_celestial_atlas(&test_celestial_images()).unwrap();
+
+        assert_eq!(atlas.width, CELESTIAL_TEXTURE_COUNT as u32);
+        assert_eq!(atlas.height, 1);
+        for (index, kind) in CelestialTextureKind::ALL.into_iter().enumerate() {
+            let uv = atlas.uvs[kind.index()].unwrap();
+            assert_close(uv.u0, index as f32 / CELESTIAL_TEXTURE_COUNT as f32);
+            assert_close(uv.u1, (index + 1) as f32 / CELESTIAL_TEXTURE_COUNT as f32);
+            assert_eq!(atlas.rgba[index * 4], index as u8);
+        }
+    }
+
+    #[test]
     fn sky_disc_vertices_match_vanilla_top_disc_shape() {
         let color = [0.25, 0.5, 0.75, 1.0];
         let vertices = sky_disc_vertices(color);
@@ -869,9 +1557,41 @@ mod tests {
         );
     }
 
+    fn assert_close2(actual: [f32; 2], expected: [f32; 2]) {
+        for (actual, expected) in actual.into_iter().zip(expected) {
+            assert_close(actual, expected);
+        }
+    }
+
     fn assert_close3(actual: [f32; 3], expected: [f32; 3]) {
         for (actual, expected) in actual.into_iter().zip(expected) {
             assert_close(actual, expected);
+        }
+    }
+
+    fn test_celestial_images() -> Vec<CelestialTextureImage> {
+        CelestialTextureKind::ALL
+            .into_iter()
+            .enumerate()
+            .map(|(index, kind)| celestial_image(kind, 1, 1, index as u8))
+            .collect()
+    }
+
+    fn celestial_image(
+        kind: CelestialTextureKind,
+        width: u32,
+        height: u32,
+        red: u8,
+    ) -> CelestialTextureImage {
+        let mut rgba = Vec::with_capacity(width as usize * height as usize * 4);
+        for _ in 0..width * height {
+            rgba.extend([red, 0, 0, 255]);
+        }
+        CelestialTextureImage {
+            kind,
+            width,
+            height,
+            rgba,
         }
     }
 }
