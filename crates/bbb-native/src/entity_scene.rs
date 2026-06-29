@@ -1476,6 +1476,7 @@ fn entity_model_instance(
         .with_wolf_body_armor(armor_material(source.wolf_body_armor))
         .with_wolf_body_armor_dye(armor_dye(source.wolf_body_armor_dye))
         .with_wolf_body_armor_crackiness(wolf_armor_crackiness(source.wolf_body_armor_crackiness))
+        .with_wolf_body_armor_foil(source.wolf_body_armor_foil)
         .with_strider_ridden(source.strider_ridden)
         .with_strider_saddle(source.strider_saddle)
         .with_camel_saddle(source.camel_saddle)
@@ -3844,11 +3845,11 @@ mod tests {
     use bbb_protocol::packets::{
         AddEntity, AttributeSnapshot, ChatFormatting, CommonPlayerSpawnInfo,
         DataComponentPatchSummary, EntityDataValue, EntityEvent, EntityPositionSync, EquipmentSlot,
-        EquipmentSlotUpdate, GameProfile, GameProfileProperty, GameType, ItemStackSummary,
-        PlayLogin, PlayTime, PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate, PlayerTeamMethod,
-        PlayerTeamParameters, RegistryTags, SetCamera, SetEntityData, SetEquipment, SetPassengers,
-        SetPlayerTeam, TagNetworkPayload, TeamCollisionRule, TeamVisibility, UpdateAttributes,
-        UpdateTags, Vec3d,
+        EquipmentSlotUpdate, GameProfile, GameProfileProperty, GameType, ItemEnchantmentSummary,
+        ItemStackSummary, PlayLogin, PlayTime, PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate,
+        PlayerTeamMethod, PlayerTeamParameters, RegistryTags, SetCamera, SetEntityData,
+        SetEquipment, SetPassengers, SetPlayerTeam, TagNetworkPayload, TeamCollisionRule,
+        TeamVisibility, UpdateAttributes, UpdateTags, Vec3d,
     };
     use bbb_world::{
         ArmorMaterialKind as WorldArmorMaterialKind, EntityPickBoundsState, EntityVec3,
@@ -8712,21 +8713,27 @@ mod tests {
         const AGEABLE_BABY_DATA_ID: u8 = 16;
         const WOLF_ARMOR_DYE: i32 = 0x0033_66CC;
 
-        let body_armor = |entity_id: i32, damage: i32| SetEquipment {
-            entity_id,
-            slots: vec![EquipmentSlotUpdate {
-                slot: EquipmentSlot::Body,
-                item: ItemStackSummary {
-                    item_id: Some(WOLF_ARMOR_ITEM_ID),
-                    count: 1,
-                    component_patch: DataComponentPatchSummary {
-                        dyed_color: Some(WOLF_ARMOR_DYE),
-                        damage: Some(damage),
-                        ..Default::default()
+        let body_armor =
+            |entity_id: i32, damage: i32, enchantment_glint_override: Option<bool>| SetEquipment {
+                entity_id,
+                slots: vec![EquipmentSlotUpdate {
+                    slot: EquipmentSlot::Body,
+                    item: ItemStackSummary {
+                        item_id: Some(WOLF_ARMOR_ITEM_ID),
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            dyed_color: Some(WOLF_ARMOR_DYE),
+                            damage: Some(damage),
+                            enchantments: vec![ItemEnchantmentSummary {
+                                holder_id: 12,
+                                level: 1,
+                            }],
+                            enchantment_glint_override,
+                            ..Default::default()
+                        },
                     },
-                },
-            }],
-        };
+                }],
+            };
         let wolf_body_armor = |world: &WorldStore, id: i32| {
             let render_state = entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
                 .into_iter()
@@ -8737,6 +8744,7 @@ mod tests {
                 render_state.wolf_body_armor,
                 render_state.wolf_body_armor_dye,
                 render_state.wolf_body_armor_crackiness,
+                render_state.wolf_body_armor_foil,
             )
         };
 
@@ -8759,25 +8767,42 @@ mod tests {
             VANILLA_ENTITY_TYPE_WOLF_ID,
             [2.0, 64.0, -3.0],
         ));
+        world.apply_add_entity(protocol_add_entity(
+            132,
+            VANILLA_ENTITY_TYPE_WOLF_ID,
+            [3.0, 64.0, -3.0],
+        ));
         assert!(world.apply_set_entity_data(SetEntityData {
             id: 131,
             values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
         }));
 
-        assert!(world.apply_set_equipment(body_armor(130, 24)));
-        assert!(world.apply_set_equipment(body_armor(131, 44)));
+        assert!(world.apply_set_equipment(body_armor(130, 24, None)));
+        assert!(world.apply_set_equipment(body_armor(131, 44, None)));
+        assert!(world.apply_set_equipment(body_armor(132, 24, Some(false))));
 
         assert_eq!(
             wolf_body_armor(&world, 130),
             (
                 Some(EntityArmorMaterial::ArmadilloScute),
                 Some(WOLF_ARMOR_DYE as u32),
-                Some(WolfArmorCrackiness::Medium)
+                Some(WolfArmorCrackiness::Medium),
+                true
             )
         );
         assert_eq!(
+            wolf_body_armor(&world, 132),
+            (
+                Some(EntityArmorMaterial::ArmadilloScute),
+                Some(WOLF_ARMOR_DYE as u32),
+                Some(WolfArmorCrackiness::Medium),
+                false
+            ),
+            "enchantment_glint_override=false wins over non-empty enchantments"
+        );
+        assert_eq!(
             wolf_body_armor(&world, 131),
-            (None, None, None),
+            (None, None, None, false),
             "baby wolves skip the adult-only WolfArmorLayer"
         );
     }

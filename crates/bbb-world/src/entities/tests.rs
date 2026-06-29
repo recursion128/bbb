@@ -11,7 +11,7 @@ use bbb_protocol::packets::{
     EntityPositionSync as ProtocolEntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
     GameEvent as ProtocolGameEvent, GameProfile as ProtocolGameProfile,
     GameType as ProtocolGameType, HurtAnimation as ProtocolHurtAnimation, InteractionHand,
-    ItemStackSummary, ItemStackSummary as ProtocolItemStackSummary,
+    ItemEnchantmentSummary, ItemStackSummary, ItemStackSummary as ProtocolItemStackSummary,
     LevelEvent as ProtocolLevelEvent, MinecartStep as ProtocolMinecartStep,
     MoveMinecartAlongTrack as ProtocolMoveMinecartAlongTrack, MoveVehicle as ProtocolMoveVehicle,
     PlayLogin as ProtocolPlayLogin, PlayerInfoAction as ProtocolPlayerInfoAction,
@@ -2410,6 +2410,8 @@ fn entity_model_sources_project_wolf_body_armor_from_body_slot() {
         dyed_color: Option<i32>,
         damage: Option<i32>,
         unbreakable: bool,
+        enchantments: Vec<ItemEnchantmentSummary>,
+        enchantment_glint_override: Option<bool>,
     ) -> ItemStackSummary {
         ItemStackSummary {
             item_id: Some(item_id),
@@ -2418,6 +2420,8 @@ fn entity_model_sources_project_wolf_body_armor_from_body_slot() {
                 dyed_color,
                 damage,
                 unbreakable,
+                enchantments,
+                enchantment_glint_override,
                 ..Default::default()
             },
         }
@@ -2425,7 +2429,12 @@ fn entity_model_sources_project_wolf_body_armor_from_body_slot() {
     fn wolf_body_armor(
         store: &WorldStore,
         entity_id: i32,
-    ) -> (Option<ArmorMaterialKind>, Option<i32>, WolfArmorCrackiness) {
+    ) -> (
+        Option<ArmorMaterialKind>,
+        Option<i32>,
+        WolfArmorCrackiness,
+        bool,
+    ) {
         let source = store
             .entity_model_sources_at_partial_tick(0.0)
             .into_iter()
@@ -2435,6 +2444,7 @@ fn entity_model_sources_project_wolf_body_armor_from_body_slot() {
             source.wolf_body_armor,
             source.wolf_body_armor_dye,
             source.wolf_body_armor_crackiness,
+            source.wolf_body_armor_foil,
         )
     }
 
@@ -2461,13 +2471,24 @@ fn entity_model_sources_project_wolf_body_armor_from_body_slot() {
             entity_id,
             slots: vec![EquipmentSlotUpdate {
                 slot: EquipmentSlot::Body,
-                item: stack(WOLF_ARMOR_ITEM_ID, 1, Some(WOLF_ARMOR_DYE), Some(4), false),
+                item: stack(
+                    WOLF_ARMOR_ITEM_ID,
+                    1,
+                    Some(WOLF_ARMOR_DYE),
+                    Some(4),
+                    false,
+                    vec![ItemEnchantmentSummary {
+                        holder_id: 12,
+                        level: 1,
+                    }],
+                    None,
+                ),
             }],
         }));
     }
     assert_eq!(
         wolf_body_armor(&store, 87),
-        (None, None, WolfArmorCrackiness::None),
+        (None, None, WolfArmorCrackiness::None, false),
         "without the item registry's wolf armor material map, a raw body item id is not enough"
     );
 
@@ -2481,17 +2502,18 @@ fn entity_model_sources_project_wolf_body_armor_from_body_slot() {
         (
             Some(ArmorMaterialKind::ArmadilloScute),
             Some(WOLF_ARMOR_DYE),
-            WolfArmorCrackiness::Low
+            WolfArmorCrackiness::Low,
+            true
         )
     );
     assert_eq!(
         wolf_body_armor(&store, 88),
-        (None, None, WolfArmorCrackiness::None),
+        (None, None, WolfArmorCrackiness::None, false),
         "non-wolf entities do not project wolf body armor"
     );
     assert_eq!(
         wolf_body_armor(&store, 89),
-        (None, None, WolfArmorCrackiness::None),
+        (None, None, WolfArmorCrackiness::None, false),
         "baby wolves skip WolfArmorLayer because vanilla supplies only the adult WOLF_ARMOR layer"
     );
 
@@ -2503,7 +2525,15 @@ fn entity_model_sources_project_wolf_body_armor_from_body_slot() {
             entity_id: 87,
             slots: vec![EquipmentSlotUpdate {
                 slot: EquipmentSlot::Body,
-                item: stack(WOLF_ARMOR_ITEM_ID, 1, None, Some(damage), false),
+                item: stack(
+                    WOLF_ARMOR_ITEM_ID,
+                    1,
+                    None,
+                    Some(damage),
+                    false,
+                    Vec::new(),
+                    None
+                ),
             }],
         }));
         assert_eq!(wolf_body_armor(&store, 87).2, expected);
@@ -2513,21 +2543,41 @@ fn entity_model_sources_project_wolf_body_armor_from_body_slot() {
         entity_id: 87,
         slots: vec![EquipmentSlotUpdate {
             slot: EquipmentSlot::Body,
-            item: stack(WOLF_ARMOR_ITEM_ID, 1, None, Some(44), true),
+            item: stack(
+                WOLF_ARMOR_ITEM_ID,
+                1,
+                None,
+                Some(44),
+                true,
+                vec![ItemEnchantmentSummary {
+                    holder_id: 12,
+                    level: 1,
+                }],
+                Some(false),
+            ),
         }],
     }));
     assert_eq!(wolf_body_armor(&store, 87).2, WolfArmorCrackiness::None);
+    assert!(!wolf_body_armor(&store, 87).3);
 
     assert!(store.apply_set_equipment(ProtocolSetEquipment {
         entity_id: 87,
         slots: vec![EquipmentSlotUpdate {
             slot: EquipmentSlot::Body,
-            item: stack(PLAIN_ITEM_ID, 0, Some(WOLF_ARMOR_DYE), Some(44), false),
+            item: stack(
+                PLAIN_ITEM_ID,
+                0,
+                Some(WOLF_ARMOR_DYE),
+                Some(44),
+                false,
+                Vec::new(),
+                None,
+            ),
         }],
     }));
     assert_eq!(
         wolf_body_armor(&store, 87),
-        (None, None, WolfArmorCrackiness::None)
+        (None, None, WolfArmorCrackiness::None, false)
     );
 }
 

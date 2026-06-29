@@ -173,6 +173,14 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             true,
         ),
         (
+            EntityModelLayerRenderType::ArmorEntityGlint,
+            "armorEntityGlint",
+            EntityModelLayerRenderBucket::GlintOnly,
+            false,
+            false,
+            true,
+        ),
+        (
             EntityModelLayerRenderType::Eyes,
             "eyes",
             EntityModelLayerRenderBucket::Eyes,
@@ -472,6 +480,15 @@ fn equipment_layer_pass_records_vanilla_model_layer_metadata() {
             3,
         ),
         (
+            EntityModelLayerKind::WolfBodyArmor,
+            EntityModelLayerRenderType::ArmorEntityGlint,
+            MODEL_LAYER_WOLF_ARMOR,
+            ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
+            [1.0, 1.0, 1.0, 1.0],
+            2,
+            2,
+        ),
+        (
             EntityModelLayerKind::WolfBodyArmorCrack,
             EntityModelLayerRenderType::ArmorTranslucent,
             MODEL_LAYER_WOLF_ARMOR,
@@ -561,6 +578,7 @@ fn equipment_layer_pass_records_vanilla_model_layer_metadata() {
             pass.render_type.vanilla_name(),
             match render_type {
                 EntityModelLayerRenderType::ArmorCutoutNoCull => "armorCutoutNoCull",
+                EntityModelLayerRenderType::ArmorEntityGlint => "armorEntityGlint",
                 EntityModelLayerRenderType::ArmorTranslucent => "armorTranslucent",
                 _ => panic!("unexpected equipment render type"),
             }

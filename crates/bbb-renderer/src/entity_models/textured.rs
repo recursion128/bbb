@@ -52,18 +52,19 @@ use super::{
         ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
         BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, CAMEL_HUSK_SADDLE_TEXTURE_REF,
         CAMEL_SADDLE_TEXTURE_REF, CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF,
-        ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, EQUINE_BABY_DONKEY_LEG_STAND_CONFIG,
-        EQUINE_STANDARD_LEG_STAND_CONFIG, HORSE_SADDLE_TEXTURE_REF,
-        HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND, HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND_SMALL,
-        HUMANOID_ARMOR_MODEL_LAYERS_BOGGED, HUMANOID_ARMOR_MODEL_LAYERS_DROWNED,
-        HUMANOID_ARMOR_MODEL_LAYERS_DROWNED_BABY, HUMANOID_ARMOR_MODEL_LAYERS_GIANT,
-        HUMANOID_ARMOR_MODEL_LAYERS_HUSK, HUMANOID_ARMOR_MODEL_LAYERS_HUSK_BABY,
-        HUMANOID_ARMOR_MODEL_LAYERS_PARCHED, HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN,
-        HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BABY, HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BRUTE,
-        HUMANOID_ARMOR_MODEL_LAYERS_PLAYER, HUMANOID_ARMOR_MODEL_LAYERS_PLAYER_SLIM,
-        HUMANOID_ARMOR_MODEL_LAYERS_SKELETON, HUMANOID_ARMOR_MODEL_LAYERS_STRAY,
-        HUMANOID_ARMOR_MODEL_LAYERS_WITHER_SKELETON, HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE,
-        HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_BABY, HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_VILLAGER,
+        ENCHANTED_GLINT_ARMOR_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS,
+        EQUINE_BABY_DONKEY_LEG_STAND_CONFIG, EQUINE_STANDARD_LEG_STAND_CONFIG,
+        HORSE_SADDLE_TEXTURE_REF, HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND,
+        HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND_SMALL, HUMANOID_ARMOR_MODEL_LAYERS_BOGGED,
+        HUMANOID_ARMOR_MODEL_LAYERS_DROWNED, HUMANOID_ARMOR_MODEL_LAYERS_DROWNED_BABY,
+        HUMANOID_ARMOR_MODEL_LAYERS_GIANT, HUMANOID_ARMOR_MODEL_LAYERS_HUSK,
+        HUMANOID_ARMOR_MODEL_LAYERS_HUSK_BABY, HUMANOID_ARMOR_MODEL_LAYERS_PARCHED,
+        HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN, HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BABY,
+        HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BRUTE, HUMANOID_ARMOR_MODEL_LAYERS_PLAYER,
+        HUMANOID_ARMOR_MODEL_LAYERS_PLAYER_SLIM, HUMANOID_ARMOR_MODEL_LAYERS_SKELETON,
+        HUMANOID_ARMOR_MODEL_LAYERS_STRAY, HUMANOID_ARMOR_MODEL_LAYERS_WITHER_SKELETON,
+        HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE, HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_BABY,
+        HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_VILLAGER,
         HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_VILLAGER_BABY,
         HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIFIED_PIGLIN,
         HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIFIED_PIGLIN_BABY, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
@@ -2554,23 +2555,43 @@ pub(in crate::entity_models) fn render_wolf_body_armor_layer(
     let mut model = WolfModel::armor(wolf_is_angry(instance.kind));
     model.prepare(&instance);
     let mut submit_sequence = first_submit_sequence;
-    for (layer_index, layer) in layers.iter().enumerate() {
+    let mut next_order = 1;
+    let mut foil_pending = instance.render_state.wolf_body_armor_foil;
+    for layer in layers.iter() {
         let Some(tint) =
             wolf_body_armor_layer_tint(layer.dyeable, instance.render_state.wolf_body_armor_dye)
         else {
             continue;
         };
+        let order = next_order;
+        next_order += 1;
         let pass = equipment_layer_pass(
             EntityModelLayerKind::WolfBodyArmor,
             EntityModelLayerRenderType::ArmorCutoutNoCull,
             MODEL_LAYER_WOLF_ARMOR,
             layer.texture,
             tint,
-            1 + layer_index as i32,
+            order,
             submit_sequence,
         );
         render_textured_no_overlay_layer_pass(meshes, &model, transform, pass, atlas);
         submit_sequence += 1;
+
+        if foil_pending {
+            let pass = equipment_layer_pass(
+                EntityModelLayerKind::WolfBodyArmor,
+                EntityModelLayerRenderType::ArmorEntityGlint,
+                MODEL_LAYER_WOLF_ARMOR,
+                ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
+                tint,
+                next_order,
+                submit_sequence,
+            );
+            meshes.record_submission(no_overlay_layer_submission(pass, transform));
+            next_order += 1;
+            submit_sequence += 1;
+            foil_pending = false;
+        }
     }
 
     if let Some(crackiness) = instance.render_state.wolf_body_armor_crackiness {

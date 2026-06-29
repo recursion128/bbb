@@ -684,6 +684,11 @@ pub struct EntityModelSourceState {
     /// wolf armor. `None` draws no crack texture.
     #[serde(default)]
     pub wolf_body_armor_crackiness: WolfArmorCrackiness,
+    /// Vanilla `ItemStack.hasFoil()` for `WolfRenderState.bodyArmorItem`. Equipment rendering emits the
+    /// armor glint submission immediately after the first non-empty wolf body armor layer, then disables
+    /// foil for later layers.
+    #[serde(default)]
+    pub wolf_body_armor_foil: bool,
     /// Vanilla `VexRenderState.isCharging` (`Vex.isCharging`, the synced `DATA_FLAGS_ID & 1`):
     /// the vex is charging an attack, which `VexModel.setupAnim` shows by leveling the body
     /// (`xRot = 0`) and raising both arms (`setArmsCharging`). Projected only for the vex

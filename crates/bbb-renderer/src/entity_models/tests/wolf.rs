@@ -769,12 +769,13 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
     .with_wolf_body_armor(Some(EntityArmorMaterial::ArmadilloScute))
     .with_wolf_body_armor_dye(Some(dye))
     .with_wolf_body_armor_crackiness(Some(WolfArmorCrackiness::Medium))
+    .with_wolf_body_armor_foil(true)
     .with_light_coords((6_u32 << 4) | (10_u32 << 20))
     .with_white_overlay_progress(0.8)
     .with_has_red_overlay(true);
     let meshes = entity_model_textured_meshes(&[wolf], &atlas);
 
-    assert_eq!(meshes.submissions.len(), 5);
+    assert_eq!(meshes.submissions.len(), 6);
     assert_eq!(meshes.submissions[0].texture, WOLF_TAME_TEXTURE_REF);
     assert_eq!(
         meshes.submissions[0].render_type,
@@ -808,7 +809,20 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
     assert_eq!(armor_base.light, meshes.submissions[0].light);
     assert_eq!(armor_base.overlay, [0.0, 10.0]);
 
-    let armor_overlay = meshes.submissions[2];
+    let armor_glint = meshes.submissions[2];
+    assert_eq!(armor_glint.texture, ENCHANTED_GLINT_ARMOR_TEXTURE_REF);
+    assert_eq!(
+        armor_glint.render_type,
+        EntityModelLayerRenderType::ArmorEntityGlint
+    );
+    assert_eq!(armor_glint.render_type.vanilla_name(), "armorEntityGlint");
+    assert_eq!(armor_glint.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((armor_glint.order, armor_glint.submit_sequence), (2, 2));
+    assert_eq!(armor_glint.transform, meshes.submissions[0].transform);
+    assert_eq!(armor_glint.light, meshes.submissions[0].light);
+    assert_eq!(armor_glint.overlay, [0.0, 10.0]);
+
+    let armor_overlay = meshes.submissions[3];
     assert_eq!(
         armor_overlay.texture,
         WOLF_BODY_ARMADILLO_SCUTE_OVERLAY_TEXTURE_REF
@@ -818,12 +832,12 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
         EntityModelLayerRenderType::ArmorCutoutNoCull
     );
     assert_eq!(armor_overlay.tint, dyed_tint);
-    assert_eq!((armor_overlay.order, armor_overlay.submit_sequence), (2, 2));
+    assert_eq!((armor_overlay.order, armor_overlay.submit_sequence), (3, 3));
     assert_eq!(armor_overlay.transform, meshes.submissions[0].transform);
     assert_eq!(armor_overlay.light, meshes.submissions[0].light);
     assert_eq!(armor_overlay.overlay, [0.0, 10.0]);
 
-    let cracks = meshes.submissions[3];
+    let cracks = meshes.submissions[4];
     assert_eq!(cracks.texture, WOLF_ARMOR_CRACKINESS_MEDIUM_TEXTURE_REF);
     assert_eq!(
         cracks.render_type,
@@ -831,7 +845,7 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
     );
     assert_eq!(cracks.render_type.vanilla_name(), "armorTranslucent");
     assert_eq!(cracks.tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!((cracks.order, cracks.submit_sequence), (0, 3));
+    assert_eq!((cracks.order, cracks.submit_sequence), (0, 4));
     assert_eq!(cracks.transform, meshes.submissions[0].transform);
     assert_eq!(cracks.light, meshes.submissions[0].light);
     assert_eq!(cracks.overlay, [0.0, 10.0]);
@@ -839,11 +853,11 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
         !meshes.translucent.vertices.is_empty(),
         "armorTranslucent cracks should emit into the translucent bucket"
     );
-    let collar = meshes.submissions[4];
+    let collar = meshes.submissions[5];
     assert_eq!(collar.texture, WOLF_COLLAR_TEXTURE_REF);
     assert_eq!(collar.render_type, EntityModelLayerRenderType::EntityCutout);
     assert_eq!(collar.tint, EntityDyeColor::Blue.texture_diffuse_color());
-    assert_eq!((collar.order, collar.submit_sequence), (1, 4));
+    assert_eq!((collar.order, collar.submit_sequence), (1, 5));
     assert_eq!(collar.light, meshes.submissions[0].light);
     assert_eq!(collar.overlay, [0.0, 10.0]);
     assert_ne!(collar.overlay, meshes.submissions[0].overlay);
@@ -893,6 +907,7 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
     assert!(!baby.submissions.iter().any(|submit| matches!(
         submit.render_type,
         EntityModelLayerRenderType::ArmorCutoutNoCull
+            | EntityModelLayerRenderType::ArmorEntityGlint
             | EntityModelLayerRenderType::ArmorTranslucent
     )));
 }
@@ -968,12 +983,13 @@ fn invisible_wolf_body_armor_keeps_vanilla_layer_submissions() {
     .with_wolf_body_armor(Some(EntityArmorMaterial::ArmadilloScute))
     .with_wolf_body_armor_dye(Some(dye))
     .with_wolf_body_armor_crackiness(Some(WolfArmorCrackiness::High))
+    .with_wolf_body_armor_foil(true)
     .with_light_coords((4_u32 << 4) | (13_u32 << 20))
     .with_white_overlay_progress(0.75)
     .with_has_red_overlay(true);
 
     let hidden = entity_model_textured_meshes(&[invisible], &atlas);
-    assert_eq!(hidden.submissions.len(), 3);
+    assert_eq!(hidden.submissions.len(), 4);
     assert!(!hidden
         .submissions
         .iter()
@@ -997,7 +1013,7 @@ fn invisible_wolf_body_armor_keeps_vanilla_layer_submissions() {
 
     let self_visible = invisible.with_invisible_to_player(false);
     let self_visible_meshes = entity_model_textured_meshes(&[self_visible], &atlas);
-    assert_eq!(self_visible_meshes.submissions.len(), 4);
+    assert_eq!(self_visible_meshes.submissions.len(), 5);
     let base = self_visible_meshes.submissions[0];
     assert_eq!(
         base.render_type,
@@ -1027,7 +1043,7 @@ fn invisible_wolf_body_armor_keeps_vanilla_layer_submissions() {
 
     let glowing_hidden = invisible.with_outline_color(0xff33_66cc);
     let glowing = entity_model_textured_meshes(&[glowing_hidden], &atlas);
-    assert_eq!(glowing.submissions.len(), 4);
+    assert_eq!(glowing.submissions.len(), 5);
     let outline = glowing.submissions[0];
     assert_eq!(outline.render_type, EntityModelLayerRenderType::Outline);
     assert_eq!(outline.render_type.vanilla_name(), "outline");
@@ -1249,6 +1265,7 @@ fn wolf_armor_texture_images() -> Vec<EntityModelTextureImage> {
         WOLF_ARMOR_CRACKINESS_LOW_TEXTURE_REF,
         WOLF_ARMOR_CRACKINESS_MEDIUM_TEXTURE_REF,
         WOLF_ARMOR_CRACKINESS_HIGH_TEXTURE_REF,
+        ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
     ]
     .iter()
     .enumerate()
@@ -1886,7 +1903,9 @@ fn assert_wolf_submissions_match_vanilla(
     if !baby {
         if let Some(material) = instance.render_state.wolf_body_armor {
             if let Some(layers) = wolf_body_armor_texture_layers(material) {
-                for (layer_index, layer) in layers.iter().enumerate() {
+                let mut next_order = 1;
+                let mut foil_pending = instance.render_state.wolf_body_armor_foil;
+                for layer in layers.iter() {
                     let Some(tint) = wolf_expected_armor_layer_tint(
                         layer.dyeable,
                         instance.render_state.wolf_body_armor_dye,
@@ -1897,11 +1916,25 @@ fn assert_wolf_submissions_match_vanilla(
                         EntityModelLayerRenderType::ArmorCutoutNoCull,
                         layer.texture,
                         tint,
-                        1 + layer_index as i32,
+                        next_order,
                         next_submit_sequence,
                         true,
                     ));
+                    next_order += 1;
                     next_submit_sequence += 1;
+                    if foil_pending {
+                        expected.push((
+                            EntityModelLayerRenderType::ArmorEntityGlint,
+                            ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
+                            tint,
+                            next_order,
+                            next_submit_sequence,
+                            true,
+                        ));
+                        next_order += 1;
+                        next_submit_sequence += 1;
+                        foil_pending = false;
+                    }
                 }
                 if let Some(crackiness) = instance.render_state.wolf_body_armor_crackiness {
                     expected.push((
@@ -1938,6 +1971,7 @@ fn assert_wolf_submissions_match_vanilla(
         let expected_render_type_name = match render_type {
             EntityModelLayerRenderType::EntityCutout => "entityCutout",
             EntityModelLayerRenderType::ArmorCutoutNoCull => "armorCutoutNoCull",
+            EntityModelLayerRenderType::ArmorEntityGlint => "armorEntityGlint",
             EntityModelLayerRenderType::ArmorTranslucent => "armorTranslucent",
             _ => panic!("unexpected wolf render type"),
         };
@@ -2004,18 +2038,25 @@ fn assert_wolf_armor_submissions_for_invisible_state(
             first_sequence,
         ),
         (
+            EntityModelLayerRenderType::ArmorEntityGlint,
+            ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
+            [1.0, 1.0, 1.0, 1.0],
+            2,
+            first_sequence + 1,
+        ),
+        (
             EntityModelLayerRenderType::ArmorCutoutNoCull,
             WOLF_BODY_ARMADILLO_SCUTE_OVERLAY_TEXTURE_REF,
             dyed_tint,
-            2,
-            first_sequence + 1,
+            3,
+            first_sequence + 2,
         ),
         (
             EntityModelLayerRenderType::ArmorTranslucent,
             WOLF_ARMOR_CRACKINESS_HIGH_TEXTURE_REF,
             [1.0, 1.0, 1.0, 1.0],
             0,
-            first_sequence + 2,
+            first_sequence + 3,
         ),
     ];
     for (index, (render_type, texture, tint, order, sequence)) in expected.iter().enumerate() {
@@ -2025,6 +2066,7 @@ fn assert_wolf_armor_submissions_for_invisible_state(
             submit.render_type.vanilla_name(),
             match render_type {
                 EntityModelLayerRenderType::ArmorCutoutNoCull => "armorCutoutNoCull",
+                EntityModelLayerRenderType::ArmorEntityGlint => "armorEntityGlint",
                 EntityModelLayerRenderType::ArmorTranslucent => "armorTranslucent",
                 _ => panic!("unexpected wolf armor render type"),
             }

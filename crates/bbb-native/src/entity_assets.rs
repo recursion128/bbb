@@ -179,6 +179,7 @@ mod tests {
                 "textures/entity/wolf/wolf_armor_crackiness_low.png",
                 "textures/entity/wolf/wolf_armor_crackiness_medium.png",
                 "textures/entity/wolf/wolf_armor_crackiness_high.png",
+                "textures/misc/enchanted_glint_armor.png",
                 "textures/entity/goat/goat.png",
                 "textures/entity/goat/goat_baby.png",
                 "textures/entity/bear/polarbear.png",

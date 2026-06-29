@@ -1572,7 +1572,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 548] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 549] = [
     PLAYER_SLIM_ALEX_TEXTURE_REF,
     PLAYER_SLIM_ARI_TEXTURE_REF,
     PLAYER_SLIM_EFE_TEXTURE_REF,
@@ -1657,6 +1657,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     WOLF_ARMOR_CRACKINESS_LOW_TEXTURE_REF,
     WOLF_ARMOR_CRACKINESS_MEDIUM_TEXTURE_REF,
     WOLF_ARMOR_CRACKINESS_HIGH_TEXTURE_REF,
+    ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
     GOAT_TEXTURE_REF,
     GOAT_BABY_TEXTURE_REF,
     POLAR_BEAR_TEXTURE_REF,
@@ -3093,6 +3094,12 @@ pub(in crate::entity_models) const TRIDENT_RIPTIDE_TEXTURE_REF: EntityModelTextu
 pub(in crate::entity_models) const ENCHANTED_GLINT_ITEM_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/misc/enchanted_glint_item.png",
+        size: [128, 128],
+    };
+
+pub(in crate::entity_models) const ENCHANTED_GLINT_ARMOR_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/misc/enchanted_glint_armor.png",
         size: [128, 128],
     };
 

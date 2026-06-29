@@ -188,6 +188,8 @@ pub(in crate::entity_models) enum EntityModelLayerRenderType {
     Outline,
     /// Vanilla `RenderTypes.entityGlint()` item foil overlay.
     EntityGlint,
+    /// Vanilla `RenderTypes.armorEntityGlint()` armor foil overlay.
+    ArmorEntityGlint,
     /// Vanilla eyes/emissive render type (`EyesLayer` / translucent emissive overlays).
     Eyes,
     /// Vanilla `RenderTypes.breezeWind(texture, u, v)`.
@@ -215,7 +217,7 @@ pub(in crate::entity_models) enum EntityModelLayerRenderBucket {
 
 impl EntityModelLayerRenderType {
     #[cfg(test)]
-    pub(in crate::entity_models) const ALL: [Self; 15] = [
+    pub(in crate::entity_models) const ALL: [Self; 16] = [
         Self::EntitySolid,
         Self::ArmorCutoutNoCull,
         Self::ArmorTranslucent,
@@ -226,6 +228,7 @@ impl EntityModelLayerRenderType {
         Self::EntityTranslucentCullItemTarget,
         Self::Outline,
         Self::EntityGlint,
+        Self::ArmorEntityGlint,
         Self::Eyes,
         Self::BreezeWind,
         Self::EnergySwirl,
@@ -247,7 +250,7 @@ impl EntityModelLayerRenderType {
                 EntityModelLayerRenderBucket::ItemEntityTranslucent
             }
             Self::Outline => EntityModelLayerRenderBucket::OutlineOnly,
-            Self::EntityGlint => EntityModelLayerRenderBucket::GlintOnly,
+            Self::EntityGlint | Self::ArmorEntityGlint => EntityModelLayerRenderBucket::GlintOnly,
             Self::Eyes => EntityModelLayerRenderBucket::Eyes,
             Self::BreezeWind | Self::EndCrystalBeam => EntityModelLayerRenderBucket::Scroll,
             Self::EnergySwirl => EntityModelLayerRenderBucket::AdditiveScroll,
@@ -276,6 +279,7 @@ impl EntityModelLayerRenderType {
                 | Self::EntityTranslucent
                 | Self::EntityTranslucentCullItemTarget
                 | Self::EntityGlint
+                | Self::ArmorEntityGlint
                 | Self::Eyes
                 | Self::BreezeWind
                 | Self::EnergySwirl
@@ -306,6 +310,7 @@ impl EntityModelLayerRenderType {
             Self::EntityTranslucentCullItemTarget => "entityTranslucentCullItemTarget",
             Self::Outline => "outline",
             Self::EntityGlint => "entityGlint",
+            Self::ArmorEntityGlint => "armorEntityGlint",
             Self::Eyes => "eyes",
             Self::BreezeWind => "breezeWind",
             Self::EnergySwirl => "energySwirl",

@@ -2347,11 +2347,16 @@ When an agent does any of the following, update this file in the same slice:
       exception path, and that outline bucket is uploaded for the static-atlas GPU
       path. Colored-path force-transparent output now preserves the vanilla
       `38/255` alpha; colored hidden-glowing fallback uses the vanilla
-      `outlineColor` tint; wolf armor glint/foil remains unsupported as a P1
-      visual follow-up, while the former wolf render-state extraction gap is
-      closed by native/world/renderer tests for armor, sitting, head/tail/walk,
-      wet shade, water-shake/head-roll, variant, collar, invisibility, outline,
-      lighting, and overlay states
+      `outlineColor` tint; wolf armor foil submission metadata is now supported
+      from the decoded `enchantment_glint_override` / enchantments summary
+      through world/native `wolf_body_armor_foil`, with renderer tests pinning
+      vanilla `armorEntityGlint` texture, tint, transform, light, no-overlay,
+      visible/invisible states, and the base-armor -> glint -> dye-overlay ->
+      crack submit order. GPU glint presentation remains deferred with the
+      broader glint GPU-state work, while the former wolf render-state
+      extraction gap is closed by native/world/renderer tests for armor,
+      sitting, head/tail/walk, wet shade, water-shake/head-roll, variant,
+      collar, invisibility, outline, lighting, and overlay states
     - base horse entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AbstractEquineModel.createBodyMesh(CubeDeformation.NONE)`,
       `BabyHorseModel.createBabyMesh(CubeDeformation.NONE)`, `HorseModel`, and

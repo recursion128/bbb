@@ -758,6 +758,9 @@ entity_render_state! {
     /// Vanilla `Crackiness.WOLF_ARMOR.byDamage(bodyArmorItem)`: low / medium / high damage cracks over
     /// the adult wolf armor model. `None` draws no crack texture.
     (with_wolf_body_armor_crackiness) wolf_body_armor_crackiness: Option<WolfArmorCrackiness> = None;
+    /// Vanilla `ItemStack.hasFoil()` for the wolf body armor item. The equipment renderer emits a single
+    /// `armorEntityGlint` pass after the first rendered wolf body armor layer.
+    (with_wolf_body_armor_foil) wolf_body_armor_foil: bool = false;
     /// Vanilla `StriderRenderState.isRidden`: a strider with passengers zeroes body pitch/yaw in
     /// `StriderModel.setupAnim`. `false` for unridden striders and every non-strider entity.
     (with_strider_ridden) strider_ridden: bool = false;
@@ -2472,6 +2475,7 @@ mod tests {
                 wolf_body_armor: None,
                 wolf_body_armor_dye: None,
                 wolf_body_armor_crackiness: None,
+                wolf_body_armor_foil: false,
                 strider_ridden: false,
                 strider_saddle: false,
                 camel_saddle: false,
