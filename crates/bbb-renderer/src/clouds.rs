@@ -2,7 +2,7 @@ use anyhow::{anyhow, bail, Result};
 use wgpu::util::DeviceExt;
 
 use crate::camera::CameraPose;
-use crate::gpu::DEPTH_FORMAT;
+use crate::gpu::{DepthTarget, DEPTH_FORMAT};
 
 pub const VANILLA_DEFAULT_CLOUD_COLOR: [f32; 4] = [0.8, 0.8, 0.8, 1.0];
 pub const VANILLA_DEFAULT_CLOUD_HEIGHT: f32 = 192.33;
@@ -19,6 +19,41 @@ const CLOUD_BOTTOM_FACE_TINT: f32 = 0.7;
 const CLOUD_TOP_FACE_TINT: f32 = 1.0;
 const CLOUD_NORTH_SOUTH_FACE_TINT: f32 = 0.8;
 const CLOUD_WEST_EAST_FACE_TINT: f32 = 0.9;
+
+const CLOUD_COMPOSITE_SHADER: &str = r#"
+@group(0) @binding(0)
+var cloud_texture: texture_2d<f32>;
+
+@group(0) @binding(1)
+var cloud_sampler: sampler;
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+};
+
+@vertex
+fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOut {
+    let positions = array<vec2<f32>, 3>(
+        vec2<f32>(-1.0, -1.0),
+        vec2<f32>(3.0, -1.0),
+        vec2<f32>(-1.0, 3.0),
+    );
+    let position = positions[vertex_index];
+    var out: VertexOut;
+    out.position = vec4<f32>(position, 0.0, 1.0);
+    out.uv = vec2<f32>(position.x * 0.5 + 0.5, 0.5 - position.y * 0.5);
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    return textureSample(cloud_texture, cloud_sampler, input.uv);
+}
+"#;
+
+pub(super) const CLOUD_COMPOSITE_BLEND: wgpu::BlendState =
+    wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING;
 
 const CLOUD_SHADER: &str = r#"
 struct Camera {
@@ -269,6 +304,14 @@ pub(super) struct CloudGpu {
     pub(super) mesh_key: Option<CloudMeshKey>,
 }
 
+pub(super) struct CloudTarget {
+    pub(super) _texture: wgpu::Texture,
+    pub(super) view: wgpu::TextureView,
+    pub(super) _sampler: wgpu::Sampler,
+    pub(super) depth: DepthTarget,
+    pub(super) bind_group: wgpu::BindGroup,
+}
+
 pub(super) fn create_cloud_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
@@ -312,13 +355,183 @@ pub(super) fn create_cloud_pipeline(
         },
         depth_stencil: Some(wgpu::DepthStencilState {
             format: DEPTH_FORMAT,
-            depth_write_enabled: false,
-            depth_compare: wgpu::CompareFunction::Always,
+            depth_write_enabled: true,
+            depth_compare: wgpu::CompareFunction::LessEqual,
             stencil: wgpu::StencilState::default(),
             bias: wgpu::DepthBiasState::default(),
         }),
         multisample: wgpu::MultisampleState::default(),
         multiview: None,
+    })
+}
+
+pub(super) fn create_cloud_target_bind_group_layout(
+    device: &wgpu::Device,
+) -> wgpu::BindGroupLayout {
+    device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("bbb-cloud-target-bind-group-layout"),
+        entries: &[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    multisampled: false,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            },
+        ],
+    })
+}
+
+pub(super) fn create_cloud_target(
+    device: &wgpu::Device,
+    layout: &wgpu::BindGroupLayout,
+    format: wgpu::TextureFormat,
+    width: u32,
+    height: u32,
+) -> CloudTarget {
+    let texture = create_cloud_target_texture(device, format, width, height);
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("bbb-cloud-target-sampler"),
+        address_mode_u: wgpu::AddressMode::ClampToEdge,
+        address_mode_v: wgpu::AddressMode::ClampToEdge,
+        address_mode_w: wgpu::AddressMode::ClampToEdge,
+        mag_filter: wgpu::FilterMode::Nearest,
+        min_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::FilterMode::Nearest,
+        ..Default::default()
+    });
+    let depth = create_cloud_depth_target(device, width, height);
+    let bind_group = create_cloud_target_bind_group(device, layout, &view, &sampler);
+
+    CloudTarget {
+        _texture: texture,
+        view,
+        _sampler: sampler,
+        depth,
+        bind_group,
+    }
+}
+
+pub(super) fn create_cloud_composite_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("bbb-cloud-composite-shader"),
+        source: wgpu::ShaderSource::Wgsl(CLOUD_COMPOSITE_SHADER.into()),
+    });
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-cloud-composite-pipeline-layout"),
+        bind_group_layouts: &[bind_group_layout],
+        push_constant_ranges: &[],
+    });
+
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("bbb-cloud-composite-pipeline"),
+        layout: Some(&layout),
+        vertex: wgpu::VertexState {
+            module: &shader,
+            entry_point: "vs_main",
+            buffers: &[],
+        },
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: None,
+            polygon_mode: wgpu::PolygonMode::Fill,
+            unclipped_depth: false,
+            conservative: false,
+        },
+        depth_stencil: None,
+        multisample: wgpu::MultisampleState::default(),
+        fragment: Some(wgpu::FragmentState {
+            module: &shader,
+            entry_point: "fs_main",
+            targets: &[Some(wgpu::ColorTargetState {
+                format,
+                blend: Some(CLOUD_COMPOSITE_BLEND),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        multiview: None,
+    })
+}
+
+fn create_cloud_target_texture(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    width: u32,
+    height: u32,
+) -> wgpu::Texture {
+    device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("bbb-cloud-target-color"),
+        size: wgpu::Extent3d {
+            width: width.max(1),
+            height: height.max(1),
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+        view_formats: &[],
+    })
+}
+
+fn create_cloud_depth_target(device: &wgpu::Device, width: u32, height: u32) -> DepthTarget {
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("bbb-cloud-target-depth"),
+        size: wgpu::Extent3d {
+            width: width.max(1),
+            height: height.max(1),
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: DEPTH_FORMAT,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        view_formats: &[],
+    });
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    DepthTarget {
+        _texture: texture,
+        view,
+    }
+}
+
+fn create_cloud_target_bind_group(
+    device: &wgpu::Device,
+    layout: &wgpu::BindGroupLayout,
+    view: &wgpu::TextureView,
+    sampler: &wgpu::Sampler,
+) -> wgpu::BindGroup {
+    device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("bbb-cloud-target-bind-group"),
+        layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::Sampler(sampler),
+            },
+        ],
     })
 }
 
@@ -962,10 +1175,11 @@ mod tests {
         create_cloud_texture_data, fancy_cloud_cell_vertices, flat_cloud_cell_vertices,
         vanilla_cloud_radius_cells, CloudEnvironment, CloudFrame, CloudMeshKey,
         CloudRelativeCameraPos, CloudShape, CloudTextureImage, CLOUD_BLOCKS_PER_TICK,
-        CLOUD_BOTTOM_FACE_TINT, CLOUD_CELL_SIZE_IN_BLOCKS, CLOUD_FANCY_HEIGHT_IN_BLOCKS,
-        CLOUD_NORTH_SOUTH_FACE_TINT, CLOUD_PRESENTATION_HALF_EXTENT, CLOUD_SHADER,
-        CLOUD_TOP_FACE_TINT, CLOUD_Z_OFFSET_BLOCKS, VANILLA_CLOUD_EMPTY_ALPHA_THRESHOLD,
-        VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
+        CLOUD_BOTTOM_FACE_TINT, CLOUD_CELL_SIZE_IN_BLOCKS, CLOUD_COMPOSITE_BLEND,
+        CLOUD_COMPOSITE_SHADER, CLOUD_FANCY_HEIGHT_IN_BLOCKS, CLOUD_NORTH_SOUTH_FACE_TINT,
+        CLOUD_PRESENTATION_HALF_EXTENT, CLOUD_SHADER, CLOUD_TOP_FACE_TINT, CLOUD_Z_OFFSET_BLOCKS,
+        VANILLA_CLOUD_EMPTY_ALPHA_THRESHOLD, VANILLA_DEFAULT_CLOUD_COLOR,
+        VANILLA_DEFAULT_CLOUD_HEIGHT,
     };
 
     #[test]
@@ -980,6 +1194,42 @@ mod tests {
     #[test]
     fn cloud_shape_defaults_to_vanilla_fancy() {
         assert_eq!(CloudShape::default(), CloudShape::Fancy);
+    }
+
+    #[test]
+    fn cloud_pipeline_depth_state_matches_vanilla_default() {
+        // Vanilla `RenderPipelines.CLOUDS_SNIPPET` uses `DepthStencilState.DEFAULT`:
+        // LEQUAL depth test with depth writes enabled.
+        let source = include_str!("clouds.rs");
+
+        assert!(source.contains("depth_write_enabled: true"));
+        assert!(source.contains("depth_compare: wgpu::CompareFunction::LessEqual"));
+    }
+
+    #[test]
+    fn cloud_target_composite_uses_vanilla_premultiplied_layer_blend() {
+        // `post/transparency.fsh` blends sorted layers as `dst * (1 - src.a) + src.rgb`;
+        // clouds target RGB has already been written through the translucent cloud pass.
+        assert_eq!(
+            CLOUD_COMPOSITE_BLEND.color.src_factor,
+            wgpu::BlendFactor::One
+        );
+        assert_eq!(
+            CLOUD_COMPOSITE_BLEND.color.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha
+        );
+        assert_eq!(
+            CLOUD_COMPOSITE_BLEND.alpha.src_factor,
+            wgpu::BlendFactor::One
+        );
+        assert_eq!(
+            CLOUD_COMPOSITE_BLEND.alpha.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha
+        );
+        assert!(
+            CLOUD_COMPOSITE_SHADER.contains("return textureSample(cloud_texture"),
+            "cloud composite must sample target color without multiplying alpha a second time"
+        );
     }
 
     #[test]

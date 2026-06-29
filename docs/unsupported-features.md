@@ -386,11 +386,13 @@ When an agent does any of the following, update this file in the same slice:
     that opaque group before feature submissions. The renderer world pass now
     draws local solid and cutout terrain in that order before entity/model draws.
     Clouds now draw in an explicit pass after the main pass / entity-outline
-    post-chain position and before later translucent world passes, matching the
-    vanilla `LevelRenderer` high-level order more closely.
-    Remaining render-graph parity still needs vanilla target separation and
-    post-chain composition for translucent / item-entity / particle / weather /
-    cloud paths; outline now has a dedicated target/composite.
+    post-chain position and before later translucent world passes, writing a
+    renderer-owned clouds color/depth target that composites back with the same
+    premultiplied layer blend shape as vanilla `post/transparency.fsh`.
+    Remaining render-graph parity still needs the full vanilla transparency
+    shader's depth-sorted composition across translucent / item-entity /
+    particle / weather / cloud targets; outline now has a dedicated
+    target/composite.
   - P0 cloud presentation slice: vanilla 26.1 `CloudRenderer` uses
     `EnvironmentAttributes.CLOUD_COLOR` / `CLOUD_HEIGHT` and the
     `rendertype_clouds` fragment alpha fade
@@ -408,9 +410,10 @@ When an agent does any of the following, update this file in the same slice:
     empty-neighbor checks, interior faces, and face color tints. Native now
     projects Overworld day-timeline and rain/thunder weather `CLOUD_COLOR`
     modifiers into the cloud environment. The renderer cloud draw is now a
-    dedicated pass after main/entity-outline ordering and before later
-    translucent world passes. Remaining cloud parity is dedicated clouds target
-    and vanilla transparency post-chain sorting.
+    dedicated pass after main/entity-outline ordering, writes a clouds
+    color/depth target, and composites that target back before later translucent
+    world passes. Remaining cloud parity is the full vanilla transparency
+    post-chain depth sorting with the other sorting targets.
   - P0 pipeline closeout treats texture-backed / dispatch-owned submission and
     RenderType/order/missing-atlas/dynamic-texture coverage as complete for the
     narrow pipeline scope: entity model tests assert `submit_sequence` across 78
@@ -713,8 +716,9 @@ When an agent does any of the following, update this file in the same slice:
     vanilla fancy/extruded cloud cells with face tint and camera-position face
     gates, and native projects vanilla day-timeline plus rain/thunder
     `CLOUD_COLOR` modifiers. The renderer now separates clouds into their own
-    pass after main/entity-outline ordering. Remaining visual gaps are clouds
-    target / transparency post-chain sorting,
+    pass after main/entity-outline ordering and composites a renderer-owned
+    clouds target. Remaining visual gaps are full transparency post-chain depth
+    sorting with translucent / item-entity / particle / weather targets,
     fuller atmosphere presentation, and later custom-pack EnvironmentAttribute
     generalization when a concrete renderer surface exists. Sun/moon presentation
     is now covered by the vanilla `CELESTIAL` overlay blend, the
@@ -731,7 +735,7 @@ When an agent does any of the following, update this file in the same slice:
     curve, block-light parabolic tint mix, boss darkening, darkness subtraction,
     and `BrightnessFactor` `notGamma` mix instead of the earlier
     `max(block, sky * 0.95)` scalar approximation. Remaining lighting gaps:
-    clouds target sorting, the real dynamic 16x16 LightTexture texture pass, provider-specific particle light emission
+    full transparency target sorting, the real dynamic 16x16 LightTexture texture pass, provider-specific particle light emission
     overrides, smooth/AO entity light, GUI / entity-in-UI lighting variants,
     and the colored debug fallback's baked-shade approximation. The item-model
     shader now consumes submitted item stack light coords through the same

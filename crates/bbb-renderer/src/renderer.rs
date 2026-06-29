@@ -13,10 +13,11 @@ use crate::{
         CameraUniform, ClearColor, FogEnvironment, LightmapEnvironment, TerrainBounds,
     },
     clouds::{
-        cloud_mesh_key, create_cloud_bind_group, create_cloud_bind_group_layout, create_cloud_gpu,
-        create_cloud_pipeline, create_cloud_texture_data, create_cloud_uniform_buffer,
-        write_cloud_uniform, CloudEnvironment, CloudFrame, CloudGpu, CloudShape, CloudTextureData,
-        CloudTextureImage,
+        cloud_mesh_key, create_cloud_bind_group, create_cloud_bind_group_layout,
+        create_cloud_composite_pipeline, create_cloud_gpu, create_cloud_pipeline,
+        create_cloud_target, create_cloud_target_bind_group_layout, create_cloud_texture_data,
+        create_cloud_uniform_buffer, write_cloud_uniform, CloudEnvironment, CloudFrame, CloudGpu,
+        CloudShape, CloudTarget, CloudTextureData, CloudTextureImage,
     },
     entity_models::{
         create_entity_model_eyes_pipeline, create_entity_model_outline_cull_pipeline,
@@ -104,6 +105,9 @@ pub struct Renderer {
     pub(super) celestial_pipeline: wgpu::RenderPipeline,
     pub(super) celestial_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) cloud_pipeline: wgpu::RenderPipeline,
+    pub(super) cloud_composite_pipeline: wgpu::RenderPipeline,
+    pub(super) cloud_target_bind_group_layout: wgpu::BindGroupLayout,
+    pub(super) cloud_target: CloudTarget,
     pub(super) cloud_bind_group: wgpu::BindGroup,
     pub(super) cloud_uniform_buffer: wgpu::Buffer,
     pub(super) hud_pipeline: wgpu::RenderPipeline,
@@ -469,6 +473,16 @@ impl Renderer {
         let cloud_uniform_buffer = create_cloud_uniform_buffer(&device);
         let cloud_bind_group =
             create_cloud_bind_group(&device, &cloud_bind_group_layout, &cloud_uniform_buffer);
+        let cloud_target_bind_group_layout = create_cloud_target_bind_group_layout(&device);
+        let cloud_composite_pipeline =
+            create_cloud_composite_pipeline(&device, format, &cloud_target_bind_group_layout);
+        let cloud_target = create_cloud_target(
+            &device,
+            &cloud_target_bind_group_layout,
+            format,
+            config.width,
+            config.height,
+        );
         let cloud_pipeline = create_cloud_pipeline(
             &device,
             format,
@@ -527,6 +541,9 @@ impl Renderer {
             celestial_pipeline,
             celestial_bind_group_layout,
             cloud_pipeline,
+            cloud_composite_pipeline,
+            cloud_target_bind_group_layout,
+            cloud_target,
             cloud_bind_group,
             cloud_uniform_buffer,
             hud_pipeline,
@@ -732,6 +749,13 @@ impl Renderer {
         self.entity_outline_target = create_entity_outline_target(
             &self.device,
             &self.entity_outline_bind_group_layout,
+            self.config.format,
+            self.config.width,
+            self.config.height,
+        );
+        self.cloud_target = create_cloud_target(
+            &self.device,
+            &self.cloud_target_bind_group_layout,
             self.config.format,
             self.config.width,
             self.config.height,

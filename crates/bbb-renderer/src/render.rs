@@ -24,6 +24,7 @@ const ENTITY_OUTLINE_BLUR_VERTICAL_PASS_LABEL: &str =
 const ENTITY_OUTLINE_BLIT_PASS_LABEL: &str = "bbb-native-entity-outline-blit-pass";
 const ENTITY_OUTLINE_COMPOSITE_PASS_LABEL: &str = "bbb-native-entity-outline-composite-pass";
 const CLOUDS_PASS_LABEL: &str = "bbb-native-clouds-pass";
+const CLOUDS_COMPOSITE_PASS_LABEL: &str = "bbb-native-clouds-composite-pass";
 
 impl Renderer {
     pub fn render(&mut self, screenshot: Option<&Path>) -> Result<()> {
@@ -52,6 +53,7 @@ impl Renderer {
         let mut sky_draw_calls = 0;
         let mut entity_model_draw_calls = 0;
         let mut outline_composite_draw_calls = 0;
+        let mut cloud_composite_draw_calls = 0;
         let mut particle_draw_calls = 0;
         let mut item_entity_draw_calls = 0;
         let mut item_model_draw_calls = 0;
@@ -442,8 +444,39 @@ impl Renderer {
 
         if let Some(clouds) = &self.clouds {
             if self.fog_environment.cloud_end > 0.0 {
+                {
+                    let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some(CLOUDS_PASS_LABEL),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view: &self.cloud_target.view,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                                store: wgpu::StoreOp::Store,
+                            },
+                        })],
+                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                            view: &self.cloud_target.depth.view,
+                            depth_ops: Some(wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(1.0),
+                                store: wgpu::StoreOp::Store,
+                            }),
+                            stencil_ops: None,
+                        }),
+                        occlusion_query_set: None,
+                        timestamp_writes: None,
+                    });
+                    pass.set_pipeline(&self.cloud_pipeline);
+                    pipeline_switches += 1;
+                    pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+                    pass.set_bind_group(1, &self.cloud_bind_group, &[]);
+                    pass.set_vertex_buffer(0, clouds.vertex_buffer.slice(..));
+                    pass.draw(0..clouds.vertex_count, 0..1);
+                    sky_draw_calls += 1;
+                }
+
                 let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some(CLOUDS_PASS_LABEL),
+                    label: Some(CLOUDS_COMPOSITE_PASS_LABEL),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                         view: &view,
                         resolve_target: None,
@@ -452,24 +485,15 @@ impl Renderer {
                             store: wgpu::StoreOp::Store,
                         },
                     })],
-                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                        view: &self.depth.view,
-                        depth_ops: Some(wgpu::Operations {
-                            load: wgpu::LoadOp::Load,
-                            store: wgpu::StoreOp::Store,
-                        }),
-                        stencil_ops: None,
-                    }),
+                    depth_stencil_attachment: None,
                     occlusion_query_set: None,
                     timestamp_writes: None,
                 });
-                pass.set_pipeline(&self.cloud_pipeline);
+                pass.set_pipeline(&self.cloud_composite_pipeline);
                 pipeline_switches += 1;
-                pass.set_bind_group(0, &self.terrain_bind_group, &[]);
-                pass.set_bind_group(1, &self.cloud_bind_group, &[]);
-                pass.set_vertex_buffer(0, clouds.vertex_buffer.slice(..));
-                pass.draw(0..clouds.vertex_count, 0..1);
-                sky_draw_calls += 1;
+                pass.set_bind_group(0, &self.cloud_target.bind_group, &[]);
+                pass.draw(0..3, 0..1);
+                cloud_composite_draw_calls += 1;
             }
         }
 
@@ -856,6 +880,7 @@ impl Renderer {
             + sky_draw_calls
             + entity_model_draw_calls
             + outline_composite_draw_calls
+            + cloud_composite_draw_calls
             + particle_draw_calls
             + item_entity_draw_calls
             + item_model_draw_calls
@@ -940,7 +965,7 @@ mod tests {
     }
 
     #[test]
-    fn cloud_presentation_draws_after_main_and_outline_before_later_translucent_passes() {
+    fn cloud_target_composites_after_main_and_outline_before_later_translucent_passes() {
         let source = include_str!("render.rs");
         let sky = source
             .find("pass.set_pipeline(&self.sky_pipeline)")
@@ -958,6 +983,9 @@ mod tests {
             .find("pass.set_pipeline(&self.cloud_pipeline)")
             .map(|index| clouds + index)
             .expect("cloud pipeline is drawn in the cloud pass");
+        let clouds_composite = source
+            .find("label: Some(CLOUDS_COMPOSITE_PASS_LABEL)")
+            .expect("cloud composite pass label is used");
         let translucent = source
             .find("label: Some(\"bbb-native-terrain-translucent-pass\")")
             .expect("terrain translucent pass label is used");
@@ -972,8 +1000,25 @@ mod tests {
             "clouds draw after the entity outline post-chain like vanilla LevelRenderer"
         );
         assert!(
-            clouds < cloud_pipeline && cloud_pipeline < translucent,
-            "clouds draw in a dedicated pass before later translucent world passes"
+            clouds < cloud_pipeline && cloud_pipeline < clouds_composite,
+            "cloud mesh draws into the dedicated clouds pass before compositing"
+        );
+        assert!(
+            clouds_composite < translucent,
+            "cloud target composites before later translucent world passes"
+        );
+        assert!(
+            source[clouds..clouds_composite].contains("view: &self.cloud_target.view"),
+            "cloud mesh writes the renderer-owned clouds color target"
+        );
+        assert!(
+            source[clouds..clouds_composite].contains("view: &self.cloud_target.depth.view"),
+            "cloud mesh writes the renderer-owned clouds depth target"
+        );
+        assert!(
+            source[clouds_composite..translucent]
+                .contains("pass.set_bind_group(0, &self.cloud_target.bind_group, &[])"),
+            "cloud composite samples the renderer-owned clouds target"
         );
     }
 
