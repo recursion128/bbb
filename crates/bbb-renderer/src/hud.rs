@@ -2746,6 +2746,7 @@ mod tests {
             ],
             uvs: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
             tint: [1.0, 1.0, 1.0, 1.0],
+            normal: [0.0, 0.0, 1.0],
             shade: 1.0,
             translucent: false,
         };
@@ -3332,6 +3333,7 @@ mod tests {
             corners: [[0.0, 0.0, 0.0]; 4],
             uvs: [[0.0, 0.0]; 4],
             tint: [1.0, 1.0, 1.0, 1.0],
+            normal: [0.0, 0.0, 1.0],
             shade: 1.0,
             translucent: false,
         };

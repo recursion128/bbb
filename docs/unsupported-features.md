@@ -875,9 +875,14 @@ When an agent does any of the following, update this file in the same slice:
     smooth/AO entity light, GUI / entity-in-UI lighting variants, and the colored
     debug fallback's baked-shade approximation. The item-model
     shader now consumes submitted item stack light coords through the same
-    renderer-owned dynamic LightTexture sampler, so vanilla item entity / thrown item submit
-    paths that reach `ItemStackRenderState.submit(..., lightCoords, ...)` no
-    longer use the old scalar light approximation. The dropped-item 3D model
+    renderer-owned dynamic LightTexture sampler and applies vanilla-shaped
+    `minecraft_mix_light` normal diffuse from per-vertex normals, so vanilla
+    item entity / thrown item submit paths that reach
+    `ItemStackRenderState.submit(..., lightCoords, ...)` no longer use the old
+    scalar light approximation or CPU-baked `Direction.getShade` RGB. The
+    remaining item lighting context gap is selecting the exact vanilla
+    `Lighting.Entry` light directions (`LEVEL`, `ITEMS_FLAT`, `ITEMS_3D`,
+    `ENTITY_IN_UI`) per draw context. The dropped-item 3D model
     path and the legacy item-entity / thrown-item billboard path now sample the
     entity light probe through `WorldStore`, keep the vanilla full-bright
     fallback for missing chunk light, and pass shader-space `[block, sky]`
@@ -1650,8 +1655,9 @@ When an agent does any of the following, update this file in the same slice:
       ground transforms). Done:
       - `ItemModelQuad`/`ItemModelMesh`/`bake_item_model_mesh`
         (`item_models.rs`): corners in vanilla `0..=16` model space normalized
-        to the unit cube under a caller `transform`, atlas-absolute UVs, vertex
-        color `tint × Direction.getShade`.
+        to the unit cube under a caller `transform`, atlas-absolute UVs,
+        submitted tint color, transformed quad normal, and shader-side
+        `minecraft_mix_light` normal diffuse.
       - block-item baker (`terrain/mesh/item_bake.rs`
         `bake_block_item_quads`): reuses the terrain box/quad geometry, atlas UV
         mapping, and directional shade to turn a block's `TerrainRenderShape`
@@ -2008,9 +2014,10 @@ When an agent does any of the following, update this file in the same slice:
         context (GUI front-lit vs world diffuse) is an open P0 visual point:
         vanilla `core/item.vsh` multiplies submitted color by
         `minecraft_mix_light(Light0_Direction, Light1_Direction, Normal, Color)`,
-        while the current baked item path still folds terrain cardinal
-        `Direction.getShade` into vertex color for both block- and
-        generated-items.
+        and the renderer now mirrors that shape for the shared item-model path
+        with per-vertex normals and no CPU-baked `Direction.getShade` RGB. The
+        remaining gap is choosing the exact vanilla `Lighting.Entry` light
+        directions for GUI flat, GUI 3D, world level, and entity-in-UI contexts.
     - thrown-item projectiles (egg, snowball, ender pearl, eye of ender, splash/lingering potion,
       experience bottle, large fireball, small fireball) as camera-facing item-icon billboards on the
       same path: vanilla's `ThrownItemRenderer` draws each as the item sprite of its carried

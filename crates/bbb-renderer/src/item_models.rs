@@ -7,10 +7,10 @@
 //! coordinates, the same units `from`/`to` use), normalized to the `0..1` unit cube at bake time so the
 //! caller's `transform` places the model in world / GUI / hand space exactly like vanilla's display
 //! transforms. `uvs` are atlas-absolute into the shared block/item atlas. `tint` is the per-face color
-//! (biome/dye tint, or white), `shade` is the directional face-shade multiplier (vanilla
-//! `Direction.getShade` with ambient occlusion off), `light` is the packed block/sky light projected to
-//! shader-space, and `overlay` is the submitted vanilla `OverlayTexture` coordinate. The baked vertex
-//! color is `tint × shade`; the shader applies light and overlay.
+//! (biome/dye tint, or white), `normal` is the baked quad normal transformed like vanilla
+//! `putBakedQuad`, `light` is the packed block/sky light projected to shader-space, and `overlay` is the
+//! submitted vanilla `OverlayTexture` coordinate. The baked vertex color keeps the submitted tint; the
+//! shader applies vanilla-shaped normal diffuse, light, and overlay.
 
 use glam::{Mat4, Vec3};
 
@@ -48,7 +48,10 @@ pub struct ItemModelQuad {
     pub uvs: [[f32; 2]; 4],
     /// Per-face tint (biome/dye/potion color, or white when untinted). Multiplied into the vertex color.
     pub tint: [f32; 4],
-    /// Directional face-shade multiplier (vanilla `Direction.getShade`, AO off). `1.0` = unshaded.
+    /// The baked quad normal used by vanilla `core/item.vsh` for `minecraft_mix_light`.
+    pub normal: [f32; 3],
+    /// Directional face-shade metadata (vanilla `Direction.getShade`, AO off). Kept for audit /
+    /// model-material parity; the shared item shader now derives visible diffuse from `normal`.
     pub shade: f32,
     /// Whether this quad's item render type uses vanilla blending (`item_translucent`).
     pub translucent: bool,
@@ -64,8 +67,8 @@ pub struct HudBlockItemModel {
 }
 
 /// A baked block/item model vertex: the model-space position normalized to the unit cube and pushed
-/// through the caller's `transform`, the atlas-absolute UV, the `tint × shade` color, shader-space
-/// block/sky light, and vanilla overlay coordinate.
+/// through the caller's `transform`, the atlas-absolute UV, the tint color, shader-space block/sky
+/// light, vanilla overlay coordinate, and transformed normal plus a diffuse-enable flag in `.w`.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct ItemModelVertex {
@@ -74,6 +77,7 @@ pub(crate) struct ItemModelVertex {
     pub(crate) color: [f32; 4],
     pub(crate) light: [f32; 2],
     pub(crate) overlay: [f32; 2],
+    pub(crate) normal_diffuse: [f32; 4],
 }
 
 /// A baked block/item model mesh: an indexed triangle list ready for the item-model pipeline.
@@ -108,8 +112,8 @@ impl ItemModelMesh {
     /// Appends `quads` to the mesh, normalizing each corner from vanilla `0..=16` model space to the unit
     /// cube and applying `transform` (the model→target-space matrix: world placement, GUI projection, or
     /// the hand attach transform). Each quad becomes two triangles wound from its four corners; the
-    /// vertex color is the quad's `tint` scaled by its directional `shade` (alpha preserved), and every
-    /// vertex carries the caller-provided shader-space block/sky light plus `OverlayTexture.NO_OVERLAY`.
+    /// vertex color is the quad's submitted `tint` (alpha preserved), and every vertex carries the
+    /// caller-provided shader-space block/sky light plus `OverlayTexture.NO_OVERLAY`.
     pub fn append_quads_with_light(
         &mut self,
         quads: &[ItemModelQuad],
@@ -133,7 +137,18 @@ impl ItemModelMesh {
             let base =
                 u32::try_from(self.vertices.len()).expect("item-model vertex count fits in u32");
             let [tr, tg, tb, ta] = quad.tint;
-            let color = [tr * quad.shade, tg * quad.shade, tb * quad.shade, ta];
+            let color = [tr, tg, tb, ta];
+            let normal = transform
+                .inverse()
+                .transpose()
+                .transform_vector3(Vec3::from_array(quad.normal))
+                .normalize_or_zero();
+            let normal = if normal.length_squared() > 0.0 {
+                normal
+            } else {
+                Vec3::Z
+            };
+            let normal_diffuse = [normal.x, normal.y, normal.z, 1.0];
             for (corner, uv) in quad.corners.iter().zip(quad.uvs.iter()) {
                 let local = Vec3::from_array(*corner) * MODEL_SPACE_SCALE;
                 let position = transform.transform_point3(local).to_array();
@@ -143,6 +158,7 @@ impl ItemModelMesh {
                     color,
                     light,
                     overlay,
+                    normal_diffuse,
                 });
             }
             // Two triangles (0,1,2)+(0,2,3) over the CCW quad corners.
@@ -166,6 +182,7 @@ impl ItemModelMesh {
                 color,
                 light,
                 overlay: ITEM_MODEL_NO_OVERLAY,
+                normal_diffuse: [0.0, 0.0, 1.0, 0.0],
             });
         }
         self.indices
@@ -322,12 +339,13 @@ impl Renderer {
     }
 }
 
-const ITEM_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![
+const ITEM_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 6] = wgpu::vertex_attr_array![
     0 => Float32x3,
     1 => Float32x2,
     2 => Float32x4,
     3 => Float32x2,
-    4 => Float32x2
+    4 => Float32x2,
+    5 => Float32x4
 ];
 
 fn item_model_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
@@ -340,10 +358,11 @@ fn item_model_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
 
 /// Item-model shader: samples the shared block/item atlas (bound exactly like the terrain pass —
 /// `view_proj` uniform `@0`, atlas texture `@1`, sampler `@2`), multiplies by the baked vertex color
-/// (the per-face `tint × Direction.getShade`), samples the renderer-owned dynamic LightTexture using the
-/// submitted block/sky light, then applies vanilla-shaped `OverlayTexture` red/white mixing. Alpha
-/// cutout: transparent texels are discarded, so the thin generated-item slab and partial block faces read
-/// cleanly against the depth buffer.
+/// (the submitted item tint), applies vanilla-shaped `minecraft_mix_light` diffuse from the submitted
+/// normal, samples the renderer-owned dynamic LightTexture using the submitted block/sky light, then
+/// applies vanilla-shaped `OverlayTexture` red/white mixing. Alpha cutout: transparent texels are
+/// discarded, so the thin generated-item slab and partial block faces read cleanly against the depth
+/// buffer.
 const ITEM_MODEL_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
@@ -380,6 +399,7 @@ struct VertexIn {
     @location(2) color: vec4<f32>,
     @location(3) light: vec2<f32>,
     @location(4) overlay: vec2<f32>,
+    @location(5) normal_diffuse: vec4<f32>,
 };
 
 struct VertexOut {
@@ -388,8 +408,9 @@ struct VertexOut {
     @location(1) color: vec4<f32>,
     @location(2) light: vec2<f32>,
     @location(3) overlay: vec2<f32>,
-    @location(4) spherical_distance: f32,
-    @location(5) cylindrical_distance: f32,
+    @location(4) normal_diffuse: vec4<f32>,
+    @location(5) spherical_distance: f32,
+    @location(6) cylindrical_distance: f32,
 };
 
 fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
@@ -427,6 +448,13 @@ fn apply_overlay(rgb: vec3<f32>, overlay: vec2<f32>) -> vec3<f32> {
     return mix(vec3<f32>(1.0, 1.0, 1.0), rgb, overlay_alpha);
 }
 
+fn diffuse_light(normal: vec3<f32>) -> f32 {
+    let light0 = normalize(vec3<f32>(0.2, 1.0, -0.7));
+    let light1 = normalize(vec3<f32>(-0.2, 1.0, 0.7));
+    let light_value = max(vec2<f32>(0.0), vec2<f32>(dot(light0, normal), dot(light1, normal)));
+    return min(1.0, (light_value.x + light_value.y) * 0.6 + 0.4);
+}
+
 @vertex
 fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
@@ -435,6 +463,7 @@ fn vs_main(input: VertexIn) -> VertexOut {
     out.color = input.color;
     out.light = input.light;
     out.overlay = input.overlay;
+    out.normal_diffuse = vec4<f32>(normalize(input.normal_diffuse.xyz), input.normal_diffuse.w);
     let fog_pos = input.position - camera.camera_position.xyz;
     out.spherical_distance = length(fog_pos);
     out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
@@ -449,7 +478,8 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     }
     let light_color = sample_lightmap(input.light);
     let overlay_rgb = apply_overlay(texel.rgb, input.overlay);
-    return apply_fog(vec4<f32>(overlay_rgb * light_color, texel.a), input.spherical_distance, input.cylindrical_distance);
+    let diffuse = mix(1.0, diffuse_light(input.normal_diffuse.xyz), input.normal_diffuse.w);
+    return apply_fog(vec4<f32>(overlay_rgb * diffuse * light_color, texel.a), input.spherical_distance, input.cylindrical_distance);
 }
 "#;
 
@@ -562,6 +592,7 @@ mod tests {
             ],
             uvs: [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
             tint,
+            normal: [0.0, 0.0, 1.0],
             shade,
             translucent: false,
         }
@@ -584,13 +615,19 @@ mod tests {
             .vertices
             .iter()
             .all(|vertex| vertex.overlay == ITEM_MODEL_NO_OVERLAY));
+        assert!(mesh
+            .vertices
+            .iter()
+            .all(|vertex| vertex.normal_diffuse == [0.0, 0.0, 1.0, 1.0]));
     }
 
     #[test]
-    fn shade_scales_rgb_but_not_alpha() {
+    fn tint_is_preserved_and_directional_diffuse_is_deferred_to_shader() {
         let mesh = bake_item_model_mesh(&[unit_quad(0.6, [1.0, 0.5, 0.25, 1.0])], Mat4::IDENTITY);
-        // Vanilla applies `Direction.getShade` to the RGB only; alpha stays put.
-        assert_eq!(mesh.vertices[0].color, [0.6, 0.3, 0.15, 1.0]);
+        // Vanilla `core/item.vsh` applies `minecraft_mix_light` from the submitted normal. The CPU
+        // vertex color keeps the item tint instead of baking `Direction.getShade` into RGB.
+        assert_eq!(mesh.vertices[0].color, [1.0, 0.5, 0.25, 1.0]);
+        assert_eq!(mesh.vertices[0].normal_diffuse, [0.0, 0.0, 1.0, 1.0]);
     }
 
     #[test]
@@ -634,13 +671,33 @@ mod tests {
         assert_eq!(meshes.solid.indices, vec![0, 1, 2, 0, 2, 3]);
         assert_eq!(meshes.translucent.vertices.len(), 4);
         assert_eq!(meshes.translucent.indices, vec![0, 1, 2, 0, 2, 3]);
-        assert_eq!(meshes.translucent.vertices[0].color, [0.4, 0.6, 0.8, 0.6]);
+        assert_eq!(meshes.translucent.vertices[0].color, [0.5, 0.75, 1.0, 0.6]);
         assert!(meshes
             .solid
             .vertices
             .iter()
             .chain(meshes.translucent.vertices.iter())
             .all(|vertex| vertex.overlay == overlay));
+    }
+
+    #[test]
+    fn raw_item_frame_map_quads_disable_item_diffuse() {
+        let mut mesh = ItemModelMesh::new();
+        mesh.append_raw_textured_quad(
+            [
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [1.0, 1.0, 0.0],
+                [0.0, 1.0, 0.0],
+            ],
+            [[0.0, 0.0]; 4],
+            [1.0; 4],
+            ITEM_MODEL_FULL_BRIGHT_LIGHT,
+        );
+        assert!(mesh
+            .vertices
+            .iter()
+            .all(|vertex| vertex.normal_diffuse == [0.0, 0.0, 1.0, 0.0]));
     }
 
     #[test]
@@ -682,6 +739,7 @@ mod tests {
     fn item_model_shader_samples_dynamic_lightmap_texture() {
         assert!(ITEM_MODEL_SHADER.contains("@location(3) light: vec2<f32>"));
         assert!(ITEM_MODEL_SHADER.contains("@location(4) overlay: vec2<f32>"));
+        assert!(ITEM_MODEL_SHADER.contains("@location(5) normal_diffuse: vec4<f32>"));
         assert!(ITEM_MODEL_SHADER.contains("@group(1) @binding(0)"));
         assert!(ITEM_MODEL_SHADER.contains("var lightmap_texture: texture_2d<f32>"));
         assert!(ITEM_MODEL_SHADER.contains("@group(1) @binding(1)"));
@@ -692,10 +750,25 @@ mod tests {
             ITEM_MODEL_SHADER.contains("textureSample(lightmap_texture, lightmap_sampler, uv).rgb")
         );
         assert!(ITEM_MODEL_SHADER.contains("let light_color = sample_lightmap(input.light)"));
-        assert!(ITEM_MODEL_SHADER.contains("overlay_rgb * light_color"));
+        assert!(ITEM_MODEL_SHADER.contains("overlay_rgb * diffuse * light_color"));
         assert!(!ITEM_MODEL_SHADER.contains("fn lightmap_brightness"));
         assert!(!ITEM_MODEL_SHADER.contains("camera.lightmap_factors.y"));
         assert!(!ITEM_MODEL_SHADER.contains("max(input.light.x, input.light.y * 0.95)"));
+    }
+
+    #[test]
+    fn item_model_shader_applies_vanilla_normal_diffuse_lighting() {
+        // Vanilla `core/item.vsh` calls `minecraft_mix_light(Light0_Direction, Light1_Direction,
+        // Normal, Color)`, and `light.glsl` uses the 0.6 power + 0.4 ambient mix. The current renderer
+        // still uses the level default light directions; choosing ITEMS_3D vs ITEMS_FLAT remains a
+        // separate lighting-context slice.
+        assert!(ITEM_MODEL_SHADER.contains("fn diffuse_light(normal: vec3<f32>) -> f32"));
+        assert!(ITEM_MODEL_SHADER.contains("vec3<f32>(0.2, 1.0, -0.7)"));
+        assert!(ITEM_MODEL_SHADER.contains("vec3<f32>(-0.2, 1.0, 0.7)"));
+        assert!(ITEM_MODEL_SHADER.contains("* 0.6 + 0.4"));
+        assert!(ITEM_MODEL_SHADER
+            .contains("let diffuse = mix(1.0, diffuse_light(input.normal_diffuse.xyz), input.normal_diffuse.w)"));
+        assert!(ITEM_MODEL_SHADER.contains("overlay_rgb * diffuse * light_color"));
     }
 
     #[test]
@@ -709,6 +782,6 @@ mod tests {
         assert!(
             ITEM_MODEL_SHADER.contains("let overlay_rgb = apply_overlay(texel.rgb, input.overlay)")
         );
-        assert!(ITEM_MODEL_SHADER.contains("overlay_rgb * light_color"));
+        assert!(ITEM_MODEL_SHADER.contains("overlay_rgb * diffuse * light_color"));
     }
 }

@@ -118,6 +118,7 @@ fn push_box(
             corners,
             uvs: local_uvs.map(|uv| rect.map(uv)),
             tint: tint_rgba(tint[index]),
+            normal: face.normal,
             shade: cardinal_shade(face_shade[index], face.face),
             translucent: face_transparency[index].has_translucent,
         });
@@ -134,6 +135,7 @@ fn quad_to_item_quad(quad: &TerrainQuad, atlas: &TerrainTextureAtlas) -> ItemMod
         corners: quad.corners,
         uvs: quad.uvs.map(|uv| rect.map(uv)),
         tint: tint_rgba(quad.tint),
+        normal: quad.normal,
         shade: cardinal_shade(quad.shade, face),
         translucent: quad.transparency.has_translucent,
     }
@@ -166,6 +168,10 @@ mod tests {
         assert_eq!(quads[1].shade, 1.0, "up face");
         assert_eq!(quads[2].shade, 0.8, "north face");
         assert_eq!(quads[4].shade, 0.6, "west face");
+        assert_eq!(quads[0].normal, [0.0, -1.0, 0.0], "down normal");
+        assert_eq!(quads[1].normal, [0.0, 1.0, 0.0], "up normal");
+        assert_eq!(quads[2].normal, [0.0, 0.0, -1.0], "north normal");
+        assert_eq!(quads[4].normal, [-1.0, 0.0, 0.0], "west normal");
         // The up face spans the top of the `0..=16` cube.
         assert_eq!(
             quads[1].corners,
@@ -262,6 +268,7 @@ mod tests {
         );
         assert_eq!(quads.len(), 1);
         assert_eq!(quads[0].corners, quad.corners);
+        assert_eq!(quads[0].normal, [0.0, 0.0, 1.0]);
         assert_eq!(quads[0].shade, 0.8);
         assert!(!quads[0].translucent);
     }

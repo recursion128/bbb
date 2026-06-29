@@ -133,6 +133,17 @@ impl ItemFace {
             ItemFace::West | ItemFace::East => 0.6,
         }
     }
+
+    fn normal(self) -> [f32; 3] {
+        match self {
+            ItemFace::Down => [0.0, -1.0, 0.0],
+            ItemFace::Up => [0.0, 1.0, 0.0],
+            ItemFace::North => [0.0, 0.0, -1.0],
+            ItemFace::South => [0.0, 0.0, 1.0],
+            ItemFace::West => [-1.0, 0.0, 0.0],
+            ItemFace::East => [1.0, 0.0, 0.0],
+        }
+    }
 }
 
 /// The four silhouette-tracing side directions (vanilla `ItemModelGenerator.SideDirection`). Each maps to
@@ -317,6 +328,7 @@ fn bake_face(
         corners,
         uvs: mapped,
         tint,
+        normal: facing.normal(),
         shade: facing.shade(),
         translucent: false,
     }
@@ -346,6 +358,8 @@ mod tests {
         let back = quads[1];
         assert!(front.corners.iter().all(|c| c[2] == MAX_Z));
         assert!(back.corners.iter().all(|c| c[2] == MIN_Z));
+        assert_eq!(front.normal, [0.0, 0.0, 1.0]);
+        assert_eq!(back.normal, [0.0, 0.0, -1.0]);
         assert_eq!(front.shade, 0.8);
         assert_eq!(back.shade, 0.8);
         // The front face covers the full 0..=16 sprite plane.
@@ -394,6 +408,11 @@ mod tests {
         let mut shades: Vec<f32> = sides.iter().map(|q| q.shade).collect();
         shades.sort_by(|a, b| a.partial_cmp(b).unwrap());
         assert_eq!(shades, vec![0.5, 0.6, 0.6, 1.0]);
+        let normals: Vec<[f32; 3]> = sides.iter().map(|q| q.normal).collect();
+        assert!(normals.contains(&[0.0, 1.0, 0.0]));
+        assert!(normals.contains(&[0.0, -1.0, 0.0]));
+        assert!(normals.contains(&[1.0, 0.0, 0.0]));
+        assert!(normals.contains(&[-1.0, 0.0, 0.0]));
     }
 
     #[test]
