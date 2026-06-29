@@ -845,6 +845,9 @@ blocker。
 - [x] 大量实体 base/layer submission 已 pin entity light、hurt/white overlay、
   no-overlay 或 red-row zero-white overlay 的来源，并让 folded vertices 继承
   对应 submission metadata。
+- [x] Ravager ledger 中旧的 `LightTexture/gamma parity` renderer gap 已收窄为
+  全局 P0 lighting pipeline 状态；ravager 自身保留的未完成项只剩 roar
+  particle/knockback effects。
 - [x] colored/textured entity shader 已用 submitted block/sky light 走 vanilla
   `Lightmap.getBrightness` 形状曲线；eyes 仍保持 emissive。
 - [x] texture-backed entity vertices 已携带 vanilla `ModelPart.Polygon.normal`

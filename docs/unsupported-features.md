@@ -2660,7 +2660,10 @@ When an agent does any of the following, update this file in the same slice:
       `xRot` only so the neck/head subtree is untouched) plus the event-driven attack
       neck-lunge, stunned neck shake, and roar mouth-gape poses (`apply_ravager_combat`
       — see the ravager note above) on both render paths; only the roar
-      particle/knockback effects and full vanilla LightTexture/gamma parity remain unsupported
+      particle/knockback effects remain unsupported. Ravager-specific
+      light/overlay submission metadata is covered here; global LightTexture /
+      gamma parity is tracked by the completed P0 lighting pipeline rather than
+      as a ravager renderer gap
     - villager entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `VillagerModel`, `BabyVillagerModel`, and
       `VillagerRenderer`, with the adult `MeshTransformer.scaling(0.9375F)`
