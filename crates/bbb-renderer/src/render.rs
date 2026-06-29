@@ -537,6 +537,37 @@ impl Renderer {
             );
         }
 
+        if let Some(overlays) = &self.block_destroy_overlays {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("bbb-native-block-destroy-overlay-pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: main_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.depth.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.block_destroy_pipeline);
+            pipeline_switches += 1;
+            pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+            pass.set_vertex_buffer(0, overlays.vertex_buffer.slice(..));
+            pass.set_index_buffer(overlays.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..overlays.index_count, 0, 0..1);
+            block_destroy_overlay_draw_calls += 1;
+        }
+
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(TRANSLUCENT_TARGET_PASS_LABEL),
@@ -571,37 +602,6 @@ impl Renderer {
                     translucent_draw_calls += 1;
                 }
             }
-        }
-
-        if let Some(overlays) = &self.block_destroy_overlays {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("bbb-native-block-destroy-overlay-pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: main_view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.depth.view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    }),
-                    stencil_ops: None,
-                }),
-                occlusion_query_set: None,
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.block_destroy_pipeline);
-            pipeline_switches += 1;
-            pass.set_bind_group(0, &self.terrain_bind_group, &[]);
-            pass.set_vertex_buffer(0, overlays.vertex_buffer.slice(..));
-            pass.set_index_buffer(overlays.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-            pass.draw_indexed(0..overlays.index_count, 0, 0..1);
-            block_destroy_overlay_draw_calls += 1;
         }
 
         // Block-item models sample the blocks atlas (the terrain bind group); flat / generated item
@@ -1455,6 +1455,9 @@ mod tests {
         let entity_translucent_features = source
             .find("label: Some(ENTITY_TRANSLUCENT_FEATURE_PASS_LABEL)")
             .expect("entity translucent feature pass label is used");
+        let block_destroy = source
+            .find("label: Some(\"bbb-native-block-destroy-overlay-pass\")")
+            .expect("block destroy overlay pass label is used");
         let combine = source
             .find("label: Some(TRANSPARENCY_COMBINE_PASS_LABEL)")
             .expect("transparency combine pass label is used");
@@ -1478,6 +1481,8 @@ mod tests {
         assert!(
             clouds < entity_translucent_features
                 && entity_translucent_features < translucent
+                && entity_translucent_features < block_destroy
+                && block_destroy < translucent
                 && translucent < item_entity_target
                 && item_entity_target < particle_target
                 && particle_target < weather_target
@@ -1613,6 +1618,39 @@ mod tests {
                 "{pipeline} is emitted through the translucent feature helper"
             );
         }
+    }
+
+    #[test]
+    fn block_destroy_overlays_draw_in_translucent_feature_phase_before_translucent_terrain() {
+        let source = include_str!("render.rs");
+        let entity_pass = source
+            .find("label: Some(ENTITY_TRANSLUCENT_FEATURE_PASS_LABEL)")
+            .expect("entity translucent feature pass label is used");
+        let block_destroy = source
+            .find("label: Some(\"bbb-native-block-destroy-overlay-pass\")")
+            .expect("block destroy overlay pass label is used");
+        let block_destroy_pipeline = source[block_destroy..]
+            .find("pass.set_pipeline(&self.block_destroy_pipeline)")
+            .map(|index| block_destroy + index)
+            .expect("block destroy pipeline is selected");
+        let translucent_target = source
+            .find("label: Some(TRANSLUCENT_TARGET_PASS_LABEL)")
+            .expect("translucent target pass label is used");
+
+        assert!(
+            entity_pass < block_destroy
+                && block_destroy < block_destroy_pipeline
+                && block_destroy_pipeline < translucent_target,
+            "vanilla crumblingBufferSource.endBatch runs during translucent features before translucent terrain"
+        );
+        assert!(
+            source[block_destroy..translucent_target].contains("view: main_view"),
+            "block destroy overlays write the renderer-owned main color target"
+        );
+        assert!(
+            source[block_destroy..translucent_target].contains("view: &self.depth.view"),
+            "block destroy overlays depth-test against the renderer-owned main depth target"
+        );
     }
 
     #[test]

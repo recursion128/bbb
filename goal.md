@@ -272,7 +272,7 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。当前 checkl
   item-entity billboard 和 selection/line geometry 写入该 target；final
   transparency combine 已扩展为 Main+Translucent+ItemEntity+Particles+Weather+Clouds 的
   vanilla-shaped depth insertion / premultiplied blend。剩余 P0 visual
-  render-graph 工作仍包括 per-submit feature 距离排序、block/text/name/crumbling
+  render-graph 工作仍包括 per-submit feature 距离排序、block/text/name
   ordering、weather/lightning target 细节，以及更细粒度 terrain target sorting。
 - 2026-06-29 particle target slice：vanilla 26.1 `LevelTargetBundle` 把
   `minecraft:particles` 列为 sorting target；`LevelRenderer.addMainPass` 在透明
@@ -326,8 +326,15 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。当前 checkl
   `breezeWind`、`energySwirl` GPU buckets 从 opaque-group pass 移到独立
   main-target translucent feature pass，在这些 depth copies 之后、translucent
   terrain target pass 之前绘制。剩余 render-graph 工作收窄为 per-submit
-  距离排序、block/text/name/crumbling feature ordering、weather/lightning target
+  距离排序、block/text/name feature ordering、weather/lightning target
   细节等，不重新打开狭义 pipeline closeout。
+- [x] 2026-06-29 block-destroy crumbling phase slice：vanilla
+  `submitBlockDestroyAnimation` 写入 crumbling buffer，
+  `crumblingBufferSource.endBatch()` 位于 `renderTranslucentFeatures()` 后、
+  `translucentTerrain` 前。renderer 现在把 block-destroy overlay pass 移到
+  main-target translucent feature phase 内，在 blended entity feature pass 后、
+  translucent terrain target pass 前绘制；剩余 render-graph ordering 不再把
+  crumbling phase 当作未完成项。
 
 ### [x] P0：提交图与 RenderType 语义（状态：狭义 pipeline 已完成）
 
