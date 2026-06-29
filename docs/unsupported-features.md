@@ -2163,8 +2163,10 @@ When an agent does any of the following, update this file in the same slice:
       and `ChickenModel.setupAnim` applies `(sin(flap) + 1) * flapSpeed` to
       `right_wing.zRot` / `-left_wing.zRot` on adult, cold, and baby models. The
       chicken has no head look in vanilla (`ChickenModel` never animates the head).
-      Variant sound metadata, custom/datapack chicken variant asset decoding, and broader lighting presentation
-      remain unsupported
+      Variant sound metadata and custom/datapack chicken variant asset decoding
+      remain unsupported; the old broader-lighting wording is stale because the
+      base submission light/overlay metadata is covered here and global
+      LightTexture / gamma parity is tracked by the completed P0 lighting pipeline
     - pig entities as renderer-owned vanilla 26.1
       `PigModel`, `ColdPigModel`, and `BabyPigModel` body-layer geometry from
       `PigModel`, `ColdPigModel`, `BabyPigModel`, `PigRenderer`,
@@ -2193,8 +2195,11 @@ When an agent does any of the following, update this file in the same slice:
       `OverlayTexture.NO_OVERLAY`; missing saddle atlas data now preserves that
       submission while suppressing only the folded saddle geometry; baby pigs intentionally
       skip it because vanilla provides no baby saddle model. Boost/ridden
-      animation, variant sound metadata, custom/datapack pig variant asset
-      decoding, and broader lighting presentation remain unsupported
+      animation, variant sound metadata, and custom/datapack pig variant asset
+      decoding remain unsupported; the old broader-lighting wording is stale
+      because base and saddle submission light/overlay metadata is covered here
+      and global LightTexture / gamma parity is tracked by the completed P0
+      lighting pipeline
     - cow entities as renderer-owned vanilla 26.1 `CowModel`, `WarmCowModel`,
       `ColdCowModel`, and `BabyCowModel` body-layer geometry from `CowModel`,
       `WarmCowModel`, `ColdCowModel`, `BabyCowModel`, `CowRenderer`,
@@ -2212,9 +2217,11 @@ When an agent does any of the following, update this file in the same slice:
       vanilla `QuadrupedModel.setupAnim`
       head-look yaw/pitch on the head part plus the standard diagonal leg walk
       swing (`cos(pos * 0.6662 [+ pi]) * 1.4 * speed`) on adult, baby,
-      warm, and cold textured models; variant sound metadata,
-      custom/datapack cow variant asset decoding, and broader lighting presentation remain
-      unsupported
+      warm, and cold textured models; variant sound metadata and
+      custom/datapack cow variant asset decoding remain unsupported. The old
+      broader-lighting wording is stale because the base submission light/overlay
+      metadata is covered here and global LightTexture / gamma parity is tracked
+      by the completed P0 lighting pipeline
     - sheep entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `SheepModel`, `BabySheepModel`, and `SheepRenderer`, with
       official base/wool/undercoat texture references, texture-backed base,

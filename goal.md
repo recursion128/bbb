@@ -1135,6 +1135,10 @@ blocker。
 
 目标：补齐已经有模型和贴图但 renderer 行为仍缺官方细节的实体。
 
+- Chicken / pig / cow variant livestock：
+  - [x] 旧的 broader lighting wording 已收窄：base（以及 pig saddle）
+    submission light/overlay metadata 已由 renderer tests pin 住；剩余只保留
+    variant sound、custom/datapack variant assets 和 pig boost/ridden animation。
 - Boat / raft：
   - [x] paddle rowing animation（world metadata/passenger gate -> native render state -> renderer paddle pose）
   - [x] hurt/damage roll（VehicleEntity metadata -> native render state -> boat root transform）
