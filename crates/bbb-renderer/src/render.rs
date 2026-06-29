@@ -206,6 +206,7 @@ impl Renderer {
                 pass.set_pipeline(&self.entity_model_pipeline);
                 pipeline_switches += 1;
                 pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
@@ -218,6 +219,7 @@ impl Renderer {
                 pass.set_pipeline(&self.entity_model_textured_pipeline);
                 pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
@@ -230,6 +232,7 @@ impl Renderer {
                 pass.set_pipeline(&self.entity_model_textured_pipeline);
                 pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
@@ -242,6 +245,7 @@ impl Renderer {
                 pass.set_pipeline(&self.entity_model_textured_pipeline);
                 pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
@@ -254,6 +258,7 @@ impl Renderer {
                 pass.set_pipeline(&self.entity_model_translucent_pipeline);
                 pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
@@ -266,6 +271,7 @@ impl Renderer {
                 pass.set_pipeline(&self.entity_model_translucent_pipeline);
                 pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
@@ -278,6 +284,7 @@ impl Renderer {
                 pass.set_pipeline(&self.entity_model_translucent_pipeline);
                 pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
@@ -304,6 +311,7 @@ impl Renderer {
                 pass.set_pipeline(&self.entity_model_scroll_pipeline);
                 pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
@@ -1179,6 +1187,67 @@ mod tests {
         assert!(
             translucent < translucent_lightmap,
             "translucent terrain samples the same dynamic LightTexture"
+        );
+    }
+
+    #[test]
+    fn lit_entity_draws_sample_dynamic_lightmap_texture() {
+        let source = include_str!("render.rs");
+        for (pipeline, bind_group, label) in [
+            (
+                "pass.set_pipeline(&self.entity_model_pipeline)",
+                "pass.set_bind_group(0, &self.terrain_bind_group, &[])",
+                "colored entity fallback",
+            ),
+            (
+                "pass.set_pipeline(&self.entity_model_textured_pipeline)",
+                "pass.set_bind_group(0, &atlas.bind_group, &[])",
+                "textured entity",
+            ),
+            (
+                "pass.set_pipeline(&self.entity_model_translucent_pipeline)",
+                "pass.set_bind_group(0, &atlas.bind_group, &[])",
+                "translucent entity",
+            ),
+            (
+                "pass.set_pipeline(&self.entity_model_scroll_pipeline)",
+                "pass.set_bind_group(0, &atlas.bind_group, &[])",
+                "breezeWind lit scroll entity",
+            ),
+        ] {
+            let pipeline = source
+                .find(pipeline)
+                .unwrap_or_else(|| panic!("{label} pipeline"));
+            let atlas = source[pipeline..]
+                .find(bind_group)
+                .map(|index| pipeline + index)
+                .unwrap_or_else(|| panic!("{label} texture/camera bind group"));
+            let lightmap = source[atlas..]
+                .find("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])")
+                .map(|index| atlas + index)
+                .unwrap_or_else(|| panic!("{label} lightmap bind group"));
+            let draw = source[lightmap..]
+                .find("pass.draw_indexed")
+                .map(|index| lightmap + index)
+                .unwrap_or_else(|| panic!("{label} draw"));
+
+            assert!(
+                pipeline < atlas && atlas < lightmap && lightmap < draw,
+                "{label} binds the renderer-owned LightTexture before drawing"
+            );
+        }
+
+        let eyes = source
+            .find("pass.set_pipeline(&self.entity_model_eyes_pipeline)")
+            .expect("eyes pipeline");
+        let eyes_draw = source[eyes..]
+            .find("pass.draw_indexed")
+            .map(|index| eyes + index)
+            .expect("eyes draw");
+        assert!(
+            !source[eyes..eyes_draw]
+                .contains("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])"),
+            "emissive eyes do not explicitly sample the dynamic lightmap"
         );
     }
 

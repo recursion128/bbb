@@ -440,20 +440,36 @@ impl Renderer {
         );
         let block_destroy_pipeline =
             create_block_destroy_pipeline(&device, format, &terrain_bind_group_layout);
-        let entity_model_pipeline =
-            create_entity_model_pipeline(&device, format, &terrain_bind_group_layout);
-        let entity_model_textured_pipeline =
-            create_entity_model_textured_pipeline(&device, format, &terrain_bind_group_layout);
-        let entity_model_translucent_pipeline =
-            create_entity_model_translucent_pipeline(&device, format, &terrain_bind_group_layout);
+        let entity_model_pipeline = create_entity_model_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+        );
+        let entity_model_textured_pipeline = create_entity_model_textured_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+        );
+        let entity_model_translucent_pipeline = create_entity_model_translucent_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+        );
         let entity_model_eyes_pipeline =
             create_entity_model_eyes_pipeline(&device, format, &terrain_bind_group_layout);
         let entity_model_outline_pipeline =
             create_entity_model_outline_pipeline(&device, format, &terrain_bind_group_layout);
         let entity_model_outline_cull_pipeline =
             create_entity_model_outline_cull_pipeline(&device, format, &terrain_bind_group_layout);
-        let entity_model_scroll_pipeline =
-            create_entity_model_scroll_pipeline(&device, format, &terrain_bind_group_layout);
+        let entity_model_scroll_pipeline = create_entity_model_scroll_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+        );
         let entity_model_scroll_additive_pipeline = create_entity_model_scroll_additive_pipeline(
             &device,
             format,
