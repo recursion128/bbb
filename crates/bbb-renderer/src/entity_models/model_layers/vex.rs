@@ -227,8 +227,8 @@ fn apply_vex_anim(root: &mut ModelPart, instance: &EntityModelInstance) {
 /// and right wing (the emit order, preserved for byte-identical meshes). Each cube carries both the
 /// colored tint and the textured UV, so one tree drives both render paths; `setup_anim` runs
 /// [`apply_vex_anim`] (head look, charging body/arms, wing flap). The same posed tree drives the
-/// colored fallback and the single translucent textured layer (the full-bright block light is deferred
-/// lighting).
+/// colored fallback and the single translucent textured layer; the native entity scene supplies
+/// VexRenderer's full-bright block-light override through submitted light coords.
 pub(in crate::entity_models) struct VexModel {
     root: ModelPart,
 }

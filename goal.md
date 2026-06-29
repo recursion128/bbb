@@ -947,6 +947,9 @@ blocker。
   `LavaParticle` / `SoulParticle.EmissiveProvider` / `SculkCharge*` full-block
   emission，以及 `AttackSweep` / `SimpleAnimatedParticle` family /
   `HugeExplosion` / `Gust` 的 full-bright emission。
+- [x] Vex / Allay 的 `getBlockLightLevel = 15` full-bright 状态已通过
+  native `entity_light_coords` 投影；renderer stale 注释已改为指向 submitted
+  light coords，不再把该 glow 记录为未实现。
 - [x] native 已用 world level dimension info 写入维度级 `LightmapEnvironment`：
   Overworld / Overworld Caves ambient `0x0A0A0A`，Nether `SkyFactor = 0`、
   `Timelines.NIGHT_SKY_LIGHT_COLOR`、ambient `0x302821`，End

@@ -3373,8 +3373,9 @@ When an agent does any of the following, update this file in the same slice:
       (`VexRenderer.getTextureLocation`: `EntityModelKind::Vex { charging }` selects
       `textures/entity/illager/vex_charging.png` over `vex.png`, the same 32×32 model, driven by the
       already-projected `charging` bit). The constant full-bright `getBlockLightLevel` (→ 15) glow IS now applied
-      (`entity_light_coords` forces the packed block light to 15 for the vex type). Broader lighting
-      presentation remains unsupported
+      (`entity_light_coords` forces the packed block light to 15 for the vex type); stale renderer
+      comments that still described this glow as deferred have been aligned with that native
+      light-coords source. Broader lighting presentation remains unsupported
     - allay entities are wired end to end on both render paths: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `2` to the real `AllayModel`, replacing
       the former placeholder box. Renderer-owned vanilla 26.1 `AllayModel.createBodyLayer()`
@@ -3407,7 +3408,9 @@ When an agent does any of the following, update this file in the same slice:
       The held-item arm poses (`holdingAnimationProgress` scaling
       the arm roll to zero and adding the `±0.27925268` arm yaw plus the flying-lerped arm pitch
       and held item) remain unsupported; the constant full-bright `getBlockLightLevel` (→ 15) glow IS
-      now applied (`entity_light_coords` forces the packed block light to 15 for the allay type).
+      now applied (`entity_light_coords` forces the packed block light to 15 for the allay type), and
+      renderer texture comments now point at that native light-coords source instead of treating it as
+      unimplemented.
       Broader lighting presentation remains unsupported
     - strider entities are wired end to end on both render paths: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `129` to the real `AdultStriderModel` /

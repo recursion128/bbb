@@ -449,7 +449,7 @@ pub fn ravager_entity_texture_refs() -> &'static [EntityModelTextureRef] {
 
 // Vanilla `VexRenderer.getTextureLocation` textures: the idle `vex.png` and the `vex_charging.png`
 // swap while the vex charges an attack (`isCharging`). The constant full-bright `getBlockLightLevel`
-// glow is deferred lighting.
+// glow is supplied by native entity light coords.
 pub(in crate::entity_models) const VEX_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/illager/vex.png",
     size: [32, 32],
@@ -461,8 +461,8 @@ pub(in crate::entity_models) const VEX_CHARGING_TEXTURE_REF: EntityModelTextureR
         size: [32, 32],
     };
 
-// Vanilla `AllayRenderer` texture. The constant full-bright `getBlockLightLevel` glow is
-// deferred lighting.
+// Vanilla `AllayRenderer` texture. The constant full-bright `getBlockLightLevel` glow is supplied
+// by native entity light coords.
 pub(in crate::entity_models) const ALLAY_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/allay/allay.png",
