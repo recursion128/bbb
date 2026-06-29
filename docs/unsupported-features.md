@@ -1544,12 +1544,15 @@ When an agent does any of the following, update this file in the same slice:
       hurt/white `OverlayTexture`, while wool and undercoat layer submissions
       preserve entity light and clear the white overlay column like vanilla
       `renderColoredCutoutModel(... getOverlayCoords(state, 0.0F))`
-  - Finish remaining sheep presentation parity:
+  - Keep covered sheep presentation parity:
     - base and wool outline submission metadata plus
       `outlineColor`-tinted GPU outline bucket geometry are now recorded for the
       texture-backed static-atlas path, including visible glowing
       `AFFECTS_OUTLINE` submits, and the bucket now draws through a basic
-      `entity_outline` target/composite
+      `entity_outline` target/composite. The former sheep render-state extraction
+      gap is closed: `SheepRenderer.extractRenderState` inputs (head-eat,
+      sheared, wool color, and `jeb_`) are projected and covered by native /
+      renderer tests
   - Finish wolf presentation parity:
     - registry-driven wolf variants are DONE: the synced `Wolf.DATA_VARIANT_ID`
       (index 23) `Holder<WolfVariant>` is resolved (dynamic `wolf_variant`
@@ -2261,8 +2264,9 @@ When an agent does any of the following, update this file in the same slice:
       metadata still preserves the original model tint/light/overlay. Colored
       fallback force-transparent output now preserves the vanilla `38/255` alpha;
       colored hidden-glowing fallback uses the vanilla `outlineColor` tint; the
-      basic `entity_outline` target/composite is implemented while remaining render-state
-      extraction remains unsupported; outline submission metadata is recorded from
+      basic `entity_outline` target/composite is implemented while remaining visual
+      parity outside sheep render-state extraction stays in later P1/P2 buckets;
+      outline submission metadata is recorded from
       the shared glowing flag and scoreboard team color
     - wolf entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AdultWolfModel`, `BabyWolfModel`, and `WolfRenderer`,
@@ -2340,7 +2344,11 @@ When an agent does any of the following, update this file in the same slice:
       exception path, and that outline bucket is uploaded for the static-atlas GPU
       path. Colored-path force-transparent output now preserves the vanilla
       `38/255` alpha; colored hidden-glowing fallback uses the vanilla
-      `outlineColor` tint; glint/foil, and remaining render-state extraction remain unsupported
+      `outlineColor` tint; wolf armor glint/foil remains unsupported as a P1
+      visual follow-up, while the former wolf render-state extraction gap is
+      closed by native/world/renderer tests for armor, sitting, head/tail/walk,
+      wet shade, water-shake/head-roll, variant, collar, invisibility, outline,
+      lighting, and overlay states
     - base horse entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AbstractEquineModel.createBodyMesh(CubeDeformation.NONE)`,
       `BabyHorseModel.createBabyMesh(CubeDeformation.NONE)`, `HorseModel`, and

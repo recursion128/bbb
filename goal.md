@@ -1186,7 +1186,11 @@ blocker。
     self-visible translucent base、hidden-glowing outline、wool/collar/armor
     layer gates、white-overlay 与 zero-white layer overlay 已由 renderer tests
     pin 住
-  - 其余 render-state extraction parity
+  - [x] 其余 render-state extraction parity：`SheepRenderer.extractRenderState`
+    的 head-eat / sheared / wool-color / jeb 状态，以及 `WolfRenderer.extractRenderState`
+    的 armor、sitting、head/tail/walk、wet shade、shake/head-roll、variant 与 collar
+    状态均已由 native/world/renderer tests pin 住；wolf armor glint/foil 继续作为
+    非 extraction 的 P1 视觉后续
 - Villager / wandering trader：
   - [x] wandering trader baby metadata 审计（vanilla `WanderingTraderRenderer`
     固定 `MobRenderer` + `ModelLayers.WANDERING_TRADER` /
