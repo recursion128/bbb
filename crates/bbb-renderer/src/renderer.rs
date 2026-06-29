@@ -68,8 +68,8 @@ use crate::{
         create_item_entity_target, create_main_target, create_particle_target,
         create_translucent_target, create_transparency_combine_bind_group,
         create_transparency_combine_bind_group_layout, create_transparency_combine_pipeline,
-        ItemEntityTarget, MainTarget, ParticleTarget, TranslucentTarget,
-        TransparencyCombineBindGroup,
+        create_weather_target, ItemEntityTarget, MainTarget, ParticleTarget, TranslucentTarget,
+        TransparencyCombineBindGroup, WeatherTarget,
     },
 };
 
@@ -85,6 +85,7 @@ pub struct Renderer {
     pub(super) translucent_target: TranslucentTarget,
     pub(super) item_entity_target: ItemEntityTarget,
     pub(super) particle_target: ParticleTarget,
+    pub(super) weather_target: WeatherTarget,
     pub(super) transparency_combine_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) transparency_combine_bind_group: TransparencyCombineBindGroup,
     pub(super) transparency_combine_pipeline: wgpu::RenderPipeline,
@@ -389,6 +390,8 @@ impl Renderer {
             create_item_entity_target(&device, config.format, config.width, config.height);
         let particle_target =
             create_particle_target(&device, config.format, config.width, config.height);
+        let weather_target =
+            create_weather_target(&device, config.format, config.width, config.height);
         let terrain_bind_group_layout = create_terrain_bind_group_layout(&device);
         let hud_bind_group_layout = create_hud_bind_group_layout(&device);
         let camera_buffer = create_camera_buffer(&device);
@@ -502,6 +505,7 @@ impl Renderer {
             &translucent_target,
             &item_entity_target,
             &particle_target,
+            &weather_target,
             &cloud_target,
         );
         let transparency_combine_pipeline = create_transparency_combine_pipeline(
@@ -541,6 +545,7 @@ impl Renderer {
             translucent_target,
             item_entity_target,
             particle_target,
+            weather_target,
             transparency_combine_bind_group_layout,
             transparency_combine_bind_group,
             transparency_combine_pipeline,
@@ -801,6 +806,12 @@ impl Renderer {
             self.config.width,
             self.config.height,
         );
+        self.weather_target = create_weather_target(
+            &self.device,
+            self.config.format,
+            self.config.width,
+            self.config.height,
+        );
         self.entity_outline_target = create_entity_outline_target(
             &self.device,
             &self.entity_outline_bind_group_layout,
@@ -822,6 +833,7 @@ impl Renderer {
             &self.translucent_target,
             &self.item_entity_target,
             &self.particle_target,
+            &self.weather_target,
             &self.cloud_target,
         );
         self.update_camera();

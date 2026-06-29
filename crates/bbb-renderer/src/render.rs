@@ -27,6 +27,7 @@ const CLOUDS_PASS_LABEL: &str = "bbb-native-clouds-pass";
 const TRANSLUCENT_TARGET_PASS_LABEL: &str = "bbb-native-translucent-target-pass";
 const ITEM_ENTITY_TARGET_PASS_LABEL: &str = "bbb-native-item-entity-target-pass";
 const PARTICLE_TARGET_PASS_LABEL: &str = "bbb-native-particle-target-pass";
+const WEATHER_TARGET_PASS_LABEL: &str = "bbb-native-weather-target-pass";
 const TRANSPARENCY_COMBINE_PASS_LABEL: &str = "bbb-native-transparency-combine-pass";
 
 impl Renderer {
@@ -47,6 +48,7 @@ impl Renderer {
         let translucent_view = &self.translucent_target.view;
         let item_entity_view = &self.item_entity_target.view;
         let particle_view = &self.particle_target.view;
+        let weather_view = &self.weather_target.view;
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -802,6 +804,50 @@ impl Renderer {
             }
         }
 
+        encoder.copy_texture_to_texture(
+            wgpu::ImageCopyTexture {
+                texture: &self.depth._texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::DepthOnly,
+            },
+            wgpu::ImageCopyTexture {
+                texture: &self.weather_target.depth._texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::DepthOnly,
+            },
+            wgpu::Extent3d {
+                width: self.config.width.max(1),
+                height: self.config.height.max(1),
+                depth_or_array_layers: 1,
+            },
+        );
+
+        {
+            let _pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some(WEATHER_TARGET_PASS_LABEL),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: weather_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.weather_target.depth.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+        }
+
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(TRANSPARENCY_COMBINE_PASS_LABEL),
@@ -1057,6 +1103,9 @@ mod tests {
         let particle_target = source
             .find("label: Some(PARTICLE_TARGET_PASS_LABEL)")
             .expect("particle target pass label is used");
+        let weather_target = source
+            .find("label: Some(WEATHER_TARGET_PASS_LABEL)")
+            .expect("weather target pass label is used");
         let combine = source
             .find("label: Some(TRANSPARENCY_COMBINE_PASS_LABEL)")
             .expect("transparency combine pass label is used");
@@ -1080,7 +1129,8 @@ mod tests {
         assert!(
             translucent < item_entity_target
                 && item_entity_target < particle_target
-                && particle_target < combine
+                && particle_target < weather_target
+                && weather_target < combine
                 && combine < hud,
             "cloud target is consumed by the transparency combine after target-backed world passes and before HUD"
         );
@@ -1115,6 +1165,14 @@ mod tests {
         assert!(
             source[clouds..combine].contains("view: &self.particle_target.depth.view"),
             "particle geometry writes the renderer-owned particles depth target"
+        );
+        assert!(
+            source[clouds..combine].contains("view: weather_view"),
+            "weather pass clears the renderer-owned weather color target"
+        );
+        assert!(
+            source[clouds..combine].contains("view: &self.weather_target.depth.view"),
+            "weather pass owns the renderer-owned weather depth target"
         );
         assert!(
             source[combine..hud].contains(
@@ -1251,6 +1309,45 @@ mod tests {
             source[target..combine].contains("view: particle_view")
                 && source[target..combine].contains("view: &self.particle_target.depth.view"),
             "particle geometry renders into the particles color/depth target"
+        );
+    }
+
+    #[test]
+    fn weather_target_copies_main_depth_and_clears_before_combine() {
+        let source = include_str!("render.rs");
+        let particle_target = source
+            .find("label: Some(PARTICLE_TARGET_PASS_LABEL)")
+            .expect("particle target pass label is used");
+        let target = source
+            .find("label: Some(WEATHER_TARGET_PASS_LABEL)")
+            .expect("weather target pass label is used");
+        let copy_depth = source[particle_target..target]
+            .rfind("encoder.copy_texture_to_texture")
+            .map(|index| particle_target + index)
+            .expect("main depth is copied into weather target depth");
+        let combine = source
+            .find("label: Some(TRANSPARENCY_COMBINE_PASS_LABEL)")
+            .expect("transparency combine pass label is used");
+
+        assert!(
+            copy_depth < target && target < combine,
+            "weather target copies main depth, clears transparent, and then transparency combine consumes it"
+        );
+        assert!(
+            source[copy_depth..target].contains("texture: &self.depth._texture")
+                && source[copy_depth..target]
+                    .contains("texture: &self.weather_target.depth._texture"),
+            "weather target depth is copied from the renderer-owned main depth texture"
+        );
+        assert!(
+            source[target..combine]
+                .contains("load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)"),
+            "weather target color is cleared every frame so a future sparse weather draw cannot reuse stale color"
+        );
+        assert!(
+            source[target..combine].contains("view: weather_view")
+                && source[target..combine].contains("view: &self.weather_target.depth.view"),
+            "weather pass owns the weather color/depth target"
         );
     }
 
