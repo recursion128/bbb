@@ -8,7 +8,7 @@ pub use crate::camera::{
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 pub use crate::clouds::{
-    CloudEnvironment, CloudFrame, CloudTextureImage, VANILLA_DEFAULT_CLOUD_COLOR,
+    CloudEnvironment, CloudFrame, CloudShape, CloudTextureImage, VANILLA_DEFAULT_CLOUD_COLOR,
     VANILLA_DEFAULT_CLOUD_HEIGHT,
 };
 pub use crate::entity_models::{

@@ -15,7 +15,7 @@ use crate::{
     clouds::{
         cloud_mesh_key, create_cloud_bind_group, create_cloud_bind_group_layout, create_cloud_gpu,
         create_cloud_pipeline, create_cloud_texture_data, create_cloud_uniform_buffer,
-        write_cloud_uniform, CloudEnvironment, CloudFrame, CloudGpu, CloudTextureData,
+        write_cloud_uniform, CloudEnvironment, CloudFrame, CloudGpu, CloudShape, CloudTextureData,
         CloudTextureImage,
     },
     entity_models::{
@@ -128,6 +128,7 @@ pub struct Renderer {
     pub(super) sky_environment: SkyEnvironment,
     pub(super) cloud_environment: CloudEnvironment,
     pub(super) cloud_frame: CloudFrame,
+    pub(super) cloud_shape: CloudShape,
     pub(super) sky_disc: Option<SkyDiscGpu>,
     pub(super) end_sky_mesh: EndSkyGpu,
     pub(super) end_sky_texture: Option<EndSkyTextureGpu>,
@@ -550,6 +551,7 @@ impl Renderer {
             sky_environment: SkyEnvironment::default(),
             cloud_environment: CloudEnvironment::default(),
             cloud_frame: CloudFrame::default(),
+            cloud_shape: CloudShape::default(),
             sky_disc: None,
             end_sky_mesh,
             end_sky_texture: None,
@@ -1074,11 +1076,25 @@ impl Renderer {
         }
         let old_mesh_key = self.clouds.as_ref().and_then(|clouds| clouds.mesh_key);
         self.cloud_frame = frame;
-        if cloud_mesh_key(self.cloud_texture.as_ref(), frame) != old_mesh_key {
+        if cloud_mesh_key(
+            self.cloud_environment,
+            self.cloud_texture.as_ref(),
+            frame,
+            self.cloud_shape,
+        ) != old_mesh_key
+        {
             self.rebuild_clouds();
         } else {
             self.write_cloud_uniform();
         }
+    }
+
+    pub fn set_cloud_shape(&mut self, shape: CloudShape) {
+        if self.cloud_shape == shape {
+            return;
+        }
+        self.cloud_shape = shape;
+        self.rebuild_clouds();
     }
 
     pub fn upload_end_sky_texture(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
@@ -1119,6 +1135,7 @@ impl Renderer {
             self.cloud_environment,
             self.cloud_texture.as_ref(),
             self.cloud_frame,
+            self.cloud_shape,
         );
         self.write_cloud_uniform();
     }

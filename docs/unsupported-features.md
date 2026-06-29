@@ -400,9 +400,11 @@ When an agent does any of the following, update this file in the same slice:
     official `alpha < 10` empty-cell rule. The flat cloud cells now use the
     vanilla `gameTime` cloud movement and camera cell offset formula
     (`cellX` / `cellZ` mesh key plus `xInCell` / `zInCell` uniform offset).
-    Remaining cloud parity is the real fancy/extruded mesh,
-    day-timeline/cloud color modifiers, dedicated clouds target, and vanilla
-    transparency post-chain sorting.
+    The renderer now defaults to vanilla `CloudStatus.FANCY` and builds the
+    extruded cloud cell faces with vanilla top/bottom camera gates, side-face
+    empty-neighbor checks, interior faces, and face color tints. Remaining
+    cloud parity is day-timeline/cloud color modifiers, dedicated clouds target,
+    and vanilla transparency post-chain sorting.
   - P0 pipeline closeout treats texture-backed / dispatch-owned submission and
     RenderType/order/missing-atlas/dynamic-texture coverage as complete for the
     narrow pipeline scope: entity model tests assert `submit_sequence` across 78
@@ -701,8 +703,9 @@ When an agent does any of the following, update this file in the same slice:
     cloud mesh presentation now consumes these visibility ends with vanilla
     default `CLOUD_COLOR` / `CLOUD_HEIGHT` and now loads vanilla
     `textures/environment/clouds.png` for flat cloud cell geometry with vanilla
-    `gameTime` movement and camera cell offset; remaining visual gaps are the
-    real fancy/extruded cloud mesh, the day timeline's cloud color state,
+    `gameTime` movement and camera cell offset; the renderer also defaults to
+    vanilla fancy/extruded cloud cells with face tint and camera-position face
+    gates. Remaining visual gaps are the day timeline's cloud color state,
     clouds target / transparency post-chain sorting,
     fuller atmosphere presentation, and later custom-pack EnvironmentAttribute
     generalization when a concrete renderer surface exists. Sun/moon presentation
@@ -720,8 +723,7 @@ When an agent does any of the following, update this file in the same slice:
     curve, block-light parabolic tint mix, boss darkening, darkness subtraction,
     and `BrightnessFactor` `notGamma` mix instead of the earlier
     `max(block, sky * 0.95)` scalar approximation. Remaining lighting gaps:
-    real fancy/extruded cloud presentation plus clouds target sorting,
-    the real dynamic 16x16 LightTexture texture pass, provider-specific particle light emission
+    clouds target sorting, the real dynamic 16x16 LightTexture texture pass, provider-specific particle light emission
     overrides, smooth/AO entity light, GUI / entity-in-UI lighting variants,
     and the colored debug fallback's baked-shade approximation. The item-model
     shader now consumes submitted item stack light coords through the same
