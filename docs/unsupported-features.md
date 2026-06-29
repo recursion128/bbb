@@ -338,10 +338,10 @@ When an agent does any of the following, update this file in the same slice:
     the textured path has no residual arm and that colored-only fallback/debug
     geometry is outside the textured submission path. Historical residual wording
     below is retained as evidence of migration slices, not as a current P0 blocker.
-    Remaining colored fallback geometry belongs to non-textured debug/parity work,
-    while remaining target/post-chain render-graph sorting, and more exact
-    lighting remain separate P0 visual or later presentation follow-ups, not
-    narrow pipeline blockers.
+    Remaining colored fallback geometry belongs to non-textured debug/parity work.
+    The major target/post-chain render-graph order is now covered for
+    main/translucent/itemEntity/particles/weather/clouds/entity_outline; remaining
+    target sorting is finer transparency parity, not a narrow pipeline blocker.
   - P0 pipeline closeout also treats the remaining GPU-path fine-grained state as
     explicitly deferred follow-up, not as a blocker for the CPU submission graph:
     the backend currently folds compatible submissions into atlas buckets
@@ -360,9 +360,8 @@ When an agent does any of the following, update this file in the same slice:
     Later GPU work should split remaining currently-coalesced render-type state
     such as no-cull `entityCutout*`, `armorCutoutNoCull`, `Eyes`, `waterMask`,
     and glint / scroll variants into equivalent pipeline state, and reconcile
-    remaining target/post-chain
-    render-graph sorting plus full dynamic LightTexture / darkness-adjusted
-    gamma / diffuse visual parity. The scroll GPU path already separates
+    finer transparency target sorting plus full dynamic LightTexture /
+    darkness-adjusted gamma / diffuse visual parity. The scroll GPU path already separates
     vanilla `breezeWind` as lightmap-lit from emissive additive `energySwirl`.
   - Entity outline target writes now use a dedicated vanilla-shaped
     `core/rendertype_outline` shader: texture alpha is only a zero-alpha discard
@@ -522,7 +521,8 @@ When an agent does any of the following, update this file in the same slice:
     heightmap updated for block changes. Weather precipitation now applies the
     vanilla height-adjustment `TEMPERATURE_NOISE` and the `frozen` biome
     `temperature_modifier`. Remaining cloud/weather parity is finer transparency
-    target sorting.
+    target sorting; the major clouds -> weather -> transparency-chain order is
+    already tested against vanilla `LevelRenderer`.
   - P0 pipeline closeout treats texture-backed / dispatch-owned submission and
     RenderType/order/missing-atlas/dynamic-texture coverage as complete for the
     narrow pipeline scope: entity model tests assert `submit_sequence` across 78
