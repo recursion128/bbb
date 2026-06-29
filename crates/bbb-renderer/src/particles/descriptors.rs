@@ -23,6 +23,15 @@ pub(crate) enum ParticleTickMotionDescriptor {
     NoMotion,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum ParticleLightEmissionDescriptor {
+    #[default]
+    World,
+    FullBright,
+    FullBlock,
+    SmoothBlockByAge,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ParticleLifetimeDescriptor {
     BaseParticle,
@@ -1007,6 +1016,34 @@ impl ParticleDescriptor {
             "BubblePopParticle.Provider" => ParticleTickMotionDescriptor::DirectGravityNoFriction,
             "AttackSweepParticle.Provider" => ParticleTickMotionDescriptor::NoMotion,
             _ => ParticleTickMotionDescriptor::DefaultParticleTick,
+        }
+    }
+
+    pub(crate) fn light_emission(self) -> ParticleLightEmissionDescriptor {
+        match self.provider {
+            // Vanilla overrides `getLightCoords` to return `LightCoordsUtil.FULL_BRIGHT`.
+            "AttackSweepParticle.Provider"
+            | "SquidInkParticle.Provider"
+            | "SquidInkParticle.GlowInkProvider"
+            | "EndRodParticle.Provider"
+            | "HugeExplosionParticle.Provider"
+            | "SonicBoomParticle.Provider"
+            | "GustParticle.Provider"
+            | "GustParticle.SmallProvider" => ParticleLightEmissionDescriptor::FullBright,
+            // Vanilla keeps sky light from the world sample and forces block light to 15.
+            "LavaParticle.Provider"
+            | "SoulParticle.EmissiveProvider"
+            | "SculkChargeParticle.Provider"
+            | "SculkChargePopParticle.Provider" => ParticleLightEmissionDescriptor::FullBlock,
+            // Vanilla uses `LightCoordsUtil.addSmoothBlockEmission(..., (age + partialTick) / lifetime)`.
+            "FlameParticle.Provider"
+            | "FlameParticle.SmallFlameProvider"
+            | "GlowParticle.GlowSquidProvider"
+            | "GlowParticle.ElectricSparkProvider"
+            | "GlowParticle.ScrapeProvider"
+            | "GlowParticle.WaxOffProvider"
+            | "GlowParticle.WaxOnProvider" => ParticleLightEmissionDescriptor::SmoothBlockByAge,
+            _ => ParticleLightEmissionDescriptor::World,
         }
     }
 }
@@ -3108,6 +3145,62 @@ mod tests {
             let lifetime = ParticleLifetimeDescriptor::Explode.sample(&mut random);
             assert!((18..=82).contains(&lifetime));
         }
+    }
+
+    #[test]
+    fn particle_descriptors_map_vanilla_light_emission_overrides() {
+        for particle_id in [
+            "minecraft:sweep_attack",
+            "minecraft:squid_ink",
+            "minecraft:glow_squid_ink",
+            "minecraft:end_rod",
+            "minecraft:explosion",
+            "minecraft:sonic_boom",
+            "minecraft:gust",
+            "minecraft:small_gust",
+        ] {
+            assert_eq!(
+                ParticleDescriptor::for_particle(particle_id).light_emission(),
+                ParticleLightEmissionDescriptor::FullBright,
+                "{particle_id}"
+            );
+        }
+
+        for particle_id in [
+            "minecraft:lava",
+            "minecraft:sculk_soul",
+            "minecraft:sculk_charge",
+            "minecraft:sculk_charge_pop",
+        ] {
+            assert_eq!(
+                ParticleDescriptor::for_particle(particle_id).light_emission(),
+                ParticleLightEmissionDescriptor::FullBlock,
+                "{particle_id}"
+            );
+        }
+
+        for particle_id in [
+            "minecraft:flame",
+            "minecraft:soul_fire_flame",
+            "minecraft:copper_fire_flame",
+            "minecraft:small_flame",
+            "minecraft:glow",
+            "minecraft:electric_spark",
+            "minecraft:scrape",
+            "minecraft:wax_off",
+            "minecraft:wax_on",
+        ] {
+            assert_eq!(
+                ParticleDescriptor::for_particle(particle_id).light_emission(),
+                ParticleLightEmissionDescriptor::SmoothBlockByAge,
+                "{particle_id}"
+            );
+        }
+
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:cloud").light_emission(),
+            ParticleLightEmissionDescriptor::World
+        );
     }
 
     fn assert_descriptor(

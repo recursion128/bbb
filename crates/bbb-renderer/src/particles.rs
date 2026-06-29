@@ -10,9 +10,9 @@ mod descriptors;
 mod gpu;
 
 use descriptors::{
-    select_initial_sprite, sprite_index_for_age, ParticleDescriptor, ParticleQuadSizeCurve,
-    ParticleRandom, ParticleSpriteSelection, ParticleTickMotionDescriptor,
-    DEFAULT_PARTICLE_RANDOM_SEED,
+    select_initial_sprite, sprite_index_for_age, ParticleDescriptor,
+    ParticleLightEmissionDescriptor, ParticleQuadSizeCurve, ParticleRandom,
+    ParticleSpriteSelection, ParticleTickMotionDescriptor, DEFAULT_PARTICLE_RANDOM_SEED,
 };
 pub(super) use gpu::{
     create_particle_atlas_gpu, create_particle_pipeline, ParticleAtlasGpu, ParticleVertex,
@@ -94,6 +94,8 @@ pub(crate) struct ParticleInstance {
     pub(crate) color: [f32; 4],
     #[serde(default = "default_particle_light")]
     pub(crate) light: [f32; 2],
+    #[serde(default)]
+    pub(crate) light_emission: ParticleLightEmissionDescriptor,
     #[serde(default)]
     pub(crate) quad_size_curve: ParticleQuadSizeCurve,
     pub(crate) provider: String,
@@ -331,7 +333,8 @@ impl ParticleRuntimeState {
         F: FnMut([f64; 3]) -> [f32; 2],
     {
         for instance in &mut self.active_instances {
-            instance.light = sanitize_particle_light(light_at_position(instance.position));
+            let sampled_light = sanitize_particle_light(light_at_position(instance.position));
+            instance.light = particle_light_with_emission(instance, sampled_light);
         }
     }
 
@@ -370,6 +373,7 @@ impl ParticleInstance {
             base_quad_size: visual.base_quad_size,
             color: visual.color,
             light: DEFAULT_PARTICLE_LIGHT,
+            light_emission: descriptor.light_emission(),
             quad_size_curve: visual.quad_size_curve,
             provider: descriptor.provider.to_string(),
             friction: descriptor.friction,
@@ -641,6 +645,27 @@ fn sanitize_particle_light(light: [f32; 2]) -> [f32; 2] {
             DEFAULT_PARTICLE_LIGHT[1]
         },
     ]
+}
+
+fn particle_light_with_emission(instance: &ParticleInstance, sampled_light: [f32; 2]) -> [f32; 2] {
+    match instance.light_emission {
+        ParticleLightEmissionDescriptor::World => sampled_light,
+        ParticleLightEmissionDescriptor::FullBright => [1.0, 1.0],
+        ParticleLightEmissionDescriptor::FullBlock => [1.0, sampled_light[1]],
+        ParticleLightEmissionDescriptor::SmoothBlockByAge => {
+            let emission = particle_light_emission_progress(
+                instance.age_ticks,
+                instance.lifetime_ticks,
+                DEFAULT_PARTICLE_RENDER_PARTIAL_TICK,
+            );
+            [(sampled_light[0] + emission).min(1.0), sampled_light[1]]
+        }
+    }
+}
+
+fn particle_light_emission_progress(age_ticks: u32, lifetime_ticks: u32, partial_tick: f32) -> f32 {
+    let lifetime = lifetime_ticks.max(1) as f32;
+    ((age_ticks as f32 + partial_tick.clamp(0.0, 1.0)) / lifetime).clamp(0.0, 1.0)
 }
 
 #[cfg(test)]
@@ -1836,6 +1861,59 @@ mod tests {
     }
 
     #[test]
+    fn particle_runtime_applies_vanilla_particle_light_emission_overrides() {
+        let sampled_light = [2.0 / 15.0, 7.0 / 15.0];
+        let mut particles = ParticleRuntimeState::with_capacities(8, 8);
+        let cloud = test_instance_with_lifetime("minecraft:cloud", 20);
+        let mut flame = test_instance_with_lifetime("minecraft:flame", 20);
+        flame.age_ticks = 4;
+        let mut glow = test_instance_with_lifetime("minecraft:glow", 4);
+        glow.age_ticks = 1;
+        let lava = test_instance_with_lifetime("minecraft:lava", 20);
+        let sculk_soul = test_instance_with_lifetime("minecraft:sculk_soul", 20);
+        let sculk_charge_pop = test_instance_with_lifetime("minecraft:sculk_charge_pop", 20);
+        let attack_sweep = test_instance_with_lifetime("minecraft:sweep_attack", 4);
+        let end_rod = test_instance_with_lifetime("minecraft:end_rod", 60);
+
+        particles.active_instances.push_back(cloud);
+        particles.active_instances.push_back(flame);
+        particles.active_instances.push_back(glow);
+        particles.active_instances.push_back(lava);
+        particles.active_instances.push_back(sculk_soul);
+        particles.active_instances.push_back(sculk_charge_pop);
+        particles.active_instances.push_back(attack_sweep);
+        particles.active_instances.push_back(end_rod);
+
+        particles.refresh_lights(|_| sampled_light);
+
+        assert_eq!(particles.active_instances()[0].light, sampled_light);
+        assert_close_f32(
+            particles.active_instances()[1].light[0],
+            sampled_light[0] + 4.5 / 20.0,
+        );
+        assert_close_f32(particles.active_instances()[1].light[1], sampled_light[1]);
+        assert_close_f32(
+            particles.active_instances()[2].light[0],
+            sampled_light[0] + 1.5 / 4.0,
+        );
+        assert_close_f32(particles.active_instances()[2].light[1], sampled_light[1]);
+        assert_eq!(
+            particles.active_instances()[3].light,
+            [1.0, sampled_light[1]]
+        );
+        assert_eq!(
+            particles.active_instances()[4].light,
+            [1.0, sampled_light[1]]
+        );
+        assert_eq!(
+            particles.active_instances()[5].light,
+            [1.0, sampled_light[1]]
+        );
+        assert_eq!(particles.active_instances()[6].light, [1.0, 1.0]);
+        assert_eq!(particles.active_instances()[7].light, [1.0, 1.0]);
+    }
+
+    #[test]
     fn particle_billboard_vertices_emit_camera_facing_textured_quad() {
         let mut instance = test_instance_with_lifetime("minecraft:cloud", 20);
         instance.position = [1.0, 2.0, 3.0];
@@ -1908,6 +1986,7 @@ mod tests {
             base_quad_size: DEFAULT_PARTICLE_QUAD_SIZE,
             color: [1.0, 1.0, 1.0, 1.0],
             light: DEFAULT_PARTICLE_LIGHT,
+            light_emission: descriptor.light_emission(),
             quad_size_curve: ParticleQuadSizeCurve::Constant,
             provider: descriptor.provider.to_string(),
             friction: descriptor.friction,
