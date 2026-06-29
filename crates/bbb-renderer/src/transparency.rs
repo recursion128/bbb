@@ -17,9 +17,15 @@ var translucent_texture: texture_2d<f32>;
 var translucent_depth: texture_depth_2d;
 
 @group(0) @binding(4)
-var clouds_texture: texture_2d<f32>;
+var item_entity_texture: texture_2d<f32>;
 
 @group(0) @binding(5)
+var item_entity_depth: texture_depth_2d;
+
+@group(0) @binding(6)
+var clouds_texture: texture_2d<f32>;
+
+@group(0) @binding(7)
 var clouds_depth: texture_depth_2d;
 
 struct VertexOut {
@@ -29,12 +35,12 @@ struct VertexOut {
 
 @vertex
 fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOut {
-    let positions = array<vec2<f32>, 3>(
-        vec2<f32>(-1.0, -1.0),
-        vec2<f32>(3.0, -1.0),
-        vec2<f32>(-1.0, 3.0),
-    );
-    let position = positions[vertex_index];
+    var position = vec2<f32>(-1.0, -1.0);
+    if (vertex_index == 1u) {
+        position = vec2<f32>(3.0, -1.0);
+    } else if (vertex_index == 2u) {
+        position = vec2<f32>(-1.0, 3.0);
+    }
     var out: VertexOut;
     out.position = vec4<f32>(position, 0.0, 1.0);
     out.uv = vec2<f32>(position.x * 0.5 + 0.5, 0.5 - position.y * 0.5);
@@ -48,7 +54,7 @@ fn blend(dst: vec3<f32>, src: vec4<f32>) -> vec3<f32> {
 struct LayerStack {
     colors: array<vec4<f32>, 6>,
     depths: array<f32, 6>,
-    active: u32,
+    active_count: u32,
 };
 
 fn try_insert(stack: LayerStack, color: vec4<f32>, depth: f32) -> LayerStack {
@@ -57,11 +63,11 @@ fn try_insert(stack: LayerStack, color: vec4<f32>, depth: f32) -> LayerStack {
         return out;
     }
 
-    out.colors[out.active] = color;
-    out.depths[out.active] = depth;
+    out.colors[out.active_count] = color;
+    out.depths[out.active_count] = depth;
 
-    var jj = out.active;
-    out.active = out.active + 1u;
+    var jj = out.active_count;
+    out.active_count = out.active_count + 1u;
     while (jj > 0u && out.depths[jj] > out.depths[jj - 1u]) {
         let ii = jj - 1u;
         let depth_temp = out.depths[ii];
@@ -108,13 +114,18 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     );
     stack = try_insert(
         stack,
+        textureLoad(item_entity_texture, pixel, 0),
+        textureLoad(item_entity_depth, pixel, 0),
+    );
+    stack = try_insert(
+        stack,
         textureLoad(clouds_texture, pixel, 0),
         textureLoad(clouds_depth, pixel, 0),
     );
 
     var texel_accum = stack.colors[0].rgb;
     var ii = 1u;
-    while (ii < stack.active) {
+    while (ii < stack.active_count) {
         texel_accum = blend(texel_accum, stack.colors[ii]);
         ii = ii + 1u;
     }
@@ -129,6 +140,12 @@ pub(super) struct MainTarget {
 }
 
 pub(super) struct TranslucentTarget {
+    pub(super) _texture: wgpu::Texture,
+    pub(super) view: wgpu::TextureView,
+    pub(super) depth: DepthTarget,
+}
+
+pub(super) struct ItemEntityTarget {
     pub(super) _texture: wgpu::Texture,
     pub(super) view: wgpu::TextureView,
     pub(super) depth: DepthTarget,
@@ -196,6 +213,26 @@ pub(super) fn create_transparency_combine_bind_group_layout(
             },
             wgpu::BindGroupLayoutEntry {
                 binding: 5,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Depth,
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    multisampled: false,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 6,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    multisampled: false,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 7,
                 visibility: wgpu::ShaderStages::FRAGMENT,
                 ty: wgpu::BindingType::Texture {
                     sample_type: wgpu::TextureSampleType::Depth,
@@ -289,12 +326,66 @@ fn create_translucent_depth_target(device: &wgpu::Device, width: u32, height: u3
     }
 }
 
+pub(super) fn create_item_entity_target(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    width: u32,
+    height: u32,
+) -> ItemEntityTarget {
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("bbb-item-entity-target-color"),
+        size: wgpu::Extent3d {
+            width: width.max(1),
+            height: height.max(1),
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+        view_formats: &[],
+    });
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let depth = create_item_entity_depth_target(device, width, height);
+
+    ItemEntityTarget {
+        _texture: texture,
+        view,
+        depth,
+    }
+}
+
+fn create_item_entity_depth_target(device: &wgpu::Device, width: u32, height: u32) -> DepthTarget {
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("bbb-item-entity-target-depth"),
+        size: wgpu::Extent3d {
+            width: width.max(1),
+            height: height.max(1),
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: DEPTH_FORMAT,
+        usage: DEPTH_TARGET_USAGE,
+        view_formats: &[],
+    });
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+    DepthTarget {
+        _texture: texture,
+        view,
+    }
+}
+
 pub(super) fn create_transparency_combine_bind_group(
     device: &wgpu::Device,
     layout: &wgpu::BindGroupLayout,
     main_target: &MainTarget,
     main_depth: &DepthTarget,
     translucent_target: &TranslucentTarget,
+    item_entity_target: &ItemEntityTarget,
     cloud_target: &CloudTarget,
 ) -> TransparencyCombineBindGroup {
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -319,10 +410,18 @@ pub(super) fn create_transparency_combine_bind_group(
             },
             wgpu::BindGroupEntry {
                 binding: 4,
-                resource: wgpu::BindingResource::TextureView(&cloud_target.view),
+                resource: wgpu::BindingResource::TextureView(&item_entity_target.view),
             },
             wgpu::BindGroupEntry {
                 binding: 5,
+                resource: wgpu::BindingResource::TextureView(&item_entity_target.depth.view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 6,
+                resource: wgpu::BindingResource::TextureView(&cloud_target.view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 7,
                 resource: wgpu::BindingResource::TextureView(&cloud_target.depth.view),
             },
         ],
@@ -380,10 +479,36 @@ pub(super) fn create_transparency_combine_pipeline(
 
 #[cfg(test)]
 mod tests {
-    use super::TRANSPARENCY_COMBINE_SHADER;
+    use super::{
+        create_transparency_combine_bind_group_layout, create_transparency_combine_pipeline,
+        TRANSPARENCY_COMBINE_SHADER,
+    };
+
+    fn request_test_device() -> Option<wgpu::Device> {
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::PRIMARY,
+            ..Default::default()
+        });
+        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::LowPower,
+            compatible_surface: None,
+            force_fallback_adapter: false,
+        }))?;
+        let Ok((device, _queue)) = pollster::block_on(adapter.request_device(
+            &wgpu::DeviceDescriptor {
+                label: Some("bbb-transparency-combine-test-device"),
+                required_features: wgpu::Features::empty(),
+                required_limits: wgpu::Limits::downlevel_defaults(),
+            },
+            None,
+        )) else {
+            return None;
+        };
+        Some(device)
+    }
 
     #[test]
-    fn transparency_combine_samples_main_translucent_and_cloud_color_depth_layers() {
+    fn transparency_combine_samples_main_translucent_item_entity_and_cloud_color_depth_layers() {
         assert!(
             TRANSPARENCY_COMBINE_SHADER.contains("var main_texture: texture_2d<f32>"),
             "combine shader samples the renderer-owned main color texture"
@@ -399,6 +524,14 @@ mod tests {
         assert!(
             TRANSPARENCY_COMBINE_SHADER.contains("var translucent_depth: texture_depth_2d"),
             "combine shader samples TranslucentDepth"
+        );
+        assert!(
+            TRANSPARENCY_COMBINE_SHADER.contains("var item_entity_texture: texture_2d<f32>"),
+            "combine shader samples the item-entity color target"
+        );
+        assert!(
+            TRANSPARENCY_COMBINE_SHADER.contains("var item_entity_depth: texture_depth_2d"),
+            "combine shader samples ItemEntityDepth"
         );
         assert!(
             TRANSPARENCY_COMBINE_SHADER.contains("var clouds_texture: texture_2d<f32>"),
@@ -425,16 +558,32 @@ mod tests {
     }
 
     #[test]
-    fn transparency_combine_inserts_translucent_before_clouds_like_vanilla_shader() {
+    fn transparency_combine_inserts_targets_in_vanilla_shader_order() {
         let translucent = TRANSPARENCY_COMBINE_SHADER
             .find("textureLoad(translucent_texture")
             .expect("TranslucentSampler equivalent is inserted");
+        let item_entity = TRANSPARENCY_COMBINE_SHADER
+            .find("textureLoad(item_entity_texture")
+            .expect("ItemEntitySampler equivalent is inserted");
         let clouds = TRANSPARENCY_COMBINE_SHADER
             .find("textureLoad(clouds_texture")
             .expect("CloudsSampler equivalent is inserted");
         assert!(
-            translucent < clouds,
-            "vanilla post/transparency.fsh calls try_insert(Translucent) before try_insert(Clouds)"
+            translucent < item_entity && item_entity < clouds,
+            "vanilla post/transparency.fsh calls try_insert(Translucent), then ItemEntity, then Clouds"
+        );
+    }
+
+    #[test]
+    fn transparency_combine_pipeline_validates_wgsl_on_wgpu_device() {
+        let Some(device) = request_test_device() else {
+            return;
+        };
+        let bind_group_layout = create_transparency_combine_bind_group_layout(&device);
+        let _pipeline = create_transparency_combine_pipeline(
+            &device,
+            wgpu::TextureFormat::Rgba8Unorm,
+            &bind_group_layout,
         );
     }
 }
