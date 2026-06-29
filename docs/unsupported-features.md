@@ -452,7 +452,11 @@ When an agent does any of the following, update this file in the same slice:
     post chain. Texture-backed blended model submissions now queue per-submission
     upload ranges and flush by vanilla `SubmitNodeStorage` order, camera-distance
     descending, and stable submit insertion; camera pose changes rebuild those
-    upload buffers from the current eye-position.
+    upload buffers from the current eye-position. Item-frame map decoration name
+    labels now follow vanilla `MapRenderer` order-1 text submission placement:
+    they draw in the main-target translucent feature phase after blended entity
+    model features and before crumbling / translucent terrain, rather than in the
+    earlier solid item-feature block.
     Flat/generated item material translucency metadata is still deferred to item
     presentation because that material source is not modeled yet; it is no longer
     a narrow render-pipeline path blocker. Remaining render-graph parity still

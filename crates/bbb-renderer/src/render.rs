@@ -310,20 +310,6 @@ impl Renderer {
                 item_model_draw_calls += 1;
             }
         }
-        let (map_text_vertices, map_text_indices) = self.collect_item_frame_map_text_geometry();
-        if !map_text_indices.is_empty() {
-            if let Some(atlas) = &self.item_frame_map_text_font_atlas {
-                self.draw_item_model_geometry(
-                    &mut encoder,
-                    main_view,
-                    &map_text_vertices,
-                    &map_text_indices,
-                    &atlas.bind_group,
-                );
-                pipeline_switches += 1;
-                item_model_draw_calls += 1;
-            }
-        }
         let (flat_item_vertices, flat_item_indices) = self.collect_flat_item_model_geometry();
         if !flat_item_indices.is_empty() {
             if let Some(atlas) = &self.item_entity_atlas {
@@ -430,6 +416,25 @@ impl Renderer {
                 &mut pipeline_switches,
                 &mut entity_model_draw_calls,
             );
+        }
+
+        // Vanilla MapRenderer submits decoration name labels through
+        // submitNodeCollector.order(1).submitText(...), so TextFeatureRenderer draws them during
+        // renderTranslucentFeatures after order-0 model/custom geometry and before crumbling /
+        // translucent terrain. The current renderer only has item-frame map labels for this path.
+        let (map_text_vertices, map_text_indices) = self.collect_item_frame_map_text_geometry();
+        if !map_text_indices.is_empty() {
+            if let Some(atlas) = &self.item_frame_map_text_font_atlas {
+                self.draw_item_model_geometry(
+                    &mut encoder,
+                    main_view,
+                    &map_text_vertices,
+                    &map_text_indices,
+                    &atlas.bind_group,
+                );
+                pipeline_switches += 1;
+                item_model_draw_calls += 1;
+            }
         }
 
         if let Some(overlays) = &self.block_destroy_overlays {
@@ -1919,6 +1924,47 @@ mod tests {
         assert!(
             source[block_destroy..translucent_target].contains("view: &self.depth.view"),
             "block destroy overlays depth-test against the renderer-owned main depth target"
+        );
+    }
+
+    #[test]
+    fn item_frame_map_text_draws_in_translucent_text_feature_phase() {
+        let source = include_str!("render.rs");
+        let copy_particles = depth_copy_to(source, "texture: &self.particle_target.depth._texture");
+        let entity_pass = source
+            .find("label: Some(ENTITY_TRANSLUCENT_FEATURE_PASS_LABEL)")
+            .expect("entity translucent feature pass label is used");
+        let draw_features = source[entity_pass..]
+            .find("self.draw_entity_translucent_features(")
+            .map(|index| entity_pass + index)
+            .expect("entity translucent feature helper is called from the pass");
+        let map_text_collect = source[draw_features..]
+            .find("let (map_text_vertices, map_text_indices)")
+            .map(|index| draw_features + index)
+            .expect("item-frame map text geometry is collected after model translucent features");
+        let map_text_draw = source[map_text_collect..]
+            .find("self.draw_item_model_geometry(")
+            .map(|index| map_text_collect + index)
+            .expect("item-frame map text geometry is drawn");
+        let block_destroy = source
+            .find("label: Some(\"bbb-native-block-destroy-overlay-pass\")")
+            .expect("block destroy overlay pass label is used");
+        let translucent_target = source
+            .find("label: Some(TRANSLUCENT_TARGET_PASS_LABEL)")
+            .expect("translucent target pass label is used");
+
+        assert!(
+            copy_particles < entity_pass
+                && entity_pass < draw_features
+                && draw_features < map_text_collect
+                && map_text_collect < map_text_draw
+                && map_text_draw < block_destroy
+                && block_destroy < translucent_target,
+            "vanilla MapRenderer decoration labels are order(1) text submits drawn during renderTranslucentFeatures before crumbling and translucent terrain"
+        );
+        assert!(
+            source[map_text_draw..block_destroy].contains("main_view"),
+            "item-frame map text writes the renderer-owned main color target"
         );
     }
 

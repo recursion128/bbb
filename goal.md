@@ -422,6 +422,18 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。当前 checkl
   GPU draw 仍按 atlas 与 target 拆分，跨 atlas / itemEntity/main target 的完全
   全局混排继续归入 render-graph target sorting polish；不阻塞本 slice。
 
+- [x] 2026-06-29 item-frame map text feature-order slice：vanilla
+  `MapRenderer.render` 将 map base surface / decoration sprite 作为 order-0
+  custom geometry 提交，decoration name label 则通过
+  `submitNodeCollector.order(1).submitText(...)` 进入
+  `TextFeatureRenderer.renderTranslucent()`。renderer 现在不再把 item-frame
+  map label text 画在 solid item feature 段，而是在 main-target translucent
+  feature phase 中、entity blended model features 之后、block-destroy /
+  translucent terrain 之前绘制；测试钉住 depth copies、entity translucent
+  features、map text、crumbling 和 translucent target 的相对顺序。剩余
+  block/text/name ordering 继续保留给通用 name tag、sign/display text 和 block
+  feature submissions。
+
 ### [x] P0：提交图与 RenderType 语义（状态：狭义 pipeline 已完成）
 
 阶段完成：
