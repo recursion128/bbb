@@ -1983,8 +1983,12 @@ When an agent does any of the following, update this file in the same slice:
         post-processing, native keeps separate memory/disk caches for cape and
         elytra textures, profile cape/elytra URLs queue async downloads, and
         the main loop uploads successful results into a renderer-owned
-        variable-size dynamic player texture atlas. `PlayerSkin.Patch`
-        resource-texture overrides are also covered for body/cape/elytra:
+        variable-size dynamic player texture atlas. Renderer atlas construction
+        rejects duplicate dynamic profile texture handles plus zero-sized or
+        malformed RGBA inputs before folding geometry, matching vanilla's
+        one-texture-location-per-resolved-skin/cape/elytra boundary without
+        allowing atlas handle overwrite or invalid UV entries.
+        `PlayerSkin.Patch` resource-texture overrides are also covered for body/cape/elytra:
         native resolves the patch `texture_path` through the pack resource
         stack, decodes body skins into the dynamic player-skin upload path,
         decodes cape/elytra PNGs without skin post-processing, and avoids the

@@ -919,6 +919,33 @@ fn dynamic_player_texture_atlas_rejects_bad_profile_texture_dimensions() {
 }
 
 #[test]
+fn dynamic_player_texture_atlas_rejects_duplicate_profile_texture_handles() {
+    let err = build_dynamic_player_texture_atlas(&[
+        dynamic_player_texture_image(88, [2, 2], 10),
+        dynamic_player_texture_image(88, [1, 3], 20),
+    ])
+    .unwrap_err();
+
+    assert!(err
+        .to_string()
+        .contains("duplicate dynamic player texture handle 88"));
+}
+
+#[test]
+fn dynamic_player_texture_atlas_rejects_zero_sized_profile_textures() {
+    let err = build_dynamic_player_texture_atlas(&[DynamicPlayerTextureImage {
+        handle: 89,
+        size: [0, 2],
+        rgba: Vec::new(),
+    }])
+    .unwrap_err();
+
+    assert!(err
+        .to_string()
+        .contains("dynamic player texture 89 has zero-sized dimensions"));
+}
+
+#[test]
 fn ready_dynamic_player_texture_submission_uses_dynamic_texture_atlas_bucket() {
     let (static_atlas, _) =
         build_entity_model_texture_atlas(&steve_player_texture_images()).unwrap();
