@@ -5055,12 +5055,15 @@ When an agent does any of the following, update this file in the same slice:
       reference, texture-backed cutout emission, official PNG atlas upload/bind/sample
       path, and the static `MinecartModel` (no `setupAnim`) shared by both render
       paths. Tests now pin explicit submission metadata for vanilla `entityCutout`,
-      white tint, `entity_model_root_transform`, `minecraft:minecart#main`, and
-      `(order, submit_sequence) == (0, 0)`, including entity light coords and
-      vanilla `OverlayTexture.NO_OVERLAY`, with folded cutout vertices inheriting that
-      metadata. The `AbstractMinecartRenderer` rail-follow transform (along-track
-      position lerp, slope tilt, hover, the TNT/spawner `displayOffset` and 0.75x
-      block-content scale), the chest/furnace/hopper/command-block/TNT/spawner content
+      white tint, `minecraft:minecart#main`, and `(order, submit_sequence) == (0, 0)`,
+      including entity light coords and vanilla `OverlayTexture.NO_OVERLAY`, with
+      folded cutout vertices inheriting that metadata. The base oldRender/no-rail root
+      transform now follows `AbstractMinecartRenderer.submit` for per-id `offsetSeed`
+      hover jitter, `translate(0, 0.375, 0)`, `Ry(180 - yRot)`, `Rz(-xRot)`, and
+      `scale(-1, -1, 1)`. Rail-follow `posOnRail` / `frontPos` / `backPos`
+      along-track translation and slope pitch, NewMinecartBehavior `renderPos` /
+      newRender root, hurt roll, the TNT/spawner `displayOffset` and 0.75x
+      block-content scale, the chest/furnace/hopper/command-block/TNT/spawner content
       models, and their block-content light hookup remain unsupported; the minecart
       body submission light/overlay metadata is covered
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic

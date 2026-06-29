@@ -76,6 +76,47 @@ fn minecart_mesh_uses_vanilla_body_layer_geometry() {
 }
 
 #[test]
+fn minecart_jitter_matches_vanilla_offset_seed_formula() {
+    assert_close3(
+        minecart_render_jitter_offset(1),
+        [0.00175, 0.00075, 0.00175],
+    );
+    assert_close3(
+        minecart_render_jitter_offset(2),
+        [0.00175, -0.00125, 0.00025],
+    );
+    assert_close3(
+        minecart_render_jitter_offset(41),
+        [-0.00175, 0.00175, 0.00025],
+    );
+
+    for offset in [-1, 0, 1, 2, 41, i32::MAX]
+        .into_iter()
+        .map(minecart_render_jitter_offset)
+    {
+        assert!(offset.iter().all(|component| component.abs() <= 0.00175));
+    }
+}
+
+#[test]
+fn minecart_root_transform_matches_vanilla_old_render_without_rail() {
+    let instance =
+        EntityModelInstance::minecart(41, [2.0, 64.0, -3.0], 45.0).with_head_look(0.0, -10.0);
+    let expected = Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_translation(Vec3::from_array([-0.00175, 0.00175, 0.00025]))
+        * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))
+        * Mat4::from_rotation_y((180.0_f32 - instance.render_state.body_rot).to_radians())
+        * Mat4::from_rotation_z((-instance.render_state.head_pitch).to_radians())
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0));
+
+    assert_close_transform(minecart_model_root_transform(instance), expected);
+    assert_ne!(
+        minecart_model_root_transform(instance),
+        entity_model_root_transform(instance)
+    );
+}
+
+#[test]
 fn minecart_textured_mesh_matches_colored_geometry_and_vanilla_uvs() {
     let (atlas, _) = build_entity_model_texture_atlas(&minecart_texture_images()).unwrap();
     let instance = EntityModelInstance::minecart(1, [0.0, 64.0, 0.0], 0.0)
@@ -91,7 +132,7 @@ fn minecart_textured_mesh_matches_colored_geometry_and_vanilla_uvs() {
     assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
     assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(submit.transform, entity_model_root_transform(instance));
+    assert_eq!(submit.transform, minecart_model_root_transform(instance));
     assert_eq!(submit.light, instance.render_state.shader_light());
     assert_eq!(submit.overlay, [0.0, 10.0]);
     assert_ne!(submit.overlay, instance.render_state.overlay_coords());
@@ -125,4 +166,17 @@ fn minecart_texture_images() -> Vec<EntityModelTextureImage> {
             EntityModelTextureImage::new(*texture, vec![index as u8; len])
         })
         .collect()
+}
+
+fn assert_close_transform(actual: Mat4, expected: Mat4) {
+    for (actual, expected) in actual
+        .to_cols_array()
+        .into_iter()
+        .zip(expected.to_cols_array())
+    {
+        assert!(
+            (actual - expected).abs() < 1.0e-5,
+            "expected {expected}, got {actual}"
+        );
+    }
 }

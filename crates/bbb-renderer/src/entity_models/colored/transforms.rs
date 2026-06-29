@@ -666,6 +666,37 @@ pub(in crate::entity_models) fn boat_bubble_transform(instance: EntityModelInsta
     }
 }
 
+/// Vanilla `AbstractMinecartRenderer.submit` old-render path without rail sample data: the renderer
+/// applies the deterministic per-id hover jitter, lifts the cart by `0.375`, rotates by
+/// `Axis.YP.rotationDegrees(180 - yRot)` then `Axis.ZP.rotationDegrees(-xRot)`, and finally flips
+/// the model with `scale(-1, -1, 1)`. Rail-follow position lerp/slope, new-render lerp, hurt roll,
+/// and display-block contents remain explicit follow-up gaps.
+pub(in crate::entity_models) fn minecart_model_root_transform(
+    instance: EntityModelInstance,
+) -> Mat4 {
+    let jitter = Vec3::from_array(minecart_render_jitter_offset(instance.entity_id));
+    Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_translation(jitter)
+        * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))
+        * Mat4::from_rotation_y((180.0 - instance.render_state.body_rot).to_radians())
+        * Mat4::from_rotation_z((-instance.render_state.head_pitch).to_radians())
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+}
+
+/// Vanilla `AbstractMinecartRenderer.extractRenderState` offsetSeed and submit-time jitter:
+/// `seed = id * 493286711L; offsetSeed = seed * seed * 4392167121L + seed * 98761L`, then each axis
+/// samples three shifted bits into a `[-0.00175, 0.00175]` world-unit nudge.
+pub(in crate::entity_models) fn minecart_render_jitter_offset(entity_id: i32) -> [f32; 3] {
+    let seed = i64::from(entity_id).wrapping_mul(493_286_711);
+    let offset_seed = seed
+        .wrapping_mul(seed)
+        .wrapping_mul(4_392_167_121_i64)
+        .wrapping_add(seed.wrapping_mul(98_761));
+
+    let component = |shift: u32| ((((offset_seed >> shift) & 7) as f32 + 0.5) / 8.0 - 0.5) * 0.004;
+    [component(16), component(20), component(24)]
+}
+
 pub(in crate::entity_models) fn slime_model_root_transform(
     instance: EntityModelInstance,
     size: i32,

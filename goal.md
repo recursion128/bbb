@@ -1239,6 +1239,15 @@ blocker。
     submission light/overlay metadata 已由 renderer tests pin 住；剩余只随
     rail-follow transform 与 chest/furnace/hopper/command-block/TNT/spawner
     内容模型的 block-content light hookup 继续跟踪。
+  - [x] base oldRender/no-rail root transform：按 vanilla
+    `AbstractMinecartRenderer.submit` 覆盖 per-id `offsetSeed` jitter、
+    `translate(0, 0.375, 0)`、`Ry(180 - yRot)`、`Rz(-xRot)` 和
+    `scale(-1, -1, 1)`；tests pin 固定 id jitter、root transform 顺序、
+    submission transform / render type / tint / light / overlay / order。
+  - [ ] rail-follow `posOnRail` / `frontPos` / `backPos` 平移与坡度 pitch、
+    NewMinecartBehavior `renderPos`/newRender root、hurt roll、display block
+    transform/content/light hookup 仍作为 P1 Minecart 剩余项，非狭义 P0
+    pipeline blocker。
 - Boat / raft：
   - [x] paddle rowing animation（world metadata/passenger gate -> native render state -> renderer paddle pose）
   - [x] hurt/damage roll（VehicleEntity metadata -> native render state -> boat root transform）
