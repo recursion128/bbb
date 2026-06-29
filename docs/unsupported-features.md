@@ -4499,7 +4499,9 @@ When an agent does any of the following, update this file in the same slice:
       official PNG atlas upload/bind/sample path, and the shared vanilla
       `setupAnim` pectoral/blue fin wiggle (`right.zRot = -0.2 + 0.4 · sin(ageInTicks ·
       0.2)`, left negated, set absolutely over the rest pose, on both render paths).
-      Broader lighting presentation remains unsupported
+      The old broader-lighting wording is stale because the base submission
+      light/overlay metadata is covered here and global LightTexture / gamma
+      parity is tracked by the completed P0 lighting pipeline
     - squid and glow squid entities are wired end to end: the native entity scene
       (`entity_scene.rs`) projects vanilla type ids `127` (squid) / `61` (glow squid)
       to the real `SquidModel` (the glow variant keyed off the type id and the baby flag
@@ -4528,8 +4530,11 @@ When an agent does any of the following, update this file in the same slice:
       `DATA_DARK_TICKS_REMAINING` int at index 18 and boosts the packed block light to
       `max(block, (int)clampedLerp(1 − darkTicks/10, 0, 15))` — full bright while undamaged, dimming for
       ~100 ticks after a hurt and ramping back over the final 10). Note 26.1 has NO separate glow-squid
-      emissive overlay/texture; the glow is purely this block-light override. Broader lighting
-      presentation remains unsupported. The `Squid.aiStep` swim integration IS now projected client-side
+      emissive overlay/texture; the glow is purely this block-light override. The
+      old broader-lighting wording is stale because the base submission
+      light/overlay metadata and glow-squid block-light override are covered here,
+      and global LightTexture / gamma parity is tracked by the completed P0
+      lighting pipeline. The `Squid.aiStep` swim integration IS now projected client-side
       (a `SquidAnimationState` accumulator in `entities/animations.rs`: `tentacleSpeed`
       seeded from the entity id via the Java `Random` LCG, the `tentacleMovement`
       half-cycle clamped at `2π` with the server event-`19` reset, `tentacleAngle =
@@ -4562,7 +4567,10 @@ When an agent does any of the following, update this file in the same slice:
       `RenderTypes::entityCutout`; the top fin keeps its negative `texOffs(20, -6)` V
       origin) while preserving explicit submission metadata for `ModelLayers.COD`, texture, white tint,
       water/beached root transform, per-entity light/overlay coords, and `order(0)`, and the official PNG atlas
-      upload/bind/sample path (colored and textured). Full vanilla dynamic lighting parity remains deferred
+      upload/bind/sample path (colored and textured). The old full-dynamic-lighting
+      wording is stale because the base submission light/overlay metadata is
+      covered here and global LightTexture / gamma parity is tracked by the
+      completed P0 lighting pipeline
     - salmon entities are wired end to end: the native entity scene (`entity_scene.rs`)
       projects vanilla type id `110` to the real `SalmonModel`, decoding the synced
       `Salmon.Variant` size (`DATA_TYPE`, index 17, ids `0/1/2` clamped, default MEDIUM)
@@ -4588,7 +4596,9 @@ When an agent does any of the following, update this file in the same slice:
       keeping its negative `texOffs(-4, 0)` U origin) while preserving explicit
       submission metadata for texture, white tint, water/beached/size root transform,
       `order(0)`, light, and hurt/white overlay, and the official PNG atlas upload/bind/sample path (colored and
-      textured). Broader lighting presentation remains unsupported
+      textured). The old broader-lighting wording is stale because the base
+      submission light/overlay metadata is covered here and global LightTexture /
+      gamma parity is tracked by the completed P0 lighting pipeline
     - tropical fish entities are wired end to end: the native entity scene
       (`entity_scene.rs`) projects vanilla type id `136` to the real tropical fish model,
       decoding the body shape from the synced packed variant (`DATA_ID_TYPE_VARIANT`,
