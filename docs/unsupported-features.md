@@ -1600,7 +1600,12 @@ When an agent does any of the following, update this file in the same slice:
     branches plus the unsupported-format diagnostic. Surface format selection is
     covered as well: the renderer prefers the sRGB BGRA/RGBA 8-bit formats,
     falls back to the unorm BGRA/RGBA variants, and rejects non-readback formats
-    before a screenshot can be requested.
+    before a screenshot can be requested. Headless framebuffer readback is also
+    pinned by `hud_block_item_renders_visible_pixels_in_its_slot`: it renders to
+    an `Rgba8Unorm` `COPY_SRC` target, reads the pixels back, and skips the
+    assertion when the machine has no GPU or software adapter, recording the
+    llvmpipe/platform fallback boundary instead of making adapter availability a
+    correctness failure.
   - Renderer draws:
     - vanilla-shaped top sky disc from `SKY_COLOR`
     - vanilla-shaped sunrise/sunset fan from `SUNRISE_SUNSET_COLOR` / `SUN_ANGLE`
