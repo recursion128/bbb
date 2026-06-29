@@ -497,41 +497,6 @@ impl Renderer {
             outline_composite_draw_calls += 1;
         }
 
-        if let Some(clouds) = &self.clouds {
-            if self.fog_environment.cloud_end > 0.0 {
-                {
-                    let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                        label: Some(CLOUDS_PASS_LABEL),
-                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                            view: &self.cloud_target.view,
-                            resolve_target: None,
-                            ops: wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                                store: wgpu::StoreOp::Store,
-                            },
-                        })],
-                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                            view: &self.cloud_target.depth.view,
-                            depth_ops: Some(wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(1.0),
-                                store: wgpu::StoreOp::Store,
-                            }),
-                            stencil_ops: None,
-                        }),
-                        occlusion_query_set: None,
-                        timestamp_writes: None,
-                    });
-                    pass.set_pipeline(&self.cloud_pipeline);
-                    pipeline_switches += 1;
-                    pass.set_bind_group(0, &self.terrain_bind_group, &[]);
-                    pass.set_bind_group(1, &self.cloud_bind_group, &[]);
-                    pass.set_vertex_buffer(0, clouds.vertex_buffer.slice(..));
-                    pass.draw(0..clouds.vertex_count, 0..1);
-                    sky_draw_calls += 1;
-                }
-            }
-        }
-
         encoder.copy_texture_to_texture(
             wgpu::ImageCopyTexture {
                 texture: &self.depth._texture,
@@ -888,6 +853,41 @@ impl Renderer {
                 pass.set_vertex_buffer(0, vertex_buffer.slice(..));
                 pass.draw(0..particle_vertices.len() as u32, 0..1);
                 particle_draw_calls += 1;
+            }
+        }
+
+        if let Some(clouds) = &self.clouds {
+            if self.fog_environment.cloud_end > 0.0 {
+                {
+                    let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some(CLOUDS_PASS_LABEL),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view: &self.cloud_target.view,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                                store: wgpu::StoreOp::Store,
+                            },
+                        })],
+                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                            view: &self.cloud_target.depth.view,
+                            depth_ops: Some(wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(1.0),
+                                store: wgpu::StoreOp::Store,
+                            }),
+                            stencil_ops: None,
+                        }),
+                        occlusion_query_set: None,
+                        timestamp_writes: None,
+                    });
+                    pass.set_pipeline(&self.cloud_pipeline);
+                    pipeline_switches += 1;
+                    pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+                    pass.set_bind_group(1, &self.cloud_bind_group, &[]);
+                    pass.set_vertex_buffer(0, clouds.vertex_buffer.slice(..));
+                    pass.draw(0..clouds.vertex_count, 0..1);
+                    sky_draw_calls += 1;
+                }
             }
         }
 
@@ -1614,11 +1614,11 @@ mod tests {
         assert!(
             world_item_models < world_item_draw
                 && world_item_draw < outline_composite
-                && outline_composite < clouds
-                && clouds < copy_translucent
+                && outline_composite < copy_translucent
+                && copy_translucent < clouds
                 && copy_translucent < entity_translucent_features
                 && entity_translucent_features < translucent_target,
-            "vanilla ItemFeatureRenderer solid output contributes to main depth before outline/cloud post passes, target depth copies, and translucent terrain"
+            "vanilla ItemFeatureRenderer solid output contributes to main depth before outline post passes, target depth copies, and translucent terrain"
         );
         assert!(
             source[world_item_draw..copy_translucent].contains("main_view"),
@@ -1738,59 +1738,58 @@ mod tests {
             "clouds draw after the entity outline post-chain like vanilla LevelRenderer"
         );
         assert!(
-            clouds < cloud_pipeline && cloud_pipeline < translucent,
-            "cloud mesh draws into the dedicated clouds pass before later world passes"
-        );
-        assert!(
-            clouds < entity_translucent_features
-                && entity_translucent_features < translucent
+            entity_translucent_features < translucent
                 && entity_translucent_features < block_destroy
                 && block_destroy < translucent
                 && translucent < item_entity_target
                 && item_entity_target < particle_target
+                && particle_target < clouds
+                && clouds < cloud_pipeline
+                && cloud_pipeline < weather_target
                 && particle_target < weather_target
                 && weather_target < combine
                 && combine < hud,
-            "cloud target is consumed by the transparency combine after target-backed world passes and before HUD"
+            "vanilla frame graph runs cloud pass after the main pass/particles and before weather and transparency combine"
         );
         assert!(
-            source[clouds..combine].contains("view: &self.cloud_target.view"),
+            source[clouds..weather_target].contains("view: &self.cloud_target.view"),
             "cloud mesh writes the renderer-owned clouds color target"
         );
         assert!(
-            source[clouds..combine].contains("view: &self.cloud_target.depth.view"),
+            source[clouds..weather_target].contains("view: &self.cloud_target.depth.view"),
             "cloud mesh writes the renderer-owned clouds depth target"
         );
         assert!(
-            source[clouds..combine].contains("view: translucent_view"),
+            source[translucent..combine].contains("view: translucent_view"),
             "translucent terrain writes the renderer-owned translucent color target"
         );
         assert!(
-            source[clouds..combine].contains("view: &self.translucent_target.depth.view"),
+            source[translucent..combine].contains("view: &self.translucent_target.depth.view"),
             "translucent terrain writes the renderer-owned translucent depth target"
         );
         assert!(
-            source[clouds..combine].contains("view: item_entity_view"),
+            source[item_entity_target..combine].contains("view: item_entity_view"),
             "item-entity geometry writes the renderer-owned item_entity color target"
         );
         assert!(
-            source[clouds..combine].contains("view: &self.item_entity_target.depth.view"),
+            source[item_entity_target..combine]
+                .contains("view: &self.item_entity_target.depth.view"),
             "item-entity geometry writes the renderer-owned item_entity depth target"
         );
         assert!(
-            source[clouds..combine].contains("view: particle_view"),
+            source[particle_target..combine].contains("view: particle_view"),
             "particle geometry writes the renderer-owned particles color target"
         );
         assert!(
-            source[clouds..combine].contains("view: &self.particle_target.depth.view"),
+            source[particle_target..combine].contains("view: &self.particle_target.depth.view"),
             "particle geometry writes the renderer-owned particles depth target"
         );
         assert!(
-            source[clouds..combine].contains("view: weather_view"),
+            source[weather_target..combine].contains("view: weather_view"),
             "weather pass clears the renderer-owned weather color target"
         );
         assert!(
-            source[clouds..combine].contains("view: &self.weather_target.depth.view"),
+            source[weather_target..combine].contains("view: &self.weather_target.depth.view"),
             "weather pass owns the renderer-owned weather depth target"
         );
         assert!(

@@ -385,6 +385,15 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。当前 checkl
   map batches 放到 entity outline post-chain 和 cloud pass 之前，继续保持在
   target depth copies 之前；剩余 render-graph ordering 仍为 per-submit feature
   距离排序、block/text/name ordering、target sorting polish。
+- [x] 2026-06-29 cloud target frame-graph ordering slice：vanilla
+  `LevelRenderer` 在完整 `addMainPass`（含 `renderTranslucentFeatures()`、
+  translucent terrain 和 `renderTranslucentParticles()`）之后才添加
+  entity-outline post-chain、cloud pass、weather pass 和 transparency chain。
+  renderer 现在把 clouds target pass 移到 particle target 之后、weather target
+  之前，clouds target 仍参与
+  Main+Translucent+ItemEntity+Particles+Weather+Clouds combine；剩余 target
+  ordering 收窄为 entity-outline chain 相对完整 main pass、per-submit feature
+  距离排序和 block/text/name ordering。
 
 ### [x] P0：提交图与 RenderType 语义（状态：狭义 pipeline 已完成）
 

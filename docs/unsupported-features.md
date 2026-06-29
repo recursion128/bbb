@@ -380,9 +380,9 @@ When an agent does any of the following, update this file in the same slice:
     is `SOLID` followed by `CUTOUT`, and `LevelRenderer.addMainPass` renders
     that opaque group before feature submissions. The renderer world pass now
     draws local solid and cutout terrain in that order before entity/model draws.
-    Clouds now draw in an explicit pass after the main pass / entity-outline
-    post-chain position and before later translucent world passes, writing a
-    renderer-owned clouds color/depth target. Terrain translucent now writes a
+    Clouds now draw in an explicit pass after the renderer's target-backed main
+    world passes and particles, before weather and transparency combine, writing
+    a renderer-owned clouds color/depth target. Terrain translucent now writes a
     renderer-owned translucent color/depth target after copying main depth,
     matching vanilla `LevelRenderer.copyDepthFrom(mainTarget)` for the
     translucent target and `RenderPipelines.TRANSLUCENT_TERRAIN` default depth
@@ -445,9 +445,10 @@ When an agent does any of the following, update this file in the same slice:
     presentation because that material source is not modeled yet; it is no longer
     a narrow render-pipeline path blocker. Remaining render-graph parity still
     needs per-submit feature distance sorting and target ordering across
-    block/text/name, terrain, particles, weather, and clouds; outline now has a
-    dedicated target/composite, and lightning is no longer missing weather-target
-    geometry.
+    block/text/name plus entity-outline chain timing relative to the complete
+    main pass; outline now has a dedicated target/composite, clouds now follow
+    particles and precede weather/combine, and lightning is no longer missing
+    weather-target geometry.
   - P0 cloud presentation slice: vanilla 26.1 `CloudRenderer` uses
     `EnvironmentAttributes.CLOUD_COLOR` / `CLOUD_HEIGHT` and the
     `rendertype_clouds` fragment alpha fade
