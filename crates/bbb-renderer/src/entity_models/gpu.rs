@@ -726,6 +726,22 @@ pub(crate) fn create_entity_model_eyes_pipeline(
     )
 }
 
+pub(crate) fn create_entity_model_outline_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_entity_model_textured_pipeline_with_depth(
+        device,
+        format,
+        bind_group_layout,
+        "bbb-entity-model-outline",
+        ENTITY_MODEL_EYES_SHADER,
+        Some(wgpu::BlendState::ALPHA_BLENDING),
+        true,
+    )
+}
+
 pub(crate) fn create_entity_model_translucent_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,

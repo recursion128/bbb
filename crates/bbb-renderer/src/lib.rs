@@ -7,6 +7,7 @@ mod gpu;
 mod hud;
 mod item_entities;
 mod item_models;
+mod outline;
 mod particles;
 mod player_skin;
 mod render;

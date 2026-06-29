@@ -159,7 +159,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 "#;
 
 pub(super) struct DepthTarget {
-    _texture: wgpu::Texture,
+    pub(super) _texture: wgpu::Texture,
     pub(super) view: wgpu::TextureView,
 }
 

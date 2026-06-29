@@ -13,11 +13,12 @@ use crate::{
         CameraUniform, ClearColor, FogEnvironment, LightmapEnvironment, TerrainBounds,
     },
     entity_models::{
-        create_entity_model_eyes_pipeline, create_entity_model_pipeline,
-        create_entity_model_scroll_additive_pipeline, create_entity_model_scroll_pipeline,
-        create_entity_model_textured_pipeline, create_entity_model_translucent_pipeline,
-        EntityDynamicPlayerSkinAtlasGpu, EntityDynamicPlayerTextureAtlasGpu, EntityModelMeshGpu,
-        EntityModelScrollMeshGpu, EntityModelTextureAtlasGpu, EntityModelTexturedMeshGpu,
+        create_entity_model_eyes_pipeline, create_entity_model_outline_pipeline,
+        create_entity_model_pipeline, create_entity_model_scroll_additive_pipeline,
+        create_entity_model_scroll_pipeline, create_entity_model_textured_pipeline,
+        create_entity_model_translucent_pipeline, EntityDynamicPlayerSkinAtlasGpu,
+        EntityDynamicPlayerTextureAtlasGpu, EntityModelMeshGpu, EntityModelScrollMeshGpu,
+        EntityModelTextureAtlasGpu, EntityModelTexturedMeshGpu,
     },
     gpu::{
         create_camera_buffer, create_depth_target, create_terrain_atlas_gpu,
@@ -35,6 +36,10 @@ use crate::{
         create_item_model_pipeline, ItemFrameMapAtlasGpu, ItemFrameMapDecorationAtlasGpu,
         ItemFrameMapDecorationSurface, ItemFrameMapSurface, ItemFrameMapTextFontAtlasGpu,
         ItemFrameMapTextSurface, ItemModelMesh,
+    },
+    outline::{
+        create_entity_outline_bind_group_layout, create_entity_outline_composite_pipeline,
+        create_entity_outline_target, EntityOutlineTarget,
     },
     particles::{create_particle_pipeline, ParticleAtlasGpu, ParticleRuntimeState},
     player_skin::{DynamicPlayerSkinImage, DynamicPlayerTextureImage},
@@ -69,12 +74,16 @@ pub struct Renderer {
     pub(super) entity_model_textured_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_translucent_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_eyes_pipeline: wgpu::RenderPipeline,
+    pub(super) entity_model_outline_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_scroll_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_scroll_additive_pipeline: wgpu::RenderPipeline,
     pub(super) particle_pipeline: wgpu::RenderPipeline,
     pub(super) item_entity_pipeline: wgpu::RenderPipeline,
     pub(super) item_model_pipeline: wgpu::RenderPipeline,
     pub(super) selection_pipeline: wgpu::RenderPipeline,
+    pub(super) entity_outline_composite_pipeline: wgpu::RenderPipeline,
+    pub(super) entity_outline_bind_group_layout: wgpu::BindGroupLayout,
+    pub(super) entity_outline_target: EntityOutlineTarget,
     pub(super) sky_pipeline: wgpu::RenderPipeline,
     pub(super) star_pipeline: wgpu::RenderPipeline,
     pub(super) end_sky_pipeline: wgpu::RenderPipeline,
@@ -367,6 +376,8 @@ impl Renderer {
             create_entity_model_translucent_pipeline(&device, format, &terrain_bind_group_layout);
         let entity_model_eyes_pipeline =
             create_entity_model_eyes_pipeline(&device, format, &terrain_bind_group_layout);
+        let entity_model_outline_pipeline =
+            create_entity_model_outline_pipeline(&device, format, &terrain_bind_group_layout);
         let entity_model_scroll_pipeline =
             create_entity_model_scroll_pipeline(&device, format, &terrain_bind_group_layout);
         let entity_model_scroll_additive_pipeline = create_entity_model_scroll_additive_pipeline(
@@ -382,6 +393,19 @@ impl Renderer {
             create_item_model_pipeline(&device, format, &terrain_bind_group_layout);
         let selection_pipeline =
             create_selection_pipeline(&device, format, &terrain_bind_group_layout);
+        let entity_outline_bind_group_layout = create_entity_outline_bind_group_layout(&device);
+        let entity_outline_composite_pipeline = create_entity_outline_composite_pipeline(
+            &device,
+            format,
+            &entity_outline_bind_group_layout,
+        );
+        let entity_outline_target = create_entity_outline_target(
+            &device,
+            &entity_outline_bind_group_layout,
+            format,
+            config.width,
+            config.height,
+        );
         let sky_pipeline = create_sky_pipeline(&device, format, &terrain_bind_group_layout);
         let star_pipeline = create_star_pipeline(&device, format, &terrain_bind_group_layout);
         let end_sky_texture_bind_group_layout = create_end_sky_bind_group_layout(&device);
@@ -429,12 +453,16 @@ impl Renderer {
             entity_model_textured_pipeline,
             entity_model_translucent_pipeline,
             entity_model_eyes_pipeline,
+            entity_model_outline_pipeline,
             entity_model_scroll_pipeline,
             entity_model_scroll_additive_pipeline,
             particle_pipeline,
             item_entity_pipeline,
             item_model_pipeline,
             selection_pipeline,
+            entity_outline_composite_pipeline,
+            entity_outline_bind_group_layout,
+            entity_outline_target,
             sky_pipeline,
             star_pipeline,
             end_sky_pipeline,
@@ -635,6 +663,13 @@ impl Renderer {
         self.config.height = size.height;
         self.surface.configure(&self.device, &self.config);
         self.depth = create_depth_target(&self.device, self.config.width, self.config.height);
+        self.entity_outline_target = create_entity_outline_target(
+            &self.device,
+            &self.entity_outline_bind_group_layout,
+            self.config.format,
+            self.config.width,
+            self.config.height,
+        );
         self.update_camera();
         self.counters.width = size.width;
         self.counters.height = size.height;

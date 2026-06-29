@@ -344,22 +344,24 @@ When an agent does any of the following, update this file in the same slice:
     geometry is outside the textured submission path. Historical residual wording
     below is retained as evidence of migration slices, not as a current P0 blocker.
     Remaining colored fallback geometry belongs to non-textured debug/parity work,
-    while vanilla outline-target compositing, remaining target/post-chain
-    render-graph sorting, and more exact lighting remain separate P0 visual or
-    later presentation follow-ups, not narrow pipeline blockers.
+    while complete outline post-chain kernel / `rendertype_outline` shader-cull
+    parity, remaining target/post-chain render-graph sorting, and more exact
+    lighting remain separate P0 visual or later presentation follow-ups, not
+    narrow pipeline blockers.
   - P0 pipeline closeout also treats the remaining GPU-path fine-grained state as
     explicitly deferred follow-up, not as a blocker for the CPU submission graph:
     the backend currently folds compatible submissions into atlas buckets
     (`cutout`, `translucent`, `eyes`, static-atlas outline, dynamic profile
     texture buckets, scroll / additive scroll), and static-atlas `AFFECTS_OUTLINE`
     submissions with a non-zero outline color are now also copied into the outline
-    bucket. Later GPU work should
+    bucket and drawn through an `entity_outline` target plus
+    `ENTITY_OUTLINE_BLIT`-shaped composite. Later GPU work should
     preserve per-submission draw order across buckets, split currently-coalesced
     render-type state such as `entityCutout*`, `entitySolid`,
     `armorCutoutNoCull`, `entityTranslucent*`, `Eyes`, `waterMask`, and glint /
     scroll variants into equivalent pipeline state, complete vanilla outline
-    target/composite behaviour, and reconcile remaining target/post-chain
-    render-graph sorting plus
+    post-chain kernel / `rendertype_outline` shader-cull fidelity, and reconcile
+    remaining target/post-chain render-graph sorting plus
     full dynamic LightTexture / darkness-adjusted gamma / diffuse visual parity. The scroll GPU path
     already separates vanilla `breezeWind` as lightmap-lit from emissive
     additive `energySwirl`.
@@ -369,7 +371,8 @@ When an agent does any of the following, update this file in the same slice:
     draws local solid and cutout terrain in that order before entity/model draws.
     Remaining render-graph parity still needs vanilla target separation and
     post-chain composition for translucent / item-entity / particle / weather /
-    cloud / outline paths.
+    cloud paths; outline now has a dedicated target/composite but still needs
+    the full vanilla post-chain kernel and shader/cull fidelity.
   - P0 pipeline closeout treats texture-backed / dispatch-owned submission and
     RenderType/order/missing-atlas/dynamic-texture coverage as complete for the
     narrow pipeline scope: entity model tests assert `submit_sequence` across 78
@@ -383,8 +386,8 @@ When an agent does any of the following, update this file in the same slice:
     render-type / residual / fallback / outline / lighting wording. Remaining
     hits are classified as history, non-textured debug fallback, P3 dynamic
     resource fallback, P2/P3 terrain or item presentation, P0 visual outline
-    target/composite, P0 visual dynamic lighting / darkness-adjusted gamma /
-    diffuse, or later GPU state
+    post-chain kernel / shader-cull fidelity, P0 visual dynamic lighting /
+    darkness-adjusted gamma / diffuse, or later GPU state
     fidelity. None remains a narrow CPU submission graph blocker. The latest
     `rg residual` / `rg fallback` / `rg unsupported` rerun counts, including the
     post-hide-lightning workflow audit, are tracked in `goal.md`.
@@ -563,8 +566,10 @@ When an agent does any of the following, update this file in the same slice:
       preserving the original model tint in submission metadata. Colored-path
       force-transparent output now uses the vanilla
       `0x26ffffff` alpha on the colored runtime path, and colored hidden-glowing
-      outline output uses `outlineColor`; vanilla outline-target compositing
-      remains deferred under the visual follow-up slots.
+      outline output uses `outlineColor`; the basic vanilla-shaped
+      `entity_outline` target and `ENTITY_OUTLINE_BLIT` composite are now in
+      place, while the full post-chain kernel / `rendertype_outline` shader-cull
+      fidelity remains deferred under the visual follow-up slots.
     - deferred slots to add with their own slices, each carrying real vanilla
       semantics and tests rather than tint fallbacks: `ageScale` (the baby `0.5`
       proportions applied in model `setupAnim`, distinct from the now-projected
@@ -1330,11 +1335,13 @@ When an agent does any of the following, update this file in the same slice:
       preserve entity light and clear the white overlay column like vanilla
       `renderColoredCutoutModel(... getOverlayCoords(state, 0.0F))`
   - Finish remaining sheep presentation parity:
-    - finish vanilla outline-target/final-composite presentation; base and wool
-      outline submission metadata plus `outlineColor`-tinted GPU outline bucket
-      geometry are now recorded for the texture-backed static-atlas path, including
-      visible glowing `AFFECTS_OUTLINE` submits
-    - implement remaining vanilla outline-target/final-composite handling
+    - finish vanilla outline post-chain kernel / `rendertype_outline` shader-cull
+      presentation; base and wool outline submission metadata plus
+      `outlineColor`-tinted GPU outline bucket geometry are now recorded for the
+      texture-backed static-atlas path, including visible glowing
+      `AFFECTS_OUTLINE` submits, and the bucket now draws through a basic
+      `entity_outline` target/composite
+    - implement remaining vanilla outline post-chain handling
   - Finish wolf presentation parity:
     - registry-driven wolf variants are DONE: the synced `Wolf.DATA_VARIANT_ID`
       (index 23) `Holder<WolfVariant>` is resolved (dynamic `wolf_variant`
@@ -1344,7 +1351,7 @@ When an agent does any of the following, update this file in the same slice:
       rusty/woods/chestnut/striped) × wild/tame/angry × adult/baby
       (`bee[...]`→`wolf_<coat>[_tame|_angry][_baby].png`), the 48 new biome faces
       joining the master atlas array (→359)
-    - finish vanilla outline-target/final-composite presentation and remaining
+    - finish vanilla outline post-chain / shader-cull presentation and remaining
       render-state extraction parity (armor, sitting/head/tail/walk pose, wet
       shade tint, water-shake roll pose, packed lighting, white overlay,
       force-transparent alpha, hidden-glowing outline color, and the hurt red
@@ -2023,8 +2030,9 @@ When an agent does any of the following, update this file in the same slice:
       uploaded through the static-atlas outline GPU bucket while submission
       metadata still preserves the original model tint/light/overlay. Colored
       fallback force-transparent output now preserves the vanilla `38/255` alpha;
-      colored hidden-glowing fallback uses the vanilla `outlineColor` tint; vanilla
-      outline-target/final-composite presentation and remaining render-state
+      colored hidden-glowing fallback uses the vanilla `outlineColor` tint; the
+      basic `entity_outline` target/composite is implemented while full
+      post-chain kernel / shader-cull presentation and remaining render-state
       extraction remain unsupported; outline submission metadata is recorded from
       the shared glowing flag and scoreboard team color
     - wolf entities as renderer-owned vanilla 26.1 adult/baby body-layer
@@ -2103,8 +2111,8 @@ When an agent does any of the following, update this file in the same slice:
       exception path, and that outline bucket is uploaded for the static-atlas GPU
       path. Colored-path force-transparent output now preserves the vanilla
       `38/255` alpha; colored hidden-glowing fallback uses the vanilla
-      `outlineColor` tint; vanilla outline-target compositing, glint/foil, and
-      remaining render-state extraction remain unsupported
+      `outlineColor` tint; full outline post-chain kernel / shader-cull fidelity,
+      glint/foil, and remaining render-state extraction remain unsupported
     - base horse entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AbstractEquineModel.createBodyMesh(CubeDeformation.NONE)`,
       `BabyHorseModel.createBabyMesh(CubeDeformation.NONE)`, `HorseModel`, and
@@ -3013,7 +3021,7 @@ When an agent does any of the following, update this file in the same slice:
       alpha-blended translucent GPU bucket. Invisible glowing slime now records the
       vanilla base and order-1 `SlimeOuterLayer` outline submissions with
       `outlineColor` metadata and static-atlas GPU outline bucket geometry;
-      vanilla outline-target compositing, particle/audio coupling, broader
+      full outline post-chain kernel / shader-cull fidelity, particle/audio coupling, broader
       lighting presentation, crumbling, and full render-graph sorting parity
       remain unsupported
     - magma cube entities as renderer-owned vanilla 26.1
@@ -4684,7 +4692,7 @@ When an agent does any of the following, update this file in the same slice:
     variants, equipment, skins, animation, lighting, custom/datapack cow/pig
     variant asset presentation, sheep
     head-look-pitch presentation,
-    wolf vanilla outline-target compositing,
+    wolf full outline post-chain / shader-cull presentation,
     boat/raft water-mask presentation and lighting (paddle rowing animation,
     hurt/damage roll, bubble wobble, underwater state, and above-water water-mask
     gating are projected and rendered),
