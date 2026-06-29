@@ -3,7 +3,7 @@ use std::path::Path;
 use anyhow::Result;
 use wgpu::util::DeviceExt;
 
-use crate::Renderer;
+use crate::{lightmap::write_lightmap_uniform, Renderer};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum TerrainOpaqueGroupLayer {
@@ -28,6 +28,7 @@ const TRANSLUCENT_TARGET_PASS_LABEL: &str = "bbb-native-translucent-target-pass"
 const ITEM_ENTITY_TARGET_PASS_LABEL: &str = "bbb-native-item-entity-target-pass";
 const PARTICLE_TARGET_PASS_LABEL: &str = "bbb-native-particle-target-pass";
 const WEATHER_TARGET_PASS_LABEL: &str = "bbb-native-weather-target-pass";
+const LIGHTMAP_PASS_LABEL: &str = "bbb-native-lightmap-pass";
 const TRANSPARENCY_COMBINE_PASS_LABEL: &str = "bbb-native-transparency-combine-pass";
 
 impl Renderer {
@@ -70,7 +71,34 @@ impl Renderer {
         let mut entity_scene_draw_calls = 0;
         let mut entity_target_draw_calls = 0;
         let mut hud_draw_calls = 0;
+        let mut lightmap_draw_calls = 0;
         let mut pipeline_switches = 0;
+        write_lightmap_uniform(
+            &self.queue,
+            &self.lightmap.uniform_buffer,
+            self.lightmap_environment,
+        );
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some(LIGHTMAP_PASS_LABEL),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &self.lightmap.view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.lightmap_pipeline);
+            pipeline_switches += 1;
+            pass.set_bind_group(0, &self.lightmap.bind_group, &[]);
+            pass.draw(0..3, 0..1);
+            lightmap_draw_calls += 1;
+        }
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("bbb-native-terrain-opaque-group-pass"),
@@ -998,7 +1026,8 @@ impl Renderer {
             + selection_draw_calls
             + entity_scene_draw_calls
             + entity_target_draw_calls
-            + hud_draw_calls;
+            + hud_draw_calls
+            + lightmap_draw_calls;
         self.counters.pipeline_switches = pipeline_switches;
         Ok(())
     }
@@ -1072,6 +1101,45 @@ mod tests {
                 TerrainOpaqueGroupLayer::Solid,
                 TerrainOpaqueGroupLayer::Cutout,
             ]
+        );
+    }
+
+    #[test]
+    fn lightmap_pass_updates_texture_before_world_passes() {
+        let source = include_str!("render.rs");
+        let lightmap_write = source
+            .find("write_lightmap_uniform(")
+            .expect("lightmap uniform is updated before rendering");
+        let lightmap = source
+            .find("label: Some(LIGHTMAP_PASS_LABEL)")
+            .expect("lightmap pass label is used");
+        let lightmap_pipeline = source[lightmap..]
+            .find("pass.set_pipeline(&self.lightmap_pipeline)")
+            .map(|index| lightmap + index)
+            .expect("lightmap pipeline is selected");
+        let lightmap_draw = source[lightmap_pipeline..]
+            .find("pass.draw(0..3, 0..1)")
+            .map(|index| lightmap_pipeline + index)
+            .expect("lightmap pass draws the vanilla screen triangle");
+        let terrain_pass = source
+            .find("label: Some(\"bbb-native-terrain-opaque-group-pass\")")
+            .expect("main terrain pass label is used");
+
+        assert!(
+            lightmap_write < lightmap
+                && lightmap < lightmap_pipeline
+                && lightmap_pipeline < lightmap_draw
+                && lightmap_draw < terrain_pass,
+            "vanilla GameRenderer updates Lightmap before world rendering samples the level lightmap"
+        );
+        assert!(
+            source[lightmap..terrain_pass].contains("view: &self.lightmap.view"),
+            "lightmap pass writes the renderer-owned LightTexture"
+        );
+        assert!(
+            source[lightmap..terrain_pass]
+                .contains("pass.set_bind_group(0, &self.lightmap.bind_group, &[])"),
+            "lightmap pass binds the standalone LightmapInfo uniform"
         );
     }
 

@@ -755,8 +755,13 @@ When an agent does any of the following, update this file in the same slice:
     8-phase `MOON_PHASE` order. Stars are covered by vanilla
     `SkyRenderer.buildStars` seed `10842`, 780 accepted quads, `STARS` overlay
     blend, `STAR_ANGLE`, `STAR_BRIGHTNESS`, and rain/thunder weather layers.
-    Overworld variants use ambient `0x0A0A0A`. The
-    block flicker path still advances
+    Overworld variants use ambient `0x0A0A0A`. The renderer now also owns a
+    vanilla-shaped dynamic LightTexture foundation:
+    a 16x16 `RGBA8` texture, standalone `LightmapInfo` uniform buffer, and a
+    `pipeline/lightmap`-shaped full-screen triangle pass that ports
+    `core/lightmap.fsh`; the scene shaders still compute the same formula from
+    camera uniforms until the next P0 visual slices bind and sample that texture
+    as `Sampler2`. The block flicker path still advances
     `blockLightFlicker` with the
     `LightmapRenderStateExtractor.tick()` formula and the shaders read
     `blockLightFlicker + 1.4`. The terrain/world shader now consumes the same
@@ -765,8 +770,9 @@ When an agent does any of the following, update this file in the same slice:
     and `BrightnessFactor` `notGamma` mix instead of the earlier
     `max(block, sky * 0.95)` scalar approximation. Remaining lighting gaps:
     full transparency target sorting after the newly added renderer-owned main
-    color target / Main+Translucent+ItemEntity+Particles+Weather+Clouds combine foundation, the real dynamic 16x16 LightTexture
-    texture pass, provider-specific particle light emission overrides,
+    color target / Main+Translucent+ItemEntity+Particles+Weather+Clouds combine foundation, routing the main
+    world/entity/item/particle shaders from uniform-computed lightmap colors to
+    the renderer-owned dynamic LightTexture sampler, provider-specific particle light emission overrides,
     smooth/AO entity light, GUI / entity-in-UI lighting variants, and the
     colored debug fallback's baked-shade approximation. The item-model
     shader now consumes submitted item stack light coords through the same

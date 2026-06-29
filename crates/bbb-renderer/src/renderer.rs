@@ -43,6 +43,10 @@ use crate::{
         ItemFrameMapDecorationSurface, ItemFrameMapSurface, ItemFrameMapTextFontAtlasGpu,
         ItemFrameMapTextSurface, ItemModelMesh,
     },
+    lightmap::{
+        create_lightmap_bind_group_layout, create_lightmap_gpu, create_lightmap_pipeline,
+        LightmapGpu,
+    },
     outline::{
         create_entity_outline_bind_group_layout, create_entity_outline_blit_pipeline,
         create_entity_outline_blur_horizontal_pipeline,
@@ -105,6 +109,8 @@ pub struct Renderer {
     pub(super) item_entity_pipeline: wgpu::RenderPipeline,
     pub(super) item_model_pipeline: wgpu::RenderPipeline,
     pub(super) selection_pipeline: wgpu::RenderPipeline,
+    pub(super) lightmap_pipeline: wgpu::RenderPipeline,
+    pub(super) lightmap: LightmapGpu,
     pub(super) entity_outline_sobel_pipeline: wgpu::RenderPipeline,
     pub(super) entity_outline_blur_horizontal_pipeline: wgpu::RenderPipeline,
     pub(super) entity_outline_blur_vertical_pipeline: wgpu::RenderPipeline,
@@ -442,6 +448,14 @@ impl Renderer {
             create_item_model_pipeline(&device, format, &terrain_bind_group_layout);
         let selection_pipeline =
             create_selection_pipeline(&device, format, &terrain_bind_group_layout);
+        let lightmap_bind_group_layout = create_lightmap_bind_group_layout(&device);
+        let lightmap_pipeline = create_lightmap_pipeline(&device, &lightmap_bind_group_layout);
+        let lightmap = create_lightmap_gpu(
+            &device,
+            &queue,
+            &lightmap_bind_group_layout,
+            LightmapEnvironment::default(),
+        );
         let entity_outline_bind_group_layout = create_entity_outline_bind_group_layout(&device);
         let entity_outline_sobel_pipeline = create_entity_outline_sobel_pipeline(
             &device,
@@ -565,6 +579,8 @@ impl Renderer {
             item_entity_pipeline,
             item_model_pipeline,
             selection_pipeline,
+            lightmap_pipeline,
+            lightmap,
             entity_outline_sobel_pipeline,
             entity_outline_blur_horizontal_pipeline,
             entity_outline_blur_vertical_pipeline,
