@@ -374,8 +374,10 @@ When an agent does any of the following, update this file in the same slice:
     `entity_outline -> swap`, and final blit writes `swap -> entity_outline`
     before `ENTITY_OUTLINE_BLIT` composites to the main target. The sobel shader
     uses vanilla alpha-diff edge detection and the blur shader uses radius `2.0`
-    with bilinear sampling. Remaining outline work is target/render-graph
-    ordering polish, not a missing kernel.
+    with bilinear sampling. The outline post-chain now runs after the complete
+    target-backed main-pass work and before clouds/weather/transparency; remaining
+    outline work is finer target-resource polish, not a missing kernel or broad
+    post-chain timing gap.
   - P0 visual render-order slice: vanilla 26.1 `ChunkSectionLayerGroup.OPAQUE`
     is `SOLID` followed by `CUTOUT`, and `LevelRenderer.addMainPass` renders
     that opaque group before feature submissions. The renderer world pass now
@@ -437,18 +439,21 @@ When an agent does any of the following, update this file in the same slice:
     buckets draw through an alpha-blended item-model pipeline in
     `OutputTarget.ITEM_ENTITY_TARGET` before billboard items and particles.
     Solid block/flat item-model and item-frame map batches now sit in the main
-    pass before entity-outline post-chain work, clouds, target depth copies, and
-    translucent terrain, matching `LevelRenderer.addMainPass` calling
-    `FeatureRenderDispatcher.renderSolidFeatures()` before later frame-graph
-    passes.
+    pass before target depth copies, translucent target work, entity-outline
+    post-chain work, and clouds, matching `LevelRenderer.addMainPass` calling
+    `FeatureRenderDispatcher.renderSolidFeatures()` before the later main-pass
+    and frame-graph phases. Entity outline target/post-chain/composite work now
+    follows the complete target-backed main pass and precedes clouds, weather,
+    and transparency combine, matching the vanilla frame-graph position of the
+    `entity_outline` post chain.
     Flat/generated item material translucency metadata is still deferred to item
     presentation because that material source is not modeled yet; it is no longer
     a narrow render-pipeline path blocker. Remaining render-graph parity still
     needs per-submit feature distance sorting and target ordering across
-    block/text/name plus entity-outline chain timing relative to the complete
-    main pass; outline now has a dedicated target/composite, clouds now follow
-    particles and precede weather/combine, and lightning is no longer missing
-    weather-target geometry.
+    block/text/name plus finer target-resource polish; outline now has a
+    dedicated target/composite at the right post-chain position, clouds now
+    follow particles and the outline chain before weather/combine, and lightning
+    is no longer missing weather-target geometry.
   - P0 cloud presentation slice: vanilla 26.1 `CloudRenderer` uses
     `EnvironmentAttributes.CLOUD_COLOR` / `CLOUD_HEIGHT` and the
     `rendertype_clouds` fragment alpha fade
@@ -466,9 +471,10 @@ When an agent does any of the following, update this file in the same slice:
     empty-neighbor checks, interior faces, and face color tints. Native now
     projects Overworld day-timeline and rain/thunder weather `CLOUD_COLOR`
     modifiers into the cloud environment. The renderer cloud draw is now a
-    dedicated pass after main/entity-outline ordering, writes a clouds
-    color/depth target, and participates in the Main+Translucent+ItemEntity+Particles+Weather+Clouds
-    transparency combine. Weather now reads vanilla `MOTION_BLOCKING`
+    dedicated pass after the complete target-backed main pass and entity-outline
+    post-chain, writes a clouds color/depth target, and participates in the
+    Main+Translucent+ItemEntity+Particles+Weather+Clouds transparency combine.
+    Weather now reads vanilla `MOTION_BLOCKING`
     heightmaps from chunk packet data for rain/snow column bounds and keeps that
     heightmap updated for block changes. Weather precipitation now applies the
     vanilla height-adjustment `TEMPERATURE_NOISE` and the `frozen` biome
@@ -777,8 +783,9 @@ When an agent does any of the following, update this file in the same slice:
     vanilla fancy/extruded cloud cells with face tint and camera-position face
     gates, and native projects vanilla day-timeline plus rain/thunder
     `CLOUD_COLOR` modifiers. The renderer now separates clouds into their own
-    pass after main/entity-outline ordering and composites a renderer-owned
-    clouds target. The main scene now also resolves through a renderer-owned
+    pass after the complete target-backed main pass and entity-outline post-chain,
+    and composites a renderer-owned clouds target. The main scene now also resolves
+    through a renderer-owned
     main color target; the final transparency combine samples
     Main+Translucent+ItemEntity+Particles+Weather+Clouds before HUD and GUI-item passes draw on the surface,
     matching vanilla's world-before-GUI render shape. Rain/snow weather columns

@@ -240,8 +240,9 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。当前 checkl
   显式 `bbb-native-clouds-pass`，写入 renderer-owned clouds color/depth target；
   final `bbb-native-transparency-combine-pass` 采样 main color/depth 与
   clouds color/depth，按 vanilla depth order / premultiplied layer blend 写回
-  surface。clouds pass 位于 main / entity-outline 后且早于后续 translucent
-  world passes，combine 位于 world passes 后、HUD 前，并用单元测试钉住。
+  surface。后续 2026-06-29 slices 已继续把 translucent / itemEntity /
+  particles / weather / clouds target 和 entity-outline post-chain 顺序收敛到
+  vanilla frame-graph 形状；combine 位于 world passes 后、HUD 前，并用单元测试钉住。
   2026-06-29 renderer 主画面已改为 renderer-owned `main` color target，
   所有既有主画面 pass 先写入该 target，最后通过 fullscreen blit 写回
   swapchain/screenshot frame；HUD / GUI item pass 已移到 transparency combine
@@ -378,22 +379,30 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。当前 checkl
   归后续 item presentation。
 - [x] 2026-06-29 solid item feature main-pass ordering slice：vanilla
   `LevelRenderer.addMainPass` 在 `renderSolidFeatures()` 后才进入
-  entity-outline post-chain、clouds、translucent target depth copies 和
-  translucent terrain；`FeatureRenderDispatcher.renderSolidFeatures()` 内 item
+  target depth copies、translucent feature / terrain / particle phases，完整
+  `addMainPass` 完成后才进入 entity-outline post-chain 和 clouds；
+  `FeatureRenderDispatcher.renderSolidFeatures()` 内 item
   features 位于 model/model-part/flame/leash 之后、block/custom/particle
   solid features 之前。renderer 现在把 solid block/flat item-model 与 item-frame
-  map batches 放到 entity outline post-chain 和 cloud pass 之前，继续保持在
-  target depth copies 之前；剩余 render-graph ordering 仍为 per-submit feature
-  距离排序、block/text/name ordering、target sorting polish。
+  map batches 放到 target depth copies、entity outline post-chain 和 cloud pass
+  之前；剩余 render-graph ordering 仍为 per-submit feature 距离排序、
+  block/text/name ordering、target sorting polish。
 - [x] 2026-06-29 cloud target frame-graph ordering slice：vanilla
   `LevelRenderer` 在完整 `addMainPass`（含 `renderTranslucentFeatures()`、
   translucent terrain 和 `renderTranslucentParticles()`）之后才添加
   entity-outline post-chain、cloud pass、weather pass 和 transparency chain。
   renderer 现在把 clouds target pass 移到 particle target 之后、weather target
   之前，clouds target 仍参与
-  Main+Translucent+ItemEntity+Particles+Weather+Clouds combine；剩余 target
-  ordering 收窄为 entity-outline chain 相对完整 main pass、per-submit feature
-  距离排序和 block/text/name ordering。
+  Main+Translucent+ItemEntity+Particles+Weather+Clouds combine；cloud slice
+  之后剩余的 outline 时序缺口已由下一条 slice 关闭。
+- [x] 2026-06-29 entity outline post-chain frame-graph ordering slice：vanilla
+  `LevelRenderer` 先完成完整 `addMainPass`（含 depth copies、
+  `renderTranslucentFeatures()`、translucent terrain 和
+  `renderTranslucentParticles()`），再添加 `entity_outline` post chain，之后才是
+  clouds、weather 和 transparency chain。renderer 现在把当前合并的
+  entity-outline target write / sobel / blur / blit / composite 移到 particle
+  target 之后、clouds 之前；剩余 target ordering 收窄为 per-submit feature
+  距离排序、block/text/name ordering 和更细 target resource polish。
 
 ### [x] P0：提交图与 RenderType 语义（状态：狭义 pipeline 已完成）
 
@@ -617,8 +626,8 @@ blocker。
   `CloudStatus.FANCY` 的 extruded cloud cell mesh，包含 top/bottom camera gates、
   side empty-neighbor gates、interior faces 和 face tints；native 已把
   Overworld day timeline 和 rain/thunder weather `CLOUD_COLOR` modifier 投影到
-  cloud environment；renderer 已把 clouds draw 分离到 main / entity-outline
-  之后的显式 pass，并接入 clouds color/depth target + Main+Translucent+ItemEntity+Particles+Weather+Clouds
+  cloud environment；renderer 已把 clouds draw 分离到完整 target-backed main pass
+  与 entity-outline post-chain 之后的显式 pass，并接入 clouds color/depth target + Main+Translucent+ItemEntity+Particles+Weather+Clouds
   transparency combine；renderer/native 也已新增 rain/snow weather column draw
   surface：native 加载 vanilla `textures/environment/rain.png` /
   `textures/environment/snow.png`，按 world rain level / camera / biome
