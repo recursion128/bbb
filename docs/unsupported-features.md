@@ -570,6 +570,18 @@ When an agent does any of the following, update this file in the same slice:
     bypass, texture-backed / dispatch-owned submission gap, or
     RenderType/order/submit-sequence/missing-atlas/dynamic-texture/light/
     overlay/outline blocker was found.
+    The 2026-06-29 closeout process freeze audit reran the same commands from a
+    clean worktree, with pre-edit counts of `rg residual` 75, `rg fallback`
+    569, and `rg unsupported` 183. Classification remains unchanged: renderer
+    residual hits are dispatch comments only; renderer fallback hits are
+    terrain/debug/profile/camera/adapter/HUD/map/test, item/map text, or
+    vanilla fallback documentation; renderer unsupported hits are screenshot
+    format diagnostics, dynamic-player defensive panics, or docs pointers, with
+    the rest in pack/protocol/net/native diagnostics. The narrow P0 pipeline
+    checklist remains closed, and particle providers, terrain, HUD,
+    first-person, GUI, and open-ended entity detail work stay paused unless they
+    directly reopen that checklist or the user explicitly starts post-closeout
+    parity work.
   - Replace proxies with full extraction from canonical world and pack data:
     - entity bounds
     - dropped-item icons (3D block/item model renderer in progress — see the
