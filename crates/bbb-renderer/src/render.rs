@@ -24,8 +24,7 @@ const ENTITY_OUTLINE_BLUR_VERTICAL_PASS_LABEL: &str =
 const ENTITY_OUTLINE_BLIT_PASS_LABEL: &str = "bbb-native-entity-outline-blit-pass";
 const ENTITY_OUTLINE_COMPOSITE_PASS_LABEL: &str = "bbb-native-entity-outline-composite-pass";
 const CLOUDS_PASS_LABEL: &str = "bbb-native-clouds-pass";
-const CLOUDS_COMPOSITE_PASS_LABEL: &str = "bbb-native-clouds-composite-pass";
-const MAIN_BLIT_PASS_LABEL: &str = "bbb-native-main-blit-pass";
+const TRANSPARENCY_COMBINE_PASS_LABEL: &str = "bbb-native-transparency-combine-pass";
 
 impl Renderer {
     pub fn render(&mut self, screenshot: Option<&Path>) -> Result<()> {
@@ -55,8 +54,7 @@ impl Renderer {
         let mut sky_draw_calls = 0;
         let mut entity_model_draw_calls = 0;
         let mut outline_composite_draw_calls = 0;
-        let mut cloud_composite_draw_calls = 0;
-        let mut main_blit_draw_calls = 0;
+        let mut transparency_combine_draw_calls = 0;
         let mut particle_draw_calls = 0;
         let mut item_entity_draw_calls = 0;
         let mut item_model_draw_calls = 0;
@@ -477,26 +475,6 @@ impl Renderer {
                     pass.draw(0..clouds.vertex_count, 0..1);
                     sky_draw_calls += 1;
                 }
-
-                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some(CLOUDS_COMPOSITE_PASS_LABEL),
-                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: main_view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Load,
-                            store: wgpu::StoreOp::Store,
-                        },
-                    })],
-                    depth_stencil_attachment: None,
-                    occlusion_query_set: None,
-                    timestamp_writes: None,
-                });
-                pass.set_pipeline(&self.cloud_composite_pipeline);
-                pipeline_switches += 1;
-                pass.set_bind_group(0, &self.cloud_target.bind_group, &[]);
-                pass.draw(0..3, 0..1);
-                cloud_composite_draw_calls += 1;
             }
         }
 
@@ -764,7 +742,7 @@ impl Renderer {
 
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some(MAIN_BLIT_PASS_LABEL),
+                label: Some(TRANSPARENCY_COMBINE_PASS_LABEL),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &surface_view,
                     resolve_target: None,
@@ -777,11 +755,11 @@ impl Renderer {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&self.main_blit_pipeline);
+            pass.set_pipeline(&self.transparency_combine_pipeline);
             pipeline_switches += 1;
-            pass.set_bind_group(0, &self.main_target.bind_group, &[]);
+            pass.set_bind_group(0, &self.transparency_combine_bind_group.bind_group, &[]);
             pass.draw(0..3, 0..1);
-            main_blit_draw_calls += 1;
+            transparency_combine_draw_calls += 1;
         }
 
         {
@@ -905,8 +883,7 @@ impl Renderer {
             + sky_draw_calls
             + entity_model_draw_calls
             + outline_composite_draw_calls
-            + cloud_composite_draw_calls
-            + main_blit_draw_calls
+            + transparency_combine_draw_calls
             + particle_draw_calls
             + item_entity_draw_calls
             + item_model_draw_calls
@@ -991,7 +968,7 @@ mod tests {
     }
 
     #[test]
-    fn cloud_target_composites_after_main_and_outline_before_later_translucent_passes() {
+    fn cloud_target_feeds_transparency_combine_after_world_passes() {
         let source = include_str!("render.rs");
         let sky = source
             .find("pass.set_pipeline(&self.sky_pipeline)")
@@ -1009,12 +986,15 @@ mod tests {
             .find("pass.set_pipeline(&self.cloud_pipeline)")
             .map(|index| clouds + index)
             .expect("cloud pipeline is drawn in the cloud pass");
-        let clouds_composite = source
-            .find("label: Some(CLOUDS_COMPOSITE_PASS_LABEL)")
-            .expect("cloud composite pass label is used");
         let translucent = source
             .find("label: Some(\"bbb-native-terrain-translucent-pass\")")
             .expect("terrain translucent pass label is used");
+        let combine = source
+            .find("label: Some(TRANSPARENCY_COMBINE_PASS_LABEL)")
+            .expect("transparency combine pass label is used");
+        let hud = source
+            .find("label: Some(\"bbb-native-hud-pass\")")
+            .expect("HUD pass label is used");
 
         assert!(sky < clouds, "clouds draw after the top sky disc");
         assert!(
@@ -1026,30 +1006,31 @@ mod tests {
             "clouds draw after the entity outline post-chain like vanilla LevelRenderer"
         );
         assert!(
-            clouds < cloud_pipeline && cloud_pipeline < clouds_composite,
-            "cloud mesh draws into the dedicated clouds pass before compositing"
+            clouds < cloud_pipeline && cloud_pipeline < translucent,
+            "cloud mesh draws into the dedicated clouds pass before later world passes"
         );
         assert!(
-            clouds_composite < translucent,
-            "cloud target composites before later translucent world passes"
+            translucent < combine && combine < hud,
+            "cloud target is consumed by the transparency combine after world passes and before HUD"
         );
         assert!(
-            source[clouds..clouds_composite].contains("view: &self.cloud_target.view"),
+            source[clouds..combine].contains("view: &self.cloud_target.view"),
             "cloud mesh writes the renderer-owned clouds color target"
         );
         assert!(
-            source[clouds..clouds_composite].contains("view: &self.cloud_target.depth.view"),
+            source[clouds..combine].contains("view: &self.cloud_target.depth.view"),
             "cloud mesh writes the renderer-owned clouds depth target"
         );
         assert!(
-            source[clouds_composite..translucent]
-                .contains("pass.set_bind_group(0, &self.cloud_target.bind_group, &[])"),
-            "cloud composite samples the renderer-owned clouds target"
+            source[combine..hud].contains(
+                "pass.set_bind_group(0, &self.transparency_combine_bind_group.bind_group, &[])"
+            ),
+            "transparency combine samples the renderer-owned main/cloud targets"
         );
     }
 
     #[test]
-    fn main_target_blits_to_surface_before_hud_and_screenshot_readback() {
+    fn transparency_combine_writes_surface_before_hud_and_screenshot_readback() {
         let source = include_str!("render.rs");
         let main_view = source
             .find("let main_view = &self.main_target.view")
@@ -1057,9 +1038,9 @@ mod tests {
         let terrain_pass = source
             .find("label: Some(\"bbb-native-terrain-opaque-group-pass\")")
             .expect("main terrain pass label is used");
-        let main_blit = source
-            .find("label: Some(MAIN_BLIT_PASS_LABEL)")
-            .expect("main blit pass label is used");
+        let combine = source
+            .find("label: Some(TRANSPARENCY_COMBINE_PASS_LABEL)")
+            .expect("transparency combine pass label is used");
         let hud_pass = source
             .find("label: Some(\"bbb-native-hud-pass\")")
             .expect("hud pass label is used");
@@ -1071,29 +1052,30 @@ mod tests {
             .expect("screenshot copy still reads the presented frame");
 
         assert!(
-            main_view < terrain_pass && terrain_pass < main_blit,
-            "content passes draw to the renderer-owned main target before the final blit"
+            main_view < terrain_pass && terrain_pass < combine,
+            "content passes draw to the renderer-owned main target before transparency combine"
         );
         assert!(
-            !source[..main_blit].contains("view: &surface_view"),
-            "surface view is not a render target until the final blit pass"
+            !source[..combine].contains("view: &surface_view"),
+            "surface view is not a render target until the transparency combine pass"
         );
         assert!(
-            source[terrain_pass..main_blit].contains("view: main_view"),
+            source[terrain_pass..combine].contains("view: main_view"),
             "main content passes use the renderer-owned main target"
         );
         assert!(
-            source[main_blit..hud_pass].contains("view: &surface_view"),
-            "final blit writes the swapchain surface before HUD rendering"
+            source[combine..hud_pass].contains("view: &surface_view"),
+            "transparency combine writes the swapchain surface before HUD rendering"
         );
         assert!(
-            source[main_blit..hud_pass]
-                .contains("pass.set_bind_group(0, &self.main_target.bind_group, &[])"),
-            "final blit samples the renderer-owned main target"
+            source[combine..hud_pass].contains(
+                "pass.set_bind_group(0, &self.transparency_combine_bind_group.bind_group, &[])"
+            ),
+            "transparency combine samples the renderer-owned target bundle"
         );
         assert!(
-            main_blit < hud_pass && hud_pass < hud_item_pass && hud_item_pass < screenshot_copy,
-            "HUD and GUI item passes draw on the surface after final main-target blit"
+            combine < hud_pass && hud_pass < hud_item_pass && hud_item_pass < screenshot_copy,
+            "HUD and GUI item passes draw on the surface after transparency combine"
         );
         assert!(
             source[hud_pass..screenshot_copy].contains("view: &surface_view"),

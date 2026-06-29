@@ -13,9 +13,8 @@ use crate::{
         CameraUniform, ClearColor, FogEnvironment, LightmapEnvironment, TerrainBounds,
     },
     clouds::{
-        cloud_mesh_key, create_cloud_bind_group, create_cloud_bind_group_layout,
-        create_cloud_composite_pipeline, create_cloud_gpu, create_cloud_pipeline,
-        create_cloud_target, create_cloud_target_bind_group_layout, create_cloud_texture_data,
+        cloud_mesh_key, create_cloud_bind_group, create_cloud_bind_group_layout, create_cloud_gpu,
+        create_cloud_pipeline, create_cloud_target, create_cloud_texture_data,
         create_cloud_uniform_buffer, write_cloud_uniform, CloudEnvironment, CloudFrame, CloudGpu,
         CloudShape, CloudTarget, CloudTextureData, CloudTextureImage,
     },
@@ -66,8 +65,9 @@ use crate::{
     },
     terrain,
     transparency::{
-        create_main_blit_pipeline, create_main_target, create_main_target_bind_group_layout,
-        MainTarget,
+        create_main_target, create_transparency_combine_bind_group,
+        create_transparency_combine_bind_group_layout, create_transparency_combine_pipeline,
+        MainTarget, TransparencyCombineBindGroup,
     },
 };
 
@@ -79,9 +79,10 @@ pub struct Renderer {
     pub(super) size: PhysicalSize<u32>,
     pub(super) clear: ClearColor,
     pub(super) counters: RendererCounters,
-    pub(super) main_target_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) main_target: MainTarget,
-    pub(super) main_blit_pipeline: wgpu::RenderPipeline,
+    pub(super) transparency_combine_bind_group_layout: wgpu::BindGroupLayout,
+    pub(super) transparency_combine_bind_group: TransparencyCombineBindGroup,
+    pub(super) transparency_combine_pipeline: wgpu::RenderPipeline,
     pub(super) depth: DepthTarget,
     pub(super) terrain_pipeline: wgpu::RenderPipeline,
     pub(super) terrain_translucent_pipeline: wgpu::RenderPipeline,
@@ -112,8 +113,6 @@ pub struct Renderer {
     pub(super) celestial_pipeline: wgpu::RenderPipeline,
     pub(super) celestial_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) cloud_pipeline: wgpu::RenderPipeline,
-    pub(super) cloud_composite_pipeline: wgpu::RenderPipeline,
-    pub(super) cloud_target_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) cloud_target: CloudTarget,
     pub(super) cloud_bind_group: wgpu::BindGroup,
     pub(super) cloud_uniform_buffer: wgpu::Buffer,
@@ -377,16 +376,7 @@ impl Renderer {
             desired_maximum_frame_latency: 2,
         };
         surface.configure(&device, &config);
-        let main_target_bind_group_layout = create_main_target_bind_group_layout(&device);
-        let main_target = create_main_target(
-            &device,
-            &main_target_bind_group_layout,
-            config.format,
-            config.width,
-            config.height,
-        );
-        let main_blit_pipeline =
-            create_main_blit_pipeline(&device, config.format, &main_target_bind_group_layout);
+        let main_target = create_main_target(&device, config.format, config.width, config.height);
         let depth = create_depth_target(&device, config.width, config.height);
         let terrain_bind_group_layout = create_terrain_bind_group_layout(&device);
         let hud_bind_group_layout = create_hud_bind_group_layout(&device);
@@ -490,15 +480,20 @@ impl Renderer {
         let cloud_uniform_buffer = create_cloud_uniform_buffer(&device);
         let cloud_bind_group =
             create_cloud_bind_group(&device, &cloud_bind_group_layout, &cloud_uniform_buffer);
-        let cloud_target_bind_group_layout = create_cloud_target_bind_group_layout(&device);
-        let cloud_composite_pipeline =
-            create_cloud_composite_pipeline(&device, format, &cloud_target_bind_group_layout);
-        let cloud_target = create_cloud_target(
+        let cloud_target = create_cloud_target(&device, format, config.width, config.height);
+        let transparency_combine_bind_group_layout =
+            create_transparency_combine_bind_group_layout(&device);
+        let transparency_combine_bind_group = create_transparency_combine_bind_group(
             &device,
-            &cloud_target_bind_group_layout,
+            &transparency_combine_bind_group_layout,
+            &main_target,
+            &depth,
+            &cloud_target,
+        );
+        let transparency_combine_pipeline = create_transparency_combine_pipeline(
+            &device,
             format,
-            config.width,
-            config.height,
+            &transparency_combine_bind_group_layout,
         );
         let cloud_pipeline = create_cloud_pipeline(
             &device,
@@ -528,9 +523,10 @@ impl Renderer {
                 height: size.height,
                 ..RendererCounters::default()
             },
-            main_target_bind_group_layout,
             main_target,
-            main_blit_pipeline,
+            transparency_combine_bind_group_layout,
+            transparency_combine_bind_group,
+            transparency_combine_pipeline,
             depth,
             terrain_pipeline,
             terrain_translucent_pipeline,
@@ -561,8 +557,6 @@ impl Renderer {
             celestial_pipeline,
             celestial_bind_group_layout,
             cloud_pipeline,
-            cloud_composite_pipeline,
-            cloud_target_bind_group_layout,
             cloud_target,
             cloud_bind_group,
             cloud_uniform_buffer,
@@ -767,7 +761,6 @@ impl Renderer {
         self.surface.configure(&self.device, &self.config);
         self.main_target = create_main_target(
             &self.device,
-            &self.main_target_bind_group_layout,
             self.config.format,
             self.config.width,
             self.config.height,
@@ -782,10 +775,16 @@ impl Renderer {
         );
         self.cloud_target = create_cloud_target(
             &self.device,
-            &self.cloud_target_bind_group_layout,
             self.config.format,
             self.config.width,
             self.config.height,
+        );
+        self.transparency_combine_bind_group = create_transparency_combine_bind_group(
+            &self.device,
+            &self.transparency_combine_bind_group_layout,
+            &self.main_target,
+            &self.depth,
+            &self.cloud_target,
         );
         self.update_camera();
         self.counters.width = size.width;

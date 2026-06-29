@@ -1,9 +1,17 @@
-pub(super) const MAIN_BLIT_SHADER: &str = r#"
+use crate::{clouds::CloudTarget, gpu::DepthTarget};
+
+pub(super) const TRANSPARENCY_COMBINE_SHADER: &str = r#"
 @group(0) @binding(0)
 var main_texture: texture_2d<f32>;
 
 @group(0) @binding(1)
-var main_sampler: sampler;
+var main_depth: texture_depth_2d;
+
+@group(0) @binding(2)
+var clouds_texture: texture_2d<f32>;
+
+@group(0) @binding(3)
+var clouds_depth: texture_depth_2d;
 
 struct VertexOut {
     @builtin(position) position: vec4<f32>,
@@ -24,22 +32,44 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOut {
     return out;
 }
 
+fn blend(dst: vec3<f32>, src: vec4<f32>) -> vec3<f32> {
+    return (dst * (1.0 - src.a)) + src.rgb;
+}
+
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
-    return textureSample(main_texture, main_sampler, input.uv);
+    let pixel = vec2<i32>(input.position.xy);
+    let main_color = vec4<f32>(textureLoad(main_texture, pixel, 0).rgb, 1.0);
+    let main_depth_value = textureLoad(main_depth, pixel, 0);
+    let clouds_color = textureLoad(clouds_texture, pixel, 0);
+    let clouds_depth_value = textureLoad(clouds_depth, pixel, 0);
+
+    if (clouds_color.a == 0.0) {
+        return main_color;
+    }
+
+    if (clouds_depth_value > main_depth_value) {
+        return vec4<f32>(blend(clouds_color.rgb, main_color), 1.0);
+    }
+
+    return vec4<f32>(blend(main_color.rgb, clouds_color), 1.0);
 }
 "#;
 
 pub(super) struct MainTarget {
     pub(super) _texture: wgpu::Texture,
     pub(super) view: wgpu::TextureView,
-    pub(super) _sampler: wgpu::Sampler,
+}
+
+pub(super) struct TransparencyCombineBindGroup {
     pub(super) bind_group: wgpu::BindGroup,
 }
 
-pub(super) fn create_main_target_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+pub(super) fn create_transparency_combine_bind_group_layout(
+    device: &wgpu::Device,
+) -> wgpu::BindGroupLayout {
     device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some("bbb-main-target-bind-group-layout"),
+        label: Some("bbb-transparency-combine-bind-group-layout"),
         entries: &[
             wgpu::BindGroupLayoutEntry {
                 binding: 0,
@@ -54,7 +84,31 @@ pub(super) fn create_main_target_bind_group_layout(device: &wgpu::Device) -> wgp
             wgpu::BindGroupLayoutEntry {
                 binding: 1,
                 visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Depth,
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    multisampled: false,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 2,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    multisampled: false,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 3,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Depth,
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    multisampled: false,
+                },
                 count: None,
             },
         ],
@@ -63,7 +117,6 @@ pub(super) fn create_main_target_bind_group_layout(device: &wgpu::Device) -> wgp
 
 pub(super) fn create_main_target(
     device: &wgpu::Device,
-    layout: &wgpu::BindGroupLayout,
     format: wgpu::TextureFormat,
     width: u32,
     height: u32,
@@ -83,56 +136,63 @@ pub(super) fn create_main_target(
         view_formats: &[],
     });
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-        label: Some("bbb-main-target-sampler"),
-        address_mode_u: wgpu::AddressMode::ClampToEdge,
-        address_mode_v: wgpu::AddressMode::ClampToEdge,
-        address_mode_w: wgpu::AddressMode::ClampToEdge,
-        mag_filter: wgpu::FilterMode::Nearest,
-        min_filter: wgpu::FilterMode::Nearest,
-        mipmap_filter: wgpu::FilterMode::Nearest,
-        ..Default::default()
-    });
-    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("bbb-main-target-bind-group"),
-        layout,
-        entries: &[
-            wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::TextureView(&view),
-            },
-            wgpu::BindGroupEntry {
-                binding: 1,
-                resource: wgpu::BindingResource::Sampler(&sampler),
-            },
-        ],
-    });
 
     MainTarget {
         _texture: texture,
         view,
-        _sampler: sampler,
-        bind_group,
     }
 }
 
-pub(super) fn create_main_blit_pipeline(
+pub(super) fn create_transparency_combine_bind_group(
+    device: &wgpu::Device,
+    layout: &wgpu::BindGroupLayout,
+    main_target: &MainTarget,
+    main_depth: &DepthTarget,
+    cloud_target: &CloudTarget,
+) -> TransparencyCombineBindGroup {
+    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("bbb-transparency-combine-bind-group"),
+        layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(&main_target.view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(&main_depth.view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::TextureView(&cloud_target.view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 3,
+                resource: wgpu::BindingResource::TextureView(&cloud_target.depth.view),
+            },
+        ],
+    });
+
+    TransparencyCombineBindGroup { bind_group }
+}
+
+pub(super) fn create_transparency_combine_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("bbb-main-blit-shader"),
-        source: wgpu::ShaderSource::Wgsl(MAIN_BLIT_SHADER.into()),
+        label: Some("bbb-transparency-combine-shader"),
+        source: wgpu::ShaderSource::Wgsl(TRANSPARENCY_COMBINE_SHADER.into()),
     });
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("bbb-main-blit-pipeline-layout"),
+        label: Some("bbb-transparency-combine-pipeline-layout"),
         bind_group_layouts: &[bind_group_layout],
         push_constant_ranges: &[],
     });
 
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("bbb-main-blit-pipeline"),
+        label: Some("bbb-transparency-combine-pipeline"),
         layout: Some(&layout),
         vertex: wgpu::VertexState {
             module: &shader,
@@ -165,17 +225,38 @@ pub(super) fn create_main_blit_pipeline(
 
 #[cfg(test)]
 mod tests {
-    use super::MAIN_BLIT_SHADER;
+    use super::TRANSPARENCY_COMBINE_SHADER;
 
     #[test]
-    fn main_blit_samples_the_renderer_owned_main_target() {
+    fn transparency_combine_samples_main_and_cloud_color_depth_layers() {
         assert!(
-            MAIN_BLIT_SHADER.contains("var main_texture: texture_2d<f32>"),
-            "main blit shader samples the renderer-owned main color texture"
+            TRANSPARENCY_COMBINE_SHADER.contains("var main_texture: texture_2d<f32>"),
+            "combine shader samples the renderer-owned main color texture"
         );
         assert!(
-            MAIN_BLIT_SHADER.contains("return textureSample(main_texture, main_sampler, input.uv)"),
-            "main blit shader returns the sampled main target without extra blending math"
+            TRANSPARENCY_COMBINE_SHADER.contains("var main_depth: texture_depth_2d"),
+            "combine shader samples MainDepth"
+        );
+        assert!(
+            TRANSPARENCY_COMBINE_SHADER.contains("var clouds_texture: texture_2d<f32>"),
+            "combine shader samples the clouds color target"
+        );
+        assert!(
+            TRANSPARENCY_COMBINE_SHADER.contains("var clouds_depth: texture_depth_2d"),
+            "combine shader samples CloudsDepth"
+        );
+    }
+
+    #[test]
+    fn transparency_combine_uses_vanilla_depth_order_and_premultiplied_layer_blend() {
+        assert!(
+            TRANSPARENCY_COMBINE_SHADER.contains("clouds_depth_value > main_depth_value"),
+            "vanilla transparency sorting inserts larger depth values before nearer layers"
+        );
+        assert!(
+            TRANSPARENCY_COMBINE_SHADER
+                .contains("return (dst * (1.0 - src.a)) + src.rgb"),
+            "vanilla post/transparency.fsh blends premultiplied layer RGB without multiplying alpha again"
         );
     }
 }
