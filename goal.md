@@ -216,9 +216,10 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。当前 checkl
   本次重跑 audit 计数：`rg residual` 46 行、`rg fallback` 522 行、
   `rg unsupported` 163 行；命中已按上述分类落账。
 - 2026-06-29 workflow-adjustment audit rerun：按当前执行顺序再次运行
-  `rg residual`、`rg fallback`、`rg unsupported`，计数仍为
-  `rg residual` 46 行、`rg fallback` 522 行、`rg unsupported` 163 行。
-  对照 `docs/unsupported-features.md` 后未发现新的狭义 P0 pipeline blocker；
+  `rg residual`、`rg fallback`、`rg unsupported`，当前计数为
+  `rg residual` 50 行、`rg fallback` 525 行、`rg unsupported` 168 行。
+  新增命中来自本文件和 cloud follow-up 文档 wording；对照
+  `docs/unsupported-features.md` 后未发现新的狭义 P0 pipeline blocker。
   stale ledger wording 仅保留历史迁移证据或已归入 P0 visual / P1/P2/P3。
   下一步不得继续无限补 P1 粒子 provider / 实体细节，除非 audit 证明其直接
   阻塞上面的 hard checklist。
