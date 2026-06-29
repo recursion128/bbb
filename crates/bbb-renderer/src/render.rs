@@ -763,6 +763,28 @@ impl Renderer {
         }
 
         {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some(MAIN_BLIT_PASS_LABEL),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &surface_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.main_blit_pipeline);
+            pipeline_switches += 1;
+            pass.set_bind_group(0, &self.main_target.bind_group, &[]);
+            pass.draw(0..3, 0..1);
+            main_blit_draw_calls += 1;
+        }
+
+        {
             let (hud_vertices, hud_commands) = self.collect_hud_draws();
             if !hud_commands.is_empty() {
                 let hud_vertex_buffer =
@@ -775,7 +797,7 @@ impl Renderer {
                 let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("bbb-native-hud-pass"),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: main_view,
+                        view: &surface_view,
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Load,
@@ -822,7 +844,7 @@ impl Renderer {
                 let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("bbb-native-hud-item-pass"),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: main_view,
+                        view: &surface_view,
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Load,
@@ -848,28 +870,6 @@ impl Renderer {
                 pipeline_switches += 1;
                 item_model_draw_calls += 1;
             }
-        }
-
-        {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some(MAIN_BLIT_PASS_LABEL),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &surface_view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                occlusion_query_set: None,
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.main_blit_pipeline);
-            pipeline_switches += 1;
-            pass.set_bind_group(0, &self.main_target.bind_group, &[]);
-            pass.draw(0..3, 0..1);
-            main_blit_draw_calls += 1;
         }
 
         let readback = if let Some(path) = screenshot {
@@ -1049,7 +1049,7 @@ mod tests {
     }
 
     #[test]
-    fn main_target_blits_to_surface_before_screenshot_readback() {
+    fn main_target_blits_to_surface_before_hud_and_screenshot_readback() {
         let source = include_str!("render.rs");
         let main_view = source
             .find("let main_view = &self.main_target.view")
@@ -1060,6 +1060,12 @@ mod tests {
         let main_blit = source
             .find("label: Some(MAIN_BLIT_PASS_LABEL)")
             .expect("main blit pass label is used");
+        let hud_pass = source
+            .find("label: Some(\"bbb-native-hud-pass\")")
+            .expect("hud pass label is used");
+        let hud_item_pass = source
+            .find("label: Some(\"bbb-native-hud-item-pass\")")
+            .expect("hud item pass label is used");
         let screenshot_copy = source
             .find("prepare_screenshot_copy")
             .expect("screenshot copy still reads the presented frame");
@@ -1077,17 +1083,21 @@ mod tests {
             "main content passes use the renderer-owned main target"
         );
         assert!(
-            source[main_blit..screenshot_copy].contains("view: &surface_view"),
-            "final blit writes the swapchain surface before screenshot readback"
+            source[main_blit..hud_pass].contains("view: &surface_view"),
+            "final blit writes the swapchain surface before HUD rendering"
         );
         assert!(
-            source[main_blit..screenshot_copy]
+            source[main_blit..hud_pass]
                 .contains("pass.set_bind_group(0, &self.main_target.bind_group, &[])"),
             "final blit samples the renderer-owned main target"
         );
         assert!(
-            main_blit < screenshot_copy,
-            "screenshots read the frame after final main-target blit"
+            main_blit < hud_pass && hud_pass < hud_item_pass && hud_item_pass < screenshot_copy,
+            "HUD and GUI item passes draw on the surface after final main-target blit"
+        );
+        assert!(
+            source[hud_pass..screenshot_copy].contains("view: &surface_view"),
+            "post-blit HUD passes target the swapchain surface"
         );
     }
 

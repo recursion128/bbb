@@ -392,7 +392,9 @@ When an agent does any of the following, update this file in the same slice:
     The main scene now writes a renderer-owned `main` color target first and
     performs a final fullscreen blit to the swapchain/screenshot frame, matching
     the prerequisite shape for vanilla `transparency.json` sampling
-    `minecraft:main` color. Remaining work still needs bindable `MainDepth`,
+    `minecraft:main` color. HUD and GUI-item passes now draw on the surface
+    after that final blit, so they are no longer part of the future world
+    transparency combine. Remaining work still needs bindable `MainDepth`,
     separate translucent / item-entity / particle / weather sorting targets,
     and the actual depth-sorted transparency shader combine.
     Remaining render-graph parity still needs the full vanilla transparency
@@ -725,11 +727,12 @@ When an agent does any of the following, update this file in the same slice:
     pass after main/entity-outline ordering and composites a renderer-owned
     clouds target. The main scene now also resolves through a renderer-owned
     main color target before a final fullscreen blit, so future transparency
-    combine can sample `Main`; remaining visual gaps are full transparency
-    post-chain depth sorting with `MainDepth` plus translucent / item-entity /
-    particle / weather targets, fuller atmosphere presentation, and later
-    custom-pack EnvironmentAttribute generalization when a concrete renderer
-    surface exists. Sun/moon presentation
+    combine can sample `Main`; HUD and GUI-item passes draw after this blit on
+    the surface, matching vanilla's world-before-GUI render shape. Remaining
+    visual gaps are full transparency post-chain depth sorting with `MainDepth`
+    plus translucent / item-entity / particle / weather targets, fuller
+    atmosphere presentation, and later custom-pack EnvironmentAttribute
+    generalization when a concrete renderer surface exists. Sun/moon presentation
     is now covered by the vanilla `CELESTIAL` overlay blend, the
     `environment/celestial` atlas source, `SUN_ANGLE` / `MOON_ANGLE`, and the
     8-phase `MOON_PHASE` order. Stars are covered by vanilla
