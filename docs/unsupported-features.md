@@ -872,19 +872,21 @@ When an agent does any of the following, update this file in the same slice:
     `max(block, sky * 0.95)` scalar approximation. Remaining lighting gaps:
     finer transparency target sorting after the renderer-owned main color target /
     Main+Translucent+ItemEntity+Particles+Weather+Clouds combine foundation,
-    smooth/AO entity light, GUI / entity-in-UI lighting variants, and the colored
-    debug fallback's baked-shade approximation. The item-model
+    smooth/AO entity light, GUI flat / entity-in-UI lighting variants, and the colored
+    debug fallback's baked-shade approximation. The texture-backed entity shaders
+    and item-model shader now read vanilla `Lighting.Entry` Light0/Light1
+    directions from the camera uniform. World entity and world item-model draws
+    use LEVEL default/nether directions, and GUI 3D block-item draws use ITEMS_3D.
+    The item-model
     shader now consumes submitted item stack light coords through the same
     renderer-owned dynamic LightTexture sampler and applies vanilla-shaped
     `minecraft_mix_light` normal diffuse from per-vertex normals, so vanilla
     item entity / thrown item submit paths that reach
     `ItemStackRenderState.submit(..., lightCoords, ...)` no longer use the old
     scalar light approximation or CPU-baked `Direction.getShade` RGB. The
-    item-model shader now reads vanilla `Lighting.Entry` Light0/Light1
-    directions from the camera uniform: world item-model draws use LEVEL and
-    GUI 3D block-item draws use ITEMS_3D. ITEMS_FLAT and ENTITY_IN_UI have
+    ITEMS_FLAT and ENTITY_IN_UI have
     pipeline-state expression but wait for the corresponding GUI flat /
-    entity-in-UI item submission surfaces. The dropped-item 3D model
+    entity-in-UI item/entity submission surfaces. The dropped-item 3D model
     path and the legacy item-entity / thrown-item billboard path now sample the
     entity light probe through `WorldStore`, keep the vanilla full-bright
     fallback for missing chunk light, and pass shader-space `[block, sky]`
@@ -2019,9 +2021,10 @@ When an agent does any of the following, update this file in the same slice:
         and the renderer now mirrors that shape for the shared item-model path
         with per-vertex normals and no CPU-baked `Direction.getShade` RGB. The
         renderer now carries vanilla `Lighting.Entry` light directions in the
-        camera uniform; world item-model draws use LEVEL and GUI 3D block-item
-        draws use ITEMS_3D. Remaining item lighting surface work is GUI flat
-        and entity-in-UI contexts.
+        camera uniform; world item-model and texture-backed entity draws use
+        LEVEL default/nether directions, and GUI 3D block-item draws use
+        ITEMS_3D. Remaining lighting surface work is GUI flat and
+        entity-in-UI item/entity contexts.
     - thrown-item projectiles (egg, snowball, ender pearl, eye of ender, splash/lingering potion,
       experience bottle, large fireball, small fireball) as camera-facing item-icon billboards on the
       same path: vanilla's `ThrownItemRenderer` draws each as the item sprite of its carried

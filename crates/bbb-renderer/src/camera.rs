@@ -32,8 +32,15 @@ pub const VANILLA_MIN_RENDER_DISTANCE_CHUNKS: u32 = 2;
 pub const VANILLA_MAX_RENDER_DISTANCE_CHUNKS: u32 = 32;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum ItemLightingEntry {
-    Level,
+pub enum LevelLighting {
+    Default,
+    Nether,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum LightingEntry {
+    LevelDefault,
+    LevelNether,
     #[allow(dead_code)]
     ItemsFlat,
     Items3d,
@@ -53,6 +60,7 @@ pub struct LightmapEnvironment {
     pub sky_light_color: [f32; 3],
     pub ambient_color: [f32; 3],
     pub night_vision_color: [f32; 3],
+    pub level_lighting: LevelLighting,
 }
 
 impl Default for LightmapEnvironment {
@@ -68,6 +76,7 @@ impl Default for LightmapEnvironment {
             sky_light_color: VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
             ambient_color: VANILLA_DEFAULT_LIGHTMAP_AMBIENT_COLOR,
             night_vision_color: VANILLA_DEFAULT_LIGHTMAP_NIGHT_VISION_COLOR,
+            level_lighting: LevelLighting::Default,
         }
     }
 }
@@ -100,6 +109,16 @@ impl LightmapEnvironment {
                 self.night_vision_color,
                 VANILLA_DEFAULT_LIGHTMAP_NIGHT_VISION_COLOR,
             ),
+            level_lighting: self.level_lighting,
+        }
+    }
+}
+
+impl LevelLighting {
+    fn entry(self) -> LightingEntry {
+        match self {
+            LevelLighting::Default => LightingEntry::LevelDefault,
+            LevelLighting::Nether => LightingEntry::LevelNether,
         }
     }
 }
@@ -264,9 +283,9 @@ pub(crate) struct CameraUniform {
     /// Vanilla `FogData` sky/cloud end distances:
     /// `[SkyEnd, CloudEnd, _, _]`.
     fog_visibility_ends: [f32; 4],
-    /// Vanilla `Lighting.Entry` diffuse directions used by item-model shaders.
-    item_light0: [f32; 4],
-    item_light1: [f32; 4],
+    /// Vanilla `Lighting.Entry` diffuse directions used by lit model shaders.
+    minecraft_light0: [f32; 4],
+    minecraft_light1: [f32; 4],
 }
 
 impl CameraUniform {
@@ -286,7 +305,7 @@ impl CameraUniform {
             Mat4::orthographic_rh(0.0, width.max(1.0), height.max(1.0), 0.0, -1000.0, 1000.0);
         Self {
             view_proj: projection.to_cols_array_2d(),
-            ..Self::identity().with_item_lighting(ItemLightingEntry::Items3d)
+            ..Self::identity().with_lighting_entry(LightingEntry::Items3d)
         }
     }
 
@@ -353,6 +372,8 @@ impl CameraUniform {
         self.sky_light_color = lightmap.sky_light_color;
         self.ambient_color = lightmap.ambient_color;
         self.night_vision_color = lightmap.night_vision_color;
+        self.minecraft_light0 = lightmap.minecraft_light0;
+        self.minecraft_light1 = lightmap.minecraft_light1;
         self
     }
 
@@ -369,10 +390,10 @@ impl CameraUniform {
         self
     }
 
-    pub(crate) fn with_item_lighting(mut self, entry: ItemLightingEntry) -> Self {
-        let (light0, light1) = item_lighting_directions(entry);
-        self.item_light0 = vec3_to_vec4(light0);
-        self.item_light1 = vec3_to_vec4(light1);
+    pub(crate) fn with_lighting_entry(mut self, entry: LightingEntry) -> Self {
+        let (light0, light1) = lighting_entry_directions(entry);
+        self.minecraft_light0 = vec3_to_vec4(light0);
+        self.minecraft_light1 = vec3_to_vec4(light1);
         self
     }
 
@@ -399,6 +420,11 @@ impl CameraUniform {
             sky_light_color: self.sky_light_color[0..3].try_into().unwrap(),
             ambient_color: self.ambient_color[0..3].try_into().unwrap(),
             night_vision_color: self.night_vision_color[0..3].try_into().unwrap(),
+            level_lighting: if self.minecraft_light1[1] < 0.0 {
+                LevelLighting::Nether
+            } else {
+                LevelLighting::Default
+            },
         }
     }
 
@@ -421,16 +447,17 @@ impl CameraUniform {
     }
 
     #[cfg(test)]
-    pub(crate) fn item_lighting(self) -> ([f32; 3], [f32; 3]) {
+    pub(crate) fn shader_lighting(self) -> ([f32; 3], [f32; 3]) {
         (
-            self.item_light0[0..3].try_into().unwrap(),
-            self.item_light1[0..3].try_into().unwrap(),
+            self.minecraft_light0[0..3].try_into().unwrap(),
+            self.minecraft_light1[0..3].try_into().unwrap(),
         )
     }
 
     fn from_lightmap_environment(environment: LightmapEnvironment) -> Self {
         let environment = environment.sanitized();
-        let (item_light0, item_light1) = item_lighting_directions(ItemLightingEntry::Level);
+        let (minecraft_light0, minecraft_light1) =
+            lighting_entry_directions(environment.level_lighting.entry());
         Self {
             view_proj: Mat4::IDENTITY.to_cols_array_2d(),
             lightmap_factors: [
@@ -463,8 +490,8 @@ impl CameraUniform {
                 0.0,
                 0.0,
             ],
-            item_light0: vec3_to_vec4(item_light0),
-            item_light1: vec3_to_vec4(item_light1),
+            minecraft_light0: vec3_to_vec4(minecraft_light0),
+            minecraft_light1: vec3_to_vec4(minecraft_light1),
         }
     }
 }
@@ -517,12 +544,13 @@ fn vec3_to_vec4(value: Vec3) -> [f32; 4] {
     [value.x, value.y, value.z, 0.0]
 }
 
-fn item_lighting_directions(entry: ItemLightingEntry) -> (Vec3, Vec3) {
+fn lighting_entry_directions(entry: LightingEntry) -> (Vec3, Vec3) {
     let diffuse0 = Vec3::new(0.2, 1.0, -0.7).normalize();
     let diffuse1 = Vec3::new(-0.2, 1.0, 0.7).normalize();
     match entry {
-        ItemLightingEntry::Level => (diffuse0, diffuse1),
-        ItemLightingEntry::ItemsFlat => {
+        LightingEntry::LevelDefault => (diffuse0, diffuse1),
+        LightingEntry::LevelNether => (diffuse0, Vec3::new(-0.2, -1.0, 0.7).normalize()),
+        LightingEntry::ItemsFlat => {
             let pose = Mat4::from_rotation_y(-std::f32::consts::PI / 8.0)
                 * Mat4::from_rotation_x(std::f32::consts::PI * 3.0 / 4.0);
             (
@@ -530,7 +558,7 @@ fn item_lighting_directions(entry: ItemLightingEntry) -> (Vec3, Vec3) {
                 pose.transform_vector3(diffuse1).normalize(),
             )
         }
-        ItemLightingEntry::Items3d => {
+        LightingEntry::Items3d => {
             let pose = Mat4::from_scale(Vec3::new(1.0, -1.0, 1.0))
                 * Mat4::from_euler(EulerRot::YXZ, 1.0821041, 3.2375858, 0.0)
                 * Mat4::from_euler(
@@ -544,7 +572,7 @@ fn item_lighting_directions(entry: ItemLightingEntry) -> (Vec3, Vec3) {
                 pose.transform_vector3(diffuse1).normalize(),
             )
         }
-        ItemLightingEntry::EntityInUi => (
+        LightingEntry::EntityInUi => (
             Vec3::new(0.2, -1.0, 1.0).normalize(),
             Vec3::new(-0.2, -1.0, 0.0).normalize(),
         ),
@@ -616,6 +644,7 @@ mod tests {
             environment.night_vision_color,
             VANILLA_DEFAULT_LIGHTMAP_NIGHT_VISION_COLOR
         );
+        assert_eq!(environment.level_lighting, LevelLighting::Default);
     }
 
     #[test]
@@ -631,8 +660,8 @@ mod tests {
     }
 
     #[test]
-    fn camera_uniform_defaults_to_vanilla_level_item_lighting() {
-        let (light0, light1) = CameraUniform::identity().item_lighting();
+    fn camera_uniform_defaults_to_vanilla_level_lighting() {
+        let (light0, light1) = CameraUniform::identity().shader_lighting();
 
         assert_vec3_close(light0, Vec3::new(0.2, 1.0, -0.7).normalize());
         assert_vec3_close(light1, Vec3::new(-0.2, 1.0, 0.7).normalize());
@@ -641,18 +670,31 @@ mod tests {
                 TerrainBounds::from_points([Vec3::ZERO, Vec3::ONE]).unwrap(),
                 1.0
             )
-            .item_lighting(),
-            CameraUniform::identity().item_lighting()
+            .shader_lighting(),
+            CameraUniform::identity().shader_lighting()
         );
     }
 
     #[test]
+    fn camera_uniform_uses_nether_level_lighting_from_environment() {
+        let (light0, light1) = CameraUniform::identity()
+            .with_lightmap_environment(LightmapEnvironment {
+                level_lighting: LevelLighting::Nether,
+                ..LightmapEnvironment::default()
+            })
+            .shader_lighting();
+
+        assert_vec3_close(light0, Vec3::new(0.2, 1.0, -0.7).normalize());
+        assert_vec3_close(light1, Vec3::new(-0.2, -1.0, 0.7).normalize());
+    }
+
+    #[test]
     fn gui_ortho_uses_vanilla_items_3d_lighting_entry() {
-        let level = CameraUniform::identity().item_lighting();
-        let gui = CameraUniform::gui_ortho(320.0, 240.0).item_lighting();
+        let level = CameraUniform::identity().shader_lighting();
+        let gui = CameraUniform::gui_ortho(320.0, 240.0).shader_lighting();
         let expected = CameraUniform::identity()
-            .with_item_lighting(ItemLightingEntry::Items3d)
-            .item_lighting();
+            .with_lighting_entry(LightingEntry::Items3d)
+            .shader_lighting();
 
         assert_eq!(gui, expected);
         assert_ne!(gui, level);
@@ -661,13 +703,13 @@ mod tests {
     #[test]
     fn camera_uniform_expresses_remaining_vanilla_item_lighting_entries() {
         let items_flat = CameraUniform::identity()
-            .with_item_lighting(ItemLightingEntry::ItemsFlat)
-            .item_lighting();
+            .with_lighting_entry(LightingEntry::ItemsFlat)
+            .shader_lighting();
         let entity_in_ui = CameraUniform::identity()
-            .with_item_lighting(ItemLightingEntry::EntityInUi)
-            .item_lighting();
+            .with_lighting_entry(LightingEntry::EntityInUi)
+            .shader_lighting();
 
-        assert_ne!(items_flat, CameraUniform::identity().item_lighting());
+        assert_ne!(items_flat, CameraUniform::identity().shader_lighting());
         assert_vec3_close(entity_in_ui.0, Vec3::new(0.2, -1.0, 1.0).normalize());
         assert_vec3_close(entity_in_ui.1, Vec3::new(-0.2, -1.0, 0.0).normalize());
     }
@@ -770,6 +812,7 @@ mod tests {
             sky_light_color: [0.25, 2.0, 0.75],
             ambient_color: [f32::NAN, 0.5, -1.0],
             night_vision_color: [0.2, f32::INFINITY, 1.5],
+            level_lighting: LevelLighting::Nether,
         };
         let sanitized = CameraUniform::identity()
             .with_lightmap_environment(environment)
@@ -797,6 +840,7 @@ mod tests {
             sanitized.night_vision_color,
             [0.2, VANILLA_DEFAULT_LIGHTMAP_NIGHT_VISION_COLOR[1], 1.0]
         );
+        assert_eq!(sanitized.level_lighting, LevelLighting::Nether);
     }
 
     #[test]

@@ -16,12 +16,13 @@ use bbb_renderer::{
     HudBlockItemModel, HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
     HudInventoryItem, HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
     HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
-    HudItemDurabilityBar, HudItemIcon, HudUvRect, LightmapEnvironment, LightningBoltRenderState,
-    SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
-    HUD_HOTBAR_SLOTS, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
-    VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
-    VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
-    VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
+    HudItemDurabilityBar, HudItemIcon, HudUvRect, LevelLighting, LightmapEnvironment,
+    LightningBoltRenderState, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame,
+    WeatherRenderState, HUD_HOTBAR_SLOTS, VANILLA_DEFAULT_CLOUD_COLOR,
+    VANILLA_DEFAULT_CLOUD_HEIGHT, VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
+    VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR,
+    VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR, VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
+    VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_world::{
     BlockPos, BookScreenState, ContainerState, MerchantOfferState, MerchantOffersState,
@@ -1344,6 +1345,7 @@ fn dimension_lightmap_environment(level: &WorldLevelInfo) -> LightmapEnvironment
             environment.sky_factor = 0.0;
             environment.sky_light_color = VANILLA_NETHER_SKY_LIGHT_COLOR;
             environment.ambient_color = VANILLA_NETHER_AMBIENT_LIGHT_COLOR;
+            environment.level_lighting = LevelLighting::Nether;
         }
         VanillaLightmapDimensionKind::End => {
             environment.sky_factor = 0.0;

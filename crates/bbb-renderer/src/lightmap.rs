@@ -355,6 +355,7 @@ mod tests {
             sky_light_color: [0.4, 0.5, 0.6],
             ambient_color: [0.7, 0.8, 0.9],
             night_vision_color: [0.9, 0.8, 0.7],
+            level_lighting: crate::camera::LevelLighting::Nether,
         });
         assert_eq!(uniform.sky_factor, 0.25);
         assert_eq!(uniform.block_factor, 1.5);

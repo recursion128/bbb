@@ -90,6 +90,8 @@ struct Camera {
     fog_color: vec4<f32>,
     fog_distances: vec4<f32>,
     fog_visibility_ends: vec4<f32>,
+    minecraft_light0: vec4<f32>,
+    minecraft_light1: vec4<f32>,
 };
 
 @group(0) @binding(0)
@@ -184,6 +186,8 @@ struct Camera {
     fog_color: vec4<f32>,
     fog_distances: vec4<f32>,
     fog_visibility_ends: vec4<f32>,
+    minecraft_light0: vec4<f32>,
+    minecraft_light1: vec4<f32>,
 };
 
 @group(0) @binding(0)
@@ -231,8 +235,8 @@ fn sample_lightmap(light: vec2<f32>) -> vec3<f32> {
 }
 
 fn diffuse_light(normal: vec3<f32>) -> f32 {
-    let light0 = normalize(vec3<f32>(0.2, 1.0, -0.7));
-    let light1 = normalize(vec3<f32>(-0.2, 1.0, 0.7));
+    let light0 = normalize(camera.minecraft_light0.xyz);
+    let light1 = normalize(camera.minecraft_light1.xyz);
     let light_value = max(vec2<f32>(0.0), vec2<f32>(dot(light0, normal), dot(light1, normal)));
     return min(1.0, (light_value.x + light_value.y) * 0.6 + 0.4);
 }
@@ -308,6 +312,8 @@ struct Camera {
     fog_color: vec4<f32>,
     fog_distances: vec4<f32>,
     fog_visibility_ends: vec4<f32>,
+    minecraft_light0: vec4<f32>,
+    minecraft_light1: vec4<f32>,
 };
 
 @group(0) @binding(0)
@@ -355,8 +361,8 @@ fn sample_lightmap(light: vec2<f32>) -> vec3<f32> {
 }
 
 fn diffuse_light(normal: vec3<f32>) -> f32 {
-    let light0 = normalize(vec3<f32>(0.2, 1.0, -0.7));
-    let light1 = normalize(vec3<f32>(-0.2, 1.0, 0.7));
+    let light0 = normalize(camera.minecraft_light0.xyz);
+    let light1 = normalize(camera.minecraft_light1.xyz);
     let light_value = max(vec2<f32>(0.0), vec2<f32>(dot(light0, normal), dot(light1, normal)));
     return min(1.0, (light_value.x + light_value.y) * 0.6 + 0.4);
 }

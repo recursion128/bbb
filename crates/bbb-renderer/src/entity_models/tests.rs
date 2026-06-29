@@ -779,15 +779,17 @@ fn entity_textured_shader_samples_dynamic_lightmap_texture() {
 
 #[test]
 fn entity_textured_shader_applies_vanilla_level_diffuse_lighting() {
-    // Vanilla entity.vsh calls minecraft_mix_light with Lighting.setupLevel's
-    // default light directions, MINECRAFT_LIGHT_POWER 0.6 and ambient 0.4.
+    // Vanilla entity.vsh calls minecraft_mix_light with the current Lighting.Entry
+    // directions, MINECRAFT_LIGHT_POWER 0.6 and ambient 0.4.
     for shader in [
         ENTITY_MODEL_TEXTURED_SHADER,
         ENTITY_MODEL_TEXTURED_CULL_SHADER,
     ] {
         assert!(shader.contains("@location(5) normal: vec3<f32>"));
-        assert!(shader.contains("vec3<f32>(0.2, 1.0, -0.7)"));
-        assert!(shader.contains("vec3<f32>(-0.2, 1.0, 0.7)"));
+        assert!(shader.contains("minecraft_light0: vec4<f32>"));
+        assert!(shader.contains("minecraft_light1: vec4<f32>"));
+        assert!(shader.contains("let light0 = normalize(camera.minecraft_light0.xyz)"));
+        assert!(shader.contains("let light1 = normalize(camera.minecraft_light1.xyz)"));
         assert!(shader.contains("(light_value.x + light_value.y) * 0.6 + 0.4"));
     }
     assert!(ENTITY_MODEL_TEXTURED_SHADER

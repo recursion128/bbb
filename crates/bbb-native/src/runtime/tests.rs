@@ -159,6 +159,7 @@ fn lightmap_environment_uses_vanilla_dimension_attributes() {
     assert_close3(overworld_environment.ambient_color, [10.0 / 255.0; 3]);
     assert_eq!(overworld_environment.brightness_factor, 0.75);
     assert_eq!(overworld_environment.block_factor, 1.25);
+    assert_eq!(overworld_environment.level_lighting, LevelLighting::Default);
 
     let nether = world_with_dimension(1, "minecraft:the_nether");
     let nether_environment = lightmap_environment_for_world(&nether, 0.5, 1.4);
@@ -171,6 +172,7 @@ fn lightmap_environment_uses_vanilla_dimension_attributes() {
         nether_environment.ambient_color,
         [48.0 / 255.0, 40.0 / 255.0, 33.0 / 255.0],
     );
+    assert_eq!(nether_environment.level_lighting, LevelLighting::Nether);
 
     let end = world_with_dimension(2, "minecraft:the_end");
     let end_environment = lightmap_environment_for_world(&end, 0.5, 1.4);
@@ -183,6 +185,7 @@ fn lightmap_environment_uses_vanilla_dimension_attributes() {
         end_environment.ambient_color,
         [63.0 / 255.0, 71.0 / 255.0, 63.0 / 255.0],
     );
+    assert_eq!(end_environment.level_lighting, LevelLighting::Default);
 }
 
 #[test]
