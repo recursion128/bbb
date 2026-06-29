@@ -430,12 +430,19 @@ When an agent does any of the following, update this file in the same slice:
     `crumblingBufferSource.endBatch()` position. Existing block/flat
     item-model and item-frame map batches now draw as world item features on the
     main target before the vanilla-shaped target depth copies and before
-    translucent terrain; GUI item icons remain a post-combine HUD pass. Remaining
-    render-graph parity still needs finer item-submit solid/translucent split,
-    per-submit feature distance sorting, and target ordering across
-    block/text/name, terrain, particles, weather, and clouds; outline
-    now has a dedicated target/composite, and lightning is no longer missing
-    weather-target geometry.
+    translucent terrain; GUI item icons remain a post-combine HUD pass. Item-model
+    quads now also carry the vanilla item-submit solid/translucent split used by
+    `ItemFeatureRenderer.hasTranslucency()`: solid dropped/held/framed item
+    models stay on the main target, while translucent block/flat item-model
+    buckets draw through an alpha-blended item-model pipeline in
+    `OutputTarget.ITEM_ENTITY_TARGET` before billboard items and particles.
+    Flat/generated item material translucency metadata is still deferred to item
+    presentation because that material source is not modeled yet; it is no longer
+    a narrow render-pipeline path blocker. Remaining render-graph parity still
+    needs per-submit feature distance sorting and target ordering across
+    block/text/name, terrain, particles, weather, and clouds; outline now has a
+    dedicated target/composite, and lightning is no longer missing weather-target
+    geometry.
   - P0 cloud presentation slice: vanilla 26.1 `CloudRenderer` uses
     `EnvironmentAttributes.CLOUD_COLOR` / `CLOUD_HEIGHT` and the
     `rendertype_clouds` fragment alpha fade

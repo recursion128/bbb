@@ -318,6 +318,7 @@ fn bake_face(
         uvs: mapped,
         tint,
         shade: facing.shade(),
+        translucent: false,
     }
 }
 

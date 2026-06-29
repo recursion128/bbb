@@ -46,6 +46,8 @@ pub struct ItemModelQuad {
     pub tint: [f32; 4],
     /// Directional face-shade multiplier (vanilla `Direction.getShade`, AO off). `1.0` = unshaded.
     pub shade: f32,
+    /// Whether this quad's item render type uses vanilla blending (`item_translucent`).
+    pub translucent: bool,
 }
 
 /// A hotbar slot's 3D block item: the block model's quads (atlas-absolute UVs over the blocks atlas, in
@@ -74,6 +76,13 @@ pub(crate) struct ItemModelVertex {
 pub struct ItemModelMesh {
     pub(crate) vertices: Vec<ItemModelVertex>,
     pub(crate) indices: Vec<u32>,
+}
+
+/// A baked block/item model split by vanilla item feature phase.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct ItemModelMeshSet {
+    pub solid: ItemModelMesh,
+    pub translucent: ItemModelMesh,
 }
 
 impl ItemModelMesh {
@@ -144,6 +153,12 @@ impl ItemModelMesh {
     }
 }
 
+impl ItemModelMeshSet {
+    pub fn is_empty(&self) -> bool {
+        self.solid.is_empty() && self.translucent.is_empty()
+    }
+}
+
 /// Bakes a single model's `quads` into a fresh mesh under `transform`. Convenience over
 /// [`ItemModelMesh::append_quads`] for the common one-model case.
 pub fn bake_item_model_mesh(quads: &[ItemModelQuad], transform: Mat4) -> ItemModelMesh {
@@ -160,6 +175,30 @@ pub fn bake_item_model_mesh_with_light(
     let mut mesh = ItemModelMesh::new();
     mesh.append_quads_with_light(quads, transform, light);
     mesh
+}
+
+/// Bakes a model into the same solid/translucent split vanilla
+/// `ItemFeatureRenderer` derives from each quad's item render type.
+pub fn bake_item_model_meshes_with_light(
+    quads: &[ItemModelQuad],
+    transform: Mat4,
+    light: [f32; 2],
+) -> ItemModelMeshSet {
+    let mut meshes = ItemModelMeshSet::default();
+    for quad in quads {
+        if quad.translucent {
+            meshes.translucent.append_quads_with_light(
+                std::slice::from_ref(quad),
+                transform,
+                light,
+            );
+        } else {
+            meshes
+                .solid
+                .append_quads_with_light(std::slice::from_ref(quad), transform, light);
+        }
+    }
+    meshes
 }
 
 /// Concatenates several baked meshes into one vertex + index buffer, rebasing each mesh's indices onto
@@ -187,11 +226,23 @@ impl Renderer {
         self.block_item_model_meshes = meshes;
     }
 
+    /// Sets the translucent block-item meshes to draw through the vanilla
+    /// `item_translucent` / itemEntity target phase.
+    pub fn set_block_item_model_translucent_meshes(&mut self, meshes: Vec<ItemModelMesh>) {
+        self.block_item_model_translucent_meshes = meshes;
+    }
+
     /// Sets the baked **flat / generated** item-model meshes to draw this frame — those whose UVs are
     /// absolute into the item atlas (the same atlas the dropped-item billboards sample). Drawn only when
     /// that atlas has been uploaded; otherwise skipped.
     pub fn set_flat_item_model_meshes(&mut self, meshes: Vec<ItemModelMesh>) {
         self.flat_item_model_meshes = meshes;
+    }
+
+    /// Sets translucent generated-item meshes to draw through the vanilla
+    /// `item_translucent` / itemEntity target phase.
+    pub fn set_flat_item_model_translucent_meshes(&mut self, meshes: Vec<ItemModelMesh>) {
+        self.flat_item_model_translucent_meshes = meshes;
     }
 
     /// Sets this frame's 3D block items for the hotbar slots (`None` for an empty slot or a flat item,
@@ -207,9 +258,21 @@ impl Renderer {
         merge_item_model_meshes(&self.block_item_model_meshes)
     }
 
+    pub(crate) fn collect_block_item_model_translucent_geometry(
+        &self,
+    ) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        merge_item_model_meshes(&self.block_item_model_translucent_meshes)
+    }
+
     /// Concatenates this frame's flat-item meshes into one vertex + index buffer for upload.
     pub(crate) fn collect_flat_item_model_geometry(&self) -> (Vec<ItemModelVertex>, Vec<u32>) {
         merge_item_model_meshes(&self.flat_item_model_meshes)
+    }
+
+    pub(crate) fn collect_flat_item_model_translucent_geometry(
+        &self,
+    ) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        merge_item_model_meshes(&self.flat_item_model_translucent_meshes)
     }
 }
 
@@ -336,6 +399,42 @@ pub(crate) fn create_item_model_pipeline(
     bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
+    create_item_model_pipeline_with_blend(
+        device,
+        format,
+        bind_group_layout,
+        lightmap_bind_group_layout,
+        "bbb-item-model-pipeline",
+        wgpu::BlendState::REPLACE,
+    )
+}
+
+/// Builds the vanilla `item_translucent` variant: same shader and depth state as
+/// item cutout, but alpha blended for the itemEntity target.
+pub(crate) fn create_item_model_translucent_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_item_model_pipeline_with_blend(
+        device,
+        format,
+        bind_group_layout,
+        lightmap_bind_group_layout,
+        "bbb-item-model-translucent-pipeline",
+        wgpu::BlendState::ALPHA_BLENDING,
+    )
+}
+
+fn create_item_model_pipeline_with_blend(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    label: &'static str,
+    blend: wgpu::BlendState,
+) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("bbb-item-model-shader"),
         source: wgpu::ShaderSource::Wgsl(ITEM_MODEL_SHADER.into()),
@@ -347,7 +446,7 @@ pub(crate) fn create_item_model_pipeline(
     });
 
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("bbb-item-model-pipeline"),
+        label: Some(label),
         layout: Some(&layout),
         vertex: wgpu::VertexState {
             module: &shader,
@@ -376,7 +475,7 @@ pub(crate) fn create_item_model_pipeline(
             entry_point: "fs_main",
             targets: &[Some(wgpu::ColorTargetState {
                 format,
-                blend: Some(wgpu::BlendState::REPLACE),
+                blend: Some(blend),
                 write_mask: wgpu::ColorWrites::ALL,
             })],
         }),
@@ -400,6 +499,7 @@ mod tests {
             uvs: [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
             tint,
             shade,
+            translucent: false,
         }
     }
 
@@ -434,6 +534,25 @@ mod tests {
             light,
         );
         assert!(mesh.vertices.iter().all(|vertex| vertex.light == light));
+    }
+
+    #[test]
+    fn mesh_set_splits_translucent_quads_for_vanilla_item_feature_phase() {
+        let mut solid = unit_quad(1.0, [1.0, 1.0, 1.0, 1.0]);
+        solid.translucent = false;
+        let mut translucent = unit_quad(0.8, [0.5, 0.75, 1.0, 0.6]);
+        translucent.translucent = true;
+        let meshes = bake_item_model_meshes_with_light(
+            &[solid, translucent],
+            Mat4::IDENTITY,
+            [4.0 / 15.0, 12.0 / 15.0],
+        );
+
+        assert_eq!(meshes.solid.vertices.len(), 4);
+        assert_eq!(meshes.solid.indices, vec![0, 1, 2, 0, 2, 3]);
+        assert_eq!(meshes.translucent.vertices.len(), 4);
+        assert_eq!(meshes.translucent.indices, vec![0, 1, 2, 0, 2, 3]);
+        assert_eq!(meshes.translucent.vertices[0].color, [0.4, 0.6, 0.8, 0.6]);
     }
 
     #[test]

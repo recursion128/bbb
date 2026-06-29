@@ -2747,6 +2747,7 @@ mod tests {
             uvs: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
             tint: [1.0, 1.0, 1.0, 1.0],
             shade: 1.0,
+            translucent: false,
         };
         let mesh = bake_item_model_mesh(&[quad], placement * gui_display);
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -3332,6 +3333,7 @@ mod tests {
             uvs: [[0.0, 0.0]; 4],
             tint: [1.0, 1.0, 1.0, 1.0],
             shade: 1.0,
+            translucent: false,
         };
         let model = |quads: Vec<crate::item_models::ItemModelQuad>| HudBlockItemModel {
             quads,

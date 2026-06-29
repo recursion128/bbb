@@ -5,7 +5,9 @@
 //! `Boxes`, and `Quads` cover every full and partial block model; `Cross`/`Crosses` are in-world-only
 //! foliage geometry and never the shape of an item, so they bake nothing.
 
-use super::super::{TerrainQuad, TerrainRenderShape, TerrainTextureAtlas, TerrainTint};
+use super::super::{
+    TerrainQuad, TerrainRenderShape, TerrainTextureAtlas, TerrainTint, TerrainTransparency,
+};
 use super::emitter::{cardinal_shade, face_from_normal};
 use super::geometry::{box_face_corners, face_uvs_from_crop, FACES};
 use crate::item_models::ItemModelQuad;
@@ -32,6 +34,7 @@ pub(in crate::terrain) fn bake_block_item_quads(
             [FULL_FACE_UVS; 6],
             [0; 6],
             [true; 6],
+            [TerrainTransparency::OPAQUE; 6],
             texture_indices,
             tint,
         ),
@@ -42,6 +45,7 @@ pub(in crate::terrain) fn bake_block_item_quads(
             face_uvs,
             face_uv_rotations,
             face_shade,
+            face_transparency,
             ..
         } => push_box(
             &mut quads,
@@ -52,6 +56,7 @@ pub(in crate::terrain) fn bake_block_item_quads(
             *face_uvs,
             *face_uv_rotations,
             *face_shade,
+            *face_transparency,
             texture_indices,
             tint,
         ),
@@ -66,6 +71,7 @@ pub(in crate::terrain) fn bake_block_item_quads(
                     model_box.face_uvs,
                     model_box.face_uv_rotations,
                     model_box.face_shade,
+                    model_box.face_transparency,
                     model_box.texture_indices,
                     model_box.tint,
                 );
@@ -94,6 +100,7 @@ fn push_box(
     face_uvs: [[u8; 4]; 6],
     face_uv_rotations: [u8; 6],
     face_shade: [bool; 6],
+    face_transparency: [TerrainTransparency; 6],
     texture_indices: [u32; 6],
     tint: [TerrainTint; 6],
 ) {
@@ -112,6 +119,7 @@ fn push_box(
             uvs: local_uvs.map(|uv| rect.map(uv)),
             tint: tint_rgba(tint[index]),
             shade: cardinal_shade(face_shade[index], face.face),
+            translucent: face_transparency[index].has_translucent,
         });
     }
 }
@@ -127,6 +135,7 @@ fn quad_to_item_quad(quad: &TerrainQuad, atlas: &TerrainTextureAtlas) -> ItemMod
         uvs: quad.uvs.map(|uv| rect.map(uv)),
         tint: tint_rgba(quad.tint),
         shade: cardinal_shade(quad.shade, face),
+        translucent: quad.transparency.has_translucent,
     }
 }
 
@@ -199,6 +208,32 @@ mod tests {
     }
 
     #[test]
+    fn box_marks_translucent_faces_for_item_submit_split() {
+        let atlas = TerrainTextureAtlas::unit();
+        let mut face_transparency = [TerrainTransparency::OPAQUE; 6];
+        face_transparency[TerrainFace::Up.index()] = TerrainTransparency::TRANSLUCENT;
+        let quads = bake_block_item_quads(
+            &TerrainRenderShape::Box {
+                from: [0, 0, 0],
+                to: [16, 16, 16],
+                face_present: [false, true, false, false, false, false],
+                face_uvs: [[0, 0, 16, 16]; 6],
+                face_uv_rotations: [0; 6],
+                face_shade: [true; 6],
+                face_light_emission: [0; 6],
+                face_cull: [None; 6],
+                face_transparency,
+            },
+            [0; 6],
+            [TerrainTint::WHITE; 6],
+            &atlas,
+        );
+
+        assert_eq!(quads.len(), 1);
+        assert!(quads[0].translucent);
+    }
+
+    #[test]
     fn quads_shape_passes_corners_and_shades_by_normal() {
         // A free-form quad renders unculled; its `0..=16` corners pass through and the shade follows the
         // face nearest its normal (here +Z = south = 0.8).
@@ -228,6 +263,7 @@ mod tests {
         assert_eq!(quads.len(), 1);
         assert_eq!(quads[0].corners, quad.corners);
         assert_eq!(quads[0].shade, 0.8);
+        assert!(!quads[0].translucent);
     }
 
     #[test]

@@ -12,8 +12,9 @@ use bbb_pack::BlockModelDisplayContext;
 use bbb_renderer::{
     bake_generated_item_quads, bake_item_frame_map_decoration_surface, bake_item_frame_map_surface,
     bake_item_frame_map_text_surface, bake_item_model_mesh_with_light,
-    ItemFrameMapDecorationSurface, ItemFrameMapDecorationTexture, ItemFrameMapSurface,
-    ItemFrameMapTextSurface, ItemFrameMapTexture, ItemModelMesh, ItemModelQuad,
+    bake_item_model_meshes_with_light, ItemFrameMapDecorationSurface,
+    ItemFrameMapDecorationTexture, ItemFrameMapSurface, ItemFrameMapTextSurface,
+    ItemFrameMapTexture, ItemModelMesh, ItemModelMeshSet, ItemModelQuad,
     ITEM_MODEL_FULL_BRIGHT_LIGHT,
 };
 use bbb_world::{ItemFrameFacing, MapItemState, TerrainLight, WorldStore};
@@ -51,7 +52,9 @@ const MAP_BRIGHTNESS_MODIFIERS: [u32; 4] = [180, 220, 255, 135];
 /// atlas; flat items sample the item atlas; filled maps sample a dynamic `minecraft:map/<id>` texture).
 pub(crate) struct ItemFrameModels {
     pub block_meshes: Vec<ItemModelMesh>,
+    pub block_translucent_meshes: Vec<ItemModelMesh>,
     pub flat_meshes: Vec<ItemModelMesh>,
+    pub flat_translucent_meshes: Vec<ItemModelMesh>,
     pub map_textures: Vec<ItemFrameMapTexture>,
     pub map_surfaces: Vec<ItemFrameMapSurface>,
     pub map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
@@ -71,7 +74,9 @@ pub(crate) fn item_frame_models(
     terrain_textures: &TerrainTextureState,
 ) -> ItemFrameModels {
     let mut block_meshes = Vec::new();
+    let mut block_translucent_meshes = Vec::new();
     let mut flat_meshes = Vec::new();
+    let mut flat_translucent_meshes = Vec::new();
     let mut map_textures = BTreeMap::new();
     let mut map_surfaces = Vec::new();
     let mut map_decoration_surfaces = Vec::new();
@@ -180,11 +185,11 @@ pub(crate) fn item_frame_models(
         if let Some(resource_id) = item_runtime.item_resource_id(item_id) {
             if let Some(quads) = terrain_textures.block_item_quads(resource_id, &BTreeMap::new()) {
                 if !quads.is_empty() {
-                    block_meshes.push(bake_item_model_mesh_with_light(
-                        &quads,
-                        item_transform,
-                        item_light,
-                    ));
+                    push_mesh_set(
+                        bake_item_model_meshes_with_light(&quads, item_transform, item_light),
+                        &mut block_meshes,
+                        &mut block_translucent_meshes,
+                    );
                     continue;
                 }
             }
@@ -202,11 +207,11 @@ pub(crate) fn item_frame_models(
         if quads.is_empty() {
             continue;
         }
-        flat_meshes.push(bake_item_model_mesh_with_light(
-            &quads,
-            item_transform,
-            item_light,
-        ));
+        push_mesh_set(
+            bake_item_model_meshes_with_light(&quads, item_transform, item_light),
+            &mut flat_meshes,
+            &mut flat_translucent_meshes,
+        );
     }
 
     let map_decoration_textures = if map_decoration_surfaces.is_empty() {
@@ -220,12 +225,27 @@ pub(crate) fn item_frame_models(
 
     ItemFrameModels {
         block_meshes,
+        block_translucent_meshes,
         flat_meshes,
+        flat_translucent_meshes,
         map_textures: map_textures.into_values().collect(),
         map_surfaces,
         map_decoration_textures,
         map_decoration_surfaces,
         map_text_surfaces,
+    }
+}
+
+fn push_mesh_set(
+    meshes: ItemModelMeshSet,
+    solid: &mut Vec<ItemModelMesh>,
+    translucent: &mut Vec<ItemModelMesh>,
+) {
+    if !meshes.solid.is_empty() {
+        solid.push(meshes.solid);
+    }
+    if !meshes.translucent.is_empty() {
+        translucent.push(meshes.translucent);
     }
 }
 

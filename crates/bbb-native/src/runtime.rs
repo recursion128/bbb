@@ -1587,11 +1587,19 @@ pub(crate) fn pump_network_and_terrain(
     block_item_meshes.extend(held_item_models.block_meshes);
     block_item_meshes.extend(item_frame_models.block_meshes);
     block_item_meshes.extend(entity_block_meshes);
+    let mut block_item_translucent_meshes = dropped_item_models.block_translucent_meshes;
+    block_item_translucent_meshes.extend(held_item_models.block_translucent_meshes);
+    block_item_translucent_meshes.extend(item_frame_models.block_translucent_meshes);
     let mut flat_item_meshes = dropped_item_models.flat_meshes;
     flat_item_meshes.extend(held_item_models.flat_meshes);
     flat_item_meshes.extend(item_frame_models.flat_meshes);
+    let mut flat_item_translucent_meshes = dropped_item_models.flat_translucent_meshes;
+    flat_item_translucent_meshes.extend(held_item_models.flat_translucent_meshes);
+    flat_item_translucent_meshes.extend(item_frame_models.flat_translucent_meshes);
     renderer.set_block_item_model_meshes(block_item_meshes);
+    renderer.set_block_item_model_translucent_meshes(block_item_translucent_meshes);
     renderer.set_flat_item_model_meshes(flat_item_meshes);
+    renderer.set_flat_item_model_translucent_meshes(flat_item_translucent_meshes);
     renderer.set_item_frame_map_surfaces(
         item_frame_models.map_textures,
         item_frame_models.map_surfaces,

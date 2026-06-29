@@ -36,6 +36,12 @@ const WEATHER_TARGET_PASS_LABEL: &str = "bbb-native-weather-target-pass";
 const LIGHTMAP_PASS_LABEL: &str = "bbb-native-lightmap-pass";
 const TRANSPARENCY_COMBINE_PASS_LABEL: &str = "bbb-native-transparency-combine-pass";
 
+struct ItemModelFrameBuffers {
+    vertex_buffer: wgpu::Buffer,
+    index_buffer: wgpu::Buffer,
+    index_count: u32,
+}
+
 impl Renderer {
     pub fn render(&mut self, screenshot: Option<&Path>) -> Result<()> {
         let frame = match self.surface.get_current_texture() {
@@ -694,6 +700,18 @@ impl Renderer {
             } else {
                 None
             };
+        let (block_item_translucent_vertices, block_item_translucent_indices) =
+            self.collect_block_item_model_translucent_geometry();
+        let block_item_translucent_buffers = self.create_item_model_frame_buffers(
+            &block_item_translucent_vertices,
+            &block_item_translucent_indices,
+        );
+        let (flat_item_translucent_vertices, flat_item_translucent_indices) =
+            self.collect_flat_item_model_translucent_geometry();
+        let flat_item_translucent_buffers = self.create_item_model_frame_buffers(
+            &flat_item_translucent_vertices,
+            &flat_item_translucent_indices,
+        );
 
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -722,6 +740,28 @@ impl Renderer {
                 &mut pipeline_switches,
                 &mut entity_model_draw_calls,
             );
+            if let Some(buffers) = &block_item_translucent_buffers {
+                self.draw_item_model_frame_buffers(
+                    &mut pass,
+                    &self.item_model_translucent_pipeline,
+                    buffers,
+                    &self.terrain_bind_group,
+                );
+                pipeline_switches += 1;
+                item_model_draw_calls += 1;
+            }
+            if let (Some(atlas), Some(buffers)) =
+                (&self.item_entity_atlas, &flat_item_translucent_buffers)
+            {
+                self.draw_item_model_frame_buffers(
+                    &mut pass,
+                    &self.item_model_translucent_pipeline,
+                    buffers,
+                    &atlas.bind_group,
+                );
+                pipeline_switches += 1;
+                item_model_draw_calls += 1;
+            }
             if let (Some(atlas), Some(vertex_buffer)) =
                 (&self.item_entity_atlas, &item_entity_vertex_buffer)
             {
@@ -1098,20 +1138,9 @@ impl Renderer {
         indices: &[u32],
         bind_group: &wgpu::BindGroup,
     ) {
-        let vertex_buffer = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("bbb-item-model-frame-vertices"),
-                contents: bytemuck::cast_slice(vertices),
-                usage: wgpu::BufferUsages::VERTEX,
-            });
-        let index_buffer = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("bbb-item-model-frame-indices"),
-                contents: bytemuck::cast_slice(indices),
-                usage: wgpu::BufferUsages::INDEX,
-            });
+        let Some(buffers) = self.create_item_model_frame_buffers(vertices, indices) else {
+            return;
+        };
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("bbb-native-item-model-pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -1133,12 +1162,56 @@ impl Renderer {
             occlusion_query_set: None,
             timestamp_writes: None,
         });
-        pass.set_pipeline(&self.item_model_pipeline);
+        self.draw_item_model_frame_buffers(
+            &mut pass,
+            &self.item_model_pipeline,
+            &buffers,
+            bind_group,
+        );
+    }
+
+    fn create_item_model_frame_buffers(
+        &self,
+        vertices: &[crate::item_models::ItemModelVertex],
+        indices: &[u32],
+    ) -> Option<ItemModelFrameBuffers> {
+        if indices.is_empty() {
+            return None;
+        }
+        let vertex_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("bbb-item-model-frame-vertices"),
+                contents: bytemuck::cast_slice(vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
+        let index_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("bbb-item-model-frame-indices"),
+                contents: bytemuck::cast_slice(indices),
+                usage: wgpu::BufferUsages::INDEX,
+            });
+        Some(ItemModelFrameBuffers {
+            vertex_buffer,
+            index_buffer,
+            index_count: indices.len() as u32,
+        })
+    }
+
+    fn draw_item_model_frame_buffers<'a>(
+        &'a self,
+        pass: &mut wgpu::RenderPass<'a>,
+        pipeline: &'a wgpu::RenderPipeline,
+        buffers: &'a ItemModelFrameBuffers,
+        bind_group: &'a wgpu::BindGroup,
+    ) {
+        pass.set_pipeline(pipeline);
         pass.set_bind_group(0, bind_group, &[]);
         pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
-        pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-        pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-        pass.draw_indexed(0..indices.len() as u32, 0, 0..1);
+        pass.set_vertex_buffer(0, buffers.vertex_buffer.slice(..));
+        pass.set_index_buffer(buffers.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        pass.draw_indexed(0..buffers.index_count, 0, 0..1);
     }
 
     fn has_entity_translucent_features(&self) -> bool {
@@ -1510,11 +1583,11 @@ mod tests {
         let source = include_str!("render.rs");
         let world_item_models = source
             .find("let (block_item_vertices, block_item_indices)")
-            .expect("world item-model collection is present");
+            .expect("solid world item-model collection is present");
         let world_item_draw = source[world_item_models..]
             .find("self.draw_item_model_geometry(")
             .map(|index| world_item_models + index)
-            .expect("world item-model draw helper is called");
+            .expect("solid world item-model draw helper is called");
         let copy_translucent =
             depth_copy_to(source, "texture: &self.translucent_target.depth._texture");
         let entity_translucent_features = source
@@ -1544,6 +1617,60 @@ mod tests {
         assert!(
             combine < hud_item,
             "GUI item icons remain a post-world HUD pass rather than joining world item features"
+        );
+    }
+
+    #[test]
+    fn translucent_item_models_draw_inside_item_entity_target_before_billboards_and_particles() {
+        let source = include_str!("render.rs");
+        let solid_collect = source
+            .find("let (block_item_vertices, block_item_indices)")
+            .expect("solid world item-model collection is present");
+        let copy_item_entity =
+            depth_copy_to(source, "texture: &self.item_entity_target.depth._texture");
+        let block_collect = source
+            .find("let (block_item_translucent_vertices, block_item_translucent_indices)")
+            .expect("translucent block item-model collection is present");
+        let flat_collect = source
+            .find("let (flat_item_translucent_vertices, flat_item_translucent_indices)")
+            .expect("translucent flat item-model collection is present");
+        let target = source
+            .find("label: Some(ITEM_ENTITY_TARGET_PASS_LABEL)")
+            .expect("item-entity target pass label is used");
+        let block_draw = source[target..]
+            .find("&self.item_model_translucent_pipeline")
+            .map(|index| target + index)
+            .expect("translucent block item-model pipeline is drawn in item_entity target");
+        let block_bind_group = source[block_draw..]
+            .find("&self.terrain_bind_group")
+            .map(|index| block_draw + index)
+            .expect("translucent block item models bind the blocks atlas");
+        let flat_draw = source[block_bind_group..]
+            .find("&self.item_model_translucent_pipeline")
+            .map(|index| block_bind_group + index)
+            .expect("translucent flat item-model pipeline is drawn in item_entity target");
+        let flat_bind_group = source[flat_draw..]
+            .find("&atlas.bind_group")
+            .map(|index| flat_draw + index)
+            .expect("translucent flat item models bind the item atlas");
+        let billboards = source[target..]
+            .find("pass.set_pipeline(&self.item_entity_pipeline)")
+            .map(|index| target + index)
+            .expect("item-entity billboards are drawn in item_entity target");
+        let particle = source
+            .find("label: Some(PARTICLE_TARGET_PASS_LABEL)")
+            .expect("particle target pass label is used");
+
+        assert!(
+            solid_collect < copy_item_entity
+                && copy_item_entity < block_collect
+                && block_collect < flat_collect
+                && flat_collect < target
+                && target < block_draw
+                && block_bind_group < flat_draw
+                && flat_bind_group < billboards
+                && billboards < particle,
+            "vanilla ItemFeatureRenderer translucent item submits draw through item_entity target before billboard items and particles"
         );
     }
 
