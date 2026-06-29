@@ -1442,12 +1442,31 @@ fn entity_model_sources_project_worn_armor_materials() {
     let bare = store.entity_model_sources_at_partial_tick(1.0);
     assert_eq!(bare[0].head_armor, None);
     assert_eq!(bare[0].chest_armor, None);
+    assert!(!bare[0].head_armor_foil);
+    assert!(!bare[0].chest_armor_foil);
 
     fn armor_item(item_id: i32) -> ItemStackSummary {
         ItemStackSummary {
             item_id: Some(item_id),
             count: 1,
             component_patch: Default::default(),
+        }
+    }
+    fn enchanted_armor_item(
+        item_id: i32,
+        enchantment_glint_override: Option<bool>,
+    ) -> ItemStackSummary {
+        ItemStackSummary {
+            item_id: Some(item_id),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                enchantments: vec![ItemEnchantmentSummary {
+                    holder_id: 12,
+                    level: 1,
+                }],
+                enchantment_glint_override,
+                ..Default::default()
+            },
         }
     }
 
@@ -1461,11 +1480,11 @@ fn entity_model_sources_project_worn_armor_materials() {
             },
             EquipmentSlotUpdate {
                 slot: EquipmentSlot::Chest,
-                item: armor_item(iron_chestplate),
+                item: enchanted_armor_item(iron_chestplate, None),
             },
             EquipmentSlotUpdate {
                 slot: EquipmentSlot::Legs,
-                item: armor_item(diamond_leggings),
+                item: enchanted_armor_item(diamond_leggings, Some(false)),
             },
             EquipmentSlotUpdate {
                 slot: EquipmentSlot::Feet,
@@ -1483,6 +1502,13 @@ fn entity_model_sources_project_worn_armor_materials() {
     assert_eq!(sources[0].chest_armor, Some(ArmorMaterialKind::Iron));
     assert_eq!(sources[0].legs_armor, Some(ArmorMaterialKind::Diamond));
     assert_eq!(sources[0].feet_armor, Some(ArmorMaterialKind::Gold));
+    assert!(!sources[0].head_armor_foil);
+    assert!(sources[0].chest_armor_foil);
+    assert!(
+        !sources[0].legs_armor_foil,
+        "enchantment_glint_override=false wins over non-empty enchantments"
+    );
+    assert!(!sources[0].feet_armor_foil);
 
     // A non-armor item (the held sword, absent from the armor map) leaves its slot bare; clearing the
     // helmet (empty stack) drops the head armor.
@@ -1496,6 +1522,8 @@ fn entity_model_sources_project_worn_armor_materials() {
     let sources = store.entity_model_sources_at_partial_tick(1.0);
     assert_eq!(sources[0].head_armor, None);
     assert_eq!(sources[0].chest_armor, Some(ArmorMaterialKind::Iron));
+    assert!(!sources[0].head_armor_foil);
+    assert!(sources[0].chest_armor_foil);
 }
 
 #[test]

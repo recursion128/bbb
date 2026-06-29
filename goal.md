@@ -1271,6 +1271,14 @@ blocker。
     Stray/Bogged `SkeletonClothingLayer` 注册顺序已由 dispatch-owned
     layer-order hook 表达；player/zombie/armor-stand 组合测试覆盖
     texture/render type/transform/order/submit_sequence
+  - [x] humanoid worn armor glint/foil submission parity：DataComponents
+    `enchantment_glint_override` / enchantments -> world/native
+    `head/chest/legs/feet_armor_foil`；renderer 按 vanilla
+    `EquipmentLayerRenderer` 在每个 foiled armor slot 的首个
+    `armorCutoutNoCull` layer 后记录 `armorEntityGlint` submit（glint texture、
+    no-overlay、entity light、transform、`order(2)` / same-order slot
+    `submit_sequence` 已由可见/不可见状态测试覆盖）；GPU glint 呈现仍归后续
+    更细粒度 GPU state
   - held item 与 use-item 的 layer/order 交互继续归入 remaining arm poses /
     use-item sway / held-item arm-pose 组合，不再混在 texture-backed layer
     submission blocker 中

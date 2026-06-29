@@ -1922,8 +1922,9 @@ fn emit_crystal_beam_submission(
 /// draped on the host humanoid's posed limbs ([`ModelPart::copy_child_poses_from`] = vanilla
 /// `copyPropertiesTo`) and drawn into the cutout pass with the material's equipment-asset texture. The
 /// pieces render in the vanilla order (chest, legs, feet, head). `transform` is the host entity's root
-/// transform so the armor sits exactly on the body. The enchant-glint, armor-trim, and leather-dye
-/// tint passes are deferred coverage.
+/// transform so the armor sits exactly on the body. Enchanted armor records the vanilla
+/// `armorEntityGlint` submission at `order(2)` with the same slot-order `submit_sequence` as that
+/// slot's `order(1)` armor layer; armor-trim passes are deferred coverage.
 fn emit_humanoid_armor(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -1935,26 +1936,30 @@ fn emit_humanoid_armor(
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     let render_state = &instance.render_state;
-    for (slot, material, dye) in [
+    for (slot, material, dye, foil) in [
         (
             HumanoidArmorSlot::Chest,
             render_state.chest_armor,
             render_state.chest_armor_dye,
+            render_state.chest_armor_foil,
         ),
         (
             HumanoidArmorSlot::Legs,
             render_state.legs_armor,
             render_state.legs_armor_dye,
+            render_state.legs_armor_foil,
         ),
         (
             HumanoidArmorSlot::Feet,
             render_state.feet_armor,
             render_state.feet_armor_dye,
+            render_state.feet_armor_foil,
         ),
         (
             HumanoidArmorSlot::Head,
             render_state.head_armor,
             render_state.head_armor_dye,
+            render_state.head_armor_foil,
         ),
     ] {
         let Some(material) = material else {
@@ -1998,6 +2003,18 @@ fn emit_humanoid_armor(
                 submit.tint,
             );
         });
+        if foil {
+            let pass = equipment_layer_pass(
+                EntityModelLayerKind::HumanoidArmor,
+                EntityModelLayerRenderType::ArmorEntityGlint,
+                armor_model_layers.model_layer(slot),
+                ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
+                pass.tint,
+                2,
+                submit_sequence,
+            );
+            meshes.record_submission(no_overlay_layer_submission(pass, transform));
+        }
     }
 }
 
@@ -2032,26 +2049,30 @@ fn emit_worn_armor_stand_armor(
     } else {
         HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND
     };
-    for (slot, material, dye) in [
+    for (slot, material, dye, foil) in [
         (
             HumanoidArmorSlot::Chest,
             render_state.chest_armor,
             render_state.chest_armor_dye,
+            render_state.chest_armor_foil,
         ),
         (
             HumanoidArmorSlot::Legs,
             render_state.legs_armor,
             render_state.legs_armor_dye,
+            render_state.legs_armor_foil,
         ),
         (
             HumanoidArmorSlot::Feet,
             render_state.feet_armor,
             render_state.feet_armor_dye,
+            render_state.feet_armor_foil,
         ),
         (
             HumanoidArmorSlot::Head,
             render_state.head_armor,
             render_state.head_armor_dye,
+            render_state.head_armor_foil,
         ),
     ] {
         let Some(material) = material else {
@@ -2086,6 +2107,18 @@ fn emit_worn_armor_stand_armor(
                 submit.tint,
             );
         });
+        if foil {
+            let pass = equipment_layer_pass(
+                EntityModelLayerKind::HumanoidArmor,
+                EntityModelLayerRenderType::ArmorEntityGlint,
+                armor_model_layers.model_layer(slot),
+                ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
+                pass.tint,
+                2,
+                submit_sequence,
+            );
+            meshes.record_submission(no_overlay_layer_submission(pass, transform));
+        }
     }
 }
 
@@ -2097,7 +2130,7 @@ fn emit_worn_armor_stand_armor(
 /// drowned, zombie villager), standard baby zombie/husk/drowned/zombie-villager armor, the skeleton
 /// family (skeleton, stray, wither/normal/bogged), the player, the adult piglin family (piglin,
 /// piglin brute, zombified piglin), and baby piglin / zombified-piglin armor models. DEFERRED:
-/// enchant-glint, armor-trim, and any remaining mob-specific armor models.
+/// armor-trim and any remaining mob-specific armor models.
 pub(in crate::entity_models) fn render_worn_humanoid_armor(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,

@@ -714,6 +714,12 @@ entity_render_state! {
     (with_chest_armor_dye) chest_armor_dye: Option<u32> = None;
     (with_legs_armor_dye) legs_armor_dye: Option<u32> = None;
     (with_feet_armor_dye) feet_armor_dye: Option<u32> = None;
+    /// Vanilla `ItemStack.hasFoil()` per worn armor slot. The equipment renderer emits one
+    /// `armorEntityGlint` pass after the first rendered armor layer for that slot.
+    (with_head_armor_foil) head_armor_foil: bool = false;
+    (with_chest_armor_foil) chest_armor_foil: bool = false;
+    (with_legs_armor_foil) legs_armor_foil: bool = false;
+    (with_feet_armor_foil) feet_armor_foil: bool = false;
     /// Vanilla `PigRenderState.saddle`: the item in `EquipmentSlot.SADDLE`. A non-empty saddle item
     /// renders the adult `PigModel.createBodyLayer(CubeDeformation(0.5F))` equipment layer over the
     /// pig body. Babies do not render this layer because vanilla supplies no baby saddle model.
@@ -2463,6 +2469,10 @@ mod tests {
                 chest_armor_dye: None,
                 legs_armor_dye: None,
                 feet_armor_dye: None,
+                head_armor_foil: false,
+                chest_armor_foil: false,
+                legs_armor_foil: false,
+                feet_armor_foil: false,
                 pig_saddle: false,
                 equine_saddle: false,
                 equine_saddle_ridden: false,

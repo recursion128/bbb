@@ -80,6 +80,7 @@ fn armor_slot_textures_match_vanilla_layer_types() {
     assert!(entity_model_texture_refs().contains(&ARMOR_IRON_HUMANOID_TEXTURE_REF));
     assert!(entity_model_texture_refs().contains(&ARMOR_NETHERITE_LEGGINGS_TEXTURE_REF));
     assert!(entity_model_texture_refs().contains(&ARMOR_IRON_BABY_HUMANOID_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&ENCHANTED_GLINT_ARMOR_TEXTURE_REF));
 }
 
 #[test]
@@ -433,6 +434,113 @@ fn armored_zombie_emits_inflated_armor_pieces() {
         armored_x_max > bare_x_max,
         "inflated armor extends beyond the body ({armored_x_max} vs {bare_x_max})"
     );
+}
+
+#[test]
+fn foiled_humanoid_armor_records_vanilla_armor_entity_glint_submission() {
+    let atlas = iron_armor_atlas();
+    let armored = EntityModelInstance::zombie(171, [0.0, 64.0, 0.0], 0.0, false)
+        .with_chest_armor(Some(EntityArmorMaterial::Iron))
+        .with_chest_armor_foil(true)
+        .with_legs_armor(Some(EntityArmorMaterial::Iron))
+        .with_light_coords((4_u32 << 4) | (12_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[armored], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 4);
+    let base = meshes.submissions[0];
+    assert_eq!(base.texture, ZOMBIE_TEXTURE_REF);
+    assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+
+    let chest = meshes.submissions[1];
+    assert_eq!(chest.texture, ARMOR_IRON_HUMANOID_TEXTURE_REF);
+    assert_eq!(
+        chest.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(chest.render_type.vanilla_name(), "armorCutoutNoCull");
+    assert_eq!(chest.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((chest.order, chest.submit_sequence), (1, 1));
+    assert_eq!(chest.transform, entity_model_root_transform(armored));
+    assert_eq!(chest.light, armored.render_state.shader_light());
+    assert_eq!(chest.overlay, [0.0, 10.0]);
+
+    let glint = meshes.submissions[2];
+    assert_eq!(glint.texture, ENCHANTED_GLINT_ARMOR_TEXTURE_REF);
+    assert_eq!(
+        glint.render_type,
+        EntityModelLayerRenderType::ArmorEntityGlint
+    );
+    assert_eq!(glint.render_type.vanilla_name(), "armorEntityGlint");
+    assert_eq!(glint.tint, chest.tint);
+    assert_eq!(
+        (glint.order, glint.submit_sequence),
+        (2, 1),
+        "the glint uses EquipmentLayerRenderer order(2), with the chest slot's same-order sequence"
+    );
+    assert_eq!(glint.transform, chest.transform);
+    assert_eq!(glint.light, chest.light);
+    assert_eq!(glint.overlay, [0.0, 10.0]);
+
+    let legs = meshes.submissions[3];
+    assert_eq!(legs.texture, ARMOR_IRON_LEGGINGS_TEXTURE_REF);
+    assert_eq!(
+        legs.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(
+        (legs.order, legs.submit_sequence),
+        (1, 2),
+        "the next HumanoidArmorLayer slot starts a fresh EquipmentLayerRenderer order(1)"
+    );
+    assert_eq!(legs.transform, chest.transform);
+    assert_eq!(legs.light, chest.light);
+    assert_eq!(legs.overlay, [0.0, 10.0]);
+}
+
+#[test]
+fn hidden_foiled_humanoid_armor_keeps_glint_without_base_submission() {
+    let atlas = iron_armor_atlas();
+    let hidden = EntityModelInstance::zombie(172, [0.0, 64.0, 0.0], 0.0, false)
+        .with_chest_armor(Some(EntityArmorMaterial::Iron))
+        .with_chest_armor_foil(true)
+        .with_invisible(true)
+        .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+        .with_white_overlay_progress(0.8)
+        .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[hidden], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 2);
+    assert!(!meshes
+        .submissions
+        .iter()
+        .any(|submit| submit.texture == ZOMBIE_TEXTURE_REF));
+    let chest = meshes.submissions[0];
+    assert_eq!(
+        chest.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(chest.texture, ARMOR_IRON_HUMANOID_TEXTURE_REF);
+    assert_eq!((chest.order, chest.submit_sequence), (1, 1));
+    assert_eq!(chest.transform, entity_model_root_transform(hidden));
+    assert_eq!(chest.light, hidden.render_state.shader_light());
+    assert_eq!(chest.overlay, [0.0, 10.0]);
+
+    let glint = meshes.submissions[1];
+    assert_eq!(
+        glint.render_type,
+        EntityModelLayerRenderType::ArmorEntityGlint
+    );
+    assert_eq!(glint.texture, ENCHANTED_GLINT_ARMOR_TEXTURE_REF);
+    assert_eq!(glint.tint, chest.tint);
+    assert_eq!((glint.order, glint.submit_sequence), (2, 1));
+    assert_eq!(glint.transform, chest.transform);
+    assert_eq!(glint.light, chest.light);
+    assert_eq!(glint.overlay, [0.0, 10.0]);
 }
 
 #[test]

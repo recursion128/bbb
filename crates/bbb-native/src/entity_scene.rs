@@ -1464,6 +1464,10 @@ fn entity_model_instance(
         .with_chest_armor_dye(armor_dye(source.chest_armor_dye))
         .with_legs_armor_dye(armor_dye(source.legs_armor_dye))
         .with_feet_armor_dye(armor_dye(source.feet_armor_dye))
+        .with_head_armor_foil(source.head_armor_foil)
+        .with_chest_armor_foil(source.chest_armor_foil)
+        .with_legs_armor_foil(source.legs_armor_foil)
+        .with_feet_armor_foil(source.feet_armor_foil)
         .with_pig_saddle(source.pig_saddle)
         .with_equine_saddle(source.equine_saddle)
         .with_equine_saddle_ridden(source.equine_saddle_ridden)
@@ -9299,6 +9303,7 @@ mod tests {
         );
 
         let mut world = WorldStore::new();
+        world.set_item_armor_materials(runtime.item_armor_materials_by_protocol_id());
         world.apply_add_entity(protocol_add_entity(
             1553,
             VANILLA_ENTITY_TYPE_PLAYER_ID,
@@ -9309,16 +9314,30 @@ mod tests {
             VANILLA_ENTITY_TYPE_ZOMBIE_ID,
             [3.0, 64.0, -2.0],
         ));
-        let equip = |entity_id: i32, item_id: Option<i32>, count: i32| SetEquipment {
-            entity_id,
-            slots: vec![EquipmentSlotUpdate {
-                slot: EquipmentSlot::Chest,
-                item: ItemStackSummary {
-                    item_id,
-                    count,
-                    component_patch: DataComponentPatchSummary::default(),
-                },
-            }],
+        let equip_with_patch = |entity_id: i32,
+                                item_id: Option<i32>,
+                                count: i32,
+                                component_patch: DataComponentPatchSummary|
+         -> SetEquipment {
+            SetEquipment {
+                entity_id,
+                slots: vec![EquipmentSlotUpdate {
+                    slot: EquipmentSlot::Chest,
+                    item: ItemStackSummary {
+                        item_id,
+                        count,
+                        component_patch,
+                    },
+                }],
+            }
+        };
+        let equip = |entity_id: i32, item_id: Option<i32>, count: i32| {
+            equip_with_patch(
+                entity_id,
+                item_id,
+                count,
+                DataComponentPatchSummary::default(),
+            )
         };
         let state = |world: &WorldStore, id: i32| {
             entity_model_instances_from_world_at_partial_tick(world, Some(&runtime), 0.0)
@@ -9332,6 +9351,8 @@ mod tests {
         let with_elytra = state(&world, 1553);
         assert!(with_elytra.chest_equipment_has_wings);
         assert!(!with_elytra.chest_equipment_has_humanoid);
+        assert_eq!(with_elytra.chest_armor, None);
+        assert!(!with_elytra.chest_armor_foil);
         assert_eq!(
             with_elytra.chest_wings_layer,
             Some(EntityEquipmentLayerTexture {
@@ -9343,22 +9364,42 @@ mod tests {
             })
         );
 
-        assert!(world.apply_set_equipment(equip(1553, Some(CHESTPLATE_ID), 1)));
+        assert!(world.apply_set_equipment(equip_with_patch(
+            1553,
+            Some(CHESTPLATE_ID),
+            1,
+            DataComponentPatchSummary {
+                enchantments: vec![ItemEnchantmentSummary {
+                    holder_id: 12,
+                    level: 1,
+                }],
+                ..Default::default()
+            }
+        )));
         let with_chestplate = state(&world, 1553);
         assert!(!with_chestplate.chest_equipment_has_wings);
         assert!(with_chestplate.chest_equipment_has_humanoid);
+        assert_eq!(
+            with_chestplate.chest_armor,
+            Some(EntityArmorMaterial::Diamond)
+        );
+        assert!(with_chestplate.chest_armor_foil);
         assert_eq!(with_chestplate.chest_wings_layer, None);
 
         assert!(world.apply_set_equipment(equip(1553, None, 0)));
         let empty_chest = state(&world, 1553);
         assert!(!empty_chest.chest_equipment_has_wings);
         assert!(!empty_chest.chest_equipment_has_humanoid);
+        assert_eq!(empty_chest.chest_armor, None);
+        assert!(!empty_chest.chest_armor_foil);
         assert_eq!(empty_chest.chest_wings_layer, None);
 
         assert!(world.apply_set_equipment(equip(1554, Some(ELYTRA_ID), 1)));
         let zombie = state(&world, 1554);
         assert!(zombie.chest_equipment_has_wings);
         assert!(!zombie.chest_equipment_has_humanoid);
+        assert_eq!(zombie.chest_armor, None);
+        assert!(!zombie.chest_armor_foil);
         assert_eq!(
             zombie.chest_wings_layer,
             Some(EntityEquipmentLayerTexture {

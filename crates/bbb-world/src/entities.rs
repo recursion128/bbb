@@ -1151,6 +1151,16 @@ pub struct EntityModelSourceState {
     pub legs_armor_dye: Option<i32>,
     #[serde(default)]
     pub feet_armor_dye: Option<i32>,
+    /// Vanilla `ItemStack.hasFoil()` per worn armor slot. `EquipmentLayerRenderer` emits one
+    /// `armorEntityGlint` submission immediately after the slot's first rendered armor layer.
+    #[serde(default)]
+    pub head_armor_foil: bool,
+    #[serde(default)]
+    pub chest_armor_foil: bool,
+    #[serde(default)]
+    pub legs_armor_foil: bool,
+    #[serde(default)]
+    pub feet_armor_foil: bool,
     /// Vanilla `PigRenderState.saddle`: true when a pig carries a non-empty saddle item in
     /// `EquipmentSlot.SADDLE`. The renderer consumes this to draw the `PIG_SADDLE` equipment layer.
     #[serde(default)]

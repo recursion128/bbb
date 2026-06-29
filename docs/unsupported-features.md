@@ -2815,8 +2815,13 @@ When an agent does any of the following, update this file in the same slice:
       `head/chest/legs/feet_armor_dye`, native carries it onto the renderer's `*_armor_dye`), and
       `armor_layer_tint` forces it opaque and applies it only to leather — exactly vanilla
       `DyedItemColor.getOrDefault` → `EquipmentLayerRenderer.getColorForLayer` (every other material renders
-      white, vanilla color `-1`, ignoring any stray dye). STILL DEFERRED: the enchant-glint and armor-trim
-      passes and any remaining mob-specific armor models
+      white, vanilla color `-1`, ignoring any stray dye). Humanoid armor foil submission metadata is now
+      wired through the same equipment path: `ItemStack.hasFoil()` is projected per armor slot as
+      `head/chest/legs/feet_armor_foil`, and the renderer records the vanilla `armorEntityGlint`
+      submission immediately after that slot's first rendered `armorCutoutNoCull` layer, preserving the
+      glint texture, no-overlay coords, entity light, root transform, `order(2)`, and same-order slot
+      `submit_sequence` even when the base body is hidden. GPU glint presentation, armor trims, and any
+      remaining mob-specific armor models stay deferred.
     - base zombie entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `HumanoidModel`, `BabyZombieModel`, and `ZombieRenderer`,
       with a texture-backed cutout render path: the adult layer emits the vanilla

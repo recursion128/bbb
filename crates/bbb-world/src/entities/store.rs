@@ -742,28 +742,28 @@ impl EntityStore {
         // items; a bare entity (no equipment component / empty slot / non-armor item) resolves to None.
         let equipment = self.ecs.get::<&EntityEquipment>(entity).ok();
         let mount = self.ecs.get::<&EntityMount>(entity).ok();
-        let armor_material = |slot: ProtocolEquipmentSlot| -> Option<ArmorMaterialKind> {
-            let equipment = equipment.as_ref()?;
-            let item_id = equipment
+        let armor_item = |slot: ProtocolEquipmentSlot| -> Option<&ItemStackSummary> {
+            equipment
+                .as_ref()?
                 .equipment
                 .iter()
-                .find(|update| update.slot == slot)?
-                .item
-                .item_id?;
+                .find(|update| update.slot == slot)
+                .map(|update| &update.item)
+        };
+        let armor_material = |slot: ProtocolEquipmentSlot| -> Option<ArmorMaterialKind> {
+            let item_id = armor_item(slot)?.item_id?;
             armor_materials.get(&item_id).copied()
         };
         // Vanilla `DyedItemColor.getOrDefault`: the per-slot worn item's `dyed_color` component (a
         // packed RGB), carried alongside the material. Only leather consumes it client-side; a slot
         // with no equipment / no dye component resolves to None.
         let armor_dye = |slot: ProtocolEquipmentSlot| -> Option<i32> {
-            let equipment = equipment.as_ref()?;
-            equipment
-                .equipment
-                .iter()
-                .find(|update| update.slot == slot)?
-                .item
-                .component_patch
-                .dyed_color
+            armor_item(slot)?.component_patch.dyed_color
+        };
+        let armor_foil = |slot: ProtocolEquipmentSlot| -> bool {
+            armor_material(slot)
+                .and_then(|_| armor_item(slot))
+                .is_some_and(item_stack_has_foil)
         };
         // Vanilla `SimpleEquipmentLayer` saddle users copy `EquipmentSlot.SADDLE` into render state,
         // then render only a non-empty equippable saddle item. bbb resolves the default saddle item
@@ -1524,6 +1524,10 @@ impl EntityStore {
             chest_armor_dye: armor_dye(ProtocolEquipmentSlot::Chest),
             legs_armor_dye: armor_dye(ProtocolEquipmentSlot::Legs),
             feet_armor_dye: armor_dye(ProtocolEquipmentSlot::Feet),
+            head_armor_foil: armor_foil(ProtocolEquipmentSlot::Head),
+            chest_armor_foil: armor_foil(ProtocolEquipmentSlot::Chest),
+            legs_armor_foil: armor_foil(ProtocolEquipmentSlot::Legs),
+            feet_armor_foil: armor_foil(ProtocolEquipmentSlot::Feet),
             wolf_body_armor,
             wolf_body_armor_dye,
             wolf_body_armor_crackiness,
