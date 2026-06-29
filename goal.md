@@ -237,9 +237,14 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。当前 checkl
   显式 `bbb-native-clouds-pass`，写入 renderer-owned clouds color/depth target，
   再以 premultiplied layer blend 合成回 main；该顺序位于 main /
   entity-outline 后且早于后续 translucent world passes，并用单元测试钉住。
+  2026-06-29 renderer 主画面已改为 renderer-owned `main` color target，
+  所有既有主画面 pass 先写入该 target，最后通过 fullscreen blit 写回
+  swapchain/screenshot frame；这是 vanilla `transparency.json` 采样
+  `minecraft:main` color 的前置基础。
   剩余 P0 visual render-graph 工作仍包括 translucent / item_entity / particle /
-  weather targets、完整 vanilla transparency post chain / depth sorting，以及更细粒度
-  feature/terrain target sorting。
+  weather targets、`MainDepth`/sorting target depth 采样、完整 vanilla
+  transparency post chain / depth sorting，以及更细粒度 feature/terrain
+  target sorting。
 
 ### [x] P0：提交图与 RenderType 语义（状态：狭义 pipeline 已完成）
 
@@ -628,8 +633,8 @@ blocker。
   End skybox 基础纹理立方体、sun/moon/stars celestial、基础 cloud mesh
   `cloudEnd` fade、`clouds.png` flat cell mesh 和 vanilla movement / camera cell
   offset、fancy/extruded mesh、day-timeline/weather cloud color、显式 clouds
-  pass 顺序与 clouds target/composite 已覆盖，后续只剩完整 transparency
-  post-chain / depth sorting、真实
+  pass 顺序与 clouds target/composite、renderer-owned main color target /
+  final blit 前置已覆盖，后续只剩完整 transparency post-chain / depth sorting、真实
   dynamic LightTexture texture pass、provider-specific particle light emission
   曲线的 diffuse 精度，以及有实际数据源的
   custom pack 属性泛化。

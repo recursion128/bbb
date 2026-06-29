@@ -16,6 +16,7 @@ mod renderer;
 mod screenshot;
 mod selection;
 mod sky;
+mod transparency;
 
 pub mod terrain;
 

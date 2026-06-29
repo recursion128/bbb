@@ -389,6 +389,12 @@ When an agent does any of the following, update this file in the same slice:
     post-chain position and before later translucent world passes, writing a
     renderer-owned clouds color/depth target that composites back with the same
     premultiplied layer blend shape as vanilla `post/transparency.fsh`.
+    The main scene now writes a renderer-owned `main` color target first and
+    performs a final fullscreen blit to the swapchain/screenshot frame, matching
+    the prerequisite shape for vanilla `transparency.json` sampling
+    `minecraft:main` color. Remaining work still needs bindable `MainDepth`,
+    separate translucent / item-entity / particle / weather sorting targets,
+    and the actual depth-sorted transparency shader combine.
     Remaining render-graph parity still needs the full vanilla transparency
     shader's depth-sorted composition across translucent / item-entity /
     particle / weather / cloud targets; outline now has a dedicated
@@ -717,10 +723,13 @@ When an agent does any of the following, update this file in the same slice:
     gates, and native projects vanilla day-timeline plus rain/thunder
     `CLOUD_COLOR` modifiers. The renderer now separates clouds into their own
     pass after main/entity-outline ordering and composites a renderer-owned
-    clouds target. Remaining visual gaps are full transparency post-chain depth
-    sorting with translucent / item-entity / particle / weather targets,
-    fuller atmosphere presentation, and later custom-pack EnvironmentAttribute
-    generalization when a concrete renderer surface exists. Sun/moon presentation
+    clouds target. The main scene now also resolves through a renderer-owned
+    main color target before a final fullscreen blit, so future transparency
+    combine can sample `Main`; remaining visual gaps are full transparency
+    post-chain depth sorting with `MainDepth` plus translucent / item-entity /
+    particle / weather targets, fuller atmosphere presentation, and later
+    custom-pack EnvironmentAttribute generalization when a concrete renderer
+    surface exists. Sun/moon presentation
     is now covered by the vanilla `CELESTIAL` overlay blend, the
     `environment/celestial` atlas source, `SUN_ANGLE` / `MOON_ANGLE`, and the
     8-phase `MOON_PHASE` order. Stars are covered by vanilla
@@ -735,9 +744,11 @@ When an agent does any of the following, update this file in the same slice:
     curve, block-light parabolic tint mix, boss darkening, darkness subtraction,
     and `BrightnessFactor` `notGamma` mix instead of the earlier
     `max(block, sky * 0.95)` scalar approximation. Remaining lighting gaps:
-    full transparency target sorting, the real dynamic 16x16 LightTexture texture pass, provider-specific particle light emission
-    overrides, smooth/AO entity light, GUI / entity-in-UI lighting variants,
-    and the colored debug fallback's baked-shade approximation. The item-model
+    full transparency target sorting after the newly added renderer-owned main
+    color target / final blit foundation, the real dynamic 16x16 LightTexture
+    texture pass, provider-specific particle light emission overrides,
+    smooth/AO entity light, GUI / entity-in-UI lighting variants, and the
+    colored debug fallback's baked-shade approximation. The item-model
     shader now consumes submitted item stack light coords through the same
     `LightmapInfo` RGB combination, so vanilla item entity / thrown item submit
     paths that reach `ItemStackRenderState.submit(..., lightCoords, ...)` no

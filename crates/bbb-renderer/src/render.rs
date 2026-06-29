@@ -25,6 +25,7 @@ const ENTITY_OUTLINE_BLIT_PASS_LABEL: &str = "bbb-native-entity-outline-blit-pas
 const ENTITY_OUTLINE_COMPOSITE_PASS_LABEL: &str = "bbb-native-entity-outline-composite-pass";
 const CLOUDS_PASS_LABEL: &str = "bbb-native-clouds-pass";
 const CLOUDS_COMPOSITE_PASS_LABEL: &str = "bbb-native-clouds-composite-pass";
+const MAIN_BLIT_PASS_LABEL: &str = "bbb-native-main-blit-pass";
 
 impl Renderer {
     pub fn render(&mut self, screenshot: Option<&Path>) -> Result<()> {
@@ -37,9 +38,10 @@ impl Renderer {
             Err(wgpu::SurfaceError::Timeout) => return Ok(()),
             Err(err) => return Err(err.into()),
         };
-        let view = frame
+        let surface_view = frame
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
+        let main_view = &self.main_target.view;
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -54,6 +56,7 @@ impl Renderer {
         let mut entity_model_draw_calls = 0;
         let mut outline_composite_draw_calls = 0;
         let mut cloud_composite_draw_calls = 0;
+        let mut main_blit_draw_calls = 0;
         let mut particle_draw_calls = 0;
         let mut item_entity_draw_calls = 0;
         let mut item_model_draw_calls = 0;
@@ -66,7 +69,7 @@ impl Renderer {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("bbb-native-terrain-opaque-group-pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
+                    view: main_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(self.clear.into()),
@@ -424,7 +427,7 @@ impl Renderer {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(ENTITY_OUTLINE_COMPOSITE_PASS_LABEL),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
+                    view: main_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Load,
@@ -478,7 +481,7 @@ impl Renderer {
                 let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some(CLOUDS_COMPOSITE_PASS_LABEL),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: &view,
+                        view: main_view,
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Load,
@@ -501,7 +504,7 @@ impl Renderer {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("bbb-native-terrain-translucent-pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
+                    view: main_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Load,
@@ -534,7 +537,7 @@ impl Renderer {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("bbb-native-block-destroy-overlay-pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
+                    view: main_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Load,
@@ -568,7 +571,7 @@ impl Renderer {
         if !block_item_indices.is_empty() {
             self.draw_item_model_geometry(
                 &mut encoder,
-                &view,
+                main_view,
                 &block_item_vertices,
                 &block_item_indices,
                 &self.terrain_bind_group,
@@ -581,7 +584,7 @@ impl Renderer {
             if let Some(atlas) = &self.item_frame_map_atlas {
                 self.draw_item_model_geometry(
                     &mut encoder,
-                    &view,
+                    main_view,
                     &map_vertices,
                     &map_indices,
                     &atlas.bind_group,
@@ -596,7 +599,7 @@ impl Renderer {
             if let Some(atlas) = &self.item_frame_map_decoration_atlas {
                 self.draw_item_model_geometry(
                     &mut encoder,
-                    &view,
+                    main_view,
                     &map_decoration_vertices,
                     &map_decoration_indices,
                     &atlas.bind_group,
@@ -610,7 +613,7 @@ impl Renderer {
             if let Some(atlas) = &self.item_frame_map_text_font_atlas {
                 self.draw_item_model_geometry(
                     &mut encoder,
-                    &view,
+                    main_view,
                     &map_text_vertices,
                     &map_text_indices,
                     &atlas.bind_group,
@@ -624,7 +627,7 @@ impl Renderer {
             if let Some(atlas) = &self.item_entity_atlas {
                 self.draw_item_model_geometry(
                     &mut encoder,
-                    &view,
+                    main_view,
                     &flat_item_vertices,
                     &flat_item_indices,
                     &atlas.bind_group,
@@ -647,7 +650,7 @@ impl Renderer {
                 let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("bbb-native-item-entity-pass"),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: &view,
+                        view: main_view,
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Load,
@@ -687,7 +690,7 @@ impl Renderer {
                 let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("bbb-native-particle-pass"),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: &view,
+                        view: main_view,
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Load,
@@ -721,7 +724,7 @@ impl Renderer {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("bbb-native-selection-outline-pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
+                    view: main_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Load,
@@ -772,7 +775,7 @@ impl Renderer {
                 let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("bbb-native-hud-pass"),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: &view,
+                        view: main_view,
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Load,
@@ -819,7 +822,7 @@ impl Renderer {
                 let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("bbb-native-hud-item-pass"),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: &view,
+                        view: main_view,
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Load,
@@ -845,6 +848,28 @@ impl Renderer {
                 pipeline_switches += 1;
                 item_model_draw_calls += 1;
             }
+        }
+
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some(MAIN_BLIT_PASS_LABEL),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &surface_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.main_blit_pipeline);
+            pipeline_switches += 1;
+            pass.set_bind_group(0, &self.main_target.bind_group, &[]);
+            pass.draw(0..3, 0..1);
+            main_blit_draw_calls += 1;
         }
 
         let readback = if let Some(path) = screenshot {
@@ -881,6 +906,7 @@ impl Renderer {
             + entity_model_draw_calls
             + outline_composite_draw_calls
             + cloud_composite_draw_calls
+            + main_blit_draw_calls
             + particle_draw_calls
             + item_entity_draw_calls
             + item_model_draw_calls
@@ -1019,6 +1045,49 @@ mod tests {
             source[clouds_composite..translucent]
                 .contains("pass.set_bind_group(0, &self.cloud_target.bind_group, &[])"),
             "cloud composite samples the renderer-owned clouds target"
+        );
+    }
+
+    #[test]
+    fn main_target_blits_to_surface_before_screenshot_readback() {
+        let source = include_str!("render.rs");
+        let main_view = source
+            .find("let main_view = &self.main_target.view")
+            .expect("renderer-owned main target view is selected");
+        let terrain_pass = source
+            .find("label: Some(\"bbb-native-terrain-opaque-group-pass\")")
+            .expect("main terrain pass label is used");
+        let main_blit = source
+            .find("label: Some(MAIN_BLIT_PASS_LABEL)")
+            .expect("main blit pass label is used");
+        let screenshot_copy = source
+            .find("prepare_screenshot_copy")
+            .expect("screenshot copy still reads the presented frame");
+
+        assert!(
+            main_view < terrain_pass && terrain_pass < main_blit,
+            "content passes draw to the renderer-owned main target before the final blit"
+        );
+        assert!(
+            !source[..main_blit].contains("view: &surface_view"),
+            "surface view is not a render target until the final blit pass"
+        );
+        assert!(
+            source[terrain_pass..main_blit].contains("view: main_view"),
+            "main content passes use the renderer-owned main target"
+        );
+        assert!(
+            source[main_blit..screenshot_copy].contains("view: &surface_view"),
+            "final blit writes the swapchain surface before screenshot readback"
+        );
+        assert!(
+            source[main_blit..screenshot_copy]
+                .contains("pass.set_bind_group(0, &self.main_target.bind_group, &[])"),
+            "final blit samples the renderer-owned main target"
+        );
+        assert!(
+            main_blit < screenshot_copy,
+            "screenshots read the frame after final main-target blit"
         );
     }
 

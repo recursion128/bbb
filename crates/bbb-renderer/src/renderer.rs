@@ -65,6 +65,10 @@ use crate::{
         SkyEnvironment, StarGpu,
     },
     terrain,
+    transparency::{
+        create_main_blit_pipeline, create_main_target, create_main_target_bind_group_layout,
+        MainTarget,
+    },
 };
 
 pub struct Renderer {
@@ -75,6 +79,9 @@ pub struct Renderer {
     pub(super) size: PhysicalSize<u32>,
     pub(super) clear: ClearColor,
     pub(super) counters: RendererCounters,
+    pub(super) main_target_bind_group_layout: wgpu::BindGroupLayout,
+    pub(super) main_target: MainTarget,
+    pub(super) main_blit_pipeline: wgpu::RenderPipeline,
     pub(super) depth: DepthTarget,
     pub(super) terrain_pipeline: wgpu::RenderPipeline,
     pub(super) terrain_translucent_pipeline: wgpu::RenderPipeline,
@@ -370,6 +377,16 @@ impl Renderer {
             desired_maximum_frame_latency: 2,
         };
         surface.configure(&device, &config);
+        let main_target_bind_group_layout = create_main_target_bind_group_layout(&device);
+        let main_target = create_main_target(
+            &device,
+            &main_target_bind_group_layout,
+            config.format,
+            config.width,
+            config.height,
+        );
+        let main_blit_pipeline =
+            create_main_blit_pipeline(&device, config.format, &main_target_bind_group_layout);
         let depth = create_depth_target(&device, config.width, config.height);
         let terrain_bind_group_layout = create_terrain_bind_group_layout(&device);
         let hud_bind_group_layout = create_hud_bind_group_layout(&device);
@@ -511,6 +528,9 @@ impl Renderer {
                 height: size.height,
                 ..RendererCounters::default()
             },
+            main_target_bind_group_layout,
+            main_target,
+            main_blit_pipeline,
             depth,
             terrain_pipeline,
             terrain_translucent_pipeline,
@@ -745,6 +765,13 @@ impl Renderer {
         self.config.width = size.width;
         self.config.height = size.height;
         self.surface.configure(&self.device, &self.config);
+        self.main_target = create_main_target(
+            &self.device,
+            &self.main_target_bind_group_layout,
+            self.config.format,
+            self.config.width,
+            self.config.height,
+        );
         self.depth = create_depth_target(&self.device, self.config.width, self.config.height);
         self.entity_outline_target = create_entity_outline_target(
             &self.device,
