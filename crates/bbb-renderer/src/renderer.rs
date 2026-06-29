@@ -336,6 +336,75 @@ pub(super) struct ResidentTerrainMesh {
     pub(super) translucent_faces: usize,
     pub(super) culled_faces: usize,
     pub(super) resident_bytes: u64,
+    translucent_sort: Option<TerrainTranslucentSortState>,
+}
+
+#[derive(Debug, Clone)]
+struct TerrainTranslucentSortState {
+    centroids: Vec<[f32; 3]>,
+    last_camera_position: Option<[f32; 3]>,
+}
+
+impl TerrainTranslucentSortState {
+    fn from_vertices(
+        vertices: &[terrain::TerrainVertex],
+        last_camera_position: Option<[f32; 3]>,
+    ) -> Option<Self> {
+        if vertices.len() % 4 != 0 {
+            return None;
+        }
+
+        let centroids = vertices
+            .chunks_exact(4)
+            .map(|quad| {
+                [
+                    (quad[0].position[0] + quad[2].position[0]) * 0.5,
+                    (quad[0].position[1] + quad[2].position[1]) * 0.5,
+                    (quad[0].position[2] + quad[2].position[2]) * 0.5,
+                ]
+            })
+            .collect();
+        Some(Self {
+            centroids,
+            last_camera_position,
+        })
+    }
+
+    fn indices_for_camera_if_changed(&mut self, camera_position: [f32; 3]) -> Option<Vec<u32>> {
+        if self.last_camera_position == Some(camera_position) {
+            return None;
+        }
+        self.last_camera_position = Some(camera_position);
+        Some(self.sorted_indices(camera_position))
+    }
+
+    fn sorted_indices(&self, camera_position: [f32; 3]) -> Vec<u32> {
+        let mut quad_distances: Vec<_> = self
+            .centroids
+            .iter()
+            .enumerate()
+            .map(|(quad_index, centroid)| {
+                let dx = centroid[0] - camera_position[0];
+                let dy = centroid[1] - camera_position[1];
+                let dz = centroid[2] - camera_position[2];
+                (quad_index, dx * dx + dy * dy + dz * dz)
+            })
+            .collect();
+        quad_distances.sort_by(
+            |(left_index, left_distance), (right_index, right_distance)| {
+                right_distance
+                    .total_cmp(left_distance)
+                    .then_with(|| left_index.cmp(right_index))
+            },
+        );
+
+        let mut indices = Vec::with_capacity(quad_distances.len() * 6);
+        for (quad_index, _) in quad_distances {
+            let base = (quad_index * 4) as u32;
+            indices.extend_from_slice(&[base, base + 1, base + 2, base + 2, base + 3, base]);
+        }
+        indices
+    }
 }
 
 impl Renderer {
@@ -923,6 +992,7 @@ impl Renderer {
             return;
         }
         self.camera_pose = pose;
+        self.resort_translucent_terrain_for_camera();
         self.update_camera();
     }
 
@@ -1141,6 +1211,14 @@ impl Renderer {
         }
 
         let bounds = TerrainBounds::from_vertices(&mesh.vertices);
+        let translucent_sort = (mesh.translucent_faces > 0)
+            .then(|| {
+                TerrainTranslucentSortState::from_vertices(
+                    &mesh.vertices,
+                    self.terrain_sort_camera_position(),
+                )
+            })
+            .flatten();
         let vertex_bytes = bytemuck::cast_slice(&mesh.vertices);
         let index_bytes = bytemuck::cast_slice(&mesh.indices);
         let vertex_buffer = self
@@ -1176,7 +1254,34 @@ impl Renderer {
             translucent_faces: mesh.translucent_faces,
             culled_faces: mesh.culled_faces,
             resident_bytes,
+            translucent_sort,
         })
+    }
+
+    fn terrain_sort_camera_position(&self) -> Option<[f32; 3]> {
+        self.camera_pose.map(|pose| {
+            [
+                pose.position[0],
+                pose.position[1] + pose.eye_height,
+                pose.position[2],
+            ]
+        })
+    }
+
+    fn resort_translucent_terrain_for_camera(&mut self) {
+        let Some(camera_position) = self.terrain_sort_camera_position() else {
+            return;
+        };
+        let queue = &self.queue;
+        for mesh in &mut self.terrain_translucent {
+            let Some(sort) = &mut mesh.translucent_sort else {
+                continue;
+            };
+            let Some(indices) = sort.indices_for_camera_if_changed(camera_position) else {
+                continue;
+            };
+            queue.write_buffer(&mesh.index_buffer, 0, bytemuck::cast_slice(&indices));
+        }
     }
 
     pub(crate) fn update_camera(&self) {
@@ -1371,4 +1476,50 @@ fn choose_format(formats: &[wgpu::TextureFormat]) -> Result<wgpu::TextureFormat>
             })
         })
         .ok_or_else(|| anyhow!("surface does not expose an RGBA/BGRA 8-bit format"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::TerrainTranslucentSortState;
+    use crate::terrain::TerrainVertex;
+
+    #[test]
+    fn translucent_sort_state_rebuilds_vanilla_indices_after_camera_move() {
+        let vertices = vec![
+            terrain_vertex([0.0, 0.0, 0.0]),
+            terrain_vertex([1.0, 0.0, 0.0]),
+            terrain_vertex([1.0, 1.0, 0.0]),
+            terrain_vertex([0.0, 1.0, 0.0]),
+            terrain_vertex([0.0, 0.0, 1.0]),
+            terrain_vertex([1.0, 0.0, 1.0]),
+            terrain_vertex([1.0, 1.0, 1.0]),
+            terrain_vertex([0.0, 1.0, 1.0]),
+        ];
+        let mut sort =
+            TerrainTranslucentSortState::from_vertices(&vertices, Some([0.5, 0.5, -4.0]))
+                .expect("quad vertices create sort state");
+
+        assert_eq!(sort.indices_for_camera_if_changed([0.5, 0.5, -4.0]), None);
+        assert_eq!(
+            sort.indices_for_camera_if_changed([0.5, 0.5, 4.0]),
+            Some(vec![0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4])
+        );
+        assert_eq!(
+            sort.indices_for_camera_if_changed([0.5, 0.5, -4.0]),
+            Some(vec![4, 5, 6, 6, 7, 4, 0, 1, 2, 2, 3, 0])
+        );
+    }
+
+    fn terrain_vertex(position: [f32; 3]) -> TerrainVertex {
+        TerrainVertex {
+            position,
+            normal: [0.0, 0.0, 1.0],
+            uv: [0.0, 0.0],
+            light: [0.0, 0.0],
+            tint: [1.0, 1.0, 1.0],
+            shade: 1.0,
+            ambient_occlusion: 1.0,
+            block_state_id: 0,
+        }
+    }
 }

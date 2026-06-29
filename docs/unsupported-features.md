@@ -417,8 +417,9 @@ When an agent does any of the following, update this file in the same slice:
     `DefaultVertexFormat.PARTICLE`-shaped vertex data, dynamic `Sampler2`
     LightTexture sampling, and rain-before-snow draw order.
     Terrain translucent upload-time quad sorting now follows vanilla
-    `MeshData.sortQuads` centroid distance order. Remaining render-graph parity
-    still needs camera-move translucent resort and finer feature/terrain target
+    `MeshData.sortQuads` centroid distance order, and camera changes rebuild
+    the resident translucent index buffer from the stored quad centroids.
+    Remaining render-graph parity still needs finer feature/terrain target
     sorting across the now present translucent / itemEntity / particles / weather / cloud targets;
     outline now has a dedicated target/composite.
   - P0 cloud presentation slice: vanilla 26.1 `CloudRenderer` uses
@@ -444,8 +445,8 @@ When an agent does any of the following, update this file in the same slice:
     heightmaps from chunk packet data for rain/snow column bounds and keeps that
     heightmap updated for block changes. Weather precipitation now applies the
     vanilla height-adjustment `TEMPERATURE_NOISE` and the `frozen` biome
-    `temperature_modifier`. Remaining cloud/weather parity is camera-move
-    translucent resort plus finer transparency target sorting.
+    `temperature_modifier`. Remaining cloud/weather parity is finer transparency
+    target sorting.
   - P0 pipeline closeout treats texture-backed / dispatch-owned submission and
     RenderType/order/missing-atlas/dynamic-texture coverage as complete for the
     narrow pipeline scope: entity model tests assert `submit_sequence` across 78
@@ -760,8 +761,8 @@ When an agent does any of the following, update this file in the same slice:
     and block-update maintenance before falling back to the old scan path.
     Weather precipitation now applies vanilla height temperature noise plus the
     frozen-ocean temperature modifier.
-    Remaining visual gaps are camera-move translucent resort / finer target sorting,
-    fuller atmosphere presentation, and later custom-pack EnvironmentAttribute
+    Remaining visual gaps are finer target sorting, fuller atmosphere presentation,
+    and later custom-pack EnvironmentAttribute
     generalization when a concrete renderer surface exists. Sun/moon presentation
     is now covered by the vanilla `CELESTIAL` overlay blend, the
     `environment/celestial` atlas source, `SUN_ANGLE` / `MOON_ANGLE`, and the
@@ -782,8 +783,7 @@ When an agent does any of the following, update this file in the same slice:
     instead of terrain recomputing the formula inline. The terrain/world shader
     no longer uses the earlier
     `max(block, sky * 0.95)` scalar approximation. Remaining lighting gaps:
-    camera-move translucent resort and finer transparency target sorting after the
-    renderer-owned main color target /
+    finer transparency target sorting after the renderer-owned main color target /
     Main+Translucent+ItemEntity+Particles+Weather+Clouds combine foundation,
     provider-specific particle light emission overrides,
     smooth/AO entity light, GUI / entity-in-UI lighting variants, and the
