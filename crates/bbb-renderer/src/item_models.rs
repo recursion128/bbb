@@ -359,8 +359,9 @@ fn item_model_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
 /// Item-model shader: samples the shared block/item atlas (bound exactly like the terrain pass —
 /// `view_proj` uniform `@0`, atlas texture `@1`, sampler `@2`), multiplies by the baked vertex color
 /// (the submitted item tint), applies vanilla-shaped `minecraft_mix_light` diffuse from the submitted
-/// normal, samples the renderer-owned dynamic LightTexture using the submitted block/sky light, then
-/// applies vanilla-shaped `OverlayTexture` red/white mixing. Alpha cutout: transparent texels are
+/// normal and the camera's current `Lighting.Entry` item light directions, samples the renderer-owned
+/// dynamic LightTexture using the submitted block/sky light, then applies vanilla-shaped
+/// `OverlayTexture` red/white mixing. Alpha cutout: transparent texels are
 /// discarded, so the thin generated-item slab and partial block faces read cleanly against the depth
 /// buffer.
 const ITEM_MODEL_SHADER: &str = r#"
@@ -376,6 +377,8 @@ struct Camera {
     fog_color: vec4<f32>,
     fog_distances: vec4<f32>,
     fog_visibility_ends: vec4<f32>,
+    item_light0: vec4<f32>,
+    item_light1: vec4<f32>,
 };
 
 @group(0) @binding(0)
@@ -449,8 +452,8 @@ fn apply_overlay(rgb: vec3<f32>, overlay: vec2<f32>) -> vec3<f32> {
 }
 
 fn diffuse_light(normal: vec3<f32>) -> f32 {
-    let light0 = normalize(vec3<f32>(0.2, 1.0, -0.7));
-    let light1 = normalize(vec3<f32>(-0.2, 1.0, 0.7));
+    let light0 = normalize(camera.item_light0.xyz);
+    let light1 = normalize(camera.item_light1.xyz);
     let light_value = max(vec2<f32>(0.0), vec2<f32>(dot(light0, normal), dot(light1, normal)));
     return min(1.0, (light_value.x + light_value.y) * 0.6 + 0.4);
 }
@@ -740,6 +743,8 @@ mod tests {
         assert!(ITEM_MODEL_SHADER.contains("@location(3) light: vec2<f32>"));
         assert!(ITEM_MODEL_SHADER.contains("@location(4) overlay: vec2<f32>"));
         assert!(ITEM_MODEL_SHADER.contains("@location(5) normal_diffuse: vec4<f32>"));
+        assert!(ITEM_MODEL_SHADER.contains("item_light0: vec4<f32>"));
+        assert!(ITEM_MODEL_SHADER.contains("item_light1: vec4<f32>"));
         assert!(ITEM_MODEL_SHADER.contains("@group(1) @binding(0)"));
         assert!(ITEM_MODEL_SHADER.contains("var lightmap_texture: texture_2d<f32>"));
         assert!(ITEM_MODEL_SHADER.contains("@group(1) @binding(1)"));
@@ -759,12 +764,11 @@ mod tests {
     #[test]
     fn item_model_shader_applies_vanilla_normal_diffuse_lighting() {
         // Vanilla `core/item.vsh` calls `minecraft_mix_light(Light0_Direction, Light1_Direction,
-        // Normal, Color)`, and `light.glsl` uses the 0.6 power + 0.4 ambient mix. The current renderer
-        // still uses the level default light directions; choosing ITEMS_3D vs ITEMS_FLAT remains a
-        // separate lighting-context slice.
+        // Normal, Color)`, and `light.glsl` uses the 0.6 power + 0.4 ambient mix. Vanilla chooses
+        // Light0/Light1 through `Lighting.Entry`, which the renderer carries in the camera uniform.
         assert!(ITEM_MODEL_SHADER.contains("fn diffuse_light(normal: vec3<f32>) -> f32"));
-        assert!(ITEM_MODEL_SHADER.contains("vec3<f32>(0.2, 1.0, -0.7)"));
-        assert!(ITEM_MODEL_SHADER.contains("vec3<f32>(-0.2, 1.0, 0.7)"));
+        assert!(ITEM_MODEL_SHADER.contains("let light0 = normalize(camera.item_light0.xyz)"));
+        assert!(ITEM_MODEL_SHADER.contains("let light1 = normalize(camera.item_light1.xyz)"));
         assert!(ITEM_MODEL_SHADER.contains("* 0.6 + 0.4"));
         assert!(ITEM_MODEL_SHADER
             .contains("let diffuse = mix(1.0, diffuse_light(input.normal_diffuse.xyz), input.normal_diffuse.w)"));
