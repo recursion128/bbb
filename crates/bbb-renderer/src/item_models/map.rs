@@ -1136,6 +1136,29 @@ mod tests {
     }
 
     #[test]
+    fn item_frame_map_surface_waits_when_dynamic_map_texture_is_malformed() {
+        let surface = bake_item_frame_map_surface(10, Mat4::IDENTITY, ITEM_MODEL_FULL_BRIGHT_LIGHT);
+        let (atlas, _) = build_item_frame_map_atlas(&[
+            ItemFrameMapTexture {
+                map_id: 10,
+                rgba: vec![1, 2, 3],
+            },
+            ItemFrameMapTexture {
+                map_id: 5,
+                rgba: vec![20; ITEM_FRAME_MAP_RGBA_LEN],
+            },
+        ])
+        .expect("valid atlas from the unrelated map");
+
+        let (vertices, indices) = merge_item_frame_map_surfaces(&[surface], &atlas);
+
+        assert!(
+            vertices.is_empty() && indices.is_empty(),
+            "malformed dynamic map texture must not fold stale map geometry"
+        );
+    }
+
+    #[test]
     fn map_decoration_type_mapping_matches_vanilla_registration_order() {
         // Vanilla `MapDecorationTypes` registers these holders in static field order; the packet carries
         // their registry id through `MapDecorationType.STREAM_CODEC`.

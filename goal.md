@@ -1567,7 +1567,8 @@ blocker。
   cache 和不画 stale texture 的 fallback 行为。
 - [x] filled-map item-frame base surface 已作为非 profile dynamic texture 代表覆盖
   `MapTextureManager.prepareMapTexture` / `MapRenderer.render` 的 128x128 map
-  atlas upload、ready draw、malformed/absent texture 不折叠 stale geometry。
+  atlas upload、ready draw、malformed texture/no atlas entry/absent texture 不折叠
+  stale geometry。
 
 仍在推进：
 
