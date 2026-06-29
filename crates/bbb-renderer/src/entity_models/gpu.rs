@@ -295,6 +295,123 @@ fn fs_main(input: VertexOut, @builtin(front_facing) front_facing: bool) -> @loca
 }
 "#;
 
+pub(super) const ENTITY_MODEL_TEXTURED_CULL_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
+    fog_visibility_ends: vec4<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+
+@group(0) @binding(1)
+var entity_texture_atlas: texture_2d<f32>;
+
+@group(0) @binding(2)
+var entity_sampler: sampler;
+
+@group(1) @binding(0)
+var lightmap_texture: texture_2d<f32>;
+
+@group(1) @binding(1)
+var lightmap_sampler: sampler;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) tint: vec4<f32>,
+    @location(3) light: vec2<f32>,
+    @location(4) overlay: vec2<f32>,
+    @location(5) normal: vec3<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+    @location(1) tint: vec4<f32>,
+    @location(2) light: vec2<f32>,
+    @location(3) overlay: vec2<f32>,
+    @location(4) normal: vec3<f32>,
+    @location(5) spherical_distance: f32,
+    @location(6) cylindrical_distance: f32,
+};
+
+fn sample_lightmap(light: vec2<f32>) -> vec3<f32> {
+    let uv = clamp(
+        light * (15.0 / 16.0) + vec2<f32>(0.5 / 16.0),
+        vec2<f32>(0.5 / 16.0),
+        vec2<f32>(15.5 / 16.0),
+    );
+    return textureSample(lightmap_texture, lightmap_sampler, uv).rgb;
+}
+
+fn diffuse_light(normal: vec3<f32>) -> f32 {
+    let light0 = normalize(vec3<f32>(0.2, 1.0, -0.7));
+    let light1 = normalize(vec3<f32>(-0.2, 1.0, 0.7));
+    let light_value = max(vec2<f32>(0.0), vec2<f32>(dot(light0, normal), dot(light1, normal)));
+    return min(1.0, (light_value.x + light_value.y) * 0.6 + 0.4);
+}
+
+fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
+    if (vertex_distance <= fog_start) {
+        return 0.0;
+    }
+    if (vertex_distance >= fog_end) {
+        return 1.0;
+    }
+    return (vertex_distance - fog_start) / (fog_end - fog_start);
+}
+
+fn apply_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f32) -> vec4<f32> {
+    let fog_value = max(
+        linear_fog_value(spherical_distance, camera.fog_distances.x, camera.fog_distances.y),
+        linear_fog_value(cylindrical_distance, camera.fog_distances.z, camera.fog_distances.w),
+    );
+    return vec4<f32>(mix(color.rgb, camera.fog_color.rgb, fog_value * camera.fog_color.a), color.a);
+}
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
+    out.uv = input.uv;
+    out.tint = input.tint;
+    out.light = input.light;
+    out.overlay = input.overlay;
+    out.normal = normalize(input.normal);
+    let fog_pos = input.position - camera.camera_position.xyz;
+    out.spherical_distance = length(fog_pos);
+    out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let texel = textureSample(entity_texture_atlas, entity_sampler, input.uv) * input.tint;
+    if texel.a <= 0.01 {
+        discard;
+    }
+    var rgb = texel.rgb;
+    if (input.overlay.y < 8.0) {
+        rgb = mix(vec3<f32>(1.0, 0.0, 0.0), rgb, 179.0 / 255.0);
+    } else {
+        let overlay_alpha = 1.0 - input.overlay.x / 15.0 * 0.75;
+        rgb = mix(vec3<f32>(1.0, 1.0, 1.0), rgb, overlay_alpha);
+    }
+    let light_color = sample_lightmap(input.light);
+    return apply_fog(vec4<f32>(rgb * diffuse_light(input.normal) * light_color, texel.a), input.spherical_distance, input.cylindrical_distance);
+}
+"#;
+
 pub(super) const ENTITY_MODEL_EYES_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
@@ -700,7 +817,7 @@ pub(crate) fn create_entity_model_textured_cull_pipeline(
         bind_group_layout,
         Some(lightmap_bind_group_layout),
         "bbb-entity-model-textured-cull",
-        ENTITY_MODEL_TEXTURED_SHADER,
+        ENTITY_MODEL_TEXTURED_CULL_SHADER,
         Some(wgpu::BlendState::REPLACE),
         true,
         ENTITY_MODEL_SURFACE_CULL_MODE,
@@ -804,7 +921,7 @@ pub(crate) fn create_entity_model_translucent_cull_pipeline(
         bind_group_layout,
         Some(lightmap_bind_group_layout),
         "bbb-entity-model-translucent-cull",
-        ENTITY_MODEL_TEXTURED_SHADER,
+        ENTITY_MODEL_TEXTURED_CULL_SHADER,
         Some(wgpu::BlendState::ALPHA_BLENDING),
         true,
         ENTITY_MODEL_SURFACE_CULL_MODE,

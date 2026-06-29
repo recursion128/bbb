@@ -637,9 +637,13 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
 
 #[test]
 fn entity_textured_shader_samples_bound_texture_and_discards_alpha() {
-    assert!(ENTITY_MODEL_TEXTURED_SHADER
-        .contains("textureSample(entity_texture_atlas, entity_sampler, input.uv)"));
-    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("discard"));
+    for shader in [
+        ENTITY_MODEL_TEXTURED_SHADER,
+        ENTITY_MODEL_TEXTURED_CULL_SHADER,
+    ] {
+        assert!(shader.contains("textureSample(entity_texture_atlas, entity_sampler, input.uv)"));
+        assert!(shader.contains("discard"));
+    }
     assert_eq!(
         ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES,
         wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2, 4 => Float32x2, 5 => Float32x3]
@@ -648,34 +652,44 @@ fn entity_textured_shader_samples_bound_texture_and_discards_alpha() {
 
 #[test]
 fn entity_textured_shader_samples_dynamic_lightmap_texture() {
-    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("@group(1) @binding(0)"));
-    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("var lightmap_texture: texture_2d<f32>"));
-    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("@group(1) @binding(1)"));
-    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("var lightmap_sampler: sampler"));
-    assert!(
-        ENTITY_MODEL_TEXTURED_SHADER.contains("fn sample_lightmap(light: vec2<f32>) -> vec3<f32>")
-    );
-    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("light * (15.0 / 16.0) + vec2<f32>(0.5 / 16.0)"));
-    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("vec2<f32>(15.5 / 16.0)"));
-    assert!(ENTITY_MODEL_TEXTURED_SHADER
-        .contains("textureSample(lightmap_texture, lightmap_sampler, uv).rgb"));
-    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("let light_color = sample_lightmap(input.light)"));
+    for shader in [
+        ENTITY_MODEL_TEXTURED_SHADER,
+        ENTITY_MODEL_TEXTURED_CULL_SHADER,
+    ] {
+        assert!(shader.contains("@group(1) @binding(0)"));
+        assert!(shader.contains("var lightmap_texture: texture_2d<f32>"));
+        assert!(shader.contains("@group(1) @binding(1)"));
+        assert!(shader.contains("var lightmap_sampler: sampler"));
+        assert!(shader.contains("fn sample_lightmap(light: vec2<f32>) -> vec3<f32>"));
+        assert!(shader.contains("light * (15.0 / 16.0) + vec2<f32>(0.5 / 16.0)"));
+        assert!(shader.contains("vec2<f32>(15.5 / 16.0)"));
+        assert!(shader.contains("textureSample(lightmap_texture, lightmap_sampler, uv).rgb"));
+        assert!(shader.contains("let light_color = sample_lightmap(input.light)"));
+        assert!(!shader.contains("fn lightmap_brightness"));
+        assert!(!shader.contains("camera.lightmap_factors.y"));
+    }
     assert!(ENTITY_MODEL_TEXTURED_SHADER
         .contains("rgb * per_face_diffuse_light(input.normal, front_facing) * light_color"));
-    assert!(!ENTITY_MODEL_TEXTURED_SHADER.contains("fn lightmap_brightness"));
-    assert!(!ENTITY_MODEL_TEXTURED_SHADER.contains("camera.lightmap_factors.y"));
+    assert!(ENTITY_MODEL_TEXTURED_CULL_SHADER
+        .contains("rgb * diffuse_light(input.normal) * light_color"));
 }
 
 #[test]
 fn entity_textured_shader_applies_vanilla_level_diffuse_lighting() {
     // Vanilla entity.vsh calls minecraft_mix_light with Lighting.setupLevel's
     // default light directions, MINECRAFT_LIGHT_POWER 0.6 and ambient 0.4.
-    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("@location(5) normal: vec3<f32>"));
-    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("vec3<f32>(0.2, 1.0, -0.7)"));
-    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("vec3<f32>(-0.2, 1.0, 0.7)"));
-    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("(light_value.x + light_value.y) * 0.6 + 0.4"));
+    for shader in [
+        ENTITY_MODEL_TEXTURED_SHADER,
+        ENTITY_MODEL_TEXTURED_CULL_SHADER,
+    ] {
+        assert!(shader.contains("@location(5) normal: vec3<f32>"));
+        assert!(shader.contains("vec3<f32>(0.2, 1.0, -0.7)"));
+        assert!(shader.contains("vec3<f32>(-0.2, 1.0, 0.7)"));
+        assert!(shader.contains("(light_value.x + light_value.y) * 0.6 + 0.4"));
+    }
     assert!(ENTITY_MODEL_TEXTURED_SHADER
         .contains("per_face_diffuse_light(input.normal, front_facing) * light_color"));
+    assert!(ENTITY_MODEL_TEXTURED_CULL_SHADER.contains("diffuse_light(input.normal) * light_color"));
 }
 
 #[test]
@@ -688,6 +702,17 @@ fn entity_textured_shader_applies_vanilla_per_face_lighting() {
         .contains("fn per_face_diffuse_light(normal: vec3<f32>, front_facing: bool) -> f32"));
     assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("if (front_facing)"));
     assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("diffuse_light(-normal)"));
+}
+
+#[test]
+fn entity_textured_cull_shader_uses_vanilla_single_face_lighting() {
+    // Vanilla entitySolid / entityCutoutCull / entityTranslucentCull do not set
+    // PER_FACE_LIGHTING; entity.vsh uses minecraft_mix_light with the submitted
+    // normal once, without the gl_FrontFacing back-face branch.
+    assert!(!ENTITY_MODEL_TEXTURED_CULL_SHADER.contains("@builtin(front_facing)"));
+    assert!(!ENTITY_MODEL_TEXTURED_CULL_SHADER.contains("per_face_diffuse_light"));
+    assert!(ENTITY_MODEL_TEXTURED_CULL_SHADER.contains("diffuse_light(input.normal)"));
+    assert!(!ENTITY_MODEL_TEXTURED_CULL_SHADER.contains("diffuse_light(-normal)"));
 }
 
 #[test]
@@ -713,7 +738,11 @@ fn entity_shaders_apply_vanilla_overlay_texture_mix() {
     // OverlayTexture: hurt row (v < 8) mixes toward red at alpha 179/255; white
     // rows mix toward white at alpha 1 - u/15 * 0.75. Applied before the
     // lightmap, matching the vanilla entity fragment shader order.
-    for shader in [ENTITY_MODEL_SHADER, ENTITY_MODEL_TEXTURED_SHADER] {
+    for shader in [
+        ENTITY_MODEL_SHADER,
+        ENTITY_MODEL_TEXTURED_SHADER,
+        ENTITY_MODEL_TEXTURED_CULL_SHADER,
+    ] {
         assert!(shader.contains("input.overlay.y < 8.0"));
         assert!(shader.contains("mix(vec3<f32>(1.0, 0.0, 0.0), rgb, 179.0 / 255.0)"));
         assert!(shader.contains("1.0 - input.overlay.x / 15.0 * 0.75"));

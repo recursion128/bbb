@@ -352,7 +352,8 @@ When an agent does any of the following, update this file in the same slice:
     `ENTITY_OUTLINE_BLIT`-shaped composite. The surface path now also splits
     vanilla cull-on entity render types (`entitySolid`, `entityCutoutCull`, and
     `entityTranslucentCullItemTarget`) into static and dynamic texture cull
-    buckets drawn with back-face culling. Later GPU work should preserve
+    buckets drawn with back-face culling and a separate no-`PER_FACE_LIGHTING`
+    single-normal diffuse shader. Later GPU work should preserve
     per-submission draw order across buckets, split remaining currently-coalesced
     render-type state such as no-cull `entityCutout*`, `armorCutoutNoCull`,
     `entityTranslucent*`, `Eyes`, `waterMask`, and glint / scroll variants into
@@ -718,7 +719,9 @@ When an agent does any of the following, update this file in the same slice:
     back faces, matching `entity.vsh`'s separate front/back diffuse colors.
     Surface buckets now also distinguish vanilla cull-on `entitySolid`,
     `entityCutoutCull`, and `entityTranslucentCullItemTarget` draws from no-cull
-    entity surfaces. Normal
+    entity surfaces, and those cull buckets use a separate texture-backed shader
+    matching vanilla no-`PER_FACE_LIGHTING` behavior: one diffuse evaluation from
+    the submitted normal, with no `gl_FrontFacing` front/back branch. Normal
     transforms use vanilla `PoseStack.Pose` normal-matrix semantics, i.e. pose
     inverse-transpose plus normalization. The colored,
     textured, and `breezeWind` entity shaders now also use a vanilla-shaped
@@ -1564,6 +1567,9 @@ When an agent does any of the following, update this file in the same slice:
       Surface GPU buckets now split vanilla cull-on static and dynamic texture
       draws for `entitySolid`, `entityCutoutCull`, and
       `entityTranslucentCullItemTarget` from no-cull entity surface draws.
+      Those cull-on buckets now use a separate texture-backed shader matching
+      vanilla no-`PER_FACE_LIGHTING` entity pipelines: the submitted normal is
+      lit once, without a `gl_FrontFacing` front/back branch.
       Texture-backed invisible-but-visible-to-client living base bodies now
       override their base submission to `entityTranslucentCullItemTarget` with
       the vanilla `38/255` alpha before folding into the translucent mesh; layer
