@@ -3816,6 +3816,88 @@ mod tests {
     }
 
     #[test]
+    fn player_profile_resource_body_patch_failure_does_not_use_remote_or_stale_skin() {
+        let root = unique_temp_dir("item-runtime-profile-resource-body-skin-failure");
+        let assets = assets_dir(&root);
+        let body_texture_path = "minecraft:textures/entity/player/body/missing.png";
+        let mut runtime = NativeItemRuntime::empty_for_test();
+        runtime.profile_texture_resources =
+            PackResourceStack::from_roots([root.join("sources").join(bbb_pack::MC_VERSION)]);
+        let skin_download_calls = Arc::new(AtomicUsize::new(0));
+        runtime.enable_player_skin_downloads_for_test(AsyncDynamicPlayerSkinRuntime::new(
+            root.join("skin-cache"),
+            TestSkinPngFetcher {
+                bytes: player_skin_png_bytes(),
+                calls: skin_download_calls.clone(),
+            },
+        ));
+
+        let profile = ResolvableProfileSummary {
+            kind: bbb_protocol::packets::ResolvableProfileKindSummary::Partial,
+            uuid: Some(uuid::Uuid::from_u128(0)),
+            name: None,
+            properties: Vec::new(),
+            profile_textures: Some(bbb_protocol::packets::ProfileTexturesSummary {
+                skin: Some(bbb_protocol::packets::ProfileSkinTextureSummary {
+                    url: "https://textures.minecraft.net/texture/remote-skin".to_string(),
+                    model: bbb_protocol::packets::PlayerModelTypeSummary::Slim,
+                }),
+                cape: None,
+                elytra: None,
+            }),
+            skin_patch: bbb_protocol::packets::PlayerSkinPatchSummary {
+                body: Some(ResourceTextureSummary {
+                    asset_id: "minecraft:entity/player/body/missing".to_string(),
+                    texture_path: body_texture_path.to_string(),
+                }),
+                cape: None,
+                elytra: None,
+                model: Some(bbb_protocol::packets::PlayerModelTypeSummary::Wide),
+            },
+        };
+
+        assert_eq!(
+            runtime.player_skin_for_profile(&profile),
+            EntityPlayerSkin::ProfiledDefault(EntityDefaultPlayerSkin::SlimAlex)
+        );
+        assert!(runtime
+            .drain_dynamic_player_skin_download_results()
+            .is_empty());
+        assert_eq!(runtime.downloaded_player_skin_count(), 0);
+        assert_eq!(skin_download_calls.load(Ordering::Relaxed), 0);
+
+        let mut body_rgba = Vec::with_capacity((64 * 64 * 4) as usize);
+        for y in 0..64 {
+            for x in 0..64 {
+                body_rgba.extend_from_slice(&[x as u8, y as u8, 191, 255]);
+            }
+        }
+        write_test_rgba_png(
+            &assets
+                .join("textures")
+                .join("entity")
+                .join("player")
+                .join("body")
+                .join("missing.png"),
+            64,
+            64,
+            &body_rgba,
+        );
+
+        assert_eq!(
+            runtime.player_skin_for_profile(&profile),
+            EntityPlayerSkin::ProfiledDefault(EntityDefaultPlayerSkin::SlimAlex)
+        );
+        assert!(runtime
+            .drain_dynamic_player_skin_download_results()
+            .is_empty());
+        assert_eq!(runtime.downloaded_player_skin_count(), 0);
+        assert_eq!(skin_download_calls.load(Ordering::Relaxed), 0);
+
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
     fn native_item_runtime_projects_llama_body_decor_colors() {
         let root = unique_temp_dir("item-runtime-llama-decor");
         let assets = assets_dir(&root);
