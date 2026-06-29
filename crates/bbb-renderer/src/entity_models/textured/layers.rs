@@ -204,6 +204,7 @@ pub(in crate::entity_models) enum EntityModelLayerRenderType {
 pub(in crate::entity_models) enum EntityModelLayerRenderBucket {
     Cutout,
     Translucent,
+    ItemEntityTranslucent,
     Eyes,
     Scroll,
     AdditiveScroll,
@@ -239,9 +240,12 @@ impl EntityModelLayerRenderType {
             | Self::EntityCutout
             | Self::EntityCutoutCull
             | Self::EntityCutoutZOffset => EntityModelLayerRenderBucket::Cutout,
-            Self::ArmorTranslucent
-            | Self::EntityTranslucent
-            | Self::EntityTranslucentCullItemTarget => EntityModelLayerRenderBucket::Translucent,
+            Self::ArmorTranslucent | Self::EntityTranslucent => {
+                EntityModelLayerRenderBucket::Translucent
+            }
+            Self::EntityTranslucentCullItemTarget => {
+                EntityModelLayerRenderBucket::ItemEntityTranslucent
+            }
             Self::Outline => EntityModelLayerRenderBucket::OutlineOnly,
             Self::EntityGlint => EntityModelLayerRenderBucket::GlintOnly,
             Self::Eyes => EntityModelLayerRenderBucket::Eyes,

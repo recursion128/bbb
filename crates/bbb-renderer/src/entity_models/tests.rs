@@ -144,7 +144,7 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
         (
             EntityModelLayerRenderType::EntityTranslucentCullItemTarget,
             "entityTranslucentCullItemTarget",
-            EntityModelLayerRenderBucket::Translucent,
+            EntityModelLayerRenderBucket::ItemEntityTranslucent,
             true,
             true,
         ),

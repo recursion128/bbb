@@ -1079,6 +1079,12 @@ impl Renderer {
                 meshes.translucent,
                 "bbb-entity-model-translucent",
             );
+            self.entity_model_item_entity_translucent_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.item_entity_translucent,
+                    "bbb-entity-model-item-entity-translucent",
+                );
             self.entity_dynamic_player_skin_cutout_mesh =
                 create_entity_model_textured_mesh_gpu_from_mesh(
                     &self.device,
@@ -1091,6 +1097,12 @@ impl Renderer {
                     meshes.dynamic_player_skin_translucent,
                     "bbb-entity-dynamic-player-skin-translucent",
                 );
+            self.entity_dynamic_player_skin_item_entity_translucent_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.dynamic_player_skin_item_entity_translucent,
+                    "bbb-entity-dynamic-player-skin-item-entity-translucent",
+                );
             self.entity_dynamic_player_texture_cutout_mesh =
                 create_entity_model_textured_mesh_gpu_from_mesh(
                     &self.device,
@@ -1102,6 +1114,12 @@ impl Renderer {
                     &self.device,
                     meshes.dynamic_player_texture_translucent,
                     "bbb-entity-dynamic-player-texture-translucent",
+                );
+            self.entity_dynamic_player_texture_item_entity_translucent_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.dynamic_player_texture_item_entity_translucent,
+                    "bbb-entity-dynamic-player-texture-item-entity-translucent",
                 );
             self.entity_model_scroll_mesh = create_entity_model_scroll_mesh_gpu_from_mesh(
                 &self.device,
@@ -1116,13 +1134,16 @@ impl Renderer {
         } else {
             self.entity_model_textured_mesh = None;
             self.entity_model_translucent_mesh = None;
+            self.entity_model_item_entity_translucent_mesh = None;
             self.entity_model_eyes_mesh = None;
             self.entity_model_outline_mesh = None;
             self.entity_model_outline_cull_mesh = None;
             self.entity_dynamic_player_skin_cutout_mesh = None;
             self.entity_dynamic_player_skin_translucent_mesh = None;
+            self.entity_dynamic_player_skin_item_entity_translucent_mesh = None;
             self.entity_dynamic_player_texture_cutout_mesh = None;
             self.entity_dynamic_player_texture_translucent_mesh = None;
+            self.entity_dynamic_player_texture_item_entity_translucent_mesh = None;
             self.entity_model_scroll_mesh = None;
             self.entity_model_scroll_additive_mesh = None;
         }
@@ -1132,6 +1153,9 @@ impl Renderer {
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_translucent_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_model_item_entity_translucent_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_eyes_mesh
@@ -1149,10 +1173,16 @@ impl Renderer {
             self.entity_dynamic_player_skin_translucent_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
+            self.entity_dynamic_player_skin_item_entity_translucent_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
             self.entity_dynamic_player_texture_cutout_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_dynamic_player_texture_translucent_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_dynamic_player_texture_item_entity_translucent_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_scroll_mesh

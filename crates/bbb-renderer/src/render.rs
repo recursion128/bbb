@@ -717,6 +717,11 @@ impl Renderer {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
+            self.draw_entity_item_entity_target_features(
+                &mut pass,
+                &mut pipeline_switches,
+                &mut entity_model_draw_calls,
+            );
             if let (Some(atlas), Some(vertex_buffer)) =
                 (&self.item_entity_atlas, &item_entity_vertex_buffer)
             {
@@ -1148,6 +1153,53 @@ impl Renderer {
                 && self
                     .entity_dynamic_player_texture_translucent_mesh
                     .is_some())
+    }
+
+    fn draw_entity_item_entity_target_features<'a>(
+        &'a self,
+        pass: &mut wgpu::RenderPass<'a>,
+        pipeline_switches: &mut u64,
+        entity_model_draw_calls: &mut u64,
+    ) {
+        if let (Some(mesh), Some(atlas)) = (
+            &self.entity_model_item_entity_translucent_mesh,
+            &self.entity_model_texture_atlas,
+        ) {
+            pass.set_pipeline(&self.entity_model_translucent_pipeline);
+            *pipeline_switches += 1;
+            pass.set_bind_group(0, &atlas.bind_group, &[]);
+            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+            pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+            *entity_model_draw_calls += 1;
+        }
+        if let (Some(mesh), Some(atlas)) = (
+            &self.entity_dynamic_player_skin_item_entity_translucent_mesh,
+            &self.entity_dynamic_player_skin_atlas,
+        ) {
+            pass.set_pipeline(&self.entity_model_translucent_pipeline);
+            *pipeline_switches += 1;
+            pass.set_bind_group(0, &atlas.bind_group, &[]);
+            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+            pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+            *entity_model_draw_calls += 1;
+        }
+        if let (Some(mesh), Some(atlas)) = (
+            &self.entity_dynamic_player_texture_item_entity_translucent_mesh,
+            &self.entity_dynamic_player_texture_atlas,
+        ) {
+            pass.set_pipeline(&self.entity_model_translucent_pipeline);
+            *pipeline_switches += 1;
+            pass.set_bind_group(0, &atlas.bind_group, &[]);
+            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+            pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+            *entity_model_draw_calls += 1;
+        }
     }
 
     fn draw_entity_translucent_features<'a>(
@@ -1737,6 +1789,10 @@ mod tests {
             .find("label: Some(ITEM_ENTITY_TARGET_PASS_LABEL)")
             .expect("item-entity target pass label is used");
         let copy_depth = depth_copy_to(source, "texture: &self.item_entity_target.depth._texture");
+        let entity_item_target_draw = source[target..]
+            .find("self.draw_entity_item_entity_target_features(")
+            .map(|index| target + index)
+            .expect("entity ITEM_ENTITY_TARGET features are drawn into item_entity target");
         let item_pipeline = source[target..]
             .find("pass.set_pipeline(&self.item_entity_pipeline)")
             .map(|index| target + index)
@@ -1763,7 +1819,8 @@ mod tests {
         assert!(
             copy_depth < entity_translucent_features
                 && entity_translucent_features < target
-                && target < item_pipeline
+                && target < entity_item_target_draw
+                && entity_item_target_draw < item_pipeline
                 && item_lightmap < selection_pipeline
                 && selection_pipeline < particle
                 && particle < combine,
@@ -1789,6 +1846,47 @@ mod tests {
             source[target..particle].contains("view: item_entity_view")
                 && source[target..particle].contains("view: &self.item_entity_target.depth.view"),
             "item and line geometry render into the item_entity color/depth target"
+        );
+    }
+
+    #[test]
+    fn entity_translucent_cull_item_target_draws_into_item_entity_target_not_main_features() {
+        let source = include_str!("render.rs");
+        let target = source
+            .find("label: Some(ITEM_ENTITY_TARGET_PASS_LABEL)")
+            .expect("item-entity target pass label is used");
+        let item_target_draw = source[target..]
+            .find("self.draw_entity_item_entity_target_features(")
+            .map(|index| target + index)
+            .expect("entity item-target helper is called from item_entity target pass");
+        let particle = source
+            .find("label: Some(PARTICLE_TARGET_PASS_LABEL)")
+            .expect("particle target pass label is used");
+        let main_helper = source
+            .find("fn draw_entity_translucent_features")
+            .expect("main translucent feature helper is present");
+        let item_helper = source
+            .find("fn draw_entity_item_entity_target_features")
+            .expect("item_entity target feature helper is present");
+        let tests_mod = source
+            .find("#[cfg(test)]")
+            .expect("render tests module is present");
+
+        assert!(
+            target < item_target_draw && item_target_draw < particle,
+            "vanilla entityTranslucentCullItemTarget uses OutputTarget.ITEM_ENTITY_TARGET before particles/combine"
+        );
+        assert!(
+            source[item_helper..main_helper].contains("entity_model_item_entity_translucent_mesh")
+                && source[item_helper..main_helper]
+                    .contains("entity_dynamic_player_skin_item_entity_translucent_mesh")
+                && source[item_helper..main_helper]
+                    .contains("entity_dynamic_player_texture_item_entity_translucent_mesh"),
+            "static and dynamic item-target translucent entity meshes draw through the item_entity target helper"
+        );
+        assert!(
+            !source[main_helper..tests_mod].contains("entity_model_item_entity_translucent_mesh"),
+            "main-target translucent feature helper must not draw ITEM_ENTITY_TARGET render types"
         );
     }
 

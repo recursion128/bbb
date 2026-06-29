@@ -155,6 +155,7 @@ pub(super) struct EntityModelRenderSubmission {
 pub(super) struct EntityModelTexturedMeshes {
     pub(super) cutout: EntityModelTexturedMesh,
     pub(super) translucent: EntityModelTexturedMesh,
+    pub(super) item_entity_translucent: EntityModelTexturedMesh,
     pub(super) eyes: EntityModelTexturedMesh,
     /// CPU-retained geometry for vanilla `RenderTypes.outline(...)` submissions. Submission metadata
     /// preserves the original model tint, while the folded vertices carry `outlineColor` like
@@ -168,10 +169,12 @@ pub(super) struct EntityModelTexturedMeshes {
     /// cutout/translucent render type while swapping only the texture source.
     pub(super) dynamic_player_skin_cutout: EntityModelTexturedMesh,
     pub(super) dynamic_player_skin_translucent: EntityModelTexturedMesh,
+    pub(super) dynamic_player_skin_item_entity_translucent: EntityModelTexturedMesh,
     /// Ready remote non-skin player profile textures, such as capes and elytra, use a separate
     /// variable-size atlas while preserving the vanilla render type.
     pub(super) dynamic_player_texture_cutout: EntityModelTexturedMesh,
     pub(super) dynamic_player_texture_translucent: EntityModelTexturedMesh,
+    pub(super) dynamic_player_texture_item_entity_translucent: EntityModelTexturedMesh,
     /// Translucent scrolling overlay (vanilla `breezeWind` — the wind charge).
     pub(super) scroll: EntityModelScrollMesh,
     /// Additive scrolling overlay (vanilla `energySwirl` — the charged-creeper / wither glow).
@@ -193,13 +196,16 @@ impl EntityModelTexturedMeshes {
         Self {
             cutout: EntityModelTexturedMesh::new(),
             translucent: EntityModelTexturedMesh::new(),
+            item_entity_translucent: EntityModelTexturedMesh::new(),
             eyes: EntityModelTexturedMesh::new(),
             outline: EntityModelTexturedMesh::new(),
             outline_cull: EntityModelTexturedMesh::new(),
             dynamic_player_skin_cutout: EntityModelTexturedMesh::new(),
             dynamic_player_skin_translucent: EntityModelTexturedMesh::new(),
+            dynamic_player_skin_item_entity_translucent: EntityModelTexturedMesh::new(),
             dynamic_player_texture_cutout: EntityModelTexturedMesh::new(),
             dynamic_player_texture_translucent: EntityModelTexturedMesh::new(),
+            dynamic_player_texture_item_entity_translucent: EntityModelTexturedMesh::new(),
             scroll: EntityModelScrollMesh::new(),
             scroll_additive: EntityModelScrollMesh::new(),
             submissions: Vec::new(),
@@ -218,6 +224,9 @@ impl EntityModelTexturedMeshes {
         match render_type.mesh_bucket() {
             EntityModelLayerRenderBucket::Cutout => &mut self.cutout,
             EntityModelLayerRenderBucket::Translucent => &mut self.translucent,
+            EntityModelLayerRenderBucket::ItemEntityTranslucent => {
+                &mut self.item_entity_translucent
+            }
             EntityModelLayerRenderBucket::Eyes => &mut self.eyes,
             EntityModelLayerRenderBucket::OutlineOnly => &mut self.outline,
             EntityModelLayerRenderBucket::Scroll | EntityModelLayerRenderBucket::AdditiveScroll => {
@@ -236,6 +245,9 @@ impl EntityModelTexturedMeshes {
         match render_type.mesh_bucket() {
             EntityModelLayerRenderBucket::Cutout => &mut self.dynamic_player_skin_cutout,
             EntityModelLayerRenderBucket::Translucent => &mut self.dynamic_player_skin_translucent,
+            EntityModelLayerRenderBucket::ItemEntityTranslucent => {
+                &mut self.dynamic_player_skin_item_entity_translucent
+            }
             EntityModelLayerRenderBucket::Eyes
             | EntityModelLayerRenderBucket::Scroll
             | EntityModelLayerRenderBucket::AdditiveScroll
@@ -255,6 +267,9 @@ impl EntityModelTexturedMeshes {
             EntityModelLayerRenderBucket::Cutout => &mut self.dynamic_player_texture_cutout,
             EntityModelLayerRenderBucket::Translucent => {
                 &mut self.dynamic_player_texture_translucent
+            }
+            EntityModelLayerRenderBucket::ItemEntityTranslucent => {
+                &mut self.dynamic_player_texture_item_entity_translucent
             }
             EntityModelLayerRenderBucket::Eyes
             | EntityModelLayerRenderBucket::Scroll

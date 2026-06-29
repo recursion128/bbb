@@ -744,10 +744,11 @@ fn sheep_textured_mesh_uses_vanilla_uvs_tints_and_layer_visibility() {
         self_visible_invisible.render_state.overlay_coords()
     );
     assert!(self_visible.cutout.vertices.is_empty());
-    assert_eq!(self_visible.translucent.cutout_faces, 36);
-    assert_eq!(self_visible.translucent.vertices.len(), 144);
+    assert!(self_visible.translucent.vertices.is_empty());
+    assert_eq!(self_visible.item_entity_translucent.cutout_faces, 36);
+    assert_eq!(self_visible.item_entity_translucent.vertices.len(), 144);
     assert!(self_visible
-        .translucent
+        .item_entity_translucent
         .vertices
         .iter()
         .all(|vertex| vertex.tint == submit.tint

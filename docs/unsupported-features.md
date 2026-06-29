@@ -391,8 +391,9 @@ When an agent does any of the following, update this file in the same slice:
     renderer-owned translucent color/depth target after copying main depth,
     matching vanilla `LevelRenderer.copyDepthFrom(mainTarget)` for the
     translucent target and `RenderPipelines.TRANSLUCENT_TERRAIN` default depth
-    state plus translucent blend. Item-entity billboards and selection/line
-    geometry now write a renderer-owned itemEntity color/depth target after the
+    state plus translucent blend. Item-entity billboards, selection/line
+    geometry, and folded `entityTranslucentCullItemTarget` entity meshes now
+    write a renderer-owned itemEntity color/depth target after the
     same main-depth copy, matching vanilla `OutputTarget.ITEM_ENTITY_TARGET`
     users such as `item_translucent`, `entity_translucent_cull_item_target`,
     `glint_translucent`, `LINES`, and `LINES_TRANSLUCENT`. Active particle
@@ -427,15 +428,17 @@ When an agent does any of the following, update this file in the same slice:
     translucent skins, `eyes`, `breezeWind`, and `energySwirl`) now draw in a
     main-target translucent feature pass after the vanilla-shaped
     translucent/itemEntity/particles depth copies and before translucent
-    terrain. Block-destroy/crumbling overlays now also draw in this main-target
-    translucent feature phase before translucent terrain, matching vanilla's
+    terrain; the `entityTranslucentCullItemTarget` bucket is split out and draws
+    through itemEntity target instead of this main-target pass.
+    Block-destroy/crumbling overlays now also draw in this main-target translucent
+    feature phase before translucent terrain, matching vanilla's
     `crumblingBufferSource.endBatch()` position. Existing block/flat
     item-model and item-frame map batches now draw as world item features on the
     main target before the vanilla-shaped target depth copies and before
     translucent terrain; GUI item icons remain a post-combine HUD pass. Remaining
     render-graph parity still needs finer item-submit solid/translucent split,
     per-submit feature distance sorting, and target ordering across
-    block/text/name, terrain, itemEntity, particles, weather, and clouds; outline
+    block/text/name, terrain, particles, weather, and clouds; outline
     now has a dedicated target/composite, and lightning is no longer missing
     weather-target geometry.
   - P0 cloud presentation slice: vanilla 26.1 `CloudRenderer` uses
