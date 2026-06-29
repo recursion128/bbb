@@ -72,8 +72,7 @@ pub(crate) struct EntityDynamicPlayerTextureAtlasGpu {
     pub(crate) layout: EntityDynamicPlayerTextureAtlasLayout,
 }
 
-pub(super) const ENTITY_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 4] =
-    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4, 2 => Float32x2, 3 => Float32x2];
+pub(super) const ENTITY_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4, 2 => Float32x2, 3 => Float32x2, 4 => Float32x3];
 pub(super) const ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 6] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2, 4 => Float32x2, 5 => Float32x3];
 pub(super) const ENTITY_MODEL_SCROLL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x2, 3 => Float32x2, 4 => Float32x4, 5 => Float32x2, 6 => Float32x2];
 
@@ -108,6 +107,7 @@ struct VertexIn {
     @location(1) color: vec4<f32>,
     @location(2) light: vec2<f32>,
     @location(3) overlay: vec2<f32>,
+    @location(4) normal: vec3<f32>,
 };
 
 struct VertexOut {
@@ -115,8 +115,9 @@ struct VertexOut {
     @location(0) color: vec4<f32>,
     @location(1) light: vec2<f32>,
     @location(2) overlay: vec2<f32>,
-    @location(3) spherical_distance: f32,
-    @location(4) cylindrical_distance: f32,
+    @location(3) normal: vec3<f32>,
+    @location(4) spherical_distance: f32,
+    @location(5) cylindrical_distance: f32,
 };
 
 fn sample_lightmap(light: vec2<f32>) -> vec3<f32> {
@@ -126,6 +127,20 @@ fn sample_lightmap(light: vec2<f32>) -> vec3<f32> {
         vec2<f32>(15.5 / 16.0),
     );
     return textureSample(lightmap_texture, lightmap_sampler, uv).rgb;
+}
+
+fn diffuse_light(normal: vec3<f32>) -> f32 {
+    let light0 = normalize(camera.minecraft_light0.xyz);
+    let light1 = normalize(camera.minecraft_light1.xyz);
+    let light_value = max(vec2<f32>(0.0), vec2<f32>(dot(light0, normal), dot(light1, normal)));
+    return min(1.0, (light_value.x + light_value.y) * 0.6 + 0.4);
+}
+
+fn per_face_diffuse_light(normal: vec3<f32>, front_facing: bool) -> f32 {
+    if (front_facing) {
+        return diffuse_light(normal);
+    }
+    return diffuse_light(-normal);
 }
 
 fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
@@ -153,6 +168,7 @@ fn vs_main(input: VertexIn) -> VertexOut {
     out.color = input.color;
     out.light = input.light;
     out.overlay = input.overlay;
+    out.normal = normalize(input.normal);
     let fog_pos = input.position - camera.camera_position.xyz;
     out.spherical_distance = length(fog_pos);
     out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
@@ -160,7 +176,7 @@ fn vs_main(input: VertexIn) -> VertexOut {
 }
 
 @fragment
-fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+fn fs_main(input: VertexOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<f32> {
     var rgb = input.color.rgb;
     if (input.overlay.y < 8.0) {
         rgb = mix(vec3<f32>(1.0, 0.0, 0.0), rgb, 179.0 / 255.0);
@@ -169,7 +185,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         rgb = mix(vec3<f32>(1.0, 1.0, 1.0), rgb, overlay_alpha);
     }
     let light_color = sample_lightmap(input.light);
-    return apply_fog(vec4<f32>(rgb * light_color, input.color.a), input.spherical_distance, input.cylindrical_distance);
+    return apply_fog(vec4<f32>(rgb * per_face_diffuse_light(input.normal, front_facing) * light_color, input.color.a), input.spherical_distance, input.cylindrical_distance);
 }
 "#;
 

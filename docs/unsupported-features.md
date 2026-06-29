@@ -877,8 +877,13 @@ When an agent does any of the following, update this file in the same slice:
     `max(block, sky * 0.95)` scalar approximation. Transparency target/resource
     shape is now covered through the renderer-owned main color target,
     Main+Translucent+ItemEntity+Particles+Weather+Clouds combine, and
-    internal-final/blit foundation. Remaining lighting gaps: smooth/AO entity
-    light and the colored debug fallback's baked-shade approximation. GUI flat / entity-in-UI lighting variants are now
+    internal-final/blit foundation. Entity smooth/AO wording is stale for
+    vanilla 26.1 because `core/entity.vsh` uses normal diffuse plus lightmap
+    rather than terrain AO sampling; the texture-backed entity path and the
+    colored debug fallback both now carry transformed face normals and apply
+    vanilla-shaped `minecraft_mix_light` / `PER_FACE_LIGHTING` diffuse in the
+    shader, so the old colored fallback CPU baked-shade approximation is no
+    longer a current P0 gap. GUI flat / entity-in-UI lighting variants are now
     classified as P1 GUI surface work because the camera uniform already carries
     the required `Lighting.Entry` expressions and no corresponding GUI
     submission surface exists yet. The texture-backed entity shaders

@@ -21,6 +21,7 @@ pub(super) struct EntityModelVertex {
     pub(super) color: [f32; 4],
     pub(super) light: [f32; 2],
     pub(super) overlay: [f32; 2],
+    pub(super) normal: [f32; 3],
 }
 
 #[repr(C)]
@@ -405,19 +406,20 @@ fn emit_model_cube_from_min_max(
         Vec3::new(min.x, max.y, max.z),
     ];
     let faces = [
-        ([4, 0, 1, 5], 0.56),
-        ([2, 3, 7, 6], 1.0),
-        ([0, 3, 2, 1], 0.78),
-        ([5, 6, 7, 4], 0.86),
-        ([0, 4, 7, 3], 0.68),
-        ([1, 2, 6, 5], 0.68),
+        ([4, 0, 1, 5], [0.0, -1.0, 0.0]),
+        ([2, 3, 7, 6], [0.0, 1.0, 0.0]),
+        ([0, 3, 2, 1], [0.0, 0.0, -1.0]),
+        ([5, 6, 7, 4], [0.0, 0.0, 1.0]),
+        ([0, 4, 7, 3], [-1.0, 0.0, 0.0]),
+        ([1, 2, 6, 5], [1.0, 0.0, 0.0]),
     ];
 
-    for (face, shade) in faces {
+    for (face, normal) in faces {
         emit_model_face(
             mesh,
             face.map(|index| transform.transform_point3(corners[index])),
-            shade_color(color, shade),
+            color,
+            transform_model_normal(transform, normal),
         );
     }
 }
@@ -564,10 +566,14 @@ fn transform_entity_normal(
     if mirror && normal.dot(Vec3::from_array(mirror_axis)).abs() > 0.0 {
         normal = -normal;
     }
+    transform_model_normal(transform, normal.to_array())
+}
+
+fn transform_model_normal(transform: Mat4, normal: [f32; 3]) -> [f32; 3] {
     transform
         .inverse()
         .transpose()
-        .transform_vector3(normal)
+        .transform_vector3(Vec3::from_array(normal))
         .normalize_or_zero()
         .to_array()
 }
@@ -587,7 +593,12 @@ fn atlas_uv(
     ]
 }
 
-fn emit_model_face(mesh: &mut EntityModelMesh, corners: [Vec3; 4], color: [f32; 4]) {
+fn emit_model_face(
+    mesh: &mut EntityModelMesh,
+    corners: [Vec3; 4],
+    color: [f32; 4],
+    normal: [f32; 3],
+) {
     let base = mesh.vertices.len() as u32;
     mesh.vertices
         .extend(corners.map(|position| EntityModelVertex {
@@ -595,17 +606,21 @@ fn emit_model_face(mesh: &mut EntityModelMesh, corners: [Vec3; 4], color: [f32; 
             color,
             light: ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
             overlay: ENTITY_VERTEX_NO_OVERLAY,
+            normal,
         }));
     mesh.indices
         .extend([base, base + 1, base + 2, base, base + 2, base + 3]);
     mesh.opaque_faces += 1;
 }
 
-pub(super) fn shade_color(color: [f32; 4], shade: f32) -> [f32; 4] {
+#[cfg(test)]
+/// Historical colored-mesh test helper. The colored fallback now preserves CPU
+/// tint and defers face lighting to the shader normal, so `shade` is ignored.
+pub(super) fn shade_color(color: [f32; 4], _shade: f32) -> [f32; 4] {
     [
-        (color[0] * shade).clamp(0.0, 1.0),
-        (color[1] * shade).clamp(0.0, 1.0),
-        (color[2] * shade).clamp(0.0, 1.0),
+        color[0].clamp(0.0, 1.0),
+        color[1].clamp(0.0, 1.0),
+        color[2].clamp(0.0, 1.0),
         color[3].clamp(0.0, 1.0),
     ]
 }

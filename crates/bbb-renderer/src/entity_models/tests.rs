@@ -822,6 +822,18 @@ fn entity_textured_cull_shader_uses_vanilla_single_face_lighting() {
 
 #[test]
 fn entity_colored_shader_samples_dynamic_lightmap_texture() {
+    // Colored meshes are a renderer-owned debug fallback, but their lighting now
+    // follows the same vanilla entity.vsh shape used by non-cull entityCutout:
+    // submitted normal + PER_FACE_LIGHTING front/back choice + dynamic LightTexture.
+    assert!(ENTITY_MODEL_SHADER.contains("@location(4) normal: vec3<f32>"));
+    assert!(ENTITY_MODEL_SHADER.contains("minecraft_light0: vec4<f32>"));
+    assert!(ENTITY_MODEL_SHADER.contains("minecraft_light1: vec4<f32>"));
+    assert!(ENTITY_MODEL_SHADER.contains("let light0 = normalize(camera.minecraft_light0.xyz)"));
+    assert!(ENTITY_MODEL_SHADER.contains("let light1 = normalize(camera.minecraft_light1.xyz)"));
+    assert!(ENTITY_MODEL_SHADER.contains("(light_value.x + light_value.y) * 0.6 + 0.4"));
+    assert!(ENTITY_MODEL_SHADER.contains("@builtin(front_facing) front_facing: bool"));
+    assert!(ENTITY_MODEL_SHADER
+        .contains("per_face_diffuse_light(input.normal, front_facing) * light_color"));
     assert!(ENTITY_MODEL_SHADER.contains("@group(1) @binding(0)"));
     assert!(ENTITY_MODEL_SHADER.contains("var lightmap_texture: texture_2d<f32>"));
     assert!(ENTITY_MODEL_SHADER.contains("@group(1) @binding(1)"));
@@ -832,7 +844,7 @@ fn entity_colored_shader_samples_dynamic_lightmap_texture() {
         ENTITY_MODEL_SHADER.contains("textureSample(lightmap_texture, lightmap_sampler, uv).rgb")
     );
     assert!(ENTITY_MODEL_SHADER.contains("let light_color = sample_lightmap(input.light)"));
-    assert!(ENTITY_MODEL_SHADER.contains("rgb * light_color"));
+    assert!(!ENTITY_MODEL_SHADER.contains("rgb * light_color"));
     assert!(ENTITY_MODEL_SHADER.contains("input.color.rgb"));
     assert!(!ENTITY_MODEL_SHADER.contains("fn lightmap_brightness"));
     assert!(!ENTITY_MODEL_SHADER.contains("camera.lightmap_factors.y"));
@@ -1543,11 +1555,39 @@ fn entity_model_vertex_layout_matches_shader_inputs() {
         layout.array_stride,
         std::mem::size_of::<EntityModelVertex>() as wgpu::BufferAddress
     );
-    assert_eq!(ENTITY_MODEL_VERTEX_ATTRIBUTES.len(), 4);
+    assert_eq!(ENTITY_MODEL_VERTEX_ATTRIBUTES.len(), 5);
     assert_eq!(ENTITY_MODEL_VERTEX_ATTRIBUTES[0].shader_location, 0);
     assert_eq!(ENTITY_MODEL_VERTEX_ATTRIBUTES[1].shader_location, 1);
     assert_eq!(ENTITY_MODEL_VERTEX_ATTRIBUTES[2].shader_location, 2);
     assert_eq!(ENTITY_MODEL_VERTEX_ATTRIBUTES[3].shader_location, 3);
+    assert_eq!(ENTITY_MODEL_VERTEX_ATTRIBUTES[4].shader_location, 4);
+}
+
+#[test]
+fn entity_colored_fallback_defers_face_shade_to_shader_normals() {
+    let instance =
+        EntityModelInstance::placeholder(1, [0.0, 0.0, 0.0], 0.0, "debug", 1.0, 1.0, 1.0);
+    let mesh = entity_model_mesh(&[instance]);
+
+    assert!(!mesh.vertices.is_empty());
+    assert!(mesh
+        .vertices
+        .iter()
+        .all(|vertex| vertex.color == PLACEHOLDER_COLOR));
+    for normal in [
+        [0.0, -1.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 0.0, -1.0],
+        [0.0, 0.0, 1.0],
+        [-1.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+    ] {
+        let expected = Vec3::from_array(normal);
+        assert!(mesh
+            .vertices
+            .iter()
+            .any(|vertex| Vec3::from_array(vertex.normal).dot(expected) > 0.999));
+    }
 }
 
 fn mesh_extents(mesh: &EntityModelMesh) -> ([f32; 3], [f32; 3]) {
