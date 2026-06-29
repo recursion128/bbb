@@ -559,6 +559,17 @@ When an agent does any of the following, update this file in the same slice:
     pack/protocol/net/native diagnostics. The narrow P0 pipeline checklist stays
     closed; particle provider, terrain, HUD, first-person, GUI, and open-ended
     entity detail work remain paused unless they directly reopen that checklist.
+    A later 2026-06-29 workflow verification found only an unverified P1
+    Enderman render-offset WIP, removed it from the submission scope, and reran
+    the audit with pre-edit counts of `rg residual` 69, `rg fallback` 561, and
+    `rg unsupported` 178. The same classification still holds: code-side
+    residual hits are dispatch comments only, renderer fallback hits are
+    terrain/debug/profile/camera/adapter/HUD/map/test or item text fallback
+    paths, and renderer unsupported hits are screenshot format diagnostics,
+    dynamic-player defensive panics, or documentation pointers. No direct mesh
+    bypass, texture-backed / dispatch-owned submission gap, or
+    RenderType/order/submit-sequence/missing-atlas/dynamic-texture/light/
+    overlay/outline blocker was found.
   - Replace proxies with full extraction from canonical world and pack data:
     - entity bounds
     - dropped-item icons (3D block/item model renderer in progress — see the

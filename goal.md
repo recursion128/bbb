@@ -260,6 +260,25 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。当前 checkl
   dynamic-player texture render-type defensive panic，其他代码侧命中为
   pack/protocol/net/native diagnostics。未发现新的 texture-backed mesh bypass
   或狭义 P0 pipeline blocker，hard checklist 保持全 `[x]`。
+- 2026-06-29 P0 closeout workflow verification：本轮开始时发现未验证的
+  P1 Enderman render-offset WIP，不属于“已验证但未提交的小 slice”，已移出
+  本轮提交范围；随后不再开启新的 P1 粒子/provider/实体细节。按要求重跑
+  `rg residual`、`rg fallback`、`rg unsupported`，写入本条前计数为
+  `rg residual` 69 行、`rg fallback` 561 行、`rg unsupported` 178 行。
+  对照 `docs/unsupported-features.md` 后，renderer code-side `residual`
+  仍只剩 `entity_models/dispatch.rs` 的“无 residual mesh-emitting arm”
+  注释；renderer `fallback` 仍归类为 terrain atlas、colored debug、
+  profile/default skin、camera sanitize、wgpu adapter、HUD/map/test、以及
+  item/map 文本 fallback 等非狭义 pipeline 项；renderer `unsupported`
+  仍只有 screenshot surface format bail、dynamic-player texture render-type
+  defensive panic 和 docs 指针，其余为 pack/protocol/net/native diagnostics。
+  未发现新的 direct mesh bypass、texture-backed / dispatch-owned submission
+  漏洞，或 RenderType/order/submit_sequence/missing-atlas/dynamic texture、
+  light/overlay/outline 相关 P0 blocker；hard checklist 保持全 `[x]`，GPU
+  path 更细状态仍按后续 deferred inventory 处理。
+  Gate：`cargo fmt --all --check`、`git diff --check`、
+  `CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace`、
+  renderer/world/pack/native `RUSTFLAGS='-D warnings'` 检查均通过。
 - 2026-06-29 item-entity LightTexture slice gate：`cargo fmt --all --check`、
   `git diff --check`、`CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace`、
   renderer/world/pack/native `RUSTFLAGS='-D warnings'` 检查均通过；native
