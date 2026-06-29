@@ -1,5 +1,6 @@
 use super::*;
 
+use crate::entity_models::colored::enderman_creepy_render_offset;
 use crate::entity_models::model::ModelCube;
 
 // The bind poses of the enderman's two arms / two legs, mirrored from the model file so the
@@ -627,35 +628,77 @@ fn enderman_textured_mesh_holds_its_arms_out_when_carrying() {
 }
 
 #[test]
+fn enderman_creepy_render_offset_matches_vanilla_axes_scale_and_seed() {
+    // Vanilla `EndermanRenderer.getRenderOffset`: when `state.isCreepy`, add two
+    // gaussian samples on X/Z with amplitude `0.02 * state.scale`; Y stays at the
+    // inherited offset. The renderer RNG seed is not protocol-visible, so bbb uses
+    // a deterministic Java-LCG-shaped seed from entity id + age while preserving the
+    // vanilla axis and scale semantics.
+    let calm = EntityModelInstance::enderman(266, [0.0, 64.0, 0.0], 0.0).with_age_in_ticks(7.0);
+    let creepy = calm.with_enderman_creepy(true);
+    let non_enderman = EntityModelInstance::chicken(266, [0.0, 64.0, 0.0], 0.0, false)
+        .with_enderman_creepy(true)
+        .with_age_in_ticks(7.0);
+
+    assert_eq!(enderman_creepy_render_offset(calm), [0.0; 3]);
+    assert_eq!(enderman_creepy_render_offset(non_enderman), [0.0; 3]);
+
+    let offset = enderman_creepy_render_offset(creepy);
+    assert_eq!(offset[1], 0.0);
+    assert!(
+        offset[0] != 0.0 || offset[2] != 0.0,
+        "creepy endermen should jitter on the X/Z plane"
+    );
+    assert_eq!(enderman_creepy_render_offset(creepy), offset);
+
+    let scaled = enderman_creepy_render_offset(creepy.with_scale(2.0));
+    assert!((scaled[0] - offset[0] * 2.0).abs() < 1.0e-6);
+    assert_eq!(scaled[1], 0.0);
+    assert!((scaled[2] - offset[2] * 2.0).abs() < 1.0e-6);
+    assert_ne!(
+        enderman_creepy_render_offset(creepy.with_age_in_ticks(8.0)),
+        offset,
+        "changing age changes the deterministic renderer-local RNG seed"
+    );
+}
+
+#[test]
 fn enderman_drops_its_head_when_creepy() {
-    // The creepy stare drops the inner head y -= 5 while the hat child rises y += 5, so the
-    // hat holds its world position while the head opens downward. Only the head cube moves;
-    // the hat, body, arms and legs are byte-identical. The colored head occupies vertices
-    // [0, 24), the hat [24, 48). Colored path here, textured below.
+    // The creepy stare applies `EndermanRenderer.getRenderOffset` to the whole
+    // root, then `EndermanModel.setupAnim` drops the inner head y -= 5 while the
+    // hat child rises y += 5. After subtracting the root jitter, only the head
+    // cube moves; the hat, body, arms and legs are byte-identical. The colored
+    // head occupies vertices [0, 24), the hat [24, 48). Colored path here,
+    // textured below.
     let y_centroid = |verts: &[EntityModelVertex]| -> f32 {
         verts.iter().map(|vertex| vertex.position[1]).sum::<f32>() / verts.len() as f32
     };
-    let base = EntityModelInstance::enderman(266, [0.0, 64.0, 0.0], 0.0);
+    let base = EntityModelInstance::enderman(267, [0.0, 64.0, 0.0], 0.0).with_age_in_ticks(7.0);
+    let creepy_instance = base.with_enderman_creepy(true);
     let rest = entity_model_mesh(&[base]);
-    let creepy = entity_model_mesh(&[base.with_enderman_creepy(true)]);
+    let creepy = entity_model_mesh(&[creepy_instance]);
+    let creepy_offset = enderman_creepy_render_offset(creepy_instance);
+    assert_ne!(creepy_offset, [0.0; 3]);
+    let creepy_without_root_offset =
+        colored_vertices_without_render_offset(&creepy.vertices, creepy_offset);
     assert_ne!(
         rest.vertices[0..24],
-        creepy.vertices[0..24],
+        creepy_without_root_offset[0..24],
         "the inner head drops"
     );
-    assert_eq!(
-        rest.vertices[24..48],
-        creepy.vertices[24..48],
-        "the hat holds its world position (the +5 raise cancels the head's -5 drop)"
+    assert_colored_vertices_close(
+        &rest.vertices[24..48],
+        &creepy_without_root_offset[24..48],
+        "the hat holds its world position (the +5 raise cancels the head's -5 drop)",
     );
-    assert_eq!(
-        rest.vertices[48..168],
-        creepy.vertices[48..168],
-        "the body, arms and legs do not move"
+    assert_colored_vertices_close(
+        &rest.vertices[48..168],
+        &creepy_without_root_offset[48..168],
+        "the body, arms and legs do not move",
     );
     // 5 model pixels at the 1/16 entity-model scale = 0.3125 world units; the (-1, -1, 1)
     // flip lifts the dropped inner head in world Y.
-    let shift = y_centroid(&creepy.vertices[0..24]) - y_centroid(&rest.vertices[0..24]);
+    let shift = y_centroid(&creepy_without_root_offset[0..24]) - y_centroid(&rest.vertices[0..24]);
     assert!(
         (shift.abs() - 0.3125).abs() < 1.0e-3,
         "the inner head shifts 5px (0.3125 world) in Y: {shift}"
@@ -664,29 +707,43 @@ fn enderman_drops_its_head_when_creepy() {
 
 #[test]
 fn enderman_textured_mesh_drops_its_head_when_creepy() {
-    // The texture-backed enderman runs the same creepy head/hat shift. Only the inner head
-    // moves; the hat stays put and the rest of the body is byte-identical.
+    // The texture-backed enderman runs the same root jitter and creepy head/hat
+    // shift. After subtracting the root jitter from the folded mesh, only the
+    // inner head moves; the hat stays put and the rest of the body is
+    // byte-identical.
     let (atlas, _) = build_entity_model_texture_atlas(&enderman_texture_images()).unwrap();
-    let base = EntityModelInstance::enderman(267, [0.0, 64.0, 0.0], 0.0);
+    let base = EntityModelInstance::enderman(268, [0.0, 64.0, 0.0], 0.0).with_age_in_ticks(7.0);
     let creepy_instance = base.with_enderman_creepy(true);
     let resting = entity_model_textured_meshes(&[base], &atlas);
     let creepy = entity_model_textured_meshes(&[creepy_instance], &atlas);
     assert_enderman_submissions_match_vanilla(&resting, base);
     assert_enderman_submissions_match_vanilla(&creepy, creepy_instance);
     assert_ne!(
+        resting.submissions[0].transform,
+        creepy.submissions[0].transform
+    );
+    assert_eq!(
+        creepy.submissions[0].transform,
+        entity_model_root_transform(creepy_instance)
+    );
+    let creepy_offset = enderman_creepy_render_offset(creepy_instance);
+    assert_ne!(creepy_offset, [0.0; 3]);
+    let creepy_cutout_without_root_offset =
+        textured_vertices_without_render_offset(&creepy.cutout.vertices, creepy_offset);
+    assert_ne!(
         resting.cutout.vertices[0..24],
-        creepy.cutout.vertices[0..24],
+        creepy_cutout_without_root_offset[0..24],
         "the inner head drops"
     );
-    assert_eq!(
-        resting.cutout.vertices[24..48],
-        creepy.cutout.vertices[24..48],
-        "the hat holds its world position"
+    assert_textured_vertices_close(
+        &resting.cutout.vertices[24..48],
+        &creepy_cutout_without_root_offset[24..48],
+        "the hat holds its world position",
     );
-    assert_eq!(
-        resting.cutout.vertices[48..168],
-        creepy.cutout.vertices[48..168],
-        "the body, arms and legs do not move"
+    assert_textured_vertices_close(
+        &resting.cutout.vertices[48..168],
+        &creepy_cutout_without_root_offset[48..168],
+        "the body, arms and legs do not move",
     );
 }
 
@@ -750,6 +807,86 @@ fn assert_enderman_submissions_match_vanilla(
         .vertices
         .iter()
         .all(|vertex| vertex.light == eyes_submit.light && vertex.overlay == eyes_submit.overlay));
+}
+
+fn colored_vertices_without_render_offset(
+    vertices: &[EntityModelVertex],
+    offset: [f32; 3],
+) -> Vec<EntityModelVertex> {
+    vertices
+        .iter()
+        .copied()
+        .map(|mut vertex| {
+            vertex.position[0] -= offset[0];
+            vertex.position[1] -= offset[1];
+            vertex.position[2] -= offset[2];
+            vertex
+        })
+        .collect()
+}
+
+fn textured_vertices_without_render_offset(
+    vertices: &[EntityModelTexturedVertex],
+    offset: [f32; 3],
+) -> Vec<EntityModelTexturedVertex> {
+    vertices
+        .iter()
+        .copied()
+        .map(|mut vertex| {
+            vertex.position[0] -= offset[0];
+            vertex.position[1] -= offset[1];
+            vertex.position[2] -= offset[2];
+            vertex
+        })
+        .collect()
+}
+
+fn assert_colored_vertices_close(
+    expected: &[EntityModelVertex],
+    actual: &[EntityModelVertex],
+    message: &str,
+) {
+    assert_eq!(expected.len(), actual.len(), "{message}");
+    for (index, (expected, actual)) in expected.iter().zip(actual).enumerate() {
+        let position_message = format!("{message}: position mismatch at vertex {index}");
+        assert_vertex_position_close(actual.position, expected.position, &position_message);
+        assert_eq!(actual.color, expected.color, "{message}: color mismatch");
+        assert_eq!(actual.light, expected.light, "{message}: light mismatch");
+        assert_eq!(
+            actual.overlay, expected.overlay,
+            "{message}: overlay mismatch"
+        );
+        assert_eq!(actual.normal, expected.normal, "{message}: normal mismatch");
+    }
+}
+
+fn assert_textured_vertices_close(
+    expected: &[EntityModelTexturedVertex],
+    actual: &[EntityModelTexturedVertex],
+    message: &str,
+) {
+    assert_eq!(expected.len(), actual.len(), "{message}");
+    for (index, (expected, actual)) in expected.iter().zip(actual).enumerate() {
+        let position_message = format!("{message}: position mismatch at vertex {index}");
+        assert_vertex_position_close(actual.position, expected.position, &position_message);
+        assert_eq!(actual.uv, expected.uv, "{message}: uv mismatch");
+        assert_eq!(actual.tint, expected.tint, "{message}: tint mismatch");
+        assert_eq!(actual.light, expected.light, "{message}: light mismatch");
+        assert_eq!(
+            actual.overlay, expected.overlay,
+            "{message}: overlay mismatch"
+        );
+        assert_eq!(actual.normal, expected.normal, "{message}: normal mismatch");
+    }
+}
+
+fn assert_vertex_position_close(actual: [f32; 3], expected: [f32; 3], message: &str) {
+    for axis in 0..3 {
+        assert!(
+            (actual[axis] - expected[axis]).abs() < 1.0e-5,
+            "{message}: axis {axis}: expected {expected:?}, got {actual:?}"
+        );
+    }
 }
 
 fn assert_enderman_folded_meshes_are_base_and_eyes_only(meshes: &EntityModelTexturedMeshes) {

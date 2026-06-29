@@ -10,6 +10,10 @@ const VILLAGER_LIKE_SCALE: f32 = 0.9375;
 const WITHER_SKELETON_SCALE: f32 = 1.2;
 const CAVE_SPIDER_SCALE: f32 = 0.7;
 const AVATAR_RENDERER_SCALE: f32 = 0.9375;
+const ENDERMAN_CREEPY_RENDER_JITTER: f64 = 0.02;
+const RANDOM_MULTIPLIER: u64 = 25_214_903_917;
+const RANDOM_INCREMENT: u64 = 11;
+const RANDOM_MASK: u64 = (1_u64 << 48) - 1;
 
 pub(in crate::entity_models) const HUSK_SCALE: f32 = 1.0625;
 pub(in crate::entity_models) const GIANT_SCALE: f32 = 6.0;
@@ -44,6 +48,7 @@ fn living_entity_model_root_transform_with_extra_setup_rotation(
     setup_rotation_tail: Mat4,
 ) -> Mat4 {
     Mat4::from_translation(Vec3::from_array(instance.position))
+        * entity_render_offset_transform(instance)
         * entity_pre_scale_translation(instance)
         * Mat4::from_scale(Vec3::splat(instance.render_state.scale))
         * entity_setup_rotations_transform(instance)
@@ -57,12 +62,89 @@ fn living_entity_model_root_transform_with_renderer_transform(
     renderer_transform: Mat4,
 ) -> Mat4 {
     Mat4::from_translation(Vec3::from_array(instance.position))
+        * entity_render_offset_transform(instance)
         * entity_pre_scale_translation(instance)
         * Mat4::from_scale(Vec3::splat(instance.render_state.scale))
         * entity_setup_rotations_transform(instance)
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
         * renderer_transform
         * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
+}
+
+fn entity_render_offset_transform(instance: EntityModelInstance) -> Mat4 {
+    Mat4::from_translation(Vec3::from_array(enderman_creepy_render_offset(instance)))
+}
+
+pub(in crate::entity_models) fn enderman_creepy_render_offset(
+    instance: EntityModelInstance,
+) -> [f32; 3] {
+    if !matches!(instance.kind, EntityModelKind::Enderman) || !instance.render_state.enderman_creepy
+    {
+        return [0.0; 3];
+    }
+
+    let mut random = LegacyRandom::new(enderman_creepy_render_offset_seed(instance));
+    let amplitude = ENDERMAN_CREEPY_RENDER_JITTER * f64::from(instance.render_state.scale);
+    [
+        (random.next_gaussian() * amplitude) as f32,
+        0.0,
+        (random.next_gaussian() * amplitude) as f32,
+    ]
+}
+
+fn enderman_creepy_render_offset_seed(instance: EntityModelInstance) -> i64 {
+    let entity_id = instance.entity_id as u32 as u64;
+    let age_bits = u64::from(instance.render_state.age_in_ticks.to_bits());
+    let seed = 0x9E37_79B9_7F4A_7C15_u64
+        ^ entity_id.wrapping_mul(0xBF58_476D_1CE4_E5B9)
+        ^ age_bits.rotate_left(17);
+    seed as i64
+}
+
+struct LegacyRandom {
+    seed: u64,
+    next_gaussian: Option<f64>,
+}
+
+impl LegacyRandom {
+    fn new(seed: i64) -> Self {
+        Self {
+            seed: ((seed as u64) ^ RANDOM_MULTIPLIER) & RANDOM_MASK,
+            next_gaussian: None,
+        }
+    }
+
+    fn next_bits(&mut self, bits: u32) -> u32 {
+        self.seed = self
+            .seed
+            .wrapping_mul(RANDOM_MULTIPLIER)
+            .wrapping_add(RANDOM_INCREMENT)
+            & RANDOM_MASK;
+        (self.seed >> (48 - bits)) as u32
+    }
+
+    fn next_f64(&mut self) -> f64 {
+        let high = u64::from(self.next_bits(26)) << 27;
+        let low = u64::from(self.next_bits(27));
+        (high + low) as f64 / ((1_u64 << 53) as f64)
+    }
+
+    fn next_gaussian(&mut self) -> f64 {
+        if let Some(value) = self.next_gaussian.take() {
+            return value;
+        }
+
+        loop {
+            let x = 2.0 * self.next_f64() - 1.0;
+            let y = 2.0 * self.next_f64() - 1.0;
+            let radius = x * x + y * y;
+            if radius < 1.0 && radius != 0.0 {
+                let multiplier = (-2.0 * radius.ln() / radius).sqrt();
+                self.next_gaussian = Some(y * multiplier);
+                return x * multiplier;
+            }
+        }
+    }
 }
 
 /// Vanilla `CreeperRenderer.scale`: the non-uniform swell scale applied at the per-renderer

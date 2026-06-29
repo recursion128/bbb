@@ -38,5 +38,6 @@ pub(super) use transforms::{
 };
 #[cfg(test)]
 pub(super) use transforms::{
-    boat_bubble_transform, boat_damage_roll_degrees, death_fall_factor, entity_flip_degrees,
+    boat_bubble_transform, boat_damage_roll_degrees, death_fall_factor,
+    enderman_creepy_render_offset, entity_flip_degrees,
 };
