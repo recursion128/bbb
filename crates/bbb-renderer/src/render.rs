@@ -102,6 +102,15 @@ impl Renderer {
                     pass.draw(0..celestials.vertex_count, 0..1);
                     sky_draw_calls += 1;
                 }
+
+                if let Some(stars) = &self.sky_stars {
+                    pass.set_pipeline(&self.star_pipeline);
+                    pipeline_switches += 1;
+                    pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+                    pass.set_vertex_buffer(0, stars.vertex_buffer.slice(..));
+                    pass.draw(0..stars.vertex_count, 0..1);
+                    sky_draw_calls += 1;
+                }
             }
 
             // Vanilla 26.1 renders ChunkSectionLayerGroup.OPAQUE as SOLID then CUTOUT

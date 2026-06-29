@@ -1,4 +1,5 @@
 use anyhow::{anyhow, bail, Result};
+use glam::Vec3;
 use wgpu::util::DeviceExt;
 
 use crate::gpu::DEPTH_FORMAT;
@@ -17,6 +18,14 @@ const CELESTIAL_HEIGHT: f32 = 100.0;
 const CELESTIAL_SUN_SIZE: f32 = 30.0;
 const CELESTIAL_MOON_SIZE: f32 = 20.0;
 const CELESTIAL_TEXTURE_COUNT: usize = 9;
+const STAR_RANDOM_SEED: i64 = 10_842;
+const STAR_SAMPLE_COUNT: usize = 1_500;
+const STAR_DISTANCE: f32 = 100.0;
+const STAR_MIN_LENGTH_SQUARED: f32 = 0.010_000_001;
+const VANILLA_ACCEPTED_STAR_QUADS: usize = 780;
+const JAVA_RANDOM_MULTIPLIER: u64 = 25_214_903_917;
+const JAVA_RANDOM_INCREMENT: u64 = 11;
+const JAVA_RANDOM_MASK: u64 = (1_u64 << 48) - 1;
 
 const SKY_OVERLAY_BLEND: wgpu::BlendState = wgpu::BlendState {
     color: wgpu::BlendComponent {
@@ -248,6 +257,8 @@ pub struct SkyEnvironment {
     pub moon_angle_radians: f32,
     pub rain_brightness: f32,
     pub moon_phase: SkyMoonPhase,
+    pub star_angle_radians: f32,
+    pub star_brightness: f32,
 }
 
 impl Default for SkyEnvironment {
@@ -266,6 +277,8 @@ impl SkyEnvironment {
             moon_angle_radians: std::f32::consts::PI,
             rain_brightness: 0.0,
             moon_phase: SkyMoonPhase::FullMoon,
+            star_angle_radians: 0.0,
+            star_brightness: 0.0,
         }
     }
 
@@ -278,6 +291,8 @@ impl SkyEnvironment {
             moon_angle_radians: std::f32::consts::PI,
             rain_brightness: 0.0,
             moon_phase: SkyMoonPhase::FullMoon,
+            star_angle_radians: 0.0,
+            star_brightness: 0.0,
         }
     }
 
@@ -290,6 +305,8 @@ impl SkyEnvironment {
             moon_angle_radians: std::f32::consts::PI,
             rain_brightness: 1.0,
             moon_phase: SkyMoonPhase::FullMoon,
+            star_angle_radians: 0.0,
+            star_brightness: 0.0,
         }
         .sanitized()
     }
@@ -312,6 +329,12 @@ impl SkyEnvironment {
         self.sanitized()
     }
 
+    pub fn with_star_state(mut self, star_angle_radians: f32, star_brightness: f32) -> Self {
+        self.star_angle_radians = star_angle_radians;
+        self.star_brightness = star_brightness;
+        self.sanitized()
+    }
+
     pub fn sanitized(self) -> Self {
         Self {
             skybox: self.skybox,
@@ -331,6 +354,8 @@ impl SkyEnvironment {
             moon_angle_radians: sanitize_radians(self.moon_angle_radians),
             rain_brightness: sanitize_unit(self.rain_brightness),
             moon_phase: self.moon_phase,
+            star_angle_radians: sanitize_radians(self.star_angle_radians),
+            star_brightness: sanitize_unit(self.star_brightness),
         }
     }
 
@@ -352,6 +377,11 @@ impl SkyEnvironment {
     pub fn celestials_visible(self) -> bool {
         let environment = self.sanitized();
         environment.skybox == SkyboxKind::Overworld && environment.rain_brightness > 0.0
+    }
+
+    pub fn stars_visible(self) -> bool {
+        let environment = self.sanitized();
+        environment.skybox == SkyboxKind::Overworld && environment.star_brightness > 0.0
     }
 }
 
@@ -400,6 +430,11 @@ pub(super) struct CelestialAtlasGpu {
     uvs: [Option<SkyTextureUvRect>; CELESTIAL_TEXTURE_COUNT],
 }
 
+pub(super) struct StarGpu {
+    pub(super) vertex_buffer: wgpu::Buffer,
+    pub(super) vertex_count: u32,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct SkyTextureUvRect {
     u0: f32,
@@ -440,6 +475,58 @@ pub(super) fn create_sky_pipeline(
             targets: &[Some(wgpu::ColorTargetState {
                 format,
                 blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            cull_mode: None,
+            ..Default::default()
+        },
+        depth_stencil: Some(wgpu::DepthStencilState {
+            format: DEPTH_FORMAT,
+            depth_write_enabled: false,
+            depth_compare: wgpu::CompareFunction::Always,
+            stencil: wgpu::StencilState::default(),
+            bias: wgpu::DepthBiasState::default(),
+        }),
+        multisample: wgpu::MultisampleState::default(),
+        multiview: None,
+    })
+}
+
+pub(super) fn create_star_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("bbb-star-shader"),
+        source: wgpu::ShaderSource::Wgsl(SKY_SHADER.into()),
+    });
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-star-pipeline-layout"),
+        bind_group_layouts: &[bind_group_layout],
+        push_constant_ranges: &[],
+    });
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("bbb-star-pipeline"),
+        layout: Some(&layout),
+        vertex: wgpu::VertexState {
+            module: &shader,
+            entry_point: "vs_main",
+            buffers: &[wgpu::VertexBufferLayout {
+                array_stride: std::mem::size_of::<SkyVertex>() as wgpu::BufferAddress,
+                step_mode: wgpu::VertexStepMode::Vertex,
+                attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4],
+            }],
+        },
+        fragment: Some(wgpu::FragmentState {
+            module: &shader,
+            entry_point: "fs_main",
+            targets: &[Some(wgpu::ColorTargetState {
+                format,
+                blend: Some(SKY_OVERLAY_BLEND),
                 write_mask: wgpu::ColorWrites::ALL,
             })],
         }),
@@ -670,6 +757,25 @@ pub(super) fn create_celestial_gpu(
         usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
     });
     Some(CelestialGpu {
+        vertex_buffer,
+        vertex_count: vertices.len() as u32,
+    })
+}
+
+pub(super) fn create_star_gpu(
+    device: &wgpu::Device,
+    environment: SkyEnvironment,
+) -> Option<StarGpu> {
+    let vertices = star_vertices(environment);
+    if vertices.is_empty() {
+        return None;
+    }
+    let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("bbb-star-vertices"),
+        contents: bytemuck::cast_slice(&vertices),
+        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+    });
+    Some(StarGpu {
         vertex_buffer,
         vertex_count: vertices.len() as u32,
     })
@@ -966,6 +1072,109 @@ fn celestial_position(position: [f32; 3], size: f32, angle_radians: f32) -> [f32
         position[2] * size,
     ];
     rotate_y(rotate_x(local, angle_radians), -std::f32::consts::FRAC_PI_2)
+}
+
+fn star_vertices(environment: SkyEnvironment) -> Vec<SkyVertex> {
+    let environment = environment.sanitized();
+    if !environment.stars_visible() {
+        return Vec::new();
+    }
+    let color = [
+        environment.star_brightness,
+        environment.star_brightness,
+        environment.star_brightness,
+        environment.star_brightness,
+    ];
+    base_star_vertices()
+        .into_iter()
+        .map(|position| SkyVertex {
+            position: rotate_y(
+                rotate_x(position, environment.star_angle_radians),
+                -std::f32::consts::FRAC_PI_2,
+            ),
+            color,
+        })
+        .collect()
+}
+
+fn base_star_vertices() -> Vec<[f32; 3]> {
+    let mut random = JavaRandom::new(STAR_RANDOM_SEED);
+    let mut vertices = Vec::with_capacity(VANILLA_ACCEPTED_STAR_QUADS * 6);
+    for _ in 0..STAR_SAMPLE_COUNT {
+        let x = random.next_float() * 2.0 - 1.0;
+        let y = random.next_float() * 2.0 - 1.0;
+        let z = random.next_float() * 2.0 - 1.0;
+        let star_size = 0.15 + random.next_float() * 0.1;
+        let length_squared = x * x + y * y + z * z;
+        if length_squared <= STAR_MIN_LENGTH_SQUARED || length_squared >= 1.0 {
+            continue;
+        }
+
+        let center = Vec3::new(x, y, z).normalize() * STAR_DISTANCE;
+        let z_rotation = random.next_double() as f32 * std::f32::consts::TAU;
+        let quad = star_quad_vertices(center, star_size, z_rotation);
+        vertices.extend([quad[0], quad[1], quad[2], quad[0], quad[2], quad[3]]);
+    }
+    vertices
+}
+
+fn star_quad_vertices(center: Vec3, star_size: f32, z_rotation: f32) -> [[f32; 3]; 4] {
+    let normal = -center.normalize();
+    let mut right = Vec3::Y.cross(normal);
+    if right.length_squared() <= f32::EPSILON {
+        right = Vec3::X.cross(normal);
+    }
+    right = right.normalize();
+    let up = normal.cross(right).normalize();
+    let local_positions = [
+        [star_size, -star_size],
+        [star_size, star_size],
+        [-star_size, star_size],
+        [-star_size, -star_size],
+    ];
+
+    std::array::from_fn(|index| {
+        let [x, y] = rotate_star_local_z(local_positions[index], -z_rotation);
+        (center + right * x + up * y).to_array()
+    })
+}
+
+fn rotate_star_local_z([x, y]: [f32; 2], radians: f32) -> [f32; 2] {
+    let sin = radians.sin();
+    let cos = radians.cos();
+    [x * cos - y * sin, x * sin + y * cos]
+}
+
+#[derive(Debug, Clone, Copy)]
+struct JavaRandom {
+    seed: u64,
+}
+
+impl JavaRandom {
+    fn new(seed: i64) -> Self {
+        Self {
+            seed: ((seed as u64) ^ JAVA_RANDOM_MULTIPLIER) & JAVA_RANDOM_MASK,
+        }
+    }
+
+    fn next_bits(&mut self, bits: u32) -> u32 {
+        self.seed = self
+            .seed
+            .wrapping_mul(JAVA_RANDOM_MULTIPLIER)
+            .wrapping_add(JAVA_RANDOM_INCREMENT)
+            & JAVA_RANDOM_MASK;
+        (self.seed >> (48 - bits)) as u32
+    }
+
+    fn next_float(&mut self) -> f32 {
+        self.next_bits(24) as f32 / (1_u32 << 24) as f32
+    }
+
+    fn next_double(&mut self) -> f64 {
+        let high = self.next_bits(26) as u64;
+        let low = self.next_bits(27) as u64;
+        ((high << 27) | low) as f64 / (1_u64 << 53) as f64
+    }
 }
 
 fn rotate_end_sky_face(face: usize, position: [f32; 3]) -> [f32; 3] {
@@ -1280,6 +1489,8 @@ mod tests {
             moon_angle_radians: f32::NEG_INFINITY,
             rain_brightness: 2.0,
             moon_phase: SkyMoonPhase::WaxingGibbous,
+            star_angle_radians: f32::NAN,
+            star_brightness: -1.0,
         }
         .sanitized();
 
@@ -1289,6 +1500,8 @@ mod tests {
         assert_eq!(environment.moon_angle_radians, 0.0);
         assert_eq!(environment.rain_brightness, 1.0);
         assert_eq!(environment.moon_phase, SkyMoonPhase::WaxingGibbous);
+        assert_eq!(environment.star_angle_radians, 0.0);
+        assert_eq!(environment.star_brightness, 0.0);
         assert!(environment.is_visible());
         assert!(!SkyEnvironment::disabled().is_visible());
         assert!(SkyEnvironment::end().end_sky_visible());
@@ -1498,6 +1711,24 @@ mod tests {
     }
 
     #[test]
+    fn star_vertices_match_vanilla_seeded_count_center_and_brightness() {
+        let environment = SkyEnvironment::from_rgb([0.25, 0.5, 0.75]).with_star_state(0.0, 0.5);
+
+        let vertices = star_vertices(environment);
+
+        assert_eq!(vertices.len(), VANILLA_ACCEPTED_STAR_QUADS * 6);
+        assert_eq!(vertices[0].color, [0.5, 0.5, 0.5, 0.5]);
+        let first_center = star_quad_center([vertices[0], vertices[1], vertices[2], vertices[5]]);
+        assert_close3(first_center, [-47.698_66, 69.925_74, -53.246_868]);
+    }
+
+    #[test]
+    fn star_vertices_skip_without_brightness_or_overworld_skybox() {
+        assert!(star_vertices(SkyEnvironment::from_rgb([0.25, 0.5, 0.75])).is_empty());
+        assert!(star_vertices(SkyEnvironment::end().with_star_state(0.0, 0.5)).is_empty());
+    }
+
+    #[test]
     fn sky_disc_vertices_match_vanilla_top_disc_shape() {
         let color = [0.25, 0.5, 0.75, 1.0];
         let vertices = sky_disc_vertices(color);
@@ -1567,6 +1798,16 @@ mod tests {
         for (actual, expected) in actual.into_iter().zip(expected) {
             assert_close(actual, expected);
         }
+    }
+
+    fn star_quad_center(vertices: [SkyVertex; 4]) -> [f32; 3] {
+        let mut center = [0.0; 3];
+        for vertex in vertices {
+            center[0] += vertex.position[0] * 0.25;
+            center[1] += vertex.position[1] * 0.25;
+            center[2] += vertex.position[2] * 0.25;
+        }
+        center
     }
 
     fn test_celestial_images() -> Vec<CelestialTextureImage> {

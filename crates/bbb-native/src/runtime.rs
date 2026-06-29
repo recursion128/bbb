@@ -160,6 +160,20 @@ const VANILLA_OVERWORLD_SUNRISE_SUNSET_COLOR_KEYFRAMES: [(i64, i32); 32] = [
     (23_642, -857_440_717),
     (23_757, -1_310_226_637),
 ];
+const VANILLA_OVERWORLD_STAR_BRIGHTNESS_KEYFRAMES: [(i64, f32); 12] = [
+    (92, 0.037),
+    (627, 0.0),
+    (11_373, 0.0),
+    (11_732, 0.016),
+    (11_959, 0.044),
+    (12_399, 0.143),
+    (12_729, 0.258),
+    (13_228, 0.5),
+    (22_772, 0.5),
+    (23_032, 0.364),
+    (23_356, 0.225),
+    (23_758, 0.101),
+];
 const VANILLA_LIGHTMAP_RENDER_PARTIAL_TICK: f32 = 1.0;
 const VANILLA_MOB_EFFECT_NIGHT_VISION_ID: i32 = 15;
 const VANILLA_MOB_EFFECT_CONDUIT_POWER_ID: i32 = 28;
@@ -4247,6 +4261,18 @@ fn sky_environment_for_world_with_environment_colors(
         1.0 - weather.rain_level.clamp(0.0, 1.0),
         overworld_moon_phase(day_time),
     )
+    .with_star_state(
+        overworld_star_angle(day_time).to_radians(),
+        apply_weather_star_brightness_layers(
+            sample_periodic_float_keyframes(
+                day_time,
+                &VANILLA_OVERWORLD_STAR_BRIGHTNESS_KEYFRAMES,
+                VANILLA_LIGHTMAP_DAY_PERIOD_TICKS,
+            ),
+            weather.rain_level.clamp(0.0, 1.0),
+            weather.thunder_level.clamp(0.0, 1.0),
+        ),
+    )
 }
 
 fn sky_disc_color_for_world_with_environment_colors(
@@ -4632,11 +4658,25 @@ fn overworld_moon_angle(day_time: i64) -> f32 {
     (overworld_sun_angle(day_time) + 180.0).rem_euclid(360.0)
 }
 
+fn overworld_star_angle(day_time: i64) -> f32 {
+    overworld_sun_angle(day_time)
+}
+
 fn overworld_moon_phase(day_time: i64) -> SkyMoonPhase {
     let phase = day_time
         .rem_euclid(VANILLA_LIGHTMAP_DAY_PERIOD_TICKS * SkyMoonPhase::ALL.len() as i64)
         / VANILLA_LIGHTMAP_DAY_PERIOD_TICKS;
     SkyMoonPhase::from_vanilla_index(phase as usize)
+}
+
+fn apply_weather_star_brightness_layers(
+    brightness: f32,
+    rain_level: f32,
+    thunder_level: f32,
+) -> f32 {
+    let thunder_level = thunder_level.clamp(0.0, 1.0);
+    let rain_without_thunder = (rain_level.clamp(0.0, 1.0) - thunder_level).max(0.0);
+    brightness * (1.0 - rain_without_thunder) * (1.0 - thunder_level)
 }
 
 fn apply_atmospheric_sky_weather_darken(color: i32, rain_level: f64, thunder_level: f64) -> i32 {

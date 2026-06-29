@@ -565,6 +565,17 @@ fn sky_environment_projects_sunrise_sunset_render_state() {
     assert!((sky.moon_angle_radians - overworld_moon_angle(day_time).to_radians()).abs() < 1e-6);
     assert!((sky.rain_brightness - 0.75).abs() < 1e-6);
     assert_eq!(sky.moon_phase, SkyMoonPhase::FullMoon);
+    assert!((sky.star_angle_radians - overworld_star_angle(day_time).to_radians()).abs() < 1e-6);
+    let star_brightness = apply_weather_star_brightness_layers(
+        sample_periodic_float_keyframes(
+            day_time,
+            &VANILLA_OVERWORLD_STAR_BRIGHTNESS_KEYFRAMES,
+            VANILLA_LIGHTMAP_DAY_PERIOD_TICKS,
+        ),
+        0.25,
+        0.5,
+    );
+    assert!((sky.star_brightness - star_brightness).abs() < 1e-6);
 }
 
 #[test]
@@ -578,6 +589,34 @@ fn sky_environment_projects_vanilla_moon_phase_cycle() {
     assert_eq!(overworld_moon_phase(144_000), SkyMoonPhase::FirstQuarter);
     assert_eq!(overworld_moon_phase(168_000), SkyMoonPhase::WaxingGibbous);
     assert_eq!(overworld_moon_phase(192_000), SkyMoonPhase::FullMoon);
+}
+
+#[test]
+fn sky_environment_projects_vanilla_star_brightness_with_weather_layers() {
+    let day_time = 13_228;
+    let mut clear = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut clear, day_time);
+    let clear_sky = sky_environment_for_world_at_camera(
+        &clear,
+        &TerrainTextureState::default(),
+        camera_pose_from_world(&clear),
+        false,
+    );
+
+    assert!((clear_sky.star_brightness - 0.5).abs() < 1e-6);
+
+    let mut storm = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut storm, day_time);
+    set_world_weather(&mut storm, 0.75, 0.25);
+    let storm_sky = sky_environment_for_world_at_camera(
+        &storm,
+        &TerrainTextureState::default(),
+        camera_pose_from_world(&storm),
+        false,
+    );
+
+    let expected = apply_weather_star_brightness_layers(0.5, 0.75, 0.25);
+    assert!((storm_sky.star_brightness - expected).abs() < 1e-6);
 }
 
 #[test]
