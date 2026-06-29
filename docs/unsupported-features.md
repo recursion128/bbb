@@ -2035,7 +2035,7 @@ When an agent does any of the following, update this file in the same slice:
         broader non-profile dynamic texture loading; the
         STAB swing pose on non-player humanoid models; the `NONE` swing type; the
         attack swing on the non-player humanoid models). Item lighting
-        context (GUI front-lit vs world diffuse) is an open P0 visual point:
+        context (GUI front-lit vs world diffuse) is now P1 GUI surface work:
         vanilla `core/item.vsh` multiplies submitted color by
         `minecraft_mix_light(Light0_Direction, Light1_Direction, Normal, Color)`,
         and the renderer now mirrors that shape for the shared item-model path
