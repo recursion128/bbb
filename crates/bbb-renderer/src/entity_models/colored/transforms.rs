@@ -672,20 +672,28 @@ pub(in crate::entity_models) fn boat_bubble_transform(instance: EntityModelInsta
     }
 }
 
-/// Vanilla `AbstractMinecartRenderer.submit` old-render path without rail sample data: the renderer
-/// applies the deterministic per-id hover jitter, lifts the cart by `0.375`, rotates by
-/// `Axis.YP.rotationDegrees(180 - yRot)` then `Axis.ZP.rotationDegrees(-xRot)`, and finally flips
-/// the model with `scale(-1, -1, 1)`. Rail-follow position lerp/slope, new-render lerp, and
-/// display-block contents remain explicit follow-up gaps.
+/// Vanilla `AbstractMinecartRenderer.submit` root transform: the renderer applies deterministic
+/// per-id hover jitter, then either `newRender` (`Ry(yRot)`, `Rz(-xRot)`,
+/// `translate(0, 0.375, 0)`) for tracked new-behavior steps or the old-render no-rail fallback
+/// (`translate(0, 0.375, 0)`, `Ry(180 - yRot)`, `Rz(-xRot)`). It then applies the hurt roll and the
+/// final model flip. Exact weighted `renderPos` interpolation, old rail-follow
+/// position/slope, and display-block contents remain explicit follow-up gaps.
 pub(in crate::entity_models) fn minecart_model_root_transform(
     instance: EntityModelInstance,
 ) -> Mat4 {
     let jitter = Vec3::from_array(minecart_render_jitter_offset(instance.entity_id));
+    let renderer_transform = if instance.render_state.minecart_new_render {
+        Mat4::from_rotation_y(instance.render_state.body_rot.to_radians())
+            * Mat4::from_rotation_z((-instance.render_state.head_pitch).to_radians())
+            * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))
+    } else {
+        Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))
+            * Mat4::from_rotation_y((180.0 - instance.render_state.body_rot).to_radians())
+            * Mat4::from_rotation_z((-instance.render_state.head_pitch).to_radians())
+    };
     Mat4::from_translation(Vec3::from_array(instance.position))
         * Mat4::from_translation(jitter)
-        * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))
-        * Mat4::from_rotation_y((180.0 - instance.render_state.body_rot).to_radians())
-        * Mat4::from_rotation_z((-instance.render_state.head_pitch).to_radians())
+        * renderer_transform
         * Mat4::from_rotation_x(minecart_damage_roll_degrees(instance).to_radians())
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
 }

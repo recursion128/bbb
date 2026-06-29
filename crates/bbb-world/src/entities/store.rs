@@ -14,14 +14,15 @@ use bbb_protocol::packets::ItemStackSummary;
 
 use super::{
     is_vanilla_abstract_nautilus_type, is_vanilla_can_wear_horse_armor_type, is_vanilla_llama_type,
-    ArmorMaterialKind, EntityAttachmentFace, EntityAttributes, EntityBlockModelState,
-    EntityCameraPoseState, EntityClientAnimations, EntityDamage, EntityEquipment,
-    EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
-    EntityMobEffects, EntityModelSourceState, EntityMount, EntityState, EntityTransform,
-    EntityTransformState, EntityTransientEvents, ItemEntityStackState, ItemFrameRenderState,
-    LlamaBodyDecorColor, WolfArmorCrackiness, VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
-    VANILLA_ENTITY_SILENT_DATA_ID, VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
-    VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
+    is_vanilla_minecart_type, ArmorMaterialKind, EntityAttachmentFace, EntityAttributes,
+    EntityBlockModelState, EntityCameraPoseState, EntityClientAnimations, EntityDamage,
+    EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata,
+    EntityMinecartLerp, EntityMobEffects, EntityModelSourceState, EntityMount, EntityState,
+    EntityTransform, EntityTransformState, EntityTransientEvents, ItemEntityStackState,
+    ItemFrameRenderState, LlamaBodyDecorColor, WolfArmorCrackiness,
+    VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
+    VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+    VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
     VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
     VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MULE_ID,
     VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
@@ -737,6 +738,7 @@ impl EntityStore {
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
         let attributes = self.ecs.get::<&EntityAttributes>(entity).ok()?;
         let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        let minecart_lerp = self.ecs.get::<&EntityMinecartLerp>(entity).ok();
         // Vanilla `HumanoidArmorLayer` worn armor: resolve the item worn in each armor slot to its
         // equipment-asset material. The `EntityEquipment` component holds the synced `SetEquipment`
         // items; a bare entity (no equipment component / empty slot / non-armor item) resolves to None.
@@ -1132,6 +1134,10 @@ impl EntityStore {
         let (boat_hurt_time, boat_hurt_dir, boat_damage_time) = client_animations
             .animations
             .boat_damage_state(partial_ticks);
+        let minecart_new_render = is_vanilla_minecart_type(identity.entity_type_id)
+            && minecart_lerp
+                .as_ref()
+                .is_some_and(|lerp| !lerp.steps.is_empty());
         let boat_bubble_angle = client_animations
             .animations
             .boat_bubble_angle(partial_ticks);
@@ -1182,6 +1188,7 @@ impl EntityStore {
             boat_hurt_time,
             boat_hurt_dir,
             boat_damage_time,
+            minecart_new_render,
             boat_bubble_angle,
             boat_underwater: false,
             wither_x_head_rots,

@@ -10535,6 +10535,12 @@ fn minecart_along_track_updates_entity_from_latest_step() {
     assert_eq!(entity.x_rot, 5.0);
     assert_eq!(entity.minecart_lerp_steps.len(), 2);
     assert_eq!(store.entities.minecart_lerp(10).unwrap().steps.len(), 2);
+    let source = store
+        .entity_model_sources_at_partial_tick(0.5)
+        .into_iter()
+        .find(|source| source.entity_id == 10)
+        .expect("minecart source");
+    assert!(source.minecart_new_render);
 
     assert!(
         store.apply_move_minecart_along_track(ProtocolMoveMinecartAlongTrack {

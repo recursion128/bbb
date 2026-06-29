@@ -1248,10 +1248,15 @@ blocker。
     vanilla `sin(hurtTime) * hurtTime * damageTime / 10 * hurtDir` 插入
     `AbstractMinecartRenderer.submit` 的 root transform；world/native/renderer
     tests 覆盖 metadata 衰减、render-state 投影和 transform 顺序。
+  - [x] NewMinecartBehavior latest-step root：`ClientboundMoveMinecartPacket`
+    tracked steps 投影为 `minecart_new_render`，renderer 在该状态下使用 vanilla
+    `newRender` root 顺序 `Ry(yRot)`、`Rz(-xRot)`、
+    `translate(0, 0.375, 0)`；当前使用 world canonical latest step，exact
+    weighted `renderPos` interpolation 仍留作后续。
   - [ ] rail-follow `posOnRail` / `frontPos` / `backPos` 平移与坡度 pitch、
-    NewMinecartBehavior `renderPos`/newRender root、display block transform /
-    content / light hookup 仍作为 P1 Minecart 剩余项，非狭义 P0 pipeline
-    blocker。
+    NewMinecartBehavior exact weighted `renderPos` interpolation、display block
+    transform / content / light hookup 仍作为 P1 Minecart 剩余项，非狭义 P0
+    pipeline blocker。
 - Boat / raft：
   - [x] paddle rowing animation（world metadata/passenger gate -> native render state -> renderer paddle pose）
   - [x] hurt/damage roll（VehicleEntity metadata -> native render state -> boat root transform）

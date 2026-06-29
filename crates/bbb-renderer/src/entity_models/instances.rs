@@ -335,6 +335,10 @@ entity_render_state! {
     /// Vanilla `MinecartRenderState.damageTime`: `max(VehicleEntity.getDamage() - partialTick, 0)`,
     /// scaling the damage roll amount.
     (with_minecart_damage_time) minecart_damage_time: f32 = 0.0;
+    /// Vanilla `MinecartRenderState.isNewRender`: true for carts using `NewMinecartBehavior`.
+    /// Current world projection sets this when `ClientboundMoveMinecartPacket` supplies tracked
+    /// `MinecartStep` data; exact weighted `renderPos` interpolation remains deferred.
+    (with_minecart_new_render) minecart_new_render: bool = false;
     /// Vanilla `BoatRenderState.bubbleAngle`: the partial-lerped bubble-column
     /// wobble angle in degrees. The boat renderer applies it only while the boat
     /// is not underwater.
@@ -2403,6 +2407,7 @@ mod tests {
                 minecart_hurt_time: 0.0,
                 minecart_hurt_dir: 1,
                 minecart_damage_time: 0.0,
+                minecart_new_render: false,
                 boat_bubble_angle: 0.0,
                 boat_underwater: false,
                 is_aggressive: false,

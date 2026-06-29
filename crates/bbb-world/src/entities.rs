@@ -427,6 +427,11 @@ pub struct EntityModelSourceState {
     /// magnitude used with hurt time to scale the roll.
     #[serde(default)]
     pub boat_damage_time: f32,
+    /// True after a tracked `ClientboundMoveMinecartPacket` gives this cart new-behavior
+    /// `MinecartStep` data. The current source projection uses the latest canonical step; exact
+    /// weighted `renderPos` interpolation remains a renderer follow-up.
+    #[serde(default)]
+    pub minecart_new_render: bool,
     /// Vanilla `BoatRenderState.bubbleAngle` (`AbstractBoat.getBubbleAngle(partialTick)`):
     /// the bubble-column wobble angle in degrees, before the renderer's underwater gate.
     #[serde(default)]

@@ -1368,6 +1368,7 @@ fn entity_model_instance(
         .with_minecart_hurt_time(source.boat_hurt_time)
         .with_minecart_hurt_dir(source.boat_hurt_dir)
         .with_minecart_damage_time(source.boat_damage_time)
+        .with_minecart_new_render(source.minecart_new_render)
         .with_boat_bubble_angle(source.boat_bubble_angle)
         .with_boat_underwater(source.boat_underwater)
         .with_is_aggressive(source.is_aggressive)
@@ -3854,10 +3855,11 @@ mod tests {
         AddEntity, AttributeSnapshot, ChatFormatting, CommonPlayerSpawnInfo,
         DataComponentPatchSummary, EntityDataValue, EntityEvent, EntityPositionSync, EquipmentSlot,
         EquipmentSlotUpdate, GameProfile, GameProfileProperty, GameType, ItemEnchantmentSummary,
-        ItemStackSummary, PlayLogin, PlayTime, PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate,
-        PlayerTeamMethod, PlayerTeamParameters, RegistryTags, SetCamera, SetEntityData,
-        SetEquipment, SetPassengers, SetPlayerTeam, TagNetworkPayload, TeamCollisionRule,
-        TeamVisibility, UpdateAttributes, UpdateTags, Vec3d,
+        ItemStackSummary, MinecartStep, MoveMinecartAlongTrack, PlayLogin, PlayTime,
+        PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate, PlayerTeamMethod,
+        PlayerTeamParameters, RegistryTags, SetCamera, SetEntityData, SetEquipment, SetPassengers,
+        SetPlayerTeam, TagNetworkPayload, TeamCollisionRule, TeamVisibility, UpdateAttributes,
+        UpdateTags, Vec3d,
     };
     use bbb_world::{
         ArmorMaterialKind as WorldArmorMaterialKind, EntityPickBoundsState, EntityVec3,
@@ -5013,6 +5015,44 @@ mod tests {
         assert!((render_state.minecart_hurt_time - 7.5).abs() < 1.0e-6);
         assert_eq!(render_state.minecart_hurt_dir, -1);
         assert!((render_state.minecart_damage_time - 17.5).abs() < 1.0e-6);
+    }
+
+    #[test]
+    fn entity_model_instances_project_minecart_new_render_from_track_steps() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            94,
+            VANILLA_ENTITY_TYPE_MINECART_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        assert!(
+            world.apply_move_minecart_along_track(MoveMinecartAlongTrack {
+                entity_id: 94,
+                lerp_steps: vec![MinecartStep {
+                    position: Vec3d {
+                        x: 1.75,
+                        y: 64.2,
+                        z: -2.75,
+                    },
+                    movement: Vec3d {
+                        x: 0.4,
+                        y: 0.0,
+                        z: -0.4,
+                    },
+                    y_rot: 90.0,
+                    x_rot: 5.0,
+                    weight: 1.25,
+                }],
+            })
+        );
+
+        let instance = entity_model_instances_from_world_at_partial_tick(&world, None, 0.5)
+            .into_iter()
+            .find(|instance| instance.entity_id == 94)
+            .unwrap();
+        assert!(instance.render_state.minecart_new_render);
+        assert_eq!(instance.render_state.body_rot, 90.0);
+        assert_eq!(instance.render_state.head_pitch, 5.0);
     }
 
     #[test]

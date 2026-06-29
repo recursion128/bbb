@@ -117,6 +117,25 @@ fn minecart_root_transform_matches_vanilla_old_render_without_rail() {
 }
 
 #[test]
+fn minecart_new_render_root_transform_uses_vanilla_order() {
+    let old_render =
+        EntityModelInstance::minecart(41, [2.0, 64.0, -3.0], 45.0).with_head_look(0.0, -10.0);
+    let new_render = old_render.with_minecart_new_render(true);
+    let expected = Mat4::from_translation(Vec3::from_array(new_render.position))
+        * Mat4::from_translation(Vec3::from_array([-0.00175, 0.00175, 0.00025]))
+        * Mat4::from_rotation_y(new_render.render_state.body_rot.to_radians())
+        * Mat4::from_rotation_z((-new_render.render_state.head_pitch).to_radians())
+        * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0));
+
+    assert_close_transform(minecart_model_root_transform(new_render), expected);
+    assert_ne!(
+        minecart_model_root_transform(new_render),
+        minecart_model_root_transform(old_render)
+    );
+}
+
+#[test]
 fn minecart_hurt_roll_matches_vanilla_vehicle_damage_formula() {
     let damaged = EntityModelInstance::minecart(41, [2.0, 64.0, -3.0], 45.0)
         .with_head_look(0.0, -10.0)
