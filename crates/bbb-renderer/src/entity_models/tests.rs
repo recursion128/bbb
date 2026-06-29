@@ -659,9 +659,8 @@ fn entity_textured_shader_samples_dynamic_lightmap_texture() {
     assert!(ENTITY_MODEL_TEXTURED_SHADER
         .contains("textureSample(lightmap_texture, lightmap_sampler, uv).rgb"));
     assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("let light_color = sample_lightmap(input.light)"));
-    assert!(
-        ENTITY_MODEL_TEXTURED_SHADER.contains("rgb * diffuse_light(input.normal) * light_color")
-    );
+    assert!(ENTITY_MODEL_TEXTURED_SHADER
+        .contains("rgb * per_face_diffuse_light(input.normal, front_facing) * light_color"));
     assert!(!ENTITY_MODEL_TEXTURED_SHADER.contains("fn lightmap_brightness"));
     assert!(!ENTITY_MODEL_TEXTURED_SHADER.contains("camera.lightmap_factors.y"));
 }
@@ -674,7 +673,20 @@ fn entity_textured_shader_applies_vanilla_level_diffuse_lighting() {
     assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("vec3<f32>(0.2, 1.0, -0.7)"));
     assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("vec3<f32>(-0.2, 1.0, 0.7)"));
     assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("(light_value.x + light_value.y) * 0.6 + 0.4"));
-    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("diffuse_light(input.normal) * light_color"));
+    assert!(ENTITY_MODEL_TEXTURED_SHADER
+        .contains("per_face_diffuse_light(input.normal, front_facing) * light_color"));
+}
+
+#[test]
+fn entity_textured_shader_applies_vanilla_per_face_lighting() {
+    // Vanilla entity.vsh's PER_FACE_LIGHTING branch computes front and back
+    // vertex colors from opposite light values, and entity.fsh selects with
+    // gl_FrontFacing. WGSL carries the same choice as `front_facing`.
+    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("@builtin(front_facing) front_facing: bool"));
+    assert!(ENTITY_MODEL_TEXTURED_SHADER
+        .contains("fn per_face_diffuse_light(normal: vec3<f32>, front_facing: bool) -> f32"));
+    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("if (front_facing)"));
+    assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("diffuse_light(-normal)"));
 }
 
 #[test]

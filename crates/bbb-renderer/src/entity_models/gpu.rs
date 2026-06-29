@@ -237,6 +237,13 @@ fn diffuse_light(normal: vec3<f32>) -> f32 {
     return min(1.0, (light_value.x + light_value.y) * 0.6 + 0.4);
 }
 
+fn per_face_diffuse_light(normal: vec3<f32>, front_facing: bool) -> f32 {
+    if (front_facing) {
+        return diffuse_light(normal);
+    }
+    return diffuse_light(-normal);
+}
+
 fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
     if (vertex_distance <= fog_start) {
         return 0.0;
@@ -271,7 +278,7 @@ fn vs_main(input: VertexIn) -> VertexOut {
 }
 
 @fragment
-fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+fn fs_main(input: VertexOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<f32> {
     let texel = textureSample(entity_texture_atlas, entity_sampler, input.uv) * input.tint;
     if texel.a <= 0.01 {
         discard;
@@ -284,7 +291,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         rgb = mix(vec3<f32>(1.0, 1.0, 1.0), rgb, overlay_alpha);
     }
     let light_color = sample_lightmap(input.light);
-    return apply_fog(vec4<f32>(rgb * diffuse_light(input.normal) * light_color, texel.a), input.spherical_distance, input.cylindrical_distance);
+    return apply_fog(vec4<f32>(rgb * per_face_diffuse_light(input.normal, front_facing) * light_color, texel.a), input.spherical_distance, input.cylindrical_distance);
 }
 "#;
 

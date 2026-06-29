@@ -711,8 +711,13 @@ When an agent does any of the following, update this file in the same slice:
     vertices now also carry per-face normals equivalent to vanilla
     `ModelPart.Polygon.normal`, and the textured shader applies vanilla
     `Lighting.setupLevel` default diffuse directions with `0.6` light power and
-    `0.4` ambient; normal transforms use vanilla `PoseStack.Pose` normal-matrix
-    semantics, i.e. pose inverse-transpose plus normalization. The colored,
+    `0.4` ambient. The textured shader now also mirrors vanilla
+    `PER_FACE_LIGHTING` by selecting `normal` for front faces and `-normal` for
+    back faces, matching `entity.vsh`'s separate front/back diffuse colors for
+    no-cull entity pipelines; future GPU state work still needs to split cull and
+    no-cull surface buckets instead of folding them into one draw. Normal
+    transforms use vanilla `PoseStack.Pose` normal-matrix semantics, i.e. pose
+    inverse-transpose plus normalization. The colored,
     textured, and `breezeWind` entity shaders now also use a vanilla-shaped
     `LightmapInfo` uniform expression: block light uses `BlockLightTint`
     (`0xFFD88C` by default) plus the parabolic mix, sky light is multiplied by
