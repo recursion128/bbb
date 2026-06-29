@@ -31,6 +31,7 @@ const CLOUDS_PASS_LABEL: &str = "bbb-native-clouds-pass";
 const ENTITY_TRANSLUCENT_FEATURE_PASS_LABEL: &str = "bbb-native-entity-translucent-feature-pass";
 const TRANSLUCENT_TARGET_PASS_LABEL: &str = "bbb-native-translucent-target-pass";
 const ITEM_ENTITY_TARGET_PASS_LABEL: &str = "bbb-native-item-entity-target-pass";
+const ITEM_ENTITY_LINE_TARGET_PASS_LABEL: &str = "bbb-native-item-entity-line-target-pass";
 const PARTICLE_TARGET_PASS_LABEL: &str = "bbb-native-particle-target-pass";
 const WEATHER_TARGET_PASS_LABEL: &str = "bbb-native-weather-target-pass";
 const LIGHTMAP_PASS_LABEL: &str = "bbb-native-lightmap-pass";
@@ -476,6 +477,95 @@ impl Renderer {
             }
         }
 
+        let item_entity_vertices = self.collect_item_entity_vertices();
+        let item_entity_vertex_buffer =
+            if self.item_entity_atlas.is_some() && !item_entity_vertices.is_empty() {
+                Some(
+                    self.device
+                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("bbb-item-entity-frame-vertices"),
+                            contents: bytemuck::cast_slice(&item_entity_vertices),
+                            usage: wgpu::BufferUsages::VERTEX,
+                        }),
+                )
+            } else {
+                None
+            };
+        let (block_item_translucent_vertices, block_item_translucent_indices) =
+            self.collect_block_item_model_translucent_geometry();
+        let block_item_translucent_buffers = self.create_item_model_frame_buffers(
+            &block_item_translucent_vertices,
+            &block_item_translucent_indices,
+        );
+        let (flat_item_translucent_vertices, flat_item_translucent_indices) =
+            self.collect_flat_item_model_translucent_geometry();
+        let flat_item_translucent_buffers = self.create_item_model_frame_buffers(
+            &flat_item_translucent_vertices,
+            &flat_item_translucent_indices,
+        );
+
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some(ITEM_ENTITY_TARGET_PASS_LABEL),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: item_entity_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.item_entity_target.depth.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            self.draw_entity_item_entity_target_features(
+                &mut pass,
+                &mut pipeline_switches,
+                &mut entity_model_draw_calls,
+            );
+            if let Some(buffers) = &block_item_translucent_buffers {
+                self.draw_item_model_frame_buffers(
+                    &mut pass,
+                    &self.item_model_translucent_pipeline,
+                    buffers,
+                    &self.terrain_bind_group,
+                );
+                pipeline_switches += 1;
+                item_model_draw_calls += 1;
+            }
+            if let (Some(atlas), Some(buffers)) =
+                (&self.item_entity_atlas, &flat_item_translucent_buffers)
+            {
+                self.draw_item_model_frame_buffers(
+                    &mut pass,
+                    &self.item_model_translucent_pipeline,
+                    buffers,
+                    &atlas.bind_group,
+                );
+                pipeline_switches += 1;
+                item_model_draw_calls += 1;
+            }
+            if let (Some(atlas), Some(vertex_buffer)) =
+                (&self.item_entity_atlas, &item_entity_vertex_buffer)
+            {
+                pass.set_pipeline(&self.item_entity_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                pass.draw(0..item_entity_vertices.len() as u32, 0..1);
+                item_entity_draw_calls += 1;
+            }
+        }
+
         if let Some(overlays) = &self.block_destroy_overlays {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("bbb-native-block-destroy-overlay-pass"),
@@ -588,41 +678,17 @@ impl Renderer {
             }
         }
 
-        let item_entity_vertices = self.collect_item_entity_vertices();
-        let item_entity_vertex_buffer =
-            if self.item_entity_atlas.is_some() && !item_entity_vertices.is_empty() {
-                Some(
-                    self.device
-                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                            label: Some("bbb-item-entity-frame-vertices"),
-                            contents: bytemuck::cast_slice(&item_entity_vertices),
-                            usage: wgpu::BufferUsages::VERTEX,
-                        }),
-                )
-            } else {
-                None
-            };
-        let (block_item_translucent_vertices, block_item_translucent_indices) =
-            self.collect_block_item_model_translucent_geometry();
-        let block_item_translucent_buffers = self.create_item_model_frame_buffers(
-            &block_item_translucent_vertices,
-            &block_item_translucent_indices,
-        );
-        let (flat_item_translucent_vertices, flat_item_translucent_indices) =
-            self.collect_flat_item_model_translucent_geometry();
-        let flat_item_translucent_buffers = self.create_item_model_frame_buffers(
-            &flat_item_translucent_vertices,
-            &flat_item_translucent_indices,
-        );
-
+        if self.selection_outline.is_some()
+            || self.entity_scene_outline.is_some()
+            || self.entity_target_outline.is_some()
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some(ITEM_ENTITY_TARGET_PASS_LABEL),
+                label: Some(ITEM_ENTITY_LINE_TARGET_PASS_LABEL),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: item_entity_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        load: wgpu::LoadOp::Load,
                         store: wgpu::StoreOp::Store,
                     },
                 })],
@@ -637,66 +703,23 @@ impl Renderer {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
-            self.draw_entity_item_entity_target_features(
-                &mut pass,
-                &mut pipeline_switches,
-                &mut entity_model_draw_calls,
-            );
-            if let Some(buffers) = &block_item_translucent_buffers {
-                self.draw_item_model_frame_buffers(
-                    &mut pass,
-                    &self.item_model_translucent_pipeline,
-                    buffers,
-                    &self.terrain_bind_group,
-                );
-                pipeline_switches += 1;
-                item_model_draw_calls += 1;
+            pass.set_pipeline(&self.selection_pipeline);
+            pipeline_switches += 1;
+            pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+            if let Some(outline) = &self.selection_outline {
+                pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
+                pass.draw(0..outline.vertex_count, 0..1);
+                selection_draw_calls += 1;
             }
-            if let (Some(atlas), Some(buffers)) =
-                (&self.item_entity_atlas, &flat_item_translucent_buffers)
-            {
-                self.draw_item_model_frame_buffers(
-                    &mut pass,
-                    &self.item_model_translucent_pipeline,
-                    buffers,
-                    &atlas.bind_group,
-                );
-                pipeline_switches += 1;
-                item_model_draw_calls += 1;
+            if let Some(outline) = &self.entity_scene_outline {
+                pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
+                pass.draw(0..outline.vertex_count, 0..1);
+                entity_scene_draw_calls += 1;
             }
-            if let (Some(atlas), Some(vertex_buffer)) =
-                (&self.item_entity_atlas, &item_entity_vertex_buffer)
-            {
-                pass.set_pipeline(&self.item_entity_pipeline);
-                pipeline_switches += 1;
-                pass.set_bind_group(0, &atlas.bind_group, &[]);
-                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
-                pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-                pass.draw(0..item_entity_vertices.len() as u32, 0..1);
-                item_entity_draw_calls += 1;
-            }
-            if self.selection_outline.is_some()
-                || self.entity_scene_outline.is_some()
-                || self.entity_target_outline.is_some()
-            {
-                pass.set_pipeline(&self.selection_pipeline);
-                pipeline_switches += 1;
-                pass.set_bind_group(0, &self.terrain_bind_group, &[]);
-                if let Some(outline) = &self.selection_outline {
-                    pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
-                    pass.draw(0..outline.vertex_count, 0..1);
-                    selection_draw_calls += 1;
-                }
-                if let Some(outline) = &self.entity_scene_outline {
-                    pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
-                    pass.draw(0..outline.vertex_count, 0..1);
-                    entity_scene_draw_calls += 1;
-                }
-                if let Some(outline) = &self.entity_target_outline {
-                    pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
-                    pass.draw(0..outline.vertex_count, 0..1);
-                    entity_target_draw_calls += 1;
-                }
+            if let Some(outline) = &self.entity_target_outline {
+                pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
+                pass.draw(0..outline.vertex_count, 0..1);
+                entity_target_draw_calls += 1;
             }
         }
 
@@ -1736,6 +1759,9 @@ mod tests {
             .expect("solid world item-model collection is present");
         let copy_item_entity =
             depth_copy_to(source, "texture: &self.item_entity_target.depth._texture");
+        let map_text_collect = source
+            .find("let (map_text_vertices, map_text_indices)")
+            .expect("item-frame map text collection is present");
         let block_collect = source
             .find("let (block_item_translucent_vertices, block_item_translucent_indices)")
             .expect("translucent block item-model collection is present");
@@ -1765,20 +1791,29 @@ mod tests {
             .find("pass.set_pipeline(&self.item_entity_pipeline)")
             .map(|index| target + index)
             .expect("item-entity billboards are drawn in item_entity target");
+        let block_destroy = source
+            .find("label: Some(\"bbb-native-block-destroy-overlay-pass\")")
+            .expect("block destroy overlay pass label is used");
+        let translucent = source
+            .find("label: Some(TRANSLUCENT_TARGET_PASS_LABEL)")
+            .expect("translucent target pass label is used");
         let particle = source
             .find("label: Some(PARTICLE_TARGET_PASS_LABEL)")
             .expect("particle target pass label is used");
 
         assert!(
             solid_collect < copy_item_entity
-                && copy_item_entity < block_collect
+                && copy_item_entity < map_text_collect
+                && map_text_collect < block_collect
                 && block_collect < flat_collect
                 && flat_collect < target
                 && target < block_draw
                 && block_bind_group < flat_draw
                 && flat_bind_group < billboards
+                && billboards < block_destroy
+                && block_destroy < translucent
                 && billboards < particle,
-            "vanilla ItemFeatureRenderer translucent item submits draw through item_entity target before billboard items and particles"
+            "vanilla FeatureRenderDispatcher draws text before ItemFeatureRenderer, then block/crumbling features, translucent terrain, and particles"
         );
     }
 
@@ -1807,6 +1842,9 @@ mod tests {
         let item_entity_target = source
             .find("label: Some(ITEM_ENTITY_TARGET_PASS_LABEL)")
             .expect("item-entity target pass label is used");
+        let item_entity_line_target = source
+            .find("label: Some(ITEM_ENTITY_LINE_TARGET_PASS_LABEL)")
+            .expect("item-entity line target pass label is used");
         let particle_target = source
             .find("label: Some(PARTICLE_TARGET_PASS_LABEL)")
             .expect("particle target pass label is used");
@@ -1836,11 +1874,12 @@ mod tests {
             "clouds draw after the entity outline post-chain like vanilla LevelRenderer"
         );
         assert!(
-            entity_translucent_features < translucent
+            entity_translucent_features < item_entity_target
                 && entity_translucent_features < block_destroy
+                && item_entity_target < block_destroy
                 && block_destroy < translucent
-                && translucent < item_entity_target
-                && item_entity_target < particle_target
+                && translucent < item_entity_line_target
+                && item_entity_line_target < particle_target
                 && particle_target < outline_composite
                 && outline_composite < clouds
                 && particle_target < clouds
@@ -1868,13 +1907,17 @@ mod tests {
             "translucent terrain writes the renderer-owned translucent depth target"
         );
         assert!(
-            source[item_entity_target..combine].contains("view: item_entity_view"),
+            source[item_entity_target..block_destroy].contains("view: item_entity_view"),
             "item-entity geometry writes the renderer-owned item_entity color target"
         );
         assert!(
-            source[item_entity_target..combine]
+            source[item_entity_target..block_destroy]
                 .contains("view: &self.item_entity_target.depth.view"),
             "item-entity geometry writes the renderer-owned item_entity depth target"
+        );
+        assert!(
+            source[item_entity_line_target..particle_target].contains("view: item_entity_view"),
+            "line geometry appends to the renderer-owned item_entity color target before particles"
         );
         assert!(
             source[particle_target..combine].contains("view: particle_view"),
@@ -2057,7 +2100,7 @@ mod tests {
     }
 
     #[test]
-    fn item_entity_target_copies_main_depth_and_collects_item_and_line_draws_before_particles() {
+    fn item_entity_target_copies_main_depth_and_splits_item_features_from_line_draws() {
         let source = include_str!("render.rs");
         let entity_translucent_features = source
             .find("label: Some(ENTITY_TRANSLUCENT_FEATURE_PASS_LABEL)")
@@ -2065,6 +2108,9 @@ mod tests {
         let target = source
             .find("label: Some(ITEM_ENTITY_TARGET_PASS_LABEL)")
             .expect("item-entity target pass label is used");
+        let line_target = source
+            .find("label: Some(ITEM_ENTITY_LINE_TARGET_PASS_LABEL)")
+            .expect("item-entity line target pass label is used");
         let copy_depth = depth_copy_to(source, "texture: &self.item_entity_target.depth._texture");
         let entity_item_target_draw = source[target..]
             .find("self.draw_entity_item_entity_target_features(")
@@ -2082,10 +2128,16 @@ mod tests {
             .find("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])")
             .map(|index| item_atlas + index)
             .expect("item-entity lightmap bind group is bound before draw");
-        let selection_pipeline = source[target..]
+        let block_destroy = source
+            .find("label: Some(\"bbb-native-block-destroy-overlay-pass\")")
+            .expect("block destroy overlay pass label is used");
+        let translucent_target = source
+            .find("label: Some(TRANSLUCENT_TARGET_PASS_LABEL)")
+            .expect("translucent target pass label is used");
+        let selection_pipeline = source[line_target..]
             .find("pass.set_pipeline(&self.selection_pipeline)")
-            .map(|index| target + index)
-            .expect("selection line pipeline is drawn into the item-entity target");
+            .map(|index| line_target + index)
+            .expect("selection line pipeline appends into the item-entity target");
         let particle = source
             .find("label: Some(PARTICLE_TARGET_PASS_LABEL)")
             .expect("particle target pass label is used");
@@ -2098,10 +2150,13 @@ mod tests {
                 && entity_translucent_features < target
                 && target < entity_item_target_draw
                 && entity_item_target_draw < item_pipeline
-                && item_lightmap < selection_pipeline
+                && item_lightmap < block_destroy
+                && block_destroy < translucent_target
+                && translucent_target < line_target
+                && line_target < selection_pipeline
                 && selection_pipeline < particle
                 && particle < combine,
-            "item_entity target copies main depth, collects item/line draws, then particles and transparency combine run later"
+            "item_entity target copies main depth, draws item features in the vanilla text->item->block phase, then appends lines before particles"
         );
         assert!(
             item_pipeline < item_atlas && item_atlas < item_lightmap,
@@ -2120,9 +2175,17 @@ mod tests {
             "item_entity target color is cleared every frame so missing item draws do not reuse stale color"
         );
         assert!(
-            source[target..particle].contains("view: item_entity_view")
-                && source[target..particle].contains("view: &self.item_entity_target.depth.view"),
-            "item and line geometry render into the item_entity color/depth target"
+            source[target..block_destroy].contains("view: item_entity_view")
+                && source[target..block_destroy]
+                    .contains("view: &self.item_entity_target.depth.view"),
+            "item geometry renders into the item_entity color/depth target before block features"
+        );
+        assert!(
+            source[line_target..particle].contains("load: wgpu::LoadOp::Load")
+                && source[line_target..particle].contains("view: item_entity_view")
+                && source[line_target..particle]
+                    .contains("view: &self.item_entity_target.depth.view"),
+            "line geometry appends to the existing item_entity color/depth target before particles"
         );
     }
 

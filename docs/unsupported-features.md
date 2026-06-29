@@ -393,12 +393,16 @@ When an agent does any of the following, update this file in the same slice:
     renderer-owned translucent color/depth target after copying main depth,
     matching vanilla `LevelRenderer.copyDepthFrom(mainTarget)` for the
     translucent target and `RenderPipelines.TRANSLUCENT_TERRAIN` default depth
-    state plus translucent blend. Item-entity billboards, selection/line
-    geometry, and folded `entityTranslucentCullItemTarget` entity meshes now
-    write a renderer-owned itemEntity color/depth target after the
-    same main-depth copy, matching vanilla `OutputTarget.ITEM_ENTITY_TARGET`
-    users such as `item_translucent`, `entity_translucent_cull_item_target`,
-    `glint_translucent`, `LINES`, and `LINES_TRANSLUCENT`. Active particle
+    state plus translucent blend. Item-entity billboards, translucent
+    item-model buckets, and folded `entityTranslucentCullItemTarget` entity
+    meshes now write a renderer-owned itemEntity color/depth target after the
+    same main-depth copy and during the vanilla text -> item -> block/crumbling
+    feature order, matching `FeatureRenderDispatcher.renderTranslucentFeatures`
+    and `OutputTarget.ITEM_ENTITY_TARGET` users such as `item_translucent`,
+    `entity_translucent_cull_item_target`, and `glint_translucent`.
+    Selection/line geometry appends to the same target in a later line pass
+    before particles; finer line/block-outline target ordering remains visual
+    polish rather than item-feature ordering debt. Active particle
     billboards now write a renderer-owned particles color/depth target after the
     same main-depth copy, matching vanilla `PARTICLES_TARGET`. The final
     transparency combine pass samples main, translucent, itemEntity, particles,
@@ -442,7 +446,9 @@ When an agent does any of the following, update this file in the same slice:
     `ItemFeatureRenderer.hasTranslucency()`: solid dropped/held/framed item
     models stay on the main target, while translucent block/flat item-model
     buckets draw through an alpha-blended item-model pipeline in
-    `OutputTarget.ITEM_ENTITY_TARGET` before billboard items and particles.
+    `OutputTarget.ITEM_ENTITY_TARGET` after text submits and before
+    block/crumbling features, billboard items, translucent terrain, and
+    particles.
     Solid block/flat item-model and item-frame map batches now sit in the main
     pass before target depth copies, translucent target work, entity-outline
     post-chain work, and clouds, matching `LevelRenderer.addMainPass` calling
@@ -460,6 +466,11 @@ When an agent does any of the following, update this file in the same slice:
     they draw in the main-target translucent feature phase after blended entity
     model features and before crumbling / translucent terrain, rather than in the
     earlier solid item-feature block.
+    The itemEntity target item-feature pass now follows that text phase and runs
+    before block/crumbling features, so translucent item-model buckets,
+    item-entity billboards, and `entityTranslucentCullItemTarget` buckets no
+    longer wait until after translucent terrain; selection/line geometry remains
+    an append pass before particles.
     Item-model mesh vertices now also carry vanilla item-submit overlay coords:
     the existing bake APIs default to `OverlayTexture.NO_OVERLAY = pack(0, 10)`,
     while explicit light+overlay bake APIs mirror
