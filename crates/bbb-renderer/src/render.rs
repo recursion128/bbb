@@ -746,6 +746,7 @@ impl Renderer {
                 pass.set_pipeline(&self.item_entity_pipeline);
                 pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 pass.set_vertex_buffer(0, vertex_buffer.slice(..));
                 pass.draw(0..item_entity_vertices.len() as u32, 0..1);
                 item_entity_draw_calls += 1;
@@ -1409,6 +1410,14 @@ mod tests {
             .find("pass.set_pipeline(&self.item_entity_pipeline)")
             .map(|index| target + index)
             .expect("item-entity pipeline is drawn into the target");
+        let item_atlas = source[item_pipeline..]
+            .find("pass.set_bind_group(0, &atlas.bind_group, &[])")
+            .map(|index| item_pipeline + index)
+            .expect("item-entity atlas bind group is bound before draw");
+        let item_lightmap = source[item_atlas..]
+            .find("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])")
+            .map(|index| item_atlas + index)
+            .expect("item-entity lightmap bind group is bound before draw");
         let selection_pipeline = source[target..]
             .find("pass.set_pipeline(&self.selection_pipeline)")
             .map(|index| target + index)
@@ -1423,10 +1432,14 @@ mod tests {
         assert!(
             copy_depth < target
                 && target < item_pipeline
-                && item_pipeline < selection_pipeline
+                && item_lightmap < selection_pipeline
                 && selection_pipeline < particle
                 && particle < combine,
             "item_entity target copies main depth, collects item/line draws, then particles and transparency combine run later"
+        );
+        assert!(
+            item_pipeline < item_atlas && item_atlas < item_lightmap,
+            "item-entity billboards bind the renderer-owned LightTexture before drawing"
         );
         assert!(
             source[copy_depth..target].contains("texture: &self.depth._texture")
