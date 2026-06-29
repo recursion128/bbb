@@ -695,9 +695,11 @@ When an agent does any of the following, update this file in the same slice:
       invisible to this client records vanilla `RenderTypes.outline(texture)` submission
       metadata for the base body, and the vanilla-specific invisible-glowing
       sheep wool and slime outer overlay submissions are also recorded as
-      `RenderTypes.outline(...)`; snow-golem carved-pumpkin and mooshroom mushroom
-      block attachments now record outline-only metadata for their vanilla
-      `submitOnlyOutline` path while skipping ordinary block-quad baking.
+      `RenderTypes.outline(...)`; entity-attached block-model layers carry the
+      parent entity light with vanilla no-overlay, and snow-golem carved-pumpkin
+      / mooshroom mushroom block attachments now record outline-only metadata for
+      their vanilla `submitOnlyOutline` path while skipping ordinary block-quad
+      baking.
       `EntityRenderState.outlineColor` is now projected from the scoreboard team
       color used by `Entity.getTeamColor()` (ordinary entities by UUID scoreboard
       name, players by GameProfile name) and recorded on texture-backed
@@ -1256,8 +1258,8 @@ When an agent does any of the following, update this file in the same slice:
     `y += 5` (`ENDERMAN_HEAD_CHILDREN_CREEPY`, so the outer head layer keeps its world
     position as the inner head opens downward) — both gated on the projected
     `enderman_carrying`/`enderman_creepy`. The held block's own block-model render is
-    implemented through the entity-attached block-model path; only the creepy render jitter stays
-    deferred. The iron golem
+    implemented through the entity-attached block-model path, carrying the parent entity light and
+    vanilla no-overlay; only the creepy render jitter stays deferred. The iron golem
     (`emit_iron_golem_model` colored and `emit_iron_golem_textured_model` textured) uses
     `iron_golem_walk_pose`: `IronGolemModel` is a custom `EntityModel` whose
     `setupAnim` swings both the legs (`±1.5 * Mth.triangleWave(pos, 13) * speed`) and —
@@ -3085,9 +3087,9 @@ When an agent does any of the following, update this file in the same slice:
       `enderman_eyes.png` submit when only the base enderman texture is atlas-backed,
       suppressing only folded eyes geometry. The held block's own
       block-model render is implemented through `CarriedBlockLayer`'s vanilla root
-      transform. Enderman base/eyes light and overlay metadata are covered; the
-      carried-block per-entity light hookup remains an entity-attached block-model
-      follow-up, and the creepy render jitter remains unsupported
+      transform and now carries the parent entity light with vanilla
+      `OverlayTexture.NO_OVERLAY`. Enderman base/eyes light and overlay metadata
+      are covered; the creepy render jitter remains unsupported
     - iron golem entities as renderer-owned vanilla 26.1
       `IronGolemModel.createBodyLayer()` geometry, including its 128x128 body
       layer, baked `CubeDeformation(0.5F)` lower-body cube, and the official

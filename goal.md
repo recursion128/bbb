@@ -1195,9 +1195,9 @@ blocker。
 - Enderman：
   - [x] 旧的 broad lighting wording 已收窄：base `entityCutout` 与 eyes
     `RenderTypes.eyes` submission light/overlay metadata 已由 renderer tests
-    pin 住；held-block root transform 已接 `CarriedBlockLayer` 对应路径，剩余
-    per-entity carried-block light hookup 归 entity-attached block-model follow-up，
-    creepy render jitter 仍为 P1 renderer 行为。
+    pin 住；held-block root transform 已接 `CarriedBlockLayer` 对应路径，且
+    entity-attached block-model bake 已携带 parent entity light / no-overlay；
+    剩余 creepy render jitter 仍为 P1 renderer 行为。
 - Minecart：
   - [x] 旧的 broad lighting wording 已收窄：minecart body `entityCutout`
     submission light/overlay metadata 已由 renderer tests pin 住；剩余只随

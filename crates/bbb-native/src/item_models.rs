@@ -14,7 +14,7 @@ use std::{
 use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
 use bbb_protocol::packets::{EquipmentSlot, ItemStackSummary};
 use bbb_renderer::{
-    bake_generated_item_quads, bake_item_model_mesh, bake_item_model_meshes_with_light,
+    bake_generated_item_quads, bake_item_model_mesh_with_light, bake_item_model_meshes_with_light,
     copper_golem_antenna_block_transform, copper_golem_hand_attach_transform,
     custom_head_item_transform, dolphin_carried_item_transform, enderman_carried_block_transform,
     fox_held_item_transform, humanoid_hand_attach_transform, iron_golem_flower_block_transform,
@@ -69,7 +69,14 @@ struct EntityBlockAttachment {
     block_id: Cow<'static, str>,
     properties: BTreeMap<String, String>,
     transform: Mat4,
+    light: [f32; 2],
     outline_only: bool,
+}
+
+fn entity_render_state_shader_light(instance: &EntityModelInstance) -> [f32; 2] {
+    let block = (instance.render_state.light_coords >> 4) & 0xF;
+    let sky = (instance.render_state.light_coords >> 20) & 0xF;
+    [block as f32 / 15.0, sky as f32 / 15.0]
 }
 
 /// Bakes entity-attached block-model layers that sample the blocks atlas. This is the block-model
@@ -97,7 +104,11 @@ pub(crate) fn entity_block_models(
             continue;
         };
         if !quads.is_empty() {
-            meshes.push(bake_item_model_mesh(&quads, attachment.transform));
+            meshes.push(bake_item_model_mesh_with_light(
+                &quads,
+                attachment.transform,
+                attachment.light,
+            ));
         }
     }
     meshes
@@ -115,6 +126,7 @@ fn entity_block_attachments(
                 block_id: Cow::Borrowed(CARVED_PUMPKIN_BLOCK_ID),
                 properties: carved_pumpkin_default_properties(),
                 transform,
+                light: entity_render_state_shader_light(instance),
                 outline_only: entity_block_attachment_outline_only(instance),
             });
         }
@@ -123,6 +135,7 @@ fn entity_block_attachments(
                 block_id: Cow::Borrowed(POPPY_BLOCK_ID),
                 properties: poppy_default_properties(),
                 transform,
+                light: entity_render_state_shader_light(instance),
                 outline_only: false,
             });
         }
@@ -132,6 +145,7 @@ fn entity_block_attachments(
                     block_id: Cow::Owned(block_state.name),
                     properties: block_state.properties,
                     transform,
+                    light: entity_render_state_shader_light(instance),
                     outline_only: false,
                 });
             }
@@ -142,6 +156,7 @@ fn entity_block_attachments(
                     block_id: Cow::Borrowed(mooshroom_mushroom_block_id(variant)),
                     properties: mooshroom_mushroom_default_properties(),
                     transform,
+                    light: entity_render_state_shader_light(instance),
                     outline_only: entity_block_attachment_outline_only(instance),
                 });
             }
@@ -181,6 +196,7 @@ fn copper_golem_antenna_block_attachment_from_stack(
         block_id: Cow::Owned(block_id.to_string()),
         properties: stack.component_patch.block_state_properties.clone(),
         transform,
+        light: entity_render_state_shader_light(instance),
         outline_only: false,
     })
 }
@@ -1300,8 +1316,10 @@ mod tests {
     fn entity_block_attachments_collect_enderman_carried_block_from_world() {
         let entity_id = 41;
         let world = world_with_enderman_carried_grass_block(entity_id);
+        let light_coords = (6_u32 << 4) | (10_u32 << 20);
         let enderman = EntityModelInstance::enderman(entity_id, [0.0, 64.0, 0.0], 0.0)
-            .with_enderman_carrying(true);
+            .with_enderman_carrying(true)
+            .with_light_coords(light_coords);
 
         let attachments = entity_block_attachments(&[enderman], &world, None);
 
@@ -1311,6 +1329,7 @@ mod tests {
             attachments[0].properties,
             BTreeMap::from([("snowy".to_string(), "false".to_string())])
         );
+        assert_eq!(attachments[0].light, [6.0 / 15.0, 10.0 / 15.0]);
     }
 
     #[test]
