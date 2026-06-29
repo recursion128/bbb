@@ -684,7 +684,26 @@ pub(crate) fn create_entity_model_textured_pipeline(
         ENTITY_MODEL_TEXTURED_SHADER,
         Some(wgpu::BlendState::REPLACE),
         true,
-        None,
+        ENTITY_MODEL_SURFACE_NO_CULL_MODE,
+    )
+}
+
+pub(crate) fn create_entity_model_textured_cull_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_entity_model_textured_pipeline_with_depth(
+        device,
+        format,
+        bind_group_layout,
+        Some(lightmap_bind_group_layout),
+        "bbb-entity-model-textured-cull",
+        ENTITY_MODEL_TEXTURED_SHADER,
+        Some(wgpu::BlendState::REPLACE),
+        true,
+        ENTITY_MODEL_SURFACE_CULL_MODE,
     )
 }
 
@@ -769,7 +788,26 @@ pub(crate) fn create_entity_model_translucent_pipeline(
         ENTITY_MODEL_TEXTURED_SHADER,
         Some(wgpu::BlendState::ALPHA_BLENDING),
         true,
-        None,
+        ENTITY_MODEL_SURFACE_NO_CULL_MODE,
+    )
+}
+
+pub(crate) fn create_entity_model_translucent_cull_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_entity_model_textured_pipeline_with_depth(
+        device,
+        format,
+        bind_group_layout,
+        Some(lightmap_bind_group_layout),
+        "bbb-entity-model-translucent-cull",
+        ENTITY_MODEL_TEXTURED_SHADER,
+        Some(wgpu::BlendState::ALPHA_BLENDING),
+        true,
+        ENTITY_MODEL_SURFACE_CULL_MODE,
     )
 }
 
@@ -789,6 +827,8 @@ const ENTITY_MODEL_ADDITIVE_BLEND: wgpu::BlendState = wgpu::BlendState {
 };
 
 const ENTITY_MODEL_OUTLINE_BLEND: Option<wgpu::BlendState> = None;
+const ENTITY_MODEL_SURFACE_NO_CULL_MODE: Option<wgpu::Face> = None;
+const ENTITY_MODEL_SURFACE_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
 const ENTITY_MODEL_OUTLINE_NO_CULL_MODE: Option<wgpu::Face> = None;
 const ENTITY_MODEL_OUTLINE_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
 
@@ -1068,6 +1108,11 @@ impl Renderer {
                 meshes.cutout,
                 "bbb-entity-model-textured",
             );
+            self.entity_model_textured_cull_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
+                &self.device,
+                meshes.cutout_cull,
+                "bbb-entity-model-textured-cull",
+            );
             self.entity_model_eyes_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
                 &self.device,
                 meshes.eyes,
@@ -1094,11 +1139,23 @@ impl Renderer {
                     meshes.item_entity_translucent,
                     "bbb-entity-model-item-entity-translucent",
                 );
+            self.entity_model_item_entity_translucent_cull_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.item_entity_translucent_cull,
+                    "bbb-entity-model-item-entity-translucent-cull",
+                );
             self.entity_dynamic_player_skin_cutout_mesh =
                 create_entity_model_textured_mesh_gpu_from_mesh(
                     &self.device,
                     meshes.dynamic_player_skin_cutout,
                     "bbb-entity-dynamic-player-skin-cutout",
+                );
+            self.entity_dynamic_player_skin_cutout_cull_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.dynamic_player_skin_cutout_cull,
+                    "bbb-entity-dynamic-player-skin-cutout-cull",
                 );
             self.entity_dynamic_player_skin_translucent_mesh =
                 create_entity_model_textured_mesh_gpu_from_mesh(
@@ -1112,11 +1169,23 @@ impl Renderer {
                     meshes.dynamic_player_skin_item_entity_translucent,
                     "bbb-entity-dynamic-player-skin-item-entity-translucent",
                 );
+            self.entity_dynamic_player_skin_item_entity_translucent_cull_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.dynamic_player_skin_item_entity_translucent_cull,
+                    "bbb-entity-dynamic-player-skin-item-entity-translucent-cull",
+                );
             self.entity_dynamic_player_texture_cutout_mesh =
                 create_entity_model_textured_mesh_gpu_from_mesh(
                     &self.device,
                     meshes.dynamic_player_texture_cutout,
                     "bbb-entity-dynamic-player-texture-cutout",
+                );
+            self.entity_dynamic_player_texture_cutout_cull_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.dynamic_player_texture_cutout_cull,
+                    "bbb-entity-dynamic-player-texture-cutout-cull",
                 );
             self.entity_dynamic_player_texture_translucent_mesh =
                 create_entity_model_textured_mesh_gpu_from_mesh(
@@ -1130,6 +1199,12 @@ impl Renderer {
                     meshes.dynamic_player_texture_item_entity_translucent,
                     "bbb-entity-dynamic-player-texture-item-entity-translucent",
                 );
+            self.entity_dynamic_player_texture_item_entity_translucent_cull_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.dynamic_player_texture_item_entity_translucent_cull,
+                    "bbb-entity-dynamic-player-texture-item-entity-translucent-cull",
+                );
             self.entity_model_scroll_mesh = create_entity_model_scroll_mesh_gpu_from_mesh(
                 &self.device,
                 meshes.scroll,
@@ -1142,17 +1217,23 @@ impl Renderer {
             );
         } else {
             self.entity_model_textured_mesh = None;
+            self.entity_model_textured_cull_mesh = None;
             self.entity_model_translucent_mesh = None;
             self.entity_model_item_entity_translucent_mesh = None;
+            self.entity_model_item_entity_translucent_cull_mesh = None;
             self.entity_model_eyes_mesh = None;
             self.entity_model_outline_mesh = None;
             self.entity_model_outline_cull_mesh = None;
             self.entity_dynamic_player_skin_cutout_mesh = None;
+            self.entity_dynamic_player_skin_cutout_cull_mesh = None;
             self.entity_dynamic_player_skin_translucent_mesh = None;
             self.entity_dynamic_player_skin_item_entity_translucent_mesh = None;
+            self.entity_dynamic_player_skin_item_entity_translucent_cull_mesh = None;
             self.entity_dynamic_player_texture_cutout_mesh = None;
+            self.entity_dynamic_player_texture_cutout_cull_mesh = None;
             self.entity_dynamic_player_texture_translucent_mesh = None;
             self.entity_dynamic_player_texture_item_entity_translucent_mesh = None;
+            self.entity_dynamic_player_texture_item_entity_translucent_cull_mesh = None;
             self.entity_model_scroll_mesh = None;
             self.entity_model_scroll_additive_mesh = None;
         }
@@ -1161,10 +1242,16 @@ impl Renderer {
             self.entity_model_textured_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
+            self.entity_model_textured_cull_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
             self.entity_model_translucent_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_item_entity_translucent_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_model_item_entity_translucent_cull_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_eyes_mesh
@@ -1179,19 +1266,31 @@ impl Renderer {
             self.entity_dynamic_player_skin_cutout_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
+            self.entity_dynamic_player_skin_cutout_cull_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
             self.entity_dynamic_player_skin_translucent_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_dynamic_player_skin_item_entity_translucent_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
+            self.entity_dynamic_player_skin_item_entity_translucent_cull_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
             self.entity_dynamic_player_texture_cutout_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_dynamic_player_texture_cutout_cull_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_dynamic_player_texture_translucent_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_dynamic_player_texture_item_entity_translucent_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_dynamic_player_texture_item_entity_translucent_cull_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_scroll_mesh
@@ -1868,6 +1967,7 @@ mod tests {
     use super::{
         ENTITY_MODEL_OUTLINE_BLEND, ENTITY_MODEL_OUTLINE_CULL_MODE,
         ENTITY_MODEL_OUTLINE_NO_CULL_MODE, ENTITY_MODEL_OUTLINE_SHADER,
+        ENTITY_MODEL_SURFACE_CULL_MODE, ENTITY_MODEL_SURFACE_NO_CULL_MODE,
     };
 
     #[test]
@@ -1900,5 +2000,11 @@ mod tests {
     fn entity_model_outline_pipelines_represent_vanilla_cull_modes() {
         assert_eq!(ENTITY_MODEL_OUTLINE_NO_CULL_MODE, None);
         assert_eq!(ENTITY_MODEL_OUTLINE_CULL_MODE, Some(wgpu::Face::Back));
+    }
+
+    #[test]
+    fn entity_model_surface_pipelines_represent_vanilla_cull_modes() {
+        assert_eq!(ENTITY_MODEL_SURFACE_NO_CULL_MODE, None);
+        assert_eq!(ENTITY_MODEL_SURFACE_CULL_MODE, Some(wgpu::Face::Back));
     }
 }

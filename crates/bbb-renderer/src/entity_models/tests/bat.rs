@@ -130,10 +130,11 @@ fn bat_textured_mesh_uses_vanilla_geometry_and_animates() {
     assert_bat_base_submission(&meshes, base);
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
-    assert_eq!(meshes.cutout.cutout_faces, 54);
-    assert_eq!(meshes.cutout.vertices.len(), 216);
+    assert!(meshes.cutout.vertices.is_empty());
+    assert_eq!(meshes.cutout_cull.cutout_faces, 54);
+    assert_eq!(meshes.cutout_cull.vertices.len(), 216);
     assert!(meshes
-        .cutout
+        .cutout_cull
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
@@ -141,10 +142,10 @@ fn bat_textured_mesh_uses_vanilla_geometry_and_animates() {
     // The looping flap re-poses the wings as the age advances and repeats every 10 ticks.
     let later = entity_model_textured_meshes(&[base.with_age_in_ticks(3.0)], &atlas);
     assert_bat_base_submission(&later, base.with_age_in_ticks(3.0));
-    assert_ne!(meshes.cutout.vertices, later.cutout.vertices);
+    assert_ne!(meshes.cutout_cull.vertices, later.cutout_cull.vertices);
     let one_cycle = entity_model_textured_meshes(&[base.with_age_in_ticks(10.0)], &atlas);
     assert_bat_base_submission(&one_cycle, base.with_age_in_ticks(10.0));
-    assert_eq!(meshes.cutout.vertices, one_cycle.cutout.vertices);
+    assert_eq!(meshes.cutout_cull.vertices, one_cycle.cutout_cull.vertices);
 }
 
 #[test]
@@ -207,9 +208,12 @@ fn bat_textured_mesh_hangs_upside_down_when_resting() {
     let resting_instance = base.with_bat_resting(true);
     let resting = entity_model_textured_meshes(&[resting_instance], &atlas);
     assert_bat_base_submission(&resting, resting_instance);
-    assert_eq!(flying.cutout.vertices.len(), resting.cutout.vertices.len());
+    assert_eq!(
+        flying.cutout_cull.vertices.len(),
+        resting.cutout_cull.vertices.len()
+    );
     assert_ne!(
-        flying.cutout.vertices, resting.cutout.vertices,
+        flying.cutout_cull.vertices, resting.cutout_cull.vertices,
         "a resting bat hangs in a different pose"
     );
 
@@ -219,7 +223,7 @@ fn bat_textured_mesh_hangs_upside_down_when_resting() {
     );
     assert_bat_base_submission(&resting_later, resting_instance.with_age_in_ticks(3.0));
     assert_eq!(
-        resting.cutout.vertices, resting_later.cutout.vertices,
+        resting.cutout_cull.vertices, resting_later.cutout_cull.vertices,
         "the resting pose holds still"
     );
 
@@ -229,7 +233,7 @@ fn bat_textured_mesh_hangs_upside_down_when_resting() {
     );
     assert_bat_base_submission(&resting_look, resting_instance.with_head_look(60.0, 0.0));
     assert_ne!(
-        resting.cutout.vertices, resting_look.cutout.vertices,
+        resting.cutout_cull.vertices, resting_look.cutout_cull.vertices,
         "a resting bat turns its head to look"
     );
 }

@@ -215,11 +215,12 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
     ];
 
     assert_eq!(cases.len(), EntityModelLayerRenderType::ALL.len());
-    for (render_type, vanilla_name, bucket, affects_outline, outline_cull, has_blending) in cases {
+    for (render_type, vanilla_name, bucket, affects_outline, surface_cull, has_blending) in cases {
         assert_eq!(render_type.vanilla_name(), vanilla_name);
         assert_eq!(render_type.mesh_bucket(), bucket);
         assert_eq!(render_type.affects_outline(), affects_outline);
-        assert_eq!(render_type.outline_cull(), outline_cull);
+        assert_eq!(render_type.surface_cull(), surface_cull);
+        assert_eq!(render_type.outline_cull(), surface_cull);
         assert_eq!(render_type.has_blending(), has_blending);
     }
 }
@@ -257,8 +258,8 @@ fn texture_backed_blended_model_uploads_sort_by_order_then_camera_distance() {
         Some([0.0, 64.0, 0.0]),
     );
     assert_eq!(
-        near_only.item_entity_translucent.vertices.len(),
-        far_only.item_entity_translucent.vertices.len()
+        near_only.item_entity_translucent_cull.vertices.len(),
+        far_only.item_entity_translucent_cull.vertices.len()
     );
 
     let sorted_from_origin = entity_model_textured_meshes_with_dynamic_textures_for_camera(
@@ -276,10 +277,10 @@ fn texture_backed_blended_model_uploads_sort_by_order_then_camera_distance() {
             .x,
         near.position[0]
     );
-    let far_vertex_count = far_only.item_entity_translucent.vertices.len();
+    let far_vertex_count = far_only.item_entity_translucent_cull.vertices.len();
     assert_eq!(
-        &sorted_from_origin.item_entity_translucent.vertices[..far_vertex_count],
-        far_only.item_entity_translucent.vertices.as_slice()
+        &sorted_from_origin.item_entity_translucent_cull.vertices[..far_vertex_count],
+        far_only.item_entity_translucent_cull.vertices.as_slice()
     );
 
     let sorted_from_positive_x = entity_model_textured_meshes_with_dynamic_textures_for_camera(
@@ -289,10 +290,10 @@ fn texture_backed_blended_model_uploads_sort_by_order_then_camera_distance() {
         None,
         Some([20.0, 64.0, 0.0]),
     );
-    let near_vertex_count = near_only.item_entity_translucent.vertices.len();
+    let near_vertex_count = near_only.item_entity_translucent_cull.vertices.len();
     assert_eq!(
-        &sorted_from_positive_x.item_entity_translucent.vertices[..near_vertex_count],
-        near_only.item_entity_translucent.vertices.as_slice()
+        &sorted_from_positive_x.item_entity_translucent_cull.vertices[..near_vertex_count],
+        near_only.item_entity_translucent_cull.vertices.as_slice()
     );
 }
 

@@ -225,6 +225,19 @@ impl Renderer {
                 entity_model_draw_calls += 1;
             }
             if let (Some(mesh), Some(atlas)) = (
+                &self.entity_model_textured_cull_mesh,
+                &self.entity_model_texture_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_textured_cull_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                entity_model_draw_calls += 1;
+            }
+            if let (Some(mesh), Some(atlas)) = (
                 &self.entity_model_textured_mesh,
                 &self.entity_model_texture_atlas,
             ) {
@@ -238,10 +251,36 @@ impl Renderer {
                 entity_model_draw_calls += 1;
             }
             if let (Some(mesh), Some(atlas)) = (
+                &self.entity_dynamic_player_skin_cutout_cull_mesh,
+                &self.entity_dynamic_player_skin_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_textured_cull_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                entity_model_draw_calls += 1;
+            }
+            if let (Some(mesh), Some(atlas)) = (
                 &self.entity_dynamic_player_skin_cutout_mesh,
                 &self.entity_dynamic_player_skin_atlas,
             ) {
                 pass.set_pipeline(&self.entity_model_textured_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                entity_model_draw_calls += 1;
+            }
+            if let (Some(mesh), Some(atlas)) = (
+                &self.entity_dynamic_player_texture_cutout_cull_mesh,
+                &self.entity_dynamic_player_texture_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_textured_cull_pipeline);
                 pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
@@ -1256,6 +1295,19 @@ impl Renderer {
             *entity_model_draw_calls += 1;
         }
         if let (Some(mesh), Some(atlas)) = (
+            &self.entity_model_item_entity_translucent_cull_mesh,
+            &self.entity_model_texture_atlas,
+        ) {
+            pass.set_pipeline(&self.entity_model_translucent_cull_pipeline);
+            *pipeline_switches += 1;
+            pass.set_bind_group(0, &atlas.bind_group, &[]);
+            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+            pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+            *entity_model_draw_calls += 1;
+        }
+        if let (Some(mesh), Some(atlas)) = (
             &self.entity_dynamic_player_skin_item_entity_translucent_mesh,
             &self.entity_dynamic_player_skin_atlas,
         ) {
@@ -1269,10 +1321,36 @@ impl Renderer {
             *entity_model_draw_calls += 1;
         }
         if let (Some(mesh), Some(atlas)) = (
+            &self.entity_dynamic_player_skin_item_entity_translucent_cull_mesh,
+            &self.entity_dynamic_player_skin_atlas,
+        ) {
+            pass.set_pipeline(&self.entity_model_translucent_cull_pipeline);
+            *pipeline_switches += 1;
+            pass.set_bind_group(0, &atlas.bind_group, &[]);
+            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+            pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+            *entity_model_draw_calls += 1;
+        }
+        if let (Some(mesh), Some(atlas)) = (
             &self.entity_dynamic_player_texture_item_entity_translucent_mesh,
             &self.entity_dynamic_player_texture_atlas,
         ) {
             pass.set_pipeline(&self.entity_model_translucent_pipeline);
+            *pipeline_switches += 1;
+            pass.set_bind_group(0, &atlas.bind_group, &[]);
+            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+            pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+            *entity_model_draw_calls += 1;
+        }
+        if let (Some(mesh), Some(atlas)) = (
+            &self.entity_dynamic_player_texture_item_entity_translucent_cull_mesh,
+            &self.entity_dynamic_player_texture_atlas,
+        ) {
+            pass.set_pipeline(&self.entity_model_translucent_cull_pipeline);
             *pipeline_switches += 1;
             pass.set_bind_group(0, &atlas.bind_group, &[]);
             pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
@@ -1484,9 +1562,19 @@ mod tests {
                 "textured entity",
             ),
             (
+                "pass.set_pipeline(&self.entity_model_textured_cull_pipeline)",
+                "pass.set_bind_group(0, &atlas.bind_group, &[])",
+                "textured cull entity",
+            ),
+            (
                 "pass.set_pipeline(&self.entity_model_translucent_pipeline)",
                 "pass.set_bind_group(0, &atlas.bind_group, &[])",
                 "translucent entity",
+            ),
+            (
+                "pass.set_pipeline(&self.entity_model_translucent_cull_pipeline)",
+                "pass.set_bind_group(0, &atlas.bind_group, &[])",
+                "translucent cull entity",
             ),
             (
                 "pass.set_pipeline(&self.entity_model_scroll_pipeline)",
@@ -2068,10 +2156,18 @@ mod tests {
         assert!(
             source[item_helper..main_helper].contains("entity_model_item_entity_translucent_mesh")
                 && source[item_helper..main_helper]
+                    .contains("entity_model_item_entity_translucent_cull_mesh")
+                && source[item_helper..main_helper]
                     .contains("entity_dynamic_player_skin_item_entity_translucent_mesh")
                 && source[item_helper..main_helper]
-                    .contains("entity_dynamic_player_texture_item_entity_translucent_mesh"),
-            "static and dynamic item-target translucent entity meshes draw through the item_entity target helper"
+                    .contains("entity_dynamic_player_skin_item_entity_translucent_cull_mesh")
+                && source[item_helper..main_helper]
+                    .contains("entity_dynamic_player_texture_item_entity_translucent_mesh")
+                && source[item_helper..main_helper]
+                    .contains("entity_dynamic_player_texture_item_entity_translucent_cull_mesh")
+                && source[item_helper..main_helper]
+                    .contains("pass.set_pipeline(&self.entity_model_translucent_cull_pipeline)"),
+            "static and dynamic item-target translucent entity meshes draw through the item_entity target helper with the cull pipeline where vanilla culls"
         );
         assert!(
             !source[main_helper..tests_mod].contains("entity_model_item_entity_translucent_mesh"),

@@ -137,9 +137,10 @@ fn arrow_textured_render_matches_vanilla_renderer() {
     let meshes = entity_model_textured_meshes(&[instance], &atlas);
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
-    assert!(!meshes.cutout.vertices.is_empty());
+    assert!(meshes.cutout.vertices.is_empty());
+    assert!(!meshes.cutout_cull.vertices.is_empty());
     assert!(meshes
-        .cutout
+        .cutout_cull
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
@@ -159,7 +160,7 @@ fn arrow_textured_render_matches_vanilla_renderer() {
     assert_eq!(submit.overlay, [0.0, 10.0]);
     assert_ne!(submit.overlay, instance.render_state.overlay_coords());
     assert!(meshes
-        .cutout
+        .cutout_cull
         .vertices
         .iter()
         .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
@@ -167,15 +168,15 @@ fn arrow_textured_render_matches_vanilla_renderer() {
     let shaken_meshes = entity_model_textured_meshes(&[instance.with_arrow_shake(4.5)], &atlas);
     assert_eq!(shaken_meshes.submissions[0].transform, submit.transform);
     assert_eq!(
-        shaken_meshes.cutout.vertices.len(),
-        meshes.cutout.vertices.len()
+        shaken_meshes.cutout_cull.vertices.len(),
+        meshes.cutout_cull.vertices.len()
     );
     assert!(
         meshes
-            .cutout
+            .cutout_cull
             .vertices
             .iter()
-            .zip(&shaken_meshes.cutout.vertices)
+            .zip(&shaken_meshes.cutout_cull.vertices)
             .any(|(base, shaken)| base.position != shaken.position),
         "impact shake should pose arrow geometry without changing the renderer root transform"
     );
@@ -208,13 +209,16 @@ fn glowing_arrow_outline_copy_uses_source_cull_bucket() {
     assert!(meshes.outline.vertices.is_empty());
     assert_eq!(
         meshes.outline_cull.vertices.len(),
-        meshes.cutout.vertices.len()
+        meshes.cutout_cull.vertices.len()
     );
     assert_eq!(
         meshes.outline_cull.indices.len(),
-        meshes.cutout.indices.len()
+        meshes.cutout_cull.indices.len()
     );
-    assert_eq!(meshes.outline_cull.cutout_faces, meshes.cutout.cutout_faces);
+    assert_eq!(
+        meshes.outline_cull.cutout_faces,
+        meshes.cutout_cull.cutout_faces
+    );
     let outline_tint = [
         0x33 as f32 / 255.0,
         0x66 as f32 / 255.0,

@@ -349,15 +349,17 @@ When an agent does any of the following, update this file in the same slice:
     texture buckets, scroll / additive scroll), and static-atlas `AFFECTS_OUTLINE`
     submissions with a non-zero outline color are now also copied into the outline
     bucket and drawn through an `entity_outline` target plus
-    `ENTITY_OUTLINE_BLIT`-shaped composite. Later GPU work should
-    preserve per-submission draw order across buckets, split currently-coalesced
-    render-type state such as `entityCutout*`, `entitySolid`,
-    `armorCutoutNoCull`, `entityTranslucent*`, `Eyes`, `waterMask`, and glint /
-    scroll variants into equivalent pipeline state, and reconcile
-    remaining target/post-chain render-graph sorting plus
-    full dynamic LightTexture / darkness-adjusted gamma / diffuse visual parity. The scroll GPU path
-    already separates vanilla `breezeWind` as lightmap-lit from emissive
-    additive `energySwirl`.
+    `ENTITY_OUTLINE_BLIT`-shaped composite. The surface path now also splits
+    vanilla cull-on entity render types (`entitySolid`, `entityCutoutCull`, and
+    `entityTranslucentCullItemTarget`) into static and dynamic texture cull
+    buckets drawn with back-face culling. Later GPU work should preserve
+    per-submission draw order across buckets, split remaining currently-coalesced
+    render-type state such as no-cull `entityCutout*`, `armorCutoutNoCull`,
+    `entityTranslucent*`, `Eyes`, `waterMask`, and glint / scroll variants into
+    equivalent pipeline state, and reconcile remaining target/post-chain
+    render-graph sorting plus full dynamic LightTexture / darkness-adjusted
+    gamma / diffuse visual parity. The scroll GPU path already separates
+    vanilla `breezeWind` as lightmap-lit from emissive additive `energySwirl`.
   - Entity outline target writes now use a dedicated vanilla-shaped
     `core/rendertype_outline` shader: texture alpha is only a zero-alpha discard
     mask, output color comes from the submitted `outlineColor` vertex tint, the
@@ -713,9 +715,10 @@ When an agent does any of the following, update this file in the same slice:
     `Lighting.setupLevel` default diffuse directions with `0.6` light power and
     `0.4` ambient. The textured shader now also mirrors vanilla
     `PER_FACE_LIGHTING` by selecting `normal` for front faces and `-normal` for
-    back faces, matching `entity.vsh`'s separate front/back diffuse colors for
-    no-cull entity pipelines; future GPU state work still needs to split cull and
-    no-cull surface buckets instead of folding them into one draw. Normal
+    back faces, matching `entity.vsh`'s separate front/back diffuse colors.
+    Surface buckets now also distinguish vanilla cull-on `entitySolid`,
+    `entityCutoutCull`, and `entityTranslucentCullItemTarget` draws from no-cull
+    entity surfaces. Normal
     transforms use vanilla `PoseStack.Pose` normal-matrix semantics, i.e. pose
     inverse-transpose plus normalization. The colored,
     textured, and `breezeWind` entity shaders now also use a vanilla-shaped
@@ -1558,6 +1561,9 @@ When an agent does any of the following, update this file in the same slice:
       `entityTranslucentCullItemTarget`, `Eyes`, `breezeWind`, and
       `energySwirl` stay distinct at the submission boundary even when the
       current backend can fold compatible output into shared mesh buffers.
+      Surface GPU buckets now split vanilla cull-on static and dynamic texture
+      draws for `entitySolid`, `entityCutoutCull`, and
+      `entityTranslucentCullItemTarget` from no-cull entity surface draws.
       Texture-backed invisible-but-visible-to-client living base bodies now
       override their base submission to `entityTranslucentCullItemTarget` with
       the vanilla `38/255` alpha before folding into the translucent mesh; layer

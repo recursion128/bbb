@@ -49,7 +49,8 @@ pub(crate) use gpu::{
     create_entity_model_eyes_pipeline, create_entity_model_outline_cull_pipeline,
     create_entity_model_outline_pipeline, create_entity_model_pipeline,
     create_entity_model_scroll_additive_pipeline, create_entity_model_scroll_pipeline,
-    create_entity_model_textured_pipeline, create_entity_model_translucent_pipeline,
+    create_entity_model_textured_cull_pipeline, create_entity_model_textured_pipeline,
+    create_entity_model_translucent_cull_pipeline, create_entity_model_translucent_pipeline,
 };
 pub(super) use gpu::{
     EntityDynamicPlayerSkinAtlasGpu, EntityDynamicPlayerTextureAtlasGpu, EntityModelMeshGpu,

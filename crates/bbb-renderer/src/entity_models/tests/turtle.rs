@@ -524,9 +524,9 @@ fn turtle_textured_mesh_uses_vanilla_geometry_and_animates() {
     assert_eq!(baby_submit.light, baby.render_state.shader_light());
     assert_eq!(baby_submit.overlay, baby.render_state.overlay_coords());
     assert_ne!(baby_submit.overlay, [0.0, 10.0]);
-    assert_eq!(baby_meshes.cutout.vertices.len(), 144);
+    assert_eq!(baby_meshes.cutout_cull.vertices.len(), 144);
     assert!(baby_meshes
-        .cutout
+        .cutout_cull
         .vertices
         .iter()
         .all(|vertex| vertex.light == baby_submit.light && vertex.overlay == baby_submit.overlay));

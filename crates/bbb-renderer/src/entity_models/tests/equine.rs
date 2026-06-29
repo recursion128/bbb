@@ -2023,8 +2023,8 @@ fn self_visible_invisible_horse_uses_translucent_base_and_skips_markings_layer()
     assert_eq!(base.overlay, instance.render_state.overlay_coords());
     assert!(meshes.cutout.vertices.is_empty());
     assert!(meshes.translucent.vertices.is_empty());
-    assert_eq!(meshes.item_entity_translucent.vertices.len(), 288);
-    assert_textured_vertices_match_submission(&meshes.item_entity_translucent.vertices, base);
+    assert_eq!(meshes.item_entity_translucent_cull.vertices.len(), 288);
+    assert_textured_vertices_match_submission(&meshes.item_entity_translucent_cull.vertices, base);
 }
 
 #[test]

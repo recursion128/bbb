@@ -405,8 +405,9 @@ fn player_deadmau5_ears_layer_records_vanilla_submission_and_geometry() {
     assert_ne!(ears_submit.overlay, body_submit.overlay);
     assert_eq!((ears_submit.order, ears_submit.submit_sequence), (0, 1));
 
-    assert_eq!(meshes.cutout.vertices.len(), 336);
-    let ears_vertices = &meshes.cutout.vertices[288..];
+    assert_eq!(meshes.cutout.vertices.len(), 288);
+    assert_eq!(meshes.cutout_cull.vertices.len(), 48);
+    let ears_vertices = &meshes.cutout_cull.vertices;
     assert_eq!(ears_vertices.len(), 48);
     assert!(ears_vertices.iter().all(|vertex| {
         vertex.tint == ears_submit.tint
@@ -466,7 +467,8 @@ fn ready_dynamic_player_skin_deadmau5_ears_use_dynamic_skin_atlas_submission() {
     );
     assert_eq!((ears_submit.order, ears_submit.submit_sequence), (0, 1));
     assert!(meshes.cutout.vertices.is_empty());
-    assert_eq!(meshes.dynamic_player_skin_cutout.vertices.len(), 336);
+    assert_eq!(meshes.dynamic_player_skin_cutout.vertices.len(), 288);
+    assert_eq!(meshes.dynamic_player_skin_cutout_cull.vertices.len(), 48);
 }
 
 #[test]
@@ -1056,8 +1058,8 @@ fn player_cape_layer_uses_dynamic_profile_texture_atlas_submission() {
     assert_eq!(cape_submit.overlay, [0.0, 10.0]);
     assert_ne!(cape_submit.overlay, body_submit.overlay);
     assert_eq!((cape_submit.order, cape_submit.submit_sequence), (0, 2));
-    assert_eq!(meshes.dynamic_player_texture_cutout.cutout_faces, 6);
-    assert_eq!(meshes.dynamic_player_texture_cutout.vertices.len(), 24);
+    assert_eq!(meshes.dynamic_player_texture_cutout_cull.cutout_faces, 6);
+    assert_eq!(meshes.dynamic_player_texture_cutout_cull.vertices.len(), 24);
     assert!(meshes
         .dynamic_player_texture_translucent
         .vertices
@@ -1238,9 +1240,9 @@ fn player_cape_layer_offsets_for_humanoid_chest_equipment() {
     assert_eq!(cape_submit.light, instance.render_state.shader_light());
     assert_eq!(cape_submit.overlay, [0.0, 10.0]);
     assert_ne!(cape_submit.overlay, instance.render_state.overlay_coords());
-    assert_eq!(meshes.dynamic_player_texture_cutout.vertices.len(), 24);
+    assert_eq!(meshes.dynamic_player_texture_cutout_cull.vertices.len(), 24);
     assert!(meshes
-        .dynamic_player_texture_cutout
+        .dynamic_player_texture_cutout_cull
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]

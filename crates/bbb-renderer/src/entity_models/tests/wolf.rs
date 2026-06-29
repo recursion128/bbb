@@ -159,10 +159,13 @@ fn wolf_textured_mesh_uses_vanilla_uvs_and_collar_tint() {
     );
     assert!(self_visible.cutout.vertices.is_empty());
     assert!(self_visible.translucent.vertices.is_empty());
-    assert_eq!(self_visible.item_entity_translucent.cutout_faces, 66);
-    assert_eq!(self_visible.item_entity_translucent.vertices.len(), 264);
+    assert_eq!(self_visible.item_entity_translucent_cull.cutout_faces, 66);
+    assert_eq!(
+        self_visible.item_entity_translucent_cull.vertices.len(),
+        264
+    );
     assert!(self_visible
-        .item_entity_translucent
+        .item_entity_translucent_cull
         .vertices
         .iter()
         .all(|vertex| vertex.tint == submit.tint
@@ -214,7 +217,7 @@ fn self_visible_invisible_wolf_submission_survives_missing_texture_atlas_entry()
     assert_eq!(submit.overlay, instance.render_state.overlay_coords());
     assert!(meshes.cutout.vertices.is_empty());
     assert!(meshes.translucent.vertices.is_empty());
-    assert!(meshes.item_entity_translucent.vertices.is_empty());
+    assert!(meshes.item_entity_translucent_cull.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
 }
 
@@ -1011,7 +1014,7 @@ fn invisible_wolf_body_armor_keeps_vanilla_layer_submissions() {
     assert_eq!(base.light, self_visible.render_state.shader_light());
     assert_eq!(base.overlay, self_visible.render_state.overlay_coords());
     assert!(!self_visible_meshes
-        .item_entity_translucent
+        .item_entity_translucent_cull
         .vertices
         .is_empty());
     assert_wolf_armor_submissions_for_invisible_state(

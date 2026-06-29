@@ -745,10 +745,13 @@ fn sheep_textured_mesh_uses_vanilla_uvs_tints_and_layer_visibility() {
     );
     assert!(self_visible.cutout.vertices.is_empty());
     assert!(self_visible.translucent.vertices.is_empty());
-    assert_eq!(self_visible.item_entity_translucent.cutout_faces, 36);
-    assert_eq!(self_visible.item_entity_translucent.vertices.len(), 144);
+    assert_eq!(self_visible.item_entity_translucent_cull.cutout_faces, 36);
+    assert_eq!(
+        self_visible.item_entity_translucent_cull.vertices.len(),
+        144
+    );
     assert!(self_visible
-        .item_entity_translucent
+        .item_entity_translucent_cull
         .vertices
         .iter()
         .all(|vertex| vertex.tint == submit.tint
