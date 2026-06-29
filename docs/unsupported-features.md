@@ -456,7 +456,8 @@ When an agent does any of the following, update this file in the same slice:
     lighting / darkness-adjusted gamma / diffuse, or later GPU state fidelity.
     None remains a narrow CPU submission graph blocker. The latest
     `rg residual` / `rg fallback` / `rg unsupported` rerun counts, including the
-    post-hide-lightning workflow audit, are tracked in `goal.md`.
+    post-hide-lightning and post-item-entity workflow audits, are tracked in
+    `goal.md`.
   - Replace proxies with full extraction from canonical world and pack data:
     - entity bounds
     - dropped-item icons (3D block/item model renderer in progress — see the

@@ -217,12 +217,17 @@ P0 visual 或 P1/P2/P3，而不是继续阻塞 pipeline closeout。当前 checkl
   `rg unsupported` 163 行；命中已按上述分类落账。
 - 2026-06-29 workflow-adjustment audit rerun：按当前执行顺序再次运行
   `rg residual`、`rg fallback`、`rg unsupported`，当前计数为
-  `rg residual` 50 行、`rg fallback` 526 行、`rg unsupported` 168 行。
+  `rg residual` 50 行、`rg fallback` 527 行、`rg unsupported` 168 行。
   新增命中来自本文件和 cloud follow-up 文档 wording；对照
   `docs/unsupported-features.md` 后未发现新的狭义 P0 pipeline blocker。
   stale ledger wording 仅保留历史迁移证据或已归入 P0 visual / P1/P2/P3。
   下一步不得继续无限补 P1 粒子 provider / 实体细节，除非 audit 证明其直接
   阻塞上面的 hard checklist。
+- 2026-06-29 item-entity LightTexture slice gate：`cargo fmt --all --check`、
+  `git diff --check`、`CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace`、
+  renderer/world/pack/native `RUSTFLAGS='-D warnings'` 检查均通过；native
+  wrapper 输出 `cargo_status=0`，`/tmp/bbb-native-test.log` 的 `^warning`
+  计数为 `0`。
 - 2026-06-28 closeout gate：狭义 pipeline checklist 在最终文档状态下通过
   `cargo fmt --all --check`、`git diff --check`、
   `CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace`、
