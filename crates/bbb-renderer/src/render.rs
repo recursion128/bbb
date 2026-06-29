@@ -24,6 +24,7 @@ const ENTITY_OUTLINE_BLUR_VERTICAL_PASS_LABEL: &str =
 const ENTITY_OUTLINE_BLIT_PASS_LABEL: &str = "bbb-native-entity-outline-blit-pass";
 const ENTITY_OUTLINE_COMPOSITE_PASS_LABEL: &str = "bbb-native-entity-outline-composite-pass";
 const CLOUDS_PASS_LABEL: &str = "bbb-native-clouds-pass";
+const TRANSLUCENT_TARGET_PASS_LABEL: &str = "bbb-native-translucent-target-pass";
 const TRANSPARENCY_COMBINE_PASS_LABEL: &str = "bbb-native-transparency-combine-pass";
 
 impl Renderer {
@@ -41,6 +42,7 @@ impl Renderer {
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
         let main_view = &self.main_target.view;
+        let translucent_view = &self.translucent_target.view;
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -478,19 +480,39 @@ impl Renderer {
             }
         }
 
-        if !self.terrain_translucent.is_empty() {
+        encoder.copy_texture_to_texture(
+            wgpu::ImageCopyTexture {
+                texture: &self.depth._texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::DepthOnly,
+            },
+            wgpu::ImageCopyTexture {
+                texture: &self.translucent_target.depth._texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::DepthOnly,
+            },
+            wgpu::Extent3d {
+                width: self.config.width.max(1),
+                height: self.config.height.max(1),
+                depth_or_array_layers: 1,
+            },
+        );
+
+        {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("bbb-native-terrain-translucent-pass"),
+                label: Some(TRANSLUCENT_TARGET_PASS_LABEL),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: main_view,
+                    view: translucent_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
                         store: wgpu::StoreOp::Store,
                     },
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.depth.view,
+                    view: &self.translucent_target.depth.view,
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Load,
                         store: wgpu::StoreOp::Store,
@@ -500,14 +522,16 @@ impl Renderer {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&self.terrain_translucent_pipeline);
-            pipeline_switches += 1;
-            pass.set_bind_group(0, &self.terrain_bind_group, &[]);
-            for mesh in &self.terrain_translucent {
-                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..mesh.index_count as u32, 0, 0..1);
-                translucent_draw_calls += 1;
+            if !self.terrain_translucent.is_empty() {
+                pass.set_pipeline(&self.terrain_translucent_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+                for mesh in &self.terrain_translucent {
+                    pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                    pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..mesh.index_count as u32, 0, 0..1);
+                    translucent_draw_calls += 1;
+                }
             }
         }
 
@@ -987,8 +1011,8 @@ mod tests {
             .map(|index| clouds + index)
             .expect("cloud pipeline is drawn in the cloud pass");
         let translucent = source
-            .find("label: Some(\"bbb-native-terrain-translucent-pass\")")
-            .expect("terrain translucent pass label is used");
+            .find("label: Some(TRANSLUCENT_TARGET_PASS_LABEL)")
+            .expect("translucent target pass label is used");
         let combine = source
             .find("label: Some(TRANSPARENCY_COMBINE_PASS_LABEL)")
             .expect("transparency combine pass label is used");
@@ -1022,10 +1046,51 @@ mod tests {
             "cloud mesh writes the renderer-owned clouds depth target"
         );
         assert!(
+            source[clouds..combine].contains("view: translucent_view"),
+            "translucent terrain writes the renderer-owned translucent color target"
+        );
+        assert!(
+            source[clouds..combine].contains("view: &self.translucent_target.depth.view"),
+            "translucent terrain writes the renderer-owned translucent depth target"
+        );
+        assert!(
             source[combine..hud].contains(
                 "pass.set_bind_group(0, &self.transparency_combine_bind_group.bind_group, &[])"
             ),
             "transparency combine samples the renderer-owned main/cloud targets"
+        );
+    }
+
+    #[test]
+    fn translucent_target_copies_main_depth_and_clears_color_before_draws() {
+        let source = include_str!("render.rs");
+        let copy_depth = source
+            .find("encoder.copy_texture_to_texture")
+            .expect("main depth is copied before translucent target rendering");
+        let target = source
+            .find("label: Some(TRANSLUCENT_TARGET_PASS_LABEL)")
+            .expect("translucent target pass label is used");
+        let terrain_pipeline = source[target..]
+            .find("pass.set_pipeline(&self.terrain_translucent_pipeline)")
+            .map(|index| target + index)
+            .expect("terrain translucent pipeline is drawn into the target");
+        let combine = source
+            .find("label: Some(TRANSPARENCY_COMBINE_PASS_LABEL)")
+            .expect("transparency combine pass label is used");
+
+        assert!(
+            copy_depth < target && target < terrain_pipeline && terrain_pipeline < combine,
+            "vanilla LevelRenderer.copyDepthFrom(main) happens before translucent target draws and post/transparency consumes it"
+        );
+        assert!(
+            source[copy_depth..target].contains("texture: &self.depth._texture")
+                && source[copy_depth..target]
+                    .contains("texture: &self.translucent_target.depth._texture"),
+            "translucent target depth is copied from the renderer-owned main depth texture"
+        );
+        assert!(
+            source[target..terrain_pipeline].contains("load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)"),
+            "translucent target color is cleared every frame so missing translucent meshes do not reuse stale color"
         );
     }
 
@@ -1128,8 +1193,8 @@ mod tests {
             .find("label: Some(ENTITY_OUTLINE_COMPOSITE_PASS_LABEL)")
             .expect("entity outline composite pass label is used");
         let translucent = source
-            .find("label: Some(\"bbb-native-terrain-translucent-pass\")")
-            .expect("terrain translucent pass label is used");
+            .find("label: Some(TRANSLUCENT_TARGET_PASS_LABEL)")
+            .expect("translucent target pass label is used");
         assert!(
             target < sobel
                 && sobel < blur_horizontal

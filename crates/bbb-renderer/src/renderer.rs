@@ -65,9 +65,9 @@ use crate::{
     },
     terrain,
     transparency::{
-        create_main_target, create_transparency_combine_bind_group,
+        create_main_target, create_translucent_target, create_transparency_combine_bind_group,
         create_transparency_combine_bind_group_layout, create_transparency_combine_pipeline,
-        MainTarget, TransparencyCombineBindGroup,
+        MainTarget, TranslucentTarget, TransparencyCombineBindGroup,
     },
 };
 
@@ -80,6 +80,7 @@ pub struct Renderer {
     pub(super) clear: ClearColor,
     pub(super) counters: RendererCounters,
     pub(super) main_target: MainTarget,
+    pub(super) translucent_target: TranslucentTarget,
     pub(super) transparency_combine_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) transparency_combine_bind_group: TransparencyCombineBindGroup,
     pub(super) transparency_combine_pipeline: wgpu::RenderPipeline,
@@ -378,6 +379,8 @@ impl Renderer {
         surface.configure(&device, &config);
         let main_target = create_main_target(&device, config.format, config.width, config.height);
         let depth = create_depth_target(&device, config.width, config.height);
+        let translucent_target =
+            create_translucent_target(&device, config.format, config.width, config.height);
         let terrain_bind_group_layout = create_terrain_bind_group_layout(&device);
         let hud_bind_group_layout = create_hud_bind_group_layout(&device);
         let camera_buffer = create_camera_buffer(&device);
@@ -488,6 +491,7 @@ impl Renderer {
             &transparency_combine_bind_group_layout,
             &main_target,
             &depth,
+            &translucent_target,
             &cloud_target,
         );
         let transparency_combine_pipeline = create_transparency_combine_pipeline(
@@ -524,6 +528,7 @@ impl Renderer {
                 ..RendererCounters::default()
             },
             main_target,
+            translucent_target,
             transparency_combine_bind_group_layout,
             transparency_combine_bind_group,
             transparency_combine_pipeline,
@@ -766,6 +771,12 @@ impl Renderer {
             self.config.height,
         );
         self.depth = create_depth_target(&self.device, self.config.width, self.config.height);
+        self.translucent_target = create_translucent_target(
+            &self.device,
+            self.config.format,
+            self.config.width,
+            self.config.height,
+        );
         self.entity_outline_target = create_entity_outline_target(
             &self.device,
             &self.entity_outline_bind_group_layout,
@@ -784,6 +795,7 @@ impl Renderer {
             &self.transparency_combine_bind_group_layout,
             &self.main_target,
             &self.depth,
+            &self.translucent_target,
             &self.cloud_target,
         );
         self.update_camera();

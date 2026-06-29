@@ -6,8 +6,10 @@ use wgpu::util::DeviceExt;
 use crate::{camera::CameraUniform, terrain};
 
 pub(super) const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
-pub(super) const DEPTH_TARGET_USAGE: wgpu::TextureUsages =
-    wgpu::TextureUsages::RENDER_ATTACHMENT.union(wgpu::TextureUsages::TEXTURE_BINDING);
+pub(super) const DEPTH_TARGET_USAGE: wgpu::TextureUsages = wgpu::TextureUsages::RENDER_ATTACHMENT
+    .union(wgpu::TextureUsages::TEXTURE_BINDING)
+    .union(wgpu::TextureUsages::COPY_SRC)
+    .union(wgpu::TextureUsages::COPY_DST);
 
 const TERRAIN_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 8] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x2, 4 => Float32x3, 5 => Float32, 6 => Float32, 7 => Sint32];
 const CAMERA_BIND_GROUP_VISIBILITY: wgpu::ShaderStages = wgpu::ShaderStages::VERTEX_FRAGMENT;
@@ -577,6 +579,8 @@ mod tests {
     fn depth_targets_are_bindable_for_vanilla_transparency_depth_inputs() {
         assert!(DEPTH_TARGET_USAGE.contains(wgpu::TextureUsages::RENDER_ATTACHMENT));
         assert!(DEPTH_TARGET_USAGE.contains(wgpu::TextureUsages::TEXTURE_BINDING));
+        assert!(DEPTH_TARGET_USAGE.contains(wgpu::TextureUsages::COPY_SRC));
+        assert!(DEPTH_TARGET_USAGE.contains(wgpu::TextureUsages::COPY_DST));
         assert_eq!(
             DEPTH_FORMAT.sample_type(None, None),
             Some(wgpu::TextureSampleType::Depth),
