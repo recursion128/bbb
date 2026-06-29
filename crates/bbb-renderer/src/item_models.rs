@@ -9,8 +9,9 @@
 //! transforms. `uvs` are atlas-absolute into the shared block/item atlas. `tint` is the per-face color
 //! (biome/dye tint, or white), `normal` is the baked quad normal transformed like vanilla
 //! `putBakedQuad`, `light` is the packed block/sky light projected to shader-space, and `overlay` is the
-//! submitted vanilla `OverlayTexture` coordinate. The baked vertex color keeps the submitted tint; the
-//! shader applies vanilla-shaped normal diffuse, light, and overlay.
+//! submitted vanilla `OverlayTexture` coordinate carried by item submits. The baked vertex color keeps
+//! the submitted tint; the shader applies vanilla-shaped normal diffuse and light. Vanilla item
+//! pipelines carry UV1 in the vertex format but do not sample the overlay texture.
 
 use glam::{Mat4, Vec3};
 
@@ -360,10 +361,10 @@ fn item_model_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
 /// `view_proj` uniform `@0`, atlas texture `@1`, sampler `@2`), multiplies by the baked vertex color
 /// (the submitted item tint), applies vanilla-shaped `minecraft_mix_light` diffuse from the submitted
 /// normal and the camera's current `Lighting.Entry` light directions, samples the renderer-owned
-/// dynamic LightTexture using the submitted block/sky light, then applies vanilla-shaped
-/// `OverlayTexture` red/white mixing. Alpha cutout: transparent texels are
-/// discarded, so the thin generated-item slab and partial block faces read cleanly against the depth
-/// buffer.
+/// dynamic LightTexture using the submitted block/sky light. Like vanilla `ITEM_SNIPPET`, the vertex
+/// format carries UV1 / overlay coords, but `core/item` binds only the item atlas plus lightmap and does
+/// not sample the overlay texture. Alpha cutout: transparent texels are discarded, so the thin
+/// generated-item slab and partial block faces read cleanly against the depth buffer.
 const ITEM_MODEL_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
@@ -410,10 +411,9 @@ struct VertexOut {
     @location(0) uv: vec2<f32>,
     @location(1) color: vec4<f32>,
     @location(2) light: vec2<f32>,
-    @location(3) overlay: vec2<f32>,
-    @location(4) normal_diffuse: vec4<f32>,
-    @location(5) spherical_distance: f32,
-    @location(6) cylindrical_distance: f32,
+    @location(3) normal_diffuse: vec4<f32>,
+    @location(4) spherical_distance: f32,
+    @location(5) cylindrical_distance: f32,
 };
 
 fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
@@ -443,14 +443,6 @@ fn sample_lightmap(light: vec2<f32>) -> vec3<f32> {
     return textureSample(lightmap_texture, lightmap_sampler, uv).rgb;
 }
 
-fn apply_overlay(rgb: vec3<f32>, overlay: vec2<f32>) -> vec3<f32> {
-    if (overlay.y < 8.0) {
-        return mix(vec3<f32>(1.0, 0.0, 0.0), rgb, 179.0 / 255.0);
-    }
-    let overlay_alpha = 1.0 - overlay.x / 15.0 * 0.75;
-    return mix(vec3<f32>(1.0, 1.0, 1.0), rgb, overlay_alpha);
-}
-
 fn diffuse_light(normal: vec3<f32>) -> f32 {
     let light0 = normalize(camera.minecraft_light0.xyz);
     let light1 = normalize(camera.minecraft_light1.xyz);
@@ -465,7 +457,6 @@ fn vs_main(input: VertexIn) -> VertexOut {
     out.uv = input.uv;
     out.color = input.color;
     out.light = input.light;
-    out.overlay = input.overlay;
     out.normal_diffuse = vec4<f32>(normalize(input.normal_diffuse.xyz), input.normal_diffuse.w);
     let fog_pos = input.position - camera.camera_position.xyz;
     out.spherical_distance = length(fog_pos);
@@ -480,9 +471,8 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
         discard;
     }
     let light_color = sample_lightmap(input.light);
-    let overlay_rgb = apply_overlay(texel.rgb, input.overlay);
     let diffuse = mix(1.0, diffuse_light(input.normal_diffuse.xyz), input.normal_diffuse.w);
-    return apply_fog(vec4<f32>(overlay_rgb * diffuse * light_color, texel.a), input.spherical_distance, input.cylindrical_distance);
+    return apply_fog(vec4<f32>(texel.rgb * diffuse * light_color, texel.a), input.spherical_distance, input.cylindrical_distance);
 }
 "#;
 
@@ -755,7 +745,7 @@ mod tests {
             ITEM_MODEL_SHADER.contains("textureSample(lightmap_texture, lightmap_sampler, uv).rgb")
         );
         assert!(ITEM_MODEL_SHADER.contains("let light_color = sample_lightmap(input.light)"));
-        assert!(ITEM_MODEL_SHADER.contains("overlay_rgb * diffuse * light_color"));
+        assert!(ITEM_MODEL_SHADER.contains("texel.rgb * diffuse * light_color"));
         assert!(!ITEM_MODEL_SHADER.contains("fn lightmap_brightness"));
         assert!(!ITEM_MODEL_SHADER.contains("camera.lightmap_factors.y"));
         assert!(!ITEM_MODEL_SHADER.contains("max(input.light.x, input.light.y * 0.95)"));
@@ -772,20 +762,20 @@ mod tests {
         assert!(ITEM_MODEL_SHADER.contains("* 0.6 + 0.4"));
         assert!(ITEM_MODEL_SHADER
             .contains("let diffuse = mix(1.0, diffuse_light(input.normal_diffuse.xyz), input.normal_diffuse.w)"));
-        assert!(ITEM_MODEL_SHADER.contains("overlay_rgb * diffuse * light_color"));
+        assert!(ITEM_MODEL_SHADER.contains("texel.rgb * diffuse * light_color"));
     }
 
     #[test]
-    fn item_model_shader_applies_vanilla_overlay_texture_mix() {
-        assert!(ITEM_MODEL_SHADER
-            .contains("fn apply_overlay(rgb: vec3<f32>, overlay: vec2<f32>) -> vec3<f32>"));
-        assert!(ITEM_MODEL_SHADER.contains("if (overlay.y < 8.0)"));
-        assert!(ITEM_MODEL_SHADER.contains("mix(vec3<f32>(1.0, 0.0, 0.0), rgb, 179.0 / 255.0)"));
-        assert!(ITEM_MODEL_SHADER.contains("1.0 - overlay.x / 15.0 * 0.75"));
-        assert!(ITEM_MODEL_SHADER.contains("mix(vec3<f32>(1.0, 1.0, 1.0), rgb, overlay_alpha)"));
-        assert!(
-            ITEM_MODEL_SHADER.contains("let overlay_rgb = apply_overlay(texel.rgb, input.overlay)")
-        );
-        assert!(ITEM_MODEL_SHADER.contains("overlay_rgb * diffuse * light_color"));
+    fn item_model_shader_carries_but_does_not_sample_overlay_like_vanilla_item_pipeline() {
+        // Vanilla `ITEM_SNIPPET` uses `DefaultVertexFormat.ENTITY`, so `core/item.vsh`
+        // receives UV1, but `RenderPipelines.ITEM_CUTOUT` / `ITEM_TRANSLUCENT` bind
+        // only Sampler0 and Sampler2 and `RenderTypes.item*` do not call `useOverlay()`.
+        assert!(ITEM_MODEL_SHADER.contains("@location(4) overlay: vec2<f32>"));
+        assert!(!ITEM_MODEL_SHADER.contains("Sampler1"));
+        assert!(!ITEM_MODEL_SHADER.contains("fn apply_overlay"));
+        assert!(!ITEM_MODEL_SHADER.contains("input.overlay"));
+        assert!(!ITEM_MODEL_SHADER.contains("overlay_rgb"));
+        assert!(!ITEM_MODEL_SHADER.contains("mix(vec3<f32>(1.0, 0.0, 0.0)"));
+        assert!(ITEM_MODEL_SHADER.contains("texel.rgb * diffuse * light_color"));
     }
 }

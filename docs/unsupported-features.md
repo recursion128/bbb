@@ -483,10 +483,13 @@ When an agent does any of the following, update this file in the same slice:
     the existing bake APIs default to `OverlayTexture.NO_OVERLAY = pack(0, 10)`,
     while explicit light+overlay bake APIs mirror
     `ItemStackRenderState.submit(..., lightCoords, overlayCoords, ...)`.
-    The item-model shader applies the same red-row / white-overlay mix shape as
-    vanilla's 16x16 `OverlayTexture` before multiplying by the dynamic
-    LightTexture sample, so item overlay is no longer a GPU presentation gap for
-    the shared item-model path.
+    Vanilla's `ITEM_SNIPPET` still does not bind `Sampler1`: item pipelines carry
+    UV1/overlay in `DefaultVertexFormat.ENTITY`, but `core/item` samples only the
+    item atlas and lightmap, and `RenderTypes.itemCutout` / `itemTranslucent` do
+    not call `useOverlay()`. The shared item-model shader now mirrors that shape
+    by preserving submitted overlay metadata in vertices while not sampling the
+    overlay texture; entity/model RenderTypes remain the GPU paths that apply the
+    16x16 `OverlayTexture` red-row / white-row mix.
     Flat/generated item material translucency metadata is still deferred to item
     presentation because that material source is not modeled yet; it is no longer
     a narrow render-pipeline path blocker. Remaining render-graph parity is now
