@@ -487,10 +487,14 @@ When an agent does any of the following, update this file in the same slice:
     the shared item-model path.
     Flat/generated item material translucency metadata is still deferred to item
     presentation because that material source is not modeled yet; it is no longer
-    a narrow render-pipeline path blocker. Remaining render-graph parity still
-    needs target ordering across block/text/name and cross-target translucent
-    feature polish plus finer target-resource polish; outline now has a
-    dedicated target/composite at the right post-chain position, clouds now
+    a narrow render-pipeline path blocker. Remaining render-graph parity is now
+    classified as cross-target translucent feature / particle sorting plus finer
+    target-resource polish. The only modeled text surface here is item-frame map
+    label text, already drawn in the vanilla `order(1).submitText` phase; generic
+    name tag, sign/display text, and block feature submissions do not yet have
+    renderer submission surfaces, so their ordering will be wired when those
+    surfaces exist instead of reopening the narrow pipeline closeout. Outline now
+    has a dedicated target/composite at the right post-chain position, clouds now
     follow particles and the outline chain before weather/combine, and lightning
     is no longer missing weather-target geometry.
   - P0 cloud presentation slice: vanilla 26.1 `CloudRenderer` uses
@@ -2001,9 +2005,12 @@ When an agent does any of the following, update this file in the same slice:
         broader non-profile dynamic texture loading; the
         STAB swing pose on non-player humanoid models; the `NONE` swing type; the
         attack swing on the non-player humanoid models). Item lighting
-        context (GUI front-lit vs world diffuse) is an open point — the baked
-        `shade` currently uses the terrain cardinal `Direction.getShade` for both
-        block- and generated-items.
+        context (GUI front-lit vs world diffuse) is an open P0 visual point:
+        vanilla `core/item.vsh` multiplies submitted color by
+        `minecraft_mix_light(Light0_Direction, Light1_Direction, Normal, Color)`,
+        while the current baked item path still folds terrain cardinal
+        `Direction.getShade` into vertex color for both block- and
+        generated-items.
     - thrown-item projectiles (egg, snowball, ender pearl, eye of ender, splash/lingering potion,
       experience bottle, large fireball, small fireball) as camera-facing item-icon billboards on the
       same path: vanilla's `ThrownItemRenderer` draws each as the item sprite of its carried
