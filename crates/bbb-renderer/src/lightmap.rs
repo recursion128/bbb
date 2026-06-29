@@ -133,9 +133,10 @@ impl LightmapUniform {
 pub(super) struct LightmapGpu {
     pub(super) _texture: wgpu::Texture,
     pub(super) view: wgpu::TextureView,
-    pub(super) _sampler: wgpu::Sampler,
+    _sampler: wgpu::Sampler,
     pub(super) uniform_buffer: wgpu::Buffer,
     pub(super) bind_group: wgpu::BindGroup,
+    pub(super) sample_bind_group: wgpu::BindGroup,
 }
 
 pub(super) fn create_lightmap_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
@@ -151,6 +152,32 @@ pub(super) fn create_lightmap_bind_group_layout(device: &wgpu::Device) -> wgpu::
             },
             count: None,
         }],
+    })
+}
+
+pub(super) fn create_lightmap_sample_bind_group_layout(
+    device: &wgpu::Device,
+) -> wgpu::BindGroupLayout {
+    device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("bbb-lightmap-sample-bind-group-layout"),
+        entries: &[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    multisampled: false,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            },
+        ],
     })
 }
 
@@ -198,6 +225,7 @@ pub(super) fn create_lightmap_gpu(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     bind_group_layout: &wgpu::BindGroupLayout,
+    sample_bind_group_layout: &wgpu::BindGroupLayout,
     environment: LightmapEnvironment,
 ) -> LightmapGpu {
     let texture = device.create_texture(&wgpu::TextureDescriptor {
@@ -263,12 +291,27 @@ pub(super) fn create_lightmap_gpu(
             resource: uniform_buffer.as_entire_binding(),
         }],
     });
+    let sample_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("bbb-lightmap-sample-bind-group"),
+        layout: sample_bind_group_layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(&view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::Sampler(&sampler),
+            },
+        ],
+    });
     LightmapGpu {
         _texture: texture,
         view,
         _sampler: sampler,
         uniform_buffer,
         bind_group,
+        sample_bind_group,
     }
 }
 

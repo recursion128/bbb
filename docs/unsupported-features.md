@@ -759,19 +759,20 @@ When an agent does any of the following, update this file in the same slice:
     vanilla-shaped dynamic LightTexture foundation:
     a 16x16 `RGBA8` texture, standalone `LightmapInfo` uniform buffer, and a
     `pipeline/lightmap`-shaped full-screen triangle pass that ports
-    `core/lightmap.fsh`; the scene shaders still compute the same formula from
-    camera uniforms until the next P0 visual slices bind and sample that texture
-    as `Sampler2`. The block flicker path still advances
+    `core/lightmap.fsh`; remaining entity/item/particle shaders still compute
+    the same formula from camera uniforms until later P0 visual slices bind and
+    sample that texture as `Sampler2`. The terrain/world shader now samples that renderer-owned
+    dynamic LightTexture using the vanilla `sample_lightmap` texel-center shape
+    for submitted `[block/15, sky/15]` coords. The block flicker path still advances
     `blockLightFlicker` with the
     `LightmapRenderStateExtractor.tick()` formula and the shaders read
-    `blockLightFlicker + 1.4`. The terrain/world shader now consumes the same
-    `LightmapInfo` environment fields with the vanilla `Lightmap.getBrightness`
-    curve, block-light parabolic tint mix, boss darkening, darkness subtraction,
-    and `BrightnessFactor` `notGamma` mix instead of the earlier
+    `blockLightFlicker + 1.4`; those factors feed the dynamic LightTexture pass
+    instead of terrain recomputing the formula inline. The terrain/world shader
+    no longer uses the earlier
     `max(block, sky * 0.95)` scalar approximation. Remaining lighting gaps:
     full transparency target sorting after the newly added renderer-owned main
     color target / Main+Translucent+ItemEntity+Particles+Weather+Clouds combine foundation, routing the main
-    world/entity/item/particle shaders from uniform-computed lightmap colors to
+    entity/item/particle shaders from uniform-computed lightmap colors to
     the renderer-owned dynamic LightTexture sampler, provider-specific particle light emission overrides,
     smooth/AO entity light, GUI / entity-in-UI lighting variants, and the
     colored debug fallback's baked-shade approximation. The item-model

@@ -171,6 +171,7 @@ impl Renderer {
                             pass.set_pipeline(&self.terrain_pipeline);
                             pipeline_switches += 1;
                             pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+                            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                             for mesh in &self.terrain_opaque {
                                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                                 pass.set_index_buffer(
@@ -187,6 +188,7 @@ impl Renderer {
                             pass.set_pipeline(&self.terrain_pipeline);
                             pipeline_switches += 1;
                             pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+                            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                             for mesh in &self.terrain_cutout {
                                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                                 pass.set_index_buffer(
@@ -560,6 +562,7 @@ impl Renderer {
                 pass.set_pipeline(&self.terrain_translucent_pipeline);
                 pipeline_switches += 1;
                 pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                 for mesh in &self.terrain_translucent {
                     pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                     pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
@@ -1140,6 +1143,42 @@ mod tests {
             source[lightmap..terrain_pass]
                 .contains("pass.set_bind_group(0, &self.lightmap.bind_group, &[])"),
             "lightmap pass binds the standalone LightmapInfo uniform"
+        );
+    }
+
+    #[test]
+    fn terrain_draws_sample_dynamic_lightmap_texture() {
+        let source = include_str!("render.rs");
+        let terrain = source
+            .find("pass.set_pipeline(&self.terrain_pipeline)")
+            .expect("opaque terrain pipeline is selected");
+        let terrain_atlas = source[terrain..]
+            .find("pass.set_bind_group(0, &self.terrain_bind_group, &[])")
+            .map(|index| terrain + index)
+            .expect("terrain bind group is bound");
+        let lightmap = source[terrain_atlas..]
+            .find("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])")
+            .map(|index| terrain_atlas + index)
+            .expect("terrain lightmap sampler bind group is bound");
+        let draw = source[lightmap..]
+            .find("pass.draw_indexed")
+            .map(|index| lightmap + index)
+            .expect("terrain draw follows bind groups");
+        let translucent = source
+            .find("pass.set_pipeline(&self.terrain_translucent_pipeline)")
+            .expect("translucent terrain pipeline is selected");
+        let translucent_lightmap = source[translucent..]
+            .find("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])")
+            .map(|index| translucent + index)
+            .expect("translucent terrain lightmap sampler bind group is bound");
+
+        assert!(
+            terrain < terrain_atlas && terrain_atlas < lightmap && lightmap < draw,
+            "terrain samples the renderer-owned LightTexture before opaque draws"
+        );
+        assert!(
+            translucent < translucent_lightmap,
+            "translucent terrain samples the same dynamic LightTexture"
         );
     }
 

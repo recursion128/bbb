@@ -45,7 +45,7 @@ use crate::{
     },
     lightmap::{
         create_lightmap_bind_group_layout, create_lightmap_gpu, create_lightmap_pipeline,
-        LightmapGpu,
+        create_lightmap_sample_bind_group_layout, LightmapGpu,
     },
     outline::{
         create_entity_outline_bind_group_layout, create_entity_outline_blit_pipeline,
@@ -399,6 +399,16 @@ impl Renderer {
         let weather_target =
             create_weather_target(&device, config.format, config.width, config.height);
         let terrain_bind_group_layout = create_terrain_bind_group_layout(&device);
+        let lightmap_bind_group_layout = create_lightmap_bind_group_layout(&device);
+        let lightmap_sample_bind_group_layout = create_lightmap_sample_bind_group_layout(&device);
+        let lightmap_pipeline = create_lightmap_pipeline(&device, &lightmap_bind_group_layout);
+        let lightmap = create_lightmap_gpu(
+            &device,
+            &queue,
+            &lightmap_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+            LightmapEnvironment::default(),
+        );
         let hud_bind_group_layout = create_hud_bind_group_layout(&device);
         let camera_buffer = create_camera_buffer(&device);
         let gui_item_camera_buffer = create_camera_buffer(&device);
@@ -416,9 +426,18 @@ impl Renderer {
             &gui_item_camera_buffer,
             &terrain_atlas,
         );
-        let terrain_pipeline = create_terrain_pipeline(&device, format, &terrain_bind_group_layout);
-        let terrain_translucent_pipeline =
-            create_terrain_translucent_pipeline(&device, format, &terrain_bind_group_layout);
+        let terrain_pipeline = create_terrain_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+        );
+        let terrain_translucent_pipeline = create_terrain_translucent_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+        );
         let block_destroy_pipeline =
             create_block_destroy_pipeline(&device, format, &terrain_bind_group_layout);
         let entity_model_pipeline =
@@ -448,14 +467,6 @@ impl Renderer {
             create_item_model_pipeline(&device, format, &terrain_bind_group_layout);
         let selection_pipeline =
             create_selection_pipeline(&device, format, &terrain_bind_group_layout);
-        let lightmap_bind_group_layout = create_lightmap_bind_group_layout(&device);
-        let lightmap_pipeline = create_lightmap_pipeline(&device, &lightmap_bind_group_layout);
-        let lightmap = create_lightmap_gpu(
-            &device,
-            &queue,
-            &lightmap_bind_group_layout,
-            LightmapEnvironment::default(),
-        );
         let entity_outline_bind_group_layout = create_entity_outline_bind_group_layout(&device);
         let entity_outline_sobel_pipeline = create_entity_outline_sobel_pipeline(
             &device,
