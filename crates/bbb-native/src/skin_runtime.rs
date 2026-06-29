@@ -711,6 +711,30 @@ mod tests {
     }
 
     #[test]
+    fn async_dynamic_texture_runtime_caches_failed_download_or_decode() {
+        let root = unique_temp_dir("async-dynamic-texture-runtime-failed");
+        let calls = Arc::new(AtomicUsize::new(0));
+        let mut runtime = AsyncDynamicPlayerTextureRuntime::new(
+            &root,
+            AsyncStaticSkinFetcher::new(b"not a png".to_vec(), calls.clone()),
+        );
+        let url = "https://textures.minecraft.net/texture/async-cape-failed";
+
+        runtime.queue(DynamicPlayerTextureKind::Cape, 0x78, url);
+        let results = drain_until_async_texture_result(&mut runtime);
+        runtime.queue(DynamicPlayerTextureKind::Cape, 0x78, url);
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].kind, DynamicPlayerTextureKind::Cape);
+        assert_eq!(results[0].url, url);
+        assert_eq!(results[0].texture, None);
+        assert_eq!(runtime.downloaded_texture_count(), 0);
+        assert_eq!(calls.load(Ordering::Relaxed), 1);
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn http_skin_fetcher_reads_successful_response_bytes() {
         let body = b"player skin bytes".to_vec();
         let url = spawn_http_response(200, "OK", body.clone());

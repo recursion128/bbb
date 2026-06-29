@@ -1983,7 +1983,10 @@ When an agent does any of the following, update this file in the same slice:
         post-processing, native keeps separate memory/disk caches for cape and
         elytra textures, profile cape/elytra URLs queue async downloads, and
         the main loop uploads successful results into a renderer-owned
-        variable-size dynamic player texture atlas. Renderer atlas construction
+        variable-size dynamic player texture atlas. The async dynamic profile
+        texture runtime also caches failed decode/download results as failed,
+        emits no upload, and does not requeue the same kind+URL after failure.
+        Renderer atlas construction
         rejects duplicate dynamic profile texture handles plus zero-sized or
         malformed RGBA inputs before folding geometry, matching vanilla's
         one-texture-location-per-resolved-skin/cape/elytra boundary without
