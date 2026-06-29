@@ -38,8 +38,10 @@ use crate::{
         ItemFrameMapTextSurface, ItemModelMesh,
     },
     outline::{
-        create_entity_outline_bind_group_layout, create_entity_outline_composite_pipeline,
-        create_entity_outline_target, EntityOutlineTarget,
+        create_entity_outline_bind_group_layout, create_entity_outline_blit_pipeline,
+        create_entity_outline_blur_horizontal_pipeline,
+        create_entity_outline_blur_vertical_pipeline, create_entity_outline_composite_pipeline,
+        create_entity_outline_sobel_pipeline, create_entity_outline_target, EntityOutlineTarget,
     },
     particles::{create_particle_pipeline, ParticleAtlasGpu, ParticleRuntimeState},
     player_skin::{DynamicPlayerSkinImage, DynamicPlayerTextureImage},
@@ -82,6 +84,10 @@ pub struct Renderer {
     pub(super) item_entity_pipeline: wgpu::RenderPipeline,
     pub(super) item_model_pipeline: wgpu::RenderPipeline,
     pub(super) selection_pipeline: wgpu::RenderPipeline,
+    pub(super) entity_outline_sobel_pipeline: wgpu::RenderPipeline,
+    pub(super) entity_outline_blur_horizontal_pipeline: wgpu::RenderPipeline,
+    pub(super) entity_outline_blur_vertical_pipeline: wgpu::RenderPipeline,
+    pub(super) entity_outline_blit_pipeline: wgpu::RenderPipeline,
     pub(super) entity_outline_composite_pipeline: wgpu::RenderPipeline,
     pub(super) entity_outline_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) entity_outline_target: EntityOutlineTarget,
@@ -398,6 +404,24 @@ impl Renderer {
         let selection_pipeline =
             create_selection_pipeline(&device, format, &terrain_bind_group_layout);
         let entity_outline_bind_group_layout = create_entity_outline_bind_group_layout(&device);
+        let entity_outline_sobel_pipeline = create_entity_outline_sobel_pipeline(
+            &device,
+            format,
+            &entity_outline_bind_group_layout,
+        );
+        let entity_outline_blur_horizontal_pipeline =
+            create_entity_outline_blur_horizontal_pipeline(
+                &device,
+                format,
+                &entity_outline_bind_group_layout,
+            );
+        let entity_outline_blur_vertical_pipeline = create_entity_outline_blur_vertical_pipeline(
+            &device,
+            format,
+            &entity_outline_bind_group_layout,
+        );
+        let entity_outline_blit_pipeline =
+            create_entity_outline_blit_pipeline(&device, format, &entity_outline_bind_group_layout);
         let entity_outline_composite_pipeline = create_entity_outline_composite_pipeline(
             &device,
             format,
@@ -465,6 +489,10 @@ impl Renderer {
             item_entity_pipeline,
             item_model_pipeline,
             selection_pipeline,
+            entity_outline_sobel_pipeline,
+            entity_outline_blur_horizontal_pipeline,
+            entity_outline_blur_vertical_pipeline,
+            entity_outline_blit_pipeline,
             entity_outline_composite_pipeline,
             entity_outline_bind_group_layout,
             entity_outline_target,

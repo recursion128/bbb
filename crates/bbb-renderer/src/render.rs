@@ -16,6 +16,12 @@ const TERRAIN_OPAQUE_GROUP_LAYERS: &[TerrainOpaqueGroupLayer] = &[
     TerrainOpaqueGroupLayer::Cutout,
 ];
 const ENTITY_OUTLINE_TARGET_PASS_LABEL: &str = "bbb-native-entity-outline-target-pass";
+const ENTITY_OUTLINE_SOBEL_PASS_LABEL: &str = "bbb-native-entity-outline-sobel-pass";
+const ENTITY_OUTLINE_BLUR_HORIZONTAL_PASS_LABEL: &str =
+    "bbb-native-entity-outline-blur-horizontal-pass";
+const ENTITY_OUTLINE_BLUR_VERTICAL_PASS_LABEL: &str =
+    "bbb-native-entity-outline-blur-vertical-pass";
+const ENTITY_OUTLINE_BLIT_PASS_LABEL: &str = "bbb-native-entity-outline-blit-pass";
 const ENTITY_OUTLINE_COMPOSITE_PASS_LABEL: &str = "bbb-native-entity-outline-composite-pass";
 
 impl Renderer {
@@ -322,6 +328,94 @@ impl Renderer {
                     pass.draw_indexed(0..mesh.index_count, 0, 0..1);
                     entity_model_draw_calls += 1;
                 }
+            }
+
+            {
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some(ENTITY_OUTLINE_SOBEL_PASS_LABEL),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &self.entity_outline_target.swap_view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: None,
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&self.entity_outline_sobel_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, &self.entity_outline_target.bind_group, &[]);
+                pass.draw(0..3, 0..1);
+                outline_composite_draw_calls += 1;
+            }
+
+            {
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some(ENTITY_OUTLINE_BLUR_HORIZONTAL_PASS_LABEL),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &self.entity_outline_target.view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: None,
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&self.entity_outline_blur_horizontal_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, &self.entity_outline_target.swap_linear_bind_group, &[]);
+                pass.draw(0..3, 0..1);
+                outline_composite_draw_calls += 1;
+            }
+
+            {
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some(ENTITY_OUTLINE_BLUR_VERTICAL_PASS_LABEL),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &self.entity_outline_target.swap_view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: None,
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&self.entity_outline_blur_vertical_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, &self.entity_outline_target.linear_bind_group, &[]);
+                pass.draw(0..3, 0..1);
+                outline_composite_draw_calls += 1;
+            }
+
+            {
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some(ENTITY_OUTLINE_BLIT_PASS_LABEL),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &self.entity_outline_target.view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: None,
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&self.entity_outline_blit_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, &self.entity_outline_target.swap_bind_group, &[]);
+                pass.draw(0..3, 0..1);
+                outline_composite_draw_calls += 1;
             }
 
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -814,12 +908,24 @@ mod tests {
     #[test]
     fn entity_outline_target_composites_before_later_world_passes() {
         // Vanilla LevelRenderer adds the entity_outline post chain immediately after the main pass
-        // and before later target/post-chain work. Keep bbb's target write + composite before the
-        // remaining standalone world passes.
+        // and before later target/post-chain work. Keep bbb's target write, post-chain, and
+        // final composite before the remaining standalone world passes.
         let source = include_str!("render.rs");
         let target = source
             .find("label: Some(ENTITY_OUTLINE_TARGET_PASS_LABEL)")
             .expect("entity outline target pass label is used");
+        let sobel = source
+            .find("label: Some(ENTITY_OUTLINE_SOBEL_PASS_LABEL)")
+            .expect("entity outline sobel pass label is used");
+        let blur_horizontal = source
+            .find("label: Some(ENTITY_OUTLINE_BLUR_HORIZONTAL_PASS_LABEL)")
+            .expect("entity outline horizontal blur pass label is used");
+        let blur_vertical = source
+            .find("label: Some(ENTITY_OUTLINE_BLUR_VERTICAL_PASS_LABEL)")
+            .expect("entity outline vertical blur pass label is used");
+        let blit = source
+            .find("label: Some(ENTITY_OUTLINE_BLIT_PASS_LABEL)")
+            .expect("entity outline blit pass label is used");
         let composite = source
             .find("label: Some(ENTITY_OUTLINE_COMPOSITE_PASS_LABEL)")
             .expect("entity outline composite pass label is used");
@@ -827,8 +933,12 @@ mod tests {
             .find("label: Some(\"bbb-native-terrain-translucent-pass\")")
             .expect("terrain translucent pass label is used");
         assert!(
-            target < composite,
-            "outline target is written before composite"
+            target < sobel
+                && sobel < blur_horizontal
+                && blur_horizontal < blur_vertical
+                && blur_vertical < blit
+                && blit < composite,
+            "outline target and post-chain passes follow vanilla entity_outline.json order"
         );
         assert!(
             composite < translucent,
