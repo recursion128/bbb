@@ -1182,7 +1182,10 @@ blocker。
   - [x] ON_SHOULDER pose（Player shoulder metadata -> native render state -> left/right ParrotOnShoulderLayer submissions）
 - Sheep / wolf：
   - [x] wolf body armor invisible layer exception（hidden / self-visible translucent / glowing outline states keep armor/crack submissions while collar skips）
-  - 完整 invisibility / outline / white overlay
+  - [x] 完整 invisibility / outline / white overlay：sheep/wolf invisible skip、
+    self-visible translucent base、hidden-glowing outline、wool/collar/armor
+    layer gates、white-overlay 与 zero-white layer overlay 已由 renderer tests
+    pin 住
   - 其余 render-state extraction parity
 - Villager / wandering trader：
   - [x] wandering trader baby metadata 审计（vanilla `WanderingTraderRenderer`
