@@ -412,9 +412,10 @@ When an agent does any of the following, update this file in the same slice:
     `TranslucentDepth` / `ItemEntityDepth` / `ParticlesDepth` /
     `WeatherDepth` / `CloudsDepth` inputs; main/translucent/itemEntity/
     particles/weather depth also carries copy usage for the vanilla depth-copy
-    step. The renderer currently clears the weather target as the future
-    `OutputTarget.WEATHER_TARGET` insertion point; actual rain/snow weather
-    columns are still a visual follow-up.
+    step. The renderer now draws rain/snow weather columns into
+    `OutputTarget.WEATHER_TARGET` with vanilla environment textures,
+    `DefaultVertexFormat.PARTICLE`-shaped vertex data, dynamic `Sampler2`
+    LightTexture sampling, and rain-before-snow draw order.
     Remaining render-graph parity still needs the full vanilla transparency
     post-chain shape and finer feature/terrain target sorting across the now
     present translucent / itemEntity / particles / weather / cloud targets;
@@ -439,7 +440,8 @@ When an agent does any of the following, update this file in the same slice:
     dedicated pass after main/entity-outline ordering, writes a clouds
     color/depth target, and participates in the Main+Translucent+ItemEntity+Particles+Weather+Clouds
     transparency combine. Remaining cloud/weather parity is the full vanilla
-    transparency post-chain depth sorting plus actual rain/snow weather draw.
+    transparency post-chain depth sorting plus weather `MOTION_BLOCKING`
+    heightmap / temperature-noise precipitation extraction precision.
   - P0 pipeline closeout treats texture-backed / dispatch-owned submission and
     RenderType/order/missing-atlas/dynamic-texture coverage as complete for the
     narrow pipeline scope: entity model tests assert `submit_sequence` across 78
@@ -747,9 +749,12 @@ When an agent does any of the following, update this file in the same slice:
     clouds target. The main scene now also resolves through a renderer-owned
     main color target; the final transparency combine samples
     Main+Translucent+ItemEntity+Particles+Weather+Clouds before HUD and GUI-item passes draw on the surface,
-    matching vanilla's world-before-GUI render shape. Remaining visual gaps are
-    full transparency post-chain depth sorting with actual rain/snow weather draw, fuller
-    atmosphere presentation, and later custom-pack EnvironmentAttribute
+    matching vanilla's world-before-GUI render shape. Rain/snow weather columns
+    now draw through vanilla environment textures, `PARTICLE` vertex layout,
+    LightTexture sampling, rain/snow index ranges, and the weather target.
+    Remaining visual gaps are full transparency post-chain depth sorting,
+    weather `MOTION_BLOCKING` heightmap / temperature-noise precipitation
+    extraction precision, fuller atmosphere presentation, and later custom-pack EnvironmentAttribute
     generalization when a concrete renderer surface exists. Sun/moon presentation
     is now covered by the vanilla `CELESTIAL` overlay blend, the
     `environment/celestial` atlas source, `SUN_ANGLE` / `MOON_ANGLE`, and the

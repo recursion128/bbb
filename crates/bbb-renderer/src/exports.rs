@@ -96,3 +96,7 @@ pub use crate::selection::{SelectionBox, SelectionOutline};
 pub use crate::sky::{
     CelestialTextureImage, CelestialTextureKind, SkyEnvironment, SkyMoonPhase, SkyboxKind,
 };
+pub use crate::weather::{
+    WeatherColumn, WeatherFrame, WeatherRenderState, WeatherTextureImage, WeatherTextureKind,
+    WEATHER_RAIN_TEXTURE_PATH, WEATHER_SNOW_TEXTURE_PATH,
+};

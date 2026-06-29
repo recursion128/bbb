@@ -17,7 +17,8 @@ use bbb_renderer::{
     HudInventoryItem, HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
     HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
     HudItemDurabilityBar, HudItemIcon, HudUvRect, LightmapEnvironment, SkyEnvironment,
-    SkyMoonPhase, HUD_HOTBAR_SLOTS, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
+    SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState, HUD_HOTBAR_SLOTS,
+    VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
     VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
@@ -25,7 +26,7 @@ use bbb_renderer::{
 use bbb_world::{
     BlockPos, BookScreenState, ContainerState, MerchantOfferState, MerchantOffersState,
     MobEffectState, MountArmorSlotKind, MountInventoryKind, TerrainFluidKind, TerrainFluidState,
-    TerrainLight, WorldLevelInfo, WorldStore, WorldWeatherState,
+    TerrainLight, TerrainMaterialClass, WorldLevelInfo, WorldStore, WorldWeatherState,
 };
 use tokio::sync::mpsc;
 
@@ -72,6 +73,8 @@ const VANILLA_WEATHER_RAIN_ALPHA: f32 = 0.3125;
 const VANILLA_WEATHER_THUNDER_ALPHA: f32 = 0.52734375;
 const VANILLA_WEATHER_RAIN_SKY_LIGHT_COLOR: i32 = argb_color(79, 122, 122, 255);
 const VANILLA_WEATHER_THUNDER_SKY_LIGHT_COLOR: i32 = argb_color(134, 122, 122, 255);
+const VANILLA_WEATHER_RENDER_RADIUS: u32 = 10;
+const VANILLA_WEATHER_SNOW_TEMPERATURE_THRESHOLD: f32 = 0.15;
 const VANILLA_OVERWORLD_SKY_COLOR: [u8; 3] = [0x78, 0xa7, 0xff];
 const VANILLA_OVERWORLD_FOG_COLOR: [u8; 3] = [0xc0, 0xd8, 0xff];
 const VANILLA_END_FOG_COLOR: [u8; 3] = [0x18, 0x13, 0x18];
@@ -1601,6 +1604,12 @@ pub(crate) fn pump_network_and_terrain(
     renderer.set_camera_pose(camera_pose);
     renderer.set_cloud_frame(cloud_frame_for_world(
         world,
+        camera_pose,
+        entity_partial_tick,
+    ));
+    renderer.set_weather_render_state(weather_render_state_for_world(
+        world,
+        terrain_textures,
         camera_pose,
         entity_partial_tick,
     ));
@@ -4382,6 +4391,305 @@ fn cloud_frame_for_world(
     camera_pose
         .map(|pose| CloudFrame::from_camera_pose(pose, game_time, partial_tick))
         .unwrap_or_else(|| CloudFrame::at_camera_position([0.0, 0.0, 0.0], game_time, partial_tick))
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum WeatherPrecipitation {
+    Rain,
+    Snow,
+}
+
+fn weather_render_state_for_world(
+    world: &WorldStore,
+    terrain_textures: &TerrainTextureState,
+    camera_pose: Option<CameraPose>,
+    partial_tick: f32,
+) -> WeatherRenderState {
+    let Some(camera_pose) = camera_pose else {
+        return WeatherRenderState::default();
+    };
+    if !world_can_have_weather(world) {
+        return WeatherRenderState::default();
+    }
+    let rain_level = world.weather().rain_level.clamp(0.0, 1.0);
+    if rain_level <= 0.0 {
+        return WeatherRenderState::default();
+    }
+
+    let camera_position = camera_eye_position(camera_pose);
+    if !camera_position.into_iter().all(f32::is_finite) {
+        return WeatherRenderState::default();
+    }
+    let frame = WeatherFrame::at_camera_position(
+        camera_position,
+        VANILLA_WEATHER_RENDER_RADIUS,
+        rain_level,
+    );
+    let camera_block_x = camera_position[0].floor() as i32;
+    let camera_block_y = camera_position[1].floor() as i32;
+    let camera_block_z = camera_position[2].floor() as i32;
+    let radius = VANILLA_WEATHER_RENDER_RADIUS as i32;
+    let sea_level = world
+        .level_info()
+        .map(|level| level.sea_level)
+        .unwrap_or(63);
+    let ticks = world.world_time().map(|time| time.game_time).unwrap_or(0) as i32;
+    let mut rain_columns = Vec::new();
+    let mut snow_columns = Vec::new();
+
+    for z in (camera_block_z - radius)..=(camera_block_z + radius) {
+        for x in (camera_block_x - radius)..=(camera_block_x + radius) {
+            let sample_pos = BlockPos {
+                x,
+                y: camera_block_y,
+                z,
+            };
+            let Some(precipitation) =
+                weather_precipitation_at(world, terrain_textures, sample_pos, sea_level)
+            else {
+                continue;
+            };
+            let terrain_height =
+                weather_motion_blocking_height(world, x, z).unwrap_or(camera_block_y - radius);
+            let bottom_y = (camera_block_y - radius).max(terrain_height);
+            let top_y = (camera_block_y + radius).max(terrain_height);
+            if top_y - bottom_y == 0 {
+                continue;
+            }
+
+            let light_sample_y = camera_block_y.max(terrain_height);
+            let raw_light = world
+                .sample_block_light(BlockPos {
+                    x,
+                    y: light_sample_y,
+                    z,
+                })
+                .unwrap_or(VANILLA_PARTICLE_MISSING_CHUNK_LIGHT);
+            match precipitation {
+                WeatherPrecipitation::Rain => rain_columns.push(rain_weather_column(
+                    x,
+                    z,
+                    bottom_y,
+                    top_y,
+                    raw_light,
+                    ticks,
+                    partial_tick,
+                )),
+                WeatherPrecipitation::Snow => snow_columns.push(snow_weather_column(
+                    x,
+                    z,
+                    bottom_y,
+                    top_y,
+                    raw_light,
+                    ticks,
+                    partial_tick,
+                )),
+            }
+        }
+    }
+
+    WeatherRenderState::new(frame, rain_columns, snow_columns)
+}
+
+fn world_can_have_weather(world: &WorldStore) -> bool {
+    world.level_info().is_some_and(|level| {
+        level.dimension == "minecraft:overworld" || level.dimension_type_id == 0
+    })
+}
+
+fn weather_precipitation_at(
+    world: &WorldStore,
+    terrain_textures: &TerrainTextureState,
+    pos: BlockPos,
+    sea_level: i32,
+) -> Option<WeatherPrecipitation> {
+    let biome_id = world.probe_block(pos).and_then(|block| block.biome_id);
+    if !terrain_textures
+        .biome_has_precipitation(biome_id)
+        .unwrap_or(true)
+    {
+        return None;
+    }
+    let temperature = terrain_textures.biome_temperature(biome_id).unwrap_or(0.5);
+    if weather_cold_enough_to_snow(temperature, pos, sea_level) {
+        Some(WeatherPrecipitation::Snow)
+    } else {
+        Some(WeatherPrecipitation::Rain)
+    }
+}
+
+fn weather_cold_enough_to_snow(base_temperature: f32, pos: BlockPos, sea_level: i32) -> bool {
+    let snow_level = sea_level + 17;
+    let adjusted_temperature = if pos.y > snow_level {
+        base_temperature - (pos.y - snow_level) as f32 * 0.05 / 40.0
+    } else {
+        base_temperature
+    };
+    adjusted_temperature < VANILLA_WEATHER_SNOW_TEMPERATURE_THRESHOLD
+}
+
+fn weather_motion_blocking_height(world: &WorldStore, x: i32, z: i32) -> Option<i32> {
+    let dimension = world.dimension();
+    let top_y = dimension.min_y + dimension.height - 1;
+    for y in (dimension.min_y..=top_y).rev() {
+        let probe = world.probe_block(BlockPos { x, y, z })?;
+        if weather_motion_blocking_material(probe.material) || probe.fluid.is_some() {
+            return Some(y + 1);
+        }
+    }
+    Some(dimension.min_y)
+}
+
+fn weather_motion_blocking_material(material: TerrainMaterialClass) -> bool {
+    !matches!(
+        material,
+        TerrainMaterialClass::Empty | TerrainMaterialClass::Invisible
+    )
+}
+
+fn rain_weather_column(
+    x: i32,
+    z: i32,
+    bottom_y: i32,
+    top_y: i32,
+    light: TerrainLight,
+    ticks: i32,
+    partial_tick: f32,
+) -> WeatherColumn {
+    let wrapped_ticks = ticks & 131_071;
+    let tick_offset = weather_column_offset_seed(x, z) & 0xff;
+    let mut random = WeatherLegacyRandom::new(i64::from(weather_column_xor_seed(x, z)));
+    let block_pos_rain_speed = 3.0 + random.next_float();
+    let texture_offset =
+        -((wrapped_ticks + tick_offset) as f32 + partial_tick) / 32.0 * block_pos_rain_speed;
+    WeatherColumn::new(
+        x,
+        z,
+        bottom_y,
+        top_y,
+        0.0,
+        texture_offset % 32.0,
+        weather_light_coords(light),
+    )
+}
+
+fn snow_weather_column(
+    x: i32,
+    z: i32,
+    bottom_y: i32,
+    top_y: i32,
+    light: TerrainLight,
+    ticks: i32,
+    partial_tick: f32,
+) -> WeatherColumn {
+    let time = ticks as f32 + partial_tick;
+    let mut random = WeatherLegacyRandom::new(i64::from(weather_column_xor_seed(x, z)));
+    let u = random.next_double() as f32 + time * 0.01 * random.next_gaussian() as f32;
+    let v = random.next_double() as f32 + time * random.next_gaussian() as f32 * 0.001;
+    let v_offset = -((ticks & 511) as f32 + partial_tick) / 512.0;
+    WeatherColumn::new(
+        x,
+        z,
+        bottom_y,
+        top_y,
+        u,
+        v_offset + v,
+        weather_snow_light_coords(light),
+    )
+}
+
+fn weather_column_xor_seed(x: i32, z: i32) -> i32 {
+    x.wrapping_mul(x)
+        .wrapping_mul(3121)
+        .wrapping_add(x.wrapping_mul(45_238_971))
+        ^ z.wrapping_mul(z)
+            .wrapping_mul(418_711)
+            .wrapping_add(z.wrapping_mul(13_761))
+}
+
+fn weather_column_offset_seed(x: i32, z: i32) -> i32 {
+    x.wrapping_mul(x)
+        .wrapping_mul(3121)
+        .wrapping_add(x.wrapping_mul(45_238_971))
+        .wrapping_add(z.wrapping_mul(z).wrapping_mul(418_711))
+        .wrapping_add(z.wrapping_mul(13_761))
+}
+
+fn weather_light_coords(light: TerrainLight) -> [f32; 2] {
+    [
+        light.block.min(15) as f32 / 15.0,
+        light.sky.min(15) as f32 / 15.0,
+    ]
+}
+
+fn weather_snow_light_coords(light: TerrainLight) -> [f32; 2] {
+    [
+        ((u16::from(light.block.min(15)) * 3 + 15) / 4) as f32 / 15.0,
+        ((u16::from(light.sky.min(15)) * 3 + 15) / 4) as f32 / 15.0,
+    ]
+}
+
+#[derive(Debug, Clone)]
+struct WeatherLegacyRandom {
+    seed: u64,
+    next_gaussian: Option<f64>,
+}
+
+impl WeatherLegacyRandom {
+    const MASK: u64 = (1u64 << 48) - 1;
+    const MULTIPLIER: u64 = 25_214_903_917;
+    const INCREMENT: u64 = 11;
+
+    fn new(seed: i64) -> Self {
+        let mut random = Self {
+            seed: 0,
+            next_gaussian: None,
+        };
+        random.set_seed(seed);
+        random
+    }
+
+    fn set_seed(&mut self, seed: i64) {
+        self.seed = ((seed as u64) ^ Self::MULTIPLIER) & Self::MASK;
+        self.next_gaussian = None;
+    }
+
+    fn next(&mut self, bits: u8) -> u32 {
+        self.seed = self
+            .seed
+            .wrapping_mul(Self::MULTIPLIER)
+            .wrapping_add(Self::INCREMENT)
+            & Self::MASK;
+        (self.seed >> (48 - bits)) as u32
+    }
+
+    fn next_float(&mut self) -> f32 {
+        self.next(24) as f32 / (1u32 << 24) as f32
+    }
+
+    fn next_double(&mut self) -> f64 {
+        let upper = u64::from(self.next(26));
+        let lower = u64::from(self.next(27));
+        ((upper << 27) + lower) as f64 / (1u64 << 53) as f64
+    }
+
+    fn next_gaussian(&mut self) -> f64 {
+        if let Some(value) = self.next_gaussian.take() {
+            return value;
+        }
+
+        loop {
+            let x = 2.0 * self.next_double() - 1.0;
+            let y = 2.0 * self.next_double() - 1.0;
+            let radius_sq = x * x + y * y;
+            if radius_sq >= 1.0 || radius_sq == 0.0 {
+                continue;
+            }
+            let multiplier = (-2.0 * radius_sq.ln() / radius_sq).sqrt();
+            self.next_gaussian = Some(y * multiplier);
+            return x * multiplier;
+        }
+    }
 }
 
 fn sky_disc_color_for_world_with_environment_colors(

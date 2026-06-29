@@ -317,6 +317,10 @@ impl TerrainTextureState {
         Some(self.biome_profile(biome_id)?.has_precipitation)
     }
 
+    pub(crate) fn biome_temperature(&self, biome_id: Option<i32>) -> Option<f32> {
+        Some(self.biome_profile(biome_id)?.temperature)
+    }
+
     #[cfg(test)]
     pub(crate) fn with_biome_colors_for_tests(biome_colors: BiomeColorCatalog) -> Self {
         let mut state = Self::default();

@@ -3,7 +3,7 @@ use std::path::Path;
 use anyhow::Result;
 use wgpu::util::DeviceExt;
 
-use crate::{lightmap::write_lightmap_uniform, Renderer};
+use crate::{lightmap::write_lightmap_uniform, weather::build_weather_mesh, Renderer};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum TerrainOpaqueGroupLayer {
@@ -65,6 +65,7 @@ impl Renderer {
         let mut outline_composite_draw_calls = 0;
         let mut transparency_combine_draw_calls = 0;
         let mut particle_draw_calls = 0;
+        let mut weather_draw_calls = 0;
         let mut item_entity_draw_calls = 0;
         let mut item_model_draw_calls = 0;
         let mut selection_draw_calls = 0;
@@ -790,6 +791,30 @@ impl Renderer {
             } else {
                 None
             };
+        let weather_mesh = build_weather_mesh(&self.weather_render_state);
+        let weather_buffers = weather_mesh
+            .as_ref()
+            .filter(|mesh| {
+                (!mesh.rain_indices.is_empty() && self.weather_rain_texture.is_some())
+                    || (!mesh.snow_indices.is_empty() && self.weather_snow_texture.is_some())
+            })
+            .map(|mesh| {
+                let vertex_buffer =
+                    self.device
+                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("bbb-weather-frame-vertices"),
+                            contents: bytemuck::cast_slice(&mesh.vertices),
+                            usage: wgpu::BufferUsages::VERTEX,
+                        });
+                let index_buffer =
+                    self.device
+                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("bbb-weather-frame-indices"),
+                            contents: bytemuck::cast_slice(&mesh.indices),
+                            usage: wgpu::BufferUsages::INDEX,
+                        });
+                (vertex_buffer, index_buffer)
+            });
         encoder.copy_texture_to_texture(
             wgpu::ImageCopyTexture {
                 texture: &self.depth._texture,
@@ -866,7 +891,7 @@ impl Renderer {
         );
 
         {
-            let _pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(WEATHER_TARGET_PASS_LABEL),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: weather_view,
@@ -887,6 +912,29 @@ impl Renderer {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
+            if let (Some(mesh), Some((vertex_buffer, index_buffer))) =
+                (&weather_mesh, &weather_buffers)
+            {
+                pass.set_pipeline(&self.weather_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                if !mesh.rain_indices.is_empty() {
+                    if let Some(texture) = &self.weather_rain_texture {
+                        pass.set_bind_group(0, &texture.bind_group, &[]);
+                        pass.draw_indexed(mesh.rain_indices.clone(), 0, 0..1);
+                        weather_draw_calls += 1;
+                    }
+                }
+                if !mesh.snow_indices.is_empty() {
+                    if let Some(texture) = &self.weather_snow_texture {
+                        pass.set_bind_group(0, &texture.bind_group, &[]);
+                        pass.draw_indexed(mesh.snow_indices.clone(), 0, 0..1);
+                        weather_draw_calls += 1;
+                    }
+                }
+            }
         }
 
         {
@@ -1021,6 +1069,7 @@ impl Renderer {
         self.counters.block_destroy_overlay_draw_calls = block_destroy_overlay_draw_calls;
         self.counters.sky_draw_calls = sky_draw_calls;
         self.counters.particle_draw_calls = particle_draw_calls;
+        self.counters.weather_draw_calls = weather_draw_calls;
         self.counters.item_entity_draw_calls = item_entity_draw_calls;
         self.counters.selection_draw_calls = selection_draw_calls;
         self.counters.entity_scene_draw_calls = entity_scene_draw_calls + entity_model_draw_calls;
@@ -1035,6 +1084,7 @@ impl Renderer {
             + outline_composite_draw_calls
             + transparency_combine_draw_calls
             + particle_draw_calls
+            + weather_draw_calls
             + item_entity_draw_calls
             + item_model_draw_calls
             + selection_draw_calls
@@ -1585,13 +1635,38 @@ mod tests {
             .rfind("encoder.copy_texture_to_texture")
             .map(|index| particle_target + index)
             .expect("main depth is copied into weather target depth");
+        let weather_pipeline = source[target..]
+            .find("pass.set_pipeline(&self.weather_pipeline)")
+            .map(|index| target + index)
+            .expect("weather pipeline is drawn into the target");
+        let weather_lightmap = source[weather_pipeline..]
+            .find("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])")
+            .map(|index| weather_pipeline + index)
+            .expect("weather binds the renderer-owned LightTexture");
+        let rain_bind = source[weather_lightmap..]
+            .find("pass.set_bind_group(0, &texture.bind_group, &[])")
+            .map(|index| weather_lightmap + index)
+            .expect("rain texture bind group is bound before rain draw");
+        let rain_draw = source[rain_bind..]
+            .find("pass.draw_indexed(mesh.rain_indices.clone(), 0, 0..1)")
+            .map(|index| rain_bind + index)
+            .expect("rain index range is drawn first");
+        let snow_draw = source[rain_draw..]
+            .find("pass.draw_indexed(mesh.snow_indices.clone(), 0, 0..1)")
+            .map(|index| rain_draw + index)
+            .expect("snow index range is drawn after rain");
         let combine = source
             .find("label: Some(TRANSPARENCY_COMBINE_PASS_LABEL)")
             .expect("transparency combine pass label is used");
 
         assert!(
-            copy_depth < target && target < combine,
-            "weather target copies main depth, clears transparent, and then transparency combine consumes it"
+            copy_depth < target
+                && target < weather_pipeline
+                && weather_lightmap < rain_bind
+                && rain_bind < rain_draw
+                && rain_draw < snow_draw
+                && snow_draw < combine,
+            "weather target copies main depth, clears transparent, draws rain then snow, and then transparency combine consumes it"
         );
         assert!(
             source[copy_depth..target].contains("texture: &self.depth._texture")
@@ -1608,6 +1683,11 @@ mod tests {
             source[target..combine].contains("view: weather_view")
                 && source[target..combine].contains("view: &self.weather_target.depth.view"),
             "weather pass owns the weather color/depth target"
+        );
+        assert!(
+            source[target..combine]
+                .contains("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])"),
+            "weather geometry samples the renderer-owned dynamic LightTexture"
         );
     }
 

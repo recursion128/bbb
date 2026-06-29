@@ -1,6 +1,9 @@
 use anyhow::{Context, Result};
 use bbb_pack::{PackRoots, ResourceLocation, SpriteImage};
-use bbb_renderer::{CelestialTextureImage, CelestialTextureKind, CloudTextureImage};
+use bbb_renderer::{
+    CelestialTextureImage, CelestialTextureKind, CloudTextureImage, WeatherTextureImage,
+    WeatherTextureKind, WEATHER_RAIN_TEXTURE_PATH, WEATHER_SNOW_TEXTURE_PATH,
+};
 
 const END_SKY_TEXTURE: &str = "textures/environment/end_sky.png";
 const CLOUD_TEXTURE: &str = "textures/environment/clouds.png";
@@ -71,6 +74,9 @@ pub(crate) fn load_sky_textures(renderer: &mut bbb_renderer::Renderer, roots: Op
     if let Err(err) = try_load_cloud_texture(renderer, roots) {
         tracing::warn!(?err, "continuing without vanilla cloud texture");
     }
+    if let Err(err) = try_load_weather_textures(renderer, roots) {
+        tracing::warn!(?err, "continuing without vanilla weather textures");
+    }
 }
 
 fn try_load_end_sky_texture(
@@ -100,6 +106,16 @@ fn try_load_cloud_texture(renderer: &mut bbb_renderer::Renderer, roots: &PackRoo
     Ok(())
 }
 
+fn try_load_weather_textures(
+    renderer: &mut bbb_renderer::Renderer,
+    roots: &PackRoots,
+) -> Result<()> {
+    let images = load_weather_images(roots)?;
+    renderer.upload_weather_textures(&images)?;
+    tracing::info!("loaded vanilla rain/snow weather textures");
+    Ok(())
+}
+
 fn load_end_sky_image(roots: &PackRoots) -> Result<SpriteImage> {
     let location = ResourceLocation::parse(END_SKY_TEXTURE)?;
     let resource = roots
@@ -117,6 +133,43 @@ fn load_cloud_image(roots: &PackRoots) -> Result<CloudTextureImage> {
         .with_context(|| format!("missing cloud texture minecraft:{CLOUD_TEXTURE}"))?;
     let image = SpriteImage::from_png_file("minecraft:textures/environment/clouds", resource.path)?;
     Ok(CloudTextureImage {
+        width: image.width,
+        height: image.height,
+        rgba: image.rgba,
+    })
+}
+
+fn load_weather_images(roots: &PackRoots) -> Result<Vec<WeatherTextureImage>> {
+    Ok(vec![
+        load_weather_image(
+            roots,
+            WeatherTextureKind::Rain,
+            WEATHER_RAIN_TEXTURE_PATH,
+            "minecraft:textures/environment/rain",
+        )?,
+        load_weather_image(
+            roots,
+            WeatherTextureKind::Snow,
+            WEATHER_SNOW_TEXTURE_PATH,
+            "minecraft:textures/environment/snow",
+        )?,
+    ])
+}
+
+fn load_weather_image(
+    roots: &PackRoots,
+    kind: WeatherTextureKind,
+    path: &str,
+    id: &str,
+) -> Result<WeatherTextureImage> {
+    let location = ResourceLocation::parse(path)?;
+    let resource = roots
+        .resource_stack()
+        .get_resource(&location)
+        .with_context(|| format!("missing weather texture minecraft:{path}"))?;
+    let image = SpriteImage::from_png_file(id, resource.path)?;
+    Ok(WeatherTextureImage {
+        kind,
         width: image.width,
         height: image.height,
         rgba: image.rgba,
@@ -232,6 +285,34 @@ mod tests {
 
         assert_eq!((image.width, image.height), (4, 2));
         assert_eq!(image.rgba.len(), 4 * 2 * 4);
+        std::fs::remove_dir_all(temp).unwrap();
+    }
+
+    #[test]
+    fn loads_vanilla_weather_textures_from_resource_stack_in_rain_snow_order() {
+        let temp = unique_temp_dir("bbb-weather-textures");
+        let sources = temp.join("sources").join("26.1");
+        for path in [WEATHER_RAIN_TEXTURE_PATH, WEATHER_SNOW_TEXTURE_PATH] {
+            let texture_path = sources.join("assets").join("minecraft").join(path);
+            std::fs::create_dir_all(texture_path.parent().unwrap()).unwrap();
+            write_png(&texture_path, 4, 4);
+        }
+        let roots = PackRoots {
+            mc_code_root: temp.clone(),
+            sources_dir: sources,
+            assets_dir: temp.join("unused-assets"),
+            generated_assets_dir: None,
+            resource_pack_dirs: Vec::new(),
+        };
+
+        let images = load_weather_images(&roots).unwrap();
+
+        assert_eq!(images.len(), 2);
+        assert_eq!(images[0].kind, WeatherTextureKind::Rain);
+        assert_eq!(images[1].kind, WeatherTextureKind::Snow);
+        assert!(images
+            .iter()
+            .all(|image| (image.width, image.height, image.rgba.len()) == (4, 4, 4 * 4 * 4)));
         std::fs::remove_dir_all(temp).unwrap();
     }
 

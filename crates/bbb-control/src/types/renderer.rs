@@ -16,6 +16,8 @@ pub struct RendererCounters {
     #[serde(default)]
     pub particle_draw_calls: u64,
     #[serde(default)]
+    pub weather_draw_calls: u64,
+    #[serde(default)]
     pub item_entity_draw_calls: u64,
     pub selection_draw_calls: u64,
     #[serde(default)]

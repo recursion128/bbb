@@ -75,6 +75,10 @@ use crate::{
         create_weather_target, ItemEntityTarget, MainTarget, ParticleTarget, TranslucentTarget,
         TransparencyCombineBindGroup, WeatherTarget,
     },
+    weather::{
+        create_weather_pipeline, create_weather_texture_gpu, WeatherRenderState, WeatherTextureGpu,
+        WeatherTextureImage, WeatherTextureKind,
+    },
 };
 
 pub struct Renderer {
@@ -106,6 +110,7 @@ pub struct Renderer {
     pub(super) entity_model_scroll_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_scroll_additive_pipeline: wgpu::RenderPipeline,
     pub(super) particle_pipeline: wgpu::RenderPipeline,
+    pub(super) weather_pipeline: wgpu::RenderPipeline,
     pub(super) item_entity_pipeline: wgpu::RenderPipeline,
     pub(super) item_model_pipeline: wgpu::RenderPipeline,
     pub(super) selection_pipeline: wgpu::RenderPipeline,
@@ -179,6 +184,9 @@ pub struct Renderer {
     pub(super) entity_dynamic_player_texture_images: Vec<DynamicPlayerTextureImage>,
     pub(super) entity_model_instances: Vec<crate::EntityModelInstance>,
     pub(super) particle_atlas: Option<ParticleAtlasGpu>,
+    pub(super) weather_rain_texture: Option<WeatherTextureGpu>,
+    pub(super) weather_snow_texture: Option<WeatherTextureGpu>,
+    pub(super) weather_render_state: WeatherRenderState,
     pub(super) item_entity_atlas: Option<ItemEntityAtlasGpu>,
     pub(super) item_entity_billboards: Vec<ItemEntityBillboard>,
     pub(super) block_item_model_meshes: Vec<ItemModelMesh>,
@@ -481,6 +489,12 @@ impl Renderer {
             &terrain_bind_group_layout,
             &lightmap_sample_bind_group_layout,
         );
+        let weather_pipeline = create_weather_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+        );
         let item_entity_pipeline = create_item_entity_pipeline(
             &device,
             format,
@@ -615,6 +629,7 @@ impl Renderer {
             entity_model_scroll_pipeline,
             entity_model_scroll_additive_pipeline,
             particle_pipeline,
+            weather_pipeline,
             item_entity_pipeline,
             item_model_pipeline,
             selection_pipeline,
@@ -688,6 +703,9 @@ impl Renderer {
             entity_dynamic_player_texture_images: Vec::new(),
             entity_model_instances: Vec::new(),
             particle_atlas: None,
+            weather_rain_texture: None,
+            weather_snow_texture: None,
+            weather_render_state: WeatherRenderState::default(),
             item_entity_atlas: None,
             item_entity_billboards: Vec::new(),
             block_item_model_meshes: Vec::new(),
@@ -1282,6 +1300,27 @@ impl Renderer {
         self.cloud_texture = Some(create_cloud_texture_data(image)?);
         self.rebuild_clouds();
         Ok(())
+    }
+
+    pub fn upload_weather_textures(&mut self, images: &[WeatherTextureImage]) -> Result<()> {
+        for image in images {
+            let texture = create_weather_texture_gpu(
+                &self.device,
+                &self.queue,
+                &self.terrain_bind_group_layout,
+                &self.camera_buffer,
+                image,
+            )?;
+            match image.kind {
+                WeatherTextureKind::Rain => self.weather_rain_texture = Some(texture),
+                WeatherTextureKind::Snow => self.weather_snow_texture = Some(texture),
+            }
+        }
+        Ok(())
+    }
+
+    pub fn set_weather_render_state(&mut self, state: WeatherRenderState) {
+        self.weather_render_state = state;
     }
 
     fn rebuild_clouds(&mut self) {

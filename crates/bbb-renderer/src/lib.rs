@@ -18,6 +18,7 @@ mod screenshot;
 mod selection;
 mod sky;
 mod transparency;
+mod weather;
 
 pub mod terrain;
 

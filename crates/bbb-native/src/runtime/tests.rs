@@ -685,6 +685,88 @@ fn cloud_frame_projects_world_game_time_and_camera_eye_position() {
 }
 
 #[test]
+fn weather_render_state_projects_overworld_rain_columns_from_world_weather() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.set_local_player_pose(local_player_pose([0.5, 4.0, 0.5], 0.0, 0.0));
+    set_world_day_time(&mut world, 96);
+    set_world_weather(&mut world, 0.5, 0.0);
+    world.insert_decoded_chunk(empty_lightmap_test_chunk_with_biome(world.dimension(), 42));
+    let terrain_textures =
+        TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
+            biome_profile_with_weather(42, 0.8, true),
+        ]));
+
+    let state = weather_render_state_for_world(
+        &world,
+        &terrain_textures,
+        camera_pose_from_world(&world),
+        0.25,
+    );
+
+    assert_eq!(state.frame.radius, VANILLA_WEATHER_RENDER_RADIUS);
+    assert_eq!(state.frame.intensity, 0.5);
+    assert_eq!(state.frame.camera_position, [0.5, 5.62, 0.5]);
+    assert_eq!(
+        state.rain_columns.len() + state.snow_columns.len(),
+        (VANILLA_WEATHER_RENDER_RADIUS * 2 + 1).pow(2) as usize
+    );
+    let center = state
+        .rain_columns
+        .iter()
+        .find(|column| column.x == 0 && column.z == 0)
+        .expect("center column uses the loaded precipitating biome");
+    assert_eq!(center.bottom_y, -5);
+    assert_eq!(center.top_y, 15);
+    assert_eq!(center.u_offset, 0.0);
+    assert!(center.v_offset.is_finite());
+}
+
+#[test]
+fn weather_precipitation_uses_cold_biome_for_snow_and_brightens_snow_light() {
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.insert_decoded_chunk(empty_lightmap_test_chunk_with_biome(world.dimension(), 7));
+    let terrain_textures =
+        TerrainTextureState::with_biome_colors_for_tests(BiomeColorCatalog::new([
+            biome_profile_with_weather(7, 0.0, true),
+        ]));
+
+    assert_eq!(
+        weather_precipitation_at(&world, &terrain_textures, BlockPos { x: 0, y: 4, z: 0 }, 63,),
+        Some(WeatherPrecipitation::Snow)
+    );
+
+    let column = snow_weather_column(0, 0, 1, 6, TerrainLight { block: 1, sky: 7 }, 96, 0.25);
+    assert_eq!(column.light, [4.0 / 15.0, 9.0 / 15.0]);
+    assert!(column.u_offset.is_finite());
+    assert!(column.v_offset.is_finite());
+}
+
+#[test]
+fn weather_render_state_is_empty_without_rain_or_weather_dimension() {
+    let mut dry = world_with_dimension(0, "minecraft:overworld");
+    dry.set_local_player_pose(local_player_pose([0.5, 4.0, 0.5], 0.0, 0.0));
+    let terrain_textures = TerrainTextureState::default();
+    assert!(weather_render_state_for_world(
+        &dry,
+        &terrain_textures,
+        camera_pose_from_world(&dry),
+        0.0,
+    )
+    .is_empty());
+
+    let mut nether = world_with_dimension(1, "minecraft:the_nether");
+    nether.set_local_player_pose(local_player_pose([0.5, 4.0, 0.5], 0.0, 0.0));
+    set_world_weather(&mut nether, 1.0, 0.0);
+    assert!(weather_render_state_for_world(
+        &nether,
+        &terrain_textures,
+        camera_pose_from_world(&nether),
+        0.0,
+    )
+    .is_empty());
+}
+
+#[test]
 fn clear_color_mixes_sunrise_sunset_color_when_camera_faces_sun() {
     let day_time = 71;
     let mut world = world_with_dimension(0, "minecraft:overworld");
@@ -1705,6 +1787,18 @@ fn biome_profile_with_water_fog_end_distance(
 
 fn biome_profile_with_precipitation(id: i32, has_precipitation: bool) -> BiomeColorProfile {
     BiomeColorProfile {
+        has_precipitation,
+        ..biome_profile_with_environment(id, None, None, None)
+    }
+}
+
+fn biome_profile_with_weather(
+    id: i32,
+    temperature: f32,
+    has_precipitation: bool,
+) -> BiomeColorProfile {
+    BiomeColorProfile {
+        temperature,
         has_precipitation,
         ..biome_profile_with_environment(id, None, None, None)
     }
