@@ -1880,10 +1880,11 @@ When an agent does any of the following, update this file in the same slice:
         and `(order, submit_sequence) == (0, 0)` before folded
         cutout/translucent/dynamic geometry checks; missing-atlas coverage now
         proves static skull submissions survive without folded stale skull
-        geometry. The skull branch now runs through a dispatch-owned post-armor
-        hook instead of a direct post-base helper call, preserving the current
-        armor -> CustomHead skull -> Wings append point while narrowing residual
-        helper ownership. Native resolves these skull
+        geometry. The skull branch now runs through the dispatch-owned vanilla
+        layer-order hook instead of a direct post-base helper call, preserving
+        player/humanoid CustomHead skull -> Wings and armor-stand Wings ->
+        CustomHead skull append points while narrowing residual helper
+        ownership. Native resolves these skull
         block items from the item
         registry into `EntityRenderState.custom_head_skull`. A `player_head`
         whose stack has no active `DataComponents.PROFILE` component is
@@ -1987,9 +1988,10 @@ When an agent does any of the following, update this file in the same slice:
         WINGS branches now also pin entity light plus no-overlay metadata on both
         the submission and folded dynamic texture vertices. World/native also project
         vanilla `LivingEntity.elytraAnimationState` rotX/Y/Z into the renderer,
-        and renderer WingsLayer submissions now run through a dispatch-owned
-        post-CustomHead hook instead of a direct post-base helper call,
-        preserving vanilla CustomHead -> Wings append order.
+        and renderer WingsLayer submissions now run through the dispatch-owned
+        vanilla layer-order hook instead of a direct post-base helper call,
+        preserving player/humanoid CustomHead -> Wings and armor-stand Wings ->
+        CustomHead append orders.
         and the same WINGS path now covers humanoid mobs, armor stands (small
         armor stands select the baby layer through `ArmorStand.isBaby()`), and
         baby humanoid mob `ELYTRA_BABY` geometry; their static equipment wings
@@ -2101,16 +2103,17 @@ When an agent does any of the following, update this file in the same slice:
       elytra animation-state projection are covered for vanilla elytra equipment
       on players, humanoid mobs, armor stands, and baby humanoid mobs; player
       cloak interpolation now feeds the cape flap/lean/lean2 values. WingsLayer
-      submissions now run through a dispatch-owned post-CustomHead hook rather
+      submissions now run through the vanilla layer-order dispatch hook rather
       than a direct post-base helper call. Player shoulder
       parrots are now projected from `Player.DATA_SHOULDER_PARROT_LEFT/RIGHT`
       metadata ids `19`/`20` (`OPTIONAL_UNSIGNED_INT`) into `AvatarRenderState`
       equivalents; `ParrotOnShoulderLayer` is represented as explicit left/right
-      same-order submissions after `WingsLayer` and before riptide spin, using
+      same-order submissions after `CustomHeadLayer` and `WingsLayer` and before
+      riptide spin, using
       vanilla `ModelLayers.PARROT`, `ParrotRenderer.getVariantTexture`, `entityCutout`,
       white tint, player light, `OverlayTexture.NO_OVERLAY`, transforms
-      `translate(±0.4, isCrouching ? -1.3 : -1.5, 0)`, and sequences `4` / `5`.
-      The riptide `SpinAttackEffectLayer` therefore moves to sequence `6`.
+      `translate(±0.4, isCrouching ? -1.3 : -1.5, 0)`, and sequences `5` / `6`.
+      The riptide `SpinAttackEffectLayer` therefore moves to sequence `7`.
       Those player-only post-Wings submissions now run through the shared dispatch/sink
       boundary rather than direct post-base helper calls, preserving the vanilla
       `WingsLayer` -> `ParrotOnShoulderLayer` -> `SpinAttackEffectLayer` append point
@@ -2985,7 +2988,7 @@ When an agent does any of the following, update this file in the same slice:
       selected textures, `entityCutout` render type, white tint, root transform
       (`wither_skeleton_model_root_transform` for wither skeleton, generic
       `entity_model_root_transform` otherwise), and explicit `(order, submit_sequence)`
-      pairs `(0, 0)` / `(1, 1)`, plus vanilla entity light and the body full
+      pairs `(0, 0)` / `(1, 5)`, plus vanilla entity light and the body full
       hurt/white overlay versus `SkeletonClothingLayer` zero-white overlay split before
       folded cutout geometry checks. Missing-atlas coverage now proves stray and
       bogged clothing overlay submissions are still recorded without their
@@ -3256,9 +3259,9 @@ When an agent does any of the following, update this file in the same slice:
       texture-backed submissions through the marker hidden/glowing no-base path
       and inherited living invisible branches, preserving vanilla texture,
       render type, transform, light, no-overlay, outline-color, order, and
-      submit-sequence metadata; the CustomHead skull branch uses the same
-      dispatch-owned post-armor hook in these invisible branches as in the visible
-      path, and WingsLayer uses the same dispatch-owned post-CustomHead hook.
+      submit-sequence metadata; the visible and invisible branches now share the
+      vanilla `ArmorStandRenderer` texture-backed layer order: armor, then
+      WingsLayer, then the CustomHead skull branch.
       The native item-model pass is now covered for
       marker hidden/glowing armor-stand held items and generic non-skull
       `CustomHeadLayer` HEAD items as well: `held_item_models` still bakes the

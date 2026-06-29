@@ -5,10 +5,8 @@ use super::colored::{
     GIANT_SCALE, HORSE_SCALE,
 };
 use super::dispatch::{
-    dispatch_invisible_living_ungated_layers, dispatch_late_entity_layers,
-    dispatch_post_armor_entity_layers, dispatch_post_base_entity_layers,
-    dispatch_post_custom_head_entity_layers, dispatch_post_wings_entity_layers,
-    dispatch_uniform_entity_model, TexturedSink,
+    dispatch_invisible_living_ungated_layers, dispatch_uniform_entity_model,
+    dispatch_vanilla_entity_layers, TexturedSink,
 };
 use super::held_item::custom_head_skull_transform;
 use super::model::{EntityModel, ModelPart};
@@ -46,15 +44,15 @@ use super::{
         CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel, CustomHeadSkullModel, ElytraModel,
         EquineAnimationPose, HumanoidArmorModelLayerSet, HumanoidArmorSlot, HumanoidBabyArmorKind,
         LlamaModel, NautilusModel, ParrotModel, PigModel, PiglinModel, PlayerEarsModel,
-        PlayerModel, SkeletonModel, SpinAttackEffectModel, StriderModel, VillagerModel,
-        WitherModel, WolfModel, ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
-        ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_DONKEY_SADDLE_PARTS_TEXTURED,
-        ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED, ADULT_HORSE_ARMOR_PARTS_TEXTURED,
-        ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
-        ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
-        BABY_HORSE_PARTS_TEXTURED, CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF,
-        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF,
-        END_CRYSTAL_TEXTURED_PARTS, EQUINE_BABY_DONKEY_LEG_STAND_CONFIG,
+        PlayerModel, SkeletonClothingModel, SkeletonModel, SpinAttackEffectModel, StriderModel,
+        VillagerModel, WitherModel, WolfModel, ZombieModel, ZombieVariantModel,
+        ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
+        ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
+        ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
+        ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
+        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, CAMEL_HUSK_SADDLE_TEXTURE_REF,
+        CAMEL_SADDLE_TEXTURE_REF, CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF,
+        ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, EQUINE_BABY_DONKEY_LEG_STAND_CONFIG,
         EQUINE_STANDARD_LEG_STAND_CONFIG, HORSE_SADDLE_TEXTURE_REF,
         HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND, HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND_SMALL,
         HUMANOID_ARMOR_MODEL_LAYERS_BOGGED, HUMANOID_ARMOR_MODEL_LAYERS_DROWNED,
@@ -93,8 +91,13 @@ const PLAYER_CAPE_CUBE: TexturedModelCubeDesc = TexturedModelCubeDesc {
     tex: [0.0, 0.0],
     mirror: false,
 };
-const PLAYER_WINGS_LAYER_SUBMIT_SEQUENCE: u32 = 3;
+const PLAYER_CUSTOM_HEAD_LAYER_SUBMIT_SEQUENCE: u32 = 3;
+const PLAYER_WINGS_LAYER_SUBMIT_SEQUENCE: u32 = 4;
+const ARMOR_STAND_WINGS_LAYER_SUBMIT_SEQUENCE: u32 = 1;
+const ARMOR_STAND_CUSTOM_HEAD_LAYER_SUBMIT_SEQUENCE: u32 = 2;
+const NON_PLAYER_CUSTOM_HEAD_LAYER_SUBMIT_SEQUENCE: u32 = 1;
 const NON_PLAYER_WINGS_LAYER_SUBMIT_SEQUENCE: u32 = 2;
+const SKELETON_CLOTHING_LAYER_SUBMIT_SEQUENCE: u32 = 5;
 
 mod layers;
 #[cfg(test)]
@@ -672,9 +675,9 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures_for_camera(
             dispatch_invisible_living_ungated_layers(instance, &mut sink, 1);
             continue;
         }
-        // HumanoidArmorLayer, CustomHeadLayer skulls, WingsLayer, player-only late layers, and
-        // villager profession overlays are now dispatch-owned while this loop preserves their
-        // current vanilla append points relative to any remaining generic helpers.
+        // HumanoidArmorLayer, CustomHeadLayer skulls, WingsLayer, player-only late layers,
+        // SkeletonClothingLayer, and villager profession overlays are dispatch-owned here in the
+        // same registration order as their vanilla renderer constructors.
         {
             let mut sink = TexturedSink {
                 meshes: &mut meshes,
@@ -682,11 +685,7 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures_for_camera(
                 dynamic_player_skin_atlas,
                 dynamic_player_texture_atlas,
             };
-            dispatch_post_base_entity_layers(instance, &mut sink);
-            dispatch_post_armor_entity_layers(instance, &mut sink);
-            dispatch_post_custom_head_entity_layers(instance, &mut sink);
-            dispatch_post_wings_entity_layers(instance, &mut sink);
-            dispatch_late_entity_layers(instance, &mut sink);
+            dispatch_vanilla_entity_layers(instance, &mut sink);
         }
     }
     meshes.flush_sorted_uploads();
@@ -2370,6 +2369,30 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
     }
 }
 
+pub(in crate::entity_models) fn render_skeleton_clothing_layer(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let EntityModelKind::SkeletonVariant { family } = instance.kind else {
+        return;
+    };
+    let Some(pass) = skeleton_textured_layer_passes(Some(family))
+        .into_iter()
+        .find(|pass| matches!(pass.kind, EntityModelLayerKind::SkeletonClothing))
+    else {
+        return;
+    };
+    let transform = if matches!(family, SkeletonModelFamily::WitherSkeleton) {
+        wither_skeleton_model_root_transform(instance)
+    } else {
+        entity_model_root_transform(instance)
+    };
+    let mut model = SkeletonClothingModel::new(Some(family));
+    model.prepare(&instance);
+    render_textured_layers(meshes, &model, transform, [pass], atlas);
+}
+
 pub(in crate::entity_models) fn render_custom_head_skull_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -2386,14 +2409,16 @@ pub(in crate::entity_models) fn render_custom_head_skull_layer(
         EntityCustomHeadSkull::Dragon => {
             let mut model = CustomHeadDragonSkullModel::new();
             model.prepare(&instance);
-            let pass = custom_head_skull_layer_pass(skull, custom_head_skull_texture_ref(skull));
+            let pass = custom_head_skull_layer_pass(skull, custom_head_skull_texture_ref(skull))
+                .with_submit_sequence(custom_head_skull_submit_sequence(instance));
             render_textured_no_overlay_layer_pass(meshes, &model, transform, pass, atlas);
             return;
         }
         EntityCustomHeadSkull::Piglin => {
             let mut model = CustomHeadPiglinSkullModel::new();
             model.prepare(&instance);
-            let pass = custom_head_skull_layer_pass(skull, custom_head_skull_texture_ref(skull));
+            let pass = custom_head_skull_layer_pass(skull, custom_head_skull_texture_ref(skull))
+                .with_submit_sequence(custom_head_skull_submit_sequence(instance));
             render_textured_no_overlay_layer_pass(meshes, &model, transform, pass, atlas);
             return;
         }
@@ -2403,7 +2428,8 @@ pub(in crate::entity_models) fn render_custom_head_skull_layer(
     let mut model = CustomHeadSkullModel::new(matches!(skull, EntityCustomHeadSkull::Player(_)));
     model.prepare(&instance);
     let texture = custom_head_skull_texture_ref(skull);
-    let pass = custom_head_skull_layer_pass(skull, texture);
+    let pass = custom_head_skull_layer_pass(skull, texture)
+        .with_submit_sequence(custom_head_skull_submit_sequence(instance));
     if let Some(dynamic_player_skin) = custom_head_dynamic_player_skin(skull) {
         render_textured_no_overlay_layer_pass_with_dynamic_player_skin(
             meshes,
@@ -2417,6 +2443,14 @@ pub(in crate::entity_models) fn render_custom_head_skull_layer(
         return;
     }
     render_textured_no_overlay_layer_pass(meshes, &model, transform, pass, atlas);
+}
+
+fn custom_head_skull_submit_sequence(instance: EntityModelInstance) -> u32 {
+    match instance.kind {
+        EntityModelKind::Player { .. } => PLAYER_CUSTOM_HEAD_LAYER_SUBMIT_SEQUENCE,
+        EntityModelKind::ArmorStand { .. } => ARMOR_STAND_CUSTOM_HEAD_LAYER_SUBMIT_SEQUENCE,
+        _ => NON_PLAYER_CUSTOM_HEAD_LAYER_SUBMIT_SEQUENCE,
+    }
 }
 
 fn custom_head_dynamic_player_skin(
@@ -3464,10 +3498,10 @@ fn wings_layer_transform_and_baby(instance: EntityModelInstance) -> Option<(Mat4
 }
 
 fn wings_layer_submit_sequence(instance: EntityModelInstance) -> u32 {
-    if matches!(instance.kind, EntityModelKind::Player { .. }) {
-        PLAYER_WINGS_LAYER_SUBMIT_SEQUENCE
-    } else {
-        NON_PLAYER_WINGS_LAYER_SUBMIT_SEQUENCE
+    match instance.kind {
+        EntityModelKind::Player { .. } => PLAYER_WINGS_LAYER_SUBMIT_SEQUENCE,
+        EntityModelKind::ArmorStand { .. } => ARMOR_STAND_WINGS_LAYER_SUBMIT_SEQUENCE,
+        _ => NON_PLAYER_WINGS_LAYER_SUBMIT_SEQUENCE,
     }
 }
 

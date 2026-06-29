@@ -188,7 +188,7 @@ fn skeleton_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(stray[1].texture, STRAY_OVERLAY_TEXTURE_REF);
     assert_eq!(stray[1].visibility, EntityModelLayerVisibility::All);
     assert_eq!(stray[1].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!((stray[1].order, stray[1].submit_sequence), (1, 1));
+    assert_eq!((stray[1].order, stray[1].submit_sequence), (1, 5));
 
     let parched = skeleton_textured_layer_passes(Some(SkeletonModelFamily::Parched));
     assert_eq!(parched.len(), 1);
@@ -208,7 +208,7 @@ fn skeleton_textured_layer_passes_match_vanilla_renderer_model_layers() {
     assert_eq!(bogged[1].kind, EntityModelLayerKind::SkeletonClothing);
     assert_eq!(bogged[1].model_layer, MODEL_LAYER_BOGGED_OUTER_LAYER);
     assert_eq!(bogged[1].texture, BOGGED_OVERLAY_TEXTURE_REF);
-    assert_eq!((bogged[1].order, bogged[1].submit_sequence), (1, 1));
+    assert_eq!((bogged[1].order, bogged[1].submit_sequence), (1, 5));
 
     let sheared_bogged =
         skeleton_textured_layer_passes(Some(SkeletonModelFamily::Bogged { sheared: true }));

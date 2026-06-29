@@ -337,6 +337,13 @@ pub(in crate::entity_models) struct EntityModelLayerPass {
     pub(in crate::entity_models) submit_sequence: u32,
 }
 
+impl EntityModelLayerPass {
+    pub(in crate::entity_models) fn with_submit_sequence(mut self, submit_sequence: u32) -> Self {
+        self.submit_sequence = submit_sequence;
+        self
+    }
+}
+
 pub(in crate::entity_models) fn boat_textured_layer_passes(
     family: BoatModelFamily,
     chest: bool,
@@ -2139,7 +2146,7 @@ pub(in crate::entity_models) fn player_parrot_on_shoulder_layer_pass(
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         order: 0,
-        submit_sequence: if is_left { 4 } else { 5 },
+        submit_sequence: if is_left { 5 } else { 6 },
     }
 }
 
@@ -2152,7 +2159,7 @@ pub(in crate::entity_models) fn player_spin_attack_effect_layer_pass() -> Entity
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         order: 0,
-        submit_sequence: 6,
+        submit_sequence: 7,
     }
 }
 
@@ -2375,7 +2382,7 @@ pub(in crate::entity_models) fn skeleton_textured_layer_passes(
             visibility: EntityModelLayerVisibility::All,
             tint: [1.0, 1.0, 1.0, 1.0],
             order: 1,
-            submit_sequence: 1,
+            submit_sequence: super::SKELETON_CLOTHING_LAYER_SUBMIT_SEQUENCE,
         });
     }
     passes

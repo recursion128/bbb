@@ -25,6 +25,14 @@ fn expected_skull_transform(instance: &EntityModelInstance) -> Mat4 {
     super::super::held_item::custom_head_skull_transform(instance).unwrap()
 }
 
+fn expected_skull_submit_sequence(instance: &EntityModelInstance) -> u32 {
+    match instance.kind {
+        EntityModelKind::Player { .. } => 3,
+        EntityModelKind::ArmorStand { .. } => 2,
+        _ => 1,
+    }
+}
+
 fn assert_skull_submission(
     instance: &EntityModelInstance,
     meshes: &EntityModelTexturedMeshes,
@@ -54,7 +62,10 @@ fn assert_skull_submission(
     assert_eq!(submit.texture, texture);
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(submit.dynamic_player_skin, None);
-    assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+    assert_eq!(
+        (submit.order, submit.submit_sequence),
+        (0, expected_skull_submit_sequence(instance))
+    );
     assert_eq!(submit.transform, expected_transform);
     assert_eq!(submit.light, instance.render_state.shader_light());
     assert_eq!(submit.overlay, [0.0, 10.0]);
@@ -465,7 +476,7 @@ fn custom_head_skull_layer_uses_profile_default_player_skin_texture() {
     assert_eq!(dynamic_submit.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         (dynamic_submit.order, dynamic_submit.submit_sequence),
-        (0, 0)
+        (0, expected_skull_submit_sequence(&dynamic_instance))
     );
     assert_eq!(
         dynamic_submit.transform,
@@ -619,7 +630,7 @@ fn custom_head_ready_dynamic_player_skin_renders_from_dynamic_skin_atlas() {
     );
     assert_eq!(
         (dynamic_submit.order, dynamic_submit.submit_sequence),
-        (0, 0)
+        (0, expected_skull_submit_sequence(&instance))
     );
     assert_eq!(dynamic_submit.light, instance.render_state.shader_light());
     assert_eq!(dynamic_submit.overlay, [0.0, 10.0]);

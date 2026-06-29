@@ -54,13 +54,13 @@ use super::model_layers::{
     MagmaCubeModel, MinecartModel, NautilusModel, PandaModel, ParrotModel, PhantomModel, PigModel,
     PiglinModel, PlayerModel, PolarBearModel, PufferfishModel, RabbitModel, RavagerModel,
     SalmonModel, SheepFurModel, SheepModel, ShulkerBulletModel, ShulkerModel, SilverfishModel,
-    SkeletonClothingModel, SkeletonModel, SlimeModel, SlimeOuterModel, SnifferModel,
-    SnowGolemModel, SpiderModel, SquidModel, StriderModel, TadpoleModel, TridentModel,
-    TropicalFishModel, TropicalFishPatternModel, TurtleModel, VexModel, VillagerModel,
-    WanderingTraderModel, WardenModel, WindChargeModel, WitchModel, WitherModel, WitherSkullModel,
-    WolfModel, ZombieModel, ZombieVariantModel, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF,
-    BAT_TEXTURE_REF, COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF,
-    END_CRYSTAL_PARTS, FELINE_CAT_SCALE, GLOW_SQUID_TEAL, GUARDIAN_ELDER_SCALE, MODEL_LAYER_ALLAY,
+    SkeletonModel, SlimeModel, SlimeOuterModel, SnifferModel, SnowGolemModel, SpiderModel,
+    SquidModel, StriderModel, TadpoleModel, TridentModel, TropicalFishModel,
+    TropicalFishPatternModel, TurtleModel, VexModel, VillagerModel, WanderingTraderModel,
+    WardenModel, WindChargeModel, WitchModel, WitherModel, WitherSkullModel, WolfModel,
+    ZombieModel, ZombieVariantModel, ALLAY_TEXTURE_REF, ARMOR_STAND_TEXTURE_REF, BAT_TEXTURE_REF,
+    COD_TEXTURE_REF, DOLPHIN_BABY_TEXTURE_REF, DOLPHIN_TEXTURE_REF, END_CRYSTAL_PARTS,
+    FELINE_CAT_SCALE, GLOW_SQUID_TEAL, GUARDIAN_ELDER_SCALE, MODEL_LAYER_ALLAY,
     MODEL_LAYER_ARMOR_STAND, MODEL_LAYER_ARMOR_STAND_SMALL, MODEL_LAYER_BAT, MODEL_LAYER_BEE,
     MODEL_LAYER_BEE_BABY, MODEL_LAYER_COD, MODEL_LAYER_DOLPHIN, MODEL_LAYER_DOLPHIN_BABY,
     MODEL_LAYER_PUFFERFISH_BIG, MODEL_LAYER_PUFFERFISH_MEDIUM, MODEL_LAYER_PUFFERFISH_SMALL,
@@ -96,14 +96,15 @@ use super::textured::{
     render_no_overlay_scrolled_textured_layers, render_pig_saddle_layer, render_player_cape_layer,
     render_player_extra_ears_layer, render_player_parrot_on_shoulder_layer,
     render_player_spin_attack_effect_layer, render_player_textured_layers,
-    render_strider_saddle_layer, render_textured_layers, render_trident_foil_submission,
-    render_undead_horse_textured_layers, render_villager_profession_layers, render_wings_layer,
-    render_wither_energy_swirl, render_wolf_body_armor_layer, render_worn_humanoid_armor,
-    salmon_textured_layer_passes, sheep_textured_layer_passes,
-    shulker_bullet_textured_layer_passes, shulker_textured_layer_passes,
-    silverfish_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
-    sniffer_textured_layer_passes, snow_golem_textured_layer_passes, spider_textured_layer_passes,
-    squid_textured_layer_passes, tadpole_textured_layer_passes, trident_textured_layer_passes,
+    render_skeleton_clothing_layer, render_strider_saddle_layer, render_textured_layers,
+    render_trident_foil_submission, render_undead_horse_textured_layers,
+    render_villager_profession_layers, render_wings_layer, render_wither_energy_swirl,
+    render_wolf_body_armor_layer, render_worn_humanoid_armor, salmon_textured_layer_passes,
+    sheep_textured_layer_passes, shulker_bullet_textured_layer_passes,
+    shulker_textured_layer_passes, silverfish_textured_layer_passes,
+    skeleton_textured_layer_passes, slime_textured_layer_passes, sniffer_textured_layer_passes,
+    snow_golem_textured_layer_passes, spider_textured_layer_passes, squid_textured_layer_passes,
+    tadpole_textured_layer_passes, trident_textured_layer_passes,
     tropical_fish_textured_layer_passes, villager_textured_layer_passes,
     wandering_trader_textured_layer_passes, warden_textured_layer_passes,
     wind_charge_textured_layer_passes, witch_textured_layer_passes,
@@ -329,6 +330,8 @@ pub(in crate::entity_models) trait EntityModelSink {
     fn custom_head_skull_layer(&mut self, _instance: &EntityModelInstance) {}
 
     fn wings_layer(&mut self, _instance: &EntityModelInstance) {}
+
+    fn skeleton_clothing_layer(&mut self, _instance: &EntityModelInstance) {}
 
     fn villager_profession_layers(&mut self, _instance: &EntityModelInstance) {}
 
@@ -800,6 +803,10 @@ impl EntityModelSink for TexturedSink<'_> {
         );
     }
 
+    fn skeleton_clothing_layer(&mut self, instance: &EntityModelInstance) {
+        render_skeleton_clothing_layer(self.meshes, *instance, self.atlas);
+    }
+
     fn villager_profession_layers(&mut self, instance: &EntityModelInstance) {
         render_villager_profession_layers(self.meshes, *instance, self.atlas);
     }
@@ -1089,14 +1096,6 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
                     transform,
                     instance,
                     &passes[0..1],
-                );
-            }
-            if passes.len() > 1 {
-                sink.textured_only_model(
-                    SkeletonClothingModel::new(Some(family)),
-                    transform,
-                    instance,
-                    &passes[1..2],
                 );
             }
         }
@@ -1718,20 +1717,61 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
     true
 }
 
-/// Dispatch-owned layers whose current textured append point is immediately after the base model.
-pub(in crate::entity_models) fn dispatch_post_base_entity_layers<S: EntityModelSink>(
+/// Dispatch-owned renderer layers in the same order vanilla registers them in each renderer
+/// constructor. The `SubmitNodeCollector.order(n)` value still controls cross-order traversal; this
+/// ordering preserves the same-order append sequence inside each order collection.
+pub(in crate::entity_models) fn dispatch_vanilla_entity_layers<S: EntityModelSink>(
     instance: &EntityModelInstance,
     sink: &mut S,
 ) {
     match instance.kind {
-        EntityModelKind::ArmorStand { .. }
-        | EntityModelKind::Zombie { .. }
-        | EntityModelKind::Giant
-        | EntityModelKind::ZombieVariant { .. }
-        | EntityModelKind::Skeleton
-        | EntityModelKind::SkeletonVariant { .. }
-        | EntityModelKind::Player { .. }
-        | EntityModelKind::Piglin { .. } => sink.worn_humanoid_armor(instance),
+        EntityModelKind::Player { .. } => {
+            sink.worn_humanoid_armor(instance);
+            sink.custom_head_skull_layer(instance);
+            sink.wings_layer(instance);
+            sink.player_post_wings_layers(instance);
+        }
+        EntityModelKind::ArmorStand { .. } => {
+            sink.worn_humanoid_armor(instance);
+            sink.wings_layer(instance);
+            sink.custom_head_skull_layer(instance);
+        }
+        EntityModelKind::Zombie { .. } | EntityModelKind::Piglin { .. } => {
+            sink.custom_head_skull_layer(instance);
+            sink.wings_layer(instance);
+            sink.worn_humanoid_armor(instance);
+        }
+        EntityModelKind::ZombieVariant { family, .. } => {
+            sink.custom_head_skull_layer(instance);
+            sink.wings_layer(instance);
+            sink.worn_humanoid_armor(instance);
+            if matches!(family, ZombieVariantModelFamily::ZombieVillager) {
+                sink.villager_profession_layers(instance);
+            }
+        }
+        EntityModelKind::Skeleton => {
+            sink.custom_head_skull_layer(instance);
+            sink.wings_layer(instance);
+            sink.worn_humanoid_armor(instance);
+        }
+        EntityModelKind::SkeletonVariant { .. } => {
+            sink.custom_head_skull_layer(instance);
+            sink.wings_layer(instance);
+            sink.worn_humanoid_armor(instance);
+            sink.skeleton_clothing_layer(instance);
+        }
+        EntityModelKind::Giant => {
+            sink.worn_humanoid_armor(instance);
+        }
+        EntityModelKind::Illager { .. }
+        | EntityModelKind::WanderingTrader
+        | EntityModelKind::CopperGolem { .. } => {
+            sink.custom_head_skull_layer(instance);
+        }
+        EntityModelKind::Villager { .. } => {
+            sink.custom_head_skull_layer(instance);
+            sink.villager_profession_layers(instance);
+        }
         _ => {}
     }
 }
@@ -1746,75 +1786,35 @@ pub(in crate::entity_models) fn dispatch_invisible_living_ungated_layers<S: Enti
     if matches!(instance.kind, EntityModelKind::Wolf { .. }) {
         sink.wolf_body_armor_layer(instance, wolf_submit_sequence_start);
     }
-    dispatch_post_base_entity_layers(instance, sink);
-    dispatch_post_armor_entity_layers(instance, sink);
-    dispatch_post_custom_head_entity_layers(instance, sink);
-}
-
-/// Dispatch-owned layers whose current textured append point is after the worn armor helper.
-pub(in crate::entity_models) fn dispatch_post_armor_entity_layers<S: EntityModelSink>(
-    instance: &EntityModelInstance,
-    sink: &mut S,
-) {
     match instance.kind {
-        EntityModelKind::Player { .. }
-        | EntityModelKind::Zombie { .. }
+        EntityModelKind::Player { .. } => {
+            sink.worn_humanoid_armor(instance);
+            sink.custom_head_skull_layer(instance);
+            sink.wings_layer(instance);
+        }
+        EntityModelKind::ArmorStand { .. } => {
+            sink.worn_humanoid_armor(instance);
+            sink.wings_layer(instance);
+            sink.custom_head_skull_layer(instance);
+        }
+        EntityModelKind::Zombie { .. }
         | EntityModelKind::ZombieVariant { .. }
         | EntityModelKind::Piglin { .. }
         | EntityModelKind::Skeleton
-        | EntityModelKind::SkeletonVariant { .. }
-        | EntityModelKind::Illager { .. }
+        | EntityModelKind::SkeletonVariant { .. } => {
+            sink.custom_head_skull_layer(instance);
+            sink.wings_layer(instance);
+            sink.worn_humanoid_armor(instance);
+        }
+        EntityModelKind::Giant => {
+            sink.worn_humanoid_armor(instance);
+        }
+        EntityModelKind::Illager { .. }
         | EntityModelKind::Villager { .. }
         | EntityModelKind::WanderingTrader
-        | EntityModelKind::ArmorStand { .. }
-        | EntityModelKind::CopperGolem { .. } => sink.custom_head_skull_layer(instance),
-        _ => {}
-    }
-}
-
-/// Dispatch-owned layers that vanilla registers immediately after `CustomHeadLayer`.
-pub(in crate::entity_models) fn dispatch_post_custom_head_entity_layers<S: EntityModelSink>(
-    instance: &EntityModelInstance,
-    sink: &mut S,
-) {
-    match instance.kind {
-        EntityModelKind::Player { .. }
-        | EntityModelKind::Zombie { .. }
-        | EntityModelKind::ZombieVariant { .. }
-        | EntityModelKind::Skeleton
-        | EntityModelKind::SkeletonVariant { .. }
-        | EntityModelKind::Piglin { .. }
-        | EntityModelKind::ArmorStand { .. } => sink.wings_layer(instance),
-        _ => {}
-    }
-}
-
-/// Dispatch-owned player layers that vanilla registers after `WingsLayer`.
-///
-/// These run from the textured post-base loop at the same point the old helper calls did, so
-/// submission append order stays `WingsLayer` -> `ParrotOnShoulderLayer` -> `SpinAttackEffectLayer`
-/// while the player-specific layer ownership moves into the shared dispatch/sink boundary.
-pub(in crate::entity_models) fn dispatch_post_wings_entity_layers<S: EntityModelSink>(
-    instance: &EntityModelInstance,
-    sink: &mut S,
-) {
-    if matches!(instance.kind, EntityModelKind::Player { .. }) {
-        sink.player_post_wings_layers(instance);
-    }
-}
-
-/// Dispatch-owned late layers whose vanilla append point is after the generic post-base helpers that
-/// still live in the textured loop.
-pub(in crate::entity_models) fn dispatch_late_entity_layers<S: EntityModelSink>(
-    instance: &EntityModelInstance,
-    sink: &mut S,
-) {
-    match instance.kind {
-        EntityModelKind::Villager { .. }
-        | EntityModelKind::ZombieVariant {
-            family: ZombieVariantModelFamily::ZombieVillager,
-            ..
-        } => sink.villager_profession_layers(instance),
+        | EntityModelKind::CopperGolem { .. } => {
+            sink.custom_head_skull_layer(instance);
+        }
         _ => {}
     }
 }

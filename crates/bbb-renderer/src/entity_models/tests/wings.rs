@@ -146,6 +146,54 @@ fn non_player_humanoid_wings_layer_uses_static_equipment_texture_submission() {
 }
 
 #[test]
+fn zombie_custom_head_wings_and_armor_follow_vanilla_layer_order() {
+    // Vanilla `HumanoidMobRenderer` registers CustomHeadLayer -> WingsLayer -> ItemInHandLayer,
+    // and zombie-family subclasses append HumanoidArmorLayer afterwards. Armor still uses
+    // `EquipmentLayerRenderer.order(1)`, while the skull and wings stay in order 0 after the base.
+    let atlas = atlas_for(&[
+        ZOMBIE_TEXTURE_REF,
+        SKELETON_TEXTURE_REF,
+        ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
+        ARMOR_IRON_HUMANOID_TEXTURE_REF,
+    ]);
+    let instance = EntityModelInstance::zombie(185, [1.0, 64.0, -2.0], 25.0, false)
+        .with_custom_head_skull(Some(EntityCustomHeadSkull::Skeleton))
+        .with_chest_wings_layer(Some(EntityEquipmentLayerTexture {
+            texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
+            use_player_texture: true,
+        }))
+        .with_chest_equipment_has_wings(true)
+        .with_head_armor(Some(EntityArmorMaterial::Iron));
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    let body = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == ZOMBIE_TEXTURE_REF)
+        .expect("zombie body");
+    assert_eq!((body.order, body.submit_sequence), (0, 0));
+    let skull = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == SKELETON_TEXTURE_REF)
+        .expect("custom head skull");
+    assert_eq!((skull.order, skull.submit_sequence), (0, 1));
+    let wings = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF)
+        .expect("wings");
+    assert_eq!((wings.order, wings.submit_sequence), (0, 2));
+    let armor = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == ARMOR_IRON_HUMANOID_TEXTURE_REF)
+        .expect("head armor");
+    assert_eq!((armor.order, armor.submit_sequence), (1, 4));
+}
+
+#[test]
 fn non_player_humanoid_wings_submission_survives_missing_texture_atlas_entry() {
     // Vanilla `WingsLayer` still submits the WINGS equipment layer through
     // `EquipmentLayerRenderer.renderLayers(..., order = 0)`; a missing stitched
@@ -233,8 +281,8 @@ fn non_player_humanoid_wings_submission_survives_missing_texture_atlas_entry() {
 fn small_armor_stand_wings_layer_uses_baby_elytra_model() {
     // Vanilla `ArmorStand.isBaby()` returns `isSmall()`, and `WingsLayer` selects
     // `ModelLayers.ELYTRA_BABY` when `state.isBaby`.
-    let adult_pass = wings_layer_pass(ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF, false, 2);
-    let baby_pass = wings_layer_pass(ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF, true, 2);
+    let adult_pass = wings_layer_pass(ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF, false, 1);
+    let baby_pass = wings_layer_pass(ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF, true, 1);
     assert_eq!(adult_pass.model_layer, MODEL_LAYER_ELYTRA);
     assert_eq!(baby_pass.model_layer, MODEL_LAYER_ELYTRA_BABY);
     assert_eq!(baby_pass.kind, EntityModelLayerKind::Wings);
@@ -242,7 +290,7 @@ fn small_armor_stand_wings_layer_uses_baby_elytra_model() {
         baby_pass.render_type,
         EntityModelLayerRenderType::ArmorCutoutNoCull
     );
-    assert_eq!((baby_pass.order, baby_pass.submit_sequence), (0, 2));
+    assert_eq!((baby_pass.order, baby_pass.submit_sequence), (0, 1));
 
     let atlas = atlas_for(&[ARMOR_STAND_TEXTURE_REF, ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF]);
     let layer = Some(EntityEquipmentLayerTexture {
@@ -296,6 +344,116 @@ fn small_armor_stand_wings_layer_uses_baby_elytra_model() {
 }
 
 #[test]
+fn armor_stand_wings_precede_custom_head_in_vanilla_layer_order() {
+    // Vanilla `ArmorStandRenderer` registers HumanoidArmorLayer, ItemInHandLayer, WingsLayer, then
+    // CustomHeadLayer. The two modeled order-0 layers therefore submit wings before the skull.
+    let atlas = atlas_for(&[
+        ARMOR_STAND_TEXTURE_REF,
+        SKELETON_TEXTURE_REF,
+        ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
+        ARMOR_IRON_HUMANOID_TEXTURE_REF,
+    ]);
+    let layer = Some(EntityEquipmentLayerTexture {
+        texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
+        use_player_texture: true,
+    });
+    let instance = EntityModelInstance::armor_stand(
+        186,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        true,
+        true,
+        DEFAULT_ARMOR_STAND_MODEL_POSE,
+    )
+    .with_custom_head_skull(Some(EntityCustomHeadSkull::Skeleton))
+    .with_chest_wings_layer(layer)
+    .with_chest_equipment_has_wings(true)
+    .with_head_armor(Some(EntityArmorMaterial::Iron));
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    let body = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == ARMOR_STAND_TEXTURE_REF)
+        .expect("armor stand body");
+    assert_eq!((body.order, body.submit_sequence), (0, 0));
+    let wings = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF)
+        .expect("wings");
+    assert_eq!((wings.order, wings.submit_sequence), (0, 1));
+    let skull = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == SKELETON_TEXTURE_REF)
+        .expect("custom head skull");
+    assert_eq!((skull.order, skull.submit_sequence), (0, 2));
+    let armor = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == ARMOR_IRON_HUMANOID_TEXTURE_REF)
+        .expect("head armor");
+    assert_eq!((armor.order, armor.submit_sequence), (1, 4));
+}
+
+#[test]
+fn player_custom_head_slot_sits_between_cape_and_wings() {
+    // Vanilla `AvatarRenderer` registers HumanoidArmorLayer, item/arrow layers, ears, cape,
+    // CustomHeadLayer, then WingsLayer. The modeled texture-backed order-0 sequence keeps the
+    // skull immediately before wings, while armor remains in order 1.
+    let atlas = atlas_for(&[
+        PLAYER_WIDE_STEVE_TEXTURE_REF,
+        SKELETON_TEXTURE_REF,
+        ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
+        ARMOR_IRON_HUMANOID_TEXTURE_REF,
+    ]);
+    let instance = EntityModelInstance::player_with_skin(
+        187,
+        [0.0, 64.0, 0.0],
+        0.0,
+        EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_custom_head_skull(Some(EntityCustomHeadSkull::Skeleton))
+    .with_chest_wings_layer(Some(EntityEquipmentLayerTexture {
+        texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
+        use_player_texture: true,
+    }))
+    .with_chest_equipment_has_wings(true)
+    .with_head_armor(Some(EntityArmorMaterial::Iron));
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    let body = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == PLAYER_WIDE_STEVE_TEXTURE_REF)
+        .expect("player body");
+    assert_eq!((body.order, body.submit_sequence), (0, 0));
+    let skull = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == SKELETON_TEXTURE_REF)
+        .expect("custom head skull");
+    assert_eq!((skull.order, skull.submit_sequence), (0, 3));
+    let wings = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF)
+        .expect("wings");
+    assert_eq!((wings.order, wings.submit_sequence), (0, 4));
+    let armor = meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == ARMOR_IRON_HUMANOID_TEXTURE_REF)
+        .expect("head armor");
+    assert_eq!((armor.order, armor.submit_sequence), (1, 4));
+}
+
+#[test]
 fn marker_hidden_glowing_armor_stand_keeps_wings_layer_without_base_submission() {
     // Vanilla `ArmorStandRenderer.getRenderType` returns null for hidden marker bases even when
     // glowing, but `LivingEntityRenderer.submit` still runs `WingsLayer` afterwards.
@@ -346,7 +504,7 @@ fn marker_hidden_glowing_armor_stand_keeps_wings_layer_without_base_submission()
     assert_eq!(submit.light, instance.render_state.shader_light());
     assert_eq!(submit.overlay, [0.0, 10.0]);
     assert_eq!(submit.outline_color, 0xff55_aa11);
-    assert_eq!((submit.order, submit.submit_sequence), (0, 2));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 1));
     assert_eq!(elytra_vertex_positions(&meshes, &atlas).len(), 48);
     assert_elytra_vertices_have_vanilla_metadata(&meshes, &atlas, instance);
     assert!(meshes.translucent.vertices.is_empty());
@@ -451,7 +609,7 @@ fn hidden_player_keeps_wings_layer_without_base_submission() {
     assert_eq!(submit.light, instance.render_state.shader_light());
     assert_eq!(submit.overlay, [0.0, 10.0]);
     assert_eq!(submit.outline_color, 0);
-    assert_eq!((submit.order, submit.submit_sequence), (0, 3));
+    assert_eq!((submit.order, submit.submit_sequence), (0, 4));
     assert_eq!(elytra_vertex_positions(&meshes, &atlas).len(), 48);
     assert_elytra_vertices_have_vanilla_metadata(&meshes, &atlas, instance);
     assert!(meshes.translucent.vertices.is_empty());
