@@ -57,8 +57,9 @@ impl CustomHeadTransforms {
 /// hand, or `None` if the instance is not a humanoid that holds items the standard way. Composes the
 /// posed arm bone (vanilla `translateToHand` = root + arm `translateAndRotate`) with the
 /// `ItemInHandLayer` hand offset (`rotX(-90°)·rotY(180°)·translate(±offsetX, offsetY, offsetZ)/16`)
-/// and the main-hand spear attack item transform (`SpearAnimations.thirdPersonAttackItem`) when the
-/// rendered player is mid-STAB swing. Kinetic weapon hold sway is still separate P1 work.
+/// plus the main-hand spear attack item transform (`SpearAnimations.thirdPersonAttackItem`) when the
+/// rendered player is mid-STAB swing, followed by the spear use transform
+/// (`SpearAnimations.thirdPersonUseItem`) when the same hand is using a spear.
 /// Vanilla `useBabyOffset` selects the offsets: adult `(1, 2, -10)`, baby `(0, 1, -4.5)`. The baby
 /// humanoid families (zombie, zombie variants, piglin) bake their reduced proportions straight into an
 /// explicit baby mesh (no part scale), so the baby attach uses the same `root · arm` formula on the baby
@@ -1435,6 +1436,47 @@ mod tests {
         assert_close_transform(
             humanoid_hand_attach_transform(&off, false).unwrap(),
             item_in_hand_layer_base_transform(right_world, false, right_baby),
+        );
+    }
+
+    #[test]
+    fn spear_attack_and_use_item_transforms_follow_vanilla_layer_order() {
+        // Vanilla `ItemInHandLayer.submitArmWithItem` composes the STAB attack item transform before the
+        // arm-pose `animateUseItem` hook: base hand offset, then `thirdPersonAttackItem`, then
+        // `thirdPersonUseItem`, then `ItemStackRenderState.submit`.
+        let kinetic = SpearKineticWeapon {
+            delay_ticks: 12.0,
+            dismount_duration_ticks: 50.0,
+            knockback_duration_ticks: 135.0,
+            damage_duration_ticks: 225.0,
+            forward_movement: 0.38,
+        };
+        let player = player_instance(0.0)
+            .with_attack_anim(0.1)
+            .with_main_hand_swing_is_stab(true)
+            .with_player_using_spear(Some(kinetic))
+            .with_crossbow_charge_ticks(60.0);
+        let (arm_world, baby) = humanoid_arm_world_transform(&player, "right_arm").unwrap();
+        let base = item_in_hand_layer_base_transform(arm_world, false, baby);
+        let attack = spear_third_person_attack_item_transform(0.1);
+        let use_item = spear_third_person_use_item_transform(kinetic, 60.0, 0.1, false);
+        let expected = base * attack * use_item;
+
+        let actual = humanoid_hand_attach_transform(&player, false).unwrap();
+        assert_close_transform(actual, expected);
+
+        let reversed = base * use_item * attack;
+        let vanilla_origin = expected.transform_point3(Vec3::ZERO);
+        let reversed_origin = reversed.transform_point3(Vec3::ZERO);
+        assert!(
+            (vanilla_origin - reversed_origin).length() > 0.001,
+            "attack/use order should be observable, got {vanilla_origin:?} vs {reversed_origin:?}"
+        );
+
+        let (left_world, left_baby) = humanoid_arm_world_transform(&player, "left_arm").unwrap();
+        assert_close_transform(
+            humanoid_hand_attach_transform(&player, true).unwrap(),
+            item_in_hand_layer_base_transform(left_world, true, left_baby),
         );
     }
 

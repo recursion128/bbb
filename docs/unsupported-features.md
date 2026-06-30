@@ -1960,8 +1960,11 @@ When an agent does any of the following, update this file in the same slice:
         `ItemInHandLayer` + `HumanoidModel.translateToHand` =
         `root.translateAndRotate · arm.translateAndRotate · rotX(-90°) ·
         rotY(180°) · T((left?-1:1), 2, -10)/16` plus the main-hand spear
-        `SpearAnimations.thirdPersonAttackItem` transform during STAB swings (built on
-        `ModelPart::try_child_attach_transform`). It dispatches over the
+        `SpearAnimations.thirdPersonAttackItem` transform during STAB swings, followed by
+        `SpearAnimations.thirdPersonUseItem` when the same hand is using a spear. The combined
+        order is now tested against vanilla `ItemInHandLayer.submitArmWithItem`: base hand offset →
+        attack item transform → use-item transform → item submit, with a regression assertion that
+        reversing attack/use changes the matrix. It dispatches over the
         weapon-holding adult humanoid families — players, zombies (+husk /
         drowned / zombie-villager), skeletons (+stray / bogged / wither),
         piglins (+brute / zombified), and illagers — posing each family's own

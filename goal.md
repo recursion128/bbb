@@ -466,7 +466,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     之后，held item transform 追加 vanilla
     `SpearAnimations.thirdPersonAttackItem` 的 local pivot rotation 与 spear
     `forwardMovement = 0.38` 平移。
-  - held item 与 use-item 的 layer/order 交互。
+  - [x] spear held-item 与 use-item 的 layer/order 交互：
+    `ItemInHandLayer.submitArmWithItem` 顺序已用 focused test 固定为
+    base hand offset → `thirdPersonAttackItem` → `thirdPersonUseItem` →
+    item submit，并验证反序矩阵不同。
 - Boss / beam / emissive 类：
   - [x] EnderDragon dying-dissolve render type / submission 表达：
     `dragonDeathTime` source projection、`entityCutoutDissolve(dragon.png,
