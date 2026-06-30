@@ -57,6 +57,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub use_effects: Option<UseEffectsSummary>,
     #[serde(default)]
+    pub consumable: Option<ConsumableSummary>,
+    #[serde(default)]
     pub attack_range: Option<AttackRangeSummary>,
     #[serde(default)]
     pub swing_animation: Option<SwingAnimationSummary>,
@@ -176,6 +178,19 @@ impl PartialEq for UseEffectsSummary {
 }
 
 impl Eq for UseEffectsSummary {}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+pub struct ConsumableSummary {
+    pub consume_seconds: f32,
+}
+
+impl PartialEq for ConsumableSummary {
+    fn eq(&self, other: &Self) -> bool {
+        self.consume_seconds.to_bits() == other.consume_seconds.to_bits()
+    }
+}
+
+impl Eq for ConsumableSummary {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SwingAnimationSummary {
@@ -361,6 +376,9 @@ fn decode_typed_data_component_patch_summary(
             }
             5 => {
                 summary.use_effects = Some(decode_use_effects_summary(decoder)?);
+            }
+            24 => {
+                summary.consumable = Some(decode_consumable_summary(decoder)?);
             }
             30 => {
                 summary.attack_range = Some(decode_attack_range_summary(decoder)?);
@@ -866,7 +884,12 @@ fn decode_food(decoder: &mut Decoder<'_>) -> Result<()> {
 }
 
 fn decode_consumable(decoder: &mut Decoder<'_>) -> Result<()> {
-    decoder.read_f32()?;
+    let _ = decode_consumable_summary(decoder)?;
+    Ok(())
+}
+
+fn decode_consumable_summary(decoder: &mut Decoder<'_>) -> Result<ConsumableSummary> {
+    let consume_seconds = decoder.read_f32()?;
     decoder.read_var_i32()?;
     decode_sound_event_holder(decoder)?;
     decoder.read_bool()?;
@@ -875,7 +898,7 @@ fn decode_consumable(decoder: &mut Decoder<'_>) -> Result<()> {
     for _ in 0..effect_count {
         decode_consume_effect(decoder)?;
     }
-    Ok(())
+    Ok(ConsumableSummary { consume_seconds })
 }
 
 fn decode_consume_effect(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -1767,6 +1790,38 @@ mod tests {
     }
 
     #[test]
+    fn decodes_consumable_component_summary() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+
+        payload.write_var_i32(24);
+        payload.write_f32(0.8);
+        payload.write_var_i32(0);
+        write_direct_sound_event(&mut payload, "minecraft:entity.generic.eat", None);
+        payload.write_bool(true);
+        payload.write_var_i32(0);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![24],
+                removed_type_ids: Vec::new(),
+                consumable: Some(ConsumableSummary {
+                    consume_seconds: 0.8,
+                }),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
     fn decodes_item_rarity_out_of_bounds_as_common() {
         let mut payload = Encoder::new();
         payload.write_var_i32(1);
@@ -2504,6 +2559,9 @@ mod tests {
                     can_sprint: true,
                     interact_vibrations: false,
                     speed_multiplier: 0.5,
+                }),
+                consumable: Some(ConsumableSummary {
+                    consume_seconds: 1.6,
                 }),
                 attack_range: Some(AttackRangeSummary {
                     min_reach: 0.0,

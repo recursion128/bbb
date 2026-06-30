@@ -5720,9 +5720,8 @@ When an agent does any of the following, update this file in the same slice:
     generated item stacks and pass the trim-material registry keys where vanilla
     resolves `TrimMaterialProperty`.
   - Thread the same use-tick context into first-person generated item consumers,
-    and add the remaining use-duration refinements (consumable component
-    duration and Quick Charge-modified crossbow charge duration) once those
-    inputs are preserved.
+    and add the remaining Quick Charge-modified crossbow charge duration
+    refinement once enchantment-level input is preserved.
   - Each plugs into the existing value-aware `RangeDispatch` / `Select`
     resolver by adding a value provider; no new selection machinery is required.
 - Evidence / boundary:
@@ -5730,10 +5729,12 @@ When an agent does any of the following, update this file in the same slice:
     (`CustomModelDataFloats`, bit-exact `Eq`) plus the strings/colors lists, the
     `minecraft:block_state` property map, the `minecraft:charged_projectiles`
     item templates (`charged_projectiles_items`), and the `minecraft:trim`
-    material holder reference id (`armor_trim_material_id`), so the
+    material holder reference id (`armor_trim_material_id`), and the
+    `minecraft:consumable` `consume_seconds` value (`consumable`), so the
     `CustomModelDataProperty.getFloat(index)`,
     `CustomModelDataProperty.getString(index)`, `ItemBlockState.get`,
-    `Charge.get`, and `TrimMaterialProperty.get` inputs are preserved on the wire.
+    `Charge.get`, `TrimMaterialProperty.get`, and
+    `ItemStack.getUseDuration(owner)` consumable input are preserved on the wire.
   - `bbb-native` resolves `minecraft:range_dispatch` item models with the exact
     vanilla `RangeSelectItemModel.update` selection:
     - `value = property.get(...) * scale`
@@ -5802,6 +5803,9 @@ When an agent does any of the following, update this file in the same slice:
       item icons and owner-backed third-person generated held items whose stack
       is the active `LivingEntity.getUseItem()`, using the local / entity use
       tick counter as elapsed ticks (`remaining=false`, vanilla bow asset path)
+      and reading vanilla `Consumable.consumeTicks()` (`consume_seconds * 20`
+      truncated to int) for ordinary consumable stacks when `remaining=true`;
+      tests also pin the 26.1 `EnderEyeItem.getUseDuration` override to `0`.
     - `minecraft:use_cycle` — `UseCycle.get`, for GUI/HUD local-player item
       icons using the active stack's remaining ticks modulo the declared
       positive `period` (vanilla brush asset path, 200 tick brush duration)
@@ -5823,8 +5827,8 @@ When an agent does any of the following, update this file in the same slice:
     does not yet receive. GUI/HUD use-tick properties are wired for the local
     active stack, and owner-backed third-person generated held-item paths use
     the entity render state's shared use tick counter. First-person generated
-    item paths, consumable-duration components, and Quick Charge-modified
-    crossbow charge duration are still documented follow-up.
+    item paths and Quick Charge-modified crossbow charge duration are still
+    documented follow-up.
     `minecraft:main_hand` and `minecraft:context_entity_type` still fall back on
     native item consumers that do not pass a `LivingEntity` owner, such as
     fake/null-owner item surfaces; third-person entity-owned generated items

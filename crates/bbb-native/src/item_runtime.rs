@@ -18,8 +18,8 @@ use bbb_pack::{
     DEFAULT_LANGUAGE_CODE,
 };
 use bbb_protocol::packets::{
-    DataComponentPatchSummary, ItemRaritySummary, ItemStackSummary, ItemStackTemplateSummary,
-    ResolvableProfileSummary, ResourceTextureSummary,
+    ConsumableSummary, DataComponentPatchSummary, ItemRaritySummary, ItemStackSummary,
+    ItemStackTemplateSummary, ResolvableProfileSummary, ResourceTextureSummary,
 };
 use bbb_renderer::{
     DynamicPlayerSkinImage, DynamicPlayerTextureImage, EntityCustomHeadSkull,
@@ -66,7 +66,7 @@ const ENDER_EYE_ITEM_ID: &str = "minecraft:ender_eye";
 const VANILLA_LONG_USE_DURATION_TICKS: i32 = 72_000;
 const VANILLA_BRUSH_USE_DURATION_TICKS: i32 = 200;
 const VANILLA_SPYGLASS_USE_DURATION_TICKS: i32 = 1_200;
-const VANILLA_ENDER_EYE_USE_DURATION_TICKS: i32 = 20;
+const VANILLA_ENDER_EYE_USE_DURATION_TICKS: i32 = 0;
 const VANILLA_CROSSBOW_CHARGE_DURATION_TICKS: i32 = 25;
 const VANILLA_BLOCKS_ATTACKS_COMPONENT_ID: i32 = 37;
 const VANILLA_KINETIC_WEAPON_COMPONENT_ID: i32 = 39;
@@ -1950,6 +1950,16 @@ fn item_stack_is_empty(stack: &ItemStackSummary) -> bool {
 }
 
 fn item_use_duration_ticks(item_id: &str, component_patch: &DataComponentPatchSummary) -> i32 {
+    match item_id {
+        BOW_ITEM_ID | CROSSBOW_ITEM_ID | TRIDENT_ITEM_ID => return VANILLA_LONG_USE_DURATION_TICKS,
+        BRUSH_ITEM_ID => return VANILLA_BRUSH_USE_DURATION_TICKS,
+        SPYGLASS_ITEM_ID => return VANILLA_SPYGLASS_USE_DURATION_TICKS,
+        ENDER_EYE_ITEM_ID => return VANILLA_ENDER_EYE_USE_DURATION_TICKS,
+        _ => {}
+    }
+    if let Some(consumable) = component_patch.consumable {
+        return consumable_use_duration_ticks(consumable);
+    }
     if component_patch
         .added_type_ids
         .contains(&VANILLA_BLOCKS_ATTACKS_COMPONENT_ID)
@@ -1959,13 +1969,14 @@ fn item_use_duration_ticks(item_id: &str, component_patch: &DataComponentPatchSu
     {
         return VANILLA_LONG_USE_DURATION_TICKS;
     }
-    match item_id {
-        BOW_ITEM_ID | CROSSBOW_ITEM_ID | TRIDENT_ITEM_ID => VANILLA_LONG_USE_DURATION_TICKS,
-        BRUSH_ITEM_ID => VANILLA_BRUSH_USE_DURATION_TICKS,
-        SPYGLASS_ITEM_ID => VANILLA_SPYGLASS_USE_DURATION_TICKS,
-        ENDER_EYE_ITEM_ID => VANILLA_ENDER_EYE_USE_DURATION_TICKS,
-        _ => 0,
+    0
+}
+
+fn consumable_use_duration_ticks(consumable: ConsumableSummary) -> i32 {
+    if !consumable.consume_seconds.is_finite() || consumable.consume_seconds <= 0.0 {
+        return 0;
     }
+    (consumable.consume_seconds * 20.0).min(i32::MAX as f32) as i32
 }
 
 fn crossbow_charge_duration_ticks(item_id: &str) -> Option<i32> {
@@ -4904,6 +4915,37 @@ mod tests {
         assert_eq!(selected(&brush, true, 7), uv("brush_brushing_0"));
         assert_eq!(selected(&brush, true, 1), uv("brush_brushing_2"));
 
+        let consumable_apple = ItemStackSummary {
+            item_id: Some(5),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                consumable: Some(ConsumableSummary {
+                    consume_seconds: 0.8,
+                }),
+                ..DataComponentPatchSummary::default()
+            },
+        };
+        assert_eq!(selected(&consumable_apple, false, 0), uv("apple"));
+        // Vanilla `Consumable.consumeTicks()` casts `consumeSeconds * 20.0F` to
+        // int, so 0.8 seconds yields a 16 tick remaining-time source.
+        assert_eq!(
+            selected(&consumable_apple, true, 0),
+            uv("apple_remaining_high")
+        );
+        assert_eq!(
+            selected(&consumable_apple, true, 10),
+            uv("apple_remaining_low")
+        );
+
+        let ender_eye = stack(6);
+        assert_eq!(selected(&ender_eye, false, 0), uv("ender_eye"));
+        // Vanilla 26.1 `EnderEyeItem.getUseDuration` returns 0, so even an
+        // active use context has no remaining ticks for range-dispatch.
+        assert_eq!(
+            selected(&ender_eye, true, 0),
+            uv("ender_eye_remaining_empty")
+        );
+
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -5552,10 +5594,19 @@ mod tests {
     fn write_use_tick_range_dispatch_fixture(root: &Path) {
         let assets = assets_dir(root);
         write_item_atlases(&assets);
-        // Item ids: 0 = bow, 1 = crossbow, 2 = firework_rocket, 3 = arrow, 4 = brush.
+        // Item ids: 0 = bow, 1 = crossbow, 2 = firework_rocket, 3 = arrow,
+        // 4 = brush, 5 = apple, 6 = ender_eye.
         write_item_registry_source(
             root,
-            &["bow", "crossbow", "firework_rocket", "arrow", "brush"],
+            &[
+                "bow",
+                "crossbow",
+                "firework_rocket",
+                "arrow",
+                "brush",
+                "apple",
+                "ender_eye",
+            ],
         );
         write_json(
             &assets.join("items").join("bow.json"),
@@ -5648,6 +5699,56 @@ mod tests {
                 }
             }"#,
         );
+        write_json(
+            &assets.join("items").join("apple.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:using_item",
+                    "on_false": { "type": "minecraft:model", "model": "minecraft:item/apple" },
+                    "on_true": {
+                        "type": "minecraft:range_dispatch",
+                        "property": "minecraft:use_duration",
+                        "remaining": true,
+                        "scale": 0.05,
+                        "entries": [
+                            {
+                                "threshold": 0.25,
+                                "model": { "type": "minecraft:model", "model": "minecraft:item/apple_remaining_low" }
+                            },
+                            {
+                                "threshold": 0.75,
+                                "model": { "type": "minecraft:model", "model": "minecraft:item/apple_remaining_high" }
+                            }
+                        ],
+                        "fallback": { "type": "minecraft:model", "model": "minecraft:item/apple_remaining_empty" }
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets.join("items").join("ender_eye.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:using_item",
+                    "on_false": { "type": "minecraft:model", "model": "minecraft:item/ender_eye" },
+                    "on_true": {
+                        "type": "minecraft:range_dispatch",
+                        "property": "minecraft:use_duration",
+                        "remaining": true,
+                        "scale": 0.05,
+                        "entries": [
+                            {
+                                "threshold": 0.25,
+                                "model": { "type": "minecraft:model", "model": "minecraft:item/ender_eye_remaining" }
+                            }
+                        ],
+                        "fallback": { "type": "minecraft:model", "model": "minecraft:item/ender_eye_remaining_empty" }
+                    }
+                }
+            }"#,
+        );
         write_flat_item_model_and_texture(&assets, "bow", &[80, 120, 160, 255]);
         write_flat_item_model_and_texture(&assets, "bow_pulling_0", &[160, 80, 120, 255]);
         write_flat_item_model_and_texture(&assets, "bow_pulling_1", &[120, 160, 80, 255]);
@@ -5662,6 +5763,17 @@ mod tests {
         write_flat_item_model_and_texture(&assets, "brush_brushing_0", &[120, 90, 90, 255]);
         write_flat_item_model_and_texture(&assets, "brush_brushing_1", &[90, 120, 90, 255]);
         write_flat_item_model_and_texture(&assets, "brush_brushing_2", &[90, 90, 120, 255]);
+        write_flat_item_model_and_texture(&assets, "apple", &[110, 20, 20, 255]);
+        write_flat_item_model_and_texture(&assets, "apple_remaining_empty", &[45, 45, 45, 255]);
+        write_flat_item_model_and_texture(&assets, "apple_remaining_low", &[170, 90, 60, 255]);
+        write_flat_item_model_and_texture(&assets, "apple_remaining_high", &[210, 40, 40, 255]);
+        write_flat_item_model_and_texture(&assets, "ender_eye", &[40, 120, 80, 255]);
+        write_flat_item_model_and_texture(
+            &assets,
+            "ender_eye_remaining_empty",
+            &[40, 80, 120, 255],
+        );
+        write_flat_item_model_and_texture(&assets, "ender_eye_remaining", &[120, 180, 80, 255]);
     }
 
     fn write_main_hand_select_fixture(root: &Path) {
