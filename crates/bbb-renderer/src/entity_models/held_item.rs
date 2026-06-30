@@ -7,7 +7,7 @@ use std::f32::consts::{FRAC_PI_2, PI};
 use glam::{Mat4, Vec3};
 
 use super::colored::{
-    entity_model_root_transform, fox_model_root_transform,
+    entity_model_root_transform, fox_model_root_transform, illusioner_model_root_transform,
     mesh_transformer_scaled_model_root_transform, player_model_root_transform,
     villager_adult_model_root_transform, wither_skeleton_model_root_transform,
     zombie_variant_root_transform, GIANT_SCALE,
@@ -75,6 +75,36 @@ pub fn humanoid_hand_attach_transform(
         item_in_hand_layer_base_transform(arm_world, left_hand, baby)
             * item_in_hand_layer_item_transform(instance, left_hand),
     )
+}
+
+/// Clone-aware variant of [`humanoid_hand_attach_transform`]. Ordinary humanoids return one transform;
+/// an invisible illusioner returns one transform for each vanilla clone root because
+/// `IllusionerRenderer.submit` wraps the full `LivingEntityRenderer.submit` call in the clone loop.
+pub fn humanoid_hand_attach_transforms(
+    instance: &EntityModelInstance,
+    left_hand: bool,
+) -> Vec<Mat4> {
+    if instance.illusioner_body_visible_when_invisible() {
+        let arm_name = if left_hand { "left_arm" } else { "right_arm" };
+        return (0..instance.render_state.illusioner_clone_offsets.len())
+            .filter_map(|index| {
+                let root = illusioner_model_root_transform(
+                    *instance,
+                    instance.illusioner_clone_offset(index),
+                );
+                let (arm_world, baby) =
+                    illager_arm_world_transform_with_root(instance, arm_name, root)?;
+                Some(
+                    item_in_hand_layer_base_transform(arm_world, left_hand, baby)
+                        * item_in_hand_layer_item_transform(instance, left_hand),
+                )
+            })
+            .collect();
+    }
+
+    humanoid_hand_attach_transform(instance, left_hand)
+        .into_iter()
+        .collect()
 }
 
 fn item_in_hand_layer_base_transform(arm_world: Mat4, left_hand: bool, baby: bool) -> Mat4 {
@@ -602,6 +632,22 @@ pub fn witch_held_item_transform(instance: &EntityModelInstance) -> Option<Mat4>
     Some(root * local)
 }
 
+fn illager_arm_world_transform_with_root(
+    instance: &EntityModelInstance,
+    arm_name: &str,
+    root: Mat4,
+) -> Option<(Mat4, bool)> {
+    let EntityModelKind::Illager { family } = instance.kind else {
+        return None;
+    };
+    let mut model = IllagerModel::new(instance, family);
+    model.prepare(instance);
+    Some((
+        root * model.root().try_child_attach_transform(arm_name)?,
+        false,
+    ))
+}
+
 /// The world transform of a named arm bone plus whether the instance is a baby (so the caller picks the
 /// baby hand offset), for the humanoid families that render held items: builds and poses the same model
 /// + root transform the entity scene uses, then reads `root · arm` (vanilla `translateToHand`). Returns
@@ -736,6 +782,47 @@ mod tests {
     fn non_humanoid_instances_have_no_hand_attach() {
         let creeper = EntityModelInstance::new(2, EntityModelKind::Creeper, [0.0, 0.0, 0.0], 0.0);
         assert!(humanoid_hand_attach_transform(&creeper, false).is_none());
+        assert!(humanoid_hand_attach_transforms(&creeper, false).is_empty());
+    }
+
+    #[test]
+    fn invisible_illusioner_hand_attach_transforms_follow_clone_roots() {
+        let offsets = [
+            [1.25, 0.0, -0.75],
+            [-1.0, 0.5, 0.5],
+            [0.5, 0.0, 1.0],
+            [-1.5, 0.0, -1.25],
+        ];
+        let instance = EntityModelInstance::illager(
+            68,
+            [4.0, 64.0, -2.0],
+            30.0,
+            IllagerModelFamily::Illusioner,
+        )
+        .with_invisible(true)
+        .with_is_aggressive(true)
+        .with_age_in_ticks(8.0)
+        .with_illusioner_clone_offsets(offsets);
+
+        let right_hands = humanoid_hand_attach_transforms(&instance, false);
+        assert_eq!(right_hands.len(), 4);
+
+        for (index, transform) in right_hands.into_iter().enumerate() {
+            let root =
+                illusioner_model_root_transform(instance, instance.illusioner_clone_offset(index));
+            let (arm_world, baby) =
+                illager_arm_world_transform_with_root(&instance, "right_arm", root).unwrap();
+            let expected = item_in_hand_layer_base_transform(arm_world, false, baby);
+            assert_close_transform(transform, expected);
+        }
+
+        let visible = instance.with_invisible(false);
+        let visible_transforms = humanoid_hand_attach_transforms(&visible, false);
+        assert_eq!(visible_transforms.len(), 1);
+        assert_close_transform(
+            visible_transforms[0],
+            humanoid_hand_attach_transform(&visible, false).unwrap(),
+        );
     }
 
     #[test]

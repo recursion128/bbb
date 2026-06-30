@@ -135,17 +135,6 @@ fn strider_base_layer_pass(baby: bool, cold: bool) -> EntityModelLayerPass {
     }
 }
 
-fn illusioner_clone_offset(instance: &EntityModelInstance, index: usize) -> [f32; 3] {
-    let offset = instance.render_state.illusioner_clone_offsets[index];
-    let i = index as f32;
-    let age = instance.render_state.age_in_ticks;
-    [
-        offset[0] + (i + age * 0.5).cos() * 0.025,
-        offset[1] + (i + age * 0.75).cos() * 0.0125,
-        offset[2] + (i + age * 0.7).cos() * 0.025,
-    ]
-}
-
 /// A render-path-agnostic sink for each model/root-transform/layer-pass tuple in a uniform entity.
 /// [`dispatch_uniform_entity_model`] drives this; the colored implementation renders the cube tree
 /// (ignoring `passes`), the textured implementation walks `passes`. `passes` is empty for
@@ -1283,7 +1272,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             for index in 0..instance.render_state.illusioner_clone_offsets.len() {
                 let root_transform = illusioner_model_root_transform(
                     *instance,
-                    illusioner_clone_offset(instance, index),
+                    instance.illusioner_clone_offset(index),
                 );
                 sink.model(
                     IllagerModel::new(instance, family),

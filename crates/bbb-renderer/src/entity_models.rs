@@ -68,7 +68,8 @@ pub(super) use gpu::{
 pub use held_item::{
     allay_hand_attach_transform, copper_golem_hand_attach_transform, custom_head_item_transform,
     dolphin_carried_item_transform, fox_held_item_transform, humanoid_hand_attach_transform,
-    panda_held_item_transform, villager_crossed_arms_item_transform, witch_held_item_transform,
+    humanoid_hand_attach_transforms, panda_held_item_transform,
+    villager_crossed_arms_item_transform, witch_held_item_transform,
 };
 pub use instances::*;
 use keyframe::*;

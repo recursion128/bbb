@@ -1372,6 +1372,17 @@ impl EntityModelInstance {
             )
     }
 
+    pub(in crate::entity_models) fn illusioner_clone_offset(&self, index: usize) -> [f32; 3] {
+        let offset = self.render_state.illusioner_clone_offsets[index];
+        let i = index as f32;
+        let age = self.render_state.age_in_ticks;
+        [
+            offset[0] + (i + age * 0.5).cos() * 0.025,
+            offset[1] + (i + age * 0.75).cos() * 0.0125,
+            offset[2] + (i + age * 0.7).cos() * 0.025,
+        ]
+    }
+
     /// Sets the vanilla `LivingEntityRenderState.isInvisible` flag. A true value
     /// also selects the ordinary non-spectator `isInvisibleToPlayer` baseline;
     /// callers can then set `with_invisible_to_player(false)` for spectator/self-visible

@@ -3560,9 +3560,13 @@ When an agent does any of the following, update this file in the same slice:
       body submissions with `illusionOffsets` plus age jitter while bypassing
       the ordinary hidden/force-transparent/outline-only invisible body
       branches, and the `CustomHeadLayer` skull branch now submits once per
-      clone with the same root transform. Renderer state extraction for dynamic
-      arm visibility and held-item layer projection across illusioner clones
-      remain unsupported. Spellcasting,
+      clone with the same root transform. The illusioner's conditional
+      `ItemInHandLayer` is also represented in the native item-model pass:
+      idle illusioners skip held-item submission, casting/aggressive visible
+      illusioners submit one held item per hand, and invisible
+      casting/aggressive illusioners submit held items once per clone. Generic
+      non-skull custom-head item projection across invisible illusioner clones
+      remains later item-presentation parity. Spellcasting,
       crossbow hold/charge, illusioner bow aim, evoker/vindicator celebrating,
       vindicator empty/armed attacking, and riding sit arm/leg poses are implemented.
     - armor stand entities as renderer-owned vanilla 26.1

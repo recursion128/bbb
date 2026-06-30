@@ -18,12 +18,12 @@ use bbb_renderer::{
     bake_item_model_mesh_with_light_and_overlay, bake_item_model_meshes_with_light,
     copper_golem_antenna_block_transform, copper_golem_hand_attach_transform,
     custom_head_item_transform, dolphin_carried_item_transform, enderman_carried_block_transform,
-    fox_held_item_transform, humanoid_hand_attach_transform, iron_golem_flower_block_transform,
+    fox_held_item_transform, humanoid_hand_attach_transforms, iron_golem_flower_block_transform,
     minecart_tnt_display_block_transform, mooshroom_mushroom_block_transforms,
     panda_held_item_transform, snow_golem_head_block_transform,
     villager_crossed_arms_item_transform, witch_held_item_transform, EntityModelInstance,
-    ItemModelMesh, ItemModelMeshSet, ItemModelQuad, MooshroomVariant, ITEM_MODEL_FULL_BRIGHT_LIGHT,
-    ITEM_MODEL_NO_OVERLAY,
+    EntityModelKind, IllagerModelFamily, ItemModelMesh, ItemModelMeshSet, ItemModelQuad,
+    MooshroomVariant, ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
 };
 use bbb_world::{TerrainLight, WorldStore};
 use glam::{Mat4, Vec3};
@@ -587,12 +587,12 @@ fn bake_held_hand(
     let Some(stack) = world.held_item(instance.entity_id, off_hand) else {
         return;
     };
+    if !humanoid_item_in_hand_layer_visible(instance) {
+        return;
+    }
     // The off hand is the left arm (default right-handed main arm); the left arm gets the left-hand
     // display mirror.
     let left_arm = off_hand;
-    let Some(hand) = humanoid_hand_attach_transform(instance, left_arm) else {
-        return;
-    };
 
     // The item's own retained third-person transform for this arm (handheld tools angle the model,
     // blocks tilt it, generated items lay it flat); falls back to the parent-model default per path.
@@ -601,20 +601,32 @@ fn bake_held_hand(
     } else {
         BlockModelDisplayContext::ThirdPersonRightHand
     };
-    bake_item_stack_at_transform(
-        &stack,
-        hand,
-        context,
-        left_arm,
-        BLOCK_THIRD_PERSON_FALLBACK,
-        GENERATED_THIRD_PERSON_FALLBACK,
-        item_runtime,
-        terrain_textures,
-        block_meshes,
-        block_translucent_meshes,
-        flat_meshes,
-        flat_translucent_meshes,
-    );
+    for hand in humanoid_hand_attach_transforms(instance, left_arm) {
+        bake_item_stack_at_transform(
+            &stack,
+            hand,
+            context,
+            left_arm,
+            BLOCK_THIRD_PERSON_FALLBACK,
+            GENERATED_THIRD_PERSON_FALLBACK,
+            item_runtime,
+            terrain_textures,
+            block_meshes,
+            block_translucent_meshes,
+            flat_meshes,
+            flat_translucent_meshes,
+        );
+    }
+}
+
+fn humanoid_item_in_hand_layer_visible(instance: &EntityModelInstance) -> bool {
+    !matches!(
+        instance.kind,
+        EntityModelKind::Illager {
+            family: IllagerModelFamily::Illusioner
+        }
+    ) || instance.render_state.illager_spellcasting
+        || instance.render_state.is_aggressive
 }
 
 /// Bakes a fox's main-hand stack in its mouth. Vanilla `FoxHeldItemLayer` is backed by
@@ -1757,6 +1769,75 @@ mod tests {
         for models in [&visible_models, &hidden_models, &glowing_models] {
             assert!(models.block_meshes.is_empty());
             assert_eq!(models.flat_meshes.len(), 2);
+            assert!(models.flat_meshes.iter().all(|mesh| !mesh.is_empty()));
+        }
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn illusioner_item_in_hand_layer_uses_vanilla_visibility_and_clones() {
+        // Vanilla `IllusionerRenderer` installs a conditional `ItemInHandLayer`: idle illusioners do not
+        // submit held items, while casting/aggressive illusioners submit inside the invisible clone loop.
+        let root = unique_item_model_temp_dir("illusioner-held-item-clones");
+        write_flat_item_runtime_fixture(&root, &["bow"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let mut world = WorldStore::new();
+        const ENTITY_ID: i32 = 604;
+        const ILLUSIONER_ENTITY_TYPE_ID: i32 = 68;
+        world.apply_add_entity(protocol_add_entity(ENTITY_ID, ILLUSIONER_ENTITY_TYPE_ID));
+        assert!(world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::MainHand, 0)));
+
+        let offsets = [
+            [1.25, 0.0, -0.75],
+            [-1.0, 0.5, 0.5],
+            [0.5, 0.0, 1.0],
+            [-1.5, 0.0, -1.25],
+        ];
+        let base = EntityModelInstance::illager(
+            ENTITY_ID,
+            [4.0, 64.0, -2.0],
+            30.0,
+            IllagerModelFamily::Illusioner,
+        )
+        .with_age_in_ticks(8.0)
+        .with_illusioner_clone_offsets(offsets);
+        let terrain_textures = TerrainTextureState::default();
+
+        let idle_models = held_item_models(&[base], &world, Some(&item_runtime), &terrain_textures);
+        let aggressive_models = held_item_models(
+            &[base.with_is_aggressive(true)],
+            &world,
+            Some(&item_runtime),
+            &terrain_textures,
+        );
+        let invisible_aggressive_models = held_item_models(
+            &[base.with_is_aggressive(true).with_invisible(true)],
+            &world,
+            Some(&item_runtime),
+            &terrain_textures,
+        );
+        let invisible_casting_models = held_item_models(
+            &[base.with_illager_spellcasting(true).with_invisible(true)],
+            &world,
+            Some(&item_runtime),
+            &terrain_textures,
+        );
+
+        assert!(idle_models.block_meshes.is_empty());
+        assert!(idle_models.flat_meshes.is_empty());
+        assert_eq!(aggressive_models.flat_meshes.len(), 1);
+        assert_eq!(invisible_aggressive_models.flat_meshes.len(), 4);
+        assert_eq!(invisible_casting_models.flat_meshes.len(), 4);
+        for models in [
+            &aggressive_models,
+            &invisible_aggressive_models,
+            &invisible_casting_models,
+        ] {
+            assert!(models.block_meshes.is_empty());
+            assert!(models.block_translucent_meshes.is_empty());
+            assert!(models.flat_translucent_meshes.is_empty());
             assert!(models.flat_meshes.iter().all(|mesh| !mesh.is_empty()));
         }
 
