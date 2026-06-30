@@ -1179,11 +1179,11 @@ pub(crate) fn create_entity_model_translucent_cull_pipeline(
     )
 }
 
-/// Vanilla `BlendFunction.ADDITIVE`: `src·srcAlpha + dst·1` for colour, `src·1 + dst·1` for alpha.
+/// Vanilla `BlendFunction.ADDITIVE`: `src·1 + dst·1` for both colour and alpha.
 /// Used by the `energySwirl` render type (the charged-creeper / wither energy-swirl glow).
 const ENTITY_MODEL_ADDITIVE_BLEND: wgpu::BlendState = wgpu::BlendState {
     color: wgpu::BlendComponent {
-        src_factor: wgpu::BlendFactor::SrcAlpha,
+        src_factor: wgpu::BlendFactor::One,
         dst_factor: wgpu::BlendFactor::One,
         operation: wgpu::BlendOperation::Add,
     },
@@ -2442,10 +2442,11 @@ fn create_entity_model_scroll_mesh_gpu_from_mesh(
 #[cfg(test)]
 mod tests {
     use super::{
-        entity_model_glint_shader, ENTITY_MODEL_GLINT_BLEND, ENTITY_MODEL_GLINT_DEPTH_COMPARE,
-        ENTITY_MODEL_GLINT_DEPTH_WRITE_ENABLED, ENTITY_MODEL_OUTLINE_BLEND,
-        ENTITY_MODEL_OUTLINE_CULL_MODE, ENTITY_MODEL_OUTLINE_NO_CULL_MODE,
-        ENTITY_MODEL_OUTLINE_SHADER, ENTITY_MODEL_SURFACE_CULL_MODE,
+        entity_model_glint_shader, ENTITY_MODEL_ADDITIVE_BLEND, ENTITY_MODEL_GLINT_BLEND,
+        ENTITY_MODEL_GLINT_DEPTH_COMPARE, ENTITY_MODEL_GLINT_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_OUTLINE_BLEND, ENTITY_MODEL_OUTLINE_CULL_MODE,
+        ENTITY_MODEL_OUTLINE_NO_CULL_MODE, ENTITY_MODEL_OUTLINE_SHADER,
+        ENTITY_MODEL_SCROLL_EMISSIVE_SHADER, ENTITY_MODEL_SURFACE_CULL_MODE,
         ENTITY_MODEL_SURFACE_NO_CULL_MODE, ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER,
     };
 
@@ -2531,6 +2532,49 @@ mod tests {
         assert!(entity_glint.contains("if color.a < 0.1"));
         assert!(!entity_glint.contains("lightmap_texture"));
         assert!(!entity_glint.contains("sample_lightmap"));
+    }
+
+    #[test]
+    fn entity_model_energy_swirl_pipeline_state_matches_vanilla_additive() {
+        assert_eq!(
+            ENTITY_MODEL_ADDITIVE_BLEND.color.src_factor,
+            wgpu::BlendFactor::One,
+            "vanilla BlendFunction.ADDITIVE uses SourceFactor.ONE for colour"
+        );
+        assert_eq!(
+            ENTITY_MODEL_ADDITIVE_BLEND.color.dst_factor,
+            wgpu::BlendFactor::One,
+            "vanilla BlendFunction.ADDITIVE uses DestFactor.ONE for colour"
+        );
+        assert_eq!(
+            ENTITY_MODEL_ADDITIVE_BLEND.alpha.src_factor,
+            wgpu::BlendFactor::One,
+            "vanilla BlendFunction.ADDITIVE uses SourceFactor.ONE for alpha"
+        );
+        assert_eq!(
+            ENTITY_MODEL_ADDITIVE_BLEND.alpha.dst_factor,
+            wgpu::BlendFactor::One,
+            "vanilla BlendFunction.ADDITIVE uses DestFactor.ONE for alpha"
+        );
+    }
+
+    #[test]
+    fn entity_model_energy_swirl_shader_matches_vanilla_emissive_scroll_shape() {
+        assert!(
+            ENTITY_MODEL_SCROLL_EMISSIVE_SHADER.contains("fract(input.local_uv)"),
+            "vanilla energySwirl applies the texture matrix offset and wraps atlas-local UVs"
+        );
+        assert!(
+            ENTITY_MODEL_SCROLL_EMISSIVE_SHADER.contains("if texel.a <= 0.1")
+                || ENTITY_MODEL_SCROLL_EMISSIVE_SHADER.contains("if (texel.a <= 0.1"),
+            "vanilla ENERGY_SWIRL keeps ALPHA_CUTOUT 0.1"
+        );
+        assert!(
+            !ENTITY_MODEL_SCROLL_EMISSIVE_SHADER.contains("sample_lightmap")
+                && !ENTITY_MODEL_SCROLL_EMISSIVE_SHADER.contains("lightmap_texture")
+                && !ENTITY_MODEL_SCROLL_EMISSIVE_SHADER.contains("input.overlay"),
+            "vanilla ENERGY_SWIRL defines EMISSIVE and NO_OVERLAY"
+        );
     }
 
     #[test]

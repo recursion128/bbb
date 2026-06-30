@@ -1125,11 +1125,12 @@ When an agent does any of the following, update this file in the same slice:
     The `CreeperPowerLayer` energy swirl is now wired: a charged creeper (the synced
     `Creeper.DATA_IS_POWERED`, entity-data index `17`, projected onto `creeper_powered`) draws the
     inflated `CREEPER_ARMOR` model (`CubeDeformation(2.0)`, `CreeperModel::new_armor`, driven by the
-    same `setup_anim` so it tracks the body pose) through the new additive scrolling pipeline (vanilla
+    same `setup_anim` so it tracks the body pose) through the additive scrolling pipeline (vanilla
     `RenderTypes.energySwirl`): `creeper_armor.png` (`CREEPER_ARMOR_TEXTURE_REF`) scrolling both axes by
     `xOffset(ageInTicks) % 1 = (ageInTicks · 0.01) % 1`, tinted by the vanilla `0xFF808080` half-grey,
-    `BlendFunction.ADDITIVE`, emissive, `ALPHA_CUTOUT 0.1` — the same shader-side `fract` atlas-wrap as
-    the wind charge's `breezeWind`, just additively blended. `creeper_textured_layer_passes` now records
+    `BlendFunction.ADDITIVE` (`SourceFactor.ONE`, `DestFactor.ONE`), emissive,
+    `ALPHA_CUTOUT 0.1` — the same shader-side `fract` atlas-wrap as the wind charge's
+    `breezeWind`, just additively blended. `creeper_textured_layer_passes` now records
     both vanilla `ModelLayers.CREEPER` and `ModelLayers.CREEPER_ARMOR`, with base `entityCutout` and armor
     `energySwirl` texture/render-type/tint/order metadata; the shared dispatch sink consumes the body
     pass and, when `isPowered`, its texture sink records and folds the armor `EnergySwirlLayer` pass. The
@@ -4295,7 +4296,8 @@ When an agent does any of the following, update this file in the same slice:
       `RenderTypes.energySwirl`: `wither_armor.png` (`WITHER_ARMOR_TEXTURE_REF`) tinted by the vanilla
       `0xFF808080` half-grey, its U scrolled by the oscillating `cos(ageInTicks · 0.02) · 3 % 1` (distinct
       from the creeper's linear scroll) and V by `ageInTicks · 0.01 % 1`, sharing the same per-fragment
-      `fract` atlas-wrap scroll pipeline as the charged creeper. `wither_textured_layer_passes` now records
+      `fract` atlas-wrap scroll pipeline as the charged creeper and the vanilla
+      `BlendFunction.ADDITIVE` (`SourceFactor.ONE`, `DestFactor.ONE`). `wither_textured_layer_passes` now records
       vanilla `ModelLayers.WITHER` and `ModelLayers.WITHER_ARMOR`, with base `entityCutout` and armor
       `energySwirl` texture/render-type/tint/order metadata; the shared dispatch sink consumes the body
       pass and, when `isPowered`, its texture sink records and folds the armor `EnergySwirlLayer` pass.

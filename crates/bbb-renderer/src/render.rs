@@ -2225,6 +2225,19 @@ mod tests {
                 "{pipeline} is emitted through the translucent feature helper"
             );
         }
+        let scroll_additive = source[helper..]
+            .find("pass.set_pipeline(&self.entity_model_scroll_additive_pipeline)")
+            .map(|index| helper + index)
+            .expect("energySwirl additive scroll pipeline is emitted");
+        let helper_end = source[scroll_additive..]
+            .find("\n    }\n}\n\n#[cfg(test)]")
+            .map(|index| scroll_additive + index)
+            .expect("entity translucent feature helper ends before tests");
+        assert!(
+            !source[scroll_additive..helper_end]
+                .contains("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])"),
+            "vanilla ENERGY_SWIRL defines EMISSIVE, so the additive scroll draw does not bind LightTexture"
+        );
     }
 
     #[test]

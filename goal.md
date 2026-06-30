@@ -121,7 +121,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - `Eyes` emissive alpha blend。
   - `armorCutoutNoCull` / `armorTranslucent`。
   - `breezeWind` lightmap-lit scroll。
-  - `energySwirl` emissive additive scroll。
+  - [x] `energySwirl` emissive additive scroll：charged creeper / wither
+    overlay 提交进入独立 additive scroll mesh / shader，使用 vanilla
+    `BlendFunction.ADDITIVE` (`ONE`, `ONE`)、depth-write `LESS_EQUAL`、
+    cull off、alpha cutout 0.1、EMISSIVE / NO_OVERLAY shader shape，并跳过
+    LightTexture 采样；更细的跨 bucket 透明排序仍归 sorting 项。
   - `waterMask` depth-only 或等价 boat mask state。
   - `end_crystal_beam` / guardian beam custom prism state。
 - target ownership：
