@@ -210,6 +210,9 @@ const VANILLA_ATTACK_RANGE_COMPONENT_ID: i32 = 30;
 const VANILLA_PIERCING_WEAPON_COMPONENT_ID: i32 = 38;
 const VANILLA_SWING_ANIMATION_COMPONENT_ID: i32 = 40;
 const VANILLA_MAP_ID_COMPONENT_ID: i32 = 41;
+const VANILLA_MOB_EFFECT_HASTE_ID: i32 = 2;
+const VANILLA_MOB_EFFECT_MINING_FATIGUE_ID: i32 = 3;
+const VANILLA_MOB_EFFECT_CONDUIT_POWER_ID: i32 = 28;
 const VANILLA_DEFAULT_MAX_STACK_SIZE: i32 = 64;
 const VANILLA_ABSOLUTE_MAX_STACK_SIZE: i32 = 99;
 const NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX: i32 = -1;
@@ -1008,7 +1011,10 @@ impl WorldStore {
         self.held_item(id, off_hand)
             .as_ref()
             .map(|item| {
-                item_stack_swing_duration(item, &self.default_item_swing_animation_durations)
+                self.entity_swing_duration_with_effects(
+                    id,
+                    item_stack_swing_duration(item, &self.default_item_swing_animation_durations),
+                )
             })
             .unwrap_or(ATTACK_SWING_DURATION)
     }
@@ -1225,6 +1231,33 @@ impl WorldStore {
             .into_iter()
             .filter(|(item_id, duration)| *item_id >= 0 && *duration > 0)
             .collect();
+    }
+
+    fn entity_swing_duration_with_effects(&self, entity_id: i32, duration: i32) -> i32 {
+        if let Some(amplifier) = self.entity_dig_speed_amplifier(entity_id) {
+            return duration.saturating_sub(amplifier.saturating_add(1));
+        }
+        if let Some(amplifier) =
+            self.entity_mob_effect_amplifier(entity_id, VANILLA_MOB_EFFECT_MINING_FATIGUE_ID)
+        {
+            return duration.saturating_add(amplifier.saturating_add(1).saturating_mul(2));
+        }
+        duration
+    }
+
+    fn entity_mob_effect_amplifier(&self, entity_id: i32, effect_id: i32) -> Option<i32> {
+        self.entity_effect(entity_id, effect_id)
+            .map(|effect| effect.amplifier)
+    }
+
+    fn entity_dig_speed_amplifier(&self, entity_id: i32) -> Option<i32> {
+        [
+            VANILLA_MOB_EFFECT_HASTE_ID,
+            VANILLA_MOB_EFFECT_CONDUIT_POWER_ID,
+        ]
+        .into_iter()
+        .filter_map(|effect_id| self.entity_mob_effect_amplifier(entity_id, effect_id))
+        .max()
     }
 
     pub fn set_default_item_use_effects(&mut self, use_effects: BTreeMap<i32, ItemUseEffects>) {

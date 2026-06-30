@@ -12,7 +12,7 @@ use bbb_protocol::packets::{
     GameEvent as ProtocolGameEvent, GameProfile as ProtocolGameProfile,
     GameType as ProtocolGameType, HurtAnimation as ProtocolHurtAnimation, InteractionHand,
     ItemEnchantmentSummary, ItemStackSummary, ItemStackSummary as ProtocolItemStackSummary,
-    LevelEvent as ProtocolLevelEvent, MinecartStep as ProtocolMinecartStep,
+    LevelEvent as ProtocolLevelEvent, MinecartStep as ProtocolMinecartStep, MobEffectFlags,
     MoveMinecartAlongTrack as ProtocolMoveMinecartAlongTrack, MoveVehicle as ProtocolMoveVehicle,
     PlayLogin as ProtocolPlayLogin, PlayTime as ProtocolPlayTime,
     PlayerInfoAction as ProtocolPlayerInfoAction, PlayerInfoEntry as ProtocolPlayerInfoEntry,
@@ -25,7 +25,7 @@ use bbb_protocol::packets::{
     SwingAnimationSummary, SwingAnimationTypeSummary, TakeItemEntity as ProtocolTakeItemEntity,
     TeamCollisionRule as ProtocolTeamCollisionRule, TeamVisibility as ProtocolTeamVisibility,
     TeleportEntity as ProtocolTeleportEntity, UpdateAttributes as ProtocolUpdateAttributes,
-    Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_X,
+    UpdateMobEffect, Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_X,
 };
 
 #[test]
@@ -3822,6 +3822,88 @@ fn entity_model_sources_use_item_stack_swing_animation_patch_duration() {
     assert!((attack(&store, 1.0) - 5.0 / 6.0).abs() < 1e-6);
     store.advance_entity_client_animations(1);
     assert_eq!(attack(&store, 1.0), 0.0);
+}
+
+#[test]
+fn entity_model_sources_apply_mob_effect_swing_duration_modifiers() {
+    const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 145;
+    const VANILLA_MOB_EFFECT_HASTE_ID: i32 = 2;
+    const VANILLA_MOB_EFFECT_MINING_FATIGUE_ID: i32 = 3;
+    const VANILLA_MOB_EFFECT_CONDUIT_POWER_ID: i32 = 28;
+    const SPEAR_ITEM_ID: i32 = 42;
+
+    let attack = |store: &WorldStore, entity_id: i32, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == entity_id)
+            .unwrap()
+            .attack_anim
+    };
+    let item = || ItemStackSummary {
+        item_id: Some(SPEAR_ITEM_ID),
+        count: 1,
+        component_patch: DataComponentPatchSummary::default(),
+    };
+    let equip = |entity_id: i32| ProtocolSetEquipment {
+        entity_id,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::MainHand,
+            item: item(),
+        }],
+    };
+    let effect = |entity_id: i32, effect_id: i32, amplifier: i32| UpdateMobEffect {
+        entity_id,
+        effect_id,
+        amplifier,
+        duration_ticks: 200,
+        flags: MobEffectFlags::default(),
+    };
+
+    let mut store = WorldStore::new();
+    store.set_default_item_swing_animation_durations(BTreeMap::from([(SPEAR_ITEM_ID, 13)]));
+
+    store.apply_add_entity(protocol_add_entity_with_type(
+        53,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    assert!(store.apply_set_equipment(equip(53)));
+    assert!(store.apply_update_mob_effect(effect(53, VANILLA_MOB_EFFECT_HASTE_ID, 1)));
+    assert!(store.apply_entity_animation(ProtocolEntityAnimation { id: 53, action: 0 }));
+    store.advance_entity_client_animations(7);
+    assert!((attack(&store, 53, 1.0) - 6.0 / 11.0).abs() < 1e-6);
+
+    store.apply_add_entity(protocol_add_entity_with_type(
+        54,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    assert!(store.apply_set_equipment(equip(54)));
+    assert!(store.apply_update_mob_effect(effect(54, VANILLA_MOB_EFFECT_MINING_FATIGUE_ID, 2,)));
+    assert!(store.apply_entity_animation(ProtocolEntityAnimation { id: 54, action: 0 }));
+    store.advance_entity_client_animations(7);
+    assert!((attack(&store, 54, 1.0) - 6.0 / 19.0).abs() < 1e-6);
+
+    store.apply_add_entity(protocol_add_entity_with_type(
+        55,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    assert!(store.apply_set_equipment(equip(55)));
+    assert!(store.apply_update_mob_effect(effect(55, VANILLA_MOB_EFFECT_HASTE_ID, 0)));
+    assert!(store.apply_update_mob_effect(effect(55, VANILLA_MOB_EFFECT_MINING_FATIGUE_ID, 5,)));
+    assert!(store.apply_entity_animation(ProtocolEntityAnimation { id: 55, action: 0 }));
+    store.advance_entity_client_animations(7);
+    assert!((attack(&store, 55, 1.0) - 6.0 / 12.0).abs() < 1e-6);
+
+    store.apply_add_entity(protocol_add_entity_with_type(
+        56,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    assert!(store.apply_set_equipment(equip(56)));
+    assert!(store.apply_update_mob_effect(effect(56, VANILLA_MOB_EFFECT_HASTE_ID, 0)));
+    assert!(store.apply_update_mob_effect(effect(56, VANILLA_MOB_EFFECT_CONDUIT_POWER_ID, 3,)));
+    assert!(store.apply_entity_animation(ProtocolEntityAnimation { id: 56, action: 0 }));
+    store.advance_entity_client_animations(7);
+    assert!((attack(&store, 56, 1.0) - 6.0 / 9.0).abs() < 1e-6);
 }
 
 #[test]
