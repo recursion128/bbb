@@ -550,8 +550,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - [x] illusioner invisible custom-head clone layer：`CustomHeadLayer` skull branch
     现在复用同一组 invisible illusioner clone root transform，在每个 clone 的
     base body 后提交一次 skull layer，保留 vanilla `entityCutoutZOffset`、skull
-    texture、no-overlay、light、transform、order / submit_sequence；generic
-    non-skull head item 随 clone 复制仍列为后续 item presentation。
+    texture、no-overlay、light、transform、order / submit_sequence。
+  - [x] illusioner invisible custom-head generic item clone layer：
+    `CustomHeadLayer` 的 non-skull HEAD item branch 现在同样复用 invisible
+    illusioner clone root transform；native item-model pass 对可见 illusioner
+    生成 1 个 HEAD item mesh，对隐身 illusioner 生成 4 个 clone mesh，并保留
+    `ItemDisplayContext.HEAD` / no-overlay 行为。
   - [x] illusioner held-item clone layer / dynamic visibility：native 持物
     item-model pass 现在匹配 vanilla anonymous `ItemInHandLayer`，idle
     illusioner 不提交持物，`isCastingSpell || isAggressive` 时提交；隐身

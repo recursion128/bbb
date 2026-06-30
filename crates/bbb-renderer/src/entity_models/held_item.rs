@@ -304,6 +304,24 @@ pub fn custom_head_item_transform(instance: &EntityModelInstance) -> Option<Mat4
     Some(custom_head_item_layer_transform(root, head, transforms))
 }
 
+/// Clone-aware variant of [`custom_head_item_transform`]. Vanilla `CustomHeadLayer` is inside
+/// `LivingEntityRenderer.submit`, so `IllusionerRenderer.submit` runs it once per invisible clone.
+pub fn custom_head_item_transforms(instance: &EntityModelInstance) -> Vec<Mat4> {
+    if instance.illusioner_body_visible_when_invisible() {
+        return (0..instance.render_state.illusioner_clone_offsets.len())
+            .filter_map(|index| {
+                let root = illusioner_model_root_transform(
+                    *instance,
+                    instance.illusioner_clone_offset(index),
+                );
+                custom_head_item_transform_with_root(instance, root)
+            })
+            .collect();
+    }
+
+    custom_head_item_transform(instance).into_iter().collect()
+}
+
 /// The model->world transform used by vanilla `CustomHeadLayer` for skull block items in the HEAD
 /// equipment slot. Unlike the generic item branch, the skull branch calls `SkullBlockRenderer`
 /// directly, so it does not apply the item display rotation or the negative item-model scale.
@@ -320,6 +338,14 @@ pub(in crate::entity_models) fn custom_head_skull_transform_with_root(
 ) -> Option<Mat4> {
     let (_, head, transforms) = custom_head_item_base_transform(instance)?;
     Some(custom_head_skull_layer_transform(root, head, transforms))
+}
+
+fn custom_head_item_transform_with_root(
+    instance: &EntityModelInstance,
+    root: Mat4,
+) -> Option<Mat4> {
+    let (_, head, transforms) = custom_head_item_base_transform(instance)?;
+    Some(custom_head_item_layer_transform(root, head, transforms))
 }
 
 fn custom_head_item_layer_transform(
@@ -939,6 +965,43 @@ mod tests {
         assert_ne!(
             resting, looking,
             "CustomHeadLayer walks through the already-posed head bone"
+        );
+    }
+
+    #[test]
+    fn invisible_illusioner_custom_head_item_transforms_follow_clone_roots() {
+        let offsets = [
+            [1.25, 0.0, -0.75],
+            [-1.0, 0.5, 0.5],
+            [0.5, 0.0, 1.0],
+            [-1.5, 0.0, -1.25],
+        ];
+        let instance = EntityModelInstance::illager(
+            68,
+            [4.0, 64.0, -2.0],
+            30.0,
+            IllagerModelFamily::Illusioner,
+        )
+        .with_invisible(true)
+        .with_head_look(35.0, -12.0)
+        .with_age_in_ticks(8.0)
+        .with_illusioner_clone_offsets(offsets);
+
+        let transforms = custom_head_item_transforms(&instance);
+        assert_eq!(transforms.len(), 4);
+        for (index, transform) in transforms.into_iter().enumerate() {
+            let root =
+                illusioner_model_root_transform(instance, instance.illusioner_clone_offset(index));
+            let expected = custom_head_item_transform_with_root(&instance, root).unwrap();
+            assert_close_transform(transform, expected);
+        }
+
+        let visible = instance.with_invisible(false);
+        let visible_transforms = custom_head_item_transforms(&visible);
+        assert_eq!(visible_transforms.len(), 1);
+        assert_close_transform(
+            visible_transforms[0],
+            custom_head_item_transform(&visible).unwrap(),
         );
     }
 

@@ -17,7 +17,7 @@ use bbb_renderer::{
     allay_hand_attach_transform, bake_generated_item_quads,
     bake_item_model_mesh_with_light_and_overlay, bake_item_model_meshes_with_light,
     copper_golem_antenna_block_transform, copper_golem_hand_attach_transform,
-    custom_head_item_transform, dolphin_carried_item_transform, enderman_carried_block_transform,
+    custom_head_item_transforms, dolphin_carried_item_transform, enderman_carried_block_transform,
     fox_held_item_transform, humanoid_hand_attach_transforms, iron_golem_flower_block_transform,
     minecart_tnt_display_block_transform, mooshroom_mushroom_block_transforms,
     panda_held_item_transform, snow_golem_head_block_transform,
@@ -923,23 +923,22 @@ fn bake_custom_head_item(
     {
         return;
     }
-    let Some(transform) = custom_head_item_transform(instance) else {
-        return;
-    };
-    bake_item_stack_at_transform(
-        &stack,
-        transform,
-        BlockModelDisplayContext::Head,
-        false,
-        BLOCK_HEAD_FALLBACK,
-        GENERATED_HEAD_FALLBACK,
-        item_runtime,
-        terrain_textures,
-        block_meshes,
-        block_translucent_meshes,
-        flat_meshes,
-        flat_translucent_meshes,
-    );
+    for transform in custom_head_item_transforms(instance) {
+        bake_item_stack_at_transform(
+            &stack,
+            transform,
+            BlockModelDisplayContext::Head,
+            false,
+            BLOCK_HEAD_FALLBACK,
+            GENERATED_HEAD_FALLBACK,
+            item_runtime,
+            terrain_textures,
+            block_meshes,
+            block_translucent_meshes,
+            flat_meshes,
+            flat_translucent_meshes,
+        );
+    }
 }
 
 fn is_custom_head_skull_item_id(resource_id: &str) -> bool {
@@ -1840,6 +1839,63 @@ mod tests {
             assert!(models.flat_translucent_meshes.is_empty());
             assert!(models.flat_meshes.iter().all(|mesh| !mesh.is_empty()));
         }
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn illusioner_custom_head_item_branch_submits_per_invisible_clone() {
+        // The generic item branch of vanilla `CustomHeadLayer` is inside `LivingEntityRenderer.submit`,
+        // so `IllusionerRenderer`'s invisible clone loop runs it once for each clone root.
+        let root = unique_item_model_temp_dir("illusioner-custom-head-item-clones");
+        write_flat_item_runtime_fixture(&root, &["head_item"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let mut world = WorldStore::new();
+        const ENTITY_ID: i32 = 605;
+        const ILLUSIONER_ENTITY_TYPE_ID: i32 = 68;
+        world.apply_add_entity(protocol_add_entity(ENTITY_ID, ILLUSIONER_ENTITY_TYPE_ID));
+        assert!(world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::Head, 0)));
+
+        let offsets = [
+            [1.25, 0.0, -0.75],
+            [-1.0, 0.5, 0.5],
+            [0.5, 0.0, 1.0],
+            [-1.5, 0.0, -1.25],
+        ];
+        let base = EntityModelInstance::illager(
+            ENTITY_ID,
+            [4.0, 64.0, -2.0],
+            30.0,
+            IllagerModelFamily::Illusioner,
+        )
+        .with_age_in_ticks(8.0)
+        .with_illusioner_clone_offsets(offsets);
+        let terrain_textures = TerrainTextureState::default();
+
+        let visible_models =
+            held_item_models(&[base], &world, Some(&item_runtime), &terrain_textures);
+        let invisible_models = held_item_models(
+            &[base.with_invisible(true)],
+            &world,
+            Some(&item_runtime),
+            &terrain_textures,
+        );
+
+        assert!(visible_models.block_meshes.is_empty());
+        assert!(invisible_models.block_meshes.is_empty());
+        assert!(visible_models.flat_translucent_meshes.is_empty());
+        assert!(invisible_models.flat_translucent_meshes.is_empty());
+        assert_eq!(visible_models.flat_meshes.len(), 1);
+        assert_eq!(invisible_models.flat_meshes.len(), 4);
+        assert!(visible_models
+            .flat_meshes
+            .iter()
+            .all(|mesh| !mesh.is_empty()));
+        assert!(invisible_models
+            .flat_meshes
+            .iter()
+            .all(|mesh| !mesh.is_empty()));
 
         std::fs::remove_dir_all(root).unwrap();
     }
