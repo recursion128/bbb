@@ -7549,6 +7549,88 @@ fn entity_model_sources_project_cat_lie_down_and_relax_amounts() {
 }
 
 #[test]
+fn entity_model_sources_project_cat_lying_on_sleeping_player() {
+    const VANILLA_ENTITY_TYPE_CAT_ID: i32 = 21;
+    const VANILLA_ENTITY_TYPE_OCELOT_ID: i32 = 91;
+    const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
+    const CAT_IS_LYING_DATA_ID: u8 = 21;
+    const POSE_STANDING: i32 = 0;
+    const POSE_SLEEPING: i32 = 2;
+
+    let add = |id, entity_type_id, position: [f64; 3]| ProtocolAddEntity {
+        position: ProtocolVec3d {
+            x: position[0],
+            y: position[1],
+            z: position[2],
+        },
+        ..protocol_add_entity_with_type(id, entity_type_id)
+    };
+    let lying_on_player = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(1.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .feline_is_lying_on_top_of_sleeping_player
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(add(94, VANILLA_ENTITY_TYPE_CAT_ID, [1.0, 64.0, -2.0]));
+    store.apply_add_entity(add(95, VANILLA_ENTITY_TYPE_PLAYER_ID, [2.0, 64.0, -1.0]));
+    store.apply_add_entity(add(96, VANILLA_ENTITY_TYPE_PLAYER_ID, [20.0, 64.0, 20.0]));
+    store.apply_add_entity(add(97, VANILLA_ENTITY_TYPE_OCELOT_ID, [1.0, 64.0, -2.0]));
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 95,
+        values: vec![protocol_pose_data(
+            super::dimensions::ENTITY_DATA_POSE_ID,
+            POSE_SLEEPING,
+        )],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 96,
+        values: vec![protocol_pose_data(
+            super::dimensions::ENTITY_DATA_POSE_ID,
+            POSE_SLEEPING,
+        )],
+    }));
+    assert!(
+        !lying_on_player(&store, 94),
+        "a nearby sleeping player does not matter until Cat.isLying is true"
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 94,
+        values: vec![protocol_bool_data(CAT_IS_LYING_DATA_ID, true)],
+    }));
+    assert!(
+        lying_on_player(&store, 94),
+        "lying cats detect sleeping players in new AABB(cat.blockPosition()).inflate(2)"
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 95,
+        values: vec![protocol_pose_data(
+            super::dimensions::ENTITY_DATA_POSE_ID,
+            POSE_STANDING,
+        )],
+    }));
+    assert!(
+        !lying_on_player(&store, 94),
+        "awake nearby players and far sleeping players do not set the cat renderer flag"
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 97,
+        values: vec![protocol_bool_data(CAT_IS_LYING_DATA_ID, true)],
+    }));
+    assert!(
+        !lying_on_player(&store, 97),
+        "ocelots do not project CatRenderer.isLyingOnTopOfSleepingPlayer"
+    );
+}
+
+#[test]
 fn chicken_flap_state_initializes_flapping_to_one() {
     // Vanilla `Chicken` field initializer `public float flapping = 1.0F;`; every
     // other flap field defaults to 0.

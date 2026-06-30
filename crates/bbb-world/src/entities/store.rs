@@ -1406,6 +1406,7 @@ impl EntityStore {
             feline_relax_state_one_amount: client_animations
                 .animations
                 .feline_relax_state_one_amount(partial_ticks),
+            feline_is_lying_on_top_of_sleeping_player: false,
             vex_charging,
             wither_invulnerable_ticks,
             is_crouching,

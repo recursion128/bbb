@@ -407,9 +407,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `90° * amount`，插在 living setup rotation 之后、model flip 之前；
     adult cat 的 `MeshTransformer.scaling(0.8)` 仍接在 feline root 之后，
     textured base/collar submission 共享该 transform。
-  - sleeping-player extra translate（`isLyingOnTopOfSleepingPlayer`）继续作为
-    P1 后续；它需要 world/entity-neighborhood sleeping player scan，不阻塞当前
-    root transform parity。
+  - [x] sleeping-player extra translate：world source 按 vanilla
+    `Cat.handleLieDown` 用 `new AABB(cat.blockPosition()).inflate(2)` 查找 nearby
+    sleeping player，native 透传 `isLyingOnTopOfSleepingPlayer`，renderer 在
+    lie-down Z roll 后追加 `translate(0.15 * lieDownAmount, 0, 0)`；textured
+    base/collar submission 共享该 transform。
 - Minecart：
   - rail-follow `posOnRail` / `frontPos` / `backPos` 平移与坡度 pitch。
   - [x] NewMinecartBehavior exact weighted `renderPos` / rotation interpolation。

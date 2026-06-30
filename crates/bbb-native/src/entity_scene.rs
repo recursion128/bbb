@@ -1444,6 +1444,9 @@ fn entity_model_instance(
         .with_feline_lie_down_amount(source.feline_lie_down_amount)
         .with_feline_lie_down_amount_tail(source.feline_lie_down_amount_tail)
         .with_feline_relax_state_one_amount(source.feline_relax_state_one_amount)
+        .with_feline_is_lying_on_top_of_sleeping_player(
+            source.feline_is_lying_on_top_of_sleeping_player,
+        )
         .with_witch_holding_item(witch_holding_item)
         .with_witch_holding_potion(witch_holding_potion)
         .with_copper_golem_holding_item(copper_golem_holding_item)
@@ -12420,6 +12423,53 @@ mod tests {
         }));
         world.advance_entity_client_animations(2);
         assert_eq!(feline_amounts(&world, 47, 1.0), (0.0, 0.0, 0.0));
+    }
+
+    #[test]
+    fn entity_model_instances_project_cat_lying_on_sleeping_player_from_world() {
+        // Vanilla `CatRenderer.extractRenderState` forwards
+        // `Cat.isLyingOnTopOfSleepingPlayer()`, which the world source derives from a lying cat and
+        // nearby sleeping player.
+        const CAT_IS_LYING_DATA_ID: u8 = 21;
+        const ENTITY_DATA_POSE_ID: u8 = 6;
+        const POSE_SLEEPING: i32 = 2;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            48,
+            VANILLA_ENTITY_TYPE_CAT_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            49,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [2.0, 64.0, -1.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 48,
+            values: vec![protocol_bool_data(CAT_IS_LYING_DATA_ID, true)],
+        }));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 49,
+            values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_SLEEPING)],
+        }));
+
+        let source = world
+            .entity_model_sources_at_partial_tick(1.0)
+            .into_iter()
+            .find(|source| source.entity_id == 48)
+            .unwrap();
+        let instance = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0)
+            .into_iter()
+            .find(|instance| instance.entity_id == 48)
+            .unwrap();
+
+        assert!(source.feline_is_lying_on_top_of_sleeping_player);
+        assert!(
+            instance
+                .render_state
+                .feline_is_lying_on_top_of_sleeping_player
+        );
     }
 
     #[test]

@@ -25,6 +25,7 @@ mod status;
 mod store;
 mod updates;
 
+use animations::cat_is_lying;
 pub use animations::{EntityClientAnimationState, PolarBearStandingAnimationState};
 pub(crate) use components::{
     EntityAttributes, EntityClientAnimations, EntityDamage, EntityEquipment,
@@ -32,7 +33,10 @@ pub(crate) use components::{
     EntityMobEffects, EntityMount, EntityTransform, EntityTransientEvents,
 };
 pub use dimensions::EntityPickBoundsState;
-use dimensions::{vanilla_client_position_for_entity_data, vanilla_living_entity_type};
+use dimensions::{
+    vanilla_client_position_for_entity_data, vanilla_is_cat, vanilla_living_entity_type,
+    VANILLA_POSE_SLEEPING_ID,
+};
 pub use dragon::{DragonFlightHistorySample, DragonFlightHistoryState, EnderDragonAnimationState};
 use movement::entity_vec3;
 use projectiles::initial_hurting_projectile_state;
@@ -713,6 +717,12 @@ pub struct EntityModelSourceState {
     /// the relaxed head pitch. Projected only for cats and `0.0` otherwise.
     #[serde(default)]
     pub feline_relax_state_one_amount: f32,
+    /// Vanilla `CatRenderer.extractRenderState` projects `Cat.isLyingOnTopOfSleepingPlayer()`, which
+    /// `Cat.handleLieDown` sets while a lying cat has a sleeping player inside
+    /// `new AABB(cat.blockPosition()).inflate(2)`. This gates the extra `setupRotations`
+    /// x-translate after the lie-down roll. Projected only for cats.
+    #[serde(default)]
+    pub feline_is_lying_on_top_of_sleeping_player: bool,
     /// Vanilla `WolfRenderState.wetShade` (`Wolf.getWetShade(partialTick)`): the base-model
     /// grayscale tint multiplier returned by `WolfRenderer.getModelTint`. A wet wolf starts at
     /// `0.75`, then brightens with the shake/drying timer; `1.0` for a dry wolf and every non-wolf.
@@ -1697,9 +1707,10 @@ impl WorldStore {
         &self,
         partial_ticks: f32,
     ) -> Vec<EntityModelSourceState> {
-        self.entities
-            .model_targets_at_partial_tick(partial_ticks)
-            .into_iter()
+        let targets = self.entities.model_targets_at_partial_tick(partial_ticks);
+        targets
+            .iter()
+            .copied()
             .filter(|target| {
                 let Some(identity) = self.entities.identity(target.entity_id) else {
                     return true;
@@ -1770,6 +1781,8 @@ impl WorldStore {
                         source.sleeping_bed_offset = offset;
                     }
                 }
+                source.feline_is_lying_on_top_of_sleeping_player =
+                    self.cat_is_lying_on_top_of_sleeping_player(&source, target, &targets);
                 if !source.is_upside_down && self.resolve_player_upside_down(target.entity_id) {
                     source.is_upside_down = true;
                 }
@@ -1778,6 +1791,29 @@ impl WorldStore {
                 Some(source)
             })
             .collect()
+    }
+
+    fn cat_is_lying_on_top_of_sleeping_player(
+        &self,
+        source: &EntityModelSourceState,
+        cat_target: EntityModelTargetState,
+        targets: &[EntityModelTargetState],
+    ) -> bool {
+        if !vanilla_is_cat(source.entity_type_id) || !cat_is_lying(&source.data_values) {
+            return false;
+        }
+
+        let (search_min, search_max) = cat_sleeping_player_search_aabb(cat_target.position);
+        targets.iter().copied().any(|target| {
+            target.entity_id != cat_target.entity_id
+                && self.entities.entity_type_id(target.entity_id)
+                    == Some(VANILLA_ENTITY_TYPE_PLAYER_ID)
+                && self.entities.pose(target.entity_id) == Some(VANILLA_POSE_SLEEPING_ID)
+                && {
+                    let (player_min, player_max) = model_target_world_aabb(target);
+                    aabb_intersects(search_min, search_max, player_min, player_max)
+                }
+        })
     }
 
     fn entity_outline_color(&self, source: &EntityModelSourceState) -> u32 {
@@ -1976,6 +2012,39 @@ impl WorldStore {
     pub(crate) fn update_entity_count(&mut self) {
         self.counters.entities_tracked = self.entities.len();
     }
+}
+
+/// Vanilla `Cat.handleLieDown`: starts with `new AABB(cat.blockPosition()).inflate(2.0, 2.0, 2.0)`
+/// and checks for sleeping players inside that search box.
+fn cat_sleeping_player_search_aabb(cat_position: EntityVec3) -> ([f64; 3], [f64; 3]) {
+    let x = cat_position.x.floor();
+    let y = cat_position.y.floor();
+    let z = cat_position.z.floor();
+    ([x - 2.0, y - 2.0, z - 2.0], [x + 3.0, y + 3.0, z + 3.0])
+}
+
+fn model_target_world_aabb(target: EntityModelTargetState) -> ([f64; 3], [f64; 3]) {
+    (
+        [
+            target.position.x + f64::from(target.bounds.min[0]),
+            target.position.y + f64::from(target.bounds.min[1]),
+            target.position.z + f64::from(target.bounds.min[2]),
+        ],
+        [
+            target.position.x + f64::from(target.bounds.max[0]),
+            target.position.y + f64::from(target.bounds.max[1]),
+            target.position.z + f64::from(target.bounds.max[2]),
+        ],
+    )
+}
+
+fn aabb_intersects(min: [f64; 3], max: [f64; 3], other_min: [f64; 3], other_max: [f64; 3]) -> bool {
+    min[0] < other_max[0]
+        && max[0] > other_min[0]
+        && min[1] < other_max[1]
+        && max[1] > other_min[1]
+        && min[2] < other_max[2]
+        && max[2] > other_min[2]
 }
 
 /// Vanilla `BedBlock.getBedOrientation` + `LivingEntityRenderer.sleepDirectionToRotation`

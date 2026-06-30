@@ -589,8 +589,8 @@ pub enum EntityModelKind {
     /// with standing `π/4`, crouch `0.47123894`, and sprint `π/10`; the baby's `tail2` is cubeless, so
     /// vanilla's identical assignment is invisible). Cat-only sitting, lie-down, lie-down-tail, and
     /// relax-head amount branches are projected from `FelineRenderState` and applied by the model;
-    /// `CatRenderer.setupRotations`'s base lie-down root translate / roll is applied before the model
-    /// flip and adult-cat scale, leaving only the sleeping-player extra translate deferred. The
+    /// `CatRenderer.setupRotations`'s lie-down root translate / roll and sleeping-player extra
+    /// translate are applied before the model flip and adult-cat scale. The
     /// textured path binds the cat-breed texture
     /// (`cat_variant`, the eleven `CatVariant`s)
     /// for cats and the `ocelot` texture for ocelots (`cat_variant` is ignored when `!cat`). `collar`

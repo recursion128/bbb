@@ -5134,10 +5134,11 @@ When an agent does any of the following, update this file in the same slice:
       render-type, tint, order, submit-sequence, and transform assertions. The base
       `CatRenderer.setupRotations` lie-down root transform is reproduced too: `lieDownAmount` applies
       the vanilla whole-body translate `(0.4, 0.15, 0.1) * amount` and Z roll `90° * amount` after the
-      living setup rotation and before the model flip / adult-cat 0.8 mesh-transformer scale, shared by
-      the base and collar submissions. The remaining cat lie-down parity is only the sleeping-player
-      extra translate (`isLyingOnTopOfSleepingPlayer`), which needs a world/entity-neighborhood sleeping
-      player scan.
+      living setup rotation and before the model flip / adult-cat 0.8 mesh-transformer scale; when
+      `Cat.isLyingOnTopOfSleepingPlayer()` is true, world source derives it with vanilla
+      `Cat.handleLieDown`'s `new AABB(cat.blockPosition()).inflate(2)` sleeping-player scan and the
+      renderer appends the extra post-roll `translate(0.15 * lieDownAmount, 0, 0)`. The base and collar
+      submissions share the resulting transform.
       The textured path is now wired:
       `Cat.DATA_VARIANT_ID` (20, `Holder<CatVariant>`) is
       projected — via the registry-holder mapping shared with chicken/cow/pig/frog — onto one of the eleven

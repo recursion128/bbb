@@ -681,6 +681,10 @@ entity_render_state! {
     /// Vanilla `FelineRenderState.relaxStateOneAmount`, copied by `CatRenderer.extractRenderState`
     /// from `Cat.getRelaxStateOneAmount(partialTick)` for the relaxed head pitch.
     (with_feline_relax_state_one_amount) feline_relax_state_one_amount: f32 = 0.0;
+    /// Vanilla `CatRenderState.isLyingOnTopOfSleepingPlayer`, copied from
+    /// `Cat.isLyingOnTopOfSleepingPlayer()`. When true, `CatRenderer.setupRotations` applies an
+    /// additional `translate(0.15 * lieDownAmount, 0, 0)` after the lie-down root roll.
+    (with_feline_is_lying_on_top_of_sleeping_player) feline_is_lying_on_top_of_sleeping_player: bool = false;
     /// Vanilla `WitchRenderState.isHoldingItem`: true when the witch's main hand is non-empty. The model
     /// pins the nose to the drinking pose (`nose.setPos(0, 1, -1.5)`, `xRot = -0.9`) before item layers
     /// read the nose transform. `false` for every other entity and for an empty-handed witch.
@@ -2503,6 +2507,7 @@ mod tests {
                 feline_lie_down_amount: 0.0,
                 feline_lie_down_amount_tail: 0.0,
                 feline_relax_state_one_amount: 0.0,
+                feline_is_lying_on_top_of_sleeping_player: false,
                 witch_holding_item: false,
                 witch_holding_potion: false,
                 copper_golem_holding_item: false,

@@ -820,6 +820,24 @@ fn feline_lie_down_root_transform_matches_cat_renderer_setup_rotations() {
         "lie-down setupRotations changes the whole-model root before the cat scale"
     );
 
+    let on_sleeping_player = cat.with_feline_is_lying_on_top_of_sleeping_player(true);
+    let expected_on_sleeping_player_root = Mat4::from_translation(Vec3::from_array(cat.position))
+        * Mat4::from_scale(Vec3::splat(cat.render_state.scale))
+        * Mat4::from_rotation_y((180.0 - cat.render_state.body_rot).to_radians())
+        * setup_tail
+        * Mat4::from_translation(Vec3::new(0.15 * lie, 0.0, 0.0))
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+        * Mat4::from_translation(Vec3::new(0.0, -1.501, 0.0));
+    assert_close_transform(
+        feline_model_root_transform(on_sleeping_player),
+        expected_on_sleeping_player_root,
+    );
+    assert_ne!(
+        feline_model_root_transform(on_sleeping_player),
+        feline_model_root_transform(cat),
+        "sleeping-player cats get the extra post-roll x translate"
+    );
+
     let standing_cat = EntityModelInstance::feline(
         544,
         [2.0, 64.0, -3.0],
@@ -883,7 +901,8 @@ fn feline_textured_mesh_applies_sitting_pose_to_base_and_collar() {
     let lying = standing
         .with_feline_lie_down_amount(1.0)
         .with_feline_lie_down_amount_tail(1.0)
-        .with_feline_relax_state_one_amount(1.0);
+        .with_feline_relax_state_one_amount(1.0)
+        .with_feline_is_lying_on_top_of_sleeping_player(true);
 
     let standing_meshes = entity_model_textured_meshes(&[standing], &atlas);
     let sitting_meshes = entity_model_textured_meshes(&[sitting], &atlas);

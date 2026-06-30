@@ -224,19 +224,31 @@ pub(in crate::entity_models) fn fox_model_root_transform(instance: EntityModelIn
 pub(in crate::entity_models) fn feline_model_root_transform(instance: EntityModelInstance) -> Mat4 {
     living_entity_model_root_transform_with_extra_setup_rotation(
         instance,
-        feline_setup_rotation_tail(instance.render_state.feline_lie_down_amount),
+        feline_setup_rotation_tail(
+            instance.render_state.feline_lie_down_amount,
+            instance
+                .render_state
+                .feline_is_lying_on_top_of_sleeping_player,
+        ),
     )
 }
 
-fn feline_setup_rotation_tail(lie_down_amount: f32) -> Mat4 {
+fn feline_setup_rotation_tail(
+    lie_down_amount: f32,
+    is_lying_on_top_of_sleeping_player: bool,
+) -> Mat4 {
     if lie_down_amount <= 0.0 {
         return Mat4::IDENTITY;
     }
-    Mat4::from_translation(Vec3::new(
+    let mut transform = Mat4::from_translation(Vec3::new(
         0.4 * lie_down_amount,
         0.15 * lie_down_amount,
         0.1 * lie_down_amount,
-    )) * Mat4::from_rotation_z((90.0 * lie_down_amount).to_radians())
+    )) * Mat4::from_rotation_z((90.0 * lie_down_amount).to_radians());
+    if is_lying_on_top_of_sleeping_player {
+        transform = transform * Mat4::from_translation(Vec3::new(0.15 * lie_down_amount, 0.0, 0.0));
+    }
+    transform
 }
 
 /// Vanilla `PandaRenderer.setupRotations`: after the standard living setup rotation and before the
