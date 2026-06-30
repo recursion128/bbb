@@ -1343,6 +1343,9 @@ impl NativeItemRuntime {
                             use_context: ItemModelUseContext::inactive(),
                             cooldown_progress: 0.0,
                             crossbow_charge: CrossbowChargeType::None,
+                            display_context: item_display_context_name(
+                                BlockModelDisplayContext::Gui,
+                            ),
                             main_hand_left: None,
                             context_dimension: None,
                             context_entity_type: None,
@@ -1427,10 +1430,12 @@ impl NativeItemRuntime {
     pub(crate) fn generated_item_layers_for_stack_with_trim_materials(
         &self,
         stack: &ItemStackSummary,
+        display_context: BlockModelDisplayContext,
         trim_material_keys: Option<&[String]>,
     ) -> Vec<GeneratedItemLayer> {
         self.generated_item_layers_for_stack_with_context(
             stack,
+            display_context,
             None,
             false,
             ItemModelUseContext::inactive(),
@@ -1453,6 +1458,7 @@ impl NativeItemRuntime {
     pub(crate) fn generated_item_layers_for_stack_with_owner_context(
         &self,
         stack: &ItemStackSummary,
+        display_context: BlockModelDisplayContext,
         owner_main_hand_left: Option<bool>,
         context_entity_type: Option<&str>,
         context_dimension: Option<&str>,
@@ -1462,6 +1468,7 @@ impl NativeItemRuntime {
     ) -> Vec<GeneratedItemLayer> {
         self.generated_item_layers_for_stack_with_context(
             stack,
+            display_context,
             owner_main_hand_left,
             using_item,
             use_context,
@@ -1474,6 +1481,7 @@ impl NativeItemRuntime {
     fn generated_item_layers_for_stack_with_context(
         &self,
         stack: &ItemStackSummary,
+        display_context: BlockModelDisplayContext,
         owner_main_hand_left: Option<bool>,
         using_item: bool,
         use_context: ItemModelUseContext,
@@ -1486,6 +1494,7 @@ impl NativeItemRuntime {
             None,
             using_item,
             use_context,
+            display_context,
             0.0,
             trim_material_keys,
             owner_main_hand_left,
@@ -1561,6 +1570,7 @@ impl NativeItemRuntime {
             bundle_selected_item_index,
             using_item,
             ItemModelUseContext::inactive(),
+            BlockModelDisplayContext::Gui,
             cooldown_progress,
             trim_material_keys,
             owner_main_hand_left,
@@ -1575,6 +1585,7 @@ impl NativeItemRuntime {
         bundle_selected_item_index: Option<i32>,
         using_item: bool,
         use_context: ItemModelUseContext,
+        display_context: BlockModelDisplayContext,
         cooldown_progress: f32,
         trim_material_keys: Option<&[String]>,
         owner_main_hand_left: Option<bool>,
@@ -1586,6 +1597,7 @@ impl NativeItemRuntime {
             bundle_selected_item_index,
             using_item,
             use_context,
+            display_context,
             cooldown_progress,
             trim_material_keys,
             owner_main_hand_left,
@@ -1613,6 +1625,7 @@ impl NativeItemRuntime {
             None,
             using_item,
             ItemModelUseContext::inactive(),
+            BlockModelDisplayContext::Gui,
             0.0,
             None,
             owner_main_hand_left,
@@ -1627,6 +1640,7 @@ impl NativeItemRuntime {
         bundle_selected_item_index: Option<i32>,
         using_item: bool,
         use_context: ItemModelUseContext,
+        display_context: BlockModelDisplayContext,
         cooldown_progress: f32,
         trim_material_keys: Option<&[String]>,
         owner_main_hand_left: Option<bool>,
@@ -1643,6 +1657,7 @@ impl NativeItemRuntime {
             bundle_selected_item_index,
             using_item,
             use_context,
+            display_context,
             cooldown_progress,
             trim_material_keys,
             owner_main_hand_left,
@@ -1662,6 +1677,7 @@ impl NativeItemRuntime {
             None,
             false,
             ItemModelUseContext::inactive(),
+            BlockModelDisplayContext::Gui,
             0.0,
             None,
             None,
@@ -1679,6 +1695,7 @@ impl NativeItemRuntime {
         bundle_selected_item_index: Option<i32>,
         using_item: bool,
         use_context: ItemModelUseContext,
+        display_context: BlockModelDisplayContext,
         cooldown_progress: f32,
         trim_material_keys: Option<&[String]>,
         owner_main_hand_left: Option<bool>,
@@ -1705,6 +1722,7 @@ impl NativeItemRuntime {
             use_context,
             cooldown_progress,
             crossbow_charge: self.crossbow_charge_for(component_patch),
+            display_context: item_display_context_name(display_context),
             main_hand_left: owner_main_hand_left,
             context_dimension,
             context_entity_type,
@@ -1850,6 +1868,7 @@ impl NativeItemRuntime {
             use_context: ItemModelUseContext::inactive(),
             cooldown_progress: 0.0,
             crossbow_charge: self.crossbow_charge_for(Some(&template.component_patch)),
+            display_context: parent_context.display_context,
             main_hand_left: parent_context.main_hand_left,
             context_dimension: parent_context.context_dimension,
             context_entity_type: parent_context.context_entity_type,
@@ -1898,6 +1917,20 @@ fn item_model_id_for_stack<'a>(
     component_patch
         .and_then(|patch| patch.item_model.as_deref())
         .or(Some(item_id))
+}
+
+fn item_display_context_name(context: BlockModelDisplayContext) -> &'static str {
+    match context {
+        BlockModelDisplayContext::ThirdPersonLeftHand => "thirdperson_lefthand",
+        BlockModelDisplayContext::ThirdPersonRightHand => "thirdperson_righthand",
+        BlockModelDisplayContext::FirstPersonLeftHand => "firstperson_lefthand",
+        BlockModelDisplayContext::FirstPersonRightHand => "firstperson_righthand",
+        BlockModelDisplayContext::Head => "head",
+        BlockModelDisplayContext::Gui => "gui",
+        BlockModelDisplayContext::Ground => "ground",
+        BlockModelDisplayContext::Fixed => "fixed",
+        BlockModelDisplayContext::OnShelf => "on_shelf",
+    }
 }
 
 fn localized_item_name(language: &LanguageCatalog, resource_id: &str) -> String {
@@ -4949,6 +4982,88 @@ mod tests {
     }
 
     #[test]
+    fn native_item_runtime_resolves_display_context_select() {
+        let root = unique_temp_dir("item-runtime-display-context");
+        write_display_context_select_fixture(&root);
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let uv = |model_id: &str| {
+            runtime
+                .textures
+                .texture_uv_rect(runtime.texture_index(&format!("minecraft:item/{model_id}")))
+                .unwrap()
+        };
+        let rect = |model_id: &str| {
+            let uv = uv(model_id);
+            ItemSpriteRect {
+                min: uv.min,
+                max: uv.max,
+            }
+        };
+        let stack = ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+
+        // GUI/HUD item icons pass vanilla ItemDisplayContext.GUI.
+        assert_eq!(
+            runtime.icon_for_stack(&stack).unwrap().layers[0].uv,
+            uv("display_gui")
+        );
+
+        // Non-living generated consumers pass their actual world contexts.
+        assert_eq!(
+            runtime
+                .generated_item_layers_for_stack_with_trim_materials(
+                    &stack,
+                    BlockModelDisplayContext::Ground,
+                    None,
+                )
+                .into_iter()
+                .next()
+                .unwrap()
+                .rect,
+            rect("display_ground")
+        );
+        assert_eq!(
+            runtime
+                .generated_item_layers_for_stack_with_trim_materials(
+                    &stack,
+                    BlockModelDisplayContext::Fixed,
+                    None,
+                )
+                .into_iter()
+                .next()
+                .unwrap()
+                .rect,
+            rect("display_fixed")
+        );
+
+        // Entity-owned generated held items pass their hand display context.
+        assert_eq!(
+            runtime
+                .generated_item_layers_for_stack_with_owner_context(
+                    &stack,
+                    BlockModelDisplayContext::ThirdPersonRightHand,
+                    None,
+                    None,
+                    None,
+                    None,
+                    false,
+                    ItemModelUseContext::inactive(),
+                )
+                .into_iter()
+                .next()
+                .unwrap()
+                .rect,
+            rect("display_thirdperson_right")
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn native_item_runtime_resolves_trim_material_select() {
         let root = unique_temp_dir("item-runtime-trim-material");
         write_trim_material_select_fixture(&root);
@@ -5088,6 +5203,7 @@ mod tests {
                     None,
                     using_item,
                     use_context,
+                    BlockModelDisplayContext::Gui,
                     0.0,
                     None,
                     None,
@@ -5118,6 +5234,7 @@ mod tests {
                         None,
                         using_item,
                         use_context,
+                        BlockModelDisplayContext::Gui,
                         0.0,
                         None,
                         None,
@@ -6078,6 +6195,49 @@ mod tests {
             "alternate_model_component",
             &[180, 80, 40, 255],
         );
+    }
+
+    fn write_display_context_select_fixture(root: &Path) {
+        let assets = assets_dir(root);
+        write_item_atlases(&assets);
+        write_single_item_registry_source(root, "display_selector");
+        write_json(
+            &assets.join("items").join("display_selector.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:display_context",
+                    "cases": [
+                        {
+                            "when": "gui",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/display_gui" }
+                        },
+                        {
+                            "when": "ground",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/display_ground" }
+                        },
+                        {
+                            "when": "fixed",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/display_fixed" }
+                        },
+                        {
+                            "when": "thirdperson_righthand",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/display_thirdperson_right" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/display_fallback" }
+                }
+            }"#,
+        );
+        write_flat_item_model_and_texture(&assets, "display_gui", &[40, 80, 120, 255]);
+        write_flat_item_model_and_texture(&assets, "display_ground", &[120, 80, 40, 255]);
+        write_flat_item_model_and_texture(&assets, "display_fixed", &[80, 120, 40, 255]);
+        write_flat_item_model_and_texture(
+            &assets,
+            "display_thirdperson_right",
+            &[160, 40, 120, 255],
+        );
+        write_flat_item_model_and_texture(&assets, "display_fallback", &[40, 40, 40, 255]);
     }
 
     fn write_trim_material_select_fixture(root: &Path) {

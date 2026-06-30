@@ -319,6 +319,9 @@ fn last_range_entry_at_or_below(
 /// broader time context and keep the build-time collapse.
 #[derive(Debug, Clone, PartialEq)]
 pub(super) enum SelectProperty {
+    /// `minecraft:display_context` — `DisplayContext.get`, matched against the
+    /// current `ItemDisplayContext` serialized name.
+    DisplayContext,
     /// `minecraft:main_hand` — `MainHand.get`, matched against the owner's
     /// `HumanoidArm` serialized name.
     MainHand,
@@ -451,6 +454,7 @@ impl CrossbowChargeType {
 /// for the context-needing ones (which keep the build-time collapse).
 fn select_property_for(property: &ItemModelProperty) -> Option<SelectProperty> {
     match property.property_type.as_str() {
+        "minecraft:display_context" => Some(SelectProperty::DisplayContext),
         "minecraft:main_hand" => Some(SelectProperty::MainHand),
         "minecraft:context_dimension" => Some(SelectProperty::ContextDimension),
         "minecraft:context_entity_type" => Some(SelectProperty::ContextEntityType),
@@ -630,6 +634,7 @@ pub(super) struct IconResolveContext<'a> {
     /// when there is no player owner / stack cooldown.
     pub cooldown_progress: f32,
     pub crossbow_charge: CrossbowChargeType,
+    pub display_context: &'a str,
     /// Vanilla `MainHand.get`: `None` means this native call site has not
     /// threaded a `LivingEntity` owner, so select cases do not match and
     /// fallback is used. `Some(true)` is `HumanoidArm.LEFT`; `Some(false)` is
@@ -658,6 +663,9 @@ fn select_property_value(
     ctx: IconResolveContext<'_>,
 ) -> Option<SelectCaseValue> {
     match property {
+        SelectProperty::DisplayContext => {
+            Some(SelectCaseValue::String(ctx.display_context.to_string()))
+        }
         SelectProperty::MainHand => ctx
             .main_hand_left
             .map(|left| if left { "left" } else { "right" })
@@ -1010,23 +1018,11 @@ pub(super) fn item_icon_model_ref_for_definition(
 }
 
 fn selected_icon_select_model<'a>(
-    property: &ItemModelProperty,
+    _property: &ItemModelProperty,
     cases: &'a [SelectCase],
     fallback: Option<&'a ItemModelDefinition>,
 ) -> Option<&'a ItemModelDefinition> {
-    if property.property_type == "minecraft:display_context" {
-        cases
-            .iter()
-            .find(|case| case.when.iter().any(is_gui_display_context))
-            .map(|case| case.model.as_ref())
-            .or(fallback)
-    } else {
-        fallback.or_else(|| cases.first().map(|case| case.model.as_ref()))
-    }
-}
-
-fn is_gui_display_context(value: &Value) -> bool {
-    value.as_str() == Some("gui")
+    fallback.or_else(|| cases.first().map(|case| case.model.as_ref()))
 }
 
 fn item_icon_model_ref_for_model_id(

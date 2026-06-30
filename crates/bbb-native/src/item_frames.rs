@@ -200,9 +200,11 @@ pub(crate) fn item_frame_models(
 
         // Flat path.
         let mut quads: Vec<ItemModelQuad> = Vec::new();
-        for layer in item_runtime
-            .generated_item_layers_for_stack_with_trim_materials(stack, trim_material_keys)
-        {
+        for layer in item_runtime.generated_item_layers_for_stack_with_trim_materials(
+            stack,
+            BlockModelDisplayContext::Fixed,
+            trim_material_keys,
+        ) {
             quads.extend(bake_generated_item_quads(
                 &layer.mask,
                 layer.rect,

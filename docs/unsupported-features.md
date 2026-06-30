@@ -5760,6 +5760,13 @@ When an agent does any of the following, update this file in the same slice:
   - `bbb-native` resolves value-aware `minecraft:select` item models by matching
     the projected property value against each case's `when` values (vanilla
     `SelectItemModel`), falling back when no case matches.
+  - `bbb-native` resolves `minecraft:display_context` item-model selects from
+    vanilla `DisplayContext.get`, matching the current `ItemDisplayContext`
+    serialized name against `when` values. GUI/HUD item icons pass `gui`,
+    dropped-item generated layers pass `ground`, item-frame generated layers
+    pass `fixed`, owner-backed third-person held generated layers pass their
+    hand display context, and nested bundle selected items inherit the parent
+    context. Tests pin texture selection across those contexts.
   - `bbb-native` resolves `minecraft:using_item` conditions for
     third-person/entity-owned generated item attachments by matching the
     submitted logical hand to vanilla `LivingEntity.getUseItem()` (`isUsingItem`
@@ -5858,6 +5865,9 @@ When an agent does any of the following, update this file in the same slice:
       enchantment holder id resolves to `minecraft:quick_charge` through the
       synced `minecraft:enchantment` registry. Already charged crossbows still
       return `0.0`.
+    - `minecraft:display_context` — `DisplayContext.get`, returning the
+      serialized `ItemDisplayContext` currently used by the consumer (`gui`,
+      `ground`, `fixed`, `thirdperson_righthand`, etc.) before case matching.
   - A value-aware `RangeDispatch` / `Select` is treated as a runtime condition so
     it is resolved per stack rather than collapsed at model-build time.
   - The trim-material registry keys are projected into the GUI icon path

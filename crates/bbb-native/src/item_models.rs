@@ -333,9 +333,11 @@ pub(crate) fn dropped_item_models(
 
         // Flat path: extrude the item's sprite layers into a slab.
         let mut quads: Vec<ItemModelQuad> = Vec::new();
-        for layer in item_runtime
-            .generated_item_layers_for_stack_with_trim_materials(&state.stack, trim_material_keys)
-        {
+        for layer in item_runtime.generated_item_layers_for_stack_with_trim_materials(
+            &state.stack,
+            BlockModelDisplayContext::Ground,
+            trim_material_keys,
+        ) {
             quads.extend(bake_generated_item_quads(
                 &layer.mask,
                 layer.rect,
@@ -1247,6 +1249,7 @@ fn bake_item_stack_at_transform(
     let mut quads: Vec<ItemModelQuad> = Vec::new();
     for layer in item_runtime.generated_item_layers_for_stack_with_owner_context(
         stack,
+        context,
         owner_main_hand_left,
         context_entity_type,
         context_dimension,

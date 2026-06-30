@@ -4018,6 +4018,7 @@ fn hud_item_icon_for_stack(
         local_selected_bundle_item_index,
         using_item,
         use_context,
+        bbb_pack::BlockModelDisplayContext::Gui,
         item_model_cooldown_progress,
         trim_material_keys.as_deref(),
         owner_main_hand_left,
