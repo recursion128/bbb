@@ -3491,8 +3491,12 @@ When an agent does any of the following, update this file in the same slice:
       the item branch applies the vanilla held-arm clamps after sampling. The
       delayed idle head-spin timer now projects `COPPER_GOLEM_STATE == IDLE`
       through world/native into renderer state and samples
-      `CopperGolemAnimation.COPPER_GOLEM_IDLE`. Copper golem interaction /
-      chest keyframe animations remain unsupported
+      `CopperGolemAnimation.COPPER_GOLEM_IDLE`. The `GETTING_ITEM`
+      chest-interaction state now projects
+      `interactionGetItemAnimationState` and samples
+      `CopperGolemAnimation.COPPER_GOLEM_CHEST_INTERACTION_NOITEM_GET`.
+      Copper golem `GETTING_NO_ITEM`, `DROPPING_ITEM`, and
+      `DROPPING_NO_ITEM` chest keyframe animations remain unsupported
     - witch entities as renderer-owned vanilla 26.1
       `WitchModel.createBodyLayer()` geometry, including the
       `VillagerModel.createBodyModel()` body/arms/legs/nose, the four nested

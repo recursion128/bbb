@@ -836,6 +836,10 @@ entity_render_state! {
     /// every non-copper golem, every interaction state, and a copper golem waiting for its randomized
     /// idle cooldown.
     (with_copper_golem_idle_seconds) copper_golem_idle_seconds: f32 = -1.0;
+    /// Vanilla `CopperGolemRenderState.interactionGetItem` elapsed seconds for
+    /// `COPPER_GOLEM_CHEST_INTERACTION_NOITEM_GET`. `-1.0` is the stopped-animation sentinel for
+    /// every non-copper golem and every state other than `GETTING_ITEM`.
+    (with_copper_golem_get_item_seconds) copper_golem_get_item_seconds: f32 = -1.0;
     /// Vanilla `LivingEntityRenderState.wornHeadType`: a supported skull block item in the HEAD slot,
     /// rendered by `CustomHeadLayer` through `SkullBlockRenderer` instead of the generic item-model path.
     /// Static mob skulls, profileless default player heads, profiled player-head default skin
@@ -2662,6 +2666,7 @@ mod tests {
                 witch_holding_potion: false,
                 copper_golem_holding_item: false,
                 copper_golem_idle_seconds: -1.0,
+                copper_golem_get_item_seconds: -1.0,
                 custom_head_skull: None,
                 vex_charging: false,
                 vex_right_hand_item_non_empty: false,

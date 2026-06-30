@@ -454,7 +454,15 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `CopperGolemAnimation.COPPER_GOLEM_IDLE` 叠加 body/head keyframe；
     回归测试覆盖 world/native projection、renderer pose，以及 textured
     submission metadata 不变。
-  - chest interaction keyframes 继续作为后续 P1/P2 视觉 parity。
+  - [x] GETTING_ITEM chest interaction keyframe：world 侧按
+    `CopperGolemState.GETTING_ITEM` 启停
+    `interactionGetItemAnimationState`，native 带入
+    `EntityRenderState.copper_golem_get_item_seconds`，renderer 按
+    `CopperGolemAnimation.COPPER_GOLEM_CHEST_INTERACTION_NOITEM_GET`
+    叠加 body/head/arms/legs keyframe；回归测试覆盖 world/native
+    projection、renderer pose，以及 textured submission metadata 不变。
+  - GETTING_NO_ITEM / DROPPING_ITEM / DROPPING_NO_ITEM chest interaction
+    keyframes 继续作为后续 P1/P2 视觉 parity。
 - Equine / camel / llama / goat / hoglin / ravager 等大型模型：
   - boost 等 remaining renderer 状态。
   - [x] camel body-anchor y-offset formula/query：`WorldStore::entity_body_anchor_y_offset`

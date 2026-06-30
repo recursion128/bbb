@@ -37,13 +37,13 @@ use super::{
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, boat_bubble_time, boat_paddle_states,
-    camel_is_dashing, cat_is_lying, cat_relax_state_one, copper_golem_is_idle, creaking_can_move,
-    creaking_is_tearing_down, entity_animation_uses_in_water, entity_is_fall_flying,
-    guardian_attack_duration, guardian_attack_target_id, guardian_is_moving,
-    is_guardian_entity_type, piglin_is_charging_crossbow, pillager_is_charging_crossbow,
-    player_is_using_item, warden_heartbeat_delay, wither_side_head_target_ids,
-    wither_side_head_target_rotation, wolf_is_interested, WitherHeadTargetRotations,
-    VANILLA_ENTITY_TYPE_CREAKING_ID,
+    camel_is_dashing, cat_is_lying, cat_relax_state_one, copper_golem_is_getting_item,
+    copper_golem_is_idle, creaking_can_move, creaking_is_tearing_down,
+    entity_animation_uses_in_water, entity_is_fall_flying, guardian_attack_duration,
+    guardian_attack_target_id, guardian_is_moving, is_guardian_entity_type,
+    piglin_is_charging_crossbow, pillager_is_charging_crossbow, player_is_using_item,
+    warden_heartbeat_delay, wither_side_head_target_ids, wither_side_head_target_rotation,
+    wolf_is_interested, WitherHeadTargetRotations, VANILLA_ENTITY_TYPE_CREAKING_ID,
 };
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
@@ -1404,6 +1404,9 @@ impl EntityStore {
             copper_golem_idle_seconds: client_animations
                 .animations
                 .copper_golem_idle_seconds(partial_ticks),
+            copper_golem_get_item_seconds: client_animations
+                .animations
+                .copper_golem_get_item_seconds(partial_ticks),
             camel_jump_cooldown: client_animations
                 .animations
                 .camel_jump_cooldown(partial_ticks),
@@ -2459,6 +2462,8 @@ impl EntityStore {
                     entity_data_pose(&metadata.data_values) == VANILLA_POSE_STANDING_ID;
                 let camel_is_dashing = camel_is_dashing(&metadata.data_values);
                 let copper_golem_is_idle = copper_golem_is_idle(&metadata.data_values);
+                let copper_golem_is_getting_item =
+                    copper_golem_is_getting_item(&metadata.data_values);
                 let allay_is_dancing = allay_is_dancing(&metadata.data_values);
                 let allay_has_item_in_hand = equipment.is_some_and(|equipment| {
                     equipment.equipment.iter().any(|update| {
@@ -2495,6 +2500,7 @@ impl EntityStore {
                     camel_is_standing,
                     camel_is_dashing,
                     copper_golem_is_idle,
+                    copper_golem_is_getting_item,
                     allay_is_dancing,
                     allay_has_item_in_hand,
                     axolotl_is_playing_dead,

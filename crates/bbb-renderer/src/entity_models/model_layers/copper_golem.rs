@@ -347,6 +347,355 @@ pub(in crate::entity_models) const COPPER_GOLEM_IDLE: AnimationDefinition = Anim
     bones: &COPPER_GOLEM_IDLE_BONES,
 };
 
+// Vanilla 26.1 `CopperGolemAnimation.COPPER_GOLEM_CHEST_INTERACTION_NOITEM_GET`
+// (length 3.0s, looping). `CopperGolemModel.setupAnim` applies this after idle while
+// `CopperGolemState.GETTING_ITEM` is active.
+const COPPER_GOLEM_CHEST_NOITEM_GET_BODY_ROT: [Keyframe; 31] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.1667, degree_vec(18.0, 0.0, 0.0), LINEAR),
+    keyframe(0.2917, degree_vec(24.0, 0.0, 0.0), LINEAR),
+    keyframe(0.375, degree_vec(15.0, 0.0, 0.0), LINEAR),
+    keyframe(0.4167, degree_vec(12.5, 0.0, 0.0), LINEAR),
+    keyframe(0.5833, degree_vec(12.5, 0.0, 0.0), LINEAR),
+    keyframe(0.75, degree_vec(12.5, 0.0, 0.0), LINEAR),
+    keyframe(0.8333, degree_vec(14.72765, -31.63886, -7.85085), LINEAR),
+    keyframe(0.9167, degree_vec(14.72765, -31.63886, -7.85085), LINEAR),
+    keyframe(1.0417, degree_vec(14.72765, -31.63886, -7.85085), LINEAR),
+    keyframe(1.125, degree_vec(12.40525, -4.4E-4, 0.00829), LINEAR),
+    keyframe(1.2083, degree_vec(12.40525, -4.4E-4, 0.00829), LINEAR),
+    keyframe(1.2917, degree_vec(13.92716, 26.80536, 6.38918), LINEAR),
+    keyframe(1.625, degree_vec(13.93, 26.81, 6.39), LINEAR),
+    keyframe(1.6667, degree_vec(21.43, 26.81, 6.39), LINEAR),
+    keyframe(1.7917, degree_vec(21.43, 26.81, 6.39), LINEAR),
+    keyframe(1.8333, degree_vec(13.93, 26.81, 6.39), LINEAR),
+    keyframe(2.0417, degree_vec(13.93, 26.81, 6.39), LINEAR),
+    keyframe(2.125, degree_vec(12.40725, 0.0, 0.00783), LINEAR),
+    keyframe(2.1667, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.25, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.2917, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.375, degree_vec(15.0, 0.0, 0.0), LINEAR),
+    keyframe(2.4167, degree_vec(17.5, 0.0, 0.0), LINEAR),
+    keyframe(2.4583, degree_vec(22.5, 0.0, 0.0), LINEAR),
+    keyframe(2.625, degree_vec(24.14867, -20.70481, -9.00717), LINEAR),
+    keyframe(2.7083, degree_vec(24.14867, -20.70481, -9.00717), LINEAR),
+    keyframe(2.75, degree_vec(22.5, 0.0, 0.0), LINEAR),
+    keyframe(2.7917, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.9583, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const COPPER_GOLEM_CHEST_NOITEM_GET_BODY_POS: [Keyframe; 16] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.2083, pos_vec(0.0, 0.6, 0.0), LINEAR),
+    keyframe(0.4167, pos_vec(0.0, 0.5, 0.0), LINEAR),
+    keyframe(1.625, pos_vec(0.0, 0.4, 0.0), LINEAR),
+    keyframe(1.6667, pos_vec(-0.01805, 0.88303, -0.09783), LINEAR),
+    keyframe(1.7917, pos_vec(-0.01805, 0.88303, -0.09783), LINEAR),
+    keyframe(1.8333, pos_vec(0.0, 0.6, 0.0), LINEAR),
+    keyframe(2.0417, pos_vec(0.0, 0.6, 0.0), LINEAR),
+    keyframe(2.1667, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.25, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.2917, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.625, pos_vec(0.0, 0.46194, -0.19134), LINEAR),
+    keyframe(2.7083, pos_vec(0.0, 0.46194, -0.19134), LINEAR),
+    keyframe(2.7917, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.9583, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const COPPER_GOLEM_CHEST_NOITEM_GET_HEAD_ROT: [Keyframe; 39] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.1667, degree_vec(-20.0, 0.0, 0.0), LINEAR),
+    keyframe(0.2083, degree_vec(-20.0, 0.0, 0.0), LINEAR),
+    keyframe(0.25, degree_vec(-2.5, 0.0, 0.0), LINEAR),
+    keyframe(0.2917, degree_vec(-5.0, 0.0, 0.0), LINEAR),
+    keyframe(0.375, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.4167, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5833, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.6667, degree_vec(0.0, -20.0, 0.0), LINEAR),
+    keyframe(0.75, degree_vec(0.0, -20.0, 0.0), LINEAR),
+    keyframe(0.8333, degree_vec(0.0, 10.0, 0.0), LINEAR),
+    keyframe(1.0417, degree_vec(0.0, 10.0, 0.0), LINEAR),
+    keyframe(1.1667, degree_vec(0.0, 10.0, 0.0), LINEAR),
+    keyframe(1.2083, degree_vec(0.0, 27.5, 0.0), LINEAR),
+    keyframe(1.2917, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.4167, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.4583, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.5, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.5833, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.625, degree_vec(0.0, -2.5, 0.0), LINEAR),
+    keyframe(1.6667, degree_vec(10.16381, -16.71134, -6.35306), LINEAR),
+    keyframe(1.8333, degree_vec(10.16381, -16.71134, -6.35306), LINEAR),
+    keyframe(1.9167, degree_vec(10.16381, -16.71134, -6.35306), LINEAR),
+    keyframe(1.9583, degree_vec(10.16381, -16.71134, -6.35306), LINEAR),
+    keyframe(2.0, degree_vec(5.16381, -16.71134, -6.35306), LINEAR),
+    keyframe(2.0417, degree_vec(0.16381, -16.71134, -6.35306), LINEAR),
+    keyframe(2.0833, degree_vec(0.15732, -4.21139, -6.31751), LINEAR),
+    keyframe(2.125, degree_vec(0.07901, 5.3943, -3.15187), LINEAR),
+    keyframe(2.1667, degree_vec(0.0, 7.5, 0.0), LINEAR),
+    keyframe(2.2917, degree_vec(4.53867, 7.47675, 0.59181), LINEAR),
+    keyframe(2.3333, degree_vec(-2.53852, 9.99038, -0.44067), LINEAR),
+    keyframe(2.4167, degree_vec(-12.68664, 9.76061, -2.18558), LINEAR),
+    keyframe(2.625, degree_vec(-15.19938, 22.36971, -3.52259), LINEAR),
+    keyframe(2.6667, degree_vec(-3.02173, 22.37156, -2.41802), LINEAR),
+    keyframe(2.7083, degree_vec(-0.52173, 22.37156, -2.41802), LINEAR),
+    keyframe(2.75, degree_vec(-12.40598, -0.4674, -1.79838), LINEAR),
+    keyframe(2.8333, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.9583, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const COPPER_GOLEM_CHEST_NOITEM_GET_HEAD_POS: [Keyframe; 25] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.1667, pos_vec(0.0, -0.15451, 0.47553), LINEAR),
+    keyframe(0.25, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.4167, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.0417, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.1667, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.2917, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.4167, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.4583, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.5, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.5833, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.625, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.6667, pos_vec(-0.22438, 0.82319, -1.27252), LINEAR),
+    keyframe(1.8333, pos_vec(-0.22438, 0.82319, -1.27252), LINEAR),
+    keyframe(1.9167, pos_vec(-0.22438, 0.82319, -1.27252), LINEAR),
+    keyframe(1.9583, pos_vec(-0.52521, 0.96725, -0.32978), LINEAR),
+    keyframe(2.0, pos_vec(-0.52521, 0.96725, -0.32978), LINEAR),
+    keyframe(2.0417, pos_vec(-0.5345, 1.16541, -0.37206), LINEAR),
+    keyframe(2.0833, pos_vec(-0.5345, 1.16541, -0.37206), LINEAR),
+    keyframe(2.1667, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.3333, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.625, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.8333, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.9583, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const COPPER_GOLEM_CHEST_NOITEM_GET_RIGHT_ARM_ROT: [Keyframe; 37] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.1667, degree_vec(-7.38733, 1.29876, 9.91615), LINEAR),
+    keyframe(0.2917, degree_vec(-7.38733, 1.29876, 9.91615), LINEAR),
+    keyframe(0.375, degree_vec(10.0, 0.0, 32.5), LINEAR),
+    keyframe(0.4167, degree_vec(-34.55418, 11.73507, 36.8361), LINEAR),
+    keyframe(0.4583, degree_vec(-82.47403, 17.82361, 2.17224), LINEAR),
+    keyframe(0.5, degree_vec(-85.08388, 14.26971, 1.99595), LINEAR),
+    keyframe(0.5417, degree_vec(-85.16266, 13.19102, 2.43976), LINEAR),
+    keyframe(0.5833, degree_vec(-92.79, 0.73, 1.39), LINEAR),
+    keyframe(0.75, degree_vec(-92.79, 0.73, 1.39), LINEAR),
+    keyframe(0.8333, degree_vec(-95.83405, 33.18639, -0.40081), LINEAR),
+    keyframe(1.25, degree_vec(-95.83, 33.19, -0.4), LINEAR),
+    keyframe(1.2917, degree_vec(-98.33, 33.19, -0.4), LINEAR),
+    keyframe(1.5417, degree_vec(-56.46674, 3.3853, 14.45894), LINEAR),
+    keyframe(1.6667, degree_vec(-56.46674, 3.3853, 14.45894), LINEAR),
+    keyframe(1.8333, degree_vec(-56.46674, 3.3853, 14.45894), LINEAR),
+    keyframe(2.0, degree_vec(-56.46674, 3.3853, 14.45894), LINEAR),
+    keyframe(2.0417, degree_vec(-56.46674, 3.3853, 14.45894), LINEAR),
+    keyframe(2.1667, degree_vec(-84.12204, 8.95753, 14.11779), LINEAR),
+    keyframe(2.2083, degree_vec(-84.12204, 8.95753, 14.11779), LINEAR),
+    keyframe(2.25, degree_vec(-93.6065, 13.90544, 15.98524), LINEAR),
+    keyframe(2.3333, degree_vec(-124.48661, 66.29146, -7.28605), LINEAR),
+    keyframe(2.375, degree_vec(-129.4866, 66.29146, -7.28605), LINEAR),
+    keyframe(2.4167, degree_vec(-108.91607, 1.79762, 20.93924), LINEAR),
+    keyframe(2.5, degree_vec(-102.18303, 4.35881, 17.40962), LINEAR),
+    keyframe(2.5417, degree_vec(-98.33642, -0.70114, 4.09322), LINEAR),
+    keyframe(2.625, degree_vec(-98.39385, 6.71929, 3.00137), LINEAR),
+    keyframe(2.6667, degree_vec(-98.33981, 1.77244, 3.7307), LINEAR),
+    keyframe(2.7083, degree_vec(-100.70987, 3.48829, 7.1138), LINEAR),
+    keyframe(2.75, degree_vec(-97.95, 6.92, 13.88), LINEAR),
+    keyframe(2.7917, degree_vec(-87.95, 6.92, 13.88), LINEAR),
+    keyframe(2.8333, degree_vec(-97.95, 6.92, 13.88), LINEAR),
+    keyframe(2.875, degree_vec(-102.95, 6.92, 13.88), LINEAR),
+    keyframe(2.9167, degree_vec(-76.475, 3.46, 6.94), LINEAR),
+    keyframe(2.9583, degree_vec(-26.475, 3.46, 6.94), LINEAR),
+    keyframe(3.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const COPPER_GOLEM_CHEST_NOITEM_GET_RIGHT_ARM_POS: [Keyframe; 29] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.2917, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.375, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5833, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.75, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.8333, pos_vec(0.25358, -0.20153, 2.21248), LINEAR),
+    keyframe(1.25, pos_vec(0.25, -0.2, 2.21), LINEAR),
+    keyframe(1.2917, pos_vec(0.25, -0.2, 2.21), LINEAR),
+    keyframe(1.5417, pos_vec(-0.26323, -1.46323, 0.66566), LINEAR),
+    keyframe(1.6667, pos_vec(-0.26323, -1.46323, 0.66566), LINEAR),
+    keyframe(1.8333, pos_vec(-0.26323, -1.46323, 0.66566), LINEAR),
+    keyframe(2.0, pos_vec(-0.26323, -1.46323, 0.66566), LINEAR),
+    keyframe(2.0417, pos_vec(-0.26323, -1.46323, 0.66566), LINEAR),
+    keyframe(2.25, pos_vec(-0.51, -0.38, 0.8), LINEAR),
+    keyframe(2.3333, pos_vec(-0.51, -0.38, 0.8), LINEAR),
+    keyframe(2.375, pos_vec(-0.51, -0.38, 0.8), LINEAR),
+    keyframe(2.4167, pos_vec(-2.14094, 0.69619, 1.23422), LINEAR),
+    keyframe(2.4583, pos_vec(-0.97932, 0.38244, 0.12884), LINEAR),
+    keyframe(2.5417, pos_vec(-1.55232, 1.79904, 0.37956), LINEAR),
+    keyframe(2.625, pos_vec(-1.53125, 1.64598, 1.41168), LINEAR),
+    keyframe(2.6667, pos_vec(-1.57256, 1.05375, 1.32469), LINEAR),
+    keyframe(2.75, pos_vec(-1.33, 0.16, 1.02), LINEAR),
+    keyframe(2.7917, pos_vec(-1.33, 0.16, 1.02), LINEAR),
+    keyframe(2.8333, pos_vec(-1.33, 0.16, 1.02), LINEAR),
+    keyframe(2.875, pos_vec(-1.33, 0.16, 1.02), LINEAR),
+    keyframe(2.9167, pos_vec(-0.5748, 0.38848, 1.45646), LINEAR),
+    keyframe(2.9583, pos_vec(-0.67, 0.08, 0.51), LINEAR),
+    keyframe(3.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const COPPER_GOLEM_CHEST_NOITEM_GET_LEFT_ARM_ROT: [Keyframe; 25] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.2083, degree_vec(25.0, 0.0, -37.5), LINEAR),
+    keyframe(0.25, degree_vec(-21.59341, -12.60837, -45.69252), LINEAR),
+    keyframe(0.2917, degree_vec(-120.7755, -5.21988, -2.02064), LINEAR),
+    keyframe(0.375, degree_vec(-98.27419, -1.79323, -1.15048), LINEAR),
+    keyframe(0.4167, degree_vec(-93.27, -1.79, -1.15), LINEAR),
+    keyframe(0.5417, degree_vec(-93.27419, -1.79323, -1.15048), LINEAR),
+    keyframe(0.5833, degree_vec(-93.55693, -22.3224, 3.64383), LINEAR),
+    keyframe(0.7083, degree_vec(-93.55693, -22.3224, 3.64383), LINEAR),
+    keyframe(1.1667, degree_vec(-93.55693, -22.3224, 3.64383), LINEAR),
+    keyframe(1.2083, degree_vec(-95.75, -2.42, 5.97), LINEAR),
+    keyframe(1.25, degree_vec(-98.4029, -17.39503, 6.85104), LINEAR),
+    keyframe(1.2917, degree_vec(-101.24523, -29.87096, 7.69993), LINEAR),
+    keyframe(1.5833, degree_vec(-101.25, -29.87, 7.7), LINEAR),
+    keyframe(1.6667, degree_vec(-88.17772, -42.09094, 10.96195), LINEAR),
+    keyframe(1.8333, degree_vec(-88.17772, -42.09094, 10.96195), LINEAR),
+    keyframe(1.9583, degree_vec(-88.17772, -42.09094, 10.96195), LINEAR),
+    keyframe(2.1667, degree_vec(-88.17772, -42.09094, 10.96195), LINEAR),
+    keyframe(2.2083, degree_vec(-88.58526, -17.10045, 11.7676), LINEAR),
+    keyframe(2.3333, degree_vec(-88.59, -17.1, 11.77), LINEAR),
+    keyframe(2.4167, degree_vec(-46.59531, -16.13694, -3.85578), LINEAR),
+    keyframe(2.5, degree_vec(-24.5317, -19.0214, -13.70805), LINEAR),
+    keyframe(2.8333, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.9583, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const COPPER_GOLEM_CHEST_NOITEM_GET_LEFT_ARM_POS: [Keyframe; 10] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.2083, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.4167, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.2083, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.5833, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.6667, pos_vec(-0.00677, -0.76064, 3.19059), LINEAR),
+    keyframe(2.3333, pos_vec(0.0512, -0.76176, 3.12882), LINEAR),
+    keyframe(2.8333, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.9583, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const COPPER_GOLEM_CHEST_NOITEM_GET_RIGHT_LEG_ROT: [Keyframe; 9] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.2083, degree_vec(7.5, 0.0, 0.0), LINEAR),
+    keyframe(2.2917, degree_vec(7.5, 0.0, 0.0), LINEAR),
+    keyframe(2.7083, degree_vec(7.5, 0.0, 0.0), LINEAR),
+    keyframe(2.7917, degree_vec(5.0, 0.0, 0.0), LINEAR),
+    keyframe(2.8333, degree_vec(5.0, 0.0, 0.0), LINEAR),
+    keyframe(2.875, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.9583, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const COPPER_GOLEM_CHEST_NOITEM_GET_RIGHT_LEG_POS: [Keyframe; 8] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.2083, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.2917, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.7083, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.7917, pos_vec(0.0, 0.09, -0.11), LINEAR),
+    keyframe(2.8333, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.9583, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const COPPER_GOLEM_CHEST_NOITEM_GET_LEFT_LEG_ROT: [Keyframe; 11] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.2083, degree_vec(-10.0, 0.0, 0.0), LINEAR),
+    keyframe(2.0417, degree_vec(-10.0, 0.0, 0.0), LINEAR),
+    keyframe(2.25, degree_vec(-10.0, 0.0, 0.0), LINEAR),
+    keyframe(2.3333, degree_vec(-10.0, 0.0, 0.0), LINEAR),
+    keyframe(2.4167, degree_vec(-10.0, 0.0, 0.0), LINEAR),
+    keyframe(2.4583, degree_vec(-10.0, 0.0, 0.0), LINEAR),
+    keyframe(2.5, degree_vec(-10.0, 0.0, 0.0), LINEAR),
+    keyframe(2.625, degree_vec(-10.0, 0.0, 0.0), LINEAR),
+    keyframe(2.9583, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const COPPER_GOLEM_CHEST_NOITEM_GET_LEFT_LEG_POS: [Keyframe; 11] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.2083, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.0417, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.25, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.3333, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.4167, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.4583, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.5, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.625, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.9583, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const COPPER_GOLEM_CHEST_NOITEM_GET_BODY_CHANNELS: [AnimationChannel; 2] = [
+    rot(&COPPER_GOLEM_CHEST_NOITEM_GET_BODY_ROT),
+    pos(&COPPER_GOLEM_CHEST_NOITEM_GET_BODY_POS),
+];
+const COPPER_GOLEM_CHEST_NOITEM_GET_HEAD_CHANNELS: [AnimationChannel; 2] = [
+    rot(&COPPER_GOLEM_CHEST_NOITEM_GET_HEAD_ROT),
+    pos(&COPPER_GOLEM_CHEST_NOITEM_GET_HEAD_POS),
+];
+const COPPER_GOLEM_CHEST_NOITEM_GET_RIGHT_ARM_CHANNELS: [AnimationChannel; 2] = [
+    rot(&COPPER_GOLEM_CHEST_NOITEM_GET_RIGHT_ARM_ROT),
+    pos(&COPPER_GOLEM_CHEST_NOITEM_GET_RIGHT_ARM_POS),
+];
+const COPPER_GOLEM_CHEST_NOITEM_GET_LEFT_ARM_CHANNELS: [AnimationChannel; 2] = [
+    rot(&COPPER_GOLEM_CHEST_NOITEM_GET_LEFT_ARM_ROT),
+    pos(&COPPER_GOLEM_CHEST_NOITEM_GET_LEFT_ARM_POS),
+];
+const COPPER_GOLEM_CHEST_NOITEM_GET_RIGHT_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&COPPER_GOLEM_CHEST_NOITEM_GET_RIGHT_LEG_ROT),
+    pos(&COPPER_GOLEM_CHEST_NOITEM_GET_RIGHT_LEG_POS),
+];
+const COPPER_GOLEM_CHEST_NOITEM_GET_LEFT_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&COPPER_GOLEM_CHEST_NOITEM_GET_LEFT_LEG_ROT),
+    pos(&COPPER_GOLEM_CHEST_NOITEM_GET_LEFT_LEG_POS),
+];
+
+const COPPER_GOLEM_CHEST_NOITEM_GET_BONES: [BoneAnimation; 6] = [
+    BoneAnimation {
+        bone: "body",
+        channels: &COPPER_GOLEM_CHEST_NOITEM_GET_BODY_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "head",
+        channels: &COPPER_GOLEM_CHEST_NOITEM_GET_HEAD_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_arm",
+        channels: &COPPER_GOLEM_CHEST_NOITEM_GET_RIGHT_ARM_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_arm",
+        channels: &COPPER_GOLEM_CHEST_NOITEM_GET_LEFT_ARM_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_leg",
+        channels: &COPPER_GOLEM_CHEST_NOITEM_GET_RIGHT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_leg",
+        channels: &COPPER_GOLEM_CHEST_NOITEM_GET_LEFT_LEG_CHANNELS,
+    },
+];
+
+pub(in crate::entity_models) const COPPER_GOLEM_CHEST_INTERACTION_NOITEM_GET: AnimationDefinition =
+    AnimationDefinition {
+        length_seconds: 3.0,
+        looping: true,
+        bones: &COPPER_GOLEM_CHEST_NOITEM_GET_BONES,
+    };
+
 fn copper_golem_tree() -> ModelPart {
     let body = ModelPart::new(
         COPPER_GOLEM_BODY_POSE,
@@ -408,11 +757,52 @@ fn apply_copper_golem_keyframe(
     part.pose = keyframe_animated_pose(part.pose, position, rotation);
 }
 
+fn apply_copper_golem_full_keyframe(
+    definition: &AnimationDefinition,
+    root: &mut ModelPart,
+    seconds: f32,
+    scale: f32,
+) {
+    {
+        let body = root.child_mut("body");
+        apply_copper_golem_keyframe(definition, body, "body", seconds, scale);
+        apply_copper_golem_keyframe(definition, body.child_mut("head"), "head", seconds, scale);
+        apply_copper_golem_keyframe(
+            definition,
+            body.child_mut("right_arm"),
+            "right_arm",
+            seconds,
+            scale,
+        );
+        apply_copper_golem_keyframe(
+            definition,
+            body.child_mut("left_arm"),
+            "left_arm",
+            seconds,
+            scale,
+        );
+    }
+    apply_copper_golem_keyframe(
+        definition,
+        root.child_mut("right_leg"),
+        "right_leg",
+        seconds,
+        scale,
+    );
+    apply_copper_golem_keyframe(
+        definition,
+        root.child_mut("left_leg"),
+        "left_leg",
+        seconds,
+        scale,
+    );
+}
+
 /// Mutable copper golem model, mirroring vanilla `CopperGolemModel.createBodyLayer`. The base
 /// renderer uses this same tree for both the cutout body and the emissive eyes texture. The vanilla
-/// interaction keyframe animations and custom head are deferred; the head look, walking /
-/// walking-with-item keyframes, idle keyframe, static held-item arm clamp, and antenna block
-/// transform are projected now.
+/// remaining interaction keyframe animations and custom head are deferred; the head look, walking /
+/// walking-with-item keyframes, idle / noitem-get interaction keyframes, static held-item arm clamp,
+/// and antenna block transform are projected now.
 pub(in crate::entity_models) struct CopperGolemModel {
     root: ModelPart,
 }
@@ -502,6 +892,19 @@ impl EntityModel for CopperGolemModel {
                 body.child_mut("head"),
                 "head",
                 idle_seconds,
+                1.0,
+            );
+        }
+
+        if render_state.copper_golem_get_item_seconds >= 0.0 {
+            let interaction_seconds = keyframe_elapsed_seconds(
+                &COPPER_GOLEM_CHEST_INTERACTION_NOITEM_GET,
+                render_state.copper_golem_get_item_seconds,
+            );
+            apply_copper_golem_full_keyframe(
+                &COPPER_GOLEM_CHEST_INTERACTION_NOITEM_GET,
+                &mut self.root,
+                interaction_seconds,
                 1.0,
             );
         }

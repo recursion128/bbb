@@ -422,6 +422,7 @@ const CAMEL_IDLE_TIMEOUT_BASE_TICKS: i32 = 80;
 /// Vanilla `CopperGolem.COPPER_GOLEM_STATE` (own data accessor after weather state).
 const COPPER_GOLEM_STATE_DATA_ID: u8 = 17;
 const COPPER_GOLEM_STATE_IDLE_ID: i32 = 0;
+const COPPER_GOLEM_STATE_GETTING_ITEM_ID: i32 = 1;
 /// Vanilla `CopperGolem.setupAnimationStates`: `idleAnimationStartTick = tickCount +
 /// random.nextInt(200, 240)`, then `idleAnimationState.start(tickCount)` at that tick.
 const COPPER_GOLEM_IDLE_TIMEOUT_RANDOM_BOUND: i32 = 40;
@@ -498,6 +499,8 @@ pub struct EntityClientAnimationState {
     pub camel_dash_cooldown: Option<CamelDashCooldownState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub copper_golem_idle: Option<CopperGolemIdleAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub copper_golem_get_item: Option<KeyframeAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sniffer: Option<SnifferAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4633,6 +4636,14 @@ impl EntityClientAnimationState {
             .unwrap_or(-1.0)
     }
 
+    /// Vanilla `CopperGolem.interactionGetItemAnimationState` elapsed seconds, started while
+    /// `COPPER_GOLEM_STATE == GETTING_ITEM` and stopped by every other state.
+    pub fn copper_golem_get_item_seconds(&self, partial_tick: f32) -> f32 {
+        self.copper_golem_get_item
+            .and_then(|state| state.elapsed_seconds(self.age_ticks, partial_tick))
+            .unwrap_or(-1.0)
+    }
+
     /// Vanilla `CamelRenderState.jumpCooldown` =
     /// `max(Camel.getJumpCooldown() - partialTicks, 0)`. The cooldown is seeded from the synced
     /// `DASH` rising edge and decremented each client tick, matching `Camel.tick`.
@@ -5193,6 +5204,9 @@ impl EntityClientAnimationState {
         // The synced `CopperGolem.COPPER_GOLEM_STATE == IDLE`, read from entity metadata in the tick
         // loop. It gates the golem's delayed idle head-spin keyframe timer.
         copper_golem_is_idle: bool,
+        // The synced `CopperGolem.COPPER_GOLEM_STATE == GETTING_ITEM`, read from entity metadata in
+        // the tick loop. It gates the no-item/get chest interaction keyframe.
+        copper_golem_is_getting_item: bool,
         // The synced `Allay.DATA_DANCING` boolean (`isDancing()`), read from the entity metadata in the
         // tick loop ([`allay_is_dancing`]). `false` for entities that do not consume it.
         allay_is_dancing: bool,
@@ -5571,6 +5585,9 @@ impl EntityClientAnimationState {
                 self.copper_golem_idle
                     .get_or_insert_with(|| CopperGolemIdleAnimationState::new(entity_id))
                     .advance_client_tick(self.age_ticks, copper_golem_is_idle);
+                self.copper_golem_get_item
+                    .get_or_insert_with(KeyframeAnimationState::default)
+                    .animate_when(copper_golem_is_getting_item, self.age_ticks);
             }
             VANILLA_ENTITY_TYPE_ALLAY_ID => {
                 // Vanilla `Allay.tick`: while the synced `DATA_DANCING` flag is set, advance the dance
@@ -5763,12 +5780,22 @@ pub(crate) fn camel_is_dashing(data_values: &[EntityDataValue]) -> bool {
 /// serializer 37). The client starts the idle spin only in this state; every missing or mismatched
 /// value falls back to the vanilla default `IDLE`.
 pub(crate) fn copper_golem_is_idle(data_values: &[EntityDataValue]) -> bool {
+    copper_golem_state_id(data_values) == COPPER_GOLEM_STATE_IDLE_ID
+}
+
+/// Vanilla `CopperGolem.getState() == GETTING_ITEM`: starts the no-item/get chest interaction
+/// animation (`COPPER_GOLEM_CHEST_INTERACTION_NOITEM_GET`) and stops every other interaction timer.
+pub(crate) fn copper_golem_is_getting_item(data_values: &[EntityDataValue]) -> bool {
+    copper_golem_state_id(data_values) == COPPER_GOLEM_STATE_GETTING_ITEM_ID
+}
+
+fn copper_golem_state_id(data_values: &[EntityDataValue]) -> i32 {
     entity_data_enum_id(
         data_values,
         COPPER_GOLEM_STATE_DATA_ID,
         EntityDataEnumSerializer::CopperGolemState,
         COPPER_GOLEM_STATE_IDLE_ID,
-    ) == COPPER_GOLEM_STATE_IDLE_ID
+    )
 }
 
 /// Vanilla `Pillager.isChargingCrossbow()` (`entityData.get(IS_CHARGING_CROSSBOW)`): the synced boolean

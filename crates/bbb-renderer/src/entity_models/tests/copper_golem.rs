@@ -269,6 +269,67 @@ fn copper_golem_idle_keyframes_use_vanilla_head_spin() {
 }
 
 #[test]
+fn copper_golem_get_item_keyframes_use_vanilla_chest_interaction() {
+    // Vanilla `CopperGolemModel.setupAnim` applies `COPPER_GOLEM_CHEST_INTERACTION_NOITEM_GET`
+    // after idle while `CopperGolemState.GETTING_ITEM` is active.
+    assert_eq!(
+        COPPER_GOLEM_CHEST_INTERACTION_NOITEM_GET.length_seconds,
+        3.0
+    );
+    assert!(COPPER_GOLEM_CHEST_INTERACTION_NOITEM_GET.looping);
+    assert_eq!(COPPER_GOLEM_CHEST_INTERACTION_NOITEM_GET.bones.len(), 6);
+
+    let instance = EntityModelInstance::new(
+        917,
+        EntityModelKind::CopperGolem {
+            weathering: CopperGolemWeathering::Unaffected,
+        },
+        [0.0, 64.0, 0.0],
+        0.0,
+    )
+    .with_head_look(20.0, -5.0)
+    .with_walk_animation(0.0, 0.0)
+    .with_copper_golem_get_item_seconds(0.4167);
+    let mut model = CopperGolemModel::new();
+    model.prepare(&instance);
+
+    let body = model.root_mut().child_mut("body");
+    assert_close3(body.pose.offset, [0.0, -5.5, 0.0]);
+    assert_close3(body.pose.rotation, degree_vec(12.5, 0.0, 0.0));
+    assert_close3(
+        body.child_mut("head").pose.rotation,
+        [-5.0 * RAD, 20.0 * RAD, 0.0],
+    );
+    assert_close3(
+        body.child_mut("right_arm").pose.rotation,
+        degree_vec(-34.55418, 11.73507, 36.8361),
+    );
+    assert_close3(
+        body.child_mut("left_arm").pose.rotation,
+        degree_vec(-93.27, -1.79, -1.15),
+    );
+    assert_close3(
+        model.root_mut().child_mut("right_leg").pose.rotation,
+        degree_vec(7.5, 0.0, 0.0),
+    );
+    assert_close3(
+        model.root_mut().child_mut("left_leg").pose.rotation,
+        degree_vec(-10.0, 0.0, 0.0),
+    );
+
+    let stopped = instance.with_copper_golem_get_item_seconds(-1.0);
+    let mut stopped_model = CopperGolemModel::new();
+    stopped_model.prepare(&stopped);
+    let stopped_body = stopped_model.root_mut().child_mut("body");
+    assert_close3(stopped_body.pose.offset, [0.0, -5.0, 0.0]);
+    assert_close3(stopped_body.pose.rotation, [0.0, 0.0, 0.0]);
+    assert_close3(
+        stopped_body.child_mut("right_arm").pose.rotation,
+        [0.0, 0.0, 0.0],
+    );
+}
+
+#[test]
 fn copper_golem_textured_layer_passes_match_vanilla_renderer() {
     let passes = copper_golem_textured_layer_passes(CopperGolemWeathering::Weathered);
 
@@ -450,6 +511,88 @@ fn copper_golem_textured_idle_preserves_submission_metadata() {
     );
     assert_eq!(still_base.texture, idle_base.texture);
     assert_eq!(still_eyes.texture, idle_eyes.texture);
+}
+
+#[test]
+fn copper_golem_textured_get_item_preserves_submission_metadata() {
+    let images: Vec<EntityModelTextureImage> = copper_golem_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let base = EntityModelInstance::new(
+        918,
+        EntityModelKind::CopperGolem {
+            weathering: CopperGolemWeathering::Oxidized,
+        },
+        [0.0, 64.0, 0.0],
+        0.0,
+    )
+    .with_light_coords((4_u32 << 4) | (10_u32 << 20))
+    .with_white_overlay_progress(0.25)
+    .with_has_red_overlay(true);
+    let still = base.with_copper_golem_get_item_seconds(-1.0);
+    let getting_item = base.with_copper_golem_get_item_seconds(0.4167);
+
+    let still_meshes = entity_model_textured_meshes(&[still], &atlas);
+    let get_meshes = entity_model_textured_meshes(&[getting_item], &atlas);
+    assert_eq!(still_meshes.submissions.len(), 2);
+    assert_eq!(get_meshes.submissions.len(), 2);
+
+    let still_base = still_meshes.submissions[0];
+    let get_base = get_meshes.submissions[0];
+    assert_eq!(
+        get_base.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(get_base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(get_base.texture, COPPER_GOLEM_OXIDIZED_TEXTURE_REF);
+    assert_eq!(get_base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        get_base.transform,
+        entity_model_root_transform(getting_item)
+    );
+    assert_eq!(get_base.transform, still_base.transform);
+    assert_eq!(get_base.light, getting_item.render_state.shader_light());
+    assert_eq!(get_base.overlay, getting_item.render_state.overlay_coords());
+    assert_eq!((get_base.order, get_base.submit_sequence), (0, 0));
+
+    let still_eyes = still_meshes.submissions[1];
+    let get_eyes = get_meshes.submissions[1];
+    assert_eq!(get_eyes.render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(get_eyes.render_type.vanilla_name(), "eyes");
+    assert_eq!(get_eyes.texture, COPPER_GOLEM_EYES_OXIDIZED_TEXTURE_REF);
+    assert_eq!(get_eyes.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(get_eyes.transform, get_base.transform);
+    assert_eq!(get_eyes.light, getting_item.render_state.shader_light());
+    assert_eq!(
+        get_eyes.overlay,
+        [0.0, getting_item.render_state.overlay_coords()[1]]
+    );
+    assert_eq!((get_eyes.order, get_eyes.submit_sequence), (1, 1));
+
+    assert_eq!(
+        still_meshes.cutout.indices.len(),
+        get_meshes.cutout.indices.len()
+    );
+    assert_eq!(
+        still_meshes.eyes.indices.len(),
+        get_meshes.eyes.indices.len()
+    );
+    assert_ne!(
+        still_meshes.cutout.vertices, get_meshes.cutout.vertices,
+        "GETTING_ITEM keyframes move the base layer without changing submission metadata"
+    );
+    assert_ne!(
+        still_meshes.eyes.vertices, get_meshes.eyes.vertices,
+        "the emissive eyes layer uses the same posed tree as the base layer"
+    );
+    assert_eq!(still_base.texture, get_base.texture);
+    assert_eq!(still_eyes.texture, get_eyes.texture);
 }
 
 #[test]
