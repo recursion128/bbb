@@ -389,7 +389,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
 - Minecart：
   - rail-follow `posOnRail` / `frontPos` / `backPos` 平移与坡度 pitch。
   - [x] NewMinecartBehavior exact weighted `renderPos` / rotation interpolation。
-  - display block transform / content / light hookup。
+  - [x] display block transform / content / light baseline：
+    `WorldStore::minecart_display_block_state` 解析 custom/default display block
+    与 `displayOffset`，renderer 内容块 transform 覆盖 vanilla 0.75 scale /
+    offset / `Ry(90)` 且位于 body final flip 之前，native block-model
+    attachment 路径携带 block properties、entity light 和 hidden-glowing
+    outline-only。
+  - TNT fuse scale / white overlay、spawner animated block-entity content 与
+    culling bbox expansion 继续作为 P1 后续。
 - Equine / camel / llama / goat / hoglin / ravager 等大型模型：
   - boost 等 remaining renderer 状态。
   - [x] camel body-anchor y-offset formula/query：`WorldStore::entity_body_anchor_y_offset`

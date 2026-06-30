@@ -5278,12 +5278,18 @@ When an agent does any of the following, update this file in the same slice:
       now project vanilla `NewMinecartBehavior.getCartLerpPosition` /
       `getCartLerp*Rot` weighted interpolation over the packet's three-tick
       window into the renderer source position, yaw, and pitch, while preserving
-      the latest canonical step for probes. Rail-follow `posOnRail` / `frontPos` /
-      `backPos` along-track translation and slope pitch, the TNT/spawner
-      `displayOffset` and 0.75x block-content scale, the
-      chest/furnace/hopper/command-block/TNT/spawner content models, and their
-      block-content light hookup remain unsupported; the minecart body submission
-      light/overlay metadata is covered
+      the latest canonical step for probes. Display-block baseline content is
+      now routed through `WorldStore::minecart_display_block_state` and the
+      entity block-model attachment path: custom `DATA_ID_CUSTOM_DISPLAY_BLOCK`
+      and `DATA_ID_DISPLAY_OFFSET` metadata, default chest/furnace/hopper/
+      command-block/TNT/spawner block states, chest/hopper/default offsets,
+      vanilla 0.75 content scale, `(-0.5, (displayOffset - 8) / 16, 0.5)`
+      translate, `Ry(90)`, entity light coords, and hidden-glowing outline-only
+      attachment records are covered by focused tests. Rail-follow `posOnRail` /
+      `frontPos` / `backPos` along-track translation and slope pitch remain
+      unsupported, as do TNT fuse scale / white overlay, spawner animated
+      block-entity content, and minecart display-block culling bbox expansion;
+      the minecart body submission light/overlay metadata remains covered
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder

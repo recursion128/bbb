@@ -19,15 +19,19 @@ use super::{
     EntityEquipment, EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata,
     EntityMinecartLerp, EntityMobEffects, EntityModelSourceState, EntityMount, EntityState,
     EntityTransform, EntityTransformState, EntityTransientEvents, ItemEntityStackState,
-    ItemFrameRenderState, LlamaBodyDecorColor, WolfArmorCrackiness,
+    ItemFrameRenderState, LlamaBodyDecorColor, MinecartDisplayBlockState, WolfArmorCrackiness,
     VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
     VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
-    VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
-    VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
-    VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MULE_ID,
-    VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
-    VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
-    VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
+    VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
+    VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
+    VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
+    VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
+    VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+    VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+    VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
+    VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
+    VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+    VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
     VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
     VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_UPSIDE_DOWN_NAMES,
 };
@@ -83,6 +87,13 @@ const VANILLA_POSE_STANDING_ID: i32 = 0;
 const VANILLA_POSE_SWIMMING_ID: i32 = 3;
 /// Vanilla `Shulker.DATA_ATTACH_FACE_ID` (Direction), declared before peek and color metadata.
 const SHULKER_ATTACH_FACE_DATA_ID: u8 = 16;
+/// Vanilla `AbstractMinecart.DATA_ID_CUSTOM_DISPLAY_BLOCK` optional block-state metadata.
+const MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID: u8 = 11;
+/// Vanilla `AbstractMinecart.DATA_ID_DISPLAY_OFFSET` int metadata.
+const MINECART_DISPLAY_OFFSET_DATA_ID: u8 = 12;
+/// Vanilla `MinecartFurnace.DATA_ID_FUEL` boolean metadata, declared after abstract minecart fields.
+const FURNACE_MINECART_FUEL_DATA_ID: u8 = 13;
+const DEFAULT_MINECART_DISPLAY_OFFSET: i32 = 6;
 
 fn wolf_armor_crackiness(
     item: &ItemStackSummary,
@@ -547,6 +558,50 @@ impl EntityStore {
             return Some(None);
         }
         self.metadata_optional_block_state(id, VANILLA_ENDERMAN_CARRY_STATE_DATA_ID)
+    }
+
+    pub(crate) fn minecart_display_block_state(
+        &self,
+        id: i32,
+        registries: &RegistrySet,
+    ) -> Option<MinecartDisplayBlockState> {
+        let identity = self.identity(id)?;
+        if !is_vanilla_minecart_type(identity.entity_type_id) {
+            return None;
+        }
+
+        let custom_state_id = self
+            .metadata_optional_block_state(id, MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID)
+            .unwrap_or(None);
+        let block = if let Some(state_id) = custom_state_id {
+            let state = registries.block_state(state_id)?;
+            if state.name == "minecraft:air" {
+                return None;
+            }
+            EntityBlockModelState {
+                name: state.name.clone(),
+                properties: state.properties.clone(),
+            }
+        } else {
+            let furnace_has_fuel = identity.entity_type_id
+                == VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID
+                && self
+                    .metadata_bool(id, FURNACE_MINECART_FUEL_DATA_ID, false)
+                    .unwrap_or(false);
+            default_minecart_display_block_state(
+                identity.entity_type_id,
+                furnace_has_fuel,
+                registries,
+            )?
+        };
+        let default_offset = default_minecart_display_offset(identity.entity_type_id);
+        let display_offset = self
+            .metadata_int(id, MINECART_DISPLAY_OFFSET_DATA_ID, default_offset)
+            .unwrap_or(default_offset);
+        Some(MinecartDisplayBlockState {
+            block,
+            display_offset,
+        })
     }
 
     pub(crate) fn pose(&self, id: i32) -> Option<i32> {
@@ -2585,6 +2640,78 @@ impl fmt::Debug for EntityStore {
         f.debug_struct("EntityStore")
             .field("entities", &states)
             .finish()
+    }
+}
+
+fn default_minecart_display_block_state(
+    entity_type_id: i32,
+    furnace_has_fuel: bool,
+    registries: &RegistrySet,
+) -> Option<EntityBlockModelState> {
+    match entity_type_id {
+        VANILLA_ENTITY_TYPE_CHEST_MINECART_ID => registered_block_model_state(
+            registries,
+            "minecraft:chest",
+            BTreeMap::from([
+                ("facing".to_string(), "north".to_string()),
+                ("type".to_string(), "single".to_string()),
+                ("waterlogged".to_string(), "false".to_string()),
+            ]),
+        ),
+        VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID => registered_block_model_state(
+            registries,
+            "minecraft:command_block",
+            BTreeMap::from([
+                ("conditional".to_string(), "false".to_string()),
+                ("facing".to_string(), "north".to_string()),
+            ]),
+        ),
+        VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID => registered_block_model_state(
+            registries,
+            "minecraft:furnace",
+            BTreeMap::from([
+                ("facing".to_string(), "north".to_string()),
+                ("lit".to_string(), furnace_has_fuel.to_string()),
+            ]),
+        ),
+        VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID => registered_block_model_state(
+            registries,
+            "minecraft:hopper",
+            BTreeMap::from([
+                ("enabled".to_string(), "true".to_string()),
+                ("facing".to_string(), "down".to_string()),
+            ]),
+        ),
+        VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID => {
+            registered_block_model_state(registries, "minecraft:spawner", BTreeMap::new())
+        }
+        VANILLA_ENTITY_TYPE_TNT_MINECART_ID => registered_block_model_state(
+            registries,
+            "minecraft:tnt",
+            BTreeMap::from([("unstable".to_string(), "false".to_string())]),
+        ),
+        VANILLA_ENTITY_TYPE_MINECART_ID => None,
+        _ => None,
+    }
+}
+
+fn registered_block_model_state(
+    registries: &RegistrySet,
+    name: &str,
+    properties: BTreeMap<String, String>,
+) -> Option<EntityBlockModelState> {
+    registries.block_state_id_by_name_and_properties(name, &properties)?;
+    Some(EntityBlockModelState {
+        name: name.to_string(),
+        properties,
+    })
+}
+
+fn default_minecart_display_offset(entity_type_id: i32) -> i32 {
+    match entity_type_id {
+        VANILLA_ENTITY_TYPE_CHEST_MINECART_ID => 8,
+        VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID => 1,
+        _ => DEFAULT_MINECART_DISPLAY_OFFSET,
     }
 }
 

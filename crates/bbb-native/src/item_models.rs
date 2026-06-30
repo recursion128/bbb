@@ -18,10 +18,11 @@ use bbb_renderer::{
     bake_item_model_meshes_with_light, copper_golem_antenna_block_transform,
     copper_golem_hand_attach_transform, custom_head_item_transform, dolphin_carried_item_transform,
     enderman_carried_block_transform, fox_held_item_transform, humanoid_hand_attach_transform,
-    iron_golem_flower_block_transform, mooshroom_mushroom_block_transforms,
-    panda_held_item_transform, snow_golem_head_block_transform,
-    villager_crossed_arms_item_transform, witch_held_item_transform, EntityModelInstance,
-    ItemModelMesh, ItemModelMeshSet, ItemModelQuad, MooshroomVariant, ITEM_MODEL_FULL_BRIGHT_LIGHT,
+    iron_golem_flower_block_transform, minecart_display_block_transform,
+    mooshroom_mushroom_block_transforms, panda_held_item_transform,
+    snow_golem_head_block_transform, villager_crossed_arms_item_transform,
+    witch_held_item_transform, EntityModelInstance, ItemModelMesh, ItemModelMeshSet, ItemModelQuad,
+    MooshroomVariant, ITEM_MODEL_FULL_BRIGHT_LIGHT,
 };
 use bbb_world::{TerrainLight, WorldStore};
 use glam::{Mat4, Vec3};
@@ -147,6 +148,19 @@ fn entity_block_attachments(
                     transform,
                     light: entity_render_state_shader_light(instance),
                     outline_only: false,
+                });
+            }
+        }
+        if let Some(display) = world.minecart_display_block_state(instance.entity_id) {
+            if let Some(transform) =
+                minecart_display_block_transform(instance, display.display_offset)
+            {
+                attachments.push(EntityBlockAttachment {
+                    block_id: Cow::Owned(display.block.name),
+                    properties: display.block.properties,
+                    transform,
+                    light: entity_render_state_shader_light(instance),
+                    outline_only: entity_block_attachment_outline_only(instance),
                 });
             }
         }
@@ -1186,6 +1200,7 @@ mod tests {
     use uuid::Uuid;
 
     const VANILLA_ENTITY_TYPE_ENDERMAN_ID: i32 = 41;
+    const VANILLA_ENTITY_TYPE_CHEST_MINECART_ID: i32 = 25;
     const ENDERMAN_CARRY_STATE_DATA_ID: u8 = 16;
     const OPTIONAL_BLOCK_STATE_SERIALIZER_ID: i32 = 15;
     const GRASS_BLOCK_STATE_ID: i32 = 9;
@@ -1266,6 +1281,15 @@ mod tests {
                 Some(GRASS_BLOCK_STATE_ID),
             )],
         }));
+        world
+    }
+
+    fn world_with_chest_minecart(entity_id: i32) -> WorldStore {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            entity_id,
+            VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
+        ));
         world
     }
 
@@ -1385,6 +1409,42 @@ mod tests {
             BTreeMap::from([("snowy".to_string(), "false".to_string())])
         );
         assert_eq!(attachments[0].light, [6.0 / 15.0, 10.0 / 15.0]);
+    }
+
+    #[test]
+    fn entity_block_attachments_collect_minecart_display_block_from_world() {
+        let entity_id = 85;
+        let world = world_with_chest_minecart(entity_id);
+        let light_coords = (6_u32 << 4) | (10_u32 << 20);
+        let minecart = EntityModelInstance::minecart(entity_id, [0.0, 64.0, 0.0], 45.0)
+            .with_light_coords(light_coords);
+
+        let attachments = entity_block_attachments(&[minecart], &world, None);
+
+        assert_eq!(attachments.len(), 1);
+        assert_eq!(attachments[0].block_id.as_ref(), "minecraft:chest");
+        assert_eq!(
+            attachments[0].properties,
+            BTreeMap::from([
+                ("facing".to_string(), "north".to_string()),
+                ("type".to_string(), "single".to_string()),
+                ("waterlogged".to_string(), "false".to_string()),
+            ])
+        );
+        assert_eq!(attachments[0].light, [6.0 / 15.0, 10.0 / 15.0]);
+        assert!(!attachments[0].outline_only);
+        assert!(attachments[0]
+            .transform
+            .transform_point3(Vec3::splat(0.5))
+            .is_finite());
+
+        let hidden = minecart.with_invisible(true);
+        assert!(entity_block_attachments(&[hidden], &world, None).is_empty());
+
+        let outline = hidden.with_appears_glowing(true);
+        let outline_attachments = entity_block_attachments(&[outline], &world, None);
+        assert_eq!(outline_attachments.len(), 1);
+        assert!(outline_attachments[0].outline_only);
     }
 
     #[test]

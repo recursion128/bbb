@@ -681,10 +681,14 @@ pub(in crate::entity_models) fn boat_bubble_transform(instance: EntityModelInsta
 /// (`translate(0, 0.375, 0)`, `Ry(180 - yRot)`, `Rz(-xRot)`). It then applies the hurt roll and the
 /// final model flip. World projection already folds exact weighted `renderPos`
 /// interpolation into the instance position/rotation; old rail-follow position/slope
-/// and display-block contents remain explicit follow-up gaps.
+/// remains an explicit follow-up gap.
 pub(in crate::entity_models) fn minecart_model_root_transform(
     instance: EntityModelInstance,
 ) -> Mat4 {
+    minecart_pre_model_transform(instance) * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+}
+
+fn minecart_pre_model_transform(instance: EntityModelInstance) -> Mat4 {
     let jitter = Vec3::from_array(minecart_render_jitter_offset(instance.entity_id));
     let renderer_transform = if instance.render_state.minecart_new_render {
         Mat4::from_rotation_y(instance.render_state.body_rot.to_radians())
@@ -699,7 +703,19 @@ pub(in crate::entity_models) fn minecart_model_root_transform(
         * Mat4::from_translation(jitter)
         * renderer_transform
         * Mat4::from_rotation_x(minecart_damage_roll_degrees(instance).to_radians())
-        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+}
+
+/// Vanilla `AbstractMinecartRenderer.submit` display block transform: after jitter, old/new render,
+/// and hurt roll, but before the body model's final `scale(-1, -1, 1)`, contents scale by `0.75`,
+/// translate by `(-0.5, (displayOffset - 8) / 16, 0.5)`, then rotate Y by `90°`.
+pub(in crate::entity_models) fn minecart_display_block_content_transform(
+    instance: EntityModelInstance,
+    display_offset: i32,
+) -> Mat4 {
+    minecart_pre_model_transform(instance)
+        * Mat4::from_scale(Vec3::splat(0.75))
+        * Mat4::from_translation(Vec3::new(-0.5, (display_offset as f32 - 8.0) / 16.0, 0.5))
+        * Mat4::from_rotation_y(90.0_f32.to_radians())
 }
 
 /// Vanilla `AbstractMinecartRenderer.submit` damage roll:

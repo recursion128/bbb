@@ -1156,6 +1156,151 @@ fn entity_model_sources_project_minecart_damage_roll_from_vehicle_metadata() {
 }
 
 #[test]
+fn minecart_display_block_state_projects_defaults_and_custom_metadata() {
+    const VANILLA_ENTITY_TYPE_CHEST_MINECART_ID: i32 = 25;
+    const VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID: i32 = 29;
+    const VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID: i32 = 56;
+    const VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID: i32 = 65;
+    const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
+    const VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID: i32 = 122;
+    const VANILLA_ENTITY_TYPE_TNT_MINECART_ID: i32 = 133;
+    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
+    const MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID: u8 = 11;
+    const MINECART_DISPLAY_OFFSET_DATA_ID: u8 = 12;
+    const FURNACE_MINECART_FUEL_DATA_ID: u8 = 13;
+
+    let mut store = WorldStore::new();
+    for (id, entity_type_id) in [
+        (23, VANILLA_ENTITY_TYPE_MINECART_ID),
+        (24, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID),
+        (25, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID),
+        (26, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID),
+        (27, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID),
+        (28, VANILLA_ENTITY_TYPE_TNT_MINECART_ID),
+        (29, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID),
+        (30, VANILLA_ENTITY_TYPE_COW_ID),
+    ] {
+        store.apply_add_entity(protocol_add_entity_with_type(id, entity_type_id));
+    }
+
+    assert_eq!(store.minecart_display_block_state(23), None);
+    assert_eq!(store.minecart_display_block_state(30), None);
+    assert_eq!(
+        store.minecart_display_block_state(24),
+        Some(MinecartDisplayBlockState {
+            block: EntityBlockModelState {
+                name: "minecraft:chest".to_string(),
+                properties: BTreeMap::from([
+                    ("facing".to_string(), "north".to_string()),
+                    ("type".to_string(), "single".to_string()),
+                    ("waterlogged".to_string(), "false".to_string()),
+                ]),
+            },
+            display_offset: 8,
+        })
+    );
+    assert_eq!(
+        store.minecart_display_block_state(25),
+        Some(MinecartDisplayBlockState {
+            block: EntityBlockModelState {
+                name: "minecraft:furnace".to_string(),
+                properties: BTreeMap::from([
+                    ("facing".to_string(), "north".to_string()),
+                    ("lit".to_string(), "false".to_string()),
+                ]),
+            },
+            display_offset: 6,
+        })
+    );
+    assert_eq!(
+        store.minecart_display_block_state(26),
+        Some(MinecartDisplayBlockState {
+            block: EntityBlockModelState {
+                name: "minecraft:hopper".to_string(),
+                properties: BTreeMap::from([
+                    ("enabled".to_string(), "true".to_string()),
+                    ("facing".to_string(), "down".to_string()),
+                ]),
+            },
+            display_offset: 1,
+        })
+    );
+    assert_eq!(
+        store.minecart_display_block_state(27),
+        Some(MinecartDisplayBlockState {
+            block: EntityBlockModelState {
+                name: "minecraft:command_block".to_string(),
+                properties: BTreeMap::from([
+                    ("conditional".to_string(), "false".to_string()),
+                    ("facing".to_string(), "north".to_string()),
+                ]),
+            },
+            display_offset: 6,
+        })
+    );
+    assert_eq!(
+        store.minecart_display_block_state(28),
+        Some(MinecartDisplayBlockState {
+            block: EntityBlockModelState {
+                name: "minecraft:tnt".to_string(),
+                properties: BTreeMap::from([("unstable".to_string(), "false".to_string())]),
+            },
+            display_offset: 6,
+        })
+    );
+    assert_eq!(
+        store.minecart_display_block_state(29),
+        Some(MinecartDisplayBlockState {
+            block: EntityBlockModelState {
+                name: "minecraft:spawner".to_string(),
+                properties: BTreeMap::new(),
+            },
+            display_offset: 6,
+        })
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 25,
+        values: vec![protocol_bool_data(FURNACE_MINECART_FUEL_DATA_ID, true)],
+    }));
+    assert_eq!(
+        store
+            .minecart_display_block_state(25)
+            .unwrap()
+            .block
+            .properties
+            .get("lit"),
+        Some(&"true".to_string())
+    );
+
+    let grass_props = BTreeMap::from([("snowy".to_string(), "false".to_string())]);
+    let grass_id = crate::registries::BlockStateRegistry::vanilla_26_1()
+        .find_by_name_and_properties("minecraft:grass_block", &grass_props)
+        .expect("vanilla 26.1 grass block state exists")
+        .id;
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 23,
+        values: vec![
+            protocol_optional_block_state_data(
+                MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
+                Some(grass_id),
+            ),
+            protocol_int_data(MINECART_DISPLAY_OFFSET_DATA_ID, 3),
+        ],
+    }));
+    assert_eq!(
+        store.minecart_display_block_state(23),
+        Some(MinecartDisplayBlockState {
+            block: EntityBlockModelState {
+                name: "minecraft:grass_block".to_string(),
+                properties: grass_props,
+            },
+            display_offset: 3,
+        })
+    );
+}
+
+#[test]
 fn entity_model_sources_project_boat_bubble_angle_from_bubble_time() {
     const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
     const BOAT_BUBBLE_TIME_DATA_ID: u8 = 13;
@@ -12658,6 +12803,14 @@ fn protocol_optional_unsigned_int_data(data_id: u8, value: Option<i32>) -> Proto
         data_id,
         serializer_id: 19,
         value: EntityDataValueKind::OptionalUnsignedInt(value),
+    }
+}
+
+fn protocol_optional_block_state_data(data_id: u8, value: Option<i32>) -> ProtocolEntityDataValue {
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id: 15,
+        value: EntityDataValueKind::OptionalBlockState(value),
     }
 }
 

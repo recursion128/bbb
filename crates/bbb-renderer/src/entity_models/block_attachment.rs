@@ -6,7 +6,10 @@ use std::f32::consts::PI;
 
 use glam::{Mat4, Vec3};
 
-use super::colored::{entity_model_root_transform, iron_golem_model_root_transform};
+use super::colored::{
+    entity_model_root_transform, iron_golem_model_root_transform,
+    minecart_display_block_content_transform,
+};
 use super::model::EntityModel;
 use super::model_layers::{CopperGolemModel, CowModel, IronGolemModel, SnowGolemModel};
 use super::{CowModelVariant, EntityModelInstance, EntityModelKind, MooshroomVariant};
@@ -132,6 +135,26 @@ pub fn mooshroom_mushroom_block_transforms(
                 * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
                 * Mat4::from_translation(Vec3::splat(-0.5)),
         ],
+    ))
+}
+
+/// World transform for vanilla `AbstractMinecartRenderer` display-block contents.
+///
+/// The returned matrix expects block quads normalized to the `0..1` unit cube. Vanilla applies this
+/// content transform after minecart jitter, old/new render, and hurt roll, but before the minecart body
+/// model's final `scale(-1, -1, 1)`.
+pub fn minecart_display_block_transform(
+    instance: &EntityModelInstance,
+    display_offset: i32,
+) -> Option<Mat4> {
+    if !matches!(instance.kind, EntityModelKind::Minecart)
+        || (instance.render_state.invisible && !instance.render_state.appears_glowing)
+    {
+        return None;
+    }
+    Some(minecart_display_block_content_transform(
+        *instance,
+        display_offset,
     ))
 }
 

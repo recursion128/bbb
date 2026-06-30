@@ -6,6 +6,7 @@ pub use crate::entities::{
     EntityCameraPoseState, EntityClientAnimationState, EntityModelSourceState,
     EntityPickTargetState, EntityState, EntityStatusProbeState, EntityTransformState, EntityVec3,
     GuardianBeamSource, HurtingProjectileState, ItemEntityStackState, ItemFrameFacing,
-    ItemFrameRenderState, LlamaBodyDecorColor, PolarBearStandingAnimationState,
-    ProjectilePowerUpdateState, VehicleMoveReport, WolfArmorCrackiness,
+    ItemFrameRenderState, LlamaBodyDecorColor, MinecartDisplayBlockState,
+    PolarBearStandingAnimationState, ProjectilePowerUpdateState, VehicleMoveReport,
+    WolfArmorCrackiness,
 };

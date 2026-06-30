@@ -159,6 +159,41 @@ fn minecart_hurt_roll_matches_vanilla_vehicle_damage_formula() {
 }
 
 #[test]
+fn minecart_display_block_transform_uses_vanilla_content_pose_before_body_flip() {
+    let display_offset = 10;
+    let minecart = EntityModelInstance::minecart(41, [2.0, 64.0, -3.0], 45.0)
+        .with_head_look(0.0, -10.0)
+        .with_minecart_hurt_time(7.5)
+        .with_minecart_hurt_dir(-1)
+        .with_minecart_damage_time(17.5);
+    let roll = minecart_damage_roll_degrees(minecart);
+    let expected = Mat4::from_translation(Vec3::from_array(minecart.position))
+        * Mat4::from_translation(Vec3::from_array([-0.00175, 0.00175, 0.00025]))
+        * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))
+        * Mat4::from_rotation_y((180.0_f32 - minecart.render_state.body_rot).to_radians())
+        * Mat4::from_rotation_z((-minecart.render_state.head_pitch).to_radians())
+        * Mat4::from_rotation_x(roll.to_radians())
+        * Mat4::from_scale(Vec3::splat(0.75))
+        * Mat4::from_translation(Vec3::new(-0.5, (display_offset as f32 - 8.0) / 16.0, 0.5))
+        * Mat4::from_rotation_y(90.0_f32.to_radians());
+
+    let transform = minecart_display_block_transform(&minecart, display_offset).unwrap();
+    assert_close_transform(transform, expected);
+    assert_ne!(transform, minecart_model_root_transform(minecart));
+
+    let creeper = EntityModelInstance::new(100, EntityModelKind::Creeper, [0.0, 64.0, 0.0], 0.0);
+    assert!(minecart_display_block_transform(&creeper, display_offset).is_none());
+    assert!(
+        minecart_display_block_transform(&minecart.with_invisible(true), display_offset).is_none()
+    );
+    assert!(minecart_display_block_transform(
+        &minecart.with_invisible(true).with_appears_glowing(true),
+        display_offset
+    )
+    .is_some());
+}
+
+#[test]
 fn minecart_textured_mesh_matches_colored_geometry_and_vanilla_uvs() {
     let (atlas, _) = build_entity_model_texture_atlas(&minecart_texture_images()).unwrap();
     let instance = EntityModelInstance::minecart(1, [0.0, 64.0, 0.0], 0.0)

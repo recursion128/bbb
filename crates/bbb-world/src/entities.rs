@@ -378,6 +378,12 @@ pub struct EntityBlockModelState {
     pub properties: BTreeMap<String, String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MinecartDisplayBlockState {
+    pub block: EntityBlockModelState,
+    pub display_offset: i32,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EntityModelSourceState {
     pub entity_id: i32,
@@ -1812,6 +1818,14 @@ impl WorldStore {
                 name: state.name.clone(),
                 properties: state.properties.clone(),
             })
+    }
+
+    pub fn minecart_display_block_state(
+        &self,
+        entity_id: i32,
+    ) -> Option<MinecartDisplayBlockState> {
+        self.entities
+            .minecart_display_block_state(entity_id, &self.registries)
     }
 
     /// Resolves the vanilla `AvatarRenderer.isEntityUpsideDown` player path: a player
