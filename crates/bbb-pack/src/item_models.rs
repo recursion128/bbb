@@ -247,6 +247,7 @@ pub struct ItemModelProperty {
 pub enum ItemModelPropertyKind {
     Broken,
     BundleHasSelectedItem,
+    CustomModelData,
     Damaged,
     HasComponent,
     UsingItem,
@@ -266,6 +267,7 @@ impl ItemModelProperty {
         match self.property_type.as_str() {
             "minecraft:broken" => ItemModelPropertyKind::Broken,
             "minecraft:bundle/has_selected_item" => ItemModelPropertyKind::BundleHasSelectedItem,
+            "minecraft:custom_model_data" => ItemModelPropertyKind::CustomModelData,
             "minecraft:damaged" => ItemModelPropertyKind::Damaged,
             "minecraft:has_component" => ItemModelPropertyKind::HasComponent,
             "minecraft:using_item" => ItemModelPropertyKind::UsingItem,
@@ -1720,6 +1722,47 @@ mod tests {
         assert_eq!(
             property.raw(),
             &serde_json::json!({"property": "minecraft:bundle/has_selected_item"})
+        );
+        assert!(matches!(on_true.as_ref(), ItemModelDefinition::Empty));
+        assert!(matches!(on_false.as_ref(), ItemModelDefinition::Empty));
+    }
+
+    #[test]
+    fn item_model_catalog_structures_custom_model_data_condition_property() {
+        let definition = ClientItemDefinition::from_json_bytes(
+            br#"{
+              "model": {
+                "type": "minecraft:condition",
+                "property": "minecraft:custom_model_data",
+                "index": 1,
+                "on_false": {
+                  "type": "minecraft:empty"
+                },
+                "on_true": {
+                  "type": "minecraft:empty"
+                }
+              }
+            }"#,
+        )
+        .unwrap();
+
+        let ItemModelDefinition::Condition {
+            property,
+            on_true,
+            on_false,
+            ..
+        } = &definition.model
+        else {
+            panic!("root should parse as a custom model data condition item model");
+        };
+        assert_eq!(property.property_type, "minecraft:custom_model_data");
+        assert_eq!(property.kind(), ItemModelPropertyKind::CustomModelData);
+        assert_eq!(
+            property.raw(),
+            &serde_json::json!({
+                "property": "minecraft:custom_model_data",
+                "index": 1
+            })
         );
         assert!(matches!(on_true.as_ref(), ItemModelDefinition::Empty));
         assert!(matches!(on_false.as_ref(), ItemModelDefinition::Empty));

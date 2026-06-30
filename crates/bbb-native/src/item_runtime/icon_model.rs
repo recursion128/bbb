@@ -1019,6 +1019,11 @@ impl ItemIconModel {
                     {
                         on_true
                     }
+                    ItemModelPropertyKind::CustomModelData
+                        if item_stack_custom_model_data_flag(property, ctx.component_patch) =>
+                    {
+                        on_true
+                    }
                     ItemModelPropertyKind::UsingItem if ctx.using_item => on_true,
                     _ => on_false,
                 };
@@ -1085,6 +1090,7 @@ pub(super) fn contains_runtime_condition(model: &ItemModelDefinition) -> bool {
                 ItemModelPropertyKind::Broken
                     | ItemModelPropertyKind::Damaged
                     | ItemModelPropertyKind::BundleHasSelectedItem
+                    | ItemModelPropertyKind::CustomModelData
                     | ItemModelPropertyKind::HasComponent
                     | ItemModelPropertyKind::UsingItem
             ) || contains_runtime_condition(on_true)
@@ -1152,6 +1158,7 @@ pub(super) fn item_icon_model_ref_for_definition(
                 ItemModelPropertyKind::Broken
                     | ItemModelPropertyKind::Damaged
                     | ItemModelPropertyKind::BundleHasSelectedItem
+                    | ItemModelPropertyKind::CustomModelData
                     | ItemModelPropertyKind::HasComponent
                     | ItemModelPropertyKind::UsingItem
             ) {
@@ -1335,6 +1342,32 @@ fn item_stack_has_selected_bundle_item(
                 .bundle_contents_item_count
                 .is_some_and(|count| selected_item_index < count)
     })
+}
+
+fn item_stack_custom_model_data_flag(
+    property: &ItemModelProperty,
+    component_patch: Option<&DataComponentPatchSummary>,
+) -> bool {
+    let index = property
+        .raw()
+        .get("index")
+        .and_then(Value::as_u64)
+        .and_then(|index| usize::try_from(index).ok())
+        .unwrap_or(0);
+    let Some(patch) = component_patch else {
+        return false;
+    };
+    if patch
+        .removed_type_ids
+        .contains(&CUSTOM_MODEL_DATA_COMPONENT_ID)
+    {
+        return false;
+    }
+    patch
+        .custom_model_data_flags
+        .get(index)
+        .copied()
+        .unwrap_or(false)
 }
 
 fn item_stack_next_damage_will_break(

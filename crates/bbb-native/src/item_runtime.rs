@@ -5637,6 +5637,45 @@ mod tests {
     }
 
     #[test]
+    fn native_item_runtime_resolves_custom_model_data_condition_flags() {
+        let root = unique_temp_dir("item-runtime-custom-model-data-condition");
+        write_custom_model_data_condition_fixture(&root);
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let uv = |model_id: &str| {
+            runtime
+                .textures
+                .texture_uv_rect(runtime.texture_index(&format!("minecraft:item/{model_id}")))
+                .unwrap()
+        };
+        let selected = |flags: Vec<bool>, removed: bool| {
+            runtime
+                .icon_for_stack(&ItemStackSummary {
+                    item_id: Some(0),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary {
+                        custom_model_data_flags: flags,
+                        removed_type_ids: if removed { vec![17] } else { Vec::new() },
+                        ..DataComponentPatchSummary::default()
+                    },
+                })
+                .unwrap()
+                .layers[0]
+                .uv
+        };
+
+        // Vanilla conditional `CustomModelDataProperty.get` reads
+        // `CustomModelData.flags[index] == true`, not floats or strings.
+        assert_eq!(selected(Vec::new(), false), uv("cmd_flag_false"));
+        assert_eq!(selected(vec![true], false), uv("cmd_flag_false"));
+        assert_eq!(selected(vec![false, true], false), uv("cmd_flag_true"));
+        assert_eq!(selected(vec![true, false], false), uv("cmd_flag_false"));
+        assert_eq!(selected(vec![false, true], true), uv("cmd_flag_false"));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn native_item_runtime_resolves_local_time_select_property() {
         let root = unique_temp_dir("item-runtime-local-time-select");
         write_local_time_select_fixture(&root);
@@ -6909,6 +6948,26 @@ mod tests {
         write_flat_item_model_and_texture(&assets, "cmd_plain", &[40, 40, 40, 255]);
         write_flat_item_model_and_texture(&assets, "cmd_blue", &[40, 80, 220, 255]);
         write_flat_item_model_and_texture(&assets, "cmd_green", &[40, 180, 80, 255]);
+    }
+
+    fn write_custom_model_data_condition_fixture(root: &Path) {
+        let assets = assets_dir(root);
+        write_item_atlases(&assets);
+        write_single_item_registry_source(root, "cmd_flag_condition");
+        write_json(
+            &assets.join("items").join("cmd_flag_condition.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:custom_model_data",
+                    "index": 1,
+                    "on_true": { "type": "minecraft:model", "model": "minecraft:item/cmd_flag_true" },
+                    "on_false": { "type": "minecraft:model", "model": "minecraft:item/cmd_flag_false" }
+                }
+            }"#,
+        );
+        write_flat_item_model_and_texture(&assets, "cmd_flag_true", &[40, 180, 80, 255]);
+        write_flat_item_model_and_texture(&assets, "cmd_flag_false", &[120, 40, 40, 255]);
     }
 
     fn write_local_time_select_fixture(root: &Path) {

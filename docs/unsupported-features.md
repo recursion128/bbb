@@ -5744,14 +5744,16 @@ When an agent does any of the following, update this file in the same slice:
     resolver by adding a value provider; no new selection machinery is required.
 - Evidence / boundary:
   - `bbb-protocol` now decodes the `minecraft:custom_model_data` `floats` list
-    (`CustomModelDataFloats`, bit-exact `Eq`) plus the strings/colors lists, the
-    `minecraft:block_state` property map, the `minecraft:charged_projectiles`
-    item templates (`charged_projectiles_items`), and the `minecraft:trim`
-    material holder reference id (`armor_trim_material_id`), and the
+    (`CustomModelDataFloats`, bit-exact `Eq`) plus the flags/strings/colors
+    lists, the `minecraft:block_state` property map, the
+    `minecraft:charged_projectiles` item templates
+    (`charged_projectiles_items`), and the `minecraft:trim` material holder
+    reference id (`armor_trim_material_id`), and the
     `minecraft:consumable` `consume_seconds` value (`consumable`), plus the
     `minecraft:item_model` resource id and `minecraft:lodestone_tracker`
     target `GlobalPos`, so the
     `CustomModelDataProperty.getFloat(index)`,
+    `CustomModelData.getBoolean(index)`,
     `CustomModelDataProperty.getString(index)`, `ItemBlockState.get`,
     `Charge.get`, `TrimMaterialProperty.get`,
     `DataComponents.ITEM_MODEL`, `DataComponents.LODESTONE_TRACKER`, and
@@ -5820,6 +5822,10 @@ When an agent does any of the following, update this file in the same slice:
     - `minecraft:custom_model_data` string select —
       `CustomModelDataProperty.getString(index)`, matching `strings[index]`
       against the case values and falling back when absent/out of range
+    - `minecraft:custom_model_data` condition —
+      conditional `CustomModelDataProperty.get`, matching
+      `flags[index] == true`; missing, false, out-of-range, or removed
+      `minecraft:custom_model_data` component id 17 selects the false branch
     - `minecraft:charge_type` — `Charge.get` (`ROCKET` when any charged
       projectile is `minecraft:firework_rocket`, `ARROW` when charged otherwise,
       else `NONE`), using the native item registry to identify the projectile
@@ -5934,9 +5940,10 @@ When an agent does any of the following, update this file in the same slice:
     available. First-person generated item paths are still documented follow-up.
     `minecraft:main_hand` and `minecraft:context_entity_type` still fall back on
     native item consumers that do not pass a `LivingEntity` owner, such as
-    fake/null-owner item surfaces. `minecraft:component` is wired for the
-    scalar / enum component subset listed above; broader component-codec parity
-    remains the documented follow-up.
+    fake/null-owner item surfaces. `minecraft:custom_model_data` condition is
+    wired for the stack-local `flags` list. `minecraft:component` is wired for
+    the scalar / enum component subset listed above; broader component-codec
+    parity remains the documented follow-up.
 
 ### Native Input, Movement, Interaction, Inventory, And Command Flows
 

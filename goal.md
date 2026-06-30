@@ -735,6 +735,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     object/list components, registry-backed component value decoding, and
     transient components such as `minecraft:map_post_processing` remain
     follow-up.
+  - [x] `minecraft:custom_model_data` item-model condition now follows vanilla
+    conditional `CustomModelDataProperty.get`: protocol preserves the
+    `CustomModelData.flags` list, runtime reads `flags[index] == true`, and
+    missing, false, out-of-range, or removed component id 17 select the false
+    branch. Tests pin texture selection for true/false/out-of-range/removed
+    cases and wire decode of floats/flags/strings/colors.
   - [x] `minecraft:has_component` item-model condition now follows vanilla
     `HasComponent.get`: default prototype components such as
     `minecraft:max_stack_size`, `minecraft:item_model`, and
