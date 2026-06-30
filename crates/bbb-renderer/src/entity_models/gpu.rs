@@ -1515,6 +1515,7 @@ const ENTITY_MODEL_OUTLINE_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back
 const ENTITY_MODEL_SCROLL_BLEND: wgpu::BlendState = wgpu::BlendState::ALPHA_BLENDING;
 const ENTITY_MODEL_SCROLL_DEPTH_WRITE_ENABLED: bool = true;
 const ENTITY_MODEL_SCROLL_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::LessEqual;
+const ENTITY_MODEL_TEXTURE_ATLAS_MIP_LEVEL_COUNT: u32 = 1;
 const ENTITY_MODEL_SCROLL_CULL_MODE: Option<wgpu::Face> = None;
 
 /// The scrolling-overlay pipeline for vanilla `breezeWind` (the wind charge): translucent
@@ -2167,7 +2168,7 @@ fn create_entity_model_texture_atlas_gpu(
             height: layout.height,
             depth_or_array_layers: 1,
         },
-        mip_level_count: 1,
+        mip_level_count: ENTITY_MODEL_TEXTURE_ATLAS_MIP_LEVEL_COUNT,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: wgpu::TextureFormat::Rgba8UnormSrgb,
@@ -2194,16 +2195,7 @@ fn create_entity_model_texture_atlas_gpu(
         },
     );
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-        label: Some("bbb-entity-model-texture-sampler"),
-        address_mode_u: wgpu::AddressMode::ClampToEdge,
-        address_mode_v: wgpu::AddressMode::ClampToEdge,
-        address_mode_w: wgpu::AddressMode::ClampToEdge,
-        mag_filter: wgpu::FilterMode::Nearest,
-        min_filter: wgpu::FilterMode::Nearest,
-        mipmap_filter: wgpu::FilterMode::Nearest,
-        ..Default::default()
-    });
+    let sampler = create_entity_model_texture_sampler(device, "bbb-entity-model-texture-sampler");
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("bbb-entity-model-texture-bind-group"),
         layout: bind_group_layout,
@@ -2247,7 +2239,7 @@ fn create_dynamic_player_skin_atlas_gpu(
             height: layout.height,
             depth_or_array_layers: 1,
         },
-        mip_level_count: 1,
+        mip_level_count: ENTITY_MODEL_TEXTURE_ATLAS_MIP_LEVEL_COUNT,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: wgpu::TextureFormat::Rgba8UnormSrgb,
@@ -2274,16 +2266,7 @@ fn create_dynamic_player_skin_atlas_gpu(
         },
     );
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-        label: Some("bbb-dynamic-player-skin-sampler"),
-        address_mode_u: wgpu::AddressMode::ClampToEdge,
-        address_mode_v: wgpu::AddressMode::ClampToEdge,
-        address_mode_w: wgpu::AddressMode::ClampToEdge,
-        mag_filter: wgpu::FilterMode::Nearest,
-        min_filter: wgpu::FilterMode::Nearest,
-        mipmap_filter: wgpu::FilterMode::Nearest,
-        ..Default::default()
-    });
+    let sampler = create_entity_model_texture_sampler(device, "bbb-dynamic-player-skin-sampler");
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("bbb-dynamic-player-skin-bind-group"),
         layout: bind_group_layout,
@@ -2327,7 +2310,7 @@ fn create_dynamic_player_texture_atlas_gpu(
             height: layout.height,
             depth_or_array_layers: 1,
         },
-        mip_level_count: 1,
+        mip_level_count: ENTITY_MODEL_TEXTURE_ATLAS_MIP_LEVEL_COUNT,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: wgpu::TextureFormat::Rgba8UnormSrgb,
@@ -2354,16 +2337,7 @@ fn create_dynamic_player_texture_atlas_gpu(
         },
     );
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-        label: Some("bbb-dynamic-player-texture-sampler"),
-        address_mode_u: wgpu::AddressMode::ClampToEdge,
-        address_mode_v: wgpu::AddressMode::ClampToEdge,
-        address_mode_w: wgpu::AddressMode::ClampToEdge,
-        mag_filter: wgpu::FilterMode::Nearest,
-        min_filter: wgpu::FilterMode::Nearest,
-        mipmap_filter: wgpu::FilterMode::Nearest,
-        ..Default::default()
-    });
+    let sampler = create_entity_model_texture_sampler(device, "bbb-dynamic-player-texture-sampler");
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("bbb-dynamic-player-texture-bind-group"),
         layout: bind_group_layout,
@@ -2389,6 +2363,22 @@ fn create_dynamic_player_texture_atlas_gpu(
         _sampler: sampler,
         bind_group,
         layout,
+    })
+}
+
+fn create_entity_model_texture_sampler(
+    device: &wgpu::Device,
+    label: &'static str,
+) -> wgpu::Sampler {
+    device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some(label),
+        address_mode_u: wgpu::AddressMode::ClampToEdge,
+        address_mode_v: wgpu::AddressMode::ClampToEdge,
+        address_mode_w: wgpu::AddressMode::ClampToEdge,
+        mag_filter: wgpu::FilterMode::Nearest,
+        min_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::FilterMode::Nearest,
+        ..Default::default()
     })
 }
 
@@ -2839,10 +2829,10 @@ mod tests {
         ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED, ENTITY_MODEL_SURFACE_NO_CULL_MODE,
         ENTITY_MODEL_SURFACE_OPAQUE_BLEND, ENTITY_MODEL_SURFACE_TRANSLUCENT_BLEND,
         ENTITY_MODEL_TEXTURED_DEPTH_COMPARE, ENTITY_MODEL_TEXTURED_SHADER,
-        ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER, ENTITY_MODEL_WATER_MASK_BLEND,
-        ENTITY_MODEL_WATER_MASK_COLOR_WRITE_MASK, ENTITY_MODEL_WATER_MASK_CULL_MODE,
-        ENTITY_MODEL_WATER_MASK_DEPTH_COMPARE, ENTITY_MODEL_WATER_MASK_DEPTH_WRITE_ENABLED,
-        ENTITY_MODEL_WATER_MASK_SHADER,
+        ENTITY_MODEL_TEXTURE_ATLAS_MIP_LEVEL_COUNT, ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER,
+        ENTITY_MODEL_WATER_MASK_BLEND, ENTITY_MODEL_WATER_MASK_COLOR_WRITE_MASK,
+        ENTITY_MODEL_WATER_MASK_CULL_MODE, ENTITY_MODEL_WATER_MASK_DEPTH_COMPARE,
+        ENTITY_MODEL_WATER_MASK_DEPTH_WRITE_ENABLED, ENTITY_MODEL_WATER_MASK_SHADER,
     };
 
     #[test]
@@ -3214,5 +3204,59 @@ mod tests {
         );
         assert_eq!(ENTITY_MODEL_SURFACE_NO_CULL_MODE, None);
         assert_eq!(ENTITY_MODEL_SURFACE_CULL_MODE, Some(wgpu::Face::Back));
+    }
+
+    #[test]
+    fn entity_model_texture_atlas_sampler_and_mip_state_are_pinned() {
+        assert_eq!(
+            ENTITY_MODEL_TEXTURE_ATLAS_MIP_LEVEL_COUNT, 1,
+            "bbb entity texture atlases are uploaded as single-mip atlases until vanilla mip generation is ported"
+        );
+
+        let source = include_str!("gpu.rs");
+        let tests_start = source
+            .find("#[cfg(test)]")
+            .expect("gpu tests module is present");
+        let implementation = &source[..tests_start];
+        let helper = source
+            .find("fn create_entity_model_texture_sampler")
+            .expect("entity atlas sampler helper is present");
+        let helper_end = source[helper..]
+            .find("#[cfg_attr(not(test), allow(dead_code))]")
+            .map(|index| helper + index)
+            .expect("sampler helper ends before atlas builders");
+        let helper_source = &source[helper..helper_end];
+        for state in [
+            "address_mode_u: wgpu::AddressMode::ClampToEdge",
+            "address_mode_v: wgpu::AddressMode::ClampToEdge",
+            "address_mode_w: wgpu::AddressMode::ClampToEdge",
+            "mag_filter: wgpu::FilterMode::Nearest",
+            "min_filter: wgpu::FilterMode::Nearest",
+            "mipmap_filter: wgpu::FilterMode::Nearest",
+        ] {
+            assert!(
+                helper_source.contains(state),
+                "entity atlas sampler pins vanilla TextureAtlas clamp-to-edge / nearest state: {state}"
+            );
+        }
+
+        assert_eq!(
+            implementation
+                .matches("mip_level_count: ENTITY_MODEL_TEXTURE_ATLAS_MIP_LEVEL_COUNT")
+                .count(),
+            3,
+            "static entity, dynamic player-skin, and dynamic profile-texture atlases share the same mip policy"
+        );
+        for label in [
+            "bbb-entity-model-texture-sampler",
+            "bbb-dynamic-player-skin-sampler",
+            "bbb-dynamic-player-texture-sampler",
+        ] {
+            let call = format!("create_entity_model_texture_sampler(device, \"{label}\")");
+            assert!(
+                implementation.contains(&call),
+                "entity atlas {label} uses the shared sampler helper"
+            );
+        }
     }
 }

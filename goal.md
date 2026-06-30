@@ -203,6 +203,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     之前，transparency combine shader 也按 translucent / itemEntity /
     particles / weather / clouds 插入透明层。
 - shader / sampler state：
+  - [x] entity texture atlas sampler / mip baseline：static entity atlas、
+    dynamic player-skin atlas、dynamic profile-texture atlas 统一走显式
+    clamp-to-edge / nearest sampler helper，并固定 single-mip 上传策略；完整
+    vanilla mip generation / standalone texture sampler parity 仍是后续更细粒度
+    shader-resource 工作。
   - per RenderType 的 blend、depth write/test、cull、sampler、mip、lightmap、
     overlay、fog、normal diffuse 组合继续拆细。
   - glint / scroll / emissive path 不应只依赖普通 entity shader fallback。

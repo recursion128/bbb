@@ -372,7 +372,12 @@ When an agent does any of the following, update this file in the same slice:
     `LevelRenderer` / `FeatureRenderDispatcher`: main-target translucent
     features precede translucent terrain, itemEntity features and line appends
     precede particles, and the transparency combine shader inserts layers in
-    translucent / itemEntity / particles / weather / clouds order. Vanilla
+    translucent / itemEntity / particles / weather / clouds order. Entity
+    texture atlases now also share one explicit clamp-to-edge / nearest sampler
+    helper and one single-mip upload policy across static entity, dynamic
+    player-skin, and dynamic profile-texture atlases; full vanilla mip
+    generation / standalone texture sampler parity remains later shader-resource
+    work rather than a current P1-1 blocker. Vanilla
     `entityCutoutZOffset` submissions now also route into dedicated static,
     dynamic-player-skin, and dynamic
     profile-texture z-offset cutout buckets, drawn through a separate main-pass
