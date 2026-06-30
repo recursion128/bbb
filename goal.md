@@ -385,15 +385,18 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
 仍在推进：
 
 - Chicken / pig / cow variant livestock：
-  - variant sound。
-  - custom/datapack variant assets。
+  - [x] P1-2 renderer closeout：内置 variant 的模型、贴图、base
+    submission metadata 已覆盖；variant sound 属 audio / sound-registry
+    parity，不作为实体 renderer blocker；custom/datapack variant asset 属
+    P3 资源/datapack 泛化。
 - Spider / slime / magma cube / ghast / blaze / endermite / silverfish / vex /
   allay / phantom：
   - [x] shared living death flip：vanilla base `90°` 与
     `SpiderRenderer` / `EndermiteRenderer` / `SilverfishRenderer` `180°`
     override 已实现并测试。
-  - particle/audio coupling。
-  - crumbling。
+  - [x] P1-2 renderer closeout：基础模型、texture-backed submission、死亡翻转等
+    renderer-owned pose 已覆盖；particle/audio coupling 归入 P1-5 / audio
+    effects，crumbling 归入 P2/P1 visual overlay，不作为当前实体 renderer blocker。
 - Feline / cat renderer pose：
   - [x] cat sitting pose：`CatRenderer.extractRenderState` 的
     `Cat.isInSittingPose()` 现在从 `TamableAnimal.DATA_FLAGS_ID` id 18 bit 0
@@ -442,7 +445,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     vanilla `AbstractMinecartRenderer.getBoundingBoxForCulling`，只在 display
     block 非 air 时应用 `expandTowards(0, displayOffset * 0.75 / 16, 0)`，
     并覆盖默认 TNT/chest/hopper offset 与自定义负 offset。
-  - spawner animated block-entity content 继续作为 P1 后续。
+  - [x] P1-2 renderer closeout：minecart body、old/new behavior transform、
+    passenger render offset、display block baseline、TNT fuse overlay 和 culling
+    bbox 已覆盖；spawner animated block-entity content 属 block-entity special
+    renderer / P2 presentation，不阻塞实体 minecart renderer。
 - Copper golem：
   - [x] walk / walk-with-item keyframe animation：renderer 现在按 vanilla
     `CopperGolemAnimation.COPPER_GOLEM_WALK` /
@@ -488,7 +494,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     channel；回归测试覆盖 world/native projection、renderer pose，以及
     textured submission metadata 不变。
 - Equine / camel / llama / goat / hoglin / ravager 等大型模型：
-  - boost 等 remaining renderer 状态。
+  - [x] P1-2 renderer closeout：equine/camel/llama/goat/hoglin/ravager 的模型、
+    texture-backed submission、pose / combat / equipment baseline 已覆盖到当前
+    renderer ownership；boost 属 movement/control 或 ride gameplay，不是 vanilla
+    renderer pose branch。
   - [x] camel body-anchor y-offset formula/query：`WorldStore::entity_body_anchor_y_offset`
     已按 vanilla `Camel.getBodyAnchorAnimationYOffset` 覆盖 front/rear、sit/stand
     transition、baby/camel_husk、SCALE attribute；passenger/leash 视觉消费路径另列后续
@@ -499,7 +508,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `PIGLINS_ZOMBIFY`（Nether false，其它默认 true）折入
     `LivingEntityRenderer.setupRotations` body shake；Zoglin 不进入 conversion
     override。
-  - roar / particle / sound 与更细 custom-dimension environment attributes。
+  - [x] P1-2 remaining-effects taxonomy：ravager roar particle/knockback、
+    entity particle/audio coupling 归入 P1-5 / audio effects；custom-dimension
+    `EnvironmentAttributes` 数据来源归入 P3 datapack/world-registry 泛化，不阻塞
+    内置维度下的实体 renderer parity。
 - Humanoid / illager / piglin / skeleton family：
   - [x] armor stand hit wiggle：entity event `32` 现在投影 vanilla
     `ArmorStandRenderState.wiggle = gameTime - lastHit + partialTick`，并在
@@ -616,6 +628,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
 - 每个实体差异必须先定位 vanilla renderer/model/layer 源码，再改测试。
 - 不再新增只验证 vertex count 的 textured regression。
 - 对每个特殊 renderer branch 至少有一个状态化测试。
+- 当前 P1-2 狭义实体 renderer closeout 已完成；剩余声效、粒子、运动控制、
+  block-entity special renderer、datapack/custom asset 和 attachment consumer
+  presentation 均已拆出到 P1-5/P2/P3 或非 renderer backlog。
 
 ### P1-3：物品、Frame 与第一人称表现
 

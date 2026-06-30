@@ -5431,7 +5431,9 @@ When an agent does any of the following, update this file in the same slice:
       `AbstractMinecartRenderer.getBoundingBoxForCulling`: non-air display blocks
       expand toward Y by `displayOffset * 0.75 / 16`, while default/custom air
       leaves the base bounds unchanged. Spawner animated block-entity content
-      remains unsupported; the minecart body submission light/overlay metadata remains covered
+      remains unsupported and is classified as block-entity special renderer /
+      P2 presentation, not a blocker for the entity minecart renderer; the
+      minecart body submission light/overlay metadata remains covered
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder
@@ -5440,12 +5442,15 @@ When an agent does any of the following, update this file in the same slice:
   - Backend GPU resources stay outside `WorldStore`.
   - Full entity presentation remains phase 6 work, including texture assets,
     variants, equipment, skins, animation, custom/datapack cow/pig
-    variant asset presentation,
+    variant asset presentation (now classified as P3 resource/datapack
+    generalization rather than P1-2 entity renderer closeout),
     remaining boat/raft visual parity beyond the completed wooden boat/chest-boat
     water-mask depth-only GPU path (paddle rowing animation, hurt/damage roll,
     bubble wobble, underwater state, above-water water-mask gating, and
     base/water-mask lighting are projected and rendered),
-    remaining equine boost and camel body-anchor y-offset presentation,
+    equine boost (movement/control rather than a renderer pose branch) and camel
+    body-anchor consumers for passenger/leash attachment presentation (the anchor
+    provider itself is implemented),
     and remaining non-base-equine presentation,
     villager live/dynamic profiled-player skin presentation (crossed-arms
     held items, generic non-skull head items, static mob skulls, profileless
