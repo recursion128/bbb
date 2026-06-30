@@ -1404,15 +1404,16 @@ impl NativeItemRuntime {
         Some(self.item_display_transforms.get(item_id)?.get(context))
     }
 
-    /// The generated (flat) item layers for a stack — each layer's alpha silhouette, atlas UV rect, and
-    /// resolved tint — for 3D extrusion (vanilla `builtin/generated`). Reuses the resolved item icon, so
-    /// it returns the same per-layer sprites + tints the flat billboard uses; empty when the item has no
-    /// icon (or its sprites are missing from the atlas).
-    pub(crate) fn generated_item_layers_for_stack(
+    /// Generated item layers for a non-living stack consumer that still has a
+    /// level-backed dynamic trim registry, such as dropped items (`GROUND`) and
+    /// item frames (`FIXED`). Vanilla `TrimMaterialProperty.get` reads only the
+    /// stack's `minecraft:trim` component and the trim material registry key.
+    pub(crate) fn generated_item_layers_for_stack_with_trim_materials(
         &self,
         stack: &ItemStackSummary,
+        trim_material_keys: Option<&[String]>,
     ) -> Vec<GeneratedItemLayer> {
-        self.generated_item_layers_for_stack_with_owner_context(stack, None, false)
+        self.generated_item_layers_for_stack_with_context(stack, None, false, trim_material_keys)
     }
 
     /// Generated item layers for an entity-owned stack. Vanilla `MainHand.get`
@@ -1427,9 +1428,31 @@ impl NativeItemRuntime {
         owner_main_hand_left: Option<bool>,
         using_item: bool,
     ) -> Vec<GeneratedItemLayer> {
-        let Some(icon) =
-            self.icon_for_stack_with_owner_context(stack, owner_main_hand_left, using_item)
-        else {
+        self.generated_item_layers_for_stack_with_context(
+            stack,
+            owner_main_hand_left,
+            using_item,
+            None,
+        )
+    }
+
+    fn generated_item_layers_for_stack_with_context(
+        &self,
+        stack: &ItemStackSummary,
+        owner_main_hand_left: Option<bool>,
+        using_item: bool,
+        trim_material_keys: Option<&[String]>,
+    ) -> Vec<GeneratedItemLayer> {
+        let Some(icon) = self.icon_for_stack_with_context(
+            stack,
+            None,
+            using_item,
+            0.0,
+            trim_material_keys,
+            owner_main_hand_left,
+            None,
+            None,
+        ) else {
             return Vec::new();
         };
         icon.layers

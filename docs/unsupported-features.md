@@ -5718,9 +5718,9 @@ When an agent does any of the following, update this file in the same slice:
   - Add a typed value representation for `minecraft:component` select cases
     (`ComponentContents.get`, which dispatches case decoding through the selected
     data component's own codec) before wiring it as a stack-only select provider.
-  - Project `minecraft:trim_material` onto the dropped-item billboard and
-    item-frame surfaces too (currently only the GUI icon path receives the
-    trim-material registry keys; dropped/frame paths pass `None`).
+  - Audit remaining non-GUI item consumers that can render component-bearing
+    generated item stacks and pass the trim-material registry keys where vanilla
+    resolves `TrimMaterialProperty`.
   - Each plugs into the existing value-aware `RangeDispatch` / `Select`
     resolver by adding a value provider; no new selection machinery is required.
 - Evidence / boundary:
@@ -5772,8 +5772,9 @@ When an agent does any of the following, update this file in the same slice:
       else `NONE`), using the native item registry to identify the projectile
     - `minecraft:trim_material` — `TrimMaterialProperty.get`, projecting the
       armor trim material holder id through the `minecraft:trim_material` dynamic
-      registry (`bbb-world` registry keys threaded into the GUI icon resolver) to
-      the material key (e.g. `minecraft:quartz`) matched against each case
+      registry (`bbb-world` registry keys threaded into the GUI icon resolver,
+      dropped-item `GROUND` flat model path, and item-frame `FIXED` flat model
+      path) to the material key (e.g. `minecraft:quartz`) matched against each case
     - `minecraft:main_hand` — `MainHand.get`, matching the owner's
       `HumanoidArm` serialized name (`left` / `right`) for third-person
       entity-owned generated item attachments and GUI/HUD item icons that can
@@ -5798,9 +5799,9 @@ When an agent does any of the following, update this file in the same slice:
   - A value-aware `RangeDispatch` / `Select` is treated as a runtime condition so
     it is resolved per stack rather than collapsed at model-build time.
   - The trim-material registry keys are projected into the GUI icon path
-    (`hud_item_icon_for_stack`); the dropped-item billboard and item-frame paths
-    still pass `None`, so a dropped/framed trimmed-armor icon falls back to the
-    untrimmed model (documented follow-up).
+    (`hud_item_icon_for_stack`), dropped-item generated model path, and
+    item-frame generated model path; no-registry / null-context consumers still
+    fall back to the untrimmed model.
   - `bbb-protocol` now preserves the `minecraft:bees` component occupant count
     (`DataComponents.BEES`, id 77) so bundle-fullness weight can distinguish
     beehive-like full-weight entries from ordinary stack-size weighted entries.

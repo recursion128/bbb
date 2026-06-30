@@ -1568,8 +1568,14 @@ pub(crate) fn pump_network_and_terrain(
         .map(|time| time.game_time as f32)
         .unwrap_or(0.0)
         + entity_partial_tick;
-    let dropped_item_models =
-        dropped_item_models(world, item_runtime, terrain_textures, item_model_age_ticks);
+    let trim_material_keys = world_trim_material_keys(world);
+    let dropped_item_models = dropped_item_models(
+        world,
+        item_runtime,
+        terrain_textures,
+        item_model_age_ticks,
+        trim_material_keys.as_deref(),
+    );
     renderer.set_item_entity_billboards(item_entity_billboards_from_world(
         world,
         item_runtime,
@@ -1582,7 +1588,12 @@ pub(crate) fn pump_network_and_terrain(
     let held_item_models =
         held_item_models(&entity_instances, world, item_runtime, terrain_textures);
     // Item frames render their wooden border + framed item into the same two atlas draws.
-    let item_frame_models = item_frame_models(world, item_runtime, terrain_textures);
+    let item_frame_models = item_frame_models(
+        world,
+        item_runtime,
+        terrain_textures,
+        trim_material_keys.as_deref(),
+    );
     let entity_block_meshes =
         entity_block_models(&entity_instances, world, item_runtime, terrain_textures);
     let mut block_item_meshes = dropped_item_models.block_meshes;

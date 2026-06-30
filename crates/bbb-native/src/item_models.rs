@@ -267,6 +267,7 @@ pub(crate) fn dropped_item_models(
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
     age_ticks: f32,
+    trim_material_keys: Option<&[String]>,
 ) -> DroppedItemModels {
     let mut block_meshes = Vec::new();
     let mut block_translucent_meshes = Vec::new();
@@ -331,7 +332,9 @@ pub(crate) fn dropped_item_models(
 
         // Flat path: extrude the item's sprite layers into a slab.
         let mut quads: Vec<ItemModelQuad> = Vec::new();
-        for layer in item_runtime.generated_item_layers_for_stack(&state.stack) {
+        for layer in item_runtime
+            .generated_item_layers_for_stack_with_trim_materials(&state.stack, trim_material_keys)
+        {
             quads.extend(bake_generated_item_quads(
                 &layer.mask,
                 layer.rect,

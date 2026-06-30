@@ -2681,6 +2681,83 @@ fn hotbar_item_icons_use_vanilla_zero_partial_cooldown_model_property() {
 }
 
 #[test]
+fn dropped_item_models_use_world_trim_material_select_context() {
+    let root = unique_runtime_temp_dir("dropped-trim-material-select");
+    write_runtime_trim_material_select_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let mut world = WorldStore::new();
+    record_trim_material_registry(&mut world);
+    world.apply_add_entity(test_add_entity(700, 71));
+    let mut stack = item_stack(0, 1);
+    stack.component_patch.armor_trim_material_id = Some(0);
+    assert!(
+        world.apply_set_entity_data(bbb_protocol::packets::SetEntityData {
+            id: 700,
+            values: vec![test_item_stack_data(8, stack)],
+        })
+    );
+    let terrain_textures = crate::terrain_runtime::TerrainTextureState::default();
+    let fallback = crate::item_models::dropped_item_models(
+        &world,
+        Some(&item_runtime),
+        &terrain_textures,
+        0.0,
+        None,
+    );
+    let trim_material_keys = world_trim_material_keys(&world).unwrap();
+    let trimmed = crate::item_models::dropped_item_models(
+        &world,
+        Some(&item_runtime),
+        &terrain_textures,
+        0.0,
+        Some(&trim_material_keys),
+    );
+
+    assert_eq!(fallback.flat_meshes.len(), 1);
+    assert_eq!(trimmed.flat_meshes.len(), 1);
+    assert_eq!(fallback.handled_entity_ids, trimmed.handled_entity_ids);
+    assert_ne!(fallback.flat_meshes[0], trimmed.flat_meshes[0]);
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn item_frame_models_use_world_trim_material_select_context() {
+    let root = unique_runtime_temp_dir("item-frame-trim-material-select");
+    write_runtime_trim_material_select_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let mut world = WorldStore::new();
+    record_trim_material_registry(&mut world);
+    world.apply_add_entity(test_add_entity(701, 73));
+    let mut stack = item_stack(0, 1);
+    stack.component_patch.armor_trim_material_id = Some(0);
+    assert!(
+        world.apply_set_entity_data(bbb_protocol::packets::SetEntityData {
+            id: 701,
+            values: vec![test_item_stack_data(9, stack)],
+        })
+    );
+    let terrain_textures = crate::terrain_runtime::TerrainTextureState::default();
+    let fallback =
+        crate::item_frames::item_frame_models(&world, Some(&item_runtime), &terrain_textures, None);
+    let trim_material_keys = world_trim_material_keys(&world).unwrap();
+    let trimmed = crate::item_frames::item_frame_models(
+        &world,
+        Some(&item_runtime),
+        &terrain_textures,
+        Some(&trim_material_keys),
+    );
+
+    assert_eq!(fallback.flat_meshes.len(), 1);
+    assert_eq!(trimmed.flat_meshes.len(), 1);
+    assert_ne!(fallback.flat_meshes[0], trimmed.flat_meshes[0]);
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn hud_inventory_screen_projects_hovered_item_tooltip_name() {
     let root = unique_runtime_temp_dir("inventory-tooltip");
     write_runtime_tooltip_item_assets(&root);
@@ -5658,6 +5735,34 @@ fn test_humanoid_arm_data(data_id: u8, arm_id: i32) -> bbb_protocol::packets::En
     }
 }
 
+fn test_item_stack_data(
+    data_id: u8,
+    item: bbb_protocol::packets::ItemStackSummary,
+) -> bbb_protocol::packets::EntityDataValue {
+    bbb_protocol::packets::EntityDataValue {
+        data_id,
+        serializer_id: 7,
+        value: bbb_protocol::packets::EntityDataValueKind::ItemStack(item),
+    }
+}
+
+fn record_trim_material_registry(world: &mut WorldStore) {
+    world.record_registry_data(bbb_protocol::packets::RegistryData {
+        registry: "minecraft:trim_material".to_string(),
+        entries: vec![
+            bbb_protocol::packets::RegistryDataEntry {
+                id: "minecraft:quartz".to_string(),
+                raw_data: None,
+            },
+            bbb_protocol::packets::RegistryDataEntry {
+                id: "minecraft:iron".to_string(),
+                raw_data: None,
+            },
+        ],
+        raw_payload_len: 0,
+    });
+}
+
 fn merchant_offers(
     container_id: i32,
     offer_count: usize,
@@ -6199,6 +6304,60 @@ fn write_runtime_cooldown_range_dispatch_item_assets(root: &Path) {
             .join("Items.java"),
         r#"public class Items {
             public static final Item COOLDOWN_SELECTOR = registerItem("cooldown_selector");
+        }"#,
+    );
+}
+
+fn write_runtime_trim_material_select_item_assets(root: &Path) {
+    let assets = runtime_assets_dir(root);
+    write_runtime_json(
+        &assets.join("atlases").join("items.json"),
+        r#"{
+            "sources": [
+                {
+                    "type": "minecraft:directory",
+                    "prefix": "item/",
+                    "source": "item"
+                }
+            ]
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("atlases").join("blocks.json"),
+        r#"{
+            "sources": []
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("items").join("trim_selector.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:select",
+                "property": "minecraft:trim_material",
+                "cases": [
+                    {
+                        "when": "minecraft:quartz",
+                        "model": { "type": "minecraft:model", "model": "minecraft:item/trim_selector_quartz" }
+                    }
+                ],
+                "fallback": { "type": "minecraft:model", "model": "minecraft:item/trim_selector" }
+            }
+        }"#,
+    );
+    write_flat_runtime_item_model_and_texture(&assets, "trim_selector", &[40, 80, 120, 255]);
+    write_flat_runtime_item_model_and_texture(&assets, "trim_selector_quartz", &[120, 80, 40, 255]);
+    write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
+    write_runtime_json(
+        &root
+            .join("sources")
+            .join(bbb_pack::MC_VERSION)
+            .join("net")
+            .join("minecraft")
+            .join("world")
+            .join("item")
+            .join("Items.java"),
+        r#"public class Items {
+            public static final Item TRIM_SELECTOR = registerItem("trim_selector");
         }"#,
     );
 }
