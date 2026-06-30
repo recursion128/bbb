@@ -731,6 +731,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     component values. Complex object/list components, registry-backed component
     value decoding, and transient components such as
     `minecraft:map_post_processing` remain follow-up.
+  - [x] `minecraft:has_component` item-model condition now follows vanilla
+    `HasComponent.get`: default prototype components such as
+    `minecraft:max_stack_size` and `minecraft:rarity` count for ordinary
+    `ItemStack.has`, while `ignore_default=true` uses patch presence
+    (`hasNonDefault`) so added and removed component patches both select the
+    true branch. Tests pin texture selection for default, added, and removed
+    cases.
 - HUD / inventory：
   - vanilla font / count / durability / cooldown / tooltip / screen depth behavior。
   - flat/generated item 与 3D block item 在 GUI pass 中的精确排序。

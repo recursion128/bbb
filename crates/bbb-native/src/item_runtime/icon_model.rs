@@ -1105,13 +1105,15 @@ fn item_stack_has_component(
         .get("ignore_default")
         .and_then(|value| value.as_bool())
         .unwrap_or(false);
-    let non_default =
-        component_patch.is_some_and(|patch| patch.added_type_ids.contains(&component_id));
-    if component_patch.is_some_and(|patch| patch.removed_type_ids.contains(&component_id)) {
-        return false;
-    }
+    let non_default = component_patch.is_some_and(|patch| {
+        patch.added_type_ids.contains(&component_id)
+            || patch.removed_type_ids.contains(&component_id)
+    });
     if ignore_default {
         return non_default;
+    }
+    if component_patch.is_some_and(|patch| patch.removed_type_ids.contains(&component_id)) {
+        return false;
     }
     non_default || item_default_has_component(component_id, default_max_damage)
 }

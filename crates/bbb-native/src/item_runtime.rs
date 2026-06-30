@@ -4783,6 +4783,95 @@ mod tests {
     }
 
     #[test]
+    fn native_item_runtime_selects_has_component_defaults_and_nondefault_patches() {
+        let root = unique_temp_dir("item-runtime-has-component-defaults");
+        write_default_has_component_fixture(&root);
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let uv = |model_id: &str| {
+            runtime
+                .textures
+                .texture_uv_rect(runtime.texture_index(&format!("minecraft:item/{model_id}")))
+                .unwrap()
+        };
+        let selected = |item_id, component_patch| {
+            runtime
+                .icon_for_stack(&ItemStackSummary {
+                    item_id: Some(item_id),
+                    count: 1,
+                    component_patch,
+                })
+                .unwrap()
+                .layers[0]
+                .uv
+        };
+
+        // Vanilla `HasComponent.get(ignoreDefault=false)` calls
+        // `ItemStack.has`, so common prototype components count as present.
+        assert_eq!(
+            selected(0, DataComponentPatchSummary::default()),
+            uv("has_max_stack_present")
+        );
+        assert_eq!(
+            selected(
+                0,
+                DataComponentPatchSummary {
+                    removed_type_ids: vec![1],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("has_max_stack_absent")
+        );
+
+        // With `ignore_default=true`, vanilla checks hasNonDefault: both added
+        // and removed patches are non-default, while the untouched prototype is
+        // not.
+        assert_eq!(
+            selected(1, DataComponentPatchSummary::default()),
+            uv("has_max_stack_unpatched")
+        );
+        assert_eq!(
+            selected(
+                1,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![1],
+                    max_stack_size: Some(16),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("has_max_stack_patched")
+        );
+        assert_eq!(
+            selected(
+                1,
+                DataComponentPatchSummary {
+                    removed_type_ids: vec![1],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("has_max_stack_patched")
+        );
+
+        // `rarity=common` is also in vanilla `COMMON_ITEM_COMPONENTS`.
+        assert_eq!(
+            selected(2, DataComponentPatchSummary::default()),
+            uv("has_rarity_present")
+        );
+        assert_eq!(
+            selected(
+                2,
+                DataComponentPatchSummary {
+                    removed_type_ids: vec![12],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("has_rarity_absent")
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn native_item_runtime_resolves_trim_material_select() {
         let root = unique_temp_dir("item-runtime-trim-material");
         write_trim_material_select_fixture(&root);
@@ -5802,6 +5891,86 @@ mod tests {
         );
         write_flat_item_model_and_texture(&assets, "compass", &[40, 120, 80, 255]);
         write_flat_item_model_and_texture(&assets, "compass_lodestone", &[120, 40, 80, 255]);
+    }
+
+    fn write_default_has_component_fixture(root: &Path) {
+        let assets = assets_dir(root);
+        write_item_atlases(&assets);
+        write_item_registry_source(
+            root,
+            &[
+                "has_max_stack",
+                "has_max_stack_ignore_default",
+                "has_rarity",
+            ],
+        );
+        write_json(
+            &assets.join("items").join("has_max_stack.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:has_component",
+                    "component": "minecraft:max_stack_size",
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/has_max_stack_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/has_max_stack_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("has_max_stack_ignore_default.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:has_component",
+                    "component": "minecraft:max_stack_size",
+                    "ignore_default": true,
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/has_max_stack_patched"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/has_max_stack_unpatched"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets.join("items").join("has_rarity.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:has_component",
+                    "component": "minecraft:rarity",
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/has_rarity_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/has_rarity_absent"
+                    }
+                }
+            }"#,
+        );
+        for (model_id, color) in [
+            ("has_max_stack_present", [40, 140, 80, 255]),
+            ("has_max_stack_absent", [80, 40, 40, 255]),
+            ("has_max_stack_patched", [40, 80, 180, 255]),
+            ("has_max_stack_unpatched", [40, 40, 80, 255]),
+            ("has_rarity_present", [180, 80, 220, 255]),
+            ("has_rarity_absent", [60, 40, 80, 255]),
+        ] {
+            write_flat_item_model_and_texture(&assets, model_id, &color);
+        }
     }
 
     fn write_trim_material_select_fixture(root: &Path) {

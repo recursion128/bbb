@@ -5763,6 +5763,12 @@ When an agent does any of the following, update this file in the same slice:
     submitted logical hand to vanilla `LivingEntity.getUseItem()` (`isUsingItem`
     plus `getUsedItemHand`); using an item in the other hand keeps the submitted
     stack on the false branch.
+  - `bbb-native` resolves `minecraft:has_component` conditions with vanilla
+    `HasComponent.get`: ordinary conditions use `ItemStack.has` so prototype
+    defaults such as `minecraft:max_stack_size` and `minecraft:rarity` count as
+    present, while `ignore_default=true` uses `ItemStack.hasNonDefault` /
+    patch presence so added and removed component patches both select the true
+    branch. Tests pin texture selection for default, added, and removed cases.
   - The context-free properties are projected from the item stack with vanilla
     math:
     - `minecraft:damage` — `Damage.get` (`damage / max_damage` normalized, or
