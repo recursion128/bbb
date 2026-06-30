@@ -680,6 +680,12 @@ When an agent does any of the following, update this file in the same slice:
     38 / 526 / 152 after the weather ledger updates; the code-side
     classification is still unchanged, so the loop stayed in P1 and fixed the
     next render-state gap rather than reopening P0.
+    A later 2026-06-30 selector hardening pass reran the quick audit from a
+    clean worktree with counts 38 / 582 / 147. No new P0 blocker was found, so
+    `goal.md` now makes the selector binary: a new P0 reopen condition starts a
+    P0 regression slice; otherwise the same turn automatically opens the next
+    P1 slice without waiting for confirmation or treating historical ledger
+    wording as a P0 backlog.
   - Replace proxies with full extraction from canonical world and pack data:
     - entity bounds
     - dropped-item icons (3D block/item model renderer in progress — see the
