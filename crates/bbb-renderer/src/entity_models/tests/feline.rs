@@ -8,6 +8,19 @@ fn assert_close(actual: f32, expected: f32) {
     );
 }
 
+fn assert_close_transform(actual: Mat4, expected: Mat4) {
+    for (actual, expected) in actual
+        .to_cols_array()
+        .into_iter()
+        .zip(expected.to_cols_array())
+    {
+        assert!(
+            (actual - expected).abs() < 1.0e-5,
+            "expected {expected}, got {actual}"
+        );
+    }
+}
+
 fn vanilla_rot_lerp(delta: f32, start: f32, end: f32) -> f32 {
     start + delta * (end - start)
 }
@@ -773,6 +786,79 @@ fn baby_feline_lie_down_and_relax_pose_matches_vanilla_branch() {
 }
 
 #[test]
+fn feline_lie_down_root_transform_matches_cat_renderer_setup_rotations() {
+    // Vanilla `CatRenderer.setupRotations` calls the living setup first, then inserts the lie-down
+    // translate and Z roll before the model flip and adult-cat mesh-transformer scale.
+    let lie = 0.5;
+    let cat = EntityModelInstance::feline(
+        543,
+        [2.0, 64.0, -3.0],
+        30.0,
+        true,
+        false,
+        CatModelVariant::Black,
+        None,
+    )
+    .with_feline_lie_down_amount(lie);
+    let setup_tail = Mat4::from_translation(Vec3::new(0.4 * lie, 0.15 * lie, 0.1 * lie))
+        * Mat4::from_rotation_z((90.0 * lie).to_radians());
+    let expected_root = Mat4::from_translation(Vec3::from_array(cat.position))
+        * Mat4::from_scale(Vec3::splat(cat.render_state.scale))
+        * Mat4::from_rotation_y((180.0 - cat.render_state.body_rot).to_radians())
+        * setup_tail
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+        * Mat4::from_translation(Vec3::new(0.0, -1.501, 0.0));
+
+    assert_close_transform(feline_model_root_transform(cat), expected_root);
+    assert_close_transform(
+        feline_model_root_transform(cat) * mesh_transformer_scale_transform(FELINE_CAT_SCALE),
+        expected_root * mesh_transformer_scale_transform(FELINE_CAT_SCALE),
+    );
+    assert_ne!(
+        feline_model_root_transform(cat),
+        entity_model_root_transform(cat),
+        "lie-down setupRotations changes the whole-model root before the cat scale"
+    );
+
+    let standing_cat = EntityModelInstance::feline(
+        544,
+        [2.0, 64.0, -3.0],
+        30.0,
+        true,
+        false,
+        CatModelVariant::Black,
+        None,
+    );
+    assert_close_transform(
+        feline_model_root_transform(standing_cat),
+        entity_model_root_transform(standing_cat),
+    );
+
+    let baby = EntityModelInstance::feline(
+        545,
+        [2.0, 64.0, -3.0],
+        30.0,
+        true,
+        true,
+        CatModelVariant::Black,
+        None,
+    )
+    .with_feline_lie_down_amount(lie);
+    let expected_baby_root = Mat4::from_translation(Vec3::from_array(baby.position))
+        * Mat4::from_scale(Vec3::splat(baby.render_state.scale))
+        * Mat4::from_rotation_y((180.0 - baby.render_state.body_rot).to_radians())
+        * setup_tail
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+        * Mat4::from_translation(Vec3::new(0.0, -1.501, 0.0));
+    assert_close_transform(feline_model_root_transform(baby), expected_baby_root);
+    assert_ne!(
+        feline_model_root_transform(baby),
+        entity_model_root_transform(baby),
+        "baby cats get the lie-down root transform without the adult 0.8 scale"
+    );
+}
+
+#[test]
 fn feline_textured_mesh_applies_sitting_pose_to_base_and_collar() {
     let images: Vec<EntityModelTextureImage> = feline_entity_texture_refs()
         .iter()
@@ -851,6 +937,21 @@ fn feline_textured_mesh_applies_sitting_pose_to_base_and_collar() {
             1,
             1,
         )
+    );
+    let expected_lying_transform =
+        feline_model_root_transform(lying) * mesh_transformer_scale_transform(FELINE_CAT_SCALE);
+    assert_eq!(
+        lying_meshes.submissions[0].transform,
+        expected_lying_transform
+    );
+    assert_eq!(
+        lying_meshes.submissions[1].transform,
+        expected_lying_transform
+    );
+    assert_ne!(
+        expected_lying_transform,
+        mesh_transformer_scaled_model_root_transform(lying, FELINE_CAT_SCALE),
+        "the CatRenderer setupRotations tail is inserted before the adult-cat mesh scale"
     );
     assert_eq!(
         sitting_meshes.cutout.vertices.len(),
@@ -1124,9 +1225,10 @@ fn feline_textured_render_matches_vanilla_renderer() {
         );
         assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
         let expected_transform = if cat && !baby {
-            mesh_transformer_scaled_model_root_transform(instance, FELINE_CAT_SCALE)
+            feline_model_root_transform(instance)
+                * mesh_transformer_scale_transform(FELINE_CAT_SCALE)
         } else {
-            entity_model_root_transform(instance)
+            feline_model_root_transform(instance)
         };
         assert_eq!(submit.transform, expected_transform);
         assert_eq!((submit.order, submit.submit_sequence), (0, 0));
@@ -1170,7 +1272,7 @@ fn feline_textured_render_matches_vanilla_renderer() {
     assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(
         base.transform,
-        mesh_transformer_scaled_model_root_transform(collared, FELINE_CAT_SCALE)
+        feline_model_root_transform(collared) * mesh_transformer_scale_transform(FELINE_CAT_SCALE)
     );
     assert_eq!((base.order, base.submit_sequence), (0, 0));
     assert_eq!(base.light, collared.render_state.shader_light());
@@ -1269,9 +1371,10 @@ fn feline_collar_submission_survives_missing_texture_atlas_entry() {
         assert_eq!(base.render_type.vanilla_name(), "entityCutout");
         assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
         let expected_transform = if baby {
-            entity_model_root_transform(collared)
+            feline_model_root_transform(collared)
         } else {
-            mesh_transformer_scaled_model_root_transform(collared, FELINE_CAT_SCALE)
+            feline_model_root_transform(collared)
+                * mesh_transformer_scale_transform(FELINE_CAT_SCALE)
         };
         assert_eq!(base.transform, expected_transform);
         assert_eq!((base.order, base.submit_sequence), (0, 0));

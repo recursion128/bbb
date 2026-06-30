@@ -22,8 +22,9 @@ pub use catalog::*;
 use colored::{
     boat_bubble_transform, boat_damage_roll_degrees, creeper_model_root_transform,
     death_fall_factor, end_crystal_model_root_transform, ender_dragon_model_root_transform,
-    entity_flip_degrees, entity_model_mesh, fox_model_root_transform, humanoid_arm_swing_parts,
-    humanoid_limb_swing_parts, iron_golem_model_root_transform, magma_cube_model_root_transform,
+    entity_flip_degrees, entity_model_mesh, feline_model_root_transform, fox_model_root_transform,
+    humanoid_arm_swing_parts, humanoid_limb_swing_parts, iron_golem_model_root_transform,
+    magma_cube_model_root_transform, mesh_transformer_scale_transform,
     minecart_damage_roll_degrees, minecart_model_root_transform, minecart_render_jitter_offset,
     panda_model_root_transform, quadruped_leg_x_rotations, quadruped_limb_swing_parts,
     shulker_bullet_model_root_transform, shulker_model_root_transform, slime_model_root_transform,

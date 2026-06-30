@@ -5131,8 +5131,13 @@ When an agent does any of the following, update this file in the same slice:
       head, and tail branches plus the relaxed head pitch. Tests pin rest, moving, advanced-position,
       zero-speed, crouch, sprint, adult/baby sitting, adult/baby lie-down/relax poses, source/native
       amount projection, and textured base/collar sitting plus lie-down geometry with texture,
-      render-type, tint, order, and submit-sequence assertions. The remaining cat lie-down parity is
-      `CatRenderer.setupRotations` whole-body roll/translate and the sleeping-player extra translate.
+      render-type, tint, order, submit-sequence, and transform assertions. The base
+      `CatRenderer.setupRotations` lie-down root transform is reproduced too: `lieDownAmount` applies
+      the vanilla whole-body translate `(0.4, 0.15, 0.1) * amount` and Z roll `90° * amount` after the
+      living setup rotation and before the model flip / adult-cat 0.8 mesh-transformer scale, shared by
+      the base and collar submissions. The remaining cat lie-down parity is only the sleeping-player
+      extra translate (`isLyingOnTopOfSleepingPlayer`), which needs a world/entity-neighborhood sleeping
+      player scan.
       The textured path is now wired:
       `Cat.DATA_VARIANT_ID` (20, `Holder<CatVariant>`) is
       projected — via the registry-holder mapping shared with chicken/cow/pig/frog — onto one of the eleven
@@ -5147,7 +5152,7 @@ When an agent does any of the following, update this file in the same slice:
       Textured regressions now pin the `FelineBase` and `FelineCollar` pass identities, vanilla
       `entityCutout` render type/name, vanilla base model layers (`CAT`, `CAT_BABY`, `OCELOT`,
       `OCELOT_BABY`) and collar layers (`CAT_COLLAR`, `CAT_BABY_COLLAR`), base white tint, collar dye tint,
-      adult-cat scale transform,
+      adult-cat scale plus cat lie-down root transform,
       `(order, submit_sequence) == (0, 0)` for base and `(1, 1)` for `CatCollarLayer`, and
       base `AgeableMobRenderer` / `LivingEntityRenderer` light plus hurt/white overlay versus
       `CatCollarLayer` entity light with zero-white overlay via

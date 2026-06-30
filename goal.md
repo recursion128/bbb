@@ -402,8 +402,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     adult/baby feline 模型应用 vanilla lie-down leg/head/tail branch 与 relaxed
     head pitch，textured base/collar 路径覆盖 texture/render type/tint/order/
     submit_sequence 与 transform。
-  - CatRenderer.setupRotations lie-down whole-body roll/translate 与
-    sleeping-player extra translate 继续作为 P1 后续。
+  - [x] CatRenderer.setupRotations base lie-down root transform：`lieDownAmount`
+    驱动 whole-body translate `(0.4, 0.15, 0.1) * amount` 和 Z roll
+    `90° * amount`，插在 living setup rotation 之后、model flip 之前；
+    adult cat 的 `MeshTransformer.scaling(0.8)` 仍接在 feline root 之后，
+    textured base/collar submission 共享该 transform。
+  - sleeping-player extra translate（`isLyingOnTopOfSleepingPlayer`）继续作为
+    P1 后续；它需要 world/entity-neighborhood sleeping player scan，不阻塞当前
+    root transform parity。
 - Minecart：
   - rail-follow `posOnRail` / `frontPos` / `backPos` 平移与坡度 pitch。
   - [x] NewMinecartBehavior exact weighted `renderPos` / rotation interpolation。

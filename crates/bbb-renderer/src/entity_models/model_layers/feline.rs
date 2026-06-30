@@ -446,7 +446,8 @@ fn feline_tail2_wobble_x_rot(
 /// ([`apply_head_look`] on `child_mut("head")`), applies the crouch/sprint tail-body setup, swings the
 /// legs with the gait, and, for the adult, drops and wobbles the lower tail via `child_mut("tail2")`;
 /// sitting folds the vanilla branch for cats; cat lie-down / relax amount branches layer on top. The
-/// whole-body `CatRenderer.setupRotations` lie-down roll/translate stays outside this model.
+/// whole-body `CatRenderer.setupRotations` lie-down roll/translate is applied by the feline root
+/// transform, outside this part model.
 pub(in crate::entity_models) struct FelineModel {
     root: ModelPart,
     baby: bool,

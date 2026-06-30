@@ -26,10 +26,11 @@ use super::colored::{
     cave_spider_model_root_transform, cod_model_root_transform, creeper_model_root_transform,
     emit_donkey_model, emit_horse_model, emit_undead_horse_model, end_crystal_model_root_transform,
     ender_dragon_model_root_transform, entity_model_root_transform,
-    evoker_fangs_model_root_transform, fox_model_root_transform, ghast_model_root_transform,
-    happy_ghast_model_root_transform, hoglin_model_color, iron_golem_model_root_transform,
-    leash_knot_model_root_transform, llama_model_color, llama_spit_model_root_transform,
-    magma_cube_model_root_transform, mesh_transformer_scaled_model_root_transform,
+    evoker_fangs_model_root_transform, feline_model_root_transform, fox_model_root_transform,
+    ghast_model_root_transform, happy_ghast_model_root_transform, hoglin_model_color,
+    iron_golem_model_root_transform, leash_knot_model_root_transform, llama_model_color,
+    llama_spit_model_root_transform, magma_cube_model_root_transform,
+    mesh_transformer_scale_transform, mesh_transformer_scaled_model_root_transform,
     minecart_model_root_transform, panda_model_root_transform, phantom_model_root_transform,
     piglin_model_color, player_model_root_transform, polar_bear_model_root_transform,
     pufferfish_model_root_transform, salmon_model_root_transform,
@@ -1700,11 +1701,10 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             cat_variant,
             collar,
         } => {
-            let transform = if cat && !baby {
-                mesh_transformer_scaled_model_root_transform(*instance, FELINE_CAT_SCALE)
-            } else {
-                entity_model_root_transform(*instance)
-            };
+            let mut transform = feline_model_root_transform(*instance);
+            if cat && !baby {
+                transform = transform * mesh_transformer_scale_transform(FELINE_CAT_SCALE);
+            }
             sink.model(
                 FelineModel::new(baby),
                 transform,

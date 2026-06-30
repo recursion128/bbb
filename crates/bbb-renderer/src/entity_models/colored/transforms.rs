@@ -217,6 +217,28 @@ pub(in crate::entity_models) fn fox_model_root_transform(instance: EntityModelIn
     living_entity_model_root_transform_with_extra_setup_rotation(instance, setup_rotation_tail)
 }
 
+/// Vanilla `CatRenderer.setupRotations`: after the standard living setup rotation and before the
+/// model flip / `-1.501` translate, a lying cat shifts and rolls the whole model by
+/// `lieDownAmount`. The sleeping-player extra x-translate remains a later entity-neighborhood
+/// projection; this helper applies the base lie-down transform shared by the base and collar layers.
+pub(in crate::entity_models) fn feline_model_root_transform(instance: EntityModelInstance) -> Mat4 {
+    living_entity_model_root_transform_with_extra_setup_rotation(
+        instance,
+        feline_setup_rotation_tail(instance.render_state.feline_lie_down_amount),
+    )
+}
+
+fn feline_setup_rotation_tail(lie_down_amount: f32) -> Mat4 {
+    if lie_down_amount <= 0.0 {
+        return Mat4::IDENTITY;
+    }
+    Mat4::from_translation(Vec3::new(
+        0.4 * lie_down_amount,
+        0.15 * lie_down_amount,
+        0.1 * lie_down_amount,
+    )) * Mat4::from_rotation_z((90.0 * lie_down_amount).to_radians())
+}
+
 /// Vanilla `PandaRenderer.setupRotations`: after the standard living setup rotation and before the
 /// model flip / `-1.501` translate, a panda applies the whole-body roll tumble, sitting tilt, scared
 /// shake, and lie-on-back tilt from `PandaRenderState.rollTime` / `sitAmount` / `lieOnBackAmount`.
@@ -814,16 +836,18 @@ pub(in crate::entity_models) fn mesh_transformer_scaled_model_root_transform(
     instance: EntityModelInstance,
     scale: f32,
 ) -> Mat4 {
-    entity_model_root_transform(instance)
-        * part_pose_transform(PartPose {
-            offset: [
-                0.0,
-                MESH_TRANSFORMER_ROOT_Y_OFFSET_PIXELS * (1.0 - scale),
-                0.0,
-            ],
-            rotation: [0.0, 0.0, 0.0],
-        })
-        * Mat4::from_scale(Vec3::splat(scale))
+    entity_model_root_transform(instance) * mesh_transformer_scale_transform(scale)
+}
+
+pub(in crate::entity_models) fn mesh_transformer_scale_transform(scale: f32) -> Mat4 {
+    part_pose_transform(PartPose {
+        offset: [
+            0.0,
+            MESH_TRANSFORMER_ROOT_Y_OFFSET_PIXELS * (1.0 - scale),
+            0.0,
+        ],
+        rotation: [0.0, 0.0, 0.0],
+    }) * Mat4::from_scale(Vec3::splat(scale))
 }
 
 pub(in crate::entity_models) fn villager_adult_model_root_transform(
