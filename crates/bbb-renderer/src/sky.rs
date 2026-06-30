@@ -42,6 +42,18 @@ fn sky_depth_stencil_state() -> Option<wgpu::DepthStencilState> {
     None
 }
 
+fn sky_cull_mode() -> Option<wgpu::Face> {
+    Some(wgpu::Face::Back)
+}
+
+fn sky_disc_blend_state() -> Option<wgpu::BlendState> {
+    None
+}
+
+fn sunrise_sunset_blend_state() -> Option<wgpu::BlendState> {
+    Some(wgpu::BlendState::ALPHA_BLENDING)
+}
+
 const SKY_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
@@ -404,7 +416,9 @@ struct SkyTexturedVertex {
 
 pub(super) struct SkyDiscGpu {
     pub(super) vertex_buffer: wgpu::Buffer,
-    pub(super) vertex_count: u32,
+    pub(super) disc_vertex_count: u32,
+    pub(super) sunrise_vertex_start: u32,
+    pub(super) sunrise_vertex_count: u32,
 }
 
 pub(super) struct EndSkyGpu {
@@ -476,13 +490,59 @@ pub(super) fn create_sky_pipeline(
             entry_point: "fs_main",
             targets: &[Some(wgpu::ColorTargetState {
                 format,
-                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                blend: sky_disc_blend_state(),
                 write_mask: wgpu::ColorWrites::ALL,
             })],
         }),
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,
-            cull_mode: None,
+            cull_mode: sky_cull_mode(),
+            ..Default::default()
+        },
+        depth_stencil: sky_depth_stencil_state(),
+        multisample: wgpu::MultisampleState::default(),
+        multiview: None,
+    })
+}
+
+pub(super) fn create_sunrise_sunset_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("bbb-sunrise-sunset-shader"),
+        source: wgpu::ShaderSource::Wgsl(SKY_SHADER.into()),
+    });
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-sunrise-sunset-pipeline-layout"),
+        bind_group_layouts: &[bind_group_layout],
+        push_constant_ranges: &[],
+    });
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("bbb-sunrise-sunset-pipeline"),
+        layout: Some(&layout),
+        vertex: wgpu::VertexState {
+            module: &shader,
+            entry_point: "vs_main",
+            buffers: &[wgpu::VertexBufferLayout {
+                array_stride: std::mem::size_of::<SkyVertex>() as wgpu::BufferAddress,
+                step_mode: wgpu::VertexStepMode::Vertex,
+                attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4],
+            }],
+        },
+        fragment: Some(wgpu::FragmentState {
+            module: &shader,
+            entry_point: "fs_main",
+            targets: &[Some(wgpu::ColorTargetState {
+                format,
+                blend: sunrise_sunset_blend_state(),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            cull_mode: sky_cull_mode(),
             ..Default::default()
         },
         depth_stencil: sky_depth_stencil_state(),
@@ -695,15 +755,20 @@ pub(super) fn create_sky_disc_gpu(
     if !environment.is_visible() && !environment.sunrise_sunset_visible() {
         return None;
     }
-    let vertices = sky_vertices(environment);
+    let batch = sky_vertex_batch(environment);
+    if batch.vertices.is_empty() {
+        return None;
+    }
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("bbb-sky-disc-vertices"),
-        contents: bytemuck::cast_slice(&vertices),
+        contents: bytemuck::cast_slice(&batch.vertices),
         usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
     });
     Some(SkyDiscGpu {
         vertex_buffer,
-        vertex_count: vertices.len() as u32,
+        disc_vertex_count: batch.disc_vertex_count,
+        sunrise_vertex_start: batch.sunrise_vertex_start,
+        sunrise_vertex_count: batch.sunrise_vertex_count,
     })
 }
 
@@ -910,16 +975,31 @@ pub(super) fn create_celestial_atlas_gpu(
     })
 }
 
-fn sky_vertices(environment: SkyEnvironment) -> Vec<SkyVertex> {
+struct SkyVertexBatch {
+    vertices: Vec<SkyVertex>,
+    disc_vertex_count: u32,
+    sunrise_vertex_start: u32,
+    sunrise_vertex_count: u32,
+}
+
+fn sky_vertex_batch(environment: SkyEnvironment) -> SkyVertexBatch {
     let mut vertices = Vec::new();
     if environment.is_visible() {
         vertices.extend(sky_disc_vertices(environment.color));
     }
+    let disc_vertex_count = vertices.len() as u32;
     vertices.extend(sunrise_sunset_vertices(
         environment.sunrise_sunset_color,
         environment.sun_angle_radians,
     ));
-    vertices
+    let sunrise_vertex_start = disc_vertex_count;
+    let sunrise_vertex_count = vertices.len() as u32 - sunrise_vertex_start;
+    SkyVertexBatch {
+        vertices,
+        disc_vertex_count,
+        sunrise_vertex_start,
+        sunrise_vertex_count,
+    }
 }
 
 fn end_sky_vertices() -> Vec<SkyTexturedVertex> {
@@ -1487,8 +1567,22 @@ mod tests {
     }
 
     #[test]
-    fn sky_pipelines_match_vanilla_no_depth_stencil_state() {
+    fn sky_pipelines_match_vanilla_disc_and_sunrise_state() {
         assert!(sky_depth_stencil_state().is_none());
+        assert_eq!(sky_cull_mode(), Some(wgpu::Face::Back));
+        assert!(sky_disc_blend_state().is_none());
+
+        let sunrise_blend = sunrise_sunset_blend_state().expect("sunrise uses translucent blend");
+        assert_eq!(sunrise_blend.color.src_factor, wgpu::BlendFactor::SrcAlpha);
+        assert_eq!(
+            sunrise_blend.color.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha
+        );
+        assert_eq!(sunrise_blend.alpha.src_factor, wgpu::BlendFactor::One);
+        assert_eq!(
+            sunrise_blend.alpha.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha
+        );
     }
 
     #[test]
@@ -1757,11 +1851,31 @@ mod tests {
     fn sky_vertices_append_sunrise_sunset_after_top_disc() {
         let environment = SkyEnvironment::from_rgb([0.25, 0.5, 0.75])
             .with_sunrise_sunset([1.0, 0.25, 0.0, 0.75], 0.0);
-        let vertices = sky_vertices(environment);
+        let vertices = sky_vertex_batch(environment).vertices;
 
         assert_eq!(vertices.len(), 24 + SUNRISE_STEPS * 3);
         assert_eq!(vertices[0].color, environment.color);
         assert_eq!(vertices[24].color, environment.sunrise_sunset_color);
+    }
+
+    #[test]
+    fn sky_vertex_batch_splits_vanilla_sky_and_sunrise_draw_ranges() {
+        let environment = SkyEnvironment::from_rgb([0.25, 0.5, 0.75])
+            .with_sunrise_sunset([1.0, 0.25, 0.0, 0.75], 0.0);
+        let batch = sky_vertex_batch(environment);
+
+        assert_eq!(batch.disc_vertex_count, 24);
+        assert_eq!(batch.sunrise_vertex_start, batch.disc_vertex_count);
+        assert_eq!(batch.sunrise_vertex_count, (SUNRISE_STEPS * 3) as u32);
+        assert_eq!(
+            batch.vertices.len() as u32,
+            batch.disc_vertex_count + batch.sunrise_vertex_count
+        );
+        assert_eq!(batch.vertices[0].color, environment.color);
+        assert_eq!(
+            batch.vertices[batch.sunrise_vertex_start as usize].color,
+            environment.sunrise_sunset_color
+        );
     }
 
     fn assert_close(actual: f32, expected: f32) {

@@ -291,8 +291,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - [x] sky family depth-state：`SKY`、`END_SKY`、`SUNRISE_SUNSET`、
     `STARS`、`CELESTIAL` 在 vanilla `RenderPipelines` 中都没有显式
     `DepthStencilState`；renderer 的 sky/end-sky/star/celestial pipelines
-    已改为无 depth-stencil state。当前 sky disc + sunrise 仍共享本地
-    triangle-list pipeline，blend/cull 和拆 pipeline 属后续 P1 细化。
+    已改为无 depth-stencil state。
+  - [x] sky `SKY` / `SUNRISE_SUNSET` blend/cull split：Overworld sky disc 和
+    sunrise/sunset 现在按 vanilla `LevelRenderer` draw 顺序拆成 sky ->
+    sunrise -> sun/moon/stars；`SKY` pipeline 使用 replace/no blend、默认
+    back-face cull、无 depth state，`SUNRISE_SUNSET` 使用 translucent blend、
+    默认 back-face cull、无 depth state。二者仍因 wgpu 用 triangle-list
+    展开官方 fan；`SKY` 的 DynamicTransforms/fog shader ABI，以及
+    `END_SKY` / `STARS` / `CELESTIAL` 的 cull/shader ABI 细化仍属后续 P1。
   - [x] terrain render-pipeline state：solid/cutout terrain 继续用 replace
     blend + depth-write，translucent terrain 继续用 translucent blend +
     no depth-write；三者现在都按 vanilla `SOLID_TERRAIN` /

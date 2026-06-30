@@ -74,9 +74,9 @@ use crate::{
         create_celestial_atlas_gpu, create_celestial_bind_group_layout, create_celestial_gpu,
         create_celestial_pipeline, create_end_sky_bind_group_layout, create_end_sky_gpu,
         create_end_sky_pipeline, create_end_sky_texture_gpu, create_sky_disc_gpu,
-        create_sky_pipeline, create_star_gpu, create_star_pipeline, CelestialAtlasGpu,
-        CelestialGpu, CelestialTextureImage, EndSkyGpu, EndSkyTextureGpu, SkyDiscGpu,
-        SkyEnvironment, StarGpu,
+        create_sky_pipeline, create_star_gpu, create_star_pipeline, create_sunrise_sunset_pipeline,
+        CelestialAtlasGpu, CelestialGpu, CelestialTextureImage, EndSkyGpu, EndSkyTextureGpu,
+        SkyDiscGpu, SkyEnvironment, StarGpu,
     },
     terrain,
     transparency::{
@@ -153,6 +153,7 @@ pub struct Renderer {
     pub(super) entity_outline_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) entity_outline_target: EntityOutlineTarget,
     pub(super) sky_pipeline: wgpu::RenderPipeline,
+    pub(super) sunrise_sunset_pipeline: wgpu::RenderPipeline,
     pub(super) star_pipeline: wgpu::RenderPipeline,
     pub(super) end_sky_pipeline: wgpu::RenderPipeline,
     pub(super) end_sky_texture_bind_group_layout: wgpu::BindGroupLayout,
@@ -731,6 +732,8 @@ impl Renderer {
             config.height,
         );
         let sky_pipeline = create_sky_pipeline(&device, format, &terrain_bind_group_layout);
+        let sunrise_sunset_pipeline =
+            create_sunrise_sunset_pipeline(&device, format, &terrain_bind_group_layout);
         let star_pipeline = create_star_pipeline(&device, format, &terrain_bind_group_layout);
         let end_sky_texture_bind_group_layout = create_end_sky_bind_group_layout(&device);
         let end_sky_pipeline = create_end_sky_pipeline(
@@ -871,6 +874,7 @@ impl Renderer {
             entity_outline_bind_group_layout,
             entity_outline_target,
             sky_pipeline,
+            sunrise_sunset_pipeline,
             star_pipeline,
             end_sky_pipeline,
             end_sky_texture_bind_group_layout,

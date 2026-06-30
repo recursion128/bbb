@@ -153,12 +153,23 @@ impl Renderer {
                     sky_draw_calls += 1;
                 }
             } else if let Some(sky_disc) = &self.sky_disc {
-                pass.set_pipeline(&self.sky_pipeline);
-                pipeline_switches += 1;
-                pass.set_bind_group(0, &self.terrain_bind_group, &[]);
                 pass.set_vertex_buffer(0, sky_disc.vertex_buffer.slice(..));
-                pass.draw(0..sky_disc.vertex_count, 0..1);
-                sky_draw_calls += 1;
+                if sky_disc.disc_vertex_count > 0 {
+                    pass.set_pipeline(&self.sky_pipeline);
+                    pipeline_switches += 1;
+                    pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+                    pass.draw(0..sky_disc.disc_vertex_count, 0..1);
+                    sky_draw_calls += 1;
+                }
+
+                if sky_disc.sunrise_vertex_count > 0 {
+                    pass.set_pipeline(&self.sunrise_sunset_pipeline);
+                    pipeline_switches += 1;
+                    pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+                    let start = sky_disc.sunrise_vertex_start;
+                    pass.draw(start..start + sky_disc.sunrise_vertex_count, 0..1);
+                    sky_draw_calls += 1;
+                }
 
                 if let (Some(celestial_atlas), Some(celestials)) =
                     (&self.celestial_atlas, &self.sky_celestials)
@@ -2270,6 +2281,28 @@ mod tests {
                 && block_destroy < translucent
                 && billboards < particle,
             "vanilla FeatureRenderDispatcher draws text before ItemFeatureRenderer, then block/crumbling features, translucent terrain, and particles"
+        );
+    }
+
+    #[test]
+    fn sky_disc_draws_before_sunrise_and_celestial_layers() {
+        let source = include_str!("render.rs");
+        let sky = source
+            .find("pass.set_pipeline(&self.sky_pipeline)")
+            .expect("sky disc pipeline is drawn");
+        let sunrise = source
+            .find("pass.set_pipeline(&self.sunrise_sunset_pipeline)")
+            .expect("sunrise/sunset pipeline is drawn");
+        let celestial = source
+            .find("pass.set_pipeline(&self.celestial_pipeline)")
+            .expect("celestial pipeline is drawn");
+        let stars = source
+            .find("pass.set_pipeline(&self.star_pipeline)")
+            .expect("star pipeline is drawn");
+
+        assert!(
+            sky < sunrise && sunrise < celestial && celestial < stars,
+            "vanilla LevelRenderer draws sky disc, sunrise/sunset, then sun/moon/stars"
         );
     }
 

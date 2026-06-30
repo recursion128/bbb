@@ -956,9 +956,10 @@ When an agent does any of the following, update this file in the same slice:
     the disc uses the vanilla 512 radius / y=16 shape triangulated from the
     official 10-vertex fan, and native drives its `SKY_COLOR` from
     dimension/biome sky color, the Overworld day multiplier, weather darken,
-    and the client lightning sky-flash layer. The same sky mesh now appends
-    the vanilla `SkyRenderer.renderSunriseAndSunset` fan: 16 ring steps, center
-    alpha 1, ring alpha 0, `SUNRISE_SUNSET_COLOR`, and `SUN_ANGLE` orientation,
+    and the client lightning sky-flash layer. The sky vertex batch now also
+    stores a separate draw range for the vanilla
+    `SkyRenderer.renderSunriseAndSunset` fan: 16 ring steps, center alpha 1,
+    ring alpha 0, `SUNRISE_SUNSET_COLOR`, and `SUN_ANGLE` orientation,
     expanded to triangle-list vertices for wgpu. The renderer also presents
     End skyboxes from vanilla `SkyRenderer.buildEndSky`: 6 `POSITION_TEX_COLOR`
     quad faces expanded to triangle-list vertices, `0..16` UV repeat sampling,
@@ -968,9 +969,14 @@ When an agent does any of the following, update this file in the same slice:
     `RenderPipelines.SKY`, `END_SKY`, `SUNRISE_SUNSET`, `STARS`, and
     `CELESTIAL` all build without a `DepthStencilState`, so renderer
     sky/end-sky/star/celestial pipelines no longer bind the old
-    `Always`/no-write depth state. Sky disc + sunrise still share a local
-    triangle-list pipeline; the remaining blend/cull and per-pipeline split are
-    ordinary P1 render-state work, not a P0 pipeline blocker. Basic
+    `Always`/no-write depth state. Sky disc + sunrise now use separate draw
+    ranges and GPU pipelines: `SKY` uses replace/no blend plus default
+    back-face cull, while `SUNRISE_SUNSET` uses translucent blend plus default
+    back-face cull; both remain depth-state-free and preserve vanilla
+    `LevelRenderer` ordering before sun/moon/stars. Sky-disc
+    DynamicTransforms/fog shader ABI plus end-sky, star, and celestial
+    cull/shader ABI refinement remains ordinary P1 render-state work, not a P0
+    pipeline blocker. Basic
     cloud mesh presentation now consumes these visibility ends with vanilla
     default `CLOUD_COLOR` / `CLOUD_HEIGHT` and now loads vanilla
     `textures/environment/clouds.png` for flat cloud cell geometry with vanilla
