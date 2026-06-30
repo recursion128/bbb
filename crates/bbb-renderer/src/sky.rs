@@ -69,19 +69,23 @@ struct Camera {
     fog_visibility_ends: vec4<f32>,
 };
 
+struct SkyDynamic {
+    color_modulator: vec4<f32>,
+};
+
 @group(0) @binding(0)
 var<uniform> camera: Camera;
+@group(1) @binding(0)
+var<uniform> sky_dynamic: SkyDynamic;
 
 struct VertexIn {
     @location(0) position: vec3<f32>,
-    @location(1) color: vec4<f32>,
 };
 
 struct VertexOut {
     @builtin(position) position: vec4<f32>,
-    @location(0) color: vec4<f32>,
-    @location(1) spherical_distance: f32,
-    @location(2) cylindrical_distance: f32,
+    @location(0) spherical_distance: f32,
+    @location(1) cylindrical_distance: f32,
 };
 
 @vertex
@@ -89,7 +93,6 @@ fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
     let world_position = input.position + camera.camera_position.xyz;
     out.position = camera.view_proj * vec4<f32>(world_position, 1.0);
-    out.color = input.color;
     out.spherical_distance = length(input.position);
     out.cylindrical_distance = max(length(input.position.xz), abs(input.position.y));
     return out;
@@ -119,7 +122,7 @@ fn apply_sky_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance
 
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
-    return apply_sky_fog(input.color, input.spherical_distance, input.cylindrical_distance);
+    return apply_sky_fog(sky_dynamic.color_modulator, input.spherical_distance, input.cylindrical_distance);
 }
 "#;
 
@@ -617,10 +620,11 @@ pub(super) struct SkyDynamicGpu {
 }
 
 pub(super) struct SkyDiscGpu {
-    pub(super) vertex_buffer: wgpu::Buffer,
+    pub(super) disc_vertex_buffer: Option<wgpu::Buffer>,
+    pub(super) sunrise_vertex_buffer: Option<wgpu::Buffer>,
     pub(super) disc_vertex_count: u32,
-    pub(super) sunrise_vertex_start: u32,
     pub(super) sunrise_vertex_count: u32,
+    pub(super) dynamic: SkyDynamicGpu,
 }
 
 pub(super) struct EndSkyGpu {
@@ -668,6 +672,7 @@ pub(super) fn create_sky_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
+    dynamic_bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("bbb-sky-disc-shader"),
@@ -675,7 +680,7 @@ pub(super) fn create_sky_pipeline(
     });
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-sky-disc-pipeline-layout"),
-        bind_group_layouts: &[bind_group_layout],
+        bind_group_layouts: &[bind_group_layout, dynamic_bind_group_layout],
         push_constant_ranges: &[],
     });
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -685,9 +690,9 @@ pub(super) fn create_sky_pipeline(
             module: &shader,
             entry_point: "vs_main",
             buffers: &[wgpu::VertexBufferLayout {
-                array_stride: std::mem::size_of::<SkyVertex>() as wgpu::BufferAddress,
+                array_stride: std::mem::size_of::<SkyPositionVertex>() as wgpu::BufferAddress,
                 step_mode: wgpu::VertexStepMode::Vertex,
-                attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4],
+                attributes: &wgpu::vertex_attr_array![0 => Float32x3],
             }],
         },
         fragment: Some(wgpu::FragmentState {
@@ -1002,6 +1007,7 @@ pub(super) fn create_celestial_pipeline(
 
 pub(super) fn create_sky_disc_gpu(
     device: &wgpu::Device,
+    dynamic_bind_group_layout: &wgpu::BindGroupLayout,
     environment: SkyEnvironment,
 ) -> Option<SkyDiscGpu> {
     let environment = environment.sanitized();
@@ -1009,20 +1015,41 @@ pub(super) fn create_sky_disc_gpu(
         return None;
     }
     let batch = sky_vertex_batch(environment);
-    if batch.vertices.is_empty() {
+    if batch.disc_vertices.is_empty() && batch.sunrise_vertices.is_empty() {
         return None;
     }
-    let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("bbb-sky-disc-vertices"),
-        contents: bytemuck::cast_slice(&batch.vertices),
-        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-    });
+    let dynamic = create_sky_dynamic_gpu(device, dynamic_bind_group_layout, environment.color);
+    let disc_vertex_buffer =
+        create_sky_vertex_buffer(device, "bbb-sky-disc-vertices", &batch.disc_vertices);
+    let sunrise_vertex_buffer = create_sky_vertex_buffer(
+        device,
+        "bbb-sunrise-sunset-vertices",
+        &batch.sunrise_vertices,
+    );
     Some(SkyDiscGpu {
-        vertex_buffer,
+        disc_vertex_buffer,
+        sunrise_vertex_buffer,
         disc_vertex_count: batch.disc_vertex_count,
-        sunrise_vertex_start: batch.sunrise_vertex_start,
         sunrise_vertex_count: batch.sunrise_vertex_count,
+        dynamic,
     })
+}
+
+fn create_sky_vertex_buffer<T: bytemuck::Pod>(
+    device: &wgpu::Device,
+    label: &'static str,
+    vertices: &[T],
+) -> Option<wgpu::Buffer> {
+    if vertices.is_empty() {
+        return None;
+    }
+    Some(
+        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some(label),
+            contents: bytemuck::cast_slice(vertices),
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        }),
+    )
 }
 
 pub(super) fn create_end_sky_gpu(
@@ -1252,29 +1279,27 @@ pub(super) fn create_celestial_atlas_gpu(
 }
 
 struct SkyVertexBatch {
-    vertices: Vec<SkyVertex>,
+    disc_vertices: Vec<SkyPositionVertex>,
+    sunrise_vertices: Vec<SkyVertex>,
     disc_vertex_count: u32,
-    sunrise_vertex_start: u32,
     sunrise_vertex_count: u32,
 }
 
 fn sky_vertex_batch(environment: SkyEnvironment) -> SkyVertexBatch {
-    let mut vertices = Vec::new();
-    if environment.is_visible() {
-        vertices.extend(sky_disc_vertices(environment.color));
-    }
-    let disc_vertex_count = vertices.len() as u32;
-    vertices.extend(sunrise_sunset_vertices(
+    let disc_vertices = if environment.is_visible() {
+        sky_disc_vertices()
+    } else {
+        Vec::new()
+    };
+    let sunrise_vertices = sunrise_sunset_vertices(
         environment.sunrise_sunset_color,
         environment.sun_angle_radians,
-    ));
-    let sunrise_vertex_start = disc_vertex_count;
-    let sunrise_vertex_count = vertices.len() as u32 - sunrise_vertex_start;
+    );
     SkyVertexBatch {
-        vertices,
-        disc_vertex_count,
-        sunrise_vertex_start,
-        sunrise_vertex_count,
+        disc_vertex_count: disc_vertices.len() as u32,
+        sunrise_vertex_count: sunrise_vertices.len() as u32,
+        disc_vertices,
+        sunrise_vertices,
     }
 }
 
@@ -1529,7 +1554,7 @@ fn rotate_z([x, y, z]: [f32; 3], radians: f32) -> [f32; 3] {
     [x * cos - y * sin, x * sin + y * cos, z]
 }
 
-fn sky_disc_vertices(color: [f32; 4]) -> Vec<SkyVertex> {
+fn sky_disc_vertices() -> Vec<SkyPositionVertex> {
     let mut ring = Vec::with_capacity(9);
     for degrees in (-180..=180).step_by(45) {
         let radians = (degrees as f32).to_radians();
@@ -1543,18 +1568,9 @@ fn sky_disc_vertices(color: [f32; 4]) -> Vec<SkyVertex> {
     let center = [0.0, SKY_DISC_Y, 0.0];
     let mut vertices = Vec::with_capacity((ring.len() - 1) * 3);
     for edge in ring.windows(2) {
-        vertices.push(SkyVertex {
-            position: center,
-            color,
-        });
-        vertices.push(SkyVertex {
-            position: edge[0],
-            color,
-        });
-        vertices.push(SkyVertex {
-            position: edge[1],
-            color,
-        });
+        vertices.push(SkyPositionVertex { position: center });
+        vertices.push(SkyPositionVertex { position: edge[0] });
+        vertices.push(SkyPositionVertex { position: edge[1] });
     }
     vertices
 }
@@ -1852,6 +1868,11 @@ mod tests {
 
     #[test]
     fn sky_disc_shader_uses_vanilla_sky_fog_end_shape() {
+        assert!(SKY_DISC_SHADER.contains("struct SkyDynamic"));
+        assert!(SKY_DISC_SHADER.contains("@location(0) position: vec3<f32>"));
+        assert!(!SKY_DISC_SHADER.contains("@location(1) color"));
+        assert!(SKY_DISC_SHADER
+            .contains("apply_sky_fog(sky_dynamic.color_modulator, input.spherical_distance"));
         assert!(SKY_DISC_SHADER.contains("let sky_end = camera.fog_visibility_ends.x;"));
         assert!(SKY_DISC_SHADER.contains("linear_fog_value(spherical_distance, 0.0, sky_end)"));
         assert!(
@@ -1909,6 +1930,7 @@ mod tests {
             &device,
             wgpu::TextureFormat::Rgba8Unorm,
             &camera_bind_group_layout,
+            &sky_dynamic_bind_group_layout,
         );
         let _sunrise_pipeline = create_sunrise_sunset_pipeline(
             &device,
@@ -2210,12 +2232,10 @@ mod tests {
 
     #[test]
     fn sky_disc_vertices_match_vanilla_top_disc_shape() {
-        let color = [0.25, 0.5, 0.75, 1.0];
-        let vertices = sky_disc_vertices(color);
+        let vertices = sky_disc_vertices();
 
         assert_eq!(vertices.len(), 24);
         assert_eq!(vertices[0].position, [0.0, SKY_DISC_Y, 0.0]);
-        assert_eq!(vertices[0].color, color);
         assert!((vertices[1].position[0] + SKY_DISC_RADIUS).abs() < 1e-4);
         assert_eq!(vertices[1].position[1], SKY_DISC_Y);
         assert!(vertices[1].position[2].abs() < 1e-4);
@@ -2254,11 +2274,14 @@ mod tests {
     fn sky_vertices_append_sunrise_sunset_after_top_disc() {
         let environment = SkyEnvironment::from_rgb([0.25, 0.5, 0.75])
             .with_sunrise_sunset([1.0, 0.25, 0.0, 0.75], 0.0);
-        let vertices = sky_vertex_batch(environment).vertices;
+        let batch = sky_vertex_batch(environment);
 
-        assert_eq!(vertices.len(), 24 + SUNRISE_STEPS * 3);
-        assert_eq!(vertices[0].color, environment.color);
-        assert_eq!(vertices[24].color, environment.sunrise_sunset_color);
+        assert_eq!(batch.disc_vertices.len(), 24);
+        assert_eq!(batch.sunrise_vertices.len(), SUNRISE_STEPS * 3);
+        assert_eq!(
+            batch.sunrise_vertices[0].color,
+            environment.sunrise_sunset_color
+        );
     }
 
     #[test]
@@ -2268,15 +2291,14 @@ mod tests {
         let batch = sky_vertex_batch(environment);
 
         assert_eq!(batch.disc_vertex_count, 24);
-        assert_eq!(batch.sunrise_vertex_start, batch.disc_vertex_count);
         assert_eq!(batch.sunrise_vertex_count, (SUNRISE_STEPS * 3) as u32);
+        assert_eq!(batch.disc_vertices.len() as u32, batch.disc_vertex_count);
         assert_eq!(
-            batch.vertices.len() as u32,
-            batch.disc_vertex_count + batch.sunrise_vertex_count
+            batch.sunrise_vertices.len() as u32,
+            batch.sunrise_vertex_count
         );
-        assert_eq!(batch.vertices[0].color, environment.color);
         assert_eq!(
-            batch.vertices[batch.sunrise_vertex_start as usize].color,
+            batch.sunrise_vertices[0].color,
             environment.sunrise_sunset_color
         );
     }

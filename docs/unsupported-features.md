@@ -979,13 +979,16 @@ When an agent does any of the following, update this file in the same slice:
     `LevelRenderer` ordering before sun/moon/stars. `END_SKY`, `STARS`, and
     `CELESTIAL` now also use vanilla's default back-face cull, with tests
     proving the local triangle-list expansion faces the camera origin for that
-    cull state. The sky-disc shader now also mirrors vanilla `core/sky.fsh`
-    fog shape by using renderer `FogSkyEnd` (`fog_visibility_ends.x`) for
-    spherical `0..FogSkyEnd` and cylindrical `FogSkyEnd..FogSkyEnd` fog while
-    leaving sunrise/sunset on the no-fog `position_color` path. Stars now mirror
-    vanilla `RenderPipelines.STARS` / `core/stars` more closely: the vertex
-    buffer is position-only and `STAR_BRIGHTNESS` is carried through a
-    `ColorModulator`-shaped sky dynamic uniform before draw. Celestial sun/moon
+    cull state. The sky-disc path now also mirrors vanilla `RenderPipelines.SKY`
+    / `core/sky` more closely: the vertex buffer is position-only, the shader
+    no longer reads per-vertex color, renderer `FogSkyEnd`
+    (`fog_visibility_ends.x`) drives spherical `0..FogSkyEnd` and cylindrical
+    `FogSkyEnd..FogSkyEnd` fog, and `skyColor` is carried through a
+    `ColorModulator`-shaped sky dynamic uniform before draw while sunrise/sunset
+    stays on the no-fog `position_color` path. Stars now mirror vanilla
+    `RenderPipelines.STARS` / `core/stars` more closely: the vertex buffer is
+    position-only and `STAR_BRIGHTNESS` is carried through a `ColorModulator`-
+    shaped sky dynamic uniform before draw. Celestial sun/moon
     rendering now also mirrors vanilla `RenderPipelines.CELESTIAL` /
     `core/position_tex` more closely: the vertex buffer is position+uv, texture
     alpha discard stays in the shader, and rain brightness is carried through
@@ -994,9 +997,9 @@ When an agent does any of the following, update this file in the same slice:
     `core/position_tex_color` more closely: the vertex buffer remains
     position+uv+color, the shader applies texture * vertexColor, alpha==0
     discard, and `ColorModulator = vec4(1, 1, 1, 1)` through the same sky dynamic
-    uniform before draw. Full sky-disc DynamicTransforms / `ColorModulator`
-    uniform ABI plus celestial/end-sky full model-matrix DynamicTransforms
-    expression remain ordinary P1 render-state work, not a P0 pipeline blocker.
+    uniform before draw. Full model-matrix DynamicTransforms expression for
+    sky-disc/celestial/end-sky remains ordinary P1 render-state work, not a P0
+    pipeline blocker.
     Basic
     cloud mesh presentation now consumes these visibility ends with vanilla
     default `CLOUD_COLOR` / `CLOUD_HEIGHT` and now loads vanilla

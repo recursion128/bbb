@@ -732,10 +732,15 @@ impl Renderer {
             config.width,
             config.height,
         );
-        let sky_pipeline = create_sky_pipeline(&device, format, &terrain_bind_group_layout);
+        let sky_dynamic_bind_group_layout = create_sky_dynamic_bind_group_layout(&device);
+        let sky_pipeline = create_sky_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &sky_dynamic_bind_group_layout,
+        );
         let sunrise_sunset_pipeline =
             create_sunrise_sunset_pipeline(&device, format, &terrain_bind_group_layout);
-        let sky_dynamic_bind_group_layout = create_sky_dynamic_bind_group_layout(&device);
         let star_pipeline = create_star_pipeline(
             &device,
             format,
@@ -1543,7 +1548,11 @@ impl Renderer {
             return;
         }
         self.sky_environment = environment;
-        self.sky_disc = create_sky_disc_gpu(&self.device, environment);
+        self.sky_disc = create_sky_disc_gpu(
+            &self.device,
+            &self.sky_dynamic_bind_group_layout,
+            environment,
+        );
         self.sky_celestials = self.celestial_atlas.as_ref().and_then(|atlas| {
             create_celestial_gpu(
                 &self.device,

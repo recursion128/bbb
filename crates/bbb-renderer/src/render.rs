@@ -154,11 +154,16 @@ impl Renderer {
                     sky_draw_calls += 1;
                 }
             } else if let Some(sky_disc) = &self.sky_disc {
-                pass.set_vertex_buffer(0, sky_disc.vertex_buffer.slice(..));
                 if sky_disc.disc_vertex_count > 0 {
                     pass.set_pipeline(&self.sky_pipeline);
                     pipeline_switches += 1;
                     pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+                    pass.set_bind_group(1, &sky_disc.dynamic.bind_group, &[]);
+                    let vertex_buffer = sky_disc
+                        .disc_vertex_buffer
+                        .as_ref()
+                        .expect("sky disc vertex buffer exists when count is non-zero");
+                    pass.set_vertex_buffer(0, vertex_buffer.slice(..));
                     pass.draw(0..sky_disc.disc_vertex_count, 0..1);
                     sky_draw_calls += 1;
                 }
@@ -167,8 +172,12 @@ impl Renderer {
                     pass.set_pipeline(&self.sunrise_sunset_pipeline);
                     pipeline_switches += 1;
                     pass.set_bind_group(0, &self.terrain_bind_group, &[]);
-                    let start = sky_disc.sunrise_vertex_start;
-                    pass.draw(start..start + sky_disc.sunrise_vertex_count, 0..1);
+                    let vertex_buffer = sky_disc
+                        .sunrise_vertex_buffer
+                        .as_ref()
+                        .expect("sunrise/sunset vertex buffer exists when count is non-zero");
+                    pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                    pass.draw(0..sky_disc.sunrise_vertex_count, 0..1);
                     sky_draw_calls += 1;
                 }
 
@@ -2306,6 +2315,31 @@ mod tests {
         assert!(
             sky < sunrise && sunrise < celestial && celestial < stars,
             "vanilla LevelRenderer draws sky disc, sunrise/sunset, then sun/moon/stars"
+        );
+    }
+
+    #[test]
+    fn sky_disc_draw_binds_color_modulator_uniform() {
+        let source = include_str!("render.rs");
+        let sky = source
+            .find("pass.set_pipeline(&self.sky_pipeline)")
+            .expect("sky disc pipeline is drawn");
+        let dynamic = source[sky..]
+            .find("pass.set_bind_group(1, &sky_disc.dynamic.bind_group, &[])")
+            .map(|index| sky + index)
+            .expect("sky disc binds DynamicTransforms-style ColorModulator uniform");
+        let vertex = source[dynamic..]
+            .find("pass.set_vertex_buffer(0, vertex_buffer.slice(..))")
+            .map(|index| dynamic + index)
+            .expect("sky disc position vertex buffer is bound after dynamic uniform");
+        let draw = source[vertex..]
+            .find("pass.draw(0..sky_disc.disc_vertex_count, 0..1)")
+            .map(|index| vertex + index)
+            .expect("sky disc is drawn after binding dynamic uniform");
+
+        assert!(
+            sky < dynamic && dynamic < vertex && vertex < draw,
+            "vanilla SKY uses core/sky with ColorModulator rather than per-vertex color"
         );
     }
 

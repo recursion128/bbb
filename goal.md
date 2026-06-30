@@ -309,14 +309,18 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `core/sky.fsh` 使用 `FogSkyEnd` 等价的 `camera.fog_visibility_ends.x`，
     以 spherical `0..FogSkyEnd` 和 cylindrical `FogSkyEnd..FogSkyEnd` 混入
     `FogColor`；sunrise/sunset 使用无 fog 的 `position_color` shape，stars
-    单独使用 `core/stars` shape。`SKY` 的完整
-    DynamicTransforms / `ColorModulator` uniform ABI 仍属后续 P1。
+    单独使用 `core/stars` shape。
+  - [x] sky `SKY` ColorModulator ABI：sky disc GPU path 现在使用 position-only
+    vertex buffer，shader 不再读取 per-vertex color，并通过 sky dynamic uniform
+    传递 `ColorModulator = skyColor`，匹配 vanilla
+    `RenderPipelines.SKY` / `core/sky`；render pass 测试固定 draw 前绑定
+    dynamic uniform。完整 DynamicTransforms model matrix 仍由 camera
+    view-projection 表达，后续可作为更细 sky ABI parity 继续推进。
   - [x] sky `STARS` ColorModulator ABI：stars GPU path 现在使用 position-only
     vertex layout，并通过单独 sky dynamic uniform 传递
     `ColorModulator = vec4(STAR_BRIGHTNESS)`，匹配 vanilla
     `RenderPipelines.STARS` / `core/stars`；测试固定 render pass 在 draw 前绑定
-    dynamic uniform。sky-disc 的完整 DynamicTransforms / `ColorModulator` ABI
-    仍属后续 P1。
+    dynamic uniform。
   - [x] sky `CELESTIAL` ColorModulator ABI：sun/moon GPU path 现在使用
     position+uv vertex layout，绑定 celestial atlas texture 后再绑定单独 sky
     dynamic uniform，传递 `ColorModulator = vec4(1, 1, 1, rainBrightness)`，
@@ -333,7 +337,7 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - [x] sky `END_SKY` / `STARS` / `CELESTIAL` default cull：这三条 pipeline
     现在也按 vanilla builder 默认启用 back-face cull；测试固定官方
     `SkyRenderer.buildEndSky` / `buildStars` / celestial quad 的 triangle-list
-    展开仍面向相机原点。剩余 sky-disc / full DynamicTransforms shader ABI
+    展开仍面向相机原点。剩余 full DynamicTransforms model-matrix shader ABI
     仍属后续 P1。
   - [x] terrain render-pipeline state：solid/cutout terrain 继续用 replace
     blend + depth-write，translucent terrain 继续用 translucent blend +
