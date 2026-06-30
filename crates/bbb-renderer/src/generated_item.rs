@@ -4,9 +4,9 @@
 //! silhouette (every opaque pixel bordering a transparent one gets a `1px` edge quad linking front to
 //! back). Corners use the same `FaceInfo` vertex selection and `CuboidFace`/`FaceBakery` UV assignment
 //! the block path uses, so the output matches what vanilla's `FaceBakery.bakeQuad` produces (for the
-//! identity model state the item generator always bakes with). The slab is thin and rendered un-culled,
-//! so the per-face winding canonicalization vanilla applies is unnecessary here — the four corners and
-//! their UVs already describe the exact textured surface.
+//! identity model state the item generator always bakes with). The slab is thin; the item-model mesh
+//! bake step normalizes triangle index order from each submitted normal so generated faces can run
+//! through the vanilla-default back-face-culled item pipeline.
 
 use crate::item_models::ItemModelQuad;
 
@@ -69,7 +69,7 @@ impl ItemSpriteRect {
 }
 
 /// The six cuboid faces, with the `FaceInfo` vertex selection (which `from`/`to` extent each of the four
-/// counter-clockwise corners reads) and the directional shade (vanilla `Direction.getShade`, AO off).
+/// vertices reads) and the directional shade (vanilla `Direction.getShade`, AO off).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ItemFace {
     Down,
@@ -82,7 +82,8 @@ enum ItemFace {
 
 impl ItemFace {
     /// Vanilla `FaceInfo` corner extents: each entry picks, per axis, the `from` (`false`) or `to`
-    /// (`true`) coordinate, wound counter-clockwise viewed from outside the face.
+    /// (`true`) coordinate. Some generated side faces pass inverted extents; mesh baking normalizes
+    /// triangle indices from the submitted normal before culling.
     fn corner_extents(self) -> [[bool; 3]; 4] {
         match self {
             ItemFace::Down => [
@@ -337,6 +338,8 @@ fn bake_face(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::item_models::{bake_item_model_mesh, ItemModelMesh};
+    use glam::{Mat4, Vec3};
 
     /// An atlas rect that maps `0..=1` sprite UVs straight through (identity), so UV asserts read as the
     /// raw `0..=1` sprite coordinates.
@@ -416,6 +419,17 @@ mod tests {
     }
 
     #[test]
+    fn generated_item_mesh_indices_face_submitted_normals_for_default_cull() {
+        let mut opaque = vec![false; 256];
+        opaque[8 * 16 + 8] = true;
+        let mask = SpriteAlphaMask::new(16, 16, opaque);
+        let quads = bake_generated_item_quads(&mask, UNIT_RECT, WHITE);
+        let mesh = bake_item_model_mesh(&quads, Mat4::IDENTITY);
+
+        assert_mesh_triangles_face_submitted_normals(&mesh);
+    }
+
+    #[test]
     fn empty_sprite_bakes_only_the_two_flat_faces() {
         let mask = SpriteAlphaMask::new(16, 16, vec![false; 256]);
         let quads = bake_generated_item_quads(&mask, UNIT_RECT, WHITE);
@@ -439,5 +453,26 @@ mod tests {
         let tint = [0.2, 0.4, 0.6, 1.0];
         let quads = bake_generated_item_quads(&full_16x16(), UNIT_RECT, tint);
         assert!(quads.iter().all(|q| q.tint == tint));
+    }
+
+    fn assert_mesh_triangles_face_submitted_normals(mesh: &ItemModelMesh) {
+        for indices in mesh.indices.chunks_exact(3) {
+            let a = mesh.vertices[indices[0] as usize].position;
+            let b = mesh.vertices[indices[1] as usize].position;
+            let c = mesh.vertices[indices[2] as usize].position;
+            let [nx, ny, nz, _] = mesh.vertices[indices[0] as usize].normal_diffuse;
+            let submitted_normal = Vec3::new(nx, ny, nz);
+            assert!(
+                triangle_normal(a, b, c).dot(submitted_normal) > 0.999,
+                "mesh triangle winding must face its submitted normal: {indices:?}"
+            );
+        }
+    }
+
+    fn triangle_normal(a: [f32; 3], b: [f32; 3], c: [f32; 3]) -> Vec3 {
+        let a = Vec3::from_array(a);
+        let b = Vec3::from_array(b);
+        let c = Vec3::from_array(c);
+        (b - a).cross(c - a).normalize()
     }
 }

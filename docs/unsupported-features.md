@@ -559,7 +559,10 @@ When an agent does any of the following, update this file in the same slice:
     `core/item.fsh` samples `Sampler0`, discards only when the texture alpha is
     below `ALPHA_CUTOUT 0.1`, and then applies the submitted tint / vertex color;
     the solid, translucent, and z-offset-forward item-model pipelines share that
-    shader behavior. Entity/model RenderTypes remain the GPU paths that apply the
+    shader behavior. Those item-model pipelines now also use vanilla's builder
+    default back-face cull, with the mesh bake step normalizing triangle index
+    order toward submitted normals and generated-item / block-item tests pinning
+    that front-face output. Entity/model RenderTypes remain the GPU paths that apply the
     16x16 `OverlayTexture` red-row / white-row mix.
     Flat/generated item material translucency metadata is still deferred to item
     presentation because that material source is not modeled yet; it is no longer
@@ -1864,14 +1867,17 @@ When an agent does any of the following, update this file in the same slice:
         `builtin/generated` `layerN` sprite becomes a `1/16`-thick slab (front
         `SOUTH` + back `NORTH` over `0..=16`, plus per-pixel side faces tracing
         the alpha silhouette), corners via `FaceInfo`/`FaceBakery` and UVs via
-        `CuboidFace` `R0`, rendered un-culled.
+        `CuboidFace` `R0`; the item-model mesh bake step normalizes triangle
+        index order for default back-face cull.
       - GPU item-model draw pass: the renderer draws baked `ItemModelMesh`es
-        with one item-model pipeline against two atlases — block-items sample
-        the blocks atlas (terrain bind group), flat/generated items sample the
-        item atlas (the dropped-item billboard bind group) — via
+        with vanilla-shaped item-model pipelines against two atlases —
+        block-items sample the blocks atlas (terrain bind group), flat/generated
+        items sample the item atlas (the dropped-item billboard bind group) — via
         `set_block_item_model_meshes` / `set_flat_item_model_meshes`, solid
-        (depth-tested + depth-writing) and un-culled, in a `Load` pass before
-        the billboards.
+        (depth-tested + depth-writing) with vanilla-default back-face cull, in a
+        `Load` pass before the billboards; translucent and z-offset-forward
+        item-model variants use the same cull baseline with their own target /
+        layering state.
       - first consumer DONE (dropped items, both paths): every dropped item
         entity renders as a 3D model instead of a billboard (native
         `item_models`). Block items bake their block render shape over the

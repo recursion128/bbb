@@ -150,7 +150,9 @@ fn tint_rgba(tint: TerrainTint) -> [f32; 4] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::item_models::{bake_item_model_mesh, ItemModelMesh};
     use crate::terrain::{TerrainFace, TerrainTransparency};
+    use glam::{Mat4, Vec3};
 
     #[test]
     fn cube_bakes_six_faces_with_vanilla_directional_shade() {
@@ -172,6 +174,7 @@ mod tests {
         assert_eq!(quads[1].normal, [0.0, 1.0, 0.0], "up normal");
         assert_eq!(quads[2].normal, [0.0, 0.0, -1.0], "north normal");
         assert_eq!(quads[4].normal, [-1.0, 0.0, 0.0], "west normal");
+        assert_mesh_triangles_face_submitted_normals(&bake_item_model_mesh(&quads, Mat4::IDENTITY));
         // The up face spans the top of the `0..=16` cube.
         assert_eq!(
             quads[1].corners,
@@ -241,8 +244,8 @@ mod tests {
 
     #[test]
     fn quads_shape_passes_corners_and_shades_by_normal() {
-        // A free-form quad renders unculled; its `0..=16` corners pass through and the shade follows the
-        // face nearest its normal (here +Z = south = 0.8).
+        // A free-form quad preserves caller winding; its `0..=16` corners pass through and the shade
+        // follows the face nearest its normal (here +Z = south = 0.8).
         let atlas = TerrainTextureAtlas::unit();
         let quad = TerrainQuad {
             corners: [
@@ -271,6 +274,7 @@ mod tests {
         assert_eq!(quads[0].normal, [0.0, 0.0, 1.0]);
         assert_eq!(quads[0].shade, 0.8);
         assert!(!quads[0].translucent);
+        assert_mesh_triangles_face_submitted_normals(&bake_item_model_mesh(&quads, Mat4::IDENTITY));
     }
 
     #[test]
@@ -294,5 +298,26 @@ mod tests {
             &atlas,
         )
         .is_empty());
+    }
+
+    fn assert_mesh_triangles_face_submitted_normals(mesh: &ItemModelMesh) {
+        for indices in mesh.indices.chunks_exact(3) {
+            let a = mesh.vertices[indices[0] as usize].position;
+            let b = mesh.vertices[indices[1] as usize].position;
+            let c = mesh.vertices[indices[2] as usize].position;
+            let [nx, ny, nz, _] = mesh.vertices[indices[0] as usize].normal_diffuse;
+            let submitted_normal = Vec3::new(nx, ny, nz);
+            assert!(
+                triangle_normal(a, b, c).dot(submitted_normal) > 0.999,
+                "mesh triangle winding must face its submitted normal: {indices:?}"
+            );
+        }
+    }
+
+    fn triangle_normal(a: [f32; 3], b: [f32; 3], c: [f32; 3]) -> Vec3 {
+        let a = Vec3::from_array(a);
+        let b = Vec3::from_array(b);
+        let c = Vec3::from_array(c);
+        (b - a).cross(c - a).normalize()
     }
 }

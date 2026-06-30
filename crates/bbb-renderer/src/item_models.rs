@@ -41,8 +41,11 @@ pub const ITEM_MODEL_FULL_BRIGHT_LIGHT: [f32; 2] = [1.0, 1.0];
 /// Shader-space no-overlay coordinate: vanilla `OverlayTexture.NO_OVERLAY = pack(0, 10)`.
 pub const ITEM_MODEL_NO_OVERLAY: [f32; 2] = [0.0, 10.0];
 
-/// One textured quad of a baked block/item model: four corners wound counter-clockwise (front face),
-/// in vanilla `0..=16` model space, with atlas-absolute UVs.
+const ITEM_MODEL_PIPELINE_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
+
+/// One textured quad of a baked block/item model: four corners in vanilla `0..=16` model space, with
+/// atlas-absolute UVs. The mesh bake step selects triangle index order from the submitted normal so the
+/// GPU front face stays valid for vanilla's default item back-face cull.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ItemModelQuad {
     pub corners: [[f32; 3]; 4],
@@ -113,9 +116,9 @@ impl ItemModelMesh {
 
     /// Appends `quads` to the mesh, normalizing each corner from vanilla `0..=16` model space to the unit
     /// cube and applying `transform` (the model→target-space matrix: world placement, GUI projection, or
-    /// the hand attach transform). Each quad becomes two triangles wound from its four corners; the
-    /// vertex color is the quad's submitted `tint` (alpha preserved), and every vertex carries the
-    /// caller-provided shader-space block/sky light plus `OverlayTexture.NO_OVERLAY`.
+    /// the hand attach transform). Each quad becomes two triangles whose front side follows the
+    /// submitted normal; the vertex color is the quad's submitted `tint` (alpha preserved), and every
+    /// vertex carries the caller-provided shader-space block/sky light plus `OverlayTexture.NO_OVERLAY`.
     pub fn append_quads_with_light(
         &mut self,
         quads: &[ItemModelQuad],
@@ -163,9 +166,20 @@ impl ItemModelMesh {
                     normal_diffuse,
                 });
             }
-            // Two triangles (0,1,2)+(0,2,3) over the CCW quad corners.
+            let source_normal = Vec3::from_array(quad.normal).normalize_or_zero();
+            let source_normal = if source_normal.length_squared() > 0.0 {
+                source_normal
+            } else {
+                Vec3::Z
+            };
+            let winding_normal = triangle_normal(quad.corners[0], quad.corners[1], quad.corners[2]);
+            let offsets = if winding_normal.dot(source_normal) >= 0.0 {
+                [0, 1, 2, 0, 2, 3]
+            } else {
+                [0, 2, 1, 0, 3, 2]
+            };
             self.indices
-                .extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+                .extend(offsets.into_iter().map(|offset| base + offset));
         }
     }
 
@@ -279,6 +293,13 @@ pub(crate) fn merge_item_model_meshes(
         indices.extend(mesh.indices.iter().map(|index| index + base));
     }
     (vertices, indices)
+}
+
+fn triangle_normal(a: [f32; 3], b: [f32; 3], c: [f32; 3]) -> Vec3 {
+    let a = Vec3::from_array(a);
+    let b = Vec3::from_array(b);
+    let c = Vec3::from_array(c);
+    (b - a).cross(c - a).normalize_or_zero()
 }
 
 impl Renderer {
@@ -506,8 +527,8 @@ fn item_model_z_offset_forward_shader() -> String {
 
 /// Builds the item-model render pipeline. Reuses the terrain camera+atlas bind-group layout (so it binds
 /// the resident blocks atlas directly), renders solid (depth-tested and depth-writing, since item models
-/// are real 3D geometry) and un-culled (the generated-item slab's faces are emitted without winding
-/// canonicalization, so both sides must draw).
+/// are real 3D geometry), and uses vanilla's default back-face cull. Mesh baking normalizes triangle
+/// indices against each submitted normal before this pipeline sees the geometry.
 pub(crate) fn create_item_model_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
@@ -596,7 +617,7 @@ fn create_item_model_pipeline_with_blend(
             topology: wgpu::PrimitiveTopology::TriangleList,
             strip_index_format: None,
             front_face: wgpu::FrontFace::Ccw,
-            cull_mode: None,
+            cull_mode: ITEM_MODEL_PIPELINE_CULL_MODE,
             polygon_mode: wgpu::PolygonMode::Fill,
             unclipped_depth: false,
             conservative: false,
@@ -664,6 +685,44 @@ mod tests {
             .vertices
             .iter()
             .all(|vertex| vertex.normal_diffuse == [0.0, 0.0, 1.0, 1.0]));
+    }
+
+    #[test]
+    fn item_model_pipeline_matches_vanilla_default_cull_state() {
+        assert_eq!(ITEM_MODEL_PIPELINE_CULL_MODE, Some(wgpu::Face::Back));
+    }
+
+    #[test]
+    fn baked_quad_indices_preserve_front_face_winding_for_cull() {
+        let mesh = bake_item_model_mesh(&[unit_quad(1.0, [1.0, 1.0, 1.0, 1.0])], Mat4::IDENTITY);
+        let normal = triangle_normal(
+            mesh.vertices[mesh.indices[0] as usize].position,
+            mesh.vertices[mesh.indices[1] as usize].position,
+            mesh.vertices[mesh.indices[2] as usize].position,
+        );
+
+        assert_eq!(mesh.vertices[0].normal_diffuse, [0.0, 0.0, 1.0, 1.0]);
+        assert!(normal.dot(Vec3::Z) > 0.999);
+    }
+
+    #[test]
+    fn reverse_wound_quad_indices_are_flipped_to_submitted_normal_for_cull() {
+        let mut quad = unit_quad(1.0, [1.0, 1.0, 1.0, 1.0]);
+        quad.corners = [
+            [0.0, 16.0, 16.0],
+            [16.0, 16.0, 16.0],
+            [16.0, 0.0, 16.0],
+            [0.0, 0.0, 16.0],
+        ];
+        let mesh = bake_item_model_mesh(&[quad], Mat4::IDENTITY);
+        let normal = triangle_normal(
+            mesh.vertices[mesh.indices[0] as usize].position,
+            mesh.vertices[mesh.indices[1] as usize].position,
+            mesh.vertices[mesh.indices[2] as usize].position,
+        );
+
+        assert_eq!(mesh.indices, vec![0, 2, 1, 0, 3, 2]);
+        assert!(normal.dot(Vec3::Z) > 0.999);
     }
 
     #[test]
@@ -779,6 +838,13 @@ mod tests {
         assert_eq!(mesh.vertices.len(), 8);
         // The second quad's triangles are rebased onto its own vertices.
         assert_eq!(mesh.indices, vec![0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7]);
+    }
+
+    fn triangle_normal(a: [f32; 3], b: [f32; 3], c: [f32; 3]) -> Vec3 {
+        let a = Vec3::from_array(a);
+        let b = Vec3::from_array(b);
+        let c = Vec3::from_array(c);
+        (b - a).cross(c - a).normalize()
     }
 
     #[test]
