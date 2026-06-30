@@ -1325,6 +1325,7 @@ impl NativeItemRuntime {
                             default_max_damage: None,
                             bundle_selected_item_index: None,
                             using_item: false,
+                            cooldown_progress: 0.0,
                             crossbow_charge: CrossbowChargeType::None,
                             main_hand_left: None,
                             context_dimension: None,
@@ -1468,6 +1469,7 @@ impl NativeItemRuntime {
             stack,
             bundle_selected_item_index,
             using_item,
+            0.0,
             None,
             None,
             None,
@@ -1483,6 +1485,7 @@ impl NativeItemRuntime {
         stack: &ItemStackSummary,
         bundle_selected_item_index: Option<i32>,
         using_item: bool,
+        cooldown_progress: f32,
         trim_material_keys: Option<&[String]>,
         owner_main_hand_left: Option<bool>,
         context_dimension: Option<&str>,
@@ -1491,6 +1494,7 @@ impl NativeItemRuntime {
             stack,
             bundle_selected_item_index,
             using_item,
+            cooldown_progress,
             trim_material_keys,
             owner_main_hand_left,
             context_dimension,
@@ -1515,6 +1519,7 @@ impl NativeItemRuntime {
             stack,
             None,
             using_item,
+            0.0,
             None,
             owner_main_hand_left,
             None,
@@ -1526,6 +1531,7 @@ impl NativeItemRuntime {
         stack: &ItemStackSummary,
         bundle_selected_item_index: Option<i32>,
         using_item: bool,
+        cooldown_progress: f32,
         trim_material_keys: Option<&[String]>,
         owner_main_hand_left: Option<bool>,
         context_dimension: Option<&str>,
@@ -1537,6 +1543,7 @@ impl NativeItemRuntime {
             Some(&stack.component_patch),
             bundle_selected_item_index,
             using_item,
+            cooldown_progress,
             trim_material_keys,
             owner_main_hand_left,
             context_dimension,
@@ -1546,7 +1553,7 @@ impl NativeItemRuntime {
     #[cfg(test)]
     pub(crate) fn icon_for_protocol_id(&self, protocol_id: i32) -> Option<ItemAtlasIcon> {
         let item_id = self.registry.as_ref()?.resource_id(protocol_id)?;
-        self.icon_for_resource_id(item_id, 1, None, None, false, None, None, None)
+        self.icon_for_resource_id(item_id, 1, None, None, false, 0.0, None, None, None)
     }
 
     fn icon_for_resource_id(
@@ -1556,6 +1563,7 @@ impl NativeItemRuntime {
         component_patch: Option<&DataComponentPatchSummary>,
         bundle_selected_item_index: Option<i32>,
         using_item: bool,
+        cooldown_progress: f32,
         trim_material_keys: Option<&[String]>,
         owner_main_hand_left: Option<bool>,
         context_dimension: Option<&str>,
@@ -1577,6 +1585,7 @@ impl NativeItemRuntime {
             default_max_damage,
             bundle_selected_item_index,
             using_item,
+            cooldown_progress,
             crossbow_charge: self.crossbow_charge_for(component_patch),
             main_hand_left: owner_main_hand_left,
             context_dimension,
@@ -1692,6 +1701,7 @@ impl NativeItemRuntime {
             default_max_damage,
             bundle_selected_item_index: None,
             using_item: false,
+            cooldown_progress: 0.0,
             crossbow_charge: self.crossbow_charge_for(Some(&template.component_patch)),
             main_hand_left: parent_context.main_hand_left,
             context_dimension: parent_context.context_dimension,
@@ -4568,7 +4578,7 @@ mod tests {
         };
         let selected = |stack: &ItemStackSummary| {
             runtime
-                .icon_for_stack_with_context(stack, None, false, Some(&trim_keys), None, None)
+                .icon_for_stack_with_context(stack, None, false, 0.0, Some(&trim_keys), None, None)
                 .unwrap()
                 .layers[0]
                 .uv

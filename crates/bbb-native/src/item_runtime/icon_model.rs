@@ -52,12 +52,11 @@ pub(super) enum ItemIconModelRef {
     Composite(Vec<ItemIconModelRef>),
 }
 
-/// The subset of vanilla `RangeSelectItemModelProperty` whose value is a pure
-/// projection of the item stack (id + count + component patch) and so resolvable
-/// from the GUI icon context without a `ClientLevel`/`ItemOwner`. The remaining
-/// numeric properties (`compass`, `time`, `cooldown`, `crossbow/pull`,
-/// `use_cycle`, `use_duration`) need ambient state and keep the value-blind
-/// fallback collapse until that context is threaded.
+/// The subset of vanilla `RangeSelectItemModelProperty` whose value is either a
+/// pure projection of the item stack or a narrow GUI owner value already
+/// threaded by the caller. The remaining numeric properties (`compass`, `time`,
+/// `crossbow/pull`, `use_cycle`, `use_duration`) need broader ambient state and
+/// keep the value-blind fallback collapse until that context is threaded.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) enum RangeDispatchProperty {
     /// `minecraft:damage` — `Damage.get`.
@@ -68,6 +67,8 @@ pub(super) enum RangeDispatchProperty {
     Count { normalize: bool },
     /// `minecraft:bundle/fullness` — `BundleFullness.get`.
     BundleFullness,
+    /// `minecraft:cooldown` — `Cooldown.get`.
+    Cooldown,
 }
 
 impl RangeDispatchProperty {
@@ -90,6 +91,7 @@ impl RangeDispatchProperty {
             Self::BundleFullness => {
                 bundle_fullness_value(ctx.component_patch, ctx.default_max_stack_size_for_item)
             }
+            Self::Cooldown => ctx.cooldown_progress,
         }
     }
 }
@@ -120,6 +122,7 @@ fn range_dispatch_property_for(property: &ItemModelProperty) -> Option<RangeDisp
                 .unwrap_or(true),
         }),
         "minecraft:bundle/fullness" => Some(RangeDispatchProperty::BundleFullness),
+        "minecraft:cooldown" => Some(RangeDispatchProperty::Cooldown),
         _ => None,
     }
 }
@@ -444,6 +447,10 @@ pub(super) struct IconResolveContext<'a> {
     pub default_max_damage: Option<i32>,
     pub bundle_selected_item_index: Option<i32>,
     pub using_item: bool,
+    /// Vanilla `Cooldown.get`: caller-projected
+    /// `Player.getCooldowns().getCooldownPercent(itemStack, 0.0F)`, or `0.0`
+    /// when there is no player owner / stack cooldown.
+    pub cooldown_progress: f32,
     pub crossbow_charge: CrossbowChargeType,
     /// Vanilla `MainHand.get`: `None` means this native call site has not
     /// threaded a `LivingEntity` owner, so select cases do not match and
@@ -724,7 +731,7 @@ pub(super) fn item_icon_model_ref_for_definition(
                     fallback: Box::new(fallback),
                 }
             } else {
-                // Context-needing numeric properties (compass/time/cooldown/
+                // Context-needing numeric properties (compass/time/
                 // crossbow-pull/use-cycle/use-duration) still collapse to the
                 // fallback (or first entry) since their value needs ambient
                 // state not available to the GUI icon resolver.

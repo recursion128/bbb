@@ -5703,7 +5703,6 @@ When an agent does any of the following, update this file in the same slice:
     icon resolver as that state becomes available to the GUI icon path:
     - `minecraft:compass` (needle direction to spawn/lodestone target)
     - `minecraft:time` (daytime / moon-phase clock dial, with the wobbler)
-    - `minecraft:cooldown` (item cooldown group progress)
     - `minecraft:crossbow/pull`, `minecraft:use_duration`, `minecraft:use_cycle`
       (local `using_item` use-tick state)
   - Wire the remaining ambient-context `select` properties onto the same
@@ -5783,6 +5782,11 @@ When an agent does any of the following, update this file in the same slice:
       current `ClientLevel.dimension()` resource key for GUI/HUD item icons from
       `bbb-world`'s `WorldLevelInfo.dimension`; no-level item consumers still
       fall back.
+    - `minecraft:cooldown` — `Cooldown.get`, matching the local player's
+      `ItemCooldowns.getCooldownPercent(itemStack, 0.0F)` for GUI/HUD item
+      icons. The item model property intentionally uses vanilla's `0.0F`
+      partial tick, while the separate HUD cooldown overlay still uses render
+      partial tick.
   - A value-aware `RangeDispatch` / `Select` is treated as a runtime condition so
     it is resolved per stack rather than collapsed at model-build time.
   - The trim-material registry keys are projected into the GUI icon path
@@ -5792,15 +5796,15 @@ When an agent does any of the following, update this file in the same slice:
   - `bbb-protocol` now preserves the `minecraft:bees` component occupant count
     (`DataComponents.BEES`, id 77) so bundle-fullness weight can distinguish
     beehive-like full-weight entries from ordinary stack-size weighted entries.
-  - The remaining numeric properties (`compass`, `time`, `cooldown`,
-    `crossbow/pull`, `use_cycle`, `use_duration`) and the remaining ambient
-    select properties (`local_time`, `context_entity_type`) still collapse to
-    the fallback/first entry because their value needs ambient `ItemOwner` /
-    use-tick / local time context the GUI icon resolver does not yet receive.
-    `minecraft:main_hand` still falls back on native item consumers that do not
-    pass a `LivingEntity` owner, such as fake/null-owner item surfaces.
-    `minecraft:component` also remains deferred until the runtime carries typed
-    component values for case matching. This is the documented follow-up.
+  - The remaining numeric properties (`compass`, `time`, `crossbow/pull`,
+    `use_cycle`, `use_duration`) and the remaining ambient select properties
+    (`local_time`, `context_entity_type`) still collapse to the fallback/first
+    entry because their value needs ambient `ItemOwner` / use-tick / local time
+    context the GUI icon resolver does not yet receive. `minecraft:main_hand`
+    still falls back on native item consumers that do not pass a `LivingEntity`
+    owner, such as fake/null-owner item surfaces. `minecraft:component` also
+    remains deferred until the runtime carries typed component values for case
+    matching. This is the documented follow-up.
 
 ### Native Input, Movement, Interaction, Inventory, And Command Flows
 

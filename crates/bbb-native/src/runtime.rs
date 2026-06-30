@@ -3969,10 +3969,16 @@ fn hud_item_icon_for_stack(
     let trim_material_keys = world_trim_material_keys(world);
     let owner_main_hand_left = world.local_player_main_arm_left();
     let context_dimension = world.level_info().map(|level| level.dimension.as_str());
+    // Vanilla `Cooldown.get` uses `getCooldownPercent(itemStack, 0.0F)` for
+    // item-model range dispatch. The HUD overlay below still uses render
+    // partial tick.
+    let item_model_cooldown_progress =
+        item_cooldown_percent_for_stack(world, item_runtime, item, 0.0).unwrap_or(0.0);
     let icon = item_runtime?.icon_for_stack_with_context(
         item,
         local_selected_bundle_item_index,
         using_item,
+        item_model_cooldown_progress,
         trim_material_keys.as_deref(),
         owner_main_hand_left,
         context_dimension,
@@ -4019,9 +4025,18 @@ fn hud_item_cooldown_progress_for_stack(
     item: &bbb_protocol::packets::ItemStackSummary,
     partial_tick: f32,
 ) -> Option<f32> {
-    let cooldown_group = item_cooldown_group(item_runtime, item)?;
-    let progress = world.item_cooldown_percent(&cooldown_group, partial_tick);
+    let progress = item_cooldown_percent_for_stack(world, item_runtime, item, partial_tick)?;
     (progress > 0.0).then_some(progress)
+}
+
+fn item_cooldown_percent_for_stack(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    item: &bbb_protocol::packets::ItemStackSummary,
+    partial_tick: f32,
+) -> Option<f32> {
+    let cooldown_group = item_cooldown_group(item_runtime, item)?;
+    Some(world.item_cooldown_percent(&cooldown_group, partial_tick))
 }
 
 fn item_cooldown_group(

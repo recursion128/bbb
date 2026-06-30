@@ -2488,7 +2488,15 @@ fn hotbar_item_icons_use_world_dimension_select_context() {
     let stack = item_stack(0, 1);
     let fallback_uv = item_runtime.icon_for_stack(&stack).unwrap().layers[0].uv;
     let overworld_uv = item_runtime
-        .icon_for_stack_with_context(&stack, None, false, None, None, Some("minecraft:overworld"))
+        .icon_for_stack_with_context(
+            &stack,
+            None,
+            false,
+            0.0,
+            None,
+            None,
+            Some("minecraft:overworld"),
+        )
         .unwrap()
         .layers[0]
         .uv;
@@ -2497,6 +2505,7 @@ fn hotbar_item_icons_use_world_dimension_select_context() {
             &stack,
             None,
             false,
+            0.0,
             None,
             None,
             Some("minecraft:the_nether"),
@@ -2548,6 +2557,65 @@ fn hotbar_item_icons_use_world_dimension_select_context() {
             min: nether_uv.min,
             max: nether_uv.max,
         }
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn hotbar_item_icons_use_vanilla_zero_partial_cooldown_model_property() {
+    let root = unique_runtime_temp_dir("hotbar-cooldown-range-dispatch");
+    write_runtime_cooldown_range_dispatch_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let mut stack = item_stack(0, 1);
+    stack.component_patch.use_cooldown_group = Some("minecraft:ender_pearl".to_string());
+    let fallback_uv = item_runtime.icon_for_stack(&stack).unwrap().layers[0].uv;
+    let active_uv = item_runtime
+        .icon_for_stack_with_context(&stack, None, false, 0.75, None, None, None)
+        .unwrap()
+        .layers[0]
+        .uv;
+    assert_eq!(
+        item_runtime
+            .icon_for_stack_with_context(&stack, None, false, 0.7, None, None, None)
+            .unwrap()
+            .layers[0]
+            .uv,
+        fallback_uv
+    );
+    assert_ne!(fallback_uv, active_uv);
+
+    let mut world = WorldStore::new();
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: stack.clone(),
+    });
+    let inactive_icons = hotbar_item_icons(&world, Some(&item_runtime), 0.0);
+    assert_eq!(
+        inactive_icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: fallback_uv.min,
+            max: fallback_uv.max,
+        }
+    );
+
+    world.apply_cooldown(bbb_protocol::packets::Cooldown {
+        cooldown_group: "minecraft:ender_pearl".to_string(),
+        duration: 20,
+    });
+    world.advance_item_cooldowns(5);
+    let active_icons = hotbar_item_icons(&world, Some(&item_runtime), 1.0);
+    assert_eq!(
+        active_icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: active_uv.min,
+            max: active_uv.max,
+        }
+    );
+    assert_eq!(
+        active_icons[0].as_ref().unwrap().cooldown_progress,
+        Some(0.7)
     );
 
     std::fs::remove_dir_all(root).unwrap();
@@ -5951,6 +6019,64 @@ fn write_runtime_context_dimension_select_item_assets(root: &Path) {
             .join("Items.java"),
         r#"public class Items {
             public static final Item DIMENSION_SELECTOR = registerItem("dimension_selector");
+        }"#,
+    );
+}
+
+fn write_runtime_cooldown_range_dispatch_item_assets(root: &Path) {
+    let assets = runtime_assets_dir(root);
+    write_runtime_json(
+        &assets.join("atlases").join("items.json"),
+        r#"{
+            "sources": [
+                {
+                    "type": "minecraft:directory",
+                    "prefix": "item/",
+                    "source": "item"
+                }
+            ]
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("atlases").join("blocks.json"),
+        r#"{
+            "sources": []
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("items").join("cooldown_selector.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:range_dispatch",
+                "property": "minecraft:cooldown",
+                "entries": [
+                    {
+                        "threshold": 0.725,
+                        "model": { "type": "minecraft:model", "model": "minecraft:item/cooldown_selector_active" }
+                    }
+                ],
+                "fallback": { "type": "minecraft:model", "model": "minecraft:item/cooldown_selector" }
+            }
+        }"#,
+    );
+    write_flat_runtime_item_model_and_texture(&assets, "cooldown_selector", &[40, 80, 120, 255]);
+    write_flat_runtime_item_model_and_texture(
+        &assets,
+        "cooldown_selector_active",
+        &[120, 80, 40, 255],
+    );
+    write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
+    write_runtime_json(
+        &root
+            .join("sources")
+            .join(bbb_pack::MC_VERSION)
+            .join("net")
+            .join("minecraft")
+            .join("world")
+            .join("item")
+            .join("Items.java"),
+        r#"public class Items {
+            public static final Item COOLDOWN_SELECTOR = registerItem("cooldown_selector");
         }"#,
     );
 }
