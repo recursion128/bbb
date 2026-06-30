@@ -608,6 +608,7 @@ fn bake_held_hand(
             context,
             left_arm,
             Some(instance.render_state.main_arm_left),
+            entity_hand_using_item(instance, off_hand),
             BLOCK_THIRD_PERSON_FALLBACK,
             GENERATED_THIRD_PERSON_FALLBACK,
             item_runtime,
@@ -656,6 +657,7 @@ fn bake_fox_held_item(
         BlockModelDisplayContext::Ground,
         false,
         Some(instance.render_state.main_arm_left),
+        entity_hand_using_item(instance, false),
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
         item_runtime,
@@ -693,6 +695,7 @@ fn bake_dolphin_carried_item(
         BlockModelDisplayContext::Ground,
         false,
         Some(instance.render_state.main_arm_left),
+        entity_hand_using_item(instance, false),
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
         item_runtime,
@@ -730,6 +733,7 @@ fn bake_witch_held_item(
         BlockModelDisplayContext::Ground,
         false,
         Some(instance.render_state.main_arm_left),
+        entity_hand_using_item(instance, false),
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
         item_runtime,
@@ -772,6 +776,7 @@ fn bake_copper_golem_held_items(
             context,
             left_hand,
             Some(instance.render_state.main_arm_left),
+            entity_hand_using_item(instance, left_hand),
             BLOCK_THIRD_PERSON_FALLBACK,
             GENERATED_THIRD_PERSON_FALLBACK,
             item_runtime,
@@ -817,6 +822,7 @@ fn bake_allay_held_items(
             context,
             left_hand,
             Some(instance.render_state.main_arm_left),
+            entity_hand_using_item(instance, left_hand),
             BLOCK_THIRD_PERSON_FALLBACK,
             GENERATED_THIRD_PERSON_FALLBACK,
             item_runtime,
@@ -854,6 +860,7 @@ fn bake_villager_crossed_arms_item(
         BlockModelDisplayContext::Ground,
         false,
         Some(instance.render_state.main_arm_left),
+        entity_hand_using_item(instance, false),
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
         item_runtime,
@@ -891,6 +898,7 @@ fn bake_panda_held_item(
         BlockModelDisplayContext::Ground,
         false,
         Some(instance.render_state.main_arm_left),
+        entity_hand_using_item(instance, false),
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
         item_runtime,
@@ -938,6 +946,7 @@ fn bake_custom_head_item(
             BlockModelDisplayContext::Head,
             false,
             Some(instance.render_state.main_arm_left),
+            false,
             BLOCK_HEAD_FALLBACK,
             GENERATED_HEAD_FALLBACK,
             item_runtime,
@@ -963,6 +972,10 @@ fn is_custom_head_skull_item_id(resource_id: &str) -> bool {
     )
 }
 
+fn entity_hand_using_item(instance: &EntityModelInstance, off_hand: bool) -> bool {
+    instance.render_state.is_using_item && instance.render_state.use_item_off_hand == off_hand
+}
+
 /// Bakes one item stack at an entity-supplied attach transform, applying the stack's retained item
 /// display transform for the selected vanilla context and falling back to the parent-model default for
 /// block vs generated items.
@@ -973,6 +986,7 @@ fn bake_item_stack_at_transform(
     context: BlockModelDisplayContext,
     left_hand: bool,
     owner_main_hand_left: Option<bool>,
+    using_item: bool,
     block_fallback: BlockModelDisplayTransform,
     generated_fallback: BlockModelDisplayTransform,
     item_runtime: &NativeItemRuntime,
@@ -1009,9 +1023,11 @@ fn bake_item_stack_at_transform(
 
     // Flat path.
     let mut quads: Vec<ItemModelQuad> = Vec::new();
-    for layer in item_runtime
-        .generated_item_layers_for_stack_with_owner_main_hand(stack, owner_main_hand_left)
-    {
+    for layer in item_runtime.generated_item_layers_for_stack_with_owner_context(
+        stack,
+        owner_main_hand_left,
+        using_item,
+    ) {
         quads.extend(bake_generated_item_quads(
             &layer.mask,
             layer.rect,
@@ -1874,6 +1890,7 @@ mod tests {
                 BlockModelDisplayContext::ThirdPersonRightHand,
                 false,
                 owner_main_hand_left,
+                false,
                 BLOCK_THIRD_PERSON_FALLBACK,
                 GENERATED_THIRD_PERSON_FALLBACK,
                 &item_runtime,
@@ -1897,6 +1914,46 @@ mod tests {
         assert_ne!(fallback, right);
         assert_ne!(fallback, left);
         assert_ne!(right, left);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn humanoid_held_generated_item_using_item_condition_matches_used_hand() {
+        // Vanilla `IsUsingItem.get` is true only when the submitted stack is the
+        // owner's active `getUseItem()` stack, not merely because the owner is
+        // using some item in the other hand.
+        let root = unique_item_model_temp_dir("held-using-item-condition");
+        write_using_item_condition_item_runtime_fixture(&root);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let mut world = WorldStore::new();
+        const ENTITY_ID: i32 = 607;
+        const PLAYER_ENTITY_TYPE_ID: i32 = 155;
+        world.apply_add_entity(protocol_add_entity(ENTITY_ID, PLAYER_ENTITY_TYPE_ID));
+        assert!(world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::MainHand, 0)));
+        let terrain_textures = TerrainTextureState::default();
+        let base = EntityModelInstance::player(ENTITY_ID, [0.0, 64.0, 0.0], 0.0, false);
+
+        let idle_models = held_item_models(&[base], &world, Some(&item_runtime), &terrain_textures);
+        let main_using_models = held_item_models(
+            &[base.with_is_using_item(true).with_use_item_off_hand(false)],
+            &world,
+            Some(&item_runtime),
+            &terrain_textures,
+        );
+        let off_using_models = held_item_models(
+            &[base.with_is_using_item(true).with_use_item_off_hand(true)],
+            &world,
+            Some(&item_runtime),
+            &terrain_textures,
+        );
+
+        assert_eq!(idle_models.flat_meshes.len(), 1);
+        assert_eq!(main_using_models.flat_meshes.len(), 1);
+        assert_eq!(off_using_models.flat_meshes.len(), 1);
+        assert_ne!(idle_models.flat_meshes[0], main_using_models.flat_meshes[0]);
+        assert_eq!(idle_models.flat_meshes[0], off_using_models.flat_meshes[0]);
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -2210,6 +2267,25 @@ mod tests {
         write_flat_item_model_and_texture(&assets, "hand_selector", &[40, 80, 120, 255]);
         write_flat_item_model_and_texture(&assets, "hand_selector_left", &[120, 40, 80, 255]);
         write_flat_item_model_and_texture(&assets, "hand_selector_right", &[80, 120, 40, 255]);
+    }
+
+    fn write_using_item_condition_item_runtime_fixture(root: &Path) {
+        let assets = item_model_assets_dir(root);
+        write_item_atlases(&assets);
+        write_item_registry_source(root, &["use_selector"]);
+        write_json(
+            &assets.join("items").join("use_selector.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:using_item",
+                    "on_false": { "type": "minecraft:model", "model": "minecraft:item/use_selector" },
+                    "on_true": { "type": "minecraft:model", "model": "minecraft:item/use_selector_using" }
+                }
+            }"#,
+        );
+        write_flat_item_model_and_texture(&assets, "use_selector", &[40, 80, 120, 255]);
+        write_flat_item_model_and_texture(&assets, "use_selector_using", &[120, 80, 40, 255]);
     }
 
     fn item_model_assets_dir(root: &Path) -> PathBuf {

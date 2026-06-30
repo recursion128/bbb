@@ -5741,6 +5741,11 @@ When an agent does any of the following, update this file in the same slice:
   - `bbb-native` resolves value-aware `minecraft:select` item models by matching
     the projected property value against each case's `when` values (vanilla
     `SelectItemModel`), falling back when no case matches.
+  - `bbb-native` resolves `minecraft:using_item` conditions for
+    third-person/entity-owned generated item attachments by matching the
+    submitted logical hand to vanilla `LivingEntity.getUseItem()` (`isUsingItem`
+    plus `getUsedItemHand`); using an item in the other hand keeps the submitted
+    stack on the false branch.
   - The context-free properties are projected from the item stack with vanilla
     math:
     - `minecraft:damage` — `Damage.get` (`damage / max_damage` normalized, or

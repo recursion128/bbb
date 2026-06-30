@@ -621,6 +621,11 @@ entity_render_state! {
     /// main-hand two-handed/affecting pose suppresses `poseLeftArm`. `false` for every entity not holding a
     /// charged off-hand crossbow — only `PlayerModel` consumes it.
     (with_player_crossbow_hold_off_hand) player_crossbow_hold_off_hand: bool = false;
+    /// Vanilla `LivingEntity.isUsingItem()`: true while the entity is actively
+    /// using a hand item. Item-model `minecraft:using_item` conditions need
+    /// this raw bit plus [`use_item_off_hand`](Self::use_item_off_hand) to
+    /// identify the exact stack returned by `getUseItem()`.
+    (with_is_using_item) is_using_item: bool = false;
     /// Vanilla `LivingEntity.getUsedItemHand()` off-hand bit: which arm the use-item pose
     /// ([`player_using_spyglass`](Self::player_using_spyglass)) applies to. `false` (main / right arm) when
     /// not using an off-hand item.
@@ -2669,6 +2674,7 @@ mod tests {
                 player_charging_crossbow: false,
                 player_crossbow_hold: false,
                 player_crossbow_hold_off_hand: false,
+                is_using_item: false,
                 use_item_off_hand: false,
                 pillager_holds_crossbow: false,
                 drowned_throw_trident: false,

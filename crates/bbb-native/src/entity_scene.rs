@@ -1580,6 +1580,7 @@ fn entity_model_instance(
                 .player_right_shoulder_parrot
                 .map(ParrotModelVariant::from_id),
         )
+        .with_is_using_item(source.is_using_item)
         .with_use_item_off_hand(source.use_item_off_hand)
         .with_pillager_holds_crossbow(pillager_holds_crossbow)
         .with_illager_main_hand_empty(illager_main_hand_empty)

@@ -664,6 +664,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     third-person/entity-attached generated item paths from vanilla
     `MainHand.get(... owner.getMainArm())`; GUI owner context and other
     consumers without threaded `LivingEntity` owner remain documented follow-up.
+  - [x] `minecraft:using_item` condition resolves for owner-backed
+    third-person/entity-attached generated item paths from vanilla
+    `IsUsingItem.get`: only the active `getUseItem()` hand selects the true
+    branch; using the other hand keeps the submitted stack on false.
 - HUD / inventory：
   - vanilla font / count / durability / cooldown / tooltip / screen depth behavior。
   - flat/generated item 与 3D block item 在 GUI pass 中的精确排序。

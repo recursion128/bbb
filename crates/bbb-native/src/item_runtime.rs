@@ -1409,18 +1409,23 @@ impl NativeItemRuntime {
         &self,
         stack: &ItemStackSummary,
     ) -> Vec<GeneratedItemLayer> {
-        self.generated_item_layers_for_stack_with_owner_main_hand(stack, None)
+        self.generated_item_layers_for_stack_with_owner_context(stack, None, false)
     }
 
     /// Generated item layers for an entity-owned stack. Vanilla `MainHand.get`
     /// returns null without a living owner; held-item paths pass the owner's
-    /// main arm so `minecraft:main_hand` select cases can resolve.
-    pub(crate) fn generated_item_layers_for_stack_with_owner_main_hand(
+    /// main arm so `minecraft:main_hand` select cases can resolve. Vanilla
+    /// `IsUsingItem.get` is true only for the stack currently returned by
+    /// `owner.getUseItem()`, so held-item paths also pass whether this hand is
+    /// the active use hand.
+    pub(crate) fn generated_item_layers_for_stack_with_owner_context(
         &self,
         stack: &ItemStackSummary,
         owner_main_hand_left: Option<bool>,
+        using_item: bool,
     ) -> Vec<GeneratedItemLayer> {
-        let Some(icon) = self.icon_for_stack_with_owner_main_hand(stack, owner_main_hand_left)
+        let Some(icon) =
+            self.icon_for_stack_with_owner_context(stack, owner_main_hand_left, using_item)
         else {
             return Vec::new();
         };
@@ -1485,7 +1490,16 @@ impl NativeItemRuntime {
         stack: &ItemStackSummary,
         owner_main_hand_left: Option<bool>,
     ) -> Option<ItemAtlasIcon> {
-        self.icon_for_stack_with_model_context(stack, None, false, None, owner_main_hand_left)
+        self.icon_for_stack_with_owner_context(stack, owner_main_hand_left, false)
+    }
+
+    pub(crate) fn icon_for_stack_with_owner_context(
+        &self,
+        stack: &ItemStackSummary,
+        owner_main_hand_left: Option<bool>,
+        using_item: bool,
+    ) -> Option<ItemAtlasIcon> {
+        self.icon_for_stack_with_model_context(stack, None, using_item, None, owner_main_hand_left)
     }
 
     fn icon_for_stack_with_model_context(
