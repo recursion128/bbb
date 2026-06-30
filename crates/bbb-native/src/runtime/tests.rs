@@ -2820,6 +2820,65 @@ fn hotbar_item_icons_use_vanilla_zero_partial_cooldown_model_property() {
 }
 
 #[test]
+fn hotbar_item_icons_project_world_time_range_dispatch() {
+    let root = unique_runtime_temp_dir("hotbar-time-range-dispatch");
+    write_runtime_time_range_dispatch_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let stack = item_stack(0, 1);
+    let fallback_uv = item_runtime.icon_for_stack(&stack).unwrap().layers[0].uv;
+    let night_uv = item_runtime
+        .icon_for_stack_with_context_and_use_context_and_time_context(
+            &stack,
+            None,
+            false,
+            crate::item_runtime::ItemModelUseContext::inactive(),
+            bbb_pack::BlockModelDisplayContext::Gui,
+            0.0,
+            None,
+            None,
+            Some("minecraft:player"),
+            Some("minecraft:overworld"),
+            Some(crate::item_runtime::ItemModelTimeContext { day_time: 18_000 }),
+        )
+        .unwrap()
+        .layers[0]
+        .uv;
+    assert_ne!(fallback_uv, night_uv);
+
+    let mut no_time_world = WorldStore::new();
+    no_time_world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: stack.clone(),
+    });
+    let no_time_icons = hotbar_item_icons(&no_time_world, Some(&item_runtime), 0.0);
+    assert_eq!(
+        no_time_icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: fallback_uv.min,
+            max: fallback_uv.max,
+        }
+    );
+
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut world, 18_000);
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: stack,
+    });
+    let icons = hotbar_item_icons(&world, Some(&item_runtime), 0.0);
+    assert_eq!(
+        icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: night_uv.min,
+            max: night_uv.max,
+        }
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn dropped_item_models_use_world_trim_material_select_context() {
     let root = unique_runtime_temp_dir("dropped-trim-material-select");
     write_runtime_trim_material_select_item_assets(&root);
@@ -6542,6 +6601,71 @@ fn write_runtime_cooldown_range_dispatch_item_assets(root: &Path) {
             .join("Items.java"),
         r#"public class Items {
             public static final Item COOLDOWN_SELECTOR = registerItem("cooldown_selector");
+        }"#,
+    );
+}
+
+fn write_runtime_time_range_dispatch_item_assets(root: &Path) {
+    let assets = runtime_assets_dir(root);
+    write_runtime_json(
+        &assets.join("atlases").join("items.json"),
+        r#"{
+            "sources": [
+                {
+                    "type": "minecraft:directory",
+                    "prefix": "item/",
+                    "source": "item"
+                }
+            ]
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("atlases").join("blocks.json"),
+        r#"{
+            "sources": []
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("items").join("time_selector.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:range_dispatch",
+                "property": "minecraft:time",
+                "source": "daytime",
+                "scale": 4.0,
+                "entries": [
+                    {
+                        "threshold": 1.0,
+                        "model": { "type": "minecraft:model", "model": "minecraft:item/time_selector_evening" }
+                    },
+                    {
+                        "threshold": 2.0,
+                        "model": { "type": "minecraft:model", "model": "minecraft:item/time_selector_night" }
+                    }
+                ],
+                "fallback": { "type": "minecraft:model", "model": "minecraft:item/time_selector_day" }
+            }
+        }"#,
+    );
+    write_flat_runtime_item_model_and_texture(&assets, "time_selector_day", &[40, 80, 120, 255]);
+    write_flat_runtime_item_model_and_texture(
+        &assets,
+        "time_selector_evening",
+        &[120, 80, 40, 255],
+    );
+    write_flat_runtime_item_model_and_texture(&assets, "time_selector_night", &[80, 40, 120, 255]);
+    write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
+    write_runtime_json(
+        &root
+            .join("sources")
+            .join(bbb_pack::MC_VERSION)
+            .join("net")
+            .join("minecraft")
+            .join("world")
+            .join("item")
+            .join("Items.java"),
+        r#"public class Items {
+            public static final Item TIME_SELECTOR = registerItem("time_selector");
         }"#,
     );
 }

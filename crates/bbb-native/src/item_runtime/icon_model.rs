@@ -12,7 +12,7 @@ use serde_json::Value;
 
 use super::{
     first_texture_id, generated_layer_texture_refs, ItemIconTextureLayer, ItemIconTextureRef,
-    ItemIconTint, ItemModelUseContext, ItemTextureState, ITEM_TINT_WHITE,
+    ItemIconTint, ItemModelTimeContext, ItemModelUseContext, ItemTextureState, ITEM_TINT_WHITE,
 };
 
 // 26.1 DataComponents ids from vanilla registration order.
@@ -82,6 +82,10 @@ pub(super) enum RangeDispatchProperty {
     UseCycle { period: f32 },
     /// `minecraft:crossbow/pull` — `CrossbowPull.get`.
     CrossbowPull,
+    /// `minecraft:time` — `Time.get`, currently projecting the target value
+    /// for `daytime` / `moon_phase`; vanilla wobbler smoothing remains a
+    /// follow-up.
+    Time { source: TimeSource },
 }
 
 impl RangeDispatchProperty {
@@ -139,6 +143,7 @@ impl RangeDispatchProperty {
                     }
                 }
             }
+            Self::Time { source } => source.value(ctx),
         }
     }
 }
@@ -187,7 +192,47 @@ fn range_dispatch_property_for(property: &ItemModelProperty) -> Option<RangeDisp
                 .unwrap_or(1.0),
         }),
         "minecraft:crossbow/pull" => Some(RangeDispatchProperty::CrossbowPull),
+        "minecraft:time" => property
+            .raw()
+            .get("source")
+            .and_then(Value::as_str)
+            .and_then(TimeSource::parse)
+            .map(|source| RangeDispatchProperty::Time { source }),
         _ => None,
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum TimeSource {
+    Random,
+    Daytime,
+    MoonPhase,
+}
+
+impl TimeSource {
+    fn parse(value: &str) -> Option<Self> {
+        match value {
+            "random" => Some(Self::Random),
+            "daytime" => Some(Self::Daytime),
+            "moon_phase" => Some(Self::MoonPhase),
+            _ => None,
+        }
+    }
+
+    fn value(self, ctx: IconResolveContext<'_>) -> f32 {
+        if ctx.context_entity_type.is_none() {
+            return 0.0;
+        }
+        let Some(time) = ctx.time_context else {
+            return 0.0;
+        };
+        match self {
+            // Vanilla uses a persistent RandomSource for this branch. Keep the
+            // no-context / deterministic fallback until that state exists.
+            Self::Random => 0.0,
+            Self::Daytime => overworld_sun_angle(time.day_time) / 360.0,
+            Self::MoonPhase => moon_phase_index(time.day_time) as f32 / 8.0,
+        }
     }
 }
 
@@ -678,6 +723,9 @@ pub(super) struct IconResolveContext<'a> {
     pub context_entity_type: Option<&'a str>,
     /// Vanilla `LocalTime.get`: wall-clock millis used for the formatted date.
     pub local_time_epoch_millis: Option<i64>,
+    /// Vanilla `Time.get`: world clock values. `None` means this native call
+    /// site has no `ClientLevel` context, so the property returns `0.0`.
+    pub time_context: Option<ItemModelTimeContext>,
     pub default_max_stack_size_for_item: Option<&'a dyn Fn(i32) -> i32>,
     /// `minecraft:trim_material` registry keys by holder id (the dynamic
     /// registry, projected from `bbb-world` at the call site).
@@ -791,6 +839,14 @@ fn parse_time_zone_offset(offset: &str) -> Option<FixedOffset> {
         return None;
     }
     FixedOffset::east_opt(sign * (hour * 3600 + minute * 60))
+}
+
+fn overworld_sun_angle(day_time: i64) -> f32 {
+    ((day_time - 6_000) as f32 * 360.0 / 24_000.0).rem_euclid(360.0)
+}
+
+fn moon_phase_index(day_time: i64) -> i64 {
+    day_time.rem_euclid(24_000 * 8) / 24_000
 }
 
 impl ItemIconModel {

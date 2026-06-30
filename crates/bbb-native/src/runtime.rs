@@ -3999,6 +3999,11 @@ fn hud_item_icon_for_stack(
     let owner_main_hand_left = world.local_player_main_arm_left();
     let context_entity_type = Some("minecraft:player");
     let context_dimension = world.level_info().map(|level| level.dimension.as_str());
+    let time_context = world
+        .world_time()
+        .map(|time| crate::item_runtime::ItemModelTimeContext {
+            day_time: time.day_time,
+        });
     // Vanilla `Cooldown.get` uses `getCooldownPercent(itemStack, 0.0F)` for
     // item-model range dispatch. The HUD overlay below still uses render
     // partial tick.
@@ -4013,7 +4018,7 @@ fn hud_item_icon_for_stack(
     } else {
         crate::item_runtime::ItemModelUseContext::inactive()
     };
-    let icon = item_runtime.icon_for_stack_with_context_and_use_context(
+    let icon = item_runtime.icon_for_stack_with_context_and_use_context_and_time_context(
         item,
         local_selected_bundle_item_index,
         using_item,
@@ -4024,6 +4029,7 @@ fn hud_item_icon_for_stack(
         owner_main_hand_left,
         context_entity_type,
         context_dimension,
+        time_context,
     )?;
     Some(HudItemIcon {
         layers: icon

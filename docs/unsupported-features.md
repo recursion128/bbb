@@ -5710,7 +5710,7 @@ When an agent does any of the following, update this file in the same slice:
   - Thread the ambient-context numeric `range_dispatch` properties through the
     icon resolver as that state becomes available to the GUI icon path:
     - `minecraft:compass` (needle direction to spawn/lodestone target)
-    - `minecraft:time` (daytime / moon-phase clock dial, with the wobbler)
+    - `minecraft:time` stateful wobbler smoothing and `source=random`
   - Wire the remaining ambient-context `select` properties onto the same
     resolver:
     - `minecraft:context_entity_type` for any future non-GUI item consumer that
@@ -5849,6 +5849,13 @@ When an agent does any of the following, update this file in the same slice:
       offset `time_zone` values use that offset; absent `time_zone` uses the
       system local timezone like vanilla. Tests pin GMT `12-25` selecting the
       Christmas branch and `12-27` selecting the fallback.
+    - `minecraft:time` — `Time.get`, for GUI/HUD item icons with a local-player
+      owner and `ClientLevel` context. Native currently projects the
+      `daytime` target from the overworld sun angle and `moon_phase` from the
+      vanilla eight-phase `day_time / 24000` cycle, then applies vanilla
+      range-dispatch threshold selection. Tests pin no-level `0.0` fallback and
+      overworld day-time texture selection; stateful wobbler smoothing and
+      `source=random` remain follow-up.
     - `minecraft:component` — `ComponentContents.get`, currently matching
       decoded persistent scalar / enum components with typed `when` values:
       `minecraft:max_stack_size`, `minecraft:max_damage`, `minecraft:damage`,
@@ -5895,16 +5902,18 @@ When an agent does any of the following, update this file in the same slice:
   - `bbb-protocol` now preserves the `minecraft:bees` component occupant count
     (`DataComponents.BEES`, id 77) so bundle-fullness weight can distinguish
     beehive-like full-weight entries from ordinary stack-size weighted entries.
-  - The remaining numeric properties (`compass`, `time`) still collapse to the
-    fallback/first entry because their value needs compass / world-time context
-    the GUI icon resolver does not yet receive. `minecraft:local_time` now
-    resolves the vanilla chest/trapped-chest `MM-dd` selector from wall-clock
-    time; full ICU pattern / locale parity remains follow-up. GUI/HUD use-tick
-    properties are wired for the local active stack, owner-backed third-person
-    generated held-item paths use the entity render state's shared use tick
-    counter, and both paths apply vanilla Quick Charge-modified crossbow charge
-    duration when the enchantment registry is available. First-person generated
-    item paths are still documented follow-up.
+  - The remaining numeric `minecraft:compass` property still collapses to the
+    fallback/first entry because its value needs compass target/owner position
+    context the GUI icon resolver does not yet receive. `minecraft:time`
+    projects GUI/HUD `daytime` / `moon_phase` target values from world time,
+    but its stateful wobbler smoothing and `source=random` remain follow-up.
+    `minecraft:local_time` resolves the vanilla chest/trapped-chest `MM-dd`
+    selector from wall-clock time; full ICU pattern / locale parity remains
+    follow-up. GUI/HUD use-tick properties are wired for the local active stack,
+    owner-backed third-person generated held-item paths use the entity render
+    state's shared use tick counter, and both paths apply vanilla Quick
+    Charge-modified crossbow charge duration when the enchantment registry is
+    available. First-person generated item paths are still documented follow-up.
     `minecraft:main_hand` and `minecraft:context_entity_type` still fall back on
     native item consumers that do not pass a `LivingEntity` owner, such as
     fake/null-owner item surfaces. `minecraft:component` is wired for the

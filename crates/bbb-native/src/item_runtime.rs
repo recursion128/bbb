@@ -1361,6 +1361,7 @@ impl NativeItemRuntime {
                             context_dimension: None,
                             context_entity_type: None,
                             local_time_epoch_millis: self.local_time_epoch_millis(),
+                            time_context: None,
                             default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
                             trim_material_keys: None,
                         })
@@ -1622,6 +1623,35 @@ impl NativeItemRuntime {
         context_entity_type: Option<&str>,
         context_dimension: Option<&str>,
     ) -> Option<ItemAtlasIcon> {
+        self.icon_for_stack_with_context_and_use_context_and_time_context(
+            stack,
+            bundle_selected_item_index,
+            using_item,
+            use_context,
+            display_context,
+            cooldown_progress,
+            trim_material_keys,
+            owner_main_hand_left,
+            context_entity_type,
+            context_dimension,
+            None,
+        )
+    }
+
+    pub(crate) fn icon_for_stack_with_context_and_use_context_and_time_context(
+        &self,
+        stack: &ItemStackSummary,
+        bundle_selected_item_index: Option<i32>,
+        using_item: bool,
+        use_context: ItemModelUseContext,
+        display_context: BlockModelDisplayContext,
+        cooldown_progress: f32,
+        trim_material_keys: Option<&[String]>,
+        owner_main_hand_left: Option<bool>,
+        context_entity_type: Option<&str>,
+        context_dimension: Option<&str>,
+        time_context: Option<ItemModelTimeContext>,
+    ) -> Option<ItemAtlasIcon> {
         self.icon_for_stack_with_model_context(
             stack,
             bundle_selected_item_index,
@@ -1633,6 +1663,7 @@ impl NativeItemRuntime {
             owner_main_hand_left,
             context_entity_type,
             context_dimension,
+            time_context,
         )
     }
 
@@ -1661,6 +1692,7 @@ impl NativeItemRuntime {
             owner_main_hand_left,
             None,
             None,
+            None,
         )
     }
 
@@ -1676,6 +1708,7 @@ impl NativeItemRuntime {
         owner_main_hand_left: Option<bool>,
         context_entity_type: Option<&str>,
         context_dimension: Option<&str>,
+        time_context: Option<ItemModelTimeContext>,
     ) -> Option<ItemAtlasIcon> {
         let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
         let item_model_id = item_model_id_for_stack(item_id, Some(&stack.component_patch))?;
@@ -1693,6 +1726,7 @@ impl NativeItemRuntime {
             owner_main_hand_left,
             context_entity_type,
             context_dimension,
+            time_context,
         )
     }
 
@@ -1709,6 +1743,7 @@ impl NativeItemRuntime {
             ItemModelUseContext::inactive(),
             BlockModelDisplayContext::Gui,
             0.0,
+            None,
             None,
             None,
             None,
@@ -1731,6 +1766,7 @@ impl NativeItemRuntime {
         owner_main_hand_left: Option<bool>,
         context_entity_type: Option<&str>,
         context_dimension: Option<&str>,
+        time_context: Option<ItemModelTimeContext>,
     ) -> Option<ItemAtlasIcon> {
         let default_max_damage = self
             .registry
@@ -1758,6 +1794,7 @@ impl NativeItemRuntime {
             context_dimension,
             context_entity_type,
             local_time_epoch_millis: self.local_time_epoch_millis(),
+            time_context,
             default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
             trim_material_keys,
         };
@@ -1906,6 +1943,7 @@ impl NativeItemRuntime {
             context_dimension: parent_context.context_dimension,
             context_entity_type: parent_context.context_entity_type,
             local_time_epoch_millis: parent_context.local_time_epoch_millis,
+            time_context: parent_context.time_context,
             default_max_stack_size_for_item: parent_context.default_max_stack_size_for_item,
             trim_material_keys: parent_context.trim_material_keys,
         };
@@ -2569,6 +2607,13 @@ impl ItemModelUseContext {
                 .map(|ticks| ticks as f32),
         }
     }
+}
+
+/// World-clock values exposed to vanilla item-model numeric properties such as
+/// `minecraft:time`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct ItemModelTimeContext {
+    pub(crate) day_time: i64,
 }
 
 /// One layer of a generated (flat) item ready for 3D extrusion: the sprite's alpha silhouette, its
