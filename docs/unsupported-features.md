@@ -973,10 +973,12 @@ When an agent does any of the following, update this file in the same slice:
     ranges and GPU pipelines: `SKY` uses replace/no blend plus default
     back-face cull, while `SUNRISE_SUNSET` uses translucent blend plus default
     back-face cull; both remain depth-state-free and preserve vanilla
-    `LevelRenderer` ordering before sun/moon/stars. Sky-disc
-    DynamicTransforms/fog shader ABI plus end-sky, star, and celestial
-    cull/shader ABI refinement remains ordinary P1 render-state work, not a P0
-    pipeline blocker. Basic
+    `LevelRenderer` ordering before sun/moon/stars. `END_SKY`, `STARS`, and
+    `CELESTIAL` now also use vanilla's default back-face cull, with tests
+    proving the local triangle-list expansion faces the camera origin for that
+    cull state. Sky-disc DynamicTransforms/fog shader ABI plus end-sky, star,
+    and celestial shader ABI refinement remains ordinary P1 render-state work,
+    not a P0 pipeline blocker. Basic
     cloud mesh presentation now consumes these visibility ends with vanilla
     default `CLOUD_COLOR` / `CLOUD_HEIGHT` and now loads vanilla
     `textures/environment/clouds.png` for flat cloud cell geometry with vanilla

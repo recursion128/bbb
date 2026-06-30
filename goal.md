@@ -297,8 +297,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     sunrise -> sun/moon/stars；`SKY` pipeline 使用 replace/no blend、默认
     back-face cull、无 depth state，`SUNRISE_SUNSET` 使用 translucent blend、
     默认 back-face cull、无 depth state。二者仍因 wgpu 用 triangle-list
-    展开官方 fan；`SKY` 的 DynamicTransforms/fog shader ABI，以及
-    `END_SKY` / `STARS` / `CELESTIAL` 的 cull/shader ABI 细化仍属后续 P1。
+    展开官方 fan；`SKY` 的 DynamicTransforms/fog shader ABI 仍属后续 P1。
+  - [x] sky `END_SKY` / `STARS` / `CELESTIAL` default cull：这三条 pipeline
+    现在也按 vanilla builder 默认启用 back-face cull；测试固定官方
+    `SkyRenderer.buildEndSky` / `buildStars` / celestial quad 的 triangle-list
+    展开仍面向相机原点。更细的 `core/position_tex(_color)` / `core/stars`
+    shader ABI 仍属后续 P1。
   - [x] terrain render-pipeline state：solid/cutout terrain 继续用 replace
     blend + depth-write，translucent terrain 继续用 translucent blend +
     no depth-write；三者现在都按 vanilla `SOLID_TERRAIN` /

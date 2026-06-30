@@ -588,7 +588,7 @@ pub(super) fn create_star_pipeline(
         }),
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,
-            cull_mode: None,
+            cull_mode: sky_cull_mode(),
             ..Default::default()
         },
         depth_stencil: sky_depth_stencil_state(),
@@ -687,7 +687,7 @@ pub(super) fn create_end_sky_pipeline(
         }),
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,
-            cull_mode: None,
+            cull_mode: sky_cull_mode(),
             ..Default::default()
         },
         depth_stencil: sky_depth_stencil_state(),
@@ -738,7 +738,7 @@ pub(super) fn create_celestial_pipeline(
         }),
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,
-            cull_mode: None,
+            cull_mode: sky_cull_mode(),
             ..Default::default()
         },
         depth_stencil: sky_depth_stencil_state(),
@@ -1806,6 +1806,61 @@ mod tests {
     }
 
     #[test]
+    fn end_sky_celestial_and_star_winding_faces_origin_for_vanilla_cull() {
+        for face in 0..6 {
+            let quad = end_sky_face_vertices(face);
+            let normal = triangle_normal(quad[0].position, quad[1].position, quad[2].position);
+            let center = quad_center([
+                quad[0].position,
+                quad[1].position,
+                quad[2].position,
+                quad[3].position,
+            ]);
+            assert!(
+                normal.dot(center) < 0.0,
+                "end sky face {face} must face inward for default back-face cull"
+            );
+        }
+
+        let uv_rect = SkyTextureUvRect {
+            u0: 0.0,
+            v0: 0.0,
+            u1: 1.0,
+            v1: 1.0,
+        };
+        let celestial = celestial_quad_vertices(
+            CELESTIAL_SUN_SIZE,
+            0.0,
+            uv_rect,
+            CelestialUvOrientation::Sun,
+            1.0,
+        );
+        let normal = triangle_normal(
+            celestial[0].position,
+            celestial[1].position,
+            celestial[2].position,
+        );
+        let center = quad_center([
+            celestial[0].position,
+            celestial[1].position,
+            celestial[2].position,
+            celestial[5].position,
+        ]);
+        assert!(
+            normal.dot(center) < 0.0,
+            "celestial quads must face the camera origin for default back-face cull"
+        );
+
+        let star = base_star_vertices();
+        let normal = triangle_normal(star[0], star[1], star[2]);
+        let center = quad_center([star[0], star[1], star[2], star[5]]);
+        assert!(
+            normal.dot(center) < 0.0,
+            "star quads must face the camera origin for default back-face cull"
+        );
+    }
+
+    #[test]
     fn sky_disc_vertices_match_vanilla_top_disc_shape() {
         let color = [0.25, 0.5, 0.75, 1.0];
         let vertices = sky_disc_vertices(color);
@@ -1903,6 +1958,21 @@ mod tests {
             center[0] += vertex.position[0] * 0.25;
             center[1] += vertex.position[1] * 0.25;
             center[2] += vertex.position[2] * 0.25;
+        }
+        center
+    }
+
+    fn triangle_normal(a: [f32; 3], b: [f32; 3], c: [f32; 3]) -> Vec3 {
+        let a = Vec3::from_array(a);
+        let b = Vec3::from_array(b);
+        let c = Vec3::from_array(c);
+        (b - a).cross(c - a).normalize()
+    }
+
+    fn quad_center(vertices: [[f32; 3]; 4]) -> Vec3 {
+        let mut center = Vec3::ZERO;
+        for vertex in vertices {
+            center += Vec3::from_array(vertex) * 0.25;
         }
         center
     }
