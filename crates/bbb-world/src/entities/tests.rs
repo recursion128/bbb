@@ -14,9 +14,9 @@ use bbb_protocol::packets::{
     ItemEnchantmentSummary, ItemStackSummary, ItemStackSummary as ProtocolItemStackSummary,
     LevelEvent as ProtocolLevelEvent, MinecartStep as ProtocolMinecartStep,
     MoveMinecartAlongTrack as ProtocolMoveMinecartAlongTrack, MoveVehicle as ProtocolMoveVehicle,
-    PlayLogin as ProtocolPlayLogin, PlayerInfoAction as ProtocolPlayerInfoAction,
-    PlayerInfoEntry as ProtocolPlayerInfoEntry, PlayerInfoUpdate as ProtocolPlayerInfoUpdate,
-    PlayerTeamMethod as ProtocolPlayerTeamMethod,
+    PlayLogin as ProtocolPlayLogin, PlayTime as ProtocolPlayTime,
+    PlayerInfoAction as ProtocolPlayerInfoAction, PlayerInfoEntry as ProtocolPlayerInfoEntry,
+    PlayerInfoUpdate as ProtocolPlayerInfoUpdate, PlayerTeamMethod as ProtocolPlayerTeamMethod,
     PlayerTeamParameters as ProtocolPlayerTeamParameters, RemoveEntities as ProtocolRemoveEntities,
     RotateHead as ProtocolRotateHead, SetEntityData as ProtocolSetEntityData,
     SetEntityLink as ProtocolSetEntityLink, SetEntityMotion as ProtocolSetEntityMotion,
@@ -8786,6 +8786,141 @@ fn camel_pick_bounds_follow_vanilla_sitting_pose_and_age_scale() {
 }
 
 #[test]
+fn camel_body_anchor_y_offset_matches_vanilla_sit_stand_curve() {
+    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
+    const ENTITY_DATA_POSE_ID: u8 = 6;
+    const AGEABLE_BABY_DATA_ID: u8 = 16;
+    const CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID: u8 = 20;
+    const POSE_STANDING: i32 = 0;
+    const POSE_SITTING: i32 = 10;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(45, 19));
+    store.apply_add_entity(protocol_add_entity_with_type(46, 20));
+    store.apply_add_entity(protocol_add_entity_with_type(47, 30));
+    store.apply_world_time(ProtocolPlayTime {
+        game_time: 200,
+        clock_updates: Vec::new(),
+    });
+
+    let anchor = |store: &WorldStore, id, front| {
+        store
+            .entity_body_anchor_y_offset(id, front, 0.0)
+            .unwrap_or_else(|| panic!("missing body anchor for {id}"))
+    };
+    let assert_close = |actual: f32, expected: f32| {
+        assert!(
+            (actual - expected).abs() < 1.0e-5,
+            "actual={actual} expected={expected}"
+        );
+    };
+
+    // Vanilla `Camel.getBodyAnchorAnimationYOffset`: standing adult dimensions are
+    // 2.375 high and the base seat anchor is `height - 0.375`.
+    assert_close(anchor(&store, 45, true), 2.0);
+    assert_close(anchor(&store, 45, false), 2.0);
+    assert_eq!(store.entity_body_anchor_y_offset(47, true, 0.0), None);
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 45,
+        values: vec![
+            protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_SITTING),
+            protocol_long_data(CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID, -100),
+        ],
+    }));
+    store.apply_world_time(ProtocolPlayTime {
+        game_time: 128,
+        clock_updates: Vec::new(),
+    });
+    // Sit-down tick 28 is the vanilla front flex point: base sitting height
+    // 0.945 - 0.375 plus `(1.43 - 0.5 * 1.23)`.
+    assert_close(anchor(&store, 45, true), 1.385);
+    // The rear anchor uses the smaller 0.1 flex offset, so it remains much higher
+    // at the same keyframe.
+    assert_close(anchor(&store, 45, false), 1.877);
+
+    store.apply_world_time(ProtocolPlayTime {
+        game_time: 160,
+        clock_updates: Vec::new(),
+    });
+    // Once sitting, the anchor is the sitting dimensions base plus `0.2`.
+    assert_close(anchor(&store, 45, true), 0.77);
+    assert_close(anchor(&store, 45, false), 0.77);
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 45,
+        values: vec![
+            protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_STANDING),
+            protocol_long_data(CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID, 200),
+        ],
+    }));
+    store.apply_world_time(ProtocolPlayTime {
+        game_time: 224,
+        clock_updates: Vec::new(),
+    });
+    // Stand-up tick 24 is the front flex point: standing base 2.0 plus
+    // `0.2 - (1.43 - 0.6 * 1.23)`.
+    assert_close(anchor(&store, 45, true), 1.508);
+    store.apply_world_time(ProtocolPlayTime {
+        game_time: 232,
+        clock_updates: Vec::new(),
+    });
+    // The rear stand-up flex point is later (tick 32) and uses offset 0.35.
+    assert_close(anchor(&store, 45, false), 1.2005);
+
+    store.apply_world_time(ProtocolPlayTime {
+        game_time: 260,
+        clock_updates: Vec::new(),
+    });
+    assert_close(anchor(&store, 45, true), 2.0);
+    assert_close(anchor(&store, 45, false), 2.0);
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 45,
+        values: vec![
+            protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_SITTING),
+            protocol_bool_data(AGEABLE_BABY_DATA_ID, true),
+            protocol_long_data(CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID, -100),
+        ],
+    }));
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 45,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 2.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    store.apply_world_time(ProtocolPlayTime {
+        game_time: 160,
+        clock_updates: Vec::new(),
+    });
+    // Normal baby camel: dimensions and the anchor scale both use ageScale 0.6,
+    // then the SCALE attribute doubles both.
+    assert_close(anchor(&store, 45, true), 0.924);
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 46,
+        values: vec![
+            protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_SITTING),
+            protocol_bool_data(AGEABLE_BABY_DATA_ID, true),
+            protocol_long_data(CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID, -100),
+        ],
+    }));
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 46,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 2.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    // Vanilla `CamelHusk.isBaby()` is always false, so the husk ignores the baby
+    // flag and only applies the SCALE attribute.
+    assert_close(anchor(&store, 46, true), 1.54);
+}
+
+#[test]
 fn goat_pick_bounds_follow_vanilla_pose_and_age_scale() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
     const ENTITY_DATA_POSE_ID: u8 = 6;
@@ -12507,6 +12642,14 @@ fn protocol_int_data(data_id: u8, value: i32) -> ProtocolEntityDataValue {
         data_id,
         serializer_id: 1,
         value: EntityDataValueKind::Int(value),
+    }
+}
+
+fn protocol_long_data(data_id: u8, value: i64) -> ProtocolEntityDataValue {
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id: 2,
+        value: EntityDataValueKind::Long(value),
     }
 }
 

@@ -42,10 +42,11 @@ use crate::entities::animations::{
 };
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
-    vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
-    vanilla_feline_family, vanilla_illager_aggressive_arm_pose_family, vanilla_is_baby,
-    vanilla_is_bat, vanilla_is_bee, vanilla_is_enderman, vanilla_is_fox, vanilla_is_vex,
-    vanilla_is_wither, vanilla_living_entity_type, vanilla_model_source_bounds_for_entity_data,
+    vanilla_body_anchor_y_offset_for_entity_data, vanilla_client_position_for_entity_data,
+    vanilla_eye_height_for_entity_data, vanilla_feline_family,
+    vanilla_illager_aggressive_arm_pose_family, vanilla_is_baby, vanilla_is_bat, vanilla_is_bee,
+    vanilla_is_enderman, vanilla_is_fox, vanilla_is_vex, vanilla_is_wither,
+    vanilla_living_entity_type, vanilla_model_source_bounds_for_entity_data,
     vanilla_pick_bounds_for_entity_data, vanilla_piglin_melee_attack_family, vanilla_render_scale,
     vanilla_zombie_model_family, ENTITY_DATA_POSE_ID, ITEM_FRAME_ENTITY_TYPE_IDS,
     VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID, VANILLA_POSE_CROUCHING_ID, VANILLA_POSE_SLEEPING_ID,
@@ -566,6 +567,27 @@ impl EntityStore {
             &metadata.data_values,
             &attributes.attributes,
             Some(client_animations.animations),
+        )
+    }
+
+    pub(crate) fn body_anchor_y_offset(
+        &self,
+        id: i32,
+        game_time: i64,
+        is_front: bool,
+        partial_ticks: f32,
+    ) -> Option<f32> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        let attributes = self.ecs.get::<&EntityAttributes>(entity).ok()?;
+        vanilla_body_anchor_y_offset_for_entity_data(
+            identity.entity_type_id,
+            &metadata.data_values,
+            &attributes.attributes,
+            game_time,
+            is_front,
+            partial_ticks,
         )
     }
 

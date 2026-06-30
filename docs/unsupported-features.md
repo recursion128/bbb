@@ -2818,11 +2818,17 @@ When an agent does any of the following, update this file in the same slice:
       add the official tail/head/ear keyframes while preserving texture/render-type/tint/transform/
       light/overlay/order metadata. Camel `updateWalkAnimation` is also projected with the vanilla
       standing-and-not-dashing gate, `min(distance * 6, 1)` target speed, `0.2` walk update factor,
-      zero target while sitting/dashing, and the existing baby position scale. The body-anchor sit/stand y-offset
-      (`Camel.getBodyAnchorAnimationYOffset`) remains unsupported; the old
-      broader-lighting wording is stale because base and saddle submission
-      light/overlay metadata is covered here and global LightTexture / gamma
-      parity is tracked by the completed P0 lighting pipeline
+      zero target while sitting/dashing, and the existing baby position scale.
+      The camel/camel_husk body-anchor sit/stand y-offset is now exposed through
+      `WorldStore::entity_body_anchor_y_offset`, matching vanilla
+      `Camel.getBodyAnchorAnimationYOffset` front/rear seat flex points, sitting
+      hold, stand-up transition, `LAST_POSE_CHANGE_TICK`, baby age scale,
+      camel_husk `isBaby() == false`, and `SCALE` attribute behavior. The
+      remaining passenger/leash visual consumer wiring that uses this anchor is
+      tracked as a follow-up attachment presentation item; the old broader-lighting
+      wording is stale because base and saddle submission light/overlay metadata
+      is covered here and global LightTexture / gamma parity is tracked by the
+      completed P0 lighting pipeline
     - llama and trader llama entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `LlamaModel`, `BabyLlamaModel`, and
       `LlamaRenderer`, including `ModelLayers.LLAMA` / `LLAMA_BABY` (the trader

@@ -195,6 +195,17 @@ impl WorldStore {
         self.resolve_root_vehicle_id(self.local_player_vehicle_id?)
     }
 
+    pub fn entity_body_anchor_y_offset(
+        &self,
+        entity_id: i32,
+        is_front: bool,
+        partial_ticks: f32,
+    ) -> Option<f32> {
+        let game_time = self.world_time().map(|time| time.game_time).unwrap_or(0);
+        self.entities
+            .body_anchor_y_offset(entity_id, game_time, is_front, partial_ticks)
+    }
+
     pub fn local_player_root_boat_vehicle_id(&self) -> Option<i32> {
         let vehicle_id = self.local_player_root_vehicle_id()?;
         self.entities

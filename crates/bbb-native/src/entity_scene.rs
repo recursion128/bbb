@@ -7340,6 +7340,58 @@ mod tests {
     }
 
     #[test]
+    fn camel_body_anchor_y_offset_is_exposed_for_native_attachment_projection() {
+        const ENTITY_DATA_POSE_ID: u8 = 6;
+        const CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID: u8 = 20;
+        const POSE_STANDING: i32 = 0;
+        const POSE_SITTING: i32 = 10;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            151,
+            VANILLA_ENTITY_TYPE_CAMEL_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 151,
+            values: vec![
+                protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_SITTING),
+                protocol_long_data(CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID, -100),
+            ],
+        }));
+        world.apply_world_time(PlayTime {
+            game_time: 160,
+            clock_updates: Vec::new(),
+        });
+        let sitting_front = world
+            .entity_body_anchor_y_offset(151, true, 0.0)
+            .expect("camel body anchor y-offset");
+        assert!(
+            (sitting_front - 0.77).abs() < 1.0e-5,
+            "sitting front anchor: {sitting_front}"
+        );
+
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 151,
+            values: vec![
+                protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_STANDING),
+                protocol_long_data(CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID, 200),
+            ],
+        }));
+        world.apply_world_time(PlayTime {
+            game_time: 224,
+            clock_updates: Vec::new(),
+        });
+        let standing_front_flex = world
+            .entity_body_anchor_y_offset(151, true, 0.0)
+            .expect("camel body anchor y-offset");
+        assert!(
+            (standing_front_flex - 1.508).abs() < 1.0e-5,
+            "stand-up front flex anchor: {standing_front_flex}"
+        );
+    }
+
+    #[test]
     fn entity_model_instances_project_player_crouch_pose() {
         // Vanilla Entity.isCrouching (Pose.CROUCHING, ordinal 5, POSE serializer 20).
         const ENTITY_DATA_POSE_ID: u8 = 6;
@@ -13501,6 +13553,14 @@ mod tests {
             data_id,
             serializer_id: 2,
             value: EntityDataValueKind::Long(value),
+        }
+    }
+
+    fn protocol_pose_data(data_id: u8, pose: i32) -> EntityDataValue {
+        EntityDataValue {
+            data_id,
+            serializer_id: 20,
+            value: EntityDataValueKind::Pose(pose),
         }
     }
 

@@ -106,6 +106,9 @@ const ARMOR_STAND_SMALL_SCALE: f32 = 0.5;
 const ARMADILLO_BABY_SCALE: f32 = 0.6;
 const CAMEL_SITTING_HEIGHT_DIFFERENCE: f32 = 1.43;
 const CAMEL_BABY_SCALE: f32 = 0.6;
+const CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID: u8 = 20;
+const CAMEL_SITDOWN_DURATION_TICKS: i64 = 40;
+const CAMEL_STANDUP_DURATION_TICKS: i64 = 52;
 const DOLPHIN_BABY_SCALE: f32 = 0.65;
 const FOX_BABY_SCALE: f32 = 0.6;
 const GOAT_LONG_JUMPING_SCALE: f32 = 0.7;
@@ -341,8 +344,42 @@ pub(crate) fn vanilla_client_position_for_entity_data(
     None
 }
 
+pub(crate) fn vanilla_body_anchor_y_offset_for_entity_data(
+    entity_type_id: i32,
+    data_values: &[EntityDataValue],
+    attributes: &[AttributeSnapshot],
+    game_time: i64,
+    is_front: bool,
+    partial_ticks: f32,
+) -> Option<f32> {
+    if entity_type_id != VANILLA_ENTITY_TYPE_CAMEL_ID
+        && entity_type_id != VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID
+    {
+        return None;
+    }
+
+    let dimensions =
+        vanilla_pick_bounds_for_entity_data(entity_type_id, 0, data_values, attributes, None)?;
+    let scale = camel_age_scale(entity_type_id, data_values)
+        * vanilla_render_scale(entity_type_id, attributes);
+    let last_pose_change_tick =
+        entity_data_long(data_values, CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID, 0);
+    Some(camel_body_anchor_animation_y_offset(
+        dimensions,
+        scale,
+        last_pose_change_tick,
+        game_time,
+        is_front,
+        partial_ticks,
+    ))
+}
+
 fn bounds_height(bounds: EntityPickBoundsState) -> f32 {
     bounds.max[1] - bounds.min[1]
+}
+
+fn lerp(delta: f32, start: f32, end: f32) -> f32 {
+    start + delta * (end - start)
 }
 
 fn scaled_eye_height_for_bounds(
@@ -460,6 +497,83 @@ fn camel_pick_bounds(
     } else {
         bounds
     }
+}
+
+fn camel_age_scale(entity_type_id: i32, data_values: &[EntityDataValue]) -> f32 {
+    if entity_type_id == VANILLA_ENTITY_TYPE_CAMEL_ID
+        && entity_data_bool(data_values, AGEABLE_MOB_BABY_DATA_ID, false)
+    {
+        CAMEL_BABY_SCALE
+    } else {
+        1.0
+    }
+}
+
+fn camel_body_anchor_animation_y_offset(
+    dimensions: EntityPickBoundsState,
+    scale: f32,
+    last_pose_change_tick: i64,
+    game_time: i64,
+    is_front: bool,
+    partial_ticks: f32,
+) -> f32 {
+    let partial_ticks = if partial_ticks.is_finite() {
+        partial_ticks.clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    let mut base_sit_offset = bounds_height(dimensions) - 0.375 * scale;
+    let sitting_height_difference = scale * CAMEL_SITTING_HEIGHT_DIFFERENCE;
+    let vertical_drop = sitting_height_difference - scale * 0.2;
+    let bottom_point = sitting_height_difference - vertical_drop;
+    let pose_time = game_time - last_pose_change_tick.saturating_abs();
+    let is_sitting = last_pose_change_tick < 0;
+    let transition_duration = if is_sitting {
+        CAMEL_SITDOWN_DURATION_TICKS
+    } else {
+        CAMEL_STANDUP_DURATION_TICKS
+    };
+    let is_in_transition = pose_time < transition_duration;
+
+    if is_in_transition {
+        let (half_point, flex_point_offset) = if is_sitting {
+            (28, if is_front { 0.5 } else { 0.1 })
+        } else {
+            (
+                if is_front { 24 } else { 32 },
+                if is_front { 0.6 } else { 0.35 },
+            )
+        };
+        let pose_time = (pose_time as f32 + partial_ticks).clamp(0.0, transition_duration as f32);
+        let is_first_part = pose_time < half_point as f32;
+        let part = if is_first_part {
+            pose_time / half_point as f32
+        } else {
+            (pose_time - half_point as f32) / (transition_duration - half_point) as f32
+        };
+        let flex_point = sitting_height_difference - flex_point_offset * vertical_drop;
+        base_sit_offset += if is_sitting {
+            if is_first_part {
+                lerp(part, sitting_height_difference, flex_point)
+            } else {
+                lerp(part, flex_point, bottom_point)
+            }
+        } else if is_first_part {
+            lerp(
+                part,
+                bottom_point - sitting_height_difference,
+                bottom_point - flex_point,
+            )
+        } else {
+            lerp(part, bottom_point - flex_point, 0.0)
+        };
+    }
+
+    if is_sitting && !is_in_transition {
+        base_sit_offset += bottom_point;
+    }
+
+    base_sit_offset
 }
 
 fn goat_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {
@@ -899,6 +1013,17 @@ fn entity_data_int(data_values: &[EntityDataValue], data_id: u8, fallback: i32) 
         .find(|value| value.data_id == data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::Int(value) => Some(*value),
+            _ => None,
+        })
+        .unwrap_or(fallback)
+}
+
+fn entity_data_long(data_values: &[EntityDataValue], data_id: u8, fallback: i64) -> i64 {
+    data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Long(value) => Some(*value),
             _ => None,
         })
         .unwrap_or(fallback)
