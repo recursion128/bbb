@@ -679,8 +679,9 @@ pub(in crate::entity_models) fn boat_bubble_transform(instance: EntityModelInsta
 /// per-id hover jitter, then either `newRender` (`Ry(yRot)`, `Rz(-xRot)`,
 /// `translate(0, 0.375, 0)`) for tracked new-behavior steps or the old-render no-rail fallback
 /// (`translate(0, 0.375, 0)`, `Ry(180 - yRot)`, `Rz(-xRot)`). It then applies the hurt roll and the
-/// final model flip. Exact weighted `renderPos` interpolation, old rail-follow
-/// position/slope, and display-block contents remain explicit follow-up gaps.
+/// final model flip. World projection already folds exact weighted `renderPos`
+/// interpolation into the instance position/rotation; old rail-follow position/slope
+/// and display-block contents remain explicit follow-up gaps.
 pub(in crate::entity_models) fn minecart_model_root_transform(
     instance: EntityModelInstance,
 ) -> Mat4 {

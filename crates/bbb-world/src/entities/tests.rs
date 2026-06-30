@@ -10541,6 +10541,46 @@ fn minecart_along_track_updates_entity_from_latest_step() {
         .find(|source| source.entity_id == 10)
         .expect("minecart source");
     assert!(source.minecart_new_render);
+    assert!((source.position.x - 1.1458333333333333).abs() < 1.0e-6);
+    assert!((source.position.y - 64.05833333333334).abs() < 1.0e-6);
+    assert!((source.position.z + 2.1458333333333335).abs() < 1.0e-6);
+    assert!((source.y_rot - 34.583332).abs() < 1.0e-5);
+    assert!((source.x_rot + 10.0).abs() < 1.0e-6);
+    assert_eq!(store.entities.minecart_lerp(10).unwrap().delay, 3);
+
+    store.advance_entity_client_animations(1);
+    let source = store
+        .entity_model_sources_at_partial_tick(0.5)
+        .into_iter()
+        .find(|source| source.entity_id == 10)
+        .expect("minecart source");
+    assert!(source.minecart_new_render);
+    assert!((source.position.x - 1.4).abs() < 1.0e-6);
+    assert!((source.position.y - 64.13).abs() < 1.0e-6);
+    assert!((source.position.z + 2.4).abs() < 1.0e-6);
+    assert!((source.y_rot - 58.5).abs() < 1.0e-6);
+    assert!((source.x_rot + 5.5).abs() < 1.0e-6);
+    assert_eq!(store.entities.minecart_lerp(10).unwrap().delay, 2);
+
+    store.advance_entity_client_animations(2);
+    assert_eq!(store.entities.minecart_lerp(10).unwrap().steps.len(), 0);
+    assert_eq!(store.counters().minecart_lerp_steps_tracked, 0);
+    let source = store
+        .entity_model_sources_at_partial_tick(0.5)
+        .into_iter()
+        .find(|source| source.entity_id == 10)
+        .expect("minecart source");
+    assert!(source.minecart_new_render);
+    assert_eq!(
+        source.position,
+        EntityVec3 {
+            x: 1.75,
+            y: 64.2,
+            z: -2.75,
+        }
+    );
+    assert_eq!(source.y_rot, 90.0);
+    assert_eq!(source.x_rot, 5.0);
 
     assert!(
         store.apply_move_minecart_along_track(ProtocolMoveMinecartAlongTrack {

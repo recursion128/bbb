@@ -1,6 +1,6 @@
 use bbb_protocol::packets::{
     EntityMove as ProtocolEntityMove, EntityPositionSync as ProtocolEntityPositionSync,
-    MoveMinecartAlongTrack as ProtocolMoveMinecartAlongTrack,
+    MinecartStep as ProtocolMinecartStep, MoveMinecartAlongTrack as ProtocolMoveMinecartAlongTrack,
     TeleportEntity as ProtocolTeleportEntity, Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_X,
     PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_DELTA_Z, PLAYER_RELATIVE_ROTATE_DELTA,
     PLAYER_RELATIVE_X, PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y, PLAYER_RELATIVE_Y_ROT,
@@ -63,6 +63,7 @@ impl WorldStore {
     ) -> bool {
         self.counters.minecart_moves_received += 1;
         self.counters.minecart_lerp_steps_received += packet.lerp_steps.len();
+        let lerp_steps = packet.lerp_steps;
         let Some(entity_type_id) = self.entities.entity_type_id(packet.entity_id) else {
             self.counters.minecart_moves_ignored += 1;
             return false;
@@ -72,7 +73,11 @@ impl WorldStore {
             return false;
         }
 
-        if let Some(last_step) = packet.lerp_steps.last().copied() {
+        let old_step = self
+            .entities
+            .transform(packet.entity_id)
+            .map(minecart_step_from_transform);
+        if let Some(last_step) = lerp_steps.last().copied() {
             let Some(()) = self
                 .entities
                 .with_transform_mut(packet.entity_id, |transform| {
@@ -90,7 +95,13 @@ impl WorldStore {
         let Some(()) = self
             .entities
             .with_minecart_lerp_mut(packet.entity_id, |lerp| {
-                lerp.steps = packet.lerp_steps;
+                if let Some(old_step) = old_step {
+                    lerp.start(old_step, lerp_steps);
+                } else {
+                    lerp.steps = lerp_steps;
+                    lerp.old_step = None;
+                    lerp.delay = 0;
+                }
             })
         else {
             self.counters.minecart_moves_ignored += 1;
@@ -142,6 +153,24 @@ pub(super) fn entity_vec3(vec: ProtocolVec3d) -> EntityVec3 {
         x: vec.x,
         y: vec.y,
         z: vec.z,
+    }
+}
+
+fn protocol_vec3(vec: EntityVec3) -> ProtocolVec3d {
+    ProtocolVec3d {
+        x: vec.x,
+        y: vec.y,
+        z: vec.z,
+    }
+}
+
+fn minecart_step_from_transform(transform: super::EntityTransform) -> ProtocolMinecartStep {
+    ProtocolMinecartStep {
+        position: protocol_vec3(transform.position),
+        movement: protocol_vec3(transform.delta_movement),
+        y_rot: transform.y_rot,
+        x_rot: transform.x_rot,
+        weight: 0.0,
     }
 }
 

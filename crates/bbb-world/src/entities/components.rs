@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use bbb_protocol::packets::{
     AttributeSnapshot as ProtocolAttributeSnapshot, EntityDataValue as ProtocolEntityDataValue,
     EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate, MinecartStep as ProtocolMinecartStep,
+    Vec3d as ProtocolVec3d,
 };
 use uuid::Uuid;
 
@@ -79,6 +80,8 @@ pub(crate) struct EntityDamage {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct EntityMinecartLerp {
     pub(crate) steps: Vec<ProtocolMinecartStep>,
+    pub(crate) old_step: Option<ProtocolMinecartStep>,
+    pub(crate) delay: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -190,8 +193,126 @@ impl From<&EntityState> for EntityMinecartLerp {
     fn from(state: &EntityState) -> Self {
         Self {
             steps: state.minecart_lerp_steps.clone(),
+            old_step: state.minecart_lerp_old_step,
+            delay: state.minecart_lerp_delay,
         }
     }
+}
+
+impl EntityMinecartLerp {
+    pub(crate) fn start(
+        &mut self,
+        old_step: ProtocolMinecartStep,
+        steps: Vec<ProtocolMinecartStep>,
+    ) {
+        let total_weight: f32 = steps.iter().map(|step| step.weight).sum();
+        self.steps = steps;
+        self.old_step = Some(old_step);
+        self.delay = if total_weight == 0.0 { 0 } else { 3 };
+    }
+
+    pub(crate) fn render_step(&self, partial_ticks: f32) -> Option<ProtocolMinecartStep> {
+        let total_weight: f32 = self.steps.iter().map(|step| step.weight).sum();
+        let index_alpha = self.current_lerp_step(partial_ticks, total_weight)?;
+        let current = *self.steps.get(index_alpha.index)?;
+        let previous = if index_alpha.index > 0 {
+            *self.steps.get(index_alpha.index - 1)?
+        } else {
+            self.old_step.unwrap_or(current)
+        };
+        Some(ProtocolMinecartStep {
+            position: lerp_vec3(index_alpha.alpha, previous.position, current.position),
+            movement: lerp_vec3(index_alpha.alpha, previous.movement, current.movement),
+            y_rot: rot_lerp(index_alpha.alpha, previous.y_rot, current.y_rot),
+            x_rot: rot_lerp(index_alpha.alpha, previous.x_rot, current.x_rot),
+            weight: current.weight,
+        })
+    }
+
+    pub(crate) fn advance_client_tick(&mut self) {
+        if self.steps.is_empty() {
+            self.delay = 0;
+            return;
+        }
+        if self.delay > 1 {
+            self.delay -= 1;
+            return;
+        }
+        self.old_step = self.steps.last().copied();
+        self.steps.clear();
+        self.delay = 0;
+    }
+
+    fn current_lerp_step(
+        &self,
+        partial_ticks: f32,
+        total_weight: f32,
+    ) -> Option<MinecartLerpStepAlpha> {
+        if self.steps.is_empty() {
+            return None;
+        }
+        if total_weight == 0.0 {
+            return Some(MinecartLerpStepAlpha {
+                index: self.steps.len() - 1,
+                alpha: 1.0,
+            });
+        }
+
+        let alpha = (3.0 - self.delay as f32 + partial_ticks) / 3.0;
+        let target = total_weight * alpha;
+        let mut count_up = 0.0;
+        for (index, step) in self.steps.iter().enumerate() {
+            let weight = step.weight;
+            if weight <= 0.0 {
+                continue;
+            }
+            count_up += weight;
+            if count_up >= target {
+                let previous_count = count_up - weight;
+                return Some(MinecartLerpStepAlpha {
+                    index,
+                    alpha: (target - previous_count) / weight,
+                });
+            }
+        }
+        Some(MinecartLerpStepAlpha {
+            index: self.steps.len() - 1,
+            alpha: 1.0,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct MinecartLerpStepAlpha {
+    index: usize,
+    alpha: f32,
+}
+
+fn lerp_vec3(alpha: f32, from: ProtocolVec3d, to: ProtocolVec3d) -> ProtocolVec3d {
+    ProtocolVec3d {
+        x: lerp_f64(alpha, from.x, to.x),
+        y: lerp_f64(alpha, from.y, to.y),
+        z: lerp_f64(alpha, from.z, to.z),
+    }
+}
+
+fn lerp_f64(alpha: f32, from: f64, to: f64) -> f64 {
+    from + (to - from) * f64::from(alpha)
+}
+
+fn rot_lerp(alpha: f32, from: f32, to: f32) -> f32 {
+    from + wrap_degrees(to - from) * alpha
+}
+
+fn wrap_degrees(degrees: f32) -> f32 {
+    let mut wrapped = degrees % 360.0;
+    if wrapped >= 180.0 {
+        wrapped -= 360.0;
+    }
+    if wrapped < -180.0 {
+        wrapped += 360.0;
+    }
+    wrapped
 }
 
 impl From<HurtingProjectileState> for EntityHurtingProjectile {
@@ -282,6 +403,8 @@ impl EntityDamage {
 impl EntityMinecartLerp {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
         state.minecart_lerp_steps = self.steps;
+        state.minecart_lerp_old_step = self.old_step;
+        state.minecart_lerp_delay = self.delay;
     }
 }
 

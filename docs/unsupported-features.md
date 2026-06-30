@@ -5262,10 +5262,12 @@ When an agent does any of the following, update this file in the same slice:
       hover jitter, `translate(0, 0.375, 0)`, `Ry(180 - yRot)`, `Rz(-xRot)`, and
       `scale(-1, -1, 1)`, including the `VehicleEntity` metadata-driven hurt roll
       inserted before the final flip. Tracked `ClientboundMoveMinecartPacket` steps
-      also select the vanilla `newRender` root order from the latest canonical
-      step. Rail-follow `posOnRail` / `frontPos` / `backPos` along-track translation
-      and slope pitch, exact weighted NewMinecartBehavior `renderPos` interpolation,
-      the TNT/spawner `displayOffset` and 0.75x block-content scale, the
+      now project vanilla `NewMinecartBehavior.getCartLerpPosition` /
+      `getCartLerp*Rot` weighted interpolation over the packet's three-tick
+      window into the renderer source position, yaw, and pitch, while preserving
+      the latest canonical step for probes. Rail-follow `posOnRail` / `frontPos` /
+      `backPos` along-track translation and slope pitch, the TNT/spawner
+      `displayOffset` and 0.75x block-content scale, the
       chest/furnace/hopper/command-block/TNT/spawner content models, and their
       block-content light hookup remain unsupported; the minecart body submission
       light/overlay metadata is covered

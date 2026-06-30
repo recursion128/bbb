@@ -336,8 +336,9 @@ entity_render_state! {
     /// scaling the damage roll amount.
     (with_minecart_damage_time) minecart_damage_time: f32 = 0.0;
     /// Vanilla `MinecartRenderState.isNewRender`: true for carts using `NewMinecartBehavior`.
-    /// Current world projection sets this when `ClientboundMoveMinecartPacket` supplies tracked
-    /// `MinecartStep` data; exact weighted `renderPos` interpolation remains deferred.
+    /// World projection sets this after `ClientboundMoveMinecartPacket` supplies tracked
+    /// `MinecartStep` data, and projects the vanilla weighted `renderPos` / rotation
+    /// interpolation into the instance position and body rotations.
     (with_minecart_new_render) minecart_new_render: bool = false;
     /// Vanilla `BoatRenderState.bubbleAngle`: the partial-lerped bubble-column
     /// wobble angle in degrees. The boat renderer applies it only while the boat

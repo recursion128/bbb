@@ -1137,7 +1137,20 @@ impl EntityStore {
         let minecart_new_render = is_vanilla_minecart_type(identity.entity_type_id)
             && minecart_lerp
                 .as_ref()
-                .is_some_and(|lerp| !lerp.steps.is_empty());
+                .is_some_and(|lerp| !lerp.steps.is_empty() || lerp.old_step.is_some());
+        let mut source_position = position;
+        let mut source_y_rot = transform.y_rot;
+        let mut source_x_rot = transform.x_rot;
+        if minecart_new_render {
+            if let Some(render_step) = minecart_lerp
+                .as_ref()
+                .and_then(|lerp| lerp.render_step(partial_ticks))
+            {
+                source_position = super::movement::entity_vec3(render_step.position);
+                source_y_rot = render_step.y_rot;
+                source_x_rot = render_step.x_rot;
+            }
+        }
         let boat_bubble_angle = client_animations
             .animations
             .boat_bubble_angle(partial_ticks);
@@ -1176,9 +1189,9 @@ impl EntityStore {
             entity_id: identity.id,
             uuid: identity.uuid,
             entity_type_id: identity.entity_type_id,
-            position,
-            y_rot: transform.y_rot,
-            x_rot: transform.x_rot,
+            position: source_position,
+            y_rot: source_y_rot,
+            x_rot: source_x_rot,
             y_head_rot: transform.y_head_rot,
             arrow_shake: client_animations.animations.arrow_shake(partial_ticks),
             is_passenger,
@@ -2324,6 +2337,9 @@ impl EntityStore {
                     is_swimming,
                 );
             }
+            for (_, minecart_lerp) in self.ecs.query_mut::<&mut EntityMinecartLerp>() {
+                minecart_lerp.advance_client_tick();
+            }
         }
     }
 
@@ -2496,6 +2512,8 @@ impl EntityStore {
             client_animations: Default::default(),
             last_damage: None,
             minecart_lerp_steps: Vec::new(),
+            minecart_lerp_old_step: None,
+            minecart_lerp_delay: 0,
             hurting_projectile: None,
         };
         (*transform).write_to_state(&mut state);

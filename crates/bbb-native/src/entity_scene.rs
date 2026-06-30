@@ -5051,8 +5051,11 @@ mod tests {
             .find(|instance| instance.entity_id == 94)
             .unwrap();
         assert!(instance.render_state.minecart_new_render);
-        assert_eq!(instance.render_state.body_rot, 90.0);
-        assert_eq!(instance.render_state.head_pitch, 5.0);
+        assert!((instance.position[0] - 1.125).abs() < 1.0e-6);
+        assert!((instance.position[1] - 64.03333).abs() < 1.0e-5);
+        assert!((instance.position[2] + 2.125).abs() < 1.0e-6);
+        assert!((instance.render_state.body_rot - 15.0).abs() < 1.0e-6);
+        assert!((instance.render_state.head_pitch - 0.8333333).abs() < 1.0e-6);
     }
 
     #[test]

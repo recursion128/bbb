@@ -5499,6 +5499,7 @@ impl WorldStore {
             .collect();
         self.entities
             .advance_client_animations(ticks, &in_water_by_id);
+        self.counters.minecart_lerp_steps_tracked = self.entities.total_minecart_lerp_steps();
     }
 }
 

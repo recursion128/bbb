@@ -293,6 +293,10 @@ pub struct EntityState {
     #[serde(default)]
     pub minecart_lerp_steps: Vec<ProtocolMinecartStep>,
     #[serde(default)]
+    pub minecart_lerp_old_step: Option<ProtocolMinecartStep>,
+    #[serde(default)]
+    pub minecart_lerp_delay: i32,
+    #[serde(default)]
     pub hurting_projectile: Option<HurtingProjectileState>,
 }
 
@@ -428,8 +432,9 @@ pub struct EntityModelSourceState {
     #[serde(default)]
     pub boat_damage_time: f32,
     /// True after a tracked `ClientboundMoveMinecartPacket` gives this cart new-behavior
-    /// `MinecartStep` data. The current source projection uses the latest canonical step; exact
-    /// weighted `renderPos` interpolation remains a renderer follow-up.
+    /// `MinecartStep` data. While the packet's 3-tick interpolation is active, the
+    /// renderer source position/rotations are projected with vanilla
+    /// `NewMinecartBehavior.getCartLerpPosition` / `getCartLerp*Rot`.
     #[serde(default)]
     pub minecart_new_render: bool,
     /// Vanilla `BoatRenderState.bubbleAngle` (`AbstractBoat.getBubbleAngle(partialTick)`):
@@ -1500,6 +1505,8 @@ impl WorldStore {
             client_animations: EntityClientAnimationState::default(),
             last_damage: None,
             minecart_lerp_steps: Vec::new(),
+            minecart_lerp_old_step: None,
+            minecart_lerp_delay: 0,
             hurting_projectile: initial_hurting_projectile_state(packet.entity_type_id),
         };
 
