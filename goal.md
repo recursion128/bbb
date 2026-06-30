@@ -420,6 +420,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `AbstractMinecartRenderer.oldRender` 应用 rail 平移、`backPos - frontPos`
     yaw 和 `atan(direction.y) * 73.0` 坡度 pitch。
   - [x] NewMinecartBehavior exact weighted `renderPos` / rotation interpolation。
+  - [x] NewMinecartBehavior passenger render offset：乘坐 new-render minecart 的
+    实体现在按 vanilla `EntityRenderer.extractRenderState.passengerOffset` 加上
+    `getCartLerpPosition(partialTicks) - lerp(xOld, getX)` 的 render-only root
+    offset；矿车 lerp drain 后自动回到普通 entity source position。
   - [x] display block transform / content / light baseline：
     `WorldStore::minecart_display_block_state` 解析 custom/default display block
     与 `displayOffset`，renderer 内容块 transform 覆盖 vanilla 0.75 scale /

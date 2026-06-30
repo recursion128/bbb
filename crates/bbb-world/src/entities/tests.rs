@@ -11228,6 +11228,91 @@ fn minecart_along_track_updates_entity_from_latest_step() {
 }
 
 #[test]
+fn new_minecart_passengers_render_with_vehicle_lerp_offset() {
+    const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_MINECART_ID,
+    ));
+    store.apply_add_entity(ProtocolAddEntity {
+        position: ProtocolVec3d {
+            x: 5.0,
+            y: 70.0,
+            z: 9.0,
+        },
+        ..protocol_add_entity_with_type(20, VANILLA_ENTITY_TYPE_COW_ID)
+    });
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![20],
+    }));
+
+    let passenger_position = |store: &WorldStore, partial_ticks: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial_ticks)
+            .into_iter()
+            .find(|source| source.entity_id == 20)
+            .expect("passenger source")
+            .position
+    };
+
+    let still = passenger_position(&store, 0.5);
+    assert_eq!(
+        still,
+        EntityVec3 {
+            x: 5.0,
+            y: 70.0,
+            z: 9.0,
+        }
+    );
+
+    assert!(
+        store.apply_move_minecart_along_track(ProtocolMoveMinecartAlongTrack {
+            entity_id: 10,
+            lerp_steps: vec![
+                minecart_step(1.25, 64.1, -2.25, 0.2, 0.0, -0.2, 45.0, -10.0, 0.5),
+                minecart_step(1.75, 64.2, -2.75, 0.4, 0.0, -0.4, 90.0, 5.0, 1.25),
+            ],
+        })
+    );
+
+    // Vanilla `EntityRenderer.extractRenderState`: passengerOffset =
+    // `NewMinecartBehavior.getCartLerpPosition(partialTicks)` minus the cart's normal
+    // xOld/getX interpolation. With the existing test packet at partial 0.5, the weighted
+    // render position is (1.1458333, 64.0583333, -2.1458333) while the normal cart
+    // interpolation is (1.375, 64.1, -2.375).
+    let shifted = passenger_position(&store, 0.5);
+    assert!(
+        (shifted.x - 4.770833333333333).abs() < 1.0e-6,
+        "x offset: {}",
+        shifted.x
+    );
+    assert!(
+        (shifted.y - 69.95833333333334).abs() < 1.0e-6,
+        "y offset: {}",
+        shifted.y
+    );
+    assert!(
+        (shifted.z - 9.229166666666666).abs() < 1.0e-6,
+        "z offset: {}",
+        shifted.z
+    );
+
+    store.advance_entity_client_animations(3);
+    assert_eq!(
+        passenger_position(&store, 0.5),
+        EntityVec3 {
+            x: 5.0,
+            y: 70.0,
+            z: 9.0,
+        },
+        "after the minecart lerp drains, passengers no longer get a render-only offset"
+    );
+}
+
+#[test]
 fn entity_model_sources_project_old_minecart_rail_render_points() {
     let mut store = WorldStore::with_dimension(crate::WorldDimension {
         min_y: 0,

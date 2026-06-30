@@ -800,6 +800,31 @@ impl EntityStore {
         self.transform_state_for_entity(entity)
     }
 
+    fn new_minecart_passenger_render_offset(
+        &self,
+        vehicle_id: i32,
+        partial_ticks: f32,
+    ) -> Option<super::EntityVec3> {
+        let vehicle = self.by_protocol_id.get(&vehicle_id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(vehicle).ok()?;
+        if !is_vanilla_minecart_type(identity.entity_type_id) {
+            return None;
+        }
+        let transform = self.ecs.get::<&EntityTransform>(vehicle).ok()?;
+        let minecart_lerp = self.ecs.get::<&EntityMinecartLerp>(vehicle).ok()?;
+        let old_step = minecart_lerp.old_step?;
+        let render_step = minecart_lerp.render_step(partial_ticks)?;
+        let cart_lerp_position = lerp_entity_vec3(
+            partial_ticks,
+            super::movement::entity_vec3(old_step.position),
+            transform.position,
+        );
+        Some(sub_entity_vec3(
+            super::movement::entity_vec3(render_step.position),
+            cart_lerp_position,
+        ))
+    }
+
     pub(crate) fn model_source(
         &self,
         id: i32,
@@ -1240,6 +1265,19 @@ impl EntityStore {
                 source_y_rot = render_step.y_rot;
                 source_x_rot = render_step.x_rot;
             }
+        }
+        if let Some(offset) =
+            mount
+                .as_ref()
+                .and_then(|mount| mount.vehicle_id)
+                .and_then(|vehicle_id| {
+                    self.new_minecart_passenger_render_offset(vehicle_id, partial_ticks)
+                })
+        {
+            // Vanilla `EntityRenderer.extractRenderState` adds this via `passengerOffset`
+            // when a new-behavior minecart's weighted render position diverges from its
+            // normal xOld/getX interpolation.
+            source_position = add_entity_vec3(source_position, offset);
         }
         let boat_bubble_angle = client_animations
             .animations
@@ -2754,6 +2792,35 @@ fn default_minecart_display_offset(entity_type_id: i32) -> i32 {
         VANILLA_ENTITY_TYPE_CHEST_MINECART_ID => 8,
         VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID => 1,
         _ => DEFAULT_MINECART_DISPLAY_OFFSET,
+    }
+}
+
+fn add_entity_vec3(left: super::EntityVec3, right: super::EntityVec3) -> super::EntityVec3 {
+    super::EntityVec3 {
+        x: left.x + right.x,
+        y: left.y + right.y,
+        z: left.z + right.z,
+    }
+}
+
+fn sub_entity_vec3(left: super::EntityVec3, right: super::EntityVec3) -> super::EntityVec3 {
+    super::EntityVec3 {
+        x: left.x - right.x,
+        y: left.y - right.y,
+        z: left.z - right.z,
+    }
+}
+
+fn lerp_entity_vec3(
+    alpha: f32,
+    from: super::EntityVec3,
+    to: super::EntityVec3,
+) -> super::EntityVec3 {
+    let alpha = f64::from(alpha);
+    super::EntityVec3 {
+        x: from.x + (to.x - from.x) * alpha,
+        y: from.y + (to.y - from.y) * alpha,
+        z: from.z + (to.z - from.z) * alpha,
     }
 }
 

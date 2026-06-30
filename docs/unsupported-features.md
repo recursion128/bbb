@@ -5364,7 +5364,11 @@ When an agent does any of the following, update this file in the same slice:
       now project vanilla `NewMinecartBehavior.getCartLerpPosition` /
       `getCartLerp*Rot` weighted interpolation over the packet's three-tick
       window into the renderer source position, yaw, and pitch, while preserving
-      the latest canonical step for probes. Display-block baseline content is
+      the latest canonical step for probes. Entities riding a new-behavior
+      minecart now also receive the vanilla render-only `passengerOffset` from
+      `EntityRenderer.extractRenderState`: `getCartLerpPosition(partialTicks)`
+      minus the cart's normal xOld/getX interpolation, folded into the passenger
+      model-source position until the minecart lerp drains. Display-block baseline content is
       now routed through `WorldStore::minecart_display_block_state` and the
       entity block-model attachment path: custom `DATA_ID_CUSTOM_DISPLAY_BLOCK`
       and `DATA_ID_DISPLAY_OFFSET` metadata, default chest/furnace/hopper/
