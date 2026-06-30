@@ -186,6 +186,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `BlockModelRenderState.submitWithZOffset` /
     `RenderTypes.entitySolidZOffsetForward(TextureAtlas.LOCATION_BLOCKS)`。Painting
     custom geometry 和更精确的 entity-solid shader/cull parity 仍属后续 P1/P2。
+  - [x] `item_cutout` / `item_translucent` alpha cutoff：block/flat
+    item-model shader 现在匹配 vanilla `core/item.fsh` 和
+    `RenderPipelines.ITEM_CUTOUT` / `ITEM_TRANSLUCENT`，先按 atlas texture
+    alpha `< ALPHA_CUTOUT 0.1` discard，再应用 submitted tint / vertex color；
+    `entitySolidZOffsetForward` item-frame block-model variant 继承同一 cutoff
+    顺序。剩余 item foil / special-display variants 仍属后续 P1 细化。
   - [x] `end_crystal_beam` / guardian beam custom prism state：Guardian attack
     beam、EndCrystal target beam、EnderDragon healing beam 均已通过
     dispatch-owned submission-first 路径记录 vanilla render type、texture、

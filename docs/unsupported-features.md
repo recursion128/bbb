@@ -535,7 +535,11 @@ When an agent does any of the following, update this file in the same slice:
     item atlas and lightmap, and `RenderTypes.itemCutout` / `itemTranslucent` do
     not call `useOverlay()`. The shared item-model shader now mirrors that shape
     by preserving submitted overlay metadata in vertices while not sampling the
-    overlay texture; entity/model RenderTypes remain the GPU paths that apply the
+    overlay texture. It also mirrors vanilla item alpha cutoff ordering:
+    `core/item.fsh` samples `Sampler0`, discards only when the texture alpha is
+    below `ALPHA_CUTOUT 0.1`, and then applies the submitted tint / vertex color;
+    the solid, translucent, and z-offset-forward item-model pipelines share that
+    shader behavior. Entity/model RenderTypes remain the GPU paths that apply the
     16x16 `OverlayTexture` red-row / white-row mix.
     Flat/generated item material translucency metadata is still deferred to item
     presentation because that material source is not modeled yet; it is no longer

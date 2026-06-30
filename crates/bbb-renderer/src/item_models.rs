@@ -429,6 +429,8 @@ struct VertexOut {
     @location(5) cylindrical_distance: f32,
 };
 
+const ALPHA_CUTOUT: f32 = 0.1;
+
 fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
     if (vertex_distance <= fog_start) {
         return 0.0;
@@ -479,10 +481,11 @@ fn vs_main(input: VertexIn) -> VertexOut {
 
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
-    let texel = textureSample(item_atlas, item_sampler, input.uv) * input.color;
-    if texel.a <= 0.01 {
+    let sampled = textureSample(item_atlas, item_sampler, input.uv);
+    if sampled.a < ALPHA_CUTOUT {
         discard;
     }
+    let texel = sampled * input.color;
     let light_color = sample_lightmap(input.light);
     let diffuse = mix(1.0, diffuse_light(input.normal_diffuse.xyz), input.normal_diffuse.w);
     return apply_fog(vec4<f32>(texel.rgb * diffuse * light_color, texel.a), input.spherical_distance, input.cylindrical_distance);
@@ -799,6 +802,25 @@ mod tests {
         assert!(!ITEM_MODEL_SHADER.contains("fn lightmap_brightness"));
         assert!(!ITEM_MODEL_SHADER.contains("camera.lightmap_factors.y"));
         assert!(!ITEM_MODEL_SHADER.contains("max(input.light.x, input.light.y * 0.95)"));
+    }
+
+    #[test]
+    fn item_model_shader_uses_vanilla_item_alpha_cutout() {
+        // Vanilla `core/item.fsh` samples Sampler0, applies `ALPHA_CUTOUT` before
+        // multiplying by `vertexColor * ColorModulator`, and both ITEM_CUTOUT /
+        // ITEM_TRANSLUCENT define that cutoff as 0.1F.
+        assert!(ITEM_MODEL_SHADER.contains("const ALPHA_CUTOUT: f32 = 0.1;"));
+        assert!(ITEM_MODEL_SHADER
+            .contains("let sampled = textureSample(item_atlas, item_sampler, input.uv);"));
+        assert!(ITEM_MODEL_SHADER.contains("if sampled.a < ALPHA_CUTOUT {"));
+        assert!(ITEM_MODEL_SHADER.contains("let texel = sampled * input.color;"));
+        assert!(!ITEM_MODEL_SHADER.contains("texel.a <= 0.01"));
+        assert!(!ITEM_MODEL_SHADER
+            .contains("textureSample(item_atlas, item_sampler, input.uv) * input.color"));
+
+        let z_offset_shader = item_model_z_offset_forward_shader();
+        assert!(z_offset_shader.contains("const ALPHA_CUTOUT: f32 = 0.1;"));
+        assert!(z_offset_shader.contains("if sampled.a < ALPHA_CUTOUT {"));
     }
 
     #[test]
