@@ -255,6 +255,7 @@ pub enum ItemModelPropertyKind {
     Selected,
     UsingItem,
     ViewEntity,
+    ExtendedView,
     Other,
 }
 
@@ -279,6 +280,7 @@ impl ItemModelProperty {
             "minecraft:selected" => ItemModelPropertyKind::Selected,
             "minecraft:using_item" => ItemModelPropertyKind::UsingItem,
             "minecraft:view_entity" => ItemModelPropertyKind::ViewEntity,
+            "minecraft:extended_view" => ItemModelPropertyKind::ExtendedView,
             _ => ItemModelPropertyKind::Other,
         }
     }
@@ -1970,6 +1972,43 @@ mod tests {
         assert_eq!(
             property.raw(),
             &serde_json::json!({"property": "minecraft:view_entity"})
+        );
+        assert!(matches!(on_true.as_ref(), ItemModelDefinition::Empty));
+        assert!(matches!(on_false.as_ref(), ItemModelDefinition::Empty));
+    }
+
+    #[test]
+    fn item_model_catalog_structures_unit_extended_view_condition_property() {
+        let definition = ClientItemDefinition::from_json_bytes(
+            br#"{
+              "model": {
+                "type": "minecraft:condition",
+                "property": "minecraft:extended_view",
+                "on_false": {
+                  "type": "minecraft:empty"
+                },
+                "on_true": {
+                  "type": "minecraft:empty"
+                }
+              }
+            }"#,
+        )
+        .unwrap();
+
+        let ItemModelDefinition::Condition {
+            property,
+            on_true,
+            on_false,
+            ..
+        } = &definition.model
+        else {
+            panic!("root should parse as an extended-view condition item model");
+        };
+        assert_eq!(property.property_type, "minecraft:extended_view");
+        assert_eq!(property.kind(), ItemModelPropertyKind::ExtendedView);
+        assert_eq!(
+            property.raw(),
+            &serde_json::json!({"property": "minecraft:extended_view"})
         );
         assert!(matches!(on_true.as_ref(), ItemModelDefinition::Empty));
         assert!(matches!(on_false.as_ref(), ItemModelDefinition::Empty));

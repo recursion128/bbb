@@ -5879,6 +5879,11 @@ When an agent does any of the following, update this file in the same slice:
       native threads an explicit view-entity bit rather than comparing by item
       contents or entity type. Spectator camera identity and non-GUI
       owner-backed item consumers remain follow-up.
+    - `minecraft:extended_view` — `ExtendedView.get`, for GUI/HUD local-player
+      item icons when either Shift key is down. Native threads
+      `ClientInputState::shift_down()` into the item icon resolver and keeps
+      vanilla's GUI display-context gate, so non-GUI consumers select the false
+      branch even while Shift is down.
     - `minecraft:local_time` — `LocalTime.get`, formatting wall-clock time for
       the vanilla 26.1 chest/trapped-chest `MM-dd` selector. Explicit `GMT`/UTC
       offset `time_zone` values use that offset; absent `time_zone` uses the
@@ -5970,7 +5975,9 @@ When an agent does any of the following, update this file in the same slice:
     fake/null-owner item surfaces. `minecraft:custom_model_data` condition is
     wired for the stack-local `flags` list, and `minecraft:selected` is wired
     for HUD hotbar selected-slot icons. `minecraft:view_entity` is wired for
-    GUI/HUD local-player icons in the normal camera==player path.
+    GUI/HUD local-player icons in the normal camera==player path, and
+    `minecraft:extended_view` is wired for Shift-held GUI/HUD local-player
+    icons while retaining vanilla's GUI display-context gate.
     `minecraft:carried` is wired as an explicit resolver context bit for future
     cursor-carried item call sites, while the cursor item presentation itself
     remains GUI follow-up.

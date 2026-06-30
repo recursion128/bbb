@@ -233,7 +233,7 @@ impl ClientInputState {
         }
     }
 
-    fn shift_down(&self) -> bool {
+    pub(crate) fn shift_down(&self) -> bool {
         self.shift_left_down || self.shift_right_down
     }
 
