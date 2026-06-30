@@ -748,8 +748,9 @@ impl Renderer {
             format,
             &terrain_bind_group_layout,
             &end_sky_texture_bind_group_layout,
+            &sky_dynamic_bind_group_layout,
         );
-        let end_sky_mesh = create_end_sky_gpu(&device);
+        let end_sky_mesh = create_end_sky_gpu(&device, &sky_dynamic_bind_group_layout);
         let celestial_bind_group_layout = create_celestial_bind_group_layout(&device);
         let celestial_pipeline = create_celestial_pipeline(
             &device,

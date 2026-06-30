@@ -148,6 +148,7 @@ impl Renderer {
                     pipeline_switches += 1;
                     pass.set_bind_group(0, &self.terrain_bind_group, &[]);
                     pass.set_bind_group(1, &end_sky_texture.bind_group, &[]);
+                    pass.set_bind_group(2, &self.end_sky_mesh.dynamic.bind_group, &[]);
                     pass.set_vertex_buffer(0, self.end_sky_mesh.vertex_buffer.slice(..));
                     pass.draw(0..self.end_sky_mesh.vertex_count, 0..1);
                     sky_draw_calls += 1;
@@ -2326,6 +2327,31 @@ mod tests {
         assert!(
             stars < dynamic && dynamic < draw,
             "vanilla STARS uses core/stars with ColorModulator rather than per-vertex color"
+        );
+    }
+
+    #[test]
+    fn end_sky_draw_binds_color_modulator_uniform() {
+        let source = include_str!("render.rs");
+        let end_sky = source
+            .find("pass.set_pipeline(&self.end_sky_pipeline)")
+            .expect("end sky pipeline is drawn");
+        let texture = source[end_sky..]
+            .find("pass.set_bind_group(1, &end_sky_texture.bind_group, &[])")
+            .map(|index| end_sky + index)
+            .expect("end sky texture is bound");
+        let dynamic = source[texture..]
+            .find("pass.set_bind_group(2, &self.end_sky_mesh.dynamic.bind_group, &[])")
+            .map(|index| texture + index)
+            .expect("end sky binds DynamicTransforms-style ColorModulator uniform");
+        let draw = source[dynamic..]
+            .find("pass.draw(0..self.end_sky_mesh.vertex_count, 0..1)")
+            .map(|index| dynamic + index)
+            .expect("end sky is drawn after binding dynamic uniform");
+
+        assert!(
+            end_sky < texture && texture < dynamic && dynamic < draw,
+            "vanilla END_SKY uses core/position_tex_color with ColorModulator"
         );
     }
 

@@ -990,9 +990,14 @@ When an agent does any of the following, update this file in the same slice:
     `core/position_tex` more closely: the vertex buffer is position+uv, texture
     alpha discard stays in the shader, and rain brightness is carried through
     `ColorModulator = vec4(1, 1, 1, rainBrightness)` instead of per-vertex alpha.
-    Full sky-disc / end-sky DynamicTransforms / `ColorModulator` uniform ABI and
-    celestial's full model-matrix DynamicTransforms expression remain ordinary
-    P1 render-state work, not a P0 pipeline blocker. Basic
+    End sky now also mirrors vanilla `RenderPipelines.END_SKY` /
+    `core/position_tex_color` more closely: the vertex buffer remains
+    position+uv+color, the shader applies texture * vertexColor, alpha==0
+    discard, and `ColorModulator = vec4(1, 1, 1, 1)` through the same sky dynamic
+    uniform before draw. Full sky-disc DynamicTransforms / `ColorModulator`
+    uniform ABI plus celestial/end-sky full model-matrix DynamicTransforms
+    expression remain ordinary P1 render-state work, not a P0 pipeline blocker.
+    Basic
     cloud mesh presentation now consumes these visibility ends with vanilla
     default `CLOUD_COLOR` / `CLOUD_HEIGHT` and now loads vanilla
     `textures/environment/clouds.png` for flat cloud cell geometry with vanilla

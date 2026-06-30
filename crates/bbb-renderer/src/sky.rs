@@ -212,7 +212,7 @@ fn fs_main(_input: VertexOut) -> @location(0) vec4<f32> {
 }
 "#;
 
-const SKY_TEXTURED_SHADER: &str = r#"
+const END_SKY_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
     lightmap_factors: vec4<f32>,
@@ -227,12 +227,18 @@ struct Camera {
     fog_visibility_ends: vec4<f32>,
 };
 
+struct SkyDynamic {
+    color_modulator: vec4<f32>,
+};
+
 @group(0) @binding(0)
 var<uniform> camera: Camera;
 @group(1) @binding(0)
 var sky_texture: texture_2d<f32>;
 @group(1) @binding(1)
 var sky_sampler: sampler;
+@group(2) @binding(0)
+var<uniform> sky_dynamic: SkyDynamic;
 
 struct VertexIn {
     @location(0) position: vec3<f32>,
@@ -259,10 +265,10 @@ fn vs_main(input: VertexIn) -> VertexOut {
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let texel = textureSample(sky_texture, sky_sampler, input.uv) * input.color;
-    if texel.a <= 0.0 {
+    if texel.a == 0.0 {
         discard;
     }
-    return texel;
+    return texel * sky_dynamic.color_modulator;
 }
 "#;
 
@@ -620,6 +626,7 @@ pub(super) struct SkyDiscGpu {
 pub(super) struct EndSkyGpu {
     pub(super) vertex_buffer: wgpu::Buffer,
     pub(super) vertex_count: u32,
+    pub(super) dynamic: SkyDynamicGpu,
 }
 
 pub(super) struct EndSkyTextureGpu {
@@ -890,14 +897,19 @@ pub(super) fn create_end_sky_pipeline(
     format: wgpu::TextureFormat,
     camera_bind_group_layout: &wgpu::BindGroupLayout,
     texture_bind_group_layout: &wgpu::BindGroupLayout,
+    dynamic_bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("bbb-end-sky-shader"),
-        source: wgpu::ShaderSource::Wgsl(SKY_TEXTURED_SHADER.into()),
+        source: wgpu::ShaderSource::Wgsl(END_SKY_SHADER.into()),
     });
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-end-sky-pipeline-layout"),
-        bind_group_layouts: &[camera_bind_group_layout, texture_bind_group_layout],
+        bind_group_layouts: &[
+            camera_bind_group_layout,
+            texture_bind_group_layout,
+            dynamic_bind_group_layout,
+        ],
         push_constant_ranges: &[],
     });
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -1013,8 +1025,12 @@ pub(super) fn create_sky_disc_gpu(
     })
 }
 
-pub(super) fn create_end_sky_gpu(device: &wgpu::Device) -> EndSkyGpu {
+pub(super) fn create_end_sky_gpu(
+    device: &wgpu::Device,
+    dynamic_bind_group_layout: &wgpu::BindGroupLayout,
+) -> EndSkyGpu {
     let vertices = end_sky_vertices();
+    let dynamic = create_sky_dynamic_gpu(device, dynamic_bind_group_layout, [1.0, 1.0, 1.0, 1.0]);
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("bbb-end-sky-vertices"),
         contents: bytemuck::cast_slice(&vertices),
@@ -1023,6 +1039,7 @@ pub(super) fn create_end_sky_gpu(device: &wgpu::Device) -> EndSkyGpu {
     EndSkyGpu {
         vertex_buffer,
         vertex_count: vertices.len() as u32,
+        dynamic,
     }
 }
 
@@ -1857,6 +1874,18 @@ mod tests {
     }
 
     #[test]
+    fn end_sky_shader_uses_vanilla_position_tex_color_modulator_shape() {
+        assert!(END_SKY_SHADER.contains("struct SkyDynamic"));
+        assert!(END_SKY_SHADER.contains("@location(0) position: vec3<f32>"));
+        assert!(END_SKY_SHADER.contains("@location(1) uv: vec2<f32>"));
+        assert!(END_SKY_SHADER.contains("@location(2) color: vec4<f32>"));
+        assert!(END_SKY_SHADER
+            .contains("textureSample(sky_texture, sky_sampler, input.uv) * input.color"));
+        assert!(END_SKY_SHADER.contains("if texel.a == 0.0"));
+        assert!(END_SKY_SHADER.contains("return texel * sky_dynamic.color_modulator;"));
+    }
+
+    #[test]
     fn celestial_shader_uses_vanilla_position_tex_color_modulator_shape() {
         assert!(CELESTIAL_SHADER.contains("struct SkyDynamic"));
         assert!(CELESTIAL_SHADER.contains("@location(0) position: vec3<f32>"));
@@ -1873,6 +1902,7 @@ mod tests {
         };
         let camera_bind_group_layout = create_test_camera_bind_group_layout(&device);
         let sky_dynamic_bind_group_layout = create_sky_dynamic_bind_group_layout(&device);
+        let end_sky_bind_group_layout = create_end_sky_bind_group_layout(&device);
         let celestial_bind_group_layout = create_celestial_bind_group_layout(&device);
 
         let _sky_pipeline = create_sky_pipeline(
@@ -1889,6 +1919,13 @@ mod tests {
             &device,
             wgpu::TextureFormat::Rgba8Unorm,
             &camera_bind_group_layout,
+            &sky_dynamic_bind_group_layout,
+        );
+        let _end_sky_pipeline = create_end_sky_pipeline(
+            &device,
+            wgpu::TextureFormat::Rgba8Unorm,
+            &camera_bind_group_layout,
+            &end_sky_bind_group_layout,
             &sky_dynamic_bind_group_layout,
         );
         let _celestial_pipeline = create_celestial_pipeline(

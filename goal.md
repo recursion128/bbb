@@ -315,8 +315,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     vertex layout，并通过单独 sky dynamic uniform 传递
     `ColorModulator = vec4(STAR_BRIGHTNESS)`，匹配 vanilla
     `RenderPipelines.STARS` / `core/stars`；测试固定 render pass 在 draw 前绑定
-    dynamic uniform。sky-disc / end-sky 的完整 DynamicTransforms /
-    ColorModulator ABI 仍属后续 P1。
+    dynamic uniform。sky-disc 的完整 DynamicTransforms / `ColorModulator` ABI
+    仍属后续 P1。
   - [x] sky `CELESTIAL` ColorModulator ABI：sun/moon GPU path 现在使用
     position+uv vertex layout，绑定 celestial atlas texture 后再绑定单独 sky
     dynamic uniform，传递 `ColorModulator = vec4(1, 1, 1, rainBrightness)`，
@@ -324,11 +324,17 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     测试固定 shader shape 和 render pass draw 前的 dynamic uniform 绑定。
     完整 DynamicTransforms model matrix 目前仍由本地顶点 transform 预烘焙表达，
     后续可作为更细 sky ABI parity 继续推进。
+  - [x] sky `END_SKY` ColorModulator ABI：End sky GPU path 现在使用专用
+    `position_tex_color` shader shape，保留 position+uv+vertex color，
+    按 vanilla 顺序执行 texture * vertexColor、alpha==0 discard，再乘
+    `ColorModulator = vec4(1, 1, 1, 1)`；render pass 在 texture bind 后、
+    draw 前绑定 sky dynamic uniform。完整 DynamicTransforms model matrix 仍由
+    camera view-projection 表达，后续可作为更细 sky ABI parity 继续推进。
   - [x] sky `END_SKY` / `STARS` / `CELESTIAL` default cull：这三条 pipeline
     现在也按 vanilla builder 默认启用 back-face cull；测试固定官方
     `SkyRenderer.buildEndSky` / `buildStars` / celestial quad 的 triangle-list
-    展开仍面向相机原点。更细的 end-sky `core/position_tex_color` 和 remaining
-    sky shader ABI 仍属后续 P1。
+    展开仍面向相机原点。剩余 sky-disc / full DynamicTransforms shader ABI
+    仍属后续 P1。
   - [x] terrain render-pipeline state：solid/cutout terrain 继续用 replace
     blend + depth-write，translucent terrain 继续用 translucent blend +
     no depth-write；三者现在都按 vanilla `SOLID_TERRAIN` /
