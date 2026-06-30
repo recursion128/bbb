@@ -1427,6 +1427,11 @@ When an agent does any of the following, update this file in the same slice:
     run, then the attacking arm's pitch drives `xRot += (90·inOutSine(progress(t,0,0.05)) −
     120·inQuad(progress(t,0.05,0.2)) + 30·inOutExpo(progress(t,0.4,1.0)))·π/180` (the prologue's
     body-twist additions on the arm rotations are undone, so the off arm keeps its resting pitch). The
+    matching `ItemInHandLayer` item-level STAB transform is implemented for the main-hand spear too:
+    after `translateToHand` and the standard hand offset, the submitted item runs vanilla
+    `SpearAnimations.thirdPersonAttackItem` (`rotateAround` the local `(0, -0.125, 0.125)` pivot by
+    `Axis.XN.rotationDegrees(70 * (attack - retract))`, then translate by the spear kinetic
+    `forwardMovement = 0.38` times that same amount). The
     STAB default lives on the item prototype (not the network component patch), so it is detected by the
     resolved item id (gated to the player kind; a datapack-overridden `SWING_ANIMATION` on a non-spear
     item, the `NONE` swing type, and the STAB pose on non-player humanoids — which use their own arm
@@ -1940,7 +1945,8 @@ When an agent does any of the following, update this file in the same slice:
         `humanoid_hand_attach_transform` (`entity_models/held_item.rs`): vanilla
         `ItemInHandLayer` + `HumanoidModel.translateToHand` =
         `root.translateAndRotate · arm.translateAndRotate · rotX(-90°) ·
-        rotY(180°) · T((left?-1:1), 2, -10)/16` (built on
+        rotY(180°) · T((left?-1:1), 2, -10)/16` plus the main-hand spear
+        `SpearAnimations.thirdPersonAttackItem` transform during STAB swings (built on
         `ModelPart::try_child_attach_transform`). It dispatches over the
         weapon-holding adult humanoid families — players, zombies (+husk /
         drowned / zombie-villager), skeletons (+stray / bogged / wither),

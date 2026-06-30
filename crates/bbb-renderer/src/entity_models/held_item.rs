@@ -56,7 +56,9 @@ impl CustomHeadTransforms {
 /// The model→world transform of the hand attach point for a humanoid's main (`right`) or off (`left`)
 /// hand, or `None` if the instance is not a humanoid that holds items the standard way. Composes the
 /// posed arm bone (vanilla `translateToHand` = root + arm `translateAndRotate`) with the
-/// `ItemInHandLayer` hand offset (`rotX(-90°)·rotY(180°)·translate(±offsetX, offsetY, offsetZ)/16`).
+/// `ItemInHandLayer` hand offset (`rotX(-90°)·rotY(180°)·translate(±offsetX, offsetY, offsetZ)/16`)
+/// and the main-hand spear attack item transform (`SpearAnimations.thirdPersonAttackItem`) when the
+/// rendered player is mid-STAB swing. Kinetic weapon hold sway is still separate P1 work.
 /// Vanilla `useBabyOffset` selects the offsets: adult `(1, 2, -10)`, baby `(0, 1, -4.5)`. The baby
 /// humanoid families (zombie, zombie variants, piglin) bake their reduced proportions straight into an
 /// explicit baby mesh (no part scale), so the baby attach uses the same `root · arm` formula on the baby
@@ -68,6 +70,13 @@ pub fn humanoid_hand_attach_transform(
 ) -> Option<Mat4> {
     let arm_name = if left_hand { "left_arm" } else { "right_arm" };
     let (arm_world, baby) = humanoid_arm_world_transform(instance, arm_name)?;
+    Some(
+        item_in_hand_layer_base_transform(arm_world, left_hand, baby)
+            * item_in_hand_layer_item_transform(instance, left_hand),
+    )
+}
+
+fn item_in_hand_layer_base_transform(arm_world: Mat4, left_hand: bool, baby: bool) -> Mat4 {
     let sign = if left_hand { -1.0 } else { 1.0 };
     // Vanilla `ItemInHandLayer.submitArmWithItem`: `offsetX/Y/Z` are `(1, 2, -10)` adult, `(0, 1, -4.5)`
     // baby (so baby hands share the X=0 column — the left/right split comes only from the arm bone).
@@ -76,16 +85,64 @@ pub fn humanoid_hand_attach_transform(
     } else {
         (1.0, 2.0, -10.0)
     };
-    Some(
-        arm_world
-            * Mat4::from_rotation_x(-FRAC_PI_2)
-            * Mat4::from_rotation_y(PI)
-            * Mat4::from_translation(Vec3::new(
-                sign * offset_x / 16.0,
-                offset_y / 16.0,
-                offset_z / 16.0,
-            )),
-    )
+    arm_world
+        * Mat4::from_rotation_x(-FRAC_PI_2)
+        * Mat4::from_rotation_y(PI)
+        * Mat4::from_translation(Vec3::new(
+            sign * offset_x / 16.0,
+            offset_y / 16.0,
+            offset_z / 16.0,
+        ))
+}
+
+fn item_in_hand_layer_item_transform(instance: &EntityModelInstance, left_hand: bool) -> Mat4 {
+    if !left_hand
+        && instance.render_state.main_hand_swing_is_stab
+        && !instance.render_state.attack_arm_off_hand
+    {
+        spear_third_person_attack_item_transform(instance.render_state.attack_anim)
+    } else {
+        Mat4::IDENTITY
+    }
+}
+
+/// Vanilla `SpearAnimations.thirdPersonAttackItem`: after the standard hand offset and before the item
+/// stack submit, a STAB swing rotates the item around `(0, -0.125, 0.125)` by
+/// `Axis.XN.rotationDegrees(70 * (attack - retract))`, then translates by the spear kinetic weapon's
+/// fixed `forwardMovement = 0.38` along local Y.
+fn spear_third_person_attack_item_transform(attack_anim: f32) -> Mat4 {
+    if attack_anim <= 0.0 {
+        return Mat4::IDENTITY;
+    }
+    let attack = progress(attack_anim, 0.05, 0.2).powi(2);
+    let retract = ease_in_out_expo(progress(attack_anim, 0.4, 1.0));
+    let amount = attack - retract;
+    rotate_around(
+        Vec3::new(0.0, -0.125, 0.125),
+        Mat4::from_rotation_x(-(70.0 * amount).to_radians()),
+    ) * Mat4::from_translation(Vec3::new(0.0, 0.38 * amount, 0.0))
+}
+
+fn rotate_around(pivot: Vec3, rotation: Mat4) -> Mat4 {
+    Mat4::from_translation(pivot) * rotation * Mat4::from_translation(-pivot)
+}
+
+fn progress(value: f32, start: f32, end: f32) -> f32 {
+    ((value - start) / (end - start)).clamp(0.0, 1.0)
+}
+
+fn ease_in_out_expo(x: f32) -> f32 {
+    if x < 0.5 {
+        if x == 0.0 {
+            0.0
+        } else {
+            2.0_f32.powf(20.0 * x - 10.0) / 2.0
+        }
+    } else if x == 1.0 {
+        1.0
+    } else {
+        (2.0 - 2.0_f32.powf(-20.0 * x + 10.0)) / 2.0
+    }
 }
 
 /// The model→world transform used by vanilla `CopperGolemModel.translateToHand` plus
@@ -1252,6 +1309,40 @@ mod tests {
     }
 
     #[test]
+    fn main_hand_spear_attack_applies_vanilla_item_layer_stab_transform() {
+        let player = player_instance(0.0)
+            .with_attack_anim(0.1)
+            .with_main_hand_swing_is_stab(true);
+        let (arm_world, baby) = humanoid_arm_world_transform(&player, "right_arm").unwrap();
+        let expected = item_in_hand_layer_base_transform(arm_world, false, baby)
+            * spear_third_person_attack_item_transform(0.1);
+        let actual = humanoid_hand_attach_transform(&player, false).unwrap();
+        assert_close_transform(actual, expected);
+
+        let base_only = item_in_hand_layer_base_transform(arm_world, false, baby);
+        let base_origin = base_only.transform_point3(Vec3::ZERO);
+        let stabbed_origin = actual.transform_point3(Vec3::ZERO);
+        assert!(
+            (stabbed_origin - base_origin).length() > 0.01,
+            "thirdPersonAttackItem should visibly move the submitted spear"
+        );
+
+        let (left_world, left_baby) = humanoid_arm_world_transform(&player, "left_arm").unwrap();
+        let expected_left = item_in_hand_layer_base_transform(left_world, true, left_baby);
+        assert_close_transform(
+            humanoid_hand_attach_transform(&player, true).unwrap(),
+            expected_left,
+        );
+
+        let whack = player.with_main_hand_swing_is_stab(false);
+        let (whack_world, whack_baby) = humanoid_arm_world_transform(&whack, "right_arm").unwrap();
+        assert_close_transform(
+            humanoid_hand_attach_transform(&whack, false).unwrap(),
+            item_in_hand_layer_base_transform(whack_world, false, whack_baby),
+        );
+    }
+
+    #[test]
     fn left_and_right_hands_mirror_across_x() {
         let right = humanoid_hand_attach_transform(&player_instance(0.0), false)
             .unwrap()
@@ -1264,5 +1355,18 @@ mod tests {
             right.x < left.x,
             "right {right:?} should be left of left {left:?}"
         );
+    }
+
+    fn assert_close_transform(actual: Mat4, expected: Mat4) {
+        for (actual, expected) in actual
+            .to_cols_array()
+            .into_iter()
+            .zip(expected.to_cols_array())
+        {
+            assert!(
+                (actual - expected).abs() < 1.0e-5,
+                "transform mismatch: {actual} != {expected}"
+            );
+        }
     }
 }

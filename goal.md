@@ -453,6 +453,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - remaining arm poses。
   - use-item sway。
   - attack / crossbow / spell / celebrate / riding 组合冲突。
+  - [x] main-hand spear STAB held-item layer transform：player STAB arm lunge
+    之后，held item transform 追加 vanilla
+    `SpearAnimations.thirdPersonAttackItem` 的 local pivot rotation 与 spear
+    `forwardMovement = 0.38` 平移；off-hand / kinetic hold sway 仍拆为后续。
   - held item 与 use-item 的 layer/order 交互。
 - Boss / beam / emissive 类：
   - [x] EnderDragon dying-dissolve render type / submission 表达：
