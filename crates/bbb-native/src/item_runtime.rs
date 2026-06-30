@@ -1326,6 +1326,7 @@ impl NativeItemRuntime {
                             bundle_selected_item_index: None,
                             using_item: false,
                             crossbow_charge: CrossbowChargeType::None,
+                            main_hand_left: None,
                             default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
                             trim_material_keys: None,
                         })
@@ -1408,7 +1409,19 @@ impl NativeItemRuntime {
         &self,
         stack: &ItemStackSummary,
     ) -> Vec<GeneratedItemLayer> {
-        let Some(icon) = self.icon_for_stack(stack) else {
+        self.generated_item_layers_for_stack_with_owner_main_hand(stack, None)
+    }
+
+    /// Generated item layers for an entity-owned stack. Vanilla `MainHand.get`
+    /// returns null without a living owner; held-item paths pass the owner's
+    /// main arm so `minecraft:main_hand` select cases can resolve.
+    pub(crate) fn generated_item_layers_for_stack_with_owner_main_hand(
+        &self,
+        stack: &ItemStackSummary,
+        owner_main_hand_left: Option<bool>,
+    ) -> Vec<GeneratedItemLayer> {
+        let Some(icon) = self.icon_for_stack_with_owner_main_hand(stack, owner_main_hand_left)
+        else {
             return Vec::new();
         };
         icon.layers
@@ -1458,6 +1471,31 @@ impl NativeItemRuntime {
         using_item: bool,
         trim_material_keys: Option<&[String]>,
     ) -> Option<ItemAtlasIcon> {
+        self.icon_for_stack_with_model_context(
+            stack,
+            bundle_selected_item_index,
+            using_item,
+            trim_material_keys,
+            None,
+        )
+    }
+
+    pub(crate) fn icon_for_stack_with_owner_main_hand(
+        &self,
+        stack: &ItemStackSummary,
+        owner_main_hand_left: Option<bool>,
+    ) -> Option<ItemAtlasIcon> {
+        self.icon_for_stack_with_model_context(stack, None, false, None, owner_main_hand_left)
+    }
+
+    fn icon_for_stack_with_model_context(
+        &self,
+        stack: &ItemStackSummary,
+        bundle_selected_item_index: Option<i32>,
+        using_item: bool,
+        trim_material_keys: Option<&[String]>,
+        owner_main_hand_left: Option<bool>,
+    ) -> Option<ItemAtlasIcon> {
         let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
         self.icon_for_resource_id(
             item_id,
@@ -1466,13 +1504,14 @@ impl NativeItemRuntime {
             bundle_selected_item_index,
             using_item,
             trim_material_keys,
+            owner_main_hand_left,
         )
     }
 
     #[cfg(test)]
     pub(crate) fn icon_for_protocol_id(&self, protocol_id: i32) -> Option<ItemAtlasIcon> {
         let item_id = self.registry.as_ref()?.resource_id(protocol_id)?;
-        self.icon_for_resource_id(item_id, 1, None, None, false, None)
+        self.icon_for_resource_id(item_id, 1, None, None, false, None, None)
     }
 
     fn icon_for_resource_id(
@@ -1483,6 +1522,7 @@ impl NativeItemRuntime {
         bundle_selected_item_index: Option<i32>,
         using_item: bool,
         trim_material_keys: Option<&[String]>,
+        owner_main_hand_left: Option<bool>,
     ) -> Option<ItemAtlasIcon> {
         let default_max_damage = self
             .registry
@@ -1502,6 +1542,7 @@ impl NativeItemRuntime {
             bundle_selected_item_index,
             using_item,
             crossbow_charge: self.crossbow_charge_for(component_patch),
+            main_hand_left: owner_main_hand_left,
             default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
             trim_material_keys,
         };
@@ -1615,6 +1656,7 @@ impl NativeItemRuntime {
             bundle_selected_item_index: None,
             using_item: false,
             crossbow_charge: self.crossbow_charge_for(Some(&template.component_patch)),
+            main_hand_left: parent_context.main_hand_left,
             default_max_stack_size_for_item: parent_context.default_max_stack_size_for_item,
             trim_material_keys: parent_context.trim_material_keys,
         };
@@ -4563,6 +4605,40 @@ mod tests {
     }
 
     #[test]
+    fn native_item_runtime_resolves_main_hand_select_from_owner_context() {
+        let root = unique_temp_dir("item-runtime-main-hand-select");
+        write_main_hand_select_fixture(&root);
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let uv = |model_id: &str| {
+            runtime
+                .textures
+                .texture_uv_rect(runtime.texture_index(&format!("minecraft:item/{model_id}")))
+                .unwrap()
+        };
+        let stack = ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let selected = |owner_main_hand_left| {
+            runtime
+                .icon_for_stack_with_owner_main_hand(&stack, owner_main_hand_left)
+                .unwrap()
+                .layers[0]
+                .uv
+        };
+
+        // Vanilla `MainHand.get` returns null when there is no living owner, so
+        // no case matches and the fallback model is used.
+        assert_eq!(selected(None), uv("hand_selector"));
+        assert_eq!(selected(Some(false)), uv("hand_selector_right"));
+        assert_eq!(selected(Some(true)), uv("hand_selector_left"));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn native_item_runtime_resolves_stack_string_select_properties() {
         let root = unique_temp_dir("item-runtime-stack-string-select");
         write_stack_string_select_fixture(&root);
@@ -5168,6 +5244,35 @@ mod tests {
         write_flat_item_model_and_texture(&assets, "crossbow", &[40, 80, 120, 255]);
         write_flat_item_model_and_texture(&assets, "crossbow_arrow", &[80, 120, 40, 255]);
         write_flat_item_model_and_texture(&assets, "crossbow_firework", &[120, 40, 80, 255]);
+    }
+
+    fn write_main_hand_select_fixture(root: &Path) {
+        let assets = assets_dir(root);
+        write_item_atlases(&assets);
+        write_single_item_registry_source(root, "hand_selector");
+        write_json(
+            &assets.join("items").join("hand_selector.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:main_hand",
+                    "cases": [
+                        {
+                            "when": "left",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/hand_selector_left" }
+                        },
+                        {
+                            "when": "right",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/hand_selector_right" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/hand_selector" }
+                }
+            }"#,
+        );
+        write_flat_item_model_and_texture(&assets, "hand_selector", &[40, 80, 120, 255]);
+        write_flat_item_model_and_texture(&assets, "hand_selector_left", &[120, 40, 80, 255]);
+        write_flat_item_model_and_texture(&assets, "hand_selector_right", &[80, 120, 40, 255]);
     }
 
     fn write_stack_string_select_fixture(root: &Path) {

@@ -248,11 +248,15 @@ fn last_range_entry_at_or_below(
 }
 
 /// The subset of vanilla `SelectItemModelProperty` whose value is a pure
-/// projection of the item stack (resolvable from the GUI icon context). The rest
-/// (`local_time`, `context_dimension`, `context_entity_type`, `main_hand`) need
-/// ambient world/owner context and keep the build-time collapse.
+/// projection of the item stack, or a narrow owner context already threaded by
+/// native item submitters. The rest (`local_time`, `context_dimension`,
+/// `context_entity_type`) need broader ambient world/entity context and keep the
+/// build-time collapse.
 #[derive(Debug, Clone, PartialEq)]
 pub(super) enum SelectProperty {
+    /// `minecraft:main_hand` — `MainHand.get`, matched against the owner's
+    /// `HumanoidArm` serialized name.
+    MainHand,
     /// `minecraft:charge_type` — `Charge.get`, matched against the crossbow's
     /// charged-projectile contents.
     ChargeType,
@@ -292,6 +296,7 @@ impl CrossbowChargeType {
 /// for the context-needing ones (which keep the build-time collapse).
 fn select_property_for(property: &ItemModelProperty) -> Option<SelectProperty> {
     match property.property_type.as_str() {
+        "minecraft:main_hand" => Some(SelectProperty::MainHand),
         "minecraft:charge_type" => Some(SelectProperty::ChargeType),
         "minecraft:trim_material" => Some(SelectProperty::TrimMaterial),
         "minecraft:block_state" => property
@@ -436,6 +441,11 @@ pub(super) struct IconResolveContext<'a> {
     pub bundle_selected_item_index: Option<i32>,
     pub using_item: bool,
     pub crossbow_charge: CrossbowChargeType,
+    /// Vanilla `MainHand.get`: `None` means this native call site has not
+    /// threaded a `LivingEntity` owner, so select cases do not match and
+    /// fallback is used. `Some(true)` is `HumanoidArm.LEFT`; `Some(false)` is
+    /// RIGHT.
+    pub main_hand_left: Option<bool>,
     pub default_max_stack_size_for_item: Option<&'a dyn Fn(i32) -> i32>,
     /// `minecraft:trim_material` registry keys by holder id (the dynamic
     /// registry, projected from `bbb-world` at the call site).
@@ -527,6 +537,10 @@ impl ItemIconModel {
                 fallback,
             } => {
                 let selected_when: Option<&str> = match property {
+                    SelectProperty::MainHand => {
+                        ctx.main_hand_left
+                            .map(|left| if left { "left" } else { "right" })
+                    }
                     SelectProperty::ChargeType => Some(ctx.crossbow_charge.when_name()),
                     SelectProperty::TrimMaterial => ctx
                         .component_patch
@@ -759,9 +773,9 @@ pub(super) fn item_icon_model_ref_for_definition(
                 }
             } else {
                 // Context-needing select properties (local_time/
-                // context_dimension/main_hand/...) collapse to the resolved
-                // single case since their value needs world/owner context not
-                // available to the GUI icon resolver.
+                // context_dimension/context_entity_type/...) collapse to the
+                // resolved single case since their value needs broader ambient
+                // context not available to the GUI icon resolver.
                 selected_icon_select_model(property, cases, fallback.as_deref())
                     .map(|model| {
                         item_icon_model_ref_for_definition(

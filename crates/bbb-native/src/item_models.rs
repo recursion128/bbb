@@ -607,6 +607,7 @@ fn bake_held_hand(
             hand,
             context,
             left_arm,
+            Some(instance.render_state.main_arm_left),
             BLOCK_THIRD_PERSON_FALLBACK,
             GENERATED_THIRD_PERSON_FALLBACK,
             item_runtime,
@@ -654,6 +655,7 @@ fn bake_fox_held_item(
         transform,
         BlockModelDisplayContext::Ground,
         false,
+        Some(instance.render_state.main_arm_left),
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
         item_runtime,
@@ -690,6 +692,7 @@ fn bake_dolphin_carried_item(
         transform,
         BlockModelDisplayContext::Ground,
         false,
+        Some(instance.render_state.main_arm_left),
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
         item_runtime,
@@ -726,6 +729,7 @@ fn bake_witch_held_item(
         transform,
         BlockModelDisplayContext::Ground,
         false,
+        Some(instance.render_state.main_arm_left),
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
         item_runtime,
@@ -767,6 +771,7 @@ fn bake_copper_golem_held_items(
             hand,
             context,
             left_hand,
+            Some(instance.render_state.main_arm_left),
             BLOCK_THIRD_PERSON_FALLBACK,
             GENERATED_THIRD_PERSON_FALLBACK,
             item_runtime,
@@ -811,6 +816,7 @@ fn bake_allay_held_items(
             hand,
             context,
             left_hand,
+            Some(instance.render_state.main_arm_left),
             BLOCK_THIRD_PERSON_FALLBACK,
             GENERATED_THIRD_PERSON_FALLBACK,
             item_runtime,
@@ -847,6 +853,7 @@ fn bake_villager_crossed_arms_item(
         transform,
         BlockModelDisplayContext::Ground,
         false,
+        Some(instance.render_state.main_arm_left),
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
         item_runtime,
@@ -883,6 +890,7 @@ fn bake_panda_held_item(
         transform,
         BlockModelDisplayContext::Ground,
         false,
+        Some(instance.render_state.main_arm_left),
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
         item_runtime,
@@ -929,6 +937,7 @@ fn bake_custom_head_item(
             transform,
             BlockModelDisplayContext::Head,
             false,
+            Some(instance.render_state.main_arm_left),
             BLOCK_HEAD_FALLBACK,
             GENERATED_HEAD_FALLBACK,
             item_runtime,
@@ -963,6 +972,7 @@ fn bake_item_stack_at_transform(
     attach: Mat4,
     context: BlockModelDisplayContext,
     left_hand: bool,
+    owner_main_hand_left: Option<bool>,
     block_fallback: BlockModelDisplayTransform,
     generated_fallback: BlockModelDisplayTransform,
     item_runtime: &NativeItemRuntime,
@@ -999,7 +1009,9 @@ fn bake_item_stack_at_transform(
 
     // Flat path.
     let mut quads: Vec<ItemModelQuad> = Vec::new();
-    for layer in item_runtime.generated_item_layers_for_stack(stack) {
+    for layer in item_runtime
+        .generated_item_layers_for_stack_with_owner_main_hand(stack, owner_main_hand_left)
+    {
         quads.extend(bake_generated_item_quads(
             &layer.mask,
             layer.rect,
@@ -1837,6 +1849,59 @@ mod tests {
     }
 
     #[test]
+    fn held_generated_item_main_hand_select_uses_owner_main_arm_context() {
+        // Vanilla `MainHand.get` returns `owner.getMainArm()`. Keep the attach
+        // transform and physical hand fixed here so the mesh difference proves
+        // the selected generated-item texture branch changed.
+        let root = unique_item_model_temp_dir("held-main-hand-select");
+        write_main_hand_select_item_runtime_fixture(&root);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let terrain_textures = TerrainTextureState::default();
+        let stack = ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let bake = |owner_main_hand_left| {
+            let mut block_meshes = Vec::new();
+            let mut block_translucent_meshes = Vec::new();
+            let mut flat_meshes = Vec::new();
+            let mut flat_translucent_meshes = Vec::new();
+            bake_item_stack_at_transform(
+                &stack,
+                Mat4::IDENTITY,
+                BlockModelDisplayContext::ThirdPersonRightHand,
+                false,
+                owner_main_hand_left,
+                BLOCK_THIRD_PERSON_FALLBACK,
+                GENERATED_THIRD_PERSON_FALLBACK,
+                &item_runtime,
+                &terrain_textures,
+                &mut block_meshes,
+                &mut block_translucent_meshes,
+                &mut flat_meshes,
+                &mut flat_translucent_meshes,
+            );
+            assert!(block_meshes.is_empty());
+            assert!(block_translucent_meshes.is_empty());
+            assert!(flat_translucent_meshes.is_empty());
+            assert_eq!(flat_meshes.len(), 1);
+            flat_meshes.remove(0)
+        };
+
+        let fallback = bake(None);
+        let right = bake(Some(false));
+        let left = bake(Some(true));
+
+        assert_ne!(fallback, right);
+        assert_ne!(fallback, left);
+        assert_ne!(right, left);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn illusioner_item_in_hand_layer_uses_vanilla_visibility_and_clones() {
         // Vanilla `IllusionerRenderer` installs a conditional `ItemInHandLayer`: idle illusioners do not
         // submit held items, while casting/aggressive illusioners submit inside the invisible clone loop.
@@ -2116,6 +2181,35 @@ mod tests {
                 &[(64 + index * 40) as u8, 80, 120, 255],
             );
         }
+    }
+
+    fn write_main_hand_select_item_runtime_fixture(root: &Path) {
+        let assets = item_model_assets_dir(root);
+        write_item_atlases(&assets);
+        write_item_registry_source(root, &["hand_selector"]);
+        write_json(
+            &assets.join("items").join("hand_selector.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:main_hand",
+                    "cases": [
+                        {
+                            "when": "left",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/hand_selector_left" }
+                        },
+                        {
+                            "when": "right",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/hand_selector_right" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/hand_selector" }
+                }
+            }"#,
+        );
+        write_flat_item_model_and_texture(&assets, "hand_selector", &[40, 80, 120, 255]);
+        write_flat_item_model_and_texture(&assets, "hand_selector_left", &[120, 40, 80, 255]);
+        write_flat_item_model_and_texture(&assets, "hand_selector_right", &[80, 120, 40, 255]);
     }
 
     fn item_model_assets_dir(root: &Path) -> PathBuf {
