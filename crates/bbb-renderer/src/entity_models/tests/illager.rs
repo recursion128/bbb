@@ -1038,6 +1038,54 @@ fn aggressive_vindicator_chops_with_its_axe() {
 }
 
 #[test]
+fn aggressive_pillager_attacks_when_not_holding_crossbow() {
+    use std::f32::consts::PI;
+
+    // Vanilla `Pillager.getArmPose`: `CROSSBOW_CHARGE` and `CROSSBOW_HOLD` win first; otherwise an
+    // aggressive pillager returns `ATTACKING` and `IllagerModel.setupAnim` uses the same armed
+    // `swingWeaponDown` branch as a vindicator when the rendered main hand is non-empty.
+    let attacking =
+        EntityModelInstance::illager(103, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Pillager)
+            .with_is_aggressive(true);
+    let mut model = IllagerModel::new(&attacking, IllagerModelFamily::Pillager);
+    model.prepare(&attacking);
+
+    let right = model.root_mut().child_mut("right_arm").pose.rotation;
+    assert!(
+        (right[0] - (-1.8849558 + 0.15)).abs() < 1.0e-6,
+        "the right arm raises overhead: {}",
+        right[0]
+    );
+    assert!((right[1] - PI / 20.0).abs() < 1.0e-6);
+    assert!(
+        (right[2] - 0.1).abs() < 1.0e-6,
+        "the bob rolls zRot: {}",
+        right[2]
+    );
+
+    let calm =
+        EntityModelInstance::illager(103, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Pillager);
+    assert_ne!(
+        entity_model_mesh(&[attacking]).vertices,
+        entity_model_mesh(&[calm]).vertices,
+        "aggressive pillager should not stay on the neutral arm swing"
+    );
+
+    let holding_crossbow = calm.with_main_hand_holds_crossbow(true);
+    assert_eq!(
+        entity_model_mesh(&[holding_crossbow.with_is_aggressive(true)]).vertices,
+        entity_model_mesh(&[holding_crossbow]).vertices,
+        "CROSSBOW_HOLD outranks ATTACKING"
+    );
+    let charging_crossbow = calm.with_is_charging_crossbow(true);
+    assert_eq!(
+        entity_model_mesh(&[charging_crossbow.with_is_aggressive(true)]).vertices,
+        entity_model_mesh(&[charging_crossbow]).vertices,
+        "CROSSBOW_CHARGE outranks ATTACKING"
+    );
+}
+
+#[test]
 fn empty_hand_attacking_vindicator_uses_zombie_arms() {
     use std::f32::consts::PI;
 

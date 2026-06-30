@@ -546,6 +546,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `PiglinModel.setupAttackAnimation -> super.setupAttackAnimation` 的默认
     `HumanoidModel` body twist / arm anchor / right-arm whack；melee-weapon
     pose 仍保持 `AnimationUtils.swingWeaponDown` 分支。
+  - [x] pillager aggressive `ATTACKING`：world/native 现在把 pillager 纳入
+    `Mob.isAggressive` render-state 投影；renderer 按 vanilla
+    `Pillager.getArmPose` 保持 `CROSSBOW_CHARGE` / `CROSSBOW_HOLD` 优先，
+    无 crossbow 且 aggressive 时进入 `IllagerModel.setupAnim` 的
+    `ATTACKING` 分支（armed `swingWeaponDown`，empty-hand `animateZombieArms`）。
   - [x] illusioner invisible clone body submit：隐身 illusioner 现在按 vanilla
     `IllusionerRenderer.submit` 循环四个 `illusionOffsets`，在实体位置之后、
     living setup rotation 之前追加 offset + age jitter，并且覆盖

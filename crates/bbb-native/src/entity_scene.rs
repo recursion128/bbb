@@ -5496,6 +5496,54 @@ mod tests {
     }
 
     #[test]
+    fn entity_model_instances_project_aggressive_for_pillager_attacking_pose() {
+        // Vanilla `Pillager.getArmPose`: after crossbow charge/hold checks, an aggressive pillager returns
+        // `ATTACKING`. The evoker has no aggressive branch, so the same mob flag stays gated out there.
+        const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
+        const MOB_FLAG_AGGRESSIVE: i8 = 4;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            91,
+            VANILLA_ENTITY_TYPE_PILLAGER_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            92,
+            VANILLA_ENTITY_TYPE_EVOKER_ID,
+            [2.0, 64.0, -2.0],
+        ));
+
+        let aggressive = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .is_aggressive
+        };
+
+        assert!(!aggressive(&world, 91));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 91,
+            values: vec![protocol_byte_data(
+                VANILLA_MOB_FLAGS_DATA_ID,
+                MOB_FLAG_AGGRESSIVE,
+            )],
+        }));
+        assert!(aggressive(&world, 91));
+
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 92,
+            values: vec![protocol_byte_data(
+                VANILLA_MOB_FLAGS_DATA_ID,
+                MOB_FLAG_AGGRESSIVE,
+            )],
+        }));
+        assert!(!aggressive(&world, 92));
+    }
+
+    #[test]
     fn entity_model_instances_project_enderman_carrying_and_creepy() {
         // Vanilla Enderman accessors: DATA_CARRY_STATE (16, OPTIONAL_BLOCK_STATE serializer
         // 15), DATA_CREEPY (17, BOOLEAN serializer 8).

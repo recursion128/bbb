@@ -1010,7 +1010,7 @@ impl EntityStore {
         // Vanilla `Mob.isAggressive()` (`DATA_MOB_FLAGS_ID & 4`): the zombie-model family
         // consumes it (their held-out `animateZombieArms` arm drop deepens when aggressive),
         // the piglin/brute drive `ATTACKING_WITH_MELEE_WEAPON` (raise + swing a melee weapon)
-        // with it, and the vindicator (`ATTACKING` axe) / illusioner (`BOW_AND_ARROW` aim)
+        // with it, and the vindicator / pillager (`ATTACKING`) plus illusioner (`BOW_AND_ARROW` aim)
         // resolve their arm pose from it. Every such type is a Mob carrying the flags byte;
         // other entities have no mob-flags byte (or do not use those arms), so they stay calm.
         let is_aggressive = (vanilla_zombie_model_family(identity.entity_type_id)

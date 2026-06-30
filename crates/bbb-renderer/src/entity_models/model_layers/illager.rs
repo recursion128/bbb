@@ -341,17 +341,26 @@ impl IllagerArmPose {
 }
 
 /// Resolves the illager arm pose from the projected render state, mirroring each family's vanilla
-/// `getArmPose()` for the supported poses. The pillager always uses the uncrossed swing layout (vanilla
-/// returns HOLD/CHARGE/ATTACKING/NEUTRAL, never CROSSED); the spellcasters cast first (priority), else the
-/// evoker celebrates and the illusioner draws its bow when aggressive; the vindicator chops its axe when
-/// aggressive (`ATTACKING`, priority over `CELEBRATING` per vanilla), else celebrates, else stays `Crossed`.
+/// `getArmPose()` for the supported poses. The pillager uses crossbow charge/hold first, otherwise
+/// `ATTACKING` when aggressive and `NEUTRAL` as the uncrossed swing layout; the spellcasters cast first
+/// (priority), else the evoker celebrates and the illusioner draws its bow when aggressive; the vindicator
+/// chops its axe when aggressive (`ATTACKING`, priority over `CELEBRATING` per vanilla), else celebrates,
+/// else stays `Crossed`.
 fn resolve_illager_arm_pose(
     instance: &EntityModelInstance,
     family: IllagerModelFamily,
 ) -> IllagerArmPose {
     let rs = &instance.render_state;
     match family {
-        IllagerModelFamily::Pillager => IllagerArmPose::Swing,
+        IllagerModelFamily::Pillager => {
+            if rs.is_charging_crossbow || illager_is_holding_crossbow(instance) {
+                IllagerArmPose::Swing
+            } else if rs.is_aggressive {
+                IllagerArmPose::Attacking
+            } else {
+                IllagerArmPose::Swing
+            }
+        }
         IllagerModelFamily::Evoker => {
             if rs.illager_spellcasting {
                 IllagerArmPose::Spellcast
@@ -390,7 +399,8 @@ fn resolve_illager_arm_pose(
 /// ([`apply_head_look`] on `head`) and swings the legs at the villager-family half amplitude
 /// ([`apply_half_amplitude_leg_swing`]), then applies the resolved arm pose: the pillager swings its
 /// separate arms ([`humanoid_arm_swing_pose`]) and either pulls back a charging crossbow
-/// ([`apply_crossbow_charge_pose`]) or levels a held one ([`apply_crossbow_hold_pose`]);
+/// ([`apply_crossbow_charge_pose`]), levels a held one ([`apply_crossbow_hold_pose`]), or attacks without
+/// a crossbow (`ATTACKING`);
 /// a casting evoker/illusioner raises the `SPELLCASTING` arms ([`illager_spellcast_arm_pose`]); an
 /// aggressive illusioner draws its bow ([`apply_illager_bow_aim`]); an aggressive vindicator either
 /// reaches with empty zombie arms ([`apply_zombie_arms_held_out_named`]) or chops its axe
@@ -451,9 +461,10 @@ impl EntityModel for IllagerModel {
                     }
                 }
                 // Vanilla `Pillager.getArmPose`: `CROSSBOW_CHARGE` (drawing) takes priority over
-                // `CROSSBOW_HOLD` (holding a level crossbow). A charging pillager pulls the crossbow back
-                // ([`apply_crossbow_charge_pose`] over the projected draw ticks), overwriting the walk
-                // swing; otherwise a held crossbow levels along the head look.
+                // `CROSSBOW_HOLD` (holding a level crossbow), and both take priority over `ATTACKING`.
+                // A charging pillager pulls the crossbow back ([`apply_crossbow_charge_pose`] over the
+                // projected draw ticks), overwriting the walk swing; otherwise a held crossbow levels along
+                // the head look.
                 if render_state.is_charging_crossbow {
                     apply_crossbow_charge_pose(
                         &mut self.root,
@@ -489,10 +500,10 @@ impl EntityModel for IllagerModel {
                 left.pose = illager_celebrate_arm_pose(left.pose, age, false);
             }
             IllagerArmPose::Attacking => {
-                // Vindicator ATTACKING: vanilla checks the rendered main-hand item. Empty hands use the
-                // same held-out `animateZombieArms` as zombies; armed hands raise the weapon overhead and
-                // chop with `swingWeaponDown`. IllagerModel is not a HumanoidModel, so there is no body
-                // twist in either branch.
+                // Illager ATTACKING (vindicator and pillager without a crossbow): vanilla checks the
+                // rendered main-hand item. Empty hands use the same held-out `animateZombieArms` as zombies;
+                // armed hands raise the weapon overhead and chop with `swingWeaponDown`. IllagerModel is
+                // not a HumanoidModel, so there is no body twist in either branch.
                 if render_state.illager_main_hand_empty {
                     apply_zombie_arms_held_out_named(
                         &mut self.root,

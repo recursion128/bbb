@@ -1354,8 +1354,9 @@ When an agent does any of the following, update this file in the same slice:
     from rest to full draw — ranked below `ATTACKING`/`ADMIRING`/`DANCING`, above `CROSSBOW_HOLD`. The
     piglin and the piglin brute also drive `ATTACKING_WITH_MELEE_WEAPON`
     (`Piglin`/`PiglinBrute.getArmPose`: `isAggressive() && isHoldingMeleeWeapon()`): aggression is
-    the synced `Mob.DATA_MOB_FLAGS_ID` (id `15`) bit `4` (the `is_aggressive` projection now covers
-    the piglin/brute alongside the zombie family), and a melee weapon is a main-hand item carrying
+    the synced `Mob.DATA_MOB_FLAGS_ID` (id `15`) bit `4` (the `is_aggressive` projection covers
+    the piglin/brute, the aggressive-arm illagers, and the zombie family), and a melee weapon is a
+    main-hand item carrying
     the `minecraft:tool` data component (`getMainHandItem().has(DataComponents.TOOL)` — the decoded
     component patch lists wire type `28` in its added types, so no item-registry lookup is needed).
     `PiglinModel` then raises the weapon overhead at rest (`holdWeaponHigh`, main right arm
@@ -1387,7 +1388,12 @@ When an agent does any of the following, update this file in the same slice:
     right arm raises overhead (`xRot = -1.8849558 + cos(age·0.09)·0.15`) and chops with
     `+= sin(t·π)·2.2 - sin((1-(1-t)²)·π)·0.4`, the left arm trails
     (`xRot = cos(age·0.19)·0.5 + sin(t·π)·1.2 - …·0.4`), both yawing apart `±π/20` with the
-    shared `bobArms` roll. `IllagerModel.isRiding` is projected from `Entity.isPassenger()` too:
+    shared `bobArms` roll. The pillager aggressive `ATTACKING` branch is now projected too
+    (`Pillager.getArmPose`: `isChargingCrossbow()` → `CROSSBOW_CHARGE`, else
+    `isHolding(Items.CROSSBOW)` → `CROSSBOW_HOLD`, else `isAggressive()` → `ATTACKING`, otherwise
+    `NEUTRAL`): bbb keeps the crossbow charge/hold priorities and otherwise reuses the same
+    `IllagerModel.setupAnim` `ATTACKING` implementation as the vindicator for armed and empty-hand
+    pillagers. `IllagerModel.isRiding` is projected from `Entity.isPassenger()` too:
     riding illagers use the vanilla fixed seated preset (`arms.xRot = -π/5`, legs at
     `xRot = -1.4137167`, `yRot = ±π/10`, `zRot = ±0.07853982`) before the arm-pose
     branch runs, so crossbow / spell / celebrate / attack arms can still overwrite it. `IllagerModel`

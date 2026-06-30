@@ -4117,10 +4117,10 @@ fn entity_model_sources_project_aggressive_for_zombie_model_family() {
 
 #[test]
 fn entity_model_sources_project_aggressive_for_piglin_and_illager_arm_poses() {
-    // The aggressive flag also drives the piglin/brute `ATTACKING_WITH_MELEE_WEAPON`, the vindicator
-    // `ATTACKING` axe, and the illusioner `BOW_AND_ARROW` aim — so `is_aggressive` is projected for those
-    // types too. The evoker (no `isAggressive` branch in `getArmPose`) and the pillager (bbb keeps it on
-    // the walk swing) are NOT projected.
+    // The aggressive flag also drives the piglin/brute `ATTACKING_WITH_MELEE_WEAPON`, the vindicator /
+    // pillager `ATTACKING` arm pose, and the illusioner `BOW_AND_ARROW` aim — so `is_aggressive` is
+    // projected for those types too. The evoker has no `isAggressive` branch in `getArmPose`, so it is
+    // NOT projected.
     const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
     const MOB_FLAG_AGGRESSIVE: i8 = 4;
     const VANILLA_ENTITY_TYPE_PIGLIN_ID: i32 = 101;
@@ -4146,6 +4146,7 @@ fn entity_model_sources_project_aggressive_for_piglin_and_illager_arm_poses() {
         (91, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID),
         (92, VANILLA_ENTITY_TYPE_VINDICATOR_ID),
         (93, VANILLA_ENTITY_TYPE_ILLUSIONER_ID),
+        (95, VANILLA_ENTITY_TYPE_PILLAGER_ID),
     ] {
         store.apply_add_entity(protocol_add_entity_with_type(id, type_id));
         assert!(
@@ -4166,12 +4167,8 @@ fn entity_model_sources_project_aggressive_for_piglin_and_illager_arm_poses() {
         );
     }
 
-    // The evoker (no aggressive arm pose) and the pillager (deferred ATTACKING) stay calm even with the
-    // flag set, so a stray aggressive bit never flips an unused pose.
-    for (id, type_id) in [
-        (94, VANILLA_ENTITY_TYPE_EVOKER_ID),
-        (95, VANILLA_ENTITY_TYPE_PILLAGER_ID),
-    ] {
+    // The evoker has no aggressive arm pose, so a stray aggressive bit never flips an unused pose.
+    for (id, type_id) in [(94, VANILLA_ENTITY_TYPE_EVOKER_ID)] {
         store.apply_add_entity(protocol_add_entity_with_type(id, type_id));
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
             id,

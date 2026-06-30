@@ -57,6 +57,7 @@ const VANILLA_ENTITY_TYPE_PHANTOM_ID: i32 = 99;
 const VANILLA_ENTITY_TYPE_PIG_ID: i32 = 100;
 const VANILLA_ENTITY_TYPE_PIGLIN_ID: i32 = 101;
 const VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID: i32 = 102;
+const VANILLA_ENTITY_TYPE_PILLAGER_ID: i32 = 103;
 const VANILLA_ENTITY_TYPE_POLAR_BEAR_ID: i32 = 104;
 const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
 const VANILLA_ENTITY_TYPE_PUFFERFISH_ID: i32 = 107;
@@ -907,16 +908,17 @@ pub(crate) fn vanilla_piglin_melee_attack_family(entity_type_id: i32) -> bool {
 }
 
 /// The illagers whose vanilla `getArmPose` branches on `isAggressive()`, and whose bbb arm pose is
-/// resolved from it: the vindicator (`isAggressive → ATTACKING`, the `swingWeaponDown` axe) and the
-/// illusioner (`!casting && isAggressive → BOW_AND_ARROW`, the bow aim). Both consume the synced `Mob`
-/// aggressive flag, so the `is_aggressive` projection covers them. The evoker never reads `isAggressive`
-/// (its `getArmPose` is `SPELLCASTING > CELEBRATING > CROSSED`); the pillager does in vanilla
-/// (`ATTACKING` when not holding a crossbow) but bbb keeps it on the walk-swing pose, so neither is
-/// projected here — add the pillager when its `ATTACKING` pose is wired.
+/// resolved from it: the vindicator (`isAggressive → ATTACKING`, the `swingWeaponDown` axe), the
+/// illusioner (`!casting && isAggressive → BOW_AND_ARROW`, the bow aim), and the pillager
+/// (`!isChargingCrossbow && !isHolding(CROSSBOW) && isAggressive → ATTACKING`). They consume the synced
+/// `Mob` aggressive flag, so the `is_aggressive` projection covers them. The evoker never reads
+/// `isAggressive` (`getArmPose` is `SPELLCASTING > CELEBRATING > CROSSED`), so it remains gated out.
 pub(crate) fn vanilla_illager_aggressive_arm_pose_family(entity_type_id: i32) -> bool {
     matches!(
         entity_type_id,
-        VANILLA_ENTITY_TYPE_VINDICATOR_ID | VANILLA_ENTITY_TYPE_ILLUSIONER_ID
+        VANILLA_ENTITY_TYPE_VINDICATOR_ID
+            | VANILLA_ENTITY_TYPE_ILLUSIONER_ID
+            | VANILLA_ENTITY_TYPE_PILLAGER_ID
     )
 }
 
