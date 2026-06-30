@@ -782,8 +782,12 @@ fn entity_textured_shader_samples_bound_texture_and_discards_alpha() {
         ENTITY_MODEL_TEXTURED_SHADER,
         ENTITY_MODEL_TEXTURED_CULL_SHADER,
     ] {
-        assert!(shader.contains("textureSample(entity_texture_atlas, entity_sampler, input.uv)"));
-        assert!(shader.contains("if texel.a <= 0.1"));
+        assert!(shader.contains(
+            "let sample = textureSample(entity_texture_atlas, entity_sampler, input.uv)"
+        ));
+        assert!(shader.contains("if sample.a < 0.1"));
+        assert!(shader.contains("let texel = sample * input.tint"));
+        assert!(!shader.contains("if texel.a <= 0.1"));
         assert!(shader.contains("discard"));
     }
     assert_eq!(

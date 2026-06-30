@@ -299,10 +299,11 @@ fn vs_main(input: VertexIn) -> VertexOut {
 
 @fragment
 fn fs_main(input: VertexOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<f32> {
-    let texel = textureSample(entity_texture_atlas, entity_sampler, input.uv) * input.tint;
-    if texel.a <= 0.1 {
+    let sample = textureSample(entity_texture_atlas, entity_sampler, input.uv);
+    if sample.a < 0.1 {
         discard;
     }
+    let texel = sample * input.tint;
     var rgb = texel.rgb;
     if (input.overlay.y < 8.0) {
         rgb = mix(vec3<f32>(1.0, 0.0, 0.0), rgb, 179.0 / 255.0);
@@ -436,10 +437,11 @@ fn vs_main(input: VertexIn) -> VertexOut {
 
 @fragment
 fn fs_main(input: VertexOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<f32> {
-    let texel = textureSample(entity_texture_atlas, entity_sampler, input.uv) * input.tint;
-    if texel.a <= 0.1 {
+    let sample = textureSample(entity_texture_atlas, entity_sampler, input.uv);
+    if sample.a < 0.1 {
         discard;
     }
+    let texel = sample * input.tint;
     let light_color = sample_lightmap(input.light);
     return apply_fog(vec4<f32>(texel.rgb * per_face_diffuse_light(input.normal, front_facing) * light_color, texel.a), input.spherical_distance, input.cylindrical_distance);
 }
@@ -548,10 +550,11 @@ fn vs_main(input: VertexIn) -> VertexOut {
 
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
-    let texel = textureSample(entity_texture_atlas, entity_sampler, input.uv) * input.tint;
-    if texel.a <= 0.1 {
+    let sample = textureSample(entity_texture_atlas, entity_sampler, input.uv);
+    if sample.a < 0.1 {
         discard;
     }
+    let texel = sample * input.tint;
     var rgb = texel.rgb;
     if (input.overlay.y < 8.0) {
         rgb = mix(vec3<f32>(1.0, 0.0, 0.0), rgb, 179.0 / 255.0);
@@ -927,10 +930,11 @@ fn vs_main(input: VertexIn) -> VertexOut {
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let atlas_uv = input.uv_rect_min + fract(input.local_uv) * input.uv_rect_size;
-    let texel = textureSample(entity_texture_atlas, entity_sampler, atlas_uv) * input.tint;
-    if texel.a <= 0.1 {
+    let sample = textureSample(entity_texture_atlas, entity_sampler, atlas_uv);
+    if sample.a < 0.1 {
         discard;
     }
+    let texel = sample * input.tint;
     let light_color = sample_lightmap(input.light);
     return apply_fog(vec4<f32>(texel.rgb * light_color, texel.a), input.spherical_distance, input.cylindrical_distance);
 }
@@ -1017,10 +1021,11 @@ fn vs_main(input: VertexIn) -> VertexOut {
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let atlas_uv = input.uv_rect_min + fract(input.local_uv) * input.uv_rect_size;
-    let texel = textureSample(entity_texture_atlas, entity_sampler, atlas_uv) * input.tint;
-    if texel.a <= 0.1 {
+    let sample = textureSample(entity_texture_atlas, entity_sampler, atlas_uv);
+    if sample.a < 0.1 {
         discard;
     }
+    let texel = sample * input.tint;
     return apply_fog(texel, input.spherical_distance, input.cylindrical_distance);
 }
 "#;
@@ -2849,13 +2854,15 @@ mod tests {
         ENTITY_MODEL_OUTLINE_NO_CULL_MODE, ENTITY_MODEL_OUTLINE_SHADER, ENTITY_MODEL_SCROLL_BLEND,
         ENTITY_MODEL_SCROLL_CULL_MODE, ENTITY_MODEL_SCROLL_DEPTH_COMPARE,
         ENTITY_MODEL_SCROLL_DEPTH_WRITE_ENABLED, ENTITY_MODEL_SCROLL_EMISSIVE_SHADER,
-        ENTITY_MODEL_SURFACE_CULL_MODE, ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED,
-        ENTITY_MODEL_SURFACE_NO_CULL_MODE, ENTITY_MODEL_SURFACE_OPAQUE_BLEND,
-        ENTITY_MODEL_SURFACE_TRANSLUCENT_BLEND, ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
-        ENTITY_MODEL_TEXTURE_ATLAS_MIP_LEVEL_COUNT, ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER,
-        ENTITY_MODEL_WATER_MASK_BLEND, ENTITY_MODEL_WATER_MASK_COLOR_WRITE_MASK,
-        ENTITY_MODEL_WATER_MASK_CULL_MODE, ENTITY_MODEL_WATER_MASK_DEPTH_COMPARE,
-        ENTITY_MODEL_WATER_MASK_DEPTH_WRITE_ENABLED, ENTITY_MODEL_WATER_MASK_SHADER,
+        ENTITY_MODEL_SCROLL_SHADER, ENTITY_MODEL_SURFACE_CULL_MODE,
+        ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED, ENTITY_MODEL_SURFACE_NO_CULL_MODE,
+        ENTITY_MODEL_SURFACE_OPAQUE_BLEND, ENTITY_MODEL_SURFACE_TRANSLUCENT_BLEND,
+        ENTITY_MODEL_TEXTURED_CULL_SHADER, ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
+        ENTITY_MODEL_TEXTURED_SHADER, ENTITY_MODEL_TEXTURE_ATLAS_MIP_LEVEL_COUNT,
+        ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER, ENTITY_MODEL_WATER_MASK_BLEND,
+        ENTITY_MODEL_WATER_MASK_COLOR_WRITE_MASK, ENTITY_MODEL_WATER_MASK_CULL_MODE,
+        ENTITY_MODEL_WATER_MASK_DEPTH_COMPARE, ENTITY_MODEL_WATER_MASK_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_WATER_MASK_SHADER,
     };
 
     #[test]
@@ -2888,8 +2895,10 @@ mod tests {
     fn entity_model_translucent_emissive_shader_matches_vanilla_pipeline_state() {
         assert!(
             ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER.contains("if sample.a < 0.1")
+                && ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER
+                    .contains("var texel = sample * input.tint")
                 && ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER.contains("discard"),
-            "vanilla entity_translucent_emissive keeps ALPHA_CUTOUT 0.1"
+            "vanilla entity_translucent_emissive cuts out sampled texture alpha before tint"
         );
         assert!(
             ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER.contains("input.overlay")
@@ -2904,11 +2913,46 @@ mod tests {
     }
 
     #[test]
+    fn entity_model_textured_shaders_cut_out_sampled_texture_alpha_before_tint() {
+        for (label, shader, uv_expr) in [
+            ("entity textured", ENTITY_MODEL_TEXTURED_SHADER, "input.uv"),
+            (
+                "entity textured cull",
+                ENTITY_MODEL_TEXTURED_CULL_SHADER,
+                "input.uv",
+            ),
+            ("breezeWind scroll", ENTITY_MODEL_SCROLL_SHADER, "atlas_uv"),
+        ] {
+            assert!(
+                shader.contains(&format!(
+                    "let sample = textureSample(entity_texture_atlas, entity_sampler, {uv_expr})"
+                )),
+                "{label} shader should sample texture before tint"
+            );
+            assert!(
+                shader.contains("if sample.a < 0.1") && shader.contains("discard"),
+                "{label} shader should use vanilla ALPHA_CUTOUT 0.1 comparison"
+            );
+            assert!(
+                shader.contains("let texel = sample * input.tint"),
+                "{label} shader should apply tint after alpha cutoff"
+            );
+            assert!(
+                !shader.contains("if texel.a <= 0.1"),
+                "{label} shader must not cut out post-tint alpha"
+            );
+        }
+    }
+
+    #[test]
     fn entity_model_armor_shader_matches_vanilla_no_overlay_entity_pipeline() {
         assert!(
-            ENTITY_MODEL_ARMOR_SHADER.contains("if texel.a <= 0.1")
+            ENTITY_MODEL_ARMOR_SHADER.contains(
+                "let sample = textureSample(entity_texture_atlas, entity_sampler, input.uv)"
+            ) && ENTITY_MODEL_ARMOR_SHADER.contains("if sample.a < 0.1")
+                && ENTITY_MODEL_ARMOR_SHADER.contains("let texel = sample * input.tint")
                 && ENTITY_MODEL_ARMOR_SHADER.contains("discard"),
-            "vanilla armor pipelines keep ALPHA_CUTOUT 0.1"
+            "vanilla armor pipelines cut out sampled texture alpha before tint"
         );
         assert!(
             ENTITY_MODEL_ARMOR_SHADER.contains("sample_lightmap")
@@ -2956,8 +3000,12 @@ mod tests {
     fn entity_model_cutout_z_offset_shader_matches_vanilla_cutout_shape() {
         let shader = entity_model_cutout_z_offset_shader();
         assert!(
-            shader.contains("if texel.a <= 0.1") && shader.contains("discard"),
-            "vanilla ENTITY_CUTOUT_Z_OFFSET keeps ALPHA_CUTOUT 0.1"
+            shader.contains(
+                "let sample = textureSample(entity_texture_atlas, entity_sampler, input.uv)"
+            ) && shader.contains("if sample.a < 0.1")
+                && shader.contains("let texel = sample * input.tint")
+                && shader.contains("discard"),
+            "vanilla ENTITY_CUTOUT_Z_OFFSET cuts out sampled texture alpha before tint"
         );
         assert!(
             shader.contains("sample_lightmap(input.light)")
@@ -3082,9 +3130,11 @@ mod tests {
             "vanilla energySwirl applies the texture matrix offset and wraps atlas-local UVs"
         );
         assert!(
-            ENTITY_MODEL_SCROLL_EMISSIVE_SHADER.contains("if texel.a <= 0.1")
-                || ENTITY_MODEL_SCROLL_EMISSIVE_SHADER.contains("if (texel.a <= 0.1"),
-            "vanilla ENERGY_SWIRL keeps ALPHA_CUTOUT 0.1"
+            ENTITY_MODEL_SCROLL_EMISSIVE_SHADER.contains(
+                "let sample = textureSample(entity_texture_atlas, entity_sampler, atlas_uv)"
+            ) && ENTITY_MODEL_SCROLL_EMISSIVE_SHADER.contains("if sample.a < 0.1")
+                && ENTITY_MODEL_SCROLL_EMISSIVE_SHADER.contains("let texel = sample * input.tint"),
+            "vanilla ENERGY_SWIRL cuts out sampled texture alpha before tint"
         );
         assert!(
             !ENTITY_MODEL_SCROLL_EMISSIVE_SHADER.contains("sample_lightmap")

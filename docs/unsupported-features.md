@@ -833,7 +833,12 @@ When an agent does any of the following, update this file in the same slice:
     `Lighting.setupLevel` default diffuse directions with `0.6` light power and
     `0.4` ambient. The textured shader now also mirrors vanilla
     `PER_FACE_LIGHTING` by selecting `normal` for front faces and `-normal` for
-    back faces, matching `entity.vsh`'s separate front/back diffuse colors.
+    back faces, matching `entity.vsh`'s separate front/back diffuse colors. The
+    texture-backed entity, armor, and scroll shaders now also mirror
+    `core/entity.fsh` alpha cutoff ordering: sample `Sampler0`, discard when the
+    texture alpha is below `ALPHA_CUTOUT 0.1`, then multiply by the submitted
+    tint / vertex color; the glint path remains the separate `core/glint.fsh`
+    shader shape.
     Surface buckets now also distinguish vanilla cull-on `entitySolid`,
     `entityCutoutCull`, and `entityTranslucentCullItemTarget` draws from no-cull
     entity surfaces, and those cull buckets use a separate texture-backed shader

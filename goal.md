@@ -250,6 +250,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `LayeringTransform.VIEW_OFFSET_Z_LAYERING` 的 layered view-projection
     矩阵；item-frame border 的 `entitySolidZOffsetForward` path 使用
     `VIEW_OFFSET_Z_LAYERING_FORWARD`，普通 `entityGlint` 继续使用未偏移矩阵。
+  - [x] entity shader alpha cutoff ordering：`entityCutout` /
+    `entityCutoutCull` / `entityCutoutZOffset` / `entityTranslucent` /
+    `entityTranslucentCullItemTarget`、armor cutout/translucent、`breezeWind`
+    和 `energySwirl` GPU shader 现在按 vanilla `core/entity.fsh` 先以 texture
+    sample alpha `< ALPHA_CUTOUT 0.1` discard，再应用 submitted tint；glint
+    保持独立 `core/glint.fsh` 形状。
   - per RenderType 的 blend、depth write/test、cull、sampler、mip、lightmap、
     overlay、fog、normal diffuse 组合继续拆细。
   - glint / scroll / emissive path 不应只依赖普通 entity shader fallback。
