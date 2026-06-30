@@ -195,6 +195,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
 - target ownership：
   - main target、itemEntity target、translucent target、particles target、
     weather target、clouds target、entity_outline target 的 draw ownership 继续收紧。
+  - [x] selection / line append pass：block selection、entity-scene outline、
+    entity-target outline 继续写入 itemEntity target 且在 particles 前绘制；
+    GPU pipeline 现在使用 vanilla `RenderTypes.lines()` 的
+    `VIEW_OFFSET_Z_LAYERING`、translucent blend、depth-write `LESS_EQUAL`、
+    普通 block-hit outline `ARGB.black(102)` alpha。屏幕空间线宽与
+    high-contrast secondary outline 仍属后续视觉 polish。
   - text / item / block / crumbling / line / selection 等 feature pass 的相对顺序
     继续按 vanilla `LevelRenderer` 和 `FeatureRenderDispatcher` 拆分。
 - sorting：

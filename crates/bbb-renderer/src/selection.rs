@@ -31,6 +31,9 @@ impl SelectionOutline {
 
 const SELECTION_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 1] =
     wgpu::vertex_attr_array![0 => Float32x3];
+#[cfg(test)]
+const SELECTION_OUTLINE_ALPHA: f32 = 102.0 / 255.0;
+const SELECTION_LINES_DEPTH_WRITE: bool = true;
 
 const SELECTION_SHADER: &str = r#"
 struct Camera {
@@ -45,6 +48,10 @@ struct Camera {
     fog_color: vec4<f32>,
     fog_distances: vec4<f32>,
     fog_visibility_ends: vec4<f32>,
+    minecraft_light0: vec4<f32>,
+    minecraft_light1: vec4<f32>,
+    glint_offsets: vec4<f32>,
+    view_proj_view_offset_z: mat4x4<f32>,
 };
 
 @group(0) @binding(0)
@@ -81,16 +88,18 @@ fn apply_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f3
 @vertex
 fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
-    out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
+    out.position = camera.view_proj_view_offset_z * vec4<f32>(input.position, 1.0);
     let fog_pos = input.position - camera.camera_position.xyz;
     out.spherical_distance = length(fog_pos);
     out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
     return out;
 }
 
+const OUTLINE_ALPHA: f32 = 102.0 / 255.0;
+
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
-    return apply_fog(vec4<f32>(0.0, 0.0, 0.0, 0.65), input.spherical_distance, input.cylindrical_distance);
+    return apply_fog(vec4<f32>(0.0, 0.0, 0.0, OUTLINE_ALPHA), input.spherical_distance, input.cylindrical_distance);
 }
 "#;
 
@@ -158,7 +167,7 @@ pub(super) fn create_selection_pipeline(
         },
         depth_stencil: Some(wgpu::DepthStencilState {
             format: DEPTH_FORMAT,
-            depth_write_enabled: false,
+            depth_write_enabled: SELECTION_LINES_DEPTH_WRITE,
             depth_compare: wgpu::CompareFunction::LessEqual,
             stencil: wgpu::StencilState::default(),
             bias: wgpu::DepthBiasState::default(),
@@ -242,6 +251,25 @@ fn selection_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn selection_lines_shader_uses_vanilla_view_offset_layering_and_alpha() {
+        // Vanilla `RenderTypes.lines()` applies `VIEW_OFFSET_Z_LAYERING` and
+        // the normal block hit outline uses `ARGB.black(102)`.
+        assert!(SELECTION_SHADER.contains("view_proj_view_offset_z: mat4x4<f32>"));
+        assert!(SELECTION_SHADER
+            .contains("camera.view_proj_view_offset_z * vec4<f32>(input.position, 1.0)"));
+        assert!(SELECTION_SHADER.contains("const OUTLINE_ALPHA: f32 = 102.0 / 255.0"));
+        assert!(!SELECTION_SHADER.contains("0.65"));
+        assert!((SELECTION_OUTLINE_ALPHA - (102.0 / 255.0)).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn selection_lines_pipeline_keeps_vanilla_depth_write_state() {
+        // Vanilla `RenderPipelines.LINES` inherits `DepthStencilState.DEFAULT`:
+        // LESS_EQUAL with depth writes enabled.
+        assert!(SELECTION_LINES_DEPTH_WRITE);
+    }
 
     #[test]
     fn selection_outline_vertices_emit_expanded_box_edges() {

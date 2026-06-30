@@ -444,8 +444,12 @@ When an agent does any of the following, update this file in the same slice:
     and `OutputTarget.ITEM_ENTITY_TARGET` users such as `item_translucent`,
     `entity_translucent_cull_item_target`, and `glint_translucent`.
     Selection/line geometry appends to the same target in a later line pass
-    before particles; finer line/block-outline target ordering remains visual
-    polish rather than item-feature ordering debt. Active particle
+    before particles, and the selection pipeline now follows
+    `RenderTypes.lines()` for `VIEW_OFFSET_Z_LAYERING`, translucent blend,
+    depth-write `LESS_EQUAL`, and the ordinary block-hit outline's
+    `ARGB.black(102)` alpha. Screen-space line-width expansion and
+    high-contrast secondary outlines remain visual polish rather than
+    item-feature ordering debt. Active particle
     billboards now write a renderer-owned particles color/depth target after the
     same main-depth copy, matching vanilla `PARTICLES_TARGET`. The final
     transparency combine pass samples main, translucent, itemEntity, particles,
@@ -520,7 +524,8 @@ When an agent does any of the following, update this file in the same slice:
     before block/crumbling features, so translucent item-model buckets,
     item-entity billboards, and `entityTranslucentCullItemTarget` buckets no
     longer wait until after translucent terrain; selection/line geometry remains
-    an append pass before particles.
+    an append pass before particles with `RenderTypes.lines()`-shaped
+    z-layering and depth-write state.
     Item-model mesh vertices now also carry vanilla item-submit overlay coords:
     the existing bake APIs default to `OverlayTexture.NO_OVERLAY = pack(0, 10)`,
     while explicit light+overlay bake APIs mirror
