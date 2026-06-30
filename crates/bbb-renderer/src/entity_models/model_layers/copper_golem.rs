@@ -4,7 +4,8 @@ use super::{
 };
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::keyframe::{
-    keyframe_animated_pose, keyframe_elapsed_seconds, keyframe_walk_sample, sample_bone_offsets,
+    keyframe_animated_pose, keyframe_elapsed_seconds, keyframe_walk_sample,
+    sample_bone_offsets_with_scale, scale_vec,
 };
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
@@ -133,6 +134,13 @@ const fn rot(keyframes: &'static [Keyframe]) -> AnimationChannel {
 const fn pos(keyframes: &'static [Keyframe]) -> AnimationChannel {
     AnimationChannel {
         target: AnimationTarget::Position,
+        keyframes,
+    }
+}
+
+const fn scale_channel(keyframes: &'static [Keyframe]) -> AnimationChannel {
+    AnimationChannel {
+        target: AnimationTarget::Scale,
         keyframes,
     }
 }
@@ -1317,6 +1325,322 @@ pub(in crate::entity_models) const COPPER_GOLEM_CHEST_INTERACTION_ITEM_DROP: Ani
         bones: &COPPER_GOLEM_CHEST_ITEM_DROP_BONES,
     };
 
+// Vanilla 26.1 `CopperGolemAnimation.COPPER_GOLEM_CHEST_INTERACTION_ITEM_NODROP`
+// (length 3.0s, looping). `CopperGolemModel.setupAnim` applies this after item/drop
+// while `CopperGolemState.DROPPING_NO_ITEM` is active.
+const COPPER_GOLEM_CHEST_ITEM_NODROP_BODY_ROT: [Keyframe; 25] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.1667, degree_vec(18.0, 0.0, 0.0), LINEAR),
+    keyframe(0.2917, degree_vec(24.0, 0.0, 0.0), LINEAR),
+    keyframe(0.375, degree_vec(15.0, 0.0, 0.0), LINEAR),
+    keyframe(0.4167, degree_vec(12.5, 0.0, 0.0), LINEAR),
+    keyframe(0.5833, degree_vec(12.5, 0.0, 0.0), LINEAR),
+    keyframe(0.75, degree_vec(12.5, 0.0, 0.0), LINEAR),
+    keyframe(0.8333, degree_vec(14.72765, -31.63886, -7.85085), LINEAR),
+    keyframe(0.9167, degree_vec(14.72765, -31.63886, -7.85085), LINEAR),
+    keyframe(1.0417, degree_vec(14.72765, -31.63886, -7.85085), LINEAR),
+    keyframe(1.125, degree_vec(12.40525, -4.4E-4, 0.00829), LINEAR),
+    keyframe(1.2083, degree_vec(12.40525, -4.4E-4, 0.00829), LINEAR),
+    keyframe(1.2917, degree_vec(13.92716, 26.80536, 6.38918), LINEAR),
+    keyframe(1.625, degree_vec(13.93, 26.81, 6.39), LINEAR),
+    keyframe(1.6667, degree_vec(21.43, 26.81, 6.39), LINEAR),
+    keyframe(1.7917, degree_vec(21.43, 26.81, 6.39), LINEAR),
+    keyframe(1.8333, degree_vec(13.93, 26.81, 6.39), LINEAR),
+    keyframe(2.0417, degree_vec(13.93, 26.81, 6.39), LINEAR),
+    keyframe(2.1667, degree_vec(12.40725, 0.0, 0.00783), LINEAR),
+    keyframe(2.25, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.3333, degree_vec(-2.5, 0.0, 0.0), LINEAR),
+    keyframe(2.5, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.875, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(3.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const COPPER_GOLEM_CHEST_ITEM_NODROP_BODY_POS: [Keyframe; 14] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.2083, pos_vec(0.0, 0.6, 0.0), LINEAR),
+    keyframe(0.4167, pos_vec(0.0, 0.5, 0.0), LINEAR),
+    keyframe(1.625, pos_vec(0.0, 0.4, 0.0), LINEAR),
+    keyframe(1.6667, pos_vec(-0.01805, 0.88303, -0.09783), LINEAR),
+    keyframe(1.7917, pos_vec(-0.01805, 0.88303, -0.09783), LINEAR),
+    keyframe(1.8333, pos_vec(0.0, 0.6, 0.0), LINEAR),
+    keyframe(2.0417, pos_vec(0.0, 0.6, 0.0), LINEAR),
+    keyframe(2.25, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.3333, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.5, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.875, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(3.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const COPPER_GOLEM_CHEST_ITEM_NODROP_HEAD_ROT: [Keyframe; 34] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.1667, degree_vec(-20.0, 0.0, 0.0), LINEAR),
+    keyframe(0.2083, degree_vec(-20.0, 0.0, 0.0), LINEAR),
+    keyframe(0.25, degree_vec(-2.5, 0.0, 0.0), LINEAR),
+    keyframe(0.2917, degree_vec(-5.0, 0.0, 0.0), LINEAR),
+    keyframe(0.375, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.4167, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5833, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.6667, degree_vec(0.0, -20.0, 0.0), LINEAR),
+    keyframe(0.75, degree_vec(0.0, -20.0, 0.0), LINEAR),
+    keyframe(0.8333, degree_vec(0.0, 10.0, 0.0), LINEAR),
+    keyframe(1.0417, degree_vec(0.0, 10.0, 0.0), LINEAR),
+    keyframe(1.1667, degree_vec(0.0, 10.0, 0.0), LINEAR),
+    keyframe(1.2083, degree_vec(0.0, 27.5, 0.0), LINEAR),
+    keyframe(1.2917, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.4167, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.4583, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.5, degree_vec(0.0, -2.5, 0.0), LINEAR),
+    keyframe(1.625, degree_vec(0.0, -2.5, 0.0), LINEAR),
+    keyframe(1.6667, degree_vec(9.73588, -1.93433, -3.73384), LINEAR),
+    keyframe(1.7083, degree_vec(9.73588, -1.93433, -3.73384), LINEAR),
+    keyframe(1.7917, degree_vec(10.15255, -1.93433, -3.73384), LINEAR),
+    keyframe(1.8333, degree_vec(17.86088, -1.93433, -3.73384), LINEAR),
+    keyframe(1.875, degree_vec(17.23588, -1.93433, -3.73384), LINEAR),
+    keyframe(1.9167, degree_vec(17.23588, -1.93433, -3.73384), LINEAR),
+    keyframe(2.0417, degree_vec(17.23588, -1.93433, -3.73384), LINEAR),
+    keyframe(2.0833, degree_vec(-0.26, -1.93, -3.73), LINEAR),
+    keyframe(2.25, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.2917, degree_vec(1.25, 0.0, 0.0), LINEAR),
+    keyframe(2.3333, degree_vec(2.5, 0.0, 0.0), LINEAR),
+    keyframe(2.6667, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.9583, degree_vec(0.0, -360.0, 0.0), LINEAR),
+    keyframe(3.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const COPPER_GOLEM_CHEST_ITEM_NODROP_HEAD_POS: [Keyframe; 23] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.1667, pos_vec(0.0, -0.15451, 0.47553), LINEAR),
+    keyframe(0.25, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.4167, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.0417, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.1667, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.2917, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.4167, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.4583, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.5, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.625, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.6667, pos_vec(-0.22438, 0.82319, -1.27252), LINEAR),
+    keyframe(1.875, pos_vec(-0.22438, 0.82319, -1.27252), LINEAR),
+    keyframe(1.9167, pos_vec(-0.22438, 0.82319, -1.27252), LINEAR),
+    keyframe(2.0417, pos_vec(-0.22438, 0.82319, -1.27252), LINEAR),
+    keyframe(2.0833, pos_vec(-0.39, 0.52, -2.21), LINEAR),
+    keyframe(2.25, pos_vec(0.0, 0.0, 0.5), LINEAR),
+    keyframe(2.2917, pos_vec(0.0, -0.01091, -0.02988), LINEAR),
+    keyframe(2.3333, pos_vec(0.0, -0.01, -0.03), LINEAR),
+    keyframe(2.6667, pos_vec(0.0, -0.01, -0.03), LINEAR),
+    keyframe(2.9583, pos_vec(0.0, -0.01, -0.03), LINEAR),
+    keyframe(3.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const COPPER_GOLEM_CHEST_ITEM_NODROP_RIGHT_ARM_ROT: [Keyframe; 24] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.1667, degree_vec(-7.38733, 1.29876, 9.91615), LINEAR),
+    keyframe(0.2917, degree_vec(-7.38733, 1.29876, 9.91615), LINEAR),
+    keyframe(0.375, degree_vec(10.0, 0.0, 32.5), LINEAR),
+    keyframe(0.4167, degree_vec(-34.55418, 11.73507, 36.8361), LINEAR),
+    keyframe(0.4583, degree_vec(-117.82767, 2.94538, 0.22703), LINEAR),
+    keyframe(0.5417, degree_vec(-97.7902, 0.73403, 1.39387), LINEAR),
+    keyframe(0.5833, degree_vec(-92.79, 0.73, 1.39), LINEAR),
+    keyframe(0.75, degree_vec(-92.79, 0.73, 1.39), LINEAR),
+    keyframe(0.8333, degree_vec(-95.83405, 33.18639, -0.40081), LINEAR),
+    keyframe(1.5, degree_vec(-95.83, 33.19, -0.4), LINEAR),
+    keyframe(1.5833, degree_vec(-44.60123, 10.14454, 8.66307), LINEAR),
+    keyframe(1.8333, degree_vec(-4.31506, 6.54961, 13.21388), LINEAR),
+    keyframe(2.0833, degree_vec(-4.31506, 6.54961, 13.21388), LINEAR),
+    keyframe(2.1667, degree_vec(-4.31506, 6.54961, 13.21388), LINEAR),
+    keyframe(2.25, degree_vec(-6.53898, 13.96898, 14.34786), LINEAR),
+    keyframe(2.3333, degree_vec(3.50393, -4.70737, 8.3608), LINEAR),
+    keyframe(2.4583, degree_vec(3.50393, -4.70737, 8.3608), LINEAR),
+    keyframe(2.5, degree_vec(3.90089, -4.3843, 3.35549), LINEAR),
+    keyframe(2.5417, degree_vec(3.9, -4.38, 3.36), LINEAR),
+    keyframe(2.9167, degree_vec(3.9, -4.38, 3.36), LINEAR),
+    keyframe(2.9583, degree_vec(3.90089, -4.3843, 3.35549), LINEAR),
+    keyframe(3.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const COPPER_GOLEM_CHEST_ITEM_NODROP_RIGHT_ARM_POS: [Keyframe; 21] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.2917, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.375, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5833, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.75, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.8333, pos_vec(0.25358, -0.20153, 2.21248), LINEAR),
+    keyframe(1.5, pos_vec(0.25, -0.2, 2.21), LINEAR),
+    keyframe(1.5417, pos_vec(-0.79739, -0.10573, 1.70592), LINEAR),
+    keyframe(1.5833, pos_vec(-0.26323, -1.46323, 0.66566), LINEAR),
+    keyframe(1.8333, pos_vec(-0.51052, -0.38088, 0.79745), LINEAR),
+    keyframe(2.0833, pos_vec(-0.51052, -0.38088, 0.79745), LINEAR),
+    keyframe(2.1667, pos_vec(-0.51052, -0.38088, 0.79745), LINEAR),
+    keyframe(2.25, pos_vec(-0.46, -0.34, 0.72), LINEAR),
+    keyframe(2.3333, pos_vec(-0.46, 0.1159, -0.30086), LINEAR),
+    keyframe(2.4583, pos_vec(-0.46, 0.1159, -0.30086), LINEAR),
+    keyframe(2.5, pos_vec(-0.46, 0.1159, -0.30086), LINEAR),
+    keyframe(2.5417, pos_vec(-0.46, -0.88, -0.3), LINEAR),
+    keyframe(2.9167, pos_vec(-0.46, -0.88, -0.3), LINEAR),
+    keyframe(2.9583, pos_vec(-0.46, 0.1159, -0.30086), LINEAR),
+    keyframe(3.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const COPPER_GOLEM_CHEST_ITEM_NODROP_LEFT_ARM_ROT: [Keyframe; 26] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.2083, degree_vec(25.0, 0.0, -37.5), LINEAR),
+    keyframe(0.25, degree_vec(-21.59341, -12.60837, -45.69252), LINEAR),
+    keyframe(0.2917, degree_vec(-120.7755, -5.21988, -2.02064), LINEAR),
+    keyframe(0.375, degree_vec(-98.27419, -1.79323, -1.15048), LINEAR),
+    keyframe(0.4167, degree_vec(-93.27, -1.79, -1.15), LINEAR),
+    keyframe(0.5417, degree_vec(-93.27419, -1.79323, -1.15048), LINEAR),
+    keyframe(0.5833, degree_vec(-93.55693, -22.3224, 3.64383), LINEAR),
+    keyframe(0.7083, degree_vec(-93.55693, -22.3224, 3.64383), LINEAR),
+    keyframe(1.1667, degree_vec(-93.55693, -22.3224, 3.64383), LINEAR),
+    keyframe(1.2083, degree_vec(-95.75, -2.42, 5.97), LINEAR),
+    keyframe(1.25, degree_vec(-98.4029, -17.39503, 6.85104), LINEAR),
+    keyframe(1.2917, degree_vec(-101.24523, -29.87096, 7.69993), LINEAR),
+    keyframe(1.5833, degree_vec(-101.25, -29.87, 7.7), LINEAR),
+    keyframe(1.6667, degree_vec(-88.17772, -42.09094, 10.96195), LINEAR),
+    keyframe(1.8333, degree_vec(-88.17772, -42.09094, 10.96195), LINEAR),
+    keyframe(2.0417, degree_vec(-88.17772, -42.09094, 10.96195), LINEAR),
+    keyframe(2.25, degree_vec(0.0, 0.0, -20.0), LINEAR),
+    keyframe(2.3333, degree_vec(2.47864, -0.32621, -12.50706), LINEAR),
+    keyframe(2.4583, degree_vec(2.47864, -0.32621, -12.50706), LINEAR),
+    keyframe(2.5, degree_vec(2.41492, -0.64686, -5.01363), LINEAR),
+    keyframe(2.5417, degree_vec(2.41, -0.65, -5.01), LINEAR),
+    keyframe(2.9167, degree_vec(2.41, -0.65, -5.01), LINEAR),
+    keyframe(2.9583, degree_vec(2.41492, -0.64686, -5.01363), LINEAR),
+    keyframe(3.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const COPPER_GOLEM_CHEST_ITEM_NODROP_LEFT_ARM_POS: [Keyframe; 17] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.2083, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.4167, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.2083, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.5833, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.6667, pos_vec(-0.00677, -0.76064, 3.19059), LINEAR),
+    keyframe(1.8333, pos_vec(-0.00677, -0.76064, 3.19059), LINEAR),
+    keyframe(2.0417, pos_vec(-0.00677, -0.76064, 3.19059), LINEAR),
+    keyframe(2.25, pos_vec(0.03, -0.76, 0.45), LINEAR),
+    keyframe(2.3333, pos_vec(0.03, -0.28229, -0.07133), LINEAR),
+    keyframe(2.4583, pos_vec(0.03, -0.28229, -0.07133), LINEAR),
+    keyframe(2.5, pos_vec(0.03, -0.28229, -0.07133), LINEAR),
+    keyframe(2.5417, pos_vec(0.03, -1.28, -0.07), LINEAR),
+    keyframe(2.9167, pos_vec(0.03, -1.28, -0.07), LINEAR),
+    keyframe(2.9583, pos_vec(0.03, -0.28229, -0.07133), LINEAR),
+    keyframe(3.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const COPPER_GOLEM_CHEST_ITEM_NODROP_RIGHT_LEG_ROT: [Keyframe; 9] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.2083, degree_vec(7.5, 0.0, 0.0), LINEAR),
+    keyframe(2.1667, degree_vec(7.5, 0.0, 0.0), LINEAR),
+    keyframe(2.25, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.3333, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.5, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.875, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(3.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const COPPER_GOLEM_CHEST_ITEM_NODROP_RIGHT_LEG_POS: [Keyframe; 9] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.2083, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.1667, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.25, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.3333, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.5, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.875, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(3.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const COPPER_GOLEM_CHEST_ITEM_NODROP_LEFT_LEG_ROT: [Keyframe; 4] = [
+    keyframe(0.125, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.2083, degree_vec(-10.0, 0.0, 0.0), LINEAR),
+    keyframe(2.1667, degree_vec(-10.0, 0.0, 0.0), LINEAR),
+    keyframe(2.25, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const COPPER_GOLEM_CHEST_ITEM_NODROP_LEFT_LEG_POS: [Keyframe; 6] = [
+    keyframe(0.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.2083, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.1667, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(2.25, pos_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(3.0, pos_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const COPPER_GOLEM_CHEST_ITEM_NODROP_LEFT_LEG_SCALE: [Keyframe; 2] = [
+    keyframe(0.0, scale_vec(1.0, 1.0, 1.0), LINEAR),
+    keyframe(3.0, scale_vec(1.0, 1.0, 1.0), LINEAR),
+];
+
+const COPPER_GOLEM_CHEST_ITEM_NODROP_BODY_CHANNELS: [AnimationChannel; 2] = [
+    rot(&COPPER_GOLEM_CHEST_ITEM_NODROP_BODY_ROT),
+    pos(&COPPER_GOLEM_CHEST_ITEM_NODROP_BODY_POS),
+];
+const COPPER_GOLEM_CHEST_ITEM_NODROP_HEAD_CHANNELS: [AnimationChannel; 2] = [
+    rot(&COPPER_GOLEM_CHEST_ITEM_NODROP_HEAD_ROT),
+    pos(&COPPER_GOLEM_CHEST_ITEM_NODROP_HEAD_POS),
+];
+const COPPER_GOLEM_CHEST_ITEM_NODROP_RIGHT_ARM_CHANNELS: [AnimationChannel; 2] = [
+    rot(&COPPER_GOLEM_CHEST_ITEM_NODROP_RIGHT_ARM_ROT),
+    pos(&COPPER_GOLEM_CHEST_ITEM_NODROP_RIGHT_ARM_POS),
+];
+const COPPER_GOLEM_CHEST_ITEM_NODROP_LEFT_ARM_CHANNELS: [AnimationChannel; 2] = [
+    rot(&COPPER_GOLEM_CHEST_ITEM_NODROP_LEFT_ARM_ROT),
+    pos(&COPPER_GOLEM_CHEST_ITEM_NODROP_LEFT_ARM_POS),
+];
+const COPPER_GOLEM_CHEST_ITEM_NODROP_RIGHT_LEG_CHANNELS: [AnimationChannel; 2] = [
+    rot(&COPPER_GOLEM_CHEST_ITEM_NODROP_RIGHT_LEG_ROT),
+    pos(&COPPER_GOLEM_CHEST_ITEM_NODROP_RIGHT_LEG_POS),
+];
+const COPPER_GOLEM_CHEST_ITEM_NODROP_LEFT_LEG_CHANNELS: [AnimationChannel; 3] = [
+    rot(&COPPER_GOLEM_CHEST_ITEM_NODROP_LEFT_LEG_ROT),
+    pos(&COPPER_GOLEM_CHEST_ITEM_NODROP_LEFT_LEG_POS),
+    scale_channel(&COPPER_GOLEM_CHEST_ITEM_NODROP_LEFT_LEG_SCALE),
+];
+
+const COPPER_GOLEM_CHEST_ITEM_NODROP_BONES: [BoneAnimation; 6] = [
+    BoneAnimation {
+        bone: "body",
+        channels: &COPPER_GOLEM_CHEST_ITEM_NODROP_BODY_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "head",
+        channels: &COPPER_GOLEM_CHEST_ITEM_NODROP_HEAD_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_arm",
+        channels: &COPPER_GOLEM_CHEST_ITEM_NODROP_RIGHT_ARM_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_arm",
+        channels: &COPPER_GOLEM_CHEST_ITEM_NODROP_LEFT_ARM_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_leg",
+        channels: &COPPER_GOLEM_CHEST_ITEM_NODROP_RIGHT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_leg",
+        channels: &COPPER_GOLEM_CHEST_ITEM_NODROP_LEFT_LEG_CHANNELS,
+    },
+];
+
+pub(in crate::entity_models) const COPPER_GOLEM_CHEST_INTERACTION_ITEM_NODROP: AnimationDefinition =
+    AnimationDefinition {
+        length_seconds: 3.0,
+        looping: true,
+        bones: &COPPER_GOLEM_CHEST_ITEM_NODROP_BONES,
+    };
+
 fn copper_golem_tree() -> ModelPart {
     let body = ModelPart::new(
         COPPER_GOLEM_BODY_POSE,
@@ -1374,8 +1698,14 @@ fn apply_copper_golem_keyframe(
     seconds: f32,
     scale: f32,
 ) {
-    let (position, rotation) = sample_bone_offsets(definition, bone, seconds, scale);
+    let (position, rotation, scale_offset) =
+        sample_bone_offsets_with_scale(definition, bone, seconds, scale);
     part.pose = keyframe_animated_pose(part.pose, position, rotation);
+    part.scale = [
+        part.scale[0] + scale_offset[0],
+        part.scale[1] + scale_offset[1],
+        part.scale[2] + scale_offset[2],
+    ];
 }
 
 fn apply_copper_golem_full_keyframe(
@@ -1550,6 +1880,19 @@ impl EntityModel for CopperGolemModel {
             );
             apply_copper_golem_full_keyframe(
                 &COPPER_GOLEM_CHEST_INTERACTION_ITEM_DROP,
+                &mut self.root,
+                interaction_seconds,
+                1.0,
+            );
+        }
+
+        if render_state.copper_golem_drop_no_item_seconds >= 0.0 {
+            let interaction_seconds = keyframe_elapsed_seconds(
+                &COPPER_GOLEM_CHEST_INTERACTION_ITEM_NODROP,
+                render_state.copper_golem_drop_no_item_seconds,
+            );
+            apply_copper_golem_full_keyframe(
+                &COPPER_GOLEM_CHEST_INTERACTION_ITEM_NODROP,
                 &mut self.root,
                 interaction_seconds,
                 1.0,

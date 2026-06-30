@@ -425,6 +425,7 @@ const COPPER_GOLEM_STATE_IDLE_ID: i32 = 0;
 const COPPER_GOLEM_STATE_GETTING_ITEM_ID: i32 = 1;
 const COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID: i32 = 2;
 const COPPER_GOLEM_STATE_DROPPING_ITEM_ID: i32 = 3;
+const COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID: i32 = 4;
 /// Vanilla `CopperGolem.setupAnimationStates`: `idleAnimationStartTick = tickCount +
 /// random.nextInt(200, 240)`, then `idleAnimationState.start(tickCount)` at that tick.
 const COPPER_GOLEM_IDLE_TIMEOUT_RANDOM_BOUND: i32 = 40;
@@ -507,6 +508,8 @@ pub struct EntityClientAnimationState {
     pub copper_golem_get_no_item: Option<KeyframeAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub copper_golem_drop_item: Option<KeyframeAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub copper_golem_drop_no_item: Option<KeyframeAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sniffer: Option<SnifferAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4666,6 +4669,14 @@ impl EntityClientAnimationState {
             .unwrap_or(-1.0)
     }
 
+    /// Vanilla `CopperGolem.interactionDropNoItemAnimationState` elapsed seconds, started while
+    /// `COPPER_GOLEM_STATE == DROPPING_NO_ITEM` and stopped by every other state.
+    pub fn copper_golem_drop_no_item_seconds(&self, partial_tick: f32) -> f32 {
+        self.copper_golem_drop_no_item
+            .and_then(|state| state.elapsed_seconds(self.age_ticks, partial_tick))
+            .unwrap_or(-1.0)
+    }
+
     /// Vanilla `CamelRenderState.jumpCooldown` =
     /// `max(Camel.getJumpCooldown() - partialTicks, 0)`. The cooldown is seeded from the synced
     /// `DASH` rising edge and decremented each client tick, matching `Camel.tick`.
@@ -5235,6 +5246,9 @@ impl EntityClientAnimationState {
         // The synced `CopperGolem.COPPER_GOLEM_STATE == DROPPING_ITEM`, read from entity metadata in
         // the tick loop. It gates the item/drop chest interaction keyframe.
         copper_golem_is_dropping_item: bool,
+        // The synced `CopperGolem.COPPER_GOLEM_STATE == DROPPING_NO_ITEM`, read from entity metadata
+        // in the tick loop. It gates the item/nodrop chest interaction keyframe.
+        copper_golem_is_dropping_no_item: bool,
         // The synced `Allay.DATA_DANCING` boolean (`isDancing()`), read from the entity metadata in the
         // tick loop ([`allay_is_dancing`]). `false` for entities that do not consume it.
         allay_is_dancing: bool,
@@ -5622,6 +5636,9 @@ impl EntityClientAnimationState {
                 self.copper_golem_drop_item
                     .get_or_insert_with(KeyframeAnimationState::default)
                     .animate_when(copper_golem_is_dropping_item, self.age_ticks);
+                self.copper_golem_drop_no_item
+                    .get_or_insert_with(KeyframeAnimationState::default)
+                    .animate_when(copper_golem_is_dropping_no_item, self.age_ticks);
             }
             VANILLA_ENTITY_TYPE_ALLAY_ID => {
                 // Vanilla `Allay.tick`: while the synced `DATA_DANCING` flag is set, advance the dance
@@ -5833,6 +5850,12 @@ pub(crate) fn copper_golem_is_getting_no_item(data_values: &[EntityDataValue]) -
 /// animation (`COPPER_GOLEM_CHEST_INTERACTION_ITEM_DROP`) and stops every other interaction timer.
 pub(crate) fn copper_golem_is_dropping_item(data_values: &[EntityDataValue]) -> bool {
     copper_golem_state_id(data_values) == COPPER_GOLEM_STATE_DROPPING_ITEM_ID
+}
+
+/// Vanilla `CopperGolem.getState() == DROPPING_NO_ITEM`: starts the item/nodrop chest interaction
+/// animation (`COPPER_GOLEM_CHEST_INTERACTION_ITEM_NODROP`) and stops every other interaction timer.
+pub(crate) fn copper_golem_is_dropping_no_item(data_values: &[EntityDataValue]) -> bool {
+    copper_golem_state_id(data_values) == COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID
 }
 
 fn copper_golem_state_id(data_values: &[EntityDataValue]) -> i32 {

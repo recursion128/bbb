@@ -427,6 +427,62 @@ fn copper_golem_drop_item_keyframes_use_vanilla_chest_interaction() {
 }
 
 #[test]
+fn copper_golem_drop_no_item_keyframes_use_vanilla_chest_interaction() {
+    // Vanilla `CopperGolemModel.setupAnim` applies `COPPER_GOLEM_CHEST_INTERACTION_ITEM_NODROP`
+    // after the item-drop interaction while `CopperGolemState.DROPPING_NO_ITEM` is active.
+    assert_eq!(
+        COPPER_GOLEM_CHEST_INTERACTION_ITEM_NODROP.length_seconds,
+        3.0
+    );
+    assert!(COPPER_GOLEM_CHEST_INTERACTION_ITEM_NODROP.looping);
+    assert_eq!(COPPER_GOLEM_CHEST_INTERACTION_ITEM_NODROP.bones.len(), 6);
+
+    let instance = EntityModelInstance::new(
+        923,
+        EntityModelKind::CopperGolem {
+            weathering: CopperGolemWeathering::Unaffected,
+        },
+        [0.0, 64.0, 0.0],
+        0.0,
+    )
+    .with_head_look(20.0, -5.0)
+    .with_walk_animation(0.0, 0.0)
+    .with_copper_golem_drop_no_item_seconds(2.3333);
+    let mut model = CopperGolemModel::new();
+    model.prepare(&instance);
+
+    let body = model.root_mut().child_mut("body");
+    assert_close3(body.pose.offset, [0.0, -5.0, 0.0]);
+    assert_close3(body.pose.rotation, degree_vec(-2.5, 0.0, 0.0));
+    let head = body.child_mut("head");
+    assert_close3(head.pose.offset, [0.0, -5.99, -0.03]);
+    assert_close3(head.pose.rotation, [(-5.0 + 2.5) * RAD, 20.0 * RAD, 0.0]);
+    let right_arm = body.child_mut("right_arm");
+    assert_close3(right_arm.pose.offset, [-4.46, -6.1159, -0.30086]);
+    assert_close3(
+        right_arm.pose.rotation,
+        degree_vec(3.50393, -4.70737, 8.3608),
+    );
+    let left_arm = body.child_mut("left_arm");
+    assert_close3(left_arm.pose.offset, [4.03, -5.71771, -0.07133]);
+    assert_close3(
+        left_arm.pose.rotation,
+        degree_vec(2.47864, -0.32621, -12.50706),
+    );
+    assert_close3(
+        model.root_mut().child_mut("left_leg").scale,
+        [1.0, 1.0, 1.0],
+    );
+
+    let stopped = instance.with_copper_golem_drop_no_item_seconds(-1.0);
+    let mut stopped_model = CopperGolemModel::new();
+    stopped_model.prepare(&stopped);
+    let stopped_body = stopped_model.root_mut().child_mut("body");
+    assert_close3(stopped_body.pose.offset, [0.0, -5.0, 0.0]);
+    assert_close3(stopped_body.pose.rotation, [0.0, 0.0, 0.0]);
+}
+
+#[test]
 fn copper_golem_textured_layer_passes_match_vanilla_renderer() {
     let passes = copper_golem_textured_layer_passes(CopperGolemWeathering::Weathered);
 
@@ -853,6 +909,97 @@ fn copper_golem_textured_drop_item_preserves_submission_metadata() {
     assert_ne!(
         still_meshes.cutout.vertices, drop_meshes.cutout.vertices,
         "DROPPING_ITEM keyframes move the base layer without changing submission metadata"
+    );
+    assert_ne!(
+        still_meshes.eyes.vertices, drop_meshes.eyes.vertices,
+        "the emissive eyes layer uses the same posed tree as the base layer"
+    );
+    assert_eq!(still_base.texture, drop_base.texture);
+    assert_eq!(still_eyes.texture, drop_eyes.texture);
+}
+
+#[test]
+fn copper_golem_textured_drop_no_item_preserves_submission_metadata() {
+    let images: Vec<EntityModelTextureImage> = copper_golem_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let base = EntityModelInstance::new(
+        924,
+        EntityModelKind::CopperGolem {
+            weathering: CopperGolemWeathering::Weathered,
+        },
+        [0.0, 64.0, 0.0],
+        0.0,
+    )
+    .with_light_coords((6_u32 << 4) | (12_u32 << 20))
+    .with_white_overlay_progress(0.35)
+    .with_has_red_overlay(true);
+    let still = base.with_copper_golem_drop_no_item_seconds(-1.0);
+    let dropping_no_item = base.with_copper_golem_drop_no_item_seconds(2.3333);
+
+    let still_meshes = entity_model_textured_meshes(&[still], &atlas);
+    let drop_meshes = entity_model_textured_meshes(&[dropping_no_item], &atlas);
+    assert_eq!(still_meshes.submissions.len(), 2);
+    assert_eq!(drop_meshes.submissions.len(), 2);
+
+    let still_base = still_meshes.submissions[0];
+    let drop_base = drop_meshes.submissions[0];
+    assert_eq!(
+        drop_base.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(drop_base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(drop_base.texture, COPPER_GOLEM_WEATHERED_TEXTURE_REF);
+    assert_eq!(drop_base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        drop_base.transform,
+        entity_model_root_transform(dropping_no_item)
+    );
+    assert_eq!(drop_base.transform, still_base.transform);
+    assert_eq!(
+        drop_base.light,
+        dropping_no_item.render_state.shader_light()
+    );
+    assert_eq!(
+        drop_base.overlay,
+        dropping_no_item.render_state.overlay_coords()
+    );
+    assert_eq!((drop_base.order, drop_base.submit_sequence), (0, 0));
+
+    let still_eyes = still_meshes.submissions[1];
+    let drop_eyes = drop_meshes.submissions[1];
+    assert_eq!(drop_eyes.render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(drop_eyes.render_type.vanilla_name(), "eyes");
+    assert_eq!(drop_eyes.texture, COPPER_GOLEM_EYES_WEATHERED_TEXTURE_REF);
+    assert_eq!(drop_eyes.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(drop_eyes.transform, drop_base.transform);
+    assert_eq!(
+        drop_eyes.light,
+        dropping_no_item.render_state.shader_light()
+    );
+    assert_eq!(
+        drop_eyes.overlay,
+        [0.0, dropping_no_item.render_state.overlay_coords()[1]]
+    );
+    assert_eq!((drop_eyes.order, drop_eyes.submit_sequence), (1, 1));
+
+    assert_eq!(
+        still_meshes.cutout.indices.len(),
+        drop_meshes.cutout.indices.len()
+    );
+    assert_eq!(
+        still_meshes.eyes.indices.len(),
+        drop_meshes.eyes.indices.len()
+    );
+    assert_ne!(
+        still_meshes.cutout.vertices, drop_meshes.cutout.vertices,
+        "DROPPING_NO_ITEM keyframes move the base layer without changing submission metadata"
     );
     assert_ne!(
         still_meshes.eyes.vertices, drop_meshes.eyes.vertices,

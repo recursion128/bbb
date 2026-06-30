@@ -475,8 +475,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `CopperGolemAnimation.COPPER_GOLEM_CHEST_INTERACTION_ITEM_DROP`
     叠加 body/head/arms/legs keyframe；回归测试覆盖 world/native
     projection、renderer pose，以及 textured submission metadata 不变。
-  - DROPPING_NO_ITEM chest interaction keyframe 继续作为后续 P1/P2 视觉
-    parity。
+  - [x] DROPPING_NO_ITEM chest interaction keyframe：world 侧按
+    `CopperGolemState.DROPPING_NO_ITEM` 启停
+    `interactionDropNoItemAnimationState`，native 带入
+    `EntityRenderState.copper_golem_drop_no_item_seconds`，renderer 按
+    `CopperGolemAnimation.COPPER_GOLEM_CHEST_INTERACTION_ITEM_NODROP`
+    叠加 body/head/arms/legs keyframe 和 vanilla left-leg identity scale
+    channel；回归测试覆盖 world/native projection、renderer pose，以及
+    textured submission metadata 不变。
 - Equine / camel / llama / goat / hoglin / ravager 等大型模型：
   - boost 等 remaining renderer 状态。
   - [x] camel body-anchor y-offset formula/query：`WorldStore::entity_body_anchor_y_offset`

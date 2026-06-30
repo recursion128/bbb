@@ -38,9 +38,10 @@ use super::{
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, boat_bubble_time, boat_paddle_states,
     camel_is_dashing, cat_is_lying, cat_relax_state_one, copper_golem_is_dropping_item,
-    copper_golem_is_getting_item, copper_golem_is_getting_no_item, copper_golem_is_idle,
-    creaking_can_move, creaking_is_tearing_down, entity_animation_uses_in_water,
-    entity_is_fall_flying, guardian_attack_duration, guardian_attack_target_id, guardian_is_moving,
+    copper_golem_is_dropping_no_item, copper_golem_is_getting_item,
+    copper_golem_is_getting_no_item, copper_golem_is_idle, creaking_can_move,
+    creaking_is_tearing_down, entity_animation_uses_in_water, entity_is_fall_flying,
+    guardian_attack_duration, guardian_attack_target_id, guardian_is_moving,
     is_guardian_entity_type, piglin_is_charging_crossbow, pillager_is_charging_crossbow,
     player_is_using_item, warden_heartbeat_delay, wither_side_head_target_ids,
     wither_side_head_target_rotation, wolf_is_interested, WitherHeadTargetRotations,
@@ -1414,6 +1415,9 @@ impl EntityStore {
             copper_golem_drop_item_seconds: client_animations
                 .animations
                 .copper_golem_drop_item_seconds(partial_ticks),
+            copper_golem_drop_no_item_seconds: client_animations
+                .animations
+                .copper_golem_drop_no_item_seconds(partial_ticks),
             camel_jump_cooldown: client_animations
                 .animations
                 .camel_jump_cooldown(partial_ticks),
@@ -2475,6 +2479,8 @@ impl EntityStore {
                     copper_golem_is_getting_no_item(&metadata.data_values);
                 let copper_golem_is_dropping_item =
                     copper_golem_is_dropping_item(&metadata.data_values);
+                let copper_golem_is_dropping_no_item =
+                    copper_golem_is_dropping_no_item(&metadata.data_values);
                 let allay_is_dancing = allay_is_dancing(&metadata.data_values);
                 let allay_has_item_in_hand = equipment.is_some_and(|equipment| {
                     equipment.equipment.iter().any(|update| {
@@ -2514,6 +2520,7 @@ impl EntityStore {
                     copper_golem_is_getting_item,
                     copper_golem_is_getting_no_item,
                     copper_golem_is_dropping_item,
+                    copper_golem_is_dropping_no_item,
                     allay_is_dancing,
                     allay_has_item_in_hand,
                     axolotl_is_playing_dead,
