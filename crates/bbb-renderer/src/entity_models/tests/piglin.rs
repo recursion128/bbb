@@ -349,6 +349,95 @@ fn zombified_piglin_uses_held_out_zombie_arms() {
 }
 
 #[test]
+fn piglin_humanoid_mob_spear_pose_points_arm_along_head_look() {
+    let yaw = 20.0_f32;
+    let pitch = -10.0_f32;
+    let yaw_rad = yaw.to_radians();
+    let spear_pitch = (-std::f32::consts::FRAC_PI_2 + pitch.to_radians() + 0.8)
+        .to_degrees()
+        .clamp(-120.0, 30.0)
+        .to_radians();
+
+    // Vanilla `PiglinRenderer` inherits `HumanoidMobRenderer.getArmPose`: when no higher-priority
+    // `PiglinArmPose` overrides it, a held spear uses `HumanoidModel.ArmPose.SPEAR`.
+    let spear =
+        EntityModelInstance::piglin(160, [0.0, 64.0, 0.0], 0.0, PiglinModelFamily::Piglin, false)
+            .with_head_look(yaw, pitch)
+            .with_humanoid_mob_main_hand_spear_pose(true);
+    let mut model = PiglinModel::new(PiglinModelFamily::Piglin, false);
+    model.prepare(&spear);
+    let right = model.root_mut().child_mut("right_arm").pose;
+    assert!((right.rotation[0] - spear_pitch).abs() < 1.0e-6);
+    assert!((right.rotation[1] - (-0.1 + yaw_rad)).abs() < 1.0e-6);
+    assert!(
+        (right.rotation[2] - 0.1).abs() < 1.0e-6,
+        "the inherited idle bob remains on top of the spear pose"
+    );
+
+    // The regular piglin's own arm-pose branches still run after the inherited HumanoidModel pose.
+    let holding = spear.with_piglin_crossbow_hold(true);
+    let mut hold_model = PiglinModel::new(PiglinModelFamily::Piglin, false);
+    hold_model.prepare(&holding);
+    let held_right = hold_model.root_mut().child_mut("right_arm").pose;
+    assert!(
+        (held_right.rotation[0] - spear_pitch).abs() > 0.5,
+        "PiglinArmPose.CROSSBOW_HOLD overwrites the inherited SPEAR arm pose"
+    );
+}
+
+#[test]
+fn zombified_piglin_stab_type_skips_held_out_rewrite() {
+    use std::f32::consts::PI;
+
+    let t = 0.1_f32;
+    let pitch = (-10.0_f32).to_radians();
+    let spear_base_x = (-PI / 2.0 + pitch + 0.8)
+        .to_degrees()
+        .clamp(-120.0, 30.0)
+        .to_radians();
+    let progress =
+        |time: f32, start: f32, end: f32| ((time - start) / (end - start)).clamp(0.0, 1.0);
+    let prepare = -((PI * progress(t, 0.0, 0.05)).cos() - 1.0) / 2.0;
+    let attack = progress(t, 0.05, 0.2).powi(2);
+    let stab_lunge = (90.0 * prepare - 120.0 * attack).to_radians();
+
+    // `ZombifiedPiglinRenderer` inherits base `HumanoidMobRenderer`, not the zombie renderer's
+    // opposite-hand override. A main-hand spear therefore poses the main/right arm, and
+    // `AnimationUtils.animateZombieArms` sees STAB and skips the held-out rewrite.
+    let spear = EntityModelInstance::piglin(
+        161,
+        [0.0, 64.0, 0.0],
+        0.0,
+        PiglinModelFamily::ZombifiedPiglin,
+        false,
+    )
+    .with_head_look(0.0, -10.0)
+    .with_attack_anim(t)
+    .with_main_hand_swing_is_stab(true)
+    .with_humanoid_mob_main_hand_spear_pose(true);
+    let mut model = PiglinModel::new(PiglinModelFamily::ZombifiedPiglin, false);
+    model.prepare(&spear);
+    let right = model.root_mut().child_mut("right_arm").pose;
+    assert!((right.rotation[0] - (spear_base_x + stab_lunge)).abs() < 1.0e-6);
+    assert!((right.rotation[1] - (-0.1)).abs() < 1.0e-6);
+    assert!((right.rotation[2] - 0.2).abs() < 1.0e-6);
+
+    let mut held_out = PiglinModel::new(PiglinModelFamily::ZombifiedPiglin, false);
+    held_out.prepare(&EntityModelInstance::piglin(
+        162,
+        [0.0, 64.0, 0.0],
+        0.0,
+        PiglinModelFamily::ZombifiedPiglin,
+        false,
+    ));
+    assert!(
+        (right.rotation[0] - held_out.root_mut().child_mut("right_arm").pose.rotation[0]).abs()
+            > 1.0,
+        "STAB swingAnimationType must skip the zombified-piglin held-out arm rewrite"
+    );
+}
+
+#[test]
 fn piglin_family_swings_its_legs_when_walking() {
     // `AbstractPiglinModel extends HumanoidModel`: its `setupAnim` runs
     // `super.setupAnim` (the inherited leg swing) then sways only the ears, so the

@@ -1,8 +1,9 @@
 use super::{
-    apply_crossbow_charge_pose, apply_crossbow_hold_pose, apply_head_look, apply_humanoid_walk,
-    apply_humanoid_weapon_swing_down, apply_zombie_arms_held_out_named, piglin_ear_flap_pose,
-    PartPose, CROSSBOW_CHARGE_DURATION_TICKS, PART_POSE_ZERO, PIGLIN_ADULT_EAR_ANGLE,
-    PIGLIN_BABY_EAR_ANGLE,
+    apply_crossbow_charge_pose, apply_crossbow_hold_pose, apply_head_look,
+    apply_humanoid_mob_spear_arm_poses, apply_humanoid_stab_attack_animation, apply_humanoid_walk,
+    apply_humanoid_weapon_swing_down, apply_zombie_arms_held_out_named, humanoid_arm_bob_pose,
+    piglin_ear_flap_pose, PartPose, CROSSBOW_CHARGE_DURATION_TICKS, PART_POSE_ZERO,
+    PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE,
 };
 use crate::entity_models::catalog::PiglinModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
@@ -579,6 +580,14 @@ impl EntityModel for PiglinModel {
             render_state.head_pitch,
         );
         apply_humanoid_walk(&mut self.root, limb_swing, limb_swing_amount, age_in_ticks);
+        apply_humanoid_mob_spear_arm_poses(
+            &mut self.root,
+            render_state.head_yaw,
+            render_state.head_pitch,
+            render_state.humanoid_mob_main_hand_spear_pose,
+            render_state.humanoid_mob_off_hand_spear_pose,
+            render_state.swim_amount,
+        );
         // Flap the two ears (head children) every frame.
         let default_ear_angle = piglin_default_ear_angle(self.baby_layout);
         let head = self.root.child_mut("head");
@@ -601,14 +610,28 @@ impl EntityModel for PiglinModel {
             limb_swing_amount,
         );
         if self.family == PiglinModelFamily::ZombifiedPiglin {
-            // Vanilla `ZombifiedPiglinModel.setupAnim` runs this after `AbstractPiglinModel`, replacing
-            // the inherited arm walk swing while preserving the leg swing and ear flap.
-            apply_zombie_arms_held_out_named(
-                &mut self.root,
-                render_state.is_aggressive,
-                render_state.attack_anim,
-                age_in_ticks,
-            );
+            // Vanilla `ZombifiedPiglinModel.setupAnim` runs `AnimationUtils.animateZombieArms` after
+            // `AbstractPiglinModel`: WHACK replaces the inherited arm pose, while STAB skips that rewrite
+            // and only applies the trailing `bobArms`.
+            if render_state.main_hand_swing_is_stab {
+                apply_humanoid_stab_attack_animation(
+                    &mut self.root,
+                    render_state.attack_anim,
+                    render_state.attack_arm_off_hand,
+                    1.0,
+                );
+                for name in ["right_arm", "left_arm"] {
+                    let arm = self.root.child_mut(name);
+                    arm.pose = humanoid_arm_bob_pose(arm.pose, age_in_ticks);
+                }
+            } else {
+                apply_zombie_arms_held_out_named(
+                    &mut self.root,
+                    render_state.is_aggressive,
+                    render_state.attack_anim,
+                    age_in_ticks,
+                );
+            }
         }
         // Vanilla `PiglinModel.setupAnim` `CROSSBOW_HOLD`: a regular piglin holding a charged crossbow
         // levels it along the head look, overwriting the walk arm swing. Mutually exclusive with DANCING

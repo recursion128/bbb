@@ -1,5 +1,5 @@
 use super::{
-    apply_head_look, apply_humanoid_leg_swing_named, apply_humanoid_spear_arm_pose,
+    apply_head_look, apply_humanoid_leg_swing_named, apply_humanoid_mob_spear_arm_poses,
     apply_humanoid_stab_attack_animation, apply_humanoid_walk, apply_zombie_arms_held_out_named,
     drowned_outer_root, humanoid_arm_bob_pose, PartPose, PART_POSE_ZERO,
 };
@@ -748,18 +748,19 @@ fn apply_zombie_family_anim(root: &mut ModelPart, instance: &EntityModelInstance
         render_state.head_yaw,
         render_state.head_pitch,
     );
-    if render_state.main_hand_swing_is_stab && render_state.attack_anim > 0.0 {
+    if render_state.main_hand_swing_is_stab {
         apply_humanoid_walk(
             root,
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,
             render_state.age_in_ticks,
         );
-        apply_humanoid_spear_arm_pose(
+        apply_humanoid_mob_spear_arm_poses(
             root,
             render_state.head_yaw,
             render_state.head_pitch,
-            render_state.attack_arm_off_hand,
+            render_state.humanoid_mob_main_hand_spear_pose,
+            render_state.humanoid_mob_off_hand_spear_pose,
             render_state.swim_amount,
         );
         apply_humanoid_stab_attack_animation(

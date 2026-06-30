@@ -269,11 +269,14 @@ fn zombie_stab_swing_uses_spear_lunge_instead_of_held_out_rewrite() {
     // `SpearAnimations.thirdPersonAttackHand`; the subsequent `AnimationUtils.animateZombieArms` sees STAB
     // and skips the held-out rewrite, keeping only its final `bobArms`.
     let t = 0.1_f32;
-    let pitch = (-10.0_f32).to_radians();
     let base =
         EntityModelInstance::zombie(64, [0.0, 64.0, 0.0], 0.0, false).with_head_look(0.0, -10.0);
 
-    let stab_instance = base.with_attack_anim(t).with_main_hand_swing_is_stab(true);
+    let stab_instance = base
+        .with_attack_anim(t)
+        .with_main_hand_swing_is_stab(true)
+        .with_humanoid_mob_main_hand_spear_pose(true)
+        .with_humanoid_mob_off_hand_spear_pose(true);
     let mut stab_model = ZombieModel::new(false);
     stab_model.prepare(&stab_instance);
 
@@ -299,10 +302,6 @@ fn zombie_stab_swing_uses_spear_lunge_instead_of_held_out_rewrite() {
             (2.0 - 2.0_f32.powf(-20.0 * x + 10.0)) / 2.0
         }
     };
-    let spear_base_x = (-PI / 2.0 + pitch + 0.8)
-        .to_degrees()
-        .clamp(-120.0, 30.0)
-        .to_radians();
     let stab_lunge = {
         let prepare = in_out_sine(progress(t, 0.0, 0.05));
         let attack = progress(t, 0.05, 0.2).powi(2);
@@ -313,13 +312,13 @@ fn zombie_stab_swing_uses_spear_lunge_instead_of_held_out_rewrite() {
     assert!((right.offset[0] - (-body_yrot.cos() * 5.0)).abs() < 1e-6);
     assert!((right.offset[2] - (body_yrot.sin() * 5.0)).abs() < 1e-6);
     assert!(
-        (right.rotation[0] - (spear_base_x + stab_lunge)).abs() < 1e-6,
-        "right arm lunges from the SPEAR arm pose: {} vs {}",
+        (right.rotation[0] - stab_lunge).abs() < 1e-6,
+        "right arm lunges from the walk pose because the zombie off-hand SPEAR pose suppresses it: {} vs {}",
         right.rotation[0],
-        spear_base_x + stab_lunge
+        stab_lunge
     );
     assert!(
-        (right.rotation[1] - (-0.1)).abs() < 1e-6,
+        right.rotation[1].abs() < 1e-6,
         "thirdPersonAttackHand cancels the body-yRot arm yaw addition"
     );
     assert!(
@@ -334,6 +333,50 @@ fn zombie_stab_swing_uses_spear_lunge_instead_of_held_out_rewrite() {
     assert!(
         (right.rotation[0] - whack_right.rotation[0]).abs() > 0.5,
         "STAB must not fall back to the zombie held-out melee rewrite"
+    );
+}
+
+#[test]
+fn zombie_stab_type_skips_held_out_rewrite_without_attack_progress() {
+    let pitch = (-10.0_f32).to_radians();
+    let spear_base_x = (-std::f32::consts::FRAC_PI_2 + pitch + 0.8)
+        .to_degrees()
+        .clamp(-120.0, 30.0)
+        .to_radians();
+
+    // `AnimationUtils.animateZombieArms` checks `swingAnimationType != STAB`, not attack progress. A zombie
+    // whose attack-arm item is a spear therefore skips the held-out rewrite even at attackTime 0. The
+    // zombie renderer marks both arm poses from the main-hand STAB component; right-handed setup applies
+    // the off-hand SPEAR pose first and skips the main hand.
+    let spear = EntityModelInstance::zombie(65, [0.0, 64.0, 0.0], 0.0, false)
+        .with_head_look(0.0, -10.0)
+        .with_main_hand_swing_is_stab(true)
+        .with_humanoid_mob_main_hand_spear_pose(true)
+        .with_humanoid_mob_off_hand_spear_pose(true);
+    let mut spear_model = ZombieModel::new(false);
+    spear_model.prepare(&spear);
+
+    let left = spear_model.root_mut().child_mut("left_arm").pose;
+    assert!((left.rotation[0] - spear_base_x).abs() < 1e-6);
+    assert!((left.rotation[1] - 0.1).abs() < 1e-6);
+
+    let right = spear_model.root_mut().child_mut("right_arm").pose;
+    assert!(
+        right.rotation[0].abs() < 1e-6,
+        "main-hand pose is skipped by the zombie off-hand SPEAR affectsOffhandPose dispatch"
+    );
+
+    let mut held_out = ZombieModel::new(false);
+    held_out.prepare(&EntityModelInstance::zombie(
+        66,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+    ));
+    assert!(
+        (right.rotation[0] - held_out.root_mut().child_mut("right_arm").pose.rotation[0]).abs()
+            > 1.0,
+        "STAB swingAnimationType must not fall back to animateZombieArms held-out rewrite"
     );
 }
 

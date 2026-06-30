@@ -1013,6 +1013,17 @@ fn entity_model_instance(
     let off_hand_holds_spear = entity_hand_holds_spear(world, item_runtime, source.entity_id, true);
     let player_main_hand_holds_spear = is_player && main_hand_holds_spear;
     let player_off_hand_holds_spear = is_player && off_hand_holds_spear;
+    let is_zombie_family = matches!(
+        kind,
+        EntityModelKind::Zombie { .. } | EntityModelKind::ZombieVariant { .. }
+    );
+    let is_humanoid_mob_renderer = is_zombie_family
+        || matches!(
+            kind,
+            EntityModelKind::Skeleton
+                | EntityModelKind::SkeletonVariant { .. }
+                | EntityModelKind::Piglin { .. }
+        );
     let player_main_hand_holds_charged_crossbow = is_player
         && entity_hand_holds_charged_crossbow(world, item_runtime, source.entity_id, false);
     let player_off_hand_holds_charged_crossbow = is_player
@@ -1180,6 +1191,15 @@ fn entity_model_instance(
         && !(source.is_using_item && source.use_item_off_hand)
         && !main_hand_crossbow_hold_forces_offhand_item
         && !main_hand_use_affects_offhand;
+    // Vanilla `HumanoidMobRenderer.getArmPose`: non-player humanoid mobs return `SPEAR` for a held item
+    // tagged `minecraft:spears` (and for STAB while swinging). `AbstractZombieRenderer` also checks the
+    // opposite hand's STAB component, so a zombie-family mob holding a spear in either hand can mark both
+    // arm poses as `SPEAR`; the later right-handed `HumanoidModel.setupAnim` dispatch decides which arm
+    // actually gets posed first / suppresses the other.
+    let humanoid_mob_main_hand_spear_pose = is_humanoid_mob_renderer
+        && (main_hand_holds_spear || (is_zombie_family && off_hand_holds_spear));
+    let humanoid_mob_off_hand_spear_pose = is_humanoid_mob_renderer
+        && (off_hand_holds_spear || (is_zombie_family && main_hand_holds_spear));
     // Vanilla `AvatarRenderer.getArmPose` `CROSSBOW_HOLD` (`AnimationUtils.animateCrossbowHold`, the same one
     // the pillager levels): a player holding a CHARGED main-hand crossbow while not mid-swing (`!swinging &&
     // crossbow && isCharged`, checked before the use-item branch) levels the crossbow along the head look.
@@ -1476,6 +1496,8 @@ fn entity_model_instance(
         .with_player_using_spear(player_using_spear)
         .with_player_main_hand_spear_pose(player_main_hand_spear_pose)
         .with_player_off_hand_spear_pose(player_off_hand_spear_pose)
+        .with_humanoid_mob_main_hand_spear_pose(humanoid_mob_main_hand_spear_pose)
+        .with_humanoid_mob_off_hand_spear_pose(humanoid_mob_off_hand_spear_pose)
         .with_player_using_spyglass(player_using_spyglass)
         .with_player_tooting_horn(player_tooting_horn)
         .with_player_brushing(player_brushing)
@@ -6515,6 +6537,8 @@ mod tests {
         let main_spear = state(&world, 243);
         assert!(main_spear.player_main_hand_spear_pose);
         assert!(!main_spear.player_off_hand_spear_pose);
+        assert!(!main_spear.humanoid_mob_main_hand_spear_pose);
+        assert!(!main_spear.humanoid_mob_off_hand_spear_pose);
         assert!(!main_spear.player_main_hand_item_pose);
         assert!(
             main_spear.player_off_hand_item_pose,
@@ -6541,6 +6565,8 @@ mod tests {
         let off_spear = state(&world, 244);
         assert!(!off_spear.player_main_hand_spear_pose);
         assert!(off_spear.player_off_hand_spear_pose);
+        assert!(!off_spear.humanoid_mob_main_hand_spear_pose);
+        assert!(!off_spear.humanoid_mob_off_hand_spear_pose);
         assert!(
             !off_spear.player_main_hand_item_pose,
             "off-hand SPEAR affectsOffhandPose skips the main-hand ITEM pose"
@@ -6569,6 +6595,124 @@ mod tests {
             off_spear_over_crossbow.player_off_hand_item_pose,
             "the forced off-hand ITEM pose replaces the held SPEAR pose before CROSSBOW_HOLD overwrites it"
         );
+    }
+
+    #[test]
+    fn entity_model_instances_project_humanoid_mob_held_spear_arm_pose() {
+        // Vanilla `HumanoidMobRenderer.getArmPose` returns `SPEAR` for a non-player humanoid mob holding an
+        // item tagged `minecraft:spears`. `AbstractZombieRenderer` additionally checks the opposite hand's
+        // STAB swing component, so a zombie-family mob with a spear in either hand marks both arm poses.
+        const WOODEN_SPEAR_ID: i32 = 0;
+        const IRON_SPEAR_ID: i32 = 1;
+        const PLAIN_ITEM_ID: i32 = 2;
+
+        let registry: bbb_pack::ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+            "resource_ids": [
+                "minecraft:wooden_spear",
+                "minecraft:iron_spear",
+                "minecraft:stick"
+            ],
+            "protocol_ids": {
+                "minecraft:wooden_spear": WOODEN_SPEAR_ID,
+                "minecraft:iron_spear": IRON_SPEAR_ID,
+                "minecraft:stick": PLAIN_ITEM_ID
+            }
+        }))
+        .unwrap();
+        let runtime = NativeItemRuntime::for_test_with_registry_and_equipment_assets(
+            registry,
+            bbb_pack::EquipmentAssetCatalog::default(),
+        );
+        let equip = |entity_id: i32, slot: EquipmentSlot, item_id: i32| SetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot,
+                item: ItemStackSummary {
+                    item_id: Some(item_id),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            }],
+        };
+        let state = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, Some(&runtime), 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+        };
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            246,
+            VANILLA_ENTITY_TYPE_SKELETON_ID,
+            [6.0, 64.0, -9.0],
+        ));
+        assert!(world.apply_set_equipment(equip(246, EquipmentSlot::MainHand, WOODEN_SPEAR_ID)));
+        let skeleton_main = state(&world, 246);
+        assert!(skeleton_main.humanoid_mob_main_hand_spear_pose);
+        assert!(!skeleton_main.humanoid_mob_off_hand_spear_pose);
+        assert!(!skeleton_main.player_main_hand_spear_pose);
+
+        world.apply_add_entity(protocol_add_entity(
+            247,
+            VANILLA_ENTITY_TYPE_SKELETON_ID,
+            [7.0, 64.0, -9.0],
+        ));
+        assert!(world.apply_set_equipment(equip(247, EquipmentSlot::MainHand, PLAIN_ITEM_ID)));
+        assert!(world.apply_set_equipment(equip(247, EquipmentSlot::OffHand, IRON_SPEAR_ID)));
+        let skeleton_off = state(&world, 247);
+        assert!(!skeleton_off.humanoid_mob_main_hand_spear_pose);
+        assert!(skeleton_off.humanoid_mob_off_hand_spear_pose);
+
+        world.apply_add_entity(protocol_add_entity(
+            248,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            [8.0, 64.0, -9.0],
+        ));
+        assert!(world.apply_set_equipment(equip(248, EquipmentSlot::MainHand, WOODEN_SPEAR_ID)));
+        let zombie_main = state(&world, 248);
+        assert!(zombie_main.humanoid_mob_main_hand_spear_pose);
+        assert!(
+            zombie_main.humanoid_mob_off_hand_spear_pose,
+            "AbstractZombieRenderer checks the opposite main-hand STAB component for the off arm"
+        );
+
+        world.apply_add_entity(protocol_add_entity(
+            249,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            [9.0, 64.0, -9.0],
+        ));
+        assert!(world.apply_set_equipment(equip(249, EquipmentSlot::OffHand, IRON_SPEAR_ID)));
+        let zombie_off = state(&world, 249);
+        assert!(
+            zombie_off.humanoid_mob_main_hand_spear_pose,
+            "AbstractZombieRenderer checks the opposite off-hand STAB component for the main arm"
+        );
+        assert!(zombie_off.humanoid_mob_off_hand_spear_pose);
+
+        world.apply_add_entity(protocol_add_entity(
+            250,
+            VANILLA_ENTITY_TYPE_PIGLIN_ID,
+            [10.0, 64.0, -9.0],
+        ));
+        assert!(world.apply_set_equipment(equip(250, EquipmentSlot::MainHand, WOODEN_SPEAR_ID)));
+        let piglin_main = state(&world, 250);
+        assert!(piglin_main.humanoid_mob_main_hand_spear_pose);
+        assert!(
+            !piglin_main.humanoid_mob_off_hand_spear_pose,
+            "PiglinRenderer inherits the base same-hand HumanoidMobRenderer pose, not the zombie opposite-hand override"
+        );
+
+        world.apply_add_entity(protocol_add_entity(
+            251,
+            VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
+            [11.0, 64.0, -9.0],
+        ));
+        assert!(world.apply_set_equipment(equip(251, EquipmentSlot::OffHand, IRON_SPEAR_ID)));
+        let zombified_off = state(&world, 251);
+        assert!(!zombified_off.humanoid_mob_main_hand_spear_pose);
+        assert!(zombified_off.humanoid_mob_off_hand_spear_pose);
     }
 
     #[test]

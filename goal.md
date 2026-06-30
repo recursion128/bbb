@@ -470,9 +470,16 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - [x] zombie-family attack-arm spear STAB：native 现在按
     `ArmedEntityRenderState.extractArmedEntityRenderState` 为非玩家 humanoid
     提取 attack-arm spear `SwingAnimationType.STAB`；zombie / husk / drowned /
-    zombie-villager 在 `attack_anim > 0` 时运行 inherited
-    `SpearAnimations.thirdPersonAttackHand` lunge，并匹配
-    `AnimationUtils.animateZombieArms` 的 STAB 分支只保留 `bobArms`。
+    zombie-villager 在 `swingAnimationType == STAB` 时跳过 held-out rewrite；
+    `attack_anim > 0` 时运行 inherited `SpearAnimations.thirdPersonAttackHand`
+    lunge，并匹配 `AnimationUtils.animateZombieArms` 的 STAB 分支只保留
+    `bobArms`。
+  - [x] non-player `HumanoidMobRenderer` held-spear `ArmPose.SPEAR`：native
+    为 skeleton / zombie / piglin family 投影 base same-hand spear pose，并只对
+    zombie-family 保留 `AbstractZombieRenderer` 的 opposite-hand STAB override；
+    renderer 复用 `SpearAnimations.thirdPersonHandUse` base pose，覆盖 skeleton
+    off-hand `SPEAR.affectsOffhandPose` 对 bow aim 的 suppression、piglin
+    custom arm-pose 后置覆盖、zombified-piglin STAB skip held-out rewrite。
   - attack / crossbow / spell / celebrate / riding 其他组合冲突。
   - [x] main-hand spear STAB held-item layer transform：player STAB arm lunge
     之后，held item transform 追加 vanilla

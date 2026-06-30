@@ -1,6 +1,7 @@
 use super::{
-    apply_head_look, apply_humanoid_attack_animation, apply_humanoid_walk, bogged_clothing_root,
-    humanoid_arm_bob_pose, stray_clothing_root, PartPose, PART_POSE_ZERO,
+    apply_head_look, apply_humanoid_attack_animation, apply_humanoid_mob_spear_arm_poses,
+    apply_humanoid_walk, bogged_clothing_root, humanoid_arm_bob_pose, stray_clothing_root,
+    PartPose, PART_POSE_ZERO,
 };
 use crate::entity_models::catalog::SkeletonModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
@@ -513,6 +514,21 @@ fn skeleton_is_meleeing(instance: &EntityModelInstance) -> bool {
     instance.render_state.is_aggressive && !instance.render_state.main_hand_holds_bow
 }
 
+fn apply_skeleton_humanoid_mob_arm_poses(root: &mut ModelPart, instance: &EntityModelInstance) {
+    let render_state = &instance.render_state;
+    let main_suppressed = apply_humanoid_mob_spear_arm_poses(
+        root,
+        render_state.head_yaw,
+        render_state.head_pitch,
+        render_state.humanoid_mob_main_hand_spear_pose,
+        render_state.humanoid_mob_off_hand_spear_pose,
+        render_state.swim_amount,
+    );
+    if !main_suppressed && skeleton_is_aiming_bow(instance) {
+        apply_skeleton_bow_aim(root, render_state.head_yaw, render_state.head_pitch);
+    }
+}
+
 /// Vanilla `SkeletonModel.setupAnim`'s melee arm pose (`isAggressive && !isHoldingBow`): both arms
 /// raise forward to `-π/2` and chop with the attack (`attack_anim` = `attackTime`), the right arm
 /// yawing in and the left out symmetrically, then take the idle bob ([`humanoid_arm_bob_pose`]). At
@@ -575,13 +591,7 @@ impl EntityModel for SkeletonModel {
             render_state.walk_animation_speed,
             render_state.age_in_ticks,
         );
-        if skeleton_is_aiming_bow(instance) {
-            apply_skeleton_bow_aim(
-                &mut self.root,
-                render_state.head_yaw,
-                render_state.head_pitch,
-            );
-        }
+        apply_skeleton_humanoid_mob_arm_poses(&mut self.root, instance);
         // Vanilla `HumanoidModel.setupAttackAnimation` (in `super.setupAnim`): the body twists for a
         // swinging skeleton (a no-op when not mid-swing).
         apply_humanoid_attack_animation(
@@ -644,13 +654,7 @@ impl EntityModel for SkeletonClothingModel {
         );
         // The clothing overlay tracks the body arms, so it aims / melees with them (vanilla poses the
         // overlay with the same `SkeletonModel.setupAnim`).
-        if skeleton_is_aiming_bow(instance) {
-            apply_skeleton_bow_aim(
-                &mut self.root,
-                render_state.head_yaw,
-                render_state.head_pitch,
-            );
-        }
+        apply_skeleton_humanoid_mob_arm_poses(&mut self.root, instance);
         apply_humanoid_attack_animation(
             &mut self.root,
             render_state.attack_anim,

@@ -1293,6 +1293,55 @@ fn skeleton_model_aims_both_arms_for_bow_and_arrow() {
 }
 
 #[test]
+fn skeleton_humanoid_mob_spear_pose_points_arm_along_head_look() {
+    let yaw = 20.0_f32;
+    let pitch = -10.0_f32;
+    let yaw_rad = yaw.to_radians();
+    let spear_pitch = (-std::f32::consts::FRAC_PI_2 + pitch.to_radians() + 0.8)
+        .to_degrees()
+        .clamp(-120.0, 30.0)
+        .to_radians();
+
+    // Vanilla `HumanoidMobRenderer.getArmPose`: a calm skeleton holding a spear in the main hand gets
+    // `ArmPose.SPEAR`, which runs `SpearAnimations.thirdPersonHandUse` without kinetic sway.
+    let main_spear = EntityModelInstance::skeleton(813, [0.0, 64.0, 0.0], 0.0)
+        .with_head_look(yaw, pitch)
+        .with_humanoid_mob_main_hand_spear_pose(true);
+    let mut main = SkeletonModel::new(None);
+    main.prepare(&main_spear);
+    let right = main.root_mut().child_mut("right_arm").pose;
+    assert!((right.rotation[0] - spear_pitch).abs() < 1e-6);
+    assert!((right.rotation[1] - (-0.1 + yaw_rad)).abs() < 1e-6);
+
+    // In the right-handed, non-using dispatch, an off-hand SPEAR runs first and suppresses the main-hand
+    // pose. This also suppresses an otherwise valid aggressive bow aim.
+    let off_spear = EntityModelInstance::skeleton(814, [0.0, 64.0, 0.0], 0.0)
+        .with_head_look(yaw, pitch)
+        .with_is_aggressive(true)
+        .with_main_hand_holds_bow(true)
+        .with_humanoid_mob_off_hand_spear_pose(true);
+    let mut off = SkeletonModel::new(None);
+    off.prepare(&off_spear);
+    let left = off.root_mut().child_mut("left_arm").pose;
+    assert!((left.rotation[0] - spear_pitch).abs() < 1e-6);
+    assert!((left.rotation[1] - (0.1 + yaw_rad)).abs() < 1e-6);
+    let right = off.root_mut().child_mut("right_arm").pose;
+    let bow_right_pitch = -std::f32::consts::FRAC_PI_2 + pitch.to_radians();
+    assert!(
+        (right.rotation[0] - bow_right_pitch).abs() > 0.5,
+        "off-hand SPEAR.affectsOffhandPose skips the main-hand BOW_AND_ARROW pose"
+    );
+
+    let mut overlay = SkeletonClothingModel::new(Some(SkeletonModelFamily::Stray));
+    overlay.prepare(&off_spear);
+    let overlay_left = overlay.root_mut().child_mut("left_arm").pose;
+    assert!(
+        (overlay_left.rotation[0] - spear_pitch).abs() < 1e-6,
+        "stray/bogged clothing overlay tracks the same spear arm pose"
+    );
+}
+
+#[test]
 fn aggressive_skeleton_without_a_bow_raises_and_chops_its_arms() {
     use std::f32::consts::FRAC_PI_2;
     // Vanilla `SkeletonModel.setupAnim` (`isAggressive && !isHoldingBow`): both arms raise to `-π/2`

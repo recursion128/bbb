@@ -383,6 +383,39 @@ pub(in crate::entity_models) fn apply_humanoid_spear_arm_pose(
     .to_radians();
 }
 
+/// Vanilla right-handed, non-using `HumanoidModel.setupAnim` dispatch for mob `ArmPose.SPEAR`: the off-hand
+/// pose runs before the main hand and `SPEAR.affectsOffhandPose()` suppresses the main arm. Returns whether
+/// the main hand was suppressed by an off-hand spear pose.
+pub(in crate::entity_models) fn apply_humanoid_mob_spear_arm_poses(
+    root: &mut ModelPart,
+    head_yaw_degrees: f32,
+    head_pitch_degrees: f32,
+    main_hand_spear_pose: bool,
+    off_hand_spear_pose: bool,
+    swim_amount: f32,
+) -> bool {
+    if off_hand_spear_pose {
+        apply_humanoid_spear_arm_pose(
+            root,
+            head_yaw_degrees,
+            head_pitch_degrees,
+            true,
+            swim_amount,
+        );
+        return true;
+    }
+    if main_hand_spear_pose {
+        apply_humanoid_spear_arm_pose(
+            root,
+            head_yaw_degrees,
+            head_pitch_degrees,
+            false,
+            swim_amount,
+        );
+    }
+    false
+}
+
 /// Vanilla `HumanoidModel.ArmPose.SPEAR` use-item pose (`SpearAnimations.thirdPersonHandUse`): the using
 /// arm points the spear along the head look, then a kinetic weapon with positive `ticksUsingItem` adds the
 /// slow/fast sway and raise/lower/back timing from `DataComponents.KINETIC_WEAPON`.

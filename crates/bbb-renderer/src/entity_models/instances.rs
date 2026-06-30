@@ -494,6 +494,16 @@ entity_render_state! {
     /// vanilla `ArmPose.SPEAR.affectsOffhandPose`, can suppress the main hand's pose in the native
     /// projection. `false` for the using-spear path.
     (with_player_off_hand_spear_pose) player_off_hand_spear_pose: bool = false;
+    /// Vanilla `HumanoidMobRenderer.getArmPose` `SPEAR` for a non-player humanoid mob's main hand. The
+    /// base mob renderer returns `SPEAR` for a held item tagged `minecraft:spears` (and for STAB while
+    /// swinging); the zombie renderer additionally checks the opposite hand's STAB component. `false` for
+    /// players and non-humanoid-mob renderers.
+    (with_humanoid_mob_main_hand_spear_pose) humanoid_mob_main_hand_spear_pose: bool = false;
+    /// Vanilla `HumanoidMobRenderer.getArmPose` `SPEAR` for a non-player humanoid mob's off hand. In the
+    /// default right-handed, non-using `HumanoidModel.setupAnim` dispatch this pose runs first and, because
+    /// `SPEAR.affectsOffhandPose()`, suppresses the main hand's pose. The zombie renderer can set this from
+    /// a STAB item in the opposite main hand.
+    (with_humanoid_mob_off_hand_spear_pose) humanoid_mob_off_hand_spear_pose: bool = false;
     /// Vanilla `HumanoidModel.setupAnim` use-item arm pose `SPYGLASS`
     /// (`ItemStack.getUseAnimation() == SPYGLASS`): a player using a spyglass raises the holding arm to
     /// the eye (`xRot = clamp(head.xRot − 1.9198622 − crouch?π/12, −2.4, 3.3)`, `yRot = head.yRot ∓ π/12`)
@@ -2577,6 +2587,8 @@ mod tests {
                 player_using_spear: None,
                 player_main_hand_spear_pose: false,
                 player_off_hand_spear_pose: false,
+                humanoid_mob_main_hand_spear_pose: false,
+                humanoid_mob_off_hand_spear_pose: false,
                 player_using_spyglass: false,
                 player_tooting_horn: false,
                 player_brushing: false,
