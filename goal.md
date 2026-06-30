@@ -746,6 +746,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     the true branch and non-selected hotbar slots stay false. Inventory slot /
     carried-cursor GUI identity cases remain follow-up with broader GUI owner
     state.
+  - [x] `minecraft:carried` item-model condition is recognized and resolved
+    through an explicit local-player carried-stack context bit from vanilla
+    `IsCarried.get` (`LocalPlayer.containerMenu.getCarried() == itemStack`):
+    ordinary HUD/GUI slots and generated recipe/offer display items stay on the
+    false branch, while future cursor-carried item call sites can pass true
+    without matching by stack contents. Visual mouse-cursor carried item
+    projection remains a GUI surface follow-up.
   - [x] `minecraft:has_component` item-model condition now follows vanilla
     `HasComponent.get`: default prototype components such as
     `minecraft:max_stack_size`, `minecraft:item_model`, and

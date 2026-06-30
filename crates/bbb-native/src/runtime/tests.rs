@@ -2534,6 +2534,78 @@ fn hotbar_item_icons_use_selected_item_condition_for_selected_slot_only() {
 }
 
 #[test]
+fn hud_item_icons_use_carried_item_condition_only_when_marked_carried() {
+    let root = unique_runtime_temp_dir("hud-carried-condition");
+    write_runtime_carried_condition_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let stack = item_stack(0, 1);
+    let normal_uv = item_runtime.icon_for_stack(&stack).unwrap().layers[0].uv;
+    let carried_uv = item_runtime
+        .icon_for_stack_with_context_and_use_context_time_state(
+            &stack,
+            None,
+            false,
+            crate::item_runtime::ItemModelUseContext::inactive(),
+            bbb_pack::BlockModelDisplayContext::Gui,
+            0.0,
+            None,
+            None,
+            Some("minecraft:player"),
+            None,
+            None,
+            None,
+            false,
+            true,
+        )
+        .unwrap()
+        .layers[0]
+        .uv;
+    assert_ne!(normal_uv, carried_uv);
+
+    let world = WorldStore::new();
+    let ordinary_icon = hud_item_icon_for_stack(
+        &world,
+        Some(&item_runtime),
+        &stack,
+        None,
+        false,
+        false,
+        false,
+        0.0,
+    )
+    .unwrap();
+    let carried_icon = hud_item_icon_for_stack(
+        &world,
+        Some(&item_runtime),
+        &stack,
+        None,
+        false,
+        false,
+        true,
+        0.0,
+    )
+    .unwrap();
+
+    assert_eq!(
+        ordinary_icon.layers[0].uv,
+        HudUvRect {
+            min: normal_uv.min,
+            max: normal_uv.max,
+        }
+    );
+    assert_eq!(
+        carried_icon.layers[0].uv,
+        HudUvRect {
+            min: carried_uv.min,
+            max: carried_uv.max,
+        }
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn hotbar_item_icons_project_local_use_ticks_into_use_duration_range_dispatch() {
     let root = unique_runtime_temp_dir("hotbar-use-duration-range-dispatch");
     write_runtime_bow_item_assets(&root);
@@ -7343,6 +7415,59 @@ fn write_runtime_selected_condition_item_assets(root: &Path) {
             .join("Items.java"),
         r#"public class Items {
             public static final Item SELECTED_CONDITION = registerItem("selected_condition");
+        }"#,
+    );
+}
+
+fn write_runtime_carried_condition_item_assets(root: &Path) {
+    let assets = runtime_assets_dir(root);
+    write_runtime_json(
+        &assets.join("atlases").join("items.json"),
+        r#"{
+            "sources": [
+                {
+                    "type": "minecraft:directory",
+                    "prefix": "item/",
+                    "source": "item"
+                }
+            ]
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("atlases").join("blocks.json"),
+        r#"{
+            "sources": []
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("items").join("carried_condition.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:condition",
+                "property": "minecraft:carried",
+                "on_true": { "type": "minecraft:model", "model": "minecraft:item/carried_condition_carried" },
+                "on_false": { "type": "minecraft:model", "model": "minecraft:item/carried_condition" }
+            }
+        }"#,
+    );
+    write_flat_runtime_item_model_and_texture(&assets, "carried_condition", &[40, 120, 80, 255]);
+    write_flat_runtime_item_model_and_texture(
+        &assets,
+        "carried_condition_carried",
+        &[120, 40, 80, 255],
+    );
+    write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
+    write_runtime_json(
+        &root
+            .join("sources")
+            .join(bbb_pack::MC_VERSION)
+            .join("net")
+            .join("minecraft")
+            .join("world")
+            .join("item")
+            .join("Items.java"),
+        r#"public class Items {
+            public static final Item CARRIED_CONDITION = registerItem("carried_condition");
         }"#,
     );
 }

@@ -247,6 +247,7 @@ pub struct ItemModelProperty {
 pub enum ItemModelPropertyKind {
     Broken,
     BundleHasSelectedItem,
+    Carried,
     CustomModelData,
     Damaged,
     HasComponent,
@@ -268,6 +269,7 @@ impl ItemModelProperty {
         match self.property_type.as_str() {
             "minecraft:broken" => ItemModelPropertyKind::Broken,
             "minecraft:bundle/has_selected_item" => ItemModelPropertyKind::BundleHasSelectedItem,
+            "minecraft:carried" => ItemModelPropertyKind::Carried,
             "minecraft:custom_model_data" => ItemModelPropertyKind::CustomModelData,
             "minecraft:damaged" => ItemModelPropertyKind::Damaged,
             "minecraft:has_component" => ItemModelPropertyKind::HasComponent,
@@ -1802,6 +1804,43 @@ mod tests {
         assert_eq!(
             property.raw(),
             &serde_json::json!({"property": "minecraft:selected"})
+        );
+        assert!(matches!(on_true.as_ref(), ItemModelDefinition::Empty));
+        assert!(matches!(on_false.as_ref(), ItemModelDefinition::Empty));
+    }
+
+    #[test]
+    fn item_model_catalog_structures_unit_carried_condition_property() {
+        let definition = ClientItemDefinition::from_json_bytes(
+            br#"{
+              "model": {
+                "type": "minecraft:condition",
+                "property": "minecraft:carried",
+                "on_false": {
+                  "type": "minecraft:empty"
+                },
+                "on_true": {
+                  "type": "minecraft:empty"
+                }
+              }
+            }"#,
+        )
+        .unwrap();
+
+        let ItemModelDefinition::Condition {
+            property,
+            on_true,
+            on_false,
+            ..
+        } = &definition.model
+        else {
+            panic!("root should parse as a carried condition item model");
+        };
+        assert_eq!(property.property_type, "minecraft:carried");
+        assert_eq!(property.kind(), ItemModelPropertyKind::Carried);
+        assert_eq!(
+            property.raw(),
+            &serde_json::json!({"property": "minecraft:carried"})
         );
         assert!(matches!(on_true.as_ref(), ItemModelDefinition::Empty));
         assert!(matches!(on_false.as_ref(), ItemModelDefinition::Empty));

@@ -792,6 +792,9 @@ pub(super) struct IconResolveContext<'a> {
     /// Vanilla `IsSelected.get`: true only when the owner is the local player
     /// and this exact stack is `LocalPlayer.getInventory().getSelectedItem()`.
     pub selected_item: bool,
+    /// Vanilla `IsCarried.get`: true only when the owner is the local player
+    /// and this exact stack is `LocalPlayer.containerMenu.getCarried()`.
+    pub carried_item: bool,
     pub using_item: bool,
     pub use_context: ItemModelUseContext,
     /// Vanilla `Cooldown.get`: caller-projected
@@ -1027,6 +1030,7 @@ impl ItemIconModel {
                     {
                         on_true
                     }
+                    ItemModelPropertyKind::Carried if ctx.carried_item => on_true,
                     ItemModelPropertyKind::Selected if ctx.selected_item => on_true,
                     ItemModelPropertyKind::UsingItem if ctx.using_item => on_true,
                     _ => on_false,
@@ -1094,6 +1098,7 @@ pub(super) fn contains_runtime_condition(model: &ItemModelDefinition) -> bool {
                 ItemModelPropertyKind::Broken
                     | ItemModelPropertyKind::Damaged
                     | ItemModelPropertyKind::BundleHasSelectedItem
+                    | ItemModelPropertyKind::Carried
                     | ItemModelPropertyKind::CustomModelData
                     | ItemModelPropertyKind::HasComponent
                     | ItemModelPropertyKind::Selected
@@ -1163,6 +1168,7 @@ pub(super) fn item_icon_model_ref_for_definition(
                 ItemModelPropertyKind::Broken
                     | ItemModelPropertyKind::Damaged
                     | ItemModelPropertyKind::BundleHasSelectedItem
+                    | ItemModelPropertyKind::Carried
                     | ItemModelPropertyKind::CustomModelData
                     | ItemModelPropertyKind::HasComponent
                     | ItemModelPropertyKind::Selected
