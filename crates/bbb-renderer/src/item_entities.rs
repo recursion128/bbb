@@ -115,6 +115,8 @@ struct VertexOut {
     @location(4) cylindrical_distance: f32,
 };
 
+const ALPHA_CUTOUT: f32 = 0.1;
+
 fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
     if (vertex_distance <= fog_start) {
         return 0.0;
@@ -157,10 +159,11 @@ fn vs_main(input: VertexIn) -> VertexOut {
 
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
-    let texel = textureSample(item_atlas, item_sampler, input.uv) * input.color;
-    if texel.a <= 0.01 {
+    let sampled = textureSample(item_atlas, item_sampler, input.uv);
+    if sampled.a < ALPHA_CUTOUT {
         discard;
     }
+    let texel = sampled * input.color;
     let light_color = sample_lightmap(input.light);
     return apply_fog(vec4<f32>(texel.rgb * light_color, texel.a), input.spherical_distance, input.cylindrical_distance);
 }
@@ -712,6 +715,20 @@ mod tests {
         assert!(ITEM_ENTITY_SHADER.contains("texel.rgb * light_color"));
         assert!(!ITEM_ENTITY_SHADER.contains("fn lightmap_brightness"));
         assert!(!ITEM_ENTITY_SHADER.contains("camera.lightmap_factors.y"));
+    }
+
+    #[test]
+    fn item_entity_shader_uses_vanilla_item_alpha_cutout() {
+        // Vanilla thrown-item renderers call `ItemStackRenderState.submit`, whose
+        // item render types define `ALPHA_CUTOUT` as 0.1F and discard before tint.
+        assert!(ITEM_ENTITY_SHADER.contains("const ALPHA_CUTOUT: f32 = 0.1;"));
+        assert!(ITEM_ENTITY_SHADER
+            .contains("let sampled = textureSample(item_atlas, item_sampler, input.uv);"));
+        assert!(ITEM_ENTITY_SHADER.contains("if sampled.a < ALPHA_CUTOUT {"));
+        assert!(ITEM_ENTITY_SHADER.contains("let texel = sampled * input.color;"));
+        assert!(!ITEM_ENTITY_SHADER.contains("texel.a <= 0.01"));
+        assert!(!ITEM_ENTITY_SHADER
+            .contains("textureSample(item_atlas, item_sampler, input.uv) * input.color"));
     }
 
     fn assert_close3_f32(actual: [f32; 3], expected: [f32; 3]) {

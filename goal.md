@@ -192,6 +192,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     alpha `< ALPHA_CUTOUT 0.1` discard，再应用 submitted tint / vertex color；
     `entitySolidZOffsetForward` item-frame block-model variant 继承同一 cutoff
     顺序。剩余 item foil / special-display variants 仍属后续 P1 细化。
+  - [x] `ThrownItemRenderer` legacy billboard alpha cutoff：保留 billboard path
+    的 thrown-item projectiles 现在也按 vanilla `ItemStackRenderState.submit` /
+    `RenderTypes.itemCutout` / `itemTranslucent` shader shape，先以 item atlas
+    alpha `< ALPHA_CUTOUT 0.1` discard，再乘 submitted tint；depth / target 的
+    更细 item-special parity 仍属后续。
   - [x] `end_crystal_beam` / guardian beam custom prism state：Guardian attack
     beam、EndCrystal target beam、EnderDragon healing beam 均已通过
     dispatch-owned submission-first 路径记录 vanilla render type、texture、

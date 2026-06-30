@@ -996,7 +996,10 @@ When an agent does any of the following, update this file in the same slice:
     entity light probe through `WorldStore`, keep the vanilla full-bright
     fallback for missing chunk light, and pass shader-space `[block, sky]`
     light into the item model or item-entity shader. Both shaders now sample the
-    renderer-owned dynamic LightTexture.
+    renderer-owned dynamic LightTexture. The legacy billboard item shader also
+    follows the vanilla item render-type alpha cutoff shape: sample `Sampler0`,
+    discard only when the texture alpha is below `ALPHA_CUTOUT 0.1`, then apply
+    the submitted tint / vertex color.
     Particle quads now follow the default vanilla `Particle.getLightCoords`
     path by sampling block+sky light at `BlockPos.containing(x, y, z)`,
     falling back to full-bright `15728640` when chunk light is missing, and
@@ -2181,7 +2184,9 @@ When an agent does any of the following, update this file in the same slice:
       `EntityModelKind::NoRender` (the 3D model scene draws nothing) and the billboard layer
       (`item_entity_billboards_from_world` over `THROWN_ITEM_PROJECTILE_BILLBOARDS` via
       `WorldStore::item_stacks_for_entity_types`) emits the sprite. The `fullBright` lighting flag (eye of
-      ender, fireballs) is a no-op on the unlit billboard shader
+      ender, fireballs) is represented by the submitted light coords sampled
+      through the renderer-owned LightTexture, and the billboard shader now uses
+      the same pre-tint `ALPHA_CUTOUT 0.1` discard as vanilla item render types.
     - player and mannequin entities as renderer-owned vanilla 26.1
       `PlayerModel.createMesh(CubeDeformation.NONE, slim)` body-layer geometry
       from `PlayerModel`, `AvatarRenderer`, and `LayerDefinitions`, including
