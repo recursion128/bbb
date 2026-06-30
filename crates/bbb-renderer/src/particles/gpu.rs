@@ -23,6 +23,10 @@ pub(crate) struct ParticleVertex {
 
 const PARTICLE_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 4] =
     wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2];
+const PARTICLE_PIPELINE_BLEND: wgpu::BlendState = wgpu::BlendState::ALPHA_BLENDING;
+const PARTICLE_PIPELINE_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
+const PARTICLE_PIPELINE_DEPTH_WRITE_ENABLED: bool = true;
+const PARTICLE_PIPELINE_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::LessEqual;
 
 const PARTICLE_SHADER: &str = r#"
 struct Camera {
@@ -149,15 +153,15 @@ pub(crate) fn create_particle_pipeline(
             topology: wgpu::PrimitiveTopology::TriangleList,
             strip_index_format: None,
             front_face: wgpu::FrontFace::Ccw,
-            cull_mode: None,
+            cull_mode: PARTICLE_PIPELINE_CULL_MODE,
             polygon_mode: wgpu::PolygonMode::Fill,
             unclipped_depth: false,
             conservative: false,
         },
         depth_stencil: Some(wgpu::DepthStencilState {
             format: DEPTH_FORMAT,
-            depth_write_enabled: false,
-            depth_compare: wgpu::CompareFunction::LessEqual,
+            depth_write_enabled: PARTICLE_PIPELINE_DEPTH_WRITE_ENABLED,
+            depth_compare: PARTICLE_PIPELINE_DEPTH_COMPARE,
             stencil: wgpu::StencilState::default(),
             bias: wgpu::DepthBiasState::default(),
         }),
@@ -167,7 +171,7 @@ pub(crate) fn create_particle_pipeline(
             entry_point: "fs_main",
             targets: &[Some(wgpu::ColorTargetState {
                 format,
-                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                blend: Some(PARTICLE_PIPELINE_BLEND),
                 write_mask: wgpu::ColorWrites::ALL,
             })],
         }),
@@ -320,5 +324,31 @@ mod tests {
         assert!(PARTICLE_SHADER.contains("texel.rgb * light_color"));
         assert!(!PARTICLE_SHADER.contains("fn lightmap_brightness"));
         assert!(!PARTICLE_SHADER.contains("camera.lightmap_factors.y"));
+    }
+
+    #[test]
+    fn particle_pipeline_state_matches_vanilla_translucent_particle() {
+        assert_eq!(PARTICLE_PIPELINE_CULL_MODE, Some(wgpu::Face::Back));
+        assert!(PARTICLE_PIPELINE_DEPTH_WRITE_ENABLED);
+        assert_eq!(
+            PARTICLE_PIPELINE_DEPTH_COMPARE,
+            wgpu::CompareFunction::LessEqual
+        );
+        assert_eq!(
+            PARTICLE_PIPELINE_BLEND.color.src_factor,
+            wgpu::BlendFactor::SrcAlpha
+        );
+        assert_eq!(
+            PARTICLE_PIPELINE_BLEND.color.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha
+        );
+        assert_eq!(
+            PARTICLE_PIPELINE_BLEND.alpha.src_factor,
+            wgpu::BlendFactor::One
+        );
+        assert_eq!(
+            PARTICLE_PIPELINE_BLEND.alpha.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha
+        );
     }
 }

@@ -451,7 +451,12 @@ When an agent does any of the following, update this file in the same slice:
     high-contrast secondary outlines remain visual polish rather than
     item-feature ordering debt. Active particle
     billboards now write a renderer-owned particles color/depth target after the
-    same main-depth copy, matching vanilla `PARTICLES_TARGET`. The final
+    same main-depth copy, matching vanilla `PARTICLES_TARGET`; the particle
+    pipeline now also matches vanilla `RenderPipelines.TRANSLUCENT_PARTICLE`
+    state for the existing billboard surface: `core/particle`, Sampler0 plus
+    Sampler2 LightTexture, `BlendFunction.TRANSLUCENT`, default back-face cull,
+    and depth-write `LESS_EQUAL`. Provider-specific particle behavior remains
+    ordinary P1/P2 follow-up rather than part of this state slice. The final
     transparency combine pass samples main, translucent, itemEntity, particles,
     and clouds color/depth and applies the same depth insertion plus
     premultiplied layer blend shape as vanilla

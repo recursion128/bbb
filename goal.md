@@ -275,6 +275,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     back-face cull，flat `RenderPipelines.FLAT_CLOUDS` 保持显式 no-cull，
     二者共享 `rendertype_clouds` shader、translucent blend 和 depth-write
     `LESS_EQUAL`。
+  - [x] translucent particle GPU state：当前 billboard 粒子路径继续只覆盖
+    已有 provider 表达，但 GPU pipeline 现在按 vanilla
+    `RenderPipelines.TRANSLUCENT_PARTICLE` / `PARTICLE_SNIPPET` 固定
+    `core/particle` shader、Sampler0 + Sampler2 LightTexture、
+    `BlendFunction.TRANSLUCENT`、默认 back-face cull、depth-write
+    `LESS_EQUAL`。
   - per RenderType 的 blend、depth write/test、cull、sampler、mip、lightmap、
     overlay、fog、normal diffuse 组合继续拆细。
   - glint / scroll / emissive path 不应只依赖普通 entity shader fallback。
