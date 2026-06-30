@@ -3483,8 +3483,13 @@ When an agent does any of the following, update this file in the same slice:
       path, including the copper golem `translateToHead` override; static
       skeleton/wither-skeleton/zombie/creeper skulls also use that override in
       the skull branch. Profileless, profiled-default, and dynamic
-      profiled-player heads use the same implemented skull path. The keyframe
-      walk/walk-with-item/idle/interaction animations remain unsupported
+      profiled-player heads use the same implemented skull path. The
+      walk/walk-with-item keyframes now use vanilla
+      `CopperGolemAnimation.COPPER_GOLEM_WALK` /
+      `COPPER_GOLEM_WALK_ITEM`, sampled through
+      `applyWalk(walkAnimationPos, walkAnimationSpeed, 2.0F, 2.5F)`;
+      the item branch applies the vanilla held-arm clamps after sampling.
+      Copper golem idle and interaction keyframe animations remain unsupported
     - witch entities as renderer-owned vanilla 26.1
       `WitchModel.createBodyLayer()` geometry, including the
       `VillagerModel.createBodyModel()` body/arms/legs/nose, the four nested

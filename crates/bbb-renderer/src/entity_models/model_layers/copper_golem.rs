@@ -1,5 +1,11 @@
-use super::{apply_head_look, PartPose, COPPER_GOLEM_COPPER};
+use super::{
+    apply_head_look, degree_vec, keyframe, pos_vec, AnimationChannel, AnimationDefinition,
+    AnimationTarget, BoneAnimation, Keyframe, KeyframeInterpolation, PartPose, COPPER_GOLEM_COPPER,
+};
 use crate::entity_models::instances::EntityModelInstance;
+use crate::entity_models::keyframe::{
+    keyframe_animated_pose, keyframe_walk_sample, sample_bone_offsets,
+};
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
 // Vanilla 26.1 `CopperGolemModel.createBodyLayer()` (atlas 64x64). The mesh root is transformed by
@@ -112,6 +118,189 @@ pub(in crate::entity_models) const COPPER_GOLEM_LEG_POSE: PartPose = PartPose {
 
 pub(in crate::entity_models) const MODEL_LAYER_COPPER_GOLEM: &str = "minecraft:copper_golem#main";
 
+const LINEAR: KeyframeInterpolation = KeyframeInterpolation::Linear;
+const CATMULLROM: KeyframeInterpolation = KeyframeInterpolation::CatmullRom;
+const COPPER_GOLEM_WALK_SPEED_FACTOR: f32 = 2.0;
+const COPPER_GOLEM_WALK_SCALE_FACTOR: f32 = 2.5;
+
+const fn rot(keyframes: &'static [Keyframe]) -> AnimationChannel {
+    AnimationChannel {
+        target: AnimationTarget::Rotation,
+        keyframes,
+    }
+}
+
+const fn pos(keyframes: &'static [Keyframe]) -> AnimationChannel {
+    AnimationChannel {
+        target: AnimationTarget::Position,
+        keyframes,
+    }
+}
+
+// Vanilla 26.1 `CopperGolemAnimation.COPPER_GOLEM_WALK` (length 0.8333s, looping).
+// `CopperGolemModel.setupAnim` samples it with `applyWalk(pos, speed, 2.0F, 2.5F)` while both
+// rendered hands are empty. Every keyframe is CatmullRom.
+const COPPER_GOLEM_WALK_BODY_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(10.0, 15.0, 0.0), CATMULLROM),
+    keyframe(0.2083, degree_vec(10.0, -1.87, -10.0), CATMULLROM),
+    keyframe(0.4167, degree_vec(10.0, -15.0, 0.0), CATMULLROM),
+    keyframe(0.625, degree_vec(10.0, -0.82, 10.0), CATMULLROM),
+    keyframe(0.8333, degree_vec(10.0, 15.0, 0.0), CATMULLROM),
+];
+const COPPER_GOLEM_WALK_HEAD_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(-10.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.2083, degree_vec(-10.0, 1.87, 10.0), CATMULLROM),
+    keyframe(0.4167, degree_vec(-10.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.625, degree_vec(-10.0, 0.82, -10.0), CATMULLROM),
+    keyframe(0.8333, degree_vec(-10.0, 0.0, 0.0), CATMULLROM),
+];
+const COPPER_GOLEM_WALK_RIGHT_ARM_ROT: [Keyframe; 3] = [
+    keyframe(0.0, degree_vec(70.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.4167, degree_vec(-80.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.8333, degree_vec(70.0, 0.0, 0.0), CATMULLROM),
+];
+const COPPER_GOLEM_WALK_LEFT_ARM_ROT: [Keyframe; 3] = [
+    keyframe(0.0, degree_vec(-80.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.4167, degree_vec(70.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.8333, degree_vec(-80.0, 0.0, 0.0), CATMULLROM),
+];
+const COPPER_GOLEM_WALK_RIGHT_LEG_ROT: [Keyframe; 3] = [
+    keyframe(0.0, degree_vec(-60.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.4167, degree_vec(60.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.8333, degree_vec(-60.0, 0.0, 0.0), CATMULLROM),
+];
+const COPPER_GOLEM_WALK_LEFT_LEG_ROT: [Keyframe; 3] = [
+    keyframe(0.0, degree_vec(60.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.4167, degree_vec(-60.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.8333, degree_vec(60.0, 0.0, 0.0), CATMULLROM),
+];
+
+const COPPER_GOLEM_WALK_BODY_CHANNELS: [AnimationChannel; 1] = [rot(&COPPER_GOLEM_WALK_BODY_ROT)];
+const COPPER_GOLEM_WALK_HEAD_CHANNELS: [AnimationChannel; 1] = [rot(&COPPER_GOLEM_WALK_HEAD_ROT)];
+const COPPER_GOLEM_WALK_RIGHT_ARM_CHANNELS: [AnimationChannel; 1] =
+    [rot(&COPPER_GOLEM_WALK_RIGHT_ARM_ROT)];
+const COPPER_GOLEM_WALK_LEFT_ARM_CHANNELS: [AnimationChannel; 1] =
+    [rot(&COPPER_GOLEM_WALK_LEFT_ARM_ROT)];
+const COPPER_GOLEM_WALK_RIGHT_LEG_CHANNELS: [AnimationChannel; 1] =
+    [rot(&COPPER_GOLEM_WALK_RIGHT_LEG_ROT)];
+const COPPER_GOLEM_WALK_LEFT_LEG_CHANNELS: [AnimationChannel; 1] =
+    [rot(&COPPER_GOLEM_WALK_LEFT_LEG_ROT)];
+
+const COPPER_GOLEM_WALK_BONES: [BoneAnimation; 6] = [
+    BoneAnimation {
+        bone: "body",
+        channels: &COPPER_GOLEM_WALK_BODY_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "head",
+        channels: &COPPER_GOLEM_WALK_HEAD_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_arm",
+        channels: &COPPER_GOLEM_WALK_RIGHT_ARM_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_arm",
+        channels: &COPPER_GOLEM_WALK_LEFT_ARM_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_leg",
+        channels: &COPPER_GOLEM_WALK_RIGHT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_leg",
+        channels: &COPPER_GOLEM_WALK_LEFT_LEG_CHANNELS,
+    },
+];
+
+pub(in crate::entity_models) const COPPER_GOLEM_WALK: AnimationDefinition = AnimationDefinition {
+    length_seconds: 0.8333,
+    looping: true,
+    bones: &COPPER_GOLEM_WALK_BONES,
+};
+
+// Vanilla 26.1 `CopperGolemAnimation.COPPER_GOLEM_WALK_ITEM` (length 0.8333s, looping).
+// The body sway and leg stride are smaller; the arms hold the carried-item pose, with a small
+// left-arm position offset, before `poseHeldItemArmsIfStill` clamps the final rotations.
+const COPPER_GOLEM_WALK_ITEM_BODY_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(10.0, 7.5, 0.0), CATMULLROM),
+    keyframe(0.2083, degree_vec(10.0, -1.87, -5.0), CATMULLROM),
+    keyframe(0.4167, degree_vec(10.0, -7.5, 0.0), CATMULLROM),
+    keyframe(0.625, degree_vec(10.0, -0.82, 5.0), CATMULLROM),
+    keyframe(0.8333, degree_vec(10.0, 7.5, 0.0), CATMULLROM),
+];
+const COPPER_GOLEM_WALK_ITEM_RIGHT_ARM_ROT: [Keyframe; 1] = [keyframe(
+    0.0,
+    degree_vec(-59.78638, -6.49053, -3.76613),
+    LINEAR,
+)];
+const COPPER_GOLEM_WALK_ITEM_LEFT_ARM_ROT: [Keyframe; 1] = [keyframe(
+    0.0,
+    degree_vec(-59.78638, 6.49053, 3.76613),
+    LINEAR,
+)];
+const COPPER_GOLEM_WALK_ITEM_LEFT_ARM_POS: [Keyframe; 1] =
+    [keyframe(0.0, pos_vec(-0.21129, -0.0212, -0.07004), LINEAR)];
+const COPPER_GOLEM_WALK_ITEM_RIGHT_LEG_ROT: [Keyframe; 3] = [
+    keyframe(0.0, degree_vec(-30.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.4167, degree_vec(30.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.8333, degree_vec(-30.0, 0.0, 0.0), CATMULLROM),
+];
+const COPPER_GOLEM_WALK_ITEM_LEFT_LEG_ROT: [Keyframe; 3] = [
+    keyframe(0.0, degree_vec(30.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.4167, degree_vec(-30.0, 0.0, 0.0), CATMULLROM),
+    keyframe(0.8333, degree_vec(30.0, 0.0, 0.0), CATMULLROM),
+];
+
+const COPPER_GOLEM_WALK_ITEM_BODY_CHANNELS: [AnimationChannel; 1] =
+    [rot(&COPPER_GOLEM_WALK_ITEM_BODY_ROT)];
+const COPPER_GOLEM_WALK_ITEM_HEAD_CHANNELS: [AnimationChannel; 1] =
+    [rot(&COPPER_GOLEM_WALK_HEAD_ROT)];
+const COPPER_GOLEM_WALK_ITEM_RIGHT_ARM_CHANNELS: [AnimationChannel; 1] =
+    [rot(&COPPER_GOLEM_WALK_ITEM_RIGHT_ARM_ROT)];
+const COPPER_GOLEM_WALK_ITEM_LEFT_ARM_CHANNELS: [AnimationChannel; 2] = [
+    rot(&COPPER_GOLEM_WALK_ITEM_LEFT_ARM_ROT),
+    pos(&COPPER_GOLEM_WALK_ITEM_LEFT_ARM_POS),
+];
+const COPPER_GOLEM_WALK_ITEM_RIGHT_LEG_CHANNELS: [AnimationChannel; 1] =
+    [rot(&COPPER_GOLEM_WALK_ITEM_RIGHT_LEG_ROT)];
+const COPPER_GOLEM_WALK_ITEM_LEFT_LEG_CHANNELS: [AnimationChannel; 1] =
+    [rot(&COPPER_GOLEM_WALK_ITEM_LEFT_LEG_ROT)];
+
+const COPPER_GOLEM_WALK_ITEM_BONES: [BoneAnimation; 6] = [
+    BoneAnimation {
+        bone: "body",
+        channels: &COPPER_GOLEM_WALK_ITEM_BODY_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "head",
+        channels: &COPPER_GOLEM_WALK_ITEM_HEAD_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_arm",
+        channels: &COPPER_GOLEM_WALK_ITEM_RIGHT_ARM_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_arm",
+        channels: &COPPER_GOLEM_WALK_ITEM_LEFT_ARM_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "right_leg",
+        channels: &COPPER_GOLEM_WALK_ITEM_RIGHT_LEG_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "left_leg",
+        channels: &COPPER_GOLEM_WALK_ITEM_LEFT_LEG_CHANNELS,
+    },
+];
+
+pub(in crate::entity_models) const COPPER_GOLEM_WALK_ITEM: AnimationDefinition =
+    AnimationDefinition {
+        length_seconds: 0.8333,
+        looping: true,
+        bones: &COPPER_GOLEM_WALK_ITEM_BONES,
+    };
+
 fn copper_golem_tree() -> ModelPart {
     let body = ModelPart::new(
         COPPER_GOLEM_BODY_POSE,
@@ -150,7 +339,7 @@ fn copper_golem_tree() -> ModelPart {
 
 fn pose_held_item_arms_if_still(root: &mut ModelPart) {
     // Vanilla `CopperGolemModel.poseHeldItemArmsIfStill`: clamp the arms into the resting held-item pose
-    // when either rendered hand is non-empty. Walk/interaction keyframes still stay deferred.
+    // when either rendered hand is non-empty, after the walk-with-item animation has been sampled.
     let body = root.child_mut("body");
     let right_arm = body.child_mut("right_arm");
     right_arm.pose.rotation[0] = right_arm.pose.rotation[0].min(-0.87266463);
@@ -162,10 +351,21 @@ fn pose_held_item_arms_if_still(root: &mut ModelPart) {
     left_arm.pose.rotation[2] = left_arm.pose.rotation[2].max(0.064577185);
 }
 
+fn apply_copper_golem_keyframe(
+    definition: &AnimationDefinition,
+    part: &mut ModelPart,
+    bone: &str,
+    seconds: f32,
+    scale: f32,
+) {
+    let (position, rotation) = sample_bone_offsets(definition, bone, seconds, scale);
+    part.pose = keyframe_animated_pose(part.pose, position, rotation);
+}
+
 /// Mutable copper golem model, mirroring vanilla `CopperGolemModel.createBodyLayer`. The base
 /// renderer uses this same tree for both the cutout body and the emissive eyes texture. The vanilla
-/// keyframe walk/idle/interaction animations and custom head are deferred; the head look, static
-/// held-item arm pose, and antenna block transform are projected now.
+/// idle/interaction keyframe animations and custom head are deferred; the head look, walking /
+/// walking-with-item keyframes, static held-item arm clamp, and antenna block transform are projected now.
 pub(in crate::entity_models) struct CopperGolemModel {
     root: ModelPart,
 }
@@ -189,8 +389,56 @@ impl EntityModel for CopperGolemModel {
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
         let render_state = &instance.render_state;
-        let head = self.root.child_mut("body").child_mut("head");
-        apply_head_look(head, render_state.head_yaw, render_state.head_pitch);
+        let definition = if render_state.copper_golem_holding_item {
+            &COPPER_GOLEM_WALK_ITEM
+        } else {
+            &COPPER_GOLEM_WALK
+        };
+        let (seconds, scale) = keyframe_walk_sample(
+            definition,
+            render_state.walk_animation_pos,
+            render_state.walk_animation_speed,
+            COPPER_GOLEM_WALK_SPEED_FACTOR,
+            COPPER_GOLEM_WALK_SCALE_FACTOR,
+        );
+        {
+            let body = self.root.child_mut("body");
+            apply_copper_golem_keyframe(definition, body, "body", seconds, scale);
+            {
+                let head = body.child_mut("head");
+                apply_head_look(head, render_state.head_yaw, render_state.head_pitch);
+                apply_copper_golem_keyframe(definition, head, "head", seconds, scale);
+            }
+            apply_copper_golem_keyframe(
+                definition,
+                body.child_mut("right_arm"),
+                "right_arm",
+                seconds,
+                scale,
+            );
+            apply_copper_golem_keyframe(
+                definition,
+                body.child_mut("left_arm"),
+                "left_arm",
+                seconds,
+                scale,
+            );
+        }
+        apply_copper_golem_keyframe(
+            definition,
+            self.root.child_mut("right_leg"),
+            "right_leg",
+            seconds,
+            scale,
+        );
+        apply_copper_golem_keyframe(
+            definition,
+            self.root.child_mut("left_leg"),
+            "left_leg",
+            seconds,
+            scale,
+        );
+
         if render_state.copper_golem_holding_item {
             pose_held_item_arms_if_still(&mut self.root);
         }

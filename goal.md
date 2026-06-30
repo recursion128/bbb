@@ -439,6 +439,15 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     block 非 air 时应用 `expandTowards(0, displayOffset * 0.75 / 16, 0)`，
     并覆盖默认 TNT/chest/hopper offset 与自定义负 offset。
   - spawner animated block-entity content 继续作为 P1 后续。
+- Copper golem：
+  - [x] walk / walk-with-item keyframe animation：renderer 现在按 vanilla
+    `CopperGolemAnimation.COPPER_GOLEM_WALK` /
+    `COPPER_GOLEM_WALK_ITEM` 和 `applyWalk(pos, speed, 2.0, 2.5)`
+    驱动 body/head/arms/legs；持物分支在 keyframe 后应用
+    `poseHeldItemArmsIfStill` clamp。textured regression 覆盖 texture /
+    render type / tint / transform / order / submit_sequence / light /
+    overlay，并验证 base 与 eyes 共享 posed tree。
+  - idle / chest interaction keyframes 继续作为后续 P1/P2 视觉 parity。
 - Equine / camel / llama / goat / hoglin / ravager 等大型模型：
   - boost 等 remaining renderer 状态。
   - [x] camel body-anchor y-offset formula/query：`WorldStore::entity_body_anchor_y_offset`
