@@ -20,7 +20,8 @@ use crate::{
     },
     entity_models::{
         create_entity_model_armor_cutout_pipeline, create_entity_model_armor_entity_glint_pipeline,
-        create_entity_model_armor_translucent_pipeline, create_entity_model_entity_glint_pipeline,
+        create_entity_model_armor_translucent_pipeline,
+        create_entity_model_cutout_z_offset_pipeline, create_entity_model_entity_glint_pipeline,
         create_entity_model_eyes_pipeline, create_entity_model_outline_cull_pipeline,
         create_entity_model_outline_pipeline, create_entity_model_pipeline,
         create_entity_model_scroll_additive_pipeline, create_entity_model_scroll_pipeline,
@@ -115,6 +116,7 @@ pub struct Renderer {
     pub(super) entity_model_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_textured_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_textured_cull_pipeline: wgpu::RenderPipeline,
+    pub(super) entity_model_cutout_z_offset_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_armor_cutout_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_translucent_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_translucent_cull_pipeline: wgpu::RenderPipeline,
@@ -190,6 +192,7 @@ pub struct Renderer {
     pub(super) entity_model_water_mask_mesh: Option<EntityModelMeshGpu>,
     pub(super) entity_model_textured_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_model_textured_cull_mesh: Option<EntityModelTexturedMeshGpu>,
+    pub(super) entity_model_cutout_z_offset_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_model_armor_cutout_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_model_translucent_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_model_armor_translucent_mesh: Option<EntityModelTexturedMeshGpu>,
@@ -205,6 +208,7 @@ pub struct Renderer {
     pub(super) entity_model_armor_entity_glint_mesh: Option<EntityModelScrollMeshGpu>,
     pub(super) entity_dynamic_player_skin_cutout_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_dynamic_player_skin_cutout_cull_mesh: Option<EntityModelTexturedMeshGpu>,
+    pub(super) entity_dynamic_player_skin_cutout_z_offset_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_dynamic_player_skin_translucent_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_dynamic_player_skin_item_entity_translucent_mesh:
         Option<EntityModelTexturedMeshGpu>,
@@ -212,6 +216,8 @@ pub struct Renderer {
         Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_dynamic_player_texture_cutout_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_dynamic_player_texture_cutout_cull_mesh: Option<EntityModelTexturedMeshGpu>,
+    pub(super) entity_dynamic_player_texture_cutout_z_offset_mesh:
+        Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_dynamic_player_texture_armor_cutout_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_dynamic_player_texture_translucent_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_dynamic_player_texture_item_entity_translucent_mesh:
@@ -580,6 +586,12 @@ impl Renderer {
             &terrain_bind_group_layout,
             &lightmap_sample_bind_group_layout,
         );
+        let entity_model_cutout_z_offset_pipeline = create_entity_model_cutout_z_offset_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+        );
         let entity_model_armor_cutout_pipeline = create_entity_model_armor_cutout_pipeline(
             &device,
             format,
@@ -803,6 +815,7 @@ impl Renderer {
             entity_model_pipeline,
             entity_model_textured_pipeline,
             entity_model_textured_cull_pipeline,
+            entity_model_cutout_z_offset_pipeline,
             entity_model_armor_cutout_pipeline,
             entity_model_translucent_pipeline,
             entity_model_translucent_cull_pipeline,
@@ -878,6 +891,7 @@ impl Renderer {
             entity_model_water_mask_mesh: None,
             entity_model_textured_mesh: None,
             entity_model_textured_cull_mesh: None,
+            entity_model_cutout_z_offset_mesh: None,
             entity_model_armor_cutout_mesh: None,
             entity_model_translucent_mesh: None,
             entity_model_armor_translucent_mesh: None,
@@ -893,11 +907,13 @@ impl Renderer {
             entity_model_armor_entity_glint_mesh: None,
             entity_dynamic_player_skin_cutout_mesh: None,
             entity_dynamic_player_skin_cutout_cull_mesh: None,
+            entity_dynamic_player_skin_cutout_z_offset_mesh: None,
             entity_dynamic_player_skin_translucent_mesh: None,
             entity_dynamic_player_skin_item_entity_translucent_mesh: None,
             entity_dynamic_player_skin_item_entity_translucent_cull_mesh: None,
             entity_dynamic_player_texture_cutout_mesh: None,
             entity_dynamic_player_texture_cutout_cull_mesh: None,
+            entity_dynamic_player_texture_cutout_z_offset_mesh: None,
             entity_dynamic_player_texture_armor_cutout_mesh: None,
             entity_dynamic_player_texture_translucent_mesh: None,
             entity_dynamic_player_texture_item_entity_translucent_mesh: None,

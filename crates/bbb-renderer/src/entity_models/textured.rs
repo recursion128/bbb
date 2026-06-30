@@ -203,6 +203,10 @@ struct PendingSortedScrollUpload {
 pub(super) struct EntityModelTexturedMeshes {
     pub(super) cutout: EntityModelTexturedMesh,
     pub(super) cutout_cull: EntityModelTexturedMesh,
+    /// Vanilla `RenderTypes.entityCutoutZOffset(texture)` geometry. Its shader state matches
+    /// `entityCutout`, but vanilla also applies `VIEW_OFFSET_Z_LAYERING`; keep it out of the plain
+    /// cutout bucket so the GPU path can own the z-offset pipeline separately.
+    pub(super) cutout_z_offset: EntityModelTexturedMesh,
     /// Vanilla `armorCutoutNoCull` geometry keeps the entity lightmap and per-face lighting, but
     /// uses the armor pipeline's no-overlay shader state.
     pub(super) armor_cutout: EntityModelTexturedMesh,
@@ -226,6 +230,7 @@ pub(super) struct EntityModelTexturedMeshes {
     /// cutout/translucent render type while swapping only the texture source.
     pub(super) dynamic_player_skin_cutout: EntityModelTexturedMesh,
     pub(super) dynamic_player_skin_cutout_cull: EntityModelTexturedMesh,
+    pub(super) dynamic_player_skin_cutout_z_offset: EntityModelTexturedMesh,
     pub(super) dynamic_player_skin_translucent: EntityModelTexturedMesh,
     pub(super) dynamic_player_skin_item_entity_translucent: EntityModelTexturedMesh,
     pub(super) dynamic_player_skin_item_entity_translucent_cull: EntityModelTexturedMesh,
@@ -233,6 +238,7 @@ pub(super) struct EntityModelTexturedMeshes {
     /// variable-size atlas while preserving the vanilla render type.
     pub(super) dynamic_player_texture_cutout: EntityModelTexturedMesh,
     pub(super) dynamic_player_texture_cutout_cull: EntityModelTexturedMesh,
+    pub(super) dynamic_player_texture_cutout_z_offset: EntityModelTexturedMesh,
     pub(super) dynamic_player_texture_armor_cutout: EntityModelTexturedMesh,
     pub(super) dynamic_player_texture_translucent: EntityModelTexturedMesh,
     pub(super) dynamic_player_texture_item_entity_translucent: EntityModelTexturedMesh,
@@ -269,6 +275,7 @@ impl EntityModelTexturedMeshes {
         Self {
             cutout: EntityModelTexturedMesh::new(),
             cutout_cull: EntityModelTexturedMesh::new(),
+            cutout_z_offset: EntityModelTexturedMesh::new(),
             armor_cutout: EntityModelTexturedMesh::new(),
             translucent: EntityModelTexturedMesh::new(),
             armor_translucent: EntityModelTexturedMesh::new(),
@@ -280,11 +287,13 @@ impl EntityModelTexturedMeshes {
             outline_cull: EntityModelTexturedMesh::new(),
             dynamic_player_skin_cutout: EntityModelTexturedMesh::new(),
             dynamic_player_skin_cutout_cull: EntityModelTexturedMesh::new(),
+            dynamic_player_skin_cutout_z_offset: EntityModelTexturedMesh::new(),
             dynamic_player_skin_translucent: EntityModelTexturedMesh::new(),
             dynamic_player_skin_item_entity_translucent: EntityModelTexturedMesh::new(),
             dynamic_player_skin_item_entity_translucent_cull: EntityModelTexturedMesh::new(),
             dynamic_player_texture_cutout: EntityModelTexturedMesh::new(),
             dynamic_player_texture_cutout_cull: EntityModelTexturedMesh::new(),
+            dynamic_player_texture_cutout_z_offset: EntityModelTexturedMesh::new(),
             dynamic_player_texture_armor_cutout: EntityModelTexturedMesh::new(),
             dynamic_player_texture_translucent: EntityModelTexturedMesh::new(),
             dynamic_player_texture_item_entity_translucent: EntityModelTexturedMesh::new(),
@@ -313,6 +322,7 @@ impl EntityModelTexturedMeshes {
         render_type: EntityModelLayerRenderType,
     ) -> &mut EntityModelTexturedMesh {
         match render_type {
+            EntityModelLayerRenderType::EntityCutoutZOffset => return &mut self.cutout_z_offset,
             EntityModelLayerRenderType::ArmorCutoutNoCull => return &mut self.armor_cutout,
             EntityModelLayerRenderType::ArmorTranslucent => return &mut self.armor_translucent,
             _ => {}
@@ -325,6 +335,7 @@ impl EntityModelTexturedMeshes {
                     &mut self.cutout
                 }
             }
+            EntityModelLayerRenderBucket::CutoutZOffset => &mut self.cutout_z_offset,
             EntityModelLayerRenderBucket::Translucent => &mut self.translucent,
             EntityModelLayerRenderBucket::TranslucentEmissive => &mut self.translucent_emissive,
             EntityModelLayerRenderBucket::ItemEntityTranslucent => {
@@ -356,6 +367,9 @@ impl EntityModelTexturedMeshes {
                 } else {
                     &mut self.dynamic_player_skin_cutout
                 }
+            }
+            EntityModelLayerRenderBucket::CutoutZOffset => {
+                &mut self.dynamic_player_skin_cutout_z_offset
             }
             EntityModelLayerRenderBucket::Translucent => &mut self.dynamic_player_skin_translucent,
             EntityModelLayerRenderBucket::ItemEntityTranslucent => {
@@ -391,6 +405,9 @@ impl EntityModelTexturedMeshes {
                 } else {
                     &mut self.dynamic_player_texture_cutout
                 }
+            }
+            EntityModelLayerRenderBucket::CutoutZOffset => {
+                &mut self.dynamic_player_texture_cutout_z_offset
             }
             EntityModelLayerRenderBucket::Translucent => {
                 &mut self.dynamic_player_texture_translucent

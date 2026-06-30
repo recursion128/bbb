@@ -258,7 +258,7 @@ fn shulker_textured_render_matches_vanilla_renderer() {
     assert_eq!(submit.overlay, default.render_state.overlay_coords());
     assert_ne!(submit.overlay, [0.0, 10.0]);
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
-    let mesh = &meshes.cutout;
+    let mesh = &meshes.cutout_z_offset;
 
     assert!(!mesh.vertices.is_empty());
     assert!(mesh
@@ -293,7 +293,7 @@ fn shulker_textured_render_matches_vanilla_renderer() {
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
     assert_eq!(submit.transform, shulker_model_root_transform(north));
     assert!(meshes
-        .cutout
+        .cutout_z_offset
         .vertices
         .iter()
         .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
@@ -336,7 +336,7 @@ fn shulker_submission_survives_missing_texture_atlas_entry() {
     assert_eq!(submit.light, instance.render_state.shader_light());
     assert_eq!(submit.overlay, instance.render_state.overlay_coords());
     assert_ne!(submit.overlay, [0.0, 10.0]);
-    assert!(meshes.cutout.vertices.is_empty());
+    assert!(meshes.cutout_z_offset.vertices.is_empty());
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
 }

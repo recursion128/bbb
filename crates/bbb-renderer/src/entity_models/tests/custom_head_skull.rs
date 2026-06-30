@@ -166,12 +166,12 @@ fn custom_head_skull_layer_renders_static_mob_heads_with_matching_textures() {
             EntityModelLayerRenderType::EntityCutoutZOffset,
             texture,
         );
-        assert_eq!(meshes.cutout.cutout_faces, 6, "{skull:?}");
-        assert_eq!(meshes.cutout.vertices.len(), 24, "{skull:?}");
-        assert_eq!(meshes.cutout.indices.len(), 36, "{skull:?}");
+        assert_eq!(meshes.cutout_z_offset.cutout_faces, 6, "{skull:?}");
+        assert_eq!(meshes.cutout_z_offset.vertices.len(), 24, "{skull:?}");
+        assert_eq!(meshes.cutout_z_offset.indices.len(), 36, "{skull:?}");
         assert!(meshes.translucent.vertices.is_empty(), "{skull:?}");
         assert!(meshes
-            .cutout
+            .cutout_z_offset
             .vertices
             .iter()
             .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]
@@ -261,9 +261,9 @@ fn marker_hidden_glowing_armor_stand_keeps_custom_head_skull_without_base_submis
         EntityModelLayerRenderType::EntityCutoutZOffset,
         SKELETON_TEXTURE_REF,
     );
-    assert_eq!(meshes.cutout.vertices.len(), 24);
+    assert_eq!(meshes.cutout_z_offset.vertices.len(), 24);
     assert!(meshes
-        .cutout
+        .cutout_z_offset
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]
@@ -298,9 +298,9 @@ fn hidden_zombie_keeps_custom_head_skull_without_base_submission() {
         EntityModelLayerRenderType::EntityCutoutZOffset,
         SKELETON_TEXTURE_REF,
     );
-    assert_eq!(meshes.cutout.vertices.len(), 24);
+    assert_eq!(meshes.cutout_z_offset.vertices.len(), 24);
     assert!(meshes
-        .cutout
+        .cutout_z_offset
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]
@@ -342,12 +342,12 @@ fn custom_head_skull_layer_renders_profileless_player_head_with_default_skin() {
         EntityModelLayerRenderType::EntityCutoutZOffset,
         PLAYER_SLIM_STEVE_TEXTURE_REF,
     );
-    assert_eq!(meshes.cutout.cutout_faces, 12);
-    assert_eq!(meshes.cutout.vertices.len(), 48);
-    assert_eq!(meshes.cutout.indices.len(), 72);
+    assert_eq!(meshes.cutout_z_offset.cutout_faces, 12);
+    assert_eq!(meshes.cutout_z_offset.vertices.len(), 48);
+    assert_eq!(meshes.cutout_z_offset.indices.len(), 72);
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes
-        .cutout
+        .cutout_z_offset
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]
@@ -719,12 +719,12 @@ fn custom_head_skull_layer_renders_piglin_head_with_specialized_geometry() {
 
     // Vanilla `PiglinHeadModel.createHeadModel` reuses `PiglinModel.addHead`: four head cubes and
     // two ear cubes, each rendered as a normal cutout cube.
-    assert_eq!(meshes.cutout.cutout_faces, 36);
-    assert_eq!(meshes.cutout.vertices.len(), 144);
-    assert_eq!(meshes.cutout.indices.len(), 216);
+    assert_eq!(meshes.cutout_z_offset.cutout_faces, 36);
+    assert_eq!(meshes.cutout_z_offset.vertices.len(), 144);
+    assert_eq!(meshes.cutout_z_offset.indices.len(), 216);
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes
-        .cutout
+        .cutout_z_offset
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
@@ -759,10 +759,16 @@ fn custom_head_piglin_skull_animates_ears_from_worn_head_animation_pos() {
         PIGLIN_TEXTURE_REF,
     );
 
-    assert_eq!(first.cutout.cutout_faces, later.cutout.cutout_faces);
-    assert_eq!(first.cutout.vertices.len(), later.cutout.vertices.len());
+    assert_eq!(
+        first.cutout_z_offset.cutout_faces,
+        later.cutout_z_offset.cutout_faces
+    );
+    assert_eq!(
+        first.cutout_z_offset.vertices.len(),
+        later.cutout_z_offset.vertices.len()
+    );
     assert_ne!(
-        first.cutout.vertices, later.cutout.vertices,
+        first.cutout_z_offset.vertices, later.cutout_z_offset.vertices,
         "PiglinHeadModel drives its ear zRot from SkullModelBase.State.animationPos"
     );
 }
@@ -802,12 +808,12 @@ fn custom_head_skull_layer_renders_dragon_head_with_specialized_geometry() {
     );
 
     // Vanilla `DragonHeadModel.createHeadLayer`: six head cubes plus one jaw cube.
-    assert_eq!(meshes.cutout.cutout_faces, 42);
-    assert_eq!(meshes.cutout.vertices.len(), 168);
-    assert_eq!(meshes.cutout.indices.len(), 252);
+    assert_eq!(meshes.cutout_z_offset.cutout_faces, 42);
+    assert_eq!(meshes.cutout_z_offset.vertices.len(), 168);
+    assert_eq!(meshes.cutout_z_offset.indices.len(), 252);
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes
-        .cutout
+        .cutout_z_offset
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
@@ -842,10 +848,16 @@ fn custom_head_dragon_skull_animates_jaw_from_worn_head_animation_pos() {
         ENDER_DRAGON_TEXTURE_REF,
     );
 
-    assert_eq!(first.cutout.cutout_faces, later.cutout.cutout_faces);
-    assert_eq!(first.cutout.vertices.len(), later.cutout.vertices.len());
+    assert_eq!(
+        first.cutout_z_offset.cutout_faces,
+        later.cutout_z_offset.cutout_faces
+    );
+    assert_eq!(
+        first.cutout_z_offset.vertices.len(),
+        later.cutout_z_offset.vertices.len()
+    );
     assert_ne!(
-        first.cutout.vertices, later.cutout.vertices,
+        first.cutout_z_offset.vertices, later.cutout_z_offset.vertices,
         "DragonHeadModel drives its jaw xRot from SkullModelBase.State.animationPos"
     );
 }
@@ -877,9 +889,12 @@ fn custom_head_skull_layer_follows_host_head_pose() {
         SKELETON_TEXTURE_REF,
     );
 
-    assert_eq!(resting.cutout.vertices.len(), looking.cutout.vertices.len());
+    assert_eq!(
+        resting.cutout_z_offset.vertices.len(),
+        looking.cutout_z_offset.vertices.len()
+    );
     assert_ne!(
-        resting.cutout.vertices, looking.cutout.vertices,
+        resting.cutout_z_offset.vertices, looking.cutout_z_offset.vertices,
         "CustomHeadLayer walks through the posed host head before rendering the skull"
     );
 }

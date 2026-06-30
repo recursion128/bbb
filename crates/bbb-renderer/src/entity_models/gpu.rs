@@ -300,7 +300,7 @@ fn vs_main(input: VertexIn) -> VertexOut {
 @fragment
 fn fs_main(input: VertexOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<f32> {
     let texel = textureSample(entity_texture_atlas, entity_sampler, input.uv) * input.tint;
-    if texel.a <= 0.01 {
+    if texel.a <= 0.1 {
         discard;
     }
     var rgb = texel.rgb;
@@ -535,7 +535,7 @@ fn vs_main(input: VertexIn) -> VertexOut {
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let texel = textureSample(entity_texture_atlas, entity_sampler, input.uv) * input.tint;
-    if texel.a <= 0.01 {
+    if texel.a <= 0.1 {
         discard;
     }
     var rgb = texel.rgb;
@@ -1206,6 +1206,30 @@ pub(crate) fn create_entity_model_textured_cull_pipeline(
     )
 }
 
+/// Vanilla `RenderPipelines.ENTITY_CUTOUT_Z_OFFSET`: the same entity shader state as
+/// `ENTITY_CUTOUT`, plus `RenderTypes.entityCutoutZOffset` applies
+/// `LayeringTransform.VIEW_OFFSET_Z_LAYERING` before drawing. The current camera uniform exposes a
+/// combined view-projection matrix, so the draw stays in a dedicated pipeline/mesh while exact
+/// projection-type layering remains a follow-up GPU state refinement.
+pub(crate) fn create_entity_model_cutout_z_offset_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_entity_model_textured_pipeline_with_depth(
+        device,
+        format,
+        bind_group_layout,
+        Some(lightmap_bind_group_layout),
+        "bbb-entity-model-cutout-z-offset",
+        ENTITY_MODEL_TEXTURED_SHADER,
+        Some(wgpu::BlendState::REPLACE),
+        true,
+        ENTITY_MODEL_SURFACE_NO_CULL_MODE,
+    )
+}
+
 /// Vanilla `RenderPipelines.ARMOR_CUTOUT_NO_CULL` / `ARMOR_TRANSLUCENT`: entity
 /// shader with `NO_OVERLAY`, `PER_FACE_LIGHTING`, alpha cutoff `0.1`, default
 /// depth writes, and no cull. The translucent variant enables vanilla
@@ -1834,6 +1858,12 @@ impl Renderer {
                 meshes.cutout_cull,
                 "bbb-entity-model-textured-cull",
             );
+            self.entity_model_cutout_z_offset_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.cutout_z_offset,
+                    "bbb-entity-model-cutout-z-offset",
+                );
             self.entity_model_armor_cutout_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
                 &self.device,
                 meshes.armor_cutout,
@@ -1895,6 +1925,12 @@ impl Renderer {
                     meshes.dynamic_player_skin_cutout_cull,
                     "bbb-entity-dynamic-player-skin-cutout-cull",
                 );
+            self.entity_dynamic_player_skin_cutout_z_offset_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.dynamic_player_skin_cutout_z_offset,
+                    "bbb-entity-dynamic-player-skin-cutout-z-offset",
+                );
             self.entity_dynamic_player_skin_translucent_mesh =
                 create_entity_model_textured_mesh_gpu_from_mesh(
                     &self.device,
@@ -1924,6 +1960,12 @@ impl Renderer {
                     &self.device,
                     meshes.dynamic_player_texture_cutout_cull,
                     "bbb-entity-dynamic-player-texture-cutout-cull",
+                );
+            self.entity_dynamic_player_texture_cutout_z_offset_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.dynamic_player_texture_cutout_z_offset,
+                    "bbb-entity-dynamic-player-texture-cutout-z-offset",
                 );
             self.entity_dynamic_player_texture_armor_cutout_mesh =
                 create_entity_model_textured_mesh_gpu_from_mesh(
@@ -1973,6 +2015,7 @@ impl Renderer {
         } else {
             self.entity_model_textured_mesh = None;
             self.entity_model_textured_cull_mesh = None;
+            self.entity_model_cutout_z_offset_mesh = None;
             self.entity_model_armor_cutout_mesh = None;
             self.entity_model_translucent_mesh = None;
             self.entity_model_armor_translucent_mesh = None;
@@ -1986,11 +2029,13 @@ impl Renderer {
             self.entity_model_outline_cull_mesh = None;
             self.entity_dynamic_player_skin_cutout_mesh = None;
             self.entity_dynamic_player_skin_cutout_cull_mesh = None;
+            self.entity_dynamic_player_skin_cutout_z_offset_mesh = None;
             self.entity_dynamic_player_skin_translucent_mesh = None;
             self.entity_dynamic_player_skin_item_entity_translucent_mesh = None;
             self.entity_dynamic_player_skin_item_entity_translucent_cull_mesh = None;
             self.entity_dynamic_player_texture_cutout_mesh = None;
             self.entity_dynamic_player_texture_cutout_cull_mesh = None;
+            self.entity_dynamic_player_texture_cutout_z_offset_mesh = None;
             self.entity_dynamic_player_texture_armor_cutout_mesh = None;
             self.entity_dynamic_player_texture_translucent_mesh = None;
             self.entity_dynamic_player_texture_item_entity_translucent_mesh = None;
@@ -2009,6 +2054,9 @@ impl Renderer {
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_textured_cull_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_model_cutout_z_offset_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_armor_cutout_mesh
@@ -2044,6 +2092,9 @@ impl Renderer {
             self.entity_dynamic_player_skin_cutout_cull_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
+            self.entity_dynamic_player_skin_cutout_z_offset_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
             self.entity_dynamic_player_skin_translucent_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
@@ -2057,6 +2108,9 @@ impl Renderer {
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_dynamic_player_texture_cutout_cull_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_dynamic_player_texture_cutout_z_offset_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_dynamic_player_texture_armor_cutout_mesh
@@ -2772,10 +2826,11 @@ mod tests {
         ENTITY_MODEL_OUTLINE_SHADER, ENTITY_MODEL_SCROLL_BLEND, ENTITY_MODEL_SCROLL_CULL_MODE,
         ENTITY_MODEL_SCROLL_DEPTH_COMPARE, ENTITY_MODEL_SCROLL_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_SCROLL_EMISSIVE_SHADER, ENTITY_MODEL_SURFACE_CULL_MODE,
-        ENTITY_MODEL_SURFACE_NO_CULL_MODE, ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER,
-        ENTITY_MODEL_WATER_MASK_BLEND, ENTITY_MODEL_WATER_MASK_COLOR_WRITE_MASK,
-        ENTITY_MODEL_WATER_MASK_CULL_MODE, ENTITY_MODEL_WATER_MASK_DEPTH_COMPARE,
-        ENTITY_MODEL_WATER_MASK_DEPTH_WRITE_ENABLED, ENTITY_MODEL_WATER_MASK_SHADER,
+        ENTITY_MODEL_SURFACE_NO_CULL_MODE, ENTITY_MODEL_TEXTURED_SHADER,
+        ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER, ENTITY_MODEL_WATER_MASK_BLEND,
+        ENTITY_MODEL_WATER_MASK_COLOR_WRITE_MASK, ENTITY_MODEL_WATER_MASK_CULL_MODE,
+        ENTITY_MODEL_WATER_MASK_DEPTH_COMPARE, ENTITY_MODEL_WATER_MASK_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_WATER_MASK_SHADER,
     };
 
     #[test]
@@ -2838,6 +2893,46 @@ mod tests {
         assert!(
             !ENTITY_MODEL_ARMOR_SHADER.contains("overlay"),
             "vanilla armor pipelines define NO_OVERLAY"
+        );
+    }
+
+    #[test]
+    fn entity_model_cutout_z_offset_pipeline_keeps_vanilla_cutout_state_split() {
+        let source = include_str!("gpu.rs");
+        let factory = source
+            .find("pub(crate) fn create_entity_model_cutout_z_offset_pipeline")
+            .expect("entityCutoutZOffset pipeline factory is present");
+        let armor_factory = source
+            .find("pub(crate) fn create_entity_model_armor_cutout_pipeline")
+            .expect("next entity pipeline factory is present");
+
+        assert!(
+            source[factory..armor_factory].contains("\"bbb-entity-model-cutout-z-offset\""),
+            "entityCutoutZOffset has a dedicated GPU pipeline label"
+        );
+        assert!(
+            source[factory..armor_factory].contains("ENTITY_MODEL_TEXTURED_SHADER"),
+            "vanilla ENTITY_CUTOUT_Z_OFFSET uses the normal entity cutout shader shape"
+        );
+        assert!(
+            source[factory..armor_factory].contains("Some(wgpu::BlendState::REPLACE)")
+                && source[factory..armor_factory].contains("ENTITY_MODEL_SURFACE_NO_CULL_MODE"),
+            "vanilla ENTITY_CUTOUT_Z_OFFSET is opaque replacement blending with cull disabled"
+        );
+    }
+
+    #[test]
+    fn entity_model_cutout_z_offset_shader_matches_vanilla_cutout_shape() {
+        assert!(
+            ENTITY_MODEL_TEXTURED_SHADER.contains("if texel.a <= 0.1")
+                && ENTITY_MODEL_TEXTURED_SHADER.contains("discard"),
+            "vanilla ENTITY_CUTOUT_Z_OFFSET keeps ALPHA_CUTOUT 0.1"
+        );
+        assert!(
+            ENTITY_MODEL_TEXTURED_SHADER.contains("sample_lightmap(input.light)")
+                && ENTITY_MODEL_TEXTURED_SHADER.contains("input.overlay")
+                && ENTITY_MODEL_TEXTURED_SHADER.contains("per_face_diffuse_light"),
+            "vanilla ENTITY_CUTOUT_Z_OFFSET uses LightTexture, overlay, and PER_FACE_LIGHTING"
         );
     }
 

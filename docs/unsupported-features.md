@@ -347,24 +347,35 @@ When an agent does any of the following, update this file in the same slice:
   - P0 pipeline closeout also treats the remaining GPU-path fine-grained state as
     explicitly deferred follow-up, not as a blocker for the CPU submission graph:
     the backend currently folds compatible submissions into atlas buckets
-    (`cutout`, `translucent`, `eyes`, static-atlas outline, dynamic profile
-    texture buckets, scroll / additive scroll), and static-atlas `AFFECTS_OUTLINE`
-    submissions with a non-zero outline color are now also copied into the outline
-    bucket and drawn through an `entity_outline` target plus
-    `ENTITY_OUTLINE_BLIT`-shaped composite. The surface path now also splits
-    vanilla cull-on entity render types (`entitySolid`, `entityCutoutCull`, and
-    `entityTranslucentCullItemTarget`) into static and dynamic texture cull
-    buckets drawn with back-face culling and a separate no-`PER_FACE_LIGHTING`
-    single-normal diffuse shader. Surface blended submissions now also keep a
-    GPU draw plan of sorted index ranges, so `entityTranslucent` and
-    `entityTranslucentCullItemTarget` draw in vanilla order across static,
-    dynamic player-skin, and dynamic profile-texture atlases within their target.
-    Later GPU work should split the remaining currently-coalesced render-type state
-    such as no-cull `entityCutout*` variants into equivalent pipeline state,
-    plus dynamic LightTexture / darkness-adjusted gamma / diffuse visual parity.
-    `armorCutoutNoCull`, `armorTranslucent`, `Eyes`, `waterMask`, glint, and
-    scroll render types now have dedicated baseline GPU pipelines; remaining
-    work there is narrower shader/time/sorting visual parity.
+    (`cutout`, `cutout_z_offset`, `translucent`, `eyes`, static-atlas outline,
+    dynamic profile texture buckets, scroll / additive scroll), and
+    static-atlas `AFFECTS_OUTLINE` submissions with a non-zero outline color are
+    now also copied into the outline bucket and drawn through an
+    `entity_outline` target plus `ENTITY_OUTLINE_BLIT`-shaped composite. The
+    surface path now also splits vanilla cull-on entity render types
+    (`entitySolid`, `entityCutoutCull`, and `entityTranslucentCullItemTarget`)
+    into static and dynamic texture cull buckets drawn with back-face culling
+    and a separate no-`PER_FACE_LIGHTING` single-normal diffuse shader. Vanilla
+    `entityCutoutZOffset` submissions now also route into dedicated static,
+    dynamic-player-skin, and dynamic
+    profile-texture z-offset cutout buckets, drawn through a separate main-pass
+    pipeline that keeps the vanilla entity cutout shader state: `ALPHA_CUTOUT
+    0.1`, LightTexture + overlay metadata, `PER_FACE_LIGHTING`, replacement
+    blending, depth writes, and no cull. The exact
+    `LayeringTransform.VIEW_OFFSET_Z_LAYERING` projection-type matrix tweak is
+    still a narrower GPU shader/camera-state follow-up because the current
+    entity uniform exposes only the combined `view_proj` matrix. Surface
+    blended submissions now also keep a GPU draw plan of sorted index ranges, so
+    `entityTranslucent` and `entityTranslucentCullItemTarget` draw in vanilla
+    order across static, dynamic player-skin, and dynamic profile-texture atlases
+    within their target.
+    Later GPU work should split remaining currently-coalesced render-type state
+    and the exact z-offset view-layering transform into equivalent pipeline
+    state, plus dynamic LightTexture / darkness-adjusted gamma / diffuse visual
+    parity. `entityCutoutZOffset`, `armorCutoutNoCull`, `armorTranslucent`,
+    `Eyes`, `waterMask`, glint, and scroll render types now have dedicated
+    baseline GPU pipelines; remaining work there is narrower shader/time/sorting
+    visual parity.
   - Entity outline target writes now use a dedicated vanilla-shaped
     `core/rendertype_outline` shader: texture alpha is only a zero-alpha discard
     mask, output color comes from the submitted `outlineColor` vertex tint, the
@@ -1939,7 +1950,7 @@ When an agent does any of the following, update this file in the same slice:
         `entityCutoutZOffset` or `entityTranslucent`, white tint, skull
         transform, entity `lightCoords`, vanilla `OverlayTexture.NO_OVERLAY`,
         and `(order, submit_sequence) == (0, 0)` before folded
-        cutout/translucent/dynamic geometry checks; missing-atlas coverage now
+        cutout-z-offset/translucent/dynamic geometry checks; missing-atlas coverage now
         proves static skull submissions survive without folded stale skull
         geometry. The skull branch now runs through the dispatch-owned vanilla
         layer-order hook instead of a direct post-base helper call, preserving
@@ -4271,9 +4282,9 @@ When an agent does any of the following, update this file in the same slice:
       — seventeen textures. The textured regression now pins the vanilla `ShulkerModel`
       `entityCutoutZOffset` base submission's `ShulkerBase` identity, `ModelLayers.SHULKER`
       (`minecraft:shulker#main`), texture, white tint, root/attach-face transform, entity light,
-      hurt/white overlay, and `order(0)`, including folded cutout vertex metadata;
+      hurt/white overlay, and `order(0)`, including folded cutout-z-offset vertex metadata;
       missing-atlas coverage pins that a red wall shulker still records the `entityCutoutZOffset`
-      submit before folded cutout geometry is suppressed
+      submit before folded cutout-z-offset geometry is suppressed
     - wither entities as renderer-owned vanilla 26.1
       `WitherBossModel.createBodyLayer(CubeDeformation.NONE)` geometry on both the colored and textured
       paths: the native

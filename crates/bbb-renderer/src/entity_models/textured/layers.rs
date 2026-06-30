@@ -207,6 +207,7 @@ pub(crate) enum EntityModelLayerRenderType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::entity_models) enum EntityModelLayerRenderBucket {
     Cutout,
+    CutoutZOffset,
     Translucent,
     TranslucentEmissive,
     ItemEntityTranslucent,
@@ -245,8 +246,8 @@ impl EntityModelLayerRenderType {
             Self::EntitySolid
             | Self::ArmorCutoutNoCull
             | Self::EntityCutout
-            | Self::EntityCutoutCull
-            | Self::EntityCutoutZOffset => EntityModelLayerRenderBucket::Cutout,
+            | Self::EntityCutoutCull => EntityModelLayerRenderBucket::Cutout,
+            Self::EntityCutoutZOffset => EntityModelLayerRenderBucket::CutoutZOffset,
             Self::ArmorTranslucent | Self::EntityTranslucent => {
                 EntityModelLayerRenderBucket::Translucent
             }

@@ -258,6 +258,19 @@ impl Renderer {
                 entity_model_draw_calls += 1;
             }
             if let (Some(mesh), Some(atlas)) = (
+                &self.entity_model_cutout_z_offset_mesh,
+                &self.entity_model_texture_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_cutout_z_offset_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                entity_model_draw_calls += 1;
+            }
+            if let (Some(mesh), Some(atlas)) = (
                 &self.entity_model_armor_cutout_mesh,
                 &self.entity_model_texture_atlas,
             ) {
@@ -297,6 +310,19 @@ impl Renderer {
                 entity_model_draw_calls += 1;
             }
             if let (Some(mesh), Some(atlas)) = (
+                &self.entity_dynamic_player_skin_cutout_z_offset_mesh,
+                &self.entity_dynamic_player_skin_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_cutout_z_offset_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                entity_model_draw_calls += 1;
+            }
+            if let (Some(mesh), Some(atlas)) = (
                 &self.entity_dynamic_player_texture_cutout_cull_mesh,
                 &self.entity_dynamic_player_texture_atlas,
             ) {
@@ -314,6 +340,19 @@ impl Renderer {
                 &self.entity_dynamic_player_texture_atlas,
             ) {
                 pass.set_pipeline(&self.entity_model_textured_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                entity_model_draw_calls += 1;
+            }
+            if let (Some(mesh), Some(atlas)) = (
+                &self.entity_dynamic_player_texture_cutout_z_offset_mesh,
+                &self.entity_dynamic_player_texture_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_cutout_z_offset_pipeline);
                 pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
@@ -1857,6 +1896,11 @@ mod tests {
                 "textured cull entity",
             ),
             (
+                "pass.set_pipeline(&self.entity_model_cutout_z_offset_pipeline)",
+                "pass.set_bind_group(0, &atlas.bind_group, &[])",
+                "textured z-offset entity",
+            ),
+            (
                 "pass.set_pipeline(&self.entity_model_translucent_pipeline)",
                 "pass.set_bind_group(0, &atlas.bind_group, &[])",
                 "translucent entity",
@@ -2655,6 +2699,52 @@ mod tests {
                 && source[main_helper..tests_mod]
                     .contains("self.entity_model_armor_translucent_pipeline"),
             "fallback unsorted translucent features also draw armorTranslucent"
+        );
+    }
+
+    #[test]
+    fn entity_cutout_z_offset_uses_dedicated_main_pass_pipeline() {
+        let source = include_str!("render.rs");
+        let main_pass = source
+            .find("label: Some(\"bbb-native-terrain-opaque-group-pass\")")
+            .expect("main terrain/entity pass label is used");
+        let plain_cutout = source[main_pass..]
+            .find("pass.set_pipeline(&self.entity_model_textured_pipeline)")
+            .map(|index| main_pass + index)
+            .expect("plain entityCutout pipeline is drawn in the main pass");
+        let z_offset = source[plain_cutout..]
+            .find("pass.set_pipeline(&self.entity_model_cutout_z_offset_pipeline)")
+            .map(|index| plain_cutout + index)
+            .expect("entityCutoutZOffset pipeline is drawn in the main pass");
+        let z_offset_block = source[plain_cutout..z_offset]
+            .find("&self.entity_model_cutout_z_offset_mesh")
+            .map(|index| plain_cutout + index)
+            .expect("entityCutoutZOffset dedicated mesh is drawn in the main pass");
+        let armor_cutout = source[z_offset..]
+            .find("pass.set_pipeline(&self.entity_model_armor_cutout_pipeline)")
+            .map(|index| z_offset + index)
+            .expect("armorCutoutNoCull pipeline follows z-offset cutout");
+        let water_mask = source[armor_cutout..]
+            .find("pass.set_pipeline(&self.entity_model_water_mask_pipeline)")
+            .map(|index| armor_cutout + index)
+            .expect("waterMask pipeline is drawn later in the main pass");
+
+        assert!(
+            main_pass < plain_cutout && plain_cutout < z_offset && z_offset < armor_cutout,
+            "entityCutoutZOffset draws after plain cutout but before armor/depth-only feature buckets"
+        );
+        assert!(
+            z_offset_block < z_offset
+                && source[z_offset_block..armor_cutout]
+                    .contains("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])"),
+            "static entityCutoutZOffset uses the dedicated mesh and still samples LightTexture"
+        );
+        assert!(
+            source[armor_cutout..water_mask]
+                .contains("entity_dynamic_player_skin_cutout_z_offset_mesh")
+                && source[armor_cutout..water_mask]
+                    .contains("entity_dynamic_player_texture_cutout_z_offset_mesh"),
+            "dynamic atlas z-offset buckets also route through the main-pass cutout-z-offset pipeline"
         );
     }
 

@@ -128,7 +128,15 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     armor foil 提交进入独立 glint mesh / GLINT blend / depth-equal pipeline，
     跳过 LightTexture；动态 texture-matrix time offset 与其他 item glint
     变体仍属后续 shader/state 细化。
-  - no-cull / cull / z-offset / translucent / translucent-cull item-target。
+  - no-cull / cull / translucent / translucent-cull item-target 的剩余细化。
+  - [x] `entityCutoutZOffset`：CustomHead skull 和 Shulker 等
+    `entityCutoutZOffset` submission 进入独立 `cutout_z_offset` mesh，并给
+    static atlas、dynamic player-skin atlas、dynamic profile-texture atlas 都保留
+    对应 z-offset bucket。GPU 主 pass 使用专用 cutout-z-offset pipeline，保持
+    vanilla `ENTITY_CUTOUT_Z_OFFSET` 的 `ALPHA_CUTOUT 0.1`、LightTexture、
+    overlay、`PER_FACE_LIGHTING`、replacement blend、depth-write 和 cull-off
+    state；精确 `VIEW_OFFSET_Z_LAYERING` 的 perspective/orthographic 矩阵偏移
+    仍属后续 shader/camera-state refinement，不阻塞本 slice。
   - [x] `Eyes` emissive alpha blend：spider / enderman / phantom /
     ender-dragon 等 `RenderTypes.eyes` 提交保留独立 eyes mesh / shader，
     GPU pipeline 使用 vanilla `BlendFunction.TRANSLUCENT`、depth-write
