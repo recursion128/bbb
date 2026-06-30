@@ -314,8 +314,7 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     vertex buffer，shader 不再读取 per-vertex color，并通过 sky dynamic uniform
     传递 `ColorModulator = skyColor`，匹配 vanilla
     `RenderPipelines.SKY` / `core/sky`；render pass 测试固定 draw 前绑定
-    dynamic uniform。完整 DynamicTransforms model matrix 仍由 camera
-    view-projection 表达，后续可作为更细 sky ABI parity 继续推进。
+    dynamic uniform。
   - [x] sky `STARS` ColorModulator ABI：stars GPU path 现在使用 position-only
     vertex layout，并通过单独 sky dynamic uniform 传递
     `ColorModulator = vec4(STAR_BRIGHTNESS)`，匹配 vanilla
@@ -326,6 +325,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     sky dynamic uniform 的 model matrix 表达 `Y(-90deg) * X(starAngle)`，
     匹配 vanilla `renderSunMoonAndStars` pose stack；测试固定静态顶点中心和
     dynamic matrix 变换后的旧渲染位置一致。
+  - [x] sky DynamicTransforms model-view ABI：sky dynamic shader 现在按
+    vanilla `ProjMat * DynamicTransforms.ModelViewMat * Position` 拆分
+    projection 和 model-view；camera 更新时将 `CameraRenderState.viewRotationMatrix`
+    等价矩阵与各 sky-local transform 组合后写入 sky dynamic uniform，
+    覆盖 `SKY`、`END_SKY`、`STARS`、`CELESTIAL`。
   - [x] sky `CELESTIAL` ColorModulator ABI：sun/moon GPU path 现在使用
     position+uv vertex layout，绑定 celestial atlas texture 后再绑定单独 sky
     dynamic uniform，传递 `ColorModulator = vec4(1, 1, 1, rainBrightness)`，
@@ -340,13 +344,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `position_tex_color` shader shape，保留 position+uv+vertex color，
     按 vanilla 顺序执行 texture * vertexColor、alpha==0 discard，再乘
     `ColorModulator = vec4(1, 1, 1, 1)`；render pass 在 texture bind 后、
-    draw 前绑定 sky dynamic uniform。完整 DynamicTransforms model matrix 仍由
-    camera view-projection 表达，后续可作为更细 sky ABI parity 继续推进。
+    draw 前绑定 sky dynamic uniform。
   - [x] sky `END_SKY` / `STARS` / `CELESTIAL` default cull：这三条 pipeline
     现在也按 vanilla builder 默认启用 back-face cull；测试固定官方
     `SkyRenderer.buildEndSky` / `buildStars` / celestial quad 的 triangle-list
-    展开仍面向相机原点。剩余 sky-disc / end-sky full DynamicTransforms
-    model-matrix shader ABI 仍属后续 P1。
+    展开仍面向相机原点。
   - [x] terrain render-pipeline state：solid/cutout terrain 继续用 replace
     blend + depth-write，translucent terrain 继续用 translucent blend +
     no depth-write；三者现在都按 vanilla `SOLID_TERRAIN` /

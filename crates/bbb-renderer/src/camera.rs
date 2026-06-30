@@ -1,4 +1,4 @@
-use glam::{EulerRot, Mat4, Vec3};
+use glam::{EulerRot, Mat4, Vec3, Vec4};
 use serde::{Deserialize, Serialize};
 
 use crate::terrain;
@@ -303,6 +303,11 @@ pub(crate) struct CameraUniform {
     view_proj_view_offset_z: [[f32; 4]; 4],
     /// Vanilla `LayeringTransform.VIEW_OFFSET_Z_LAYERING_FORWARD` view-projection matrix.
     view_proj_view_offset_z_forward: [[f32; 4]; 4],
+    /// Vanilla projection matrix for sky shaders that bind `DynamicTransforms.ModelViewMat`
+    /// separately from `Projection.ProjMat`.
+    projection: [[f32; 4]; 4],
+    /// Vanilla sky model-view matrix without camera translation (`CameraRenderState.viewRotationMatrix`).
+    sky_model_view: [[f32; 4]; 4],
 }
 
 impl CameraUniform {
@@ -322,6 +327,8 @@ impl CameraUniform {
             Mat4::orthographic_rh(0.0, width.max(1.0), height.max(1.0), 0.0, -1000.0, 1000.0);
         Self {
             view_proj: projection.to_cols_array_2d(),
+            projection: projection.to_cols_array_2d(),
+            sky_model_view: Mat4::IDENTITY.to_cols_array_2d(),
             view_proj_view_offset_z: orthographic_view_offset_z_projection(
                 projection,
                 Mat4::IDENTITY,
@@ -351,6 +358,8 @@ impl CameraUniform {
 
         Self {
             view_proj: (projection * view).to_cols_array_2d(),
+            projection: projection.to_cols_array_2d(),
+            sky_model_view: view_without_translation(view).to_cols_array_2d(),
             view_proj_view_offset_z: orthographic_view_offset_z_projection(projection, view)
                 .to_cols_array_2d(),
             view_proj_view_offset_z_forward: orthographic_view_offset_z_forward_projection(
@@ -380,6 +389,8 @@ impl CameraUniform {
 
         Self {
             view_proj: (projection * view).to_cols_array_2d(),
+            projection: projection.to_cols_array_2d(),
+            sky_model_view: view_without_translation(view).to_cols_array_2d(),
             view_proj_view_offset_z: perspective_view_offset_z_projection(projection, view)
                 .to_cols_array_2d(),
             view_proj_view_offset_z_forward: perspective_view_offset_z_forward_projection(
@@ -509,6 +520,15 @@ impl CameraUniform {
         Mat4::from_cols_array_2d(&self.view_proj)
     }
 
+    pub(crate) fn sky_model_view_transform(self) -> Mat4 {
+        Mat4::from_cols_array_2d(&self.sky_model_view)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn projection(self) -> Mat4 {
+        Mat4::from_cols_array_2d(&self.projection)
+    }
+
     #[cfg(test)]
     pub(crate) fn view_proj_view_offset_z(self) -> Mat4 {
         Mat4::from_cols_array_2d(&self.view_proj_view_offset_z)
@@ -560,6 +580,8 @@ impl CameraUniform {
             glint_offsets: [0.0, 0.0, 0.0, 0.0],
             view_proj_view_offset_z: Mat4::IDENTITY.to_cols_array_2d(),
             view_proj_view_offset_z_forward: Mat4::IDENTITY.to_cols_array_2d(),
+            projection: Mat4::IDENTITY.to_cols_array_2d(),
+            sky_model_view: Mat4::IDENTITY.to_cols_array_2d(),
         }
     }
 }
@@ -613,6 +635,10 @@ fn orthographic_view_offset_z_forward_projection(projection: Mat4, view: Mat4) -
             VANILLA_VIEW_OFFSET_Z_FORWARD_ORTHOGRAPHIC_TRANSLATE,
         ))
         * view
+}
+
+fn view_without_translation(view: Mat4) -> Mat4 {
+    Mat4::from_cols(view.x_axis, view.y_axis, view.z_axis, Vec4::W)
 }
 
 pub(crate) fn sanitize_lightmap_brightness_factor(factor: f32) -> f32 {
@@ -970,6 +996,27 @@ mod tests {
         assert_eq!(
             CameraUniform::from_pose(pose, 16.0 / 9.0).camera_position(),
             [10.0, 65.62, -5.0]
+        );
+    }
+
+    #[test]
+    fn camera_uniform_splits_sky_projection_and_model_view_without_changing_projection() {
+        let pose = CameraPose {
+            position: [4.0, 64.0, -8.0],
+            y_rot: 35.0,
+            x_rot: -12.0,
+            eye_height: 1.5,
+        };
+        let uniform = CameraUniform::from_pose(pose, 16.0 / 9.0);
+        let sky_position = Vec3::new(32.0, 100.0, -24.0);
+        let old_projection = uniform.view_proj()
+            * (sky_position + Vec3::from_array(uniform.camera_position())).extend(1.0);
+        let split_projection =
+            uniform.projection() * uniform.sky_model_view_transform() * sky_position.extend(1.0);
+
+        assert!(
+            old_projection.abs_diff_eq(split_projection, 1.0e-4),
+            "expected split sky projection {split_projection:?}, got {old_projection:?}"
         );
     }
 

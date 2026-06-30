@@ -67,6 +67,12 @@ struct Camera {
     fog_color: vec4<f32>,
     fog_distances: vec4<f32>,
     fog_visibility_ends: vec4<f32>,
+    minecraft_light0: vec4<f32>,
+    minecraft_light1: vec4<f32>,
+    glint_offsets: vec4<f32>,
+    view_proj_view_offset_z: mat4x4<f32>,
+    view_proj_view_offset_z_forward: mat4x4<f32>,
+    projection: mat4x4<f32>,
 };
 
 struct SkyDynamic {
@@ -93,8 +99,7 @@ struct VertexOut {
 fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
     let model_position = (sky_dynamic.model_transform * vec4<f32>(input.position, 1.0)).xyz;
-    let world_position = model_position + camera.camera_position.xyz;
-    out.position = camera.view_proj * vec4<f32>(world_position, 1.0);
+    out.position = camera.projection * vec4<f32>(model_position, 1.0);
     out.spherical_distance = length(input.position);
     out.cylindrical_distance = max(length(input.position.xz), abs(input.position.y));
     return out;
@@ -141,6 +146,12 @@ struct Camera {
     fog_color: vec4<f32>,
     fog_distances: vec4<f32>,
     fog_visibility_ends: vec4<f32>,
+    minecraft_light0: vec4<f32>,
+    minecraft_light1: vec4<f32>,
+    glint_offsets: vec4<f32>,
+    view_proj_view_offset_z: mat4x4<f32>,
+    view_proj_view_offset_z_forward: mat4x4<f32>,
+    projection: mat4x4<f32>,
 };
 
 @group(0) @binding(0)
@@ -184,6 +195,12 @@ struct Camera {
     fog_color: vec4<f32>,
     fog_distances: vec4<f32>,
     fog_visibility_ends: vec4<f32>,
+    minecraft_light0: vec4<f32>,
+    minecraft_light1: vec4<f32>,
+    glint_offsets: vec4<f32>,
+    view_proj_view_offset_z: mat4x4<f32>,
+    view_proj_view_offset_z_forward: mat4x4<f32>,
+    projection: mat4x4<f32>,
 };
 
 struct SkyDynamic {
@@ -208,8 +225,7 @@ struct VertexOut {
 fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
     let model_position = (sky_dynamic.model_transform * vec4<f32>(input.position, 1.0)).xyz;
-    let world_position = model_position + camera.camera_position.xyz;
-    out.position = camera.view_proj * vec4<f32>(world_position, 1.0);
+    out.position = camera.projection * vec4<f32>(model_position, 1.0);
     return out;
 }
 
@@ -232,6 +248,12 @@ struct Camera {
     fog_color: vec4<f32>,
     fog_distances: vec4<f32>,
     fog_visibility_ends: vec4<f32>,
+    minecraft_light0: vec4<f32>,
+    minecraft_light1: vec4<f32>,
+    glint_offsets: vec4<f32>,
+    view_proj_view_offset_z: mat4x4<f32>,
+    view_proj_view_offset_z_forward: mat4x4<f32>,
+    projection: mat4x4<f32>,
 };
 
 struct SkyDynamic {
@@ -264,8 +286,7 @@ struct VertexOut {
 fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
     let model_position = (sky_dynamic.model_transform * vec4<f32>(input.position, 1.0)).xyz;
-    let world_position = model_position + camera.camera_position.xyz;
-    out.position = camera.view_proj * vec4<f32>(world_position, 1.0);
+    out.position = camera.projection * vec4<f32>(model_position, 1.0);
     out.uv = input.uv;
     out.color = input.color;
     return out;
@@ -294,6 +315,12 @@ struct Camera {
     fog_color: vec4<f32>,
     fog_distances: vec4<f32>,
     fog_visibility_ends: vec4<f32>,
+    minecraft_light0: vec4<f32>,
+    minecraft_light1: vec4<f32>,
+    glint_offsets: vec4<f32>,
+    view_proj_view_offset_z: mat4x4<f32>,
+    view_proj_view_offset_z_forward: mat4x4<f32>,
+    projection: mat4x4<f32>,
 };
 
 struct SkyDynamic {
@@ -324,8 +351,7 @@ struct VertexOut {
 fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
     let model_position = (sky_dynamic.model_transform * vec4<f32>(input.position, 1.0)).xyz;
-    let world_position = model_position + camera.camera_position.xyz;
-    out.position = camera.view_proj * vec4<f32>(world_position, 1.0);
+    out.position = camera.projection * vec4<f32>(model_position, 1.0);
     out.uv = input.uv;
     return out;
 }
@@ -624,8 +650,10 @@ struct SkyDynamicUniform {
 }
 
 pub(super) struct SkyDynamicGpu {
-    pub(super) _buffer: wgpu::Buffer,
+    pub(super) buffer: wgpu::Buffer,
     pub(super) bind_group: wgpu::BindGroup,
+    local_transform: Mat4,
+    color_modulator: [f32; 4],
 }
 
 pub(super) struct SkyDiscGpu {
@@ -844,14 +872,11 @@ fn create_sky_dynamic_gpu(
     model_transform: Mat4,
     color_modulator: [f32; 4],
 ) -> SkyDynamicGpu {
-    let uniform = SkyDynamicUniform {
-        model_transform: model_transform.to_cols_array_2d(),
-        color_modulator,
-    };
+    let uniform = sky_dynamic_uniform(model_transform, color_modulator);
     let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("bbb-sky-dynamic-uniform"),
         contents: bytemuck::bytes_of(&uniform),
-        usage: wgpu::BufferUsages::UNIFORM,
+        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
     });
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("bbb-sky-dynamic-bind-group"),
@@ -862,9 +887,34 @@ fn create_sky_dynamic_gpu(
         }],
     });
     SkyDynamicGpu {
-        _buffer: buffer,
+        buffer,
         bind_group,
+        local_transform: model_transform,
+        color_modulator,
     }
+}
+
+fn sky_dynamic_uniform(model_transform: Mat4, color_modulator: [f32; 4]) -> SkyDynamicUniform {
+    SkyDynamicUniform {
+        model_transform: model_transform.to_cols_array_2d(),
+        color_modulator,
+    }
+}
+
+pub(super) fn write_sky_model_view_dynamic(
+    queue: &wgpu::Queue,
+    dynamic: &SkyDynamicGpu,
+    sky_model_view: Mat4,
+) {
+    let uniform = sky_dynamic_uniform(
+        sky_dynamic_model_view_transform(sky_model_view, dynamic.local_transform),
+        dynamic.color_modulator,
+    );
+    queue.write_buffer(&dynamic.buffer, 0, bytemuck::bytes_of(&uniform));
+}
+
+fn sky_dynamic_model_view_transform(sky_model_view: Mat4, local_transform: Mat4) -> Mat4 {
+    sky_model_view * local_transform
 }
 
 pub(super) fn create_end_sky_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
@@ -1912,8 +1962,7 @@ mod tests {
         assert!(SKY_DISC_SHADER.contains("model_transform: mat4x4<f32>"));
         assert!(SKY_DISC_SHADER.contains("@location(0) position: vec3<f32>"));
         assert!(!SKY_DISC_SHADER.contains("@location(1) color"));
-        assert!(SKY_DISC_SHADER
-            .contains("sky_dynamic.model_transform * vec4<f32>(input.position, 1.0)"));
+        assert!(SKY_DISC_SHADER.contains("camera.projection * vec4<f32>(model_position, 1.0)"));
         assert!(SKY_DISC_SHADER
             .contains("apply_sky_fog(sky_dynamic.color_modulator, input.spherical_distance"));
         assert!(SKY_DISC_SHADER.contains("let sky_end = camera.fog_visibility_ends.x;"));
@@ -1935,9 +1984,7 @@ mod tests {
         assert!(STAR_SHADER.contains("model_transform: mat4x4<f32>"));
         assert!(STAR_SHADER.contains("@location(0) position: vec3<f32>"));
         assert!(!STAR_SHADER.contains("@location(1) color"));
-        assert!(
-            STAR_SHADER.contains("sky_dynamic.model_transform * vec4<f32>(input.position, 1.0)")
-        );
+        assert!(STAR_SHADER.contains("camera.projection * vec4<f32>(model_position, 1.0)"));
         assert!(STAR_SHADER.contains("return sky_dynamic.color_modulator;"));
     }
 
@@ -1948,9 +1995,7 @@ mod tests {
         assert!(END_SKY_SHADER.contains("@location(0) position: vec3<f32>"));
         assert!(END_SKY_SHADER.contains("@location(1) uv: vec2<f32>"));
         assert!(END_SKY_SHADER.contains("@location(2) color: vec4<f32>"));
-        assert!(
-            END_SKY_SHADER.contains("sky_dynamic.model_transform * vec4<f32>(input.position, 1.0)")
-        );
+        assert!(END_SKY_SHADER.contains("camera.projection * vec4<f32>(model_position, 1.0)"));
         assert!(END_SKY_SHADER
             .contains("textureSample(sky_texture, sky_sampler, input.uv) * input.color"));
         assert!(END_SKY_SHADER.contains("if texel.a == 0.0"));
@@ -1964,10 +2009,27 @@ mod tests {
         assert!(CELESTIAL_SHADER.contains("@location(0) position: vec3<f32>"));
         assert!(CELESTIAL_SHADER.contains("@location(1) uv: vec2<f32>"));
         assert!(!CELESTIAL_SHADER.contains("@location(2) color"));
-        assert!(CELESTIAL_SHADER
-            .contains("sky_dynamic.model_transform * vec4<f32>(input.position, 1.0)"));
+        assert!(CELESTIAL_SHADER.contains("camera.projection * vec4<f32>(model_position, 1.0)"));
         assert!(CELESTIAL_SHADER.contains("if texel.a == 0.0"));
         assert!(CELESTIAL_SHADER.contains("return texel * sky_dynamic.color_modulator;"));
+    }
+
+    #[test]
+    fn sky_dynamic_model_view_matches_vanilla_projection_order() {
+        let sky_model_view = Mat4::from_rotation_y(0.75);
+        let local_transform = Mat4::from_rotation_x(0.25)
+            * Mat4::from_translation(Vec3::new(0.0, CELESTIAL_HEIGHT, 0.0))
+            * Mat4::from_scale(Vec3::new(CELESTIAL_SUN_SIZE, 1.0, CELESTIAL_SUN_SIZE));
+        let position = Vec3::new(-1.0, 0.0, -1.0);
+
+        let model_view = sky_dynamic_model_view_transform(sky_model_view, local_transform);
+
+        assert_close3(
+            model_view.transform_point3(position).to_array(),
+            sky_model_view
+                .transform_point3(local_transform.transform_point3(position))
+                .to_array(),
+        );
     }
 
     #[test]

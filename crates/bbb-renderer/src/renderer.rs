@@ -2,6 +2,7 @@ use std::time::Instant;
 
 use anyhow::{anyhow, Result};
 use bbb_control::RendererCounters;
+use glam::Mat4;
 use wgpu::util::DeviceExt;
 use winit::{dpi::PhysicalSize, window::Window};
 
@@ -75,8 +76,9 @@ use crate::{
         create_celestial_pipeline, create_end_sky_bind_group_layout, create_end_sky_gpu,
         create_end_sky_pipeline, create_end_sky_texture_gpu, create_sky_disc_gpu,
         create_sky_dynamic_bind_group_layout, create_sky_pipeline, create_star_gpu,
-        create_star_pipeline, create_sunrise_sunset_pipeline, CelestialAtlasGpu, CelestialGpu,
-        CelestialTextureImage, EndSkyGpu, EndSkyTextureGpu, SkyDiscGpu, SkyEnvironment, StarGpu,
+        create_star_pipeline, create_sunrise_sunset_pipeline, write_sky_model_view_dynamic,
+        CelestialAtlasGpu, CelestialGpu, CelestialTextureImage, EndSkyGpu, EndSkyTextureGpu,
+        SkyDiscGpu, SkyEnvironment, StarGpu,
     },
     terrain,
     transparency::{
@@ -1206,9 +1208,8 @@ impl Renderer {
         self.resort_translucent_terrain_for_camera();
         if self.entity_model_texture_atlas.is_some() && !self.entity_model_instances.is_empty() {
             self.rebuild_entity_model_meshes();
-        } else {
-            self.update_camera();
         }
+        self.update_camera();
     }
 
     pub fn set_clear_color(&mut self, clear: ClearColor) {
@@ -1512,6 +1513,7 @@ impl Renderer {
         .with_lightmap_environment(self.lightmap_environment)
         .with_fog_environment(self.fog_environment)
         .with_glint_texture_time(glint_elapsed_millis, VANILLA_DEFAULT_GLINT_SPEED);
+        self.update_sky_model_view_dynamics(uniform.sky_model_view_transform());
         self.queue
             .write_buffer(&self.camera_buffer, 0, bytemuck::bytes_of(&uniform));
         // The GUI item pass projects 3D inventory icons with a screen-space ortho (separate buffer so it
@@ -1520,6 +1522,20 @@ impl Renderer {
             .with_glint_texture_time(glint_elapsed_millis, VANILLA_DEFAULT_GLINT_SPEED);
         self.queue
             .write_buffer(&self.gui_item_camera_buffer, 0, bytemuck::bytes_of(&gui));
+    }
+
+    fn update_sky_model_view_dynamics(&self, sky_model_view: Mat4) {
+        write_sky_model_view_dynamic(&self.queue, &self.end_sky_mesh.dynamic, sky_model_view);
+        if let Some(sky_disc) = &self.sky_disc {
+            write_sky_model_view_dynamic(&self.queue, &sky_disc.dynamic, sky_model_view);
+        }
+        if let Some(stars) = &self.sky_stars {
+            write_sky_model_view_dynamic(&self.queue, &stars.dynamic, sky_model_view);
+        }
+        if let Some(celestials) = &self.sky_celestials {
+            write_sky_model_view_dynamic(&self.queue, &celestials.sun.dynamic, sky_model_view);
+            write_sky_model_view_dynamic(&self.queue, &celestials.moon.dynamic, sky_model_view);
+        }
     }
 
     pub fn set_lightmap_brightness_factor(&mut self, factor: f32) {
@@ -1566,6 +1582,7 @@ impl Renderer {
             &self.sky_dynamic_bind_group_layout,
             environment,
         );
+        self.update_camera();
     }
 
     pub fn set_cloud_environment(&mut self, environment: CloudEnvironment) {
@@ -1632,6 +1649,7 @@ impl Renderer {
                 atlas,
             )
         });
+        self.update_camera();
         Ok(())
     }
 
