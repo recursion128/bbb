@@ -28,7 +28,7 @@ use bbb_renderer::{
 use bbb_world::{TerrainLight, WorldStore};
 use glam::{Mat4, Vec3};
 
-use crate::item_runtime::NativeItemRuntime;
+use crate::item_runtime::{ItemModelUseContext, NativeItemRuntime};
 use crate::terrain_runtime::TerrainTextureState;
 
 /// Fallback GROUND display transform for a block item (`minecraft:block/block`): rotation `0`,
@@ -604,6 +604,8 @@ fn bake_held_hand(
     } else {
         BlockModelDisplayContext::ThirdPersonRightHand
     };
+    let using_item = entity_hand_using_item(instance, off_hand);
+    let using_item_ticks = entity_use_elapsed_ticks(instance, using_item);
     for hand in humanoid_hand_attach_transforms(instance, left_arm) {
         bake_item_stack_at_transform(
             &stack,
@@ -611,7 +613,8 @@ fn bake_held_hand(
             context,
             left_arm,
             Some(instance.render_state.main_arm_left),
-            entity_hand_using_item(instance, off_hand),
+            using_item,
+            using_item_ticks,
             BLOCK_THIRD_PERSON_FALLBACK,
             GENERATED_THIRD_PERSON_FALLBACK,
             item_runtime,
@@ -654,13 +657,15 @@ fn bake_fox_held_item(
     let Some(transform) = fox_held_item_transform(instance) else {
         return;
     };
+    let using_item = entity_hand_using_item(instance, false);
     bake_item_stack_at_transform(
         &stack,
         transform,
         BlockModelDisplayContext::Ground,
         false,
         Some(instance.render_state.main_arm_left),
-        entity_hand_using_item(instance, false),
+        using_item,
+        entity_use_elapsed_ticks(instance, using_item),
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
         item_runtime,
@@ -692,13 +697,15 @@ fn bake_dolphin_carried_item(
     let Some(transform) = dolphin_carried_item_transform(instance) else {
         return;
     };
+    let using_item = entity_hand_using_item(instance, false);
     bake_item_stack_at_transform(
         &stack,
         transform,
         BlockModelDisplayContext::Ground,
         false,
         Some(instance.render_state.main_arm_left),
-        entity_hand_using_item(instance, false),
+        using_item,
+        entity_use_elapsed_ticks(instance, using_item),
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
         item_runtime,
@@ -730,13 +737,15 @@ fn bake_witch_held_item(
     let Some(transform) = witch_held_item_transform(instance) else {
         return;
     };
+    let using_item = entity_hand_using_item(instance, false);
     bake_item_stack_at_transform(
         &stack,
         transform,
         BlockModelDisplayContext::Ground,
         false,
         Some(instance.render_state.main_arm_left),
-        entity_hand_using_item(instance, false),
+        using_item,
+        entity_use_elapsed_ticks(instance, using_item),
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
         item_runtime,
@@ -773,13 +782,15 @@ fn bake_copper_golem_held_items(
         } else {
             BlockModelDisplayContext::ThirdPersonRightHand
         };
+        let using_item = entity_hand_using_item(instance, left_hand);
         bake_item_stack_at_transform(
             &stack,
             hand,
             context,
             left_hand,
             Some(instance.render_state.main_arm_left),
-            entity_hand_using_item(instance, left_hand),
+            using_item,
+            entity_use_elapsed_ticks(instance, using_item),
             BLOCK_THIRD_PERSON_FALLBACK,
             GENERATED_THIRD_PERSON_FALLBACK,
             item_runtime,
@@ -819,13 +830,15 @@ fn bake_allay_held_items(
         } else {
             BlockModelDisplayContext::ThirdPersonRightHand
         };
+        let using_item = entity_hand_using_item(instance, left_hand);
         bake_item_stack_at_transform(
             &stack,
             hand,
             context,
             left_hand,
             Some(instance.render_state.main_arm_left),
-            entity_hand_using_item(instance, left_hand),
+            using_item,
+            entity_use_elapsed_ticks(instance, using_item),
             BLOCK_THIRD_PERSON_FALLBACK,
             GENERATED_THIRD_PERSON_FALLBACK,
             item_runtime,
@@ -857,13 +870,15 @@ fn bake_villager_crossed_arms_item(
     let Some(transform) = villager_crossed_arms_item_transform(instance) else {
         return;
     };
+    let using_item = entity_hand_using_item(instance, false);
     bake_item_stack_at_transform(
         &stack,
         transform,
         BlockModelDisplayContext::Ground,
         false,
         Some(instance.render_state.main_arm_left),
-        entity_hand_using_item(instance, false),
+        using_item,
+        entity_use_elapsed_ticks(instance, using_item),
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
         item_runtime,
@@ -895,13 +910,15 @@ fn bake_panda_held_item(
     let Some(transform) = panda_held_item_transform(instance) else {
         return;
     };
+    let using_item = entity_hand_using_item(instance, false);
     bake_item_stack_at_transform(
         &stack,
         transform,
         BlockModelDisplayContext::Ground,
         false,
         Some(instance.render_state.main_arm_left),
-        entity_hand_using_item(instance, false),
+        using_item,
+        entity_use_elapsed_ticks(instance, using_item),
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
         item_runtime,
@@ -950,6 +967,7 @@ fn bake_custom_head_item(
             false,
             Some(instance.render_state.main_arm_left),
             false,
+            0.0,
             BLOCK_HEAD_FALLBACK,
             GENERATED_HEAD_FALLBACK,
             item_runtime,
@@ -979,6 +997,22 @@ fn entity_hand_using_item(instance: &EntityModelInstance, off_hand: bool) -> boo
     instance.render_state.is_using_item && instance.render_state.use_item_off_hand == off_hand
 }
 
+fn entity_use_elapsed_ticks(instance: &EntityModelInstance, using_item: bool) -> f32 {
+    if using_item {
+        instance.render_state.crossbow_charge_ticks
+    } else {
+        0.0
+    }
+}
+
+fn item_model_elapsed_ticks(ticks: f32) -> u32 {
+    if ticks.is_finite() {
+        ticks.max(0.0).floor() as u32
+    } else {
+        0
+    }
+}
+
 /// Bakes one item stack at an entity-supplied attach transform, applying the stack's retained item
 /// display transform for the selected vanilla context and falling back to the parent-model default for
 /// block vs generated items.
@@ -990,6 +1024,7 @@ fn bake_item_stack_at_transform(
     left_hand: bool,
     owner_main_hand_left: Option<bool>,
     using_item: bool,
+    using_item_ticks: f32,
     block_fallback: BlockModelDisplayTransform,
     generated_fallback: BlockModelDisplayTransform,
     item_runtime: &NativeItemRuntime,
@@ -1025,11 +1060,18 @@ fn bake_item_stack_at_transform(
     }
 
     // Flat path.
+    let use_context = if using_item {
+        item_runtime
+            .item_model_use_context_for_stack(stack, item_model_elapsed_ticks(using_item_ticks))
+    } else {
+        ItemModelUseContext::inactive()
+    };
     let mut quads: Vec<ItemModelQuad> = Vec::new();
     for layer in item_runtime.generated_item_layers_for_stack_with_owner_context(
         stack,
         owner_main_hand_left,
         using_item,
+        use_context,
     ) {
         quads.extend(bake_generated_item_quads(
             &layer.mask,
@@ -1894,6 +1936,7 @@ mod tests {
                 false,
                 owner_main_hand_left,
                 false,
+                0.0,
                 BLOCK_THIRD_PERSON_FALLBACK,
                 GENERATED_THIRD_PERSON_FALLBACK,
                 &item_runtime,
@@ -1957,6 +2000,54 @@ mod tests {
         assert_eq!(off_using_models.flat_meshes.len(), 1);
         assert_ne!(idle_models.flat_meshes[0], main_using_models.flat_meshes[0]);
         assert_eq!(idle_models.flat_meshes[0], off_using_models.flat_meshes[0]);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn humanoid_held_generated_item_use_duration_reads_owner_use_ticks() {
+        // Vanilla `ItemModelResolver.updateForLiving` passes the owning living
+        // entity into the item model; `UseDuration.get` then reads the active
+        // `getUseItem()` stack's elapsed use ticks.
+        let root = unique_item_model_temp_dir("held-use-duration-range-dispatch");
+        write_bow_use_duration_item_runtime_fixture(&root);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let mut world = WorldStore::new();
+        const ENTITY_ID: i32 = 608;
+        const PLAYER_ENTITY_TYPE_ID: i32 = 155;
+        world.apply_add_entity(protocol_add_entity(ENTITY_ID, PLAYER_ENTITY_TYPE_ID));
+        assert!(world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::MainHand, 0)));
+        let terrain_textures = TerrainTextureState::default();
+        let base = EntityModelInstance::player(ENTITY_ID, [0.0, 64.0, 0.0], 0.0, false);
+
+        let bake = |instance: EntityModelInstance| {
+            let models =
+                held_item_models(&[instance], &world, Some(&item_runtime), &terrain_textures);
+            assert_eq!(models.flat_meshes.len(), 1);
+            models.flat_meshes[0].clone()
+        };
+
+        let idle = bake(base);
+        let using_start = bake(
+            base.with_is_using_item(true)
+                .with_use_item_off_hand(false)
+                .with_crossbow_charge_ticks(0.0),
+        );
+        let using_pulling = bake(
+            base.with_is_using_item(true)
+                .with_use_item_off_hand(false)
+                .with_crossbow_charge_ticks(13.5),
+        );
+        let offhand_using = bake(
+            base.with_is_using_item(true)
+                .with_use_item_off_hand(true)
+                .with_crossbow_charge_ticks(13.5),
+        );
+
+        assert_ne!(idle, using_start);
+        assert_ne!(using_start, using_pulling);
+        assert_eq!(idle, offhand_using);
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -2289,6 +2380,42 @@ mod tests {
         );
         write_flat_item_model_and_texture(&assets, "use_selector", &[40, 80, 120, 255]);
         write_flat_item_model_and_texture(&assets, "use_selector_using", &[120, 80, 40, 255]);
+    }
+
+    fn write_bow_use_duration_item_runtime_fixture(root: &Path) {
+        let assets = item_model_assets_dir(root);
+        write_item_atlases(&assets);
+        write_item_registry_source(root, &["bow"]);
+        write_json(
+            &assets.join("items").join("bow.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:using_item",
+                    "on_false": { "type": "minecraft:model", "model": "minecraft:item/bow" },
+                    "on_true": {
+                        "type": "minecraft:range_dispatch",
+                        "property": "minecraft:use_duration",
+                        "scale": 0.05,
+                        "entries": [
+                            {
+                                "threshold": 0.65,
+                                "model": { "type": "minecraft:model", "model": "minecraft:item/bow_pulling_1" }
+                            },
+                            {
+                                "threshold": 0.9,
+                                "model": { "type": "minecraft:model", "model": "minecraft:item/bow_pulling_2" }
+                            }
+                        ],
+                        "fallback": { "type": "minecraft:model", "model": "minecraft:item/bow_pulling_0" }
+                    }
+                }
+            }"#,
+        );
+        write_flat_item_model_and_texture(&assets, "bow", &[40, 80, 120, 255]);
+        write_flat_item_model_and_texture(&assets, "bow_pulling_0", &[120, 80, 40, 255]);
+        write_flat_item_model_and_texture(&assets, "bow_pulling_1", &[80, 120, 40, 255]);
+        write_flat_item_model_and_texture(&assets, "bow_pulling_2", &[120, 40, 80, 255]);
     }
 
     fn item_model_assets_dir(root: &Path) -> PathBuf {

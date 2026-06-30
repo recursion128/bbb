@@ -1427,7 +1427,13 @@ impl NativeItemRuntime {
         stack: &ItemStackSummary,
         trim_material_keys: Option<&[String]>,
     ) -> Vec<GeneratedItemLayer> {
-        self.generated_item_layers_for_stack_with_context(stack, None, false, trim_material_keys)
+        self.generated_item_layers_for_stack_with_context(
+            stack,
+            None,
+            false,
+            ItemModelUseContext::inactive(),
+            trim_material_keys,
+        )
     }
 
     /// Generated item layers for an entity-owned stack. Vanilla `MainHand.get`
@@ -1441,11 +1447,13 @@ impl NativeItemRuntime {
         stack: &ItemStackSummary,
         owner_main_hand_left: Option<bool>,
         using_item: bool,
+        use_context: ItemModelUseContext,
     ) -> Vec<GeneratedItemLayer> {
         self.generated_item_layers_for_stack_with_context(
             stack,
             owner_main_hand_left,
             using_item,
+            use_context,
             None,
         )
     }
@@ -1455,12 +1463,14 @@ impl NativeItemRuntime {
         stack: &ItemStackSummary,
         owner_main_hand_left: Option<bool>,
         using_item: bool,
+        use_context: ItemModelUseContext,
         trim_material_keys: Option<&[String]>,
     ) -> Vec<GeneratedItemLayer> {
-        let Some(icon) = self.icon_for_stack_with_context(
+        let Some(icon) = self.icon_for_stack_with_context_and_use_context(
             stack,
             None,
             using_item,
+            use_context,
             0.0,
             trim_material_keys,
             owner_main_hand_left,
