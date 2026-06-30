@@ -11,11 +11,11 @@ const MAX_CONTAINER_ITEMS: usize = 1024;
 pub use data_components::{
     decode_profile_textures_from_properties, AttackRangeSummary, ConsumableSummary,
     CustomModelDataFloats, DataComponentPatchSummary, GameProfilePropertySummary,
-    ItemEnchantmentSummary, ItemRaritySummary, ItemStackTemplateSummary, MapPostProcessingSummary,
-    PlayerModelTypeSummary, PlayerSkinPatchSummary, ProfileSkinTextureSummary,
-    ProfileTextureSummary, ProfileTexturesSummary, ResolvableProfileKindSummary,
-    ResolvableProfileSummary, ResourceTextureSummary, SwingAnimationSummary,
-    SwingAnimationTypeSummary, UseEffectsSummary, WrittenBookContentSummary,
+    ItemEnchantmentSummary, ItemRaritySummary, ItemStackTemplateSummary, LodestoneTargetSummary,
+    MapPostProcessingSummary, PlayerModelTypeSummary, PlayerSkinPatchSummary,
+    ProfileSkinTextureSummary, ProfileTextureSummary, ProfileTexturesSummary,
+    ResolvableProfileKindSummary, ResolvableProfileSummary, ResourceTextureSummary,
+    SwingAnimationSummary, SwingAnimationTypeSummary, UseEffectsSummary, WrittenBookContentSummary,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

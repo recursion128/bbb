@@ -5709,8 +5709,8 @@ When an agent does any of the following, update this file in the same slice:
 - Next action:
   - Thread the ambient-context numeric `range_dispatch` properties through the
     icon resolver as that state becomes available to the GUI icon path:
-    - `minecraft:compass` stateful wobble / no-target random spin plus
-      lodestone/recovery targets
+    - `minecraft:compass` stateful wobble plus no-target / invalid-target random
+      spin and recovery targets
     - `minecraft:time` stateful wobbler smoothing and `source=random`
   - Wire the remaining ambient-context `select` properties onto the same
     resolver:
@@ -5749,11 +5749,12 @@ When an agent does any of the following, update this file in the same slice:
     item templates (`charged_projectiles_items`), and the `minecraft:trim`
     material holder reference id (`armor_trim_material_id`), and the
     `minecraft:consumable` `consume_seconds` value (`consumable`), plus the
-    `minecraft:item_model` resource id, so the
+    `minecraft:item_model` resource id and `minecraft:lodestone_tracker`
+    target `GlobalPos`, so the
     `CustomModelDataProperty.getFloat(index)`,
     `CustomModelDataProperty.getString(index)`, `ItemBlockState.get`,
     `Charge.get`, `TrimMaterialProperty.get`,
-    `DataComponents.ITEM_MODEL`, and
+    `DataComponents.ITEM_MODEL`, `DataComponents.LODESTONE_TRACKER`, and
     `ItemStack.getUseDuration(owner)` consumable input are preserved on the wire.
   - `bbb-native` resolves `minecraft:range_dispatch` item models with the exact
     vanilla `RangeSelectItemModel.update` selection:
@@ -5859,13 +5860,15 @@ When an agent does any of the following, update this file in the same slice:
       `source=random` remain follow-up.
     - `minecraft:compass` — `CompassAngle.get`, for GUI/HUD item icons with a
       local-player owner and `ClientLevel` context when the model opts out of
-      stateful wobble (`wobble=false`) and targets spawn. Native projects the
-      default-spawn `GlobalPos`, validates it against the current dimension,
-      computes vanilla's owner-position / visual-yaw rotation toward the block
-      center, and applies vanilla range-dispatch threshold selection. Tests pin
-      no-pose `0.0` fallback, same-dimension spawn texture selection, and
-      cross-dimension invalid-target fallback. Stateful wobble, no-target
-      random spin, lodestone, and recovery targets remain follow-up.
+      stateful wobble (`wobble=false`) and targets spawn or lodestone. Native
+      projects the default-spawn or `LodestoneTracker.target` `GlobalPos`,
+      validates it against the current dimension, computes vanilla's
+      owner-position / visual-yaw rotation toward the block center, and applies
+      vanilla range-dispatch threshold selection. Tests pin no-pose `0.0`
+      fallback, missing-component fallback, same-dimension spawn/lodestone
+      texture selection, and cross-dimension invalid-target fallback. Stateful
+      wobble, no-target / invalid-target random spin, and recovery targets
+      remain follow-up.
     - `minecraft:component` — `ComponentContents.get`, currently matching
       decoded persistent scalar / enum components with typed `when` values:
       `minecraft:max_stack_size`, `minecraft:max_damage`, `minecraft:damage`,
@@ -5913,11 +5916,12 @@ When an agent does any of the following, update this file in the same slice:
     (`DataComponents.BEES`, id 77) so bundle-fullness weight can distinguish
     beehive-like full-weight entries from ordinary stack-size weighted entries.
   - The remaining numeric `minecraft:compass` debt is now limited to stateful
-    wobble / no-target random spin plus lodestone and recovery targets; GUI/HUD
-    `wobble=false` spawn compasses project owner-position / yaw against the
-    current default spawn. `minecraft:time` projects GUI/HUD `daytime` /
-    `moon_phase` target values from world time, but its stateful wobbler
-    smoothing and `source=random` remain follow-up.
+    wobble plus no-target / invalid-target random spin and recovery targets;
+    GUI/HUD `wobble=false` spawn and lodestone compasses project owner-position
+    / yaw against the current default spawn or `LodestoneTracker.target`.
+    `minecraft:time` projects GUI/HUD `daytime` / `moon_phase` target values
+    from world time, but its stateful wobbler smoothing and `source=random`
+    remain follow-up.
     `minecraft:local_time` resolves the vanilla chest/trapped-chest `MM-dd`
     selector from wall-clock time; full ICU pattern / locale parity remains
     follow-up. GUI/HUD use-tick properties are wired for the local active stack,

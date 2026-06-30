@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use super::read_resource_location;
+use super::{chunks, read_resource_location};
 use crate::{
     codec::{Decoder, ProtocolError, Result},
     component::{decode_component_summary_from_decoder, skip_nbt_tag_from_decoder},
@@ -104,6 +104,14 @@ pub struct DataComponentPatchSummary {
     pub block_state_properties: BTreeMap<String, String>,
     #[serde(default)]
     pub profile: Option<ResolvableProfileSummary>,
+    #[serde(default)]
+    pub lodestone_target: Option<LodestoneTargetSummary>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LodestoneTargetSummary {
+    pub dimension: String,
+    pub pos: chunks::BlockPos,
 }
 
 /// The `floats` list of a `minecraft:custom_model_data` component, preserved so
@@ -442,6 +450,9 @@ fn decode_typed_data_component_patch_summary(
             55 => {
                 summary.written_book = Some(decode_written_book_content(decoder)?);
             }
+            67 => {
+                summary.lodestone_target = decode_lodestone_tracker(decoder)?;
+            }
             76 => {
                 summary.block_state_properties =
                     decode_string_map(decoder, MAX_BLOCK_STATE_PROPERTIES)?;
@@ -581,7 +592,9 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         62 => decode_trim_material_holder(decoder)?,
         64 => decode_jukebox_playable(decoder)?,
         65 => decode_holder_set(decoder)?,
-        67 => decode_lodestone_tracker(decoder)?,
+        67 => {
+            let _ = decode_lodestone_tracker(decoder)?;
+        }
         70 => {
             let _ = decode_resolvable_profile(decoder)?;
         }
@@ -709,17 +722,18 @@ fn decode_optional_sound_event_holder(decoder: &mut Decoder<'_>) -> Result<()> {
     Ok(())
 }
 
-fn decode_optional_global_pos(decoder: &mut Decoder<'_>) -> Result<()> {
-    if decoder.read_bool()? {
-        decode_global_pos(decoder)?;
+fn decode_optional_global_pos(decoder: &mut Decoder<'_>) -> Result<Option<LodestoneTargetSummary>> {
+    if !decoder.read_bool()? {
+        return Ok(None);
     }
-    Ok(())
+    decode_global_pos(decoder).map(Some)
 }
 
-fn decode_global_pos(decoder: &mut Decoder<'_>) -> Result<()> {
-    decode_identifier(decoder)?;
-    decoder.read_i64()?;
-    Ok(())
+fn decode_global_pos(decoder: &mut Decoder<'_>) -> Result<LodestoneTargetSummary> {
+    Ok(LodestoneTargetSummary {
+        dimension: read_resource_location(decoder)?,
+        pos: chunks::decode_block_pos(decoder.read_i64()?),
+    })
 }
 
 fn decode_lore(decoder: &mut Decoder<'_>) -> Result<Vec<String>> {
@@ -1194,10 +1208,10 @@ fn decode_jukebox_playable(decoder: &mut Decoder<'_>) -> Result<()> {
     decode_holder_with_direct(decoder, decode_direct_jukebox_song)
 }
 
-fn decode_lodestone_tracker(decoder: &mut Decoder<'_>) -> Result<()> {
-    decode_optional_global_pos(decoder)?;
+fn decode_lodestone_tracker(decoder: &mut Decoder<'_>) -> Result<Option<LodestoneTargetSummary>> {
+    let target = decode_optional_global_pos(decoder)?;
     decoder.read_bool()?;
-    Ok(())
+    Ok(target)
 }
 
 fn decode_resolvable_profile(decoder: &mut Decoder<'_>) -> Result<ResolvableProfileSummary> {
@@ -1620,6 +1634,44 @@ mod tests {
                 enchantment_glint_override: Some(true),
                 use_cooldown_ticks: Some(30),
                 use_cooldown_group: Some("minecraft:ender_pearl".to_string()),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_lodestone_tracker_target_component() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(67);
+        payload.write_bool(true);
+        payload.write_string("minecraft:overworld");
+        payload.write_i64(chunks::encode_block_pos(chunks::BlockPos {
+            x: 10,
+            y: 64,
+            z: -4,
+        }));
+        payload.write_bool(false);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![67],
+                removed_type_ids: Vec::new(),
+                lodestone_target: Some(LodestoneTargetSummary {
+                    dimension: "minecraft:overworld".to_string(),
+                    pos: chunks::BlockPos {
+                        x: 10,
+                        y: 64,
+                        z: -4,
+                    },
+                }),
                 ..DataComponentPatchSummary::default()
             }
         );
@@ -2232,6 +2284,10 @@ mod tests {
                 added_type_ids: component_ids.to_vec(),
                 removed_type_ids: Vec::new(),
                 bees_count: 1,
+                lodestone_target: Some(LodestoneTargetSummary {
+                    dimension: "minecraft:overworld".to_string(),
+                    pos: chunks::BlockPos { x: 0, y: 0, z: 0 },
+                }),
                 profile: Some(ResolvableProfileSummary {
                     kind: ResolvableProfileKindSummary::Partial,
                     uuid: Some(Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678)),

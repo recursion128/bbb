@@ -226,12 +226,14 @@ fn range_dispatch_property_for(property: &ItemModelProperty) -> Option<RangeDisp
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum CompassTarget {
+    Lodestone,
     Spawn,
 }
 
 impl CompassTarget {
     fn parse(value: &str) -> Option<Self> {
         match value {
+            "lodestone" => Some(Self::Lodestone),
             "spawn" => Some(Self::Spawn),
             _ => None,
         }
@@ -242,6 +244,14 @@ impl CompassTarget {
             return 0.0;
         };
         match self {
+            Self::Lodestone => ctx
+                .component_patch
+                .and_then(lodestone_target_for_patch)
+                .filter(|target| target.dimension == compass.level_dimension)
+                .and_then(|target| {
+                    compass_rotation_to_target(compass, [target.pos.x, target.pos.y, target.pos.z])
+                })
+                .unwrap_or(0.0),
             Self::Spawn => compass
                 .spawn
                 .filter(|target| target.dimension == compass.level_dimension)
@@ -915,6 +925,18 @@ fn compass_rotation_to_target(
     let angle_to_target = (dz.atan2(dx) / (std::f64::consts::PI * 2.0)) as f32;
     let owner_y_rotation = (compass.owner_y_rot_degrees / 360.0).rem_euclid(1.0);
     Some((0.5 - (owner_y_rotation - 0.25 - angle_to_target)).rem_euclid(1.0))
+}
+
+fn lodestone_target_for_patch(
+    patch: &DataComponentPatchSummary,
+) -> Option<&bbb_protocol::packets::LodestoneTargetSummary> {
+    if patch
+        .removed_type_ids
+        .contains(&LODESTONE_TRACKER_COMPONENT_ID)
+    {
+        return None;
+    }
+    patch.lodestone_target.as_ref()
 }
 
 impl ItemIconModel {

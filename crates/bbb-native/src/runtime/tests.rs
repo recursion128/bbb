@@ -12,10 +12,10 @@ use bbb_protocol::packets::ClockUpdate as ProtocolClockUpdate;
 use bbb_protocol::packets::{
     BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate, BossBarColor, BossBarOverlay,
     BossEvent as ProtocolBossEvent, BossEventFlags as ProtocolBossEventFlags,
-    BossEventOperation as ProtocolBossEventOperation, CommonPlayerSpawnInfo, DialogHolder,
-    GameEvent as ProtocolGameEvent, InteractionHand, MerchantOffer, MerchantOffers, MobEffectFlags,
-    OpenBook, OpenSignEditor, PlayLogin, PlayTime, RemoveMobEffect,
-    SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog, UpdateMobEffect,
+    BossEventOperation as ProtocolBossEventOperation, CommonPlayerSpawnInfo,
+    DataComponentPatchSummary, DialogHolder, GameEvent as ProtocolGameEvent, InteractionHand,
+    MerchantOffer, MerchantOffers, MobEffectFlags, OpenBook, OpenSignEditor, PlayLogin, PlayTime,
+    RemoveMobEffect, SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog, UpdateMobEffect,
     WrittenBookContentSummary,
 };
 use bbb_world::{
@@ -2969,6 +2969,110 @@ fn hotbar_item_icons_project_spawn_compass_range_dispatch() {
     wrong_dimension_world.apply_set_player_inventory(ProtocolSetPlayerInventory {
         slot: 0,
         item: stack,
+    });
+    let wrong_dimension_icons = hotbar_item_icons(&wrong_dimension_world, Some(&item_runtime), 0.0);
+    assert_eq!(
+        wrong_dimension_icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: fallback_uv.min,
+            max: fallback_uv.max,
+        }
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn hotbar_item_icons_project_lodestone_compass_range_dispatch() {
+    let root = unique_runtime_temp_dir("hotbar-lodestone-compass-range-dispatch");
+    write_runtime_lodestone_compass_range_dispatch_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let lodestone_stack = ItemStackSummary {
+        item_id: Some(0),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            added_type_ids: vec![67],
+            lodestone_target: Some(bbb_protocol::packets::LodestoneTargetSummary {
+                dimension: "minecraft:overworld".to_string(),
+                pos: ProtocolBlockPos { x: 10, y: 64, z: 0 },
+            }),
+            ..DataComponentPatchSummary::default()
+        },
+    };
+    let fallback_uv = item_runtime
+        .icon_for_stack(&lodestone_stack)
+        .unwrap()
+        .layers[0]
+        .uv;
+    let east_uv = item_runtime
+        .icon_for_stack_with_context_and_use_context_and_time_context(
+            &lodestone_stack,
+            None,
+            false,
+            crate::item_runtime::ItemModelUseContext::inactive(),
+            bbb_pack::BlockModelDisplayContext::Gui,
+            0.0,
+            None,
+            None,
+            Some("minecraft:player"),
+            Some("minecraft:overworld"),
+            None,
+            Some(crate::item_runtime::ItemModelCompassContext {
+                level_dimension: "minecraft:overworld",
+                owner_position: [0.5, 64.0, 0.5],
+                owner_y_rot_degrees: 0.0,
+                spawn: None,
+            }),
+        )
+        .unwrap()
+        .layers[0]
+        .uv;
+    assert_ne!(fallback_uv, east_uv);
+
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.set_local_player_pose(local_player_pose([0.5, 64.0, 0.5], 0.0, 0.0));
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: lodestone_stack.clone(),
+    });
+    let icons = hotbar_item_icons(&world, Some(&item_runtime), 0.0);
+    assert_eq!(
+        icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: east_uv.min,
+            max: east_uv.max,
+        }
+    );
+
+    let mut missing_component_world = world_with_dimension(0, "minecraft:overworld");
+    missing_component_world.set_local_player_pose(local_player_pose([0.5, 64.0, 0.5], 0.0, 0.0));
+    missing_component_world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: item_stack(0, 1),
+    });
+    let missing_component_icons =
+        hotbar_item_icons(&missing_component_world, Some(&item_runtime), 0.0);
+    assert_eq!(
+        missing_component_icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: fallback_uv.min,
+            max: fallback_uv.max,
+        }
+    );
+
+    let mut wrong_dimension_stack = lodestone_stack;
+    wrong_dimension_stack
+        .component_patch
+        .lodestone_target
+        .as_mut()
+        .unwrap()
+        .dimension = "minecraft:the_nether".to_string();
+    let mut wrong_dimension_world = world_with_dimension(0, "minecraft:overworld");
+    wrong_dimension_world.set_local_player_pose(local_player_pose([0.5, 64.0, 0.5], 0.0, 0.0));
+    wrong_dimension_world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: wrong_dimension_stack,
     });
     let wrong_dimension_icons = hotbar_item_icons(&wrong_dimension_world, Some(&item_runtime), 0.0);
     assert_eq!(
@@ -6831,6 +6935,71 @@ fn write_runtime_spawn_compass_range_dispatch_item_assets(root: &Path) {
             .join("Items.java"),
         r#"public class Items {
             public static final Item SPAWN_COMPASS = registerItem("spawn_compass");
+        }"#,
+    );
+}
+
+fn write_runtime_lodestone_compass_range_dispatch_item_assets(root: &Path) {
+    let assets = runtime_assets_dir(root);
+    write_runtime_json(
+        &assets.join("atlases").join("items.json"),
+        r#"{
+            "sources": [
+                {
+                    "type": "minecraft:directory",
+                    "prefix": "item/",
+                    "source": "item"
+                }
+            ]
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("atlases").join("blocks.json"),
+        r#"{
+            "sources": []
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("items").join("lodestone_compass.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:range_dispatch",
+                "property": "minecraft:compass",
+                "target": "lodestone",
+                "wobble": false,
+                "scale": 4.0,
+                "entries": [
+                    {
+                        "threshold": 3.0,
+                        "model": { "type": "minecraft:model", "model": "minecraft:item/lodestone_compass_east" }
+                    }
+                ],
+                "fallback": { "type": "minecraft:model", "model": "minecraft:item/lodestone_compass_fallback" }
+            }
+        }"#,
+    );
+    write_flat_runtime_item_model_and_texture(
+        &assets,
+        "lodestone_compass_fallback",
+        &[40, 120, 80, 255],
+    );
+    write_flat_runtime_item_model_and_texture(
+        &assets,
+        "lodestone_compass_east",
+        &[120, 40, 80, 255],
+    );
+    write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
+    write_runtime_json(
+        &root
+            .join("sources")
+            .join(bbb_pack::MC_VERSION)
+            .join("net")
+            .join("minecraft")
+            .join("world")
+            .join("item")
+            .join("Items.java"),
+        r#"public class Items {
+            public static final Item LODESTONE_COMPASS = registerItem("lodestone_compass");
         }"#,
     );
 }
