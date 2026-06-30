@@ -1351,6 +1351,7 @@ impl NativeItemRuntime {
                             bundle_selected_item_index: None,
                             selected_item: false,
                             carried_item: false,
+                            view_entity: false,
                             using_item: false,
                             use_context: ItemModelUseContext::inactive(),
                             cooldown_progress: 0.0,
@@ -1705,6 +1706,7 @@ impl NativeItemRuntime {
             compass_context,
             selected_item,
             false,
+            false,
         )
     }
 
@@ -1724,6 +1726,7 @@ impl NativeItemRuntime {
         compass_context: Option<ItemModelCompassContext<'_>>,
         selected_item: bool,
         carried_item: bool,
+        view_entity: bool,
     ) -> Option<ItemAtlasIcon> {
         self.icon_for_stack_with_model_context(
             stack,
@@ -1740,6 +1743,7 @@ impl NativeItemRuntime {
             compass_context,
             selected_item,
             carried_item,
+            view_entity,
         )
     }
 
@@ -1772,6 +1776,7 @@ impl NativeItemRuntime {
             None,
             false,
             false,
+            false,
         )
     }
 
@@ -1791,6 +1796,7 @@ impl NativeItemRuntime {
         compass_context: Option<ItemModelCompassContext<'_>>,
         selected_item: bool,
         carried_item: bool,
+        view_entity: bool,
     ) -> Option<ItemAtlasIcon> {
         let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
         let item_model_id = item_model_id_for_stack(item_id, Some(&stack.component_patch))?;
@@ -1812,6 +1818,7 @@ impl NativeItemRuntime {
             compass_context,
             selected_item,
             carried_item,
+            view_entity,
         )
     }
 
@@ -1836,6 +1843,7 @@ impl NativeItemRuntime {
             None,
             false,
             false,
+            false,
         )
     }
 
@@ -1858,6 +1866,7 @@ impl NativeItemRuntime {
         compass_context: Option<ItemModelCompassContext<'_>>,
         selected_item: bool,
         carried_item: bool,
+        view_entity: bool,
     ) -> Option<ItemAtlasIcon> {
         let default_max_damage = self
             .registry
@@ -1877,6 +1886,7 @@ impl NativeItemRuntime {
             bundle_selected_item_index,
             selected_item,
             carried_item,
+            view_entity,
             using_item,
             use_context,
             cooldown_progress,
@@ -2029,6 +2039,7 @@ impl NativeItemRuntime {
             bundle_selected_item_index: None,
             selected_item: false,
             carried_item: false,
+            view_entity: false,
             using_item: false,
             use_context: ItemModelUseContext::inactive(),
             cooldown_progress: 0.0,

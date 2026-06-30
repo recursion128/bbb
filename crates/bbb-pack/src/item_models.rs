@@ -254,6 +254,7 @@ pub enum ItemModelPropertyKind {
     HasComponent,
     Selected,
     UsingItem,
+    ViewEntity,
     Other,
 }
 
@@ -277,6 +278,7 @@ impl ItemModelProperty {
             "minecraft:has_component" => ItemModelPropertyKind::HasComponent,
             "minecraft:selected" => ItemModelPropertyKind::Selected,
             "minecraft:using_item" => ItemModelPropertyKind::UsingItem,
+            "minecraft:view_entity" => ItemModelPropertyKind::ViewEntity,
             _ => ItemModelPropertyKind::Other,
         }
     }
@@ -1934,6 +1936,43 @@ mod tests {
             on_false.as_ref(),
             ItemModelDefinition::Model { model, .. } if model == "minecraft:item/bow"
         ));
+    }
+
+    #[test]
+    fn item_model_catalog_structures_unit_view_entity_condition_property() {
+        let definition = ClientItemDefinition::from_json_bytes(
+            br#"{
+              "model": {
+                "type": "minecraft:condition",
+                "property": "minecraft:view_entity",
+                "on_false": {
+                  "type": "minecraft:empty"
+                },
+                "on_true": {
+                  "type": "minecraft:empty"
+                }
+              }
+            }"#,
+        )
+        .unwrap();
+
+        let ItemModelDefinition::Condition {
+            property,
+            on_true,
+            on_false,
+            ..
+        } = &definition.model
+        else {
+            panic!("root should parse as a view-entity condition item model");
+        };
+        assert_eq!(property.property_type, "minecraft:view_entity");
+        assert_eq!(property.kind(), ItemModelPropertyKind::ViewEntity);
+        assert_eq!(
+            property.raw(),
+            &serde_json::json!({"property": "minecraft:view_entity"})
+        );
+        assert!(matches!(on_true.as_ref(), ItemModelDefinition::Empty));
+        assert!(matches!(on_false.as_ref(), ItemModelDefinition::Empty));
     }
 
     #[test]

@@ -5873,6 +5873,12 @@ When an agent does any of the following, update this file in the same slice:
       held-item paths project the renderer entity kind to the vanilla entity
       type key before resolving generated item layers; tests pin player vs witch
       branch selection. Null-owner/fake item consumers still fall back.
+    - `minecraft:view_entity` — `IsViewEntity.get`, for GUI/HUD local-player
+      item icons in the normal camera==player path. This mirrors
+      `GuiGraphicsExtractor.item`, which passes `minecraft.player` as owner;
+      native threads an explicit view-entity bit rather than comparing by item
+      contents or entity type. Spectator camera identity and non-GUI
+      owner-backed item consumers remain follow-up.
     - `minecraft:local_time` — `LocalTime.get`, formatting wall-clock time for
       the vanilla 26.1 chest/trapped-chest `MM-dd` selector. Explicit `GMT`/UTC
       offset `time_zone` values use that offset; absent `time_zone` uses the
@@ -5963,9 +5969,11 @@ When an agent does any of the following, update this file in the same slice:
     native item consumers that do not pass a `LivingEntity` owner, such as
     fake/null-owner item surfaces. `minecraft:custom_model_data` condition is
     wired for the stack-local `flags` list, and `minecraft:selected` is wired
-    for HUD hotbar selected-slot icons. `minecraft:carried` is wired as an
-    explicit resolver context bit for future cursor-carried item call sites,
-    while the cursor item presentation itself remains GUI follow-up.
+    for HUD hotbar selected-slot icons. `minecraft:view_entity` is wired for
+    GUI/HUD local-player icons in the normal camera==player path.
+    `minecraft:carried` is wired as an explicit resolver context bit for future
+    cursor-carried item call sites, while the cursor item presentation itself
+    remains GUI follow-up.
     `minecraft:component` is wired for the scalar / enum component select subset
     listed above, and the condition form covers component-type / AnyValue
     predicates; broader component-codec and complex `DataComponentPredicate`

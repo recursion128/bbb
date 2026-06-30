@@ -795,6 +795,9 @@ pub(super) struct IconResolveContext<'a> {
     /// Vanilla `IsCarried.get`: true only when the owner is the local player
     /// and this exact stack is `LocalPlayer.containerMenu.getCarried()`.
     pub carried_item: bool,
+    /// Vanilla `IsViewEntity.get`: true when the item owner is the current
+    /// camera entity, or the local player when there is no camera entity.
+    pub view_entity: bool,
     pub using_item: bool,
     pub use_context: ItemModelUseContext,
     /// Vanilla `Cooldown.get`: caller-projected
@@ -1038,6 +1041,7 @@ impl ItemIconModel {
                     }
                     ItemModelPropertyKind::Selected if ctx.selected_item => on_true,
                     ItemModelPropertyKind::UsingItem if ctx.using_item => on_true,
+                    ItemModelPropertyKind::ViewEntity if ctx.view_entity => on_true,
                     _ => on_false,
                 };
                 branch.icon_layers_with_bundle_resolver(ctx, resolve_bundle_selected_item)
@@ -1143,7 +1147,8 @@ fn condition_property_is_runtime_resolved(property: &ItemModelProperty) -> bool 
         | ItemModelPropertyKind::CustomModelData
         | ItemModelPropertyKind::HasComponent
         | ItemModelPropertyKind::Selected
-        | ItemModelPropertyKind::UsingItem => true,
+        | ItemModelPropertyKind::UsingItem
+        | ItemModelPropertyKind::ViewEntity => true,
         ItemModelPropertyKind::Component => {
             component_condition_any_value_component_id(property).is_some()
         }

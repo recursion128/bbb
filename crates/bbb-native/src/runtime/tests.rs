@@ -2557,6 +2557,7 @@ fn hud_item_icons_use_carried_item_condition_only_when_marked_carried() {
             None,
             false,
             true,
+            false,
         )
         .unwrap()
         .layers[0]
@@ -2949,6 +2950,54 @@ fn hotbar_item_icons_use_local_player_context_entity_type_select() {
         HudUvRect {
             min: player_uv.min,
             max: player_uv.max,
+        }
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn hotbar_item_icons_use_local_player_view_entity_condition() {
+    let root = unique_runtime_temp_dir("hotbar-view-entity-condition");
+    write_runtime_view_entity_condition_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let stack = item_stack(0, 1);
+    let fallback_uv = item_runtime.icon_for_stack(&stack).unwrap().layers[0].uv;
+    let view_entity_uv = item_runtime
+        .icon_for_stack_with_context_and_use_context_time_state(
+            &stack,
+            None,
+            false,
+            crate::item_runtime::ItemModelUseContext::inactive(),
+            bbb_pack::BlockModelDisplayContext::Gui,
+            0.0,
+            None,
+            None,
+            Some("minecraft:player"),
+            None,
+            None,
+            None,
+            false,
+            false,
+            true,
+        )
+        .unwrap()
+        .layers[0]
+        .uv;
+    assert_ne!(fallback_uv, view_entity_uv);
+
+    let mut world = WorldStore::new();
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: stack,
+    });
+    let icons = hotbar_item_icons(&world, Some(&item_runtime), 0.0);
+    assert_eq!(
+        icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: view_entity_uv.min,
+            max: view_entity_uv.max,
         }
     );
 
@@ -7048,6 +7097,63 @@ fn write_runtime_context_entity_type_select_item_assets(root: &Path) {
             .join("Items.java"),
         r#"public class Items {
             public static final Item ENTITY_SELECTOR = registerItem("entity_selector");
+        }"#,
+    );
+}
+
+fn write_runtime_view_entity_condition_item_assets(root: &Path) {
+    let assets = runtime_assets_dir(root);
+    write_runtime_json(
+        &assets.join("atlases").join("items.json"),
+        r#"{
+            "sources": [
+                {
+                    "type": "minecraft:directory",
+                    "prefix": "item/",
+                    "source": "item"
+                }
+            ]
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("atlases").join("blocks.json"),
+        r#"{
+            "sources": []
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("items").join("view_entity_condition.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:condition",
+                "property": "minecraft:view_entity",
+                "on_true": { "type": "minecraft:model", "model": "minecraft:item/view_entity_condition_view" },
+                "on_false": { "type": "minecraft:model", "model": "minecraft:item/view_entity_condition" }
+            }
+        }"#,
+    );
+    write_flat_runtime_item_model_and_texture(
+        &assets,
+        "view_entity_condition",
+        &[40, 80, 120, 255],
+    );
+    write_flat_runtime_item_model_and_texture(
+        &assets,
+        "view_entity_condition_view",
+        &[120, 80, 40, 255],
+    );
+    write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
+    write_runtime_json(
+        &root
+            .join("sources")
+            .join(bbb_pack::MC_VERSION)
+            .join("net")
+            .join("minecraft")
+            .join("world")
+            .join("item")
+            .join("Items.java"),
+        r#"public class Items {
+            public static final Item VIEW_ENTITY_CONDITION = registerItem("view_entity_condition");
         }"#,
     );
 }

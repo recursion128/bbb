@@ -4073,6 +4073,7 @@ fn hud_item_icon_for_stack(
         compass_context,
         selected_item,
         carried_item,
+        true,
     )?;
     Some(HudItemIcon {
         layers: icon
