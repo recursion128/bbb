@@ -8,7 +8,10 @@ use super::dragon::{
     EnderDragonAnimationState, ENDER_DRAGON_PHASE_DATA_ID, ENDER_DRAGON_PHASE_HOVERING_ID,
     VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
 };
-use super::{is_vanilla_boat_type, is_vanilla_vehicle_entity_type, EntityTransform, EntityVec3};
+use super::{
+    is_vanilla_boat_type, is_vanilla_vehicle_entity_type, EntityTransform, EntityVec3,
+    VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
+};
 
 const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
 /// Vanilla `VehicleEntity.DATA_ID_HURT` / `DATA_ID_HURTDIR` / `DATA_ID_DAMAGE`:
@@ -410,6 +413,11 @@ const CREAKING_CAN_MOVE_DATA_ID: u8 = 16;
 /// (`CAN_MOVE` 16, `IS_ACTIVE` 17, `IS_TEARING_DOWN` 18; default `false`). `isTearingDown()` reads
 /// it, and `setupAnimationStates` `animateWhen`s the death keyframe on it.
 const CREAKING_IS_TEARING_DOWN_DATA_ID: u8 = 18;
+/// Vanilla `MinecartTNT.handleEntityEvent(10)` calls `primeFuse`, which sets the client-side
+/// `fuse` counter to 80. `TntMinecartRenderer.extractRenderState` projects it as
+/// `fuse - partialTicks + 1.0`.
+const TNT_MINECART_PRIME_EVENT_ID: i8 = 10;
+const TNT_MINECART_FUSE_TICKS: i32 = 80;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 pub struct EntityClientAnimationState {
@@ -528,6 +536,8 @@ pub struct EntityClientAnimationState {
     pub breeze: Option<BreezeAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub walk_animation: Option<WalkAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub minecart_tnt_fuse: Option<MinecartTntFuseAnimationState>,
 }
 
 /// Vanilla `VehicleEntity` hurt-roll state as consumed by `AbstractBoatRenderer` and
@@ -568,6 +578,23 @@ impl BoatDamageAnimationState {
 
     fn is_settled(self) -> bool {
         self.hurt_time <= 0 && self.damage <= 0.0
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct MinecartTntFuseAnimationState {
+    pub fuse_remaining_ticks: i32,
+}
+
+impl MinecartTntFuseAnimationState {
+    fn advance_client_tick(&mut self) {
+        if self.fuse_remaining_ticks > 0 {
+            self.fuse_remaining_ticks -= 1;
+        }
+    }
+
+    fn fuse_remaining_in_ticks(&self, partial_tick: f32) -> f32 {
+        self.fuse_remaining_ticks as f32 - partial_tick + 1.0
     }
 }
 
@@ -3855,6 +3882,12 @@ impl EntityClientAnimationState {
             self.sheep_eat = Some(SheepEatAnimationState {
                 eat_animation_tick: SHEEP_EAT_ANIMATION_TICKS,
             });
+        } else if entity_type_id == VANILLA_ENTITY_TYPE_TNT_MINECART_ID
+            && event_id == TNT_MINECART_PRIME_EVENT_ID
+        {
+            self.minecart_tnt_fuse = Some(MinecartTntFuseAnimationState {
+                fuse_remaining_ticks: TNT_MINECART_FUSE_TICKS,
+            });
         } else if entity_type_id == VANILLA_ENTITY_TYPE_WARDEN_ID
             && event_id == WARDEN_TENDRIL_EVENT_ID
         {
@@ -4219,6 +4252,14 @@ impl EntityClientAnimationState {
     pub fn creeper_swelling(&self, partial_tick: f32) -> f32 {
         self.creeper_swell
             .map_or(0.0, |state| state.swelling(partial_tick))
+    }
+
+    /// Vanilla `MinecartTntRenderState.fuseRemainingInTicks`: `MinecartTNT.getFuse() - partialTick
+    /// + 1.0`, or `-1.0` while the cart is not primed. `TntMinecartRenderer` consumes this for the
+    /// TNT display-block scale pulse and white overlay strobe.
+    pub fn minecart_tnt_fuse_remaining_in_ticks(&self, partial_tick: f32) -> f32 {
+        self.minecart_tnt_fuse
+            .map_or(-1.0, |state| state.fuse_remaining_in_ticks(partial_tick))
     }
 
     /// Vanilla `Shulker.getClientPeekAmount(partialTick)`, exposed for the renderer
@@ -4962,6 +5003,11 @@ impl EntityClientAnimationState {
         // synced health), so this also runs outside the per-type match.
         if let Some(death) = self.death.as_mut() {
             death.death_time = (death.death_time + 1).min(DEATH_ANIMATION_MAX_TICKS);
+        }
+        if entity_type_id == VANILLA_ENTITY_TYPE_TNT_MINECART_ID {
+            if let Some(fuse) = self.minecart_tnt_fuse.as_mut() {
+                fuse.advance_client_tick();
+            }
         }
         if entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
             if self.ender_dragon.is_some_and(|dragon| dragon.dragon_dying) {

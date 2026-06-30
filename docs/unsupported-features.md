@@ -5285,11 +5285,15 @@ When an agent does any of the following, update this file in the same slice:
       command-block/TNT/spawner block states, chest/hopper/default offsets,
       vanilla 0.75 content scale, `(-0.5, (displayOffset - 8) / 16, 0.5)`
       translate, `Ry(90)`, entity light coords, and hidden-glowing outline-only
-      attachment records are covered by focused tests. Rail-follow `posOnRail` /
+      attachment records are covered by focused tests. TNT minecart display-block
+      content now also projects `MinecartTNT.handleEntityEvent(10)` into the
+      renderer `fuseRemainingInTicks`, applies the final-10-tick fourth-power
+      scale pulse, and carries `OverlayTexture.u(1.0F)` white-strobe overlay
+      coords through the explicit block attachment bake path. Rail-follow `posOnRail` /
       `frontPos` / `backPos` along-track translation and slope pitch remain
-      unsupported, as do TNT fuse scale / white overlay, spawner animated
-      block-entity content, and minecart display-block culling bbox expansion;
-      the minecart body submission light/overlay metadata remains covered
+      unsupported, as do spawner animated block-entity content and minecart
+      display-block culling bbox expansion; the minecart body submission
+      light/overlay metadata remains covered
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder

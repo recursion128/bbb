@@ -1156,6 +1156,58 @@ fn entity_model_sources_project_minecart_damage_roll_from_vehicle_metadata() {
 }
 
 #[test]
+fn entity_model_sources_project_tnt_minecart_fuse_from_prime_event() {
+    let fuse = |store: &WorldStore, entity_id: i32, partial_tick: f32| -> f32 {
+        store
+            .entity_model_sources_at_partial_tick(partial_tick)
+            .into_iter()
+            .find(|source| source.entity_id == entity_id)
+            .expect("minecart source")
+            .minecart_tnt_fuse_remaining_in_ticks
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        28,
+        VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        29,
+        VANILLA_ENTITY_TYPE_MINECART_ID,
+    ));
+
+    assert_eq!(fuse(&store, 28, 0.0), -1.0);
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 28,
+        event_id: 10,
+    }));
+    // Vanilla `MinecartTNT.handleEntityEvent(10)` primes `fuse = 80`, and
+    // `TntMinecartRenderer.extractRenderState` consumes `fuse - partialTick + 1.0`.
+    assert_eq!(fuse(&store, 28, 0.0), 81.0);
+    assert_eq!(fuse(&store, 28, 0.5), 80.5);
+
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 29,
+        event_id: 10,
+    }));
+    assert_eq!(
+        fuse(&store, 29, 0.0),
+        -1.0,
+        "event 10 is TNT-minecart-specific"
+    );
+
+    store.advance_entity_client_animations(1);
+    assert_eq!(fuse(&store, 28, 0.0), 80.0);
+    assert_eq!(fuse(&store, 28, 0.5), 79.5);
+    store.advance_entity_client_animations(75);
+    assert_eq!(fuse(&store, 28, 0.0), 5.0);
+    assert_eq!(fuse(&store, 28, 0.5), 4.5);
+    store.advance_entity_client_animations(10);
+    assert_eq!(fuse(&store, 28, 0.0), 1.0);
+    assert_eq!(fuse(&store, 28, 1.0), 0.0);
+}
+
+#[test]
 fn minecart_display_block_state_projects_defaults_and_custom_metadata() {
     const VANILLA_ENTITY_TYPE_CHEST_MINECART_ID: i32 = 25;
     const VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID: i32 = 29;

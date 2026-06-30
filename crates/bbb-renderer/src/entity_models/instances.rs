@@ -345,6 +345,10 @@ entity_render_state! {
     /// `MinecartStep` data, and projects the vanilla weighted `renderPos` / rotation
     /// interpolation into the instance position and body rotations.
     (with_minecart_new_render) minecart_new_render: bool = false;
+    /// Vanilla `MinecartTntRenderState.fuseRemainingInTicks`: the extracted TNT fuse value
+    /// (`MinecartTNT.getFuse() - partialTick + 1.0`) used by `TntMinecartRenderer` for the
+    /// display-block scale pulse and white overlay. `-1.0` means unprimed/non-TNT.
+    (with_minecart_tnt_fuse_remaining_in_ticks) minecart_tnt_fuse_remaining_in_ticks: f32 = -1.0;
     /// Vanilla `BoatRenderState.bubbleAngle`: the partial-lerped bubble-column
     /// wobble angle in degrees. The boat renderer applies it only while the boat
     /// is not underwater.
@@ -2415,6 +2419,7 @@ mod tests {
                 minecart_hurt_dir: 1,
                 minecart_damage_time: 0.0,
                 minecart_new_render: false,
+                minecart_tnt_fuse_remaining_in_ticks: -1.0,
                 boat_bubble_angle: 0.0,
                 boat_underwater: false,
                 is_aggressive: false,

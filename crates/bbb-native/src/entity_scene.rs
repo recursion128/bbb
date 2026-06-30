@@ -1370,6 +1370,7 @@ fn entity_model_instance(
         .with_minecart_hurt_dir(source.boat_hurt_dir)
         .with_minecart_damage_time(source.boat_damage_time)
         .with_minecart_new_render(source.minecart_new_render)
+        .with_minecart_tnt_fuse_remaining_in_ticks(source.minecart_tnt_fuse_remaining_in_ticks)
         .with_boat_bubble_angle(source.boat_bubble_angle)
         .with_boat_underwater(source.boat_underwater)
         .with_is_aggressive(source.is_aggressive)
@@ -5053,6 +5054,29 @@ mod tests {
         assert!((render_state.minecart_hurt_time - 7.5).abs() < 1.0e-6);
         assert_eq!(render_state.minecart_hurt_dir, -1);
         assert!((render_state.minecart_damage_time - 17.5).abs() < 1.0e-6);
+    }
+
+    #[test]
+    fn entity_model_instances_project_tnt_minecart_fuse_remaining_ticks() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            95,
+            VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        assert!(world.apply_entity_event(EntityEvent {
+            entity_id: 95,
+            event_id: 10,
+        }));
+        world.advance_entity_client_animations(76);
+
+        let render_state = entity_model_instances_from_world_at_partial_tick(&world, None, 0.5)
+            .into_iter()
+            .find(|instance| instance.entity_id == 95)
+            .unwrap()
+            .render_state;
+
+        assert_eq!(render_state.minecart_tnt_fuse_remaining_in_ticks, 4.5);
     }
 
     #[test]

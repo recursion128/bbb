@@ -14,15 +14,16 @@ use std::{
 use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
 use bbb_protocol::packets::{EquipmentSlot, ItemStackSummary};
 use bbb_renderer::{
-    allay_hand_attach_transform, bake_generated_item_quads, bake_item_model_mesh_with_light,
-    bake_item_model_meshes_with_light, copper_golem_antenna_block_transform,
-    copper_golem_hand_attach_transform, custom_head_item_transform, dolphin_carried_item_transform,
-    enderman_carried_block_transform, fox_held_item_transform, humanoid_hand_attach_transform,
-    iron_golem_flower_block_transform, minecart_display_block_transform,
-    mooshroom_mushroom_block_transforms, panda_held_item_transform,
-    snow_golem_head_block_transform, villager_crossed_arms_item_transform,
-    witch_held_item_transform, EntityModelInstance, ItemModelMesh, ItemModelMeshSet, ItemModelQuad,
-    MooshroomVariant, ITEM_MODEL_FULL_BRIGHT_LIGHT,
+    allay_hand_attach_transform, bake_generated_item_quads,
+    bake_item_model_mesh_with_light_and_overlay, bake_item_model_meshes_with_light,
+    copper_golem_antenna_block_transform, copper_golem_hand_attach_transform,
+    custom_head_item_transform, dolphin_carried_item_transform, enderman_carried_block_transform,
+    fox_held_item_transform, humanoid_hand_attach_transform, iron_golem_flower_block_transform,
+    minecart_tnt_display_block_transform, mooshroom_mushroom_block_transforms,
+    panda_held_item_transform, snow_golem_head_block_transform,
+    villager_crossed_arms_item_transform, witch_held_item_transform, EntityModelInstance,
+    ItemModelMesh, ItemModelMeshSet, ItemModelQuad, MooshroomVariant, ITEM_MODEL_FULL_BRIGHT_LIGHT,
+    ITEM_MODEL_NO_OVERLAY,
 };
 use bbb_world::{TerrainLight, WorldStore};
 use glam::{Mat4, Vec3};
@@ -71,6 +72,7 @@ struct EntityBlockAttachment {
     properties: BTreeMap<String, String>,
     transform: Mat4,
     light: [f32; 2],
+    overlay: [f32; 2],
     outline_only: bool,
 }
 
@@ -78,6 +80,15 @@ fn entity_render_state_shader_light(instance: &EntityModelInstance) -> [f32; 2] 
     let block = (instance.render_state.light_coords >> 4) & 0xF;
     let sky = (instance.render_state.light_coords >> 20) & 0xF;
     [block as f32 / 15.0, sky as f32 / 15.0]
+}
+
+fn minecart_tnt_display_block_overlay(instance: &EntityModelInstance) -> [f32; 2] {
+    let fuse = instance.render_state.minecart_tnt_fuse_remaining_in_ticks;
+    if fuse > -1.0 && (fuse as i32) / 5 % 2 == 0 {
+        [15.0, 10.0]
+    } else {
+        ITEM_MODEL_NO_OVERLAY
+    }
 }
 
 /// Bakes entity-attached block-model layers that sample the blocks atlas. This is the block-model
@@ -105,10 +116,11 @@ pub(crate) fn entity_block_models(
             continue;
         };
         if !quads.is_empty() {
-            meshes.push(bake_item_model_mesh_with_light(
+            meshes.push(bake_item_model_mesh_with_light_and_overlay(
                 &quads,
                 attachment.transform,
                 attachment.light,
+                attachment.overlay,
             ));
         }
     }
@@ -128,6 +140,7 @@ fn entity_block_attachments(
                 properties: carved_pumpkin_default_properties(),
                 transform,
                 light: entity_render_state_shader_light(instance),
+                overlay: ITEM_MODEL_NO_OVERLAY,
                 outline_only: entity_block_attachment_outline_only(instance),
             });
         }
@@ -137,6 +150,7 @@ fn entity_block_attachments(
                 properties: poppy_default_properties(),
                 transform,
                 light: entity_render_state_shader_light(instance),
+                overlay: ITEM_MODEL_NO_OVERLAY,
                 outline_only: false,
             });
         }
@@ -147,19 +161,21 @@ fn entity_block_attachments(
                     properties: block_state.properties,
                     transform,
                     light: entity_render_state_shader_light(instance),
+                    overlay: ITEM_MODEL_NO_OVERLAY,
                     outline_only: false,
                 });
             }
         }
         if let Some(display) = world.minecart_display_block_state(instance.entity_id) {
             if let Some(transform) =
-                minecart_display_block_transform(instance, display.display_offset)
+                minecart_tnt_display_block_transform(instance, display.display_offset)
             {
                 attachments.push(EntityBlockAttachment {
                     block_id: Cow::Owned(display.block.name),
                     properties: display.block.properties,
                     transform,
                     light: entity_render_state_shader_light(instance),
+                    overlay: minecart_tnt_display_block_overlay(instance),
                     outline_only: entity_block_attachment_outline_only(instance),
                 });
             }
@@ -171,6 +187,7 @@ fn entity_block_attachments(
                     properties: mooshroom_mushroom_default_properties(),
                     transform,
                     light: entity_render_state_shader_light(instance),
+                    overlay: ITEM_MODEL_NO_OVERLAY,
                     outline_only: entity_block_attachment_outline_only(instance),
                 });
             }
@@ -211,6 +228,7 @@ fn copper_golem_antenna_block_attachment_from_stack(
         properties: stack.component_patch.block_state_properties.clone(),
         transform,
         light: entity_render_state_shader_light(instance),
+        overlay: ITEM_MODEL_NO_OVERLAY,
         outline_only: false,
     })
 }
@@ -1201,6 +1219,7 @@ mod tests {
 
     const VANILLA_ENTITY_TYPE_ENDERMAN_ID: i32 = 41;
     const VANILLA_ENTITY_TYPE_CHEST_MINECART_ID: i32 = 25;
+    const VANILLA_ENTITY_TYPE_TNT_MINECART_ID: i32 = 133;
     const ENDERMAN_CARRY_STATE_DATA_ID: u8 = 16;
     const OPTIONAL_BLOCK_STATE_SERIALIZER_ID: i32 = 15;
     const GRASS_BLOCK_STATE_ID: i32 = 9;
@@ -1289,6 +1308,15 @@ mod tests {
         world.apply_add_entity(protocol_add_entity(
             entity_id,
             VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
+        ));
+        world
+    }
+
+    fn world_with_tnt_minecart(entity_id: i32) -> WorldStore {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            entity_id,
+            VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
         ));
         world
     }
@@ -1432,6 +1460,7 @@ mod tests {
             ])
         );
         assert_eq!(attachments[0].light, [6.0 / 15.0, 10.0 / 15.0]);
+        assert_eq!(attachments[0].overlay, ITEM_MODEL_NO_OVERLAY);
         assert!(!attachments[0].outline_only);
         assert!(attachments[0]
             .transform
@@ -1445,6 +1474,44 @@ mod tests {
         let outline_attachments = entity_block_attachments(&[outline], &world, None);
         assert_eq!(outline_attachments.len(), 1);
         assert!(outline_attachments[0].outline_only);
+    }
+
+    #[test]
+    fn entity_block_attachments_apply_tnt_minecart_fuse_scale_and_white_overlay() {
+        let entity_id = 133;
+        let world = world_with_tnt_minecart(entity_id);
+        let light_coords = (5_u32 << 4) | (12_u32 << 20);
+        let primed = EntityModelInstance::minecart(entity_id, [0.0, 64.0, 0.0], 0.0)
+            .with_light_coords(light_coords)
+            .with_minecart_tnt_fuse_remaining_in_ticks(4.5);
+
+        let attachments = entity_block_attachments(&[primed], &world, None);
+
+        assert_eq!(attachments.len(), 1);
+        assert_eq!(attachments[0].block_id.as_ref(), "minecraft:tnt");
+        assert_eq!(
+            attachments[0].properties,
+            BTreeMap::from([("unstable".to_string(), "false".to_string())])
+        );
+        assert_eq!(attachments[0].light, [5.0 / 15.0, 12.0 / 15.0]);
+        assert_eq!(attachments[0].overlay, [15.0, 10.0]);
+        assert_eq!(
+            attachments[0].transform,
+            minecart_tnt_display_block_transform(&primed, 6).unwrap()
+        );
+
+        let unprimed = primed.with_minecart_tnt_fuse_remaining_in_ticks(-1.0);
+        let unprimed_attachment = entity_block_attachments(&[unprimed], &world, None)
+            .pop()
+            .expect("unprimed tnt attachment");
+        assert_eq!(unprimed_attachment.overlay, ITEM_MODEL_NO_OVERLAY);
+        assert_ne!(unprimed_attachment.transform, attachments[0].transform);
+
+        let odd_strobe = primed.with_minecart_tnt_fuse_remaining_in_ticks(6.0);
+        let odd_strobe_attachment = entity_block_attachments(&[odd_strobe], &world, None)
+            .pop()
+            .expect("odd strobe tnt attachment");
+        assert_eq!(odd_strobe_attachment.overlay, ITEM_MODEL_NO_OVERLAY);
     }
 
     #[test]

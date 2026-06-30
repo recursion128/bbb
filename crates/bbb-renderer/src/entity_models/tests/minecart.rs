@@ -194,6 +194,47 @@ fn minecart_display_block_transform_uses_vanilla_content_pose_before_body_flip()
 }
 
 #[test]
+fn tnt_minecart_display_block_transform_applies_vanilla_fuse_scale() {
+    let display_offset = 6;
+    let fuse = 4.5_f32;
+    let minecart = EntityModelInstance::minecart(41, [2.0, 64.0, -3.0], 45.0)
+        .with_minecart_tnt_fuse_remaining_in_ticks(fuse);
+    let g = (1.0 - fuse / 10.0).clamp(0.0, 1.0);
+    let scale = 1.0 + g * g * g * g * 0.3;
+    let expected = minecart_display_block_transform(&minecart, display_offset).unwrap()
+        * Mat4::from_scale(Vec3::splat(scale));
+
+    assert_close_transform(
+        minecart_tnt_display_block_transform(&minecart, display_offset).unwrap(),
+        expected,
+    );
+    assert_close_transform(
+        minecart_tnt_display_block_transform(
+            &minecart.with_minecart_tnt_fuse_remaining_in_ticks(10.0),
+            display_offset,
+        )
+        .unwrap(),
+        minecart_display_block_transform(
+            &minecart.with_minecart_tnt_fuse_remaining_in_ticks(10.0),
+            display_offset,
+        )
+        .unwrap(),
+    );
+    assert_close_transform(
+        minecart_tnt_display_block_transform(
+            &minecart.with_minecart_tnt_fuse_remaining_in_ticks(-1.0),
+            display_offset,
+        )
+        .unwrap(),
+        minecart_display_block_transform(
+            &minecart.with_minecart_tnt_fuse_remaining_in_ticks(-1.0),
+            display_offset,
+        )
+        .unwrap(),
+    );
+}
+
+#[test]
 fn minecart_textured_mesh_matches_colored_geometry_and_vanilla_uvs() {
     let (atlas, _) = build_entity_model_texture_atlas(&minecart_texture_images()).unwrap();
     let instance = EntityModelInstance::minecart(1, [0.0, 64.0, 0.0], 0.0)

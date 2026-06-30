@@ -158,6 +158,32 @@ pub fn minecart_display_block_transform(
     ))
 }
 
+/// World transform for vanilla `TntMinecartRenderer.submitMinecartContents`.
+///
+/// TNT minecarts inherit the ordinary display-block content transform, then scale the block uniformly
+/// when the extracted `fuseRemainingInTicks` is in the final 10 ticks:
+/// `s = 1 + clamp(1 - fuse/10, 0, 1)^4 * 0.3`.
+pub fn minecart_tnt_display_block_transform(
+    instance: &EntityModelInstance,
+    display_offset: i32,
+) -> Option<Mat4> {
+    Some(
+        minecart_display_block_transform(instance, display_offset)?
+            * Mat4::from_scale(Vec3::splat(minecart_tnt_display_block_scale(
+                instance.render_state.minecart_tnt_fuse_remaining_in_ticks,
+            ))),
+    )
+}
+
+fn minecart_tnt_display_block_scale(fuse_remaining_in_ticks: f32) -> f32 {
+    if fuse_remaining_in_ticks > -1.0 && fuse_remaining_in_ticks < 10.0 {
+        let g = (1.0 - fuse_remaining_in_ticks / 10.0).clamp(0.0, 1.0);
+        1.0 + g * g * g * g * 0.3
+    } else {
+        1.0
+    }
+}
+
 /// World transform for vanilla `SnowGolemHeadLayer`'s carved-pumpkin block model.
 ///
 /// The returned matrix expects block quads normalized to the `0..1` unit cube, matching

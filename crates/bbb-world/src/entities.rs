@@ -443,6 +443,11 @@ pub struct EntityModelSourceState {
     /// `NewMinecartBehavior.getCartLerpPosition` / `getCartLerp*Rot`.
     #[serde(default)]
     pub minecart_new_render: bool,
+    /// Vanilla `MinecartTntRenderState.fuseRemainingInTicks`: `MinecartTNT.getFuse() - partialTick
+    /// + 1.0`, or `-1.0` when the TNT minecart is not primed. Drives the TNT display block's
+    /// renderer-owned scale pulse and white overlay.
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub minecart_tnt_fuse_remaining_in_ticks: f32,
     /// Vanilla `BoatRenderState.bubbleAngle` (`AbstractBoat.getBubbleAngle(partialTick)`):
     /// the bubble-column wobble angle in degrees, before the renderer's underwater gate.
     #[serde(default)]

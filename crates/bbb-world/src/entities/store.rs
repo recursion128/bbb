@@ -1279,6 +1279,9 @@ impl EntityStore {
             boat_hurt_dir,
             boat_damage_time,
             minecart_new_render,
+            minecart_tnt_fuse_remaining_in_ticks: client_animations
+                .animations
+                .minecart_tnt_fuse_remaining_in_ticks(partial_ticks),
             boat_bubble_angle,
             boat_underwater: false,
             wither_x_head_rots,

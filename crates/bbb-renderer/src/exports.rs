@@ -62,9 +62,9 @@ pub use crate::entity_models::{
     copper_golem_hand_attach_transform, custom_head_item_transform, dolphin_carried_item_transform,
     enderman_carried_block_transform, fox_held_item_transform, humanoid_hand_attach_transform,
     iron_golem_flower_block_transform, minecart_display_block_transform,
-    mooshroom_mushroom_block_transforms, panda_held_item_transform,
-    snow_golem_head_block_transform, villager_crossed_arms_item_transform,
-    witch_held_item_transform,
+    minecart_tnt_display_block_transform, mooshroom_mushroom_block_transforms,
+    panda_held_item_transform, snow_golem_head_block_transform,
+    villager_crossed_arms_item_transform, witch_held_item_transform,
 };
 pub use crate::generated_item::{bake_generated_item_quads, ItemSpriteRect, SpriteAlphaMask};
 pub use crate::hud::{
