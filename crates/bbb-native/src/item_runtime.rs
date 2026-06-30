@@ -1,7 +1,8 @@
 use std::{
-    cell::RefCell,
+    cell::{Cell, RefCell},
     collections::{BTreeMap, BTreeSet, HashMap},
     path::PathBuf,
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 use anyhow::{Context, Result};
@@ -353,6 +354,7 @@ pub(crate) struct NativeItemRuntime {
     local_dynamic_skins: RefCell<LocalDynamicPlayerSkinCache>,
     local_dynamic_textures: RefCell<LocalDynamicPlayerTextureCache>,
     profile_skins: RefCell<ProfileSkinCache>,
+    local_time_epoch_millis_override: Cell<Option<i64>>,
 }
 
 impl NativeItemRuntime {
@@ -567,6 +569,7 @@ impl NativeItemRuntime {
             local_dynamic_skins: RefCell::default(),
             local_dynamic_textures: RefCell::default(),
             profile_skins: RefCell::default(),
+            local_time_epoch_millis_override: Cell::new(None),
         })
     }
 
@@ -600,6 +603,7 @@ impl NativeItemRuntime {
             local_dynamic_skins: RefCell::default(),
             local_dynamic_textures: RefCell::default(),
             profile_skins: RefCell::default(),
+            local_time_epoch_millis_override: Cell::new(None),
         }
     }
 
@@ -612,6 +616,12 @@ impl NativeItemRuntime {
         runtime.registry = Some(registry);
         runtime.equipment_assets = equipment_assets;
         runtime
+    }
+
+    #[cfg(test)]
+    fn set_local_time_epoch_millis_for_test(&self, epoch_millis: i64) {
+        self.local_time_epoch_millis_override
+            .set(Some(epoch_millis));
     }
 
     pub(crate) fn item_definition_count(&self) -> usize {
@@ -1350,6 +1360,7 @@ impl NativeItemRuntime {
                             main_hand_left: None,
                             context_dimension: None,
                             context_entity_type: None,
+                            local_time_epoch_millis: self.local_time_epoch_millis(),
                             default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
                             trim_material_keys: None,
                         })
@@ -1746,6 +1757,7 @@ impl NativeItemRuntime {
             main_hand_left: owner_main_hand_left,
             context_dimension,
             context_entity_type,
+            local_time_epoch_millis: self.local_time_epoch_millis(),
             default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
             trim_material_keys,
         };
@@ -1893,6 +1905,7 @@ impl NativeItemRuntime {
             main_hand_left: parent_context.main_hand_left,
             context_dimension: parent_context.context_dimension,
             context_entity_type: parent_context.context_entity_type,
+            local_time_epoch_millis: parent_context.local_time_epoch_millis,
             default_max_stack_size_for_item: parent_context.default_max_stack_size_for_item,
             trim_material_keys: parent_context.trim_material_keys,
         };
@@ -1916,12 +1929,25 @@ impl NativeItemRuntime {
             .clamp(1, 99)
     }
 
+    fn local_time_epoch_millis(&self) -> Option<i64> {
+        self.local_time_epoch_millis_override
+            .get()
+            .or_else(current_epoch_millis)
+    }
+
     fn fallback_icon_texture_layers(&self) -> Vec<ItemIconTextureLayer> {
         vec![ItemIconTextureLayer {
             texture_index: self.textures.fallback_index(),
             tint: ItemIconTint::Static(ITEM_TINT_WHITE),
         }]
     }
+}
+
+fn current_epoch_millis() -> Option<i64> {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .ok()
+        .and_then(|duration| i64::try_from(duration.as_millis()).ok())
 }
 
 fn item_model_id_for_stack<'a>(
@@ -2953,6 +2979,7 @@ mod tests {
     use crate::skin_runtime::{
         AsyncDynamicPlayerSkinRuntime, AsyncDynamicPlayerTextureRuntime, SkinPngFetcher,
     };
+    use chrono::TimeZone;
     use std::{
         io::Cursor,
         path::{Path, PathBuf},
@@ -5537,6 +5564,46 @@ mod tests {
     }
 
     #[test]
+    fn native_item_runtime_resolves_local_time_select_property() {
+        let root = unique_temp_dir("item-runtime-local-time-select");
+        write_local_time_select_fixture(&root);
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let uv = |model_id: &str| {
+            runtime
+                .textures
+                .texture_uv_rect(runtime.texture_index(&format!("minecraft:item/{model_id}")))
+                .unwrap()
+        };
+        let stack = ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let selected = || runtime.icon_for_stack(&stack).unwrap().layers[0].uv;
+
+        runtime.set_local_time_epoch_millis_for_test(
+            chrono::Utc
+                .with_ymd_and_hms(2026, 12, 25, 0, 0, 0)
+                .single()
+                .unwrap()
+                .timestamp_millis(),
+        );
+        assert_eq!(selected(), uv("seasonal_chest_christmas"));
+
+        runtime.set_local_time_epoch_millis_for_test(
+            chrono::Utc
+                .with_ymd_and_hms(2026, 12, 27, 0, 0, 0)
+                .single()
+                .unwrap()
+                .timestamp_millis(),
+        );
+        assert_eq!(selected(), uv("seasonal_chest_normal"));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn native_item_runtime_resolves_component_select_values() {
         let root = unique_temp_dir("item-runtime-component-select");
         write_component_select_fixture(&root);
@@ -6688,6 +6755,32 @@ mod tests {
         write_flat_item_model_and_texture(&assets, "cmd_plain", &[40, 40, 40, 255]);
         write_flat_item_model_and_texture(&assets, "cmd_blue", &[40, 80, 220, 255]);
         write_flat_item_model_and_texture(&assets, "cmd_green", &[40, 180, 80, 255]);
+    }
+
+    fn write_local_time_select_fixture(root: &Path) {
+        let assets = assets_dir(root);
+        write_item_atlases(&assets);
+        write_single_item_registry_source(root, "seasonal_chest");
+        write_json(
+            &assets.join("items").join("seasonal_chest.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:local_time",
+                    "pattern": "MM-dd",
+                    "time_zone": "GMT",
+                    "cases": [
+                        {
+                            "when": ["12-24", "12-25", "12-26"],
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/seasonal_chest_christmas" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/seasonal_chest_normal" }
+                }
+            }"#,
+        );
+        write_flat_item_model_and_texture(&assets, "seasonal_chest_normal", &[80, 60, 40, 255]);
+        write_flat_item_model_and_texture(&assets, "seasonal_chest_christmas", &[180, 30, 30, 255]);
     }
 
     fn write_component_select_fixture(root: &Path) {

@@ -7,6 +7,7 @@ use bbb_pack::{
 use bbb_protocol::packets::{
     DataComponentPatchSummary, ItemRaritySummary, ItemStackTemplateSummary,
 };
+use chrono::{Datelike, FixedOffset, Local, TimeZone, Utc};
 use serde_json::Value;
 
 use super::{
@@ -315,8 +316,7 @@ fn last_range_entry_at_or_below(
 
 /// The subset of vanilla `SelectItemModelProperty` whose value is a pure
 /// projection of the item stack, or a narrow ambient context already threaded by
-/// native item submitters / GUI call sites. The rest (`local_time`) need
-/// broader time context and keep the build-time collapse.
+/// native item submitters / GUI call sites.
 #[derive(Debug, Clone, PartialEq)]
 pub(super) enum SelectProperty {
     /// `minecraft:display_context` — `DisplayContext.get`, matched against the
@@ -331,6 +331,13 @@ pub(super) enum SelectProperty {
     /// `minecraft:context_entity_type` — `ContextEntityType.get`, matched
     /// against the owner entity type resource key.
     ContextEntityType,
+    /// `minecraft:local_time` — `LocalTime.get`, matched against the formatted
+    /// wall-clock date. Native currently supports the vanilla 26.1 chest
+    /// pattern `MM-dd`.
+    LocalTime {
+        pattern: String,
+        time_zone: Option<String>,
+    },
     /// `minecraft:charge_type` — `Charge.get`, matched against the crossbow's
     /// charged-projectile contents.
     ChargeType,
@@ -467,6 +474,19 @@ fn select_property_for(property: &ItemModelProperty) -> Option<SelectProperty> {
         "minecraft:main_hand" => Some(SelectProperty::MainHand),
         "minecraft:context_dimension" => Some(SelectProperty::ContextDimension),
         "minecraft:context_entity_type" => Some(SelectProperty::ContextEntityType),
+        "minecraft:local_time" => Some(SelectProperty::LocalTime {
+            pattern: property
+                .raw()
+                .get("pattern")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string(),
+            time_zone: property
+                .raw()
+                .get("time_zone")
+                .and_then(Value::as_str)
+                .map(str::to_string),
+        }),
         "minecraft:charge_type" => Some(SelectProperty::ChargeType),
         "minecraft:trim_material" => Some(SelectProperty::TrimMaterial),
         "minecraft:block_state" => property
@@ -656,6 +676,8 @@ pub(super) struct IconResolveContext<'a> {
     /// Vanilla `ContextEntityType.get`: `None` means this native call site has
     /// no owner entity, so select cases do not match.
     pub context_entity_type: Option<&'a str>,
+    /// Vanilla `LocalTime.get`: wall-clock millis used for the formatted date.
+    pub local_time_epoch_millis: Option<i64>,
     pub default_max_stack_size_for_item: Option<&'a dyn Fn(i32) -> i32>,
     /// `minecraft:trim_material` registry keys by holder id (the dynamic
     /// registry, projected from `bbb-world` at the call site).
@@ -686,6 +708,12 @@ fn select_property_value(
         SelectProperty::ContextEntityType => ctx
             .context_entity_type
             .map(|value| SelectCaseValue::String(value.to_string())),
+        SelectProperty::LocalTime { pattern, time_zone } => ctx
+            .local_time_epoch_millis
+            .and_then(|epoch_millis| {
+                local_time_select_value(epoch_millis, pattern, time_zone.as_deref())
+            })
+            .map(SelectCaseValue::String),
         SelectProperty::ChargeType => Some(SelectCaseValue::String(
             ctx.crossbow_charge.when_name().to_string(),
         )),
@@ -705,6 +733,64 @@ fn select_property_value(
             .map(|value| SelectCaseValue::String(value.clone())),
         SelectProperty::Component { component } => component.value(ctx),
     }
+}
+
+fn local_time_select_value(
+    epoch_millis: i64,
+    pattern: &str,
+    time_zone: Option<&str>,
+) -> Option<String> {
+    if pattern != "MM-dd" {
+        return None;
+    }
+    let (month, day) = match time_zone {
+        Some(time_zone) => {
+            let offset = fixed_time_zone_offset(time_zone)?;
+            let date = Utc
+                .timestamp_millis_opt(epoch_millis)
+                .single()?
+                .with_timezone(&offset);
+            (date.month(), date.day())
+        }
+        None => {
+            let date = Local.timestamp_millis_opt(epoch_millis).single()?;
+            (date.month(), date.day())
+        }
+    };
+    Some(format!("{month:02}-{day:02}"))
+}
+
+fn fixed_time_zone_offset(time_zone: &str) -> Option<FixedOffset> {
+    match time_zone {
+        "GMT" | "UTC" | "Etc/UTC" | "Z" => FixedOffset::east_opt(0),
+        value => {
+            let offset = value
+                .strip_prefix("GMT")
+                .or_else(|| value.strip_prefix("UTC"))
+                .unwrap_or(value);
+            parse_time_zone_offset(offset)
+        }
+    }
+}
+
+fn parse_time_zone_offset(offset: &str) -> Option<FixedOffset> {
+    let (sign, rest) = match offset.as_bytes().first().copied()? {
+        b'+' => (1, &offset[1..]),
+        b'-' => (-1, &offset[1..]),
+        _ => return None,
+    };
+    let (hour, minute) = match rest.split_once(':') {
+        Some((hour, minute)) => (hour.parse::<i32>().ok()?, minute.parse::<i32>().ok()?),
+        None if rest.len() == 4 => (
+            rest[..2].parse::<i32>().ok()?,
+            rest[2..].parse::<i32>().ok()?,
+        ),
+        None => (rest.parse::<i32>().ok()?, 0),
+    };
+    if !(0..=23).contains(&hour) || !(0..=59).contains(&minute) {
+        return None;
+    }
+    FixedOffset::east_opt(sign * (hour * 3600 + minute * 60))
 }
 
 impl ItemIconModel {

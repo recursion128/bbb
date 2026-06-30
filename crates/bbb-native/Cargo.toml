@@ -20,6 +20,7 @@ bbb-platform = { path = "../bbb-platform" }
 bbb-protocol = { path = "../bbb-protocol" }
 bbb-renderer = { path = "../bbb-renderer" }
 bbb-world = { path = "../bbb-world" }
+chrono = { workspace = true }
 clap = { workspace = true }
 glam = { workspace = true }
 pollster = { workspace = true }
