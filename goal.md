@@ -505,7 +505,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `ArmorStandRenderState.wiggle = gameTime - lastHit + partialTick`，并在
     root transform 中按 `sin(wiggle / 1.5 * PI) * 3°` 追加 Y 轴 setup rotation；
     base textured submission 继承相同 transform。
-  - remaining arm poses。
+  - [x] P1-2 illager / piglin / skeleton arm-pose audit：skeleton bow aim、
+    held spear、zombie-family STAB/WHACK、piglin/brute attack/crossbow/admire、
+    illager spell / bow / celebrate / attack / crossbow / riding precedence 已有
+    vanilla-backed renderer/native/world 覆盖；剩余 custom `NONE` swing type、
+    first-person / item presentation edge cases 归入 P1-3，不作为当前 P1-2 blocker。
   - [x] player spear use-item kinetic sway：using-hand `ArmPose.SPEAR`
     现在按 vanilla `SpearAnimations.thirdPersonHandUse` 使用 `KineticWeapon`
     delay/condition ticks 叠加 arm raise/sway；held item layer 同步追加
@@ -581,7 +585,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     illusioner 复用 `IllusionerRenderer.submit` 的四个 clone root transform，
     每个 clone 生成一次 right/left hand item transform，focused tests 覆盖
     idle 0 个、可见 aggressive 1 个、隐身 aggressive/casting 4 个 mesh。
-  - attack / crossbow / spell / celebrate / riding 其他组合冲突。
+  - [x] illager attack / crossbow / spell / celebrate / riding 组合冲突：
+    renderer transform test 现在固定 vanilla `IllagerModel.setupAnim` 顺序：
+    riding seated pose 先写 limbs，随后 spell / bow / crossbow hold /
+    crossbow charge / celebrate / attack arm-pose branch 可覆写 arms，legs 保持
+    seated。
   - [x] main-hand spear STAB held-item layer transform：player STAB arm lunge
     之后，held item transform 追加 vanilla
     `SpearAnimations.thirdPersonAttackItem` 的 local pivot rotation 与 spear

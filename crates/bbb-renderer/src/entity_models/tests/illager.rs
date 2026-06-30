@@ -302,6 +302,95 @@ fn riding_illagers_use_vanilla_seated_pose() {
 }
 
 #[test]
+fn riding_illager_arm_poses_still_override_the_seated_arms() {
+    use std::f32::consts::{FRAC_PI_2, PI};
+
+    // Vanilla `IllagerModel.setupAnim` writes the riding preset first, then runs the
+    // arm-pose branch. The legs stay seated, while spell / bow / crossbow / celebrate
+    // arms replace the `-PI / 5` seated arm pitch.
+    let spellcasting =
+        EntityModelInstance::illager(46, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Evoker)
+            .with_is_riding(true)
+            .with_illager_spellcasting(true);
+    let mut spell_model = IllagerModel::new(&spellcasting, IllagerModelFamily::Evoker);
+    spell_model.prepare(&spellcasting);
+    assert_illager_seated_legs(&mut spell_model);
+    let spell_right = spell_model.root_mut().child_mut("right_arm").pose.rotation;
+    assert!((spell_right[0] - 0.25).abs() < 1e-6);
+    assert!((spell_right[2] - PI * 3.0 / 4.0).abs() < 1e-6);
+
+    let celebrating =
+        EntityModelInstance::illager(140, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Vindicator)
+            .with_is_riding(true)
+            .with_illager_celebrating(true);
+    let mut celebrating_model = IllagerModel::new(&celebrating, IllagerModelFamily::Vindicator);
+    celebrating_model.prepare(&celebrating);
+    assert_illager_seated_legs(&mut celebrating_model);
+    let celebrating_right = celebrating_model
+        .root_mut()
+        .child_mut("right_arm")
+        .pose
+        .rotation;
+    assert!((celebrating_right[0] - 0.05).abs() < 1e-6);
+    assert!((celebrating_right[2] - 2.670354).abs() < 1e-6);
+
+    let yaw = 25.0_f32;
+    let pitch = -15.0_f32;
+    let yaw_rad = yaw.to_radians();
+    let pitch_rad = pitch.to_radians();
+    let crossbow_hold =
+        EntityModelInstance::illager(103, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Pillager)
+            .with_is_riding(true)
+            .with_head_look(yaw, pitch)
+            .with_pillager_holds_crossbow(true);
+    let mut hold_model = IllagerModel::new(&crossbow_hold, IllagerModelFamily::Pillager);
+    hold_model.prepare(&crossbow_hold);
+    assert_illager_seated_legs(&mut hold_model);
+    let hold_right = hold_model.root_mut().child_mut("right_arm").pose.rotation;
+    assert!((hold_right[0] - (-FRAC_PI_2 + pitch_rad + 0.1)).abs() < 1e-6);
+    assert!((hold_right[1] - (-0.3 + yaw_rad)).abs() < 1e-6);
+
+    let crossbow_charge = crossbow_hold
+        .with_is_charging_crossbow(true)
+        .with_crossbow_charge_ticks(12.5);
+    let mut charge_model = IllagerModel::new(&crossbow_charge, IllagerModelFamily::Pillager);
+    charge_model.prepare(&crossbow_charge);
+    assert_illager_seated_legs(&mut charge_model);
+    let charge_right = charge_model.root_mut().child_mut("right_arm").pose.rotation;
+    let charge_left = charge_model.root_mut().child_mut("left_arm").pose.rotation;
+    assert!((charge_right[0] - (-0.97079635)).abs() < 1e-6);
+    assert!((charge_right[1] - (-0.8)).abs() < 1e-6);
+    assert!(charge_left[1] > 0.4 && charge_left[1] < 0.85);
+
+    let bow_aim =
+        EntityModelInstance::illager(68, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Illusioner)
+            .with_is_riding(true)
+            .with_head_look(yaw, pitch)
+            .with_is_aggressive(true);
+    let mut bow_model = IllagerModel::new(&bow_aim, IllagerModelFamily::Illusioner);
+    bow_model.prepare(&bow_aim);
+    assert_illager_seated_legs(&mut bow_model);
+    let bow_right = bow_model.root_mut().child_mut("right_arm").pose.rotation;
+    let bow_left = bow_model.root_mut().child_mut("left_arm").pose.rotation;
+    assert!((bow_right[0] - (-FRAC_PI_2 + pitch_rad)).abs() < 1e-6);
+    assert!((bow_right[1] - (-0.1 + yaw_rad)).abs() < 1e-6);
+    assert!((bow_left[2] - FRAC_PI_2).abs() < 1e-6);
+}
+
+fn assert_illager_seated_legs(model: &mut IllagerModel) {
+    use std::f32::consts::PI;
+
+    let right_leg = model.root_mut().child_mut("right_leg").pose.rotation;
+    assert!((right_leg[0] - -1.4137167).abs() < 1e-6);
+    assert!((right_leg[1] - PI / 10.0).abs() < 1e-6);
+    assert!((right_leg[2] - 0.07853982).abs() < 1e-6);
+    let left_leg = model.root_mut().child_mut("left_leg").pose.rotation;
+    assert!((left_leg[0] - -1.4137167).abs() < 1e-6);
+    assert!((left_leg[1] - -PI / 10.0).abs() < 1e-6);
+    assert!((left_leg[2] - -0.07853982).abs() < 1e-6);
+}
+
+#[test]
 fn pillager_swings_its_arms_when_walking() {
     // Vanilla `IllagerModel.setupAnim` swings the separate arms with the `HumanoidModel`
     // amplitude `cos(pos * 0.6662 [+ π]) * 2.0 * speed * 0.5` (right arm a half-cycle out of

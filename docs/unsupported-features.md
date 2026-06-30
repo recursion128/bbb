@@ -3576,7 +3576,10 @@ When an agent does any of the following, update this file in the same slice:
       hand, and invisible casting/aggressive illusioners submit held items once
       per clone. Spellcasting,
       crossbow hold/charge, illusioner bow aim, evoker/vindicator celebrating,
-      vindicator empty/armed attacking, and riding sit arm/leg poses are implemented.
+      vindicator empty/armed attacking, and riding sit arm/leg poses are implemented;
+      focused renderer tests now pin the vanilla ordering where riding writes the
+      seated limbs first and spell / bow / crossbow / celebrate / attack arm poses
+      can still overwrite the arms while the legs remain seated.
     - armor stand entities as renderer-owned vanilla 26.1
       `ArmorStandModel.createBodyLayer()` geometry, including the normal layer,
       `ModelLayers.ARMOR_STAND_SMALL` `HumanoidModel.BABY_TRANSFORMER` root-part
