@@ -315,6 +315,18 @@ fn fs_main(input: VertexOut, @builtin(front_facing) front_facing: bool) -> @loca
 }
 "#;
 
+fn entity_model_cutout_z_offset_shader() -> String {
+    ENTITY_MODEL_TEXTURED_SHADER
+        .replace(
+            "    minecraft_light1: vec4<f32>,\n};",
+            "    minecraft_light1: vec4<f32>,\n    glint_offsets: vec4<f32>,\n    view_proj_view_offset_z: mat4x4<f32>,\n};",
+        )
+        .replace(
+            "out.position = camera.view_proj * vec4<f32>(input.position, 1.0);",
+            "out.position = camera.view_proj_view_offset_z * vec4<f32>(input.position, 1.0);",
+        )
+}
+
 pub(super) const ENTITY_MODEL_ARMOR_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
@@ -1011,7 +1023,12 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 }
 "#;
 
-fn entity_model_glint_shader(scale: &str) -> String {
+fn entity_model_glint_shader(scale: &str, use_view_offset_z_layering: bool) -> String {
+    let view_proj = if use_view_offset_z_layering {
+        "camera.view_proj_view_offset_z"
+    } else {
+        "camera.view_proj"
+    };
     format!(
         r#"
 struct Camera {{
@@ -1029,6 +1046,7 @@ struct Camera {{
     minecraft_light0: vec4<f32>,
     minecraft_light1: vec4<f32>,
     glint_offsets: vec4<f32>,
+    view_proj_view_offset_z: mat4x4<f32>,
 }};
 
 const GLINT_UV_SCALE: f32 = {scale};
@@ -1094,7 +1112,7 @@ fn glint_uv(local_uv: vec2<f32>) -> vec2<f32> {{
 @vertex
 fn vs_main(input: VertexIn) -> VertexOut {{
     var out: VertexOut;
-    out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
+    out.position = {view_proj} * vec4<f32>(input.position, 1.0);
     out.local_uv = glint_uv(input.local_uv);
     out.uv_rect_min = input.uv_rect_min;
     out.uv_rect_size = input.uv_rect_size;
@@ -1212,22 +1230,21 @@ pub(crate) fn create_entity_model_textured_cull_pipeline(
 
 /// Vanilla `RenderPipelines.ENTITY_CUTOUT_Z_OFFSET`: the same entity shader state as
 /// `ENTITY_CUTOUT`, plus `RenderTypes.entityCutoutZOffset` applies
-/// `LayeringTransform.VIEW_OFFSET_Z_LAYERING` before drawing. The current camera uniform exposes a
-/// combined view-projection matrix, so the draw stays in a dedicated pipeline/mesh while exact
-/// projection-type layering remains a follow-up GPU state refinement.
+/// `LayeringTransform.VIEW_OFFSET_Z_LAYERING` before drawing.
 pub(crate) fn create_entity_model_cutout_z_offset_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
+    let shader = entity_model_cutout_z_offset_shader();
     create_entity_model_textured_pipeline_with_depth(
         device,
         format,
         bind_group_layout,
         Some(lightmap_bind_group_layout),
         "bbb-entity-model-cutout-z-offset",
-        ENTITY_MODEL_TEXTURED_SHADER,
+        &shader,
         ENTITY_MODEL_SURFACE_OPAQUE_BLEND,
         ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_SURFACE_NO_CULL_MODE,
@@ -1570,7 +1587,7 @@ pub(crate) fn create_entity_model_entity_glint_pipeline(
         bind_group_layout,
         None,
         "bbb-entity-model-entity-glint",
-        &entity_model_glint_shader("0.5"),
+        &entity_model_glint_shader("0.5", false),
         ENTITY_MODEL_GLINT_BLEND,
         ENTITY_MODEL_GLINT_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_GLINT_DEPTH_COMPARE,
@@ -1588,7 +1605,7 @@ pub(crate) fn create_entity_model_armor_entity_glint_pipeline(
         bind_group_layout,
         None,
         "bbb-entity-model-armor-entity-glint",
-        &entity_model_glint_shader("0.16"),
+        &entity_model_glint_shader("0.16", true),
         ENTITY_MODEL_GLINT_BLEND,
         ENTITY_MODEL_GLINT_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_GLINT_DEPTH_COMPARE,
@@ -2820,19 +2837,19 @@ fn create_entity_model_scroll_mesh_gpu_from_mesh(
 #[cfg(test)]
 mod tests {
     use super::{
-        entity_model_glint_shader, ENTITY_MODEL_ADDITIVE_BLEND, ENTITY_MODEL_ARMOR_CULL_MODE,
-        ENTITY_MODEL_ARMOR_CUTOUT_BLEND, ENTITY_MODEL_ARMOR_DEPTH_WRITE_ENABLED,
-        ENTITY_MODEL_ARMOR_SHADER, ENTITY_MODEL_ARMOR_TRANSLUCENT_BLEND, ENTITY_MODEL_EYES_BLEND,
-        ENTITY_MODEL_EYES_CULL_MODE, ENTITY_MODEL_EYES_DEPTH_WRITE_ENABLED,
-        ENTITY_MODEL_GLINT_BLEND, ENTITY_MODEL_GLINT_DEPTH_COMPARE,
-        ENTITY_MODEL_GLINT_DEPTH_WRITE_ENABLED, ENTITY_MODEL_OUTLINE_BLEND,
-        ENTITY_MODEL_OUTLINE_CULL_MODE, ENTITY_MODEL_OUTLINE_NO_CULL_MODE,
-        ENTITY_MODEL_OUTLINE_SHADER, ENTITY_MODEL_SCROLL_BLEND, ENTITY_MODEL_SCROLL_CULL_MODE,
-        ENTITY_MODEL_SCROLL_DEPTH_COMPARE, ENTITY_MODEL_SCROLL_DEPTH_WRITE_ENABLED,
-        ENTITY_MODEL_SCROLL_EMISSIVE_SHADER, ENTITY_MODEL_SURFACE_CULL_MODE,
-        ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED, ENTITY_MODEL_SURFACE_NO_CULL_MODE,
-        ENTITY_MODEL_SURFACE_OPAQUE_BLEND, ENTITY_MODEL_SURFACE_TRANSLUCENT_BLEND,
-        ENTITY_MODEL_TEXTURED_DEPTH_COMPARE, ENTITY_MODEL_TEXTURED_SHADER,
+        entity_model_cutout_z_offset_shader, entity_model_glint_shader,
+        ENTITY_MODEL_ADDITIVE_BLEND, ENTITY_MODEL_ARMOR_CULL_MODE, ENTITY_MODEL_ARMOR_CUTOUT_BLEND,
+        ENTITY_MODEL_ARMOR_DEPTH_WRITE_ENABLED, ENTITY_MODEL_ARMOR_SHADER,
+        ENTITY_MODEL_ARMOR_TRANSLUCENT_BLEND, ENTITY_MODEL_EYES_BLEND, ENTITY_MODEL_EYES_CULL_MODE,
+        ENTITY_MODEL_EYES_DEPTH_WRITE_ENABLED, ENTITY_MODEL_GLINT_BLEND,
+        ENTITY_MODEL_GLINT_DEPTH_COMPARE, ENTITY_MODEL_GLINT_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_OUTLINE_BLEND, ENTITY_MODEL_OUTLINE_CULL_MODE,
+        ENTITY_MODEL_OUTLINE_NO_CULL_MODE, ENTITY_MODEL_OUTLINE_SHADER, ENTITY_MODEL_SCROLL_BLEND,
+        ENTITY_MODEL_SCROLL_CULL_MODE, ENTITY_MODEL_SCROLL_DEPTH_COMPARE,
+        ENTITY_MODEL_SCROLL_DEPTH_WRITE_ENABLED, ENTITY_MODEL_SCROLL_EMISSIVE_SHADER,
+        ENTITY_MODEL_SURFACE_CULL_MODE, ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_SURFACE_NO_CULL_MODE, ENTITY_MODEL_SURFACE_OPAQUE_BLEND,
+        ENTITY_MODEL_SURFACE_TRANSLUCENT_BLEND, ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
         ENTITY_MODEL_TEXTURE_ATLAS_MIP_LEVEL_COUNT, ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER,
         ENTITY_MODEL_WATER_MASK_BLEND, ENTITY_MODEL_WATER_MASK_COLOR_WRITE_MASK,
         ENTITY_MODEL_WATER_MASK_CULL_MODE, ENTITY_MODEL_WATER_MASK_DEPTH_COMPARE,
@@ -2917,8 +2934,8 @@ mod tests {
             "entityCutoutZOffset has a dedicated GPU pipeline label"
         );
         assert!(
-            source[factory..armor_factory].contains("ENTITY_MODEL_TEXTURED_SHADER"),
-            "vanilla ENTITY_CUTOUT_Z_OFFSET uses the normal entity cutout shader shape"
+            source[factory..armor_factory].contains("entity_model_cutout_z_offset_shader()"),
+            "entityCutoutZOffset uses the cutout shader shape with view-offset layering"
         );
         assert!(
             source[factory..armor_factory].contains("ENTITY_MODEL_SURFACE_OPAQUE_BLEND")
@@ -2929,16 +2946,22 @@ mod tests {
 
     #[test]
     fn entity_model_cutout_z_offset_shader_matches_vanilla_cutout_shape() {
+        let shader = entity_model_cutout_z_offset_shader();
         assert!(
-            ENTITY_MODEL_TEXTURED_SHADER.contains("if texel.a <= 0.1")
-                && ENTITY_MODEL_TEXTURED_SHADER.contains("discard"),
+            shader.contains("if texel.a <= 0.1") && shader.contains("discard"),
             "vanilla ENTITY_CUTOUT_Z_OFFSET keeps ALPHA_CUTOUT 0.1"
         );
         assert!(
-            ENTITY_MODEL_TEXTURED_SHADER.contains("sample_lightmap(input.light)")
-                && ENTITY_MODEL_TEXTURED_SHADER.contains("input.overlay")
-                && ENTITY_MODEL_TEXTURED_SHADER.contains("per_face_diffuse_light"),
+            shader.contains("sample_lightmap(input.light)")
+                && shader.contains("input.overlay")
+                && shader.contains("per_face_diffuse_light"),
             "vanilla ENTITY_CUTOUT_Z_OFFSET uses LightTexture, overlay, and PER_FACE_LIGHTING"
+        );
+        assert!(
+            shader.contains("view_proj_view_offset_z: mat4x4<f32>")
+                && shader
+                    .contains("camera.view_proj_view_offset_z * vec4<f32>(input.position, 1.0)"),
+            "vanilla ENTITY_CUTOUT_Z_OFFSET applies VIEW_OFFSET_Z_LAYERING before projection"
         );
     }
 
@@ -3001,14 +3024,19 @@ mod tests {
 
     #[test]
     fn entity_model_glint_shader_uses_vanilla_texture_transform_shape() {
-        let entity_glint = entity_model_glint_shader("0.5");
-        let armor_glint = entity_model_glint_shader("0.16");
+        let entity_glint = entity_model_glint_shader("0.5", false);
+        let armor_glint = entity_model_glint_shader("0.16", true);
         assert!(entity_glint.contains("const GLINT_UV_SCALE: f32 = 0.5"));
         assert!(armor_glint.contains("const GLINT_UV_SCALE: f32 = 0.16"));
         assert!(entity_glint.contains("const GLINT_ALPHA: f32 = 0.75"));
         assert!(entity_glint.contains("const GLINT_ANGLE: f32 = 0.1745329252"));
         assert!(entity_glint.contains("glint_offsets: vec4<f32>"));
+        assert!(entity_glint.contains("view_proj_view_offset_z: mat4x4<f32>"));
         assert!(entity_glint.contains("rotated + camera.glint_offsets.xy"));
+        assert!(entity_glint.contains("camera.view_proj * vec4<f32>(input.position, 1.0)"));
+        assert!(
+            armor_glint.contains("camera.view_proj_view_offset_z * vec4<f32>(input.position, 1.0)")
+        );
         assert!(entity_glint.contains("fract(input.local_uv)"));
         assert!(entity_glint.contains("if color.a < 0.1"));
         assert!(!entity_glint.contains("lightmap_texture"));

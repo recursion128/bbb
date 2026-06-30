@@ -24,6 +24,10 @@ pub const VANILLA_DEFAULT_LIGHTMAP_NIGHT_VISION_COLOR: [f32; 3] =
     [153.0 / 255.0, 153.0 / 255.0, 153.0 / 255.0];
 /// Vanilla `Options.glintSpeed` default.
 pub(crate) const VANILLA_DEFAULT_GLINT_SPEED: f64 = 0.5;
+/// Vanilla `ProjectionType.PERSPECTIVE.applyLayeringTransform(..., 1.0F)`.
+pub(crate) const VANILLA_VIEW_OFFSET_Z_PERSPECTIVE_SCALE: f32 = 1.0 - 1.0 / 4096.0;
+/// Vanilla `ProjectionType.ORTHOGRAPHIC.applyLayeringTransform(..., 1.0F)`.
+pub(crate) const VANILLA_VIEW_OFFSET_Z_ORTHOGRAPHIC_TRANSLATE: f32 = 1.0 / 512.0;
 /// Vanilla `Options.renderDistance` default.
 pub const VANILLA_DEFAULT_RENDER_DISTANCE_CHUNKS: u32 = 12;
 /// Vanilla `Options.renderDistance` lower bound.
@@ -291,6 +295,8 @@ pub(crate) struct CameraUniform {
     /// Vanilla `TextureTransform.setupGlintTexturing` translation offsets:
     /// `[-layerOffset0, layerOffset1, _, _]`.
     glint_offsets: [f32; 4],
+    /// Vanilla `LayeringTransform.VIEW_OFFSET_Z_LAYERING` view-projection matrix.
+    view_proj_view_offset_z: [[f32; 4]; 4],
 }
 
 impl CameraUniform {
@@ -310,6 +316,11 @@ impl CameraUniform {
             Mat4::orthographic_rh(0.0, width.max(1.0), height.max(1.0), 0.0, -1000.0, 1000.0);
         Self {
             view_proj: projection.to_cols_array_2d(),
+            view_proj_view_offset_z: orthographic_view_offset_z_projection(
+                projection,
+                Mat4::IDENTITY,
+            )
+            .to_cols_array_2d(),
             ..Self::identity().with_lighting_entry(LightingEntry::Items3d)
         }
     }
@@ -329,6 +340,8 @@ impl CameraUniform {
 
         Self {
             view_proj: (projection * view).to_cols_array_2d(),
+            view_proj_view_offset_z: orthographic_view_offset_z_projection(projection, view)
+                .to_cols_array_2d(),
             camera_position: vec3_to_vec4(eye),
             ..Self::identity()
         }
@@ -352,6 +365,8 @@ impl CameraUniform {
 
         Self {
             view_proj: (projection * view).to_cols_array_2d(),
+            view_proj_view_offset_z: perspective_view_offset_z_projection(projection, view)
+                .to_cols_array_2d(),
             camera_position: vec3_to_vec4(eye),
             ..Self::identity()
         }
@@ -470,6 +485,16 @@ impl CameraUniform {
         self.glint_offsets
     }
 
+    #[cfg(test)]
+    pub(crate) fn view_proj(self) -> Mat4 {
+        Mat4::from_cols_array_2d(&self.view_proj)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn view_proj_view_offset_z(self) -> Mat4 {
+        Mat4::from_cols_array_2d(&self.view_proj_view_offset_z)
+    }
+
     fn from_lightmap_environment(environment: LightmapEnvironment) -> Self {
         let environment = environment.sanitized();
         let (minecraft_light0, minecraft_light1) =
@@ -509,6 +534,7 @@ impl CameraUniform {
             minecraft_light0: vec3_to_vec4(minecraft_light0),
             minecraft_light1: vec3_to_vec4(minecraft_light1),
             glint_offsets: [0.0, 0.0, 0.0, 0.0],
+            view_proj_view_offset_z: Mat4::IDENTITY.to_cols_array_2d(),
         }
     }
 }
@@ -532,6 +558,20 @@ pub(crate) fn vanilla_glint_texture_offsets(elapsed_millis: f64, glint_speed: f6
     let layer0 = (millis % LAYER0_PERIOD_MILLIS) as f32 / LAYER0_PERIOD_MILLIS as f32;
     let layer1 = (millis % LAYER1_PERIOD_MILLIS) as f32 / LAYER1_PERIOD_MILLIS as f32;
     [-layer0, layer1]
+}
+
+fn perspective_view_offset_z_projection(projection: Mat4, view: Mat4) -> Mat4 {
+    projection * Mat4::from_scale(Vec3::splat(VANILLA_VIEW_OFFSET_Z_PERSPECTIVE_SCALE)) * view
+}
+
+fn orthographic_view_offset_z_projection(projection: Mat4, view: Mat4) -> Mat4 {
+    projection
+        * Mat4::from_translation(Vec3::new(
+            0.0,
+            0.0,
+            VANILLA_VIEW_OFFSET_Z_ORTHOGRAPHIC_TRANSLATE,
+        ))
+        * view
 }
 
 pub(crate) fn sanitize_lightmap_brightness_factor(factor: f32) -> f32 {
@@ -638,6 +678,13 @@ mod tests {
     fn assert_vec2_close(actual: [f32; 2], expected: [f32; 2]) {
         assert!(
             (actual[0] - expected[0]).abs() < 1.0e-6 && (actual[1] - expected[1]).abs() < 1.0e-6,
+            "expected {expected:?}, got {actual:?}"
+        );
+    }
+
+    fn assert_mat4_close(actual: Mat4, expected: Mat4) {
+        assert!(
+            actual.abs_diff_eq(expected, 1.0e-5),
             "expected {expected:?}, got {actual:?}"
         );
     }
@@ -770,6 +817,48 @@ mod tests {
                 .glint_offsets(),
             [-4000.0 / 110_000.0, 4000.0 / 30_000.0, 0.0, 0.0]
         );
+    }
+
+    #[test]
+    fn camera_uniform_stores_perspective_view_offset_z_layering() {
+        let pose = CameraPose {
+            position: [0.0, 64.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 0.0,
+        };
+        let projection = Mat4::perspective_rh(70.0_f32.to_radians(), 16.0 / 9.0, 0.05, 2048.0);
+        let view = Mat4::look_at_rh(
+            Vec3::new(0.0, 64.0, 0.0),
+            Vec3::new(0.0, 64.0, 1.0),
+            Vec3::Y,
+        );
+        let expected = projection
+            * Mat4::from_scale(Vec3::splat(VANILLA_VIEW_OFFSET_Z_PERSPECTIVE_SCALE))
+            * view;
+        let uniform = CameraUniform::from_pose(pose, 16.0 / 9.0);
+
+        assert_mat4_close(uniform.view_proj_view_offset_z(), expected);
+        assert!(!uniform
+            .view_proj()
+            .abs_diff_eq(uniform.view_proj_view_offset_z(), 1.0e-8));
+    }
+
+    #[test]
+    fn camera_uniform_stores_orthographic_view_offset_z_layering() {
+        let projection = Mat4::orthographic_rh(0.0, 320.0, 240.0, 0.0, -1000.0, 1000.0);
+        let expected = projection
+            * Mat4::from_translation(Vec3::new(
+                0.0,
+                0.0,
+                VANILLA_VIEW_OFFSET_Z_ORTHOGRAPHIC_TRANSLATE,
+            ));
+        let uniform = CameraUniform::gui_ortho(320.0, 240.0);
+
+        assert_mat4_close(uniform.view_proj_view_offset_z(), expected);
+        assert!(!uniform
+            .view_proj()
+            .abs_diff_eq(uniform.view_proj_view_offset_z(), 1.0e-8));
     }
 
     #[test]

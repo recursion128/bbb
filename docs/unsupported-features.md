@@ -383,18 +383,19 @@ When an agent does any of the following, update this file in the same slice:
     profile-texture z-offset cutout buckets, drawn through a separate main-pass
     pipeline that keeps the vanilla entity cutout shader state: `ALPHA_CUTOUT
     0.1`, LightTexture + overlay metadata, `PER_FACE_LIGHTING`, replacement
-    blending, depth writes, and no cull. The exact
-    `LayeringTransform.VIEW_OFFSET_Z_LAYERING` projection-type matrix tweak is
-    still a narrower GPU shader/camera-state follow-up because the current
-    entity uniform exposes only the combined `view_proj` matrix. Surface
+    blending, depth writes, and no cull. The camera uniform now also exposes
+    vanilla `LayeringTransform.VIEW_OFFSET_Z_LAYERING` as a layered
+    view-projection matrix: perspective paths use `scale(1 - 1/4096)`, and
+    orthographic paths use `translate(z = 1/512)`. The `entityCutoutZOffset`
+    shader and `armorEntityGlint` shader read that layered matrix while plain
+    `entityGlint` stays on the unshifted matrix. Surface
     blended submissions now also keep a GPU draw plan of sorted index ranges, so
     `entityTranslucent` and `entityTranslucentCullItemTarget` draw in vanilla
     order across static, dynamic player-skin, and dynamic profile-texture atlases
     within their target.
-    Later GPU work should split remaining currently-coalesced render-type state
-    and the exact z-offset view-layering transform into equivalent pipeline
-    state, plus dynamic LightTexture / darkness-adjusted gamma / diffuse visual
-    parity. `entityCutoutZOffset`, `armorCutoutNoCull`, `armorTranslucent`,
+    Later GPU work should split remaining currently-coalesced render-type state,
+    dynamic LightTexture / darkness-adjusted gamma, and diffuse visual parity.
+    `entityCutoutZOffset`, `armorCutoutNoCull`, `armorTranslucent`,
     `Eyes`, `waterMask`, glint, and scroll render types now have dedicated
     baseline GPU pipelines; remaining work there is narrower shader/time/sorting
     visual parity.
@@ -2464,8 +2465,9 @@ When an agent does any of the following, update this file in the same slice:
       armorEntityGlint geometry into a dedicated main-target GLINT blend /
       depth-equal pipeline and reads the camera uniform's vanilla-shaped
       `TextureTransform.setupGlintTexturing` offsets (`Options.glintSpeed`
-      default `0.5`, `110000` / `30000`ms periods). Remaining item-specific
-      glint variants stay in the broader GPU-state work. The former wolf render-state
+      default `0.5`, `110000` / `30000`ms periods) plus the vanilla
+      `VIEW_OFFSET_Z_LAYERING` matrix. Remaining item-specific glint variants
+      stay in the broader GPU-state work. The former wolf render-state
       extraction gap is closed by native/world/renderer tests for armor,
       sitting, head/tail/walk, wet shade, water-shake/head-roll, variant,
       collar, invisibility, outline, lighting, and overlay states
@@ -2932,8 +2934,8 @@ When an agent does any of the following, update this file in the same slice:
       glint texture, no-overlay coords, entity light, root transform, `order(2)`, and same-order slot
       `submit_sequence` even when the base body is hidden. The static-atlas GPU path now folds this
       geometry into the dedicated armorEntityGlint GLINT blend / depth-equal pipeline with the
-      vanilla-shaped dynamic texture-matrix offset; armor trims and any remaining mob-specific armor
-      models stay deferred.
+      vanilla-shaped dynamic texture-matrix offset and `VIEW_OFFSET_Z_LAYERING`; armor trims and any
+      remaining mob-specific armor models stay deferred.
     - base zombie entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `HumanoidModel`, `BabyZombieModel`, and `ZombieRenderer`,
       with a texture-backed cutout render path: the adult layer emits the vanilla

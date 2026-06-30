@@ -143,8 +143,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     对应 z-offset bucket。GPU 主 pass 使用专用 cutout-z-offset pipeline，保持
     vanilla `ENTITY_CUTOUT_Z_OFFSET` 的 `ALPHA_CUTOUT 0.1`、LightTexture、
     overlay、`PER_FACE_LIGHTING`、replacement blend、depth-write 和 cull-off
-    state；精确 `VIEW_OFFSET_Z_LAYERING` 的 perspective/orthographic 矩阵偏移
-    仍属后续 shader/camera-state refinement，不阻塞本 slice。
+    state，并通过 camera uniform 暴露 vanilla `VIEW_OFFSET_Z_LAYERING`：
+    perspective 使用 `scale(1 - 1/4096)`，orthographic 使用
+    `translate(z = 1/512)`。
   - [x] `Eyes` emissive alpha blend：spider / enderman / phantom /
     ender-dragon 等 `RenderTypes.eyes` 提交保留独立 eyes mesh / shader，
     GPU pipeline 使用 vanilla `BlendFunction.TRANSLUCENT`、depth-write
@@ -214,6 +215,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `0.5` 与 `armorEntityGlint` scale `0.16` 保持独立 shader，uniform 记录
     vanilla `Util.getMillis() * glintSpeed * 8` 派生的 `-layerOffset0` /
     `layerOffset1`，shader 在 scale + `rotateZ(π/18)` 后应用 translation。
+  - [x] view-offset z layering：`entityCutoutZOffset` 和
+    `armorEntityGlint` shader 使用 `LayeringTransform.VIEW_OFFSET_Z_LAYERING`
+    的 layered view-projection 矩阵；普通 `entityGlint` 继续使用未偏移矩阵。
   - per RenderType 的 blend、depth write/test、cull、sampler、mip、lightmap、
     overlay、fog、normal diffuse 组合继续拆细。
   - glint / scroll / emissive path 不应只依赖普通 entity shader fallback。
