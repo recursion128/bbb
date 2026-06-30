@@ -156,8 +156,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `armor_cutout`、`armor_translucent`，以及动态 profile texture
     armor cutout mesh。GPU 使用 vanilla-shaped armor pipeline：alpha cutoff
     0.1、`NO_OVERLAY`、`PER_FACE_LIGHTING`、LightTexture 绑定、
-    depth-write `LESS_EQUAL`、cull off，且仅 `armorTranslucent` 启用
-    translucent alpha blend。
+    depth-write `LESS_EQUAL`、cull off、`VIEW_OFFSET_Z_LAYERING` layered
+    view-projection，且仅 `armorTranslucent` 启用 translucent alpha blend。
   - [x] `breezeWind` lightmap-lit scroll：wind charge 和 BreezeWindLayer
     提交进入独立 scroll mesh / shader，使用 vanilla
     `BlendFunction.TRANSLUCENT`、depth-write `LESS_EQUAL`、cull off、
@@ -215,9 +215,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `0.5` 与 `armorEntityGlint` scale `0.16` 保持独立 shader，uniform 记录
     vanilla `Util.getMillis() * glintSpeed * 8` 派生的 `-layerOffset0` /
     `layerOffset1`，shader 在 scale + `rotateZ(π/18)` 后应用 translation。
-  - [x] view-offset z layering：`entityCutoutZOffset` 和
-    `armorEntityGlint` shader 使用 `LayeringTransform.VIEW_OFFSET_Z_LAYERING`
-    的 layered view-projection 矩阵；普通 `entityGlint` 继续使用未偏移矩阵。
+  - [x] view-offset z layering：`entityCutoutZOffset`、
+    `armorCutoutNoCull` / `armorTranslucent`、`armorEntityGlint` shader 使用
+    `LayeringTransform.VIEW_OFFSET_Z_LAYERING` 的 layered view-projection
+    矩阵；普通 `entityGlint` 继续使用未偏移矩阵。
   - per RenderType 的 blend、depth write/test、cull、sampler、mip、lightmap、
     overlay、fog、normal diffuse 组合继续拆细。
   - glint / scroll / emissive path 不应只依赖普通 entity shader fallback。

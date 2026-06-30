@@ -386,9 +386,10 @@ When an agent does any of the following, update this file in the same slice:
     blending, depth writes, and no cull. The camera uniform now also exposes
     vanilla `LayeringTransform.VIEW_OFFSET_Z_LAYERING` as a layered
     view-projection matrix: perspective paths use `scale(1 - 1/4096)`, and
-    orthographic paths use `translate(z = 1/512)`. The `entityCutoutZOffset`
-    shader and `armorEntityGlint` shader read that layered matrix while plain
-    `entityGlint` stays on the unshifted matrix. Surface
+    orthographic paths use `translate(z = 1/512)`. The `entityCutoutZOffset`,
+    `armorCutoutNoCull` / `armorTranslucent`, and `armorEntityGlint` shaders
+    read that layered matrix while plain `entityGlint` stays on the unshifted
+    matrix. Surface
     blended submissions now also keep a GPU draw plan of sorted index ranges, so
     `entityTranslucent` and `entityTranslucentCullItemTarget` draw in vanilla
     order across static, dynamic player-skin, and dynamic profile-texture atlases
@@ -2932,9 +2933,10 @@ When an agent does any of the following, update this file in the same slice:
       `head/chest/legs/feet_armor_foil`, and the renderer records the vanilla `armorEntityGlint`
       submission immediately after that slot's first rendered `armorCutoutNoCull` layer, preserving the
       glint texture, no-overlay coords, entity light, root transform, `order(2)`, and same-order slot
-      `submit_sequence` even when the base body is hidden. The static-atlas GPU path now folds this
+      `submit_sequence` even when the base body is hidden. The static-atlas GPU path now applies
+      `VIEW_OFFSET_Z_LAYERING` to the base `armorCutoutNoCull` / `armorTranslucent` shader and folds foil
       geometry into the dedicated armorEntityGlint GLINT blend / depth-equal pipeline with the
-      vanilla-shaped dynamic texture-matrix offset and `VIEW_OFFSET_Z_LAYERING`; armor trims and any
+      vanilla-shaped dynamic texture-matrix offset and the same view-offset layering; armor trims and any
       remaining mob-specific armor models stay deferred.
     - base zombie entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `HumanoidModel`, `BabyZombieModel`, and `ZombieRenderer`,

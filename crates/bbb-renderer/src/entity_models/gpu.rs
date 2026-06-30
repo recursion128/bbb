@@ -342,6 +342,8 @@ struct Camera {
     fog_visibility_ends: vec4<f32>,
     minecraft_light0: vec4<f32>,
     minecraft_light1: vec4<f32>,
+    glint_offsets: vec4<f32>,
+    view_proj_view_offset_z: mat4x4<f32>,
 };
 
 @group(0) @binding(0)
@@ -421,7 +423,7 @@ fn apply_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f3
 @vertex
 fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
-    out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
+    out.position = camera.view_proj_view_offset_z * vec4<f32>(input.position, 1.0);
     out.uv = input.uv;
     out.tint = input.tint;
     out.light = input.light;
@@ -2916,6 +2918,12 @@ mod tests {
         assert!(
             !ENTITY_MODEL_ARMOR_SHADER.contains("overlay"),
             "vanilla armor pipelines define NO_OVERLAY"
+        );
+        assert!(
+            ENTITY_MODEL_ARMOR_SHADER.contains("view_proj_view_offset_z: mat4x4<f32>")
+                && ENTITY_MODEL_ARMOR_SHADER
+                    .contains("camera.view_proj_view_offset_z * vec4<f32>(input.position, 1.0)"),
+            "vanilla armorCutoutNoCull / armorTranslucent apply VIEW_OFFSET_Z_LAYERING"
         );
     }
 
