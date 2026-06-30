@@ -1354,6 +1354,7 @@ impl NativeItemRuntime {
                             view_entity: false,
                             shift_down: false,
                             keybind_context: ItemModelKeybindContext::default(),
+                            fishing_rod_cast: false,
                             using_item: false,
                             use_context: ItemModelUseContext::inactive(),
                             cooldown_progress: 0.0,
@@ -1734,6 +1735,49 @@ impl NativeItemRuntime {
         shift_down: bool,
         keybind_context: ItemModelKeybindContext,
     ) -> Option<ItemAtlasIcon> {
+        self.icon_for_stack_with_context_and_use_context_time_state_and_fishing_rod_cast(
+            stack,
+            bundle_selected_item_index,
+            using_item,
+            use_context,
+            display_context,
+            cooldown_progress,
+            trim_material_keys,
+            owner_main_hand_left,
+            context_entity_type,
+            context_dimension,
+            time_context,
+            compass_context,
+            selected_item,
+            carried_item,
+            view_entity,
+            shift_down,
+            keybind_context,
+            false,
+        )
+    }
+
+    pub(crate) fn icon_for_stack_with_context_and_use_context_time_state_and_fishing_rod_cast(
+        &self,
+        stack: &ItemStackSummary,
+        bundle_selected_item_index: Option<i32>,
+        using_item: bool,
+        use_context: ItemModelUseContext,
+        display_context: BlockModelDisplayContext,
+        cooldown_progress: f32,
+        trim_material_keys: Option<&[String]>,
+        owner_main_hand_left: Option<bool>,
+        context_entity_type: Option<&str>,
+        context_dimension: Option<&str>,
+        time_context: Option<ItemModelTimeContext>,
+        compass_context: Option<ItemModelCompassContext<'_>>,
+        selected_item: bool,
+        carried_item: bool,
+        view_entity: bool,
+        shift_down: bool,
+        keybind_context: ItemModelKeybindContext,
+        fishing_rod_cast: bool,
+    ) -> Option<ItemAtlasIcon> {
         self.icon_for_stack_with_model_context(
             stack,
             bundle_selected_item_index,
@@ -1752,6 +1796,7 @@ impl NativeItemRuntime {
             view_entity,
             shift_down,
             keybind_context,
+            fishing_rod_cast,
         )
     }
 
@@ -1787,6 +1832,7 @@ impl NativeItemRuntime {
             false,
             false,
             ItemModelKeybindContext::default(),
+            false,
         )
     }
 
@@ -1809,6 +1855,7 @@ impl NativeItemRuntime {
         view_entity: bool,
         shift_down: bool,
         keybind_context: ItemModelKeybindContext,
+        fishing_rod_cast: bool,
     ) -> Option<ItemAtlasIcon> {
         let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
         let item_model_id = item_model_id_for_stack(item_id, Some(&stack.component_patch))?;
@@ -1833,6 +1880,7 @@ impl NativeItemRuntime {
             view_entity,
             shift_down,
             keybind_context,
+            fishing_rod_cast,
         )
     }
 
@@ -1860,6 +1908,7 @@ impl NativeItemRuntime {
             false,
             false,
             ItemModelKeybindContext::default(),
+            false,
         )
     }
 
@@ -1885,6 +1934,7 @@ impl NativeItemRuntime {
         view_entity: bool,
         shift_down: bool,
         keybind_context: ItemModelKeybindContext,
+        fishing_rod_cast: bool,
     ) -> Option<ItemAtlasIcon> {
         let default_max_damage = self
             .registry
@@ -1907,6 +1957,7 @@ impl NativeItemRuntime {
             view_entity,
             shift_down,
             keybind_context,
+            fishing_rod_cast,
             using_item,
             use_context,
             cooldown_progress,
@@ -2062,6 +2113,7 @@ impl NativeItemRuntime {
             view_entity: false,
             shift_down: false,
             keybind_context: ItemModelKeybindContext::default(),
+            fishing_rod_cast: false,
             using_item: false,
             use_context: ItemModelUseContext::inactive(),
             cooldown_progress: 0.0,

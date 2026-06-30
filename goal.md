@@ -704,6 +704,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     mouse buttons into the item icon resolver, including `key.use` /
     `key.attack` / `key.pickItem` and hotbar 1-9. User-rebound/custom key
     mappings and the wider debug/misc key set remain follow-up.
+  - [x] `minecraft:fishing_rod/cast` item-model condition resolves for GUI/HUD
+    hotbar local-player selected main-hand fishing rods from vanilla
+    `FishingRodCast.get` / `FishingHookRenderer.getHoldingArm`: world tracks
+    the local player's fishing bobber through fishing-bobber add-entity owner
+    data; only the selected hotbar fishing rod selects true, while non-selected
+    slots and no-bobber paths stay false. Fishing-hook billboard / line
+    rendering remains P1/P2 visual follow-up.
   - [x] `minecraft:cooldown` item-model range_dispatch resolves for GUI/HUD
     item icons from vanilla `Cooldown.get`: local-player item cooldown percent
     uses the current stack cooldown group and `getCooldownPercent(..., 0.0F)`;

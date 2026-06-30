@@ -804,6 +804,10 @@ pub(super) struct IconResolveContext<'a> {
     /// Vanilla `IsKeybindDown.get`: caller-projected `KeyMapping.isDown()` state
     /// for supported default key names.
     pub keybind_context: ItemModelKeybindContext,
+    /// Vanilla `FishingRodCast.get`: true only when the player owner has a
+    /// fishing hook and this exact stack is held by
+    /// `FishingHookRenderer.getHoldingArm(player)`.
+    pub fishing_rod_cast: bool,
     pub using_item: bool,
     pub use_context: ItemModelUseContext,
     /// Vanilla `Cooldown.get`: caller-projected
@@ -1058,6 +1062,7 @@ impl ItemIconModel {
                     {
                         on_true
                     }
+                    ItemModelPropertyKind::FishingRodCast if ctx.fishing_rod_cast => on_true,
                     _ => on_false,
                 };
                 branch.icon_layers_with_bundle_resolver(ctx, resolve_bundle_selected_item)
@@ -1173,6 +1178,7 @@ fn condition_property_is_runtime_resolved(property: &ItemModelProperty) -> bool 
         | ItemModelPropertyKind::Carried
         | ItemModelPropertyKind::CustomModelData
         | ItemModelPropertyKind::HasComponent
+        | ItemModelPropertyKind::FishingRodCast
         | ItemModelPropertyKind::Selected
         | ItemModelPropertyKind::UsingItem
         | ItemModelPropertyKind::ViewEntity

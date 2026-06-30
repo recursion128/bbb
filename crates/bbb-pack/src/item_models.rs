@@ -251,6 +251,7 @@ pub enum ItemModelPropertyKind {
     Component,
     CustomModelData,
     Damaged,
+    FishingRodCast,
     HasComponent,
     KeybindDown,
     Selected,
@@ -277,6 +278,7 @@ impl ItemModelProperty {
             "minecraft:component" => ItemModelPropertyKind::Component,
             "minecraft:custom_model_data" => ItemModelPropertyKind::CustomModelData,
             "minecraft:damaged" => ItemModelPropertyKind::Damaged,
+            "minecraft:fishing_rod/cast" => ItemModelPropertyKind::FishingRodCast,
             "minecraft:has_component" => ItemModelPropertyKind::HasComponent,
             "minecraft:keybind_down" => ItemModelPropertyKind::KeybindDown,
             "minecraft:selected" => ItemModelPropertyKind::Selected,
@@ -1694,6 +1696,43 @@ mod tests {
         assert_eq!(
             property.raw(),
             &serde_json::json!({"property": "minecraft:damaged"})
+        );
+        assert!(matches!(on_true.as_ref(), ItemModelDefinition::Empty));
+        assert!(matches!(on_false.as_ref(), ItemModelDefinition::Empty));
+    }
+
+    #[test]
+    fn item_model_catalog_structures_unit_fishing_rod_cast_condition_property() {
+        let definition = ClientItemDefinition::from_json_bytes(
+            br#"{
+              "model": {
+                "type": "minecraft:condition",
+                "property": "minecraft:fishing_rod/cast",
+                "on_false": {
+                  "type": "minecraft:empty"
+                },
+                "on_true": {
+                  "type": "minecraft:empty"
+                }
+              }
+            }"#,
+        )
+        .unwrap();
+
+        let ItemModelDefinition::Condition {
+            property,
+            on_true,
+            on_false,
+            ..
+        } = &definition.model
+        else {
+            panic!("root should parse as a fishing-rod cast condition item model");
+        };
+        assert_eq!(property.property_type, "minecraft:fishing_rod/cast");
+        assert_eq!(property.kind(), ItemModelPropertyKind::FishingRodCast);
+        assert_eq!(
+            property.raw(),
+            &serde_json::json!({"property": "minecraft:fishing_rod/cast"})
         );
         assert!(matches!(on_true.as_ref(), ItemModelDefinition::Empty));
         assert!(matches!(on_false.as_ref(), ItemModelDefinition::Empty));

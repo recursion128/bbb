@@ -11011,6 +11011,35 @@ fn player_pick_bounds_skip_spectator_profile() {
 }
 
 #[test]
+fn local_player_fishing_bobber_uses_add_entity_owner_data() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    assert_eq!(store.local_player_fishing_bobber_id(), None);
+
+    store.apply_add_entity(protocol_add_entity_with_type_data(
+        10,
+        VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+        99,
+    ));
+    assert_eq!(store.local_player_fishing_bobber_id(), Some(10));
+
+    store.apply_add_entity(protocol_add_entity_with_type_data(
+        11,
+        VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+        123,
+    ));
+    assert_eq!(store.local_player_fishing_bobber_id(), Some(10));
+
+    assert_eq!(
+        store.apply_remove_entities(ProtocolRemoveEntities {
+            entity_ids: vec![10],
+        }),
+        1
+    );
+    assert_eq!(store.local_player_fishing_bobber_id(), None);
+}
+
+#[test]
 fn tracks_entity_passenger_updates() {
     let mut store = WorldStore::new();
     for id in [10, 20, 21, 30] {

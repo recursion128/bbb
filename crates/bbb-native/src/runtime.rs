@@ -1787,14 +1787,18 @@ fn hotbar_item_icons_with_input_context(
     let selected_slot = usize::from(world.local_player().selected_hotbar_slot.min(8));
     let using_selected_item = world.local_player().interaction.using_item;
     for (slot_index, item) in world.inventory().hotbar_item_states().iter().enumerate() {
+        let selected_item = slot_index == selected_slot;
+        let fishing_rod_cast =
+            local_player_fishing_rod_casts_item(world, item_runtime, &item.item, selected_item);
         icons[slot_index] = hud_item_icon_for_stack(
             world,
             item_runtime,
             &item.item,
             item.local_selected_bundle_item_index(),
-            using_selected_item && slot_index == selected_slot,
-            slot_index == selected_slot,
+            using_selected_item && selected_item,
+            selected_item,
             false,
+            fishing_rod_cast,
             shift_down,
             keybind_context,
             partial_tick,
@@ -1924,6 +1928,7 @@ fn hud_inventory_screen_with_local_state(
                         &slot.item,
                         (slot.local_selected_bundle_item_index >= 0)
                             .then_some(slot.local_selected_bundle_item_index),
+                        false,
                         false,
                         false,
                         false,
@@ -2851,6 +2856,7 @@ fn push_merchant_trade_item(
         false,
         false,
         false,
+        false,
         shift_down,
         keybind_context,
         partial_tick,
@@ -2881,6 +2887,7 @@ fn hud_stonecutter_recipe_items(
             item_runtime,
             &option.stack,
             None,
+            false,
             false,
             false,
             false,
@@ -4071,6 +4078,21 @@ fn world_enchantment_keys(world: &WorldStore) -> Option<Vec<String>> {
         })
 }
 
+fn local_player_fishing_rod_casts_item(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    item: &bbb_protocol::packets::ItemStackSummary,
+    selected_item: bool,
+) -> bool {
+    selected_item
+        && world.local_player_fishing_bobber_id().is_some()
+        && item.item_id.is_some_and(|item_id| {
+            item_runtime
+                .and_then(|runtime| runtime.item_resource_id(item_id))
+                .is_some_and(|resource_id| resource_id == "minecraft:fishing_rod")
+        })
+}
+
 fn hud_item_icon_for_stack(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
@@ -4079,6 +4101,7 @@ fn hud_item_icon_for_stack(
     using_item: bool,
     selected_item: bool,
     carried_item: bool,
+    fishing_rod_cast: bool,
     shift_down: bool,
     keybind_context: ItemModelKeybindContext,
     partial_tick: f32,
@@ -4133,25 +4156,27 @@ fn hud_item_icon_for_stack(
     } else {
         crate::item_runtime::ItemModelUseContext::inactive()
     };
-    let icon = item_runtime.icon_for_stack_with_context_and_use_context_time_state(
-        item,
-        local_selected_bundle_item_index,
-        using_item,
-        use_context,
-        bbb_pack::BlockModelDisplayContext::Gui,
-        item_model_cooldown_progress,
-        trim_material_keys.as_deref(),
-        owner_main_hand_left,
-        context_entity_type,
-        context_dimension,
-        time_context,
-        compass_context,
-        selected_item,
-        carried_item,
-        true,
-        shift_down,
-        keybind_context,
-    )?;
+    let icon = item_runtime
+        .icon_for_stack_with_context_and_use_context_time_state_and_fishing_rod_cast(
+            item,
+            local_selected_bundle_item_index,
+            using_item,
+            use_context,
+            bbb_pack::BlockModelDisplayContext::Gui,
+            item_model_cooldown_progress,
+            trim_material_keys.as_deref(),
+            owner_main_hand_left,
+            context_entity_type,
+            context_dimension,
+            time_context,
+            compass_context,
+            selected_item,
+            carried_item,
+            true,
+            shift_down,
+            keybind_context,
+            fishing_rod_cast,
+        )?;
     Some(HudItemIcon {
         layers: icon
             .layers

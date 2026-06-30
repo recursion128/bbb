@@ -32,6 +32,7 @@ const TOOLTIP_TEST_WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const TOOLTIP_TEST_AQUA: [f32; 4] = [85.0 / 255.0, 1.0, 1.0, 1.0];
 const TOOLTIP_TEST_DARK_PURPLE: [f32; 4] = [170.0 / 255.0, 0.0, 170.0 / 255.0, 1.0];
 const VANILLA_26_1_PLAYER_ENTITY_TYPE_ID: i32 = 155;
+const VANILLA_26_1_FISHING_BOBBER_ENTITY_TYPE_ID: i32 = 156;
 const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
 const TEST_LIGHT_ARRAY_BYTES: usize = 2048;
 
@@ -2576,6 +2577,7 @@ fn hud_item_icons_use_carried_item_condition_only_when_marked_carried() {
         false,
         false,
         false,
+        false,
         ItemModelKeybindContext::default(),
         0.0,
     )
@@ -2588,6 +2590,7 @@ fn hud_item_icons_use_carried_item_condition_only_when_marked_carried() {
         false,
         false,
         true,
+        false,
         false,
         ItemModelKeybindContext::default(),
         0.0,
@@ -3192,6 +3195,83 @@ fn hotbar_item_icons_use_keybind_down_condition_when_default_key_is_down() {
         HudUvRect {
             min: keybind_uv.min,
             max: keybind_uv.max,
+        }
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn hotbar_item_icons_use_fishing_rod_cast_condition_for_selected_local_rod() {
+    let root = unique_runtime_temp_dir("hotbar-fishing-rod-cast-condition");
+    write_runtime_fishing_rod_cast_condition_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let stack = item_stack(0, 1);
+    let fallback_uv = item_runtime.icon_for_stack(&stack).unwrap().layers[0].uv;
+    let cast_uv = item_runtime
+        .icon_for_stack_with_context_and_use_context_time_state_and_fishing_rod_cast(
+            &stack,
+            None,
+            false,
+            crate::item_runtime::ItemModelUseContext::inactive(),
+            bbb_pack::BlockModelDisplayContext::Gui,
+            0.0,
+            None,
+            None,
+            Some("minecraft:player"),
+            None,
+            None,
+            None,
+            true,
+            false,
+            true,
+            false,
+            ItemModelKeybindContext::default(),
+            true,
+        )
+        .unwrap()
+        .layers[0]
+        .uv;
+    assert_ne!(fallback_uv, cast_uv);
+
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: stack.clone(),
+    });
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 1,
+        item: stack,
+    });
+    assert!(world.set_local_selected_hotbar_slot(0));
+
+    let no_bobber_icons = hotbar_item_icons(&world, Some(&item_runtime), 0.0);
+    assert_eq!(
+        no_bobber_icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: fallback_uv.min,
+            max: fallback_uv.max,
+        }
+    );
+
+    world.apply_add_entity(bbb_protocol::packets::AddEntity {
+        data: 42,
+        ..test_add_entity(700, VANILLA_26_1_FISHING_BOBBER_ENTITY_TYPE_ID)
+    });
+    let icons = hotbar_item_icons(&world, Some(&item_runtime), 0.0);
+    assert_eq!(
+        icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: cast_uv.min,
+            max: cast_uv.max,
+        }
+    );
+    assert_eq!(
+        icons[1].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: fallback_uv.min,
+            max: fallback_uv.max,
         }
     );
 
@@ -7463,6 +7543,55 @@ fn write_runtime_keybind_down_condition_item_assets(root: &Path) {
             .join("Items.java"),
         r#"public class Items {
             public static final Item KEYBIND_DOWN_CONDITION = registerItem("keybind_down_condition");
+        }"#,
+    );
+}
+
+fn write_runtime_fishing_rod_cast_condition_item_assets(root: &Path) {
+    let assets = runtime_assets_dir(root);
+    write_runtime_json(
+        &assets.join("atlases").join("items.json"),
+        r#"{
+            "sources": [
+                {
+                    "type": "minecraft:directory",
+                    "prefix": "item/",
+                    "source": "item"
+                }
+            ]
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("atlases").join("blocks.json"),
+        r#"{
+            "sources": []
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("items").join("fishing_rod.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:condition",
+                "property": "minecraft:fishing_rod/cast",
+                "on_true": { "type": "minecraft:model", "model": "minecraft:item/fishing_rod_cast" },
+                "on_false": { "type": "minecraft:model", "model": "minecraft:item/fishing_rod" }
+            }
+        }"#,
+    );
+    write_flat_runtime_item_model_and_texture(&assets, "fishing_rod", &[40, 80, 120, 255]);
+    write_flat_runtime_item_model_and_texture(&assets, "fishing_rod_cast", &[120, 80, 40, 255]);
+    write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
+    write_runtime_json(
+        &root
+            .join("sources")
+            .join(bbb_pack::MC_VERSION)
+            .join("net")
+            .join("minecraft")
+            .join("world")
+            .join("item")
+            .join("Items.java"),
+        r#"public class Items {
+            public static final Item FISHING_ROD = registerItem("fishing_rod");
         }"#,
     );
 }

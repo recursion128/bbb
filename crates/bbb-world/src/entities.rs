@@ -65,6 +65,7 @@ pub(crate) const VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID: i32 = 37;
 pub(crate) const VANILLA_ENTITY_TYPE_END_CRYSTAL_ID: i32 = 45;
 pub(crate) const VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID: i32 = 49;
 pub(crate) const VANILLA_ENTITY_TYPE_FIREBALL_ID: i32 = 52;
+pub(crate) const VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID: i32 = 156;
 pub(crate) const VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID: i32 = 56;
 pub(crate) const VANILLA_ENTITY_TYPE_GLOW_SQUID_ID: i32 = 61;
 pub(crate) const VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID: i32 = 65;
@@ -2256,6 +2257,18 @@ impl WorldStore {
 
     pub fn local_player_main_arm_left(&self) -> Option<bool> {
         self.entities.main_arm_left(self.local_player_id?)
+    }
+
+    /// The fishing bobber currently owned by the local player, if any. Vanilla
+    /// `FishingHook.getAddEntityPacket` stores the owner id in
+    /// `ClientboundAddEntityPacket.data`, and `FishingHook.setOwner` writes it
+    /// back to `Player.fishing` on the client.
+    pub fn local_player_fishing_bobber_id(&self) -> Option<i32> {
+        let local_player_id = self.local_player_id?;
+        self.entities.first_entity_id_with_type_and_data(
+            VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+            local_player_id,
+        )
     }
 
     pub fn local_player_vehicle_id(&self) -> Option<i32> {

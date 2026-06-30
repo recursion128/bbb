@@ -416,6 +416,25 @@ impl EntityStore {
             .map(|identity| identity.entity_type_id)
     }
 
+    pub(crate) fn first_entity_id_with_type_and_data(
+        &self,
+        entity_type_id: i32,
+        data: i32,
+    ) -> Option<i32> {
+        for id in &self.order {
+            let Some(entity) = self.by_protocol_id.get(id).copied() else {
+                continue;
+            };
+            let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
+                continue;
+            };
+            if identity.entity_type_id == entity_type_id && identity.data == data {
+                return Some(identity.id);
+            }
+        }
+        None
+    }
+
     pub(crate) fn identity(&self, id: i32) -> Option<EntityIdentity> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         self.ecs
