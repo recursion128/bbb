@@ -2,6 +2,7 @@ use bbb_protocol::packets::{
     decode_profile_textures_from_properties, EntityDataEnumSerializer, EntityDataRegistryHolder,
     EntityDataValueKind, EquipmentSlot, GameProfilePropertySummary, ItemStackSummary,
     PlayerSkinPatchSummary, ResolvableProfileKindSummary, ResolvableProfileSummary,
+    SwingAnimationTypeSummary,
 };
 use bbb_renderer::{
     ArmorStandModelPose, ArrowModelTexture, AxolotlModelVariant, BoatModelFamily, CamelModelFamily,
@@ -586,13 +587,10 @@ fn entity_hand_holds_bow(
     item_runtime.item_resource_id(item_id) == Some("minecraft:bow")
 }
 
-/// Whether the item in the given hand is a spear — one of the seven tool-material spears whose item
-/// prototype sets `DataComponents.SWING_ANIMATION` to `SwingAnimationType.STAB` in `Item.Properties.spear(...)`.
-/// A spear's melee swing uses the `STAB` `SpearAnimations.thirdPersonAttackHand` pose instead of the default
-/// `WHACK`. That STAB default lives on the item PROTOTYPE (not the network component patch), so it is detected
-/// by the resolved item id rather than a component-presence check (a datapack explicitly overriding
-/// `SWING_ANIMATION` on a non-spear item is a deferred edge case). Resolved through the item registry; `false`
-/// without it or for any non-spear / empty hand.
+/// Whether the item in the given hand is one of the tool-material spears. This is the item/tag side of
+/// vanilla spear presentation: held spear poses and kinetic use transforms come from the resolved item
+/// prototype. Per-stack `DataComponents.SWING_ANIMATION` overrides are handled by
+/// [`entity_hand_swing_is_stab`].
 fn entity_hand_holds_spear(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
@@ -714,6 +712,10 @@ fn entity_hand_holds_brush(
 /// that adds both should stay on EAT/DRINK rather than the block pose.
 const DATA_COMPONENT_CONSUMABLE_TYPE_ID: i32 = 24;
 
+/// Vanilla `DataComponents.SWING_ANIMATION` network type id (40, the registry order of
+/// `minecraft:swing_animation` in `DataComponents`).
+const DATA_COMPONENT_SWING_ANIMATION_TYPE_ID: i32 = 40;
+
 /// Vanilla `DataComponents.BLOCKS_ATTACKS` network type id (37, the registry order of
 /// `minecraft:blocks_attacks` in `DataComponents`). `Item.getUseAnimation` returns `BLOCK` for a non-consumable
 /// item carrying this component.
@@ -724,6 +726,28 @@ fn component_patch_has_added_component(
     type_id: i32,
 ) -> bool {
     patch.added_type_ids.contains(&type_id) && !patch.removed_type_ids.contains(&type_id)
+}
+
+fn entity_hand_swing_is_stab(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    entity_id: i32,
+    off_hand: bool,
+) -> bool {
+    let Some(stack) = world.held_item(entity_id, off_hand) else {
+        return false;
+    };
+    if stack
+        .component_patch
+        .removed_type_ids
+        .contains(&DATA_COMPONENT_SWING_ANIMATION_TYPE_ID)
+    {
+        return false;
+    }
+    if let Some(swing_animation) = stack.component_patch.swing_animation {
+        return swing_animation.animation_type == SwingAnimationTypeSummary::Stab;
+    }
+    entity_hand_holds_spear(world, item_runtime, entity_id, off_hand)
 }
 
 /// Whether the item in the given hand has the `BLOCK` use-animation (vanilla `ItemStack.getUseAnimation() ==
@@ -1024,6 +1048,10 @@ fn entity_model_instance(
     let main_hand_holds_spear =
         entity_hand_holds_spear(world, item_runtime, source.entity_id, false);
     let off_hand_holds_spear = entity_hand_holds_spear(world, item_runtime, source.entity_id, true);
+    let main_hand_swing_is_stab_type =
+        entity_hand_swing_is_stab(world, item_runtime, source.entity_id, false);
+    let off_hand_swing_is_stab_type =
+        entity_hand_swing_is_stab(world, item_runtime, source.entity_id, true);
     let player_main_hand_holds_spear = is_player && main_hand_holds_spear;
     let player_off_hand_holds_spear = is_player && off_hand_holds_spear;
     let is_zombie_family = matches!(
@@ -1058,9 +1086,9 @@ fn entity_model_instance(
     // armed models: PlayerModel and the zombie family consume it in their attack poses, and ItemInHandLayer
     // consumes it for the attack-arm item transform.
     let main_hand_swing_is_stab = if source.attack_arm_off_hand {
-        off_hand_holds_spear
+        off_hand_swing_is_stab_type
     } else {
-        main_hand_holds_spear
+        main_hand_swing_is_stab_type
     };
     // Vanilla `AvatarRenderer.getArmPose` use-item `ItemUseAnimation.SPEAR`: while the using hand holds a
     // spear, `HumanoidModel.ArmPose.SPEAR` applies `SpearAnimations.thirdPersonHandUse`, and
@@ -1194,13 +1222,18 @@ fn entity_model_instance(
     // branch because `ticksUsingItem <= 0`. In the non-using right-handed dispatch, an off-hand SPEAR runs
     // first and suppresses the main-hand pose unless a charged main-hand crossbow has already forced the
     // off-hand pose to ITEM through `CROSSBOW_HOLD.isTwoHanded()`.
+    let player_main_hand_stab_swing_pose =
+        is_player && source.is_swinging && main_hand_swing_is_stab_type;
+    let player_off_hand_stab_swing_pose =
+        is_player && source.is_swinging && off_hand_swing_is_stab_type;
     let player_main_hand_spear_pose = is_player
-        && player_main_hand_holds_spear
+        && (player_main_hand_holds_spear || player_main_hand_stab_swing_pose)
         && !(source.is_using_item && !source.use_item_off_hand)
         && !off_hand_use_affects_offhand
-        && (source.is_using_item || !player_off_hand_holds_spear);
+        && (source.is_using_item
+            || !(player_off_hand_holds_spear || player_off_hand_stab_swing_pose));
     let player_off_hand_spear_pose = is_player
-        && player_off_hand_holds_spear
+        && (player_off_hand_holds_spear || player_off_hand_stab_swing_pose)
         && !(source.is_using_item && source.use_item_off_hand)
         && !main_hand_crossbow_hold_forces_offhand_item
         && !main_hand_use_affects_offhand;
@@ -1210,9 +1243,13 @@ fn entity_model_instance(
     // arm poses as `SPEAR`; the later right-handed `HumanoidModel.setupAnim` dispatch decides which arm
     // actually gets posed first / suppresses the other.
     let humanoid_mob_main_hand_spear_pose = is_humanoid_mob_renderer
-        && (main_hand_holds_spear || (is_zombie_family && off_hand_holds_spear));
+        && (main_hand_holds_spear
+            || (source.is_swinging && main_hand_swing_is_stab_type)
+            || (is_zombie_family && off_hand_swing_is_stab_type));
     let humanoid_mob_off_hand_spear_pose = is_humanoid_mob_renderer
-        && (off_hand_holds_spear || (is_zombie_family && main_hand_holds_spear));
+        && (off_hand_holds_spear
+            || (source.is_swinging && off_hand_swing_is_stab_type)
+            || (is_zombie_family && main_hand_swing_is_stab_type));
     // Vanilla `AvatarRenderer.getArmPose` `CROSSBOW_HOLD` (`AnimationUtils.animateCrossbowHold`, the same one
     // the pillager levels): a player holding a CHARGED main-hand crossbow while not mid-swing (`!swinging &&
     // crossbow && isCharged`, checked before the use-item branch) levels the crossbow along the head look.
@@ -4036,8 +4073,8 @@ mod tests {
         GameType, ItemEnchantmentSummary, ItemStackSummary, MinecartStep, MoveMinecartAlongTrack,
         PlayLogin, PlayTime, PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate, PlayerTeamMethod,
         PlayerTeamParameters, RegistryTags, SetCamera, SetEntityData, SetEquipment, SetPassengers,
-        SetPlayerTeam, TagNetworkPayload, TeamCollisionRule, TeamVisibility, UpdateAttributes,
-        UpdateTags, Vec3d,
+        SetPlayerTeam, SwingAnimationSummary, SwingAnimationTypeSummary, TagNetworkPayload,
+        TeamCollisionRule, TeamVisibility, UpdateAttributes, UpdateTags, Vec3d,
     };
     use bbb_world::{
         ArmorMaterialKind as WorldArmorMaterialKind, EntityPickBoundsState, EntityVec3,
@@ -6693,6 +6730,125 @@ mod tests {
             zombie_attack.main_hand_swing_is_stab,
             "ArmedEntityRenderState extracts attack-arm STAB for non-player humanoids too"
         );
+    }
+
+    #[test]
+    fn entity_model_instances_project_stab_from_stack_swing_animation_patch() {
+        // Vanilla `ItemStack.getSwingAnimation()` reads the stack component before
+        // the item prototype. A patch-granted STAB therefore drives the attack-arm
+        // STAB render state even on a non-spear item and without an item runtime.
+        const PLAIN_ITEM_ID: i32 = 31;
+
+        let mut item = ItemStackSummary {
+            item_id: Some(PLAIN_ITEM_ID),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        item.component_patch.added = 1;
+        item.component_patch.added_type_ids = vec![DATA_COMPONENT_SWING_ANIMATION_TYPE_ID];
+        item.component_patch.swing_animation = Some(SwingAnimationSummary {
+            animation_type: SwingAnimationTypeSummary::Stab,
+            duration: 17,
+        });
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            242,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [1.0, 64.0, -9.0],
+        ));
+        assert!(world.apply_set_equipment(SetEquipment {
+            entity_id: 242,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::MainHand,
+                item,
+            }],
+        }));
+        assert!(world.apply_entity_animation(EntityAnimation { id: 242, action: 0 }));
+
+        let state = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0)
+            .into_iter()
+            .find(|instance| instance.entity_id == 242)
+            .unwrap()
+            .render_state;
+        assert!(state.main_hand_swing_is_stab);
+        assert!(
+            state.player_main_hand_spear_pose,
+            "AvatarRenderer returns ArmPose.SPEAR for a swinging STAB stack even when the item is not tagged spear"
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_stack_swing_animation_overrides_default_spear_stab() {
+        // Removing or overriding `SWING_ANIMATION` on a spear stack changes
+        // `getSwingAnimation().type()` away from the item prototype's STAB default.
+        const WOODEN_SPEAR_ID: i32 = 0;
+
+        let registry: bbb_pack::ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+            "resource_ids": [
+                "minecraft:wooden_spear"
+            ],
+            "protocol_ids": {
+                "minecraft:wooden_spear": WOODEN_SPEAR_ID
+            }
+        }))
+        .unwrap();
+        let runtime = NativeItemRuntime::for_test_with_registry_and_equipment_assets(
+            registry,
+            bbb_pack::EquipmentAssetCatalog::default(),
+        );
+        let equip = |entity_id: i32, item: ItemStackSummary| SetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::MainHand,
+                item,
+            }],
+        };
+        let state = |world: &WorldStore, entity_id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, Some(&runtime), 1.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == entity_id)
+                .unwrap()
+                .render_state
+        };
+
+        let mut removed = ItemStackSummary {
+            item_id: Some(WOODEN_SPEAR_ID),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        removed.component_patch.removed_type_ids = vec![DATA_COMPONENT_SWING_ANIMATION_TYPE_ID];
+
+        let mut whack = ItemStackSummary {
+            item_id: Some(WOODEN_SPEAR_ID),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        whack.component_patch.added = 1;
+        whack.component_patch.added_type_ids = vec![DATA_COMPONENT_SWING_ANIMATION_TYPE_ID];
+        whack.component_patch.swing_animation = Some(SwingAnimationSummary {
+            animation_type: SwingAnimationTypeSummary::Whack,
+            duration: 6,
+        });
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            243,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [1.0, 64.0, -9.0],
+        ));
+        assert!(world.apply_set_equipment(equip(243, removed)));
+        assert!(world.apply_entity_animation(EntityAnimation { id: 243, action: 0 }));
+        assert!(!state(&world, 243).main_hand_swing_is_stab);
+
+        world.apply_add_entity(protocol_add_entity(
+            244,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [2.0, 64.0, -9.0],
+        ));
+        assert!(world.apply_set_equipment(equip(244, whack)));
+        assert!(world.apply_entity_animation(EntityAnimation { id: 244, action: 0 }));
+        assert!(!state(&world, 244).main_hand_swing_is_stab);
     }
 
     #[test]

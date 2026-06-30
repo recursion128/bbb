@@ -22,10 +22,10 @@ use bbb_protocol::packets::{
     SetEntityLink as ProtocolSetEntityLink, SetEntityMotion as ProtocolSetEntityMotion,
     SetEquipment as ProtocolSetEquipment, SetPassengers as ProtocolSetPassengers,
     SetPlayerInventory as ProtocolSetPlayerInventory, SetPlayerTeam as ProtocolSetPlayerTeam,
-    TakeItemEntity as ProtocolTakeItemEntity, TeamCollisionRule as ProtocolTeamCollisionRule,
-    TeamVisibility as ProtocolTeamVisibility, TeleportEntity as ProtocolTeleportEntity,
-    UpdateAttributes as ProtocolUpdateAttributes, Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_Y,
-    PLAYER_RELATIVE_X,
+    SwingAnimationSummary, SwingAnimationTypeSummary, TakeItemEntity as ProtocolTakeItemEntity,
+    TeamCollisionRule as ProtocolTeamCollisionRule, TeamVisibility as ProtocolTeamVisibility,
+    TeleportEntity as ProtocolTeleportEntity, UpdateAttributes as ProtocolUpdateAttributes,
+    Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_X,
 };
 
 #[test]
@@ -3756,6 +3756,70 @@ fn entity_model_sources_use_held_item_default_swing_duration() {
 
     store.advance_entity_client_animations(6);
     assert!((attack(&store, 1.0) - 12.0 / 13.0).abs() < 1e-6);
+    store.advance_entity_client_animations(1);
+    assert_eq!(attack(&store, 1.0), 0.0);
+}
+
+#[test]
+fn entity_model_sources_use_item_stack_swing_animation_patch_duration() {
+    const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 145;
+    const SPEAR_ITEM_ID: i32 = 42;
+
+    let attack = |store: &WorldStore, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == 52)
+            .unwrap()
+            .attack_anim
+    };
+    let equip = |item: ItemStackSummary| ProtocolSetEquipment {
+        entity_id: 52,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::MainHand,
+            item,
+        }],
+    };
+
+    let mut patched = ItemStackSummary {
+        item_id: Some(SPEAR_ITEM_ID),
+        count: 1,
+        component_patch: DataComponentPatchSummary::default(),
+    };
+    patched.component_patch.added = 1;
+    patched.component_patch.added_type_ids = vec![40];
+    patched.component_patch.swing_animation = Some(SwingAnimationSummary {
+        animation_type: SwingAnimationTypeSummary::Stab,
+        duration: 17,
+    });
+
+    let mut removed = ItemStackSummary {
+        item_id: Some(SPEAR_ITEM_ID),
+        count: 1,
+        component_patch: DataComponentPatchSummary::default(),
+    };
+    removed.component_patch.removed_type_ids = vec![40];
+
+    let mut store = WorldStore::new();
+    store.set_default_item_swing_animation_durations(BTreeMap::from([(SPEAR_ITEM_ID, 13)]));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        52,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+
+    // Vanilla `ItemStack.getSwingAnimation()` reads the stack component before the
+    // item prototype default, so a server-synchronized patch duration wins.
+    assert!(store.apply_set_equipment(equip(patched)));
+    assert!(store.apply_entity_animation(ProtocolEntityAnimation { id: 52, action: 0 }));
+    store.advance_entity_client_animations(7);
+    assert!((attack(&store, 1.0) - 6.0 / 17.0).abs() < 1e-6);
+
+    // Removing the component from a spear falls through to `SwingAnimation.DEFAULT`
+    // (`WHACK`, 6 ticks), not the spear prototype's 13-tick STAB default.
+    assert!(store.apply_set_equipment(equip(removed)));
+    assert!(store.apply_entity_animation(ProtocolEntityAnimation { id: 52, action: 0 }));
+    store.advance_entity_client_animations(6);
+    assert!((attack(&store, 1.0) - 5.0 / 6.0).abs() < 1e-6);
     store.advance_entity_client_animations(1);
     assert_eq!(attack(&store, 1.0), 0.0);
 }

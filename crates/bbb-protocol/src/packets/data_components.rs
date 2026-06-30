@@ -59,6 +59,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub attack_range: Option<AttackRangeSummary>,
     #[serde(default)]
+    pub swing_animation: Option<SwingAnimationSummary>,
+    #[serde(default)]
     pub custom_model_data_floats: CustomModelDataFloats,
     #[serde(default)]
     pub custom_model_data_strings: Vec<String>,
@@ -174,6 +176,20 @@ impl PartialEq for UseEffectsSummary {
 }
 
 impl Eq for UseEffectsSummary {}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SwingAnimationSummary {
+    pub animation_type: SwingAnimationTypeSummary,
+    pub duration: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SwingAnimationTypeSummary {
+    None,
+    Whack,
+    Stab,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ItemEnchantmentSummary {
@@ -349,6 +365,9 @@ fn decode_typed_data_component_patch_summary(
             30 => {
                 summary.attack_range = Some(decode_attack_range_summary(decoder)?);
             }
+            40 => {
+                summary.swing_animation = Some(decode_swing_animation(decoder)?);
+            }
             17 => {
                 let (floats, strings, colors) = decode_custom_model_data(decoder)?;
                 summary.custom_model_data_floats = floats.into();
@@ -504,7 +523,9 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         38 => decode_piercing_weapon(decoder)?,
         39 => decode_kinetic_weapon(decoder)?,
         // swing_animation.
-        40 => decode_swing_animation(decoder)?,
+        40 => {
+            let _ = decode_swing_animation(decoder)?;
+        }
         // dyed_color and map_color.
         44 | 45 => {
             decoder.read_i32()?;
@@ -1344,10 +1365,16 @@ fn decode_direct_painting_variant(decoder: &mut Decoder<'_>) -> Result<()> {
     Ok(())
 }
 
-fn decode_swing_animation(decoder: &mut Decoder<'_>) -> Result<()> {
-    decoder.read_var_i32()?;
-    decoder.read_var_i32()?;
-    Ok(())
+fn decode_swing_animation(decoder: &mut Decoder<'_>) -> Result<SwingAnimationSummary> {
+    let animation_type = match decoder.read_var_i32()? {
+        1 => SwingAnimationTypeSummary::Whack,
+        2 => SwingAnimationTypeSummary::Stab,
+        _ => SwingAnimationTypeSummary::None,
+    };
+    Ok(SwingAnimationSummary {
+        animation_type,
+        duration: decoder.read_var_i32()?,
+    })
 }
 
 fn decode_potion_contents(decoder: &mut Decoder<'_>) -> Result<Option<i32>> {
@@ -1670,6 +1697,36 @@ mod tests {
                     max_creative_reach: 6.5,
                     hitbox_margin: 0.125,
                     mob_factor: 0.5,
+                }),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_swing_animation_component_summary() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+
+        payload.write_var_i32(40);
+        payload.write_var_i32(2);
+        payload.write_var_i32(17);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![40],
+                removed_type_ids: Vec::new(),
+                swing_animation: Some(SwingAnimationSummary {
+                    animation_type: SwingAnimationTypeSummary::Stab,
+                    duration: 17,
                 }),
                 ..DataComponentPatchSummary::default()
             }
@@ -2455,6 +2512,10 @@ mod tests {
                     max_creative_reach: 5.0,
                     hitbox_margin: 0.3,
                     mob_factor: 1.0,
+                }),
+                swing_animation: Some(SwingAnimationSummary {
+                    animation_type: SwingAnimationTypeSummary::None,
+                    duration: 6,
                 }),
                 potion_custom_color: Some(0x778899),
                 firework_explosion_colors: vec![0x010203, 0x040506],

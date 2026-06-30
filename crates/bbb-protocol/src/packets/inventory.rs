@@ -14,7 +14,8 @@ pub use data_components::{
     ItemRaritySummary, ItemStackTemplateSummary, MapPostProcessingSummary, PlayerModelTypeSummary,
     PlayerSkinPatchSummary, ProfileSkinTextureSummary, ProfileTextureSummary,
     ProfileTexturesSummary, ResolvableProfileKindSummary, ResolvableProfileSummary,
-    ResourceTextureSummary, UseEffectsSummary, WrittenBookContentSummary,
+    ResourceTextureSummary, SwingAnimationSummary, SwingAnimationTypeSummary, UseEffectsSummary,
+    WrittenBookContentSummary,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

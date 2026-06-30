@@ -1430,9 +1430,12 @@ When an agent does any of the following, update this file in the same slice:
     per-item default swing duration is now wired through pack →
     native → world for `ItemStack.getSwingAnimation().duration()`: vanilla spear attack durations
     from `Item.Properties.spear(... attackDuration ...)` keep the client-side swing alive past the
-    default 6-tick WHACK ramp (for example wooden spear `0.65F * 20 -> 13` ticks). Dig-speed /
-    mining-fatigue duration modifiers, runtime item swaps during an in-flight swing, and patch-granted
-    custom `swing_animation` values remain deferred. The `STAB` swing type IS implemented for the
+    default 6-tick WHACK ramp (for example wooden spear `0.65F * 20 -> 13` ticks). Stack-level
+    `swing_animation` component patches now override the item prototype for both duration and type:
+    patch-granted `STAB` drives the attack-arm STAB render state even on non-spear items, while removed
+    or `WHACK` patches on spear stacks fall back away from the prototype STAB. Dig-speed /
+    mining-fatigue duration modifiers and runtime item swaps during an in-flight swing remain deferred.
+    The `STAB` swing type IS implemented for the
     player: a remote player whose current attack-arm item is one of the seven spears
     (`wooden`/`stone`/`copper`/`iron`/`golden`/`diamond`/`netherite_spear`, whose item prototype sets
     `SWING_ANIMATION = STAB` via `Item.Properties.spear(...)`) lunges with

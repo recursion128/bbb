@@ -15,6 +15,7 @@ use bbb_protocol::packets::{
     SetCursorItem as ProtocolSetCursorItem, SetPlayerInventory as ProtocolSetPlayerInventory,
     SlotDisplaySummary as ProtocolSlotDisplaySummary,
     StonecutterSelectableRecipeSummary as ProtocolStonecutterSelectableRecipeSummary,
+    SwingAnimationSummary as ProtocolSwingAnimationSummary,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -2266,6 +2267,10 @@ fn item_stack_swing_duration(
         return ATTACK_SWING_DURATION;
     }
 
+    if let Some(swing_animation) = stack.component_patch.swing_animation {
+        return item_swing_animation_duration_from_protocol(swing_animation);
+    }
+
     let Some(item_id) = stack.item_id.filter(|item_id| *item_id >= 0) else {
         return ATTACK_SWING_DURATION;
     };
@@ -2273,6 +2278,16 @@ fn item_stack_swing_duration(
         .get(&item_id)
         .copied()
         .unwrap_or(ATTACK_SWING_DURATION)
+}
+
+fn item_swing_animation_duration_from_protocol(
+    swing_animation: ProtocolSwingAnimationSummary,
+) -> i32 {
+    if swing_animation.duration > 0 {
+        swing_animation.duration
+    } else {
+        ATTACK_SWING_DURATION
+    }
 }
 
 fn item_attack_range_from_protocol(attack_range: ProtocolAttackRangeSummary) -> ItemAttackRange {

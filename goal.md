@@ -649,8 +649,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - [x] player attack-arm spear `STAB` uses vanilla registry default swing duration
     (`Item.Properties.spear(... attackDuration ...)` -> `SwingAnimation.duration`) through
     pack -> native -> world, including off-hand attack-arm STAB item transform.
+  - [x] patch-granted custom `swing_animation` stack values override item defaults for
+    `SwingAnimation.duration` and `SwingAnimation.type` (including stack `STAB` on non-spear
+    items and removed / `WHACK` overrides on default spear stacks).
   - remaining per-item swing duration edge cases：dig-speed / mining-fatigue modifiers,
-    item swaps during an in-flight swing, and patch-granted custom `swing_animation` values.
+    and item swaps during an in-flight swing.
   - left/right-hand transform 差异。
 - HUD / inventory：
   - vanilla font / count / durability / cooldown / tooltip / screen depth behavior。
