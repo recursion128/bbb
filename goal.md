@@ -753,6 +753,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     false branch, while future cursor-carried item call sites can pass true
     without matching by stack contents. Visual mouse-cursor carried item
     projection remains a GUI surface follow-up.
+  - [x] `minecraft:component` item-model condition covers the vanilla
+    `ComponentMatches.get` component-type / `AnyValue` predicate branch for
+    decoded component ids such as `minecraft:rarity` and
+    `minecraft:enchantment_glint_override`: default prototype components count
+    as present, removed components select false, and non-default patched
+    components select true. Complex `DataComponentPredicate` types such as
+    `minecraft:damage`, enchantments, containers, trim, and fireworks remain
+    component-predicate follow-up.
   - [x] `minecraft:has_component` item-model condition now follows vanilla
     `HasComponent.get`: default prototype components such as
     `minecraft:max_stack_size`, `minecraft:item_model`, and

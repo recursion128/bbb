@@ -248,6 +248,7 @@ pub enum ItemModelPropertyKind {
     Broken,
     BundleHasSelectedItem,
     Carried,
+    Component,
     CustomModelData,
     Damaged,
     HasComponent,
@@ -270,6 +271,7 @@ impl ItemModelProperty {
             "minecraft:broken" => ItemModelPropertyKind::Broken,
             "minecraft:bundle/has_selected_item" => ItemModelPropertyKind::BundleHasSelectedItem,
             "minecraft:carried" => ItemModelPropertyKind::Carried,
+            "minecraft:component" => ItemModelPropertyKind::Component,
             "minecraft:custom_model_data" => ItemModelPropertyKind::CustomModelData,
             "minecraft:damaged" => ItemModelPropertyKind::Damaged,
             "minecraft:has_component" => ItemModelPropertyKind::HasComponent,
@@ -1841,6 +1843,49 @@ mod tests {
         assert_eq!(
             property.raw(),
             &serde_json::json!({"property": "minecraft:carried"})
+        );
+        assert!(matches!(on_true.as_ref(), ItemModelDefinition::Empty));
+        assert!(matches!(on_false.as_ref(), ItemModelDefinition::Empty));
+    }
+
+    #[test]
+    fn item_model_catalog_structures_component_condition_property() {
+        let definition = ClientItemDefinition::from_json_bytes(
+            br#"{
+              "model": {
+                "type": "minecraft:condition",
+                "property": "minecraft:component",
+                "predicate": "minecraft:rarity",
+                "value": {},
+                "on_false": {
+                  "type": "minecraft:empty"
+                },
+                "on_true": {
+                  "type": "minecraft:empty"
+                }
+              }
+            }"#,
+        )
+        .unwrap();
+
+        let ItemModelDefinition::Condition {
+            property,
+            on_true,
+            on_false,
+            ..
+        } = &definition.model
+        else {
+            panic!("root should parse as a component condition item model");
+        };
+        assert_eq!(property.property_type, "minecraft:component");
+        assert_eq!(property.kind(), ItemModelPropertyKind::Component);
+        assert_eq!(
+            property.raw(),
+            &serde_json::json!({
+                "property": "minecraft:component",
+                "predicate": "minecraft:rarity",
+                "value": {}
+            })
         );
         assert!(matches!(on_true.as_ref(), ItemModelDefinition::Empty));
         assert!(matches!(on_false.as_ref(), ItemModelDefinition::Empty));

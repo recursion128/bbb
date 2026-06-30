@@ -5201,6 +5201,80 @@ mod tests {
     }
 
     #[test]
+    fn native_item_runtime_resolves_component_condition_any_value_predicates() {
+        let root = unique_temp_dir("item-runtime-component-condition");
+        write_component_condition_fixture(&root);
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let uv = |model_id: &str| {
+            runtime
+                .textures
+                .texture_uv_rect(runtime.texture_index(&format!("minecraft:item/{model_id}")))
+                .unwrap()
+        };
+        let selected = |item_id, component_patch| {
+            runtime
+                .icon_for_stack(&ItemStackSummary {
+                    item_id: Some(item_id),
+                    count: 1,
+                    component_patch,
+                })
+                .unwrap()
+                .layers[0]
+                .uv
+        };
+
+        // `ComponentMatches` with a component-type discriminator uses
+        // `AnyValue.matches`, so vanilla common default components are present.
+        assert_eq!(
+            selected(0, DataComponentPatchSummary::default()),
+            uv("component_condition_rarity_present")
+        );
+        assert_eq!(
+            selected(
+                0,
+                DataComponentPatchSummary {
+                    removed_type_ids: vec![12],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_rarity_absent")
+        );
+
+        // Non-default components are present only when the stack patch carries
+        // that component, regardless of the component's boolean payload.
+        assert_eq!(
+            selected(1, DataComponentPatchSummary::default()),
+            uv("component_condition_glint_absent")
+        );
+        assert_eq!(
+            selected(
+                1,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![21],
+                    enchantment_glint_override: Some(false),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_glint_present")
+        );
+        assert_eq!(
+            selected(
+                1,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![21],
+                    enchantment_glint_override: Some(false),
+                    removed_type_ids: vec![21],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_glint_absent")
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn native_item_runtime_uses_item_model_component_as_root_model() {
         let root = unique_temp_dir("item-runtime-item-model-component");
         write_item_model_component_fixture(&root);
@@ -6627,6 +6701,61 @@ mod tests {
             ("has_max_stack_unpatched", [40, 40, 80, 255]),
             ("has_rarity_present", [180, 80, 220, 255]),
             ("has_rarity_absent", [60, 40, 80, 255]),
+        ] {
+            write_flat_item_model_and_texture(&assets, model_id, &color);
+        }
+    }
+
+    fn write_component_condition_fixture(root: &Path) {
+        let assets = assets_dir(root);
+        write_item_atlases(&assets);
+        write_item_registry_source(
+            root,
+            &["component_condition_rarity", "component_condition_glint"],
+        );
+        write_json(
+            &assets.join("items").join("component_condition_rarity.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:rarity",
+                    "value": {},
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_rarity_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_rarity_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets.join("items").join("component_condition_glint.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:enchantment_glint_override",
+                    "value": {},
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_glint_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_glint_absent"
+                    }
+                }
+            }"#,
+        );
+        for (model_id, color) in [
+            ("component_condition_rarity_present", [80, 160, 220, 255]),
+            ("component_condition_rarity_absent", [60, 40, 80, 255]),
+            ("component_condition_glint_present", [180, 80, 220, 255]),
+            ("component_condition_glint_absent", [40, 40, 80, 255]),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);
         }

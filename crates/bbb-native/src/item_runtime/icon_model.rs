@@ -1031,6 +1031,11 @@ impl ItemIconModel {
                         on_true
                     }
                     ItemModelPropertyKind::Carried if ctx.carried_item => on_true,
+                    ItemModelPropertyKind::Component
+                        if item_stack_matches_component_predicate(property, ctx) =>
+                    {
+                        on_true
+                    }
                     ItemModelPropertyKind::Selected if ctx.selected_item => on_true,
                     ItemModelPropertyKind::UsingItem if ctx.using_item => on_true,
                     _ => on_false,
@@ -1093,17 +1098,8 @@ pub(super) fn contains_runtime_condition(model: &ItemModelDefinition) -> bool {
             on_false,
             ..
         } => {
-            matches!(
-                property.kind(),
-                ItemModelPropertyKind::Broken
-                    | ItemModelPropertyKind::Damaged
-                    | ItemModelPropertyKind::BundleHasSelectedItem
-                    | ItemModelPropertyKind::Carried
-                    | ItemModelPropertyKind::CustomModelData
-                    | ItemModelPropertyKind::HasComponent
-                    | ItemModelPropertyKind::Selected
-                    | ItemModelPropertyKind::UsingItem
-            ) || contains_runtime_condition(on_true)
+            condition_property_is_runtime_resolved(property)
+                || contains_runtime_condition(on_true)
                 || contains_runtime_condition(on_false)
         }
         ItemModelDefinition::RangeDispatch {
@@ -1138,6 +1134,23 @@ pub(super) fn contains_runtime_condition(model: &ItemModelDefinition) -> bool {
     }
 }
 
+fn condition_property_is_runtime_resolved(property: &ItemModelProperty) -> bool {
+    match property.kind() {
+        ItemModelPropertyKind::Broken
+        | ItemModelPropertyKind::Damaged
+        | ItemModelPropertyKind::BundleHasSelectedItem
+        | ItemModelPropertyKind::Carried
+        | ItemModelPropertyKind::CustomModelData
+        | ItemModelPropertyKind::HasComponent
+        | ItemModelPropertyKind::Selected
+        | ItemModelPropertyKind::UsingItem => true,
+        ItemModelPropertyKind::Component => {
+            component_condition_any_value_component_id(property).is_some()
+        }
+        ItemModelPropertyKind::Other => false,
+    }
+}
+
 pub(super) fn item_icon_model_ref_for_definition(
     model: &ItemModelDefinition,
     cuboid_models: &ItemCuboidModelCatalog,
@@ -1163,17 +1176,7 @@ pub(super) fn item_icon_model_ref_for_definition(
                 item_icon_model_ref_for_definition(on_true, cuboid_models, model_tints, colormaps);
             let on_false =
                 item_icon_model_ref_for_definition(on_false, cuboid_models, model_tints, colormaps);
-            if matches!(
-                property.kind(),
-                ItemModelPropertyKind::Broken
-                    | ItemModelPropertyKind::Damaged
-                    | ItemModelPropertyKind::BundleHasSelectedItem
-                    | ItemModelPropertyKind::Carried
-                    | ItemModelPropertyKind::CustomModelData
-                    | ItemModelPropertyKind::HasComponent
-                    | ItemModelPropertyKind::Selected
-                    | ItemModelPropertyKind::UsingItem
-            ) {
+            if condition_property_is_runtime_resolved(property) {
                 ItemIconModelRef::Condition {
                     property: property.clone(),
                     on_true: Box::new(on_true),
@@ -1418,6 +1421,49 @@ fn item_stack_has_component(
         .get("ignore_default")
         .and_then(|value| value.as_bool())
         .unwrap_or(false);
+    item_stack_has_component_id(
+        component_id,
+        component_patch,
+        default_max_damage,
+        ignore_default,
+    )
+}
+
+fn item_stack_matches_component_predicate(
+    property: &ItemModelProperty,
+    ctx: IconResolveContext<'_>,
+) -> bool {
+    let Some(component_id) = component_condition_any_value_component_id(property) else {
+        return false;
+    };
+    item_stack_has_component_id(
+        component_id,
+        ctx.component_patch,
+        ctx.default_max_damage,
+        false,
+    )
+}
+
+fn component_condition_any_value_component_id(property: &ItemModelProperty) -> Option<i32> {
+    let Some(predicate) = property
+        .raw()
+        .get("predicate")
+        .and_then(|value| value.as_str())
+    else {
+        return None;
+    };
+    if data_component_predicate_type_is_complex(predicate) {
+        return None;
+    }
+    data_component_type_id(predicate)
+}
+
+fn item_stack_has_component_id(
+    component_id: i32,
+    component_patch: Option<&DataComponentPatchSummary>,
+    default_max_damage: Option<i32>,
+    ignore_default: bool,
+) -> bool {
     let non_default = component_patch.is_some_and(|patch| {
         patch.added_type_ids.contains(&component_id)
             || patch.removed_type_ids.contains(&component_id)
@@ -1429,6 +1475,27 @@ fn item_stack_has_component(
         return false;
     }
     non_default || item_default_has_component(component_id, default_max_damage)
+}
+
+fn data_component_predicate_type_is_complex(predicate: &str) -> bool {
+    matches!(
+        predicate,
+        "minecraft:damage"
+            | "minecraft:enchantments"
+            | "minecraft:stored_enchantments"
+            | "minecraft:potion_contents"
+            | "minecraft:custom_data"
+            | "minecraft:container"
+            | "minecraft:bundle_contents"
+            | "minecraft:firework_explosion"
+            | "minecraft:fireworks"
+            | "minecraft:writable_book_content"
+            | "minecraft:written_book_content"
+            | "minecraft:attribute_modifiers"
+            | "minecraft:trim"
+            | "minecraft:jukebox_playable"
+            | "minecraft:villager/variant"
+    )
 }
 
 fn data_component_type_id(component: &str) -> Option<i32> {
