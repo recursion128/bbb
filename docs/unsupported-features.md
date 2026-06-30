@@ -3498,8 +3498,11 @@ When an agent does any of the following, update this file in the same slice:
       The `GETTING_NO_ITEM` chest-interaction state now projects
       `interactionGetNoItemAnimationState` and samples
       `CopperGolemAnimation.COPPER_GOLEM_CHEST_INTERACTION_NOITEM_NOGET`.
-      Copper golem `DROPPING_ITEM` and `DROPPING_NO_ITEM` chest keyframe
-      animations remain unsupported
+      The `DROPPING_ITEM` chest-interaction state now projects
+      `interactionDropItemAnimationState` and samples
+      `CopperGolemAnimation.COPPER_GOLEM_CHEST_INTERACTION_ITEM_DROP`.
+      Copper golem `DROPPING_NO_ITEM` chest keyframe animation remains
+      unsupported
     - witch entities as renderer-owned vanilla 26.1
       `WitchModel.createBodyLayer()` geometry, including the
       `VillagerModel.createBodyModel()` body/arms/legs/nose, the four nested
