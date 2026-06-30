@@ -149,6 +149,14 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             true,
         ),
         (
+            EntityModelLayerRenderType::EntityTranslucentEmissive,
+            "entityTranslucentEmissive",
+            EntityModelLayerRenderBucket::TranslucentEmissive,
+            false,
+            false,
+            true,
+        ),
+        (
             EntityModelLayerRenderType::EntityTranslucentCullItemTarget,
             "entityTranslucentCullItemTarget",
             EntityModelLayerRenderBucket::ItemEntityTranslucent,
@@ -295,6 +303,7 @@ fn texture_backed_blended_model_uploads_sort_by_order_then_camera_distance() {
         sorted_from_origin.sorted_item_entity_draws[0],
         EntityModelTexturedDrawRange {
             atlas: EntityModelTexturedDrawAtlas::Static,
+            render_type: EntityModelLayerRenderType::EntityTranslucentCullItemTarget,
             surface_cull: true,
             index_start: 0,
             index_count: far_only.item_entity_translucent_cull.indices.len() as u32,
@@ -304,6 +313,7 @@ fn texture_backed_blended_model_uploads_sort_by_order_then_camera_distance() {
         sorted_from_origin.sorted_item_entity_draws[1],
         EntityModelTexturedDrawRange {
             atlas: EntityModelTexturedDrawAtlas::Static,
+            render_type: EntityModelLayerRenderType::EntityTranslucentCullItemTarget,
             surface_cull: true,
             index_start: far_only.item_entity_translucent_cull.indices.len() as u32,
             index_count: near_only.item_entity_translucent_cull.indices.len() as u32,

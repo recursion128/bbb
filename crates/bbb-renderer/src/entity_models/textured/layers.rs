@@ -164,7 +164,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(in crate::entity_models) enum EntityModelLayerRenderType {
+pub(crate) enum EntityModelLayerRenderType {
     /// Vanilla `RenderTypes.entitySolid(texture)`.
     EntitySolid,
     /// Vanilla `RenderTypes.armorCutoutNoCull(texture)` used by equipment layers.
@@ -180,6 +180,8 @@ pub(in crate::entity_models) enum EntityModelLayerRenderType {
     EntityCutoutZOffset,
     /// Vanilla `RenderTypes.entityTranslucent(texture)`.
     EntityTranslucent,
+    /// Vanilla `RenderTypes.entityTranslucentEmissive(texture, affectsOutline)`.
+    EntityTranslucentEmissive,
     /// Vanilla `RenderTypes.entityTranslucentCullItemTarget(texture)`, used by
     /// `LivingEntityRenderer.getRenderType` for invisible entities still visible to this client.
     EntityTranslucentCullItemTarget,
@@ -206,6 +208,7 @@ pub(in crate::entity_models) enum EntityModelLayerRenderType {
 pub(in crate::entity_models) enum EntityModelLayerRenderBucket {
     Cutout,
     Translucent,
+    TranslucentEmissive,
     ItemEntityTranslucent,
     Eyes,
     Scroll,
@@ -217,7 +220,7 @@ pub(in crate::entity_models) enum EntityModelLayerRenderBucket {
 
 impl EntityModelLayerRenderType {
     #[cfg(test)]
-    pub(in crate::entity_models) const ALL: [Self; 16] = [
+    pub(in crate::entity_models) const ALL: [Self; 17] = [
         Self::EntitySolid,
         Self::ArmorCutoutNoCull,
         Self::ArmorTranslucent,
@@ -225,6 +228,7 @@ impl EntityModelLayerRenderType {
         Self::EntityCutoutCull,
         Self::EntityCutoutZOffset,
         Self::EntityTranslucent,
+        Self::EntityTranslucentEmissive,
         Self::EntityTranslucentCullItemTarget,
         Self::Outline,
         Self::EntityGlint,
@@ -246,6 +250,7 @@ impl EntityModelLayerRenderType {
             Self::ArmorTranslucent | Self::EntityTranslucent => {
                 EntityModelLayerRenderBucket::Translucent
             }
+            Self::EntityTranslucentEmissive => EntityModelLayerRenderBucket::TranslucentEmissive,
             Self::EntityTranslucentCullItemTarget => {
                 EntityModelLayerRenderBucket::ItemEntityTranslucent
             }
@@ -277,6 +282,7 @@ impl EntityModelLayerRenderType {
             self,
             Self::ArmorTranslucent
                 | Self::EntityTranslucent
+                | Self::EntityTranslucentEmissive
                 | Self::EntityTranslucentCullItemTarget
                 | Self::EntityGlint
                 | Self::ArmorEntityGlint
@@ -307,6 +313,7 @@ impl EntityModelLayerRenderType {
             Self::EntityCutoutCull => "entityCutoutCull",
             Self::EntityCutoutZOffset => "entityCutoutZOffset",
             Self::EntityTranslucent => "entityTranslucent",
+            Self::EntityTranslucentEmissive => "entityTranslucentEmissive",
             Self::EntityTranslucentCullItemTarget => "entityTranslucentCullItemTarget",
             Self::Outline => "outline",
             Self::EntityGlint => "entityGlint",
@@ -403,7 +410,7 @@ pub(in crate::entity_models) fn breeze_textured_layer_passes() -> Vec<EntityMode
         },
         EntityModelLayerPass {
             kind: EntityModelLayerKind::BreezeEyes,
-            render_type: EntityModelLayerRenderType::Eyes,
+            render_type: EntityModelLayerRenderType::EntityTranslucentEmissive,
             model_layer: MODEL_LAYER_BREEZE_EYES,
             texture: BREEZE_EYES_TEXTURE_REF,
             visibility: EntityModelLayerVisibility::All,
@@ -1787,12 +1794,12 @@ pub(in crate::entity_models) fn warden_textured_layer_passes(
     tendril_animation: f32,
     heart_animation: f32,
 ) -> Vec<EntityModelLayerPass> {
-    // The warden's base body, then the five `WardenEmissiveLayer`s — each an eyes-render-type pass (the
-    // pipeline being emissive + alpha-blended, matching vanilla `entityTranslucentEmissive`) over its
-    // own part subset: the always-on bioluminescent overlay (alpha 1.0, head/arms/legs); the two
-    // pulsating-spots overlays (body/legs, each fading on its own `cos(ageInTicks · 0.045)` pulse); the
-    // tendril overlay, which reuses the base `warden.png` over the two tendril planes at the lerped
-    // `tendrilAnimation` alpha; and the heart overlay (body only) at the lerped `heartAnimation` alpha.
+    // The warden's base body, then the five `WardenEmissiveLayer`s — each an
+    // entityTranslucentEmissive pass over its own part subset: the always-on bioluminescent overlay
+    // (alpha 1.0, head/arms/legs); the two pulsating-spots overlays (body/legs, each fading on its
+    // own `cos(ageInTicks · 0.045)` pulse); the tendril overlay, which reuses the base `warden.png`
+    // over the two tendril planes at the lerped `tendrilAnimation` alpha; and the heart overlay
+    // (body only) at the lerped `heartAnimation` alpha.
     vec![
         EntityModelLayerPass {
             kind: EntityModelLayerKind::WardenBase,
@@ -1806,7 +1813,7 @@ pub(in crate::entity_models) fn warden_textured_layer_passes(
         },
         EntityModelLayerPass {
             kind: EntityModelLayerKind::WardenBioluminescent,
-            render_type: EntityModelLayerRenderType::Eyes,
+            render_type: EntityModelLayerRenderType::EntityTranslucentEmissive,
             model_layer: MODEL_LAYER_WARDEN_BIOLUMINESCENT,
             texture: WARDEN_BIOLUMINESCENT_TEXTURE_REF,
             visibility: EntityModelLayerVisibility::RetainedParts(WARDEN_BIOLUMINESCENT_PARTS),
@@ -1816,7 +1823,7 @@ pub(in crate::entity_models) fn warden_textured_layer_passes(
         },
         EntityModelLayerPass {
             kind: EntityModelLayerKind::WardenPulsatingSpots1,
-            render_type: EntityModelLayerRenderType::Eyes,
+            render_type: EntityModelLayerRenderType::EntityTranslucentEmissive,
             model_layer: MODEL_LAYER_WARDEN_PULSATING_SPOTS,
             texture: WARDEN_PULSATING_SPOTS_1_TEXTURE_REF,
             visibility: EntityModelLayerVisibility::RetainedParts(WARDEN_PULSATING_SPOTS_PARTS),
@@ -1831,7 +1838,7 @@ pub(in crate::entity_models) fn warden_textured_layer_passes(
         },
         EntityModelLayerPass {
             kind: EntityModelLayerKind::WardenPulsatingSpots2,
-            render_type: EntityModelLayerRenderType::Eyes,
+            render_type: EntityModelLayerRenderType::EntityTranslucentEmissive,
             model_layer: MODEL_LAYER_WARDEN_PULSATING_SPOTS,
             texture: WARDEN_PULSATING_SPOTS_2_TEXTURE_REF,
             visibility: EntityModelLayerVisibility::RetainedParts(WARDEN_PULSATING_SPOTS_PARTS),
@@ -1846,7 +1853,7 @@ pub(in crate::entity_models) fn warden_textured_layer_passes(
         },
         EntityModelLayerPass {
             kind: EntityModelLayerKind::WardenTendrils,
-            render_type: EntityModelLayerRenderType::Eyes,
+            render_type: EntityModelLayerRenderType::EntityTranslucentEmissive,
             model_layer: MODEL_LAYER_WARDEN_TENDRILS,
             texture: WARDEN_TEXTURE_REF,
             visibility: EntityModelLayerVisibility::RetainedParts(WARDEN_TENDRILS_PARTS),
@@ -1856,7 +1863,7 @@ pub(in crate::entity_models) fn warden_textured_layer_passes(
         },
         EntityModelLayerPass {
             kind: EntityModelLayerKind::WardenHeart,
-            render_type: EntityModelLayerRenderType::Eyes,
+            render_type: EntityModelLayerRenderType::EntityTranslucentEmissive,
             model_layer: MODEL_LAYER_WARDEN_HEART,
             texture: WARDEN_HEART_TEXTURE_REF,
             visibility: EntityModelLayerVisibility::RetainedParts(WARDEN_HEART_PARTS),

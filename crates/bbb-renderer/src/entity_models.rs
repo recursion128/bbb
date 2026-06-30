@@ -52,7 +52,8 @@ pub(crate) use gpu::{
     create_entity_model_outline_pipeline, create_entity_model_pipeline,
     create_entity_model_scroll_additive_pipeline, create_entity_model_scroll_pipeline,
     create_entity_model_textured_cull_pipeline, create_entity_model_textured_pipeline,
-    create_entity_model_translucent_cull_pipeline, create_entity_model_translucent_pipeline,
+    create_entity_model_translucent_cull_pipeline,
+    create_entity_model_translucent_emissive_pipeline, create_entity_model_translucent_pipeline,
 };
 pub(super) use gpu::{
     EntityDynamicPlayerSkinAtlasGpu, EntityDynamicPlayerTextureAtlasGpu, EntityModelMeshGpu,
@@ -132,7 +133,7 @@ use textured::{
     wolf_textured_layer_passes, zombie_nautilus_textured_layer_passes,
     zombie_textured_layer_passes, zombie_villager_data_textured_layer_passes,
     zombie_villager_textured_layer_passes, EntityModelLayerKind, EntityModelLayerPass,
-    EntityModelLayerRenderBucket, EntityModelLayerRenderType, EntityModelLayerVisibility,
+    EntityModelLayerRenderBucket, EntityModelLayerVisibility,
 };
 #[cfg(test)]
 use textured::{
@@ -140,7 +141,9 @@ use textured::{
     entity_model_textured_meshes_with_dynamic_skins,
     entity_model_textured_meshes_with_dynamic_textures, EntityModelTexturedMeshes,
 };
-pub(crate) use textured::{EntityModelTexturedDrawAtlas, EntityModelTexturedDrawRange};
+pub(crate) use textured::{
+    EntityModelLayerRenderType, EntityModelTexturedDrawAtlas, EntityModelTexturedDrawRange,
+};
 
 #[cfg(test)]
 mod tests;

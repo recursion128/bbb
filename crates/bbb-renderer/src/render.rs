@@ -5,7 +5,8 @@ use wgpu::util::DeviceExt;
 
 use crate::{
     entity_models::{
-        EntityModelTexturedDrawAtlas, EntityModelTexturedDrawRange, EntityModelTexturedMeshGpu,
+        EntityModelLayerRenderType, EntityModelTexturedDrawAtlas, EntityModelTexturedDrawRange,
+        EntityModelTexturedMeshGpu,
     },
     lightmap::write_lightmap_uniform,
     weather::{build_lightning_mesh, build_weather_mesh},
@@ -1315,6 +1316,7 @@ impl Renderer {
     fn has_entity_translucent_features(&self) -> bool {
         (self.entity_model_texture_atlas.is_some()
             && (self.entity_model_translucent_mesh.is_some()
+                || self.entity_model_translucent_emissive_mesh.is_some()
                 || self.entity_model_eyes_mesh.is_some()
                 || self.entity_model_scroll_mesh.is_some()
                 || self.entity_model_scroll_additive_mesh.is_some()))
@@ -1443,14 +1445,20 @@ impl Renderer {
             return;
         }
 
-        if draw.surface_cull {
+        let uses_translucent_emissive_pipeline =
+            draw.render_type == EntityModelLayerRenderType::EntityTranslucentEmissive;
+        if uses_translucent_emissive_pipeline {
+            pass.set_pipeline(&self.entity_model_translucent_emissive_pipeline);
+        } else if draw.surface_cull {
             pass.set_pipeline(&self.entity_model_translucent_cull_pipeline);
         } else {
             pass.set_pipeline(&self.entity_model_translucent_pipeline);
         }
         *pipeline_switches += 1;
         pass.set_bind_group(0, bind_group, &[]);
-        pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+        if !uses_translucent_emissive_pipeline {
+            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+        }
         pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
         pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         pass.draw_indexed(draw.index_start..index_end, 0, 0..1);
@@ -1462,6 +1470,18 @@ impl Renderer {
         draw: EntityModelTexturedDrawRange,
         item_entity_target: bool,
     ) -> Option<(&'a EntityModelTexturedMeshGpu, &'a wgpu::BindGroup)> {
+        if draw.render_type == EntityModelLayerRenderType::EntityTranslucentEmissive {
+            if item_entity_target
+                || draw.atlas != EntityModelTexturedDrawAtlas::Static
+                || draw.surface_cull
+            {
+                return None;
+            }
+            return Some((
+                self.entity_model_translucent_emissive_mesh.as_ref()?,
+                &self.entity_model_texture_atlas.as_ref()?.bind_group,
+            ));
+        }
         match (draw.atlas, item_entity_target, draw.surface_cull) {
             (EntityModelTexturedDrawAtlas::Static, false, false) => Some((
                 self.entity_model_translucent_mesh.as_ref()?,
@@ -1533,6 +1553,18 @@ impl Renderer {
                 *pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                *entity_model_draw_calls += 1;
+            }
+            if let (Some(mesh), Some(atlas)) = (
+                &self.entity_model_translucent_emissive_mesh,
+                &self.entity_model_texture_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_translucent_emissive_pipeline);
+                *pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
                 pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
                 pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
@@ -2417,6 +2449,47 @@ mod tests {
         assert!(
             source[main_helper..tests_mod].contains("self.draw_entity_textured_range("),
             "main translucent helper dispatches sorted draw-plan ranges"
+        );
+    }
+
+    #[test]
+    fn entity_translucent_emissive_uses_own_pipeline_without_lightmap_bind() {
+        let source = include_str!("render.rs");
+        let range_helper = source
+            .find("fn draw_entity_textured_range")
+            .expect("textured range draw helper is present");
+        let resources_helper = source
+            .find("fn entity_textured_range_resources")
+            .expect("textured range resource helper is present");
+        let main_helper = source
+            .find("fn draw_entity_translucent_features")
+            .expect("main translucent feature helper is present");
+        let tests_mod = source
+            .find("#[cfg(test)]")
+            .expect("render tests module is present");
+
+        assert!(
+            source[range_helper..resources_helper]
+                .contains("EntityModelLayerRenderType::EntityTranslucentEmissive")
+                && source[range_helper..resources_helper]
+                    .contains("self.entity_model_translucent_emissive_pipeline"),
+            "sorted entityTranslucentEmissive ranges use the split vanilla pipeline"
+        );
+        assert!(
+            source[range_helper..resources_helper]
+                .contains("if !uses_translucent_emissive_pipeline"),
+            "entityTranslucentEmissive skips the LightTexture bind group"
+        );
+        assert!(
+            source[resources_helper..main_helper]
+                .contains("self.entity_model_translucent_emissive_mesh"),
+            "sorted entityTranslucentEmissive ranges resolve to the dedicated mesh bucket"
+        );
+        assert!(
+            source[main_helper..tests_mod].contains("entity_model_translucent_emissive_mesh")
+                && source[main_helper..tests_mod]
+                    .contains("self.entity_model_translucent_emissive_pipeline"),
+            "fallback unsorted translucent features also draw entityTranslucentEmissive"
         );
     }
 

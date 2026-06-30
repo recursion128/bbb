@@ -509,6 +509,114 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 }
 "#;
 
+pub(super) const ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
+    fog_visibility_ends: vec4<f32>,
+    minecraft_light0: vec4<f32>,
+    minecraft_light1: vec4<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+
+@group(0) @binding(1)
+var entity_texture_atlas: texture_2d<f32>;
+
+@group(0) @binding(2)
+var entity_sampler: sampler;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) tint: vec4<f32>,
+    @location(3) light: vec2<f32>,
+    @location(4) overlay: vec2<f32>,
+    @location(5) normal: vec3<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+    @location(1) tint: vec4<f32>,
+    @location(2) overlay: vec2<f32>,
+    @location(3) normal: vec3<f32>,
+    @location(4) spherical_distance: f32,
+    @location(5) cylindrical_distance: f32,
+};
+
+fn diffuse_light(normal: vec3<f32>) -> f32 {
+    let light0 = normalize(camera.minecraft_light0.xyz);
+    let light1 = normalize(camera.minecraft_light1.xyz);
+    let light_value = max(vec2<f32>(0.0), vec2<f32>(dot(light0, normal), dot(light1, normal)));
+    return min(1.0, (light_value.x + light_value.y) * 0.6 + 0.4);
+}
+
+fn per_face_diffuse_light(normal: vec3<f32>, front_facing: bool) -> f32 {
+    if (front_facing) {
+        return diffuse_light(normal);
+    }
+    return diffuse_light(-normal);
+}
+
+fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
+    if (vertex_distance <= fog_start) {
+        return 0.0;
+    }
+    if (vertex_distance >= fog_end) {
+        return 1.0;
+    }
+    return (vertex_distance - fog_start) / (fog_end - fog_start);
+}
+
+fn apply_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f32) -> vec4<f32> {
+    let fog_value = max(
+        linear_fog_value(spherical_distance, camera.fog_distances.x, camera.fog_distances.y),
+        linear_fog_value(cylindrical_distance, camera.fog_distances.z, camera.fog_distances.w),
+    );
+    return vec4<f32>(mix(color.rgb, camera.fog_color.rgb, fog_value * camera.fog_color.a), color.a);
+}
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
+    out.uv = input.uv;
+    out.tint = input.tint;
+    out.overlay = input.overlay;
+    out.normal = normalize(input.normal);
+    let fog_pos = input.position - camera.camera_position.xyz;
+    out.spherical_distance = length(fog_pos);
+    out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<f32> {
+    let sample = textureSample(entity_texture_atlas, entity_sampler, input.uv);
+    if sample.a < 0.1 {
+        discard;
+    }
+    var texel = sample * input.tint;
+    if (input.overlay.y < 8.0) {
+        texel.rgb = mix(vec3<f32>(1.0, 0.0, 0.0), texel.rgb, 179.0 / 255.0);
+    } else {
+        let overlay_alpha = 1.0 - input.overlay.x / 15.0 * 0.75;
+        texel.rgb = mix(vec3<f32>(1.0, 1.0, 1.0), texel.rgb, overlay_alpha);
+    }
+    return apply_fog(vec4<f32>(texel.rgb * per_face_diffuse_light(input.normal, front_facing), texel.a), input.spherical_distance, input.cylindrical_distance);
+}
+"#;
+
 // Vanilla `core/rendertype_outline`: texture alpha is only a mask; the outline colour comes from the
 // `OutlineBufferSource` vertex color, and the output alpha is the default `ColorModulator.a` (1.0).
 pub(super) const ENTITY_MODEL_OUTLINE_SHADER: &str = r#"
@@ -861,6 +969,24 @@ pub(crate) fn create_entity_model_eyes_pipeline(
         Some(wgpu::BlendState::ALPHA_BLENDING),
         false,
         None,
+    )
+}
+
+pub(crate) fn create_entity_model_translucent_emissive_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_entity_model_textured_pipeline_with_depth(
+        device,
+        format,
+        bind_group_layout,
+        None,
+        "bbb-entity-model-translucent-emissive",
+        ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER,
+        Some(wgpu::BlendState::ALPHA_BLENDING),
+        false,
+        ENTITY_MODEL_SURFACE_NO_CULL_MODE,
     )
 }
 
@@ -1274,6 +1400,12 @@ impl Renderer {
                 meshes.translucent,
                 "bbb-entity-model-translucent",
             );
+            self.entity_model_translucent_emissive_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.translucent_emissive,
+                    "bbb-entity-model-translucent-emissive",
+                );
             self.entity_model_item_entity_translucent_mesh =
                 create_entity_model_textured_mesh_gpu_from_mesh(
                     &self.device,
@@ -1360,6 +1492,7 @@ impl Renderer {
             self.entity_model_textured_mesh = None;
             self.entity_model_textured_cull_mesh = None;
             self.entity_model_translucent_mesh = None;
+            self.entity_model_translucent_emissive_mesh = None;
             self.entity_model_item_entity_translucent_mesh = None;
             self.entity_model_item_entity_translucent_cull_mesh = None;
             self.entity_model_sorted_translucent_draws.clear();
@@ -1389,6 +1522,9 @@ impl Renderer {
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_translucent_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_model_translucent_emissive_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_item_entity_translucent_mesh
@@ -2111,6 +2247,7 @@ mod tests {
         ENTITY_MODEL_OUTLINE_BLEND, ENTITY_MODEL_OUTLINE_CULL_MODE,
         ENTITY_MODEL_OUTLINE_NO_CULL_MODE, ENTITY_MODEL_OUTLINE_SHADER,
         ENTITY_MODEL_SURFACE_CULL_MODE, ENTITY_MODEL_SURFACE_NO_CULL_MODE,
+        ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER,
     };
 
     #[test]
@@ -2136,6 +2273,25 @@ mod tests {
         assert_eq!(
             ENTITY_MODEL_OUTLINE_BLEND, None,
             "vanilla OUTLINE_SNIPPET declares no color-target blend state"
+        );
+    }
+
+    #[test]
+    fn entity_model_translucent_emissive_shader_matches_vanilla_pipeline_state() {
+        assert!(
+            ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER.contains("if sample.a < 0.1")
+                && ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER.contains("discard"),
+            "vanilla entity_translucent_emissive keeps ALPHA_CUTOUT 0.1"
+        );
+        assert!(
+            ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER.contains("input.overlay")
+                && ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER.contains("per_face_diffuse_light"),
+            "vanilla entity_translucent_emissive keeps overlay and PER_FACE_LIGHTING"
+        );
+        assert!(
+            !ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER.contains("lightmap_texture")
+                && !ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER.contains("sample_lightmap"),
+            "vanilla ENTITY_EMISSIVE snippet omits LightTexture sampling"
         );
     }
 

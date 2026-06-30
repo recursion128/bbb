@@ -3742,8 +3742,8 @@ When an agent does any of the following, update this file in the same slice:
       slideBack transition, the five definitions, and each action re-posing the body model). The two
       overlay layers are now reproduced too. The emissive eyes (vanilla `BreezeEyesLayer`) are an
       always-on second textured pass re-rendering the base body with the `breeze_eyes.png` reference in
-      the eyes (emissive) render type — transparent except at the head's eye UVs — mirroring the
-      creaking eyes pass but ungated. The swirling wind body (vanilla `BreezeWindLayer`) is a SEPARATE
+      vanilla `entityTranslucentEmissive` — transparent except at the head's eye UVs — instead of the
+      generic `eyes` pipeline. The swirling wind body (vanilla `BreezeWindLayer`) is a SEPARATE
       `BreezeWindModel` (vanilla `createWindLayer`, atlas 128×128) — the `wind_body` pivot → `wind_bottom`
       → `wind_mid` → `wind_top` shell chain, three concentric shells per tier — rendered into the
       translucent scrolling-overlay mesh with the `breeze_wind.png` reference, its U coordinate scrolled
@@ -3753,18 +3753,19 @@ When an agent does any of the following, update this file in the same slice:
       rotation/position swirls and the `JUMP`/`INHALE` `wind_body`/`wind_bottom` `SCALE` pulses (folded
       onto the reset scale, vanilla `ModelPart.offsetScale`), so the wind body moves with the base body.
       The colored debug path keeps the base body only, consistent with every other scrolling overlay
-      (the energy swirls, the guardian beam). Renderer tests pin the wind geometry, the eyes pass,
-      the wind body folding into the scroll mesh and U-scrolling past the looped idle, plus vanilla
+      (the energy swirls, the guardian beam). Renderer tests pin the wind geometry, the
+      entityTranslucentEmissive eyes pass, the wind body folding into the scroll mesh and U-scrolling
+      past the looped idle, plus vanilla
       submission metadata: `breeze_textured_layer_passes` records vanilla `ModelLayers.BREEZE`,
       `ModelLayers.BREEZE_WIND`, and `ModelLayers.BREEZE_EYES`, with texture, render type,
       `vanilla_name()`, white tint, and order/sequence coverage. The base `entityTranslucent` submit
       keeps entity light plus hurt/white overlay; the shared dispatch sink now records the vanilla
       body -> `BreezeWindLayer` -> `BreezeEyesLayer` generation order, while both layer submissions
-      preserve entity light and force `OverlayTexture.NO_OVERLAY` before folded eyes and scroll
+      preserve entity light and force `OverlayTexture.NO_OVERLAY` before folded emissive and scroll
       vertices inherit their submit metadata. `BreezeWindLayer` also pins the vanilla `breezeWind`
       render-type name, and missing-atlas coverage proves the wind submit survives without
       `breeze_wind.png` while only folded scroll geometry is suppressed, and the eyes submit survives
-      without `breeze_eyes.png` while only folded emissive eyes geometry is suppressed.
+      without `breeze_eyes.png` while only folded entityTranslucentEmissive geometry is suppressed.
       Breeze is now fully aligned with vanilla 26.1
     - dolphin entities are wired end to end on both render paths off the real vanilla 26.1
       `DolphinModel`: the native entity scene (`entity_scene.rs`) projects vanilla type id `35` to
@@ -4048,9 +4049,9 @@ When an agent does any of the following, update this file in the same slice:
       and the emerge→dig pose handoff; renderer tests pin all six def lengths/looping/bone-counts and that
       roaring/attacking/booming/emerging/digging re-pose vs bind and differently from each other (emerge/dig
       also moving the legs). The base texture is now bound on the textured path (`WARDEN_TEXTURE_REF`), together with all five
-      `WardenEmissiveLayer`s as eyes-render-type passes (the eyes pipeline being emissive + alpha-blended, so a
-      pass `tint[3]` scales output alpha directly, matching vanilla `entityTranslucentEmissive` — no new
-      pipeline). Each overlay is baked by vanilla
+      `WardenEmissiveLayer`s as vanilla `entityTranslucentEmissive` passes (emissive + alpha-blended,
+      with the split GPU pipeline keeping alpha cutout, overlay, and per-face lighting while skipping
+      LightTexture). Each overlay is baked by vanilla
       `WardenModel.create{Bioluminescent,PulsatingSpots,Tendrils,Heart}Layer` as a `retainExactParts` subset of
       the one body mesh, reproduced by a new `ModelPart::render_textured_retained` (a retained part draws its own
       cubes and its whole subtree is dropped — vanilla `clearRecursively` — so a retained ancestor short-circuits
@@ -4062,10 +4063,10 @@ When an agent does any of the following, update this file in the same slice:
       the lerped `tendril_animation` alpha); and the heart overlay (`WARDEN_HEART_TEXTURE_REF`, body only, at the
       lerped `heart_animation` alpha). Zero-alpha emissive layers are now skipped before submission, matching
       `LivingEntityEmissiveLayer`'s `alpha <= 1e-5` gate; textured tests pin the remaining base/emissive submissions'
-      texture, internal render type (`entityCutout` / `eyes`, used here for vanilla `entityTranslucentEmissive`),
+      texture, internal render type (`entityCutout` / `entityTranslucentEmissive`),
       vanilla model layers (`WARDEN`, `WARDEN_BIOLUMINESCENT`, `WARDEN_PULSATING_SPOTS`,
       `WARDEN_TENDRILS`, `WARDEN_HEART`), tint alpha, root transform, entity light, base hurt/white overlay, emissive
-      `getOverlayCoords(state, 0.0F)` red-row/zero-white overlay, folded cutout/eyes vertex metadata,
+      `getOverlayCoords(state, 0.0F)` red-row/zero-white overlay, folded cutout/entityTranslucentEmissive vertex metadata,
       and explicit `(order, submit_sequence)`; missing-atlas coverage proves the always-on bioluminescent
       submission is still recorded without `warden_bioluminescent_layer.png` while only that layer's
       folded retained geometry is suppressed. `heart_animation` mirrors the client-side `Warden.heartAnimation`/`O`

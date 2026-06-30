@@ -23,10 +23,11 @@ use crate::{
         create_entity_model_outline_pipeline, create_entity_model_pipeline,
         create_entity_model_scroll_additive_pipeline, create_entity_model_scroll_pipeline,
         create_entity_model_textured_cull_pipeline, create_entity_model_textured_pipeline,
-        create_entity_model_translucent_cull_pipeline, create_entity_model_translucent_pipeline,
-        EntityDynamicPlayerSkinAtlasGpu, EntityDynamicPlayerTextureAtlasGpu, EntityModelMeshGpu,
-        EntityModelScrollMeshGpu, EntityModelTextureAtlasGpu, EntityModelTexturedDrawRange,
-        EntityModelTexturedMeshGpu,
+        create_entity_model_translucent_cull_pipeline,
+        create_entity_model_translucent_emissive_pipeline,
+        create_entity_model_translucent_pipeline, EntityDynamicPlayerSkinAtlasGpu,
+        EntityDynamicPlayerTextureAtlasGpu, EntityModelMeshGpu, EntityModelScrollMeshGpu,
+        EntityModelTextureAtlasGpu, EntityModelTexturedDrawRange, EntityModelTexturedMeshGpu,
     },
     gpu::{
         create_camera_buffer, create_depth_target, create_terrain_atlas_gpu,
@@ -113,6 +114,7 @@ pub struct Renderer {
     pub(super) entity_model_textured_cull_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_translucent_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_translucent_cull_pipeline: wgpu::RenderPipeline,
+    pub(super) entity_model_translucent_emissive_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_eyes_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_outline_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_outline_cull_pipeline: wgpu::RenderPipeline,
@@ -180,6 +182,7 @@ pub struct Renderer {
     pub(super) entity_model_textured_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_model_textured_cull_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_model_translucent_mesh: Option<EntityModelTexturedMeshGpu>,
+    pub(super) entity_model_translucent_emissive_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_model_item_entity_translucent_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_model_item_entity_translucent_cull_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_model_sorted_translucent_draws: Vec<EntityModelTexturedDrawRange>,
@@ -575,6 +578,12 @@ impl Renderer {
             &terrain_bind_group_layout,
             &lightmap_sample_bind_group_layout,
         );
+        let entity_model_translucent_emissive_pipeline =
+            create_entity_model_translucent_emissive_pipeline(
+                &device,
+                format,
+                &terrain_bind_group_layout,
+            );
         let entity_model_eyes_pipeline =
             create_entity_model_eyes_pipeline(&device, format, &terrain_bind_group_layout);
         let entity_model_outline_pipeline =
@@ -759,6 +768,7 @@ impl Renderer {
             entity_model_textured_cull_pipeline,
             entity_model_translucent_pipeline,
             entity_model_translucent_cull_pipeline,
+            entity_model_translucent_emissive_pipeline,
             entity_model_eyes_pipeline,
             entity_model_outline_pipeline,
             entity_model_outline_cull_pipeline,
@@ -826,6 +836,7 @@ impl Renderer {
             entity_model_textured_mesh: None,
             entity_model_textured_cull_mesh: None,
             entity_model_translucent_mesh: None,
+            entity_model_translucent_emissive_mesh: None,
             entity_model_item_entity_translucent_mesh: None,
             entity_model_item_entity_translucent_cull_mesh: None,
             entity_model_sorted_translucent_draws: Vec::new(),

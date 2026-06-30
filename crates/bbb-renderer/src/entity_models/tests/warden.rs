@@ -443,11 +443,11 @@ fn warden_spawn_animations_re_pose_off_the_bind_pose_including_the_legs() {
 #[test]
 fn warden_textured_render_matches_vanilla_renderer() {
     // The warden binds its base body texture (warden.png, atlas 128×128, whole model), then the five
-    // `WardenEmissiveLayer`s as eyes-render-type passes (the eyes pipeline being emissive + alpha-
-    // blended), each over its own `retainExactParts` subset: the always-on bioluminescent overlay
-    // (head/arms/legs), the two pulsating-spots overlays (body/legs), the tendril overlay (the two
-    // tendrils, reusing the base texture at the lerped `tendrilAnimation` alpha), and the heart overlay
-    // (body only, warden_heart.png at the lerped `heartAnimation` alpha).
+    // `WardenEmissiveLayer`s as entityTranslucentEmissive passes, each over its own
+    // `retainExactParts` subset: the always-on bioluminescent overlay (head/arms/legs), the two
+    // pulsating-spots overlays (body/legs), the tendril overlay (the two tendrils, reusing the base
+    // texture at the lerped `tendrilAnimation` alpha), and the heart overlay (body only,
+    // warden_heart.png at the lerped `heartAnimation` alpha).
     let passes = warden_textured_layer_passes(0.0, 1.0, 0.7);
     assert_eq!(passes.len(), 6);
     assert_eq!(passes[0].kind, EntityModelLayerKind::WardenBase);
@@ -462,8 +462,14 @@ fn warden_textured_render_matches_vanilla_renderer() {
     assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
     assert_eq!(passes[1].kind, EntityModelLayerKind::WardenBioluminescent);
-    assert_eq!(passes[1].render_type, EntityModelLayerRenderType::Eyes);
-    assert_eq!(passes[1].render_type.vanilla_name(), "eyes");
+    assert_eq!(
+        passes[1].render_type,
+        EntityModelLayerRenderType::EntityTranslucentEmissive
+    );
+    assert_eq!(
+        passes[1].render_type.vanilla_name(),
+        "entityTranslucentEmissive"
+    );
     assert_eq!(passes[1].model_layer, MODEL_LAYER_WARDEN_BIOLUMINESCENT);
     assert_eq!(passes[1].texture, WARDEN_BIOLUMINESCENT_TEXTURE_REF);
     assert_eq!(passes[1].tint, [1.0, 1.0, 1.0, 1.0]);
@@ -479,8 +485,14 @@ fn warden_textured_render_matches_vanilla_renderer() {
         ])
     );
     assert_eq!(passes[2].kind, EntityModelLayerKind::WardenPulsatingSpots1);
-    assert_eq!(passes[2].render_type, EntityModelLayerRenderType::Eyes);
-    assert_eq!(passes[2].render_type.vanilla_name(), "eyes");
+    assert_eq!(
+        passes[2].render_type,
+        EntityModelLayerRenderType::EntityTranslucentEmissive
+    );
+    assert_eq!(
+        passes[2].render_type.vanilla_name(),
+        "entityTranslucentEmissive"
+    );
     assert_eq!(passes[2].model_layer, MODEL_LAYER_WARDEN_PULSATING_SPOTS);
     assert_eq!(passes[2].texture, WARDEN_PULSATING_SPOTS_1_TEXTURE_REF);
     assert_eq!((passes[2].order, passes[2].submit_sequence), (1, 2));
@@ -496,16 +508,28 @@ fn warden_textured_render_matches_vanilla_renderer() {
         ])
     );
     assert_eq!(passes[3].kind, EntityModelLayerKind::WardenPulsatingSpots2);
-    assert_eq!(passes[3].render_type, EntityModelLayerRenderType::Eyes);
-    assert_eq!(passes[3].render_type.vanilla_name(), "eyes");
+    assert_eq!(
+        passes[3].render_type,
+        EntityModelLayerRenderType::EntityTranslucentEmissive
+    );
+    assert_eq!(
+        passes[3].render_type.vanilla_name(),
+        "entityTranslucentEmissive"
+    );
     assert_eq!(passes[3].model_layer, MODEL_LAYER_WARDEN_PULSATING_SPOTS);
     assert_eq!(passes[3].texture, WARDEN_PULSATING_SPOTS_2_TEXTURE_REF);
     assert_eq!((passes[3].order, passes[3].submit_sequence), (1, 3));
     assert_eq!(passes[3].visibility, passes[2].visibility);
     // The tendril overlay reuses warden.png over the two tendril planes at `tendrilAnimation` (1.0 here).
     assert_eq!(passes[4].kind, EntityModelLayerKind::WardenTendrils);
-    assert_eq!(passes[4].render_type, EntityModelLayerRenderType::Eyes);
-    assert_eq!(passes[4].render_type.vanilla_name(), "eyes");
+    assert_eq!(
+        passes[4].render_type,
+        EntityModelLayerRenderType::EntityTranslucentEmissive
+    );
+    assert_eq!(
+        passes[4].render_type.vanilla_name(),
+        "entityTranslucentEmissive"
+    );
     assert_eq!(passes[4].model_layer, MODEL_LAYER_WARDEN_TENDRILS);
     assert_eq!(passes[4].texture, WARDEN_TEXTURE_REF);
     assert_eq!(passes[4].tint[3], 1.0);
@@ -516,8 +540,14 @@ fn warden_textured_render_matches_vanilla_renderer() {
     );
     // The heart overlay binds warden_heart.png over the body only at `heartAnimation` (0.7 here).
     assert_eq!(passes[5].kind, EntityModelLayerKind::WardenHeart);
-    assert_eq!(passes[5].render_type, EntityModelLayerRenderType::Eyes);
-    assert_eq!(passes[5].render_type.vanilla_name(), "eyes");
+    assert_eq!(
+        passes[5].render_type,
+        EntityModelLayerRenderType::EntityTranslucentEmissive
+    );
+    assert_eq!(
+        passes[5].render_type.vanilla_name(),
+        "entityTranslucentEmissive"
+    );
     assert_eq!(passes[5].model_layer, MODEL_LAYER_WARDEN_HEART);
     assert_eq!(passes[5].texture, WARDEN_HEART_TEXTURE_REF);
     assert_eq!(passes[5].tint[3], 0.7);
@@ -579,7 +609,7 @@ fn warden_textured_render_matches_vanilla_renderer() {
     let meshes = entity_model_textured_meshes(&[default_instance], &atlas);
     assert_warden_submissions_match_vanilla(&meshes, default_instance);
     // The base cutout pass draws the whole body (10 cubes → 240 vertices), every cube at the neutral
-    // tint; the emissive overlays route to the eyes mesh, not here.
+    // tint; the emissive overlays route to the entityTranslucentEmissive mesh, not here.
     assert_eq!(meshes.cutout.vertices.len(), 240);
     assert!(meshes
         .cutout
@@ -590,8 +620,8 @@ fn warden_textured_render_matches_vanilla_renderer() {
             && vertex.overlay == meshes.submissions[0].overlay));
     // Vanilla skips 0-alpha emissive layers. At age 0 with no heart/tendril pulse, only the
     // bioluminescent layer (5 cubes) and the first pulsating-spots layer (3 cubes) submit.
-    assert_eq!(meshes.eyes.vertices.len(), 8 * 24);
-    assert!(meshes.eyes.vertices.iter().all(|vertex| {
+    assert_eq!(meshes.translucent_emissive.vertices.len(), 8 * 24);
+    assert!(meshes.translucent_emissive.vertices.iter().all(|vertex| {
         vertex.light == default_instance.render_state.shader_light()
             && vertex.overlay == [0.0, default_instance.render_state.overlay_coords()[1]]
     }));
@@ -607,11 +637,15 @@ fn warden_textured_render_matches_vanilla_renderer() {
     assert_warden_submissions_match_vanilla(&animated_meshes, animated_instance);
     // Half a pulsating-spots period flips the active spots layer; the non-zero tendril and heart
     // pulses add their retained tendril (2 cubes) and body-heart (1 cube) submissions.
-    assert_eq!(animated_meshes.eyes.vertices.len(), 11 * 24);
-    assert!(animated_meshes.eyes.vertices.iter().all(|vertex| {
-        vertex.light == animated_instance.render_state.shader_light()
-            && vertex.overlay == [0.0, animated_instance.render_state.overlay_coords()[1]]
-    }));
+    assert_eq!(animated_meshes.translucent_emissive.vertices.len(), 11 * 24);
+    assert!(animated_meshes
+        .translucent_emissive
+        .vertices
+        .iter()
+        .all(|vertex| {
+            vertex.light == animated_instance.render_state.shader_light()
+                && vertex.overlay == [0.0, animated_instance.render_state.overlay_coords()[1]]
+        }));
 }
 
 #[test]
@@ -643,8 +677,14 @@ fn warden_bioluminescent_submission_survives_missing_texture_atlas_entry() {
     assert_warden_submissions_match_vanilla(&meshes, instance);
     assert_eq!(meshes.submissions.len(), 3);
     let bioluminescent = meshes.submissions[1];
-    assert_eq!(bioluminescent.render_type, EntityModelLayerRenderType::Eyes);
-    assert_eq!(bioluminescent.render_type.vanilla_name(), "eyes");
+    assert_eq!(
+        bioluminescent.render_type,
+        EntityModelLayerRenderType::EntityTranslucentEmissive
+    );
+    assert_eq!(
+        bioluminescent.render_type.vanilla_name(),
+        "entityTranslucentEmissive"
+    );
     assert_eq!(bioluminescent.texture, WARDEN_BIOLUMINESCENT_TEXTURE_REF);
     assert_eq!(
         (bioluminescent.order, bioluminescent.submit_sequence),
@@ -663,12 +703,12 @@ fn warden_bioluminescent_submission_survives_missing_texture_atlas_entry() {
 
     assert_eq!(meshes.cutout.vertices.len(), 240);
     assert_eq!(
-        meshes.eyes.vertices.len(),
+        meshes.translucent_emissive.vertices.len(),
         3 * 24,
         "missing bioluminescent texture suppresses only its five retained cubes"
     );
     assert!(meshes
-        .eyes
+        .translucent_emissive
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 0.25]

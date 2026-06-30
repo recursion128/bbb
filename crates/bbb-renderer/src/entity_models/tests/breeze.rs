@@ -180,8 +180,9 @@ fn breeze_texture_ref_matches_vanilla_renderer() {
             size: [32, 32],
         })
     );
-    // Vanilla `BreezeEyesLayer`'s always-on emissive glow adds the `breeze_eyes.png` eyes overlay, and
-    // `BreezeWindLayer` adds the 128×128 `breeze_wind.png` swirling wind body.
+    // Vanilla `BreezeEyesLayer`'s always-on emissive glow adds the `breeze_eyes.png`
+    // entityTranslucentEmissive overlay, and `BreezeWindLayer` adds the 128×128
+    // `breeze_wind.png` swirling wind body.
     assert!(entity_model_texture_refs().contains(&BREEZE_TEXTURE_REF));
     assert!(entity_model_texture_refs().contains(&BREEZE_EYES_TEXTURE_REF));
     assert!(entity_model_texture_refs().contains(&BREEZE_WIND_TEXTURE_REF));
@@ -226,8 +227,14 @@ fn breeze_texture_ref_matches_vanilla_renderer() {
     assert_eq!((passes[1].order, passes[1].submit_sequence), (1, 1));
     assert_eq!(passes[2].kind, EntityModelLayerKind::BreezeEyes);
     assert_eq!(passes[2].model_layer, MODEL_LAYER_BREEZE_EYES);
-    assert_eq!(passes[2].render_type, EntityModelLayerRenderType::Eyes);
-    assert_eq!(passes[2].render_type.vanilla_name(), "eyes");
+    assert_eq!(
+        passes[2].render_type,
+        EntityModelLayerRenderType::EntityTranslucentEmissive
+    );
+    assert_eq!(
+        passes[2].render_type.vanilla_name(),
+        "entityTranslucentEmissive"
+    );
     assert_eq!(passes[2].texture, BREEZE_EYES_TEXTURE_REF);
     assert_eq!(passes[2].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((passes[2].order, passes[2].submit_sequence), (1, 2));
@@ -275,37 +282,50 @@ fn breeze_textured_mesh_uses_vanilla_geometry_and_animates() {
             && vertex.overlay == body_submit.overlay));
 
     // Vanilla `BreezeEyesLayer`'s always-on emissive glow re-renders the same head+rods geometry into
-    // the eyes mesh with `breeze_eyes.png` (transparent except the head's eye UVs).
-    let eyes_submit = meshes
+    // entityTranslucentEmissive with `breeze_eyes.png` (transparent except the head's eye UVs).
+    let emissive_submit = meshes
         .submissions
         .iter()
         .find(|submit| submit.texture == BREEZE_EYES_TEXTURE_REF)
         .expect("breeze emits a breezeEyes submit");
-    assert_eq!(eyes_submit.render_type, EntityModelLayerRenderType::Eyes);
-    assert_eq!(eyes_submit.render_type.vanilla_name(), "eyes");
-    assert_eq!(eyes_submit.texture, BREEZE_EYES_TEXTURE_REF);
-    assert_eq!(eyes_submit.tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(eyes_submit.light, body_submit.light);
-    assert_eq!(eyes_submit.overlay, [0.0, 10.0]);
-    assert_ne!(eyes_submit.overlay, body_submit.overlay);
-    assert_eq!(eyes_submit.order, 1);
-    assert_eq!(eyes_submit.submit_sequence, 2);
-    assert_eq!(eyes_submit.transform, entity_model_root_transform(base));
-    assert_eq!(meshes.eyes.cutout_faces, 30);
-    assert_eq!(meshes.eyes.vertices.len(), 120);
+    assert_eq!(
+        emissive_submit.render_type,
+        EntityModelLayerRenderType::EntityTranslucentEmissive
+    );
+    assert_eq!(
+        emissive_submit.render_type.vanilla_name(),
+        "entityTranslucentEmissive"
+    );
+    assert_eq!(emissive_submit.texture, BREEZE_EYES_TEXTURE_REF);
+    assert_eq!(emissive_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(emissive_submit.light, body_submit.light);
+    assert_eq!(emissive_submit.overlay, [0.0, 10.0]);
+    assert_ne!(emissive_submit.overlay, body_submit.overlay);
+    assert_eq!(emissive_submit.order, 1);
+    assert_eq!(emissive_submit.submit_sequence, 2);
+    assert_eq!(emissive_submit.transform, entity_model_root_transform(base));
+    assert_eq!(meshes.translucent_emissive.cutout_faces, 30);
+    assert_eq!(meshes.translucent_emissive.vertices.len(), 120);
     assert!(meshes
-        .eyes
+        .translucent_emissive
         .vertices
         .iter()
-        .all(|vertex| vertex.light == eyes_submit.light && vertex.overlay == eyes_submit.overlay));
+        .all(|vertex| vertex.light == emissive_submit.light
+            && vertex.overlay == emissive_submit.overlay));
 
     // The looping IDLE re-poses both meshes with age and loops every 40 ticks.
     let later = entity_model_textured_meshes(&[base.with_age_in_ticks(7.0)], &atlas);
     assert_ne!(meshes.translucent.vertices, later.translucent.vertices);
-    assert_ne!(meshes.eyes.vertices, later.eyes.vertices);
+    assert_ne!(
+        meshes.translucent_emissive.vertices,
+        later.translucent_emissive.vertices
+    );
     let one_cycle = entity_model_textured_meshes(&[base.with_age_in_ticks(40.0)], &atlas);
     assert_eq!(meshes.translucent.vertices, one_cycle.translucent.vertices);
-    assert_eq!(meshes.eyes.vertices, one_cycle.eyes.vertices);
+    assert_eq!(
+        meshes.translucent_emissive.vertices,
+        one_cycle.translucent_emissive.vertices
+    );
 }
 
 #[test]
@@ -465,8 +485,8 @@ fn breeze_wind_submission_survives_missing_wind_texture_atlas_entry() {
 
 #[test]
 fn breeze_eyes_submission_survives_missing_eyes_texture_atlas_entry() {
-    // Vanilla `BreezeEyesLayer` records an order(1) eyes submit after the wind layer; missing
-    // eyes texture data suppresses only the folded emissive eyes geometry.
+    // Vanilla `BreezeEyesLayer` records an order(1) entityTranslucentEmissive submit after the wind
+    // layer; missing eyes texture data suppresses only the folded emissive eyes geometry.
     let images: Vec<_> = breeze_texture_images()
         .into_iter()
         .filter(|image| image.texture != BREEZE_EYES_TEXTURE_REF)
@@ -511,25 +531,34 @@ fn breeze_eyes_submission_survives_missing_eyes_texture_atlas_entry() {
     assert_eq!(wind_submit.overlay, [0.0, 10.0]);
     assert!(!meshes.scroll.vertices.is_empty());
 
-    let eyes_submit = meshes
+    let emissive_submit = meshes
         .submissions
         .iter()
         .find(|submit| submit.texture == BREEZE_EYES_TEXTURE_REF)
         .expect("breeze records a breezeEyes submit before atlas lookup");
-    assert_eq!(eyes_submit.render_type, EntityModelLayerRenderType::Eyes);
-    assert_eq!(eyes_submit.render_type.vanilla_name(), "eyes");
-    assert_eq!(eyes_submit.texture, BREEZE_EYES_TEXTURE_REF);
-    assert_eq!(eyes_submit.tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(eyes_submit.transform, entity_model_root_transform(base));
-    assert_eq!((eyes_submit.order, eyes_submit.submit_sequence), (1, 2));
-    assert_eq!(eyes_submit.light, body_submit.light);
-    assert_eq!(eyes_submit.overlay, [0.0, 10.0]);
-    assert_ne!(eyes_submit.overlay, body_submit.overlay);
-    assert!(
-        meshes.eyes.vertices.is_empty(),
-        "missing breeze_eyes.png suppresses only folded eyes geometry"
+    assert_eq!(
+        emissive_submit.render_type,
+        EntityModelLayerRenderType::EntityTranslucentEmissive
     );
-    assert!(meshes.eyes.indices.is_empty());
+    assert_eq!(
+        emissive_submit.render_type.vanilla_name(),
+        "entityTranslucentEmissive"
+    );
+    assert_eq!(emissive_submit.texture, BREEZE_EYES_TEXTURE_REF);
+    assert_eq!(emissive_submit.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(emissive_submit.transform, entity_model_root_transform(base));
+    assert_eq!(
+        (emissive_submit.order, emissive_submit.submit_sequence),
+        (1, 2)
+    );
+    assert_eq!(emissive_submit.light, body_submit.light);
+    assert_eq!(emissive_submit.overlay, [0.0, 10.0]);
+    assert_ne!(emissive_submit.overlay, body_submit.overlay);
+    assert!(
+        meshes.translucent_emissive.vertices.is_empty(),
+        "missing breeze_eyes.png suppresses only folded entityTranslucentEmissive geometry"
+    );
+    assert!(meshes.translucent_emissive.indices.is_empty());
 }
 
 fn breeze_texture_images() -> Vec<EntityModelTextureImage> {

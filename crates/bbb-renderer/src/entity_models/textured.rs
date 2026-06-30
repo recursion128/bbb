@@ -106,6 +106,7 @@ pub(super) use layers::player_textured_layer_passes;
 pub(super) use layers::shulker_bullet_textured_layer_passes;
 #[cfg(test)]
 pub(super) use layers::warden_pulsating_spots_alpha;
+pub(crate) use layers::EntityModelLayerRenderType;
 pub(super) use layers::{
     armadillo_textured_layer_passes, arrow_textured_layer_passes, axolotl_textured_layer_passes,
     blaze_textured_layer_passes, boat_textured_layer_passes, breeze_textured_layer_passes,
@@ -139,7 +140,7 @@ pub(super) use layers::{
     zombie_nautilus_textured_layer_passes, zombie_textured_layer_passes,
     zombie_villager_data_textured_layer_passes, zombie_villager_textured_layer_passes,
     EntityModelLayerKind, EntityModelLayerPass, EntityModelLayerRenderBucket,
-    EntityModelLayerRenderType, EntityModelLayerVisibility,
+    EntityModelLayerVisibility,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -187,6 +188,7 @@ pub(crate) enum EntityModelTexturedDrawAtlas {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct EntityModelTexturedDrawRange {
     pub(crate) atlas: EntityModelTexturedDrawAtlas,
+    pub(crate) render_type: EntityModelLayerRenderType,
     pub(crate) surface_cull: bool,
     pub(crate) index_start: u32,
     pub(crate) index_count: u32,
@@ -202,6 +204,7 @@ pub(super) struct EntityModelTexturedMeshes {
     pub(super) cutout: EntityModelTexturedMesh,
     pub(super) cutout_cull: EntityModelTexturedMesh,
     pub(super) translucent: EntityModelTexturedMesh,
+    pub(super) translucent_emissive: EntityModelTexturedMesh,
     pub(super) item_entity_translucent: EntityModelTexturedMesh,
     pub(super) item_entity_translucent_cull: EntityModelTexturedMesh,
     pub(super) eyes: EntityModelTexturedMesh,
@@ -254,6 +257,7 @@ impl EntityModelTexturedMeshes {
             cutout: EntityModelTexturedMesh::new(),
             cutout_cull: EntityModelTexturedMesh::new(),
             translucent: EntityModelTexturedMesh::new(),
+            translucent_emissive: EntityModelTexturedMesh::new(),
             item_entity_translucent: EntityModelTexturedMesh::new(),
             item_entity_translucent_cull: EntityModelTexturedMesh::new(),
             eyes: EntityModelTexturedMesh::new(),
@@ -298,6 +302,7 @@ impl EntityModelTexturedMeshes {
                 }
             }
             EntityModelLayerRenderBucket::Translucent => &mut self.translucent,
+            EntityModelLayerRenderBucket::TranslucentEmissive => &mut self.translucent_emissive,
             EntityModelLayerRenderBucket::ItemEntityTranslucent => {
                 if render_type.surface_cull() {
                     &mut self.item_entity_translucent_cull
@@ -337,6 +342,7 @@ impl EntityModelTexturedMeshes {
                 }
             }
             EntityModelLayerRenderBucket::Eyes
+            | EntityModelLayerRenderBucket::TranslucentEmissive
             | EntityModelLayerRenderBucket::Scroll
             | EntityModelLayerRenderBucket::AdditiveScroll
             | EntityModelLayerRenderBucket::OutlineOnly
@@ -370,6 +376,7 @@ impl EntityModelTexturedMeshes {
                 }
             }
             EntityModelLayerRenderBucket::Eyes
+            | EntityModelLayerRenderBucket::TranslucentEmissive
             | EntityModelLayerRenderBucket::Scroll
             | EntityModelLayerRenderBucket::AdditiveScroll
             | EntityModelLayerRenderBucket::OutlineOnly
@@ -475,12 +482,16 @@ impl EntityModelTexturedMeshes {
             };
             let draw = EntityModelTexturedDrawRange {
                 atlas,
+                render_type,
                 surface_cull,
                 index_start,
                 index_count,
             };
             match bucket {
-                EntityModelLayerRenderBucket::Translucent if index_count > 0 => {
+                EntityModelLayerRenderBucket::Translucent
+                | EntityModelLayerRenderBucket::TranslucentEmissive
+                    if index_count > 0 =>
+                {
                     self.sorted_translucent_draws.push(draw);
                 }
                 EntityModelLayerRenderBucket::ItemEntityTranslucent if index_count > 0 => {
