@@ -475,6 +475,8 @@ pub(super) enum ComponentSelectProperty {
     Rarity,
     EnchantmentGlintOverride,
     MapId,
+    DyedColor,
+    MapColor,
 }
 
 impl ComponentSelectProperty {
@@ -487,6 +489,8 @@ impl ComponentSelectProperty {
             "minecraft:rarity" => Some(Self::Rarity),
             "minecraft:enchantment_glint_override" => Some(Self::EnchantmentGlintOverride),
             "minecraft:map_id" => Some(Self::MapId),
+            "minecraft:dyed_color" => Some(Self::DyedColor),
+            "minecraft:map_color" => Some(Self::MapColor),
             _ => None,
         }
     }
@@ -500,6 +504,8 @@ impl ComponentSelectProperty {
             Self::Rarity => RARITY_COMPONENT_ID,
             Self::EnchantmentGlintOverride => ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID,
             Self::MapId => MAP_ID_COMPONENT_ID,
+            Self::DyedColor => DYED_COLOR_COMPONENT_ID,
+            Self::MapColor => MAP_COLOR_COMPONENT_ID,
         }
     }
 
@@ -543,6 +549,14 @@ impl ComponentSelectProperty {
             Self::MapId => ctx
                 .component_patch
                 .and_then(|patch| patch.map_id)
+                .map(SelectCaseValue::I32),
+            Self::DyedColor => ctx
+                .component_patch
+                .and_then(|patch| patch.dyed_color)
+                .map(SelectCaseValue::I32),
+            Self::MapColor => ctx
+                .component_patch
+                .and_then(|patch| patch.map_color)
                 .map(SelectCaseValue::I32),
         }
     }

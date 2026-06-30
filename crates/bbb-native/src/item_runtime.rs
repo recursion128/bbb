@@ -5904,6 +5904,59 @@ mod tests {
             uv("component_map_id_fallback")
         );
 
+        // `DyedItemColor.CODEC` and `MapItemColor.CODEC` expose their RGB ints
+        // to `ComponentContents.get`, with no common default component.
+        assert_eq!(
+            selected(7, DataComponentPatchSummary::default()),
+            uv("component_dyed_color_fallback")
+        );
+        assert_eq!(
+            selected(
+                7,
+                DataComponentPatchSummary {
+                    dyed_color: Some(0x12_34_56),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_dyed_color_123456")
+        );
+        assert_eq!(
+            selected(
+                7,
+                DataComponentPatchSummary {
+                    dyed_color: Some(0x12_34_56),
+                    removed_type_ids: vec![44],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_dyed_color_fallback")
+        );
+        assert_eq!(
+            selected(8, DataComponentPatchSummary::default()),
+            uv("component_map_color_fallback")
+        );
+        assert_eq!(
+            selected(
+                8,
+                DataComponentPatchSummary {
+                    map_color: Some(0x45_67_89),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_map_color_456789")
+        );
+        assert_eq!(
+            selected(
+                8,
+                DataComponentPatchSummary {
+                    map_color: Some(0x45_67_89),
+                    removed_type_ids: vec![45],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_map_color_fallback")
+        );
+
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -6912,6 +6965,8 @@ mod tests {
                 );
                 public static final Item ITEM_MODEL_COMPONENT_SELECTOR = registerItem("item_model_component_selector");
                 public static final Item MAP_ID_COMPONENT_SELECTOR = registerItem("map_id_component_selector");
+                public static final Item DYED_COLOR_COMPONENT_SELECTOR = registerItem("dyed_color_component_selector");
+                public static final Item MAP_COLOR_COMPONENT_SELECTOR = registerItem("map_color_component_selector");
             }"#,
         );
         write_json(
@@ -7068,6 +7123,44 @@ mod tests {
                 }
             }"#,
         );
+        write_json(
+            &assets
+                .join("items")
+                .join("dyed_color_component_selector.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:component",
+                    "component": "minecraft:dyed_color",
+                    "cases": [
+                        {
+                            "when": 1193046,
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_dyed_color_123456" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/component_dyed_color_fallback" }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("map_color_component_selector.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:component",
+                    "component": "minecraft:map_color",
+                    "cases": [
+                        {
+                            "when": 4548489,
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_map_color_456789" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/component_map_color_fallback" }
+                }
+            }"#,
+        );
         for (model_id, color) in [
             ("component_rarity_common", [80, 80, 80, 255]),
             ("component_rarity_rare", [80, 180, 220, 255]),
@@ -7089,6 +7182,10 @@ mod tests {
             ("component_item_model_fallback", [50, 50, 70, 255]),
             ("component_map_id_123", [50, 120, 210, 255]),
             ("component_map_id_fallback", [35, 50, 70, 255]),
+            ("component_dyed_color_123456", [0x12, 0x34, 0x56, 255]),
+            ("component_dyed_color_fallback", [60, 35, 70, 255]),
+            ("component_map_color_456789", [0x45, 0x67, 0x89, 255]),
+            ("component_map_color_fallback", [35, 65, 60, 255]),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);
         }
