@@ -5706,13 +5706,14 @@ When an agent does any of the following, update this file in the same slice:
   - Wire the remaining ambient-context `select` properties onto the same
     resolver:
     - `minecraft:local_time`
-    - `minecraft:context_entity_type` for non-GUI entity-owned item consumers
-      once their owner entity type resource key is threaded
+    - `minecraft:context_entity_type` for any future non-GUI item consumer that
+      gains a real living owner but is not routed through the current
+      owner-backed generated held-item path
   - Audit remaining item consumers that vanilla renders with a living owner and
-    pass that owner context into the item resolver. `minecraft:main_hand` is now
-    wired for entity-owned generated item attachments and GUI/HUD item icons
-    that use the local-player owner context; `minecraft:context_entity_type` is
-    currently wired for GUI/HUD local-player item icons.
+    pass that owner context into the item resolver. `minecraft:main_hand` and
+    `minecraft:context_entity_type` are now wired for owner-backed generated
+    item attachments and GUI/HUD item icons that use the local-player owner
+    context.
   - Add a typed value representation for `minecraft:component` select cases
     (`ComponentContents.get`, which dispatches case decoding through the selected
     data component's own codec) before wiring it as a stack-only select provider.
@@ -5792,8 +5793,10 @@ When an agent does any of the following, update this file in the same slice:
     - `minecraft:context_entity_type` — `ContextEntityType.get`, matching the
       owner entity type resource key for GUI/HUD item icons. This mirrors
       `GuiGraphicsExtractor.item`, which passes `minecraft.player` as the owner,
-      so the GUI/HUD context value is `minecraft:player`; null-owner/fake item
-      consumers still fall back.
+      so the GUI/HUD context value is `minecraft:player`. Owner-backed generated
+      held-item paths project the renderer entity kind to the vanilla entity
+      type key before resolving generated item layers; tests pin player vs witch
+      branch selection. Null-owner/fake item consumers still fall back.
     - `minecraft:cooldown` — `Cooldown.get`, matching the local player's
       `ItemCooldowns.getCooldownPercent(itemStack, 0.0F)` for GUI/HUD item
       icons. The item model property intentionally uses vanilla's `0.0F`
@@ -5831,9 +5834,7 @@ When an agent does any of the following, update this file in the same slice:
     documented follow-up.
     `minecraft:main_hand` and `minecraft:context_entity_type` still fall back on
     native item consumers that do not pass a `LivingEntity` owner, such as
-    fake/null-owner item surfaces; third-person entity-owned generated items
-    still need an entity type id -> resource key projection for
-    `minecraft:context_entity_type`. `minecraft:component` also remains deferred
+    fake/null-owner item surfaces. `minecraft:component` also remains deferred
     until the runtime carries typed component values for case matching. This is
     the documented follow-up.
 

@@ -22,8 +22,9 @@ use bbb_renderer::{
     minecart_tnt_display_block_transform, mooshroom_mushroom_block_transforms,
     panda_held_item_transform, snow_golem_head_block_transform,
     villager_crossed_arms_item_transform, witch_held_item_transform, EntityModelInstance,
-    EntityModelKind, IllagerModelFamily, ItemModelMesh, ItemModelMeshSet, ItemModelQuad,
-    MooshroomVariant, ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
+    EntityModelKind, HumanoidModelFamily, IllagerModelFamily, ItemModelMesh, ItemModelMeshSet,
+    ItemModelQuad, MooshroomVariant, PiglinModelFamily, SkeletonModelFamily,
+    ZombieVariantModelFamily, ITEM_MODEL_FULL_BRIGHT_LIGHT, ITEM_MODEL_NO_OVERLAY,
 };
 use bbb_world::{TerrainLight, WorldStore};
 use glam::{Mat4, Vec3};
@@ -613,6 +614,7 @@ fn bake_held_hand(
             context,
             left_arm,
             Some(instance.render_state.main_arm_left),
+            entity_model_context_entity_type(instance.kind),
             using_item,
             using_item_ticks,
             BLOCK_THIRD_PERSON_FALLBACK,
@@ -664,6 +666,7 @@ fn bake_fox_held_item(
         BlockModelDisplayContext::Ground,
         false,
         Some(instance.render_state.main_arm_left),
+        entity_model_context_entity_type(instance.kind),
         using_item,
         entity_use_elapsed_ticks(instance, using_item),
         BLOCK_GROUND_FALLBACK,
@@ -704,6 +707,7 @@ fn bake_dolphin_carried_item(
         BlockModelDisplayContext::Ground,
         false,
         Some(instance.render_state.main_arm_left),
+        entity_model_context_entity_type(instance.kind),
         using_item,
         entity_use_elapsed_ticks(instance, using_item),
         BLOCK_GROUND_FALLBACK,
@@ -744,6 +748,7 @@ fn bake_witch_held_item(
         BlockModelDisplayContext::Ground,
         false,
         Some(instance.render_state.main_arm_left),
+        entity_model_context_entity_type(instance.kind),
         using_item,
         entity_use_elapsed_ticks(instance, using_item),
         BLOCK_GROUND_FALLBACK,
@@ -789,6 +794,7 @@ fn bake_copper_golem_held_items(
             context,
             left_hand,
             Some(instance.render_state.main_arm_left),
+            entity_model_context_entity_type(instance.kind),
             using_item,
             entity_use_elapsed_ticks(instance, using_item),
             BLOCK_THIRD_PERSON_FALLBACK,
@@ -837,6 +843,7 @@ fn bake_allay_held_items(
             context,
             left_hand,
             Some(instance.render_state.main_arm_left),
+            entity_model_context_entity_type(instance.kind),
             using_item,
             entity_use_elapsed_ticks(instance, using_item),
             BLOCK_THIRD_PERSON_FALLBACK,
@@ -877,6 +884,7 @@ fn bake_villager_crossed_arms_item(
         BlockModelDisplayContext::Ground,
         false,
         Some(instance.render_state.main_arm_left),
+        entity_model_context_entity_type(instance.kind),
         using_item,
         entity_use_elapsed_ticks(instance, using_item),
         BLOCK_GROUND_FALLBACK,
@@ -917,6 +925,7 @@ fn bake_panda_held_item(
         BlockModelDisplayContext::Ground,
         false,
         Some(instance.render_state.main_arm_left),
+        entity_model_context_entity_type(instance.kind),
         using_item,
         entity_use_elapsed_ticks(instance, using_item),
         BLOCK_GROUND_FALLBACK,
@@ -966,6 +975,7 @@ fn bake_custom_head_item(
             BlockModelDisplayContext::Head,
             false,
             Some(instance.render_state.main_arm_left),
+            entity_model_context_entity_type(instance.kind),
             false,
             0.0,
             BLOCK_HEAD_FALLBACK,
@@ -1005,6 +1015,56 @@ fn entity_use_elapsed_ticks(instance: &EntityModelInstance, using_item: bool) ->
     }
 }
 
+fn entity_model_context_entity_type(kind: EntityModelKind) -> Option<&'static str> {
+    match kind {
+        EntityModelKind::Player { .. } => Some("minecraft:player"),
+        EntityModelKind::Humanoid { family, .. } => match family {
+            HumanoidModelFamily::Player => Some("minecraft:player"),
+            HumanoidModelFamily::Zombie => Some("minecraft:zombie"),
+            HumanoidModelFamily::Skeleton => Some("minecraft:skeleton"),
+            HumanoidModelFamily::Villager => Some("minecraft:villager"),
+            HumanoidModelFamily::Illager => None,
+            HumanoidModelFamily::ArmorStand => Some("minecraft:armor_stand"),
+        },
+        EntityModelKind::ArmorStand { .. } => Some("minecraft:armor_stand"),
+        EntityModelKind::Zombie { .. } => Some("minecraft:zombie"),
+        EntityModelKind::ZombieVariant { family, .. } => match family {
+            ZombieVariantModelFamily::Husk => Some("minecraft:husk"),
+            ZombieVariantModelFamily::Drowned => Some("minecraft:drowned"),
+            ZombieVariantModelFamily::ZombieVillager => Some("minecraft:zombie_villager"),
+        },
+        EntityModelKind::Skeleton => Some("minecraft:skeleton"),
+        EntityModelKind::SkeletonVariant { family } => match family {
+            SkeletonModelFamily::Stray => Some("minecraft:stray"),
+            SkeletonModelFamily::Parched => Some("minecraft:parched"),
+            SkeletonModelFamily::WitherSkeleton => Some("minecraft:wither_skeleton"),
+            SkeletonModelFamily::Bogged { .. } => Some("minecraft:bogged"),
+        },
+        EntityModelKind::Piglin { family, .. } => match family {
+            PiglinModelFamily::Piglin => Some("minecraft:piglin"),
+            PiglinModelFamily::PiglinBrute => Some("minecraft:piglin_brute"),
+            PiglinModelFamily::ZombifiedPiglin => Some("minecraft:zombified_piglin"),
+        },
+        EntityModelKind::Giant => Some("minecraft:giant"),
+        EntityModelKind::Vex { .. } => Some("minecraft:vex"),
+        EntityModelKind::Allay => Some("minecraft:allay"),
+        EntityModelKind::Dolphin { .. } => Some("minecraft:dolphin"),
+        EntityModelKind::Villager { .. } => Some("minecraft:villager"),
+        EntityModelKind::WanderingTrader => Some("minecraft:wandering_trader"),
+        EntityModelKind::Fox { .. } => Some("minecraft:fox"),
+        EntityModelKind::Panda { .. } => Some("minecraft:panda"),
+        EntityModelKind::CopperGolem { .. } => Some("minecraft:copper_golem"),
+        EntityModelKind::Witch => Some("minecraft:witch"),
+        EntityModelKind::Illager { family } => match family {
+            IllagerModelFamily::Evoker => Some("minecraft:evoker"),
+            IllagerModelFamily::Illusioner => Some("minecraft:illusioner"),
+            IllagerModelFamily::Pillager => Some("minecraft:pillager"),
+            IllagerModelFamily::Vindicator => Some("minecraft:vindicator"),
+        },
+        _ => None,
+    }
+}
+
 fn item_model_elapsed_ticks(ticks: f32) -> u32 {
     if ticks.is_finite() {
         ticks.max(0.0).floor() as u32
@@ -1023,6 +1083,7 @@ fn bake_item_stack_at_transform(
     context: BlockModelDisplayContext,
     left_hand: bool,
     owner_main_hand_left: Option<bool>,
+    context_entity_type: Option<&str>,
     using_item: bool,
     using_item_ticks: f32,
     block_fallback: BlockModelDisplayTransform,
@@ -1070,6 +1131,7 @@ fn bake_item_stack_at_transform(
     for layer in item_runtime.generated_item_layers_for_stack_with_owner_context(
         stack,
         owner_main_hand_left,
+        context_entity_type,
         using_item,
         use_context,
     ) {
@@ -1935,6 +1997,7 @@ mod tests {
                 BlockModelDisplayContext::ThirdPersonRightHand,
                 false,
                 owner_main_hand_left,
+                None,
                 false,
                 0.0,
                 BLOCK_THIRD_PERSON_FALLBACK,
@@ -1960,6 +2023,75 @@ mod tests {
         assert_ne!(fallback, right);
         assert_ne!(fallback, left);
         assert_ne!(right, left);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn held_generated_item_context_entity_type_select_uses_owner_kind() {
+        // Vanilla `ContextEntityType.get` returns the living owner entity type
+        // key. Keep the transform fixed so mesh changes prove the generated
+        // item texture branch changed, not the hand pose.
+        let root = unique_item_model_temp_dir("held-context-entity-type-select");
+        write_context_entity_type_select_item_runtime_fixture(&root);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let terrain_textures = TerrainTextureState::default();
+        let stack = ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let bake = |context_entity_type| {
+            let mut block_meshes = Vec::new();
+            let mut block_translucent_meshes = Vec::new();
+            let mut flat_meshes = Vec::new();
+            let mut flat_translucent_meshes = Vec::new();
+            bake_item_stack_at_transform(
+                &stack,
+                Mat4::IDENTITY,
+                BlockModelDisplayContext::ThirdPersonRightHand,
+                false,
+                Some(false),
+                context_entity_type,
+                false,
+                0.0,
+                BLOCK_THIRD_PERSON_FALLBACK,
+                GENERATED_THIRD_PERSON_FALLBACK,
+                &item_runtime,
+                &terrain_textures,
+                &mut block_meshes,
+                &mut block_translucent_meshes,
+                &mut flat_meshes,
+                &mut flat_translucent_meshes,
+            );
+            assert!(block_meshes.is_empty());
+            assert!(block_translucent_meshes.is_empty());
+            assert!(flat_translucent_meshes.is_empty());
+            assert_eq!(flat_meshes.len(), 1);
+            flat_meshes.remove(0)
+        };
+
+        let player_kind = EntityModelKind::Humanoid {
+            family: HumanoidModelFamily::Player,
+            baby: false,
+        };
+        assert_eq!(
+            entity_model_context_entity_type(player_kind),
+            Some("minecraft:player")
+        );
+        assert_eq!(
+            entity_model_context_entity_type(EntityModelKind::Witch),
+            Some("minecraft:witch")
+        );
+
+        let fallback = bake(None);
+        let player = bake(entity_model_context_entity_type(player_kind));
+        let witch = bake(entity_model_context_entity_type(EntityModelKind::Witch));
+
+        assert_ne!(fallback, player);
+        assert_ne!(fallback, witch);
+        assert_ne!(player, witch);
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -2361,6 +2493,35 @@ mod tests {
         write_flat_item_model_and_texture(&assets, "hand_selector", &[40, 80, 120, 255]);
         write_flat_item_model_and_texture(&assets, "hand_selector_left", &[120, 40, 80, 255]);
         write_flat_item_model_and_texture(&assets, "hand_selector_right", &[80, 120, 40, 255]);
+    }
+
+    fn write_context_entity_type_select_item_runtime_fixture(root: &Path) {
+        let assets = item_model_assets_dir(root);
+        write_item_atlases(&assets);
+        write_item_registry_source(root, &["entity_selector"]);
+        write_json(
+            &assets.join("items").join("entity_selector.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:context_entity_type",
+                    "cases": [
+                        {
+                            "when": "minecraft:player",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/entity_selector_player" }
+                        },
+                        {
+                            "when": "minecraft:witch",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/entity_selector_witch" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/entity_selector" }
+                }
+            }"#,
+        );
+        write_flat_item_model_and_texture(&assets, "entity_selector", &[40, 80, 120, 255]);
+        write_flat_item_model_and_texture(&assets, "entity_selector_player", &[120, 40, 80, 255]);
+        write_flat_item_model_and_texture(&assets, "entity_selector_witch", &[80, 120, 40, 255]);
     }
 
     fn write_using_item_condition_item_runtime_fixture(root: &Path) {

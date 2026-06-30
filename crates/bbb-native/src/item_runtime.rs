@@ -1432,6 +1432,7 @@ impl NativeItemRuntime {
             None,
             false,
             ItemModelUseContext::inactive(),
+            None,
             trim_material_keys,
         )
     }
@@ -1441,11 +1442,14 @@ impl NativeItemRuntime {
     /// main arm so `minecraft:main_hand` select cases can resolve. Vanilla
     /// `IsUsingItem.get` is true only for the stack currently returned by
     /// `owner.getUseItem()`, so held-item paths also pass whether this hand is
-    /// the active use hand.
+    /// the active use hand. Vanilla `ContextEntityType.get` reads
+    /// `owner.typeHolder().unwrapKey()`, so entity-owned callers may also pass
+    /// the owner's entity type key.
     pub(crate) fn generated_item_layers_for_stack_with_owner_context(
         &self,
         stack: &ItemStackSummary,
         owner_main_hand_left: Option<bool>,
+        context_entity_type: Option<&str>,
         using_item: bool,
         use_context: ItemModelUseContext,
     ) -> Vec<GeneratedItemLayer> {
@@ -1454,6 +1458,7 @@ impl NativeItemRuntime {
             owner_main_hand_left,
             using_item,
             use_context,
+            context_entity_type,
             None,
         )
     }
@@ -1464,6 +1469,7 @@ impl NativeItemRuntime {
         owner_main_hand_left: Option<bool>,
         using_item: bool,
         use_context: ItemModelUseContext,
+        context_entity_type: Option<&str>,
         trim_material_keys: Option<&[String]>,
     ) -> Vec<GeneratedItemLayer> {
         let Some(icon) = self.icon_for_stack_with_context_and_use_context(
@@ -1474,7 +1480,7 @@ impl NativeItemRuntime {
             0.0,
             trim_material_keys,
             owner_main_hand_left,
-            None,
+            context_entity_type,
             None,
         ) else {
             return Vec::new();
