@@ -2,8 +2,6 @@ use anyhow::{anyhow, bail, Result};
 use glam::Vec3;
 use wgpu::util::DeviceExt;
 
-use crate::gpu::DEPTH_FORMAT;
-
 const SKY_DISC_RADIUS: f32 = 512.0;
 const SKY_DISC_Y: f32 = 16.0;
 const SUNRISE_STEPS: usize = 16;
@@ -39,6 +37,10 @@ const SKY_OVERLAY_BLEND: wgpu::BlendState = wgpu::BlendState {
         operation: wgpu::BlendOperation::Add,
     },
 };
+
+fn sky_depth_stencil_state() -> Option<wgpu::DepthStencilState> {
+    None
+}
 
 const SKY_SHADER: &str = r#"
 struct Camera {
@@ -483,13 +485,7 @@ pub(super) fn create_sky_pipeline(
             cull_mode: None,
             ..Default::default()
         },
-        depth_stencil: Some(wgpu::DepthStencilState {
-            format: DEPTH_FORMAT,
-            depth_write_enabled: false,
-            depth_compare: wgpu::CompareFunction::Always,
-            stencil: wgpu::StencilState::default(),
-            bias: wgpu::DepthBiasState::default(),
-        }),
+        depth_stencil: sky_depth_stencil_state(),
         multisample: wgpu::MultisampleState::default(),
         multiview: None,
     })
@@ -535,13 +531,7 @@ pub(super) fn create_star_pipeline(
             cull_mode: None,
             ..Default::default()
         },
-        depth_stencil: Some(wgpu::DepthStencilState {
-            format: DEPTH_FORMAT,
-            depth_write_enabled: false,
-            depth_compare: wgpu::CompareFunction::Always,
-            stencil: wgpu::StencilState::default(),
-            bias: wgpu::DepthBiasState::default(),
-        }),
+        depth_stencil: sky_depth_stencil_state(),
         multisample: wgpu::MultisampleState::default(),
         multiview: None,
     })
@@ -640,13 +630,7 @@ pub(super) fn create_end_sky_pipeline(
             cull_mode: None,
             ..Default::default()
         },
-        depth_stencil: Some(wgpu::DepthStencilState {
-            format: DEPTH_FORMAT,
-            depth_write_enabled: false,
-            depth_compare: wgpu::CompareFunction::Always,
-            stencil: wgpu::StencilState::default(),
-            bias: wgpu::DepthBiasState::default(),
-        }),
+        depth_stencil: sky_depth_stencil_state(),
         multisample: wgpu::MultisampleState::default(),
         multiview: None,
     })
@@ -697,13 +681,7 @@ pub(super) fn create_celestial_pipeline(
             cull_mode: None,
             ..Default::default()
         },
-        depth_stencil: Some(wgpu::DepthStencilState {
-            format: DEPTH_FORMAT,
-            depth_write_enabled: false,
-            depth_compare: wgpu::CompareFunction::Always,
-            stencil: wgpu::StencilState::default(),
-            bias: wgpu::DepthBiasState::default(),
-        }),
+        depth_stencil: sky_depth_stencil_state(),
         multisample: wgpu::MultisampleState::default(),
         multiview: None,
     })
@@ -1506,6 +1484,11 @@ mod tests {
         assert!(!SkyEnvironment::disabled().is_visible());
         assert!(SkyEnvironment::end().end_sky_visible());
         assert!(!SkyEnvironment::end().is_visible());
+    }
+
+    #[test]
+    fn sky_pipelines_match_vanilla_no_depth_stencil_state() {
+        assert!(sky_depth_stencil_state().is_none());
     }
 
     #[test]

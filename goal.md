@@ -287,6 +287,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     固定 `core/item` shape、`ALPHA_CUTOUT 0.1`、Sampler0 + LightTexture、
     `BlendFunction.TRANSLUCENT`、默认 back-face cull、depth-write
     `LESS_EQUAL`。
+  - [x] sky family depth-state：`SKY`、`END_SKY`、`SUNRISE_SUNSET`、
+    `STARS`、`CELESTIAL` 在 vanilla `RenderPipelines` 中都没有显式
+    `DepthStencilState`；renderer 的 sky/end-sky/star/celestial pipelines
+    已改为无 depth-stencil state。当前 sky disc + sunrise 仍共享本地
+    triangle-list pipeline，blend/cull 和拆 pipeline 属后续 P1 细化。
   - per RenderType 的 blend、depth write/test、cull、sampler、mip、lightmap、
     overlay、fog、normal diffuse 组合继续拆细。
   - glint / scroll / emissive path 不应只依赖普通 entity shader fallback。

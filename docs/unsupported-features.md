@@ -961,6 +961,13 @@ When an agent does any of the following, update this file in the same slice:
     quad faces expanded to triangle-list vertices, `0..16` UV repeat sampling,
     `0x282828` vertex color, and the official
     `textures/environment/end_sky.png` loaded from the resource stack. Basic
+    sky-family pipelines now also match vanilla's missing depth-stencil state:
+    `RenderPipelines.SKY`, `END_SKY`, `SUNRISE_SUNSET`, `STARS`, and
+    `CELESTIAL` all build without a `DepthStencilState`, so renderer
+    sky/end-sky/star/celestial pipelines no longer bind the old
+    `Always`/no-write depth state. Sky disc + sunrise still share a local
+    triangle-list pipeline; the remaining blend/cull and per-pipeline split are
+    ordinary P1 render-state work, not a P0 pipeline blocker. Basic
     cloud mesh presentation now consumes these visibility ends with vanilla
     default `CLOUD_COLOR` / `CLOUD_HEIGHT` and now loads vanilla
     `textures/environment/clouds.png` for flat cloud cell geometry with vanilla
