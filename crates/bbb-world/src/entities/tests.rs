@@ -7467,6 +7467,88 @@ fn entity_model_sources_project_fox_head_roll_and_crouch() {
 }
 
 #[test]
+fn entity_model_sources_project_cat_lie_down_and_relax_amounts() {
+    const VANILLA_ENTITY_TYPE_CAT_ID: i32 = 21;
+    const VANILLA_ENTITY_TYPE_OCELOT_ID: i32 = 91;
+    const CAT_IS_LYING_DATA_ID: u8 = 21;
+    const CAT_RELAX_STATE_ONE_DATA_ID: u8 = 22;
+
+    let source = |store: &WorldStore, id: i32, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+    };
+    let amounts = |store: &WorldStore, id: i32, partial: f32| {
+        let source = source(store, id, partial);
+        (
+            source.feline_lie_down_amount,
+            source.feline_lie_down_amount_tail,
+            source.feline_relax_state_one_amount,
+        )
+    };
+    let assert_close = |actual: f32, expected: f32| {
+        assert!(
+            (actual - expected).abs() < 1.0e-6,
+            "expected {expected}, got {actual}"
+        );
+    };
+    let assert_amounts = |actual: (f32, f32, f32), expected: (f32, f32, f32)| {
+        assert_close(actual.0, expected.0);
+        assert_close(actual.1, expected.1);
+        assert_close(actual.2, expected.2);
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        92,
+        VANILLA_ENTITY_TYPE_CAT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        93,
+        VANILLA_ENTITY_TYPE_OCELOT_ID,
+    ));
+
+    assert_eq!(amounts(&store, 92, 1.0), (0.0, 0.0, 0.0));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 92,
+        values: vec![
+            protocol_bool_data(CAT_IS_LYING_DATA_ID, true),
+            protocol_bool_data(CAT_RELAX_STATE_ONE_DATA_ID, true),
+        ],
+    }));
+    store.advance_entity_client_animations(2);
+    assert_amounts(amounts(&store, 92, 1.0), (0.3, 0.16, 0.2));
+    assert_amounts(amounts(&store, 92, 0.5), (0.225, 0.12, 0.15));
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 92,
+        values: vec![
+            protocol_bool_data(CAT_IS_LYING_DATA_ID, false),
+            protocol_bool_data(CAT_RELAX_STATE_ONE_DATA_ID, false),
+        ],
+    }));
+    store.advance_entity_client_animations(1);
+    assert_amounts(amounts(&store, 92, 0.0), (0.3, 0.16, 0.2));
+    assert_amounts(amounts(&store, 92, 1.0), (0.08, 0.03, 0.07));
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 93,
+        values: vec![
+            protocol_bool_data(CAT_IS_LYING_DATA_ID, true),
+            protocol_bool_data(CAT_RELAX_STATE_ONE_DATA_ID, true),
+        ],
+    }));
+    store.advance_entity_client_animations(2);
+    assert_eq!(
+        amounts(&store, 93, 1.0),
+        (0.0, 0.0, 0.0),
+        "ocelots do not consume the cat-only lie/relax metadata slots"
+    );
+}
+
+#[test]
 fn chicken_flap_state_initializes_flapping_to_one() {
     // Vanilla `Chicken` field initializer `public float flapping = 1.0F;`; every
     // other flap field defaults to 0.

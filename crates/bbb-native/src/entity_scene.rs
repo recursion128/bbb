@@ -1441,6 +1441,9 @@ fn entity_model_instance(
         .with_feline_is_crouching(source.feline_is_crouching)
         .with_feline_is_sprinting(source.feline_is_sprinting)
         .with_feline_is_sitting(source.feline_is_sitting)
+        .with_feline_lie_down_amount(source.feline_lie_down_amount)
+        .with_feline_lie_down_amount_tail(source.feline_lie_down_amount_tail)
+        .with_feline_relax_state_one_amount(source.feline_relax_state_one_amount)
         .with_witch_holding_item(witch_holding_item)
         .with_witch_holding_potion(witch_holding_potion)
         .with_copper_golem_holding_item(copper_golem_holding_item)
@@ -12351,6 +12354,72 @@ mod tests {
             ],
         }));
         assert_eq!(feline_state(&world, 43), (false, false, false));
+    }
+
+    #[test]
+    fn entity_model_instances_project_cat_lie_down_and_relax_amounts_from_world() {
+        // Vanilla `CatRenderer.extractRenderState` forwards the partial-tick eased
+        // `getLieDownAmount`, `getLieDownAmountTail`, and `getRelaxStateOneAmount` into
+        // `FelineRenderState`; ocelots leave all three at zero.
+        const CAT_IS_LYING_DATA_ID: u8 = 21;
+        const CAT_RELAX_STATE_ONE_DATA_ID: u8 = 22;
+        let feline_amounts = |world: &WorldStore, id: i32, partial_tick: f32| {
+            let instance =
+                entity_model_instances_from_world_at_partial_tick(world, None, partial_tick)
+                    .into_iter()
+                    .find(|instance| instance.entity_id == id)
+                    .unwrap();
+            (
+                instance.render_state.feline_lie_down_amount,
+                instance.render_state.feline_lie_down_amount_tail,
+                instance.render_state.feline_relax_state_one_amount,
+            )
+        };
+        let assert_close = |actual: f32, expected: f32| {
+            assert!(
+                (actual - expected).abs() < 1.0e-6,
+                "expected {expected}, got {actual}"
+            );
+        };
+        let assert_amounts = |actual: (f32, f32, f32), expected: (f32, f32, f32)| {
+            assert_close(actual.0, expected.0);
+            assert_close(actual.1, expected.1);
+            assert_close(actual.2, expected.2);
+        };
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            46,
+            VANILLA_ENTITY_TYPE_CAT_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            47,
+            VANILLA_ENTITY_TYPE_OCELOT_ID,
+            [3.0, 64.0, -2.0],
+        ));
+
+        assert_eq!(feline_amounts(&world, 46, 1.0), (0.0, 0.0, 0.0));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 46,
+            values: vec![
+                protocol_bool_data(CAT_IS_LYING_DATA_ID, true),
+                protocol_bool_data(CAT_RELAX_STATE_ONE_DATA_ID, true),
+            ],
+        }));
+        world.advance_entity_client_animations(2);
+        assert_amounts(feline_amounts(&world, 46, 1.0), (0.3, 0.16, 0.2));
+        assert_amounts(feline_amounts(&world, 46, 0.5), (0.225, 0.12, 0.15));
+
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 47,
+            values: vec![
+                protocol_bool_data(CAT_IS_LYING_DATA_ID, true),
+                protocol_bool_data(CAT_RELAX_STATE_ONE_DATA_ID, true),
+            ],
+        }));
+        world.advance_entity_client_animations(2);
+        assert_eq!(feline_amounts(&world, 47, 1.0), (0.0, 0.0, 0.0));
     }
 
     #[test]

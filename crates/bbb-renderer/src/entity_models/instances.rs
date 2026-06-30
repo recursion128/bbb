@@ -671,6 +671,16 @@ entity_render_state! {
     /// folds the body/tail/legs into the sitting branch. `false` for ocelots, non-cats, and standing
     /// cats.
     (with_feline_is_sitting) feline_is_sitting: bool = false;
+    /// Vanilla `FelineRenderState.lieDownAmount`, copied by `CatRenderer.extractRenderState` from
+    /// `Cat.getLieDownAmount(partialTick)`. `OcelotRenderer` leaves it `0.0`; non-lying cats ease back
+    /// to `0.0`.
+    (with_feline_lie_down_amount) feline_lie_down_amount: f32 = 0.0;
+    /// Vanilla `FelineRenderState.lieDownAmountTail`, copied by `CatRenderer.extractRenderState` from
+    /// `Cat.getLieDownAmountTail(partialTick)` for the lying tail pose.
+    (with_feline_lie_down_amount_tail) feline_lie_down_amount_tail: f32 = 0.0;
+    /// Vanilla `FelineRenderState.relaxStateOneAmount`, copied by `CatRenderer.extractRenderState`
+    /// from `Cat.getRelaxStateOneAmount(partialTick)` for the relaxed head pitch.
+    (with_feline_relax_state_one_amount) feline_relax_state_one_amount: f32 = 0.0;
     /// Vanilla `WitchRenderState.isHoldingItem`: true when the witch's main hand is non-empty. The model
     /// pins the nose to the drinking pose (`nose.setPos(0, 1, -1.5)`, `xRot = -0.9`) before item layers
     /// read the nose transform. `false` for every other entity and for an empty-handed witch.
@@ -2490,6 +2500,9 @@ mod tests {
                 feline_is_crouching: false,
                 feline_is_sprinting: false,
                 feline_is_sitting: false,
+                feline_lie_down_amount: 0.0,
+                feline_lie_down_amount_tail: 0.0,
+                feline_relax_state_one_amount: 0.0,
                 witch_holding_item: false,
                 witch_holding_potion: false,
                 copper_golem_holding_item: false,

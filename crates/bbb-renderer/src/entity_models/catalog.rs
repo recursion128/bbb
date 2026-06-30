@@ -587,9 +587,10 @@ pub enum EntityModelKind {
     /// reproduced, plus the bespoke crouch/sprint body-tail setup, walk leg swing, and adult lower-tail
     /// droop/wobble (`tail2.xRot = 1.7278761 + amplitude·cos(walkAnimationPos)·walkAnimationSpeed`,
     /// with standing `π/4`, crouch `0.47123894`, and sprint `π/10`; the baby's `tail2` is cubeless, so
-    /// vanilla's identical assignment is invisible). The remaining feline poses (`isSitting`,
-    /// `lieDownAmount`, `lieDownAmountTail`, `relaxStateOneAmount`) read un-projected
-    /// `FelineRenderState` state and stay deferred. The textured path binds the cat-breed texture
+    /// vanilla's identical assignment is invisible). Cat-only sitting, lie-down, lie-down-tail, and
+    /// relax-head amount branches are projected from `FelineRenderState` and applied by the model; the
+    /// remaining cat lie-down parity is the whole-body `CatRenderer.setupRotations` roll/translate. The
+    /// textured path binds the cat-breed texture
     /// (`cat_variant`, the eleven `CatVariant`s)
     /// for cats and the `ocelot` texture for ocelots (`cat_variant` is ignored when `!cat`). `collar`
     /// is the tame cat's dyed collar overlay (`CatCollarLayer`, `Some` only for a tame cat — the ocelot

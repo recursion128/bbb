@@ -701,6 +701,18 @@ pub struct EntityModelSourceState {
     /// every other entity.
     #[serde(default)]
     pub feline_is_sitting: bool,
+    /// Vanilla `CatRenderer.extractRenderState` projects `Cat.getLieDownAmount(partialTick)` into
+    /// `FelineRenderState.lieDownAmount`; `OcelotRenderer` leaves it `0.0`. Projected only for cats.
+    #[serde(default)]
+    pub feline_lie_down_amount: f32,
+    /// Vanilla `CatRenderer.extractRenderState` projects `Cat.getLieDownAmountTail(partialTick)` for
+    /// the lying tail pose. Projected only for cats and `0.0` otherwise.
+    #[serde(default)]
+    pub feline_lie_down_amount_tail: f32,
+    /// Vanilla `CatRenderer.extractRenderState` projects `Cat.getRelaxStateOneAmount(partialTick)` for
+    /// the relaxed head pitch. Projected only for cats and `0.0` otherwise.
+    #[serde(default)]
+    pub feline_relax_state_one_amount: f32,
     /// Vanilla `WolfRenderState.wetShade` (`Wolf.getWetShade(partialTick)`): the base-model
     /// grayscale tint multiplier returned by `WolfRenderer.getModelTint`. A wet wolf starts at
     /// `0.75`, then brightens with the shake/drying timer; `1.0` for a dry wolf and every non-wolf.

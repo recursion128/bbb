@@ -174,6 +174,20 @@ const SHULKER_MAX_PEEK_AMOUNT: f32 = 1.0;
 /// standing flag). `FLAG_ROLL` is mask `2` within that byte.
 const BEE_FLAGS_DATA_ID: u8 = 18;
 const BEE_FLAG_ROLL: i8 = 2;
+/// Vanilla `Cat` entity type id (`EntityType.CAT`).
+const VANILLA_ENTITY_TYPE_CAT_ID: i32 = 21;
+/// Vanilla `Cat.IS_LYING`, the synced boolean after `Cat.DATA_VARIANT_ID`:
+/// Entity 0-7, LivingEntity 8-14, Mob 15, AgeableMob 16-17, TamableAnimal 18-19,
+/// then Cat variant 20, lying 21, relax-state-one 22.
+const CAT_IS_LYING_DATA_ID: u8 = 21;
+const CAT_RELAX_STATE_ONE_DATA_ID: u8 = 22;
+/// Vanilla `Cat.updateLieDownAmount` / `updateRelaxStateOneAmount` easing.
+const CAT_LIE_DOWN_AMOUNT_RISE_PER_TICK: f32 = 0.15;
+const CAT_LIE_DOWN_AMOUNT_FALL_PER_TICK: f32 = 0.22;
+const CAT_LIE_DOWN_TAIL_AMOUNT_RISE_PER_TICK: f32 = 0.08;
+const CAT_LIE_DOWN_TAIL_AMOUNT_FALL_PER_TICK: f32 = 0.13;
+const CAT_RELAX_STATE_ONE_AMOUNT_RISE_PER_TICK: f32 = 0.1;
+const CAT_RELAX_STATE_ONE_AMOUNT_FALL_PER_TICK: f32 = 0.13;
 /// Vanilla `Fox` entity type id (`EntityType.FOX`).
 const VANILLA_ENTITY_TYPE_FOX_ID: i32 = 54;
 /// Vanilla `Wolf` entity type id (`EntityType.WOLF`).
@@ -445,6 +459,8 @@ pub struct EntityClientAnimationState {
     pub wolf_wet: Option<WolfWetAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wolf_head_roll: Option<WolfHeadRollAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cat_lie_down: Option<CatLieDownAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wither_heads: Option<WitherHeadRotationsState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1549,6 +1565,95 @@ impl WolfHeadRollAnimationState {
         !self.interested
             && self.previous_interested_angle.abs() <= f32::EPSILON
             && self.current_interested_angle.abs() <= f32::EPSILON
+    }
+}
+
+/// Canonical client-side cat lie-down / relax accumulators, mirroring vanilla `Cat.lieDownAmount`,
+/// `lieDownAmountTail`, and `relaxStateOneAmount` plus their `*O` previous-frame fields. The synced
+/// `Cat.IS_LYING` and `Cat.RELAX_STATE_ONE` booleans select the targets; each client tick saves the
+/// previous values, then rises or falls by the vanilla fixed per-tick step.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+pub struct CatLieDownAnimationState {
+    pub is_lying: bool,
+    pub relax_state_one: bool,
+    pub previous_lie_down_amount: f32,
+    pub current_lie_down_amount: f32,
+    pub previous_lie_down_amount_tail: f32,
+    pub current_lie_down_amount_tail: f32,
+    pub previous_relax_state_one_amount: f32,
+    pub current_relax_state_one_amount: f32,
+}
+
+impl CatLieDownAnimationState {
+    fn set_flags(&mut self, is_lying: bool, relax_state_one: bool) {
+        self.is_lying = is_lying;
+        self.relax_state_one = relax_state_one;
+    }
+
+    fn advance_client_tick(&mut self, is_lying: bool, relax_state_one: bool) {
+        self.set_flags(is_lying, relax_state_one);
+        self.previous_lie_down_amount = self.current_lie_down_amount;
+        self.previous_lie_down_amount_tail = self.current_lie_down_amount_tail;
+        self.previous_relax_state_one_amount = self.current_relax_state_one_amount;
+
+        if is_lying {
+            self.current_lie_down_amount =
+                (self.current_lie_down_amount + CAT_LIE_DOWN_AMOUNT_RISE_PER_TICK).min(1.0);
+            self.current_lie_down_amount_tail = (self.current_lie_down_amount_tail
+                + CAT_LIE_DOWN_TAIL_AMOUNT_RISE_PER_TICK)
+                .min(1.0);
+        } else {
+            self.current_lie_down_amount =
+                (self.current_lie_down_amount - CAT_LIE_DOWN_AMOUNT_FALL_PER_TICK).max(0.0);
+            self.current_lie_down_amount_tail = (self.current_lie_down_amount_tail
+                - CAT_LIE_DOWN_TAIL_AMOUNT_FALL_PER_TICK)
+                .max(0.0);
+        }
+
+        if relax_state_one {
+            self.current_relax_state_one_amount = (self.current_relax_state_one_amount
+                + CAT_RELAX_STATE_ONE_AMOUNT_RISE_PER_TICK)
+                .min(1.0);
+        } else {
+            self.current_relax_state_one_amount = (self.current_relax_state_one_amount
+                - CAT_RELAX_STATE_ONE_AMOUNT_FALL_PER_TICK)
+                .max(0.0);
+        }
+    }
+
+    fn lie_down_amount(self, partial_tick: f32) -> f32 {
+        lerp_f32(
+            partial_tick,
+            self.previous_lie_down_amount,
+            self.current_lie_down_amount,
+        )
+    }
+
+    fn lie_down_amount_tail(self, partial_tick: f32) -> f32 {
+        lerp_f32(
+            partial_tick,
+            self.previous_lie_down_amount_tail,
+            self.current_lie_down_amount_tail,
+        )
+    }
+
+    fn relax_state_one_amount(self, partial_tick: f32) -> f32 {
+        lerp_f32(
+            partial_tick,
+            self.previous_relax_state_one_amount,
+            self.current_relax_state_one_amount,
+        )
+    }
+
+    fn is_settled(self) -> bool {
+        !self.is_lying
+            && !self.relax_state_one
+            && self.previous_lie_down_amount <= f32::EPSILON
+            && self.current_lie_down_amount <= f32::EPSILON
+            && self.previous_lie_down_amount_tail <= f32::EPSILON
+            && self.current_lie_down_amount_tail <= f32::EPSILON
+            && self.previous_relax_state_one_amount <= f32::EPSILON
+            && self.current_relax_state_one_amount <= f32::EPSILON
     }
 }
 
@@ -3743,6 +3848,19 @@ impl EntityClientAnimationState {
                     });
                 }
             }
+            VANILLA_ENTITY_TYPE_CAT_ID => {
+                let is_lying = cat_is_lying(data_values);
+                let relax_state_one = cat_relax_state_one(data_values);
+                if let Some(cat) = self.cat_lie_down.as_mut() {
+                    cat.set_flags(is_lying, relax_state_one);
+                } else if is_lying || relax_state_one {
+                    self.cat_lie_down = Some(CatLieDownAnimationState {
+                        is_lying,
+                        relax_state_one,
+                        ..CatLieDownAnimationState::default()
+                    });
+                }
+            }
             entity_type_id if vanilla_equine_type(entity_type_id) => {
                 let (eating, standing, open_mouth) = equine_pose_flags(data_values);
                 if let Some(pose) = self.equine_pose.as_mut() {
@@ -4564,6 +4682,27 @@ impl EntityClientAnimationState {
             .map_or(0.0, |state| state.crouch_amount(partial_tick))
     }
 
+    /// Vanilla `Cat.getLieDownAmount(partialTick)` projected for
+    /// `FelineRenderState.lieDownAmount`. Returns `0.0` for upright cats and every non-cat.
+    pub fn feline_lie_down_amount(&self, partial_tick: f32) -> f32 {
+        self.cat_lie_down
+            .map_or(0.0, |state| state.lie_down_amount(partial_tick))
+    }
+
+    /// Vanilla `Cat.getLieDownAmountTail(partialTick)` projected for the feline tail lie-down pose.
+    /// Returns `0.0` for upright cats and every non-cat.
+    pub fn feline_lie_down_amount_tail(&self, partial_tick: f32) -> f32 {
+        self.cat_lie_down
+            .map_or(0.0, |state| state.lie_down_amount_tail(partial_tick))
+    }
+
+    /// Vanilla `Cat.getRelaxStateOneAmount(partialTick)` projected for the relaxed head pitch.
+    /// Returns `0.0` for non-relaxing cats and every non-cat.
+    pub fn feline_relax_state_one_amount(&self, partial_tick: f32) -> f32 {
+        self.cat_lie_down
+            .map_or(0.0, |state| state.relax_state_one_amount(partial_tick))
+    }
+
     /// Vanilla `WolfRenderState.wetShade` (`Wolf.getWetShade(partialTick)`): the base
     /// model tint multiplier used by `WolfRenderer.getModelTint`. Returns `1.0` when
     /// the wolf is dry, the `0.75` wet floor while submerged, and lerps back to white
@@ -4970,6 +5109,10 @@ impl EntityClientAnimationState {
         // The synced `Wolf.DATA_INTERESTED_ID` boolean (`isInterested()`), read from metadata in the
         // tick loop ([`wolf_is_interested`]). It drives the wolf's client-side interested-angle ease.
         wolf_is_interested: bool,
+        // The synced `Cat.IS_LYING` / `RELAX_STATE_ONE` booleans, read from metadata in the tick loop.
+        // They drive the cat's client-side lie-down and relaxed-head easing. `false` for non-cats.
+        cat_is_lying: bool,
+        cat_relax_state_one: bool,
         // Vanilla `AbstractBoat.getPaddleState(side)`: synced left/right paddle
         // booleans gated by the presence of a controlling passenger.
         boat_paddle_left: bool,
@@ -5159,6 +5302,17 @@ impl EntityClientAnimationState {
             VANILLA_ENTITY_TYPE_FOX_ID => {
                 if let Some(fox) = self.fox.as_mut() {
                     fox.advance_client_tick();
+                }
+            }
+            VANILLA_ENTITY_TYPE_CAT_ID => {
+                if self.cat_lie_down.is_some() || cat_is_lying || cat_relax_state_one {
+                    let cat = self
+                        .cat_lie_down
+                        .get_or_insert_with(CatLieDownAnimationState::default);
+                    cat.advance_client_tick(cat_is_lying, cat_relax_state_one);
+                    if cat.is_settled() {
+                        self.cat_lie_down = None;
+                    }
                 }
             }
             VANILLA_ENTITY_TYPE_WOLF_ID => {
@@ -5649,6 +5803,16 @@ fn fox_is_interested(data_values: &[EntityDataValue]) -> bool {
 /// Vanilla `Wolf.isInterested()` = `entityData.get(DATA_INTERESTED_ID)`.
 pub(crate) fn wolf_is_interested(data_values: &[EntityDataValue]) -> bool {
     entity_data_bool(data_values, WOLF_INTERESTED_DATA_ID, false)
+}
+
+/// Vanilla `Cat.isLying()` = `entityData.get(IS_LYING)`.
+pub(crate) fn cat_is_lying(data_values: &[EntityDataValue]) -> bool {
+    entity_data_bool(data_values, CAT_IS_LYING_DATA_ID, false)
+}
+
+/// Vanilla `Cat.isRelaxStateOne()` = `entityData.get(RELAX_STATE_ONE)`.
+pub(crate) fn cat_relax_state_one(data_values: &[EntityDataValue]) -> bool {
+    entity_data_bool(data_values, CAT_RELAX_STATE_ONE_DATA_ID, false)
 }
 
 /// Vanilla `Fox.isCrouching()` = `getFlag(FLAG_CROUCHING)` = `(flags & 4) != 0`.

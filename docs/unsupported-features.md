@@ -5124,10 +5124,16 @@ When an agent does any of the following, update this file in the same slice:
       `TamableAnimal.DATA_FLAGS_ID` id 18 bit 0 (`isInSittingPose()`); `OcelotRenderer` leaves
       `FelineRenderState.isSitting` false. The renderer applies the vanilla adult sitting branch
       (`body.xRot = π/4`, folded legs, raised tail) and the baby sitting deltas while skipping the
-      not-sitting walk/tail branch. Tests pin rest, moving, advanced-position, zero-speed, crouch,
-      sprint, adult/baby sitting poses, and textured base/collar sitting geometry. The rest stays
-      deferred: `lieDownAmount`, `lieDownAmountTail`, `relaxStateOneAmount`, and
-      `CatRenderer.setupRotations` lie-down roll/translate. The textured path is now wired:
+      not-sitting walk/tail branch. `CatRenderer`-only lie-down / relax state is now projected as well:
+      `Cat.IS_LYING` (21) and `Cat.RELAX_STATE_ONE` (22) drive the vanilla per-tick easing for
+      `lieDownAmount` (`+0.15/-0.22`), `lieDownAmountTail` (`+0.08/-0.13`), and
+      `relaxStateOneAmount` (`+0.1/-0.13`), and the adult/baby model applies the vanilla lie-down leg,
+      head, and tail branches plus the relaxed head pitch. Tests pin rest, moving, advanced-position,
+      zero-speed, crouch, sprint, adult/baby sitting, adult/baby lie-down/relax poses, source/native
+      amount projection, and textured base/collar sitting plus lie-down geometry with texture,
+      render-type, tint, order, and submit-sequence assertions. The remaining cat lie-down parity is
+      `CatRenderer.setupRotations` whole-body roll/translate and the sleeping-player extra translate.
+      The textured path is now wired:
       `Cat.DATA_VARIANT_ID` (20, `Holder<CatVariant>`) is
       projected — via the registry-holder mapping shared with chicken/cow/pig/frog — onto one of the eleven
       vanilla breeds (tabby/black/red/siamese/british_shorthair/calico/persian/ragdoll/white/jellie/all_black),

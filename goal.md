@@ -395,7 +395,15 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `Cat.isInSittingPose()` 现在从 `TamableAnimal.DATA_FLAGS_ID` id 18 bit 0
     投影到 `feline_is_sitting`，ocelot 保持 false；adult/baby feline 模型应用
     vanilla sitting branch，textured base/collar 共享坐姿 posed tree。
-  - lie-down / relax / sleeping-player roll 继续作为 P1 后续。
+  - [x] cat lie-down / relax model state：`Cat.IS_LYING` id 21 与
+    `Cat.RELAX_STATE_ONE` id 22 现在驱动 vanilla client tick easing
+    (`lieDownAmount` +0.15/-0.22、`lieDownAmountTail` +0.08/-0.13、
+    `relaxStateOneAmount` +0.1/-0.13)，world/native/renderer 投影三组 amount；
+    adult/baby feline 模型应用 vanilla lie-down leg/head/tail branch 与 relaxed
+    head pitch，textured base/collar 路径覆盖 texture/render type/tint/order/
+    submit_sequence 与 transform。
+  - CatRenderer.setupRotations lie-down whole-body roll/translate 与
+    sleeping-player extra translate 继续作为 P1 后续。
 - Minecart：
   - rail-follow `posOnRail` / `frontPos` / `backPos` 平移与坡度 pitch。
   - [x] NewMinecartBehavior exact weighted `renderPos` / rotation interpolation。

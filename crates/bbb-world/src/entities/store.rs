@@ -37,8 +37,9 @@ use super::{
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, boat_bubble_time, boat_paddle_states,
-    camel_is_dashing, creaking_can_move, creaking_is_tearing_down, entity_animation_uses_in_water,
-    entity_is_fall_flying, guardian_attack_duration, guardian_attack_target_id, guardian_is_moving,
+    camel_is_dashing, cat_is_lying, cat_relax_state_one, creaking_can_move,
+    creaking_is_tearing_down, entity_animation_uses_in_water, entity_is_fall_flying,
+    guardian_attack_duration, guardian_attack_target_id, guardian_is_moving,
     is_guardian_entity_type, piglin_is_charging_crossbow, pillager_is_charging_crossbow,
     player_is_using_item, warden_heartbeat_delay, wither_side_head_target_ids,
     wither_side_head_target_rotation, wolf_is_interested, WitherHeadTargetRotations,
@@ -1396,6 +1397,15 @@ impl EntityStore {
             feline_is_crouching,
             feline_is_sprinting,
             feline_is_sitting,
+            feline_lie_down_amount: client_animations
+                .animations
+                .feline_lie_down_amount(partial_ticks),
+            feline_lie_down_amount_tail: client_animations
+                .animations
+                .feline_lie_down_amount_tail(partial_ticks),
+            feline_relax_state_one_amount: client_animations
+                .animations
+                .feline_relax_state_one_amount(partial_ticks),
             vex_charging,
             wither_invulnerable_ticks,
             is_crouching,
@@ -2401,6 +2411,8 @@ impl EntityStore {
                     piglin_is_charging_crossbow(&metadata.data_values);
                 let player_is_using_item = player_is_using_item(&metadata.data_values);
                 let wolf_is_interested = wolf_is_interested(&metadata.data_values);
+                let cat_is_lying = cat_is_lying(&metadata.data_values);
+                let cat_relax_state_one = cat_relax_state_one(&metadata.data_values);
                 let boat_paddles =
                     boat_paddle_states(&metadata.data_values, !mount.passengers.is_empty());
                 let boat_bubble_time_value = boat_bubble_time(&metadata.data_values);
@@ -2427,6 +2439,8 @@ impl EntityStore {
                     piglin_is_charging_crossbow,
                     player_is_using_item,
                     wolf_is_interested,
+                    cat_is_lying,
+                    cat_relax_state_one,
                     boat_paddles[0],
                     boat_paddles[1],
                     boat_bubble_time_value,

@@ -8,6 +8,10 @@ fn assert_close(actual: f32, expected: f32) {
     );
 }
 
+fn vanilla_rot_lerp(delta: f32, start: f32, end: f32) -> f32 {
+    start + delta * (end - start)
+}
+
 #[test]
 fn feline_geometry_matches_vanilla_26_1_body_layer() {
     // Vanilla `AdultFelineModel.createBodyMesh(NONE)` (atlas 64×32): eight flat named root parts —
@@ -619,6 +623,156 @@ fn baby_feline_sitting_pose_matches_vanilla_branch() {
 }
 
 #[test]
+fn adult_feline_lie_down_and_relax_pose_matches_vanilla_branch() {
+    // Vanilla applies the sitting branch first when set, then still layers the cat-only lie-down and
+    // relax branches. This pins that order so the model does not return early after sitting.
+    let lie = 0.5;
+    let tail = 0.25;
+    let relax = 0.5;
+    let mut model = FelineModel::new(false);
+    model.prepare(
+        &EntityModelInstance::feline(
+            541,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+            false,
+            CatModelVariant::Black,
+            None,
+        )
+        .with_feline_is_sitting(true)
+        .with_feline_lie_down_amount(lie)
+        .with_feline_lie_down_amount_tail(tail)
+        .with_feline_relax_state_one_amount(relax),
+    );
+
+    assert_close3(
+        model.root_mut().child_mut("head").pose.offset,
+        [0.0, 11.7, -8.0],
+    );
+    assert_close(
+        model.root_mut().child_mut("head").pose.rotation[0],
+        vanilla_rot_lerp(relax, 0.0, FELINE_RELAX_HEAD_X_ROT),
+    );
+    assert_close(
+        model.root_mut().child_mut("head").pose.rotation[1],
+        vanilla_rot_lerp(lie, 0.0, ADULT_FELINE_LIE_HEAD_Y_ROT),
+    );
+    assert_close(
+        model.root_mut().child_mut("head").pose.rotation[2],
+        vanilla_rot_lerp(lie, 0.0, ADULT_FELINE_LIE_HEAD_Z_ROT),
+    );
+
+    assert_close(
+        model.root_mut().child_mut("left_front_leg").pose.rotation[0],
+        ADULT_FELINE_LIE_LEFT_FRONT_LEG_X_ROT,
+    );
+    {
+        let part = model.root_mut().child_mut("right_front_leg");
+        assert_close3(part.pose.offset, [-0.2, 16.1, -7.0]);
+        assert_close(
+            part.pose.rotation[0],
+            ADULT_FELINE_LIE_RIGHT_FRONT_LEG_X_ROT,
+        );
+        assert_close(part.pose.rotation[2], -0.2);
+    }
+    {
+        let part = model.root_mut().child_mut("left_hind_leg");
+        assert_close3(part.pose.offset, [1.1, 21.0, 1.0]);
+        assert_close(part.pose.rotation[0], -0.4);
+    }
+    {
+        let part = model.root_mut().child_mut("right_hind_leg");
+        assert_close3(part.pose.offset, [-0.3, 23.0, 1.0]);
+        assert_close(part.pose.rotation[0], 0.5);
+        assert_close(part.pose.rotation[2], -0.5);
+    }
+    assert_close(
+        model.root_mut().child_mut("tail1").pose.rotation[0],
+        vanilla_rot_lerp(tail, FELINE_TAIL2_REST_X_ROT, 0.8),
+    );
+    assert_close(
+        model.root_mut().child_mut("tail2").pose.rotation[0],
+        vanilla_rot_lerp(tail, FELINE_SITTING_TAIL2_X_ROT, -0.4),
+    );
+}
+
+#[test]
+fn baby_feline_lie_down_and_relax_pose_matches_vanilla_branch() {
+    let lie = 0.5;
+    let tail = 0.25;
+    let relax = 0.5;
+    let mut model = FelineModel::new(true);
+    model.prepare(
+        &EntityModelInstance::feline(
+            542,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+            true,
+            CatModelVariant::Black,
+            None,
+        )
+        .with_feline_lie_down_amount(lie)
+        .with_feline_lie_down_amount_tail(tail)
+        .with_feline_relax_state_one_amount(relax),
+    );
+
+    let head_lie_x = vanilla_rot_lerp(lie, 0.0, std::f32::consts::PI / 18.0);
+    assert_close3(
+        model.root_mut().child_mut("body").pose.offset,
+        [1.0, 20.5, 0.5],
+    );
+    assert_close3(
+        model.root_mut().child_mut("head").pose.offset,
+        [1.5, 20.75, -3.625],
+    );
+    assert_close(
+        model.root_mut().child_mut("head").pose.rotation[0],
+        vanilla_rot_lerp(relax, head_lie_x, FELINE_RELAX_HEAD_X_ROT),
+    );
+    assert_close(
+        model.root_mut().child_mut("head").pose.rotation[2],
+        vanilla_rot_lerp(lie, 0.0, -std::f32::consts::PI * 5.0 / 12.0),
+    );
+    {
+        let part = model.root_mut().child_mut("right_front_leg");
+        assert_close3(part.pose.offset, [2.5, 21.5, -1.5]);
+        assert_close(part.pose.rotation[0], -std::f32::consts::FRAC_PI_4);
+    }
+    {
+        let part = model.root_mut().child_mut("left_front_leg");
+        assert_close3(part.pose.offset, [2.5, 21.0, -3.5]);
+        assert_close(part.pose.rotation[0], -std::f32::consts::FRAC_PI_2);
+    }
+    {
+        let part = model.root_mut().child_mut("right_hind_leg");
+        assert_close3(part.pose.offset, [1.5, 21.75, 3.0]);
+        assert_close(part.pose.rotation[0], std::f32::consts::PI * 2.0 / 9.0);
+        assert_close(part.pose.rotation[1], std::f32::consts::PI / 9.0);
+        assert_close(part.pose.rotation[2], -std::f32::consts::PI / 9.0);
+    }
+    assert_close3(
+        model.root_mut().child_mut("left_hind_leg").pose.offset,
+        [2.5, 22.0, 1.5],
+    );
+
+    let tail1_base = -0.567232;
+    assert_close3(
+        model.root_mut().child_mut("tail1").pose.offset,
+        [1.0, 19.607, 3.6651],
+    );
+    assert_close(
+        model.root_mut().child_mut("tail1").pose.rotation[0],
+        tail1_base + vanilla_rot_lerp(tail, tail1_base, -std::f32::consts::PI / 6.0),
+    );
+    assert_close(
+        model.root_mut().child_mut("tail1").pose.rotation[2],
+        vanilla_rot_lerp(tail, 0.0, -std::f32::consts::PI / 18.0),
+    );
+}
+
+#[test]
 fn feline_textured_mesh_applies_sitting_pose_to_base_and_collar() {
     let images: Vec<EntityModelTextureImage> = feline_entity_texture_refs()
         .iter()
@@ -640,11 +794,17 @@ fn feline_textured_mesh_applies_sitting_pose_to_base_and_collar() {
     )
     .with_walk_animation(3.0, 0.8);
     let sitting = standing.with_feline_is_sitting(true);
+    let lying = standing
+        .with_feline_lie_down_amount(1.0)
+        .with_feline_lie_down_amount_tail(1.0)
+        .with_feline_relax_state_one_amount(1.0);
 
     let standing_meshes = entity_model_textured_meshes(&[standing], &atlas);
     let sitting_meshes = entity_model_textured_meshes(&[sitting], &atlas);
+    let lying_meshes = entity_model_textured_meshes(&[lying], &atlas);
     assert_eq!(standing_meshes.submissions.len(), 2);
     assert_eq!(sitting_meshes.submissions.len(), 2);
+    assert_eq!(lying_meshes.submissions.len(), 2);
     assert_eq!(
         sitting_meshes.submissions[0].texture,
         feline_texture_ref(true, false, CatModelVariant::Black)
@@ -671,12 +831,38 @@ fn feline_textured_mesh_applies_sitting_pose_to_base_and_collar() {
         (0, 0, 1, 1)
     );
     assert_eq!(
+        (
+            lying_meshes.submissions[0].texture,
+            lying_meshes.submissions[0].render_type.vanilla_name(),
+            lying_meshes.submissions[1].texture,
+            lying_meshes.submissions[1].tint,
+            lying_meshes.submissions[0].order,
+            lying_meshes.submissions[0].submit_sequence,
+            lying_meshes.submissions[1].order,
+            lying_meshes.submissions[1].submit_sequence,
+        ),
+        (
+            feline_texture_ref(true, false, CatModelVariant::Black),
+            "entityCutout",
+            FELINE_CAT_COLLAR_TEXTURE_REF,
+            EntityDyeColor::Lime.texture_diffuse_color(),
+            0,
+            0,
+            1,
+            1,
+        )
+    );
+    assert_eq!(
         sitting_meshes.cutout.vertices.len(),
         standing_meshes.cutout.vertices.len()
     );
     assert_ne!(
         sitting_meshes.cutout.vertices, standing_meshes.cutout.vertices,
         "the shared posed tree drives both base and collar textured geometry"
+    );
+    assert_ne!(
+        lying_meshes.cutout.vertices, standing_meshes.cutout.vertices,
+        "the cat lie-down pose also flows through the textured base and collar layers"
     );
 }
 
