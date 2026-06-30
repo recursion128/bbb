@@ -3968,12 +3968,14 @@ fn hud_item_icon_for_stack(
 ) -> Option<HudItemIcon> {
     let trim_material_keys = world_trim_material_keys(world);
     let owner_main_hand_left = world.local_player_main_arm_left();
+    let context_dimension = world.level_info().map(|level| level.dimension.as_str());
     let icon = item_runtime?.icon_for_stack_with_context(
         item,
         local_selected_bundle_item_index,
         using_item,
         trim_material_keys.as_deref(),
         owner_main_hand_left,
+        context_dimension,
     )?;
     Some(HudItemIcon {
         layers: icon

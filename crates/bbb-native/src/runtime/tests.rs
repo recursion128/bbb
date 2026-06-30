@@ -2480,6 +2480,80 @@ fn hotbar_item_icons_use_local_player_main_hand_owner_context() {
 }
 
 #[test]
+fn hotbar_item_icons_use_world_dimension_select_context() {
+    let root = unique_runtime_temp_dir("hotbar-context-dimension");
+    write_runtime_context_dimension_select_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let stack = item_stack(0, 1);
+    let fallback_uv = item_runtime.icon_for_stack(&stack).unwrap().layers[0].uv;
+    let overworld_uv = item_runtime
+        .icon_for_stack_with_context(&stack, None, false, None, None, Some("minecraft:overworld"))
+        .unwrap()
+        .layers[0]
+        .uv;
+    let nether_uv = item_runtime
+        .icon_for_stack_with_context(
+            &stack,
+            None,
+            false,
+            None,
+            None,
+            Some("minecraft:the_nether"),
+        )
+        .unwrap()
+        .layers[0]
+        .uv;
+    assert_ne!(fallback_uv, overworld_uv);
+    assert_ne!(fallback_uv, nether_uv);
+    assert_ne!(overworld_uv, nether_uv);
+
+    let mut no_level_world = WorldStore::new();
+    no_level_world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: stack.clone(),
+    });
+    let no_level_icons = hotbar_item_icons(&no_level_world, Some(&item_runtime), 0.0);
+    assert_eq!(
+        no_level_icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: fallback_uv.min,
+            max: fallback_uv.max,
+        }
+    );
+
+    let mut overworld = world_with_dimension(0, "minecraft:overworld");
+    overworld.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: stack.clone(),
+    });
+    let overworld_icons = hotbar_item_icons(&overworld, Some(&item_runtime), 0.0);
+    assert_eq!(
+        overworld_icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: overworld_uv.min,
+            max: overworld_uv.max,
+        }
+    );
+
+    let mut nether = world_with_dimension(1, "minecraft:the_nether");
+    nether.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: stack,
+    });
+    let nether_icons = hotbar_item_icons(&nether, Some(&item_runtime), 0.0);
+    assert_eq!(
+        nether_icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: nether_uv.min,
+            max: nether_uv.max,
+        }
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn hud_inventory_screen_projects_hovered_item_tooltip_name() {
     let root = unique_runtime_temp_dir("inventory-tooltip");
     write_runtime_tooltip_item_assets(&root);
@@ -5810,6 +5884,73 @@ fn write_runtime_main_hand_select_item_assets(root: &Path) {
             .join("Items.java"),
         r#"public class Items {
             public static final Item HAND_SELECTOR = registerItem("hand_selector");
+        }"#,
+    );
+}
+
+fn write_runtime_context_dimension_select_item_assets(root: &Path) {
+    let assets = runtime_assets_dir(root);
+    write_runtime_json(
+        &assets.join("atlases").join("items.json"),
+        r#"{
+            "sources": [
+                {
+                    "type": "minecraft:directory",
+                    "prefix": "item/",
+                    "source": "item"
+                }
+            ]
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("atlases").join("blocks.json"),
+        r#"{
+            "sources": []
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("items").join("dimension_selector.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:select",
+                "property": "minecraft:context_dimension",
+                "cases": [
+                    {
+                        "when": "minecraft:overworld",
+                        "model": { "type": "minecraft:model", "model": "minecraft:item/dimension_selector_overworld" }
+                    },
+                    {
+                        "when": "minecraft:the_nether",
+                        "model": { "type": "minecraft:model", "model": "minecraft:item/dimension_selector_nether" }
+                    }
+                ],
+                "fallback": { "type": "minecraft:model", "model": "minecraft:item/dimension_selector" }
+            }
+        }"#,
+    );
+    write_flat_runtime_item_model_and_texture(&assets, "dimension_selector", &[40, 80, 120, 255]);
+    write_flat_runtime_item_model_and_texture(
+        &assets,
+        "dimension_selector_overworld",
+        &[80, 120, 40, 255],
+    );
+    write_flat_runtime_item_model_and_texture(
+        &assets,
+        "dimension_selector_nether",
+        &[120, 40, 80, 255],
+    );
+    write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
+    write_runtime_json(
+        &root
+            .join("sources")
+            .join(bbb_pack::MC_VERSION)
+            .join("net")
+            .join("minecraft")
+            .join("world")
+            .join("item")
+            .join("Items.java"),
+        r#"public class Items {
+            public static final Item DIMENSION_SELECTOR = registerItem("dimension_selector");
         }"#,
     );
 }

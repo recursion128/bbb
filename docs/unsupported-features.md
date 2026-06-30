@@ -5708,8 +5708,7 @@ When an agent does any of the following, update this file in the same slice:
       (local `using_item` use-tick state)
   - Wire the remaining ambient-context `select` properties onto the same
     resolver:
-    - `minecraft:context_dimension`, `minecraft:local_time`,
-      `minecraft:context_entity_type`
+    - `minecraft:local_time`, `minecraft:context_entity_type`
   - Audit remaining item consumers that vanilla renders with a living owner and
     pass that owner context into the item resolver. `minecraft:main_hand` is now
     wired for entity-owned generated item attachments and GUI/HUD item icons
@@ -5780,6 +5779,10 @@ When an agent does any of the following, update this file in the same slice:
       `GuiGraphicsExtractor.item`, which passes `minecraft.player` to
       `ItemModelResolver.updateForTopItem`; null-owner/fake item consumers still
       fall back.
+    - `minecraft:context_dimension` — `ContextDimension.get`, matching the
+      current `ClientLevel.dimension()` resource key for GUI/HUD item icons from
+      `bbb-world`'s `WorldLevelInfo.dimension`; no-level item consumers still
+      fall back.
   - A value-aware `RangeDispatch` / `Select` is treated as a runtime condition so
     it is resolved per stack rather than collapsed at model-build time.
   - The trim-material registry keys are projected into the GUI icon path
@@ -5791,14 +5794,13 @@ When an agent does any of the following, update this file in the same slice:
     beehive-like full-weight entries from ordinary stack-size weighted entries.
   - The remaining numeric properties (`compass`, `time`, `cooldown`,
     `crossbow/pull`, `use_cycle`, `use_duration`) and the remaining ambient
-    select properties (`context_dimension`, `local_time`,
-    `context_entity_type`) still collapse to the fallback/first entry because
-    their value needs ambient `ClientLevel` / `ItemOwner` / use-tick context the
-    GUI icon resolver does not yet receive. `minecraft:main_hand` still falls
-    back on native item consumers that do not pass a `LivingEntity` owner, such
-    as fake/null-owner item surfaces. `minecraft:component` also remains
-    deferred until the runtime carries typed component values for case matching.
-    This is the documented follow-up.
+    select properties (`local_time`, `context_entity_type`) still collapse to
+    the fallback/first entry because their value needs ambient `ItemOwner` /
+    use-tick / local time context the GUI icon resolver does not yet receive.
+    `minecraft:main_hand` still falls back on native item consumers that do not
+    pass a `LivingEntity` owner, such as fake/null-owner item surfaces.
+    `minecraft:component` also remains deferred until the runtime carries typed
+    component values for case matching. This is the documented follow-up.
 
 ### Native Input, Movement, Interaction, Inventory, And Command Flows
 
