@@ -480,6 +480,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     renderer 复用 `SpearAnimations.thirdPersonHandUse` base pose，覆盖 skeleton
     off-hand `SPEAR.affectsOffhandPose` 对 bow aim 的 suppression、piglin
     custom arm-pose 后置覆盖、zombified-piglin STAB skip held-out rewrite。
+  - [x] zombie-family WHACK inherited body twist / arm-anchor：WHACK
+    `attack_anim > 0` 时先运行 `HumanoidModel.setupAttackAnimation` 的 body
+    yRot 与左右 arm anchor offset，再由 `AnimationUtils.animateZombieArms`
+    覆写 arm rotation，adult zombie 状态测试固定 body/anchor/held-out rotation。
   - attack / crossbow / spell / celebrate / riding 其他组合冲突。
   - [x] main-hand spear STAB held-item layer transform：player STAB arm lunge
     之后，held item transform 追加 vanilla

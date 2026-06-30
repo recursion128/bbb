@@ -3133,8 +3133,9 @@ When an agent does any of the following, update this file in the same slice:
       swings now preserve `AbstractZombieRenderer.getArmPose`'s opposite-hand SPEAR behavior, skip the
       held-out rewrite whenever `swingAnimationType == STAB`, and take the inherited
       `SpearAnimations.thirdPersonAttackHand` lunge when `attack_anim > 0`, matching
-      `AnimationUtils.animateZombieArms`' STAB branch; the inherited WHACK `setupAttackAnimation` body twist /
-      arm-anchor reposition remains deferred. Husk entities share that texture-backed render path through
+      `AnimationUtils.animateZombieArms`' STAB branch. WHACK swings now keep the inherited
+      `HumanoidModel.setupAttackAnimation` body twist and arm-anchor reposition before
+      `AnimationUtils.animateZombieArms` overwrites the arm rotations. Husk entities share that texture-backed render path through
       `HuskRenderer extends ZombieRenderer`: they reuse the zombie adult/baby body
       parts (so the husk geometry is byte-for-byte the zombie geometry) over
       `textures/entity/zombie/husk.png` / `textures/entity/zombie/husk_baby.png`,
@@ -3249,9 +3250,8 @@ When an agent does any of the following, update this file in the same slice:
       (see the piglin note);
       the zombie-arm attack swing IS implemented (the
       held-out arms, the `Mob.isAggressive` arm-raise, and the
-      `animateZombieArms` melee swing over the projected `attack_anim`, plus the STAB
-      attack-arm spear skip/lunge — only the inherited WHACK `setupAttackAnimation`
-      body twist / arm-anchor reposition stays deferred for the zombie family); the drowned
+      `animateZombieArms` melee swing over the projected `attack_anim`, the inherited WHACK body twist /
+      arm-anchor reposition, plus the STAB attack-arm spear skip/lunge); the drowned
       `THROW_TRIDENT` raised-arm pose and swimAmount re-pose ARE implemented (see the drowned note above);
       the zombie, husk,
       drowned, zombie-villager, piglin, piglin-brute, and zombified-piglin head

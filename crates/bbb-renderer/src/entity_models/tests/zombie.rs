@@ -261,6 +261,38 @@ fn zombie_arm_held_out_pose_swings_during_a_melee_strike() {
 }
 
 #[test]
+fn zombie_whack_swing_keeps_inherited_body_twist_and_arm_anchors() {
+    use std::f32::consts::PI;
+
+    // Vanilla `AbstractZombieModel.setupAnim`: `super.setupAnim` first runs
+    // `HumanoidModel.setupAttackAnimation` for a WHACK swing, then `AnimationUtils.animateZombieArms`
+    // overwrites the arm rotations. The body twist and arm anchor offsets from the inherited helper remain.
+    let t = 0.1_f32;
+    let mut model = ZombieModel::new(false);
+    model.prepare(
+        &EntityModelInstance::zombie(63, [0.0, 64.0, 0.0], 0.0, false).with_attack_anim(t),
+    );
+
+    let body_yrot = (t.sqrt() * PI * 2.0).sin() * 0.2;
+    assert!(
+        (model.root_mut().child_mut("body").pose.rotation[1] - body_yrot).abs() < 1e-6,
+        "WHACK keeps the inherited HumanoidModel body twist"
+    );
+    let right = model.root_mut().child_mut("right_arm").pose;
+    assert!((right.offset[0] - (-body_yrot.cos() * 5.0)).abs() < 1e-6);
+    assert!((right.offset[2] - (body_yrot.sin() * 5.0)).abs() < 1e-6);
+
+    let attack_y = (t * PI).sin();
+    let attack_x = ((1.0 - (1.0 - t) * (1.0 - t)) * PI).sin();
+    let held_out_x = -PI / 2.25 + attack_y * 1.2 - attack_x * 0.4;
+    assert!(
+        (right.rotation[0] - held_out_x).abs() < 1e-6,
+        "animateZombieArms still overwrites the WHACK arm pitch"
+    );
+    assert!((right.rotation[1] - (-(0.1 - attack_y * 0.6))).abs() < 1e-6);
+}
+
+#[test]
 fn zombie_stab_swing_uses_spear_lunge_instead_of_held_out_rewrite() {
     use std::f32::consts::PI;
 

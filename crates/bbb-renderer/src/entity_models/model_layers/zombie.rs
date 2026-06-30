@@ -1,7 +1,8 @@
 use super::{
-    apply_head_look, apply_humanoid_leg_swing_named, apply_humanoid_mob_spear_arm_poses,
-    apply_humanoid_stab_attack_animation, apply_humanoid_walk, apply_zombie_arms_held_out_named,
-    drowned_outer_root, humanoid_arm_bob_pose, PartPose, PART_POSE_ZERO,
+    apply_head_look, apply_humanoid_attack_animation, apply_humanoid_leg_swing_named,
+    apply_humanoid_mob_spear_arm_poses, apply_humanoid_stab_attack_animation, apply_humanoid_walk,
+    apply_zombie_arms_held_out_named, drowned_outer_root, humanoid_arm_bob_pose, PartPose,
+    PART_POSE_ZERO,
 };
 use crate::entity_models::catalog::ZombieVariantModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
@@ -780,6 +781,13 @@ fn apply_zombie_family_anim(root: &mut ModelPart, instance: &EntityModelInstance
             root,
             render_state.walk_animation_pos,
             render_state.walk_animation_speed,
+        );
+        apply_humanoid_attack_animation(
+            root,
+            render_state.attack_anim,
+            render_state.attack_arm_off_hand,
+            render_state.head_pitch,
+            1.0,
         );
         apply_zombie_arms_held_out_named(
             root,
