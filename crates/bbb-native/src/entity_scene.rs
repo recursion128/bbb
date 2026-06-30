@@ -229,7 +229,13 @@ const VILLAGER_DATA_DATA_ID: u8 = 19;
 /// Vanilla `ZombieVillager.DATA_VILLAGER_DATA`: `Zombie` consumes baby 16, special-type 17, and
 /// drowned-conversion 18; `ZombieVillager` then defines converting 19 before villager data at 20.
 const ZOMBIE_VILLAGER_DATA_DATA_ID: u8 = 20;
+/// Vanilla `AbstractPiglin.DATA_IMMUNE_TO_ZOMBIFICATION`: `Entity` 0..=7,
+/// `LivingEntity` 8..=14, `Mob` 15, then the abstract piglin's first accessor.
+const PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID: u8 = 16;
 const PIGLIN_BABY_DATA_ID: u8 = 17;
+/// Vanilla `Hoglin.DATA_IMMUNE_TO_ZOMBIFICATION`: hoglins extend `AgeableMob`,
+/// whose baby and age-locked accessors occupy ids 16 and 17.
+const HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID: u8 = 18;
 const BOGGED_SHEARED_DATA_ID: u8 = 16;
 /// Vanilla `CopperGolem.DATA_WEATHER_STATE` data id (16): `CopperGolem` extends `AbstractGolem`
 /// without adding inherited synced data after `Mob.DATA_MOB_FLAGS_ID` (15), so its first own
@@ -1282,6 +1288,7 @@ fn entity_model_instance(
         source.entity_type_id,
         &source.data_values,
         source.is_fully_frozen,
+        world_piglins_zombify(world),
     );
     let body_rot = projected_body_yaw + entity_body_shake_degrees(source.age_ticks, is_shaking);
     // Vanilla LivingEntityRenderer.setupRotations riptide branch reads the lerped
@@ -1643,14 +1650,17 @@ fn entity_body_shake_degrees(age_ticks: u32, is_shaking: bool) -> f32 {
 /// ORs in `ZombieVillager.isConverting()` (synced `DATA_CONVERTING_ID`, id 19).
 /// `StriderRenderer.isShaking` additionally ORs in `Strider.isSuffocating()`
 /// (synced `DATA_SUFFOCATING`, id 19), the same flag that selects the cold
-/// texture.
-/// The hoglin/piglin zombification shake is environment-attribute-derived (not a
-/// synced flag) and the base-`Skeleton` freeze-conversion shake is server-side
-/// `conversionTime`, so both remain deferred.
+/// texture. `PiglinRenderer` / `HoglinRenderer` OR in `isConverting()`, which is
+/// true when the entity is not immune to zombification and the dimension's
+/// `EnvironmentAttributes.PIGLINS_ZOMBIFY` value is true. `NoAI` is not synced to
+/// this client projection, matching the rest of the network-visible entity state.
+/// The base-`Skeleton` freeze-conversion shake remains deferred because it is a
+/// server-side `conversionTime`.
 fn entity_shaking(
     entity_type_id: i32,
     data_values: &[bbb_protocol::packets::EntityDataValue],
     is_fully_frozen: bool,
+    piglins_zombify: bool,
 ) -> bool {
     if is_fully_frozen {
         return true;
@@ -1668,8 +1678,32 @@ fn entity_shaking(
         VANILLA_ENTITY_TYPE_STRIDER_ID => {
             entity_data_bool(data_values, STRIDER_SUFFOCATING_DATA_ID, false)
         }
+        VANILLA_ENTITY_TYPE_PIGLIN_ID | VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID => {
+            piglins_zombify
+                && !entity_data_bool(data_values, PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID, false)
+        }
+        VANILLA_ENTITY_TYPE_HOGLIN_ID => {
+            piglins_zombify
+                && !entity_data_bool(data_values, HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID, false)
+        }
         _ => false,
     }
+}
+
+/// Vanilla `EnvironmentAttributes.PIGLINS_ZOMBIFY` defaults to `true`; the built-in Nether
+/// dimension type explicitly sets it to `false`. bbb currently projects built-in dimension
+/// profiles by id/name/type-name, so custom dimension attribute maps stay a later resource-registry
+/// parity item.
+fn world_piglins_zombify(world: &WorldStore) -> bool {
+    let Some(level) = world.level_info() else {
+        return true;
+    };
+    let dimension = level.dimension.as_str();
+    let dimension_type = level.dimension_type_name.as_deref();
+    !matches!(
+        (level.dimension_type_id, dimension, dimension_type),
+        (1, _, _) | (_, "minecraft:the_nether", _) | (_, _, Some("minecraft:the_nether"))
+    )
 }
 
 /// Vanilla `Mth.wrapDegrees`: wraps an angle in degrees to `-180.0..=180.0`.
@@ -4910,6 +4944,87 @@ mod tests {
                 cold: true
             }
         );
+    }
+
+    #[test]
+    fn entity_model_instances_shake_piglins_and_hoglins_while_zombifying() {
+        fn dimension_world(dimension_type_id: i32, dimension: &str) -> WorldStore {
+            let mut world = WorldStore::new();
+            let mut login = protocol_play_login(10);
+            login.levels = vec![dimension.to_string()];
+            login.common_spawn_info.dimension_type_id = dimension_type_id;
+            login.common_spawn_info.dimension = dimension.to_string();
+            world.apply_login(&login);
+            world
+        }
+
+        fn add_piglin_family(world: &mut WorldStore) {
+            for (id, entity_type_id, position) in [
+                (87, VANILLA_ENTITY_TYPE_PIGLIN_ID, [1.0, 64.0, -2.0]),
+                (88, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, [3.0, 64.0, -2.0]),
+                (89, VANILLA_ENTITY_TYPE_HOGLIN_ID, [5.0, 64.0, -2.0]),
+                (90, VANILLA_ENTITY_TYPE_ZOGLIN_ID, [7.0, 64.0, -2.0]),
+            ] {
+                world.apply_add_entity(protocol_add_entity(id, entity_type_id, position));
+            }
+            world.advance_entity_client_animations(2);
+        }
+
+        fn body_rot(world: &WorldStore, id: i32) -> f32 {
+            entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .body_rot
+        }
+
+        let shake = (2.0_f32 * 3.25).cos() * std::f32::consts::PI * 0.4;
+
+        let mut overworld = dimension_world(0, "minecraft:overworld");
+        add_piglin_family(&mut overworld);
+
+        // Vanilla `PiglinRenderer` and `HoglinRenderer` OR `isConverting()` into
+        // `isShaking`. The built-in Overworld keeps
+        // `EnvironmentAttributes.PIGLINS_ZOMBIFY` at its default `true`.
+        for id in [87, 88, 89] {
+            assert!((body_rot(&overworld, id) - shake).abs() < 1e-6);
+        }
+        // ZoglinRenderer does not expose a conversion override.
+        assert_eq!(body_rot(&overworld, 90), 0.0);
+
+        // Synced immune-to-zombification metadata suppresses the conversion shake.
+        assert!(overworld.apply_set_entity_data(SetEntityData {
+            id: 87,
+            values: vec![protocol_bool_data(
+                PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID,
+                true,
+            )],
+        }));
+        assert!(overworld.apply_set_entity_data(SetEntityData {
+            id: 88,
+            values: vec![protocol_bool_data(
+                PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID,
+                true,
+            )],
+        }));
+        assert!(overworld.apply_set_entity_data(SetEntityData {
+            id: 89,
+            values: vec![protocol_bool_data(
+                HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID,
+                true,
+            )],
+        }));
+        for id in [87, 88, 89] {
+            assert_eq!(body_rot(&overworld, id), 0.0);
+        }
+
+        let mut nether = dimension_world(1, "minecraft:the_nether");
+        add_piglin_family(&mut nether);
+        // Vanilla built-in Nether sets `PIGLINS_ZOMBIFY` to false.
+        for id in [87, 88, 89, 90] {
+            assert_eq!(body_rot(&nether, id), 0.0);
+        }
     }
 
     #[test]

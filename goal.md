@@ -438,7 +438,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     已按 vanilla `Camel.getBodyAnchorAnimationYOffset` 覆盖 front/rear、sit/stand
     transition、baby/camel_husk、SCALE attribute；passenger/leash 视觉消费路径另列后续
     attachment presentation。
-  - roar / particle / sound / converting shake。
+  - [x] piglin / piglin brute / hoglin converting shake：native projection 现在按
+    vanilla `PiglinRenderer` / `HoglinRenderer.isShaking = super || isConverting`
+    读取 synced immune-to-zombification flags，并用 built-in dimension
+    `PIGLINS_ZOMBIFY`（Nether false，其它默认 true）折入
+    `LivingEntityRenderer.setupRotations` body shake；Zoglin 不进入 conversion
+    override。
+  - roar / particle / sound 与更细 custom-dimension environment attributes。
 - Humanoid / illager / piglin / skeleton family：
   - remaining arm poses。
   - use-item sway。

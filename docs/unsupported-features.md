@@ -1685,14 +1685,21 @@ When an agent does any of the following, update this file in the same slice:
     `ZombieVillagerRenderer` additionally ORs in `ZombieVillager.isConverting()`
     (`DATA_CONVERTING_ID`, id `19`). `StriderRenderer` additionally ORs in
     `StriderRenderState.isSuffocating` from synced `Strider.DATA_SUFFOCATING`
-    (id `19`), the same flag used by the cold texture swap. While shaking, the scene folds
+    (id `19`), the same flag used by the cold texture swap. Piglin / Piglin Brute
+    and Hoglin conversion shake is now projected from the vanilla
+    `isConverting()` conditions that are visible to this client: the synced
+    immune-to-zombification flags (`AbstractPiglin.DATA_IMMUNE_TO_ZOMBIFICATION`
+    id `16`, `Hoglin.DATA_IMMUNE_TO_ZOMBIFICATION` id `18`) and the built-in
+    dimension `EnvironmentAttributes.PIGLINS_ZOMBIFY` value (true by default,
+    false for Nether); Zoglin stays unshaken because `ZoglinRenderer` has no
+    conversion override. While shaking, the scene folds
     `cos(floor(ageInTicks) * 3.25) * π * 0.4` (degrees) into the projected
     `body_rot`, computed against the integer `ageInTicks` (= `Mth.floor`, so no
     partial lerp); the net head-look yaw is taken against the unshaken body yaw, so
     the whole model jitters while the head turn relative to the body is unchanged.
-    Remaining gap: the conversion shakes that are not a synced client flag — the
-    hoglin/piglin zombification shake (environment-attribute derived, server-side)
-    and the base-`Skeleton` freeze-conversion shake (server-side `conversionTime`).
+    Remaining gap: custom-dimension attribute maps are still collapsed to the
+    built-in dimension profile, and the base-`Skeleton` freeze-conversion shake is
+    still server-side `conversionTime`.
   - The head-look projection is implemented as a reusable render-state field: the
     canonical `Entity.yHeadRot`/`getXRot` flow through `EntityModelSourceState`,
     the native scene derives `LivingEntityRenderState.yRot` =
@@ -2922,7 +2929,10 @@ When an agent does any of the following, update this file in the same slice:
       `(order, submit_sequence) == (0, 0)`, vanilla entity light, and hurt/white
       overlay coords before folded UV, yaw-only head look, leg swing, and
       ear-sway checks. Folded cutout vertices inherit each corresponding
-      submission's metadata; the hoglin converting shake remains unsupported
+      submission's metadata; the Hoglin conversion shake now follows
+      `HoglinRenderer.isShaking = super || state.isConverting` using the synced
+      immune flag and built-in dimension `PIGLINS_ZOMBIFY`; Zoglin remains
+      deliberately unshaken
     - ravager entities as renderer-owned vanilla 26.1 `RavagerModel`
       body-layer geometry from `RavagerModel` and `RavagerRenderer`,
       including nested neck/head/horn/mouth parts, official
@@ -3155,7 +3165,8 @@ When an agent does any of the following, update this file in the same slice:
       piglin uses the held-out `animateZombieArms` arms;
       the `DrownedOuterLayer` (adult and baby), drowned swim re-pose, and
       non-player/baby WingsLayer/elytra presentation ARE implemented (see the
-      drowned and WINGS notes above); zombie/piglin converting shake, remaining
+      drowned and WINGS notes above); zombie and piglin converting shakes covered by the
+      native `LivingEntityRenderer.isShaking` projection, while remaining
       zombie-family and piglin-family armor nuances, and held-item refinements
       remain unsupported
       (generic non-skull head-slot items and static skeleton/wither-skeleton/
