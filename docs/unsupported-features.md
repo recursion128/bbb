@@ -404,6 +404,12 @@ When an agent does any of the following, update this file in the same slice:
     `Eyes`, `waterMask`, glint, and scroll render types now have dedicated
     baseline GPU pipelines; remaining work there is narrower shader/time/sorting
     visual parity.
+    The P1-1 render-state closeout now treats the remaining generic entries as
+    non-blocking follow-up buckets rather than an open narrow-pipeline checklist:
+    `glintTranslucent` and other item foil variants belong to P1-3 item
+    presentation, standalone mip/sampler generalization belongs to P3 resource
+    parity, and remaining diffuse/fog polish is handled only by later scoped
+    visual slices.
   - Entity outline target writes now use a dedicated vanilla-shaped
     `core/rendertype_outline` shader: texture alpha is only a zero-alpha discard
     mask, output color comes from the submitted `outlineColor` vertex tint, the
