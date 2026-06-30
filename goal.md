@@ -164,7 +164,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     使用 vanilla `RenderPipelines.WATER_MASK` 的 color write mask 0、
     depth-write `LESS_EQUAL`、默认 back-face cull、无 texture / LightTexture 绑定，
     并用 `ModelLayers.BOAT_WATER_PATCH` geometry。
-  - `end_crystal_beam` / guardian beam custom prism state。
+  - [x] `end_crystal_beam` / guardian beam custom prism state：Guardian attack
+    beam、EndCrystal target beam、EnderDragon healing beam 均已通过
+    dispatch-owned submission-first 路径记录 vanilla render type、texture、
+    tint、transform、light、overlay、`order` / `submit_sequence`，并把自定义
+    beam prism geometry 折入 scroll bucket；missing-atlas 覆盖已证明提交先于
+    folded geometry。
 - target ownership：
   - main target、itemEntity target、translucent target、particles target、
     weather target、clouds target、entity_outline target 的 draw ownership 继续收紧。
