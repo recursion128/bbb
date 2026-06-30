@@ -8,6 +8,10 @@ use crate::{gpu::DEPTH_FORMAT, Renderer};
 const ITEM_ENTITY_BILLBOARD_SIZE: f32 = 0.5;
 const ITEM_ENTITY_TINT_WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const ITEM_ENTITY_FULL_BRIGHT_LIGHT: [f32; 2] = [1.0, 1.0];
+const ITEM_ENTITY_PIPELINE_BLEND: wgpu::BlendState = wgpu::BlendState::ALPHA_BLENDING;
+const ITEM_ENTITY_PIPELINE_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
+const ITEM_ENTITY_PIPELINE_DEPTH_WRITE_ENABLED: bool = true;
+const ITEM_ENTITY_PIPELINE_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::LessEqual;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ItemEntityUvRect {
@@ -197,15 +201,15 @@ pub(crate) fn create_item_entity_pipeline(
             topology: wgpu::PrimitiveTopology::TriangleList,
             strip_index_format: None,
             front_face: wgpu::FrontFace::Ccw,
-            cull_mode: None,
+            cull_mode: ITEM_ENTITY_PIPELINE_CULL_MODE,
             polygon_mode: wgpu::PolygonMode::Fill,
             unclipped_depth: false,
             conservative: false,
         },
         depth_stencil: Some(wgpu::DepthStencilState {
             format: DEPTH_FORMAT,
-            depth_write_enabled: false,
-            depth_compare: wgpu::CompareFunction::LessEqual,
+            depth_write_enabled: ITEM_ENTITY_PIPELINE_DEPTH_WRITE_ENABLED,
+            depth_compare: ITEM_ENTITY_PIPELINE_DEPTH_COMPARE,
             stencil: wgpu::StencilState::default(),
             bias: wgpu::DepthBiasState::default(),
         }),
@@ -215,7 +219,7 @@ pub(crate) fn create_item_entity_pipeline(
             entry_point: "fs_main",
             targets: &[Some(wgpu::ColorTargetState {
                 format,
-                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                blend: Some(ITEM_ENTITY_PIPELINE_BLEND),
                 write_mask: wgpu::ColorWrites::ALL,
             })],
         }),
@@ -729,6 +733,32 @@ mod tests {
         assert!(!ITEM_ENTITY_SHADER.contains("texel.a <= 0.01"));
         assert!(!ITEM_ENTITY_SHADER
             .contains("textureSample(item_atlas, item_sampler, input.uv) * input.color"));
+    }
+
+    #[test]
+    fn item_entity_pipeline_state_matches_vanilla_item_translucent() {
+        assert_eq!(ITEM_ENTITY_PIPELINE_CULL_MODE, Some(wgpu::Face::Back));
+        assert!(ITEM_ENTITY_PIPELINE_DEPTH_WRITE_ENABLED);
+        assert_eq!(
+            ITEM_ENTITY_PIPELINE_DEPTH_COMPARE,
+            wgpu::CompareFunction::LessEqual
+        );
+        assert_eq!(
+            ITEM_ENTITY_PIPELINE_BLEND.color.src_factor,
+            wgpu::BlendFactor::SrcAlpha
+        );
+        assert_eq!(
+            ITEM_ENTITY_PIPELINE_BLEND.color.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha
+        );
+        assert_eq!(
+            ITEM_ENTITY_PIPELINE_BLEND.alpha.src_factor,
+            wgpu::BlendFactor::One
+        );
+        assert_eq!(
+            ITEM_ENTITY_PIPELINE_BLEND.alpha.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha
+        );
     }
 
     fn assert_close3_f32(actual: [f32; 3], expected: [f32; 3]) {

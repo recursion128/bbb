@@ -281,6 +281,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `core/particle` shader、Sampler0 + Sampler2 LightTexture、
     `BlendFunction.TRANSLUCENT`、默认 back-face cull、depth-write
     `LESS_EQUAL`。
+  - [x] itemEntity billboard GPU state：当前 flat billboard 路径继续只是
+    现有 dropped/thrown item 近似表达，但写入 itemEntity target 的 pipeline
+    现在按 vanilla `RenderPipelines.ITEM_TRANSLUCENT` / `RenderTypes.item_translucent`
+    固定 `core/item` shape、`ALPHA_CUTOUT 0.1`、Sampler0 + LightTexture、
+    `BlendFunction.TRANSLUCENT`、默认 back-face cull、depth-write
+    `LESS_EQUAL`。
   - per RenderType 的 blend、depth write/test、cull、sampler、mip、lightmap、
     overlay、fog、normal diffuse 组合继续拆细。
   - glint / scroll / emissive path 不应只依赖普通 entity shader fallback。

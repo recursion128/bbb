@@ -443,8 +443,13 @@ When an agent does any of the following, update this file in the same slice:
     feature order, matching `FeatureRenderDispatcher.renderTranslucentFeatures`
     and `OutputTarget.ITEM_ENTITY_TARGET` users such as `item_translucent`,
     `entity_translucent_cull_item_target`, and `glint_translucent`.
-    Selection/line geometry appends to the same target in a later line pass
-    before particles, and the selection pipeline now follows
+    The current flat item-entity billboard approximation now also uses
+    vanilla `RenderPipelines.ITEM_TRANSLUCENT` state for that target-backed
+    surface: `core/item`-shaped alpha cutout `0.1`, Sampler0 plus LightTexture,
+    `BlendFunction.TRANSLUCENT`, default back-face cull, and depth-write
+    `LESS_EQUAL`; full item model / clustered item renderer parity remains
+    ordinary P1 follow-up. Selection/line geometry appends to the same target in
+    a later line pass before particles, and the selection pipeline now follows
     `RenderTypes.lines()` for `VIEW_OFFSET_Z_LAYERING`, translucent blend,
     depth-write `LESS_EQUAL`, and the ordinary block-hit outline's
     `ARGB.black(102)` alpha. Screen-space line-width expansion and
