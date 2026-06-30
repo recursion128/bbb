@@ -14,6 +14,23 @@ pub struct BlockDestroyOverlay {
 
 const BLOCK_DESTROY_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 8] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x2, 4 => Float32x3, 5 => Float32, 6 => Float32, 7 => Sint32];
 const BLOCK_DESTROY_FACE_OFFSET: f32 = 0.003;
+const BLOCK_DESTROY_CRUMBLING_BLEND: wgpu::BlendState = wgpu::BlendState {
+    color: wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::Dst,
+        dst_factor: wgpu::BlendFactor::Src,
+        operation: wgpu::BlendOperation::Add,
+    },
+    alpha: wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::One,
+        dst_factor: wgpu::BlendFactor::Zero,
+        operation: wgpu::BlendOperation::Add,
+    },
+};
+const BLOCK_DESTROY_DEPTH_BIAS: wgpu::DepthBiasState = wgpu::DepthBiasState {
+    constant: -10,
+    slope_scale: -1.0,
+    clamp: 0.0,
+};
 
 const BLOCK_DESTROY_SHADER: &str = r#"
 struct Camera {
@@ -88,11 +105,11 @@ fn vs_main(input: VertexIn) -> VertexOut {
 
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
-    let texel = textureSample(terrain_atlas, terrain_sampler, input.uv);
-    if texel.a <= 0.01 {
+    let color = textureSample(terrain_atlas, terrain_sampler, input.uv);
+    if color.a < 0.1 {
         discard;
     }
-    return apply_fog(vec4<f32>(texel.rgb, texel.a * 0.85), input.spherical_distance, input.cylindrical_distance);
+    return apply_fog(color, input.spherical_distance, input.cylindrical_distance);
 }
 "#;
 
@@ -163,7 +180,7 @@ pub(super) fn create_block_destroy_pipeline(
             depth_write_enabled: false,
             depth_compare: wgpu::CompareFunction::LessEqual,
             stencil: wgpu::StencilState::default(),
-            bias: wgpu::DepthBiasState::default(),
+            bias: BLOCK_DESTROY_DEPTH_BIAS,
         }),
         multisample: wgpu::MultisampleState::default(),
         fragment: Some(wgpu::FragmentState {
@@ -171,7 +188,7 @@ pub(super) fn create_block_destroy_pipeline(
             entry_point: "fs_main",
             targets: &[Some(wgpu::ColorTargetState {
                 format,
-                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                blend: Some(BLOCK_DESTROY_CRUMBLING_BLEND),
                 write_mask: wgpu::ColorWrites::ALL,
             })],
         }),
@@ -295,6 +312,42 @@ fn block_destroy_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn block_destroy_crumbling_state_matches_vanilla_pipeline() {
+        // Vanilla 26.1 `RenderPipelines.CRUMBLING` uses
+        // `BlendFunction(DST_COLOR, SRC_COLOR, ONE, ZERO)` and
+        // `DepthStencilState(LESS_EQUAL, false, -1.0F, -10.0F)`.
+        assert_eq!(
+            BLOCK_DESTROY_CRUMBLING_BLEND.color.src_factor,
+            wgpu::BlendFactor::Dst
+        );
+        assert_eq!(
+            BLOCK_DESTROY_CRUMBLING_BLEND.color.dst_factor,
+            wgpu::BlendFactor::Src
+        );
+        assert_eq!(
+            BLOCK_DESTROY_CRUMBLING_BLEND.alpha.src_factor,
+            wgpu::BlendFactor::One
+        );
+        assert_eq!(
+            BLOCK_DESTROY_CRUMBLING_BLEND.alpha.dst_factor,
+            wgpu::BlendFactor::Zero
+        );
+        assert_eq!(BLOCK_DESTROY_DEPTH_BIAS.slope_scale, -1.0);
+        assert_eq!(BLOCK_DESTROY_DEPTH_BIAS.constant, -10);
+        assert_eq!(BLOCK_DESTROY_DEPTH_BIAS.clamp, 0.0);
+    }
+
+    #[test]
+    fn block_destroy_shader_uses_vanilla_crumbling_alpha_cutout() {
+        // Vanilla `core/rendertype_crumbling.fsh` discards fragments below 0.1
+        // and leaves the sampled color alpha intact for the crumbling blend.
+        assert!(BLOCK_DESTROY_SHADER.contains("if color.a < 0.1"));
+        assert!(BLOCK_DESTROY_SHADER.contains("return apply_fog(color"));
+        assert!(!BLOCK_DESTROY_SHADER.contains("0.85"));
+        assert!(!BLOCK_DESTROY_SHADER.contains("<= 0.01"));
+    }
 
     #[test]
     fn block_destroy_overlay_mesh_emits_offset_cube_faces() {

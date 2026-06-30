@@ -173,6 +173,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     使用 vanilla `RenderPipelines.WATER_MASK` 的 color write mask 0、
     depth-write `LESS_EQUAL`、默认 back-face cull、无 texture / LightTexture 绑定，
     并用 `ModelLayers.BOAT_WATER_PATCH` geometry。
+  - [x] `crumbling` block-destroy overlay GPU state：本地 destroy-stage overlay
+    仍在 vanilla `crumblingBufferSource.endBatch()` 对应 phase 绘制到 main
+    target，pipeline 现在使用 vanilla `RenderPipelines.CRUMBLING` 的
+    `DST_COLOR` / `SRC_COLOR` blend、alpha cutoff `0.1`、depth-write off、
+    `LESS_EQUAL` + polygon offset `-1.0F, -10.0F`。完整 block model-shaped
+    crack decals 仍属后续视觉/geometry parity。
   - [x] `entitySolidZOffsetForward` item-frame block model：item-frame /
     glow-item-frame visible border 从普通 block-item solid bucket 拆到
     `solid_z_offset_forward` mesh，GPU 使用专用 item-model pipeline 读取 camera

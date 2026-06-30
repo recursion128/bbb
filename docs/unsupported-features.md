@@ -481,7 +481,11 @@ When an agent does any of the following, update this file in the same slice:
     through itemEntity target instead of this main-target pass.
     Block-destroy/crumbling overlays now also draw in this main-target translucent
     feature phase before translucent terrain, matching vanilla's
-    `crumblingBufferSource.endBatch()` position. Existing block/flat
+    `crumblingBufferSource.endBatch()` position, and the overlay pipeline now
+    uses vanilla `RenderPipelines.CRUMBLING`-shaped state: `DST_COLOR` /
+    `SRC_COLOR` color blend, alpha source / zero destination alpha, alpha cutoff
+    `0.1`, depth-write disabled, `LESS_EQUAL`, and polygon offset
+    `-1.0F, -10.0F`. Existing block/flat
     item-model and item-frame map batches now draw as world item features on the
     main target before the vanilla-shaped target depth copies and before
     translucent terrain; GUI item icons remain a post-combine HUD pass. Item-model
@@ -5523,8 +5527,9 @@ When an agent does any of the following, update this file in the same slice:
     - remaining hit effects beyond local block hit/break sounds:
       - block-specific `state.attack` callbacks
       - hit particles
-    - full model-shaped crack decals with vanilla crumbling blend/depth-bias
-      behavior
+    - full model-shaped crack decals beyond the current cube overlay; vanilla
+      crumbling blend/depth-bias behavior is now covered by the renderer
+      pipeline state
     - any remaining `STOP_DESTROY_BLOCK` sequencing gaps
   - Commands:
     - Continue adding focused command queue and encode tests for:
