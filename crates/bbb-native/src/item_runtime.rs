@@ -1463,25 +1463,26 @@ impl NativeItemRuntime {
         bundle_selected_item_index: Option<i32>,
         using_item: bool,
     ) -> Option<ItemAtlasIcon> {
-        self.icon_for_stack_with_context(stack, bundle_selected_item_index, using_item, None)
+        self.icon_for_stack_with_context(stack, bundle_selected_item_index, using_item, None, None)
     }
 
-    /// Resolves a stack's icon with the `minecraft:trim_material` registry keys
-    /// (the dynamic registry, projected from `bbb-world`) so trimmed-armor icons
-    /// select their trim model. Callers without that registry pass `None`.
+    /// Resolves a stack's icon with GUI/HUD context: bundle selected item,
+    /// local using-item state, `minecraft:trim_material` registry keys, and an
+    /// optional living-owner main arm for `minecraft:main_hand`.
     pub(crate) fn icon_for_stack_with_context(
         &self,
         stack: &ItemStackSummary,
         bundle_selected_item_index: Option<i32>,
         using_item: bool,
         trim_material_keys: Option<&[String]>,
+        owner_main_hand_left: Option<bool>,
     ) -> Option<ItemAtlasIcon> {
         self.icon_for_stack_with_model_context(
             stack,
             bundle_selected_item_index,
             using_item,
             trim_material_keys,
-            None,
+            owner_main_hand_left,
         )
     }
 
@@ -4544,7 +4545,7 @@ mod tests {
         };
         let selected = |stack: &ItemStackSummary| {
             runtime
-                .icon_for_stack_with_context(stack, None, false, Some(&trim_keys))
+                .icon_for_stack_with_context(stack, None, false, Some(&trim_keys), None)
                 .unwrap()
                 .layers[0]
                 .uv

@@ -5710,11 +5710,10 @@ When an agent does any of the following, update this file in the same slice:
     resolver:
     - `minecraft:context_dimension`, `minecraft:local_time`,
       `minecraft:context_entity_type`
-  - Audit item consumers that vanilla renders with a living owner and pass that
-    owner context into the item resolver. `minecraft:main_hand` is now wired for
-    entity-owned generated item attachments; native GUI still lacks the vanilla
-    `GuiGraphicsExtractor` player-owner context and falls back until that owner
-    is threaded.
+  - Audit remaining item consumers that vanilla renders with a living owner and
+    pass that owner context into the item resolver. `minecraft:main_hand` is now
+    wired for entity-owned generated item attachments and GUI/HUD item icons
+    that use the local-player owner context.
   - Add a typed value representation for `minecraft:component` select cases
     (`ComponentContents.get`, which dispatches case decoding through the selected
     data component's own codec) before wiring it as a stack-only select provider.
@@ -5776,8 +5775,11 @@ When an agent does any of the following, update this file in the same slice:
       the material key (e.g. `minecraft:quartz`) matched against each case
     - `minecraft:main_hand` — `MainHand.get`, matching the owner's
       `HumanoidArm` serialized name (`left` / `right`) for third-person
-      entity-owned generated item attachments; native consumers that do not
-      thread a `LivingEntity` owner fall back
+      entity-owned generated item attachments and GUI/HUD item icons that can
+      use the local-player owner context. This matches
+      `GuiGraphicsExtractor.item`, which passes `minecraft.player` to
+      `ItemModelResolver.updateForTopItem`; null-owner/fake item consumers still
+      fall back.
   - A value-aware `RangeDispatch` / `Select` is treated as a runtime condition so
     it is resolved per stack rather than collapsed at model-build time.
   - The trim-material registry keys are projected into the GUI icon path
@@ -5793,11 +5795,10 @@ When an agent does any of the following, update this file in the same slice:
     `context_entity_type`) still collapse to the fallback/first entry because
     their value needs ambient `ClientLevel` / `ItemOwner` / use-tick context the
     GUI icon resolver does not yet receive. `minecraft:main_hand` still falls
-    back on native item consumers that do not pass a `LivingEntity` owner,
-    including GUI paths where vanilla `GuiGraphicsExtractor` can pass the local
-    player owner. `minecraft:component` also remains deferred until the runtime
-    carries typed component values for case matching. This is the documented
-    follow-up.
+    back on native item consumers that do not pass a `LivingEntity` owner, such
+    as fake/null-owner item surfaces. `minecraft:component` also remains
+    deferred until the runtime carries typed component values for case matching.
+    This is the documented follow-up.
 
 ### Native Input, Movement, Interaction, Inventory, And Command Flows
 

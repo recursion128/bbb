@@ -424,6 +424,11 @@ impl EntityStore {
             .map(|identity| (*identity).clone())
     }
 
+    pub(crate) fn main_arm_left(&self, id: i32) -> Option<bool> {
+        let entity_type_id = self.entity_type_id(id)?;
+        Some(self.entity_main_arm_left(id, entity_type_id))
+    }
+
     pub(crate) fn is_silent(&self, id: i32) -> Option<bool> {
         self.metadata_bool(id, VANILLA_ENTITY_SILENT_DATA_ID, false)
     }

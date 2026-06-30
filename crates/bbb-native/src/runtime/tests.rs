@@ -2411,6 +2411,75 @@ fn hotbar_item_icons_use_using_item_model_for_selected_slot_only() {
 }
 
 #[test]
+fn hotbar_item_icons_use_local_player_main_hand_owner_context() {
+    let root = unique_runtime_temp_dir("hotbar-main-hand");
+    write_runtime_main_hand_select_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let stack = item_stack(0, 1);
+    let fallback_uv = item_runtime.icon_for_stack(&stack).unwrap().layers[0].uv;
+    let right_uv = item_runtime
+        .icon_for_stack_with_owner_main_hand(&stack, Some(false))
+        .unwrap()
+        .layers[0]
+        .uv;
+    let left_uv = item_runtime
+        .icon_for_stack_with_owner_main_hand(&stack, Some(true))
+        .unwrap()
+        .layers[0]
+        .uv;
+    assert_ne!(fallback_uv, right_uv);
+    assert_ne!(fallback_uv, left_uv);
+    assert_ne!(right_uv, left_uv);
+
+    let mut no_owner_world = WorldStore::new();
+    no_owner_world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: stack.clone(),
+    });
+    let no_owner_icons = hotbar_item_icons(&no_owner_world, Some(&item_runtime), 0.0);
+    assert_eq!(
+        no_owner_icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: fallback_uv.min,
+            max: fallback_uv.max,
+        }
+    );
+
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.apply_add_entity(test_add_entity(42, VANILLA_26_1_PLAYER_ENTITY_TYPE_ID));
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: stack,
+    });
+    let right_icons = hotbar_item_icons(&world, Some(&item_runtime), 0.0);
+    assert_eq!(
+        right_icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: right_uv.min,
+            max: right_uv.max,
+        }
+    );
+
+    assert!(
+        world.apply_set_entity_data(bbb_protocol::packets::SetEntityData {
+            id: 42,
+            values: vec![test_humanoid_arm_data(15, 0)],
+        })
+    );
+    let left_icons = hotbar_item_icons(&world, Some(&item_runtime), 0.0);
+    assert_eq!(
+        left_icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: left_uv.min,
+            max: left_uv.max,
+        }
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn hud_inventory_screen_projects_hovered_item_tooltip_name() {
     let root = unique_runtime_temp_dir("inventory-tooltip");
     write_runtime_tooltip_item_assets(&root);
@@ -5380,6 +5449,14 @@ fn test_byte_data(data_id: u8, value: i8) -> bbb_protocol::packets::EntityDataVa
     }
 }
 
+fn test_humanoid_arm_data(data_id: u8, arm_id: i32) -> bbb_protocol::packets::EntityDataValue {
+    bbb_protocol::packets::EntityDataValue {
+        data_id,
+        serializer_id: 42,
+        value: bbb_protocol::packets::EntityDataValueKind::HumanoidArm(arm_id),
+    }
+}
+
 fn merchant_offers(
     container_id: i32,
     offer_count: usize,
@@ -5674,6 +5751,65 @@ fn write_runtime_bow_item_assets(root: &Path) {
             .join("Items.java"),
         r#"public class Items {
             public static final Item BOW = registerItem("bow");
+        }"#,
+    );
+}
+
+fn write_runtime_main_hand_select_item_assets(root: &Path) {
+    let assets = runtime_assets_dir(root);
+    write_runtime_json(
+        &assets.join("atlases").join("items.json"),
+        r#"{
+            "sources": [
+                {
+                    "type": "minecraft:directory",
+                    "prefix": "item/",
+                    "source": "item"
+                }
+            ]
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("atlases").join("blocks.json"),
+        r#"{
+            "sources": []
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("items").join("hand_selector.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:select",
+                "property": "minecraft:main_hand",
+                "cases": [
+                    {
+                        "when": "left",
+                        "model": { "type": "minecraft:model", "model": "minecraft:item/hand_selector_left" }
+                    },
+                    {
+                        "when": "right",
+                        "model": { "type": "minecraft:model", "model": "minecraft:item/hand_selector_right" }
+                    }
+                ],
+                "fallback": { "type": "minecraft:model", "model": "minecraft:item/hand_selector" }
+            }
+        }"#,
+    );
+    write_flat_runtime_item_model_and_texture(&assets, "hand_selector", &[40, 80, 120, 255]);
+    write_flat_runtime_item_model_and_texture(&assets, "hand_selector_left", &[120, 40, 80, 255]);
+    write_flat_runtime_item_model_and_texture(&assets, "hand_selector_right", &[80, 120, 40, 255]);
+    write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
+    write_runtime_json(
+        &root
+            .join("sources")
+            .join(bbb_pack::MC_VERSION)
+            .join("net")
+            .join("minecraft")
+            .join("world")
+            .join("item")
+            .join("Items.java"),
+        r#"public class Items {
+            public static final Item HAND_SELECTOR = registerItem("hand_selector");
         }"#,
     );
 }

@@ -2254,6 +2254,10 @@ impl WorldStore {
         self.local_player_id
     }
 
+    pub fn local_player_main_arm_left(&self) -> Option<bool> {
+        self.entities.main_arm_left(self.local_player_id?)
+    }
+
     pub fn local_player_vehicle_id(&self) -> Option<i32> {
         self.local_player_vehicle_id
     }
