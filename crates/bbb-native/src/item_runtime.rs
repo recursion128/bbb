@@ -1434,6 +1434,7 @@ impl NativeItemRuntime {
             false,
             ItemModelUseContext::inactive(),
             None,
+            None,
             trim_material_keys,
         )
     }
@@ -1451,6 +1452,7 @@ impl NativeItemRuntime {
         stack: &ItemStackSummary,
         owner_main_hand_left: Option<bool>,
         context_entity_type: Option<&str>,
+        context_dimension: Option<&str>,
         using_item: bool,
         use_context: ItemModelUseContext,
     ) -> Vec<GeneratedItemLayer> {
@@ -1460,6 +1462,7 @@ impl NativeItemRuntime {
             using_item,
             use_context,
             context_entity_type,
+            context_dimension,
             None,
         )
     }
@@ -1471,6 +1474,7 @@ impl NativeItemRuntime {
         using_item: bool,
         use_context: ItemModelUseContext,
         context_entity_type: Option<&str>,
+        context_dimension: Option<&str>,
         trim_material_keys: Option<&[String]>,
     ) -> Vec<GeneratedItemLayer> {
         let Some(icon) = self.icon_for_stack_with_context_and_use_context(
@@ -1482,7 +1486,7 @@ impl NativeItemRuntime {
             trim_material_keys,
             owner_main_hand_left,
             context_entity_type,
-            None,
+            context_dimension,
         ) else {
             return Vec::new();
         };

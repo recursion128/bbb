@@ -674,9 +674,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `IsUsingItem.get`: only the active `getUseItem()` hand selects the true
     branch; using the other hand keeps the submitted stack on false.
   - [x] `minecraft:context_dimension` item-model select resolves for GUI/HUD
-    item icons from vanilla `ContextDimension.get`: with a `ClientLevel`
-    context it matches `level.dimension()`, while no-level item consumers keep
-    the fallback.
+    item icons and owner-backed third-person generated held-item paths from
+    vanilla `ContextDimension.get`: with a `ClientLevel` context it matches
+    `level.dimension()`, while no-level item consumers keep the fallback. Tests
+    pin GUI/HUD world-dimension selection and held-item fallback / overworld /
+    nether mesh branch changes.
   - [x] `minecraft:context_entity_type` item-model select resolves for GUI/HUD
     item icons from vanilla `ContextEntityType.get`: `GuiGraphicsExtractor.item`
     passes the local player owner, so the projected owner type is

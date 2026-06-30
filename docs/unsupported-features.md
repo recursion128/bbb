@@ -5796,9 +5796,9 @@ When an agent does any of the following, update this file in the same slice:
       `ItemModelResolver.updateForTopItem`; null-owner/fake item consumers still
       fall back.
     - `minecraft:context_dimension` — `ContextDimension.get`, matching the
-      current `ClientLevel.dimension()` resource key for GUI/HUD item icons from
-      `bbb-world`'s `WorldLevelInfo.dimension`; no-level item consumers still
-      fall back.
+      current `ClientLevel.dimension()` resource key for GUI/HUD item icons and
+      owner-backed third-person generated held-item paths from `bbb-world`'s
+      `WorldLevelInfo.dimension`; no-level item consumers still fall back.
     - `minecraft:context_entity_type` — `ContextEntityType.get`, matching the
       owner entity type resource key for GUI/HUD item icons. This mirrors
       `GuiGraphicsExtractor.item`, which passes `minecraft.player` as the owner,

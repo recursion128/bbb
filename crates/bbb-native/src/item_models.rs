@@ -459,6 +459,7 @@ pub(crate) fn held_item_models(
         };
     };
     let enchantment_keys = world_enchantment_keys(world);
+    let context_dimension = world.level_info().map(|level| level.dimension.as_str());
 
     for instance in instances {
         // Vanilla `ItemInHandLayer.submit` submits the right arm first and the left arm second. Each arm's
@@ -471,6 +472,7 @@ pub(crate) fn held_item_models(
             item_runtime,
             terrain_textures,
             enchantment_keys.as_deref(),
+            context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
             &mut flat_meshes,
@@ -483,6 +485,7 @@ pub(crate) fn held_item_models(
             item_runtime,
             terrain_textures,
             enchantment_keys.as_deref(),
+            context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
             &mut flat_meshes,
@@ -494,6 +497,7 @@ pub(crate) fn held_item_models(
             item_runtime,
             terrain_textures,
             enchantment_keys.as_deref(),
+            context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
             &mut flat_meshes,
@@ -505,6 +509,7 @@ pub(crate) fn held_item_models(
             item_runtime,
             terrain_textures,
             enchantment_keys.as_deref(),
+            context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
             &mut flat_meshes,
@@ -516,6 +521,7 @@ pub(crate) fn held_item_models(
             item_runtime,
             terrain_textures,
             enchantment_keys.as_deref(),
+            context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
             &mut flat_meshes,
@@ -527,6 +533,7 @@ pub(crate) fn held_item_models(
             item_runtime,
             terrain_textures,
             enchantment_keys.as_deref(),
+            context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
             &mut flat_meshes,
@@ -538,6 +545,7 @@ pub(crate) fn held_item_models(
             item_runtime,
             terrain_textures,
             enchantment_keys.as_deref(),
+            context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
             &mut flat_meshes,
@@ -549,6 +557,7 @@ pub(crate) fn held_item_models(
             item_runtime,
             terrain_textures,
             enchantment_keys.as_deref(),
+            context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
             &mut flat_meshes,
@@ -560,6 +569,7 @@ pub(crate) fn held_item_models(
             item_runtime,
             terrain_textures,
             enchantment_keys.as_deref(),
+            context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
             &mut flat_meshes,
@@ -571,6 +581,7 @@ pub(crate) fn held_item_models(
             item_runtime,
             terrain_textures,
             enchantment_keys.as_deref(),
+            context_dimension,
             &mut block_meshes,
             &mut block_translucent_meshes,
             &mut flat_meshes,
@@ -609,6 +620,7 @@ fn bake_held_hand(
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
     enchantment_keys: Option<&[String]>,
+    context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
@@ -642,6 +654,7 @@ fn bake_held_hand(
             using_item,
             using_item_ticks,
             enchantment_keys,
+            context_dimension,
             BLOCK_THIRD_PERSON_FALLBACK,
             GENERATED_THIRD_PERSON_FALLBACK,
             item_runtime,
@@ -674,6 +687,7 @@ fn bake_fox_held_item(
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
     enchantment_keys: Option<&[String]>,
+    context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
@@ -696,6 +710,7 @@ fn bake_fox_held_item(
         using_item,
         entity_use_elapsed_ticks(instance, using_item),
         enchantment_keys,
+        context_dimension,
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
         item_runtime,
@@ -717,6 +732,7 @@ fn bake_dolphin_carried_item(
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
     enchantment_keys: Option<&[String]>,
+    context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
@@ -739,6 +755,7 @@ fn bake_dolphin_carried_item(
         using_item,
         entity_use_elapsed_ticks(instance, using_item),
         enchantment_keys,
+        context_dimension,
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
         item_runtime,
@@ -760,6 +777,7 @@ fn bake_witch_held_item(
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
     enchantment_keys: Option<&[String]>,
+    context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
@@ -782,6 +800,7 @@ fn bake_witch_held_item(
         using_item,
         entity_use_elapsed_ticks(instance, using_item),
         enchantment_keys,
+        context_dimension,
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
         item_runtime,
@@ -802,6 +821,7 @@ fn bake_copper_golem_held_items(
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
     enchantment_keys: Option<&[String]>,
+    context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
@@ -830,6 +850,7 @@ fn bake_copper_golem_held_items(
             using_item,
             entity_use_elapsed_ticks(instance, using_item),
             enchantment_keys,
+            context_dimension,
             BLOCK_THIRD_PERSON_FALLBACK,
             GENERATED_THIRD_PERSON_FALLBACK,
             item_runtime,
@@ -853,6 +874,7 @@ fn bake_allay_held_items(
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
     enchantment_keys: Option<&[String]>,
+    context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
@@ -881,6 +903,7 @@ fn bake_allay_held_items(
             using_item,
             entity_use_elapsed_ticks(instance, using_item),
             enchantment_keys,
+            context_dimension,
             BLOCK_THIRD_PERSON_FALLBACK,
             GENERATED_THIRD_PERSON_FALLBACK,
             item_runtime,
@@ -902,6 +925,7 @@ fn bake_villager_crossed_arms_item(
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
     enchantment_keys: Option<&[String]>,
+    context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
@@ -924,6 +948,7 @@ fn bake_villager_crossed_arms_item(
         using_item,
         entity_use_elapsed_ticks(instance, using_item),
         enchantment_keys,
+        context_dimension,
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
         item_runtime,
@@ -945,6 +970,7 @@ fn bake_panda_held_item(
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
     enchantment_keys: Option<&[String]>,
+    context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
@@ -967,6 +993,7 @@ fn bake_panda_held_item(
         using_item,
         entity_use_elapsed_ticks(instance, using_item),
         enchantment_keys,
+        context_dimension,
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
         item_runtime,
@@ -988,6 +1015,7 @@ fn bake_custom_head_item(
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
     enchantment_keys: Option<&[String]>,
+    context_dimension: Option<&str>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
@@ -1019,6 +1047,7 @@ fn bake_custom_head_item(
             false,
             0.0,
             enchantment_keys,
+            context_dimension,
             BLOCK_HEAD_FALLBACK,
             GENERATED_HEAD_FALLBACK,
             item_runtime,
@@ -1128,6 +1157,7 @@ fn bake_item_stack_at_transform(
     using_item: bool,
     using_item_ticks: f32,
     enchantment_keys: Option<&[String]>,
+    context_dimension: Option<&str>,
     block_fallback: BlockModelDisplayTransform,
     generated_fallback: BlockModelDisplayTransform,
     item_runtime: &NativeItemRuntime,
@@ -1177,6 +1207,7 @@ fn bake_item_stack_at_transform(
         stack,
         owner_main_hand_left,
         context_entity_type,
+        context_dimension,
         using_item,
         use_context,
     ) {
@@ -1401,8 +1432,8 @@ impl LegacyRandom {
 mod tests {
     use super::*;
     use bbb_protocol::packets::{
-        AddEntity, DataComponentPatchSummary, EntityDataValue, EntityDataValueKind,
-        EquipmentSlotUpdate, SetEntityData, SetEquipment, Vec3d,
+        AddEntity, CommonPlayerSpawnInfo, DataComponentPatchSummary, EntityDataValue,
+        EntityDataValueKind, EquipmentSlotUpdate, PlayLogin, SetEntityData, SetEquipment, Vec3d,
     };
     use std::path::{Path, PathBuf};
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -1465,6 +1496,35 @@ mod tests {
             y_head_rot: 0.0,
             data: 0,
         }
+    }
+
+    fn world_with_level_dimension(dimension: &str) -> WorldStore {
+        let mut world = WorldStore::new();
+        world.apply_login(&PlayLogin {
+            player_id: 1,
+            hardcore: false,
+            levels: vec![dimension.to_string()],
+            max_players: 20,
+            chunk_radius: 8,
+            simulation_distance: 6,
+            reduced_debug_info: false,
+            show_death_screen: true,
+            do_limited_crafting: false,
+            common_spawn_info: CommonPlayerSpawnInfo {
+                dimension_type_id: 0,
+                dimension: dimension.to_string(),
+                seed: 0,
+                game_type: 0,
+                previous_game_type: -1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 63,
+            },
+            enforces_secure_chat: false,
+        });
+        world
     }
 
     fn protocol_optional_block_state_data(
@@ -2046,6 +2106,7 @@ mod tests {
                 false,
                 0.0,
                 None,
+                None,
                 BLOCK_THIRD_PERSON_FALLBACK,
                 GENERATED_THIRD_PERSON_FALLBACK,
                 &item_runtime,
@@ -2103,6 +2164,7 @@ mod tests {
                 false,
                 0.0,
                 None,
+                None,
                 BLOCK_THIRD_PERSON_FALLBACK,
                 GENERATED_THIRD_PERSON_FALLBACK,
                 &item_runtime,
@@ -2139,6 +2201,41 @@ mod tests {
         assert_ne!(fallback, player);
         assert_ne!(fallback, witch);
         assert_ne!(player, witch);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn held_generated_item_context_dimension_select_uses_world_level() {
+        // Vanilla `ContextDimension.get` returns `level.dimension()` when the
+        // item resolver is called with a `ClientLevel`. The held-item path uses
+        // the real world level, so the same stack can select different
+        // generated textures in different dimensions.
+        let root = unique_item_model_temp_dir("held-context-dimension-select");
+        write_context_dimension_select_item_runtime_fixture(&root);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let terrain_textures = TerrainTextureState::default();
+        const ENTITY_ID: i32 = 610;
+        const PLAYER_ENTITY_TYPE_ID: i32 = 155;
+        let bake = |dimension: Option<&str>| {
+            let mut world = dimension.map_or_else(WorldStore::new, world_with_level_dimension);
+            world.apply_add_entity(protocol_add_entity(ENTITY_ID, PLAYER_ENTITY_TYPE_ID));
+            assert!(world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::MainHand, 0)));
+            let instance = EntityModelInstance::player(ENTITY_ID, [0.0, 64.0, 0.0], 0.0, false);
+            let models =
+                held_item_models(&[instance], &world, Some(&item_runtime), &terrain_textures);
+            assert_eq!(models.flat_meshes.len(), 1);
+            models.flat_meshes[0].clone()
+        };
+
+        let fallback = bake(None);
+        let overworld = bake(Some("minecraft:overworld"));
+        let nether = bake(Some("minecraft:the_nether"));
+
+        assert_ne!(fallback, overworld);
+        assert_ne!(fallback, nether);
+        assert_ne!(overworld, nether);
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -2651,6 +2748,43 @@ mod tests {
         write_flat_item_model_and_texture(&assets, "entity_selector", &[40, 80, 120, 255]);
         write_flat_item_model_and_texture(&assets, "entity_selector_player", &[120, 40, 80, 255]);
         write_flat_item_model_and_texture(&assets, "entity_selector_witch", &[80, 120, 40, 255]);
+    }
+
+    fn write_context_dimension_select_item_runtime_fixture(root: &Path) {
+        let assets = item_model_assets_dir(root);
+        write_item_atlases(&assets);
+        write_item_registry_source(root, &["dimension_selector"]);
+        write_json(
+            &assets.join("items").join("dimension_selector.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:context_dimension",
+                    "cases": [
+                        {
+                            "when": "minecraft:overworld",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/dimension_selector_overworld" }
+                        },
+                        {
+                            "when": "minecraft:the_nether",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/dimension_selector_nether" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/dimension_selector" }
+                }
+            }"#,
+        );
+        write_flat_item_model_and_texture(&assets, "dimension_selector", &[40, 80, 120, 255]);
+        write_flat_item_model_and_texture(
+            &assets,
+            "dimension_selector_overworld",
+            &[120, 40, 80, 255],
+        );
+        write_flat_item_model_and_texture(
+            &assets,
+            "dimension_selector_nether",
+            &[80, 120, 40, 255],
+        );
     }
 
     fn write_using_item_condition_item_runtime_fixture(root: &Path) {
