@@ -359,11 +359,12 @@ When an agent does any of the following, update this file in the same slice:
     GPU draw plan of sorted index ranges, so `entityTranslucent` and
     `entityTranslucentCullItemTarget` draw in vanilla order across static,
     dynamic player-skin, and dynamic profile-texture atlases within their target.
-    Later GPU work should split remaining currently-coalesced render-type state
-    such as no-cull `entityCutout*`, `armorCutoutNoCull`, `Eyes`, `waterMask`,
-    and glint / scroll variants into equivalent pipeline state, plus dynamic
-    LightTexture / darkness-adjusted gamma / diffuse visual parity. The scroll GPU path already separates
-    vanilla `breezeWind` as lightmap-lit from emissive additive `energySwirl`.
+    Later GPU work should split the remaining currently-coalesced render-type state
+    such as no-cull `entityCutout*`, `armorCutoutNoCull`, and armor translucent
+    variants into equivalent pipeline state, plus dynamic LightTexture /
+    darkness-adjusted gamma / diffuse visual parity. `Eyes`, `waterMask`, glint,
+    and scroll render types now have dedicated baseline GPU pipelines; remaining
+    work there is narrower shader/time/sorting visual parity.
   - Entity outline target writes now use a dedicated vanilla-shaped
     `core/rendertype_outline` shader: texture alpha is only a zero-alpha discard
     mask, output color comes from the submitted `outlineColor` vertex tint, the
@@ -2202,9 +2203,13 @@ When an agent does any of the following, update this file in the same slice:
       `OverlayTexture.NO_OVERLAY` inherited by folded cutout vertices; the shared boat dispatch sink
       now also records `BoatRenderer.submitTypeAdditions`' above-water
       `ModelLayers.BOAT_WATER_PATCH` submit as vanilla `waterMask` metadata at `(0, 1)` with the same
-      texture/transform/light and `OverlayTexture.NO_OVERLAY`. Bamboo raft / chest raft route through
+      texture/transform/light and `OverlayTexture.NO_OVERLAY`, then folds it into a dedicated
+      depth-only water-mask mesh/pipeline. That GPU path matches vanilla
+      `RenderPipelines.WATER_MASK`: color write mask 0, depth write `LESS_EQUAL`, default back-face
+      cull, no texture sampler, and no LightTexture bind; missing boat texture data suppresses only
+      the base cutout geometry. Bamboo raft / chest raft route through
       vanilla `RaftRenderer`, which does not override `submitTypeAdditions`, so they now record only the
-      base submit. Water-mask depth-only GPU presentation is still deferred. Paddle rowing animation is
+      base submit. Paddle rowing animation is
       projected from `AbstractBoat` metadata ids 11/12 plus the controlling-passenger
       gate and rendered through `AbstractBoatModel.animatePaddle`; hurt/damage roll
       is projected from `VehicleEntity` metadata ids 8/9/10 and folded into the boat
@@ -2214,8 +2219,7 @@ When an agent does any of the following, update this file in the same slice:
       from the vanilla boat top-slice water-surface test and now gates both bubble wobble
       and wooden boat / chest boat above-water `waterMask` submission. Boat /
       raft base and wooden boat water-mask submissions now preserve the vanilla
-      `state.lightCoords` plus `OverlayTexture.NO_OVERLAY`; only water-mask
-      depth-only GPU presentation remains deferred.
+      `state.lightCoords` plus `OverlayTexture.NO_OVERLAY`.
     - chicken entities as renderer-owned vanilla 26.1
       `AdultChickenModel`, `ColdChickenModel`, and `BabyChickenModel` body-layer
       geometry from `ChickenModel`, `ChickenRenderer`, `ChickenVariants`, and
@@ -5103,9 +5107,10 @@ When an agent does any of the following, update this file in the same slice:
   - Full entity presentation remains phase 6 work, including texture assets,
     variants, equipment, skins, animation, custom/datapack cow/pig
     variant asset presentation,
-    boat/raft water-mask depth-only presentation (paddle rowing animation,
-    hurt/damage roll, bubble wobble, underwater state, above-water water-mask
-    gating, and base/water-mask lighting are projected and rendered),
+    remaining boat/raft visual parity beyond the completed wooden boat/chest-boat
+    water-mask depth-only GPU path (paddle rowing animation, hurt/damage roll,
+    bubble wobble, underwater state, above-water water-mask gating, and
+    base/water-mask lighting are projected and rendered),
     remaining equine boost and camel body-anchor y-offset presentation,
     and remaining non-base-equine presentation,
     villager live/dynamic profiled-player skin presentation (crossed-arms

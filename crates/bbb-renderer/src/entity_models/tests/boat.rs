@@ -47,6 +47,12 @@ fn boat_model_parts_match_vanilla_26_1_layers() {
         [0.0, std::f32::consts::PI, std::f32::consts::PI / 16.0],
         BOAT_RIGHT_PADDLE.as_slice(),
     );
+    assert_part(
+        &BOAT_WATER_PATCH_PART,
+        [0.0, -3.0, 1.0],
+        [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+        BOAT_BOTTOM.as_slice(),
+    );
 
     assert_eq!(BOAT_CHEST_PARTS.len(), 3);
     assert_part(
@@ -513,6 +519,12 @@ fn boat_textured_mesh_uses_vanilla_uvs_tints_and_root_transform() {
         assert_eq!(water_mask.overlay, [0.0, 10.0]);
         assert_eq!((water_mask.order, water_mask.submit_sequence), (0, 1));
     }
+    assert_eq!(
+        meshes.water_mask.vertices.len(),
+        48,
+        "two wooden boats submit one vanilla BOAT_WATER_PATCH cube each"
+    );
+    assert_eq!(meshes.water_mask.indices.len(), 72);
     let mesh = &meshes.cutout;
 
     assert_eq!(atlas.width, 128);
@@ -582,6 +594,8 @@ fn boat_underwater_skips_water_mask_submission_and_bubble_roll() {
     assert_eq!(base.overlay, [0.0, 10.0]);
     assert_eq!((base.order, base.submit_sequence), (0, 0));
     assert_eq!(meshes.cutout.vertices.len(), 216);
+    assert!(meshes.water_mask.vertices.is_empty());
+    assert!(meshes.water_mask.indices.is_empty());
     assert!(meshes
         .submissions
         .iter()
@@ -646,6 +660,12 @@ fn boat_paddles_use_vanilla_rowing_time_rotations() {
     assert_eq!(water_mask.light, base.light);
     assert_eq!(water_mask.overlay, [0.0, 10.0]);
     assert_eq!((water_mask.order, water_mask.submit_sequence), (0, 1));
+    assert_eq!(rest_meshes.water_mask.vertices.len(), 24);
+    assert_eq!(rowing_meshes.water_mask.vertices.len(), 24);
+    assert_eq!(
+        rest_meshes.water_mask.vertices, rowing_meshes.water_mask.vertices,
+        "BoatModel.createWaterPatch is independent from paddle animation"
+    );
 
     assert_eq!(rest_meshes.cutout.vertices.len(), 216);
     assert_eq!(rowing_meshes.cutout.vertices.len(), 216);
@@ -661,6 +681,40 @@ fn boat_paddles_use_vanilla_rowing_time_rotations() {
         &rest_meshes.cutout.vertices[168..216],
         &rowing_meshes.cutout.vertices[168..216]
     );
+}
+
+#[test]
+fn boat_water_mask_geometry_survives_missing_base_texture_atlas_entry() {
+    let image = EntityModelTextureImage::new(
+        ZOMBIE_TEXTURE_REF,
+        vec![
+            3;
+            usize::try_from(ZOMBIE_TEXTURE_REF.size[0] * ZOMBIE_TEXTURE_REF.size[1] * 4).unwrap()
+        ],
+    );
+    let (atlas, _) = build_entity_model_texture_atlas(&[image]).unwrap();
+    let instance =
+        EntityModelInstance::boat(302, [0.0, 64.0, 0.0], 0.0, BoatModelFamily::Oak, false);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+    assert_eq!(meshes.submissions.len(), 2);
+    assert_eq!(
+        meshes.submissions[0].render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(
+        meshes.submissions[1].render_type,
+        EntityModelLayerRenderType::WaterMask
+    );
+    assert_eq!(meshes.submissions[1].texture, BOAT_OAK_TEXTURE_REF);
+    assert!(meshes.cutout.vertices.is_empty());
+    assert!(meshes.cutout.indices.is_empty());
+    assert_eq!(
+        meshes.water_mask.vertices.len(),
+        24,
+        "RenderTypes.waterMask has no texture sampler, so missing boat.png only suppresses the base"
+    );
+    assert_eq!(meshes.water_mask.indices.len(), 36);
 }
 
 #[test]

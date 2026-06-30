@@ -19,9 +19,9 @@ use super::{
         EntityModelUvRect,
     },
     entity_model_colored_runtime_mesh,
-    entity_model_textured_meshes_with_dynamic_textures_for_camera,
+    entity_model_textured_meshes_with_dynamic_textures_for_camera, entity_model_water_mask_mesh,
     geometry::{
-        EntityModelScrollMesh, EntityModelScrollVertex, EntityModelTexturedMesh,
+        EntityModelMesh, EntityModelScrollMesh, EntityModelScrollVertex, EntityModelTexturedMesh,
         EntityModelTexturedVertex, EntityModelVertex,
     },
     instances::EntityModelInstance,
@@ -506,6 +506,39 @@ fn vs_main(input: VertexIn) -> VertexOut {
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let texel = textureSample(entity_texture_atlas, entity_sampler, input.uv) * input.tint;
     return apply_fog(texel, input.spherical_distance, input.cylindrical_distance);
+}
+"#;
+
+pub(super) const ENTITY_MODEL_WATER_MASK_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
+    fog_visibility_ends: vec4<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+};
+
+@vertex
+fn vs_main(input: VertexIn) -> @builtin(position) vec4<f32> {
+    return camera.view_proj * vec4<f32>(input.position, 1.0);
+}
+
+@fragment
+fn fs_main() -> @location(0) vec4<f32> {
+    return vec4<f32>(1.0, 1.0, 1.0, 1.0);
 }
 "#;
 
@@ -1063,6 +1096,15 @@ const ENTITY_MODEL_EYES_BLEND: wgpu::BlendState = wgpu::BlendState::ALPHA_BLENDI
 const ENTITY_MODEL_EYES_DEPTH_WRITE_ENABLED: bool = false;
 const ENTITY_MODEL_EYES_CULL_MODE: Option<wgpu::Face> = None;
 
+/// Vanilla `RenderPipelines.WATER_MASK`: default depth, default cull, and colour writes disabled.
+const ENTITY_MODEL_WATER_MASK_BLEND: Option<wgpu::BlendState> =
+    Some(wgpu::BlendState::ALPHA_BLENDING);
+const ENTITY_MODEL_WATER_MASK_COLOR_WRITE_MASK: wgpu::ColorWrites = wgpu::ColorWrites::empty();
+const ENTITY_MODEL_WATER_MASK_DEPTH_WRITE_ENABLED: bool = true;
+const ENTITY_MODEL_WATER_MASK_DEPTH_COMPARE: wgpu::CompareFunction =
+    wgpu::CompareFunction::LessEqual;
+const ENTITY_MODEL_WATER_MASK_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
+
 pub(crate) fn create_entity_model_eyes_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
@@ -1079,6 +1121,59 @@ pub(crate) fn create_entity_model_eyes_pipeline(
         ENTITY_MODEL_EYES_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_EYES_CULL_MODE,
     )
+}
+
+pub(crate) fn create_entity_model_water_mask_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("bbb-entity-model-water-mask-shader"),
+        source: wgpu::ShaderSource::Wgsl(ENTITY_MODEL_WATER_MASK_SHADER.into()),
+    });
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-entity-model-water-mask-pipeline-layout"),
+        bind_group_layouts: &[bind_group_layout],
+        push_constant_ranges: &[],
+    });
+
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("bbb-entity-model-water-mask-pipeline"),
+        layout: Some(&layout),
+        vertex: wgpu::VertexState {
+            module: &shader,
+            entry_point: "vs_main",
+            buffers: &[entity_model_vertex_layout()],
+        },
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: ENTITY_MODEL_WATER_MASK_CULL_MODE,
+            polygon_mode: wgpu::PolygonMode::Fill,
+            unclipped_depth: false,
+            conservative: false,
+        },
+        depth_stencil: Some(wgpu::DepthStencilState {
+            format: DEPTH_FORMAT,
+            depth_write_enabled: ENTITY_MODEL_WATER_MASK_DEPTH_WRITE_ENABLED,
+            depth_compare: ENTITY_MODEL_WATER_MASK_DEPTH_COMPARE,
+            stencil: wgpu::StencilState::default(),
+            bias: wgpu::DepthBiasState::default(),
+        }),
+        multisample: wgpu::MultisampleState::default(),
+        fragment: Some(wgpu::FragmentState {
+            module: &shader,
+            entry_point: "fs_main",
+            targets: &[Some(wgpu::ColorTargetState {
+                format,
+                blend: ENTITY_MODEL_WATER_MASK_BLEND,
+                write_mask: ENTITY_MODEL_WATER_MASK_COLOR_WRITE_MASK,
+            })],
+        }),
+        multiview: None,
+    })
 }
 
 pub(crate) fn create_entity_model_translucent_emissive_pipeline(
@@ -1542,6 +1637,11 @@ impl Renderer {
     pub(crate) fn rebuild_entity_model_meshes(&mut self) {
         self.entity_model_mesh =
             create_entity_model_mesh_gpu(&self.device, self.entity_model_instances.clone());
+        self.entity_model_water_mask_mesh = create_entity_model_mesh_gpu_from_mesh(
+            &self.device,
+            entity_model_water_mask_mesh(&self.entity_model_instances),
+            "bbb-entity-model-water-mask",
+        );
         if let Some(atlas) = &self.entity_model_texture_atlas {
             let dynamic_player_skin_atlas = self
                 .entity_dynamic_player_skin_atlas
@@ -1718,6 +1818,9 @@ impl Renderer {
         }
         self.entity_model_bounds = merged_entity_model_bounds(&[
             self.entity_model_mesh.as_ref().and_then(|mesh| mesh.bounds),
+            self.entity_model_water_mask_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
             self.entity_model_textured_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
@@ -2304,7 +2407,18 @@ fn create_entity_model_mesh_gpu(
     device: &wgpu::Device,
     instances: Vec<EntityModelInstance>,
 ) -> Option<EntityModelMeshGpu> {
-    let mesh = entity_model_colored_runtime_mesh(&instances);
+    create_entity_model_mesh_gpu_from_mesh(
+        device,
+        entity_model_colored_runtime_mesh(&instances),
+        "bbb-entity-model",
+    )
+}
+
+fn create_entity_model_mesh_gpu_from_mesh(
+    device: &wgpu::Device,
+    mesh: EntityModelMesh,
+    label_prefix: &str,
+) -> Option<EntityModelMeshGpu> {
     if mesh.vertices.is_empty() || mesh.indices.is_empty() {
         return None;
     }
@@ -2313,13 +2427,15 @@ fn create_entity_model_mesh_gpu(
             .iter()
             .map(|vertex| Vec3::from_array(vertex.position)),
     );
+    let vertex_label = format!("{label_prefix}-vertices");
+    let index_label = format!("{label_prefix}-indices");
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("bbb-entity-model-vertices"),
+        label: Some(vertex_label.as_str()),
         contents: bytemuck::cast_slice(&mesh.vertices),
         usage: wgpu::BufferUsages::VERTEX,
     });
     let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("bbb-entity-model-indices"),
+        label: Some(index_label.as_str()),
         contents: bytemuck::cast_slice(&mesh.indices),
         usage: wgpu::BufferUsages::INDEX,
     });
@@ -2462,6 +2578,9 @@ mod tests {
         ENTITY_MODEL_SCROLL_DEPTH_COMPARE, ENTITY_MODEL_SCROLL_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_SCROLL_EMISSIVE_SHADER, ENTITY_MODEL_SURFACE_CULL_MODE,
         ENTITY_MODEL_SURFACE_NO_CULL_MODE, ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER,
+        ENTITY_MODEL_WATER_MASK_BLEND, ENTITY_MODEL_WATER_MASK_COLOR_WRITE_MASK,
+        ENTITY_MODEL_WATER_MASK_CULL_MODE, ENTITY_MODEL_WATER_MASK_DEPTH_COMPARE,
+        ENTITY_MODEL_WATER_MASK_DEPTH_WRITE_ENABLED, ENTITY_MODEL_WATER_MASK_SHADER,
     };
 
     #[test]
@@ -2615,6 +2734,60 @@ mod tests {
         );
         assert!(!ENTITY_MODEL_EYES_DEPTH_WRITE_ENABLED);
         assert_eq!(ENTITY_MODEL_EYES_CULL_MODE, None);
+    }
+
+    #[test]
+    fn entity_model_water_mask_pipeline_state_matches_vanilla_water_mask() {
+        let blend = ENTITY_MODEL_WATER_MASK_BLEND.expect("waterMask keeps TRANSLUCENT blend state");
+        assert_eq!(
+            blend.color.src_factor,
+            wgpu::BlendFactor::SrcAlpha,
+            "vanilla BlendFunction.TRANSLUCENT uses SourceFactor.SRC_ALPHA for colour"
+        );
+        assert_eq!(
+            blend.color.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha,
+            "vanilla BlendFunction.TRANSLUCENT uses DestFactor.ONE_MINUS_SRC_ALPHA for colour"
+        );
+        assert_eq!(
+            blend.alpha.src_factor,
+            wgpu::BlendFactor::One,
+            "vanilla BlendFunction.TRANSLUCENT uses SourceFactor.ONE for alpha"
+        );
+        assert_eq!(
+            blend.alpha.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha,
+            "vanilla BlendFunction.TRANSLUCENT uses DestFactor.ONE_MINUS_SRC_ALPHA for alpha"
+        );
+        assert!(ENTITY_MODEL_WATER_MASK_COLOR_WRITE_MASK.is_empty());
+        assert!(ENTITY_MODEL_WATER_MASK_DEPTH_WRITE_ENABLED);
+        assert_eq!(
+            ENTITY_MODEL_WATER_MASK_DEPTH_COMPARE,
+            wgpu::CompareFunction::LessEqual
+        );
+        assert_eq!(
+            ENTITY_MODEL_WATER_MASK_CULL_MODE,
+            Some(wgpu::Face::Back),
+            "RenderPipeline.Builder defaults cull=true for WATER_MASK"
+        );
+    }
+
+    #[test]
+    fn entity_model_water_mask_shader_matches_vanilla_depth_only_shape() {
+        assert!(
+            ENTITY_MODEL_WATER_MASK_SHADER.contains("@location(0) position: vec3<f32>"),
+            "vanilla rendertype_water_mask.vsh consumes only Position"
+        );
+        assert!(
+            !ENTITY_MODEL_WATER_MASK_SHADER.contains("textureSample")
+                && !ENTITY_MODEL_WATER_MASK_SHADER.contains("lightmap_texture")
+                && !ENTITY_MODEL_WATER_MASK_SHADER.contains("overlay"),
+            "vanilla rendertype_water_mask has no texture, lightmap, or overlay sampling"
+        );
+        assert!(
+            ENTITY_MODEL_WATER_MASK_SHADER.contains("return vec4<f32>(1.0, 1.0, 1.0, 1.0)"),
+            "fragment color is ignored because WATER_MASK has color write mask 0"
+        );
     }
 
     #[test]

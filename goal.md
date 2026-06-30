@@ -134,7 +134,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `BlendFunction.ADDITIVE` (`ONE`, `ONE`)、depth-write `LESS_EQUAL`、
     cull off、alpha cutout 0.1、EMISSIVE / NO_OVERLAY shader shape，并跳过
     LightTexture 采样；更细的跨 bucket 透明排序仍归 sorting 项。
-  - `waterMask` depth-only 或等价 boat mask state。
+  - [x] `waterMask` depth-only boat mask：wooden boat / chest boat
+    `BoatRenderer.submitTypeAdditions` 进入独立 water-mask mesh / pipeline，
+    使用 vanilla `RenderPipelines.WATER_MASK` 的 color write mask 0、
+    depth-write `LESS_EQUAL`、默认 back-face cull、无 texture / LightTexture 绑定，
+    并用 `ModelLayers.BOAT_WATER_PATCH` geometry。
   - `end_crystal_beam` / guardian beam custom prism state。
 - target ownership：
   - main target、itemEntity target、translucent target、particles target、

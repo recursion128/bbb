@@ -45,6 +45,15 @@ pub(in crate::entity_models) const BOAT_BOTTOM: [ModelCubeDesc; 1] = [ModelCubeD
     color: BOAT_WOOD,
 }];
 
+pub(in crate::entity_models) const BOAT_WATER_PATCH_PART: ModelPartDesc = ModelPartDesc {
+    pose: PartPose {
+        offset: [0.0, -3.0, 1.0],
+        rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+    },
+    cubes: &BOAT_BOTTOM,
+    children: &[],
+};
+
 pub(in crate::entity_models) const BOAT_BACK: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-13.0, -7.0, -1.0],
     size: [18.0, 6.0, 2.0],
@@ -686,4 +695,46 @@ impl EntityModel for BoatModel {
         right_paddle.pose.rotation[0] = right[0];
         right_paddle.pose.rotation[1] = right[1];
     }
+}
+
+/// Vanilla `BoatModel.createWaterPatch`: a standalone, untextured `Model.Simple` with only the
+/// `water_patch` cube, submitted through `RenderTypes.waterMask()` by `BoatRenderer`.
+pub(in crate::entity_models) struct BoatWaterPatchModel {
+    root: ModelPart,
+}
+
+impl BoatWaterPatchModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        let cube = BOAT_WATER_PATCH_PART.cubes[0];
+        let water_patch = ModelPart::leaf(
+            BOAT_WATER_PATCH_PART.pose,
+            vec![ModelCube::new(
+                cube.min,
+                cube.size,
+                cube.color,
+                cube.size,
+                [0.0, 0.0],
+                false,
+            )],
+        );
+        Self {
+            root: ModelPart::new(
+                PART_POSE_ZERO,
+                Vec::new(),
+                vec![("water_patch", water_patch)],
+            ),
+        }
+    }
+}
+
+impl EntityModel for BoatWaterPatchModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, _instance: &EntityModelInstance) {}
 }

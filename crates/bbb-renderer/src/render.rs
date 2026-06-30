@@ -309,6 +309,15 @@ impl Renderer {
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
                 entity_model_draw_calls += 1;
             }
+            if let Some(mesh) = &self.entity_model_water_mask_mesh {
+                pass.set_pipeline(&self.entity_model_water_mask_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                entity_model_draw_calls += 1;
+            }
             if let (Some(mesh), Some(atlas)) = (
                 &self.entity_model_armor_entity_glint_mesh,
                 &self.entity_model_texture_atlas,
@@ -2556,6 +2565,45 @@ mod tests {
                 && !source[entity_glint..depth_copy]
                     .contains("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])"),
             "vanilla glint pipeline does not bind LightTexture"
+        );
+    }
+
+    #[test]
+    fn entity_water_mask_draws_depth_only_before_depth_copies() {
+        let source = include_str!("render.rs");
+        let main_pass = source
+            .find("label: Some(\"bbb-native-terrain-opaque-group-pass\")")
+            .expect("main terrain/entity pass label is used");
+        let water_mask = source[main_pass..]
+            .find("pass.set_pipeline(&self.entity_model_water_mask_pipeline)")
+            .map(|index| main_pass + index)
+            .expect("waterMask pipeline is drawn");
+        let water_mask_draw = source[water_mask..]
+            .find("pass.draw_indexed")
+            .map(|index| water_mask + index)
+            .expect("waterMask draw follows pipeline");
+        let armor_glint = source[water_mask_draw..]
+            .find("self.entity_model_armor_entity_glint_pipeline")
+            .map(|index| water_mask_draw + index)
+            .expect("armorEntityGlint pipeline follows waterMask");
+        let depth_copy = depth_copy_to(source, "texture: &self.translucent_target.depth._texture");
+
+        assert!(
+            main_pass < water_mask
+                && water_mask < water_mask_draw
+                && water_mask_draw < armor_glint
+                && armor_glint < depth_copy,
+            "waterMask is a main-target depth write before glint and target depth copies"
+        );
+        assert!(
+            source[water_mask..water_mask_draw]
+                .contains("pass.set_bind_group(0, &self.terrain_bind_group, &[])"),
+            "waterMask binds only the camera/terrain group, not the entity texture atlas"
+        );
+        assert!(
+            !source[water_mask..water_mask_draw]
+                .contains("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])"),
+            "vanilla waterMask does not bind LightTexture"
         );
     }
 

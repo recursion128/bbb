@@ -28,7 +28,7 @@ use super::{
     geometry::{
         append_scrolled_textured_mesh, argb_to_tint, emit_textured_model_cube,
         emit_textured_model_parts, fill_entity_textured_light, fill_entity_textured_overlay,
-        part_pose_transform, EntityModelScrollMesh, EntityModelScrollVertex,
+        part_pose_transform, EntityModelMesh, EntityModelScrollMesh, EntityModelScrollVertex,
         EntityModelTexturedMesh, EntityModelTexturedVertex, PartPose, TexturedModelCubeDesc,
         TexturedModelPartDesc, ENTITY_VERTEX_FULL_BRIGHT_LIGHT, ENTITY_VERTEX_NO_OVERLAY,
     },
@@ -40,31 +40,31 @@ use super::{
         equine_head_pose, equine_leg_pose, equine_tail_pose, head_look_at_rest,
         horse_body_armor_texture_layers, limb_swing_at_rest, llama_body_decor_texture_ref,
         nautilus_body_armor_texture_ref, wolf_armor_crackiness_texture_ref,
-        wolf_body_armor_texture_layers, ArmorStandModel, BreezeWindModel, CamelModel, CreeperModel,
-        CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel, CustomHeadSkullModel, ElytraModel,
-        EquineAnimationPose, HumanoidArmorModelLayerSet, HumanoidArmorSlot, HumanoidBabyArmorKind,
-        LlamaModel, NautilusModel, ParrotModel, PigModel, PiglinModel, PlayerEarsModel,
-        PlayerModel, SkeletonClothingModel, SkeletonModel, SpinAttackEffectModel, StriderModel,
-        TridentModel, VillagerModel, WitherModel, WolfModel, ZombieModel, ZombieVariantModel,
-        ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
-        ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
-        ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
-        ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
-        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, CAMEL_HUSK_SADDLE_TEXTURE_REF,
-        CAMEL_SADDLE_TEXTURE_REF, CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF,
-        ENCHANTED_GLINT_ARMOR_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS,
-        EQUINE_BABY_DONKEY_LEG_STAND_CONFIG, EQUINE_STANDARD_LEG_STAND_CONFIG,
-        HORSE_SADDLE_TEXTURE_REF, HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND,
-        HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND_SMALL, HUMANOID_ARMOR_MODEL_LAYERS_BOGGED,
-        HUMANOID_ARMOR_MODEL_LAYERS_DROWNED, HUMANOID_ARMOR_MODEL_LAYERS_DROWNED_BABY,
-        HUMANOID_ARMOR_MODEL_LAYERS_GIANT, HUMANOID_ARMOR_MODEL_LAYERS_HUSK,
-        HUMANOID_ARMOR_MODEL_LAYERS_HUSK_BABY, HUMANOID_ARMOR_MODEL_LAYERS_PARCHED,
-        HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN, HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BABY,
-        HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BRUTE, HUMANOID_ARMOR_MODEL_LAYERS_PLAYER,
-        HUMANOID_ARMOR_MODEL_LAYERS_PLAYER_SLIM, HUMANOID_ARMOR_MODEL_LAYERS_SKELETON,
-        HUMANOID_ARMOR_MODEL_LAYERS_STRAY, HUMANOID_ARMOR_MODEL_LAYERS_WITHER_SKELETON,
-        HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE, HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_BABY,
-        HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_VILLAGER,
+        wolf_body_armor_texture_layers, ArmorStandModel, BoatWaterPatchModel, BreezeWindModel,
+        CamelModel, CreeperModel, CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel,
+        CustomHeadSkullModel, ElytraModel, EquineAnimationPose, HumanoidArmorModelLayerSet,
+        HumanoidArmorSlot, HumanoidBabyArmorKind, LlamaModel, NautilusModel, ParrotModel, PigModel,
+        PiglinModel, PlayerEarsModel, PlayerModel, SkeletonClothingModel, SkeletonModel,
+        SpinAttackEffectModel, StriderModel, TridentModel, VillagerModel, WitherModel, WolfModel,
+        ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
+        ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_DONKEY_SADDLE_PARTS_TEXTURED,
+        ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED, ADULT_HORSE_ARMOR_PARTS_TEXTURED,
+        ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
+        ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
+        BABY_HORSE_PARTS_TEXTURED, CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF,
+        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
+        ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, EQUINE_BABY_DONKEY_LEG_STAND_CONFIG,
+        EQUINE_STANDARD_LEG_STAND_CONFIG, HORSE_SADDLE_TEXTURE_REF,
+        HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND, HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND_SMALL,
+        HUMANOID_ARMOR_MODEL_LAYERS_BOGGED, HUMANOID_ARMOR_MODEL_LAYERS_DROWNED,
+        HUMANOID_ARMOR_MODEL_LAYERS_DROWNED_BABY, HUMANOID_ARMOR_MODEL_LAYERS_GIANT,
+        HUMANOID_ARMOR_MODEL_LAYERS_HUSK, HUMANOID_ARMOR_MODEL_LAYERS_HUSK_BABY,
+        HUMANOID_ARMOR_MODEL_LAYERS_PARCHED, HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN,
+        HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BABY, HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BRUTE,
+        HUMANOID_ARMOR_MODEL_LAYERS_PLAYER, HUMANOID_ARMOR_MODEL_LAYERS_PLAYER_SLIM,
+        HUMANOID_ARMOR_MODEL_LAYERS_SKELETON, HUMANOID_ARMOR_MODEL_LAYERS_STRAY,
+        HUMANOID_ARMOR_MODEL_LAYERS_WITHER_SKELETON, HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE,
+        HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_BABY, HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_VILLAGER,
         HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_VILLAGER_BABY,
         HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIFIED_PIGLIN,
         HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIFIED_PIGLIN_BABY, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
@@ -238,6 +238,8 @@ pub(super) struct EntityModelTexturedMeshes {
     pub(super) entity_glint: EntityModelScrollMesh,
     /// Vanilla `armorEntityGlint` folded through the armor glint texture transform.
     pub(super) armor_entity_glint: EntityModelScrollMesh,
+    /// Vanilla `RenderTypes.waterMask()` depth-only boat patch geometry.
+    pub(super) water_mask: EntityModelMesh,
     /// Vanilla-shaped submit metadata for textured entity models. The current backend still folds
     /// compatible submits into shared meshes, but this preserves render type, order, tint, texture,
     /// transform, light, and overlay so the folded GPU buckets can be audited against explicit
@@ -281,6 +283,7 @@ impl EntityModelTexturedMeshes {
             scroll_additive: EntityModelScrollMesh::new(),
             entity_glint: EntityModelScrollMesh::new(),
             armor_entity_glint: EntityModelScrollMesh::new(),
+            water_mask: EntityModelMesh::new(),
             submissions: Vec::new(),
             sorted_translucent_draws: Vec::new(),
             sorted_item_entity_draws: Vec::new(),
@@ -708,6 +711,19 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures_for_camera(
     }
     meshes.flush_sorted_uploads();
     meshes
+}
+
+pub(super) fn entity_model_water_mask_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
+    let mut mesh = EntityModelMesh::new();
+    for instance in instances {
+        if instance.render_state.invisible {
+            continue;
+        }
+        if let Some(submit) = boat_water_mask_submission(*instance) {
+            append_boat_water_mask_mesh(&mut mesh, submit);
+        }
+    }
+    mesh
 }
 
 #[cfg(test)]
@@ -1183,21 +1199,34 @@ pub(in crate::entity_models) fn render_boat_water_mask_submission(
     if meshes.current_force_transparent || meshes.current_outline_only {
         return;
     }
-    let EntityModelKind::Boat { family, chest } = instance.kind else {
+    let Some(submit) = boat_water_mask_submission(instance) else {
         return;
+    };
+    meshes.record_submission(submit);
+    append_boat_water_mask_mesh(&mut meshes.water_mask, submit);
+}
+
+fn boat_water_mask_submission(instance: EntityModelInstance) -> Option<EntityModelSubmissionEmit> {
+    let EntityModelKind::Boat { family, chest } = instance.kind else {
+        return None;
     };
     // Vanilla `BoatRenderer.submitTypeAdditions`: wooden boats and chest boats submit the
     // `ModelLayers.BOAT_WATER_PATCH` depth-only `RenderTypes.waterMask()` model when not underwater.
     // Bamboo rafts use `RaftRenderer`, which does not override `submitTypeAdditions`.
     if instance.render_state.boat_underwater {
-        return;
+        return None;
     }
     let passes = boat_textured_layer_passes(family, chest);
-    let Some(pass) = passes.get(1).copied() else {
-        return;
-    };
-    let submit = no_overlay_layer_submission(pass, boat_model_root_transform(instance));
-    meshes.record_submission(submit);
+    let pass = passes.get(1).copied()?;
+    Some(no_overlay_layer_submission(
+        pass,
+        boat_model_root_transform(instance),
+    ))
+}
+
+fn append_boat_water_mask_mesh(mesh: &mut EntityModelMesh, submit: EntityModelSubmissionEmit) {
+    let model = BoatWaterPatchModel::new();
+    model.root().render_colored(mesh, submit.transform);
 }
 
 pub(in crate::entity_models) fn render_trident_foil_submission(
