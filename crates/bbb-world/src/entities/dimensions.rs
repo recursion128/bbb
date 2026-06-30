@@ -195,6 +195,16 @@ impl EntityPickBoundsState {
             pick_radius: self.pick_radius,
         }
     }
+
+    pub(crate) fn expand_towards_y(self, delta: f32) -> Self {
+        let mut bounds = self;
+        if delta >= 0.0 {
+            bounds.max[1] += delta;
+        } else {
+            bounds.min[1] += delta;
+        }
+        bounds
+    }
 }
 
 pub(crate) fn vanilla_pick_bounds_for_type(entity_type_id: i32) -> Option<EntityPickBoundsState> {

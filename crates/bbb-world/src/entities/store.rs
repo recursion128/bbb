@@ -651,19 +651,27 @@ impl EntityStore {
         )
     }
 
-    fn model_source_bounds(&self, id: i32) -> Option<super::EntityPickBoundsState> {
+    fn model_source_bounds(
+        &self,
+        id: i32,
+        registries: &RegistrySet,
+    ) -> Option<super::EntityPickBoundsState> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
         let attributes = self.ecs.get::<&EntityAttributes>(entity).ok()?;
         let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
-        vanilla_model_source_bounds_for_entity_data(
+        let mut bounds = vanilla_model_source_bounds_for_entity_data(
             identity.entity_type_id,
             identity.data,
             &metadata.data_values,
             &attributes.attributes,
             Some(client_animations.animations),
-        )
+        )?;
+        if let Some(display) = self.minecart_display_block_state(identity.id, registries) {
+            bounds = bounds.expand_towards_y(display.display_offset as f32 * 0.75 / 16.0);
+        }
+        Some(bounds)
     }
 
     pub(crate) fn pick_targets_at_partial_tick(
@@ -707,6 +715,7 @@ impl EntityStore {
     pub(crate) fn model_targets_at_partial_tick(
         &self,
         _partial_ticks: f32,
+        registries: &RegistrySet,
     ) -> Vec<super::EntityModelTargetState> {
         let mut targets = Vec::new();
         for id in &self.order {
@@ -722,7 +731,7 @@ impl EntityStore {
             let Ok(transform) = self.ecs.get::<&EntityTransform>(entity) else {
                 continue;
             };
-            let Some(bounds) = self.model_source_bounds(identity.id) else {
+            let Some(bounds) = self.model_source_bounds(identity.id, registries) else {
                 continue;
             };
             targets.push(super::EntityModelTargetState {

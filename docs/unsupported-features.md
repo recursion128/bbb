@@ -5384,9 +5384,12 @@ When an agent does any of the following, update this file in the same slice:
       rail block-state `shape`, using `OldMinecartBehavior.getPos` /
       `getPosOffs(..., ±0.3F)`, and renderer oldRender consumes those points for
       along-track translation, yaw from `backPos - frontPos`, and slope pitch
-      `atan(direction.y) * 73.0`. Spawner animated block-entity content and
-      minecart display-block culling bbox expansion remain unsupported; the
-      minecart body submission light/overlay metadata remains covered
+      `atan(direction.y) * 73.0`. Minecart display-block culling bounds now use
+      the current model-target bounds proxy for vanilla
+      `AbstractMinecartRenderer.getBoundingBoxForCulling`: non-air display blocks
+      expand toward Y by `displayOffset * 0.75 / 16`, while default/custom air
+      leaves the base bounds unchanged. Spawner animated block-entity content
+      remains unsupported; the minecart body submission light/overlay metadata remains covered
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder

@@ -1789,7 +1789,9 @@ impl WorldStore {
         &self,
         partial_ticks: f32,
     ) -> Vec<EntityModelSourceState> {
-        let targets = self.entities.model_targets_at_partial_tick(partial_ticks);
+        let targets = self
+            .entities
+            .model_targets_at_partial_tick(partial_ticks, &self.registries);
         targets
             .iter()
             .copied()

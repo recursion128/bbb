@@ -434,8 +434,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     投影 `fuse = 80`，`MinecartTntRenderState.fuseRemainingInTicks` 传到
     renderer instance；native display-block attachment 使用 vanilla final-10-tick
     四次方 scale 和 `OverlayTexture.u(1.0F)` 白闪 overlay。
-  - spawner animated block-entity content 与 culling bbox expansion 继续作为
-    P1 后续。
+  - [x] display-block culling bbox expansion：model-target bounds proxy 按
+    vanilla `AbstractMinecartRenderer.getBoundingBoxForCulling`，只在 display
+    block 非 air 时应用 `expandTowards(0, displayOffset * 0.75 / 16, 0)`，
+    并覆盖默认 TNT/chest/hopper offset 与自定义负 offset。
+  - spawner animated block-entity content 继续作为 P1 后续。
 - Equine / camel / llama / goat / hoglin / ravager 等大型模型：
   - boost 等 remaining renderer 状态。
   - [x] camel body-anchor y-offset formula/query：`WorldStore::entity_body_anchor_y_offset`

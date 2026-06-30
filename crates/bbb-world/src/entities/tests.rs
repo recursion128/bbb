@@ -1353,6 +1353,93 @@ fn minecart_display_block_state_projects_defaults_and_custom_metadata() {
 }
 
 #[test]
+fn minecart_display_blocks_expand_model_culling_bounds() {
+    const VANILLA_ENTITY_TYPE_CHEST_MINECART_ID: i32 = 25;
+    const VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID: i32 = 65;
+    const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
+    const VANILLA_ENTITY_TYPE_TNT_MINECART_ID: i32 = 133;
+    const MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID: u8 = 11;
+    const MINECART_DISPLAY_OFFSET_DATA_ID: u8 = 12;
+
+    fn assert_close(actual: f32, expected: f32, label: &str) {
+        assert!(
+            (actual - expected).abs() < 0.00001,
+            "{label}: actual={actual}, expected={expected}"
+        );
+    }
+
+    fn target_bounds(targets: &[EntityModelTargetState], entity_id: i32) -> EntityPickBoundsState {
+        targets
+            .iter()
+            .find(|target| target.entity_id == entity_id)
+            .unwrap_or_else(|| panic!("missing model target {entity_id}"))
+            .bounds
+    }
+
+    let mut store = WorldStore::new();
+    for (id, entity_type_id) in [
+        (23, VANILLA_ENTITY_TYPE_MINECART_ID),
+        (24, VANILLA_ENTITY_TYPE_TNT_MINECART_ID),
+        (25, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID),
+        (26, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID),
+    ] {
+        store.apply_add_entity(protocol_add_entity_with_type(id, entity_type_id));
+    }
+
+    let targets = store
+        .entities
+        .model_targets_at_partial_tick(1.0, &store.registries);
+    let plain = target_bounds(&targets, 23);
+    let tnt = target_bounds(&targets, 24);
+    let chest = target_bounds(&targets, 25);
+    let hopper = target_bounds(&targets, 26);
+
+    assert_close(tnt.min[1], plain.min[1], "tnt min y");
+    assert_close(
+        tnt.max[1] - plain.max[1],
+        6.0 * 0.75 / 16.0,
+        "tnt display-block culling expansion",
+    );
+    assert_close(
+        chest.max[1] - plain.max[1],
+        8.0 * 0.75 / 16.0,
+        "chest display-block culling expansion",
+    );
+    assert_close(
+        hopper.max[1] - plain.max[1],
+        1.0 * 0.75 / 16.0,
+        "hopper display-block culling expansion",
+    );
+
+    let grass_props = BTreeMap::from([("snowy".to_string(), "false".to_string())]);
+    let grass_id = crate::registries::BlockStateRegistry::vanilla_26_1()
+        .find_by_name_and_properties("minecraft:grass_block", &grass_props)
+        .expect("vanilla 26.1 grass block state exists")
+        .id;
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 23,
+        values: vec![
+            protocol_optional_block_state_data(
+                MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
+                Some(grass_id),
+            ),
+            protocol_int_data(MINECART_DISPLAY_OFFSET_DATA_ID, -4),
+        ],
+    }));
+
+    let targets = store
+        .entities
+        .model_targets_at_partial_tick(1.0, &store.registries);
+    let custom = target_bounds(&targets, 23);
+    assert_close(custom.max[1], plain.max[1], "negative offset max y");
+    assert_close(
+        custom.min[1] - plain.min[1],
+        -4.0 * 0.75 / 16.0,
+        "negative display-block culling expansion",
+    );
+}
+
+#[test]
 fn entity_model_sources_project_boat_bubble_angle_from_bubble_time() {
     const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
     const BOAT_BUBBLE_TIME_DATA_ID: u8 = 13;
@@ -10481,7 +10568,9 @@ fn armor_stand_marker_has_model_target_without_pick_target() {
         .iter()
         .all(|target| target.entity_id != 28));
 
-    let model_targets = store.entities.model_targets_at_partial_tick(1.0);
+    let model_targets = store
+        .entities
+        .model_targets_at_partial_tick(1.0, &store.registries);
     let model_target = model_targets
         .iter()
         .find(|target| target.entity_id == 28)
