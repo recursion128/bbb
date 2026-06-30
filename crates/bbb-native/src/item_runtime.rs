@@ -1329,6 +1329,7 @@ impl NativeItemRuntime {
                             crossbow_charge: CrossbowChargeType::None,
                             main_hand_left: None,
                             context_dimension: None,
+                            context_entity_type: None,
                             default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
                             trim_material_keys: None,
                         })
@@ -1473,13 +1474,15 @@ impl NativeItemRuntime {
             None,
             None,
             None,
+            None,
         )
     }
 
     /// Resolves a stack's icon with GUI/HUD context: bundle selected item,
     /// local using-item state, `minecraft:trim_material` registry keys, and an
-    /// optional living-owner main arm for `minecraft:main_hand` plus the
-    /// current dimension for `minecraft:context_dimension`.
+    /// optional living-owner main arm / entity type for `minecraft:main_hand`
+    /// / `minecraft:context_entity_type` plus the current dimension for
+    /// `minecraft:context_dimension`.
     pub(crate) fn icon_for_stack_with_context(
         &self,
         stack: &ItemStackSummary,
@@ -1488,6 +1491,7 @@ impl NativeItemRuntime {
         cooldown_progress: f32,
         trim_material_keys: Option<&[String]>,
         owner_main_hand_left: Option<bool>,
+        context_entity_type: Option<&str>,
         context_dimension: Option<&str>,
     ) -> Option<ItemAtlasIcon> {
         self.icon_for_stack_with_model_context(
@@ -1497,6 +1501,7 @@ impl NativeItemRuntime {
             cooldown_progress,
             trim_material_keys,
             owner_main_hand_left,
+            context_entity_type,
             context_dimension,
         )
     }
@@ -1523,6 +1528,7 @@ impl NativeItemRuntime {
             None,
             owner_main_hand_left,
             None,
+            None,
         )
     }
 
@@ -1534,6 +1540,7 @@ impl NativeItemRuntime {
         cooldown_progress: f32,
         trim_material_keys: Option<&[String]>,
         owner_main_hand_left: Option<bool>,
+        context_entity_type: Option<&str>,
         context_dimension: Option<&str>,
     ) -> Option<ItemAtlasIcon> {
         let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
@@ -1546,6 +1553,7 @@ impl NativeItemRuntime {
             cooldown_progress,
             trim_material_keys,
             owner_main_hand_left,
+            context_entity_type,
             context_dimension,
         )
     }
@@ -1553,7 +1561,7 @@ impl NativeItemRuntime {
     #[cfg(test)]
     pub(crate) fn icon_for_protocol_id(&self, protocol_id: i32) -> Option<ItemAtlasIcon> {
         let item_id = self.registry.as_ref()?.resource_id(protocol_id)?;
-        self.icon_for_resource_id(item_id, 1, None, None, false, 0.0, None, None, None)
+        self.icon_for_resource_id(item_id, 1, None, None, false, 0.0, None, None, None, None)
     }
 
     fn icon_for_resource_id(
@@ -1566,6 +1574,7 @@ impl NativeItemRuntime {
         cooldown_progress: f32,
         trim_material_keys: Option<&[String]>,
         owner_main_hand_left: Option<bool>,
+        context_entity_type: Option<&str>,
         context_dimension: Option<&str>,
     ) -> Option<ItemAtlasIcon> {
         let default_max_damage = self
@@ -1589,6 +1598,7 @@ impl NativeItemRuntime {
             crossbow_charge: self.crossbow_charge_for(component_patch),
             main_hand_left: owner_main_hand_left,
             context_dimension,
+            context_entity_type,
             default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
             trim_material_keys,
         };
@@ -1705,6 +1715,7 @@ impl NativeItemRuntime {
             crossbow_charge: self.crossbow_charge_for(Some(&template.component_patch)),
             main_hand_left: parent_context.main_hand_left,
             context_dimension: parent_context.context_dimension,
+            context_entity_type: parent_context.context_entity_type,
             default_max_stack_size_for_item: parent_context.default_max_stack_size_for_item,
             trim_material_keys: parent_context.trim_material_keys,
         };
@@ -4578,7 +4589,16 @@ mod tests {
         };
         let selected = |stack: &ItemStackSummary| {
             runtime
-                .icon_for_stack_with_context(stack, None, false, 0.0, Some(&trim_keys), None, None)
+                .icon_for_stack_with_context(
+                    stack,
+                    None,
+                    false,
+                    0.0,
+                    Some(&trim_keys),
+                    None,
+                    None,
+                    None,
+                )
                 .unwrap()
                 .layers[0]
                 .uv

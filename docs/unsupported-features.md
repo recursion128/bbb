@@ -5707,11 +5707,14 @@ When an agent does any of the following, update this file in the same slice:
       (local `using_item` use-tick state)
   - Wire the remaining ambient-context `select` properties onto the same
     resolver:
-    - `minecraft:local_time`, `minecraft:context_entity_type`
+    - `minecraft:local_time`
+    - `minecraft:context_entity_type` for non-GUI entity-owned item consumers
+      once their owner entity type resource key is threaded
   - Audit remaining item consumers that vanilla renders with a living owner and
     pass that owner context into the item resolver. `minecraft:main_hand` is now
     wired for entity-owned generated item attachments and GUI/HUD item icons
-    that use the local-player owner context.
+    that use the local-player owner context; `minecraft:context_entity_type` is
+    currently wired for GUI/HUD local-player item icons.
   - Add a typed value representation for `minecraft:component` select cases
     (`ComponentContents.get`, which dispatches case decoding through the selected
     data component's own codec) before wiring it as a stack-only select provider.
@@ -5782,6 +5785,11 @@ When an agent does any of the following, update this file in the same slice:
       current `ClientLevel.dimension()` resource key for GUI/HUD item icons from
       `bbb-world`'s `WorldLevelInfo.dimension`; no-level item consumers still
       fall back.
+    - `minecraft:context_entity_type` — `ContextEntityType.get`, matching the
+      owner entity type resource key for GUI/HUD item icons. This mirrors
+      `GuiGraphicsExtractor.item`, which passes `minecraft.player` as the owner,
+      so the GUI/HUD context value is `minecraft:player`; null-owner/fake item
+      consumers still fall back.
     - `minecraft:cooldown` — `Cooldown.get`, matching the local player's
       `ItemCooldowns.getCooldownPercent(itemStack, 0.0F)` for GUI/HUD item
       icons. The item model property intentionally uses vanilla's `0.0F`
@@ -5797,14 +5805,16 @@ When an agent does any of the following, update this file in the same slice:
     (`DataComponents.BEES`, id 77) so bundle-fullness weight can distinguish
     beehive-like full-weight entries from ordinary stack-size weighted entries.
   - The remaining numeric properties (`compass`, `time`, `crossbow/pull`,
-    `use_cycle`, `use_duration`) and the remaining ambient select properties
-    (`local_time`, `context_entity_type`) still collapse to the fallback/first
-    entry because their value needs ambient `ItemOwner` / use-tick / local time
-    context the GUI icon resolver does not yet receive. `minecraft:main_hand`
-    still falls back on native item consumers that do not pass a `LivingEntity`
-    owner, such as fake/null-owner item surfaces. `minecraft:component` also
-    remains deferred until the runtime carries typed component values for case
-    matching. This is the documented follow-up.
+    `use_cycle`, `use_duration`) and `minecraft:local_time` still collapse to
+    the fallback/first entry because their value needs compass / use-tick /
+    local-time context the GUI icon resolver does not yet receive.
+    `minecraft:main_hand` and `minecraft:context_entity_type` still fall back on
+    native item consumers that do not pass a `LivingEntity` owner, such as
+    fake/null-owner item surfaces; third-person entity-owned generated items
+    still need an entity type id -> resource key projection for
+    `minecraft:context_entity_type`. `minecraft:component` also remains deferred
+    until the runtime carries typed component values for case matching. This is
+    the documented follow-up.
 
 ### Native Input, Movement, Interaction, Inventory, And Command Flows
 

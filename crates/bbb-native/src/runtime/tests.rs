@@ -2495,6 +2495,7 @@ fn hotbar_item_icons_use_world_dimension_select_context() {
             0.0,
             None,
             None,
+            None,
             Some("minecraft:overworld"),
         )
         .unwrap()
@@ -2506,6 +2507,7 @@ fn hotbar_item_icons_use_world_dimension_select_context() {
             None,
             false,
             0.0,
+            None,
             None,
             None,
             Some("minecraft:the_nether"),
@@ -2563,6 +2565,63 @@ fn hotbar_item_icons_use_world_dimension_select_context() {
 }
 
 #[test]
+fn hotbar_item_icons_use_local_player_context_entity_type_select() {
+    let root = unique_runtime_temp_dir("hotbar-context-entity-type");
+    write_runtime_context_entity_type_select_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let stack = item_stack(0, 1);
+    let fallback_uv = item_runtime.icon_for_stack(&stack).unwrap().layers[0].uv;
+    let player_uv = item_runtime
+        .icon_for_stack_with_context(
+            &stack,
+            None,
+            false,
+            0.0,
+            None,
+            None,
+            Some("minecraft:player"),
+            None,
+        )
+        .unwrap()
+        .layers[0]
+        .uv;
+    let cow_uv = item_runtime
+        .icon_for_stack_with_context(
+            &stack,
+            None,
+            false,
+            0.0,
+            None,
+            None,
+            Some("minecraft:cow"),
+            None,
+        )
+        .unwrap()
+        .layers[0]
+        .uv;
+    assert_ne!(fallback_uv, player_uv);
+    assert_ne!(fallback_uv, cow_uv);
+    assert_ne!(player_uv, cow_uv);
+
+    let mut world = WorldStore::new();
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: stack,
+    });
+    let icons = hotbar_item_icons(&world, Some(&item_runtime), 0.0);
+    assert_eq!(
+        icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: player_uv.min,
+            max: player_uv.max,
+        }
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn hotbar_item_icons_use_vanilla_zero_partial_cooldown_model_property() {
     let root = unique_runtime_temp_dir("hotbar-cooldown-range-dispatch");
     write_runtime_cooldown_range_dispatch_item_assets(&root);
@@ -2572,13 +2631,13 @@ fn hotbar_item_icons_use_vanilla_zero_partial_cooldown_model_property() {
     stack.component_patch.use_cooldown_group = Some("minecraft:ender_pearl".to_string());
     let fallback_uv = item_runtime.icon_for_stack(&stack).unwrap().layers[0].uv;
     let active_uv = item_runtime
-        .icon_for_stack_with_context(&stack, None, false, 0.75, None, None, None)
+        .icon_for_stack_with_context(&stack, None, false, 0.75, None, None, None, None)
         .unwrap()
         .layers[0]
         .uv;
     assert_eq!(
         item_runtime
-            .icon_for_stack_with_context(&stack, None, false, 0.7, None, None, None)
+            .icon_for_stack_with_context(&stack, None, false, 0.7, None, None, None, None)
             .unwrap()
             .layers[0]
             .uv,
@@ -6019,6 +6078,69 @@ fn write_runtime_context_dimension_select_item_assets(root: &Path) {
             .join("Items.java"),
         r#"public class Items {
             public static final Item DIMENSION_SELECTOR = registerItem("dimension_selector");
+        }"#,
+    );
+}
+
+fn write_runtime_context_entity_type_select_item_assets(root: &Path) {
+    let assets = runtime_assets_dir(root);
+    write_runtime_json(
+        &assets.join("atlases").join("items.json"),
+        r#"{
+            "sources": [
+                {
+                    "type": "minecraft:directory",
+                    "prefix": "item/",
+                    "source": "item"
+                }
+            ]
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("atlases").join("blocks.json"),
+        r#"{
+            "sources": []
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("items").join("entity_selector.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:select",
+                "property": "minecraft:context_entity_type",
+                "cases": [
+                    {
+                        "when": "minecraft:player",
+                        "model": { "type": "minecraft:model", "model": "minecraft:item/entity_selector_player" }
+                    },
+                    {
+                        "when": "minecraft:cow",
+                        "model": { "type": "minecraft:model", "model": "minecraft:item/entity_selector_cow" }
+                    }
+                ],
+                "fallback": { "type": "minecraft:model", "model": "minecraft:item/entity_selector" }
+            }
+        }"#,
+    );
+    write_flat_runtime_item_model_and_texture(&assets, "entity_selector", &[40, 80, 120, 255]);
+    write_flat_runtime_item_model_and_texture(
+        &assets,
+        "entity_selector_player",
+        &[80, 120, 40, 255],
+    );
+    write_flat_runtime_item_model_and_texture(&assets, "entity_selector_cow", &[120, 40, 80, 255]);
+    write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
+    write_runtime_json(
+        &root
+            .join("sources")
+            .join(bbb_pack::MC_VERSION)
+            .join("net")
+            .join("minecraft")
+            .join("world")
+            .join("item")
+            .join("Items.java"),
+        r#"public class Items {
+            public static final Item ENTITY_SELECTOR = registerItem("entity_selector");
         }"#,
     );
 }

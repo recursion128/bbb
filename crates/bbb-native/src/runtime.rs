@@ -3968,6 +3968,7 @@ fn hud_item_icon_for_stack(
 ) -> Option<HudItemIcon> {
     let trim_material_keys = world_trim_material_keys(world);
     let owner_main_hand_left = world.local_player_main_arm_left();
+    let context_entity_type = Some("minecraft:player");
     let context_dimension = world.level_info().map(|level| level.dimension.as_str());
     // Vanilla `Cooldown.get` uses `getCooldownPercent(itemStack, 0.0F)` for
     // item-model range dispatch. The HUD overlay below still uses render
@@ -3981,6 +3982,7 @@ fn hud_item_icon_for_stack(
         item_model_cooldown_progress,
         trim_material_keys.as_deref(),
         owner_main_hand_left,
+        context_entity_type,
         context_dimension,
     )?;
     Some(HudItemIcon {

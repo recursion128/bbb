@@ -252,9 +252,8 @@ fn last_range_entry_at_or_below(
 
 /// The subset of vanilla `SelectItemModelProperty` whose value is a pure
 /// projection of the item stack, or a narrow ambient context already threaded by
-/// native item submitters / GUI call sites. The rest (`local_time`,
-/// `context_entity_type`) need broader time/entity context and keep the
-/// build-time collapse.
+/// native item submitters / GUI call sites. The rest (`local_time`) need
+/// broader time context and keep the build-time collapse.
 #[derive(Debug, Clone, PartialEq)]
 pub(super) enum SelectProperty {
     /// `minecraft:main_hand` — `MainHand.get`, matched against the owner's
@@ -263,6 +262,9 @@ pub(super) enum SelectProperty {
     /// `minecraft:context_dimension` — `ContextDimension.get`, matched against
     /// the current `ClientLevel.dimension()` resource key.
     ContextDimension,
+    /// `minecraft:context_entity_type` — `ContextEntityType.get`, matched
+    /// against the owner entity type resource key.
+    ContextEntityType,
     /// `minecraft:charge_type` — `Charge.get`, matched against the crossbow's
     /// charged-projectile contents.
     ChargeType,
@@ -304,6 +306,7 @@ fn select_property_for(property: &ItemModelProperty) -> Option<SelectProperty> {
     match property.property_type.as_str() {
         "minecraft:main_hand" => Some(SelectProperty::MainHand),
         "minecraft:context_dimension" => Some(SelectProperty::ContextDimension),
+        "minecraft:context_entity_type" => Some(SelectProperty::ContextEntityType),
         "minecraft:charge_type" => Some(SelectProperty::ChargeType),
         "minecraft:trim_material" => Some(SelectProperty::TrimMaterial),
         "minecraft:block_state" => property
@@ -460,6 +463,9 @@ pub(super) struct IconResolveContext<'a> {
     /// Vanilla `ContextDimension.get`: `None` means this native call site has
     /// no `ClientLevel` context, so select cases do not match.
     pub context_dimension: Option<&'a str>,
+    /// Vanilla `ContextEntityType.get`: `None` means this native call site has
+    /// no owner entity, so select cases do not match.
+    pub context_entity_type: Option<&'a str>,
     pub default_max_stack_size_for_item: Option<&'a dyn Fn(i32) -> i32>,
     /// `minecraft:trim_material` registry keys by holder id (the dynamic
     /// registry, projected from `bbb-world` at the call site).
@@ -556,6 +562,7 @@ impl ItemIconModel {
                             .map(|left| if left { "left" } else { "right" })
                     }
                     SelectProperty::ContextDimension => ctx.context_dimension,
+                    SelectProperty::ContextEntityType => ctx.context_entity_type,
                     SelectProperty::ChargeType => Some(ctx.crossbow_charge.when_name()),
                     SelectProperty::TrimMaterial => ctx
                         .component_patch
@@ -787,10 +794,9 @@ pub(super) fn item_icon_model_ref_for_definition(
                     fallback: Box::new(fallback),
                 }
             } else {
-                // Context-needing select properties (local_time/
-                // context_entity_type/...) collapse to the resolved single
-                // case since their value needs broader ambient context not
-                // available to the GUI icon resolver.
+                // Context-needing select properties (local_time/...) collapse
+                // to the resolved single case since their value needs broader
+                // ambient context not available to the GUI icon resolver.
                 selected_icon_select_model(property, cases, fallback.as_deref())
                     .map(|model| {
                         item_icon_model_ref_for_definition(
