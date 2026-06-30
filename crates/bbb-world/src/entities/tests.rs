@@ -12190,6 +12190,58 @@ fn copper_golem_getting_item_state_drives_interaction_timer() {
 }
 
 #[test]
+fn copper_golem_getting_no_item_state_drives_interaction_timer() {
+    const VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID: i32 = 28;
+    const COPPER_GOLEM_STATE_DATA_ID: u8 = 17;
+    const COPPER_GOLEM_STATE_IDLE_ID: i32 = 0;
+    const COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID: i32 = 2;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        94,
+        VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
+    ));
+
+    let get_no_item_seconds = |store: &WorldStore| {
+        store
+            .entity_model_sources_at_partial_tick(1.0)
+            .into_iter()
+            .find(|source| source.entity_id == 94)
+            .unwrap()
+            .copper_golem_get_no_item_seconds
+    };
+    let set_state = |store: &mut WorldStore, state_id: i32| {
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 94,
+            values: vec![protocol_enum_data(
+                COPPER_GOLEM_STATE_DATA_ID,
+                EntityDataEnumSerializer::CopperGolemState,
+                state_id,
+            )],
+        }));
+    };
+
+    assert_eq!(get_no_item_seconds(&store), -1.0);
+    set_state(&mut store, COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID);
+    store.advance_entity_client_animations(1);
+    let after_one = get_no_item_seconds(&store);
+    assert!(
+        after_one >= 0.0,
+        "GETTING_NO_ITEM starts CopperGolem.interactionGetNoItemAnimationState: {after_one}"
+    );
+    store.advance_entity_client_animations(2);
+    let after_three = get_no_item_seconds(&store);
+    assert!(
+        after_three > after_one,
+        "the GETTING_NO_ITEM interaction timer advances: {after_one} -> {after_three}"
+    );
+
+    set_state(&mut store, COPPER_GOLEM_STATE_IDLE_ID);
+    store.advance_entity_client_animations(1);
+    assert_eq!(get_no_item_seconds(&store), -1.0);
+}
+
+#[test]
 fn allay_dancing_flag_drives_the_dance_spin_state() {
     const VANILLA_ENTITY_TYPE_ALLAY_ID: i32 = 2;
     const ALLAY_DANCING_DATA_ID: u8 = 16;

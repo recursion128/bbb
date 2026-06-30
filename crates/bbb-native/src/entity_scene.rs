@@ -1589,6 +1589,7 @@ fn entity_model_instance(
         .with_camel_idle_seconds(source.camel_idle_seconds)
         .with_copper_golem_idle_seconds(source.copper_golem_idle_seconds)
         .with_copper_golem_get_item_seconds(source.copper_golem_get_item_seconds)
+        .with_copper_golem_get_no_item_seconds(source.copper_golem_get_no_item_seconds)
         .with_camel_jump_cooldown(source.camel_jump_cooldown)
         .with_vex_charging(source.vex_charging)
         .with_vex_right_hand_item_non_empty(vex_right_hand_item_non_empty)
@@ -6307,6 +6308,49 @@ mod tests {
         }));
         world.advance_entity_client_animations(1);
         assert_eq!(get_item_seconds(&world), -1.0);
+    }
+
+    #[test]
+    fn entity_model_instances_project_copper_golem_get_no_item_seconds_from_world_timer() {
+        const COPPER_GOLEM_STATE_IDLE_ID: i32 = 0;
+        const COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID: i32 = 2;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            249,
+            VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
+            [3.0, 64.0, 0.0],
+        ));
+
+        let get_no_item_seconds = |world: &WorldStore| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 1.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == 249)
+                .unwrap()
+                .render_state
+                .copper_golem_get_no_item_seconds
+        };
+
+        assert_eq!(get_no_item_seconds(&world), -1.0);
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 249,
+            values: vec![protocol_copper_golem_state_data(
+                COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID
+            )],
+        }));
+        world.advance_entity_client_animations(1);
+        let after_one = get_no_item_seconds(&world);
+        assert!(
+            after_one >= 0.0,
+            "native projection carries the copper golem GETTING_NO_ITEM interaction timer: {after_one}"
+        );
+
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 249,
+            values: vec![protocol_copper_golem_state_data(COPPER_GOLEM_STATE_IDLE_ID)],
+        }));
+        world.advance_entity_client_animations(1);
+        assert_eq!(get_no_item_seconds(&world), -1.0);
     }
 
     #[test]
