@@ -982,10 +982,13 @@ When an agent does any of the following, update this file in the same slice:
     cull state. The sky-disc shader now also mirrors vanilla `core/sky.fsh`
     fog shape by using renderer `FogSkyEnd` (`fog_visibility_ends.x`) for
     spherical `0..FogSkyEnd` and cylindrical `FogSkyEnd..FogSkyEnd` fog while
-    leaving sunrise/sunset and stars on their no-fog color shader paths. Full
-    sky-disc DynamicTransforms / `ColorModulator` uniform ABI plus end-sky,
-    star, and celestial shader ABI refinement remains ordinary P1 render-state
-    work, not a P0 pipeline blocker. Basic
+    leaving sunrise/sunset on the no-fog `position_color` path. Stars now mirror
+    vanilla `RenderPipelines.STARS` / `core/stars` more closely: the vertex
+    buffer is position-only and `STAR_BRIGHTNESS` is carried through a
+    `ColorModulator`-shaped sky dynamic uniform before draw. Full sky-disc
+    DynamicTransforms / `ColorModulator` uniform ABI plus end-sky and celestial
+    shader ABI refinement remains ordinary P1 render-state work, not a P0
+    pipeline blocker. Basic
     cloud mesh presentation now consumes these visibility ends with vanilla
     default `CLOUD_COLOR` / `CLOUD_HEIGHT` and now loads vanilla
     `textures/environment/clouds.png` for flat cloud cell geometry with vanilla
@@ -1015,7 +1018,8 @@ When an agent does any of the following, update this file in the same slice:
     `environment/celestial` atlas source, `SUN_ANGLE` / `MOON_ANGLE`, and the
     8-phase `MOON_PHASE` order. Stars are covered by vanilla
     `SkyRenderer.buildStars` seed `10842`, 780 accepted quads, `STARS` overlay
-    blend, `STAR_ANGLE`, `STAR_BRIGHTNESS`, and rain/thunder weather layers.
+    blend, `core/stars` position-only vertex shape, `ColorModulator`
+    `STAR_BRIGHTNESS`, `STAR_ANGLE`, and rain/thunder weather layers.
     Overworld variants use ambient `0x0A0A0A`. The renderer now also owns a
     vanilla-shaped dynamic LightTexture foundation:
     a 16x16 `RGBA8` texture, standalone `LightmapInfo` uniform buffer, and a

@@ -166,6 +166,52 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 }
 "#;
 
+const STAR_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
+    fog_visibility_ends: vec4<f32>,
+};
+
+struct SkyDynamic {
+    color_modulator: vec4<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+@group(1) @binding(0)
+var<uniform> sky_dynamic: SkyDynamic;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+};
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    let world_position = input.position + camera.camera_position.xyz;
+    out.position = camera.view_proj * vec4<f32>(world_position, 1.0);
+    return out;
+}
+
+@fragment
+fn fs_main(_input: VertexOut) -> @location(0) vec4<f32> {
+    return sky_dynamic.color_modulator;
+}
+"#;
+
 const SKY_TEXTURED_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
@@ -477,10 +523,27 @@ struct SkyVertex {
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct SkyPositionVertex {
+    position: [f32; 3],
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct SkyTexturedVertex {
     position: [f32; 3],
     uv: [f32; 2],
     color: [f32; 4],
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct SkyDynamicUniform {
+    color_modulator: [f32; 4],
+}
+
+pub(super) struct SkyDynamicGpu {
+    pub(super) _buffer: wgpu::Buffer,
+    pub(super) bind_group: wgpu::BindGroup,
 }
 
 pub(super) struct SkyDiscGpu {
@@ -518,6 +581,7 @@ pub(super) struct CelestialAtlasGpu {
 pub(super) struct StarGpu {
     pub(super) vertex_buffer: wgpu::Buffer,
     pub(super) vertex_count: u32,
+    pub(super) dynamic: SkyDynamicGpu,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -623,15 +687,16 @@ pub(super) fn create_sunrise_sunset_pipeline(
 pub(super) fn create_star_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
-    bind_group_layout: &wgpu::BindGroupLayout,
+    camera_bind_group_layout: &wgpu::BindGroupLayout,
+    dynamic_bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("bbb-star-shader"),
-        source: wgpu::ShaderSource::Wgsl(SKY_COLOR_SHADER.into()),
+        source: wgpu::ShaderSource::Wgsl(STAR_SHADER.into()),
     });
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-star-pipeline-layout"),
-        bind_group_layouts: &[bind_group_layout],
+        bind_group_layouts: &[camera_bind_group_layout, dynamic_bind_group_layout],
         push_constant_ranges: &[],
     });
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -641,9 +706,9 @@ pub(super) fn create_star_pipeline(
             module: &shader,
             entry_point: "vs_main",
             buffers: &[wgpu::VertexBufferLayout {
-                array_stride: std::mem::size_of::<SkyVertex>() as wgpu::BufferAddress,
+                array_stride: std::mem::size_of::<SkyPositionVertex>() as wgpu::BufferAddress,
                 step_mode: wgpu::VertexStepMode::Vertex,
-                attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4],
+                attributes: &wgpu::vertex_attr_array![0 => Float32x3],
             }],
         },
         fragment: Some(wgpu::FragmentState {
@@ -664,6 +729,47 @@ pub(super) fn create_star_pipeline(
         multisample: wgpu::MultisampleState::default(),
         multiview: None,
     })
+}
+
+pub(super) fn create_sky_dynamic_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+    device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("bbb-sky-dynamic-bind-group-layout"),
+        entries: &[wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        }],
+    })
+}
+
+fn create_sky_dynamic_gpu(
+    device: &wgpu::Device,
+    layout: &wgpu::BindGroupLayout,
+    color_modulator: [f32; 4],
+) -> SkyDynamicGpu {
+    let uniform = SkyDynamicUniform { color_modulator };
+    let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("bbb-sky-dynamic-uniform"),
+        contents: bytemuck::bytes_of(&uniform),
+        usage: wgpu::BufferUsages::UNIFORM,
+    });
+    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("bbb-sky-dynamic-bind-group"),
+        layout,
+        entries: &[wgpu::BindGroupEntry {
+            binding: 0,
+            resource: buffer.as_entire_binding(),
+        }],
+    });
+    SkyDynamicGpu {
+        _buffer: buffer,
+        bind_group,
+    }
 }
 
 pub(super) fn create_end_sky_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
@@ -876,12 +982,21 @@ pub(super) fn create_celestial_gpu(
 
 pub(super) fn create_star_gpu(
     device: &wgpu::Device,
+    dynamic_bind_group_layout: &wgpu::BindGroupLayout,
     environment: SkyEnvironment,
 ) -> Option<StarGpu> {
+    let environment = environment.sanitized();
     let vertices = star_vertices(environment);
     if vertices.is_empty() {
         return None;
     }
+    let color = [
+        environment.star_brightness,
+        environment.star_brightness,
+        environment.star_brightness,
+        environment.star_brightness,
+    ];
+    let dynamic = create_sky_dynamic_gpu(device, dynamic_bind_group_layout, color);
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("bbb-star-vertices"),
         contents: bytemuck::cast_slice(&vertices),
@@ -890,6 +1005,7 @@ pub(super) fn create_star_gpu(
     Some(StarGpu {
         vertex_buffer,
         vertex_count: vertices.len() as u32,
+        dynamic,
     })
 }
 
@@ -1201,25 +1317,18 @@ fn celestial_position(position: [f32; 3], size: f32, angle_radians: f32) -> [f32
     rotate_y(rotate_x(local, angle_radians), -std::f32::consts::FRAC_PI_2)
 }
 
-fn star_vertices(environment: SkyEnvironment) -> Vec<SkyVertex> {
+fn star_vertices(environment: SkyEnvironment) -> Vec<SkyPositionVertex> {
     let environment = environment.sanitized();
     if !environment.stars_visible() {
         return Vec::new();
     }
-    let color = [
-        environment.star_brightness,
-        environment.star_brightness,
-        environment.star_brightness,
-        environment.star_brightness,
-    ];
     base_star_vertices()
         .into_iter()
-        .map(|position| SkyVertex {
+        .map(|position| SkyPositionVertex {
             position: rotate_y(
                 rotate_x(position, environment.star_angle_radians),
                 -std::f32::consts::FRAC_PI_2,
             ),
-            color,
         })
         .collect()
 }
@@ -1670,11 +1779,20 @@ mod tests {
     }
 
     #[test]
+    fn star_shader_uses_vanilla_color_modulator_shape() {
+        assert!(STAR_SHADER.contains("struct SkyDynamic"));
+        assert!(STAR_SHADER.contains("@location(0) position: vec3<f32>"));
+        assert!(!STAR_SHADER.contains("@location(1) color"));
+        assert!(STAR_SHADER.contains("return sky_dynamic.color_modulator;"));
+    }
+
+    #[test]
     fn sky_color_pipelines_validate_wgsl_on_wgpu_device() {
         let Some(device) = request_test_device() else {
             return;
         };
         let camera_bind_group_layout = create_test_camera_bind_group_layout(&device);
+        let sky_dynamic_bind_group_layout = create_sky_dynamic_bind_group_layout(&device);
 
         let _sky_pipeline = create_sky_pipeline(
             &device,
@@ -1690,6 +1808,7 @@ mod tests {
             &device,
             wgpu::TextureFormat::Rgba8Unorm,
             &camera_bind_group_layout,
+            &sky_dynamic_bind_group_layout,
         );
     }
 
@@ -1896,13 +2015,12 @@ mod tests {
     }
 
     #[test]
-    fn star_vertices_match_vanilla_seeded_count_center_and_brightness() {
+    fn star_vertices_match_vanilla_seeded_count_and_center() {
         let environment = SkyEnvironment::from_rgb([0.25, 0.5, 0.75]).with_star_state(0.0, 0.5);
 
         let vertices = star_vertices(environment);
 
         assert_eq!(vertices.len(), VANILLA_ACCEPTED_STAR_QUADS * 6);
-        assert_eq!(vertices[0].color, [0.5, 0.5, 0.5, 0.5]);
         let first_center = star_quad_center([vertices[0], vertices[1], vertices[2], vertices[5]]);
         assert_close3(first_center, [-47.698_66, 69.925_74, -53.246_868]);
     }
@@ -2060,7 +2178,7 @@ mod tests {
         }
     }
 
-    fn star_quad_center(vertices: [SkyVertex; 4]) -> [f32; 3] {
+    fn star_quad_center(vertices: [SkyPositionVertex; 4]) -> [f32; 3] {
         let mut center = [0.0; 3];
         for vertex in vertices {
             center[0] += vertex.position[0] * 0.25;

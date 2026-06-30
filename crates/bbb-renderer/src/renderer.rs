@@ -74,9 +74,9 @@ use crate::{
         create_celestial_atlas_gpu, create_celestial_bind_group_layout, create_celestial_gpu,
         create_celestial_pipeline, create_end_sky_bind_group_layout, create_end_sky_gpu,
         create_end_sky_pipeline, create_end_sky_texture_gpu, create_sky_disc_gpu,
-        create_sky_pipeline, create_star_gpu, create_star_pipeline, create_sunrise_sunset_pipeline,
-        CelestialAtlasGpu, CelestialGpu, CelestialTextureImage, EndSkyGpu, EndSkyTextureGpu,
-        SkyDiscGpu, SkyEnvironment, StarGpu,
+        create_sky_dynamic_bind_group_layout, create_sky_pipeline, create_star_gpu,
+        create_star_pipeline, create_sunrise_sunset_pipeline, CelestialAtlasGpu, CelestialGpu,
+        CelestialTextureImage, EndSkyGpu, EndSkyTextureGpu, SkyDiscGpu, SkyEnvironment, StarGpu,
     },
     terrain,
     transparency::{
@@ -155,6 +155,7 @@ pub struct Renderer {
     pub(super) sky_pipeline: wgpu::RenderPipeline,
     pub(super) sunrise_sunset_pipeline: wgpu::RenderPipeline,
     pub(super) star_pipeline: wgpu::RenderPipeline,
+    pub(super) sky_dynamic_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) end_sky_pipeline: wgpu::RenderPipeline,
     pub(super) end_sky_texture_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) celestial_pipeline: wgpu::RenderPipeline,
@@ -734,7 +735,13 @@ impl Renderer {
         let sky_pipeline = create_sky_pipeline(&device, format, &terrain_bind_group_layout);
         let sunrise_sunset_pipeline =
             create_sunrise_sunset_pipeline(&device, format, &terrain_bind_group_layout);
-        let star_pipeline = create_star_pipeline(&device, format, &terrain_bind_group_layout);
+        let sky_dynamic_bind_group_layout = create_sky_dynamic_bind_group_layout(&device);
+        let star_pipeline = create_star_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &sky_dynamic_bind_group_layout,
+        );
         let end_sky_texture_bind_group_layout = create_end_sky_bind_group_layout(&device);
         let end_sky_pipeline = create_end_sky_pipeline(
             &device,
@@ -876,6 +883,7 @@ impl Renderer {
             sky_pipeline,
             sunrise_sunset_pipeline,
             star_pipeline,
+            sky_dynamic_bind_group_layout,
             end_sky_pipeline,
             end_sky_texture_bind_group_layout,
             celestial_pipeline,
@@ -1538,7 +1546,11 @@ impl Renderer {
             .celestial_atlas
             .as_ref()
             .and_then(|atlas| create_celestial_gpu(&self.device, environment, atlas));
-        self.sky_stars = create_star_gpu(&self.device, environment);
+        self.sky_stars = create_star_gpu(
+            &self.device,
+            &self.sky_dynamic_bind_group_layout,
+            environment,
+        );
     }
 
     pub fn set_cloud_environment(&mut self, environment: CloudEnvironment) {

@@ -187,6 +187,7 @@ impl Renderer {
                     pass.set_pipeline(&self.star_pipeline);
                     pipeline_switches += 1;
                     pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+                    pass.set_bind_group(1, &stars.dynamic.bind_group, &[]);
                     pass.set_vertex_buffer(0, stars.vertex_buffer.slice(..));
                     pass.draw(0..stars.vertex_count, 0..1);
                     sky_draw_calls += 1;
@@ -2303,6 +2304,27 @@ mod tests {
         assert!(
             sky < sunrise && sunrise < celestial && celestial < stars,
             "vanilla LevelRenderer draws sky disc, sunrise/sunset, then sun/moon/stars"
+        );
+    }
+
+    #[test]
+    fn stars_draw_binds_color_modulator_uniform() {
+        let source = include_str!("render.rs");
+        let stars = source
+            .find("pass.set_pipeline(&self.star_pipeline)")
+            .expect("star pipeline is drawn");
+        let dynamic = source[stars..]
+            .find("pass.set_bind_group(1, &stars.dynamic.bind_group, &[])")
+            .map(|index| stars + index)
+            .expect("stars bind DynamicTransforms-style ColorModulator uniform");
+        let draw = source[dynamic..]
+            .find("pass.draw(0..stars.vertex_count, 0..1)")
+            .map(|index| dynamic + index)
+            .expect("stars are drawn after binding dynamic uniform");
+
+        assert!(
+            stars < dynamic && dynamic < draw,
+            "vanilla STARS uses core/stars with ColorModulator rather than per-vertex color"
         );
     }
 
