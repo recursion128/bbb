@@ -635,6 +635,14 @@ When an agent does any of the following, update this file in the same slice:
     first-person, GUI, and open-ended entity detail work stay paused unless they
     directly reopen that checklist or the user explicitly starts post-closeout
     parity work.
+    The 2026-06-30 slice-selection audit reran `rg residual`, `rg fallback`,
+    and `rg unsupported` from a clean worktree with counts 35 / 524 / 150.
+    Classification remains unchanged: no texture-backed residual emit path,
+    dispatch-owned submission gap, or RenderType/order/submit-sequence/
+    missing-atlas/dynamic-texture/light/overlay/outline P0 blocker was found.
+    Slice selection now treats that quick audit as the P0 reopen gate; when it
+    finds no new P0 blocker, the next slice is opened automatically from the
+    P1 checklist, starting with P1-1 render-state / render-graph fidelity.
   - Replace proxies with full extraction from canonical world and pack data:
     - entity bounds
     - dropped-item icons (3D block/item model renderer in progress — see the
