@@ -1181,8 +1181,8 @@ pub(crate) fn create_entity_model_textured_pipeline(
         Some(lightmap_bind_group_layout),
         "bbb-entity-model-textured",
         ENTITY_MODEL_TEXTURED_SHADER,
-        Some(wgpu::BlendState::REPLACE),
-        true,
+        ENTITY_MODEL_SURFACE_OPAQUE_BLEND,
+        ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_SURFACE_NO_CULL_MODE,
     )
 }
@@ -1200,8 +1200,8 @@ pub(crate) fn create_entity_model_textured_cull_pipeline(
         Some(lightmap_bind_group_layout),
         "bbb-entity-model-textured-cull",
         ENTITY_MODEL_TEXTURED_CULL_SHADER,
-        Some(wgpu::BlendState::REPLACE),
-        true,
+        ENTITY_MODEL_SURFACE_OPAQUE_BLEND,
+        ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_SURFACE_CULL_MODE,
     )
 }
@@ -1224,8 +1224,8 @@ pub(crate) fn create_entity_model_cutout_z_offset_pipeline(
         Some(lightmap_bind_group_layout),
         "bbb-entity-model-cutout-z-offset",
         ENTITY_MODEL_TEXTURED_SHADER,
-        Some(wgpu::BlendState::REPLACE),
-        true,
+        ENTITY_MODEL_SURFACE_OPAQUE_BLEND,
+        ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_SURFACE_NO_CULL_MODE,
     )
 }
@@ -1443,8 +1443,8 @@ pub(crate) fn create_entity_model_translucent_pipeline(
         Some(lightmap_bind_group_layout),
         "bbb-entity-model-translucent",
         ENTITY_MODEL_TEXTURED_SHADER,
-        Some(wgpu::BlendState::ALPHA_BLENDING),
-        true,
+        ENTITY_MODEL_SURFACE_TRANSLUCENT_BLEND,
+        ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_SURFACE_NO_CULL_MODE,
     )
 }
@@ -1462,8 +1462,8 @@ pub(crate) fn create_entity_model_translucent_cull_pipeline(
         Some(lightmap_bind_group_layout),
         "bbb-entity-model-translucent-cull",
         ENTITY_MODEL_TEXTURED_CULL_SHADER,
-        Some(wgpu::BlendState::ALPHA_BLENDING),
-        true,
+        ENTITY_MODEL_SURFACE_TRANSLUCENT_BLEND,
+        ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_SURFACE_CULL_MODE,
     )
 }
@@ -1500,6 +1500,13 @@ const ENTITY_MODEL_GLINT_DEPTH_WRITE_ENABLED: bool = false;
 const ENTITY_MODEL_GLINT_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::Equal;
 
 const ENTITY_MODEL_OUTLINE_BLEND: Option<wgpu::BlendState> = None;
+/// Vanilla entity surface pipelines use replacement blending for opaque cutout/solid draws and
+/// `BlendFunction.TRANSLUCENT` for translucent surface draws.
+const ENTITY_MODEL_SURFACE_OPAQUE_BLEND: Option<wgpu::BlendState> = Some(wgpu::BlendState::REPLACE);
+const ENTITY_MODEL_SURFACE_TRANSLUCENT_BLEND: Option<wgpu::BlendState> =
+    Some(wgpu::BlendState::ALPHA_BLENDING);
+const ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED: bool = true;
+const ENTITY_MODEL_TEXTURED_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::LessEqual;
 const ENTITY_MODEL_SURFACE_NO_CULL_MODE: Option<wgpu::Face> = None;
 const ENTITY_MODEL_SURFACE_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
 const ENTITY_MODEL_OUTLINE_NO_CULL_MODE: Option<wgpu::Face> = None;
@@ -1719,7 +1726,7 @@ fn create_entity_model_textured_pipeline_with_depth(
         depth_stencil: Some(wgpu::DepthStencilState {
             format: DEPTH_FORMAT,
             depth_write_enabled,
-            depth_compare: wgpu::CompareFunction::LessEqual,
+            depth_compare: ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
             stencil: wgpu::StencilState::default(),
             bias: wgpu::DepthBiasState::default(),
         }),
@@ -2826,7 +2833,9 @@ mod tests {
         ENTITY_MODEL_OUTLINE_SHADER, ENTITY_MODEL_SCROLL_BLEND, ENTITY_MODEL_SCROLL_CULL_MODE,
         ENTITY_MODEL_SCROLL_DEPTH_COMPARE, ENTITY_MODEL_SCROLL_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_SCROLL_EMISSIVE_SHADER, ENTITY_MODEL_SURFACE_CULL_MODE,
-        ENTITY_MODEL_SURFACE_NO_CULL_MODE, ENTITY_MODEL_TEXTURED_SHADER,
+        ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED, ENTITY_MODEL_SURFACE_NO_CULL_MODE,
+        ENTITY_MODEL_SURFACE_OPAQUE_BLEND, ENTITY_MODEL_SURFACE_TRANSLUCENT_BLEND,
+        ENTITY_MODEL_TEXTURED_DEPTH_COMPARE, ENTITY_MODEL_TEXTURED_SHADER,
         ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER, ENTITY_MODEL_WATER_MASK_BLEND,
         ENTITY_MODEL_WATER_MASK_COLOR_WRITE_MASK, ENTITY_MODEL_WATER_MASK_CULL_MODE,
         ENTITY_MODEL_WATER_MASK_DEPTH_COMPARE, ENTITY_MODEL_WATER_MASK_DEPTH_WRITE_ENABLED,
@@ -2915,7 +2924,7 @@ mod tests {
             "vanilla ENTITY_CUTOUT_Z_OFFSET uses the normal entity cutout shader shape"
         );
         assert!(
-            source[factory..armor_factory].contains("Some(wgpu::BlendState::REPLACE)")
+            source[factory..armor_factory].contains("ENTITY_MODEL_SURFACE_OPAQUE_BLEND")
                 && source[factory..armor_factory].contains("ENTITY_MODEL_SURFACE_NO_CULL_MODE"),
             "vanilla ENTITY_CUTOUT_Z_OFFSET is opaque replacement blending with cull disabled"
         );
@@ -3167,7 +3176,39 @@ mod tests {
     }
 
     #[test]
-    fn entity_model_surface_pipelines_represent_vanilla_cull_modes() {
+    fn entity_model_surface_pipelines_represent_vanilla_core_state() {
+        assert_eq!(
+            ENTITY_MODEL_SURFACE_OPAQUE_BLEND,
+            Some(wgpu::BlendState::REPLACE),
+            "vanilla entitySolid/entityCutout/entityCutoutCull/entityCutoutZOffset use replacement color writes"
+        );
+        let translucent = ENTITY_MODEL_SURFACE_TRANSLUCENT_BLEND
+            .expect("entity translucent surfaces use BlendFunction.TRANSLUCENT");
+        assert_eq!(
+            translucent.color.src_factor,
+            wgpu::BlendFactor::SrcAlpha,
+            "vanilla BlendFunction.TRANSLUCENT uses SourceFactor.SRC_ALPHA for colour"
+        );
+        assert_eq!(
+            translucent.color.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha,
+            "vanilla BlendFunction.TRANSLUCENT uses DestFactor.ONE_MINUS_SRC_ALPHA for colour"
+        );
+        assert_eq!(
+            translucent.alpha.src_factor,
+            wgpu::BlendFactor::One,
+            "vanilla BlendFunction.TRANSLUCENT uses SourceFactor.ONE for alpha"
+        );
+        assert_eq!(
+            translucent.alpha.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha,
+            "vanilla BlendFunction.TRANSLUCENT uses DestFactor.ONE_MINUS_SRC_ALPHA for alpha"
+        );
+        assert!(ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED);
+        assert_eq!(
+            ENTITY_MODEL_TEXTURED_DEPTH_COMPARE,
+            wgpu::CompareFunction::LessEqual
+        );
         assert_eq!(ENTITY_MODEL_SURFACE_NO_CULL_MODE, None);
         assert_eq!(ENTITY_MODEL_SURFACE_CULL_MODE, Some(wgpu::Face::Back));
     }

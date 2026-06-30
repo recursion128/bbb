@@ -128,7 +128,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     armor foil 提交进入独立 glint mesh / GLINT blend / depth-equal pipeline，
     跳过 LightTexture；动态 texture-matrix time offset 与其他 item glint
     变体仍属后续 shader/state 细化。
-  - no-cull / cull / translucent / translucent-cull item-target 的剩余细化。
+  - [x] no-cull / cull / translucent / translucent-cull item-target baseline
+    GPU state：generic `entityCutout` / `entityCutoutCull` /
+    `entityTranslucent` / `entityTranslucentCullItemTarget` 路径已用显式
+    surface constants 固定 vanilla replacement-vs-translucent blend、
+    depth-write `LESS_EQUAL`、LightTexture/overlay、per-face-vs-single-face
+    lighting，以及 cull-on / cull-off pipeline 分流；item-target 变体仍只在
+    `OutputTarget.ITEM_ENTITY_TARGET` helper 中绘制。
   - [x] `entityCutoutZOffset`：CustomHead skull 和 Shulker 等
     `entityCutoutZOffset` submission 进入独立 `cutout_z_offset` mesh，并给
     static atlas、dynamic player-skin atlas、dynamic profile-texture atlas 都保留

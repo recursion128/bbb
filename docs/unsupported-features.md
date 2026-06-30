@@ -355,7 +355,12 @@ When an agent does any of the following, update this file in the same slice:
     surface path now also splits vanilla cull-on entity render types
     (`entitySolid`, `entityCutoutCull`, and `entityTranslucentCullItemTarget`)
     into static and dynamic texture cull buckets drawn with back-face culling
-    and a separate no-`PER_FACE_LIGHTING` single-normal diffuse shader. Vanilla
+    and a separate no-`PER_FACE_LIGHTING` single-normal diffuse shader. Generic
+    vanilla entity surface pipelines are now pinned by explicit GPU constants
+    and tests: opaque cutout/solid surfaces use replacement color writes,
+    translucent surfaces use `BlendFunction.TRANSLUCENT`, all baseline surface
+    paths keep depth-write `LESS_EQUAL`, and item-target translucent surfaces
+    draw only through the itemEntity target helper. Vanilla
     `entityCutoutZOffset` submissions now also route into dedicated static,
     dynamic-player-skin, and dynamic
     profile-texture z-offset cutout buckets, drawn through a separate main-pass
