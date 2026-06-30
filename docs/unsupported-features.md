@@ -580,6 +580,10 @@ When an agent does any of the following, update this file in the same slice:
     dedicated pass after the complete target-backed main pass and entity-outline
     post-chain, writes a clouds color/depth target, and participates in the
     Main+Translucent+ItemEntity+Particles+Weather+Clouds transparency combine.
+    Cloud GPU state now also distinguishes vanilla `RenderPipelines.CLOUDS`
+    from `RenderPipelines.FLAT_CLOUDS`: fancy clouds use default back-face
+    culling, flat clouds keep the explicit no-cull branch, and both retain
+    translucent blend plus default depth-write `LESS_EQUAL`.
     Weather now reads vanilla `MOTION_BLOCKING`
     heightmaps from chunk packet data for rain/snow column bounds and keeps that
     heightmap updated for block changes. Weather precipitation now applies the

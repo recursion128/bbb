@@ -269,6 +269,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `core/rendertype_lightning` shader、`DefaultVertexFormat.POSITION_COLOR`、
     `BlendFunction.LIGHTNING`、默认 back-face cull、depth-write `LESS_EQUAL`；
     quad 顶点顺序仍按 vanilla `LightningBoltRenderer.quad(...)` 生成。
+  - [x] clouds `CLOUDS` / `FLAT_CLOUDS` cull split：renderer 现在为 fancy
+    clouds 和 flat clouds 创建独立 GPU pipeline，并按 `CloudShape` 选择；
+    fancy `CloudStatus.FANCY` / vanilla `RenderPipelines.CLOUDS` 使用默认
+    back-face cull，flat `RenderPipelines.FLAT_CLOUDS` 保持显式 no-cull，
+    二者共享 `rendertype_clouds` shader、translucent blend 和 depth-write
+    `LESS_EQUAL`。
   - per RenderType 的 blend、depth write/test、cull、sampler、mip、lightmap、
     overlay、fog、normal diffuse 组合继续拆细。
   - glint / scroll / emissive path 不应只依赖普通 entity shader fallback。

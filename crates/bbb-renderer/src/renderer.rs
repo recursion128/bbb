@@ -158,7 +158,8 @@ pub struct Renderer {
     pub(super) end_sky_texture_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) celestial_pipeline: wgpu::RenderPipeline,
     pub(super) celestial_bind_group_layout: wgpu::BindGroupLayout,
-    pub(super) cloud_pipeline: wgpu::RenderPipeline,
+    pub(super) cloud_flat_pipeline: wgpu::RenderPipeline,
+    pub(super) cloud_fancy_pipeline: wgpu::RenderPipeline,
     pub(super) cloud_target: CloudTarget,
     pub(super) cloud_bind_group: wgpu::BindGroup,
     pub(super) cloud_uniform_buffer: wgpu::Buffer,
@@ -783,11 +784,19 @@ impl Renderer {
             format,
             &transparency_blit_bind_group_layout,
         );
-        let cloud_pipeline = create_cloud_pipeline(
+        let cloud_flat_pipeline = create_cloud_pipeline(
             &device,
             format,
             &terrain_bind_group_layout,
             &cloud_bind_group_layout,
+            CloudShape::Flat,
+        );
+        let cloud_fancy_pipeline = create_cloud_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &cloud_bind_group_layout,
+            CloudShape::Fancy,
         );
         let hud_pipeline = create_hud_pipeline(&device, format, &hud_bind_group_layout);
         let hud_white_pixel = create_hud_sprite_gpu(
@@ -867,7 +876,8 @@ impl Renderer {
             end_sky_texture_bind_group_layout,
             celestial_pipeline,
             celestial_bind_group_layout,
-            cloud_pipeline,
+            cloud_flat_pipeline,
+            cloud_fancy_pipeline,
             cloud_target,
             cloud_bind_group,
             cloud_uniform_buffer,

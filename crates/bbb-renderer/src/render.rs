@@ -4,6 +4,7 @@ use anyhow::Result;
 use wgpu::util::DeviceExt;
 
 use crate::{
+    clouds::CloudShape,
     entity_models::{
         EntityModelLayerRenderType, EntityModelScrollDrawRange, EntityModelTexturedDrawAtlas,
         EntityModelTexturedDrawRange, EntityModelTexturedMeshGpu, EntityModelTranslucentDrawRange,
@@ -1066,7 +1067,11 @@ impl Renderer {
                         occlusion_query_set: None,
                         timestamp_writes: None,
                     });
-                    pass.set_pipeline(&self.cloud_pipeline);
+                    let cloud_pipeline = match self.cloud_shape {
+                        CloudShape::Flat => &self.cloud_flat_pipeline,
+                        CloudShape::Fancy => &self.cloud_fancy_pipeline,
+                    };
+                    pass.set_pipeline(cloud_pipeline);
                     pipeline_switches += 1;
                     pass.set_bind_group(0, &self.terrain_bind_group, &[]);
                     pass.set_bind_group(1, &self.cloud_bind_group, &[]);
@@ -2284,7 +2289,7 @@ mod tests {
             .find("label: Some(CLOUDS_PASS_LABEL)")
             .expect("cloud pass label is used");
         let cloud_pipeline = source[clouds..]
-            .find("pass.set_pipeline(&self.cloud_pipeline)")
+            .find("pass.set_pipeline(cloud_pipeline)")
             .map(|index| clouds + index)
             .expect("cloud pipeline is drawn in the cloud pass");
         let translucent = source
@@ -3268,7 +3273,7 @@ mod tests {
     fn cloud_presentation_binds_cloud_offset_uniform() {
         let source = include_str!("render.rs");
         let clouds = source
-            .find("pass.set_pipeline(&self.cloud_pipeline)")
+            .find("pass.set_pipeline(cloud_pipeline)")
             .expect("cloud pipeline is drawn");
         let cloud_uniform = source
             .find("pass.set_bind_group(1, &self.cloud_bind_group, &[])")

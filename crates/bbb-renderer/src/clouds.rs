@@ -21,6 +21,10 @@ const CLOUD_NORTH_SOUTH_FACE_TINT: f32 = 0.8;
 const CLOUD_WEST_EAST_FACE_TINT: f32 = 0.9;
 
 pub(super) const CLOUD_TARGET_BLEND: wgpu::BlendState = wgpu::BlendState::ALPHA_BLENDING;
+const CLOUD_FLAT_PIPELINE_CULL_MODE: Option<wgpu::Face> = None;
+const CLOUD_FANCY_PIPELINE_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
+const CLOUD_PIPELINE_DEPTH_WRITE_ENABLED: bool = true;
+const CLOUD_PIPELINE_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::LessEqual;
 
 const CLOUD_SHADER: &str = r#"
 struct Camera {
@@ -282,7 +286,12 @@ pub(super) fn create_cloud_pipeline(
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
     cloud_bind_group_layout: &wgpu::BindGroupLayout,
+    shape: CloudShape,
 ) -> wgpu::RenderPipeline {
+    let (pipeline_label, cull_mode) = match shape {
+        CloudShape::Flat => ("bbb-cloud-flat-pipeline", CLOUD_FLAT_PIPELINE_CULL_MODE),
+        CloudShape::Fancy => ("bbb-cloud-fancy-pipeline", CLOUD_FANCY_PIPELINE_CULL_MODE),
+    };
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("bbb-cloud-shader"),
         source: wgpu::ShaderSource::Wgsl(CLOUD_SHADER.into()),
@@ -293,7 +302,7 @@ pub(super) fn create_cloud_pipeline(
         push_constant_ranges: &[],
     });
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("bbb-cloud-pipeline"),
+        label: Some(pipeline_label),
         layout: Some(&layout),
         vertex: wgpu::VertexState {
             module: &shader,
@@ -315,13 +324,13 @@ pub(super) fn create_cloud_pipeline(
         }),
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,
-            cull_mode: None,
+            cull_mode,
             ..Default::default()
         },
         depth_stencil: Some(wgpu::DepthStencilState {
             format: DEPTH_FORMAT,
-            depth_write_enabled: true,
-            depth_compare: wgpu::CompareFunction::LessEqual,
+            depth_write_enabled: CLOUD_PIPELINE_DEPTH_WRITE_ENABLED,
+            depth_compare: CLOUD_PIPELINE_DEPTH_COMPARE,
             stencil: wgpu::StencilState::default(),
             bias: wgpu::DepthBiasState::default(),
         }),
@@ -1032,10 +1041,11 @@ mod tests {
         vanilla_cloud_radius_cells, CloudEnvironment, CloudFrame, CloudMeshKey,
         CloudRelativeCameraPos, CloudShape, CloudTextureImage, CLOUD_BLOCKS_PER_TICK,
         CLOUD_BOTTOM_FACE_TINT, CLOUD_CELL_SIZE_IN_BLOCKS, CLOUD_FANCY_HEIGHT_IN_BLOCKS,
-        CLOUD_NORTH_SOUTH_FACE_TINT, CLOUD_PRESENTATION_HALF_EXTENT, CLOUD_SHADER,
-        CLOUD_TARGET_BLEND, CLOUD_TOP_FACE_TINT, CLOUD_Z_OFFSET_BLOCKS, DEPTH_TARGET_USAGE,
-        VANILLA_CLOUD_EMPTY_ALPHA_THRESHOLD, VANILLA_DEFAULT_CLOUD_COLOR,
-        VANILLA_DEFAULT_CLOUD_HEIGHT,
+        CLOUD_FANCY_PIPELINE_CULL_MODE, CLOUD_FLAT_PIPELINE_CULL_MODE, CLOUD_NORTH_SOUTH_FACE_TINT,
+        CLOUD_PIPELINE_DEPTH_COMPARE, CLOUD_PIPELINE_DEPTH_WRITE_ENABLED,
+        CLOUD_PRESENTATION_HALF_EXTENT, CLOUD_SHADER, CLOUD_TARGET_BLEND, CLOUD_TOP_FACE_TINT,
+        CLOUD_Z_OFFSET_BLOCKS, DEPTH_TARGET_USAGE, VANILLA_CLOUD_EMPTY_ALPHA_THRESHOLD,
+        VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
     };
 
     #[test]
@@ -1053,13 +1063,27 @@ mod tests {
     }
 
     #[test]
-    fn cloud_pipeline_depth_state_matches_vanilla_default() {
-        // Vanilla `RenderPipelines.CLOUDS_SNIPPET` uses `DepthStencilState.DEFAULT`:
-        // LEQUAL depth test with depth writes enabled.
-        let source = include_str!("clouds.rs");
-
-        assert!(source.contains("depth_write_enabled: true"));
-        assert!(source.contains("depth_compare: wgpu::CompareFunction::LessEqual"));
+    fn cloud_pipeline_state_matches_vanilla_cloud_variants() {
+        assert_eq!(CLOUD_FANCY_PIPELINE_CULL_MODE, Some(wgpu::Face::Back));
+        assert_eq!(CLOUD_FLAT_PIPELINE_CULL_MODE, None);
+        assert!(CLOUD_PIPELINE_DEPTH_WRITE_ENABLED);
+        assert_eq!(
+            CLOUD_PIPELINE_DEPTH_COMPARE,
+            wgpu::CompareFunction::LessEqual
+        );
+        assert_eq!(
+            CLOUD_TARGET_BLEND.color.src_factor,
+            wgpu::BlendFactor::SrcAlpha
+        );
+        assert_eq!(
+            CLOUD_TARGET_BLEND.color.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha
+        );
+        assert_eq!(CLOUD_TARGET_BLEND.alpha.src_factor, wgpu::BlendFactor::One);
+        assert_eq!(
+            CLOUD_TARGET_BLEND.alpha.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha
+        );
     }
 
     #[test]
