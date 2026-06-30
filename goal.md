@@ -446,6 +446,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     override。
   - roar / particle / sound 与更细 custom-dimension environment attributes。
 - Humanoid / illager / piglin / skeleton family：
+  - [x] armor stand hit wiggle：entity event `32` 现在投影 vanilla
+    `ArmorStandRenderState.wiggle = gameTime - lastHit + partialTick`，并在
+    root transform 中按 `sin(wiggle / 1.5 * PI) * 3°` 追加 Y 轴 setup rotation；
+    base textured submission 继承相同 transform。
   - remaining arm poses。
   - use-item sway。
   - attack / crossbow / spell / celebrate / riding 组合冲突。

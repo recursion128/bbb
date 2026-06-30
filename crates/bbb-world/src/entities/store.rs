@@ -1459,6 +1459,9 @@ impl EntityStore {
             hoglin_attack_animation_tick: client_animations
                 .animations
                 .hoglin_attack_animation_tick(),
+            armor_stand_wiggle: client_animations
+                .animations
+                .armor_stand_wiggle(partial_ticks),
             polar_bear_stand_scale: client_animations
                 .animations
                 .polar_bear_stand_scale(partial_ticks),

@@ -21,11 +21,18 @@ pub(in crate::entity_models) const HORSE_SCALE: f32 = 1.1;
 pub(super) const DONKEY_SCALE: f32 = 0.87;
 pub(super) const MULE_SCALE: f32 = 0.92;
 pub(super) const POLAR_BEAR_SCALE: f32 = 1.2;
+const ARMOR_STAND_WOBBLE_TIME: f32 = 5.0;
 const GHAST_SCALE: f32 = 4.5;
 const HAPPY_GHAST_SCALE: f32 = 4.0;
 
 pub(in crate::entity_models) fn entity_model_root_transform(instance: EntityModelInstance) -> Mat4 {
-    living_entity_model_root_transform_with_extra_setup_rotation(instance, Mat4::IDENTITY)
+    let setup_rotation_tail = match instance.kind {
+        EntityModelKind::ArmorStand { .. } => {
+            armor_stand_setup_rotation_tail(instance.render_state.armor_stand_wiggle)
+        }
+        _ => Mat4::IDENTITY,
+    };
+    living_entity_model_root_transform_with_extra_setup_rotation(instance, setup_rotation_tail)
 }
 
 /// Vanilla `ShulkerRenderer.setupRotations`: call the living setup with `bodyRot + 180`, then rotate
@@ -201,6 +208,16 @@ fn iron_golem_setup_rotation_tail(walk_animation_pos: f32, walk_animation_speed:
     let wave_pos = walk_animation_pos + 6.0;
     let triangle_wave = ((wave_pos % 13.0 - 6.5).abs() - 3.25) / 3.25;
     Mat4::from_rotation_z((6.5 * triangle_wave).to_radians())
+}
+
+/// Vanilla `ArmorStandRenderer.setupRotations`: after the armor stand's own `180 - yRot` yaw and before
+/// the model flip / `-1.501` translate, a recent hit adds
+/// `sin(wiggle / 1.5 * PI) * 3` degrees around Y. `wiggle >= ArmorStand.WOBBLE_TIME` is rest.
+fn armor_stand_setup_rotation_tail(wiggle: f32) -> Mat4 {
+    if wiggle >= ARMOR_STAND_WOBBLE_TIME {
+        return Mat4::IDENTITY;
+    }
+    Mat4::from_rotation_y(((wiggle / 1.5 * std::f32::consts::PI).sin() * 3.0).to_radians())
 }
 
 /// Vanilla `FoxRenderer.setupRotations`: after the standard living-entity setup rotation

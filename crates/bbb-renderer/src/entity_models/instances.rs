@@ -961,6 +961,10 @@ entity_render_state! {
     /// (`head.xRot = lerp(1 - |10 - 2·tick|/10, 0.87266463, -π/9)`, the baby also lifting `head.y`). `0`
     /// for a hoglin / zoglin not mid-headbutt and every other entity.
     (with_hoglin_attack_animation_tick) hoglin_attack_animation_tick: i32 = 0;
+    /// Vanilla `ArmorStandRenderState.wiggle`: `level.getGameTime() - lastHit + partialTick`,
+    /// reset by armor-stand entity event `32`. `ArmorStandRenderer.setupRotations` adds
+    /// `sin(wiggle / 1.5 * PI) * 3°` around Y while `< ArmorStand.WOBBLE_TIME`; `5.0` is rest.
+    (with_armor_stand_wiggle) armor_stand_wiggle: f32 = 5.0;
     /// Vanilla `LivingEntityRenderState.isCrouching` (`Pose.CROUCHING`): a sneaking player,
     /// whose `HumanoidModel.setupAnim` leans the body forward, drops the head, tucks the legs
     /// back and tilts the arms. `false` for every other entity and for a standing player.
@@ -2588,6 +2592,7 @@ mod tests {
                 ravager_attack_ticks_remaining: 0.0,
                 ravager_roar_animation: 0.0,
                 hoglin_attack_animation_tick: 0,
+                armor_stand_wiggle: 5.0,
                 is_crouching: false,
                 elytra_rot_x: ELYTRA_DEFAULT_X_ROT,
                 elytra_rot_y: ELYTRA_DEFAULT_Y_ROT,

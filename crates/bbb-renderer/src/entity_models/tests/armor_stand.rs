@@ -1,4 +1,5 @@
 use super::*;
+use glam::{Mat4, Vec3};
 
 #[test]
 fn armor_stand_parts_match_vanilla_26_1_body_layers() {
@@ -304,6 +305,49 @@ fn armor_stand_textured_mesh_matches_colored_geometry_and_visibility() {
 }
 
 #[test]
+fn armor_stand_hit_wiggle_applies_vanilla_setup_rotation_to_base_submission() {
+    let (atlas, _) = build_entity_model_texture_atlas(&armor_stand_texture_images()).unwrap();
+    let wiggle = 1.25_f32;
+    let instance = EntityModelInstance::armor_stand(
+        5,
+        [0.0, 64.0, 0.0],
+        30.0,
+        false,
+        true,
+        true,
+        DEFAULT_ARMOR_STAND_MODEL_POSE,
+    )
+    .with_armor_stand_wiggle(wiggle);
+    let rotation = (wiggle / 1.5 * std::f32::consts::PI).sin() * 3.0;
+    let expected = Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_scale(Vec3::splat(instance.render_state.scale))
+        * Mat4::from_rotation_y((180.0_f32 - instance.render_state.body_rot).to_radians())
+        * Mat4::from_rotation_y(rotation.to_radians())
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+        * Mat4::from_translation(Vec3::new(0.0, -1.501, 0.0));
+
+    assert_close_transform(entity_model_root_transform(instance), expected);
+
+    let textured_meshes = entity_model_textured_meshes(&[instance], &atlas);
+    let submit = textured_meshes.submissions[0];
+    assert_close_transform(submit.transform, expected);
+
+    let settled = instance.with_armor_stand_wiggle(5.0);
+    assert_eq!(
+        entity_model_root_transform(settled),
+        entity_model_root_transform(EntityModelInstance::armor_stand(
+            5,
+            [0.0, 64.0, 0.0],
+            30.0,
+            false,
+            true,
+            true,
+            DEFAULT_ARMOR_STAND_MODEL_POSE,
+        ))
+    );
+}
+
+#[test]
 fn armor_stand_marker_render_type_follows_vanilla_visibility_branch() {
     let (atlas, _) = build_entity_model_texture_atlas(&armor_stand_texture_images()).unwrap();
     let visible_marker = EntityModelInstance::armor_stand_with_marker(
@@ -444,4 +488,17 @@ fn armor_stand_texture_images() -> Vec<EntityModelTextureImage> {
             EntityModelTextureImage::new(*texture, vec![index as u8; len])
         })
         .collect()
+}
+
+fn assert_close_transform(actual: Mat4, expected: Mat4) {
+    for (a, e) in actual
+        .to_cols_array()
+        .into_iter()
+        .zip(expected.to_cols_array())
+    {
+        assert!(
+            (a - e).abs() < 1.0e-5,
+            "transform mismatch: {actual:?} != {expected:?}"
+        );
+    }
 }

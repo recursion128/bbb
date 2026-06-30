@@ -3537,8 +3537,14 @@ When an agent does any of the following, update this file in the same slice:
       The native item-model pass is now covered for
       marker hidden/glowing armor-stand held items and generic non-skull
       `CustomHeadLayer` HEAD items as well: `held_item_models` still bakes the
-      main-hand and HEAD item meshes when the base body records no submission.
-      Hurt wiggle and animation interpolation remain unsupported
+      main-hand and HEAD item meshes when the base body records no submission. The
+      armor-stand hit wiggle is now projected from entity event `32`
+      (`ArmorStand.handleEntityEvent` setting `lastHit = gameTime`) through
+      `ArmorStandRenderState.wiggle = gameTime - lastHit + partialTick`, and the
+      root transform applies vanilla
+      `sin(wiggle / 1.5 * PI) * 3°` while `wiggle < ArmorStand.WOBBLE_TIME`, with
+      the same transform inherited by the texture-backed base submission.
+      Animation interpolation remains unsupported
     - slime entities as renderer-owned vanilla 26.1 `SlimeModel` inner
       `ModelLayers.SLIME` geometry plus outer `ModelLayers.SLIME_OUTER`
       geometry, official `textures/entity/slime/slime.png` texture reference,

@@ -1573,6 +1573,7 @@ fn entity_model_instance(
         .with_ravager_attack_ticks_remaining(source.ravager_attack_ticks_remaining)
         .with_ravager_roar_animation(source.ravager_roar_animation)
         .with_hoglin_attack_animation_tick(source.hoglin_attack_animation_tick)
+        .with_armor_stand_wiggle(source.armor_stand_wiggle)
         .with_turtle_has_egg(turtle_has_egg(source.entity_type_id, &source.data_values))
         .with_turtle_laying_egg(turtle_laying_egg(
             source.entity_type_id,
@@ -9324,6 +9325,44 @@ mod tests {
                 1.0,
             )
         );
+    }
+
+    #[test]
+    fn entity_model_instances_project_armor_stand_hit_wiggle() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            5,
+            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+            [1.0, 64.0, -2.0],
+        ));
+
+        fn armor_stand_wiggle(world: &WorldStore, partial_tick: f32) -> f32 {
+            entity_model_instances_from_world_at_partial_tick(world, None, partial_tick)
+                .into_iter()
+                .find(|instance| instance.entity_id == 5)
+                .unwrap()
+                .render_state
+                .armor_stand_wiggle
+        }
+
+        // Rest projects the first non-wobbling value: vanilla only applies the
+        // setup rotation while `ArmorStandRenderState.wiggle < ArmorStand.WOBBLE_TIME`.
+        assert_eq!(armor_stand_wiggle(&world, 0.0), 5.0);
+
+        assert!(
+            world.apply_entity_event(bbb_protocol::packets::EntityEvent {
+                entity_id: 5,
+                event_id: 32,
+            })
+        );
+        assert_eq!(armor_stand_wiggle(&world, 0.0), 0.0);
+        assert_eq!(armor_stand_wiggle(&world, 0.5), 0.5);
+
+        world.advance_entity_client_animations(4);
+        assert_eq!(armor_stand_wiggle(&world, 0.75), 4.75);
+
+        world.advance_entity_client_animations(1);
+        assert_eq!(armor_stand_wiggle(&world, 0.0), 5.0);
     }
 
     #[test]

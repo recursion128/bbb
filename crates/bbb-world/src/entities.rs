@@ -994,6 +994,11 @@ pub struct EntityModelSourceState {
     /// event 4): the hoglin / zoglin head-down ram. `0` when not mid-headbutt and for every other entity.
     #[serde(default)]
     pub hoglin_attack_animation_tick: i32,
+    /// Vanilla `ArmorStandRenderState.wiggle`: `level.getGameTime() - lastHit + partialTick`, reset by
+    /// armor-stand entity event `32` and consumed by `ArmorStandRenderer.setupRotations` while `< 5`.
+    /// Defaults to `5.0`, the first rest value, for every non-wobbling armor stand and other entity.
+    #[serde(default = "entity_model_source_default_armor_stand_wiggle")]
+    pub armor_stand_wiggle: f32,
     #[serde(default)]
     pub polar_bear_stand_scale: f32,
     /// Stored block+sky light at the entity's light-probe block position,
@@ -1547,6 +1552,10 @@ fn entity_model_source_default_elytra_rot_x() -> f32 {
 
 fn entity_model_source_default_elytra_rot_z() -> f32 {
     -std::f32::consts::PI / 12.0
+}
+
+fn entity_model_source_default_armor_stand_wiggle() -> f32 {
+    5.0
 }
 
 fn entity_model_source_default_true() -> bool {

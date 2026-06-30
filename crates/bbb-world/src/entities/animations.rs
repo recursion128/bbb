@@ -13,6 +13,7 @@ use super::{
     VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
 };
 
+const VANILLA_ENTITY_TYPE_ARMOR_STAND_ID: i32 = 5;
 const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
 /// Vanilla `VehicleEntity.DATA_ID_HURT` / `DATA_ID_HURTDIR` / `DATA_ID_DAMAGE`:
 /// the vehicle damage-roll accessors after base `Entity` ids `0..=7`.
@@ -37,6 +38,10 @@ const VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID: i32 = 123;
 const ABSTRACT_ARROW_IN_GROUND_DATA_ID: u8 = 10;
 const ARROW_SHAKE_TICKS: i32 = 7;
 const VANILLA_ENTITY_TYPE_CREEPER_ID: i32 = 32;
+/// Vanilla `ArmorStand.handleEntityEvent(32)`: client-side hit wobble.
+const ARMOR_STAND_HIT_EVENT_ID: i8 = 32;
+/// Vanilla `ArmorStand.WOBBLE_TIME`.
+const ARMOR_STAND_WOBBLE_TIME: i32 = 5;
 /// Vanilla `EntityType.ELDER_GUARDIAN` / `EntityType.GUARDIAN`. Both share
 /// `GuardianModel` and the same client `Guardian.aiStep` tail accumulator (the
 /// elder is the guardian mesh scaled 2.35×, with no animation override).
@@ -503,6 +508,8 @@ pub struct EntityClientAnimationState {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hurt: Option<HurtAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub armor_stand_wiggle: Option<ArmorStandWiggleAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attack_swing: Option<AttackSwingAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub death: Option<DeathAnimationState>,
@@ -782,6 +789,15 @@ pub struct CreeperSwellAnimationState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HurtAnimationState {
     pub hurt_time: i32,
+}
+
+/// Canonical armor-stand hit wobble timer. Vanilla stores the hit game time in
+/// `ArmorStand.lastHit`; `ArmorStandRenderer.extractRenderState` exposes
+/// `wiggle = level.getGameTime() - lastHit + partialTicks`, and
+/// `setupRotations` applies it only while `< ArmorStand.WOBBLE_TIME`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ArmorStandWiggleAnimationState {
+    pub elapsed_ticks: i32,
 }
 
 /// Canonical client-side melee-swing animation, mirroring vanilla `LivingEntity`'s
@@ -3994,9 +4010,18 @@ impl EntityClientAnimationState {
     }
 
     /// Projects a client entity event into client animation state. Vanilla
+    /// `ArmorStand.handleEntityEvent(32)` resets the hit wobble, and
     /// `Sheep.handleEntityEvent` resets the eat-grass animation on event `10`.
     pub(crate) fn handle_entity_event(&mut self, entity_type_id: i32, event_id: i8) {
-        if entity_type_id == VANILLA_ENTITY_TYPE_SHEEP_ID && event_id == SHEEP_EAT_GRASS_EVENT_ID {
+        if entity_type_id == VANILLA_ENTITY_TYPE_ARMOR_STAND_ID
+            && event_id == ARMOR_STAND_HIT_EVENT_ID
+        {
+            // Vanilla `ArmorStand.handleEntityEvent(32)`: `lastHit = level.getGameTime()`;
+            // the renderer derives `wiggle = gameTime - lastHit + partialTicks`.
+            self.armor_stand_wiggle = Some(ArmorStandWiggleAnimationState { elapsed_ticks: 0 });
+        } else if entity_type_id == VANILLA_ENTITY_TYPE_SHEEP_ID
+            && event_id == SHEEP_EAT_GRASS_EVENT_ID
+        {
             self.sheep_eat = Some(SheepEatAnimationState {
                 eat_animation_tick: SHEEP_EAT_ANIMATION_TICKS,
             });
@@ -4792,6 +4817,15 @@ impl EntityClientAnimationState {
             || self.death.is_some_and(|state| state.death_time > 0)
     }
 
+    /// Vanilla `ArmorStandRenderState.wiggle`: `gameTime - lastHit + partialTick`.
+    /// Values `>= ArmorStand.WOBBLE_TIME` render as rest.
+    pub fn armor_stand_wiggle(&self, partial_tick: f32) -> f32 {
+        self.armor_stand_wiggle
+            .map_or(ARMOR_STAND_WOBBLE_TIME as f32, |state| {
+                state.elapsed_ticks as f32 + partial_tick
+            })
+    }
+
     /// Arms a melee swing, mirroring vanilla `LivingEntity.swing(hand)`: a swing only
     /// (re)starts when none is playing, the current one is past halfway, or the counter is
     /// the fresh `-1` — so a rapid re-swing during the first half is ignored (the in-flight
@@ -5146,6 +5180,14 @@ impl EntityClientAnimationState {
         // synced health), so this also runs outside the per-type match.
         if let Some(death) = self.death.as_mut() {
             death.death_time = (death.death_time + 1).min(DEATH_ANIMATION_MAX_TICKS);
+        }
+        if entity_type_id == VANILLA_ENTITY_TYPE_ARMOR_STAND_ID {
+            if let Some(wiggle) = self.armor_stand_wiggle.as_mut() {
+                wiggle.elapsed_ticks += 1;
+                if wiggle.elapsed_ticks >= ARMOR_STAND_WOBBLE_TIME {
+                    self.armor_stand_wiggle = None;
+                }
+            }
         }
         if entity_type_id == VANILLA_ENTITY_TYPE_TNT_MINECART_ID {
             if let Some(fuse) = self.minecart_tnt_fuse.as_mut() {
