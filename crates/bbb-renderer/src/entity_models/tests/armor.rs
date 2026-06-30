@@ -254,7 +254,7 @@ fn leather_armor_tints_with_default_undyed_color_others_white() {
         &atlas,
     );
     assert!(armored
-        .cutout
+        .armor_cutout
         .vertices
         .iter()
         .any(|vertex| vertex.tint == leather));
@@ -307,17 +307,21 @@ fn custom_dyed_leather_tints_by_dye_color_and_non_leather_ignores_it() {
         &atlas,
     );
     assert!(armored
-        .cutout
+        .armor_cutout
         .vertices
         .iter()
         .any(|vertex| vertex.tint == dyed));
-    assert!(!armored.cutout.vertices.iter().any(|vertex| vertex.tint
-        == [
-            0xA0 as f32 / 255.0,
-            0x65 as f32 / 255.0,
-            0x40 as f32 / 255.0,
-            1.0
-        ]));
+    assert!(!armored
+        .armor_cutout
+        .vertices
+        .iter()
+        .any(|vertex| vertex.tint
+            == [
+                0xA0 as f32 / 255.0,
+                0x65 as f32 / 255.0,
+                0x40 as f32 / 255.0,
+                1.0
+            ]));
 }
 
 #[test]
@@ -349,10 +353,11 @@ fn armored_zombie_emits_inflated_armor_pieces() {
         .with_feet_armor(Some(EntityArmorMaterial::Iron));
     let armored = entity_model_textured_meshes(&[armored_instance], &atlas);
     assert_eq!(
-        armored.cutout.vertices.len() - bare_cutout,
+        armored.armor_cutout.vertices.len(),
         240,
-        "four iron armor pieces add 10 cubes of cutout geometry"
+        "four iron armor pieces add 10 cubes of armorCutoutNoCull geometry"
     );
+    assert_eq!(armored.cutout.vertices.len(), bare_cutout);
     assert_eq!(armored.submissions.len(), 5);
     assert_eq!(
         armored.submissions[0].render_type,
@@ -400,23 +405,27 @@ fn armored_zombie_emits_inflated_armor_pieces() {
         assert_eq!(submit.overlay, [0.0, 10.0]);
     }
 
-    // Folded cutout geometry is appended in the same order as the explicit vanilla submissions:
-    // base, chest, legs, feet, head.
+    assert!(armored.cutout.vertices.iter().all(|vertex| {
+        vertex.light == armored.submissions[0].light
+            && vertex.overlay == armored.submissions[0].overlay
+    }));
+
+    // Armor geometry is appended in the same order as the explicit vanilla armor submissions:
+    // chest, legs, feet, head.
     let mut vertex_start = 0;
     for (submit, vertex_count) in [
-        (armored.submissions[0], bare_cutout),
         (armored.submissions[1], 72),
         (armored.submissions[2], 72),
         (armored.submissions[3], 48),
         (armored.submissions[4], 48),
     ] {
         let vertex_end = vertex_start + vertex_count;
-        assert!(armored.cutout.vertices[vertex_start..vertex_end]
+        assert!(armored.armor_cutout.vertices[vertex_start..vertex_end]
             .iter()
             .all(|vertex| vertex.light == submit.light && vertex.overlay == submit.overlay));
         vertex_start = vertex_end;
     }
-    assert_eq!(vertex_start, armored.cutout.vertices.len());
+    assert_eq!(vertex_start, armored.armor_cutout.vertices.len());
 
     // The armor is inflated (`CubeDeformation 1.0` / `0.5`), so it floats just outside the body: the
     // armored cutout reaches wider in X than the bare body.
@@ -427,7 +436,7 @@ fn armored_zombie_emits_inflated_armor_pieces() {
         .map(|vertex| vertex.position[0])
         .fold(f32::MIN, f32::max);
     let armored_x_max = armored
-        .cutout
+        .armor_cutout
         .vertices
         .iter()
         .map(|vertex| vertex.position[0])
@@ -579,10 +588,11 @@ fn hidden_zombie_keeps_humanoid_armor_without_base_submission() {
         .any(|submit| submit.texture == ZOMBIE_TEXTURE_REF));
     assert_full_iron_zombie_armor_submissions(&meshes, hidden, 0, 0);
     assert_eq!(
-        meshes.cutout.vertices.len(),
+        meshes.armor_cutout.vertices.len(),
         240,
         "hidden base records no submission, but vanilla still runs HumanoidArmorLayer"
     );
+    assert!(meshes.cutout.vertices.is_empty());
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
 }
@@ -612,7 +622,8 @@ fn hidden_player_keeps_humanoid_armor_without_base_submission() {
 
     assert_eq!(meshes.submissions.len(), 4);
     assert_full_iron_player_armor_submissions(&meshes, hidden, 0, 0);
-    assert_eq!(meshes.cutout.vertices.len(), 240);
+    assert_eq!(meshes.armor_cutout.vertices.len(), 240);
+    assert!(meshes.cutout.vertices.is_empty());
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
 }
@@ -646,10 +657,11 @@ fn invisible_glowing_zombie_keeps_humanoid_armor_layer_submissions() {
     assert_eq!((base.order, base.submit_sequence), (0, 0));
     assert_full_iron_zombie_armor_submissions(&meshes, hidden_glowing, 1, 0xff11_44cc);
     assert_eq!(
-        meshes.cutout.vertices.len(),
+        meshes.armor_cutout.vertices.len(),
         240,
-        "outline-only base folds into the outline bucket, while armorCutoutNoCull equipment still folds"
+        "outline-only base folds into the outline bucket, while armorCutoutNoCull equipment uses the armor bucket"
     );
+    assert!(meshes.cutout.vertices.is_empty());
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
 }
@@ -690,7 +702,8 @@ fn full_armor_stand_armor_submissions_match_vanilla_layer_order() {
     assert_eq!((base.order, base.submit_sequence), (0, 0));
 
     assert_full_iron_armor_stand_submissions(&meshes, armored_instance, 1, 0);
-    assert_eq!(meshes.cutout.vertices.len(), 480);
+    assert_eq!(meshes.cutout.vertices.len(), 240);
+    assert_eq!(meshes.armor_cutout.vertices.len(), 240);
 }
 
 #[test]
@@ -725,10 +738,11 @@ fn invisible_glowing_armor_stand_keeps_armor_layer_submissions() {
     assert_eq!(base.overlay, hidden_glowing.render_state.overlay_coords());
     assert_full_iron_armor_stand_submissions(&meshes, hidden_glowing, 1, 0xff66_aa33);
     assert_eq!(
-        meshes.cutout.vertices.len(),
+        meshes.armor_cutout.vertices.len(),
         240,
-        "outline-only base folds into the outline bucket, while armorCutoutNoCull equipment still folds"
+        "outline-only base folds into the outline bucket, while armorCutoutNoCull equipment uses the armor bucket"
     );
+    assert!(meshes.cutout.vertices.is_empty());
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
 }
@@ -765,10 +779,11 @@ fn marker_invisible_glowing_armor_stand_keeps_armor_without_base_submission() {
         .any(|submit| submit.texture == ARMOR_STAND_TEXTURE_REF));
     assert_full_iron_armor_stand_submissions(&meshes, marker_hidden_glowing, 0, 0xff22_88cc);
     assert_eq!(
-        meshes.cutout.vertices.len(),
+        meshes.armor_cutout.vertices.len(),
         240,
         "marker hidden base records no submission, but vanilla still runs HumanoidArmorLayer"
     );
+    assert!(meshes.cutout.vertices.is_empty());
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
 }
@@ -963,7 +978,7 @@ fn armor_stand_armor_vertex_positions(
         })
         .collect();
     meshes
-        .cutout
+        .armor_cutout
         .vertices
         .iter()
         .filter(|vertex| {
@@ -1022,6 +1037,7 @@ fn humanoid_armor_submissions_survive_missing_texture_atlas_entries() {
         bare.cutout.vertices.len(),
         "missing armor atlas entries must not fold stale armor geometry"
     );
+    assert!(armored.armor_cutout.vertices.is_empty());
     assert_eq!(armored.submissions.len(), 5);
     let body_submit = armored.submissions[0];
     assert_eq!(
@@ -1083,9 +1099,13 @@ fn armored_giant_uses_vanilla_giant_armor_layer() {
     let armored_meshes = entity_model_textured_meshes(&[armored], &atlas);
 
     assert_eq!(
-        armored_meshes.cutout.vertices.len() - bare_meshes.cutout.vertices.len(),
+        armored_meshes.armor_cutout.vertices.len(),
         240,
         "GiantMobRenderer's HumanoidArmorLayer adds the standard 10 armor cubes"
+    );
+    assert_eq!(
+        armored_meshes.cutout.vertices.len(),
+        bare_meshes.cutout.vertices.len()
     );
     assert_eq!(armored_meshes.submissions.len(), 5);
     let expected_transform = mesh_transformer_scaled_model_root_transform(base, GIANT_SCALE);
@@ -1140,15 +1160,6 @@ fn armored_giant_uses_vanilla_giant_armor_layer() {
 #[test]
 fn single_armor_slot_emits_only_its_pieces() {
     let atlas = iron_armor_atlas();
-    let bare = entity_model_textured_meshes(
-        &[EntityModelInstance::zombie(
-            72,
-            [0.0, 64.0, 0.0],
-            0.0,
-            false,
-        )],
-        &atlas,
-    );
     // Just a helmet: head + hat = 2 cubes → 48 vertices.
     let helmet = entity_model_textured_meshes(
         &[
@@ -1157,10 +1168,7 @@ fn single_armor_slot_emits_only_its_pieces() {
         ],
         &atlas,
     );
-    assert_eq!(
-        helmet.cutout.vertices.len() - bare.cutout.vertices.len(),
-        48
-    );
+    assert_eq!(helmet.armor_cutout.vertices.len(), 48);
 }
 
 #[test]
@@ -1197,11 +1205,12 @@ fn standard_humanoid_wearers_all_drape_armor() {
         let bare = entity_model_textured_meshes(&[instance], &atlas);
         let armored = entity_model_textured_meshes(&[full_iron(instance)], &atlas);
         assert_eq!(
-            armored.cutout.vertices.len() - bare.cutout.vertices.len(),
+            armored.armor_cutout.vertices.len(),
             240,
             "{:?} drapes the four armor pieces",
             instance.kind
         );
+        assert_eq!(armored.cutout.vertices.len(), bare.cutout.vertices.len());
     }
 
     // A baby husk uses the standard baby humanoid armor mesh: helmet (1 cube), chestplate (body +
@@ -1215,10 +1224,8 @@ fn standard_humanoid_wearers_all_drape_armor() {
     );
     let bare = entity_model_textured_meshes(&[baby_husk], &atlas);
     let armored = entity_model_textured_meshes(&[full_iron(baby_husk)], &atlas);
-    assert_eq!(
-        armored.cutout.vertices.len() - bare.cutout.vertices.len(),
-        216
-    );
+    assert_eq!(armored.armor_cutout.vertices.len(), 216);
+    assert_eq!(armored.cutout.vertices.len(), bare.cutout.vertices.len());
 }
 
 #[test]
@@ -1307,9 +1314,13 @@ fn piglin_family_drapes_armor_at_wider_deformation() {
         let bare_meshes = entity_model_textured_meshes(&[bare], &atlas);
         let armored = entity_model_textured_meshes(&[full_iron(bare)], &atlas);
         assert_eq!(
-            armored.cutout.vertices.len() - bare_meshes.cutout.vertices.len(),
+            armored.armor_cutout.vertices.len(),
             240,
             "{family:?} drapes the four armor pieces"
+        );
+        assert_eq!(
+            armored.cutout.vertices.len(),
+            bare_meshes.cutout.vertices.len()
         );
     }
 
@@ -1319,7 +1330,7 @@ fn piglin_family_drapes_armor_at_wider_deformation() {
     // differs.
     let max_armor_x = |instance: EntityModelInstance| {
         entity_model_textured_meshes(&[full_iron(instance)], &atlas)
-            .cutout
+            .armor_cutout
             .vertices
             .iter()
             .map(|vertex| vertex.position[0])
@@ -1357,10 +1368,11 @@ fn piglin_family_drapes_armor_at_wider_deformation() {
         let bare = entity_model_textured_meshes(&[baby], &atlas);
         let armored = entity_model_textured_meshes(&[full_iron(baby)], &atlas);
         assert_eq!(
-            armored.cutout.vertices.len() - bare.cutout.vertices.len(),
+            armored.armor_cutout.vertices.len(),
             216,
             "{family:?} baby armor retains nine baby cubes"
         );
+        assert_eq!(armored.cutout.vertices.len(), bare.cutout.vertices.len());
         assert_eq!(armored.submissions.len(), 5);
         assert_eq!(armored.submissions[0].texture, base_texture);
         assert_eq!(
@@ -1413,10 +1425,11 @@ fn baby_zombie_armor_uses_humanoid_baby_layer() {
         &atlas,
     );
     assert_eq!(
-        armored.cutout.vertices.len() - bare.cutout.vertices.len(),
+        armored.armor_cutout.vertices.len(),
         216,
         "baby humanoid armor keeps nine retained cubes"
     );
+    assert_eq!(armored.cutout.vertices.len(), bare.cutout.vertices.len());
     assert_eq!(armored.submissions.len(), 5);
     assert_eq!(armored.submissions[0].texture, ZOMBIE_BABY_TEXTURE_REF);
     assert_eq!(
@@ -1480,6 +1493,7 @@ fn baby_humanoid_armor_submissions_survive_missing_texture_atlas_entry() {
         bare.cutout.vertices.len(),
         "missing baby armor atlas entry must not fold stale armor geometry"
     );
+    assert!(armored.armor_cutout.vertices.is_empty());
     assert_eq!(armored.submissions.len(), 5);
     let body_submit = armored.submissions[0];
     assert_eq!(
@@ -1564,9 +1578,13 @@ fn baby_zombie_villager_armor_uses_zombie_villager_baby_armor_set() {
     let bare_meshes = entity_model_textured_meshes(&[base], &atlas);
     let armored_meshes = entity_model_textured_meshes(&[armored], &atlas);
     assert_eq!(
-        armored_meshes.cutout.vertices.len() - bare_meshes.cutout.vertices.len(),
+        armored_meshes.armor_cutout.vertices.len(),
         216,
         "baby zombie-villager armor keeps the nine-cube baby humanoid armor topology"
+    );
+    assert_eq!(
+        armored_meshes.cutout.vertices.len(),
+        bare_meshes.cutout.vertices.len()
     );
     assert_eq!(armored_meshes.submissions.len(), 6);
     let expected_transform = entity_model_root_transform(base);

@@ -442,15 +442,21 @@ fn camel_saddle_layer_renders_for_adult_camel_and_husk_only() {
         entity_model_root_transform(saddled_instance)
     );
     assert_ne!(saddled_instance.render_state.overlay_coords(), [0.0, 10.0]);
-    assert_eq!(saddled.cutout_faces - bare.cutout_faces, 120);
-    assert_eq!(saddled.vertices.len() - bare.vertices.len(), 480);
+    assert_eq!(saddled.cutout_faces, bare.cutout_faces);
+    assert_eq!(saddled.vertices.len(), bare.vertices.len());
+    assert_eq!(saddled_meshes.armor_cutout.cutout_faces, 120);
+    assert_eq!(saddled_meshes.armor_cutout.vertices.len(), 480);
 
     let ridden_instance = adult.with_camel_saddle(true).with_camel_saddle_ridden(true);
     let ridden_meshes = entity_model_textured_meshes(&[ridden_instance], &atlas);
     assert_camel_submissions_match_vanilla(&ridden_meshes, ridden_instance);
-    assert_eq!(ridden_meshes.cutout.cutout_faces - saddled.cutout_faces, 18);
+    assert_eq!(ridden_meshes.cutout.cutout_faces, saddled.cutout_faces);
     assert_eq!(
-        ridden_meshes.cutout.vertices.len() - saddled.vertices.len(),
+        ridden_meshes.armor_cutout.cutout_faces - saddled_meshes.armor_cutout.cutout_faces,
+        18
+    );
+    assert_eq!(
+        ridden_meshes.armor_cutout.vertices.len() - saddled_meshes.armor_cutout.vertices.len(),
         72
     );
 
@@ -460,7 +466,7 @@ fn camel_saddle_layer_renders_for_adult_camel_and_husk_only() {
         .find(|entry| entry.texture == CAMEL_SADDLE_TEXTURE_REF)
         .unwrap()
         .uv;
-    let first_saddle_vertex = saddled.vertices[bare.vertices.len()].uv;
+    let first_saddle_vertex = saddled_meshes.armor_cutout.vertices[0].uv;
     assert!(first_saddle_vertex[0] >= saddle_uv.min[0]);
     assert!(first_saddle_vertex[0] <= saddle_uv.max[0]);
     assert!(first_saddle_vertex[1] >= saddle_uv.min[1]);
@@ -480,6 +486,7 @@ fn camel_saddle_layer_renders_for_adult_camel_and_husk_only() {
         264,
         "vanilla supplies no baby model for the camel saddle layer"
     );
+    assert!(baby_meshes.armor_cutout.vertices.is_empty());
 
     let husk = EntityModelInstance::camel(
         762,
@@ -514,14 +521,15 @@ fn camel_saddle_layer_renders_for_adult_camel_and_husk_only() {
         husk_saddle_submit.transform,
         entity_model_root_transform(husk)
     );
-    assert_eq!(husk_mesh.cutout_faces - bare.cutout_faces, 120);
+    assert_eq!(husk_mesh.cutout_faces, bare.cutout_faces);
+    assert_eq!(husk_meshes.armor_cutout.cutout_faces, 120);
     let husk_saddle_uv = atlas
         .entries
         .iter()
         .find(|entry| entry.texture == CAMEL_HUSK_SADDLE_TEXTURE_REF)
         .unwrap()
         .uv;
-    let first_husk_saddle_vertex = husk_mesh.vertices[bare.vertices.len()].uv;
+    let first_husk_saddle_vertex = husk_meshes.armor_cutout.vertices[0].uv;
     assert!(first_husk_saddle_vertex[0] >= husk_saddle_uv.min[0]);
     assert!(first_husk_saddle_vertex[0] <= husk_saddle_uv.max[0]);
     assert!(first_husk_saddle_vertex[1] >= husk_saddle_uv.min[1]);
@@ -558,6 +566,7 @@ fn camel_saddle_submission_survives_missing_saddle_texture_atlas_entry() {
         288,
         "missing camel_saddle/saddle.png suppresses only folded saddle geometry"
     );
+    assert!(meshes.armor_cutout.vertices.is_empty());
     assert!(meshes
         .cutout
         .vertices

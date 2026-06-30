@@ -434,16 +434,15 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
     let white_instance = adult.with_llama_body_decor(Some(EntityDyeColor::White));
     let white_meshes = entity_model_textured_meshes(&[white_instance], &atlas);
     let white = &white_meshes.cutout;
-    assert_eq!(white.vertices.len(), bare.vertices.len() * 2);
-    assert_eq!(white.indices.len(), bare.indices.len() * 2);
-    assert_vertex_inside_texture(
-        white.vertices[bare.vertices.len()].uv,
-        LLAMA_BODY_WHITE_TEXTURE_REF,
-        &atlas,
-    );
+    let decor = &white_meshes.armor_cutout;
+    assert_eq!(white.vertices.len(), bare.vertices.len());
+    assert_eq!(white.indices.len(), bare.indices.len());
+    assert_eq!(decor.vertices.len(), bare.vertices.len());
+    assert_eq!(decor.indices.len(), bare.indices.len());
+    assert_vertex_inside_texture(decor.vertices[0].uv, LLAMA_BODY_WHITE_TEXTURE_REF, &atlas);
 
     let (bare_min, bare_max) = textured_mesh_extents(&bare);
-    let (decor_min, decor_max) = textured_mesh_extents(&white);
+    let (decor_min, decor_max) = textured_mesh_extents(decor);
     assert!(decor_min[0] < bare_min[0]);
     assert!(decor_max[0] > bare_max[0]);
     assert_eq!(white_meshes.submissions.len(), 2);
@@ -459,11 +458,13 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
     assert_ne!(white_instance.render_state.overlay_coords(), [0.0, 10.0]);
     let base_submit = white_meshes.submissions[0];
     let decor_submit = white_meshes.submissions[1];
-    assert!(white.vertices[..bare.vertices.len()]
+    assert!(white
+        .vertices
         .iter()
         .all(|vertex| vertex.light == base_submit.light && vertex.overlay == base_submit.overlay));
     assert!(
-        white.vertices[bare.vertices.len()..]
+        decor
+            .vertices
             .iter()
             .all(|vertex| vertex.light == decor_submit.light
                 && vertex.overlay == decor_submit.overlay)
@@ -483,9 +484,11 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
     .with_has_red_overlay(true);
     let trader_meshes = entity_model_textured_meshes(&[adult_trader], &atlas);
     let trader = &trader_meshes.cutout;
-    assert_eq!(trader.vertices.len(), bare.vertices.len() * 2);
+    let trader_decor = &trader_meshes.armor_cutout;
+    assert_eq!(trader.vertices.len(), bare.vertices.len());
+    assert_eq!(trader_decor.vertices.len(), bare.vertices.len());
     assert_vertex_inside_texture(
-        trader.vertices[bare.vertices.len()].uv,
+        trader_decor.vertices[0].uv,
         LLAMA_BODY_TRADER_TEXTURE_REF,
         &atlas,
     );
@@ -503,11 +506,16 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
     let black_trader_instance = adult_trader.with_llama_body_decor(Some(EntityDyeColor::Black));
     let black_trader_meshes = entity_model_textured_meshes(&[black_trader_instance], &atlas);
     let black_trader = &black_trader_meshes.cutout;
+    let black_trader_decor = &black_trader_meshes.armor_cutout;
     assert_eq!(black_trader_meshes.submissions.len(), 2);
     assert_llama_base_submission_at(&black_trader_meshes, 0, black_trader_instance);
     assert_eq!(black_trader.vertices.len(), trader.vertices.len());
+    assert_eq!(
+        black_trader_decor.vertices.len(),
+        trader_decor.vertices.len()
+    );
     assert_vertex_inside_texture(
-        black_trader.vertices[bare.vertices.len()].uv,
+        black_trader_decor.vertices[0].uv,
         LLAMA_BODY_BLACK_TEXTURE_REF,
         &atlas,
     );
@@ -563,12 +571,11 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
     assert_eq!(baby_trader_meshes.submissions.len(), 2);
     assert_llama_base_submission_at(&baby_trader_meshes, 0, baby_trader);
     let baby_trader_mesh = &baby_trader_meshes.cutout;
-    assert_eq!(
-        baby_trader_mesh.vertices.len(),
-        baby_bare.vertices.len() * 2
-    );
+    let baby_trader_decor = &baby_trader_meshes.armor_cutout;
+    assert_eq!(baby_trader_mesh.vertices.len(), baby_bare.vertices.len());
+    assert_eq!(baby_trader_decor.vertices.len(), baby_bare.vertices.len());
     assert_vertex_inside_texture(
-        baby_trader_mesh.vertices[baby_bare.vertices.len()].uv,
+        baby_trader_decor.vertices[0].uv,
         LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
         &atlas,
     );

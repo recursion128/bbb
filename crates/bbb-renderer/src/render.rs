@@ -258,6 +258,19 @@ impl Renderer {
                 entity_model_draw_calls += 1;
             }
             if let (Some(mesh), Some(atlas)) = (
+                &self.entity_model_armor_cutout_mesh,
+                &self.entity_model_texture_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_armor_cutout_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                entity_model_draw_calls += 1;
+            }
+            if let (Some(mesh), Some(atlas)) = (
                 &self.entity_dynamic_player_skin_cutout_cull_mesh,
                 &self.entity_dynamic_player_skin_atlas,
             ) {
@@ -301,6 +314,19 @@ impl Renderer {
                 &self.entity_dynamic_player_texture_atlas,
             ) {
                 pass.set_pipeline(&self.entity_model_textured_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                entity_model_draw_calls += 1;
+            }
+            if let (Some(mesh), Some(atlas)) = (
+                &self.entity_dynamic_player_texture_armor_cutout_mesh,
+                &self.entity_dynamic_player_texture_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_armor_cutout_pipeline);
                 pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
@@ -1349,6 +1375,7 @@ impl Renderer {
     fn has_entity_translucent_features(&self) -> bool {
         (self.entity_model_texture_atlas.is_some()
             && (self.entity_model_translucent_mesh.is_some()
+                || self.entity_model_armor_translucent_mesh.is_some()
                 || self.entity_model_translucent_emissive_mesh.is_some()
                 || self.entity_model_eyes_mesh.is_some()
                 || self.entity_model_scroll_mesh.is_some()
@@ -1480,8 +1507,12 @@ impl Renderer {
 
         let uses_translucent_emissive_pipeline =
             draw.render_type == EntityModelLayerRenderType::EntityTranslucentEmissive;
+        let uses_armor_translucent_pipeline =
+            draw.render_type == EntityModelLayerRenderType::ArmorTranslucent;
         if uses_translucent_emissive_pipeline {
             pass.set_pipeline(&self.entity_model_translucent_emissive_pipeline);
+        } else if uses_armor_translucent_pipeline {
+            pass.set_pipeline(&self.entity_model_armor_translucent_pipeline);
         } else if draw.surface_cull {
             pass.set_pipeline(&self.entity_model_translucent_cull_pipeline);
         } else {
@@ -1512,6 +1543,18 @@ impl Renderer {
             }
             return Some((
                 self.entity_model_translucent_emissive_mesh.as_ref()?,
+                &self.entity_model_texture_atlas.as_ref()?.bind_group,
+            ));
+        }
+        if draw.render_type == EntityModelLayerRenderType::ArmorTranslucent {
+            if item_entity_target
+                || draw.atlas != EntityModelTexturedDrawAtlas::Static
+                || draw.surface_cull
+            {
+                return None;
+            }
+            return Some((
+                self.entity_model_armor_translucent_mesh.as_ref()?,
                 &self.entity_model_texture_atlas.as_ref()?.bind_group,
             ));
         }
@@ -1583,6 +1626,19 @@ impl Renderer {
                 &self.entity_model_texture_atlas,
             ) {
                 pass.set_pipeline(&self.entity_model_translucent_pipeline);
+                *pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                *entity_model_draw_calls += 1;
+            }
+            if let (Some(mesh), Some(atlas)) = (
+                &self.entity_model_armor_translucent_mesh,
+                &self.entity_model_texture_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_armor_translucent_pipeline);
                 *pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
@@ -2225,6 +2281,7 @@ mod tests {
             .expect("entity translucent feature helper is present");
         for pipeline in [
             "pass.set_pipeline(&self.entity_model_translucent_pipeline)",
+            "pass.set_pipeline(&self.entity_model_armor_translucent_pipeline)",
             "pass.set_pipeline(&self.entity_model_eyes_pipeline)",
             "pass.set_pipeline(&self.entity_model_scroll_pipeline)",
             "pass.set_pipeline(&self.entity_model_scroll_additive_pipeline)",
@@ -2536,6 +2593,68 @@ mod tests {
                 && source[main_helper..tests_mod]
                     .contains("self.entity_model_translucent_emissive_pipeline"),
             "fallback unsorted translucent features also draw entityTranslucentEmissive"
+        );
+    }
+
+    #[test]
+    fn armor_render_types_use_dedicated_entity_model_pipelines() {
+        let source = include_str!("render.rs");
+        let main_pass = source
+            .find("label: Some(\"bbb-native-terrain-opaque-group-pass\")")
+            .expect("main terrain/entity pass label is used");
+        let armor_cutout = source[main_pass..]
+            .find("pass.set_pipeline(&self.entity_model_armor_cutout_pipeline)")
+            .map(|index| main_pass + index)
+            .expect("armorCutoutNoCull pipeline is drawn in the main pass");
+        let water_mask = source[main_pass..]
+            .find("pass.set_pipeline(&self.entity_model_water_mask_pipeline)")
+            .map(|index| main_pass + index)
+            .expect("waterMask pipeline is drawn in the main pass");
+        let range_helper = source
+            .find("fn draw_entity_textured_range")
+            .expect("textured range draw helper is present");
+        let resources_helper = source
+            .find("fn entity_textured_range_resources")
+            .expect("textured range resource helper is present");
+        let main_helper = source
+            .find("fn draw_entity_translucent_features")
+            .expect("main translucent feature helper is present");
+        let tests_mod = source
+            .find("#[cfg(test)]")
+            .expect("render tests module is present");
+
+        assert!(
+            main_pass < armor_cutout && armor_cutout < water_mask,
+            "armorCutoutNoCull uses its dedicated main-pass pipeline before depth-only waterMask"
+        );
+        assert!(
+            source[main_pass..water_mask].contains("entity_model_armor_cutout_mesh")
+                && source[main_pass..water_mask]
+                    .contains("entity_dynamic_player_texture_armor_cutout_mesh"),
+            "static and profile-texture armorCutoutNoCull meshes draw through the armor cutout pipeline"
+        );
+        assert!(
+            source[armor_cutout..water_mask]
+                .contains("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])"),
+            "armorCutoutNoCull keeps the entity LightTexture bind"
+        );
+        assert!(
+            source[range_helper..resources_helper]
+                .contains("EntityModelLayerRenderType::ArmorTranslucent")
+                && source[range_helper..resources_helper]
+                    .contains("self.entity_model_armor_translucent_pipeline"),
+            "sorted armorTranslucent ranges use the split vanilla pipeline"
+        );
+        assert!(
+            source[resources_helper..main_helper]
+                .contains("self.entity_model_armor_translucent_mesh"),
+            "sorted armorTranslucent ranges resolve to the dedicated mesh bucket"
+        );
+        assert!(
+            source[main_helper..tests_mod].contains("entity_model_armor_translucent_mesh")
+                && source[main_helper..tests_mod]
+                    .contains("self.entity_model_armor_translucent_pipeline"),
+            "fallback unsorted translucent features also draw armorTranslucent"
         );
     }
 

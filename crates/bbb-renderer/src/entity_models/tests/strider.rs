@@ -365,6 +365,7 @@ fn strider_textured_mesh_uses_vanilla_geometry_and_animates() {
         .vertices
         .iter()
         .all(|vertex| vertex.light == baby_submit.light && vertex.overlay == baby_submit.overlay));
+    assert!(baby_meshes.armor_cutout.vertices.is_empty());
 
     // The body tracks the look, and the walk + age animate the legs/body/bristles.
     let looking = entity_model_textured_meshes(&[adult.with_head_look(40.0, -25.0)], &atlas);
@@ -406,6 +407,7 @@ fn strider_saddle_layer_renders_for_adults_only() {
     let saddled_meshes = entity_model_textured_meshes(&[saddled_instance], &atlas);
     let bare = &bare_meshes.cutout;
     let saddled = &saddled_meshes.cutout;
+    let saddle_mesh = &saddled_meshes.armor_cutout;
     assert_eq!(saddled_meshes.submissions.len(), 2);
     let base_submit = saddled_meshes.submissions[0];
     assert_eq!(
@@ -436,12 +438,14 @@ fn strider_saddle_layer_renders_for_adults_only() {
     );
     assert_eq!(saddle_submit.light, adult.render_state.shader_light());
     assert_eq!(saddle_submit.overlay, [0.0, 10.0]);
-    assert_eq!(saddled.cutout_faces - bare.cutout_faces, 54);
-    assert_eq!(saddled.vertices.len() - bare.vertices.len(), 216);
+    assert_eq!(saddled.cutout_faces, bare.cutout_faces);
+    assert_eq!(saddled.vertices.len(), bare.vertices.len());
+    assert_eq!(saddle_mesh.cutout_faces, 54);
+    assert_eq!(saddle_mesh.vertices.len(), 216);
     assert!(saddled.vertices[..216]
         .iter()
         .all(|vertex| vertex.light == base_submit.light && vertex.overlay == base_submit.overlay));
-    assert!(saddled.vertices[216..].iter().all(
+    assert!(saddle_mesh.vertices.iter().all(
         |vertex| vertex.light == saddle_submit.light && vertex.overlay == saddle_submit.overlay
     ));
 
@@ -451,7 +455,7 @@ fn strider_saddle_layer_renders_for_adults_only() {
         .find(|entry| entry.texture == STRIDER_SADDLE_TEXTURE_REF)
         .unwrap()
         .uv;
-    let first_saddle_vertex = saddled.vertices[bare.vertices.len()].uv;
+    let first_saddle_vertex = saddle_mesh.vertices[0].uv;
     assert!(first_saddle_vertex[0] >= saddle_uv.min[0]);
     assert!(first_saddle_vertex[0] <= saddle_uv.max[0]);
     assert!(first_saddle_vertex[1] >= saddle_uv.min[1]);
@@ -516,6 +520,7 @@ fn strider_saddle_submission_survives_missing_saddle_texture_atlas_entry() {
         216,
         "missing strider_saddle/saddle.png suppresses only folded saddle geometry"
     );
+    assert!(meshes.armor_cutout.vertices.is_empty());
     assert!(meshes
         .cutout
         .vertices

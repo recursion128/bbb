@@ -2091,8 +2091,11 @@ fn equine_saddle_layer_renders_for_adult_horses_only() {
     let saddled_meshes = entity_model_textured_meshes(&[saddled_instance], &atlas);
     assert_equine_submissions_match_vanilla(&saddled_meshes, saddled_instance);
     let saddled = &saddled_meshes.cutout;
-    assert_eq!(saddled.cutout_faces - bare.cutout_faces, 102);
-    assert_eq!(saddled.vertices.len() - bare.vertices.len(), 408);
+    let saddle = &saddled_meshes.armor_cutout;
+    assert_eq!(saddled.cutout_faces, bare.cutout_faces);
+    assert_eq!(saddled.vertices.len(), bare.vertices.len());
+    assert_eq!(saddle.cutout_faces, 102);
+    assert_eq!(saddle.vertices.len(), 408);
     assert_eq!(saddled_meshes.submissions.len(), 2);
     assert_eq!(
         saddled_meshes.submissions[1].render_type,
@@ -2116,20 +2119,14 @@ fn equine_saddle_layer_renders_for_adult_horses_only() {
     );
     assert_ne!(saddled_meshes.submissions[0].overlay, [0.0, 10.0]);
     assert_eq!(saddled_meshes.submissions[1].overlay, [0.0, 10.0]);
-    assert_textured_vertices_match_submission(
-        &saddled.vertices[..288],
-        saddled_meshes.submissions[0],
-    );
-    assert_textured_vertices_match_submission(
-        &saddled.vertices[288..],
-        saddled_meshes.submissions[1],
-    );
+    assert_textured_vertices_match_submission(&saddled.vertices, saddled_meshes.submissions[0]);
+    assert_textured_vertices_match_submission(&saddle.vertices, saddled_meshes.submissions[1]);
     assert!(
-        saddled.vertices[288].uv[1] >= 64.0 / 192.0,
+        saddle.vertices[0].uv[1] >= 64.0 / 192.0,
         "the overlay samples the horse_saddle atlas region"
     );
     let (bare_min, bare_max) = textured_mesh_extents(&bare);
-    let (saddle_min, saddle_max) = textured_mesh_extents(&saddled);
+    let (saddle_min, saddle_max) = textured_mesh_extents(saddle);
     assert!(saddle_min[0] < bare_min[0]);
     assert!(saddle_max[0] > bare_max[0]);
 
@@ -2139,14 +2136,14 @@ fn equine_saddle_layer_renders_for_adult_horses_only() {
     let ridden_meshes = entity_model_textured_meshes(&[ridden_instance], &atlas);
     assert_equine_submissions_match_vanilla(&ridden_meshes, ridden_instance);
     let ridden = &ridden_meshes.cutout;
-    assert_eq!(ridden.cutout_faces - saddled.cutout_faces, 12);
-    assert_eq!(ridden.vertices.len() - saddled.vertices.len(), 48);
+    let ridden_saddle = &ridden_meshes.armor_cutout;
+    assert_eq!(ridden.cutout_faces, saddled.cutout_faces);
+    assert_eq!(ridden.vertices.len(), saddled.vertices.len());
+    assert_eq!(ridden_saddle.cutout_faces - saddle.cutout_faces, 12);
+    assert_eq!(ridden_saddle.vertices.len() - saddle.vertices.len(), 48);
+    assert_textured_vertices_match_submission(&ridden.vertices, ridden_meshes.submissions[0]);
     assert_textured_vertices_match_submission(
-        &ridden.vertices[..288],
-        ridden_meshes.submissions[0],
-    );
-    assert_textured_vertices_match_submission(
-        &ridden.vertices[288..],
+        &ridden_saddle.vertices,
         ridden_meshes.submissions[1],
     );
 
@@ -2196,6 +2193,7 @@ fn horse_saddle_submission_survives_missing_saddle_texture_atlas_entry() {
         288,
         "missing horse_saddle/saddle.png suppresses only folded saddle geometry"
     );
+    assert!(meshes.armor_cutout.vertices.is_empty());
     assert_textured_vertices_match_submission(&meshes.cutout.vertices, base);
 
     let saddle = meshes.submissions[1];
@@ -2249,8 +2247,11 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
         horse.with_equine_body_armor(Some(EntityArmorMaterial::Iron)),
     );
     let iron = &iron_meshes.cutout;
-    assert_eq!(iron.cutout_faces - bare.cutout_faces, 72);
-    assert_eq!(iron.vertices.len() - bare.vertices.len(), 288);
+    let iron_armor = &iron_meshes.armor_cutout;
+    assert_eq!(iron.cutout_faces, bare.cutout_faces);
+    assert_eq!(iron.vertices.len(), bare.vertices.len());
+    assert_eq!(iron_armor.cutout_faces, 72);
+    assert_eq!(iron_armor.vertices.len(), 288);
     assert_eq!(iron_meshes.submissions.len(), 2);
     assert_eq!(
         iron_meshes.submissions[1].render_type,
@@ -2274,15 +2275,15 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
     );
     assert_ne!(iron_meshes.submissions[0].overlay, [0.0, 10.0]);
     assert_eq!(iron_meshes.submissions[1].overlay, [0.0, 10.0]);
-    assert_textured_vertices_match_submission(&iron.vertices[..288], iron_meshes.submissions[0]);
-    assert_textured_vertices_match_submission(&iron.vertices[288..], iron_meshes.submissions[1]);
+    assert_textured_vertices_match_submission(&iron.vertices, iron_meshes.submissions[0]);
+    assert_textured_vertices_match_submission(&iron_armor.vertices, iron_meshes.submissions[1]);
     let iron_uv = atlas
         .entries
         .iter()
         .find(|entry| entry.texture == HORSE_BODY_IRON_TEXTURE_REF)
         .unwrap()
         .uv;
-    let first_armor_vertex = iron.vertices[bare.vertices.len()].uv;
+    let first_armor_vertex = iron_armor.vertices[0].uv;
     assert!(first_armor_vertex[0] >= iron_uv.min[0]);
     assert!(first_armor_vertex[0] <= iron_uv.max[0]);
     assert!(first_armor_vertex[1] >= iron_uv.min[1]);
@@ -2319,19 +2320,19 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
         "saddle sequence advances after the body armor layer"
     );
     assert_eq!(
-        armored_saddled_meshes.cutout.vertices.len() - iron.vertices.len(),
+        armored_saddled_meshes.armor_cutout.vertices.len() - iron_armor.vertices.len(),
         408
     );
     assert_textured_vertices_match_submission(
-        &armored_saddled_meshes.cutout.vertices[..288],
+        &armored_saddled_meshes.cutout.vertices,
         armored_saddled_meshes.submissions[0],
     );
     assert_textured_vertices_match_submission(
-        &armored_saddled_meshes.cutout.vertices[288..576],
+        &armored_saddled_meshes.armor_cutout.vertices[..288],
         armored_saddled_meshes.submissions[1],
     );
     assert_textured_vertices_match_submission(
-        &armored_saddled_meshes.cutout.vertices[576..],
+        &armored_saddled_meshes.armor_cutout.vertices[288..],
         armored_saddled_meshes.submissions[2],
     );
 
@@ -2355,8 +2356,10 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
             .with_equine_body_armor_dye(Some(dye)),
     );
     let leather = &leather_meshes.cutout;
-    assert_eq!(leather.cutout_faces - bare.cutout_faces, 144);
-    assert_eq!(leather.vertices.len() - bare.vertices.len(), 576);
+    assert_eq!(leather.cutout_faces, bare.cutout_faces);
+    assert_eq!(leather.vertices.len(), bare.vertices.len());
+    assert_eq!(leather_meshes.armor_cutout.cutout_faces, 144);
+    assert_eq!(leather_meshes.armor_cutout.vertices.len(), 576);
     assert_eq!(leather_meshes.submissions.len(), 3);
     assert_eq!(
         leather_meshes.submissions[1].render_type,
@@ -2392,24 +2395,20 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
     );
     assert_eq!(leather_meshes.submissions[1].overlay, [0.0, 10.0]);
     assert_eq!(leather_meshes.submissions[2].overlay, [0.0, 10.0]);
+    assert_textured_vertices_match_submission(&leather.vertices, leather_meshes.submissions[0]);
+    let leather_armor = &leather_meshes.armor_cutout;
     assert_textured_vertices_match_submission(
-        &leather.vertices[..288],
-        leather_meshes.submissions[0],
-    );
-    assert_textured_vertices_match_submission(
-        &leather.vertices[288..576],
+        &leather_armor.vertices[..288],
         leather_meshes.submissions[1],
     );
     assert_textured_vertices_match_submission(
-        &leather.vertices[576..],
+        &leather_armor.vertices[288..],
         leather_meshes.submissions[2],
     );
-    assert!(
-        leather.vertices[bare.vertices.len()..bare.vertices.len() + 288]
-            .iter()
-            .all(|vertex| vertex.tint == dyed_tint)
-    );
-    assert!(leather.vertices[bare.vertices.len() + 288..]
+    assert!(leather_armor.vertices[..288]
+        .iter()
+        .all(|vertex| vertex.tint == dyed_tint));
+    assert!(leather_armor.vertices[288..]
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
 
@@ -2452,17 +2451,17 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
     let zombie_armored_meshes = entity_model_textured_meshes(&[zombie_armored_instance], &atlas);
     assert_equine_submissions_match_vanilla(&zombie_armored_meshes, zombie_armored_instance);
     let zombie_armored = &zombie_armored_meshes.cutout;
-    assert_eq!(zombie_armored.cutout_faces - zombie_bare.cutout_faces, 72);
-    assert_eq!(
-        zombie_armored.vertices.len() - zombie_bare.vertices.len(),
-        288
-    );
+    let zombie_armor = &zombie_armored_meshes.armor_cutout;
+    assert_eq!(zombie_armored.cutout_faces, zombie_bare.cutout_faces);
+    assert_eq!(zombie_armored.vertices.len(), zombie_bare.vertices.len());
+    assert_eq!(zombie_armor.cutout_faces, 72);
+    assert_eq!(zombie_armor.vertices.len(), 288);
     assert_textured_vertices_match_submission(
-        &zombie_armored.vertices[..288],
+        &zombie_armored.vertices,
         zombie_armored_meshes.submissions[0],
     );
     assert_textured_vertices_match_submission(
-        &zombie_armored.vertices[288..],
+        &zombie_armor.vertices,
         zombie_armored_meshes.submissions[1],
     );
 
@@ -2494,6 +2493,7 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
         skeleton_bare.vertices.len(),
         "EntityTypeTags.CAN_WEAR_HORSE_ARMOR excludes skeleton horses"
     );
+    assert!(skeleton_armored_meshes.armor_cutout.vertices.is_empty());
 
     let invalid_material_instance =
         horse.with_equine_body_armor(Some(EntityArmorMaterial::Chainmail));
@@ -2506,6 +2506,7 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
         bare.vertices.len(),
         "vanilla 26.1 has no chainmail horse_body equipment texture"
     );
+    assert!(invalid_material_meshes.armor_cutout.vertices.is_empty());
 }
 
 #[test]
@@ -2522,6 +2523,7 @@ fn horse_body_armor_submission_survives_missing_texture_atlas_entry() {
     assert_equine_submissions_match_vanilla(&meshes, horse);
     assert_eq!(meshes.submissions.len(), 2);
     assert_eq!(meshes.cutout.vertices.len(), 288);
+    assert!(meshes.armor_cutout.vertices.is_empty());
 
     let base = meshes.submissions[0];
     let armor = meshes.submissions[1];
@@ -2581,8 +2583,11 @@ fn equine_saddle_layer_uses_family_specific_models_and_textures() {
     let donkey_meshes = entity_model_textured_meshes(&[donkey_instance], &atlas);
     assert_equine_submissions_match_vanilla(&donkey_meshes, donkey_instance);
     let donkey = &donkey_meshes.cutout;
-    assert_eq!(donkey.cutout_faces, 72 + 114);
-    assert_eq!(donkey.vertices.len(), 288 + 456);
+    let donkey_saddle = &donkey_meshes.armor_cutout;
+    assert_eq!(donkey.cutout_faces, 72);
+    assert_eq!(donkey.vertices.len(), 288);
+    assert_eq!(donkey_saddle.cutout_faces, 114);
+    assert_eq!(donkey_saddle.vertices.len(), 456);
     assert_eq!(donkey_meshes.submissions.len(), 2);
     assert_eq!(
         donkey_meshes.submissions[1].render_type,
@@ -2601,13 +2606,14 @@ fn equine_saddle_layer_uses_family_specific_models_and_textures() {
     );
     assert_ne!(donkey_instance.render_state.overlay_coords(), [0.0, 10.0]);
     let donkey_base = donkey_meshes.submissions[0];
-    let donkey_saddle = donkey_meshes.submissions[1];
-    assert!(donkey.vertices[..288]
+    let donkey_saddle_submit = donkey_meshes.submissions[1];
+    assert!(donkey
+        .vertices
         .iter()
         .all(|vertex| vertex.light == donkey_base.light && vertex.overlay == donkey_base.overlay));
-    assert!(donkey.vertices[288..].iter().all(
-        |vertex| vertex.light == donkey_saddle.light && vertex.overlay == donkey_saddle.overlay
-    ));
+    assert!(donkey_saddle.vertices.iter().all(|vertex| {
+        vertex.light == donkey_saddle_submit.light && vertex.overlay == donkey_saddle_submit.overlay
+    }));
 
     let mule_instance = EntityModelInstance::donkey(
         175,
@@ -2624,17 +2630,21 @@ fn equine_saddle_layer_uses_family_specific_models_and_textures() {
     let mule_meshes = entity_model_textured_meshes(&[mule_instance], &atlas);
     assert_equine_submissions_match_vanilla(&mule_meshes, mule_instance);
     let mule = &mule_meshes.cutout;
-    assert_eq!(mule.cutout_faces, 72 + 114);
+    let mule_saddle_mesh = &mule_meshes.armor_cutout;
+    assert_eq!(mule.cutout_faces, 72);
+    assert_eq!(mule_saddle_mesh.cutout_faces, 114);
     let mule_base = mule_meshes.submissions[0];
     let mule_saddle = mule_meshes.submissions[1];
-    assert!(mule.vertices[..288]
+    assert!(mule
+        .vertices
         .iter()
         .all(|vertex| vertex.light == mule_base.light && vertex.overlay == mule_base.overlay));
-    assert!(mule.vertices[288..]
+    assert!(mule_saddle_mesh
+        .vertices
         .iter()
         .all(|vertex| vertex.light == mule_saddle.light && vertex.overlay == mule_saddle.overlay));
-    let (_, donkey_max) = textured_mesh_extents(&donkey);
-    let (_, mule_max) = textured_mesh_extents(&mule);
+    let (_, donkey_max) = textured_mesh_extents(donkey_saddle);
+    let (_, mule_max) = textured_mesh_extents(mule_saddle_mesh);
     assert!(
         mule_max[1] > donkey_max[1],
         "the mule saddle layer uses the larger 0.92 layer scale"
@@ -2668,8 +2678,12 @@ fn equine_saddle_layer_uses_family_specific_models_and_textures() {
     let zombie_meshes = entity_model_textured_meshes(&[zombie_instance], &atlas);
     assert_equine_submissions_match_vanilla(&zombie_meshes, zombie_instance);
     let zombie = &zombie_meshes.cutout;
-    assert_eq!(skeleton.cutout_faces, 72 + 102);
-    assert_eq!(zombie.cutout_faces, 72 + 102);
+    let skeleton_saddle = &skeleton_meshes.armor_cutout;
+    let zombie_saddle = &zombie_meshes.armor_cutout;
+    assert_eq!(skeleton.cutout_faces, 72);
+    assert_eq!(zombie.cutout_faces, 72);
+    assert_eq!(skeleton_saddle.cutout_faces, 102);
+    assert_eq!(zombie_saddle.cutout_faces, 102);
     assert_eq!(zombie_meshes.submissions.len(), 2);
     assert_eq!(
         zombie_meshes.submissions[1].render_type,
@@ -2686,24 +2700,18 @@ fn equine_saddle_layer_uses_family_specific_models_and_textures() {
         ),
         (0, 1)
     );
+    assert_textured_vertices_match_submission(&skeleton.vertices, skeleton_meshes.submissions[0]);
     assert_textured_vertices_match_submission(
-        &skeleton.vertices[..288],
-        skeleton_meshes.submissions[0],
-    );
-    assert_textured_vertices_match_submission(
-        &skeleton.vertices[288..],
+        &skeleton_saddle.vertices,
         skeleton_meshes.submissions[1],
     );
+    assert_textured_vertices_match_submission(&zombie.vertices, zombie_meshes.submissions[0]);
     assert_textured_vertices_match_submission(
-        &zombie.vertices[..288],
-        zombie_meshes.submissions[0],
-    );
-    assert_textured_vertices_match_submission(
-        &zombie.vertices[288..],
+        &zombie_saddle.vertices,
         zombie_meshes.submissions[1],
     );
-    let skeleton_overlay_uv = skeleton.vertices[288].uv;
-    let zombie_overlay_uv = zombie.vertices[288].uv;
+    let skeleton_overlay_uv = skeleton_saddle.vertices[0].uv;
+    let zombie_overlay_uv = zombie_saddle.vertices[0].uv;
     assert_ne!(
         skeleton_overlay_uv, zombie_overlay_uv,
         "skeleton and zombie horse saddles sample different equipment-layer atlas regions"

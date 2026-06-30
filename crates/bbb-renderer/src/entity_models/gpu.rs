@@ -315,6 +315,122 @@ fn fs_main(input: VertexOut, @builtin(front_facing) front_facing: bool) -> @loca
 }
 "#;
 
+pub(super) const ENTITY_MODEL_ARMOR_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
+    fog_visibility_ends: vec4<f32>,
+    minecraft_light0: vec4<f32>,
+    minecraft_light1: vec4<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+
+@group(0) @binding(1)
+var entity_texture_atlas: texture_2d<f32>;
+
+@group(0) @binding(2)
+var entity_sampler: sampler;
+
+@group(1) @binding(0)
+var lightmap_texture: texture_2d<f32>;
+
+@group(1) @binding(1)
+var lightmap_sampler: sampler;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) tint: vec4<f32>,
+    @location(3) light: vec2<f32>,
+    @location(5) normal: vec3<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+    @location(1) tint: vec4<f32>,
+    @location(2) light: vec2<f32>,
+    @location(3) normal: vec3<f32>,
+    @location(4) spherical_distance: f32,
+    @location(5) cylindrical_distance: f32,
+};
+
+fn sample_lightmap(light: vec2<f32>) -> vec3<f32> {
+    let uv = clamp(
+        light * (15.0 / 16.0) + vec2<f32>(0.5 / 16.0),
+        vec2<f32>(0.5 / 16.0),
+        vec2<f32>(15.5 / 16.0),
+    );
+    return textureSample(lightmap_texture, lightmap_sampler, uv).rgb;
+}
+
+fn diffuse_light(normal: vec3<f32>) -> f32 {
+    let light0 = normalize(camera.minecraft_light0.xyz);
+    let light1 = normalize(camera.minecraft_light1.xyz);
+    let light_value = max(vec2<f32>(0.0), vec2<f32>(dot(light0, normal), dot(light1, normal)));
+    return min(1.0, (light_value.x + light_value.y) * 0.6 + 0.4);
+}
+
+fn per_face_diffuse_light(normal: vec3<f32>, front_facing: bool) -> f32 {
+    if (front_facing) {
+        return diffuse_light(normal);
+    }
+    return diffuse_light(-normal);
+}
+
+fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
+    if (vertex_distance <= fog_start) {
+        return 0.0;
+    }
+    if (vertex_distance >= fog_end) {
+        return 1.0;
+    }
+    return (vertex_distance - fog_start) / (fog_end - fog_start);
+}
+
+fn apply_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f32) -> vec4<f32> {
+    let fog_value = max(
+        linear_fog_value(spherical_distance, camera.fog_distances.x, camera.fog_distances.y),
+        linear_fog_value(cylindrical_distance, camera.fog_distances.z, camera.fog_distances.w),
+    );
+    return vec4<f32>(mix(color.rgb, camera.fog_color.rgb, fog_value * camera.fog_color.a), color.a);
+}
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
+    out.uv = input.uv;
+    out.tint = input.tint;
+    out.light = input.light;
+    out.normal = normalize(input.normal);
+    let fog_pos = input.position - camera.camera_position.xyz;
+    out.spherical_distance = length(fog_pos);
+    out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<f32> {
+    let texel = textureSample(entity_texture_atlas, entity_sampler, input.uv) * input.tint;
+    if texel.a <= 0.1 {
+        discard;
+    }
+    let light_color = sample_lightmap(input.light);
+    return apply_fog(vec4<f32>(texel.rgb * per_face_diffuse_light(input.normal, front_facing) * light_color, texel.a), input.spherical_distance, input.cylindrical_distance);
+}
+"#;
+
 pub(super) const ENTITY_MODEL_TEXTURED_CULL_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
@@ -1090,6 +1206,54 @@ pub(crate) fn create_entity_model_textured_cull_pipeline(
     )
 }
 
+/// Vanilla `RenderPipelines.ARMOR_CUTOUT_NO_CULL` / `ARMOR_TRANSLUCENT`: entity
+/// shader with `NO_OVERLAY`, `PER_FACE_LIGHTING`, alpha cutoff `0.1`, default
+/// depth writes, and no cull. The translucent variant enables vanilla
+/// translucent blending.
+const ENTITY_MODEL_ARMOR_CUTOUT_BLEND: Option<wgpu::BlendState> = None;
+const ENTITY_MODEL_ARMOR_TRANSLUCENT_BLEND: Option<wgpu::BlendState> =
+    Some(wgpu::BlendState::ALPHA_BLENDING);
+const ENTITY_MODEL_ARMOR_DEPTH_WRITE_ENABLED: bool = true;
+const ENTITY_MODEL_ARMOR_CULL_MODE: Option<wgpu::Face> = None;
+
+pub(crate) fn create_entity_model_armor_cutout_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_entity_model_textured_pipeline_with_depth(
+        device,
+        format,
+        bind_group_layout,
+        Some(lightmap_bind_group_layout),
+        "bbb-entity-model-armor-cutout",
+        ENTITY_MODEL_ARMOR_SHADER,
+        ENTITY_MODEL_ARMOR_CUTOUT_BLEND,
+        ENTITY_MODEL_ARMOR_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_ARMOR_CULL_MODE,
+    )
+}
+
+pub(crate) fn create_entity_model_armor_translucent_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_entity_model_textured_pipeline_with_depth(
+        device,
+        format,
+        bind_group_layout,
+        Some(lightmap_bind_group_layout),
+        "bbb-entity-model-armor-translucent",
+        ENTITY_MODEL_ARMOR_SHADER,
+        ENTITY_MODEL_ARMOR_TRANSLUCENT_BLEND,
+        ENTITY_MODEL_ARMOR_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_ARMOR_CULL_MODE,
+    )
+}
+
 /// Vanilla `RenderPipelines.EYES`: translucent alpha blend, depth-test `LESS_EQUAL`,
 /// depth write disabled, and cull off.
 const ENTITY_MODEL_EYES_BLEND: wgpu::BlendState = wgpu::BlendState::ALPHA_BLENDING;
@@ -1670,6 +1834,11 @@ impl Renderer {
                 meshes.cutout_cull,
                 "bbb-entity-model-textured-cull",
             );
+            self.entity_model_armor_cutout_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
+                &self.device,
+                meshes.armor_cutout,
+                "bbb-entity-model-armor-cutout",
+            );
             self.entity_model_eyes_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
                 &self.device,
                 meshes.eyes,
@@ -1690,6 +1859,12 @@ impl Renderer {
                 meshes.translucent,
                 "bbb-entity-model-translucent",
             );
+            self.entity_model_armor_translucent_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.armor_translucent,
+                    "bbb-entity-model-armor-translucent",
+                );
             self.entity_model_translucent_emissive_mesh =
                 create_entity_model_textured_mesh_gpu_from_mesh(
                     &self.device,
@@ -1750,6 +1925,12 @@ impl Renderer {
                     meshes.dynamic_player_texture_cutout_cull,
                     "bbb-entity-dynamic-player-texture-cutout-cull",
                 );
+            self.entity_dynamic_player_texture_armor_cutout_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.dynamic_player_texture_armor_cutout,
+                    "bbb-entity-dynamic-player-texture-armor-cutout",
+                );
             self.entity_dynamic_player_texture_translucent_mesh =
                 create_entity_model_textured_mesh_gpu_from_mesh(
                     &self.device,
@@ -1792,7 +1973,9 @@ impl Renderer {
         } else {
             self.entity_model_textured_mesh = None;
             self.entity_model_textured_cull_mesh = None;
+            self.entity_model_armor_cutout_mesh = None;
             self.entity_model_translucent_mesh = None;
+            self.entity_model_armor_translucent_mesh = None;
             self.entity_model_translucent_emissive_mesh = None;
             self.entity_model_item_entity_translucent_mesh = None;
             self.entity_model_item_entity_translucent_cull_mesh = None;
@@ -1808,6 +1991,7 @@ impl Renderer {
             self.entity_dynamic_player_skin_item_entity_translucent_cull_mesh = None;
             self.entity_dynamic_player_texture_cutout_mesh = None;
             self.entity_dynamic_player_texture_cutout_cull_mesh = None;
+            self.entity_dynamic_player_texture_armor_cutout_mesh = None;
             self.entity_dynamic_player_texture_translucent_mesh = None;
             self.entity_dynamic_player_texture_item_entity_translucent_mesh = None;
             self.entity_dynamic_player_texture_item_entity_translucent_cull_mesh = None;
@@ -1827,7 +2011,13 @@ impl Renderer {
             self.entity_model_textured_cull_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
+            self.entity_model_armor_cutout_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
             self.entity_model_translucent_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_model_armor_translucent_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_translucent_emissive_mesh
@@ -1867,6 +2057,9 @@ impl Renderer {
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_dynamic_player_texture_cutout_cull_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_dynamic_player_texture_armor_cutout_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_dynamic_player_texture_translucent_mesh
@@ -2569,7 +2762,9 @@ fn create_entity_model_scroll_mesh_gpu_from_mesh(
 #[cfg(test)]
 mod tests {
     use super::{
-        entity_model_glint_shader, ENTITY_MODEL_ADDITIVE_BLEND, ENTITY_MODEL_EYES_BLEND,
+        entity_model_glint_shader, ENTITY_MODEL_ADDITIVE_BLEND, ENTITY_MODEL_ARMOR_CULL_MODE,
+        ENTITY_MODEL_ARMOR_CUTOUT_BLEND, ENTITY_MODEL_ARMOR_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_ARMOR_SHADER, ENTITY_MODEL_ARMOR_TRANSLUCENT_BLEND, ENTITY_MODEL_EYES_BLEND,
         ENTITY_MODEL_EYES_CULL_MODE, ENTITY_MODEL_EYES_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_GLINT_BLEND, ENTITY_MODEL_GLINT_DEPTH_COMPARE,
         ENTITY_MODEL_GLINT_DEPTH_WRITE_ENABLED, ENTITY_MODEL_OUTLINE_BLEND,
@@ -2626,6 +2821,56 @@ mod tests {
                 && !ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER.contains("sample_lightmap"),
             "vanilla ENTITY_EMISSIVE snippet omits LightTexture sampling"
         );
+    }
+
+    #[test]
+    fn entity_model_armor_shader_matches_vanilla_no_overlay_entity_pipeline() {
+        assert!(
+            ENTITY_MODEL_ARMOR_SHADER.contains("if texel.a <= 0.1")
+                && ENTITY_MODEL_ARMOR_SHADER.contains("discard"),
+            "vanilla armor pipelines keep ALPHA_CUTOUT 0.1"
+        );
+        assert!(
+            ENTITY_MODEL_ARMOR_SHADER.contains("sample_lightmap")
+                && ENTITY_MODEL_ARMOR_SHADER.contains("per_face_diffuse_light"),
+            "vanilla armor pipelines keep LightTexture and PER_FACE_LIGHTING"
+        );
+        assert!(
+            !ENTITY_MODEL_ARMOR_SHADER.contains("overlay"),
+            "vanilla armor pipelines define NO_OVERLAY"
+        );
+    }
+
+    #[test]
+    fn entity_model_armor_pipeline_state_matches_vanilla_armor_pipelines() {
+        assert!(
+            ENTITY_MODEL_ARMOR_CUTOUT_BLEND.is_none(),
+            "armorCutoutNoCull does not enable blending"
+        );
+        let blend = ENTITY_MODEL_ARMOR_TRANSLUCENT_BLEND
+            .expect("armorTranslucent uses TRANSLUCENT blend state");
+        assert_eq!(
+            blend.color.src_factor,
+            wgpu::BlendFactor::SrcAlpha,
+            "vanilla BlendFunction.TRANSLUCENT uses SourceFactor.SRC_ALPHA for colour"
+        );
+        assert_eq!(
+            blend.color.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha,
+            "vanilla BlendFunction.TRANSLUCENT uses DestFactor.ONE_MINUS_SRC_ALPHA for colour"
+        );
+        assert_eq!(
+            blend.alpha.src_factor,
+            wgpu::BlendFactor::One,
+            "vanilla BlendFunction.TRANSLUCENT uses SourceFactor.ONE for alpha"
+        );
+        assert_eq!(
+            blend.alpha.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha,
+            "vanilla BlendFunction.TRANSLUCENT uses DestFactor.ONE_MINUS_SRC_ALPHA for alpha"
+        );
+        assert!(ENTITY_MODEL_ARMOR_DEPTH_WRITE_ENABLED);
+        assert_eq!(ENTITY_MODEL_ARMOR_CULL_MODE, None);
     }
 
     #[test]

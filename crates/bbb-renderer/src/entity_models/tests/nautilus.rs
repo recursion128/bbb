@@ -425,6 +425,7 @@ fn nautilus_saddle_layer_renders_for_adult_living_and_zombie_only() {
     assert_nautilus_submissions_match_vanilla(&saddled_meshes, saddled_instance);
     let bare = &bare_meshes.cutout;
     let saddled = &saddled_meshes.cutout;
+    let saddle_mesh = &saddled_meshes.armor_cutout;
     assert_eq!(saddled_meshes.submissions.len(), 2);
     let saddle_submit = saddled_meshes.submissions[1];
     assert_eq!(
@@ -445,14 +446,16 @@ fn nautilus_saddle_layer_renders_for_adult_living_and_zombie_only() {
     assert_eq!(saddle_submit.light, adult.render_state.shader_light());
     assert_eq!(saddle_submit.overlay, [0.0, 10.0]);
     // Saddle layer: one inflated shell cube plus the adult body/mouth subtree = 6 cubes.
-    assert_eq!(saddled.cutout_faces - bare.cutout_faces, 36);
-    assert_eq!(saddled.vertices.len() - bare.vertices.len(), 144);
+    assert_eq!(saddled.cutout_faces, bare.cutout_faces);
+    assert_eq!(saddled.vertices.len(), bare.vertices.len());
+    assert_eq!(saddle_mesh.cutout_faces, 36);
+    assert_eq!(saddle_mesh.vertices.len(), 144);
     assert_eq!(
-        saddled.vertices[bare.vertices.len()].light,
+        saddle_mesh.vertices[0].light,
         adult.render_state.shader_light()
     );
-    assert_eq!(saddled.vertices[bare.vertices.len()].overlay, [0.0, 10.0]);
-    let first_saddle_vertex = saddled.vertices[bare.vertices.len()].uv;
+    assert_eq!(saddle_mesh.vertices[0].overlay, [0.0, 10.0]);
+    let first_saddle_vertex = saddle_mesh.vertices[0].uv;
     assert!(first_saddle_vertex[0] >= saddle_uv.min[0]);
     assert!(first_saddle_vertex[0] <= saddle_uv.max[0]);
     assert!(first_saddle_vertex[1] >= saddle_uv.min[1]);
@@ -469,6 +472,7 @@ fn nautilus_saddle_layer_renders_for_adult_living_and_zombie_only() {
         baby_bare.cutout.vertices.len(),
         "vanilla supplies no baby nautilus saddle model"
     );
+    assert!(baby_saddled.armor_cutout.vertices.is_empty());
 
     let zombie = EntityModelInstance::new(
         922,
@@ -481,13 +485,11 @@ fn nautilus_saddle_layer_renders_for_adult_living_and_zombie_only() {
     let zombie_saddled = entity_model_textured_meshes(&[zombie_saddled_instance], &atlas);
     assert_nautilus_submissions_match_vanilla(&zombie_bare, zombie);
     assert_nautilus_submissions_match_vanilla(&zombie_saddled, zombie_saddled_instance);
+    assert_eq!(zombie_saddled.armor_cutout.cutout_faces, 36);
+    assert_eq!(zombie_saddled.armor_cutout.vertices.len(), 144);
     assert_eq!(
-        zombie_saddled.cutout.cutout_faces - zombie_bare.cutout.cutout_faces,
-        36
-    );
-    assert_eq!(
-        zombie_saddled.cutout.vertices.len() - zombie_bare.cutout.vertices.len(),
-        144
+        zombie_saddled.cutout.vertices.len(),
+        zombie_bare.cutout.vertices.len()
     );
 
     let warm = EntityModelInstance::new(
@@ -501,13 +503,11 @@ fn nautilus_saddle_layer_renders_for_adult_living_and_zombie_only() {
     let warm_saddled = entity_model_textured_meshes(&[warm_saddled_instance], &atlas);
     assert_nautilus_submissions_match_vanilla(&warm_bare, warm);
     assert_nautilus_submissions_match_vanilla(&warm_saddled, warm_saddled_instance);
+    assert_eq!(warm_saddled.armor_cutout.cutout_faces, 36);
+    assert_eq!(warm_saddled.armor_cutout.vertices.len(), 144);
     assert_eq!(
-        warm_saddled.cutout.cutout_faces - warm_bare.cutout.cutout_faces,
-        36
-    );
-    assert_eq!(
-        warm_saddled.cutout.vertices.len() - warm_bare.cutout.vertices.len(),
-        144
+        warm_saddled.cutout.vertices.len(),
+        warm_bare.cutout.vertices.len()
     );
 }
 
@@ -547,6 +547,7 @@ fn nautilus_saddle_submission_survives_missing_saddle_texture_atlas_entry() {
         192,
         "missing nautilus_saddle/saddle.png suppresses only folded saddle geometry"
     );
+    assert!(meshes.armor_cutout.vertices.is_empty());
     assert!(meshes
         .cutout
         .vertices
@@ -605,6 +606,7 @@ fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
     assert_nautilus_submissions_match_vanilla(&armored_meshes, armored_instance);
     let bare = &bare_meshes.cutout;
     let armored = &armored_meshes.cutout;
+    let armor_mesh = &armored_meshes.armor_cutout;
     assert_eq!(armored_meshes.submissions.len(), 2);
     let armor_submit = armored_meshes.submissions[1];
     assert_eq!(
@@ -622,14 +624,16 @@ fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
     assert_eq!(armor_submit.light, adult.render_state.shader_light());
     assert_eq!(armor_submit.overlay, [0.0, 10.0]);
     // Armor layer: adult shell/body/mouth subtree = 8 cubes.
-    assert_eq!(armored.cutout_faces - bare.cutout_faces, 48);
-    assert_eq!(armored.vertices.len() - bare.vertices.len(), 192);
+    assert_eq!(armored.cutout_faces, bare.cutout_faces);
+    assert_eq!(armored.vertices.len(), bare.vertices.len());
+    assert_eq!(armor_mesh.cutout_faces, 48);
+    assert_eq!(armor_mesh.vertices.len(), 192);
     assert_eq!(
-        armored.vertices[bare.vertices.len()].light,
+        armor_mesh.vertices[0].light,
         adult.render_state.shader_light()
     );
-    assert_eq!(armored.vertices[bare.vertices.len()].overlay, [0.0, 10.0]);
-    let first_armor_vertex = armored.vertices[bare.vertices.len()].uv;
+    assert_eq!(armor_mesh.vertices[0].overlay, [0.0, 10.0]);
+    let first_armor_vertex = armor_mesh.vertices[0].uv;
     assert!(first_armor_vertex[0] >= iron_uv.min[0]);
     assert!(first_armor_vertex[0] <= iron_uv.max[0]);
     assert!(first_armor_vertex[1] >= iron_uv.min[1]);
@@ -666,19 +670,19 @@ fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
         "saddle sequence advances after body armor"
     );
     assert_eq!(
-        armored_saddled_meshes.cutout.vertices.len() - armored.vertices.len(),
+        armored_saddled_meshes.armor_cutout.vertices.len() - armor_mesh.vertices.len(),
         144
     );
+    assert!(armored_saddled_meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(
+            |vertex| vertex.light == armored_saddled_meshes.submissions[0].light
+                && vertex.overlay == armored_saddled_meshes.submissions[0].overlay
+        ));
     assert!(
-        armored_saddled_meshes.cutout.vertices[..bare.vertices.len()]
-            .iter()
-            .all(
-                |vertex| vertex.light == armored_saddled_meshes.submissions[0].light
-                    && vertex.overlay == armored_saddled_meshes.submissions[0].overlay
-            )
-    );
-    assert!(
-        armored_saddled_meshes.cutout.vertices[bare.vertices.len()..armored.vertices.len()]
+        armored_saddled_meshes.armor_cutout.vertices[..armor_mesh.vertices.len()]
             .iter()
             .all(
                 |vertex| vertex.light == armored_saddled_meshes.submissions[1].light
@@ -686,7 +690,7 @@ fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
             )
     );
     assert!(
-        armored_saddled_meshes.cutout.vertices[armored.vertices.len()..]
+        armored_saddled_meshes.armor_cutout.vertices[armor_mesh.vertices.len()..]
             .iter()
             .all(
                 |vertex| vertex.light == armored_saddled_meshes.submissions[2].light
@@ -703,6 +707,7 @@ fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
         bare.vertices.len(),
         "vanilla 26.1 has no chainmail nautilus_body equipment texture"
     );
+    assert!(invalid_material.armor_cutout.vertices.is_empty());
 
     let baby = EntityModelInstance::nautilus(931, [0.0, 64.0, 0.0], 0.0, true);
     let baby_armored_instance = baby.with_nautilus_body_armor(Some(EntityArmorMaterial::Iron));
@@ -715,6 +720,7 @@ fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
         baby_bare.cutout.vertices.len(),
         "vanilla supplies no baby nautilus armor model"
     );
+    assert!(baby_armored.armor_cutout.vertices.is_empty());
 
     let zombie = EntityModelInstance::new(
         932,
@@ -728,13 +734,11 @@ fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
     let zombie_armored = entity_model_textured_meshes(&[zombie_armored_instance], &atlas);
     assert_nautilus_submissions_match_vanilla(&zombie_bare, zombie);
     assert_nautilus_submissions_match_vanilla(&zombie_armored, zombie_armored_instance);
+    assert_eq!(zombie_armored.armor_cutout.cutout_faces, 48);
+    assert_eq!(zombie_armored.armor_cutout.vertices.len(), 192);
     assert_eq!(
-        zombie_armored.cutout.cutout_faces - zombie_bare.cutout.cutout_faces,
-        48
-    );
-    assert_eq!(
-        zombie_armored.cutout.vertices.len() - zombie_bare.cutout.vertices.len(),
-        192
+        zombie_armored.cutout.vertices.len(),
+        zombie_bare.cutout.vertices.len()
     );
 
     let warm = EntityModelInstance::new(
@@ -760,6 +764,10 @@ fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
     assert_eq!(
         warm_armored.cutout.vertices.len(),
         zombie_armored.cutout.vertices.len()
+    );
+    assert_eq!(
+        warm_armored.armor_cutout.vertices.len(),
+        zombie_armored.armor_cutout.vertices.len()
     );
 }
 
@@ -799,6 +807,7 @@ fn nautilus_body_armor_submission_survives_missing_armor_texture_atlas_entry() {
         192,
         "missing nautilus_body/iron.png suppresses only folded armor geometry"
     );
+    assert!(meshes.armor_cutout.vertices.is_empty());
     assert!(meshes
         .cutout
         .vertices

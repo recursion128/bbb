@@ -360,10 +360,10 @@ When an agent does any of the following, update this file in the same slice:
     `entityTranslucentCullItemTarget` draw in vanilla order across static,
     dynamic player-skin, and dynamic profile-texture atlases within their target.
     Later GPU work should split the remaining currently-coalesced render-type state
-    such as no-cull `entityCutout*`, `armorCutoutNoCull`, and armor translucent
-    variants into equivalent pipeline state, plus dynamic LightTexture /
-    darkness-adjusted gamma / diffuse visual parity. `Eyes`, `waterMask`, glint,
-    and scroll render types now have dedicated baseline GPU pipelines; remaining
+    such as no-cull `entityCutout*` variants into equivalent pipeline state,
+    plus dynamic LightTexture / darkness-adjusted gamma / diffuse visual parity.
+    `armorCutoutNoCull`, `armorTranslucent`, `Eyes`, `waterMask`, glint, and
+    scroll render types now have dedicated baseline GPU pipelines; remaining
     work there is narrower shader/time/sorting visual parity.
   - Entity outline target writes now use a dedicated vanilla-shaped
     `core/rendertype_outline` shader: texture alpha is only a zero-alpha discard
@@ -1659,8 +1659,10 @@ When an agent does any of the following, update this file in the same slice:
       `breezeWind`, energy-swirl, equipment, cape/wings, wolf-collar layers,
       object/projectile renderer submits (arrows, tridents, evoker fangs, llama spit,
       shulker bullets, wither skulls, and end-crystal bodies), and crystal-beam submissions, while the GPU
-      backend still folds compatible submits into shared meshes and now fills standard folded mesh
-      vertices from each submission's resolved light / overlay instead of a later per-entity overwrite.
+      backend still folds compatible submits into shared meshes, with dedicated
+      exceptions for armor cutout / armor translucent / eyes / outline / glint /
+      scroll / water-mask state, and now fills standard folded mesh vertices
+      from each submission's resolved light / overlay instead of a later per-entity overwrite.
       NO_OVERLAY selection is keyed by pass identity rather than texture alone, so `wither.png` can be
       no-overlay for `WitherSkullRenderer` without clearing the Wither boss body overlay.
       The render-type expression is pinned by
@@ -2402,11 +2404,11 @@ When an agent does any of the following, update this file in the same slice:
       `armorCutoutNoCull` / `armorTranslucent` render type names, tints, `entity_model_root_transform`,
       base entity light plus hurt/white overlay versus collar/armor/crack
       `OverlayTexture.NO_OVERLAY`, and explicit `(order, submit_sequence)` before
-      folded cutout/translucent light/overlay geometry checks; missing-atlas coverage now pins that
+      folded cutout / armor-cutout / armor-translucent light/overlay geometry checks; missing-atlas coverage now pins that
       adult/baby collar submits are still recorded without `wolf_collar*.png`, suppressing only
       folded collar geometry, and that the medium-damage `armorTranslucent` crack submit is still
       recorded after the base armor layers when only the crack texture is absent, suppressing only
-      folded translucent crack geometry, including the texture-backed invisible states:
+      folded armor-translucent crack geometry, including the texture-backed invisible states:
       the invisible-but-visible-to-client base body branch (`entityTranslucentCullItemTarget`,
       `38/255` alpha, base order `(0,0)`) and the hidden/glowing wolf-armor layer
       exception, now routed through the dispatch-owned invisible ungated layer
@@ -2568,14 +2570,14 @@ When an agent does any of the following, update this file in the same slice:
       base submits now also pin vanilla entity light plus hurt/white overlay,
       `HorseMarkingLayer` keeps entity light and zeroes the white overlay column,
       and saddle/body-armor equipment submits keep entity light while forcing
-      `OverlayTexture.NO_OVERLAY` before folded cutout/translucent geometry checks;
+      `OverlayTexture.NO_OVERLAY` before folded armor-cutout geometry checks;
       missing-atlas coverage pins that a marked horse still records the
       `entityTranslucent` `horse_markings_whitedots.png` submission before only
       the folded markings geometry is suppressed, and that a saddled horse still records the
       `armorCutoutNoCull` `horse_saddle/saddle.png` submission before only the
-      folded saddle geometry is suppressed. Missing-atlas coverage now also pins
+      folded armor-cutout saddle geometry is suppressed. Missing-atlas coverage now also pins
       that an adult iron horse body-armor submission is still recorded before
-      only the folded armor geometry is suppressed.
+      only the folded armor-cutout geometry is suppressed.
       Horse, donkey/mule, and undead-horse base submissions plus the horse
       markings overlay, saddle equipment submissions, and horse/zombie-horse body-armor
       submissions now come from the shared dispatch sink rather than
@@ -2682,11 +2684,11 @@ When an agent does any of the following, update this file in the same slice:
       records vanilla `EquipmentLayerRenderer` submission metadata generated from
       `equipment_layer_pass` (`ModelLayers.LLAMA_DECOR` / `LLAMA_BABY_DECOR`,
       `armorCutoutNoCull`, `order(1)`, submit sequence 1, white tint, base transform, entity light, and
-      `OverlayTexture.NO_OVERLAY`) before folding into the cutout bucket. The decor submit now
+      `OverlayTexture.NO_OVERLAY`) before folding into the armor-cutout bucket. The decor submit now
       comes from the shared Llama dispatch sink rather than a post-base helper. The base
       `entityCutout` submission now also pins vanilla `LivingEntityRenderer`
-      light plus hurt/white overlay metadata, and folded cutout vertices inherit
-      the corresponding base or decor submission metadata. Missing-atlas coverage
+      light plus hurt/white overlay metadata, and folded cutout / armor-cutout
+      vertices inherit the corresponding base or decor submission metadata. Missing-atlas coverage
       pins that adult carpet and baby trader decor submissions are still recorded
       before only the folded decor geometry is suppressed. The llama spit
       projectile is covered separately below with object-renderer no-overlay
@@ -3611,9 +3613,9 @@ When an agent does any of the following, update this file in the same slice:
       submission generated through the shared Strider dispatch sink rather than a post-base helper,
       from `equipment_layer_pass` for vanilla `ModelLayers.STRIDER_SADDLE` at the same collector
       order with `submit_sequence = 1`, entity light, and `OverlayTexture.NO_OVERLAY`, after the
-      base submit. Folded saddle vertices inherit the saddle metadata;
+      base submit. Folded armor-cutout saddle vertices inherit the saddle metadata;
       missing-atlas coverage pins that the saddle submission is still recorded without
-      `strider_saddle/saddle.png` while only folded saddle geometry is suppressed.
+      `strider_saddle/saddle.png` while only folded armor-cutout saddle geometry is suppressed.
       Baby striders intentionally skip this layer because vanilla supplies `null` for the baby
       saddle model, and tests pin that the baby saddle path still has only the base submission.
       The suffocating shake is also
@@ -4850,7 +4852,8 @@ When an agent does any of the following, update this file in the same slice:
       with white tint and the same transform, entity light, and `OverlayTexture.NO_OVERLAY` at `(0, 1)`,
       with saddle advancing to `(0, 2)` when a valid body-armor layer is also present. These equipment
       submits now run through the shared Nautilus / ZombieNautilus dispatch sink rather than post-base
-      helpers, and a regression pins the body-armor-before-saddle sequence when both layers are present.
+      helpers, fold into the armor-cutout bucket, and a regression pins the
+      body-armor-before-saddle sequence when both layers are present.
       Baby living nautilus remain base-only
       because vanilla `SimpleEquipmentLayer` has no
       baby model. The colored debug path stays as a fallback (it renders a tan shell over a pale body)

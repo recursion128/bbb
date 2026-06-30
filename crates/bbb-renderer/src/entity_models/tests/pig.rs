@@ -418,6 +418,7 @@ fn pig_saddle_layer_renders_for_adults_only() {
     assert_pig_base_submission_at(&saddled_meshes, 0, saddled_instance);
     let bare = &bare_meshes.cutout;
     let saddled = &saddled_meshes.cutout;
+    let saddle_mesh = &saddled_meshes.armor_cutout;
     let saddle_submit = saddled_meshes.submissions[1];
     assert_eq!(
         saddle_submit.render_type,
@@ -443,11 +444,13 @@ fn pig_saddle_layer_renders_for_adults_only() {
         saddle_submit.transform,
         entity_model_root_transform(saddled_instance)
     );
-    assert_eq!(saddled.cutout_faces - bare.cutout_faces, 42);
-    assert_eq!(saddled.vertices.len() - bare.vertices.len(), 168);
-    assert_close2(saddled.vertices[168].uv, [16.0 / 64.0, 64.0 / 160.0]);
+    assert_eq!(saddled.cutout_faces, bare.cutout_faces);
+    assert_eq!(saddled.vertices.len(), bare.vertices.len());
+    assert_eq!(saddle_mesh.cutout_faces, 42);
+    assert_eq!(saddle_mesh.vertices.len(), 168);
+    assert_close2(saddle_mesh.vertices[0].uv, [16.0 / 64.0, 64.0 / 160.0]);
     let (bare_min, bare_max) = textured_mesh_extents(&bare);
-    let (saddle_min, saddle_max) = textured_mesh_extents(&saddled);
+    let (saddle_min, saddle_max) = textured_mesh_extents(saddle_mesh);
     assert!(saddle_min[0] < bare_min[0]);
     assert!(saddle_max[0] > bare_max[0]);
 
@@ -522,6 +525,7 @@ fn pig_saddle_submission_survives_missing_texture_atlas_entry() {
         bare_meshes.cutout.cutout_faces
     );
     assert_eq!(saddled_meshes.cutout.vertices, bare_meshes.cutout.vertices);
+    assert!(saddled_meshes.armor_cutout.vertices.is_empty());
 }
 
 #[test]

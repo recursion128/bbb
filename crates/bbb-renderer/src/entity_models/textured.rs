@@ -203,7 +203,13 @@ struct PendingSortedScrollUpload {
 pub(super) struct EntityModelTexturedMeshes {
     pub(super) cutout: EntityModelTexturedMesh,
     pub(super) cutout_cull: EntityModelTexturedMesh,
+    /// Vanilla `armorCutoutNoCull` geometry keeps the entity lightmap and per-face lighting, but
+    /// uses the armor pipeline's no-overlay shader state.
+    pub(super) armor_cutout: EntityModelTexturedMesh,
     pub(super) translucent: EntityModelTexturedMesh,
+    /// Vanilla `armorTranslucent` geometry uses the dedicated armor translucent pipeline instead
+    /// of the generic `entityTranslucent` shader.
+    pub(super) armor_translucent: EntityModelTexturedMesh,
     pub(super) translucent_emissive: EntityModelTexturedMesh,
     pub(super) item_entity_translucent: EntityModelTexturedMesh,
     pub(super) item_entity_translucent_cull: EntityModelTexturedMesh,
@@ -227,6 +233,7 @@ pub(super) struct EntityModelTexturedMeshes {
     /// variable-size atlas while preserving the vanilla render type.
     pub(super) dynamic_player_texture_cutout: EntityModelTexturedMesh,
     pub(super) dynamic_player_texture_cutout_cull: EntityModelTexturedMesh,
+    pub(super) dynamic_player_texture_armor_cutout: EntityModelTexturedMesh,
     pub(super) dynamic_player_texture_translucent: EntityModelTexturedMesh,
     pub(super) dynamic_player_texture_item_entity_translucent: EntityModelTexturedMesh,
     pub(super) dynamic_player_texture_item_entity_translucent_cull: EntityModelTexturedMesh,
@@ -262,7 +269,9 @@ impl EntityModelTexturedMeshes {
         Self {
             cutout: EntityModelTexturedMesh::new(),
             cutout_cull: EntityModelTexturedMesh::new(),
+            armor_cutout: EntityModelTexturedMesh::new(),
             translucent: EntityModelTexturedMesh::new(),
+            armor_translucent: EntityModelTexturedMesh::new(),
             translucent_emissive: EntityModelTexturedMesh::new(),
             item_entity_translucent: EntityModelTexturedMesh::new(),
             item_entity_translucent_cull: EntityModelTexturedMesh::new(),
@@ -276,6 +285,7 @@ impl EntityModelTexturedMeshes {
             dynamic_player_skin_item_entity_translucent_cull: EntityModelTexturedMesh::new(),
             dynamic_player_texture_cutout: EntityModelTexturedMesh::new(),
             dynamic_player_texture_cutout_cull: EntityModelTexturedMesh::new(),
+            dynamic_player_texture_armor_cutout: EntityModelTexturedMesh::new(),
             dynamic_player_texture_translucent: EntityModelTexturedMesh::new(),
             dynamic_player_texture_item_entity_translucent: EntityModelTexturedMesh::new(),
             dynamic_player_texture_item_entity_translucent_cull: EntityModelTexturedMesh::new(),
@@ -302,6 +312,11 @@ impl EntityModelTexturedMeshes {
         &mut self,
         render_type: EntityModelLayerRenderType,
     ) -> &mut EntityModelTexturedMesh {
+        match render_type {
+            EntityModelLayerRenderType::ArmorCutoutNoCull => return &mut self.armor_cutout,
+            EntityModelLayerRenderType::ArmorTranslucent => return &mut self.armor_translucent,
+            _ => {}
+        }
         match render_type.mesh_bucket() {
             EntityModelLayerRenderBucket::Cutout => {
                 if render_type.surface_cull() {
@@ -366,6 +381,9 @@ impl EntityModelTexturedMeshes {
         &mut self,
         render_type: EntityModelLayerRenderType,
     ) -> &mut EntityModelTexturedMesh {
+        if render_type == EntityModelLayerRenderType::ArmorCutoutNoCull {
+            return &mut self.dynamic_player_texture_armor_cutout;
+        }
         match render_type.mesh_bucket() {
             EntityModelLayerRenderBucket::Cutout => {
                 if render_type.surface_cull() {

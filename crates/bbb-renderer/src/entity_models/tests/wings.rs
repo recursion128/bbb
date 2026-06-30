@@ -24,7 +24,7 @@ fn elytra_vertex_positions(
         .find(|entry| entry.texture == ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF)
         .expect("elytra atlas entry");
     meshes
-        .cutout
+        .armor_cutout
         .vertices
         .iter()
         .filter(|vertex| {
@@ -57,7 +57,7 @@ fn assert_elytra_vertices_have_vanilla_metadata(
         .find(|entry| entry.texture == ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF)
         .expect("elytra atlas entry");
     let vertices: Vec<_> = meshes
-        .cutout
+        .armor_cutout
         .vertices
         .iter()
         .filter(|vertex| {

@@ -1337,7 +1337,8 @@ fn player_wings_layer_uses_static_equipment_texture_submission() {
     assert_ne!(wings_submit.overlay, body_submit.overlay);
     assert_eq!((wings_submit.order, wings_submit.submit_sequence), (0, 4));
     assert_eq!(meshes.dynamic_player_texture_cutout.vertices.len(), 0);
-    assert_eq!(meshes.cutout.vertices.len(), 336);
+    assert_eq!(meshes.cutout.vertices.len(), 288);
+    assert_eq!(meshes.armor_cutout.vertices.len(), 48);
 }
 
 #[test]
@@ -1501,10 +1502,13 @@ fn player_wings_layer_prefers_ready_profile_elytra_texture_over_cape() {
         .iter()
         .all(|submit| submit.dynamic_player_texture != Some(profile_cape)));
     assert_eq!(meshes.cutout.vertices.len(), 288);
-    assert_eq!(meshes.dynamic_player_texture_cutout.vertices.len(), 48);
+    assert_eq!(
+        meshes.dynamic_player_texture_armor_cutout.vertices.len(),
+        48
+    );
     assert!(
         meshes
-            .dynamic_player_texture_cutout
+            .dynamic_player_texture_armor_cutout
             .vertices
             .iter()
             .all(|vertex| vertex.light == wings_submit.light
@@ -1588,10 +1592,13 @@ fn player_wings_layer_uses_ready_profile_cape_texture_when_elytra_is_absent() {
     assert_eq!(wings_submit.overlay, [0.0, 10.0]);
     assert_ne!(wings_submit.overlay, body_submit.overlay);
     assert_eq!((wings_submit.order, wings_submit.submit_sequence), (0, 4));
-    assert_eq!(meshes.dynamic_player_texture_cutout.vertices.len(), 48);
+    assert_eq!(
+        meshes.dynamic_player_texture_armor_cutout.vertices.len(),
+        48
+    );
     assert!(
         meshes
-            .dynamic_player_texture_cutout
+            .dynamic_player_texture_armor_cutout
             .vertices
             .iter()
             .all(|vertex| vertex.light == wings_submit.light
@@ -1634,6 +1641,10 @@ fn player_wings_layer_waits_for_profile_texture_upload() {
         .all(|submit| submit.texture != ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF));
     assert_eq!(meshes.cutout.vertices.len(), 288);
     assert!(meshes.dynamic_player_texture_cutout.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_armor_cutout
+        .vertices
+        .is_empty());
 }
 
 #[test]

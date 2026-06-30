@@ -850,9 +850,10 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
     assert_eq!(cracks.light, meshes.submissions[0].light);
     assert_eq!(cracks.overlay, [0.0, 10.0]);
     assert!(
-        !meshes.translucent.vertices.is_empty(),
-        "armorTranslucent cracks should emit into the translucent bucket"
+        !meshes.armor_translucent.vertices.is_empty(),
+        "armorTranslucent cracks should emit into the dedicated armor translucent bucket"
     );
+    assert!(meshes.translucent.vertices.is_empty());
     let collar = meshes.submissions[5];
     assert_eq!(collar.texture, WOLF_COLLAR_TEXTURE_REF);
     assert_eq!(collar.render_type, EntityModelLayerRenderType::EntityCutout);
@@ -1005,11 +1006,13 @@ fn invisible_wolf_body_armor_keeps_vanilla_layer_submissions() {
         invisible,
         dyed_tint,
     );
-    assert!(hidden.cutout.vertices.iter().all(|vertex| {
+    assert!(hidden.armor_cutout.vertices.iter().all(|vertex| {
         vertex.overlay == [0.0, 10.0] && vertex.light == invisible.render_state.shader_light()
     }));
-    assert!(!hidden.cutout.vertices.is_empty());
-    assert!(!hidden.translucent.vertices.is_empty());
+    assert!(!hidden.armor_cutout.vertices.is_empty());
+    assert!(!hidden.armor_translucent.vertices.is_empty());
+    assert!(hidden.cutout.vertices.is_empty());
+    assert!(hidden.translucent.vertices.is_empty());
 
     let self_visible = invisible.with_invisible_to_player(false);
     let self_visible_meshes = entity_model_textured_meshes(&[self_visible], &atlas);
