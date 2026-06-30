@@ -110,6 +110,8 @@ pub struct LocalPlayerInteractionState {
     #[serde(default)]
     pub using_item_hand: Option<InteractionHand>,
     #[serde(default)]
+    pub using_item_ticks: u32,
+    #[serde(default)]
     pub prediction_sequence: i32,
 }
 
@@ -527,20 +529,45 @@ impl WorldStore {
     }
 
     pub fn set_local_using_item(&mut self, using_item: bool) {
+        if using_item && !self.local_player.interaction.using_item {
+            self.local_player.interaction.using_item_ticks = 0;
+        }
+        if !using_item {
+            self.local_player.interaction.using_item_ticks = 0;
+        }
         self.local_player.interaction.using_item = using_item;
         self.local_player.interaction.using_item_hand =
             using_item.then_some(InteractionHand::MainHand);
     }
 
     pub fn set_local_using_item_with_hand(&mut self, using_item: bool, hand: InteractionHand) {
+        if using_item && !self.local_player.interaction.using_item {
+            self.local_player.interaction.using_item_ticks = 0;
+        }
+        if !using_item {
+            self.local_player.interaction.using_item_ticks = 0;
+        }
         self.local_player.interaction.using_item = using_item;
         self.local_player.interaction.using_item_hand = using_item.then_some(hand);
+    }
+
+    pub fn advance_local_using_item_ticks(&mut self, ticks: u32) {
+        if self.local_player.interaction.using_item {
+            self.local_player.interaction.using_item_ticks = self
+                .local_player
+                .interaction
+                .using_item_ticks
+                .saturating_add(ticks);
+        } else {
+            self.local_player.interaction.using_item_ticks = 0;
+        }
     }
 
     pub fn take_local_using_item(&mut self) -> bool {
         let using_item = self.local_player.interaction.using_item;
         self.local_player.interaction.using_item = false;
         self.local_player.interaction.using_item_hand = None;
+        self.local_player.interaction.using_item_ticks = 0;
         using_item
     }
 
@@ -999,7 +1026,11 @@ mod tests {
         );
 
         store.set_local_using_item(true);
+        assert_eq!(store.local_player().interaction.using_item_ticks, 0);
+        store.advance_local_using_item_ticks(3);
+        assert_eq!(store.local_player().interaction.using_item_ticks, 3);
         assert!(store.take_local_using_item());
+        assert_eq!(store.local_player().interaction.using_item_ticks, 0);
         assert!(!store.take_local_using_item());
     }
 
@@ -1027,6 +1058,7 @@ mod tests {
                 destroy_delay_ticks: 0,
                 using_item: true,
                 using_item_hand: Some(InteractionHand::MainHand),
+                using_item_ticks: 0,
                 prediction_sequence: 1,
             }
         );

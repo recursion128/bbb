@@ -57,6 +57,19 @@ use profile_skin::{entity_player_skin_model, profile_default_player_skin, profil
 use crate::ascii_font::{hud_ascii_atlas_from_image, load_ascii_font_texture};
 
 const FIREWORK_ROCKET_ITEM_ID: &str = "minecraft:firework_rocket";
+const BOW_ITEM_ID: &str = "minecraft:bow";
+const BRUSH_ITEM_ID: &str = "minecraft:brush";
+const CROSSBOW_ITEM_ID: &str = "minecraft:crossbow";
+const SPYGLASS_ITEM_ID: &str = "minecraft:spyglass";
+const TRIDENT_ITEM_ID: &str = "minecraft:trident";
+const ENDER_EYE_ITEM_ID: &str = "minecraft:ender_eye";
+const VANILLA_LONG_USE_DURATION_TICKS: i32 = 72_000;
+const VANILLA_BRUSH_USE_DURATION_TICKS: i32 = 200;
+const VANILLA_SPYGLASS_USE_DURATION_TICKS: i32 = 1_200;
+const VANILLA_ENDER_EYE_USE_DURATION_TICKS: i32 = 20;
+const VANILLA_CROSSBOW_CHARGE_DURATION_TICKS: i32 = 25;
+const VANILLA_BLOCKS_ATTACKS_COMPONENT_ID: i32 = 37;
+const VANILLA_KINETIC_WEAPON_COMPONENT_ID: i32 = 39;
 const ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/equipment/wings/elytra.png",
     size: [64, 32],
@@ -1325,6 +1338,7 @@ impl NativeItemRuntime {
                             default_max_damage: None,
                             bundle_selected_item_index: None,
                             using_item: false,
+                            use_context: ItemModelUseContext::inactive(),
                             cooldown_progress: 0.0,
                             crossbow_charge: CrossbowChargeType::None,
                             main_hand_left: None,
@@ -1517,10 +1531,36 @@ impl NativeItemRuntime {
         context_entity_type: Option<&str>,
         context_dimension: Option<&str>,
     ) -> Option<ItemAtlasIcon> {
+        self.icon_for_stack_with_context_and_use_context(
+            stack,
+            bundle_selected_item_index,
+            using_item,
+            ItemModelUseContext::inactive(),
+            cooldown_progress,
+            trim_material_keys,
+            owner_main_hand_left,
+            context_entity_type,
+            context_dimension,
+        )
+    }
+
+    pub(crate) fn icon_for_stack_with_context_and_use_context(
+        &self,
+        stack: &ItemStackSummary,
+        bundle_selected_item_index: Option<i32>,
+        using_item: bool,
+        use_context: ItemModelUseContext,
+        cooldown_progress: f32,
+        trim_material_keys: Option<&[String]>,
+        owner_main_hand_left: Option<bool>,
+        context_entity_type: Option<&str>,
+        context_dimension: Option<&str>,
+    ) -> Option<ItemAtlasIcon> {
         self.icon_for_stack_with_model_context(
             stack,
             bundle_selected_item_index,
             using_item,
+            use_context,
             cooldown_progress,
             trim_material_keys,
             owner_main_hand_left,
@@ -1547,6 +1587,7 @@ impl NativeItemRuntime {
             stack,
             None,
             using_item,
+            ItemModelUseContext::inactive(),
             0.0,
             None,
             owner_main_hand_left,
@@ -1560,6 +1601,7 @@ impl NativeItemRuntime {
         stack: &ItemStackSummary,
         bundle_selected_item_index: Option<i32>,
         using_item: bool,
+        use_context: ItemModelUseContext,
         cooldown_progress: f32,
         trim_material_keys: Option<&[String]>,
         owner_main_hand_left: Option<bool>,
@@ -1573,6 +1615,7 @@ impl NativeItemRuntime {
             Some(&stack.component_patch),
             bundle_selected_item_index,
             using_item,
+            use_context,
             cooldown_progress,
             trim_material_keys,
             owner_main_hand_left,
@@ -1584,7 +1627,19 @@ impl NativeItemRuntime {
     #[cfg(test)]
     pub(crate) fn icon_for_protocol_id(&self, protocol_id: i32) -> Option<ItemAtlasIcon> {
         let item_id = self.registry.as_ref()?.resource_id(protocol_id)?;
-        self.icon_for_resource_id(item_id, 1, None, None, false, 0.0, None, None, None, None)
+        self.icon_for_resource_id(
+            item_id,
+            1,
+            None,
+            None,
+            false,
+            ItemModelUseContext::inactive(),
+            0.0,
+            None,
+            None,
+            None,
+            None,
+        )
     }
 
     fn icon_for_resource_id(
@@ -1594,6 +1649,7 @@ impl NativeItemRuntime {
         component_patch: Option<&DataComponentPatchSummary>,
         bundle_selected_item_index: Option<i32>,
         using_item: bool,
+        use_context: ItemModelUseContext,
         cooldown_progress: f32,
         trim_material_keys: Option<&[String]>,
         owner_main_hand_left: Option<bool>,
@@ -1617,6 +1673,7 @@ impl NativeItemRuntime {
             default_max_damage,
             bundle_selected_item_index,
             using_item,
+            use_context,
             cooldown_progress,
             crossbow_charge: self.crossbow_charge_for(component_patch),
             main_hand_left: owner_main_hand_left,
@@ -1684,6 +1741,24 @@ impl NativeItemRuntime {
         }
     }
 
+    pub(crate) fn item_model_use_context_for_stack(
+        &self,
+        stack: &ItemStackSummary,
+        elapsed_ticks: u32,
+    ) -> ItemModelUseContext {
+        let Some(item_id) = stack
+            .item_id
+            .and_then(|protocol_id| self.registry.as_ref()?.resource_id(protocol_id))
+        else {
+            return ItemModelUseContext::inactive();
+        };
+        ItemModelUseContext::active(
+            elapsed_ticks,
+            item_use_duration_ticks(item_id, &stack.component_patch),
+            crossbow_charge_duration_ticks(item_id),
+        )
+    }
+
     fn bundle_selected_item_layers(
         &self,
         context: IconResolveContext<'_>,
@@ -1734,6 +1809,7 @@ impl NativeItemRuntime {
             default_max_damage,
             bundle_selected_item_index: None,
             using_item: false,
+            use_context: ItemModelUseContext::inactive(),
             cooldown_progress: 0.0,
             crossbow_charge: self.crossbow_charge_for(Some(&template.component_patch)),
             main_hand_left: parent_context.main_hand_left,
@@ -1861,6 +1937,29 @@ fn description_key(prefix: &str, resource_id: &str) -> String {
 
 fn item_stack_is_empty(stack: &ItemStackSummary) -> bool {
     stack.item_id.is_none() || stack.count <= 0
+}
+
+fn item_use_duration_ticks(item_id: &str, component_patch: &DataComponentPatchSummary) -> i32 {
+    if component_patch
+        .added_type_ids
+        .contains(&VANILLA_BLOCKS_ATTACKS_COMPONENT_ID)
+        || component_patch
+            .added_type_ids
+            .contains(&VANILLA_KINETIC_WEAPON_COMPONENT_ID)
+    {
+        return VANILLA_LONG_USE_DURATION_TICKS;
+    }
+    match item_id {
+        BOW_ITEM_ID | CROSSBOW_ITEM_ID | TRIDENT_ITEM_ID => VANILLA_LONG_USE_DURATION_TICKS,
+        BRUSH_ITEM_ID => VANILLA_BRUSH_USE_DURATION_TICKS,
+        SPYGLASS_ITEM_ID => VANILLA_SPYGLASS_USE_DURATION_TICKS,
+        ENDER_EYE_ITEM_ID => VANILLA_ENDER_EYE_USE_DURATION_TICKS,
+        _ => 0,
+    }
+}
+
+fn crossbow_charge_duration_ticks(item_id: &str) -> Option<i32> {
+    (item_id == CROSSBOW_ITEM_ID).then_some(VANILLA_CROSSBOW_CHARGE_DURATION_TICKS)
 }
 
 fn protocol_ids_for_resource_ids(
@@ -2270,6 +2369,35 @@ fn world_item_mining_rule(rule: &PackItemMiningRule) -> WorldItemMiningRule {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct ItemAtlasIcon {
     pub(crate) layers: Vec<ItemAtlasIconLayer>,
+}
+
+/// Per-stack use-state values for vanilla item-model numeric properties. These
+/// are active only for the stack that vanilla would expose as
+/// `LivingEntity.getUseItem()`.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub(crate) struct ItemModelUseContext {
+    pub(crate) elapsed_ticks: u32,
+    pub(crate) remaining_ticks: Option<f32>,
+    pub(crate) crossbow_charge_duration_ticks: Option<f32>,
+}
+
+impl ItemModelUseContext {
+    pub(crate) fn inactive() -> Self {
+        Self::default()
+    }
+
+    fn active(
+        elapsed_ticks: u32,
+        use_duration_ticks: i32,
+        crossbow_charge_duration_ticks: Option<i32>,
+    ) -> Self {
+        Self {
+            elapsed_ticks,
+            remaining_ticks: Some((use_duration_ticks - elapsed_ticks as i32).max(0) as f32),
+            crossbow_charge_duration_ticks: crossbow_charge_duration_ticks
+                .map(|ticks| ticks as f32),
+        }
+    }
 }
 
 /// One layer of a generated (flat) item ready for 3D extrusion: the sprite's alpha silhouette, its
@@ -4696,6 +4824,80 @@ mod tests {
     }
 
     #[test]
+    fn native_item_runtime_resolves_use_tick_range_dispatch_properties() {
+        let root = unique_temp_dir("item-runtime-use-tick-range-dispatch");
+        write_use_tick_range_dispatch_fixture(&root);
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let uv = |model_id: &str| {
+            runtime
+                .textures
+                .texture_uv_rect(runtime.texture_index(&format!("minecraft:item/{model_id}")))
+                .unwrap()
+        };
+        let stack = |item_id: i32| ItemStackSummary {
+            item_id: Some(item_id),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        };
+        let selected = |stack: &ItemStackSummary, using_item: bool, elapsed_ticks: u32| {
+            let use_context = if using_item {
+                runtime.item_model_use_context_for_stack(stack, elapsed_ticks)
+            } else {
+                ItemModelUseContext::inactive()
+            };
+            runtime
+                .icon_for_stack_with_context_and_use_context(
+                    stack,
+                    None,
+                    using_item,
+                    use_context,
+                    0.0,
+                    None,
+                    None,
+                    None,
+                    None,
+                )
+                .unwrap()
+                .layers[0]
+                .uv
+        };
+
+        let bow = stack(0);
+        assert_eq!(selected(&bow, false, 20), uv("bow"));
+        assert_eq!(selected(&bow, true, 0), uv("bow_pulling_0"));
+        assert_eq!(selected(&bow, true, 13), uv("bow_pulling_1"));
+        assert_eq!(selected(&bow, true, 18), uv("bow_pulling_2"));
+
+        let crossbow = stack(1);
+        assert_eq!(selected(&crossbow, false, 25), uv("crossbow"));
+        assert_eq!(selected(&crossbow, true, 0), uv("crossbow_pulling_0"));
+        assert_eq!(selected(&crossbow, true, 15), uv("crossbow_pulling_1"));
+        assert_eq!(selected(&crossbow, true, 25), uv("crossbow_pulling_2"));
+        let charged_crossbow = ItemStackSummary {
+            item_id: Some(1),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                charged_projectiles_items: vec![ItemStackTemplateSummary {
+                    item_id: 3,
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                }],
+                ..DataComponentPatchSummary::default()
+            },
+        };
+        assert_eq!(selected(&charged_crossbow, true, 25), uv("crossbow_arrow"));
+
+        let brush = stack(4);
+        assert_eq!(selected(&brush, false, 1), uv("brush"));
+        assert_eq!(selected(&brush, true, 0), uv("brush"));
+        assert_eq!(selected(&brush, true, 7), uv("brush_brushing_0"));
+        assert_eq!(selected(&brush, true, 1), uv("brush_brushing_2"));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn native_item_runtime_resolves_main_hand_select_from_owner_context() {
         let root = unique_temp_dir("item-runtime-main-hand-select");
         write_main_hand_select_fixture(&root);
@@ -5335,6 +5537,121 @@ mod tests {
         write_flat_item_model_and_texture(&assets, "crossbow", &[40, 80, 120, 255]);
         write_flat_item_model_and_texture(&assets, "crossbow_arrow", &[80, 120, 40, 255]);
         write_flat_item_model_and_texture(&assets, "crossbow_firework", &[120, 40, 80, 255]);
+    }
+
+    fn write_use_tick_range_dispatch_fixture(root: &Path) {
+        let assets = assets_dir(root);
+        write_item_atlases(&assets);
+        // Item ids: 0 = bow, 1 = crossbow, 2 = firework_rocket, 3 = arrow, 4 = brush.
+        write_item_registry_source(
+            root,
+            &["bow", "crossbow", "firework_rocket", "arrow", "brush"],
+        );
+        write_json(
+            &assets.join("items").join("bow.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:using_item",
+                    "on_false": { "type": "minecraft:model", "model": "minecraft:item/bow" },
+                    "on_true": {
+                        "type": "minecraft:range_dispatch",
+                        "property": "minecraft:use_duration",
+                        "scale": 0.05,
+                        "entries": [
+                            {
+                                "threshold": 0.65,
+                                "model": { "type": "minecraft:model", "model": "minecraft:item/bow_pulling_1" }
+                            },
+                            {
+                                "threshold": 0.9,
+                                "model": { "type": "minecraft:model", "model": "minecraft:item/bow_pulling_2" }
+                            }
+                        ],
+                        "fallback": { "type": "minecraft:model", "model": "minecraft:item/bow_pulling_0" }
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets.join("items").join("crossbow.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:charge_type",
+                    "cases": [
+                        {
+                            "when": "arrow",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/crossbow_arrow" }
+                        },
+                        {
+                            "when": "rocket",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/crossbow_firework" }
+                        }
+                    ],
+                    "fallback": {
+                        "type": "minecraft:condition",
+                        "property": "minecraft:using_item",
+                        "on_false": { "type": "minecraft:model", "model": "minecraft:item/crossbow" },
+                        "on_true": {
+                            "type": "minecraft:range_dispatch",
+                            "property": "minecraft:crossbow/pull",
+                            "entries": [
+                                {
+                                    "threshold": 0.58,
+                                    "model": { "type": "minecraft:model", "model": "minecraft:item/crossbow_pulling_1" }
+                                },
+                                {
+                                    "threshold": 1.0,
+                                    "model": { "type": "minecraft:model", "model": "minecraft:item/crossbow_pulling_2" }
+                                }
+                            ],
+                            "fallback": { "type": "minecraft:model", "model": "minecraft:item/crossbow_pulling_0" }
+                        }
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets.join("items").join("brush.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:range_dispatch",
+                    "property": "minecraft:use_cycle",
+                    "period": 10.0,
+                    "scale": 0.1,
+                    "entries": [
+                        {
+                            "threshold": 0.25,
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/brush_brushing_0" }
+                        },
+                        {
+                            "threshold": 0.5,
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/brush_brushing_1" }
+                        },
+                        {
+                            "threshold": 0.75,
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/brush_brushing_2" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/brush" }
+                }
+            }"#,
+        );
+        write_flat_item_model_and_texture(&assets, "bow", &[80, 120, 160, 255]);
+        write_flat_item_model_and_texture(&assets, "bow_pulling_0", &[160, 80, 120, 255]);
+        write_flat_item_model_and_texture(&assets, "bow_pulling_1", &[120, 160, 80, 255]);
+        write_flat_item_model_and_texture(&assets, "bow_pulling_2", &[160, 120, 80, 255]);
+        write_flat_item_model_and_texture(&assets, "crossbow", &[40, 80, 120, 255]);
+        write_flat_item_model_and_texture(&assets, "crossbow_arrow", &[80, 120, 40, 255]);
+        write_flat_item_model_and_texture(&assets, "crossbow_firework", &[120, 40, 80, 255]);
+        write_flat_item_model_and_texture(&assets, "crossbow_pulling_0", &[70, 100, 130, 255]);
+        write_flat_item_model_and_texture(&assets, "crossbow_pulling_1", &[100, 130, 70, 255]);
+        write_flat_item_model_and_texture(&assets, "crossbow_pulling_2", &[130, 70, 100, 255]);
+        write_flat_item_model_and_texture(&assets, "brush", &[90, 90, 90, 255]);
+        write_flat_item_model_and_texture(&assets, "brush_brushing_0", &[120, 90, 90, 255]);
+        write_flat_item_model_and_texture(&assets, "brush_brushing_1", &[90, 120, 90, 255]);
+        write_flat_item_model_and_texture(&assets, "brush_brushing_2", &[90, 90, 120, 255]);
     }
 
     fn write_main_hand_select_fixture(root: &Path) {

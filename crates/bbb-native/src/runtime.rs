@@ -1529,6 +1529,7 @@ pub(crate) fn pump_network_and_terrain(
         entity_partial_tick,
         advanced_ticks,
     );
+    world.advance_local_using_item_ticks(advanced_ticks);
     let local_player = world.local_player();
     renderer.set_hud_health(local_player.health.map(|health| health.health));
     renderer.set_hud_food(local_player.health.map(|health| health.food));
@@ -3977,6 +3978,7 @@ fn hud_item_icon_for_stack(
     using_item: bool,
     partial_tick: f32,
 ) -> Option<HudItemIcon> {
+    let item_runtime = item_runtime?;
     let trim_material_keys = world_trim_material_keys(world);
     let owner_main_hand_left = world.local_player_main_arm_left();
     let context_entity_type = Some("minecraft:player");
@@ -3985,11 +3987,20 @@ fn hud_item_icon_for_stack(
     // item-model range dispatch. The HUD overlay below still uses render
     // partial tick.
     let item_model_cooldown_progress =
-        item_cooldown_percent_for_stack(world, item_runtime, item, 0.0).unwrap_or(0.0);
-    let icon = item_runtime?.icon_for_stack_with_context(
+        item_cooldown_percent_for_stack(world, Some(item_runtime), item, 0.0).unwrap_or(0.0);
+    let use_context = if using_item {
+        item_runtime.item_model_use_context_for_stack(
+            item,
+            world.local_player().interaction.using_item_ticks,
+        )
+    } else {
+        crate::item_runtime::ItemModelUseContext::inactive()
+    };
+    let icon = item_runtime.icon_for_stack_with_context_and_use_context(
         item,
         local_selected_bundle_item_index,
         using_item,
+        use_context,
         item_model_cooldown_progress,
         trim_material_keys.as_deref(),
         owner_main_hand_left,
@@ -4014,7 +4025,7 @@ fn hud_item_icon_for_stack(
         durability_bar: hud_item_durability_bar_for_stack(item),
         cooldown_progress: hud_item_cooldown_progress_for_stack(
             world,
-            item_runtime,
+            Some(item_runtime),
             item,
             partial_tick,
         ),

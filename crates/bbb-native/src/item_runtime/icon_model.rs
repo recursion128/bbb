@@ -9,7 +9,7 @@ use serde_json::Value;
 
 use super::{
     first_texture_id, generated_layer_texture_refs, ItemIconTextureLayer, ItemIconTextureRef,
-    ItemIconTint, ItemTextureState, ITEM_TINT_WHITE,
+    ItemIconTint, ItemModelUseContext, ItemTextureState, ITEM_TINT_WHITE,
 };
 
 // 26.1 DataComponents ids from vanilla registration order.
@@ -54,9 +54,9 @@ pub(super) enum ItemIconModelRef {
 
 /// The subset of vanilla `RangeSelectItemModelProperty` whose value is either a
 /// pure projection of the item stack or a narrow GUI owner value already
-/// threaded by the caller. The remaining numeric properties (`compass`, `time`,
-/// `crossbow/pull`, `use_cycle`, `use_duration`) need broader ambient state and
-/// keep the value-blind fallback collapse until that context is threaded.
+/// threaded by the caller. The remaining numeric properties (`compass`, `time`)
+/// need broader ambient state and keep the value-blind fallback collapse until
+/// that context is threaded.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) enum RangeDispatchProperty {
     /// `minecraft:damage` — `Damage.get`.
@@ -69,6 +69,12 @@ pub(super) enum RangeDispatchProperty {
     BundleFullness,
     /// `minecraft:cooldown` — `Cooldown.get`.
     Cooldown,
+    /// `minecraft:use_duration` — `UseDuration.get`.
+    UseDuration { remaining: bool },
+    /// `minecraft:use_cycle` — `UseCycle.get`.
+    UseCycle { period: f32 },
+    /// `minecraft:crossbow/pull` — `CrossbowPull.get`.
+    CrossbowPull,
 }
 
 impl RangeDispatchProperty {
@@ -92,6 +98,40 @@ impl RangeDispatchProperty {
                 bundle_fullness_value(ctx.component_patch, ctx.default_max_stack_size_for_item)
             }
             Self::Cooldown => ctx.cooldown_progress,
+            Self::UseDuration { remaining } => {
+                if !ctx.using_item {
+                    0.0
+                } else if remaining {
+                    ctx.use_context.remaining_ticks.unwrap_or(0.0)
+                } else {
+                    ctx.use_context.elapsed_ticks as f32
+                }
+            }
+            Self::UseCycle { period } => {
+                if !ctx.using_item {
+                    0.0
+                } else {
+                    ctx.use_context
+                        .remaining_ticks
+                        .map(|remaining| remaining % period)
+                        .unwrap_or(0.0)
+                }
+            }
+            Self::CrossbowPull => {
+                if !ctx.using_item || ctx.crossbow_charge != CrossbowChargeType::None {
+                    0.0
+                } else {
+                    let charge_duration = ctx
+                        .use_context
+                        .crossbow_charge_duration_ticks
+                        .unwrap_or(0.0);
+                    if charge_duration <= 0.0 {
+                        0.0
+                    } else {
+                        ctx.use_context.elapsed_ticks as f32 / charge_duration
+                    }
+                }
+            }
         }
     }
 }
@@ -123,6 +163,23 @@ fn range_dispatch_property_for(property: &ItemModelProperty) -> Option<RangeDisp
         }),
         "minecraft:bundle/fullness" => Some(RangeDispatchProperty::BundleFullness),
         "minecraft:cooldown" => Some(RangeDispatchProperty::Cooldown),
+        "minecraft:use_duration" => Some(RangeDispatchProperty::UseDuration {
+            remaining: property
+                .raw()
+                .get("remaining")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+        }),
+        "minecraft:use_cycle" => Some(RangeDispatchProperty::UseCycle {
+            period: property
+                .raw()
+                .get("period")
+                .and_then(Value::as_f64)
+                .map(|period| period as f32)
+                .filter(|period| *period > 0.0)
+                .unwrap_or(1.0),
+        }),
+        "minecraft:crossbow/pull" => Some(RangeDispatchProperty::CrossbowPull),
         _ => None,
     }
 }
@@ -450,6 +507,7 @@ pub(super) struct IconResolveContext<'a> {
     pub default_max_damage: Option<i32>,
     pub bundle_selected_item_index: Option<i32>,
     pub using_item: bool,
+    pub use_context: ItemModelUseContext,
     /// Vanilla `Cooldown.get`: caller-projected
     /// `Player.getCooldowns().getCooldownPercent(itemStack, 0.0F)`, or `0.0`
     /// when there is no player owner / stack cooldown.
@@ -738,10 +796,9 @@ pub(super) fn item_icon_model_ref_for_definition(
                     fallback: Box::new(fallback),
                 }
             } else {
-                // Context-needing numeric properties (compass/time/
-                // crossbow-pull/use-cycle/use-duration) still collapse to the
-                // fallback (or first entry) since their value needs ambient
-                // state not available to the GUI icon resolver.
+                // Context-needing numeric properties (compass/time) still
+                // collapse to the fallback (or first entry) since their value
+                // needs ambient state not available to the GUI icon resolver.
                 fallback
                     .as_deref()
                     .or_else(|| entries.first().map(|entry| entry.model.as_ref()))

@@ -2411,6 +2411,67 @@ fn hotbar_item_icons_use_using_item_model_for_selected_slot_only() {
 }
 
 #[test]
+fn hotbar_item_icons_project_local_use_ticks_into_use_duration_range_dispatch() {
+    let root = unique_runtime_temp_dir("hotbar-use-duration-range-dispatch");
+    write_runtime_bow_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let stack = item_stack(0, 1);
+    let expected_uv = item_runtime
+        .icon_for_stack_with_context_and_use_context(
+            &stack,
+            None,
+            true,
+            item_runtime.item_model_use_context_for_stack(&stack, 13),
+            0.0,
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap()
+        .layers[0]
+        .uv;
+    let initial_using_uv = item_runtime
+        .icon_for_stack_with_context_and_use_context(
+            &stack,
+            None,
+            true,
+            item_runtime.item_model_use_context_for_stack(&stack, 0),
+            0.0,
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap()
+        .layers[0]
+        .uv;
+    assert_ne!(expected_uv, initial_using_uv);
+
+    let mut world = WorldStore::new();
+    world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+        slot: 0,
+        item: stack,
+    });
+    assert!(world.set_local_selected_hotbar_slot(0));
+    world.set_local_using_item(true);
+    world.advance_local_using_item_ticks(13);
+
+    let icons = hotbar_item_icons(&world, Some(&item_runtime), 0.0);
+
+    assert_eq!(
+        icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: expected_uv.min,
+            max: expected_uv.max,
+        }
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn hotbar_item_icons_use_local_player_main_hand_owner_context() {
     let root = unique_runtime_temp_dir("hotbar-main-hand");
     write_runtime_main_hand_select_item_assets(&root);

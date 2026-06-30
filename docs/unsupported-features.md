@@ -5703,8 +5703,6 @@ When an agent does any of the following, update this file in the same slice:
     icon resolver as that state becomes available to the GUI icon path:
     - `minecraft:compass` (needle direction to spawn/lodestone target)
     - `minecraft:time` (daytime / moon-phase clock dial, with the wobbler)
-    - `minecraft:crossbow/pull`, `minecraft:use_duration`, `minecraft:use_cycle`
-      (local `using_item` use-tick state)
   - Wire the remaining ambient-context `select` properties onto the same
     resolver:
     - `minecraft:local_time`
@@ -5721,6 +5719,10 @@ When an agent does any of the following, update this file in the same slice:
   - Audit remaining non-GUI item consumers that can render component-bearing
     generated item stacks and pass the trim-material registry keys where vanilla
     resolves `TrimMaterialProperty`.
+  - Thread the same use-tick context into first-person / third-person
+    owner-backed generated item consumers, and add the remaining use-duration
+    refinements (consumable component duration and Quick Charge-modified
+    crossbow charge duration) once those inputs are preserved.
   - Each plugs into the existing value-aware `RangeDispatch` / `Select`
     resolver by adding a value provider; no new selection machinery is required.
 - Evidence / boundary:
@@ -5796,6 +5798,16 @@ When an agent does any of the following, update this file in the same slice:
       icons. The item model property intentionally uses vanilla's `0.0F`
       partial tick, while the separate HUD cooldown overlay still uses render
       partial tick.
+    - `minecraft:use_duration` — `UseDuration.get`, for GUI/HUD local-player
+      item icons whose stack is the active `LivingEntity.getUseItem()`, using
+      the local use tick counter as elapsed ticks (`remaining=false`, vanilla
+      bow asset path)
+    - `minecraft:use_cycle` — `UseCycle.get`, for GUI/HUD local-player item
+      icons using the active stack's remaining ticks modulo the declared
+      positive `period` (vanilla brush asset path, 200 tick brush duration)
+    - `minecraft:crossbow/pull` — `CrossbowPull.get`, for GUI/HUD local-player
+      item icons using elapsed ticks divided by the default 25 tick crossbow
+      charge duration, and returning `0.0` for already charged crossbows
   - A value-aware `RangeDispatch` / `Select` is treated as a runtime condition so
     it is resolved per stack rather than collapsed at model-build time.
   - The trim-material registry keys are projected into the GUI icon path
@@ -5805,10 +5817,13 @@ When an agent does any of the following, update this file in the same slice:
   - `bbb-protocol` now preserves the `minecraft:bees` component occupant count
     (`DataComponents.BEES`, id 77) so bundle-fullness weight can distinguish
     beehive-like full-weight entries from ordinary stack-size weighted entries.
-  - The remaining numeric properties (`compass`, `time`, `crossbow/pull`,
-    `use_cycle`, `use_duration`) and `minecraft:local_time` still collapse to
-    the fallback/first entry because their value needs compass / use-tick /
-    local-time context the GUI icon resolver does not yet receive.
+  - The remaining numeric properties (`compass`, `time`) and
+    `minecraft:local_time` still collapse to the fallback/first entry because
+    their value needs compass / time / local-time context the GUI icon resolver
+    does not yet receive. GUI/HUD use-tick properties are wired for the local
+    active stack; first-person / third-person owner-backed generated item paths,
+    consumable-duration components, and Quick Charge-modified crossbow charge
+    duration are still documented follow-up.
     `minecraft:main_hand` and `minecraft:context_entity_type` still fall back on
     native item consumers that do not pass a `LivingEntity` owner, such as
     fake/null-owner item surfaces; third-person entity-owned generated items
