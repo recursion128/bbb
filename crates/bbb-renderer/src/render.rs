@@ -425,6 +425,20 @@ impl Renderer {
             pipeline_switches += 1;
             item_model_draw_calls += 1;
         }
+        let (block_item_z_offset_forward_vertices, block_item_z_offset_forward_indices) =
+            self.collect_block_item_model_z_offset_forward_geometry();
+        if !block_item_z_offset_forward_indices.is_empty() {
+            self.draw_item_model_geometry_with_pipeline(
+                &mut encoder,
+                main_view,
+                &block_item_z_offset_forward_vertices,
+                &block_item_z_offset_forward_indices,
+                &self.terrain_bind_group,
+                &self.item_model_z_offset_forward_pipeline,
+            );
+            pipeline_switches += 1;
+            item_model_draw_calls += 1;
+        }
         let (map_vertices, map_indices) = self.collect_item_frame_map_geometry();
         if !map_indices.is_empty() {
             if let Some(atlas) = &self.item_frame_map_atlas {
@@ -1335,6 +1349,25 @@ impl Renderer {
         indices: &[u32],
         bind_group: &wgpu::BindGroup,
     ) {
+        self.draw_item_model_geometry_with_pipeline(
+            encoder,
+            view,
+            vertices,
+            indices,
+            bind_group,
+            &self.item_model_pipeline,
+        );
+    }
+
+    fn draw_item_model_geometry_with_pipeline(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        view: &wgpu::TextureView,
+        vertices: &[crate::item_models::ItemModelVertex],
+        indices: &[u32],
+        bind_group: &wgpu::BindGroup,
+        pipeline: &wgpu::RenderPipeline,
+    ) {
         let Some(buffers) = self.create_item_model_frame_buffers(vertices, indices) else {
             return;
         };
@@ -1359,12 +1392,7 @@ impl Renderer {
             occlusion_query_set: None,
             timestamp_writes: None,
         });
-        self.draw_item_model_frame_buffers(
-            &mut pass,
-            &self.item_model_pipeline,
-            &buffers,
-            bind_group,
-        );
+        self.draw_item_model_frame_buffers(&mut pass, pipeline, &buffers, bind_group);
     }
 
     fn create_item_model_frame_buffers(
@@ -2120,6 +2148,13 @@ mod tests {
             .find("self.draw_item_model_geometry(")
             .map(|index| world_item_models + index)
             .expect("solid world item-model draw helper is called");
+        let world_item_z_offset_forward_models = source
+            .find("let (block_item_z_offset_forward_vertices, block_item_z_offset_forward_indices)")
+            .expect("z-offset-forward world item-model collection is present");
+        let world_item_z_offset_forward_draw = source[world_item_z_offset_forward_models..]
+            .find("&self.item_model_z_offset_forward_pipeline")
+            .map(|index| world_item_z_offset_forward_models + index)
+            .expect("z-offset-forward world item-model pipeline is drawn");
         let copy_translucent =
             depth_copy_to(source, "texture: &self.translucent_target.depth._texture");
         let outline_composite = source
@@ -2146,6 +2181,9 @@ mod tests {
 
         assert!(
             world_item_models < world_item_draw
+                && world_item_draw < world_item_z_offset_forward_models
+                && world_item_z_offset_forward_models < world_item_z_offset_forward_draw
+                && world_item_z_offset_forward_draw < copy_translucent
                 && world_item_draw < copy_translucent
                 && copy_translucent < entity_translucent_features
                 && entity_translucent_features < translucent_target

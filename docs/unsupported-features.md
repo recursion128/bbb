@@ -384,12 +384,16 @@ When an agent does any of the following, update this file in the same slice:
     pipeline that keeps the vanilla entity cutout shader state: `ALPHA_CUTOUT
     0.1`, LightTexture + overlay metadata, `PER_FACE_LIGHTING`, replacement
     blending, depth writes, and no cull. The camera uniform now also exposes
-    vanilla `LayeringTransform.VIEW_OFFSET_Z_LAYERING` as a layered
-    view-projection matrix: perspective paths use `scale(1 - 1/4096)`, and
-    orthographic paths use `translate(z = 1/512)`. The `entityCutoutZOffset`,
+    vanilla `LayeringTransform.VIEW_OFFSET_Z_LAYERING` and
+    `VIEW_OFFSET_Z_LAYERING_FORWARD` as layered view-projection matrices:
+    perspective paths use `scale(1 - bias/4096)`, and orthographic paths use
+    `translate(z = bias/512)`. The `entityCutoutZOffset`,
     `armorCutoutNoCull` / `armorTranslucent`, and `armorEntityGlint` shaders
-    read that layered matrix while plain `entityGlint` stays on the unshifted
-    matrix. Surface
+    read the positive-bias matrix while item-frame block-model borders use the
+    forward matrix for vanilla `RenderTypes.entitySolidZOffsetForward`; plain
+    `entityGlint` stays on the unshifted matrix. Painting custom geometry and
+    the exact entity-solid shader/cull split for block/painting atlas consumers
+    remain later P1/P2 parity, not a narrow P0 blocker. Surface
     blended submissions now also keep a GPU draw plan of sorted index ranges, so
     `entityTranslucent` and `entityTranslucentCullItemTarget` draw in vanilla
     order across static, dynamic player-skin, and dynamic profile-texture atlases
@@ -1857,7 +1861,9 @@ When an agent does any of the following, update this file in the same slice:
         `item_frames` bakes the border by transcribing `block/template_item_frame`
         or `block/template_item_frame_map` (four `birch_planks` bars + the
         `item_frame` / `glow_item_frame` back panel) into the blocks atlas via
-        item-baked free-form quads, preserving vanilla fractional model depths
+        item-baked free-form quads, now routed through a dedicated
+        `entitySolidZOffsetForward` block-item bucket that uses
+        `VIEW_OFFSET_Z_LAYERING_FORWARD`, preserving vanilla fractional model depths
         (`template_item_frame` back panel `from.z = 15.5`; every
         `template_item_frame_map` element `from.z = 15.001`), and the framed item
         to block/flat quads with its `FIXED` display transform. The facing wall

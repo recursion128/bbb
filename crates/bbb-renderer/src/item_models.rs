@@ -92,6 +92,7 @@ pub struct ItemModelMesh {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ItemModelMeshSet {
     pub solid: ItemModelMesh,
+    pub solid_z_offset_forward: ItemModelMesh,
     pub translucent: ItemModelMesh,
 }
 
@@ -290,6 +291,12 @@ impl Renderer {
         self.block_item_model_meshes = meshes;
     }
 
+    /// Sets block-atlas item-model meshes drawn with vanilla
+    /// `RenderTypes.entitySolidZOffsetForward(TextureAtlas.LOCATION_BLOCKS)`.
+    pub fn set_block_item_model_z_offset_forward_meshes(&mut self, meshes: Vec<ItemModelMesh>) {
+        self.block_item_model_z_offset_forward_meshes = meshes;
+    }
+
     /// Sets the translucent block-item meshes to draw through the vanilla
     /// `item_translucent` / itemEntity target phase.
     pub fn set_block_item_model_translucent_meshes(&mut self, meshes: Vec<ItemModelMesh>) {
@@ -320,6 +327,12 @@ impl Renderer {
     /// Concatenates this frame's block-item meshes into one vertex + index buffer for upload.
     pub(crate) fn collect_block_item_model_geometry(&self) -> (Vec<ItemModelVertex>, Vec<u32>) {
         merge_item_model_meshes(&self.block_item_model_meshes)
+    }
+
+    pub(crate) fn collect_block_item_model_z_offset_forward_geometry(
+        &self,
+    ) -> (Vec<ItemModelVertex>, Vec<u32>) {
+        merge_item_model_meshes(&self.block_item_model_z_offset_forward_meshes)
     }
 
     pub(crate) fn collect_block_item_model_translucent_geometry(
@@ -476,6 +489,18 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 }
 "#;
 
+fn item_model_z_offset_forward_shader() -> String {
+    ITEM_MODEL_SHADER
+        .replace(
+            "    minecraft_light1: vec4<f32>,\n};",
+            "    minecraft_light1: vec4<f32>,\n    glint_offsets: vec4<f32>,\n    view_proj_view_offset_z: mat4x4<f32>,\n    view_proj_view_offset_z_forward: mat4x4<f32>,\n};",
+        )
+        .replace(
+            "out.position = camera.view_proj * vec4<f32>(input.position, 1.0);",
+            "out.position = camera.view_proj_view_offset_z_forward * vec4<f32>(input.position, 1.0);",
+        )
+}
+
 /// Builds the item-model render pipeline. Reuses the terrain camera+atlas bind-group layout (so it binds
 /// the resident blocks atlas directly), renders solid (depth-tested and depth-writing, since item models
 /// are real 3D geometry) and un-culled (the generated-item slab's faces are emitted without winding
@@ -491,7 +516,29 @@ pub(crate) fn create_item_model_pipeline(
         format,
         bind_group_layout,
         lightmap_bind_group_layout,
+        ITEM_MODEL_SHADER,
         "bbb-item-model-pipeline",
+        wgpu::BlendState::REPLACE,
+    )
+}
+
+/// Builds the block-atlas item-model variant for vanilla
+/// `RenderTypes.entitySolidZOffsetForward(TextureAtlas.LOCATION_BLOCKS)`, used by item-frame block
+/// models. The shader reads the camera's `VIEW_OFFSET_Z_LAYERING_FORWARD` matrix.
+pub(crate) fn create_item_model_z_offset_forward_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    let shader = item_model_z_offset_forward_shader();
+    create_item_model_pipeline_with_blend(
+        device,
+        format,
+        bind_group_layout,
+        lightmap_bind_group_layout,
+        &shader,
+        "bbb-item-model-z-offset-forward-pipeline",
         wgpu::BlendState::REPLACE,
     )
 }
@@ -509,6 +556,7 @@ pub(crate) fn create_item_model_translucent_pipeline(
         format,
         bind_group_layout,
         lightmap_bind_group_layout,
+        ITEM_MODEL_SHADER,
         "bbb-item-model-translucent-pipeline",
         wgpu::BlendState::ALPHA_BLENDING,
     )
@@ -519,12 +567,13 @@ fn create_item_model_pipeline_with_blend(
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    shader_source: &str,
     label: &'static str,
     blend: wgpu::BlendState,
 ) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("bbb-item-model-shader"),
-        source: wgpu::ShaderSource::Wgsl(ITEM_MODEL_SHADER.into()),
+        source: wgpu::ShaderSource::Wgsl(shader_source.into()),
     });
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-item-model-pipeline-layout"),
@@ -662,6 +711,7 @@ mod tests {
 
         assert_eq!(meshes.solid.vertices.len(), 4);
         assert_eq!(meshes.solid.indices, vec![0, 1, 2, 0, 2, 3]);
+        assert!(meshes.solid_z_offset_forward.is_empty());
         assert_eq!(meshes.translucent.vertices.len(), 4);
         assert_eq!(meshes.translucent.indices, vec![0, 1, 2, 0, 2, 3]);
         assert_eq!(meshes.translucent.vertices[0].color, [0.5, 0.75, 1.0, 0.6]);
@@ -749,6 +799,20 @@ mod tests {
         assert!(!ITEM_MODEL_SHADER.contains("fn lightmap_brightness"));
         assert!(!ITEM_MODEL_SHADER.contains("camera.lightmap_factors.y"));
         assert!(!ITEM_MODEL_SHADER.contains("max(input.light.x, input.light.y * 0.95)"));
+    }
+
+    #[test]
+    fn item_model_z_offset_forward_shader_uses_vanilla_forward_layering() {
+        let shader = item_model_z_offset_forward_shader();
+        assert!(shader.contains("glint_offsets: vec4<f32>"));
+        assert!(shader.contains("view_proj_view_offset_z: mat4x4<f32>"));
+        assert!(shader.contains("view_proj_view_offset_z_forward: mat4x4<f32>"));
+        assert!(shader
+            .contains("camera.view_proj_view_offset_z_forward * vec4<f32>(input.position, 1.0)"));
+        assert!(
+            !shader.contains("out.position = camera.view_proj * vec4<f32>(input.position, 1.0)"),
+            "vanilla entitySolidZOffsetForward uses VIEW_OFFSET_Z_LAYERING_FORWARD"
+        );
     }
 
     #[test]

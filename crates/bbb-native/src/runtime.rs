@@ -1589,6 +1589,7 @@ pub(crate) fn pump_network_and_terrain(
     block_item_meshes.extend(held_item_models.block_meshes);
     block_item_meshes.extend(item_frame_models.block_meshes);
     block_item_meshes.extend(entity_block_meshes);
+    let block_item_z_offset_forward_meshes = item_frame_models.block_z_offset_forward_meshes;
     let mut block_item_translucent_meshes = dropped_item_models.block_translucent_meshes;
     block_item_translucent_meshes.extend(held_item_models.block_translucent_meshes);
     block_item_translucent_meshes.extend(item_frame_models.block_translucent_meshes);
@@ -1599,6 +1600,7 @@ pub(crate) fn pump_network_and_terrain(
     flat_item_translucent_meshes.extend(held_item_models.flat_translucent_meshes);
     flat_item_translucent_meshes.extend(item_frame_models.flat_translucent_meshes);
     renderer.set_block_item_model_meshes(block_item_meshes);
+    renderer.set_block_item_model_z_offset_forward_meshes(block_item_z_offset_forward_meshes);
     renderer.set_block_item_model_translucent_meshes(block_item_translucent_meshes);
     renderer.set_flat_item_model_meshes(flat_item_meshes);
     renderer.set_flat_item_model_translucent_meshes(flat_item_translucent_meshes);

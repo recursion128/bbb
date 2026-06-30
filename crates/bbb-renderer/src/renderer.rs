@@ -49,7 +49,8 @@ use crate::{
     },
     item_entities::{create_item_entity_pipeline, ItemEntityAtlasGpu, ItemEntityBillboard},
     item_models::{
-        create_item_model_pipeline, create_item_model_translucent_pipeline, ItemFrameMapAtlasGpu,
+        create_item_model_pipeline, create_item_model_translucent_pipeline,
+        create_item_model_z_offset_forward_pipeline, ItemFrameMapAtlasGpu,
         ItemFrameMapDecorationAtlasGpu, ItemFrameMapDecorationSurface, ItemFrameMapSurface,
         ItemFrameMapTextFontAtlasGpu, ItemFrameMapTextSurface, ItemModelMesh,
     },
@@ -139,6 +140,7 @@ pub struct Renderer {
     pub(super) lightning_pipeline: wgpu::RenderPipeline,
     pub(super) item_entity_pipeline: wgpu::RenderPipeline,
     pub(super) item_model_pipeline: wgpu::RenderPipeline,
+    pub(super) item_model_z_offset_forward_pipeline: wgpu::RenderPipeline,
     pub(super) item_model_translucent_pipeline: wgpu::RenderPipeline,
     pub(super) selection_pipeline: wgpu::RenderPipeline,
     pub(super) lightmap_pipeline: wgpu::RenderPipeline,
@@ -244,6 +246,7 @@ pub struct Renderer {
     pub(super) item_entity_atlas: Option<ItemEntityAtlasGpu>,
     pub(super) item_entity_billboards: Vec<ItemEntityBillboard>,
     pub(super) block_item_model_meshes: Vec<ItemModelMesh>,
+    pub(super) block_item_model_z_offset_forward_meshes: Vec<ItemModelMesh>,
     pub(super) block_item_model_translucent_meshes: Vec<ItemModelMesh>,
     pub(super) flat_item_model_meshes: Vec<ItemModelMesh>,
     pub(super) flat_item_model_translucent_meshes: Vec<ItemModelMesh>,
@@ -681,6 +684,12 @@ impl Renderer {
             &terrain_bind_group_layout,
             &lightmap_sample_bind_group_layout,
         );
+        let item_model_z_offset_forward_pipeline = create_item_model_z_offset_forward_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+        );
         let item_model_translucent_pipeline = create_item_model_translucent_pipeline(
             &device,
             format,
@@ -840,6 +849,7 @@ impl Renderer {
             lightning_pipeline,
             item_entity_pipeline,
             item_model_pipeline,
+            item_model_z_offset_forward_pipeline,
             item_model_translucent_pipeline,
             selection_pipeline,
             lightmap_pipeline,
@@ -940,6 +950,7 @@ impl Renderer {
             item_entity_atlas: None,
             item_entity_billboards: Vec::new(),
             block_item_model_meshes: Vec::new(),
+            block_item_model_z_offset_forward_meshes: Vec::new(),
             block_item_model_translucent_meshes: Vec::new(),
             flat_item_model_meshes: Vec::new(),
             flat_item_model_translucent_meshes: Vec::new(),

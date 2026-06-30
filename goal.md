@@ -173,6 +173,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     使用 vanilla `RenderPipelines.WATER_MASK` 的 color write mask 0、
     depth-write `LESS_EQUAL`、默认 back-face cull、无 texture / LightTexture 绑定，
     并用 `ModelLayers.BOAT_WATER_PATCH` geometry。
+  - [x] `entitySolidZOffsetForward` item-frame block model：item-frame /
+    glow-item-frame visible border 从普通 block-item solid bucket 拆到
+    `solid_z_offset_forward` mesh，GPU 使用专用 item-model pipeline 读取 camera
+    uniform 的 `VIEW_OFFSET_Z_LAYERING_FORWARD` layered view-projection；对应 vanilla
+    `BlockModelRenderState.submitWithZOffset` /
+    `RenderTypes.entitySolidZOffsetForward(TextureAtlas.LOCATION_BLOCKS)`。Painting
+    custom geometry 和更精确的 entity-solid shader/cull parity 仍属后续 P1/P2。
   - [x] `end_crystal_beam` / guardian beam custom prism state：Guardian attack
     beam、EndCrystal target beam、EnderDragon healing beam 均已通过
     dispatch-owned submission-first 路径记录 vanilla render type、texture、
@@ -218,7 +225,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - [x] view-offset z layering：`entityCutoutZOffset`、
     `armorCutoutNoCull` / `armorTranslucent`、`armorEntityGlint` shader 使用
     `LayeringTransform.VIEW_OFFSET_Z_LAYERING` 的 layered view-projection
-    矩阵；普通 `entityGlint` 继续使用未偏移矩阵。
+    矩阵；item-frame border 的 `entitySolidZOffsetForward` path 使用
+    `VIEW_OFFSET_Z_LAYERING_FORWARD`，普通 `entityGlint` 继续使用未偏移矩阵。
   - per RenderType 的 blend、depth write/test、cull、sampler、mip、lightmap、
     overlay、fog、normal diffuse 组合继续拆细。
   - glint / scroll / emissive path 不应只依赖普通 entity shader fallback。

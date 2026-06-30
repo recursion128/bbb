@@ -28,6 +28,10 @@ pub(crate) const VANILLA_DEFAULT_GLINT_SPEED: f64 = 0.5;
 pub(crate) const VANILLA_VIEW_OFFSET_Z_PERSPECTIVE_SCALE: f32 = 1.0 - 1.0 / 4096.0;
 /// Vanilla `ProjectionType.ORTHOGRAPHIC.applyLayeringTransform(..., 1.0F)`.
 pub(crate) const VANILLA_VIEW_OFFSET_Z_ORTHOGRAPHIC_TRANSLATE: f32 = 1.0 / 512.0;
+/// Vanilla `ProjectionType.PERSPECTIVE.applyLayeringTransform(..., -1.0F)`.
+pub(crate) const VANILLA_VIEW_OFFSET_Z_FORWARD_PERSPECTIVE_SCALE: f32 = 1.0 + 1.0 / 4096.0;
+/// Vanilla `ProjectionType.ORTHOGRAPHIC.applyLayeringTransform(..., -1.0F)`.
+pub(crate) const VANILLA_VIEW_OFFSET_Z_FORWARD_ORTHOGRAPHIC_TRANSLATE: f32 = -1.0 / 512.0;
 /// Vanilla `Options.renderDistance` default.
 pub const VANILLA_DEFAULT_RENDER_DISTANCE_CHUNKS: u32 = 12;
 /// Vanilla `Options.renderDistance` lower bound.
@@ -297,6 +301,8 @@ pub(crate) struct CameraUniform {
     glint_offsets: [f32; 4],
     /// Vanilla `LayeringTransform.VIEW_OFFSET_Z_LAYERING` view-projection matrix.
     view_proj_view_offset_z: [[f32; 4]; 4],
+    /// Vanilla `LayeringTransform.VIEW_OFFSET_Z_LAYERING_FORWARD` view-projection matrix.
+    view_proj_view_offset_z_forward: [[f32; 4]; 4],
 }
 
 impl CameraUniform {
@@ -317,6 +323,11 @@ impl CameraUniform {
         Self {
             view_proj: projection.to_cols_array_2d(),
             view_proj_view_offset_z: orthographic_view_offset_z_projection(
+                projection,
+                Mat4::IDENTITY,
+            )
+            .to_cols_array_2d(),
+            view_proj_view_offset_z_forward: orthographic_view_offset_z_forward_projection(
                 projection,
                 Mat4::IDENTITY,
             )
@@ -342,6 +353,10 @@ impl CameraUniform {
             view_proj: (projection * view).to_cols_array_2d(),
             view_proj_view_offset_z: orthographic_view_offset_z_projection(projection, view)
                 .to_cols_array_2d(),
+            view_proj_view_offset_z_forward: orthographic_view_offset_z_forward_projection(
+                projection, view,
+            )
+            .to_cols_array_2d(),
             camera_position: vec3_to_vec4(eye),
             ..Self::identity()
         }
@@ -367,6 +382,10 @@ impl CameraUniform {
             view_proj: (projection * view).to_cols_array_2d(),
             view_proj_view_offset_z: perspective_view_offset_z_projection(projection, view)
                 .to_cols_array_2d(),
+            view_proj_view_offset_z_forward: perspective_view_offset_z_forward_projection(
+                projection, view,
+            )
+            .to_cols_array_2d(),
             camera_position: vec3_to_vec4(eye),
             ..Self::identity()
         }
@@ -495,6 +514,11 @@ impl CameraUniform {
         Mat4::from_cols_array_2d(&self.view_proj_view_offset_z)
     }
 
+    #[cfg(test)]
+    pub(crate) fn view_proj_view_offset_z_forward(self) -> Mat4 {
+        Mat4::from_cols_array_2d(&self.view_proj_view_offset_z_forward)
+    }
+
     fn from_lightmap_environment(environment: LightmapEnvironment) -> Self {
         let environment = environment.sanitized();
         let (minecraft_light0, minecraft_light1) =
@@ -535,6 +559,7 @@ impl CameraUniform {
             minecraft_light1: vec3_to_vec4(minecraft_light1),
             glint_offsets: [0.0, 0.0, 0.0, 0.0],
             view_proj_view_offset_z: Mat4::IDENTITY.to_cols_array_2d(),
+            view_proj_view_offset_z_forward: Mat4::IDENTITY.to_cols_array_2d(),
         }
     }
 }
@@ -564,12 +589,28 @@ fn perspective_view_offset_z_projection(projection: Mat4, view: Mat4) -> Mat4 {
     projection * Mat4::from_scale(Vec3::splat(VANILLA_VIEW_OFFSET_Z_PERSPECTIVE_SCALE)) * view
 }
 
+fn perspective_view_offset_z_forward_projection(projection: Mat4, view: Mat4) -> Mat4 {
+    projection
+        * Mat4::from_scale(Vec3::splat(VANILLA_VIEW_OFFSET_Z_FORWARD_PERSPECTIVE_SCALE))
+        * view
+}
+
 fn orthographic_view_offset_z_projection(projection: Mat4, view: Mat4) -> Mat4 {
     projection
         * Mat4::from_translation(Vec3::new(
             0.0,
             0.0,
             VANILLA_VIEW_OFFSET_Z_ORTHOGRAPHIC_TRANSLATE,
+        ))
+        * view
+}
+
+fn orthographic_view_offset_z_forward_projection(projection: Mat4, view: Mat4) -> Mat4 {
+    projection
+        * Mat4::from_translation(Vec3::new(
+            0.0,
+            0.0,
+            VANILLA_VIEW_OFFSET_Z_FORWARD_ORTHOGRAPHIC_TRANSLATE,
         ))
         * view
 }
@@ -845,6 +886,31 @@ mod tests {
     }
 
     #[test]
+    fn camera_uniform_stores_perspective_view_offset_z_forward_layering() {
+        let pose = CameraPose {
+            position: [0.0, 64.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 0.0,
+        };
+        let projection = Mat4::perspective_rh(70.0_f32.to_radians(), 16.0 / 9.0, 0.05, 2048.0);
+        let view = Mat4::look_at_rh(
+            Vec3::new(0.0, 64.0, 0.0),
+            Vec3::new(0.0, 64.0, 1.0),
+            Vec3::Y,
+        );
+        let expected = projection
+            * Mat4::from_scale(Vec3::splat(VANILLA_VIEW_OFFSET_Z_FORWARD_PERSPECTIVE_SCALE))
+            * view;
+        let uniform = CameraUniform::from_pose(pose, 16.0 / 9.0);
+
+        assert_mat4_close(uniform.view_proj_view_offset_z_forward(), expected);
+        assert!(!uniform
+            .view_proj_view_offset_z()
+            .abs_diff_eq(uniform.view_proj_view_offset_z_forward(), 1.0e-8));
+    }
+
+    #[test]
     fn camera_uniform_stores_orthographic_view_offset_z_layering() {
         let projection = Mat4::orthographic_rh(0.0, 320.0, 240.0, 0.0, -1000.0, 1000.0);
         let expected = projection
@@ -859,6 +925,23 @@ mod tests {
         assert!(!uniform
             .view_proj()
             .abs_diff_eq(uniform.view_proj_view_offset_z(), 1.0e-8));
+    }
+
+    #[test]
+    fn camera_uniform_stores_orthographic_view_offset_z_forward_layering() {
+        let projection = Mat4::orthographic_rh(0.0, 320.0, 240.0, 0.0, -1000.0, 1000.0);
+        let expected = projection
+            * Mat4::from_translation(Vec3::new(
+                0.0,
+                0.0,
+                VANILLA_VIEW_OFFSET_Z_FORWARD_ORTHOGRAPHIC_TRANSLATE,
+            ));
+        let uniform = CameraUniform::gui_ortho(320.0, 240.0);
+
+        assert_mat4_close(uniform.view_proj_view_offset_z_forward(), expected);
+        assert!(!uniform
+            .view_proj_view_offset_z()
+            .abs_diff_eq(uniform.view_proj_view_offset_z_forward(), 1.0e-8));
     }
 
     #[test]

@@ -52,6 +52,7 @@ const MAP_BRIGHTNESS_MODIFIERS: [u32; 4] = [180, 220, 255, 135];
 /// atlas; flat items sample the item atlas; filled maps sample a dynamic `minecraft:map/<id>` texture).
 pub(crate) struct ItemFrameModels {
     pub block_meshes: Vec<ItemModelMesh>,
+    pub block_z_offset_forward_meshes: Vec<ItemModelMesh>,
     pub block_translucent_meshes: Vec<ItemModelMesh>,
     pub flat_meshes: Vec<ItemModelMesh>,
     pub flat_translucent_meshes: Vec<ItemModelMesh>,
@@ -74,6 +75,7 @@ pub(crate) fn item_frame_models(
     terrain_textures: &TerrainTextureState,
 ) -> ItemFrameModels {
     let mut block_meshes = Vec::new();
+    let mut block_z_offset_forward_meshes = Vec::new();
     let mut block_translucent_meshes = Vec::new();
     let mut flat_meshes = Vec::new();
     let mut flat_translucent_meshes = Vec::new();
@@ -100,7 +102,7 @@ pub(crate) fn item_frame_models(
         let border = terrain_textures.item_frame_border_quads(state.glow, map.is_some());
         if !state.invisible && !border.is_empty() {
             let border_transform = base * Mat4::from_translation(Vec3::splat(-0.5));
-            block_meshes.push(bake_item_model_mesh_with_light(
+            block_z_offset_forward_meshes.push(bake_item_model_mesh_with_light(
                 &border,
                 border_transform,
                 item_frame_border_light(state.glow, state.light),
@@ -225,6 +227,7 @@ pub(crate) fn item_frame_models(
 
     ItemFrameModels {
         block_meshes,
+        block_z_offset_forward_meshes,
         block_translucent_meshes,
         flat_meshes,
         flat_translucent_meshes,
@@ -409,7 +412,8 @@ mod tests {
         world.apply_add_entity(protocol_add_entity(700, VANILLA_ENTITY_TYPE_ITEM_FRAME_ID));
 
         let visible = item_frame_models(&world, None, &TerrainTextureState::default());
-        assert_eq!(visible.block_meshes.len(), 1);
+        assert!(visible.block_meshes.is_empty());
+        assert_eq!(visible.block_z_offset_forward_meshes.len(), 1);
         assert!(visible.flat_meshes.is_empty());
         assert!(visible.map_textures.is_empty());
         assert!(visible.map_surfaces.is_empty());
@@ -424,6 +428,7 @@ mod tests {
         }));
         let hidden = item_frame_models(&world, None, &TerrainTextureState::default());
         assert!(hidden.block_meshes.is_empty());
+        assert!(hidden.block_z_offset_forward_meshes.is_empty());
         assert!(hidden.flat_meshes.is_empty());
         assert!(hidden.map_textures.is_empty());
         assert!(hidden.map_surfaces.is_empty());
@@ -444,7 +449,8 @@ mod tests {
         assert!(world.map_item(7).is_none());
 
         let models = item_frame_models(&world, None, &TerrainTextureState::default());
-        assert_eq!(models.block_meshes.len(), 1);
+        assert!(models.block_meshes.is_empty());
+        assert_eq!(models.block_z_offset_forward_meshes.len(), 1);
         assert!(models.flat_meshes.is_empty());
         assert!(
             models.map_surfaces.is_empty(),
@@ -480,7 +486,8 @@ mod tests {
         }));
 
         let models = item_frame_models(&world, None, &TerrainTextureState::default());
-        assert_eq!(models.block_meshes.len(), 1);
+        assert!(models.block_meshes.is_empty());
+        assert_eq!(models.block_z_offset_forward_meshes.len(), 1);
         assert!(models.flat_meshes.is_empty());
         assert_eq!(models.map_textures.len(), 1);
         assert_eq!(models.map_textures[0].map_id, 7);
