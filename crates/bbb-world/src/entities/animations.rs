@@ -98,6 +98,7 @@ const PANDA_ROLL_COUNTER_MAX: i32 = 32;
 /// Entities whose `updateWalkAnimation` override (`Camel`, `Creaking`, `Frog`) replaces the base
 /// distance→speed mapping.
 const VANILLA_ENTITY_TYPE_CAMEL_ID: i32 = 19;
+const VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID: i32 = 28;
 pub(crate) const VANILLA_ENTITY_TYPE_CREAKING_ID: i32 = 31;
 const VANILLA_ENTITY_TYPE_FROG_ID: i32 = 55;
 /// Vanilla `Pose.CROAKING` ordinal (`Pose.CROAKING(8, …)`), the synced `DATA_POSE` int value that
@@ -418,6 +419,13 @@ const CAMEL_DASH_COOLDOWN_TICKS: i32 = 55;
 /// `idleAnimationState.start(tickCount)`. `CAMEL_IDLE` itself is the 4.0 s non-looping keyframe.
 const CAMEL_IDLE_TIMEOUT_RANDOM_BOUND: i32 = 40;
 const CAMEL_IDLE_TIMEOUT_BASE_TICKS: i32 = 80;
+/// Vanilla `CopperGolem.COPPER_GOLEM_STATE` (own data accessor after weather state).
+const COPPER_GOLEM_STATE_DATA_ID: u8 = 17;
+const COPPER_GOLEM_STATE_IDLE_ID: i32 = 0;
+/// Vanilla `CopperGolem.setupAnimationStates`: `idleAnimationStartTick = tickCount +
+/// random.nextInt(200, 240)`, then `idleAnimationState.start(tickCount)` at that tick.
+const COPPER_GOLEM_IDLE_TIMEOUT_RANDOM_BOUND: i32 = 40;
+const COPPER_GOLEM_IDLE_TIMEOUT_BASE_TICKS: i32 = 200;
 
 /// Vanilla `Creaking.handleEntityEvent`: event `4` sets `attackAnimationRemainingTicks = 15` (the
 /// lunge), event `66` sets `invulnerabilityAnimationRemainingTicks = 8` (the heart-bound stagger).
@@ -488,6 +496,8 @@ pub struct EntityClientAnimationState {
     pub camel_idle: Option<CamelIdleAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub camel_dash_cooldown: Option<CamelDashCooldownState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub copper_golem_idle: Option<CopperGolemIdleAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sniffer: Option<SnifferAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1245,6 +1255,54 @@ impl CamelIdleAnimationState {
             self.animation.start_age = Some(age_ticks);
         } else {
             self.timeout_ticks -= 1;
+        }
+    }
+
+    fn elapsed_seconds(self, age_ticks: u32, partial_tick: f32) -> Option<f32> {
+        self.animation.elapsed_seconds(age_ticks, partial_tick)
+    }
+}
+
+/// Vanilla `CopperGolem.idleAnimationStartTick` plus `idleAnimationState`. The exact
+/// `RandomSource` seed is client-local, so bbb uses the same deterministic Java LCG shape used by
+/// other client-only idle timers while preserving vanilla's `random.nextInt(200, 240)` interval, the
+/// delayed first start, and the reset 10 ticks after the head-spin sound point.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CopperGolemIdleAnimationState {
+    random_seed: u64,
+    idle_animation_start_tick: i32,
+    animation: KeyframeAnimationState,
+}
+
+impl CopperGolemIdleAnimationState {
+    fn new(entity_id: i32) -> Self {
+        Self {
+            random_seed: java_random_seed(i64::from(entity_id).wrapping_add(0xC0_6E)),
+            idle_animation_start_tick: 0,
+            animation: KeyframeAnimationState { start_age: None },
+        }
+    }
+
+    fn advance_client_tick(&mut self, age_ticks: u32, is_idle: bool) {
+        if !is_idle {
+            self.idle_animation_start_tick = 0;
+            self.animation.start_age = None;
+            return;
+        }
+
+        let tick = i32::try_from(age_ticks).unwrap_or(i32::MAX);
+        if self.idle_animation_start_tick == tick {
+            self.animation.start_age = Some(age_ticks);
+        } else if self.idle_animation_start_tick == 0 {
+            self.idle_animation_start_tick =
+                tick + java_random_next_int_bound(
+                    &mut self.random_seed,
+                    COPPER_GOLEM_IDLE_TIMEOUT_RANDOM_BOUND,
+                ) + COPPER_GOLEM_IDLE_TIMEOUT_BASE_TICKS;
+        }
+
+        if tick == self.idle_animation_start_tick + 10 {
+            self.idle_animation_start_tick = 0;
         }
     }
 
@@ -4566,6 +4624,15 @@ impl EntityClientAnimationState {
             .unwrap_or(-1.0)
     }
 
+    /// Vanilla `CopperGolem.idleAnimationState` elapsed seconds. The client starts it only on the
+    /// delayed `idleAnimationStartTick` while `COPPER_GOLEM_STATE == IDLE`; non-copper golems and
+    /// interaction states return `-1.0` so the renderer applies no idle keyframe.
+    pub fn copper_golem_idle_seconds(&self, partial_tick: f32) -> f32 {
+        self.copper_golem_idle
+            .and_then(|state| state.elapsed_seconds(self.age_ticks, partial_tick))
+            .unwrap_or(-1.0)
+    }
+
     /// Vanilla `CamelRenderState.jumpCooldown` =
     /// `max(Camel.getJumpCooldown() - partialTicks, 0)`. The cooldown is seeded from the synced
     /// `DASH` rising edge and decremented each client tick, matching `Camel.tick`.
@@ -5123,6 +5190,9 @@ impl EntityClientAnimationState {
         // The synced `Camel.DASH` boolean (`isDashing()`), read from the entity metadata in the tick
         // loop ([`camel_is_dashing`]). `false` for entities that do not consume it.
         camel_is_dashing: bool,
+        // The synced `CopperGolem.COPPER_GOLEM_STATE == IDLE`, read from entity metadata in the tick
+        // loop. It gates the golem's delayed idle head-spin keyframe timer.
+        copper_golem_is_idle: bool,
         // The synced `Allay.DATA_DANCING` boolean (`isDancing()`), read from the entity metadata in the
         // tick loop ([`allay_is_dancing`]). `false` for entities that do not consume it.
         allay_is_dancing: bool,
@@ -5497,6 +5567,11 @@ impl EntityClientAnimationState {
                     self.camel_dash_cooldown = None;
                 }
             }
+            VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID => {
+                self.copper_golem_idle
+                    .get_or_insert_with(|| CopperGolemIdleAnimationState::new(entity_id))
+                    .advance_client_tick(self.age_ticks, copper_golem_is_idle);
+            }
             VANILLA_ENTITY_TYPE_ALLAY_ID => {
                 // Vanilla `Allay.tick`: while the synced `DATA_DANCING` flag is set, advance the dance
                 // and spin counters; otherwise reset them. The counters drive `AllayModel`'s body spin.
@@ -5682,6 +5757,18 @@ pub(crate) fn guardian_is_moving(data_values: &[EntityDataValue]) -> bool {
 /// `19` is not this boolean) fall back to `false`.
 pub(crate) fn camel_is_dashing(data_values: &[EntityDataValue]) -> bool {
     entity_data_bool(data_values, CAMEL_DASH_DATA_ID, false)
+}
+
+/// Vanilla `CopperGolem.getState() == IDLE`: `COPPER_GOLEM_STATE` is a synced enum id (data id 17,
+/// serializer 37). The client starts the idle spin only in this state; every missing or mismatched
+/// value falls back to the vanilla default `IDLE`.
+pub(crate) fn copper_golem_is_idle(data_values: &[EntityDataValue]) -> bool {
+    entity_data_enum_id(
+        data_values,
+        COPPER_GOLEM_STATE_DATA_ID,
+        EntityDataEnumSerializer::CopperGolemState,
+        COPPER_GOLEM_STATE_IDLE_ID,
+    ) == COPPER_GOLEM_STATE_IDLE_ID
 }
 
 /// Vanilla `Pillager.isChargingCrossbow()` (`entityData.get(IS_CHARGING_CROSSBOW)`): the synced boolean

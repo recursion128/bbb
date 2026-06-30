@@ -12080,6 +12080,64 @@ fn camel_dash_flag_drives_the_dash_animation_timer() {
 }
 
 #[test]
+fn copper_golem_idle_state_drives_delayed_idle_animation_timer() {
+    const VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID: i32 = 28;
+    const COPPER_GOLEM_STATE_DATA_ID: u8 = 17;
+    const COPPER_GOLEM_STATE_IDLE_ID: i32 = 0;
+    const COPPER_GOLEM_STATE_GETTING_ITEM_ID: i32 = 1;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        92,
+        VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
+    ));
+
+    let idle_seconds = |store: &WorldStore| {
+        store
+            .entity_model_sources_at_partial_tick(1.0)
+            .into_iter()
+            .find(|source| source.entity_id == 92)
+            .unwrap()
+            .copper_golem_idle_seconds
+    };
+    let set_state = |store: &mut WorldStore, state_id: i32| {
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 92,
+            values: vec![protocol_enum_data(
+                COPPER_GOLEM_STATE_DATA_ID,
+                EntityDataEnumSerializer::CopperGolemState,
+                state_id,
+            )],
+        }));
+    };
+
+    // Vanilla `CopperGolem.setupAnimationStates` first schedules a delayed `random.nextInt(200, 240)`
+    // start while the synced state is IDLE; it does not start the head spin on the first client tick.
+    assert_eq!(idle_seconds(&store), -1.0);
+    store.advance_entity_client_animations(1);
+    assert_eq!(idle_seconds(&store), -1.0);
+
+    // bbb uses a deterministic Java-LCG-shaped client seed, but preserves vanilla's 200..239 tick
+    // timeout range, so by 240 client ticks the first idle keyframe has started.
+    store.advance_entity_client_animations(239);
+    let after_timeout = idle_seconds(&store);
+    assert!(
+        after_timeout >= 0.0,
+        "the delayed copper golem idle timer starts by the vanilla timeout window: {after_timeout}"
+    );
+
+    // Any non-IDLE interaction state stops the idle animation and clears the timer; returning to IDLE
+    // schedules a later restart instead of immediately resuming the head spin.
+    set_state(&mut store, COPPER_GOLEM_STATE_GETTING_ITEM_ID);
+    store.advance_entity_client_animations(1);
+    assert_eq!(idle_seconds(&store), -1.0);
+
+    set_state(&mut store, COPPER_GOLEM_STATE_IDLE_ID);
+    store.advance_entity_client_animations(1);
+    assert_eq!(idle_seconds(&store), -1.0);
+}
+
+#[test]
 fn allay_dancing_flag_drives_the_dance_spin_state() {
     const VANILLA_ENTITY_TYPE_ALLAY_ID: i32 = 2;
     const ALLAY_DANCING_DATA_ID: u8 = 16;

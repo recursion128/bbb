@@ -677,6 +677,12 @@ pub struct EntityModelSourceState {
     /// every other entity.
     #[serde(default = "entity_model_source_default_neg_one")]
     pub camel_idle_seconds: f32,
+    /// Vanilla copper golem idle head-spin timing (`CopperGolemRenderState.idleAnimationState`):
+    /// elapsed seconds since the delayed `idleAnimationStartTick` fired while
+    /// `COPPER_GOLEM_STATE == IDLE`. Projected only for copper golems and `-1.0` for a stopped idle
+    /// animation, every interaction state, and every other entity.
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub copper_golem_idle_seconds: f32,
     /// Vanilla `CamelRenderState.jumpCooldown` (`max(Camel.getJumpCooldown() - partialTicks, 0)`):
     /// a post-dash cooldown counter that adds extra upward head pitch in `CamelModel.applyHeadRotation`.
     /// Projected only for the camel and `0.0` for every other entity or an expired cooldown.

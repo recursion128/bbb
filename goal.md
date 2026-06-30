@@ -447,7 +447,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `poseHeldItemArmsIfStill` clamp。textured regression 覆盖 texture /
     render type / tint / transform / order / submit_sequence / light /
     overlay，并验证 base 与 eyes 共享 posed tree。
-  - idle / chest interaction keyframes 继续作为后续 P1/P2 视觉 parity。
+  - [x] idle head-spin keyframe animation：world 侧按 vanilla
+    `CopperGolem.COPPER_GOLEM_STATE`（data id 17，serializer 37）和
+    `random.nextInt(200, 240)` delayed start 投影 idle timer，native 带入
+    `EntityRenderState.copper_golem_idle_seconds`，renderer 按
+    `CopperGolemAnimation.COPPER_GOLEM_IDLE` 叠加 body/head keyframe；
+    回归测试覆盖 world/native projection、renderer pose，以及 textured
+    submission metadata 不变。
+  - chest interaction keyframes 继续作为后续 P1/P2 视觉 parity。
 - Equine / camel / llama / goat / hoglin / ravager 等大型模型：
   - boost 等 remaining renderer 状态。
   - [x] camel body-anchor y-offset formula/query：`WorldStore::entity_body_anchor_y_offset`

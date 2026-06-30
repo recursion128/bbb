@@ -4,7 +4,7 @@ use super::{
 };
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::keyframe::{
-    keyframe_animated_pose, keyframe_walk_sample, sample_bone_offsets,
+    keyframe_animated_pose, keyframe_elapsed_seconds, keyframe_walk_sample, sample_bone_offsets,
 };
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 
@@ -301,6 +301,52 @@ pub(in crate::entity_models) const COPPER_GOLEM_WALK_ITEM: AnimationDefinition =
         bones: &COPPER_GOLEM_WALK_ITEM_BONES,
     };
 
+// Vanilla 26.1 `CopperGolemAnimation.COPPER_GOLEM_IDLE` (length 3.5s, non-looping).
+// `CopperGolemModel.setupAnim` applies it after the walk / held-item pose branch, so the body/head
+// rotations are additive on top of the current walk and head-look pose.
+const COPPER_GOLEM_IDLE_BODY_ROT: [Keyframe; 8] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, degree_vec(0.0, -35.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(0.0, -35.0, 0.0), LINEAR),
+    keyframe(0.625, degree_vec(0.0, 35.0, 0.0), LINEAR),
+    keyframe(1.2083, degree_vec(0.0, 35.0, 0.0), LINEAR),
+    keyframe(2.7083, degree_vec(0.0, 35.0, 0.0), LINEAR),
+    keyframe(3.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(3.5, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const COPPER_GOLEM_IDLE_HEAD_ROT: [Keyframe; 11] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.125, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.625, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.2083, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.5, degree_vec(0.0, 300.0, 0.0), LINEAR),
+    keyframe(1.6667, degree_vec(0.0, 300.0, 0.0), LINEAR),
+    keyframe(1.75, degree_vec(-25.0, 300.0, 0.0), LINEAR),
+    keyframe(2.7083, degree_vec(-25.0, 300.0, 0.0), LINEAR),
+    keyframe(3.0, degree_vec(0.0, 360.0, 0.0), LINEAR),
+    keyframe(3.5, degree_vec(0.0, 360.0, 0.0), LINEAR),
+];
+
+const COPPER_GOLEM_IDLE_BODY_CHANNELS: [AnimationChannel; 1] = [rot(&COPPER_GOLEM_IDLE_BODY_ROT)];
+const COPPER_GOLEM_IDLE_HEAD_CHANNELS: [AnimationChannel; 1] = [rot(&COPPER_GOLEM_IDLE_HEAD_ROT)];
+const COPPER_GOLEM_IDLE_BONES: [BoneAnimation; 2] = [
+    BoneAnimation {
+        bone: "body",
+        channels: &COPPER_GOLEM_IDLE_BODY_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "head",
+        channels: &COPPER_GOLEM_IDLE_HEAD_CHANNELS,
+    },
+];
+
+pub(in crate::entity_models) const COPPER_GOLEM_IDLE: AnimationDefinition = AnimationDefinition {
+    length_seconds: 3.5,
+    looping: false,
+    bones: &COPPER_GOLEM_IDLE_BONES,
+};
+
 fn copper_golem_tree() -> ModelPart {
     let body = ModelPart::new(
         COPPER_GOLEM_BODY_POSE,
@@ -364,8 +410,9 @@ fn apply_copper_golem_keyframe(
 
 /// Mutable copper golem model, mirroring vanilla `CopperGolemModel.createBodyLayer`. The base
 /// renderer uses this same tree for both the cutout body and the emissive eyes texture. The vanilla
-/// idle/interaction keyframe animations and custom head are deferred; the head look, walking /
-/// walking-with-item keyframes, static held-item arm clamp, and antenna block transform are projected now.
+/// interaction keyframe animations and custom head are deferred; the head look, walking /
+/// walking-with-item keyframes, idle keyframe, static held-item arm clamp, and antenna block
+/// transform are projected now.
 pub(in crate::entity_models) struct CopperGolemModel {
     root: ModelPart,
 }
@@ -441,6 +488,22 @@ impl EntityModel for CopperGolemModel {
 
         if render_state.copper_golem_holding_item {
             pose_held_item_arms_if_still(&mut self.root);
+        }
+
+        if render_state.copper_golem_idle_seconds >= 0.0 {
+            let idle_seconds = keyframe_elapsed_seconds(
+                &COPPER_GOLEM_IDLE,
+                render_state.copper_golem_idle_seconds,
+            );
+            let body = self.root.child_mut("body");
+            apply_copper_golem_keyframe(&COPPER_GOLEM_IDLE, body, "body", idle_seconds, 1.0);
+            apply_copper_golem_keyframe(
+                &COPPER_GOLEM_IDLE,
+                body.child_mut("head"),
+                "head",
+                idle_seconds,
+                1.0,
+            );
         }
     }
 }

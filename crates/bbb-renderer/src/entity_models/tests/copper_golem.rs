@@ -230,6 +230,45 @@ fn copper_golem_walk_with_item_uses_vanilla_item_cycle_and_clamp() {
 }
 
 #[test]
+fn copper_golem_idle_keyframes_use_vanilla_head_spin() {
+    // Vanilla `CopperGolemModel.setupAnim` applies `COPPER_GOLEM_IDLE` after the walk branch.
+    assert_eq!(COPPER_GOLEM_IDLE.length_seconds, 3.5);
+    assert!(!COPPER_GOLEM_IDLE.looping);
+    assert_eq!(COPPER_GOLEM_IDLE.bones.len(), 2);
+
+    let instance = EntityModelInstance::new(
+        915,
+        EntityModelKind::CopperGolem {
+            weathering: CopperGolemWeathering::Unaffected,
+        },
+        [0.0, 64.0, 0.0],
+        0.0,
+    )
+    .with_head_look(20.0, -5.0)
+    .with_walk_animation(0.0, 0.0)
+    .with_copper_golem_idle_seconds(1.75);
+    let mut model = CopperGolemModel::new();
+    model.prepare(&instance);
+
+    let body = model.root_mut().child_mut("body");
+    assert_close3(body.pose.rotation, degree_vec(0.0, 35.0, 0.0));
+    assert_close3(
+        body.child_mut("head").pose.rotation,
+        [(-5.0 - 25.0) * RAD, (20.0 + 300.0) * RAD, 0.0],
+    );
+
+    let stopped = instance.with_copper_golem_idle_seconds(-1.0);
+    let mut stopped_model = CopperGolemModel::new();
+    stopped_model.prepare(&stopped);
+    let stopped_body = stopped_model.root_mut().child_mut("body");
+    assert_close3(stopped_body.pose.rotation, [0.0, 0.0, 0.0]);
+    assert_close3(
+        stopped_body.child_mut("head").pose.rotation,
+        [-5.0 * RAD, 20.0 * RAD, 0.0],
+    );
+}
+
+#[test]
 fn copper_golem_textured_layer_passes_match_vanilla_renderer() {
     let passes = copper_golem_textured_layer_passes(CopperGolemWeathering::Weathered);
 
@@ -332,6 +371,85 @@ fn copper_golem_textured_walk_preserves_submission_metadata() {
     );
     assert_eq!(still_base.texture, walking_base.texture);
     assert_eq!(still_eyes.texture, walking_eyes.texture);
+}
+
+#[test]
+fn copper_golem_textured_idle_preserves_submission_metadata() {
+    let images: Vec<EntityModelTextureImage> = copper_golem_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let base = EntityModelInstance::new(
+        916,
+        EntityModelKind::CopperGolem {
+            weathering: CopperGolemWeathering::Exposed,
+        },
+        [0.0, 64.0, 0.0],
+        0.0,
+    )
+    .with_light_coords((7_u32 << 4) | (13_u32 << 20))
+    .with_white_overlay_progress(0.45)
+    .with_has_red_overlay(true);
+    let still = base.with_copper_golem_idle_seconds(-1.0);
+    let idle = base.with_copper_golem_idle_seconds(1.75);
+
+    let still_meshes = entity_model_textured_meshes(&[still], &atlas);
+    let idle_meshes = entity_model_textured_meshes(&[idle], &atlas);
+    assert_eq!(still_meshes.submissions.len(), 2);
+    assert_eq!(idle_meshes.submissions.len(), 2);
+
+    let still_base = still_meshes.submissions[0];
+    let idle_base = idle_meshes.submissions[0];
+    assert_eq!(
+        idle_base.render_type,
+        EntityModelLayerRenderType::EntityCutout
+    );
+    assert_eq!(idle_base.render_type.vanilla_name(), "entityCutout");
+    assert_eq!(idle_base.texture, COPPER_GOLEM_EXPOSED_TEXTURE_REF);
+    assert_eq!(idle_base.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(idle_base.transform, entity_model_root_transform(idle));
+    assert_eq!(idle_base.transform, still_base.transform);
+    assert_eq!(idle_base.light, idle.render_state.shader_light());
+    assert_eq!(idle_base.overlay, idle.render_state.overlay_coords());
+    assert_eq!((idle_base.order, idle_base.submit_sequence), (0, 0));
+
+    let still_eyes = still_meshes.submissions[1];
+    let idle_eyes = idle_meshes.submissions[1];
+    assert_eq!(idle_eyes.render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(idle_eyes.render_type.vanilla_name(), "eyes");
+    assert_eq!(idle_eyes.texture, COPPER_GOLEM_EYES_EXPOSED_TEXTURE_REF);
+    assert_eq!(idle_eyes.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(idle_eyes.transform, idle_base.transform);
+    assert_eq!(idle_eyes.light, idle.render_state.shader_light());
+    assert_eq!(
+        idle_eyes.overlay,
+        [0.0, idle.render_state.overlay_coords()[1]]
+    );
+    assert_eq!((idle_eyes.order, idle_eyes.submit_sequence), (1, 1));
+
+    assert_eq!(
+        still_meshes.cutout.indices.len(),
+        idle_meshes.cutout.indices.len()
+    );
+    assert_eq!(
+        still_meshes.eyes.indices.len(),
+        idle_meshes.eyes.indices.len()
+    );
+    assert_ne!(
+        still_meshes.cutout.vertices, idle_meshes.cutout.vertices,
+        "idle keyframes move the base layer without changing submission metadata"
+    );
+    assert_ne!(
+        still_meshes.eyes.vertices, idle_meshes.eyes.vertices,
+        "the emissive eyes layer uses the same posed tree as the base layer"
+    );
+    assert_eq!(still_base.texture, idle_base.texture);
+    assert_eq!(still_eyes.texture, idle_eyes.texture);
 }
 
 #[test]

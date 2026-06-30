@@ -241,6 +241,10 @@ const BOGGED_SHEARED_DATA_ID: u8 = 16;
 /// without adding inherited synced data after `Mob.DATA_MOB_FLAGS_ID` (15), so its first own
 /// accessor is the weathering enum.
 const COPPER_GOLEM_WEATHER_STATE_DATA_ID: u8 = 16;
+/// Vanilla `CopperGolem.COPPER_GOLEM_STATE` data id (17): the synced `CopperGolemState` enum,
+/// declared immediately after `DATA_WEATHER_STATE`.
+#[cfg(test)]
+const COPPER_GOLEM_STATE_DATA_ID: u8 = 17;
 /// Vanilla `Armadillo.ARMADILLO_STATE` data id (18): the synced `ArmadilloState` enum, the
 /// armadillo's first own accessor after `AgeableMob.AGE_LOCKED` (17). Matches the
 /// `Sniffer.DATA_STATE` slot (both `extends Animal`).
@@ -1583,6 +1587,7 @@ fn entity_model_instance(
         .with_camel_standup_seconds(camel_sit.standup_seconds)
         .with_camel_dash_seconds(source.camel_dash_seconds)
         .with_camel_idle_seconds(source.camel_idle_seconds)
+        .with_copper_golem_idle_seconds(source.copper_golem_idle_seconds)
         .with_camel_jump_cooldown(source.camel_jump_cooldown)
         .with_vex_charging(source.vex_charging)
         .with_vex_right_hand_item_non_empty(vex_right_hand_item_non_empty)
@@ -6212,6 +6217,52 @@ mod tests {
             .unwrap()
             .render_state;
         assert!(state.copper_golem_holding_item);
+    }
+
+    #[test]
+    fn entity_model_instances_project_copper_golem_idle_seconds_from_world_timer() {
+        const COPPER_GOLEM_STATE_IDLE_ID: i32 = 0;
+        const COPPER_GOLEM_STATE_GETTING_ITEM_ID: i32 = 1;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            247,
+            VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
+            [3.0, 64.0, -2.0],
+        ));
+
+        let idle_seconds = |world: &WorldStore| {
+            entity_model_instances_from_world_at_partial_tick(world, None, 1.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == 247)
+                .unwrap()
+                .render_state
+                .copper_golem_idle_seconds
+        };
+
+        assert_eq!(idle_seconds(&world), -1.0);
+        world.advance_entity_client_animations(240);
+        let after_timeout = idle_seconds(&world);
+        assert!(
+            after_timeout >= 0.0,
+            "native projection carries the world copper golem idle timer: {after_timeout}"
+        );
+
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 247,
+            values: vec![protocol_copper_golem_state_data(
+                COPPER_GOLEM_STATE_GETTING_ITEM_ID
+            )],
+        }));
+        world.advance_entity_client_animations(1);
+        assert_eq!(idle_seconds(&world), -1.0);
+
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 247,
+            values: vec![protocol_copper_golem_state_data(COPPER_GOLEM_STATE_IDLE_ID)],
+        }));
+        world.advance_entity_client_animations(1);
+        assert_eq!(idle_seconds(&world), -1.0);
     }
 
     #[test]
@@ -14373,6 +14424,18 @@ mod tests {
             serializer_id: 38,
             value: EntityDataValueKind::EnumId {
                 serializer: EntityDataEnumSerializer::WeatheringCopperState,
+                id,
+            },
+        }
+    }
+
+    fn protocol_copper_golem_state_data(id: i32) -> EntityDataValue {
+        // Vanilla `EntityDataSerializers.COPPER_GOLEM_STATE` is serializer id 37.
+        EntityDataValue {
+            data_id: COPPER_GOLEM_STATE_DATA_ID,
+            serializer_id: 37,
+            value: EntityDataValueKind::EnumId {
+                serializer: EntityDataEnumSerializer::CopperGolemState,
                 id,
             },
         }
