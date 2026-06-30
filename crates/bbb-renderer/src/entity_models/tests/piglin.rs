@@ -1122,6 +1122,52 @@ fn piglin_raises_and_swings_its_melee_weapon_when_attacking() {
 }
 
 #[test]
+fn piglin_default_whack_swing_uses_humanoid_attack_animation() {
+    use std::f32::consts::PI;
+
+    let attack_anim = 0.5_f32;
+    let head_pitch = -20.0_f32;
+    let body_yrot = (attack_anim.sqrt() * PI * 2.0).sin() * 0.2;
+    let swing = 1.0 - (1.0 - attack_anim).powi(4);
+    let raise = (swing * PI).sin();
+    let head_term = (attack_anim * PI).sin() * -(head_pitch.to_radians() - 0.7) * 0.75;
+
+    for family in [PiglinModelFamily::Piglin, PiglinModelFamily::PiglinBrute] {
+        let default_whack = EntityModelInstance::piglin(171, [0.0, 64.0, 0.0], 0.0, family, false)
+            .with_head_look(0.0, head_pitch)
+            .with_attack_anim(attack_anim);
+        let mut model = PiglinModel::new(family, false);
+        model.prepare(&default_whack);
+        let body = model.root_mut().child_mut("body").pose;
+        let right = model.root_mut().child_mut("right_arm").pose;
+
+        assert!(
+            (body.rotation[1] - body_yrot).abs() < 1.0e-6,
+            "{family:?} default WHACK twists the body"
+        );
+        assert!((right.offset[0] - (-body_yrot.cos() * 5.0)).abs() < 1.0e-6);
+        assert!((right.offset[2] - (body_yrot.sin() * 5.0)).abs() < 1.0e-6);
+        assert!((right.rotation[0] - (-(raise * 1.2 + head_term))).abs() < 1.0e-6);
+        assert!((right.rotation[1] - body_yrot * 3.0).abs() < 1.0e-6);
+        assert!((right.rotation[2] - (0.1 - 0.4)).abs() < 1.0e-6);
+
+        let melee = default_whack.with_piglin_attacking_with_melee(true);
+        let mut melee_model = PiglinModel::new(family, false);
+        melee_model.prepare(&melee);
+        assert!(
+            melee_model
+                .root_mut()
+                .child_mut("body")
+                .pose
+                .rotation[1]
+                .abs()
+                < 1.0e-6,
+            "ATTACKING_WITH_MELEE_WEAPON uses swingWeaponDown instead of default HumanoidModel WHACK"
+        );
+    }
+}
+
+#[test]
 fn piglin_admires_a_loved_offhand_item() {
     // Vanilla `PiglinModel.setupAnim` ADMIRING_ITEM (mainArm = RIGHT): head tilts down to the item
     // (`head.xRot = 0.5, head.yRot = 0`, overwriting the head look) and the off (left) arm lifts it

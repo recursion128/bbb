@@ -491,6 +491,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `attack_anim > 0` 时先运行 `HumanoidModel.setupAttackAnimation` 的 body
     yRot 与左右 arm anchor offset，再由 `AnimationUtils.animateZombieArms`
     覆写 arm rotation，adult zombie 状态测试固定 body/anchor/held-out rotation。
+  - [x] piglin-family default WHACK：普通 piglin / piglin brute 在非
+    `ATTACKING_WITH_MELEE_WEAPON` 的 mid-swing 分支现在走 vanilla
+    `PiglinModel.setupAttackAnimation -> super.setupAttackAnimation` 的默认
+    `HumanoidModel` body twist / arm anchor / right-arm whack；melee-weapon
+    pose 仍保持 `AnimationUtils.swingWeaponDown` 分支。
   - attack / crossbow / spell / celebrate / riding 其他组合冲突。
   - [x] main-hand spear STAB held-item layer transform：player STAB arm lunge
     之后，held item transform 追加 vanilla

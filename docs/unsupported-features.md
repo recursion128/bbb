@@ -1417,9 +1417,11 @@ When an agent does any of the following, update this file in the same slice:
     helper is wired into the skeleton (with the `SkeletonModel` melee arm override), the zombie
     family applies the `animateZombieArms` arm-swing terms, and the vindicator chops with the
     `IllagerModel` `swingWeaponDown` axe pose, and the piglin/brute reuse that same
-    `swingWeaponDown` for their `ATTACKING_WITH_MELEE_WEAPON` pose (see the piglin note above); the
-    default `HumanoidModel` body-twist whack for a non-`ATTACKING` piglin (empty hand / non-tool
-    item) is deferred. Registry-backed per-item default swing duration is now wired through pack →
+    `swingWeaponDown` for their `ATTACKING_WITH_MELEE_WEAPON` pose (see the piglin note above).
+    Ordinary non-`ATTACKING_WITH_MELEE_WEAPON` piglin/brute swings now fall through to vanilla
+    `HumanoidModel.setupAttackAnimation`, applying the default WHACK body twist, arm-anchor
+    reposition, and attacking-arm chop before any later piglin arm-pose override. Registry-backed
+    per-item default swing duration is now wired through pack →
     native → world for `ItemStack.getSwingAnimation().duration()`: vanilla spear attack durations
     from `Item.Properties.spear(... attackDuration ...)` keep the client-side swing alive past the
     default 6-tick WHACK ramp (for example wooden spear `0.65F * 20 -> 13` ticks). Dig-speed /
@@ -2303,12 +2305,12 @@ When an agent does any of the following, update this file in the same slice:
         uses model-specific branches: zombie-family `animateZombieArms`, skeleton melee,
         and vindicator empty/armed `ATTACKING`; illager riding sit pose is also covered
         through the projected passenger state. Non-player `HumanoidMobRenderer` held-spear `ArmPose.SPEAR`
-        and zombie/zombified-piglin `STAB` skip/lunge parity are covered; `NONE` swing-type parity remains
-        separate work.
+        and zombie/zombified-piglin `STAB` skip/lunge parity are covered; ordinary piglin/brute
+        non-melee-pose WHACK now uses the inherited `HumanoidModel.setupAttackAnimation`; `NONE`
+        swing-type parity remains separate custom-component work.
       - remaining slices: held-item refinements (first-person viewmodel;
         broader non-profile dynamic texture loading; the
-        `NONE` swing type; the
-        remaining attack swing details on non-player humanoid models). Item lighting
+        `NONE` swing type). Item lighting
         context (GUI front-lit vs world diffuse) is now P1 GUI surface work:
         vanilla `core/item.vsh` multiplies submitted color by
         `minecraft_mix_light(Light0_Direction, Light1_Direction, Normal, Color)`,

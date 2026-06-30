@@ -1,9 +1,9 @@
 use super::{
     apply_crossbow_charge_pose, apply_crossbow_hold_pose, apply_head_look,
-    apply_humanoid_mob_spear_arm_poses, apply_humanoid_stab_attack_animation, apply_humanoid_walk,
-    apply_humanoid_weapon_swing_down, apply_zombie_arms_held_out_named, humanoid_arm_bob_pose,
-    piglin_ear_flap_pose, PartPose, CROSSBOW_CHARGE_DURATION_TICKS, PART_POSE_ZERO,
-    PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE,
+    apply_humanoid_attack_animation, apply_humanoid_mob_spear_arm_poses,
+    apply_humanoid_stab_attack_animation, apply_humanoid_walk, apply_humanoid_weapon_swing_down,
+    apply_zombie_arms_held_out_named, humanoid_arm_bob_pose, piglin_ear_flap_pose, PartPose,
+    CROSSBOW_CHARGE_DURATION_TICKS, PART_POSE_ZERO, PIGLIN_ADULT_EAR_ANGLE, PIGLIN_BABY_EAR_ANGLE,
 };
 use crate::entity_models::catalog::PiglinModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
@@ -632,6 +632,20 @@ impl EntityModel for PiglinModel {
                     age_in_ticks,
                 );
             }
+        }
+        if self.family != PiglinModelFamily::ZombifiedPiglin
+            && !render_state.piglin_attacking_with_melee
+        {
+            // Vanilla `PiglinModel.setupAttackAnimation`: only ATTACKING_WITH_MELEE_WEAPON replaces the
+            // inherited attack animation with `swingWeaponDown`; default/hold/charge/admire/dance poses
+            // still run `HumanoidModel.setupAttackAnimation` first.
+            apply_humanoid_attack_animation(
+                &mut self.root,
+                render_state.attack_anim,
+                render_state.attack_arm_off_hand,
+                render_state.head_pitch,
+                1.0,
+            );
         }
         // Vanilla `PiglinModel.setupAnim` `CROSSBOW_HOLD`: a regular piglin holding a charged crossbow
         // levels it along the head look, overwriting the walk arm swing. Mutually exclusive with DANCING
