@@ -5838,15 +5838,17 @@ When an agent does any of the following, update this file in the same slice:
       matching by item contents. The visual mouse-cursor carried-item projection
       is still a later GUI surface slice.
     - `minecraft:component` condition — `ComponentMatches.get`, currently for
-      the `DataComponentPredicate` component-type / `AnyValue` branch. Native
-      maps the predicate component id through the same decoded component table
-      as `has_component`: default prototype components such as
-      `minecraft:rarity` count as present, removed components select false, and
-      non-default patched components such as
-      `minecraft:enchantment_glint_override` select true regardless of their
-      boolean payload. Complex predicate types (`minecraft:damage`,
-      enchantments, container/bundle contents, trim, fireworks, and similar)
-      remain follow-up.
+      the `DataComponentPredicate` component-type / `AnyValue` branch plus the
+      concrete `minecraft:damage` predicate. Native maps the AnyValue
+      component id through the same decoded component table as `has_component`:
+      default prototype components such as `minecraft:rarity` count as present,
+      removed components select false, and non-default patched components such
+      as `minecraft:enchantment_glint_override` select true regardless of their
+      boolean payload. The damage predicate matches vanilla
+      `DamagePredicate.matches` over the stack's `minecraft:damage` and
+      `durability = max_damage - damage` bounds. Remaining complex predicate
+      types (enchantments, container/bundle contents, trim, fireworks, and
+      similar) remain follow-up.
     - `minecraft:charge_type` — `Charge.get` (`ROCKET` when any charged
       projectile is `minecraft:firework_rocket`, `ARROW` when charged otherwise,
       else `NONE`), using the native item registry to identify the projectile
@@ -5996,9 +5998,9 @@ When an agent does any of the following, update this file in the same slice:
     cursor-carried item call sites, while the cursor item presentation itself
     remains GUI follow-up.
     `minecraft:component` is wired for the scalar / enum component select subset
-    listed above, and the condition form covers component-type / AnyValue
-    predicates; broader component-codec and complex `DataComponentPredicate`
-    parity remains the documented follow-up.
+    listed above, and the condition form covers component-type / AnyValue plus
+    `minecraft:damage` predicates; broader component-codec and remaining
+    complex `DataComponentPredicate` parity remains the documented follow-up.
 
 ### Native Input, Movement, Interaction, Inventory, And Command Flows
 

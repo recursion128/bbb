@@ -1184,9 +1184,7 @@ fn condition_property_is_runtime_resolved(property: &ItemModelProperty) -> bool 
         | ItemModelPropertyKind::ViewEntity
         | ItemModelPropertyKind::ExtendedView
         | ItemModelPropertyKind::KeybindDown => true,
-        ItemModelPropertyKind::Component => {
-            component_condition_any_value_component_id(property).is_some()
-        }
+        ItemModelPropertyKind::Component => component_condition_is_runtime_resolved(property),
         ItemModelPropertyKind::Other => false,
     }
 }
@@ -1473,7 +1471,20 @@ fn item_stack_matches_component_predicate(
     property: &ItemModelProperty,
     ctx: IconResolveContext<'_>,
 ) -> bool {
-    let Some(component_id) = component_condition_any_value_component_id(property) else {
+    let Some(predicate) = component_condition_predicate(property) else {
+        return false;
+    };
+    if predicate == "minecraft:damage" {
+        return item_stack_matches_damage_component_predicate(
+            property,
+            ctx.component_patch,
+            ctx.default_max_damage,
+        );
+    }
+    if data_component_predicate_type_is_complex(predicate) {
+        return false;
+    }
+    let Some(component_id) = data_component_type_id(predicate) else {
         return false;
     };
     item_stack_has_component_id(
@@ -1484,18 +1495,91 @@ fn item_stack_matches_component_predicate(
     )
 }
 
-fn component_condition_any_value_component_id(property: &ItemModelProperty) -> Option<i32> {
-    let Some(predicate) = property
+fn component_condition_is_runtime_resolved(property: &ItemModelProperty) -> bool {
+    let Some(predicate) = component_condition_predicate(property) else {
+        return false;
+    };
+    predicate == "minecraft:damage"
+        || component_condition_any_value_component_id(property).is_some()
+}
+
+fn component_condition_predicate(property: &ItemModelProperty) -> Option<&str> {
+    property
         .raw()
         .get("predicate")
         .and_then(|value| value.as_str())
-    else {
+}
+
+fn component_condition_any_value_component_id(property: &ItemModelProperty) -> Option<i32> {
+    let Some(predicate) = component_condition_predicate(property) else {
         return None;
     };
     if data_component_predicate_type_is_complex(predicate) {
         return None;
     }
     data_component_type_id(predicate)
+}
+
+fn item_stack_matches_damage_component_predicate(
+    property: &ItemModelProperty,
+    component_patch: Option<&DataComponentPatchSummary>,
+    default_max_damage: Option<i32>,
+) -> bool {
+    let Some((damage, max_damage)) =
+        damage_component_predicate_state(component_patch, default_max_damage)
+    else {
+        return false;
+    };
+    let Some(value) = property.raw().get("value") else {
+        return false;
+    };
+    min_max_int_bounds_match(value.get("damage"), damage)
+        && min_max_int_bounds_match(value.get("durability"), max_damage - damage)
+}
+
+fn damage_component_predicate_state(
+    component_patch: Option<&DataComponentPatchSummary>,
+    default_max_damage: Option<i32>,
+) -> Option<(i32, i32)> {
+    if component_patch.is_some_and(|patch| patch.removed_type_ids.contains(&DAMAGE_COMPONENT_ID)) {
+        return None;
+    }
+    let damage = component_patch
+        .and_then(|patch| patch.damage)
+        .or_else(|| default_max_damage.map(|_| 0))?;
+    let max_damage = if component_patch
+        .is_some_and(|patch| patch.removed_type_ids.contains(&MAX_DAMAGE_COMPONENT_ID))
+    {
+        0
+    } else {
+        component_patch
+            .and_then(|patch| patch.max_damage)
+            .or(default_max_damage)
+            .unwrap_or(0)
+    };
+    Some((damage, max_damage))
+}
+
+fn min_max_int_bounds_match(bounds: Option<&Value>, value: i32) -> bool {
+    let Some(bounds) = bounds else {
+        return true;
+    };
+    if let Some(exact) = json_i32(bounds) {
+        return value == exact;
+    }
+    let Some(object) = bounds.as_object() else {
+        return false;
+    };
+    let min = object.get("min").map(json_i32).unwrap_or(Some(i32::MIN));
+    let max = object.get("max").map(json_i32).unwrap_or(Some(i32::MAX));
+    let (Some(min), Some(max)) = (min, max) else {
+        return false;
+    };
+    min <= max && value >= min && value <= max
+}
+
+fn json_i32(value: &Value) -> Option<i32> {
+    i32::try_from(value.as_i64()?).ok()
 }
 
 fn item_stack_has_component_id(

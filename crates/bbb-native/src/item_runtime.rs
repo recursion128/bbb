@@ -5340,7 +5340,7 @@ mod tests {
     }
 
     #[test]
-    fn native_item_runtime_resolves_component_condition_any_value_predicates() {
+    fn native_item_runtime_resolves_component_condition_predicates() {
         let root = unique_temp_dir("item-runtime-component-condition");
         write_component_condition_fixture(&root);
 
@@ -5408,6 +5408,60 @@ mod tests {
                 }
             ),
             uv("component_condition_glint_absent")
+        );
+
+        // Vanilla `DamagePredicate.matches` requires the `minecraft:damage`
+        // component and matches both damage and durability (`max_damage -
+        // damage`) with `MinMaxBounds.Ints`.
+        assert_eq!(
+            selected(2, DataComponentPatchSummary::default()),
+            uv("component_condition_damage_absent")
+        );
+        assert_eq!(
+            selected(
+                2,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![3],
+                    damage: Some(3),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_damage_present")
+        );
+        assert_eq!(
+            selected(
+                2,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![3],
+                    damage: Some(4),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_damage_absent")
+        );
+        assert_eq!(
+            selected(
+                2,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![3],
+                    removed_type_ids: vec![3],
+                    damage: Some(3),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_damage_absent")
+        );
+        assert_eq!(
+            selected(
+                2,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![3],
+                    removed_type_ids: vec![2],
+                    damage: Some(3),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_damage_absent")
         );
 
         std::fs::remove_dir_all(root).unwrap();
@@ -6848,9 +6902,20 @@ mod tests {
     fn write_component_condition_fixture(root: &Path) {
         let assets = assets_dir(root);
         write_item_atlases(&assets);
-        write_item_registry_source(
-            root,
-            &["component_condition_rarity", "component_condition_glint"],
+        write_json(
+            &root
+                .join("sources")
+                .join(bbb_pack::MC_VERSION)
+                .join("net")
+                .join("minecraft")
+                .join("world")
+                .join("item")
+                .join("Items.java"),
+            r#"public class Items {
+                public static final Item COMPONENT_CONDITION_RARITY = registerItem("component_condition_rarity");
+                public static final Item COMPONENT_CONDITION_GLINT = registerItem("component_condition_glint");
+                public static final Item COMPONENT_CONDITION_DAMAGE = registerItem("component_condition_damage", new Item.Properties().durability(10));
+            }"#,
         );
         write_json(
             &assets.join("items").join("component_condition_rarity.json"),
@@ -6890,11 +6955,38 @@ mod tests {
                 }
             }"#,
         );
+        write_json(
+            &assets.join("items").join("component_condition_damage.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:damage",
+                    "value": {
+                        "damage": 3,
+                        "durability": {
+                            "min": 4,
+                            "max": 8
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_damage_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_damage_absent"
+                    }
+                }
+            }"#,
+        );
         for (model_id, color) in [
             ("component_condition_rarity_present", [80, 160, 220, 255]),
             ("component_condition_rarity_absent", [60, 40, 80, 255]),
             ("component_condition_glint_present", [180, 80, 220, 255]),
             ("component_condition_glint_absent", [40, 40, 80, 255]),
+            ("component_condition_damage_present", [220, 120, 40, 255]),
+            ("component_condition_damage_absent", [40, 80, 60, 255]),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);
         }
