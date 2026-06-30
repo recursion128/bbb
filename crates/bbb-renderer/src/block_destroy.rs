@@ -14,6 +14,9 @@ pub struct BlockDestroyOverlay {
 
 const BLOCK_DESTROY_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 8] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x2, 4 => Float32x3, 5 => Float32, 6 => Float32, 7 => Sint32];
 const BLOCK_DESTROY_FACE_OFFSET: f32 = 0.003;
+const BLOCK_DESTROY_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
+const BLOCK_DESTROY_DEPTH_WRITE_ENABLED: bool = false;
+const BLOCK_DESTROY_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::LessEqual;
 const BLOCK_DESTROY_CRUMBLING_BLEND: wgpu::BlendState = wgpu::BlendState {
     color: wgpu::BlendComponent {
         src_factor: wgpu::BlendFactor::Dst,
@@ -170,15 +173,15 @@ pub(super) fn create_block_destroy_pipeline(
             topology: wgpu::PrimitiveTopology::TriangleList,
             strip_index_format: None,
             front_face: wgpu::FrontFace::Ccw,
-            cull_mode: None,
+            cull_mode: BLOCK_DESTROY_CULL_MODE,
             polygon_mode: wgpu::PolygonMode::Fill,
             unclipped_depth: false,
             conservative: false,
         },
         depth_stencil: Some(wgpu::DepthStencilState {
             format: DEPTH_FORMAT,
-            depth_write_enabled: false,
-            depth_compare: wgpu::CompareFunction::LessEqual,
+            depth_write_enabled: BLOCK_DESTROY_DEPTH_WRITE_ENABLED,
+            depth_compare: BLOCK_DESTROY_DEPTH_COMPARE,
             stencil: wgpu::StencilState::default(),
             bias: BLOCK_DESTROY_DEPTH_BIAS,
         }),
@@ -265,7 +268,11 @@ fn emit_block_destroy_face(
             block_state_id: -1,
         });
     }
-    indices.extend([base, base + 1, base + 2, base, base + 2, base + 3]);
+    if face.normal[1] != 0.0 {
+        indices.extend([base, base + 2, base + 1, base, base + 3, base + 2]);
+    } else {
+        indices.extend([base, base + 1, base + 2, base, base + 2, base + 3]);
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -317,7 +324,13 @@ mod tests {
     fn block_destroy_crumbling_state_matches_vanilla_pipeline() {
         // Vanilla 26.1 `RenderPipelines.CRUMBLING` uses
         // `BlendFunction(DST_COLOR, SRC_COLOR, ONE, ZERO)` and
-        // `DepthStencilState(LESS_EQUAL, false, -1.0F, -10.0F)`.
+        // default cull plus `DepthStencilState(LESS_EQUAL, false, -1.0F, -10.0F)`.
+        assert_eq!(BLOCK_DESTROY_CULL_MODE, Some(wgpu::Face::Back));
+        assert!(!BLOCK_DESTROY_DEPTH_WRITE_ENABLED);
+        assert_eq!(
+            BLOCK_DESTROY_DEPTH_COMPARE,
+            wgpu::CompareFunction::LessEqual
+        );
         assert_eq!(
             BLOCK_DESTROY_CRUMBLING_BLEND.color.src_factor,
             wgpu::BlendFactor::Dst
@@ -367,7 +380,7 @@ mod tests {
         assert_eq!(mesh.vertices[1].uv, [0.5, 0.75]);
         assert_eq!(mesh.vertices[2].uv, [0.5, 0.5]);
         assert_eq!(mesh.vertices[3].uv, [0.25, 0.5]);
-        assert_eq!(mesh.indices[0..6], [0, 1, 2, 0, 2, 3]);
+        assert_eq!(mesh.indices[0..6], [0, 2, 1, 0, 3, 2]);
     }
 
     #[test]
@@ -396,6 +409,26 @@ mod tests {
     }
 
     #[test]
+    fn block_destroy_overlay_mesh_uses_outward_winding_for_back_face_cull() {
+        let mesh = block_destroy_overlay_mesh(BlockDestroyOverlay {
+            pos: [0, 0, 0],
+            uv: TerrainUvRect::UNIT,
+        });
+
+        for face_index in 0..DESTROY_OVERLAY_FACES.len() {
+            let triangle = face_index * 6;
+            let a = mesh.vertices[mesh.indices[triangle] as usize].position;
+            let b = mesh.vertices[mesh.indices[triangle + 1] as usize].position;
+            let c = mesh.vertices[mesh.indices[triangle + 2] as usize].position;
+            let normal = triangle_normal(a, b, c);
+            assert!(
+                dot3(normal, DESTROY_OVERLAY_FACES[face_index].normal) > 0.0,
+                "face {face_index} winding should point outward for vanilla crumbling back-face cull"
+            );
+        }
+    }
+
+    #[test]
     fn block_destroy_overlays_mesh_batches_multiple_positions() {
         let overlays = [
             BlockDestroyOverlay {
@@ -414,6 +447,20 @@ mod tests {
         assert_eq!(mesh.indices.len(), 72);
         assert_eq!(mesh.vertices[0].position, [0.0, -0.003, 1.0]);
         assert_eq!(mesh.vertices[24].position, [2.0, -0.003, 1.0]);
-        assert_eq!(mesh.indices[36..42], [24, 25, 26, 24, 26, 27]);
+        assert_eq!(mesh.indices[36..42], [24, 26, 25, 24, 27, 26]);
+    }
+
+    fn triangle_normal(a: [f32; 3], b: [f32; 3], c: [f32; 3]) -> [f32; 3] {
+        let ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+        let ac = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+        [
+            ab[1] * ac[2] - ab[2] * ac[1],
+            ab[2] * ac[0] - ab[0] * ac[2],
+            ab[0] * ac[1] - ab[1] * ac[0],
+        ]
+    }
+
+    fn dot3(a: [f32; 3], b: [f32; 3]) -> f32 {
+        a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
     }
 }

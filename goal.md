@@ -178,7 +178,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     仍在 vanilla `crumblingBufferSource.endBatch()` 对应 phase 绘制到 main
     target，pipeline 现在使用 vanilla `RenderPipelines.CRUMBLING` 的
     `DST_COLOR` / `SRC_COLOR` blend、alpha cutoff `0.1`、depth-write off、
-    `LESS_EQUAL` + polygon offset `-1.0F, -10.0F`。完整 block model-shaped
+    `LESS_EQUAL` + polygon offset `-1.0F, -10.0F`、默认 back-face cull；
+    本地 cube overlay 三角 winding 已同步为 outward。完整 block model-shaped
     crack decals 仍属后续视觉/geometry parity。
   - [x] `entitySolidZOffsetForward` item-frame block model：item-frame /
     glow-item-frame visible border 从普通 block-item solid bucket 拆到

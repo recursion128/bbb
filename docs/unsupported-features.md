@@ -508,7 +508,8 @@ When an agent does any of the following, update this file in the same slice:
     uses vanilla `RenderPipelines.CRUMBLING`-shaped state: `DST_COLOR` /
     `SRC_COLOR` color blend, alpha source / zero destination alpha, alpha cutoff
     `0.1`, depth-write disabled, `LESS_EQUAL`, and polygon offset
-    `-1.0F, -10.0F`. Existing block/flat
+    `-1.0F, -10.0F`, plus the default back-face cull; the local cube overlay
+    now emits outward triangle winding for that cull state. Existing block/flat
     item-model and item-frame map batches now draw as world item features on the
     main target before the vanilla-shaped target depth copies and before
     translucent terrain; GUI item icons remain a post-combine HUD pass. Item-model
@@ -5589,8 +5590,8 @@ When an agent does any of the following, update this file in the same slice:
       - block-specific `state.attack` callbacks
       - hit particles
     - full model-shaped crack decals beyond the current cube overlay; vanilla
-      crumbling blend/depth-bias behavior is now covered by the renderer
-      pipeline state
+      crumbling blend/cull/depth-bias behavior is now covered by the renderer
+      pipeline state, with the local cube overlay using outward winding
     - any remaining `STOP_DESTROY_BLOCK` sequencing gaps
   - Commands:
     - Continue adding focused command queue and encode tests for:
