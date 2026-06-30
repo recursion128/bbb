@@ -186,6 +186,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     translucent 与 itemEntity target 的 `EntityModelTexturedDrawRange` 现在携带
     `order`、camera-distance、insertion index，并有测试直接验证
     `SubmitNodeCollector.order` 优先、同 order 内远到近、等距按提交插入顺序稳定。
+  - [x] main translucent feature pass 的 textured / eyes / scroll / additive-scroll
+    combined draw plan：BreezeWind、EnergySwirl、Eyes、entityTranslucent /
+    entityTranslucentEmissive 等 draw range 共享 `order`、camera-distance、
+    insertion index 排序；Breeze `WindLayer` 与 `EyesLayer` 同为 `order(1)` 时
+    保持 vanilla layer 注册顺序（wind 先于 eyes）。非 `sortOnUpload` 的
+    EndCrystal / Guardian beam scroll range 也进入 range draw，避免 combined
+    plan 存在时漏画。
   - terrain translucent 与 entity translucent 的跨 target / cross bucket 顺序。
   - particles translucent order 与 itemEntity target 的交界。
 - shader / sampler state：

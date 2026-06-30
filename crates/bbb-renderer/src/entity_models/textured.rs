@@ -197,8 +197,25 @@ pub(crate) struct EntityModelTexturedDrawRange {
     pub(crate) index_count: u32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct EntityModelScrollDrawRange {
+    pub(crate) render_type: EntityModelLayerRenderType,
+    pub(crate) order: i32,
+    pub(crate) distance_sq: f32,
+    pub(crate) insertion_index: usize,
+    pub(crate) index_start: u32,
+    pub(crate) index_count: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) enum EntityModelTranslucentDrawRange {
+    Textured(EntityModelTexturedDrawRange),
+    Scroll(EntityModelScrollDrawRange),
+    AdditiveScroll(EntityModelScrollDrawRange),
+}
+
 struct PendingSortedScrollUpload {
-    bucket: EntityModelLayerRenderBucket,
+    render_type: EntityModelLayerRenderType,
     sort_key: EntityModelSubmitSortKey,
     mesh: EntityModelScrollMesh,
 }
@@ -261,6 +278,7 @@ pub(super) struct EntityModelTexturedMeshes {
     /// transform, light, and overlay so the folded GPU buckets can be audited against explicit
     /// submissions.
     pub(super) submissions: Vec<EntityModelRenderSubmission>,
+    pub(super) sorted_main_translucent_draws: Vec<EntityModelTranslucentDrawRange>,
     pub(super) sorted_translucent_draws: Vec<EntityModelTexturedDrawRange>,
     pub(super) sorted_item_entity_draws: Vec<EntityModelTexturedDrawRange>,
     pending_sorted_textured_uploads: Vec<PendingSortedTexturedUpload>,
@@ -307,6 +325,7 @@ impl EntityModelTexturedMeshes {
             armor_entity_glint: EntityModelScrollMesh::new(),
             water_mask: EntityModelMesh::new(),
             submissions: Vec::new(),
+            sorted_main_translucent_draws: Vec::new(),
             sorted_translucent_draws: Vec::new(),
             sorted_item_entity_draws: Vec::new(),
             pending_sorted_textured_uploads: Vec::new(),
@@ -494,6 +513,56 @@ impl EntityModelTexturedMeshes {
         })
     }
 
+    fn scroll_draw_key(
+        &self,
+        submission: EntityModelRenderSubmission,
+        insertion_index: usize,
+    ) -> Option<EntityModelSubmitSortKey> {
+        let camera_position = self.sort_camera_position?;
+        let position = submission.transform.transform_point3(Vec3::ZERO);
+        let camera = Vec3::from_array(camera_position);
+        let distance_sq = (position - camera).length_squared();
+        Some(EntityModelSubmitSortKey {
+            order: submission.order,
+            distance_sq: if distance_sq.is_finite() {
+                distance_sq
+            } else {
+                0.0
+            },
+            insertion_index,
+        })
+    }
+
+    fn push_scroll_draw_range(
+        &mut self,
+        render_type: EntityModelLayerRenderType,
+        bucket: EntityModelLayerRenderBucket,
+        sort_key: EntityModelSubmitSortKey,
+        index_start: u32,
+        index_count: u32,
+    ) {
+        if index_count == 0 {
+            return;
+        }
+        let draw = EntityModelScrollDrawRange {
+            render_type,
+            order: sort_key.order,
+            distance_sq: sort_key.distance_sq,
+            insertion_index: sort_key.insertion_index,
+            index_start,
+            index_count,
+        };
+        match bucket {
+            EntityModelLayerRenderBucket::Scroll => self
+                .sorted_main_translucent_draws
+                .push(EntityModelTranslucentDrawRange::Scroll(draw)),
+            EntityModelLayerRenderBucket::AdditiveScroll => self
+                .sorted_main_translucent_draws
+                .push(EntityModelTranslucentDrawRange::AdditiveScroll(draw)),
+            _ => {}
+        }
+    }
+
     fn flush_sorted_uploads(&mut self) {
         self.pending_sorted_textured_uploads
             .sort_by(|left, right| compare_submit_sort_key(left.sort_key, right.sort_key));
@@ -543,6 +612,12 @@ impl EntityModelTexturedMeshes {
                     if index_count > 0 =>
                 {
                     self.sorted_translucent_draws.push(draw);
+                    self.sorted_main_translucent_draws
+                        .push(EntityModelTranslucentDrawRange::Textured(draw));
+                }
+                EntityModelLayerRenderBucket::Eyes if index_count > 0 => {
+                    self.sorted_main_translucent_draws
+                        .push(EntityModelTranslucentDrawRange::Textured(draw));
                 }
                 EntityModelLayerRenderBucket::ItemEntityTranslucent if index_count > 0 => {
                     self.sorted_item_entity_draws.push(draw);
@@ -554,8 +629,40 @@ impl EntityModelTexturedMeshes {
         self.pending_sorted_scroll_uploads
             .sort_by(|left, right| compare_submit_sort_key(left.sort_key, right.sort_key));
         for upload in std::mem::take(&mut self.pending_sorted_scroll_uploads) {
-            append_scroll_mesh(scroll_bucket_mut(self, upload.bucket), upload.mesh);
+            let bucket = upload.render_type.mesh_bucket();
+            let index_count = u32::try_from(upload.mesh.indices.len())
+                .expect("sorted scroll index count fits in u32");
+            let index_start = append_scroll_mesh(scroll_bucket_mut(self, bucket), upload.mesh);
+            self.push_scroll_draw_range(
+                upload.render_type,
+                bucket,
+                upload.sort_key,
+                index_start,
+                index_count,
+            );
         }
+        self.sorted_main_translucent_draws.sort_by(|left, right| {
+            compare_submit_sort_key(
+                translucent_draw_sort_key(*left),
+                translucent_draw_sort_key(*right),
+            )
+        });
+    }
+}
+
+fn translucent_draw_sort_key(draw: EntityModelTranslucentDrawRange) -> EntityModelSubmitSortKey {
+    match draw {
+        EntityModelTranslucentDrawRange::Textured(draw) => EntityModelSubmitSortKey {
+            order: draw.order,
+            distance_sq: draw.distance_sq,
+            insertion_index: draw.insertion_index,
+        },
+        EntityModelTranslucentDrawRange::Scroll(draw)
+        | EntityModelTranslucentDrawRange::AdditiveScroll(draw) => EntityModelSubmitSortKey {
+            order: draw.order,
+            distance_sq: draw.distance_sq,
+            insertion_index: draw.insertion_index,
+        },
     }
 }
 
@@ -1137,11 +1244,13 @@ fn append_textured_mesh(
     index_start
 }
 
-fn append_scroll_mesh(dest: &mut EntityModelScrollMesh, source: EntityModelScrollMesh) {
+fn append_scroll_mesh(dest: &mut EntityModelScrollMesh, source: EntityModelScrollMesh) -> u32 {
+    let index_start = u32::try_from(dest.indices.len()).expect("scroll index count fits in u32");
     let base = u32::try_from(dest.vertices.len()).expect("scroll vertex count fits in u32");
     dest.vertices.extend(source.vertices);
     dest.indices
         .extend(source.indices.into_iter().map(|index| index + base));
+    index_start
 }
 
 fn submission_writes_outline_buffer(submission: EntityModelRenderSubmission) -> bool {
@@ -1314,7 +1423,7 @@ fn render_scrolled_textured_submission(
         meshes
             .pending_sorted_scroll_uploads
             .push(PendingSortedScrollUpload {
-                bucket: submit.render_type.mesh_bucket(),
+                render_type: submit.render_type,
                 sort_key,
                 mesh: scroll,
             });
@@ -1366,10 +1475,25 @@ fn render_scroll_geometry_submission(
         meshes
             .pending_sorted_scroll_uploads
             .push(PendingSortedScrollUpload {
-                bucket: target_bucket,
+                render_type: submit.render_type,
                 sort_key,
                 mesh,
             });
+        return;
+    }
+    if let Some(sort_key) = meshes.scroll_draw_key(submission, insertion_index) {
+        let mut mesh = EntityModelScrollMesh::new();
+        emit(&mut mesh, entry, submission);
+        let index_count =
+            u32::try_from(mesh.indices.len()).expect("scroll geometry index count fits in u32");
+        let index_start = append_scroll_mesh(scroll_bucket_mut(meshes, target_bucket), mesh);
+        meshes.push_scroll_draw_range(
+            submit.render_type,
+            target_bucket,
+            sort_key,
+            index_start,
+            index_count,
+        );
         return;
     }
     emit(scroll_bucket_mut(meshes, target_bucket), entry, submission);

@@ -5,8 +5,8 @@ use wgpu::util::DeviceExt;
 
 use crate::{
     entity_models::{
-        EntityModelLayerRenderType, EntityModelTexturedDrawAtlas, EntityModelTexturedDrawRange,
-        EntityModelTexturedMeshGpu,
+        EntityModelLayerRenderType, EntityModelScrollDrawRange, EntityModelTexturedDrawAtlas,
+        EntityModelTexturedDrawRange, EntityModelTexturedMeshGpu, EntityModelTranslucentDrawRange,
     },
     lightmap::write_lightmap_uniform,
     weather::{build_lightning_mesh, build_weather_mesh},
@@ -1548,10 +1548,13 @@ impl Renderer {
             draw.render_type == EntityModelLayerRenderType::EntityTranslucentEmissive;
         let uses_armor_translucent_pipeline =
             draw.render_type == EntityModelLayerRenderType::ArmorTranslucent;
+        let uses_eyes_pipeline = draw.render_type == EntityModelLayerRenderType::Eyes;
         if uses_translucent_emissive_pipeline {
             pass.set_pipeline(&self.entity_model_translucent_emissive_pipeline);
         } else if uses_armor_translucent_pipeline {
             pass.set_pipeline(&self.entity_model_armor_translucent_pipeline);
+        } else if uses_eyes_pipeline {
+            pass.set_pipeline(&self.entity_model_eyes_pipeline);
         } else if draw.surface_cull {
             pass.set_pipeline(&self.entity_model_translucent_cull_pipeline);
         } else {
@@ -1559,7 +1562,7 @@ impl Renderer {
         }
         *pipeline_switches += 1;
         pass.set_bind_group(0, bind_group, &[]);
-        if !uses_translucent_emissive_pipeline {
+        if !uses_translucent_emissive_pipeline && !uses_eyes_pipeline {
             pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
         }
         pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
@@ -1594,6 +1597,18 @@ impl Renderer {
             }
             return Some((
                 self.entity_model_armor_translucent_mesh.as_ref()?,
+                &self.entity_model_texture_atlas.as_ref()?.bind_group,
+            ));
+        }
+        if draw.render_type == EntityModelLayerRenderType::Eyes {
+            if item_entity_target
+                || draw.atlas != EntityModelTexturedDrawAtlas::Static
+                || draw.surface_cull
+            {
+                return None;
+            }
+            return Some((
+                self.entity_model_eyes_mesh.as_ref()?,
                 &self.entity_model_texture_atlas.as_ref()?.bind_group,
             ));
         }
@@ -1653,12 +1668,90 @@ impl Renderer {
         }
     }
 
+    fn draw_entity_main_translucent_range<'a>(
+        &'a self,
+        pass: &mut wgpu::RenderPass<'a>,
+        draw: EntityModelTranslucentDrawRange,
+        pipeline_switches: &mut u64,
+        entity_model_draw_calls: &mut u64,
+    ) {
+        match draw {
+            EntityModelTranslucentDrawRange::Textured(draw) => self.draw_entity_textured_range(
+                pass,
+                draw,
+                false,
+                pipeline_switches,
+                entity_model_draw_calls,
+            ),
+            EntityModelTranslucentDrawRange::Scroll(draw)
+            | EntityModelTranslucentDrawRange::AdditiveScroll(draw) => self
+                .draw_entity_scroll_range(pass, draw, pipeline_switches, entity_model_draw_calls),
+        }
+    }
+
+    fn draw_entity_scroll_range<'a>(
+        &'a self,
+        pass: &mut wgpu::RenderPass<'a>,
+        draw: EntityModelScrollDrawRange,
+        pipeline_switches: &mut u64,
+        entity_model_draw_calls: &mut u64,
+    ) {
+        let (mesh, uses_lightmap) = match draw.render_type {
+            EntityModelLayerRenderType::BreezeWind | EntityModelLayerRenderType::EndCrystalBeam => {
+                let Some(mesh) = self.entity_model_scroll_mesh.as_ref() else {
+                    return;
+                };
+                (mesh, true)
+            }
+            EntityModelLayerRenderType::EnergySwirl => {
+                let Some(mesh) = self.entity_model_scroll_additive_mesh.as_ref() else {
+                    return;
+                };
+                (mesh, false)
+            }
+            _ => return,
+        };
+        let index_end = draw.index_start.saturating_add(draw.index_count);
+        if draw.index_count == 0 || index_end > mesh.index_count {
+            return;
+        }
+
+        let Some(atlas) = &self.entity_model_texture_atlas else {
+            return;
+        };
+        if draw.render_type == EntityModelLayerRenderType::EnergySwirl {
+            pass.set_pipeline(&self.entity_model_scroll_additive_pipeline);
+        } else {
+            pass.set_pipeline(&self.entity_model_scroll_pipeline);
+        }
+        *pipeline_switches += 1;
+        pass.set_bind_group(0, &atlas.bind_group, &[]);
+        if uses_lightmap {
+            pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+        }
+        pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+        pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        pass.draw_indexed(draw.index_start..index_end, 0, 0..1);
+        *entity_model_draw_calls += 1;
+    }
+
     fn draw_entity_translucent_features<'a>(
         &'a self,
         pass: &mut wgpu::RenderPass<'a>,
         pipeline_switches: &mut u64,
         entity_model_draw_calls: &mut u64,
     ) {
+        if !self.entity_model_sorted_main_translucent_draws.is_empty() {
+            for draw in &self.entity_model_sorted_main_translucent_draws {
+                self.draw_entity_main_translucent_range(
+                    pass,
+                    *draw,
+                    pipeline_switches,
+                    entity_model_draw_calls,
+                );
+            }
+            return;
+        }
         if self.entity_model_sorted_translucent_draws.is_empty() {
             if let (Some(mesh), Some(atlas)) = (
                 &self.entity_model_translucent_mesh,
@@ -1945,9 +2038,18 @@ mod tests {
             .find("pass.draw_indexed")
             .map(|index| eyes + index)
             .expect("eyes draw");
+        let eyes_lightmap_guard = source[eyes..eyes_draw]
+            .find("if !uses_translucent_emissive_pipeline && !uses_eyes_pipeline")
+            .map(|index| eyes + index)
+            .expect("eyes lightmap guard");
+        let eyes_lightmap_bind = source[eyes_lightmap_guard..eyes_draw]
+            .find("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])")
+            .map(|index| eyes_lightmap_guard + index)
+            .expect("guarded eyes lightmap bind");
         assert!(
-            !source[eyes..eyes_draw]
-                .contains("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])"),
+            eyes < eyes_lightmap_guard
+                && eyes_lightmap_guard < eyes_lightmap_bind
+                && eyes_lightmap_bind < eyes_draw,
             "emissive eyes do not explicitly sample the dynamic lightmap"
         );
     }
@@ -2572,6 +2674,12 @@ mod tests {
         let range_helper = source
             .find("fn draw_entity_textured_range")
             .expect("textured range draw helper is present");
+        let main_range_helper = source
+            .find("fn draw_entity_main_translucent_range")
+            .expect("main translucent range draw helper is present");
+        let scroll_range_helper = source
+            .find("fn draw_entity_scroll_range")
+            .expect("scroll range draw helper is present");
         let main_helper = source
             .find("fn draw_entity_translucent_features")
             .expect("main translucent feature helper is present");
@@ -2590,12 +2698,25 @@ mod tests {
             "sorted blended surface draws must draw only the submission range, not the whole atlas bucket"
         );
         assert!(
-            source[main_helper..tests_mod].contains("self.entity_model_sorted_translucent_draws"),
-            "main translucent blended surface draws consume the sorted translucent draw plan"
+            source[main_range_helper..scroll_range_helper]
+                .contains("EntityModelTranslucentDrawRange::Scroll(draw)")
+                && source[main_range_helper..scroll_range_helper]
+                    .contains("EntityModelTranslucentDrawRange::AdditiveScroll(draw)"),
+            "main translucent range helper dispatches scroll and additive-scroll draw-plan ranges"
         );
         assert!(
-            source[main_helper..tests_mod].contains("self.draw_entity_textured_range("),
-            "main translucent helper dispatches sorted draw-plan ranges"
+            source[scroll_range_helper..main_helper]
+                .contains("pass.draw_indexed(draw.index_start..index_end, 0, 0..1)"),
+            "sorted scroll draws must draw only the submission range, not the whole scroll bucket"
+        );
+        assert!(
+            source[main_helper..tests_mod]
+                .contains("self.entity_model_sorted_main_translucent_draws"),
+            "main translucent blended draws consume the combined textured/scroll draw plan"
+        );
+        assert!(
+            source[main_helper..tests_mod].contains("self.draw_entity_main_translucent_range("),
+            "main translucent helper dispatches sorted combined draw-plan ranges"
         );
     }
 

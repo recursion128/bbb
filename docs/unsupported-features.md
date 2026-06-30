@@ -363,9 +363,12 @@ When an agent does any of the following, update this file in the same slice:
     draw only through the itemEntity target helper. Vanilla
     blended texture-backed entity-model submissions now also expose their GPU
     draw-plan sort key (`SubmitNodeCollector.order`, camera distance, and stable
-    insertion index) on the main translucent and itemEntity target draw ranges;
-    scroll / terrain / particle cross-bucket ordering remains later P1/P2
-    transparency parity. Vanilla
+    insertion index) on the main translucent and itemEntity target draw ranges.
+    Main-pass entity translucent draws now consume a combined textured / eyes /
+    scroll / additive-scroll draw plan, so BreezeWind and Eyes order(1) overlays
+    keep vanilla layer registration order and beam scroll ranges are not skipped
+    when sorted overlays exist. Terrain target ordering and particle/itemEntity
+    boundaries remain later P1/P2 transparency parity. Vanilla
     `entityCutoutZOffset` submissions now also route into dedicated static,
     dynamic-player-skin, and dynamic
     profile-texture z-offset cutout buckets, drawn through a separate main-pass

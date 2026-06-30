@@ -355,6 +355,64 @@ fn translucent_draw_plan_sorts_order_then_camera_distance_then_insertion() {
         draws[4].distance_sq > draws[2].distance_sq,
         "order(1) emissive overlay remains after all order(0) translucent model draws even when farther"
     );
+
+    let main_draws = &meshes.sorted_main_translucent_draws;
+    assert_eq!(main_draws.len(), 6);
+    assert_eq!(
+        main_draws
+            .iter()
+            .map(|draw| match draw {
+                EntityModelTranslucentDrawRange::Textured(draw) => (
+                    draw.render_type,
+                    draw.order,
+                    draw.insertion_index,
+                    "textured",
+                ),
+                EntityModelTranslucentDrawRange::Scroll(draw) =>
+                    (draw.render_type, draw.order, draw.insertion_index, "scroll",),
+                EntityModelTranslucentDrawRange::AdditiveScroll(draw) => (
+                    draw.render_type,
+                    draw.order,
+                    draw.insertion_index,
+                    "additive_scroll",
+                ),
+            })
+            .collect::<Vec<_>>(),
+        vec![
+            (
+                EntityModelLayerRenderType::EntityTranslucent,
+                0,
+                5,
+                "textured"
+            ),
+            (
+                EntityModelLayerRenderType::EntityTranslucent,
+                0,
+                2,
+                "textured"
+            ),
+            (
+                EntityModelLayerRenderType::EntityTranslucent,
+                0,
+                0,
+                "textured"
+            ),
+            (
+                EntityModelLayerRenderType::EntityTranslucent,
+                0,
+                1,
+                "textured"
+            ),
+            (EntityModelLayerRenderType::BreezeWind, 1, 3, "scroll"),
+            (
+                EntityModelLayerRenderType::EntityTranslucentEmissive,
+                1,
+                4,
+                "textured",
+            ),
+        ],
+        "main translucent draw plan preserves BreezeRenderer's order(1) WindLayer before EyesLayer"
+    );
 }
 
 fn allay_texture_images() -> Vec<EntityModelTextureImage> {

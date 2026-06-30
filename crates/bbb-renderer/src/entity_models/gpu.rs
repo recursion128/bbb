@@ -1853,6 +1853,8 @@ impl Renderer {
                 dynamic_player_texture_atlas,
                 self.camera_sort_position(),
             );
+            self.entity_model_sorted_main_translucent_draws =
+                meshes.sorted_main_translucent_draws.clone();
             self.entity_model_sorted_translucent_draws = meshes.sorted_translucent_draws.clone();
             self.entity_model_sorted_item_entity_draws = meshes.sorted_item_entity_draws.clone();
             self.entity_model_textured_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
@@ -2029,6 +2031,7 @@ impl Renderer {
             self.entity_model_translucent_emissive_mesh = None;
             self.entity_model_item_entity_translucent_mesh = None;
             self.entity_model_item_entity_translucent_cull_mesh = None;
+            self.entity_model_sorted_main_translucent_draws.clear();
             self.entity_model_sorted_translucent_draws.clear();
             self.entity_model_sorted_item_entity_draws.clear();
             self.entity_model_eyes_mesh = None;

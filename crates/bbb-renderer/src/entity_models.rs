@@ -147,7 +147,8 @@ use textured::{
     entity_model_textured_meshes_with_dynamic_textures_for_camera, entity_model_water_mask_mesh,
 };
 pub(crate) use textured::{
-    EntityModelLayerRenderType, EntityModelTexturedDrawAtlas, EntityModelTexturedDrawRange,
+    EntityModelLayerRenderType, EntityModelScrollDrawRange, EntityModelTexturedDrawAtlas,
+    EntityModelTexturedDrawRange, EntityModelTranslucentDrawRange,
 };
 
 #[cfg(test)]
