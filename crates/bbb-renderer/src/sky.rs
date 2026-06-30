@@ -54,7 +54,76 @@ fn sunrise_sunset_blend_state() -> Option<wgpu::BlendState> {
     Some(wgpu::BlendState::ALPHA_BLENDING)
 }
 
-const SKY_SHADER: &str = r#"
+const SKY_DISC_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
+    fog_visibility_ends: vec4<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+    @location(1) color: vec4<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) color: vec4<f32>,
+    @location(1) spherical_distance: f32,
+    @location(2) cylindrical_distance: f32,
+};
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    let world_position = input.position + camera.camera_position.xyz;
+    out.position = camera.view_proj * vec4<f32>(world_position, 1.0);
+    out.color = input.color;
+    out.spherical_distance = length(input.position);
+    out.cylindrical_distance = max(length(input.position.xz), abs(input.position.y));
+    return out;
+}
+
+fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
+    if (vertex_distance <= fog_start) {
+        return 0.0;
+    }
+    if (vertex_distance >= fog_end) {
+        return 1.0;
+    }
+    return (vertex_distance - fog_start) / (fog_end - fog_start);
+}
+
+fn apply_sky_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f32) -> vec4<f32> {
+    let sky_end = camera.fog_visibility_ends.x;
+    if (sky_end <= 0.0) {
+        return color;
+    }
+    let fog_value = max(
+        linear_fog_value(spherical_distance, 0.0, sky_end),
+        linear_fog_value(cylindrical_distance, sky_end, sky_end),
+    );
+    return vec4<f32>(mix(color.rgb, camera.fog_color.rgb, fog_value * camera.fog_color.a), color.a);
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    return apply_sky_fog(input.color, input.spherical_distance, input.cylindrical_distance);
+}
+"#;
+
+const SKY_COLOR_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
     lightmap_factors: vec4<f32>,
@@ -466,7 +535,7 @@ pub(super) fn create_sky_pipeline(
 ) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("bbb-sky-disc-shader"),
-        source: wgpu::ShaderSource::Wgsl(SKY_SHADER.into()),
+        source: wgpu::ShaderSource::Wgsl(SKY_DISC_SHADER.into()),
     });
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-sky-disc-pipeline-layout"),
@@ -512,7 +581,7 @@ pub(super) fn create_sunrise_sunset_pipeline(
 ) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("bbb-sunrise-sunset-shader"),
-        source: wgpu::ShaderSource::Wgsl(SKY_SHADER.into()),
+        source: wgpu::ShaderSource::Wgsl(SKY_COLOR_SHADER.into()),
     });
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-sunrise-sunset-pipeline-layout"),
@@ -558,7 +627,7 @@ pub(super) fn create_star_pipeline(
 ) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("bbb-star-shader"),
-        source: wgpu::ShaderSource::Wgsl(SKY_SHADER.into()),
+        source: wgpu::ShaderSource::Wgsl(SKY_COLOR_SHADER.into()),
     });
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-star-pipeline-layout"),
@@ -1586,6 +1655,45 @@ mod tests {
     }
 
     #[test]
+    fn sky_disc_shader_uses_vanilla_sky_fog_end_shape() {
+        assert!(SKY_DISC_SHADER.contains("let sky_end = camera.fog_visibility_ends.x;"));
+        assert!(SKY_DISC_SHADER.contains("linear_fog_value(spherical_distance, 0.0, sky_end)"));
+        assert!(
+            SKY_DISC_SHADER.contains("linear_fog_value(cylindrical_distance, sky_end, sky_end)")
+        );
+        assert!(SKY_DISC_SHADER.contains("mix(color.rgb, camera.fog_color.rgb"));
+        assert!(
+            !SKY_COLOR_SHADER.contains("apply_sky_fog")
+                && !SKY_COLOR_SHADER.contains("fog_visibility_ends.x"),
+            "sunrise/sunset and stars mirror vanilla position_color/stars without sky fog"
+        );
+    }
+
+    #[test]
+    fn sky_color_pipelines_validate_wgsl_on_wgpu_device() {
+        let Some(device) = request_test_device() else {
+            return;
+        };
+        let camera_bind_group_layout = create_test_camera_bind_group_layout(&device);
+
+        let _sky_pipeline = create_sky_pipeline(
+            &device,
+            wgpu::TextureFormat::Rgba8Unorm,
+            &camera_bind_group_layout,
+        );
+        let _sunrise_pipeline = create_sunrise_sunset_pipeline(
+            &device,
+            wgpu::TextureFormat::Rgba8Unorm,
+            &camera_bind_group_layout,
+        );
+        let _star_pipeline = create_star_pipeline(
+            &device,
+            wgpu::TextureFormat::Rgba8Unorm,
+            &camera_bind_group_layout,
+        );
+    }
+
+    #[test]
     fn end_sky_vertices_match_vanilla_quad_cube_shape() {
         let vertices = end_sky_vertices();
 
@@ -1975,6 +2083,45 @@ mod tests {
             center += Vec3::from_array(vertex) * 0.25;
         }
         center
+    }
+
+    fn request_test_device() -> Option<wgpu::Device> {
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::PRIMARY,
+            ..Default::default()
+        });
+        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::LowPower,
+            compatible_surface: None,
+            force_fallback_adapter: false,
+        }))?;
+        let Ok((device, _queue)) = pollster::block_on(adapter.request_device(
+            &wgpu::DeviceDescriptor {
+                label: Some("bbb-sky-test-device"),
+                required_features: wgpu::Features::empty(),
+                required_limits: wgpu::Limits::downlevel_defaults(),
+            },
+            None,
+        )) else {
+            return None;
+        };
+        Some(device)
+    }
+
+    fn create_test_camera_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("bbb-sky-test-camera-bind-group-layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        })
     }
 
     fn test_celestial_images() -> Vec<CelestialTextureImage> {

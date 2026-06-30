@@ -976,9 +976,13 @@ When an agent does any of the following, update this file in the same slice:
     `LevelRenderer` ordering before sun/moon/stars. `END_SKY`, `STARS`, and
     `CELESTIAL` now also use vanilla's default back-face cull, with tests
     proving the local triangle-list expansion faces the camera origin for that
-    cull state. Sky-disc DynamicTransforms/fog shader ABI plus end-sky, star,
-    and celestial shader ABI refinement remains ordinary P1 render-state work,
-    not a P0 pipeline blocker. Basic
+    cull state. The sky-disc shader now also mirrors vanilla `core/sky.fsh`
+    fog shape by using renderer `FogSkyEnd` (`fog_visibility_ends.x`) for
+    spherical `0..FogSkyEnd` and cylindrical `FogSkyEnd..FogSkyEnd` fog while
+    leaving sunrise/sunset and stars on their no-fog color shader paths. Full
+    sky-disc DynamicTransforms / `ColorModulator` uniform ABI plus end-sky,
+    star, and celestial shader ABI refinement remains ordinary P1 render-state
+    work, not a P0 pipeline blocker. Basic
     cloud mesh presentation now consumes these visibility ends with vanilla
     default `CLOUD_COLOR` / `CLOUD_HEIGHT` and now loads vanilla
     `textures/environment/clouds.png` for flat cloud cell geometry with vanilla
