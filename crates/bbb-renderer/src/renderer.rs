@@ -25,12 +25,13 @@ use crate::{
     entity_models::{
         create_entity_model_armor_cutout_pipeline, create_entity_model_armor_entity_glint_pipeline,
         create_entity_model_armor_translucent_pipeline,
-        create_entity_model_cutout_z_offset_pipeline, create_entity_model_entity_glint_pipeline,
-        create_entity_model_eyes_pipeline, create_entity_model_outline_cull_pipeline,
-        create_entity_model_outline_pipeline, create_entity_model_pipeline,
-        create_entity_model_scroll_additive_pipeline, create_entity_model_scroll_pipeline,
-        create_entity_model_textured_cull_pipeline, create_entity_model_textured_pipeline,
-        create_entity_model_translucent_cull_pipeline,
+        create_entity_model_cutout_z_offset_pipeline,
+        create_entity_model_dragon_rays_depth_pipeline, create_entity_model_dragon_rays_pipeline,
+        create_entity_model_entity_glint_pipeline, create_entity_model_eyes_pipeline,
+        create_entity_model_outline_cull_pipeline, create_entity_model_outline_pipeline,
+        create_entity_model_pipeline, create_entity_model_scroll_additive_pipeline,
+        create_entity_model_scroll_pipeline, create_entity_model_textured_cull_pipeline,
+        create_entity_model_textured_pipeline, create_entity_model_translucent_cull_pipeline,
         create_entity_model_translucent_emissive_pipeline,
         create_entity_model_translucent_pipeline, create_entity_model_water_mask_pipeline,
         EntityDynamicPlayerSkinAtlasGpu, EntityDynamicPlayerTextureAtlasGpu, EntityModelMeshGpu,
@@ -130,6 +131,8 @@ pub struct Renderer {
     pub(super) entity_model_armor_translucent_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_translucent_emissive_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_eyes_pipeline: wgpu::RenderPipeline,
+    pub(super) entity_model_dragon_rays_pipeline: wgpu::RenderPipeline,
+    pub(super) entity_model_dragon_rays_depth_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_water_mask_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_outline_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_outline_cull_pipeline: wgpu::RenderPipeline,
@@ -214,6 +217,8 @@ pub struct Renderer {
     pub(super) entity_model_sorted_translucent_draws: Vec<EntityModelTexturedDrawRange>,
     pub(super) entity_model_sorted_item_entity_draws: Vec<EntityModelTexturedDrawRange>,
     pub(super) entity_model_eyes_mesh: Option<EntityModelTexturedMeshGpu>,
+    pub(super) entity_model_dragon_rays_mesh: Option<EntityModelMeshGpu>,
+    pub(super) entity_model_dragon_rays_depth_mesh: Option<EntityModelMeshGpu>,
     pub(super) entity_model_outline_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_model_outline_cull_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_model_entity_glint_mesh: Option<EntityModelScrollMeshGpu>,
@@ -638,6 +643,14 @@ impl Renderer {
             );
         let entity_model_eyes_pipeline =
             create_entity_model_eyes_pipeline(&device, format, &terrain_bind_group_layout);
+        let entity_model_dragon_rays_pipeline =
+            create_entity_model_dragon_rays_pipeline(&device, format, &terrain_bind_group_layout);
+        let entity_model_dragon_rays_depth_pipeline =
+            create_entity_model_dragon_rays_depth_pipeline(
+                &device,
+                format,
+                &terrain_bind_group_layout,
+            );
         let entity_model_water_mask_pipeline =
             create_entity_model_water_mask_pipeline(&device, format, &terrain_bind_group_layout);
         let entity_model_outline_pipeline =
@@ -865,6 +878,8 @@ impl Renderer {
             entity_model_armor_translucent_pipeline,
             entity_model_translucent_emissive_pipeline,
             entity_model_eyes_pipeline,
+            entity_model_dragon_rays_pipeline,
+            entity_model_dragon_rays_depth_pipeline,
             entity_model_water_mask_pipeline,
             entity_model_outline_pipeline,
             entity_model_outline_cull_pipeline,
@@ -949,6 +964,8 @@ impl Renderer {
             entity_model_sorted_translucent_draws: Vec::new(),
             entity_model_sorted_item_entity_draws: Vec::new(),
             entity_model_eyes_mesh: None,
+            entity_model_dragon_rays_mesh: None,
+            entity_model_dragon_rays_depth_mesh: None,
             entity_model_outline_mesh: None,
             entity_model_outline_cull_mesh: None,
             entity_model_entity_glint_mesh: None,

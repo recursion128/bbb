@@ -6,8 +6,9 @@ use wgpu::util::DeviceExt;
 use crate::{
     clouds::CloudShape,
     entity_models::{
-        EntityModelLayerRenderType, EntityModelScrollDrawRange, EntityModelTexturedDrawAtlas,
-        EntityModelTexturedDrawRange, EntityModelTexturedMeshGpu, EntityModelTranslucentDrawRange,
+        EntityModelLayerRenderType, EntityModelMeshGpu, EntityModelPositionColorDrawRange,
+        EntityModelScrollDrawRange, EntityModelTexturedDrawAtlas, EntityModelTexturedDrawRange,
+        EntityModelTexturedMeshGpu, EntityModelTranslucentDrawRange,
     },
     lightmap::write_lightmap_uniform,
     weather::{build_lightning_mesh, build_weather_mesh},
@@ -1477,6 +1478,8 @@ impl Renderer {
                 || self.entity_model_armor_translucent_mesh.is_some()
                 || self.entity_model_translucent_emissive_mesh.is_some()
                 || self.entity_model_eyes_mesh.is_some()
+                || self.entity_model_dragon_rays_mesh.is_some()
+                || self.entity_model_dragon_rays_depth_mesh.is_some()
                 || self.entity_model_scroll_mesh.is_some()
                 || self.entity_model_scroll_additive_mesh.is_some()))
             || (self.entity_dynamic_player_skin_atlas.is_some()
@@ -1746,6 +1749,53 @@ impl Renderer {
             EntityModelTranslucentDrawRange::Scroll(draw)
             | EntityModelTranslucentDrawRange::AdditiveScroll(draw) => self
                 .draw_entity_scroll_range(pass, draw, pipeline_switches, entity_model_draw_calls),
+            EntityModelTranslucentDrawRange::PositionColor(draw) => self
+                .draw_entity_position_color_range(
+                    pass,
+                    draw,
+                    pipeline_switches,
+                    entity_model_draw_calls,
+                ),
+        }
+    }
+
+    fn draw_entity_position_color_range<'a>(
+        &'a self,
+        pass: &mut wgpu::RenderPass<'a>,
+        draw: EntityModelPositionColorDrawRange,
+        pipeline_switches: &mut u64,
+        entity_model_draw_calls: &mut u64,
+    ) {
+        let Some((mesh, pipeline)) = self.entity_position_color_range_resources(draw) else {
+            return;
+        };
+        let index_end = draw.index_start.saturating_add(draw.index_count);
+        if draw.index_count == 0 || index_end > mesh.index_count {
+            return;
+        }
+        pass.set_pipeline(pipeline);
+        *pipeline_switches += 1;
+        pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+        pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+        pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        pass.draw_indexed(draw.index_start..index_end, 0, 0..1);
+        *entity_model_draw_calls += 1;
+    }
+
+    fn entity_position_color_range_resources<'a>(
+        &'a self,
+        draw: EntityModelPositionColorDrawRange,
+    ) -> Option<(&'a EntityModelMeshGpu, &'a wgpu::RenderPipeline)> {
+        match draw.render_type {
+            EntityModelLayerRenderType::DragonRays => Some((
+                self.entity_model_dragon_rays_mesh.as_ref()?,
+                &self.entity_model_dragon_rays_pipeline,
+            )),
+            EntityModelLayerRenderType::DragonRaysDepth => Some((
+                self.entity_model_dragon_rays_depth_mesh.as_ref()?,
+                &self.entity_model_dragon_rays_depth_pipeline,
+            )),
+            _ => None,
         }
     }
 
@@ -1895,6 +1945,24 @@ impl Renderer {
             pass.set_pipeline(&self.entity_model_eyes_pipeline);
             *pipeline_switches += 1;
             pass.set_bind_group(0, &atlas.bind_group, &[]);
+            pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+            *entity_model_draw_calls += 1;
+        }
+        if let Some(mesh) = &self.entity_model_dragon_rays_mesh {
+            pass.set_pipeline(&self.entity_model_dragon_rays_pipeline);
+            *pipeline_switches += 1;
+            pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+            pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+            *entity_model_draw_calls += 1;
+        }
+        if let Some(mesh) = &self.entity_model_dragon_rays_depth_mesh {
+            pass.set_pipeline(&self.entity_model_dragon_rays_depth_pipeline);
+            *pipeline_switches += 1;
+            pass.set_bind_group(0, &self.terrain_bind_group, &[]);
             pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
             pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
             pass.draw_indexed(0..mesh.index_count, 0, 0..1);

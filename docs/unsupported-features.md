@@ -4782,9 +4782,15 @@ When an agent does any of the following, update this file in the same slice:
       `1 - deathTime / 200`, explicit same-order sequence `(0, 0)`, light preservation, and
       `OverlayTexture.NO_OVERLAY`; missing-atlas coverage pins that a missing
       `dragon_exploding.png` suppresses only the folded dying-body geometry while preserving the
-      submission record. The remaining dragon death visual parity is the custom `dragonRays` /
-      `dragonRaysDepth` geometry and GPU-side `DISSOLVE` mask sampling precision. The colored
-      debug path stays as a fallback (it renders the body dark and the wing membranes a lighter tint)
+      submission record. The death rays now follow vanilla `EnderDragonRenderer.submitRays`: after
+      body and eyes, the shared EnderDragon dispatch sink records no-texture custom geometry
+      submissions for `RenderTypes.dragonRays()` and `RenderTypes.dragonRaysDepth()` at same-order
+      sequences `(0, 2)` / `(0, 3)`, uses the vanilla `432` seed, `rayCount` formula, inner white /
+      outer magenta colours, additive position-colour GPU pipeline, and depth-only replay pipeline;
+      missing-atlas coverage pins that ray submissions and folded geometry survive absent dragon
+      textures. The remaining dragon death visual parity is GPU-side `DISSOLVE` mask sampling
+      precision. The colored debug path stays as a fallback (it renders the body dark and the wing
+      membranes a lighter tint)
     - area effect cloud, marker, and interaction entities now resolve to `EntityModelKind::NoRender`,
       which is a dispatch-owned no-submit path and emits no geometry — exact parity with vanilla, whose
       `EntityRenderers` registers all three to `NoopRenderer` (the area effect cloud is drawn as

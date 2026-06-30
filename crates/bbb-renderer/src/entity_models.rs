@@ -52,6 +52,7 @@ use gpu::{
 pub(crate) use gpu::{
     create_entity_model_armor_cutout_pipeline, create_entity_model_armor_entity_glint_pipeline,
     create_entity_model_armor_translucent_pipeline, create_entity_model_cutout_z_offset_pipeline,
+    create_entity_model_dragon_rays_depth_pipeline, create_entity_model_dragon_rays_pipeline,
     create_entity_model_entity_glint_pipeline, create_entity_model_eyes_pipeline,
     create_entity_model_outline_cull_pipeline, create_entity_model_outline_pipeline,
     create_entity_model_pipeline, create_entity_model_scroll_additive_pipeline,
@@ -149,8 +150,8 @@ use textured::{
     entity_model_textured_meshes_with_dynamic_textures_for_camera, entity_model_water_mask_mesh,
 };
 pub(crate) use textured::{
-    EntityModelLayerRenderType, EntityModelScrollDrawRange, EntityModelTexturedDrawAtlas,
-    EntityModelTexturedDrawRange, EntityModelTranslucentDrawRange,
+    EntityModelLayerRenderType, EntityModelPositionColorDrawRange, EntityModelScrollDrawRange,
+    EntityModelTexturedDrawAtlas, EntityModelTexturedDrawRange, EntityModelTranslucentDrawRange,
 };
 
 #[cfg(test)]

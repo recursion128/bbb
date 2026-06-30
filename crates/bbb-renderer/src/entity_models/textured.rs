@@ -1,8 +1,8 @@
 use super::catalog::EntityDynamicPlayerTextureAtlasEntry;
 use super::colored::{
     boat_model_root_transform, creeper_model_root_transform, drowned_model_root_transform,
-    trident_model_root_transform, villager_adult_model_root_transform, wither_model_root_transform,
-    GIANT_SCALE, HORSE_SCALE,
+    ender_dragon_model_root_transform, trident_model_root_transform,
+    villager_adult_model_root_transform, wither_model_root_transform, GIANT_SCALE, HORSE_SCALE,
 };
 use super::dispatch::{
     dispatch_invisible_living_ungated_layers, dispatch_uniform_entity_model,
@@ -29,8 +29,9 @@ use super::{
         append_scrolled_textured_mesh, argb_to_tint, emit_textured_model_cube,
         emit_textured_model_parts, fill_entity_textured_light, fill_entity_textured_overlay,
         part_pose_transform, EntityModelMesh, EntityModelScrollMesh, EntityModelScrollVertex,
-        EntityModelTexturedMesh, EntityModelTexturedVertex, PartPose, TexturedModelCubeDesc,
-        TexturedModelPartDesc, ENTITY_VERTEX_FULL_BRIGHT_LIGHT, ENTITY_VERTEX_NO_OVERLAY,
+        EntityModelTexturedMesh, EntityModelTexturedVertex, EntityModelVertex, PartPose,
+        TexturedModelCubeDesc, TexturedModelPartDesc, ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
+        ENTITY_VERTEX_NO_OVERLAY,
     },
     instances::EntityModelInstance,
     mesh_transformer_scaled_model_root_transform,
@@ -100,6 +101,11 @@ const ARMOR_STAND_CUSTOM_HEAD_LAYER_SUBMIT_SEQUENCE: u32 = 2;
 const NON_PLAYER_CUSTOM_HEAD_LAYER_SUBMIT_SEQUENCE: u32 = 1;
 const NON_PLAYER_WINGS_LAYER_SUBMIT_SEQUENCE: u32 = 2;
 const SKELETON_CLOTHING_LAYER_SUBMIT_SEQUENCE: u32 = 5;
+const DRAGON_RAYS_RANDOM_SEED: i64 = 432;
+const DRAGON_RAYS_RANDOM_MULTIPLIER: u64 = 25_214_903_917;
+const DRAGON_RAYS_RANDOM_INCREMENT: u64 = 11;
+const DRAGON_RAYS_RANDOM_MASK: u64 = (1_u64 << 48) - 1;
+const DRAGON_RAYS_HALF_SQRT_3: f32 = 0.866_025_4;
 
 mod layers;
 #[cfg(test)]
@@ -160,6 +166,14 @@ pub(super) struct EntityModelRenderSubmission {
     pub(super) submit_sequence: u32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(super) struct EntityModelCustomGeometrySubmission {
+    pub(super) render_type: EntityModelLayerRenderType,
+    pub(super) transform: Mat4,
+    pub(super) order: i32,
+    pub(super) submit_sequence: u32,
+}
+
 #[derive(Clone, Copy)]
 struct EntityModelSubmitSortKey {
     order: i32,
@@ -214,6 +228,17 @@ pub(crate) enum EntityModelTranslucentDrawRange {
     Textured(EntityModelTexturedDrawRange),
     Scroll(EntityModelScrollDrawRange),
     AdditiveScroll(EntityModelScrollDrawRange),
+    PositionColor(EntityModelPositionColorDrawRange),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct EntityModelPositionColorDrawRange {
+    pub(crate) render_type: EntityModelLayerRenderType,
+    pub(crate) order: i32,
+    pub(crate) distance_sq: f32,
+    pub(crate) insertion_index: usize,
+    pub(crate) index_start: u32,
+    pub(crate) index_count: u32,
 }
 
 struct PendingSortedScrollUpload {
@@ -275,11 +300,19 @@ pub(super) struct EntityModelTexturedMeshes {
     pub(super) armor_entity_glint: EntityModelScrollMesh,
     /// Vanilla `RenderTypes.waterMask()` depth-only boat patch geometry.
     pub(super) water_mask: EntityModelMesh,
+    /// Vanilla `RenderTypes.dragonRays()` position-colour death rays. The geometry is no-texture
+    /// custom geometry from `EnderDragonRenderer.submitRays`.
+    pub(super) dragon_rays: EntityModelMesh,
+    /// Vanilla `RenderTypes.dragonRaysDepth()` replays the same ray shape into a depth-only pipeline.
+    pub(super) dragon_rays_depth: EntityModelMesh,
     /// Vanilla-shaped submit metadata for textured entity models. The current backend still folds
     /// compatible submits into shared meshes, but this preserves render type, order, tint, texture,
     /// transform, light, and overlay so the folded GPU buckets can be audited against explicit
     /// submissions.
     pub(super) submissions: Vec<EntityModelRenderSubmission>,
+    /// Vanilla-shaped submit metadata for no-texture custom geometry such as
+    /// `EnderDragonRenderer.submitRays`.
+    pub(super) custom_submissions: Vec<EntityModelCustomGeometrySubmission>,
     pub(super) sorted_main_translucent_draws: Vec<EntityModelTranslucentDrawRange>,
     pub(super) sorted_translucent_draws: Vec<EntityModelTexturedDrawRange>,
     pub(super) sorted_item_entity_draws: Vec<EntityModelTexturedDrawRange>,
@@ -291,6 +324,7 @@ pub(super) struct EntityModelTexturedMeshes {
     current_submission_outline_color: u32,
     current_force_transparent: bool,
     current_outline_only: bool,
+    next_submission_index: usize,
 }
 
 impl EntityModelTexturedMeshes {
@@ -326,7 +360,10 @@ impl EntityModelTexturedMeshes {
             entity_glint: EntityModelScrollMesh::new(),
             armor_entity_glint: EntityModelScrollMesh::new(),
             water_mask: EntityModelMesh::new(),
+            dragon_rays: EntityModelMesh::new(),
+            dragon_rays_depth: EntityModelMesh::new(),
             submissions: Vec::new(),
+            custom_submissions: Vec::new(),
             sorted_main_translucent_draws: Vec::new(),
             sorted_translucent_draws: Vec::new(),
             sorted_item_entity_draws: Vec::new(),
@@ -338,6 +375,7 @@ impl EntityModelTexturedMeshes {
             current_submission_outline_color: 0,
             current_force_transparent: false,
             current_outline_only: false,
+            next_submission_index: 0,
         }
     }
 
@@ -371,7 +409,9 @@ impl EntityModelTexturedMeshes {
             }
             EntityModelLayerRenderBucket::Eyes => &mut self.eyes,
             EntityModelLayerRenderBucket::OutlineOnly => &mut self.outline,
-            EntityModelLayerRenderBucket::Scroll | EntityModelLayerRenderBucket::AdditiveScroll => {
+            EntityModelLayerRenderBucket::Scroll
+            | EntityModelLayerRenderBucket::AdditiveScroll
+            | EntityModelLayerRenderBucket::PositionColor => {
                 panic!("scroll render types are not emitted into textured mesh buckets")
             }
             EntityModelLayerRenderBucket::DepthOnly | EntityModelLayerRenderBucket::GlintOnly => {
@@ -407,6 +447,7 @@ impl EntityModelTexturedMeshes {
             | EntityModelLayerRenderBucket::TranslucentEmissive
             | EntityModelLayerRenderBucket::Scroll
             | EntityModelLayerRenderBucket::AdditiveScroll
+            | EntityModelLayerRenderBucket::PositionColor
             | EntityModelLayerRenderBucket::OutlineOnly
             | EntityModelLayerRenderBucket::DepthOnly
             | EntityModelLayerRenderBucket::GlintOnly => {
@@ -447,6 +488,7 @@ impl EntityModelTexturedMeshes {
             | EntityModelLayerRenderBucket::TranslucentEmissive
             | EntityModelLayerRenderBucket::Scroll
             | EntityModelLayerRenderBucket::AdditiveScroll
+            | EntityModelLayerRenderBucket::PositionColor
             | EntityModelLayerRenderBucket::OutlineOnly
             | EntityModelLayerRenderBucket::DepthOnly
             | EntityModelLayerRenderBucket::GlintOnly => {
@@ -487,8 +529,19 @@ impl EntityModelTexturedMeshes {
         submission.outline_color = submit
             .outline_color
             .unwrap_or(self.current_submission_outline_color);
-        let insertion_index = self.submissions.len();
+        let insertion_index = self.next_submission_index;
+        self.next_submission_index += 1;
         self.submissions.push(submission);
+        (submission, insertion_index)
+    }
+
+    fn record_custom_submission_with_index(
+        &mut self,
+        submission: EntityModelCustomGeometrySubmission,
+    ) -> (EntityModelCustomGeometrySubmission, usize) {
+        let insertion_index = self.next_submission_index;
+        self.next_submission_index += 1;
+        self.custom_submissions.push(submission);
         (submission, insertion_index)
     }
 
@@ -533,6 +586,49 @@ impl EntityModelTexturedMeshes {
             },
             insertion_index,
         })
+    }
+
+    fn custom_geometry_draw_key(
+        &self,
+        submission: EntityModelCustomGeometrySubmission,
+        insertion_index: usize,
+    ) -> Option<EntityModelSubmitSortKey> {
+        let camera_position = self.sort_camera_position?;
+        let position = submission.transform.transform_point3(Vec3::ZERO);
+        let camera = Vec3::from_array(camera_position);
+        let distance_sq = (position - camera).length_squared();
+        Some(EntityModelSubmitSortKey {
+            order: submission.order,
+            distance_sq: if distance_sq.is_finite() {
+                distance_sq
+            } else {
+                0.0
+            },
+            insertion_index,
+        })
+    }
+
+    fn push_position_color_draw_range(
+        &mut self,
+        render_type: EntityModelLayerRenderType,
+        sort_key: EntityModelSubmitSortKey,
+        index_start: u32,
+        index_count: u32,
+    ) {
+        if index_count == 0 {
+            return;
+        }
+        self.sorted_main_translucent_draws
+            .push(EntityModelTranslucentDrawRange::PositionColor(
+                EntityModelPositionColorDrawRange {
+                    render_type,
+                    order: sort_key.order,
+                    distance_sq: sort_key.distance_sq,
+                    insertion_index: sort_key.insertion_index,
+                    index_start,
+                    index_count,
+                },
+            ));
     }
 
     fn push_scroll_draw_range(
@@ -661,6 +757,11 @@ fn translucent_draw_sort_key(draw: EntityModelTranslucentDrawRange) -> EntityMod
         },
         EntityModelTranslucentDrawRange::Scroll(draw)
         | EntityModelTranslucentDrawRange::AdditiveScroll(draw) => EntityModelSubmitSortKey {
+            order: draw.order,
+            distance_sq: draw.distance_sq,
+            insertion_index: draw.insertion_index,
+        },
+        EntityModelTranslucentDrawRange::PositionColor(draw) => EntityModelSubmitSortKey {
             order: draw.order,
             distance_sq: draw.distance_sq,
             insertion_index: draw.insertion_index,
@@ -1266,6 +1367,16 @@ fn append_scroll_mesh(dest: &mut EntityModelScrollMesh, source: EntityModelScrol
     dest.vertices.extend(source.vertices);
     dest.indices
         .extend(source.indices.into_iter().map(|index| index + base));
+    index_start
+}
+
+fn append_entity_model_mesh(dest: &mut EntityModelMesh, source: EntityModelMesh) -> u32 {
+    let index_start = u32::try_from(dest.indices.len()).expect("entity index count fits in u32");
+    let base = u32::try_from(dest.vertices.len()).expect("entity vertex count fits in u32");
+    dest.vertices.extend(source.vertices);
+    dest.indices
+        .extend(source.indices.into_iter().map(|index| index + base));
+    dest.opaque_faces += source.opaque_faces;
     index_start
 }
 
@@ -2107,6 +2218,192 @@ pub(in crate::entity_models) fn render_ender_dragon_beam(
         delta.length(),
         instance.render_state.age_in_ticks,
     );
+}
+
+/// Vanilla `EnderDragonRenderer.submit`: immediately after body and eyes, a dying dragon pushes the
+/// current dragon pose by `(0, -1, -2)` and submits the same seeded custom ray geometry twice:
+/// `RenderTypes.dragonRays()` for additive colour and `RenderTypes.dragonRaysDepth()` for the
+/// depth-only replay. The geometry is no-texture position-colour custom geometry, so it records a
+/// separate custom submission instead of pretending to be texture-backed.
+pub(in crate::entity_models) fn render_ender_dragon_death_rays(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+) {
+    if !matches!(instance.kind, EntityModelKind::EnderDragon) {
+        return;
+    }
+    if meshes.current_force_transparent || meshes.current_outline_only {
+        return;
+    }
+    let death_time = instance.render_state.ender_dragon_death_time;
+    if death_time <= 0.0 {
+        return;
+    }
+
+    let transform = ender_dragon_model_root_transform(instance)
+        * Mat4::from_translation(Vec3::new(0.0, -1.0, -2.0));
+    let normalized_death_time = death_time / 200.0;
+    emit_dragon_rays_custom_submission(
+        meshes,
+        EntityModelLayerRenderType::DragonRays,
+        transform,
+        normalized_death_time,
+        2,
+    );
+    emit_dragon_rays_custom_submission(
+        meshes,
+        EntityModelLayerRenderType::DragonRaysDepth,
+        transform,
+        normalized_death_time,
+        3,
+    );
+}
+
+fn emit_dragon_rays_custom_submission(
+    meshes: &mut EntityModelTexturedMeshes,
+    render_type: EntityModelLayerRenderType,
+    transform: Mat4,
+    death_time: f32,
+    submit_sequence: u32,
+) {
+    let (submission, insertion_index) =
+        meshes.record_custom_submission_with_index(EntityModelCustomGeometrySubmission {
+            render_type,
+            transform,
+            order: 0,
+            submit_sequence,
+        });
+    let mut mesh = EntityModelMesh::new();
+    append_dragon_rays_mesh(&mut mesh, submission.transform, death_time);
+    let index_count =
+        u32::try_from(mesh.indices.len()).expect("dragon rays index count fits in u32");
+    let index_start = match render_type {
+        EntityModelLayerRenderType::DragonRays => {
+            append_entity_model_mesh(&mut meshes.dragon_rays, mesh)
+        }
+        EntityModelLayerRenderType::DragonRaysDepth => {
+            append_entity_model_mesh(&mut meshes.dragon_rays_depth, mesh)
+        }
+        _ => unreachable!("dragon rays custom submission render type"),
+    };
+    if let Some(sort_key) = meshes.custom_geometry_draw_key(submission, insertion_index) {
+        meshes.push_position_color_draw_range(render_type, sort_key, index_start, index_count);
+    }
+}
+
+fn append_dragon_rays_mesh(mesh: &mut EntityModelMesh, transform: Mat4, death_time: f32) {
+    let over_drive = if death_time > 0.8 {
+        ((death_time - 0.8) / 0.2).min(1.0)
+    } else {
+        0.0
+    };
+    let inner_alpha = 1.0 - over_drive;
+    let inner_color = [1.0, 1.0, 1.0, inner_alpha];
+    let outer_color = [1.0, 0.0, 1.0, 1.0];
+    let ray_count = ((death_time + death_time * death_time) / 2.0 * 60.0).floor() as usize;
+    let mut random = DragonRaysRandom::new(DRAGON_RAYS_RANDOM_SEED);
+    let mut pose = transform;
+
+    for _ in 0..ray_count {
+        let first = Quat::from_euler(
+            glam::EulerRot::XYZ,
+            random.next_float() * std::f32::consts::TAU,
+            random.next_float() * std::f32::consts::TAU,
+            random.next_float() * std::f32::consts::TAU,
+        );
+        let second = Quat::from_euler(
+            glam::EulerRot::XYZ,
+            random.next_float() * std::f32::consts::TAU,
+            random.next_float() * std::f32::consts::TAU,
+            random.next_float() * std::f32::consts::TAU + death_time * std::f32::consts::FRAC_PI_2,
+        );
+        pose = pose * Mat4::from_quat(first * second);
+        let length = random.next_float() * 20.0 + 5.0 + over_drive * 10.0;
+        let width = random.next_float() * 2.0 + 1.0 + over_drive * 2.0;
+        let origin = Vec3::ZERO;
+        let outer_left = Vec3::new(-DRAGON_RAYS_HALF_SQRT_3 * width, length, -0.5 * width);
+        let outer_right = Vec3::new(DRAGON_RAYS_HALF_SQRT_3 * width, length, -0.5 * width);
+        let outer_bottom = Vec3::new(0.0, length, width);
+        append_dragon_ray_triangle(
+            mesh,
+            pose,
+            origin,
+            outer_left,
+            outer_right,
+            inner_color,
+            outer_color,
+        );
+        append_dragon_ray_triangle(
+            mesh,
+            pose,
+            origin,
+            outer_right,
+            outer_bottom,
+            inner_color,
+            outer_color,
+        );
+        append_dragon_ray_triangle(
+            mesh,
+            pose,
+            origin,
+            outer_bottom,
+            outer_left,
+            inner_color,
+            outer_color,
+        );
+    }
+}
+
+fn append_dragon_ray_triangle(
+    mesh: &mut EntityModelMesh,
+    transform: Mat4,
+    origin: Vec3,
+    left: Vec3,
+    right: Vec3,
+    inner_color: [f32; 4],
+    outer_color: [f32; 4],
+) {
+    let base = u32::try_from(mesh.vertices.len()).expect("dragon rays vertex count fits in u32");
+    for (position, color) in [
+        (origin, inner_color),
+        (left, outer_color),
+        (right, outer_color),
+    ] {
+        mesh.vertices.push(EntityModelVertex {
+            position: transform.transform_point3(position).to_array(),
+            color,
+            light: ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
+            overlay: ENTITY_VERTEX_NO_OVERLAY,
+            normal: [0.0, 1.0, 0.0],
+        });
+    }
+    mesh.indices.extend_from_slice(&[base, base + 1, base + 2]);
+}
+
+#[derive(Clone, Copy)]
+struct DragonRaysRandom {
+    seed: u64,
+}
+
+impl DragonRaysRandom {
+    fn new(seed: i64) -> Self {
+        Self {
+            seed: ((seed as u64) ^ DRAGON_RAYS_RANDOM_MULTIPLIER) & DRAGON_RAYS_RANDOM_MASK,
+        }
+    }
+
+    fn next_bits(&mut self, bits: u32) -> u32 {
+        self.seed = self
+            .seed
+            .wrapping_mul(DRAGON_RAYS_RANDOM_MULTIPLIER)
+            .wrapping_add(DRAGON_RAYS_RANDOM_INCREMENT)
+            & DRAGON_RAYS_RANDOM_MASK;
+        (self.seed >> (48 - bits)) as u32
+    }
+
+    fn next_float(&mut self) -> f32 {
+        self.next_bits(24) as f32 * 5.960_464_5e-8
+    }
 }
 
 fn emit_crystal_beam_submission(

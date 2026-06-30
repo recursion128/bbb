@@ -449,8 +449,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `dragonDeathTime` source projection、`entityCutoutDissolve(dragon.png,
     dragon_exploding.png)`、secondary mask texture、alpha、no-overlay、order /
     submit_sequence、missing-atlas submission-first 测试已覆盖。
-  - EnderDragon `dragonRays` / `dragonRaysDepth` 死亡 rays 与 GPU `DISSOLVE`
-    mask sampling精度。
+  - [x] EnderDragon `dragonRays` / `dragonRaysDepth` 死亡 rays：
+    dispatch-owned no-texture custom geometry submission、vanilla 432 seed /
+    `rayCount` / inner-outer color、`dragonRays` additive pipeline、
+    `dragonRaysDepth` depth-only replay、order / submit_sequence 与
+    missing-atlas-independent geometry 测试已覆盖。
+  - GPU `DISSOLVE` mask sampling 精度继续作为后续视觉 parity，不阻塞本轮
+    death rays slice。
 
 完成标准：
 

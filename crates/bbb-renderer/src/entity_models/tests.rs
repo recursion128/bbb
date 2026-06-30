@@ -229,6 +229,22 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             false,
         ),
         (
+            EntityModelLayerRenderType::DragonRays,
+            "dragonRays",
+            EntityModelLayerRenderBucket::PositionColor,
+            false,
+            false,
+            true,
+        ),
+        (
+            EntityModelLayerRenderType::DragonRaysDepth,
+            "dragonRaysDepth",
+            EntityModelLayerRenderBucket::DepthOnly,
+            false,
+            false,
+            false,
+        ),
+        (
             EntityModelLayerRenderType::WaterMask,
             "waterMask",
             EntityModelLayerRenderBucket::DepthOnly,

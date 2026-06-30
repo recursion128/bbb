@@ -248,6 +248,102 @@ fn ender_dragon_dying_body_uses_vanilla_cutout_dissolve_submission() {
 }
 
 #[test]
+fn ender_dragon_dying_records_vanilla_death_rays_custom_geometry() {
+    // Vanilla `EnderDragonRenderer.submit`: after body and eyes, a dying dragon translates the
+    // current model pose by `(0, -1, -2)` and calls `submitRays` twice: `dragonRays()` then
+    // `dragonRaysDepth()`. The geometry is seeded with 432 and uses no texture, lightmap, or overlay.
+    let images: Vec<EntityModelTextureImage> = ender_dragon_entity_texture_refs()
+        .iter()
+        .map(|texture| blank_texture(*texture))
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let position = [4.0, 80.0, -3.0];
+    let instance = EntityModelInstance::ender_dragon(904, position, 30.0)
+        .with_ender_dragon_death_time(50.0)
+        .with_light_coords((9_u32 << 4) | (12_u32 << 20))
+        .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 2);
+    assert_eq!(meshes.custom_submissions.len(), 2);
+    let rays = meshes.custom_submissions[0];
+    assert_eq!(rays.render_type, EntityModelLayerRenderType::DragonRays);
+    assert_eq!(rays.render_type.vanilla_name(), "dragonRays");
+    assert_eq!((rays.order, rays.submit_sequence), (0, 2));
+    let rays_depth = meshes.custom_submissions[1];
+    assert_eq!(
+        rays_depth.render_type,
+        EntityModelLayerRenderType::DragonRaysDepth
+    );
+    assert_eq!(rays_depth.render_type.vanilla_name(), "dragonRaysDepth");
+    assert_eq!((rays_depth.order, rays_depth.submit_sequence), (0, 3));
+
+    let expected_transform = ender_dragon_model_root_transform(instance)
+        * Mat4::from_translation(Vec3::new(0.0, -1.0, -2.0));
+    assert_eq!(rays.transform, expected_transform);
+    assert_eq!(rays_depth.transform, expected_transform);
+    assert_close3(
+        meshes.dragon_rays.vertices[0].position,
+        expected_transform.transform_point3(Vec3::ZERO).to_array(),
+    );
+
+    let death_time = 50.0_f32 / 200.0;
+    let ray_count = ((death_time + death_time * death_time) / 2.0 * 60.0).floor() as usize;
+    assert_eq!(ray_count, 9);
+    assert_eq!(meshes.dragon_rays.vertices.len(), ray_count * 9);
+    assert_eq!(meshes.dragon_rays.indices.len(), ray_count * 9);
+    assert_eq!(
+        meshes.dragon_rays_depth.vertices.len(),
+        meshes.dragon_rays.vertices.len()
+    );
+    assert_eq!(meshes.dragon_rays_depth.indices, meshes.dragon_rays.indices);
+    for (color, expected) in [
+        (meshes.dragon_rays.vertices[0].color, [1.0, 1.0, 1.0, 1.0]),
+        (meshes.dragon_rays.vertices[1].color, [1.0, 0.0, 1.0, 1.0]),
+        (meshes.dragon_rays.vertices[2].color, [1.0, 0.0, 1.0, 1.0]),
+    ] {
+        assert_eq!(color, expected);
+    }
+    assert!(meshes
+        .dragon_rays_depth
+        .vertices
+        .iter()
+        .zip(&meshes.dragon_rays.vertices)
+        .all(|(depth, color)| depth.position == color.position && depth.color == color.color));
+}
+
+#[test]
+fn ender_dragon_death_rays_survive_missing_dragon_textures() {
+    // `dragonRays` / `dragonRaysDepth` are no-texture custom geometry, so missing body, eyes, or
+    // dissolve atlas entries suppress only folded textured model geometry, not the ray submissions.
+    let (atlas, _) =
+        build_entity_model_texture_atlas(&[blank_texture(END_CRYSTAL_BEAM_TEXTURE_REF)]).unwrap();
+    let instance = EntityModelInstance::ender_dragon(905, [0.0, 70.0, 0.0], 0.0)
+        .with_ender_dragon_death_time(50.0);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 2);
+    assert_eq!(meshes.custom_submissions.len(), 2);
+    assert_eq!(
+        meshes.custom_submissions[0].render_type,
+        EntityModelLayerRenderType::DragonRays
+    );
+    assert_eq!(
+        meshes.custom_submissions[1].render_type,
+        EntityModelLayerRenderType::DragonRaysDepth
+    );
+    assert!(meshes.cutout.vertices.is_empty());
+    assert!(meshes.eyes.vertices.is_empty());
+    assert!(!meshes.dragon_rays.vertices.is_empty());
+    assert_eq!(
+        meshes.dragon_rays_depth.vertices.len(),
+        meshes.dragon_rays.vertices.len()
+    );
+}
+
+#[test]
 fn ender_dragon_dying_submission_survives_missing_dissolve_mask_atlas_entry() {
     // The submission records the vanilla secondary mask texture even when the atlas lacks
     // `dragon_exploding.png`; only the backend's folded body geometry is suppressed.

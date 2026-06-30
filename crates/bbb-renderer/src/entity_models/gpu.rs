@@ -675,6 +675,71 @@ fn fs_main() -> @location(0) vec4<f32> {
 }
 "#;
 
+pub(super) const ENTITY_MODEL_POSITION_COLOR_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
+    fog_visibility_ends: vec4<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+    @location(1) color: vec4<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) color: vec4<f32>,
+    @location(1) spherical_distance: f32,
+    @location(2) cylindrical_distance: f32,
+};
+
+fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {
+    if (vertex_distance <= fog_start) {
+        return 0.0;
+    }
+    if (vertex_distance >= fog_end) {
+        return 1.0;
+    }
+    return (vertex_distance - fog_start) / (fog_end - fog_start);
+}
+
+fn apply_fog(color: vec4<f32>, spherical_distance: f32, cylindrical_distance: f32) -> vec4<f32> {
+    let fog_value = max(
+        linear_fog_value(spherical_distance, camera.fog_distances.x, camera.fog_distances.y),
+        linear_fog_value(cylindrical_distance, camera.fog_distances.z, camera.fog_distances.w),
+    );
+    return vec4<f32>(mix(color.rgb, camera.fog_color.rgb, fog_value * camera.fog_color.a), color.a);
+}
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
+    out.color = input.color;
+    let fog_pos = input.position - camera.camera_position.xyz;
+    out.spherical_distance = length(fog_pos);
+    out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    return apply_fog(input.color, input.spherical_distance, input.cylindrical_distance);
+}
+"#;
+
 pub(super) const ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
@@ -1320,6 +1385,28 @@ const ENTITY_MODEL_WATER_MASK_DEPTH_WRITE_ENABLED: bool = true;
 const ENTITY_MODEL_WATER_MASK_DEPTH_COMPARE: wgpu::CompareFunction =
     wgpu::CompareFunction::LessEqual;
 const ENTITY_MODEL_WATER_MASK_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
+/// Vanilla `RenderPipelines.DRAGON_RAYS`: lightning blend, depth test `LESS_EQUAL`, no depth write,
+/// and no cull.
+pub(super) const ENTITY_MODEL_DRAGON_RAYS_BLEND: wgpu::BlendState = wgpu::BlendState {
+    color: wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::SrcAlpha,
+        dst_factor: wgpu::BlendFactor::One,
+        operation: wgpu::BlendOperation::Add,
+    },
+    alpha: wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::SrcAlpha,
+        dst_factor: wgpu::BlendFactor::One,
+        operation: wgpu::BlendOperation::Add,
+    },
+};
+pub(super) const ENTITY_MODEL_DRAGON_RAYS_DEPTH_WRITE_ENABLED: bool = false;
+pub(super) const ENTITY_MODEL_DRAGON_RAYS_DEPTH_COMPARE: wgpu::CompareFunction =
+    wgpu::CompareFunction::LessEqual;
+pub(super) const ENTITY_MODEL_DRAGON_RAYS_CULL_MODE: Option<wgpu::Face> = None;
+/// Vanilla `RenderPipelines.DRAGON_RAYS_DEPTH`: default depth write plus zero colour writes.
+pub(super) const ENTITY_MODEL_DRAGON_RAYS_DEPTH_ONLY_WRITE_ENABLED: bool = true;
+pub(super) const ENTITY_MODEL_DRAGON_RAYS_DEPTH_ONLY_COLOR_WRITE_MASK: wgpu::ColorWrites =
+    wgpu::ColorWrites::empty();
 
 pub(crate) fn create_entity_model_eyes_pipeline(
     device: &wgpu::Device,
@@ -1386,6 +1473,98 @@ pub(crate) fn create_entity_model_water_mask_pipeline(
                 format,
                 blend: ENTITY_MODEL_WATER_MASK_BLEND,
                 write_mask: ENTITY_MODEL_WATER_MASK_COLOR_WRITE_MASK,
+            })],
+        }),
+        multiview: None,
+    })
+}
+
+pub(crate) fn create_entity_model_dragon_rays_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_entity_model_position_color_pipeline(
+        device,
+        format,
+        bind_group_layout,
+        "bbb-entity-model-dragon-rays",
+        Some(ENTITY_MODEL_DRAGON_RAYS_BLEND),
+        ENTITY_MODEL_DRAGON_RAYS_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_DRAGON_RAYS_DEPTH_COMPARE,
+        wgpu::ColorWrites::ALL,
+    )
+}
+
+pub(crate) fn create_entity_model_dragon_rays_depth_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_entity_model_position_color_pipeline(
+        device,
+        format,
+        bind_group_layout,
+        "bbb-entity-model-dragon-rays-depth",
+        None,
+        ENTITY_MODEL_DRAGON_RAYS_DEPTH_ONLY_WRITE_ENABLED,
+        wgpu::CompareFunction::LessEqual,
+        ENTITY_MODEL_DRAGON_RAYS_DEPTH_ONLY_COLOR_WRITE_MASK,
+    )
+}
+
+fn create_entity_model_position_color_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    label_prefix: &str,
+    blend: Option<wgpu::BlendState>,
+    depth_write_enabled: bool,
+    depth_compare: wgpu::CompareFunction,
+    color_write_mask: wgpu::ColorWrites,
+) -> wgpu::RenderPipeline {
+    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some(&format!("{label_prefix}-shader")),
+        source: wgpu::ShaderSource::Wgsl(ENTITY_MODEL_POSITION_COLOR_SHADER.into()),
+    });
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some(&format!("{label_prefix}-pipeline-layout")),
+        bind_group_layouts: &[bind_group_layout],
+        push_constant_ranges: &[],
+    });
+
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some(&format!("{label_prefix}-pipeline")),
+        layout: Some(&layout),
+        vertex: wgpu::VertexState {
+            module: &shader,
+            entry_point: "vs_main",
+            buffers: &[entity_model_vertex_layout()],
+        },
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: ENTITY_MODEL_DRAGON_RAYS_CULL_MODE,
+            polygon_mode: wgpu::PolygonMode::Fill,
+            unclipped_depth: false,
+            conservative: false,
+        },
+        depth_stencil: Some(wgpu::DepthStencilState {
+            format: DEPTH_FORMAT,
+            depth_write_enabled,
+            depth_compare,
+            stencil: wgpu::StencilState::default(),
+            bias: wgpu::DepthBiasState::default(),
+        }),
+        multisample: wgpu::MultisampleState::default(),
+        fragment: Some(wgpu::FragmentState {
+            module: &shader,
+            entry_point: "fs_main",
+            targets: &[Some(wgpu::ColorTargetState {
+                format,
+                blend,
+                write_mask: color_write_mask,
             })],
         }),
         multiview: None,
@@ -1912,6 +2091,16 @@ impl Renderer {
                 meshes.eyes,
                 "bbb-entity-model-eyes",
             );
+            self.entity_model_dragon_rays_mesh = create_entity_model_mesh_gpu_from_mesh(
+                &self.device,
+                meshes.dragon_rays,
+                "bbb-entity-model-dragon-rays",
+            );
+            self.entity_model_dragon_rays_depth_mesh = create_entity_model_mesh_gpu_from_mesh(
+                &self.device,
+                meshes.dragon_rays_depth,
+                "bbb-entity-model-dragon-rays-depth",
+            );
             self.entity_model_outline_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
                 &self.device,
                 meshes.outline,
@@ -2064,6 +2253,8 @@ impl Renderer {
             self.entity_model_sorted_translucent_draws.clear();
             self.entity_model_sorted_item_entity_draws.clear();
             self.entity_model_eyes_mesh = None;
+            self.entity_model_dragon_rays_mesh = None;
+            self.entity_model_dragon_rays_depth_mesh = None;
             self.entity_model_outline_mesh = None;
             self.entity_model_outline_cull_mesh = None;
             self.entity_dynamic_player_skin_cutout_mesh = None;
@@ -2117,6 +2308,12 @@ impl Renderer {
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_eyes_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_model_dragon_rays_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_model_dragon_rays_depth_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_outline_mesh
@@ -2847,11 +3044,16 @@ mod tests {
         entity_model_cutout_z_offset_shader, entity_model_glint_shader,
         ENTITY_MODEL_ADDITIVE_BLEND, ENTITY_MODEL_ARMOR_CULL_MODE, ENTITY_MODEL_ARMOR_CUTOUT_BLEND,
         ENTITY_MODEL_ARMOR_DEPTH_WRITE_ENABLED, ENTITY_MODEL_ARMOR_SHADER,
-        ENTITY_MODEL_ARMOR_TRANSLUCENT_BLEND, ENTITY_MODEL_EYES_BLEND, ENTITY_MODEL_EYES_CULL_MODE,
-        ENTITY_MODEL_EYES_DEPTH_WRITE_ENABLED, ENTITY_MODEL_GLINT_BLEND,
-        ENTITY_MODEL_GLINT_DEPTH_COMPARE, ENTITY_MODEL_GLINT_DEPTH_WRITE_ENABLED,
-        ENTITY_MODEL_OUTLINE_BLEND, ENTITY_MODEL_OUTLINE_CULL_MODE,
-        ENTITY_MODEL_OUTLINE_NO_CULL_MODE, ENTITY_MODEL_OUTLINE_SHADER, ENTITY_MODEL_SCROLL_BLEND,
+        ENTITY_MODEL_ARMOR_TRANSLUCENT_BLEND, ENTITY_MODEL_DRAGON_RAYS_BLEND,
+        ENTITY_MODEL_DRAGON_RAYS_CULL_MODE, ENTITY_MODEL_DRAGON_RAYS_DEPTH_COMPARE,
+        ENTITY_MODEL_DRAGON_RAYS_DEPTH_ONLY_COLOR_WRITE_MASK,
+        ENTITY_MODEL_DRAGON_RAYS_DEPTH_ONLY_WRITE_ENABLED,
+        ENTITY_MODEL_DRAGON_RAYS_DEPTH_WRITE_ENABLED, ENTITY_MODEL_EYES_BLEND,
+        ENTITY_MODEL_EYES_CULL_MODE, ENTITY_MODEL_EYES_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_GLINT_BLEND, ENTITY_MODEL_GLINT_DEPTH_COMPARE,
+        ENTITY_MODEL_GLINT_DEPTH_WRITE_ENABLED, ENTITY_MODEL_OUTLINE_BLEND,
+        ENTITY_MODEL_OUTLINE_CULL_MODE, ENTITY_MODEL_OUTLINE_NO_CULL_MODE,
+        ENTITY_MODEL_OUTLINE_SHADER, ENTITY_MODEL_POSITION_COLOR_SHADER, ENTITY_MODEL_SCROLL_BLEND,
         ENTITY_MODEL_SCROLL_CULL_MODE, ENTITY_MODEL_SCROLL_DEPTH_COMPARE,
         ENTITY_MODEL_SCROLL_DEPTH_WRITE_ENABLED, ENTITY_MODEL_SCROLL_EMISSIVE_SHADER,
         ENTITY_MODEL_SCROLL_SHADER, ENTITY_MODEL_SURFACE_CULL_MODE,
@@ -3168,6 +3370,48 @@ mod tests {
         );
         assert!(!ENTITY_MODEL_EYES_DEPTH_WRITE_ENABLED);
         assert_eq!(ENTITY_MODEL_EYES_CULL_MODE, None);
+    }
+
+    #[test]
+    fn entity_model_dragon_rays_pipeline_state_matches_vanilla_rays() {
+        assert_eq!(
+            ENTITY_MODEL_DRAGON_RAYS_BLEND.color.src_factor,
+            wgpu::BlendFactor::SrcAlpha,
+            "vanilla BlendFunction.LIGHTNING uses SRC_ALPHA for colour"
+        );
+        assert_eq!(
+            ENTITY_MODEL_DRAGON_RAYS_BLEND.color.dst_factor,
+            wgpu::BlendFactor::One,
+            "vanilla BlendFunction.LIGHTNING adds to destination colour"
+        );
+        assert_eq!(
+            ENTITY_MODEL_DRAGON_RAYS_BLEND.alpha.src_factor,
+            wgpu::BlendFactor::SrcAlpha,
+            "vanilla BlendFunction.LIGHTNING uses SRC_ALPHA for alpha"
+        );
+        assert_eq!(
+            ENTITY_MODEL_DRAGON_RAYS_BLEND.alpha.dst_factor,
+            wgpu::BlendFactor::One
+        );
+        assert!(!ENTITY_MODEL_DRAGON_RAYS_DEPTH_WRITE_ENABLED);
+        assert_eq!(
+            ENTITY_MODEL_DRAGON_RAYS_DEPTH_COMPARE,
+            wgpu::CompareFunction::LessEqual
+        );
+        assert_eq!(ENTITY_MODEL_DRAGON_RAYS_CULL_MODE, None);
+        assert!(ENTITY_MODEL_POSITION_COLOR_SHADER.contains("@location(1) color: vec4<f32>"));
+        assert!(!ENTITY_MODEL_POSITION_COLOR_SHADER.contains("textureSample"));
+        assert!(!ENTITY_MODEL_POSITION_COLOR_SHADER.contains("lightmap_texture"));
+    }
+
+    #[test]
+    fn entity_model_dragon_rays_depth_pipeline_state_matches_vanilla_depth_replay() {
+        assert!(ENTITY_MODEL_DRAGON_RAYS_DEPTH_ONLY_WRITE_ENABLED);
+        assert_eq!(
+            ENTITY_MODEL_DRAGON_RAYS_DEPTH_ONLY_COLOR_WRITE_MASK,
+            wgpu::ColorWrites::empty(),
+            "vanilla DRAGON_RAYS_DEPTH uses ColorTargetState(Optional.empty(), 0)"
+        );
     }
 
     #[test]

@@ -92,9 +92,9 @@ use super::textured::{
     render_breeze_wind_scroll_model, render_camel_saddle_layer,
     render_charged_creeper_energy_swirl, render_custom_head_skull_layer,
     render_donkey_textured_layers, render_end_crystal_beam, render_end_crystal_textured_layers,
-    render_ender_dragon_beam, render_equine_body_armor_layer, render_equine_saddle_layer,
-    render_guardian_beam, render_horse_textured_layers, render_llama_decor_layer,
-    render_nautilus_body_armor_layer, render_nautilus_saddle_layer,
+    render_ender_dragon_beam, render_ender_dragon_death_rays, render_equine_body_armor_layer,
+    render_equine_saddle_layer, render_guardian_beam, render_horse_textured_layers,
+    render_llama_decor_layer, render_nautilus_body_armor_layer, render_nautilus_saddle_layer,
     render_no_overlay_scrolled_textured_layers, render_pig_saddle_layer, render_player_cape_layer,
     render_player_extra_ears_layer, render_player_parrot_on_shoulder_layer,
     render_player_spin_attack_effect_layer, render_player_textured_layers,
@@ -613,6 +613,7 @@ impl EntityModelSink for TexturedSink<'_> {
             instance,
             &passes[0..2],
         );
+        render_ender_dragon_death_rays(self.meshes, *instance);
         render_ender_dragon_beam(self.meshes, *instance, self.atlas);
     }
 
@@ -1659,8 +1660,8 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &wither_skull_textured_layer_passes(dangerous),
         ),
-        // EnderDragonRenderer submits body+eyes, then optional nearest-crystal healing-beam custom
-        // geometry; the textured sink owns that full sequence.
+        // EnderDragonRenderer submits body+eyes, optional death rays, then optional nearest-crystal
+        // healing-beam custom geometry; the textured sink owns that full sequence.
         EntityModelKind::EnderDragon => sink.ender_dragon_model(instance),
         EntityModelKind::Mooshroom { baby, variant } => sink.model(
             CowModel::new(CowModelVariant::Temperate, baby),

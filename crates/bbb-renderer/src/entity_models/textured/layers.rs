@@ -202,6 +202,10 @@ pub(crate) enum EntityModelLayerRenderType {
     EnergySwirl,
     /// Vanilla `RenderTypes.endCrystalBeam(texture)`.
     EndCrystalBeam,
+    /// Vanilla `RenderTypes.dragonRays()`.
+    DragonRays,
+    /// Vanilla `RenderTypes.dragonRaysDepth()`.
+    DragonRaysDepth,
     /// Vanilla `RenderTypes.waterMask()`, used by the boat water patch.
     WaterMask,
 }
@@ -216,6 +220,7 @@ pub(in crate::entity_models) enum EntityModelLayerRenderBucket {
     Eyes,
     Scroll,
     AdditiveScroll,
+    PositionColor,
     OutlineOnly,
     DepthOnly,
     GlintOnly,
@@ -223,7 +228,7 @@ pub(in crate::entity_models) enum EntityModelLayerRenderBucket {
 
 impl EntityModelLayerRenderType {
     #[cfg(test)]
-    pub(in crate::entity_models) const ALL: [Self; 18] = [
+    pub(in crate::entity_models) const ALL: [Self; 20] = [
         Self::EntitySolid,
         Self::ArmorCutoutNoCull,
         Self::ArmorTranslucent,
@@ -241,6 +246,8 @@ impl EntityModelLayerRenderType {
         Self::BreezeWind,
         Self::EnergySwirl,
         Self::EndCrystalBeam,
+        Self::DragonRays,
+        Self::DragonRaysDepth,
         Self::WaterMask,
     ];
 
@@ -264,7 +271,9 @@ impl EntityModelLayerRenderType {
             Self::Eyes => EntityModelLayerRenderBucket::Eyes,
             Self::BreezeWind | Self::EndCrystalBeam => EntityModelLayerRenderBucket::Scroll,
             Self::EnergySwirl => EntityModelLayerRenderBucket::AdditiveScroll,
+            Self::DragonRays => EntityModelLayerRenderBucket::PositionColor,
             Self::WaterMask => EntityModelLayerRenderBucket::DepthOnly,
+            Self::DragonRaysDepth => EntityModelLayerRenderBucket::DepthOnly,
         }
     }
 
@@ -295,6 +304,7 @@ impl EntityModelLayerRenderType {
                 | Self::Eyes
                 | Self::BreezeWind
                 | Self::EnergySwirl
+                | Self::DragonRays
         )
     }
 
@@ -329,6 +339,8 @@ impl EntityModelLayerRenderType {
             Self::BreezeWind => "breezeWind",
             Self::EnergySwirl => "energySwirl",
             Self::EndCrystalBeam => "end_crystal_beam",
+            Self::DragonRays => "dragonRays",
+            Self::DragonRaysDepth => "dragonRaysDepth",
             Self::WaterMask => "waterMask",
         }
     }
@@ -1385,6 +1397,7 @@ pub(in crate::entity_models) fn ender_dragon_textured_layer_passes(
 ) -> Vec<EntityModelLayerPass> {
     let dying_alpha = (1.0 - death_time / 200.0).clamp(0.0, 1.0);
     let dying = death_time > 0.0;
+    let beam_submit_sequence = if dying { 4 } else { 2 };
     vec![
         EntityModelLayerPass {
             kind: EntityModelLayerKind::EnderDragonBase,
@@ -1421,7 +1434,7 @@ pub(in crate::entity_models) fn ender_dragon_textured_layer_passes(
             visibility: EntityModelLayerVisibility::All,
             tint: [1.0, 1.0, 1.0, 1.0],
             order: 0,
-            submit_sequence: 2,
+            submit_sequence: beam_submit_sequence,
         },
     ]
 }
