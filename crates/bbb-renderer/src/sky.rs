@@ -1,5 +1,5 @@
 use anyhow::{anyhow, bail, Result};
-use glam::Vec3;
+use glam::{Mat4, Vec3};
 use wgpu::util::DeviceExt;
 
 const SKY_DISC_RADIUS: f32 = 512.0;
@@ -70,6 +70,7 @@ struct Camera {
 };
 
 struct SkyDynamic {
+    model_transform: mat4x4<f32>,
     color_modulator: vec4<f32>,
 };
 
@@ -91,7 +92,8 @@ struct VertexOut {
 @vertex
 fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
-    let world_position = input.position + camera.camera_position.xyz;
+    let model_position = (sky_dynamic.model_transform * vec4<f32>(input.position, 1.0)).xyz;
+    let world_position = model_position + camera.camera_position.xyz;
     out.position = camera.view_proj * vec4<f32>(world_position, 1.0);
     out.spherical_distance = length(input.position);
     out.cylindrical_distance = max(length(input.position.xz), abs(input.position.y));
@@ -185,6 +187,7 @@ struct Camera {
 };
 
 struct SkyDynamic {
+    model_transform: mat4x4<f32>,
     color_modulator: vec4<f32>,
 };
 
@@ -204,7 +207,8 @@ struct VertexOut {
 @vertex
 fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
-    let world_position = input.position + camera.camera_position.xyz;
+    let model_position = (sky_dynamic.model_transform * vec4<f32>(input.position, 1.0)).xyz;
+    let world_position = model_position + camera.camera_position.xyz;
     out.position = camera.view_proj * vec4<f32>(world_position, 1.0);
     return out;
 }
@@ -231,6 +235,7 @@ struct Camera {
 };
 
 struct SkyDynamic {
+    model_transform: mat4x4<f32>,
     color_modulator: vec4<f32>,
 };
 
@@ -258,7 +263,8 @@ struct VertexOut {
 @vertex
 fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
-    let world_position = input.position + camera.camera_position.xyz;
+    let model_position = (sky_dynamic.model_transform * vec4<f32>(input.position, 1.0)).xyz;
+    let world_position = model_position + camera.camera_position.xyz;
     out.position = camera.view_proj * vec4<f32>(world_position, 1.0);
     out.uv = input.uv;
     out.color = input.color;
@@ -291,6 +297,7 @@ struct Camera {
 };
 
 struct SkyDynamic {
+    model_transform: mat4x4<f32>,
     color_modulator: vec4<f32>,
 };
 
@@ -316,7 +323,8 @@ struct VertexOut {
 @vertex
 fn vs_main(input: VertexIn) -> VertexOut {
     var out: VertexOut;
-    let world_position = input.position + camera.camera_position.xyz;
+    let model_position = (sky_dynamic.model_transform * vec4<f32>(input.position, 1.0)).xyz;
+    let world_position = model_position + camera.camera_position.xyz;
     out.position = camera.view_proj * vec4<f32>(world_position, 1.0);
     out.uv = input.uv;
     return out;
@@ -611,6 +619,7 @@ struct SkyTexturedVertex {
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct SkyDynamicUniform {
+    model_transform: [[f32; 4]; 4],
     color_modulator: [f32; 4],
 }
 
@@ -827,9 +836,13 @@ pub(super) fn create_sky_dynamic_bind_group_layout(device: &wgpu::Device) -> wgp
 fn create_sky_dynamic_gpu(
     device: &wgpu::Device,
     layout: &wgpu::BindGroupLayout,
+    model_transform: Mat4,
     color_modulator: [f32; 4],
 ) -> SkyDynamicGpu {
-    let uniform = SkyDynamicUniform { color_modulator };
+    let uniform = SkyDynamicUniform {
+        model_transform: model_transform.to_cols_array_2d(),
+        color_modulator,
+    };
     let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("bbb-sky-dynamic-uniform"),
         contents: bytemuck::bytes_of(&uniform),
@@ -1018,7 +1031,12 @@ pub(super) fn create_sky_disc_gpu(
     if batch.disc_vertices.is_empty() && batch.sunrise_vertices.is_empty() {
         return None;
     }
-    let dynamic = create_sky_dynamic_gpu(device, dynamic_bind_group_layout, environment.color);
+    let dynamic = create_sky_dynamic_gpu(
+        device,
+        dynamic_bind_group_layout,
+        Mat4::IDENTITY,
+        environment.color,
+    );
     let disc_vertex_buffer =
         create_sky_vertex_buffer(device, "bbb-sky-disc-vertices", &batch.disc_vertices);
     let sunrise_vertex_buffer = create_sky_vertex_buffer(
@@ -1057,7 +1075,12 @@ pub(super) fn create_end_sky_gpu(
     dynamic_bind_group_layout: &wgpu::BindGroupLayout,
 ) -> EndSkyGpu {
     let vertices = end_sky_vertices();
-    let dynamic = create_sky_dynamic_gpu(device, dynamic_bind_group_layout, [1.0, 1.0, 1.0, 1.0]);
+    let dynamic = create_sky_dynamic_gpu(
+        device,
+        dynamic_bind_group_layout,
+        Mat4::IDENTITY,
+        [1.0, 1.0, 1.0, 1.0],
+    );
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("bbb-end-sky-vertices"),
         contents: bytemuck::cast_slice(&vertices),
@@ -1084,6 +1107,7 @@ pub(super) fn create_celestial_gpu(
     let dynamic = create_sky_dynamic_gpu(
         device,
         dynamic_bind_group_layout,
+        Mat4::IDENTITY,
         [1.0, 1.0, 1.0, environment.rain_brightness],
     );
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -1114,7 +1138,12 @@ pub(super) fn create_star_gpu(
         environment.star_brightness,
         environment.star_brightness,
     ];
-    let dynamic = create_sky_dynamic_gpu(device, dynamic_bind_group_layout, color);
+    let dynamic = create_sky_dynamic_gpu(
+        device,
+        dynamic_bind_group_layout,
+        star_model_transform(environment.star_angle_radians),
+        color,
+    );
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("bbb-star-vertices"),
         contents: bytemuck::cast_slice(&vertices),
@@ -1436,13 +1465,12 @@ fn star_vertices(environment: SkyEnvironment) -> Vec<SkyPositionVertex> {
     }
     base_star_vertices()
         .into_iter()
-        .map(|position| SkyPositionVertex {
-            position: rotate_y(
-                rotate_x(position, environment.star_angle_radians),
-                -std::f32::consts::FRAC_PI_2,
-            ),
-        })
+        .map(|position| SkyPositionVertex { position })
         .collect()
+}
+
+fn star_model_transform(star_angle_radians: f32) -> Mat4 {
+    Mat4::from_rotation_y(-std::f32::consts::FRAC_PI_2) * Mat4::from_rotation_x(star_angle_radians)
 }
 
 fn base_star_vertices() -> Vec<[f32; 3]> {
@@ -1869,8 +1897,11 @@ mod tests {
     #[test]
     fn sky_disc_shader_uses_vanilla_sky_fog_end_shape() {
         assert!(SKY_DISC_SHADER.contains("struct SkyDynamic"));
+        assert!(SKY_DISC_SHADER.contains("model_transform: mat4x4<f32>"));
         assert!(SKY_DISC_SHADER.contains("@location(0) position: vec3<f32>"));
         assert!(!SKY_DISC_SHADER.contains("@location(1) color"));
+        assert!(SKY_DISC_SHADER
+            .contains("sky_dynamic.model_transform * vec4<f32>(input.position, 1.0)"));
         assert!(SKY_DISC_SHADER
             .contains("apply_sky_fog(sky_dynamic.color_modulator, input.spherical_distance"));
         assert!(SKY_DISC_SHADER.contains("let sky_end = camera.fog_visibility_ends.x;"));
@@ -1889,17 +1920,25 @@ mod tests {
     #[test]
     fn star_shader_uses_vanilla_color_modulator_shape() {
         assert!(STAR_SHADER.contains("struct SkyDynamic"));
+        assert!(STAR_SHADER.contains("model_transform: mat4x4<f32>"));
         assert!(STAR_SHADER.contains("@location(0) position: vec3<f32>"));
         assert!(!STAR_SHADER.contains("@location(1) color"));
+        assert!(
+            STAR_SHADER.contains("sky_dynamic.model_transform * vec4<f32>(input.position, 1.0)")
+        );
         assert!(STAR_SHADER.contains("return sky_dynamic.color_modulator;"));
     }
 
     #[test]
     fn end_sky_shader_uses_vanilla_position_tex_color_modulator_shape() {
         assert!(END_SKY_SHADER.contains("struct SkyDynamic"));
+        assert!(END_SKY_SHADER.contains("model_transform: mat4x4<f32>"));
         assert!(END_SKY_SHADER.contains("@location(0) position: vec3<f32>"));
         assert!(END_SKY_SHADER.contains("@location(1) uv: vec2<f32>"));
         assert!(END_SKY_SHADER.contains("@location(2) color: vec4<f32>"));
+        assert!(
+            END_SKY_SHADER.contains("sky_dynamic.model_transform * vec4<f32>(input.position, 1.0)")
+        );
         assert!(END_SKY_SHADER
             .contains("textureSample(sky_texture, sky_sampler, input.uv) * input.color"));
         assert!(END_SKY_SHADER.contains("if texel.a == 0.0"));
@@ -1909,9 +1948,12 @@ mod tests {
     #[test]
     fn celestial_shader_uses_vanilla_position_tex_color_modulator_shape() {
         assert!(CELESTIAL_SHADER.contains("struct SkyDynamic"));
+        assert!(CELESTIAL_SHADER.contains("model_transform: mat4x4<f32>"));
         assert!(CELESTIAL_SHADER.contains("@location(0) position: vec3<f32>"));
         assert!(CELESTIAL_SHADER.contains("@location(1) uv: vec2<f32>"));
         assert!(!CELESTIAL_SHADER.contains("@location(2) color"));
+        assert!(CELESTIAL_SHADER
+            .contains("sky_dynamic.model_transform * vec4<f32>(input.position, 1.0)"));
         assert!(CELESTIAL_SHADER.contains("if texel.a == 0.0"));
         assert!(CELESTIAL_SHADER.contains("return texel * sky_dynamic.color_modulator;"));
     }
@@ -2167,7 +2209,26 @@ mod tests {
 
         assert_eq!(vertices.len(), VANILLA_ACCEPTED_STAR_QUADS * 6);
         let first_center = star_quad_center([vertices[0], vertices[1], vertices[2], vertices[5]]);
-        assert_close3(first_center, [-47.698_66, 69.925_74, -53.246_868]);
+        assert_close3(first_center, [-53.246_868, 69.925_74, 47.698_66]);
+        let transformed = star_model_transform(environment.star_angle_radians)
+            .transform_point3(Vec3::from(first_center));
+        assert_close3(transformed.to_array(), [-47.698_66, 69.925_74, -53.246_868]);
+    }
+
+    #[test]
+    fn star_vertices_keep_angle_in_dynamic_transform() {
+        let base =
+            star_vertices(SkyEnvironment::from_rgb([0.25, 0.5, 0.75]).with_star_state(0.0, 0.5));
+        let angled =
+            star_vertices(SkyEnvironment::from_rgb([0.25, 0.5, 0.75]).with_star_state(1.25, 0.5));
+
+        assert_eq!(base.len(), angled.len());
+        assert_eq!(base[0].position, angled[0].position);
+        let first_center = star_quad_center([base[0], base[1], base[2], base[5]]);
+        let transformed = star_model_transform(1.25).transform_point3(Vec3::from(first_center));
+        let baked = rotate_y(rotate_x(first_center, 1.25), -std::f32::consts::FRAC_PI_2);
+
+        assert_close3(transformed.to_array(), baked);
     }
 
     #[test]

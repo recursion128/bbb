@@ -987,8 +987,11 @@ When an agent does any of the following, update this file in the same slice:
     `ColorModulator`-shaped sky dynamic uniform before draw while sunrise/sunset
     stays on the no-fog `position_color` path. Stars now mirror vanilla
     `RenderPipelines.STARS` / `core/stars` more closely: the vertex buffer is
-    position-only and `STAR_BRIGHTNESS` is carried through a `ColorModulator`-
-    shaped sky dynamic uniform before draw. Celestial sun/moon
+    position-only, `STAR_BRIGHTNESS` is carried through a `ColorModulator`-
+    shaped sky dynamic uniform before draw, and `STAR_ANGLE` is carried through
+    a DynamicTransforms-style model matrix matching vanilla's
+    `Y(-90deg) * X(starAngle)` pose stack instead of being baked into the
+    static stars vertex buffer. Celestial sun/moon
     rendering now also mirrors vanilla `RenderPipelines.CELESTIAL` /
     `core/position_tex` more closely: the vertex buffer is position+uv, texture
     alpha discard stays in the shader, and rain brightness is carried through
