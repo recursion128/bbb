@@ -162,6 +162,9 @@ fn main() -> Result<()> {
             items.wolf_body_armor_materials_by_protocol_id(),
         );
         world.set_default_item_attack_ranges(items.item_attack_ranges_by_protocol_id());
+        world.set_default_item_swing_animation_durations(
+            items.item_swing_animation_durations_by_protocol_id(),
+        );
         world.set_default_piercing_weapon_item_ids(
             items.default_piercing_weapon_item_ids_by_protocol_id(),
         );
@@ -197,6 +200,7 @@ fn main() -> Result<()> {
             horse_body_armor_materials = items.horse_body_armor_material_count(),
             wolf_body_armor_materials = items.wolf_body_armor_material_count(),
             default_attack_range_items = items.item_attack_range_count(),
+            default_swing_animation_items = items.item_swing_animation_duration_count(),
             default_piercing_weapon_items = items.default_piercing_weapon_item_count(),
             default_item_max_damage = items.item_max_damage_count(),
             default_damageable_items = items.default_damageable_item_count(),

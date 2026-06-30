@@ -74,6 +74,8 @@ pub struct ItemRegistryCatalog {
     #[serde(default)]
     default_attack_ranges: BTreeMap<String, ItemAttackRange>,
     #[serde(default)]
+    default_swing_animation_durations: BTreeMap<String, i32>,
+    #[serde(default)]
     default_use_effects: BTreeMap<String, ItemUseEffects>,
     #[serde(default)]
     crafting_remainders: BTreeMap<String, String>,
@@ -192,6 +194,7 @@ impl ItemRegistryCatalog {
         let mut mount_body_armor_assets = BTreeMap::new();
         let mut default_piercing_weapon_ids = BTreeSet::new();
         let mut default_attack_ranges = BTreeMap::new();
+        let mut default_swing_animation_durations = BTreeMap::new();
         let mut default_use_effects = BTreeMap::new();
         let mut crafting_remainders = BTreeMap::new();
         let mut mining_profiles = BTreeMap::new();
@@ -209,6 +212,8 @@ impl ItemRegistryCatalog {
             let mount_body_armor_asset = mount_body_armor_asset_for_declaration(expression)?;
             let default_piercing_weapon = default_piercing_weapon_for_declaration(expression);
             let default_attack_range = default_attack_range_for_declaration(expression)?;
+            let default_swing_animation_duration =
+                default_swing_animation_duration_for_declaration(expression)?;
             let default_use_effect = default_use_effects_for_declaration(expression)?;
             let crafting_remainder =
                 crafting_remainder_for_declaration(expression, item_id_constants)?;
@@ -244,6 +249,10 @@ impl ItemRegistryCatalog {
                 }
                 if let Some(default_attack_range) = default_attack_range {
                     default_attack_ranges.insert(resource_id.clone(), default_attack_range);
+                }
+                if let Some(default_swing_animation_duration) = default_swing_animation_duration {
+                    default_swing_animation_durations
+                        .insert(resource_id.clone(), default_swing_animation_duration);
                 }
                 if let Some(default_use_effect) = default_use_effect {
                     default_use_effects.insert(resource_id.clone(), default_use_effect);
@@ -284,6 +293,7 @@ impl ItemRegistryCatalog {
             mount_body_armor_assets,
             default_piercing_weapon_ids,
             default_attack_ranges,
+            default_swing_animation_durations,
             default_use_effects,
             crafting_remainders,
             mining_profiles,
@@ -387,6 +397,13 @@ impl ItemRegistryCatalog {
     pub fn default_attack_range(&self, resource_id: &str) -> Option<ItemAttackRange> {
         let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
         self.default_attack_ranges.get(&resource_id).copied()
+    }
+
+    pub fn default_swing_animation_duration(&self, resource_id: &str) -> Option<i32> {
+        let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
+        self.default_swing_animation_durations
+            .get(&resource_id)
+            .copied()
     }
 
     pub fn default_use_effects(&self, resource_id: &str) -> Option<ItemUseEffects> {
@@ -745,6 +762,44 @@ fn default_attack_range_for_declaration(expression: &str) -> Result<Option<ItemA
         hitbox_margin: parse_java_float_literal(capture.get(5).unwrap().as_str())?,
         mob_factor: parse_java_float_literal(capture.get(6).unwrap().as_str())?,
     }))
+}
+
+fn default_swing_animation_duration_for_declaration(expression: &str) -> Result<Option<i32>> {
+    if let Some(attack_duration) = spear_attack_duration_for_declaration(expression)? {
+        return Ok(Some((attack_duration * 20.0) as i32));
+    }
+
+    let float = r#"-?[0-9]+(?:\.[0-9]+)?F?"#;
+    let direct_duration = r#"(-?[0-9]+)"#;
+    let seconds_duration = format!(r#"\(int\)\s*\(\s*({float})\s*\*\s*20\.0F\s*\)"#);
+    let pattern = format!(
+        r#"(?s)\.component\(\s*DataComponents\.SWING_ANIMATION\s*,\s*new\s+SwingAnimation\(\s*SwingAnimationType\.[A-Z_]+\s*,\s*(?:{direct_duration}|{seconds_duration})\s*\)\s*\)"#
+    );
+    let regex = Regex::new(&pattern)?;
+    let Some(capture) = regex.captures(expression) else {
+        return Ok(None);
+    };
+    if let Some(duration) = capture.get(1) {
+        return Ok(Some(duration.as_str().parse()?));
+    }
+    let Some(seconds) = capture.get(2) else {
+        return Ok(None);
+    };
+    Ok(Some(
+        (parse_java_float_literal(seconds.as_str())? * 20.0) as i32,
+    ))
+}
+
+fn spear_attack_duration_for_declaration(expression: &str) -> Result<Option<f32>> {
+    let float = r#"-?[0-9]+(?:\.[0-9]+)?F?"#;
+    let pattern = format!(r#"(?s)\.spear\(\s*ToolMaterial\.[A-Z_]+\s*,\s*({float})"#);
+    let regex = Regex::new(&pattern)?;
+    let Some(capture) = regex.captures(expression) else {
+        return Ok(None);
+    };
+    Ok(Some(parse_java_float_literal(
+        capture.get(1).unwrap().as_str(),
+    )?))
 }
 
 fn default_use_effects_for_declaration(expression: &str) -> Result<Option<ItemUseEffects>> {
@@ -1147,6 +1202,65 @@ mod tests {
             })
         );
         assert_eq!(catalog.default_attack_range("minecraft:iron_sword"), None);
+    }
+
+    #[test]
+    fn item_registry_catalog_parses_default_swing_animation_duration() {
+        let source = r#"
+            public class Items {
+               public static final Item WOODEN_SPEAR = registerItem(
+                  "wooden_spear",
+                  new Item.Properties().spear(ToolMaterial.WOOD, 0.65F, 0.7F, 0.75F, 5.0F, 14.0F, 10.0F, 5.1F, 15.0F, 4.6F)
+               );
+               public static final Item DIAMOND_SPEAR = registerItem(
+                  "diamond_spear",
+                  new Item.Properties().spear(ToolMaterial.DIAMOND, 1.05F, 1.075F, 0.5F, 3.0F, 10.0F, 6.5F, 5.1F, 10.0F, 4.6F)
+               );
+               public static final Item TEST_STAB = registerItem(
+                  "test_stab",
+                  new Item.Properties().component(DataComponents.SWING_ANIMATION, new SwingAnimation(SwingAnimationType.STAB, 17))
+               );
+               public static final Item TEST_SECONDS = registerItem(
+                  "test_seconds",
+                  new Item.Properties().component(DataComponents.SWING_ANIMATION, new SwingAnimation(SwingAnimationType.STAB, (int)(0.8F * 20.0F)))
+               );
+               public static final Item IRON_SWORD = registerItem("iron_sword", new Item.Properties().sword(ToolMaterial.IRON, 3.0F, -2.4F));
+            }
+        "#;
+
+        let catalog =
+            ItemRegistryCatalog::from_items_java_source(source, &BTreeMap::new()).unwrap();
+
+        assert_eq!(
+            catalog.default_swing_animation_duration("minecraft:wooden_spear"),
+            Some(13)
+        );
+        assert_eq!(
+            catalog.default_swing_animation_duration("minecraft:diamond_spear"),
+            Some(21)
+        );
+        assert_eq!(
+            catalog.default_swing_animation_duration("minecraft:test_stab"),
+            Some(17)
+        );
+        assert_eq!(
+            catalog.default_swing_animation_duration("minecraft:test_seconds"),
+            Some(16)
+        );
+        assert_eq!(
+            catalog.default_swing_animation_duration("minecraft:iron_sword"),
+            None
+        );
+
+        let decoded: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+            "resource_ids": ["minecraft:wooden_spear"],
+            "protocol_ids": {"minecraft:wooden_spear": 0}
+        }))
+        .unwrap();
+        assert_eq!(
+            decoded.default_swing_animation_duration("minecraft:wooden_spear"),
+            None
+        );
     }
 
     #[test]

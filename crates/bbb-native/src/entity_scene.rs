@@ -1016,11 +1016,16 @@ fn entity_model_instance(
         && entity_hand_holds_charged_crossbow(world, item_runtime, source.entity_id, false);
     let player_off_hand_holds_charged_crossbow = is_player
         && entity_hand_holds_charged_crossbow(world, item_runtime, source.entity_id, true);
-    // Vanilla `HumanoidModel.setupAttackAnimation` switches on the held item's `SWING_ANIMATION` type: a
-    // spear swings with the `STAB` `SpearAnimations.thirdPersonAttackHand` pose instead of the default
-    // `WHACK`. Only `PlayerModel` consumes the shared attack helper (the skeleton/zombie/illager melee
-    // models use their own arm poses), so resolve the spear just for the player kind.
-    let main_hand_swing_is_stab = player_main_hand_holds_spear;
+    // Vanilla `ArmedEntityRenderState.extractArmedEntityRenderState` selects the `attackArm` hand stack and
+    // copies its `getSwingAnimation().type()` into the render state: a spear swing uses the `STAB`
+    // `SpearAnimations.thirdPersonAttackHand` pose instead of the default `WHACK`. Only `PlayerModel`
+    // consumes the shared attack helper here (the skeleton/zombie/illager melee models use their own arm
+    // poses), so resolve the spear just for the player kind.
+    let main_hand_swing_is_stab = if source.attack_arm_off_hand {
+        player_off_hand_holds_spear
+    } else {
+        player_main_hand_holds_spear
+    };
     // Vanilla `AvatarRenderer.getArmPose` use-item `ItemUseAnimation.SPEAR`: while the using hand holds a
     // spear, `HumanoidModel.ArmPose.SPEAR` applies `SpearAnimations.thirdPersonHandUse`, and
     // `ItemInHandLayer` applies `thirdPersonUseItem` using the spear's default `KineticWeapon`.
@@ -3961,10 +3966,10 @@ mod tests {
     use super::*;
     use bbb_protocol::packets::{
         AddEntity, AttributeSnapshot, ChatFormatting, CommonPlayerSpawnInfo,
-        DataComponentPatchSummary, EntityDataValue, EntityEvent, EntityPositionSync, EquipmentSlot,
-        EquipmentSlotUpdate, GameProfile, GameProfileProperty, GameType, ItemEnchantmentSummary,
-        ItemStackSummary, MinecartStep, MoveMinecartAlongTrack, PlayLogin, PlayTime,
-        PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate, PlayerTeamMethod,
+        DataComponentPatchSummary, EntityAnimation, EntityDataValue, EntityEvent,
+        EntityPositionSync, EquipmentSlot, EquipmentSlotUpdate, GameProfile, GameProfileProperty,
+        GameType, ItemEnchantmentSummary, ItemStackSummary, MinecartStep, MoveMinecartAlongTrack,
+        PlayLogin, PlayTime, PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate, PlayerTeamMethod,
         PlayerTeamParameters, RegistryTags, SetCamera, SetEntityData, SetEquipment, SetPassengers,
         SetPlayerTeam, TagNetworkPayload, TeamCollisionRule, TeamVisibility, UpdateAttributes,
         UpdateTags, Vec3d,
@@ -6212,6 +6217,71 @@ mod tests {
             .render_state
             .main_hand_swing_is_stab;
         assert!(!stab);
+    }
+
+    #[test]
+    fn entity_model_instances_project_stab_from_attack_arm_item() {
+        // Vanilla `ArmedEntityRenderState.extractArmedEntityRenderState` reads
+        // `entity.getItemHeldByArm(state.attackArm).getSwingAnimation().type()`: an
+        // off-hand spear swing is STAB even when the main hand is a plain item.
+        const WOODEN_SPEAR_ID: i32 = 0;
+        const PLAIN_ITEM_ID: i32 = 1;
+
+        let registry: bbb_pack::ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+            "resource_ids": [
+                "minecraft:wooden_spear",
+                "minecraft:stick"
+            ],
+            "protocol_ids": {
+                "minecraft:wooden_spear": WOODEN_SPEAR_ID,
+                "minecraft:stick": PLAIN_ITEM_ID
+            }
+        }))
+        .unwrap();
+        let runtime = NativeItemRuntime::for_test_with_registry_and_equipment_assets(
+            registry,
+            bbb_pack::EquipmentAssetCatalog::default(),
+        );
+        let equip = |entity_id: i32, slot: EquipmentSlot, item_id: i32| SetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot,
+                item: ItemStackSummary {
+                    item_id: Some(item_id),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            }],
+        };
+        let state = |world: &WorldStore| {
+            entity_model_instances_from_world_at_partial_tick(world, Some(&runtime), 1.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == 240)
+                .unwrap()
+                .render_state
+        };
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            240,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [1.0, 64.0, -9.0],
+        ));
+        assert!(world.apply_set_equipment(equip(240, EquipmentSlot::MainHand, PLAIN_ITEM_ID)));
+        assert!(world.apply_set_equipment(equip(240, EquipmentSlot::OffHand, WOODEN_SPEAR_ID)));
+        assert!(world.apply_entity_animation(EntityAnimation { id: 240, action: 3 }));
+
+        let off_hand_attack = state(&world);
+        assert!(off_hand_attack.attack_arm_off_hand);
+        assert!(off_hand_attack.main_hand_swing_is_stab);
+
+        assert!(world.apply_entity_animation(EntityAnimation { id: 240, action: 0 }));
+        let main_hand_attack = state(&world);
+        assert!(!main_hand_attack.attack_arm_off_hand);
+        assert!(
+            !main_hand_attack.main_hand_swing_is_stab,
+            "the main-hand plain item keeps WHACK even while the off hand holds a spear"
+        );
     }
 
     #[test]

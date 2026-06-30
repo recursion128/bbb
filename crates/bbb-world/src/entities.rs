@@ -26,6 +26,7 @@ mod store;
 mod updates;
 
 use animations::cat_is_lying;
+pub(crate) use animations::ATTACK_SWING_DURATION;
 pub use animations::{EntityClientAnimationState, PolarBearStandingAnimationState};
 pub(crate) use components::{
     EntityAttributes, EntityClientAnimations, EntityDamage, EntityEquipment,

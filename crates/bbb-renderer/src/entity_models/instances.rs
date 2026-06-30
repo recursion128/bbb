@@ -472,10 +472,12 @@ entity_render_state! {
     /// `BOW_AND_ARROW`, so `SkeletonModel` aims both arms forward along the head look. `false` for every
     /// non-skeleton entity and for a skeleton not holding a bow.
     (with_main_hand_holds_bow) main_hand_holds_bow: bool = false;
-    /// Vanilla `HumanoidRenderState.swingAnimationType == STAB` (`ItemStack.getSwingAnimation().type()`):
-    /// a held spear makes `HumanoidModel.setupAttackAnimation` run `SpearAnimations.thirdPersonAttackHand`
-    /// (the lunge/retract stab) instead of the default `WHACK` arm chop. `false` for every entity not
-    /// holding a spear — only `PlayerModel` consumes it (the default `WHACK` covers every other case).
+    /// Vanilla `HumanoidRenderState.swingAnimationType == STAB` for the current attack arm
+    /// (`getItemHeldByArm(attackArm).getSwingAnimation().type()`): a spear makes
+    /// `HumanoidModel.setupAttackAnimation` run `SpearAnimations.thirdPersonAttackHand` (the lunge/retract
+    /// stab) instead of the default `WHACK` arm chop. `false` for every entity whose attack-arm item is not
+    /// a spear — only `PlayerModel` consumes it (the default `WHACK` covers every other case). The builder
+    /// name is historical.
     (with_main_hand_swing_is_stab) main_hand_swing_is_stab: bool = false;
     /// Vanilla `HumanoidModel.ArmPose.SPEAR` while using a spear: `SpearAnimations.thirdPersonHandUse`
     /// poses the using arm with kinetic weapon timing, and `ItemInHandLayer` applies the matching

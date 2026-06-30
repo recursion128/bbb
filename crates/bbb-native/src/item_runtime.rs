@@ -1141,6 +1141,24 @@ impl NativeItemRuntime {
         self.item_attack_ranges_by_protocol_id().len()
     }
 
+    pub(crate) fn item_swing_animation_durations_by_protocol_id(&self) -> BTreeMap<i32, i32> {
+        let mut durations = BTreeMap::new();
+        let Some(registry) = &self.registry else {
+            return durations;
+        };
+        for (protocol_id, resource_id) in registry.resource_ids().iter().enumerate() {
+            let Some(duration) = registry.default_swing_animation_duration(resource_id) else {
+                continue;
+            };
+            durations.insert(protocol_id as i32, duration);
+        }
+        durations
+    }
+
+    pub(crate) fn item_swing_animation_duration_count(&self) -> usize {
+        self.item_swing_animation_durations_by_protocol_id().len()
+    }
+
     pub(crate) fn item_use_effects_by_protocol_id(&self) -> BTreeMap<i32, WorldItemUseEffects> {
         let mut use_effects = BTreeMap::new();
         let Some(registry) = &self.registry else {

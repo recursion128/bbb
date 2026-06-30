@@ -57,7 +57,7 @@ impl CustomHeadTransforms {
 /// hand, or `None` if the instance is not a humanoid that holds items the standard way. Composes the
 /// posed arm bone (vanilla `translateToHand` = root + arm `translateAndRotate`) with the
 /// `ItemInHandLayer` hand offset (`rotX(-90°)·rotY(180°)·translate(±offsetX, offsetY, offsetZ)/16`)
-/// plus the main-hand spear attack item transform (`SpearAnimations.thirdPersonAttackItem`) when the
+/// plus the attack-arm spear item transform (`SpearAnimations.thirdPersonAttackItem`) when the
 /// rendered player is mid-STAB swing, followed by the spear use transform
 /// (`SpearAnimations.thirdPersonUseItem`) when the same hand is using a spear.
 /// Vanilla `useBabyOffset` selects the offsets: adult `(1, 2, -10)`, baby `(0, 1, -4.5)`. The baby
@@ -98,9 +98,8 @@ fn item_in_hand_layer_base_transform(arm_world: Mat4, left_hand: bool, baby: boo
 
 fn item_in_hand_layer_item_transform(instance: &EntityModelInstance, left_hand: bool) -> Mat4 {
     let mut transform = Mat4::IDENTITY;
-    if !left_hand
+    if left_hand == instance.render_state.attack_arm_off_hand
         && instance.render_state.main_hand_swing_is_stab
-        && !instance.render_state.attack_arm_off_hand
     {
         transform *= spear_third_person_attack_item_transform(instance.render_state.attack_anim);
     }
@@ -1394,6 +1393,26 @@ mod tests {
         assert_close_transform(
             humanoid_hand_attach_transform(&whack, false).unwrap(),
             item_in_hand_layer_base_transform(whack_world, false, whack_baby),
+        );
+    }
+
+    #[test]
+    fn off_hand_spear_attack_applies_vanilla_item_layer_stab_transform() {
+        let player = player_instance(0.0)
+            .with_attack_anim(0.1)
+            .with_attack_arm_off_hand(true)
+            .with_main_hand_swing_is_stab(true);
+        let (left_world, left_baby) = humanoid_arm_world_transform(&player, "left_arm").unwrap();
+        let expected = item_in_hand_layer_base_transform(left_world, true, left_baby)
+            * spear_third_person_attack_item_transform(0.1);
+        let actual = humanoid_hand_attach_transform(&player, true).unwrap();
+        assert_close_transform(actual, expected);
+
+        let (right_world, right_baby) = humanoid_arm_world_transform(&player, "right_arm").unwrap();
+        let expected_right = item_in_hand_layer_base_transform(right_world, false, right_baby);
+        assert_close_transform(
+            humanoid_hand_attach_transform(&player, false).unwrap(),
+            expected_right,
         );
     }
 

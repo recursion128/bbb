@@ -492,7 +492,7 @@ impl EntityModel for PlayerModel {
         }
         // Vanilla `HumanoidModel.setupAnim` runs `setupAttackAnimation` last (after the pose / crouch):
         // a swinging player twists the body and drives the attacking arm. The player is always adult
-        // (`ageScale = 1.0`). A held spear lunges (`STAB`); everything else chops (`WHACK`).
+        // (`ageScale = 1.0`). An attack-arm spear lunges (`STAB`); everything else chops (`WHACK`).
         if render_state.main_hand_swing_is_stab {
             apply_humanoid_stab_attack_animation(
                 &mut self.root,

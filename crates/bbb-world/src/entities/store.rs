@@ -2318,10 +2318,15 @@ impl EntityStore {
 
     /// Arms the melee swing for `id` (vanilla `LivingEntity.swing`), triggered by the
     /// `ClientboundAnimate` packet's main-hand (`off_hand = false`) / off-hand actions.
-    pub(crate) fn trigger_client_animation_swing(&mut self, id: i32, off_hand: bool) -> Option<()> {
+    pub(crate) fn trigger_client_animation_swing(
+        &mut self,
+        id: i32,
+        off_hand: bool,
+        duration: i32,
+    ) -> Option<()> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let mut animations = self.ecs.get::<&mut EntityClientAnimations>(entity).ok()?;
-        animations.animations.trigger_swing(off_hand);
+        animations.animations.trigger_swing(off_hand, duration);
         Some(())
     }
 

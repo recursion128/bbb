@@ -134,6 +134,8 @@ pub struct WorldStore {
     #[serde(default)]
     pub(crate) default_item_attack_ranges: BTreeMap<i32, ItemAttackRange>,
     #[serde(default)]
+    pub(crate) default_item_swing_animation_durations: BTreeMap<i32, i32>,
+    #[serde(default)]
     pub(crate) default_item_use_effects: BTreeMap<i32, ItemUseEffects>,
     #[serde(default)]
     pub(crate) default_damageable_item_ids: BTreeSet<i32>,

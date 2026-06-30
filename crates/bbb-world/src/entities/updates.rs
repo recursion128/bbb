@@ -28,9 +28,11 @@ impl WorldStore {
         // Vanilla `ClientboundAnimatePacket`: action `0` swings the main hand, `3` the off hand
         // (`ClientPacketListener.handleAnimate` → `LivingEntity.swing`). Both arm the melee swing.
         if packet.action == SWING_MAIN_HAND_ACTION || packet.action == SWING_OFF_HAND_ACTION {
+            let off_hand = packet.action == SWING_OFF_HAND_ACTION;
+            let duration = self.entity_held_item_swing_duration(packet.id, off_hand);
             let _ = self
                 .entities
-                .trigger_client_animation_swing(packet.id, packet.action == SWING_OFF_HAND_ACTION);
+                .trigger_client_animation_swing(packet.id, off_hand, duration);
         }
         self.counters.entity_animation_updates_applied += 1;
         true

@@ -1419,15 +1419,20 @@ When an agent does any of the following, update this file in the same slice:
     `IllagerModel` `swingWeaponDown` axe pose, and the piglin/brute reuse that same
     `swingWeaponDown` for their `ATTACKING_WITH_MELEE_WEAPON` pose (see the piglin note above); the
     default `HumanoidModel` body-twist whack for a non-`ATTACKING` piglin (empty hand / non-tool
-    item) and the per-item swing duration are deferred (every swing is the default 6-tick whack). The
-    `STAB` swing type IS implemented for the player: a remote player whose main-hand item is one of the
-    seven spears (`wooden`/`stone`/`copper`/`iron`/`golden`/`diamond`/`netherite_spear`, whose item
-    prototype sets `SWING_ANIMATION = STAB` via `Item.Properties.spear(...)`) lunges with
+    item) is deferred. Registry-backed per-item default swing duration is now wired through pack →
+    native → world for `ItemStack.getSwingAnimation().duration()`: vanilla spear attack durations
+    from `Item.Properties.spear(... attackDuration ...)` keep the client-side swing alive past the
+    default 6-tick WHACK ramp (for example wooden spear `0.65F * 20 -> 13` ticks). Dig-speed /
+    mining-fatigue duration modifiers, runtime item swaps during an in-flight swing, and patch-granted
+    custom `swing_animation` values remain deferred. The `STAB` swing type IS implemented for the
+    player: a remote player whose current attack-arm item is one of the seven spears
+    (`wooden`/`stone`/`copper`/`iron`/`golden`/`diamond`/`netherite_spear`, whose item prototype sets
+    `SWING_ANIMATION = STAB` via `Item.Properties.spear(...)`) lunges with
     `SpearAnimations.thirdPersonAttackHand` instead of the whack — the shared body twist + arm anchors
     run, then the attacking arm's pitch drives `xRot += (90·inOutSine(progress(t,0,0.05)) −
     120·inQuad(progress(t,0.05,0.2)) + 30·inOutExpo(progress(t,0.4,1.0)))·π/180` (the prologue's
     body-twist additions on the arm rotations are undone, so the off arm keeps its resting pitch). The
-    matching `ItemInHandLayer` item-level STAB transform is implemented for the main-hand spear too:
+    matching `ItemInHandLayer` item-level STAB transform is implemented for the attack-arm spear too:
     after `translateToHand` and the standard hand offset, the submitted item runs vanilla
     `SpearAnimations.thirdPersonAttackItem` (`rotateAround` the local `(0, -0.125, 0.125)` pivot by
     `Axis.XN.rotationDegrees(70 * (attack - retract))`, then translate by the spear kinetic

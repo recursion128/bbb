@@ -20,8 +20,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::{
-    LocalPlayerAbilitiesState, LocalPlayerExperienceState, MountScreenState, RegistryTagState,
-    WorldStore,
+    entities::ATTACK_SWING_DURATION, LocalPlayerAbilitiesState, LocalPlayerExperienceState,
+    MountScreenState, RegistryTagState, WorldStore,
 };
 
 mod crafting;
@@ -207,6 +207,7 @@ const VANILLA_DAMAGE_COMPONENT_ID: i32 = 3;
 const VANILLA_USE_EFFECTS_COMPONENT_ID: i32 = 5;
 const VANILLA_ATTACK_RANGE_COMPONENT_ID: i32 = 30;
 const VANILLA_PIERCING_WEAPON_COMPONENT_ID: i32 = 38;
+const VANILLA_SWING_ANIMATION_COMPONENT_ID: i32 = 40;
 const VANILLA_MAP_ID_COMPONENT_ID: i32 = 41;
 const VANILLA_DEFAULT_MAX_STACK_SIZE: i32 = 64;
 const VANILLA_ABSOLUTE_MAX_STACK_SIZE: i32 = 99;
@@ -1002,6 +1003,15 @@ impl WorldStore {
             .and_then(|item| item_stack_attack_range(item, &self.default_item_attack_ranges))
     }
 
+    pub(crate) fn entity_held_item_swing_duration(&self, id: i32, off_hand: bool) -> i32 {
+        self.held_item(id, off_hand)
+            .as_ref()
+            .map(|item| {
+                item_stack_swing_duration(item, &self.default_item_swing_animation_durations)
+            })
+            .unwrap_or(ATTACK_SWING_DURATION)
+    }
+
     pub(crate) fn local_using_item_use_effects(&self) -> Option<ItemUseEffects> {
         if !self.local_player.interaction.using_item {
             return None;
@@ -1206,6 +1216,13 @@ impl WorldStore {
         self.default_item_attack_ranges = attack_ranges
             .into_iter()
             .filter(|(item_id, _)| *item_id >= 0)
+            .collect();
+    }
+
+    pub fn set_default_item_swing_animation_durations(&mut self, durations: BTreeMap<i32, i32>) {
+        self.default_item_swing_animation_durations = durations
+            .into_iter()
+            .filter(|(item_id, duration)| *item_id >= 0 && *duration > 0)
             .collect();
     }
 
@@ -2234,6 +2251,28 @@ fn item_stack_attack_range(
 
     let item_id = stack.item_id.filter(|item_id| *item_id >= 0)?;
     default_item_attack_ranges.get(&item_id).copied()
+}
+
+fn item_stack_swing_duration(
+    stack: &ProtocolItemStackSummary,
+    default_item_swing_animation_durations: &BTreeMap<i32, i32>,
+) -> i32 {
+    if item_stack_is_empty(stack)
+        || stack
+            .component_patch
+            .removed_type_ids
+            .contains(&VANILLA_SWING_ANIMATION_COMPONENT_ID)
+    {
+        return ATTACK_SWING_DURATION;
+    }
+
+    let Some(item_id) = stack.item_id.filter(|item_id| *item_id >= 0) else {
+        return ATTACK_SWING_DURATION;
+    };
+    default_item_swing_animation_durations
+        .get(&item_id)
+        .copied()
+        .unwrap_or(ATTACK_SWING_DURATION)
 }
 
 fn item_attack_range_from_protocol(attack_range: ProtocolAttackRangeSummary) -> ItemAttackRange {
