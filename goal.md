@@ -368,22 +368,5 @@ datapack 组合路径。
 - 动态资源路径区分 decode、cache、upload、ready 状态。
 - submission metadata 在缺 atlas entry 时仍可记录，折叠 geometry 可按 vanilla fallback 或等待策略处理。
 
-## Slice 选择顺序（当前有效）
-
-1. 开始前先看 `git status --short`。若存在已验证但未提交的小 slice，先完成
-   提交；若只是未验证文档整理或 audit 结果，先验证后再提交。
-2. 如果 audit 发现新的 direct mesh bypass、texture-backed / dispatch-owned
-   submission gap，或 RenderType/order/submit_sequence/missing-atlas/
-   dynamic texture/light/overlay/outline 相关 blocker，下一 slice 只能是关闭
-   该 checklist 项的 P0 工作。
-3. 如果没有新的 P0 blocker，不自动开启新的 P1/P2/P3 slice；必须由用户显式
-   恢复 post-closeout parity 方向。
-4. 恢复 post-closeout parity 后，优先选择能关闭整类 completion standard 的小
-   slice，而不是继续补零散 provider / 动画 / GUI 细节。
-5. 粒子 provider、terrain、HUD、first-person、GUI 和开放式实体细节只有在
-   被显式选中或直接阻塞 P0 checklist 时才展开。
-6. residual / fallback / unsupported audit 中发现的 stale 文案先归类或清理；
-   如果没有新的 direct mesh bypass，不重新打开狭义 pipeline closeout。
-
 每个 slice 开始前先 grep 当前实现，确认该 feature 确实缺失或测试不足；历史上多次出现
 “ledger 以为缺失但代码已实现”的情况。
