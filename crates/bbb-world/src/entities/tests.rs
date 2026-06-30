@@ -3430,6 +3430,70 @@ fn entity_model_sources_project_death_animation_counter() {
 }
 
 #[test]
+fn entity_model_sources_project_ender_dragon_death_time() {
+    const VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID: i32 = 43;
+    const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
+    const FLOAT_SERIALIZER_ID: i32 = 3;
+
+    let source = |store: &WorldStore, partial: f32| {
+        let position = store.entities.transform(61).unwrap().position;
+        store
+            .entities
+            .model_source(
+                61,
+                position,
+                partial,
+                &store.registries,
+                &store.default_item_max_damage,
+                &store.default_item_armor_materials,
+                &store.default_item_equipment_slots,
+                &store.default_llama_body_decor_colors,
+                &store.default_nautilus_body_armor_materials,
+                &store.default_horse_body_armor_materials,
+                &store.default_wolf_body_armor_materials,
+            )
+            .unwrap()
+    };
+    let set_health = |store: &mut WorldStore, health: f32| {
+        store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 61,
+            values: vec![ProtocolEntityDataValue {
+                data_id: VANILLA_ENTITY_HEALTH_DATA_ID,
+                serializer_id: FLOAT_SERIALIZER_ID,
+                value: EntityDataValueKind::Float(health),
+            }],
+        })
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        61,
+        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+    ));
+    assert!(set_health(&mut store, 200.0));
+    store.advance_entity_client_animations(3);
+    assert_eq!(source(&store, 0.0).death_time, 0.0);
+    assert_eq!(source(&store, 0.0).ender_dragon_death_time, 0.0);
+
+    // Vanilla `EnderDragonRenderer.extractRenderState`: `dragonDeathTime > 0 ?
+    // dragonDeathTime + partialTicks : 0`. The dragon's counter is distinct from
+    // the generic 20-tick living death flip and runs to 200 ticks.
+    assert!(set_health(&mut store, 0.0));
+    assert_eq!(source(&store, 0.0).ender_dragon_death_time, 0.0);
+    store.advance_entity_client_animations(2);
+    assert_eq!(source(&store, 0.25).death_time, 0.0);
+    assert_eq!(source(&store, 0.25).ender_dragon_death_time, 2.25);
+
+    store.advance_entity_client_animations(250);
+    assert_eq!(source(&store, 0.0).death_time, 0.0);
+    assert_eq!(source(&store, 0.0).ender_dragon_death_time, 200.0);
+
+    assert!(set_health(&mut store, 120.0));
+    assert_eq!(source(&store, 0.0).death_time, 0.0);
+    assert_eq!(source(&store, 0.0).ender_dragon_death_time, 0.0);
+}
+
+#[test]
 fn entity_model_sources_project_full_freeze_for_living_entities() {
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
     const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;

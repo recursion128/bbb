@@ -400,7 +400,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - attack / crossbow / spell / celebrate / riding 组合冲突。
   - held item 与 use-item 的 layer/order 交互。
 - Boss / beam / emissive 类：
-  - EnderDragon dying-dissolve render type 等非 beam/emissive 视觉后续。
+  - [x] EnderDragon dying-dissolve render type / submission 表达：
+    `dragonDeathTime` source projection、`entityCutoutDissolve(dragon.png,
+    dragon_exploding.png)`、secondary mask texture、alpha、no-overlay、order /
+    submit_sequence、missing-atlas submission-first 测试已覆盖。
+  - EnderDragon `dragonRays` / `dragonRaysDepth` 死亡 rays 与 GPU `DISSOLVE`
+    mask sampling精度。
 
 完成标准：
 

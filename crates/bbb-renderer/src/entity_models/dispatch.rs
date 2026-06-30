@@ -187,7 +187,8 @@ pub(in crate::entity_models) trait EntityModelSink {
     );
 
     fn ender_dragon_model(&mut self, instance: &EntityModelInstance) {
-        let passes = ender_dragon_textured_layer_passes();
+        let passes =
+            ender_dragon_textured_layer_passes(instance.render_state.ender_dragon_death_time);
         self.model(
             EnderDragonModel::new(),
             ender_dragon_model_root_transform(*instance),
@@ -603,7 +604,8 @@ impl EntityModelSink for TexturedSink<'_> {
     }
 
     fn ender_dragon_model(&mut self, instance: &EntityModelInstance) {
-        let passes = ender_dragon_textured_layer_passes();
+        let passes =
+            ender_dragon_textured_layer_passes(instance.render_state.ender_dragon_death_time);
         self.model(
             EnderDragonModel::new(),
             ender_dragon_model_root_transform(*instance),

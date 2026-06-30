@@ -1345,6 +1345,7 @@ fn entity_model_instance(
         .with_light_coords(light_coords)
         .with_has_red_overlay(source.has_red_overlay)
         .with_death_time(source.death_time)
+        .with_ender_dragon_death_time(source.ender_dragon_death_time)
         .with_auto_spin_age_ticks(auto_spin_age_ticks)
         .with_upside_down_height(upside_down_height)
         .with_bounding_box_height(drowned_bounding_box_height)
@@ -4742,6 +4743,43 @@ mod tests {
     }
 
     #[test]
+    fn entity_model_instances_project_ender_dragon_death_time() {
+        // Vanilla `EnderDragonRenderer.extractRenderState` reads the dragon-specific
+        // `dragonDeathTime`, not the generic 20-tick `LivingEntity.deathTime`, before selecting the
+        // dying dissolve body render type.
+        let source: EntityModelSourceState = serde_json::from_value(serde_json::json!({
+            "entity_id": 83,
+            "entity_type_id": VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+            "position": { "x": 1.0, "y": 64.0, "z": -2.0 },
+            "y_rot": 0.0,
+            "ender_dragon_death_time": 3.5,
+            "data_values": []
+        }))
+        .unwrap();
+
+        let instance = entity_model_instance(
+            source,
+            &WorldStore::new(),
+            None,
+            0,
+            0.0,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(instance.kind, EntityModelKind::EnderDragon);
+        assert_eq!(instance.render_state.death_time, 0.0);
+        assert_eq!(instance.render_state.ender_dragon_death_time, 3.5);
+    }
+
+    #[test]
     fn entity_model_instances_fold_freeze_shake_into_body_rot() {
         const VANILLA_ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
 
@@ -7115,6 +7153,7 @@ mod tests {
             "entity_type_id": VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
             "position": { "x": 1.0, "y": 64.0, "z": -2.0 },
             "y_rot": 0.0,
+            "ender_dragon_death_time": 44.5,
             "ender_dragon_beam": { "beam_offset": [6.0, -0.1, 8.0] },
             "data_values": []
         }))
@@ -7138,6 +7177,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(instance.kind, EntityModelKind::EnderDragon);
+        assert_eq!(instance.render_state.ender_dragon_death_time, 44.5);
         assert_eq!(
             instance
                 .render_state

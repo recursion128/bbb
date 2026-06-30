@@ -294,6 +294,9 @@ const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
 /// the death tip-over flip is fully clamped by then, so the client counter is
 /// capped here to stay bounded when no server removal arrives.
 const DEATH_ANIMATION_MAX_TICKS: i32 = 20;
+/// Vanilla `EnderDragon.tickDeath`: `dragonDeathTime++`, with renderer fade/rays normalized over
+/// 200 ticks and server removal at `>= 200`.
+const ENDER_DRAGON_DEATH_ANIMATION_MAX_TICKS: i32 = 200;
 /// Vanilla `Sheep.EAT_ANIMATION_TICKS`: the eat-grass animation runs for 40
 /// client ticks after entity event `10`.
 const SHEEP_EAT_ANIMATION_TICKS: i32 = 40;
@@ -3633,6 +3636,13 @@ impl EntityClientAnimationState {
                 });
             }
         }
+        if entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
+            if let Some(health) = entity_data_float(data_values, VANILLA_ENTITY_HEALTH_DATA_ID) {
+                self.ender_dragon
+                    .get_or_insert_with(EnderDragonAnimationState::default)
+                    .set_dragon_dying(health <= 0.0);
+            }
+        }
         match entity_type_id {
             VANILLA_ENTITY_TYPE_POLAR_BEAR_ID => {
                 let target_standing =
@@ -4659,6 +4669,14 @@ impl EntityClientAnimationState {
         })
     }
 
+    /// Vanilla `EnderDragonRenderState.deathTime`: `dragonDeathTime + partialTick` once the dragon's
+    /// own death counter starts ticking, used by `EnderDragonRenderer` for the dissolve body and
+    /// deferred death rays.
+    pub fn ender_dragon_death_time(&self, partial_tick: f32) -> f32 {
+        self.ender_dragon
+            .map_or(0.0, |dragon| dragon.death_time(partial_tick))
+    }
+
     /// Vanilla `PolarBear.getStandingAnimationScale(partialTick)` projected for
     /// the renderer `PolarBearModel.setupAnim` standing pose. Returns `0.0` when
     /// the entity is not a rearing polar bear.
@@ -4944,6 +4962,15 @@ impl EntityClientAnimationState {
         // synced health), so this also runs outside the per-type match.
         if let Some(death) = self.death.as_mut() {
             death.death_time = (death.death_time + 1).min(DEATH_ANIMATION_MAX_TICKS);
+        }
+        if entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
+            if self.ender_dragon.is_some_and(|dragon| dragon.dragon_dying) {
+                self.ender_dragon
+                    .get_or_insert_with(EnderDragonAnimationState::default)
+                    .advance_dragon_death_tick(ENDER_DRAGON_DEATH_ANIMATION_MAX_TICKS);
+            } else if let Some(dragon) = self.ender_dragon.as_mut() {
+                dragon.clear_dragon_death();
+            }
         }
         // Vanilla `LivingEntity.updateSwimAmount`: save `swimAmountO`, then ease
         // `swimAmount` toward the current `isVisuallySwimming()` target by 0.09.

@@ -84,6 +84,10 @@ pub struct EnderDragonAnimationState {
     #[serde(default = "default_ender_dragon_phase_id")]
     pub phase_id: i32,
     #[serde(default)]
+    pub dragon_dying: bool,
+    #[serde(default)]
+    pub dragon_death_time: i32,
+    #[serde(default)]
     pub y_rot_a: f32,
     #[serde(default)]
     pub flight_history: DragonFlightHistoryState,
@@ -113,6 +117,8 @@ impl Default for EnderDragonAnimationState {
     fn default() -> Self {
         Self {
             phase_id: default_ender_dragon_phase_id(),
+            dragon_dying: false,
+            dragon_death_time: 0,
             y_rot_a: 0.0,
             flight_history: DragonFlightHistoryState::default(),
         }
@@ -170,6 +176,29 @@ fn default_ender_dragon_phase_id() -> i32 {
 impl EnderDragonAnimationState {
     pub(crate) fn set_phase(&mut self, phase_id: i32) {
         self.phase_id = phase_id;
+    }
+
+    pub(crate) fn set_dragon_dying(&mut self, dragon_dying: bool) {
+        self.dragon_dying = dragon_dying;
+        if !dragon_dying {
+            self.clear_dragon_death();
+        }
+    }
+
+    pub(crate) fn clear_dragon_death(&mut self) {
+        self.dragon_death_time = 0;
+    }
+
+    pub(crate) fn advance_dragon_death_tick(&mut self, max_ticks: i32) {
+        self.dragon_death_time = (self.dragon_death_time + 1).min(max_ticks);
+    }
+
+    pub(crate) fn death_time(self, partial_tick: f32) -> f32 {
+        if self.dragon_death_time > 0 {
+            self.dragon_death_time as f32 + partial_tick
+        } else {
+            0.0
+        }
     }
 
     pub(crate) fn advance_client_tick(&mut self, transform: EntityTransform) {

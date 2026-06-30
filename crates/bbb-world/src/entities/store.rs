@@ -1382,6 +1382,9 @@ impl EntityStore {
             },
             has_red_overlay: client_animations.animations.has_red_overlay(),
             death_time: client_animations.animations.death_time(partial_ticks),
+            ender_dragon_death_time: client_animations
+                .animations
+                .ender_dragon_death_time(partial_ticks),
             creeper_swelling: client_animations.animations.creeper_swelling(partial_ticks),
             tendril_animation: client_animations
                 .animations

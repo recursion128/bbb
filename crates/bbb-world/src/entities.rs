@@ -920,6 +920,11 @@ pub struct EntityModelSourceState {
     /// that is alive (and every non-living entity).
     #[serde(default)]
     pub death_time: f32,
+    /// Vanilla `EnderDragonRenderState.deathTime` (`EnderDragon.dragonDeathTime`
+    /// lerped): drives the dragon-only dying dissolve body submission and death
+    /// rays. `0.0` for living dragons and every non-dragon entity.
+    #[serde(default)]
+    pub ender_dragon_death_time: f32,
     /// Vanilla `CreeperRenderState.swelling` (`Creeper.getSwelling`): the lerped
     /// fuse progress that drives the renderer white swelling overlay. `0.0` for
     /// every non-creeper entity and for a creeper at rest.

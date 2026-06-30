@@ -125,6 +125,14 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             false,
         ),
         (
+            EntityModelLayerRenderType::EntityCutoutDissolve,
+            "entityCutoutDissolve",
+            EntityModelLayerRenderBucket::Cutout,
+            true,
+            false,
+            false,
+        ),
+        (
             EntityModelLayerRenderType::EntityCutoutCull,
             "entityCutoutCull",
             EntityModelLayerRenderBucket::Cutout,

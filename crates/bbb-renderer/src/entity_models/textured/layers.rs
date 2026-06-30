@@ -174,6 +174,8 @@ pub(crate) enum EntityModelLayerRenderType {
     /// Vanilla `RenderTypes.entityCutout(texture)`; this is also the default
     /// `EntityModel` render type when the model does not override it.
     EntityCutout,
+    /// Vanilla `RenderTypes.entityCutoutDissolve(texture, maskTexture)`.
+    EntityCutoutDissolve,
     /// Vanilla `RenderTypes.entityCutoutCull(texture)`.
     EntityCutoutCull,
     /// Vanilla `RenderTypes.entityCutoutZOffset(texture)`.
@@ -221,11 +223,12 @@ pub(in crate::entity_models) enum EntityModelLayerRenderBucket {
 
 impl EntityModelLayerRenderType {
     #[cfg(test)]
-    pub(in crate::entity_models) const ALL: [Self; 17] = [
+    pub(in crate::entity_models) const ALL: [Self; 18] = [
         Self::EntitySolid,
         Self::ArmorCutoutNoCull,
         Self::ArmorTranslucent,
         Self::EntityCutout,
+        Self::EntityCutoutDissolve,
         Self::EntityCutoutCull,
         Self::EntityCutoutZOffset,
         Self::EntityTranslucent,
@@ -246,6 +249,7 @@ impl EntityModelLayerRenderType {
             Self::EntitySolid
             | Self::ArmorCutoutNoCull
             | Self::EntityCutout
+            | Self::EntityCutoutDissolve
             | Self::EntityCutoutCull => EntityModelLayerRenderBucket::Cutout,
             Self::EntityCutoutZOffset => EntityModelLayerRenderBucket::CutoutZOffset,
             Self::ArmorTranslucent | Self::EntityTranslucent => {
@@ -271,6 +275,7 @@ impl EntityModelLayerRenderType {
                 | Self::ArmorCutoutNoCull
                 | Self::ArmorTranslucent
                 | Self::EntityCutout
+                | Self::EntityCutoutDissolve
                 | Self::EntityCutoutCull
                 | Self::EntityCutoutZOffset
                 | Self::EntityTranslucent
@@ -311,6 +316,7 @@ impl EntityModelLayerRenderType {
             Self::ArmorCutoutNoCull => "armorCutoutNoCull",
             Self::ArmorTranslucent => "armorTranslucent",
             Self::EntityCutout => "entityCutout",
+            Self::EntityCutoutDissolve => "entityCutoutDissolve",
             Self::EntityCutoutCull => "entityCutoutCull",
             Self::EntityCutoutZOffset => "entityCutoutZOffset",
             Self::EntityTranslucent => "entityTranslucent",
@@ -1374,15 +1380,23 @@ pub(in crate::entity_models) fn shulker_textured_layer_passes(
     }]
 }
 
-pub(in crate::entity_models) fn ender_dragon_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+pub(in crate::entity_models) fn ender_dragon_textured_layer_passes(
+    death_time: f32,
+) -> Vec<EntityModelLayerPass> {
+    let dying_alpha = (1.0 - death_time / 200.0).clamp(0.0, 1.0);
+    let dying = death_time > 0.0;
     vec![
         EntityModelLayerPass {
             kind: EntityModelLayerKind::EnderDragonBase,
-            render_type: EntityModelLayerRenderType::EntityCutout,
+            render_type: if dying {
+                EntityModelLayerRenderType::EntityCutoutDissolve
+            } else {
+                EntityModelLayerRenderType::EntityCutout
+            },
             model_layer: MODEL_LAYER_ENDER_DRAGON,
             texture: ENDER_DRAGON_TEXTURE_REF,
             visibility: EntityModelLayerVisibility::All,
-            tint: [1.0, 1.0, 1.0, 1.0],
+            tint: [1.0, 1.0, 1.0, dying_alpha],
             order: 0,
             submit_sequence: 0,
         },

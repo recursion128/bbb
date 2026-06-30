@@ -147,6 +147,11 @@ entity_render_state! {
     /// (`Axis.ZP.rotationDegrees(sqrt(min((deathTime-1)/20*1.6, 1)) *
     /// getFlipDegrees())`). `0.0` for every entity that is alive.
     (with_death_time) death_time: f32 = 0.0;
+    /// Vanilla `EnderDragonRenderState.deathTime` (`entity.dragonDeathTime > 0 ?
+    /// entity.dragonDeathTime + partialTick : 0`): drives the dragon-only
+    /// `entityCutoutDissolve(dragon.png, dragon_exploding.png)` body submission and the deferred
+    /// death rays. `0.0` for living dragons and every non-dragon entity.
+    (with_ender_dragon_death_time) ender_dragon_death_time: f32 = 0.0;
     /// Vanilla `EntityRenderState.lightCoords` (`LightCoordsUtil.pack(block,
     /// sky)`): the packed block+sky light sampled at the entity's light-probe
     /// block position. Defaults to [`ENTITY_FULL_BRIGHT_LIGHT_COORDS`]; the
@@ -2365,6 +2370,7 @@ mod tests {
                 head_eat: SheepHeadEatPose::NONE,
                 polar_bear_stand_scale: 0.0,
                 death_time: 0.0,
+                ender_dragon_death_time: 0.0,
                 light_coords: ENTITY_FULL_BRIGHT_LIGHT_COORDS,
                 has_red_overlay: false,
                 white_overlay_progress: 0.0,

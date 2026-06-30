@@ -53,18 +53,19 @@ use super::{
         ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
         BABY_HORSE_PARTS_TEXTURED, CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF,
         CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
-        ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, EQUINE_BABY_DONKEY_LEG_STAND_CONFIG,
-        EQUINE_STANDARD_LEG_STAND_CONFIG, HORSE_SADDLE_TEXTURE_REF,
-        HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND, HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND_SMALL,
-        HUMANOID_ARMOR_MODEL_LAYERS_BOGGED, HUMANOID_ARMOR_MODEL_LAYERS_DROWNED,
-        HUMANOID_ARMOR_MODEL_LAYERS_DROWNED_BABY, HUMANOID_ARMOR_MODEL_LAYERS_GIANT,
-        HUMANOID_ARMOR_MODEL_LAYERS_HUSK, HUMANOID_ARMOR_MODEL_LAYERS_HUSK_BABY,
-        HUMANOID_ARMOR_MODEL_LAYERS_PARCHED, HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN,
-        HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BABY, HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BRUTE,
-        HUMANOID_ARMOR_MODEL_LAYERS_PLAYER, HUMANOID_ARMOR_MODEL_LAYERS_PLAYER_SLIM,
-        HUMANOID_ARMOR_MODEL_LAYERS_SKELETON, HUMANOID_ARMOR_MODEL_LAYERS_STRAY,
-        HUMANOID_ARMOR_MODEL_LAYERS_WITHER_SKELETON, HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE,
-        HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_BABY, HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_VILLAGER,
+        ENDER_DRAGON_EXPLODING_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS,
+        EQUINE_BABY_DONKEY_LEG_STAND_CONFIG, EQUINE_STANDARD_LEG_STAND_CONFIG,
+        HORSE_SADDLE_TEXTURE_REF, HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND,
+        HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND_SMALL, HUMANOID_ARMOR_MODEL_LAYERS_BOGGED,
+        HUMANOID_ARMOR_MODEL_LAYERS_DROWNED, HUMANOID_ARMOR_MODEL_LAYERS_DROWNED_BABY,
+        HUMANOID_ARMOR_MODEL_LAYERS_GIANT, HUMANOID_ARMOR_MODEL_LAYERS_HUSK,
+        HUMANOID_ARMOR_MODEL_LAYERS_HUSK_BABY, HUMANOID_ARMOR_MODEL_LAYERS_PARCHED,
+        HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN, HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BABY,
+        HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BRUTE, HUMANOID_ARMOR_MODEL_LAYERS_PLAYER,
+        HUMANOID_ARMOR_MODEL_LAYERS_PLAYER_SLIM, HUMANOID_ARMOR_MODEL_LAYERS_SKELETON,
+        HUMANOID_ARMOR_MODEL_LAYERS_STRAY, HUMANOID_ARMOR_MODEL_LAYERS_WITHER_SKELETON,
+        HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE, HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_BABY,
+        HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_VILLAGER,
         HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_VILLAGER_BABY,
         HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIFIED_PIGLIN,
         HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIFIED_PIGLIN_BABY, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
@@ -147,6 +148,7 @@ pub(super) use layers::{
 pub(super) struct EntityModelRenderSubmission {
     pub(super) render_type: EntityModelLayerRenderType,
     pub(super) texture: EntityModelTextureRef,
+    pub(super) dissolve_texture: Option<EntityModelTextureRef>,
     pub(super) dynamic_player_skin: Option<EntityDynamicPlayerSkin>,
     pub(super) dynamic_player_texture: Option<EntityDynamicPlayerTexture>,
     pub(super) tint: [f32; 4],
@@ -685,6 +687,7 @@ fn compare_submit_sort_key(
 struct EntityModelSubmissionEmit {
     render_type: EntityModelLayerRenderType,
     texture: EntityModelTextureRef,
+    dissolve_texture: Option<EntityModelTextureRef>,
     dynamic_player_skin: Option<EntityDynamicPlayerSkin>,
     dynamic_player_texture: Option<EntityDynamicPlayerTexture>,
     tint: [f32; 4],
@@ -708,6 +711,7 @@ impl EntityModelSubmissionEmit {
         Self {
             render_type,
             texture,
+            dissolve_texture: None,
             dynamic_player_skin: None,
             dynamic_player_texture: None,
             tint,
@@ -730,6 +734,11 @@ impl EntityModelSubmissionEmit {
         self
     }
 
+    fn with_dissolve_texture(mut self, texture: EntityModelTextureRef) -> Self {
+        self.dissolve_texture = Some(texture);
+        self
+    }
+
     fn with_overlay(mut self, overlay: [f32; 2]) -> Self {
         self.overlay = Some(overlay);
         self
@@ -746,6 +755,7 @@ impl From<EntityModelSubmissionEmit> for EntityModelRenderSubmission {
         Self {
             render_type: submit.render_type,
             texture: submit.texture,
+            dissolve_texture: submit.dissolve_texture,
             dynamic_player_skin: submit.dynamic_player_skin,
             dynamic_player_texture: submit.dynamic_player_texture,
             tint: submit.tint,
@@ -1164,6 +1174,12 @@ fn render_textured_submission(
     emit: impl FnOnce(&mut EntityModelTexturedMesh, EntityModelTextureAtlasEntry),
 ) {
     let (submission, insertion_index) = meshes.record_submission_with_index(submit);
+    if submit
+        .dissolve_texture
+        .is_some_and(|texture| entity_model_texture_atlas_entry(atlas, texture).is_none())
+    {
+        return;
+    }
     if let Some(entry) = entity_model_texture_atlas_entry(atlas, submit.texture) {
         if submission.render_type.mesh_bucket() == EntityModelLayerRenderBucket::GlintOnly {
             let mut scratch = EntityModelTexturedMesh::new();
@@ -1597,7 +1613,11 @@ fn textured_layer_submission(
         pass.order,
         pass.submit_sequence,
     );
-    if layer_pass_uses_no_overlay(pass) {
+    if pass.render_type == EntityModelLayerRenderType::EntityCutoutDissolve {
+        submit
+            .with_overlay(ENTITY_VERTEX_NO_OVERLAY)
+            .with_dissolve_texture(ENDER_DRAGON_EXPLODING_TEXTURE_REF)
+    } else if layer_pass_uses_no_overlay(pass) {
         submit.with_overlay(ENTITY_VERTEX_NO_OVERLAY)
     } else if layer_pass_uses_zero_white_overlay(pass) {
         submit.with_overlay([0.0, meshes.current_submission_overlay[1]])
@@ -1731,7 +1751,9 @@ pub(in crate::entity_models) fn render_textured_layers<M: EntityModel>(
 ) {
     for pass in passes {
         // Vanilla `LivingEntityEmissiveLayer` skips layers whose computed alpha is effectively zero.
-        if pass.tint[3] <= 1.0e-5 {
+        if pass.tint[3] <= 1.0e-5
+            && pass.render_type != EntityModelLayerRenderType::EntityCutoutDissolve
+        {
             continue;
         }
         match pass.visibility {
@@ -2075,7 +2097,7 @@ pub(in crate::entity_models) fn render_ender_dragon_beam(
         * Mat4::from_translation(Vec3::new(0.0, 2.0, 0.0))
         * Mat4::from_rotation_y(-delta.z.atan2(delta.x) - std::f32::consts::FRAC_PI_2)
         * Mat4::from_rotation_x(-horizontal_length.atan2(delta.y) - std::f32::consts::FRAC_PI_2);
-    let passes = ender_dragon_textured_layer_passes();
+    let passes = ender_dragon_textured_layer_passes(instance.render_state.ender_dragon_death_time);
     let beam_pass = passes[2];
     let submit = no_overlay_layer_submission(beam_pass, transform);
     emit_crystal_beam_submission(

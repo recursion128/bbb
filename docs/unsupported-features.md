@@ -4769,8 +4769,15 @@ When an agent does any of the following, update this file in the same slice:
       healing beam record no-overlay submits. The Guardian / EndCrystal / EnderDragon beam
       submissions and the Creeper / Wither `energySwirl` plus dragon-eyes emissive paths are no
       longer listed as remaining beam/emissive audit items; their UV/scroll/additive/emissive and
-      missing-atlas submission-first behavior is covered by source-pinned renderer tests. The
-      dying-dissolve render type stays deferred. The colored
+      missing-atlas submission-first behavior is covered by source-pinned renderer tests. The dragon
+      death body now carries the vanilla `dragonDeathTime` source projection and records
+      `RenderTypes.entityCutoutDissolve(dragon.png, dragon_exploding.png)` when
+      `deathTime > 0`, including the secondary dissolve-mask texture, alpha
+      `1 - deathTime / 200`, explicit same-order sequence `(0, 0)`, light preservation, and
+      `OverlayTexture.NO_OVERLAY`; missing-atlas coverage pins that a missing
+      `dragon_exploding.png` suppresses only the folded dying-body geometry while preserving the
+      submission record. The remaining dragon death visual parity is the custom `dragonRays` /
+      `dragonRaysDepth` geometry and GPU-side `DISSOLVE` mask sampling precision. The colored
       debug path stays as a fallback (it renders the body dark and the wing membranes a lighter tint)
     - area effect cloud, marker, and interaction entities now resolve to `EntityModelKind::NoRender`,
       which is a dispatch-owned no-submit path and emits no geometry — exact parity with vanilla, whose

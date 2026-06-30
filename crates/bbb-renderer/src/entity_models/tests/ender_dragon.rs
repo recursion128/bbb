@@ -89,7 +89,7 @@ fn ender_dragon_mesh_uses_vanilla_body_layer_geometry() {
 
 #[test]
 fn ender_dragon_textured_render_matches_vanilla_renderer() {
-    let passes = ender_dragon_textured_layer_passes();
+    let passes = ender_dragon_textured_layer_passes(0.0);
     // The cutout base body, always-on emissive eyes overlay, and optional healing-beam custom geometry.
     assert_eq!(passes.len(), 3);
     assert_eq!(passes[0].kind, EntityModelLayerKind::EnderDragonBase);
@@ -127,12 +127,14 @@ fn ender_dragon_textured_render_matches_vanilla_renderer() {
         })
     );
     assert!(entity_model_texture_refs().contains(&ENDER_DRAGON_TEXTURE_REF));
+    assert!(entity_model_texture_refs().contains(&ENDER_DRAGON_EXPLODING_TEXTURE_REF));
     assert!(entity_model_texture_refs().contains(&ENDER_DRAGON_EYES_TEXTURE_REF));
     assert!(entity_model_texture_refs().contains(&END_CRYSTAL_BEAM_TEXTURE_REF));
     assert_eq!(
         ender_dragon_entity_texture_refs(),
         &[
             ENDER_DRAGON_TEXTURE_REF,
+            ENDER_DRAGON_EXPLODING_TEXTURE_REF,
             ENDER_DRAGON_EYES_TEXTURE_REF,
             END_CRYSTAL_BEAM_TEXTURE_REF
         ]
@@ -155,6 +157,7 @@ fn ender_dragon_textured_render_matches_vanilla_renderer() {
     assert_eq!(base.render_type, EntityModelLayerRenderType::EntityCutout);
     assert_eq!(base.render_type.vanilla_name(), "entityCutout");
     assert_eq!(base.texture, ENDER_DRAGON_TEXTURE_REF);
+    assert_eq!(base.dissolve_texture, None);
     assert_eq!(base.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(base.transform, ender_dragon_model_root_transform(instance));
     assert_eq!((base.order, base.submit_sequence), (0, 0));
@@ -162,6 +165,7 @@ fn ender_dragon_textured_render_matches_vanilla_renderer() {
     assert_eq!(eyes.render_type, EntityModelLayerRenderType::Eyes);
     assert_eq!(eyes.render_type.vanilla_name(), "eyes");
     assert_eq!(eyes.texture, ENDER_DRAGON_EYES_TEXTURE_REF);
+    assert_eq!(eyes.dissolve_texture, None);
     assert_eq!(eyes.tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!(eyes.transform, base.transform);
     assert_eq!((eyes.order, eyes.submit_sequence), (0, 1));
@@ -173,6 +177,117 @@ fn ender_dragon_textured_render_matches_vanilla_renderer() {
         .vertices
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+}
+
+#[test]
+fn ender_dragon_dying_body_uses_vanilla_cutout_dissolve_submission() {
+    // Vanilla `EnderDragonRenderer.submit`: when `deathTime > 0`, submit the body with
+    // `RenderTypes.entityCutoutDissolve(dragon.png, dragon_exploding.png)`, alpha
+    // `1 - deathTime / 200`, and `OverlayTexture.NO_OVERLAY`; eyes are still submitted next.
+    let passes = ender_dragon_textured_layer_passes(50.0);
+    assert_eq!(passes[0].kind, EntityModelLayerKind::EnderDragonBase);
+    assert_eq!(
+        passes[0].render_type,
+        EntityModelLayerRenderType::EntityCutoutDissolve
+    );
+    assert_eq!(passes[0].render_type.vanilla_name(), "entityCutoutDissolve");
+    assert_eq!(passes[0].texture, ENDER_DRAGON_TEXTURE_REF);
+    assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 0.75]);
+    assert_eq!((passes[0].order, passes[0].submit_sequence), (0, 0));
+    assert_eq!(passes[1].render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!((passes[1].order, passes[1].submit_sequence), (0, 1));
+
+    let images: Vec<EntityModelTextureImage> = ender_dragon_entity_texture_refs()
+        .iter()
+        .map(|texture| blank_texture(*texture))
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let instance = EntityModelInstance::ender_dragon(902, [0.0, 64.0, 0.0], 0.0)
+        .with_ender_dragon_death_time(50.0)
+        .with_light_coords((9_u32 << 4) | (12_u32 << 20))
+        .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 2);
+    let base = meshes.submissions[0];
+    assert_eq!(
+        base.render_type,
+        EntityModelLayerRenderType::EntityCutoutDissolve
+    );
+    assert_eq!(base.render_type.vanilla_name(), "entityCutoutDissolve");
+    assert_eq!(base.texture, ENDER_DRAGON_TEXTURE_REF);
+    assert_eq!(
+        base.dissolve_texture,
+        Some(ENDER_DRAGON_EXPLODING_TEXTURE_REF)
+    );
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 0.75]);
+    assert_eq!(base.transform, ender_dragon_model_root_transform(instance));
+    assert_eq!((base.order, base.submit_sequence), (0, 0));
+    assert_eq!(base.light, instance.render_state.shader_light());
+    assert_eq!(base.overlay, [0.0, 10.0]);
+    assert_ne!(base.overlay, instance.render_state.overlay_coords());
+    assert!(!meshes.cutout.vertices.is_empty());
+    assert!(meshes
+        .cutout
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == base.tint
+            && vertex.light == base.light
+            && vertex.overlay == base.overlay));
+
+    let eyes = meshes.submissions[1];
+    assert_eq!(eyes.render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(eyes.texture, ENDER_DRAGON_EYES_TEXTURE_REF);
+    assert_eq!(eyes.dissolve_texture, None);
+    assert_eq!(eyes.tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(eyes.transform, base.transform);
+    assert_eq!((eyes.order, eyes.submit_sequence), (0, 1));
+    assert_eq!(eyes.light, base.light);
+    assert_eq!(eyes.overlay, [0.0, 10.0]);
+}
+
+#[test]
+fn ender_dragon_dying_submission_survives_missing_dissolve_mask_atlas_entry() {
+    // The submission records the vanilla secondary mask texture even when the atlas lacks
+    // `dragon_exploding.png`; only the backend's folded body geometry is suppressed.
+    let images = vec![
+        blank_texture(ENDER_DRAGON_TEXTURE_REF),
+        blank_texture(ENDER_DRAGON_EYES_TEXTURE_REF),
+    ];
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let instance = EntityModelInstance::ender_dragon(903, [0.0, 64.0, 0.0], 0.0)
+        .with_ender_dragon_death_time(80.0)
+        .with_light_coords((7_u32 << 4) | (10_u32 << 20))
+        .with_has_red_overlay(true);
+
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 2);
+    let base = meshes.submissions[0];
+    assert_eq!(
+        base.render_type,
+        EntityModelLayerRenderType::EntityCutoutDissolve
+    );
+    assert_eq!(base.texture, ENDER_DRAGON_TEXTURE_REF);
+    assert_eq!(
+        base.dissolve_texture,
+        Some(ENDER_DRAGON_EXPLODING_TEXTURE_REF)
+    );
+    assert_eq!(base.tint, [1.0, 1.0, 1.0, 0.6]);
+    assert_eq!(base.overlay, [0.0, 10.0]);
+    assert!(
+        meshes.cutout.vertices.is_empty(),
+        "missing dragon_exploding.png suppresses only folded dying body geometry"
+    );
+    assert!(meshes.cutout.indices.is_empty());
+
+    let eyes = meshes.submissions[1];
+    assert_eq!(eyes.render_type, EntityModelLayerRenderType::Eyes);
+    assert_eq!(eyes.texture, ENDER_DRAGON_EYES_TEXTURE_REF);
+    assert_eq!(eyes.dissolve_texture, None);
+    assert_eq!(eyes.overlay, [0.0, 10.0]);
+    assert!(!meshes.eyes.vertices.is_empty());
 }
 
 #[test]
