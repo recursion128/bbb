@@ -2460,6 +2460,22 @@ fn player_holding_a_charged_crossbow_levels_it_along_the_head_look() {
         left.rotation[1]
     );
 
+    // Vanilla `AvatarRenderer.getArmPose(avatar, arm)` forces a non-empty off hand to ITEM when the
+    // main-hand pose is the two-handed `CROSSBOW_HOLD`. `HumanoidModel.setupAnim` applies that off-hand pose
+    // first and then overwrites both arms with the main-hand hold, so an off-hand SPEAR must not survive.
+    let mut holding_over_spear = PlayerModel::new(false);
+    holding_over_spear.prepare(
+        &base
+            .with_player_off_hand_spear_pose(true)
+            .with_player_crossbow_hold(true),
+    );
+    let right = holding_over_spear.root_mut().child_mut("right_arm").pose;
+    assert!((right.rotation[0] - (-FRAC_PI_2 + pitch + 0.1)).abs() < 1e-6);
+    assert!((right.rotation[1] - (-0.3 + yaw)).abs() < 1e-6);
+    let left = holding_over_spear.root_mut().child_mut("left_arm").pose;
+    assert!((left.rotation[0] - (-1.5 + pitch)).abs() < 1e-6);
+    assert!((left.rotation[1] - (0.6 + yaw)).abs() < 1e-6);
+
     // Vanilla `holdingInRightArm = false` mirrors `CROSSBOW_HOLD` for a charged off-hand crossbow.
     let mut off = PlayerModel::new(false);
     off.prepare(&base.with_player_crossbow_hold_off_hand(true));

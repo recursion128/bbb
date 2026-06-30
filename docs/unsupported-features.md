@@ -1633,13 +1633,16 @@ When an agent does any of the following, update this file in the same slice:
     eating food, drinking a potion, or using any plain item correctly shows the lowered `ITEM` arm. The
     `affectsOffhandPose` skip is now symmetric (`main_hand_use_affects_offhand` /
     `off_hand_use_affects_offhand`), so an `affectsOffhandPose` draw in either hand suppresses the OPPOSITE
-    hand's `ITEM`; the non-using off-hand `SPEAR` case additionally suppresses the main-hand `ITEM` /
-    `CROSSBOW_HOLD` pose because vanilla poses the off hand first in the right-handed branch. The remaining
+    hand's `ITEM`; the non-using off-hand `SPEAR` case additionally suppresses the main-hand `ITEM`
+    pose because vanilla poses the off hand first in the right-handed branch. The exception is a
+    non-swinging charged main-hand crossbow: `AvatarRenderer.getArmPose` resolves
+    `CROSSBOW_HOLD` before the use-item branch, `CROSSBOW_HOLD.isTwoHanded()` forces any non-empty
+    off-hand pose to `ITEM`, and `HumanoidModel.setupAnim` then applies main-hand
+    `AnimationUtils.animateCrossbowHold` last. Native now mirrors that by letting main-hand charged
+    crossbow hold suppress off-hand spear / bow-use / charged-crossbow poses and by recording the forced
+    off-hand `ITEM` pose before the visible crossbow hold overwrites it. The remaining
     use-item arm pose edge on the same dispatch (the off-arm `EMPTY` reset — a
-    near-no-op since at rest the off arm's `yRot` is already `0`) stays deferred. (The `getArmPose`
-    `isTwoHanded`-forces-off-hand-to-`ITEM` branch
-    needs no implementation: every `isTwoHanded` pose is also `affectsOffhandPose`, so `setupAnim` always
-    SKIPS the forced arm's `poseArm` and the forced value is never rendered.) The
+    near-no-op since at rest the off arm's `yRot` is already `0`) stays deferred. The
     per-subclass arm/ear/nose poses that override it are tracked separately (the zombie held-out
     arms' attack swing — the resting held-out pose, the synced `Mob.isAggressive`
     arm-raise, and the `animateZombieArms` melee swing over the projected `attack_anim` —

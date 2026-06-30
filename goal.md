@@ -460,8 +460,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     现在投影为显式 spear arm-pose flags，renderer 复用
     `SpearAnimations.thirdPersonHandUse` 的 base pose（`ticksUsingItem <= 0`，
     无 kinetic sway）；off-hand `SPEAR.affectsOffhandPose` 会按 vanilla 跳过
-    main-hand `ITEM` / `CROSSBOW_HOLD`。
-  - attack / crossbow / spell / celebrate / riding 组合冲突。
+    main-hand `ITEM`，但主手 charged `CROSSBOW_HOLD.isTwoHanded()` 会先把非空
+    副手强制成 `ITEM`。
+  - [x] player main-hand charged crossbow two-handed override：vanilla
+    `AvatarRenderer.getArmPose` 在 `CROSSBOW_HOLD.isTwoHanded()` 时把非空副手
+    pose 强制为 `ITEM`，native 现在让主手 charged crossbow hold 压过副手
+    spear / bow-use / charged-crossbow 专用 pose，renderer 测试固定最终双臂仍是
+    `AnimationUtils.animateCrossbowHold`。
+  - attack / crossbow / spell / celebrate / riding 其他组合冲突。
   - [x] main-hand spear STAB held-item layer transform：player STAB arm lunge
     之后，held item transform 追加 vanilla
     `SpearAnimations.thirdPersonAttackItem` 的 local pivot rotation 与 spear
