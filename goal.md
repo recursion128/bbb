@@ -723,6 +723,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `-0.25F` per level before `floor(seconds * 20)`. Tests pin hotbar UV
     selection and held-item baked mesh branch changes. First-person generated
     item consumers and custom enchantment effect parsing remain follow-up.
+  - [x] `minecraft:component` item-model select now has typed case matching for
+    decoded scalar / enum stack components backed by vanilla persistent codecs:
+    `minecraft:max_stack_size`, `minecraft:max_damage`, `minecraft:damage`,
+    `minecraft:rarity`, and `minecraft:enchantment_glint_override`. Tests pin
+    texture selection for string, numeric, boolean, default, and removed
+    component values. Complex object/list components, registry-backed component
+    value decoding, and transient components such as
+    `minecraft:map_post_processing` remain follow-up.
 - HUD / inventory：
   - vanilla font / count / durability / cooldown / tooltip / screen depth behavior。
   - flat/generated item 与 3D block item 在 GUI pass 中的精确排序。

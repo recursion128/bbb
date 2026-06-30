@@ -4,7 +4,9 @@ use bbb_pack::{
     ItemCuboidModelCatalog, ItemModelDefinition, ItemModelProperty, ItemModelPropertyKind,
     ItemTintSource, SelectCase, TerrainColorMaps,
 };
-use bbb_protocol::packets::{DataComponentPatchSummary, ItemStackTemplateSummary};
+use bbb_protocol::packets::{
+    DataComponentPatchSummary, ItemRaritySummary, ItemStackTemplateSummary,
+};
 use serde_json::Value;
 
 use super::{
@@ -13,10 +15,13 @@ use super::{
 };
 
 // 26.1 DataComponents ids from vanilla registration order.
+const MAX_STACK_SIZE_COMPONENT_ID: i32 = 1;
 const MAX_DAMAGE_COMPONENT_ID: i32 = 2;
 const DAMAGE_COMPONENT_ID: i32 = 3;
 const UNBREAKABLE_COMPONENT_ID: i32 = 4;
+const RARITY_COMPONENT_ID: i32 = 12;
 const CUSTOM_MODEL_DATA_COMPONENT_ID: i32 = 17;
+const ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID: i32 = 21;
 const DYED_COLOR_COMPONENT_ID: i32 = 44;
 const MAP_COLOR_COMPONENT_ID: i32 = 45;
 const POTION_CONTENTS_COMPONENT_ID: i32 = 51;
@@ -46,7 +51,7 @@ pub(super) enum ItemIconModelRef {
     Select {
         property: SelectProperty,
         /// `(when values, model)` cases in declaration order.
-        cases: Vec<(Vec<String>, Box<ItemIconModelRef>)>,
+        cases: Vec<(Vec<SelectCaseValue>, Box<ItemIconModelRef>)>,
         fallback: Box<ItemIconModelRef>,
     },
     Composite(Vec<ItemIconModelRef>),
@@ -333,6 +338,90 @@ pub(super) enum SelectProperty {
     BlockState { property: String },
     /// `minecraft:custom_model_data` — `CustomModelDataProperty.getString`.
     CustomModelDataString { index: usize },
+    /// `minecraft:component` — `ComponentContents.get`, currently for decoded
+    /// scalar / enum components.
+    Component { component: ComponentSelectProperty },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum ComponentSelectProperty {
+    MaxStackSize,
+    MaxDamage,
+    Damage,
+    Rarity,
+    EnchantmentGlintOverride,
+}
+
+impl ComponentSelectProperty {
+    fn for_component(component: &str) -> Option<Self> {
+        match component {
+            "minecraft:max_stack_size" => Some(Self::MaxStackSize),
+            "minecraft:max_damage" => Some(Self::MaxDamage),
+            "minecraft:damage" => Some(Self::Damage),
+            "minecraft:rarity" => Some(Self::Rarity),
+            "minecraft:enchantment_glint_override" => Some(Self::EnchantmentGlintOverride),
+            _ => None,
+        }
+    }
+
+    fn component_id(self) -> i32 {
+        match self {
+            Self::MaxStackSize => MAX_STACK_SIZE_COMPONENT_ID,
+            Self::MaxDamage => MAX_DAMAGE_COMPONENT_ID,
+            Self::Damage => DAMAGE_COMPONENT_ID,
+            Self::Rarity => RARITY_COMPONENT_ID,
+            Self::EnchantmentGlintOverride => ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID,
+        }
+    }
+
+    fn value(self, ctx: IconResolveContext<'_>) -> Option<SelectCaseValue> {
+        if ctx
+            .component_patch
+            .is_some_and(|patch| patch.removed_type_ids.contains(&self.component_id()))
+        {
+            return None;
+        }
+
+        match self {
+            Self::MaxStackSize => Some(SelectCaseValue::I32(ctx.effective_max_stack_size())),
+            Self::MaxDamage => ctx
+                .component_patch
+                .and_then(|patch| patch.max_damage)
+                .or(ctx.default_max_damage)
+                .map(SelectCaseValue::I32),
+            Self::Damage => ctx
+                .component_patch
+                .and_then(|patch| patch.damage)
+                .or_else(|| ctx.default_max_damage.map(|_| 0))
+                .map(SelectCaseValue::I32),
+            Self::Rarity => Some(SelectCaseValue::String(
+                ctx.component_patch
+                    .and_then(|patch| patch.rarity)
+                    .unwrap_or(ItemRaritySummary::Common)
+                    .when_name()
+                    .to_string(),
+            )),
+            Self::EnchantmentGlintOverride => ctx
+                .component_patch
+                .and_then(|patch| patch.enchantment_glint_override)
+                .map(SelectCaseValue::Bool),
+        }
+    }
+}
+
+trait ItemRaritySummaryExt {
+    fn when_name(self) -> &'static str;
+}
+
+impl ItemRaritySummaryExt for ItemRaritySummary {
+    fn when_name(self) -> &'static str {
+        match self {
+            Self::Common => "common",
+            Self::Uncommon => "uncommon",
+            Self::Rare => "rare",
+            Self::Epic => "epic",
+        }
+    }
 }
 
 /// Vanilla `CrossbowItem.ChargeType` — the value of the `minecraft:charge_type`
@@ -381,17 +470,44 @@ fn select_property_for(property: &ItemModelProperty) -> Option<SelectProperty> {
                 .and_then(|index| usize::try_from(index).ok())
                 .unwrap_or(0),
         }),
+        "minecraft:component" => property
+            .raw()
+            .get("component")
+            .and_then(Value::as_str)
+            .and_then(ComponentSelectProperty::for_component)
+            .map(|component| SelectProperty::Component { component }),
         _ => None,
     }
 }
 
-/// Collects the string `when` values of a select case (vanilla `when` may be a
-/// single value or a list; non-string values are ignored for the string-keyed
-/// properties handled at runtime).
-fn select_case_when_strings(case: &SelectCase) -> Vec<String> {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) enum SelectCaseValue {
+    String(String),
+    I32(i32),
+    Bool(bool),
+}
+
+impl SelectCaseValue {
+    fn from_json(value: &Value) -> Option<Self> {
+        match value {
+            Value::String(value) => Some(Self::String(value.clone())),
+            Value::Bool(value) => Some(Self::Bool(*value)),
+            Value::Number(value) => value
+                .as_i64()
+                .and_then(|value| i32::try_from(value).ok())
+                .or_else(|| value.as_u64().and_then(|value| i32::try_from(value).ok()))
+                .map(Self::I32),
+            _ => None,
+        }
+    }
+}
+
+/// Collects the typed `when` values of a select case (vanilla `when` may be a
+/// single value or a list).
+fn select_case_when_values(case: &SelectCase) -> Vec<SelectCaseValue> {
     case.when
         .iter()
-        .filter_map(|value| value.as_str().map(str::to_string))
+        .filter_map(SelectCaseValue::from_json)
         .collect()
 }
 
@@ -490,7 +606,7 @@ pub(super) enum ItemIconModel {
     },
     Select {
         property: SelectProperty,
-        cases: Vec<(Vec<String>, Box<ItemIconModel>)>,
+        cases: Vec<(Vec<SelectCaseValue>, Box<ItemIconModel>)>,
         fallback: Box<ItemIconModel>,
     },
     Composite(Vec<ItemIconModel>),
@@ -533,6 +649,42 @@ pub(super) struct IconResolveContext<'a> {
 impl IconResolveContext<'_> {
     fn effective_max_stack_size(self) -> i32 {
         effective_item_max_stack_size(self.component_patch, self.default_max_stack_size)
+    }
+}
+
+fn select_property_value(
+    property: &SelectProperty,
+    ctx: IconResolveContext<'_>,
+) -> Option<SelectCaseValue> {
+    match property {
+        SelectProperty::MainHand => ctx
+            .main_hand_left
+            .map(|left| if left { "left" } else { "right" })
+            .map(|value| SelectCaseValue::String(value.to_string())),
+        SelectProperty::ContextDimension => ctx
+            .context_dimension
+            .map(|value| SelectCaseValue::String(value.to_string())),
+        SelectProperty::ContextEntityType => ctx
+            .context_entity_type
+            .map(|value| SelectCaseValue::String(value.to_string())),
+        SelectProperty::ChargeType => Some(SelectCaseValue::String(
+            ctx.crossbow_charge.when_name().to_string(),
+        )),
+        SelectProperty::TrimMaterial => ctx
+            .component_patch
+            .and_then(|patch| patch.armor_trim_material_id)
+            .and_then(|id| usize::try_from(id).ok())
+            .and_then(|id| ctx.trim_material_keys.and_then(|keys| keys.get(id)))
+            .map(|value| SelectCaseValue::String(value.clone())),
+        SelectProperty::BlockState { property } => ctx
+            .component_patch
+            .and_then(|patch| patch.block_state_properties.get(property))
+            .map(|value| SelectCaseValue::String(value.clone())),
+        SelectProperty::CustomModelDataString { index } => ctx
+            .component_patch
+            .and_then(|patch| patch.custom_model_data_strings.get(*index))
+            .map(|value| SelectCaseValue::String(value.clone())),
+        SelectProperty::Component { component } => component.value(ctx),
     }
 }
 
@@ -614,33 +766,12 @@ impl ItemIconModel {
                 cases,
                 fallback,
             } => {
-                let selected_when: Option<&str> = match property {
-                    SelectProperty::MainHand => {
-                        ctx.main_hand_left
-                            .map(|left| if left { "left" } else { "right" })
-                    }
-                    SelectProperty::ContextDimension => ctx.context_dimension,
-                    SelectProperty::ContextEntityType => ctx.context_entity_type,
-                    SelectProperty::ChargeType => Some(ctx.crossbow_charge.when_name()),
-                    SelectProperty::TrimMaterial => ctx
-                        .component_patch
-                        .and_then(|patch| patch.armor_trim_material_id)
-                        .and_then(|id| usize::try_from(id).ok())
-                        .and_then(|id| ctx.trim_material_keys.and_then(|keys| keys.get(id)))
-                        .map(String::as_str),
-                    SelectProperty::BlockState { property } => ctx
-                        .component_patch
-                        .and_then(|patch| patch.block_state_properties.get(property))
-                        .map(String::as_str),
-                    SelectProperty::CustomModelDataString { index } => ctx
-                        .component_patch
-                        .and_then(|patch| patch.custom_model_data_strings.get(*index))
-                        .map(String::as_str),
-                };
+                let selected_when = select_property_value(property, ctx);
                 let selected = cases
                     .iter()
                     .find(|(when, _)| {
                         selected_when
+                            .as_ref()
                             .is_some_and(|value| when.iter().any(|candidate| candidate == value))
                     })
                     .map(|(_, model)| model.as_ref())
@@ -820,11 +951,11 @@ pub(super) fn item_icon_model_ref_for_definition(
             ..
         } => {
             if let Some(resolved_property) = select_property_for(property) {
-                let resolved_cases: Vec<(Vec<String>, Box<ItemIconModelRef>)> = cases
+                let resolved_cases: Vec<(Vec<SelectCaseValue>, Box<ItemIconModelRef>)> = cases
                     .iter()
                     .map(|case| {
                         (
-                            select_case_when_strings(case),
+                            select_case_when_values(case),
                             Box::new(item_icon_model_ref_for_definition(
                                 &case.model,
                                 cuboid_models,
@@ -987,10 +1118,13 @@ fn item_stack_has_component(
 
 fn data_component_type_id(component: &str) -> Option<i32> {
     match component {
+        "minecraft:max_stack_size" => Some(MAX_STACK_SIZE_COMPONENT_ID),
         "minecraft:max_damage" => Some(MAX_DAMAGE_COMPONENT_ID),
         "minecraft:damage" => Some(DAMAGE_COMPONENT_ID),
         "minecraft:unbreakable" => Some(UNBREAKABLE_COMPONENT_ID),
+        "minecraft:rarity" => Some(RARITY_COMPONENT_ID),
         "minecraft:custom_model_data" => Some(CUSTOM_MODEL_DATA_COMPONENT_ID),
+        "minecraft:enchantment_glint_override" => Some(ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID),
         "minecraft:dyed_color" => Some(DYED_COLOR_COMPONENT_ID),
         "minecraft:map_color" => Some(MAP_COLOR_COMPONENT_ID),
         "minecraft:potion_contents" => Some(POTION_CONTENTS_COMPONENT_ID),
@@ -1002,8 +1136,11 @@ fn data_component_type_id(component: &str) -> Option<i32> {
 }
 
 fn item_default_has_component(component_id: i32, default_max_damage: Option<i32>) -> bool {
-    matches!(component_id, MAX_DAMAGE_COMPONENT_ID | DAMAGE_COMPONENT_ID)
-        && default_max_damage.is_some()
+    matches!(
+        component_id,
+        MAX_STACK_SIZE_COMPONENT_ID | RARITY_COMPONENT_ID
+    ) || (matches!(component_id, MAX_DAMAGE_COMPONENT_ID | DAMAGE_COMPONENT_ID)
+        && default_max_damage.is_some())
 }
 
 fn effective_damage_state(

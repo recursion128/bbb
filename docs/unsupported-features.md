@@ -5720,9 +5720,11 @@ When an agent does any of the following, update this file in the same slice:
     `minecraft:context_entity_type` are now wired for owner-backed generated
     item attachments and GUI/HUD item icons that use the local-player owner
     context.
-  - Add a typed value representation for `minecraft:component` select cases
-    (`ComponentContents.get`, which dispatches case decoding through the selected
-    data component's own codec) before wiring it as a stack-only select provider.
+  - Extend `minecraft:component` select beyond the current decoded scalar /
+    enum subset as protocol/runtime summaries become available: complex
+    object/list component values, registry-backed component value codecs, custom
+    datapack component value decoding, and components without a persistent
+    codec remain follow-up.
   - Audit remaining non-GUI item consumers that can render component-bearing
     generated item stacks and pass the trim-material registry keys where vanilla
     resolves `TrimMaterialProperty`. Dropped-item `GROUND`, item-frame `FIXED`,
@@ -5808,6 +5810,15 @@ When an agent does any of the following, update this file in the same slice:
       held-item paths project the renderer entity kind to the vanilla entity
       type key before resolving generated item layers; tests pin player vs witch
       branch selection. Null-owner/fake item consumers still fall back.
+    - `minecraft:component` — `ComponentContents.get`, currently matching
+      decoded persistent scalar / enum components with typed `when` values:
+      `minecraft:max_stack_size`, `minecraft:max_damage`, `minecraft:damage`,
+      `minecraft:rarity`, and `minecraft:enchantment_glint_override`. Native
+      item icons project vanilla common defaults (`max_stack_size=64`,
+      `rarity=common`) and damageable item defaults (`damage=0`,
+      `max_damage=<item default>`), and removed component ids suppress the
+      selected value before case matching. Tests pin texture selection for
+      string, numeric, boolean, default, and removed component cases.
     - `minecraft:cooldown` — `Cooldown.get`, matching the local player's
       `ItemCooldowns.getCooldownPercent(itemStack, 0.0F)` for GUI/HUD item
       icons. The item model property intentionally uses vanilla's `0.0F`
@@ -5851,9 +5862,9 @@ When an agent does any of the following, update this file in the same slice:
     follow-up.
     `minecraft:main_hand` and `minecraft:context_entity_type` still fall back on
     native item consumers that do not pass a `LivingEntity` owner, such as
-    fake/null-owner item surfaces. `minecraft:component` also remains deferred
-    until the runtime carries typed component values for case matching. This is
-    the documented follow-up.
+    fake/null-owner item surfaces. `minecraft:component` is wired for the
+    scalar / enum component subset listed above; broader component-codec parity
+    remains the documented follow-up.
 
 ### Native Input, Movement, Interaction, Inventory, And Command Flows
 

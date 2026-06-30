@@ -5165,6 +5165,179 @@ mod tests {
     }
 
     #[test]
+    fn native_item_runtime_resolves_component_select_values() {
+        let root = unique_temp_dir("item-runtime-component-select");
+        write_component_select_fixture(&root);
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let uv = |model_id: &str| {
+            runtime
+                .textures
+                .texture_uv_rect(runtime.texture_index(&format!("minecraft:item/{model_id}")))
+                .unwrap()
+        };
+        let selected = |item_id, component_patch| {
+            runtime
+                .icon_for_stack(&ItemStackSummary {
+                    item_id: Some(item_id),
+                    count: 1,
+                    component_patch,
+                })
+                .unwrap()
+                .layers[0]
+                .uv
+        };
+
+        // Vanilla `COMMON_ITEM_COMPONENTS` gives every item `rarity=common`.
+        assert_eq!(
+            selected(0, DataComponentPatchSummary::default()),
+            uv("component_rarity_common")
+        );
+        assert_eq!(
+            selected(
+                0,
+                DataComponentPatchSummary {
+                    rarity: Some(ItemRaritySummary::Rare),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_rarity_rare")
+        );
+        assert_eq!(
+            selected(
+                0,
+                DataComponentPatchSummary {
+                    rarity: Some(ItemRaritySummary::Rare),
+                    removed_type_ids: vec![12],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_rarity_fallback")
+        );
+
+        // `max_stack_size` is another common default component; numeric cases
+        // must match JSON numbers, not strings.
+        assert_eq!(
+            selected(1, DataComponentPatchSummary::default()),
+            uv("component_stack_size_64")
+        );
+        assert_eq!(
+            selected(
+                1,
+                DataComponentPatchSummary {
+                    max_stack_size: Some(16),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_stack_size_16")
+        );
+        assert_eq!(
+            selected(
+                1,
+                DataComponentPatchSummary {
+                    max_stack_size: Some(16),
+                    removed_type_ids: vec![1],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_stack_size_fallback")
+        );
+
+        // `enchantment_glint_override` has no common default, so the unset
+        // stack falls through while explicit true/false cases both match.
+        assert_eq!(
+            selected(2, DataComponentPatchSummary::default()),
+            uv("component_glint_fallback")
+        );
+        assert_eq!(
+            selected(
+                2,
+                DataComponentPatchSummary {
+                    enchantment_glint_override: Some(true),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_glint_true")
+        );
+        assert_eq!(
+            selected(
+                2,
+                DataComponentPatchSummary {
+                    enchantment_glint_override: Some(false),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_glint_false")
+        );
+        assert_eq!(
+            selected(
+                2,
+                DataComponentPatchSummary {
+                    enchantment_glint_override: Some(true),
+                    removed_type_ids: vec![21],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_glint_fallback")
+        );
+
+        // Damageable item defaults project through the item registry: damage=0
+        // and max_damage=432 until overridden or removed.
+        assert_eq!(
+            selected(3, DataComponentPatchSummary::default()),
+            uv("component_damage_0")
+        );
+        assert_eq!(
+            selected(
+                3,
+                DataComponentPatchSummary {
+                    damage: Some(7),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_damage_7")
+        );
+        assert_eq!(
+            selected(
+                3,
+                DataComponentPatchSummary {
+                    damage: Some(7),
+                    removed_type_ids: vec![3],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_damage_fallback")
+        );
+        assert_eq!(
+            selected(4, DataComponentPatchSummary::default()),
+            uv("component_max_damage_432")
+        );
+        assert_eq!(
+            selected(
+                4,
+                DataComponentPatchSummary {
+                    max_damage: Some(99),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_max_damage_99")
+        );
+        assert_eq!(
+            selected(
+                4,
+                DataComponentPatchSummary {
+                    max_damage: Some(99),
+                    removed_type_ids: vec![2],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_max_damage_fallback")
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn native_item_runtime_resolves_value_aware_range_dispatch() {
         let root = unique_temp_dir("item-runtime-range-dispatch");
         write_value_aware_range_dispatch_fixture(&root);
@@ -5960,6 +6133,162 @@ mod tests {
         write_flat_item_model_and_texture(&assets, "cmd_plain", &[40, 40, 40, 255]);
         write_flat_item_model_and_texture(&assets, "cmd_blue", &[40, 80, 220, 255]);
         write_flat_item_model_and_texture(&assets, "cmd_green", &[40, 180, 80, 255]);
+    }
+
+    fn write_component_select_fixture(root: &Path) {
+        let assets = assets_dir(root);
+        write_item_atlases(&assets);
+        write_json(
+            &root
+                .join("sources")
+                .join(bbb_pack::MC_VERSION)
+                .join("net")
+                .join("minecraft")
+                .join("world")
+                .join("item")
+                .join("Items.java"),
+            r#"public class Items {
+                public static final Item RARITY_SELECTOR = registerItem("rarity_selector");
+                public static final Item STACK_SIZE_SELECTOR = registerItem("stack_size_selector");
+                public static final Item GLINT_SELECTOR = registerItem("glint_selector");
+                public static final Item DAMAGE_COMPONENT_SELECTOR = registerItem(
+                    "damage_component_selector",
+                    Item::new,
+                    new Item.Properties().durability(432)
+                );
+                public static final Item MAX_DAMAGE_COMPONENT_SELECTOR = registerItem(
+                    "max_damage_component_selector",
+                    Item::new,
+                    new Item.Properties().durability(432)
+                );
+            }"#,
+        );
+        write_json(
+            &assets.join("items").join("rarity_selector.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:component",
+                    "component": "minecraft:rarity",
+                    "cases": [
+                        {
+                            "when": "common",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_rarity_common" }
+                        },
+                        {
+                            "when": "rare",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_rarity_rare" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/component_rarity_fallback" }
+                }
+            }"#,
+        );
+        write_json(
+            &assets.join("items").join("stack_size_selector.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:component",
+                    "component": "minecraft:max_stack_size",
+                    "cases": [
+                        {
+                            "when": 16,
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_stack_size_16" }
+                        },
+                        {
+                            "when": 64,
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_stack_size_64" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/component_stack_size_fallback" }
+                }
+            }"#,
+        );
+        write_json(
+            &assets.join("items").join("glint_selector.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:component",
+                    "component": "minecraft:enchantment_glint_override",
+                    "cases": [
+                        {
+                            "when": true,
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_glint_true" }
+                        },
+                        {
+                            "when": false,
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_glint_false" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/component_glint_fallback" }
+                }
+            }"#,
+        );
+        write_json(
+            &assets.join("items").join("damage_component_selector.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:component",
+                    "component": "minecraft:damage",
+                    "cases": [
+                        {
+                            "when": 0,
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_damage_0" }
+                        },
+                        {
+                            "when": 7,
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_damage_7" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/component_damage_fallback" }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("max_damage_component_selector.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:component",
+                    "component": "minecraft:max_damage",
+                    "cases": [
+                        {
+                            "when": 99,
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_max_damage_99" }
+                        },
+                        {
+                            "when": 432,
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_max_damage_432" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/component_max_damage_fallback" }
+                }
+            }"#,
+        );
+        for (model_id, color) in [
+            ("component_rarity_common", [80, 80, 80, 255]),
+            ("component_rarity_rare", [80, 180, 220, 255]),
+            ("component_rarity_fallback", [30, 30, 30, 255]),
+            ("component_stack_size_16", [120, 80, 40, 255]),
+            ("component_stack_size_64", [40, 120, 80, 255]),
+            ("component_stack_size_fallback", [30, 50, 30, 255]),
+            ("component_glint_true", [180, 80, 220, 255]),
+            ("component_glint_false", [70, 70, 120, 255]),
+            ("component_glint_fallback", [40, 40, 80, 255]),
+            ("component_damage_0", [40, 140, 180, 255]),
+            ("component_damage_7", [180, 80, 40, 255]),
+            ("component_damage_fallback", [50, 40, 30, 255]),
+            ("component_max_damage_99", [180, 120, 40, 255]),
+            ("component_max_damage_432", [40, 180, 120, 255]),
+            ("component_max_damage_fallback", [30, 60, 40, 255]),
+        ] {
+            write_flat_item_model_and_texture(&assets, model_id, &color);
+        }
     }
 
     fn write_value_aware_range_dispatch_fixture(root: &Path) {
