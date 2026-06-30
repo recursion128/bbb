@@ -45,7 +45,7 @@ use super::{
         EquineAnimationPose, HumanoidArmorModelLayerSet, HumanoidArmorSlot, HumanoidBabyArmorKind,
         LlamaModel, NautilusModel, ParrotModel, PigModel, PiglinModel, PlayerEarsModel,
         PlayerModel, SkeletonClothingModel, SkeletonModel, SpinAttackEffectModel, StriderModel,
-        VillagerModel, WitherModel, WolfModel, ZombieModel, ZombieVariantModel,
+        TridentModel, VillagerModel, WitherModel, WolfModel, ZombieModel, ZombieVariantModel,
         ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
         ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
         ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
@@ -234,6 +234,10 @@ pub(super) struct EntityModelTexturedMeshes {
     pub(super) scroll: EntityModelScrollMesh,
     /// Additive scrolling overlay (vanilla `energySwirl` — the charged-creeper / wither glow).
     pub(super) scroll_additive: EntityModelScrollMesh,
+    /// Vanilla `entityGlint` folded through the glint texture transform.
+    pub(super) entity_glint: EntityModelScrollMesh,
+    /// Vanilla `armorEntityGlint` folded through the armor glint texture transform.
+    pub(super) armor_entity_glint: EntityModelScrollMesh,
     /// Vanilla-shaped submit metadata for textured entity models. The current backend still folds
     /// compatible submits into shared meshes, but this preserves render type, order, tint, texture,
     /// transform, light, and overlay so the folded GPU buckets can be audited against explicit
@@ -275,6 +279,8 @@ impl EntityModelTexturedMeshes {
             dynamic_player_texture_item_entity_translucent_cull: EntityModelTexturedMesh::new(),
             scroll: EntityModelScrollMesh::new(),
             scroll_additive: EntityModelScrollMesh::new(),
+            entity_glint: EntityModelScrollMesh::new(),
+            armor_entity_glint: EntityModelScrollMesh::new(),
             submissions: Vec::new(),
             sorted_translucent_draws: Vec::new(),
             sorted_item_entity_draws: Vec::new(),
@@ -995,6 +1001,18 @@ fn render_textured_submission(
 ) {
     let (submission, insertion_index) = meshes.record_submission_with_index(submit);
     if let Some(entry) = entity_model_texture_atlas_entry(atlas, submit.texture) {
+        if submission.render_type.mesh_bucket() == EntityModelLayerRenderBucket::GlintOnly {
+            let mut scratch = EntityModelTexturedMesh::new();
+            emit(&mut scratch, entry);
+            fill_textured_submission_vertices(&mut scratch, 0, submission);
+            append_scrolled_textured_mesh(
+                glint_mesh_mut(meshes, submission.render_type),
+                &scratch,
+                entry.uv,
+                [0.0, 0.0],
+            );
+            return;
+        }
         if let Some(sort_key) = meshes.sorted_upload_key(submission, insertion_index) {
             let mut mesh = EntityModelTexturedMesh::new();
             emit(&mut mesh, entry);
@@ -1147,6 +1165,17 @@ fn scroll_bucket_mut(
     }
 }
 
+fn glint_mesh_mut(
+    meshes: &mut EntityModelTexturedMeshes,
+    render_type: EntityModelLayerRenderType,
+) -> &mut EntityModelScrollMesh {
+    match render_type {
+        EntityModelLayerRenderType::EntityGlint => &mut meshes.entity_glint,
+        EntityModelLayerRenderType::ArmorEntityGlint => &mut meshes.armor_entity_glint,
+        _ => panic!("only glint render types are emitted through glint meshes"),
+    }
+}
+
 pub(in crate::entity_models) fn render_boat_water_mask_submission(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -1174,6 +1203,7 @@ pub(in crate::entity_models) fn render_boat_water_mask_submission(
 pub(in crate::entity_models) fn render_trident_foil_submission(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
 ) {
     if meshes.current_force_transparent || meshes.current_outline_only {
         return;
@@ -1183,8 +1213,15 @@ pub(in crate::entity_models) fn render_trident_foil_submission(
     }
     let passes = trident_textured_layer_passes();
     let pass = passes[1];
-    let submit = no_overlay_layer_submission(pass, trident_model_root_transform(instance));
-    meshes.record_submission(submit);
+    let mut model = TridentModel::new();
+    model.prepare(&instance);
+    render_textured_no_overlay_layer_pass(
+        meshes,
+        &model,
+        trident_model_root_transform(instance),
+        pass,
+        atlas,
+    );
 }
 
 fn render_scrolled_textured_submission(
@@ -2024,7 +2061,16 @@ fn emit_humanoid_armor(
                 2,
                 submit_sequence,
             );
-            meshes.record_submission(no_overlay_layer_submission(pass, transform));
+            let submit = no_overlay_layer_submission(pass, transform);
+            render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+                tree.render_textured(
+                    mesh,
+                    submit.transform,
+                    submit.texture,
+                    entry.uv,
+                    submit.tint,
+                );
+            });
         }
     }
 }
@@ -2128,7 +2174,16 @@ fn emit_worn_armor_stand_armor(
                 2,
                 submit_sequence,
             );
-            meshes.record_submission(no_overlay_layer_submission(pass, transform));
+            let submit = no_overlay_layer_submission(pass, transform);
+            render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+                tree.render_textured(
+                    mesh,
+                    submit.transform,
+                    submit.texture,
+                    entry.uv,
+                    submit.tint,
+                );
+            });
         }
     }
 }
@@ -2631,7 +2686,7 @@ pub(in crate::entity_models) fn render_wolf_body_armor_layer(
                 next_order,
                 submit_sequence,
             );
-            meshes.record_submission(no_overlay_layer_submission(pass, transform));
+            render_textured_no_overlay_layer_pass(meshes, &model, transform, pass, atlas);
             next_order += 1;
             submit_sequence += 1;
             foil_pending = false;

@@ -48,6 +48,7 @@ use gpu::{
     ENTITY_MODEL_VERTEX_ATTRIBUTES,
 };
 pub(crate) use gpu::{
+    create_entity_model_armor_entity_glint_pipeline, create_entity_model_entity_glint_pipeline,
     create_entity_model_eyes_pipeline, create_entity_model_outline_cull_pipeline,
     create_entity_model_outline_pipeline, create_entity_model_pipeline,
     create_entity_model_scroll_additive_pipeline, create_entity_model_scroll_pipeline,

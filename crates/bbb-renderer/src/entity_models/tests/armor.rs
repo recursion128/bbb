@@ -1,13 +1,14 @@
 use super::*;
 use crate::entity_models::colored::GIANT_SCALE;
 
-// Build an atlas covering the zombie base texture plus the iron equipment-asset textures (humanoid +
-// leggings), enough to render an iron-clad zombie.
+// Build an atlas covering the zombie base texture plus the iron equipment-asset textures and armor
+// glint texture, enough to render an iron-clad zombie.
 fn iron_armor_atlas() -> EntityModelTextureAtlasLayout {
     let mut refs: Vec<EntityModelTextureRef> = zombie_entity_texture_refs().to_vec();
     refs.push(ARMOR_IRON_HUMANOID_TEXTURE_REF);
     refs.push(ARMOR_IRON_LEGGINGS_TEXTURE_REF);
     refs.push(ARMOR_IRON_BABY_HUMANOID_TEXTURE_REF);
+    refs.push(ENCHANTED_GLINT_ARMOR_TEXTURE_REF);
     build_atlas_for_refs(&refs)
 }
 
@@ -15,6 +16,7 @@ fn armor_stand_iron_armor_atlas() -> EntityModelTextureAtlasLayout {
     let mut refs: Vec<EntityModelTextureRef> = armor_stand_entity_texture_refs().to_vec();
     refs.push(ARMOR_IRON_HUMANOID_TEXTURE_REF);
     refs.push(ARMOR_IRON_LEGGINGS_TEXTURE_REF);
+    refs.push(ENCHANTED_GLINT_ARMOR_TEXTURE_REF);
     build_atlas_for_refs(&refs)
 }
 
@@ -484,6 +486,11 @@ fn foiled_humanoid_armor_records_vanilla_armor_entity_glint_submission() {
     assert_eq!(glint.transform, chest.transform);
     assert_eq!(glint.light, chest.light);
     assert_eq!(glint.overlay, [0.0, 10.0]);
+    assert!(!meshes.armor_entity_glint.vertices.is_empty());
+    assert!(meshes.armor_entity_glint.vertices.iter().all(|vertex| {
+        vertex.tint == glint.tint && vertex.light == glint.light && vertex.overlay == glint.overlay
+    }));
+    assert!(meshes.entity_glint.vertices.is_empty());
 
     let legs = meshes.submissions[3];
     assert_eq!(legs.texture, ARMOR_IRON_LEGGINGS_TEXTURE_REF);
@@ -541,6 +548,11 @@ fn hidden_foiled_humanoid_armor_keeps_glint_without_base_submission() {
     assert_eq!(glint.transform, chest.transform);
     assert_eq!(glint.light, chest.light);
     assert_eq!(glint.overlay, [0.0, 10.0]);
+    assert!(!meshes.armor_entity_glint.vertices.is_empty());
+    assert!(meshes.armor_entity_glint.vertices.iter().all(|vertex| {
+        vertex.tint == glint.tint && vertex.light == glint.light && vertex.overlay == glint.overlay
+    }));
+    assert!(meshes.entity_glint.vertices.is_empty());
 }
 
 #[test]

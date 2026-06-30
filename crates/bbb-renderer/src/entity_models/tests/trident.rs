@@ -218,6 +218,11 @@ fn foiled_trident_records_vanilla_entity_glint_submission() {
     assert!(meshes.eyes.vertices.is_empty());
     assert!(meshes.scroll.vertices.is_empty());
     assert!(meshes.scroll_additive.vertices.is_empty());
+    assert_eq!(meshes.entity_glint.vertices.len(), 120);
+    assert!(meshes.entity_glint.vertices.iter().all(|vertex| {
+        vertex.tint == glint.tint && vertex.light == glint.light && vertex.overlay == glint.overlay
+    }));
+    assert!(meshes.armor_entity_glint.vertices.is_empty());
 }
 
 #[test]
@@ -266,4 +271,6 @@ fn foiled_trident_submissions_survive_missing_texture_atlas_entry() {
     assert!(meshes.eyes.vertices.is_empty());
     assert!(meshes.scroll.vertices.is_empty());
     assert!(meshes.scroll_additive.vertices.is_empty());
+    assert!(meshes.entity_glint.vertices.is_empty());
+    assert!(meshes.armor_entity_glint.vertices.is_empty());
 }

@@ -113,10 +113,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     Warden `LivingEntityEmissiveLayer` 提交进入独立 `translucent_emissive`
     mesh / GPU pipeline，保留 vanilla alpha cutout、overlay、per-face lighting，
     并跳过 LightTexture。
+  - [x] `entityGlint` / `armorEntityGlint` 基础 GPU path：trident foil 和
+    armor foil 提交进入独立 glint mesh / GLINT blend / depth-equal pipeline，
+    跳过 LightTexture；动态 texture-matrix time offset 与其他 item glint
+    变体仍属后续 shader/state 细化。
   - no-cull / cull / z-offset / translucent / translucent-cull item-target。
   - `Eyes` emissive alpha blend。
   - `armorCutoutNoCull` / `armorTranslucent`。
-  - `entityGlint` / `armorEntityGlint`。
   - `breezeWind` lightmap-lit scroll。
   - `energySwirl` emissive additive scroll。
   - `waterMask` depth-only 或等价 boat mask state。

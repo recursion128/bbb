@@ -309,6 +309,30 @@ impl Renderer {
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
                 entity_model_draw_calls += 1;
             }
+            if let (Some(mesh), Some(atlas)) = (
+                &self.entity_model_armor_entity_glint_mesh,
+                &self.entity_model_texture_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_armor_entity_glint_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                entity_model_draw_calls += 1;
+            }
+            if let (Some(mesh), Some(atlas)) = (
+                &self.entity_model_entity_glint_mesh,
+                &self.entity_model_texture_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_entity_glint_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                entity_model_draw_calls += 1;
+            }
         }
 
         // Vanilla solid item features are part of FeatureRenderDispatcher.renderSolidFeatures()
@@ -2490,6 +2514,35 @@ mod tests {
                 && source[main_helper..tests_mod]
                     .contains("self.entity_model_translucent_emissive_pipeline"),
             "fallback unsorted translucent features also draw entityTranslucentEmissive"
+        );
+    }
+
+    #[test]
+    fn entity_glint_draws_in_main_pass_without_lightmap_bind() {
+        let source = include_str!("render.rs");
+        let main_pass = source
+            .find("label: Some(\"bbb-native-terrain-opaque-group-pass\")")
+            .expect("main terrain/entity pass label is used");
+        let armor_glint = source[main_pass..]
+            .find("self.entity_model_armor_entity_glint_pipeline")
+            .map(|index| main_pass + index)
+            .expect("armorEntityGlint pipeline is drawn");
+        let entity_glint = source[armor_glint..]
+            .find("self.entity_model_entity_glint_pipeline")
+            .map(|index| armor_glint + index)
+            .expect("entityGlint pipeline is drawn");
+        let depth_copy = depth_copy_to(source, "texture: &self.translucent_target.depth._texture");
+
+        assert!(
+            main_pass < armor_glint && armor_glint < entity_glint && entity_glint < depth_copy,
+            "entity glint render types are main-target entity feature draws before target depth copies"
+        );
+        assert!(
+            !source[armor_glint..entity_glint]
+                .contains("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])")
+                && !source[entity_glint..depth_copy]
+                    .contains("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])"),
+            "vanilla glint pipeline does not bind LightTexture"
         );
     }
 

@@ -877,7 +877,7 @@ impl EntityModelSink for TexturedSink<'_> {
             instance,
             &body_passes,
         );
-        render_trident_foil_submission(self.meshes, *instance);
+        render_trident_foil_submission(self.meshes, *instance, self.atlas);
     }
 
     fn creeper_model(&mut self, instance: &EntityModelInstance) {

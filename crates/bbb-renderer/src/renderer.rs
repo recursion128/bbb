@@ -19,6 +19,7 @@ use crate::{
         CloudShape, CloudTarget, CloudTextureData, CloudTextureImage,
     },
     entity_models::{
+        create_entity_model_armor_entity_glint_pipeline, create_entity_model_entity_glint_pipeline,
         create_entity_model_eyes_pipeline, create_entity_model_outline_cull_pipeline,
         create_entity_model_outline_pipeline, create_entity_model_pipeline,
         create_entity_model_scroll_additive_pipeline, create_entity_model_scroll_pipeline,
@@ -120,6 +121,8 @@ pub struct Renderer {
     pub(super) entity_model_outline_cull_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_scroll_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_scroll_additive_pipeline: wgpu::RenderPipeline,
+    pub(super) entity_model_entity_glint_pipeline: wgpu::RenderPipeline,
+    pub(super) entity_model_armor_entity_glint_pipeline: wgpu::RenderPipeline,
     pub(super) particle_pipeline: wgpu::RenderPipeline,
     pub(super) weather_pipeline: wgpu::RenderPipeline,
     pub(super) lightning_pipeline: wgpu::RenderPipeline,
@@ -190,6 +193,8 @@ pub struct Renderer {
     pub(super) entity_model_eyes_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_model_outline_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_model_outline_cull_mesh: Option<EntityModelTexturedMeshGpu>,
+    pub(super) entity_model_entity_glint_mesh: Option<EntityModelScrollMeshGpu>,
+    pub(super) entity_model_armor_entity_glint_mesh: Option<EntityModelScrollMeshGpu>,
     pub(super) entity_dynamic_player_skin_cutout_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_dynamic_player_skin_cutout_cull_mesh: Option<EntityModelTexturedMeshGpu>,
     pub(super) entity_dynamic_player_skin_translucent_mesh: Option<EntityModelTexturedMeshGpu>,
@@ -601,6 +606,14 @@ impl Renderer {
             format,
             &terrain_bind_group_layout,
         );
+        let entity_model_entity_glint_pipeline =
+            create_entity_model_entity_glint_pipeline(&device, format, &terrain_bind_group_layout);
+        let entity_model_armor_entity_glint_pipeline =
+            create_entity_model_armor_entity_glint_pipeline(
+                &device,
+                format,
+                &terrain_bind_group_layout,
+            );
         let particle_pipeline = create_particle_pipeline(
             &device,
             format,
@@ -774,6 +787,8 @@ impl Renderer {
             entity_model_outline_cull_pipeline,
             entity_model_scroll_pipeline,
             entity_model_scroll_additive_pipeline,
+            entity_model_entity_glint_pipeline,
+            entity_model_armor_entity_glint_pipeline,
             particle_pipeline,
             weather_pipeline,
             lightning_pipeline,
@@ -844,6 +859,8 @@ impl Renderer {
             entity_model_eyes_mesh: None,
             entity_model_outline_mesh: None,
             entity_model_outline_cull_mesh: None,
+            entity_model_entity_glint_mesh: None,
+            entity_model_armor_entity_glint_mesh: None,
             entity_dynamic_player_skin_cutout_mesh: None,
             entity_dynamic_player_skin_cutout_cull_mesh: None,
             entity_dynamic_player_skin_translucent_mesh: None,

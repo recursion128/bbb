@@ -12,8 +12,8 @@ pub(in crate::entity_models) const MODEL_LAYER_TRIDENT: &str = "minecraft:triden
 // captured by `trident_model_root_transform`. Each unified cube carries both the colored debug tint
 // (`TRIDENT_POLE` / `TRIDENT_SPIKE`) and the textured `uv_size` / `texOffs`; the right spike is the
 // only mirrored box (it samples the same atlas region as the left spike, flipped). The base texture
-// submit is wired; the enchant-foil overlay is recorded as glint submission metadata while GPU glint
-// presentation remains deferred.
+// submit is wired; the enchant-foil overlay is recorded as glint submission metadata and folded into
+// the entity glint GPU path when its atlas texture is present.
 
 // `pole`: the 1×25×1 shaft.
 pub(in crate::entity_models) const TRIDENT_POLE_CUBE: ModelCube = ModelCube::new(

@@ -862,6 +862,109 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 }
 "#;
 
+fn entity_model_glint_shader(scale: &str) -> String {
+    format!(
+        r#"
+struct Camera {{
+    view_proj: mat4x4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
+    fog_visibility_ends: vec4<f32>,
+}};
+
+const GLINT_UV_SCALE: f32 = {scale};
+const GLINT_ALPHA: f32 = 0.75;
+const GLINT_ANGLE: f32 = 0.1745329252;
+
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+
+@group(0) @binding(1)
+var entity_texture_atlas: texture_2d<f32>;
+
+@group(0) @binding(2)
+var entity_sampler: sampler;
+
+struct VertexIn {{
+    @location(0) position: vec3<f32>,
+    @location(1) local_uv: vec2<f32>,
+    @location(2) uv_rect_min: vec2<f32>,
+    @location(3) uv_rect_size: vec2<f32>,
+    @location(4) tint: vec4<f32>,
+    @location(5) light: vec2<f32>,
+    @location(6) overlay: vec2<f32>,
+}};
+
+struct VertexOut {{
+    @builtin(position) position: vec4<f32>,
+    @location(0) local_uv: vec2<f32>,
+    @location(1) uv_rect_min: vec2<f32>,
+    @location(2) uv_rect_size: vec2<f32>,
+    @location(3) spherical_distance: f32,
+    @location(4) cylindrical_distance: f32,
+}};
+
+fn linear_fog_value(vertex_distance: f32, fog_start: f32, fog_end: f32) -> f32 {{
+    if (vertex_distance <= fog_start) {{
+        return 0.0;
+    }}
+    if (vertex_distance >= fog_end) {{
+        return 1.0;
+    }}
+    return (vertex_distance - fog_start) / (fog_end - fog_start);
+}}
+
+fn total_fog_value(spherical_distance: f32, cylindrical_distance: f32) -> f32 {{
+    return max(
+        linear_fog_value(spherical_distance, camera.fog_distances.x, camera.fog_distances.y),
+        linear_fog_value(cylindrical_distance, camera.fog_distances.z, camera.fog_distances.w),
+    );
+}}
+
+fn glint_uv(local_uv: vec2<f32>) -> vec2<f32> {{
+    let scaled = local_uv * GLINT_UV_SCALE;
+    let cos_angle = cos(GLINT_ANGLE);
+    let sin_angle = sin(GLINT_ANGLE);
+    return vec2<f32>(
+        scaled.x * cos_angle - scaled.y * sin_angle,
+        scaled.x * sin_angle + scaled.y * cos_angle,
+    );
+}}
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {{
+    var out: VertexOut;
+    out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
+    out.local_uv = glint_uv(input.local_uv);
+    out.uv_rect_min = input.uv_rect_min;
+    out.uv_rect_size = input.uv_rect_size;
+    let fog_pos = input.position - camera.camera_position.xyz;
+    out.spherical_distance = length(fog_pos);
+    out.cylindrical_distance = max(length(fog_pos.xz), abs(fog_pos.y));
+    return out;
+}}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {{
+    let atlas_uv = input.uv_rect_min + fract(input.local_uv) * input.uv_rect_size;
+    let color = textureSample(entity_texture_atlas, entity_sampler, atlas_uv);
+    if color.a < 0.1 {{
+        discard;
+    }}
+    let fade = (1.0 - total_fog_value(input.spherical_distance, input.cylindrical_distance)) * GLINT_ALPHA;
+    return vec4<f32>(color.rgb * fade, color.a);
+}}
+"#
+    )
+}
+
 pub(crate) fn create_entity_model_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
@@ -1091,6 +1194,22 @@ const ENTITY_MODEL_ADDITIVE_BLEND: wgpu::BlendState = wgpu::BlendState {
     },
 };
 
+/// Vanilla `BlendFunction.GLINT`: `src * srcColor + dst * 1` for colour, alpha keeps destination.
+const ENTITY_MODEL_GLINT_BLEND: wgpu::BlendState = wgpu::BlendState {
+    color: wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::Src,
+        dst_factor: wgpu::BlendFactor::One,
+        operation: wgpu::BlendOperation::Add,
+    },
+    alpha: wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::Zero,
+        dst_factor: wgpu::BlendFactor::One,
+        operation: wgpu::BlendOperation::Add,
+    },
+};
+const ENTITY_MODEL_GLINT_DEPTH_WRITE_ENABLED: bool = false;
+const ENTITY_MODEL_GLINT_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::Equal;
+
 const ENTITY_MODEL_OUTLINE_BLEND: Option<wgpu::BlendState> = None;
 const ENTITY_MODEL_SURFACE_NO_CULL_MODE: Option<wgpu::Face> = None;
 const ENTITY_MODEL_SURFACE_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
@@ -1134,6 +1253,42 @@ pub(crate) fn create_entity_model_scroll_additive_pipeline(
     )
 }
 
+pub(crate) fn create_entity_model_entity_glint_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_entity_model_scroll_pipeline_with_depth(
+        device,
+        format,
+        bind_group_layout,
+        None,
+        "bbb-entity-model-entity-glint",
+        &entity_model_glint_shader("0.5"),
+        ENTITY_MODEL_GLINT_BLEND,
+        ENTITY_MODEL_GLINT_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_GLINT_DEPTH_COMPARE,
+    )
+}
+
+pub(crate) fn create_entity_model_armor_entity_glint_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_entity_model_scroll_pipeline_with_depth(
+        device,
+        format,
+        bind_group_layout,
+        None,
+        "bbb-entity-model-armor-entity-glint",
+        &entity_model_glint_shader("0.16"),
+        ENTITY_MODEL_GLINT_BLEND,
+        ENTITY_MODEL_GLINT_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_GLINT_DEPTH_COMPARE,
+    )
+}
+
 /// Builds a scrolling-overlay pipeline (its own scroll vertex layout + [`ENTITY_MODEL_SCROLL_SHADER`],
 /// depth-writing, cull off) with the given blend and shader.
 fn create_entity_model_scroll_pipeline_with_blend(
@@ -1144,6 +1299,30 @@ fn create_entity_model_scroll_pipeline_with_blend(
     label_prefix: &str,
     shader_source: &str,
     blend: wgpu::BlendState,
+) -> wgpu::RenderPipeline {
+    create_entity_model_scroll_pipeline_with_depth(
+        device,
+        format,
+        bind_group_layout,
+        lightmap_bind_group_layout,
+        label_prefix,
+        shader_source,
+        blend,
+        true,
+        wgpu::CompareFunction::LessEqual,
+    )
+}
+
+fn create_entity_model_scroll_pipeline_with_depth(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: Option<&wgpu::BindGroupLayout>,
+    label_prefix: &str,
+    shader_source: &str,
+    blend: wgpu::BlendState,
+    depth_write_enabled: bool,
+    depth_compare: wgpu::CompareFunction,
 ) -> wgpu::RenderPipeline {
     let shader_label = format!("{label_prefix}-shader");
     let pipeline_layout_label = format!("{label_prefix}-pipeline-layout");
@@ -1180,8 +1359,8 @@ fn create_entity_model_scroll_pipeline_with_blend(
         },
         depth_stencil: Some(wgpu::DepthStencilState {
             format: DEPTH_FORMAT,
-            depth_write_enabled: true,
-            depth_compare: wgpu::CompareFunction::LessEqual,
+            depth_write_enabled,
+            depth_compare,
             stencil: wgpu::StencilState::default(),
             bias: wgpu::DepthBiasState::default(),
         }),
@@ -1488,6 +1667,17 @@ impl Renderer {
                 meshes.scroll_additive,
                 "bbb-entity-model-scroll-additive",
             );
+            self.entity_model_entity_glint_mesh = create_entity_model_scroll_mesh_gpu_from_mesh(
+                &self.device,
+                meshes.entity_glint,
+                "bbb-entity-model-entity-glint",
+            );
+            self.entity_model_armor_entity_glint_mesh =
+                create_entity_model_scroll_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.armor_entity_glint,
+                    "bbb-entity-model-armor-entity-glint",
+                );
         } else {
             self.entity_model_textured_mesh = None;
             self.entity_model_textured_cull_mesh = None;
@@ -1512,6 +1702,8 @@ impl Renderer {
             self.entity_dynamic_player_texture_item_entity_translucent_cull_mesh = None;
             self.entity_model_scroll_mesh = None;
             self.entity_model_scroll_additive_mesh = None;
+            self.entity_model_entity_glint_mesh = None;
+            self.entity_model_armor_entity_glint_mesh = None;
         }
         self.entity_model_bounds = merged_entity_model_bounds(&[
             self.entity_model_mesh.as_ref().and_then(|mesh| mesh.bounds),
@@ -1576,6 +1768,12 @@ impl Renderer {
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_scroll_additive_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_model_entity_glint_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_model_armor_entity_glint_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
         ]);
@@ -2244,10 +2442,11 @@ fn create_entity_model_scroll_mesh_gpu_from_mesh(
 #[cfg(test)]
 mod tests {
     use super::{
-        ENTITY_MODEL_OUTLINE_BLEND, ENTITY_MODEL_OUTLINE_CULL_MODE,
-        ENTITY_MODEL_OUTLINE_NO_CULL_MODE, ENTITY_MODEL_OUTLINE_SHADER,
-        ENTITY_MODEL_SURFACE_CULL_MODE, ENTITY_MODEL_SURFACE_NO_CULL_MODE,
-        ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER,
+        entity_model_glint_shader, ENTITY_MODEL_GLINT_BLEND, ENTITY_MODEL_GLINT_DEPTH_COMPARE,
+        ENTITY_MODEL_GLINT_DEPTH_WRITE_ENABLED, ENTITY_MODEL_OUTLINE_BLEND,
+        ENTITY_MODEL_OUTLINE_CULL_MODE, ENTITY_MODEL_OUTLINE_NO_CULL_MODE,
+        ENTITY_MODEL_OUTLINE_SHADER, ENTITY_MODEL_SURFACE_CULL_MODE,
+        ENTITY_MODEL_SURFACE_NO_CULL_MODE, ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER,
     };
 
     #[test]
@@ -2293,6 +2492,45 @@ mod tests {
                 && !ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER.contains("sample_lightmap"),
             "vanilla ENTITY_EMISSIVE snippet omits LightTexture sampling"
         );
+    }
+
+    #[test]
+    fn entity_model_glint_pipeline_state_matches_vanilla_glint() {
+        assert_eq!(
+            ENTITY_MODEL_GLINT_BLEND.color.src_factor,
+            wgpu::BlendFactor::Src
+        );
+        assert_eq!(
+            ENTITY_MODEL_GLINT_BLEND.color.dst_factor,
+            wgpu::BlendFactor::One
+        );
+        assert_eq!(
+            ENTITY_MODEL_GLINT_BLEND.alpha.src_factor,
+            wgpu::BlendFactor::Zero
+        );
+        assert_eq!(
+            ENTITY_MODEL_GLINT_BLEND.alpha.dst_factor,
+            wgpu::BlendFactor::One
+        );
+        assert!(!ENTITY_MODEL_GLINT_DEPTH_WRITE_ENABLED);
+        assert_eq!(
+            ENTITY_MODEL_GLINT_DEPTH_COMPARE,
+            wgpu::CompareFunction::Equal
+        );
+    }
+
+    #[test]
+    fn entity_model_glint_shader_uses_vanilla_texture_transform_shape() {
+        let entity_glint = entity_model_glint_shader("0.5");
+        let armor_glint = entity_model_glint_shader("0.16");
+        assert!(entity_glint.contains("const GLINT_UV_SCALE: f32 = 0.5"));
+        assert!(armor_glint.contains("const GLINT_UV_SCALE: f32 = 0.16"));
+        assert!(entity_glint.contains("const GLINT_ALPHA: f32 = 0.75"));
+        assert!(entity_glint.contains("const GLINT_ANGLE: f32 = 0.1745329252"));
+        assert!(entity_glint.contains("fract(input.local_uv)"));
+        assert!(entity_glint.contains("if color.a < 0.1"));
+        assert!(!entity_glint.contains("lightmap_texture"));
+        assert!(!entity_glint.contains("sample_lightmap"));
     }
 
     #[test]
