@@ -1,6 +1,8 @@
 use super::*;
 
-use crate::entity_models::colored::villager_adult_model_root_transform;
+use crate::entity_models::colored::{
+    illusioner_model_root_transform, villager_adult_model_root_transform,
+};
 use crate::entity_models::model::{EntityModel, ModelCube};
 
 #[test]
@@ -668,6 +670,77 @@ fn illager_textured_mesh_matches_colored_geometry_and_swings() {
     let illusioner_cast = entity_model_textured_meshes(&[illusioner_cast_instance], &atlas);
     assert_illager_base_submission_matches_vanilla(&illusioner_cast, illusioner_cast_instance);
     assert_eq!(illusioner_cast.cutout.vertices.len(), 216);
+}
+
+#[test]
+fn invisible_illusioner_submits_visible_clone_bodies() {
+    let (atlas, _) = build_entity_model_texture_atlas(&illager_texture_images()).unwrap();
+    let offsets = [
+        [1.5, 0.0, -0.5],
+        [-1.0, 1.0, 0.75],
+        [0.25, 0.0, 1.25],
+        [-1.5, 0.0, -1.25],
+    ];
+    let instance =
+        EntityModelInstance::illager(68, [4.0, 64.0, -2.0], 30.0, IllagerModelFamily::Illusioner)
+            .with_invisible(true)
+            .with_appears_glowing(true)
+            .with_age_in_ticks(8.0)
+            .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+            .with_has_red_overlay(true)
+            .with_illusioner_clone_offsets(offsets);
+
+    let colored = entity_model_mesh(&[instance]);
+    assert_eq!(colored.vertices.len(), 240 * 4);
+    assert_eq!(colored.opaque_faces, 60 * 4);
+
+    let textured = entity_model_textured_meshes(&[instance], &atlas);
+    assert_eq!(textured.submissions.len(), 4);
+    assert_eq!(textured.cutout.vertices.len(), 240 * 4);
+    assert!(textured.translucent.vertices.is_empty());
+    assert_eq!(textured.outline.vertices.len(), 240 * 4);
+    assert!(textured.outline_cull.vertices.is_empty());
+
+    for (index, submit) in textured.submissions.iter().enumerate() {
+        assert_eq!(submit.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(submit.texture, ILLUSIONER_TEXTURE_REF);
+        assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(
+            submit.transform,
+            illusioner_model_root_transform(
+                instance,
+                expected_illusioner_clone_offset(instance, index)
+            )
+        );
+        assert_eq!((submit.order, submit.submit_sequence), (0, 0));
+        assert_eq!(submit.light, instance.render_state.shader_light());
+        assert_eq!(submit.overlay, instance.render_state.overlay_coords());
+        assert_eq!(submit.outline_color, ENTITY_DEFAULT_OUTLINE_COLOR);
+    }
+
+    let evoker =
+        EntityModelInstance::illager(46, [4.0, 64.0, -2.0], 30.0, IllagerModelFamily::Evoker)
+            .with_invisible(true)
+            .with_appears_glowing(true);
+    let evoker_outline = entity_model_textured_meshes(&[evoker], &atlas);
+    assert_eq!(evoker_outline.submissions.len(), 1);
+    assert_eq!(
+        evoker_outline.submissions[0].render_type,
+        EntityModelLayerRenderType::Outline
+    );
+    assert!(evoker_outline.cutout.vertices.is_empty());
+    assert!(!evoker_outline.outline.vertices.is_empty());
+}
+
+fn expected_illusioner_clone_offset(instance: EntityModelInstance, index: usize) -> [f32; 3] {
+    let offset = instance.render_state.illusioner_clone_offsets[index];
+    let i = index as f32;
+    let age = instance.render_state.age_in_ticks;
+    [
+        offset[0] + (i + age * 0.5).cos() * 0.025,
+        offset[1] + (i + age * 0.75).cos() * 0.0125,
+        offset[2] + (i + age * 0.7).cos() * 0.025,
+    ]
 }
 
 fn assert_illager_base_submission_matches_vanilla(

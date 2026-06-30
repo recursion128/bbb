@@ -501,11 +501,14 @@ impl EntityModelTexturedMeshes {
         self.current_submission_light = instance.render_state.shader_light();
         self.current_submission_overlay = instance.render_state.overlay_coords();
         self.current_submission_outline_color = instance.render_state.outline_color;
-        self.current_force_transparent =
-            instance.render_state.invisible && !instance.render_state.invisible_to_player;
+        let illusioner_body_visible = instance.illusioner_body_visible_when_invisible();
+        self.current_force_transparent = instance.render_state.invisible
+            && !instance.render_state.invisible_to_player
+            && !illusioner_body_visible;
         self.current_outline_only = instance.render_state.invisible
             && instance.render_state.invisible_to_player
-            && instance.render_state.appears_glowing;
+            && instance.render_state.appears_glowing
+            && !illusioner_body_visible;
     }
 
     pub(in crate::entity_models) fn current_invisible_base_only(&self) -> bool {
@@ -920,6 +923,7 @@ pub(super) fn entity_model_textured_meshes_with_dynamic_textures_for_camera(
         if instance.render_state.invisible
             && instance.render_state.invisible_to_player
             && !instance.render_state.appears_glowing
+            && !instance.illusioner_body_visible_when_invisible()
         {
             meshes.set_current_submission_state(*instance);
             // Vanilla `LivingEntityRenderer` still runs layers when the base body has no render

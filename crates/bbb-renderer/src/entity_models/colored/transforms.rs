@@ -64,6 +64,24 @@ fn living_entity_model_root_transform_with_extra_setup_rotation(
         * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
 }
 
+/// Vanilla `IllusionerRenderer.submit` applies each illusion offset after the
+/// dispatcher's entity-position frame and before `LivingEntityRenderer.submit`
+/// runs the scale / setup-rotations / model flip chain.
+pub(in crate::entity_models) fn illusioner_model_root_transform(
+    instance: EntityModelInstance,
+    clone_offset: [f32; 3],
+) -> Mat4 {
+    Mat4::from_translation(Vec3::from_array(instance.position))
+        * entity_render_offset_transform(instance)
+        * Mat4::from_translation(Vec3::from_array(clone_offset))
+        * entity_pre_scale_translation(instance)
+        * Mat4::from_scale(Vec3::splat(instance.render_state.scale))
+        * entity_setup_rotations_transform(instance)
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+        * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
+        * mesh_transformer_scale_transform(VILLAGER_LIKE_SCALE)
+}
+
 fn living_entity_model_root_transform_with_renderer_transform(
     instance: EntityModelInstance,
     renderer_transform: Mat4,

@@ -3555,9 +3555,13 @@ When an agent does any of the following, update this file in the same slice:
       shared `CustomHeadLayer` item path, and static skeleton/wither-skeleton/
       zombie/creeper skulls plus profileless default-player heads and profiled
       default-skin player heads and dynamic profiled-player heads are
-      implemented by the skull branch; illusioner clone offsets/invisible-body
-      rendering, and renderer state extraction for dynamic arm visibility
-      remain unsupported. Spellcasting,
+      implemented by the skull branch; invisible illusioner base-body clones
+      now follow `IllusionerRenderer.submit`, rendering four `entityCutout`
+      body submissions with `illusionOffsets` plus age jitter while bypassing
+      the ordinary hidden/force-transparent/outline-only invisible body
+      branches. Renderer state extraction for dynamic arm visibility and
+      custom-head / held-item layer projection across illusioner clones remain
+      unsupported. Spellcasting,
       crossbow hold/charge, illusioner bow aim, evoker/vindicator celebrating,
       vindicator empty/armed attacking, and riding sit arm/leg poses are implemented.
     - armor stand entities as renderer-owned vanilla 26.1

@@ -36,12 +36,19 @@ fn entity_model_mesh_with_options(
 ) -> EntityModelMesh {
     let mut mesh = EntityModelMesh::new();
     for instance in instances {
-        let force_transparent =
-            instance.render_state.invisible && !instance.render_state.invisible_to_player;
+        let illusioner_body_visible = instance.illusioner_body_visible_when_invisible();
+        let force_transparent = instance.render_state.invisible
+            && !instance.render_state.invisible_to_player
+            && !illusioner_body_visible;
         let outline_only = instance.render_state.invisible
             && instance.render_state.invisible_to_player
-            && instance.render_state.appears_glowing;
-        if instance.render_state.invisible && !force_transparent && !outline_only {
+            && instance.render_state.appears_glowing
+            && !illusioner_body_visible;
+        if instance.render_state.invisible
+            && !force_transparent
+            && !outline_only
+            && !illusioner_body_visible
+        {
             continue;
         }
         let vertex_start = mesh.vertices.len();

@@ -1010,6 +1010,12 @@ entity_render_state! {
     /// `AnimationUtils.swingWeaponDown`. `false` preserves the usual armed vindicator path unless native
     /// has projected an actually empty main hand.
     (with_illager_main_hand_empty) illager_main_hand_empty: bool = false;
+    /// Vanilla `IllusionerRenderState.illusionOffsets`, the four render-only body offsets that
+    /// `IllusionerRenderer.submit` loops over while `state.isInvisible`. The offsets are world-space
+    /// translations applied after the entity position and before the ordinary living body transform;
+    /// the renderer adds vanilla's per-clone age jitter at submit time. Defaults to four zero offsets,
+    /// matching a fresh client-side illusioner before the mirror spell picks random spread positions.
+    (with_illusioner_clone_offsets) illusioner_clone_offsets: [[f32; 3]; 4] = [[0.0; 3]; 4];
     /// Vanilla `Piglin.isDancing()` (the synced `DATA_IS_DANCING` boolean): a piglin dancing by a soul
     /// campfire, whose `PiglinModel.setupAnim` returns the `DANCING` arm pose — the ears sway, the head
     /// and body bob, and both arms raise overhead (`zRot = ±(70° + cos·10°)`) wagging with `ageInTicks`.
@@ -1356,6 +1362,16 @@ impl EntityRenderState {
 }
 
 impl EntityModelInstance {
+    pub(in crate::entity_models) fn illusioner_body_visible_when_invisible(&self) -> bool {
+        self.render_state.invisible
+            && matches!(
+                self.kind,
+                EntityModelKind::Illager {
+                    family: IllagerModelFamily::Illusioner
+                }
+            )
+    }
+
     /// Sets the vanilla `LivingEntityRenderState.isInvisible` flag. A true value
     /// also selects the ordinary non-spectator `isInvisibleToPlayer` baseline;
     /// callers can then set `with_invisible_to_player(false)` for spectator/self-visible
@@ -2726,6 +2742,7 @@ mod tests {
                 illager_spellcasting: false,
                 illager_celebrating: false,
                 illager_main_hand_empty: false,
+                illusioner_clone_offsets: [[0.0; 3]; 4],
                 piglin_dancing: false,
                 piglin_crossbow_hold: false,
                 piglin_crossbow_charge: false,

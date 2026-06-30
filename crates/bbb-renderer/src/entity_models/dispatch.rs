@@ -18,8 +18,9 @@ use super::catalog::{
     BoatModelFamily, CamelModelFamily, CowModelVariant, DonkeyModelFamily, EntityDyeColor,
     EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerTextureAtlasLayout, EntityModelKind,
     EntityModelTextureAtlasLayout, EntityPlayerSkin, HorseColorVariant, HorseMarkings,
-    LlamaModelFamily, LlamaVariant, PigModelVariant, PiglinModelFamily, PlayerModelPartVisibility,
-    SkeletonModelFamily, UndeadHorseModelFamily, WolfModelVariant, ZombieVariantModelFamily,
+    IllagerModelFamily, LlamaModelFamily, LlamaVariant, PigModelVariant, PiglinModelFamily,
+    PlayerModelPartVisibility, SkeletonModelFamily, UndeadHorseModelFamily, WolfModelVariant,
+    ZombieVariantModelFamily,
 };
 use super::colored::{
     arrow_model_root_transform, boat_model_root_transform, camel_model_color,
@@ -28,18 +29,18 @@ use super::colored::{
     ender_dragon_model_root_transform, entity_model_root_transform,
     evoker_fangs_model_root_transform, feline_model_root_transform, fox_model_root_transform,
     ghast_model_root_transform, happy_ghast_model_root_transform, hoglin_model_color,
-    iron_golem_model_root_transform, leash_knot_model_root_transform, llama_model_color,
-    llama_spit_model_root_transform, magma_cube_model_root_transform,
-    mesh_transformer_scale_transform, mesh_transformer_scaled_model_root_transform,
-    minecart_model_root_transform, panda_model_root_transform, phantom_model_root_transform,
-    piglin_model_color, player_model_root_transform, polar_bear_model_root_transform,
-    pufferfish_model_root_transform, salmon_model_root_transform,
-    shulker_bullet_model_root_transform, shulker_model_root_transform, slime_model_root_transform,
-    squid_model_root_transform, trident_model_root_transform, tropical_fish_model_root_transform,
-    villager_adult_model_root_transform, wind_charge_model_root_transform,
-    wither_model_root_transform, wither_skeleton_model_root_transform,
-    wither_skull_model_root_transform, zombie_variant_color, zombie_variant_root_transform,
-    GIANT_SCALE,
+    illusioner_model_root_transform, iron_golem_model_root_transform,
+    leash_knot_model_root_transform, llama_model_color, llama_spit_model_root_transform,
+    magma_cube_model_root_transform, mesh_transformer_scale_transform,
+    mesh_transformer_scaled_model_root_transform, minecart_model_root_transform,
+    panda_model_root_transform, phantom_model_root_transform, piglin_model_color,
+    player_model_root_transform, polar_bear_model_root_transform, pufferfish_model_root_transform,
+    salmon_model_root_transform, shulker_bullet_model_root_transform, shulker_model_root_transform,
+    slime_model_root_transform, squid_model_root_transform, trident_model_root_transform,
+    tropical_fish_model_root_transform, villager_adult_model_root_transform,
+    wind_charge_model_root_transform, wither_model_root_transform,
+    wither_skeleton_model_root_transform, wither_skull_model_root_transform, zombie_variant_color,
+    zombie_variant_root_transform, GIANT_SCALE,
 };
 use super::geometry::{
     emit_model_cube, emit_model_part, part_pose_transform, EntityModelMesh, PartPose,
@@ -131,6 +132,17 @@ fn strider_base_layer_pass(baby: bool, cold: bool) -> EntityModelLayerPass {
         order: 0,
         submit_sequence: 0,
     }
+}
+
+fn illusioner_clone_offset(instance: &EntityModelInstance, index: usize) -> [f32; 3] {
+    let offset = instance.render_state.illusioner_clone_offsets[index];
+    let i = index as f32;
+    let age = instance.render_state.age_in_ticks;
+    [
+        offset[0] + (i + age * 0.5).cos() * 0.025,
+        offset[1] + (i + age * 0.75).cos() * 0.0125,
+        offset[2] + (i + age * 0.7).cos() * 0.025,
+    ]
 }
 
 /// A render-path-agnostic sink for each model/root-transform/layer-pass tuple in a uniform entity.
@@ -1241,6 +1253,22 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &goat_textured_layer_passes(baby),
         ),
+        EntityModelKind::Illager {
+            family: family @ IllagerModelFamily::Illusioner,
+        } if instance.render_state.invisible => {
+            let passes = illager_textured_layer_passes(family);
+            for index in 0..instance.render_state.illusioner_clone_offsets.len() {
+                sink.model(
+                    IllagerModel::new(instance, family),
+                    illusioner_model_root_transform(
+                        *instance,
+                        illusioner_clone_offset(instance, index),
+                    ),
+                    instance,
+                    &passes,
+                );
+            }
+        }
         EntityModelKind::Illager { family } => sink.model(
             IllagerModel::new(instance, family),
             villager_adult_model_root_transform(*instance),
