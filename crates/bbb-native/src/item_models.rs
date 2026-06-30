@@ -458,6 +458,7 @@ pub(crate) fn held_item_models(
             flat_translucent_meshes,
         };
     };
+    let enchantment_keys = world_enchantment_keys(world);
 
     for instance in instances {
         // Vanilla `ItemInHandLayer.submit` submits the right arm first and the left arm second. Each arm's
@@ -469,6 +470,7 @@ pub(crate) fn held_item_models(
             world,
             item_runtime,
             terrain_textures,
+            enchantment_keys.as_deref(),
             &mut block_meshes,
             &mut block_translucent_meshes,
             &mut flat_meshes,
@@ -480,6 +482,7 @@ pub(crate) fn held_item_models(
             world,
             item_runtime,
             terrain_textures,
+            enchantment_keys.as_deref(),
             &mut block_meshes,
             &mut block_translucent_meshes,
             &mut flat_meshes,
@@ -490,6 +493,7 @@ pub(crate) fn held_item_models(
             world,
             item_runtime,
             terrain_textures,
+            enchantment_keys.as_deref(),
             &mut block_meshes,
             &mut block_translucent_meshes,
             &mut flat_meshes,
@@ -500,6 +504,7 @@ pub(crate) fn held_item_models(
             world,
             item_runtime,
             terrain_textures,
+            enchantment_keys.as_deref(),
             &mut block_meshes,
             &mut block_translucent_meshes,
             &mut flat_meshes,
@@ -510,6 +515,7 @@ pub(crate) fn held_item_models(
             world,
             item_runtime,
             terrain_textures,
+            enchantment_keys.as_deref(),
             &mut block_meshes,
             &mut block_translucent_meshes,
             &mut flat_meshes,
@@ -520,6 +526,7 @@ pub(crate) fn held_item_models(
             world,
             item_runtime,
             terrain_textures,
+            enchantment_keys.as_deref(),
             &mut block_meshes,
             &mut block_translucent_meshes,
             &mut flat_meshes,
@@ -530,6 +537,7 @@ pub(crate) fn held_item_models(
             world,
             item_runtime,
             terrain_textures,
+            enchantment_keys.as_deref(),
             &mut block_meshes,
             &mut block_translucent_meshes,
             &mut flat_meshes,
@@ -540,6 +548,7 @@ pub(crate) fn held_item_models(
             world,
             item_runtime,
             terrain_textures,
+            enchantment_keys.as_deref(),
             &mut block_meshes,
             &mut block_translucent_meshes,
             &mut flat_meshes,
@@ -550,6 +559,7 @@ pub(crate) fn held_item_models(
             world,
             item_runtime,
             terrain_textures,
+            enchantment_keys.as_deref(),
             &mut block_meshes,
             &mut block_translucent_meshes,
             &mut flat_meshes,
@@ -560,6 +570,7 @@ pub(crate) fn held_item_models(
             world,
             item_runtime,
             terrain_textures,
+            enchantment_keys.as_deref(),
             &mut block_meshes,
             &mut block_translucent_meshes,
             &mut flat_meshes,
@@ -575,6 +586,18 @@ pub(crate) fn held_item_models(
     }
 }
 
+fn world_enchantment_keys(world: &WorldStore) -> Option<Vec<String>> {
+    world
+        .registry_content("minecraft:enchantment")
+        .map(|registry| {
+            registry
+                .entries
+                .iter()
+                .map(|entry| entry.id.clone())
+                .collect()
+        })
+}
+
 /// Bakes one arm's held item onto its arm bone with that arm's own
 /// `thirdperson_{left,right}hand` display transform. The logical hand slot is
 /// resolved from the entity's main arm, mirroring vanilla `getItemHeldByArm`.
@@ -585,6 +608,7 @@ fn bake_held_hand(
     world: &WorldStore,
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
+    enchantment_keys: Option<&[String]>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
@@ -617,6 +641,7 @@ fn bake_held_hand(
             entity_model_context_entity_type(instance.kind),
             using_item,
             using_item_ticks,
+            enchantment_keys,
             BLOCK_THIRD_PERSON_FALLBACK,
             GENERATED_THIRD_PERSON_FALLBACK,
             item_runtime,
@@ -648,6 +673,7 @@ fn bake_fox_held_item(
     world: &WorldStore,
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
+    enchantment_keys: Option<&[String]>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
@@ -669,6 +695,7 @@ fn bake_fox_held_item(
         entity_model_context_entity_type(instance.kind),
         using_item,
         entity_use_elapsed_ticks(instance, using_item),
+        enchantment_keys,
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
         item_runtime,
@@ -689,6 +716,7 @@ fn bake_dolphin_carried_item(
     world: &WorldStore,
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
+    enchantment_keys: Option<&[String]>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
@@ -710,6 +738,7 @@ fn bake_dolphin_carried_item(
         entity_model_context_entity_type(instance.kind),
         using_item,
         entity_use_elapsed_ticks(instance, using_item),
+        enchantment_keys,
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
         item_runtime,
@@ -730,6 +759,7 @@ fn bake_witch_held_item(
     world: &WorldStore,
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
+    enchantment_keys: Option<&[String]>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
@@ -751,6 +781,7 @@ fn bake_witch_held_item(
         entity_model_context_entity_type(instance.kind),
         using_item,
         entity_use_elapsed_ticks(instance, using_item),
+        enchantment_keys,
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
         item_runtime,
@@ -770,6 +801,7 @@ fn bake_copper_golem_held_items(
     world: &WorldStore,
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
+    enchantment_keys: Option<&[String]>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
@@ -797,6 +829,7 @@ fn bake_copper_golem_held_items(
             entity_model_context_entity_type(instance.kind),
             using_item,
             entity_use_elapsed_ticks(instance, using_item),
+            enchantment_keys,
             BLOCK_THIRD_PERSON_FALLBACK,
             GENERATED_THIRD_PERSON_FALLBACK,
             item_runtime,
@@ -819,6 +852,7 @@ fn bake_allay_held_items(
     world: &WorldStore,
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
+    enchantment_keys: Option<&[String]>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
@@ -846,6 +880,7 @@ fn bake_allay_held_items(
             entity_model_context_entity_type(instance.kind),
             using_item,
             entity_use_elapsed_ticks(instance, using_item),
+            enchantment_keys,
             BLOCK_THIRD_PERSON_FALLBACK,
             GENERATED_THIRD_PERSON_FALLBACK,
             item_runtime,
@@ -866,6 +901,7 @@ fn bake_villager_crossed_arms_item(
     world: &WorldStore,
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
+    enchantment_keys: Option<&[String]>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
@@ -887,6 +923,7 @@ fn bake_villager_crossed_arms_item(
         entity_model_context_entity_type(instance.kind),
         using_item,
         entity_use_elapsed_ticks(instance, using_item),
+        enchantment_keys,
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
         item_runtime,
@@ -907,6 +944,7 @@ fn bake_panda_held_item(
     world: &WorldStore,
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
+    enchantment_keys: Option<&[String]>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
@@ -928,6 +966,7 @@ fn bake_panda_held_item(
         entity_model_context_entity_type(instance.kind),
         using_item,
         entity_use_elapsed_ticks(instance, using_item),
+        enchantment_keys,
         BLOCK_GROUND_FALLBACK,
         GENERATED_GROUND_FALLBACK,
         item_runtime,
@@ -948,6 +987,7 @@ fn bake_custom_head_item(
     world: &WorldStore,
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
+    enchantment_keys: Option<&[String]>,
     block_meshes: &mut Vec<ItemModelMesh>,
     block_translucent_meshes: &mut Vec<ItemModelMesh>,
     flat_meshes: &mut Vec<ItemModelMesh>,
@@ -978,6 +1018,7 @@ fn bake_custom_head_item(
             entity_model_context_entity_type(instance.kind),
             false,
             0.0,
+            enchantment_keys,
             BLOCK_HEAD_FALLBACK,
             GENERATED_HEAD_FALLBACK,
             item_runtime,
@@ -1086,6 +1127,7 @@ fn bake_item_stack_at_transform(
     context_entity_type: Option<&str>,
     using_item: bool,
     using_item_ticks: f32,
+    enchantment_keys: Option<&[String]>,
     block_fallback: BlockModelDisplayTransform,
     generated_fallback: BlockModelDisplayTransform,
     item_runtime: &NativeItemRuntime,
@@ -1122,8 +1164,11 @@ fn bake_item_stack_at_transform(
 
     // Flat path.
     let use_context = if using_item {
-        item_runtime
-            .item_model_use_context_for_stack(stack, item_model_elapsed_ticks(using_item_ticks))
+        item_runtime.item_model_use_context_for_stack_with_enchantment_keys(
+            stack,
+            item_model_elapsed_ticks(using_item_ticks),
+            enchantment_keys,
+        )
     } else {
         ItemModelUseContext::inactive()
     };
@@ -2000,6 +2045,7 @@ mod tests {
                 None,
                 false,
                 0.0,
+                None,
                 BLOCK_THIRD_PERSON_FALLBACK,
                 GENERATED_THIRD_PERSON_FALLBACK,
                 &item_runtime,
@@ -2056,6 +2102,7 @@ mod tests {
                 context_entity_type,
                 false,
                 0.0,
+                None,
                 BLOCK_THIRD_PERSON_FALLBACK,
                 GENERATED_THIRD_PERSON_FALLBACK,
                 &item_runtime,
@@ -2180,6 +2227,71 @@ mod tests {
         assert_ne!(idle, using_start);
         assert_ne!(using_start, using_pulling);
         assert_eq!(idle, offhand_using);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn humanoid_held_generated_crossbow_pull_applies_quick_charge_registry() {
+        // Vanilla `CrossbowPull.get` divides elapsed use ticks by
+        // `CrossbowItem.getChargeDuration`, which applies Quick Charge through
+        // the synced enchantment registry before choosing the item-model
+        // texture.
+        let root = unique_item_model_temp_dir("held-crossbow-quick-charge-range-dispatch");
+        write_crossbow_pull_item_runtime_fixture(&root);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        const ENTITY_ID: i32 = 609;
+        const PLAYER_ENTITY_TYPE_ID: i32 = 155;
+        let quick_charge_crossbow = ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                    holder_id: 1,
+                    level: 2,
+                }],
+                ..DataComponentPatchSummary::default()
+            },
+        };
+        let mut default_world = WorldStore::new();
+        default_world.apply_add_entity(protocol_add_entity(ENTITY_ID, PLAYER_ENTITY_TYPE_ID));
+        assert!(default_world.apply_set_equipment(SetEquipment {
+            entity_id: ENTITY_ID,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::MainHand,
+                item: quick_charge_crossbow,
+            }],
+        }));
+        let mut quick_charge_world = default_world.clone();
+        record_enchantment_registry(&mut quick_charge_world);
+        let terrain_textures = TerrainTextureState::default();
+        let instance = EntityModelInstance::player(ENTITY_ID, [0.0, 64.0, 0.0], 0.0, false)
+            .with_is_using_item(true)
+            .with_use_item_off_hand(false)
+            .with_crossbow_charge_ticks(10.0);
+
+        let default_models = held_item_models(
+            &[instance],
+            &default_world,
+            Some(&item_runtime),
+            &terrain_textures,
+        );
+        let quick_charge_models = held_item_models(
+            &[instance],
+            &quick_charge_world,
+            Some(&item_runtime),
+            &terrain_textures,
+        );
+
+        assert_eq!(default_models.flat_meshes.len(), 1);
+        assert_eq!(quick_charge_models.flat_meshes.len(), 1);
+        assert!(!default_models.flat_meshes[0].is_empty());
+        assert!(!quick_charge_models.flat_meshes[0].is_empty());
+        assert_ne!(
+            default_models.flat_meshes[0],
+            quick_charge_models.flat_meshes[0]
+        );
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -2442,6 +2554,23 @@ mod tests {
         }
     }
 
+    fn record_enchantment_registry(world: &mut WorldStore) {
+        world.record_registry_data(bbb_protocol::packets::RegistryData {
+            registry: "minecraft:enchantment".to_string(),
+            entries: vec![
+                bbb_protocol::packets::RegistryDataEntry {
+                    id: "minecraft:power".to_string(),
+                    raw_data: None,
+                },
+                bbb_protocol::packets::RegistryDataEntry {
+                    id: "minecraft:quick_charge".to_string(),
+                    raw_data: None,
+                },
+            ],
+            raw_payload_len: 0,
+        });
+    }
+
     fn write_flat_item_runtime_fixture(root: &Path, item_ids: &[&str]) {
         let assets = item_model_assets_dir(root);
         write_item_atlases(&assets);
@@ -2577,6 +2706,46 @@ mod tests {
         write_flat_item_model_and_texture(&assets, "bow_pulling_0", &[120, 80, 40, 255]);
         write_flat_item_model_and_texture(&assets, "bow_pulling_1", &[80, 120, 40, 255]);
         write_flat_item_model_and_texture(&assets, "bow_pulling_2", &[120, 40, 80, 255]);
+    }
+
+    fn write_crossbow_pull_item_runtime_fixture(root: &Path) {
+        let assets = item_model_assets_dir(root);
+        write_item_atlases(&assets);
+        write_item_registry_source(root, &["crossbow"]);
+        write_json(
+            &assets.join("items").join("crossbow.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:charge_type",
+                    "cases": [],
+                    "fallback": {
+                        "type": "minecraft:condition",
+                        "property": "minecraft:using_item",
+                        "on_false": { "type": "minecraft:model", "model": "minecraft:item/crossbow" },
+                        "on_true": {
+                            "type": "minecraft:range_dispatch",
+                            "property": "minecraft:crossbow/pull",
+                            "entries": [
+                                {
+                                    "threshold": 0.58,
+                                    "model": { "type": "minecraft:model", "model": "minecraft:item/crossbow_pulling_1" }
+                                },
+                                {
+                                    "threshold": 1.0,
+                                    "model": { "type": "minecraft:model", "model": "minecraft:item/crossbow_pulling_2" }
+                                }
+                            ],
+                            "fallback": { "type": "minecraft:model", "model": "minecraft:item/crossbow_pulling_0" }
+                        }
+                    }
+                }
+            }"#,
+        );
+        write_flat_item_model_and_texture(&assets, "crossbow", &[40, 80, 120, 255]);
+        write_flat_item_model_and_texture(&assets, "crossbow_pulling_0", &[70, 100, 130, 255]);
+        write_flat_item_model_and_texture(&assets, "crossbow_pulling_1", &[100, 130, 70, 255]);
+        write_flat_item_model_and_texture(&assets, "crossbow_pulling_2", &[130, 70, 100, 255]);
     }
 
     fn item_model_assets_dir(root: &Path) -> PathBuf {

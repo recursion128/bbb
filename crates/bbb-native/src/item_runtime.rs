@@ -63,6 +63,7 @@ const CROSSBOW_ITEM_ID: &str = "minecraft:crossbow";
 const SPYGLASS_ITEM_ID: &str = "minecraft:spyglass";
 const TRIDENT_ITEM_ID: &str = "minecraft:trident";
 const ENDER_EYE_ITEM_ID: &str = "minecraft:ender_eye";
+const QUICK_CHARGE_ENCHANTMENT_ID: &str = "minecraft:quick_charge";
 const VANILLA_LONG_USE_DURATION_TICKS: i32 = 72_000;
 const VANILLA_BRUSH_USE_DURATION_TICKS: i32 = 200;
 const VANILLA_SPYGLASS_USE_DURATION_TICKS: i32 = 1_200;
@@ -1762,6 +1763,15 @@ impl NativeItemRuntime {
         stack: &ItemStackSummary,
         elapsed_ticks: u32,
     ) -> ItemModelUseContext {
+        self.item_model_use_context_for_stack_with_enchantment_keys(stack, elapsed_ticks, None)
+    }
+
+    pub(crate) fn item_model_use_context_for_stack_with_enchantment_keys(
+        &self,
+        stack: &ItemStackSummary,
+        elapsed_ticks: u32,
+        enchantment_keys: Option<&[String]>,
+    ) -> ItemModelUseContext {
         let Some(item_id) = stack
             .item_id
             .and_then(|protocol_id| self.registry.as_ref()?.resource_id(protocol_id))
@@ -1771,7 +1781,7 @@ impl NativeItemRuntime {
         ItemModelUseContext::active(
             elapsed_ticks,
             item_use_duration_ticks(item_id, &stack.component_patch),
-            crossbow_charge_duration_ticks(item_id),
+            crossbow_charge_duration_ticks(item_id, &stack.component_patch, enchantment_keys),
         )
     }
 
@@ -1985,8 +1995,34 @@ fn consumable_use_duration_ticks(consumable: ConsumableSummary) -> i32 {
     (consumable.consume_seconds * 20.0).min(i32::MAX as f32) as i32
 }
 
-fn crossbow_charge_duration_ticks(item_id: &str) -> Option<i32> {
-    (item_id == CROSSBOW_ITEM_ID).then_some(VANILLA_CROSSBOW_CHARGE_DURATION_TICKS)
+fn crossbow_charge_duration_ticks(
+    item_id: &str,
+    component_patch: &DataComponentPatchSummary,
+    enchantment_keys: Option<&[String]>,
+) -> Option<i32> {
+    if item_id != CROSSBOW_ITEM_ID {
+        return None;
+    }
+    let quick_charge_level = enchantment_keys
+        .map(|keys| {
+            component_patch
+                .enchantments
+                .iter()
+                .filter(|enchantment| {
+                    usize::try_from(enchantment.holder_id)
+                        .ok()
+                        .and_then(|id| keys.get(id))
+                        .is_some_and(|key| key == QUICK_CHARGE_ENCHANTMENT_ID)
+                })
+                .map(|enchantment| enchantment.level.max(0))
+                .sum::<i32>()
+        })
+        .unwrap_or(0);
+    if quick_charge_level == 0 {
+        return Some(VANILLA_CROSSBOW_CHARGE_DURATION_TICKS);
+    }
+    let duration_seconds = (1.25 - 0.25 * quick_charge_level as f32).max(0.0);
+    Some((duration_seconds * 20.0).floor() as i32)
 }
 
 fn protocol_ids_for_resource_ids(
@@ -4889,6 +4925,36 @@ mod tests {
                 .layers[0]
                 .uv
         };
+        let selected_with_enchantment_keys =
+            |stack: &ItemStackSummary,
+             using_item: bool,
+             elapsed_ticks: u32,
+             enchantment_keys: &[String]| {
+                let use_context = if using_item {
+                    runtime.item_model_use_context_for_stack_with_enchantment_keys(
+                        stack,
+                        elapsed_ticks,
+                        Some(enchantment_keys),
+                    )
+                } else {
+                    ItemModelUseContext::inactive()
+                };
+                runtime
+                    .icon_for_stack_with_context_and_use_context(
+                        stack,
+                        None,
+                        using_item,
+                        use_context,
+                        0.0,
+                        None,
+                        None,
+                        None,
+                        None,
+                    )
+                    .unwrap()
+                    .layers[0]
+                    .uv
+            };
 
         let bow = stack(0);
         assert_eq!(selected(&bow, false, 20), uv("bow"));
@@ -4901,6 +4967,34 @@ mod tests {
         assert_eq!(selected(&crossbow, true, 0), uv("crossbow_pulling_0"));
         assert_eq!(selected(&crossbow, true, 15), uv("crossbow_pulling_1"));
         assert_eq!(selected(&crossbow, true, 25), uv("crossbow_pulling_2"));
+        let quick_charge_keys = vec![
+            "minecraft:power".to_string(),
+            "minecraft:quick_charge".to_string(),
+        ];
+        let quick_charge_crossbow = ItemStackSummary {
+            item_id: Some(1),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                    holder_id: 1,
+                    level: 2,
+                }],
+                ..DataComponentPatchSummary::default()
+            },
+        };
+        // Vanilla `CrossbowItem.getChargeDuration` starts at 1.25 seconds and
+        // `QUICK_CHARGE` adds `-0.25F` per level before `floor(seconds * 20)`.
+        // Level 2 therefore charges in 15 ticks, so elapsed 10 ticks crosses
+        // the 0.58 `crossbow/pull` threshold; without the registry-backed
+        // enchantment context, the same stack still uses the 25 tick default.
+        assert_eq!(
+            selected(&quick_charge_crossbow, true, 10),
+            uv("crossbow_pulling_0")
+        );
+        assert_eq!(
+            selected_with_enchantment_keys(&quick_charge_crossbow, true, 10, &quick_charge_keys),
+            uv("crossbow_pulling_1")
+        );
         let charged_crossbow = ItemStackSummary {
             item_id: Some(1),
             count: 1,

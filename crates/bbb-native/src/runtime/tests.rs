@@ -2472,6 +2472,80 @@ fn hotbar_item_icons_project_local_use_ticks_into_use_duration_range_dispatch() 
 }
 
 #[test]
+fn hotbar_item_icons_apply_quick_charge_to_crossbow_pull_range_dispatch() {
+    let root = unique_runtime_temp_dir("hotbar-crossbow-quick-charge-range-dispatch");
+    write_runtime_crossbow_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let mut stack = item_stack(0, 1);
+    stack.component_patch.enchantments = vec![bbb_protocol::packets::ItemEnchantmentSummary {
+        holder_id: 1,
+        level: 2,
+    }];
+    let enchantment_keys = vec![
+        "minecraft:power".to_string(),
+        "minecraft:quick_charge".to_string(),
+    ];
+    let default_uv = item_runtime
+        .icon_for_stack_with_context_and_use_context(
+            &stack,
+            None,
+            true,
+            item_runtime.item_model_use_context_for_stack(&stack, 10),
+            0.0,
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap()
+        .layers[0]
+        .uv;
+    let expected_uv = item_runtime
+        .icon_for_stack_with_context_and_use_context(
+            &stack,
+            None,
+            true,
+            item_runtime.item_model_use_context_for_stack_with_enchantment_keys(
+                &stack,
+                10,
+                Some(&enchantment_keys),
+            ),
+            0.0,
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap()
+        .layers[0]
+        .uv;
+    assert_ne!(default_uv, expected_uv);
+
+    let mut world = WorldStore::new();
+    record_enchantment_registry(&mut world);
+    world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+        slot: 0,
+        item: stack,
+    });
+    assert!(world.set_local_selected_hotbar_slot(0));
+    world.set_local_using_item(true);
+    world.advance_local_using_item_ticks(10);
+
+    let icons = hotbar_item_icons(&world, Some(&item_runtime), 0.0);
+
+    assert_eq!(
+        icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: expected_uv.min,
+            max: expected_uv.max,
+        }
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn hotbar_item_icons_use_local_player_main_hand_owner_context() {
     let root = unique_runtime_temp_dir("hotbar-main-hand");
     write_runtime_main_hand_select_item_assets(&root);
@@ -5824,6 +5898,23 @@ fn record_trim_material_registry(world: &mut WorldStore) {
     });
 }
 
+fn record_enchantment_registry(world: &mut WorldStore) {
+    world.record_registry_data(bbb_protocol::packets::RegistryData {
+        registry: "minecraft:enchantment".to_string(),
+        entries: vec![
+            bbb_protocol::packets::RegistryDataEntry {
+                id: "minecraft:power".to_string(),
+                raw_data: None,
+            },
+            bbb_protocol::packets::RegistryDataEntry {
+                id: "minecraft:quick_charge".to_string(),
+                raw_data: None,
+            },
+        ],
+        raw_payload_len: 0,
+    });
+}
+
 fn merchant_offers(
     container_id: i32,
     offer_count: usize,
@@ -6118,6 +6209,88 @@ fn write_runtime_bow_item_assets(root: &Path) {
             .join("Items.java"),
         r#"public class Items {
             public static final Item BOW = registerItem("bow");
+        }"#,
+    );
+}
+
+fn write_runtime_crossbow_item_assets(root: &Path) {
+    let assets = runtime_assets_dir(root);
+    write_runtime_json(
+        &assets.join("atlases").join("items.json"),
+        r#"{
+            "sources": [
+                {
+                    "type": "minecraft:directory",
+                    "prefix": "item/",
+                    "source": "item"
+                }
+            ]
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("atlases").join("blocks.json"),
+        r#"{
+            "sources": []
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("items").join("crossbow.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:select",
+                "property": "minecraft:charge_type",
+                "cases": [],
+                "fallback": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:using_item",
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/crossbow"
+                    },
+                    "on_true": {
+                        "type": "minecraft:range_dispatch",
+                        "property": "minecraft:crossbow/pull",
+                        "entries": [
+                            {
+                                "threshold": 0.58,
+                                "model": {
+                                    "type": "minecraft:model",
+                                    "model": "minecraft:item/crossbow_pulling_1"
+                                }
+                            },
+                            {
+                                "threshold": 1.0,
+                                "model": {
+                                    "type": "minecraft:model",
+                                    "model": "minecraft:item/crossbow_pulling_2"
+                                }
+                            }
+                        ],
+                        "fallback": {
+                            "type": "minecraft:model",
+                            "model": "minecraft:item/crossbow_pulling_0"
+                        }
+                    }
+                }
+            }
+        }"#,
+    );
+    write_flat_runtime_item_model_and_texture(&assets, "crossbow", &[40, 80, 120, 255]);
+    write_flat_runtime_item_model_and_texture(&assets, "crossbow_pulling_0", &[70, 100, 130, 255]);
+    write_flat_runtime_item_model_and_texture(&assets, "crossbow_pulling_1", &[100, 130, 70, 255]);
+    write_flat_runtime_item_model_and_texture(&assets, "crossbow_pulling_2", &[130, 70, 100, 255]);
+    write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
+    write_runtime_json(
+        &root
+            .join("sources")
+            .join(bbb_pack::MC_VERSION)
+            .join("net")
+            .join("minecraft")
+            .join("world")
+            .join("item")
+            .join("Items.java"),
+        r#"public class Items {
+            public static final Item CROSSBOW = registerItem("crossbow");
         }"#,
     );
 }

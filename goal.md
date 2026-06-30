@@ -699,7 +699,7 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:use_cycle`, and `minecraft:crossbow/pull` for the active
     `LivingEntity.getUseItem()` stack; tests pin bow pulling, brush cycle, and
     default crossbow pull texture selection. First-person use-tick threading
-    plus Quick Charge refinements stay as P1 follow-up.
+    remains P1 follow-up.
   - [x] Owner-backed third-person generated held-item paths now pass the active
     hand's entity use tick counter into item-model `minecraft:use_duration` /
     `minecraft:use_cycle` / `minecraft:crossbow/pull`; tests pin a held bow
@@ -710,8 +710,15 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     component summary and feeds vanilla `Consumable.consumeTicks()` into
     item-model `minecraft:use_duration` `remaining=true`; tests pin a 0.8s
     apple to 16 remaining ticks and the 26.1 `EnderEyeItem.getUseDuration`
-    override to 0 ticks. Quick Charge-modified crossbow charge duration remains
-    P1 follow-up.
+    override to 0 ticks.
+  - [x] Quick Charge-modified crossbow charge duration feeds item-model
+    `minecraft:crossbow/pull` for GUI/HUD local-player item icons and
+    owner-backed third-person generated held-item paths: protocol enchantment
+    holder ids plus the world `minecraft:enchantment` registry identify
+    `minecraft:quick_charge`, then apply vanilla `CROSSBOW_CHARGE_TIME`
+    `-0.25F` per level before `floor(seconds * 20)`. Tests pin hotbar UV
+    selection and held-item baked mesh branch changes. First-person generated
+    item consumers and custom enchantment effect parsing remain follow-up.
 - HUD / inventory：
   - vanilla font / count / durability / cooldown / tooltip / screen depth behavior。
   - flat/generated item 与 3D block item 在 GUI pass 中的精确排序。

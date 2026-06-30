@@ -5726,9 +5726,12 @@ When an agent does any of the following, update this file in the same slice:
   - Audit remaining non-GUI item consumers that can render component-bearing
     generated item stacks and pass the trim-material registry keys where vanilla
     resolves `TrimMaterialProperty`.
-  - Thread the same use-tick context into first-person generated item consumers,
-    and add the remaining Quick Charge-modified crossbow charge duration
-    refinement once enchantment-level input is preserved.
+  - Thread the same use-tick context into first-person generated item consumers.
+    Vanilla Quick Charge-modified crossbow charge duration is now wired for
+    GUI/HUD local-player icons and owner-backed third-person generated held-item
+    paths when the synced `minecraft:enchantment` registry identifies
+    `minecraft:quick_charge`; custom enchantment effect parsing remains later
+    registry/effect generalization.
   - Each plugs into the existing value-aware `RangeDispatch` / `Select`
     resolver by adding a value provider; no new selection machinery is required.
 - Evidence / boundary:
@@ -5819,8 +5822,12 @@ When an agent does any of the following, update this file in the same slice:
       icons using the active stack's remaining ticks modulo the declared
       positive `period` (vanilla brush asset path, 200 tick brush duration)
     - `minecraft:crossbow/pull` — `CrossbowPull.get`, for GUI/HUD local-player
-      item icons using elapsed ticks divided by the default 25 tick crossbow
-      charge duration, and returning `0.0` for already charged crossbows
+      item icons and owner-backed third-person generated held-item paths using
+      elapsed ticks divided by `CrossbowItem.getChargeDuration`: default 25
+      ticks, or Quick Charge's vanilla `-0.25F` per level when the stack
+      enchantment holder id resolves to `minecraft:quick_charge` through the
+      synced `minecraft:enchantment` registry. Already charged crossbows still
+      return `0.0`.
   - A value-aware `RangeDispatch` / `Select` is treated as a runtime condition so
     it is resolved per stack rather than collapsed at model-build time.
   - The trim-material registry keys are projected into the GUI icon path
@@ -5834,10 +5841,11 @@ When an agent does any of the following, update this file in the same slice:
     `minecraft:local_time` still collapse to the fallback/first entry because
     their value needs compass / time / local-time context the GUI icon resolver
     does not yet receive. GUI/HUD use-tick properties are wired for the local
-    active stack, and owner-backed third-person generated held-item paths use
-    the entity render state's shared use tick counter. First-person generated
-    item paths and Quick Charge-modified crossbow charge duration are still
-    documented follow-up.
+    active stack, owner-backed third-person generated held-item paths use the
+    entity render state's shared use tick counter, and both paths apply vanilla
+    Quick Charge-modified crossbow charge duration when the enchantment registry
+    is available. First-person generated item paths are still documented
+    follow-up.
     `minecraft:main_hand` and `minecraft:context_entity_type` still fall back on
     native item consumers that do not pass a `LivingEntity` owner, such as
     fake/null-owner item surfaces. `minecraft:component` also remains deferred

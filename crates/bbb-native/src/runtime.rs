@@ -3970,6 +3970,21 @@ fn world_trim_material_keys(world: &WorldStore) -> Option<Vec<String>> {
         })
 }
 
+/// The `minecraft:enchantment` registry keys by holder id (registration
+/// order), projected from the world's synced dynamic registry so item-model
+/// use properties can apply vanilla enchantment effects such as Quick Charge.
+fn world_enchantment_keys(world: &WorldStore) -> Option<Vec<String>> {
+    world
+        .registry_content("minecraft:enchantment")
+        .map(|registry| {
+            registry
+                .entries
+                .iter()
+                .map(|entry| entry.id.clone())
+                .collect()
+        })
+}
+
 fn hud_item_icon_for_stack(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
@@ -3980,6 +3995,7 @@ fn hud_item_icon_for_stack(
 ) -> Option<HudItemIcon> {
     let item_runtime = item_runtime?;
     let trim_material_keys = world_trim_material_keys(world);
+    let enchantment_keys = world_enchantment_keys(world);
     let owner_main_hand_left = world.local_player_main_arm_left();
     let context_entity_type = Some("minecraft:player");
     let context_dimension = world.level_info().map(|level| level.dimension.as_str());
@@ -3989,9 +4005,10 @@ fn hud_item_icon_for_stack(
     let item_model_cooldown_progress =
         item_cooldown_percent_for_stack(world, Some(item_runtime), item, 0.0).unwrap_or(0.0);
     let use_context = if using_item {
-        item_runtime.item_model_use_context_for_stack(
+        item_runtime.item_model_use_context_for_stack_with_enchantment_keys(
             item,
             world.local_player().interaction.using_item_ticks,
+            enchantment_keys.as_deref(),
         )
     } else {
         crate::item_runtime::ItemModelUseContext::inactive()
