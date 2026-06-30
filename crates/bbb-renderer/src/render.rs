@@ -2617,6 +2617,62 @@ mod tests {
     }
 
     #[test]
+    fn vanilla_translucent_target_boundaries_are_pinned() {
+        let source = include_str!("render.rs");
+        let copy_translucent =
+            depth_copy_to(source, "texture: &self.translucent_target.depth._texture");
+        let copy_item_entity =
+            depth_copy_to(source, "texture: &self.item_entity_target.depth._texture");
+        let copy_particles = depth_copy_to(source, "texture: &self.particle_target.depth._texture");
+        let entity_features = source
+            .find("label: Some(ENTITY_TRANSLUCENT_FEATURE_PASS_LABEL)")
+            .expect("entity translucent feature pass label is used");
+        let map_text = source
+            .find("let (map_text_vertices, map_text_indices)")
+            .expect("item-frame map text collection is present");
+        let item_entity = source
+            .find("label: Some(ITEM_ENTITY_TARGET_PASS_LABEL)")
+            .expect("item-entity target pass label is used");
+        let block_destroy = source
+            .find("label: Some(\"bbb-native-block-destroy-overlay-pass\")")
+            .expect("block destroy overlay pass label is used");
+        let translucent_terrain = source
+            .find("label: Some(TRANSLUCENT_TARGET_PASS_LABEL)")
+            .expect("translucent terrain target pass label is used");
+        let item_entity_lines = source
+            .find("label: Some(ITEM_ENTITY_LINE_TARGET_PASS_LABEL)")
+            .expect("item-entity line target pass label is used");
+        let particles = source
+            .find("label: Some(PARTICLE_TARGET_PASS_LABEL)")
+            .expect("particle target pass label is used");
+        let combine = source
+            .find("label: Some(TRANSPARENCY_COMBINE_PASS_LABEL)")
+            .expect("transparency combine pass label is used");
+
+        assert!(
+            copy_translucent < copy_item_entity
+                && copy_item_entity < copy_particles
+                && copy_particles < entity_features
+                && entity_features < map_text
+                && map_text < item_entity
+                && item_entity < block_destroy
+                && block_destroy < translucent_terrain
+                && translucent_terrain < item_entity_lines
+                && item_entity_lines < particles
+                && particles < combine,
+            "vanilla LevelRenderer copies target depths, renders translucent features before translucent terrain, and defers translucent particles until after terrain and item_entity lines"
+        );
+        assert!(
+            source[entity_features..translucent_terrain].contains("view: main_view")
+                && source[translucent_terrain..item_entity_lines].contains("view: translucent_view")
+                && source[item_entity..block_destroy].contains("view: item_entity_view")
+                && source[item_entity_lines..particles].contains("view: item_entity_view")
+                && source[particles..combine].contains("view: particle_view"),
+            "entity features, terrain translucent, itemEntity features/lines, and particles keep distinct renderer-owned targets"
+        );
+    }
+
+    #[test]
     fn entity_translucent_cull_item_target_draws_into_item_entity_target_not_main_features() {
         let source = include_str!("render.rs");
         let target = source

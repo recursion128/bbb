@@ -367,8 +367,12 @@ When an agent does any of the following, update this file in the same slice:
     Main-pass entity translucent draws now consume a combined textured / eyes /
     scroll / additive-scroll draw plan, so BreezeWind and Eyes order(1) overlays
     keep vanilla layer registration order and beam scroll ranges are not skipped
-    when sorted overlays exist. Terrain target ordering and particle/itemEntity
-    boundaries remain later P1/P2 transparency parity. Vanilla
+    when sorted overlays exist. Terrain/entity and particle/itemEntity target
+    boundaries are now pinned by render-graph tests against vanilla
+    `LevelRenderer` / `FeatureRenderDispatcher`: main-target translucent
+    features precede translucent terrain, itemEntity features and line appends
+    precede particles, and the transparency combine shader inserts layers in
+    translucent / itemEntity / particles / weather / clouds order. Vanilla
     `entityCutoutZOffset` submissions now also route into dedicated static,
     dynamic-player-skin, and dynamic
     profile-texture z-offset cutout buckets, drawn through a separate main-pass

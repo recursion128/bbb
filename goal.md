@@ -193,8 +193,15 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     保持 vanilla layer 注册顺序（wind 先于 eyes）。非 `sortOnUpload` 的
     EndCrystal / Guardian beam scroll range 也进入 range draw，避免 combined
     plan 存在时漏画。
-  - terrain translucent 与 entity translucent 的跨 target / cross bucket 顺序。
-  - particles translucent order 与 itemEntity target 的交界。
+  - [x] terrain translucent 与 entity translucent 的跨 target / cross bucket 顺序：
+    depth copy 后先运行 main-target `renderTranslucentFeatures`，再运行
+    itemEntity target / block-destroy overlay，随后才是 translucent target 的
+    terrain translucent pass；测试固定 `LevelRenderer` 的 target 边界和
+    renderer-owned target 写入。
+  - [x] particles translucent order 与 itemEntity target 的交界：
+    itemEntity target feature pass 和 itemEntity line append 都在 particle target
+    之前，transparency combine shader 也按 translucent / itemEntity /
+    particles / weather / clouds 插入透明层。
 - shader / sampler state：
   - per RenderType 的 blend、depth write/test、cull、sampler、mip、lightmap、
     overlay、fog、normal diffuse 组合继续拆细。
