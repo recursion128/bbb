@@ -480,11 +480,14 @@ pub(in crate::entity_models) fn death_fall_factor(death_time: f32) -> f32 {
 }
 
 /// Vanilla `LivingEntityRenderer.getFlipDegrees`: the death tip-over angle. The
-/// base living renderer flips `90` degrees (onto its side); `SpiderRenderer`
-/// (and the cave spider that extends it) flip `180` degrees (onto its back).
+/// base living renderer flips `90` degrees (onto its side); `SpiderRenderer`,
+/// `EndermiteRenderer`, and `SilverfishRenderer` flip `180` degrees.
 pub(in crate::entity_models) fn entity_flip_degrees(kind: EntityModelKind) -> f32 {
     match kind {
-        EntityModelKind::Spider | EntityModelKind::CaveSpider => 180.0,
+        EntityModelKind::Endermite
+        | EntityModelKind::Silverfish
+        | EntityModelKind::Spider
+        | EntityModelKind::CaveSpider => 180.0,
         _ => 90.0,
     }
 }

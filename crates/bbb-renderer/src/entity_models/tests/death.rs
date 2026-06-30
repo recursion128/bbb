@@ -18,10 +18,13 @@ fn death_fall_factor_matches_vanilla_setup_rotations() {
 
 #[test]
 fn entity_flip_degrees_match_vanilla_renderer_overrides() {
-    // SpiderRenderer (and the cave spider that extends it) override
-    // getFlipDegrees to 180; every other living renderer keeps the base 90.
+    // SpiderRenderer (and the cave spider that extends it), EndermiteRenderer,
+    // and SilverfishRenderer override getFlipDegrees to 180; other living
+    // renderers keep the base 90.
     assert_eq!(entity_flip_degrees(EntityModelKind::Spider), 180.0);
     assert_eq!(entity_flip_degrees(EntityModelKind::CaveSpider), 180.0);
+    assert_eq!(entity_flip_degrees(EntityModelKind::Endermite), 180.0);
+    assert_eq!(entity_flip_degrees(EntityModelKind::Silverfish), 180.0);
     assert_eq!(entity_flip_degrees(EntityModelKind::Creeper), 90.0);
     assert_eq!(
         entity_flip_degrees(EntityModelKind::Zombie { baby: false }),

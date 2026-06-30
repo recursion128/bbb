@@ -1136,7 +1136,8 @@ When an agent does any of the following, update this file in the same slice:
     axis by `death_fall_factor(deathTime) * getFlipDegrees()`, where
     `death_fall_factor = min(sqrt(max((deathTime - 1) / 20 * 1.6, 0)), 1)` and
     `getFlipDegrees` is `90` for the base living renderer and `180` for the
-    spider/cave spider (`SpiderRenderer`). The flip is inserted right after the
+    spider/cave spider (`SpiderRenderer`), endermite (`EndermiteRenderer`), and
+    silverfish (`SilverfishRenderer`). The flip is inserted right after the
     `180 - bodyRot` yaw and before the `(-1, -1, 1)` flip in both shared living
     root transforms, so every colored and textured living model tips over, and is
     identity while alive.
@@ -3293,8 +3294,9 @@ When an agent does any of the following, update this file in the same slice:
       each leg sweeps `yRot += -(cos(animationPos*2 + phase) * 0.4) * speed` and steps
       `zRot += |sin(animationPos + phase) * 0.4| * speed`, right legs `+`/left legs `-`,
       per-pair phases `0`/`π`/`π/2`/`3π/2`, legs at `[3..=10]`) on both render paths and
-      passes (colored and textured, both spider and cave spider); death
-      flip remains unsupported. The old broader-lighting wording is stale because
+      passes (colored and textured, both spider and cave spider). The vanilla
+      180-degree `SpiderRenderer.getFlipDegrees` death flip is covered by the shared
+      living death transform. The old broader-lighting wording is stale because
       base and eyes submission light/overlay metadata is covered here and global
       LightTexture / gamma parity is tracked by the completed P0 lighting pipeline
     - enderman entities as renderer-owned vanilla 26.1
@@ -3630,6 +3632,8 @@ When an agent does any of the following, update this file in the same slice:
       segment wiggle (`segment.yRot = cos(phase) * π * 0.01 * (1 + |i - 2|)`,
       `segment.x = sin(phase) * π * 0.1 * |i - 2|`, `phase = ageInTicks * 0.9 + i *
       0.15 * π`, driven by the projected `ageInTicks`, on both render paths).
+      The vanilla 180-degree `EndermiteRenderer.getFlipDegrees` death flip is covered
+      by the shared living death transform.
       The old broader-lighting wording is stale because the base submission
       light/overlay metadata is covered here and global LightTexture / gamma
       parity is tracked by the completed P0 lighting pipeline
@@ -3648,7 +3652,9 @@ When an agent does any of the following, update this file in the same slice:
       `SilverfishModel.setupAnim` segment wiggle (`segment.yRot = cos(phase) * π *
       0.05 * (1 + |i - 2|)`, `segment.x = sin(phase) * π * 0.2 * |i - 2|`, `phase =
       ageInTicks * 0.9 + i * 0.15 * π`, with the overlay layers copying segments
-      2/4/1, driven by the projected `ageInTicks`, on both render paths). The old
+      2/4/1, driven by the projected `ageInTicks`, on both render paths). The vanilla
+      180-degree `SilverfishRenderer.getFlipDegrees` death flip is covered by the
+      shared living death transform. The old
       broader-lighting wording is stale because the base submission
       light/overlay metadata is covered here and global LightTexture / gamma
       parity is tracked by the completed P0 lighting pipeline
