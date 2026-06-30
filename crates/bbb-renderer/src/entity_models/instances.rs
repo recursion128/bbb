@@ -406,6 +406,9 @@ entity_render_state! {
     /// body twist + arm whack (the off arm tracked via [`attack_arm_off_hand`](Self::attack_arm_off_hand)).
     /// `0.0` for an entity that is not mid-swing, leaving the arms on their walk/idle pose.
     (with_attack_anim) attack_anim: f32 = 0.0;
+    /// Vanilla `ArmedEntityRenderState.mainArm`: whether the entity's main arm is the left arm. The
+    /// default `false` path is vanilla's right-handed default.
+    (with_main_arm_left) main_arm_left: bool = false;
     /// Vanilla `HumanoidRenderState.attackArm` (`LivingEntity.swingingArm`): whether the active swing
     /// is the off (left) hand. `false` for a main-hand swing (the common case) and every entity that
     /// is not mid-swing.
@@ -2617,6 +2620,7 @@ mod tests {
                 worn_head_animation_pos: 0.0,
                 is_riding: false,
                 attack_anim: 0.0,
+                main_arm_left: false,
                 attack_arm_off_hand: false,
                 age_in_ticks: 0.0,
                 boat_rowing_time_left: 0.0,

@@ -88,6 +88,17 @@ const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
 const VANILLA_ENTITY_TYPE_PIG_ID: i32 = 100;
 /// Vanilla 26.1 `EntityType.WOLF` registry id, used to gate `WolfArmorLayer`.
 const VANILLA_ENTITY_TYPE_WOLF_ID: i32 = 148;
+/// Vanilla 26.1 skeleton-family ids whose renderers extend `HumanoidMobRenderer`
+/// and therefore feed `ItemInHandLayer` through `getItemHeldByArm`.
+const VANILLA_ENTITY_TYPE_BOGGED_ID: i32 = 16;
+const VANILLA_ENTITY_TYPE_PARCHED_ID: i32 = 97;
+const VANILLA_ENTITY_TYPE_SKELETON_ID: i32 = 115;
+const VANILLA_ENTITY_TYPE_STRAY_ID: i32 = 128;
+const VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID: i32 = 146;
+/// Vanilla 26.1 `EvokerRenderer` installs an `ItemInHandLayer` over the illager model.
+const VANILLA_ENTITY_TYPE_EVOKER_ID: i32 = 46;
+/// Vanilla 26.1 `ZombifiedPiglinRenderer` extends `HumanoidMobRenderer`.
+const VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID: i32 = 154;
 /// Vanilla `Pose.STANDING` ordinal, used by camel walk-animation gating.
 const VANILLA_POSE_STANDING_ID: i32 = 0;
 /// Vanilla `Pose.SWIMMING` ordinal, used by player cape bob suppression.
@@ -208,6 +219,23 @@ fn vanilla_camel_saddle_type(entity_type_id: i32) -> bool {
     )
 }
 
+fn vanilla_mob_item_in_hand_layer_type(entity_type_id: i32) -> bool {
+    vanilla_zombie_model_family(entity_type_id)
+        || vanilla_piglin_melee_attack_family(entity_type_id)
+        || vanilla_illager_aggressive_arm_pose_family(entity_type_id)
+        || vanilla_is_vex(entity_type_id)
+        || matches!(
+            entity_type_id,
+            VANILLA_ENTITY_TYPE_BOGGED_ID
+                | VANILLA_ENTITY_TYPE_EVOKER_ID
+                | VANILLA_ENTITY_TYPE_PARCHED_ID
+                | VANILLA_ENTITY_TYPE_SKELETON_ID
+                | VANILLA_ENTITY_TYPE_STRAY_ID
+                | VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID
+                | VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID
+        )
+}
+
 /// Vanilla `LivingEntity.DATA_LIVING_ENTITY_FLAGS` data id (8): the byte holding
 /// the using-item / off-hand / spin-attack flags.
 const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
@@ -232,6 +260,12 @@ const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
 /// Vanilla `Mob.MOB_FLAG_AGGRESSIVE` (4): the `DATA_MOB_FLAGS_ID` bit set while a mob is
 /// in its aggressive AI state (`Mob.isAggressive`).
 const MOB_FLAG_AGGRESSIVE: i8 = 4;
+/// Vanilla `Mob.MOB_FLAG_LEFTHANDED` (2): flips `Mob.getMainArm()` from RIGHT to LEFT.
+const MOB_FLAG_LEFTHANDED: i8 = 2;
+/// Vanilla `Avatar.DATA_PLAYER_MAIN_HAND` data id (15): `HumanoidArm.LEFT` (0) or RIGHT (1).
+const VANILLA_AVATAR_MAIN_HAND_DATA_ID: u8 = 15;
+const VANILLA_HUMANOID_ARM_LEFT_ID: i32 = 0;
+const VANILLA_HUMANOID_ARM_RIGHT_ID: i32 = 1;
 
 /// Vanilla `SnowGolem.DATA_PUMPKIN_ID` data id (16): the byte holding the carved-pumpkin-head flag.
 const VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID: u8 = 16;
@@ -468,6 +502,24 @@ impl EntityStore {
         Some((identity.uuid, cape_shown))
     }
 
+    fn entity_main_arm_left(&self, id: i32, entity_type_id: i32) -> bool {
+        if entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
+            return self
+                .metadata_humanoid_arm(
+                    id,
+                    VANILLA_AVATAR_MAIN_HAND_DATA_ID,
+                    VANILLA_HUMANOID_ARM_RIGHT_ID,
+                )
+                .is_some_and(|arm| arm == VANILLA_HUMANOID_ARM_LEFT_ID);
+        }
+        if vanilla_mob_item_in_hand_layer_type(entity_type_id) {
+            return self
+                .metadata_byte(id, VANILLA_MOB_FLAGS_DATA_ID, 0)
+                .is_some_and(|flags| flags & MOB_FLAG_LEFTHANDED != 0);
+        }
+        false
+    }
+
     /// Vanilla `Entity.getEyeHeight(Pose.STANDING)` used by the sleeping bed
     /// head-offset translate: the eye height resolved with the synced pose stripped
     /// so the dimensions fall back to standing rather than `SLEEPING_DIMENSIONS`.
@@ -518,6 +570,22 @@ impl EntityStore {
                 .find(|value| value.data_id == data_id)
                 .and_then(|value| match &value.value {
                     EntityDataValueKind::Int(value) => Some(*value),
+                    _ => None,
+                })
+                .unwrap_or(default),
+        )
+    }
+
+    fn metadata_humanoid_arm(&self, id: i32, data_id: u8, default: i32) -> Option<i32> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        Some(
+            metadata
+                .data_values
+                .iter()
+                .find(|value| value.data_id == data_id)
+                .and_then(|value| match &value.value {
+                    EntityDataValueKind::HumanoidArm(value) => Some(*value),
                     _ => None,
                 })
                 .unwrap_or(default),
@@ -1168,6 +1236,7 @@ impl EntityStore {
             .unwrap_or(0);
         let is_using_item = living_entity_flags & LIVING_ENTITY_FLAG_IS_USING != 0;
         let use_item_off_hand = living_entity_flags & LIVING_ENTITY_FLAG_OFF_HAND != 0;
+        let main_arm_left = self.entity_main_arm_left(id, identity.entity_type_id);
         // Vanilla `LivingEntityRenderer.isEntityUpsideDown`: a non-player living
         // entity whose custom name is `Dinnerbone`/`Grumm`. The player variant
         // (`AvatarRenderer.isPlayerUpsideDown`) keys off the GameProfile name and
@@ -1611,10 +1680,11 @@ impl EntityStore {
                 .animations
                 .walk_animation_speed(partial_ticks),
             worn_head_animation_position,
-            // Vanilla `HumanoidRenderState.attackTime`/`attackArm`
-            // (`LivingEntity.getAttackAnim(partialTick)` + `swingingArm`): the lerped melee swing
-            // progress and which arm swings. `0.0` for an entity that is not mid-swing.
+            // Vanilla `HumanoidRenderState.attackTime` / `ArmedEntityRenderState.mainArm` /
+            // `attackArm`: the lerped melee swing progress, which arm is the main arm, and which arm
+            // swings. Attack progress is `0.0` for an entity that is not mid-swing.
             attack_anim: client_animations.animations.attack_anim(partial_ticks),
+            main_arm_left,
             attack_arm_off_hand: client_animations.animations.attack_arm_off_hand(),
             is_swinging: client_animations.animations.is_swinging(),
             // Vanilla `SquidRenderer.extractRenderState`: the lerped tentacle flex

@@ -1174,6 +1174,12 @@ pub struct EntityModelSourceState {
     /// body twist + arm whack. `0.0` for an entity that is not mid-swing.
     #[serde(default)]
     pub attack_anim: f32,
+    /// Vanilla `ArmedEntityRenderState.mainArm`: whether the entity's main arm is
+    /// left. Players read `Avatar.DATA_PLAYER_MAIN_HAND`; mobs that use
+    /// `ItemInHandLayer` read `Mob.MOB_FLAG_LEFTHANDED`. `false` is vanilla's
+    /// right-handed default.
+    #[serde(default)]
+    pub main_arm_left: bool,
     /// Vanilla `HumanoidRenderState.attackArm` (`LivingEntity.swingingArm`): whether the active
     /// swing is the off (left) hand. `false` for a main-hand swing and every non-swinging entity.
     #[serde(default)]

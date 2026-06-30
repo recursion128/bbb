@@ -2009,14 +2009,17 @@ When an agent does any of the following, update this file in the same slice:
         `BABY_TRANSFORMER` only ARMOR_STAND_SMALL uses), so the baby attach reuses
         the same `root · arm` formula on the baby model and only swaps the
         `ItemInHandLayer` `useBabyOffset` offsets to `(0, 1, -4.5)/16` (X drops to
-        0, so the left/right split comes only from the arm bone). The off-hand item
-        attaches to the left arm and uses the item's `thirdperson_lefthand`
-        transform with vanilla's left-hand fix (`display_matrix` negates
-        `translation.x`, `rotation.y`, `rotation.z`). Native `held_item_models`
-        iterates every entity instance and resolves
-        the held stack to the same block/flat quads as the dropped path and
-        applies the item's own retained third-person display transform for that
-        hand (see per-item display transforms below), so a held sword angles
+        0, so the left/right split comes only from the arm bone). Native
+        `held_item_models` now mirrors vanilla `getItemHeldByArm(arm)`:
+        `ItemInHandLayer` submits right arm then left arm, and `mainArm` decides
+        whether the main-hand or off-hand stack feeds each arm. Players project
+        `Avatar.DATA_PLAYER_MAIN_HAND`; supported humanoid mobs project
+        `Mob.MOB_FLAG_LEFTHANDED`. The left arm uses the item's
+        `thirdperson_lefthand` transform with vanilla's left-hand fix
+        (`display_matrix` negates `translation.x`, `rotation.y`, `rotation.z`).
+        Native resolves each held stack to the same block/flat quads as the
+        dropped path and applies the item's own retained third-person display
+        transform for that arm (see per-item display transforms below), so a held sword angles
         on `item/handheld`'s `[0,-90,55]`/`[0,4,0.5]/16` scale `0.85`, a block
         tilts on `block/block`'s `[75,45,0]`/`[0,2.5,0]/16` scale `0.375`, and a
         generated item lies flat on `item/generated`'s `[0,3,1]/16` scale `0.55`,

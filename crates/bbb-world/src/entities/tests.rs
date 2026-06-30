@@ -4296,6 +4296,81 @@ fn entity_model_sources_project_using_item_flags() {
 }
 
 #[test]
+fn entity_model_sources_project_main_arm_left_for_item_in_hand_layer() {
+    const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
+    const VANILLA_ENTITY_TYPE_ZOMBIE_ID: i32 = 150;
+    const VANILLA_ENTITY_TYPE_OAK_BOAT_ID: i32 = 89;
+    const VANILLA_AVATAR_MAIN_HAND_DATA_ID: u8 = 15;
+    const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
+    const VANILLA_HUMANOID_ARM_LEFT_ID: i32 = 0;
+    const VANILLA_HUMANOID_ARM_RIGHT_ID: i32 = 1;
+    const MOB_FLAG_LEFTHANDED: i8 = 2;
+
+    let main_arm_left = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .main_arm_left
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        82,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    assert!(!main_arm_left(&store, 82));
+
+    // Vanilla `Avatar.getMainArm` reads DATA_PLAYER_MAIN_HAND (HumanoidArm.LEFT id 0).
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 82,
+        values: vec![protocol_humanoid_arm_data(
+            VANILLA_AVATAR_MAIN_HAND_DATA_ID,
+            VANILLA_HUMANOID_ARM_LEFT_ID,
+        )],
+    }));
+    assert!(main_arm_left(&store, 82));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 82,
+        values: vec![protocol_humanoid_arm_data(
+            VANILLA_AVATAR_MAIN_HAND_DATA_ID,
+            VANILLA_HUMANOID_ARM_RIGHT_ID,
+        )],
+    }));
+    assert!(!main_arm_left(&store, 82));
+
+    store.apply_add_entity(protocol_add_entity_with_type(
+        83,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+    ));
+    assert!(!main_arm_left(&store, 83));
+    // Vanilla `Mob.getMainArm`: `MOB_FLAG_LEFTHANDED` flips the default RIGHT arm.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 83,
+        values: vec![protocol_byte_data(
+            VANILLA_MOB_FLAGS_DATA_ID,
+            MOB_FLAG_LEFTHANDED,
+        )],
+    }));
+    assert!(main_arm_left(&store, 83));
+
+    // Non-humanoid/non-living entities do not treat data id 15 as a main-arm source.
+    store.apply_add_entity(protocol_add_entity_with_type(
+        84,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 84,
+        values: vec![protocol_byte_data(
+            VANILLA_MOB_FLAGS_DATA_ID,
+            MOB_FLAG_LEFTHANDED,
+        )],
+    }));
+    assert!(!main_arm_left(&store, 84));
+}
+
+#[test]
 fn entity_model_sources_project_aggressive_for_zombie_model_family() {
     const VANILLA_ENTITY_TYPE_ZOMBIE_ID: i32 = 150;
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
@@ -13922,6 +13997,14 @@ fn protocol_enum_data(
         data_id,
         serializer_id,
         value: EntityDataValueKind::EnumId { serializer, id },
+    }
+}
+
+fn protocol_humanoid_arm_data(data_id: u8, arm_id: i32) -> ProtocolEntityDataValue {
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id: 42,
+        value: EntityDataValueKind::HumanoidArm(arm_id),
     }
 }
 

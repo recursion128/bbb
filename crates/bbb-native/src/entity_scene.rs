@@ -1523,6 +1523,7 @@ fn entity_model_instance(
         .with_worn_head_animation_pos(source.worn_head_animation_position)
         .with_is_riding(source.is_passenger)
         .with_attack_anim(source.attack_anim)
+        .with_main_arm_left(source.main_arm_left)
         .with_attack_arm_off_hand(source.attack_arm_off_hand)
         .with_age_in_ticks(source.age_ticks as f32 + entity_partial_tick)
         .with_boat_rowing_time_left(source.boat_rowing_time_left)

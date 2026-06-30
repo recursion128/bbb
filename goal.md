@@ -656,7 +656,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     (`MobEffectUtil.hasDigSpeed` HASTE / CONDUIT_POWER priority, else MINING_FATIGUE).
   - [x] runtime item/effect changes during an in-flight swing refresh active
     `SwingAnimation.duration` from the current swinging-arm stack and mob effects.
-  - left/right-hand transform 差异。
+  - [x] third-person `ItemInHandLayer` resolves held stacks through vanilla
+    `getItemHeldByArm`: player `DATA_PLAYER_MAIN_HAND` and mob `MOB_FLAG_LEFTHANDED`
+    now swap main/off-hand items across right/left arm transforms and
+    `thirdperson_{right,left}hand` display contexts.
 - HUD / inventory：
   - vanilla font / count / durability / cooldown / tooltip / screen depth behavior。
   - flat/generated item 与 3D block item 在 GUI pass 中的精确排序。

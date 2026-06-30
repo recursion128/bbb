@@ -456,8 +456,9 @@ pub(crate) fn held_item_models(
     };
 
     for instance in instances {
-        // Vanilla holds the main hand in the right arm and the off hand in the left arm (default main
-        // arm; the off-hand item additionally gets the left-hand display mirror).
+        // Vanilla `ItemInHandLayer.submit` submits the right arm first and the left arm second. Each arm's
+        // stack comes from `LivingEntity.getItemHeldByArm(arm)`, so a left-main-arm entity swaps which
+        // logical hand slot is attached to the right/left arm.
         bake_held_hand(
             instance,
             false,
@@ -570,12 +571,13 @@ pub(crate) fn held_item_models(
     }
 }
 
-/// Bakes one held item (`off_hand` selects the off-hand slot / left arm) onto its arm bone with the
-/// item's own `thirdperson_{left,right}hand` display transform.
+/// Bakes one arm's held item onto its arm bone with that arm's own
+/// `thirdperson_{left,right}hand` display transform. The logical hand slot is
+/// resolved from the entity's main arm, mirroring vanilla `getItemHeldByArm`.
 #[allow(clippy::too_many_arguments)]
 fn bake_held_hand(
     instance: &EntityModelInstance,
-    off_hand: bool,
+    left_arm: bool,
     world: &WorldStore,
     item_runtime: &NativeItemRuntime,
     terrain_textures: &TerrainTextureState,
@@ -584,15 +586,13 @@ fn bake_held_hand(
     flat_meshes: &mut Vec<ItemModelMesh>,
     flat_translucent_meshes: &mut Vec<ItemModelMesh>,
 ) {
+    let off_hand = left_arm != instance.render_state.main_arm_left;
     let Some(stack) = world.held_item(instance.entity_id, off_hand) else {
         return;
     };
     if !humanoid_item_in_hand_layer_visible(instance) {
         return;
     }
-    // The off hand is the left arm (default right-handed main arm); the left arm gets the left-hand
-    // display mirror.
-    let left_arm = off_hand;
 
     // The item's own retained third-person transform for this arm (handheld tools angle the model,
     // blocks tilt it, generated items lay it flat); falls back to the parent-model default per path.
@@ -1770,6 +1770,68 @@ mod tests {
             assert_eq!(models.flat_meshes.len(), 2);
             assert!(models.flat_meshes.iter().all(|mesh| !mesh.is_empty()));
         }
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn humanoid_item_in_hand_layer_uses_main_arm_for_hand_slot_mapping() {
+        // Vanilla `ItemInHandLayer.submit` renders RIGHT then LEFT, but each arm resolves its stack via
+        // `LivingEntity.getItemHeldByArm(arm)`. A left-main-arm player therefore renders the main-hand
+        // stack on the left arm and the off-hand stack on the right arm.
+        let root = unique_item_model_temp_dir("humanoid-main-arm-held-items");
+        write_flat_item_runtime_fixture(&root, &["main_item", "off_item"]);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        const ENTITY_ID: i32 = 606;
+        const PLAYER_ENTITY_TYPE_ID: i32 = 155;
+        let terrain_textures = TerrainTextureState::default();
+
+        let mut main_world = WorldStore::new();
+        main_world.apply_add_entity(protocol_add_entity(ENTITY_ID, PLAYER_ENTITY_TYPE_ID));
+        assert!(main_world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::MainHand, 0)));
+        let right_main = EntityModelInstance::player(ENTITY_ID, [0.0, 64.0, 0.0], 0.0, false);
+        let left_main = right_main.with_main_arm_left(true);
+        let right_main_models = held_item_models(
+            &[right_main],
+            &main_world,
+            Some(&item_runtime),
+            &terrain_textures,
+        );
+        let left_main_models = held_item_models(
+            &[left_main],
+            &main_world,
+            Some(&item_runtime),
+            &terrain_textures,
+        );
+        assert_eq!(right_main_models.flat_meshes.len(), 1);
+        assert_eq!(left_main_models.flat_meshes.len(), 1);
+        assert_ne!(
+            right_main_models.flat_meshes[0], left_main_models.flat_meshes[0],
+            "main-hand item moves from the right arm to the left arm when mainArm is LEFT"
+        );
+
+        let mut off_world = WorldStore::new();
+        off_world.apply_add_entity(protocol_add_entity(ENTITY_ID, PLAYER_ENTITY_TYPE_ID));
+        assert!(off_world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::OffHand, 1)));
+        let right_off_models = held_item_models(
+            &[right_main],
+            &off_world,
+            Some(&item_runtime),
+            &terrain_textures,
+        );
+        let left_off_models = held_item_models(
+            &[left_main],
+            &off_world,
+            Some(&item_runtime),
+            &terrain_textures,
+        );
+        assert_eq!(right_off_models.flat_meshes.len(), 1);
+        assert_eq!(left_off_models.flat_meshes.len(), 1);
+        assert_ne!(
+            right_off_models.flat_meshes[0], left_off_models.flat_meshes[0],
+            "off-hand item moves from the left arm to the right arm when mainArm is LEFT"
+        );
 
         std::fs::remove_dir_all(root).unwrap();
     }
