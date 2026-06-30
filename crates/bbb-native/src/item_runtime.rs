@@ -5464,6 +5464,53 @@ mod tests {
             uv("component_condition_damage_absent")
         );
 
+        for (item_id, component_id, model_id) in [
+            (3, 50, "component_condition_bundle_contents"),
+            (4, 56, "component_condition_trim"),
+            (5, 68, "component_condition_firework_explosion"),
+            (6, 69, "component_condition_fireworks"),
+            (7, 64, "component_condition_jukebox_playable"),
+            (8, 75, "component_condition_container"),
+        ] {
+            assert_eq!(
+                selected(item_id, DataComponentPatchSummary::default()),
+                uv(&format!("{model_id}_absent"))
+            );
+            assert_eq!(
+                selected(
+                    item_id,
+                    DataComponentPatchSummary {
+                        added_type_ids: vec![component_id],
+                        ..DataComponentPatchSummary::default()
+                    }
+                ),
+                uv(&format!("{model_id}_present"))
+            );
+            assert_eq!(
+                selected(
+                    item_id,
+                    DataComponentPatchSummary {
+                        added_type_ids: vec![component_id],
+                        removed_type_ids: vec![component_id],
+                        ..DataComponentPatchSummary::default()
+                    }
+                ),
+                uv(&format!("{model_id}_absent"))
+            );
+        }
+
+        assert_eq!(
+            selected(
+                9,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_contents_constrained_absent")
+        );
+
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -6915,6 +6962,13 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_RARITY = registerItem("component_condition_rarity");
                 public static final Item COMPONENT_CONDITION_GLINT = registerItem("component_condition_glint");
                 public static final Item COMPONENT_CONDITION_DAMAGE = registerItem("component_condition_damage", new Item.Properties().durability(10));
+                public static final Item COMPONENT_CONDITION_BUNDLE_CONTENTS = registerItem("component_condition_bundle_contents");
+                public static final Item COMPONENT_CONDITION_TRIM = registerItem("component_condition_trim");
+                public static final Item COMPONENT_CONDITION_FIREWORK_EXPLOSION = registerItem("component_condition_firework_explosion");
+                public static final Item COMPONENT_CONDITION_FIREWORKS = registerItem("component_condition_fireworks");
+                public static final Item COMPONENT_CONDITION_JUKEBOX_PLAYABLE = registerItem("component_condition_jukebox_playable");
+                public static final Item COMPONENT_CONDITION_CONTAINER = registerItem("component_condition_container");
+                public static final Item COMPONENT_CONDITION_BUNDLE_CONTENTS_CONSTRAINED = registerItem("component_condition_bundle_contents_constrained");
             }"#,
         );
         write_json(
@@ -6980,6 +7034,70 @@ mod tests {
                 }
             }"#,
         );
+        for (item_id, predicate) in [
+            (
+                "component_condition_bundle_contents",
+                "minecraft:bundle_contents",
+            ),
+            ("component_condition_trim", "minecraft:trim"),
+            (
+                "component_condition_firework_explosion",
+                "minecraft:firework_explosion",
+            ),
+            ("component_condition_fireworks", "minecraft:fireworks"),
+            (
+                "component_condition_jukebox_playable",
+                "minecraft:jukebox_playable",
+            ),
+            ("component_condition_container", "minecraft:container"),
+        ] {
+            write_json(
+                &assets.join("items").join(format!("{item_id}.json")),
+                &format!(
+                    r#"{{
+                        "model": {{
+                            "type": "minecraft:condition",
+                            "property": "minecraft:component",
+                            "predicate": "{predicate}",
+                            "value": {{}},
+                            "on_true": {{
+                                "type": "minecraft:model",
+                                "model": "minecraft:item/{item_id}_present"
+                            }},
+                            "on_false": {{
+                                "type": "minecraft:model",
+                                "model": "minecraft:item/{item_id}_absent"
+                            }}
+                        }}
+                    }}"#,
+                ),
+            );
+        }
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_contents_constrained.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "size": 1
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_contents_constrained_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_contents_constrained_absent"
+                    }
+                }
+            }"#,
+        );
         for (model_id, color) in [
             ("component_condition_rarity_present", [80, 160, 220, 255]),
             ("component_condition_rarity_absent", [60, 40, 80, 255]),
@@ -6987,6 +7105,44 @@ mod tests {
             ("component_condition_glint_absent", [40, 40, 80, 255]),
             ("component_condition_damage_present", [220, 120, 40, 255]),
             ("component_condition_damage_absent", [40, 80, 60, 255]),
+            (
+                "component_condition_bundle_contents_present",
+                [80, 120, 180, 255],
+            ),
+            (
+                "component_condition_bundle_contents_absent",
+                [30, 40, 80, 255],
+            ),
+            ("component_condition_trim_present", [120, 180, 80, 255]),
+            ("component_condition_trim_absent", [40, 80, 30, 255]),
+            (
+                "component_condition_firework_explosion_present",
+                [180, 120, 80, 255],
+            ),
+            (
+                "component_condition_firework_explosion_absent",
+                [80, 40, 30, 255],
+            ),
+            ("component_condition_fireworks_present", [180, 80, 120, 255]),
+            ("component_condition_fireworks_absent", [80, 30, 40, 255]),
+            (
+                "component_condition_jukebox_playable_present",
+                [120, 80, 180, 255],
+            ),
+            (
+                "component_condition_jukebox_playable_absent",
+                [40, 30, 80, 255],
+            ),
+            ("component_condition_container_present", [80, 180, 120, 255]),
+            ("component_condition_container_absent", [30, 80, 40, 255]),
+            (
+                "component_condition_bundle_contents_constrained_present",
+                [200, 200, 80, 255],
+            ),
+            (
+                "component_condition_bundle_contents_constrained_absent",
+                [50, 50, 30, 255],
+            ),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);
         }

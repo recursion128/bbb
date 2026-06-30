@@ -783,9 +783,15 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     as present, removed components select false, and non-default patched
     components select true. The concrete `minecraft:damage` predicate now also
     matches vanilla `DamagePredicate.matches` over both `damage` and
-    `durability = max_damage - damage` `MinMaxBounds.Ints`. Remaining complex
-    `DataComponentPredicate` types such as enchantments, containers, trim, and
-    fireworks remain component-predicate follow-up.
+    `durability = max_damage - damage` `MinMaxBounds.Ints`; empty
+    single-component predicates for `minecraft:bundle_contents`,
+    `minecraft:container`, `minecraft:trim`,
+    `minecraft:firework_explosion`, `minecraft:fireworks`, and
+    `minecraft:jukebox_playable` now match vanilla's component-present path.
+    Remaining constrained `DataComponentPredicate` types such as enchantments,
+    bundle/container item collection predicates, trim material/pattern, and
+    firework shape/trail/twinkle/flight details remain component-predicate
+    follow-up.
   - [x] `minecraft:has_component` item-model condition now follows vanilla
     `HasComponent.get`: default prototype components such as
     `minecraft:max_stack_size`, `minecraft:item_model`, and

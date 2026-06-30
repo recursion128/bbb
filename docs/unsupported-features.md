@@ -5846,8 +5846,13 @@ When an agent does any of the following, update this file in the same slice:
       as `minecraft:enchantment_glint_override` select true regardless of their
       boolean payload. The damage predicate matches vanilla
       `DamagePredicate.matches` over the stack's `minecraft:damage` and
-      `durability = max_damage - damage` bounds. Remaining complex predicate
-      types (enchantments, container/bundle contents, trim, fireworks, and
+      `durability = max_damage - damage` bounds. Empty single-component
+      predicates for `minecraft:bundle_contents`, `minecraft:container`,
+      `minecraft:trim`, `minecraft:firework_explosion`, `minecraft:fireworks`,
+      and `minecraft:jukebox_playable` also match the vanilla
+      component-present branch. Remaining constrained predicate types
+      (enchantments, container/bundle item collection predicates, trim
+      material/pattern, firework shape/trail/twinkle/flight details, and
       similar) remain follow-up.
     - `minecraft:charge_type` — `Charge.get` (`ROCKET` when any charged
       projectile is `minecraft:firework_rocket`, `ARROW` when charged otherwise,
@@ -5999,8 +6004,9 @@ When an agent does any of the following, update this file in the same slice:
     remains GUI follow-up.
     `minecraft:component` is wired for the scalar / enum component select subset
     listed above, and the condition form covers component-type / AnyValue plus
-    `minecraft:damage` predicates; broader component-codec and remaining
-    complex `DataComponentPredicate` parity remains the documented follow-up.
+    `minecraft:damage` and empty single-component predicates; broader
+    component-codec and remaining constrained `DataComponentPredicate` parity
+    remains the documented follow-up.
 
 ### Native Input, Movement, Interaction, Inventory, And Command Flows
 

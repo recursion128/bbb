@@ -28,10 +28,14 @@ const ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID: i32 = 21;
 const MAP_ID_COMPONENT_ID: i32 = 41;
 const DYED_COLOR_COMPONENT_ID: i32 = 44;
 const MAP_COLOR_COMPONENT_ID: i32 = 45;
+const BUNDLE_CONTENTS_COMPONENT_ID: i32 = 50;
 const POTION_CONTENTS_COMPONENT_ID: i32 = 51;
+const TRIM_COMPONENT_ID: i32 = 56;
+const JUKEBOX_PLAYABLE_COMPONENT_ID: i32 = 64;
 const LODESTONE_TRACKER_COMPONENT_ID: i32 = 67;
 const FIREWORK_EXPLOSION_COMPONENT_ID: i32 = 68;
 const FIREWORKS_COMPONENT_ID: i32 = 69;
+const CONTAINER_COMPONENT_ID: i32 = 75;
 const VANILLA_DEFAULT_MAX_STACK_SIZE: i32 = 64;
 const VANILLA_ABSOLUTE_MAX_STACK_SIZE: i32 = 99;
 
@@ -1481,6 +1485,14 @@ fn item_stack_matches_component_predicate(
             ctx.default_max_damage,
         );
     }
+    if let Some(component_id) = empty_single_component_predicate_id(property) {
+        return item_stack_has_component_id(
+            component_id,
+            ctx.component_patch,
+            ctx.default_max_damage,
+            false,
+        );
+    }
     if data_component_predicate_type_is_complex(predicate) {
         return false;
     }
@@ -1500,6 +1512,7 @@ fn component_condition_is_runtime_resolved(property: &ItemModelProperty) -> bool
         return false;
     };
     predicate == "minecraft:damage"
+        || empty_single_component_predicate_id(property).is_some()
         || component_condition_any_value_component_id(property).is_some()
 }
 
@@ -1518,6 +1531,22 @@ fn component_condition_any_value_component_id(property: &ItemModelProperty) -> O
         return None;
     }
     data_component_type_id(predicate)
+}
+
+fn empty_single_component_predicate_id(property: &ItemModelProperty) -> Option<i32> {
+    let value = property.raw().get("value")?.as_object()?;
+    if !value.is_empty() {
+        return None;
+    }
+    match component_condition_predicate(property)? {
+        "minecraft:bundle_contents" => Some(BUNDLE_CONTENTS_COMPONENT_ID),
+        "minecraft:container" => Some(CONTAINER_COMPONENT_ID),
+        "minecraft:firework_explosion" => Some(FIREWORK_EXPLOSION_COMPONENT_ID),
+        "minecraft:fireworks" => Some(FIREWORKS_COMPONENT_ID),
+        "minecraft:jukebox_playable" => Some(JUKEBOX_PLAYABLE_COMPONENT_ID),
+        "minecraft:trim" => Some(TRIM_COMPONENT_ID),
+        _ => None,
+    }
 }
 
 fn item_stack_matches_damage_component_predicate(
@@ -1635,10 +1664,14 @@ fn data_component_type_id(component: &str) -> Option<i32> {
         "minecraft:dyed_color" => Some(DYED_COLOR_COMPONENT_ID),
         "minecraft:map_color" => Some(MAP_COLOR_COMPONENT_ID),
         "minecraft:map_id" => Some(MAP_ID_COMPONENT_ID),
+        "minecraft:bundle_contents" => Some(BUNDLE_CONTENTS_COMPONENT_ID),
         "minecraft:potion_contents" => Some(POTION_CONTENTS_COMPONENT_ID),
+        "minecraft:trim" => Some(TRIM_COMPONENT_ID),
+        "minecraft:jukebox_playable" => Some(JUKEBOX_PLAYABLE_COMPONENT_ID),
         "minecraft:lodestone_tracker" => Some(LODESTONE_TRACKER_COMPONENT_ID),
         "minecraft:firework_explosion" => Some(FIREWORK_EXPLOSION_COMPONENT_ID),
         "minecraft:fireworks" => Some(FIREWORKS_COMPONENT_ID),
+        "minecraft:container" => Some(CONTAINER_COMPONENT_ID),
         _ => None,
     }
 }
