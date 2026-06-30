@@ -118,7 +118,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     跳过 LightTexture；动态 texture-matrix time offset 与其他 item glint
     变体仍属后续 shader/state 细化。
   - no-cull / cull / z-offset / translucent / translucent-cull item-target。
-  - `Eyes` emissive alpha blend。
+  - [x] `Eyes` emissive alpha blend：spider / enderman / phantom /
+    ender-dragon 等 `RenderTypes.eyes` 提交保留独立 eyes mesh / shader，
+    GPU pipeline 使用 vanilla `BlendFunction.TRANSLUCENT`、depth-write
+    disabled、depth-test `LESS_EQUAL`、cull off、EMISSIVE / NO_OVERLAY /
+    NO_CARDINAL_LIGHTING shape，并跳过 LightTexture。
   - `armorCutoutNoCull` / `armorTranslucent`。
   - `breezeWind` lightmap-lit scroll。
   - [x] `energySwirl` emissive additive scroll：charged creeper / wither

@@ -1057,6 +1057,12 @@ pub(crate) fn create_entity_model_textured_cull_pipeline(
     )
 }
 
+/// Vanilla `RenderPipelines.EYES`: translucent alpha blend, depth-test `LESS_EQUAL`,
+/// depth write disabled, and cull off.
+const ENTITY_MODEL_EYES_BLEND: wgpu::BlendState = wgpu::BlendState::ALPHA_BLENDING;
+const ENTITY_MODEL_EYES_DEPTH_WRITE_ENABLED: bool = false;
+const ENTITY_MODEL_EYES_CULL_MODE: Option<wgpu::Face> = None;
+
 pub(crate) fn create_entity_model_eyes_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
@@ -1069,9 +1075,9 @@ pub(crate) fn create_entity_model_eyes_pipeline(
         None,
         "bbb-entity-model-eyes",
         ENTITY_MODEL_EYES_SHADER,
-        Some(wgpu::BlendState::ALPHA_BLENDING),
-        false,
-        None,
+        Some(ENTITY_MODEL_EYES_BLEND),
+        ENTITY_MODEL_EYES_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_EYES_CULL_MODE,
     )
 }
 
@@ -2442,12 +2448,14 @@ fn create_entity_model_scroll_mesh_gpu_from_mesh(
 #[cfg(test)]
 mod tests {
     use super::{
-        entity_model_glint_shader, ENTITY_MODEL_ADDITIVE_BLEND, ENTITY_MODEL_GLINT_BLEND,
-        ENTITY_MODEL_GLINT_DEPTH_COMPARE, ENTITY_MODEL_GLINT_DEPTH_WRITE_ENABLED,
-        ENTITY_MODEL_OUTLINE_BLEND, ENTITY_MODEL_OUTLINE_CULL_MODE,
-        ENTITY_MODEL_OUTLINE_NO_CULL_MODE, ENTITY_MODEL_OUTLINE_SHADER,
-        ENTITY_MODEL_SCROLL_EMISSIVE_SHADER, ENTITY_MODEL_SURFACE_CULL_MODE,
-        ENTITY_MODEL_SURFACE_NO_CULL_MODE, ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER,
+        entity_model_glint_shader, ENTITY_MODEL_ADDITIVE_BLEND, ENTITY_MODEL_EYES_BLEND,
+        ENTITY_MODEL_EYES_CULL_MODE, ENTITY_MODEL_EYES_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_GLINT_BLEND, ENTITY_MODEL_GLINT_DEPTH_COMPARE,
+        ENTITY_MODEL_GLINT_DEPTH_WRITE_ENABLED, ENTITY_MODEL_OUTLINE_BLEND,
+        ENTITY_MODEL_OUTLINE_CULL_MODE, ENTITY_MODEL_OUTLINE_NO_CULL_MODE,
+        ENTITY_MODEL_OUTLINE_SHADER, ENTITY_MODEL_SCROLL_EMISSIVE_SHADER,
+        ENTITY_MODEL_SURFACE_CULL_MODE, ENTITY_MODEL_SURFACE_NO_CULL_MODE,
+        ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER,
     };
 
     #[test]
@@ -2575,6 +2583,32 @@ mod tests {
                 && !ENTITY_MODEL_SCROLL_EMISSIVE_SHADER.contains("input.overlay"),
             "vanilla ENERGY_SWIRL defines EMISSIVE and NO_OVERLAY"
         );
+    }
+
+    #[test]
+    fn entity_model_eyes_pipeline_state_matches_vanilla_eyes() {
+        assert_eq!(
+            ENTITY_MODEL_EYES_BLEND.color.src_factor,
+            wgpu::BlendFactor::SrcAlpha,
+            "vanilla BlendFunction.TRANSLUCENT uses SourceFactor.SRC_ALPHA for colour"
+        );
+        assert_eq!(
+            ENTITY_MODEL_EYES_BLEND.color.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha,
+            "vanilla BlendFunction.TRANSLUCENT uses DestFactor.ONE_MINUS_SRC_ALPHA for colour"
+        );
+        assert_eq!(
+            ENTITY_MODEL_EYES_BLEND.alpha.src_factor,
+            wgpu::BlendFactor::One,
+            "vanilla BlendFunction.TRANSLUCENT uses SourceFactor.ONE for alpha"
+        );
+        assert_eq!(
+            ENTITY_MODEL_EYES_BLEND.alpha.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha,
+            "vanilla BlendFunction.TRANSLUCENT uses DestFactor.ONE_MINUS_SRC_ALPHA for alpha"
+        );
+        assert!(!ENTITY_MODEL_EYES_DEPTH_WRITE_ENABLED);
+        assert_eq!(ENTITY_MODEL_EYES_CULL_MODE, None);
     }
 
     #[test]

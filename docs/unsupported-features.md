@@ -3114,7 +3114,8 @@ When an agent does any of the following, update this file in the same slice:
       metadata for `entityCutout` then `eyes`, white tint, spider/cave-spider root
       transforms, `spider.png` or `cave_spider.png`, `spider_eyes.png`, and
       `(order, submit_sequence) == (0, 0)` then `(1, 1)`, plus a
-      `RenderTypes.eyes`-style translucent/depth-write-disabled GPU path. Tests
+      `RenderTypes.eyes`-style `BlendFunction.TRANSLUCENT`,
+      depth-write-disabled, cull-off GPU path. Tests
       now also pin base entity light plus hurt/white overlay and `SpiderEyesLayer`
       entity light plus `OverlayTexture.NO_OVERLAY` on both submissions and
       folded buckets; missing-atlas coverage proves both spider renderers still
@@ -3137,7 +3138,8 @@ When an agent does any of the following, update this file in the same slice:
       `EndermanRenderer`, texture-backed base layer pass emission, and the
       vanilla `EnderEyesLayer` `enderman_eyes.png` texture-backed eyes pass
       using the parent Enderman model parts, submit order `1`, and a
-      `RenderTypes.eyes`-style translucent/depth-write-disabled GPU path, and the
+      `RenderTypes.eyes`-style `BlendFunction.TRANSLUCENT`,
+      depth-write-disabled, cull-off GPU path, and the
       vanilla `HumanoidModel.setupAnim` head-look yaw/pitch on the head part and
       the enderman walk animation — the inherited arm and leg swing halved and
       clamped to `[-0.4, 0.4]` (arms `[2, 3]`, legs `[4, 5]`) — plus the
@@ -4573,7 +4575,8 @@ When an agent does any of the following, update this file in the same slice:
       identity at rest and the yaw projected through `body_rot`). The base texture is now bound on the
       textured path (`ENDER_DRAGON_TEXTURE_REF`), the primary now-wired path, together with the always-on
       emissive `dragon_eyes.png` eyes overlay (`ENDER_DRAGON_EYES_TEXTURE_REF`, an eyes-render-type pass
-      re-rendering the whole model, matching vanilla `EnderDragonRenderer.EYES`). Tests pin both
+      re-rendering the whole model with the vanilla translucent/depth-write-disabled/cull-off
+      eyes GPU state, matching vanilla `EnderDragonRenderer.EYES`). Tests pin both
       submissions' texture, render type, white tint, root transform, and same-order sequences
       `(0, 0)` / `(0, 1)`, with folded base/eyes vertices inheriting their respective
       light/overlay metadata; missing-atlas coverage pins that the eyes submission still records
