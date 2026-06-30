@@ -1353,6 +1353,7 @@ impl NativeItemRuntime {
                             carried_item: false,
                             view_entity: false,
                             shift_down: false,
+                            keybind_context: ItemModelKeybindContext::default(),
                             using_item: false,
                             use_context: ItemModelUseContext::inactive(),
                             cooldown_progress: 0.0,
@@ -1709,6 +1710,7 @@ impl NativeItemRuntime {
             false,
             false,
             false,
+            ItemModelKeybindContext::default(),
         )
     }
 
@@ -1730,6 +1732,7 @@ impl NativeItemRuntime {
         carried_item: bool,
         view_entity: bool,
         shift_down: bool,
+        keybind_context: ItemModelKeybindContext,
     ) -> Option<ItemAtlasIcon> {
         self.icon_for_stack_with_model_context(
             stack,
@@ -1748,6 +1751,7 @@ impl NativeItemRuntime {
             carried_item,
             view_entity,
             shift_down,
+            keybind_context,
         )
     }
 
@@ -1782,6 +1786,7 @@ impl NativeItemRuntime {
             false,
             false,
             false,
+            ItemModelKeybindContext::default(),
         )
     }
 
@@ -1803,6 +1808,7 @@ impl NativeItemRuntime {
         carried_item: bool,
         view_entity: bool,
         shift_down: bool,
+        keybind_context: ItemModelKeybindContext,
     ) -> Option<ItemAtlasIcon> {
         let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
         let item_model_id = item_model_id_for_stack(item_id, Some(&stack.component_patch))?;
@@ -1826,6 +1832,7 @@ impl NativeItemRuntime {
             carried_item,
             view_entity,
             shift_down,
+            keybind_context,
         )
     }
 
@@ -1852,6 +1859,7 @@ impl NativeItemRuntime {
             false,
             false,
             false,
+            ItemModelKeybindContext::default(),
         )
     }
 
@@ -1876,6 +1884,7 @@ impl NativeItemRuntime {
         carried_item: bool,
         view_entity: bool,
         shift_down: bool,
+        keybind_context: ItemModelKeybindContext,
     ) -> Option<ItemAtlasIcon> {
         let default_max_damage = self
             .registry
@@ -1897,6 +1906,7 @@ impl NativeItemRuntime {
             carried_item,
             view_entity,
             shift_down,
+            keybind_context,
             using_item,
             use_context,
             cooldown_progress,
@@ -2051,6 +2061,7 @@ impl NativeItemRuntime {
             carried_item: false,
             view_entity: false,
             shift_down: false,
+            keybind_context: ItemModelKeybindContext::default(),
             using_item: false,
             use_context: ItemModelUseContext::inactive(),
             cooldown_progress: 0.0,
@@ -2724,6 +2735,60 @@ impl ItemModelUseContext {
             remaining_ticks: Some((use_duration_ticks - elapsed_ticks as i32).max(0) as f32),
             crossbow_charge_duration_ticks: crossbow_charge_duration_ticks
                 .map(|ticks| ticks as f32),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct ItemModelKeybindContext {
+    pub(crate) forward: bool,
+    pub(crate) left: bool,
+    pub(crate) backward: bool,
+    pub(crate) right: bool,
+    pub(crate) jump: bool,
+    pub(crate) sneak: bool,
+    pub(crate) sprint: bool,
+    pub(crate) attack: bool,
+    pub(crate) use_item: bool,
+    pub(crate) pick_item: bool,
+    pub(crate) inventory: bool,
+    pub(crate) swap_offhand: bool,
+    pub(crate) drop: bool,
+    pub(crate) chat: bool,
+    pub(crate) command: bool,
+    pub(crate) player_list: bool,
+    pub(crate) hotbar: [bool; 9],
+}
+
+impl ItemModelKeybindContext {
+    pub(crate) fn keybind_down(&self, keybind: &str) -> bool {
+        match keybind {
+            "key.forward" => self.forward,
+            "key.left" => self.left,
+            "key.back" => self.backward,
+            "key.right" => self.right,
+            "key.jump" => self.jump,
+            "key.sneak" => self.sneak,
+            "key.sprint" => self.sprint,
+            "key.attack" => self.attack,
+            "key.use" => self.use_item,
+            "key.pickItem" => self.pick_item,
+            "key.inventory" => self.inventory,
+            "key.swapOffhand" => self.swap_offhand,
+            "key.drop" => self.drop,
+            "key.chat" => self.chat,
+            "key.command" => self.command,
+            "key.playerlist" => self.player_list,
+            "key.hotbar.1" => self.hotbar[0],
+            "key.hotbar.2" => self.hotbar[1],
+            "key.hotbar.3" => self.hotbar[2],
+            "key.hotbar.4" => self.hotbar[3],
+            "key.hotbar.5" => self.hotbar[4],
+            "key.hotbar.6" => self.hotbar[5],
+            "key.hotbar.7" => self.hotbar[6],
+            "key.hotbar.8" => self.hotbar[7],
+            "key.hotbar.9" => self.hotbar[8],
+            _ => false,
         }
     }
 }

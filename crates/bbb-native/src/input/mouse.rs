@@ -66,6 +66,7 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
     {
         return;
     }
+    input.set_mouse_button_down(button, matches!(state, ElementState::Pressed));
     let player_pose = world.local_player_pose();
     let camera_target = match (button, state) {
         (MouseButton::Left | MouseButton::Right | MouseButton::Middle, ElementState::Pressed) => {

@@ -12,8 +12,8 @@ use serde_json::Value;
 
 use super::{
     first_texture_id, generated_layer_texture_refs, ItemIconTextureLayer, ItemIconTextureRef,
-    ItemIconTint, ItemModelCompassContext, ItemModelTimeContext, ItemModelUseContext,
-    ItemTextureState, ITEM_TINT_WHITE,
+    ItemIconTint, ItemModelCompassContext, ItemModelKeybindContext, ItemModelTimeContext,
+    ItemModelUseContext, ItemTextureState, ITEM_TINT_WHITE,
 };
 
 // 26.1 DataComponents ids from vanilla registration order.
@@ -801,6 +801,9 @@ pub(super) struct IconResolveContext<'a> {
     /// Vanilla `ExtendedView.get`: true only for GUI item display context while
     /// either Shift key is held down.
     pub shift_down: bool,
+    /// Vanilla `IsKeybindDown.get`: caller-projected `KeyMapping.isDown()` state
+    /// for supported default key names.
+    pub keybind_context: ItemModelKeybindContext,
     pub using_item: bool,
     pub use_context: ItemModelUseContext,
     /// Vanilla `Cooldown.get`: caller-projected
@@ -1050,6 +1053,11 @@ impl ItemIconModel {
                     {
                         on_true
                     }
+                    ItemModelPropertyKind::KeybindDown
+                        if item_stack_keybind_condition_is_down(property, &ctx) =>
+                    {
+                        on_true
+                    }
                     _ => on_false,
                 };
                 branch.icon_layers_with_bundle_resolver(ctx, resolve_bundle_selected_item)
@@ -1096,6 +1104,17 @@ impl ItemIconModel {
                 .collect(),
         }
     }
+}
+
+fn item_stack_keybind_condition_is_down(
+    property: &ItemModelProperty,
+    ctx: &IconResolveContext<'_>,
+) -> bool {
+    property
+        .raw()
+        .get("keybind")
+        .and_then(Value::as_str)
+        .is_some_and(|keybind| ctx.keybind_context.keybind_down(keybind))
 }
 
 pub(super) fn contains_runtime_condition(model: &ItemModelDefinition) -> bool {
@@ -1157,7 +1176,8 @@ fn condition_property_is_runtime_resolved(property: &ItemModelProperty) -> bool 
         | ItemModelPropertyKind::Selected
         | ItemModelPropertyKind::UsingItem
         | ItemModelPropertyKind::ViewEntity
-        | ItemModelPropertyKind::ExtendedView => true,
+        | ItemModelPropertyKind::ExtendedView
+        | ItemModelPropertyKind::KeybindDown => true,
         ItemModelPropertyKind::Component => {
             component_condition_any_value_component_id(property).is_some()
         }

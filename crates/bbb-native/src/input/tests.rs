@@ -4020,6 +4020,77 @@ fn release_active_input_keeps_shift_modifier_for_inventory_clicks() {
     assert!(!input.shift_down());
 }
 
+#[test]
+fn item_model_keybind_context_tracks_default_key_and_mouse_state() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &None,
+        PhysicalKey::Code(KeyCode::KeyW),
+        ElementState::Pressed,
+    );
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &None,
+        PhysicalKey::Code(KeyCode::Digit5),
+        ElementState::Pressed,
+    );
+
+    let context = input.item_model_keybind_context();
+    assert!(context.keybind_down("key.forward"));
+    assert!(context.keybind_down("key.hotbar.5"));
+    assert!(!context.keybind_down("key.use"));
+
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &None,
+        PhysicalKey::Code(KeyCode::KeyW),
+        ElementState::Released,
+    );
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &None,
+        PhysicalKey::Code(KeyCode::Digit5),
+        ElementState::Released,
+    );
+
+    let context = input.item_model_keybind_context();
+    assert!(!context.keybind_down("key.forward"));
+    assert!(!context.keybind_down("key.hotbar.5"));
+
+    let mut world = WorldStore::new();
+    handle_mouse_input_at_partial_tick(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &None,
+        MouseButton::Right,
+        ElementState::Pressed,
+        1.0,
+    );
+    assert!(input.item_model_keybind_context().keybind_down("key.use"));
+    assert!(!input
+        .item_model_keybind_context()
+        .keybind_down("key.attack"));
+
+    handle_mouse_input_at_partial_tick(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &None,
+        MouseButton::Right,
+        ElementState::Released,
+        1.0,
+    );
+    assert!(!input.item_model_keybind_context().keybind_down("key.use"));
+}
+
 fn assert_sprint_key_on_mount_only_queues_raw_player_input(entity_type_id: i32) {
     let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);

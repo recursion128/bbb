@@ -252,6 +252,7 @@ pub enum ItemModelPropertyKind {
     CustomModelData,
     Damaged,
     HasComponent,
+    KeybindDown,
     Selected,
     UsingItem,
     ViewEntity,
@@ -277,6 +278,7 @@ impl ItemModelProperty {
             "minecraft:custom_model_data" => ItemModelPropertyKind::CustomModelData,
             "minecraft:damaged" => ItemModelPropertyKind::Damaged,
             "minecraft:has_component" => ItemModelPropertyKind::HasComponent,
+            "minecraft:keybind_down" => ItemModelPropertyKind::KeybindDown,
             "minecraft:selected" => ItemModelPropertyKind::Selected,
             "minecraft:using_item" => ItemModelPropertyKind::UsingItem,
             "minecraft:view_entity" => ItemModelPropertyKind::ViewEntity,
@@ -2009,6 +2011,44 @@ mod tests {
         assert_eq!(
             property.raw(),
             &serde_json::json!({"property": "minecraft:extended_view"})
+        );
+        assert!(matches!(on_true.as_ref(), ItemModelDefinition::Empty));
+        assert!(matches!(on_false.as_ref(), ItemModelDefinition::Empty));
+    }
+
+    #[test]
+    fn item_model_catalog_structures_keybind_down_condition_property() {
+        let definition = ClientItemDefinition::from_json_bytes(
+            br#"{
+              "model": {
+                "type": "minecraft:condition",
+                "property": "minecraft:keybind_down",
+                "keybind": "key.use",
+                "on_false": {
+                  "type": "minecraft:empty"
+                },
+                "on_true": {
+                  "type": "minecraft:empty"
+                }
+              }
+            }"#,
+        )
+        .unwrap();
+
+        let ItemModelDefinition::Condition {
+            property,
+            on_true,
+            on_false,
+            ..
+        } = &definition.model
+        else {
+            panic!("root should parse as a keybind-down condition item model");
+        };
+        assert_eq!(property.property_type, "minecraft:keybind_down");
+        assert_eq!(property.kind(), ItemModelPropertyKind::KeybindDown);
+        assert_eq!(
+            property.raw(),
+            &serde_json::json!({"keybind": "key.use", "property": "minecraft:keybind_down"})
         );
         assert!(matches!(on_true.as_ref(), ItemModelDefinition::Empty));
         assert!(matches!(on_false.as_ref(), ItemModelDefinition::Empty));

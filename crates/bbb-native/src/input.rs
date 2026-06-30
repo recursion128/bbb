@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::{collections::HashSet, time::Instant};
 
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
@@ -22,7 +22,7 @@ mod movement;
 mod text_edit;
 
 use crate::crosshair::protocol_block_pos_from_world;
-use crate::item_runtime::NativeItemRuntime;
+use crate::item_runtime::{ItemModelKeybindContext, NativeItemRuntime};
 pub(crate) use bundle::select_bundle_item;
 use commands::*;
 pub(crate) use commands::{
@@ -92,6 +92,10 @@ pub(crate) struct ClientInputState {
     shift_right_down: bool,
     control_left_down: bool,
     control_right_down: bool,
+    pressed_keys: HashSet<KeyCode>,
+    mouse_left_down: bool,
+    mouse_right_down: bool,
+    mouse_middle_down: bool,
     use_item_repeat_delay_ticks: u8,
     mouse_delta_x: f64,
     mouse_delta_y: f64,
@@ -188,6 +192,10 @@ impl ClientInputState {
         self.sprint = false;
         self.destroy_block_held = false;
         self.use_item_held = false;
+        self.pressed_keys.clear();
+        self.mouse_left_down = false;
+        self.mouse_right_down = false;
+        self.mouse_middle_down = false;
         self.use_item_repeat_delay_ticks = 0;
         self.mouse_delta_x = 0.0;
         self.mouse_delta_y = 0.0;
@@ -235,6 +243,55 @@ impl ClientInputState {
 
     pub(crate) fn shift_down(&self) -> bool {
         self.shift_left_down || self.shift_right_down
+    }
+
+    fn set_key_down(&mut self, code: KeyCode, pressed: bool) {
+        if pressed {
+            self.pressed_keys.insert(code);
+        } else {
+            self.pressed_keys.remove(&code);
+        }
+    }
+
+    fn set_mouse_button_down(&mut self, button: MouseButton, pressed: bool) {
+        match button {
+            MouseButton::Left => self.mouse_left_down = pressed,
+            MouseButton::Right => self.mouse_right_down = pressed,
+            MouseButton::Middle => self.mouse_middle_down = pressed,
+            _ => {}
+        }
+    }
+
+    pub(crate) fn item_model_keybind_context(&self) -> ItemModelKeybindContext {
+        ItemModelKeybindContext {
+            forward: self.pressed_keys.contains(&KeyCode::KeyW),
+            left: self.pressed_keys.contains(&KeyCode::KeyA),
+            backward: self.pressed_keys.contains(&KeyCode::KeyS),
+            right: self.pressed_keys.contains(&KeyCode::KeyD),
+            jump: self.pressed_keys.contains(&KeyCode::Space),
+            sneak: self.pressed_keys.contains(&KeyCode::ShiftLeft),
+            sprint: self.pressed_keys.contains(&KeyCode::ControlLeft),
+            attack: self.mouse_left_down,
+            use_item: self.mouse_right_down,
+            pick_item: self.mouse_middle_down,
+            inventory: self.pressed_keys.contains(&KeyCode::KeyE),
+            swap_offhand: self.pressed_keys.contains(&KeyCode::KeyF),
+            drop: self.pressed_keys.contains(&KeyCode::KeyQ),
+            chat: self.pressed_keys.contains(&KeyCode::KeyT),
+            command: self.pressed_keys.contains(&KeyCode::Slash),
+            player_list: self.pressed_keys.contains(&KeyCode::Tab),
+            hotbar: [
+                self.pressed_keys.contains(&KeyCode::Digit1),
+                self.pressed_keys.contains(&KeyCode::Digit2),
+                self.pressed_keys.contains(&KeyCode::Digit3),
+                self.pressed_keys.contains(&KeyCode::Digit4),
+                self.pressed_keys.contains(&KeyCode::Digit5),
+                self.pressed_keys.contains(&KeyCode::Digit6),
+                self.pressed_keys.contains(&KeyCode::Digit7),
+                self.pressed_keys.contains(&KeyCode::Digit8),
+                self.pressed_keys.contains(&KeyCode::Digit9),
+            ],
+        }
     }
 
     fn set_control_key(&mut self, code: KeyCode, pressed: bool) {
@@ -527,6 +584,7 @@ pub(crate) fn handle_key_input_with_item_runtime(
     let PhysicalKey::Code(code) = physical_key else {
         return;
     };
+    input.set_key_down(code, pressed);
     if matches!(code, KeyCode::ShiftLeft | KeyCode::ShiftRight) {
         input.set_shift_key(code, pressed);
     }

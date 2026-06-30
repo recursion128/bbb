@@ -50,7 +50,7 @@ use crate::{
     item_entities::item_entity_billboards_from_world,
     item_frames::item_frame_models,
     item_models::{dropped_item_models, entity_block_models, held_item_models},
-    item_runtime::NativeItemRuntime,
+    item_runtime::{ItemModelKeybindContext, NativeItemRuntime},
     particle_runtime::ParticleEventSink,
     terrain_runtime::{
         maybe_upload_decoded_terrain, maybe_upload_terrain_texture_animation, TerrainTextureState,
@@ -394,6 +394,7 @@ struct InventoryHudLocalState {
     loom_selected_pattern_index: Option<i32>,
     anvil_rename_text: Option<String>,
     shift_down: bool,
+    keybind_context: ItemModelKeybindContext,
 }
 
 pub(crate) use control_requests::pump_control_net_requests;
@@ -1540,11 +1541,13 @@ pub(crate) fn pump_network_and_terrain(
             .map(|experience| experience.progress),
     );
     renderer.set_hud_selected_slot(local_player.selected_hotbar_slot);
-    renderer.set_hud_hotbar_item_icons(hotbar_item_icons_with_extended_view(
+    let item_model_keybind_context = input.item_model_keybind_context();
+    renderer.set_hud_hotbar_item_icons(hotbar_item_icons_with_input_context(
         world,
         item_runtime,
         entity_partial_tick,
         input.shift_down(),
+        item_model_keybind_context,
     ));
     renderer.set_hud_hotbar_block_item_models(hotbar_block_item_models(
         world,
@@ -1566,6 +1569,7 @@ pub(crate) fn pump_network_and_terrain(
             loom_selected_pattern_index: input.loom_selected_pattern_index(),
             anvil_rename_text: Some(input.anvil_rename_text().to_string()),
             shift_down: input.shift_down(),
+            keybind_context: item_model_keybind_context,
         },
         entity_partial_tick,
     ));
@@ -1748,7 +1752,13 @@ fn hotbar_item_icons(
     item_runtime: Option<&NativeItemRuntime>,
     partial_tick: f32,
 ) -> [Option<HudItemIcon>; HUD_HOTBAR_SLOTS] {
-    hotbar_item_icons_with_extended_view(world, item_runtime, partial_tick, false)
+    hotbar_item_icons_with_input_context(
+        world,
+        item_runtime,
+        partial_tick,
+        false,
+        ItemModelKeybindContext::default(),
+    )
 }
 
 fn hotbar_item_icons_with_extended_view(
@@ -1756,6 +1766,22 @@ fn hotbar_item_icons_with_extended_view(
     item_runtime: Option<&NativeItemRuntime>,
     partial_tick: f32,
     shift_down: bool,
+) -> [Option<HudItemIcon>; HUD_HOTBAR_SLOTS] {
+    hotbar_item_icons_with_input_context(
+        world,
+        item_runtime,
+        partial_tick,
+        shift_down,
+        ItemModelKeybindContext::default(),
+    )
+}
+
+fn hotbar_item_icons_with_input_context(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    partial_tick: f32,
+    shift_down: bool,
+    keybind_context: ItemModelKeybindContext,
 ) -> [Option<HudItemIcon>; HUD_HOTBAR_SLOTS] {
     let mut icons = std::array::from_fn(|_| None);
     let selected_slot = usize::from(world.local_player().selected_hotbar_slot.min(8));
@@ -1770,6 +1796,7 @@ fn hotbar_item_icons_with_extended_view(
             slot_index == selected_slot,
             false,
             shift_down,
+            keybind_context,
             partial_tick,
         );
     }
@@ -1901,6 +1928,7 @@ fn hud_inventory_screen_with_local_state(
                         false,
                         false,
                         local_state.shift_down,
+                        local_state.keybind_context,
                         partial_tick,
                     )
                 }),
@@ -1928,6 +1956,7 @@ fn hud_inventory_screen_with_local_state(
             layout.background,
             local_state.stonecutter_recipe_scroll_row,
             local_state.shift_down,
+            local_state.keybind_context,
             partial_tick,
         ),
         text_labels: hud_inventory_text_labels(world, layout.background, &local_state),
@@ -2253,6 +2282,7 @@ fn hud_inventory_floating_items(
     background: InventoryScreenBackground,
     stonecutter_recipe_scroll_row: Option<i32>,
     shift_down: bool,
+    keybind_context: ItemModelKeybindContext,
     partial_tick: f32,
 ) -> Vec<HudInventoryItem> {
     match background {
@@ -2261,6 +2291,7 @@ fn hud_inventory_floating_items(
             item_runtime,
             terrain_textures,
             shift_down,
+            keybind_context,
             partial_tick,
         ),
         InventoryScreenBackground::Stonecutter => hud_stonecutter_recipe_items(
@@ -2269,6 +2300,7 @@ fn hud_inventory_floating_items(
             terrain_textures,
             stonecutter_recipe_scroll_row.unwrap_or_default(),
             shift_down,
+            keybind_context,
             partial_tick,
         ),
         _ => Vec::new(),
@@ -2741,6 +2773,7 @@ fn hud_merchant_trade_items(
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
     shift_down: bool,
+    keybind_context: ItemModelKeybindContext,
     partial_tick: f32,
 ) -> Vec<HudInventoryItem> {
     let Some(offers) = merchant_offers_state(world) else {
@@ -2761,6 +2794,7 @@ fn hud_merchant_trade_items(
             item_runtime,
             terrain_textures,
             shift_down,
+            keybind_context,
             partial_tick,
             &mut items,
             MERCHANT_TRADE_COST_A_X,
@@ -2773,6 +2807,7 @@ fn hud_merchant_trade_items(
                 item_runtime,
                 terrain_textures,
                 shift_down,
+                keybind_context,
                 partial_tick,
                 &mut items,
                 MERCHANT_TRADE_COST_B_X,
@@ -2785,6 +2820,7 @@ fn hud_merchant_trade_items(
             item_runtime,
             terrain_textures,
             shift_down,
+            keybind_context,
             partial_tick,
             &mut items,
             MERCHANT_TRADE_RESULT_X,
@@ -2800,6 +2836,7 @@ fn push_merchant_trade_item(
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
     shift_down: bool,
+    keybind_context: ItemModelKeybindContext,
     partial_tick: f32,
     items: &mut Vec<HudInventoryItem>,
     x: i32,
@@ -2815,6 +2852,7 @@ fn push_merchant_trade_item(
         false,
         false,
         shift_down,
+        keybind_context,
         partial_tick,
     ) {
         let block_model = block_item_3d_model(&item, item_runtime, terrain_textures);
@@ -2833,6 +2871,7 @@ fn hud_stonecutter_recipe_items(
     terrain_textures: &TerrainTextureState,
     scroll_row: i32,
     shift_down: bool,
+    keybind_context: ItemModelKeybindContext,
     partial_tick: f32,
 ) -> Vec<HudInventoryItem> {
     let mut items = Vec::new();
@@ -2846,6 +2885,7 @@ fn hud_stonecutter_recipe_items(
             false,
             false,
             shift_down,
+            keybind_context,
             partial_tick,
         ) {
             let block_model = block_item_3d_model(&option.stack, item_runtime, terrain_textures);
@@ -4040,6 +4080,7 @@ fn hud_item_icon_for_stack(
     selected_item: bool,
     carried_item: bool,
     shift_down: bool,
+    keybind_context: ItemModelKeybindContext,
     partial_tick: f32,
 ) -> Option<HudItemIcon> {
     let item_runtime = item_runtime?;
@@ -4109,6 +4150,7 @@ fn hud_item_icon_for_stack(
         carried_item,
         true,
         shift_down,
+        keybind_context,
     )?;
     Some(HudItemIcon {
         layers: icon

@@ -5884,6 +5884,11 @@ When an agent does any of the following, update this file in the same slice:
       `ClientInputState::shift_down()` into the item icon resolver and keeps
       vanilla's GUI display-context gate, so non-GUI consumers select the false
       branch even while Shift is down.
+    - `minecraft:keybind_down` — `IsKeybindDown.get`, for GUI/HUD local-player
+      item icons whose condition references native-tracked default key names.
+      Native projects pressed movement/gameplay/inventory keys plus mouse
+      attack/use/pick buttons into the item icon resolver. User-rebound/custom
+      key mappings and broader debug/misc key coverage remain follow-up.
     - `minecraft:local_time` — `LocalTime.get`, formatting wall-clock time for
       the vanilla 26.1 chest/trapped-chest `MM-dd` selector. Explicit `GMT`/UTC
       offset `time_zone` values use that offset; absent `time_zone` uses the
@@ -5977,7 +5982,8 @@ When an agent does any of the following, update this file in the same slice:
     for HUD hotbar selected-slot icons. `minecraft:view_entity` is wired for
     GUI/HUD local-player icons in the normal camera==player path, and
     `minecraft:extended_view` is wired for Shift-held GUI/HUD local-player
-    icons while retaining vanilla's GUI display-context gate.
+    icons while retaining vanilla's GUI display-context gate. `minecraft:keybind_down`
+    is wired for the default key names currently tracked by native input.
     `minecraft:carried` is wired as an explicit resolver context bit for future
     cursor-carried item call sites, while the cursor item presentation itself
     remains GUI follow-up.
