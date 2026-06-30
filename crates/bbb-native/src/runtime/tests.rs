@@ -1675,6 +1675,19 @@ fn set_world_day_time(world: &mut WorldStore, day_time: i64) {
     });
 }
 
+fn set_default_spawn(world: &mut WorldStore, dimension: &str, pos: [i32; 3]) {
+    world.apply_default_spawn_position(bbb_protocol::packets::SetDefaultSpawnPosition {
+        dimension: dimension.to_string(),
+        pos: ProtocolBlockPos {
+            x: pos[0],
+            y: pos[1],
+            z: pos[2],
+        },
+        yaw: 0.0,
+        pitch: 0.0,
+    });
+}
+
 fn set_world_end_clock_time(world: &mut WorldStore, total_ticks: i64) {
     world.apply_world_time(PlayTime {
         game_time: total_ticks,
@@ -2840,6 +2853,7 @@ fn hotbar_item_icons_project_world_time_range_dispatch() {
             Some("minecraft:player"),
             Some("minecraft:overworld"),
             Some(crate::item_runtime::ItemModelTimeContext { day_time: 18_000 }),
+            None,
         )
         .unwrap()
         .layers[0]
@@ -2872,6 +2886,96 @@ fn hotbar_item_icons_project_world_time_range_dispatch() {
         HudUvRect {
             min: night_uv.min,
             max: night_uv.max,
+        }
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn hotbar_item_icons_project_spawn_compass_range_dispatch() {
+    let root = unique_runtime_temp_dir("hotbar-spawn-compass-range-dispatch");
+    write_runtime_spawn_compass_range_dispatch_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let stack = item_stack(0, 1);
+    let fallback_uv = item_runtime.icon_for_stack(&stack).unwrap().layers[0].uv;
+    let east_uv = item_runtime
+        .icon_for_stack_with_context_and_use_context_and_time_context(
+            &stack,
+            None,
+            false,
+            crate::item_runtime::ItemModelUseContext::inactive(),
+            bbb_pack::BlockModelDisplayContext::Gui,
+            0.0,
+            None,
+            None,
+            Some("minecraft:player"),
+            Some("minecraft:overworld"),
+            None,
+            Some(crate::item_runtime::ItemModelCompassContext {
+                level_dimension: "minecraft:overworld",
+                owner_position: [0.5, 64.0, 0.5],
+                owner_y_rot_degrees: 0.0,
+                spawn: Some(crate::item_runtime::ItemModelCompassTarget {
+                    dimension: "minecraft:overworld",
+                    pos: [10, 64, 0],
+                }),
+            }),
+        )
+        .unwrap()
+        .layers[0]
+        .uv;
+    assert_ne!(fallback_uv, east_uv);
+
+    let mut no_pose_world = world_with_dimension(0, "minecraft:overworld");
+    set_default_spawn(&mut no_pose_world, "minecraft:overworld", [10, 64, 0]);
+    no_pose_world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: stack.clone(),
+    });
+    let no_pose_icons = hotbar_item_icons(&no_pose_world, Some(&item_runtime), 0.0);
+    assert_eq!(
+        no_pose_icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: fallback_uv.min,
+            max: fallback_uv.max,
+        }
+    );
+
+    let mut world = world_with_dimension(0, "minecraft:overworld");
+    world.set_local_player_pose(local_player_pose([0.5, 64.0, 0.5], 0.0, 0.0));
+    set_default_spawn(&mut world, "minecraft:overworld", [10, 64, 0]);
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: stack.clone(),
+    });
+    let icons = hotbar_item_icons(&world, Some(&item_runtime), 0.0);
+    assert_eq!(
+        icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: east_uv.min,
+            max: east_uv.max,
+        }
+    );
+
+    let mut wrong_dimension_world = world_with_dimension(0, "minecraft:overworld");
+    wrong_dimension_world.set_local_player_pose(local_player_pose([0.5, 64.0, 0.5], 0.0, 0.0));
+    set_default_spawn(
+        &mut wrong_dimension_world,
+        "minecraft:the_nether",
+        [10, 64, 0],
+    );
+    wrong_dimension_world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: stack,
+    });
+    let wrong_dimension_icons = hotbar_item_icons(&wrong_dimension_world, Some(&item_runtime), 0.0);
+    assert_eq!(
+        wrong_dimension_icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: fallback_uv.min,
+            max: fallback_uv.max,
         }
     );
 
@@ -6666,6 +6770,67 @@ fn write_runtime_time_range_dispatch_item_assets(root: &Path) {
             .join("Items.java"),
         r#"public class Items {
             public static final Item TIME_SELECTOR = registerItem("time_selector");
+        }"#,
+    );
+}
+
+fn write_runtime_spawn_compass_range_dispatch_item_assets(root: &Path) {
+    let assets = runtime_assets_dir(root);
+    write_runtime_json(
+        &assets.join("atlases").join("items.json"),
+        r#"{
+            "sources": [
+                {
+                    "type": "minecraft:directory",
+                    "prefix": "item/",
+                    "source": "item"
+                }
+            ]
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("atlases").join("blocks.json"),
+        r#"{
+            "sources": []
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("items").join("spawn_compass.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:range_dispatch",
+                "property": "minecraft:compass",
+                "target": "spawn",
+                "wobble": false,
+                "scale": 4.0,
+                "entries": [
+                    {
+                        "threshold": 3.0,
+                        "model": { "type": "minecraft:model", "model": "minecraft:item/spawn_compass_east" }
+                    }
+                ],
+                "fallback": { "type": "minecraft:model", "model": "minecraft:item/spawn_compass_fallback" }
+            }
+        }"#,
+    );
+    write_flat_runtime_item_model_and_texture(
+        &assets,
+        "spawn_compass_fallback",
+        &[40, 80, 120, 255],
+    );
+    write_flat_runtime_item_model_and_texture(&assets, "spawn_compass_east", &[120, 80, 40, 255]);
+    write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
+    write_runtime_json(
+        &root
+            .join("sources")
+            .join(bbb_pack::MC_VERSION)
+            .join("net")
+            .join("minecraft")
+            .join("world")
+            .join("item")
+            .join("Items.java"),
+        r#"public class Items {
+            public static final Item SPAWN_COMPASS = registerItem("spawn_compass");
         }"#,
     );
 }

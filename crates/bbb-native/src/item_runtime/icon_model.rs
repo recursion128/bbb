@@ -12,7 +12,8 @@ use serde_json::Value;
 
 use super::{
     first_texture_id, generated_layer_texture_refs, ItemIconTextureLayer, ItemIconTextureRef,
-    ItemIconTint, ItemModelTimeContext, ItemModelUseContext, ItemTextureState, ITEM_TINT_WHITE,
+    ItemIconTint, ItemModelCompassContext, ItemModelTimeContext, ItemModelUseContext,
+    ItemTextureState, ITEM_TINT_WHITE,
 };
 
 // 26.1 DataComponents ids from vanilla registration order.
@@ -61,9 +62,8 @@ pub(super) enum ItemIconModelRef {
 
 /// The subset of vanilla `RangeSelectItemModelProperty` whose value is either a
 /// pure projection of the item stack or a narrow GUI owner value already
-/// threaded by the caller. The remaining numeric properties (`compass`, `time`)
-/// need broader ambient state and keep the value-blind fallback collapse until
-/// that context is threaded.
+/// threaded by the caller. Stateful needle wobblers and random-spin branches
+/// stay value-blind until the runtime owns that mutable state.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) enum RangeDispatchProperty {
     /// `minecraft:damage` — `Damage.get`.
@@ -82,6 +82,10 @@ pub(super) enum RangeDispatchProperty {
     UseCycle { period: f32 },
     /// `minecraft:crossbow/pull` — `CrossbowPull.get`.
     CrossbowPull,
+    /// `minecraft:compass` — `CompassAngle.get`, currently for
+    /// `wobble=false` target projection. Stateful wobble and no-target random
+    /// spin remain follow-up.
+    Compass { target: CompassTarget },
     /// `minecraft:time` — `Time.get`, currently projecting the target value
     /// for `daytime` / `moon_phase`; vanilla wobbler smoothing remains a
     /// follow-up.
@@ -144,12 +148,13 @@ impl RangeDispatchProperty {
                 }
             }
             Self::Time { source } => source.value(ctx),
+            Self::Compass { target } => target.value(ctx),
         }
     }
 }
 
 /// Builds a [`RangeDispatchProperty`] for the value-aware numeric properties, or
-/// `None` for the context-needing ones (which keep the fallback collapse).
+/// `None` for branches that still need stateful needle wobble / random spin.
 fn range_dispatch_property_for(property: &ItemModelProperty) -> Option<RangeDispatchProperty> {
     match property.property_type.as_str() {
         "minecraft:damage" => Some(RangeDispatchProperty::Damage {
@@ -192,6 +197,23 @@ fn range_dispatch_property_for(property: &ItemModelProperty) -> Option<RangeDisp
                 .unwrap_or(1.0),
         }),
         "minecraft:crossbow/pull" => Some(RangeDispatchProperty::CrossbowPull),
+        "minecraft:compass" => {
+            let wobble = property
+                .raw()
+                .get("wobble")
+                .and_then(Value::as_bool)
+                .unwrap_or(true);
+            if wobble {
+                None
+            } else {
+                property
+                    .raw()
+                    .get("target")
+                    .and_then(Value::as_str)
+                    .and_then(CompassTarget::parse)
+                    .map(|target| RangeDispatchProperty::Compass { target })
+            }
+        }
         "minecraft:time" => property
             .raw()
             .get("source")
@@ -199,6 +221,33 @@ fn range_dispatch_property_for(property: &ItemModelProperty) -> Option<RangeDisp
             .and_then(TimeSource::parse)
             .map(|source| RangeDispatchProperty::Time { source }),
         _ => None,
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum CompassTarget {
+    Spawn,
+}
+
+impl CompassTarget {
+    fn parse(value: &str) -> Option<Self> {
+        match value {
+            "spawn" => Some(Self::Spawn),
+            _ => None,
+        }
+    }
+
+    fn value(self, ctx: IconResolveContext<'_>) -> f32 {
+        let Some(compass) = ctx.compass_context else {
+            return 0.0;
+        };
+        match self {
+            Self::Spawn => compass
+                .spawn
+                .filter(|target| target.dimension == compass.level_dimension)
+                .and_then(|target| compass_rotation_to_target(compass, target.pos))
+                .unwrap_or(0.0),
+        }
     }
 }
 
@@ -726,6 +775,9 @@ pub(super) struct IconResolveContext<'a> {
     /// Vanilla `Time.get`: world clock values. `None` means this native call
     /// site has no `ClientLevel` context, so the property returns `0.0`.
     pub time_context: Option<ItemModelTimeContext>,
+    /// Vanilla `CompassAngle.get`: owner pose, level dimension, and known
+    /// compass targets available to the GUI/HUD icon resolver.
+    pub compass_context: Option<ItemModelCompassContext<'a>>,
     pub default_max_stack_size_for_item: Option<&'a dyn Fn(i32) -> i32>,
     /// `minecraft:trim_material` registry keys by holder id (the dynamic
     /// registry, projected from `bbb-world` at the call site).
@@ -847,6 +899,22 @@ fn overworld_sun_angle(day_time: i64) -> f32 {
 
 fn moon_phase_index(day_time: i64) -> i64 {
     day_time.rem_euclid(24_000 * 8) / 24_000
+}
+
+fn compass_rotation_to_target(
+    compass: ItemModelCompassContext<'_>,
+    target_pos: [i32; 3],
+) -> Option<f32> {
+    let target_x = f64::from(target_pos[0]) + 0.5;
+    let target_z = f64::from(target_pos[2]) + 0.5;
+    let dx = target_x - compass.owner_position[0];
+    let dz = target_z - compass.owner_position[2];
+    if dx * dx + dz * dz < 1.0e-5 {
+        return None;
+    }
+    let angle_to_target = (dz.atan2(dx) / (std::f64::consts::PI * 2.0)) as f32;
+    let owner_y_rotation = (compass.owner_y_rot_degrees / 360.0).rem_euclid(1.0);
+    Some((0.5 - (owner_y_rotation - 0.25 - angle_to_target)).rem_euclid(1.0))
 }
 
 impl ItemIconModel {
@@ -1088,9 +1156,9 @@ pub(super) fn item_icon_model_ref_for_definition(
                     fallback: Box::new(fallback),
                 }
             } else {
-                // Context-needing numeric properties (compass/time) still
-                // collapse to the fallback (or first entry) since their value
-                // needs ambient state not available to the GUI icon resolver.
+                // Stateful needle wobble / random-spin branches still collapse
+                // to the fallback (or first entry) until the icon resolver owns
+                // that mutable vanilla state.
                 fallback
                     .as_deref()
                     .or_else(|| entries.first().map(|entry| entry.model.as_ref()))

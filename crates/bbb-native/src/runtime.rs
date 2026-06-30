@@ -4004,6 +4004,22 @@ fn hud_item_icon_for_stack(
         .map(|time| crate::item_runtime::ItemModelTimeContext {
             day_time: time.day_time,
         });
+    let compass_spawn = world.local_player().default_spawn.as_ref().map(|spawn| {
+        crate::item_runtime::ItemModelCompassTarget {
+            dimension: spawn.dimension.as_str(),
+            pos: [spawn.pos.x, spawn.pos.y, spawn.pos.z],
+        }
+    });
+    let compass_context = context_dimension.and_then(|level_dimension| {
+        world
+            .local_player_pose()
+            .map(|pose| crate::item_runtime::ItemModelCompassContext {
+                level_dimension,
+                owner_position: [pose.position.x, pose.position.y, pose.position.z],
+                owner_y_rot_degrees: pose.y_rot,
+                spawn: compass_spawn,
+            })
+    });
     // Vanilla `Cooldown.get` uses `getCooldownPercent(itemStack, 0.0F)` for
     // item-model range dispatch. The HUD overlay below still uses render
     // partial tick.
@@ -4030,6 +4046,7 @@ fn hud_item_icon_for_stack(
         context_entity_type,
         context_dimension,
         time_context,
+        compass_context,
     )?;
     Some(HudItemIcon {
         layers: icon

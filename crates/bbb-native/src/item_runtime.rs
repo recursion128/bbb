@@ -1362,6 +1362,7 @@ impl NativeItemRuntime {
                             context_entity_type: None,
                             local_time_epoch_millis: self.local_time_epoch_millis(),
                             time_context: None,
+                            compass_context: None,
                             default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
                             trim_material_keys: None,
                         })
@@ -1635,6 +1636,7 @@ impl NativeItemRuntime {
             context_entity_type,
             context_dimension,
             None,
+            None,
         )
     }
 
@@ -1651,6 +1653,7 @@ impl NativeItemRuntime {
         context_entity_type: Option<&str>,
         context_dimension: Option<&str>,
         time_context: Option<ItemModelTimeContext>,
+        compass_context: Option<ItemModelCompassContext<'_>>,
     ) -> Option<ItemAtlasIcon> {
         self.icon_for_stack_with_model_context(
             stack,
@@ -1664,6 +1667,7 @@ impl NativeItemRuntime {
             context_entity_type,
             context_dimension,
             time_context,
+            compass_context,
         )
     }
 
@@ -1693,6 +1697,7 @@ impl NativeItemRuntime {
             None,
             None,
             None,
+            None,
         )
     }
 
@@ -1709,6 +1714,7 @@ impl NativeItemRuntime {
         context_entity_type: Option<&str>,
         context_dimension: Option<&str>,
         time_context: Option<ItemModelTimeContext>,
+        compass_context: Option<ItemModelCompassContext<'_>>,
     ) -> Option<ItemAtlasIcon> {
         let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
         let item_model_id = item_model_id_for_stack(item_id, Some(&stack.component_patch))?;
@@ -1727,6 +1733,7 @@ impl NativeItemRuntime {
             context_entity_type,
             context_dimension,
             time_context,
+            compass_context,
         )
     }
 
@@ -1743,6 +1750,7 @@ impl NativeItemRuntime {
             ItemModelUseContext::inactive(),
             BlockModelDisplayContext::Gui,
             0.0,
+            None,
             None,
             None,
             None,
@@ -1767,6 +1775,7 @@ impl NativeItemRuntime {
         context_entity_type: Option<&str>,
         context_dimension: Option<&str>,
         time_context: Option<ItemModelTimeContext>,
+        compass_context: Option<ItemModelCompassContext<'_>>,
     ) -> Option<ItemAtlasIcon> {
         let default_max_damage = self
             .registry
@@ -1795,6 +1804,7 @@ impl NativeItemRuntime {
             context_entity_type,
             local_time_epoch_millis: self.local_time_epoch_millis(),
             time_context,
+            compass_context,
             default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
             trim_material_keys,
         };
@@ -1944,6 +1954,7 @@ impl NativeItemRuntime {
             context_entity_type: parent_context.context_entity_type,
             local_time_epoch_millis: parent_context.local_time_epoch_millis,
             time_context: parent_context.time_context,
+            compass_context: parent_context.compass_context,
             default_max_stack_size_for_item: parent_context.default_max_stack_size_for_item,
             trim_material_keys: parent_context.trim_material_keys,
         };
@@ -2614,6 +2625,22 @@ impl ItemModelUseContext {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct ItemModelTimeContext {
     pub(crate) day_time: i64,
+}
+
+/// Owner and level values exposed to vanilla compass item-model numeric
+/// properties.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct ItemModelCompassContext<'a> {
+    pub(crate) level_dimension: &'a str,
+    pub(crate) owner_position: [f64; 3],
+    pub(crate) owner_y_rot_degrees: f32,
+    pub(crate) spawn: Option<ItemModelCompassTarget<'a>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct ItemModelCompassTarget<'a> {
+    pub(crate) dimension: &'a str,
+    pub(crate) pos: [i32; 3],
 }
 
 /// One layer of a generated (flat) item ready for 3D extrusion: the sprite's alpha silhouette, its
