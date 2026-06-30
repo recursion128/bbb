@@ -1424,6 +1424,24 @@ impl NativeItemRuntime {
         Some(self.item_display_transforms.get(item_id)?.get(context))
     }
 
+    /// Display transform for the effective root item model on this stack. Vanilla
+    /// `ItemModelResolver.appendItemLayers` reads `DataComponents.ITEM_MODEL`
+    /// before `ModelRenderProperties.applyToLayer` selects the transform for
+    /// the current display context.
+    pub(crate) fn item_display_transform_for_stack(
+        &self,
+        stack: &ItemStackSummary,
+        context: BlockModelDisplayContext,
+    ) -> Option<BlockModelDisplayTransform> {
+        let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
+        let item_model_id = item_model_id_for_stack(item_id, Some(&stack.component_patch))?;
+        Some(
+            self.item_display_transforms
+                .get(item_model_id)?
+                .get(context),
+        )
+    }
+
     /// Generated item layers for a non-living stack consumer that still has a
     /// level-backed dynamic trim registry, such as dropped items (`GROUND`) and
     /// item frames (`FIXED`). Vanilla `TrimMaterialProperty.get` reads only the
@@ -3350,6 +3368,15 @@ mod tests {
                 }
             }"#,
         );
+        write_json(
+            &assets.join("items").join("test_combo_alt.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:item/test_sword_alt"
+                }
+            }"#,
+        );
         // An `item/handheld`-style angled third-person transform on the item's own model.
         write_json(
             &assets.join("models").join("item").join("test_sword.json"),
@@ -3364,11 +3391,36 @@ mod tests {
                 "textures": { "layer0": "minecraft:item/test_sword" }
             }"##,
         );
+        write_json(
+            &assets
+                .join("models")
+                .join("item")
+                .join("test_sword_alt.json"),
+            r##"{
+                "display": {
+                    "thirdperson_righthand": {
+                        "rotation": [10, -20, 30],
+                        "translation": [1, 8, 2],
+                        "scale": [0.4, 0.5, 0.6]
+                    }
+                },
+                "textures": { "layer0": "minecraft:item/test_sword_alt" }
+            }"##,
+        );
         write_test_rgba_png(
             &assets.join("textures").join("item").join("test_sword.png"),
             1,
             1,
             &[255, 0, 0, 255],
+        );
+        write_test_rgba_png(
+            &assets
+                .join("textures")
+                .join("item")
+                .join("test_sword_alt.png"),
+            1,
+            1,
+            &[0, 255, 0, 255],
         );
 
         let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
@@ -3387,6 +3439,40 @@ mod tests {
         // An unregistered protocol id has no retained transform (caller uses a parent-model default).
         assert_eq!(
             runtime.item_display_transform(999, BlockModelDisplayContext::ThirdPersonRightHand),
+            None
+        );
+        let stack = |component_patch| ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch,
+        };
+        assert_eq!(
+            runtime.item_display_transform_for_stack(
+                &stack(DataComponentPatchSummary::default()),
+                BlockModelDisplayContext::ThirdPersonRightHand,
+            ),
+            Some(transform)
+        );
+        let alternate = runtime
+            .item_display_transform_for_stack(
+                &stack(DataComponentPatchSummary {
+                    item_model: Some("minecraft:test_combo_alt".to_string()),
+                    ..DataComponentPatchSummary::default()
+                }),
+                BlockModelDisplayContext::ThirdPersonRightHand,
+            )
+            .unwrap();
+        assert_eq!(alternate.rotation, [10.0, -20.0, 30.0]);
+        assert_eq!(alternate.translation, [1.0 / 16.0, 8.0 / 16.0, 2.0 / 16.0]);
+        assert_eq!(alternate.scale, [0.4, 0.5, 0.6]);
+        assert_eq!(
+            runtime.item_display_transform_for_stack(
+                &stack(DataComponentPatchSummary {
+                    removed_type_ids: vec![10],
+                    ..DataComponentPatchSummary::default()
+                }),
+                BlockModelDisplayContext::ThirdPersonRightHand,
+            ),
             None
         );
 

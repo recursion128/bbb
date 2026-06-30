@@ -2031,13 +2031,15 @@ When an agent does any of the following, update this file in the same slice:
         generated item lies flat on `item/generated`'s `[0,3,1]/16` scale `0.55`,
         merging into the same two atlas draws.
       - per-item display transforms retained: `NativeItemRuntime` now keeps each
-        item's resolved model `BlockModelDisplayTransforms` (from the first
-        cuboid model, shared across an item's conditional variants) keyed by
-        resource id, exposed as `item_display_transform(protocol_id, context)`.
+        resolved model `BlockModelDisplayTransforms` (from the first cuboid
+        model, shared across an item's conditional variants) keyed by resource
+        id. Stack consumers use the effective `DataComponents.ITEM_MODEL` root
+        before selecting the display context, so patched item-model roots carry
+        their own retained transforms and removed roots produce no transform.
         Native `display_matrix` builds the vanilla `ItemTransform.apply` matrix
         (`T(t)·Rxyz·S·T(-0.5)`, translation already in world units) from any
-        context; held items use `thirdperson_righthand`, frames use `fixed`, with
-        the parent-model default as the no-model fallback.
+        context; held items use third-person contexts, frames use `fixed`, and
+        no-model paths keep the parent-model default fallback.
       - third consumer DONE (item frames): every item-frame / glow-item-frame
         entity renders as the 3D wooden border plus the framed item (vanilla
         `ItemFrameRenderer`), replacing the placeholder bounds box (now
@@ -5787,6 +5789,13 @@ When an agent does any of the following, update this file in the same slice:
     id 10 yields no item layers. The prototype item id remains the source for
     default `max_damage` / `max_stack_size` context values. Tests pin default,
     alternate, and removed behavior through texture UV selection.
+  - Retained item display transforms are read from the same effective
+    `DataComponents.ITEM_MODEL` root before applying the current display
+    context, matching `ItemModelResolver.appendItemLayers` feeding
+    `ModelRenderProperties.applyToLayer`. Dropped-item `GROUND`, item-frame
+    `FIXED`, owner-backed held-item contexts, and HUD GUI block-item icons all
+    query stack-aware transforms. Tests pin the default item root, a patched
+    alternate root, and removed component id 10 returning no retained transform.
   - The context-free properties are projected from the item stack with vanilla
     math:
     - `minecraft:damage` — `Damage.get` (`damage / max_damage` normalized, or

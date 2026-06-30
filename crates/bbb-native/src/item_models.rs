@@ -303,7 +303,7 @@ pub(crate) fn dropped_item_models(
         // items that define one); falls back to the vanilla `block/block` or `item/generated` default.
         let ground = |fallback| {
             item_runtime
-                .item_display_transform(item_id, BlockModelDisplayContext::Ground)
+                .item_display_transform_for_stack(&state.stack, BlockModelDisplayContext::Ground)
                 .unwrap_or(fallback)
         };
 
@@ -1214,7 +1214,7 @@ fn bake_item_stack_at_transform(
     let Some(item_id) = stack.item_id else {
         return;
     };
-    let retained = item_runtime.item_display_transform(item_id, context);
+    let retained = item_runtime.item_display_transform_for_stack(stack, context);
 
     // Block path.
     if let Some(resource_id) = item_runtime.item_resource_id(item_id) {

@@ -174,7 +174,7 @@ pub(crate) fn item_frame_models(
         };
 
         let fixed = item_runtime
-            .item_display_transform(item_id, BlockModelDisplayContext::Fixed)
+            .item_display_transform_for_stack(stack, BlockModelDisplayContext::Fixed)
             .unwrap_or_default();
         let item_depth = item_frame_item_depth(state.invisible);
         let item_transform = base

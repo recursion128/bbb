@@ -1775,7 +1775,7 @@ fn block_item_3d_model(
         return None;
     }
     let gui = item_runtime
-        .item_display_transform(item_id, bbb_pack::BlockModelDisplayContext::Gui)
+        .item_display_transform_for_stack(item, bbb_pack::BlockModelDisplayContext::Gui)
         .unwrap_or_default();
     Some(HudBlockItemModel {
         quads,

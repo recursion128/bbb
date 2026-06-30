@@ -752,6 +752,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     generated layers pass `ground`, item-frame generated layers pass `fixed`,
     and owner-backed third-person held generated layers pass their hand
     display context. Tests pin texture selection across those contexts.
+  - [x] Retained display transforms now follow the effective
+    `DataComponents.ITEM_MODEL` root, matching vanilla
+    `ItemModelResolver.appendItemLayers` before
+    `ModelRenderProperties.applyToLayer`: dropped-item `GROUND`, item-frame
+    `FIXED`, owner-backed held contexts, and the HUD GUI 3D block-item path
+    query stack-aware transforms. Tests pin default, patched alternate root,
+    and removed item-model component behavior.
 - HUD / inventory：
   - vanilla font / count / durability / cooldown / tooltip / screen depth behavior。
   - flat/generated item 与 3D block item 在 GUI pass 中的精确排序。
