@@ -92,10 +92,11 @@ use super::textured::{
     ravager_textured_layer_passes, render_boat_water_mask_submission,
     render_breeze_wind_scroll_model, render_camel_saddle_layer,
     render_charged_creeper_energy_swirl, render_custom_head_skull_layer,
-    render_donkey_textured_layers, render_end_crystal_beam, render_end_crystal_textured_layers,
-    render_ender_dragon_beam, render_ender_dragon_death_rays, render_equine_body_armor_layer,
-    render_equine_saddle_layer, render_guardian_beam, render_horse_textured_layers,
-    render_llama_decor_layer, render_nautilus_body_armor_layer, render_nautilus_saddle_layer,
+    render_custom_head_skull_layer_with_root_transform, render_donkey_textured_layers,
+    render_end_crystal_beam, render_end_crystal_textured_layers, render_ender_dragon_beam,
+    render_ender_dragon_death_rays, render_equine_body_armor_layer, render_equine_saddle_layer,
+    render_guardian_beam, render_horse_textured_layers, render_llama_decor_layer,
+    render_nautilus_body_armor_layer, render_nautilus_saddle_layer,
     render_no_overlay_scrolled_textured_layers, render_pig_saddle_layer, render_player_cape_layer,
     render_player_extra_ears_layer, render_player_parrot_on_shoulder_layer,
     render_player_spin_attack_effect_layer, render_player_textured_layers,
@@ -343,6 +344,14 @@ pub(in crate::entity_models) trait EntityModelSink {
     fn worn_humanoid_armor(&mut self, _instance: &EntityModelInstance) {}
 
     fn custom_head_skull_layer(&mut self, _instance: &EntityModelInstance) {}
+
+    fn custom_head_skull_layer_with_root_transform(
+        &mut self,
+        instance: &EntityModelInstance,
+        _root_transform: Mat4,
+    ) {
+        self.custom_head_skull_layer(instance);
+    }
 
     fn wings_layer(&mut self, _instance: &EntityModelInstance) {}
 
@@ -811,6 +820,20 @@ impl EntityModelSink for TexturedSink<'_> {
         );
     }
 
+    fn custom_head_skull_layer_with_root_transform(
+        &mut self,
+        instance: &EntityModelInstance,
+        root_transform: Mat4,
+    ) {
+        render_custom_head_skull_layer_with_root_transform(
+            self.meshes,
+            *instance,
+            root_transform,
+            self.atlas,
+            self.dynamic_player_skin_atlas,
+        );
+    }
+
     fn wings_layer(&mut self, instance: &EntityModelInstance) {
         render_wings_layer(
             self.meshes,
@@ -1258,15 +1281,17 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
         } if instance.render_state.invisible => {
             let passes = illager_textured_layer_passes(family);
             for index in 0..instance.render_state.illusioner_clone_offsets.len() {
+                let root_transform = illusioner_model_root_transform(
+                    *instance,
+                    illusioner_clone_offset(instance, index),
+                );
                 sink.model(
                     IllagerModel::new(instance, family),
-                    illusioner_model_root_transform(
-                        *instance,
-                        illusioner_clone_offset(instance, index),
-                    ),
+                    root_transform,
                     instance,
                     &passes,
                 );
+                sink.custom_head_skull_layer_with_root_transform(instance, root_transform);
             }
         }
         EntityModelKind::Illager { family } => sink.model(
@@ -1795,6 +1820,9 @@ pub(in crate::entity_models) fn dispatch_vanilla_entity_layers<S: EntityModelSin
         EntityModelKind::Giant => {
             sink.worn_humanoid_armor(instance);
         }
+        EntityModelKind::Illager {
+            family: IllagerModelFamily::Illusioner,
+        } if instance.render_state.invisible => {}
         EntityModelKind::Illager { .. }
         | EntityModelKind::WanderingTrader
         | EntityModelKind::CopperGolem { .. } => {

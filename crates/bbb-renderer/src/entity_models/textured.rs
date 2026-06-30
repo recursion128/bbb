@@ -8,7 +8,7 @@ use super::dispatch::{
     dispatch_invisible_living_ungated_layers, dispatch_uniform_entity_model,
     dispatch_vanilla_entity_layers, TexturedSink,
 };
-use super::held_item::custom_head_skull_transform;
+use super::held_item::{custom_head_skull_transform, custom_head_skull_transform_with_root};
 use super::model::{EntityModel, ModelPart};
 #[cfg(test)]
 use super::model_layers::PLAYER_WIDE_STEVE_TEXTURE_REF;
@@ -3016,10 +3016,51 @@ pub(in crate::entity_models) fn render_custom_head_skull_layer(
     atlas: &EntityModelTextureAtlasLayout,
     dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
 ) {
-    let Some(skull) = instance.render_state.custom_head_skull else {
+    if instance.render_state.custom_head_skull.is_none() {
+        return;
+    }
+    let Some(transform) = custom_head_skull_transform(&instance) else {
         return;
     };
-    let Some(transform) = custom_head_skull_transform(&instance) else {
+    render_custom_head_skull_layer_at_transform(
+        meshes,
+        instance,
+        transform,
+        atlas,
+        dynamic_player_skin_atlas,
+    );
+}
+
+pub(in crate::entity_models) fn render_custom_head_skull_layer_with_root_transform(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    root_transform: Mat4,
+    atlas: &EntityModelTextureAtlasLayout,
+    dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
+) {
+    if instance.render_state.custom_head_skull.is_none() {
+        return;
+    }
+    let Some(transform) = custom_head_skull_transform_with_root(&instance, root_transform) else {
+        return;
+    };
+    render_custom_head_skull_layer_at_transform(
+        meshes,
+        instance,
+        transform,
+        atlas,
+        dynamic_player_skin_atlas,
+    );
+}
+
+fn render_custom_head_skull_layer_at_transform(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    transform: Mat4,
+    atlas: &EntityModelTextureAtlasLayout,
+    dynamic_player_skin_atlas: Option<&EntityDynamicPlayerSkinAtlasLayout>,
+) {
+    let Some(skull) = instance.render_state.custom_head_skull else {
         return;
     };
     match skull {

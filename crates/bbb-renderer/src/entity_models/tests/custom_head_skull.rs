@@ -1,5 +1,6 @@
 use super::super::textured::EntityModelTexturedMeshes;
 use super::*;
+use crate::entity_models::colored::illusioner_model_root_transform;
 use crate::player_skin::DynamicPlayerSkinImage;
 
 fn atlas_with(texture: EntityModelTextureRef) -> EntityModelTextureAtlasLayout {
@@ -23,6 +24,10 @@ fn atlas_with_many(textures: &[EntityModelTextureRef]) -> EntityModelTextureAtla
 
 fn expected_skull_transform(instance: &EntityModelInstance) -> Mat4 {
     super::super::held_item::custom_head_skull_transform(instance).unwrap()
+}
+
+fn expected_skull_transform_with_root(instance: &EntityModelInstance, root: Mat4) -> Mat4 {
+    super::super::held_item::custom_head_skull_transform_with_root(instance, root).unwrap()
 }
 
 fn expected_skull_submit_sequence(instance: &EntityModelInstance) -> u32 {
@@ -224,6 +229,73 @@ fn custom_head_static_skull_submission_survives_missing_texture_atlas_entry() {
         .all(|vertex| vertex.overlay != [0.0, 10.0]));
     assert!(meshes.translucent.vertices.is_empty());
     assert!(meshes.eyes.vertices.is_empty());
+}
+
+#[test]
+fn invisible_illusioner_custom_head_skull_submits_for_each_clone() {
+    let atlas = atlas_with_many(&[ILLUSIONER_TEXTURE_REF, SKELETON_TEXTURE_REF]);
+    let offsets = [
+        [1.25, 0.0, -0.75],
+        [-1.0, 1.0, 0.5],
+        [0.5, 0.0, 1.0],
+        [-1.5, 0.0, -1.25],
+    ];
+    let instance =
+        EntityModelInstance::illager(68, [4.0, 64.0, -2.0], 30.0, IllagerModelFamily::Illusioner)
+            .with_invisible(true)
+            .with_age_in_ticks(8.0)
+            .with_light_coords((6_u32 << 4) | (10_u32 << 20))
+            .with_custom_head_skull(Some(EntityCustomHeadSkull::Skeleton))
+            .with_illusioner_clone_offsets(offsets);
+    let meshes = entity_model_textured_meshes(&[instance], &atlas);
+
+    assert_eq!(meshes.submissions.len(), 8);
+    assert_eq!(meshes.cutout.vertices.len(), 240 * 4);
+    assert_eq!(meshes.cutout_z_offset.vertices.len(), 24 * 4);
+    assert!(meshes.translucent.vertices.is_empty());
+    for index in 0..4 {
+        let root = illusioner_model_root_transform(
+            instance,
+            expected_illusioner_clone_offset(instance, index),
+        );
+        let body = meshes.submissions[index * 2];
+        assert_eq!(body.render_type, EntityModelLayerRenderType::EntityCutout);
+        assert_eq!(body.texture, ILLUSIONER_TEXTURE_REF);
+        assert_eq!(body.transform, root);
+        assert_eq!((body.order, body.submit_sequence), (0, 0));
+        assert_eq!(body.light, instance.render_state.shader_light());
+        assert_eq!(body.overlay, instance.render_state.overlay_coords());
+
+        let skull = meshes.submissions[index * 2 + 1];
+        assert_eq!(
+            skull.render_type,
+            EntityModelLayerRenderType::EntityCutoutZOffset
+        );
+        assert_eq!(skull.texture, SKELETON_TEXTURE_REF);
+        assert_eq!(
+            skull.transform,
+            expected_skull_transform_with_root(&instance, root)
+        );
+        assert_eq!((skull.order, skull.submit_sequence), (0, 1));
+        assert_eq!(skull.light, instance.render_state.shader_light());
+        assert_eq!(skull.overlay, [0.0, 10.0]);
+    }
+    assert!(!meshes
+        .submissions
+        .iter()
+        .any(|submit| submit.texture == SKELETON_TEXTURE_REF
+            && submit.transform == expected_skull_transform(&instance)));
+}
+
+fn expected_illusioner_clone_offset(instance: EntityModelInstance, index: usize) -> [f32; 3] {
+    let offset = instance.render_state.illusioner_clone_offsets[index];
+    let i = index as f32;
+    let age = instance.render_state.age_in_ticks;
+    [
+        offset[0] + (i + age * 0.5).cos() * 0.025,
+        offset[1] + (i + age * 0.75).cos() * 0.0125,
+        offset[2] + (i + age * 0.7).cos() * 0.025,
+    ]
 }
 
 #[test]

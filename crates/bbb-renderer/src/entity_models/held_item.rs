@@ -284,6 +284,14 @@ pub(in crate::entity_models) fn custom_head_skull_transform(
     Some(custom_head_skull_layer_transform(root, head, transforms))
 }
 
+pub(in crate::entity_models) fn custom_head_skull_transform_with_root(
+    instance: &EntityModelInstance,
+    root: Mat4,
+) -> Option<Mat4> {
+    let (_, head, transforms) = custom_head_item_base_transform(instance)?;
+    Some(custom_head_skull_layer_transform(root, head, transforms))
+}
+
 fn custom_head_item_layer_transform(
     root: Mat4,
     head: Mat4,

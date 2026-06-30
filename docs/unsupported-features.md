@@ -3559,9 +3559,10 @@ When an agent does any of the following, update this file in the same slice:
       now follow `IllusionerRenderer.submit`, rendering four `entityCutout`
       body submissions with `illusionOffsets` plus age jitter while bypassing
       the ordinary hidden/force-transparent/outline-only invisible body
-      branches. Renderer state extraction for dynamic arm visibility and
-      custom-head / held-item layer projection across illusioner clones remain
-      unsupported. Spellcasting,
+      branches, and the `CustomHeadLayer` skull branch now submits once per
+      clone with the same root transform. Renderer state extraction for dynamic
+      arm visibility and held-item layer projection across illusioner clones
+      remain unsupported. Spellcasting,
       crossbow hold/charge, illusioner bow aim, evoker/vindicator celebrating,
       vindicator empty/armed attacking, and riding sit arm/leg poses are implemented.
     - armor stand entities as renderer-owned vanilla 26.1

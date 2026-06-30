@@ -545,8 +545,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     living setup rotation 之前追加 offset + age jitter，并且覆盖
     `LivingEntityRenderer.isBodyVisible` 的普通 hidden / force-transparent /
     outline-only 分支，四个 body submission 保留 `entityCutout`、illusioner
-    texture、tint、transform、light、overlay、order / submit_sequence。custom-head /
-    held-item layer 随 clone 复制仍列为后续 item/layer presentation。
+    texture、tint、transform、light、overlay、order / submit_sequence。layer 随
+    clone 复制由后续 item/layer presentation slice 逐步收口。
+  - [x] illusioner invisible custom-head clone layer：`CustomHeadLayer` skull branch
+    现在复用同一组 invisible illusioner clone root transform，在每个 clone 的
+    base body 后提交一次 skull layer，保留 vanilla `entityCutoutZOffset`、skull
+    texture、no-overlay、light、transform、order / submit_sequence；held-item layer
+    随 clone 复制仍列为后续 item presentation。
   - attack / crossbow / spell / celebrate / riding 其他组合冲突。
   - [x] main-hand spear STAB held-item layer transform：player STAB arm lunge
     之后，held item transform 追加 vanilla
