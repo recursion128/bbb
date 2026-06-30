@@ -856,9 +856,9 @@ pub struct AttackSwingAnimationState {
     /// Vanilla `LivingEntity.swingTime`: the integer tick counter, `-1` for the tick
     /// just after `swing()` before the first `updateSwingTime`.
     pub swing_time: i32,
-    /// Vanilla `LivingEntity.getCurrentSwingDuration()` for this swing. bbb records
-    /// the current held item default at trigger time; potion-based speed modifiers
-    /// and item swaps during an in-flight swing are still deferred.
+    /// Vanilla `LivingEntity.getCurrentSwingDuration()` for this swing. The value is
+    /// refreshed when the active hand item or relevant mob effects change, matching
+    /// the runtime duration `updateSwingTime` observes.
     #[serde(default = "default_attack_swing_duration")]
     pub duration: i32,
     /// Vanilla `LivingEntity.attackAnim`: `swingTime / duration`, the current-tick value.
@@ -5002,6 +5002,19 @@ impl EntityClientAnimationState {
             state.swinging = true;
             state.duration = duration;
             state.off_hand = off_hand;
+        }
+    }
+
+    pub(crate) fn active_swing_off_hand(&self) -> Option<bool> {
+        self.attack_swing
+            .as_ref()
+            .filter(|state| state.swinging)
+            .map(|state| state.off_hand)
+    }
+
+    pub(crate) fn refresh_swing_duration(&mut self, duration: i32) {
+        if let Some(swing) = self.attack_swing.as_mut().filter(|state| state.swinging) {
+            swing.duration = duration.max(1);
         }
     }
 

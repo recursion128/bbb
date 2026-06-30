@@ -654,7 +654,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     items and removed / `WHACK` overrides on default spear stacks).
   - [x] dig-speed / mining-fatigue modifiers apply to entity attack swing duration
     (`MobEffectUtil.hasDigSpeed` HASTE / CONDUIT_POWER priority, else MINING_FATIGUE).
-  - remaining per-item swing duration edge cases：item swaps during an in-flight swing.
+  - [x] runtime item/effect changes during an in-flight swing refresh active
+    `SwingAnimation.duration` from the current swinging-arm stack and mob effects.
   - left/right-hand transform 差异。
 - HUD / inventory：
   - vanilla font / count / durability / cooldown / tooltip / screen depth behavior。

@@ -126,6 +126,7 @@ impl WorldStore {
             return false;
         };
         self.update_active_mob_effect_count();
+        self.refresh_entity_active_swing_duration(entity_id);
         true
     }
 
@@ -149,7 +150,9 @@ impl WorldStore {
             return false;
         };
         self.update_active_mob_effect_count();
-        if !removed {
+        if removed {
+            self.refresh_entity_active_swing_duration(packet.entity_id);
+        } else {
             self.counters.remove_mob_effects_ignored += 1;
         }
         removed

@@ -1436,8 +1436,9 @@ When an agent does any of the following, update this file in the same slice:
     or `WHACK` patches on spear stacks fall back away from the prototype STAB. Dig-speed /
     mining-fatigue duration modifiers now follow vanilla `LivingEntity.getCurrentSwingDuration` too:
     HASTE / CONDUIT_POWER take priority and reduce the duration by the max amplifier + 1, otherwise
-    MINING_FATIGUE increases it by `(amplifier + 1) * 2`. Runtime item swaps during an in-flight swing
-    remain deferred.
+    MINING_FATIGUE increases it by `(amplifier + 1) * 2`. Runtime item/effect changes during an
+    in-flight swing now refresh the active duration from the current swinging-arm stack and mob effects,
+    matching `updateSwingTime` re-reading `getCurrentSwingDuration()`.
     The `STAB` swing type IS implemented for the
     player: a remote player whose current attack-arm item is one of the seven spears
     (`wooden`/`stone`/`copper`/`iron`/`golden`/`diamond`/`netherite_spear`, whose item prototype sets

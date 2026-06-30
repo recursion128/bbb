@@ -2400,6 +2400,23 @@ impl EntityStore {
         Some(())
     }
 
+    pub(crate) fn active_swing_off_hand(&self, id: i32) -> Option<bool> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        animations.animations.active_swing_off_hand()
+    }
+
+    pub(crate) fn refresh_client_animation_swing_duration(
+        &mut self,
+        id: i32,
+        duration: i32,
+    ) -> Option<()> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let mut animations = self.ecs.get::<&mut EntityClientAnimations>(entity).ok()?;
+        animations.animations.refresh_swing_duration(duration);
+        Some(())
+    }
+
     /// Gathers the world AABBs the per-entity `in_water` map is built from, for the
     /// entity types whose client-tick animation reads `isInWater()`
     /// ([`entity_animation_uses_in_water`]). Each tuple is `(entity_id, aabb_min,

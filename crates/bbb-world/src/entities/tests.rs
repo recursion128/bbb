@@ -18,14 +18,15 @@ use bbb_protocol::packets::{
     PlayerInfoAction as ProtocolPlayerInfoAction, PlayerInfoEntry as ProtocolPlayerInfoEntry,
     PlayerInfoUpdate as ProtocolPlayerInfoUpdate, PlayerTeamMethod as ProtocolPlayerTeamMethod,
     PlayerTeamParameters as ProtocolPlayerTeamParameters, RemoveEntities as ProtocolRemoveEntities,
-    RotateHead as ProtocolRotateHead, SetEntityData as ProtocolSetEntityData,
-    SetEntityLink as ProtocolSetEntityLink, SetEntityMotion as ProtocolSetEntityMotion,
-    SetEquipment as ProtocolSetEquipment, SetPassengers as ProtocolSetPassengers,
-    SetPlayerInventory as ProtocolSetPlayerInventory, SetPlayerTeam as ProtocolSetPlayerTeam,
-    SwingAnimationSummary, SwingAnimationTypeSummary, TakeItemEntity as ProtocolTakeItemEntity,
-    TeamCollisionRule as ProtocolTeamCollisionRule, TeamVisibility as ProtocolTeamVisibility,
-    TeleportEntity as ProtocolTeleportEntity, UpdateAttributes as ProtocolUpdateAttributes,
-    UpdateMobEffect, Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_X,
+    RemoveMobEffect as ProtocolRemoveMobEffect, RotateHead as ProtocolRotateHead,
+    SetEntityData as ProtocolSetEntityData, SetEntityLink as ProtocolSetEntityLink,
+    SetEntityMotion as ProtocolSetEntityMotion, SetEquipment as ProtocolSetEquipment,
+    SetPassengers as ProtocolSetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
+    SetPlayerTeam as ProtocolSetPlayerTeam, SwingAnimationSummary, SwingAnimationTypeSummary,
+    TakeItemEntity as ProtocolTakeItemEntity, TeamCollisionRule as ProtocolTeamCollisionRule,
+    TeamVisibility as ProtocolTeamVisibility, TeleportEntity as ProtocolTeleportEntity,
+    UpdateAttributes as ProtocolUpdateAttributes, UpdateMobEffect, Vec3d as ProtocolVec3d,
+    PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_X,
 };
 
 #[test]
@@ -3904,6 +3905,97 @@ fn entity_model_sources_apply_mob_effect_swing_duration_modifiers() {
     assert!(store.apply_entity_animation(ProtocolEntityAnimation { id: 56, action: 0 }));
     store.advance_entity_client_animations(7);
     assert!((attack(&store, 56, 1.0) - 6.0 / 9.0).abs() < 1e-6);
+}
+
+#[test]
+fn entity_model_sources_refresh_in_flight_swing_duration_from_runtime_state_changes() {
+    const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 145;
+    const PLAIN_ITEM_ID: i32 = 41;
+    const SPEAR_ITEM_ID: i32 = 42;
+    const VANILLA_MOB_EFFECT_HASTE_ID: i32 = 2;
+
+    let attack = |store: &WorldStore, entity_id: i32, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == entity_id)
+            .unwrap()
+            .attack_anim
+    };
+    let item = |item_id| ItemStackSummary {
+        item_id: Some(item_id),
+        count: 1,
+        component_patch: DataComponentPatchSummary::default(),
+    };
+    let equip = |entity_id: i32, item_id: i32| ProtocolSetEquipment {
+        entity_id,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::MainHand,
+            item: item(item_id),
+        }],
+    };
+    let effect = |entity_id: i32, amplifier: i32| UpdateMobEffect {
+        entity_id,
+        effect_id: VANILLA_MOB_EFFECT_HASTE_ID,
+        amplifier,
+        duration_ticks: 200,
+        flags: MobEffectFlags::default(),
+    };
+
+    let mut store = WorldStore::new();
+    store.set_default_item_swing_animation_durations(BTreeMap::from([(SPEAR_ITEM_ID, 13)]));
+
+    // `LivingEntity.updateSwingTime` re-reads `getCurrentSwingDuration()` every tick,
+    // so swapping to a longer current hand item keeps the in-flight swing alive.
+    store.apply_add_entity(protocol_add_entity_with_type(
+        57,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    assert!(store.apply_set_equipment(equip(57, PLAIN_ITEM_ID)));
+    assert!(store.apply_entity_animation(ProtocolEntityAnimation { id: 57, action: 0 }));
+    store.advance_entity_client_animations(3);
+    assert!(store.apply_set_equipment(equip(57, SPEAR_ITEM_ID)));
+    store.advance_entity_client_animations(4);
+    assert!((attack(&store, 57, 1.0) - 6.0 / 13.0).abs() < 1e-6);
+
+    // Swapping back to the default 6-tick item shortens the same swing and reaches reset.
+    store.apply_add_entity(protocol_add_entity_with_type(
+        58,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    assert!(store.apply_set_equipment(equip(58, SPEAR_ITEM_ID)));
+    assert!(store.apply_entity_animation(ProtocolEntityAnimation { id: 58, action: 0 }));
+    store.advance_entity_client_animations(3);
+    assert!(store.apply_set_equipment(equip(58, PLAIN_ITEM_ID)));
+    store.advance_entity_client_animations(4);
+    assert_eq!(attack(&store, 58, 1.0), 0.0);
+
+    // Runtime effect updates and removals also affect the current duration source.
+    store.apply_add_entity(protocol_add_entity_with_type(
+        59,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    assert!(store.apply_set_equipment(equip(59, SPEAR_ITEM_ID)));
+    assert!(store.apply_entity_animation(ProtocolEntityAnimation { id: 59, action: 0 }));
+    store.advance_entity_client_animations(3);
+    assert!(store.apply_update_mob_effect(effect(59, 1)));
+    store.advance_entity_client_animations(4);
+    assert!((attack(&store, 59, 1.0) - 6.0 / 11.0).abs() < 1e-6);
+
+    store.apply_add_entity(protocol_add_entity_with_type(
+        60,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    assert!(store.apply_set_equipment(equip(60, SPEAR_ITEM_ID)));
+    assert!(store.apply_update_mob_effect(effect(60, 1)));
+    assert!(store.apply_entity_animation(ProtocolEntityAnimation { id: 60, action: 0 }));
+    store.advance_entity_client_animations(3);
+    assert!(store.apply_remove_mob_effect(ProtocolRemoveMobEffect {
+        entity_id: 60,
+        effect_id: VANILLA_MOB_EFFECT_HASTE_ID,
+    }));
+    store.advance_entity_client_animations(4);
+    assert!((attack(&store, 60, 1.0) - 6.0 / 13.0).abs() < 1e-6);
 }
 
 #[test]

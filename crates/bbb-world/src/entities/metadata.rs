@@ -118,6 +118,7 @@ impl WorldStore {
             return false;
         };
         self.counters.entity_equipment_updates_applied += 1;
+        self.refresh_entity_active_swing_duration(packet.entity_id);
         true
     }
 
