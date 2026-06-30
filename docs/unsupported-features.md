@@ -991,18 +991,21 @@ When an agent does any of the following, update this file in the same slice:
     shaped sky dynamic uniform before draw, and `STAR_ANGLE` is carried through
     a DynamicTransforms-style model matrix matching vanilla's
     `Y(-90deg) * X(starAngle)` pose stack instead of being baked into the
-    static stars vertex buffer. Celestial sun/moon
-    rendering now also mirrors vanilla `RenderPipelines.CELESTIAL` /
-    `core/position_tex` more closely: the vertex buffer is position+uv, texture
-    alpha discard stays in the shader, and rain brightness is carried through
-    `ColorModulator = vec4(1, 1, 1, rainBrightness)` instead of per-vertex alpha.
+    static stars vertex buffer. Celestial sun/moon rendering now also mirrors
+    vanilla `RenderPipelines.CELESTIAL` / `core/position_tex` more closely: sun
+    and moon use separate static unit-quad vertex buffers, texture alpha discard
+    stays in the shader, rain brightness is carried through `ColorModulator =
+    vec4(1, 1, 1, rainBrightness)` instead of per-vertex alpha, and
+    `SUN_ANGLE` / `MOON_ANGLE` plus the vanilla translate/scale are carried
+    through per-body DynamicTransforms-style model matrices instead of being
+    baked into the vertices.
     End sky now also mirrors vanilla `RenderPipelines.END_SKY` /
     `core/position_tex_color` more closely: the vertex buffer remains
     position+uv+color, the shader applies texture * vertexColor, alpha==0
     discard, and `ColorModulator = vec4(1, 1, 1, 1)` through the same sky dynamic
     uniform before draw. Full model-matrix DynamicTransforms expression for
-    sky-disc/celestial/end-sky remains ordinary P1 render-state work, not a P0
-    pipeline blocker.
+    sky-disc/end-sky remains ordinary P1 render-state work, not a P0 pipeline
+    blocker.
     Basic
     cloud mesh presentation now consumes these visibility ends with vanilla
     default `CLOUD_COLOR` / `CLOUD_HEIGHT` and now loads vanilla

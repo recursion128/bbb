@@ -188,9 +188,13 @@ impl Renderer {
                     pipeline_switches += 1;
                     pass.set_bind_group(0, &self.terrain_bind_group, &[]);
                     pass.set_bind_group(1, &celestial_atlas.bind_group, &[]);
-                    pass.set_bind_group(2, &celestials.dynamic.bind_group, &[]);
-                    pass.set_vertex_buffer(0, celestials.vertex_buffer.slice(..));
-                    pass.draw(0..celestials.vertex_count, 0..1);
+                    pass.set_bind_group(2, &celestials.sun.dynamic.bind_group, &[]);
+                    pass.set_vertex_buffer(0, celestials.sun.vertex_buffer.slice(..));
+                    pass.draw(0..celestials.sun.vertex_count, 0..1);
+                    sky_draw_calls += 1;
+                    pass.set_bind_group(2, &celestials.moon.dynamic.bind_group, &[]);
+                    pass.set_vertex_buffer(0, celestials.moon.vertex_buffer.slice(..));
+                    pass.draw(0..celestials.moon.vertex_count, 0..1);
                     sky_draw_calls += 1;
                 }
 
@@ -2399,18 +2403,30 @@ mod tests {
             .find("pass.set_bind_group(1, &celestial_atlas.bind_group, &[])")
             .map(|index| celestial + index)
             .expect("celestial atlas texture is bound");
-        let dynamic = source[atlas..]
-            .find("pass.set_bind_group(2, &celestials.dynamic.bind_group, &[])")
+        let sun_dynamic = source[atlas..]
+            .find("pass.set_bind_group(2, &celestials.sun.dynamic.bind_group, &[])")
             .map(|index| atlas + index)
-            .expect("celestial bind DynamicTransforms-style ColorModulator uniform");
-        let draw = source[dynamic..]
-            .find("pass.draw(0..celestials.vertex_count, 0..1)")
-            .map(|index| dynamic + index)
-            .expect("celestials are drawn after binding dynamic uniform");
+            .expect("sun binds DynamicTransforms-style ColorModulator uniform");
+        let sun_draw = source[sun_dynamic..]
+            .find("pass.draw(0..celestials.sun.vertex_count, 0..1)")
+            .map(|index| sun_dynamic + index)
+            .expect("sun is drawn after binding dynamic uniform");
+        let moon_dynamic = source[sun_draw..]
+            .find("pass.set_bind_group(2, &celestials.moon.dynamic.bind_group, &[])")
+            .map(|index| sun_draw + index)
+            .expect("moon binds DynamicTransforms-style ColorModulator uniform");
+        let moon_draw = source[moon_dynamic..]
+            .find("pass.draw(0..celestials.moon.vertex_count, 0..1)")
+            .map(|index| moon_dynamic + index)
+            .expect("moon is drawn after binding dynamic uniform");
 
         assert!(
-            celestial < atlas && atlas < dynamic && dynamic < draw,
-            "vanilla CELESTIAL uses core/position_tex with ColorModulator rather than per-vertex alpha"
+            celestial < atlas
+                && atlas < sun_dynamic
+                && sun_dynamic < sun_draw
+                && sun_draw < moon_dynamic
+                && moon_dynamic < moon_draw,
+            "vanilla CELESTIAL draws sun and moon with separate DynamicTransforms"
         );
     }
 

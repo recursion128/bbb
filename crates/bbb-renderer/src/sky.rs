@@ -650,6 +650,11 @@ pub(super) struct EndSkyTextureGpu {
 }
 
 pub(super) struct CelestialGpu {
+    pub(super) sun: CelestialBodyGpu,
+    pub(super) moon: CelestialBodyGpu,
+}
+
+pub(super) struct CelestialBodyGpu {
     pub(super) vertex_buffer: wgpu::Buffer,
     pub(super) vertex_count: u32,
     pub(super) dynamic: SkyDynamicGpu,
@@ -1100,26 +1105,68 @@ pub(super) fn create_celestial_gpu(
     atlas: &CelestialAtlasGpu,
 ) -> Option<CelestialGpu> {
     let environment = environment.sanitized();
-    let vertices = celestial_vertices(environment, &atlas.uvs);
-    if vertices.is_empty() {
+    let (sun_uv, moon_uv) = celestial_uvs(environment, &atlas.uvs)?;
+    let color_modulator = [1.0, 1.0, 1.0, environment.rain_brightness];
+    let sun_vertices = celestial_quad_vertices(sun_uv, CelestialUvOrientation::Sun);
+    let moon_vertices = celestial_quad_vertices(moon_uv, CelestialUvOrientation::Moon);
+
+    let sun = create_celestial_body_gpu(
+        device,
+        dynamic_bind_group_layout,
+        "bbb-celestial-sun-vertices",
+        &sun_vertices,
+        celestial_model_transform(CELESTIAL_SUN_SIZE, environment.sun_angle_radians),
+        color_modulator,
+    );
+    let moon = create_celestial_body_gpu(
+        device,
+        dynamic_bind_group_layout,
+        "bbb-celestial-moon-vertices",
+        &moon_vertices,
+        celestial_model_transform(CELESTIAL_MOON_SIZE, environment.moon_angle_radians),
+        color_modulator,
+    );
+
+    Some(CelestialGpu { sun, moon })
+}
+
+fn celestial_uvs(
+    environment: SkyEnvironment,
+    uvs: &[Option<SkyTextureUvRect>; CELESTIAL_TEXTURE_COUNT],
+) -> Option<(SkyTextureUvRect, SkyTextureUvRect)> {
+    let environment = environment.sanitized();
+    if !environment.celestials_visible() {
         return None;
     }
+    let sun_uv = uvs[CelestialTextureKind::Sun.index()]?;
+    let moon_uv = uvs[environment.moon_phase.texture_kind().index()]?;
+    Some((sun_uv, moon_uv))
+}
+
+fn create_celestial_body_gpu(
+    device: &wgpu::Device,
+    dynamic_bind_group_layout: &wgpu::BindGroupLayout,
+    label: &'static str,
+    vertices: &[SkyUvVertex],
+    model_transform: Mat4,
+    color_modulator: [f32; 4],
+) -> CelestialBodyGpu {
     let dynamic = create_sky_dynamic_gpu(
         device,
         dynamic_bind_group_layout,
-        Mat4::IDENTITY,
-        [1.0, 1.0, 1.0, environment.rain_brightness],
+        model_transform,
+        color_modulator,
     );
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("bbb-celestial-vertices"),
-        contents: bytemuck::cast_slice(&vertices),
+        label: Some(label),
+        contents: bytemuck::cast_slice(vertices),
         usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
     });
-    Some(CelestialGpu {
+    CelestialBodyGpu {
         vertex_buffer,
         vertex_count: vertices.len() as u32,
         dynamic,
-    })
+    }
 }
 
 pub(super) fn create_star_gpu(
@@ -1378,38 +1425,6 @@ fn end_sky_face_vertices(face: usize) -> [SkyTexturedVertex; 4] {
     })
 }
 
-fn celestial_vertices(
-    environment: SkyEnvironment,
-    uvs: &[Option<SkyTextureUvRect>; CELESTIAL_TEXTURE_COUNT],
-) -> Vec<SkyUvVertex> {
-    let environment = environment.sanitized();
-    if !environment.celestials_visible() {
-        return Vec::new();
-    }
-
-    let Some(sun_uv) = uvs[CelestialTextureKind::Sun.index()] else {
-        return Vec::new();
-    };
-    let Some(moon_uv) = uvs[environment.moon_phase.texture_kind().index()] else {
-        return Vec::new();
-    };
-
-    let mut vertices = Vec::with_capacity(12);
-    vertices.extend(celestial_quad_vertices(
-        CELESTIAL_SUN_SIZE,
-        environment.sun_angle_radians,
-        sun_uv,
-        CelestialUvOrientation::Sun,
-    ));
-    vertices.extend(celestial_quad_vertices(
-        CELESTIAL_MOON_SIZE,
-        environment.moon_angle_radians,
-        moon_uv,
-        CelestialUvOrientation::Moon,
-    ));
-    vertices
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum CelestialUvOrientation {
     Sun,
@@ -1417,8 +1432,6 @@ enum CelestialUvOrientation {
 }
 
 fn celestial_quad_vertices(
-    size: f32,
-    angle_radians: f32,
     uv_rect: SkyTextureUvRect,
     orientation: CelestialUvOrientation,
 ) -> [SkyUvVertex; 6] {
@@ -1443,19 +1456,17 @@ fn celestial_quad_vertices(
         ],
     };
     let quad: [SkyUvVertex; 4] = std::array::from_fn(|index| SkyUvVertex {
-        position: celestial_position(base_positions[index], size, angle_radians),
+        position: base_positions[index],
         uv: uvs[index],
     });
     [quad[0], quad[1], quad[2], quad[0], quad[2], quad[3]]
 }
 
-fn celestial_position(position: [f32; 3], size: f32, angle_radians: f32) -> [f32; 3] {
-    let local = [
-        position[0] * size,
-        CELESTIAL_HEIGHT + position[1],
-        position[2] * size,
-    ];
-    rotate_y(rotate_x(local, angle_radians), -std::f32::consts::FRAC_PI_2)
+fn celestial_model_transform(size: f32, angle_radians: f32) -> Mat4 {
+    Mat4::from_rotation_y(-std::f32::consts::FRAC_PI_2)
+        * Mat4::from_rotation_x(angle_radians)
+        * Mat4::from_translation(Vec3::new(0.0, CELESTIAL_HEIGHT, 0.0))
+        * Mat4::from_scale(Vec3::new(size, 1.0, size))
 }
 
 fn star_vertices(environment: SkyEnvironment) -> Vec<SkyPositionVertex> {
@@ -1570,6 +1581,7 @@ fn rotate_x([x, y, z]: [f32; 3], radians: f32) -> [f32; 3] {
     [x, y * cos - z * sin, y * sin + z * cos]
 }
 
+#[cfg(test)]
 fn rotate_y([x, y, z]: [f32; 3], radians: f32) -> [f32; 3] {
     let sin = radians.sin();
     let cos = radians.cos();
@@ -2121,12 +2133,33 @@ mod tests {
             .with_sunrise_sunset([0.0, 0.0, 0.0, 0.0], 0.0)
             .with_celestial_state(0.0, 0.5, SkyMoonPhase::FullMoon);
 
-        let vertices = celestial_vertices(environment, &uvs);
+        let (sun_uv, _) = celestial_uvs(environment, &uvs).unwrap();
+        let vertices = celestial_quad_vertices(sun_uv, CelestialUvOrientation::Sun);
+        let transform =
+            celestial_model_transform(CELESTIAL_SUN_SIZE, environment.sun_angle_radians);
 
-        assert_eq!(vertices.len(), 12);
-        assert_close3(vertices[0].position, [30.0, 100.0, -30.0]);
-        assert_close3(vertices[1].position, [30.0, 100.0, 30.0]);
-        assert_close3(vertices[2].position, [-30.0, 100.0, 30.0]);
+        assert_eq!(vertices.len(), 6);
+        assert_close3(vertices[0].position, [-1.0, 0.0, -1.0]);
+        assert_close3(vertices[1].position, [1.0, 0.0, -1.0]);
+        assert_close3(vertices[2].position, [1.0, 0.0, 1.0]);
+        assert_close3(
+            transform
+                .transform_point3(Vec3::from(vertices[0].position))
+                .to_array(),
+            [30.0, 100.0, -30.0],
+        );
+        assert_close3(
+            transform
+                .transform_point3(Vec3::from(vertices[1].position))
+                .to_array(),
+            [30.0, 100.0, 30.0],
+        );
+        assert_close3(
+            transform
+                .transform_point3(Vec3::from(vertices[2].position))
+                .to_array(),
+            [-30.0, 100.0, 30.0],
+        );
         assert_close2(vertices[0].uv, [0.0, 0.0]);
         assert_close2(vertices[1].uv, [0.25, 0.0]);
         assert_close2(vertices[2].uv, [0.25, 0.5]);
@@ -2153,15 +2186,36 @@ mod tests {
             SkyMoonPhase::WaningGibbous,
         );
 
-        let vertices = celestial_vertices(environment, &uvs);
+        let (_, moon_uv) = celestial_uvs(environment, &uvs).unwrap();
+        let vertices = celestial_quad_vertices(moon_uv, CelestialUvOrientation::Moon);
+        let transform =
+            celestial_model_transform(CELESTIAL_MOON_SIZE, environment.moon_angle_radians);
 
-        assert_eq!(vertices.len(), 12);
-        assert_close3(vertices[6].position, [20.0, 100.0, -20.0]);
-        assert_close3(vertices[7].position, [20.0, 100.0, 20.0]);
-        assert_close3(vertices[8].position, [-20.0, 100.0, 20.0]);
-        assert_close2(vertices[6].uv, [0.5, 0.5]);
-        assert_close2(vertices[7].uv, [0.25, 0.5]);
-        assert_close2(vertices[8].uv, [0.25, 0.0]);
+        assert_eq!(vertices.len(), 6);
+        assert_close3(vertices[0].position, [-1.0, 0.0, -1.0]);
+        assert_close3(vertices[1].position, [1.0, 0.0, -1.0]);
+        assert_close3(vertices[2].position, [1.0, 0.0, 1.0]);
+        assert_close3(
+            transform
+                .transform_point3(Vec3::from(vertices[0].position))
+                .to_array(),
+            [20.0, 100.0, -20.0],
+        );
+        assert_close3(
+            transform
+                .transform_point3(Vec3::from(vertices[1].position))
+                .to_array(),
+            [20.0, 100.0, 20.0],
+        );
+        assert_close3(
+            transform
+                .transform_point3(Vec3::from(vertices[2].position))
+                .to_array(),
+            [-20.0, 100.0, 20.0],
+        );
+        assert_close2(vertices[0].uv, [0.5, 0.5]);
+        assert_close2(vertices[1].uv, [0.25, 0.5]);
+        assert_close2(vertices[2].uv, [0.25, 0.0]);
     }
 
     #[test]
@@ -2169,7 +2223,7 @@ mod tests {
         let uvs = [None; CELESTIAL_TEXTURE_COUNT];
         let environment = SkyEnvironment::from_rgb([0.25, 0.5, 0.75]);
 
-        assert!(celestial_vertices(environment, &uvs).is_empty());
+        assert!(celestial_uvs(environment, &uvs).is_none());
     }
 
     #[test]
@@ -2260,22 +2314,19 @@ mod tests {
             u1: 1.0,
             v1: 1.0,
         };
-        let celestial = celestial_quad_vertices(
-            CELESTIAL_SUN_SIZE,
-            0.0,
-            uv_rect,
-            CelestialUvOrientation::Sun,
-        );
-        let normal = triangle_normal(
-            celestial[0].position,
-            celestial[1].position,
-            celestial[2].position,
-        );
+        let celestial = celestial_quad_vertices(uv_rect, CelestialUvOrientation::Sun);
+        let transform = celestial_model_transform(CELESTIAL_SUN_SIZE, 0.0);
+        let transformed = celestial.map(|vertex| {
+            transform
+                .transform_point3(Vec3::from(vertex.position))
+                .to_array()
+        });
+        let normal = triangle_normal(transformed[0], transformed[1], transformed[2]);
         let center = quad_center([
-            celestial[0].position,
-            celestial[1].position,
-            celestial[2].position,
-            celestial[5].position,
+            transformed[0],
+            transformed[1],
+            transformed[2],
+            transformed[5],
         ]);
         assert!(
             normal.dot(center) < 0.0,
