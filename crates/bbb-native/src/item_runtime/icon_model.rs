@@ -19,6 +19,7 @@ const MAX_STACK_SIZE_COMPONENT_ID: i32 = 1;
 const MAX_DAMAGE_COMPONENT_ID: i32 = 2;
 const DAMAGE_COMPONENT_ID: i32 = 3;
 const UNBREAKABLE_COMPONENT_ID: i32 = 4;
+const ITEM_MODEL_COMPONENT_ID: i32 = 10;
 const RARITY_COMPONENT_ID: i32 = 12;
 const CUSTOM_MODEL_DATA_COMPONENT_ID: i32 = 17;
 const ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID: i32 = 21;
@@ -1124,6 +1125,7 @@ fn data_component_type_id(component: &str) -> Option<i32> {
         "minecraft:max_damage" => Some(MAX_DAMAGE_COMPONENT_ID),
         "minecraft:damage" => Some(DAMAGE_COMPONENT_ID),
         "minecraft:unbreakable" => Some(UNBREAKABLE_COMPONENT_ID),
+        "minecraft:item_model" => Some(ITEM_MODEL_COMPONENT_ID),
         "minecraft:rarity" => Some(RARITY_COMPONENT_ID),
         "minecraft:custom_model_data" => Some(CUSTOM_MODEL_DATA_COMPONENT_ID),
         "minecraft:enchantment_glint_override" => Some(ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID),
@@ -1140,7 +1142,7 @@ fn data_component_type_id(component: &str) -> Option<i32> {
 fn item_default_has_component(component_id: i32, default_max_damage: Option<i32>) -> bool {
     matches!(
         component_id,
-        MAX_STACK_SIZE_COMPONENT_ID | RARITY_COMPONENT_ID
+        MAX_STACK_SIZE_COMPONENT_ID | ITEM_MODEL_COMPONENT_ID | RARITY_COMPONENT_ID
     ) || (matches!(component_id, MAX_DAMAGE_COMPONENT_ID | DAMAGE_COMPONENT_ID)
         && default_max_damage.is_some())
 }

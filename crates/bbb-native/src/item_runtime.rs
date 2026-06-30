@@ -69,6 +69,7 @@ const VANILLA_BRUSH_USE_DURATION_TICKS: i32 = 200;
 const VANILLA_SPYGLASS_USE_DURATION_TICKS: i32 = 1_200;
 const VANILLA_ENDER_EYE_USE_DURATION_TICKS: i32 = 0;
 const VANILLA_CROSSBOW_CHARGE_DURATION_TICKS: i32 = 25;
+const VANILLA_ITEM_MODEL_COMPONENT_ID: i32 = 10;
 const VANILLA_BLOCKS_ATTACKS_COMPONENT_ID: i32 = 37;
 const VANILLA_KINETIC_WEAPON_COMPONENT_ID: i32 = 39;
 const ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
@@ -1633,8 +1634,10 @@ impl NativeItemRuntime {
         context_dimension: Option<&str>,
     ) -> Option<ItemAtlasIcon> {
         let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
+        let item_model_id = item_model_id_for_stack(item_id, Some(&stack.component_patch))?;
         self.icon_for_resource_id(
             item_id,
+            item_model_id,
             stack.count,
             Some(&stack.component_patch),
             bundle_selected_item_index,
@@ -1653,6 +1656,7 @@ impl NativeItemRuntime {
         let item_id = self.registry.as_ref()?.resource_id(protocol_id)?;
         self.icon_for_resource_id(
             item_id,
+            item_id,
             1,
             None,
             None,
@@ -1669,6 +1673,7 @@ impl NativeItemRuntime {
     fn icon_for_resource_id(
         &self,
         item_id: &str,
+        item_model_id: &str,
         stack_count: i32,
         component_patch: Option<&DataComponentPatchSummary>,
         bundle_selected_item_index: Option<i32>,
@@ -1708,7 +1713,7 @@ impl NativeItemRuntime {
         };
         let layers = self
             .item_icon_models
-            .get(item_id)
+            .get(item_model_id)
             .map(|model| self.icon_layers_for_model(model, context, 0))
             .unwrap_or_else(|| self.fallback_icon_texture_layers());
         let layers = layers
@@ -1877,6 +1882,22 @@ impl NativeItemRuntime {
             tint: ItemIconTint::Static(ITEM_TINT_WHITE),
         }]
     }
+}
+
+fn item_model_id_for_stack<'a>(
+    item_id: &'a str,
+    component_patch: Option<&'a DataComponentPatchSummary>,
+) -> Option<&'a str> {
+    if component_patch.is_some_and(|patch| {
+        patch
+            .removed_type_ids
+            .contains(&VANILLA_ITEM_MODEL_COMPONENT_ID)
+    }) {
+        return None;
+    }
+    component_patch
+        .and_then(|patch| patch.item_model.as_deref())
+        .or(Some(item_id))
 }
 
 fn localized_item_name(language: &LanguageCatalog, resource_id: &str) -> String {
@@ -4872,6 +4893,62 @@ mod tests {
     }
 
     #[test]
+    fn native_item_runtime_uses_item_model_component_as_root_model() {
+        let root = unique_temp_dir("item-runtime-item-model-component");
+        write_item_model_component_fixture(&root);
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let uv = |model_id: &str| {
+            runtime
+                .textures
+                .texture_uv_rect(runtime.texture_index(&format!("minecraft:item/{model_id}")))
+                .unwrap()
+        };
+        let stack = |component_patch| ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch,
+        };
+
+        // Vanilla `Item.Properties.finalizeInitializer` defaults ITEM_MODEL to
+        // the item's own id, so an unpatched stack uses the item definition.
+        assert_eq!(
+            runtime
+                .icon_for_stack(&stack(DataComponentPatchSummary::default()))
+                .unwrap()
+                .layers[0]
+                .uv,
+            uv("model_component")
+        );
+
+        // `ItemModelResolver.appendItemLayers` reads the effective
+        // DataComponents.ITEM_MODEL value for the root item model.
+        assert_eq!(
+            runtime
+                .icon_for_stack(&stack(DataComponentPatchSummary {
+                    added_type_ids: vec![10],
+                    item_model: Some("minecraft:alternate_model_component".to_string()),
+                    ..DataComponentPatchSummary::default()
+                }))
+                .unwrap()
+                .layers[0]
+                .uv,
+            uv("alternate_model_component")
+        );
+
+        // Removing ITEM_MODEL makes ItemStack.get(ITEM_MODEL) return null; the
+        // vanilla resolver clears the output and appends no item layers.
+        assert!(runtime
+            .icon_for_stack(&stack(DataComponentPatchSummary {
+                removed_type_ids: vec![10],
+                ..DataComponentPatchSummary::default()
+            }))
+            .is_none());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn native_item_runtime_resolves_trim_material_select() {
         let root = unique_temp_dir("item-runtime-trim-material");
         write_trim_material_select_fixture(&root);
@@ -5971,6 +6048,36 @@ mod tests {
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);
         }
+    }
+
+    fn write_item_model_component_fixture(root: &Path) {
+        let assets = assets_dir(root);
+        write_item_atlases(&assets);
+        write_single_item_registry_source(root, "model_component");
+        write_json(
+            &assets.join("items").join("model_component.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:item/model_component"
+                }
+            }"#,
+        );
+        write_json(
+            &assets.join("items").join("alternate_model_component.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:item/alternate_model_component"
+                }
+            }"#,
+        );
+        write_flat_item_model_and_texture(&assets, "model_component", &[40, 120, 180, 255]);
+        write_flat_item_model_and_texture(
+            &assets,
+            "alternate_model_component",
+            &[180, 80, 40, 255],
+        );
     }
 
     fn write_trim_material_select_fixture(root: &Path) {

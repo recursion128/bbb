@@ -47,6 +47,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub item_name: Option<String>,
     #[serde(default)]
+    pub item_model: Option<String>,
+    #[serde(default)]
     pub lore: Vec<String>,
     #[serde(default)]
     pub rarity: Option<ItemRaritySummary>,
@@ -362,6 +364,9 @@ fn decode_typed_data_component_patch_summary(
             }
             9 => {
                 summary.item_name = Some(decode_component_summary_from_decoder(decoder)?);
+            }
+            10 => {
+                summary.item_model = Some(read_resource_location(decoder)?);
             }
             11 => {
                 summary.lore = decode_lore(decoder)?;
@@ -1611,6 +1616,7 @@ mod tests {
                 damage: Some(431),
                 unbreakable: true,
                 custom_name: Some("Named".to_string()),
+                item_model: Some("minecraft:diamond_sword".to_string()),
                 enchantment_glint_override: Some(true),
                 use_cooldown_ticks: Some(30),
                 use_cooldown_group: Some("minecraft:ender_pearl".to_string()),

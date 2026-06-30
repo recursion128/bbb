@@ -5744,10 +5744,12 @@ When an agent does any of the following, update this file in the same slice:
     `minecraft:block_state` property map, the `minecraft:charged_projectiles`
     item templates (`charged_projectiles_items`), and the `minecraft:trim`
     material holder reference id (`armor_trim_material_id`), and the
-    `minecraft:consumable` `consume_seconds` value (`consumable`), so the
+    `minecraft:consumable` `consume_seconds` value (`consumable`), plus the
+    `minecraft:item_model` resource id, so the
     `CustomModelDataProperty.getFloat(index)`,
     `CustomModelDataProperty.getString(index)`, `ItemBlockState.get`,
-    `Charge.get`, `TrimMaterialProperty.get`, and
+    `Charge.get`, `TrimMaterialProperty.get`,
+    `DataComponents.ITEM_MODEL`, and
     `ItemStack.getUseDuration(owner)` consumable input are preserved on the wire.
   - `bbb-native` resolves `minecraft:range_dispatch` item models with the exact
     vanilla `RangeSelectItemModel.update` selection:
@@ -5765,10 +5767,19 @@ When an agent does any of the following, update this file in the same slice:
     stack on the false branch.
   - `bbb-native` resolves `minecraft:has_component` conditions with vanilla
     `HasComponent.get`: ordinary conditions use `ItemStack.has` so prototype
-    defaults such as `minecraft:max_stack_size` and `minecraft:rarity` count as
-    present, while `ignore_default=true` uses `ItemStack.hasNonDefault` /
-    patch presence so added and removed component patches both select the true
-    branch. Tests pin texture selection for default, added, and removed cases.
+    defaults such as `minecraft:max_stack_size`, `minecraft:item_model`, and
+    `minecraft:rarity` count as present, while `ignore_default=true` uses
+    `ItemStack.hasNonDefault` / patch presence so added and removed component
+    patches both select the true branch. Tests pin texture selection for
+    default, added, and removed cases.
+  - `bbb-native` resolves the root item model from the effective
+    `DataComponents.ITEM_MODEL` value before evaluating the item-model tree:
+    unpatched stacks use the vanilla default item id initialized by
+    `Item.Properties.finalizeInitializer`, patched stacks select the overridden
+    root model like `ItemModelResolver.appendItemLayers`, and removed component
+    id 10 yields no item layers. The prototype item id remains the source for
+    default `max_damage` / `max_stack_size` context values. Tests pin default,
+    alternate, and removed behavior through texture UV selection.
   - The context-free properties are projected from the item stack with vanilla
     math:
     - `minecraft:damage` — `Damage.get` (`damage / max_damage` normalized, or

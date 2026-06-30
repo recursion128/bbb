@@ -208,6 +208,7 @@ mod tests {
                 added_type_ids: vec![1, 10],
                 removed_type_ids: Vec::new(),
                 max_stack_size: Some(64),
+                item_model: Some("minecraft:diamond_sword".to_string()),
                 ..DataComponentPatchSummary::default()
             }
         );
