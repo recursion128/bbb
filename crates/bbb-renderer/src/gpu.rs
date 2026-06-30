@@ -12,6 +12,13 @@ pub(super) const DEPTH_TARGET_USAGE: wgpu::TextureUsages = wgpu::TextureUsages::
     .union(wgpu::TextureUsages::COPY_DST);
 
 const TERRAIN_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 8] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x2, 4 => Float32x3, 5 => Float32, 6 => Float32, 7 => Sint32];
+const TERRAIN_PIPELINE_OPAQUE_BLEND: Option<wgpu::BlendState> = Some(wgpu::BlendState::REPLACE);
+const TERRAIN_PIPELINE_TRANSLUCENT_BLEND: Option<wgpu::BlendState> =
+    Some(wgpu::BlendState::ALPHA_BLENDING);
+const TERRAIN_PIPELINE_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
+const TERRAIN_PIPELINE_OPAQUE_DEPTH_WRITE_ENABLED: bool = true;
+const TERRAIN_PIPELINE_TRANSLUCENT_DEPTH_WRITE_ENABLED: bool = false;
+const TERRAIN_PIPELINE_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::LessEqual;
 const CAMERA_BIND_GROUP_VISIBILITY: wgpu::ShaderStages = wgpu::ShaderStages::VERTEX_FRAGMENT;
 
 const TERRAIN_SHADER: &str = r#"
@@ -441,8 +448,8 @@ pub(super) fn create_terrain_pipeline(
         camera_bind_group_layout,
         lightmap_bind_group_layout,
         "bbb-terrain-pipeline",
-        true,
-        Some(wgpu::BlendState::REPLACE),
+        TERRAIN_PIPELINE_OPAQUE_DEPTH_WRITE_ENABLED,
+        TERRAIN_PIPELINE_OPAQUE_BLEND,
     )
 }
 
@@ -458,8 +465,8 @@ pub(super) fn create_terrain_translucent_pipeline(
         camera_bind_group_layout,
         lightmap_bind_group_layout,
         "bbb-terrain-translucent-pipeline",
-        false,
-        Some(wgpu::BlendState::ALPHA_BLENDING),
+        TERRAIN_PIPELINE_TRANSLUCENT_DEPTH_WRITE_ENABLED,
+        TERRAIN_PIPELINE_TRANSLUCENT_BLEND,
     )
 }
 
@@ -494,7 +501,7 @@ fn create_terrain_pipeline_with_options(
             topology: wgpu::PrimitiveTopology::TriangleList,
             strip_index_format: None,
             front_face: wgpu::FrontFace::Ccw,
-            cull_mode: None,
+            cull_mode: TERRAIN_PIPELINE_CULL_MODE,
             polygon_mode: wgpu::PolygonMode::Fill,
             unclipped_depth: false,
             conservative: false,
@@ -502,7 +509,7 @@ fn create_terrain_pipeline_with_options(
         depth_stencil: Some(wgpu::DepthStencilState {
             format: DEPTH_FORMAT,
             depth_write_enabled,
-            depth_compare: wgpu::CompareFunction::LessEqual,
+            depth_compare: TERRAIN_PIPELINE_DEPTH_COMPARE,
             stencil: wgpu::StencilState::default(),
             bias: wgpu::DepthBiasState::default(),
         }),
@@ -563,6 +570,37 @@ mod tests {
             DEPTH_FORMAT.sample_type(None, None),
             Some(wgpu::TextureSampleType::Depth),
             "transparency post-chain samples MainDepth and sorting-target depth textures"
+        );
+    }
+
+    #[test]
+    fn terrain_pipeline_state_matches_vanilla_terrain_render_pipelines() {
+        assert_eq!(TERRAIN_PIPELINE_CULL_MODE, Some(wgpu::Face::Back));
+        assert!(TERRAIN_PIPELINE_OPAQUE_DEPTH_WRITE_ENABLED);
+        assert!(!TERRAIN_PIPELINE_TRANSLUCENT_DEPTH_WRITE_ENABLED);
+        assert_eq!(
+            TERRAIN_PIPELINE_DEPTH_COMPARE,
+            wgpu::CompareFunction::LessEqual
+        );
+        assert_eq!(
+            TERRAIN_PIPELINE_OPAQUE_BLEND,
+            Some(wgpu::BlendState::REPLACE)
+        );
+
+        let translucent_blend = TERRAIN_PIPELINE_TRANSLUCENT_BLEND
+            .expect("translucent terrain uses BlendFunction.TRANSLUCENT");
+        assert_eq!(
+            translucent_blend.color.src_factor,
+            wgpu::BlendFactor::SrcAlpha
+        );
+        assert_eq!(
+            translucent_blend.color.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha
+        );
+        assert_eq!(translucent_blend.alpha.src_factor, wgpu::BlendFactor::One);
+        assert_eq!(
+            translucent_blend.alpha.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha
         );
     }
 

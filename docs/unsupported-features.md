@@ -435,8 +435,10 @@ When an agent does any of the following, update this file in the same slice:
     a renderer-owned clouds color/depth target. Terrain translucent now writes a
     renderer-owned translucent color/depth target after copying main depth,
     matching vanilla `LevelRenderer.copyDepthFrom(mainTarget)` for the
-    translucent target and `RenderPipelines.TRANSLUCENT_TERRAIN` default depth
-    state plus translucent blend. Item-entity billboards, translucent
+    translucent target and `RenderPipelines.TRANSLUCENT_TERRAIN` default cull /
+    depth state plus translucent blend; solid/cutout terrain also uses the
+    vanilla terrain-pipeline default back-face cull with depth-write
+    `LESS_EQUAL`. Item-entity billboards, translucent
     item-model buckets, and folded `entityTranslucentCullItemTarget` entity
     meshes now write a renderer-owned itemEntity color/depth target after the
     same main-depth copy and during the vanilla text -> item -> block/crumbling

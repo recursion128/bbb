@@ -292,6 +292,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `DepthStencilState`；renderer 的 sky/end-sky/star/celestial pipelines
     已改为无 depth-stencil state。当前 sky disc + sunrise 仍共享本地
     triangle-list pipeline，blend/cull 和拆 pipeline 属后续 P1 细化。
+  - [x] terrain render-pipeline state：solid/cutout terrain 继续用 replace
+    blend + depth-write，translucent terrain 继续用 translucent blend +
+    no depth-write；三者现在都按 vanilla `SOLID_TERRAIN` /
+    `CUTOUT_TERRAIN` / `TRANSLUCENT_TERRAIN` builder 默认使用 back-face cull
+    和 `LESS_EQUAL` depth test。
   - per RenderType 的 blend、depth write/test、cull、sampler、mip、lightmap、
     overlay、fog、normal diffuse 组合继续拆细。
   - glint / scroll / emissive path 不应只依赖普通 entity shader fallback。
