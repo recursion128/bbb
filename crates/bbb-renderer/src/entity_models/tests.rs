@@ -305,6 +305,9 @@ fn texture_backed_blended_model_uploads_sort_by_order_then_camera_distance() {
             atlas: EntityModelTexturedDrawAtlas::Static,
             render_type: EntityModelLayerRenderType::EntityTranslucentCullItemTarget,
             surface_cull: true,
+            order: 0,
+            distance_sq: sorted_from_origin.sorted_item_entity_draws[0].distance_sq,
+            insertion_index: 1,
             index_start: 0,
             index_count: far_only.item_entity_translucent_cull.indices.len() as u32,
         }
@@ -315,9 +318,16 @@ fn texture_backed_blended_model_uploads_sort_by_order_then_camera_distance() {
             atlas: EntityModelTexturedDrawAtlas::Static,
             render_type: EntityModelLayerRenderType::EntityTranslucentCullItemTarget,
             surface_cull: true,
+            order: 0,
+            distance_sq: sorted_from_origin.sorted_item_entity_draws[1].distance_sq,
+            insertion_index: 0,
             index_start: far_only.item_entity_translucent_cull.indices.len() as u32,
             index_count: near_only.item_entity_translucent_cull.indices.len() as u32,
         }
+    );
+    assert!(
+        sorted_from_origin.sorted_item_entity_draws[0].distance_sq
+            > sorted_from_origin.sorted_item_entity_draws[1].distance_sq
     );
 
     let sorted_from_positive_x = entity_model_textured_meshes_with_dynamic_textures_for_camera(

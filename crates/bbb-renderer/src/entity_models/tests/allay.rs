@@ -292,9 +292,86 @@ fn allay_textured_mesh_uses_vanilla_geometry_and_animates() {
     assert_ne!(meshes.translucent.vertices, flying.translucent.vertices);
 }
 
+#[test]
+fn translucent_draw_plan_sorts_order_then_camera_distance_then_insertion() {
+    let (atlas, _) = build_entity_model_texture_atlas(&allay_and_breeze_texture_images()).unwrap();
+    let near_a = EntityModelInstance::allay(851, [0.0, 64.0, 2.0], 0.0);
+    let near_b = EntityModelInstance::allay(852, [0.0, 64.0, -2.0], 0.0);
+    let breeze = EntityModelInstance::breeze(853, [0.0, 64.0, 8.0], 0.0);
+    let far = EntityModelInstance::allay(854, [0.0, 64.0, 12.0], 0.0);
+
+    let meshes = entity_model_textured_meshes_with_dynamic_textures_for_camera(
+        &[near_a, near_b, breeze, far],
+        &atlas,
+        None,
+        None,
+        Some([0.0, 64.0, 0.0]),
+    );
+
+    assert_eq!(
+        meshes
+            .submissions
+            .iter()
+            .map(|submit| (submit.render_type, submit.order, submit.submit_sequence))
+            .collect::<Vec<_>>(),
+        vec![
+            (EntityModelLayerRenderType::EntityTranslucent, 0, 0),
+            (EntityModelLayerRenderType::EntityTranslucent, 0, 0),
+            (EntityModelLayerRenderType::EntityTranslucent, 0, 0),
+            (EntityModelLayerRenderType::BreezeWind, 1, 1),
+            (EntityModelLayerRenderType::EntityTranslucentEmissive, 1, 2,),
+            (EntityModelLayerRenderType::EntityTranslucent, 0, 0),
+        ],
+        "vanilla submit order stays recorded before GPU draw-plan sorting"
+    );
+
+    let draws = &meshes.sorted_translucent_draws;
+    assert_eq!(draws.len(), 5);
+    assert!(draws
+        .iter()
+        .all(|draw| draw.atlas == EntityModelTexturedDrawAtlas::Static));
+    assert_eq!(
+        draws
+            .iter()
+            .map(|draw| (draw.render_type, draw.order, draw.insertion_index))
+            .collect::<Vec<_>>(),
+        vec![
+            (EntityModelLayerRenderType::EntityTranslucent, 0, 5),
+            (EntityModelLayerRenderType::EntityTranslucent, 0, 2),
+            (EntityModelLayerRenderType::EntityTranslucent, 0, 0),
+            (EntityModelLayerRenderType::EntityTranslucent, 0, 1),
+            (
+                EntityModelLayerRenderType::EntityTranslucentEmissive,
+                1,
+                4,
+            ),
+        ],
+        "draw ranges follow SubmitNodeCollector.order first, then far-to-near distance, then stable insertion"
+    );
+    assert!(draws[0].distance_sq > draws[1].distance_sq);
+    assert!(draws[1].distance_sq > draws[2].distance_sq);
+    assert!((draws[2].distance_sq - draws[3].distance_sq).abs() < 1.0e-5);
+    assert!(
+        draws[4].distance_sq > draws[2].distance_sq,
+        "order(1) emissive overlay remains after all order(0) translucent model draws even when farther"
+    );
+}
+
 fn allay_texture_images() -> Vec<EntityModelTextureImage> {
     allay_entity_texture_refs()
         .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
+}
+
+fn allay_and_breeze_texture_images() -> Vec<EntityModelTextureImage> {
+    allay_entity_texture_refs()
+        .iter()
+        .chain(breeze_entity_texture_refs())
         .enumerate()
         .map(|(index, texture)| {
             let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();

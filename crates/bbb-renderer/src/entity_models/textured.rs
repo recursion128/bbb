@@ -178,18 +178,21 @@ enum PendingSortedTexturedTarget {
     DynamicPlayerTexture(EntityModelLayerRenderType),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum EntityModelTexturedDrawAtlas {
     Static,
     DynamicPlayerSkin,
     DynamicPlayerTexture,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct EntityModelTexturedDrawRange {
     pub(crate) atlas: EntityModelTexturedDrawAtlas,
     pub(crate) render_type: EntityModelLayerRenderType,
     pub(crate) surface_cull: bool,
+    pub(crate) order: i32,
+    pub(crate) distance_sq: f32,
+    pub(crate) insertion_index: usize,
     pub(crate) index_start: u32,
     pub(crate) index_count: u32,
 }
@@ -528,6 +531,9 @@ impl EntityModelTexturedMeshes {
                 atlas,
                 render_type,
                 surface_cull,
+                order: upload.sort_key.order,
+                distance_sq: upload.sort_key.distance_sq,
+                insertion_index: upload.sort_key.insertion_index,
                 index_start,
                 index_count,
             };

@@ -182,7 +182,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - text / item / block / crumbling / line / selection 等 feature pass 的相对顺序
     继续按 vanilla `LevelRenderer` 和 `FeatureRenderDispatcher` 拆分。
 - sorting：
-  - blended texture-backed model submit 的 camera-distance sort。
+  - [x] blended texture-backed model submit 的 draw-plan sort：main
+    translucent 与 itemEntity target 的 `EntityModelTexturedDrawRange` 现在携带
+    `order`、camera-distance、insertion index，并有测试直接验证
+    `SubmitNodeCollector.order` 优先、同 order 内远到近、等距按提交插入顺序稳定。
   - terrain translucent 与 entity translucent 的跨 target / cross bucket 顺序。
   - particles translucent order 与 itemEntity target 的交界。
 - shader / sampler state：

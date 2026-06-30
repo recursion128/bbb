@@ -361,6 +361,11 @@ When an agent does any of the following, update this file in the same slice:
     translucent surfaces use `BlendFunction.TRANSLUCENT`, all baseline surface
     paths keep depth-write `LESS_EQUAL`, and item-target translucent surfaces
     draw only through the itemEntity target helper. Vanilla
+    blended texture-backed entity-model submissions now also expose their GPU
+    draw-plan sort key (`SubmitNodeCollector.order`, camera distance, and stable
+    insertion index) on the main translucent and itemEntity target draw ranges;
+    scroll / terrain / particle cross-bucket ordering remains later P1/P2
+    transparency parity. Vanilla
     `entityCutoutZOffset` submissions now also route into dedicated static,
     dynamic-player-skin, and dynamic
     profile-texture z-offset cutout buckets, drawn through a separate main-pass
