@@ -11182,6 +11182,52 @@ fn minecart_along_track_updates_entity_from_latest_step() {
 }
 
 #[test]
+fn entity_model_sources_project_old_minecart_rail_render_points() {
+    let mut store = WorldStore::with_dimension(crate::WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store.insert_decoded_chunk(empty_test_chunk());
+    store.apply_add_entity(ProtocolAddEntity {
+        position: ProtocolVec3d {
+            x: 2.5,
+            y: 1.0,
+            z: 3.5,
+        },
+        ..protocol_add_entity_with_type(10, VANILLA_ENTITY_TYPE_MINECART_ID)
+    });
+
+    let source = store
+        .entity_model_sources_at_partial_tick(1.0)
+        .into_iter()
+        .find(|source| source.entity_id == 10)
+        .expect("minecart source");
+    assert!(!source.minecart_new_render);
+    assert_eq!(source.minecart_pos_on_rail, None);
+    assert_eq!(source.minecart_front_pos, None);
+    assert_eq!(source.minecart_back_pos, None);
+
+    let rail_id = vanilla_block_state_id(
+        "minecraft:rail",
+        [("shape", "ascending_east"), ("waterlogged", "false")],
+    );
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos { x: 2, y: 1, z: 3 },
+        block_state_id: rail_id,
+    }));
+
+    let source = store
+        .entity_model_sources_at_partial_tick(1.0)
+        .into_iter()
+        .find(|source| source.entity_id == 10)
+        .expect("minecart source");
+    assert!(!source.minecart_new_render);
+    assert_close3_f32(source.minecart_pos_on_rail.unwrap(), [2.5, 1.5625, 3.5]);
+    assert_close3_f32(source.minecart_front_pos.unwrap(), [2.8, 1.8625, 3.5]);
+    assert_close3_f32(source.minecart_back_pos.unwrap(), [2.2, 1.2625, 3.5]);
+}
+
+#[test]
 fn item_entity_stacks_filters_and_preserves_protocol_order() {
     let mut store = WorldStore::new();
 
@@ -12953,6 +12999,33 @@ fn assert_entity_vec3_close(actual: EntityVec3, expected: EntityVec3) {
         expected.z,
         actual.z
     );
+}
+
+fn assert_close3_f32(actual: [f32; 3], expected: [f32; 3]) {
+    const EPSILON: f32 = 0.000_01;
+
+    for axis in 0..3 {
+        assert!(
+            (actual[axis] - expected[axis]).abs() <= EPSILON,
+            "axis {axis}: expected {:?}, got {:?}",
+            expected,
+            actual
+        );
+    }
+}
+
+fn vanilla_block_state_id<const N: usize>(name: &str, props: [(&str, &str); N]) -> i32 {
+    crate::registries::BlockStateRegistry::vanilla_26_1()
+        .find_by_name_and_properties(name, &string_props(props))
+        .unwrap_or_else(|| panic!("vanilla 26.1 block state exists for {name}"))
+        .id
+}
+
+fn string_props<const N: usize>(entries: [(&str, &str); N]) -> BTreeMap<String, String> {
+    entries
+        .into_iter()
+        .map(|(key, value)| (key.to_string(), value.to_string()))
+        .collect()
 }
 
 fn pick_target(targets: &[EntityPickTargetState], entity_id: i32) -> &EntityPickTargetState {

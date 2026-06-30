@@ -1292,6 +1292,9 @@ impl EntityStore {
             boat_hurt_dir,
             boat_damage_time,
             minecart_new_render,
+            minecart_pos_on_rail: None,
+            minecart_front_pos: None,
+            minecart_back_pos: None,
             minecart_tnt_fuse_remaining_in_ticks: client_animations
                 .animations
                 .minecart_tnt_fuse_remaining_in_ticks(partial_ticks),

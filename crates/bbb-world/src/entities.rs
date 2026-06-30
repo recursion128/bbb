@@ -375,6 +375,67 @@ pub(crate) struct EntityModelTargetState {
     pub bounds: EntityPickBoundsState,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum MinecartRailShape {
+    NorthSouth,
+    EastWest,
+    AscendingEast,
+    AscendingWest,
+    AscendingNorth,
+    AscendingSouth,
+    SouthEast,
+    SouthWest,
+    NorthWest,
+    NorthEast,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct MinecartRailRenderState {
+    pos_on_rail: [f32; 3],
+    front_pos: [f32; 3],
+    back_pos: [f32; 3],
+}
+
+impl MinecartRailShape {
+    fn from_vanilla_name(name: &str) -> Option<Self> {
+        match name {
+            "north_south" => Some(Self::NorthSouth),
+            "east_west" => Some(Self::EastWest),
+            "ascending_east" => Some(Self::AscendingEast),
+            "ascending_west" => Some(Self::AscendingWest),
+            "ascending_north" => Some(Self::AscendingNorth),
+            "ascending_south" => Some(Self::AscendingSouth),
+            "south_east" => Some(Self::SouthEast),
+            "south_west" => Some(Self::SouthWest),
+            "north_west" => Some(Self::NorthWest),
+            "north_east" => Some(Self::NorthEast),
+            _ => None,
+        }
+    }
+
+    fn is_slope(self) -> bool {
+        matches!(
+            self,
+            Self::AscendingEast | Self::AscendingWest | Self::AscendingNorth | Self::AscendingSouth
+        )
+    }
+
+    fn exits(self) -> ([i32; 3], [i32; 3]) {
+        match self {
+            Self::NorthSouth => ([0, 0, -1], [0, 0, 1]),
+            Self::EastWest => ([-1, 0, 0], [1, 0, 0]),
+            Self::AscendingEast => ([-1, -1, 0], [1, 0, 0]),
+            Self::AscendingWest => ([-1, 0, 0], [1, -1, 0]),
+            Self::AscendingNorth => ([0, 0, -1], [0, -1, 1]),
+            Self::AscendingSouth => ([0, -1, -1], [0, 0, 1]),
+            Self::SouthEast => ([0, 0, 1], [1, 0, 0]),
+            Self::SouthWest => ([0, 0, 1], [-1, 0, 0]),
+            Self::NorthWest => ([0, 0, -1], [-1, 0, 0]),
+            Self::NorthEast => ([0, 0, -1], [1, 0, 0]),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EntityBlockModelState {
     pub name: String,
@@ -447,6 +508,18 @@ pub struct EntityModelSourceState {
     /// `NewMinecartBehavior.getCartLerpPosition` / `getCartLerp*Rot`.
     #[serde(default)]
     pub minecart_new_render: bool,
+    /// Vanilla `MinecartRenderState.posOnRail`, projected by `OldMinecartBehavior.getPos`
+    /// from the current world rail block. `None` keeps the old-render no-rail fallback.
+    #[serde(default)]
+    pub minecart_pos_on_rail: Option<[f32; 3]>,
+    /// Vanilla `MinecartRenderState.frontPos`, projected by `OldMinecartBehavior.getPosOffs(...,
+    /// 0.3F)` or falling back to `posOnRail`.
+    #[serde(default)]
+    pub minecart_front_pos: Option<[f32; 3]>,
+    /// Vanilla `MinecartRenderState.backPos`, projected by `OldMinecartBehavior.getPosOffs(...,
+    /// -0.3F)` or falling back to `posOnRail`.
+    #[serde(default)]
+    pub minecart_back_pos: Option<[f32; 3]>,
     /// Vanilla `MinecartTntRenderState.fuseRemainingInTicks`: `MinecartTNT.getFuse() - partialTick
     /// + 1.0`, or `-1.0` when the TNT minecart is not primed. Drives the TNT display block's
     /// renderer-owned scale pulse and white overlay.
@@ -1769,6 +1842,13 @@ impl WorldStore {
                     source.boat_underwater =
                         crate::fluid::world_aabb_boat_underwater(self, aabb_min, aabb_max);
                 }
+                if is_vanilla_minecart_type(source.entity_type_id) && !source.minecart_new_render {
+                    if let Some(rail) = self.old_minecart_rail_render_state(source.position) {
+                        source.minecart_pos_on_rail = Some(rail.pos_on_rail);
+                        source.minecart_front_pos = Some(rail.front_pos);
+                        source.minecart_back_pos = Some(rail.back_pos);
+                    }
+                }
                 if source.entity_type_id == VANILLA_ENTITY_TYPE_PARROT_ID {
                     // Vanilla `LevelEventHandler.playJukeboxSong` notifies nearby living entities,
                     // and `Parrot.aiStep` keeps PARTY only while its jukebox block position is within
@@ -1791,6 +1871,140 @@ impl WorldStore {
                 Some(source)
             })
             .collect()
+    }
+
+    fn old_minecart_rail_render_state(
+        &self,
+        position: EntityVec3,
+    ) -> Option<MinecartRailRenderState> {
+        let pos_on_rail = self.old_minecart_get_pos(position.x, position.y, position.z)?;
+        let front_pos = self
+            .old_minecart_get_pos_offs(position.x, position.y, position.z, 0.3)
+            .unwrap_or(pos_on_rail);
+        let back_pos = self
+            .old_minecart_get_pos_offs(position.x, position.y, position.z, -0.3)
+            .unwrap_or(pos_on_rail);
+        Some(MinecartRailRenderState {
+            pos_on_rail: vec3_f64_to_f32_array(pos_on_rail),
+            front_pos: vec3_f64_to_f32_array(front_pos),
+            back_pos: vec3_f64_to_f32_array(back_pos),
+        })
+    }
+
+    /// Vanilla `OldMinecartBehavior.getPosOffs`: sample the current rail, step
+    /// along its exit direction by `offs`, adjust the query Y for slopes, then
+    /// resolve through `getPos`.
+    fn old_minecart_get_pos_offs(
+        &self,
+        mut x: f64,
+        mut y: f64,
+        mut z: f64,
+        offs: f64,
+    ) -> Option<[f64; 3]> {
+        let xt = floor_to_i32(x);
+        let mut yt = floor_to_i32(y);
+        let zt = floor_to_i32(z);
+        if self
+            .rail_shape_at(BlockPos {
+                x: xt,
+                y: yt - 1,
+                z: zt,
+            })
+            .is_some()
+        {
+            yt -= 1;
+        }
+
+        let shape = self.rail_shape_at(BlockPos {
+            x: xt,
+            y: yt,
+            z: zt,
+        })?;
+        y = f64::from(yt);
+        if shape.is_slope() {
+            y = f64::from(yt + 1);
+        }
+        let (exit0, exit1) = shape.exits();
+        let mut x_d = f64::from(exit1[0] - exit0[0]);
+        let mut z_d = f64::from(exit1[2] - exit0[2]);
+        let dd = (x_d * x_d + z_d * z_d).sqrt();
+        x_d /= dd;
+        z_d /= dd;
+        x += x_d * offs;
+        z += z_d * offs;
+
+        if exit0[1] != 0 && floor_to_i32(x) - xt == exit0[0] && floor_to_i32(z) - zt == exit0[2] {
+            y += f64::from(exit0[1]);
+        } else if exit1[1] != 0
+            && floor_to_i32(x) - xt == exit1[0]
+            && floor_to_i32(z) - zt == exit1[2]
+        {
+            y += f64::from(exit1[1]);
+        }
+
+        self.old_minecart_get_pos(x, y, z)
+    }
+
+    /// Vanilla `OldMinecartBehavior.getPos`: project the minecart's interpolated
+    /// entity position onto the current rail segment, including the rail's
+    /// `0.0625` Y lift and slope endpoint correction.
+    fn old_minecart_get_pos(&self, mut x: f64, y: f64, mut z: f64) -> Option<[f64; 3]> {
+        let xt = floor_to_i32(x);
+        let mut yt = floor_to_i32(y);
+        let zt = floor_to_i32(z);
+        if self
+            .rail_shape_at(BlockPos {
+                x: xt,
+                y: yt - 1,
+                z: zt,
+            })
+            .is_some()
+        {
+            yt -= 1;
+        }
+
+        let shape = self.rail_shape_at(BlockPos {
+            x: xt,
+            y: yt,
+            z: zt,
+        })?;
+        let (exit0, exit1) = shape.exits();
+        let x0 = f64::from(xt) + 0.5 + f64::from(exit0[0]) * 0.5;
+        let y0 = f64::from(yt) + 0.0625 + f64::from(exit0[1]) * 0.5;
+        let z0 = f64::from(zt) + 0.5 + f64::from(exit0[2]) * 0.5;
+        let x1 = f64::from(xt) + 0.5 + f64::from(exit1[0]) * 0.5;
+        let y1 = f64::from(yt) + 0.0625 + f64::from(exit1[1]) * 0.5;
+        let z1 = f64::from(zt) + 0.5 + f64::from(exit1[2]) * 0.5;
+        let x_d = x1 - x0;
+        let y_d = (y1 - y0) * 2.0;
+        let z_d = z1 - z0;
+        let progress = if x_d == 0.0 {
+            z - f64::from(zt)
+        } else if z_d == 0.0 {
+            x - f64::from(xt)
+        } else {
+            let xx = x - x0;
+            let zz = z - z0;
+            (xx * x_d + zz * z_d) * 2.0
+        };
+
+        x = x0 + x_d * progress;
+        let mut projected_y = y0 + y_d * progress;
+        z = z0 + z_d * progress;
+        if y_d < 0.0 {
+            projected_y += 1.0;
+        } else if y_d > 0.0 {
+            projected_y += 0.5;
+        }
+        Some([x, projected_y, z])
+    }
+
+    fn rail_shape_at(&self, pos: BlockPos) -> Option<MinecartRailShape> {
+        let block = self.probe_block(pos)?;
+        if !is_vanilla_rail_block_name(block.block_name.as_deref()?) {
+            return None;
+        }
+        MinecartRailShape::from_vanilla_name(block.block_properties.get("shape")?)
     }
 
     fn cat_is_lying_on_top_of_sleeping_player(
@@ -2036,6 +2250,24 @@ fn model_target_world_aabb(target: EntityModelTargetState) -> ([f64; 3], [f64; 3
             target.position.z + f64::from(target.bounds.max[2]),
         ],
     )
+}
+
+fn is_vanilla_rail_block_name(name: &str) -> bool {
+    matches!(
+        name,
+        "minecraft:rail"
+            | "minecraft:powered_rail"
+            | "minecraft:detector_rail"
+            | "minecraft:activator_rail"
+    )
+}
+
+fn floor_to_i32(value: f64) -> i32 {
+    value.floor() as i32
+}
+
+fn vec3_f64_to_f32_array(value: [f64; 3]) -> [f32; 3] {
+    [value[0] as f32, value[1] as f32, value[2] as f32]
 }
 
 fn aabb_intersects(min: [f64; 3], max: [f64; 3], other_min: [f64; 3], other_max: [f64; 3]) -> bool {

@@ -413,7 +413,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     lie-down Z roll 后追加 `translate(0.15 * lieDownAmount, 0, 0)`；textured
     base/collar submission 共享该 transform。
 - Minecart：
-  - rail-follow `posOnRail` / `frontPos` / `backPos` 平移与坡度 pitch。
+  - [x] rail-follow `posOnRail` / `frontPos` / `backPos` 平移与坡度 pitch：
+    old-render minecart source 按 vanilla `OldMinecartBehavior.getPos` /
+    `getPosOffs(..., ±0.3F)` 从当前 rail block-state `shape` 投影三点，native
+    透传到 renderer state，renderer 在 no-new-render 分支按
+    `AbstractMinecartRenderer.oldRender` 应用 rail 平移、`backPos - frontPos`
+    yaw 和 `atan(direction.y) * 73.0` 坡度 pitch。
   - [x] NewMinecartBehavior exact weighted `renderPos` / rotation interpolation。
   - [x] display block transform / content / light baseline：
     `WorldStore::minecart_display_block_state` 解析 custom/default display block

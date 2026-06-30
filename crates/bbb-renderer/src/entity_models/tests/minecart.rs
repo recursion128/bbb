@@ -117,6 +117,35 @@ fn minecart_root_transform_matches_vanilla_old_render_without_rail() {
 }
 
 #[test]
+fn minecart_old_render_root_transform_follows_rail_points() {
+    let instance = EntityModelInstance::minecart(41, [2.5, 1.0, 3.5], 20.0)
+        .with_head_look(0.0, -10.0)
+        .with_minecart_pos_on_rail(Some([2.5, 1.5625, 3.5]))
+        .with_minecart_front_pos(Some([2.8, 1.8625, 3.5]))
+        .with_minecart_back_pos(Some([2.2, 1.2625, 3.5]));
+    let front_pos = Vec3::from_array(instance.render_state.minecart_front_pos.unwrap());
+    let back_pos = Vec3::from_array(instance.render_state.minecart_back_pos.unwrap());
+    let direction = (back_pos - front_pos).normalize();
+    let rotation = direction.z.atan2(direction.x).to_degrees();
+    let x_rot = direction.y.atan() * 73.0;
+    let expected = Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_translation(Vec3::from_array([-0.00175, 0.00175, 0.00025]))
+        * Mat4::from_translation(Vec3::new(0.0, 0.5625, 0.0))
+        * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))
+        * Mat4::from_rotation_y((180.0_f32 - rotation).to_radians())
+        * Mat4::from_rotation_z((-x_rot).to_radians())
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0));
+
+    assert_close_transform(minecart_model_root_transform(instance), expected);
+    assert_ne!(
+        minecart_model_root_transform(instance),
+        minecart_model_root_transform(
+            EntityModelInstance::minecart(41, [2.5, 1.0, 3.5], 20.0).with_head_look(0.0, -10.0)
+        )
+    );
+}
+
+#[test]
 fn minecart_new_render_root_transform_uses_vanilla_order() {
     let old_render =
         EntityModelInstance::minecart(41, [2.0, 64.0, -3.0], 45.0).with_head_look(0.0, -10.0);

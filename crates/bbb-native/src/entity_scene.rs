@@ -1370,6 +1370,9 @@ fn entity_model_instance(
         .with_minecart_hurt_dir(source.boat_hurt_dir)
         .with_minecart_damage_time(source.boat_damage_time)
         .with_minecart_new_render(source.minecart_new_render)
+        .with_minecart_pos_on_rail(source.minecart_pos_on_rail)
+        .with_minecart_front_pos(source.minecart_front_pos)
+        .with_minecart_back_pos(source.minecart_back_pos)
         .with_minecart_tnt_fuse_remaining_in_ticks(source.minecart_tnt_fuse_remaining_in_ticks)
         .with_boat_bubble_angle(source.boat_bubble_angle)
         .with_boat_underwater(source.boat_underwater)
@@ -5125,6 +5128,52 @@ mod tests {
         assert!((instance.position[2] + 2.125).abs() < 1.0e-6);
         assert!((instance.render_state.body_rot - 15.0).abs() < 1.0e-6);
         assert!((instance.render_state.head_pitch - 0.8333333).abs() < 1.0e-6);
+    }
+
+    #[test]
+    fn entity_model_instance_projects_old_minecart_rail_render_points_from_source() {
+        let source: EntityModelSourceState = serde_json::from_value(serde_json::json!({
+            "entity_id": 96,
+            "entity_type_id": VANILLA_ENTITY_TYPE_MINECART_ID,
+            "position": { "x": 2.5, "y": 1.0, "z": 3.5 },
+            "y_rot": 20.0,
+            "x_rot": -10.0,
+            "minecart_pos_on_rail": [2.5, 1.5625, 3.5],
+            "minecart_front_pos": [2.8, 1.8625, 3.5],
+            "minecart_back_pos": [2.2, 1.2625, 3.5],
+            "data_values": []
+        }))
+        .unwrap();
+
+        let instance = entity_model_instance(
+            source,
+            &WorldStore::new(),
+            None,
+            0,
+            1.0,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(
+            instance.render_state.minecart_pos_on_rail,
+            Some([2.5, 1.5625, 3.5])
+        );
+        assert_eq!(
+            instance.render_state.minecart_front_pos,
+            Some([2.8, 1.8625, 3.5])
+        );
+        assert_eq!(
+            instance.render_state.minecart_back_pos,
+            Some([2.2, 1.2625, 3.5])
+        );
     }
 
     #[test]

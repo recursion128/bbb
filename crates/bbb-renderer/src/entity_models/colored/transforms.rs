@@ -713,9 +713,10 @@ pub(in crate::entity_models) fn boat_bubble_transform(instance: EntityModelInsta
 /// per-id hover jitter, then either `newRender` (`Ry(yRot)`, `Rz(-xRot)`,
 /// `translate(0, 0.375, 0)`) for tracked new-behavior steps or the old-render no-rail fallback
 /// (`translate(0, 0.375, 0)`, `Ry(180 - yRot)`, `Rz(-xRot)`). It then applies the hurt roll and the
-/// final model flip. World projection already folds exact weighted `renderPos`
-/// interpolation into the instance position/rotation; old rail-follow position/slope
-/// remains an explicit follow-up gap.
+/// final model flip. Old-render rail state additionally prepends the vanilla
+/// `posOnRail - entity` translation and derives yaw/pitch from `backPos - frontPos`.
+/// World projection already folds exact weighted `renderPos` interpolation into the
+/// instance position/rotation for new-render carts.
 pub(in crate::entity_models) fn minecart_model_root_transform(
     instance: EntityModelInstance,
 ) -> Mat4 {
@@ -729,14 +730,45 @@ fn minecart_pre_model_transform(instance: EntityModelInstance) -> Mat4 {
             * Mat4::from_rotation_z((-instance.render_state.head_pitch).to_radians())
             * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))
     } else {
-        Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))
-            * Mat4::from_rotation_y((180.0 - instance.render_state.body_rot).to_radians())
-            * Mat4::from_rotation_z((-instance.render_state.head_pitch).to_radians())
+        minecart_old_render_transform(instance)
     };
     Mat4::from_translation(Vec3::from_array(instance.position))
         * Mat4::from_translation(jitter)
         * renderer_transform
         * Mat4::from_rotation_x(minecart_damage_roll_degrees(instance).to_radians())
+}
+
+fn minecart_old_render_transform(instance: EntityModelInstance) -> Mat4 {
+    let mut rotation = instance.render_state.body_rot;
+    let mut x_rot = instance.render_state.head_pitch;
+    let rail_transform = match (
+        instance.render_state.minecart_pos_on_rail,
+        instance.render_state.minecart_front_pos,
+        instance.render_state.minecart_back_pos,
+    ) {
+        (Some(pos_on_rail), Some(front_pos), Some(back_pos)) => {
+            let entity_pos = Vec3::from_array(instance.position);
+            let pos_on_rail = Vec3::from_array(pos_on_rail);
+            let front_pos = Vec3::from_array(front_pos);
+            let back_pos = Vec3::from_array(back_pos);
+            let direction = back_pos - front_pos;
+            if direction.length() != 0.0 {
+                let direction = direction.normalize();
+                rotation = direction.z.atan2(direction.x).to_degrees();
+                x_rot = direction.y.atan() * 73.0;
+            }
+            Mat4::from_translation(Vec3::new(
+                pos_on_rail.x - entity_pos.x,
+                (front_pos.y + back_pos.y) * 0.5 - entity_pos.y,
+                pos_on_rail.z - entity_pos.z,
+            ))
+        }
+        _ => Mat4::IDENTITY,
+    };
+    rail_transform
+        * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))
+        * Mat4::from_rotation_y((180.0 - rotation).to_radians())
+        * Mat4::from_rotation_z((-x_rot).to_radians())
 }
 
 /// Vanilla `AbstractMinecartRenderer.submit` display block transform: after jitter, old/new render,

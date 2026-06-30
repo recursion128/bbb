@@ -345,6 +345,14 @@ entity_render_state! {
     /// `MinecartStep` data, and projects the vanilla weighted `renderPos` / rotation
     /// interpolation into the instance position and body rotations.
     (with_minecart_new_render) minecart_new_render: bool = false;
+    /// Vanilla `MinecartRenderState.posOnRail`, set by old-render carts when
+    /// `OldMinecartBehavior.getPos` resolves the current rail block. `None` keeps
+    /// the no-rail fallback branch.
+    (with_minecart_pos_on_rail) minecart_pos_on_rail: Option<[f32; 3]> = None;
+    /// Vanilla `MinecartRenderState.frontPos`, from `OldMinecartBehavior.getPosOffs(..., 0.3F)`.
+    (with_minecart_front_pos) minecart_front_pos: Option<[f32; 3]> = None;
+    /// Vanilla `MinecartRenderState.backPos`, from `OldMinecartBehavior.getPosOffs(..., -0.3F)`.
+    (with_minecart_back_pos) minecart_back_pos: Option<[f32; 3]> = None;
     /// Vanilla `MinecartTntRenderState.fuseRemainingInTicks`: the extracted TNT fuse value
     /// (`MinecartTNT.getFuse() - partialTick + 1.0`) used by `TntMinecartRenderer` for the
     /// display-block scale pulse and white overlay. `-1.0` means unprimed/non-TNT.
@@ -2438,6 +2446,9 @@ mod tests {
                 minecart_hurt_dir: 1,
                 minecart_damage_time: 0.0,
                 minecart_new_render: false,
+                minecart_pos_on_rail: None,
+                minecart_front_pos: None,
+                minecart_back_pos: None,
                 minecart_tnt_fuse_remaining_in_ticks: -1.0,
                 boat_bubble_angle: 0.0,
                 boat_underwater: false,

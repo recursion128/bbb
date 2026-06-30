@@ -5306,11 +5306,14 @@ When an agent does any of the following, update this file in the same slice:
       content now also projects `MinecartTNT.handleEntityEvent(10)` into the
       renderer `fuseRemainingInTicks`, applies the final-10-tick fourth-power
       scale pulse, and carries `OverlayTexture.u(1.0F)` white-strobe overlay
-      coords through the explicit block attachment bake path. Rail-follow `posOnRail` /
-      `frontPos` / `backPos` along-track translation and slope pitch remain
-      unsupported, as do spawner animated block-entity content and minecart
-      display-block culling bbox expansion; the minecart body submission
-      light/overlay metadata remains covered
+      coords through the explicit block attachment bake path. Old-render rail-follow
+      now projects `posOnRail`, `frontPos`, and `backPos` from the current vanilla
+      rail block-state `shape`, using `OldMinecartBehavior.getPos` /
+      `getPosOffs(..., ±0.3F)`, and renderer oldRender consumes those points for
+      along-track translation, yaw from `backPos - frontPos`, and slope pitch
+      `atan(direction.y) * 73.0`. Spawner animated block-entity content and
+      minecart display-block culling bbox expansion remain unsupported; the
+      minecart body submission light/overlay metadata remains covered
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder
