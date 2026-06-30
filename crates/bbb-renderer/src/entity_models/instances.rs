@@ -484,6 +484,11 @@ entity_render_state! {
     /// `thirdPersonUseItem` item transform before submitting the held item. `None` for every entity not
     /// using a spear — only `PlayerModel` / humanoid held-item attachment consume it.
     (with_player_using_spear) player_using_spear: Option<SpearKineticWeapon> = None;
+    /// Vanilla `LivingEntityRenderState.ticksSinceKineticHitFeedback`: sampled from
+    /// `LivingEntity.getTicksSinceLastKineticHitFeedback(partialTicks)` and consumed by
+    /// `SpearAnimations.thirdPersonUseItem` to kick the held spear item backward after a kinetic hit.
+    /// Defaults to `0.0`, the no-feedback case.
+    (with_ticks_since_kinetic_hit_feedback) ticks_since_kinetic_hit_feedback: f32 = 0.0;
     /// Vanilla `AvatarRenderer.getArmPose` `SPEAR` for a non-using main-hand spear: a held spear, or a
     /// STAB-swinging spear, points the right arm along the head look with
     /// `SpearAnimations.thirdPersonHandUse`; because `ticksUsingItem` is zero, no kinetic sway is applied.
@@ -2633,6 +2638,7 @@ mod tests {
                 main_hand_holds_bow: false,
                 main_hand_swing_is_stab: false,
                 player_using_spear: None,
+                ticks_since_kinetic_hit_feedback: 0.0,
                 player_main_hand_spear_pose: false,
                 player_off_hand_spear_pose: false,
                 humanoid_mob_main_hand_spear_pose: false,

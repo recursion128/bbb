@@ -1442,9 +1442,10 @@ When an agent does any of the following, update this file in the same slice:
     using hand: native resolves the seven vanilla spear item ids to their default `KineticWeapon`
     `delayTicks` / condition durations from `Items.java`, renderer applies
     `SpearAnimations.thirdPersonHandUse` to the arm, and `ItemInHandLayer` applies
-    `SpearAnimations.thirdPersonUseItem` before submitting the held item. The current transform covers the
-    vanilla zero-hit-feedback case; `LivingEntityRenderState.ticksSinceKineticHitFeedback` is still a later
-    visual detail. The non-using held-spear `ArmPose.SPEAR` is implemented too: native projects explicit
+    `SpearAnimations.thirdPersonUseItem` before submitting the held item. The renderer now also applies
+    the vanilla `ticksSinceKineticHitFeedback` kickback translation in that held-item transform; projecting
+    the real `lastKineticHitFeedbackTime` event source into render state remains a later gameplay event
+    slice. The non-using held-spear `ArmPose.SPEAR` is implemented too: native projects explicit
     main/off-hand spear arm-pose flags for a resolved held spear (including the STAB swing case), and the
     renderer applies the same `SpearAnimations.thirdPersonHandUse` base pose with `ticksUsingItem <= 0`, so
     the arm points along the head look without kinetic sway. The off-hand `SPEAR` pose follows vanilla's

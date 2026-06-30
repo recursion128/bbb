@@ -505,8 +505,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - [x] player spear use-item kinetic sway：using-hand `ArmPose.SPEAR`
     现在按 vanilla `SpearAnimations.thirdPersonHandUse` 使用 `KineticWeapon`
     delay/condition ticks 叠加 arm raise/sway；held item layer 同步追加
-    `SpearAnimations.thirdPersonUseItem` transform。`ticksSinceKineticHitFeedback`
-    留作后续视觉 slice。
+    `SpearAnimations.thirdPersonUseItem` transform。
+  - [x] player spear use-item kinetic hit feedback：renderer 现在表达
+    `LivingEntityRenderState.ticksSinceKineticHitFeedback` 对
+    `SpearAnimations.thirdPersonUseItem` 的 held-item kickback 平移
+    `(0, -hitFeedback*0.4, +hitFeedback)`，并用 focused transform test 覆盖
+    non-zero feedback；真实 `lastKineticHitFeedbackTime` 来源投影仍作为后续
+    gameplay event slice。
   - [x] player held-spear `ArmPose.SPEAR`：非 using 的 main/off-hand spear
     现在投影为显式 spear arm-pose flags，renderer 复用
     `SpearAnimations.thirdPersonHandUse` 的 base pose（`ticksUsingItem <= 0`，

@@ -140,6 +140,7 @@ fn item_in_hand_layer_item_transform(instance: &EntityModelInstance, left_hand: 
                 instance.render_state.crossbow_charge_ticks,
                 instance.render_state.attack_anim,
                 left_hand,
+                instance.render_state.ticks_since_kinetic_hit_feedback,
             );
         }
     }
@@ -164,13 +165,14 @@ fn spear_third_person_attack_item_transform(attack_anim: f32) -> Mat4 {
 }
 
 /// Vanilla `SpearAnimations.thirdPersonUseItem` for the held-item layer. This applies after the standard
-/// hand offset and after the STAB attack item transform. The world projection does not yet expose
-/// `ticksSinceKineticHitFeedback`, so the hit-feedback translate term is currently the vanilla zero case.
+/// hand offset and after the STAB attack item transform. The first translate includes the kinetic
+/// hit-feedback kickback sampled from `LivingEntityRenderState.ticksSinceKineticHitFeedback`.
 fn spear_third_person_use_item_transform(
     kinetic_weapon: SpearKineticWeapon,
     ticks_using_item: f32,
     attack_anim: f32,
     left_hand: bool,
+    ticks_since_kinetic_hit_feedback: f32,
 ) -> Mat4 {
     if ticks_using_item == 0.0 {
         return Mat4::IDENTITY;
@@ -180,10 +182,12 @@ fn spear_third_person_use_item_transform(
     let params = kinetic_weapon.use_params(ticks_using_item);
     let invert = if left_hand { -1.0 } else { 1.0 };
     let raise_progress_modified = 1.0 - ease_out_back(1.0 - params.raise_progress);
+    let hit_feedback = spear_kinetic_hit_feedback_amount(ticks_since_kinetic_hit_feedback);
     Mat4::from_translation(Vec3::new(
         0.0,
-        0.0,
-        -kinetic_weapon.forward_movement * (raise_progress_modified - params.raise_back_progress),
+        -hit_feedback * 0.4,
+        -kinetic_weapon.forward_movement * (raise_progress_modified - params.raise_back_progress)
+            + hit_feedback,
     )) * rotate_around(
         Vec3::new(0.0, -0.03125, 0.125),
         Mat4::from_rotation_x(
@@ -200,6 +204,11 @@ fn spear_third_person_use_item_transform(
                 .to_radians(),
         ),
     )
+}
+
+fn spear_kinetic_hit_feedback_amount(ticks_since_feedback_start: f32) -> f32 {
+    0.4 * (ease_out_quart(progress(ticks_since_feedback_start, 1.0, 3.0))
+        - ease_in_out_sine(progress(ticks_since_feedback_start, 3.0, 10.0)))
 }
 
 fn rotate_around(pivot: Vec3, rotation: Mat4) -> Mat4 {
@@ -224,9 +233,17 @@ fn ease_in_out_expo(x: f32) -> f32 {
     }
 }
 
+fn ease_in_out_sine(x: f32) -> f32 {
+    -((PI * x).cos() - 1.0) / 2.0
+}
+
 fn ease_out_back(x: f32) -> f32 {
     let delta = x - 1.0;
     1.0 + 2.70158 * delta.powi(3) + 1.70158 * delta.powi(2)
+}
+
+fn ease_out_quart(x: f32) -> f32 {
+    1.0 - (1.0 - x).powi(4)
 }
 
 /// The model→world transform used by vanilla `CopperGolemModel.translateToHand` plus
@@ -1588,7 +1605,7 @@ mod tests {
             .with_crossbow_charge_ticks(60.0);
         let (arm_world, baby) = humanoid_arm_world_transform(&player, "right_arm").unwrap();
         let expected = item_in_hand_layer_base_transform(arm_world, false, baby)
-            * spear_third_person_use_item_transform(kinetic, 60.0, 0.0, false);
+            * spear_third_person_use_item_transform(kinetic, 60.0, 0.0, false, 0.0);
         let actual = humanoid_hand_attach_transform(&player, false).unwrap();
         assert_close_transform(actual, expected);
 
@@ -1603,7 +1620,7 @@ mod tests {
         let off = player.with_use_item_off_hand(true);
         let (left_world, left_baby) = humanoid_arm_world_transform(&off, "left_arm").unwrap();
         let expected_left = item_in_hand_layer_base_transform(left_world, true, left_baby)
-            * spear_third_person_use_item_transform(kinetic, 60.0, 0.0, true);
+            * spear_third_person_use_item_transform(kinetic, 60.0, 0.0, true, 0.0);
         assert_close_transform(
             humanoid_hand_attach_transform(&off, true).unwrap(),
             expected_left,
@@ -1613,6 +1630,36 @@ mod tests {
         assert_close_transform(
             humanoid_hand_attach_transform(&off, false).unwrap(),
             item_in_hand_layer_base_transform(right_world, false, right_baby),
+        );
+    }
+
+    #[test]
+    fn spear_use_item_applies_kinetic_hit_feedback_translate() {
+        let kinetic = SpearKineticWeapon {
+            delay_ticks: 12.0,
+            dismount_duration_ticks: 50.0,
+            knockback_duration_ticks: 135.0,
+            damage_duration_ticks: 225.0,
+            forward_movement: 0.38,
+        };
+        let player = player_instance(0.0)
+            .with_player_using_spear(Some(kinetic))
+            .with_crossbow_charge_ticks(60.0)
+            .with_ticks_since_kinetic_hit_feedback(2.0);
+        let (arm_world, baby) = humanoid_arm_world_transform(&player, "right_arm").unwrap();
+        let base = item_in_hand_layer_base_transform(arm_world, false, baby);
+        let feedback = spear_third_person_use_item_transform(kinetic, 60.0, 0.0, false, 2.0);
+        let expected = base * feedback;
+        let actual = humanoid_hand_attach_transform(&player, false).unwrap();
+        assert_close_transform(actual, expected);
+
+        let no_feedback =
+            base * spear_third_person_use_item_transform(kinetic, 60.0, 0.0, false, 0.0);
+        assert!(
+            (actual.transform_point3(Vec3::ZERO) - no_feedback.transform_point3(Vec3::ZERO))
+                .length()
+                > 0.01,
+            "kinetic hit feedback should visibly kick the held spear item"
         );
     }
 
@@ -1636,7 +1683,7 @@ mod tests {
         let (arm_world, baby) = humanoid_arm_world_transform(&player, "right_arm").unwrap();
         let base = item_in_hand_layer_base_transform(arm_world, false, baby);
         let attack = spear_third_person_attack_item_transform(0.1);
-        let use_item = spear_third_person_use_item_transform(kinetic, 60.0, 0.1, false);
+        let use_item = spear_third_person_use_item_transform(kinetic, 60.0, 0.1, false, 0.0);
         let expected = base * attack * use_item;
 
         let actual = humanoid_hand_attach_transform(&player, false).unwrap();
