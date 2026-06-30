@@ -3754,8 +3754,9 @@ When an agent does any of the following, update this file in the same slice:
       `BreezeWindModel` (vanilla `createWindLayer`, atlas 128×128) — the `wind_body` pivot → `wind_bottom`
       → `wind_mid` → `wind_top` shell chain, three concentric shells per tier — rendered into the
       translucent scrolling-overlay mesh with the `breeze_wind.png` reference, its U coordinate scrolled
-      by `ageInTicks · 0.02` (vanilla `RenderTypes.breezeWind`), exactly like the wind charge folds into
-      the same scroll pass. Its `setup_anim` applies the same idle (the `wind_top`/`wind_mid` LINEAR
+      by `ageInTicks · 0.02` (vanilla `RenderTypes.breezeWind`: `BlendFunction.TRANSLUCENT`,
+      default depth-write `LESS_EQUAL`, cull off), exactly like the wind charge folds into the same
+      scroll pass. Its `setup_anim` applies the same idle (the `wind_top`/`wind_mid` LINEAR
       position sways, now transcribed into `BreezeAnimation.IDLE`) plus the action one-shots' `wind_*`
       rotation/position swirls and the `JUMP`/`INHALE` `wind_body`/`wind_bottom` `SCALE` pulses (folded
       onto the reset scale, vanilla `ModelPart.offsetScale`), so the wind body moves with the base body.
@@ -4535,14 +4536,15 @@ When an agent does any of the following, update this file in the same slice:
       `windCharge.yRot = -age·16°`, so the two halves continuously counter-rotate. The whole model is now
       rendered through the scrolling `breezeWind` overlay (`WIND_CHARGE_TEXTURE_REF`) — vanilla
       `WindChargeRenderer` draws it with `RenderTypes.breezeWind(texture, xOffset(ageInTicks) % 1, 0)`, a
-      texture-matrix `OffsetTextureTransform` (`xOffset(t) = t·0.03`) over a `GL_REPEAT` texture, translucent
-      and `ALPHA_CUTOUT 0.1`. Because our textures share one atlas (no per-texture `REPEAT`), the textured
+      texture-matrix `OffsetTextureTransform` (`xOffset(t) = t·0.03`) over a `GL_REPEAT` texture,
+      `BlendFunction.TRANSLUCENT`, default depth-write `LESS_EQUAL`, cull off, and
+      `ALPHA_CUTOUT 0.1`. Because our textures share one atlas (no per-texture `REPEAT`), the textured
       sink now consumes the dispatch-owned `WindChargeModel` / `WIND_CHARGE` pass tuple and reproduces the
       scroll in the shader: the model is rendered once with the normal atlas UVs, then
       folded into a dedicated scroll mesh (`EntityModelScrollVertex`) whose per-vertex local UV carries the
       baked per-instance U offset and the texture's atlas sub-rect, and `ENTITY_MODEL_SCROLL_SHADER` does
       `atlas_uv = uv_rect_min + fract(local_uv)·uv_rect_size` (the per-fragment `fract` recreating the `REPEAT`
-      seam) with the `0.1` alpha cutout, translucent-blended and depth-writing.
+      seam) with the `0.1` alpha cutout, translucent-blended, depth-writing, and cull off.
       Vanilla `breezeWind` is lightmap-lit with `NO_CARDINAL_LIGHTING`, so the
       scroll shader now applies the submitted block/sky light through the same
       vanilla-shaped `Lightmap.getBrightness` curve used by the vanilla lightmap;

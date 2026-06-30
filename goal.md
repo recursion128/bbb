@@ -124,7 +124,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     disabled、depth-test `LESS_EQUAL`、cull off、EMISSIVE / NO_OVERLAY /
     NO_CARDINAL_LIGHTING shape，并跳过 LightTexture。
   - `armorCutoutNoCull` / `armorTranslucent`。
-  - `breezeWind` lightmap-lit scroll。
+  - [x] `breezeWind` lightmap-lit scroll：wind charge 和 BreezeWindLayer
+    提交进入独立 scroll mesh / shader，使用 vanilla
+    `BlendFunction.TRANSLUCENT`、depth-write `LESS_EQUAL`、cull off、
+    lightmap-lit、NO_OVERLAY / NO_CARDINAL_LIGHTING texture-matrix scroll；
+    更细的 cross bucket 透明排序仍归 sorting 项。
   - [x] `energySwirl` emissive additive scroll：charged creeper / wither
     overlay 提交进入独立 additive scroll mesh / shader，使用 vanilla
     `BlendFunction.ADDITIVE` (`ONE`, `ONE`)、depth-write `LESS_EQUAL`、

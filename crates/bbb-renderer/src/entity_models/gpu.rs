@@ -1221,6 +1221,11 @@ const ENTITY_MODEL_SURFACE_NO_CULL_MODE: Option<wgpu::Face> = None;
 const ENTITY_MODEL_SURFACE_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
 const ENTITY_MODEL_OUTLINE_NO_CULL_MODE: Option<wgpu::Face> = None;
 const ENTITY_MODEL_OUTLINE_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
+/// Vanilla `RenderPipelines.BREEZE_WIND`: translucent blend, default depth, and cull off.
+const ENTITY_MODEL_SCROLL_BLEND: wgpu::BlendState = wgpu::BlendState::ALPHA_BLENDING;
+const ENTITY_MODEL_SCROLL_DEPTH_WRITE_ENABLED: bool = true;
+const ENTITY_MODEL_SCROLL_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::LessEqual;
+const ENTITY_MODEL_SCROLL_CULL_MODE: Option<wgpu::Face> = None;
 
 /// The scrolling-overlay pipeline for vanilla `breezeWind` (the wind charge): translucent
 /// (`BlendFunction.TRANSLUCENT`), lightmap-lit, depth-writing, cull off.
@@ -1237,7 +1242,7 @@ pub(crate) fn create_entity_model_scroll_pipeline(
         Some(lightmap_bind_group_layout),
         "bbb-entity-model-scroll",
         ENTITY_MODEL_SCROLL_SHADER,
-        wgpu::BlendState::ALPHA_BLENDING,
+        ENTITY_MODEL_SCROLL_BLEND,
     )
 }
 
@@ -1314,8 +1319,8 @@ fn create_entity_model_scroll_pipeline_with_blend(
         label_prefix,
         shader_source,
         blend,
-        true,
-        wgpu::CompareFunction::LessEqual,
+        ENTITY_MODEL_SCROLL_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_SCROLL_DEPTH_COMPARE,
     )
 }
 
@@ -1358,7 +1363,7 @@ fn create_entity_model_scroll_pipeline_with_depth(
             topology: wgpu::PrimitiveTopology::TriangleList,
             strip_index_format: None,
             front_face: wgpu::FrontFace::Ccw,
-            cull_mode: None,
+            cull_mode: ENTITY_MODEL_SCROLL_CULL_MODE,
             polygon_mode: wgpu::PolygonMode::Fill,
             unclipped_depth: false,
             conservative: false,
@@ -2453,9 +2458,10 @@ mod tests {
         ENTITY_MODEL_GLINT_BLEND, ENTITY_MODEL_GLINT_DEPTH_COMPARE,
         ENTITY_MODEL_GLINT_DEPTH_WRITE_ENABLED, ENTITY_MODEL_OUTLINE_BLEND,
         ENTITY_MODEL_OUTLINE_CULL_MODE, ENTITY_MODEL_OUTLINE_NO_CULL_MODE,
-        ENTITY_MODEL_OUTLINE_SHADER, ENTITY_MODEL_SCROLL_EMISSIVE_SHADER,
-        ENTITY_MODEL_SURFACE_CULL_MODE, ENTITY_MODEL_SURFACE_NO_CULL_MODE,
-        ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER,
+        ENTITY_MODEL_OUTLINE_SHADER, ENTITY_MODEL_SCROLL_BLEND, ENTITY_MODEL_SCROLL_CULL_MODE,
+        ENTITY_MODEL_SCROLL_DEPTH_COMPARE, ENTITY_MODEL_SCROLL_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_SCROLL_EMISSIVE_SHADER, ENTITY_MODEL_SURFACE_CULL_MODE,
+        ENTITY_MODEL_SURFACE_NO_CULL_MODE, ENTITY_MODEL_TRANSLUCENT_EMISSIVE_SHADER,
     };
 
     #[test]
@@ -2609,6 +2615,36 @@ mod tests {
         );
         assert!(!ENTITY_MODEL_EYES_DEPTH_WRITE_ENABLED);
         assert_eq!(ENTITY_MODEL_EYES_CULL_MODE, None);
+    }
+
+    #[test]
+    fn entity_model_breeze_wind_pipeline_state_matches_vanilla_breeze_wind() {
+        assert_eq!(
+            ENTITY_MODEL_SCROLL_BLEND.color.src_factor,
+            wgpu::BlendFactor::SrcAlpha,
+            "vanilla BlendFunction.TRANSLUCENT uses SourceFactor.SRC_ALPHA for colour"
+        );
+        assert_eq!(
+            ENTITY_MODEL_SCROLL_BLEND.color.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha,
+            "vanilla BlendFunction.TRANSLUCENT uses DestFactor.ONE_MINUS_SRC_ALPHA for colour"
+        );
+        assert_eq!(
+            ENTITY_MODEL_SCROLL_BLEND.alpha.src_factor,
+            wgpu::BlendFactor::One,
+            "vanilla BlendFunction.TRANSLUCENT uses SourceFactor.ONE for alpha"
+        );
+        assert_eq!(
+            ENTITY_MODEL_SCROLL_BLEND.alpha.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha,
+            "vanilla BlendFunction.TRANSLUCENT uses DestFactor.ONE_MINUS_SRC_ALPHA for alpha"
+        );
+        assert!(ENTITY_MODEL_SCROLL_DEPTH_WRITE_ENABLED);
+        assert_eq!(
+            ENTITY_MODEL_SCROLL_DEPTH_COMPARE,
+            wgpu::CompareFunction::LessEqual
+        );
+        assert_eq!(ENTITY_MODEL_SCROLL_CULL_MODE, None);
     }
 
     #[test]
