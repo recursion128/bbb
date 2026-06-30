@@ -265,7 +265,8 @@ pub(in crate::entity_models) fn apply_humanoid_walk(
 /// 0.7) · 0.75`, `yRot += bodyYRot · 2`, `zRot += sin(t · π) · -0.4`. `head_pitch_degrees` is the head
 /// look pitch (vanilla `head.xRot`); `age_scale` is the model scale (`1.0` adult). A no-op at
 /// `attack_anim <= 0`. Runs LAST — after the walk swing / arm pose — accumulating onto their rotations
-/// and overwriting the arm anchor offsets. The per-item STAB / NONE swing types are deferred.
+/// and overwriting the arm anchor offsets. Use [`apply_humanoid_stab_attack_animation`] for the per-item
+/// STAB branch; the per-item NONE skip remains later swing-type parity.
 pub(in crate::entity_models) fn apply_humanoid_attack_animation(
     root: &mut ModelPart,
     attack_anim: f32,
@@ -835,8 +836,8 @@ pub(in crate::entity_models) fn humanoid_crouch_leg_pose(base: PartPose) -> Part
 /// yRot toward center (`yRot = ±(0.1 - attackYRot·0.6)`) and `xRot += attackYRot·1.2 - sin((1-(1-t)²)·π)
 /// ·0.4` chops them down then back. `ZombieModel.setupAnim` calls this *after* the inherited
 /// `HumanoidModel.setupAnim`, so it overrides the walk arm swing while the legs keep theirs (the held-out
-/// values are set absolutely). The body twist / arm-anchor reposition from the inherited
-/// `setupAttackAnimation` (and the per-item STAB swing-type skip) stay deferred for the zombie family.
+/// values are set absolutely). The zombie-family STAB branch bypasses this held-out rewrite and uses the
+/// inherited `SpearAnimations.thirdPersonAttackHand` lunge instead.
 pub(in crate::entity_models) fn zombie_arm_held_out_pose(
     base: PartPose,
     aggressive: bool,

@@ -467,6 +467,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     pose 强制为 `ITEM`，native 现在让主手 charged crossbow hold 压过副手
     spear / bow-use / charged-crossbow 专用 pose，renderer 测试固定最终双臂仍是
     `AnimationUtils.animateCrossbowHold`。
+  - [x] zombie-family attack-arm spear STAB：native 现在按
+    `ArmedEntityRenderState.extractArmedEntityRenderState` 为非玩家 humanoid
+    提取 attack-arm spear `SwingAnimationType.STAB`；zombie / husk / drowned /
+    zombie-villager 在 `attack_anim > 0` 时运行 inherited
+    `SpearAnimations.thirdPersonAttackHand` lunge，并匹配
+    `AnimationUtils.animateZombieArms` 的 STAB 分支只保留 `bobArms`。
   - attack / crossbow / spell / celebrate / riding 其他组合冲突。
   - [x] main-hand spear STAB held-item layer transform：player STAB arm lunge
     之后，held item transform 追加 vanilla

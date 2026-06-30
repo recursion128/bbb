@@ -261,6 +261,83 @@ fn zombie_arm_held_out_pose_swings_during_a_melee_strike() {
 }
 
 #[test]
+fn zombie_stab_swing_uses_spear_lunge_instead_of_held_out_rewrite() {
+    use std::f32::consts::PI;
+
+    // Vanilla `AbstractZombieModel.setupAnim`: `super.setupAnim` runs
+    // `HumanoidModel.setupAttackAnimation`. For `SwingAnimationType.STAB` this applies
+    // `SpearAnimations.thirdPersonAttackHand`; the subsequent `AnimationUtils.animateZombieArms` sees STAB
+    // and skips the held-out rewrite, keeping only its final `bobArms`.
+    let t = 0.1_f32;
+    let pitch = (-10.0_f32).to_radians();
+    let base =
+        EntityModelInstance::zombie(64, [0.0, 64.0, 0.0], 0.0, false).with_head_look(0.0, -10.0);
+
+    let stab_instance = base.with_attack_anim(t).with_main_hand_swing_is_stab(true);
+    let mut stab_model = ZombieModel::new(false);
+    stab_model.prepare(&stab_instance);
+
+    let body_yrot = (t.sqrt() * PI * 2.0).sin() * 0.2;
+    assert!(
+        (stab_model.root_mut().child_mut("body").pose.rotation[1] - body_yrot).abs() < 1e-6,
+        "STAB still runs the HumanoidModel attack body twist"
+    );
+
+    let progress =
+        |time: f32, start: f32, end: f32| ((time - start) / (end - start)).clamp(0.0, 1.0);
+    let in_out_sine = |x: f32| -((PI * x).cos() - 1.0) / 2.0;
+    let in_out_expo = |x: f32| {
+        if x < 0.5 {
+            if x == 0.0 {
+                0.0
+            } else {
+                2.0_f32.powf(20.0 * x - 10.0) / 2.0
+            }
+        } else if x == 1.0 {
+            1.0
+        } else {
+            (2.0 - 2.0_f32.powf(-20.0 * x + 10.0)) / 2.0
+        }
+    };
+    let spear_base_x = (-PI / 2.0 + pitch + 0.8)
+        .to_degrees()
+        .clamp(-120.0, 30.0)
+        .to_radians();
+    let stab_lunge = {
+        let prepare = in_out_sine(progress(t, 0.0, 0.05));
+        let attack = progress(t, 0.05, 0.2).powi(2);
+        let retract = in_out_expo(progress(t, 0.4, 1.0));
+        (90.0 * prepare - 120.0 * attack + 30.0 * retract).to_radians()
+    };
+    let right = stab_model.root_mut().child_mut("right_arm").pose;
+    assert!((right.offset[0] - (-body_yrot.cos() * 5.0)).abs() < 1e-6);
+    assert!((right.offset[2] - (body_yrot.sin() * 5.0)).abs() < 1e-6);
+    assert!(
+        (right.rotation[0] - (spear_base_x + stab_lunge)).abs() < 1e-6,
+        "right arm lunges from the SPEAR arm pose: {} vs {}",
+        right.rotation[0],
+        spear_base_x + stab_lunge
+    );
+    assert!(
+        (right.rotation[1] - (-0.1)).abs() < 1e-6,
+        "thirdPersonAttackHand cancels the body-yRot arm yaw addition"
+    );
+    assert!(
+        (right.rotation[2] - 0.2).abs() < 1e-6,
+        "HumanoidModel bob plus animateZombieArms STAB bob both remain"
+    );
+
+    let whack_instance = base.with_attack_anim(t);
+    let mut whack_model = ZombieModel::new(false);
+    whack_model.prepare(&whack_instance);
+    let whack_right = whack_model.root_mut().child_mut("right_arm").pose;
+    assert!(
+        (right.rotation[0] - whack_right.rotation[0]).abs() > 0.5,
+        "STAB must not fall back to the zombie held-out melee rewrite"
+    );
+}
+
+#[test]
 fn zombie_arms_held_out_and_bob_with_age() {
     // The zombie arms are held out forward (animateZombieArms), reaching well past the body's
     // ~0.28 bind depth, and the folded-in idle bob moves them with ageInTicks even while the

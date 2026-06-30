@@ -1446,12 +1446,15 @@ When an agent does any of the following, update this file in the same slice:
     main/off-hand spear arm-pose flags for a resolved held spear (including the STAB swing case), and the
     renderer applies the same `SpearAnimations.thirdPersonHandUse` base pose with `ticksUsingItem <= 0`, so
     the arm points along the head look without kinetic sway. The off-hand `SPEAR` pose follows vanilla's
-    `affectsOffhandPose` dispatch: in the non-using right-handed branch it suppresses the main-hand `ITEM`
-    and `CROSSBOW_HOLD` poses, while a main-hand spear still coexists with a plain off-hand `ITEM` pose. The
-    STAB default lives on the item prototype (not the network component patch), so it is detected by the
-    resolved item id (gated to the player kind; a datapack-overridden `SWING_ANIMATION` on a non-spear item,
-    the `NONE` swing type, and the STAB pose on non-player humanoids — which use their own arm poses — stay
-    deferred). The
+    `affectsOffhandPose` dispatch: in the non-using right-handed branch it suppresses the main-hand `ITEM`,
+    while a charged main-hand `CROSSBOW_HOLD.isTwoHanded()` first forces the off hand to `ITEM` and a
+    main-hand spear still coexists with a plain off-hand `ITEM` pose. Zombie-family STAB attack swings are
+    now implemented too: native extracts the attack-arm spear swing type for non-player humanoids, and the
+    zombie/husk/drowned/zombie-villager models run the `HumanoidModel.setupAttackAnimation` STAB lunge before
+    `AnimationUtils.animateZombieArms` keeps only its STAB `bobArms` tail. The STAB default lives on the item
+    prototype (not the network component patch), so it is detected by the resolved item id. A
+    datapack-overridden `SWING_ANIMATION` on a non-spear item, the `NONE` swing type, and non-attacking
+    non-player held-spear `ArmPose.SPEAR` stay deferred. The
     enderman (`emit_enderman_model` colored and `emit_enderman_textured_model` textured)
     uses dedicated `enderman_arm_swing_pose`/`enderman_leg_swing_pose`: `EndermanModel
     extends HumanoidModel`, so `super.setupAnim` sets the inherited arm and leg swing,
@@ -2295,12 +2298,12 @@ When an agent does any of the following, update this file in the same slice:
         the player entry above). Non-player default WHACK arm poses are also covered where vanilla
         uses model-specific branches: zombie-family `animateZombieArms`, skeleton melee,
         and vindicator empty/armed `ATTACKING`; illager riding sit pose is also covered
-        through the projected passenger state. STAB/NONE swing-type parity on non-player
-        humanoids remains separate work.
+        through the projected passenger state. Zombie-family `STAB` attack swings are covered; `NONE`
+        swing-type parity and non-player held-spear arm poses remain separate work.
       - remaining slices: held-item refinements (first-person viewmodel;
         broader non-profile dynamic texture loading; the
-        STAB swing pose on non-player humanoid models; the `NONE` swing type; the
-        attack swing on the non-player humanoid models). Item lighting
+        `NONE` swing type; non-attacking non-player held-spear arm poses; the
+        remaining attack swing details on non-player humanoid models). Item lighting
         context (GUI front-lit vs world diffuse) is now P1 GUI surface work:
         vanilla `core/item.vsh` multiplies submitted color by
         `minecraft_mix_light(Light0_Direction, Light1_Direction, Normal, Color)`,
@@ -3121,8 +3124,10 @@ When an agent does any of the following, update this file in the same slice:
       (`armDrop = -π / (isAggressive ? 1.5 : 2.25)` from the synced `Mob.isAggressive`
       flag, `yRot ∓0.1`, `zRot 0`, then the idle bob) plus the `animateZombieArms` melee
       swing over the projected `attack_anim` (`attackYRot = sin(t·π)` toward center,
-      `xRot += attackYRot·1.2 - sin((1-(1-t)²)·π)·0.4`) on both render paths (only the
-      inherited `setupAttackAnimation` body twist / arm-anchor reposition stays deferred); husk entities share that texture-backed render path through
+      `xRot += attackYRot·1.2 - sin((1-(1-t)²)·π)·0.4`) on both render paths. STAB attack-arm spear
+      swings now take the inherited `SpearAnimations.thirdPersonAttackHand` lunge and skip the held-out
+      rewrite, matching `AnimationUtils.animateZombieArms`' STAB branch; the inherited WHACK
+      `setupAttackAnimation` body twist / arm-anchor reposition remains deferred. Husk entities share that texture-backed render path through
       `HuskRenderer extends ZombieRenderer`: they reuse the zombie adult/baby body
       parts (so the husk geometry is byte-for-byte the zombie geometry) over
       `textures/entity/zombie/husk.png` / `textures/entity/zombie/husk_baby.png`,
@@ -3234,9 +3239,9 @@ When an agent does any of the following, update this file in the same slice:
       (see the piglin note);
       the zombie-arm attack swing IS implemented (the
       held-out arms, the `Mob.isAggressive` arm-raise, and the
-      `animateZombieArms` melee swing over the projected `attack_anim` — only the
-      inherited `setupAttackAnimation` body twist / arm-anchor reposition and the
-      STAB swing-type skip stay deferred for the zombie family); the drowned
+      `animateZombieArms` melee swing over the projected `attack_anim`, plus the STAB
+      attack-arm spear lunge — only the inherited WHACK `setupAttackAnimation`
+      body twist / arm-anchor reposition stays deferred for the zombie family); the drowned
       `THROW_TRIDENT` raised-arm pose and swimAmount re-pose ARE implemented (see the drowned note above);
       the zombie, husk,
       drowned, zombie-villager, piglin, piglin-brute, and zombified-piglin head

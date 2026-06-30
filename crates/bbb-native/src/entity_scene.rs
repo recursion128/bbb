@@ -1008,10 +1008,11 @@ fn entity_model_instance(
             EntityModelKind::Skeleton | EntityModelKind::SkeletonVariant { .. }
         ) && entity_main_hand_holds_bow(world, item_runtime, source.entity_id);
     let is_player = matches!(kind, EntityModelKind::Player { .. });
-    let player_main_hand_holds_spear =
-        is_player && entity_hand_holds_spear(world, item_runtime, source.entity_id, false);
-    let player_off_hand_holds_spear =
-        is_player && entity_hand_holds_spear(world, item_runtime, source.entity_id, true);
+    let main_hand_holds_spear =
+        entity_hand_holds_spear(world, item_runtime, source.entity_id, false);
+    let off_hand_holds_spear = entity_hand_holds_spear(world, item_runtime, source.entity_id, true);
+    let player_main_hand_holds_spear = is_player && main_hand_holds_spear;
+    let player_off_hand_holds_spear = is_player && off_hand_holds_spear;
     let player_main_hand_holds_charged_crossbow = is_player
         && entity_hand_holds_charged_crossbow(world, item_runtime, source.entity_id, false);
     let player_off_hand_holds_charged_crossbow = is_player
@@ -1029,13 +1030,13 @@ fn entity_model_instance(
         source.use_item_off_hand && main_hand_crossbow_hold_forces_offhand_item;
     // Vanilla `ArmedEntityRenderState.extractArmedEntityRenderState` selects the `attackArm` hand stack and
     // copies its `getSwingAnimation().type()` into the render state: a spear swing uses the `STAB`
-    // `SpearAnimations.thirdPersonAttackHand` pose instead of the default `WHACK`. Only `PlayerModel`
-    // consumes the shared attack helper here (the skeleton/zombie/illager melee models use their own arm
-    // poses), so resolve the spear just for the player kind.
+    // `SpearAnimations.thirdPersonAttackHand` pose instead of the default `WHACK`. Resolve this for all
+    // armed models: PlayerModel and the zombie family consume it in their attack poses, and ItemInHandLayer
+    // consumes it for the attack-arm item transform.
     let main_hand_swing_is_stab = if source.attack_arm_off_hand {
-        player_off_hand_holds_spear
+        off_hand_holds_spear
     } else {
-        player_main_hand_holds_spear
+        main_hand_holds_spear
     };
     // Vanilla `AvatarRenderer.getArmPose` use-item `ItemUseAnimation.SPEAR`: while the using hand holds a
     // spear, `HumanoidModel.ArmPose.SPEAR` applies `SpearAnimations.thirdPersonHandUse`, and
@@ -6225,8 +6226,7 @@ mod tests {
     fn entity_model_instances_stab_swing_needs_a_resolved_spear() {
         // The STAB swing type needs the held item resolved through the item registry to confirm a spear
         // (the STAB default lives on the item prototype, not the network patch); without an item runtime
-        // it can never resolve, so the projection defaults off and the player keeps the WHACK swing. Gated
-        // to the player kind, so a non-player entity never gets it either.
+        // it can never resolve, so the projection defaults off and the entity keeps the WHACK swing.
         let mut world = WorldStore::new();
         world.apply_add_entity(protocol_add_entity(
             240,
@@ -6304,6 +6304,24 @@ mod tests {
         assert!(
             !main_hand_attack.main_hand_swing_is_stab,
             "the main-hand plain item keeps WHACK even while the off hand holds a spear"
+        );
+
+        world.apply_add_entity(protocol_add_entity(
+            241,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            [2.0, 64.0, -9.0],
+        ));
+        assert!(world.apply_set_equipment(equip(241, EquipmentSlot::MainHand, WOODEN_SPEAR_ID,)));
+        assert!(world.apply_entity_animation(EntityAnimation { id: 241, action: 0 }));
+        let zombie_attack =
+            entity_model_instances_from_world_at_partial_tick(&world, Some(&runtime), 1.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == 241)
+                .unwrap()
+                .render_state;
+        assert!(
+            zombie_attack.main_hand_swing_is_stab,
+            "ArmedEntityRenderState extracts attack-arm STAB for non-player humanoids too"
         );
     }
 

@@ -1,6 +1,7 @@
 use super::{
-    apply_head_look, apply_humanoid_leg_swing_named, apply_zombie_arms_held_out_named,
-    drowned_outer_root, PartPose, PART_POSE_ZERO,
+    apply_head_look, apply_humanoid_leg_swing_named, apply_humanoid_spear_arm_pose,
+    apply_humanoid_stab_attack_animation, apply_humanoid_walk, apply_zombie_arms_held_out_named,
+    drowned_outer_root, humanoid_arm_bob_pose, PartPose, PART_POSE_ZERO,
 };
 use crate::entity_models::catalog::ZombieVariantModelFamily;
 use crate::entity_models::instances::EntityModelInstance;
@@ -737,9 +738,9 @@ fn zombie_villager_tree(baby: bool) -> ModelPart {
 
 /// Vanilla `ZombieModel.setupAnim` (`super.setupAnim` then `AnimationUtils.animateZombieArms`),
 /// shared by the plain zombie and every zombie variant (husk, drowned, zombie villager): look the
-/// head ([`apply_head_look`] on `head`), run the humanoid leg swing
-/// ([`apply_humanoid_leg_swing_named`]), then override the arms with the held-out `animateZombieArms`
-/// pose ([`apply_zombie_arms_held_out_named`], `isAggressive`-driven and swung by `attack_anim`).
+/// head ([`apply_head_look`] on `head`), then either run the vanilla STAB swing branch for an attack-arm
+/// spear or override the arms with the held-out `animateZombieArms` pose
+/// ([`apply_zombie_arms_held_out_named`], `isAggressive`-driven and swung by `attack_anim`).
 fn apply_zombie_family_anim(root: &mut ModelPart, instance: &EntityModelInstance) {
     let render_state = &instance.render_state;
     apply_head_look(
@@ -747,17 +748,45 @@ fn apply_zombie_family_anim(root: &mut ModelPart, instance: &EntityModelInstance
         render_state.head_yaw,
         render_state.head_pitch,
     );
-    apply_humanoid_leg_swing_named(
-        root,
-        render_state.walk_animation_pos,
-        render_state.walk_animation_speed,
-    );
-    apply_zombie_arms_held_out_named(
-        root,
-        render_state.is_aggressive,
-        render_state.attack_anim,
-        render_state.age_in_ticks,
-    );
+    if render_state.main_hand_swing_is_stab && render_state.attack_anim > 0.0 {
+        apply_humanoid_walk(
+            root,
+            render_state.walk_animation_pos,
+            render_state.walk_animation_speed,
+            render_state.age_in_ticks,
+        );
+        apply_humanoid_spear_arm_pose(
+            root,
+            render_state.head_yaw,
+            render_state.head_pitch,
+            render_state.attack_arm_off_hand,
+            render_state.swim_amount,
+        );
+        apply_humanoid_stab_attack_animation(
+            root,
+            render_state.attack_anim,
+            render_state.attack_arm_off_hand,
+            1.0,
+        );
+        // Vanilla `AnimationUtils.animateZombieArms` still runs after `super.setupAnim`, but the STAB branch
+        // skips the held-out arm rewrite and only applies `bobArms`.
+        for name in ["right_arm", "left_arm"] {
+            let arm = root.child_mut(name);
+            arm.pose = humanoid_arm_bob_pose(arm.pose, render_state.age_in_ticks);
+        }
+    } else {
+        apply_humanoid_leg_swing_named(
+            root,
+            render_state.walk_animation_pos,
+            render_state.walk_animation_speed,
+        );
+        apply_zombie_arms_held_out_named(
+            root,
+            render_state.is_aggressive,
+            render_state.attack_anim,
+            render_state.age_in_ticks,
+        );
+    }
 }
 
 /// Vanilla `DrownedModel.setupAnim` `THROW_TRIDENT` override: after the held-out zombie arms, the main

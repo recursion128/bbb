@@ -476,8 +476,8 @@ entity_render_state! {
     /// (`getItemHeldByArm(attackArm).getSwingAnimation().type()`): a spear makes
     /// `HumanoidModel.setupAttackAnimation` run `SpearAnimations.thirdPersonAttackHand` (the lunge/retract
     /// stab) instead of the default `WHACK` arm chop. `false` for every entity whose attack-arm item is not
-    /// a spear — only `PlayerModel` consumes it (the default `WHACK` covers every other case). The builder
-    /// name is historical.
+    /// a spear. PlayerModel, zombie-family models, and the standard humanoid held-item layer consume it.
+    /// The builder name is historical.
     (with_main_hand_swing_is_stab) main_hand_swing_is_stab: bool = false;
     /// Vanilla `HumanoidModel.ArmPose.SPEAR` while using a spear: `SpearAnimations.thirdPersonHandUse`
     /// poses the using arm with kinetic weapon timing, and `ItemInHandLayer` applies the matching
