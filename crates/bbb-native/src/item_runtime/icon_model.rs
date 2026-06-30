@@ -25,6 +25,7 @@ const ITEM_MODEL_COMPONENT_ID: i32 = 10;
 const RARITY_COMPONENT_ID: i32 = 12;
 const CUSTOM_MODEL_DATA_COMPONENT_ID: i32 = 17;
 const ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID: i32 = 21;
+const MAP_ID_COMPONENT_ID: i32 = 41;
 const DYED_COLOR_COMPONENT_ID: i32 = 44;
 const MAP_COLOR_COMPONENT_ID: i32 = 45;
 const POTION_CONTENTS_COMPONENT_ID: i32 = 51;
@@ -473,6 +474,7 @@ pub(super) enum ComponentSelectProperty {
     ItemModel,
     Rarity,
     EnchantmentGlintOverride,
+    MapId,
 }
 
 impl ComponentSelectProperty {
@@ -484,6 +486,7 @@ impl ComponentSelectProperty {
             "minecraft:item_model" => Some(Self::ItemModel),
             "minecraft:rarity" => Some(Self::Rarity),
             "minecraft:enchantment_glint_override" => Some(Self::EnchantmentGlintOverride),
+            "minecraft:map_id" => Some(Self::MapId),
             _ => None,
         }
     }
@@ -496,6 +499,7 @@ impl ComponentSelectProperty {
             Self::ItemModel => ITEM_MODEL_COMPONENT_ID,
             Self::Rarity => RARITY_COMPONENT_ID,
             Self::EnchantmentGlintOverride => ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID,
+            Self::MapId => MAP_ID_COMPONENT_ID,
         }
     }
 
@@ -536,6 +540,10 @@ impl ComponentSelectProperty {
                 .component_patch
                 .and_then(|patch| patch.enchantment_glint_override)
                 .map(SelectCaseValue::Bool),
+            Self::MapId => ctx
+                .component_patch
+                .and_then(|patch| patch.map_id)
+                .map(SelectCaseValue::I32),
         }
     }
 }
@@ -1376,6 +1384,7 @@ fn data_component_type_id(component: &str) -> Option<i32> {
         "minecraft:enchantment_glint_override" => Some(ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID),
         "minecraft:dyed_color" => Some(DYED_COLOR_COMPONENT_ID),
         "minecraft:map_color" => Some(MAP_COLOR_COMPONENT_ID),
+        "minecraft:map_id" => Some(MAP_ID_COMPONENT_ID),
         "minecraft:potion_contents" => Some(POTION_CONTENTS_COMPONENT_ID),
         "minecraft:lodestone_tracker" => Some(LODESTONE_TRACKER_COMPONENT_ID),
         "minecraft:firework_explosion" => Some(FIREWORK_EXPLOSION_COMPONENT_ID),

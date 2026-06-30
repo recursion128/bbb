@@ -5876,6 +5876,34 @@ mod tests {
             })
             .is_none());
 
+        // `DataComponents.MAP_ID` wraps an int (`MapId.CODEC`), so component
+        // select cases match JSON numbers and removed id 41 suppresses it.
+        assert_eq!(
+            selected(6, DataComponentPatchSummary::default()),
+            uv("component_map_id_fallback")
+        );
+        assert_eq!(
+            selected(
+                6,
+                DataComponentPatchSummary {
+                    map_id: Some(123),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_map_id_123")
+        );
+        assert_eq!(
+            selected(
+                6,
+                DataComponentPatchSummary {
+                    map_id: Some(123),
+                    removed_type_ids: vec![41],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_map_id_fallback")
+        );
+
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -6883,6 +6911,7 @@ mod tests {
                     new Item.Properties().durability(432)
                 );
                 public static final Item ITEM_MODEL_COMPONENT_SELECTOR = registerItem("item_model_component_selector");
+                public static final Item MAP_ID_COMPONENT_SELECTOR = registerItem("map_id_component_selector");
             }"#,
         );
         write_json(
@@ -7022,6 +7051,23 @@ mod tests {
                 .join("item_model_component_selector_alt_root.json"),
             item_model_component_select,
         );
+        write_json(
+            &assets.join("items").join("map_id_component_selector.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:component",
+                    "component": "minecraft:map_id",
+                    "cases": [
+                        {
+                            "when": 123,
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_map_id_123" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/component_map_id_fallback" }
+                }
+            }"#,
+        );
         for (model_id, color) in [
             ("component_rarity_common", [80, 80, 80, 255]),
             ("component_rarity_rare", [80, 180, 220, 255]),
@@ -7041,6 +7087,8 @@ mod tests {
             ("component_item_model_default", [40, 90, 180, 255]),
             ("component_item_model_alt", [180, 90, 40, 255]),
             ("component_item_model_fallback", [50, 50, 70, 255]),
+            ("component_map_id_123", [50, 120, 210, 255]),
+            ("component_map_id_fallback", [35, 50, 70, 255]),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);
         }
