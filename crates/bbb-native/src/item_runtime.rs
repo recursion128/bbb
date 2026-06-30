@@ -1446,13 +1446,16 @@ impl NativeItemRuntime {
     /// `owner.getUseItem()`, so held-item paths also pass whether this hand is
     /// the active use hand. Vanilla `ContextEntityType.get` reads
     /// `owner.typeHolder().unwrapKey()`, so entity-owned callers may also pass
-    /// the owner's entity type key.
+    /// the owner's entity type key. Vanilla `TrimMaterialProperty.get` reads
+    /// only the stack trim component and synced trim-material registry key, so
+    /// owner-backed world-level callers may pass those keys too.
     pub(crate) fn generated_item_layers_for_stack_with_owner_context(
         &self,
         stack: &ItemStackSummary,
         owner_main_hand_left: Option<bool>,
         context_entity_type: Option<&str>,
         context_dimension: Option<&str>,
+        trim_material_keys: Option<&[String]>,
         using_item: bool,
         use_context: ItemModelUseContext,
     ) -> Vec<GeneratedItemLayer> {
@@ -1463,7 +1466,7 @@ impl NativeItemRuntime {
             use_context,
             context_entity_type,
             context_dimension,
-            None,
+            trim_material_keys,
         )
     }
 

@@ -5725,7 +5725,9 @@ When an agent does any of the following, update this file in the same slice:
     data component's own codec) before wiring it as a stack-only select provider.
   - Audit remaining non-GUI item consumers that can render component-bearing
     generated item stacks and pass the trim-material registry keys where vanilla
-    resolves `TrimMaterialProperty`.
+    resolves `TrimMaterialProperty`. Dropped-item `GROUND`, item-frame `FIXED`,
+    owner-backed third-person held generated items, and GUI/HUD icons now carry
+    those keys; no-registry consumers still fall back.
   - Thread the same use-tick context into first-person generated item consumers.
     Vanilla Quick Charge-modified crossbow charge duration is now wired for
     GUI/HUD local-player icons and owner-backed third-person generated held-item
@@ -5831,9 +5833,10 @@ When an agent does any of the following, update this file in the same slice:
   - A value-aware `RangeDispatch` / `Select` is treated as a runtime condition so
     it is resolved per stack rather than collapsed at model-build time.
   - The trim-material registry keys are projected into the GUI icon path
-    (`hud_item_icon_for_stack`), dropped-item generated model path, and
-    item-frame generated model path; no-registry / null-context consumers still
-    fall back to the untrimmed model.
+    (`hud_item_icon_for_stack`), dropped-item generated model path, item-frame
+    generated model path, and owner-backed third-person held generated item
+    path; no-registry / null-context consumers still fall back to the untrimmed
+    model.
   - `bbb-protocol` now preserves the `minecraft:bees` component occupant count
     (`DataComponents.BEES`, id 77) so bundle-fullness weight can distinguish
     beehive-like full-weight entries from ordinary stack-size weighted entries.

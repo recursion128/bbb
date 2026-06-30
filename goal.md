@@ -694,8 +694,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     no-owner / no-cooldown paths resolve as `0.0`.
   - [x] `minecraft:trim_material` item-model select now receives the dynamic
     trim-material registry keys for dropped-item `GROUND` and item-frame `FIXED`
-    generated model paths, in addition to GUI/HUD icons; no-registry consumers
-    still fall back to the untrimmed model.
+    generated model paths and owner-backed third-person generated held-item
+    paths, in addition to GUI/HUD icons; no-registry consumers still fall back
+    to the untrimmed model. Tests pin held-item fallback / quartz / diamond
+    baked mesh branch changes.
   - [x] GUI/HUD local-player item icons now resolve the vanilla use-tick
     numeric `range_dispatch` properties `minecraft:use_duration`,
     `minecraft:use_cycle`, and `minecraft:crossbow/pull` for the active
