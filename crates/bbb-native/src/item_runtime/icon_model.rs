@@ -789,6 +789,9 @@ pub(super) struct IconResolveContext<'a> {
     pub default_max_stack_size: Option<i32>,
     pub default_max_damage: Option<i32>,
     pub bundle_selected_item_index: Option<i32>,
+    /// Vanilla `IsSelected.get`: true only when the owner is the local player
+    /// and this exact stack is `LocalPlayer.getInventory().getSelectedItem()`.
+    pub selected_item: bool,
     pub using_item: bool,
     pub use_context: ItemModelUseContext,
     /// Vanilla `Cooldown.get`: caller-projected
@@ -1024,6 +1027,7 @@ impl ItemIconModel {
                     {
                         on_true
                     }
+                    ItemModelPropertyKind::Selected if ctx.selected_item => on_true,
                     ItemModelPropertyKind::UsingItem if ctx.using_item => on_true,
                     _ => on_false,
                 };
@@ -1092,6 +1096,7 @@ pub(super) fn contains_runtime_condition(model: &ItemModelDefinition) -> bool {
                     | ItemModelPropertyKind::BundleHasSelectedItem
                     | ItemModelPropertyKind::CustomModelData
                     | ItemModelPropertyKind::HasComponent
+                    | ItemModelPropertyKind::Selected
                     | ItemModelPropertyKind::UsingItem
             ) || contains_runtime_condition(on_true)
                 || contains_runtime_condition(on_false)
@@ -1160,6 +1165,7 @@ pub(super) fn item_icon_model_ref_for_definition(
                     | ItemModelPropertyKind::BundleHasSelectedItem
                     | ItemModelPropertyKind::CustomModelData
                     | ItemModelPropertyKind::HasComponent
+                    | ItemModelPropertyKind::Selected
                     | ItemModelPropertyKind::UsingItem
             ) {
                 ItemIconModelRef::Condition {

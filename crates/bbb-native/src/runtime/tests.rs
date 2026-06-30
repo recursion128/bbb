@@ -2474,6 +2474,66 @@ fn hotbar_item_icons_use_using_item_model_for_selected_slot_only() {
 }
 
 #[test]
+fn hotbar_item_icons_use_selected_item_condition_for_selected_slot_only() {
+    let root = unique_runtime_temp_dir("hotbar-selected-condition");
+    write_runtime_selected_condition_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let stack = item_stack(0, 1);
+    let normal_uv = item_runtime.icon_for_stack(&stack).unwrap().layers[0].uv;
+    let selected_uv = item_runtime
+        .icon_for_stack_with_context_and_use_context_time_selected(
+            &stack,
+            None,
+            false,
+            crate::item_runtime::ItemModelUseContext::inactive(),
+            bbb_pack::BlockModelDisplayContext::Gui,
+            0.0,
+            None,
+            None,
+            Some("minecraft:player"),
+            None,
+            None,
+            None,
+            true,
+        )
+        .unwrap()
+        .layers[0]
+        .uv;
+    assert_ne!(normal_uv, selected_uv);
+
+    let mut world = WorldStore::new();
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: stack.clone(),
+    });
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 1,
+        item: stack,
+    });
+    assert!(world.set_local_selected_hotbar_slot(1));
+
+    let icons = hotbar_item_icons(&world, Some(&item_runtime), 0.0);
+
+    assert_eq!(
+        icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: normal_uv.min,
+            max: normal_uv.max,
+        }
+    );
+    assert_eq!(
+        icons[1].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: selected_uv.min,
+            max: selected_uv.max,
+        }
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn hotbar_item_icons_project_local_use_ticks_into_use_duration_range_dispatch() {
     let root = unique_runtime_temp_dir("hotbar-use-duration-range-dispatch");
     write_runtime_bow_item_assets(&root);
@@ -7230,6 +7290,59 @@ fn write_runtime_recovery_compass_range_dispatch_item_assets(root: &Path) {
             .join("Items.java"),
         r#"public class Items {
             public static final Item RECOVERY_COMPASS = registerItem("recovery_compass");
+        }"#,
+    );
+}
+
+fn write_runtime_selected_condition_item_assets(root: &Path) {
+    let assets = runtime_assets_dir(root);
+    write_runtime_json(
+        &assets.join("atlases").join("items.json"),
+        r#"{
+            "sources": [
+                {
+                    "type": "minecraft:directory",
+                    "prefix": "item/",
+                    "source": "item"
+                }
+            ]
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("atlases").join("blocks.json"),
+        r#"{
+            "sources": []
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("items").join("selected_condition.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:condition",
+                "property": "minecraft:selected",
+                "on_true": { "type": "minecraft:model", "model": "minecraft:item/selected_condition_selected" },
+                "on_false": { "type": "minecraft:model", "model": "minecraft:item/selected_condition" }
+            }
+        }"#,
+    );
+    write_flat_runtime_item_model_and_texture(&assets, "selected_condition", &[40, 80, 120, 255]);
+    write_flat_runtime_item_model_and_texture(
+        &assets,
+        "selected_condition_selected",
+        &[120, 80, 40, 255],
+    );
+    write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
+    write_runtime_json(
+        &root
+            .join("sources")
+            .join(bbb_pack::MC_VERSION)
+            .join("net")
+            .join("minecraft")
+            .join("world")
+            .join("item")
+            .join("Items.java"),
+        r#"public class Items {
+            public static final Item SELECTED_CONDITION = registerItem("selected_condition");
         }"#,
     );
 }

@@ -1349,6 +1349,7 @@ impl NativeItemRuntime {
                                 .and_then(|registry| registry.max_stack_size(item_id)),
                             default_max_damage: None,
                             bundle_selected_item_index: None,
+                            selected_item: false,
                             using_item: false,
                             use_context: ItemModelUseContext::inactive(),
                             cooldown_progress: 0.0,
@@ -1655,6 +1656,39 @@ impl NativeItemRuntime {
         time_context: Option<ItemModelTimeContext>,
         compass_context: Option<ItemModelCompassContext<'_>>,
     ) -> Option<ItemAtlasIcon> {
+        self.icon_for_stack_with_context_and_use_context_time_selected(
+            stack,
+            bundle_selected_item_index,
+            using_item,
+            use_context,
+            display_context,
+            cooldown_progress,
+            trim_material_keys,
+            owner_main_hand_left,
+            context_entity_type,
+            context_dimension,
+            time_context,
+            compass_context,
+            false,
+        )
+    }
+
+    pub(crate) fn icon_for_stack_with_context_and_use_context_time_selected(
+        &self,
+        stack: &ItemStackSummary,
+        bundle_selected_item_index: Option<i32>,
+        using_item: bool,
+        use_context: ItemModelUseContext,
+        display_context: BlockModelDisplayContext,
+        cooldown_progress: f32,
+        trim_material_keys: Option<&[String]>,
+        owner_main_hand_left: Option<bool>,
+        context_entity_type: Option<&str>,
+        context_dimension: Option<&str>,
+        time_context: Option<ItemModelTimeContext>,
+        compass_context: Option<ItemModelCompassContext<'_>>,
+        selected_item: bool,
+    ) -> Option<ItemAtlasIcon> {
         self.icon_for_stack_with_model_context(
             stack,
             bundle_selected_item_index,
@@ -1668,6 +1702,7 @@ impl NativeItemRuntime {
             context_dimension,
             time_context,
             compass_context,
+            selected_item,
         )
     }
 
@@ -1698,6 +1733,7 @@ impl NativeItemRuntime {
             None,
             None,
             None,
+            false,
         )
     }
 
@@ -1715,6 +1751,7 @@ impl NativeItemRuntime {
         context_dimension: Option<&str>,
         time_context: Option<ItemModelTimeContext>,
         compass_context: Option<ItemModelCompassContext<'_>>,
+        selected_item: bool,
     ) -> Option<ItemAtlasIcon> {
         let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
         let item_model_id = item_model_id_for_stack(item_id, Some(&stack.component_patch))?;
@@ -1734,6 +1771,7 @@ impl NativeItemRuntime {
             context_dimension,
             time_context,
             compass_context,
+            selected_item,
         )
     }
 
@@ -1756,6 +1794,7 @@ impl NativeItemRuntime {
             None,
             None,
             None,
+            false,
         )
     }
 
@@ -1776,6 +1815,7 @@ impl NativeItemRuntime {
         context_dimension: Option<&str>,
         time_context: Option<ItemModelTimeContext>,
         compass_context: Option<ItemModelCompassContext<'_>>,
+        selected_item: bool,
     ) -> Option<ItemAtlasIcon> {
         let default_max_damage = self
             .registry
@@ -1793,6 +1833,7 @@ impl NativeItemRuntime {
             default_max_stack_size,
             default_max_damage,
             bundle_selected_item_index,
+            selected_item,
             using_item,
             use_context,
             cooldown_progress,
@@ -1943,6 +1984,7 @@ impl NativeItemRuntime {
             default_max_stack_size,
             default_max_damage,
             bundle_selected_item_index: None,
+            selected_item: false,
             using_item: false,
             use_context: ItemModelUseContext::inactive(),
             cooldown_progress: 0.0,

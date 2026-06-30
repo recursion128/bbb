@@ -741,6 +741,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     missing, false, out-of-range, or removed component id 17 select the false
     branch. Tests pin texture selection for true/false/out-of-range/removed
     cases and wire decode of floats/flags/strings/colors.
+  - [x] `minecraft:selected` item-model condition resolves for HUD hotbar item
+    icons from vanilla `IsSelected.get`: the local selected hotbar slot receives
+    the true branch and non-selected hotbar slots stay false. Inventory slot /
+    carried-cursor GUI identity cases remain follow-up with broader GUI owner
+    state.
   - [x] `minecraft:has_component` item-model condition now follows vanilla
     `HasComponent.get`: default prototype components such as
     `minecraft:max_stack_size`, `minecraft:item_model`, and

@@ -250,6 +250,7 @@ pub enum ItemModelPropertyKind {
     CustomModelData,
     Damaged,
     HasComponent,
+    Selected,
     UsingItem,
     Other,
 }
@@ -270,6 +271,7 @@ impl ItemModelProperty {
             "minecraft:custom_model_data" => ItemModelPropertyKind::CustomModelData,
             "minecraft:damaged" => ItemModelPropertyKind::Damaged,
             "minecraft:has_component" => ItemModelPropertyKind::HasComponent,
+            "minecraft:selected" => ItemModelPropertyKind::Selected,
             "minecraft:using_item" => ItemModelPropertyKind::UsingItem,
             _ => ItemModelPropertyKind::Other,
         }
@@ -1763,6 +1765,43 @@ mod tests {
                 "property": "minecraft:custom_model_data",
                 "index": 1
             })
+        );
+        assert!(matches!(on_true.as_ref(), ItemModelDefinition::Empty));
+        assert!(matches!(on_false.as_ref(), ItemModelDefinition::Empty));
+    }
+
+    #[test]
+    fn item_model_catalog_structures_unit_selected_condition_property() {
+        let definition = ClientItemDefinition::from_json_bytes(
+            br#"{
+              "model": {
+                "type": "minecraft:condition",
+                "property": "minecraft:selected",
+                "on_false": {
+                  "type": "minecraft:empty"
+                },
+                "on_true": {
+                  "type": "minecraft:empty"
+                }
+              }
+            }"#,
+        )
+        .unwrap();
+
+        let ItemModelDefinition::Condition {
+            property,
+            on_true,
+            on_false,
+            ..
+        } = &definition.model
+        else {
+            panic!("root should parse as a selected condition item model");
+        };
+        assert_eq!(property.property_type, "minecraft:selected");
+        assert_eq!(property.kind(), ItemModelPropertyKind::Selected);
+        assert_eq!(
+            property.raw(),
+            &serde_json::json!({"property": "minecraft:selected"})
         );
         assert!(matches!(on_true.as_ref(), ItemModelDefinition::Empty));
         assert!(matches!(on_false.as_ref(), ItemModelDefinition::Empty));

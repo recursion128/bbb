@@ -5826,6 +5826,10 @@ When an agent does any of the following, update this file in the same slice:
       conditional `CustomModelDataProperty.get`, matching
       `flags[index] == true`; missing, false, out-of-range, or removed
       `minecraft:custom_model_data` component id 17 selects the false branch
+    - `minecraft:selected` — `IsSelected.get`, for HUD hotbar item icons:
+      the local selected hotbar slot resolves the true branch and non-selected
+      hotbar slots resolve false. Broader GUI slot identity and carried-cursor
+      item conditions remain follow-up with the GUI owner/state surface.
     - `minecraft:charge_type` — `Charge.get` (`ROCKET` when any charged
       projectile is `minecraft:firework_rocket`, `ARROW` when charged otherwise,
       else `NONE`), using the native item registry to identify the projectile
@@ -5941,9 +5945,10 @@ When an agent does any of the following, update this file in the same slice:
     `minecraft:main_hand` and `minecraft:context_entity_type` still fall back on
     native item consumers that do not pass a `LivingEntity` owner, such as
     fake/null-owner item surfaces. `minecraft:custom_model_data` condition is
-    wired for the stack-local `flags` list. `minecraft:component` is wired for
-    the scalar / enum component subset listed above; broader component-codec
-    parity remains the documented follow-up.
+    wired for the stack-local `flags` list, and `minecraft:selected` is wired
+    for HUD hotbar selected-slot icons. `minecraft:component` is wired for the
+    scalar / enum component subset listed above; broader component-codec parity
+    remains the documented follow-up.
 
 ### Native Input, Movement, Interaction, Inventory, And Command Flows
 

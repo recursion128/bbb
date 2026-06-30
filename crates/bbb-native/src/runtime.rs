@@ -1751,6 +1751,7 @@ fn hotbar_item_icons(
             &item.item,
             item.local_selected_bundle_item_index(),
             using_selected_item && slot_index == selected_slot,
+            slot_index == selected_slot,
             partial_tick,
         );
     }
@@ -1878,6 +1879,7 @@ fn hud_inventory_screen_with_local_state(
                         &slot.item,
                         (slot.local_selected_bundle_item_index >= 0)
                             .then_some(slot.local_selected_bundle_item_index),
+                        false,
                         false,
                         partial_tick,
                     )
@@ -2773,7 +2775,7 @@ fn push_merchant_trade_item(
     item: ItemStackSummary,
 ) {
     if let Some(icon) =
-        hud_item_icon_for_stack(world, item_runtime, &item, None, false, partial_tick)
+        hud_item_icon_for_stack(world, item_runtime, &item, None, false, false, partial_tick)
     {
         let block_model = block_item_3d_model(&item, item_runtime, terrain_textures);
         items.push(HudInventoryItem {
@@ -2799,6 +2801,7 @@ fn hud_stonecutter_recipe_items(
             item_runtime,
             &option.stack,
             None,
+            false,
             false,
             partial_tick,
         ) {
@@ -3991,6 +3994,7 @@ fn hud_item_icon_for_stack(
     item: &bbb_protocol::packets::ItemStackSummary,
     local_selected_bundle_item_index: Option<i32>,
     using_item: bool,
+    selected_item: bool,
     partial_tick: f32,
 ) -> Option<HudItemIcon> {
     let item_runtime = item_runtime?;
@@ -4043,7 +4047,7 @@ fn hud_item_icon_for_stack(
     } else {
         crate::item_runtime::ItemModelUseContext::inactive()
     };
-    let icon = item_runtime.icon_for_stack_with_context_and_use_context_and_time_context(
+    let icon = item_runtime.icon_for_stack_with_context_and_use_context_time_selected(
         item,
         local_selected_bundle_item_index,
         using_item,
@@ -4056,6 +4060,7 @@ fn hud_item_icon_for_stack(
         context_dimension,
         time_context,
         compass_context,
+        selected_item,
     )?;
     Some(HudItemIcon {
         layers: icon
