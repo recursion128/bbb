@@ -482,6 +482,16 @@ entity_render_state! {
     /// `thirdPersonUseItem` item transform before submitting the held item. `None` for every entity not
     /// using a spear — only `PlayerModel` / humanoid held-item attachment consume it.
     (with_player_using_spear) player_using_spear: Option<SpearKineticWeapon> = None;
+    /// Vanilla `AvatarRenderer.getArmPose` `SPEAR` for a non-using main-hand spear: a held spear, or a
+    /// STAB-swinging spear, points the right arm along the head look with
+    /// `SpearAnimations.thirdPersonHandUse`; because `ticksUsingItem` is zero, no kinetic sway is applied.
+    /// `false` for the using-spear path, which is represented by [`player_using_spear`](Self::player_using_spear).
+    (with_player_main_hand_spear_pose) player_main_hand_spear_pose: bool = false;
+    /// Vanilla `AvatarRenderer.getArmPose(_, OFF_HAND)` `SPEAR` for a non-using off-hand spear. This poses
+    /// the left arm with the same no-kinetic `SpearAnimations.thirdPersonHandUse` base transform and, like
+    /// vanilla `ArmPose.SPEAR.affectsOffhandPose`, can suppress the main hand's pose in the native
+    /// projection. `false` for the using-spear path.
+    (with_player_off_hand_spear_pose) player_off_hand_spear_pose: bool = false;
     /// Vanilla `HumanoidModel.setupAnim` use-item arm pose `SPYGLASS`
     /// (`ItemStack.getUseAnimation() == SPYGLASS`): a player using a spyglass raises the holding arm to
     /// the eye (`xRot = clamp(head.xRot − 1.9198622 − crouch?π/12, −2.4, 3.3)`, `yRot = head.yRot ∓ π/12`)
@@ -2563,6 +2573,8 @@ mod tests {
                 main_hand_holds_bow: false,
                 main_hand_swing_is_stab: false,
                 player_using_spear: None,
+                player_main_hand_spear_pose: false,
+                player_off_hand_spear_pose: false,
                 player_using_spyglass: false,
                 player_tooting_horn: false,
                 player_brushing: false,

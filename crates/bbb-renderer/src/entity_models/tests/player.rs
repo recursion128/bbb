@@ -1804,11 +1804,18 @@ fn player_with_a_spear_lunges_instead_of_whacking() {
         EntityModelInstance::player(905, [0.0, 64.0, 0.0], 0.0, false).with_head_look(0.0, -10.0);
     let mut resting = PlayerModel::new(false);
     resting.prepare(&base);
-    let resting_right_xrot = resting.root_mut().child_mut("right_arm").pose.rotation[0];
     let resting_left_xrot = resting.root_mut().child_mut("left_arm").pose.rotation[0];
 
-    // A spear-swing twists the body the same way the whack does, but lunges the right arm.
-    let spear = base.with_attack_anim(t).with_main_hand_swing_is_stab(true);
+    let spear_base = base.with_player_main_hand_spear_pose(true);
+    let mut spear_held = PlayerModel::new(false);
+    spear_held.prepare(&spear_base);
+    let spear_base_right_xrot = spear_held.root_mut().child_mut("right_arm").pose.rotation[0];
+
+    // A spear-swing first points the held spear along the head look, twists the body the same way the whack
+    // does, then lunges the right arm from that SPEAR base pose.
+    let spear = spear_base
+        .with_attack_anim(t)
+        .with_main_hand_swing_is_stab(true);
     let mut model = PlayerModel::new(false);
     model.prepare(&spear);
     assert!(
@@ -1820,9 +1827,9 @@ fn player_with_a_spear_lunges_instead_of_whacking() {
     let right_xrot = right.pose.rotation[0];
     assert!((right_offset0 - (-body_yrot.cos() * 5.0)).abs() < 1e-6);
     assert!(
-        (right_xrot - (resting_right_xrot + stab)).abs() < 1e-6,
-        "the main arm lunges by the stab term: {right_xrot} vs {}",
-        resting_right_xrot + stab
+        (right_xrot - (spear_base_right_xrot + stab)).abs() < 1e-6,
+        "the main arm lunges from the held-spear pose: {right_xrot} vs {}",
+        spear_base_right_xrot + stab
     );
 
     // Unlike the whack, the stab undoes the prologue's body-twist add on the off arm's pitch — it stays
@@ -1841,6 +1848,48 @@ fn player_with_a_spear_lunges_instead_of_whacking() {
         (whack_right_xrot - right_xrot).abs() > 0.3,
         "the spear lunge differs from the whack chop: stab {right_xrot} vs whack {whack_right_xrot}"
     );
+}
+
+#[test]
+fn player_holding_a_spear_points_the_arm_along_head_look() {
+    // Vanilla `AvatarRenderer.getArmPose` returns `SPEAR` for a held spear even when the player is not using
+    // it. `SpearAnimations.thirdPersonHandUse` still applies the head-look base pose, but with
+    // `ticksUsingItem <= 0` it skips all kinetic sway.
+    let yaw = 25.0_f32;
+    let pitch = -15.0_f32;
+    let base =
+        EntityModelInstance::player(906, [0.0, 64.0, 0.0], 0.0, false).with_head_look(yaw, pitch);
+    let mut idle = PlayerModel::new(false);
+    idle.prepare(&base);
+    let idle_right_zrot = idle.root_mut().child_mut("right_arm").pose.rotation[2];
+    let expected_x = (-std::f32::consts::FRAC_PI_2 + pitch.to_radians() + 0.8)
+        .to_degrees()
+        .clamp(-120.0, 30.0)
+        .to_radians();
+
+    let mut main = PlayerModel::new(false);
+    main.prepare(&base.with_player_main_hand_spear_pose(true));
+    let right = main.root_mut().child_mut("right_arm").pose;
+    let expected_right_y = (-0.1 + yaw.to_radians())
+        .to_degrees()
+        .clamp(-60.0, 60.0)
+        .to_radians();
+    assert!((right.rotation[0] - expected_x).abs() < 1e-6);
+    assert!((right.rotation[1] - expected_right_y).abs() < 1e-6);
+    assert_eq!(
+        right.rotation[2], idle_right_zrot,
+        "held spear keeps only the folded-in idle bob roll, with no kinetic roll sway"
+    );
+
+    let mut off = PlayerModel::new(false);
+    off.prepare(&base.with_player_off_hand_spear_pose(true));
+    let left = off.root_mut().child_mut("left_arm").pose;
+    let expected_left_y = (0.1 + yaw.to_radians())
+        .to_degrees()
+        .clamp(-60.0, 60.0)
+        .to_radians();
+    assert!((left.rotation[0] - expected_x).abs() < 1e-6);
+    assert!((left.rotation[1] - expected_left_y).abs() < 1e-6);
 }
 
 #[test]

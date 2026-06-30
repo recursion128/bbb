@@ -1007,26 +1007,33 @@ fn entity_model_instance(
             kind,
             EntityModelKind::Skeleton | EntityModelKind::SkeletonVariant { .. }
         ) && entity_main_hand_holds_bow(world, item_runtime, source.entity_id);
+    let is_player = matches!(kind, EntityModelKind::Player { .. });
+    let player_main_hand_holds_spear =
+        is_player && entity_hand_holds_spear(world, item_runtime, source.entity_id, false);
+    let player_off_hand_holds_spear =
+        is_player && entity_hand_holds_spear(world, item_runtime, source.entity_id, true);
+    let player_main_hand_holds_charged_crossbow = is_player
+        && entity_hand_holds_charged_crossbow(world, item_runtime, source.entity_id, false);
+    let player_off_hand_holds_charged_crossbow = is_player
+        && entity_hand_holds_charged_crossbow(world, item_runtime, source.entity_id, true);
     // Vanilla `HumanoidModel.setupAttackAnimation` switches on the held item's `SWING_ANIMATION` type: a
     // spear swings with the `STAB` `SpearAnimations.thirdPersonAttackHand` pose instead of the default
     // `WHACK`. Only `PlayerModel` consumes the shared attack helper (the skeleton/zombie/illager melee
     // models use their own arm poses), so resolve the spear just for the player kind.
-    let main_hand_swing_is_stab = matches!(kind, EntityModelKind::Player { .. })
-        && entity_hand_holds_spear(world, item_runtime, source.entity_id, false);
+    let main_hand_swing_is_stab = player_main_hand_holds_spear;
     // Vanilla `AvatarRenderer.getArmPose` use-item `ItemUseAnimation.SPEAR`: while the using hand holds a
     // spear, `HumanoidModel.ArmPose.SPEAR` applies `SpearAnimations.thirdPersonHandUse`, and
     // `ItemInHandLayer` applies `thirdPersonUseItem` using the spear's default `KineticWeapon`.
-    let player_using_spear =
-        if matches!(kind, EntityModelKind::Player { .. }) && source.is_using_item {
-            entity_hand_spear_kinetic_weapon(
-                world,
-                item_runtime,
-                source.entity_id,
-                source.use_item_off_hand,
-            )
-        } else {
-            None
-        };
+    let player_using_spear = if is_player && source.is_using_item {
+        entity_hand_spear_kinetic_weapon(
+            world,
+            item_runtime,
+            source.entity_id,
+            source.use_item_off_hand,
+        )
+    } else {
+        None
+    };
     // Vanilla `HumanoidModel.setupAnim` use-item arm pose `SPYGLASS`: while a player is using a spyglass
     // (`isUsingItem` + the using hand holds a spyglass), the holding arm raises it to the eye. Only
     // `PlayerModel` consumes the use-item poses, so resolve the using-hand item just for the player kind.
@@ -1101,7 +1108,7 @@ fn entity_model_instance(
     // string back over the draw ticks
     // (`crossbow_charge_ticks`, the shared `getTicksUsingItem` counter advanced off `isUsingItem` in the
     // world tick loop). A CHARGED crossbow is excluded (`getArmPose` returns `CROSSBOW_HOLD` first).
-    let player_charging_crossbow = matches!(kind, EntityModelKind::Player { .. })
+    let player_charging_crossbow = is_player
         && source.is_using_item
         && entity_hand_holds_crossbow(
             world,
@@ -1109,48 +1116,59 @@ fn entity_model_instance(
             source.entity_id,
             source.use_item_off_hand,
         )
-        && !entity_hand_holds_charged_crossbow(
-            world,
-            item_runtime,
-            source.entity_id,
-            source.use_item_off_hand,
-        );
-    // Vanilla `AvatarRenderer.getArmPose` `CROSSBOW_HOLD` (`AnimationUtils.animateCrossbowHold`, the same one
-    // the pillager levels): a player holding a CHARGED main-hand crossbow while not mid-swing (`!swinging &&
-    // crossbow && isCharged`, checked before the use-item branch) levels the crossbow along the head look.
-    // Gated to the player kind, the main hand, and `!is_swinging` (the swing wins). Applied after the ITEM
-    // blocks in the model so it overwrites both arms exactly as vanilla's `poseRightArm` runs last for this
-    // case.
-    let player_crossbow_hold = matches!(kind, EntityModelKind::Player { .. })
-        && !source.is_swinging
-        && entity_hand_holds_charged_crossbow(world, item_runtime, source.entity_id, false);
+        && !(if source.use_item_off_hand {
+            player_off_hand_holds_charged_crossbow
+        } else {
+            player_main_hand_holds_charged_crossbow
+        });
     // Vanilla `HumanoidModel.setupAnim` dispatch (lines 245-257): when a hand uses an `affectsOffhandPose`
     // item (the two-handed draws — `BOW_AND_ARROW` / `THROW_TRIDENT` / `CROSSBOW_CHARGE` / `CROSSBOW_HOLD`,
-    // plus `SPEAR`), the OPPOSITE arm's `poseArm` is SKIPPED, so the opposite hand gets NO pose. Compute it
-    // per using-hand to suppress the opposite hand's `ITEM` fallback (the opposite arm keeps its draw-set or
-    // walk pose). `SPYGLASS`/`TOOT_HORN`/`BRUSH`/`BLOCK` are NOT `affectsOffhandPose`, so they leave the
-    // opposite `ITEM` intact.
+    // plus `SPEAR`), the OPPOSITE arm's `poseArm` is SKIPPED, so the opposite hand gets NO pose. Compute
+    // this before the held-spear / crossbow-hold / item fallback flags so those projections share the same
+    // vanilla skip. `SPYGLASS`/`TOOT_HORN`/`BRUSH`/`BLOCK` are NOT `affectsOffhandPose`.
     let main_hand_use_affects_offhand = source.is_using_item
         && !source.use_item_off_hand
         && (entity_hand_holds_bow(world, item_runtime, source.entity_id, false)
             || entity_hand_holds_trident(world, item_runtime, source.entity_id, false)
             || entity_hand_holds_crossbow(world, item_runtime, source.entity_id, false)
-            || entity_hand_holds_spear(world, item_runtime, source.entity_id, false));
+            || player_main_hand_holds_spear);
     let off_hand_use_affects_offhand = source.is_using_item
         && source.use_item_off_hand
         && (entity_hand_holds_bow(world, item_runtime, source.entity_id, true)
             || entity_hand_holds_trident(world, item_runtime, source.entity_id, true)
             || entity_hand_holds_crossbow(world, item_runtime, source.entity_id, true)
-            || entity_hand_holds_spear(world, item_runtime, source.entity_id, true));
+            || player_off_hand_holds_spear);
+    // Vanilla `AvatarRenderer.getArmPose` `SPEAR`: a player merely holding a spear (or swinging it with
+    // STAB) still gets `ArmPose.SPEAR`, which runs `SpearAnimations.thirdPersonHandUse` with no kinetic
+    // branch because `ticksUsingItem <= 0`. In the non-using right-handed dispatch, the off-hand pose runs
+    // first; since `SPEAR.affectsOffhandPose()`, an off-hand spear suppresses the main-hand pose.
+    let player_main_hand_spear_pose = is_player
+        && player_main_hand_holds_spear
+        && !(source.is_using_item && !source.use_item_off_hand)
+        && !off_hand_use_affects_offhand
+        && (source.is_using_item || !player_off_hand_holds_spear);
+    let player_off_hand_spear_pose = is_player
+        && player_off_hand_holds_spear
+        && !(source.is_using_item && source.use_item_off_hand)
+        && !main_hand_use_affects_offhand;
+    // Vanilla `AvatarRenderer.getArmPose` `CROSSBOW_HOLD` (`AnimationUtils.animateCrossbowHold`, the same one
+    // the pillager levels): a player holding a CHARGED main-hand crossbow while not mid-swing (`!swinging &&
+    // crossbow && isCharged`, checked before the use-item branch) levels the crossbow along the head look.
+    // An off-hand spear suppresses it only in the non-using dispatch, where `poseLeftArm(SPEAR)` runs first.
+    let player_crossbow_hold = is_player
+        && !source.is_swinging
+        && player_main_hand_holds_charged_crossbow
+        && !off_hand_use_affects_offhand
+        && (source.is_using_item || !player_off_hand_holds_spear);
     // Vanilla's off-hand `CROSSBOW_HOLD` (`poseLeftArm`) is skipped when the main hand already has an
     // affecting pose (`BOW_AND_ARROW`, `THROW_TRIDENT`, `CROSSBOW_CHARGE`/`HOLD`, or `SPEAR`). Otherwise a
     // charged off-hand crossbow levels the mirrored hold pose after the main hand's non-affecting pose.
-    let player_crossbow_hold_off_hand = matches!(kind, EntityModelKind::Player { .. })
+    let player_crossbow_hold_off_hand = is_player
         && !source.is_swinging
         && !main_hand_use_affects_offhand
-        && !entity_hand_holds_spear(world, item_runtime, source.entity_id, false)
-        && !entity_hand_holds_charged_crossbow(world, item_runtime, source.entity_id, false)
-        && entity_hand_holds_charged_crossbow(world, item_runtime, source.entity_id, true);
+        && !player_main_hand_holds_spear
+        && !player_main_hand_holds_charged_crossbow
+        && player_off_hand_holds_charged_crossbow;
     // Whether a hand is the using hand holding a SPECIAL-pose item (so it gets its dedicated pose, NOT the
     // `ITEM` fallback). Any OTHER used item (food/potion -> `EAT`/`DRINK`, or a plain tool) falls through to
     // `ITEM`, so a player eating/drinking still shows the lowered `ITEM` arm.
@@ -1167,12 +1185,13 @@ fn entity_model_instance(
     // (`off_hand_use_affects_offhand` -> vanilla skips this arm's `poseArm`). Spears (-> `SPEAR`) and charged
     // crossbows (-> `CROSSBOW_HOLD`) are excluded so their dedicated poses win; a non-charged crossbow or a
     // held (not drawn) bow correctly falls through to `ITEM`. Only `PlayerModel` consumes it.
-    let player_main_hand_item_pose = matches!(kind, EntityModelKind::Player { .. })
+    let player_main_hand_item_pose = is_player
         && !main_hand_use_is_special
         && !off_hand_use_affects_offhand
+        && (source.is_using_item || !player_off_hand_holds_spear)
         && entity_main_hand_non_empty(world, source.entity_id)
-        && !entity_hand_holds_spear(world, item_runtime, source.entity_id, false)
-        && !entity_hand_holds_charged_crossbow(world, item_runtime, source.entity_id, false);
+        && !player_main_hand_holds_spear
+        && !player_main_hand_holds_charged_crossbow;
     // Vanilla `AvatarRenderer.getArmPose(_, OFF_HAND)` fallback `ITEM` arm pose, posed onto the OFF (left)
     // arm by `HumanoidModel.poseLeftArm`: a player holding a plain off-hand item (shield/totem/block/food)
     // lowers and halves that arm. Mirror of the main-hand gate: fires whether or not using, EXCEPT when the
@@ -1181,12 +1200,12 @@ fn entity_model_instance(
     // charged crossbows. The `isTwoHanded`-main-hand override (which would FORCE a non-empty off hand to
     // `ITEM`) stays deferred — it only diverges for an off-hand spear / charged crossbow while the main hand
     // draws a two-handed item.
-    let player_off_hand_item_pose = matches!(kind, EntityModelKind::Player { .. })
+    let player_off_hand_item_pose = is_player
         && !off_hand_use_is_special
         && !main_hand_use_affects_offhand
         && entity_offhand_non_empty(world, source.entity_id)
-        && !entity_hand_holds_spear(world, item_runtime, source.entity_id, true)
-        && !entity_hand_holds_charged_crossbow(world, item_runtime, source.entity_id, true);
+        && !player_off_hand_holds_spear
+        && !player_off_hand_holds_charged_crossbow;
     // Only the pillager drives the `CROSSBOW_HOLD` pose; resolve the held item just for it.
     let main_hand_holds_crossbow =
         matches!(
@@ -1426,6 +1445,8 @@ fn entity_model_instance(
         .with_main_hand_holds_bow(main_hand_holds_bow)
         .with_main_hand_swing_is_stab(main_hand_swing_is_stab)
         .with_player_using_spear(player_using_spear)
+        .with_player_main_hand_spear_pose(player_main_hand_spear_pose)
+        .with_player_off_hand_spear_pose(player_off_hand_spear_pose)
         .with_player_using_spyglass(player_using_spyglass)
         .with_player_tooting_horn(player_tooting_horn)
         .with_player_brushing(player_brushing)
@@ -6268,6 +6289,8 @@ mod tests {
             })
         );
         assert!(!main.player_main_hand_item_pose);
+        assert!(!main.player_main_hand_spear_pose);
+        assert!(!main.player_off_hand_spear_pose);
 
         world.apply_add_entity(protocol_add_entity(
             242,
@@ -6294,6 +6317,142 @@ mod tests {
         );
         assert!(!off.player_main_hand_item_pose);
         assert!(!off.player_off_hand_item_pose);
+        assert!(!off.player_main_hand_spear_pose);
+        assert!(!off.player_off_hand_spear_pose);
+    }
+
+    #[test]
+    fn entity_model_instances_project_player_held_spear_arm_pose() {
+        // Vanilla `AvatarRenderer.getArmPose` returns `SPEAR` for a held spear even when it is not being
+        // used. In the normal right-handed `HumanoidModel.setupAnim` dispatch, the off-hand pose runs first;
+        // an off-hand `SPEAR` has `affectsOffhandPose`, so it suppresses the main-hand ITEM / CROSSBOW_HOLD
+        // pose. A main-hand spear does not suppress a plain off-hand ITEM because the off hand is posed first.
+        const WOODEN_SPEAR_ID: i32 = 0;
+        const IRON_SPEAR_ID: i32 = 1;
+        const PLAIN_ITEM_ID: i32 = 2;
+        const CROSSBOW_ID: i32 = 3;
+
+        let registry: bbb_pack::ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+            "resource_ids": [
+                "minecraft:wooden_spear",
+                "minecraft:iron_spear",
+                "minecraft:stick",
+                "minecraft:crossbow"
+            ],
+            "protocol_ids": {
+                "minecraft:wooden_spear": WOODEN_SPEAR_ID,
+                "minecraft:iron_spear": IRON_SPEAR_ID,
+                "minecraft:stick": PLAIN_ITEM_ID,
+                "minecraft:crossbow": CROSSBOW_ID
+            }
+        }))
+        .unwrap();
+        let runtime = NativeItemRuntime::for_test_with_registry_and_equipment_assets(
+            registry,
+            bbb_pack::EquipmentAssetCatalog::default(),
+        );
+        let equip =
+            |entity_id: i32, slot: EquipmentSlot, item_id: i32, charged: bool| SetEquipment {
+                entity_id,
+                slots: vec![EquipmentSlotUpdate {
+                    slot,
+                    item: ItemStackSummary {
+                        item_id: Some(item_id),
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            charged_projectiles_items: if charged {
+                                vec![bbb_protocol::packets::ItemStackTemplateSummary {
+                                    item_id: PLAIN_ITEM_ID,
+                                    count: 1,
+                                    component_patch: DataComponentPatchSummary::default(),
+                                }]
+                            } else {
+                                Vec::new()
+                            },
+                            ..DataComponentPatchSummary::default()
+                        },
+                    },
+                }],
+            };
+        let state = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, Some(&runtime), 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+        };
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            243,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [3.0, 64.0, -9.0],
+        ));
+        assert!(world.apply_set_equipment(equip(
+            243,
+            EquipmentSlot::MainHand,
+            WOODEN_SPEAR_ID,
+            false,
+        )));
+        assert!(world.apply_set_equipment(equip(
+            243,
+            EquipmentSlot::OffHand,
+            PLAIN_ITEM_ID,
+            false,
+        )));
+        let main_spear = state(&world, 243);
+        assert!(main_spear.player_main_hand_spear_pose);
+        assert!(!main_spear.player_off_hand_spear_pose);
+        assert!(!main_spear.player_main_hand_item_pose);
+        assert!(
+            main_spear.player_off_hand_item_pose,
+            "a main-hand spear does not suppress the plain off-hand ITEM pose"
+        );
+
+        world.apply_add_entity(protocol_add_entity(
+            244,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [4.0, 64.0, -9.0],
+        ));
+        assert!(world.apply_set_equipment(equip(
+            244,
+            EquipmentSlot::MainHand,
+            PLAIN_ITEM_ID,
+            false,
+        )));
+        assert!(world.apply_set_equipment(equip(
+            244,
+            EquipmentSlot::OffHand,
+            IRON_SPEAR_ID,
+            false,
+        )));
+        let off_spear = state(&world, 244);
+        assert!(!off_spear.player_main_hand_spear_pose);
+        assert!(off_spear.player_off_hand_spear_pose);
+        assert!(
+            !off_spear.player_main_hand_item_pose,
+            "off-hand SPEAR affectsOffhandPose skips the main-hand ITEM pose"
+        );
+        assert!(!off_spear.player_off_hand_item_pose);
+
+        world.apply_add_entity(protocol_add_entity(
+            245,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [5.0, 64.0, -9.0],
+        ));
+        assert!(world.apply_set_equipment(equip(245, EquipmentSlot::MainHand, CROSSBOW_ID, true,)));
+        assert!(world.apply_set_equipment(equip(
+            245,
+            EquipmentSlot::OffHand,
+            IRON_SPEAR_ID,
+            false,
+        )));
+        let off_spear_over_crossbow = state(&world, 245);
+        assert!(off_spear_over_crossbow.player_off_hand_spear_pose);
+        assert!(
+            !off_spear_over_crossbow.player_crossbow_hold,
+            "off-hand SPEAR runs first and skips the main-hand CROSSBOW_HOLD pose"
+        );
     }
 
     #[test]

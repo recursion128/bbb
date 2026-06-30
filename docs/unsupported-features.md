@@ -1437,10 +1437,16 @@ When an agent does any of the following, update this file in the same slice:
     `SpearAnimations.thirdPersonHandUse` to the arm, and `ItemInHandLayer` applies
     `SpearAnimations.thirdPersonUseItem` before submitting the held item. The current transform covers the
     vanilla zero-hit-feedback case; `LivingEntityRenderState.ticksSinceKineticHitFeedback` is still a later
-    visual detail. The STAB default lives on the item prototype (not the network component patch), so it is
-    detected by the resolved item id (gated to the player kind; a datapack-overridden `SWING_ANIMATION` on a
-    non-spear item, the `NONE` swing type, the non-using held-spear `ArmPose.SPEAR`, and the STAB pose on
-    non-player humanoids — which use their own arm poses — stay deferred). The
+    visual detail. The non-using held-spear `ArmPose.SPEAR` is implemented too: native projects explicit
+    main/off-hand spear arm-pose flags for a resolved held spear (including the STAB swing case), and the
+    renderer applies the same `SpearAnimations.thirdPersonHandUse` base pose with `ticksUsingItem <= 0`, so
+    the arm points along the head look without kinetic sway. The off-hand `SPEAR` pose follows vanilla's
+    `affectsOffhandPose` dispatch: in the non-using right-handed branch it suppresses the main-hand `ITEM`
+    and `CROSSBOW_HOLD` poses, while a main-hand spear still coexists with a plain off-hand `ITEM` pose. The
+    STAB default lives on the item prototype (not the network component patch), so it is detected by the
+    resolved item id (gated to the player kind; a datapack-overridden `SWING_ANIMATION` on a non-spear item,
+    the `NONE` swing type, and the STAB pose on non-player humanoids — which use their own arm poses — stay
+    deferred). The
     enderman (`emit_enderman_model` colored and `emit_enderman_textured_model` textured)
     uses dedicated `enderman_arm_swing_pose`/`enderman_leg_swing_pose`: `EndermanModel
     extends HumanoidModel`, so `super.setupAnim` sets the inherited arm and leg swing,
@@ -1612,7 +1618,9 @@ When an agent does any of the following, update this file in the same slice:
     the attack-swing state) so the swing wins as in vanilla, and the main-hand pose runs after the ITEM blocks
     so it overwrites the off-hand `ITEM` exactly as vanilla's `poseRightArm`-runs-last does for that case. The
     off-hand hold is suppressed when the main hand already has an affecting pose (`BOW_AND_ARROW`,
-    `THROW_TRIDENT`, `CROSSBOW_CHARGE`/`HOLD`, or `SPEAR`), matching `poseLeftArm` being skipped. The
+    `THROW_TRIDENT`, `CROSSBOW_CHARGE`/`HOLD`, or `SPEAR`), matching `poseLeftArm` being skipped; the
+    main-hand hold is likewise suppressed by a non-using off-hand `SPEAR`, matching
+    `poseLeftArm(SPEAR)` running first and skipping `poseRightArm`. The
     `EAT`/`DRINK`
     (and any using-non-special) route to `ITEM` IS now handled too: the `ITEM` gate no longer keys off
     `!isUsingItem` but off "this hand is NOT using a special-pose item" (`main_hand_use_is_special` /
@@ -1620,7 +1628,9 @@ When an agent does any of the following, update this file in the same slice:
     eating food, drinking a potion, or using any plain item correctly shows the lowered `ITEM` arm. The
     `affectsOffhandPose` skip is now symmetric (`main_hand_use_affects_offhand` /
     `off_hand_use_affects_offhand`), so an `affectsOffhandPose` draw in either hand suppresses the OPPOSITE
-    hand's `ITEM`. The remaining use-item arm pose edge on the same dispatch (the off-arm `EMPTY` reset — a
+    hand's `ITEM`; the non-using off-hand `SPEAR` case additionally suppresses the main-hand `ITEM` /
+    `CROSSBOW_HOLD` pose because vanilla poses the off hand first in the right-handed branch. The remaining
+    use-item arm pose edge on the same dispatch (the off-arm `EMPTY` reset — a
     near-no-op since at rest the off arm's `yRot` is already `0`) stays deferred. (The `getArmPose`
     `isTwoHanded`-forces-off-hand-to-`ITEM` branch
     needs no implementation: every `isTwoHanded` pose is also `affectsOffhandPose`, so `setupAnim` always

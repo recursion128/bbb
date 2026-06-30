@@ -357,17 +357,15 @@ pub(in crate::entity_models) fn apply_humanoid_stab_attack_animation(
     attack_arm.pose.rotation[0] += (90.0 * prepare - 120.0 * attack + 30.0 * retract).to_radians();
 }
 
-/// Vanilla `HumanoidModel.ArmPose.SPEAR` use-item pose (`SpearAnimations.thirdPersonHandUse`): the using
-/// arm points the spear along the head look, then a kinetic weapon with positive `ticksUsingItem` adds the
-/// slow/fast sway and raise/lower/back timing from `DataComponents.KINETIC_WEAPON`.
-pub(in crate::entity_models) fn apply_humanoid_spear_use_pose(
+/// Vanilla `HumanoidModel.ArmPose.SPEAR` base arm pose (`SpearAnimations.thirdPersonHandUse` before the
+/// kinetic `ticksUsingItem` branch): the spear arm points along the head look, clamped to vanilla's
+/// `[-60°, 60°]` yaw and `[-120°, 30°]` pitch range. Non-using held spears stop here.
+pub(in crate::entity_models) fn apply_humanoid_spear_arm_pose(
     root: &mut ModelPart,
     head_yaw_degrees: f32,
     head_pitch_degrees: f32,
     off_hand: bool,
     swim_amount: f32,
-    ticks_using_item: f32,
-    kinetic_weapon: SpearKineticWeapon,
 ) {
     let invert = if off_hand { -1.0 } else { 1.0 };
     let head_yaw = head_yaw_degrees.to_radians();
@@ -382,11 +380,34 @@ pub(in crate::entity_models) fn apply_humanoid_spear_use_pose(
     .to_degrees()
     .clamp(-120.0, 30.0)
     .to_radians();
+}
+
+/// Vanilla `HumanoidModel.ArmPose.SPEAR` use-item pose (`SpearAnimations.thirdPersonHandUse`): the using
+/// arm points the spear along the head look, then a kinetic weapon with positive `ticksUsingItem` adds the
+/// slow/fast sway and raise/lower/back timing from `DataComponents.KINETIC_WEAPON`.
+pub(in crate::entity_models) fn apply_humanoid_spear_use_pose(
+    root: &mut ModelPart,
+    head_yaw_degrees: f32,
+    head_pitch_degrees: f32,
+    off_hand: bool,
+    swim_amount: f32,
+    ticks_using_item: f32,
+    kinetic_weapon: SpearKineticWeapon,
+) {
+    apply_humanoid_spear_arm_pose(
+        root,
+        head_yaw_degrees,
+        head_pitch_degrees,
+        off_hand,
+        swim_amount,
+    );
 
     if ticks_using_item <= 0.0 {
         return;
     }
 
+    let invert = if off_hand { -1.0 } else { 1.0 };
+    let arm = root.child_mut(if off_hand { "left_arm" } else { "right_arm" });
     let params = kinetic_weapon.use_params(ticks_using_item);
     arm.pose.rotation[1] += -invert * params.sway_scale_fast.to_radians() * params.sway_intensity;
     arm.pose.rotation[2] +=
