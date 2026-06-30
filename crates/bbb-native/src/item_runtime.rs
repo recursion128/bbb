@@ -1346,6 +1346,7 @@ impl NativeItemRuntime {
                             display_context: item_display_context_name(
                                 BlockModelDisplayContext::Gui,
                             ),
+                            default_item_model_id: item_id,
                             main_hand_left: None,
                             context_dimension: None,
                             context_entity_type: None,
@@ -1723,6 +1724,7 @@ impl NativeItemRuntime {
             cooldown_progress,
             crossbow_charge: self.crossbow_charge_for(component_patch),
             display_context: item_display_context_name(display_context),
+            default_item_model_id: item_id,
             main_hand_left: owner_main_hand_left,
             context_dimension,
             context_entity_type,
@@ -1869,6 +1871,7 @@ impl NativeItemRuntime {
             cooldown_progress: 0.0,
             crossbow_charge: self.crossbow_charge_for(Some(&template.component_patch)),
             display_context: parent_context.display_context,
+            default_item_model_id: item_id,
             main_hand_left: parent_context.main_hand_left,
             context_dimension: parent_context.context_dimension,
             context_entity_type: parent_context.context_entity_type,
@@ -5617,6 +5620,36 @@ mod tests {
             uv("component_max_damage_fallback")
         );
 
+        // `Item.Properties.finalizeInitializer` defaults ITEM_MODEL to the
+        // item's own id; an explicit item_model patch changes the root model and
+        // the component value seen by `ComponentContents.get`.
+        assert_eq!(
+            selected(5, DataComponentPatchSummary::default()),
+            uv("component_item_model_default")
+        );
+        assert_eq!(
+            selected(
+                5,
+                DataComponentPatchSummary {
+                    item_model: Some(
+                        "minecraft:item_model_component_selector_alt_root".to_string()
+                    ),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_item_model_alt")
+        );
+        assert!(runtime
+            .icon_for_stack(&ItemStackSummary {
+                item_id: Some(5),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    removed_type_ids: vec![10],
+                    ..DataComponentPatchSummary::default()
+                },
+            })
+            .is_none());
+
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -6597,6 +6630,7 @@ mod tests {
                     Item::new,
                     new Item.Properties().durability(432)
                 );
+                public static final Item ITEM_MODEL_COMPONENT_SELECTOR = registerItem("item_model_component_selector");
             }"#,
         );
         write_json(
@@ -6706,6 +6740,36 @@ mod tests {
                 }
             }"#,
         );
+        let item_model_component_select = r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:component",
+                    "component": "minecraft:item_model",
+                    "cases": [
+                        {
+                            "when": "minecraft:item_model_component_selector",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_item_model_default" }
+                        },
+                        {
+                            "when": "minecraft:item_model_component_selector_alt_root",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_item_model_alt" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/component_item_model_fallback" }
+                }
+            }"#;
+        write_json(
+            &assets
+                .join("items")
+                .join("item_model_component_selector.json"),
+            item_model_component_select,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("item_model_component_selector_alt_root.json"),
+            item_model_component_select,
+        );
         for (model_id, color) in [
             ("component_rarity_common", [80, 80, 80, 255]),
             ("component_rarity_rare", [80, 180, 220, 255]),
@@ -6722,6 +6786,9 @@ mod tests {
             ("component_max_damage_99", [180, 120, 40, 255]),
             ("component_max_damage_432", [40, 180, 120, 255]),
             ("component_max_damage_fallback", [30, 60, 40, 255]),
+            ("component_item_model_default", [40, 90, 180, 255]),
+            ("component_item_model_alt", [180, 90, 40, 255]),
+            ("component_item_model_fallback", [50, 50, 70, 255]),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);
         }

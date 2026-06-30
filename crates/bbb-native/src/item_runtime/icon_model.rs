@@ -352,6 +352,7 @@ pub(super) enum ComponentSelectProperty {
     MaxStackSize,
     MaxDamage,
     Damage,
+    ItemModel,
     Rarity,
     EnchantmentGlintOverride,
 }
@@ -362,6 +363,7 @@ impl ComponentSelectProperty {
             "minecraft:max_stack_size" => Some(Self::MaxStackSize),
             "minecraft:max_damage" => Some(Self::MaxDamage),
             "minecraft:damage" => Some(Self::Damage),
+            "minecraft:item_model" => Some(Self::ItemModel),
             "minecraft:rarity" => Some(Self::Rarity),
             "minecraft:enchantment_glint_override" => Some(Self::EnchantmentGlintOverride),
             _ => None,
@@ -373,6 +375,7 @@ impl ComponentSelectProperty {
             Self::MaxStackSize => MAX_STACK_SIZE_COMPONENT_ID,
             Self::MaxDamage => MAX_DAMAGE_COMPONENT_ID,
             Self::Damage => DAMAGE_COMPONENT_ID,
+            Self::ItemModel => ITEM_MODEL_COMPONENT_ID,
             Self::Rarity => RARITY_COMPONENT_ID,
             Self::EnchantmentGlintOverride => ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID,
         }
@@ -398,6 +401,12 @@ impl ComponentSelectProperty {
                 .and_then(|patch| patch.damage)
                 .or_else(|| ctx.default_max_damage.map(|_| 0))
                 .map(SelectCaseValue::I32),
+            Self::ItemModel => Some(SelectCaseValue::String(
+                ctx.component_patch
+                    .and_then(|patch| patch.item_model.as_deref())
+                    .unwrap_or(ctx.default_item_model_id)
+                    .to_string(),
+            )),
             Self::Rarity => Some(SelectCaseValue::String(
                 ctx.component_patch
                     .and_then(|patch| patch.rarity)
@@ -635,6 +644,7 @@ pub(super) struct IconResolveContext<'a> {
     pub cooldown_progress: f32,
     pub crossbow_charge: CrossbowChargeType,
     pub display_context: &'a str,
+    pub default_item_model_id: &'a str,
     /// Vanilla `MainHand.get`: `None` means this native call site has not
     /// threaded a `LivingEntity` owner, so select cases do not match and
     /// fallback is used. `Some(true)` is `HumanoidArm.LEFT`; `Some(false)` is

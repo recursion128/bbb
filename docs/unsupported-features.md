@@ -5837,12 +5837,14 @@ When an agent does any of the following, update this file in the same slice:
     - `minecraft:component` — `ComponentContents.get`, currently matching
       decoded persistent scalar / enum components with typed `when` values:
       `minecraft:max_stack_size`, `minecraft:max_damage`, `minecraft:damage`,
-      `minecraft:rarity`, and `minecraft:enchantment_glint_override`. Native
-      item icons project vanilla common defaults (`max_stack_size=64`,
+      `minecraft:item_model`, `minecraft:rarity`, and
+      `minecraft:enchantment_glint_override`. Native item icons project vanilla
+      common defaults (`max_stack_size=64`, `item_model=<item id>`,
       `rarity=common`) and damageable item defaults (`damage=0`,
       `max_damage=<item default>`), and removed component ids suppress the
       selected value before case matching. Tests pin texture selection for
-      string, numeric, boolean, default, and removed component cases.
+      string, numeric, boolean, resource-id, default, patched, and removed
+      component cases.
     - `minecraft:cooldown` — `Cooldown.get`, matching the local player's
       `ItemCooldowns.getCooldownPercent(itemStack, 0.0F)` for GUI/HUD item
       icons. The item model property intentionally uses vanilla's `0.0F`
