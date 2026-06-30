@@ -266,6 +266,63 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 }
 "#;
 
+const CELESTIAL_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+    lightmap_factors: vec4<f32>,
+    lightmap_effects: vec4<f32>,
+    block_light_tint: vec4<f32>,
+    sky_light_color: vec4<f32>,
+    ambient_color: vec4<f32>,
+    night_vision_color: vec4<f32>,
+    camera_position: vec4<f32>,
+    fog_color: vec4<f32>,
+    fog_distances: vec4<f32>,
+    fog_visibility_ends: vec4<f32>,
+};
+
+struct SkyDynamic {
+    color_modulator: vec4<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+@group(1) @binding(0)
+var sky_texture: texture_2d<f32>;
+@group(1) @binding(1)
+var sky_sampler: sampler;
+@group(2) @binding(0)
+var<uniform> sky_dynamic: SkyDynamic;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+    @location(1) uv: vec2<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+};
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    let world_position = input.position + camera.camera_position.xyz;
+    out.position = camera.view_proj * vec4<f32>(world_position, 1.0);
+    out.uv = input.uv;
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let texel = textureSample(sky_texture, sky_sampler, input.uv);
+    if texel.a == 0.0 {
+        discard;
+    }
+    return texel * sky_dynamic.color_modulator;
+}
+"#;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SkyboxKind {
     None,
@@ -529,6 +586,13 @@ struct SkyPositionVertex {
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct SkyUvVertex {
+    position: [f32; 3],
+    uv: [f32; 2],
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct SkyTexturedVertex {
     position: [f32; 3],
     uv: [f32; 2],
@@ -568,6 +632,7 @@ pub(super) struct EndSkyTextureGpu {
 pub(super) struct CelestialGpu {
     pub(super) vertex_buffer: wgpu::Buffer,
     pub(super) vertex_count: u32,
+    pub(super) dynamic: SkyDynamicGpu,
 }
 
 pub(super) struct CelestialAtlasGpu {
@@ -876,14 +941,19 @@ pub(super) fn create_celestial_pipeline(
     format: wgpu::TextureFormat,
     camera_bind_group_layout: &wgpu::BindGroupLayout,
     texture_bind_group_layout: &wgpu::BindGroupLayout,
+    dynamic_bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("bbb-celestial-shader"),
-        source: wgpu::ShaderSource::Wgsl(SKY_TEXTURED_SHADER.into()),
+        source: wgpu::ShaderSource::Wgsl(CELESTIAL_SHADER.into()),
     });
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("bbb-celestial-pipeline-layout"),
-        bind_group_layouts: &[camera_bind_group_layout, texture_bind_group_layout],
+        bind_group_layouts: &[
+            camera_bind_group_layout,
+            texture_bind_group_layout,
+            dynamic_bind_group_layout,
+        ],
         push_constant_ranges: &[],
     });
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -893,13 +963,9 @@ pub(super) fn create_celestial_pipeline(
             module: &shader,
             entry_point: "vs_main",
             buffers: &[wgpu::VertexBufferLayout {
-                array_stride: std::mem::size_of::<SkyTexturedVertex>() as wgpu::BufferAddress,
+                array_stride: std::mem::size_of::<SkyUvVertex>() as wgpu::BufferAddress,
                 step_mode: wgpu::VertexStepMode::Vertex,
-                attributes: &wgpu::vertex_attr_array![
-                    0 => Float32x3,
-                    1 => Float32x2,
-                    2 => Float32x4
-                ],
+                attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2],
             }],
         },
         fragment: Some(wgpu::FragmentState {
@@ -962,13 +1028,20 @@ pub(super) fn create_end_sky_gpu(device: &wgpu::Device) -> EndSkyGpu {
 
 pub(super) fn create_celestial_gpu(
     device: &wgpu::Device,
+    dynamic_bind_group_layout: &wgpu::BindGroupLayout,
     environment: SkyEnvironment,
     atlas: &CelestialAtlasGpu,
 ) -> Option<CelestialGpu> {
+    let environment = environment.sanitized();
     let vertices = celestial_vertices(environment, &atlas.uvs);
     if vertices.is_empty() {
         return None;
     }
+    let dynamic = create_sky_dynamic_gpu(
+        device,
+        dynamic_bind_group_layout,
+        [1.0, 1.0, 1.0, environment.rain_brightness],
+    );
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("bbb-celestial-vertices"),
         contents: bytemuck::cast_slice(&vertices),
@@ -977,6 +1050,7 @@ pub(super) fn create_celestial_gpu(
     Some(CelestialGpu {
         vertex_buffer,
         vertex_count: vertices.len() as u32,
+        dynamic,
     })
 }
 
@@ -1236,7 +1310,7 @@ fn end_sky_face_vertices(face: usize) -> [SkyTexturedVertex; 4] {
 fn celestial_vertices(
     environment: SkyEnvironment,
     uvs: &[Option<SkyTextureUvRect>; CELESTIAL_TEXTURE_COUNT],
-) -> Vec<SkyTexturedVertex> {
+) -> Vec<SkyUvVertex> {
     let environment = environment.sanitized();
     if !environment.celestials_visible() {
         return Vec::new();
@@ -1255,14 +1329,12 @@ fn celestial_vertices(
         environment.sun_angle_radians,
         sun_uv,
         CelestialUvOrientation::Sun,
-        environment.rain_brightness,
     ));
     vertices.extend(celestial_quad_vertices(
         CELESTIAL_MOON_SIZE,
         environment.moon_angle_radians,
         moon_uv,
         CelestialUvOrientation::Moon,
-        environment.rain_brightness,
     ));
     vertices
 }
@@ -1278,8 +1350,7 @@ fn celestial_quad_vertices(
     angle_radians: f32,
     uv_rect: SkyTextureUvRect,
     orientation: CelestialUvOrientation,
-    alpha: f32,
-) -> [SkyTexturedVertex; 6] {
+) -> [SkyUvVertex; 6] {
     let base_positions = [
         [-1.0, 0.0, -1.0],
         [1.0, 0.0, -1.0],
@@ -1300,10 +1371,9 @@ fn celestial_quad_vertices(
             [uv_rect.u1, uv_rect.v0],
         ],
     };
-    let quad: [SkyTexturedVertex; 4] = std::array::from_fn(|index| SkyTexturedVertex {
+    let quad: [SkyUvVertex; 4] = std::array::from_fn(|index| SkyUvVertex {
         position: celestial_position(base_positions[index], size, angle_radians),
         uv: uvs[index],
-        color: [1.0, 1.0, 1.0, alpha],
     });
     [quad[0], quad[1], quad[2], quad[0], quad[2], quad[3]]
 }
@@ -1787,12 +1857,23 @@ mod tests {
     }
 
     #[test]
+    fn celestial_shader_uses_vanilla_position_tex_color_modulator_shape() {
+        assert!(CELESTIAL_SHADER.contains("struct SkyDynamic"));
+        assert!(CELESTIAL_SHADER.contains("@location(0) position: vec3<f32>"));
+        assert!(CELESTIAL_SHADER.contains("@location(1) uv: vec2<f32>"));
+        assert!(!CELESTIAL_SHADER.contains("@location(2) color"));
+        assert!(CELESTIAL_SHADER.contains("if texel.a == 0.0"));
+        assert!(CELESTIAL_SHADER.contains("return texel * sky_dynamic.color_modulator;"));
+    }
+
+    #[test]
     fn sky_color_pipelines_validate_wgsl_on_wgpu_device() {
         let Some(device) = request_test_device() else {
             return;
         };
         let camera_bind_group_layout = create_test_camera_bind_group_layout(&device);
         let sky_dynamic_bind_group_layout = create_sky_dynamic_bind_group_layout(&device);
+        let celestial_bind_group_layout = create_celestial_bind_group_layout(&device);
 
         let _sky_pipeline = create_sky_pipeline(
             &device,
@@ -1808,6 +1889,13 @@ mod tests {
             &device,
             wgpu::TextureFormat::Rgba8Unorm,
             &camera_bind_group_layout,
+            &sky_dynamic_bind_group_layout,
+        );
+        let _celestial_pipeline = create_celestial_pipeline(
+            &device,
+            wgpu::TextureFormat::Rgba8Unorm,
+            &camera_bind_group_layout,
+            &celestial_bind_group_layout,
             &sky_dynamic_bind_group_layout,
         );
     }
@@ -1941,7 +2029,6 @@ mod tests {
         assert_close2(vertices[0].uv, [0.0, 0.0]);
         assert_close2(vertices[1].uv, [0.25, 0.0]);
         assert_close2(vertices[2].uv, [0.25, 0.5]);
-        assert_eq!(vertices[0].color, [1.0, 1.0, 1.0, 0.5]);
     }
 
     #[test]
@@ -1974,7 +2061,6 @@ mod tests {
         assert_close2(vertices[6].uv, [0.5, 0.5]);
         assert_close2(vertices[7].uv, [0.25, 0.5]);
         assert_close2(vertices[8].uv, [0.25, 0.0]);
-        assert_eq!(vertices[6].color, [1.0, 1.0, 1.0, 0.25]);
     }
 
     #[test]
@@ -2059,7 +2145,6 @@ mod tests {
             0.0,
             uv_rect,
             CelestialUvOrientation::Sun,
-            1.0,
         );
         let normal = triangle_normal(
             celestial[0].position,

@@ -985,10 +985,14 @@ When an agent does any of the following, update this file in the same slice:
     leaving sunrise/sunset on the no-fog `position_color` path. Stars now mirror
     vanilla `RenderPipelines.STARS` / `core/stars` more closely: the vertex
     buffer is position-only and `STAR_BRIGHTNESS` is carried through a
-    `ColorModulator`-shaped sky dynamic uniform before draw. Full sky-disc
-    DynamicTransforms / `ColorModulator` uniform ABI plus end-sky and celestial
-    shader ABI refinement remains ordinary P1 render-state work, not a P0
-    pipeline blocker. Basic
+    `ColorModulator`-shaped sky dynamic uniform before draw. Celestial sun/moon
+    rendering now also mirrors vanilla `RenderPipelines.CELESTIAL` /
+    `core/position_tex` more closely: the vertex buffer is position+uv, texture
+    alpha discard stays in the shader, and rain brightness is carried through
+    `ColorModulator = vec4(1, 1, 1, rainBrightness)` instead of per-vertex alpha.
+    Full sky-disc / end-sky DynamicTransforms / `ColorModulator` uniform ABI and
+    celestial's full model-matrix DynamicTransforms expression remain ordinary
+    P1 render-state work, not a P0 pipeline blocker. Basic
     cloud mesh presentation now consumes these visibility ends with vanilla
     default `CLOUD_COLOR` / `CLOUD_HEIGHT` and now loads vanilla
     `textures/environment/clouds.png` for flat cloud cell geometry with vanilla
@@ -1015,7 +1019,8 @@ When an agent does any of the following, update this file in the same slice:
     and later custom-pack EnvironmentAttribute
     generalization when a concrete renderer surface exists. Sun/moon presentation
     is now covered by the vanilla `CELESTIAL` overlay blend, the
-    `environment/celestial` atlas source, `SUN_ANGLE` / `MOON_ANGLE`, and the
+    `environment/celestial` atlas source, `core/position_tex` position+uv shader
+    shape, `ColorModulator` rain brightness, `SUN_ANGLE` / `MOON_ANGLE`, and the
     8-phase `MOON_PHASE` order. Stars are covered by vanilla
     `SkyRenderer.buildStars` seed `10842`, 780 accepted quads, `STARS` overlay
     blend, `core/stars` position-only vertex shape, `ColorModulator`

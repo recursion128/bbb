@@ -178,6 +178,7 @@ impl Renderer {
                     pipeline_switches += 1;
                     pass.set_bind_group(0, &self.terrain_bind_group, &[]);
                     pass.set_bind_group(1, &celestial_atlas.bind_group, &[]);
+                    pass.set_bind_group(2, &celestials.dynamic.bind_group, &[]);
                     pass.set_vertex_buffer(0, celestials.vertex_buffer.slice(..));
                     pass.draw(0..celestials.vertex_count, 0..1);
                     sky_draw_calls += 1;
@@ -2325,6 +2326,31 @@ mod tests {
         assert!(
             stars < dynamic && dynamic < draw,
             "vanilla STARS uses core/stars with ColorModulator rather than per-vertex color"
+        );
+    }
+
+    #[test]
+    fn celestial_draw_binds_color_modulator_uniform() {
+        let source = include_str!("render.rs");
+        let celestial = source
+            .find("pass.set_pipeline(&self.celestial_pipeline)")
+            .expect("celestial pipeline is drawn");
+        let atlas = source[celestial..]
+            .find("pass.set_bind_group(1, &celestial_atlas.bind_group, &[])")
+            .map(|index| celestial + index)
+            .expect("celestial atlas texture is bound");
+        let dynamic = source[atlas..]
+            .find("pass.set_bind_group(2, &celestials.dynamic.bind_group, &[])")
+            .map(|index| atlas + index)
+            .expect("celestial bind DynamicTransforms-style ColorModulator uniform");
+        let draw = source[dynamic..]
+            .find("pass.draw(0..celestials.vertex_count, 0..1)")
+            .map(|index| dynamic + index)
+            .expect("celestials are drawn after binding dynamic uniform");
+
+        assert!(
+            celestial < atlas && atlas < dynamic && dynamic < draw,
+            "vanilla CELESTIAL uses core/position_tex with ColorModulator rather than per-vertex alpha"
         );
     }
 

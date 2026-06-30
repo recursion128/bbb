@@ -756,6 +756,7 @@ impl Renderer {
             format,
             &terrain_bind_group_layout,
             &celestial_bind_group_layout,
+            &sky_dynamic_bind_group_layout,
         );
         let cloud_bind_group_layout = create_cloud_bind_group_layout(&device);
         let cloud_uniform_buffer = create_cloud_uniform_buffer(&device);
@@ -1542,10 +1543,14 @@ impl Renderer {
         }
         self.sky_environment = environment;
         self.sky_disc = create_sky_disc_gpu(&self.device, environment);
-        self.sky_celestials = self
-            .celestial_atlas
-            .as_ref()
-            .and_then(|atlas| create_celestial_gpu(&self.device, environment, atlas));
+        self.sky_celestials = self.celestial_atlas.as_ref().and_then(|atlas| {
+            create_celestial_gpu(
+                &self.device,
+                &self.sky_dynamic_bind_group_layout,
+                environment,
+                atlas,
+            )
+        });
         self.sky_stars = create_star_gpu(
             &self.device,
             &self.sky_dynamic_bind_group_layout,
@@ -1609,10 +1614,14 @@ impl Renderer {
             &self.celestial_bind_group_layout,
             images,
         )?);
-        self.sky_celestials = self
-            .celestial_atlas
-            .as_ref()
-            .and_then(|atlas| create_celestial_gpu(&self.device, self.sky_environment, atlas));
+        self.sky_celestials = self.celestial_atlas.as_ref().and_then(|atlas| {
+            create_celestial_gpu(
+                &self.device,
+                &self.sky_dynamic_bind_group_layout,
+                self.sky_environment,
+                atlas,
+            )
+        });
         Ok(())
     }
 
