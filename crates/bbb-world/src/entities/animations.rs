@@ -303,6 +303,11 @@ const FOX_MAX_CROUCH_AMOUNT: f32 = 5.0;
 /// Vanilla `LivingEntity.hurtDuration`: the hurt animation (and red damage
 /// overlay) runs for 10 client ticks after a hurt animation or damage event.
 const HURT_ANIMATION_DURATION: i32 = 10;
+/// Vanilla `LivingEntity.handleEntityEvent(2)`: start kinetic weapon hit feedback.
+const LIVING_ENTITY_KINETIC_HIT_EVENT_ID: i8 = 2;
+/// Vanilla `LivingEntity.onKineticHit`: ignore repeated hit feedback until more
+/// than ten game ticks have elapsed since the last accepted hit.
+const KINETIC_HIT_FEEDBACK_RETRIGGER_TICKS: i32 = 10;
 /// Vanilla `SwingAnimation.DEFAULT.duration()`: the empty hand and common-item
 /// WHACK swing ramps `attackAnim` from `0` to `1` over six client ticks.
 /// Per-item default durations are recorded on each triggered swing; dig-speed /
@@ -532,6 +537,8 @@ pub struct EntityClientAnimationState {
     pub creaking: Option<CreakingAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hurt: Option<HurtAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kinetic_hit_feedback: Option<KineticHitFeedbackAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub armor_stand_wiggle: Option<ArmorStandWiggleAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -814,6 +821,16 @@ pub struct CreeperSwellAnimationState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HurtAnimationState {
     pub hurt_time: i32,
+}
+
+/// Canonical client-side kinetic hit feedback timer, mirroring vanilla
+/// `LivingEntity.lastKineticHitFeedbackTime`. Entity event `2` calls
+/// `onKineticHit`; the renderer reads
+/// `getTicksSinceLastKineticHitFeedback(partialTicks)` to kick spear items
+/// backward for the vanilla ten-tick feedback curve.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct KineticHitFeedbackAnimationState {
+    pub elapsed_ticks: i32,
 }
 
 /// Canonical armor-stand hit wobble timer. Vanilla stores the hit game time in
@@ -4091,7 +4108,20 @@ impl EntityClientAnimationState {
     /// `ArmorStand.handleEntityEvent(32)` resets the hit wobble, and
     /// `Sheep.handleEntityEvent` resets the eat-grass animation on event `10`.
     pub(crate) fn handle_entity_event(&mut self, entity_type_id: i32, event_id: i8) {
-        if entity_type_id == VANILLA_ENTITY_TYPE_ARMOR_STAND_ID
+        if vanilla_living_entity_type(entity_type_id)
+            && event_id == LIVING_ENTITY_KINETIC_HIT_EVENT_ID
+        {
+            // Vanilla `LivingEntity.handleEntityEvent(2)` calls `onKineticHit()`, which
+            // refreshes `lastKineticHitFeedbackTime` only when more than ten game ticks
+            // elapsed since the previous accepted feedback.
+            if self
+                .kinetic_hit_feedback
+                .is_none_or(|state| state.elapsed_ticks > KINETIC_HIT_FEEDBACK_RETRIGGER_TICKS)
+            {
+                self.kinetic_hit_feedback =
+                    Some(KineticHitFeedbackAnimationState { elapsed_ticks: 0 });
+            }
+        } else if entity_type_id == VANILLA_ENTITY_TYPE_ARMOR_STAND_ID
             && event_id == ARMOR_STAND_HIT_EVENT_ID
         {
             // Vanilla `ArmorStand.handleEntityEvent(32)`: `lastHit = level.getGameTime()`;
@@ -4945,6 +4975,14 @@ impl EntityClientAnimationState {
             })
     }
 
+    /// Vanilla `LivingEntity.getTicksSinceLastKineticHitFeedback(partialTicks)`:
+    /// returns `0.0` before any accepted feedback event, otherwise
+    /// `gameTime - lastKineticHitFeedbackTime + partialTicks`.
+    pub fn ticks_since_kinetic_hit_feedback(&self, partial_tick: f32) -> f32 {
+        self.kinetic_hit_feedback
+            .map_or(0.0, |state| state.elapsed_ticks as f32 + partial_tick)
+    }
+
     /// Arms a melee swing, mirroring vanilla `LivingEntity.swing(hand)`: a swing only
     /// (re)starts when none is playing, the current one is past halfway, or the counter is
     /// the fresh `-1` — so a rapid re-swing during the first half is ignored (the in-flight
@@ -5350,6 +5388,9 @@ impl EntityClientAnimationState {
         // Vanilla `LivingEntity` (`oAttackAnim = attackAnim` at tick start, then
         // `updateSwingTime`): the melee swing ramps for every living entity, so it runs
         // outside the per-type match. The state is dropped once the swing has fully decayed.
+        if let Some(feedback) = self.kinetic_hit_feedback.as_mut() {
+            feedback.elapsed_ticks = feedback.elapsed_ticks.saturating_add(1);
+        }
         if let Some(swing) = self.attack_swing.as_mut() {
             let duration = swing.duration.max(1);
             swing.prev_attack_anim = swing.attack_anim;

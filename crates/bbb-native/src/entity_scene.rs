@@ -1498,6 +1498,7 @@ fn entity_model_instance(
         .with_main_hand_holds_bow(main_hand_holds_bow)
         .with_main_hand_swing_is_stab(main_hand_swing_is_stab)
         .with_player_using_spear(player_using_spear)
+        .with_ticks_since_kinetic_hit_feedback(source.ticks_since_kinetic_hit_feedback)
         .with_player_main_hand_spear_pose(player_main_hand_spear_pose)
         .with_player_off_hand_spear_pose(player_off_hand_spear_pose)
         .with_humanoid_mob_main_hand_spear_pose(humanoid_mob_main_hand_spear_pose)
@@ -6651,6 +6652,19 @@ mod tests {
         assert!(!main.player_main_hand_item_pose);
         assert!(!main.player_main_hand_spear_pose);
         assert!(!main.player_off_hand_spear_pose);
+
+        assert!(world.apply_entity_event(EntityEvent {
+            entity_id: 241,
+            event_id: 2,
+        }));
+        world.advance_entity_client_animations(2);
+        let hit_feedback =
+            entity_model_instances_from_world_at_partial_tick(&world, Some(&runtime), 0.5)
+                .into_iter()
+                .find(|instance| instance.entity_id == 241)
+                .unwrap()
+                .render_state;
+        assert_eq!(hit_feedback.ticks_since_kinetic_hit_feedback, 2.5);
 
         world.apply_add_entity(protocol_add_entity(
             242,

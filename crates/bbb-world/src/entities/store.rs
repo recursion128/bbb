@@ -1691,6 +1691,12 @@ impl EntityStore {
             crossbow_charge_ticks: client_animations
                 .animations
                 .crossbow_charge_ticks_using_item(partial_ticks),
+            // Vanilla `LivingEntityRenderState.ticksSinceKineticHitFeedback`
+            // (`LivingEntity.getTicksSinceLastKineticHitFeedback(partialTicks)`): entity event `2`
+            // starts the local feedback timer that `SpearAnimations.thirdPersonUseItem` consumes.
+            ticks_since_kinetic_hit_feedback: client_animations
+                .animations
+                .ticks_since_kinetic_hit_feedback(partial_ticks),
             // Vanilla `AxolotlRenderer.extractRenderState`: the four `BinaryAnimator` factors
             // (`Axolotl.{playingDead,inWater,onGround,moving}Animator.getFactor`) that
             // `AdultAxolotlModel.setupAnim` blends into its swim / hover / crawl / lay-still /

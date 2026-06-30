@@ -1278,6 +1278,12 @@ pub struct EntityModelSourceState {
     /// it with their own durations; `0.0` for anything not mid-draw/use.
     #[serde(default)]
     pub crossbow_charge_ticks: f32,
+    /// Vanilla `LivingEntityRenderState.ticksSinceKineticHitFeedback`
+    /// (`LivingEntity.getTicksSinceLastKineticHitFeedback(partialTicks)`): driven by
+    /// entity event `2` and consumed by spear item use feedback. `0.0` before any
+    /// accepted kinetic-hit event and for every non-living entity.
+    #[serde(default)]
+    pub ticks_since_kinetic_hit_feedback: f32,
     /// Vanilla `AxolotlRenderState.playingDeadFactor` (`Axolotl.playingDeadAnimator.getFactor`): the
     /// `0..1` eased blend `AdultAxolotlModel.setupPlayDeadAnimation` scales the limp-on-its-side pose
     /// by. `0.0` (awake) for every other entity.

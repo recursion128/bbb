@@ -3604,6 +3604,71 @@ fn entity_model_sources_project_hurt_overlay_for_ten_ticks() {
 }
 
 #[test]
+fn entity_model_sources_project_kinetic_hit_feedback_from_living_entity_event() {
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
+    const KINETIC_HIT_EVENT_ID: i8 = 2;
+
+    let feedback = |store: &WorldStore, entity_id: i32, partial_tick: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial_tick)
+            .into_iter()
+            .find(|source| source.entity_id == entity_id)
+            .expect("entity source")
+            .ticks_since_kinetic_hit_feedback
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        41,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        42,
+        VANILLA_ENTITY_TYPE_MINECART_ID,
+    ));
+
+    assert_eq!(feedback(&store, 41, 0.5), 0.0);
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 41,
+        event_id: KINETIC_HIT_EVENT_ID,
+    }));
+    // Vanilla `LivingEntity.handleEntityEvent(2)` calls `onKineticHit`, and
+    // `getTicksSinceLastKineticHitFeedback(partialTicks)` reads gameTime delta + partial.
+    assert_eq!(feedback(&store, 41, 0.25), 0.25);
+    store.advance_entity_client_animations(3);
+    assert_eq!(feedback(&store, 41, 0.5), 3.5);
+
+    store.advance_entity_client_animations(7);
+    assert_eq!(feedback(&store, 41, 0.0), 10.0);
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 41,
+        event_id: KINETIC_HIT_EVENT_ID,
+    }));
+    assert_eq!(
+        feedback(&store, 41, 0.0),
+        10.0,
+        "vanilla ignores repeated kinetic feedback until elapsed > 10 ticks"
+    );
+    store.advance_entity_client_animations(1);
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 41,
+        event_id: KINETIC_HIT_EVENT_ID,
+    }));
+    assert_eq!(feedback(&store, 41, 0.0), 0.0);
+
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 42,
+        event_id: KINETIC_HIT_EVENT_ID,
+    }));
+    assert_eq!(
+        feedback(&store, 42, 0.5),
+        0.0,
+        "event 2 is LivingEntity-specific"
+    );
+}
+
+#[test]
 fn entity_model_sources_project_attack_swing_ramp() {
     const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
 
