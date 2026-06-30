@@ -478,8 +478,9 @@ When an agent does any of the following, update this file in the same slice:
     branch rather than a blocker for the current render graph. Lightning bolts now
     render as vanilla-shaped `RenderTypes.lightning()` / `POSITION_COLOR` quad
     geometry into the weather target with `BlendFunction.LIGHTNING`-shaped
-    additive blending and default depth state; native projects active lightning
-    bolt entities into that weather state instead of the old placeholder box.
+    additive blending, default back-face culling, and default depth-write
+    `LESS_EQUAL`; native projects active lightning bolt entities into that
+    weather state instead of the old placeholder box.
     Terrain translucent upload-time quad sorting now follows vanilla
     `MeshData.sortQuads` centroid distance order, and camera changes rebuild
     the resident translucent index buffer from the stored quad centroids.
@@ -649,6 +650,10 @@ When an agent does any of the following, update this file in the same slice:
     Slice selection now treats that quick audit as the P0 reopen gate; when it
     finds no new P0 blocker, the next slice is opened automatically from the
     P1 checklist, starting with P1-1 render-state / render-graph fidelity.
+    A follow-up 2026-06-30 P1-1 loop reran the same quick audit with counts
+    38 / 526 / 152 after the weather ledger updates; the code-side
+    classification is still unchanged, so the loop stayed in P1 and fixed the
+    next render-state gap rather than reopening P0.
   - Replace proxies with full extraction from canonical world and pack data:
     - entity bounds
     - dropped-item icons (3D block/item model renderer in progress — see the

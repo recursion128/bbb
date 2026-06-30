@@ -107,6 +107,9 @@ const WEATHER_PIPELINE_BLEND: wgpu::BlendState = wgpu::BlendState::ALPHA_BLENDIN
 const WEATHER_PIPELINE_CULL_MODE: Option<wgpu::Face> = None;
 const WEATHER_PIPELINE_DEPTH_WRITE_ENABLED: bool = true;
 const WEATHER_PIPELINE_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::LessEqual;
+const LIGHTNING_PIPELINE_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
+const LIGHTNING_PIPELINE_DEPTH_WRITE_ENABLED: bool = true;
+const LIGHTNING_PIPELINE_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::LessEqual;
 const LIGHTNING_BLEND: wgpu::BlendState = wgpu::BlendState {
     color: wgpu::BlendComponent {
         src_factor: wgpu::BlendFactor::SrcAlpha,
@@ -462,15 +465,15 @@ pub(crate) fn create_lightning_pipeline(
             topology: wgpu::PrimitiveTopology::TriangleList,
             strip_index_format: None,
             front_face: wgpu::FrontFace::Ccw,
-            cull_mode: None,
+            cull_mode: LIGHTNING_PIPELINE_CULL_MODE,
             polygon_mode: wgpu::PolygonMode::Fill,
             unclipped_depth: false,
             conservative: false,
         },
         depth_stencil: Some(wgpu::DepthStencilState {
             format: DEPTH_FORMAT,
-            depth_write_enabled: true,
-            depth_compare: wgpu::CompareFunction::LessEqual,
+            depth_write_enabled: LIGHTNING_PIPELINE_DEPTH_WRITE_ENABLED,
+            depth_compare: LIGHTNING_PIPELINE_DEPTH_COMPARE,
             stencil: wgpu::StencilState::default(),
             bias: wgpu::DepthBiasState::default(),
         }),
@@ -1083,6 +1086,12 @@ mod tests {
         assert_eq!(
             LIGHTNING_VERTEX_ATTRIBUTES[1].format,
             wgpu::VertexFormat::Float32x4
+        );
+        assert_eq!(LIGHTNING_PIPELINE_CULL_MODE, Some(wgpu::Face::Back));
+        assert!(LIGHTNING_PIPELINE_DEPTH_WRITE_ENABLED);
+        assert_eq!(
+            LIGHTNING_PIPELINE_DEPTH_COMPARE,
+            wgpu::CompareFunction::LessEqual
         );
         assert_eq!(
             LIGHTNING_BLEND.color.src_factor,
