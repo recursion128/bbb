@@ -551,6 +551,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `Pillager.getArmPose` 保持 `CROSSBOW_CHARGE` / `CROSSBOW_HOLD` 优先，
     无 crossbow 且 aggressive 时进入 `IllagerModel.setupAnim` 的
     `ATTACKING` 分支（armed `swingWeaponDown`，empty-hand `animateZombieArms`）。
+  - [x] pillager `isHolding(CROSSBOW)` 双手语义：native 现在按 vanilla
+    `LivingEntity.isHolding` 检查主手或副手 crossbow，投影为
+    `pillager_holds_crossbow`；renderer 继续让 `CROSSBOW_HOLD` 压过
+    aggressive `ATTACKING`。
   - [x] illusioner invisible clone body submit：隐身 illusioner 现在按 vanilla
     `IllusionerRenderer.submit` 循环四个 `illusionOffsets`，在实体位置之后、
     living setup rotation 之前追加 offset + age jitter，并且覆盖

@@ -341,7 +341,7 @@ fn pillager_holds_its_crossbow_level_with_the_head_look() {
     let holding =
         EntityModelInstance::illager(103, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Pillager)
             .with_head_look(yaw, pitch)
-            .with_main_hand_holds_crossbow(true);
+            .with_pillager_holds_crossbow(true);
     let mut model = IllagerModel::new(&holding, IllagerModelFamily::Pillager);
     model.prepare(&holding);
 
@@ -457,7 +457,7 @@ fn pillager_crossbow_hold_reposes_only_the_arms() {
         EntityModelInstance::illager(103, [0.0, 64.0, 0.0], 0.0, IllagerModelFamily::Pillager)
             .with_head_look(15.0, -10.0);
     let rest = entity_model_mesh(&[base]);
-    let holding = entity_model_mesh(&[base.with_main_hand_holds_crossbow(true)]);
+    let holding = entity_model_mesh(&[base.with_pillager_holds_crossbow(true)]);
     assert_eq!(rest.vertices.len(), 192);
     assert_eq!(
         rest.vertices[0..144],
@@ -470,7 +470,7 @@ fn pillager_crossbow_hold_reposes_only_the_arms() {
         "both arms level the crossbow"
     );
     let charging = entity_model_mesh(&[base
-        .with_main_hand_holds_crossbow(true)
+        .with_pillager_holds_crossbow(true)
         .with_is_charging_crossbow(true)
         .with_crossbow_charge_ticks(12.0)]);
     assert_eq!(
@@ -1071,7 +1071,7 @@ fn aggressive_pillager_attacks_when_not_holding_crossbow() {
         "aggressive pillager should not stay on the neutral arm swing"
     );
 
-    let holding_crossbow = calm.with_main_hand_holds_crossbow(true);
+    let holding_crossbow = calm.with_pillager_holds_crossbow(true);
     assert_eq!(
         entity_model_mesh(&[holding_crossbow.with_is_aggressive(true)]).vertices,
         entity_model_mesh(&[holding_crossbow]).vertices,

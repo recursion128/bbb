@@ -790,6 +790,15 @@ fn entity_hand_holds_crossbow(
     item_runtime.item_resource_id(item_id) == Some("minecraft:crossbow")
 }
 
+fn entity_holds_crossbow(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    entity_id: i32,
+) -> bool {
+    entity_hand_holds_crossbow(world, item_runtime, entity_id, false)
+        || entity_hand_holds_crossbow(world, item_runtime, entity_id, true)
+}
+
 /// Whether the item in the given hand routes to a SPECIAL `getArmPose` (not the `ITEM` fallback) when used:
 /// the use-animation poses `BOW_AND_ARROW` (bow), `CROSSBOW_CHARGE` (crossbow), `THROW_TRIDENT` (trident),
 /// `BLOCK` (non-consumable `BLOCKS_ATTACKS` item, normally the shield), `SPYGLASS`, `TOOT_HORN` (goat horn),
@@ -1259,14 +1268,14 @@ fn entity_model_instance(
             && !player_off_hand_holds_spear
             && !player_off_hand_holds_charged_crossbow
     };
-    // Only the pillager drives the `CROSSBOW_HOLD` pose; resolve the held item just for it.
-    let main_hand_holds_crossbow =
-        matches!(
-            kind,
-            EntityModelKind::Illager {
-                family: IllagerModelFamily::Pillager
-            }
-        ) && entity_hand_holds_crossbow(world, item_runtime, source.entity_id, false);
+    // Vanilla `Pillager.getArmPose` checks `isHolding(Items.CROSSBOW)`, which scans both hands, before
+    // falling back to aggressive `ATTACKING`.
+    let pillager_holds_crossbow = matches!(
+        kind,
+        EntityModelKind::Illager {
+            family: IllagerModelFamily::Pillager
+        }
+    ) && entity_holds_crossbow(world, item_runtime, source.entity_id);
     // Vanilla `IllagerModel.setupAnim` `ATTACKING` branch selects empty-handed `animateZombieArms` versus
     // armed `swingWeaponDown` from the rendered main-hand item state.
     let illager_main_hand_empty = matches!(kind, EntityModelKind::Illager { .. })
@@ -1534,7 +1543,7 @@ fn entity_model_instance(
                 .map(ParrotModelVariant::from_id),
         )
         .with_use_item_off_hand(source.use_item_off_hand)
-        .with_main_hand_holds_crossbow(main_hand_holds_crossbow)
+        .with_pillager_holds_crossbow(pillager_holds_crossbow)
         .with_illager_main_hand_empty(illager_main_hand_empty)
         .with_drowned_throw_trident(drowned_throw_trident)
         .with_is_charging_crossbow(pillager_is_charging_crossbow(
@@ -5845,6 +5854,69 @@ mod tests {
             )],
         }));
         assert!(!charging(&world, 161));
+    }
+
+    #[test]
+    fn entity_model_instances_project_pillager_crossbow_hold_from_either_hand() {
+        // Vanilla `Pillager.getArmPose` uses `isHolding(Items.CROSSBOW)`, and `LivingEntity.isHolding`
+        // checks both hands before the aggressive ATTACKING fallback.
+        const CROSSBOW_ID: i32 = 0;
+
+        let registry: bbb_pack::ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+            "resource_ids": ["minecraft:crossbow"],
+            "protocol_ids": { "minecraft:crossbow": CROSSBOW_ID }
+        }))
+        .unwrap();
+        let runtime = NativeItemRuntime::for_test_with_registry_and_equipment_assets(
+            registry,
+            bbb_pack::EquipmentAssetCatalog::default(),
+        );
+        let equip = |entity_id: i32, slot: EquipmentSlot| SetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot,
+                item: ItemStackSummary {
+                    item_id: Some(CROSSBOW_ID),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            }],
+        };
+        let holds_crossbow = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, Some(&runtime), 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+                .pillager_holds_crossbow
+        };
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            162,
+            VANILLA_ENTITY_TYPE_PILLAGER_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            163,
+            VANILLA_ENTITY_TYPE_PILLAGER_ID,
+            [2.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            164,
+            VANILLA_ENTITY_TYPE_EVOKER_ID,
+            [3.0, 64.0, -2.0],
+        ));
+
+        assert!(!holds_crossbow(&world, 162));
+        assert!(world.apply_set_equipment(equip(162, EquipmentSlot::MainHand)));
+        assert!(holds_crossbow(&world, 162));
+
+        assert!(world.apply_set_equipment(equip(163, EquipmentSlot::OffHand)));
+        assert!(holds_crossbow(&world, 163));
+
+        assert!(world.apply_set_equipment(equip(164, EquipmentSlot::OffHand)));
+        assert!(!holds_crossbow(&world, 164));
     }
 
     #[test]

@@ -308,7 +308,7 @@ fn apply_illager_bow_aim(root: &mut ModelPart, head_yaw_degrees: f32, head_pitch
 /// `CROSSBOW_HOLD`): it holds a crossbow and is not mid-draw (`isChargingCrossbow()`, which instead
 /// takes the higher-priority `CROSSBOW_CHARGE` pull-back pose).
 fn illager_is_holding_crossbow(instance: &EntityModelInstance) -> bool {
-    instance.render_state.main_hand_holds_crossbow && !instance.render_state.is_charging_crossbow
+    instance.render_state.pillager_holds_crossbow && !instance.render_state.is_charging_crossbow
 }
 
 /// The resolved illager arm pose for a frame, mirroring each family's vanilla `getArmPose()` for the

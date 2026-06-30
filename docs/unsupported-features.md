@@ -1326,7 +1326,7 @@ When an agent does any of the following, update this file in the same slice:
     crossed `arms` part, the illusioner keeping its hat) and raises both separate arms —
     `xRot = cos(ageInTicks · 0.6662) · 0.25`, `zRot = ±3π/4`, holding the bind offset
     `x = ∓5` — on both render paths. The pillager `CROSSBOW_HOLD` arm pose is also
-    projected: a pillager holding a crossbow (`main_hand_holds_crossbow`, the main-hand
+    projected: a pillager holding a crossbow (`pillager_holds_crossbow`, either hand's
     item resolved to `minecraft:crossbow`) that is not drawing (`!is_charging_crossbow`,
     the synced `IS_CHARGING_CROSSBOW` boolean, data id `17`, gated to the pillager type)
     levels the weapon along the head look — `AnimationUtils.animateCrossbowHold`,

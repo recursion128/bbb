@@ -625,8 +625,8 @@ entity_render_state! {
     /// Vanilla `Pillager.isHolding(Items.CROSSBOW)`: with [`is_charging_crossbow`](Self::is_charging_crossbow)
     /// `false`, `Pillager.getArmPose` returns `CROSSBOW_HOLD`, so `IllagerModel` levels the crossbow
     /// (`AnimationUtils.animateCrossbowHold`) along the head look. `false` for every non-pillager entity
-    /// and for a pillager whose main hand is not a crossbow.
-    (with_main_hand_holds_crossbow) main_hand_holds_crossbow: bool = false;
+    /// and for a pillager holding no crossbow in either hand.
+    (with_pillager_holds_crossbow) pillager_holds_crossbow: bool = false;
     /// Vanilla `DrownedRenderer.getArmPose` `THROW_TRIDENT`: a drowned holding a trident in its main hand
     /// while aggressive raises the arm overhead to throw (`DrownedModel.setupAnim` sets the main arm
     /// `xRot = xRot*0.5 - π`, `yRot = 0` after the held-out zombie arms). `false` for every other entity,
@@ -2666,7 +2666,7 @@ mod tests {
                 player_crossbow_hold: false,
                 player_crossbow_hold_off_hand: false,
                 use_item_off_hand: false,
-                main_hand_holds_crossbow: false,
+                pillager_holds_crossbow: false,
                 drowned_throw_trident: false,
                 is_charging_crossbow: false,
                 crossbow_charge_ticks: 0.0,
