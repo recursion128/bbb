@@ -2462,8 +2462,10 @@ When an agent does any of the following, update this file in the same slice:
       visible/invisible states, and the base-armor -> glint -> dye-overlay ->
       crack submit order. Basic GPU glint presentation now emits the folded
       armorEntityGlint geometry into a dedicated main-target GLINT blend /
-      depth-equal pipeline, while animated glint time offset and remaining
-      item-specific glint variants stay in the broader GPU-state work. The former wolf render-state
+      depth-equal pipeline and reads the camera uniform's vanilla-shaped
+      `TextureTransform.setupGlintTexturing` offsets (`Options.glintSpeed`
+      default `0.5`, `110000` / `30000`ms periods). Remaining item-specific
+      glint variants stay in the broader GPU-state work. The former wolf render-state
       extraction gap is closed by native/world/renderer tests for armor,
       sitting, head/tail/walk, wet shade, water-shake/head-roll, variant,
       collar, invisibility, outline, lighting, and overlay states
@@ -2929,9 +2931,9 @@ When an agent does any of the following, update this file in the same slice:
       submission immediately after that slot's first rendered `armorCutoutNoCull` layer, preserving the
       glint texture, no-overlay coords, entity light, root transform, `order(2)`, and same-order slot
       `submit_sequence` even when the base body is hidden. The static-atlas GPU path now folds this
-      geometry into the dedicated armorEntityGlint GLINT blend / depth-equal pipeline; animated glint
-      texture-matrix time offsets, armor trims, and any remaining mob-specific armor models stay
-      deferred.
+      geometry into the dedicated armorEntityGlint GLINT blend / depth-equal pipeline with the
+      vanilla-shaped dynamic texture-matrix offset; armor trims and any remaining mob-specific armor
+      models stay deferred.
     - base zombie entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `HumanoidModel`, `BabyZombieModel`, and `ZombieRenderer`,
       with a texture-backed cutout render path: the adult layer emits the vanilla
@@ -4499,7 +4501,8 @@ When an agent does any of the following, update this file in the same slice:
       synced `ID_FOIL` order-1 `entityGlint` submit with `textures/misc/enchanted_glint_item.png`, white
       tint, same flight transform, light coords, and `OverlayTexture.NO_OVERLAY`; the shared trident
       dispatch sink now records the vanilla base -> foil generation order, and the static-atlas GPU path
-      folds the foil geometry into a dedicated entityGlint GLINT blend / depth-equal pipeline. The base
+      folds the foil geometry into a dedicated entityGlint GLINT blend / depth-equal pipeline with the
+      vanilla-shaped dynamic glint texture offset. The base
       submission explicitly records vanilla `order(0)`, `entityCutout`,
       white tint, texture, light coords, `OverlayTexture.NO_OVERLAY`, and the
       flight-orientation transform, with folded cutout vertices inheriting that base

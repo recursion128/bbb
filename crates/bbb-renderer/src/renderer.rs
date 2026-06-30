@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use anyhow::{anyhow, Result};
 use bbb_control::RendererCounters;
 use wgpu::util::DeviceExt;
@@ -11,6 +13,7 @@ use crate::{
     camera::{
         sanitize_lightmap_block_factor, sanitize_lightmap_brightness_factor, CameraPose,
         CameraUniform, ClearColor, FogEnvironment, LightmapEnvironment, TerrainBounds,
+        VANILLA_DEFAULT_GLINT_SPEED,
     },
     clouds::{
         cloud_mesh_key, create_cloud_bind_group, create_cloud_bind_group_layout, create_cloud_gpu,
@@ -98,6 +101,7 @@ pub struct Renderer {
     pub(super) size: PhysicalSize<u32>,
     pub(super) clear: ClearColor,
     pub(super) counters: RendererCounters,
+    pub(super) started_at: Instant,
     pub(super) main_target: MainTarget,
     pub(super) translucent_target: TranslucentTarget,
     pub(super) item_entity_target: ItemEntityTarget,
@@ -798,6 +802,7 @@ impl Renderer {
                 height: size.height,
                 ..RendererCounters::default()
             },
+            started_at: Instant::now(),
             main_target,
             translucent_target,
             item_entity_target,
@@ -1456,6 +1461,7 @@ impl Renderer {
 
     pub(crate) fn update_camera(&self) {
         let aspect = self.config.width as f32 / self.config.height.max(1) as f32;
+        let glint_elapsed_millis = self.started_at.elapsed().as_secs_f64() * 1000.0;
         let uniform = if let Some(pose) = self.camera_pose {
             CameraUniform::from_pose(pose, aspect)
         } else {
@@ -1463,13 +1469,15 @@ impl Renderer {
                 .map(|bounds| CameraUniform::from_bounds(bounds, aspect))
                 .unwrap_or_else(CameraUniform::identity)
         }
-        .with_lightmap_environment(self.lightmap_environment);
-        let uniform = uniform.with_fog_environment(self.fog_environment);
+        .with_lightmap_environment(self.lightmap_environment)
+        .with_fog_environment(self.fog_environment)
+        .with_glint_texture_time(glint_elapsed_millis, VANILLA_DEFAULT_GLINT_SPEED);
         self.queue
             .write_buffer(&self.camera_buffer, 0, bytemuck::bytes_of(&uniform));
         // The GUI item pass projects 3D inventory icons with a screen-space ortho (separate buffer so it
         // does not clobber the world camera, which earlier passes in the same submit still read).
-        let gui = CameraUniform::gui_ortho(self.config.width as f32, self.config.height as f32);
+        let gui = CameraUniform::gui_ortho(self.config.width as f32, self.config.height as f32)
+            .with_glint_texture_time(glint_elapsed_millis, VANILLA_DEFAULT_GLINT_SPEED);
         self.queue
             .write_buffer(&self.gui_item_camera_buffer, 0, bytemuck::bytes_of(&gui));
     }

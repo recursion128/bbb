@@ -1026,6 +1026,9 @@ struct Camera {{
     fog_color: vec4<f32>,
     fog_distances: vec4<f32>,
     fog_visibility_ends: vec4<f32>,
+    minecraft_light0: vec4<f32>,
+    minecraft_light1: vec4<f32>,
+    glint_offsets: vec4<f32>,
 }};
 
 const GLINT_UV_SCALE: f32 = {scale};
@@ -1081,10 +1084,11 @@ fn glint_uv(local_uv: vec2<f32>) -> vec2<f32> {{
     let scaled = local_uv * GLINT_UV_SCALE;
     let cos_angle = cos(GLINT_ANGLE);
     let sin_angle = sin(GLINT_ANGLE);
-    return vec2<f32>(
+    let rotated = vec2<f32>(
         scaled.x * cos_angle - scaled.y * sin_angle,
         scaled.x * sin_angle + scaled.y * cos_angle,
     );
+    return rotated + camera.glint_offsets.xy;
 }}
 
 @vertex
@@ -3003,6 +3007,8 @@ mod tests {
         assert!(armor_glint.contains("const GLINT_UV_SCALE: f32 = 0.16"));
         assert!(entity_glint.contains("const GLINT_ALPHA: f32 = 0.75"));
         assert!(entity_glint.contains("const GLINT_ANGLE: f32 = 0.1745329252"));
+        assert!(entity_glint.contains("glint_offsets: vec4<f32>"));
+        assert!(entity_glint.contains("rotated + camera.glint_offsets.xy"));
         assert!(entity_glint.contains("fract(input.local_uv)"));
         assert!(entity_glint.contains("if color.a < 0.1"));
         assert!(!entity_glint.contains("lightmap_texture"));

@@ -22,6 +22,8 @@ pub const VANILLA_DEFAULT_LIGHTMAP_AMBIENT_COLOR: [f32; 3] = [0.0, 0.0, 0.0];
 /// Vanilla `EnvironmentAttributes.NIGHT_VISION_COLOR` default (`0x999999`).
 pub const VANILLA_DEFAULT_LIGHTMAP_NIGHT_VISION_COLOR: [f32; 3] =
     [153.0 / 255.0, 153.0 / 255.0, 153.0 / 255.0];
+/// Vanilla `Options.glintSpeed` default.
+pub(crate) const VANILLA_DEFAULT_GLINT_SPEED: f64 = 0.5;
 /// Vanilla `Options.renderDistance` default.
 pub const VANILLA_DEFAULT_RENDER_DISTANCE_CHUNKS: u32 = 12;
 /// Vanilla `Options.renderDistance` lower bound.
@@ -286,6 +288,9 @@ pub(crate) struct CameraUniform {
     /// Vanilla `Lighting.Entry` diffuse directions used by lit model shaders.
     minecraft_light0: [f32; 4],
     minecraft_light1: [f32; 4],
+    /// Vanilla `TextureTransform.setupGlintTexturing` translation offsets:
+    /// `[-layerOffset0, layerOffset1, _, _]`.
+    glint_offsets: [f32; 4],
 }
 
 impl CameraUniform {
@@ -397,6 +402,12 @@ impl CameraUniform {
         self
     }
 
+    pub(crate) fn with_glint_texture_time(mut self, elapsed_millis: f64, glint_speed: f64) -> Self {
+        let offsets = vanilla_glint_texture_offsets(elapsed_millis, glint_speed);
+        self.glint_offsets = [offsets[0], offsets[1], 0.0, 0.0];
+        self
+    }
+
     #[cfg(test)]
     pub(crate) fn lightmap_brightness_factor(self) -> f32 {
         self.lightmap_effects[1]
@@ -454,6 +465,11 @@ impl CameraUniform {
         )
     }
 
+    #[cfg(test)]
+    pub(crate) fn glint_offsets(self) -> [f32; 4] {
+        self.glint_offsets
+    }
+
     fn from_lightmap_environment(environment: LightmapEnvironment) -> Self {
         let environment = environment.sanitized();
         let (minecraft_light0, minecraft_light1) =
@@ -492,8 +508,30 @@ impl CameraUniform {
             ],
             minecraft_light0: vec3_to_vec4(minecraft_light0),
             minecraft_light1: vec3_to_vec4(minecraft_light1),
+            glint_offsets: [0.0, 0.0, 0.0, 0.0],
         }
     }
+}
+
+pub(crate) fn vanilla_glint_texture_offsets(elapsed_millis: f64, glint_speed: f64) -> [f32; 2] {
+    const GLINT_SPEED_MILLIS_MULTIPLIER: f64 = 8.0;
+    const LAYER0_PERIOD_MILLIS: u64 = 110_000;
+    const LAYER1_PERIOD_MILLIS: u64 = 30_000;
+
+    let elapsed_millis = if elapsed_millis.is_finite() {
+        elapsed_millis.max(0.0)
+    } else {
+        0.0
+    };
+    let glint_speed = if glint_speed.is_finite() {
+        glint_speed.max(0.0)
+    } else {
+        VANILLA_DEFAULT_GLINT_SPEED
+    };
+    let millis = (elapsed_millis * glint_speed * GLINT_SPEED_MILLIS_MULTIPLIER) as u64;
+    let layer0 = (millis % LAYER0_PERIOD_MILLIS) as f32 / LAYER0_PERIOD_MILLIS as f32;
+    let layer1 = (millis % LAYER1_PERIOD_MILLIS) as f32 / LAYER1_PERIOD_MILLIS as f32;
+    [-layer0, layer1]
 }
 
 pub(crate) fn sanitize_lightmap_brightness_factor(factor: f32) -> f32 {
@@ -593,6 +631,13 @@ mod tests {
         let actual = Vec3::from_array(actual);
         assert!(
             actual.abs_diff_eq(expected, 1.0e-5),
+            "expected {expected:?}, got {actual:?}"
+        );
+    }
+
+    fn assert_vec2_close(actual: [f32; 2], expected: [f32; 2]) {
+        assert!(
+            (actual[0] - expected[0]).abs() < 1.0e-6 && (actual[1] - expected[1]).abs() < 1.0e-6,
             "expected {expected:?}, got {actual:?}"
         );
     }
@@ -698,6 +743,33 @@ mod tests {
 
         assert_eq!(gui, expected);
         assert_ne!(gui, level);
+    }
+
+    #[test]
+    fn vanilla_glint_texture_offsets_match_texture_transform_periods() {
+        assert_vec2_close(
+            vanilla_glint_texture_offsets(0.0, VANILLA_DEFAULT_GLINT_SPEED),
+            [0.0, 0.0],
+        );
+        assert_vec2_close(
+            vanilla_glint_texture_offsets(1000.0, VANILLA_DEFAULT_GLINT_SPEED),
+            [-4000.0 / 110_000.0, 4000.0 / 30_000.0],
+        );
+        assert_vec2_close(
+            vanilla_glint_texture_offsets(27_500.0, VANILLA_DEFAULT_GLINT_SPEED),
+            [0.0, 20_000.0 / 30_000.0],
+        );
+    }
+
+    #[test]
+    fn camera_uniform_stores_vanilla_glint_offsets() {
+        assert_eq!(CameraUniform::identity().glint_offsets(), [0.0; 4]);
+        assert_eq!(
+            CameraUniform::identity()
+                .with_glint_texture_time(1000.0, VANILLA_DEFAULT_GLINT_SPEED)
+                .glint_offsets(),
+            [-4000.0 / 110_000.0, 4000.0 / 30_000.0, 0.0, 0.0]
+        );
     }
 
     #[test]

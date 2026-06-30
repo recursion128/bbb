@@ -126,8 +126,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     并跳过 LightTexture。
   - [x] `entityGlint` / `armorEntityGlint` 基础 GPU path：trident foil 和
     armor foil 提交进入独立 glint mesh / GLINT blend / depth-equal pipeline，
-    跳过 LightTexture；动态 texture-matrix time offset 与其他 item glint
-    变体仍属后续 shader/state 细化。
+    跳过 LightTexture；shader 现在读取 camera uniform 中按 vanilla
+    `TextureTransform.setupGlintTexturing` 推进的动态 offset（默认
+    `Options.glintSpeed = 0.5`，`110000` / `30000`ms 双周期）。其他 item
+    glint 变体仍属后续 shader/state 细化。
   - [x] no-cull / cull / translucent / translucent-cull item-target baseline
     GPU state：generic `entityCutout` / `entityCutoutCull` /
     `entityTranslucent` / `entityTranslucentCullItemTarget` 路径已用显式
@@ -208,6 +210,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     clamp-to-edge / nearest sampler helper，并固定 single-mip 上传策略；完整
     vanilla mip generation / standalone texture sampler parity 仍是后续更细粒度
     shader-resource 工作。
+  - [x] entity / armor glint dynamic texture offset：`entityGlint` scale
+    `0.5` 与 `armorEntityGlint` scale `0.16` 保持独立 shader，uniform 记录
+    vanilla `Util.getMillis() * glintSpeed * 8` 派生的 `-layerOffset0` /
+    `layerOffset1`，shader 在 scale + `rotateZ(π/18)` 后应用 translation。
   - per RenderType 的 blend、depth write/test、cull、sampler、mip、lightmap、
     overlay、fog、normal diffuse 组合继续拆细。
   - glint / scroll / emissive path 不应只依赖普通 entity shader fallback。
