@@ -51,11 +51,11 @@ pub use crate::entity_models::{
     HumanoidModelFamily, IllagerModelFamily, IronGolemCrackiness, LlamaModelFamily, LlamaVariant,
     MooshroomVariant, PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
     PlayerModelPartVisibility, QuadrupedModelFamily, RabbitModelVariant, SalmonModelSize,
-    SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose, TropicalFishModelShape,
-    TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelProfession,
-    VillagerModelType, WolfArmorCrackiness, WolfModelVariant, ZombieVariantModelFamily,
-    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_DEFAULT_OUTLINE_COLOR, ENTITY_FULL_BRIGHT_LIGHT_COORDS,
-    PLAYER_MODEL_PARTS_ALL_HIDDEN, PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose, SpearKineticWeapon,
+    TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData,
+    VillagerModelProfession, VillagerModelType, WolfArmorCrackiness, WolfModelVariant,
+    ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_DEFAULT_OUTLINE_COLOR,
+    ENTITY_FULL_BRIGHT_LIGHT_COORDS, PLAYER_MODEL_PARTS_ALL_HIDDEN, PLAYER_MODEL_PARTS_ALL_VISIBLE,
 };
 pub use crate::entity_models::{
     allay_hand_attach_transform, copper_golem_antenna_block_transform,

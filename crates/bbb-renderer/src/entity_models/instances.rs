@@ -10,6 +10,105 @@ pub const ENTITY_FULL_BRIGHT_LIGHT_COORDS: u32 = 15_728_880;
 /// `ARGB.opaque` for a glowing entity with no colored scoreboard team.
 pub const ENTITY_DEFAULT_OUTLINE_COLOR: u32 = 0xffff_ffff;
 
+/// Vanilla `DataComponents.KINETIC_WEAPON` subset needed by `SpearAnimations.thirdPersonHandUse` and
+/// `thirdPersonUseItem`. Native projects the official default spear values from `Items.java`; renderer
+/// consumes only timing and forward movement and stays independent of pack parsing.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SpearKineticWeapon {
+    pub delay_ticks: f32,
+    pub dismount_duration_ticks: f32,
+    pub knockback_duration_ticks: f32,
+    pub damage_duration_ticks: f32,
+    pub forward_movement: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct SpearKineticUseParams {
+    pub raise_progress: f32,
+    pub raise_progress_start: f32,
+    pub raise_progress_middle: f32,
+    pub raise_progress_end: f32,
+    pub sway_progress: f32,
+    pub lower_progress: f32,
+    pub raise_back_progress: f32,
+    pub sway_intensity: f32,
+    pub sway_scale_slow: f32,
+    pub sway_scale_fast: f32,
+}
+
+impl SpearKineticWeapon {
+    pub(crate) fn use_params(self, time: f32) -> SpearKineticUseParams {
+        let finish_raising_tick = self.delay_ticks;
+        let finish_swaying_tick = self.dismount_duration_ticks + finish_raising_tick;
+        let start_swaying_tick = finish_swaying_tick - 20.0;
+        let finish_lowering_tick = self.knockback_duration_ticks + finish_raising_tick;
+        let start_lowering_tick = finish_lowering_tick - 40.0;
+        let finish_raising_back_tick = self.damage_duration_ticks + finish_raising_tick;
+        let raise_progress = progress(time, 0.0, finish_raising_tick);
+        let raise_progress_start = progress(raise_progress, 0.0, 0.5);
+        let raise_progress_middle = progress(raise_progress, 0.5, 0.8);
+        let raise_progress_end = progress(raise_progress, 0.8, 1.0);
+        let sway_progress = progress(time, start_swaying_tick, finish_swaying_tick);
+        let lower_progress = ease_out_cubic(ease_in_out_elastic(progress(
+            time - 20.0,
+            start_lowering_tick,
+            finish_lowering_tick,
+        )));
+        let raise_back_progress = progress(
+            time,
+            finish_raising_back_tick - 5.0,
+            finish_raising_back_tick,
+        );
+        let sway_intensity =
+            2.0 * ease_out_circ(sway_progress) - 2.0 * ease_in_circ(raise_back_progress);
+        let sway_scale_slow = (time * 19.0_f32.to_radians()).sin() * sway_intensity;
+        let sway_scale_fast = (time * 30.0_f32.to_radians()).sin() * sway_intensity;
+        SpearKineticUseParams {
+            raise_progress,
+            raise_progress_start,
+            raise_progress_middle,
+            raise_progress_end,
+            sway_progress,
+            lower_progress,
+            raise_back_progress,
+            sway_intensity,
+            sway_scale_slow,
+            sway_scale_fast,
+        }
+    }
+}
+
+fn progress(value: f32, start: f32, end: f32) -> f32 {
+    ((value - start) / (end - start)).clamp(0.0, 1.0)
+}
+
+fn ease_out_circ(x: f32) -> f32 {
+    (1.0 - (x - 1.0).powi(2)).sqrt()
+}
+
+fn ease_in_circ(x: f32) -> f32 {
+    1.0 - (1.0 - x * x).sqrt()
+}
+
+fn ease_out_cubic(x: f32) -> f32 {
+    1.0 - (1.0 - x).powi(3)
+}
+
+fn ease_in_out_elastic(x: f32) -> f32 {
+    if x == 0.0 {
+        return 0.0;
+    }
+    if x == 1.0 {
+        return 1.0;
+    }
+    let sin = ((20.0 * x - 11.125) * std::f32::consts::PI * 4.0 / 9.0).sin();
+    if x < 0.5 {
+        -(2.0_f32.powf(20.0 * x - 10.0) * sin) / 2.0
+    } else {
+        2.0_f32.powf(-20.0 * x + 10.0) * sin / 2.0 + 1.0
+    }
+}
+
 /// Vanilla sleeping pose (`LivingEntityRenderer.setupRotations`/`submit` when
 /// `state.hasPose(Pose.SLEEPING)`): the entity lies down in a bed. The renderer
 /// skips the usual `180 - bodyRot` body yaw and instead applies `Ry(yaw_angle) *
@@ -378,6 +477,11 @@ entity_render_state! {
     /// (the lunge/retract stab) instead of the default `WHACK` arm chop. `false` for every entity not
     /// holding a spear — only `PlayerModel` consumes it (the default `WHACK` covers every other case).
     (with_main_hand_swing_is_stab) main_hand_swing_is_stab: bool = false;
+    /// Vanilla `HumanoidModel.ArmPose.SPEAR` while using a spear: `SpearAnimations.thirdPersonHandUse`
+    /// poses the using arm with kinetic weapon timing, and `ItemInHandLayer` applies the matching
+    /// `thirdPersonUseItem` item transform before submitting the held item. `None` for every entity not
+    /// using a spear — only `PlayerModel` / humanoid held-item attachment consume it.
+    (with_player_using_spear) player_using_spear: Option<SpearKineticWeapon> = None;
     /// Vanilla `HumanoidModel.setupAnim` use-item arm pose `SPYGLASS`
     /// (`ItemStack.getUseAnimation() == SPYGLASS`): a player using a spyglass raises the holding arm to
     /// the eye (`xRot = clamp(head.xRot − 1.9198622 − crouch?π/12, −2.4, 3.3)`, `yRot = head.yRot ∓ π/12`)
@@ -506,10 +610,9 @@ entity_render_state! {
     /// pillager pulls the crossbow back ([`crossbow_charge_ticks`](Self::crossbow_charge_ticks)
     /// drives the draw). `false` for every non-pillager entity.
     (with_is_charging_crossbow) is_charging_crossbow: bool = false;
-    /// Vanilla `{Illager,Piglin}RenderState.ticksUsingItem` for the `CROSSBOW_CHARGE` draw — the
-    /// reconstructed `getTicksUsingItem()`. `AnimationUtils.animateCrossbowCharge` lerps the pulling arm
-    /// from rest to full draw over `ticksUsingItem / maxChargeDuration`. Shared by the pillager
-    /// (`IllagerModel`) and the regular piglin (`PiglinModel`). `0.0` for anything not mid-draw.
+    /// Vanilla render-state `ticksUsingItem`: the reconstructed `getTicksUsingItem()` counter used by
+    /// crossbow `CROSSBOW_CHARGE` poses and the player's spear kinetic use sway. `AnimationUtils`
+    /// consumers clamp it to their own durations. `0.0` for anything not using / charging.
     (with_crossbow_charge_ticks) crossbow_charge_ticks: f32 = 0.0;
     /// Vanilla `EndermanRenderState.carriedBlock` non-empty: the enderman is holding a
     /// block, so `EndermanModel.setupAnim` poses both arms forward (`xRot = -0.5`, `zRot =
@@ -2459,6 +2562,7 @@ mod tests {
                 is_aggressive: false,
                 main_hand_holds_bow: false,
                 main_hand_swing_is_stab: false,
+                player_using_spear: None,
                 player_using_spyglass: false,
                 player_tooting_horn: false,
                 player_brushing: false,

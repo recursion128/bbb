@@ -18,7 +18,7 @@ use super::model_layers::{
     PiglinModel, PlayerModel, SkeletonModel, VillagerModel, WanderingTraderModel, WitchModel,
     ZombieModel, ZombieVariantModel,
 };
-use super::{EntityModelInstance, EntityModelKind, SkeletonModelFamily};
+use super::{EntityModelInstance, EntityModelKind, SkeletonModelFamily, SpearKineticWeapon};
 
 const CUSTOM_HEAD_ITEM_SCALE: f32 = 0.625;
 const CUSTOM_HEAD_SKULL_SCALE: f32 = 1.1875;
@@ -96,14 +96,24 @@ fn item_in_hand_layer_base_transform(arm_world: Mat4, left_hand: bool, baby: boo
 }
 
 fn item_in_hand_layer_item_transform(instance: &EntityModelInstance, left_hand: bool) -> Mat4 {
+    let mut transform = Mat4::IDENTITY;
     if !left_hand
         && instance.render_state.main_hand_swing_is_stab
         && !instance.render_state.attack_arm_off_hand
     {
-        spear_third_person_attack_item_transform(instance.render_state.attack_anim)
-    } else {
-        Mat4::IDENTITY
+        transform *= spear_third_person_attack_item_transform(instance.render_state.attack_anim);
     }
+    if let Some(kinetic_weapon) = instance.render_state.player_using_spear {
+        if left_hand == instance.render_state.use_item_off_hand {
+            transform *= spear_third_person_use_item_transform(
+                kinetic_weapon,
+                instance.render_state.crossbow_charge_ticks,
+                instance.render_state.attack_anim,
+                left_hand,
+            );
+        }
+    }
+    transform
 }
 
 /// Vanilla `SpearAnimations.thirdPersonAttackItem`: after the standard hand offset and before the item
@@ -121,6 +131,45 @@ fn spear_third_person_attack_item_transform(attack_anim: f32) -> Mat4 {
         Vec3::new(0.0, -0.125, 0.125),
         Mat4::from_rotation_x(-(70.0 * amount).to_radians()),
     ) * Mat4::from_translation(Vec3::new(0.0, 0.38 * amount, 0.0))
+}
+
+/// Vanilla `SpearAnimations.thirdPersonUseItem` for the held-item layer. This applies after the standard
+/// hand offset and after the STAB attack item transform. The world projection does not yet expose
+/// `ticksSinceKineticHitFeedback`, so the hit-feedback translate term is currently the vanilla zero case.
+fn spear_third_person_use_item_transform(
+    kinetic_weapon: SpearKineticWeapon,
+    ticks_using_item: f32,
+    attack_anim: f32,
+    left_hand: bool,
+) -> Mat4 {
+    if ticks_using_item == 0.0 {
+        return Mat4::IDENTITY;
+    }
+    let attack = progress(attack_anim, 0.05, 0.2).powi(2);
+    let retract = ease_in_out_expo(progress(attack_anim, 0.4, 1.0));
+    let params = kinetic_weapon.use_params(ticks_using_item);
+    let invert = if left_hand { -1.0 } else { 1.0 };
+    let raise_progress_modified = 1.0 - ease_out_back(1.0 - params.raise_progress);
+    Mat4::from_translation(Vec3::new(
+        0.0,
+        0.0,
+        -kinetic_weapon.forward_movement * (raise_progress_modified - params.raise_back_progress),
+    )) * rotate_around(
+        Vec3::new(0.0, -0.03125, 0.125),
+        Mat4::from_rotation_x(
+            -(70.0 * (params.raise_progress - params.raise_back_progress)
+                - 40.0 * (attack - retract))
+                .to_radians(),
+        ),
+    ) * rotate_around(
+        Vec3::new(0.0, 0.0, 0.125),
+        Mat4::from_rotation_y(
+            (invert
+                * 90.0
+                * (params.raise_progress - params.sway_progress + 3.0 * retract + attack))
+                .to_radians(),
+        ),
+    )
 }
 
 fn rotate_around(pivot: Vec3, rotation: Mat4) -> Mat4 {
@@ -143,6 +192,11 @@ fn ease_in_out_expo(x: f32) -> f32 {
     } else {
         (2.0 - 2.0_f32.powf(-20.0 * x + 10.0)) / 2.0
     }
+}
+
+fn ease_out_back(x: f32) -> f32 {
+    let delta = x - 1.0;
+    1.0 + 2.70158 * delta.powi(3) + 1.70158 * delta.powi(2)
 }
 
 /// The model→world transform used by vanilla `CopperGolemModel.translateToHand` plus
@@ -1339,6 +1393,48 @@ mod tests {
         assert_close_transform(
             humanoid_hand_attach_transform(&whack, false).unwrap(),
             item_in_hand_layer_base_transform(whack_world, false, whack_baby),
+        );
+    }
+
+    #[test]
+    fn spear_use_applies_vanilla_item_layer_kinetic_transform() {
+        let kinetic = SpearKineticWeapon {
+            delay_ticks: 12.0,
+            dismount_duration_ticks: 50.0,
+            knockback_duration_ticks: 135.0,
+            damage_duration_ticks: 225.0,
+            forward_movement: 0.38,
+        };
+        let player = player_instance(0.0)
+            .with_player_using_spear(Some(kinetic))
+            .with_crossbow_charge_ticks(60.0);
+        let (arm_world, baby) = humanoid_arm_world_transform(&player, "right_arm").unwrap();
+        let expected = item_in_hand_layer_base_transform(arm_world, false, baby)
+            * spear_third_person_use_item_transform(kinetic, 60.0, 0.0, false);
+        let actual = humanoid_hand_attach_transform(&player, false).unwrap();
+        assert_close_transform(actual, expected);
+
+        let base_origin =
+            item_in_hand_layer_base_transform(arm_world, false, baby).transform_point3(Vec3::ZERO);
+        let use_origin = actual.transform_point3(Vec3::ZERO);
+        assert!(
+            (use_origin - base_origin).length() > 0.01,
+            "thirdPersonUseItem should visibly move the submitted spear"
+        );
+
+        let off = player.with_use_item_off_hand(true);
+        let (left_world, left_baby) = humanoid_arm_world_transform(&off, "left_arm").unwrap();
+        let expected_left = item_in_hand_layer_base_transform(left_world, true, left_baby)
+            * spear_third_person_use_item_transform(kinetic, 60.0, 0.0, true);
+        assert_close_transform(
+            humanoid_hand_attach_transform(&off, true).unwrap(),
+            expected_left,
+        );
+
+        let (right_world, right_baby) = humanoid_arm_world_transform(&off, "right_arm").unwrap();
+        assert_close_transform(
+            humanoid_hand_attach_transform(&off, false).unwrap(),
+            item_in_hand_layer_base_transform(right_world, false, right_baby),
         );
     }
 

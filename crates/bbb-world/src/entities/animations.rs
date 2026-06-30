@@ -4596,9 +4596,9 @@ impl EntityClientAnimationState {
             .map_or(0.0, |state| state.holding_item_progress(partial_tick))
     }
 
-    /// Vanilla `IllagerRenderState.ticksUsingItem` (`getTicksUsingItem(partialTicks)`) for the pillager's
-    /// `CROSSBOW_CHARGE` draw, reconstructed from the charge counter. `0.0` for a pillager that is not
-    /// charging and every other entity.
+    /// Vanilla render-state `ticksUsingItem` (`getTicksUsingItem(partialTicks)`) reconstructed from the
+    /// charge/use counter. Used by crossbow `CROSSBOW_CHARGE` poses and player spear kinetic use sway.
+    /// `0.0` when the tracked charge/use bit is down.
     pub fn crossbow_charge_ticks_using_item(&self, partial_tick: f32) -> f32 {
         self.crossbow_charge
             .map_or(0.0, |state| state.ticks_using_item(partial_tick))

@@ -1621,9 +1621,9 @@ impl EntityStore {
             allay_holding_item_progress: client_animations
                 .animations
                 .allay_holding_item_progress(partial_ticks),
-            // Vanilla `{Illager,Piglin}RenderState.ticksUsingItem` for the `CROSSBOW_CHARGE` draw,
-            // reconstructed from the shared charge counter (the pillager and the regular piglin both draw
-            // crossbows). `0.0` for anything not mid-draw (the renderer only reads it while charging).
+            // Vanilla render-state `ticksUsingItem`, reconstructed from the shared charge/use counter.
+            // Crossbow draw poses and player spear kinetic use sway consume it with their own durations.
+            // `0.0` for anything not mid-draw/use.
             crossbow_charge_ticks: client_animations
                 .animations
                 .crossbow_charge_ticks_using_item(partial_ticks),

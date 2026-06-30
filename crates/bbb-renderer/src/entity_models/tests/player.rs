@@ -1844,6 +1844,68 @@ fn player_with_a_spear_lunges_instead_of_whacking() {
 }
 
 #[test]
+fn player_using_a_spear_applies_kinetic_hand_sway() {
+    // Vanilla `SpearAnimations.thirdPersonHandUse`: the SPEAR arm pose points along the head look first,
+    // then kinetic weapon timing adds y/z sway and the raise/lower/back pitch terms from `ticksUsingItem`.
+    let kinetic = SpearKineticWeapon {
+        delay_ticks: 12.0,
+        dismount_duration_ticks: 50.0,
+        knockback_duration_ticks: 135.0,
+        damage_duration_ticks: 225.0,
+        forward_movement: 0.38,
+    };
+    let ticks = 60.0;
+    let yaw = 20.0_f32;
+    let pitch = -10.0_f32;
+    let base = EntityModelInstance::player(906, [0.0, 64.0, 0.0], 0.0, false)
+        .with_head_look(yaw, pitch)
+        .with_player_using_spear(Some(kinetic));
+
+    let mut steady = PlayerModel::new(false);
+    steady.prepare(&base);
+    let steady_right = steady.root_mut().child_mut("right_arm").pose;
+    let expected_y = (-0.1 + yaw.to_radians())
+        .to_degrees()
+        .clamp(-60.0, 60.0)
+        .to_radians();
+    let expected_x = (-std::f32::consts::FRAC_PI_2 + pitch.to_radians() + 0.8)
+        .to_degrees()
+        .clamp(-120.0, 30.0)
+        .to_radians();
+    assert!((steady_right.rotation[0] - expected_x).abs() < 1e-6);
+    assert!((steady_right.rotation[1] - expected_y).abs() < 1e-6);
+
+    let mut swaying = PlayerModel::new(false);
+    swaying.prepare(&base.with_crossbow_charge_ticks(ticks));
+    let swaying_right = swaying.root_mut().child_mut("right_arm").pose;
+    let params = kinetic.use_params(ticks);
+    let x_delta = (-40.0 * params.raise_progress_start
+        + 30.0 * params.raise_progress_middle
+        + -20.0 * params.raise_progress_end
+        + 20.0 * params.lower_progress
+        + 10.0 * params.raise_back_progress
+        + 0.6 * params.sway_scale_slow * params.sway_intensity)
+        .to_radians();
+    let y_delta = -params.sway_scale_fast.to_radians() * params.sway_intensity;
+    let z_delta = -params.sway_scale_slow.to_radians() * params.sway_intensity * 0.5;
+    assert!((swaying_right.rotation[0] - (steady_right.rotation[0] + x_delta)).abs() < 1e-6);
+    assert!((swaying_right.rotation[1] - (steady_right.rotation[1] + y_delta)).abs() < 1e-6);
+    assert!((swaying_right.rotation[2] - (steady_right.rotation[2] + z_delta)).abs() < 1e-6);
+
+    let mut off = PlayerModel::new(false);
+    off.prepare(
+        &base
+            .with_use_item_off_hand(true)
+            .with_crossbow_charge_ticks(ticks),
+    );
+    let off_left = off.root_mut().child_mut("left_arm").pose;
+    assert!(
+        (off_left.rotation[1] - (0.1 + yaw.to_radians() - y_delta)).abs() < 1e-6,
+        "off-hand spear mirrors the kinetic yaw sway"
+    );
+}
+
+#[test]
 fn player_using_a_spyglass_raises_it_to_the_eye() {
     use std::f32::consts::PI;
 

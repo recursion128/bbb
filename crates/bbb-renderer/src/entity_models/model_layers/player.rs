@@ -2,10 +2,11 @@ use super::{
     apply_crossbow_charge_pose_for_hand, apply_crossbow_hold_pose,
     apply_crossbow_hold_pose_for_hand, apply_head_look, apply_humanoid_attack_animation,
     apply_humanoid_block_pose, apply_humanoid_bow_pose, apply_humanoid_brush_pose,
-    apply_humanoid_crouch_named, apply_humanoid_item_hold_pose, apply_humanoid_spyglass_pose,
-    apply_humanoid_stab_attack_animation, apply_humanoid_throw_trident_pose,
-    apply_humanoid_toot_horn_pose, apply_humanoid_walk, humanoid_crouch_head_pose, PartPose,
-    CROSSBOW_CHARGE_DURATION_TICKS, PART_POSE_ZERO, PLAYER_BLUE,
+    apply_humanoid_crouch_named, apply_humanoid_item_hold_pose, apply_humanoid_spear_use_pose,
+    apply_humanoid_spyglass_pose, apply_humanoid_stab_attack_animation,
+    apply_humanoid_throw_trident_pose, apply_humanoid_toot_horn_pose, apply_humanoid_walk,
+    humanoid_crouch_head_pose, PartPose, CROSSBOW_CHARGE_DURATION_TICKS, PART_POSE_ZERO,
+    PLAYER_BLUE,
 };
 use crate::entity_models::catalog::PlayerModelPartVisibility;
 use crate::entity_models::instances::EntityModelInstance;
@@ -418,6 +419,17 @@ impl EntityModel for PlayerModel {
                 CROSSBOW_CHARGE_DURATION_TICKS,
                 render_state.crossbow_charge_ticks,
                 render_state.use_item_off_hand,
+            );
+        }
+        if let Some(kinetic_weapon) = render_state.player_using_spear {
+            apply_humanoid_spear_use_pose(
+                &mut self.root,
+                render_state.head_yaw,
+                render_state.head_pitch,
+                render_state.use_item_off_hand,
+                render_state.swim_amount,
+                render_state.crossbow_charge_ticks,
+                kinetic_weapon,
             );
         }
         // Vanilla `AvatarRenderer.getArmPose` fallback `ITEM`: a player holding a plain main-hand item lowers

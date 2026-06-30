@@ -1,5 +1,6 @@
 use super::PartPose;
 use crate::entity_models::model::ModelPart;
+use crate::entity_models::SpearKineticWeapon;
 
 /// Head-part index for standalone single-head body layers whose mesh lists the head first (the iron
 /// and snow golems still address their head positionally). The creeper, spider/cave spider, enderman,
@@ -316,8 +317,7 @@ pub(in crate::entity_models) fn apply_humanoid_attack_animation(
 /// rotations free of the twist, and drives the attacking arm's pitch through a lunge:
 /// `xRot += (90·prepare − 120·attack + 30·retract)·π/180`, where `prepare = inOutSine(progress(t, 0, 0.05))`,
 /// `attack = inQuad(progress(t, 0.05, 0.2))`, `retract = inOutExpo(progress(t, 0.4, 1.0))` and
-/// `progress(t, a, b) = clamp((t − a)/(b − a), 0, 1)`. `t = attack_anim`. The per-tick `thirdPersonHandUse`
-/// hold sway (`KINETIC_WEAPON`/`ticksUsingItem`) is a separate path and stays deferred.
+/// `progress(t, a, b) = clamp((t − a)/(b − a), 0, 1)`. `t = attack_anim`.
 pub(in crate::entity_models) fn apply_humanoid_stab_attack_animation(
     root: &mut ModelPart,
     attack_anim: f32,
@@ -355,6 +355,49 @@ pub(in crate::entity_models) fn apply_humanoid_stab_attack_animation(
         "right_arm"
     });
     attack_arm.pose.rotation[0] += (90.0 * prepare - 120.0 * attack + 30.0 * retract).to_radians();
+}
+
+/// Vanilla `HumanoidModel.ArmPose.SPEAR` use-item pose (`SpearAnimations.thirdPersonHandUse`): the using
+/// arm points the spear along the head look, then a kinetic weapon with positive `ticksUsingItem` adds the
+/// slow/fast sway and raise/lower/back timing from `DataComponents.KINETIC_WEAPON`.
+pub(in crate::entity_models) fn apply_humanoid_spear_use_pose(
+    root: &mut ModelPart,
+    head_yaw_degrees: f32,
+    head_pitch_degrees: f32,
+    off_hand: bool,
+    swim_amount: f32,
+    ticks_using_item: f32,
+    kinetic_weapon: SpearKineticWeapon,
+) {
+    let invert = if off_hand { -1.0 } else { 1.0 };
+    let head_yaw = head_yaw_degrees.to_radians();
+    let head_pitch = head_pitch_degrees.to_radians();
+    let arm = root.child_mut(if off_hand { "left_arm" } else { "right_arm" });
+    arm.pose.rotation[1] = (-0.1 * invert + head_yaw)
+        .to_degrees()
+        .clamp(-60.0, 60.0)
+        .to_radians();
+    arm.pose.rotation[0] = (-std::f32::consts::FRAC_PI_2 + head_pitch + 0.8
+        - if swim_amount > 0.0 { 0.959_931_1 } else { 0.0 })
+    .to_degrees()
+    .clamp(-120.0, 30.0)
+    .to_radians();
+
+    if ticks_using_item <= 0.0 {
+        return;
+    }
+
+    let params = kinetic_weapon.use_params(ticks_using_item);
+    arm.pose.rotation[1] += -invert * params.sway_scale_fast.to_radians() * params.sway_intensity;
+    arm.pose.rotation[2] +=
+        -invert * params.sway_scale_slow.to_radians() * params.sway_intensity * 0.5;
+    arm.pose.rotation[0] += (-40.0 * params.raise_progress_start
+        + 30.0 * params.raise_progress_middle
+        + -20.0 * params.raise_progress_end
+        + 20.0 * params.lower_progress
+        + 10.0 * params.raise_back_progress
+        + 0.6 * params.sway_scale_slow * params.sway_intensity)
+        .to_radians();
 }
 
 /// Vanilla `HumanoidModel.poseRightArm`/`poseLeftArm` `SPYGLASS` use-item arm pose: while a player is

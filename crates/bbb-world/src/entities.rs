@@ -1246,10 +1246,9 @@ pub struct EntityModelSourceState {
     /// empty-handed allay and every other entity.
     #[serde(default)]
     pub allay_holding_item_progress: f32,
-    /// Vanilla `{Illager,Piglin}RenderState.ticksUsingItem` for the `CROSSBOW_CHARGE` draw — the
-    /// reconstructed `getTicksUsingItem()` (ticks since the synced charging flag rose, + partial). The
-    /// `animateCrossbowCharge` pose lerps `ticksUsingItem / maxChargeDuration` over it. Shared by the
-    /// pillager and the regular piglin; `0.0` for anything not mid-draw.
+    /// Vanilla render-state `ticksUsingItem` reconstructed from the synced charging / using bit
+    /// (ticks since it rose, + partial). Crossbow draw poses and player spear kinetic use sway consume
+    /// it with their own durations; `0.0` for anything not mid-draw/use.
     #[serde(default)]
     pub crossbow_charge_ticks: f32,
     /// Vanilla `AxolotlRenderState.playingDeadFactor` (`Axolotl.playingDeadAnimator.getFactor`): the

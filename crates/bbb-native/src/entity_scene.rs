@@ -14,10 +14,10 @@ use bbb_renderer::{
     IllagerModelFamily, IronGolemCrackiness, LlamaModelFamily, LlamaVariant, MooshroomVariant,
     PandaModelVariant, ParrotModelVariant, PigModelVariant, PiglinModelFamily,
     PlayerModelPartVisibility, RabbitModelVariant, SalmonModelSize, SelectionBox, SelectionOutline,
-    SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose, TropicalFishModelShape,
-    TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData, VillagerModelProfession,
-    VillagerModelType, WolfArmorCrackiness, WolfModelVariant, ZombieVariantModelFamily,
-    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_DEFAULT_OUTLINE_COLOR,
+    SheepHeadEatPose, SheepWoolColor, SkeletonModelFamily, SleepingPose, SpearKineticWeapon,
+    TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily, VillagerModelData,
+    VillagerModelProfession, VillagerModelType, WolfArmorCrackiness, WolfModelVariant,
+    ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_DEFAULT_OUTLINE_COLOR,
 };
 #[cfg(test)]
 use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
@@ -595,27 +595,48 @@ fn entity_hand_holds_spear(
     entity_id: i32,
     off_hand: bool,
 ) -> bool {
+    entity_hand_spear_kinetic_weapon(world, item_runtime, entity_id, off_hand).is_some()
+}
+
+fn entity_hand_spear_kinetic_weapon(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    entity_id: i32,
+    off_hand: bool,
+) -> Option<SpearKineticWeapon> {
     let Some(item_runtime) = item_runtime else {
-        return false;
+        return None;
     };
     let Some(stack) = world.held_item(entity_id, off_hand) else {
-        return false;
+        return None;
     };
     let Some(item_id) = stack.item_id else {
-        return false;
+        return None;
     };
-    matches!(
-        item_runtime.item_resource_id(item_id),
-        Some(
-            "minecraft:wooden_spear"
-                | "minecraft:stone_spear"
-                | "minecraft:copper_spear"
-                | "minecraft:iron_spear"
-                | "minecraft:golden_spear"
-                | "minecraft:diamond_spear"
-                | "minecraft:netherite_spear"
-        )
-    )
+    spear_kinetic_weapon_for_resource_id(item_runtime.item_resource_id(item_id)?)
+}
+
+fn spear_kinetic_weapon_for_resource_id(resource_id: &str) -> Option<SpearKineticWeapon> {
+    let (delay, dismount, knockback, damage) = match resource_id {
+        // Vanilla `Items.*_SPEAR` -> `Item.Properties.spear(... delay, dismountTime,
+        // knockbackTime, damageTime ...)`, each seconds value multiplied by 20 for
+        // `KineticWeapon` ticks.
+        "minecraft:wooden_spear" => (15.0, 100.0, 200.0, 300.0),
+        "minecraft:stone_spear" => (14.0, 90.0, 180.0, 275.0),
+        "minecraft:copper_spear" => (13.0, 80.0, 165.0, 250.0),
+        "minecraft:iron_spear" => (12.0, 50.0, 135.0, 225.0),
+        "minecraft:golden_spear" => (14.0, 70.0, 170.0, 275.0),
+        "minecraft:diamond_spear" => (10.0, 60.0, 130.0, 200.0),
+        "minecraft:netherite_spear" => (8.0, 50.0, 110.0, 175.0),
+        _ => return None,
+    };
+    Some(SpearKineticWeapon {
+        delay_ticks: delay,
+        dismount_duration_ticks: dismount,
+        knockback_duration_ticks: knockback,
+        damage_duration_ticks: damage,
+        forward_movement: 0.38,
+    })
 }
 
 /// Whether the item in the given hand is a spyglass (vanilla `ItemStack.getUseAnimation() ==
@@ -768,8 +789,9 @@ fn entity_hand_holds_crossbow(
 /// Whether the item in the given hand routes to a SPECIAL `getArmPose` (not the `ITEM` fallback) when used:
 /// the use-animation poses `BOW_AND_ARROW` (bow), `CROSSBOW_CHARGE` (crossbow), `THROW_TRIDENT` (trident),
 /// `BLOCK` (non-consumable `BLOCKS_ATTACKS` item, normally the shield), `SPYGLASS`, `TOOT_HORN` (goat horn),
-/// `BRUSH`. While the entity uses one of these in this hand, that hand gets its dedicated pose instead of
-/// `ITEM`; any OTHER used item (food/potion -> `EAT`/`DRINK`, or any plain item) falls through to `ITEM`.
+/// `BRUSH`, and `SPEAR`. While the entity uses one of these in this hand, that hand gets its dedicated pose
+/// instead of `ITEM`; any OTHER used item (food/potion -> `EAT`/`DRINK`, or any plain item) falls through to
+/// `ITEM`.
 fn entity_hand_holds_special_use_item(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
@@ -783,6 +805,7 @@ fn entity_hand_holds_special_use_item(
         || entity_hand_holds_spyglass(world, item_runtime, entity_id, off_hand)
         || entity_hand_holds_goat_horn(world, item_runtime, entity_id, off_hand)
         || entity_hand_holds_brush(world, item_runtime, entity_id, off_hand)
+        || entity_hand_holds_spear(world, item_runtime, entity_id, off_hand)
 }
 
 /// Whether the item in the given hand is a *charged* crossbow (vanilla
@@ -990,6 +1013,20 @@ fn entity_model_instance(
     // models use their own arm poses), so resolve the spear just for the player kind.
     let main_hand_swing_is_stab = matches!(kind, EntityModelKind::Player { .. })
         && entity_hand_holds_spear(world, item_runtime, source.entity_id, false);
+    // Vanilla `AvatarRenderer.getArmPose` use-item `ItemUseAnimation.SPEAR`: while the using hand holds a
+    // spear, `HumanoidModel.ArmPose.SPEAR` applies `SpearAnimations.thirdPersonHandUse`, and
+    // `ItemInHandLayer` applies `thirdPersonUseItem` using the spear's default `KineticWeapon`.
+    let player_using_spear =
+        if matches!(kind, EntityModelKind::Player { .. }) && source.is_using_item {
+            entity_hand_spear_kinetic_weapon(
+                world,
+                item_runtime,
+                source.entity_id,
+                source.use_item_off_hand,
+            )
+        } else {
+            None
+        };
     // Vanilla `HumanoidModel.setupAnim` use-item arm pose `SPYGLASS`: while a player is using a spyglass
     // (`isUsingItem` + the using hand holds a spyglass), the holding arm raises it to the eye. Only
     // `PlayerModel` consumes the use-item poses, so resolve the using-hand item just for the player kind.
@@ -1088,21 +1125,23 @@ fn entity_model_instance(
         && !source.is_swinging
         && entity_hand_holds_charged_crossbow(world, item_runtime, source.entity_id, false);
     // Vanilla `HumanoidModel.setupAnim` dispatch (lines 245-257): when a hand uses an `affectsOffhandPose`
-    // item (the two-handed draws — `BOW_AND_ARROW` / `THROW_TRIDENT` / `CROSSBOW_CHARGE` / `CROSSBOW_HOLD`),
-    // the OPPOSITE arm's `poseArm` is SKIPPED, so the opposite hand gets NO pose. Compute it per using-hand to
-    // suppress the opposite hand's `ITEM` fallback (the opposite arm keeps its draw-set or walk pose).
-    // `SPYGLASS`/`TOOT_HORN`/`BRUSH`/`BLOCK` are NOT `affectsOffhandPose`, so they leave the opposite `ITEM`
-    // intact. (The `affectsOffhandPose` use items bbb poses are exactly the bow / trident / crossbow draws.)
+    // item (the two-handed draws — `BOW_AND_ARROW` / `THROW_TRIDENT` / `CROSSBOW_CHARGE` / `CROSSBOW_HOLD`,
+    // plus `SPEAR`), the OPPOSITE arm's `poseArm` is SKIPPED, so the opposite hand gets NO pose. Compute it
+    // per using-hand to suppress the opposite hand's `ITEM` fallback (the opposite arm keeps its draw-set or
+    // walk pose). `SPYGLASS`/`TOOT_HORN`/`BRUSH`/`BLOCK` are NOT `affectsOffhandPose`, so they leave the
+    // opposite `ITEM` intact.
     let main_hand_use_affects_offhand = source.is_using_item
         && !source.use_item_off_hand
         && (entity_hand_holds_bow(world, item_runtime, source.entity_id, false)
             || entity_hand_holds_trident(world, item_runtime, source.entity_id, false)
-            || entity_hand_holds_crossbow(world, item_runtime, source.entity_id, false));
+            || entity_hand_holds_crossbow(world, item_runtime, source.entity_id, false)
+            || entity_hand_holds_spear(world, item_runtime, source.entity_id, false));
     let off_hand_use_affects_offhand = source.is_using_item
         && source.use_item_off_hand
         && (entity_hand_holds_bow(world, item_runtime, source.entity_id, true)
             || entity_hand_holds_trident(world, item_runtime, source.entity_id, true)
-            || entity_hand_holds_crossbow(world, item_runtime, source.entity_id, true));
+            || entity_hand_holds_crossbow(world, item_runtime, source.entity_id, true)
+            || entity_hand_holds_spear(world, item_runtime, source.entity_id, true));
     // Vanilla's off-hand `CROSSBOW_HOLD` (`poseLeftArm`) is skipped when the main hand already has an
     // affecting pose (`BOW_AND_ARROW`, `THROW_TRIDENT`, `CROSSBOW_CHARGE`/`HOLD`, or `SPEAR`). Otherwise a
     // charged off-hand crossbow levels the mirrored hold pose after the main hand's non-affecting pose.
@@ -1386,6 +1425,7 @@ fn entity_model_instance(
         .with_is_aggressive(source.is_aggressive)
         .with_main_hand_holds_bow(main_hand_holds_bow)
         .with_main_hand_swing_is_stab(main_hand_swing_is_stab)
+        .with_player_using_spear(player_using_spear)
         .with_player_using_spyglass(player_using_spyglass)
         .with_player_tooting_horn(player_tooting_horn)
         .with_player_brushing(player_brushing)
@@ -6151,6 +6191,109 @@ mod tests {
             .render_state
             .main_hand_swing_is_stab;
         assert!(!stab);
+    }
+
+    #[test]
+    fn entity_model_instances_project_player_spear_use_kinetic_state() {
+        // Vanilla `AvatarRenderer.getArmPose` returns `SPEAR` while a player uses a spear, and
+        // `SpearAnimations` reads the default `KineticWeapon` from the resolved item prototype. The same
+        // pose has `affectsOffhandPose`, so an off-hand spear use suppresses the main-hand ITEM fallback.
+        const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
+        const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
+        const LIVING_ENTITY_FLAG_OFF_HAND: i8 = 2;
+        const WOODEN_SPEAR_ID: i32 = 0;
+        const IRON_SPEAR_ID: i32 = 1;
+        const PLAIN_ITEM_ID: i32 = 2;
+
+        let registry: bbb_pack::ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+            "resource_ids": [
+                "minecraft:wooden_spear",
+                "minecraft:iron_spear",
+                "minecraft:stick"
+            ],
+            "protocol_ids": {
+                "minecraft:wooden_spear": WOODEN_SPEAR_ID,
+                "minecraft:iron_spear": IRON_SPEAR_ID,
+                "minecraft:stick": PLAIN_ITEM_ID
+            }
+        }))
+        .unwrap();
+        let runtime = NativeItemRuntime::for_test_with_registry_and_equipment_assets(
+            registry,
+            bbb_pack::EquipmentAssetCatalog::default(),
+        );
+        let equip = |entity_id: i32, slot: EquipmentSlot, item_id: i32| SetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot,
+                item: ItemStackSummary {
+                    item_id: Some(item_id),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            }],
+        };
+        let using = |id: i32, flags: i8| SetEntityData {
+            id,
+            values: vec![protocol_byte_data(
+                VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
+                flags,
+            )],
+        };
+        let state = |world: &WorldStore, id: i32| {
+            entity_model_instances_from_world_at_partial_tick(world, Some(&runtime), 0.0)
+                .into_iter()
+                .find(|instance| instance.entity_id == id)
+                .unwrap()
+                .render_state
+        };
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            241,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [1.0, 64.0, -9.0],
+        ));
+        assert!(world.apply_set_equipment(equip(241, EquipmentSlot::MainHand, WOODEN_SPEAR_ID)));
+        assert!(world.apply_set_entity_data(using(241, LIVING_ENTITY_FLAG_IS_USING)));
+        let main = state(&world, 241);
+        assert_eq!(
+            main.player_using_spear,
+            Some(SpearKineticWeapon {
+                delay_ticks: 15.0,
+                dismount_duration_ticks: 100.0,
+                knockback_duration_ticks: 200.0,
+                damage_duration_ticks: 300.0,
+                forward_movement: 0.38,
+            })
+        );
+        assert!(!main.player_main_hand_item_pose);
+
+        world.apply_add_entity(protocol_add_entity(
+            242,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [2.0, 64.0, -9.0],
+        ));
+        assert!(world.apply_set_equipment(equip(242, EquipmentSlot::MainHand, PLAIN_ITEM_ID)));
+        assert!(world.apply_set_equipment(equip(242, EquipmentSlot::OffHand, IRON_SPEAR_ID)));
+        assert!(world.apply_set_entity_data(using(
+            242,
+            LIVING_ENTITY_FLAG_IS_USING | LIVING_ENTITY_FLAG_OFF_HAND,
+        )));
+        let off = state(&world, 242);
+        assert!(off.use_item_off_hand);
+        assert_eq!(
+            off.player_using_spear,
+            Some(SpearKineticWeapon {
+                delay_ticks: 12.0,
+                dismount_duration_ticks: 50.0,
+                knockback_duration_ticks: 135.0,
+                damage_duration_ticks: 225.0,
+                forward_movement: 0.38,
+            })
+        );
+        assert!(!off.player_main_hand_item_pose);
+        assert!(!off.player_off_hand_item_pose);
     }
 
     #[test]

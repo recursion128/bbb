@@ -451,12 +451,16 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     root transform 中按 `sin(wiggle / 1.5 * PI) * 3°` 追加 Y 轴 setup rotation；
     base textured submission 继承相同 transform。
   - remaining arm poses。
-  - use-item sway。
+  - [x] player spear use-item kinetic sway：using-hand `ArmPose.SPEAR`
+    现在按 vanilla `SpearAnimations.thirdPersonHandUse` 使用 `KineticWeapon`
+    delay/condition ticks 叠加 arm raise/sway；held item layer 同步追加
+    `SpearAnimations.thirdPersonUseItem` transform。`ticksSinceKineticHitFeedback`
+    和非 using 的纯 held-spear pose 留作后续视觉/arm-pose slice。
   - attack / crossbow / spell / celebrate / riding 组合冲突。
   - [x] main-hand spear STAB held-item layer transform：player STAB arm lunge
     之后，held item transform 追加 vanilla
     `SpearAnimations.thirdPersonAttackItem` 的 local pivot rotation 与 spear
-    `forwardMovement = 0.38` 平移；off-hand / kinetic hold sway 仍拆为后续。
+    `forwardMovement = 0.38` 平移。
   - held item 与 use-item 的 layer/order 交互。
 - Boss / beam / emissive 类：
   - [x] EnderDragon dying-dissolve render type / submission 表达：

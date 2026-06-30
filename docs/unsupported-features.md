@@ -1431,12 +1431,16 @@ When an agent does any of the following, update this file in the same slice:
     after `translateToHand` and the standard hand offset, the submitted item runs vanilla
     `SpearAnimations.thirdPersonAttackItem` (`rotateAround` the local `(0, -0.125, 0.125)` pivot by
     `Axis.XN.rotationDegrees(70 * (attack - retract))`, then translate by the spear kinetic
-    `forwardMovement = 0.38` times that same amount). The
-    STAB default lives on the item prototype (not the network component patch), so it is detected by the
-    resolved item id (gated to the player kind; a datapack-overridden `SWING_ANIMATION` on a non-spear
-    item, the `NONE` swing type, and the STAB pose on non-player humanoids — which use their own arm
-    poses — stay deferred). The per-tick `thirdPersonHandUse` hold sway (`KINETIC_WEAPON`/`ticksUsingItem`)
-    also stays deferred. The
+    `forwardMovement = 0.38` times that same amount). Player use-item `SPEAR` is also projected for the
+    using hand: native resolves the seven vanilla spear item ids to their default `KineticWeapon`
+    `delayTicks` / condition durations from `Items.java`, renderer applies
+    `SpearAnimations.thirdPersonHandUse` to the arm, and `ItemInHandLayer` applies
+    `SpearAnimations.thirdPersonUseItem` before submitting the held item. The current transform covers the
+    vanilla zero-hit-feedback case; `LivingEntityRenderState.ticksSinceKineticHitFeedback` is still a later
+    visual detail. The STAB default lives on the item prototype (not the network component patch), so it is
+    detected by the resolved item id (gated to the player kind; a datapack-overridden `SWING_ANIMATION` on a
+    non-spear item, the `NONE` swing type, the non-using held-spear `ArmPose.SPEAR`, and the STAB pose on
+    non-player humanoids — which use their own arm poses — stay deferred). The
     enderman (`emit_enderman_model` colored and `emit_enderman_textured_model` textured)
     uses dedicated `enderman_arm_swing_pose`/`enderman_leg_swing_pose`: `EndermanModel
     extends HumanoidModel`, so `super.setupAnim` sets the inherited arm and leg swing,
