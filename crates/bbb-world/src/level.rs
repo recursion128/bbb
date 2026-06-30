@@ -6,7 +6,7 @@ use bbb_protocol::packets::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::WorldStore;
+use crate::{BlockPos, WorldStore};
 
 const VANILLA_SPECTATOR_GAME_TYPE_ID: i32 = 3;
 const RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: i8 = 1;
@@ -42,9 +42,17 @@ pub struct WorldLevelInfo {
     pub dimension: String,
     pub dimension_type_id: i32,
     pub dimension_type_name: Option<String>,
+    #[serde(default)]
+    pub last_death_location: Option<WorldGlobalPos>,
     pub sea_level: i32,
     pub is_debug: bool,
     pub is_flat: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorldGlobalPos {
+    pub dimension: String,
+    pub pos: BlockPos,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -131,6 +139,17 @@ impl Default for WorldTickingState {
             frozen: false,
             frozen_ticks_to_run: 0,
         }
+    }
+}
+
+fn world_global_pos_from_protocol(pos: &bbb_protocol::packets::GlobalPos) -> WorldGlobalPos {
+    WorldGlobalPos {
+        dimension: pos.dimension.clone(),
+        pos: BlockPos {
+            x: pos.pos.x,
+            y: pos.pos.y,
+            z: pos.pos.z,
+        },
     }
 }
 
@@ -315,6 +334,10 @@ impl WorldStore {
             dimension: spawn_info.dimension.clone(),
             dimension_type_id: spawn_info.dimension_type_id,
             dimension_type_name: profile.name.map(str::to_string),
+            last_death_location: spawn_info
+                .last_death_location
+                .as_ref()
+                .map(world_global_pos_from_protocol),
             sea_level: spawn_info.sea_level,
             is_debug: spawn_info.is_debug,
             is_flat: spawn_info.is_flat,
@@ -545,11 +568,11 @@ mod tests {
         AttributeSnapshot as ProtocolAttributeSnapshot,
         BlockDestruction as ProtocolBlockDestruction, BlockEvent as ProtocolBlockEvent,
         BlockPos as ProtocolBlockPos, EntityDataValue as ProtocolEntityDataValue,
-        EntityDataValueKind, LevelEvent as ProtocolLevelEvent, MobEffectFlags,
-        PlayerExperience as ProtocolPlayerExperience, PlayerHealth as ProtocolPlayerHealth,
-        SetCamera as ProtocolSetCamera, SetEntityData as ProtocolSetEntityData,
-        UpdateAttributes as ProtocolUpdateAttributes, UpdateMobEffect as ProtocolUpdateMobEffect,
-        Vec3d as ProtocolVec3d,
+        EntityDataValueKind, GlobalPos as ProtocolGlobalPos, LevelEvent as ProtocolLevelEvent,
+        MobEffectFlags, PlayerExperience as ProtocolPlayerExperience,
+        PlayerHealth as ProtocolPlayerHealth, SetCamera as ProtocolSetCamera,
+        SetEntityData as ProtocolSetEntityData, UpdateAttributes as ProtocolUpdateAttributes,
+        UpdateMobEffect as ProtocolUpdateMobEffect, Vec3d as ProtocolVec3d,
     };
     use uuid::Uuid;
 
@@ -585,7 +608,10 @@ mod tests {
                 previous_game_type: -1,
                 is_debug: false,
                 is_flat: false,
-                last_death_location: None,
+                last_death_location: Some(ProtocolGlobalPos {
+                    dimension: "minecraft:overworld".to_string(),
+                    pos: ProtocolBlockPos { x: 8, y: 64, z: -3 },
+                }),
                 portal_cooldown: 0,
                 sea_level: 32,
             },
@@ -607,6 +633,13 @@ mod tests {
         assert_eq!(
             level.dimension_type_name.as_deref(),
             Some("minecraft:the_nether")
+        );
+        assert_eq!(
+            level.last_death_location,
+            Some(WorldGlobalPos {
+                dimension: "minecraft:overworld".to_string(),
+                pos: BlockPos { x: 8, y: 64, z: -3 },
+            })
         );
         assert_eq!(level.sea_level, 32);
         assert_eq!(
@@ -769,6 +802,7 @@ mod tests {
             dimension: "minecraft:the_nether".to_string(),
             dimension_type_id: 1,
             dimension_type_name: Some("minecraft:the_nether".to_string()),
+            last_death_location: None,
             sea_level: 32,
             is_debug: false,
             is_flat: false,

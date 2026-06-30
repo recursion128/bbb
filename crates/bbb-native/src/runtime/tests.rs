@@ -1630,6 +1630,56 @@ fn world_with_dimension(dimension_type_id: i32, dimension: &str) -> WorldStore {
     world_with_dimension_height(dimension_type_id, dimension, 16)
 }
 
+fn world_with_dimension_last_death_location(
+    dimension_type_id: i32,
+    dimension: &str,
+    last_death_location: Option<(&str, [i32; 3])>,
+) -> WorldStore {
+    let mut world = world_with_dimension_height(dimension_type_id, dimension, 16);
+    let level = world
+        .level_info()
+        .expect("test world has level info")
+        .clone();
+    world.apply_login(&PlayLogin {
+        player_id: 42,
+        hardcore: false,
+        levels: vec![
+            "minecraft:overworld".to_string(),
+            "minecraft:the_nether".to_string(),
+            "minecraft:the_end".to_string(),
+        ],
+        max_players: 20,
+        chunk_radius: 8,
+        simulation_distance: 6,
+        reduced_debug_info: false,
+        show_death_screen: true,
+        do_limited_crafting: false,
+        common_spawn_info: CommonPlayerSpawnInfo {
+            dimension_type_id: level.dimension_type_id,
+            dimension: level.dimension,
+            seed: 12345,
+            game_type: 0,
+            previous_game_type: -1,
+            is_debug: level.is_debug,
+            is_flat: level.is_flat,
+            last_death_location: last_death_location.map(|(dimension, pos)| {
+                bbb_protocol::packets::GlobalPos {
+                    dimension: dimension.to_string(),
+                    pos: ProtocolBlockPos {
+                        x: pos[0],
+                        y: pos[1],
+                        z: pos[2],
+                    },
+                }
+            }),
+            portal_cooldown: 0,
+            sea_level: level.sea_level,
+        },
+        enforces_secure_chat: true,
+    });
+    world
+}
+
 fn world_with_dimension_height(dimension_type_id: i32, dimension: &str, height: i32) -> WorldStore {
     let mut world = WorldStore::with_dimension(WorldDimension { min_y: 0, height });
     world.apply_login(&PlayLogin {
@@ -2921,6 +2971,7 @@ fn hotbar_item_icons_project_spawn_compass_range_dispatch() {
                     dimension: "minecraft:overworld",
                     pos: [10, 64, 0],
                 }),
+                recovery: None,
             }),
         )
         .unwrap()
@@ -3023,6 +3074,7 @@ fn hotbar_item_icons_project_lodestone_compass_range_dispatch() {
                 owner_position: [0.5, 64.0, 0.5],
                 owner_y_rot_degrees: 0.0,
                 spawn: None,
+                recovery: None,
             }),
         )
         .unwrap()
@@ -3073,6 +3125,119 @@ fn hotbar_item_icons_project_lodestone_compass_range_dispatch() {
     wrong_dimension_world.apply_set_player_inventory(ProtocolSetPlayerInventory {
         slot: 0,
         item: wrong_dimension_stack,
+    });
+    let wrong_dimension_icons = hotbar_item_icons(&wrong_dimension_world, Some(&item_runtime), 0.0);
+    assert_eq!(
+        wrong_dimension_icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: fallback_uv.min,
+            max: fallback_uv.max,
+        }
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn hotbar_item_icons_project_recovery_compass_range_dispatch() {
+    let root = unique_runtime_temp_dir("hotbar-recovery-compass-range-dispatch");
+    write_runtime_recovery_compass_range_dispatch_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let stack = item_stack(0, 1);
+    let fallback_uv = item_runtime.icon_for_stack(&stack).unwrap().layers[0].uv;
+    let east_uv = item_runtime
+        .icon_for_stack_with_context_and_use_context_and_time_context(
+            &stack,
+            None,
+            false,
+            crate::item_runtime::ItemModelUseContext::inactive(),
+            bbb_pack::BlockModelDisplayContext::Gui,
+            0.0,
+            None,
+            None,
+            Some("minecraft:player"),
+            Some("minecraft:overworld"),
+            None,
+            Some(crate::item_runtime::ItemModelCompassContext {
+                level_dimension: "minecraft:overworld",
+                owner_position: [0.5, 64.0, 0.5],
+                owner_y_rot_degrees: 0.0,
+                spawn: None,
+                recovery: Some(crate::item_runtime::ItemModelCompassTarget {
+                    dimension: "minecraft:overworld",
+                    pos: [10, 64, 0],
+                }),
+            }),
+        )
+        .unwrap()
+        .layers[0]
+        .uv;
+    assert_ne!(fallback_uv, east_uv);
+
+    let mut no_pose_world = world_with_dimension_last_death_location(
+        0,
+        "minecraft:overworld",
+        Some(("minecraft:overworld", [10, 64, 0])),
+    );
+    no_pose_world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: stack.clone(),
+    });
+    let no_pose_icons = hotbar_item_icons(&no_pose_world, Some(&item_runtime), 0.0);
+    assert_eq!(
+        no_pose_icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: fallback_uv.min,
+            max: fallback_uv.max,
+        }
+    );
+
+    let mut world = world_with_dimension_last_death_location(
+        0,
+        "minecraft:overworld",
+        Some(("minecraft:overworld", [10, 64, 0])),
+    );
+    world.set_local_player_pose(local_player_pose([0.5, 64.0, 0.5], 0.0, 0.0));
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: stack.clone(),
+    });
+    let icons = hotbar_item_icons(&world, Some(&item_runtime), 0.0);
+    assert_eq!(
+        icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: east_uv.min,
+            max: east_uv.max,
+        }
+    );
+
+    let mut missing_recovery_world =
+        world_with_dimension_last_death_location(0, "minecraft:overworld", None);
+    missing_recovery_world.set_local_player_pose(local_player_pose([0.5, 64.0, 0.5], 0.0, 0.0));
+    missing_recovery_world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: stack.clone(),
+    });
+    let missing_recovery_icons =
+        hotbar_item_icons(&missing_recovery_world, Some(&item_runtime), 0.0);
+    assert_eq!(
+        missing_recovery_icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: fallback_uv.min,
+            max: fallback_uv.max,
+        }
+    );
+
+    let mut wrong_dimension_world = world_with_dimension_last_death_location(
+        0,
+        "minecraft:overworld",
+        Some(("minecraft:the_nether", [10, 64, 0])),
+    );
+    wrong_dimension_world.set_local_player_pose(local_player_pose([0.5, 64.0, 0.5], 0.0, 0.0));
+    wrong_dimension_world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: stack,
     });
     let wrong_dimension_icons = hotbar_item_icons(&wrong_dimension_world, Some(&item_runtime), 0.0);
     assert_eq!(
@@ -7000,6 +7165,71 @@ fn write_runtime_lodestone_compass_range_dispatch_item_assets(root: &Path) {
             .join("Items.java"),
         r#"public class Items {
             public static final Item LODESTONE_COMPASS = registerItem("lodestone_compass");
+        }"#,
+    );
+}
+
+fn write_runtime_recovery_compass_range_dispatch_item_assets(root: &Path) {
+    let assets = runtime_assets_dir(root);
+    write_runtime_json(
+        &assets.join("atlases").join("items.json"),
+        r#"{
+            "sources": [
+                {
+                    "type": "minecraft:directory",
+                    "prefix": "item/",
+                    "source": "item"
+                }
+            ]
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("atlases").join("blocks.json"),
+        r#"{
+            "sources": []
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("items").join("recovery_compass.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:range_dispatch",
+                "property": "minecraft:compass",
+                "target": "recovery",
+                "wobble": false,
+                "scale": 4.0,
+                "entries": [
+                    {
+                        "threshold": 3.0,
+                        "model": { "type": "minecraft:model", "model": "minecraft:item/recovery_compass_east" }
+                    }
+                ],
+                "fallback": { "type": "minecraft:model", "model": "minecraft:item/recovery_compass_fallback" }
+            }
+        }"#,
+    );
+    write_flat_runtime_item_model_and_texture(
+        &assets,
+        "recovery_compass_fallback",
+        &[40, 80, 120, 255],
+    );
+    write_flat_runtime_item_model_and_texture(
+        &assets,
+        "recovery_compass_east",
+        &[120, 80, 40, 255],
+    );
+    write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
+    write_runtime_json(
+        &root
+            .join("sources")
+            .join(bbb_pack::MC_VERSION)
+            .join("net")
+            .join("minecraft")
+            .join("world")
+            .join("item")
+            .join("Items.java"),
+        r#"public class Items {
+            public static final Item RECOVERY_COMPASS = registerItem("recovery_compass");
         }"#,
     );
 }

@@ -227,6 +227,7 @@ fn range_dispatch_property_for(property: &ItemModelProperty) -> Option<RangeDisp
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum CompassTarget {
     Lodestone,
+    Recovery,
     Spawn,
 }
 
@@ -234,6 +235,7 @@ impl CompassTarget {
     fn parse(value: &str) -> Option<Self> {
         match value {
             "lodestone" => Some(Self::Lodestone),
+            "recovery" => Some(Self::Recovery),
             "spawn" => Some(Self::Spawn),
             _ => None,
         }
@@ -251,6 +253,11 @@ impl CompassTarget {
                 .and_then(|target| {
                     compass_rotation_to_target(compass, [target.pos.x, target.pos.y, target.pos.z])
                 })
+                .unwrap_or(0.0),
+            Self::Recovery => compass
+                .recovery
+                .filter(|target| target.dimension == compass.level_dimension)
+                .and_then(|target| compass_rotation_to_target(compass, target.pos))
                 .unwrap_or(0.0),
             Self::Spawn => compass
                 .spawn

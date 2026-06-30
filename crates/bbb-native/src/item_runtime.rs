@@ -2635,6 +2635,7 @@ pub(crate) struct ItemModelCompassContext<'a> {
     pub(crate) owner_position: [f64; 3],
     pub(crate) owner_y_rot_degrees: f32,
     pub(crate) spawn: Option<ItemModelCompassTarget<'a>>,
+    pub(crate) recovery: Option<ItemModelCompassTarget<'a>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

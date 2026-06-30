@@ -4010,6 +4010,14 @@ fn hud_item_icon_for_stack(
             pos: [spawn.pos.x, spawn.pos.y, spawn.pos.z],
         }
     });
+    let compass_recovery = world.level_info().and_then(|level| {
+        level.last_death_location.as_ref().map(|target| {
+            crate::item_runtime::ItemModelCompassTarget {
+                dimension: target.dimension.as_str(),
+                pos: [target.pos.x, target.pos.y, target.pos.z],
+            }
+        })
+    });
     let compass_context = context_dimension.and_then(|level_dimension| {
         world
             .local_player_pose()
@@ -4018,6 +4026,7 @@ fn hud_item_icon_for_stack(
                 owner_position: [pose.position.x, pose.position.y, pose.position.z],
                 owner_y_rot_degrees: pose.y_rot,
                 spawn: compass_spawn,
+                recovery: compass_recovery,
             })
     });
     // Vanilla `Cooldown.get` uses `getCooldownPercent(itemStack, 0.0F)` for
