@@ -257,6 +257,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     和 `energySwirl` GPU shader 现在按 vanilla `core/entity.fsh` 先以 texture
     sample alpha `< ALPHA_CUTOUT 0.1` discard，再应用 submitted tint；glint
     保持独立 `core/glint.fsh` 形状。
+  - [x] weather `WEATHER_DEPTH_WRITE` render-state：target-backed rain/snow
+    weather pass 现在用显式 GPU 常量和测试固定 vanilla shader-transparency
+    分支：`core/particle` shader shape、`DefaultVertexFormat.PARTICLE`、
+    Sampler0 + Sampler2 LightTexture、`BlendFunction.TRANSLUCENT`、cull off、
+    depth-write `LESS_EQUAL`。`WEATHER_NO_DEPTH_WRITE` 属于非 shader
+    transparency 分支，不阻塞当前 target-backed render graph。
   - per RenderType 的 blend、depth write/test、cull、sampler、mip、lightmap、
     overlay、fog、normal diffuse 组合继续拆细。
   - glint / scroll / emissive path 不应只依赖普通 entity shader fallback。

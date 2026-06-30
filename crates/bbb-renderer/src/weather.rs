@@ -103,6 +103,10 @@ const WEATHER_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 4] =
     wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2];
 const LIGHTNING_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 2] =
     wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4];
+const WEATHER_PIPELINE_BLEND: wgpu::BlendState = wgpu::BlendState::ALPHA_BLENDING;
+const WEATHER_PIPELINE_CULL_MODE: Option<wgpu::Face> = None;
+const WEATHER_PIPELINE_DEPTH_WRITE_ENABLED: bool = true;
+const WEATHER_PIPELINE_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::LessEqual;
 const LIGHTNING_BLEND: wgpu::BlendState = wgpu::BlendState {
     color: wgpu::BlendComponent {
         src_factor: wgpu::BlendFactor::SrcAlpha,
@@ -405,15 +409,15 @@ pub(crate) fn create_weather_pipeline(
             topology: wgpu::PrimitiveTopology::TriangleList,
             strip_index_format: None,
             front_face: wgpu::FrontFace::Ccw,
-            cull_mode: None,
+            cull_mode: WEATHER_PIPELINE_CULL_MODE,
             polygon_mode: wgpu::PolygonMode::Fill,
             unclipped_depth: false,
             conservative: false,
         },
         depth_stencil: Some(wgpu::DepthStencilState {
             format: DEPTH_FORMAT,
-            depth_write_enabled: true,
-            depth_compare: wgpu::CompareFunction::LessEqual,
+            depth_write_enabled: WEATHER_PIPELINE_DEPTH_WRITE_ENABLED,
+            depth_compare: WEATHER_PIPELINE_DEPTH_COMPARE,
             stencil: wgpu::StencilState::default(),
             bias: wgpu::DepthBiasState::default(),
         }),
@@ -423,7 +427,7 @@ pub(crate) fn create_weather_pipeline(
             entry_point: "fs_main",
             targets: &[Some(wgpu::ColorTargetState {
                 format,
-                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                blend: Some(WEATHER_PIPELINE_BLEND),
                 write_mask: wgpu::ColorWrites::ALL,
             })],
         }),
@@ -1003,6 +1007,40 @@ mod tests {
     fn weather_texture_paths_match_vanilla_environment_textures() {
         assert_eq!(WEATHER_RAIN_TEXTURE_PATH, "textures/environment/rain.png");
         assert_eq!(WEATHER_SNOW_TEXTURE_PATH, "textures/environment/snow.png");
+    }
+
+    #[test]
+    fn weather_pipeline_state_matches_vanilla_shader_transparency_depth_write() {
+        assert_eq!(WEATHER_PIPELINE_CULL_MODE, None);
+        assert!(WEATHER_PIPELINE_DEPTH_WRITE_ENABLED);
+        assert_eq!(
+            WEATHER_PIPELINE_DEPTH_COMPARE,
+            wgpu::CompareFunction::LessEqual
+        );
+        assert_eq!(
+            WEATHER_PIPELINE_BLEND.color.src_factor,
+            wgpu::BlendFactor::SrcAlpha
+        );
+        assert_eq!(
+            WEATHER_PIPELINE_BLEND.color.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha
+        );
+        assert_eq!(
+            WEATHER_PIPELINE_BLEND.color.operation,
+            wgpu::BlendOperation::Add
+        );
+        assert_eq!(
+            WEATHER_PIPELINE_BLEND.alpha.src_factor,
+            wgpu::BlendFactor::One
+        );
+        assert_eq!(
+            WEATHER_PIPELINE_BLEND.alpha.dst_factor,
+            wgpu::BlendFactor::OneMinusSrcAlpha
+        );
+        assert_eq!(
+            WEATHER_PIPELINE_BLEND.alpha.operation,
+            wgpu::BlendOperation::Add
+        );
     }
 
     #[test]

@@ -469,7 +469,13 @@ When an agent does any of the following, update this file in the same slice:
     step. The renderer now draws rain/snow weather columns into
     `OutputTarget.WEATHER_TARGET` with vanilla environment textures,
     `DefaultVertexFormat.PARTICLE`-shaped vertex data, dynamic `Sampler2`
-    LightTexture sampling, and rain-before-snow draw order. Lightning bolts now
+    LightTexture sampling, and rain-before-snow draw order. The target-backed
+    weather pipeline is now pinned to vanilla's shader-transparency branch:
+    `WeatherEffectRenderer` selects `RenderPipelines.WEATHER_DEPTH_WRITE`, which
+    derives from `WEATHER_SNIPPET` / `core/particle` with
+    `BlendFunction.TRANSLUCENT`, cull off, and default depth-write
+    `LESS_EQUAL`; `WEATHER_NO_DEPTH_WRITE` remains the non-shader-transparency
+    branch rather than a blocker for the current render graph. Lightning bolts now
     render as vanilla-shaped `RenderTypes.lightning()` / `POSITION_COLOR` quad
     geometry into the weather target with `BlendFunction.LIGHTNING`-shaped
     additive blending and default depth state; native projects active lightning
