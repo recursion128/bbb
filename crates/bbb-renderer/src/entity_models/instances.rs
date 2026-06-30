@@ -666,6 +666,11 @@ entity_render_state! {
     /// cat or ocelot uses sprint leg phase offsets and the sprint lower-tail wobble amplitude. `false`
     /// for non-felines and non-sprinting felines.
     (with_feline_is_sprinting) feline_is_sprinting: bool = false;
+    /// Vanilla `CatRenderer.extractRenderState` copies `Cat.isInSittingPose()` into
+    /// `FelineRenderState.isSitting`; `OcelotRenderer` leaves it false. The model skips walk swing and
+    /// folds the body/tail/legs into the sitting branch. `false` for ocelots, non-cats, and standing
+    /// cats.
+    (with_feline_is_sitting) feline_is_sitting: bool = false;
     /// Vanilla `WitchRenderState.isHoldingItem`: true when the witch's main hand is non-empty. The model
     /// pins the nose to the drinking pose (`nose.setPos(0, 1, -1.5)`, `xRot = -0.9`) before item layers
     /// read the nose transform. `false` for every other entity and for an empty-handed witch.
@@ -2484,6 +2489,7 @@ mod tests {
                 fox_is_faceplanted: false,
                 feline_is_crouching: false,
                 feline_is_sprinting: false,
+                feline_is_sitting: false,
                 witch_holding_item: false,
                 witch_holding_potion: false,
                 copper_golem_holding_item: false,

@@ -500,6 +500,187 @@ fn feline_sprint_pose_matches_vanilla_branch() {
 }
 
 #[test]
+fn adult_feline_sitting_pose_matches_vanilla_branch() {
+    // Vanilla `AdultFelineModel.setupAnim`: after head look and crouch/sprint setup, `isSitting` skips
+    // the not-sitting leg swing/tail wobble branch and folds the adult body, tail, and legs.
+    let mut model = FelineModel::new(false);
+    model.prepare(
+        &EntityModelInstance::feline(
+            538,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+            false,
+            CatModelVariant::Black,
+            None,
+        )
+        .with_feline_is_sitting(true)
+        .with_walk_animation(3.0, 0.8),
+    );
+
+    assert_close3(
+        model.root_mut().child_mut("body").pose.offset,
+        [0.0, 8.0, -5.0],
+    );
+    assert_close(
+        model.root_mut().child_mut("body").pose.rotation[0],
+        std::f32::consts::FRAC_PI_4,
+    );
+    assert_close3(
+        model.root_mut().child_mut("head").pose.offset,
+        [0.0, 11.7, -8.0],
+    );
+    assert_close3(
+        model.root_mut().child_mut("tail1").pose.offset,
+        [0.0, 23.0, 6.0],
+    );
+    assert_close(
+        model.root_mut().child_mut("tail1").pose.rotation[0],
+        FELINE_TAIL2_REST_X_ROT,
+    );
+    assert_close3(
+        model.root_mut().child_mut("tail2").pose.offset,
+        [0.0, 22.0, 13.2],
+    );
+    assert_close(
+        model.root_mut().child_mut("tail2").pose.rotation[0],
+        FELINE_SITTING_TAIL2_X_ROT,
+    );
+
+    for name in ["left_front_leg", "right_front_leg"] {
+        let part = model.root_mut().child_mut(name);
+        assert_close(part.pose.rotation[0], -std::f32::consts::PI / 20.0);
+        assert_close(part.pose.offset[1], 16.1);
+        assert_close(part.pose.offset[2], -7.0);
+    }
+    for name in ["left_hind_leg", "right_hind_leg"] {
+        let part = model.root_mut().child_mut(name);
+        assert_close(part.pose.rotation[0], -std::f32::consts::FRAC_PI_2);
+        assert_close(part.pose.offset[1], 21.0);
+        assert_close(part.pose.offset[2], 1.0);
+    }
+}
+
+#[test]
+fn baby_feline_sitting_pose_matches_vanilla_branch() {
+    // Vanilla `BabyFelineModel.setupAnim` sitting branch applies a smaller unscaled delta and still
+    // skips the walk leg swing.
+    let mut model = FelineModel::new(true);
+    model.prepare(
+        &EntityModelInstance::feline(
+            539,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+            true,
+            CatModelVariant::Black,
+            None,
+        )
+        .with_feline_is_sitting(true)
+        .with_walk_animation(3.0, 0.8),
+    );
+
+    assert_close3(
+        model.root_mut().child_mut("body").pose.offset,
+        [0.0, 21.75, 0.5],
+    );
+    assert_close(
+        model.root_mut().child_mut("body").pose.rotation[0],
+        BABY_FELINE_SITTING_BODY_X_ROT_DELTA,
+    );
+    assert_close3(
+        model.root_mut().child_mut("head").pose.offset,
+        [0.0, 20.0, -2.375],
+    );
+    assert_close3(
+        model.root_mut().child_mut("tail1").pose.offset,
+        [0.0, 23.107, 3.0151],
+    );
+    assert_close(
+        model.root_mut().child_mut("tail1").pose.rotation[0],
+        -0.567232 + BABY_FELINE_SITTING_TAIL1_X_ROT_DELTA,
+    );
+    assert_close(
+        model.root_mut().child_mut("left_hind_leg").pose.offset[2],
+        1.6,
+    );
+    assert_close(
+        model.root_mut().child_mut("right_hind_leg").pose.offset[2],
+        1.6,
+    );
+    for name in [
+        "left_front_leg",
+        "right_front_leg",
+        "left_hind_leg",
+        "right_hind_leg",
+    ] {
+        assert_close(model.root_mut().child_mut(name).pose.rotation[0], 0.0);
+    }
+}
+
+#[test]
+fn feline_textured_mesh_applies_sitting_pose_to_base_and_collar() {
+    let images: Vec<EntityModelTextureImage> = feline_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let standing = EntityModelInstance::feline(
+        540,
+        [0.0, 64.0, 0.0],
+        0.0,
+        true,
+        false,
+        CatModelVariant::Black,
+        Some(EntityDyeColor::Lime),
+    )
+    .with_walk_animation(3.0, 0.8);
+    let sitting = standing.with_feline_is_sitting(true);
+
+    let standing_meshes = entity_model_textured_meshes(&[standing], &atlas);
+    let sitting_meshes = entity_model_textured_meshes(&[sitting], &atlas);
+    assert_eq!(standing_meshes.submissions.len(), 2);
+    assert_eq!(sitting_meshes.submissions.len(), 2);
+    assert_eq!(
+        sitting_meshes.submissions[0].texture,
+        feline_texture_ref(true, false, CatModelVariant::Black)
+    );
+    assert_eq!(
+        sitting_meshes.submissions[0].render_type.vanilla_name(),
+        "entityCutout"
+    );
+    assert_eq!(
+        sitting_meshes.submissions[1].texture,
+        FELINE_CAT_COLLAR_TEXTURE_REF
+    );
+    assert_eq!(
+        sitting_meshes.submissions[1].tint,
+        EntityDyeColor::Lime.texture_diffuse_color()
+    );
+    assert_eq!(
+        (
+            sitting_meshes.submissions[0].order,
+            sitting_meshes.submissions[0].submit_sequence,
+            sitting_meshes.submissions[1].order,
+            sitting_meshes.submissions[1].submit_sequence,
+        ),
+        (0, 0, 1, 1)
+    );
+    assert_eq!(
+        sitting_meshes.cutout.vertices.len(),
+        standing_meshes.cutout.vertices.len()
+    );
+    assert_ne!(
+        sitting_meshes.cutout.vertices, standing_meshes.cutout.vertices,
+        "the shared posed tree drives both base and collar textured geometry"
+    );
+}
+
+#[test]
 fn baby_feline_crouch_and_sprint_pose_the_visible_tail() {
     // `BabyFelineModel` shares the crouch/sprint setup with the adult, but its lower `tail2` is a
     // cubeless pivot. Pin the visible `tail1` offsets/rotations so the branch still has observable

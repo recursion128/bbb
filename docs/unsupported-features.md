@@ -5120,10 +5120,15 @@ When an agent does any of the following, update this file in the same slice:
       `tail2.y = tail1.y` / forward-tail setup, the sprint leg phase offsets (`right_hind +0.3`,
       `left_front +π+0.3`, `right_front +π`), and the branch-specific adult lower-tail wobble
       amplitudes: standing `π/4`, crouch `0.47123894`, and sprint `π/10`, all on top of
-      `tail2.xRot = 1.7278761`. Tests pin rest, moving, advanced-position, zero-speed, crouch, sprint,
-      and baby visible-tail samples. The rest stays deferred: `isSitting`, `lieDownAmount`,
-      `lieDownAmountTail`, `relaxStateOneAmount`, and `CatRenderer.setupRotations` lie-down
-      roll/translate. The textured path is now wired: `Cat.DATA_VARIANT_ID` (20, `Holder<CatVariant>`) is
+      `tail2.xRot = 1.7278761`. `CatRenderer`-only sitting is now projected from
+      `TamableAnimal.DATA_FLAGS_ID` id 18 bit 0 (`isInSittingPose()`); `OcelotRenderer` leaves
+      `FelineRenderState.isSitting` false. The renderer applies the vanilla adult sitting branch
+      (`body.xRot = π/4`, folded legs, raised tail) and the baby sitting deltas while skipping the
+      not-sitting walk/tail branch. Tests pin rest, moving, advanced-position, zero-speed, crouch,
+      sprint, adult/baby sitting poses, and textured base/collar sitting geometry. The rest stays
+      deferred: `lieDownAmount`, `lieDownAmountTail`, `relaxStateOneAmount`, and
+      `CatRenderer.setupRotations` lie-down roll/translate. The textured path is now wired:
+      `Cat.DATA_VARIANT_ID` (20, `Holder<CatVariant>`) is
       projected — via the registry-holder mapping shared with chicken/cow/pig/frog — onto one of the eleven
       vanilla breeds (tabby/black/red/siamese/british_shorthair/calico/persian/ragdoll/white/jellie/all_black),
       falling back to the bootstrap order (tabby=0..all_black=10, default BLACK) before the dynamic

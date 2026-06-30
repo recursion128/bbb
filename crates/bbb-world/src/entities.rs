@@ -695,6 +695,12 @@ pub struct EntityModelSourceState {
     /// and non-sprinting felines.
     #[serde(default)]
     pub feline_is_sprinting: bool,
+    /// Vanilla `CatRenderer.extractRenderState` projects `Cat.isInSittingPose()` into
+    /// `FelineRenderState.isSitting`; `OcelotRenderer` never writes the field. The synced source is
+    /// `TamableAnimal.DATA_FLAGS_ID` id 18 bit 0. Projected only for cats and `false` for ocelots and
+    /// every other entity.
+    #[serde(default)]
+    pub feline_is_sitting: bool,
     /// Vanilla `WolfRenderState.wetShade` (`Wolf.getWetShade(partialTick)`): the base-model
     /// grayscale tint multiplier returned by `WolfRenderer.getModelTint`. A wet wolf starts at
     /// `0.75`, then brightens with the shake/drying timer; `1.0` for a dry wolf and every non-wolf.

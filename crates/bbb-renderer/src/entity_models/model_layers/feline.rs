@@ -16,7 +16,8 @@ pub(in crate::entity_models) const MODEL_LAYER_OCELOT_BABY: &str = "minecraft:oc
 // `AdultFelineModel.setupAnim` sets `head.xRot/yRot` from the look, applies crouch/sprint body-tail
 // offsets, swings the four legs with its own mirrored phase + amplitude-1.0 formula, and, while not
 // sitting, drops the lower tail to `tail2.xRot = 1.7278761` plus the branch-specific
-// `cos(pos)·speed` wobble (`π/4`, crouch `0.47123894`, sprint `π/10`). `isSitting`, `lieDownAmount`,
+// `cos(pos)·speed` wobble (`π/4`, crouch `0.47123894`, sprint `π/10`). `isSitting` folds the
+// body/tail/legs after head look and skips that not-sitting walk branch. `lieDownAmount`,
 // `lieDownAmountTail`, and `relaxStateOneAmount` stay deferred. The textured path binds cat/ocelot
 // textures and the tame-cat collar layer; the colored debug path remains a single tan tint.
 // Cat/ocelot use a plain `MobRenderer`.
@@ -405,8 +406,11 @@ fn baby_feline_root() -> ModelPart {
 /// `tail2.xRot = 1.7278761` (`= π·0.55`), the base the walk wobble adds onto. At rest (zero walk
 /// speed) the wobble term collapses to zero, so this is the resting `tail2` pitch — a real change
 /// from the `0` bind rotation.
-const FELINE_TAIL2_REST_X_ROT: f32 = 1.7278761;
+pub(in crate::entity_models) const FELINE_TAIL2_REST_X_ROT: f32 = 1.7278761;
 const FELINE_TAIL2_CROUCH_WOBBLE_AMPLITUDE: f32 = 0.47123894;
+pub(in crate::entity_models) const FELINE_SITTING_TAIL2_X_ROT: f32 = 2.670354;
+pub(in crate::entity_models) const BABY_FELINE_SITTING_BODY_X_ROT_DELTA: f32 = -0.43633232;
+pub(in crate::entity_models) const BABY_FELINE_SITTING_TAIL1_X_ROT_DELTA: f32 = 0.5454154;
 
 /// Vanilla `AdultFelineModel.setupAnim` lower-tail walk wobble while not sitting:
 /// `tail2.xRot = 1.7278761 + amplitude·cos(walkAnimationPos)·walkAnimationSpeed`.
@@ -436,7 +440,7 @@ fn feline_tail2_wobble_x_rot(
 /// runtime — the babies are unscaled). `setup_anim` runs the head look
 /// ([`apply_head_look`] on `child_mut("head")`), applies the crouch/sprint tail-body setup, swings the
 /// legs with the gait, and, for the adult, drops and wobbles the lower tail via `child_mut("tail2")`;
-/// sitting and lie-down feline poses stay deferred.
+/// sitting folds the vanilla branch for cats; lie-down / relax feline poses stay deferred.
 pub(in crate::entity_models) struct FelineModel {
     root: ModelPart,
     baby: bool,
@@ -513,6 +517,55 @@ fn apply_feline_crouch_or_sprint_pose(
     }
 }
 
+/// Vanilla `AdultFelineModel.setupAnim` sitting branch. The adult feline model is only used for adult
+/// cats/ocelots, so `state.ageScale` is the vanilla adult baseline `1.0`.
+fn apply_adult_feline_sitting_pose(root: &mut ModelPart) {
+    root.child_mut("body").pose.rotation[0] = std::f32::consts::FRAC_PI_4;
+    root.child_mut("body").pose.offset[1] -= 4.0;
+    root.child_mut("body").pose.offset[2] += 5.0;
+    root.child_mut("head").pose.offset[1] -= 3.3;
+    root.child_mut("head").pose.offset[2] += 1.0;
+    root.child_mut("tail1").pose.offset[1] += 8.0;
+    root.child_mut("tail1").pose.offset[2] -= 2.0;
+    root.child_mut("tail2").pose.offset[1] += 2.0;
+    root.child_mut("tail2").pose.offset[2] -= 0.8;
+    root.child_mut("tail1").pose.rotation[0] = FELINE_TAIL2_REST_X_ROT;
+    root.child_mut("tail2").pose.rotation[0] = FELINE_SITTING_TAIL2_X_ROT;
+    root.child_mut("left_front_leg").pose.rotation[0] = -std::f32::consts::PI / 20.0;
+    root.child_mut("left_front_leg").pose.offset[1] += 2.0;
+    root.child_mut("left_front_leg").pose.offset[2] -= 2.0;
+    root.child_mut("right_front_leg").pose.rotation[0] = -std::f32::consts::PI / 20.0;
+    root.child_mut("right_front_leg").pose.offset[1] += 2.0;
+    root.child_mut("right_front_leg").pose.offset[2] -= 2.0;
+    root.child_mut("left_hind_leg").pose.rotation[0] = -std::f32::consts::FRAC_PI_2;
+    root.child_mut("left_hind_leg").pose.offset[1] += 3.0;
+    root.child_mut("left_hind_leg").pose.offset[2] -= 4.0;
+    root.child_mut("right_hind_leg").pose.rotation[0] = -std::f32::consts::FRAC_PI_2;
+    root.child_mut("right_hind_leg").pose.offset[1] += 3.0;
+    root.child_mut("right_hind_leg").pose.offset[2] -= 4.0;
+}
+
+/// Vanilla `BabyFelineModel.setupAnim` sitting branch. Baby feline applies these deltas unscaled after
+/// the shared head-look and crouch/sprint setup.
+fn apply_baby_feline_sitting_pose(root: &mut ModelPart) {
+    root.child_mut("body").pose.rotation[0] += BABY_FELINE_SITTING_BODY_X_ROT_DELTA;
+    root.child_mut("body").pose.offset[1] += 1.25;
+    root.child_mut("head").pose.offset[2] += 0.75;
+    root.child_mut("tail1").pose.rotation[0] += BABY_FELINE_SITTING_TAIL1_X_ROT_DELTA;
+    root.child_mut("tail1").pose.offset[1] += 4.0;
+    root.child_mut("tail1").pose.offset[2] -= 0.9;
+    root.child_mut("left_hind_leg").pose.offset[2] -= 0.9;
+    root.child_mut("right_hind_leg").pose.offset[2] -= 0.9;
+}
+
+fn apply_feline_sitting_pose(root: &mut ModelPart, baby: bool) {
+    if baby {
+        apply_baby_feline_sitting_pose(root);
+    } else {
+        apply_adult_feline_sitting_pose(root);
+    }
+}
+
 impl EntityModel for FelineModel {
     fn root(&self) -> &ModelPart {
         &self.root
@@ -534,6 +587,10 @@ impl EntityModel for FelineModel {
             render_state.head_yaw,
             render_state.head_pitch,
         );
+        if render_state.feline_is_sitting {
+            apply_feline_sitting_pose(&mut self.root, self.baby);
+            return;
+        }
         // Vanilla's not-sitting branch drops the lower tail to `1.7278761` and then adds the
         // branch-specific standing/crouch/sprint wobble. At rest the wobble collapses to zero, leaving
         // the standing droop. The baby's `tail2` is cubeless, so vanilla's identical assignment there is
@@ -546,8 +603,7 @@ impl EntityModel for FelineModel {
                 render_state.feline_is_sprinting,
             );
         }
-        // The four legs sweep with the gait (the sitting / crouching / sprinting branches that alter it
-        // are now covered for crouch/sprint; sitting stays deferred).
+        // The four legs sweep only in vanilla's not-sitting branch; sitting returned above.
         apply_feline_leg_swing(
             &mut self.root,
             render_state.walk_animation_pos,

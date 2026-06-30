@@ -1440,6 +1440,7 @@ fn entity_model_instance(
         .with_fox_is_faceplanted(source.fox_is_faceplanted)
         .with_feline_is_crouching(source.feline_is_crouching)
         .with_feline_is_sprinting(source.feline_is_sprinting)
+        .with_feline_is_sitting(source.feline_is_sitting)
         .with_witch_holding_item(witch_holding_item)
         .with_witch_holding_potion(witch_holding_potion)
         .with_copper_golem_holding_item(copper_golem_holding_item)
@@ -12265,9 +12266,10 @@ mod tests {
     }
 
     #[test]
-    fn entity_model_instances_project_feline_crouch_and_sprint_from_world() {
+    fn entity_model_instances_project_feline_crouch_sprint_and_cat_sitting_from_world() {
         // Vanilla `CatRenderer` / `OcelotRenderer.extractRenderState` copy `Entity.isCrouching()`
-        // (Pose.CROUCHING, ordinal 5) and `Entity.isSprinting()` (shared flags bit 3).
+        // (Pose.CROUCHING, ordinal 5) and `Entity.isSprinting()` (shared flags bit 3). Cat also copies
+        // `TamableAnimal.isInSittingPose()`; ocelot leaves `isSitting` at the default false.
         const ENTITY_DATA_POSE_ID: u8 = 6;
         const ENTITY_SHARED_FLAG_SPRINTING: i8 = 1 << 3;
         const POSE_STANDING: i32 = 0;
@@ -12287,6 +12289,7 @@ mod tests {
             (
                 instance.render_state.feline_is_crouching,
                 instance.render_state.feline_is_sprinting,
+                instance.render_state.feline_is_sitting,
             )
         };
 
@@ -12307,41 +12310,47 @@ mod tests {
             [5.0, 64.0, -2.0],
         ));
 
-        assert_eq!(feline_state(&world, 43), (false, false));
-        assert_eq!(feline_state(&world, 44), (false, false));
+        assert_eq!(feline_state(&world, 43), (false, false, false));
+        assert_eq!(feline_state(&world, 44), (false, false, false));
 
         assert!(world.apply_set_entity_data(SetEntityData {
             id: 43,
             values: vec![
                 pose_data(POSE_CROUCHING),
                 protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_SPRINTING),
+                protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_SITTING_FLAG),
             ],
         }));
-        assert_eq!(feline_state(&world, 43), (true, true));
+        assert_eq!(feline_state(&world, 43), (true, true, true));
 
         assert!(world.apply_set_entity_data(SetEntityData {
             id: 44,
-            values: vec![pose_data(POSE_CROUCHING)],
+            values: vec![
+                pose_data(POSE_CROUCHING),
+                protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_SITTING_FLAG),
+            ],
         }));
-        assert_eq!(feline_state(&world, 44), (true, false));
+        assert_eq!(feline_state(&world, 44), (true, false, false));
 
         assert!(world.apply_set_entity_data(SetEntityData {
             id: 45,
             values: vec![
                 pose_data(POSE_CROUCHING),
                 protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_SPRINTING),
+                protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_SITTING_FLAG),
             ],
         }));
-        assert_eq!(feline_state(&world, 45), (false, false));
+        assert_eq!(feline_state(&world, 45), (false, false, false));
 
         assert!(world.apply_set_entity_data(SetEntityData {
             id: 43,
             values: vec![
                 pose_data(POSE_STANDING),
                 protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, 0),
+                protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, 0),
             ],
         }));
-        assert_eq!(feline_state(&world, 43), (false, false));
+        assert_eq!(feline_state(&world, 43), (false, false, false));
     }
 
     #[test]

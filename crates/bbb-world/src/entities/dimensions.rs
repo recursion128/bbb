@@ -942,6 +942,12 @@ pub(crate) fn vanilla_feline_family(entity_type_id: i32) -> bool {
     )
 }
 
+/// Whether the entity renders through vanilla `CatRenderer` rather than `OcelotRenderer`. Only cats
+/// project `TamableAnimal.isInSittingPose()` into `FelineRenderState.isSitting`.
+pub(crate) fn vanilla_is_cat(entity_type_id: i32) -> bool {
+    entity_type_id == VANILLA_ENTITY_TYPE_CAT_ID
+}
+
 /// Whether the entity is rendered with the vanilla `EndermanModel`. Its `setupAnim`
 /// poses the arms forward to hold a block (`!carriedBlock.isEmpty()`) and drops the
 /// head/raises the hat when staring at a player (`isCreepy`), so the carried-block and

@@ -49,7 +49,7 @@ use crate::entities::dimensions::{
     vanilla_body_anchor_y_offset_for_entity_data, vanilla_client_position_for_entity_data,
     vanilla_eye_height_for_entity_data, vanilla_feline_family,
     vanilla_illager_aggressive_arm_pose_family, vanilla_is_baby, vanilla_is_bat, vanilla_is_bee,
-    vanilla_is_enderman, vanilla_is_fox, vanilla_is_vex, vanilla_is_wither,
+    vanilla_is_cat, vanilla_is_enderman, vanilla_is_fox, vanilla_is_vex, vanilla_is_wither,
     vanilla_living_entity_type, vanilla_model_source_bounds_for_entity_data,
     vanilla_pick_bounds_for_entity_data, vanilla_piglin_melee_attack_family, vanilla_render_scale,
     vanilla_zombie_model_family, ENTITY_DATA_POSE_ID, ITEM_FRAME_ENTITY_TYPE_IDS,
@@ -76,6 +76,10 @@ const ENTITY_SHARED_FLAG_SPRINTING: i8 = 1 << 3;
 const ENTITY_SHARED_FLAG_INVISIBLE: i8 = 1 << 5;
 /// Vanilla `Entity.DATA_SHARED_FLAGS_ID` id 0 bit 6 (`Entity.isCurrentlyGlowing()` on the client).
 const ENTITY_SHARED_FLAG_GLOWING: i8 = 1 << 6;
+/// Vanilla `TamableAnimal.DATA_FLAGS_ID`: Cat extends TamableAnimal, while the ocelot does not.
+const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
+/// Vanilla `TamableAnimal.isInSittingPose()` reads `DATA_FLAGS_ID & 1`.
+const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
 
 /// Vanilla 26.1 `EntityType.PIG` registry id, used to gate `PigRenderState.saddle`.
 const VANILLA_ENTITY_TYPE_PIG_ID: i32 = 100;
@@ -1050,7 +1054,9 @@ impl EntityStore {
         let is_feline = vanilla_feline_family(identity.entity_type_id);
         // Vanilla `CatRenderer` / `OcelotRenderer.extractRenderState` copies
         // `Entity.isCrouching()` and `Entity.isSprinting()` into `FelineRenderState`. The former is the
-        // synced `Pose.CROUCHING`; the latter is shared entity flags bit 3.
+        // synced `Pose.CROUCHING`; the latter is shared entity flags bit 3. `CatRenderer` additionally
+        // projects `Cat.isInSittingPose()` from `TamableAnimal.DATA_FLAGS_ID & 1`; `OcelotRenderer`
+        // leaves `isSitting` at its default.
         let feline_is_crouching =
             is_feline && entity_data_pose(&metadata.data_values) == VANILLA_POSE_CROUCHING_ID;
         let feline_is_sprinting = is_feline
@@ -1058,6 +1064,12 @@ impl EntityStore {
                 .metadata_byte(id, ENTITY_SHARED_FLAGS_DATA_ID, 0)
                 .unwrap_or(0)
                 & ENTITY_SHARED_FLAG_SPRINTING
+                != 0;
+        let feline_is_sitting = vanilla_is_cat(identity.entity_type_id)
+            && self
+                .metadata_byte(id, TAMABLE_ANIMAL_FLAGS_DATA_ID, 0)
+                .unwrap_or(0)
+                & TAMABLE_ANIMAL_SITTING_FLAG
                 != 0;
         // Vanilla `VexModel.setupAnim` levels the body (`xRot = 0`) and raises both arms
         // (`setArmsCharging`) while `Vex.isCharging` (`DATA_FLAGS_ID & 1`). Only the vex
@@ -1383,6 +1395,7 @@ impl EntityStore {
             fox_is_faceplanted,
             feline_is_crouching,
             feline_is_sprinting,
+            feline_is_sitting,
             vex_charging,
             wither_invulnerable_ticks,
             is_crouching,
