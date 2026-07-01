@@ -5913,7 +5913,9 @@ When an agent does any of the following, update this file in the same slice:
       `has_twinkle`, plus exact `minecraft:fireworks` components for
       `flight_duration` and ordered explosion lists, plus nested partial
       `minecraft:damage`, plus exact `minecraft:jukebox_playable` components
-      for direct vanilla jukebox-song keys,
+      for direct vanilla jukebox-song keys, plus exact `minecraft:trim`
+      components for direct trim-material registry keys and direct vanilla
+      trim-pattern keys,
       `minecraft:enchantments`, `minecraft:stored_enchantments`,
       `minecraft:firework_explosion`, `minecraft:fireworks`, `minecraft:trim`,
       `minecraft:jukebox_playable`, `minecraft:potion_contents`,
@@ -5951,7 +5953,7 @@ When an agent does any of the following, update this file in the same slice:
       empty-custom-effects `potion_contents` components,
       filterable-page-list `writable_book_content` components, and full-field
       `firework_explosion` / `fireworks` components, plus direct-key exact
-      `jukebox_playable` components, exact
+      `jukebox_playable` and `trim` components, exact
       `potion_contents` with non-empty custom-effect payload equality,
       non-literal / rich / styled written-book page `ComponentSerialization`
       equality, trim inline material or pattern payloads / datapack pattern

@@ -7504,6 +7504,36 @@ mod tests {
             ),
             uv("component_condition_bundle_exact_jukebox_playable_absent")
         );
+        let exact_trim = DataComponentPatchSummary {
+            added_type_ids: vec![56],
+            armor_trim_material_id: Some(1),
+            armor_trim_pattern_id: Some(0),
+            ..DataComponentPatchSummary::default()
+        };
+        assert_eq!(
+            selected_with_trim_keys(90, named_bundle_entry(exact_trim.clone())),
+            uv("component_condition_bundle_exact_trim_present")
+        );
+        assert_eq!(
+            selected_with_trim_keys(
+                90,
+                named_bundle_entry(DataComponentPatchSummary {
+                    armor_trim_material_id: Some(0),
+                    ..exact_trim.clone()
+                })
+            ),
+            uv("component_condition_bundle_exact_trim_absent")
+        );
+        assert_eq!(
+            selected_with_trim_keys(
+                90,
+                named_bundle_entry(DataComponentPatchSummary {
+                    removed_type_ids: vec![56],
+                    ..exact_trim
+                })
+            ),
+            uv("component_condition_bundle_exact_trim_absent")
+        );
         assert_eq!(
             selected(
                 33,
@@ -10968,6 +10998,7 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_FIREWORK_EXPLOSION = registerItem("component_condition_bundle_exact_firework_explosion");
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_FIREWORKS = registerItem("component_condition_bundle_exact_fireworks");
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_JUKEBOX_PLAYABLE = registerItem("component_condition_bundle_exact_jukebox_playable");
+                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_TRIM = registerItem("component_condition_bundle_exact_trim");
             }"#,
         );
         write_json(
@@ -11793,6 +11824,42 @@ mod tests {
                     "on_false": {
                         "type": "minecraft:model",
                         "model": "minecraft:item/component_condition_bundle_exact_jukebox_playable_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_exact_trim.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "components": {
+                                            "minecraft:trim": {
+                                                "material": "minecraft:diamond",
+                                                "pattern": "minecraft:sentry"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_trim_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_trim_absent"
                     }
                 }
             }"#,
@@ -14259,6 +14326,14 @@ mod tests {
             (
                 "component_condition_bundle_exact_jukebox_playable_absent",
                 [45, 95, 95, 255],
+            ),
+            (
+                "component_condition_bundle_exact_trim_present",
+                [205, 185, 245, 255],
+            ),
+            (
+                "component_condition_bundle_exact_trim_absent",
+                [75, 55, 105, 255],
             ),
             (
                 "component_condition_container_components_present",

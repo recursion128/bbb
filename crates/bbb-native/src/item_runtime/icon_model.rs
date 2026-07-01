@@ -2406,6 +2406,7 @@ fn item_exact_component_is_supported(component: &str, expected: &Value) -> bool 
         || (component == "minecraft:fireworks" && fireworks_exact_value(expected).is_some())
         || (component == "minecraft:jukebox_playable"
             && jukebox_playable_exact_value(expected).is_some())
+        || (component == "minecraft:trim" && trim_exact_value(expected).is_some())
 }
 
 fn item_partial_component_predicates_are_supported(value: &Value) -> bool {
@@ -3469,6 +3470,7 @@ fn item_data_component_matchers_match(
             components,
             item,
             resource_id,
+            trim_material_keys,
             default_max_stack_size_for_item,
             default_max_damage_for_item,
         ) {
@@ -3503,6 +3505,7 @@ fn item_exact_components_match(
     value: &Value,
     item: &ItemStackTemplateSummary,
     resource_id: &str,
+    trim_material_keys: Option<&[String]>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
@@ -3519,6 +3522,7 @@ fn item_exact_components_match(
             expected,
             item,
             resource_id,
+            trim_material_keys,
             default_max_stack_size,
             default_max_damage,
         )
@@ -3530,6 +3534,7 @@ fn item_exact_component_matches(
     expected: &Value,
     item: &ItemStackTemplateSummary,
     resource_id: &str,
+    trim_material_keys: Option<&[String]>,
     default_max_stack_size: Option<i32>,
     default_max_damage: Option<i32>,
 ) -> bool {
@@ -3619,6 +3624,13 @@ fn item_exact_component_matches(
             return false;
         };
         return jukebox_playable_exact_match(expected, &item.component_patch);
+    }
+
+    if component == "minecraft:trim" {
+        let Some(expected) = trim_exact_value(expected) else {
+            return false;
+        };
+        return trim_exact_match(&expected, &item.component_patch, trim_material_keys);
     }
 
     let Some(expected) = simple_component_text(expected) else {
@@ -3962,6 +3974,59 @@ fn item_stack_matches_trim_value(
         }
     }
     true
+}
+
+struct ExactTrim<'a> {
+    material: &'a str,
+    pattern: &'a str,
+}
+
+fn trim_exact_value(value: &Value) -> Option<ExactTrim<'_>> {
+    let value = value.as_object()?;
+    if !value
+        .keys()
+        .all(|key| key == "material" || key == "pattern")
+    {
+        return None;
+    }
+    Some(ExactTrim {
+        material: direct_registry_key_value(value.get("material")?)?,
+        pattern: direct_registry_key_value(value.get("pattern")?)?,
+    })
+}
+
+fn direct_registry_key_value(value: &Value) -> Option<&str> {
+    let value = value.as_str()?;
+    (!value.is_empty() && !value.starts_with('#')).then_some(value)
+}
+
+fn trim_exact_match(
+    expected: &ExactTrim<'_>,
+    component_patch: &DataComponentPatchSummary,
+    trim_material_keys: Option<&[String]>,
+) -> bool {
+    if component_patch
+        .removed_type_ids
+        .contains(&TRIM_COMPONENT_ID)
+        || !component_patch.added_type_ids.contains(&TRIM_COMPONENT_ID)
+    {
+        return false;
+    }
+    let Some(material_key) = component_patch
+        .armor_trim_material_id
+        .and_then(|id| usize::try_from(id).ok())
+        .and_then(|index| trim_material_keys.and_then(|keys| keys.get(index)))
+    else {
+        return false;
+    };
+    let Some(pattern_key) = component_patch
+        .armor_trim_pattern_id
+        .and_then(|id| usize::try_from(id).ok())
+        .and_then(|index| VANILLA_TRIM_PATTERN_KEYS.get(index))
+    else {
+        return false;
+    };
+    material_key.as_str() == expected.material && *pattern_key == expected.pattern
 }
 
 fn jukebox_playable_component_predicate_is_supported(property: &ItemModelProperty) -> bool {
