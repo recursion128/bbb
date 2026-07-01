@@ -856,11 +856,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `flight_duration` and ordered explosion lists, plus nested partial
     `minecraft:damage`, plus exact `minecraft:jukebox_playable` components for
     direct vanilla jukebox-song keys and inline direct-song objects with direct
-    sound-event payloads, description text summaries, `length_in_seconds`, and
-    `comparator_output`, plus exact `minecraft:trim` components
-    for direct trim-material registry keys, inline trim-material payloads with
-    asset name / override armor assets / description text, direct vanilla
-    trim-pattern keys, and inline trim-pattern payloads with asset id /
+    or registry sound-event holders, description text summaries,
+    `length_in_seconds`, and `comparator_output`, plus exact `minecraft:trim`
+    components for direct trim-material registry keys, inline trim-material
+    payloads with asset name / override armor assets / description text, direct
+    vanilla trim-pattern keys, and inline trim-pattern payloads with asset id /
     description text / decal, plus exact `minecraft:enchantments` and
     `minecraft:stored_enchantments` components for direct enchantment
     registry-key maps, plus exact `minecraft:villager/variant` components for
@@ -919,9 +919,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     attribute holder payloads, full style-sensitive written-book page
     `ComponentSerialization` equality, datapack trim-material or trim-pattern
     registry-key remaps, datapack
-    villager-type registry remaps, and jukebox-song datapack registry remaps plus registry
-    sound-event holders inside inline jukebox songs remain component-predicate
-    follow-up.
+    villager-type registry remaps, and jukebox-song datapack registry remaps
+    remain component-predicate follow-up.
   - [x] `minecraft:has_component` item-model condition now follows vanilla
     `HasComponent.get`: default prototype components such as
     `minecraft:max_stack_size`, `minecraft:item_model`, `minecraft:rarity`,

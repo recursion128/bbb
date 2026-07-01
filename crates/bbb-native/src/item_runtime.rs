@@ -7508,9 +7508,9 @@ mod tests {
             added_type_ids: vec![64],
             jukebox_direct_song: Some(JukeboxSongSummary {
                 sound_event: SoundEventSummary {
-                    registry_id: None,
-                    sound_id: Some("minecraft:test.song".to_string()),
-                    fixed_range_bits: Some(16.0f32.to_bits()),
+                    registry_id: Some(286),
+                    sound_id: None,
+                    fixed_range_bits: None,
                 },
                 description: "Test song".to_string(),
                 length_in_seconds_bits: 3.5f32.to_bits(),
@@ -12215,10 +12215,7 @@ mod tests {
                                     "components": {
                                         "components": {
                                             "minecraft:jukebox_playable": {
-                                                "sound_event": {
-                                                    "sound_id": "minecraft:test.song",
-                                                    "range": 16.0
-                                                },
+                                                "sound_event": "minecraft:entity.cat.ambient",
                                                 "description": {
                                                     "text": "Test",
                                                     "extra": [

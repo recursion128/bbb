@@ -2402,6 +2402,42 @@ mod tests {
     }
 
     #[test]
+    fn decodes_inline_jukebox_song_registry_sound_event_payload() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(64);
+        payload.write_var_i32(0);
+        payload.write_var_i32(287);
+        payload.write_bytes(&nbt_string_root("Registry sound song"));
+        payload.write_f32(4.25);
+        payload.write_var_i32(9);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![64],
+                jukebox_direct_song: Some(JukeboxSongSummary {
+                    sound_event: SoundEventSummary {
+                        registry_id: Some(286),
+                        sound_id: None,
+                        fixed_range_bits: None,
+                    },
+                    description: "Registry sound song".to_string(),
+                    length_in_seconds_bits: 4.25f32.to_bits(),
+                    comparator_output: 9,
+                }),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
     fn decodes_inline_trim_pattern_payload() {
         let mut payload = Encoder::new();
         payload.write_var_i32(1);

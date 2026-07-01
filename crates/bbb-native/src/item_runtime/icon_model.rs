@@ -1,5 +1,9 @@
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::OnceLock,
+};
 
+use bbb_audio::SoundEventRegistry;
 use bbb_pack::{
     ItemCuboidModelCatalog, ItemModelDefinition, ItemModelProperty, ItemModelPropertyKind,
     ItemTintSource, SelectCase, TagCatalog, TerrainColorMaps,
@@ -555,6 +559,50 @@ mod tests {
 
         let weight = bundle_item_weight(&nested_empty_bundle, Some(&|_| 64));
         assert!((weight - 1.0 / 16.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn exact_sound_event_matches_registry_and_direct_holders() {
+        let registry_value = Value::String("minecraft:entity.cat.ambient".to_string());
+        let registry_expected = exact_sound_event_value(&registry_value).unwrap();
+        assert!(sound_event_exact_match(
+            &registry_expected,
+            &SoundEventSummary {
+                registry_id: Some(286),
+                sound_id: None,
+                fixed_range_bits: None,
+            }
+        ));
+        assert!(!sound_event_exact_match(
+            &registry_expected,
+            &SoundEventSummary {
+                registry_id: Some(7),
+                sound_id: None,
+                fixed_range_bits: None,
+            }
+        ));
+
+        let direct_value = serde_json::json!({
+            "sound_id": "minecraft:test.song",
+            "range": 16.0
+        });
+        let direct_expected = exact_sound_event_value(&direct_value).unwrap();
+        assert!(sound_event_exact_match(
+            &direct_expected,
+            &SoundEventSummary {
+                registry_id: None,
+                sound_id: Some("minecraft:test.song".to_string()),
+                fixed_range_bits: Some(16.0f32.to_bits()),
+            }
+        ));
+        assert!(!sound_event_exact_match(
+            &direct_expected,
+            &SoundEventSummary {
+                registry_id: Some(286),
+                sound_id: None,
+                fixed_range_bits: None,
+            }
+        ));
     }
 
     #[test]
@@ -4666,17 +4714,22 @@ fn item_stack_matches_jukebox_playable_value(
 
 enum ExactJukeboxPlayable<'a> {
     RegistryKey(&'a str),
-    DirectSong(ExactJukeboxSong),
+    DirectSong(ExactJukeboxSong<'a>),
 }
 
-struct ExactJukeboxSong {
-    sound_event: ExactSoundEvent,
+struct ExactJukeboxSong<'a> {
+    sound_event: ExactSoundEvent<'a>,
     description: String,
     length_in_seconds_bits: u32,
     comparator_output: i32,
 }
 
-struct ExactSoundEvent {
+enum ExactSoundEvent<'a> {
+    RegistryKey(&'a str),
+    Direct(ExactDirectSoundEvent),
+}
+
+struct ExactDirectSoundEvent {
     sound_id: String,
     fixed_range_bits: Option<u32>,
 }
@@ -4718,26 +4771,33 @@ fn direct_registry_key_str(value: &str) -> Option<&str> {
     (!value.is_empty() && !value.starts_with('#')).then_some(value)
 }
 
-fn exact_sound_event_value(value: &Value) -> Option<ExactSoundEvent> {
-    let value = value.as_object()?;
-    if !value.keys().all(|key| key == "sound_id" || key == "range") {
-        return None;
-    }
-    let sound_id = direct_registry_key_str(value.get("sound_id")?.as_str()?)?.to_string();
-    let fixed_range_bits = match value.get("range") {
-        None => None,
-        Some(range) => {
-            let range = json_f32(range)?;
-            if !range.is_finite() {
+fn exact_sound_event_value(value: &Value) -> Option<ExactSoundEvent<'_>> {
+    match value {
+        Value::String(value) => Some(ExactSoundEvent::RegistryKey(direct_registry_key_str(
+            value,
+        )?)),
+        Value::Object(value) => {
+            if !value.keys().all(|key| key == "sound_id" || key == "range") {
                 return None;
             }
-            Some(range.to_bits())
+            let sound_id = direct_registry_key_str(value.get("sound_id")?.as_str()?)?.to_string();
+            let fixed_range_bits = match value.get("range") {
+                None => None,
+                Some(range) => {
+                    let range = json_f32(range)?;
+                    if !range.is_finite() {
+                        return None;
+                    }
+                    Some(range.to_bits())
+                }
+            };
+            Some(ExactSoundEvent::Direct(ExactDirectSoundEvent {
+                sound_id,
+                fixed_range_bits,
+            }))
         }
-    };
-    Some(ExactSoundEvent {
-        sound_id,
-        fixed_range_bits,
-    })
+        _ => None,
+    }
 }
 
 fn json_f32(value: &Value) -> Option<f32> {
@@ -4775,7 +4835,7 @@ fn jukebox_playable_exact_match(
 }
 
 fn jukebox_direct_song_exact_match(
-    expected: &ExactJukeboxSong,
+    expected: &ExactJukeboxSong<'_>,
     actual: &JukeboxSongSummary,
 ) -> bool {
     sound_event_exact_match(&expected.sound_event, &actual.sound_event)
@@ -4785,9 +4845,24 @@ fn jukebox_direct_song_exact_match(
 }
 
 fn sound_event_exact_match(expected: &ExactSoundEvent, actual: &SoundEventSummary) -> bool {
-    actual.registry_id.is_none()
-        && actual.sound_id.as_deref() == Some(expected.sound_id.as_str())
-        && actual.fixed_range_bits == expected.fixed_range_bits
+    match expected {
+        ExactSoundEvent::RegistryKey(expected) => actual
+            .registry_id
+            .and_then(vanilla_sound_event_key)
+            .is_some_and(|actual| actual == *expected),
+        ExactSoundEvent::Direct(expected) => {
+            actual.registry_id.is_none()
+                && actual.sound_id.as_deref() == Some(expected.sound_id.as_str())
+                && actual.fixed_range_bits == expected.fixed_range_bits
+        }
+    }
+}
+
+fn vanilla_sound_event_key(registry_id: i32) -> Option<&'static str> {
+    static VANILLA_SOUND_EVENTS: OnceLock<SoundEventRegistry> = OnceLock::new();
+    VANILLA_SOUND_EVENTS
+        .get_or_init(SoundEventRegistry::vanilla_26_1)
+        .event_id(registry_id)
 }
 
 fn potion_contents_component_predicate_is_supported(property: &ItemModelProperty) -> bool {

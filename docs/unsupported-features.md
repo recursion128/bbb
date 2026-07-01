@@ -5919,7 +5919,7 @@ When an agent does any of the following, update this file in the same slice:
       `flight_duration` and ordered explosion lists, plus nested partial
       `minecraft:damage`, plus exact `minecraft:jukebox_playable` components
       for direct vanilla jukebox-song keys and inline direct-song objects with
-      direct sound-event payloads, description text summaries,
+      direct or registry sound-event holders, description text summaries,
       `length_in_seconds`, and `comparator_output`, plus exact `minecraft:trim`
       components for direct trim-material registry keys, inline trim-material
       payloads with asset name / override armor assets / description text,
@@ -5988,9 +5988,8 @@ When an agent does any of the following, update this file in the same slice:
       attribute holder payloads, full style-sensitive written-book page
       `ComponentSerialization` equality, datapack trim-material or trim-pattern
       registry-key remaps, datapack
-      villager-type registry remaps, jukebox-song datapack registry remaps plus
-      registry sound-event holders inside inline jukebox songs, and similar)
-      remain follow-up.
+      villager-type registry remaps, jukebox-song datapack registry remaps, and
+      similar) remain follow-up.
     - `minecraft:charge_type` — `Charge.get` (`ROCKET` when any charged
       projectile is `minecraft:firework_rocket`, `ARROW` when charged otherwise,
       else `NONE`), using the native item registry to identify the projectile
