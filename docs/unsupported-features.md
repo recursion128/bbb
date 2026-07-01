@@ -1133,8 +1133,11 @@ When an agent does any of the following, update this file in the same slice:
     vanilla `ItemDisplayContext.THIRD_PERSON_LEFT_HAND` for the
     `ItemInHandLayer` slot and `ItemDisplayContext.HEAD` for the
     `CustomHeadLayer` slot, with full-bright light, no-overlay, foil, order,
-    and submit_sequence pinned in tests. Actual GPU PIP drawing for those item
-    layers and broader layer-order drawing remain subsequent P1-4 slices.
+    and submit_sequence pinned in tests. This closes the narrow P1-4 GUI
+    lighting / entity-in-UI render-plan surface. Actual GPU PIP drawing for
+    those item layers, creative inventory-tab state, and broader layer-order
+    drawing remain subsequent visual / screen-state parity work rather than
+    reopening the narrow lighting surface.
     The dropped-item 3D model
     path and the legacy item-entity / thrown-item billboard path now sample the
     entity light probe through `WorldStore`, keep the vanilla full-bright
