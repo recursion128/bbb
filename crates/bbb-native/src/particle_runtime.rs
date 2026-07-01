@@ -402,6 +402,9 @@ impl ParticleCommandResolver {
                 }
                 batch
             }
+            POTION_BREAK_LEVEL_EVENT | INSTANT_POTION_BREAK_LEVEL_EVENT => {
+                self.potion_break_spell_particle_batch(event, random)
+            }
             DRAGON_FIREBALL_EXPLODE_LEVEL_EVENT => self.dragon_breath_particle_batch(event, random),
             ENDER_EYE_BREAK_LEVEL_EVENT => self.ender_eye_break_particle_batch(event, random),
             EXPLOSION_LEVEL_EVENT => self.simple_particle_batch(
@@ -675,12 +678,83 @@ impl ParticleCommandResolver {
         batch
     }
 
+    fn potion_break_spell_particle_batch(
+        &self,
+        event: &LevelEvent,
+        random: &mut LevelEventSoundRandomState,
+    ) -> ParticleSpawnBatch {
+        for _ in 0..POTION_BREAK_ITEM_PARTICLE_COUNT {
+            random.next_gaussian();
+            random.next_double();
+            random.next_gaussian();
+        }
+
+        let particle_type_id = if event.event_type == INSTANT_POTION_BREAK_LEVEL_EVENT {
+            INSTANT_EFFECT_PARTICLE_TYPE_ID
+        } else {
+            EFFECT_PARTICLE_TYPE_ID
+        };
+        let template = match self.simple_particle_template(particle_type_id) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+
+        let red = ((event.data >> 16) & 0xFF) as f32 / 255.0;
+        let green = ((event.data >> 8) & 0xFF) as f32 / 255.0;
+        let blue = (event.data & 0xFF) as f32 / 255.0;
+        let base_x = f64::from(event.pos.x) + 0.5;
+        let base_y = f64::from(event.pos.y);
+        let base_z = f64::from(event.pos.z) + 0.5;
+
+        for _ in 0..POTION_BREAK_SPELL_PARTICLE_COUNT {
+            let dist = random.next_double() * 4.0;
+            let angle = random.next_double() * std::f64::consts::TAU;
+            let velocity = Vec3d {
+                x: angle.cos() * dist,
+                y: 0.01 + random.next_double() * 0.5,
+                z: angle.sin() * dist,
+            };
+            let random_brightness = 0.75 + random.next_float() * 0.25;
+            let option_state = ParticleOptionRenderState {
+                color: Some([
+                    red * random_brightness,
+                    green * random_brightness,
+                    blue * random_brightness,
+                    1.0,
+                ]),
+                power: Some(dist as f32),
+                ..ParticleOptionRenderState::default()
+            };
+            batch.commands.push(self.command_for_type(
+                template.particle_type,
+                &template.sprite_ids,
+                Vec3d {
+                    x: base_x + velocity.x * 0.1,
+                    y: base_y + 0.3,
+                    z: base_z + velocity.z * 0.1,
+                },
+                velocity,
+                template.particle_type.override_limiter,
+                false,
+                0,
+                0,
+                option_state,
+            ));
+        }
+
+        batch
+    }
+
     fn ender_eye_break_particle_batch(
         &self,
         event: &LevelEvent,
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch {
-        for _ in 0..ENDER_EYE_BREAK_ITEM_PARTICLE_COUNT {
+        for _ in 0..ITEM_BREAK_PARTICLE_COUNT {
             random.next_gaussian();
             random.next_double();
             random.next_gaussian();
@@ -1486,9 +1560,11 @@ const LAVA_EXTINGUISH_LEVEL_EVENT: i32 = 1501;
 const REDSTONE_TORCH_BURNOUT_LEVEL_EVENT: i32 = 1502;
 const END_PORTAL_FRAME_FILL_LEVEL_EVENT: i32 = 1503;
 const DISPENSER_SMOKE_LEVEL_EVENT: i32 = 2000;
+const POTION_BREAK_LEVEL_EVENT: i32 = 2002;
 const ENDER_EYE_BREAK_LEVEL_EVENT: i32 = 2003;
 const BLAZE_SMOKE_LEVEL_EVENT: i32 = 2004;
 const DRAGON_FIREBALL_EXPLODE_LEVEL_EVENT: i32 = 2006;
+const INSTANT_POTION_BREAK_LEVEL_EVENT: i32 = 2007;
 const EXPLOSION_LEVEL_EVENT: i32 = 2008;
 const SPLASH_CLOUD_LEVEL_EVENT: i32 = 2009;
 const DISPENSER_WHITE_SMOKE_LEVEL_EVENT: i32 = 2010;
@@ -1557,7 +1633,9 @@ const ELECTRIC_SPARK_AXIS_RADIUS: f64 = 0.125;
 const ELECTRIC_SPARK_AXIS_MIN: i32 = 10;
 const ELECTRIC_SPARK_AXIS_MAX: i32 = 19;
 const EGG_CRACK_PARTICLE_MAX: i32 = 6;
-const ENDER_EYE_BREAK_ITEM_PARTICLE_COUNT: i32 = 8;
+const ITEM_BREAK_PARTICLE_COUNT: i32 = 8;
+const POTION_BREAK_ITEM_PARTICLE_COUNT: i32 = ITEM_BREAK_PARTICLE_COUNT;
+const POTION_BREAK_SPELL_PARTICLE_COUNT: i32 = 100;
 const SCULK_SHRIEKER_TOP_Y: f64 = 0.5;
 const SCULK_SHRIEK_PARTICLE_COUNT: u32 = 10;
 const SCULK_SHRIEK_DELAY_STEP_TICKS: u32 = 5;
@@ -2225,6 +2303,52 @@ mod tests {
                 -7.453_970_007_633_87,
             ],
             false,
+        );
+
+        let mut potion_random = LevelEventSoundRandomState::with_seed(0);
+        let potion = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 2002,
+                data: 0x0033_66cc,
+                ..level_event_packet(2002)
+            },
+            &mut potion_random,
+        );
+        assert_eq!(potion.len(), 100);
+        let (expected_position, expected_velocity, expected_color, expected_power) =
+            first_potion_break_spell_particle(0x0033_66cc);
+        assert_particle_command(
+            &potion.commands[0],
+            EFFECT_PARTICLE_TYPE_ID,
+            "minecraft:effect",
+            expected_position,
+            expected_velocity,
+            false,
+        );
+        assert_eq!(potion.commands[0].option_color, Some(expected_color));
+        assert_eq!(potion.commands[0].option_power, Some(expected_power));
+
+        let mut instant_potion_random = LevelEventSoundRandomState::with_seed(0);
+        let instant_potion = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 2007,
+                data: 0x00aa_bbcc,
+                ..level_event_packet(2007)
+            },
+            &mut instant_potion_random,
+        );
+        assert_eq!(instant_potion.len(), 100);
+        assert_eq!(
+            instant_potion.commands[0].particle_type_id,
+            INSTANT_EFFECT_PARTICLE_TYPE_ID
+        );
+        assert_eq!(
+            instant_potion.commands[0].particle_id,
+            "minecraft:instant_effect"
+        );
+        assert_eq!(
+            instant_potion.commands[0].option_power,
+            Some(first_potion_break_spell_particle(0x00aa_bbcc).3)
         );
 
         let mut ender_eye_random = LevelEventSoundRandomState::with_seed(0);
@@ -3273,6 +3397,37 @@ mod tests {
             data: 0,
             global: false,
         }
+    }
+
+    fn first_potion_break_spell_particle(data: i32) -> ([f64; 3], [f64; 3], [f32; 4], f32) {
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        for _ in 0..POTION_BREAK_ITEM_PARTICLE_COUNT {
+            random.next_gaussian();
+            random.next_double();
+            random.next_gaussian();
+        }
+        let dist = random.next_double() * 4.0;
+        let angle = random.next_double() * std::f64::consts::TAU;
+        let velocity = [
+            angle.cos() * dist,
+            0.01 + random.next_double() * 0.5,
+            angle.sin() * dist,
+        ];
+        let random_brightness = 0.75 + random.next_float() * 0.25;
+        let red = ((data >> 16) & 0xFF) as f32 / 255.0;
+        let green = ((data >> 8) & 0xFF) as f32 / 255.0;
+        let blue = (data & 0xFF) as f32 / 255.0;
+        (
+            [10.5 + velocity[0] * 0.1, 64.3, -2.5 + velocity[2] * 0.1],
+            velocity,
+            [
+                red * random_brightness,
+                green * random_brightness,
+                blue * random_brightness,
+                1.0,
+            ],
+            dist as f32,
+        )
     }
 
     fn assert_particle_command(

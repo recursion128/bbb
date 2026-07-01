@@ -1408,6 +1408,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     after consuming the preceding eight `ItemParticleOption(Items.ENDER_EYE)`
     random draws; the ender-eye item particles remain deferred with item
     particle option rendering.
+  - [x] splash / instant splash potion break spell particles：events `2002` and
+    `2007` now consume the preceding eight `ItemParticleOption(Items.SPLASH_POTION)`
+    random draws, then emit 100 vanilla-positioned `minecraft:effect` /
+    `minecraft:instant_effect` submissions with event-data RGB, random
+    brightness, and `SpellParticleOption` power. The splash-potion item
+    particles remain deferred with item particle option rendering.
   - [x] bee-growth / turtle-egg-placement happy-villager in-block particles：
     events `2011` (`PARTICLES_BEE_GROWTH`) and `2012`
     (`PARTICLES_TURTLE_EGG_PLACEMENT`) now mirror vanilla
@@ -1421,7 +1427,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `SCULK_SHRIEKER_SHRIEK` sound branch remains audio/world-state follow-up.
   - block-state shape-sensitive `spawnParticleInBlock` heights plus
     `1505` (`PARTICLES_AND_SOUND_PLANT_GROWTH`) BonemealableBlock / water
-    branches plus block/item option events remain follow-up work.
+    branches plus remaining block/item option event particles remain follow-up
+    work.
   - smoke/flame/dragon-breath/explosion/cloud/block-face/trial-spawner/
     portal ring/happy-villager 之外的剩余事件。
 

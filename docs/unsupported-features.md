@@ -217,6 +217,10 @@ When an agent does any of the following, update this file in the same slice:
       - event `2000`: ten directionally emitted `minecraft:smoke` particles
       - event `2010`: ten directionally emitted `minecraft:white_smoke`
         particles
+      - events `2002` / `2007`: after preserving the eight splash-potion item
+        particle random draws, 100 vanilla-positioned `minecraft:effect` /
+        `minecraft:instant_effect` spell particles with event-data RGB,
+        random brightness, and `SpellParticleOption` power
       - events `2011` (`PARTICLES_BEE_GROWTH`) and `2012`
         (`PARTICLES_TURTLE_EGG_PLACEMENT`): vanilla
         `ParticleUtils.spawnParticleInBlock`-shaped `minecraft:happy_villager`
@@ -255,12 +259,13 @@ When an agent does any of the following, update this file in the same slice:
       - event `3021`: trial spawner item-spawn sound-side smoke plus
         normal/ominous flame spawn particles
     - Remaining item/block option LevelEvent branches, including event `2003`'s
-      ender-eye item particles, stay deferred with terrain/item particle option
-      rendering rather than being approximated as simple atlas particles.
-      Event `1505` (`PARTICLES_AND_SOUND_PLANT_GROWTH`) also stays deferred
-      because vanilla `BoneMealItem.addGrowthParticles` branches on the target
-      block's `BonemealableBlock` type or water state before choosing the
-      particle spread.
+      ender-eye item particles and events `2002` / `2007` splash-potion item
+      particles, stay deferred with terrain/item particle option rendering
+      rather than being approximated as simple atlas particles. Event `1505`
+      (`PARTICLES_AND_SOUND_PLANT_GROWTH`) also stays deferred because vanilla
+      `BoneMealItem.addGrowthParticles` branches on the target block's
+      `BonemealableBlock` type or water state before choosing the particle
+      spread.
     - Advances CPU-side common particles.
     - Samples vanilla-shaped curves for common particle providers:
       - size
