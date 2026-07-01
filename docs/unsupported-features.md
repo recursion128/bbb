@@ -342,6 +342,11 @@ When an agent does any of the following, update this file in the same slice:
         (`pos = 1 - age/lifetime`, `y -= (age/lifetime)^4 * 1.2`), and
         quartic smooth block-light emission; `VaultConnectionProvider` remains
         deferred until lifetime alpha and glowing variants are represented
+      - `TotemParticle.Provider` uses age sprite selection, command velocity,
+        `0.75` quad-size multiplier, `60 + random.nextInt(12)` lifetime,
+        translucent particle layer, `0.6` friction, `1.25` gravity, full-bright
+        light coords, both vanilla random color branches, and the
+        `SimpleAnimatedParticle` half-lifetime alpha fade
       - Simple `SpellParticle.Provider` particles (`infested`, `raid_omen`,
         `trial_omen`) use the vanilla random horizontal constructor velocity,
         y-velocity scaling, still-horizontal x/z dampening, age sprite

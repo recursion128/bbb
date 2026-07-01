@@ -10,9 +10,9 @@ mod descriptors;
 mod gpu;
 
 use descriptors::{
-    particle_limit_for_particle, select_initial_sprite, sprite_index_for_age, ParticleDescriptor,
-    ParticleLightEmissionDescriptor, ParticleLimitDescriptor, ParticleQuadSizeCurve,
-    ParticleRandom, ParticleSpriteSelection, ParticleTickMotionDescriptor,
+    particle_limit_for_particle, select_initial_sprite, sprite_index_for_age, ParticleAlphaCurve,
+    ParticleDescriptor, ParticleLightEmissionDescriptor, ParticleLimitDescriptor,
+    ParticleQuadSizeCurve, ParticleRandom, ParticleSpriteSelection, ParticleTickMotionDescriptor,
     DEFAULT_PARTICLE_RANDOM_SEED,
 };
 pub(super) use gpu::{
@@ -101,6 +101,8 @@ pub(crate) struct ParticleInstance {
     pub(crate) light: [f32; 2],
     #[serde(default)]
     pub(crate) light_emission: ParticleLightEmissionDescriptor,
+    #[serde(default)]
+    pub(crate) alpha_curve: ParticleAlphaCurve,
     #[serde(default)]
     pub(crate) quad_size_curve: ParticleQuadSizeCurve,
     pub(crate) provider: String,
@@ -375,6 +377,7 @@ impl ParticleRuntimeState {
             instance.tick_motion_without_collision();
             instance.age_ticks = instance.age_ticks.saturating_add(1);
             instance.update_sprite_from_age();
+            instance.update_alpha_from_age();
             active_instances.push_back(instance);
         }
         self.active_instances = active_instances;
@@ -508,6 +511,7 @@ impl ParticleInstance {
             color: visual.color,
             light: DEFAULT_PARTICLE_LIGHT,
             light_emission: descriptor.light_emission(),
+            alpha_curve: descriptor.alpha_curve(),
             quad_size_curve: visual.quad_size_curve,
             provider: descriptor.provider.to_string(),
             render_group,
@@ -629,6 +633,20 @@ impl ParticleInstance {
         };
         self.current_sprite_index = Some(index);
         self.current_sprite_id = self.sprite_ids.get(index).cloned();
+    }
+
+    fn update_alpha_from_age(&mut self) {
+        match self.alpha_curve {
+            ParticleAlphaCurve::Constant => {}
+            ParticleAlphaCurve::SimpleAnimatedFade => {
+                let half_lifetime = self.lifetime_ticks / 2;
+                if self.age_ticks > half_lifetime {
+                    let lifetime = self.lifetime_ticks.max(1) as f32;
+                    self.color[3] =
+                        1.0 - (self.age_ticks.saturating_sub(half_lifetime) as f32 / lifetime);
+                }
+            }
+        }
     }
 }
 
@@ -824,6 +842,7 @@ fn particle_render_layer_for_particle(particle_id: &str) -> ParticleRenderLayer 
     match particle_id {
         "minecraft:cloud"
         | "minecraft:sneeze"
+        | "minecraft:totem_of_undying"
         | "minecraft:squid_ink"
         | "minecraft:glow_squid_ink"
         | "minecraft:end_rod"
@@ -1344,6 +1363,21 @@ mod tests {
         let instance = &particles.active_instances()[0];
         assert_eq!(instance.sprite_selection, ParticleSpriteSelection::Random);
         assert_eq!(instance.current_sprite_id, initial_sprite);
+    }
+
+    #[test]
+    fn particle_runtime_simple_animated_alpha_fades_after_half_lifetime() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:totem_of_undying", 60);
+        instance.age_ticks = 30;
+        instance.color[3] = 1.0;
+        particles.active_instances.push_back(instance);
+
+        particles.advance(1);
+
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 31);
+        assert_close_f32(instance.color[3], 1.0 - 1.0 / 60.0);
     }
 
     #[test]
@@ -1909,6 +1943,30 @@ mod tests {
         assert_range_f32(nautilus.base_quad_size, 0.02, 0.07);
         assert!((30..=39).contains(&nautilus.lifetime_ticks));
 
+        let mut totem_random = ParticleRandom::new(85);
+        let mut totem_command = spawn_command("minecraft:totem_of_undying", 1.0);
+        totem_command.velocity = [0.25, 0.5, -0.75];
+        let totem = ParticleInstance::from_spawn_command(totem_command, &mut totem_random);
+        assert_eq!(totem.provider, "TotemParticle.Provider");
+        assert_eq!(totem.sprite_selection, ParticleSpriteSelection::Age);
+        assert_eq!(totem.current_sprite_index, Some(0));
+        assert_range_f32(totem.base_quad_size, 0.075, 0.15);
+        assert!((0.1..=0.3).contains(&totem.color[0]) || (0.6..=0.8).contains(&totem.color[0]));
+        assert_range_f32(totem.color[1], 0.4, 0.9);
+        assert_range_f32(totem.color[2], 0.0, 0.2);
+        assert_eq!(totem.color[3], 1.0);
+        assert!((60..=71).contains(&totem.lifetime_ticks));
+        assert_eq!(totem.velocity, [0.25, 0.5, -0.75]);
+        assert_eq!(totem.friction, 0.6);
+        assert_eq!(totem.gravity, 1.25);
+        assert!(totem.has_physics);
+        assert_eq!(totem.render_layer, ParticleRenderLayer::Translucent);
+        assert_eq!(
+            totem.light_emission,
+            ParticleLightEmissionDescriptor::FullBright
+        );
+        assert_eq!(totem.alpha_curve, ParticleAlphaCurve::SimpleAnimatedFade);
+
         let mut angry_villager_random = ParticleRandom::new(52);
         let angry_villager = ParticleInstance::from_spawn_command(
             spawn_command("minecraft:angry_villager", 1.0),
@@ -2259,6 +2317,10 @@ mod tests {
             spawn_command("minecraft:nautilus", 8.0),
             &mut random,
         );
+        let totem = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:totem_of_undying", 9.0),
+            &mut random,
+        );
 
         assert_eq!(opaque.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(cloud.render_group, ParticleRenderGroup::SingleQuads);
@@ -2268,10 +2330,12 @@ mod tests {
         assert_eq!(current_down.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(enchant.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(nautilus.render_group, ParticleRenderGroup::SingleQuads);
+        assert_eq!(totem.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(opaque.render_layer, ParticleRenderLayer::Opaque);
         assert_eq!(cloud.render_layer, ParticleRenderLayer::Translucent);
         assert_eq!(squid_ink.render_layer, ParticleRenderLayer::Translucent);
         assert_eq!(sculk.render_layer, ParticleRenderLayer::Translucent);
+        assert_eq!(totem.render_layer, ParticleRenderLayer::Translucent);
         assert_eq!(glow.render_layer, ParticleRenderLayer::Opaque);
         assert_eq!(current_down.render_layer, ParticleRenderLayer::Opaque);
         assert_eq!(enchant.render_layer, ParticleRenderLayer::Opaque);
@@ -2506,7 +2570,7 @@ mod tests {
     #[test]
     fn particle_runtime_applies_vanilla_particle_light_emission_overrides() {
         let sampled_light = [2.0 / 15.0, 7.0 / 15.0];
-        let mut particles = ParticleRuntimeState::with_capacities(11, 11);
+        let mut particles = ParticleRuntimeState::with_capacities(12, 12);
         let cloud = test_instance_with_lifetime("minecraft:cloud", 20);
         let mut flame = test_instance_with_lifetime("minecraft:flame", 20);
         flame.age_ticks = 4;
@@ -2517,6 +2581,7 @@ mod tests {
         let sculk_charge_pop = test_instance_with_lifetime("minecraft:sculk_charge_pop", 20);
         let attack_sweep = test_instance_with_lifetime("minecraft:sweep_attack", 4);
         let end_rod = test_instance_with_lifetime("minecraft:end_rod", 60);
+        let totem = test_instance_with_lifetime("minecraft:totem_of_undying", 60);
         let mut enchant = test_instance_with_lifetime("minecraft:enchant", 40);
         enchant.age_ticks = 20;
         let mut portal = test_instance_with_lifetime("minecraft:portal", 40);
@@ -2532,6 +2597,7 @@ mod tests {
         particles.active_instances.push_back(sculk_charge_pop);
         particles.active_instances.push_back(attack_sweep);
         particles.active_instances.push_back(end_rod);
+        particles.active_instances.push_back(totem);
         particles.active_instances.push_back(enchant);
         particles.active_instances.push_back(portal);
         particles.active_instances.push_back(reverse_portal);
@@ -2563,11 +2629,7 @@ mod tests {
         );
         assert_eq!(particles.active_instances()[6].light, [1.0, 1.0]);
         assert_eq!(particles.active_instances()[7].light, [1.0, 1.0]);
-        assert_close_f32(
-            particles.active_instances()[8].light[0],
-            sampled_light[0] + 0.5_f32.powi(4),
-        );
-        assert_close_f32(particles.active_instances()[8].light[1], sampled_light[1]);
+        assert_eq!(particles.active_instances()[8].light, [1.0, 1.0]);
         assert_close_f32(
             particles.active_instances()[9].light[0],
             sampled_light[0] + 0.5_f32.powi(4),
@@ -2578,6 +2640,11 @@ mod tests {
             sampled_light[0] + 0.5_f32.powi(4),
         );
         assert_close_f32(particles.active_instances()[10].light[1], sampled_light[1]);
+        assert_close_f32(
+            particles.active_instances()[11].light[0],
+            sampled_light[0] + 0.5_f32.powi(4),
+        );
+        assert_close_f32(particles.active_instances()[11].light[1], sampled_light[1]);
     }
 
     #[test]
@@ -2655,6 +2722,7 @@ mod tests {
             color: [1.0, 1.0, 1.0, 1.0],
             light: DEFAULT_PARTICLE_LIGHT,
             light_emission: descriptor.light_emission(),
+            alpha_curve: descriptor.alpha_curve(),
             quad_size_curve: ParticleQuadSizeCurve::Constant,
             provider: descriptor.provider.to_string(),
             render_group: particle_render_group_for_particle(particle_id),

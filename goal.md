@@ -1211,6 +1211,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     no-physics metadata, fly-towards position curve (`pos = 1 - age/lifetime`,
     `y -= (age/lifetime)^4 * 1.2`), and quartic smooth block-light emission.
     `VaultConnectionProvider` remains a later alpha/glowing variant.
+  - [x] `TotemParticle.Provider`：renderer descriptor now mirrors vanilla age
+    sprite selection, command velocity, `0.75` quad-size multiplier,
+    `60 + random.nextInt(12)` lifetime, translucent layer, `0.6` friction,
+    `1.25` gravity, full-bright light coords, both vanilla random color
+    branches, and `SimpleAnimatedParticle` half-lifetime alpha fade.
   - 初速度。
   - lifetime。
   - size curve。

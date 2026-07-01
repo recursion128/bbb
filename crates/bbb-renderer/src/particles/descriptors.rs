@@ -38,6 +38,13 @@ pub(crate) enum ParticleLightEmissionDescriptor {
     SmoothBlockByAgeQuartic,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum ParticleAlphaCurve {
+    #[default]
+    Constant,
+    SimpleAnimatedFade,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub(crate) enum ParticleLimitDescriptor {
     SporeBlossom,
@@ -127,6 +134,7 @@ pub(crate) enum ParticleVisualDescriptor {
     },
     HugeExplosion,
     FlyTowardsPosition,
+    Totem,
     Portal,
     ReversePortal,
     BaseAshSmoke {
@@ -467,6 +475,17 @@ impl ParticleDescriptor {
                 friction: 0.98,
                 gravity: 0.0,
                 has_physics: false,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:totem_of_undying" => Self {
+                provider: "TotemParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::RandomInclusive { min: 60, max: 71 },
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::Totem,
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
+                friction: 0.6,
+                gravity: 1.25,
+                has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
             "minecraft:dragon_breath" => Self {
@@ -1116,6 +1135,7 @@ impl ParticleDescriptor {
         match self.provider {
             // Vanilla overrides `getLightCoords` to return `LightCoordsUtil.FULL_BRIGHT`.
             "AttackSweepParticle.Provider"
+            | "TotemParticle.Provider"
             | "SquidInkParticle.Provider"
             | "SquidInkParticle.GlowInkProvider"
             | "EndRodParticle.Provider"
@@ -1144,6 +1164,13 @@ impl ParticleDescriptor {
                 ParticleLightEmissionDescriptor::SmoothBlockByAgeQuartic
             }
             _ => ParticleLightEmissionDescriptor::World,
+        }
+    }
+
+    pub(crate) fn alpha_curve(self) -> ParticleAlphaCurve {
+        match self.provider {
+            "TotemParticle.Provider" => ParticleAlphaCurve::SimpleAnimatedFade,
+            _ => ParticleAlphaCurve::Constant,
         }
     }
 }
@@ -1279,6 +1306,28 @@ impl ParticleVisualDescriptor {
                 ParticleVisualState::new(
                     size,
                     [brightness * 0.9, brightness * 0.9, brightness, 1.0],
+                    ParticleQuadSizeCurve::Constant,
+                )
+            }
+            Self::Totem => {
+                let color = if random.next_index(4) == Some(0) {
+                    [
+                        0.6 + random.next_f32() * 0.2,
+                        0.6 + random.next_f32() * 0.3,
+                        random.next_f32() * 0.2,
+                        1.0,
+                    ]
+                } else {
+                    [
+                        0.1 + random.next_f32() * 0.2,
+                        0.4 + random.next_f32() * 0.3,
+                        random.next_f32() * 0.2,
+                        1.0,
+                    ]
+                };
+                ParticleVisualState::new(
+                    base_quad_size * 0.75,
+                    color,
                     ParticleQuadSizeCurve::Constant,
                 )
             }
@@ -2099,6 +2148,27 @@ mod tests {
                 "{particle_id}"
             );
         }
+        assert_descriptor(
+            "minecraft:totem_of_undying",
+            "TotemParticle.Provider",
+            ParticleLifetimeDescriptor::RandomInclusive { min: 60, max: 71 },
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::Totem,
+            0.6,
+            1.25,
+            true,
+            false,
+        );
+        let totem = ParticleDescriptor::for_particle("minecraft:totem_of_undying");
+        assert_eq!(
+            totem.initial_velocity,
+            ParticleInitialVelocityDescriptor::Command
+        );
+        assert_eq!(
+            totem.light_emission(),
+            ParticleLightEmissionDescriptor::FullBright
+        );
+        assert_eq!(totem.alpha_curve(), ParticleAlphaCurve::SimpleAnimatedFade);
         assert_descriptor(
             "minecraft:dragon_breath",
             "DragonBreathParticle.Provider",
