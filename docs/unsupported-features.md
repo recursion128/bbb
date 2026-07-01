@@ -329,6 +329,13 @@ When an agent does any of the following, update this file in the same slice:
         `1.0` friction, `0.225` gravity, physics metadata, opaque particle
         layer, and vanilla post-tick damping (`xd *= 0.95`, `yd *= 0.9`,
         `zd *= 0.95`)
+      - `DripParticle.NectarFallProvider` and
+        `SporeBlossomFallProvider` use random sprite selection, zero initial
+        velocity, DripParticle opaque layer, physics metadata, direct gravity
+        motion with `0.98` friction, fixed tints `[0.92, 0.782, 0.72]` /
+        `[0.32, 0.5, 0.22]`, gravity `0.007` / `0.005`, and lifetimes
+        `16 / (random * 0.8 + 0.2)` / `64 / randomBetween(0.1, 0.9)`.
+        On-ground removal remains deferred with world-coupled collision work.
       - `SuspendedParticle.CrimsonSporeProvider` and `WarpedSporeProvider`
         use random sprite selection, `y - 0.125` initial position,
         `0.6..1.2` quad-size multiplier, `16 / (random * 0.8 + 0.2)`

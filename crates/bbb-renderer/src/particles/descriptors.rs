@@ -113,6 +113,11 @@ pub(crate) enum ParticleLifetimeDescriptor {
         min: u32,
         span: u32,
     },
+    RandomFloatDivisor {
+        numerator: u32,
+        min_tenths: u32,
+        span_tenths: u32,
+    },
     RandomInclusive {
         min: u32,
         max: u32,
@@ -486,6 +491,40 @@ impl ParticleDescriptor {
                 friction: 1.0,
                 gravity: 0.01,
                 has_physics: false,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:falling_nectar" => Self {
+                provider: "DripParticle.NectarFallProvider",
+                lifetime: ParticleLifetimeDescriptor::SixteenOverRandom,
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 1.0,
+                    color: ParticleColorDescriptor::FixedRgb([0.92, 0.782, 0.72]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Zero,
+                friction: 0.98,
+                gravity: 0.007,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:falling_spore_blossom" => Self {
+                provider: "DripParticle.SporeBlossomFallProvider",
+                lifetime: ParticleLifetimeDescriptor::RandomFloatDivisor {
+                    numerator: 64,
+                    min_tenths: 1,
+                    span_tenths: 8,
+                },
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 1.0,
+                    color: ParticleColorDescriptor::FixedRgb([0.32, 0.5, 0.22]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Zero,
+                friction: 0.98,
+                gravity: 0.005,
+                has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
             "minecraft:crimson_spore" | "minecraft:warped_spore" => Self {
@@ -1459,6 +1498,9 @@ impl ParticleDescriptor {
             "WaterDropParticle.Provider" | "SplashParticle.Provider" => {
                 ParticleTickMotionDescriptor::WaterDrop
             }
+            "DripParticle.NectarFallProvider" | "DripParticle.SporeBlossomFallProvider" => {
+                ParticleTickMotionDescriptor::WaterDrop
+            }
             "WakeParticle.Provider" => ParticleTickMotionDescriptor::Wake,
             "PortalParticle.Provider" => ParticleTickMotionDescriptor::Portal,
             "ReversePortalParticle.ReversePortalProvider" => {
@@ -2072,6 +2114,14 @@ impl ParticleLifetimeDescriptor {
                 (random.next_f32() * 2.0) as u32 + 60
             }
             Self::RandomFloatSpan { min, span } => min + (random.next_f32() * span as f32) as u32,
+            Self::RandomFloatDivisor {
+                numerator,
+                min_tenths,
+                span_tenths,
+            } => {
+                let divisor = (min_tenths as f32 + random.next_f32() * span_tenths as f32) / 10.0;
+                (numerator as f32 / divisor) as u32
+            }
             Self::RandomInclusive { min, max } => {
                 let span = max.saturating_sub(min).saturating_add(1);
                 min + random.next_index(span as usize).unwrap_or(0) as u32
@@ -2698,6 +2748,59 @@ mod tests {
         assert_eq!(
             spore_blossom_air.initial_position([1.0, 2.0, 3.0], &mut ParticleRandom::new(1)),
             [1.0, 1.875, 3.0]
+        );
+        assert_descriptor(
+            "minecraft:falling_nectar",
+            "DripParticle.NectarFallProvider",
+            ParticleLifetimeDescriptor::SixteenOverRandom,
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::SingleQuadScaled {
+                scale: 1.0,
+                color: ParticleColorDescriptor::FixedRgb([0.92, 0.782, 0.72]),
+                quad_size_curve: ParticleQuadSizeCurve::Constant,
+            },
+            0.98,
+            0.007,
+            true,
+            false,
+        );
+        let falling_nectar = ParticleDescriptor::for_particle("minecraft:falling_nectar");
+        assert_eq!(
+            falling_nectar.initial_velocity,
+            ParticleInitialVelocityDescriptor::Zero
+        );
+        assert_eq!(
+            falling_nectar.tick_motion(),
+            ParticleTickMotionDescriptor::WaterDrop
+        );
+        assert_descriptor(
+            "minecraft:falling_spore_blossom",
+            "DripParticle.SporeBlossomFallProvider",
+            ParticleLifetimeDescriptor::RandomFloatDivisor {
+                numerator: 64,
+                min_tenths: 1,
+                span_tenths: 8,
+            },
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::SingleQuadScaled {
+                scale: 1.0,
+                color: ParticleColorDescriptor::FixedRgb([0.32, 0.5, 0.22]),
+                quad_size_curve: ParticleQuadSizeCurve::Constant,
+            },
+            0.98,
+            0.005,
+            true,
+            false,
+        );
+        let falling_spore_blossom =
+            ParticleDescriptor::for_particle("minecraft:falling_spore_blossom");
+        assert_eq!(
+            falling_spore_blossom.initial_velocity,
+            ParticleInitialVelocityDescriptor::Zero
+        );
+        assert_eq!(
+            falling_spore_blossom.tick_motion(),
+            ParticleTickMotionDescriptor::WaterDrop
         );
         for (particle_id, provider, color, initial_velocity) in [
             (
@@ -4504,6 +4607,17 @@ mod tests {
         for _ in 0..32 {
             let lifetime = ParticleLifetimeDescriptor::SixteenOverRandomPlusTwo.sample(&mut random);
             assert!((18..=82).contains(&lifetime));
+        }
+
+        let mut random = ParticleRandom::new(48);
+        for _ in 0..32 {
+            let lifetime = ParticleLifetimeDescriptor::RandomFloatDivisor {
+                numerator: 64,
+                min_tenths: 1,
+                span_tenths: 8,
+            }
+            .sample(&mut random);
+            assert!((71..=640).contains(&lifetime));
         }
 
         let mut random = ParticleRandom::new(5);

@@ -1244,6 +1244,15 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `[0.32, 0.5, 0.22]` color, `0.01` gravity, `1.0` friction, no physics,
     opaque layer, and existing `ParticleLimit.SPORE_BLOSSOM` cap/release
     behavior.
+  - [x] `DripParticle.NectarFallProvider` /
+    `SporeBlossomFallProvider`：renderer descriptor now maps
+    `falling_nectar` and `falling_spore_blossom` to random sprites, vanilla
+    DripParticle opaque layer, zero initial velocity, physics metadata,
+    direct gravity motion with `0.98` friction, fixed tints
+    `[0.92, 0.782, 0.72]` / `[0.32, 0.5, 0.22]`, gravity `0.007` /
+    `0.005`, and lifetimes `16 / (random * 0.8 + 0.2)` /
+    `64 / randomBetween(0.1, 0.9)`. On-ground removal remains in the
+    world-coupled collision follow-up.
   - [x] `SuspendedParticle.CrimsonSporeProvider` /
     `WarpedSporeProvider`：renderer descriptor now mirrors vanilla random
     sprite selection, `y - 0.125` initial position, `0.6..1.2` quad-size

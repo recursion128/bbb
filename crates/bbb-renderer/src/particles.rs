@@ -2901,6 +2901,66 @@ mod tests {
         );
         assert_eq!(spore_blossom_air.render_layer, ParticleRenderLayer::Opaque);
 
+        let mut nectar_random = ParticleRandom::new(79);
+        let falling_nectar = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:falling_nectar", 1.0),
+            &mut nectar_random,
+        );
+        assert_eq!(falling_nectar.provider, "DripParticle.NectarFallProvider");
+        assert_eq!(
+            falling_nectar.sprite_selection,
+            ParticleSpriteSelection::Random
+        );
+        assert_eq!(
+            falling_nectar.quad_size_curve,
+            ParticleQuadSizeCurve::Constant
+        );
+        assert_range_f32(falling_nectar.base_quad_size, 0.1, 0.2);
+        assert_eq!(falling_nectar.color, [0.92, 0.782, 0.72, 1.0]);
+        assert!((16..=80).contains(&falling_nectar.lifetime_ticks));
+        assert_eq!(falling_nectar.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(falling_nectar.friction, 0.98);
+        assert_eq!(falling_nectar.gravity, 0.007);
+        assert!(falling_nectar.has_physics);
+        assert_eq!(
+            falling_nectar.tick_motion,
+            ParticleTickMotionDescriptor::WaterDrop
+        );
+        assert_eq!(falling_nectar.render_layer, ParticleRenderLayer::Opaque);
+
+        let mut falling_spore_random = ParticleRandom::new(80);
+        let falling_spore_blossom = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:falling_spore_blossom", 1.0),
+            &mut falling_spore_random,
+        );
+        assert_eq!(
+            falling_spore_blossom.provider,
+            "DripParticle.SporeBlossomFallProvider"
+        );
+        assert_eq!(
+            falling_spore_blossom.sprite_selection,
+            ParticleSpriteSelection::Random
+        );
+        assert_eq!(
+            falling_spore_blossom.quad_size_curve,
+            ParticleQuadSizeCurve::Constant
+        );
+        assert_range_f32(falling_spore_blossom.base_quad_size, 0.1, 0.2);
+        assert_eq!(falling_spore_blossom.color, [0.32, 0.5, 0.22, 1.0]);
+        assert!((71..=640).contains(&falling_spore_blossom.lifetime_ticks));
+        assert_eq!(falling_spore_blossom.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(falling_spore_blossom.friction, 0.98);
+        assert_eq!(falling_spore_blossom.gravity, 0.005);
+        assert!(falling_spore_blossom.has_physics);
+        assert_eq!(
+            falling_spore_blossom.tick_motion,
+            ParticleTickMotionDescriptor::WaterDrop
+        );
+        assert_eq!(
+            falling_spore_blossom.render_layer,
+            ParticleRenderLayer::Opaque
+        );
+
         let mut crimson_random = ParticleRandom::new(46);
         let crimson_spore = ParticleInstance::from_spawn_command(
             spawn_command("minecraft:crimson_spore", 1.0),
