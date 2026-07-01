@@ -7220,6 +7220,40 @@ mod tests {
         );
         assert_eq!(
             selected(
+                82,
+                named_bundle_entry(DataComponentPatchSummary {
+                    added_type_ids: vec![11],
+                    lore: vec!["Lore one".to_string(), "Lore two".to_string()],
+                    ..DataComponentPatchSummary::default()
+                })
+            ),
+            uv("component_condition_bundle_exact_lore_present")
+        );
+        assert_eq!(
+            selected(
+                82,
+                named_bundle_entry(DataComponentPatchSummary {
+                    added_type_ids: vec![11],
+                    lore: vec!["Lore two".to_string(), "Lore one".to_string()],
+                    ..DataComponentPatchSummary::default()
+                })
+            ),
+            uv("component_condition_bundle_exact_lore_absent")
+        );
+        assert_eq!(
+            selected(
+                82,
+                named_bundle_entry(DataComponentPatchSummary {
+                    added_type_ids: vec![11],
+                    removed_type_ids: vec![11],
+                    lore: vec!["Lore one".to_string(), "Lore two".to_string()],
+                    ..DataComponentPatchSummary::default()
+                })
+            ),
+            uv("component_condition_bundle_exact_lore_absent")
+        );
+        assert_eq!(
+            selected(
                 33,
                 DataComponentPatchSummary {
                     added_type_ids: vec![75],
@@ -10674,6 +10708,7 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_CUSTOM_DATA_SNBT = registerItem("component_condition_bundle_partial_custom_data_snbt");
                 public static final Item COMPONENT_CONDITION_WRITTEN_BOOK_COMPONENT_PAGE = registerItem("component_condition_written_book_component_page");
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_COMPONENT_TEXT = registerItem("component_condition_bundle_exact_component_text");
+                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_LORE = registerItem("component_condition_bundle_exact_lore");
             }"#,
         );
         write_json(
@@ -11192,6 +11227,44 @@ mod tests {
                     "on_false": {
                         "type": "minecraft:model",
                         "model": "minecraft:item/component_condition_bundle_exact_component_text_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_exact_lore.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "components": {
+                                            "minecraft:lore": [
+                                                {
+                                                    "text": "Lore one"
+                                                },
+                                                "Lore two"
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_lore_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_lore_absent"
                     }
                 }
             }"#,
@@ -13594,6 +13667,14 @@ mod tests {
             (
                 "component_condition_bundle_exact_component_text_absent",
                 [55, 85, 50, 255],
+            ),
+            (
+                "component_condition_bundle_exact_lore_present",
+                [175, 215, 230, 255],
+            ),
+            (
+                "component_condition_bundle_exact_lore_absent",
+                [50, 75, 85, 255],
             ),
             (
                 "component_condition_container_components_present",

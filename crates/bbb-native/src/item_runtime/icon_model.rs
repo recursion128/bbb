@@ -27,6 +27,7 @@ const UNBREAKABLE_COMPONENT_ID: i32 = 4;
 const CUSTOM_NAME_COMPONENT_ID: i32 = 6;
 const ITEM_NAME_COMPONENT_ID: i32 = 9;
 const ITEM_MODEL_COMPONENT_ID: i32 = 10;
+const LORE_COMPONENT_ID: i32 = 11;
 const RARITY_COMPONENT_ID: i32 = 12;
 const ENCHANTMENTS_COMPONENT_ID: i32 = 13;
 const ATTRIBUTE_MODIFIERS_COMPONENT_ID: i32 = 16;
@@ -2314,6 +2315,14 @@ fn simple_component_text(value: &Value) -> Option<&str> {
     }
 }
 
+fn simple_component_text_list(value: &Value) -> Option<Vec<&str>> {
+    value
+        .as_array()?
+        .iter()
+        .map(simple_component_text)
+        .collect()
+}
+
 fn item_predicate_list_is_supported(value: &Value) -> bool {
     value
         .as_array()
@@ -2380,6 +2389,7 @@ fn item_exact_component_is_supported(component: &str, expected: &Value) -> bool 
         .is_some_and(|_| SelectCaseValue::from_json(expected).is_some())
         || (matches!(component, "minecraft:custom_name" | "minecraft:item_name")
             && simple_component_text(expected).is_some())
+        || (component == "minecraft:lore" && simple_component_text_list(expected).is_some())
 }
 
 fn item_partial_component_predicates_are_supported(value: &Value) -> bool {
@@ -3493,6 +3503,23 @@ fn item_exact_component_matches(
             default_max_damage,
             resource_id,
         ) == Some(expected);
+    }
+
+    if component == "minecraft:lore" {
+        let Some(expected) = simple_component_text_list(expected) else {
+            return false;
+        };
+        return !item
+            .component_patch
+            .removed_type_ids
+            .contains(&LORE_COMPONENT_ID)
+            && item.component_patch.lore.len() == expected.len()
+            && item
+                .component_patch
+                .lore
+                .iter()
+                .zip(expected)
+                .all(|(actual, expected)| actual == expected);
     }
 
     let Some(expected) = simple_component_text(expected) else {

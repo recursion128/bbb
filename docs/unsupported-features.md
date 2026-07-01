@@ -5901,7 +5901,8 @@ When an agent does any of the following, update this file in the same slice:
       vanilla `ItemPredicate` direct item-key or item-tag HolderSets,
       stack-count bounds, exact scalar/default `DataComponentMatchers`
       components, and patch-backed simple literal `minecraft:custom_name` /
-      `minecraft:item_name` exact components plus nested partial `minecraft:damage`,
+      `minecraft:item_name` / `minecraft:lore` exact components plus nested
+      partial `minecraft:damage`,
       `minecraft:enchantments`, `minecraft:stored_enchantments`,
       `minecraft:firework_explosion`, `minecraft:fireworks`, `minecraft:trim`,
       `minecraft:jukebox_playable`, `minecraft:potion_contents`,
@@ -5935,7 +5936,7 @@ When an agent does any of the following, update this file in the same slice:
       constrained predicate types (inline enchantment holder payloads / server
       datapack tag remaps, broader NBT scalar typing, remaining concrete partial
       predicates and complex exact component codecs beyond simple literal name
-      components, non-literal / rich / styled written-book page `ComponentSerialization`
+      / lore components, non-literal / rich / styled written-book page `ComponentSerialization`
       equality, trim inline material or pattern payloads / datapack pattern
       registry-key remaps, datapack villager-type registry remaps, jukebox
       inline song payloads / datapack jukebox-song registry
@@ -6101,7 +6102,7 @@ When an agent does any of the following, update this file in the same slice:
     synced attribute registry is available, plus direct and
     bundle/container-nested custom-data NBT compound predicates for JSON-object
     and SNBT-string compound expected values, plus patch-backed simple literal
-    custom-name / item-name exact components; broader component-codec and
+    custom-name / item-name / lore exact components; broader component-codec and
     remaining constrained `DataComponentPredicate` parity remains the documented
     follow-up.
 
