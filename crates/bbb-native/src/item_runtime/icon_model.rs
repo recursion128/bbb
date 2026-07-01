@@ -1060,6 +1060,7 @@ impl ItemIconModel {
                             property,
                             ctx.component_patch,
                             ctx.default_max_damage,
+                            ctx.default_item_model_id,
                         ) =>
                     {
                         on_true
@@ -1477,6 +1478,7 @@ fn item_stack_has_component(
     property: &ItemModelProperty,
     component_patch: Option<&DataComponentPatchSummary>,
     default_max_damage: Option<i32>,
+    default_item_model_id: &str,
 ) -> bool {
     let Some(component) = property
         .raw()
@@ -1497,6 +1499,7 @@ fn item_stack_has_component(
         component_id,
         component_patch,
         default_max_damage,
+        Some(default_item_model_id),
         ignore_default,
     )
 }
@@ -1538,6 +1541,7 @@ fn item_stack_matches_component_predicate(
             component_id,
             ctx.component_patch,
             ctx.default_max_damage,
+            Some(ctx.default_item_model_id),
             false,
         );
     }
@@ -1551,6 +1555,7 @@ fn item_stack_matches_component_predicate(
         component_id,
         ctx.component_patch,
         ctx.default_max_damage,
+        Some(ctx.default_item_model_id),
         false,
     )
 }
@@ -1807,6 +1812,7 @@ fn item_stack_matches_bundle_contents_predicate(
         BUNDLE_CONTENTS_COMPONENT_ID,
         ctx.component_patch,
         None,
+        Some(ctx.default_item_model_id),
         false,
     ) {
         return false;
@@ -1853,7 +1859,13 @@ fn item_stack_matches_container_predicate(
     if !container_component_predicate_is_supported(property) {
         return false;
     }
-    if !item_stack_has_component_id(CONTAINER_COMPONENT_ID, ctx.component_patch, None, false) {
+    if !item_stack_has_component_id(
+        CONTAINER_COMPONENT_ID,
+        ctx.component_patch,
+        None,
+        Some(ctx.default_item_model_id),
+        false,
+    ) {
         return false;
     }
     let Some(items) = property
@@ -2458,6 +2470,7 @@ fn item_stack_has_component_id(
     component_id: i32,
     component_patch: Option<&DataComponentPatchSummary>,
     default_max_damage: Option<i32>,
+    default_item_model_id: Option<&str>,
     ignore_default: bool,
 ) -> bool {
     let non_default = component_patch.is_some_and(|patch| {
@@ -2470,7 +2483,8 @@ fn item_stack_has_component_id(
     if component_patch.is_some_and(|patch| patch.removed_type_ids.contains(&component_id)) {
         return false;
     }
-    non_default || item_default_has_component(component_id, default_max_damage)
+    non_default
+        || item_default_has_component(component_id, default_max_damage, default_item_model_id)
 }
 
 fn data_component_predicate_type_is_complex(predicate: &str) -> bool {
@@ -2507,6 +2521,8 @@ fn data_component_type_id(component: &str) -> Option<i32> {
         "minecraft:dyed_color" => Some(DYED_COLOR_COMPONENT_ID),
         "minecraft:map_color" => Some(MAP_COLOR_COMPONENT_ID),
         "minecraft:map_id" => Some(MAP_ID_COMPONENT_ID),
+        "minecraft:enchantments" => Some(ENCHANTMENTS_COMPONENT_ID),
+        "minecraft:stored_enchantments" => Some(STORED_ENCHANTMENTS_COMPONENT_ID),
         "minecraft:bundle_contents" => Some(BUNDLE_CONTENTS_COMPONENT_ID),
         "minecraft:potion_contents" => Some(POTION_CONTENTS_COMPONENT_ID),
         "minecraft:trim" => Some(TRIM_COMPONENT_ID),
@@ -2519,12 +2535,21 @@ fn data_component_type_id(component: &str) -> Option<i32> {
     }
 }
 
-fn item_default_has_component(component_id: i32, default_max_damage: Option<i32>) -> bool {
+fn item_default_has_component(
+    component_id: i32,
+    default_max_damage: Option<i32>,
+    default_item_model_id: Option<&str>,
+) -> bool {
     matches!(
         component_id,
-        MAX_STACK_SIZE_COMPONENT_ID | ITEM_MODEL_COMPONENT_ID | RARITY_COMPONENT_ID
+        MAX_STACK_SIZE_COMPONENT_ID
+            | ITEM_MODEL_COMPONENT_ID
+            | RARITY_COMPONENT_ID
+            | ENCHANTMENTS_COMPONENT_ID
     ) || (matches!(component_id, MAX_DAMAGE_COMPONENT_ID | DAMAGE_COMPONENT_ID)
         && default_max_damage.is_some())
+        || (component_id == STORED_ENCHANTMENTS_COMPONENT_ID
+            && default_item_model_id == Some("minecraft:enchanted_book"))
 }
 
 fn effective_damage_state(

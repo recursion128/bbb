@@ -823,9 +823,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     component-predicate follow-up.
   - [x] `minecraft:has_component` item-model condition now follows vanilla
     `HasComponent.get`: default prototype components such as
-    `minecraft:max_stack_size`, `minecraft:item_model`, and
-    `minecraft:rarity` count for ordinary `ItemStack.has`, while
-    `ignore_default=true` uses patch presence
+    `minecraft:max_stack_size`, `minecraft:item_model`, `minecraft:rarity`,
+    and common empty `minecraft:enchantments` count for ordinary
+    `ItemStack.has`; vanilla `minecraft:enchanted_book` also counts its default
+    empty `minecraft:stored_enchantments` component unless removed. The
+    `ignore_default=true` path still uses patch presence
     (`hasNonDefault`) so added and removed component patches both select the
     true branch. Tests pin texture selection for default, added, and removed
     cases.

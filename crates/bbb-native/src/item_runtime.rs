@@ -5496,6 +5496,34 @@ mod tests {
             ),
             uv("has_rarity_absent")
         );
+        assert_eq!(
+            selected(3, DataComponentPatchSummary::default()),
+            uv("has_enchantments_present")
+        );
+        assert_eq!(
+            selected(
+                3,
+                DataComponentPatchSummary {
+                    removed_type_ids: vec![13],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("has_enchantments_absent")
+        );
+        assert_eq!(
+            selected(4, DataComponentPatchSummary::default()),
+            uv("has_stored_enchantments_present")
+        );
+        assert_eq!(
+            selected(
+                4,
+                DataComponentPatchSummary {
+                    removed_type_ids: vec![42],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("has_stored_enchantments_absent")
+        );
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -7922,6 +7950,8 @@ mod tests {
                 "has_max_stack",
                 "has_max_stack_ignore_default",
                 "has_rarity",
+                "has_enchantments",
+                "enchanted_book",
             ],
         );
         write_json(
@@ -7981,6 +8011,42 @@ mod tests {
                 }
             }"#,
         );
+        write_json(
+            &assets.join("items").join("has_enchantments.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:has_component",
+                    "component": "minecraft:enchantments",
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/has_enchantments_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/has_enchantments_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets.join("items").join("enchanted_book.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:has_component",
+                    "component": "minecraft:stored_enchantments",
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/has_stored_enchantments_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/has_stored_enchantments_absent"
+                    }
+                }
+            }"#,
+        );
         for (model_id, color) in [
             ("has_max_stack_present", [40, 140, 80, 255]),
             ("has_max_stack_absent", [80, 40, 40, 255]),
@@ -7988,6 +8054,10 @@ mod tests {
             ("has_max_stack_unpatched", [40, 40, 80, 255]),
             ("has_rarity_present", [180, 80, 220, 255]),
             ("has_rarity_absent", [60, 40, 80, 255]),
+            ("has_enchantments_present", [220, 200, 80, 255]),
+            ("has_enchantments_absent", [80, 70, 30, 255]),
+            ("has_stored_enchantments_present", [230, 210, 100, 255]),
+            ("has_stored_enchantments_absent", [90, 80, 40, 255]),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);
         }

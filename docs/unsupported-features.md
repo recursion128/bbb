@@ -5784,11 +5784,13 @@ When an agent does any of the following, update this file in the same slice:
     stack on the false branch.
   - `bbb-native` resolves `minecraft:has_component` conditions with vanilla
     `HasComponent.get`: ordinary conditions use `ItemStack.has` so prototype
-    defaults such as `minecraft:max_stack_size`, `minecraft:item_model`, and
-    `minecraft:rarity` count as present, while `ignore_default=true` uses
-    `ItemStack.hasNonDefault` / patch presence so added and removed component
-    patches both select the true branch. Tests pin texture selection for
-    default, added, and removed cases.
+    defaults such as `minecraft:max_stack_size`, `minecraft:item_model`,
+    `minecraft:rarity`, and common empty `minecraft:enchantments` count as
+    present; vanilla `minecraft:enchanted_book` also counts its default empty
+    `minecraft:stored_enchantments` component unless removed. The
+    `ignore_default=true` path uses `ItemStack.hasNonDefault` / patch presence
+    so added and removed component patches both select the true branch. Tests
+    pin texture selection for default, added, and removed cases.
   - `bbb-native` resolves the root item model from the effective
     `DataComponents.ITEM_MODEL` value before evaluating the item-model tree:
     unpatched stacks use the vanilla default item id initialized by
