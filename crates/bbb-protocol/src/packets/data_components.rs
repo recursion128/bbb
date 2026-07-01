@@ -92,6 +92,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub firework_explosion_colors: Vec<i32>,
     #[serde(default)]
+    pub firework_explosion_fade_colors: Vec<i32>,
+    #[serde(default)]
     pub firework_explosion_shape: Option<FireworkExplosionShapeSummary>,
     #[serde(default)]
     pub firework_explosion_has_trail: Option<bool>,
@@ -306,6 +308,8 @@ impl FireworkExplosionShapeSummary {
 pub struct FireworkExplosionSummary {
     pub shape: FireworkExplosionShapeSummary,
     pub colors: Vec<i32>,
+    #[serde(default)]
+    pub fade_colors: Vec<i32>,
     pub has_trail: bool,
     pub has_twinkle: bool,
 }
@@ -545,6 +549,7 @@ fn decode_typed_data_component_patch_summary(
             68 => {
                 let explosion = decode_firework_explosion(decoder)?;
                 summary.firework_explosion_colors = explosion.colors;
+                summary.firework_explosion_fade_colors = explosion.fade_colors;
                 summary.firework_explosion_shape = Some(explosion.shape);
                 summary.firework_explosion_has_trail = Some(explosion.has_trail);
                 summary.firework_explosion_has_twinkle = Some(explosion.has_twinkle);
@@ -1938,12 +1943,13 @@ fn decode_fireworks(decoder: &mut Decoder<'_>) -> Result<FireworksComponentSumma
 fn decode_firework_explosion(decoder: &mut Decoder<'_>) -> Result<FireworkExplosionSummary> {
     let shape = FireworkExplosionShapeSummary::from_vanilla_id(decoder.read_var_i32()?);
     let colors = decode_int_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    decode_int_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    let fade_colors = decode_int_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
     let has_trail = decoder.read_bool()?;
     let has_twinkle = decoder.read_bool()?;
     Ok(FireworkExplosionSummary {
         shape,
         colors,
+        fade_colors,
         has_trail,
         has_twinkle,
     })
@@ -3210,6 +3216,7 @@ mod tests {
                 potion_custom_effect_count: Some(1),
                 potion_custom_name: Some("healing".to_string()),
                 firework_explosion_colors: vec![0x010203, 0x040506],
+                firework_explosion_fade_colors: vec![0x070809],
                 firework_explosion_shape: Some(FireworkExplosionShapeSummary::Star),
                 firework_explosion_has_trail: Some(true),
                 firework_explosion_has_twinkle: Some(false),
@@ -3218,6 +3225,7 @@ mod tests {
                 fireworks_explosions: vec![FireworkExplosionSummary {
                     shape: FireworkExplosionShapeSummary::SmallBall,
                     colors: vec![0x010203, 0x040506],
+                    fade_colors: vec![0x070809],
                     has_trail: true,
                     has_twinkle: false,
                 }],

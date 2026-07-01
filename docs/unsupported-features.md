@@ -5908,7 +5908,9 @@ When an agent does any of the following, update this file in the same slice:
       direct potion keys, optional `custom_color`, empty `custom_effects`, and
       optional `custom_name`, plus exact `minecraft:writable_book_content`
       ordered `Filterable<String>` page lists with raw and optional filtered
-      strings, plus nested partial `minecraft:damage`,
+      strings, plus exact `minecraft:firework_explosion` components for
+      `shape`, ordered `colors`, ordered `fade_colors`, `has_trail`, and
+      `has_twinkle`, plus nested partial `minecraft:damage`,
       `minecraft:enchantments`, `minecraft:stored_enchantments`,
       `minecraft:firework_explosion`, `minecraft:fireworks`, `minecraft:trim`,
       `minecraft:jukebox_playable`, `minecraft:potion_contents`,
@@ -5943,8 +5945,9 @@ When an agent does any of the following, update this file in the same slice:
       datapack tag remaps, broader NBT scalar typing, remaining concrete partial
       predicates and complex exact component codecs beyond simple literal name
       / lore, Unit `unbreakable`, compound `custom_data`, and direct-key /
-      empty-custom-effects `potion_contents` components and
-      filterable-page-list `writable_book_content` components, exact
+      empty-custom-effects `potion_contents` components,
+      filterable-page-list `writable_book_content` components, and full-field
+      `firework_explosion` components, exact
       `potion_contents` with non-empty custom-effect payload equality,
       non-literal / rich / styled written-book page `ComponentSerialization`
       equality, trim inline material or pattern payloads / datapack pattern

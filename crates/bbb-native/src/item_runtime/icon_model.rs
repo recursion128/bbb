@@ -2401,6 +2401,8 @@ fn item_exact_component_is_supported(component: &str, expected: &Value) -> bool 
             && potion_contents_exact_value(expected).is_some())
         || (component == "minecraft:writable_book_content"
             && writable_book_exact_value(expected).is_some())
+        || (component == "minecraft:firework_explosion"
+            && firework_explosion_exact_value(expected).is_some())
 }
 
 fn item_partial_component_predicates_are_supported(value: &Value) -> bool {
@@ -3593,6 +3595,13 @@ fn item_exact_component_matches(
             return false;
         };
         return writable_book_exact_match(&expected, &item.component_patch);
+    }
+
+    if component == "minecraft:firework_explosion" {
+        let Some(expected) = firework_explosion_exact_value(expected) else {
+            return false;
+        };
+        return firework_explosion_exact_match(&expected, &item.component_patch);
     }
 
     let Some(expected) = simple_component_text(expected) else {
@@ -4801,6 +4810,73 @@ fn item_stack_matches_firework_explosion_value(
         }
     }
     true
+}
+
+struct ExactFireworkExplosion {
+    shape: FireworkExplosionShapeSummary,
+    colors: Vec<i32>,
+    fade_colors: Vec<i32>,
+    has_trail: bool,
+    has_twinkle: bool,
+}
+
+fn firework_explosion_exact_value(value: &Value) -> Option<ExactFireworkExplosion> {
+    let value = value.as_object()?;
+    if !value.keys().all(|key| {
+        matches!(
+            key.as_str(),
+            "shape" | "colors" | "fade_colors" | "has_trail" | "has_twinkle"
+        )
+    }) {
+        return None;
+    }
+    let shape = value
+        .get("shape")
+        .and_then(Value::as_str)
+        .and_then(firework_explosion_shape)?;
+    Some(ExactFireworkExplosion {
+        shape,
+        colors: value
+            .get("colors")
+            .map(json_i32_list)
+            .unwrap_or_else(|| Some(Vec::new()))?,
+        fade_colors: value
+            .get("fade_colors")
+            .map(json_i32_list)
+            .unwrap_or_else(|| Some(Vec::new()))?,
+        has_trail: value
+            .get("has_trail")
+            .map(Value::as_bool)
+            .unwrap_or(Some(false))?,
+        has_twinkle: value
+            .get("has_twinkle")
+            .map(Value::as_bool)
+            .unwrap_or(Some(false))?,
+    })
+}
+
+fn json_i32_list(value: &Value) -> Option<Vec<i32>> {
+    value.as_array()?.iter().map(json_i32).collect()
+}
+
+fn firework_explosion_exact_match(
+    expected: &ExactFireworkExplosion,
+    component_patch: &DataComponentPatchSummary,
+) -> bool {
+    if component_patch
+        .removed_type_ids
+        .contains(&FIREWORK_EXPLOSION_COMPONENT_ID)
+        || !component_patch
+            .added_type_ids
+            .contains(&FIREWORK_EXPLOSION_COMPONENT_ID)
+    {
+        return false;
+    }
+    component_patch.firework_explosion_shape == Some(expected.shape)
+        && component_patch.firework_explosion_colors == expected.colors
+        && component_patch.firework_explosion_fade_colors == expected.fade_colors
+        && component_patch.firework_explosion_has_trail == Some(expected.has_trail)
+        && component_patch.firework_explosion_has_twinkle == Some(expected.has_twinkle)
 }
 
 fn firework_explosion_shape(value: &str) -> Option<FireworkExplosionShapeSummary> {

@@ -6373,6 +6373,7 @@ mod tests {
                 FireworkExplosionSummary {
                     shape,
                     colors: Vec::new(),
+                    fade_colors: Vec::new(),
                     has_trail,
                     has_twinkle,
                 }
@@ -7397,6 +7398,39 @@ mod tests {
                 })
             ),
             uv("component_condition_bundle_exact_writable_book_absent")
+        );
+        let exact_firework_explosion = DataComponentPatchSummary {
+            added_type_ids: vec![68],
+            firework_explosion_shape: Some(FireworkExplosionShapeSummary::Star),
+            firework_explosion_colors: vec![0x11_22_33],
+            firework_explosion_fade_colors: vec![0x44_55_66],
+            firework_explosion_has_trail: Some(true),
+            firework_explosion_has_twinkle: Some(false),
+            ..DataComponentPatchSummary::default()
+        };
+        assert_eq!(
+            selected(87, named_bundle_entry(exact_firework_explosion.clone())),
+            uv("component_condition_bundle_exact_firework_explosion_present")
+        );
+        assert_eq!(
+            selected(
+                87,
+                named_bundle_entry(DataComponentPatchSummary {
+                    firework_explosion_fade_colors: vec![0x01_02_03],
+                    ..exact_firework_explosion.clone()
+                })
+            ),
+            uv("component_condition_bundle_exact_firework_explosion_absent")
+        );
+        assert_eq!(
+            selected(
+                87,
+                named_bundle_entry(DataComponentPatchSummary {
+                    removed_type_ids: vec![68],
+                    ..exact_firework_explosion
+                })
+            ),
+            uv("component_condition_bundle_exact_firework_explosion_absent")
         );
         assert_eq!(
             selected(
@@ -10859,6 +10893,7 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_CUSTOM_DATA = registerItem("component_condition_bundle_exact_custom_data");
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_POTION_CONTENTS = registerItem("component_condition_bundle_exact_potion_contents");
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_WRITABLE_BOOK = registerItem("component_condition_bundle_exact_writable_book");
+                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_FIREWORK_EXPLOSION = registerItem("component_condition_bundle_exact_firework_explosion");
             }"#,
         );
         write_json(
@@ -11560,6 +11595,49 @@ mod tests {
                     "on_false": {
                         "type": "minecraft:model",
                         "model": "minecraft:item/component_condition_bundle_exact_writable_book_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_exact_firework_explosion.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "components": {
+                                            "minecraft:firework_explosion": {
+                                                "shape": "star",
+                                                "colors": [
+                                                    1122867
+                                                ],
+                                                "fade_colors": [
+                                                    4478310
+                                                ],
+                                                "has_trail": true,
+                                                "has_twinkle": false
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_firework_explosion_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_firework_explosion_absent"
                     }
                 }
             }"#,
@@ -14002,6 +14080,14 @@ mod tests {
             (
                 "component_condition_bundle_exact_writable_book_absent",
                 [55, 65, 100, 255],
+            ),
+            (
+                "component_condition_bundle_exact_firework_explosion_present",
+                [245, 215, 120, 255],
+            ),
+            (
+                "component_condition_bundle_exact_firework_explosion_absent",
+                [100, 75, 30, 255],
             ),
             (
                 "component_condition_container_components_present",
