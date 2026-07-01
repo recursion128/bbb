@@ -1072,7 +1072,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     full-bright、outline 和 invalid-state filtering。
   - armor / held item / head item 在 UI preview 中的 layer order。
 - screen integration：
-  - inventory、container、merchant、recipe/book/sign/advancement 等 screen 调用点。
+  - [x] inventory local-player entity preview call point：
+    native local inventory screen now emits a `HudEntityPreview` for the logged-in
+    player, using vanilla `InventoryScreen.extractEntityInInventoryFollowsMouse`
+    rect / scale / mouse-follow rotation, full-bright entity light, and isolated
+    PIP depth metadata.
+  - container、merchant、recipe/book/sign/advancement 等 screen 调用点。
   - GUI pass 与 world pass 的 load/clear/depth ordering。
 
 完成标准：

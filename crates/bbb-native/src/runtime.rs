@@ -13,12 +13,13 @@ use bbb_protocol::{
 };
 use bbb_renderer::{
     BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment, CloudFrame, FogEnvironment,
-    GuiItemLightingEntry, HudBlockItemModel, HudIconLayer, HudInventoryBackgroundLayer,
-    HudInventoryBackgroundTexture, HudInventoryItem, HudInventoryScreen, HudInventorySlot,
-    HudInventoryTextBackground, HudInventoryTextLabel, HudInventoryTooltip,
-    HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemIcon, HudUvRect,
-    LevelLighting, LightmapEnvironment, LightningBoltRenderState, SkyEnvironment, SkyMoonPhase,
-    WeatherColumn, WeatherFrame, WeatherRenderState, HUD_HOTBAR_SLOTS, VANILLA_DEFAULT_CLOUD_COLOR,
+    GuiItemLightingEntry, HudBlockItemModel, HudEntityPreview, HudEntityPreviewRect, HudIconLayer,
+    HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryItem,
+    HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground, HudInventoryTextLabel,
+    HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar,
+    HudItemIcon, HudUvRect, LevelLighting, LightmapEnvironment, LightningBoltRenderState,
+    SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame, WeatherRenderState,
+    ENTITY_FULL_BRIGHT_LIGHT_COORDS, HUD_HOTBAR_SLOTS, VANILLA_DEFAULT_CLOUD_COLOR,
     VANILLA_DEFAULT_CLOUD_HEIGHT, VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
     VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR,
     VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR, VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
@@ -38,6 +39,7 @@ use crate::{
     code_of_conduct::CodeOfConductAcceptance,
     crosshair::{entity_target_outline_from_camera_at_partial_tick, selection_outline_from_camera},
     entity_scene::{
+        entity_model_instance_from_world_entity_at_partial_tick,
         entity_model_instances_from_world_at_partial_tick,
         entity_scene_outline_from_world_at_partial_tick,
     },
@@ -1605,7 +1607,7 @@ pub(crate) fn pump_network_and_terrain(
         &dropped_item_models.handled_entity_ids,
     ));
     // Held items render as 3D models at each player's hand, on top of the dropped-item models (sharing
-    // the two atlas draws). The entity instances are built once and reused for the hand transforms.
+    // the two atlas draws).
     let entity_instances =
         entity_model_instances_from_world_at_partial_tick(world, item_runtime, entity_partial_tick);
     let held_item_models =
@@ -1982,11 +1984,109 @@ fn hud_inventory_screen_with_local_state(
             local_state.keybind_context,
             partial_tick,
         ),
-        entity_previews: Vec::new(),
+        entity_previews: hud_inventory_entity_previews(
+            world,
+            item_runtime,
+            layout.background,
+            &local_state,
+            partial_tick,
+        ),
         text_labels: hud_inventory_text_labels(world, layout.background, &local_state),
         hovered_slot_id: hovered_slot_id.and_then(|slot| u16::try_from(slot).ok()),
         tooltip: hud_inventory_tooltip(item_runtime, hovered_slot_id, &layout.slots, container),
     })
+}
+
+fn hud_inventory_entity_previews(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    background: InventoryScreenBackground,
+    local_state: &InventoryHudLocalState,
+    partial_tick: f32,
+) -> Vec<HudEntityPreview> {
+    match background {
+        InventoryScreenBackground::LocalInventory => {
+            hud_local_inventory_entity_preview(world, item_runtime, local_state, partial_tick)
+                .into_iter()
+                .collect()
+        }
+        _ => Vec::new(),
+    }
+}
+
+fn hud_local_inventory_entity_preview(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    local_state: &InventoryHudLocalState,
+    partial_tick: f32,
+) -> Option<HudEntityPreview> {
+    const X0: i32 = 26;
+    const Y0: i32 = 8;
+    const X1: i32 = 75;
+    const Y1: i32 = 78;
+    const SCALE: f32 = 30.0;
+    const OFFSET_Y: f32 = 0.0625;
+    const MOUSE_FOLLOW_DIVISOR: f32 = 40.0;
+    const ROTATION_SCALE_DEGREES: f32 = 20.0;
+
+    let local_player_id = world.local_player_id()?;
+    let mut entity = entity_model_instance_from_world_entity_at_partial_tick(
+        world,
+        item_runtime,
+        local_player_id,
+        partial_tick,
+    )?;
+    let bounds = world.probe_entity_pick_bounds(local_player_id)?;
+    let height = bounds.max[1] - bounds.min[1];
+    let center_x = (X0 + X1) as f32 / 2.0;
+    let center_y = (Y0 + Y1) as f32 / 2.0;
+    let (mouse_x, mouse_y) = local_state
+        .cursor_position
+        .map(|(x, y)| (x as f32, y as f32))
+        .unwrap_or((center_x, center_y));
+    let x_angle = ((center_x - mouse_x) / MOUSE_FOLLOW_DIVISOR).atan();
+    let y_angle = ((center_y - mouse_y) / MOUSE_FOLLOW_DIVISOR).atan();
+    let yaw_degrees = x_angle * ROTATION_SCALE_DEGREES;
+    let pitch_degrees = y_angle * ROTATION_SCALE_DEGREES;
+    let camera_x_rotation = quaternion_x(pitch_degrees.to_radians());
+
+    entity.render_state.body_rot = 180.0 + yaw_degrees;
+    entity.render_state.head_yaw = yaw_degrees;
+    entity.render_state.head_pitch = -pitch_degrees;
+    entity.render_state.light_coords = ENTITY_FULL_BRIGHT_LIGHT_COORDS;
+    entity.render_state.outline_color = 0;
+    entity.render_state.appears_glowing = false;
+
+    Some(HudEntityPreview {
+        entity,
+        lighting: GuiItemLightingEntry::EntityInUi,
+        rect: HudEntityPreviewRect {
+            x: X0,
+            y: Y0,
+            width: u32::try_from(X1 - X0).ok()?,
+            height: u32::try_from(Y1 - Y0).ok()?,
+        },
+        scissor: None,
+        translation: [0.0, height / 2.0 + OFFSET_Y, 0.0],
+        rotation: quaternion_mul([0.0, 0.0, 1.0, 0.0], camera_x_rotation),
+        override_camera_rotation: Some(camera_x_rotation),
+        scale: SCALE,
+        depth_isolated: true,
+    })
+}
+
+fn quaternion_x(angle_radians: f32) -> [f32; 4] {
+    let half = angle_radians / 2.0;
+    [half.sin(), 0.0, 0.0, half.cos()]
+}
+
+fn quaternion_mul(a: [f32; 4], b: [f32; 4]) -> [f32; 4] {
+    [
+        a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
+        a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
+        a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
+        a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2],
+    ]
 }
 
 fn hud_book_screen(book: &BookScreenState) -> HudInventoryScreen {

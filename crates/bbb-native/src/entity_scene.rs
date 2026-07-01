@@ -510,6 +510,43 @@ pub(crate) fn entity_model_instances_from_world_at_partial_tick(
         .collect()
 }
 
+pub(crate) fn entity_model_instance_from_world_entity_at_partial_tick(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    entity_id: i32,
+    entity_partial_tick: f32,
+) -> Option<EntityModelInstance> {
+    let entity_partial_tick = entity_partial_tick.clamp(0.0, 1.0);
+    let source = world
+        .entity_model_sources_at_partial_tick(entity_partial_tick)
+        .into_iter()
+        .find(|source| source.entity_id == entity_id)?;
+    let chicken_variants = world.registry_content("minecraft:chicken_variant");
+    let cow_variants = world.registry_content("minecraft:cow_variant");
+    let pig_variants = world.registry_content("minecraft:pig_variant");
+    let frog_variants = world.registry_content("minecraft:frog_variant");
+    let cat_variants = world.registry_content("minecraft:cat_variant");
+    let wolf_variants = world.registry_content("minecraft:wolf_variant");
+    let villager_types = world.registry_content("minecraft:villager_type");
+    let villager_professions = world.registry_content("minecraft:villager_profession");
+    let game_time = world.world_time().map(|time| time.game_time).unwrap_or(0);
+    entity_model_instance(
+        source,
+        world,
+        item_runtime,
+        game_time,
+        entity_partial_tick,
+        chicken_variants,
+        cow_variants,
+        pig_variants,
+        frog_variants,
+        cat_variants,
+        wolf_variants,
+        villager_types,
+        villager_professions,
+    )
+}
+
 /// Whether the entity's main-hand item is a bow (vanilla `SkeletonRenderState.isHoldingBow =
 /// getMainHandItem().is(Items.BOW)`), driving the skeleton's `BOW_AND_ARROW` aim pose. Resolved through
 /// the item registry, so it needs the runtime; `false` without it or for any non-bow / empty hand.

@@ -2429,6 +2429,64 @@ fn hud_inventory_screen_projects_open_local_inventory_layout() {
 }
 
 #[test]
+fn hud_inventory_screen_projects_local_player_entity_preview() {
+    let mut world = world_with_dimension_height(0, "minecraft:overworld", 384);
+    world.apply_add_entity(test_add_entity(42, VANILLA_26_1_PLAYER_ENTITY_TYPE_ID));
+    assert!(world.open_local_inventory());
+
+    let screen = hud_inventory_screen_with_local_state(
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState {
+            cursor_position: Some((10, 80)),
+            ..InventoryHudLocalState::default()
+        },
+        0.0,
+    )
+    .unwrap();
+
+    assert_eq!(screen.entity_previews.len(), 1);
+    let preview = &screen.entity_previews[0];
+    assert_eq!(preview.entity.entity_id, 42);
+    assert_eq!(preview.lighting, GuiItemLightingEntry::EntityInUi);
+    assert_eq!(
+        preview.rect,
+        HudEntityPreviewRect {
+            x: 26,
+            y: 8,
+            width: 49,
+            height: 70,
+        }
+    );
+    assert_eq!(preview.scissor, None);
+    assert_eq!(preview.scale, 30.0);
+    assert!(preview.depth_isolated);
+    assert_close3(preview.translation, [0.0, 0.9625, 0.0]);
+
+    let x_angle = ((50.5_f32 - 10.0) / 40.0).atan();
+    let y_angle = ((43.0_f32 - 80.0) / 40.0).atan();
+    let expected_yaw = x_angle * 20.0;
+    let expected_pitch = y_angle * 20.0;
+    let expected_camera = quaternion_x(expected_pitch.to_radians());
+    assert!((preview.entity.render_state.body_rot - (180.0 + expected_yaw)).abs() < 1.0e-6);
+    assert!((preview.entity.render_state.head_yaw - expected_yaw).abs() < 1.0e-6);
+    assert!((preview.entity.render_state.head_pitch + expected_pitch).abs() < 1.0e-6);
+    assert_close4(
+        preview.rotation,
+        quaternion_mul([0.0, 0.0, 1.0, 0.0], expected_camera),
+    );
+    assert_eq!(preview.override_camera_rotation, Some(expected_camera));
+    assert_eq!(
+        preview.entity.render_state.light_coords,
+        ENTITY_FULL_BRIGHT_LIGHT_COORDS
+    );
+    assert_eq!(preview.entity.render_state.outline_color, 0);
+    assert!(!preview.entity.render_state.appears_glowing);
+}
+
+#[test]
 fn hotbar_item_icons_use_using_item_model_for_selected_slot_only() {
     let root = unique_runtime_temp_dir("hotbar-using-item");
     write_runtime_bow_item_assets(&root);
