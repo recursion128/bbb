@@ -821,13 +821,15 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     components plus nested partial `minecraft:damage`, `minecraft:enchantments`,
     `minecraft:stored_enchantments`, `minecraft:firework_explosion`,
     `minecraft:fireworks`, `minecraft:trim`, `minecraft:jukebox_playable`,
-    `minecraft:potion_contents`, and data-component AnyValue predicates over
-    decoded bundle entries.
+    `minecraft:potion_contents`, `minecraft:writable_book_content`,
+    `minecraft:written_book_content`, and data-component AnyValue predicates
+    over decoded bundle entries.
     `minecraft:container` now decodes non-empty container entries and matches
     the same direct item-key / item-tag / stack-count / exact scalar component /
     nested partial damage, enchantments, stored-enchantments,
-    firework-explosion, fireworks, trim, jukebox-playable, potion-contents, and
-    AnyValue predicate collection subset.
+    firework-explosion, fireworks, trim, jukebox-playable, potion-contents,
+    writable-book-content, written-book-content, and AnyValue predicate
+    collection subset.
     `minecraft:enchantments` and patch-backed
     `minecraft:stored_enchantments` now match decoded enchantment levels and
     direct registry-key or enchantment-tag HolderSet predicates when the
@@ -841,11 +843,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     empty `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
     constrained `DataComponentPredicate` types such as inline enchantment holder
     payloads / server datapack tag remaps, bundle/container nested remaining
-    concrete partial predicates (including book predicates) and complex exact
-    component codecs, rich/styled written-book page `ComponentSerialization`
-    equality, trim inline material or pattern payloads / datapack pattern
-    registry-key remaps, and jukebox inline song payloads / datapack
-    jukebox-song registry remaps remain component-predicate follow-up.
+    concrete partial predicates and complex exact component codecs, rich/styled
+    written-book page `ComponentSerialization` equality, trim inline material
+    or pattern payloads / datapack pattern registry-key remaps, and jukebox
+    inline song payloads / datapack jukebox-song registry remaps remain
+    component-predicate follow-up.
   - [x] `minecraft:has_component` item-model condition now follows vanilla
     `HasComponent.get`: default prototype components such as
     `minecraft:max_stack_size`, `minecraft:item_model`, `minecraft:rarity`,

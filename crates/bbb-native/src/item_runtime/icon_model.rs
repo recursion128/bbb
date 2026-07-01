@@ -2248,6 +2248,8 @@ fn item_partial_component_predicate_is_supported(predicate: &str, value: &Value)
         "minecraft:trim" => trim_predicate_value_is_supported(value),
         "minecraft:jukebox_playable" => jukebox_playable_predicate_value_is_supported(value),
         "minecraft:potion_contents" => potion_contents_predicate_value_is_supported(value),
+        "minecraft:writable_book_content" => writable_book_predicate_value_is_supported(value),
+        "minecraft:written_book_content" => written_book_predicate_value_is_supported(value),
         "minecraft:firework_explosion" => firework_explosion_predicate_is_supported(value),
         "minecraft:fireworks" => fireworks_predicate_value_is_supported(value),
         _ => {
@@ -2624,6 +2626,12 @@ fn item_partial_component_predicate_match(
         }
         "minecraft:potion_contents" => {
             item_stack_matches_potion_contents_value(value, component_patch, potion_tags)
+        }
+        "minecraft:writable_book_content" => {
+            item_stack_matches_writable_book_value(value, component_patch)
+        }
+        "minecraft:written_book_content" => {
+            item_stack_matches_written_book_value(value, component_patch)
         }
         _ if let Some(kind) =
             enchantments_component_predicate_kind_from_parts(predicate, value) =>

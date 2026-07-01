@@ -8049,11 +8049,126 @@ mod tests {
                 DataComponentPatchSummary {
                     added_type_ids: vec![55],
                     removed_type_ids: vec![55],
-                    written_book: Some(matching_written_book),
+                    written_book: Some(matching_written_book.clone()),
                     ..DataComponentPatchSummary::default()
                 }
             ),
             uv("component_condition_written_book_content_absent")
+        );
+        assert_eq!(
+            selected(
+                54,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            added_type_ids: vec![54],
+                            writable_book_pages: vec![
+                                "alpha".to_string(),
+                                "beta".to_string(),
+                                "alpha".to_string(),
+                            ],
+                            ..DataComponentPatchSummary::default()
+                        },
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_partial_writable_book_present")
+        );
+        assert_eq!(
+            selected(
+                54,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            added_type_ids: vec![54],
+                            writable_book_pages: vec!["alpha".to_string(), "beta".to_string()],
+                            ..DataComponentPatchSummary::default()
+                        },
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_partial_writable_book_absent")
+        );
+        assert_eq!(
+            selected(
+                55,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(2),
+                    container_items: vec![
+                        ItemStackTemplateSummary {
+                            item_id: 0,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![55],
+                                written_book: Some(matching_written_book.clone()),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                        ItemStackTemplateSummary {
+                            item_id: 1,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![55],
+                                written_book: Some(matching_written_book.clone()),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_partial_written_book_present")
+        );
+        assert_eq!(
+            selected(
+                55,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(2),
+                    container_items: vec![
+                        ItemStackTemplateSummary {
+                            item_id: 0,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![55],
+                                written_book: Some(matching_written_book),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                        ItemStackTemplateSummary {
+                            item_id: 1,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![55],
+                                written_book: Some(WrittenBookContentSummary {
+                                    title: "Other".to_string(),
+                                    author: "Alex".to_string(),
+                                    generation: 2,
+                                    pages: vec![
+                                        "First page".to_string(),
+                                        "Second page".to_string(),
+                                    ],
+                                    resolved: true,
+                                }),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_partial_written_book_absent")
         );
 
         std::fs::remove_dir_all(root).unwrap();
@@ -9600,6 +9715,8 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_POTION_CONTENTS = registerItem("component_condition_container_partial_potion_contents");
                 public static final Item COMPONENT_CONDITION_WRITABLE_BOOK_PAGES = registerItem("component_condition_writable_book_pages");
                 public static final Item COMPONENT_CONDITION_WRITTEN_BOOK_CONTENT = registerItem("component_condition_written_book_content");
+                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_WRITABLE_BOOK = registerItem("component_condition_bundle_partial_writable_book");
+                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_WRITTEN_BOOK = registerItem("component_condition_container_partial_written_book");
             }"#,
         );
         write_json(
@@ -10997,6 +11114,111 @@ mod tests {
         write_json(
             &assets
                 .join("items")
+                .join("component_condition_bundle_partial_writable_book.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "predicates": {
+                                            "minecraft:writable_book_content": {
+                                                "pages": {
+                                                    "contains": [
+                                                        "alpha",
+                                                        "beta"
+                                                    ],
+                                                    "count": [
+                                                        {
+                                                            "test": "alpha",
+                                                            "count": 2
+                                                        }
+                                                    ],
+                                                    "size": 3
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_writable_book_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_writable_book_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_container_partial_written_book.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:container",
+                    "value": {
+                        "items": {
+                            "count": [
+                                {
+                                    "test": {
+                                        "components": {
+                                            "predicates": {
+                                                "minecraft:written_book_content": {
+                                                    "author": "Alex",
+                                                    "title": "Quest",
+                                                    "generation": {
+                                                        "min": 1,
+                                                        "max": 2
+                                                    },
+                                                    "resolved": true,
+                                                    "pages": {
+                                                        "contains": [
+                                                            "First page"
+                                                        ],
+                                                        "count": [
+                                                            {
+                                                                "test": "First page",
+                                                                "count": 1
+                                                            }
+                                                        ],
+                                                        "size": 2
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "count": {
+                                        "min": 2
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_written_book_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_written_book_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
                 .join("component_condition_enchantments_level.json"),
             r#"{
                 "model": {
@@ -11612,6 +11834,22 @@ mod tests {
             (
                 "component_condition_written_book_content_absent",
                 [90, 70, 90, 255],
+            ),
+            (
+                "component_condition_bundle_partial_writable_book_present",
+                [210, 245, 210, 255],
+            ),
+            (
+                "component_condition_bundle_partial_writable_book_absent",
+                [70, 90, 70, 255],
+            ),
+            (
+                "component_condition_container_partial_written_book_present",
+                [245, 210, 210, 255],
+            ),
+            (
+                "component_condition_container_partial_written_book_absent",
+                [90, 70, 70, 255],
             ),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);

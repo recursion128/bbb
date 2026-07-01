@@ -5885,13 +5885,15 @@ When an agent does any of the following, update this file in the same slice:
       components plus nested partial `minecraft:damage`,
       `minecraft:enchantments`, `minecraft:stored_enchantments`,
       `minecraft:firework_explosion`, `minecraft:fireworks`, `minecraft:trim`,
-      `minecraft:jukebox_playable`, `minecraft:potion_contents`, and
+      `minecraft:jukebox_playable`, `minecraft:potion_contents`,
+      `minecraft:writable_book_content`, `minecraft:written_book_content`, and
       data-component AnyValue predicates over decoded bundle entries.
       `minecraft:container` now decodes non-empty container entries and matches
       the same direct item-key / item-tag / stack-count / exact scalar component
       / nested partial damage, enchantments, stored-enchantments,
       firework-explosion, fireworks, trim, jukebox-playable, potion-contents,
-      and AnyValue predicate collection subset.
+      writable-book-content, written-book-content, and AnyValue predicate
+      collection subset.
       `minecraft:fireworks`
       `explosions.contains` / `count` predicates now match decoded explosion
       shape / trail / twinkle summaries. `minecraft:trim` direct vanilla
@@ -5911,11 +5913,11 @@ When an agent does any of the following, update this file in the same slice:
       `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
       constrained predicate types (inline enchantment holder payloads / server
       datapack tag remaps, bundle/container nested remaining concrete partial
-      predicates including book predicates and complex exact component codecs,
-      rich/styled written-book page `ComponentSerialization` equality, trim
-      inline material or pattern payloads / datapack pattern registry-key remaps,
-      jukebox inline song payloads / datapack jukebox-song registry remaps, and
-      similar) remain follow-up.
+      predicates and complex exact component codecs, rich/styled written-book
+      page `ComponentSerialization` equality, trim inline material or pattern
+      payloads / datapack pattern registry-key remaps, jukebox inline song
+      payloads / datapack jukebox-song registry remaps, and similar) remain
+      follow-up.
     - `minecraft:charge_type` — `Charge.get` (`ROCKET` when any charged
       projectile is `minecraft:firework_rocket`, `ARROW` when charged otherwise,
       else `NONE`), using the native item registry to identify the projectile
@@ -6068,9 +6070,10 @@ When an agent does any of the following, update this file in the same slice:
     listed above, and the condition form covers component-type / AnyValue,
     `minecraft:damage`, empty single-component predicates, direct-key
     enchantment HolderSet predicates when the synced enchantment registry is
-    available, and direct writable/written-book predicates for decoded raw
-    string fields/pages; broader component-codec and remaining constrained
-    `DataComponentPredicate` parity remains the documented follow-up.
+    available, and direct plus nested bundle/container writable/written-book
+    predicates for decoded raw string fields/pages; broader component-codec and
+    remaining constrained `DataComponentPredicate` parity remains the documented
+    follow-up.
 
 ### Native Input, Movement, Interaction, Inventory, And Command Flows
 
