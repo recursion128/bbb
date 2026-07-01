@@ -804,8 +804,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     the world cursor stack renders as a floating GUI item at local
     `mouseX - 8`, `mouseY - 8`, and resolves item-model `minecraft:carried`
     as true while ordinary slots remain false. Tests pin cursor position,
-    count label, and carried-vs-slot texture branch selection. Dragging
-    split-stack and snapback animation remain broader GUI surface follow-up.
+    count label, and carried-vs-slot texture branch selection. GUI quick-craft
+    drag preview now applies vanilla `getQuickCraftPlaceCount` /
+    `quickCraftingRemainder` to the floating cursor stack; tests pin 11 items
+    spread over three slots leaving count label `2`. Touchscreen split-stack
+    and snapback animation remain broader GUI surface follow-up.
   - [x] `minecraft:bundle/has_selected_item` and
     `minecraft:bundle/selected_item` now resolve from the explicit local bundle
     selected-item index used by GUI/HUD item icons: unselected bundles stay on

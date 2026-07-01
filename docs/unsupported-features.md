@@ -5847,8 +5847,10 @@ When an agent does any of the following, update this file in the same slice:
       matching by item contents. GUI inventory cursor-carried items now use
       that true branch while projecting vanilla
       `AbstractContainerScreen.extractCarriedItem`'s non-dragging
-      `mouseX - 8`, `mouseY - 8` floating item position; dragging split-stack
-      and snapback animation remain broader GUI surface follow-up.
+      `mouseX - 8`, `mouseY - 8` floating item position; local quick-craft
+      drag preview now applies vanilla `getQuickCraftPlaceCount` /
+      `quickCraftingRemainder` to the floating cursor stack. Touchscreen
+      split-stack and snapback animation remain broader GUI surface follow-up.
     - `minecraft:component` condition — `ComponentMatches.get`, currently for
       the `DataComponentPredicate` component-type / `AnyValue` branch plus the
       concrete `minecraft:damage` predicate. Native maps the AnyValue
@@ -6145,8 +6147,10 @@ When an agent does any of the following, update this file in the same slice:
     main-hand fishing rods while a local-player-owned fishing bobber exists.
     `minecraft:carried` is wired as an explicit resolver context bit for the
     GUI inventory cursor-carried item path, which now renders the world cursor
-    stack as a floating GUI item at vanilla's non-dragging cursor offset.
-    Dragging split-stack and snapback animation remain GUI follow-up.
+    stack as a floating GUI item at vanilla's non-dragging cursor offset and
+    applies the vanilla quick-craft remainder count while drag-distributing
+    across multiple slots. Touchscreen split-stack and snapback animation remain
+    GUI follow-up.
     `minecraft:component` is wired for the scalar / enum component select subset
     listed above, and the condition form covers component-type / AnyValue,
     `minecraft:damage`, empty single-component predicates, direct-key

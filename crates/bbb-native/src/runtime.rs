@@ -395,6 +395,8 @@ struct InventoryHudLocalState {
     loom_selected_pattern_index: Option<i32>,
     anvil_rename_text: Option<String>,
     cursor_position: Option<(i32, i32)>,
+    quick_craft_button_num: Option<i8>,
+    quick_craft_slots: Vec<i16>,
     shift_down: bool,
     keybind_context: ItemModelKeybindContext,
 }
@@ -1571,6 +1573,8 @@ pub(crate) fn pump_network_and_terrain(
             loom_selected_pattern_index: input.loom_selected_pattern_index(),
             anvil_rename_text: Some(input.anvil_rename_text().to_string()),
             cursor_position: input.inventory_cursor_position(),
+            quick_craft_button_num: input.inventory_quick_craft_button_num(),
+            quick_craft_slots: input.inventory_quick_craft_slots().to_vec(),
             shift_down: input.shift_down(),
             keybind_context: item_model_keybind_context,
         },
@@ -1971,6 +1975,8 @@ fn hud_inventory_screen_with_local_state(
             layout.background,
             local_state.stonecutter_recipe_scroll_row,
             local_state.cursor_position,
+            local_state.quick_craft_button_num,
+            &local_state.quick_craft_slots,
             local_state.shift_down,
             local_state.keybind_context,
             partial_tick,
@@ -2298,6 +2304,8 @@ fn hud_inventory_floating_items(
     background: InventoryScreenBackground,
     stonecutter_recipe_scroll_row: Option<i32>,
     cursor_position: Option<(i32, i32)>,
+    quick_craft_button_num: Option<i8>,
+    quick_craft_slots: &[i16],
     shift_down: bool,
     keybind_context: ItemModelKeybindContext,
     partial_tick: f32,
@@ -2327,6 +2335,8 @@ fn hud_inventory_floating_items(
         item_runtime,
         terrain_textures,
         cursor_position,
+        quick_craft_button_num,
+        quick_craft_slots,
         shift_down,
         keybind_context,
         partial_tick,
@@ -2340,6 +2350,8 @@ fn push_hud_inventory_cursor_item(
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
     cursor_position: Option<(i32, i32)>,
+    quick_craft_button_num: Option<i8>,
+    quick_craft_slots: &[i16],
     shift_down: bool,
     keybind_context: ItemModelKeybindContext,
     partial_tick: f32,
@@ -2348,14 +2360,20 @@ fn push_hud_inventory_cursor_item(
     let Some((cursor_x, cursor_y)) = cursor_position else {
         return;
     };
-    let item = &world.inventory().cursor_item;
-    if item_stack_is_empty(item) {
+    let mut item = world.inventory().cursor_item.clone();
+    if item_stack_is_empty(&item) {
         return;
     }
+    let count_label_override =
+        hud_inventory_quick_craft_cursor_count(world, quick_craft_button_num, quick_craft_slots)
+            .and_then(|count| {
+                item.count = count;
+                (count == 0).then(|| HudItemCountLabel::new("0"))
+            });
     let Some(icon) = hud_item_icon_for_stack(
         world,
         item_runtime,
-        item,
+        &item,
         None,
         false,
         false,
@@ -2367,13 +2385,118 @@ fn push_hud_inventory_cursor_item(
     ) else {
         return;
     };
-    let block_model = block_item_3d_model(item, item_runtime, terrain_textures);
+    let mut icon = icon;
+    if let Some(count_label) = count_label_override {
+        icon.count_label = Some(count_label);
+    }
+    let block_model = block_item_3d_model(&item, item_runtime, terrain_textures);
     items.push(HudInventoryItem {
         x: cursor_x - 8,
         y: cursor_y - 8,
         icon,
         block_model,
     });
+}
+
+fn hud_inventory_quick_craft_cursor_count(
+    world: &WorldStore,
+    button_num: Option<i8>,
+    slots: &[i16],
+) -> Option<i32> {
+    if !world.local_inventory_is_open() || slots.len() <= 1 {
+        return None;
+    }
+    let button_num = button_num?;
+    if !matches!(button_num, 0 | 1) {
+        return None;
+    }
+    let source = &world.inventory().cursor_item;
+    if item_stack_is_empty(source) {
+        return None;
+    }
+
+    let slot_count = i32::try_from(slots.len()).ok()?;
+    let place_count = match button_num {
+        0 => source.count / slot_count,
+        1 => 1,
+        _ => return None,
+    };
+    let mut remaining = source.count;
+    for slot_num in slots {
+        let Some(slot_item) = world
+            .inventory()
+            .inventory_menu
+            .slots
+            .iter()
+            .find(|slot| slot.slot == *slot_num)
+            .map(|slot| &slot.item)
+        else {
+            continue;
+        };
+        if !hud_inventory_quick_craft_slot_can_accept(world, *slot_num, slot_item, source) {
+            continue;
+        }
+
+        let carry = if item_stack_is_empty(slot_item) {
+            0
+        } else {
+            slot_item.count
+        };
+        let max_size = hud_inventory_slot_max_stack_size(world, *slot_num, source);
+        let new_count = (place_count + carry).min(max_size);
+        remaining -= new_count - carry;
+    }
+
+    Some(remaining.max(0))
+}
+
+fn hud_inventory_quick_craft_slot_can_accept(
+    world: &WorldStore,
+    slot_num: i16,
+    slot_item: &ItemStackSummary,
+    cursor: &ItemStackSummary,
+) -> bool {
+    if hud_inventory_slot_max_stack_size(world, slot_num, cursor) <= 0 {
+        return false;
+    }
+    item_stack_is_empty(slot_item) || item_stacks_match_by_item_and_components(slot_item, cursor)
+}
+
+fn hud_inventory_slot_max_stack_size(
+    world: &WorldStore,
+    slot_num: i16,
+    stack: &ItemStackSummary,
+) -> i32 {
+    let item_max_stack_size = hud_inventory_item_max_stack_size(world, stack);
+    let slot_max_stack_size = match slot_num {
+        0 => 0,
+        5..=8 => 1,
+        _ => 64,
+    };
+    item_max_stack_size.min(slot_max_stack_size)
+}
+
+fn hud_inventory_item_max_stack_size(world: &WorldStore, stack: &ItemStackSummary) -> i32 {
+    if item_stack_is_empty(stack) {
+        return 0;
+    }
+    if let Some(max_stack_size) = stack.component_patch.max_stack_size {
+        return max_stack_size.clamp(1, 99);
+    }
+    if stack.component_patch.max_damage.is_some() || stack.component_patch.damage.is_some() {
+        return 1;
+    }
+    stack
+        .item_id
+        .map(|item_id| world.item_max_stack_size_for_protocol_id(item_id))
+        .unwrap_or(64)
+}
+
+fn item_stacks_match_by_item_and_components(
+    left: &ItemStackSummary,
+    right: &ItemStackSummary,
+) -> bool {
+    left.item_id == right.item_id && left.component_patch == right.component_patch
 }
 
 fn hud_inventory_background_layers(

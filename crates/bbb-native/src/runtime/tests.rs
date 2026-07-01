@@ -2827,6 +2827,71 @@ fn hud_inventory_screen_projects_cursor_item_as_carried_floating_item() {
 }
 
 #[test]
+fn hud_inventory_screen_projects_quick_craft_cursor_remainder() {
+    let root = unique_runtime_temp_dir("hud-quick-craft-cursor-remainder");
+    write_runtime_carried_condition_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let stack = item_stack(0, 11);
+    let carried_uv = item_runtime
+        .icon_for_stack_with_context_and_use_context_time_state(
+            &stack,
+            None,
+            false,
+            crate::item_runtime::ItemModelUseContext::inactive(),
+            bbb_pack::BlockModelDisplayContext::Gui,
+            0.0,
+            None,
+            None,
+            Some("minecraft:player"),
+            None,
+            None,
+            None,
+            false,
+            true,
+            false,
+            false,
+            ItemModelKeybindContext::default(),
+        )
+        .unwrap()
+        .layers[0]
+        .uv;
+
+    let mut world = WorldStore::new();
+    assert!(world.open_local_inventory());
+    world.apply_set_cursor_item(ProtocolSetCursorItem { item: stack });
+
+    let screen = hud_inventory_screen_with_local_state(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState {
+            cursor_position: Some((40, 60)),
+            quick_craft_button_num: Some(0),
+            quick_craft_slots: vec![9, 10, 11],
+            ..InventoryHudLocalState::default()
+        },
+        0.0,
+    )
+    .unwrap();
+
+    assert_eq!(screen.floating_items.len(), 1);
+    let cursor = &screen.floating_items[0];
+    assert_eq!((cursor.x, cursor.y), (32, 52));
+    assert_eq!(
+        cursor.icon.layers[0].uv,
+        HudUvRect {
+            min: carried_uv.min,
+            max: carried_uv.max,
+        }
+    );
+    assert_eq!(cursor.icon.count_label, Some(HudItemCountLabel::new("2")));
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn hotbar_item_icons_project_local_use_ticks_into_use_duration_range_dispatch() {
     let root = unique_runtime_temp_dir("hotbar-use-duration-range-dispatch");
     write_runtime_bow_item_assets(&root);

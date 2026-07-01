@@ -331,6 +331,14 @@ impl ClientInputState {
         self.inventory_cursor_position
     }
 
+    pub(crate) fn inventory_quick_craft_button_num(&self) -> Option<i8> {
+        self.inventory_quick_craft_button_num
+    }
+
+    pub(crate) fn inventory_quick_craft_slots(&self) -> &[i16] {
+        &self.inventory_quick_craft_slots
+    }
+
     pub(crate) fn stonecutter_recipe_scroll_row(&self) -> i32 {
         self.stonecutter_recipe_scroll_row
     }
