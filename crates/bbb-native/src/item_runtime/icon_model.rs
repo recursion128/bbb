@@ -509,6 +509,44 @@ mod tests {
         let weight = bundle_item_weight(&nested_empty_bundle, Some(&|_| 64));
         assert!((weight - 1.0 / 16.0).abs() < f32::EPSILON);
     }
+
+    #[test]
+    fn custom_data_predicate_accepts_snbt_compound_strings() {
+        let value = Value::String(
+            r#"{owner:"Alex",level:7,nested:{flag:true},lore:["two"],bytes:[B;1b,2b]}"#.to_string(),
+        );
+        let expected = custom_data_predicate_value_to_nbt_summary(&value).unwrap();
+        let actual = NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "owner".to_string(),
+                value: NbtSummaryValue::String("Alex".to_string()),
+            },
+            NbtSummaryEntry {
+                name: "level".to_string(),
+                value: NbtSummaryValue::Int(7),
+            },
+            NbtSummaryEntry {
+                name: "nested".to_string(),
+                value: NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                    name: "flag".to_string(),
+                    value: NbtSummaryValue::Byte(1),
+                }]),
+            },
+            NbtSummaryEntry {
+                name: "lore".to_string(),
+                value: NbtSummaryValue::List(vec![
+                    NbtSummaryValue::String("one".to_string()),
+                    NbtSummaryValue::String("two".to_string()),
+                ]),
+            },
+            NbtSummaryEntry {
+                name: "bytes".to_string(),
+                value: NbtSummaryValue::ByteArray(vec![1, 2]),
+            },
+        ]);
+
+        assert!(nbt_summary_matches(&expected, &actual, true));
+    }
 }
 
 fn effective_item_max_stack_size(
@@ -2336,8 +2374,7 @@ fn custom_data_component_predicate_is_supported(property: &ItemModelProperty) ->
 }
 
 fn custom_data_predicate_value_is_supported(value: &Value) -> bool {
-    json_value_to_nbt_summary(value)
-        .is_some_and(|value| matches!(value, NbtSummaryValue::Compound(_)))
+    custom_data_predicate_value_to_nbt_summary(value).is_some()
 }
 
 fn item_stack_matches_custom_data_predicate(
@@ -2357,7 +2394,7 @@ fn item_stack_matches_custom_data_value(
     value: &Value,
     component_patch: Option<&DataComponentPatchSummary>,
 ) -> bool {
-    let Some(expected) = json_value_to_nbt_summary(value) else {
+    let Some(expected) = custom_data_predicate_value_to_nbt_summary(value) else {
         return false;
     };
     let empty = NbtSummaryValue::Compound(Vec::new());
@@ -2371,6 +2408,14 @@ fn item_stack_matches_custom_data_value(
         })
         .unwrap_or(&empty);
     nbt_summary_matches(&expected, actual, true)
+}
+
+fn custom_data_predicate_value_to_nbt_summary(value: &Value) -> Option<NbtSummaryValue> {
+    match value {
+        Value::String(value) => parse_snbt_compound_summary(value),
+        _ => json_value_to_nbt_summary(value)
+            .filter(|value| matches!(value, NbtSummaryValue::Compound(_))),
+    }
 }
 
 fn json_value_to_nbt_summary(value: &Value) -> Option<NbtSummaryValue> {
@@ -2406,6 +2451,285 @@ fn json_value_to_nbt_summary(value: &Value) -> Option<NbtSummaryValue> {
             .collect::<Option<Vec<_>>>()
             .map(NbtSummaryValue::Compound),
     }
+}
+
+fn parse_snbt_compound_summary(input: &str) -> Option<NbtSummaryValue> {
+    let mut parser = SnbtSummaryParser::new(input);
+    let value = parser.parse_compound_value()?;
+    parser.finish().then_some(value)
+}
+
+struct SnbtSummaryParser<'a> {
+    input: &'a str,
+    position: usize,
+}
+
+impl<'a> SnbtSummaryParser<'a> {
+    fn new(input: &'a str) -> Self {
+        Self { input, position: 0 }
+    }
+
+    fn finish(&mut self) -> bool {
+        self.skip_whitespace();
+        self.position == self.input.len()
+    }
+
+    fn parse_value(&mut self) -> Option<NbtSummaryValue> {
+        self.skip_whitespace();
+        match self.peek_char()? {
+            '{' => self.parse_compound_value(),
+            '[' => self.parse_list_or_array_value(),
+            '"' | '\'' => self.parse_quoted_string().map(NbtSummaryValue::String),
+            _ => self.parse_unquoted_value(),
+        }
+    }
+
+    fn parse_compound_value(&mut self) -> Option<NbtSummaryValue> {
+        self.consume_char('{')?;
+        let mut entries = Vec::new();
+        self.skip_whitespace();
+        if self.consume_char('}').is_some() {
+            return Some(NbtSummaryValue::Compound(entries));
+        }
+        loop {
+            let name = self.parse_key()?;
+            self.skip_whitespace();
+            self.consume_char(':')?;
+            let value = self.parse_value()?;
+            entries.push(NbtSummaryEntry { name, value });
+            self.skip_whitespace();
+            if self.consume_char('}').is_some() {
+                break;
+            }
+            self.consume_char(',')?;
+        }
+        Some(NbtSummaryValue::Compound(entries))
+    }
+
+    fn parse_list_or_array_value(&mut self) -> Option<NbtSummaryValue> {
+        self.consume_char('[')?;
+        self.skip_whitespace();
+        let array_start = self.position;
+        if let Some(kind @ ('B' | 'b' | 'I' | 'i' | 'L' | 'l')) = self.peek_char() {
+            self.bump_char();
+            self.skip_whitespace();
+            if self.consume_char(';').is_some() {
+                return self.parse_typed_array_value(kind);
+            }
+            self.position = array_start;
+        }
+
+        let mut values = Vec::new();
+        self.skip_whitespace();
+        if self.consume_char(']').is_some() {
+            return Some(NbtSummaryValue::List(values));
+        }
+        loop {
+            values.push(self.parse_value()?);
+            self.skip_whitespace();
+            if self.consume_char(']').is_some() {
+                break;
+            }
+            self.consume_char(',')?;
+        }
+        Some(NbtSummaryValue::List(values))
+    }
+
+    fn parse_typed_array_value(&mut self, kind: char) -> Option<NbtSummaryValue> {
+        self.skip_whitespace();
+        match kind.to_ascii_lowercase() {
+            'b' => {
+                let mut values = Vec::new();
+                if self.consume_char(']').is_some() {
+                    return Some(NbtSummaryValue::ByteArray(values));
+                }
+                loop {
+                    values.push(parse_snbt_i8(&self.parse_unquoted_token()?)?);
+                    self.skip_whitespace();
+                    if self.consume_char(']').is_some() {
+                        break;
+                    }
+                    self.consume_char(',')?;
+                }
+                Some(NbtSummaryValue::ByteArray(values))
+            }
+            'i' => {
+                let mut values = Vec::new();
+                if self.consume_char(']').is_some() {
+                    return Some(NbtSummaryValue::IntArray(values));
+                }
+                loop {
+                    values.push(parse_snbt_i32(&self.parse_unquoted_token()?)?);
+                    self.skip_whitespace();
+                    if self.consume_char(']').is_some() {
+                        break;
+                    }
+                    self.consume_char(',')?;
+                }
+                Some(NbtSummaryValue::IntArray(values))
+            }
+            'l' => {
+                let mut values = Vec::new();
+                if self.consume_char(']').is_some() {
+                    return Some(NbtSummaryValue::LongArray(values));
+                }
+                loop {
+                    values.push(parse_snbt_i64(&self.parse_unquoted_token()?)?);
+                    self.skip_whitespace();
+                    if self.consume_char(']').is_some() {
+                        break;
+                    }
+                    self.consume_char(',')?;
+                }
+                Some(NbtSummaryValue::LongArray(values))
+            }
+            _ => None,
+        }
+    }
+
+    fn parse_key(&mut self) -> Option<String> {
+        self.skip_whitespace();
+        match self.peek_char()? {
+            '"' | '\'' => self.parse_quoted_string(),
+            _ => {
+                let start = self.position;
+                while let Some(ch) = self.peek_char() {
+                    if ch == ':' {
+                        break;
+                    }
+                    self.bump_char();
+                }
+                let key = self.input[start..self.position].trim();
+                (!key.is_empty()).then(|| key.to_string())
+            }
+        }
+    }
+
+    fn parse_quoted_string(&mut self) -> Option<String> {
+        let quote = self.bump_char()?;
+        let mut value = String::new();
+        loop {
+            let ch = self.bump_char()?;
+            if ch == quote {
+                break;
+            }
+            if ch == '\\' {
+                value.push(match self.bump_char()? {
+                    'n' => '\n',
+                    'r' => '\r',
+                    't' => '\t',
+                    'b' => '\u{0008}',
+                    'f' => '\u{000c}',
+                    escaped => escaped,
+                });
+            } else {
+                value.push(ch);
+            }
+        }
+        Some(value)
+    }
+
+    fn parse_unquoted_value(&mut self) -> Option<NbtSummaryValue> {
+        let token = self.parse_unquoted_token()?;
+        let lower = token.to_ascii_lowercase();
+        if lower == "true" {
+            return Some(NbtSummaryValue::Byte(1));
+        }
+        if lower == "false" {
+            return Some(NbtSummaryValue::Byte(0));
+        }
+        parse_snbt_numeric_value(&token).or(Some(NbtSummaryValue::String(token)))
+    }
+
+    fn parse_unquoted_token(&mut self) -> Option<String> {
+        self.skip_whitespace();
+        let start = self.position;
+        while let Some(ch) = self.peek_char() {
+            if matches!(ch, ',' | ']' | '}') {
+                break;
+            }
+            self.bump_char();
+        }
+        let token = self.input[start..self.position].trim();
+        (!token.is_empty()).then(|| token.to_string())
+    }
+
+    fn skip_whitespace(&mut self) {
+        while self.peek_char().is_some_and(char::is_whitespace) {
+            self.bump_char();
+        }
+    }
+
+    fn consume_char(&mut self, expected: char) -> Option<char> {
+        if self.peek_char()? == expected {
+            self.bump_char()
+        } else {
+            None
+        }
+    }
+
+    fn peek_char(&self) -> Option<char> {
+        self.input[self.position..].chars().next()
+    }
+
+    fn bump_char(&mut self) -> Option<char> {
+        let ch = self.peek_char()?;
+        self.position += ch.len_utf8();
+        Some(ch)
+    }
+}
+
+fn parse_snbt_numeric_value(token: &str) -> Option<NbtSummaryValue> {
+    match token.chars().last()?.to_ascii_lowercase() {
+        'b' => parse_snbt_i8(token).map(NbtSummaryValue::Byte),
+        's' => parse_snbt_number_body(token)
+            .parse::<i16>()
+            .ok()
+            .map(NbtSummaryValue::Short),
+        'l' => parse_snbt_i64(token).map(NbtSummaryValue::Long),
+        'f' => parse_snbt_number_body(token)
+            .parse::<f32>()
+            .ok()
+            .map(|value| NbtSummaryValue::Float(value.to_bits())),
+        'd' => parse_snbt_number_body(token)
+            .parse::<f64>()
+            .ok()
+            .map(|value| NbtSummaryValue::Double(value.to_bits())),
+        _ if token.contains('.') || token.contains('e') || token.contains('E') => token
+            .parse::<f64>()
+            .ok()
+            .map(|value| NbtSummaryValue::Double(value.to_bits())),
+        _ => token
+            .parse::<i32>()
+            .ok()
+            .map(NbtSummaryValue::Int)
+            .or_else(|| token.parse::<i64>().ok().map(NbtSummaryValue::Long)),
+    }
+}
+
+fn parse_snbt_i8(token: &str) -> Option<i8> {
+    let body = token
+        .strip_suffix('b')
+        .or_else(|| token.strip_suffix('B'))
+        .unwrap_or(token);
+    body.parse::<i8>().ok()
+}
+
+fn parse_snbt_i32(token: &str) -> Option<i32> {
+    token.parse::<i32>().ok()
+}
+
+fn parse_snbt_i64(token: &str) -> Option<i64> {
+    let body = token
+        .strip_suffix('l')
+        .or_else(|| token.strip_suffix('L'))
+        .unwrap_or(token);
+    body.parse::<i64>().ok()
+}
+
+fn parse_snbt_number_body(token: &str) -> &str {
+    let end = token.len() - token.chars().last().map(char::len_utf8).unwrap_or(0);
+    &token[..end]
 }
 
 fn nbt_summary_matches(

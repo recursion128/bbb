@@ -9014,6 +9014,22 @@ mod tests {
             selected(65, container_custom_data_patch("Steve")),
             uv("component_condition_container_partial_custom_data_absent")
         );
+        assert_eq!(
+            selected(78, custom_data_patch("Alex")),
+            uv("component_condition_custom_data_snbt_present")
+        );
+        assert_eq!(
+            selected(78, custom_data_patch("Steve")),
+            uv("component_condition_custom_data_snbt_absent")
+        );
+        assert_eq!(
+            selected(79, bundle_custom_data_patch("Alex")),
+            uv("component_condition_bundle_partial_custom_data_snbt_present")
+        );
+        assert_eq!(
+            selected(79, bundle_custom_data_patch("Steve")),
+            uv("component_condition_bundle_partial_custom_data_snbt_absent")
+        );
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -10583,6 +10599,8 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_DEFAULT_ATTRIBUTE_MODIFIERS = registerItem("component_condition_container_partial_default_attribute_modifiers");
                 public static final Item COMPONENT_CONDITION_DEFAULT_ARMOR_ATTRIBUTE_MODIFIERS = registerItem("component_condition_default_armor_attribute_modifiers", new Item.Properties().humanoidArmor(ArmorMaterials.DIAMOND, ArmorType.HELMET));
                 public static final Item COMPONENT_CONDITION_DEFAULT_MACE_ATTRIBUTE_MODIFIERS = registerItem("component_condition_default_mace_attribute_modifiers", MaceItem::new, new Item.Properties().attributes(MaceItem.createAttributes()));
+                public static final Item COMPONENT_CONDITION_CUSTOM_DATA_SNBT = registerItem("component_condition_custom_data_snbt");
+                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_CUSTOM_DATA_SNBT = registerItem("component_condition_bundle_partial_custom_data_snbt");
             }"#,
         );
         write_json(
@@ -12826,6 +12844,27 @@ mod tests {
         write_json(
             &assets
                 .join("items")
+                .join("component_condition_custom_data_snbt.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:custom_data",
+                    "value": "{owner:\"Alex\",level:7,nested:{flag:true},lore:[\"two\"]}",
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_custom_data_snbt_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_custom_data_snbt_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
                 .join("component_condition_bundle_partial_custom_data.json"),
             r#"{
                 "model": {
@@ -12858,6 +12897,39 @@ mod tests {
                     "on_false": {
                         "type": "minecraft:model",
                         "model": "minecraft:item/component_condition_bundle_partial_custom_data_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_partial_custom_data_snbt.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "predicates": {
+                                            "minecraft:custom_data": "{owner:\"Alex\",level:7,nested:{flag:true},lore:[\"two\"]}"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_custom_data_snbt_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_custom_data_snbt_absent"
                     }
                 }
             }"#,
@@ -13694,12 +13766,28 @@ mod tests {
             ),
             ("component_condition_custom_data_absent", [95, 70, 35, 255]),
             (
+                "component_condition_custom_data_snbt_present",
+                [210, 245, 160, 255],
+            ),
+            (
+                "component_condition_custom_data_snbt_absent",
+                [70, 95, 45, 255],
+            ),
+            (
                 "component_condition_bundle_partial_custom_data_present",
                 [245, 190, 120, 255],
             ),
             (
                 "component_condition_bundle_partial_custom_data_absent",
                 [95, 55, 35, 255],
+            ),
+            (
+                "component_condition_bundle_partial_custom_data_snbt_present",
+                [190, 235, 155, 255],
+            ),
+            (
+                "component_condition_bundle_partial_custom_data_snbt_absent",
+                [65, 85, 40, 255],
             ),
             (
                 "component_condition_container_partial_custom_data_present",

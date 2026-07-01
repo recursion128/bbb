@@ -5893,7 +5893,7 @@ When an agent does any of the following, update this file in the same slice:
       `minecraft:custom_data` now preserves decoded custom-data NBT compound
       summaries and matches direct plus bundle/container-nested predicates with
       vanilla `NbtUtils.compareNbt(..., true)` subset-compound and partial-list
-      semantics for JSON-object predicate values.
+      semantics for JSON-object and SNBT-string compound predicate values.
       `minecraft:bundle_contents`
       `items.size` constraints match vanilla `CollectionPredicate.size` against
       the decoded bundle item count, and `items.contains` / `count` now support
@@ -5931,9 +5931,9 @@ When an agent does any of the following, update this file in the same slice:
       `minecraft:enchanted_book` contributes its item-specific default empty
       `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
       constrained predicate types (inline enchantment holder payloads / server
-      datapack tag remaps, custom-data SNBT-string predicate parsing / broader
-      NBT scalar typing, remaining concrete partial predicates and complex exact
-      component codecs, rich/styled written-book page `ComponentSerialization`
+      datapack tag remaps, broader NBT scalar typing, remaining concrete partial
+      predicates and complex exact component codecs, rich/styled written-book
+      page `ComponentSerialization`
       equality, trim inline material or pattern payloads / datapack pattern
       registry-key remaps, datapack villager-type registry remaps, jukebox
       inline song payloads / datapack jukebox-song registry
