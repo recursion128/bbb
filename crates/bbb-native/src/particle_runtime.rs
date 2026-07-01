@@ -1149,6 +1149,7 @@ impl ParticleCommandResolver {
             option_power: option_state.power,
             option_target: option_state.target,
             option_duration_ticks: option_state.duration_ticks,
+            option_roll: option_state.roll,
         }
     }
 
@@ -1189,6 +1190,7 @@ struct ParticleOptionRenderState {
     power: Option<f32>,
     target: Option<[f64; 3]>,
     duration_ticks: Option<u32>,
+    roll: Option<f32>,
 }
 
 fn particle_option_render_state(
@@ -1222,6 +1224,18 @@ fn particle_option_render_state(
             }
             ParticleOptionRenderState {
                 color: Some(argb_particle_color(color)),
+                ..ParticleOptionRenderState::default()
+            }
+        }
+        SCULK_CHARGE_PARTICLE_TYPE_ID => {
+            let Ok(roll) = decoder.read_f32() else {
+                return ParticleOptionRenderState::default();
+            };
+            if !decoder.is_empty() {
+                return ParticleOptionRenderState::default();
+            }
+            ParticleOptionRenderState {
+                roll: Some(roll),
                 ..ParticleOptionRenderState::default()
             }
         }
@@ -1415,6 +1429,7 @@ const ENTITY_EFFECT_PARTICLE_TYPE_ID: i32 = 21;
 const EXPLOSION_EMITTER_PARTICLE_TYPE_ID: i32 = 22;
 const EXPLOSION_PARTICLE_TYPE_ID: i32 = 23;
 const FLAME_PARTICLE_TYPE_ID: i32 = 32;
+const SCULK_CHARGE_PARTICLE_TYPE_ID: i32 = 38;
 const SOUL_FIRE_FLAME_PARTICLE_TYPE_ID: i32 = 40;
 const FLASH_PARTICLE_TYPE_ID: i32 = 42;
 const HAPPY_VILLAGER_PARTICLE_TYPE_ID: i32 = 43;
@@ -1665,6 +1680,26 @@ mod tests {
                 0x66 as f32 / 255.0,
             ])
         );
+        assert_eq!(command.option_power, None);
+    }
+
+    #[test]
+    fn sculk_charge_particle_options_decode_roll_into_spawn_command() {
+        let mut resolver = test_resolver(0);
+        let mut packet = level_particles_packet(SCULK_CHARGE_PARTICLE_TYPE_ID, 0);
+        packet.particle.raw_options = 0.75_f32.to_be_bytes().to_vec();
+
+        let batch = resolver.resolve_level_particles(&packet);
+
+        assert_eq!(batch.len(), 1);
+        let command = &batch.commands[0];
+        assert_eq!(command.particle_id, "minecraft:sculk_charge");
+        assert_eq!(
+            command.sprite_ids,
+            vec!["minecraft:sculk_charge_0".to_string()]
+        );
+        assert_eq!(command.option_roll, Some(0.75));
+        assert_eq!(command.option_color, None);
         assert_eq!(command.option_power, None);
     }
 
@@ -2641,6 +2676,7 @@ mod tests {
                 "spell_0",
                 "dragon_breath_0",
                 "flash",
+                "sculk_charge_0",
                 "flame",
                 "soul_fire_flame",
                 "explosion_emitter_0",
@@ -2741,6 +2777,14 @@ mod tests {
             r#"{
               "textures": [
                 "minecraft:generic_0"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("sculk_charge.json"),
+            r#"{
+              "textures": [
+                "minecraft:sculk_charge_0"
               ]
             }"#,
         );

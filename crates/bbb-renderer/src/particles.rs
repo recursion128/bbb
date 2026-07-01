@@ -59,6 +59,8 @@ pub struct ParticleSpawnCommand {
     pub option_target: Option<[f64; 3]>,
     #[serde(default)]
     pub option_duration_ticks: Option<u32>,
+    #[serde(default)]
+    pub option_roll: Option<f32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -116,6 +118,10 @@ pub(crate) struct ParticleInstance {
     pub(crate) velocity: [f64; 3],
     pub(crate) age_ticks: u32,
     pub(crate) lifetime_ticks: u32,
+    #[serde(default)]
+    pub(crate) previous_roll: f32,
+    #[serde(default)]
+    pub(crate) roll: f32,
     #[serde(default = "default_particle_quad_size")]
     pub(crate) base_quad_size: f32,
     #[serde(default = "default_particle_color")]
@@ -163,6 +169,8 @@ pub(crate) struct ParticleInstance {
     pub(crate) option_target: Option<[f64; 3]>,
     #[serde(default)]
     pub(crate) option_duration_ticks: Option<u32>,
+    #[serde(default)]
+    pub(crate) option_roll: Option<f32>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -588,6 +596,12 @@ impl ParticleInstance {
                 .unwrap_or_else(|| descriptor.lifetime.sample(random)),
             _ => descriptor.lifetime.sample(random),
         };
+        let (previous_roll, roll) = if descriptor.provider == "SculkChargeParticle.Provider" {
+            let roll = command.option_roll.unwrap_or(0.0);
+            (roll, roll)
+        } else {
+            (0.0, 0.0)
+        };
         Self {
             particle_type_id: command.particle_type_id,
             particle_id: command.particle_id,
@@ -600,6 +614,8 @@ impl ParticleInstance {
             velocity,
             age_ticks: 0,
             lifetime_ticks,
+            previous_roll,
+            roll,
             base_quad_size: visual.base_quad_size,
             color,
             color_fade_target: descriptor.color_fade_target(),
@@ -628,6 +644,7 @@ impl ParticleInstance {
             option_power: command.option_power,
             option_target: command.option_target,
             option_duration_ticks: command.option_duration_ticks,
+            option_roll: command.option_roll,
         }
     }
 
@@ -833,6 +850,7 @@ impl ParticleInstance {
             option_power: None,
             option_target: None,
             option_duration_ticks: None,
+            option_roll: None,
         })
     }
 }
@@ -1035,8 +1053,14 @@ fn particle_instance_vertices(
         instance.position[2] as f32,
     );
     let half_size = instance.render_quad_size() * 0.5;
-    let right = axes.right * half_size;
-    let up = axes.up * half_size;
+    let roll = lerp_f32(
+        DEFAULT_PARTICLE_RENDER_PARTIAL_TICK,
+        instance.previous_roll,
+        instance.roll,
+    );
+    let (right_axis, up_axis) = rotated_billboard_axes(axes, roll);
+    let right = right_axis * half_size;
+    let up = up_axis * half_size;
     let bottom_left = center - right - up;
     let bottom_right = center + right - up;
     let top_right = center + right + up;
@@ -1152,6 +1176,21 @@ fn flash_overlay_alpha(age_ticks: u32, partial_tick: f32) -> f32 {
 
 fn lerp_f64(alpha: f64, start: f64, end: f64) -> f64 {
     start + alpha * (end - start)
+}
+
+fn lerp_f32(alpha: f32, start: f32, end: f32) -> f32 {
+    start + alpha * (end - start)
+}
+
+fn rotated_billboard_axes(axes: ParticleBillboardAxes, roll: f32) -> (Vec3, Vec3) {
+    if roll == 0.0 {
+        return (axes.right, axes.up);
+    }
+    let (sin, cos) = roll.sin_cos();
+    (
+        axes.right * cos + axes.up * sin,
+        -axes.right * sin + axes.up * cos,
+    )
 }
 
 fn vault_connection_alpha(age_ticks: u32, lifetime_ticks: u32, partial_tick: f32) -> f32 {
@@ -2906,6 +2945,7 @@ mod tests {
         let mut sculk_charge_random = ParticleRandom::new(78);
         let mut sculk_charge_command = spawn_command("minecraft:sculk_charge", 1.0);
         sculk_charge_command.velocity = [1.0, 2.0, 3.0];
+        sculk_charge_command.option_roll = Some(0.75);
         let sculk_charge =
             ParticleInstance::from_spawn_command(sculk_charge_command, &mut sculk_charge_random);
         assert_eq!(sculk_charge.provider, "SculkChargeParticle.Provider");
@@ -2921,6 +2961,9 @@ mod tests {
         assert_eq!(sculk_charge.friction, 0.96);
         assert_eq!(sculk_charge.gravity, 0.0);
         assert!(!sculk_charge.has_physics);
+        assert_eq!(sculk_charge.option_roll, Some(0.75));
+        assert_eq!(sculk_charge.previous_roll, 0.75);
+        assert_eq!(sculk_charge.roll, 0.75);
 
         let mut sculk_charge_pop_random = ParticleRandom::new(74);
         let mut sculk_charge_pop_command = spawn_command("minecraft:sculk_charge_pop", 1.0);
@@ -3493,6 +3536,39 @@ mod tests {
     }
 
     #[test]
+    fn particle_billboard_vertices_apply_vanilla_roll_transform() {
+        let mut instance = test_instance_with_lifetime("minecraft:sculk_charge", 20);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.current_sprite_id = Some("minecraft:generic_0".to_string());
+        instance.base_quad_size = 2.0;
+        instance.previous_roll = std::f32::consts::FRAC_PI_2;
+        instance.roll = std::f32::consts::FRAC_PI_2;
+        let sprite_uvs = BTreeMap::from([(
+            "minecraft:generic_0".to_string(),
+            ParticleUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+        )]);
+
+        let vertices = particle_billboard_vertices(
+            [&instance],
+            &sprite_uvs,
+            ParticleBillboardAxes {
+                right: Vec3::X,
+                up: Vec3::Y,
+            },
+            Some(ParticlePipelineKind::Translucent),
+        );
+
+        assert_eq!(vertices.len(), 6);
+        assert_close3_f32(vertices[0].position, [2.0, 1.0, 3.0]);
+        assert_close3_f32(vertices[1].position, [2.0, 3.0, 3.0]);
+        assert_close3_f32(vertices[2].position, [0.0, 3.0, 3.0]);
+        assert_close3_f32(vertices[5].position, [0.0, 1.0, 3.0]);
+    }
+
+    #[test]
     fn particle_billboard_vertices_apply_vault_connection_lifetime_alpha() {
         let mut instance = test_instance_with_lifetime("minecraft:vault_connection", 40);
         instance.position = [1.0, 2.0, 3.0];
@@ -3704,6 +3780,8 @@ mod tests {
             velocity: [0.0, 0.0, 0.0],
             age_ticks: 0,
             lifetime_ticks,
+            previous_roll: 0.0,
+            roll: 0.0,
             base_quad_size: DEFAULT_PARTICLE_QUAD_SIZE,
             color: [1.0, 1.0, 1.0, 1.0],
             color_fade_target: descriptor.color_fade_target(),
@@ -3732,6 +3810,7 @@ mod tests {
             option_power: None,
             option_target: None,
             option_duration_ticks: None,
+            option_roll: None,
         }
     }
 
@@ -3751,6 +3830,7 @@ mod tests {
             option_power: None,
             option_target: None,
             option_duration_ticks: None,
+            option_roll: None,
         }
     }
 

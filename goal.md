@@ -1283,6 +1283,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     renderer maps the provider to random sprite selection, option duration,
     vanilla random RGB scaling, `0.26` quad size, opaque layer, full-bright
     light, command velocity, and target interpolation toward the option target.
+  - [x] `SculkChargeParticle.Provider` roll：native command resolution decodes
+    `SculkChargeParticleOptions.roll` for `minecraft:sculk_charge`; renderer
+    stores it as initial `oRoll` / `roll` and applies the vanilla billboard
+    roll transform during vertex emission.
   - 初速度。
   - lifetime。
   - size curve。

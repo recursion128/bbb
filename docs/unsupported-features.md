@@ -377,8 +377,10 @@ When an agent does any of the following, update this file in the same slice:
         vanilla overlay size / render-alpha formulas. `trail` now maps to
         `TrailParticle.Provider` with decoded target / RGB color / duration,
         vanilla random color scaling, target interpolation, full-bright light,
-        and opaque layer. Other non-spell particle option rendering remains
-        separate follow-up work.
+        and opaque layer. `sculk_charge` now carries decoded
+        `SculkChargeParticleOptions.roll` through to billboard roll rotation.
+        Other non-spell particle option rendering remains separate follow-up
+        work.
       - `SpellParticle.WitchProvider` reuses the simple spell motion/lifetime
         metadata and applies the vanilla shared random magenta brightness
         (`0.35..0.85` for red and blue, zero green)
@@ -416,6 +418,9 @@ When an agent does any of the following, update this file in the same slice:
         `6 + random.nextInt(4)` lifetime, `0.96` friction, and no-physics
         metadata plus full-bright block override and the translucent particle
         layer
+      - `SculkChargeParticle.Provider` carries decoded
+        `SculkChargeParticleOptions.roll` into initial `oRoll` / `roll`, and
+        billboard vertex emission applies the vanilla roll transform.
     - Uploads a stitched official particle atlas when assets are available.
     - Draws active particles as camera-facing textured billboards.
   - Follow-up work in the plan:
@@ -5727,8 +5732,8 @@ When an agent does any of the following, update this file in the same slice:
       - particle descriptors map `SculkChargeParticle.Provider` to command
         velocity, alpha `1.0`, `1.5` quad-size scaling, age sprites,
         `8..=19` lifetime, friction `0.96`, no-physics metadata,
-        translucent particle layer, and full-bright block override. Roll option
-        rendering remains a provider-specific visual follow-up.
+        translucent particle layer, full-bright block override, and decoded
+        `SculkChargeParticleOptions.roll` billboard rotation.
       - particle descriptors map `ShriekParticle.Provider` to
         `ShriekParticleOption.delay` carried in
         `ParticleSpawnCommand.initial_delay_ticks`; delayed instances do not
