@@ -847,7 +847,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     ordered `Filterable<String>` page lists with raw and optional filtered
     strings, plus exact `minecraft:firework_explosion` components for
     `shape`, ordered `colors`, ordered `fade_colors`, `has_trail`, and
-    `has_twinkle`, plus nested partial `minecraft:damage`,
+    `has_twinkle`, plus exact `minecraft:fireworks` components for
+    `flight_duration` and ordered explosion lists, plus nested partial
+    `minecraft:damage`,
     `minecraft:enchantments`,
     `minecraft:stored_enchantments`, `minecraft:firework_explosion`,
     `minecraft:fireworks`, `minecraft:trim`, `minecraft:jukebox_playable`,
@@ -878,7 +880,7 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     simple literal name/lore, Unit `unbreakable`, compound `custom_data`, and
     direct-key / empty-custom-effects `potion_contents` components,
     filterable-page-list `writable_book_content` components, and full-field
-    `firework_explosion` components, exact
+    `firework_explosion` / `fireworks` components, exact
     `potion_contents` with non-empty custom-effect payload equality,
     non-literal / rich / styled written-book page
     `ComponentSerialization` equality, trim inline material or pattern payloads

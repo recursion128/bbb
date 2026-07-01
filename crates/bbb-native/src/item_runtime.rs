@@ -7432,6 +7432,49 @@ mod tests {
             ),
             uv("component_condition_bundle_exact_firework_explosion_absent")
         );
+        let exact_fireworks = DataComponentPatchSummary {
+            added_type_ids: vec![69],
+            fireworks_flight_duration: Some(2),
+            fireworks_explosions_count: Some(1),
+            fireworks_explosions: vec![FireworkExplosionSummary {
+                shape: FireworkExplosionShapeSummary::Star,
+                colors: vec![0x11_22_33],
+                fade_colors: vec![0x44_55_66],
+                has_trail: true,
+                has_twinkle: false,
+            }],
+            ..DataComponentPatchSummary::default()
+        };
+        assert_eq!(
+            selected(88, named_bundle_entry(exact_fireworks.clone())),
+            uv("component_condition_bundle_exact_fireworks_present")
+        );
+        assert_eq!(
+            selected(
+                88,
+                named_bundle_entry(DataComponentPatchSummary {
+                    fireworks_flight_duration: Some(1),
+                    ..exact_fireworks.clone()
+                })
+            ),
+            uv("component_condition_bundle_exact_fireworks_absent")
+        );
+        assert_eq!(
+            selected(
+                88,
+                named_bundle_entry(DataComponentPatchSummary {
+                    fireworks_explosions: vec![FireworkExplosionSummary {
+                        shape: FireworkExplosionShapeSummary::Star,
+                        colors: vec![0x11_22_33],
+                        fade_colors: vec![0x01_02_03],
+                        has_trail: true,
+                        has_twinkle: false,
+                    }],
+                    ..exact_fireworks
+                })
+            ),
+            uv("component_condition_bundle_exact_fireworks_absent")
+        );
         assert_eq!(
             selected(
                 33,
@@ -10894,6 +10937,7 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_POTION_CONTENTS = registerItem("component_condition_bundle_exact_potion_contents");
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_WRITABLE_BOOK = registerItem("component_condition_bundle_exact_writable_book");
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_FIREWORK_EXPLOSION = registerItem("component_condition_bundle_exact_firework_explosion");
+                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_FIREWORKS = registerItem("component_condition_bundle_exact_fireworks");
             }"#,
         );
         write_json(
@@ -11638,6 +11682,54 @@ mod tests {
                     "on_false": {
                         "type": "minecraft:model",
                         "model": "minecraft:item/component_condition_bundle_exact_firework_explosion_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_exact_fireworks.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "components": {
+                                            "minecraft:fireworks": {
+                                                "flight_duration": 2,
+                                                "explosions": [
+                                                    {
+                                                        "shape": "star",
+                                                        "colors": [
+                                                            1122867
+                                                        ],
+                                                        "fade_colors": [
+                                                            4478310
+                                                        ],
+                                                        "has_trail": true,
+                                                        "has_twinkle": false
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_fireworks_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_fireworks_absent"
                     }
                 }
             }"#,
@@ -14088,6 +14180,14 @@ mod tests {
             (
                 "component_condition_bundle_exact_firework_explosion_absent",
                 [100, 75, 30, 255],
+            ),
+            (
+                "component_condition_bundle_exact_fireworks_present",
+                [245, 160, 105, 255],
+            ),
+            (
+                "component_condition_bundle_exact_fireworks_absent",
+                [105, 55, 35, 255],
             ),
             (
                 "component_condition_container_components_present",

@@ -2403,6 +2403,7 @@ fn item_exact_component_is_supported(component: &str, expected: &Value) -> bool 
             && writable_book_exact_value(expected).is_some())
         || (component == "minecraft:firework_explosion"
             && firework_explosion_exact_value(expected).is_some())
+        || (component == "minecraft:fireworks" && fireworks_exact_value(expected).is_some())
 }
 
 fn item_partial_component_predicates_are_supported(value: &Value) -> bool {
@@ -3602,6 +3603,13 @@ fn item_exact_component_matches(
             return false;
         };
         return firework_explosion_exact_match(&expected, &item.component_patch);
+    }
+
+    if component == "minecraft:fireworks" {
+        let Some(expected) = fireworks_exact_value(expected) else {
+            return false;
+        };
+        return fireworks_exact_match(&expected, &item.component_patch);
     }
 
     let Some(expected) = simple_component_text(expected) else {
@@ -4877,6 +4885,71 @@ fn firework_explosion_exact_match(
         && component_patch.firework_explosion_fade_colors == expected.fade_colors
         && component_patch.firework_explosion_has_trail == Some(expected.has_trail)
         && component_patch.firework_explosion_has_twinkle == Some(expected.has_twinkle)
+}
+
+struct ExactFireworks {
+    flight_duration: i32,
+    explosions: Vec<ExactFireworkExplosion>,
+}
+
+fn fireworks_exact_value(value: &Value) -> Option<ExactFireworks> {
+    let value = value.as_object()?;
+    if !value
+        .keys()
+        .all(|key| key == "flight_duration" || key == "explosions")
+    {
+        return None;
+    }
+    let flight_duration = match value.get("flight_duration") {
+        None => 0,
+        Some(value) => json_i32(value).filter(|value| (0..=255).contains(value))?,
+    };
+    let explosions = match value.get("explosions") {
+        None => Vec::new(),
+        Some(Value::Array(explosions)) => explosions
+            .iter()
+            .map(firework_explosion_exact_value)
+            .collect::<Option<Vec<_>>>()?,
+        Some(_) => return None,
+    };
+    Some(ExactFireworks {
+        flight_duration,
+        explosions,
+    })
+}
+
+fn fireworks_exact_match(
+    expected: &ExactFireworks,
+    component_patch: &DataComponentPatchSummary,
+) -> bool {
+    if component_patch
+        .removed_type_ids
+        .contains(&FIREWORKS_COMPONENT_ID)
+        || !component_patch
+            .added_type_ids
+            .contains(&FIREWORKS_COMPONENT_ID)
+        || component_patch.fireworks_flight_duration != Some(expected.flight_duration)
+        || component_patch.fireworks_explosions_count != Some(expected.explosions.len())
+        || component_patch.fireworks_explosions.len() != expected.explosions.len()
+    {
+        return false;
+    }
+    expected
+        .explosions
+        .iter()
+        .zip(&component_patch.fireworks_explosions)
+        .all(|(expected, actual)| firework_explosion_exact_matches_summary(expected, actual))
+}
+
+fn firework_explosion_exact_matches_summary(
+    expected: &ExactFireworkExplosion,
+    actual: &FireworkExplosionSummary,
+) -> bool {
+    actual.shape == expected.shape
+        && actual.colors == expected.colors
+        && actual.fade_colors == expected.fade_colors
+        && actual.has_trail == expected.has_trail
+        && actual.has_twinkle == expected.has_twinkle
 }
 
 fn firework_explosion_shape(value: &str) -> Option<FireworkExplosionShapeSummary> {
