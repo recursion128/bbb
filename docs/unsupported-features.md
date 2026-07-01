@@ -300,9 +300,9 @@ When an agent does any of the following, update this file in the same slice:
       - `SnowflakeParticle.Provider` age sprite selection, fixed pale-blue tint,
         `0.1 * (random * random + 1.0)` quad size, command velocity plus
         random `+-0.05` per axis, `16 / (random * 0.8 + 0.2) + 2` lifetime,
-        `1.0` friction, `0.225` gravity, and physics metadata; its extra
-        post-tick x/z/y damping and opaque particle layer remain deferred until
-        those per-particle states are represented
+        `1.0` friction, `0.225` gravity, physics metadata, opaque particle
+        layer, and vanilla post-tick damping (`xd *= 0.95`, `yd *= 0.9`,
+        `zd *= 0.95`)
       - `SquidInkParticle.Provider` and `GlowInkProvider` age sprite selection,
         fixed `0.5` quad size, black / glow-ink tint, command velocity,
         `6 / (random * 0.8 + 0.2)` lifetime, `0.92` friction, zero gravity, and
@@ -5741,9 +5741,8 @@ When an agent does any of the following, update this file in the same slice:
         fixed pale-blue tint, `0.1 * (random * random + 1.0)` quad size,
         command velocity plus random `+-0.05` per axis,
         `16/(random*.8+.2)+2` lifetime, friction `1.0`, gravity `0.225`,
-        and physics metadata. Extra post-tick x/z/y damping and the opaque
-        particle layer remain deferred until those per-particle states are
-        represented.
+        physics metadata, opaque particle layer, and vanilla post-tick damping
+        (`xd *= 0.95`, `yd *= 0.9`, `zd *= 0.95`).
       - particle descriptors map `SquidInkParticle.Provider` and
         `GlowInkProvider` to age sprites, fixed `0.5` quad size, black /
         glow-ink tint, command velocity, `6/(random*.8+.2)` lifetime, friction

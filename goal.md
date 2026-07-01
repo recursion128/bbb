@@ -1230,6 +1230,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     visible, vertex collection emits the vanilla two rotated quads from
     `ShriekParticle.extract` (`rotationX(-1.0472)` and
     `rotationYXZ(-PI, 1.0472, 0)`).
+  - [x] `SnowflakeParticle.Provider`：renderer descriptor mirrors vanilla age
+    sprite selection, pale-blue tint, `0.1 * (random * random + 1.0)` quad
+    size, command velocity plus random `+-0.05` per axis,
+    `16 / (random * 0.8 + 0.2) + 2` lifetime, `1.0` friction, `0.225`
+    gravity, physics metadata, opaque layer, and post-tick damping
+    (`xd *= 0.95`, `yd *= 0.9`, `zd *= 0.95`).
   - 初速度。
   - lifetime。
   - size curve。

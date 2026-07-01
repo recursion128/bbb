@@ -616,6 +616,16 @@ impl ParticleInstance {
                 self.position[2] += self.velocity[2];
                 self.tick_angle += 0.08;
             }
+            ParticleTickMotionDescriptor::Snowflake => {
+                self.velocity[1] -= 0.04 * f64::from(self.gravity);
+                self.position[0] += self.velocity[0];
+                self.position[1] += self.velocity[1];
+                self.position[2] += self.velocity[2];
+                let friction = f64::from(self.friction);
+                self.velocity[0] *= friction * 0.95;
+                self.velocity[1] *= friction * 0.9;
+                self.velocity[2] *= friction * 0.95;
+            }
             ParticleTickMotionDescriptor::FlyTowardsPosition => {
                 let next_age = self.age_ticks.saturating_add(1);
                 let lifetime = self.lifetime_ticks.max(1) as f32;
@@ -1932,6 +1942,11 @@ mod tests {
         assert_eq!(snowflake.friction, 1.0);
         assert_eq!(snowflake.gravity, 0.225);
         assert!(snowflake.has_physics);
+        assert_eq!(snowflake.render_layer, ParticleRenderLayer::Opaque);
+        assert_eq!(
+            snowflake.tick_motion,
+            ParticleTickMotionDescriptor::Snowflake
+        );
 
         let mut squid_ink_random = ParticleRandom::new(57);
         let mut squid_ink_command = spawn_command("minecraft:squid_ink", 1.0);
@@ -2591,6 +2606,26 @@ mod tests {
     }
 
     #[test]
+    fn particle_runtime_snowflake_applies_vanilla_post_tick_damping() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:snowflake", 20);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.velocity = [1.0, 2.0, 3.0];
+        particles.active_instances.push_back(instance);
+
+        particles.advance(1);
+
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.previous_position, [1.0, 2.0, 3.0]);
+        assert_close_f64(instance.position[0], 2.0);
+        assert_close_f64(instance.position[1], 3.991);
+        assert_close_f64(instance.position[2], 6.0);
+        assert_close_f64(instance.velocity[0], 0.95);
+        assert_close_f64(instance.velocity[1], 1.7919);
+        assert_close_f64(instance.velocity[2], 2.85);
+    }
+
+    #[test]
     fn particle_render_group_and_layer_order_match_vanilla_extract_passes() {
         assert_eq!(ParticleRenderGroup::SingleQuads.vanilla_order(), 0);
         assert_eq!(ParticleRenderGroup::ItemPickup.vanilla_order(), 1);
@@ -3183,6 +3218,13 @@ mod tests {
     }
 
     fn assert_close_f32(actual: f32, expected: f32) {
+        assert!(
+            (actual - expected).abs() < 1.0e-6,
+            "expected {expected}, got {actual}"
+        );
+    }
+
+    fn assert_close_f64(actual: f64, expected: f64) {
         assert!(
             (actual - expected).abs() < 1.0e-6,
             "expected {expected}, got {actual}"

@@ -23,6 +23,7 @@ pub(crate) enum ParticleTickMotionDescriptor {
     DirectGravityNoFriction,
     NoMotion,
     CurrentDown,
+    Snowflake,
     FlyTowardsPosition,
     Portal,
     ReversePortal,
@@ -1146,6 +1147,7 @@ impl ParticleDescriptor {
             "BubblePopParticle.Provider" => ParticleTickMotionDescriptor::DirectGravityNoFriction,
             "AttackSweepParticle.Provider" => ParticleTickMotionDescriptor::NoMotion,
             "WaterCurrentDownParticle.Provider" => ParticleTickMotionDescriptor::CurrentDown,
+            "SnowflakeParticle.Provider" => ParticleTickMotionDescriptor::Snowflake,
             "FlyTowardsPositionParticle.EnchantProvider"
             | "FlyTowardsPositionParticle.NautilusProvider"
             | "FlyTowardsPositionParticle.VaultConnectionProvider" => {
@@ -2058,6 +2060,10 @@ mod tests {
                 command_scale: 1.0,
                 random_range: 0.05,
             }
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:snowflake").tick_motion(),
+            ParticleTickMotionDescriptor::Snowflake
         );
         assert_descriptor(
             "minecraft:squid_ink",
