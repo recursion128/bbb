@@ -626,6 +626,9 @@ impl ParticleInstance {
             ParticleQuadSizeCurve::Flame => {
                 self.base_quad_size * (1.0 - progress * progress * 0.5).max(0.0)
             }
+            ParticleQuadSizeCurve::FlashOverlay => {
+                7.1 * ((age - 1.0) * 0.25 * std::f32::consts::PI).sin()
+            }
             ParticleQuadSizeCurve::Portal => {
                 self.base_quad_size * (1.0 - (1.0 - progress) * (1.0 - progress))
             }
@@ -1069,6 +1072,9 @@ fn particle_render_color(instance: &ParticleInstance) -> [f32; 4] {
             );
         }
     }
+    if instance.quad_size_curve == ParticleQuadSizeCurve::FlashOverlay {
+        color[3] = flash_overlay_alpha(instance.age_ticks, DEFAULT_PARTICLE_RENDER_PARTIAL_TICK);
+    }
     color
 }
 
@@ -1089,6 +1095,10 @@ fn apply_particle_power(velocity: [f64; 3], power: f32) -> [f64; 3] {
         (velocity[1] - 0.1) * power + 0.1,
         velocity[2] * power,
     ]
+}
+
+fn flash_overlay_alpha(age_ticks: u32, partial_tick: f32) -> f32 {
+    0.6 - (age_ticks as f32 + partial_tick.clamp(0.0, 1.0) - 1.0) * 0.25 * 0.5
 }
 
 fn vault_connection_alpha(age_ticks: u32, lifetime_ticks: u32, partial_tick: f32) -> f32 {
@@ -1119,6 +1129,7 @@ fn particle_render_layer_for_particle(particle_id: &str) -> ParticleRenderLayer 
         | "minecraft:effect"
         | "minecraft:instant_effect"
         | "minecraft:entity_effect"
+        | "minecraft:flash"
         | "minecraft:infested"
         | "minecraft:raid_omen"
         | "minecraft:trial_omen"
@@ -2228,6 +2239,18 @@ mod tests {
         assert!(note.speed_up_when_y_motion_is_blocked);
         assert_range_f64(note.velocity[1], 0.198, 0.202);
 
+        let mut flash_random = ParticleRandom::new(66);
+        let mut flash_command = spawn_command("minecraft:flash", 1.0);
+        flash_command.option_color = Some([0.1, 0.2, 0.3, 0.4]);
+        let flash = ParticleInstance::from_spawn_command(flash_command, &mut flash_random);
+        assert_eq!(flash.provider, "FireworkParticles.FlashProvider");
+        assert_eq!(flash.sprite_selection, ParticleSpriteSelection::Random);
+        assert_eq!(flash.lifetime_ticks, 4);
+        assert_eq!(flash.color, [0.1, 0.2, 0.3, 0.4]);
+        assert_eq!(flash.quad_size_curve, ParticleQuadSizeCurve::FlashOverlay);
+        assert_eq!(flash.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(flash.render_layer, ParticleRenderLayer::Translucent);
+
         let mut spell_random = ParticleRandom::new(61);
         let mut spell_command = spawn_command("minecraft:infested", 1.0);
         spell_command.velocity = [0.0, 1.0, 0.0];
@@ -3059,6 +3082,14 @@ mod tests {
         assert_close_f32(shriek.quad_size_at_partial_tick(0.5), 0.010_625);
         shriek.age_ticks = 30;
         assert_close_f32(shriek.quad_size_at_partial_tick(0.0), 0.637_5);
+
+        let mut flash = test_instance_with_lifetime("minecraft:flash", 4);
+        flash.quad_size_curve = ParticleQuadSizeCurve::FlashOverlay;
+        flash.age_ticks = 1;
+        assert_close_f32(
+            flash.quad_size_at_partial_tick(0.5),
+            7.1 * (0.5 * 0.25 * std::f32::consts::PI).sin(),
+        );
     }
 
     #[test]
@@ -3359,6 +3390,44 @@ mod tests {
         assert_eq!(vertices[0].color[1], 0.45);
         assert_eq!(vertices[0].color[2], 0.5);
         assert_close_f32(vertices[0].color[3], 0.21);
+    }
+
+    #[test]
+    fn particle_billboard_vertices_apply_flash_overlay_alpha_and_size() {
+        let mut instance = test_instance_with_lifetime("minecraft:flash", 4);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.current_sprite_id = Some("minecraft:generic_0".to_string());
+        instance.quad_size_curve = ParticleQuadSizeCurve::FlashOverlay;
+        instance.color = [0.1, 0.2, 0.3, 0.4];
+        instance.age_ticks = 1;
+        let sprite_uvs = BTreeMap::from([(
+            "minecraft:generic_0".to_string(),
+            ParticleUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+        )]);
+
+        let vertices = particle_billboard_vertices(
+            [&instance],
+            &sprite_uvs,
+            ParticleBillboardAxes {
+                right: Vec3::X,
+                up: Vec3::Y,
+            },
+            Some(ParticlePipelineKind::Translucent),
+        );
+
+        let size = 7.1 * (0.5 * 0.25 * std::f32::consts::PI).sin();
+        assert_eq!(vertices.len(), 6);
+        assert_close3_f32(
+            vertices[0].position,
+            [1.0 - size / 2.0, 2.0 - size / 2.0, 3.0],
+        );
+        assert_close_f32(vertices[0].color[0], 0.1);
+        assert_close_f32(vertices[0].color[1], 0.2);
+        assert_close_f32(vertices[0].color[2], 0.3);
+        assert_close_f32(vertices[0].color[3], flash_overlay_alpha(1, 0.5));
     }
 
     #[test]

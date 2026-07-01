@@ -372,8 +372,10 @@ When an agent does any of the following, update this file in the same slice:
         decoded command metadata: `effect` / `instant_effect` use
         `SpellParticle.InstantProvider` RGB color plus `setPower(power)`, and
         `entity_effect` uses `SpellParticle.MobEffectProvider` ARGB color /
-        alpha. Non-spell particle option rendering remains separate follow-up
-        work.
+        alpha. `flash` now maps to `FireworkParticles.FlashProvider` with
+        decoded ARGB color, fixed lifetime `4`, translucent layer, and the
+        vanilla overlay size / render-alpha formulas. Other non-spell particle
+        option rendering remains separate follow-up work.
       - `SpellParticle.WitchProvider` reuses the simple spell motion/lifetime
         metadata and applies the vanilla shared random magenta brightness
         (`0.35..0.85` for red and blue, zero green)

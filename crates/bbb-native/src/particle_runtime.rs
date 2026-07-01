@@ -204,7 +204,7 @@ impl ParticleCommandResolver {
         let override_limiter = particle_type.override_limiter || packet.override_limiter;
         let raw_options_len = packet.particle.raw_options.len();
         let (option_color, option_power) =
-            spell_particle_option_render_state(particle_type.id, &packet.particle.raw_options);
+            particle_option_render_state(particle_type.id, &packet.particle.raw_options);
         let initial_delay_ticks = initial_delay_ticks_for_particle_options(
             particle_type.id,
             &packet.particle.raw_options,
@@ -1187,7 +1187,7 @@ fn initial_delay_ticks_for_particle_options(particle_type_id: i32, raw_options: 
     }
 }
 
-fn spell_particle_option_render_state(
+fn particle_option_render_state(
     particle_type_id: i32,
     raw_options: &[u8],
 ) -> (Option<[f32; 4]>, Option<f32>) {
@@ -1205,7 +1205,7 @@ fn spell_particle_option_render_state(
             }
             (Some(rgb_particle_color(color)), Some(power))
         }
-        ENTITY_EFFECT_PARTICLE_TYPE_ID => {
+        ENTITY_EFFECT_PARTICLE_TYPE_ID | FLASH_PARTICLE_TYPE_ID => {
             let Ok(color) = decoder.read_i32() else {
                 return (None, None);
             };
@@ -1375,6 +1375,7 @@ const EXPLOSION_EMITTER_PARTICLE_TYPE_ID: i32 = 22;
 const EXPLOSION_PARTICLE_TYPE_ID: i32 = 23;
 const FLAME_PARTICLE_TYPE_ID: i32 = 32;
 const SOUL_FIRE_FLAME_PARTICLE_TYPE_ID: i32 = 40;
+const FLASH_PARTICLE_TYPE_ID: i32 = 42;
 const HAPPY_VILLAGER_PARTICLE_TYPE_ID: i32 = 43;
 const INSTANT_EFFECT_PARTICLE_TYPE_ID: i32 = 46;
 const LARGE_SMOKE_PARTICLE_TYPE_ID: i32 = 55;
@@ -1597,6 +1598,29 @@ mod tests {
                 0x22 as f32 / 255.0,
                 0x33 as f32 / 255.0,
                 0x80 as f32 / 255.0,
+            ])
+        );
+        assert_eq!(command.option_power, None);
+    }
+
+    #[test]
+    fn flash_particle_options_decode_argb_color_into_spawn_command() {
+        let mut resolver = test_resolver(0);
+        let mut packet = level_particles_packet(FLASH_PARTICLE_TYPE_ID, 0);
+        packet.particle.raw_options = 0x6612_3456_u32.to_be_bytes().to_vec();
+
+        let batch = resolver.resolve_level_particles(&packet);
+
+        assert_eq!(batch.len(), 1);
+        let command = &batch.commands[0];
+        assert_eq!(command.particle_id, "minecraft:flash");
+        assert_eq!(
+            command.option_color,
+            Some([
+                0x12 as f32 / 255.0,
+                0x34 as f32 / 255.0,
+                0x56 as f32 / 255.0,
+                0x66 as f32 / 255.0,
             ])
         );
         assert_eq!(command.option_power, None);
@@ -2548,6 +2572,7 @@ mod tests {
                 "effect_0",
                 "spell_0",
                 "dragon_breath_0",
+                "flash",
                 "flame",
                 "soul_fire_flame",
                 "explosion_emitter_0",
@@ -2632,6 +2657,14 @@ mod tests {
             r#"{
               "textures": [
                 "minecraft:dragon_breath_0"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("flash.json"),
+            r#"{
+              "textures": [
+                "minecraft:flash"
               ]
             }"#,
         );

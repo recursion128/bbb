@@ -1274,6 +1274,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `entity_effect`; renderer maps them to vanilla
     `SpellParticle.InstantProvider` / `MobEffectProvider`, applies option
     tint/alpha, and mirrors `setPower(power)` velocity adjustment.
+  - [x] `FireworkParticles.FlashProvider`：native command resolution decodes
+    `ColorParticleOption` ARGB for `minecraft:flash`; renderer maps the
+    provider to fixed lifetime `4`, translucent layer, random sprite selection,
+    option tint, and vanilla overlay `getQuadSize` / extract alpha formulas.
   - 初速度。
   - lifetime。
   - size curve。

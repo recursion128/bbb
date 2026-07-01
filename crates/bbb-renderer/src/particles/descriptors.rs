@@ -197,6 +197,7 @@ pub(crate) enum ParticleQuadSizeCurve {
     Constant,
     GrowToBase,
     Flame,
+    FlashOverlay,
     Portal,
     ReversePortal,
     Shriek,
@@ -837,6 +838,21 @@ impl ParticleDescriptor {
                 gravity: 0.0,
                 has_physics: false,
                 speed_up_when_y_motion_is_blocked: true,
+            },
+            "minecraft:flash" => Self {
+                provider: "FireworkParticles.FlashProvider",
+                lifetime: ParticleLifetimeDescriptor::Fixed(4),
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 1.0,
+                    color: ParticleColorDescriptor::FixedRgba([1.0, 1.0, 1.0, 1.0]),
+                    quad_size_curve: ParticleQuadSizeCurve::FlashOverlay,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Zero,
+                friction: 0.98,
+                gravity: 0.0,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
             },
             "minecraft:effect"
             | "minecraft:instant_effect"
@@ -1934,6 +1950,26 @@ mod tests {
         assert_eq!(
             angry_villager.initial_position([1.0, 2.0, 3.0], &mut ParticleRandom::new(1)),
             [1.0, 2.5, 3.0]
+        );
+
+        assert_descriptor(
+            "minecraft:flash",
+            "FireworkParticles.FlashProvider",
+            ParticleLifetimeDescriptor::Fixed(4),
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::SingleQuadScaled {
+                scale: 1.0,
+                color: ParticleColorDescriptor::FixedRgba([1.0, 1.0, 1.0, 1.0]),
+                quad_size_curve: ParticleQuadSizeCurve::FlashOverlay,
+            },
+            0.98,
+            0.0,
+            true,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:flash").initial_velocity,
+            ParticleInitialVelocityDescriptor::Zero
         );
 
         assert_descriptor(
