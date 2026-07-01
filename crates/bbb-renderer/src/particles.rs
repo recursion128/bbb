@@ -952,6 +952,20 @@ impl ParticleInstance {
                 self.velocity[1] *= 0.02 * friction;
                 self.velocity[2] *= 0.02 * friction;
             }
+            ParticleTickMotionDescriptor::CoolingDripHang => {
+                let cooling_age = self.age_ticks as f32;
+                self.color[0] = 1.0;
+                self.color[1] = 16.0 / (cooling_age + 16.0);
+                self.color[2] = 4.0 / (cooling_age + 8.0);
+                self.velocity[1] -= f64::from(self.gravity);
+                self.position[0] += self.velocity[0];
+                self.position[1] += self.velocity[1];
+                self.position[2] += self.velocity[2];
+                let friction = f64::from(self.friction);
+                self.velocity[0] *= 0.02 * friction;
+                self.velocity[1] *= 0.02 * friction;
+                self.velocity[2] *= 0.02 * friction;
+            }
             ParticleTickMotionDescriptor::DustPlume => {
                 self.gravity *= 0.88;
                 self.friction *= 0.92;
@@ -2115,6 +2129,27 @@ mod tests {
         assert_close3(instance.previous_position, [1.0, 2.0, 3.0]);
         assert_close3(instance.position, [1.1, 1.999_988, 2.8]);
         assert_close3(instance.velocity, [0.001_96, -0.000_000_235_2, -0.003_92]);
+    }
+
+    #[test]
+    fn particle_runtime_lava_drip_hang_updates_cooling_color_before_motion() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:dripping_lava", 40);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.1, 0.0, -0.2];
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.active_instances, 1);
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 1);
+        assert_close3(instance.previous_position, [1.0, 2.0, 3.0]);
+        assert_eq!(instance.color, [1.0, 1.0, 0.5, 1.0]);
+        assert_close3(instance.position, [1.1, 1.9988, 2.8]);
+        assert_close3(instance.velocity, [0.001_96, -0.000_023_52, -0.003_92]);
     }
 
     #[test]
@@ -3691,6 +3726,72 @@ mod tests {
             ParticleLightEmissionDescriptor::FullBlock
         );
         assert_eq!(landing_obsidian.render_layer, ParticleRenderLayer::Opaque);
+
+        let mut dripping_lava_random = ParticleRandom::new(87);
+        let dripping_lava = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:dripping_lava", 1.0),
+            &mut dripping_lava_random,
+        );
+        assert_eq!(dripping_lava.provider, "DripParticle.LavaHangProvider");
+        assert_range_f32(dripping_lava.base_quad_size, 0.1, 0.2);
+        assert_eq!(dripping_lava.color, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(dripping_lava.lifetime_ticks, 40);
+        assert_eq!(dripping_lava.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(dripping_lava.friction, 0.98);
+        assert_eq!(dripping_lava.gravity, 0.0012);
+        assert_eq!(
+            dripping_lava.tick_motion,
+            ParticleTickMotionDescriptor::CoolingDripHang
+        );
+        assert_eq!(
+            dripping_lava.light_emission,
+            ParticleLightEmissionDescriptor::World
+        );
+        assert_eq!(dripping_lava.render_layer, ParticleRenderLayer::Opaque);
+
+        let mut falling_lava_random = ParticleRandom::new(88);
+        let falling_lava = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:falling_lava", 1.0),
+            &mut falling_lava_random,
+        );
+        assert_eq!(falling_lava.provider, "DripParticle.LavaFallProvider");
+        assert_range_f32(falling_lava.base_quad_size, 0.1, 0.2);
+        assert_eq!(falling_lava.color, [1.0, 0.285_714_3, 0.083_333_336, 1.0]);
+        assert!((64..=320).contains(&falling_lava.lifetime_ticks));
+        assert_eq!(falling_lava.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(falling_lava.friction, 0.98);
+        assert_eq!(falling_lava.gravity, 0.06);
+        assert_eq!(
+            falling_lava.tick_motion,
+            ParticleTickMotionDescriptor::WaterDrop
+        );
+        assert_eq!(
+            falling_lava.light_emission,
+            ParticleLightEmissionDescriptor::World
+        );
+        assert_eq!(falling_lava.render_layer, ParticleRenderLayer::Opaque);
+
+        let mut landing_lava_random = ParticleRandom::new(89);
+        let landing_lava = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:landing_lava", 1.0),
+            &mut landing_lava_random,
+        );
+        assert_eq!(landing_lava.provider, "DripParticle.LavaLandProvider");
+        assert_range_f32(landing_lava.base_quad_size, 0.1, 0.2);
+        assert_eq!(landing_lava.color, [1.0, 0.285_714_3, 0.083_333_336, 1.0]);
+        assert!((16..=80).contains(&landing_lava.lifetime_ticks));
+        assert_eq!(landing_lava.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(landing_lava.friction, 0.98);
+        assert_eq!(landing_lava.gravity, 0.06);
+        assert_eq!(
+            landing_lava.tick_motion,
+            ParticleTickMotionDescriptor::WaterDrop
+        );
+        assert_eq!(
+            landing_lava.light_emission,
+            ParticleLightEmissionDescriptor::World
+        );
+        assert_eq!(landing_lava.render_layer, ParticleRenderLayer::Opaque);
 
         let mut crimson_random = ParticleRandom::new(46);
         let crimson_spore = ParticleInstance::from_spawn_command(

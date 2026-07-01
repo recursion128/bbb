@@ -363,6 +363,18 @@ When an agent does any of the following, update this file in the same slice:
         `0.06`. Hang-to-fall child spawning, fall-to-land child spawning, and
         on-ground collision remain deferred with world-coupled particle/audio
         work.
+      - `DripParticle.LavaHangProvider`, `LavaFallProvider`, and
+        `LavaLandProvider` use random sprite selection, zero initial velocity,
+        DripParticle opaque layer, physics metadata, `0.98` friction, direct
+        gravity motion, non-glowing world light, and lifetimes `40`,
+        `64 / (random * 0.8 + 0.2)`, and
+        `16 / (random * 0.8 + 0.2)`, with gravity `0.0012`, `0.06`, and
+        `0.06`. The hang provider starts at the vanilla default white and
+        updates RGB during runtime with `CoolingDripHangParticle.preMoveUpdate`
+        before applying hang-particle `0.02` post-move damping. Hang-to-fall
+        child spawning, fall-to-land child spawning, lava-fluid removal, and
+        on-ground collision remain deferred with world-coupled particle/audio
+        work.
       - `SuspendedParticle.CrimsonSporeProvider` and `WarpedSporeProvider`
         use random sprite selection, `y - 0.125` initial position,
         `0.6..1.2` quad-size multiplier, `16 / (random * 0.8 + 0.2)`

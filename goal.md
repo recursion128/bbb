@@ -1275,6 +1275,18 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `28 / (random * 0.8 + 0.2)`, with gravity `0.000012`, `0.01`, and
     `0.06`. Hang-to-fall child spawning, fall-to-land child spawning, and
     on-ground collision remain in the world-coupled particle/audio follow-up.
+  - [x] `DripParticle.LavaHangProvider` / `LavaFallProvider` /
+    `LavaLandProvider`：renderer descriptor now maps `dripping_lava`,
+    `falling_lava`, and `landing_lava` to random sprites, vanilla
+    DripParticle opaque layer, zero initial velocity, physics metadata,
+    `0.98` friction, direct gravity motion, non-glowing world light, initial
+    default-white cooling hang color with runtime
+    `CoolingDripHangParticle.preMoveUpdate` RGB formula, hang-particle `0.02`
+    post-move damping, lifetimes `40`, `64 / (random * 0.8 + 0.2)`, and
+    `16 / (random * 0.8 + 0.2)`, with gravity `0.0012`, `0.06`, and `0.06`.
+    Hang-to-fall child spawning, fall-to-land child spawning, lava-fluid
+    removal, and on-ground collision remain in the world-coupled particle/audio
+    follow-up.
   - [x] `SuspendedParticle.CrimsonSporeProvider` /
     `WarpedSporeProvider`：renderer descriptor now mirrors vanilla random
     sprite selection, `y - 0.125` initial position, `0.6..1.2` quad-size
