@@ -15,7 +15,7 @@ use bbb_protocol::packets::{
     NbtSummaryValue, SoundEventSummary, TrimMaterialSummary, TrimPatternSummary,
     WrittenBookContentSummary,
 };
-use chrono::{Datelike, FixedOffset, Local, TimeZone, Timelike, Utc, Weekday};
+use chrono::{Datelike, FixedOffset, Local, Offset, TimeZone, Timelike, Utc, Weekday};
 use chrono_tz::Tz;
 use serde_json::Value;
 
@@ -1290,6 +1290,7 @@ struct LocalTimeFields {
     second: u32,
     millisecond: u32,
     weekday: Weekday,
+    offset_seconds: i32,
 }
 
 impl LocalTimeFields {
@@ -1303,6 +1304,7 @@ impl LocalTimeFields {
             second: date.second(),
             millisecond: date.nanosecond() / 1_000_000,
             weekday: date.weekday(),
+            offset_seconds: date.offset().fix().local_minus_utc(),
         }
     }
 }
@@ -1386,6 +1388,15 @@ fn format_local_time_field(
         's' => Some(padded_u32(fields.second, count)),
         'S' => Some(fractional_second(fields.millisecond, count)),
         'a' => english_text(locale, if fields.hour < 12 { "AM" } else { "PM" }),
+        'Z' => {
+            if (1..=3).contains(&count) {
+                Some(rfc822_offset(fields.offset_seconds))
+            } else {
+                None
+            }
+        }
+        'X' => iso8601_offset(fields.offset_seconds, count, true),
+        'x' => iso8601_offset(fields.offset_seconds, count, false),
         'E' => {
             if count <= 3 {
                 english_text(locale, short_weekday_name(fields.weekday))
@@ -1395,6 +1406,39 @@ fn format_local_time_field(
         }
         _ => None,
     }
+}
+
+fn rfc822_offset(offset_seconds: i32) -> String {
+    let (sign, hours, minutes) = offset_parts(offset_seconds);
+    format!("{sign}{hours:02}{minutes:02}")
+}
+
+fn iso8601_offset(offset_seconds: i32, width: usize, zero_as_z: bool) -> Option<String> {
+    if !(1..=3).contains(&width) {
+        return None;
+    }
+    if offset_seconds == 0 && zero_as_z {
+        return Some("Z".to_string());
+    }
+    let (sign, hours, minutes) = offset_parts(offset_seconds);
+    match width {
+        1 => {
+            if minutes == 0 {
+                Some(format!("{sign}{hours:02}"))
+            } else {
+                Some(format!("{sign}{hours:02}{minutes:02}"))
+            }
+        }
+        2 => Some(format!("{sign}{hours:02}{minutes:02}")),
+        3 => Some(format!("{sign}{hours:02}:{minutes:02}")),
+        _ => None,
+    }
+}
+
+fn offset_parts(offset_seconds: i32) -> (char, i32, i32) {
+    let sign = if offset_seconds < 0 { '-' } else { '+' };
+    let total_minutes = offset_seconds.abs() / 60;
+    (sign, total_minutes / 60, total_minutes % 60)
 }
 
 fn padded_i32(value: i32, width: usize) -> String {

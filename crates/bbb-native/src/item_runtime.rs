@@ -10514,6 +10514,24 @@ mod tests {
         );
         assert_eq!(selected(2), uv("tokyo_clock_fallback"));
 
+        runtime.set_local_time_epoch_millis_for_test(
+            chrono::Utc
+                .with_ymd_and_hms(2026, 12, 25, 0, 8, 7)
+                .single()
+                .unwrap()
+                .timestamp_millis(),
+        );
+        assert_eq!(selected(3), uv("utc_offset_clock_match"));
+
+        runtime.set_local_time_epoch_millis_for_test(
+            chrono::Utc
+                .with_ymd_and_hms(2026, 12, 25, 0, 8, 8)
+                .single()
+                .unwrap()
+                .timestamp_millis(),
+        );
+        assert_eq!(selected(3), uv("utc_offset_clock_fallback"));
+
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -16107,7 +16125,15 @@ mod tests {
     fn write_local_time_select_fixture(root: &Path) {
         let assets = assets_dir(root);
         write_item_atlases(&assets);
-        write_item_registry_source(root, &["seasonal_chest", "precise_clock", "tokyo_clock"]);
+        write_item_registry_source(
+            root,
+            &[
+                "seasonal_chest",
+                "precise_clock",
+                "tokyo_clock",
+                "utc_offset_clock",
+            ],
+        );
         write_json(
             &assets.join("items").join("seasonal_chest.json"),
             r#"{
@@ -16150,15 +16176,33 @@ mod tests {
                 "model": {
                     "type": "minecraft:select",
                     "property": "minecraft:local_time",
-                    "pattern": "yyyy-MM-dd'T'HH:mm:ss.SSS EEEE a",
+                    "pattern": "yyyy-MM-dd'T'HH:mm:ss.SSS XXX Z x",
                     "time_zone": "Asia/Tokyo",
                     "cases": [
                         {
-                            "when": "2026-12-25T00:08:07.123 Friday AM",
+                            "when": "2026-12-25T00:08:07.123 +09:00 +0900 +09",
                             "model": { "type": "minecraft:model", "model": "minecraft:item/tokyo_clock_match" }
                         }
                     ],
                     "fallback": { "type": "minecraft:model", "model": "minecraft:item/tokyo_clock_fallback" }
+                }
+            }"#,
+        );
+        write_json(
+            &assets.join("items").join("utc_offset_clock.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:local_time",
+                    "pattern": "yyyy-MM-dd'T'HH:mm:ss X xx",
+                    "time_zone": "UTC",
+                    "cases": [
+                        {
+                            "when": "2026-12-25T00:08:07 Z +0000",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/utc_offset_clock_match" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/utc_offset_clock_fallback" }
                 }
             }"#,
         );
@@ -16168,6 +16212,8 @@ mod tests {
         write_flat_item_model_and_texture(&assets, "precise_clock_fallback", &[40, 40, 40, 255]);
         write_flat_item_model_and_texture(&assets, "tokyo_clock_match", &[180, 120, 40, 255]);
         write_flat_item_model_and_texture(&assets, "tokyo_clock_fallback", &[40, 40, 80, 255]);
+        write_flat_item_model_and_texture(&assets, "utc_offset_clock_match", &[120, 180, 40, 255]);
+        write_flat_item_model_and_texture(&assets, "utc_offset_clock_fallback", &[30, 30, 80, 255]);
     }
 
     fn write_component_select_fixture(root: &Path) {
