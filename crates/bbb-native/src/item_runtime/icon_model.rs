@@ -4930,8 +4930,13 @@ struct ExactWrittenBookContent<'a> {
     title: ExactFilterableString<'a>,
     author: &'a str,
     generation: i32,
-    pages: Vec<ExactFilterableString<'a>>,
+    pages: Vec<ExactFilterableComponentText>,
     resolved: bool,
+}
+
+struct ExactFilterableComponentText {
+    raw: String,
+    filtered: Option<String>,
 }
 
 fn written_book_exact_value(value: &Value) -> Option<ExactWrittenBookContent<'_>> {
@@ -4977,21 +4982,21 @@ fn written_book_exact_value(value: &Value) -> Option<ExactWrittenBookContent<'_>
     })
 }
 
-fn exact_filterable_component_text_value(value: &Value) -> Option<ExactFilterableString<'_>> {
+fn exact_filterable_component_text_value(value: &Value) -> Option<ExactFilterableComponentText> {
     if let Value::Object(value) = value {
         if value.keys().all(|key| key == "raw" || key == "filtered") && value.contains_key("raw") {
             let filtered = match value.get("filtered") {
                 None => None,
-                Some(filtered) => Some(simple_component_text(filtered)?),
+                Some(filtered) => Some(component_summary_text(filtered)?),
             };
-            return Some(ExactFilterableString {
-                raw: simple_component_text(value.get("raw")?)?,
+            return Some(ExactFilterableComponentText {
+                raw: component_summary_text(value.get("raw")?)?,
                 filtered,
             });
         }
     }
-    Some(ExactFilterableString {
-        raw: simple_component_text(value)?,
+    Some(ExactFilterableComponentText {
+        raw: component_summary_text(value)?,
         filtered: None,
     })
 }
@@ -5027,7 +5032,8 @@ fn written_book_exact_match(
         .iter()
         .zip(book.pages.iter().zip(&book.page_filters))
         .all(|(expected, (actual_raw, actual_filtered))| {
-            actual_raw == expected.raw && actual_filtered.as_deref() == expected.filtered
+            actual_raw == &expected.raw
+                && actual_filtered.as_deref() == expected.filtered.as_deref()
         })
 }
 

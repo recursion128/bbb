@@ -12461,10 +12461,31 @@ mod tests {
                                                 "author": "Alex",
                                                 "generation": 1,
                                                 "pages": [
-                                                    "First page",
                                                     {
-                                                        "raw": "Second page",
-                                                        "filtered": "Filtered second page"
+                                                        "text": "First",
+                                                        "extra": [
+                                                            {
+                                                                "text": " page",
+                                                                "italic": true
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "raw": {
+                                                            "translate": "Second",
+                                                            "with": [
+                                                                "page"
+                                                            ]
+                                                        },
+                                                        "filtered": {
+                                                            "text": "Filtered second",
+                                                            "extra": [
+                                                                {
+                                                                    "text": " page",
+                                                                    "color": "blue"
+                                                                }
+                                                            ]
+                                                        }
                                                     }
                                                 ],
                                                 "resolved": true

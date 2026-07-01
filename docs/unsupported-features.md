@@ -5911,7 +5911,8 @@ When an agent does any of the following, update this file in the same slice:
       `custom_name`, plus exact `minecraft:writable_book_content`
       ordered `Filterable<String>` page lists with raw and optional filtered
       strings, plus exact `minecraft:written_book_content` components for raw
-      / filtered title strings and ordered simple literal component pages, plus
+      / filtered title strings and ordered simple literal plus styled / extra /
+      translated component page text summaries, plus
       exact `minecraft:firework_explosion` components for
       `shape`, ordered `colors`, ordered `fade_colors`, `has_trail`, and
       `has_twinkle`, plus exact `minecraft:fireworks` components for
@@ -5970,7 +5971,8 @@ When an agent does any of the following, update this file in the same slice:
       extra override display text summaries. Exact
       `minecraft:written_book_content` components now compare decoded raw /
       filtered title strings, author, generation, resolved, and ordered simple
-      literal raw / filtered pages. Remaining
+      literal plus styled / extra / translated raw / filtered page text
+      summaries. Remaining
       constrained predicate types (inline enchantment holder payloads / server
       datapack tag remaps, broader NBT scalar typing, remaining concrete partial
       predicates and complex exact component codecs beyond simple literal name
@@ -5979,10 +5981,10 @@ When an agent does any of the following, update this file in the same slice:
       `firework_explosion` / `fireworks` components, plus direct-key exact
       `jukebox_playable` and `trim` components, potion / mob-effect datapack
       registry remaps for `potion_contents`, attribute modifier inline /
-      datapack attribute holder payloads,
-      non-literal / rich / styled written-book page `ComponentSerialization`
-      equality, trim inline material or pattern payloads / datapack pattern
-      registry-key remaps, datapack villager-type registry remaps, jukebox
+      datapack attribute holder payloads, full style-sensitive written-book page
+      `ComponentSerialization` equality, trim inline material or pattern
+      payloads / datapack pattern registry-key remaps, datapack villager-type
+      registry remaps, jukebox
       inline song payloads / datapack jukebox-song registry
       remaps, and similar) remain follow-up.
     - `minecraft:charge_type` — `Charge.get` (`ROCKET` when any charged
