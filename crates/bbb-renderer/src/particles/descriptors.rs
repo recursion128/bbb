@@ -23,6 +23,7 @@ pub(crate) enum ParticleTickMotionDescriptor {
     DirectGravityNoFriction,
     NoMotion,
     Portal,
+    ReversePortal,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -70,6 +71,7 @@ pub(crate) enum ParticleLifetimeDescriptor {
     SixteenOverRandomPlusTwo,
     FortyOverRandom,
     Portal,
+    ReversePortal,
     RandomInclusive {
         min: u32,
         max: u32,
@@ -119,6 +121,7 @@ pub(crate) enum ParticleVisualDescriptor {
     },
     HugeExplosion,
     Portal,
+    ReversePortal,
     BaseAshSmoke {
         scale: f32,
         color: ParticleColorDescriptor,
@@ -168,6 +171,7 @@ pub(crate) enum ParticleQuadSizeCurve {
     GrowToBase,
     Flame,
     Portal,
+    ReversePortal,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -988,6 +992,17 @@ impl ParticleDescriptor {
                 has_physics: false,
                 speed_up_when_y_motion_is_blocked: false,
             },
+            "minecraft:reverse_portal" => Self {
+                provider: "ReversePortalParticle.ReversePortalProvider",
+                lifetime: ParticleLifetimeDescriptor::ReversePortal,
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::ReversePortal,
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
+                friction: 0.98,
+                gravity: 0.0,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: false,
+            },
             "minecraft:spit" => Self {
                 provider: "SpitParticle.Provider",
                 lifetime: ParticleLifetimeDescriptor::Explode,
@@ -1046,6 +1061,9 @@ impl ParticleDescriptor {
             "BubblePopParticle.Provider" => ParticleTickMotionDescriptor::DirectGravityNoFriction,
             "AttackSweepParticle.Provider" => ParticleTickMotionDescriptor::NoMotion,
             "PortalParticle.Provider" => ParticleTickMotionDescriptor::Portal,
+            "ReversePortalParticle.ReversePortalProvider" => {
+                ParticleTickMotionDescriptor::ReversePortal
+            }
             _ => ParticleTickMotionDescriptor::DefaultParticleTick,
         }
     }
@@ -1075,7 +1093,9 @@ impl ParticleDescriptor {
             | "GlowParticle.WaxOffProvider"
             | "GlowParticle.WaxOnProvider" => ParticleLightEmissionDescriptor::SmoothBlockByAge,
             // Vanilla portal particles add `(age / lifetime)^4` smooth block emission.
-            "PortalParticle.Provider" => ParticleLightEmissionDescriptor::SmoothBlockByAgeQuartic,
+            "PortalParticle.Provider" | "ReversePortalParticle.ReversePortalProvider" => {
+                ParticleLightEmissionDescriptor::SmoothBlockByAgeQuartic
+            }
             _ => ParticleLightEmissionDescriptor::World,
         }
     }
@@ -1213,6 +1233,15 @@ impl ParticleVisualDescriptor {
                     portal_size,
                     [brightness * 0.9, brightness * 0.3, brightness, 1.0],
                     ParticleQuadSizeCurve::Portal,
+                )
+            }
+            Self::ReversePortal => {
+                let portal_size = (base_quad_size * 0.2 + 0.03) * 1.5;
+                let brightness = random.next_f32() * 0.6 + 0.4;
+                ParticleVisualState::new(
+                    portal_size,
+                    [brightness * 0.9, brightness * 0.3, brightness, 1.0],
+                    ParticleQuadSizeCurve::ReversePortal,
                 )
             }
             Self::BaseAshSmoke { scale, color } => ParticleVisualState::new(
@@ -1498,6 +1527,10 @@ impl ParticleLifetimeDescriptor {
             }
             Self::FortyOverRandom => ((40.0 / (random.next_f32() * 0.8 + 0.2)) as u32).max(1),
             Self::Portal => (random.next_f32() * 10.0) as u32 + 40,
+            Self::ReversePortal => {
+                random.next_f32();
+                (random.next_f32() * 2.0) as u32 + 60
+            }
             Self::RandomInclusive { min, max } => {
                 let span = max.saturating_sub(min).saturating_add(1);
                 min + random.next_index(span as usize).unwrap_or(0) as u32
@@ -2637,6 +2670,30 @@ mod tests {
         assert_eq!(portal.tick_motion(), ParticleTickMotionDescriptor::Portal);
         assert_eq!(
             portal.light_emission(),
+            ParticleLightEmissionDescriptor::SmoothBlockByAgeQuartic
+        );
+        assert_descriptor(
+            "minecraft:reverse_portal",
+            "ReversePortalParticle.ReversePortalProvider",
+            ParticleLifetimeDescriptor::ReversePortal,
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::ReversePortal,
+            0.98,
+            0.0,
+            false,
+            false,
+        );
+        let reverse_portal = ParticleDescriptor::for_particle("minecraft:reverse_portal");
+        assert_eq!(
+            reverse_portal.initial_velocity,
+            ParticleInitialVelocityDescriptor::Command
+        );
+        assert_eq!(
+            reverse_portal.tick_motion(),
+            ParticleTickMotionDescriptor::ReversePortal
+        );
+        assert_eq!(
+            reverse_portal.light_emission(),
             ParticleLightEmissionDescriptor::SmoothBlockByAgeQuartic
         );
         assert_descriptor(

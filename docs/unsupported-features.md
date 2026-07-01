@@ -275,6 +275,12 @@ When an agent does any of the following, update this file in the same slice:
         `[0.9, 0.3, 1.0]` RGB scaling, `40..49` lifetime,
         `1 - (1-progress)^2` render-size curve, start-position tick path, and
         `(age / lifetime)^4` smooth block-light emission
+      - `ReversePortalParticle.ReversePortalProvider` inherits portal random
+        sprite/color setup, applies the vanilla `1.5` quad-size multiplier,
+        consumes the parent portal lifetime draw before overriding lifetime to
+        `60..61`, uses the `1 - progress / 1.5` render-size curve, moves by
+        incremental age-scaled velocity, and inherits quartic smooth block
+        emission
       - `NoteParticle.Provider` command-x hue color formula, fixed lifetime,
         grow-to-base size curve, 1.5 quad-size scale, initial y-speed offset,
         friction, and blocked-y speed-up metadata

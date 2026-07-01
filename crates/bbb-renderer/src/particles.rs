@@ -522,6 +522,9 @@ impl ParticleInstance {
             ParticleQuadSizeCurve::Portal => {
                 self.base_quad_size * (1.0 - (1.0 - progress) * (1.0 - progress))
             }
+            ParticleQuadSizeCurve::ReversePortal => {
+                self.base_quad_size * (1.0 - progress / 1.5).max(0.0)
+            }
         }
     }
 
@@ -558,6 +561,15 @@ impl ParticleInstance {
                     + f64::from(1.0 - progress);
                 self.position[2] =
                     self.start_position[2] + self.velocity[2] * f64::from(position_scale);
+            }
+            ParticleTickMotionDescriptor::ReversePortal => {
+                let next_age = self.age_ticks.saturating_add(1);
+                let lifetime = self.lifetime_ticks.max(1) as f32;
+                let speed_multiplier = f64::from((next_age as f32 / lifetime).clamp(0.0, 1.0));
+                self.previous_position = self.position;
+                self.position[0] += self.velocity[0] * speed_multiplier;
+                self.position[1] += self.velocity[1] * speed_multiplier;
+                self.position[2] += self.velocity[2] * speed_multiplier;
             }
         }
     }
@@ -1075,6 +1087,33 @@ mod tests {
             ],
         );
         assert_close3(instance.velocity, [-5.0, 0.5, 5.0]);
+    }
+
+    #[test]
+    fn particle_runtime_reverse_portal_tick_uses_incremental_age_scaled_velocity() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:reverse_portal", 60);
+        instance.position = [10.0, 64.0, -2.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [-6.0, 0.6, 6.0];
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.expired_instances, 0);
+        let instance = &particles.active_instances()[0];
+        let speed_multiplier = 1.0_f64 / 60.0;
+        assert_eq!(instance.age_ticks, 1);
+        assert_close3(instance.previous_position, [10.0, 64.0, -2.0]);
+        assert_close3(
+            instance.position,
+            [
+                10.0 - 6.0 * speed_multiplier,
+                64.0 + 0.6 * speed_multiplier,
+                -2.0 + 6.0 * speed_multiplier,
+            ],
+        );
+        assert_close3(instance.velocity, [-6.0, 0.6, 6.0]);
     }
 
     #[test]
@@ -1893,6 +1932,40 @@ mod tests {
             ParticleLightEmissionDescriptor::SmoothBlockByAgeQuartic
         );
 
+        let mut reverse_portal_random = ParticleRandom::new(81);
+        let mut reverse_portal_command = spawn_command("minecraft:reverse_portal", 1.0);
+        reverse_portal_command.velocity = [-5.0, 0.0, 5.0];
+        let reverse_portal = ParticleInstance::from_spawn_command(
+            reverse_portal_command,
+            &mut reverse_portal_random,
+        );
+        assert_eq!(
+            reverse_portal.provider,
+            "ReversePortalParticle.ReversePortalProvider"
+        );
+        assert_eq!(
+            reverse_portal.sprite_selection,
+            ParticleSpriteSelection::Random
+        );
+        assert_eq!(
+            reverse_portal.quad_size_curve,
+            ParticleQuadSizeCurve::ReversePortal
+        );
+        assert_range_f32(reverse_portal.base_quad_size, 0.075, 0.105);
+        assert_close_f32(reverse_portal.color[0], reverse_portal.color[2] * 0.9);
+        assert_close_f32(reverse_portal.color[1], reverse_portal.color[2] * 0.3);
+        assert_eq!(reverse_portal.color[3], 1.0);
+        assert!((60..=61).contains(&reverse_portal.lifetime_ticks));
+        assert_eq!(reverse_portal.velocity, [-5.0, 0.0, 5.0]);
+        assert_eq!(
+            reverse_portal.tick_motion,
+            ParticleTickMotionDescriptor::ReversePortal
+        );
+        assert_eq!(
+            reverse_portal.light_emission,
+            ParticleLightEmissionDescriptor::SmoothBlockByAgeQuartic
+        );
+
         let mut explosion_random = ParticleRandom::new(70);
         let mut explosion_command = spawn_command("minecraft:explosion", 1.0);
         explosion_command.velocity = [0.5, 2.0, 3.0];
@@ -2105,6 +2178,15 @@ mod tests {
         assert_close_f32(portal.quad_size_at_partial_tick(0.0), 0.045);
         portal.age_ticks = 40;
         assert_close_f32(portal.quad_size_at_partial_tick(0.0), 0.06);
+
+        let mut reverse_portal = test_instance_with_lifetime("minecraft:reverse_portal", 60);
+        reverse_portal.base_quad_size = 0.09;
+        reverse_portal.quad_size_curve = ParticleQuadSizeCurve::ReversePortal;
+        assert_close_f32(reverse_portal.quad_size_at_partial_tick(0.0), 0.09);
+        reverse_portal.age_ticks = 30;
+        assert_close_f32(reverse_portal.quad_size_at_partial_tick(0.0), 0.06);
+        reverse_portal.age_ticks = 60;
+        assert_close_f32(reverse_portal.quad_size_at_partial_tick(0.0), 0.03);
     }
 
     #[test]
@@ -2244,7 +2326,7 @@ mod tests {
     #[test]
     fn particle_runtime_applies_vanilla_particle_light_emission_overrides() {
         let sampled_light = [2.0 / 15.0, 7.0 / 15.0];
-        let mut particles = ParticleRuntimeState::with_capacities(9, 9);
+        let mut particles = ParticleRuntimeState::with_capacities(10, 10);
         let cloud = test_instance_with_lifetime("minecraft:cloud", 20);
         let mut flame = test_instance_with_lifetime("minecraft:flame", 20);
         flame.age_ticks = 4;
@@ -2257,6 +2339,8 @@ mod tests {
         let end_rod = test_instance_with_lifetime("minecraft:end_rod", 60);
         let mut portal = test_instance_with_lifetime("minecraft:portal", 40);
         portal.age_ticks = 20;
+        let mut reverse_portal = test_instance_with_lifetime("minecraft:reverse_portal", 60);
+        reverse_portal.age_ticks = 30;
 
         particles.active_instances.push_back(cloud);
         particles.active_instances.push_back(flame);
@@ -2267,6 +2351,7 @@ mod tests {
         particles.active_instances.push_back(attack_sweep);
         particles.active_instances.push_back(end_rod);
         particles.active_instances.push_back(portal);
+        particles.active_instances.push_back(reverse_portal);
 
         particles.refresh_lights(|_| sampled_light);
 
@@ -2300,6 +2385,11 @@ mod tests {
             sampled_light[0] + 0.5_f32.powi(4),
         );
         assert_close_f32(particles.active_instances()[8].light[1], sampled_light[1]);
+        assert_close_f32(
+            particles.active_instances()[9].light[0],
+            sampled_light[0] + 0.5_f32.powi(4),
+        );
+        assert_close_f32(particles.active_instances()[9].light[1], sampled_light[1]);
     }
 
     #[test]

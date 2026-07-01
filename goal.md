@@ -1188,6 +1188,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     brightness-derived `[0.9, 0.3, 1.0]` RGB scaling, `40..49` lifetime,
     portal `1 - (1-progress)^2` render-size curve, start-position tick path,
     and `(age / lifetime)^4` smooth block-light emission.
+  - [x] `ReversePortalParticle.ReversePortalProvider`：renderer descriptor
+    now mirrors vanilla inherited portal random sprite/color setup, `1.5`
+    quad-size multiplier, overridden `60..61` lifetime after consuming the
+    parent portal lifetime draw, `1 - progress / 1.5` render-size curve,
+    incremental age-scaled velocity tick path, and inherited quartic smooth
+    block-light emission.
   - 初速度。
   - lifetime。
   - size curve。
