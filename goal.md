@@ -1094,7 +1094,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     hidden base plate; result-slot armor/skull/wings equipment projection is now
     covered above.
   - container、merchant、recipe/book/sign/advancement 等 screen 调用点。
-  - GUI pass 与 world pass 的 load/clear/depth ordering。
+  - [x] GUI pass 与 world pass 的 load/clear/depth ordering：
+    renderer source-order tests pin world content rendering into the
+    renderer-owned main target before transparency combine/final blit, then HUD
+    base commands on the surface, then GUI 3D item pass with a freshly-cleared
+    depth attachment, then HUD overlay commands before screenshot readback.
+    Entity preview PIP actual GPU drawing remains a later surface, not this
+    GUI 3D item depth-ordering slice.
 
 完成标准：
 

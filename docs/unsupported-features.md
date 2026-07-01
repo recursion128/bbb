@@ -1102,7 +1102,10 @@ When an agent does any of the following, update this file in the same slice:
     overlay pass. The render graph now draws base HUD commands, then
     `bbb-native-hud-item-pass` with an isolated cleared depth buffer for GUI 3D
     block/model item faces, then `bbb-native-hud-overlay-pass` for item
-    decorations, front highlights, tooltips, and full-screen overlays. The
+    decorations, front highlights, tooltips, and full-screen overlays. Renderer
+    source-order tests pin the world-main-target -> transparency final blit ->
+    HUD base -> GUI 3D item depth-clear pass -> HUD overlay -> screenshot
+    readback ordering. The
     entity-in-UI preview surface now pins vanilla `GuiGraphicsExtractor.entity`
     / `GuiEntityRenderer` behavior at the render-plan boundary: `ENTITY_IN_UI`
     lighting, forced full-bright entity light coords, outline/glow disabled,
