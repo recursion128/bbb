@@ -60,6 +60,29 @@ const VANILLA_TRIM_PATTERN_KEYS: &[&str] = &[
     "minecraft:flow",
     "minecraft:bolt",
 ];
+const VANILLA_JUKEBOX_SONG_KEYS: &[&str] = &[
+    "minecraft:13",
+    "minecraft:cat",
+    "minecraft:blocks",
+    "minecraft:chirp",
+    "minecraft:far",
+    "minecraft:mall",
+    "minecraft:mellohi",
+    "minecraft:stal",
+    "minecraft:strad",
+    "minecraft:ward",
+    "minecraft:11",
+    "minecraft:wait",
+    "minecraft:pigstep",
+    "minecraft:otherside",
+    "minecraft:5",
+    "minecraft:relic",
+    "minecraft:precipice",
+    "minecraft:creator",
+    "minecraft:creator_music_box",
+    "minecraft:tears",
+    "minecraft:lava_chicken",
+];
 const VANILLA_DEFAULT_MAX_STACK_SIZE: i32 = 64;
 const VANILLA_ABSOLUTE_MAX_STACK_SIZE: i32 = 99;
 
@@ -892,6 +915,9 @@ pub(super) struct IconResolveContext<'a> {
     /// `tags/trim_pattern` catalog used for `#namespace:path` HolderSet entries
     /// in vanilla `TrimPredicate.pattern`.
     pub trim_pattern_tags: Option<&'a TagCatalog>,
+    /// `tags/jukebox_song` catalog used for `#namespace:path` HolderSet
+    /// entries in vanilla `JukeboxPlayablePredicate.song`.
+    pub jukebox_song_tags: Option<&'a TagCatalog>,
     /// `minecraft:trim_material` registry keys by holder id (the dynamic
     /// registry, projected from `bbb-world` at the call site).
     pub trim_material_keys: Option<&'a [String]>,
@@ -1560,6 +1586,13 @@ fn item_stack_matches_component_predicate(
     if trim_component_predicate_is_supported(property) {
         return item_stack_matches_trim_predicate(property, ctx);
     }
+    if jukebox_playable_component_predicate_is_supported(property) {
+        return item_stack_matches_jukebox_playable_predicate(
+            property,
+            ctx.component_patch,
+            ctx.jukebox_song_tags,
+        );
+    }
     if let Some(component_id) = empty_single_component_predicate_id(property) {
         return item_stack_has_component_id(
             component_id,
@@ -1595,6 +1628,7 @@ fn component_condition_is_runtime_resolved(property: &ItemModelProperty) -> bool
         || predicate == "minecraft:firework_explosion"
         || fireworks_component_predicate_is_supported(property)
         || trim_component_predicate_is_supported(property)
+        || jukebox_playable_component_predicate_is_supported(property)
         || empty_single_component_predicate_id(property).is_some()
         || component_condition_any_value_component_id(property).is_some()
 }
@@ -1922,6 +1956,7 @@ fn item_stack_matches_bundle_contents_predicate(
         ctx.trim_material_keys,
         ctx.trim_material_tags,
         ctx.trim_pattern_tags,
+        ctx.jukebox_song_tags,
         ctx.default_max_stack_size_for_item,
         ctx.default_max_damage_for_item,
     )
@@ -1981,6 +2016,7 @@ fn item_stack_matches_container_predicate(
         ctx.trim_material_keys,
         ctx.trim_material_tags,
         ctx.trim_pattern_tags,
+        ctx.jukebox_song_tags,
         ctx.default_max_stack_size_for_item,
         ctx.default_max_damage_for_item,
     )
@@ -2101,6 +2137,7 @@ fn item_partial_component_predicate_is_supported(predicate: &str, value: &Value)
         "minecraft:damage" => damage_component_predicate_value_is_supported(value),
         _ if enchantments_component_predicate_kind_from_parts(predicate, value).is_some() => true,
         "minecraft:trim" => trim_predicate_value_is_supported(value),
+        "minecraft:jukebox_playable" => jukebox_playable_predicate_value_is_supported(value),
         "minecraft:firework_explosion" => firework_explosion_predicate_is_supported(value),
         "minecraft:fireworks" => fireworks_predicate_value_is_supported(value),
         _ => {
@@ -2149,6 +2186,7 @@ fn item_collection_predicate_matches(
     trim_material_keys: Option<&[String]>,
     trim_material_tags: Option<&TagCatalog>,
     trim_pattern_tags: Option<&TagCatalog>,
+    jukebox_song_tags: Option<&TagCatalog>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
@@ -2171,6 +2209,7 @@ fn item_collection_predicate_matches(
                     trim_material_keys,
                     trim_material_tags,
                     trim_pattern_tags,
+                    jukebox_song_tags,
                     default_max_stack_size_for_item,
                     default_max_damage_for_item,
                 )
@@ -2194,6 +2233,7 @@ fn item_collection_predicate_matches(
                 trim_material_keys,
                 trim_material_tags,
                 trim_pattern_tags,
+                jukebox_song_tags,
                 default_max_stack_size_for_item,
                 default_max_damage_for_item,
             )
@@ -2225,6 +2265,7 @@ fn item_predicate_count_entry_matches(
     trim_material_keys: Option<&[String]>,
     trim_material_tags: Option<&TagCatalog>,
     trim_pattern_tags: Option<&TagCatalog>,
+    jukebox_song_tags: Option<&TagCatalog>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
@@ -2247,6 +2288,7 @@ fn item_predicate_count_entry_matches(
                 trim_material_keys,
                 trim_material_tags,
                 trim_pattern_tags,
+                jukebox_song_tags,
                 default_max_stack_size_for_item,
                 default_max_damage_for_item,
             )
@@ -2268,6 +2310,7 @@ fn item_predicate_matches(
     trim_material_keys: Option<&[String]>,
     trim_material_tags: Option<&TagCatalog>,
     trim_pattern_tags: Option<&TagCatalog>,
+    jukebox_song_tags: Option<&TagCatalog>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
@@ -2306,6 +2349,7 @@ fn item_predicate_matches(
             trim_material_keys,
             trim_material_tags,
             trim_pattern_tags,
+            jukebox_song_tags,
             default_max_stack_size_for_item,
             default_max_damage_for_item,
         ) {
@@ -2324,6 +2368,7 @@ fn item_data_component_matchers_match(
     trim_material_keys: Option<&[String]>,
     trim_material_tags: Option<&TagCatalog>,
     trim_pattern_tags: Option<&TagCatalog>,
+    jukebox_song_tags: Option<&TagCatalog>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
@@ -2351,6 +2396,7 @@ fn item_data_component_matchers_match(
             trim_material_keys,
             trim_material_tags,
             trim_pattern_tags,
+            jukebox_song_tags,
             default_max_damage_for_item,
         ) {
             return false;
@@ -2398,6 +2444,7 @@ fn item_partial_component_predicates_match(
     trim_material_keys: Option<&[String]>,
     trim_material_tags: Option<&TagCatalog>,
     trim_pattern_tags: Option<&TagCatalog>,
+    jukebox_song_tags: Option<&TagCatalog>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
     let Some(predicates) = value.as_object() else {
@@ -2417,6 +2464,7 @@ fn item_partial_component_predicates_match(
             trim_material_keys,
             trim_material_tags,
             trim_pattern_tags,
+            jukebox_song_tags,
         )
     })
 }
@@ -2432,6 +2480,7 @@ fn item_partial_component_predicate_match(
     trim_material_keys: Option<&[String]>,
     trim_material_tags: Option<&TagCatalog>,
     trim_pattern_tags: Option<&TagCatalog>,
+    jukebox_song_tags: Option<&TagCatalog>,
 ) -> bool {
     match predicate {
         "minecraft:damage" => {
@@ -2448,6 +2497,9 @@ fn item_partial_component_predicate_match(
             item_stack_matches_firework_explosion_value(value, component_patch)
         }
         "minecraft:fireworks" => item_stack_matches_fireworks_value(value, component_patch),
+        "minecraft:jukebox_playable" => {
+            item_stack_matches_jukebox_playable_value(value, component_patch, jukebox_song_tags)
+        }
         _ if let Some(kind) =
             enchantments_component_predicate_kind_from_parts(predicate, value) =>
         {
@@ -2588,11 +2640,11 @@ fn trim_predicate_value_is_supported(value: &Value) -> bool {
         .all(|key| key == "material" || key == "pattern")
         && value
             .get("material")
-            .map(trim_registry_key_holder_set_is_supported)
+            .map(registry_key_holder_set_is_supported)
             .unwrap_or(true)
         && value
             .get("pattern")
-            .map(trim_registry_key_holder_set_is_supported)
+            .map(registry_key_holder_set_is_supported)
             .unwrap_or(true)
 }
 
@@ -2646,7 +2698,7 @@ fn item_stack_matches_trim_value(
         else {
             return false;
         };
-        if !trim_registry_key_holder_set_matches(Some(material), material_key, trim_material_tags) {
+        if !registry_key_holder_set_matches(Some(material), material_key, trim_material_tags) {
             return false;
         }
     }
@@ -2660,14 +2712,84 @@ fn item_stack_matches_trim_value(
         let Some(pattern_key) = VANILLA_TRIM_PATTERN_KEYS.get(pattern_index) else {
             return false;
         };
-        if !trim_registry_key_holder_set_matches(Some(pattern), pattern_key, trim_pattern_tags) {
+        if !registry_key_holder_set_matches(Some(pattern), pattern_key, trim_pattern_tags) {
             return false;
         }
     }
     true
 }
 
-fn trim_registry_key_holder_set_matches(
+fn jukebox_playable_component_predicate_is_supported(property: &ItemModelProperty) -> bool {
+    if component_condition_predicate(property) != Some("minecraft:jukebox_playable") {
+        return false;
+    }
+    let Some(value) = property.raw().get("value") else {
+        return false;
+    };
+    jukebox_playable_predicate_value_is_supported(value)
+}
+
+fn jukebox_playable_predicate_value_is_supported(value: &Value) -> bool {
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    value.keys().all(|key| key == "song")
+        && value
+            .get("song")
+            .map(registry_key_holder_set_is_supported)
+            .unwrap_or(true)
+}
+
+fn item_stack_matches_jukebox_playable_predicate(
+    property: &ItemModelProperty,
+    component_patch: Option<&DataComponentPatchSummary>,
+    jukebox_song_tags: Option<&TagCatalog>,
+) -> bool {
+    if !jukebox_playable_component_predicate_is_supported(property) {
+        return false;
+    }
+    let Some(value) = property.raw().get("value") else {
+        return false;
+    };
+    item_stack_matches_jukebox_playable_value(value, component_patch, jukebox_song_tags)
+}
+
+fn item_stack_matches_jukebox_playable_value(
+    value: &Value,
+    component_patch: Option<&DataComponentPatchSummary>,
+    jukebox_song_tags: Option<&TagCatalog>,
+) -> bool {
+    let Some(component_patch) = component_patch else {
+        return false;
+    };
+    if component_patch
+        .removed_type_ids
+        .contains(&JUKEBOX_PLAYABLE_COMPONENT_ID)
+        || !component_patch
+            .added_type_ids
+            .contains(&JUKEBOX_PLAYABLE_COMPONENT_ID)
+    {
+        return false;
+    }
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    let Some(song) = value.get("song") else {
+        return true;
+    };
+    let Some(song_id) = component_patch.jukebox_song_id else {
+        return false;
+    };
+    let Ok(song_index) = usize::try_from(song_id) else {
+        return false;
+    };
+    let Some(song_key) = VANILLA_JUKEBOX_SONG_KEYS.get(song_index) else {
+        return false;
+    };
+    registry_key_holder_set_matches(Some(song), song_key, jukebox_song_tags)
+}
+
+fn registry_key_holder_set_matches(
     value: Option<&Value>,
     registry_key: &str,
     registry_tags: Option<&TagCatalog>,
@@ -2675,18 +2797,18 @@ fn trim_registry_key_holder_set_matches(
     match value {
         None => true,
         Some(Value::String(expected)) => {
-            trim_registry_key_holder_set_entry_matches(expected, registry_key, registry_tags)
+            registry_key_holder_set_entry_matches(expected, registry_key, registry_tags)
         }
         Some(Value::Array(expected)) => expected.iter().any(|expected| {
             expected.as_str().is_some_and(|expected| {
-                trim_registry_key_holder_set_entry_matches(expected, registry_key, registry_tags)
+                registry_key_holder_set_entry_matches(expected, registry_key, registry_tags)
             })
         }),
         Some(_) => false,
     }
 }
 
-fn trim_registry_key_holder_set_entry_matches(
+fn registry_key_holder_set_entry_matches(
     expected: &str,
     registry_key: &str,
     registry_tags: Option<&TagCatalog>,
@@ -2698,19 +2820,19 @@ fn trim_registry_key_holder_set_entry_matches(
     }
 }
 
-fn trim_registry_key_holder_set_is_supported(value: &Value) -> bool {
+fn registry_key_holder_set_is_supported(value: &Value) -> bool {
     match value {
-        Value::String(expected) => trim_registry_key_holder_set_entry_is_supported(expected),
+        Value::String(expected) => registry_key_holder_set_entry_is_supported(expected),
         Value::Array(expected) => expected.iter().all(|expected| {
             expected
                 .as_str()
-                .is_some_and(trim_registry_key_holder_set_entry_is_supported)
+                .is_some_and(registry_key_holder_set_entry_is_supported)
         }),
         _ => false,
     }
 }
 
-fn trim_registry_key_holder_set_entry_is_supported(expected: &str) -> bool {
+fn registry_key_holder_set_entry_is_supported(expected: &str) -> bool {
     if let Some(tag_id) = expected.strip_prefix('#') {
         !tag_id.is_empty()
     } else {

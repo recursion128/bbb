@@ -115,6 +115,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub armor_trim_pattern_id: Option<i32>,
     #[serde(default)]
+    pub jukebox_song_id: Option<i32>,
+    #[serde(default)]
     pub map_id: Option<i32>,
     #[serde(default)]
     pub map_post_processing: Option<MapPostProcessingSummary>,
@@ -472,6 +474,9 @@ fn decode_typed_data_component_patch_summary(
                 let trim = decode_armor_trim(decoder)?;
                 summary.armor_trim_material_id = trim.material_id;
                 summary.armor_trim_pattern_id = trim.pattern_id;
+            }
+            64 => {
+                summary.jukebox_song_id = decode_jukebox_song_holder_id(decoder)?;
             }
             50 => {
                 summary.bundle_contents_items =
@@ -1310,6 +1315,22 @@ fn decode_jukebox_playable(decoder: &mut Decoder<'_>) -> Result<()> {
     decode_holder_with_direct(decoder, decode_direct_jukebox_song)
 }
 
+/// Decodes the `JukeboxPlayable.song()` holder, returning the registry
+/// reference id (`holder_id - 1`) so item component predicates can match the
+/// vanilla jukebox-song registry key, or `None` for an inline direct song.
+fn decode_jukebox_song_holder_id(decoder: &mut Decoder<'_>) -> Result<Option<i32>> {
+    let id = decoder.read_var_i32()?;
+    if id < 0 {
+        return Err(ProtocolError::NegativeLength(id));
+    }
+    if id == 0 {
+        decode_direct_jukebox_song(decoder)?;
+        Ok(None)
+    } else {
+        Ok(Some(id - 1))
+    }
+}
+
 fn decode_lodestone_tracker(decoder: &mut Decoder<'_>) -> Result<Option<LodestoneTargetSummary>> {
     let target = decode_optional_global_pos(decoder)?;
     decoder.read_bool()?;
@@ -1788,6 +1809,29 @@ mod tests {
                         z: -4,
                     },
                 }),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_jukebox_playable_song_holder_id() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(64);
+        payload.write_var_i32(3);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![64],
+                jukebox_song_id: Some(2),
                 ..DataComponentPatchSummary::default()
             }
         );

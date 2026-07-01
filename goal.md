@@ -801,19 +801,23 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     and native trim-material tag catalog, and direct vanilla registry-key or
     trim-pattern-tag constraints now match decoded `ArmorTrim.pattern()` holder
     ids through vanilla `TrimPatterns.bootstrap` order and native trim-pattern
-    tag catalog. `minecraft:bundle_contents`
+    tag catalog. `minecraft:jukebox_playable` now matches the optional `song`
+    HolderSet against the decoded `JukeboxPlayable.song()` holder id through
+    vanilla `JukeboxSongs.bootstrap` order, including direct vanilla registry
+    keys and native jukebox-song tag entries. `minecraft:bundle_contents`
     `items.size` constraints now match vanilla `CollectionPredicate.size`
     against the decoded bundle item count, and `items.contains` / `count`
     now support vanilla `ItemPredicate` direct item-key or item-tag HolderSets,
     stack-count bounds, and exact scalar/default `DataComponentMatchers`
     components plus nested partial `minecraft:damage`, `minecraft:enchantments`,
     `minecraft:stored_enchantments`, `minecraft:firework_explosion`,
-    `minecraft:fireworks`, `minecraft:trim`, and data-component AnyValue
-    predicates over decoded bundle entries. `minecraft:container` now decodes
-    non-empty container entries and matches the same direct item-key / item-tag
-    / stack-count / exact scalar component / nested partial damage,
-    enchantments, stored-enchantments, firework-explosion, fireworks, trim, and
-    AnyValue predicate collection subset.
+    `minecraft:fireworks`, `minecraft:trim`, `minecraft:jukebox_playable`, and
+    data-component AnyValue predicates over decoded bundle entries.
+    `minecraft:container` now decodes non-empty container entries and matches
+    the same direct item-key / item-tag / stack-count / exact scalar component /
+    nested partial damage, enchantments, stored-enchantments,
+    firework-explosion, fireworks, trim, jukebox-playable, and AnyValue
+    predicate collection subset.
     `minecraft:enchantments` and patch-backed
     `minecraft:stored_enchantments` now match decoded enchantment levels and
     direct registry-key or enchantment-tag HolderSet predicates when the
@@ -827,8 +831,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     empty `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
     constrained `DataComponentPredicate` types such as inline enchantment holder
     payloads / server datapack tag remaps, bundle/container nested remaining
-    concrete partial predicates and complex exact component codecs, and trim
-    inline material or pattern payloads / datapack pattern registry-key remaps remain
+    concrete partial predicates and complex exact component codecs, trim inline
+    material or pattern payloads / datapack pattern registry-key remaps, and
+    jukebox inline song payloads / datapack jukebox-song registry remaps remain
     component-predicate follow-up.
   - [x] `minecraft:has_component` item-model condition now follows vanilla
     `HasComponent.get`: default prototype components such as

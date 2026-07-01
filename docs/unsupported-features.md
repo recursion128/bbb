@@ -5864,7 +5864,11 @@ When an agent does any of the following, update this file in the same slice:
       explosions count. `minecraft:trim`
       direct registry-key or trim-material-tag constraints match the decoded
       `ArmorTrim.material()` holder id through dynamic trim-material registry
-      keys and native trim-material tag catalog. `minecraft:bundle_contents`
+      keys and native trim-material tag catalog. `minecraft:jukebox_playable`
+      now matches the optional `song` HolderSet against the decoded
+      `JukeboxPlayable.song()` holder id through vanilla
+      `JukeboxSongs.bootstrap` order, including direct vanilla registry keys and
+      native jukebox-song tag entries. `minecraft:bundle_contents`
       `items.size` constraints match vanilla `CollectionPredicate.size` against
       the decoded bundle item count, and `items.contains` / `count` now support
       vanilla `ItemPredicate` direct item-key or item-tag HolderSets,
@@ -5872,12 +5876,13 @@ When an agent does any of the following, update this file in the same slice:
       components plus nested partial `minecraft:damage`,
       `minecraft:enchantments`, `minecraft:stored_enchantments`,
       `minecraft:firework_explosion`, `minecraft:fireworks`, `minecraft:trim`,
-      and data-component AnyValue predicates over decoded bundle entries.
+      `minecraft:jukebox_playable`, and data-component AnyValue predicates over
+      decoded bundle entries.
       `minecraft:container` now decodes non-empty container entries and matches
       the same direct item-key / item-tag / stack-count / exact scalar component
       / nested partial damage, enchantments, stored-enchantments,
-      firework-explosion, fireworks, trim, and AnyValue predicate collection
-      subset.
+      firework-explosion, fireworks, trim, jukebox-playable, and AnyValue
+      predicate collection subset.
       `minecraft:fireworks`
       `explosions.contains` / `count` predicates now match decoded explosion
       shape / trail / twinkle summaries. `minecraft:trim` direct vanilla
@@ -5898,8 +5903,9 @@ When an agent does any of the following, update this file in the same slice:
       constrained predicate types (inline enchantment holder payloads / server
       datapack tag remaps, bundle/container nested remaining concrete partial
       predicates and complex exact component codecs, trim inline material or
-      pattern payloads / datapack pattern registry-key remaps, and similar)
-      remain follow-up.
+      pattern payloads / datapack pattern registry-key remaps, jukebox inline
+      song payloads / datapack jukebox-song registry remaps, and similar) remain
+      follow-up.
     - `minecraft:charge_type` — `Charge.get` (`ROCKET` when any charged
       projectile is `minecraft:firework_rocket`, `ARROW` when charged otherwise,
       else `NONE`), using the native item registry to identify the projectile

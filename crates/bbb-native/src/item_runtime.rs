@@ -347,6 +347,7 @@ pub(crate) struct NativeItemRuntime {
     enchantment_tags: Option<TagCatalog>,
     trim_material_tags: Option<TagCatalog>,
     trim_pattern_tags: Option<TagCatalog>,
+    jukebox_song_tags: Option<TagCatalog>,
     equipment_assets: EquipmentAssetCatalog,
     language: LanguageCatalog,
     map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
@@ -452,6 +453,14 @@ impl NativeItemRuntime {
                 err
             })
             .ok();
+        let jukebox_song_tags = roots
+            .load_tag_catalog("jukebox_song")
+            .context("load native jukebox song tags")
+            .map_err(|err| {
+                tracing::warn!(?err, "continuing without native jukebox song tag catalog");
+                err
+            })
+            .ok();
         let equipment_assets = roots
             .load_equipment_asset_catalog()
             .context("load equipment asset catalog")
@@ -503,6 +512,7 @@ impl NativeItemRuntime {
             enchantment_tags,
             trim_material_tags,
             trim_pattern_tags,
+            jukebox_song_tags,
             roots.resource_stack(),
         )
     }
@@ -525,6 +535,7 @@ impl NativeItemRuntime {
         enchantment_tags: Option<TagCatalog>,
         trim_material_tags: Option<TagCatalog>,
         trim_pattern_tags: Option<TagCatalog>,
+        jukebox_song_tags: Option<TagCatalog>,
         profile_texture_resources: PackResourceStack,
     ) -> Result<Self> {
         let mut texture_ids = BTreeSet::new();
@@ -606,6 +617,7 @@ impl NativeItemRuntime {
             enchantment_tags,
             trim_material_tags,
             trim_pattern_tags,
+            jukebox_song_tags,
             equipment_assets,
             language,
             map_decoration_textures,
@@ -643,6 +655,7 @@ impl NativeItemRuntime {
             enchantment_tags: None,
             trim_material_tags: None,
             trim_pattern_tags: None,
+            jukebox_song_tags: None,
             equipment_assets: EquipmentAssetCatalog::default(),
             language: LanguageCatalog::from_json_bytes(b"{}").expect("empty test language"),
             map_decoration_textures: Vec::new(),
@@ -1434,6 +1447,7 @@ impl NativeItemRuntime {
                             enchantment_tags: self.enchantment_tags.as_ref(),
                             trim_material_tags: self.trim_material_tags.as_ref(),
                             trim_pattern_tags: self.trim_pattern_tags.as_ref(),
+                            jukebox_song_tags: self.jukebox_song_tags.as_ref(),
                             trim_material_keys: None,
                             enchantment_keys: None,
                         })
@@ -2195,6 +2209,7 @@ impl NativeItemRuntime {
             enchantment_tags: self.enchantment_tags.as_ref(),
             trim_material_tags: self.trim_material_tags.as_ref(),
             trim_pattern_tags: self.trim_pattern_tags.as_ref(),
+            jukebox_song_tags: self.jukebox_song_tags.as_ref(),
             trim_material_keys,
             enchantment_keys,
         };
@@ -2358,6 +2373,7 @@ impl NativeItemRuntime {
             enchantment_tags: parent_context.enchantment_tags,
             trim_material_tags: parent_context.trim_material_tags,
             trim_pattern_tags: parent_context.trim_pattern_tags,
+            jukebox_song_tags: parent_context.jukebox_song_tags,
             trim_material_keys: parent_context.trim_material_keys,
             enchantment_keys: parent_context.enchantment_keys,
         };
@@ -7637,6 +7653,144 @@ mod tests {
             ),
             uv("component_condition_container_partial_trim_absent")
         );
+        assert_eq!(
+            selected(46, DataComponentPatchSummary::default()),
+            uv("component_condition_jukebox_playable_song_absent")
+        );
+        assert_eq!(
+            selected(
+                46,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![64],
+                    jukebox_song_id: Some(1),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_jukebox_playable_song_present")
+        );
+        assert_eq!(
+            selected(
+                46,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![64],
+                    jukebox_song_id: Some(0),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_jukebox_playable_song_absent")
+        );
+        assert_eq!(
+            selected(
+                46,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![64],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_jukebox_playable_song_absent")
+        );
+        assert_eq!(
+            selected(
+                47,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            added_type_ids: vec![64],
+                            jukebox_song_id: Some(1),
+                            ..DataComponentPatchSummary::default()
+                        },
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_partial_jukebox_playable_present")
+        );
+        assert_eq!(
+            selected(
+                47,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            added_type_ids: vec![64],
+                            jukebox_song_id: Some(0),
+                            ..DataComponentPatchSummary::default()
+                        },
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_partial_jukebox_playable_absent")
+        );
+        assert_eq!(
+            selected(
+                48,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(2),
+                    container_items: vec![
+                        ItemStackTemplateSummary {
+                            item_id: 0,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![64],
+                                jukebox_song_id: Some(1),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                        ItemStackTemplateSummary {
+                            item_id: 1,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![64],
+                                jukebox_song_id: Some(1),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_partial_jukebox_playable_present")
+        );
+        assert_eq!(
+            selected(
+                48,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(2),
+                    container_items: vec![
+                        ItemStackTemplateSummary {
+                            item_id: 0,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![64],
+                                jukebox_song_id: Some(1),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                        ItemStackTemplateSummary {
+                            item_id: 1,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![64],
+                                jukebox_song_id: Some(0),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_partial_jukebox_playable_absent")
+        );
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -9174,6 +9328,9 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_FIREWORKS = registerItem("component_condition_container_partial_fireworks");
                 public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_TRIM = registerItem("component_condition_bundle_partial_trim");
                 public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_TRIM = registerItem("component_condition_container_partial_trim");
+                public static final Item COMPONENT_CONDITION_JUKEBOX_PLAYABLE_SONG = registerItem("component_condition_jukebox_playable_song");
+                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_JUKEBOX_PLAYABLE = registerItem("component_condition_bundle_partial_jukebox_playable");
+                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_JUKEBOX_PLAYABLE = registerItem("component_condition_container_partial_jukebox_playable");
             }"#,
         );
         write_json(
@@ -9234,6 +9391,21 @@ mod tests {
             r#"{
                 "values": [
                     "minecraft:sentry"
+                ]
+            }"#,
+        );
+        write_json(
+            &root
+                .join("sources")
+                .join(bbb_pack::MC_VERSION)
+                .join("data")
+                .join("minecraft")
+                .join("tags")
+                .join("jukebox_song")
+                .join("component_condition_jukebox_songs.json"),
+            r#"{
+                "values": [
+                    "minecraft:cat"
                 ]
             }"#,
         );
@@ -10039,6 +10211,83 @@ mod tests {
         write_json(
             &assets
                 .join("items")
+                .join("component_condition_bundle_partial_jukebox_playable.json"),
+            r##"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "predicates": {
+                                            "minecraft:jukebox_playable": {
+                                                "song": "#minecraft:component_condition_jukebox_songs"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_jukebox_playable_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_jukebox_playable_absent"
+                    }
+                }
+            }"##,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_container_partial_jukebox_playable.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:container",
+                    "value": {
+                        "items": {
+                            "count": [
+                                {
+                                    "test": {
+                                        "components": {
+                                            "predicates": {
+                                                "minecraft:jukebox_playable": {
+                                                    "song": [
+                                                        "minecraft:cat"
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "count": {
+                                        "min": 2
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_jukebox_playable_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_jukebox_playable_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
                 .join("component_condition_firework_explosion_star.json"),
             r#"{
                 "model": {
@@ -10267,6 +10516,29 @@ mod tests {
                     }
                 }
             }"##,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_jukebox_playable_song.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:jukebox_playable",
+                    "value": {
+                        "song": "minecraft:cat"
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_jukebox_playable_song_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_jukebox_playable_song_absent"
+                    }
+                }
+            }"#,
         );
         write_json(
             &assets
@@ -10822,6 +11094,30 @@ mod tests {
             (
                 "component_condition_container_partial_trim_absent",
                 [45, 70, 90, 255],
+            ),
+            (
+                "component_condition_jukebox_playable_song_present",
+                [210, 245, 170, 255],
+            ),
+            (
+                "component_condition_jukebox_playable_song_absent",
+                [70, 90, 45, 255],
+            ),
+            (
+                "component_condition_bundle_partial_jukebox_playable_present",
+                [245, 210, 170, 255],
+            ),
+            (
+                "component_condition_bundle_partial_jukebox_playable_absent",
+                [90, 70, 45, 255],
+            ),
+            (
+                "component_condition_container_partial_jukebox_playable_present",
+                [170, 245, 210, 255],
+            ),
+            (
+                "component_condition_container_partial_jukebox_playable_absent",
+                [45, 90, 70, 255],
             ),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);
