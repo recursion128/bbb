@@ -871,6 +871,9 @@ pub(super) struct IconResolveContext<'a> {
     /// `tags/item` catalog used for `#namespace:path` HolderSet entries in
     /// vanilla `ItemPredicate.items`.
     pub item_tags: Option<&'a TagCatalog>,
+    /// `tags/enchantment` catalog used for `#namespace:path` HolderSet entries
+    /// in vanilla `EnchantmentPredicate.enchantments`.
+    pub enchantment_tags: Option<&'a TagCatalog>,
     /// `minecraft:trim_material` registry keys by holder id (the dynamic
     /// registry, projected from `bbb-world` at the call site).
     pub trim_material_keys: Option<&'a [String]>,
@@ -1647,17 +1650,21 @@ fn enchantment_predicate_is_supported(predicate: &Value) -> bool {
 
 fn enchantment_holder_set_is_supported(value: &Value) -> bool {
     match value {
-        Value::String(key) => enchantment_direct_key_is_supported(key),
+        Value::String(key) => enchantment_holder_set_entry_is_supported(key),
         Value::Array(keys) => keys.iter().all(|key| {
             key.as_str()
-                .is_some_and(enchantment_direct_key_is_supported)
+                .is_some_and(enchantment_holder_set_entry_is_supported)
         }),
         _ => false,
     }
 }
 
-fn enchantment_direct_key_is_supported(key: &str) -> bool {
-    !key.is_empty() && !key.starts_with('#')
+fn enchantment_holder_set_entry_is_supported(key: &str) -> bool {
+    if let Some(tag_id) = key.strip_prefix('#') {
+        !tag_id.is_empty()
+    } else {
+        !key.is_empty()
+    }
 }
 
 fn item_stack_matches_enchantments_predicate(
@@ -1684,7 +1691,12 @@ fn item_stack_matches_enchantments_predicate(
         return false;
     }
     predicates.iter().all(|predicate| {
-        enchantment_predicate_matches(predicate, enchantments, ctx.enchantment_keys)
+        enchantment_predicate_matches(
+            predicate,
+            enchantments,
+            ctx.enchantment_keys,
+            ctx.enchantment_tags,
+        )
     })
 }
 
@@ -1731,6 +1743,7 @@ fn enchantment_predicate_matches(
     predicate: &Value,
     enchantments: &[ItemEnchantmentSummary],
     enchantment_keys: Option<&[String]>,
+    enchantment_tags: Option<&TagCatalog>,
 ) -> bool {
     let Some(predicate) = predicate.as_object() else {
         return false;
@@ -1741,6 +1754,7 @@ fn enchantment_predicate_matches(
             predicate.get("levels"),
             enchantments,
             enchantment_keys,
+            enchantment_tags,
         );
     }
     if let Some(levels) = predicate.get("levels") {
@@ -1756,16 +1770,28 @@ fn enchantment_holder_set_matches(
     levels: Option<&Value>,
     enchantments: &[ItemEnchantmentSummary],
     enchantment_keys: Option<&[String]>,
+    enchantment_tags: Option<&TagCatalog>,
 ) -> bool {
     let Some(enchantment_keys) = enchantment_keys else {
         return false;
     };
     match holder_set {
-        Value::String(key) => enchantment_key_matches(key, levels, enchantments, enchantment_keys),
-        Value::Array(keys) => keys
-            .iter()
-            .filter_map(Value::as_str)
-            .any(|key| enchantment_key_matches(key, levels, enchantments, enchantment_keys)),
+        Value::String(key) => enchantment_key_matches(
+            key,
+            levels,
+            enchantments,
+            enchantment_keys,
+            enchantment_tags,
+        ),
+        Value::Array(keys) => keys.iter().filter_map(Value::as_str).any(|key| {
+            enchantment_key_matches(
+                key,
+                levels,
+                enchantments,
+                enchantment_keys,
+                enchantment_tags,
+            )
+        }),
         _ => false,
     }
 }
@@ -1775,6 +1801,7 @@ fn enchantment_key_matches(
     levels: Option<&Value>,
     enchantments: &[ItemEnchantmentSummary],
     enchantment_keys: &[String],
+    enchantment_tags: Option<&TagCatalog>,
 ) -> bool {
     enchantments.iter().any(|enchantment| {
         if enchantment.level == 0 {
@@ -1783,9 +1810,23 @@ fn enchantment_key_matches(
         let key_matches = usize::try_from(enchantment.holder_id)
             .ok()
             .and_then(|holder_id| enchantment_keys.get(holder_id))
-            .is_some_and(|actual_key| actual_key == key);
+            .is_some_and(|actual_key| {
+                enchantment_holder_set_entry_matches(key, actual_key, enchantment_tags)
+            });
         key_matches && min_max_int_bounds_match(levels, enchantment.level)
     })
+}
+
+fn enchantment_holder_set_entry_matches(
+    expected: &str,
+    actual_key: &str,
+    enchantment_tags: Option<&TagCatalog>,
+) -> bool {
+    if let Some(tag_id) = expected.strip_prefix('#') {
+        enchantment_tags.is_some_and(|tags| tags.contains(tag_id, actual_key))
+    } else {
+        expected == actual_key
+    }
 }
 
 fn bundle_contents_component_predicate_is_supported(property: &ItemModelProperty) -> bool {

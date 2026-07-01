@@ -5740,9 +5740,10 @@ When an agent does any of the following, update this file in the same slice:
     GUI/HUD local-player icons and owner-backed third-person generated held-item
     paths when the synced `minecraft:enchantment` registry identifies
     `minecraft:quick_charge`. The same registry projection now feeds direct-key
-    enchantment component predicates for GUI/HUD, dropped `GROUND`, item-frame
-    `FIXED`, and owner-backed third-person generated held-item icons; custom
-    enchantment effect parsing remains later registry/effect generalization.
+    and vanilla/static tag-key enchantment component predicates for GUI/HUD,
+    dropped `GROUND`, item-frame `FIXED`, and owner-backed third-person
+    generated held-item icons; custom enchantment effect parsing remains later
+    registry/effect generalization.
   - Each plugs into the existing value-aware `RangeDispatch` / `Select`
     resolver by adding a value provider; no new selection machinery is required.
 - Evidence / boundary:
@@ -5877,18 +5878,19 @@ When an agent does any of the following, update this file in the same slice:
       holder ids through vanilla `TrimPatterns.bootstrap` order.
       `minecraft:enchantments` and patch-backed
       `minecraft:stored_enchantments` match decoded enchantment levels and
-      direct registry-key HolderSet predicates when the `minecraft:enchantment`
-      registry keys are available to the icon resolver; GUI/HUD, dropped
-      `GROUND`, item-frame `FIXED`, and owner-backed third-person generated
-      held-item paths now thread that registry context. Empty
+      direct registry-key or enchantment-tag HolderSet predicates when the
+      `minecraft:enchantment` registry keys and native enchantment tag catalog
+      are available to the icon resolver; GUI/HUD, dropped `GROUND`, item-frame
+      `FIXED`, and owner-backed third-person generated held-item paths now
+      thread that registry context. Empty
       `minecraft:enchantments` predicate lists honor vanilla's default empty
       `ENCHANTMENTS` component unless id 13 is removed, and vanilla
       `minecraft:enchanted_book` contributes its item-specific default empty
       `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
-      constrained predicate types (enchantment tag HolderSets / inline or
-      datapack holder payloads, bundle/container nested component matchers,
-      trim tag sets / inline material or pattern payloads / datapack pattern
-      registry-key remaps, and similar) remain follow-up.
+      constrained predicate types (inline enchantment holder payloads / server
+      datapack tag remaps, bundle/container nested component matchers, trim tag
+      sets / inline material or pattern payloads / datapack pattern registry-key
+      remaps, and similar) remain follow-up.
     - `minecraft:charge_type` — `Charge.get` (`ROCKET` when any charged
       projectile is `minecraft:firework_rocket`, `ARROW` when charged otherwise,
       else `NONE`), using the native item registry to identify the projectile

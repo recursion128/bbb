@@ -809,18 +809,19 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     / item-tag / stack-count collection predicate subset.
     `minecraft:enchantments` and patch-backed
     `minecraft:stored_enchantments` now match decoded enchantment levels and
-    direct registry-key HolderSet predicates when the
-    `minecraft:enchantment` registry keys are available to the icon resolver;
+    direct registry-key or enchantment-tag HolderSet predicates when the
+    `minecraft:enchantment` registry keys and native enchantment tag catalog are
+    available to the icon resolver;
     GUI/HUD, dropped `GROUND`, item-frame `FIXED`, and owner-backed third-person
     generated held-item paths now thread that registry context, while empty
     `minecraft:enchantments` predicate lists honor vanilla's default empty
     `ENCHANTMENTS` component unless id 13 is removed. Vanilla
     `minecraft:enchanted_book` now also contributes its item-specific default
     empty `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
-    constrained `DataComponentPredicate` types such as enchantment tag
-    HolderSets / inline or datapack holder payloads, bundle/container nested
-    component matchers, and trim tag sets / inline material or pattern payloads
-    / datapack pattern registry-key remaps remain
+    constrained `DataComponentPredicate` types such as inline enchantment holder
+    payloads / server datapack tag remaps, bundle/container nested component
+    matchers, and trim tag sets / inline material or pattern payloads / datapack
+    pattern registry-key remaps remain
     component-predicate follow-up.
   - [x] `minecraft:has_component` item-model condition now follows vanilla
     `HasComponent.get`: default prototype components such as
