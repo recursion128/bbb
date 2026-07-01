@@ -40,6 +40,7 @@ pub(crate) enum ParticleTickMotionDescriptor {
     VibrationSignal,
     FlyStraightTowards,
     CampfireSmoke,
+    DripHang,
     DustPlume,
     WaterDrop,
     Wake,
@@ -549,6 +550,59 @@ impl ParticleDescriptor {
                 initial_velocity: ParticleInitialVelocityDescriptor::Zero,
                 friction: 0.98,
                 gravity: 0.005,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:dripping_honey" => Self {
+                provider: "DripParticle.HoneyHangProvider",
+                lifetime: ParticleLifetimeDescriptor::Fixed(100),
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 1.0,
+                    color: ParticleColorDescriptor::FixedRgb([0.622, 0.508, 0.082]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Zero,
+                friction: 0.98,
+                gravity: 0.000_012,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:falling_honey" => Self {
+                provider: "DripParticle.HoneyFallProvider",
+                lifetime: ParticleLifetimeDescriptor::RandomFloatDivisor {
+                    numerator: 64,
+                    min_tenths: 2,
+                    span_tenths: 8,
+                },
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 1.0,
+                    color: ParticleColorDescriptor::FixedRgb([0.582, 0.448, 0.082]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Zero,
+                friction: 0.98,
+                gravity: 0.01,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:landing_honey" => Self {
+                provider: "DripParticle.HoneyLandProvider",
+                lifetime: ParticleLifetimeDescriptor::RandomFloatDivisor {
+                    numerator: 128,
+                    min_tenths: 2,
+                    span_tenths: 8,
+                },
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 1.0,
+                    color: ParticleColorDescriptor::FixedRgb([0.522, 0.408, 0.082]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Zero,
+                friction: 0.98,
+                gravity: 0.06,
                 has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
@@ -1609,13 +1663,15 @@ impl ParticleDescriptor {
             "CampfireSmokeParticle.CosyProvider" | "CampfireSmokeParticle.SignalProvider" => {
                 ParticleTickMotionDescriptor::CampfireSmoke
             }
+            "DripParticle.HoneyHangProvider" => ParticleTickMotionDescriptor::DripHang,
             "DustPlumeParticle.Provider" => ParticleTickMotionDescriptor::DustPlume,
             "WaterDropParticle.Provider" | "SplashParticle.Provider" => {
                 ParticleTickMotionDescriptor::WaterDrop
             }
-            "DripParticle.NectarFallProvider" | "DripParticle.SporeBlossomFallProvider" => {
-                ParticleTickMotionDescriptor::WaterDrop
-            }
+            "DripParticle.NectarFallProvider"
+            | "DripParticle.SporeBlossomFallProvider"
+            | "DripParticle.HoneyFallProvider"
+            | "DripParticle.HoneyLandProvider" => ParticleTickMotionDescriptor::WaterDrop,
             "WakeParticle.Provider" => ParticleTickMotionDescriptor::Wake,
             "PortalParticle.Provider" => ParticleTickMotionDescriptor::Portal,
             "ReversePortalParticle.ReversePortalProvider" => {
@@ -3102,6 +3158,63 @@ mod tests {
             falling_spore_blossom.tick_motion(),
             ParticleTickMotionDescriptor::WaterDrop
         );
+        for (particle_id, provider, lifetime, color, gravity, tick_motion) in [
+            (
+                "minecraft:dripping_honey",
+                "DripParticle.HoneyHangProvider",
+                ParticleLifetimeDescriptor::Fixed(100),
+                [0.622, 0.508, 0.082],
+                0.000_012,
+                ParticleTickMotionDescriptor::DripHang,
+            ),
+            (
+                "minecraft:falling_honey",
+                "DripParticle.HoneyFallProvider",
+                ParticleLifetimeDescriptor::RandomFloatDivisor {
+                    numerator: 64,
+                    min_tenths: 2,
+                    span_tenths: 8,
+                },
+                [0.582, 0.448, 0.082],
+                0.01,
+                ParticleTickMotionDescriptor::WaterDrop,
+            ),
+            (
+                "minecraft:landing_honey",
+                "DripParticle.HoneyLandProvider",
+                ParticleLifetimeDescriptor::RandomFloatDivisor {
+                    numerator: 128,
+                    min_tenths: 2,
+                    span_tenths: 8,
+                },
+                [0.522, 0.408, 0.082],
+                0.06,
+                ParticleTickMotionDescriptor::WaterDrop,
+            ),
+        ] {
+            assert_descriptor(
+                particle_id,
+                provider,
+                lifetime,
+                ParticleSpriteSelection::Random,
+                ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 1.0,
+                    color: ParticleColorDescriptor::FixedRgb(color),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                0.98,
+                gravity,
+                true,
+                false,
+            );
+            let descriptor = ParticleDescriptor::for_particle(particle_id);
+            assert_eq!(
+                descriptor.initial_velocity,
+                ParticleInitialVelocityDescriptor::Zero,
+                "{particle_id}"
+            );
+            assert_eq!(descriptor.tick_motion(), tick_motion, "{particle_id}");
+        }
         for (particle_id, provider, color, initial_velocity) in [
             (
                 "minecraft:crimson_spore",

@@ -1253,6 +1253,17 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `0.005`, and lifetimes `16 / (random * 0.8 + 0.2)` /
     `64 / randomBetween(0.1, 0.9)`. On-ground removal remains in the
     world-coupled collision follow-up.
+  - [x] `DripParticle.HoneyHangProvider` / `HoneyFallProvider` /
+    `HoneyLandProvider`：renderer descriptor now maps `dripping_honey`,
+    `falling_honey`, and `landing_honey` to random sprites, vanilla
+    DripParticle opaque layer, zero initial velocity, physics metadata,
+    fixed honey tints, `0.98` friction, direct gravity motion, hang-particle
+    `0.02` post-move damping, lifetimes `100`,
+    `64 / (random * 0.8 + 0.2)`, and
+    `128 / (random * 0.8 + 0.2)`, with gravity `0.000012`, `0.01`, and
+    `0.06`. Hang-to-fall child spawning, fall-to-land child spawning, local
+    drip sound, and on-ground collision remain in the world-coupled
+    particle/audio follow-up.
   - [x] `SuspendedParticle.CrimsonSporeProvider` /
     `WarpedSporeProvider`：renderer descriptor now mirrors vanilla random
     sprite selection, `y - 0.125` initial position, `0.6..1.2` quad-size

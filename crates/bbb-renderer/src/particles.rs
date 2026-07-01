@@ -942,6 +942,16 @@ impl ParticleInstance {
                     self.color[3] -= 0.015;
                 }
             }
+            ParticleTickMotionDescriptor::DripHang => {
+                self.velocity[1] -= f64::from(self.gravity);
+                self.position[0] += self.velocity[0];
+                self.position[1] += self.velocity[1];
+                self.position[2] += self.velocity[2];
+                let friction = f64::from(self.friction);
+                self.velocity[0] *= 0.02 * friction;
+                self.velocity[1] *= 0.02 * friction;
+                self.velocity[2] *= 0.02 * friction;
+            }
             ParticleTickMotionDescriptor::DustPlume => {
                 self.gravity *= 0.88;
                 self.friction *= 0.92;
@@ -2083,6 +2093,28 @@ mod tests {
         assert_close3(instance.previous_position, [1.0, 2.0, 3.0]);
         assert_close3(instance.position, [1.2, 2.24, 2.6]);
         assert_close3(instance.velocity, [0.196, 0.2352, -0.392]);
+    }
+
+    #[test]
+    fn particle_runtime_drip_hang_applies_post_move_damping_before_friction() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:dripping_honey", 100);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.1, 0.0, -0.2];
+        instance.gravity = 0.000_012;
+        instance.friction = 0.98;
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.active_instances, 1);
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 1);
+        assert_close3(instance.previous_position, [1.0, 2.0, 3.0]);
+        assert_close3(instance.position, [1.1, 1.999_988, 2.8]);
+        assert_close3(instance.velocity, [0.001_96, -0.000_000_235_2, -0.003_92]);
     }
 
     #[test]
@@ -3512,6 +3544,69 @@ mod tests {
             falling_spore_blossom.render_layer,
             ParticleRenderLayer::Opaque
         );
+
+        let mut dripping_honey_random = ParticleRandom::new(81);
+        let dripping_honey = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:dripping_honey", 1.0),
+            &mut dripping_honey_random,
+        );
+        assert_eq!(dripping_honey.provider, "DripParticle.HoneyHangProvider");
+        assert_eq!(
+            dripping_honey.sprite_selection,
+            ParticleSpriteSelection::Random
+        );
+        assert_eq!(
+            dripping_honey.quad_size_curve,
+            ParticleQuadSizeCurve::Constant
+        );
+        assert_range_f32(dripping_honey.base_quad_size, 0.1, 0.2);
+        assert_eq!(dripping_honey.color, [0.622, 0.508, 0.082, 1.0]);
+        assert_eq!(dripping_honey.lifetime_ticks, 100);
+        assert_eq!(dripping_honey.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(dripping_honey.friction, 0.98);
+        assert_eq!(dripping_honey.gravity, 0.000_012);
+        assert!(dripping_honey.has_physics);
+        assert_eq!(
+            dripping_honey.tick_motion,
+            ParticleTickMotionDescriptor::DripHang
+        );
+        assert_eq!(dripping_honey.render_layer, ParticleRenderLayer::Opaque);
+
+        let mut falling_honey_random = ParticleRandom::new(82);
+        let falling_honey = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:falling_honey", 1.0),
+            &mut falling_honey_random,
+        );
+        assert_eq!(falling_honey.provider, "DripParticle.HoneyFallProvider");
+        assert_range_f32(falling_honey.base_quad_size, 0.1, 0.2);
+        assert_eq!(falling_honey.color, [0.582, 0.448, 0.082, 1.0]);
+        assert!((64..=320).contains(&falling_honey.lifetime_ticks));
+        assert_eq!(falling_honey.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(falling_honey.friction, 0.98);
+        assert_eq!(falling_honey.gravity, 0.01);
+        assert_eq!(
+            falling_honey.tick_motion,
+            ParticleTickMotionDescriptor::WaterDrop
+        );
+        assert_eq!(falling_honey.render_layer, ParticleRenderLayer::Opaque);
+
+        let mut landing_honey_random = ParticleRandom::new(83);
+        let landing_honey = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:landing_honey", 1.0),
+            &mut landing_honey_random,
+        );
+        assert_eq!(landing_honey.provider, "DripParticle.HoneyLandProvider");
+        assert_range_f32(landing_honey.base_quad_size, 0.1, 0.2);
+        assert_eq!(landing_honey.color, [0.522, 0.408, 0.082, 1.0]);
+        assert!((128..=640).contains(&landing_honey.lifetime_ticks));
+        assert_eq!(landing_honey.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(landing_honey.friction, 0.98);
+        assert_eq!(landing_honey.gravity, 0.06);
+        assert_eq!(
+            landing_honey.tick_motion,
+            ParticleTickMotionDescriptor::WaterDrop
+        );
+        assert_eq!(landing_honey.render_layer, ParticleRenderLayer::Opaque);
 
         let mut crimson_random = ParticleRandom::new(46);
         let crimson_spore = ParticleInstance::from_spawn_command(
