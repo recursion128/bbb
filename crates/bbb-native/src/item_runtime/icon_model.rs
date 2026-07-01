@@ -5,8 +5,8 @@ use bbb_pack::{
     ItemTintSource, SelectCase, TerrainColorMaps,
 };
 use bbb_protocol::packets::{
-    DataComponentPatchSummary, FireworkExplosionShapeSummary, ItemRaritySummary,
-    ItemStackTemplateSummary,
+    DataComponentPatchSummary, FireworkExplosionShapeSummary, ItemEnchantmentSummary,
+    ItemRaritySummary, ItemStackTemplateSummary,
 };
 use chrono::{Datelike, FixedOffset, Local, TimeZone, Utc};
 use serde_json::Value;
@@ -24,6 +24,7 @@ const DAMAGE_COMPONENT_ID: i32 = 3;
 const UNBREAKABLE_COMPONENT_ID: i32 = 4;
 const ITEM_MODEL_COMPONENT_ID: i32 = 10;
 const RARITY_COMPONENT_ID: i32 = 12;
+const ENCHANTMENTS_COMPONENT_ID: i32 = 13;
 const CUSTOM_MODEL_DATA_COMPONENT_ID: i32 = 17;
 const ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID: i32 = 21;
 const MAP_ID_COMPONENT_ID: i32 = 41;
@@ -1489,6 +1490,9 @@ fn item_stack_matches_component_predicate(
     if bundle_contents_component_predicate_is_supported(property) {
         return item_stack_matches_bundle_contents_predicate(property, ctx.component_patch);
     }
+    if enchantments_component_predicate_is_supported(property) {
+        return item_stack_matches_enchantments_predicate(property, ctx.component_patch);
+    }
     if predicate == "minecraft:firework_explosion" {
         return item_stack_matches_firework_explosion_predicate(property, ctx.component_patch);
     }
@@ -1526,6 +1530,7 @@ fn component_condition_is_runtime_resolved(property: &ItemModelProperty) -> bool
     };
     predicate == "minecraft:damage"
         || bundle_contents_component_predicate_is_supported(property)
+        || enchantments_component_predicate_is_supported(property)
         || predicate == "minecraft:firework_explosion"
         || fireworks_component_predicate_is_supported(property)
         || trim_component_predicate_is_supported(property)
@@ -1564,6 +1569,63 @@ fn empty_single_component_predicate_id(property: &ItemModelProperty) -> Option<i
         "minecraft:trim" => Some(TRIM_COMPONENT_ID),
         _ => None,
     }
+}
+
+fn enchantments_component_predicate_is_supported(property: &ItemModelProperty) -> bool {
+    if component_condition_predicate(property) != Some("minecraft:enchantments") {
+        return false;
+    }
+    let Some(predicates) = property.raw().get("value").and_then(Value::as_array) else {
+        return false;
+    };
+    predicates
+        .iter()
+        .all(enchantment_level_predicate_is_supported)
+}
+
+fn enchantment_level_predicate_is_supported(predicate: &Value) -> bool {
+    let Some(predicate) = predicate.as_object() else {
+        return false;
+    };
+    !predicate.contains_key("enchantments") && predicate.keys().all(|key| key == "levels")
+}
+
+fn item_stack_matches_enchantments_predicate(
+    property: &ItemModelProperty,
+    component_patch: Option<&DataComponentPatchSummary>,
+) -> bool {
+    if !enchantments_component_predicate_is_supported(property) {
+        return false;
+    }
+    if component_patch
+        .is_some_and(|patch| patch.removed_type_ids.contains(&ENCHANTMENTS_COMPONENT_ID))
+    {
+        return false;
+    }
+    let Some(predicates) = property.raw().get("value").and_then(Value::as_array) else {
+        return false;
+    };
+    let enchantments = component_patch
+        .map(|patch| patch.enchantments.as_slice())
+        .unwrap_or(&[]);
+    predicates
+        .iter()
+        .all(|predicate| enchantment_level_predicate_matches(predicate, enchantments))
+}
+
+fn enchantment_level_predicate_matches(
+    predicate: &Value,
+    enchantments: &[ItemEnchantmentSummary],
+) -> bool {
+    let Some(predicate) = predicate.as_object() else {
+        return false;
+    };
+    if let Some(levels) = predicate.get("levels") {
+        return enchantments
+            .iter()
+            .any(|enchantment| min_max_int_bounds_match(Some(levels), enchantment.level));
+    }
+    !enchantments.is_empty()
 }
 
 fn bundle_contents_component_predicate_is_supported(property: &ItemModelProperty) -> bool {
