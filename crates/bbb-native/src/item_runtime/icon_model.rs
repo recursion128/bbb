@@ -2495,6 +2495,8 @@ fn item_exact_component_is_supported(component: &str, expected: &Value) -> bool 
         || (component == "minecraft:jukebox_playable"
             && jukebox_playable_exact_value(expected).is_some())
         || (component == "minecraft:trim" && trim_exact_value(expected).is_some())
+        || (component == "minecraft:villager/variant"
+            && direct_registry_key_value(expected).is_some())
 }
 
 fn item_partial_component_predicates_are_supported(value: &Value) -> bool {
@@ -3744,6 +3746,13 @@ fn item_exact_component_matches(
         return trim_exact_match(&expected, &item.component_patch, trim_material_keys);
     }
 
+    if component == "minecraft:villager/variant" {
+        let Some(expected) = direct_registry_key_value(expected) else {
+            return false;
+        };
+        return villager_variant_exact_match(expected, &item.component_patch);
+    }
+
     let Some(expected) = simple_component_text(expected) else {
         return false;
     };
@@ -4679,6 +4688,26 @@ fn item_stack_matches_villager_variant_value(
         return false;
     };
     registry_key_holder_set_matches(Some(value), variant_key, villager_type_tags)
+}
+
+fn villager_variant_exact_match(
+    expected: &str,
+    component_patch: &DataComponentPatchSummary,
+) -> bool {
+    if component_patch
+        .removed_type_ids
+        .contains(&VILLAGER_VARIANT_COMPONENT_ID)
+        || !component_patch
+            .added_type_ids
+            .contains(&VILLAGER_VARIANT_COMPONENT_ID)
+    {
+        return false;
+    }
+    component_patch
+        .villager_variant_id
+        .and_then(|id| usize::try_from(id).ok())
+        .and_then(|index| VANILLA_VILLAGER_TYPE_KEYS.get(index))
+        .is_some_and(|actual| *actual == expected)
 }
 
 fn string_collection_predicate_matches(value: &Value, values: &[String]) -> bool {
