@@ -6145,13 +6145,14 @@ When an agent does any of the following, update this file in the same slice:
       `minecraft:enchantment_glint_override`, plus `minecraft:map_id` from the
       synced `MapId` int wrapper and the RGB int wrappers
       `minecraft:dyed_color` / `minecraft:map_color`, plus simple literal
-      JSON-string `minecraft:custom_name` components. Native item icons project
-      vanilla common defaults (`max_stack_size=64`, `item_model=<item id>`,
-      `rarity=common`) and damageable item defaults (`damage=0`,
-      `max_damage=<item default>`), and removed component ids suppress the
-      selected value before case matching. Tests pin texture selection for
-      string, numeric, boolean, resource-id, default, patched, explicit map-id,
-      explicit color, literal custom-name, and removed component cases.
+      JSON-string / `{"text": ...}` `minecraft:custom_name` components. Native
+      item icons project vanilla common defaults (`max_stack_size=64`,
+      `item_model=<item id>`, `rarity=common`) and damageable item defaults
+      (`damage=0`, `max_damage=<item default>`), and removed component ids
+      suppress the selected value before case matching. Tests pin texture
+      selection for string, numeric, boolean, resource-id, default, patched,
+      explicit map-id, explicit color, literal custom-name string / text-object,
+      and removed component cases.
     - `minecraft:cooldown` — `Cooldown.get`, matching the local player's
       `ItemCooldowns.getCooldownPercent(itemStack, 0.0F)` for GUI/HUD item
       icons. The item model property intentionally uses vanilla's `0.0F`

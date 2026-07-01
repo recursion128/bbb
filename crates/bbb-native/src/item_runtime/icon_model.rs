@@ -951,11 +951,23 @@ impl SelectCaseValue {
 
 /// Collects the typed `when` values of a select case (vanilla `when` may be a
 /// single value or a list).
-fn select_case_when_values(case: &SelectCase) -> Vec<SelectCaseValue> {
+fn select_case_when_values(property: &SelectProperty, case: &SelectCase) -> Vec<SelectCaseValue> {
     case.when
         .iter()
-        .filter_map(SelectCaseValue::from_json)
+        .filter_map(|value| select_case_value_for_property(property, value))
         .collect()
+}
+
+fn select_case_value_for_property(
+    property: &SelectProperty,
+    value: &Value,
+) -> Option<SelectCaseValue> {
+    match property {
+        SelectProperty::Component {
+            component: ComponentSelectProperty::CustomName,
+        } => simple_component_text(value).map(|text| SelectCaseValue::String(text.to_string())),
+        _ => SelectCaseValue::from_json(value),
+    }
 }
 
 impl ItemIconModelRef {
@@ -1613,7 +1625,7 @@ pub(super) fn item_icon_model_ref_for_definition(
                     .iter()
                     .map(|case| {
                         (
-                            select_case_when_values(case),
+                            select_case_when_values(&resolved_property, case),
                             Box::new(item_icon_model_ref_for_definition(
                                 &case.model,
                                 cuboid_models,

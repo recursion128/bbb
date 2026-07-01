@@ -763,11 +763,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:enchantment_glint_override`, plus the synced integer
     `minecraft:map_id` `MapId` wrapper and the RGB integer wrappers
     `minecraft:dyed_color` / `minecraft:map_color`, plus simple literal
-    JSON-string `minecraft:custom_name` values from `ComponentSerialization.CODEC`.
-    Tests pin texture
+    JSON-string / `{"text": ...}` `minecraft:custom_name` values from
+    `ComponentSerialization.CODEC`. Tests pin texture
     selection for string, numeric, boolean, resource-id, default, patched,
-    explicit map-id, explicit color, literal custom-name, and removed component
-    values. Complex object/list components, `item_name` default text,
+    explicit map-id, explicit color, literal custom-name string / text-object,
+    and removed component values. Complex object/list components beyond simple
+    literal text, `item_name` default text,
     style-sensitive component equality, registry-backed component value decoding,
     and transient components that vanilla rejects from `ComponentContents`
     selects, such as `minecraft:map_post_processing`, remain follow-up.

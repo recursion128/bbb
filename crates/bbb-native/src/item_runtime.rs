@@ -10737,7 +10737,8 @@ mod tests {
         );
 
         // `DataComponents.CUSTOM_NAME` uses ComponentSerialization.CODEC;
-        // this pins the JSON-string literal case and removed id 6 suppression.
+        // this pins JSON-string / {"text": "..."} literal cases and removed id
+        // 6 suppression.
         assert_eq!(
             selected(9, DataComponentPatchSummary::default()),
             uv("component_custom_name_fallback")
@@ -10751,6 +10752,16 @@ mod tests {
                 }
             ),
             uv("component_custom_name_named")
+        );
+        assert_eq!(
+            selected(
+                9,
+                DataComponentPatchSummary {
+                    custom_name: Some("Object Selector".to_string()),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_custom_name_object")
         );
         assert_eq!(
             selected(
@@ -16232,6 +16243,10 @@ mod tests {
                         {
                             "when": "Named Selector",
                             "model": { "type": "minecraft:model", "model": "minecraft:item/component_custom_name_named" }
+                        },
+                        {
+                            "when": { "text": "Object Selector" },
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_custom_name_object" }
                         }
                     ],
                     "fallback": { "type": "minecraft:model", "model": "minecraft:item/component_custom_name_fallback" }
@@ -16264,6 +16279,7 @@ mod tests {
             ("component_map_color_456789", [0x45, 0x67, 0x89, 255]),
             ("component_map_color_fallback", [35, 65, 60, 255]),
             ("component_custom_name_named", [210, 160, 80, 255]),
+            ("component_custom_name_object", [80, 180, 210, 255]),
             ("component_custom_name_fallback", [70, 45, 35, 255]),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);
