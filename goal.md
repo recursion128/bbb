@@ -1093,7 +1093,16 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     with fixed rect / scale / translation / rotation, `showArms = true`, and
     hidden base plate; result-slot armor/skull/wings equipment projection is now
     covered above.
-  - container、merchant、recipe/book/sign/advancement 等 screen 调用点。
+  - [x] ordinary container / merchant / recipe-book / book / sign /
+    advancement entity-preview call-point audit：
+    vanilla 26.1 `rg` over `client/gui/screens` finds entity-in-UI calls only in
+    `InventoryScreen`, `AbstractMountInventoryScreen`, `SmithingScreen`, and
+    the `CreativeModeInventoryScreen` inventory tab. Generic containers,
+    merchant, recipe/book, sign, and advancement screens do not call
+    `GuiGraphics.entity` / `extractEntityInInventoryFollowsMouse`, so they have
+    no missing entity-preview call point in the current P1-4 surface.
+    Creative inventory-tab player preview remains a later creative-screen-state
+    presentation slice.
   - [x] GUI pass 与 world pass 的 load/clear/depth ordering：
     renderer source-order tests pin world content rendering into the
     renderer-owned main target before transparency combine/final blit, then HUD

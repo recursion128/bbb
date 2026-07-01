@@ -1120,9 +1120,13 @@ When an agent does any of the following, update this file in the same slice:
     armor-stand preview with fixed rect / scale / translation / rotation,
     visible arms, and hidden base plate; the preview also projects smithing
     result-slot humanoid armor material / dye / foil, elytra wings metadata,
-    and supported custom-head skulls. Generic held items, non-skull head-item
-    projection, container/merchant/other screen call points, actual GPU PIP
-    drawing, and broader layer-order drawing remain subsequent P1-4 slices.
+    and supported custom-head skulls. A vanilla 26.1 screen call-point audit
+    finds no `GuiGraphics.entity` / `extractEntityInInventoryFollowsMouse`
+    calls in ordinary container, merchant, recipe/book, sign, or advancement
+    screens; the remaining vanilla entity-in-UI call point is the creative
+    inventory tab, deferred until creative screen state exists. Generic held
+    items, non-skull head-item projection, actual GPU PIP drawing, and broader
+    layer-order drawing remain subsequent P1-4 slices.
     The dropped-item 3D model
     path and the legacy item-entity / thrown-item billboard path now sample the
     entity light probe through `WorldStore`, keep the vanilla full-bright
