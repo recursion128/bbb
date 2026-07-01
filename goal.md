@@ -803,12 +803,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     order. `minecraft:bundle_contents`
     `items.size` constraints now match vanilla `CollectionPredicate.size`
     against the decoded bundle item count, and `items.contains` / `count`
-    now support vanilla `ItemPredicate` direct item-key plus stack-count bounds
-    over decoded bundle entries. `minecraft:container` now decodes non-empty
-    container entries and matches the same direct item-key / stack-count
-    collection predicate subset. `minecraft:enchantments` and
-    patch-backed `minecraft:stored_enchantments` now match decoded enchantment
-    levels and direct registry-key HolderSet predicates when the
+    now support vanilla `ItemPredicate` direct item-key or item-tag HolderSets
+    plus stack-count bounds over decoded bundle entries. `minecraft:container`
+    now decodes non-empty container entries and matches the same direct item-key
+    / item-tag / stack-count collection predicate subset.
+    `minecraft:enchantments` and patch-backed
+    `minecraft:stored_enchantments` now match decoded enchantment levels and
+    direct registry-key HolderSet predicates when the
     `minecraft:enchantment` registry keys are available to the icon resolver;
     GUI/HUD, dropped `GROUND`, item-frame `FIXED`, and owner-backed third-person
     generated held-item paths now thread that registry context, while empty
@@ -817,9 +818,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:enchanted_book` now also contributes its item-specific default
     empty `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
     constrained `DataComponentPredicate` types such as enchantment tag
-    HolderSets / inline or datapack holder payloads, bundle/container item tags
-    and nested component matchers, and trim tag sets / inline material or
-    pattern payloads / datapack pattern registry-key remaps remain
+    HolderSets / inline or datapack holder payloads, bundle/container nested
+    component matchers, and trim tag sets / inline material or pattern payloads
+    / datapack pattern registry-key remaps remain
     component-predicate follow-up.
   - [x] `minecraft:has_component` item-model condition now follows vanilla
     `HasComponent.get`: default prototype components such as

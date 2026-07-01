@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use bbb_pack::{
     ItemCuboidModelCatalog, ItemModelDefinition, ItemModelProperty, ItemModelPropertyKind,
-    ItemTintSource, SelectCase, TerrainColorMaps,
+    ItemTintSource, SelectCase, TagCatalog, TerrainColorMaps,
 };
 use bbb_protocol::packets::{
     DataComponentPatchSummary, FireworkExplosionShapeSummary, FireworkExplosionSummary,
@@ -868,6 +868,9 @@ pub(super) struct IconResolveContext<'a> {
     /// Item registry keys by protocol id, used for vanilla `ItemPredicate.items`
     /// matching inside collection component predicates.
     pub item_resource_ids: Option<&'a [String]>,
+    /// `tags/item` catalog used for `#namespace:path` HolderSet entries in
+    /// vanilla `ItemPredicate.items`.
+    pub item_tags: Option<&'a TagCatalog>,
     /// `minecraft:trim_material` registry keys by holder id (the dynamic
     /// registry, projected from `bbb-world` at the call site).
     pub trim_material_keys: Option<&'a [String]>,
@@ -1833,6 +1836,7 @@ fn item_stack_matches_bundle_contents_predicate(
         &component_patch.bundle_contents_items,
         component_patch.bundle_contents_item_count,
         ctx.item_resource_ids,
+        ctx.item_tags,
     )
 }
 
@@ -1884,6 +1888,7 @@ fn item_stack_matches_container_predicate(
         &component_patch.container_items,
         component_patch.container_item_count,
         ctx.item_resource_ids,
+        ctx.item_tags,
     )
 }
 
@@ -1952,13 +1957,21 @@ fn item_predicate_is_supported(value: &Value) -> bool {
 
 fn item_holder_set_is_supported(value: &Value) -> bool {
     match value {
-        Value::String(expected) => !expected.starts_with('#'),
+        Value::String(expected) => item_holder_set_entry_is_supported(expected),
         Value::Array(expected) => expected.iter().all(|expected| {
             expected
                 .as_str()
-                .is_some_and(|expected| !expected.starts_with('#'))
+                .is_some_and(item_holder_set_entry_is_supported)
         }),
         _ => false,
+    }
+}
+
+fn item_holder_set_entry_is_supported(expected: &str) -> bool {
+    if let Some(tag_id) = expected.strip_prefix('#') {
+        !tag_id.is_empty()
+    } else {
+        !expected.is_empty()
     }
 }
 
@@ -1967,6 +1980,7 @@ fn item_collection_predicate_matches(
     items: &[ItemStackTemplateSummary],
     item_count: Option<usize>,
     item_resource_ids: Option<&[String]>,
+    item_tags: Option<&TagCatalog>,
 ) -> bool {
     let Some(value) = value.as_object() else {
         return false;
@@ -1978,7 +1992,7 @@ fn item_collection_predicate_matches(
         if !predicates.iter().all(|predicate| {
             items
                 .iter()
-                .any(|item| item_predicate_matches(predicate, item, item_resource_ids))
+                .any(|item| item_predicate_matches(predicate, item, item_resource_ids, item_tags))
         }) {
             return false;
         }
@@ -1987,10 +2001,9 @@ fn item_collection_predicate_matches(
         let Some(entries) = counts.as_array() else {
             return false;
         };
-        if !entries
-            .iter()
-            .all(|entry| item_predicate_count_entry_matches(entry, items, item_resource_ids))
-        {
+        if !entries.iter().all(|entry| {
+            item_predicate_count_entry_matches(entry, items, item_resource_ids, item_tags)
+        }) {
             return false;
         }
     }
@@ -2012,6 +2025,7 @@ fn item_predicate_count_entry_matches(
     entry: &Value,
     items: &[ItemStackTemplateSummary],
     item_resource_ids: Option<&[String]>,
+    item_tags: Option<&TagCatalog>,
 ) -> bool {
     let Some(entry) = entry.as_object() else {
         return false;
@@ -2021,7 +2035,7 @@ fn item_predicate_count_entry_matches(
     };
     let count = items
         .iter()
-        .filter(|item| item_predicate_matches(test, item, item_resource_ids))
+        .filter(|item| item_predicate_matches(test, item, item_resource_ids, item_tags))
         .count();
     let Ok(count) = i32::try_from(count) else {
         return false;
@@ -2033,6 +2047,7 @@ fn item_predicate_matches(
     value: &Value,
     item: &ItemStackTemplateSummary,
     item_resource_ids: Option<&[String]>,
+    item_tags: Option<&TagCatalog>,
 ) -> bool {
     let Some(value) = value.as_object() else {
         return false;
@@ -2044,7 +2059,7 @@ fn item_predicate_matches(
         let Some(resource_id) = item_resource_ids.and_then(|ids| ids.get(item_index)) else {
             return false;
         };
-        if !item_holder_set_matches(items, resource_id) {
+        if !item_holder_set_matches(items, resource_id, item_tags) {
             return false;
         }
     }
@@ -2056,13 +2071,31 @@ fn item_predicate_matches(
     true
 }
 
-fn item_holder_set_matches(value: &Value, resource_id: &str) -> bool {
+fn item_holder_set_matches(
+    value: &Value,
+    resource_id: &str,
+    item_tags: Option<&TagCatalog>,
+) -> bool {
     match value {
-        Value::String(expected) => expected == resource_id,
-        Value::Array(expected) => expected
-            .iter()
-            .any(|expected| expected.as_str() == Some(resource_id)),
+        Value::String(expected) => item_holder_set_entry_matches(expected, resource_id, item_tags),
+        Value::Array(expected) => expected.iter().any(|expected| {
+            expected.as_str().is_some_and(|expected| {
+                item_holder_set_entry_matches(expected, resource_id, item_tags)
+            })
+        }),
         _ => false,
+    }
+}
+
+fn item_holder_set_entry_matches(
+    expected: &str,
+    resource_id: &str,
+    item_tags: Option<&TagCatalog>,
+) -> bool {
+    if let Some(tag_id) = expected.strip_prefix('#') {
+        item_tags.is_some_and(|tags| tags.contains(tag_id, resource_id))
+    } else {
+        expected == resource_id
     }
 }
 

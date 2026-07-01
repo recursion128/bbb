@@ -5866,10 +5866,11 @@ When an agent does any of the following, update this file in the same slice:
       keys when no pattern constraint is present. `minecraft:bundle_contents`
       `items.size` constraints match vanilla `CollectionPredicate.size` against
       the decoded bundle item count, and `items.contains` / `count` now support
-      vanilla `ItemPredicate` direct item-key plus stack-count bounds over
-      decoded bundle entries. `minecraft:container` now decodes non-empty
-      container entries and matches the same direct item-key / stack-count
-      collection predicate subset. `minecraft:fireworks`
+      vanilla `ItemPredicate` direct item-key or item-tag HolderSets plus
+      stack-count bounds over decoded bundle entries. `minecraft:container`
+      now decodes non-empty container entries and matches the same direct
+      item-key / item-tag / stack-count collection predicate subset.
+      `minecraft:fireworks`
       `explosions.contains` / `count` predicates now match decoded explosion
       shape / trail / twinkle summaries. `minecraft:trim` direct vanilla
       registry-key pattern constraints now match decoded `ArmorTrim.pattern()`
@@ -5885,9 +5886,9 @@ When an agent does any of the following, update this file in the same slice:
       `minecraft:enchanted_book` contributes its item-specific default empty
       `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
       constrained predicate types (enchantment tag HolderSets / inline or
-      datapack holder payloads, bundle/container item tags and nested component
-      matchers, trim tag sets / inline material or pattern payloads / datapack
-      pattern registry-key remaps, and similar) remain follow-up.
+      datapack holder payloads, bundle/container nested component matchers,
+      trim tag sets / inline material or pattern payloads / datapack pattern
+      registry-key remaps, and similar) remain follow-up.
     - `minecraft:charge_type` — `Charge.get` (`ROCKET` when any charged
       projectile is `minecraft:firework_rocket`, `ARROW` when charged otherwise,
       else `NONE`), using the native item registry to identify the projectile

@@ -15,7 +15,7 @@ use bbb_pack::{
     ItemMiningProfile as PackItemMiningProfile, ItemMiningRule as PackItemMiningRule,
     ItemModelCatalog, ItemModelDefinition, ItemMountBodyArmorKind as PackItemMountBodyArmorKind,
     ItemRegistryCatalog, ItemTintSource, ItemUseEffects as PackItemUseEffects, LanguageCatalog,
-    PackResourceStack, PackRoots, ResourceLocation, SpriteImage, TerrainColorMaps,
+    PackResourceStack, PackRoots, ResourceLocation, SpriteImage, TagCatalog, TerrainColorMaps,
     DEFAULT_LANGUAGE_CODE,
 };
 use bbb_protocol::packets::{
@@ -343,6 +343,7 @@ pub(crate) struct NativeItemRuntime {
     item_icon_models: HashMap<String, ItemIconModel>,
     item_display_transforms: HashMap<String, BlockModelDisplayTransforms>,
     registry: Option<ItemRegistryCatalog>,
+    item_tags: Option<TagCatalog>,
     equipment_assets: EquipmentAssetCatalog,
     language: LanguageCatalog,
     map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
@@ -416,6 +417,14 @@ impl NativeItemRuntime {
             .as_ref()
             .map(recipe_specific_crafting_remainder_item_ids)
             .unwrap_or_default();
+        let item_tags = roots
+            .load_tag_catalog("item")
+            .context("load native item tags")
+            .map_err(|err| {
+                tracing::warn!(?err, "continuing without native item tag catalog");
+                err
+            })
+            .ok();
         let equipment_assets = roots
             .load_equipment_asset_catalog()
             .context("load equipment asset catalog")
@@ -463,6 +472,7 @@ impl NativeItemRuntime {
             language,
             map_decoration_textures,
             map_text_glyphs,
+            item_tags,
             roots.resource_stack(),
         )
     }
@@ -481,6 +491,7 @@ impl NativeItemRuntime {
         language: LanguageCatalog,
         map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
         map_text_glyphs: Option<[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT]>,
+        item_tags: Option<TagCatalog>,
         profile_texture_resources: PackResourceStack,
     ) -> Result<Self> {
         let mut texture_ids = BTreeSet::new();
@@ -558,6 +569,7 @@ impl NativeItemRuntime {
             item_icon_models,
             item_display_transforms,
             registry,
+            item_tags,
             equipment_assets,
             language,
             map_decoration_textures,
@@ -591,6 +603,7 @@ impl NativeItemRuntime {
             item_icon_models: HashMap::new(),
             item_display_transforms: HashMap::new(),
             registry: None,
+            item_tags: None,
             equipment_assets: EquipmentAssetCatalog::default(),
             language: LanguageCatalog::from_json_bytes(b"{}").expect("empty test language"),
             map_decoration_textures: Vec::new(),
@@ -1375,6 +1388,7 @@ impl NativeItemRuntime {
                                 .registry
                                 .as_ref()
                                 .map(ItemRegistryCatalog::resource_ids),
+                            item_tags: self.item_tags.as_ref(),
                             trim_material_keys: None,
                             enchantment_keys: None,
                         })
@@ -2129,6 +2143,7 @@ impl NativeItemRuntime {
                 .registry
                 .as_ref()
                 .map(ItemRegistryCatalog::resource_ids),
+            item_tags: self.item_tags.as_ref(),
             trim_material_keys,
             enchantment_keys,
         };
@@ -2287,6 +2302,7 @@ impl NativeItemRuntime {
             compass_context: parent_context.compass_context,
             default_max_stack_size_for_item: parent_context.default_max_stack_size_for_item,
             item_resource_ids: parent_context.item_resource_ids,
+            item_tags: parent_context.item_tags,
             trim_material_keys: parent_context.trim_material_keys,
             enchantment_keys: parent_context.enchantment_keys,
         };
@@ -5983,6 +5999,106 @@ mod tests {
             ),
             uv("component_condition_container_count_absent")
         );
+        assert_eq!(
+            selected(
+                28,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 2,
+                        component_patch: DataComponentPatchSummary::default(),
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_tag_contains_present")
+        );
+        assert_eq!(
+            selected(
+                28,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 2,
+                        count: 2,
+                        component_patch: DataComponentPatchSummary::default(),
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_tag_contains_absent")
+        );
+        assert_eq!(
+            selected(
+                28,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    removed_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 2,
+                        component_patch: DataComponentPatchSummary::default(),
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_tag_contains_absent")
+        );
+        assert_eq!(
+            selected(
+                29,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(3),
+                    container_items: vec![
+                        ItemStackTemplateSummary {
+                            item_id: 0,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary::default(),
+                        },
+                        ItemStackTemplateSummary {
+                            item_id: 1,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary::default(),
+                        },
+                        ItemStackTemplateSummary {
+                            item_id: 2,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary::default(),
+                        },
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_tag_count_present")
+        );
+        assert_eq!(
+            selected(
+                29,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(2),
+                    container_items: vec![
+                        ItemStackTemplateSummary {
+                            item_id: 0,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary::default(),
+                        },
+                        ItemStackTemplateSummary {
+                            item_id: 2,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary::default(),
+                        },
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_tag_count_absent")
+        );
 
         let star_trail = DataComponentPatchSummary {
             added_type_ids: vec![68],
@@ -8104,6 +8220,24 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_ENCHANTMENTS_HOLDER = registerItem("component_condition_enchantments_holder");
                 public static final Item COMPONENT_CONDITION_STORED_ENCHANTMENTS_HOLDER = registerItem("component_condition_stored_enchantments_holder");
                 public static final Item ENCHANTED_BOOK = registerItem("enchanted_book");
+                public static final Item COMPONENT_CONDITION_BUNDLE_TAG_CONTAINS = registerItem("component_condition_bundle_tag_contains");
+                public static final Item COMPONENT_CONDITION_CONTAINER_TAG_COUNT = registerItem("component_condition_container_tag_count");
+            }"#,
+        );
+        write_json(
+            &root
+                .join("sources")
+                .join(bbb_pack::MC_VERSION)
+                .join("data")
+                .join("minecraft")
+                .join("tags")
+                .join("item")
+                .join("component_condition_tagged.json"),
+            r#"{
+                "values": [
+                    "minecraft:component_condition_rarity",
+                    "minecraft:component_condition_glint"
+                ]
             }"#,
         );
         write_json(
@@ -8369,6 +8503,72 @@ mod tests {
                     }
                 }
             }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_tag_contains.json"),
+            r##"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "items": "#minecraft:component_condition_tagged",
+                                    "count": {
+                                        "min": 2
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_tag_contains_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_tag_contains_absent"
+                    }
+                }
+            }"##,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_container_tag_count.json"),
+            r##"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:container",
+                    "value": {
+                        "items": {
+                            "count": [
+                                {
+                                    "test": {
+                                        "items": "#minecraft:component_condition_tagged"
+                                    },
+                                    "count": {
+                                        "min": 2
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_tag_count_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_tag_count_absent"
+                    }
+                }
+            }"##,
         );
         write_json(
             &assets
@@ -8910,6 +9110,22 @@ mod tests {
             (
                 "component_condition_stored_enchantments_default_absent",
                 [90, 80, 40, 255],
+            ),
+            (
+                "component_condition_bundle_tag_contains_present",
+                [210, 230, 110, 255],
+            ),
+            (
+                "component_condition_bundle_tag_contains_absent",
+                [70, 80, 30, 255],
+            ),
+            (
+                "component_condition_container_tag_count_present",
+                [110, 230, 210, 255],
+            ),
+            (
+                "component_condition_container_tag_count_absent",
+                [30, 80, 70, 255],
             ),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);
