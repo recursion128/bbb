@@ -786,8 +786,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     firework texture selection from decoded charged projectile item templates.
   - [x] `minecraft:selected` item-model condition resolves for HUD hotbar item
     icons from vanilla `IsSelected.get`: the local selected hotbar slot receives
-    the true branch and non-selected hotbar slots stay false. Broader inventory
-    slot identity cases remain follow-up with the GUI owner/state surface.
+    the true branch and non-selected hotbar slots stay false. Local inventory
+    GUI hotbar slots now resolve the same condition for slot
+    `36 + selected_hotbar_slot`; same-stack non-selected slots stay false
+    instead of matching by item contents. Server-opened container player-slot
+    identity remains follow-up with the broader GUI owner/state surface.
   - [x] `minecraft:carried` item-model condition is recognized and resolved
     through an explicit local-player carried-stack context bit from vanilla
     `IsCarried.get` (`LocalPlayer.containerMenu.getCarried() == itemStack`):
