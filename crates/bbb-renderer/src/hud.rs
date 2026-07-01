@@ -2,7 +2,7 @@ use anyhow::Result;
 use winit::dpi::PhysicalSize;
 
 use crate::entity_models::{EntityModelInstance, ENTITY_FULL_BRIGHT_LIGHT_COORDS};
-use crate::item_models::{GuiItemLightingEntry, HudBlockItemModel};
+use crate::item_models::{GuiItemLightingEntry, HudBlockItemModel, ITEM_MODEL_NO_OVERLAY};
 use crate::Renderer;
 
 mod gpu;
@@ -298,6 +298,38 @@ impl HudEntityPreviewRect {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudEntityPreviewItemSlot {
+    LeftHand,
+    Head,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudEntityPreviewItemDisplayContext {
+    ThirdPersonLeftHand,
+    Head,
+}
+
+/// Item layer metadata for a GUI entity picture-in-picture render plan.
+///
+/// Vanilla `ArmorStandRenderer` registers `ItemInHandLayer` before `WingsLayer` and
+/// `CustomHeadLayer`; `SmithingScreen.updateArmorStandPreview` uses
+/// `ItemDisplayContext.THIRD_PERSON_LEFT_HAND` for ordinary result stacks and
+/// `ItemDisplayContext.HEAD` for HEAD-slot stacks that are not rendered by
+/// `HumanoidArmorLayer` / `SkullBlockRenderer`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HudEntityPreviewItemLayer {
+    pub slot: HudEntityPreviewItemSlot,
+    pub display_context: HudEntityPreviewItemDisplayContext,
+    pub item_id: i32,
+    pub count: i32,
+    pub foil: bool,
+    pub light_coords: u32,
+    pub overlay: [f32; 2],
+    pub order: u32,
+    pub submit_sequence: u32,
+}
+
 /// Vanilla GUI entity picture-in-picture render plan.
 ///
 /// `GuiGraphicsExtractor.entity` submits a `GuiEntityRenderState`, forces the entity render-state light
@@ -321,6 +353,8 @@ pub struct HudEntityPreview {
     pub scale: f32,
     /// Vanilla PIP renderers use a private color texture and a private depth texture, cleared per preview.
     pub depth_isolated: bool,
+    /// Item layers submitted by the preview renderer around the entity model, with vanilla order metadata.
+    pub item_layers: Vec<HudEntityPreviewItemLayer>,
 }
 
 impl HudEntityPreview {
@@ -2732,6 +2766,13 @@ fn sanitize_hud_entity_preview(mut preview: HudEntityPreview) -> Option<HudEntit
     preview.entity.render_state.light_coords = ENTITY_FULL_BRIGHT_LIGHT_COORDS;
     preview.entity.render_state.outline_color = 0;
     preview.entity.render_state.appears_glowing = false;
+    for layer in &mut preview.item_layers {
+        if layer.item_id < 0 || layer.count <= 0 {
+            return None;
+        }
+        layer.light_coords = ENTITY_FULL_BRIGHT_LIGHT_COORDS;
+        layer.overlay = ITEM_MODEL_NO_OVERLAY;
+    }
     Some(preview)
 }
 
@@ -3639,6 +3680,17 @@ mod tests {
             override_camera_rotation: Some([0.125, 0.0, 0.0, 0.992_156_74]),
             scale: 30.0,
             depth_isolated: true,
+            item_layers: vec![HudEntityPreviewItemLayer {
+                slot: HudEntityPreviewItemSlot::LeftHand,
+                display_context: HudEntityPreviewItemDisplayContext::ThirdPersonLeftHand,
+                item_id: 12,
+                count: 1,
+                foil: true,
+                light_coords: 0,
+                overlay: [1.0, 2.0],
+                order: 0,
+                submit_sequence: 1,
+            }],
         }
     }
 
@@ -3696,6 +3748,20 @@ mod tests {
         );
         assert_eq!(preview.entity.render_state.outline_color, 0);
         assert!(!preview.entity.render_state.appears_glowing);
+        assert_eq!(
+            preview.item_layers,
+            vec![HudEntityPreviewItemLayer {
+                slot: HudEntityPreviewItemSlot::LeftHand,
+                display_context: HudEntityPreviewItemDisplayContext::ThirdPersonLeftHand,
+                item_id: 12,
+                count: 1,
+                foil: true,
+                light_coords: ENTITY_FULL_BRIGHT_LIGHT_COORDS,
+                overlay: ITEM_MODEL_NO_OVERLAY,
+                order: 0,
+                submit_sequence: 1,
+            }]
+        );
     }
 
     #[test]

@@ -1127,9 +1127,14 @@ When an agent does any of the following, update this file in the same slice:
     finds no `GuiGraphics.entity` / `extractEntityInInventoryFollowsMouse`
     calls in ordinary container, merchant, recipe/book, sign, or advancement
     screens; the remaining vanilla entity-in-UI call point is the creative
-    inventory tab, deferred until creative screen state exists. Generic held
-    items, non-skull head-item projection, actual GPU PIP drawing, and broader
-    layer-order drawing remain subsequent P1-4 slices.
+    inventory tab, deferred until creative screen state exists. Smithing
+    preview ordinary result stacks and HEAD-slot non-armor/non-skull stacks now
+    carry explicit `HudEntityPreview` item-layer render-plan metadata, matching
+    vanilla `ItemDisplayContext.THIRD_PERSON_LEFT_HAND` for the
+    `ItemInHandLayer` slot and `ItemDisplayContext.HEAD` for the
+    `CustomHeadLayer` slot, with full-bright light, no-overlay, foil, order,
+    and submit_sequence pinned in tests. Actual GPU PIP drawing for those item
+    layers and broader layer-order drawing remain subsequent P1-4 slices.
     The dropped-item 3D model
     path and the legacy item-entity / thrown-item billboard path now sample the
     entity light probe through `WorldStore`, keep the vanilla full-bright

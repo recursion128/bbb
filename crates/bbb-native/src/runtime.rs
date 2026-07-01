@@ -14,16 +14,18 @@ use bbb_protocol::{
 use bbb_renderer::{
     BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment, CloudFrame, EntityModelInstance,
     FogEnvironment, GuiItemLightingEntry, HudBlockItemModel, HudEntityPreview,
+    HudEntityPreviewItemDisplayContext, HudEntityPreviewItemLayer, HudEntityPreviewItemSlot,
     HudEntityPreviewRect, HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
     HudInventoryItem, HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
     HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
     HudItemDurabilityBar, HudItemIcon, HudUvRect, LevelLighting, LightmapEnvironment,
     LightningBoltRenderState, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame,
     WeatherRenderState, DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_FULL_BRIGHT_LIGHT_COORDS,
-    HUD_HOTBAR_SLOTS, VANILLA_DEFAULT_CLOUD_COLOR, VANILLA_DEFAULT_CLOUD_HEIGHT,
-    VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR, VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR,
-    VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR,
-    VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
+    HUD_HOTBAR_SLOTS, ITEM_MODEL_NO_OVERLAY, VANILLA_DEFAULT_CLOUD_COLOR,
+    VANILLA_DEFAULT_CLOUD_HEIGHT, VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
+    VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR,
+    VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR, VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
+    VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_world::{
     BlockPos, BookScreenState, ContainerState, ItemEquipmentSlot, MerchantOfferState,
@@ -2131,6 +2133,7 @@ fn hud_entity_in_inventory_follows_mouse_preview(
         override_camera_rotation: Some(camera_x_rotation),
         scale,
         depth_isolated: true,
+        item_layers: Vec::new(),
     })
 }
 
@@ -2161,7 +2164,7 @@ fn hud_smithing_entity_preview(
     entity.render_state.light_coords = ENTITY_FULL_BRIGHT_LIGHT_COORDS;
     entity.render_state.outline_color = 0;
     entity.render_state.appears_glowing = false;
-    apply_smithing_result_equipment(&mut entity, world, item_runtime);
+    let item_layers = apply_smithing_result_equipment(&mut entity, world, item_runtime);
 
     HudEntityPreview {
         entity,
@@ -2181,6 +2184,7 @@ fn hud_smithing_entity_preview(
         override_camera_rotation: None,
         scale: SCALE,
         depth_isolated: true,
+        item_layers,
     }
 }
 
@@ -2188,20 +2192,22 @@ fn apply_smithing_result_equipment(
     entity: &mut EntityModelInstance,
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
-) {
+) -> Vec<HudEntityPreviewItemLayer> {
     const SMITHING_RESULT_SLOT: i16 = 3;
+    const ARMOR_STAND_ITEM_IN_HAND_LAYER_SEQUENCE: u32 = 1;
+    const ARMOR_STAND_CUSTOM_HEAD_LAYER_SEQUENCE: u32 = 2;
 
     let Some(item_runtime) = item_runtime else {
-        return;
+        return Vec::new();
     };
     let Some(stack) = open_container_slot_item(world, SMITHING_RESULT_SLOT) else {
-        return;
+        return Vec::new();
     };
     if item_stack_is_empty(stack) {
-        return;
+        return Vec::new();
     }
     let Some(item_id) = stack.item_id else {
-        return;
+        return Vec::new();
     };
 
     match item_runtime.item_equipment_slot(item_id) {
@@ -2214,7 +2220,17 @@ fn apply_smithing_result_equipment(
                 entity.render_state.head_armor.is_some() && item_stack_has_foil(stack);
         }
         Some(ItemEquipmentSlot::Head) => {
-            entity.render_state.custom_head_skull = item_runtime.custom_head_skull_for_stack(stack);
+            if smithing_result_is_custom_head_skull(item_runtime, item_id) {
+                entity.render_state.custom_head_skull =
+                    item_runtime.custom_head_skull_for_stack(stack);
+            } else {
+                return vec![smithing_preview_item_layer(
+                    HudEntityPreviewItemSlot::Head,
+                    HudEntityPreviewItemDisplayContext::Head,
+                    stack,
+                    ARMOR_STAND_CUSTOM_HEAD_LAYER_SEQUENCE,
+                )];
+            }
         }
         Some(ItemEquipmentSlot::Chest) => {
             entity.render_state.chest_armor =
@@ -2252,8 +2268,52 @@ fn apply_smithing_result_equipment(
             | ItemEquipmentSlot::Body
             | ItemEquipmentSlot::Saddle,
         )
-        | None => {}
+        | None => {
+            return vec![smithing_preview_item_layer(
+                HudEntityPreviewItemSlot::LeftHand,
+                HudEntityPreviewItemDisplayContext::ThirdPersonLeftHand,
+                stack,
+                ARMOR_STAND_ITEM_IN_HAND_LAYER_SEQUENCE,
+            )];
+        }
     }
+    Vec::new()
+}
+
+fn smithing_preview_item_layer(
+    slot: HudEntityPreviewItemSlot,
+    display_context: HudEntityPreviewItemDisplayContext,
+    stack: &ItemStackSummary,
+    submit_sequence: u32,
+) -> HudEntityPreviewItemLayer {
+    HudEntityPreviewItemLayer {
+        slot,
+        display_context,
+        item_id: stack.item_id.unwrap_or_default(),
+        count: stack.count,
+        foil: item_stack_has_foil(stack),
+        light_coords: ENTITY_FULL_BRIGHT_LIGHT_COORDS,
+        overlay: ITEM_MODEL_NO_OVERLAY,
+        order: 0,
+        submit_sequence,
+    }
+}
+
+fn smithing_result_is_custom_head_skull(item_runtime: &NativeItemRuntime, item_id: i32) -> bool {
+    item_runtime
+        .item_resource_id(item_id)
+        .is_some_and(|resource_id| {
+            matches!(
+                resource_id,
+                "minecraft:skeleton_skull"
+                    | "minecraft:wither_skeleton_skull"
+                    | "minecraft:zombie_head"
+                    | "minecraft:creeper_head"
+                    | "minecraft:piglin_head"
+                    | "minecraft:dragon_head"
+                    | "minecraft:player_head"
+            )
+        })
 }
 
 fn item_stack_has_foil(item: &ItemStackSummary) -> bool {

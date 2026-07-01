@@ -6479,6 +6479,8 @@ fn hud_inventory_screen_projects_smithing_result_equipment_preview() {
     const BOOTS_ID: i32 = 3;
     const ELYTRA_ID: i32 = 4;
     const SKELETON_SKULL_ID: i32 = 5;
+    const CARVED_PUMPKIN_ID: i32 = 6;
+    const IRON_SWORD_ID: i32 = 7;
 
     let runtime = smithing_preview_item_runtime();
 
@@ -6548,6 +6550,45 @@ fn hud_inventory_screen_projects_smithing_result_equipment_preview() {
         skull_state.custom_head_skull,
         Some(bbb_renderer::EntityCustomHeadSkull::Skeleton)
     );
+    assert!(skull_preview.item_layers.is_empty());
+
+    let pumpkin_preview =
+        smithing_preview_for_result_stack(item_stack(CARVED_PUMPKIN_ID, 1), &runtime);
+    let pumpkin_state = &pumpkin_preview.entity.render_state;
+    assert_eq!(pumpkin_state.head_armor, None);
+    assert_eq!(pumpkin_state.custom_head_skull, None);
+    assert_eq!(
+        pumpkin_preview.item_layers,
+        vec![HudEntityPreviewItemLayer {
+            slot: HudEntityPreviewItemSlot::Head,
+            display_context: HudEntityPreviewItemDisplayContext::Head,
+            item_id: CARVED_PUMPKIN_ID,
+            count: 1,
+            foil: false,
+            light_coords: ENTITY_FULL_BRIGHT_LIGHT_COORDS,
+            overlay: ITEM_MODEL_NO_OVERLAY,
+            order: 0,
+            submit_sequence: 2,
+        }]
+    );
+
+    let mut sword = item_stack(IRON_SWORD_ID, 1);
+    sword.component_patch.enchantment_glint_override = Some(true);
+    let sword_preview = smithing_preview_for_result_stack(sword, &runtime);
+    assert_eq!(
+        sword_preview.item_layers,
+        vec![HudEntityPreviewItemLayer {
+            slot: HudEntityPreviewItemSlot::LeftHand,
+            display_context: HudEntityPreviewItemDisplayContext::ThirdPersonLeftHand,
+            item_id: IRON_SWORD_ID,
+            count: 1,
+            foil: true,
+            light_coords: ENTITY_FULL_BRIGHT_LIGHT_COORDS,
+            overlay: ITEM_MODEL_NO_OVERLAY,
+            order: 0,
+            submit_sequence: 1,
+        }]
+    );
 }
 
 fn smithing_preview_for_result_stack(
@@ -6585,7 +6626,9 @@ fn smithing_preview_item_runtime() -> NativeItemRuntime {
             "minecraft:diamond_leggings",
             "minecraft:diamond_boots",
             "minecraft:elytra",
-            "minecraft:skeleton_skull"
+            "minecraft:skeleton_skull",
+            "minecraft:carved_pumpkin",
+            "minecraft:iron_sword"
         ],
         "protocol_ids": {
             "minecraft:diamond_helmet": 0,
@@ -6593,7 +6636,9 @@ fn smithing_preview_item_runtime() -> NativeItemRuntime {
             "minecraft:diamond_leggings": 2,
             "minecraft:diamond_boots": 3,
             "minecraft:elytra": 4,
-            "minecraft:skeleton_skull": 5
+            "minecraft:skeleton_skull": 5,
+            "minecraft:carved_pumpkin": 6,
+            "minecraft:iron_sword": 7
         },
         "default_equipment_slots": {
             "minecraft:diamond_helmet": "head",
@@ -6601,7 +6646,8 @@ fn smithing_preview_item_runtime() -> NativeItemRuntime {
             "minecraft:diamond_leggings": "legs",
             "minecraft:diamond_boots": "feet",
             "minecraft:elytra": "chest",
-            "minecraft:skeleton_skull": "head"
+            "minecraft:skeleton_skull": "head",
+            "minecraft:carved_pumpkin": "head"
         },
         "humanoid_armor_assets": {
             "minecraft:diamond_helmet": "diamond",

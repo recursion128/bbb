@@ -1082,7 +1082,16 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     equipment: humanoid armor material / dye / foil, elytra wings metadata, and
     supported custom-head skulls. Tests pin head/chest/legs/feet armor, elytra
     layer texture, skull projection, tint, and foil.
-  - generic held item / non-skull head item 在 UI preview 中的 layer order。
+  - [x] generic held item / non-skull head item 在 UI preview 中的 layer order：
+    `HudEntityPreview` now carries explicit item-layer render-plan metadata for
+    smithing preview ordinary result stacks and HEAD-slot non-armor/non-skull
+    stacks. Native mirrors vanilla `SmithingScreen.updateArmorStandPreview`:
+    default result stacks use `ItemDisplayContext.THIRD_PERSON_LEFT_HAND` at
+    the `ItemInHandLayer` sequence before wings/custom-head, while non-skull
+    HEAD stacks use `ItemDisplayContext.HEAD` at the `CustomHeadLayer`
+    sequence. Tests pin item id/count, foil, full-bright light, no-overlay,
+    order, submit_sequence, and display context. Actual GPU PIP item drawing
+    remains a later entity-in-UI surface.
 - screen integration：
   - [x] inventory local-player entity preview call point：
     native local inventory screen now emits a `HudEntityPreview` for the logged-in
