@@ -735,6 +735,7 @@ pub(super) enum ComponentSelectProperty {
     MaxDamage,
     Damage,
     ItemModel,
+    ItemName,
     Rarity,
     CustomName,
     EnchantmentGlintOverride,
@@ -750,6 +751,7 @@ impl ComponentSelectProperty {
             "minecraft:max_damage" => Some(Self::MaxDamage),
             "minecraft:damage" => Some(Self::Damage),
             "minecraft:item_model" => Some(Self::ItemModel),
+            "minecraft:item_name" => Some(Self::ItemName),
             "minecraft:rarity" => Some(Self::Rarity),
             "minecraft:custom_name" => Some(Self::CustomName),
             "minecraft:enchantment_glint_override" => Some(Self::EnchantmentGlintOverride),
@@ -766,6 +768,7 @@ impl ComponentSelectProperty {
             Self::MaxDamage => MAX_DAMAGE_COMPONENT_ID,
             Self::Damage => DAMAGE_COMPONENT_ID,
             Self::ItemModel => ITEM_MODEL_COMPONENT_ID,
+            Self::ItemName => ITEM_NAME_COMPONENT_ID,
             Self::Rarity => RARITY_COMPONENT_ID,
             Self::CustomName => CUSTOM_NAME_COMPONENT_ID,
             Self::EnchantmentGlintOverride => ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID,
@@ -816,6 +819,15 @@ impl ComponentSelectProperty {
                     .unwrap_or(default_item_model_id)
                     .to_string(),
             )),
+            Self::ItemName => {
+                if let Some(name) = component_patch.and_then(|patch| patch.item_name.as_deref()) {
+                    Some(SelectCaseValue::String(name.to_string()))
+                } else {
+                    Some(SelectCaseValue::TranslatableComponentKey(
+                        default_item_name_translation_key(default_item_model_id),
+                    ))
+                }
+            }
             Self::Rarity => Some(SelectCaseValue::String(
                 component_patch
                     .and_then(|patch| patch.rarity)
@@ -932,6 +944,7 @@ pub(super) enum SelectCaseValue {
     String(String),
     I32(i32),
     Bool(bool),
+    TranslatableComponentKey(String),
 }
 
 impl SelectCaseValue {
@@ -966,6 +979,14 @@ fn select_case_value_for_property(
         SelectProperty::Component {
             component: ComponentSelectProperty::CustomName,
         } => simple_component_text(value).map(|text| SelectCaseValue::String(text.to_string())),
+        SelectProperty::Component {
+            component: ComponentSelectProperty::ItemName,
+        } => simple_component_text(value)
+            .map(|text| SelectCaseValue::String(text.to_string()))
+            .or_else(|| {
+                simple_component_translate_key(value)
+                    .map(|key| SelectCaseValue::TranslatableComponentKey(key.to_string()))
+            }),
         _ => SelectCaseValue::from_json(value),
     }
 }
@@ -2523,6 +2544,20 @@ fn simple_component_text(value: &Value) -> Option<&str> {
         Value::Object(value) if value.len() == 1 => value.get("text").and_then(Value::as_str),
         _ => None,
     }
+}
+
+fn simple_component_translate_key(value: &Value) -> Option<&str> {
+    match value {
+        Value::Object(value) if value.len() == 1 => value.get("translate").and_then(Value::as_str),
+        _ => None,
+    }
+}
+
+fn default_item_name_translation_key(resource_id: &str) -> String {
+    let (namespace, path) = resource_id
+        .split_once(':')
+        .unwrap_or(("minecraft", resource_id));
+    format!("item.{}.{}", namespace, path.replace('/', "."))
 }
 
 fn simple_component_text_list(value: &Value) -> Option<Vec<&str>> {

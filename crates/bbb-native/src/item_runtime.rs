@@ -10775,6 +10775,55 @@ mod tests {
             uv("component_custom_name_fallback")
         );
 
+        // `DataComponents.ITEM_NAME` also uses ComponentSerialization.CODEC,
+        // and `Item.Properties.finalizeInitializer` contributes the default
+        // translatable item-name component. Literal strings must not match that
+        // default translatable key.
+        assert_eq!(
+            selected(10, DataComponentPatchSummary::default()),
+            uv("component_item_name_default")
+        );
+        assert_eq!(
+            selected(
+                10,
+                DataComponentPatchSummary {
+                    item_name: Some("Patched Item Name".to_string()),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_item_name_literal")
+        );
+        assert_eq!(
+            selected(
+                10,
+                DataComponentPatchSummary {
+                    item_name: Some("Object Item Name".to_string()),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_item_name_object")
+        );
+        assert_eq!(
+            selected(
+                10,
+                DataComponentPatchSummary {
+                    item_name: Some("item.minecraft.item_name_component_selector".to_string()),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_item_name_literal_key")
+        );
+        assert_eq!(
+            selected(
+                10,
+                DataComponentPatchSummary {
+                    removed_type_ids: vec![9],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_item_name_fallback")
+        );
+
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -16036,6 +16085,7 @@ mod tests {
                 public static final Item DYED_COLOR_COMPONENT_SELECTOR = registerItem("dyed_color_component_selector");
                 public static final Item MAP_COLOR_COMPONENT_SELECTOR = registerItem("map_color_component_selector");
                 public static final Item CUSTOM_NAME_COMPONENT_SELECTOR = registerItem("custom_name_component_selector");
+                public static final Item ITEM_NAME_COMPONENT_SELECTOR = registerItem("item_name_component_selector");
             }"#,
         );
         write_json(
@@ -16253,6 +16303,37 @@ mod tests {
                 }
             }"#,
         );
+        write_json(
+            &assets
+                .join("items")
+                .join("item_name_component_selector.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:component",
+                    "component": "minecraft:item_name",
+                    "cases": [
+                        {
+                            "when": "item.minecraft.item_name_component_selector",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_item_name_literal_key" }
+                        },
+                        {
+                            "when": { "translate": "item.minecraft.item_name_component_selector" },
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_item_name_default" }
+                        },
+                        {
+                            "when": "Patched Item Name",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_item_name_literal" }
+                        },
+                        {
+                            "when": { "text": "Object Item Name" },
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_item_name_object" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/component_item_name_fallback" }
+                }
+            }"#,
+        );
         for (model_id, color) in [
             ("component_rarity_common", [80, 80, 80, 255]),
             ("component_rarity_rare", [80, 180, 220, 255]),
@@ -16281,6 +16362,11 @@ mod tests {
             ("component_custom_name_named", [210, 160, 80, 255]),
             ("component_custom_name_object", [80, 180, 210, 255]),
             ("component_custom_name_fallback", [70, 45, 35, 255]),
+            ("component_item_name_default", [95, 150, 210, 255]),
+            ("component_item_name_literal", [210, 120, 95, 255]),
+            ("component_item_name_object", [120, 210, 95, 255]),
+            ("component_item_name_literal_key", [210, 95, 170, 255]),
+            ("component_item_name_fallback", [45, 55, 70, 255]),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);
         }

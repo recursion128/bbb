@@ -764,14 +764,17 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:map_id` `MapId` wrapper and the RGB integer wrappers
     `minecraft:dyed_color` / `minecraft:map_color`, plus simple literal
     JSON-string / `{"text": ...}` `minecraft:custom_name` values from
-    `ComponentSerialization.CODEC`. Tests pin texture
+    `ComponentSerialization.CODEC`, plus `minecraft:item_name` simple literal
+    patch values and the ordinary item default translatable description key
+    from `Item.Properties.finalizeInitializer`. Tests pin texture
     selection for string, numeric, boolean, resource-id, default, patched,
     explicit map-id, explicit color, literal custom-name string / text-object,
-    and removed component values. Complex object/list components beyond simple
-    literal text, `item_name` default text,
-    style-sensitive component equality, registry-backed component value decoding,
-    and transient components that vanilla rejects from `ComponentContents`
-    selects, such as `minecraft:map_post_processing`, remain follow-up.
+    default / literal item-name string / text-object, and removed component
+    values. Complex object/list components beyond simple literal text,
+    block-description-prefix and custom item-name defaults, style-sensitive
+    component equality, registry-backed component value decoding, and transient
+    components that vanilla rejects from `ComponentContents` selects, such as
+    `minecraft:map_post_processing`, remain follow-up.
   - [x] `minecraft:custom_model_data` item-model condition now follows vanilla
     conditional `CustomModelDataProperty.get`: protocol preserves the
     `CustomModelData.flags` list, runtime reads `flags[index] == true`, and

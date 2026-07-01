@@ -5787,10 +5787,12 @@ When an agent does any of the following, update this file in the same slice:
     item attachments and GUI/HUD item icons that use the local-player owner
     context.
   - Extend `minecraft:component` select beyond the current decoded scalar /
-    enum / simple literal text subset as protocol/runtime summaries become
-    available: complex object/list component values, style-sensitive Component
-    equality, registry-backed component value codecs, custom datapack component
-    value decoding, and components without a persistent codec remain follow-up.
+    enum / simple literal text subset plus ordinary item default-name
+    translatable keys as protocol/runtime summaries become available: complex
+    object/list component values, block-description-prefix and custom item-name
+    defaults, style-sensitive Component equality, registry-backed component
+    value codecs, custom datapack component value decoding, and components
+    without a persistent codec remain follow-up.
   - Audit remaining non-GUI item consumers that can render component-bearing
     generated item stacks and pass dynamic registry keys where vanilla resolves
     registry-backed item-model properties. Dropped-item `GROUND`, item-frame
@@ -6145,14 +6147,17 @@ When an agent does any of the following, update this file in the same slice:
       `minecraft:enchantment_glint_override`, plus `minecraft:map_id` from the
       synced `MapId` int wrapper and the RGB int wrappers
       `minecraft:dyed_color` / `minecraft:map_color`, plus simple literal
-      JSON-string / `{"text": ...}` `minecraft:custom_name` components. Native
-      item icons project vanilla common defaults (`max_stack_size=64`,
-      `item_model=<item id>`, `rarity=common`) and damageable item defaults
-      (`damage=0`, `max_damage=<item default>`), and removed component ids
-      suppress the selected value before case matching. Tests pin texture
-      selection for string, numeric, boolean, resource-id, default, patched,
-      explicit map-id, explicit color, literal custom-name string / text-object,
-      and removed component cases.
+      JSON-string / `{"text": ...}` `minecraft:custom_name` components, plus
+      `minecraft:item_name` simple literal patch values and ordinary item
+      default translatable description keys from
+      `Item.Properties.finalizeInitializer`. Native item icons project vanilla
+      common defaults (`max_stack_size=64`, `item_model=<item id>`,
+      `rarity=common`) and damageable item defaults (`damage=0`,
+      `max_damage=<item default>`), and removed component ids suppress the
+      selected value before case matching. Tests pin texture selection for
+      string, numeric, boolean, resource-id, default, patched, explicit map-id,
+      explicit color, literal custom-name string / text-object, default /
+      literal item-name string / text-object, and removed component cases.
     - `minecraft:cooldown` — `Cooldown.get`, matching the local player's
       `ItemCooldowns.getCooldownPercent(itemStack, 0.0F)` for GUI/HUD item
       icons. The item model property intentionally uses vanilla's `0.0F`
