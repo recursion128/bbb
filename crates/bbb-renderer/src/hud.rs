@@ -1,7 +1,7 @@
 use anyhow::Result;
 use winit::dpi::PhysicalSize;
 
-use crate::item_models::HudBlockItemModel;
+use crate::item_models::{GuiItemLightingEntry, HudBlockItemModel};
 use crate::Renderer;
 
 mod gpu;
@@ -2523,7 +2523,7 @@ fn sanitize_hud_inventory_item(item: HudInventoryItem) -> Option<HudInventoryIte
 
 /// A 3D block-item icon is only worth carrying when it has geometry to draw.
 fn hud_block_item_model_is_renderable(model: &HudBlockItemModel) -> bool {
-    !model.quads.is_empty()
+    model.lighting == GuiItemLightingEntry::Items3d && !model.quads.is_empty()
 }
 
 fn sanitize_hud_inventory_text_label(
@@ -3340,6 +3340,7 @@ mod tests {
         let model = |quads: Vec<crate::item_models::ItemModelQuad>| HudBlockItemModel {
             quads,
             gui_display: glam::Mat4::IDENTITY,
+            lighting: GuiItemLightingEntry::Items3d,
         };
 
         // A slot whose block model has geometry keeps it; one with no quads drops it (None).
@@ -3360,6 +3361,19 @@ mod tests {
             block_model: Some(model(Vec::new())),
         });
         assert!(dropped.block_model.is_none());
+
+        let wrong_lighting = sanitize_hud_inventory_slot(HudInventorySlot {
+            slot_id: 3,
+            x: 0,
+            y: 0,
+            icon: None,
+            block_model: Some(HudBlockItemModel {
+                quads: vec![quad],
+                gui_display: glam::Mat4::IDENTITY,
+                lighting: GuiItemLightingEntry::ItemsFlat,
+            }),
+        });
+        assert!(wrong_lighting.block_model.is_none());
 
         // The same filtering applies to floating (cursor / preview) items.
         let floating = sanitize_hud_inventory_item(HudInventoryItem {

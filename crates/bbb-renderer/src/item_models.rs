@@ -61,13 +61,27 @@ pub struct ItemModelQuad {
     pub translucent: bool,
 }
 
+/// Vanilla `Lighting.Entry` selected for GUI item rendering.
+///
+/// GUI item stacks render to vanilla's UI item atlas at full-bright light coords; flat/generated items
+/// use `ITEMS_FLAT`, 3D block/model items use `ITEMS_3D`, and entity preview picture-in-picture renderers
+/// use `ENTITY_IN_UI`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GuiItemLightingEntry {
+    ItemsFlat,
+    Items3d,
+    EntityInUi,
+}
+
 /// A hotbar slot's 3D block item: the block model's quads (atlas-absolute UVs over the blocks atlas, in
-/// `0..=16` model space) plus its resolved `gui` display transform. The renderer seats it in the slot's
-/// pixel rect and draws it under the GUI ortho camera (vanilla 3D inventory icon).
+/// `0..=16` model space), its resolved `gui` display transform, and the vanilla GUI lighting entry. The
+/// renderer seats it in the slot's pixel rect and draws it under the GUI ortho camera (vanilla 3D
+/// inventory icon).
 #[derive(Debug, Clone, PartialEq)]
 pub struct HudBlockItemModel {
     pub quads: Vec<ItemModelQuad>,
     pub gui_display: Mat4,
+    pub lighting: GuiItemLightingEntry,
 }
 
 /// A baked block/item model vertex: the model-space position normalized to the unit cube and pushed

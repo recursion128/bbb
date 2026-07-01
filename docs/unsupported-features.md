@@ -2346,8 +2346,14 @@ When an agent does any of the following, update this file in the same slice:
         renderer now carries vanilla `Lighting.Entry` light directions in the
         camera uniform; world item-model and texture-backed entity draws use
         LEVEL default/nether directions, and GUI 3D block-item draws use
-        ITEMS_3D. Remaining GUI flat and entity-in-UI item/entity lighting
-        contexts are deferred to P1 GUI surface work.
+        ITEMS_3D. GUI 3D block-item submissions now also carry explicit
+        `GuiItemLightingEntry::Items3d` metadata, matching vanilla
+        `GuiItemAtlas` / `OversizedItemRenderer`'s `usesBlockLight()` switch to
+        `Lighting.Entry.ITEMS_3D`; the renderer sanitizer rejects
+        `HudBlockItemModel` inputs with non-3D GUI lighting so this pass cannot
+        accidentally consume future flat/entity-in-UI submissions. Remaining
+        GUI flat and entity-in-UI item/entity lighting contexts are deferred to
+        P1 GUI surface work.
     - thrown-item projectiles (egg, snowball, ender pearl, eye of ender, splash/lingering potion,
       experience bottle, large fireball, small fireball) as camera-facing item-icon billboards on the
       same path: vanilla's `ThrownItemRenderer` draws each as the item sprite of its carried

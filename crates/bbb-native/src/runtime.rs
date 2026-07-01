@@ -13,12 +13,12 @@ use bbb_protocol::{
 };
 use bbb_renderer::{
     BlockDestroyOverlay, CameraPose, ClearColor, CloudEnvironment, CloudFrame, FogEnvironment,
-    HudBlockItemModel, HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
-    HudInventoryItem, HudInventoryScreen, HudInventorySlot, HudInventoryTextBackground,
-    HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudItemCountLabel,
-    HudItemDurabilityBar, HudItemIcon, HudUvRect, LevelLighting, LightmapEnvironment,
-    LightningBoltRenderState, SkyEnvironment, SkyMoonPhase, WeatherColumn, WeatherFrame,
-    WeatherRenderState, HUD_HOTBAR_SLOTS, VANILLA_DEFAULT_CLOUD_COLOR,
+    GuiItemLightingEntry, HudBlockItemModel, HudIconLayer, HudInventoryBackgroundLayer,
+    HudInventoryBackgroundTexture, HudInventoryItem, HudInventoryScreen, HudInventorySlot,
+    HudInventoryTextBackground, HudInventoryTextLabel, HudInventoryTooltip,
+    HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemIcon, HudUvRect,
+    LevelLighting, LightmapEnvironment, LightningBoltRenderState, SkyEnvironment, SkyMoonPhase,
+    WeatherColumn, WeatherFrame, WeatherRenderState, HUD_HOTBAR_SLOTS, VANILLA_DEFAULT_CLOUD_COLOR,
     VANILLA_DEFAULT_CLOUD_HEIGHT, VANILLA_DEFAULT_LIGHTMAP_BLOCK_FACTOR,
     VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR, VANILLA_DEFAULT_LIGHTMAP_SKY_FACTOR,
     VANILLA_DEFAULT_LIGHTMAP_SKY_LIGHT_COLOR, VANILLA_MAX_RENDER_DISTANCE_CHUNKS,
@@ -1843,6 +1843,7 @@ fn block_item_3d_model(
     Some(HudBlockItemModel {
         quads,
         gui_display: crate::item_models::display_matrix(&gui, false),
+        lighting: GuiItemLightingEntry::Items3d,
     })
 }
 
