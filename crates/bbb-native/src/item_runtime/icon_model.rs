@@ -2061,7 +2061,10 @@ fn item_partial_component_predicates_are_supported(value: &Value) -> bool {
 fn item_partial_component_predicate_is_supported(predicate: &str, value: &Value) -> bool {
     match predicate {
         "minecraft:damage" => damage_component_predicate_value_is_supported(value),
-        _ => false,
+        _ => {
+            item_partial_any_value_component_id(predicate).is_some()
+                && value.as_object().is_some_and(|value| value.is_empty())
+        }
     }
 }
 
@@ -2257,7 +2260,12 @@ fn item_data_component_matchers_match(
         }
     }
     if let Some(predicates) = value.get("predicates") {
-        if !item_partial_component_predicates_match(predicates, item, default_max_damage_for_item) {
+        if !item_partial_component_predicates_match(
+            predicates,
+            item,
+            resource_id,
+            default_max_damage_for_item,
+        ) {
             return false;
         }
     }
@@ -2297,6 +2305,7 @@ fn item_exact_components_match(
 fn item_partial_component_predicates_match(
     value: &Value,
     item: &ItemStackTemplateSummary,
+    resource_id: &str,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
     let Some(predicates) = value.as_object() else {
@@ -2310,6 +2319,7 @@ fn item_partial_component_predicates_match(
             value,
             Some(&item.component_patch),
             default_max_damage,
+            resource_id,
         )
     })
 }
@@ -2319,13 +2329,30 @@ fn item_partial_component_predicate_match(
     value: &Value,
     component_patch: Option<&DataComponentPatchSummary>,
     default_max_damage: Option<i32>,
+    default_item_model_id: &str,
 ) -> bool {
     match predicate {
         "minecraft:damage" => {
             damage_component_predicate_matches_value(value, component_patch, default_max_damage)
         }
-        _ => false,
+        _ => item_partial_any_value_component_id(predicate).is_some_and(|component_id| {
+            value.as_object().is_some_and(|value| value.is_empty())
+                && item_stack_has_component_id(
+                    component_id,
+                    component_patch,
+                    default_max_damage,
+                    Some(default_item_model_id),
+                    false,
+                )
+        }),
     }
+}
+
+fn item_partial_any_value_component_id(predicate: &str) -> Option<i32> {
+    if data_component_predicate_type_is_complex(predicate) {
+        return None;
+    }
+    data_component_type_id(predicate)
 }
 
 fn item_holder_set_matches(

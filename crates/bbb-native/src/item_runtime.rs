@@ -7146,6 +7146,99 @@ mod tests {
             ),
             uv("component_condition_container_partial_damage_absent")
         );
+        assert_eq!(
+            selected(
+                38,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary::default(),
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_partial_any_value_present")
+        );
+        assert_eq!(
+            selected(
+                38,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            removed_type_ids: vec![12],
+                            ..DataComponentPatchSummary::default()
+                        },
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_partial_any_value_absent")
+        );
+        assert_eq!(
+            selected(
+                39,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(2),
+                    container_items: vec![
+                        ItemStackTemplateSummary {
+                            item_id: 0,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![21],
+                                enchantment_glint_override: Some(false),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                        ItemStackTemplateSummary {
+                            item_id: 1,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![21],
+                                enchantment_glint_override: Some(true),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_partial_any_value_present")
+        );
+        assert_eq!(
+            selected(
+                39,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(2),
+                    container_items: vec![
+                        ItemStackTemplateSummary {
+                            item_id: 0,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![21],
+                                enchantment_glint_override: Some(false),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                        ItemStackTemplateSummary {
+                            item_id: 1,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary::default(),
+                        },
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_partial_any_value_absent")
+        );
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -8675,6 +8768,8 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_TRIM_PATTERN_TAG = registerItem("component_condition_trim_pattern_tag");
                 public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_DAMAGE = registerItem("component_condition_bundle_partial_damage");
                 public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_DAMAGE = registerItem("component_condition_container_partial_damage");
+                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_ANY_VALUE = registerItem("component_condition_bundle_partial_any_value");
+                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_ANY_VALUE = registerItem("component_condition_container_partial_any_value");
             }"#,
         );
         write_json(
@@ -9214,6 +9309,77 @@ mod tests {
                     "on_false": {
                         "type": "minecraft:model",
                         "model": "minecraft:item/component_condition_container_partial_damage_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_partial_any_value.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "predicates": {
+                                            "minecraft:rarity": {}
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_any_value_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_any_value_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_container_partial_any_value.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:container",
+                    "value": {
+                        "items": {
+                            "count": [
+                                {
+                                    "test": {
+                                        "components": {
+                                            "predicates": {
+                                                "minecraft:enchantment_glint_override": {}
+                                            }
+                                        }
+                                    },
+                                    "count": {
+                                        "min": 2
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_any_value_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_any_value_absent"
                     }
                 }
             }"#,
@@ -9940,6 +10106,22 @@ mod tests {
             (
                 "component_condition_container_partial_damage_absent",
                 [40, 60, 80, 255],
+            ),
+            (
+                "component_condition_bundle_partial_any_value_present",
+                [230, 210, 150, 255],
+            ),
+            (
+                "component_condition_bundle_partial_any_value_absent",
+                [80, 70, 40, 255],
+            ),
+            (
+                "component_condition_container_partial_any_value_present",
+                [150, 230, 210, 255],
+            ),
+            (
+                "component_condition_container_partial_any_value_absent",
+                [40, 80, 70, 255],
             ),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);
