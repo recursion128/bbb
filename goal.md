@@ -1243,6 +1243,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `[0.32, 0.5, 0.22]` color, `0.01` gravity, `1.0` friction, no physics,
     opaque layer, and existing `ParticleLimit.SPORE_BLOSSOM` cap/release
     behavior.
+  - [x] `SuspendedParticle.CrimsonSporeProvider` /
+    `WarpedSporeProvider`：renderer descriptor now mirrors vanilla random
+    sprite selection, `y - 0.125` initial position, `0.6..1.2` quad-size
+    multiplier, `16 / (random * 0.8 + 0.2)` lifetime, no physics,
+    `1.0` friction, zero gravity, opaque layer, crimson gaussian micro-drift
+    with `[0.9, 0.4, 0.5]` tint, and warped downward random drift with
+    `[0.1, 0.1, 0.3]` tint.
   - [x] `SimpleVerticalParticle.PauseMobGrowthProvider` /
     `ResetMobGrowthProvider`：renderer descriptor/test coverage now pins
     vanilla random sprite selection, `0.5..1.1` quad-size scaling, fixed `8`

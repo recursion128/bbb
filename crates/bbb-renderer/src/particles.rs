@@ -2528,6 +2528,54 @@ mod tests {
         );
         assert_eq!(spore_blossom_air.render_layer, ParticleRenderLayer::Opaque);
 
+        let mut crimson_random = ParticleRandom::new(46);
+        let crimson_spore = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:crimson_spore", 1.0),
+            &mut crimson_random,
+        );
+        assert_eq!(
+            crimson_spore.provider,
+            "SuspendedParticle.CrimsonSporeProvider"
+        );
+        assert_eq!(
+            crimson_spore.sprite_selection,
+            ParticleSpriteSelection::Random
+        );
+        assert_eq!(crimson_spore.previous_position, [1.0, -0.125, 0.0]);
+        assert_eq!(crimson_spore.position, [1.0, -0.125, 0.0]);
+        assert_range_f32(crimson_spore.base_quad_size, 0.06, 0.24);
+        assert_eq!(crimson_spore.color, [0.9, 0.4, 0.5, 1.0]);
+        assert!((16..=80).contains(&crimson_spore.lifetime_ticks));
+        assert_close_f64(crimson_spore.velocity[0], 1.3558214650566454E-6);
+        assert_close_f64(crimson_spore.velocity[1], -0.8270729973920494E-4);
+        assert_close_f64(crimson_spore.velocity[2], 1.6065611415614136E-6);
+        assert_eq!(crimson_spore.friction, 1.0);
+        assert_eq!(crimson_spore.gravity, 0.0);
+        assert!(!crimson_spore.has_physics);
+        assert_eq!(crimson_spore.render_layer, ParticleRenderLayer::Opaque);
+
+        let mut warped_random = ParticleRandom::new(47);
+        let warped_spore = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:warped_spore", 1.0),
+            &mut warped_random,
+        );
+        assert_eq!(
+            warped_spore.provider,
+            "SuspendedParticle.WarpedSporeProvider"
+        );
+        assert_eq!(warped_spore.previous_position, [1.0, -0.125, 0.0]);
+        assert_eq!(warped_spore.position, [1.0, -0.125, 0.0]);
+        assert_range_f32(warped_spore.base_quad_size, 0.06, 0.24);
+        assert_eq!(warped_spore.color, [0.1, 0.1, 0.3, 1.0]);
+        assert!((16..=80).contains(&warped_spore.lifetime_ticks));
+        assert_close_f64(warped_spore.velocity[0], 0.0);
+        assert_close_f64(warped_spore.velocity[1], -0.055236806630186874);
+        assert_close_f64(warped_spore.velocity[2], 0.0);
+        assert_eq!(warped_spore.friction, 1.0);
+        assert_eq!(warped_spore.gravity, 0.0);
+        assert!(!warped_spore.has_physics);
+        assert_eq!(warped_spore.render_layer, ParticleRenderLayer::Opaque);
+
         let mut glow_random = ParticleRandom::new(67);
         let mut glow_command = spawn_command("minecraft:glow", 1.0);
         glow_command.velocity = [0.0, 1.0, 0.0];

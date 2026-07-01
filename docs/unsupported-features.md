@@ -316,6 +316,13 @@ When an agent does any of the following, update this file in the same slice:
         `1.0` friction, `0.225` gravity, physics metadata, opaque particle
         layer, and vanilla post-tick damping (`xd *= 0.95`, `yd *= 0.9`,
         `zd *= 0.95`)
+      - `SuspendedParticle.CrimsonSporeProvider` and `WarpedSporeProvider`
+        use random sprite selection, `y - 0.125` initial position,
+        `0.6..1.2` quad-size multiplier, `16 / (random * 0.8 + 0.2)`
+        lifetime, no physics, `1.0` friction, zero gravity, and opaque
+        particle layer. Crimson spores use gaussian micro-drift and
+        `[0.9, 0.4, 0.5]` tint; warped spores use downward random drift and
+        `[0.1, 0.1, 0.3]` tint.
       - `SquidInkParticle.Provider` and `GlowInkProvider` age sprite selection,
         fixed `0.5` quad size, black / glow-ink tint, command velocity,
         `6 / (random * 0.8 + 0.2)` lifetime, `0.92` friction, zero gravity, and
@@ -5790,6 +5797,12 @@ When an agent does any of the following, update this file in the same slice:
         `16/(random*.8+.2)+2` lifetime, friction `1.0`, gravity `0.225`,
         physics metadata, opaque particle layer, and vanilla post-tick damping
         (`xd *= 0.95`, `yd *= 0.9`, `zd *= 0.95`).
+      - particle descriptors map `SuspendedParticle.CrimsonSporeProvider` and
+        `WarpedSporeProvider` to random sprites, `y - 0.125` initial position,
+        `0.6..1.2` quad-size multiplier, `16/(random*.8+.2)` lifetime, no
+        physics, friction `1.0`, zero gravity, opaque layer, crimson gaussian
+        micro-drift with `[0.9, 0.4, 0.5]` tint, and warped downward random
+        drift with `[0.1, 0.1, 0.3]` tint.
       - particle descriptors map `SquidInkParticle.Provider` and
         `GlowInkProvider` to age sprites, fixed `0.5` quad size, black /
         glow-ink tint, command velocity, `6/(random*.8+.2)` lifetime, friction

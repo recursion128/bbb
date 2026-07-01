@@ -244,6 +244,8 @@ pub(crate) enum ParticleInitialVelocityDescriptor {
         scale: f64,
         y_offset: f64,
     },
+    CrimsonSpore,
+    WarpedSpore,
     CampfireSmoke,
     Spell,
     GlowSquid,
@@ -260,6 +262,7 @@ pub(crate) struct ParticleVisualState {
 #[derive(Debug, Clone)]
 pub(crate) struct ParticleRandom {
     seed: u64,
+    next_next_gaussian: Option<f64>,
 }
 
 impl ParticleDescriptor {
@@ -400,6 +403,36 @@ impl ParticleDescriptor {
                 initial_velocity: ParticleInitialVelocityDescriptor::Fixed([0.0, -0.8, 0.0]),
                 friction: 1.0,
                 gravity: 0.01,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:crimson_spore" | "minecraft:warped_spore" => Self {
+                provider: if particle_id == "minecraft:crimson_spore" {
+                    "SuspendedParticle.CrimsonSporeProvider"
+                } else {
+                    "SuspendedParticle.WarpedSporeProvider"
+                },
+                lifetime: ParticleLifetimeDescriptor::SixteenOverRandom,
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SingleQuadRandomScaled {
+                    min_scale: 0.6,
+                    max_scale: 1.2,
+                    color: ParticleColorDescriptor::FixedRgb(if particle_id
+                        == "minecraft:crimson_spore"
+                    {
+                        [0.9, 0.4, 0.5]
+                    } else {
+                        [0.1, 0.1, 0.3]
+                    }),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: if particle_id == "minecraft:crimson_spore" {
+                    ParticleInitialVelocityDescriptor::CrimsonSpore
+                } else {
+                    ParticleInitialVelocityDescriptor::WarpedSpore
+                },
+                friction: 1.0,
+                gravity: 0.0,
                 has_physics: false,
                 speed_up_when_y_motion_is_blocked: false,
             },
@@ -1272,7 +1305,9 @@ impl ParticleDescriptor {
                 command_position[2] + random_centered_offset(random, 0.05),
             ],
             "SuspendedParticle.UnderwaterProvider"
-            | "SuspendedParticle.SporeBlossomAirProvider" => [
+            | "SuspendedParticle.SporeBlossomAirProvider"
+            | "SuspendedParticle.CrimsonSporeProvider"
+            | "SuspendedParticle.WarpedSporeProvider" => [
                 command_position[0],
                 command_position[1] - 0.125,
                 command_position[2],
@@ -1748,6 +1783,16 @@ impl ParticleInitialVelocityDescriptor {
                 command_velocity[1] + f64::from(random.next_f32()) / 500.0,
                 command_velocity[2],
             ],
+            Self::CrimsonSpore => [
+                random.next_gaussian() * 1.0E-6,
+                random.next_gaussian() * 1.0E-4,
+                random.next_gaussian() * 1.0E-6,
+            ],
+            Self::WarpedSpore => [
+                0.0,
+                f64::from(random.next_f32()) * -1.9 * f64::from(random.next_f32()) * 0.1,
+                0.0,
+            ],
             Self::Spell | Self::GlowSquid => {
                 sample_random_horizontal_y_velocity(command_velocity, random)
             }
@@ -1922,6 +1967,7 @@ impl ParticleRandom {
     pub(crate) fn new(seed: i64) -> Self {
         Self {
             seed: ((seed as u64) ^ RANDOM_MULTIPLIER) & RANDOM_MASK,
+            next_next_gaussian: None,
         }
     }
 
@@ -1935,6 +1981,30 @@ impl ParticleRandom {
 
     pub(crate) fn next_bool(&mut self) -> bool {
         self.next_bits(1) != 0
+    }
+
+    fn next_gaussian(&mut self) -> f64 {
+        if let Some(next) = self.next_next_gaussian.take() {
+            return next;
+        }
+
+        let (v1, v2, s) = loop {
+            let v1 = 2.0 * self.next_double() - 1.0;
+            let v2 = 2.0 * self.next_double() - 1.0;
+            let s = v1 * v1 + v2 * v2;
+            if s < 1.0 && s != 0.0 {
+                break (v1, v2, s);
+            }
+        };
+        let multiplier = (-2.0 * s.ln() / s).sqrt();
+        self.next_next_gaussian = Some(v2 * multiplier);
+        v1 * multiplier
+    }
+
+    fn next_double(&mut self) -> f64 {
+        let high = u64::from(self.next_bits(26));
+        let low = u64::from(self.next_bits(27));
+        ((high << 27) | low) as f64 / (1_u64 << 53) as f64
     }
 
     fn next_index(&mut self, len: usize) -> Option<usize> {
@@ -2321,6 +2391,47 @@ mod tests {
             spore_blossom_air.initial_position([1.0, 2.0, 3.0], &mut ParticleRandom::new(1)),
             [1.0, 1.875, 3.0]
         );
+        for (particle_id, provider, color, initial_velocity) in [
+            (
+                "minecraft:crimson_spore",
+                "SuspendedParticle.CrimsonSporeProvider",
+                [0.9, 0.4, 0.5],
+                ParticleInitialVelocityDescriptor::CrimsonSpore,
+            ),
+            (
+                "minecraft:warped_spore",
+                "SuspendedParticle.WarpedSporeProvider",
+                [0.1, 0.1, 0.3],
+                ParticleInitialVelocityDescriptor::WarpedSpore,
+            ),
+        ] {
+            assert_descriptor(
+                particle_id,
+                provider,
+                ParticleLifetimeDescriptor::SixteenOverRandom,
+                ParticleSpriteSelection::Random,
+                ParticleVisualDescriptor::SingleQuadRandomScaled {
+                    min_scale: 0.6,
+                    max_scale: 1.2,
+                    color: ParticleColorDescriptor::FixedRgb(color),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                1.0,
+                0.0,
+                false,
+                false,
+            );
+            let descriptor = ParticleDescriptor::for_particle(particle_id);
+            assert_eq!(
+                descriptor.initial_velocity, initial_velocity,
+                "{particle_id}"
+            );
+            assert_eq!(
+                descriptor.initial_position([1.0, 2.0, 3.0], &mut ParticleRandom::new(1)),
+                [1.0, 1.875, 3.0],
+                "{particle_id}"
+            );
+        }
 
         assert_descriptor(
             "minecraft:cloud",
@@ -3832,6 +3943,24 @@ mod tests {
         assert_close_f64(fixed[0], 0.0);
         assert_close_f64(fixed[1], -0.05);
         assert_close_f64(fixed[2], 0.0);
+
+        let mut gaussian_random = ParticleRandom::new(46);
+        assert_close_f64(gaussian_random.next_gaussian(), 1.3558214650566454);
+        assert_close_f64(gaussian_random.next_gaussian(), -0.8270729973920494);
+        assert_close_f64(gaussian_random.next_gaussian(), 1.6065611415614136);
+
+        let mut crimson_random = ParticleRandom::new(46);
+        let crimson_velocity = ParticleInitialVelocityDescriptor::CrimsonSpore
+            .sample([9.0, 9.0, 9.0], &mut crimson_random);
+        assert_close_f64(crimson_velocity[0], 1.3558214650566454E-6);
+        assert_close_f64(crimson_velocity[1], -0.8270729973920494E-4);
+        assert_close_f64(crimson_velocity[2], 1.6065611415614136E-6);
+
+        let warped_velocity = ParticleInitialVelocityDescriptor::WarpedSpore
+            .sample([9.0, 9.0, 9.0], &mut ParticleRandom::new(47));
+        assert_close_f64(warped_velocity[0], 0.0);
+        assert_close_f64(warped_velocity[1], -0.055236806630186874);
+        assert_close_f64(warped_velocity[2], 0.0);
 
         let rising_velocity = ParticleInitialVelocityDescriptor::RisingParticle
             .sample([1.0, 2.0, 3.0], &mut ParticleRandom::new(34));
