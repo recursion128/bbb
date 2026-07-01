@@ -906,13 +906,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     Remaining
     constrained `DataComponentPredicate` types such as inline enchantment holder
     payloads / server datapack tag remaps, broader NBT scalar typing, remaining
-    concrete partial predicates and complex exact component codecs beyond
-    simple literal name/lore, Unit `unbreakable`, compound `custom_data`,
-    filterable-page-list `writable_book_content` components, and full-field
-    `firework_explosion` / `fireworks` components, plus direct-key exact
-    `jukebox_playable` and `trim` components, potion / mob-effect datapack
-    registry remaps for `potion_contents`, attribute modifier inline /
-    datapack attribute holder payloads, full style-sensitive written-book page
+    concrete partial predicates and complex exact component codecs beyond the
+    already covered simple literal name/lore, Unit `unbreakable`, compound
+    `custom_data`, filterable-page-list `writable_book_content`, full-field
+    `firework_explosion` / `fireworks`, direct-key `jukebox_playable`, and
+    direct-key `trim` exact components, potion / mob-effect datapack registry
+    remaps for `potion_contents`, attribute modifier inline / datapack
+    attribute holder payloads, full style-sensitive written-book page
     `ComponentSerialization` equality, trim inline material or pattern payloads
     / datapack pattern registry-key remaps, datapack villager-type registry
     remaps, and jukebox inline song payloads / datapack
