@@ -52,6 +52,8 @@ pub struct ItemRegistryCatalog {
     #[serde(default)]
     max_stack_size: BTreeMap<String, i32>,
     #[serde(default)]
+    default_item_name_translation_keys: BTreeMap<String, String>,
+    #[serde(default)]
     default_equipment_slots: BTreeMap<String, ItemEquipmentSlot>,
     /// Resource id → humanoid armor equipment-asset name (`ArmorMaterials.<MAT>` →
     /// `EquipmentAssets.<MAT>`, the lowercased material, e.g. `iron` / `chainmail` / `turtle_scute`),
@@ -198,6 +200,7 @@ impl ItemRegistryCatalog {
         let mut resource_ids = Vec::new();
         let mut max_damage = BTreeMap::new();
         let mut max_stack_size = BTreeMap::new();
+        let mut default_item_name_translation_keys = BTreeMap::new();
         let mut default_equipment_slots = BTreeMap::new();
         let mut humanoid_armor_assets = BTreeMap::new();
         let mut equippable_assets = BTreeMap::new();
@@ -215,6 +218,7 @@ impl ItemRegistryCatalog {
             let field = capture.get(2).unwrap().as_str();
             let expression = capture.get(3).unwrap().as_str();
             let ids = resource_ids_for_declaration(kind, field, expression, item_id_constants)?;
+            let default_item_name = default_item_name_for_declaration(kind, expression)?;
             let stack_size = max_stack_size_for_declaration(expression)?;
             let equipment_slot = equipment_slot_for_declaration(expression)?;
             let humanoid_armor_asset = humanoid_armor_asset_for_declaration(expression)?;
@@ -239,6 +243,10 @@ impl ItemRegistryCatalog {
             }
             for resource_id in &ids {
                 max_stack_size.insert(resource_id.clone(), stack_size);
+                default_item_name_translation_keys.insert(
+                    resource_id.clone(),
+                    default_item_name.translation_key(resource_id),
+                );
                 if let Some(equipment_slot) = equipment_slot {
                     default_equipment_slots.insert(resource_id.clone(), equipment_slot);
                 }
@@ -306,6 +314,7 @@ impl ItemRegistryCatalog {
             protocol_ids,
             max_damage,
             max_stack_size,
+            default_item_name_translation_keys,
             default_equipment_slots,
             humanoid_armor_assets,
             equippable_assets,
@@ -352,6 +361,13 @@ impl ItemRegistryCatalog {
     pub fn max_stack_size(&self, resource_id: &str) -> Option<i32> {
         let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
         self.max_stack_size.get(&resource_id).copied()
+    }
+
+    pub fn default_item_name_translation_key(&self, resource_id: &str) -> Option<&str> {
+        let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
+        self.default_item_name_translation_keys
+            .get(&resource_id)
+            .map(String::as_str)
     }
 
     pub fn equipment_slot(&self, resource_id: &str) -> Option<ItemEquipmentSlot> {
@@ -530,6 +546,47 @@ fn resource_ids_for_declaration(
     }
 
     bail!("unsupported item registry declaration {field}: {expression:?}")
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum DefaultItemName {
+    Prefix(&'static str),
+    Fixed(String),
+}
+
+impl DefaultItemName {
+    fn translation_key(&self, resource_id: &str) -> String {
+        match self {
+            Self::Prefix(prefix) => description_translation_key(prefix, resource_id),
+            Self::Fixed(key) => key.clone(),
+        }
+    }
+}
+
+fn default_item_name_for_declaration(kind: &str, expression: &str) -> Result<DefaultItemName> {
+    if let Some(description_id) =
+        optional_capture(r#"\.overrideDescription\(\s*"([^"]+)""#, expression)?
+    {
+        return Ok(DefaultItemName::Fixed(description_id));
+    }
+
+    if kind == "WeatheringCopperItems" {
+        return Ok(DefaultItemName::Prefix("block"));
+    }
+
+    let expression = expression.trim_start();
+    if expression.starts_with("registerBlock") && !expression.contains("useItemDescriptionPrefix") {
+        return Ok(DefaultItemName::Prefix("block"));
+    }
+
+    Ok(DefaultItemName::Prefix("item"))
+}
+
+fn description_translation_key(prefix: &str, resource_id: &str) -> String {
+    let (namespace, path) = resource_id
+        .split_once(':')
+        .unwrap_or(("minecraft", resource_id));
+    format!("{prefix}.{namespace}.{}", path.replace('/', "."))
 }
 
 fn weathering_copper_ids(base: &str) -> Result<Vec<String>> {
@@ -1387,6 +1444,26 @@ mod tests {
         assert_eq!(catalog.max_stack_size("minecraft:elytra"), Some(1));
         assert_eq!(catalog.max_stack_size("minecraft:ender_pearl"), Some(16));
         assert_eq!(catalog.max_stack_size("minecraft:iron_sword"), Some(1));
+        assert_eq!(
+            catalog.default_item_name_translation_key("minecraft:air"),
+            Some("block.minecraft.air")
+        );
+        assert_eq!(
+            catalog.default_item_name_translation_key("minecraft:short_dry_grass"),
+            Some("block.minecraft.short_dry_grass")
+        );
+        assert_eq!(
+            catalog.default_item_name_translation_key("minecraft:trial_key"),
+            Some("item.minecraft.trial_key")
+        );
+        assert_eq!(
+            catalog.default_item_name_translation_key("minecraft:pumpkin_seeds"),
+            Some("item.minecraft.pumpkin_seeds")
+        );
+        assert_eq!(
+            catalog.default_item_name_translation_key("minecraft:waxed_oxidized_copper_bars"),
+            Some("block.minecraft.waxed_oxidized_copper_bars")
+        );
         assert_eq!(catalog.resource_id(-1), None);
     }
 

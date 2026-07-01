@@ -53,8 +53,9 @@ mod icon_model;
 mod profile_skin;
 
 use icon_model::{
-    contains_runtime_condition, item_icon_model_ref_for_definition, CrossbowChargeType,
-    IconResolveContext, ItemIconModel, ItemIconModelRef,
+    contains_runtime_condition, default_item_name_translation_key,
+    item_icon_model_ref_for_definition, CrossbowChargeType, IconResolveContext, ItemIconModel,
+    ItemIconModelRef,
 };
 pub(crate) use profile_skin::default_player_skin_for_profile_id;
 use profile_skin::ProfileSkinCache;
@@ -1472,6 +1473,8 @@ impl NativeItemRuntime {
             |item_id| self.default_max_stack_size_for_protocol_id(item_id);
         let default_max_damage_for_item =
             |item_id| self.default_max_damage_for_protocol_id(item_id);
+        let default_item_name_translation_key =
+            self.default_item_name_translation_key_for_resource_id(item_id);
         let default_attribute_modifiers =
             self.default_attribute_modifiers_for_resource_id(item_id, None);
         let default_attribute_modifiers_for_item =
@@ -1504,6 +1507,7 @@ impl NativeItemRuntime {
                                 BlockModelDisplayContext::Gui,
                             ),
                             default_item_model_id: item_id,
+                            default_item_name_translation_key: &default_item_name_translation_key,
                             main_hand_left: None,
                             context_dimension: None,
                             context_entity_type: None,
@@ -2272,6 +2276,8 @@ impl NativeItemRuntime {
             |item_id| self.default_max_stack_size_for_protocol_id(item_id);
         let default_max_damage_for_item =
             |item_id| self.default_max_damage_for_protocol_id(item_id);
+        let default_item_name_translation_key =
+            self.default_item_name_translation_key_for_resource_id(item_id);
         let default_attribute_modifiers =
             self.default_attribute_modifiers_for_resource_id(item_id, attribute_keys);
         let default_attribute_modifiers_for_item =
@@ -2294,6 +2300,7 @@ impl NativeItemRuntime {
             crossbow_charge: self.crossbow_charge_for(component_patch),
             display_context: item_display_context_name(display_context),
             default_item_model_id: item_id,
+            default_item_name_translation_key: &default_item_name_translation_key,
             main_hand_left: owner_main_hand_left,
             context_dimension,
             context_entity_type,
@@ -2449,6 +2456,8 @@ impl NativeItemRuntime {
         let default_max_stack_size = parent_context
             .default_max_stack_size_for_item
             .map(|max_stack_size| max_stack_size(template.item_id));
+        let default_item_name_translation_key =
+            self.default_item_name_translation_key_for_resource_id(item_id);
         let default_attribute_modifiers = parent_context
             .default_attribute_modifiers_for_item
             .map(|modifiers| modifiers(template.item_id))
@@ -2471,6 +2480,7 @@ impl NativeItemRuntime {
             crossbow_charge: self.crossbow_charge_for(Some(&template.component_patch)),
             display_context: parent_context.display_context,
             default_item_model_id: item_id,
+            default_item_name_translation_key: &default_item_name_translation_key,
             main_hand_left: parent_context.main_hand_left,
             context_dimension: parent_context.context_dimension,
             context_entity_type: parent_context.context_entity_type,
@@ -2521,6 +2531,14 @@ impl NativeItemRuntime {
                 .resource_id(protocol_id)
                 .and_then(|resource_id| registry.max_damage(resource_id))
         })
+    }
+
+    fn default_item_name_translation_key_for_resource_id(&self, resource_id: &str) -> String {
+        self.registry
+            .as_ref()
+            .and_then(|registry| registry.default_item_name_translation_key(resource_id))
+            .map(str::to_string)
+            .unwrap_or_else(|| default_item_name_translation_key(resource_id))
     }
 
     fn default_attribute_modifiers_for_resource_id(
@@ -10823,6 +10841,20 @@ mod tests {
             ),
             uv("component_item_name_fallback")
         );
+        assert_eq!(
+            selected(11, DataComponentPatchSummary::default()),
+            uv("component_item_name_block_default")
+        );
+        assert_eq!(
+            selected(
+                11,
+                DataComponentPatchSummary {
+                    removed_type_ids: vec![9],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_item_name_fallback")
+        );
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -16086,6 +16118,7 @@ mod tests {
                 public static final Item MAP_COLOR_COMPONENT_SELECTOR = registerItem("map_color_component_selector");
                 public static final Item CUSTOM_NAME_COMPONENT_SELECTOR = registerItem("custom_name_component_selector");
                 public static final Item ITEM_NAME_COMPONENT_SELECTOR = registerItem("item_name_component_selector");
+                public static final Item BLOCK_ITEM_NAME_COMPONENT_SELECTOR = registerBlock(Blocks.BLOCK_ITEM_NAME_COMPONENT_SELECTOR);
             }"#,
         );
         write_json(
@@ -16334,6 +16367,33 @@ mod tests {
                 }
             }"#,
         );
+        write_json(
+            &assets
+                .join("items")
+                .join("block_item_name_component_selector.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:component",
+                    "component": "minecraft:item_name",
+                    "cases": [
+                        {
+                            "when": "block.minecraft.block_item_name_component_selector",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_item_name_literal_key" }
+                        },
+                        {
+                            "when": { "translate": "block.minecraft.block_item_name_component_selector" },
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_item_name_block_default" }
+                        },
+                        {
+                            "when": { "translate": "item.minecraft.block_item_name_component_selector" },
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_item_name_default" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/component_item_name_fallback" }
+                }
+            }"#,
+        );
         for (model_id, color) in [
             ("component_rarity_common", [80, 80, 80, 255]),
             ("component_rarity_rare", [80, 180, 220, 255]),
@@ -16366,6 +16426,7 @@ mod tests {
             ("component_item_name_literal", [210, 120, 95, 255]),
             ("component_item_name_object", [120, 210, 95, 255]),
             ("component_item_name_literal_key", [210, 95, 170, 255]),
+            ("component_item_name_block_default", [95, 210, 190, 255]),
             ("component_item_name_fallback", [45, 55, 70, 255]),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);

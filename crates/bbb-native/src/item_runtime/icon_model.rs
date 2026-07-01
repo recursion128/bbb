@@ -784,6 +784,7 @@ impl ComponentSelectProperty {
             ctx.default_max_stack_size,
             ctx.default_max_damage,
             ctx.default_item_model_id,
+            ctx.default_item_name_translation_key,
         )
     }
 
@@ -793,6 +794,7 @@ impl ComponentSelectProperty {
         default_max_stack_size: Option<i32>,
         default_max_damage: Option<i32>,
         default_item_model_id: &str,
+        default_item_name_translation_key: &str,
     ) -> Option<SelectCaseValue> {
         if component_patch
             .is_some_and(|patch| patch.removed_type_ids.contains(&self.component_id()))
@@ -824,7 +826,7 @@ impl ComponentSelectProperty {
                     Some(SelectCaseValue::String(name.to_string()))
                 } else {
                     Some(SelectCaseValue::TranslatableComponentKey(
-                        default_item_name_translation_key(default_item_model_id),
+                        default_item_name_translation_key.to_string(),
                     ))
                 }
             }
@@ -1130,6 +1132,7 @@ pub(super) struct IconResolveContext<'a> {
     pub crossbow_charge: CrossbowChargeType,
     pub display_context: &'a str,
     pub default_item_model_id: &'a str,
+    pub default_item_name_translation_key: &'a str,
     /// Vanilla `MainHand.get`: `None` means this native call site has not
     /// threaded a `LivingEntity` owner, so select cases do not match and
     /// fallback is used. `Some(true)` is `HumanoidArm.LEFT`; `Some(false)` is
@@ -2553,7 +2556,7 @@ fn simple_component_translate_key(value: &Value) -> Option<&str> {
     }
 }
 
-fn default_item_name_translation_key(resource_id: &str) -> String {
+pub(super) fn default_item_name_translation_key(resource_id: &str) -> String {
     let (namespace, path) = resource_id
         .split_once(':')
         .unwrap_or(("minecraft", resource_id));
@@ -4057,6 +4060,7 @@ fn item_exact_component_matches(
             default_max_stack_size,
             default_max_damage,
             resource_id,
+            &default_item_name_translation_key(resource_id),
         ) == Some(expected);
     }
 
