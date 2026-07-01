@@ -807,11 +807,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     now support vanilla `ItemPredicate` direct item-key or item-tag HolderSets,
     stack-count bounds, and exact scalar/default `DataComponentMatchers`
     components plus nested partial `minecraft:damage`, `minecraft:enchantments`,
-    `minecraft:stored_enchantments`, and data-component AnyValue predicates over
-    decoded bundle entries. `minecraft:container` now decodes non-empty
-    container entries and matches the same direct item-key / item-tag /
-    stack-count / exact scalar component / nested partial damage,
-    enchantments, stored-enchantments, and AnyValue predicate collection subset.
+    `minecraft:stored_enchantments`, `minecraft:firework_explosion`,
+    `minecraft:fireworks`, and data-component AnyValue predicates over decoded
+    bundle entries. `minecraft:container` now decodes non-empty container
+    entries and matches the same direct item-key / item-tag / stack-count /
+    exact scalar component / nested partial damage, enchantments,
+    stored-enchantments, firework-explosion, fireworks, and AnyValue predicate
+    collection subset.
     `minecraft:enchantments` and patch-backed
     `minecraft:stored_enchantments` now match decoded enchantment levels and
     direct registry-key or enchantment-tag HolderSet predicates when the

@@ -5870,12 +5870,13 @@ When an agent does any of the following, update this file in the same slice:
       vanilla `ItemPredicate` direct item-key or item-tag HolderSets,
       stack-count bounds, and exact scalar/default `DataComponentMatchers`
       components plus nested partial `minecraft:damage`,
-      `minecraft:enchantments`, `minecraft:stored_enchantments`, and
+      `minecraft:enchantments`, `minecraft:stored_enchantments`,
+      `minecraft:firework_explosion`, `minecraft:fireworks`, and
       data-component AnyValue predicates over decoded bundle entries.
       `minecraft:container` now decodes non-empty container entries and matches
       the same direct item-key / item-tag / stack-count / exact scalar component
-      / nested partial damage, enchantments, stored-enchantments, and AnyValue
-      predicate collection subset.
+      / nested partial damage, enchantments, stored-enchantments,
+      firework-explosion, fireworks, and AnyValue predicate collection subset.
       `minecraft:fireworks`
       `explosions.contains` / `count` predicates now match decoded explosion
       shape / trail / twinkle summaries. `minecraft:trim` direct vanilla

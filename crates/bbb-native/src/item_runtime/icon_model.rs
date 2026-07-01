@@ -1984,7 +1984,14 @@ fn fireworks_component_predicate_is_supported(property: &ItemModelProperty) -> b
     if component_condition_predicate(property) != Some("minecraft:fireworks") {
         return false;
     }
-    let Some(value) = property.raw().get("value").and_then(Value::as_object) else {
+    let Some(value) = property.raw().get("value") else {
+        return false;
+    };
+    fireworks_predicate_value_is_supported(value)
+}
+
+fn fireworks_predicate_value_is_supported(value: &Value) -> bool {
+    let Some(value) = value.as_object() else {
         return false;
     };
     value
@@ -2087,6 +2094,8 @@ fn item_partial_component_predicate_is_supported(predicate: &str, value: &Value)
     match predicate {
         "minecraft:damage" => damage_component_predicate_value_is_supported(value),
         _ if enchantments_component_predicate_kind_from_parts(predicate, value).is_some() => true,
+        "minecraft:firework_explosion" => firework_explosion_predicate_is_supported(value),
+        "minecraft:fireworks" => fireworks_predicate_value_is_supported(value),
         _ => {
             item_partial_any_value_component_id(predicate).is_some()
                 && value.as_object().is_some_and(|value| value.is_empty())
@@ -2385,6 +2394,10 @@ fn item_partial_component_predicate_match(
         "minecraft:damage" => {
             damage_component_predicate_matches_value(value, component_patch, default_max_damage)
         }
+        "minecraft:firework_explosion" => {
+            item_stack_matches_firework_explosion_value(value, component_patch)
+        }
+        "minecraft:fireworks" => item_stack_matches_fireworks_value(value, component_patch),
         _ if let Some(kind) =
             enchantments_component_predicate_kind_from_parts(predicate, value) =>
         {
@@ -2643,6 +2656,16 @@ fn item_stack_matches_fireworks_predicate(
     if !fireworks_component_predicate_is_supported(property) {
         return false;
     }
+    let Some(value) = property.raw().get("value") else {
+        return false;
+    };
+    item_stack_matches_fireworks_value(value, component_patch)
+}
+
+fn item_stack_matches_fireworks_value(
+    value: &Value,
+    component_patch: Option<&DataComponentPatchSummary>,
+) -> bool {
     let Some(component_patch) = component_patch else {
         return false;
     };
@@ -2655,7 +2678,7 @@ fn item_stack_matches_fireworks_predicate(
     {
         return false;
     }
-    let Some(value) = property.raw().get("value").and_then(Value::as_object) else {
+    let Some(value) = value.as_object() else {
         return false;
     };
     if let Some(explosions) = value.get("explosions") {
@@ -2769,6 +2792,16 @@ fn item_stack_matches_firework_explosion_predicate(
     property: &ItemModelProperty,
     component_patch: Option<&DataComponentPatchSummary>,
 ) -> bool {
+    let Some(value) = property.raw().get("value") else {
+        return false;
+    };
+    item_stack_matches_firework_explosion_value(value, component_patch)
+}
+
+fn item_stack_matches_firework_explosion_value(
+    value: &Value,
+    component_patch: Option<&DataComponentPatchSummary>,
+) -> bool {
     let Some(component_patch) = component_patch else {
         return false;
     };
@@ -2781,7 +2814,7 @@ fn item_stack_matches_firework_explosion_predicate(
     {
         return false;
     }
-    let Some(value) = property.raw().get("value").and_then(Value::as_object) else {
+    let Some(value) = value.as_object() else {
         return false;
     };
     if let Some(expected_shape) = value.get("shape").and_then(Value::as_str) {

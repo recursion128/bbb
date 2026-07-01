@@ -7390,6 +7390,127 @@ mod tests {
             ),
             uv("component_condition_container_partial_stored_enchantments_absent")
         );
+        assert_eq!(
+            selected(
+                42,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: star_trail.clone(),
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_partial_firework_explosion_present")
+        );
+        assert_eq!(
+            selected(
+                42,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            firework_explosion_shape: Some(FireworkExplosionShapeSummary::Burst),
+                            ..star_trail.clone()
+                        },
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_partial_firework_explosion_absent")
+        );
+        assert_eq!(
+            selected(
+                43,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(2),
+                    container_items: vec![
+                        ItemStackTemplateSummary {
+                            item_id: 0,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![69],
+                                fireworks_flight_duration: Some(3),
+                                fireworks_explosions_count: Some(1),
+                                fireworks_explosions: vec![fireworks_explosion(
+                                    FireworkExplosionShapeSummary::Burst,
+                                    false,
+                                    true,
+                                )],
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                        ItemStackTemplateSummary {
+                            item_id: 1,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![69],
+                                fireworks_flight_duration: Some(2),
+                                fireworks_explosions_count: Some(1),
+                                fireworks_explosions: vec![fireworks_explosion(
+                                    FireworkExplosionShapeSummary::Burst,
+                                    true,
+                                    true,
+                                )],
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_partial_fireworks_present")
+        );
+        assert_eq!(
+            selected(
+                43,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(2),
+                    container_items: vec![
+                        ItemStackTemplateSummary {
+                            item_id: 0,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![69],
+                                fireworks_flight_duration: Some(3),
+                                fireworks_explosions_count: Some(1),
+                                fireworks_explosions: vec![fireworks_explosion(
+                                    FireworkExplosionShapeSummary::Burst,
+                                    false,
+                                    true,
+                                )],
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                        ItemStackTemplateSummary {
+                            item_id: 1,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![69],
+                                fireworks_flight_duration: Some(1),
+                                fireworks_explosions_count: Some(1),
+                                fireworks_explosions: vec![fireworks_explosion(
+                                    FireworkExplosionShapeSummary::Burst,
+                                    true,
+                                    true,
+                                )],
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_partial_fireworks_absent")
+        );
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -8923,6 +9044,8 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_ANY_VALUE = registerItem("component_condition_container_partial_any_value");
                 public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_ENCHANTMENTS = registerItem("component_condition_bundle_partial_enchantments");
                 public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_STORED_ENCHANTMENTS = registerItem("component_condition_container_partial_stored_enchantments");
+                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_FIREWORK_EXPLOSION = registerItem("component_condition_bundle_partial_firework_explosion");
+                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_FIREWORKS = registerItem("component_condition_container_partial_fireworks");
             }"#,
         );
         write_json(
@@ -9616,6 +9739,94 @@ mod tests {
                     "on_false": {
                         "type": "minecraft:model",
                         "model": "minecraft:item/component_condition_container_partial_stored_enchantments_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_partial_firework_explosion.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "predicates": {
+                                            "minecraft:firework_explosion": {
+                                                "shape": "star",
+                                                "has_trail": true,
+                                                "has_twinkle": false
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_firework_explosion_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_firework_explosion_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_container_partial_fireworks.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:container",
+                    "value": {
+                        "items": {
+                            "count": [
+                                {
+                                    "test": {
+                                        "components": {
+                                            "predicates": {
+                                                "minecraft:fireworks": {
+                                                    "flight_duration": {
+                                                        "min": 2,
+                                                        "max": 4
+                                                    },
+                                                    "explosions": {
+                                                        "contains": [
+                                                            {
+                                                                "shape": "burst",
+                                                                "has_twinkle": true
+                                                            }
+                                                        ]
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "count": {
+                                        "min": 2
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_fireworks_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_fireworks_absent"
                     }
                 }
             }"#,
@@ -10374,6 +10585,22 @@ mod tests {
             (
                 "component_condition_container_partial_stored_enchantments_absent",
                 [50, 90, 30, 255],
+            ),
+            (
+                "component_condition_bundle_partial_firework_explosion_present",
+                [245, 150, 90, 255],
+            ),
+            (
+                "component_condition_bundle_partial_firework_explosion_absent",
+                [90, 40, 25, 255],
+            ),
+            (
+                "component_condition_container_partial_fireworks_present",
+                [150, 245, 90, 255],
+            ),
+            (
+                "component_condition_container_partial_fireworks_absent",
+                [40, 90, 25, 255],
             ),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);
