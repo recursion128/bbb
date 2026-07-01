@@ -7368,6 +7368,36 @@ mod tests {
             ),
             uv("component_condition_bundle_exact_potion_contents_absent")
         );
+        let exact_writable_book = DataComponentPatchSummary {
+            added_type_ids: vec![54],
+            writable_book_pages: vec!["alpha".to_string(), "beta".to_string()],
+            writable_book_page_filters: vec![None, Some("filtered beta".to_string())],
+            ..DataComponentPatchSummary::default()
+        };
+        assert_eq!(
+            selected(86, named_bundle_entry(exact_writable_book.clone())),
+            uv("component_condition_bundle_exact_writable_book_present")
+        );
+        assert_eq!(
+            selected(
+                86,
+                named_bundle_entry(DataComponentPatchSummary {
+                    writable_book_page_filters: vec![None, Some("other filtered".to_string())],
+                    ..exact_writable_book.clone()
+                })
+            ),
+            uv("component_condition_bundle_exact_writable_book_absent")
+        );
+        assert_eq!(
+            selected(
+                86,
+                named_bundle_entry(DataComponentPatchSummary {
+                    removed_type_ids: vec![54],
+                    ..exact_writable_book
+                })
+            ),
+            uv("component_condition_bundle_exact_writable_book_absent")
+        );
         assert_eq!(
             selected(
                 33,
@@ -10828,6 +10858,7 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_UNBREAKABLE = registerItem("component_condition_bundle_exact_unbreakable");
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_CUSTOM_DATA = registerItem("component_condition_bundle_exact_custom_data");
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_POTION_CONTENTS = registerItem("component_condition_bundle_exact_potion_contents");
+                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_WRITABLE_BOOK = registerItem("component_condition_bundle_exact_writable_book");
             }"#,
         );
         write_json(
@@ -11488,6 +11519,47 @@ mod tests {
                     "on_false": {
                         "type": "minecraft:model",
                         "model": "minecraft:item/component_condition_bundle_exact_potion_contents_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_exact_writable_book.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "components": {
+                                            "minecraft:writable_book_content": {
+                                                "pages": [
+                                                    "alpha",
+                                                    {
+                                                        "raw": "beta",
+                                                        "filtered": "filtered beta"
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_writable_book_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_writable_book_absent"
                     }
                 }
             }"#,
@@ -13922,6 +13994,14 @@ mod tests {
             (
                 "component_condition_bundle_exact_potion_contents_absent",
                 [85, 45, 70, 255],
+            ),
+            (
+                "component_condition_bundle_exact_writable_book_present",
+                [190, 205, 245, 255],
+            ),
+            (
+                "component_condition_bundle_exact_writable_book_absent",
+                [55, 65, 100, 255],
             ),
             (
                 "component_condition_container_components_present",

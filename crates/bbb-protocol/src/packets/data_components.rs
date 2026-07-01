@@ -136,6 +136,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub writable_book_pages: Vec<String>,
     #[serde(default)]
+    pub writable_book_page_filters: Vec<Option<String>>,
+    #[serde(default)]
     pub written_book: Option<WrittenBookContentSummary>,
     #[serde(default)]
     pub block_state_properties: BTreeMap<String, String>,
@@ -575,7 +577,9 @@ fn decode_typed_data_component_patch_summary(
                 summary.map_post_processing = Some(decode_map_post_processing(decoder)?);
             }
             54 => {
-                summary.writable_book_pages = decode_writable_book_content(decoder)?;
+                let writable_book = decode_writable_book_content(decoder)?;
+                summary.writable_book_pages = writable_book.pages;
+                summary.writable_book_page_filters = writable_book.page_filters;
             }
             55 => {
                 summary.written_book = Some(decode_written_book_content(decoder)?);
@@ -1842,14 +1846,21 @@ fn decode_mob_effect_details(decoder: &mut Decoder<'_>, depth: usize) -> Result<
     Ok(())
 }
 
-fn decode_writable_book_content(decoder: &mut Decoder<'_>) -> Result<Vec<String>> {
+struct WritableBookContentSummary {
+    pages: Vec<String>,
+    page_filters: Vec<Option<String>>,
+}
+
+fn decode_writable_book_content(decoder: &mut Decoder<'_>) -> Result<WritableBookContentSummary> {
     let pages = read_bounded_len(decoder, MAX_BOOK_PAGES)?;
-    let mut out = Vec::with_capacity(pages);
+    let mut out = WritableBookContentSummary {
+        pages: Vec::with_capacity(pages),
+        page_filters: Vec::with_capacity(pages),
+    };
     for _ in 0..pages {
-        out.push(decode_filterable_string(
-            decoder,
-            MAX_WRITABLE_BOOK_PAGE_CHARS,
-        )?);
+        let page = decode_filterable_string_summary(decoder, MAX_WRITABLE_BOOK_PAGE_CHARS)?;
+        out.pages.push(page.raw);
+        out.page_filters.push(page.filtered);
     }
     Ok(out)
 }
@@ -1873,10 +1884,22 @@ fn decode_written_book_content(decoder: &mut Decoder<'_>) -> Result<WrittenBookC
     })
 }
 
+struct FilterableStringSummary {
+    raw: String,
+    filtered: Option<String>,
+}
+
 fn decode_filterable_string(decoder: &mut Decoder<'_>, max_chars: usize) -> Result<String> {
+    Ok(decode_filterable_string_summary(decoder, max_chars)?.raw)
+}
+
+fn decode_filterable_string_summary(
+    decoder: &mut Decoder<'_>,
+    max_chars: usize,
+) -> Result<FilterableStringSummary> {
     let raw = decoder.read_string(max_chars)?;
-    decode_optional_string(decoder, max_chars)?;
-    Ok(raw)
+    let filtered = decode_optional_string_value(decoder, max_chars)?;
+    Ok(FilterableStringSummary { raw, filtered })
 }
 
 fn decode_filterable_component(decoder: &mut Decoder<'_>) -> Result<String> {
@@ -3199,6 +3222,7 @@ mod tests {
                     has_twinkle: false,
                 }],
                 writable_book_pages: vec!["raw page".to_string()],
+                writable_book_page_filters: vec![Some("filtered page".to_string())],
                 written_book: Some(WrittenBookContentSummary {
                     title: "Title".to_string(),
                     author: "Author".to_string(),
@@ -3276,6 +3300,7 @@ mod tests {
                 added_type_ids: vec![54, 55],
                 removed_type_ids: Vec::new(),
                 writable_book_pages: vec!["first page".to_string(), "second raw".to_string()],
+                writable_book_page_filters: vec![None, Some("second filtered".to_string())],
                 written_book: Some(WrittenBookContentSummary {
                     title: "Guide".to_string(),
                     author: "Alex".to_string(),

@@ -2399,6 +2399,8 @@ fn item_exact_component_is_supported(component: &str, expected: &Value) -> bool 
             && custom_data_predicate_value_to_nbt_summary(expected).is_some())
         || (component == "minecraft:potion_contents"
             && potion_contents_exact_value(expected).is_some())
+        || (component == "minecraft:writable_book_content"
+            && writable_book_exact_value(expected).is_some())
 }
 
 fn item_partial_component_predicates_are_supported(value: &Value) -> bool {
@@ -3586,6 +3588,13 @@ fn item_exact_component_matches(
         return potion_contents_exact_match(&expected, &item.component_patch);
     }
 
+    if component == "minecraft:writable_book_content" {
+        let Some(expected) = writable_book_exact_value(expected) else {
+            return false;
+        };
+        return writable_book_exact_match(&expected, &item.component_patch);
+    }
+
     let Some(expected) = simple_component_text(expected) else {
         return false;
     };
@@ -4142,6 +4151,84 @@ fn potion_contents_exact_match(
     component_patch.potion_custom_color == expected.custom_color
         && component_patch.potion_custom_effect_count == Some(expected.custom_effect_count)
         && component_patch.potion_custom_name.as_deref() == expected.custom_name
+}
+
+struct ExactWritableBookContent<'a> {
+    pages: Vec<ExactFilterableString<'a>>,
+}
+
+struct ExactFilterableString<'a> {
+    raw: &'a str,
+    filtered: Option<&'a str>,
+}
+
+fn writable_book_exact_value(value: &Value) -> Option<ExactWritableBookContent<'_>> {
+    let value = value.as_object()?;
+    if !value.keys().all(|key| key == "pages") {
+        return None;
+    }
+    let pages = match value.get("pages") {
+        None => Vec::new(),
+        Some(Value::Array(pages)) => pages
+            .iter()
+            .map(exact_filterable_string_value)
+            .collect::<Option<Vec<_>>>()?,
+        Some(_) => return None,
+    };
+    Some(ExactWritableBookContent { pages })
+}
+
+fn exact_filterable_string_value(value: &Value) -> Option<ExactFilterableString<'_>> {
+    match value {
+        Value::String(raw) => Some(ExactFilterableString {
+            raw,
+            filtered: None,
+        }),
+        Value::Object(value) => {
+            if !value.keys().all(|key| key == "raw" || key == "filtered") {
+                return None;
+            }
+            let filtered = match value.get("filtered") {
+                None => None,
+                Some(Value::String(filtered)) => Some(filtered.as_str()),
+                Some(_) => return None,
+            };
+            Some(ExactFilterableString {
+                raw: value.get("raw")?.as_str()?,
+                filtered,
+            })
+        }
+        _ => None,
+    }
+}
+
+fn writable_book_exact_match(
+    expected: &ExactWritableBookContent<'_>,
+    component_patch: &DataComponentPatchSummary,
+) -> bool {
+    if component_patch
+        .removed_type_ids
+        .contains(&WRITABLE_BOOK_CONTENT_COMPONENT_ID)
+        || !component_patch
+            .added_type_ids
+            .contains(&WRITABLE_BOOK_CONTENT_COMPONENT_ID)
+        || component_patch.writable_book_pages.len() != expected.pages.len()
+        || component_patch.writable_book_page_filters.len() != expected.pages.len()
+    {
+        return false;
+    }
+    expected
+        .pages
+        .iter()
+        .zip(
+            component_patch
+                .writable_book_pages
+                .iter()
+                .zip(&component_patch.writable_book_page_filters),
+        )
+        .all(|(expected, (actual_raw, actual_filtered))| {
+            actual_raw == expected.raw && actual_filtered.as_deref() == expected.filtered
+        })
 }
 
 fn writable_book_component_predicate_is_supported(property: &ItemModelProperty) -> bool {
