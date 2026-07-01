@@ -7475,6 +7475,35 @@ mod tests {
             ),
             uv("component_condition_bundle_exact_fireworks_absent")
         );
+        let exact_jukebox_playable = DataComponentPatchSummary {
+            added_type_ids: vec![64],
+            jukebox_song_id: Some(1),
+            ..DataComponentPatchSummary::default()
+        };
+        assert_eq!(
+            selected(89, named_bundle_entry(exact_jukebox_playable.clone())),
+            uv("component_condition_bundle_exact_jukebox_playable_present")
+        );
+        assert_eq!(
+            selected(
+                89,
+                named_bundle_entry(DataComponentPatchSummary {
+                    jukebox_song_id: Some(0),
+                    ..exact_jukebox_playable.clone()
+                })
+            ),
+            uv("component_condition_bundle_exact_jukebox_playable_absent")
+        );
+        assert_eq!(
+            selected(
+                89,
+                named_bundle_entry(DataComponentPatchSummary {
+                    removed_type_ids: vec![64],
+                    ..exact_jukebox_playable
+                })
+            ),
+            uv("component_condition_bundle_exact_jukebox_playable_absent")
+        );
         assert_eq!(
             selected(
                 33,
@@ -10938,6 +10967,7 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_WRITABLE_BOOK = registerItem("component_condition_bundle_exact_writable_book");
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_FIREWORK_EXPLOSION = registerItem("component_condition_bundle_exact_firework_explosion");
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_FIREWORKS = registerItem("component_condition_bundle_exact_fireworks");
+                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_JUKEBOX_PLAYABLE = registerItem("component_condition_bundle_exact_jukebox_playable");
             }"#,
         );
         write_json(
@@ -11730,6 +11760,39 @@ mod tests {
                     "on_false": {
                         "type": "minecraft:model",
                         "model": "minecraft:item/component_condition_bundle_exact_fireworks_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_exact_jukebox_playable.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "components": {
+                                            "minecraft:jukebox_playable": "minecraft:cat"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_jukebox_playable_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_jukebox_playable_absent"
                     }
                 }
             }"#,
@@ -14188,6 +14251,14 @@ mod tests {
             (
                 "component_condition_bundle_exact_fireworks_absent",
                 [105, 55, 35, 255],
+            ),
+            (
+                "component_condition_bundle_exact_jukebox_playable_present",
+                [185, 235, 235, 255],
+            ),
+            (
+                "component_condition_bundle_exact_jukebox_playable_absent",
+                [45, 95, 95, 255],
             ),
             (
                 "component_condition_container_components_present",

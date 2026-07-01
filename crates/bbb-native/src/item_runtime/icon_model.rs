@@ -2404,6 +2404,8 @@ fn item_exact_component_is_supported(component: &str, expected: &Value) -> bool 
         || (component == "minecraft:firework_explosion"
             && firework_explosion_exact_value(expected).is_some())
         || (component == "minecraft:fireworks" && fireworks_exact_value(expected).is_some())
+        || (component == "minecraft:jukebox_playable"
+            && jukebox_playable_exact_value(expected).is_some())
 }
 
 fn item_partial_component_predicates_are_supported(value: &Value) -> bool {
@@ -3612,6 +3614,13 @@ fn item_exact_component_matches(
         return fireworks_exact_match(&expected, &item.component_patch);
     }
 
+    if component == "minecraft:jukebox_playable" {
+        let Some(expected) = jukebox_playable_exact_value(expected) else {
+            return false;
+        };
+        return jukebox_playable_exact_match(expected, &item.component_patch);
+    }
+
     let Some(expected) = simple_component_text(expected) else {
         return false;
     };
@@ -4023,6 +4032,33 @@ fn item_stack_matches_jukebox_playable_value(
         return false;
     };
     registry_key_holder_set_matches(Some(song), song_key, jukebox_song_tags)
+}
+
+fn jukebox_playable_exact_value(value: &Value) -> Option<&str> {
+    let value = value.as_str()?;
+    (!value.is_empty() && !value.starts_with('#')).then_some(value)
+}
+
+fn jukebox_playable_exact_match(
+    expected: &str,
+    component_patch: &DataComponentPatchSummary,
+) -> bool {
+    if component_patch
+        .removed_type_ids
+        .contains(&JUKEBOX_PLAYABLE_COMPONENT_ID)
+        || !component_patch
+            .added_type_ids
+            .contains(&JUKEBOX_PLAYABLE_COMPONENT_ID)
+    {
+        return false;
+    }
+    let Some(song_id) = component_patch.jukebox_song_id else {
+        return false;
+    };
+    let Ok(song_index) = usize::try_from(song_id) else {
+        return false;
+    };
+    VANILLA_JUKEBOX_SONG_KEYS.get(song_index) == Some(&expected)
 }
 
 fn potion_contents_component_predicate_is_supported(property: &ItemModelProperty) -> bool {
