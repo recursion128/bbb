@@ -871,6 +871,9 @@ pub(super) struct IconResolveContext<'a> {
     /// `minecraft:trim_material` registry keys by holder id (the dynamic
     /// registry, projected from `bbb-world` at the call site).
     pub trim_material_keys: Option<&'a [String]>,
+    /// `minecraft:enchantment` registry keys by holder id (the dynamic
+    /// registry, projected from `bbb-world` at the call site).
+    pub enchantment_keys: Option<&'a [String]>,
 }
 
 impl IconResolveContext<'_> {
@@ -1519,7 +1522,7 @@ fn item_stack_matches_component_predicate(
         return item_stack_matches_container_predicate(property, ctx);
     }
     if enchantments_component_predicate_is_supported(property) {
-        return item_stack_matches_enchantments_predicate(property, ctx.component_patch);
+        return item_stack_matches_enchantments_predicate(property, ctx);
     }
     if predicate == "minecraft:firework_explosion" {
         return item_stack_matches_firework_explosion_predicate(property, ctx.component_patch);
@@ -1611,10 +1614,7 @@ fn enchantments_component_predicate_kind(
     let Some(predicates) = property.raw().get("value").and_then(Value::as_array) else {
         return None;
     };
-    if predicates
-        .iter()
-        .all(enchantment_level_predicate_is_supported)
-    {
+    if predicates.iter().all(enchantment_predicate_is_supported) {
         Some(kind)
     } else {
         None
@@ -1625,35 +1625,59 @@ fn enchantments_component_predicate_is_supported(property: &ItemModelProperty) -
     enchantments_component_predicate_kind(property).is_some()
 }
 
-fn enchantment_level_predicate_is_supported(predicate: &Value) -> bool {
+fn enchantment_predicate_is_supported(predicate: &Value) -> bool {
     let Some(predicate) = predicate.as_object() else {
         return false;
     };
-    !predicate.contains_key("enchantments") && predicate.keys().all(|key| key == "levels")
+    predicate
+        .keys()
+        .all(|key| key == "levels" || key == "enchantments")
+        && predicate
+            .get("enchantments")
+            .is_none_or(enchantment_holder_set_is_supported)
+}
+
+fn enchantment_holder_set_is_supported(value: &Value) -> bool {
+    match value {
+        Value::String(key) => enchantment_direct_key_is_supported(key),
+        Value::Array(keys) => keys.iter().all(|key| {
+            key.as_str()
+                .is_some_and(enchantment_direct_key_is_supported)
+        }),
+        _ => false,
+    }
+}
+
+fn enchantment_direct_key_is_supported(key: &str) -> bool {
+    !key.is_empty() && !key.starts_with('#')
 }
 
 fn item_stack_matches_enchantments_predicate(
     property: &ItemModelProperty,
-    component_patch: Option<&DataComponentPatchSummary>,
+    ctx: IconResolveContext<'_>,
 ) -> bool {
     let Some(kind) = enchantments_component_predicate_kind(property) else {
         return false;
     };
-    if component_patch.is_some_and(|patch| patch.removed_type_ids.contains(&kind.component_id())) {
+    if ctx
+        .component_patch
+        .is_some_and(|patch| patch.removed_type_ids.contains(&kind.component_id()))
+    {
         return false;
     }
     let Some(predicates) = property.raw().get("value").and_then(Value::as_array) else {
         return false;
     };
-    let enchantments = component_patch
+    let enchantments = ctx
+        .component_patch
         .map(|patch| kind.enchantments(patch))
         .unwrap_or(&[]);
-    if !kind.component_is_present(component_patch, enchantments) {
+    if !kind.component_is_present(ctx.component_patch, enchantments) {
         return false;
     }
-    predicates
-        .iter()
-        .all(|predicate| enchantment_level_predicate_matches(predicate, enchantments))
+    predicates.iter().all(|predicate| {
+        enchantment_predicate_matches(predicate, enchantments, ctx.enchantment_keys)
+    })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1693,19 +1717,65 @@ impl EnchantmentComponentKind {
     }
 }
 
-fn enchantment_level_predicate_matches(
+fn enchantment_predicate_matches(
     predicate: &Value,
     enchantments: &[ItemEnchantmentSummary],
+    enchantment_keys: Option<&[String]>,
 ) -> bool {
     let Some(predicate) = predicate.as_object() else {
         return false;
     };
+    if let Some(holder_set) = predicate.get("enchantments") {
+        return enchantment_holder_set_matches(
+            holder_set,
+            predicate.get("levels"),
+            enchantments,
+            enchantment_keys,
+        );
+    }
     if let Some(levels) = predicate.get("levels") {
         return enchantments
             .iter()
             .any(|enchantment| min_max_int_bounds_match(Some(levels), enchantment.level));
     }
     !enchantments.is_empty()
+}
+
+fn enchantment_holder_set_matches(
+    holder_set: &Value,
+    levels: Option<&Value>,
+    enchantments: &[ItemEnchantmentSummary],
+    enchantment_keys: Option<&[String]>,
+) -> bool {
+    let Some(enchantment_keys) = enchantment_keys else {
+        return false;
+    };
+    match holder_set {
+        Value::String(key) => enchantment_key_matches(key, levels, enchantments, enchantment_keys),
+        Value::Array(keys) => keys
+            .iter()
+            .filter_map(Value::as_str)
+            .any(|key| enchantment_key_matches(key, levels, enchantments, enchantment_keys)),
+        _ => false,
+    }
+}
+
+fn enchantment_key_matches(
+    key: &str,
+    levels: Option<&Value>,
+    enchantments: &[ItemEnchantmentSummary],
+    enchantment_keys: &[String],
+) -> bool {
+    enchantments.iter().any(|enchantment| {
+        if enchantment.level == 0 {
+            return false;
+        }
+        let key_matches = usize::try_from(enchantment.holder_id)
+            .ok()
+            .and_then(|holder_id| enchantment_keys.get(holder_id))
+            .is_some_and(|actual_key| actual_key == key);
+        key_matches && min_max_int_bounds_match(levels, enchantment.level)
+    })
 }
 
 fn bundle_contents_component_predicate_is_supported(property: &ItemModelProperty) -> bool {

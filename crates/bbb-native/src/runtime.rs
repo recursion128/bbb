@@ -1581,12 +1581,14 @@ pub(crate) fn pump_network_and_terrain(
         .unwrap_or(0.0)
         + entity_partial_tick;
     let trim_material_keys = world_trim_material_keys(world);
+    let enchantment_keys = world_enchantment_keys(world);
     let dropped_item_models = dropped_item_models(
         world,
         item_runtime,
         terrain_textures,
         item_model_age_ticks,
         trim_material_keys.as_deref(),
+        enchantment_keys.as_deref(),
     );
     renderer.set_item_entity_billboards(item_entity_billboards_from_world(
         world,
@@ -1605,6 +1607,7 @@ pub(crate) fn pump_network_and_terrain(
         item_runtime,
         terrain_textures,
         trim_material_keys.as_deref(),
+        enchantment_keys.as_deref(),
     );
     let entity_block_meshes =
         entity_block_models(&entity_instances, world, item_runtime, terrain_textures);
@@ -4157,7 +4160,7 @@ fn hud_item_icon_for_stack(
         crate::item_runtime::ItemModelUseContext::inactive()
     };
     let icon = item_runtime
-        .icon_for_stack_with_context_and_use_context_time_state_and_fishing_rod_cast(
+        .icon_for_stack_with_context_and_use_context_time_state_and_fishing_rod_cast_with_registry_context(
             item,
             local_selected_bundle_item_index,
             using_item,
@@ -4165,6 +4168,7 @@ fn hud_item_icon_for_stack(
             bbb_pack::BlockModelDisplayContext::Gui,
             item_model_cooldown_progress,
             trim_material_keys.as_deref(),
+            enchantment_keys.as_deref(),
             owner_main_hand_left,
             context_entity_type,
             context_dimension,

@@ -807,16 +807,20 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     over decoded bundle entries. `minecraft:container` now decodes non-empty
     container entries and matches the same direct item-key / stack-count
     collection predicate subset. `minecraft:enchantments` and
-    patch-backed `minecraft:stored_enchantments` level-only predicates now match
-    decoded enchantment levels; empty `minecraft:enchantments` predicate lists
-    honor vanilla's default empty `ENCHANTMENTS` component unless id 13 is
-    removed, while `stored_enchantments` still requires a patch-visible
-    component until item-specific default components are modeled. Remaining
-    constrained `DataComponentPredicate` types such as enchantment HolderSet
-    matching / item-specific default `stored_enchantments`,
-    bundle/container item tags and nested component matchers, and trim tag sets
-    / inline material or pattern payloads / datapack pattern registry-key remaps
-    remain component-predicate follow-up.
+    patch-backed `minecraft:stored_enchantments` now match decoded enchantment
+    levels and direct registry-key HolderSet predicates when the
+    `minecraft:enchantment` registry keys are available to the icon resolver;
+    GUI/HUD, dropped `GROUND`, item-frame `FIXED`, and owner-backed third-person
+    generated held-item paths now thread that registry context, while empty
+    `minecraft:enchantments` predicate lists honor vanilla's default empty
+    `ENCHANTMENTS` component unless id 13 is removed. `stored_enchantments`
+    still requires a patch-visible component until item-specific default
+    components are modeled. Remaining constrained `DataComponentPredicate`
+    types such as enchantment tag HolderSets / inline or datapack holder
+    payloads / item-specific default `stored_enchantments`, bundle/container
+    item tags and nested component matchers, and trim tag sets / inline material
+    or pattern payloads / datapack pattern registry-key remaps remain
+    component-predicate follow-up.
   - [x] `minecraft:has_component` item-model condition now follows vanilla
     `HasComponent.get`: default prototype components such as
     `minecraft:max_stack_size`, `minecraft:item_model`, and

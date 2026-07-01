@@ -1376,6 +1376,7 @@ impl NativeItemRuntime {
                                 .as_ref()
                                 .map(ItemRegistryCatalog::resource_ids),
                             trim_material_keys: None,
+                            enchantment_keys: None,
                         })
                         .into_iter()
                         .next()
@@ -1476,6 +1477,21 @@ impl NativeItemRuntime {
         display_context: BlockModelDisplayContext,
         trim_material_keys: Option<&[String]>,
     ) -> Vec<GeneratedItemLayer> {
+        self.generated_item_layers_for_stack_with_registry_context(
+            stack,
+            display_context,
+            trim_material_keys,
+            None,
+        )
+    }
+
+    pub(crate) fn generated_item_layers_for_stack_with_registry_context(
+        &self,
+        stack: &ItemStackSummary,
+        display_context: BlockModelDisplayContext,
+        trim_material_keys: Option<&[String]>,
+        enchantment_keys: Option<&[String]>,
+    ) -> Vec<GeneratedItemLayer> {
         self.generated_item_layers_for_stack_with_context(
             stack,
             display_context,
@@ -1485,6 +1501,7 @@ impl NativeItemRuntime {
             None,
             None,
             trim_material_keys,
+            enchantment_keys,
         )
     }
 
@@ -1509,6 +1526,31 @@ impl NativeItemRuntime {
         using_item: bool,
         use_context: ItemModelUseContext,
     ) -> Vec<GeneratedItemLayer> {
+        self.generated_item_layers_for_stack_with_owner_registry_context(
+            stack,
+            display_context,
+            owner_main_hand_left,
+            context_entity_type,
+            context_dimension,
+            trim_material_keys,
+            None,
+            using_item,
+            use_context,
+        )
+    }
+
+    pub(crate) fn generated_item_layers_for_stack_with_owner_registry_context(
+        &self,
+        stack: &ItemStackSummary,
+        display_context: BlockModelDisplayContext,
+        owner_main_hand_left: Option<bool>,
+        context_entity_type: Option<&str>,
+        context_dimension: Option<&str>,
+        trim_material_keys: Option<&[String]>,
+        enchantment_keys: Option<&[String]>,
+        using_item: bool,
+        use_context: ItemModelUseContext,
+    ) -> Vec<GeneratedItemLayer> {
         self.generated_item_layers_for_stack_with_context(
             stack,
             display_context,
@@ -1518,6 +1560,7 @@ impl NativeItemRuntime {
             context_entity_type,
             context_dimension,
             trim_material_keys,
+            enchantment_keys,
         )
     }
 
@@ -1531,8 +1574,9 @@ impl NativeItemRuntime {
         context_entity_type: Option<&str>,
         context_dimension: Option<&str>,
         trim_material_keys: Option<&[String]>,
+        enchantment_keys: Option<&[String]>,
     ) -> Vec<GeneratedItemLayer> {
-        let Some(icon) = self.icon_for_stack_with_context_and_use_context(
+        let Some(icon) = self.icon_for_stack_with_model_registry_context(
             stack,
             None,
             using_item,
@@ -1540,9 +1584,18 @@ impl NativeItemRuntime {
             display_context,
             0.0,
             trim_material_keys,
+            enchantment_keys,
             owner_main_hand_left,
             context_entity_type,
             context_dimension,
+            None,
+            None,
+            false,
+            false,
+            false,
+            false,
+            ItemModelKeybindContext::default(),
+            false,
         ) else {
             return Vec::new();
         };
@@ -1783,7 +1836,7 @@ impl NativeItemRuntime {
         keybind_context: ItemModelKeybindContext,
         fishing_rod_cast: bool,
     ) -> Option<ItemAtlasIcon> {
-        self.icon_for_stack_with_model_context(
+        self.icon_for_stack_with_model_registry_context(
             stack,
             bundle_selected_item_index,
             using_item,
@@ -1791,6 +1844,53 @@ impl NativeItemRuntime {
             display_context,
             cooldown_progress,
             trim_material_keys,
+            None,
+            owner_main_hand_left,
+            context_entity_type,
+            context_dimension,
+            time_context,
+            compass_context,
+            selected_item,
+            carried_item,
+            view_entity,
+            shift_down,
+            keybind_context,
+            fishing_rod_cast,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn icon_for_stack_with_context_and_use_context_time_state_and_fishing_rod_cast_with_registry_context(
+        &self,
+        stack: &ItemStackSummary,
+        bundle_selected_item_index: Option<i32>,
+        using_item: bool,
+        use_context: ItemModelUseContext,
+        display_context: BlockModelDisplayContext,
+        cooldown_progress: f32,
+        trim_material_keys: Option<&[String]>,
+        enchantment_keys: Option<&[String]>,
+        owner_main_hand_left: Option<bool>,
+        context_entity_type: Option<&str>,
+        context_dimension: Option<&str>,
+        time_context: Option<ItemModelTimeContext>,
+        compass_context: Option<ItemModelCompassContext<'_>>,
+        selected_item: bool,
+        carried_item: bool,
+        view_entity: bool,
+        shift_down: bool,
+        keybind_context: ItemModelKeybindContext,
+        fishing_rod_cast: bool,
+    ) -> Option<ItemAtlasIcon> {
+        self.icon_for_stack_with_model_registry_context(
+            stack,
+            bundle_selected_item_index,
+            using_item,
+            use_context,
+            display_context,
+            cooldown_progress,
+            trim_material_keys,
+            enchantment_keys,
             owner_main_hand_left,
             context_entity_type,
             context_dimension,
@@ -1862,6 +1962,52 @@ impl NativeItemRuntime {
         keybind_context: ItemModelKeybindContext,
         fishing_rod_cast: bool,
     ) -> Option<ItemAtlasIcon> {
+        self.icon_for_stack_with_model_registry_context(
+            stack,
+            bundle_selected_item_index,
+            using_item,
+            use_context,
+            display_context,
+            cooldown_progress,
+            trim_material_keys,
+            None,
+            owner_main_hand_left,
+            context_entity_type,
+            context_dimension,
+            time_context,
+            compass_context,
+            selected_item,
+            carried_item,
+            view_entity,
+            shift_down,
+            keybind_context,
+            fishing_rod_cast,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn icon_for_stack_with_model_registry_context(
+        &self,
+        stack: &ItemStackSummary,
+        bundle_selected_item_index: Option<i32>,
+        using_item: bool,
+        use_context: ItemModelUseContext,
+        display_context: BlockModelDisplayContext,
+        cooldown_progress: f32,
+        trim_material_keys: Option<&[String]>,
+        enchantment_keys: Option<&[String]>,
+        owner_main_hand_left: Option<bool>,
+        context_entity_type: Option<&str>,
+        context_dimension: Option<&str>,
+        time_context: Option<ItemModelTimeContext>,
+        compass_context: Option<ItemModelCompassContext<'_>>,
+        selected_item: bool,
+        carried_item: bool,
+        view_entity: bool,
+        shift_down: bool,
+        keybind_context: ItemModelKeybindContext,
+        fishing_rod_cast: bool,
+    ) -> Option<ItemAtlasIcon> {
         let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
         let item_model_id = item_model_id_for_stack(item_id, Some(&stack.component_patch))?;
         self.icon_for_resource_id(
@@ -1875,6 +2021,7 @@ impl NativeItemRuntime {
             display_context,
             cooldown_progress,
             trim_material_keys,
+            enchantment_keys,
             owner_main_hand_left,
             context_entity_type,
             context_dimension,
@@ -1908,6 +2055,7 @@ impl NativeItemRuntime {
             None,
             None,
             None,
+            None,
             false,
             false,
             false,
@@ -1929,6 +2077,7 @@ impl NativeItemRuntime {
         display_context: BlockModelDisplayContext,
         cooldown_progress: f32,
         trim_material_keys: Option<&[String]>,
+        enchantment_keys: Option<&[String]>,
         owner_main_hand_left: Option<bool>,
         context_entity_type: Option<&str>,
         context_dimension: Option<&str>,
@@ -1981,6 +2130,7 @@ impl NativeItemRuntime {
                 .as_ref()
                 .map(ItemRegistryCatalog::resource_ids),
             trim_material_keys,
+            enchantment_keys,
         };
         let layers = self
             .item_icon_models
@@ -2138,6 +2288,7 @@ impl NativeItemRuntime {
             default_max_stack_size_for_item: parent_context.default_max_stack_size_for_item,
             item_resource_ids: parent_context.item_resource_ids,
             trim_material_keys: parent_context.trim_material_keys,
+            enchantment_keys: parent_context.enchantment_keys,
         };
         let layers = self
             .item_icon_models
@@ -5376,6 +5527,10 @@ mod tests {
             "minecraft:quartz".to_string(),
             "minecraft:diamond".to_string(),
         ];
+        let enchantment_keys = [
+            "minecraft:sharpness".to_string(),
+            "minecraft:mending".to_string(),
+        ];
         let selected_with_trim_keys = |item_id, component_patch| {
             runtime
                 .icon_for_stack_with_context(
@@ -5391,6 +5546,37 @@ mod tests {
                     None,
                     None,
                     None,
+                )
+                .unwrap()
+                .layers[0]
+                .uv
+        };
+        let selected_with_enchantment_keys = |item_id, component_patch| {
+            runtime
+                .icon_for_stack_with_model_registry_context(
+                    &ItemStackSummary {
+                        item_id: Some(item_id),
+                        count: 1,
+                        component_patch,
+                    },
+                    None,
+                    false,
+                    ItemModelUseContext::inactive(),
+                    BlockModelDisplayContext::Gui,
+                    0.0,
+                    None,
+                    Some(&enchantment_keys),
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    false,
+                    false,
+                    false,
+                    false,
+                    ItemModelKeybindContext::default(),
+                    false,
                 )
                 .unwrap()
                 .layers[0]
@@ -6228,6 +6414,134 @@ mod tests {
                 }
             ),
             uv("component_condition_stored_enchantments_empty_present")
+        );
+        assert_eq!(
+            selected(
+                25,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![13],
+                    enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                        holder_id: 0,
+                        level: 3,
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_enchantments_holder_absent")
+        );
+        assert_eq!(
+            selected_with_enchantment_keys(
+                25,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![13],
+                    enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                        holder_id: 0,
+                        level: 3,
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_enchantments_holder_present")
+        );
+        assert_eq!(
+            selected_with_enchantment_keys(
+                25,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![13],
+                    enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                        holder_id: 1,
+                        level: 3,
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_enchantments_holder_absent")
+        );
+        assert_eq!(
+            selected_with_enchantment_keys(
+                25,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![13],
+                    enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                        holder_id: 0,
+                        level: 1,
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_enchantments_holder_absent")
+        );
+        assert_eq!(
+            selected_with_enchantment_keys(
+                25,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![13],
+                    removed_type_ids: vec![13],
+                    enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                        holder_id: 0,
+                        level: 3,
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_enchantments_holder_absent")
+        );
+        assert_eq!(
+            selected_with_enchantment_keys(
+                26,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![42],
+                    stored_enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                        holder_id: 1,
+                        level: 1,
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_stored_enchantments_holder_present")
+        );
+        assert_eq!(
+            selected_with_enchantment_keys(
+                26,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![42],
+                    stored_enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                        holder_id: 0,
+                        level: 1,
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_stored_enchantments_holder_absent")
+        );
+        assert_eq!(
+            selected_with_enchantment_keys(
+                26,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![42],
+                    stored_enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                        holder_id: 1,
+                        level: 2,
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_stored_enchantments_holder_absent")
+        );
+        assert_eq!(
+            selected_with_enchantment_keys(
+                26,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![42],
+                    removed_type_ids: vec![42],
+                    stored_enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                        holder_id: 1,
+                        level: 1,
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_stored_enchantments_holder_absent")
         );
 
         std::fs::remove_dir_all(root).unwrap();
@@ -7703,6 +8017,8 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_BUNDLE_COUNT = registerItem("component_condition_bundle_count");
                 public static final Item COMPONENT_CONDITION_CONTAINER_CONTAINS = registerItem("component_condition_container_contains");
                 public static final Item COMPONENT_CONDITION_CONTAINER_COUNT = registerItem("component_condition_container_count");
+                public static final Item COMPONENT_CONDITION_ENCHANTMENTS_HOLDER = registerItem("component_condition_enchantments_holder");
+                public static final Item COMPONENT_CONDITION_STORED_ENCHANTMENTS_HOLDER = registerItem("component_condition_stored_enchantments_holder");
             }"#,
         );
         write_json(
@@ -8251,6 +8567,63 @@ mod tests {
                 }
             }"#,
         );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_enchantments_holder.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:enchantments",
+                    "value": [
+                        {
+                            "enchantments": "minecraft:sharpness",
+                            "levels": {
+                                "min": 2
+                            }
+                        }
+                    ],
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_enchantments_holder_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_enchantments_holder_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_stored_enchantments_holder.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:stored_enchantments",
+                    "value": [
+                        {
+                            "enchantments": [
+                                "minecraft:mending",
+                                "minecraft:power"
+                            ],
+                            "levels": 1
+                        }
+                    ],
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_stored_enchantments_holder_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_stored_enchantments_holder_absent"
+                    }
+                }
+            }"#,
+        );
         for (model_id, color) in [
             ("component_condition_rarity_present", [80, 160, 220, 255]),
             ("component_condition_rarity_absent", [60, 40, 80, 255]),
@@ -8409,6 +8782,22 @@ mod tests {
             (
                 "component_condition_stored_enchantments_empty_absent",
                 [60, 50, 80, 255],
+            ),
+            (
+                "component_condition_enchantments_holder_present",
+                [250, 210, 90, 255],
+            ),
+            (
+                "component_condition_enchantments_holder_absent",
+                [80, 60, 20, 255],
+            ),
+            (
+                "component_condition_stored_enchantments_holder_present",
+                [230, 230, 120, 255],
+            ),
+            (
+                "component_condition_stored_enchantments_holder_absent",
+                [80, 70, 30, 255],
             ),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);

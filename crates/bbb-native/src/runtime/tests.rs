@@ -3730,6 +3730,7 @@ fn dropped_item_models_use_world_trim_material_select_context() {
         &terrain_textures,
         0.0,
         None,
+        None,
     );
     let trim_material_keys = world_trim_material_keys(&world).unwrap();
     let trimmed = crate::item_models::dropped_item_models(
@@ -3738,6 +3739,7 @@ fn dropped_item_models_use_world_trim_material_select_context() {
         &terrain_textures,
         0.0,
         Some(&trim_material_keys),
+        None,
     );
 
     assert_eq!(fallback.flat_meshes.len(), 1);
@@ -3766,14 +3768,20 @@ fn item_frame_models_use_world_trim_material_select_context() {
         })
     );
     let terrain_textures = crate::terrain_runtime::TerrainTextureState::default();
-    let fallback =
-        crate::item_frames::item_frame_models(&world, Some(&item_runtime), &terrain_textures, None);
+    let fallback = crate::item_frames::item_frame_models(
+        &world,
+        Some(&item_runtime),
+        &terrain_textures,
+        None,
+        None,
+    );
     let trim_material_keys = world_trim_material_keys(&world).unwrap();
     let trimmed = crate::item_frames::item_frame_models(
         &world,
         Some(&item_runtime),
         &terrain_textures,
         Some(&trim_material_keys),
+        None,
     );
 
     assert_eq!(fallback.flat_meshes.len(), 1);

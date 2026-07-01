@@ -5730,16 +5730,19 @@ When an agent does any of the following, update this file in the same slice:
     datapack component value decoding, and components without a persistent
     codec remain follow-up.
   - Audit remaining non-GUI item consumers that can render component-bearing
-    generated item stacks and pass the trim-material registry keys where vanilla
-    resolves `TrimMaterialProperty`. Dropped-item `GROUND`, item-frame `FIXED`,
-    owner-backed third-person held generated items, and GUI/HUD icons now carry
-    those keys; no-registry consumers still fall back.
+    generated item stacks and pass dynamic registry keys where vanilla resolves
+    registry-backed item-model properties. Dropped-item `GROUND`, item-frame
+    `FIXED`, owner-backed third-person held generated items, and GUI/HUD icons
+    now carry trim-material keys and direct enchantment keys; no-registry
+    consumers still fall back.
   - Thread the same use-tick context into first-person generated item consumers.
     Vanilla Quick Charge-modified crossbow charge duration is now wired for
     GUI/HUD local-player icons and owner-backed third-person generated held-item
     paths when the synced `minecraft:enchantment` registry identifies
-    `minecraft:quick_charge`; custom enchantment effect parsing remains later
-    registry/effect generalization.
+    `minecraft:quick_charge`. The same registry projection now feeds direct-key
+    enchantment component predicates for GUI/HUD, dropped `GROUND`, item-frame
+    `FIXED`, and owner-backed third-person generated held-item icons; custom
+    enchantment effect parsing remains later registry/effect generalization.
   - Each plugs into the existing value-aware `RangeDispatch` / `Select`
     resolver by adding a value provider; no new selection machinery is required.
 - Evidence / boundary:
@@ -5870,15 +5873,20 @@ When an agent does any of the following, update this file in the same slice:
       registry-key pattern constraints now match decoded `ArmorTrim.pattern()`
       holder ids through vanilla `TrimPatterns.bootstrap` order.
       `minecraft:enchantments` and patch-backed
-      `minecraft:stored_enchantments` level-only predicates match decoded
-      enchantment levels; empty `minecraft:enchantments` predicate lists honor
-      vanilla's default empty `ENCHANTMENTS` component unless id 13 is removed,
-      while `stored_enchantments` still requires a patch-visible component until
+      `minecraft:stored_enchantments` match decoded enchantment levels and
+      direct registry-key HolderSet predicates when the `minecraft:enchantment`
+      registry keys are available to the icon resolver; GUI/HUD, dropped
+      `GROUND`, item-frame `FIXED`, and owner-backed third-person generated
+      held-item paths now thread that registry context. Empty
+      `minecraft:enchantments` predicate lists honor vanilla's default empty
+      `ENCHANTMENTS` component unless id 13 is removed, while
+      `stored_enchantments` still requires a patch-visible component until
       item-specific default components are modeled. Remaining constrained
-      predicate types (enchantment HolderSet matching / item-specific default
-      `stored_enchantments`, bundle/container item tags and nested component
-      matchers, trim tag sets / inline material or pattern payloads / datapack
-      pattern registry-key remaps, and similar) remain follow-up.
+      predicate types (enchantment tag HolderSets / inline or datapack holder
+      payloads / item-specific default `stored_enchantments`, bundle/container
+      item tags and nested component matchers, trim tag sets / inline material
+      or pattern payloads / datapack pattern registry-key remaps, and similar)
+      remain follow-up.
     - `minecraft:charge_type` — `Charge.get` (`ROCKET` when any charged
       projectile is `minecraft:firework_rocket`, `ARROW` when charged otherwise,
       else `NONE`), using the native item registry to identify the projectile
@@ -6029,9 +6037,10 @@ When an agent does any of the following, update this file in the same slice:
     remains GUI follow-up.
     `minecraft:component` is wired for the scalar / enum component select subset
     listed above, and the condition form covers component-type / AnyValue plus
-    `minecraft:damage` and empty single-component predicates; broader
-    component-codec and remaining constrained `DataComponentPredicate` parity
-    remains the documented follow-up.
+    `minecraft:damage`, empty single-component predicates, and direct-key
+    enchantment HolderSet predicates when the synced enchantment registry is
+    available; broader component-codec and remaining constrained
+    `DataComponentPredicate` parity remains the documented follow-up.
 
 ### Native Input, Movement, Interaction, Inventory, And Command Flows
 
