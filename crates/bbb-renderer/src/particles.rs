@@ -115,6 +115,8 @@ pub(crate) struct ParticleInstance {
     #[serde(default)]
     pub(crate) tick_motion: ParticleTickMotionDescriptor,
     #[serde(default)]
+    pub(crate) tick_angle: f32,
+    #[serde(default)]
     pub(crate) particle_limit: Option<ParticleLimitDescriptor>,
     pub(crate) sprite_selection: ParticleSpriteSelection,
     pub(crate) override_limiter: bool,
@@ -495,6 +497,7 @@ impl ParticleInstance {
             has_physics: descriptor.has_physics,
             speed_up_when_y_motion_is_blocked: descriptor.speed_up_when_y_motion_is_blocked,
             tick_motion: descriptor.tick_motion(),
+            tick_angle: 0.0,
             particle_limit,
             sprite_selection: descriptor.sprite_selection,
             override_limiter: command.override_limiter,
@@ -548,6 +551,15 @@ impl ParticleInstance {
                 self.position[2] += self.velocity[2];
             }
             ParticleTickMotionDescriptor::NoMotion => {}
+            ParticleTickMotionDescriptor::CurrentDown => {
+                let angle = f64::from(self.tick_angle);
+                self.velocity[0] = (self.velocity[0] + 0.6 * angle.cos()) * 0.07;
+                self.velocity[2] = (self.velocity[2] + 0.6 * angle.sin()) * 0.07;
+                self.position[0] += self.velocity[0];
+                self.position[1] += self.velocity[1];
+                self.position[2] += self.velocity[2];
+                self.tick_angle += 0.08;
+            }
             ParticleTickMotionDescriptor::Portal => {
                 let next_age = self.age_ticks.saturating_add(1);
                 let lifetime = self.lifetime_ticks.max(1) as f32;
@@ -1061,6 +1073,26 @@ mod tests {
     }
 
     #[test]
+    fn particle_runtime_current_down_tick_uses_vanilla_swirl_motion() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:current_down", 30);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.0, -0.05, 0.0];
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.expired_instances, 0);
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 1);
+        assert_close3(instance.previous_position, [1.0, 2.0, 3.0]);
+        assert_close3(instance.position, [1.042, 1.95, 3.0]);
+        assert_close3(instance.velocity, [0.042, -0.05, 0.0]);
+        assert_close_f32(instance.tick_angle, 0.08);
+    }
+
+    #[test]
     fn particle_runtime_portal_tick_uses_vanilla_start_position_curve() {
         let mut particles = ParticleRuntimeState::with_capacities(4, 4);
         let mut instance = test_instance_with_lifetime("minecraft:portal", 40);
@@ -1433,6 +1465,33 @@ mod tests {
         assert_range_f64(column_bubble.velocity[0], 0.18, 0.22);
         assert_range_f64(column_bubble.velocity[1], 0.38, 0.42);
         assert_range_f64(column_bubble.velocity[2], 0.58, 0.62);
+
+        let mut current_down_random = ParticleRandom::new(82);
+        let mut current_down_command = spawn_command("minecraft:current_down", 1.0);
+        current_down_command.velocity = [9.0, 9.0, 9.0];
+        let current_down =
+            ParticleInstance::from_spawn_command(current_down_command, &mut current_down_random);
+        assert_eq!(current_down.provider, "WaterCurrentDownParticle.Provider");
+        assert_eq!(
+            current_down.sprite_selection,
+            ParticleSpriteSelection::Random
+        );
+        assert_eq!(
+            current_down.quad_size_curve,
+            ParticleQuadSizeCurve::Constant
+        );
+        assert_range_f32(current_down.base_quad_size, 0.02, 0.16);
+        assert_eq!(current_down.color, [1.0, 1.0, 1.0, 1.0]);
+        assert!((30..=89).contains(&current_down.lifetime_ticks));
+        assert_eq!(current_down.velocity, [0.0, -0.05, 0.0]);
+        assert_eq!(current_down.friction, 0.98);
+        assert_eq!(current_down.gravity, 0.002);
+        assert!(!current_down.has_physics);
+        assert_eq!(
+            current_down.tick_motion,
+            ParticleTickMotionDescriptor::CurrentDown
+        );
+        assert_eq!(current_down.render_layer, ParticleRenderLayer::Opaque);
 
         let mut bubble_pop_random = ParticleRandom::new(75);
         let mut bubble_pop_command = spawn_command("minecraft:bubble_pop", 1.0);
@@ -2085,17 +2144,23 @@ mod tests {
         );
         let glow =
             ParticleInstance::from_spawn_command(spawn_command("minecraft:glow", 5.0), &mut random);
+        let current_down = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:current_down", 6.0),
+            &mut random,
+        );
 
         assert_eq!(opaque.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(cloud.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(squid_ink.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(sculk.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(glow.render_group, ParticleRenderGroup::SingleQuads);
+        assert_eq!(current_down.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(opaque.render_layer, ParticleRenderLayer::Opaque);
         assert_eq!(cloud.render_layer, ParticleRenderLayer::Translucent);
         assert_eq!(squid_ink.render_layer, ParticleRenderLayer::Translucent);
         assert_eq!(sculk.render_layer, ParticleRenderLayer::Translucent);
         assert_eq!(glow.render_layer, ParticleRenderLayer::Opaque);
+        assert_eq!(current_down.render_layer, ParticleRenderLayer::Opaque);
     }
 
     #[test]
@@ -2476,6 +2541,7 @@ mod tests {
             has_physics: descriptor.has_physics,
             speed_up_when_y_motion_is_blocked: descriptor.speed_up_when_y_motion_is_blocked,
             tick_motion: descriptor.tick_motion(),
+            tick_angle: 0.0,
             particle_limit: particle_limit_for_particle(particle_id),
             sprite_selection: descriptor.sprite_selection,
             override_limiter: false,

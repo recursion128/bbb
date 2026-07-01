@@ -1194,6 +1194,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     parent portal lifetime draw, `1 - progress / 1.5` render-size curve,
     incremental age-scaled velocity tick path, and inherited quartic smooth
     block-light emission.
+  - [x] `WaterCurrentDownParticle.Provider`：renderer descriptor now mirrors
+    vanilla random sprite selection, fixed `(0, -0.05, 0)` initial velocity,
+    `30 + random.nextFloat() * 60` lifetime range, `0.2..0.8` quad-size
+    multiplier, opaque particle layer, no-physics metadata, gravity `0.002`,
+    and the custom swirl tick path (`xd += 0.6*cos(angle)`, `zd +=
+    0.6*sin(angle)`, horizontal damping `0.07`, `angle += 0.08`). The
+    water-fluid / on-ground removal gate remains in the world-coupled
+    collision/physics follow-up.
   - 初速度。
   - lifetime。
   - size curve。

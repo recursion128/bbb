@@ -22,6 +22,7 @@ pub(crate) enum ParticleTickMotionDescriptor {
     DefaultParticleTick,
     DirectGravityNoFriction,
     NoMotion,
+    CurrentDown,
     Portal,
     ReversePortal,
 }
@@ -72,6 +73,10 @@ pub(crate) enum ParticleLifetimeDescriptor {
     FortyOverRandom,
     Portal,
     ReversePortal,
+    RandomFloatSpan {
+        min: u32,
+        span: u32,
+    },
     RandomInclusive {
         min: u32,
         max: u32,
@@ -177,6 +182,7 @@ pub(crate) enum ParticleQuadSizeCurve {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum ParticleInitialVelocityDescriptor {
     Zero,
+    Fixed([f64; 3]),
     Command,
     CommandScaledPlusRandom {
         command_scale: f64,
@@ -270,6 +276,22 @@ impl ParticleDescriptor {
                 friction: 0.85,
                 gravity: -0.125,
                 has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:current_down" => Self {
+                provider: "WaterCurrentDownParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::RandomFloatSpan { min: 30, span: 60 },
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SingleQuadRandomScaled {
+                    min_scale: 0.2,
+                    max_scale: 0.8,
+                    color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Fixed([0.0, -0.05, 0.0]),
+                friction: 0.98,
+                gravity: 0.002,
+                has_physics: false,
                 speed_up_when_y_motion_is_blocked: false,
             },
             "minecraft:bubble_pop" => Self {
@@ -1060,6 +1082,7 @@ impl ParticleDescriptor {
         match self.provider {
             "BubblePopParticle.Provider" => ParticleTickMotionDescriptor::DirectGravityNoFriction,
             "AttackSweepParticle.Provider" => ParticleTickMotionDescriptor::NoMotion,
+            "WaterCurrentDownParticle.Provider" => ParticleTickMotionDescriptor::CurrentDown,
             "PortalParticle.Provider" => ParticleTickMotionDescriptor::Portal,
             "ReversePortalParticle.ReversePortalProvider" => {
                 ParticleTickMotionDescriptor::ReversePortal
@@ -1288,6 +1311,7 @@ impl ParticleInitialVelocityDescriptor {
     ) -> [f64; 3] {
         match self {
             Self::Zero => [0.0, 0.0, 0.0],
+            Self::Fixed(velocity) => velocity,
             Self::Command => command_velocity,
             Self::CommandScaledPlusRandom {
                 command_scale,
@@ -1531,6 +1555,7 @@ impl ParticleLifetimeDescriptor {
                 random.next_f32();
                 (random.next_f32() * 2.0) as u32 + 60
             }
+            Self::RandomFloatSpan { min, span } => min + (random.next_f32() * span as f32) as u32,
             Self::RandomInclusive { min, max } => {
                 let span = max.saturating_sub(min).saturating_add(1);
                 min + random.next_index(span as usize).unwrap_or(0) as u32
@@ -1758,6 +1783,31 @@ mod tests {
                 command_scale: 0.2,
                 random_range: 0.02,
             }
+        );
+        assert_descriptor(
+            "minecraft:current_down",
+            "WaterCurrentDownParticle.Provider",
+            ParticleLifetimeDescriptor::RandomFloatSpan { min: 30, span: 60 },
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::SingleQuadRandomScaled {
+                min_scale: 0.2,
+                max_scale: 0.8,
+                color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                quad_size_curve: ParticleQuadSizeCurve::Constant,
+            },
+            0.98,
+            0.002,
+            false,
+            false,
+        );
+        let current_down = ParticleDescriptor::for_particle("minecraft:current_down");
+        assert_eq!(
+            current_down.initial_velocity,
+            ParticleInitialVelocityDescriptor::Fixed([0.0, -0.05, 0.0])
+        );
+        assert_eq!(
+            current_down.tick_motion(),
+            ParticleTickMotionDescriptor::CurrentDown
         );
         assert_descriptor(
             "minecraft:bubble_pop",
@@ -3150,6 +3200,12 @@ mod tests {
         assert_close_f64(axis_scaled[1], 0.03);
         assert_close_f64(axis_scaled[2], 0.02);
 
+        let fixed = ParticleInitialVelocityDescriptor::Fixed([0.0, -0.05, 0.0])
+            .sample([2.0, 3.0, 4.0], &mut ParticleRandom::new(35));
+        assert_close_f64(fixed[0], 0.0);
+        assert_close_f64(fixed[1], -0.05);
+        assert_close_f64(fixed[2], 0.0);
+
         let rising_velocity = ParticleInitialVelocityDescriptor::RisingParticle
             .sample([1.0, 2.0, 3.0], &mut ParticleRandom::new(34));
         assert_range_f64(rising_velocity[0], 0.998, 1.002);
@@ -3266,6 +3322,13 @@ mod tests {
         for _ in 0..32 {
             let lifetime = ParticleLifetimeDescriptor::FortyOverRandom.sample(&mut random);
             assert!((40..=200).contains(&lifetime));
+        }
+
+        let mut random = ParticleRandom::new(35);
+        for _ in 0..32 {
+            let lifetime = ParticleLifetimeDescriptor::RandomFloatSpan { min: 30, span: 60 }
+                .sample(&mut random);
+            assert!((30..=89).contains(&lifetime));
         }
 
         let mut random = ParticleRandom::new(41);
