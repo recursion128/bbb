@@ -798,11 +798,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `ArmorTrim.material()` holder id through dynamic trim-material registry keys
     when no pattern constraint is present. `minecraft:bundle_contents`
     `items.size` constraints now match vanilla `CollectionPredicate.size`
-    against the decoded bundle item count. `minecraft:enchantments`
-    level-only predicates now match decoded enchantment levels, and an empty
-    predicate list honors vanilla's default empty `ENCHANTMENTS` component
-    unless id 13 is removed. Remaining constrained `DataComponentPredicate`
-    types such as enchantment HolderSet matching / `stored_enchantments`,
+    against the decoded bundle item count. `minecraft:enchantments` and
+    patch-backed `minecraft:stored_enchantments` level-only predicates now match
+    decoded enchantment levels; empty `minecraft:enchantments` predicate lists
+    honor vanilla's default empty `ENCHANTMENTS` component unless id 13 is
+    removed, while `stored_enchantments` still requires a patch-visible
+    component until item-specific default components are modeled. Remaining
+    constrained `DataComponentPredicate` types such as enchantment HolderSet
+    matching / item-specific default `stored_enchantments`,
     bundle `contains`/`count` item predicates, container item collection
     predicates, trim pattern / tag material sets / inline material payloads, and
     `minecraft:fireworks` explosion `contains`/`count` details remain

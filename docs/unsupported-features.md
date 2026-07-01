@@ -5860,13 +5860,16 @@ When an agent does any of the following, update this file in the same slice:
       `ArmorTrim.material()` holder id through dynamic trim-material registry
       keys when no pattern constraint is present. `minecraft:bundle_contents`
       `items.size` constraints match vanilla `CollectionPredicate.size` against
-      the decoded bundle item count. `minecraft:enchantments` level-only
-      predicates match decoded enchantment levels, and an empty predicate list
-      honors vanilla's default empty `ENCHANTMENTS` component unless id 13 is
-      removed. Remaining constrained predicate types (enchantment HolderSet
-      matching / `stored_enchantments`, bundle `contains`/`count` item
-      predicates, container item collection predicates, trim pattern / tag
-      material sets / inline material payloads, `minecraft:fireworks` explosion
+      the decoded bundle item count. `minecraft:enchantments` and patch-backed
+      `minecraft:stored_enchantments` level-only predicates match decoded
+      enchantment levels; empty `minecraft:enchantments` predicate lists honor
+      vanilla's default empty `ENCHANTMENTS` component unless id 13 is removed,
+      while `stored_enchantments` still requires a patch-visible component until
+      item-specific default components are modeled. Remaining constrained
+      predicate types (enchantment HolderSet matching / item-specific default
+      `stored_enchantments`, bundle `contains`/`count` item predicates,
+      container item collection predicates, trim pattern / tag material sets /
+      inline material payloads, `minecraft:fireworks` explosion
       `contains`/`count` details, and similar) remain follow-up.
     - `minecraft:charge_type` — `Charge.get` (`ROCKET` when any charged
       projectile is `minecraft:firework_rocket`, `ARROW` when charged otherwise,

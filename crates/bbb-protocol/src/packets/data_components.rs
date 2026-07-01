@@ -101,6 +101,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub enchantments: Vec<ItemEnchantmentSummary>,
     #[serde(default)]
+    pub stored_enchantments: Vec<ItemEnchantmentSummary>,
+    #[serde(default)]
     pub enchantment_glint_override: Option<bool>,
     #[serde(default)]
     pub armor_trim_material_id: Option<i32>,
@@ -478,6 +480,9 @@ fn decode_typed_data_component_patch_summary(
             }
             13 => {
                 summary.enchantments = decode_varint_map(decoder)?;
+            }
+            42 => {
+                summary.stored_enchantments = decode_varint_map(decoder)?;
             }
             21 => {
                 summary.enchantment_glint_override = Some(decoder.read_bool()?);
@@ -2010,6 +2015,45 @@ mod tests {
                     },
                     ItemEnchantmentSummary {
                         holder_id: 300,
+                        level: 5,
+                    },
+                ],
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_stored_enchantments_component_summary_in_wire_order() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+
+        payload.write_var_i32(42);
+        payload.write_var_i32(2);
+        payload.write_var_i32(8);
+        payload.write_var_i32(3);
+        payload.write_var_i32(22);
+        payload.write_var_i32(5);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![42],
+                removed_type_ids: Vec::new(),
+                stored_enchantments: vec![
+                    ItemEnchantmentSummary {
+                        holder_id: 8,
+                        level: 3,
+                    },
+                    ItemEnchantmentSummary {
+                        holder_id: 22,
                         level: 5,
                     },
                 ],

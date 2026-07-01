@@ -28,6 +28,7 @@ const ENCHANTMENTS_COMPONENT_ID: i32 = 13;
 const CUSTOM_MODEL_DATA_COMPONENT_ID: i32 = 17;
 const ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID: i32 = 21;
 const MAP_ID_COMPONENT_ID: i32 = 41;
+const STORED_ENCHANTMENTS_COMPONENT_ID: i32 = 42;
 const DYED_COLOR_COMPONENT_ID: i32 = 44;
 const MAP_COLOR_COMPONENT_ID: i32 = 45;
 const BUNDLE_CONTENTS_COMPONENT_ID: i32 = 50;
@@ -1571,16 +1572,29 @@ fn empty_single_component_predicate_id(property: &ItemModelProperty) -> Option<i
     }
 }
 
-fn enchantments_component_predicate_is_supported(property: &ItemModelProperty) -> bool {
-    if component_condition_predicate(property) != Some("minecraft:enchantments") {
-        return false;
-    }
-    let Some(predicates) = property.raw().get("value").and_then(Value::as_array) else {
-        return false;
+fn enchantments_component_predicate_kind(
+    property: &ItemModelProperty,
+) -> Option<EnchantmentComponentKind> {
+    let kind = match component_condition_predicate(property)? {
+        "minecraft:enchantments" => EnchantmentComponentKind::Enchantments,
+        "minecraft:stored_enchantments" => EnchantmentComponentKind::StoredEnchantments,
+        _ => return None,
     };
-    predicates
+    let Some(predicates) = property.raw().get("value").and_then(Value::as_array) else {
+        return None;
+    };
+    if predicates
         .iter()
         .all(enchantment_level_predicate_is_supported)
+    {
+        Some(kind)
+    } else {
+        None
+    }
+}
+
+fn enchantments_component_predicate_is_supported(property: &ItemModelProperty) -> bool {
+    enchantments_component_predicate_kind(property).is_some()
 }
 
 fn enchantment_level_predicate_is_supported(predicate: &Value) -> bool {
@@ -1594,23 +1608,61 @@ fn item_stack_matches_enchantments_predicate(
     property: &ItemModelProperty,
     component_patch: Option<&DataComponentPatchSummary>,
 ) -> bool {
-    if !enchantments_component_predicate_is_supported(property) {
+    let Some(kind) = enchantments_component_predicate_kind(property) else {
         return false;
-    }
-    if component_patch
-        .is_some_and(|patch| patch.removed_type_ids.contains(&ENCHANTMENTS_COMPONENT_ID))
-    {
+    };
+    if component_patch.is_some_and(|patch| patch.removed_type_ids.contains(&kind.component_id())) {
         return false;
     }
     let Some(predicates) = property.raw().get("value").and_then(Value::as_array) else {
         return false;
     };
     let enchantments = component_patch
-        .map(|patch| patch.enchantments.as_slice())
+        .map(|patch| kind.enchantments(patch))
         .unwrap_or(&[]);
+    if !kind.component_is_present(component_patch, enchantments) {
+        return false;
+    }
     predicates
         .iter()
         .all(|predicate| enchantment_level_predicate_matches(predicate, enchantments))
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum EnchantmentComponentKind {
+    Enchantments,
+    StoredEnchantments,
+}
+
+impl EnchantmentComponentKind {
+    fn component_id(self) -> i32 {
+        match self {
+            Self::Enchantments => ENCHANTMENTS_COMPONENT_ID,
+            Self::StoredEnchantments => STORED_ENCHANTMENTS_COMPONENT_ID,
+        }
+    }
+
+    fn enchantments(self, patch: &DataComponentPatchSummary) -> &[ItemEnchantmentSummary] {
+        match self {
+            Self::Enchantments => &patch.enchantments,
+            Self::StoredEnchantments => &patch.stored_enchantments,
+        }
+    }
+
+    fn component_is_present(
+        self,
+        component_patch: Option<&DataComponentPatchSummary>,
+        enchantments: &[ItemEnchantmentSummary],
+    ) -> bool {
+        match self {
+            Self::Enchantments => true,
+            Self::StoredEnchantments => {
+                !enchantments.is_empty()
+                    || component_patch
+                        .is_some_and(|patch| patch.added_type_ids.contains(&self.component_id()))
+            }
+        }
+    }
 }
 
 fn enchantment_level_predicate_matches(

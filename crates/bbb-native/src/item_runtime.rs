@@ -5840,6 +5840,68 @@ mod tests {
             uv("component_condition_enchantments_empty_absent")
         );
 
+        assert_eq!(
+            selected(17, DataComponentPatchSummary::default()),
+            uv("component_condition_stored_enchantments_level_absent")
+        );
+        assert_eq!(
+            selected(
+                17,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![42],
+                    stored_enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                        holder_id: 11,
+                        level: 3,
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_stored_enchantments_level_present")
+        );
+        assert_eq!(
+            selected(
+                17,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![42],
+                    stored_enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                        holder_id: 11,
+                        level: 1,
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_stored_enchantments_level_absent")
+        );
+        assert_eq!(
+            selected(
+                17,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![42],
+                    removed_type_ids: vec![42],
+                    stored_enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                        holder_id: 11,
+                        level: 3,
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_stored_enchantments_level_absent")
+        );
+        assert_eq!(
+            selected(18, DataComponentPatchSummary::default()),
+            uv("component_condition_stored_enchantments_empty_absent")
+        );
+        assert_eq!(
+            selected(
+                18,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![42],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_stored_enchantments_empty_present")
+        );
+
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -7305,6 +7367,8 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_TRIM_PATTERN = registerItem("component_condition_trim_pattern");
                 public static final Item COMPONENT_CONDITION_ENCHANTMENTS_LEVEL = registerItem("component_condition_enchantments_level");
                 public static final Item COMPONENT_CONDITION_ENCHANTMENTS_EMPTY = registerItem("component_condition_enchantments_empty");
+                public static final Item COMPONENT_CONDITION_STORED_ENCHANTMENTS_LEVEL = registerItem("component_condition_stored_enchantments_level");
+                public static final Item COMPONENT_CONDITION_STORED_ENCHANTMENTS_EMPTY = registerItem("component_condition_stored_enchantments_empty");
             }"#,
         );
         write_json(
@@ -7605,6 +7669,55 @@ mod tests {
                 }
             }"#,
         );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_stored_enchantments_level.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:stored_enchantments",
+                    "value": [
+                        {
+                            "levels": {
+                                "min": 2,
+                                "max": 4
+                            }
+                        }
+                    ],
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_stored_enchantments_level_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_stored_enchantments_level_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_stored_enchantments_empty.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:stored_enchantments",
+                    "value": [],
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_stored_enchantments_empty_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_stored_enchantments_empty_absent"
+                    }
+                }
+            }"#,
+        );
         for (model_id, color) in [
             ("component_condition_rarity_present", [80, 160, 220, 255]),
             ("component_condition_rarity_absent", [60, 40, 80, 255]),
@@ -7702,6 +7815,22 @@ mod tests {
             (
                 "component_condition_enchantments_empty_absent",
                 [50, 40, 70, 255],
+            ),
+            (
+                "component_condition_stored_enchantments_level_present",
+                [240, 220, 100, 255],
+            ),
+            (
+                "component_condition_stored_enchantments_level_absent",
+                [70, 60, 30, 255],
+            ),
+            (
+                "component_condition_stored_enchantments_empty_present",
+                [210, 180, 240, 255],
+            ),
+            (
+                "component_condition_stored_enchantments_empty_absent",
+                [60, 50, 80, 255],
             ),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);
