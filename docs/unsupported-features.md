@@ -5779,8 +5779,9 @@ When an agent does any of the following, update this file in the same slice:
     - `minecraft:context_entity_type` for any future non-GUI item consumer that
       gains a real living owner but is not routed through the current
       owner-backed generated held-item path
-    - broader `minecraft:local_time` ICU pattern / locale coverage beyond the
-      vanilla 26.1 chest/trapped-chest `MM-dd` resource use
+    - remaining `minecraft:local_time` coverage beyond the supported
+      root/en-locale ICU numeric/date-time subset: full localized symbols and
+      IANA timezone IDs
   - Audit remaining item consumers that vanilla renders with a living owner and
     pass that owner context into the item resolver. `minecraft:main_hand` and
     `minecraft:context_entity_type` are now wired for owner-backed generated
@@ -6116,10 +6117,14 @@ When an agent does any of the following, update this file in the same slice:
       inventory identity and fishing-hook billboard / line rendering remain
       follow-up.
     - `minecraft:local_time` — `LocalTime.get`, formatting wall-clock time for
-      the vanilla 26.1 chest/trapped-chest `MM-dd` selector. Explicit `GMT`/UTC
-      offset `time_zone` values use that offset; absent `time_zone` uses the
-      system local timezone like vanilla. Tests pin GMT `12-25` selecting the
-      Christmas branch and `12-27` selecting the fallback.
+      the vanilla 26.1 chest/trapped-chest `MM-dd` selector plus a
+      root/en-locale ICU `SimpleDateFormat` subset (`y`/`M`/`d`,
+      24/12-hour `H`/`k`/`K`/`h`, `m`/`s`/`S`, `E`, `a`, and quoted
+      literals). Explicit `GMT`/UTC offset `time_zone` values use that offset;
+      absent `time_zone` uses the system local timezone like vanilla. Tests pin
+      GMT `12-25` selecting the Christmas branch, `12-27` selecting the
+      fallback, and a cross-midnight `UTC+02:30` date-time / weekday / AM-PM
+      branch.
     - `minecraft:time` — `Time.get`, for GUI/HUD item icons with a local-player
       owner and `ClientLevel` context when the model opts out of stateful
       wobble (`wobble=false`). Native currently projects the `daytime` target
@@ -6203,8 +6208,9 @@ When an agent does any of the following, update this file in the same slice:
     target values from world time, but its stateful wobbler smoothing and
     per-property `source=random` RNG remain follow-up.
     `minecraft:local_time` resolves the vanilla chest/trapped-chest `MM-dd`
-    selector from wall-clock time; full ICU pattern / locale parity remains
-    follow-up. GUI/HUD use-tick properties are wired for the local active stack,
+    selector and common root/en-locale ICU date-time patterns from wall-clock
+    time; full localized symbols and IANA timezone IDs remain follow-up.
+    GUI/HUD use-tick properties are wired for the local active stack,
     owner-backed third-person generated held-item paths use the entity render
     state's shared use tick counter, and both paths apply vanilla Quick
     Charge-modified crossbow charge duration when the enchantment registry is

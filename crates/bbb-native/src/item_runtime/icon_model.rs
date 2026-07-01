@@ -15,7 +15,7 @@ use bbb_protocol::packets::{
     NbtSummaryValue, SoundEventSummary, TrimMaterialSummary, TrimPatternSummary,
     WrittenBookContentSummary,
 };
-use chrono::{Datelike, FixedOffset, Local, TimeZone, Utc};
+use chrono::{Datelike, FixedOffset, Local, TimeZone, Timelike, Utc, Weekday};
 use serde_json::Value;
 
 use super::{
@@ -706,11 +706,11 @@ pub(super) enum SelectProperty {
     /// `minecraft:context_entity_type` — `ContextEntityType.get`, matched
     /// against the owner entity type resource key.
     ContextEntityType,
-    /// `minecraft:local_time` — `LocalTime.get`, matched against the formatted
-    /// wall-clock date. Native currently supports the vanilla 26.1 chest
-    /// pattern `MM-dd`.
+    /// `minecraft:local_time` — `LocalTime.get`, matched against a formatted
+    /// wall-clock date/time pattern.
     LocalTime {
         pattern: String,
+        locale: String,
         time_zone: Option<String>,
     },
     /// `minecraft:charge_type` — `Charge.get`, matched against the crossbow's
@@ -905,6 +905,12 @@ fn select_property_for(property: &ItemModelProperty) -> Option<SelectProperty> {
             pattern: property
                 .raw()
                 .get("pattern")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string(),
+            locale: property
+                .raw()
+                .get("locale")
                 .and_then(Value::as_str)
                 .unwrap_or_default()
                 .to_string(),
@@ -1219,10 +1225,14 @@ fn select_property_value(
         SelectProperty::ContextEntityType => ctx
             .context_entity_type
             .map(|value| SelectCaseValue::String(value.to_string())),
-        SelectProperty::LocalTime { pattern, time_zone } => ctx
+        SelectProperty::LocalTime {
+            pattern,
+            locale,
+            time_zone,
+        } => ctx
             .local_time_epoch_millis
             .and_then(|epoch_millis| {
-                local_time_select_value(epoch_millis, pattern, time_zone.as_deref())
+                local_time_select_value(epoch_millis, pattern, locale, time_zone.as_deref())
             })
             .map(SelectCaseValue::String),
         SelectProperty::ChargeType => Some(SelectCaseValue::String(
@@ -1249,26 +1259,241 @@ fn select_property_value(
 fn local_time_select_value(
     epoch_millis: i64,
     pattern: &str,
+    locale: &str,
     time_zone: Option<&str>,
 ) -> Option<String> {
-    if pattern != "MM-dd" {
-        return None;
-    }
-    let (month, day) = match time_zone {
+    let fields = match time_zone {
         Some(time_zone) => {
             let offset = fixed_time_zone_offset(time_zone)?;
             let date = Utc
                 .timestamp_millis_opt(epoch_millis)
                 .single()?
                 .with_timezone(&offset);
-            (date.month(), date.day())
+            LocalTimeFields::from_datetime(date)
         }
         None => {
             let date = Local.timestamp_millis_opt(epoch_millis).single()?;
-            (date.month(), date.day())
+            LocalTimeFields::from_datetime(date)
         }
     };
-    Some(format!("{month:02}-{day:02}"))
+    format_local_time_pattern(&fields, pattern, locale)
+}
+
+struct LocalTimeFields {
+    year: i32,
+    month: u32,
+    day: u32,
+    hour: u32,
+    minute: u32,
+    second: u32,
+    millisecond: u32,
+    weekday: Weekday,
+}
+
+impl LocalTimeFields {
+    fn from_datetime<Tz: TimeZone>(date: chrono::DateTime<Tz>) -> Self {
+        Self {
+            year: date.year(),
+            month: date.month(),
+            day: date.day(),
+            hour: date.hour(),
+            minute: date.minute(),
+            second: date.second(),
+            millisecond: date.nanosecond() / 1_000_000,
+            weekday: date.weekday(),
+        }
+    }
+}
+
+fn format_local_time_pattern(
+    fields: &LocalTimeFields,
+    pattern: &str,
+    locale: &str,
+) -> Option<String> {
+    let mut output = String::new();
+    let mut chars = pattern.chars().peekable();
+    while let Some(ch) = chars.next() {
+        if ch == '\'' {
+            if matches!(chars.peek(), Some('\'')) {
+                chars.next();
+                output.push('\'');
+                continue;
+            }
+            loop {
+                let literal = chars.next()?;
+                if literal == '\'' {
+                    if matches!(chars.peek(), Some('\'')) {
+                        chars.next();
+                        output.push('\'');
+                    } else {
+                        break;
+                    }
+                } else {
+                    output.push(literal);
+                }
+            }
+            continue;
+        }
+
+        if ch.is_ascii_alphabetic() {
+            let mut count = 1usize;
+            while matches!(chars.peek(), Some(next) if *next == ch) {
+                chars.next();
+                count += 1;
+            }
+            output.push_str(&format_local_time_field(fields, ch, count, locale)?);
+        } else {
+            output.push(ch);
+        }
+    }
+    Some(output)
+}
+
+fn format_local_time_field(
+    fields: &LocalTimeFields,
+    field: char,
+    count: usize,
+    locale: &str,
+) -> Option<String> {
+    match field {
+        'y' => {
+            if count == 2 {
+                Some(padded_u32(fields.year.rem_euclid(100) as u32, 2))
+            } else {
+                Some(padded_i32(fields.year, count))
+            }
+        }
+        'M' | 'L' => match count {
+            1 => Some(fields.month.to_string()),
+            2 => Some(padded_u32(fields.month, 2)),
+            3 => english_text(locale, short_month_name(fields.month)),
+            _ => english_text(locale, long_month_name(fields.month)),
+        },
+        'd' => Some(padded_u32(fields.day, count)),
+        'H' => Some(padded_u32(fields.hour, count)),
+        'k' => {
+            let hour = if fields.hour == 0 { 24 } else { fields.hour };
+            Some(padded_u32(hour, count))
+        }
+        'K' => Some(padded_u32(fields.hour % 12, count)),
+        'h' => {
+            let hour = fields.hour % 12;
+            Some(padded_u32(if hour == 0 { 12 } else { hour }, count))
+        }
+        'm' => Some(padded_u32(fields.minute, count)),
+        's' => Some(padded_u32(fields.second, count)),
+        'S' => Some(fractional_second(fields.millisecond, count)),
+        'a' => english_text(locale, if fields.hour < 12 { "AM" } else { "PM" }),
+        'E' => {
+            if count <= 3 {
+                english_text(locale, short_weekday_name(fields.weekday))
+            } else {
+                english_text(locale, long_weekday_name(fields.weekday))
+            }
+        }
+        _ => None,
+    }
+}
+
+fn padded_i32(value: i32, width: usize) -> String {
+    if width <= 1 {
+        value.to_string()
+    } else if value < 0 {
+        format!("-{:0width$}", value.abs(), width = width)
+    } else {
+        format!("{value:0width$}")
+    }
+}
+
+fn padded_u32(value: u32, width: usize) -> String {
+    if width <= 1 {
+        value.to_string()
+    } else {
+        format!("{value:0width$}")
+    }
+}
+
+fn fractional_second(millisecond: u32, width: usize) -> String {
+    let mut digits = format!("{millisecond:03}");
+    if width <= 3 {
+        digits.truncate(width);
+    } else {
+        digits.extend(std::iter::repeat_n('0', width - 3));
+    }
+    digits
+}
+
+fn english_text(locale: &str, value: &'static str) -> Option<String> {
+    if locale.is_empty()
+        || locale.eq_ignore_ascii_case("root")
+        || locale.eq_ignore_ascii_case("en")
+        || locale.starts_with("en_")
+        || locale.starts_with("en-")
+    {
+        Some(value.to_string())
+    } else {
+        None
+    }
+}
+
+fn short_month_name(month: u32) -> &'static str {
+    match month {
+        1 => "Jan",
+        2 => "Feb",
+        3 => "Mar",
+        4 => "Apr",
+        5 => "May",
+        6 => "Jun",
+        7 => "Jul",
+        8 => "Aug",
+        9 => "Sep",
+        10 => "Oct",
+        11 => "Nov",
+        12 => "Dec",
+        _ => "",
+    }
+}
+
+fn long_month_name(month: u32) -> &'static str {
+    match month {
+        1 => "January",
+        2 => "February",
+        3 => "March",
+        4 => "April",
+        5 => "May",
+        6 => "June",
+        7 => "July",
+        8 => "August",
+        9 => "September",
+        10 => "October",
+        11 => "November",
+        12 => "December",
+        _ => "",
+    }
+}
+
+fn short_weekday_name(weekday: Weekday) -> &'static str {
+    match weekday {
+        Weekday::Mon => "Mon",
+        Weekday::Tue => "Tue",
+        Weekday::Wed => "Wed",
+        Weekday::Thu => "Thu",
+        Weekday::Fri => "Fri",
+        Weekday::Sat => "Sat",
+        Weekday::Sun => "Sun",
+    }
+}
+
+fn long_weekday_name(weekday: Weekday) -> &'static str {
+    match weekday {
+        Weekday::Mon => "Monday",
+        Weekday::Tue => "Tuesday",
+        Weekday::Wed => "Wednesday",
+        Weekday::Thu => "Thursday",
+        Weekday::Fri => "Friday",
+        Weekday::Sat => "Saturday",
+        Weekday::Sun => "Sunday",
+    }
 }
 
 fn fixed_time_zone_offset(time_zone: &str) -> Option<FixedOffset> {
