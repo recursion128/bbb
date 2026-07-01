@@ -1492,6 +1492,9 @@ fn item_stack_matches_component_predicate(
     if predicate == "minecraft:fireworks" {
         return item_stack_matches_fireworks_predicate(property, ctx.component_patch);
     }
+    if trim_component_predicate_is_supported(property) {
+        return item_stack_matches_trim_predicate(property, ctx);
+    }
     if let Some(component_id) = empty_single_component_predicate_id(property) {
         return item_stack_has_component_id(
             component_id,
@@ -1519,8 +1522,9 @@ fn component_condition_is_runtime_resolved(property: &ItemModelProperty) -> bool
         return false;
     };
     predicate == "minecraft:damage"
-        || component_condition_predicate(property) == Some("minecraft:firework_explosion")
+        || predicate == "minecraft:firework_explosion"
         || fireworks_component_predicate_is_supported(property)
+        || trim_component_predicate_is_supported(property)
         || empty_single_component_predicate_id(property).is_some()
         || component_condition_any_value_component_id(property).is_some()
 }
@@ -1566,6 +1570,77 @@ fn fireworks_component_predicate_is_supported(property: &ItemModelProperty) -> b
         return false;
     };
     !value.contains_key("explosions")
+}
+
+fn trim_component_predicate_is_supported(property: &ItemModelProperty) -> bool {
+    if component_condition_predicate(property) != Some("minecraft:trim") {
+        return false;
+    }
+    let Some(value) = property.raw().get("value").and_then(Value::as_object) else {
+        return false;
+    };
+    !value.contains_key("pattern")
+        && value
+            .get("material")
+            .is_some_and(trim_material_holder_set_is_supported)
+}
+
+fn item_stack_matches_trim_predicate(
+    property: &ItemModelProperty,
+    ctx: IconResolveContext<'_>,
+) -> bool {
+    if !trim_component_predicate_is_supported(property) {
+        return false;
+    }
+    let Some(component_patch) = ctx.component_patch else {
+        return false;
+    };
+    if component_patch
+        .removed_type_ids
+        .contains(&TRIM_COMPONENT_ID)
+        || !component_patch.added_type_ids.contains(&TRIM_COMPONENT_ID)
+    {
+        return false;
+    }
+    let Some(material_id) = component_patch.armor_trim_material_id else {
+        return false;
+    };
+    let Ok(material_index) = usize::try_from(material_id) else {
+        return false;
+    };
+    let Some(material_key) = ctx
+        .trim_material_keys
+        .and_then(|keys| keys.get(material_index))
+    else {
+        return false;
+    };
+    let Some(value) = property.raw().get("value").and_then(Value::as_object) else {
+        return false;
+    };
+    trim_material_holder_set_matches(value.get("material"), material_key)
+}
+
+fn trim_material_holder_set_matches(value: Option<&Value>, material_key: &str) -> bool {
+    match value {
+        None => true,
+        Some(Value::String(expected)) => expected == material_key,
+        Some(Value::Array(expected)) => expected
+            .iter()
+            .any(|expected| expected.as_str() == Some(material_key)),
+        Some(_) => false,
+    }
+}
+
+fn trim_material_holder_set_is_supported(value: &Value) -> bool {
+    match value {
+        Value::String(expected) => !expected.starts_with('#'),
+        Value::Array(expected) => expected.iter().all(|expected| {
+            expected
+                .as_str()
+                .is_some_and(|expected| !expected.starts_with('#'))
+        }),
+        _ => false,
+    }
 }
 
 fn item_stack_matches_fireworks_predicate(

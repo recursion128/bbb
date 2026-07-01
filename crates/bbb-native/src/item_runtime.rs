@@ -5362,6 +5362,30 @@ mod tests {
                 .layers[0]
                 .uv
         };
+        let trim_keys = [
+            "minecraft:quartz".to_string(),
+            "minecraft:diamond".to_string(),
+        ];
+        let selected_with_trim_keys = |item_id, component_patch| {
+            runtime
+                .icon_for_stack_with_context(
+                    &ItemStackSummary {
+                        item_id: Some(item_id),
+                        count: 1,
+                        component_patch,
+                    },
+                    None,
+                    false,
+                    0.0,
+                    Some(&trim_keys),
+                    None,
+                    None,
+                    None,
+                )
+                .unwrap()
+                .layers[0]
+                .uv
+        };
 
         // `ComponentMatches` with a component-type discriminator uses
         // `AnyValue.matches`, so vanilla common default components are present.
@@ -5607,6 +5631,67 @@ mod tests {
                 }
             ),
             uv("component_condition_fireworks_explosions_absent")
+        );
+
+        assert_eq!(
+            selected(13, DataComponentPatchSummary::default()),
+            uv("component_condition_trim_material_absent")
+        );
+        assert_eq!(
+            selected_with_trim_keys(
+                13,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![56],
+                    armor_trim_material_id: Some(1),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_trim_material_present")
+        );
+        assert_eq!(
+            selected_with_trim_keys(
+                13,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![56],
+                    armor_trim_material_id: Some(0),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_trim_material_absent")
+        );
+        assert_eq!(
+            selected(
+                13,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![56],
+                    armor_trim_material_id: Some(1),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_trim_material_absent")
+        );
+        assert_eq!(
+            selected_with_trim_keys(
+                13,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![56],
+                    removed_type_ids: vec![56],
+                    armor_trim_material_id: Some(1),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_trim_material_absent")
+        );
+        assert_eq!(
+            selected_with_trim_keys(
+                14,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![56],
+                    armor_trim_material_id: Some(1),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_trim_pattern_absent")
         );
 
         std::fs::remove_dir_all(root).unwrap();
@@ -7070,6 +7155,8 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_FIREWORK_EXPLOSION_STAR = registerItem("component_condition_firework_explosion_star");
                 public static final Item COMPONENT_CONDITION_FIREWORKS_FLIGHT = registerItem("component_condition_fireworks_flight");
                 public static final Item COMPONENT_CONDITION_FIREWORKS_EXPLOSIONS = registerItem("component_condition_fireworks_explosions");
+                public static final Item COMPONENT_CONDITION_TRIM_MATERIAL = registerItem("component_condition_trim_material");
+                public static final Item COMPONENT_CONDITION_TRIM_PATTERN = registerItem("component_condition_trim_pattern");
             }"#,
         );
         write_json(
@@ -7275,6 +7362,52 @@ mod tests {
                 }
             }"#,
         );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_trim_material.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:trim",
+                    "value": {
+                        "material": "minecraft:diamond"
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_trim_material_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_trim_material_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_trim_pattern.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:trim",
+                    "value": {
+                        "pattern": "minecraft:sentry"
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_trim_pattern_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_trim_pattern_absent"
+                    }
+                }
+            }"#,
+        );
         for (model_id, color) in [
             ("component_condition_rarity_present", [80, 160, 220, 255]),
             ("component_condition_rarity_absent", [60, 40, 80, 255]),
@@ -7344,6 +7477,19 @@ mod tests {
                 "component_condition_fireworks_explosions_absent",
                 [50, 60, 20, 255],
             ),
+            (
+                "component_condition_trim_material_present",
+                [160, 210, 240, 255],
+            ),
+            (
+                "component_condition_trim_material_absent",
+                [30, 50, 70, 255],
+            ),
+            (
+                "component_condition_trim_pattern_present",
+                [160, 240, 190, 255],
+            ),
+            ("component_condition_trim_pattern_absent", [30, 70, 50, 255]),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);
         }
