@@ -808,6 +808,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     matches vanilla `PotionsPredicate` HolderSets against the decoded
     `PotionContents.potion()` holder id through vanilla `Potions` registration
     order, including direct vanilla registry keys and native potion tag entries.
+    `minecraft:writable_book_content` now matches decoded raw writable-book
+    pages with vanilla `CollectionPredicate` `contains` / `count` / `size`;
+    `minecraft:written_book_content` now matches decoded written-book raw
+    title, author, `generation` `MinMaxBounds.Ints`, `resolved`, and
+    plain-string page collection predicates.
     `minecraft:bundle_contents`
     `items.size` constraints now match vanilla `CollectionPredicate.size`
     against the decoded bundle item count, and `items.contains` / `count`
@@ -836,10 +841,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     empty `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
     constrained `DataComponentPredicate` types such as inline enchantment holder
     payloads / server datapack tag remaps, bundle/container nested remaining
-    concrete partial predicates and complex exact component codecs, trim inline
-    material or pattern payloads / datapack pattern registry-key remaps, and
-    jukebox inline song payloads / datapack jukebox-song registry remaps remain
-    component-predicate follow-up.
+    concrete partial predicates (including book predicates) and complex exact
+    component codecs, rich/styled written-book page `ComponentSerialization`
+    equality, trim inline material or pattern payloads / datapack pattern
+    registry-key remaps, and jukebox inline song payloads / datapack
+    jukebox-song registry remaps remain component-predicate follow-up.
   - [x] `minecraft:has_component` item-model condition now follows vanilla
     `HasComponent.get`: default prototype components such as
     `minecraft:max_stack_size`, `minecraft:item_model`, `minecraft:rarity`,

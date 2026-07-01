@@ -5872,7 +5872,12 @@ When an agent does any of the following, update this file in the same slice:
       vanilla `PotionsPredicate` HolderSets against the decoded
       `PotionContents.potion()` holder id through vanilla `Potions`
       registration order, including direct vanilla registry keys and native
-      potion tag entries. `minecraft:bundle_contents`
+      potion tag entries. `minecraft:writable_book_content` now matches decoded
+      raw writable-book pages with vanilla `CollectionPredicate` `contains` /
+      `count` / `size`; `minecraft:written_book_content` now matches decoded
+      written-book raw title, author, `generation` `MinMaxBounds.Ints`,
+      `resolved`, and plain-string page collection predicates.
+      `minecraft:bundle_contents`
       `items.size` constraints match vanilla `CollectionPredicate.size` against
       the decoded bundle item count, and `items.contains` / `count` now support
       vanilla `ItemPredicate` direct item-key or item-tag HolderSets,
@@ -5906,10 +5911,11 @@ When an agent does any of the following, update this file in the same slice:
       `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
       constrained predicate types (inline enchantment holder payloads / server
       datapack tag remaps, bundle/container nested remaining concrete partial
-      predicates and complex exact component codecs, trim inline material or
-      pattern payloads / datapack pattern registry-key remaps, jukebox inline
-      song payloads / datapack jukebox-song registry remaps, and similar) remain
-      follow-up.
+      predicates including book predicates and complex exact component codecs,
+      rich/styled written-book page `ComponentSerialization` equality, trim
+      inline material or pattern payloads / datapack pattern registry-key remaps,
+      jukebox inline song payloads / datapack jukebox-song registry remaps, and
+      similar) remain follow-up.
     - `minecraft:charge_type` — `Charge.get` (`ROCKET` when any charged
       projectile is `minecraft:firework_rocket`, `ARROW` when charged otherwise,
       else `NONE`), using the native item registry to identify the projectile
@@ -6059,10 +6065,11 @@ When an agent does any of the following, update this file in the same slice:
     cursor-carried item call sites, while the cursor item presentation itself
     remains GUI follow-up.
     `minecraft:component` is wired for the scalar / enum component select subset
-    listed above, and the condition form covers component-type / AnyValue plus
-    `minecraft:damage`, empty single-component predicates, and direct-key
+    listed above, and the condition form covers component-type / AnyValue,
+    `minecraft:damage`, empty single-component predicates, direct-key
     enchantment HolderSet predicates when the synced enchantment registry is
-    available; broader component-codec and remaining constrained
+    available, and direct writable/written-book predicates for decoded raw
+    string fields/pages; broader component-codec and remaining constrained
     `DataComponentPredicate` parity remains the documented follow-up.
 
 ### Native Input, Movement, Interaction, Inventory, And Command Flows

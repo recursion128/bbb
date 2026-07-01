@@ -6,7 +6,7 @@ use bbb_pack::{
 };
 use bbb_protocol::packets::{
     DataComponentPatchSummary, FireworkExplosionShapeSummary, FireworkExplosionSummary,
-    ItemEnchantmentSummary, ItemRaritySummary, ItemStackTemplateSummary,
+    ItemEnchantmentSummary, ItemRaritySummary, ItemStackTemplateSummary, WrittenBookContentSummary,
 };
 use chrono::{Datelike, FixedOffset, Local, TimeZone, Utc};
 use serde_json::Value;
@@ -33,6 +33,8 @@ const DYED_COLOR_COMPONENT_ID: i32 = 44;
 const MAP_COLOR_COMPONENT_ID: i32 = 45;
 const BUNDLE_CONTENTS_COMPONENT_ID: i32 = 50;
 const POTION_CONTENTS_COMPONENT_ID: i32 = 51;
+const WRITABLE_BOOK_CONTENT_COMPONENT_ID: i32 = 54;
+const WRITTEN_BOOK_CONTENT_COMPONENT_ID: i32 = 55;
 const TRIM_COMPONENT_ID: i32 = 56;
 const JUKEBOX_PLAYABLE_COMPONENT_ID: i32 = 64;
 const LODESTONE_TRACKER_COMPONENT_ID: i32 = 67;
@@ -1651,6 +1653,12 @@ fn item_stack_matches_component_predicate(
             ctx.potion_tags,
         );
     }
+    if writable_book_component_predicate_is_supported(property) {
+        return item_stack_matches_writable_book_predicate(property, ctx.component_patch);
+    }
+    if written_book_component_predicate_is_supported(property) {
+        return item_stack_matches_written_book_predicate(property, ctx.component_patch);
+    }
     if let Some(component_id) = empty_single_component_predicate_id(property) {
         return item_stack_has_component_id(
             component_id,
@@ -1688,6 +1696,8 @@ fn component_condition_is_runtime_resolved(property: &ItemModelProperty) -> bool
         || trim_component_predicate_is_supported(property)
         || jukebox_playable_component_predicate_is_supported(property)
         || potion_contents_component_predicate_is_supported(property)
+        || writable_book_component_predicate_is_supported(property)
+        || written_book_component_predicate_is_supported(property)
         || empty_single_component_predicate_id(property).is_some()
         || component_condition_any_value_component_id(property).is_some()
 }
@@ -1721,6 +1731,8 @@ fn empty_single_component_predicate_id(property: &ItemModelProperty) -> Option<i
         "minecraft:fireworks" => Some(FIREWORKS_COMPONENT_ID),
         "minecraft:jukebox_playable" => Some(JUKEBOX_PLAYABLE_COMPONENT_ID),
         "minecraft:trim" => Some(TRIM_COMPONENT_ID),
+        "minecraft:writable_book_content" => Some(WRITABLE_BOOK_CONTENT_COMPONENT_ID),
+        "minecraft:written_book_content" => Some(WRITTEN_BOOK_CONTENT_COMPONENT_ID),
         _ => None,
     }
 }
@@ -2121,6 +2133,42 @@ fn item_collection_predicate_is_supported(value: &Value) -> bool {
             .get("count")
             .map(item_predicate_count_list_is_supported)
             .unwrap_or(true)
+}
+
+fn string_collection_predicate_is_supported(value: &Value) -> bool {
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    value
+        .keys()
+        .all(|key| key == "contains" || key == "count" || key == "size")
+        && value
+            .get("contains")
+            .map(string_predicate_list_is_supported)
+            .unwrap_or(true)
+        && value
+            .get("count")
+            .map(string_predicate_count_list_is_supported)
+            .unwrap_or(true)
+}
+
+fn string_predicate_list_is_supported(value: &Value) -> bool {
+    value
+        .as_array()
+        .is_some_and(|predicates| predicates.iter().all(Value::is_string))
+}
+
+fn string_predicate_count_list_is_supported(value: &Value) -> bool {
+    value.as_array().is_some_and(|entries| {
+        entries.iter().all(|entry| {
+            let Some(entry) = entry.as_object() else {
+                return false;
+            };
+            entry.keys().all(|key| key == "test" || key == "count")
+                && entry.get("test").is_some_and(Value::is_string)
+                && entry.contains_key("count")
+        })
+    })
 }
 
 fn item_predicate_list_is_supported(value: &Value) -> bool {
@@ -2923,6 +2971,226 @@ fn item_stack_matches_potion_contents_value(
     registry_key_holder_set_matches(Some(value), potion_key, potion_tags)
 }
 
+fn writable_book_component_predicate_is_supported(property: &ItemModelProperty) -> bool {
+    if component_condition_predicate(property) != Some("minecraft:writable_book_content") {
+        return false;
+    }
+    let Some(value) = property.raw().get("value") else {
+        return false;
+    };
+    writable_book_predicate_value_is_supported(value)
+}
+
+fn writable_book_predicate_value_is_supported(value: &Value) -> bool {
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    value.keys().all(|key| key == "pages")
+        && value
+            .get("pages")
+            .map(string_collection_predicate_is_supported)
+            .unwrap_or(true)
+}
+
+fn item_stack_matches_writable_book_predicate(
+    property: &ItemModelProperty,
+    component_patch: Option<&DataComponentPatchSummary>,
+) -> bool {
+    if !writable_book_component_predicate_is_supported(property) {
+        return false;
+    }
+    let Some(value) = property.raw().get("value") else {
+        return false;
+    };
+    item_stack_matches_writable_book_value(value, component_patch)
+}
+
+fn item_stack_matches_writable_book_value(
+    value: &Value,
+    component_patch: Option<&DataComponentPatchSummary>,
+) -> bool {
+    let Some(component_patch) = component_patch else {
+        return false;
+    };
+    if component_patch
+        .removed_type_ids
+        .contains(&WRITABLE_BOOK_CONTENT_COMPONENT_ID)
+        || !component_patch
+            .added_type_ids
+            .contains(&WRITABLE_BOOK_CONTENT_COMPONENT_ID)
+    {
+        return false;
+    }
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    if let Some(pages) = value.get("pages") {
+        if !string_collection_predicate_matches(pages, &component_patch.writable_book_pages) {
+            return false;
+        }
+    }
+    true
+}
+
+fn written_book_component_predicate_is_supported(property: &ItemModelProperty) -> bool {
+    if component_condition_predicate(property) != Some("minecraft:written_book_content") {
+        return false;
+    }
+    let Some(value) = property.raw().get("value") else {
+        return false;
+    };
+    written_book_predicate_value_is_supported(value)
+}
+
+fn written_book_predicate_value_is_supported(value: &Value) -> bool {
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    value.keys().all(|key| {
+        key == "author"
+            || key == "title"
+            || key == "generation"
+            || key == "resolved"
+            || key == "pages"
+    }) && value.get("author").is_none_or(Value::is_string)
+        && value.get("title").is_none_or(Value::is_string)
+        && value.get("resolved").is_none_or(Value::is_boolean)
+        && value
+            .get("pages")
+            .map(string_collection_predicate_is_supported)
+            .unwrap_or(true)
+}
+
+fn item_stack_matches_written_book_predicate(
+    property: &ItemModelProperty,
+    component_patch: Option<&DataComponentPatchSummary>,
+) -> bool {
+    if !written_book_component_predicate_is_supported(property) {
+        return false;
+    }
+    let Some(value) = property.raw().get("value") else {
+        return false;
+    };
+    item_stack_matches_written_book_value(value, component_patch)
+}
+
+fn item_stack_matches_written_book_value(
+    value: &Value,
+    component_patch: Option<&DataComponentPatchSummary>,
+) -> bool {
+    let Some(component_patch) = component_patch else {
+        return false;
+    };
+    if component_patch
+        .removed_type_ids
+        .contains(&WRITTEN_BOOK_CONTENT_COMPONENT_ID)
+        || !component_patch
+            .added_type_ids
+            .contains(&WRITTEN_BOOK_CONTENT_COMPONENT_ID)
+    {
+        return false;
+    }
+    let Some(book) = component_patch.written_book.as_ref() else {
+        return false;
+    };
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    written_book_value_matches(value, book)
+}
+
+fn written_book_value_matches(
+    value: &serde_json::Map<String, Value>,
+    book: &WrittenBookContentSummary,
+) -> bool {
+    if value
+        .get("author")
+        .and_then(Value::as_str)
+        .is_some_and(|author| author != book.author.as_str())
+    {
+        return false;
+    }
+    if value
+        .get("title")
+        .and_then(Value::as_str)
+        .is_some_and(|title| title != book.title.as_str())
+    {
+        return false;
+    }
+    if !min_max_int_bounds_match(value.get("generation"), book.generation) {
+        return false;
+    }
+    if value
+        .get("resolved")
+        .and_then(Value::as_bool)
+        .is_some_and(|resolved| resolved != book.resolved)
+    {
+        return false;
+    }
+    if let Some(pages) = value.get("pages") {
+        if !string_collection_predicate_matches(pages, &book.pages) {
+            return false;
+        }
+    }
+    true
+}
+
+fn string_collection_predicate_matches(value: &Value, values: &[String]) -> bool {
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    if let Some(contains) = value.get("contains") {
+        let Some(predicates) = contains.as_array() else {
+            return false;
+        };
+        if !predicates.iter().all(|predicate| {
+            predicate
+                .as_str()
+                .is_some_and(|expected| values.iter().any(|actual| actual == expected))
+        }) {
+            return false;
+        }
+    }
+    if let Some(counts) = value.get("count") {
+        let Some(entries) = counts.as_array() else {
+            return false;
+        };
+        if !entries
+            .iter()
+            .all(|entry| string_count_entry_matches(entry, values))
+        {
+            return false;
+        }
+    }
+    if let Some(size) = value.get("size") {
+        let Ok(count) = i32::try_from(values.len()) else {
+            return false;
+        };
+        if !min_max_int_bounds_match(Some(size), count) {
+            return false;
+        }
+    }
+    true
+}
+
+fn string_count_entry_matches(entry: &Value, values: &[String]) -> bool {
+    let Some(entry) = entry.as_object() else {
+        return false;
+    };
+    let Some(expected) = entry.get("test").and_then(Value::as_str) else {
+        return false;
+    };
+    let Ok(count) = i32::try_from(
+        values
+            .iter()
+            .filter(|actual| actual.as_str() == expected)
+            .count(),
+    ) else {
+        return false;
+    };
+    min_max_int_bounds_match(entry.get("count"), count)
+}
+
 fn registry_key_holder_set_matches(
     value: Option<&Value>,
     registry_key: &str,
@@ -3303,6 +3571,8 @@ fn data_component_type_id(component: &str) -> Option<i32> {
         "minecraft:stored_enchantments" => Some(STORED_ENCHANTMENTS_COMPONENT_ID),
         "minecraft:bundle_contents" => Some(BUNDLE_CONTENTS_COMPONENT_ID),
         "minecraft:potion_contents" => Some(POTION_CONTENTS_COMPONENT_ID),
+        "minecraft:writable_book_content" => Some(WRITABLE_BOOK_CONTENT_COMPONENT_ID),
+        "minecraft:written_book_content" => Some(WRITTEN_BOOK_CONTENT_COMPONENT_ID),
         "minecraft:trim" => Some(TRIM_COMPONENT_ID),
         "minecraft:jukebox_playable" => Some(JUKEBOX_PLAYABLE_COMPONENT_ID),
         "minecraft:lodestone_tracker" => Some(LODESTONE_TRACKER_COMPONENT_ID),
