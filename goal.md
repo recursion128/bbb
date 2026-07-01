@@ -80,8 +80,9 @@ audit 未命中 “P0 重新打开条件”时，结论视为 “P0 关闭且可
 6. P1 slice 已完成 `P1-1` render-state / render-graph fidelity closeout 和
    `P1-2` 狭义实体 renderer closeout；后续默认直接执行当前 P1 子队列的
    下一条小 slice，除非 quick audit 重新打开 P0。
-7. 不自动跳到粒子 provider、terrain、HUD/GUI 大面或 first-person 宽面；
-   这些队列只有在阻塞当前 P1 完成条件，或当前子队列无可执行小 slice 时才恢复。
+7. P0 clean 时不得停下等待确认；粒子 provider、terrain、HUD/GUI 大面或
+   first-person 宽面只按能关闭当前 P1 checklist 的最小 slice 进入，避免开放式
+   细节补完重新吞掉 selector。
 
 ## P0 重新打开条件
 
@@ -1308,6 +1309,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `PositionSource` is consumed without fabricating a target; unresolved
     vibration instances stay out of vertex submission until world/entity lookup
     is available.
+  - [x] `TrialSpawnerDetectionParticle.Provider` and
+    `SingleQuadParticle.FacingCameraMode.LOOKAT_Y`：renderer now records
+    per-instance facing mode and maps `trial_spawner_detection` /
+    `_ominous` to age sprites, `scale(1.5)` over the vanilla `0.75`
+    single-quad scale, command velocity, `12 / (0.5 + random * 0.5)`
+    lifetime, opaque layer, full-block light, grow-to-base size curve,
+    physics metadata, and `LOOKAT_Y` vertex transform with world-Y up
+    instead of full camera pitch.
   - [x] `SculkChargeParticle.Provider` roll：native command resolution decodes
     `SculkChargeParticleOptions.roll` for `minecraft:sculk_charge`; renderer
     stores it as initial `oRoll` / `roll` and applies the vanilla billboard

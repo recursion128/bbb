@@ -44,6 +44,13 @@ pub(crate) enum ParticleLightEmissionDescriptor {
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum ParticleFacingCameraMode {
+    #[default]
+    LookAtXyz,
+    LookAtY,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) enum ParticleAlphaCurve {
     #[default]
     Constant,
@@ -92,6 +99,7 @@ pub(crate) enum ParticleLifetimeDescriptor {
     SixteenOverRandomPlusTwo,
     FortyOverRandom,
     SporeBlossomAir,
+    TrialSpawnerDetection,
     Portal,
     ReversePortal,
     RandomFloatSpan {
@@ -693,6 +701,22 @@ impl ParticleDescriptor {
                 gravity: 0.0,
                 has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:trial_spawner_detection"
+            | "minecraft:trial_spawner_detection_ominous" => Self {
+                provider: "TrialSpawnerDetectionParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::TrialSpawnerDetection,
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 1.125,
+                    color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                    quad_size_curve: ParticleQuadSizeCurve::GrowToBase,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
+                friction: 0.96,
+                gravity: -0.1,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: true,
             },
             "minecraft:gust" => Self {
                 provider: "GustParticle.Provider",
@@ -1360,7 +1384,8 @@ impl ParticleDescriptor {
             | "SculkChargePopParticle.Provider"
             | "ShriekParticle.Provider"
             | "VibrationSignalParticle.Provider"
-            | "FlyTowardsPositionParticle.VaultConnectionProvider" => {
+            | "FlyTowardsPositionParticle.VaultConnectionProvider"
+            | "TrialSpawnerDetectionParticle.Provider" => {
                 ParticleLightEmissionDescriptor::FullBlock
             }
             // Vanilla uses `LightCoordsUtil.addSmoothBlockEmission(..., (age + partialTick) / lifetime)`.
@@ -1379,6 +1404,13 @@ impl ParticleDescriptor {
                 ParticleLightEmissionDescriptor::SmoothBlockByAgeQuartic
             }
             _ => ParticleLightEmissionDescriptor::World,
+        }
+    }
+
+    pub(crate) fn facing_camera_mode(self) -> ParticleFacingCameraMode {
+        match self.provider {
+            "TrialSpawnerDetectionParticle.Provider" => ParticleFacingCameraMode::LookAtY,
+            _ => ParticleFacingCameraMode::LookAtXyz,
         }
     }
 
@@ -1899,6 +1931,7 @@ impl ParticleLifetimeDescriptor {
                 random.next_f32();
                 500 + random.next_index(501).unwrap_or(0) as u32
             }
+            Self::TrialSpawnerDetection => (12.0 / (random.next_f32() * 0.5 + 0.5)) as u32,
             Self::Portal => (random.next_f32() * 10.0) as u32 + 40,
             Self::ReversePortal => {
                 random.next_f32();
@@ -2806,6 +2839,42 @@ mod tests {
             ParticleDescriptor::for_particle("minecraft:shriek").initial_velocity,
             ParticleInitialVelocityDescriptor::Fixed([0.0, 0.1, 0.0])
         );
+        for particle_id in [
+            "minecraft:trial_spawner_detection",
+            "minecraft:trial_spawner_detection_ominous",
+        ] {
+            assert_descriptor(
+                particle_id,
+                "TrialSpawnerDetectionParticle.Provider",
+                ParticleLifetimeDescriptor::TrialSpawnerDetection,
+                ParticleSpriteSelection::Age,
+                ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 1.125,
+                    color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                    quad_size_curve: ParticleQuadSizeCurve::GrowToBase,
+                },
+                0.96,
+                -0.1,
+                true,
+                true,
+            );
+            let descriptor = ParticleDescriptor::for_particle(particle_id);
+            assert_eq!(
+                descriptor.initial_velocity,
+                ParticleInitialVelocityDescriptor::Command,
+                "{particle_id}"
+            );
+            assert_eq!(
+                descriptor.facing_camera_mode(),
+                ParticleFacingCameraMode::LookAtY,
+                "{particle_id}"
+            );
+            assert_eq!(
+                descriptor.light_emission(),
+                ParticleLightEmissionDescriptor::FullBlock,
+                "{particle_id}"
+            );
+        }
         assert_descriptor(
             "minecraft:gust",
             "GustParticle.Provider",
@@ -4078,6 +4147,12 @@ mod tests {
         for _ in 0..32 {
             let lifetime = ParticleLifetimeDescriptor::SporeBlossomAir.sample(&mut random);
             assert!((500..=1000).contains(&lifetime));
+        }
+
+        let mut random = ParticleRandom::new(17);
+        for _ in 0..32 {
+            let lifetime = ParticleLifetimeDescriptor::TrialSpawnerDetection.sample(&mut random);
+            assert!((12..=24).contains(&lifetime));
         }
 
         let mut random = ParticleRandom::new(29);

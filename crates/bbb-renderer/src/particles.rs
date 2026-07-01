@@ -12,8 +12,8 @@ mod gpu;
 use descriptors::{
     dust_lifetime, particle_limit_for_particle, select_initial_sprite, sprite_index_for_age,
     ParticleAlphaCurve, ParticleChildEmissionDescriptor, ParticleDescriptor,
-    ParticleLightEmissionDescriptor, ParticleLimitDescriptor, ParticleQuadSizeCurve,
-    ParticleRandom, ParticleSpriteSelection, ParticleTickMotionDescriptor,
+    ParticleFacingCameraMode, ParticleLightEmissionDescriptor, ParticleLimitDescriptor,
+    ParticleQuadSizeCurve, ParticleRandom, ParticleSpriteSelection, ParticleTickMotionDescriptor,
     DEFAULT_PARTICLE_RANDOM_SEED,
 };
 pub(super) use gpu::{
@@ -156,6 +156,8 @@ pub(crate) struct ParticleInstance {
     pub(crate) render_group: ParticleRenderGroup,
     #[serde(default)]
     pub(crate) render_layer: ParticleRenderLayer,
+    #[serde(default)]
+    pub(crate) facing_camera_mode: ParticleFacingCameraMode,
     pub(crate) friction: f32,
     pub(crate) gravity: f32,
     pub(crate) has_physics: bool,
@@ -695,6 +697,7 @@ impl ParticleInstance {
             provider: descriptor.provider.to_string(),
             render_group,
             render_layer,
+            facing_camera_mode: descriptor.facing_camera_mode(),
             friction: descriptor.friction,
             gravity: descriptor.gravity,
             has_physics: descriptor.has_physics,
@@ -1133,6 +1136,19 @@ fn camera_billboard_axes(pose: crate::CameraPose) -> ParticleBillboardAxes {
     }
 }
 
+fn particle_axes_for_instance(
+    axes: ParticleBillboardAxes,
+    facing_camera_mode: ParticleFacingCameraMode,
+) -> ParticleBillboardAxes {
+    match facing_camera_mode {
+        ParticleFacingCameraMode::LookAtXyz => axes,
+        ParticleFacingCameraMode::LookAtY => ParticleBillboardAxes {
+            right: axes.right,
+            up: Vec3::Y,
+        },
+    }
+}
+
 fn append_particle_instance_vertices(
     vertices: &mut Vec<ParticleVertex>,
     instance: &ParticleInstance,
@@ -1153,7 +1169,11 @@ fn append_particle_instance_vertices(
         return;
     }
 
-    vertices.extend(particle_instance_vertices(instance, uv, axes));
+    vertices.extend(particle_instance_vertices(
+        instance,
+        uv,
+        particle_axes_for_instance(axes, instance.facing_camera_mode),
+    ));
 }
 
 fn particle_instance_vertices(
@@ -3410,6 +3430,32 @@ mod tests {
         assert_eq!(shriek.render_layer, ParticleRenderLayer::Translucent);
         assert_eq!(shriek.delay_ticks, 15);
 
+        let mut detection_random = ParticleRandom::new(82);
+        let mut detection_command = spawn_command("minecraft:trial_spawner_detection", 1.0);
+        detection_command.velocity = [0.25, 0.5, -0.75];
+        let detection =
+            ParticleInstance::from_spawn_command(detection_command, &mut detection_random);
+        assert_eq!(detection.provider, "TrialSpawnerDetectionParticle.Provider");
+        assert_eq!(detection.sprite_selection, ParticleSpriteSelection::Age);
+        assert_range_f32(detection.base_quad_size, 0.1125, 0.225);
+        assert_eq!(detection.color, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(detection.quad_size_curve, ParticleQuadSizeCurve::GrowToBase);
+        assert_eq!(
+            detection.light_emission,
+            ParticleLightEmissionDescriptor::FullBlock
+        );
+        assert_eq!(
+            detection.facing_camera_mode,
+            ParticleFacingCameraMode::LookAtY
+        );
+        assert!((12..=24).contains(&detection.lifetime_ticks));
+        assert_eq!(detection.velocity, [0.25, 0.5, -0.75]);
+        assert_eq!(detection.friction, 0.96);
+        assert_eq!(detection.gravity, -0.1);
+        assert!(detection.has_physics);
+        assert!(detection.speed_up_when_y_motion_is_blocked);
+        assert_eq!(detection.render_layer, ParticleRenderLayer::Opaque);
+
         let mut gust_random = ParticleRandom::new(71);
         let mut gust_command = spawn_command("minecraft:gust", 1.0);
         gust_command.velocity = [1.0, 2.0, 3.0];
@@ -3960,6 +4006,41 @@ mod tests {
     }
 
     #[test]
+    fn particle_billboard_vertices_apply_vanilla_lookat_y_facing_mode() {
+        let mut instance = test_instance_with_lifetime("minecraft:trial_spawner_detection", 20);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.current_sprite_id = Some("minecraft:generic_0".to_string());
+        instance.base_quad_size = 2.0;
+        let sprite_uvs = BTreeMap::from([(
+            "minecraft:generic_0".to_string(),
+            ParticleUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+        )]);
+
+        let vertices = particle_billboard_vertices(
+            [&instance],
+            &sprite_uvs,
+            ParticleBillboardAxes {
+                right: Vec3::Z,
+                up: Vec3::new(0.0, 0.5, 0.866_025_4),
+            },
+            Some(ParticlePipelineKind::Opaque),
+        );
+
+        assert_eq!(
+            instance.facing_camera_mode,
+            ParticleFacingCameraMode::LookAtY
+        );
+        assert_eq!(vertices.len(), 6);
+        assert_close3_f32(vertices[0].position, [1.0, 1.0, 2.0]);
+        assert_close3_f32(vertices[1].position, [1.0, 1.0, 4.0]);
+        assert_close3_f32(vertices[2].position, [1.0, 3.0, 4.0]);
+        assert_close3_f32(vertices[5].position, [1.0, 3.0, 2.0]);
+    }
+
+    #[test]
     fn particle_billboard_vertices_apply_vanilla_roll_transform() {
         let mut instance = test_instance_with_lifetime("minecraft:sculk_charge", 20);
         instance.position = [1.0, 2.0, 3.0];
@@ -4264,6 +4345,7 @@ mod tests {
             provider: descriptor.provider.to_string(),
             render_group: particle_render_group_for_particle(particle_id),
             render_layer: particle_render_layer_for_particle(particle_id),
+            facing_camera_mode: descriptor.facing_camera_mode(),
             friction: descriptor.friction,
             gravity: descriptor.gravity,
             has_physics: descriptor.has_physics,

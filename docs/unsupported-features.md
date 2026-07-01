@@ -401,6 +401,13 @@ When an agent does any of the following, update this file in the same slice:
         unresolved vibration instances out of vertex submission until particle
         commands can query the world/entity table. `sculk_charge` now carries decoded
         `SculkChargeParticleOptions.roll` through to billboard roll rotation.
+        `trial_spawner_detection` and `_ominous` now map to
+        `TrialSpawnerDetectionParticle.Provider` with age sprites, command
+        velocity, `scale(1.5)` over the vanilla `0.75` single-quad scale,
+        `12 / (0.5 + random * 0.5)` lifetime, opaque layer, full-block light,
+        grow-to-base size curve, physics metadata, and
+        `SingleQuadParticle.FacingCameraMode.LOOKAT_Y` represented as a
+        per-instance facing mode whose vertex transform keeps world-Y up.
         `dust` / `dust_color_transition` now map to their vanilla providers
         with decoded RGB colors, transition target color, clamped scale,
         scale-shaped quad size / lifetime, random color variation, age sprites,
@@ -5759,6 +5766,12 @@ When an agent does any of the following, update this file in the same slice:
         `8..=19` lifetime, friction `0.96`, no-physics metadata,
         translucent particle layer, full-bright block override, and decoded
         `SculkChargeParticleOptions.roll` billboard rotation.
+      - particle descriptors map `TrialSpawnerDetectionParticle.Provider` for
+        `trial_spawner_detection` and `_ominous` to age sprites, command
+        velocity, `scale(1.5)` over the vanilla `0.75` single-quad scale,
+        `12/(0.5+random*.5)` lifetime, opaque particle layer, full-block
+        light, grow-to-base size curve, physics metadata, and vanilla
+        `FacingCameraMode.LOOKAT_Y` vertex orientation with world-Y up.
       - particle descriptors map `ShriekParticle.Provider` to
         `ShriekParticleOption.delay` carried in
         `ParticleSpawnCommand.initial_delay_ticks`; delayed instances do not
