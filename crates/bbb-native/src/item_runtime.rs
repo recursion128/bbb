@@ -7279,6 +7279,63 @@ mod tests {
             ),
             uv("component_condition_bundle_exact_unbreakable_absent")
         );
+        let exact_custom_data = NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "owner".to_string(),
+                value: NbtSummaryValue::String("Alex".to_string()),
+            },
+            NbtSummaryEntry {
+                name: "level".to_string(),
+                value: NbtSummaryValue::Int(7),
+            },
+        ]);
+        assert_eq!(
+            selected(
+                84,
+                named_bundle_entry(DataComponentPatchSummary {
+                    added_type_ids: vec![0],
+                    custom_data: Some(exact_custom_data.clone()),
+                    ..DataComponentPatchSummary::default()
+                })
+            ),
+            uv("component_condition_bundle_exact_custom_data_present")
+        );
+        assert_eq!(
+            selected(
+                84,
+                named_bundle_entry(DataComponentPatchSummary {
+                    added_type_ids: vec![0],
+                    custom_data: Some(NbtSummaryValue::Compound(vec![
+                        NbtSummaryEntry {
+                            name: "owner".to_string(),
+                            value: NbtSummaryValue::String("Alex".to_string()),
+                        },
+                        NbtSummaryEntry {
+                            name: "level".to_string(),
+                            value: NbtSummaryValue::Int(7),
+                        },
+                        NbtSummaryEntry {
+                            name: "extra".to_string(),
+                            value: NbtSummaryValue::Byte(1),
+                        },
+                    ])),
+                    ..DataComponentPatchSummary::default()
+                })
+            ),
+            uv("component_condition_bundle_exact_custom_data_absent")
+        );
+        assert_eq!(
+            selected(
+                84,
+                named_bundle_entry(DataComponentPatchSummary {
+                    added_type_ids: vec![0],
+                    removed_type_ids: vec![0],
+                    custom_data: Some(exact_custom_data),
+                    ..DataComponentPatchSummary::default()
+                })
+            ),
+            uv("component_condition_bundle_exact_custom_data_absent")
+        );
         assert_eq!(
             selected(
                 33,
@@ -10737,6 +10794,7 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_COMPONENT_TEXT = registerItem("component_condition_bundle_exact_component_text");
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_LORE = registerItem("component_condition_bundle_exact_lore");
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_UNBREAKABLE = registerItem("component_condition_bundle_exact_unbreakable");
+                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_CUSTOM_DATA = registerItem("component_condition_bundle_exact_custom_data");
             }"#,
         );
         write_json(
@@ -11326,6 +11384,39 @@ mod tests {
                     "on_false": {
                         "type": "minecraft:model",
                         "model": "minecraft:item/component_condition_bundle_exact_unbreakable_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_exact_custom_data.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "components": {
+                                            "minecraft:custom_data": "{owner:\"Alex\",level:7}"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_custom_data_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_custom_data_absent"
                     }
                 }
             }"#,
@@ -13744,6 +13835,14 @@ mod tests {
             (
                 "component_condition_bundle_exact_unbreakable_absent",
                 [85, 70, 50, 255],
+            ),
+            (
+                "component_condition_bundle_exact_custom_data_present",
+                [210, 235, 180, 255],
+            ),
+            (
+                "component_condition_bundle_exact_custom_data_absent",
+                [70, 90, 55, 255],
             ),
             (
                 "component_condition_container_components_present",

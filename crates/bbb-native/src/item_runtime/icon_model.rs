@@ -2395,6 +2395,8 @@ fn item_exact_component_is_supported(component: &str, expected: &Value) -> bool 
             && simple_component_text(expected).is_some())
         || (component == "minecraft:lore" && simple_component_text_list(expected).is_some())
         || (component == "minecraft:unbreakable" && unit_component_value_is_supported(expected))
+        || (component == "minecraft:custom_data"
+            && custom_data_predicate_value_to_nbt_summary(expected).is_some())
 }
 
 fn item_partial_component_predicates_are_supported(value: &Value) -> bool {
@@ -2836,6 +2838,30 @@ fn nbt_summary_matches(
                     .iter()
                     .any(|actual_item| nbt_summary_matches(expected_item, actual_item, true))
             })
+        }
+        _ => expected == actual,
+    }
+}
+
+fn nbt_summary_exact_matches(expected: &NbtSummaryValue, actual: &NbtSummaryValue) -> bool {
+    match (expected, actual) {
+        (NbtSummaryValue::Compound(expected), NbtSummaryValue::Compound(actual)) => {
+            expected.len() == actual.len()
+                && expected.iter().all(|entry| {
+                    actual
+                        .iter()
+                        .find(|actual_entry| actual_entry.name == entry.name)
+                        .is_some_and(|actual_entry| {
+                            nbt_summary_exact_matches(&entry.value, &actual_entry.value)
+                        })
+                })
+        }
+        (NbtSummaryValue::List(expected), NbtSummaryValue::List(actual)) => {
+            expected.len() == actual.len()
+                && expected
+                    .iter()
+                    .zip(actual)
+                    .all(|(expected, actual)| nbt_summary_exact_matches(expected, actual))
         }
         _ => expected == actual,
     }
@@ -3534,6 +3560,21 @@ fn item_exact_component_matches(
                 .component_patch
                 .removed_type_ids
                 .contains(&UNBREAKABLE_COMPONENT_ID);
+    }
+
+    if component == "minecraft:custom_data" {
+        let Some(expected) = custom_data_predicate_value_to_nbt_summary(expected) else {
+            return false;
+        };
+        return !item
+            .component_patch
+            .removed_type_ids
+            .contains(&CUSTOM_DATA_COMPONENT_ID)
+            && item
+                .component_patch
+                .custom_data
+                .as_ref()
+                .is_some_and(|actual| nbt_summary_exact_matches(&expected, actual));
     }
 
     let Some(expected) = simple_component_text(expected) else {

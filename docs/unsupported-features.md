@@ -5902,8 +5902,9 @@ When an agent does any of the following, update this file in the same slice:
       stack-count bounds, exact scalar/default `DataComponentMatchers`
       components, and patch-backed simple literal `minecraft:custom_name` /
       `minecraft:item_name` / `minecraft:lore` exact components plus
-      `minecraft:unbreakable` Unit exact components and nested partial
-      `minecraft:damage`,
+      `minecraft:unbreakable` Unit exact components and exact
+      `minecraft:custom_data` compound components (JSON-object or SNBT-string
+      expected values) plus nested partial `minecraft:damage`,
       `minecraft:enchantments`, `minecraft:stored_enchantments`,
       `minecraft:firework_explosion`, `minecraft:fireworks`, `minecraft:trim`,
       `minecraft:jukebox_playable`, `minecraft:potion_contents`,
@@ -5937,8 +5938,8 @@ When an agent does any of the following, update this file in the same slice:
       constrained predicate types (inline enchantment holder payloads / server
       datapack tag remaps, broader NBT scalar typing, remaining concrete partial
       predicates and complex exact component codecs beyond simple literal name
-      / lore and Unit `unbreakable` components, non-literal / rich / styled
-      written-book page `ComponentSerialization`
+      / lore, Unit `unbreakable`, and compound `custom_data` components,
+      non-literal / rich / styled written-book page `ComponentSerialization`
       equality, trim inline material or pattern payloads / datapack pattern
       registry-key remaps, datapack villager-type registry remaps, jukebox
       inline song payloads / datapack jukebox-song registry
@@ -6105,8 +6106,9 @@ When an agent does any of the following, update this file in the same slice:
     bundle/container-nested custom-data NBT compound predicates for JSON-object
     and SNBT-string compound expected values, plus patch-backed simple literal
     custom-name / item-name / lore exact components and `unbreakable` Unit exact
-    components; broader component-codec and remaining constrained
-    `DataComponentPredicate` parity remains the documented follow-up.
+    components, plus exact custom-data compound components; broader
+    component-codec and remaining constrained `DataComponentPredicate` parity
+    remains the documented follow-up.
 
 ### Native Input, Movement, Interaction, Inventory, And Command Flows
 

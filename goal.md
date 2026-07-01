@@ -839,8 +839,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     stack-count bounds, exact scalar/default `DataComponentMatchers`
     components, and patch-backed simple literal `minecraft:custom_name` /
     `minecraft:item_name` / `minecraft:lore` exact components plus
-    `minecraft:unbreakable` Unit exact components and nested partial
-    `minecraft:damage`, `minecraft:enchantments`,
+    `minecraft:unbreakable` Unit exact components and exact
+    `minecraft:custom_data` compound components (JSON-object or SNBT-string
+    expected values) plus nested partial `minecraft:damage`,
+    `minecraft:enchantments`,
     `minecraft:stored_enchantments`, `minecraft:firework_explosion`,
     `minecraft:fireworks`, `minecraft:trim`, `minecraft:jukebox_playable`,
     `minecraft:potion_contents`, `minecraft:writable_book_content`,
@@ -867,7 +869,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     constrained `DataComponentPredicate` types such as inline enchantment holder
     payloads / server datapack tag remaps, broader NBT scalar typing, remaining
     concrete partial predicates and complex exact component codecs beyond
-    simple literal name/lore and Unit `unbreakable` components,
+    simple literal name/lore, Unit `unbreakable`, and compound `custom_data`
+    components,
     non-literal / rich / styled written-book page
     `ComponentSerialization` equality, trim inline material or pattern payloads
     / datapack pattern registry-key remaps, datapack villager-type registry
