@@ -347,8 +347,11 @@ When an agent does any of the following, update this file in the same slice:
         `[0.9, 0.9, 1.0]` RGB scaling, `30..39` lifetime, opaque particle
         layer, no-physics metadata, the vanilla fly-towards position curve
         (`pos = 1 - age/lifetime`, `y -= (age/lifetime)^4 * 1.2`), and
-        quartic smooth block-light emission; `VaultConnectionProvider` remains
-        deferred until lifetime alpha and glowing variants are represented
+        quartic smooth block-light emission
+      - `FlyTowardsPositionParticle.VaultConnectionProvider` reuses the
+        fly-towards position curve with vanilla `scale(1.5)`, translucent
+        layer, full-block glowing light, and `LifetimeAlpha(0.0, 0.6, 0.25,
+        1.0)` applied at runtime tick and partial-tick vertex emission
       - `TotemParticle.Provider` uses age sprite selection, command velocity,
         `0.75` quad-size multiplier, `60 + random.nextInt(12)` lifetime,
         translucent particle layer, `0.6` friction, `1.25` gravity, full-bright

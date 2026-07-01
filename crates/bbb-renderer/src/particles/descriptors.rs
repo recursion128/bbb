@@ -44,6 +44,7 @@ pub(crate) enum ParticleAlphaCurve {
     Constant,
     SimpleAnimatedFade,
     ShriekFade,
+    VaultConnectionFade,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -135,6 +136,7 @@ pub(crate) enum ParticleVisualDescriptor {
     },
     HugeExplosion,
     FlyTowardsPosition,
+    VaultConnection,
     Shriek,
     Totem,
     Portal,
@@ -474,6 +476,17 @@ impl ParticleDescriptor {
                 lifetime: ParticleLifetimeDescriptor::RandomFloatSpan { min: 30, span: 10 },
                 sprite_selection: ParticleSpriteSelection::Random,
                 visual: ParticleVisualDescriptor::FlyTowardsPosition,
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
+                friction: 0.98,
+                gravity: 0.0,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:vault_connection" => Self {
+                provider: "FlyTowardsPositionParticle.VaultConnectionProvider",
+                lifetime: ParticleLifetimeDescriptor::RandomFloatSpan { min: 30, span: 10 },
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::VaultConnection,
                 initial_velocity: ParticleInitialVelocityDescriptor::Command,
                 friction: 0.98,
                 gravity: 0.0,
@@ -1134,7 +1147,8 @@ impl ParticleDescriptor {
             "AttackSweepParticle.Provider" => ParticleTickMotionDescriptor::NoMotion,
             "WaterCurrentDownParticle.Provider" => ParticleTickMotionDescriptor::CurrentDown,
             "FlyTowardsPositionParticle.EnchantProvider"
-            | "FlyTowardsPositionParticle.NautilusProvider" => {
+            | "FlyTowardsPositionParticle.NautilusProvider"
+            | "FlyTowardsPositionParticle.VaultConnectionProvider" => {
                 ParticleTickMotionDescriptor::FlyTowardsPosition
             }
             "PortalParticle.Provider" => ParticleTickMotionDescriptor::Portal,
@@ -1162,7 +1176,10 @@ impl ParticleDescriptor {
             | "SoulParticle.EmissiveProvider"
             | "SculkChargeParticle.Provider"
             | "SculkChargePopParticle.Provider"
-            | "ShriekParticle.Provider" => ParticleLightEmissionDescriptor::FullBlock,
+            | "ShriekParticle.Provider"
+            | "FlyTowardsPositionParticle.VaultConnectionProvider" => {
+                ParticleLightEmissionDescriptor::FullBlock
+            }
             // Vanilla uses `LightCoordsUtil.addSmoothBlockEmission(..., (age + partialTick) / lifetime)`.
             "FlameParticle.Provider"
             | "FlameParticle.SmallFlameProvider"
@@ -1186,6 +1203,9 @@ impl ParticleDescriptor {
         match self.provider {
             "TotemParticle.Provider" => ParticleAlphaCurve::SimpleAnimatedFade,
             "ShriekParticle.Provider" => ParticleAlphaCurve::ShriekFade,
+            "FlyTowardsPositionParticle.VaultConnectionProvider" => {
+                ParticleAlphaCurve::VaultConnectionFade
+            }
             _ => ParticleAlphaCurve::Constant,
         }
     }
@@ -1322,6 +1342,15 @@ impl ParticleVisualDescriptor {
                 ParticleVisualState::new(
                     size,
                     [brightness * 0.9, brightness * 0.9, brightness, 1.0],
+                    ParticleQuadSizeCurve::Constant,
+                )
+            }
+            Self::VaultConnection => {
+                let size = 0.1 * (random.next_f32() * 0.5 + 0.2) * 1.5;
+                let brightness = random.next_f32() * 0.6 + 0.4;
+                ParticleVisualState::new(
+                    size,
+                    [brightness * 0.9, brightness * 0.9, brightness, 0.0],
                     ParticleQuadSizeCurve::Constant,
                 )
             }
@@ -2167,6 +2196,34 @@ mod tests {
                 "{particle_id}"
             );
         }
+        assert_descriptor(
+            "minecraft:vault_connection",
+            "FlyTowardsPositionParticle.VaultConnectionProvider",
+            ParticleLifetimeDescriptor::RandomFloatSpan { min: 30, span: 10 },
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::VaultConnection,
+            0.98,
+            0.0,
+            false,
+            false,
+        );
+        let vault_connection = ParticleDescriptor::for_particle("minecraft:vault_connection");
+        assert_eq!(
+            vault_connection.initial_velocity,
+            ParticleInitialVelocityDescriptor::Command
+        );
+        assert_eq!(
+            vault_connection.tick_motion(),
+            ParticleTickMotionDescriptor::FlyTowardsPosition
+        );
+        assert_eq!(
+            vault_connection.light_emission(),
+            ParticleLightEmissionDescriptor::FullBlock
+        );
+        assert_eq!(
+            vault_connection.alpha_curve(),
+            ParticleAlphaCurve::VaultConnectionFade
+        );
         assert_descriptor(
             "minecraft:totem_of_undying",
             "TotemParticle.Provider",
@@ -3538,6 +3595,7 @@ mod tests {
             "minecraft:sculk_charge",
             "minecraft:sculk_charge_pop",
             "minecraft:shriek",
+            "minecraft:vault_connection",
         ] {
             assert_eq!(
                 ParticleDescriptor::for_particle(particle_id).light_emission(),

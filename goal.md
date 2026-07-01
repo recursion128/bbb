@@ -1210,7 +1210,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `[0.9, 0.9, 1.0]` RGB scaling, `30..39` lifetime, opaque layer,
     no-physics metadata, fly-towards position curve (`pos = 1 - age/lifetime`,
     `y -= (age/lifetime)^4 * 1.2`), and quartic smooth block-light emission.
-    `VaultConnectionProvider` remains a later alpha/glowing variant.
+  - [x] `FlyTowardsPositionParticle.VaultConnectionProvider`：renderer
+    descriptor reuses the fly-towards position curve with vanilla `scale(1.5)`,
+    glowing full-block light, translucent layer, and
+    `LifetimeAlpha(0.0, 0.6, 0.25, 1.0)` at both runtime tick and partial-tick
+    vertex emission.
   - [x] `TotemParticle.Provider`：renderer descriptor now mirrors vanilla age
     sprite selection, command velocity, `0.75` quad-size multiplier,
     `60 + random.nextInt(12)` lifetime, translucent layer, `0.6` friction,

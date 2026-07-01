@@ -500,6 +500,7 @@ impl ParticleInstance {
             descriptor.provider,
             "FlyTowardsPositionParticle.EnchantProvider"
                 | "FlyTowardsPositionParticle.NautilusProvider"
+                | "FlyTowardsPositionParticle.VaultConnectionProvider"
         ) {
             position = [
                 command.position[0] + velocity[0],
@@ -511,6 +512,7 @@ impl ParticleInstance {
             descriptor.provider,
             "FlyTowardsPositionParticle.EnchantProvider"
                 | "FlyTowardsPositionParticle.NautilusProvider"
+                | "FlyTowardsPositionParticle.VaultConnectionProvider"
         ) {
             command.position
         } else {
@@ -679,6 +681,9 @@ impl ParticleInstance {
             ParticleAlphaCurve::ShriekFade => {
                 let lifetime = self.lifetime_ticks.max(1) as f32;
                 self.color[3] = 1.0 - (self.age_ticks as f32 / lifetime).clamp(0.0, 1.0);
+            }
+            ParticleAlphaCurve::VaultConnectionFade => {
+                self.color[3] = vault_connection_alpha(self.age_ticks, self.lifetime_ticks, 0.0);
             }
         }
     }
@@ -947,8 +952,21 @@ fn particle_render_color(instance: &ParticleInstance) -> [f32; 4] {
         color[3] = 1.0
             - ((instance.age_ticks as f32 + DEFAULT_PARTICLE_RENDER_PARTIAL_TICK) / lifetime)
                 .clamp(0.0, 1.0);
+    } else if instance.alpha_curve == ParticleAlphaCurve::VaultConnectionFade {
+        color[3] = vault_connection_alpha(
+            instance.age_ticks,
+            instance.lifetime_ticks,
+            DEFAULT_PARTICLE_RENDER_PARTIAL_TICK,
+        );
     }
     color
+}
+
+fn vault_connection_alpha(age_ticks: u32, lifetime_ticks: u32, partial_tick: f32) -> f32 {
+    let lifetime = lifetime_ticks.max(1) as f32;
+    let normalized = (age_ticks as f32 + partial_tick.clamp(0.0, 1.0)) / lifetime;
+    let time = ((normalized - 0.25) / 0.75).clamp(0.0, 1.0);
+    time * 0.6
 }
 
 fn particle_render_group_for_particle(_particle_id: &str) -> ParticleRenderGroup {
@@ -968,6 +986,7 @@ fn particle_render_layer_for_particle(particle_id: &str) -> ParticleRenderLayer 
         | "minecraft:sculk_charge"
         | "minecraft:sculk_charge_pop"
         | "minecraft:shriek"
+        | "minecraft:vault_connection"
         | "minecraft:infested"
         | "minecraft:raid_omen"
         | "minecraft:trial_omen"
@@ -1536,6 +1555,21 @@ mod tests {
     }
 
     #[test]
+    fn particle_runtime_vault_connection_alpha_follows_vanilla_lifetime_window() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:vault_connection", 40);
+        instance.age_ticks = 20;
+        instance.color[3] = 0.0;
+        particles.active_instances.push_back(instance);
+
+        particles.advance(1);
+
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 21);
+        assert_close_f32(instance.color[3], 0.22);
+    }
+
+    #[test]
     fn particle_runtime_sets_initial_sprite_from_spawn_command_sprites() {
         let mut particles = ParticleRuntimeState::with_capacities(4, 4);
         particles.submit_batch(ParticleSpawnBatch {
@@ -2098,6 +2132,37 @@ mod tests {
         assert_range_f32(nautilus.base_quad_size, 0.02, 0.07);
         assert!((30..=39).contains(&nautilus.lifetime_ticks));
 
+        let mut vault_random = ParticleRandom::new(86);
+        let mut vault_command = spawn_command("minecraft:vault_connection", 1.0);
+        vault_command.position = [1.0, 2.0, 3.0];
+        vault_command.velocity = [0.25, -0.5, 0.75];
+        let vault = ParticleInstance::from_spawn_command(vault_command, &mut vault_random);
+        assert_eq!(
+            vault.provider,
+            "FlyTowardsPositionParticle.VaultConnectionProvider"
+        );
+        assert_eq!(vault.sprite_selection, ParticleSpriteSelection::Random);
+        assert_eq!(vault.start_position, [1.0, 2.0, 3.0]);
+        assert_eq!(vault.previous_position, [1.25, 1.5, 3.75]);
+        assert_eq!(vault.position, [1.25, 1.5, 3.75]);
+        assert_eq!(vault.velocity, [0.25, -0.5, 0.75]);
+        assert_range_f32(vault.base_quad_size, 0.03, 0.105);
+        assert_close_f32(vault.color[0], vault.color[2] * 0.9);
+        assert_close_f32(vault.color[1], vault.color[2] * 0.9);
+        assert_eq!(vault.color[3], 0.0);
+        assert!((30..=39).contains(&vault.lifetime_ticks));
+        assert!(!vault.has_physics);
+        assert_eq!(
+            vault.tick_motion,
+            ParticleTickMotionDescriptor::FlyTowardsPosition
+        );
+        assert_eq!(vault.render_layer, ParticleRenderLayer::Translucent);
+        assert_eq!(vault.alpha_curve, ParticleAlphaCurve::VaultConnectionFade);
+        assert_eq!(
+            vault.light_emission,
+            ParticleLightEmissionDescriptor::FullBlock
+        );
+
         let mut totem_random = ParticleRandom::new(85);
         let mut totem_command = spawn_command("minecraft:totem_of_undying", 1.0);
         totem_command.velocity = [0.25, 0.5, -0.75];
@@ -2498,6 +2563,10 @@ mod tests {
             spawn_command("minecraft:totem_of_undying", 9.0),
             &mut random,
         );
+        let vault = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:vault_connection", 10.0),
+            &mut random,
+        );
 
         assert_eq!(opaque.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(cloud.render_group, ParticleRenderGroup::SingleQuads);
@@ -2508,6 +2577,7 @@ mod tests {
         assert_eq!(enchant.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(nautilus.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(totem.render_group, ParticleRenderGroup::SingleQuads);
+        assert_eq!(vault.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(opaque.render_layer, ParticleRenderLayer::Opaque);
         assert_eq!(cloud.render_layer, ParticleRenderLayer::Translucent);
         assert_eq!(squid_ink.render_layer, ParticleRenderLayer::Translucent);
@@ -2517,6 +2587,7 @@ mod tests {
         assert_eq!(current_down.render_layer, ParticleRenderLayer::Opaque);
         assert_eq!(enchant.render_layer, ParticleRenderLayer::Opaque);
         assert_eq!(nautilus.render_layer, ParticleRenderLayer::Opaque);
+        assert_eq!(vault.render_layer, ParticleRenderLayer::Translucent);
     }
 
     #[test]
@@ -2799,7 +2870,7 @@ mod tests {
     #[test]
     fn particle_runtime_applies_vanilla_particle_light_emission_overrides() {
         let sampled_light = [2.0 / 15.0, 7.0 / 15.0];
-        let mut particles = ParticleRuntimeState::with_capacities(13, 13);
+        let mut particles = ParticleRuntimeState::with_capacities(14, 14);
         let cloud = test_instance_with_lifetime("minecraft:cloud", 20);
         let mut flame = test_instance_with_lifetime("minecraft:flame", 20);
         flame.age_ticks = 4;
@@ -2818,6 +2889,7 @@ mod tests {
         let mut reverse_portal = test_instance_with_lifetime("minecraft:reverse_portal", 60);
         reverse_portal.age_ticks = 30;
         let shriek = test_instance_with_lifetime("minecraft:shriek", 30);
+        let vault_connection = test_instance_with_lifetime("minecraft:vault_connection", 40);
 
         particles.active_instances.push_back(cloud);
         particles.active_instances.push_back(flame);
@@ -2832,6 +2904,7 @@ mod tests {
         particles.active_instances.push_back(portal);
         particles.active_instances.push_back(reverse_portal);
         particles.active_instances.push_back(shriek);
+        particles.active_instances.push_back(vault_connection);
 
         particles.refresh_lights(|_| sampled_light);
 
@@ -2880,6 +2953,10 @@ mod tests {
             particles.active_instances()[12].light,
             [1.0, sampled_light[1]]
         );
+        assert_eq!(
+            particles.active_instances()[13].light,
+            [1.0, sampled_light[1]]
+        );
     }
 
     #[test]
@@ -2921,6 +2998,39 @@ mod tests {
         assert_eq!(vertices[5].uv, [0.25, 0.125]);
         assert_eq!(vertices[5].color, [0.25, 0.5, 0.75, 0.8]);
         assert_eq!(vertices[5].light, [0.4, 0.8]);
+    }
+
+    #[test]
+    fn particle_billboard_vertices_apply_vault_connection_lifetime_alpha() {
+        let mut instance = test_instance_with_lifetime("minecraft:vault_connection", 40);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.current_sprite_id = Some("minecraft:generic_0".to_string());
+        instance.base_quad_size = 0.4;
+        instance.color = [0.45, 0.45, 0.5, 0.0];
+        instance.age_ticks = 20;
+        let sprite_uvs = BTreeMap::from([(
+            "minecraft:generic_0".to_string(),
+            ParticleUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+        )]);
+
+        let vertices = particle_billboard_vertices(
+            [&instance],
+            &sprite_uvs,
+            ParticleBillboardAxes {
+                right: Vec3::X,
+                up: Vec3::Y,
+            },
+            Some(ParticlePipelineKind::Translucent),
+        );
+
+        assert_eq!(vertices.len(), 6);
+        assert_eq!(vertices[0].color[0], 0.45);
+        assert_eq!(vertices[0].color[1], 0.45);
+        assert_eq!(vertices[0].color[2], 0.5);
+        assert_close_f32(vertices[0].color[3], 0.21);
     }
 
     #[test]
