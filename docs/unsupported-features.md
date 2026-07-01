@@ -5885,7 +5885,7 @@ When an agent does any of the following, update this file in the same slice:
       when `minecraft:attribute` registry keys are available, plus `id`,
       `amount`, `operation`, `slot`, and `size` / `contains` / `count`.
       `minecraft:custom_data` now preserves decoded custom-data NBT compound
-      summaries and matches direct plus container-nested predicates with
+      summaries and matches direct plus bundle/container-nested predicates with
       vanilla `NbtUtils.compareNbt(..., true)` subset-compound and partial-list
       semantics for JSON-object predicate values.
       `minecraft:bundle_contents`
@@ -6090,7 +6090,7 @@ When an agent does any of the following, update this file in the same slice:
     keys, plus direct and container-nested attribute modifier predicates for
     decoded direct registry-key attribute / id / amount / operation / slot
     entries when the synced attribute registry is available, plus direct and
-    container-nested custom-data NBT compound predicates for JSON-object
+    bundle/container-nested custom-data NBT compound predicates for JSON-object
     expected values; broader component-codec and remaining constrained
     `DataComponentPredicate` parity remains the documented follow-up.
 

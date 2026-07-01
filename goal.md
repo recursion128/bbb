@@ -821,7 +821,7 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     available, plus `id`, `amount`, `operation`, `slot`, and `size` /
     `contains` / `count`. `minecraft:custom_data` now preserves decoded
     custom-data NBT compound summaries and matches direct plus
-    container-nested predicates with vanilla `NbtUtils.compareNbt(..., true)`
+    bundle/container-nested predicates with vanilla `NbtUtils.compareNbt(..., true)`
     subset-compound and partial-list semantics for JSON-object predicate values.
     `minecraft:bundle_contents`
     `items.size` constraints now match vanilla `CollectionPredicate.size`

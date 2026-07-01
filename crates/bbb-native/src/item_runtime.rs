@@ -8570,6 +8570,34 @@ mod tests {
             ),
             uv("component_condition_custom_data_absent")
         );
+        let bundle_custom_data_patch = |owner| DataComponentPatchSummary {
+            added_type_ids: vec![50],
+            bundle_contents_item_count: Some(1),
+            bundle_contents_items: vec![ItemStackTemplateSummary {
+                item_id: 0,
+                count: 1,
+                component_patch: custom_data_patch(owner),
+            }],
+            ..DataComponentPatchSummary::default()
+        };
+        assert_eq!(
+            selected(64, bundle_custom_data_patch("Alex")),
+            uv("component_condition_bundle_partial_custom_data_present")
+        );
+        assert_eq!(
+            selected(64, bundle_custom_data_patch("Steve")),
+            uv("component_condition_bundle_partial_custom_data_absent")
+        );
+        assert_eq!(
+            selected(
+                64,
+                DataComponentPatchSummary {
+                    removed_type_ids: vec![50],
+                    ..bundle_custom_data_patch("Alex")
+                }
+            ),
+            uv("component_condition_bundle_partial_custom_data_absent")
+        );
         let container_custom_data_patch = |owner| DataComponentPatchSummary {
             added_type_ids: vec![75],
             container_item_count: Some(1),
@@ -8581,11 +8609,11 @@ mod tests {
             ..DataComponentPatchSummary::default()
         };
         assert_eq!(
-            selected(64, container_custom_data_patch("Alex")),
+            selected(65, container_custom_data_patch("Alex")),
             uv("component_condition_container_partial_custom_data_present")
         );
         assert_eq!(
-            selected(64, container_custom_data_patch("Steve")),
+            selected(65, container_custom_data_patch("Steve")),
             uv("component_condition_container_partial_custom_data_absent")
         );
 
@@ -10143,6 +10171,7 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_ATTRIBUTE_MODIFIERS_ATTRIBUTE = registerItem("component_condition_attribute_modifiers_attribute");
                 public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_ATTRIBUTE_MODIFIERS_ATTRIBUTE = registerItem("component_condition_container_partial_attribute_modifiers_attribute");
                 public static final Item COMPONENT_CONDITION_CUSTOM_DATA = registerItem("component_condition_custom_data");
+                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_CUSTOM_DATA = registerItem("component_condition_bundle_partial_custom_data");
                 public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_CUSTOM_DATA = registerItem("component_condition_container_partial_custom_data");
             }"#,
         );
@@ -11915,6 +11944,45 @@ mod tests {
         write_json(
             &assets
                 .join("items")
+                .join("component_condition_bundle_partial_custom_data.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "predicates": {
+                                            "minecraft:custom_data": {
+                                                "owner": "Alex",
+                                                "nested": {
+                                                    "flag": true
+                                                },
+                                                "lore": ["two"]
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_custom_data_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_custom_data_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
                 .join("component_condition_container_partial_custom_data.json"),
             r#"{
                 "model": {
@@ -12647,6 +12715,14 @@ mod tests {
                 [245, 210, 120, 255],
             ),
             ("component_condition_custom_data_absent", [95, 70, 35, 255]),
+            (
+                "component_condition_bundle_partial_custom_data_present",
+                [245, 190, 120, 255],
+            ),
+            (
+                "component_condition_bundle_partial_custom_data_absent",
+                [95, 55, 35, 255],
+            ),
             (
                 "component_condition_container_partial_custom_data_present",
                 [245, 170, 120, 255],
