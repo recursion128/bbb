@@ -5868,7 +5868,11 @@ When an agent does any of the following, update this file in the same slice:
       now matches the optional `song` HolderSet against the decoded
       `JukeboxPlayable.song()` holder id through vanilla
       `JukeboxSongs.bootstrap` order, including direct vanilla registry keys and
-      native jukebox-song tag entries. `minecraft:bundle_contents`
+      native jukebox-song tag entries. `minecraft:potion_contents` now matches
+      vanilla `PotionsPredicate` HolderSets against the decoded
+      `PotionContents.potion()` holder id through vanilla `Potions`
+      registration order, including direct vanilla registry keys and native
+      potion tag entries. `minecraft:bundle_contents`
       `items.size` constraints match vanilla `CollectionPredicate.size` against
       the decoded bundle item count, and `items.contains` / `count` now support
       vanilla `ItemPredicate` direct item-key or item-tag HolderSets,
@@ -5876,13 +5880,13 @@ When an agent does any of the following, update this file in the same slice:
       components plus nested partial `minecraft:damage`,
       `minecraft:enchantments`, `minecraft:stored_enchantments`,
       `minecraft:firework_explosion`, `minecraft:fireworks`, `minecraft:trim`,
-      `minecraft:jukebox_playable`, and data-component AnyValue predicates over
-      decoded bundle entries.
+      `minecraft:jukebox_playable`, `minecraft:potion_contents`, and
+      data-component AnyValue predicates over decoded bundle entries.
       `minecraft:container` now decodes non-empty container entries and matches
       the same direct item-key / item-tag / stack-count / exact scalar component
       / nested partial damage, enchantments, stored-enchantments,
-      firework-explosion, fireworks, trim, jukebox-playable, and AnyValue
-      predicate collection subset.
+      firework-explosion, fireworks, trim, jukebox-playable, potion-contents,
+      and AnyValue predicate collection subset.
       `minecraft:fireworks`
       `explosions.contains` / `count` predicates now match decoded explosion
       shape / trail / twinkle summaries. `minecraft:trim` direct vanilla

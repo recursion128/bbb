@@ -79,6 +79,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub potion_custom_color: Option<i32>,
     #[serde(default)]
+    pub potion_id: Option<i32>,
+    #[serde(default)]
     pub firework_explosion_colors: Vec<i32>,
     #[serde(default)]
     pub firework_explosion_shape: Option<FireworkExplosionShapeSummary>,
@@ -484,7 +486,9 @@ fn decode_typed_data_component_patch_summary(
                 summary.bundle_contents_item_count = Some(summary.bundle_contents_items.len());
             }
             51 => {
-                summary.potion_custom_color = decode_potion_contents(decoder)?;
+                let potion = decode_potion_contents(decoder)?;
+                summary.potion_id = potion.potion_id;
+                summary.potion_custom_color = potion.custom_color;
             }
             68 => {
                 let explosion = decode_firework_explosion(decoder)?;
@@ -1542,17 +1546,27 @@ fn decode_swing_animation(decoder: &mut Decoder<'_>) -> Result<SwingAnimationSum
     })
 }
 
-fn decode_potion_contents(decoder: &mut Decoder<'_>) -> Result<Option<i32>> {
-    if decoder.read_bool()? {
-        decode_holder_registry(decoder)?;
-    }
+struct PotionContentsSummary {
+    potion_id: Option<i32>,
+    custom_color: Option<i32>,
+}
+
+fn decode_potion_contents(decoder: &mut Decoder<'_>) -> Result<PotionContentsSummary> {
+    let potion_id = if decoder.read_bool()? {
+        Some(decoder.read_var_i32()?)
+    } else {
+        None
+    };
     let custom_color = decode_optional_i32_value(decoder)?;
     let effects = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
     for _ in 0..effects {
         decode_mob_effect_instance(decoder)?;
     }
     decode_optional_string(decoder, MAX_STRING_CHARS)?;
-    Ok(custom_color)
+    Ok(PotionContentsSummary {
+        potion_id,
+        custom_color,
+    })
 }
 
 fn decode_suspicious_stew_effects(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -2838,6 +2852,7 @@ mod tests {
                     duration: 6,
                 }),
                 potion_custom_color: Some(0x778899),
+                potion_id: Some(3),
                 firework_explosion_colors: vec![0x010203, 0x040506],
                 firework_explosion_shape: Some(FireworkExplosionShapeSummary::Star),
                 firework_explosion_has_trail: Some(true),

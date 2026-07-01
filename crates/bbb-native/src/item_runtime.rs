@@ -348,6 +348,7 @@ pub(crate) struct NativeItemRuntime {
     trim_material_tags: Option<TagCatalog>,
     trim_pattern_tags: Option<TagCatalog>,
     jukebox_song_tags: Option<TagCatalog>,
+    potion_tags: Option<TagCatalog>,
     equipment_assets: EquipmentAssetCatalog,
     language: LanguageCatalog,
     map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
@@ -461,6 +462,14 @@ impl NativeItemRuntime {
                 err
             })
             .ok();
+        let potion_tags = roots
+            .load_tag_catalog("potion")
+            .context("load native potion tags")
+            .map_err(|err| {
+                tracing::warn!(?err, "continuing without native potion tag catalog");
+                err
+            })
+            .ok();
         let equipment_assets = roots
             .load_equipment_asset_catalog()
             .context("load equipment asset catalog")
@@ -513,6 +522,7 @@ impl NativeItemRuntime {
             trim_material_tags,
             trim_pattern_tags,
             jukebox_song_tags,
+            potion_tags,
             roots.resource_stack(),
         )
     }
@@ -536,6 +546,7 @@ impl NativeItemRuntime {
         trim_material_tags: Option<TagCatalog>,
         trim_pattern_tags: Option<TagCatalog>,
         jukebox_song_tags: Option<TagCatalog>,
+        potion_tags: Option<TagCatalog>,
         profile_texture_resources: PackResourceStack,
     ) -> Result<Self> {
         let mut texture_ids = BTreeSet::new();
@@ -618,6 +629,7 @@ impl NativeItemRuntime {
             trim_material_tags,
             trim_pattern_tags,
             jukebox_song_tags,
+            potion_tags,
             equipment_assets,
             language,
             map_decoration_textures,
@@ -656,6 +668,7 @@ impl NativeItemRuntime {
             trim_material_tags: None,
             trim_pattern_tags: None,
             jukebox_song_tags: None,
+            potion_tags: None,
             equipment_assets: EquipmentAssetCatalog::default(),
             language: LanguageCatalog::from_json_bytes(b"{}").expect("empty test language"),
             map_decoration_textures: Vec::new(),
@@ -1448,6 +1461,7 @@ impl NativeItemRuntime {
                             trim_material_tags: self.trim_material_tags.as_ref(),
                             trim_pattern_tags: self.trim_pattern_tags.as_ref(),
                             jukebox_song_tags: self.jukebox_song_tags.as_ref(),
+                            potion_tags: self.potion_tags.as_ref(),
                             trim_material_keys: None,
                             enchantment_keys: None,
                         })
@@ -2210,6 +2224,7 @@ impl NativeItemRuntime {
             trim_material_tags: self.trim_material_tags.as_ref(),
             trim_pattern_tags: self.trim_pattern_tags.as_ref(),
             jukebox_song_tags: self.jukebox_song_tags.as_ref(),
+            potion_tags: self.potion_tags.as_ref(),
             trim_material_keys,
             enchantment_keys,
         };
@@ -2374,6 +2389,7 @@ impl NativeItemRuntime {
             trim_material_tags: parent_context.trim_material_tags,
             trim_pattern_tags: parent_context.trim_pattern_tags,
             jukebox_song_tags: parent_context.jukebox_song_tags,
+            potion_tags: parent_context.potion_tags,
             trim_material_keys: parent_context.trim_material_keys,
             enchantment_keys: parent_context.enchantment_keys,
         };
@@ -5654,6 +5670,7 @@ mod tests {
             "minecraft:sharpness".to_string(),
             "minecraft:mending".to_string(),
         ];
+        let healing_potion_id = 24;
         let selected_with_trim_keys = |item_id, component_patch| {
             runtime
                 .icon_for_stack_with_context(
@@ -7791,6 +7808,144 @@ mod tests {
             ),
             uv("component_condition_container_partial_jukebox_playable_absent")
         );
+        assert_eq!(
+            selected(49, DataComponentPatchSummary::default()),
+            uv("component_condition_potion_contents_absent")
+        );
+        assert_eq!(
+            selected(
+                49,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![51],
+                    potion_id: Some(healing_potion_id),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_potion_contents_present")
+        );
+        assert_eq!(
+            selected(
+                49,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![51],
+                    potion_id: Some(0),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_potion_contents_absent")
+        );
+        assert_eq!(
+            selected(
+                49,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![51],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_potion_contents_absent")
+        );
+        assert_eq!(
+            selected(
+                50,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            added_type_ids: vec![51],
+                            potion_id: Some(healing_potion_id),
+                            ..DataComponentPatchSummary::default()
+                        },
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_partial_potion_contents_present")
+        );
+        assert_eq!(
+            selected(
+                50,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            added_type_ids: vec![51],
+                            potion_id: Some(0),
+                            ..DataComponentPatchSummary::default()
+                        },
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_partial_potion_contents_absent")
+        );
+        assert_eq!(
+            selected(
+                51,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(2),
+                    container_items: vec![
+                        ItemStackTemplateSummary {
+                            item_id: 0,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![51],
+                                potion_id: Some(healing_potion_id),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                        ItemStackTemplateSummary {
+                            item_id: 1,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![51],
+                                potion_id: Some(healing_potion_id),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_partial_potion_contents_present")
+        );
+        assert_eq!(
+            selected(
+                51,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(2),
+                    container_items: vec![
+                        ItemStackTemplateSummary {
+                            item_id: 0,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![51],
+                                potion_id: Some(healing_potion_id),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                        ItemStackTemplateSummary {
+                            item_id: 1,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![51],
+                                potion_id: Some(0),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_partial_potion_contents_absent")
+        );
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -9331,6 +9486,9 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_JUKEBOX_PLAYABLE_SONG = registerItem("component_condition_jukebox_playable_song");
                 public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_JUKEBOX_PLAYABLE = registerItem("component_condition_bundle_partial_jukebox_playable");
                 public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_JUKEBOX_PLAYABLE = registerItem("component_condition_container_partial_jukebox_playable");
+                public static final Item COMPONENT_CONDITION_POTION_CONTENTS = registerItem("component_condition_potion_contents");
+                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_POTION_CONTENTS = registerItem("component_condition_bundle_partial_potion_contents");
+                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_POTION_CONTENTS = registerItem("component_condition_container_partial_potion_contents");
             }"#,
         );
         write_json(
@@ -9406,6 +9564,21 @@ mod tests {
             r#"{
                 "values": [
                     "minecraft:cat"
+                ]
+            }"#,
+        );
+        write_json(
+            &root
+                .join("sources")
+                .join(bbb_pack::MC_VERSION)
+                .join("data")
+                .join("minecraft")
+                .join("tags")
+                .join("potion")
+                .join("component_condition_potions.json"),
+            r#"{
+                "values": [
+                    "minecraft:healing"
                 ]
             }"#,
         );
@@ -10288,6 +10461,79 @@ mod tests {
         write_json(
             &assets
                 .join("items")
+                .join("component_condition_bundle_partial_potion_contents.json"),
+            r##"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "predicates": {
+                                            "minecraft:potion_contents": "#minecraft:component_condition_potions"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_potion_contents_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_potion_contents_absent"
+                    }
+                }
+            }"##,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_container_partial_potion_contents.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:container",
+                    "value": {
+                        "items": {
+                            "count": [
+                                {
+                                    "test": {
+                                        "components": {
+                                            "predicates": {
+                                                "minecraft:potion_contents": [
+                                                    "minecraft:healing"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "count": {
+                                        "min": 2
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_potion_contents_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_potion_contents_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
                 .join("component_condition_firework_explosion_star.json"),
             r#"{
                 "model": {
@@ -10536,6 +10782,27 @@ mod tests {
                     "on_false": {
                         "type": "minecraft:model",
                         "model": "minecraft:item/component_condition_jukebox_playable_song_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_potion_contents.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:potion_contents",
+                    "value": "minecraft:healing",
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_potion_contents_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_potion_contents_absent"
                     }
                 }
             }"#,
@@ -11118,6 +11385,30 @@ mod tests {
             (
                 "component_condition_container_partial_jukebox_playable_absent",
                 [45, 90, 70, 255],
+            ),
+            (
+                "component_condition_potion_contents_present",
+                [245, 170, 210, 255],
+            ),
+            (
+                "component_condition_potion_contents_absent",
+                [90, 45, 70, 255],
+            ),
+            (
+                "component_condition_bundle_partial_potion_contents_present",
+                [245, 170, 245, 255],
+            ),
+            (
+                "component_condition_bundle_partial_potion_contents_absent",
+                [90, 45, 90, 255],
+            ),
+            (
+                "component_condition_container_partial_potion_contents_present",
+                [170, 245, 245, 255],
+            ),
+            (
+                "component_condition_container_partial_potion_contents_absent",
+                [45, 90, 90, 255],
             ),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);

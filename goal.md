@@ -804,20 +804,25 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     tag catalog. `minecraft:jukebox_playable` now matches the optional `song`
     HolderSet against the decoded `JukeboxPlayable.song()` holder id through
     vanilla `JukeboxSongs.bootstrap` order, including direct vanilla registry
-    keys and native jukebox-song tag entries. `minecraft:bundle_contents`
+    keys and native jukebox-song tag entries. `minecraft:potion_contents` now
+    matches vanilla `PotionsPredicate` HolderSets against the decoded
+    `PotionContents.potion()` holder id through vanilla `Potions` registration
+    order, including direct vanilla registry keys and native potion tag entries.
+    `minecraft:bundle_contents`
     `items.size` constraints now match vanilla `CollectionPredicate.size`
     against the decoded bundle item count, and `items.contains` / `count`
     now support vanilla `ItemPredicate` direct item-key or item-tag HolderSets,
     stack-count bounds, and exact scalar/default `DataComponentMatchers`
     components plus nested partial `minecraft:damage`, `minecraft:enchantments`,
     `minecraft:stored_enchantments`, `minecraft:firework_explosion`,
-    `minecraft:fireworks`, `minecraft:trim`, `minecraft:jukebox_playable`, and
-    data-component AnyValue predicates over decoded bundle entries.
+    `minecraft:fireworks`, `minecraft:trim`, `minecraft:jukebox_playable`,
+    `minecraft:potion_contents`, and data-component AnyValue predicates over
+    decoded bundle entries.
     `minecraft:container` now decodes non-empty container entries and matches
     the same direct item-key / item-tag / stack-count / exact scalar component /
     nested partial damage, enchantments, stored-enchantments,
-    firework-explosion, fireworks, trim, jukebox-playable, and AnyValue
-    predicate collection subset.
+    firework-explosion, fireworks, trim, jukebox-playable, potion-contents, and
+    AnyValue predicate collection subset.
     `minecraft:enchantments` and patch-backed
     `minecraft:stored_enchantments` now match decoded enchantment levels and
     direct registry-key or enchantment-tag HolderSet predicates when the

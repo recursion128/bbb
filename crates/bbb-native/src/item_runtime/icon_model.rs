@@ -83,6 +83,54 @@ const VANILLA_JUKEBOX_SONG_KEYS: &[&str] = &[
     "minecraft:tears",
     "minecraft:lava_chicken",
 ];
+const VANILLA_POTION_KEYS: &[&str] = &[
+    "minecraft:water",
+    "minecraft:mundane",
+    "minecraft:thick",
+    "minecraft:awkward",
+    "minecraft:night_vision",
+    "minecraft:long_night_vision",
+    "minecraft:invisibility",
+    "minecraft:long_invisibility",
+    "minecraft:leaping",
+    "minecraft:long_leaping",
+    "minecraft:strong_leaping",
+    "minecraft:fire_resistance",
+    "minecraft:long_fire_resistance",
+    "minecraft:swiftness",
+    "minecraft:long_swiftness",
+    "minecraft:strong_swiftness",
+    "minecraft:slowness",
+    "minecraft:long_slowness",
+    "minecraft:strong_slowness",
+    "minecraft:turtle_master",
+    "minecraft:long_turtle_master",
+    "minecraft:strong_turtle_master",
+    "minecraft:water_breathing",
+    "minecraft:long_water_breathing",
+    "minecraft:healing",
+    "minecraft:strong_healing",
+    "minecraft:harming",
+    "minecraft:strong_harming",
+    "minecraft:poison",
+    "minecraft:long_poison",
+    "minecraft:strong_poison",
+    "minecraft:regeneration",
+    "minecraft:long_regeneration",
+    "minecraft:strong_regeneration",
+    "minecraft:strength",
+    "minecraft:long_strength",
+    "minecraft:strong_strength",
+    "minecraft:weakness",
+    "minecraft:long_weakness",
+    "minecraft:luck",
+    "minecraft:slow_falling",
+    "minecraft:long_slow_falling",
+    "minecraft:wind_charged",
+    "minecraft:weaving",
+    "minecraft:oozing",
+    "minecraft:infested",
+];
 const VANILLA_DEFAULT_MAX_STACK_SIZE: i32 = 64;
 const VANILLA_ABSOLUTE_MAX_STACK_SIZE: i32 = 99;
 
@@ -918,6 +966,9 @@ pub(super) struct IconResolveContext<'a> {
     /// `tags/jukebox_song` catalog used for `#namespace:path` HolderSet
     /// entries in vanilla `JukeboxPlayablePredicate.song`.
     pub jukebox_song_tags: Option<&'a TagCatalog>,
+    /// `tags/potion` catalog used for `#namespace:path` HolderSet entries in
+    /// vanilla `PotionsPredicate`.
+    pub potion_tags: Option<&'a TagCatalog>,
     /// `minecraft:trim_material` registry keys by holder id (the dynamic
     /// registry, projected from `bbb-world` at the call site).
     pub trim_material_keys: Option<&'a [String]>,
@@ -1593,6 +1644,13 @@ fn item_stack_matches_component_predicate(
             ctx.jukebox_song_tags,
         );
     }
+    if potion_contents_component_predicate_is_supported(property) {
+        return item_stack_matches_potion_contents_predicate(
+            property,
+            ctx.component_patch,
+            ctx.potion_tags,
+        );
+    }
     if let Some(component_id) = empty_single_component_predicate_id(property) {
         return item_stack_has_component_id(
             component_id,
@@ -1629,6 +1687,7 @@ fn component_condition_is_runtime_resolved(property: &ItemModelProperty) -> bool
         || fireworks_component_predicate_is_supported(property)
         || trim_component_predicate_is_supported(property)
         || jukebox_playable_component_predicate_is_supported(property)
+        || potion_contents_component_predicate_is_supported(property)
         || empty_single_component_predicate_id(property).is_some()
         || component_condition_any_value_component_id(property).is_some()
 }
@@ -1957,6 +2016,7 @@ fn item_stack_matches_bundle_contents_predicate(
         ctx.trim_material_tags,
         ctx.trim_pattern_tags,
         ctx.jukebox_song_tags,
+        ctx.potion_tags,
         ctx.default_max_stack_size_for_item,
         ctx.default_max_damage_for_item,
     )
@@ -2017,6 +2077,7 @@ fn item_stack_matches_container_predicate(
         ctx.trim_material_tags,
         ctx.trim_pattern_tags,
         ctx.jukebox_song_tags,
+        ctx.potion_tags,
         ctx.default_max_stack_size_for_item,
         ctx.default_max_damage_for_item,
     )
@@ -2138,6 +2199,7 @@ fn item_partial_component_predicate_is_supported(predicate: &str, value: &Value)
         _ if enchantments_component_predicate_kind_from_parts(predicate, value).is_some() => true,
         "minecraft:trim" => trim_predicate_value_is_supported(value),
         "minecraft:jukebox_playable" => jukebox_playable_predicate_value_is_supported(value),
+        "minecraft:potion_contents" => potion_contents_predicate_value_is_supported(value),
         "minecraft:firework_explosion" => firework_explosion_predicate_is_supported(value),
         "minecraft:fireworks" => fireworks_predicate_value_is_supported(value),
         _ => {
@@ -2187,6 +2249,7 @@ fn item_collection_predicate_matches(
     trim_material_tags: Option<&TagCatalog>,
     trim_pattern_tags: Option<&TagCatalog>,
     jukebox_song_tags: Option<&TagCatalog>,
+    potion_tags: Option<&TagCatalog>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
@@ -2210,6 +2273,7 @@ fn item_collection_predicate_matches(
                     trim_material_tags,
                     trim_pattern_tags,
                     jukebox_song_tags,
+                    potion_tags,
                     default_max_stack_size_for_item,
                     default_max_damage_for_item,
                 )
@@ -2234,6 +2298,7 @@ fn item_collection_predicate_matches(
                 trim_material_tags,
                 trim_pattern_tags,
                 jukebox_song_tags,
+                potion_tags,
                 default_max_stack_size_for_item,
                 default_max_damage_for_item,
             )
@@ -2266,6 +2331,7 @@ fn item_predicate_count_entry_matches(
     trim_material_tags: Option<&TagCatalog>,
     trim_pattern_tags: Option<&TagCatalog>,
     jukebox_song_tags: Option<&TagCatalog>,
+    potion_tags: Option<&TagCatalog>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
@@ -2289,6 +2355,7 @@ fn item_predicate_count_entry_matches(
                 trim_material_tags,
                 trim_pattern_tags,
                 jukebox_song_tags,
+                potion_tags,
                 default_max_stack_size_for_item,
                 default_max_damage_for_item,
             )
@@ -2311,6 +2378,7 @@ fn item_predicate_matches(
     trim_material_tags: Option<&TagCatalog>,
     trim_pattern_tags: Option<&TagCatalog>,
     jukebox_song_tags: Option<&TagCatalog>,
+    potion_tags: Option<&TagCatalog>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
@@ -2350,6 +2418,7 @@ fn item_predicate_matches(
             trim_material_tags,
             trim_pattern_tags,
             jukebox_song_tags,
+            potion_tags,
             default_max_stack_size_for_item,
             default_max_damage_for_item,
         ) {
@@ -2369,6 +2438,7 @@ fn item_data_component_matchers_match(
     trim_material_tags: Option<&TagCatalog>,
     trim_pattern_tags: Option<&TagCatalog>,
     jukebox_song_tags: Option<&TagCatalog>,
+    potion_tags: Option<&TagCatalog>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
@@ -2397,6 +2467,7 @@ fn item_data_component_matchers_match(
             trim_material_tags,
             trim_pattern_tags,
             jukebox_song_tags,
+            potion_tags,
             default_max_damage_for_item,
         ) {
             return false;
@@ -2445,6 +2516,7 @@ fn item_partial_component_predicates_match(
     trim_material_tags: Option<&TagCatalog>,
     trim_pattern_tags: Option<&TagCatalog>,
     jukebox_song_tags: Option<&TagCatalog>,
+    potion_tags: Option<&TagCatalog>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
     let Some(predicates) = value.as_object() else {
@@ -2465,6 +2537,7 @@ fn item_partial_component_predicates_match(
             trim_material_tags,
             trim_pattern_tags,
             jukebox_song_tags,
+            potion_tags,
         )
     })
 }
@@ -2481,6 +2554,7 @@ fn item_partial_component_predicate_match(
     trim_material_tags: Option<&TagCatalog>,
     trim_pattern_tags: Option<&TagCatalog>,
     jukebox_song_tags: Option<&TagCatalog>,
+    potion_tags: Option<&TagCatalog>,
 ) -> bool {
     match predicate {
         "minecraft:damage" => {
@@ -2499,6 +2573,9 @@ fn item_partial_component_predicate_match(
         "minecraft:fireworks" => item_stack_matches_fireworks_value(value, component_patch),
         "minecraft:jukebox_playable" => {
             item_stack_matches_jukebox_playable_value(value, component_patch, jukebox_song_tags)
+        }
+        "minecraft:potion_contents" => {
+            item_stack_matches_potion_contents_value(value, component_patch, potion_tags)
         }
         _ if let Some(kind) =
             enchantments_component_predicate_kind_from_parts(predicate, value) =>
@@ -2787,6 +2864,63 @@ fn item_stack_matches_jukebox_playable_value(
         return false;
     };
     registry_key_holder_set_matches(Some(song), song_key, jukebox_song_tags)
+}
+
+fn potion_contents_component_predicate_is_supported(property: &ItemModelProperty) -> bool {
+    if component_condition_predicate(property) != Some("minecraft:potion_contents") {
+        return false;
+    }
+    let Some(value) = property.raw().get("value") else {
+        return false;
+    };
+    potion_contents_predicate_value_is_supported(value)
+}
+
+fn potion_contents_predicate_value_is_supported(value: &Value) -> bool {
+    registry_key_holder_set_is_supported(value)
+}
+
+fn item_stack_matches_potion_contents_predicate(
+    property: &ItemModelProperty,
+    component_patch: Option<&DataComponentPatchSummary>,
+    potion_tags: Option<&TagCatalog>,
+) -> bool {
+    if !potion_contents_component_predicate_is_supported(property) {
+        return false;
+    }
+    let Some(value) = property.raw().get("value") else {
+        return false;
+    };
+    item_stack_matches_potion_contents_value(value, component_patch, potion_tags)
+}
+
+fn item_stack_matches_potion_contents_value(
+    value: &Value,
+    component_patch: Option<&DataComponentPatchSummary>,
+    potion_tags: Option<&TagCatalog>,
+) -> bool {
+    let Some(component_patch) = component_patch else {
+        return false;
+    };
+    if component_patch
+        .removed_type_ids
+        .contains(&POTION_CONTENTS_COMPONENT_ID)
+        || !component_patch
+            .added_type_ids
+            .contains(&POTION_CONTENTS_COMPONENT_ID)
+    {
+        return false;
+    }
+    let Some(potion_id) = component_patch.potion_id else {
+        return false;
+    };
+    let Ok(potion_index) = usize::try_from(potion_id) else {
+        return false;
+    };
+    let Some(potion_key) = VANILLA_POTION_KEYS.get(potion_index) else {
+        return false;
+    };
+    registry_key_holder_set_matches(Some(value), potion_key, potion_tags)
 }
 
 fn registry_key_holder_set_matches(
