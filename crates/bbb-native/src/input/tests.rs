@@ -2360,9 +2360,11 @@ fn anvil_text_input_starts_from_written_book_title_without_item_runtime() {
     let mut stack = test_item_stack(42, 1);
     stack.component_patch.written_book = Some(WrittenBookContentSummary {
         title: "Book Title".to_string(),
+        title_filter: None,
         author: "Author".to_string(),
         generation: 0,
         pages: Vec::new(),
+        page_filters: Vec::new(),
         resolved: true,
     });
     stack.component_patch.item_name = Some("Ignored Item Name".to_string());
@@ -2390,9 +2392,11 @@ fn anvil_text_input_starts_from_decoded_item_name_without_item_runtime() {
     let mut stack = test_item_stack(42, 1);
     stack.component_patch.written_book = Some(WrittenBookContentSummary {
         title: "   ".to_string(),
+        title_filter: None,
         author: "Author".to_string(),
         generation: 0,
         pages: Vec::new(),
+        page_filters: Vec::new(),
         resolved: true,
     });
     stack.component_patch.item_name = Some("Component Item".to_string());
@@ -5121,11 +5125,15 @@ fn test_item_stack(item_id: i32, count: i32) -> ProtocolItemStackSummary {
 
 fn open_test_book_screen(world: &mut WorldStore, pages: Vec<&str>) {
     let mut stack = test_item_stack(42, 1);
+    let pages: Vec<String> = pages.into_iter().map(str::to_string).collect();
+    let page_filters = vec![None; pages.len()];
     stack.component_patch.written_book = Some(WrittenBookContentSummary {
         title: "Guide".to_string(),
+        title_filter: None,
         author: "Alex".to_string(),
         generation: 0,
-        pages: pages.into_iter().map(str::to_string).collect(),
+        pages,
+        page_filters,
         resolved: true,
     });
     world.apply_set_player_inventory(ProtocolSetPlayerInventory {

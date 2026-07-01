@@ -2493,6 +2493,8 @@ fn item_exact_component_is_supported(component: &str, expected: &Value) -> bool 
             && potion_contents_exact_value(expected).is_some())
         || (component == "minecraft:writable_book_content"
             && writable_book_exact_value(expected).is_some())
+        || (component == "minecraft:written_book_content"
+            && written_book_exact_value(expected).is_some())
         || (component == "minecraft:firework_explosion"
             && firework_explosion_exact_value(expected).is_some())
         || (component == "minecraft:fireworks" && fireworks_exact_value(expected).is_some())
@@ -3913,6 +3915,13 @@ fn item_exact_component_matches(
         return writable_book_exact_match(&expected, &item.component_patch);
     }
 
+    if component == "minecraft:written_book_content" {
+        let Some(expected) = written_book_exact_value(expected) else {
+            return false;
+        };
+        return written_book_exact_match(&expected, &item.component_patch);
+    }
+
     if component == "minecraft:firework_explosion" {
         let Some(expected) = firework_explosion_exact_value(expected) else {
             return false;
@@ -4659,6 +4668,111 @@ fn writable_book_exact_match(
                 .iter()
                 .zip(&component_patch.writable_book_page_filters),
         )
+        .all(|(expected, (actual_raw, actual_filtered))| {
+            actual_raw == expected.raw && actual_filtered.as_deref() == expected.filtered
+        })
+}
+
+struct ExactWrittenBookContent<'a> {
+    title: ExactFilterableString<'a>,
+    author: &'a str,
+    generation: i32,
+    pages: Vec<ExactFilterableString<'a>>,
+    resolved: bool,
+}
+
+fn written_book_exact_value(value: &Value) -> Option<ExactWrittenBookContent<'_>> {
+    let value = value.as_object()?;
+    if !value.keys().all(|key| {
+        key == "title"
+            || key == "author"
+            || key == "generation"
+            || key == "pages"
+            || key == "resolved"
+    }) {
+        return None;
+    }
+    let generation = match value.get("generation") {
+        None => 0,
+        Some(generation) => {
+            let generation = json_i32(generation)?;
+            if !(0..=3).contains(&generation) {
+                return None;
+            }
+            generation
+        }
+    };
+    let pages = match value.get("pages") {
+        None => Vec::new(),
+        Some(Value::Array(pages)) => pages
+            .iter()
+            .map(exact_filterable_component_text_value)
+            .collect::<Option<Vec<_>>>()?,
+        Some(_) => return None,
+    };
+    let resolved = match value.get("resolved") {
+        None => false,
+        Some(Value::Bool(resolved)) => *resolved,
+        Some(_) => return None,
+    };
+    Some(ExactWrittenBookContent {
+        title: exact_filterable_string_value(value.get("title")?)?,
+        author: value.get("author")?.as_str()?,
+        generation,
+        pages,
+        resolved,
+    })
+}
+
+fn exact_filterable_component_text_value(value: &Value) -> Option<ExactFilterableString<'_>> {
+    if let Value::Object(value) = value {
+        if value.keys().all(|key| key == "raw" || key == "filtered") && value.contains_key("raw") {
+            let filtered = match value.get("filtered") {
+                None => None,
+                Some(filtered) => Some(simple_component_text(filtered)?),
+            };
+            return Some(ExactFilterableString {
+                raw: simple_component_text(value.get("raw")?)?,
+                filtered,
+            });
+        }
+    }
+    Some(ExactFilterableString {
+        raw: simple_component_text(value)?,
+        filtered: None,
+    })
+}
+
+fn written_book_exact_match(
+    expected: &ExactWrittenBookContent<'_>,
+    component_patch: &DataComponentPatchSummary,
+) -> bool {
+    if component_patch
+        .removed_type_ids
+        .contains(&WRITTEN_BOOK_CONTENT_COMPONENT_ID)
+        || !component_patch
+            .added_type_ids
+            .contains(&WRITTEN_BOOK_CONTENT_COMPONENT_ID)
+    {
+        return false;
+    }
+    let Some(book) = component_patch.written_book.as_ref() else {
+        return false;
+    };
+    if book.title != expected.title.raw
+        || book.title_filter.as_deref() != expected.title.filtered
+        || book.author != expected.author
+        || book.generation != expected.generation
+        || book.resolved != expected.resolved
+        || book.pages.len() != expected.pages.len()
+        || book.page_filters.len() != expected.pages.len()
+    {
+        return false;
+    }
+    expected
+        .pages
+        .iter()
+        .zip(book.pages.iter().zip(&book.page_filters))
         .all(|(expected, (actual_raw, actual_filtered))| {
             actual_raw == expected.raw && actual_filtered.as_deref() == expected.filtered
         })

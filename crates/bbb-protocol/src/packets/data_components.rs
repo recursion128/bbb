@@ -336,9 +336,13 @@ pub struct AttributeModifierSummary {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WrittenBookContentSummary {
     pub title: String,
+    #[serde(default)]
+    pub title_filter: Option<String>,
     pub author: String,
     pub generation: i32,
     pub pages: Vec<String>,
+    #[serde(default)]
+    pub page_filters: Vec<Option<String>>,
     pub resolved: bool,
 }
 
@@ -1882,20 +1886,25 @@ fn decode_writable_book_content(decoder: &mut Decoder<'_>) -> Result<WritableBoo
 }
 
 fn decode_written_book_content(decoder: &mut Decoder<'_>) -> Result<WrittenBookContentSummary> {
-    let title = decode_filterable_string(decoder, MAX_WRITTEN_BOOK_TITLE_CHARS)?;
+    let title = decode_filterable_string_summary(decoder, MAX_WRITTEN_BOOK_TITLE_CHARS)?;
     let author = decoder.read_string(MAX_STRING_CHARS)?;
     let generation = decoder.read_var_i32()?;
     let pages = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    let mut out = Vec::with_capacity(pages);
+    let mut page_values = Vec::with_capacity(pages);
+    let mut page_filters = Vec::with_capacity(pages);
     for _ in 0..pages {
-        out.push(decode_filterable_component(decoder)?);
+        let page = decode_filterable_component_summary(decoder)?;
+        page_values.push(page.raw);
+        page_filters.push(page.filtered);
     }
     let resolved = decoder.read_bool()?;
     Ok(WrittenBookContentSummary {
-        title,
+        title: title.raw,
+        title_filter: title.filtered,
         author,
         generation,
-        pages: out,
+        pages: page_values,
+        page_filters,
         resolved,
     })
 }
@@ -1903,10 +1912,6 @@ fn decode_written_book_content(decoder: &mut Decoder<'_>) -> Result<WrittenBookC
 struct FilterableStringSummary {
     raw: String,
     filtered: Option<String>,
-}
-
-fn decode_filterable_string(decoder: &mut Decoder<'_>, max_chars: usize) -> Result<String> {
-    Ok(decode_filterable_string_summary(decoder, max_chars)?.raw)
 }
 
 fn decode_filterable_string_summary(
@@ -1918,12 +1923,16 @@ fn decode_filterable_string_summary(
     Ok(FilterableStringSummary { raw, filtered })
 }
 
-fn decode_filterable_component(decoder: &mut Decoder<'_>) -> Result<String> {
+fn decode_filterable_component_summary(
+    decoder: &mut Decoder<'_>,
+) -> Result<FilterableStringSummary> {
     let raw = decode_component_summary_from_decoder(decoder)?;
-    if decoder.read_bool()? {
-        decode_component_summary_from_decoder(decoder)?;
-    }
-    Ok(raw)
+    let filtered = if decoder.read_bool()? {
+        Some(decode_component_summary_from_decoder(decoder)?)
+    } else {
+        None
+    };
+    Ok(FilterableStringSummary { raw, filtered })
 }
 
 fn decode_optional_component(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -3249,9 +3258,11 @@ mod tests {
                 writable_book_page_filters: vec![Some("filtered page".to_string())],
                 written_book: Some(WrittenBookContentSummary {
                     title: "Title".to_string(),
+                    title_filter: None,
                     author: "Author".to_string(),
                     generation: 1,
                     pages: vec!["Page".to_string()],
+                    page_filters: vec![Some("Filtered".to_string())],
                     resolved: true,
                 }),
                 charged_projectiles_items: vec![
@@ -3302,7 +3313,7 @@ mod tests {
         write_filterable_string(&mut payload, "second raw", Some("second filtered"));
 
         payload.write_var_i32(55);
-        write_filterable_string(&mut payload, "Guide", None);
+        write_filterable_string(&mut payload, "Guide", Some("Filtered Guide"));
         payload.write_string("Alex");
         payload.write_var_i32(2);
         payload.write_var_i32(2);
@@ -3327,9 +3338,11 @@ mod tests {
                 writable_book_page_filters: vec![None, Some("second filtered".to_string())],
                 written_book: Some(WrittenBookContentSummary {
                     title: "Guide".to_string(),
+                    title_filter: Some("Filtered Guide".to_string()),
                     author: "Alex".to_string(),
                     generation: 2,
                     pages: vec!["Chapter one".to_string(), "Raw chapter two".to_string()],
+                    page_filters: vec![None, Some("Filtered chapter two".to_string())],
                     resolved: true,
                 }),
                 ..DataComponentPatchSummary::default()

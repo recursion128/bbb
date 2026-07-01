@@ -5908,7 +5908,9 @@ When an agent does any of the following, update this file in the same slice:
       direct potion keys, optional `custom_color`, empty `custom_effects`, and
       optional `custom_name`, plus exact `minecraft:writable_book_content`
       ordered `Filterable<String>` page lists with raw and optional filtered
-      strings, plus exact `minecraft:firework_explosion` components for
+      strings, plus exact `minecraft:written_book_content` components for raw
+      / filtered title strings and ordered simple literal component pages, plus
+      exact `minecraft:firework_explosion` components for
       `shape`, ordered `colors`, ordered `fade_colors`, `has_trail`, and
       `has_twinkle`, plus exact `minecraft:fireworks` components for
       `flight_duration` and ordered explosion lists, plus nested partial
@@ -5961,7 +5963,10 @@ When an agent does any of the following, update this file in the same slice:
       target `GlobalPos` and `tracked` flag. Exact
       `minecraft:attribute_modifiers` components now compare decoded ordered
       modifier entries against direct attribute registry keys, numeric amount,
-      operation, slot, and default / hidden display kind. Remaining
+      operation, slot, and default / hidden display kind. Exact
+      `minecraft:written_book_content` components now compare decoded raw /
+      filtered title strings, author, generation, resolved, and ordered simple
+      literal raw / filtered pages. Remaining
       constrained predicate types (inline enchantment holder payloads / server
       datapack tag remaps, broader NBT scalar typing, remaining concrete partial
       predicates and complex exact component codecs beyond simple literal name

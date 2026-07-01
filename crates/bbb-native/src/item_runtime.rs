@@ -3959,9 +3959,11 @@ mod tests {
                 component_patch: DataComponentPatchSummary {
                     written_book: Some(bbb_protocol::packets::WrittenBookContentSummary {
                         title: "Book Title".to_string(),
+                        title_filter: None,
                         author: "Alex".to_string(),
                         generation: 0,
                         pages: Vec::new(),
+                        page_filters: Vec::new(),
                         resolved: true,
                     }),
                     item_name: Some("Ignored Item Name".to_string()),
@@ -3983,9 +3985,11 @@ mod tests {
                 component_patch: DataComponentPatchSummary {
                     written_book: Some(bbb_protocol::packets::WrittenBookContentSummary {
                         title: "Copy".to_string(),
+                        title_filter: None,
                         author: "   ".to_string(),
                         generation: 2,
                         pages: Vec::new(),
+                        page_filters: Vec::new(),
                         resolved: true,
                     }),
                     ..DataComponentPatchSummary::default()
@@ -7755,6 +7759,59 @@ mod tests {
             ),
             uv("component_condition_bundle_exact_attribute_modifiers_absent")
         );
+        let exact_written_book = DataComponentPatchSummary {
+            added_type_ids: vec![55],
+            written_book: Some(WrittenBookContentSummary {
+                title: "Quest".to_string(),
+                title_filter: Some("Filtered Quest".to_string()),
+                author: "Alex".to_string(),
+                generation: 1,
+                pages: vec!["First page".to_string(), "Second page".to_string()],
+                page_filters: vec![None, Some("Filtered second page".to_string())],
+                resolved: true,
+            }),
+            ..DataComponentPatchSummary::default()
+        };
+        assert_eq!(
+            selected(96, named_bundle_entry(exact_written_book.clone())),
+            uv("component_condition_bundle_exact_written_book_present")
+        );
+        assert_eq!(
+            selected(
+                96,
+                named_bundle_entry(DataComponentPatchSummary {
+                    written_book: Some(WrittenBookContentSummary {
+                        title_filter: None,
+                        ..exact_written_book.written_book.clone().unwrap()
+                    }),
+                    ..exact_written_book.clone()
+                })
+            ),
+            uv("component_condition_bundle_exact_written_book_absent")
+        );
+        assert_eq!(
+            selected(
+                96,
+                named_bundle_entry(DataComponentPatchSummary {
+                    written_book: Some(WrittenBookContentSummary {
+                        page_filters: vec![None, None],
+                        ..exact_written_book.written_book.clone().unwrap()
+                    }),
+                    ..exact_written_book.clone()
+                })
+            ),
+            uv("component_condition_bundle_exact_written_book_absent")
+        );
+        assert_eq!(
+            selected(
+                96,
+                named_bundle_entry(DataComponentPatchSummary {
+                    removed_type_ids: vec![55],
+                    ..exact_written_book
+                })
+            ),
+            uv("component_condition_bundle_exact_written_book_absent")
+        );
         assert_eq!(
             selected(
                 33,
@@ -8743,9 +8800,11 @@ mod tests {
 
         let matching_written_book = WrittenBookContentSummary {
             title: "Quest".to_string(),
+            title_filter: None,
             author: "Alex".to_string(),
             generation: 2,
             pages: vec!["First page".to_string(), "Second page".to_string()],
+            page_filters: vec![None, None],
             resolved: true,
         };
         assert_eq!(
@@ -8926,12 +8985,14 @@ mod tests {
                                 added_type_ids: vec![55],
                                 written_book: Some(WrittenBookContentSummary {
                                     title: "Other".to_string(),
+                                    title_filter: None,
                                     author: "Alex".to_string(),
                                     generation: 2,
                                     pages: vec![
                                         "First page".to_string(),
                                         "Second page".to_string(),
                                     ],
+                                    page_filters: vec![None, None],
                                     resolved: true,
                                 }),
                                 ..DataComponentPatchSummary::default()
@@ -11227,6 +11288,7 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_VILLAGER_VARIANT = registerItem("component_condition_bundle_exact_villager_variant");
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_LODESTONE_TRACKER = registerItem("component_condition_bundle_exact_lodestone_tracker");
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_ATTRIBUTE_MODIFIERS = registerItem("component_condition_bundle_exact_attribute_modifiers");
+                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_WRITTEN_BOOK = registerItem("component_condition_bundle_exact_written_book");
             }"#,
         );
         write_json(
@@ -12279,6 +12341,54 @@ mod tests {
                     "on_false": {
                         "type": "minecraft:model",
                         "model": "minecraft:item/component_condition_bundle_exact_attribute_modifiers_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_exact_written_book.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "components": {
+                                            "minecraft:written_book_content": {
+                                                "title": {
+                                                    "raw": "Quest",
+                                                    "filtered": "Filtered Quest"
+                                                },
+                                                "author": "Alex",
+                                                "generation": 1,
+                                                "pages": [
+                                                    "First page",
+                                                    {
+                                                        "raw": "Second page",
+                                                        "filtered": "Filtered second page"
+                                                    }
+                                                ],
+                                                "resolved": true
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_written_book_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_written_book_absent"
                     }
                 }
             }"#,
@@ -14793,6 +14903,14 @@ mod tests {
             (
                 "component_condition_bundle_exact_attribute_modifiers_absent",
                 [105, 55, 35, 255],
+            ),
+            (
+                "component_condition_bundle_exact_written_book_present",
+                [225, 205, 120, 255],
+            ),
+            (
+                "component_condition_bundle_exact_written_book_absent",
+                [95, 75, 40, 255],
             ),
             (
                 "component_condition_container_components_present",

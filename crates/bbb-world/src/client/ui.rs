@@ -514,11 +514,15 @@ mod tests {
 
     fn written_book_stack(pages: Vec<&str>) -> ItemStackSummary {
         let mut stack = item_stack(42, 1);
+        let pages: Vec<String> = pages.into_iter().map(str::to_string).collect();
+        let page_filters = vec![None; pages.len()];
         stack.component_patch.written_book = Some(WrittenBookContentSummary {
             title: "Guide".to_string(),
+            title_filter: None,
             author: "Alex".to_string(),
             generation: 0,
-            pages: pages.into_iter().map(str::to_string).collect(),
+            pages,
+            page_filters,
             resolved: true,
         });
         stack

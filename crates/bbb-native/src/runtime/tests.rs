@@ -5461,12 +5461,14 @@ fn hud_inventory_screen_projects_lectern_current_page_text() {
     let mut book = item_stack(42, 1);
     book.component_patch.written_book = Some(bbb_protocol::packets::WrittenBookContentSummary {
         title: "Guide".to_string(),
+        title_filter: None,
         author: "Alex".to_string(),
         generation: 0,
         pages: vec![
             "First page".to_string(),
             "Second page\nLine two".to_string(),
         ],
+        page_filters: vec![None, None],
         resolved: true,
     });
     world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
@@ -6946,11 +6948,15 @@ fn item_stack(item_id: i32, count: i32) -> bbb_protocol::packets::ItemStackSumma
 
 fn written_book_stack(pages: Vec<&str>) -> bbb_protocol::packets::ItemStackSummary {
     let mut item = item_stack(42, 1);
+    let pages: Vec<String> = pages.into_iter().map(str::to_string).collect();
+    let page_filters = vec![None; pages.len()];
     item.component_patch.written_book = Some(WrittenBookContentSummary {
         title: "Guide".to_string(),
+        title_filter: None,
         author: "Alex".to_string(),
         generation: 0,
-        pages: pages.into_iter().map(str::to_string).collect(),
+        pages,
+        page_filters,
         resolved: true,
     });
     item
