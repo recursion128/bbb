@@ -5772,7 +5772,8 @@ When an agent does any of the following, update this file in the same slice:
     icon resolver as that state becomes available to the GUI icon path:
     - `minecraft:compass` stateful wobble plus no-target / invalid-target random
       spin
-    - `minecraft:time` stateful wobbler smoothing and `source=random`
+    - `minecraft:time` default stateful wobbler smoothing and the per-property
+      `source=random` RNG
   - Wire the remaining ambient-context `select` properties onto the same
     resolver:
     - `minecraft:context_entity_type` for any future non-GUI item consumer that
@@ -6113,12 +6114,14 @@ When an agent does any of the following, update this file in the same slice:
       system local timezone like vanilla. Tests pin GMT `12-25` selecting the
       Christmas branch and `12-27` selecting the fallback.
     - `minecraft:time` — `Time.get`, for GUI/HUD item icons with a local-player
-      owner and `ClientLevel` context. Native currently projects the
-      `daytime` target from the overworld sun angle and `moon_phase` from the
-      vanilla eight-phase `day_time / 24000` cycle, then applies vanilla
-      range-dispatch threshold selection. Tests pin no-level `0.0` fallback and
-      overworld day-time texture selection; stateful wobbler smoothing and
-      `source=random` remain follow-up.
+      owner and `ClientLevel` context when the model opts out of stateful
+      wobble (`wobble=false`). Native currently projects the `daytime` target
+      from the overworld sun angle and `moon_phase` from the vanilla
+      eight-phase `day_time / 24000` cycle, then applies vanilla range-dispatch
+      threshold selection. Tests pin no-level `0.0` fallback, overworld
+      day-time texture selection, and fallback collapse for default
+      `wobble=true` plus `source=random`; stateful wobbler smoothing and the
+      vanilla per-property `RandomSource` remain follow-up.
     - `minecraft:compass` — `CompassAngle.get`, for GUI/HUD item icons with a
       local-player owner and `ClientLevel` context when the model opts out of
       stateful wobble (`wobble=false`) and targets spawn, lodestone, or
@@ -6183,9 +6186,9 @@ When an agent does any of the following, update this file in the same slice:
     `wobble=false` spawn, lodestone, and recovery compasses project
     owner-position / yaw against the current default spawn,
     `LodestoneTracker.target`, or local-player `lastDeathLocation`.
-    `minecraft:time` projects GUI/HUD `daytime` / `moon_phase` target values
-    from world time, but its stateful wobbler smoothing and `source=random`
-    remain follow-up.
+    `minecraft:time` projects GUI/HUD `wobble=false` `daytime` / `moon_phase`
+    target values from world time, but its stateful wobbler smoothing and
+    per-property `source=random` RNG remain follow-up.
     `minecraft:local_time` resolves the vanilla chest/trapped-chest `MM-dd`
     selector from wall-clock time; full ICU pattern / locale parity remains
     follow-up. GUI/HUD use-tick properties are wired for the local active stack,

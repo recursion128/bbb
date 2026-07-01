@@ -3678,25 +3678,28 @@ fn hotbar_item_icons_project_world_time_range_dispatch() {
     let item_runtime =
         NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
     let stack = item_stack(0, 1);
+    let selected_at_time = |stack: &bbb_protocol::packets::ItemStackSummary, day_time| {
+        item_runtime
+            .icon_for_stack_with_context_and_use_context_and_time_context(
+                stack,
+                None,
+                false,
+                crate::item_runtime::ItemModelUseContext::inactive(),
+                bbb_pack::BlockModelDisplayContext::Gui,
+                0.0,
+                None,
+                None,
+                Some("minecraft:player"),
+                Some("minecraft:overworld"),
+                Some(crate::item_runtime::ItemModelTimeContext { day_time }),
+                None,
+            )
+            .unwrap()
+            .layers[0]
+            .uv
+    };
     let fallback_uv = item_runtime.icon_for_stack(&stack).unwrap().layers[0].uv;
-    let night_uv = item_runtime
-        .icon_for_stack_with_context_and_use_context_and_time_context(
-            &stack,
-            None,
-            false,
-            crate::item_runtime::ItemModelUseContext::inactive(),
-            bbb_pack::BlockModelDisplayContext::Gui,
-            0.0,
-            None,
-            None,
-            Some("minecraft:player"),
-            Some("minecraft:overworld"),
-            Some(crate::item_runtime::ItemModelTimeContext { day_time: 18_000 }),
-            None,
-        )
-        .unwrap()
-        .layers[0]
-        .uv;
+    let night_uv = selected_at_time(&stack, 18_000);
     assert_ne!(fallback_uv, night_uv);
 
     let mut no_time_world = WorldStore::new();
@@ -3727,6 +3730,17 @@ fn hotbar_item_icons_project_world_time_range_dispatch() {
             max: night_uv.max,
         }
     );
+
+    let wobbled_stack = item_stack(1, 1);
+    let wobbled_fallback_uv = item_runtime.icon_for_stack(&wobbled_stack).unwrap().layers[0].uv;
+    assert_eq!(
+        selected_at_time(&wobbled_stack, 18_000),
+        wobbled_fallback_uv
+    );
+
+    let random_stack = item_stack(2, 1);
+    let random_fallback_uv = item_runtime.icon_for_stack(&random_stack).unwrap().layers[0].uv;
+    assert_eq!(selected_at_time(&random_stack, 18_000), random_fallback_uv);
 
     std::fs::remove_dir_all(root).unwrap();
 }
@@ -8397,6 +8411,7 @@ fn write_runtime_time_range_dispatch_item_assets(root: &Path) {
                 "type": "minecraft:range_dispatch",
                 "property": "minecraft:time",
                 "source": "daytime",
+                "wobble": false,
                 "scale": 4.0,
                 "entries": [
                     {
@@ -8412,6 +8427,43 @@ fn write_runtime_time_range_dispatch_item_assets(root: &Path) {
             }
         }"#,
     );
+    write_runtime_json(
+        &assets.join("items").join("time_wobbled_selector.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:range_dispatch",
+                "property": "minecraft:time",
+                "source": "daytime",
+                "scale": 4.0,
+                "entries": [
+                    {
+                        "threshold": 1.0,
+                        "model": { "type": "minecraft:model", "model": "minecraft:item/time_wobbled_stateful" }
+                    }
+                ],
+                "fallback": { "type": "minecraft:model", "model": "minecraft:item/time_wobbled_fallback" }
+            }
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("items").join("time_random_selector.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:range_dispatch",
+                "property": "minecraft:time",
+                "source": "random",
+                "wobble": false,
+                "scale": 4.0,
+                "entries": [
+                    {
+                        "threshold": 0.0,
+                        "model": { "type": "minecraft:model", "model": "minecraft:item/time_random_stateful" }
+                    }
+                ],
+                "fallback": { "type": "minecraft:model", "model": "minecraft:item/time_random_fallback" }
+            }
+        }"#,
+    );
     write_flat_runtime_item_model_and_texture(&assets, "time_selector_day", &[40, 80, 120, 255]);
     write_flat_runtime_item_model_and_texture(
         &assets,
@@ -8419,6 +8471,18 @@ fn write_runtime_time_range_dispatch_item_assets(root: &Path) {
         &[120, 80, 40, 255],
     );
     write_flat_runtime_item_model_and_texture(&assets, "time_selector_night", &[80, 40, 120, 255]);
+    write_flat_runtime_item_model_and_texture(
+        &assets,
+        "time_wobbled_fallback",
+        &[45, 75, 115, 255],
+    );
+    write_flat_runtime_item_model_and_texture(
+        &assets,
+        "time_wobbled_stateful",
+        &[160, 40, 100, 255],
+    );
+    write_flat_runtime_item_model_and_texture(&assets, "time_random_fallback", &[50, 70, 110, 255]);
+    write_flat_runtime_item_model_and_texture(&assets, "time_random_stateful", &[180, 50, 90, 255]);
     write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
     write_runtime_json(
         &root
@@ -8431,6 +8495,8 @@ fn write_runtime_time_range_dispatch_item_assets(root: &Path) {
             .join("Items.java"),
         r#"public class Items {
             public static final Item TIME_SELECTOR = registerItem("time_selector");
+            public static final Item TIME_WOBBLED_SELECTOR = registerItem("time_wobbled_selector");
+            public static final Item TIME_RANDOM_SELECTOR = registerItem("time_random_selector");
         }"#,
     );
 }

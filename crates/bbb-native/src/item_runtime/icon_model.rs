@@ -252,9 +252,9 @@ pub(super) enum RangeDispatchProperty {
     /// `wobble=false` target projection. Stateful wobble and no-target random
     /// spin remain follow-up.
     Compass { target: CompassTarget },
-    /// `minecraft:time` — `Time.get`, currently projecting the target value
-    /// for `daytime` / `moon_phase`; vanilla wobbler smoothing remains a
-    /// follow-up.
+    /// `minecraft:time` — `Time.get`, currently projecting the
+    /// `wobble=false` target value for `daytime` / `moon_phase`; vanilla
+    /// wobbler smoothing and random sources remain follow-up.
     Time { source: TimeSource },
 }
 
@@ -380,12 +380,24 @@ fn range_dispatch_property_for(property: &ItemModelProperty) -> Option<RangeDisp
                     .map(|target| RangeDispatchProperty::Compass { target })
             }
         }
-        "minecraft:time" => property
-            .raw()
-            .get("source")
-            .and_then(Value::as_str)
-            .and_then(TimeSource::parse)
-            .map(|source| RangeDispatchProperty::Time { source }),
+        "minecraft:time" => {
+            let wobble = property
+                .raw()
+                .get("wobble")
+                .and_then(Value::as_bool)
+                .unwrap_or(true);
+            if wobble {
+                None
+            } else {
+                property
+                    .raw()
+                    .get("source")
+                    .and_then(Value::as_str)
+                    .and_then(TimeSource::parse)
+                    .filter(|source| !source.requires_stateful_rng())
+                    .map(|source| RangeDispatchProperty::Time { source })
+            }
+        }
         _ => None,
     }
 }
@@ -449,6 +461,10 @@ impl TimeSource {
             "moon_phase" => Some(Self::MoonPhase),
             _ => None,
         }
+    }
+
+    fn requires_stateful_rng(self) -> bool {
+        matches!(self, Self::Random)
     }
 
     fn value(self, ctx: IconResolveContext<'_>) -> f32 {
