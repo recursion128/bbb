@@ -870,14 +870,27 @@ impl Renderer {
             }
         }
 
-        let particle_vertices = self.collect_particle_vertices();
-        let particle_vertex_buffer =
-            if self.particle_atlas.is_some() && !particle_vertices.is_empty() {
+        let particle_vertex_batches = self.collect_particle_vertex_batches();
+        let opaque_particle_vertex_buffer =
+            if self.particle_atlas.is_some() && !particle_vertex_batches.opaque.is_empty() {
                 Some(
                     self.device
                         .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                            label: Some("bbb-particle-frame-vertices"),
-                            contents: bytemuck::cast_slice(&particle_vertices),
+                            label: Some("bbb-opaque-particle-frame-vertices"),
+                            contents: bytemuck::cast_slice(&particle_vertex_batches.opaque),
+                            usage: wgpu::BufferUsages::VERTEX,
+                        }),
+                )
+            } else {
+                None
+            };
+        let translucent_particle_vertex_buffer =
+            if self.particle_atlas.is_some() && !particle_vertex_batches.translucent.is_empty() {
+                Some(
+                    self.device
+                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("bbb-translucent-particle-frame-vertices"),
+                            contents: bytemuck::cast_slice(&particle_vertex_batches.translucent),
                             usage: wgpu::BufferUsages::VERTEX,
                         }),
                 )
@@ -948,16 +961,25 @@ impl Renderer {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
-            if let (Some(atlas), Some(vertex_buffer)) =
-                (&self.particle_atlas, &particle_vertex_buffer)
-            {
-                pass.set_pipeline(&self.particle_pipeline);
-                pipeline_switches += 1;
-                pass.set_bind_group(0, &atlas.bind_group, &[]);
-                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
-                pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-                pass.draw(0..particle_vertices.len() as u32, 0..1);
-                particle_draw_calls += 1;
+            if let Some(atlas) = &self.particle_atlas {
+                if let Some(vertex_buffer) = &opaque_particle_vertex_buffer {
+                    pass.set_pipeline(&self.opaque_particle_pipeline);
+                    pipeline_switches += 1;
+                    pass.set_bind_group(0, &atlas.bind_group, &[]);
+                    pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                    pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                    pass.draw(0..particle_vertex_batches.opaque.len() as u32, 0..1);
+                    particle_draw_calls += 1;
+                }
+                if let Some(vertex_buffer) = &translucent_particle_vertex_buffer {
+                    pass.set_pipeline(&self.translucent_particle_pipeline);
+                    pipeline_switches += 1;
+                    pass.set_bind_group(0, &atlas.bind_group, &[]);
+                    pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                    pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                    pass.draw(0..particle_vertex_batches.translucent.len() as u32, 0..1);
+                    particle_draw_calls += 1;
+                }
             }
         }
 
@@ -3305,18 +3327,30 @@ mod tests {
             .find("label: Some(PARTICLE_TARGET_PASS_LABEL)")
             .expect("particle target pass label is used");
         let copy_depth = depth_copy_to(source, "texture: &self.particle_target.depth._texture");
-        let particle_pipeline = source[target..]
-            .find("pass.set_pipeline(&self.particle_pipeline)")
+        let opaque_particle_pipeline = source[target..]
+            .find("pass.set_pipeline(&self.opaque_particle_pipeline)")
             .map(|index| target + index)
-            .expect("particle pipeline is drawn into the target");
-        let particle_atlas = source[particle_pipeline..]
+            .expect("opaque particle pipeline is drawn into the target");
+        let opaque_particle_atlas = source[opaque_particle_pipeline..]
             .find("pass.set_bind_group(0, &atlas.bind_group, &[])")
-            .map(|index| particle_pipeline + index)
-            .expect("particle atlas bind group is bound before draw");
-        let particle_lightmap = source[particle_atlas..]
+            .map(|index| opaque_particle_pipeline + index)
+            .expect("opaque particle atlas bind group is bound before draw");
+        let opaque_particle_lightmap = source[opaque_particle_atlas..]
             .find("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])")
-            .map(|index| particle_atlas + index)
-            .expect("particle lightmap bind group is bound before draw");
+            .map(|index| opaque_particle_atlas + index)
+            .expect("opaque particle lightmap bind group is bound before draw");
+        let translucent_particle_pipeline = source[opaque_particle_lightmap..]
+            .find("pass.set_pipeline(&self.translucent_particle_pipeline)")
+            .map(|index| opaque_particle_lightmap + index)
+            .expect("translucent particle pipeline is drawn into the target");
+        let translucent_particle_atlas = source[translucent_particle_pipeline..]
+            .find("pass.set_bind_group(0, &atlas.bind_group, &[])")
+            .map(|index| translucent_particle_pipeline + index)
+            .expect("translucent particle atlas bind group is bound before draw");
+        let translucent_particle_lightmap = source[translucent_particle_atlas..]
+            .find("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])")
+            .map(|index| translucent_particle_atlas + index)
+            .expect("translucent particle lightmap bind group is bound before draw");
         let combine = source
             .find("label: Some(TRANSPARENCY_COMBINE_PASS_LABEL)")
             .expect("transparency combine pass label is used");
@@ -3324,13 +3358,17 @@ mod tests {
         assert!(
             copy_depth < entity_translucent_features
                 && entity_translucent_features < target
-                && target < particle_pipeline
-                && particle_lightmap < combine,
-            "particle target copies main depth, clears transparent, draws particles, then transparency combine consumes it"
+                && target < opaque_particle_pipeline
+                && opaque_particle_pipeline < translucent_particle_pipeline
+                && translucent_particle_lightmap < combine,
+            "particle target copies main depth, clears transparent, draws opaque then translucent particles, then transparency combine consumes it"
         );
         assert!(
-            particle_pipeline < particle_atlas && particle_atlas < particle_lightmap,
-            "particles bind the renderer-owned LightTexture before drawing"
+            opaque_particle_pipeline < opaque_particle_atlas
+                && opaque_particle_atlas < opaque_particle_lightmap
+                && translucent_particle_pipeline < translucent_particle_atlas
+                && translucent_particle_atlas < translucent_particle_lightmap,
+            "both particle pipelines bind the renderer-owned LightTexture before drawing"
         );
         assert!(
             source[copy_depth..entity_translucent_features]
@@ -3340,7 +3378,7 @@ mod tests {
             "particle target depth is copied from the renderer-owned main depth texture"
         );
         assert!(
-            source[target..particle_pipeline]
+            source[target..opaque_particle_pipeline]
                 .contains("load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)"),
             "particle target color is cleared every frame so missing particle draws do not reuse stale color"
         );

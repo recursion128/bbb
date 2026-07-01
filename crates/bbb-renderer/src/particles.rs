@@ -16,7 +16,8 @@ use descriptors::{
     DEFAULT_PARTICLE_RANDOM_SEED,
 };
 pub(super) use gpu::{
-    create_particle_atlas_gpu, create_particle_pipeline, ParticleAtlasGpu, ParticleVertex,
+    create_particle_atlas_gpu, create_particle_pipeline, ParticleAtlasGpu, ParticlePipelineKind,
+    ParticleVertex,
 };
 
 const DEFAULT_MAX_PENDING_PARTICLE_SPAWNS: usize = 16_384;
@@ -168,6 +169,15 @@ impl ParticleRenderLayer {
             Self::Translucent => 5,
         }
     }
+
+    fn pipeline_kind(self) -> ParticlePipelineKind {
+        match self {
+            Self::OpaqueTerrain | Self::OpaqueItems | Self::Opaque => ParticlePipelineKind::Opaque,
+            Self::TranslucentTerrain | Self::TranslucentItems | Self::Translucent => {
+                ParticlePipelineKind::Translucent
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -195,6 +205,12 @@ pub(crate) struct ParticleAdvanceSummary {
     pub(crate) total_dropped_active_instances: u64,
     pub(crate) limited_particle_drops: usize,
     pub(crate) total_limited_particle_drops: u64,
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub(crate) struct ParticleVertexBatches {
+    pub(crate) opaque: Vec<ParticleVertex>,
+    pub(crate) translucent: Vec<ParticleVertex>,
 }
 
 impl ParticleSpawnBatch {
@@ -728,18 +744,28 @@ impl Renderer {
             .refresh_lights(|position| light_at_position(position));
     }
 
-    pub(crate) fn collect_particle_vertices(&self) -> Vec<ParticleVertex> {
+    pub(crate) fn collect_particle_vertex_batches(&self) -> ParticleVertexBatches {
         let Some(pose) = self.camera_pose else {
-            return Vec::new();
+            return ParticleVertexBatches::default();
         };
         let Some(atlas) = &self.particle_atlas else {
-            return Vec::new();
+            return ParticleVertexBatches::default();
         };
-        particle_billboard_vertices(
-            self.particles.active_instances.iter(),
-            &atlas.sprite_uvs,
-            camera_billboard_axes(pose),
-        )
+        let axes = camera_billboard_axes(pose);
+        ParticleVertexBatches {
+            opaque: particle_billboard_vertices(
+                self.particles.active_instances.iter(),
+                &atlas.sprite_uvs,
+                axes,
+                Some(ParticlePipelineKind::Opaque),
+            ),
+            translucent: particle_billboard_vertices(
+                self.particles.active_instances.iter(),
+                &atlas.sprite_uvs,
+                axes,
+                Some(ParticlePipelineKind::Translucent),
+            ),
+        }
     }
 }
 
@@ -747,11 +773,16 @@ fn particle_billboard_vertices<'a>(
     instances: impl IntoIterator<Item = &'a ParticleInstance>,
     sprite_uvs: &BTreeMap<String, ParticleUvRect>,
     axes: ParticleBillboardAxes,
+    pipeline_kind: Option<ParticlePipelineKind>,
 ) -> Vec<ParticleVertex> {
     let mut vertices = Vec::new();
     let mut instances: Vec<_> = instances
         .into_iter()
         .filter(|instance| instance.render_group != ParticleRenderGroup::NoRender)
+        .filter(|instance| match pipeline_kind {
+            Some(kind) => instance.render_layer.pipeline_kind() == kind,
+            None => true,
+        })
         .collect();
     instances.sort_by_key(|instance| {
         (
@@ -2389,12 +2420,56 @@ mod tests {
                 right: Vec3::X,
                 up: Vec3::Y,
             },
+            None,
         );
 
         assert_eq!(vertices.len(), 18);
         assert_close_f32(vertices[0].position[0], 19.9);
         assert_close_f32(vertices[6].position[0], 9.9);
         assert_close_f32(vertices[12].position[0], 29.9);
+    }
+
+    #[test]
+    fn particle_billboard_vertices_split_vanilla_opaque_and_translucent_pipelines() {
+        let mut cloud = test_instance_with_lifetime("minecraft:cloud", 20);
+        cloud.position = [10.0, 0.0, 0.0];
+        cloud.current_sprite_id = Some("minecraft:generic_0".to_string());
+        let mut flame = test_instance_with_lifetime("minecraft:flame", 20);
+        flame.position = [20.0, 0.0, 0.0];
+        flame.current_sprite_id = Some("minecraft:generic_0".to_string());
+        let mut soul = test_instance_with_lifetime("minecraft:soul", 20);
+        soul.position = [30.0, 0.0, 0.0];
+        soul.current_sprite_id = Some("minecraft:generic_0".to_string());
+        let sprite_uvs = BTreeMap::from([(
+            "minecraft:generic_0".to_string(),
+            ParticleUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+        )]);
+        let axes = ParticleBillboardAxes {
+            right: Vec3::X,
+            up: Vec3::Y,
+        };
+
+        let opaque_vertices = particle_billboard_vertices(
+            [&cloud, &flame, &soul],
+            &sprite_uvs,
+            axes,
+            Some(ParticlePipelineKind::Opaque),
+        );
+        let translucent_vertices = particle_billboard_vertices(
+            [&cloud, &flame, &soul],
+            &sprite_uvs,
+            axes,
+            Some(ParticlePipelineKind::Translucent),
+        );
+
+        assert_eq!(opaque_vertices.len(), 6);
+        assert_close_f32(opaque_vertices[0].position[0], 19.9);
+        assert_eq!(translucent_vertices.len(), 12);
+        assert_close_f32(translucent_vertices[0].position[0], 9.9);
+        assert_close_f32(translucent_vertices[6].position[0], 29.9);
     }
 
     #[test]
@@ -2670,6 +2745,7 @@ mod tests {
                 right: Vec3::X,
                 up: Vec3::Y,
             },
+            None,
         );
 
         assert_eq!(vertices.len(), 6);
@@ -2699,6 +2775,7 @@ mod tests {
                 right: Vec3::X,
                 up: Vec3::Y,
             },
+            None,
         );
 
         assert!(vertices.is_empty());

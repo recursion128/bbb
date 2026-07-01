@@ -1229,9 +1229,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     group order (`SINGLE_QUADS`, then future `ITEM_PICKUP`, then
     `ELDER_GUARDIANS`) with solid layers before translucent layers while
     preserving insertion order inside the same group/layer.
-  - split solid vs translucent particle passes and non-particle-atlas layers
-    (`OPAQUE_TERRAIN` / `TRANSLUCENT_TERRAIN`, `OPAQUE_ITEMS` /
-    `TRANSLUCENT_ITEMS`) remain follow-up work.
+  - [x] current particle-atlas solid vs translucent pass split：single-quad
+    atlas billboards now collect separate opaque/translucent vertex batches and
+    draw them through vanilla-shaped `OPAQUE_PARTICLE` (no blend) and
+    `TRANSLUCENT_PARTICLE` (`BlendFunction.TRANSLUCENT`) pipelines, preserving
+    the existing group/layer order and renderer-owned LightTexture sampling.
+  - non-particle-atlas terrain/item layers (`OPAQUE_TERRAIN` /
+    `TRANSLUCENT_TERRAIN`, `OPAQUE_ITEMS` / `TRANSLUCENT_ITEMS`) remain
+    follow-up work.
   - terrain/item particle option rendering。
   - [x] `ParticleLimit.SPORE_BLOSSOM` active-count cap：renderer runtime
     按 vanilla `ParticleEngine.add` / `ParticleLimit.SPORE_BLOSSOM(1000)`

@@ -66,7 +66,9 @@ use crate::{
         create_entity_outline_blur_vertical_pipeline, create_entity_outline_composite_pipeline,
         create_entity_outline_sobel_pipeline, create_entity_outline_target, EntityOutlineTarget,
     },
-    particles::{create_particle_pipeline, ParticleAtlasGpu, ParticleRuntimeState},
+    particles::{
+        create_particle_pipeline, ParticleAtlasGpu, ParticlePipelineKind, ParticleRuntimeState,
+    },
     player_skin::{DynamicPlayerSkinImage, DynamicPlayerTextureImage},
     selection::{
         create_selection_outline_gpu, create_selection_pipeline, SelectionOutline,
@@ -140,7 +142,8 @@ pub struct Renderer {
     pub(super) entity_model_scroll_additive_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_entity_glint_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_armor_entity_glint_pipeline: wgpu::RenderPipeline,
-    pub(super) particle_pipeline: wgpu::RenderPipeline,
+    pub(super) opaque_particle_pipeline: wgpu::RenderPipeline,
+    pub(super) translucent_particle_pipeline: wgpu::RenderPipeline,
     pub(super) weather_pipeline: wgpu::RenderPipeline,
     pub(super) lightning_pipeline: wgpu::RenderPipeline,
     pub(super) item_entity_pipeline: wgpu::RenderPipeline,
@@ -676,11 +679,19 @@ impl Renderer {
                 format,
                 &terrain_bind_group_layout,
             );
-        let particle_pipeline = create_particle_pipeline(
+        let opaque_particle_pipeline = create_particle_pipeline(
             &device,
             format,
             &terrain_bind_group_layout,
             &lightmap_sample_bind_group_layout,
+            ParticlePipelineKind::Opaque,
+        );
+        let translucent_particle_pipeline = create_particle_pipeline(
+            &device,
+            format,
+            &terrain_bind_group_layout,
+            &lightmap_sample_bind_group_layout,
+            ParticlePipelineKind::Translucent,
         );
         let weather_pipeline = create_weather_pipeline(
             &device,
@@ -887,7 +898,8 @@ impl Renderer {
             entity_model_scroll_additive_pipeline,
             entity_model_entity_glint_pipeline,
             entity_model_armor_entity_glint_pipeline,
-            particle_pipeline,
+            opaque_particle_pipeline,
+            translucent_particle_pipeline,
             weather_pipeline,
             lightning_pipeline,
             item_entity_pipeline,

@@ -161,7 +161,7 @@ When an agent does any of the following, update this file in the same slice:
   - Implement remaining renderer slices for:
     - provider-specific behavior
     - light curves
-    - remaining particle sorting beyond covered single-quad group/layer order
+    - remaining non-particle-atlas terrain/item particle layer sorting
     - collision/player-coupled physics
     - atlas mip-level animation beyond covered age-based `SpriteSet` frame
       selection
@@ -178,9 +178,11 @@ When an agent does any of the following, update this file in the same slice:
       `SingleQuadParticle.Layer.OPAQUE` / `TRANSLUCENT`, vanilla
       `ParticleEngine` group order (`SINGLE_QUADS`, `ITEM_PICKUP`,
       `ELDER_GUARDIANS`), and stable solid-before-translucent vertex
-      collection within the current particle-atlas path. Split solid vs
-      translucent particle passes plus terrain/item atlas particle layers
-      remain follow-up work.
+      collection within the current particle-atlas path. The current atlas
+      billboards split opaque and translucent vertex batches and draw them
+      through vanilla-shaped `RenderPipelines.OPAQUE_PARTICLE` (no blend) and
+      `RenderPipelines.TRANSLUCENT_PARTICLE` (`BlendFunction.TRANSLUCENT`)
+      GPU pipelines. Terrain/item particle layers remain follow-up work.
     - Advances age-selected particle sprites with vanilla
       `SpriteSet.get(index, max)` shape (`index * (sprites.size() - 1) / max`),
       keeps random-selected sprites stable after intake, and preserves missing
@@ -535,13 +537,14 @@ When an agent does any of the following, update this file in the same slice:
     item-feature ordering debt. Active particle
     billboards now write a renderer-owned particles color/depth target after the
     same main-depth copy, matching vanilla `PARTICLES_TARGET`; the particle
-    pipeline now also matches vanilla `RenderPipelines.TRANSLUCENT_PARTICLE`
-    state for the existing billboard surface: `core/particle`, Sampler0 plus
-    Sampler2 LightTexture, `BlendFunction.TRANSLUCENT`, default back-face cull,
-    and depth-write `LESS_EQUAL`. Provider-specific particle behavior remains
-    ordinary P1/P2 follow-up rather than part of this state slice. The final
-    transparency combine pass samples main, translucent, itemEntity, particles,
-    and clouds color/depth and applies the same depth insertion plus
+    pipelines now also match vanilla `RenderPipelines.OPAQUE_PARTICLE` and
+    `TRANSLUCENT_PARTICLE` state for the current billboard surface:
+    `core/particle`, Sampler0 plus Sampler2 LightTexture, default back-face
+    cull, depth-write `LESS_EQUAL`, opaque no-blend output, and translucent
+    `BlendFunction.TRANSLUCENT` output. Provider-specific particle behavior
+    remains ordinary P1/P2 follow-up rather than part of this state slice. The
+    final transparency combine pass samples main, translucent, itemEntity,
+    particles, and clouds color/depth and applies the same depth insertion plus
     premultiplied layer blend shape as vanilla
     `post/transparency.fsh`.
     The main scene now writes a renderer-owned `main` color target first and

@@ -23,10 +23,38 @@ pub(crate) struct ParticleVertex {
 
 const PARTICLE_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 4] =
     wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Float32x2];
-const PARTICLE_PIPELINE_BLEND: wgpu::BlendState = wgpu::BlendState::ALPHA_BLENDING;
 const PARTICLE_PIPELINE_CULL_MODE: Option<wgpu::Face> = Some(wgpu::Face::Back);
 const PARTICLE_PIPELINE_DEPTH_WRITE_ENABLED: bool = true;
 const PARTICLE_PIPELINE_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::LessEqual;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ParticlePipelineKind {
+    Opaque,
+    Translucent,
+}
+
+impl ParticlePipelineKind {
+    fn pipeline_label(self) -> &'static str {
+        match self {
+            Self::Opaque => "bbb-opaque-particle-pipeline",
+            Self::Translucent => "bbb-translucent-particle-pipeline",
+        }
+    }
+
+    fn pipeline_layout_label(self) -> &'static str {
+        match self {
+            Self::Opaque => "bbb-opaque-particle-pipeline-layout",
+            Self::Translucent => "bbb-translucent-particle-pipeline-layout",
+        }
+    }
+
+    fn blend_state(self) -> Option<wgpu::BlendState> {
+        match self {
+            Self::Opaque => None,
+            Self::Translucent => Some(wgpu::BlendState::ALPHA_BLENDING),
+        }
+    }
+}
 
 const PARTICLE_SHADER: &str = r#"
 struct Camera {
@@ -130,19 +158,20 @@ pub(crate) fn create_particle_pipeline(
     format: wgpu::TextureFormat,
     bind_group_layout: &wgpu::BindGroupLayout,
     lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+    kind: ParticlePipelineKind,
 ) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("bbb-particle-shader"),
         source: wgpu::ShaderSource::Wgsl(PARTICLE_SHADER.into()),
     });
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("bbb-particle-pipeline-layout"),
+        label: Some(kind.pipeline_layout_label()),
         bind_group_layouts: &[bind_group_layout, lightmap_bind_group_layout],
         push_constant_ranges: &[],
     });
 
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("bbb-particle-pipeline"),
+        label: Some(kind.pipeline_label()),
         layout: Some(&layout),
         vertex: wgpu::VertexState {
             module: &shader,
@@ -171,7 +200,7 @@ pub(crate) fn create_particle_pipeline(
             entry_point: "fs_main",
             targets: &[Some(wgpu::ColorTargetState {
                 format,
-                blend: Some(PARTICLE_PIPELINE_BLEND),
+                blend: kind.blend_state(),
                 write_mask: wgpu::ColorWrites::ALL,
             })],
         }),
@@ -327,27 +356,31 @@ mod tests {
     }
 
     #[test]
-    fn particle_pipeline_state_matches_vanilla_translucent_particle() {
+    fn particle_pipeline_state_matches_vanilla_particle_pipelines() {
         assert_eq!(PARTICLE_PIPELINE_CULL_MODE, Some(wgpu::Face::Back));
         assert!(PARTICLE_PIPELINE_DEPTH_WRITE_ENABLED);
         assert_eq!(
             PARTICLE_PIPELINE_DEPTH_COMPARE,
             wgpu::CompareFunction::LessEqual
         );
+        assert!(
+            ParticlePipelineKind::Opaque.blend_state().is_none(),
+            "vanilla RenderPipelines.OPAQUE_PARTICLE has no color target blend"
+        );
+        let translucent_blend = ParticlePipelineKind::Translucent
+            .blend_state()
+            .expect("vanilla RenderPipelines.TRANSLUCENT_PARTICLE has TRANSLUCENT blend");
         assert_eq!(
-            PARTICLE_PIPELINE_BLEND.color.src_factor,
+            translucent_blend.color.src_factor,
             wgpu::BlendFactor::SrcAlpha
         );
         assert_eq!(
-            PARTICLE_PIPELINE_BLEND.color.dst_factor,
+            translucent_blend.color.dst_factor,
             wgpu::BlendFactor::OneMinusSrcAlpha
         );
+        assert_eq!(translucent_blend.alpha.src_factor, wgpu::BlendFactor::One);
         assert_eq!(
-            PARTICLE_PIPELINE_BLEND.alpha.src_factor,
-            wgpu::BlendFactor::One
-        );
-        assert_eq!(
-            PARTICLE_PIPELINE_BLEND.alpha.dst_factor,
+            translucent_blend.alpha.dst_factor,
             wgpu::BlendFactor::OneMinusSrcAlpha
         );
     }
