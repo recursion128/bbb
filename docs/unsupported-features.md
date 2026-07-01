@@ -278,7 +278,9 @@ When an agent does any of the following, update this file in the same slice:
       (`PARTICLES_AND_SOUND_PLANT_GROWTH`) also stays deferred because vanilla
       `BoneMealItem.addGrowthParticles` branches on the target block's
       `BonemealableBlock` type or water state before choosing the particle
-      spread.
+      spread, and the water / neighbor-spreader path uses
+      `ParticleUtils.spawnParticles(..., allowFloatingParticles=false)`, which
+      queries the block below each sampled particle position before emitting.
     - Advances CPU-side common particles.
     - Samples vanilla-shaped curves for common particle providers:
       - size

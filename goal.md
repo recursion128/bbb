@@ -1485,7 +1485,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - block-state shape-sensitive `spawnParticleInBlock` heights plus
     `1505` (`PARTICLES_AND_SOUND_PLANT_GROWTH`) BonemealableBlock / water
     branches plus remaining block/item option event particles remain follow-up
-    work.
+    work; `1505` water / neighbor-spreader emission is world-coupled because
+    vanilla `ParticleUtils.spawnParticles(..., allowFloatingParticles=false)`
+    samples particle positions and checks the block below each sample before
+    submitting.
   - smoke/flame/dragon-breath/explosion/cloud/block-face/trial-spawner/
     portal ring/happy-villager 之外的剩余事件。
 
