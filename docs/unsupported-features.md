@@ -1077,9 +1077,10 @@ When an agent does any of the following, update this file in the same slice:
     vanilla-shaped `minecraft_mix_light` / `PER_FACE_LIGHTING` diffuse in the
     shader, so the old colored fallback CPU baked-shade approximation is no
     longer a current P0 gap. GUI flat / entity-in-UI lighting variants are now
-    classified as P1 GUI surface work because the camera uniform already carries
-    the required `Lighting.Entry` expressions and no corresponding GUI
-    submission surface exists yet. The texture-backed entity shaders
+    classified as P1 GUI surface work; the camera uniform carries the required
+    `Lighting.Entry` expressions, and the HUD inventory render-plan now has a
+    `HudEntityPreview` surface for vanilla `GuiEntityRenderState` metadata. The
+    texture-backed entity shaders
     and item-model shader now read vanilla `Lighting.Entry` Light0/Light1
     directions from the camera uniform. World entity and world item-model draws
     use LEVEL default/nether directions, and GUI 3D block-item draws use ITEMS_3D.
@@ -1101,9 +1102,14 @@ When an agent does any of the following, update this file in the same slice:
     overlay pass. The render graph now draws base HUD commands, then
     `bbb-native-hud-item-pass` with an isolated cleared depth buffer for GUI 3D
     block/model item faces, then `bbb-native-hud-overlay-pass` for item
-    decorations, front highlights, tooltips, and full-screen overlays.
-    ENTITY_IN_UI still has pipeline-state expression but waits for the
-    corresponding P1 entity-in-UI item/entity submission surface.
+    decorations, front highlights, tooltips, and full-screen overlays. The
+    entity-in-UI preview surface now pins vanilla `GuiGraphicsExtractor.entity`
+    / `GuiEntityRenderer` behavior at the render-plan boundary: `ENTITY_IN_UI`
+    lighting, forced full-bright entity light coords, outline/glow disabled,
+    GUI rect + scale + translation + rotation + override-camera rotation,
+    scissor-derived visible bounds, and isolated PIP depth. Actual inventory /
+    mount screen call points and armor / held-item / head-item layer-order
+    drawing remain subsequent P1-4 slices.
     The dropped-item 3D model
     path and the legacy item-entity / thrown-item billboard path now sample the
     entity light probe through `WorldStore`, keep the vanilla full-bright

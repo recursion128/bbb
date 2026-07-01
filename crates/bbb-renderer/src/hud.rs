@@ -1,6 +1,7 @@
 use anyhow::Result;
 use winit::dpi::PhysicalSize;
 
+use crate::entity_models::{EntityModelInstance, ENTITY_FULL_BRIGHT_LIGHT_COORDS};
 use crate::item_models::{GuiItemLightingEntry, HudBlockItemModel};
 use crate::Renderer;
 
@@ -263,6 +264,74 @@ pub struct HudInventoryItem {
     pub block_model: Option<HudBlockItemModel>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudEntityPreviewRect {
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
+}
+
+impl HudEntityPreviewRect {
+    fn right(self) -> i64 {
+        i64::from(self.x) + i64::from(self.width)
+    }
+
+    fn bottom(self) -> i64 {
+        i64::from(self.y) + i64::from(self.height)
+    }
+
+    fn intersection(self, other: Self) -> Option<Self> {
+        let left = i64::from(self.x.max(other.x));
+        let top = i64::from(self.y.max(other.y));
+        let right = self.right().min(other.right());
+        let bottom = self.bottom().min(other.bottom());
+        if left >= right || top >= bottom {
+            return None;
+        }
+        Some(Self {
+            x: i32::try_from(left).ok()?,
+            y: i32::try_from(top).ok()?,
+            width: u32::try_from(right - left).ok()?,
+            height: u32::try_from(bottom - top).ok()?,
+        })
+    }
+}
+
+/// Vanilla GUI entity picture-in-picture render plan.
+///
+/// `GuiGraphicsExtractor.entity` submits a `GuiEntityRenderState`, forces the entity render-state light
+/// to `LightCoordsUtil.FULL_BRIGHT`, and `GuiEntityRenderer` renders it through an isolated
+/// color+depth PIP target under `Lighting.Entry.ENTITY_IN_UI`. The native screen layer can fill this
+/// structure before the GPU entity-in-UI draw path exists; sanitizer keeps the vanilla lighting, bounds,
+/// scissor, transform, and depth-isolation contract explicit.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudEntityPreview {
+    pub entity: EntityModelInstance,
+    pub lighting: GuiItemLightingEntry,
+    /// Preview bounds in GUI pixels, equivalent to vanilla `x0/y0/x1/y1`.
+    pub rect: HudEntityPreviewRect,
+    /// Optional GUI scissor rectangle; visible bounds are `rect ∩ scissor`.
+    pub scissor: Option<HudEntityPreviewRect>,
+    pub translation: [f32; 3],
+    /// Quaternion as `[x, y, z, w]`, matching JOML `Quaternionf`.
+    pub rotation: [f32; 4],
+    /// Optional camera override quaternion as `[x, y, z, w]`.
+    pub override_camera_rotation: Option<[f32; 4]>,
+    pub scale: f32,
+    /// Vanilla PIP renderers use a private color texture and a private depth texture, cleared per preview.
+    pub depth_isolated: bool,
+}
+
+impl HudEntityPreview {
+    pub fn visible_bounds(&self) -> Option<HudEntityPreviewRect> {
+        match self.scissor {
+            Some(scissor) => self.rect.intersection(scissor),
+            None => Some(self.rect),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct HudInventoryTextBackground {
     pub x: i32,
@@ -310,6 +379,8 @@ pub struct HudInventoryScreen {
     pub slots: Vec<HudInventorySlot>,
     /// Item icons drawn by the inventory screen that are not container slots.
     pub floating_items: Vec<HudInventoryItem>,
+    /// Entity previews drawn through vanilla GUI picture-in-picture renderers.
+    pub entity_previews: Vec<HudEntityPreview>,
     pub text_labels: Vec<HudInventoryTextLabel>,
     pub hovered_slot_id: Option<u16>,
     pub tooltip: Option<HudInventoryTooltip>,
@@ -2583,6 +2654,11 @@ fn sanitize_hud_inventory_screen(screen: HudInventoryScreen) -> HudInventoryScre
             .into_iter()
             .filter_map(sanitize_hud_inventory_item)
             .collect(),
+        entity_previews: screen
+            .entity_previews
+            .into_iter()
+            .filter_map(sanitize_hud_entity_preview)
+            .collect(),
         text_labels: screen
             .text_labels
             .into_iter()
@@ -2622,6 +2698,45 @@ fn sanitize_hud_inventory_item(item: HudInventoryItem) -> Option<HudInventoryIte
 /// A 3D block-item icon is only worth carrying when it has geometry to draw.
 fn hud_block_item_model_is_renderable(model: &HudBlockItemModel) -> bool {
     model.lighting == GuiItemLightingEntry::Items3d && !model.quads.is_empty()
+}
+
+fn sanitize_hud_entity_preview(mut preview: HudEntityPreview) -> Option<HudEntityPreview> {
+    if preview.lighting != GuiItemLightingEntry::EntityInUi || !preview.depth_isolated {
+        return None;
+    }
+    preview.rect = sanitize_hud_entity_preview_rect(preview.rect)?;
+    preview.scissor = match preview.scissor {
+        Some(scissor) => Some(sanitize_hud_entity_preview_rect(scissor)?),
+        None => None,
+    };
+    preview.visible_bounds()?;
+    if !preview.scale.is_finite() || preview.scale <= 0.0 {
+        return None;
+    }
+    if !preview
+        .translation
+        .iter()
+        .all(|component| component.is_finite())
+        || !preview
+            .rotation
+            .iter()
+            .all(|component| component.is_finite())
+        || !preview
+            .override_camera_rotation
+            .map(|rotation| rotation.iter().all(|component| component.is_finite()))
+            .unwrap_or(true)
+    {
+        return None;
+    }
+
+    preview.entity.render_state.light_coords = ENTITY_FULL_BRIGHT_LIGHT_COORDS;
+    preview.entity.render_state.outline_color = 0;
+    preview.entity.render_state.appears_glowing = false;
+    Some(preview)
+}
+
+fn sanitize_hud_entity_preview_rect(rect: HudEntityPreviewRect) -> Option<HudEntityPreviewRect> {
+    (rect.width > 0 && rect.height > 0).then_some(rect)
 }
 
 fn sanitize_hud_inventory_text_label(
@@ -3308,6 +3423,7 @@ mod tests {
                 },
             ],
             floating_items: Vec::new(),
+            entity_previews: Vec::new(),
             text_labels: vec![
                 HudInventoryTextLabel {
                     x: 62,
@@ -3473,6 +3589,7 @@ mod tests {
                     block_model: None,
                 },
             ],
+            entity_previews: Vec::new(),
             hovered_slot_id: None,
             tooltip: None,
             text_labels: Vec::new(),
@@ -3497,6 +3614,131 @@ mod tests {
                 cooldown_progress: Some(1.0),
             }
         );
+    }
+
+    fn hud_entity_preview_for_test() -> HudEntityPreview {
+        HudEntityPreview {
+            entity: EntityModelInstance::chicken(90, [0.0, 64.0, 0.0], 180.0, false)
+                .with_light_coords(0)
+                .with_outline_color(0xff00_ff00),
+            lighting: GuiItemLightingEntry::EntityInUi,
+            rect: HudEntityPreviewRect {
+                x: 26,
+                y: 8,
+                width: 49,
+                height: 70,
+            },
+            scissor: Some(HudEntityPreviewRect {
+                x: 30,
+                y: 20,
+                width: 10,
+                height: 12,
+            }),
+            translation: [0.0, 0.875, 0.0],
+            rotation: [0.0, 0.0, 1.0, 0.0],
+            override_camera_rotation: Some([0.125, 0.0, 0.0, 0.992_156_74]),
+            scale: 30.0,
+            depth_isolated: true,
+        }
+    }
+
+    fn hud_inventory_screen_with_entity_previews(
+        entity_previews: Vec<HudEntityPreview>,
+    ) -> HudInventoryScreen {
+        HudInventoryScreen {
+            width: 176,
+            height: 166,
+            background_layers: Vec::new(),
+            slots: Vec::new(),
+            floating_items: Vec::new(),
+            entity_previews,
+            text_labels: Vec::new(),
+            hovered_slot_id: None,
+            tooltip: None,
+        }
+    }
+
+    #[test]
+    fn sanitize_inventory_keeps_entity_in_ui_preview_render_plan() {
+        let screen =
+            sanitize_hud_inventory_screen(hud_inventory_screen_with_entity_previews(vec![
+                hud_entity_preview_for_test(),
+            ]));
+
+        assert_eq!(screen.entity_previews.len(), 1);
+        let preview = &screen.entity_previews[0];
+        assert_eq!(preview.lighting, GuiItemLightingEntry::EntityInUi);
+        assert_eq!(
+            preview.rect,
+            HudEntityPreviewRect {
+                x: 26,
+                y: 8,
+                width: 49,
+                height: 70,
+            }
+        );
+        assert_eq!(
+            preview.visible_bounds(),
+            Some(HudEntityPreviewRect {
+                x: 30,
+                y: 20,
+                width: 10,
+                height: 12,
+            })
+        );
+        assert_eq!(preview.translation, [0.0, 0.875, 0.0]);
+        assert_eq!(preview.rotation, [0.0, 0.0, 1.0, 0.0]);
+        assert_eq!(preview.scale, 30.0);
+        assert!(preview.depth_isolated);
+        assert_eq!(
+            preview.entity.render_state.light_coords,
+            ENTITY_FULL_BRIGHT_LIGHT_COORDS
+        );
+        assert_eq!(preview.entity.render_state.outline_color, 0);
+        assert!(!preview.entity.render_state.appears_glowing);
+    }
+
+    #[test]
+    fn sanitize_inventory_drops_invalid_entity_in_ui_previews() {
+        let base = hud_entity_preview_for_test();
+        let screen =
+            sanitize_hud_inventory_screen(hud_inventory_screen_with_entity_previews(vec![
+                HudEntityPreview {
+                    lighting: GuiItemLightingEntry::Items3d,
+                    ..base.clone()
+                },
+                HudEntityPreview {
+                    depth_isolated: false,
+                    ..base.clone()
+                },
+                HudEntityPreview {
+                    rect: HudEntityPreviewRect {
+                        width: 0,
+                        ..base.rect
+                    },
+                    ..base.clone()
+                },
+                HudEntityPreview {
+                    scissor: Some(HudEntityPreviewRect {
+                        x: 200,
+                        y: 200,
+                        width: 10,
+                        height: 10,
+                    }),
+                    ..base.clone()
+                },
+                HudEntityPreview {
+                    translation: [0.0, f32::NAN, 0.0],
+                    ..base.clone()
+                },
+                HudEntityPreview {
+                    override_camera_rotation: Some([0.0, 0.0, f32::INFINITY, 1.0]),
+                    ..base.clone()
+                },
+                HudEntityPreview { scale: 0.0, ..base },
+            ]));
+
+        assert!(screen.entity_previews.is_empty());
     }
 
     #[test]
