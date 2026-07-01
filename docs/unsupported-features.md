@@ -1096,10 +1096,14 @@ When an agent does any of the following, update this file in the same slice:
     `Lighting.Entry.ITEMS_FLAT`. The flat icon draw plan also pins vanilla
     decoration order from `GuiGraphicsExtractor.itemDecorations`: item sprite
     layers first, then durability bar, cooldown fill, and count label; GUI 3D
-    block items skip only the flat stand-in layers while preserving those
-    decorations after the 3D pass. ENTITY_IN_UI still has pipeline-state
-    expression but waits for the corresponding P1 entity-in-UI item/entity
-    submission surface.
+    block items skip only the flat stand-in layers in the base HUD pass, then
+    draw their durability/cooldown/count decorations in the post-GUI-item HUD
+    overlay pass. The render graph now draws base HUD commands, then
+    `bbb-native-hud-item-pass` with an isolated cleared depth buffer for GUI 3D
+    block/model item faces, then `bbb-native-hud-overlay-pass` for item
+    decorations, front highlights, tooltips, and full-screen overlays.
+    ENTITY_IN_UI still has pipeline-state expression but waits for the
+    corresponding P1 entity-in-UI item/entity submission surface.
     The dropped-item 3D model
     path and the legacy item-entity / thrown-item billboard path now sample the
     entity light probe through `WorldStore`, keep the vanilla full-bright
@@ -2111,10 +2115,11 @@ When an agent does any of the following, update this file in the same slice:
         llvmpipe readback test (`hud_block_item_renders_visible_pixels_in_its_slot`)
         that renders a block icon and asserts visible non-background pixels in the
         slot. Flat / generated items keep their 2D sprite (no 3D model). The 2D
-        HUD layer's flat block-texture stand-in is suppressed for any slot that
-        renders a 3D model (`push_hud_item_icon`'s `skip_layers`), keeping the
-        count / durability / cooldown overlays the 3D pass doesn't draw — so the
-        flat square no longer peeks out behind the iso block's silhouette.
+        HUD layer's flat block-texture stand-in is suppressed in the base HUD
+        phase for any slot that renders a 3D model, while the count /
+        durability / cooldown overlays the 3D pass does not draw are emitted in
+        the post-GUI-item overlay phase — so the flat square no longer peeks out
+        behind the iso block's silhouette and the overlays remain above it.
       - inventory-screen 3D block icons DONE: the same pass also renders the open
         inventory / container screen's block items as 3D — every container slot
         plus the floating merchant-trade and stonecutter-recipe preview items.
@@ -2359,8 +2364,13 @@ When an agent does any of the following, update this file in the same slice:
         `GuiItemAtlas` / `OversizedItemRenderer`'s `usesBlockLight()` switch to
         `Lighting.Entry.ITEMS_3D`; the renderer sanitizer rejects
         `HudBlockItemModel` inputs with non-3D GUI lighting so this pass cannot
-        accidentally consume future flat/entity-in-UI submissions. Remaining
-        GUI flat `HudItemIcon` submissions similarly carry
+        accidentally consume future flat/entity-in-UI submissions. The renderer
+        now splits HUD drawing so GUI 3D block/model items draw after base HUD
+        backgrounds and before the post-GUI-item HUD overlay pass; count,
+        durability, cooldown, front highlights, tooltips, and full-screen
+        overlays therefore remain above the 3D item pass while that pass keeps a
+        cleared depth buffer for within-slot model sorting. GUI flat
+        `HudItemIcon` submissions similarly carry
         `GuiItemLightingEntry::ItemsFlat`, matching vanilla
         `GuiItemAtlas`'s non-block-light branch to `Lighting.Entry.ITEMS_FLAT`.
         Remaining entity-in-UI item/entity lighting contexts are deferred to

@@ -1044,15 +1044,21 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     order：vanilla `GuiGraphicsExtractor.itemDecorations` 在 item sprite 之后按
     `itemBar` → `itemCooldown` → `itemCount` 执行；renderer
     `for_each_hud_item_icon_draw_step` 固定 `Layers` → `DurabilityBar` →
-    `Cooldown` → `CountLabel`，`skip_layers` 只替换 GUI 3D block item 的 flat
-    stand-in sprite，同时保留 decoration 顺序。
+    `Cooldown` → `CountLabel`，GUI 3D block item 的 base HUD phase 只跳过
+    flat stand-in sprite，post-GUI-item overlay phase 保留 decoration 顺序。
 - GUI 3D item：
   - [x] `Lighting.Entry.ITEMS_3D` light directions / render-plan metadata：
     vanilla `GuiItemAtlas` 按 `usesBlockLight()` 选择 `ITEMS_3D`，native
     `block_item_3d_model` 生成 `GuiItemLightingEntry::Items3d`，renderer
     sanitizer 拒绝非 `Items3d` 的 `HudBlockItemModel` 进入 GUI 3D pass；
     tests pin metadata filtering 和 `gui_ortho` 的 `ITEMS_3D` camera lighting。
-  - block item / model item 与 GUI depth 的相互关系。
+  - [x] block item / model item 与 GUI depth / decoration order：
+    renderer 将 HUD 2D 拆成 base commands 和 `post_gui_item` commands；
+    `bbb-native-hud-item-pass` 在 base HUD pass 与
+    `bbb-native-hud-overlay-pass` 之间绘制 GUI 3D block-item mesh，只在 GUI
+    item pass 清空 depth，让模型面在 slot 内排序，同时 count/durability/
+    cooldown、front highlight、tooltip 和 full-screen overlays 画在其上。
+    source-order tests 固定 base HUD → GUI 3D item → HUD overlay pass。
 - entity-in-UI：
   - entity preview lighting。
   - entity preview transform / scale / scissor / depth isolation。

@@ -321,6 +321,12 @@ pub(super) struct HudDrawCommand<'a> {
     pub(super) end: u32,
 }
 
+pub(super) struct HudDraws<'a> {
+    pub(super) vertices: Vec<HudVertex>,
+    pub(super) commands: Vec<HudDrawCommand<'a>>,
+    pub(super) post_gui_item_start: usize,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum HudItemIconDrawStep {
     Layers,
@@ -1507,9 +1513,10 @@ impl Renderer {
         mesh
     }
 
-    pub(super) fn collect_hud_draws(&self) -> (Vec<HudVertex>, Vec<HudDrawCommand<'_>>) {
+    pub(super) fn collect_hud_draws(&self) -> HudDraws<'_> {
         let mut vertices = Vec::new();
         let mut commands = Vec::new();
+        let mut post_gui_item_commands = Vec::new();
         let surface_size = self.surface_size();
 
         if let Some(crosshair) = &self.hud_crosshair {
@@ -1564,8 +1571,24 @@ impl Renderer {
                         surface_size,
                         item_rect,
                         icon,
-                        renders_as_3d_block,
+                        !renders_as_3d_block,
+                        !renders_as_3d_block,
                     );
+                    if renders_as_3d_block {
+                        push_hud_item_icon(
+                            &mut vertices,
+                            &mut post_gui_item_commands,
+                            atlas,
+                            &self.hud_white_pixel,
+                            self.hud_digit_atlas.as_ref(),
+                            &self.hud_digit_glyphs,
+                            surface_size,
+                            item_rect,
+                            icon,
+                            false,
+                            true,
+                        );
+                    }
                 }
             }
         }
@@ -1728,8 +1751,24 @@ impl Renderer {
                             surface_size,
                             item_rect,
                             icon,
-                            slot.block_model.is_some(),
+                            slot.block_model.is_none(),
+                            slot.block_model.is_none(),
                         );
+                        if slot.block_model.is_some() {
+                            push_hud_item_icon(
+                                &mut vertices,
+                                &mut post_gui_item_commands,
+                                atlas,
+                                &self.hud_white_pixel,
+                                self.hud_digit_atlas.as_ref(),
+                                &self.hud_digit_glyphs,
+                                surface_size,
+                                item_rect,
+                                icon,
+                                false,
+                                true,
+                            );
+                        }
                     }
                 }
                 for item in &screen.floating_items {
@@ -1750,14 +1789,30 @@ impl Renderer {
                         surface_size,
                         item_rect,
                         &item.icon,
-                        item.block_model.is_some(),
+                        item.block_model.is_none(),
+                        item.block_model.is_none(),
                     );
+                    if item.block_model.is_some() {
+                        push_hud_item_icon(
+                            &mut vertices,
+                            &mut post_gui_item_commands,
+                            atlas,
+                            &self.hud_white_pixel,
+                            self.hud_digit_atlas.as_ref(),
+                            &self.hud_digit_glyphs,
+                            surface_size,
+                            item_rect,
+                            &item.icon,
+                            false,
+                            true,
+                        );
+                    }
                 }
             }
 
             push_hud_inventory_text_labels(
                 &mut vertices,
-                &mut commands,
+                &mut post_gui_item_commands,
                 &self.hud_white_pixel,
                 self.hud_ascii_atlas.as_ref(),
                 &self.hud_ascii_glyphs,
@@ -1768,7 +1823,7 @@ impl Renderer {
             if let (Some(slot), Some(highlight)) = (hovered_slot, &self.hud_slot_highlight_front) {
                 push_hud_draw(
                     &mut vertices,
-                    &mut commands,
+                    &mut post_gui_item_commands,
                     highlight,
                     surface_size,
                     inventory_slot_highlight_hud_rect(
@@ -1783,7 +1838,7 @@ impl Renderer {
 
             push_hud_inventory_tooltip(
                 &mut vertices,
-                &mut commands,
+                &mut post_gui_item_commands,
                 &self.hud_white_pixel,
                 self.hud_ascii_atlas.as_ref(),
                 &self.hud_ascii_glyphs,
@@ -1795,14 +1850,21 @@ impl Renderer {
         if let Some(overlay) = &self.hud_code_of_conduct_overlay {
             push_hud_draw(
                 &mut vertices,
-                &mut commands,
+                &mut post_gui_item_commands,
                 overlay,
                 surface_size,
                 centered_hud_rect(surface_size, overlay.width, overlay.height),
             );
         }
 
-        (vertices, commands)
+        let post_gui_item_start = commands.len();
+        commands.extend(post_gui_item_commands);
+
+        HudDraws {
+            vertices,
+            commands,
+            post_gui_item_start,
+        }
     }
 
     fn hud_inventory_background_sprite(
@@ -2102,11 +2164,12 @@ fn push_hud_item_icon<'a>(
     item_rect: HudRect,
     icon: &HudItemIcon,
     // When the slot also renders a 3D block model (in the GUI item pass), its 2D sprite layers are the
-    // flat block-texture stand-in that the 3D icon replaces — skip them, but keep the count / durability
-    // / cooldown overlays, which the 3D pass does not draw.
-    skip_layers: bool,
+    // flat block-texture stand-in that the 3D icon replaces. Decorations are deferred until after the
+    // GUI item pass so the 3D model cannot cover count / durability / cooldown overlays.
+    draw_layers: bool,
+    draw_decorations: bool,
 ) {
-    for_each_hud_item_icon_draw_step(icon, skip_layers, |step| match step {
+    for_each_hud_item_icon_draw_step(icon, draw_layers, draw_decorations, |step| match step {
         HudItemIconDrawStep::Layers => {
             for layer in &icon.layers {
                 push_hud_draw_with_uv_and_tint(
@@ -2150,11 +2213,15 @@ fn push_hud_item_icon<'a>(
 
 fn for_each_hud_item_icon_draw_step(
     icon: &HudItemIcon,
-    skip_layers: bool,
+    draw_layers: bool,
+    draw_decorations: bool,
     mut emit: impl FnMut(HudItemIconDrawStep),
 ) {
-    if !skip_layers && !icon.layers.is_empty() {
+    if draw_layers && !icon.layers.is_empty() {
         emit(HudItemIconDrawStep::Layers);
+    }
+    if !draw_decorations {
+        return;
     }
     if icon.durability_bar.is_some() {
         emit(HudItemIconDrawStep::DurabilityBar);
@@ -3042,7 +3109,7 @@ mod tests {
         };
 
         let mut steps = Vec::new();
-        for_each_hud_item_icon_draw_step(&icon, false, |step| steps.push(step));
+        for_each_hud_item_icon_draw_step(&icon, true, true, |step| steps.push(step));
         assert_eq!(
             steps,
             vec![
@@ -3054,7 +3121,7 @@ mod tests {
         );
 
         let mut steps = Vec::new();
-        for_each_hud_item_icon_draw_step(&icon, true, |step| steps.push(step));
+        for_each_hud_item_icon_draw_step(&icon, false, true, |step| steps.push(step));
         assert_eq!(
             steps,
             vec![

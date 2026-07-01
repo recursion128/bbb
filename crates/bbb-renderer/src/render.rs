@@ -1232,16 +1232,22 @@ impl Renderer {
             transparency_blit_draw_calls += 1;
         }
 
-        {
-            let (hud_vertices, hud_commands) = self.collect_hud_draws();
+        let hud_draws = self.collect_hud_draws();
+        let hud_vertex_buffer = if hud_draws.commands.is_empty() {
+            None
+        } else {
+            Some(
+                self.device
+                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("bbb-hud-frame-vertices"),
+                        contents: bytemuck::cast_slice(&hud_draws.vertices),
+                        usage: wgpu::BufferUsages::VERTEX,
+                    }),
+            )
+        };
+        if let Some(hud_vertex_buffer) = &hud_vertex_buffer {
+            let hud_commands = &hud_draws.commands[..hud_draws.post_gui_item_start];
             if !hud_commands.is_empty() {
-                let hud_vertex_buffer =
-                    self.device
-                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                            label: Some("bbb-hud-frame-vertices"),
-                            contents: bytemuck::cast_slice(&hud_vertices),
-                            usage: wgpu::BufferUsages::VERTEX,
-                        });
                 let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("bbb-native-hud-pass"),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -1259,7 +1265,7 @@ impl Renderer {
                 pass.set_pipeline(&self.hud_pipeline);
                 pass.set_vertex_buffer(0, hud_vertex_buffer.slice(..));
                 pipeline_switches += 1;
-                for command in &hud_commands {
+                for command in hud_commands {
                     pass.set_bind_group(0, &command.sprite.bind_group, &[]);
                     pass.draw(command.start..command.end, 0..1);
                 }
@@ -1268,10 +1274,10 @@ impl Renderer {
         }
 
         // GUI 3D block-item icons: the hotbar's block items render as 3D models (vanilla inventory item
-        // rendering) under the GUI ortho camera, on top of the 2D HUD, against a freshly-cleared depth
-        // buffer so their faces sort within each slot. Block-light items sample the blocks atlas via the
-        // GUI item bind group (the world camera's pass already finished, so reusing the depth target with
-        // a clear is safe).
+        // rendering) under the GUI ortho camera, after the 2D HUD backgrounds / flat items and before
+        // item decorations / foreground overlays. A freshly-cleared depth buffer isolates the 3D icon
+        // faces within each slot. Block-light items sample the blocks atlas via the GUI item bind group
+        // (the world camera's pass already finished, so reusing the depth target with a clear is safe).
         {
             let gui_item_mesh = self.collect_hud_block_item_mesh();
             if !gui_item_mesh.indices.is_empty() {
@@ -1318,6 +1324,34 @@ impl Renderer {
                 pass.draw_indexed(0..gui_item_mesh.indices.len() as u32, 0, 0..1);
                 pipeline_switches += 1;
                 item_model_draw_calls += 1;
+            }
+        }
+
+        if let Some(hud_vertex_buffer) = &hud_vertex_buffer {
+            let hud_commands = &hud_draws.commands[hud_draws.post_gui_item_start..];
+            if !hud_commands.is_empty() {
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("bbb-native-hud-overlay-pass"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &surface_view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: None,
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&self.hud_pipeline);
+                pass.set_vertex_buffer(0, hud_vertex_buffer.slice(..));
+                pipeline_switches += 1;
+                for command in hud_commands {
+                    pass.set_bind_group(0, &command.sprite.bind_group, &[]);
+                    pass.draw(command.start..command.end, 0..1);
+                }
+                hud_draw_calls += hud_commands.len() as u64;
             }
         }
 
@@ -3436,6 +3470,9 @@ mod tests {
         let hud_item_pass = source
             .find("label: Some(\"bbb-native-hud-item-pass\")")
             .expect("hud item pass label is used");
+        let hud_overlay_pass = source
+            .find("label: Some(\"bbb-native-hud-overlay-pass\")")
+            .expect("hud overlay pass label is used");
         let screenshot_copy = source
             .find("prepare_screenshot_copy")
             .expect("screenshot copy still reads the presented frame");
@@ -3485,12 +3522,50 @@ mod tests {
             combine < blit
                 && blit < hud_pass
                 && hud_pass < hud_item_pass
-                && hud_item_pass < screenshot_copy,
-            "HUD and GUI item passes draw on the surface after transparency final blit"
+                && hud_item_pass < hud_overlay_pass
+                && hud_overlay_pass < screenshot_copy,
+            "HUD, GUI item, and HUD overlay passes draw on the surface after transparency final blit"
         );
         assert!(
             source[hud_pass..screenshot_copy].contains("view: &surface_view"),
             "post-blit HUD passes target the swapchain surface"
+        );
+    }
+
+    #[test]
+    fn hud_gui_3d_items_draw_between_hud_base_and_overlay_decorations() {
+        let source = include_str!("render.rs");
+        let pre_commands = source
+            .find("&hud_draws.commands[..hud_draws.post_gui_item_start]")
+            .expect("pre-GUI-item HUD command slice is drawn first");
+        let hud_pass = source[pre_commands..]
+            .find("label: Some(\"bbb-native-hud-pass\")")
+            .map(|index| pre_commands + index)
+            .expect("base HUD pass label is used");
+        let gui_items = source[hud_pass..]
+            .find("let gui_item_mesh = self.collect_hud_block_item_mesh()")
+            .map(|index| hud_pass + index)
+            .expect("GUI 3D item mesh is collected after base HUD");
+        let hud_item_pass = source[gui_items..]
+            .find("label: Some(\"bbb-native-hud-item-pass\")")
+            .map(|index| gui_items + index)
+            .expect("GUI 3D item pass label is used");
+        let post_commands = source[hud_item_pass..]
+            .find("&hud_draws.commands[hud_draws.post_gui_item_start..]")
+            .map(|index| hud_item_pass + index)
+            .expect("post-GUI-item HUD command slice is drawn last");
+        let hud_overlay_pass = source[post_commands..]
+            .find("label: Some(\"bbb-native-hud-overlay-pass\")")
+            .map(|index| post_commands + index)
+            .expect("HUD overlay pass label is used");
+
+        assert!(
+            pre_commands < hud_pass
+                && hud_pass < gui_items
+                && gui_items < hud_item_pass
+                && hud_item_pass < post_commands
+                && post_commands < hud_overlay_pass,
+            "GUI 3D item models draw after base HUD/slot backgrounds and before decorations/front overlays"
         );
     }
 
