@@ -408,6 +408,13 @@ When an agent does any of the following, update this file in the same slice:
         grow-to-base size curve, physics metadata, and
         `SingleQuadParticle.FacingCameraMode.LOOKAT_Y` represented as a
         per-instance facing mode whose vertex transform keeps world-Y up.
+        `dust_plume` now maps to `DustPlumeParticle.Provider` with age
+        sprites, `BaseAshSmokeParticle` `0.75` quad-size scale,
+        `7 / (random * 0.8 + 0.2)` lifetime, command velocity plus `0.15`
+        y offset, opaque layer, no-physics metadata, `0.5` initial gravity,
+        `0.96` friction, `ARGB(0xBAB1C2) - random * 0.2` tint,
+        grow-to-base size curve, and the provider tick override that decays
+        gravity by `0.88` and friction by `0.92` before default motion.
         `dust` / `dust_color_transition` now map to their vanilla providers
         with decoded RGB colors, transition target color, clamped scale,
         scale-shaped quad size / lifetime, random color variation, age sprites,
@@ -5772,6 +5779,13 @@ When an agent does any of the following, update this file in the same slice:
         `12/(0.5+random*.5)` lifetime, opaque particle layer, full-block
         light, grow-to-base size curve, physics metadata, and vanilla
         `FacingCameraMode.LOOKAT_Y` vertex orientation with world-Y up.
+      - particle descriptors map `DustPlumeParticle.Provider` for
+        `dust_plume` to age sprites, `BaseAshSmokeParticle` `0.75`
+        quad-size scale, `7/(random*.8+.2)` lifetime, command velocity plus
+        `0.15` y offset, opaque particle layer, no-physics metadata, `0.5`
+        initial gravity, `0.96` friction, `ARGB(0xBAB1C2)-random*.2`
+        tint, grow-to-base size curve, and provider tick motion that decays
+        gravity by `0.88` and friction by `0.92` before default motion.
       - particle descriptors map `ShriekParticle.Provider` to
         `ShriekParticleOption.delay` carried in
         `ParticleSpawnCommand.initial_delay_ticks`; delayed instances do not

@@ -1317,6 +1317,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     lifetime, opaque layer, full-block light, grow-to-base size curve,
     physics metadata, and `LOOKAT_Y` vertex transform with world-Y up
     instead of full camera pitch.
+  - [x] `DustPlumeParticle.Provider`：renderer descriptor now maps
+    `minecraft:dust_plume` to age sprites, vanilla `BaseAshSmokeParticle`
+    `0.75` quad-size scale, `7 / (random * 0.8 + 0.2)` lifetime, command
+    velocity with `+0.15` y offset, opaque layer, no-physics metadata,
+    `0.5` initial gravity, `0.96` friction, `ARGB(0xBAB1C2) - random * 0.2`
+    tint, grow-to-base size curve, and the provider tick override that applies
+    `gravity *= 0.88` and `friction *= 0.92` before default particle motion.
   - [x] `SculkChargeParticle.Provider` roll：native command resolution decodes
     `SculkChargeParticleOptions.roll` for `minecraft:sculk_charge`; renderer
     stores it as initial `oRoll` / `roll` and applies the vanilla billboard

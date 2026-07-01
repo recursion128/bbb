@@ -29,6 +29,7 @@ pub(crate) enum ParticleTickMotionDescriptor {
     TrailTarget,
     VibrationSignal,
     CampfireSmoke,
+    DustPlume,
     Portal,
     ReversePortal,
 }
@@ -197,6 +198,10 @@ pub(crate) enum ParticleColorDescriptor {
     FixedRgbChoice {
         first: [f32; 3],
         second: [f32; 3],
+    },
+    FixedRgbMinusRandom {
+        rgb: [f32; 3],
+        max_subtract: f32,
     },
     FixedRgba([f32; 4]),
     FixedRgb([f32; 3]),
@@ -1158,6 +1163,28 @@ impl ParticleDescriptor {
                 has_physics: false,
                 speed_up_when_y_motion_is_blocked: true,
             },
+            "minecraft:dust_plume" => Self {
+                provider: "DustPlumeParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::BaseAshSmoke {
+                    max_lifetime: 7,
+                    scale_tenths: 10,
+                },
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::BaseAshSmoke {
+                    scale: 1.0,
+                    color: ParticleColorDescriptor::FixedRgbMinusRandom {
+                        rgb: WHITE_ASH_SMOKE_RGB,
+                        max_subtract: 0.2,
+                    },
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::CommandWithYOffset {
+                    y_offset: 0.15,
+                },
+                friction: 0.96,
+                gravity: 0.5,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: true,
+            },
             "minecraft:happy_villager" => Self {
                 provider: "SuspendedTownParticle.HappyVillagerProvider",
                 lifetime: ParticleLifetimeDescriptor::BaseAshSmoke {
@@ -1356,6 +1383,7 @@ impl ParticleDescriptor {
             "CampfireSmokeParticle.CosyProvider" | "CampfireSmokeParticle.SignalProvider" => {
                 ParticleTickMotionDescriptor::CampfireSmoke
             }
+            "DustPlumeParticle.Provider" => ParticleTickMotionDescriptor::DustPlume,
             "PortalParticle.Provider" => ParticleTickMotionDescriptor::Portal,
             "ReversePortalParticle.ReversePortalProvider" => {
                 ParticleTickMotionDescriptor::ReversePortal
@@ -1875,6 +1903,13 @@ impl ParticleColorDescriptor {
             Self::FixedRgbChoice { first, second } => {
                 let [red, green, blue] = if random.next_bool() { first } else { second };
                 [red, green, blue, 1.0]
+            }
+            Self::FixedRgbMinusRandom {
+                rgb: [red, green, blue],
+                max_subtract,
+            } => {
+                let shift = random.next_f32() * max_subtract;
+                [red - shift, green - shift, blue - shift, 1.0]
             }
             Self::FixedRgba(rgba) => rgba,
             Self::FixedRgb([red, green, blue]) => [red, green, blue, 1.0],
@@ -3390,6 +3425,35 @@ mod tests {
             true,
         );
         assert_descriptor(
+            "minecraft:dust_plume",
+            "DustPlumeParticle.Provider",
+            ParticleLifetimeDescriptor::BaseAshSmoke {
+                max_lifetime: 7,
+                scale_tenths: 10,
+            },
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::BaseAshSmoke {
+                scale: 1.0,
+                color: ParticleColorDescriptor::FixedRgbMinusRandom {
+                    rgb: WHITE_ASH_SMOKE_RGB,
+                    max_subtract: 0.2,
+                },
+            },
+            0.96,
+            0.5,
+            false,
+            true,
+        );
+        let dust_plume_descriptor = ParticleDescriptor::for_particle("minecraft:dust_plume");
+        assert_eq!(
+            dust_plume_descriptor.initial_velocity,
+            ParticleInitialVelocityDescriptor::CommandWithYOffset { y_offset: 0.15 }
+        );
+        assert_eq!(
+            dust_plume_descriptor.tick_motion(),
+            ParticleTickMotionDescriptor::DustPlume
+        );
+        assert_descriptor(
             "minecraft:happy_villager",
             "SuspendedTownParticle.HappyVillagerProvider",
             ParticleLifetimeDescriptor::BaseAshSmoke {
@@ -3917,6 +3981,35 @@ mod tests {
                 WHITE_ASH_SMOKE_RGB[2],
                 1.0,
             ]
+        );
+
+        let mut dust_plume_random = ParticleRandom::new(31);
+        let dust_plume = ParticleVisualDescriptor::BaseAshSmoke {
+            scale: 1.0,
+            color: ParticleColorDescriptor::FixedRgbMinusRandom {
+                rgb: WHITE_ASH_SMOKE_RGB,
+                max_subtract: 0.2,
+            },
+        }
+        .sample_for_command(&mut dust_plume_random, [0.0, 0.0, 0.0]);
+        assert_range_f32(dust_plume.base_quad_size, 0.075, 0.15);
+        assert_range_f32(
+            dust_plume.color[0],
+            WHITE_ASH_SMOKE_RGB[0] - 0.2,
+            WHITE_ASH_SMOKE_RGB[0],
+        );
+        assert_close_f32(
+            dust_plume.color[0] - dust_plume.color[1],
+            WHITE_ASH_SMOKE_RGB[0] - WHITE_ASH_SMOKE_RGB[1],
+        );
+        assert_close_f32(
+            dust_plume.color[2] - dust_plume.color[0],
+            WHITE_ASH_SMOKE_RGB[2] - WHITE_ASH_SMOKE_RGB[0],
+        );
+        assert_eq!(dust_plume.color[3], 1.0);
+        assert_eq!(
+            dust_plume.quad_size_curve,
+            ParticleQuadSizeCurve::GrowToBase
         );
 
         let mut poof_random = ParticleRandom::new(11);

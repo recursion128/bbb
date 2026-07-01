@@ -853,6 +853,18 @@ impl ParticleInstance {
                     self.color[3] -= 0.015;
                 }
             }
+            ParticleTickMotionDescriptor::DustPlume => {
+                self.gravity *= 0.88;
+                self.friction *= 0.92;
+                self.velocity[1] -= 0.04 * f64::from(self.gravity);
+                self.position[0] += self.velocity[0];
+                self.position[1] += self.velocity[1];
+                self.position[2] += self.velocity[2];
+                let friction = f64::from(self.friction);
+                self.velocity[0] *= friction;
+                self.velocity[1] *= friction;
+                self.velocity[2] *= friction;
+            }
             ParticleTickMotionDescriptor::Portal => {
                 let next_age = self.age_ticks.saturating_add(1);
                 let lifetime = self.lifetime_ticks.max(1) as f32;
@@ -1677,6 +1689,30 @@ mod tests {
         assert_close3(instance.previous_position, [1.0, 2.0, 3.0]);
         assert_close3(instance.position, [1.5, 2.23, 2.5]);
         assert_close3(instance.velocity, [0.4, 0.184, -0.4]);
+    }
+
+    #[test]
+    fn particle_runtime_dust_plume_decays_gravity_and_friction_before_motion() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:dust_plume", 20);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.2, 0.3, -0.4];
+        instance.gravity = 0.5;
+        instance.friction = 0.96;
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.active_instances, 1);
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 1);
+        assert_close3(instance.previous_position, [1.0, 2.0, 3.0]);
+        assert_close_f32(instance.gravity, 0.44);
+        assert_close_f32(instance.friction, 0.8832);
+        assert_close3(instance.position, [1.2, 2.2824, 2.6]);
+        assert_close3(instance.velocity, [0.17664, 0.249_415_68, -0.35328]);
     }
 
     #[test]
@@ -3455,6 +3491,31 @@ mod tests {
         assert!(detection.has_physics);
         assert!(detection.speed_up_when_y_motion_is_blocked);
         assert_eq!(detection.render_layer, ParticleRenderLayer::Opaque);
+
+        let mut dust_plume_random = ParticleRandom::new(86);
+        let mut dust_plume_command = spawn_command("minecraft:dust_plume", 1.0);
+        dust_plume_command.velocity = [0.25, 0.5, -0.75];
+        let dust_plume =
+            ParticleInstance::from_spawn_command(dust_plume_command, &mut dust_plume_random);
+        assert_eq!(dust_plume.provider, "DustPlumeParticle.Provider");
+        assert_eq!(dust_plume.sprite_selection, ParticleSpriteSelection::Age);
+        assert_range_f32(dust_plume.base_quad_size, 0.075, 0.15);
+        assert_range_f32(dust_plume.color[0], 186.0 / 255.0 - 0.2, 186.0 / 255.0);
+        assert_eq!(
+            dust_plume.quad_size_curve,
+            ParticleQuadSizeCurve::GrowToBase
+        );
+        assert!((7..=35).contains(&dust_plume.lifetime_ticks));
+        assert_eq!(dust_plume.velocity, [0.25, 0.65, -0.75]);
+        assert_eq!(dust_plume.friction, 0.96);
+        assert_eq!(dust_plume.gravity, 0.5);
+        assert!(!dust_plume.has_physics);
+        assert!(dust_plume.speed_up_when_y_motion_is_blocked);
+        assert_eq!(
+            dust_plume.tick_motion,
+            ParticleTickMotionDescriptor::DustPlume
+        );
+        assert_eq!(dust_plume.render_layer, ParticleRenderLayer::Opaque);
 
         let mut gust_random = ParticleRandom::new(71);
         let mut gust_command = spawn_command("minecraft:gust", 1.0);
