@@ -2397,6 +2397,8 @@ fn item_exact_component_is_supported(component: &str, expected: &Value) -> bool 
         || (component == "minecraft:unbreakable" && unit_component_value_is_supported(expected))
         || (component == "minecraft:custom_data"
             && custom_data_predicate_value_to_nbt_summary(expected).is_some())
+        || (component == "minecraft:potion_contents"
+            && potion_contents_exact_value(expected).is_some())
 }
 
 fn item_partial_component_predicates_are_supported(value: &Value) -> bool {
@@ -3577,6 +3579,13 @@ fn item_exact_component_matches(
                 .is_some_and(|actual| nbt_summary_exact_matches(&expected, actual));
     }
 
+    if component == "minecraft:potion_contents" {
+        let Some(expected) = potion_contents_exact_value(expected) else {
+            return false;
+        };
+        return potion_contents_exact_match(&expected, &item.component_patch);
+    }
+
     let Some(expected) = simple_component_text(expected) else {
         return false;
     };
@@ -4045,6 +4054,94 @@ fn item_stack_matches_potion_contents_value(
         return false;
     };
     registry_key_holder_set_matches(Some(value), potion_key, potion_tags)
+}
+
+struct ExactPotionContents<'a> {
+    potion_key: Option<&'a str>,
+    custom_color: Option<i32>,
+    custom_effect_count: usize,
+    custom_name: Option<&'a str>,
+}
+
+fn potion_contents_exact_value(value: &Value) -> Option<ExactPotionContents<'_>> {
+    match value {
+        Value::String(potion_key) => Some(ExactPotionContents {
+            potion_key: Some(potion_contents_exact_key(potion_key)?),
+            custom_color: None,
+            custom_effect_count: 0,
+            custom_name: None,
+        }),
+        Value::Object(value) => {
+            if !value.keys().all(|key| {
+                matches!(
+                    key.as_str(),
+                    "potion" | "custom_color" | "custom_effects" | "custom_name"
+                )
+            }) {
+                return None;
+            }
+            let potion_key = match value.get("potion") {
+                None => None,
+                Some(Value::String(potion_key)) => Some(potion_contents_exact_key(potion_key)?),
+                Some(_) => return None,
+            };
+            let custom_color = match value.get("custom_color") {
+                None => None,
+                Some(custom_color) => Some(json_i32(custom_color)?),
+            };
+            let custom_effect_count = match value.get("custom_effects") {
+                None => 0,
+                Some(Value::Array(custom_effects)) if custom_effects.is_empty() => 0,
+                Some(_) => return None,
+            };
+            let custom_name = match value.get("custom_name") {
+                None => None,
+                Some(Value::String(custom_name)) => Some(custom_name.as_str()),
+                Some(_) => return None,
+            };
+            Some(ExactPotionContents {
+                potion_key,
+                custom_color,
+                custom_effect_count,
+                custom_name,
+            })
+        }
+        _ => None,
+    }
+}
+
+fn potion_contents_exact_key(value: &str) -> Option<&str> {
+    (!value.is_empty() && !value.starts_with('#')).then_some(value)
+}
+
+fn potion_contents_exact_match(
+    expected: &ExactPotionContents<'_>,
+    component_patch: &DataComponentPatchSummary,
+) -> bool {
+    if component_patch
+        .removed_type_ids
+        .contains(&POTION_CONTENTS_COMPONENT_ID)
+        || !component_patch
+            .added_type_ids
+            .contains(&POTION_CONTENTS_COMPONENT_ID)
+    {
+        return false;
+    }
+    match (expected.potion_key, component_patch.potion_id) {
+        (None, None) => {}
+        (Some(expected), Some(actual)) => {
+            let Ok(actual) = usize::try_from(actual) else {
+                return false;
+            };
+            if VANILLA_POTION_KEYS.get(actual) != Some(&expected) {
+                return false;
+            }
+        }
+        _ => return false,
+    }
+    component_patch.potion_custom_color == expected.custom_color
+        && component_patch.potion_custom_effect_count == Some(expected.custom_effect_count)
+        && component_patch.potion_custom_name.as_deref() == expected.custom_name
 }
 
 fn writable_book_component_predicate_is_supported(property: &ItemModelProperty) -> bool {

@@ -86,6 +86,10 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub potion_id: Option<i32>,
     #[serde(default)]
+    pub potion_custom_effect_count: Option<usize>,
+    #[serde(default)]
+    pub potion_custom_name: Option<String>,
+    #[serde(default)]
     pub firework_explosion_colors: Vec<i32>,
     #[serde(default)]
     pub firework_explosion_shape: Option<FireworkExplosionShapeSummary>,
@@ -533,6 +537,8 @@ fn decode_typed_data_component_patch_summary(
                 let potion = decode_potion_contents(decoder)?;
                 summary.potion_id = potion.potion_id;
                 summary.potion_custom_color = potion.custom_color;
+                summary.potion_custom_effect_count = Some(potion.custom_effect_count);
+                summary.potion_custom_name = potion.custom_name;
             }
             68 => {
                 let explosion = decode_firework_explosion(decoder)?;
@@ -1781,6 +1787,8 @@ fn decode_swing_animation(decoder: &mut Decoder<'_>) -> Result<SwingAnimationSum
 struct PotionContentsSummary {
     potion_id: Option<i32>,
     custom_color: Option<i32>,
+    custom_effect_count: usize,
+    custom_name: Option<String>,
 }
 
 fn decode_potion_contents(decoder: &mut Decoder<'_>) -> Result<PotionContentsSummary> {
@@ -1794,10 +1802,12 @@ fn decode_potion_contents(decoder: &mut Decoder<'_>) -> Result<PotionContentsSum
     for _ in 0..effects {
         decode_mob_effect_instance(decoder)?;
     }
-    decode_optional_string(decoder, MAX_STRING_CHARS)?;
+    let custom_name = decode_optional_string_value(decoder, MAX_STRING_CHARS)?;
     Ok(PotionContentsSummary {
         potion_id,
         custom_color,
+        custom_effect_count: effects,
+        custom_name,
     })
 }
 
@@ -3174,6 +3184,8 @@ mod tests {
                 }),
                 potion_custom_color: Some(0x778899),
                 potion_id: Some(3),
+                potion_custom_effect_count: Some(1),
+                potion_custom_name: Some("healing".to_string()),
                 firework_explosion_colors: vec![0x010203, 0x040506],
                 firework_explosion_shape: Some(FireworkExplosionShapeSummary::Star),
                 firework_explosion_has_trail: Some(true),

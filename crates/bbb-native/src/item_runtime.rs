@@ -7336,6 +7336,38 @@ mod tests {
             ),
             uv("component_condition_bundle_exact_custom_data_absent")
         );
+        let exact_potion_contents = DataComponentPatchSummary {
+            added_type_ids: vec![51],
+            potion_id: Some(healing_potion_id),
+            potion_custom_color: Some(0x77_88_99),
+            potion_custom_effect_count: Some(0),
+            potion_custom_name: Some("healing".to_string()),
+            ..DataComponentPatchSummary::default()
+        };
+        assert_eq!(
+            selected(85, named_bundle_entry(exact_potion_contents.clone())),
+            uv("component_condition_bundle_exact_potion_contents_present")
+        );
+        assert_eq!(
+            selected(
+                85,
+                named_bundle_entry(DataComponentPatchSummary {
+                    potion_custom_effect_count: Some(1),
+                    ..exact_potion_contents.clone()
+                })
+            ),
+            uv("component_condition_bundle_exact_potion_contents_absent")
+        );
+        assert_eq!(
+            selected(
+                85,
+                named_bundle_entry(DataComponentPatchSummary {
+                    removed_type_ids: vec![51],
+                    ..exact_potion_contents
+                })
+            ),
+            uv("component_condition_bundle_exact_potion_contents_absent")
+        );
         assert_eq!(
             selected(
                 33,
@@ -10795,6 +10827,7 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_LORE = registerItem("component_condition_bundle_exact_lore");
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_UNBREAKABLE = registerItem("component_condition_bundle_exact_unbreakable");
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_CUSTOM_DATA = registerItem("component_condition_bundle_exact_custom_data");
+                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_POTION_CONTENTS = registerItem("component_condition_bundle_exact_potion_contents");
             }"#,
         );
         write_json(
@@ -11417,6 +11450,44 @@ mod tests {
                     "on_false": {
                         "type": "minecraft:model",
                         "model": "minecraft:item/component_condition_bundle_exact_custom_data_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_exact_potion_contents.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "components": {
+                                            "minecraft:potion_contents": {
+                                                "potion": "minecraft:healing",
+                                                "custom_color": 7833753,
+                                                "custom_effects": [],
+                                                "custom_name": "healing"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_potion_contents_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_potion_contents_absent"
                     }
                 }
             }"#,
@@ -13843,6 +13914,14 @@ mod tests {
             (
                 "component_condition_bundle_exact_custom_data_absent",
                 [70, 90, 55, 255],
+            ),
+            (
+                "component_condition_bundle_exact_potion_contents_present",
+                [235, 185, 215, 255],
+            ),
+            (
+                "component_condition_bundle_exact_potion_contents_absent",
+                [85, 45, 70, 255],
             ),
             (
                 "component_condition_container_components_present",

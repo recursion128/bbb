@@ -841,7 +841,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:item_name` / `minecraft:lore` exact components plus
     `minecraft:unbreakable` Unit exact components and exact
     `minecraft:custom_data` compound components (JSON-object or SNBT-string
-    expected values) plus nested partial `minecraft:damage`,
+    expected values), plus exact `minecraft:potion_contents` components for
+    direct potion keys, optional `custom_color`, empty `custom_effects`, and
+    optional `custom_name`, plus nested partial `minecraft:damage`,
     `minecraft:enchantments`,
     `minecraft:stored_enchantments`, `minecraft:firework_explosion`,
     `minecraft:fireworks`, `minecraft:trim`, `minecraft:jukebox_playable`,
@@ -869,8 +871,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     constrained `DataComponentPredicate` types such as inline enchantment holder
     payloads / server datapack tag remaps, broader NBT scalar typing, remaining
     concrete partial predicates and complex exact component codecs beyond
-    simple literal name/lore, Unit `unbreakable`, and compound `custom_data`
-    components,
+    simple literal name/lore, Unit `unbreakable`, compound `custom_data`, and
+    direct-key / empty-custom-effects `potion_contents` components, exact
+    `potion_contents` with non-empty custom-effect payload equality,
     non-literal / rich / styled written-book page
     `ComponentSerialization` equality, trim inline material or pattern payloads
     / datapack pattern registry-key remaps, datapack villager-type registry
