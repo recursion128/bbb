@@ -517,6 +517,14 @@ When an agent does any of the following, update this file in the same slice:
         nextDouble()` offsets scaled by the provider scale, and vanilla child
         xAux `age / lifetime`; `GustParticle.Provider` ignores that xAux just
         like vanilla.
+      - `ElderGuardianParticle.Provider` for `minecraft:elder_guardian` is
+        accepted as a definition-less special particle, records fixed lifetime
+        `30`, zero aux/motion/gravity provider metadata, the translucent
+        `entityTranslucent(textures/entity/guardian/guardian_elder.png)`
+        render-type intent, and `ParticleRenderType.ELDER_GUARDIANS`; the
+        atlas billboard submission path explicitly skips non-`SINGLE_QUADS`
+        groups. Rendering the actual elder guardian model remains deferred to
+        special-group visual parity.
       - `SculkChargePopParticle.Provider` uses vanilla command velocity,
         `alpha=1`, base quad size, age sprite selection,
         `6 + random.nextInt(4)` lifetime, `0.96` friction, and no-physics
@@ -5931,6 +5939,13 @@ When an agent does any of the following, update this file in the same slice:
         quad-size scaling, fixed lifetime `8`, command velocity with
         `-0.03` / `+0.03` y offset, default `0.98` friction, zero gravity, and
         physics metadata plus vanilla opaque particle layer.
+      - particle descriptors map `ElderGuardianParticle.Provider` to
+        definition-less `minecraft:elder_guardian`, fixed lifetime `30`, zero
+        aux/motion/gravity provider metadata, translucent
+        `entityTranslucent(textures/entity/guardian/guardian_elder.png)`
+        intent, and `ParticleRenderType.ELDER_GUARDIANS`; atlas billboard
+        vertices are limited to `SINGLE_QUADS`, so actual elder guardian model
+        drawing remains deferred to special-group visual parity.
     - native dispatcher and offline probe recording/playback for
       `LevelEventHandler` portal travel local ambience:
       - event `1032`

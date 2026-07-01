@@ -1383,7 +1383,8 @@ fn initial_delay_ticks_for_particle_options(particle_type_id: i32, raw_options: 
 fn definitionless_particle_type(particle_type_id: i32) -> bool {
     matches!(
         particle_type_id,
-        EXPLOSION_EMITTER_PARTICLE_TYPE_ID
+        ELDER_GUARDIAN_PARTICLE_TYPE_ID
+            | EXPLOSION_EMITTER_PARTICLE_TYPE_ID
             | GUST_EMITTER_LARGE_PARTICLE_TYPE_ID
             | GUST_EMITTER_SMALL_PARTICLE_TYPE_ID
     )
@@ -1721,6 +1722,7 @@ const DRAGON_BREATH_PARTICLE_TYPE_ID: i32 = 8;
 const DUST_PARTICLE_TYPE_ID: i32 = 14;
 const DUST_COLOR_TRANSITION_PARTICLE_TYPE_ID: i32 = 15;
 const EFFECT_PARTICLE_TYPE_ID: i32 = 16;
+const ELDER_GUARDIAN_PARTICLE_TYPE_ID: i32 = 17;
 const ENTITY_EFFECT_PARTICLE_TYPE_ID: i32 = 21;
 const EXPLOSION_EMITTER_PARTICLE_TYPE_ID: i32 = 22;
 const EXPLOSION_PARTICLE_TYPE_ID: i32 = 23;
@@ -1934,6 +1936,21 @@ mod tests {
         assert_eq!(child.particle_type_id, EXPLOSION_PARTICLE_TYPE_ID);
         assert_eq!(child.particle_id, "minecraft:explosion");
         assert_eq!(child.sprite_ids, vec!["minecraft:explosion_0".to_string()]);
+    }
+
+    #[test]
+    fn elder_guardian_particle_command_is_definitionless_special_group_input() {
+        let mut resolver = test_resolver(0);
+        let batch = resolver
+            .resolve_level_particles(&level_particles_packet(ELDER_GUARDIAN_PARTICLE_TYPE_ID, 0));
+
+        assert_eq!(batch.len(), 1);
+        assert_eq!(batch.missing_definition_count, 0);
+        let command = &batch.commands[0];
+        assert_eq!(command.particle_type_id, ELDER_GUARDIAN_PARTICLE_TYPE_ID);
+        assert_eq!(command.particle_id, "minecraft:elder_guardian");
+        assert!(command.sprite_ids.is_empty());
+        assert!(command.child_spawn_templates.is_empty());
     }
 
     #[test]

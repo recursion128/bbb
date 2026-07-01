@@ -780,6 +780,17 @@ impl ParticleDescriptor {
                 has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
+            "minecraft:elder_guardian" => Self {
+                provider: "ElderGuardianParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::Fixed(30),
+                sprite_selection: ParticleSpriteSelection::First,
+                visual: ParticleVisualDescriptor::BaseSingleQuad,
+                initial_velocity: ParticleInitialVelocityDescriptor::Zero,
+                friction: 0.98,
+                gravity: 0.0,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
             "minecraft:sonic_boom" => Self {
                 provider: "SonicBoomParticle.Provider",
                 lifetime: ParticleLifetimeDescriptor::Fixed(16),
@@ -3228,6 +3239,21 @@ mod tests {
         assert_eq!(
             ParticleDescriptor::for_particle("minecraft:explosion_emitter").child_emission(),
             Some(ParticleChildEmissionDescriptor::HugeExplosionSeed)
+        );
+        assert_descriptor(
+            "minecraft:elder_guardian",
+            "ElderGuardianParticle.Provider",
+            ParticleLifetimeDescriptor::Fixed(30),
+            ParticleSpriteSelection::First,
+            ParticleVisualDescriptor::BaseSingleQuad,
+            0.98,
+            0.0,
+            true,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:elder_guardian").initial_velocity,
+            ParticleInitialVelocityDescriptor::Zero
         );
         assert_descriptor(
             "minecraft:sonic_boom",

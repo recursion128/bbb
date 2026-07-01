@@ -1389,6 +1389,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `age % (delay + 1) == 0`, random `nextDouble() - nextDouble()` offsets,
     and the vanilla child xAux `age / lifetime` (which `GustParticle.Provider`
     itself ignores).
+  - [x] `ElderGuardianParticle.Provider`：native command resolution now allows
+    the definition-less `minecraft:elder_guardian` special particle type;
+    renderer records fixed lifetime `30`, zero aux/motion/gravity provider
+    metadata, translucent `entityTranslucent` intent, and vanilla
+    `ParticleRenderType.ELDER_GUARDIANS` group while keeping the atlas
+    billboard path limited to `SINGLE_QUADS`. Actual elder guardian model
+    rendering remains follow-up special-group visual parity.
   - 初速度。
   - lifetime。
   - size curve。
@@ -1401,7 +1408,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     providers, and vertex collection uses the vanilla `ParticleEngine`
     group order (`SINGLE_QUADS`, then future `ITEM_PICKUP`, then
     `ELDER_GUARDIANS`) with solid layers before translucent layers while
-    preserving insertion order inside the same group/layer.
+    preserving insertion order inside the same group/layer; the current atlas
+    billboard submission path now explicitly consumes only `SINGLE_QUADS` and
+    leaves `ELDER_GUARDIANS` for the later model-special render path.
   - [x] current particle-atlas solid vs translucent pass split：single-quad
     atlas billboards now collect separate opaque/translucent vertex batches and
     draw them through vanilla-shaped `OPAQUE_PARTICLE` (no blend) and

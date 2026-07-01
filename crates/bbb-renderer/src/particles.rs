@@ -1274,7 +1274,7 @@ fn particle_billboard_vertices<'a>(
     let mut vertices = Vec::new();
     let mut instances: Vec<_> = instances
         .into_iter()
-        .filter(|instance| instance.render_group != ParticleRenderGroup::NoRender)
+        .filter(|instance| instance.render_group == ParticleRenderGroup::SingleQuads)
         .filter(|instance| instance.delay_ticks == 0)
         .filter(|instance| match pipeline_kind {
             Some(kind) => instance.render_layer.pipeline_kind() == kind,
@@ -1614,8 +1614,11 @@ fn vault_connection_alpha(age_ticks: u32, lifetime_ticks: u32, partial_tick: f32
     time * 0.6
 }
 
-fn particle_render_group_for_particle(_particle_id: &str) -> ParticleRenderGroup {
-    ParticleRenderGroup::SingleQuads
+fn particle_render_group_for_particle(particle_id: &str) -> ParticleRenderGroup {
+    match particle_id {
+        "minecraft:elder_guardian" => ParticleRenderGroup::ElderGuardians,
+        _ => ParticleRenderGroup::SingleQuads,
+    }
 }
 
 fn particle_render_layer_for_particle(particle_id: &str) -> ParticleRenderLayer {
@@ -1640,6 +1643,7 @@ fn particle_render_layer_for_particle(particle_id: &str) -> ParticleRenderLayer 
         | "minecraft:entity_effect"
         | "minecraft:flash"
         | "minecraft:firefly"
+        | "minecraft:elder_guardian"
         | "minecraft:infested"
         | "minecraft:raid_omen"
         | "minecraft:trial_omen"
@@ -4278,7 +4282,7 @@ mod tests {
     }
 
     #[test]
-    fn particle_instances_record_vanilla_single_quad_render_layers() {
+    fn particle_instances_record_vanilla_render_groups_and_layers() {
         let mut random = ParticleRandom::new(0);
         let opaque = ParticleInstance::from_spawn_command(
             spawn_command("minecraft:flame", 1.0),
@@ -4330,6 +4334,10 @@ mod tests {
             spawn_command("minecraft:vibration", 13.0),
             &mut random,
         );
+        let elder_guardian = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:elder_guardian", 14.0),
+            &mut random,
+        );
 
         assert_eq!(opaque.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(cloud.render_group, ParticleRenderGroup::SingleQuads);
@@ -4347,6 +4355,12 @@ mod tests {
             unresolved_vibration.render_group,
             ParticleRenderGroup::NoRender
         );
+        assert_eq!(
+            elder_guardian.render_group,
+            ParticleRenderGroup::ElderGuardians
+        );
+        assert_eq!(elder_guardian.provider, "ElderGuardianParticle.Provider");
+        assert_eq!(elder_guardian.lifetime_ticks, 30);
         assert_eq!(opaque.render_layer, ParticleRenderLayer::Opaque);
         assert_eq!(cloud.render_layer, ParticleRenderLayer::Translucent);
         assert_eq!(squid_ink.render_layer, ParticleRenderLayer::Translucent);
@@ -4359,6 +4373,10 @@ mod tests {
         assert_eq!(vault.render_layer, ParticleRenderLayer::Translucent);
         assert_eq!(ominous_spawn.render_layer, ParticleRenderLayer::Opaque);
         assert_eq!(vibration.render_layer, ParticleRenderLayer::Translucent);
+        assert_eq!(
+            elder_guardian.render_layer,
+            ParticleRenderLayer::Translucent
+        );
     }
 
     #[test]
@@ -4435,6 +4453,36 @@ mod tests {
         assert_close_f32(vertices[0].position[0], 19.9);
         assert_close_f32(vertices[6].position[0], 9.9);
         assert_close_f32(vertices[12].position[0], 29.9);
+    }
+
+    #[test]
+    fn particle_billboard_vertices_skip_non_single_quad_groups() {
+        let mut cloud = test_instance_with_lifetime("minecraft:cloud", 20);
+        cloud.position = [10.0, 0.0, 0.0];
+        cloud.current_sprite_id = Some("minecraft:generic_0".to_string());
+        let mut elder_guardian = test_instance_with_lifetime("minecraft:elder_guardian", 30);
+        elder_guardian.position = [20.0, 0.0, 0.0];
+        elder_guardian.current_sprite_id = Some("minecraft:generic_0".to_string());
+        let sprite_uvs = BTreeMap::from([(
+            "minecraft:generic_0".to_string(),
+            ParticleUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+        )]);
+
+        let vertices = particle_billboard_vertices(
+            [&cloud, &elder_guardian],
+            &sprite_uvs,
+            ParticleBillboardAxes {
+                right: Vec3::X,
+                up: Vec3::Y,
+            },
+            None,
+        );
+
+        assert_eq!(vertices.len(), 6);
+        assert_close_f32(vertices[0].position[0], 9.9);
     }
 
     #[test]
