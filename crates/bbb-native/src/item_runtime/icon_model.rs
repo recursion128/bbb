@@ -24,6 +24,8 @@ const MAX_STACK_SIZE_COMPONENT_ID: i32 = 1;
 const MAX_DAMAGE_COMPONENT_ID: i32 = 2;
 const DAMAGE_COMPONENT_ID: i32 = 3;
 const UNBREAKABLE_COMPONENT_ID: i32 = 4;
+const CUSTOM_NAME_COMPONENT_ID: i32 = 6;
+const ITEM_NAME_COMPONENT_ID: i32 = 9;
 const ITEM_MODEL_COMPONENT_ID: i32 = 10;
 const RARITY_COMPONENT_ID: i32 = 12;
 const ENCHANTMENTS_COMPONENT_ID: i32 = 13;
@@ -2367,11 +2369,17 @@ fn item_data_component_matchers_is_supported(value: &Value) -> bool {
 
 fn item_exact_components_are_supported(value: &Value) -> bool {
     value.as_object().is_some_and(|components| {
-        components.iter().all(|(component, expected)| {
-            ComponentSelectProperty::for_component(component)
-                .is_some_and(|_| SelectCaseValue::from_json(expected).is_some())
-        })
+        components
+            .iter()
+            .all(|(component, expected)| item_exact_component_is_supported(component, expected))
     })
+}
+
+fn item_exact_component_is_supported(component: &str, expected: &Value) -> bool {
+    ComponentSelectProperty::for_component(component)
+        .is_some_and(|_| SelectCaseValue::from_json(expected).is_some())
+        || (matches!(component, "minecraft:custom_name" | "minecraft:item_name")
+            && simple_component_text(expected).is_some())
 }
 
 fn item_partial_component_predicates_are_supported(value: &Value) -> bool {
@@ -3456,19 +3464,56 @@ fn item_exact_components_match(
     let default_max_damage =
         default_max_damage_for_item.and_then(|max_damage| max_damage(item.item_id));
     components.iter().all(|(component, expected)| {
-        let Some(component) = ComponentSelectProperty::for_component(component) else {
-            return false;
-        };
+        item_exact_component_matches(
+            component,
+            expected,
+            item,
+            resource_id,
+            default_max_stack_size,
+            default_max_damage,
+        )
+    })
+}
+
+fn item_exact_component_matches(
+    component: &str,
+    expected: &Value,
+    item: &ItemStackTemplateSummary,
+    resource_id: &str,
+    default_max_stack_size: Option<i32>,
+    default_max_damage: Option<i32>,
+) -> bool {
+    if let Some(component) = ComponentSelectProperty::for_component(component) {
         let Some(expected) = SelectCaseValue::from_json(expected) else {
             return false;
         };
-        component.value_from_stack(
+        return component.value_from_stack(
             Some(&item.component_patch),
             default_max_stack_size,
             default_max_damage,
             resource_id,
-        ) == Some(expected)
-    })
+        ) == Some(expected);
+    }
+
+    let Some(expected) = simple_component_text(expected) else {
+        return false;
+    };
+    let (component_id, actual) = match component {
+        "minecraft:custom_name" => (
+            CUSTOM_NAME_COMPONENT_ID,
+            item.component_patch.custom_name.as_deref(),
+        ),
+        "minecraft:item_name" => (
+            ITEM_NAME_COMPONENT_ID,
+            item.component_patch.item_name.as_deref(),
+        ),
+        _ => return false,
+    };
+    !item
+        .component_patch
+        .removed_type_ids
+        .contains(&component_id)
+        && actual == Some(expected)
 }
 
 fn item_partial_component_predicates_match(

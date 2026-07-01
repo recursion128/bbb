@@ -7172,6 +7172,52 @@ mod tests {
             ),
             uv("component_condition_bundle_components_absent")
         );
+        let named_bundle_entry = |component_patch| DataComponentPatchSummary {
+            added_type_ids: vec![50],
+            bundle_contents_item_count: Some(1),
+            bundle_contents_items: vec![ItemStackTemplateSummary {
+                item_id: 0,
+                count: 1,
+                component_patch,
+            }],
+            ..DataComponentPatchSummary::default()
+        };
+        assert_eq!(
+            selected(
+                81,
+                named_bundle_entry(DataComponentPatchSummary {
+                    added_type_ids: vec![6, 9],
+                    custom_name: Some("Custom Name".to_string()),
+                    item_name: Some("Item Name".to_string()),
+                    ..DataComponentPatchSummary::default()
+                })
+            ),
+            uv("component_condition_bundle_exact_component_text_present")
+        );
+        assert_eq!(
+            selected(
+                81,
+                named_bundle_entry(DataComponentPatchSummary {
+                    added_type_ids: vec![6],
+                    custom_name: Some("Custom Name".to_string()),
+                    ..DataComponentPatchSummary::default()
+                })
+            ),
+            uv("component_condition_bundle_exact_component_text_absent")
+        );
+        assert_eq!(
+            selected(
+                81,
+                named_bundle_entry(DataComponentPatchSummary {
+                    added_type_ids: vec![6, 9],
+                    removed_type_ids: vec![6],
+                    custom_name: Some("Custom Name".to_string()),
+                    item_name: Some("Item Name".to_string()),
+                    ..DataComponentPatchSummary::default()
+                })
+            ),
+            uv("component_condition_bundle_exact_component_text_absent")
+        );
         assert_eq!(
             selected(
                 33,
@@ -10627,6 +10673,7 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_CUSTOM_DATA_SNBT = registerItem("component_condition_custom_data_snbt");
                 public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_CUSTOM_DATA_SNBT = registerItem("component_condition_bundle_partial_custom_data_snbt");
                 public static final Item COMPONENT_CONDITION_WRITTEN_BOOK_COMPONENT_PAGE = registerItem("component_condition_written_book_component_page");
+                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_COMPONENT_TEXT = registerItem("component_condition_bundle_exact_component_text");
             }"#,
         );
         write_json(
@@ -11109,6 +11156,42 @@ mod tests {
                     "on_false": {
                         "type": "minecraft:model",
                         "model": "minecraft:item/component_condition_bundle_components_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_exact_component_text.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "components": {
+                                            "minecraft:custom_name": {
+                                                "text": "Custom Name"
+                                            },
+                                            "minecraft:item_name": "Item Name"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_component_text_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_component_text_absent"
                     }
                 }
             }"#,
@@ -13503,6 +13586,14 @@ mod tests {
             (
                 "component_condition_bundle_components_absent",
                 [60, 80, 30, 255],
+            ),
+            (
+                "component_condition_bundle_exact_component_text_present",
+                [180, 230, 175, 255],
+            ),
+            (
+                "component_condition_bundle_exact_component_text_absent",
+                [55, 85, 50, 255],
             ),
             (
                 "component_condition_container_components_present",
