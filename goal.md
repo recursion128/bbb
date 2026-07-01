@@ -1347,6 +1347,15 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `scale(randomBetween(3, 5))`, `25 + random * 5` lifetime, opaque layer,
     no-physics metadata, full-block light, and the straight-toward tick path
     plus `ARGB.srgbLerp` from `0xFF45AEFE` to white.
+  - [x] `FireflyParticle.FireflyProvider`：renderer descriptor now maps
+    `minecraft:firefly` to random sprites, vanilla `200..300` inclusive
+    lifetime, initial alpha `0`, translucent layer, `speedUpWhenYMotionIsBlocked`,
+    `0.96` friction, provider aux velocity (`0.5 - random.nextDouble()` x/z
+    and signed `yAux`) through the vanilla `Particle` constructor followed by
+    `*0.8`, `0.75 * scale(1.5)` quad-size path, first-tick / 5% random speed
+    reroll, alpha fade (`0.3` / `0.5`) and direct smooth block-light fade
+    (`0.1` / `0.3`). The in-block removal gate remains a world-coupled
+    collision/state follow-up.
   - [x] `SculkChargeParticle.Provider` roll：native command resolution decodes
     `SculkChargeParticleOptions.roll` for `minecraft:sculk_charge`; renderer
     stores it as initial `oRoll` / `roll` and applies the vanilla billboard

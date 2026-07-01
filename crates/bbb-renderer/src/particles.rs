@@ -927,6 +927,25 @@ impl ParticleInstance {
                 self.position[1] += self.velocity[1] * speed_multiplier;
                 self.position[2] += self.velocity[2] * speed_multiplier;
             }
+            ParticleTickMotionDescriptor::Firefly => {
+                let next_age = self.age_ticks.saturating_add(1);
+                self.velocity[1] -= 0.04 * f64::from(self.gravity);
+                self.position[0] += self.velocity[0];
+                self.position[1] += self.velocity[1];
+                self.position[2] += self.velocity[2];
+                let friction = f64::from(self.friction);
+                self.velocity[0] *= friction;
+                self.velocity[1] *= friction;
+                self.velocity[2] *= friction;
+
+                if random.next_f32() > 0.95 || next_age == 1 {
+                    self.velocity = [
+                        -0.05 + 0.1 * f64::from(random.next_f32()),
+                        -0.05 + 0.1 * f64::from(random.next_f32()),
+                        -0.05 + 0.1 * f64::from(random.next_f32()),
+                    ];
+                }
+            }
         }
     }
 
@@ -957,6 +976,10 @@ impl ParticleInstance {
             }
             ParticleAlphaCurve::VaultConnectionFade => {
                 self.color[3] = vault_connection_alpha(self.age_ticks, self.lifetime_ticks, 0.0);
+            }
+            ParticleAlphaCurve::FireflyFade => {
+                let progress = self.age_ticks as f32 / self.lifetime_ticks.max(1) as f32;
+                self.color[3] = firefly_fade_amount(progress, 0.3, 0.5);
             }
         }
     }
@@ -1350,6 +1373,11 @@ fn particle_render_color(instance: &ParticleInstance) -> [f32; 4] {
                 DEFAULT_PARTICLE_RENDER_PARTIAL_TICK,
             );
         }
+        ParticleAlphaCurve::FireflyFade => {
+            let progress = (instance.age_ticks as f32 + DEFAULT_PARTICLE_RENDER_PARTIAL_TICK)
+                / instance.lifetime_ticks.max(1) as f32;
+            color[3] = firefly_fade_amount(progress, 0.3, 0.5);
+        }
     }
     if instance.quad_size_curve == ParticleQuadSizeCurve::FlashOverlay {
         color[3] = flash_overlay_alpha(instance.age_ticks, DEFAULT_PARTICLE_RENDER_PARTIAL_TICK);
@@ -1488,6 +1516,7 @@ fn particle_render_layer_for_particle(particle_id: &str) -> ParticleRenderLayer 
         | "minecraft:instant_effect"
         | "minecraft:entity_effect"
         | "minecraft:flash"
+        | "minecraft:firefly"
         | "minecraft:infested"
         | "minecraft:raid_omen"
         | "minecraft:trial_omen"
@@ -1543,12 +1572,28 @@ fn particle_light_with_emission(instance: &ParticleInstance, sampled_light: [f32
             let emission = age * age * age * age;
             [(sampled_light[0] + emission).min(1.0), sampled_light[1]]
         }
+        ParticleLightEmissionDescriptor::Firefly => {
+            let progress = (instance.age_ticks as f32 + DEFAULT_PARTICLE_RENDER_PARTIAL_TICK)
+                / instance.lifetime_ticks.max(1) as f32;
+            [firefly_fade_amount(progress, 0.1, 0.3), 0.0]
+        }
     }
 }
 
 fn particle_light_emission_progress(age_ticks: u32, lifetime_ticks: u32, partial_tick: f32) -> f32 {
     let lifetime = lifetime_ticks.max(1) as f32;
     ((age_ticks as f32 + partial_tick.clamp(0.0, 1.0)) / lifetime).clamp(0.0, 1.0)
+}
+
+fn firefly_fade_amount(lifetime_progress: f32, fade_in_time: f32, fade_out_time: f32) -> f32 {
+    let lifetime_progress = lifetime_progress.clamp(0.0, 1.0);
+    if lifetime_progress >= 1.0 - fade_in_time {
+        (1.0 - lifetime_progress) / fade_in_time
+    } else if lifetime_progress <= fade_out_time {
+        lifetime_progress / fade_out_time
+    } else {
+        1.0
+    }
 }
 
 #[cfg(test)]
@@ -1918,6 +1963,29 @@ mod tests {
         assert_close3(instance.previous_position, [1.0, 2.0, 3.0]);
         assert_close3(instance.position, [1.5, 2.242, 2.5]);
         assert_close3(instance.velocity, [0.5, 0.242, -0.5]);
+    }
+
+    #[test]
+    fn particle_runtime_firefly_first_tick_rerolls_speed_and_fades_alpha() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:firefly", 100);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.1, 0.2, -0.3];
+        instance.color[3] = 0.0;
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.expired_instances, 0);
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 1);
+        assert_close3(instance.previous_position, [1.0, 2.0, 3.0]);
+        assert_close3(instance.position, [1.1, 2.2, 2.7]);
+        assert_range_f64(instance.velocity[0], -0.05, 0.05);
+        assert_range_f64(instance.velocity[1], -0.05, 0.05);
+        assert_range_f64(instance.velocity[2], -0.05, 0.05);
+        assert_close_f32(instance.color[3], firefly_fade_amount(0.01, 0.3, 0.5));
     }
 
     #[test]
@@ -2752,6 +2820,12 @@ mod tests {
         assert_close_f32(tint[0], lerp_f32(alpha, transition.color[0], target[0]));
         assert_close_f32(tint[1], lerp_f32(alpha, transition.color[1], target[1]));
         assert_close_f32(tint[2], lerp_f32(alpha, transition.color[2], target[2]));
+
+        let mut firefly_tint = test_instance_with_lifetime("minecraft:firefly", 100);
+        firefly_tint.color = [1.0, 1.0, 1.0, 1.0];
+        firefly_tint.age_ticks = 90;
+        let tint = particle_render_color(&firefly_tint);
+        assert_close_f32(tint[3], firefly_fade_amount(90.5 / 100.0, 0.3, 0.5));
 
         let mut sweep_random = ParticleRandom::new(76);
         let mut sweep_command = spawn_command("minecraft:sweep_attack", 1.0);
@@ -3687,6 +3761,29 @@ mod tests {
         assert_eq!(sculk_charge_pop.friction, 0.96);
         assert!(!sculk_charge_pop.has_physics);
 
+        let mut firefly_random = ParticleRandom::new(75);
+        let mut firefly_command = spawn_command("minecraft:firefly", 1.0);
+        firefly_command.velocity = [0.0, 0.25, 0.0];
+        let firefly = ParticleInstance::from_spawn_command(firefly_command, &mut firefly_random);
+        assert_eq!(firefly.provider, "FireflyParticle.FireflyProvider");
+        assert_eq!(firefly.sprite_selection, ParticleSpriteSelection::Random);
+        assert_range_f32(firefly.base_quad_size, 0.1125, 0.225);
+        assert_eq!(firefly.color, [1.0, 1.0, 1.0, 0.0]);
+        assert!((200..=300).contains(&firefly.lifetime_ticks));
+        assert_range_f64(firefly.velocity[0], -0.15, 0.15);
+        assert_range_f64(firefly.velocity[1], -0.07, 0.23);
+        assert_range_f64(firefly.velocity[2], -0.15, 0.15);
+        assert_eq!(firefly.friction, 0.96);
+        assert!(firefly.has_physics);
+        assert!(firefly.speed_up_when_y_motion_is_blocked);
+        assert_eq!(firefly.tick_motion, ParticleTickMotionDescriptor::Firefly);
+        assert_eq!(firefly.render_layer, ParticleRenderLayer::Translucent);
+        assert_eq!(firefly.alpha_curve, ParticleAlphaCurve::FireflyFade);
+        assert_eq!(
+            firefly.light_emission,
+            ParticleLightEmissionDescriptor::Firefly
+        );
+
         let mut shriek_random = ParticleRandom::new(76);
         let mut shriek_command = spawn_command("minecraft:shriek", 1.0);
         shriek_command.velocity = [1.0, 2.0, 3.0];
@@ -4179,7 +4276,7 @@ mod tests {
     #[test]
     fn particle_runtime_applies_vanilla_particle_light_emission_overrides() {
         let sampled_light = [2.0 / 15.0, 7.0 / 15.0];
-        let mut particles = ParticleRuntimeState::with_capacities(16, 16);
+        let mut particles = ParticleRuntimeState::with_capacities(17, 17);
         let cloud = test_instance_with_lifetime("minecraft:cloud", 20);
         let mut flame = test_instance_with_lifetime("minecraft:flame", 20);
         flame.age_ticks = 4;
@@ -4201,6 +4298,8 @@ mod tests {
         let vault_connection = test_instance_with_lifetime("minecraft:vault_connection", 40);
         let vibration = test_instance_with_lifetime("minecraft:vibration", 40);
         let ominous_spawn = test_instance_with_lifetime("minecraft:ominous_spawning", 25);
+        let mut firefly = test_instance_with_lifetime("minecraft:firefly", 100);
+        firefly.age_ticks = 15;
 
         particles.active_instances.push_back(cloud);
         particles.active_instances.push_back(flame);
@@ -4218,6 +4317,7 @@ mod tests {
         particles.active_instances.push_back(vault_connection);
         particles.active_instances.push_back(vibration);
         particles.active_instances.push_back(ominous_spawn);
+        particles.active_instances.push_back(firefly);
 
         particles.refresh_lights(|_| sampled_light);
 
@@ -4278,6 +4378,11 @@ mod tests {
             particles.active_instances()[15].light,
             [1.0, sampled_light[1]]
         );
+        assert_close_f32(
+            particles.active_instances()[16].light[0],
+            firefly_fade_amount(15.5 / 100.0, 0.1, 0.3),
+        );
+        assert_close_f32(particles.active_instances()[16].light[1], 0.0);
     }
 
     #[test]

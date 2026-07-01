@@ -35,6 +35,7 @@ pub(crate) enum ParticleTickMotionDescriptor {
     Wake,
     Portal,
     ReversePortal,
+    Firefly,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -45,6 +46,7 @@ pub(crate) enum ParticleLightEmissionDescriptor {
     FullBlock,
     SmoothBlockByAge,
     SmoothBlockByAgeQuartic,
+    Firefly,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -61,6 +63,7 @@ pub(crate) enum ParticleAlphaCurve {
     SimpleAnimatedFade,
     ShriekFade,
     VaultConnectionFade,
+    FireflyFade,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -269,6 +272,7 @@ pub(crate) enum ParticleInitialVelocityDescriptor {
     Spell,
     GlowSquid,
     Lava,
+    Firefly,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -404,6 +408,21 @@ impl ParticleDescriptor {
                 gravity: 0.008,
                 has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:firefly" => Self {
+                provider: "FireflyParticle.FireflyProvider",
+                lifetime: ParticleLifetimeDescriptor::RandomInclusive { min: 200, max: 300 },
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 1.125,
+                    color: ParticleColorDescriptor::FixedRgba([1.0, 1.0, 1.0, 0.0]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Firefly,
+                friction: 0.96,
+                gravity: 0.0,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: true,
             },
             "minecraft:dust" | "minecraft:dust_color_transition" => Self {
                 provider: if particle_id == "minecraft:dust_color_transition" {
@@ -1445,6 +1464,7 @@ impl ParticleDescriptor {
             "ReversePortalParticle.ReversePortalProvider" => {
                 ParticleTickMotionDescriptor::ReversePortal
             }
+            "FireflyParticle.FireflyProvider" => ParticleTickMotionDescriptor::Firefly,
             _ => ParticleTickMotionDescriptor::DefaultParticleTick,
         }
     }
@@ -1489,6 +1509,7 @@ impl ParticleDescriptor {
             | "ReversePortalParticle.ReversePortalProvider" => {
                 ParticleLightEmissionDescriptor::SmoothBlockByAgeQuartic
             }
+            "FireflyParticle.FireflyProvider" => ParticleLightEmissionDescriptor::Firefly,
             _ => ParticleLightEmissionDescriptor::World,
         }
     }
@@ -1510,6 +1531,7 @@ impl ParticleDescriptor {
             "FlyTowardsPositionParticle.VaultConnectionProvider" => {
                 ParticleAlphaCurve::VaultConnectionFade
             }
+            "FireflyParticle.FireflyProvider" => ParticleAlphaCurve::FireflyFade,
             _ => ParticleAlphaCurve::Constant,
         }
     }
@@ -1950,6 +1972,7 @@ impl ParticleInitialVelocityDescriptor {
                 };
                 [x * 0.8, f64::from(random.next_f32()) * 0.4 + 0.05, z * 0.8]
             }
+            Self::Firefly => sample_firefly_velocity(command_velocity, random),
         }
     }
 }
@@ -2250,6 +2273,31 @@ fn sample_random_horizontal_y_velocity(
     velocity
 }
 
+fn sample_firefly_velocity(command_velocity: [f64; 3], random: &mut ParticleRandom) -> [f64; 3] {
+    let x = 0.5 - random.next_double();
+    let y = if random.next_bool() {
+        command_velocity[1]
+    } else {
+        -command_velocity[1]
+    };
+    let z = 0.5 - random.next_double();
+    let x = x + random_signed_velocity(random);
+    let y = y + random_signed_velocity(random);
+    let z = z + random_signed_velocity(random);
+    let speed = (f64::from(random.next_f32()) + f64::from(random.next_f32()) + 1.0) * 0.15;
+    let length = (x * x + y * y + z * z).sqrt();
+    let velocity = if length == 0.0 {
+        [0.0, 0.1, 0.0]
+    } else {
+        [
+            x / length * speed * 0.4,
+            y / length * speed * 0.4 + 0.1,
+            z / length * speed * 0.4,
+        ]
+    };
+    [velocity[0] * 0.8, velocity[1] * 0.8, velocity[2] * 0.8]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2303,6 +2351,33 @@ mod tests {
             ParticleDescriptor::for_particle("minecraft:flash").initial_velocity,
             ParticleInitialVelocityDescriptor::Zero
         );
+
+        assert_descriptor(
+            "minecraft:firefly",
+            "FireflyParticle.FireflyProvider",
+            ParticleLifetimeDescriptor::RandomInclusive { min: 200, max: 300 },
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::SingleQuadScaled {
+                scale: 1.125,
+                color: ParticleColorDescriptor::FixedRgba([1.0, 1.0, 1.0, 0.0]),
+                quad_size_curve: ParticleQuadSizeCurve::Constant,
+            },
+            0.96,
+            0.0,
+            true,
+            true,
+        );
+        let firefly = ParticleDescriptor::for_particle("minecraft:firefly");
+        assert_eq!(
+            firefly.initial_velocity,
+            ParticleInitialVelocityDescriptor::Firefly
+        );
+        assert_eq!(firefly.tick_motion(), ParticleTickMotionDescriptor::Firefly);
+        assert_eq!(
+            firefly.light_emission(),
+            ParticleLightEmissionDescriptor::Firefly
+        );
+        assert_eq!(firefly.alpha_curve(), ParticleAlphaCurve::FireflyFade);
 
         assert_descriptor(
             "minecraft:trail",
@@ -4295,6 +4370,12 @@ mod tests {
         assert_close_f64(fixed[1], -0.05);
         assert_close_f64(fixed[2], 0.0);
 
+        let firefly_velocity = ParticleInitialVelocityDescriptor::Firefly
+            .sample([0.0, 0.25, 0.0], &mut ParticleRandom::new(36));
+        assert_range_f64(firefly_velocity[0], -0.15, 0.15);
+        assert_range_f64(firefly_velocity[1], -0.07, 0.23);
+        assert_range_f64(firefly_velocity[2], -0.15, 0.15);
+
         let mut gaussian_random = ParticleRandom::new(46);
         assert_close_f64(gaussian_random.next_gaussian(), 1.3558214650566454);
         assert_close_f64(gaussian_random.next_gaussian(), -0.8270729973920494);
@@ -4455,6 +4536,13 @@ mod tests {
             let lifetime = ParticleLifetimeDescriptor::Explode.sample(&mut random);
             assert!((18..=82).contains(&lifetime));
         }
+
+        let mut random = ParticleRandom::new(43);
+        for _ in 0..32 {
+            let lifetime = ParticleLifetimeDescriptor::RandomInclusive { min: 200, max: 300 }
+                .sample(&mut random);
+            assert!((200..=300).contains(&lifetime));
+        }
     }
 
     #[test]
@@ -4512,6 +4600,10 @@ mod tests {
         assert_eq!(
             ParticleDescriptor::for_particle("minecraft:cloud").light_emission(),
             ParticleLightEmissionDescriptor::World
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:firefly").light_emission(),
+            ParticleLightEmissionDescriptor::Firefly
         );
     }
 

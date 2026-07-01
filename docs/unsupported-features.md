@@ -451,6 +451,15 @@ When an agent does any of the following, update this file in the same slice:
         `scale(randomBetween(3, 5))`, `25 + random * 5` lifetime, opaque
         layer, no-physics metadata, full-block light, and the straight-toward
         tick path plus `ARGB.srgbLerp` from `0xFF45AEFE` to white.
+        `firefly` now maps to `FireflyParticle.FireflyProvider` with random
+        sprites, vanilla `200..300` inclusive lifetime, initial alpha `0`,
+        translucent layer, `speedUpWhenYMotionIsBlocked`, `0.96` friction,
+        provider aux velocity (`0.5 - random.nextDouble()` x/z and signed
+        `yAux`) through the vanilla `Particle` constructor followed by `*0.8`,
+        `0.75 * scale(1.5)` quad-size path, first-tick / 5% random speed
+        reroll, alpha fade (`0.3` / `0.5`) and direct smooth block-light fade
+        (`0.1` / `0.3`). The in-block removal gate remains deferred until
+        particle ticking can query world block state.
         `dust` / `dust_color_transition` now map to their vanilla providers
         with decoded RGB colors, transition target color, clamped scale,
         scale-shaped quad size / lifetime, random color variation, age sprites,
