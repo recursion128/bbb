@@ -1486,6 +1486,9 @@ fn item_stack_matches_component_predicate(
             ctx.default_max_damage,
         );
     }
+    if bundle_contents_component_predicate_is_supported(property) {
+        return item_stack_matches_bundle_contents_predicate(property, ctx.component_patch);
+    }
     if predicate == "minecraft:firework_explosion" {
         return item_stack_matches_firework_explosion_predicate(property, ctx.component_patch);
     }
@@ -1522,6 +1525,7 @@ fn component_condition_is_runtime_resolved(property: &ItemModelProperty) -> bool
         return false;
     };
     predicate == "minecraft:damage"
+        || bundle_contents_component_predicate_is_supported(property)
         || predicate == "minecraft:firework_explosion"
         || fireworks_component_predicate_is_supported(property)
         || trim_component_predicate_is_supported(property)
@@ -1560,6 +1564,51 @@ fn empty_single_component_predicate_id(property: &ItemModelProperty) -> Option<i
         "minecraft:trim" => Some(TRIM_COMPONENT_ID),
         _ => None,
     }
+}
+
+fn bundle_contents_component_predicate_is_supported(property: &ItemModelProperty) -> bool {
+    if component_condition_predicate(property) != Some("minecraft:bundle_contents") {
+        return false;
+    }
+    let Some(value) = property.raw().get("value").and_then(Value::as_object) else {
+        return false;
+    };
+    if value.is_empty() {
+        return false;
+    }
+    let Some(items) = value.get("items").and_then(Value::as_object) else {
+        return false;
+    };
+    value.len() == 1
+        && !items.contains_key("contains")
+        && !items.contains_key("count")
+        && items.keys().all(|key| key == "size")
+}
+
+fn item_stack_matches_bundle_contents_predicate(
+    property: &ItemModelProperty,
+    component_patch: Option<&DataComponentPatchSummary>,
+) -> bool {
+    if !bundle_contents_component_predicate_is_supported(property) {
+        return false;
+    }
+    if !item_stack_has_component_id(BUNDLE_CONTENTS_COMPONENT_ID, component_patch, None, false) {
+        return false;
+    }
+    let Some(size) = property
+        .raw()
+        .get("value")
+        .and_then(Value::as_object)
+        .and_then(|value| value.get("items"))
+        .and_then(Value::as_object)
+        .and_then(|items| items.get("size"))
+    else {
+        return true;
+    };
+    component_patch
+        .and_then(|patch| patch.bundle_contents_item_count)
+        .and_then(|item_count| i32::try_from(item_count).ok())
+        .is_some_and(|item_count| min_max_int_bounds_match(Some(size), item_count))
 }
 
 fn fireworks_component_predicate_is_supported(property: &ItemModelProperty) -> bool {

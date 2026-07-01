@@ -5524,10 +5524,47 @@ mod tests {
         }
 
         assert_eq!(
+            selected(9, DataComponentPatchSummary::default()),
+            uv("component_condition_bundle_contents_constrained_absent")
+        );
+        assert_eq!(
             selected(
                 9,
                 DataComponentPatchSummary {
                     added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_contents_constrained_present")
+        );
+        assert_eq!(
+            selected(
+                9,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(2),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_contents_constrained_absent")
+        );
+        assert_eq!(
+            selected(
+                9,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_contents_constrained_absent")
+        );
+        assert_eq!(
+            selected(
+                9,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    removed_type_ids: vec![50],
                     bundle_contents_item_count: Some(1),
                     ..DataComponentPatchSummary::default()
                 }
