@@ -504,6 +504,14 @@ When an agent does any of the following, update this file in the same slice:
         sizes (`1.0` and scaled `0.15`), age sprite selection,
         `12 + random.nextInt(4)` lifetime, static zero velocity in the current
         CPU model, base physics metadata, and full-bright light coords
+      - `GustSeedParticle.Provider` for `gust_emitter_large` /
+        `gust_emitter_small` is represented as a definition-less no-render
+        emitter with vanilla constructor parameters `(3.0, 7, 0)` /
+        `(1.0, 3, 2)`, inclusive tick lifetime, three child `minecraft:gust`
+        submissions on `age % (delay + 1) == 0`, `nextDouble() -
+        nextDouble()` offsets scaled by the provider scale, and vanilla child
+        xAux `age / lifetime`; `GustParticle.Provider` ignores that xAux just
+        like vanilla.
       - `SculkChargePopParticle.Provider` uses vanilla command velocity,
         `alpha=1`, base quad size, age sprite selection,
         `6 + random.nextInt(4)` lifetime, `0.96` friction, and no-physics

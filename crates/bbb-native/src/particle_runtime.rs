@@ -189,18 +189,22 @@ impl ParticleCommandResolver {
                 ..ParticleSpawnBatch::default()
             };
         };
-        let Some(definition) = self.definitions.definition(particle_type.name) else {
-            return ParticleSpawnBatch {
-                missing_definition_count: 1,
-                ..ParticleSpawnBatch::default()
+        let (sprite_ids, missing_sprite_count) =
+            if let Some(definition) = self.definitions.definition(particle_type.name) {
+                let sprite_ids = definition.textures.clone();
+                let missing_sprite_count = sprite_ids
+                    .iter()
+                    .filter(|sprite_id| self.sprites.sprite(sprite_id).is_none())
+                    .count();
+                (sprite_ids, missing_sprite_count)
+            } else if definitionless_particle_type(particle_type.id) {
+                (Vec::new(), 0)
+            } else {
+                return ParticleSpawnBatch {
+                    missing_definition_count: 1,
+                    ..ParticleSpawnBatch::default()
+                };
             };
-        };
-
-        let sprite_ids = definition.textures.clone();
-        let missing_sprite_count = sprite_ids
-            .iter()
-            .filter(|sprite_id| self.sprites.sprite(sprite_id).is_none())
-            .count();
         let override_limiter = particle_type.override_limiter || packet.override_limiter;
         let raw_options_len = packet.particle.raw_options.len();
         let option_state =
@@ -1340,10 +1344,14 @@ impl ParticleCommandResolver {
         &self,
         particle_type: ParticleTypeInfo,
     ) -> Vec<ParticleChildSpawnTemplate> {
-        if particle_type.id != LAVA_PARTICLE_TYPE_ID {
-            return Vec::new();
-        }
-        self.simple_particle_template(SMOKE_PARTICLE_TYPE_ID)
+        let child_particle_type_id = match particle_type.id {
+            LAVA_PARTICLE_TYPE_ID => SMOKE_PARTICLE_TYPE_ID,
+            GUST_EMITTER_LARGE_PARTICLE_TYPE_ID | GUST_EMITTER_SMALL_PARTICLE_TYPE_ID => {
+                GUST_PARTICLE_TYPE_ID
+            }
+            _ => return Vec::new(),
+        };
+        self.simple_particle_template(child_particle_type_id)
             .ok()
             .map(|template| {
                 vec![ParticleChildSpawnTemplate {
@@ -1365,6 +1373,13 @@ fn initial_delay_ticks_for_particle_options(particle_type_id: i32, raw_options: 
         Ok(delay) if decoder.is_empty() => u32::try_from(delay).unwrap_or(0),
         _ => 0,
     }
+}
+
+fn definitionless_particle_type(particle_type_id: i32) -> bool {
+    matches!(
+        particle_type_id,
+        GUST_EMITTER_LARGE_PARTICLE_TYPE_ID | GUST_EMITTER_SMALL_PARTICLE_TYPE_ID
+    )
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -1702,6 +1717,9 @@ const EFFECT_PARTICLE_TYPE_ID: i32 = 16;
 const ENTITY_EFFECT_PARTICLE_TYPE_ID: i32 = 21;
 const EXPLOSION_EMITTER_PARTICLE_TYPE_ID: i32 = 22;
 const EXPLOSION_PARTICLE_TYPE_ID: i32 = 23;
+const GUST_PARTICLE_TYPE_ID: i32 = 24;
+const GUST_EMITTER_LARGE_PARTICLE_TYPE_ID: i32 = 26;
+const GUST_EMITTER_SMALL_PARTICLE_TYPE_ID: i32 = 27;
 const FLAME_PARTICLE_TYPE_ID: i32 = 32;
 const SCULK_CHARGE_PARTICLE_TYPE_ID: i32 = 38;
 const SOUL_FIRE_FLAME_PARTICLE_TYPE_ID: i32 = 40;
@@ -1888,6 +1906,27 @@ mod tests {
         assert_eq!(child.particle_type_id, SMOKE_PARTICLE_TYPE_ID);
         assert_eq!(child.particle_id, "minecraft:smoke");
         assert_eq!(child.sprite_ids, vec!["minecraft:smoke_0".to_string()]);
+    }
+
+    #[test]
+    fn gust_seed_particle_commands_carry_gust_child_template() {
+        let mut resolver = test_resolver(0);
+        for particle_type_id in [
+            GUST_EMITTER_LARGE_PARTICLE_TYPE_ID,
+            GUST_EMITTER_SMALL_PARTICLE_TYPE_ID,
+        ] {
+            let batch =
+                resolver.resolve_level_particles(&level_particles_packet(particle_type_id, 0));
+
+            assert_eq!(batch.len(), 1);
+            let command = &batch.commands[0];
+            assert_eq!(command.particle_type_id, particle_type_id);
+            assert_eq!(command.child_spawn_templates.len(), 1);
+            let child = &command.child_spawn_templates[0];
+            assert_eq!(child.particle_type_id, GUST_PARTICLE_TYPE_ID);
+            assert_eq!(child.particle_id, "minecraft:gust");
+            assert_eq!(child.sprite_ids, vec!["minecraft:gust_0".to_string()]);
+        }
     }
 
     #[test]
@@ -3160,6 +3199,7 @@ mod tests {
                 "soul_fire_flame",
                 "explosion_emitter_0",
                 "explosion_0",
+                "gust_0",
                 "smoke_0",
                 "large_smoke_0",
                 "lava",
@@ -3240,6 +3280,14 @@ mod tests {
             r#"{
               "textures": [
                 "minecraft:dragon_breath_0"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("gust.json"),
+            r#"{
+              "textures": [
+                "minecraft:gust_0"
               ]
             }"#,
         );

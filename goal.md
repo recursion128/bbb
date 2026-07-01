@@ -1374,6 +1374,15 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:dust` / `minecraft:dust_color_transition`; renderer maps both
     providers to age sprites, opaque layer, vanilla scale-shaped quad size /
     lifetime, random color variation, and transition partial-tick color lerp.
+  - [x] `GustSeedParticle.Provider`：native command resolution now allows the
+    definition-less no-render `gust_emitter_large` / `_small` particle types
+    while attaching the `minecraft:gust` child SpriteSet; renderer maps the
+    providers as no-render seed particles with vanilla constructor parameters
+    `(scale=3.0, lifetime=7, delay=0)` / `(scale=1.0, lifetime=3, delay=2)`,
+    inclusive age ticks, three child `gust` submissions when
+    `age % (delay + 1) == 0`, random `nextDouble() - nextDouble()` offsets,
+    and the vanilla child xAux `age / lifetime` (which `GustParticle.Provider`
+    itself ignores).
   - 初速度。
   - lifetime。
   - size curve。

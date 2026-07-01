@@ -69,6 +69,11 @@ pub(crate) enum ParticleAlphaCurve {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) enum ParticleChildEmissionDescriptor {
     LavaSmoke,
+    GustSeed {
+        scale_tenths: u32,
+        vanilla_lifetime: u32,
+        tick_delay: u32,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -121,6 +126,9 @@ pub(crate) enum ParticleLifetimeDescriptor {
     RandomInclusive {
         min: u32,
         max: u32,
+    },
+    InclusiveTick {
+        vanilla_lifetime: u32,
     },
     CommandOption {
         fallback: u32,
@@ -839,6 +847,32 @@ impl ParticleDescriptor {
                     size: 1.0,
                     color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
                 },
+                initial_velocity: ParticleInitialVelocityDescriptor::Zero,
+                friction: 0.98,
+                gravity: 0.0,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:gust_emitter_large" => Self {
+                provider: "GustSeedParticle.Provider(3.0,7,0)",
+                lifetime: ParticleLifetimeDescriptor::InclusiveTick {
+                    vanilla_lifetime: 7,
+                },
+                sprite_selection: ParticleSpriteSelection::First,
+                visual: ParticleVisualDescriptor::BaseSingleQuad,
+                initial_velocity: ParticleInitialVelocityDescriptor::Zero,
+                friction: 0.98,
+                gravity: 0.0,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:gust_emitter_small" => Self {
+                provider: "GustSeedParticle.Provider(1.0,3,2)",
+                lifetime: ParticleLifetimeDescriptor::InclusiveTick {
+                    vanilla_lifetime: 3,
+                },
+                sprite_selection: ParticleSpriteSelection::First,
+                visual: ParticleVisualDescriptor::BaseSingleQuad,
                 initial_velocity: ParticleInitialVelocityDescriptor::Zero,
                 friction: 0.98,
                 gravity: 0.0,
@@ -1588,6 +1622,20 @@ impl ParticleDescriptor {
     pub(crate) fn child_emission(self) -> Option<ParticleChildEmissionDescriptor> {
         match self.provider {
             "LavaParticle.Provider" => Some(ParticleChildEmissionDescriptor::LavaSmoke),
+            "GustSeedParticle.Provider(3.0,7,0)" => {
+                Some(ParticleChildEmissionDescriptor::GustSeed {
+                    scale_tenths: 30,
+                    vanilla_lifetime: 7,
+                    tick_delay: 0,
+                })
+            }
+            "GustSeedParticle.Provider(1.0,3,2)" => {
+                Some(ParticleChildEmissionDescriptor::GustSeed {
+                    scale_tenths: 10,
+                    vanilla_lifetime: 3,
+                    tick_delay: 2,
+                })
+            }
             _ => None,
         }
     }
@@ -2126,6 +2174,7 @@ impl ParticleLifetimeDescriptor {
                 let span = max.saturating_sub(min).saturating_add(1);
                 min + random.next_index(span as usize).unwrap_or(0) as u32
             }
+            Self::InclusiveTick { vanilla_lifetime } => vanilla_lifetime.saturating_add(1),
             Self::CommandOption { fallback } => fallback,
             Self::DustScale { fallback_scale } => dust_lifetime(random, fallback_scale as f32),
             Self::Explode => (16.0 / (random.next_f64() * 0.8 + 0.2)) as u32 + 2,
@@ -2218,7 +2267,7 @@ impl ParticleRandom {
         v1 * multiplier
     }
 
-    fn next_double(&mut self) -> f64 {
+    pub(crate) fn next_double(&mut self) -> f64 {
         let high = u64::from(self.next_bits(26));
         let low = u64::from(self.next_bits(27));
         ((high << 27) | low) as f64 / (1_u64 << 53) as f64
@@ -3270,6 +3319,52 @@ mod tests {
         assert_eq!(
             ParticleDescriptor::for_particle("minecraft:gust").initial_velocity,
             ParticleInitialVelocityDescriptor::Zero
+        );
+        assert_descriptor(
+            "minecraft:gust_emitter_large",
+            "GustSeedParticle.Provider(3.0,7,0)",
+            ParticleLifetimeDescriptor::InclusiveTick {
+                vanilla_lifetime: 7,
+            },
+            ParticleSpriteSelection::First,
+            ParticleVisualDescriptor::BaseSingleQuad,
+            0.98,
+            0.0,
+            true,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:gust_emitter_large").initial_velocity,
+            ParticleInitialVelocityDescriptor::Zero
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:gust_emitter_large").child_emission(),
+            Some(ParticleChildEmissionDescriptor::GustSeed {
+                scale_tenths: 30,
+                vanilla_lifetime: 7,
+                tick_delay: 0,
+            })
+        );
+        assert_descriptor(
+            "minecraft:gust_emitter_small",
+            "GustSeedParticle.Provider(1.0,3,2)",
+            ParticleLifetimeDescriptor::InclusiveTick {
+                vanilla_lifetime: 3,
+            },
+            ParticleSpriteSelection::First,
+            ParticleVisualDescriptor::BaseSingleQuad,
+            0.98,
+            0.0,
+            true,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:gust_emitter_small").child_emission(),
+            Some(ParticleChildEmissionDescriptor::GustSeed {
+                scale_tenths: 10,
+                vanilla_lifetime: 3,
+                tick_delay: 2,
+            })
         );
         assert_descriptor(
             "minecraft:small_gust",
@@ -4657,6 +4752,14 @@ mod tests {
                 .sample(&mut random);
             assert!((200..=300).contains(&lifetime));
         }
+
+        assert_eq!(
+            ParticleLifetimeDescriptor::InclusiveTick {
+                vanilla_lifetime: 7,
+            }
+            .sample(&mut ParticleRandom::new(49)),
+            8
+        );
     }
 
     #[test]

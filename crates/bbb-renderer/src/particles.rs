@@ -28,6 +28,7 @@ const DEFAULT_PARTICLE_RENDER_PARTIAL_TICK: f32 = 0.5;
 const DEFAULT_PARTICLE_LIGHT: [f32; 2] = [1.0, 1.0];
 const SHRIEK_MAGICAL_X_ROT: f32 = 1.0472;
 const LAVA_CHILD_SMOKE_PARTICLE_ID: &str = "minecraft:smoke";
+const GUST_CHILD_PARTICLE_ID: &str = "minecraft:gust";
 const OMINOUS_SPAWN_START_ARGB: u32 = 0xFF45_AEFE;
 const OMINOUS_SPAWN_END_ARGB: u32 = 0xFFFF_FFFF;
 
@@ -483,10 +484,9 @@ impl ParticleRuntimeState {
     }
 
     fn enqueue_child_spawns_from(&mut self, instance: &ParticleInstance) {
-        let Some(command) = instance.child_spawn_command(&mut self.random) else {
-            return;
-        };
-        self.queue_pending_spawn(command);
+        for command in instance.child_spawn_commands(&mut self.random) {
+            self.queue_pending_spawn(command);
+        }
     }
 
     fn drain_pending_spawns(
@@ -570,10 +570,14 @@ impl ParticleRuntimeState {
 impl ParticleInstance {
     fn from_spawn_command(command: ParticleSpawnCommand, random: &mut ParticleRandom) -> Self {
         let descriptor = ParticleDescriptor::for_particle(&command.particle_id);
+        let child_emission = descriptor.child_emission();
         let particle_limit = particle_limit_for_particle(&command.particle_id);
-        let render_group = if descriptor.provider == "VibrationSignalParticle.Provider"
-            && command.option_target.is_none()
-        {
+        let render_group = if (descriptor.provider == "VibrationSignalParticle.Provider"
+            && command.option_target.is_none())
+            || matches!(
+                child_emission,
+                Some(ParticleChildEmissionDescriptor::GustSeed { .. })
+            ) {
             ParticleRenderGroup::NoRender
         } else {
             particle_render_group_for_particle(&command.particle_id)
@@ -704,7 +708,7 @@ impl ParticleInstance {
             tick_motion: descriptor.tick_motion(),
             tick_angle: 0.0,
             particle_limit,
-            child_emission: descriptor.child_emission(),
+            child_emission,
             child_spawn_templates: command.child_spawn_templates,
             sprite_selection: descriptor.sprite_selection,
             override_limiter: command.override_limiter,
@@ -996,12 +1000,23 @@ impl ParticleInstance {
         self.color[2] += (target[2] - self.color[2]) * 0.2;
     }
 
-    fn child_spawn_command(&self, random: &mut ParticleRandom) -> Option<ParticleSpawnCommand> {
+    fn child_spawn_commands(&self, random: &mut ParticleRandom) -> Vec<ParticleSpawnCommand> {
         match self.child_emission {
-            Some(ParticleChildEmissionDescriptor::LavaSmoke) => {
-                self.lava_child_smoke_spawn_command(random)
-            }
-            None => None,
+            Some(ParticleChildEmissionDescriptor::LavaSmoke) => self
+                .lava_child_smoke_spawn_command(random)
+                .into_iter()
+                .collect(),
+            Some(ParticleChildEmissionDescriptor::GustSeed {
+                scale_tenths,
+                vanilla_lifetime,
+                tick_delay,
+            }) => self.gust_seed_child_spawn_commands(
+                random,
+                scale_tenths,
+                vanilla_lifetime,
+                tick_delay,
+            ),
+            None => Vec::new(),
         }
     }
 
@@ -1036,6 +1051,60 @@ impl ParticleInstance {
             option_duration_ticks: None,
             option_roll: None,
         })
+    }
+
+    fn gust_seed_child_spawn_commands(
+        &self,
+        random: &mut ParticleRandom,
+        scale_tenths: u32,
+        vanilla_lifetime: u32,
+        tick_delay: u32,
+    ) -> Vec<ParticleSpawnCommand> {
+        let vanilla_age = self.age_ticks.saturating_sub(1);
+        if vanilla_age % tick_delay.saturating_add(1) != 0 {
+            return Vec::new();
+        }
+        let Some(template) = self
+            .child_spawn_templates
+            .iter()
+            .find(|template| template.particle_id == GUST_CHILD_PARTICLE_ID)
+        else {
+            return Vec::new();
+        };
+        let scale = f64::from(scale_tenths) / 10.0;
+        let velocity = [
+            f64::from(vanilla_age) / f64::from(vanilla_lifetime.max(1)),
+            0.0,
+            0.0,
+        ];
+        (0..3)
+            .map(|_| {
+                let position = [
+                    self.position[0] + (random.next_double() - random.next_double()) * scale,
+                    self.position[1] + (random.next_double() - random.next_double()) * scale,
+                    self.position[2] + (random.next_double() - random.next_double()) * scale,
+                ];
+                ParticleSpawnCommand {
+                    particle_type_id: template.particle_type_id,
+                    particle_id: template.particle_id.clone(),
+                    sprite_ids: template.sprite_ids.clone(),
+                    position,
+                    velocity,
+                    override_limiter: false,
+                    always_show: false,
+                    raw_options_len: 0,
+                    initial_delay_ticks: 0,
+                    child_spawn_templates: Vec::new(),
+                    option_color: None,
+                    option_color_to: None,
+                    option_scale: None,
+                    option_power: None,
+                    option_target: None,
+                    option_duration_ticks: None,
+                    option_roll: None,
+                }
+            })
+            .collect()
     }
 }
 
@@ -1930,6 +1999,80 @@ mod tests {
         assert_close3(smoke.position, lava.position);
         assert_close3(smoke.velocity, lava.velocity);
         assert!(smoke.child_spawn_templates.is_empty());
+    }
+
+    #[test]
+    fn particle_runtime_gust_seed_emits_vanilla_child_gusts() {
+        let gust_template = ParticleChildSpawnTemplate {
+            particle_type_id: 24,
+            particle_id: "minecraft:gust".to_string(),
+            sprite_ids: vec!["minecraft:gust_0".to_string()],
+        };
+        let mut seed_for_command = test_instance_with_lifetime("minecraft:gust_emitter_large", 8);
+        seed_for_command.position = [1.0, 0.0, 0.0];
+        seed_for_command.age_ticks = 2;
+        seed_for_command.child_spawn_templates = vec![gust_template.clone()];
+        let commands = seed_for_command.child_spawn_commands(&mut ParticleRandom::new(0));
+        assert_eq!(commands.len(), 3);
+        for command in &commands {
+            assert_eq!(command.particle_type_id, 24);
+            assert_eq!(command.particle_id, "minecraft:gust");
+            assert_close3(command.velocity, [1.0 / 7.0, 0.0, 0.0]);
+        }
+
+        let mut particles = ParticleRuntimeState::with_capacities_and_seed(16, 16, 0);
+        let mut large = spawn_command("minecraft:gust_emitter_large", 1.0);
+        large.child_spawn_templates = vec![gust_template.clone()];
+        particles.submit_batch(ParticleSpawnBatch {
+            commands: vec![large],
+            ..ParticleSpawnBatch::default()
+        });
+        particles.advance(0);
+
+        let seed = &particles.active_instances()[0];
+        assert_eq!(seed.provider, "GustSeedParticle.Provider(3.0,7,0)");
+        assert_eq!(seed.render_group, ParticleRenderGroup::NoRender);
+        assert_eq!(seed.lifetime_ticks, 8);
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.intaken_instances, 3);
+        assert_eq!(summary.active_instances, 4);
+        let seed = &particles.active_instances()[0];
+        assert_eq!(seed.age_ticks, 1);
+        for child in particles.active_instances().iter().skip(1) {
+            assert_eq!(child.particle_type_id, 24);
+            assert_eq!(child.particle_id, "minecraft:gust");
+            assert_eq!(child.provider, "GustParticle.Provider");
+            assert_eq!(child.current_sprite_id.as_deref(), Some("minecraft:gust_0"));
+            assert_range_f64(child.position[0], -2.0, 4.0);
+            assert_range_f64(child.position[1], -3.0, 3.0);
+            assert_range_f64(child.position[2], -3.0, 3.0);
+            assert_eq!(child.velocity, [0.0, 0.0, 0.0]);
+            assert!(child.child_spawn_templates.is_empty());
+        }
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.intaken_instances, 3);
+        assert_eq!(summary.active_instances, 7);
+        for child in particles.active_instances().iter().skip(4) {
+            assert_eq!(child.velocity, [0.0, 0.0, 0.0]);
+        }
+
+        let mut particles = ParticleRuntimeState::with_capacities_and_seed(16, 16, 0);
+        let mut small = spawn_command("minecraft:gust_emitter_small", 1.0);
+        small.child_spawn_templates = vec![gust_template];
+        particles.submit_batch(ParticleSpawnBatch {
+            commands: vec![small],
+            ..ParticleSpawnBatch::default()
+        });
+        particles.advance(0);
+
+        assert_eq!(particles.advance(1).intaken_instances, 3);
+        assert_eq!(particles.advance(1).intaken_instances, 0);
+        assert_eq!(particles.advance(1).intaken_instances, 0);
+        assert_eq!(particles.advance(1).intaken_instances, 3);
     }
 
     #[test]
@@ -3942,6 +4085,55 @@ mod tests {
         assert!((12..=15).contains(&small_gust.lifetime_ticks));
         assert_eq!(small_gust.velocity, [0.0, 0.0, 0.0]);
         assert!(small_gust.has_physics);
+
+        let mut gust_emitter_large_command = spawn_command("minecraft:gust_emitter_large", 1.0);
+        gust_emitter_large_command.child_spawn_templates = vec![ParticleChildSpawnTemplate {
+            particle_type_id: 24,
+            particle_id: "minecraft:gust".to_string(),
+            sprite_ids: vec!["minecraft:gust_0".to_string()],
+        }];
+        let gust_emitter_large =
+            ParticleInstance::from_spawn_command(gust_emitter_large_command, &mut gust_random);
+        assert_eq!(
+            gust_emitter_large.provider,
+            "GustSeedParticle.Provider(3.0,7,0)"
+        );
+        assert_eq!(
+            gust_emitter_large.render_group,
+            ParticleRenderGroup::NoRender
+        );
+        assert_eq!(gust_emitter_large.lifetime_ticks, 8);
+        assert_eq!(gust_emitter_large.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(
+            gust_emitter_large.child_emission,
+            Some(ParticleChildEmissionDescriptor::GustSeed {
+                scale_tenths: 30,
+                vanilla_lifetime: 7,
+                tick_delay: 0,
+            })
+        );
+
+        let gust_emitter_small = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:gust_emitter_small", 1.0),
+            &mut small_gust_random,
+        );
+        assert_eq!(
+            gust_emitter_small.provider,
+            "GustSeedParticle.Provider(1.0,3,2)"
+        );
+        assert_eq!(
+            gust_emitter_small.render_group,
+            ParticleRenderGroup::NoRender
+        );
+        assert_eq!(gust_emitter_small.lifetime_ticks, 4);
+        assert_eq!(
+            gust_emitter_small.child_emission,
+            Some(ParticleChildEmissionDescriptor::GustSeed {
+                scale_tenths: 10,
+                vanilla_lifetime: 3,
+                tick_delay: 2,
+            })
+        );
     }
 
     #[test]
