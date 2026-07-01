@@ -132,6 +132,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub armor_trim_pattern_id: Option<i32>,
     #[serde(default)]
+    pub armor_trim_pattern_direct: Option<TrimPatternSummary>,
+    #[serde(default)]
     pub jukebox_song_id: Option<i32>,
     #[serde(default)]
     pub jukebox_direct_song: Option<JukeboxSongSummary>,
@@ -199,6 +201,13 @@ pub struct SoundEventSummary {
     pub registry_id: Option<i32>,
     pub sound_id: Option<String>,
     pub fixed_range_bits: Option<u32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TrimPatternSummary {
+    pub asset_id: String,
+    pub description: String,
+    pub decal: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -582,6 +591,7 @@ fn decode_typed_data_component_patch_summary(
                 let trim = decode_armor_trim(decoder)?;
                 summary.armor_trim_material_id = trim.material_id;
                 summary.armor_trim_pattern_id = trim.pattern_id;
+                summary.armor_trim_pattern_direct = trim.pattern_direct;
             }
             64 => {
                 let song = decode_jukebox_song_holder(decoder)?;
@@ -1539,14 +1549,16 @@ fn decode_equippable(decoder: &mut Decoder<'_>) -> Result<()> {
 struct ArmorTrimSummary {
     material_id: Option<i32>,
     pattern_id: Option<i32>,
+    pattern_direct: Option<TrimPatternSummary>,
 }
 
 fn decode_armor_trim(decoder: &mut Decoder<'_>) -> Result<ArmorTrimSummary> {
     let material_id = decode_trim_material_holder_id(decoder)?;
-    let pattern_id = decode_trim_pattern_holder_id(decoder)?;
+    let pattern = decode_trim_pattern_holder(decoder)?;
     Ok(ArmorTrimSummary {
         material_id,
-        pattern_id,
+        pattern_id: pattern.registry_id,
+        pattern_direct: pattern.direct,
     })
 }
 
@@ -1603,24 +1615,38 @@ fn decode_material_asset_group(decoder: &mut Decoder<'_>) -> Result<()> {
     Ok(())
 }
 
-fn decode_trim_pattern_holder_id(decoder: &mut Decoder<'_>) -> Result<Option<i32>> {
+struct TrimPatternHolderSummary {
+    registry_id: Option<i32>,
+    direct: Option<TrimPatternSummary>,
+}
+
+fn decode_trim_pattern_holder(decoder: &mut Decoder<'_>) -> Result<TrimPatternHolderSummary> {
     let id = decoder.read_var_i32()?;
     if id < 0 {
         return Err(ProtocolError::NegativeLength(id));
     }
     if id == 0 {
-        decode_direct_trim_pattern(decoder)?;
-        Ok(None)
+        Ok(TrimPatternHolderSummary {
+            registry_id: None,
+            direct: Some(decode_direct_trim_pattern_summary(decoder)?),
+        })
     } else {
-        Ok(Some(id - 1))
+        Ok(TrimPatternHolderSummary {
+            registry_id: Some(id - 1),
+            direct: None,
+        })
     }
 }
 
-fn decode_direct_trim_pattern(decoder: &mut Decoder<'_>) -> Result<()> {
-    decode_identifier(decoder)?;
-    decode_component_summary_from_decoder(decoder)?;
-    decoder.read_bool()?;
-    Ok(())
+fn decode_direct_trim_pattern_summary(decoder: &mut Decoder<'_>) -> Result<TrimPatternSummary> {
+    let asset_id = read_resource_location(decoder)?;
+    let description = decode_component_summary_from_decoder(decoder)?;
+    let decal = decoder.read_bool()?;
+    Ok(TrimPatternSummary {
+        asset_id,
+        description,
+        decal,
+    })
 }
 
 fn decode_jukebox_playable(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -2330,6 +2356,38 @@ mod tests {
                     description: "Test song".to_string(),
                     length_in_seconds_bits: 3.5f32.to_bits(),
                     comparator_output: 7,
+                }),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_inline_trim_pattern_payload() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(56);
+        payload.write_var_i32(2);
+        payload.write_var_i32(0);
+        payload.write_string("minecraft:test_pattern");
+        payload.write_bytes(&nbt_string_root("Test pattern"));
+        payload.write_bool(true);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![56],
+                armor_trim_material_id: Some(1),
+                armor_trim_pattern_direct: Some(TrimPatternSummary {
+                    asset_id: "minecraft:test_pattern".to_string(),
+                    description: "Test pattern".to_string(),
+                    decal: true,
                 }),
                 ..DataComponentPatchSummary::default()
             }

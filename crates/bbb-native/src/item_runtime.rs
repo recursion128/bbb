@@ -24,7 +24,7 @@ use bbb_protocol::packets::{
     FireworkExplosionShapeSummary, FireworkExplosionSummary, ItemRaritySummary, ItemStackSummary,
     ItemStackTemplateSummary, JukeboxSongSummary, LodestoneTargetSummary, MobEffectDetailsSummary,
     MobEffectInstanceSummary, NbtSummaryEntry, NbtSummaryValue, ResolvableProfileSummary,
-    ResourceTextureSummary, SoundEventSummary, WrittenBookContentSummary,
+    ResourceTextureSummary, SoundEventSummary, TrimPatternSummary, WrittenBookContentSummary,
 };
 use bbb_renderer::{
     DynamicPlayerSkinImage, DynamicPlayerTextureImage, EntityCustomHeadSkull,
@@ -7546,7 +7546,11 @@ mod tests {
         let exact_trim = DataComponentPatchSummary {
             added_type_ids: vec![56],
             armor_trim_material_id: Some(1),
-            armor_trim_pattern_id: Some(0),
+            armor_trim_pattern_direct: Some(TrimPatternSummary {
+                asset_id: "minecraft:test_pattern".to_string(),
+                description: "Test pattern".to_string(),
+                decal: true,
+            }),
             ..DataComponentPatchSummary::default()
         };
         assert_eq!(
@@ -7557,7 +7561,10 @@ mod tests {
             selected_with_trim_keys(
                 90,
                 named_bundle_entry(DataComponentPatchSummary {
-                    armor_trim_material_id: Some(0),
+                    armor_trim_pattern_direct: Some(TrimPatternSummary {
+                        decal: false,
+                        ..exact_trim.armor_trim_pattern_direct.clone().unwrap()
+                    }),
                     ..exact_trim.clone()
                 })
             ),
@@ -12235,7 +12242,18 @@ mod tests {
                                         "components": {
                                             "minecraft:trim": {
                                                 "material": "minecraft:diamond",
-                                                "pattern": "minecraft:sentry"
+                                                "pattern": {
+                                                    "asset_id": "minecraft:test_pattern",
+                                                    "description": {
+                                                        "text": "Test",
+                                                        "extra": [
+                                                            {
+                                                                "text": " pattern"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "decal": true
+                                                }
                                             }
                                         }
                                     }

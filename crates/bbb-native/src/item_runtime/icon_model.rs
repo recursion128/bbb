@@ -8,7 +8,7 @@ use bbb_protocol::packets::{
     AttributeModifierSummary, DataComponentPatchSummary, FireworkExplosionShapeSummary,
     FireworkExplosionSummary, ItemEnchantmentSummary, ItemRaritySummary, ItemStackTemplateSummary,
     JukeboxSongSummary, MobEffectDetailsSummary, MobEffectInstanceSummary, NbtSummaryEntry,
-    NbtSummaryValue, SoundEventSummary, WrittenBookContentSummary,
+    NbtSummaryValue, SoundEventSummary, TrimPatternSummary, WrittenBookContentSummary,
 };
 use chrono::{Datelike, FixedOffset, Local, TimeZone, Utc};
 use serde_json::Value;
@@ -4400,7 +4400,18 @@ fn item_stack_matches_trim_value(
 
 struct ExactTrim<'a> {
     material: &'a str,
-    pattern: &'a str,
+    pattern: ExactTrimPattern<'a>,
+}
+
+enum ExactTrimPattern<'a> {
+    RegistryKey(&'a str),
+    Direct(ExactDirectTrimPattern),
+}
+
+struct ExactDirectTrimPattern {
+    asset_id: String,
+    description: String,
+    decal: bool,
 }
 
 fn trim_exact_value(value: &Value) -> Option<ExactTrim<'_>> {
@@ -4413,8 +4424,33 @@ fn trim_exact_value(value: &Value) -> Option<ExactTrim<'_>> {
     }
     Some(ExactTrim {
         material: direct_registry_key_value(value.get("material")?)?,
-        pattern: direct_registry_key_value(value.get("pattern")?)?,
+        pattern: trim_pattern_exact_value(value.get("pattern")?)?,
     })
+}
+
+fn trim_pattern_exact_value(value: &Value) -> Option<ExactTrimPattern<'_>> {
+    match value {
+        Value::String(value) => Some(ExactTrimPattern::RegistryKey(direct_registry_key_str(
+            value,
+        )?)),
+        Value::Object(value) => {
+            if !value
+                .keys()
+                .all(|key| key == "asset_id" || key == "description" || key == "decal")
+            {
+                return None;
+            }
+            Some(ExactTrimPattern::Direct(ExactDirectTrimPattern {
+                asset_id: direct_registry_key_str(value.get("asset_id")?.as_str()?)?.to_string(),
+                description: component_summary_text(value.get("description")?)?,
+                decal: value
+                    .get("decal")
+                    .map(Value::as_bool)
+                    .unwrap_or(Some(false))?,
+            }))
+        }
+        _ => None,
+    }
 }
 
 fn direct_registry_key_value(value: &Value) -> Option<&str> {
@@ -4441,14 +4477,39 @@ fn trim_exact_match(
     else {
         return false;
     };
-    let Some(pattern_key) = component_patch
-        .armor_trim_pattern_id
-        .and_then(|id| usize::try_from(id).ok())
-        .and_then(|index| VANILLA_TRIM_PATTERN_KEYS.get(index))
-    else {
-        return false;
-    };
-    material_key.as_str() == expected.material && *pattern_key == expected.pattern
+    material_key.as_str() == expected.material
+        && trim_pattern_exact_match(&expected.pattern, component_patch)
+}
+
+fn trim_pattern_exact_match(
+    expected: &ExactTrimPattern<'_>,
+    component_patch: &DataComponentPatchSummary,
+) -> bool {
+    match expected {
+        ExactTrimPattern::RegistryKey(expected) => {
+            let Some(pattern_key) = component_patch
+                .armor_trim_pattern_id
+                .and_then(|id| usize::try_from(id).ok())
+                .and_then(|index| VANILLA_TRIM_PATTERN_KEYS.get(index))
+            else {
+                return false;
+            };
+            pattern_key == expected
+        }
+        ExactTrimPattern::Direct(expected) => component_patch
+            .armor_trim_pattern_direct
+            .as_ref()
+            .is_some_and(|actual| direct_trim_pattern_exact_match(expected, actual)),
+    }
+}
+
+fn direct_trim_pattern_exact_match(
+    expected: &ExactDirectTrimPattern,
+    actual: &TrimPatternSummary,
+) -> bool {
+    actual.asset_id == expected.asset_id
+        && actual.description == expected.description
+        && actual.decal == expected.decal
 }
 
 fn jukebox_playable_component_predicate_is_supported(property: &ItemModelProperty) -> bool {

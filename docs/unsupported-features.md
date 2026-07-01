@@ -5921,8 +5921,9 @@ When an agent does any of the following, update this file in the same slice:
       for direct vanilla jukebox-song keys and inline direct-song objects with
       direct sound-event payloads, description text summaries,
       `length_in_seconds`, and `comparator_output`, plus exact `minecraft:trim`
-      components for direct trim-material registry keys and direct vanilla
-      trim-pattern keys, plus exact `minecraft:enchantments` and
+      components for direct trim-material registry keys, direct vanilla
+      trim-pattern keys, and inline trim-pattern payloads with asset id /
+      description text / decal, plus exact `minecraft:enchantments` and
       `minecraft:stored_enchantments` components for direct enchantment
       registry-key maps, plus exact `minecraft:villager/variant` components
       for direct vanilla villager-type registry keys, plus exact
@@ -5984,11 +5985,11 @@ When an agent does any of the following, update this file in the same slice:
       direct-key `trim` exact components, potion / mob-effect datapack registry
       remaps for `potion_contents`, attribute modifier inline / datapack
       attribute holder payloads, full style-sensitive written-book page
-      `ComponentSerialization` equality, trim inline material or pattern
-      payloads / datapack pattern registry-key remaps, datapack villager-type
-      registry remaps, jukebox-song datapack registry remaps plus registry
-      sound-event holders inside inline jukebox songs, and similar) remain
-      follow-up.
+      `ComponentSerialization` equality, trim inline material payloads /
+      datapack trim-material or trim-pattern registry-key remaps, datapack
+      villager-type registry remaps, jukebox-song datapack registry remaps plus
+      registry sound-event holders inside inline jukebox songs, and similar)
+      remain follow-up.
     - `minecraft:charge_type` — `Charge.get` (`ROCKET` when any charged
       projectile is `minecraft:firework_rocket`, `ARROW` when charged otherwise,
       else `NONE`), using the native item registry to identify the projectile

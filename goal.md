@@ -858,8 +858,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     direct vanilla jukebox-song keys and inline direct-song objects with direct
     sound-event payloads, description text summaries, `length_in_seconds`, and
     `comparator_output`, plus exact `minecraft:trim` components
-    for direct trim-material registry keys and direct vanilla trim-pattern
-    keys, plus exact `minecraft:enchantments` and
+    for direct trim-material registry keys, direct vanilla trim-pattern keys,
+    and inline trim-pattern payloads with asset id / description text / decal,
+    plus exact `minecraft:enchantments` and
     `minecraft:stored_enchantments` components for direct enchantment
     registry-key maps, plus exact `minecraft:villager/variant` components for
     direct vanilla villager-type registry keys, plus exact
@@ -915,9 +916,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     direct-key `trim` exact components, potion / mob-effect datapack registry
     remaps for `potion_contents`, attribute modifier inline / datapack
     attribute holder payloads, full style-sensitive written-book page
-    `ComponentSerialization` equality, trim inline material or pattern payloads
-    / datapack pattern registry-key remaps, datapack villager-type registry
-    remaps, and jukebox-song datapack registry remaps plus registry
+    `ComponentSerialization` equality, trim inline material payloads /
+    datapack trim-material or trim-pattern registry-key remaps, datapack
+    villager-type registry remaps, and jukebox-song datapack registry remaps plus registry
     sound-event holders inside inline jukebox songs remain component-predicate
     follow-up.
   - [x] `minecraft:has_component` item-model condition now follows vanilla
