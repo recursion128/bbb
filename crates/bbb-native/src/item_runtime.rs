@@ -7239,6 +7239,157 @@ mod tests {
             ),
             uv("component_condition_container_partial_any_value_absent")
         );
+        assert_eq!(
+            selected(
+                40,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            added_type_ids: vec![13],
+                            enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                                holder_id: 0,
+                                level: 3,
+                            }],
+                            ..DataComponentPatchSummary::default()
+                        },
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_partial_enchantments_absent")
+        );
+        assert_eq!(
+            selected_with_enchantment_keys(
+                40,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            added_type_ids: vec![13],
+                            enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                                holder_id: 0,
+                                level: 3,
+                            }],
+                            ..DataComponentPatchSummary::default()
+                        },
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_partial_enchantments_present")
+        );
+        assert_eq!(
+            selected_with_enchantment_keys(
+                40,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            added_type_ids: vec![13],
+                            enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                                holder_id: 1,
+                                level: 3,
+                            }],
+                            ..DataComponentPatchSummary::default()
+                        },
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_partial_enchantments_absent")
+        );
+        assert_eq!(
+            selected_with_enchantment_keys(
+                41,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(2),
+                    container_items: vec![
+                        ItemStackTemplateSummary {
+                            item_id: 0,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![42],
+                                stored_enchantments: vec![
+                                    bbb_protocol::packets::ItemEnchantmentSummary {
+                                        holder_id: 1,
+                                        level: 1,
+                                    },
+                                ],
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                        ItemStackTemplateSummary {
+                            item_id: 1,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![42],
+                                stored_enchantments: vec![
+                                    bbb_protocol::packets::ItemEnchantmentSummary {
+                                        holder_id: 1,
+                                        level: 1,
+                                    },
+                                ],
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_partial_stored_enchantments_present")
+        );
+        assert_eq!(
+            selected_with_enchantment_keys(
+                41,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(2),
+                    container_items: vec![
+                        ItemStackTemplateSummary {
+                            item_id: 0,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![42],
+                                stored_enchantments: vec![
+                                    bbb_protocol::packets::ItemEnchantmentSummary {
+                                        holder_id: 1,
+                                        level: 1,
+                                    },
+                                ],
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                        ItemStackTemplateSummary {
+                            item_id: 1,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![42],
+                                stored_enchantments: vec![
+                                    bbb_protocol::packets::ItemEnchantmentSummary {
+                                        holder_id: 0,
+                                        level: 1,
+                                    },
+                                ],
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_partial_stored_enchantments_absent")
+        );
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -8770,6 +8921,8 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_DAMAGE = registerItem("component_condition_container_partial_damage");
                 public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_ANY_VALUE = registerItem("component_condition_bundle_partial_any_value");
                 public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_ANY_VALUE = registerItem("component_condition_container_partial_any_value");
+                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_ENCHANTMENTS = registerItem("component_condition_bundle_partial_enchantments");
+                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_STORED_ENCHANTMENTS = registerItem("component_condition_container_partial_stored_enchantments");
             }"#,
         );
         write_json(
@@ -9380,6 +9533,89 @@ mod tests {
                     "on_false": {
                         "type": "minecraft:model",
                         "model": "minecraft:item/component_condition_container_partial_any_value_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_partial_enchantments.json"),
+            r##"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "predicates": {
+                                            "minecraft:enchantments": [
+                                                {
+                                                    "enchantments": "#minecraft:component_condition_tagged",
+                                                    "levels": {
+                                                        "min": 2
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_enchantments_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_enchantments_absent"
+                    }
+                }
+            }"##,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_container_partial_stored_enchantments.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:container",
+                    "value": {
+                        "items": {
+                            "count": [
+                                {
+                                    "test": {
+                                        "components": {
+                                            "predicates": {
+                                                "minecraft:stored_enchantments": [
+                                                    {
+                                                        "enchantments": "minecraft:mending",
+                                                        "levels": 1
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "count": {
+                                        "min": 2
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_stored_enchantments_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_stored_enchantments_absent"
                     }
                 }
             }"#,
@@ -10122,6 +10358,22 @@ mod tests {
             (
                 "component_condition_container_partial_any_value_absent",
                 [40, 80, 70, 255],
+            ),
+            (
+                "component_condition_bundle_partial_enchantments_present",
+                [245, 180, 120, 255],
+            ),
+            (
+                "component_condition_bundle_partial_enchantments_absent",
+                [90, 50, 30, 255],
+            ),
+            (
+                "component_condition_container_partial_stored_enchantments_present",
+                [180, 245, 120, 255],
+            ),
+            (
+                "component_condition_container_partial_stored_enchantments_absent",
+                [50, 90, 30, 255],
             ),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);

@@ -806,11 +806,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     against the decoded bundle item count, and `items.contains` / `count`
     now support vanilla `ItemPredicate` direct item-key or item-tag HolderSets,
     stack-count bounds, and exact scalar/default `DataComponentMatchers`
-    components plus nested partial `minecraft:damage` and data-component
-    AnyValue predicates over decoded bundle entries. `minecraft:container` now
-    decodes non-empty container entries and matches the same direct item-key /
-    item-tag / stack-count / exact scalar component / nested partial damage and
-    AnyValue predicate collection subset.
+    components plus nested partial `minecraft:damage`, `minecraft:enchantments`,
+    `minecraft:stored_enchantments`, and data-component AnyValue predicates over
+    decoded bundle entries. `minecraft:container` now decodes non-empty
+    container entries and matches the same direct item-key / item-tag /
+    stack-count / exact scalar component / nested partial damage,
+    enchantments, stored-enchantments, and AnyValue predicate collection subset.
     `minecraft:enchantments` and patch-backed
     `minecraft:stored_enchantments` now match decoded enchantment levels and
     direct registry-key or enchantment-tag HolderSet predicates when the
@@ -823,7 +824,7 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:enchanted_book` now also contributes its item-specific default
     empty `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
     constrained `DataComponentPredicate` types such as inline enchantment holder
-    payloads / server datapack tag remaps, bundle/container nested non-damage
+    payloads / server datapack tag remaps, bundle/container nested remaining
     concrete partial predicates and complex exact component codecs, and trim
     inline material or pattern payloads / datapack pattern registry-key remaps remain
     component-predicate follow-up.

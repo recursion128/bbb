@@ -1635,12 +1635,21 @@ fn empty_single_component_predicate_id(property: &ItemModelProperty) -> Option<i
 fn enchantments_component_predicate_kind(
     property: &ItemModelProperty,
 ) -> Option<EnchantmentComponentKind> {
-    let kind = match component_condition_predicate(property)? {
+    let predicate = component_condition_predicate(property)?;
+    let value = property.raw().get("value")?;
+    enchantments_component_predicate_kind_from_parts(predicate, value)
+}
+
+fn enchantments_component_predicate_kind_from_parts(
+    predicate: &str,
+    value: &Value,
+) -> Option<EnchantmentComponentKind> {
+    let kind = match predicate {
         "minecraft:enchantments" => EnchantmentComponentKind::Enchantments,
         "minecraft:stored_enchantments" => EnchantmentComponentKind::StoredEnchantments,
         _ => return None,
     };
-    let Some(predicates) = property.raw().get("value").and_then(Value::as_array) else {
+    let Some(predicates) = value.as_array() else {
         return None;
     };
     if predicates.iter().all(enchantment_predicate_is_supported) {
@@ -1692,29 +1701,41 @@ fn item_stack_matches_enchantments_predicate(
     let Some(kind) = enchantments_component_predicate_kind(property) else {
         return false;
     };
-    if ctx
-        .component_patch
-        .is_some_and(|patch| patch.removed_type_ids.contains(&kind.component_id()))
-    {
-        return false;
-    }
-    let Some(predicates) = property.raw().get("value").and_then(Value::as_array) else {
+    let Some(value) = property.raw().get("value") else {
         return false;
     };
-    let enchantments = ctx
-        .component_patch
+    item_stack_matches_enchantments_value(
+        kind,
+        value,
+        ctx.component_patch,
+        ctx.default_item_model_id,
+        ctx.enchantment_keys,
+        ctx.enchantment_tags,
+    )
+}
+
+fn item_stack_matches_enchantments_value(
+    kind: EnchantmentComponentKind,
+    value: &Value,
+    component_patch: Option<&DataComponentPatchSummary>,
+    default_item_model_id: &str,
+    enchantment_keys: Option<&[String]>,
+    enchantment_tags: Option<&TagCatalog>,
+) -> bool {
+    if component_patch.is_some_and(|patch| patch.removed_type_ids.contains(&kind.component_id())) {
+        return false;
+    }
+    let Some(predicates) = value.as_array() else {
+        return false;
+    };
+    let enchantments = component_patch
         .map(|patch| kind.enchantments(patch))
         .unwrap_or(&[]);
-    if !kind.component_is_present(ctx.component_patch, enchantments, ctx.default_item_model_id) {
+    if !kind.component_is_present(component_patch, enchantments, default_item_model_id) {
         return false;
     }
     predicates.iter().all(|predicate| {
-        enchantment_predicate_matches(
-            predicate,
-            enchantments,
-            ctx.enchantment_keys,
-            ctx.enchantment_tags,
-        )
+        enchantment_predicate_matches(predicate, enchantments, enchantment_keys, enchantment_tags)
     })
 }
 
@@ -1896,6 +1917,8 @@ fn item_stack_matches_bundle_contents_predicate(
         component_patch.bundle_contents_item_count,
         ctx.item_resource_ids,
         ctx.item_tags,
+        ctx.enchantment_keys,
+        ctx.enchantment_tags,
         ctx.default_max_stack_size_for_item,
         ctx.default_max_damage_for_item,
     )
@@ -1950,6 +1973,8 @@ fn item_stack_matches_container_predicate(
         component_patch.container_item_count,
         ctx.item_resource_ids,
         ctx.item_tags,
+        ctx.enchantment_keys,
+        ctx.enchantment_tags,
         ctx.default_max_stack_size_for_item,
         ctx.default_max_damage_for_item,
     )
@@ -2061,6 +2086,7 @@ fn item_partial_component_predicates_are_supported(value: &Value) -> bool {
 fn item_partial_component_predicate_is_supported(predicate: &str, value: &Value) -> bool {
     match predicate {
         "minecraft:damage" => damage_component_predicate_value_is_supported(value),
+        _ if enchantments_component_predicate_kind_from_parts(predicate, value).is_some() => true,
         _ => {
             item_partial_any_value_component_id(predicate).is_some()
                 && value.as_object().is_some_and(|value| value.is_empty())
@@ -2102,6 +2128,8 @@ fn item_collection_predicate_matches(
     item_count: Option<usize>,
     item_resource_ids: Option<&[String]>,
     item_tags: Option<&TagCatalog>,
+    enchantment_keys: Option<&[String]>,
+    enchantment_tags: Option<&TagCatalog>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
@@ -2119,6 +2147,8 @@ fn item_collection_predicate_matches(
                     item,
                     item_resource_ids,
                     item_tags,
+                    enchantment_keys,
+                    enchantment_tags,
                     default_max_stack_size_for_item,
                     default_max_damage_for_item,
                 )
@@ -2137,6 +2167,8 @@ fn item_collection_predicate_matches(
                 items,
                 item_resource_ids,
                 item_tags,
+                enchantment_keys,
+                enchantment_tags,
                 default_max_stack_size_for_item,
                 default_max_damage_for_item,
             )
@@ -2163,6 +2195,8 @@ fn item_predicate_count_entry_matches(
     items: &[ItemStackTemplateSummary],
     item_resource_ids: Option<&[String]>,
     item_tags: Option<&TagCatalog>,
+    enchantment_keys: Option<&[String]>,
+    enchantment_tags: Option<&TagCatalog>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
@@ -2180,6 +2214,8 @@ fn item_predicate_count_entry_matches(
                 item,
                 item_resource_ids,
                 item_tags,
+                enchantment_keys,
+                enchantment_tags,
                 default_max_stack_size_for_item,
                 default_max_damage_for_item,
             )
@@ -2196,6 +2232,8 @@ fn item_predicate_matches(
     item: &ItemStackTemplateSummary,
     item_resource_ids: Option<&[String]>,
     item_tags: Option<&TagCatalog>,
+    enchantment_keys: Option<&[String]>,
+    enchantment_tags: Option<&TagCatalog>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
@@ -2229,6 +2267,8 @@ fn item_predicate_matches(
             components,
             item,
             resource_id,
+            enchantment_keys,
+            enchantment_tags,
             default_max_stack_size_for_item,
             default_max_damage_for_item,
         ) {
@@ -2242,6 +2282,8 @@ fn item_data_component_matchers_match(
     value: &Value,
     item: &ItemStackTemplateSummary,
     resource_id: &str,
+    enchantment_keys: Option<&[String]>,
+    enchantment_tags: Option<&TagCatalog>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
@@ -2264,6 +2306,8 @@ fn item_data_component_matchers_match(
             predicates,
             item,
             resource_id,
+            enchantment_keys,
+            enchantment_tags,
             default_max_damage_for_item,
         ) {
             return false;
@@ -2306,6 +2350,8 @@ fn item_partial_component_predicates_match(
     value: &Value,
     item: &ItemStackTemplateSummary,
     resource_id: &str,
+    enchantment_keys: Option<&[String]>,
+    enchantment_tags: Option<&TagCatalog>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
     let Some(predicates) = value.as_object() else {
@@ -2320,6 +2366,8 @@ fn item_partial_component_predicates_match(
             Some(&item.component_patch),
             default_max_damage,
             resource_id,
+            enchantment_keys,
+            enchantment_tags,
         )
     })
 }
@@ -2330,10 +2378,24 @@ fn item_partial_component_predicate_match(
     component_patch: Option<&DataComponentPatchSummary>,
     default_max_damage: Option<i32>,
     default_item_model_id: &str,
+    enchantment_keys: Option<&[String]>,
+    enchantment_tags: Option<&TagCatalog>,
 ) -> bool {
     match predicate {
         "minecraft:damage" => {
             damage_component_predicate_matches_value(value, component_patch, default_max_damage)
+        }
+        _ if let Some(kind) =
+            enchantments_component_predicate_kind_from_parts(predicate, value) =>
+        {
+            item_stack_matches_enchantments_value(
+                kind,
+                value,
+                component_patch,
+                default_item_model_id,
+                enchantment_keys,
+                enchantment_tags,
+            )
         }
         _ => item_partial_any_value_component_id(predicate).is_some_and(|component_id| {
             value.as_object().is_some_and(|value| value.is_empty())
