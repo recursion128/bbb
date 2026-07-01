@@ -49,6 +49,11 @@ pub(crate) enum ParticleAlphaCurve {
     VaultConnectionFade,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum ParticleChildEmissionDescriptor {
+    LavaSmoke,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub(crate) enum ParticleLimitDescriptor {
     SporeBlossom,
@@ -1240,6 +1245,13 @@ impl ParticleDescriptor {
             _ => None,
         }
     }
+
+    pub(crate) fn child_emission(self) -> Option<ParticleChildEmissionDescriptor> {
+        match self.provider {
+            "LavaParticle.Provider" => Some(ParticleChildEmissionDescriptor::LavaSmoke),
+            _ => None,
+        }
+    }
 }
 
 pub(crate) fn particle_limit_for_particle(particle_id: &str) -> Option<ParticleLimitDescriptor> {
@@ -1782,7 +1794,7 @@ impl ParticleRandom {
         f64::from(self.next_bits(24)) / f64::from(1_u32 << 24)
     }
 
-    fn next_f32(&mut self) -> f32 {
+    pub(crate) fn next_f32(&mut self) -> f32 {
         self.next_bits(24) as f32 / (1_u32 << 24) as f32
     }
 
@@ -2531,6 +2543,10 @@ mod tests {
         assert_eq!(
             ParticleDescriptor::for_particle("minecraft:lava").initial_velocity,
             ParticleInitialVelocityDescriptor::Lava
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:lava").child_emission(),
+            Some(ParticleChildEmissionDescriptor::LavaSmoke)
         );
         assert_descriptor(
             "minecraft:soul",

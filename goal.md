@@ -1263,6 +1263,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     vanilla `setFadeColor(15916745)` RGB fade toward `0xF2DEC9` by 20% per
     tick after half lifetime. The collision-free `move` override remains
     provider-specific follow-up.
+  - [x] `LavaParticle.Provider` child smoke：native lava spawn commands now
+    carry the smoke child particle template and SpriteSet from pack-backed
+    particle definitions; renderer runtime records explicit `LavaSmoke` child
+    emission state and, after the lava tick, mirrors vanilla `random.nextFloat()
+    > age / lifetime` smoke spawning at the current lava position/velocity.
   - 初速度。
   - lifetime。
   - size curve。

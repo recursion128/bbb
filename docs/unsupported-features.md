@@ -299,8 +299,10 @@ When an agent does any of the following, update this file in the same slice:
         horizontal velocity damped by `0.8`, random upward velocity
         `0.05..0.45`, `0.2..2.2` quad-size scaling, shrinking size curve,
         `16 / (random * 0.8 + 0.2)` lifetime, `0.999` friction, `0.75`
-        gravity, physics metadata, and full-bright block light; child smoke
-        emission remains deferred until that per-particle state is represented
+        gravity, physics metadata, full-bright block light, and child smoke
+        emission. Lava spawn commands carry the pack-backed smoke child
+        SpriteSet, and runtime emits smoke after lava ticks when
+        `random.nextFloat() > age / lifetime`
       - `SnowflakeParticle.Provider` age sprite selection, fixed pale-blue tint,
         `0.1 * (random * random + 1.0)` quad size, command velocity plus
         random `+-0.05` per axis, `16 / (random * 0.8 + 0.2) + 2` lifetime,
@@ -5740,9 +5742,9 @@ When an agent does any of the following, update this file in the same slice:
         selection, constructor-random horizontal velocity damped by `0.8`,
         random upward velocity `0.05..0.45`, `0.2..2.2` quad-size scaling,
         shrinking size curve, `16/(random*.8+.2)` lifetime, friction `0.999`,
-        gravity `0.75`, physics metadata, and full-bright block light. Child
-        smoke emission remains deferred until that per-particle state is
-        represented.
+        gravity `0.75`, physics metadata, full-bright block light, and child
+        smoke emission using the command-carried smoke SpriteSet and vanilla
+        `random.nextFloat() > age / lifetime` post-tick odds.
       - particle descriptors map `SnowflakeParticle.Provider` to age sprites,
         fixed pale-blue tint, `0.1 * (random * random + 1.0)` quad size,
         command velocity plus random `+-0.05` per axis,

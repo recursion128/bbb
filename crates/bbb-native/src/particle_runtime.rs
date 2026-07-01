@@ -8,7 +8,8 @@ use bbb_pack::{
 use bbb_protocol::codec::Decoder;
 use bbb_protocol::packets::{ClientParticleStatus, LevelEvent, LevelParticles, Vec3d};
 use bbb_renderer::{
-    ParticleSpawnBatch, ParticleSpawnCommand, ParticleSpriteUv, ParticleUvRect, Renderer,
+    ParticleChildSpawnTemplate, ParticleSpawnBatch, ParticleSpawnCommand, ParticleSpriteUv,
+    ParticleUvRect, Renderer,
 };
 use bbb_world::LevelEventSoundRandomState;
 
@@ -1124,6 +1125,7 @@ impl ParticleCommandResolver {
         raw_options_len: usize,
         initial_delay_ticks: u32,
     ) -> ParticleSpawnCommand {
+        let child_spawn_templates = self.child_spawn_templates_for_type(particle_type);
         ParticleSpawnCommand {
             particle_type_id: particle_type.id,
             particle_id: particle_type.name.to_string(),
@@ -1134,7 +1136,27 @@ impl ParticleCommandResolver {
             always_show,
             raw_options_len,
             initial_delay_ticks,
+            child_spawn_templates,
         }
+    }
+
+    fn child_spawn_templates_for_type(
+        &self,
+        particle_type: ParticleTypeInfo,
+    ) -> Vec<ParticleChildSpawnTemplate> {
+        if particle_type.id != LAVA_PARTICLE_TYPE_ID {
+            return Vec::new();
+        }
+        self.simple_particle_template(SMOKE_PARTICLE_TYPE_ID)
+            .ok()
+            .map(|template| {
+                vec![ParticleChildSpawnTemplate {
+                    particle_type_id: template.particle_type.id,
+                    particle_id: template.particle_type.name.to_string(),
+                    sprite_ids: template.sprite_ids,
+                }]
+            })
+            .unwrap_or_default()
     }
 }
 
@@ -1286,6 +1308,7 @@ const FLAME_PARTICLE_TYPE_ID: i32 = 32;
 const SOUL_FIRE_FLAME_PARTICLE_TYPE_ID: i32 = 40;
 const HAPPY_VILLAGER_PARTICLE_TYPE_ID: i32 = 43;
 const LARGE_SMOKE_PARTICLE_TYPE_ID: i32 = 55;
+const LAVA_PARTICLE_TYPE_ID: i32 = 56;
 const POOF_PARTICLE_TYPE_ID: i32 = 59;
 const PORTAL_PARTICLE_TYPE_ID: i32 = 60;
 const SMOKE_PARTICLE_TYPE_ID: i32 = 62;
@@ -1437,6 +1460,23 @@ mod tests {
         assert!(command.always_show);
         assert_eq!(command.raw_options_len, 2);
         assert_eq!(command.initial_delay_ticks, 0);
+    }
+
+    #[test]
+    fn lava_level_particle_command_carries_smoke_child_template() {
+        let mut resolver = test_resolver(0);
+        let batch =
+            resolver.resolve_level_particles(&level_particles_packet(LAVA_PARTICLE_TYPE_ID, 0));
+
+        assert_eq!(batch.len(), 1);
+        let command = &batch.commands[0];
+        assert_eq!(command.particle_type_id, LAVA_PARTICLE_TYPE_ID);
+        assert_eq!(command.particle_id, "minecraft:lava");
+        assert_eq!(command.child_spawn_templates.len(), 1);
+        let child = &command.child_spawn_templates[0];
+        assert_eq!(child.particle_type_id, SMOKE_PARTICLE_TYPE_ID);
+        assert_eq!(child.particle_id, "minecraft:smoke");
+        assert_eq!(child.sprite_ids, vec!["minecraft:smoke_0".to_string()]);
     }
 
     #[test]
@@ -2389,6 +2429,7 @@ mod tests {
                 "explosion_0",
                 "smoke_0",
                 "large_smoke_0",
+                "lava",
                 "white_smoke_0",
                 "poof_0",
                 "happy_villager_0",
@@ -2482,6 +2523,14 @@ mod tests {
             r#"{
               "textures": [
                 "minecraft:large_smoke_0"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("lava.json"),
+            r#"{
+              "textures": [
+                "minecraft:lava"
               ]
             }"#,
         );

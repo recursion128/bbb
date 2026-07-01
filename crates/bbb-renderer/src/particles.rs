@@ -11,9 +11,9 @@ mod gpu;
 
 use descriptors::{
     particle_limit_for_particle, select_initial_sprite, sprite_index_for_age, ParticleAlphaCurve,
-    ParticleDescriptor, ParticleLightEmissionDescriptor, ParticleLimitDescriptor,
-    ParticleQuadSizeCurve, ParticleRandom, ParticleSpriteSelection, ParticleTickMotionDescriptor,
-    DEFAULT_PARTICLE_RANDOM_SEED,
+    ParticleChildEmissionDescriptor, ParticleDescriptor, ParticleLightEmissionDescriptor,
+    ParticleLimitDescriptor, ParticleQuadSizeCurve, ParticleRandom, ParticleSpriteSelection,
+    ParticleTickMotionDescriptor, DEFAULT_PARTICLE_RANDOM_SEED,
 };
 pub(super) use gpu::{
     create_particle_atlas_gpu, create_particle_pipeline, ParticleAtlasGpu, ParticlePipelineKind,
@@ -26,6 +26,15 @@ const DEFAULT_PARTICLE_QUAD_SIZE: f32 = 0.2;
 const DEFAULT_PARTICLE_RENDER_PARTIAL_TICK: f32 = 0.5;
 const DEFAULT_PARTICLE_LIGHT: [f32; 2] = [1.0, 1.0];
 const SHRIEK_MAGICAL_X_ROT: f32 = 1.0472;
+const LAVA_CHILD_SMOKE_PARTICLE_ID: &str = "minecraft:smoke";
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ParticleChildSpawnTemplate {
+    pub particle_type_id: i32,
+    pub particle_id: String,
+    #[serde(default)]
+    pub sprite_ids: Vec<String>,
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ParticleSpawnCommand {
@@ -40,6 +49,8 @@ pub struct ParticleSpawnCommand {
     pub raw_options_len: usize,
     #[serde(default)]
     pub initial_delay_ticks: u32,
+    #[serde(default)]
+    pub child_spawn_templates: Vec<ParticleChildSpawnTemplate>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -126,6 +137,10 @@ pub(crate) struct ParticleInstance {
     pub(crate) tick_angle: f32,
     #[serde(default)]
     pub(crate) particle_limit: Option<ParticleLimitDescriptor>,
+    #[serde(default)]
+    pub(crate) child_emission: Option<ParticleChildEmissionDescriptor>,
+    #[serde(default)]
+    pub(crate) child_spawn_templates: Vec<ParticleChildSpawnTemplate>,
     pub(crate) sprite_selection: ParticleSpriteSelection,
     pub(crate) override_limiter: bool,
     pub(crate) always_show: bool,
@@ -308,22 +323,15 @@ impl ParticleRuntimeState {
 
         let requested_spawns = batch.commands.len();
         let mut queued_spawns = 0;
-        let mut dropped_spawns = 0;
+        let dropped_spawns_before = self.dropped_spawns;
 
         for command in batch.commands {
-            if self.max_pending_spawns == 0 {
-                dropped_spawns += 1;
-                continue;
+            if self.queue_pending_spawn(command) {
+                queued_spawns += 1;
             }
-            if self.pending_spawns.len() == self.max_pending_spawns {
-                self.pending_spawns.pop_front();
-                dropped_spawns += 1;
-            }
-            self.pending_spawns.push_back(command);
-            queued_spawns += 1;
         }
 
-        self.dropped_spawns = self.dropped_spawns.saturating_add(dropped_spawns as u64);
+        let dropped_spawns = self.dropped_spawns.saturating_sub(dropped_spawns_before) as usize;
 
         ParticleSubmitSummary {
             requested_spawns,
@@ -335,6 +343,19 @@ impl ParticleRuntimeState {
             pending_spawns: self.pending_spawns.len(),
             total_dropped_spawns: self.dropped_spawns,
         }
+    }
+
+    fn queue_pending_spawn(&mut self, command: ParticleSpawnCommand) -> bool {
+        if self.max_pending_spawns == 0 {
+            self.dropped_spawns = self.dropped_spawns.saturating_add(1);
+            return false;
+        }
+        if self.pending_spawns.len() == self.max_pending_spawns {
+            self.pending_spawns.pop_front();
+            self.dropped_spawns = self.dropped_spawns.saturating_add(1);
+        }
+        self.pending_spawns.push_back(command);
+        true
     }
 
     pub(crate) fn advance(&mut self, ticks: u32) -> ParticleAdvanceSummary {
@@ -407,10 +428,18 @@ impl ParticleRuntimeState {
             instance.update_sprite_from_age();
             instance.update_alpha_from_age();
             instance.update_color_fade_from_age();
+            self.enqueue_child_spawns_from(&instance);
             active_instances.push_back(instance);
         }
         self.active_instances = active_instances;
         expired_instances
+    }
+
+    fn enqueue_child_spawns_from(&mut self, instance: &ParticleInstance) {
+        let Some(command) = instance.child_spawn_command(&mut self.random) else {
+            return;
+        };
+        self.queue_pending_spawn(command);
     }
 
     fn drain_pending_spawns(
@@ -555,6 +584,8 @@ impl ParticleInstance {
             tick_motion: descriptor.tick_motion(),
             tick_angle: 0.0,
             particle_limit,
+            child_emission: descriptor.child_emission(),
+            child_spawn_templates: command.child_spawn_templates,
             sprite_selection: descriptor.sprite_selection,
             override_limiter: command.override_limiter,
             always_show: command.always_show,
@@ -707,6 +738,41 @@ impl ParticleInstance {
         self.color[0] += (target[0] - self.color[0]) * 0.2;
         self.color[1] += (target[1] - self.color[1]) * 0.2;
         self.color[2] += (target[2] - self.color[2]) * 0.2;
+    }
+
+    fn child_spawn_command(&self, random: &mut ParticleRandom) -> Option<ParticleSpawnCommand> {
+        match self.child_emission {
+            Some(ParticleChildEmissionDescriptor::LavaSmoke) => {
+                self.lava_child_smoke_spawn_command(random)
+            }
+            None => None,
+        }
+    }
+
+    fn lava_child_smoke_spawn_command(
+        &self,
+        random: &mut ParticleRandom,
+    ) -> Option<ParticleSpawnCommand> {
+        let template = self
+            .child_spawn_templates
+            .iter()
+            .find(|template| template.particle_id == LAVA_CHILD_SMOKE_PARTICLE_ID)?;
+        let odds = self.age_ticks as f32 / self.lifetime_ticks.max(1) as f32;
+        if random.next_f32() <= odds {
+            return None;
+        }
+        Some(ParticleSpawnCommand {
+            particle_type_id: template.particle_type_id,
+            particle_id: template.particle_id.clone(),
+            sprite_ids: template.sprite_ids.clone(),
+            position: self.position,
+            velocity: self.velocity,
+            override_limiter: false,
+            always_show: false,
+            raw_options_len: 0,
+            initial_delay_ticks: 0,
+            child_spawn_templates: Vec::new(),
+        })
     }
 }
 
@@ -1280,6 +1346,43 @@ mod tests {
     }
 
     #[test]
+    fn particle_runtime_lava_emits_child_smoke_after_tick_when_vanilla_odds_pass() {
+        let mut particles = ParticleRuntimeState::with_capacities_and_seed(8, 8, 0);
+        let mut lava = test_instance_with_lifetime("minecraft:lava", 20);
+        lava.position = [1.0, 2.0, 3.0];
+        lava.previous_position = lava.position;
+        lava.velocity = [0.1, 0.2, 0.3];
+        lava.child_spawn_templates = vec![ParticleChildSpawnTemplate {
+            particle_type_id: 62,
+            particle_id: "minecraft:smoke".to_string(),
+            sprite_ids: vec!["minecraft:generic_7".to_string()],
+        }];
+        particles.active_instances.push_back(lava);
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.intaken_instances, 1);
+        assert_eq!(summary.active_instances, 2);
+        let lava = &particles.active_instances()[0];
+        assert_eq!(lava.age_ticks, 1);
+        assert_close3(lava.position, [1.1, 2.17, 3.3]);
+        assert_close3(lava.velocity, [0.0999, 0.16983, 0.2997]);
+
+        let smoke = &particles.active_instances()[1];
+        assert_eq!(smoke.particle_type_id, 62);
+        assert_eq!(smoke.particle_id, "minecraft:smoke");
+        assert_eq!(smoke.provider, "SmokeParticle.Provider");
+        assert_eq!(
+            smoke.current_sprite_id.as_deref(),
+            Some("minecraft:generic_7")
+        );
+        assert_close3(smoke.position, lava.position);
+        assert_close3(smoke.velocity, lava.velocity);
+        assert!(smoke.child_spawn_templates.is_empty());
+    }
+
+    #[test]
     fn particle_runtime_negative_gravity_increases_y_velocity_before_friction() {
         let mut particles = ParticleRuntimeState::with_capacities(4, 4);
         let mut instance = test_instance_with_lifetime("minecraft:poof", 20);
@@ -1737,6 +1840,10 @@ mod tests {
         assert_eq!(lava.friction, 0.999);
         assert_eq!(lava.gravity, 0.75);
         assert!(lava.has_physics);
+        assert_eq!(
+            lava.child_emission,
+            Some(ParticleChildEmissionDescriptor::LavaSmoke)
+        );
 
         let mut soul_random = ParticleRandom::new(68);
         let mut soul_command = spawn_command("minecraft:soul", 1.0);
@@ -3333,6 +3440,8 @@ mod tests {
             tick_motion: descriptor.tick_motion(),
             tick_angle: 0.0,
             particle_limit: particle_limit_for_particle(particle_id),
+            child_emission: descriptor.child_emission(),
+            child_spawn_templates: Vec::new(),
             sprite_selection: descriptor.sprite_selection,
             override_limiter: false,
             always_show: false,
@@ -3352,6 +3461,7 @@ mod tests {
             always_show: false,
             raw_options_len: 0,
             initial_delay_ticks: 0,
+            child_spawn_templates: Vec::new(),
         }
     }
 
