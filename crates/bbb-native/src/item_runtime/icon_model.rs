@@ -2483,6 +2483,8 @@ fn item_exact_component_is_supported(component: &str, expected: &Value) -> bool 
             && custom_data_predicate_value_to_nbt_summary(expected).is_some())
         || (component == "minecraft:lodestone_tracker"
             && lodestone_tracker_exact_value(expected).is_some())
+        || (component == "minecraft:attribute_modifiers"
+            && attribute_modifiers_exact_value(expected).is_some())
         || (matches!(
             component,
             "minecraft:enchantments" | "minecraft:stored_enchantments"
@@ -3036,6 +3038,98 @@ fn lodestone_tracker_exact_match(
         }
         _ => false,
     }
+}
+
+struct ExactAttributeModifier<'a> {
+    attribute: &'a str,
+    modifier_id: &'a str,
+    amount_bits: u64,
+    operation_id: i32,
+    slot_id: i32,
+    display_id: i32,
+}
+
+fn attribute_modifiers_exact_value(value: &Value) -> Option<Vec<ExactAttributeModifier<'_>>> {
+    value
+        .as_array()?
+        .iter()
+        .map(attribute_modifier_exact_value)
+        .collect()
+}
+
+fn attribute_modifier_exact_value(value: &Value) -> Option<ExactAttributeModifier<'_>> {
+    let value = value.as_object()?;
+    if !value.keys().all(|key| {
+        key == "type"
+            || key == "id"
+            || key == "amount"
+            || key == "operation"
+            || key == "slot"
+            || key == "display"
+    }) {
+        return None;
+    }
+    Some(ExactAttributeModifier {
+        attribute: direct_registry_key_value(value.get("type")?)?,
+        modifier_id: value.get("id")?.as_str()?,
+        amount_bits: value.get("amount")?.as_f64()?.to_bits(),
+        operation_id: value
+            .get("operation")?
+            .as_str()
+            .and_then(attribute_modifier_operation_id)?,
+        slot_id: value
+            .get("slot")
+            .map(|slot| slot.as_str().and_then(equipment_slot_group_id))
+            .unwrap_or(Some(0))?,
+        display_id: attribute_modifier_display_exact_id(value.get("display"))?,
+    })
+}
+
+fn attribute_modifier_display_exact_id(value: Option<&Value>) -> Option<i32> {
+    let Some(value) = value else {
+        return Some(0);
+    };
+    let value = value.as_object()?;
+    if !value.keys().all(|key| key == "type") {
+        return None;
+    }
+    match value.get("type")?.as_str()? {
+        "default" => Some(0),
+        "hidden" => Some(1),
+        _ => None,
+    }
+}
+
+fn attribute_modifiers_exact_match(
+    expected: &[ExactAttributeModifier<'_>],
+    component_patch: &DataComponentPatchSummary,
+    default_attribute_modifiers: &[AttributeModifierSummary],
+    attribute_keys: Option<&[String]>,
+) -> bool {
+    let Some(actual_modifiers) =
+        effective_attribute_modifiers(Some(component_patch), default_attribute_modifiers)
+    else {
+        return false;
+    };
+    actual_modifiers.len() == expected.len()
+        && expected
+            .iter()
+            .zip(actual_modifiers)
+            .all(|(expected, actual)| {
+                let Ok(attribute_index) = usize::try_from(actual.attribute_id) else {
+                    return false;
+                };
+                let Some(attribute_key) = attribute_keys.and_then(|keys| keys.get(attribute_index))
+                else {
+                    return false;
+                };
+                attribute_key == expected.attribute
+                    && actual.modifier_id == expected.modifier_id
+                    && actual.amount_bits == expected.amount_bits
+                    && actual.operation_id == expected.operation_id
+                    && actual.slot_id == expected.slot_id
+                    && actual.display_id == expected.display_id
+            })
 }
 
 fn attribute_modifiers_component_predicate_is_supported(property: &ItemModelProperty) -> bool {
@@ -3633,8 +3727,10 @@ fn item_data_component_matchers_match(
             resource_id,
             enchantment_keys,
             trim_material_keys,
+            attribute_keys,
             default_max_stack_size_for_item,
             default_max_damage_for_item,
+            default_attribute_modifiers_for_item,
         ) {
             return false;
         }
@@ -3669,8 +3765,10 @@ fn item_exact_components_match(
     resource_id: &str,
     enchantment_keys: Option<&[String]>,
     trim_material_keys: Option<&[String]>,
+    attribute_keys: Option<&[String]>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
+    default_attribute_modifiers_for_item: Option<&dyn Fn(i32) -> Vec<AttributeModifierSummary>>,
 ) -> bool {
     let Some(components) = value.as_object() else {
         return false;
@@ -3679,6 +3777,9 @@ fn item_exact_components_match(
         default_max_stack_size_for_item.map(|max_stack_size| max_stack_size(item.item_id));
     let default_max_damage =
         default_max_damage_for_item.and_then(|max_damage| max_damage(item.item_id));
+    let default_attribute_modifiers = default_attribute_modifiers_for_item
+        .map(|modifiers| modifiers(item.item_id))
+        .unwrap_or_default();
     components.iter().all(|(component, expected)| {
         item_exact_component_matches(
             component,
@@ -3687,8 +3788,10 @@ fn item_exact_components_match(
             resource_id,
             enchantment_keys,
             trim_material_keys,
+            attribute_keys,
             default_max_stack_size,
             default_max_damage,
+            &default_attribute_modifiers,
         )
     })
 }
@@ -3700,8 +3803,10 @@ fn item_exact_component_matches(
     resource_id: &str,
     enchantment_keys: Option<&[String]>,
     trim_material_keys: Option<&[String]>,
+    attribute_keys: Option<&[String]>,
     default_max_stack_size: Option<i32>,
     default_max_damage: Option<i32>,
+    default_attribute_modifiers: &[AttributeModifierSummary],
 ) -> bool {
     if let Some(component) = ComponentSelectProperty::for_component(component) {
         let Some(expected) = SelectCaseValue::from_json(expected) else {
@@ -3761,6 +3866,18 @@ fn item_exact_component_matches(
             return false;
         };
         return lodestone_tracker_exact_match(&expected, &item.component_patch);
+    }
+
+    if component == "minecraft:attribute_modifiers" {
+        let Some(expected) = attribute_modifiers_exact_value(expected) else {
+            return false;
+        };
+        return attribute_modifiers_exact_match(
+            &expected,
+            &item.component_patch,
+            default_attribute_modifiers,
+            attribute_keys,
+        );
     }
 
     if matches!(

@@ -2565,6 +2565,7 @@ fn default_attribute_modifier_summary(
         amount_bits: modifier.amount_bits,
         operation_id: modifier.operation_id,
         slot_id: modifier.slot_id,
+        display_id: 0,
     }
 }
 
@@ -7702,6 +7703,58 @@ mod tests {
             ),
             uv("component_condition_bundle_exact_lodestone_tracker_absent")
         );
+        let exact_attribute_modifiers = DataComponentPatchSummary {
+            added_type_ids: vec![16],
+            attribute_modifiers: vec![AttributeModifierSummary {
+                attribute_id: 0,
+                modifier_id: "minecraft:test/attack".to_string(),
+                amount_bits: 2.5f64.to_bits(),
+                operation_id: 0,
+                slot_id: 1,
+                display_id: 1,
+            }],
+            ..DataComponentPatchSummary::default()
+        };
+        assert_eq!(
+            selected_with_attribute_keys(95, named_bundle_entry(exact_attribute_modifiers.clone())),
+            uv("component_condition_bundle_exact_attribute_modifiers_present")
+        );
+        assert_eq!(
+            selected_with_attribute_keys(
+                95,
+                named_bundle_entry(DataComponentPatchSummary {
+                    attribute_modifiers: vec![AttributeModifierSummary {
+                        display_id: 0,
+                        ..exact_attribute_modifiers.attribute_modifiers[0].clone()
+                    }],
+                    ..exact_attribute_modifiers.clone()
+                })
+            ),
+            uv("component_condition_bundle_exact_attribute_modifiers_absent")
+        );
+        assert_eq!(
+            selected_with_attribute_keys(
+                95,
+                named_bundle_entry(DataComponentPatchSummary {
+                    attribute_modifiers: vec![AttributeModifierSummary {
+                        amount_bits: 3.0f64.to_bits(),
+                        ..exact_attribute_modifiers.attribute_modifiers[0].clone()
+                    }],
+                    ..exact_attribute_modifiers.clone()
+                })
+            ),
+            uv("component_condition_bundle_exact_attribute_modifiers_absent")
+        );
+        assert_eq!(
+            selected_with_attribute_keys(
+                95,
+                named_bundle_entry(DataComponentPatchSummary {
+                    removed_type_ids: vec![16],
+                    ..exact_attribute_modifiers
+                })
+            ),
+            uv("component_condition_bundle_exact_attribute_modifiers_absent")
+        );
         assert_eq!(
             selected(
                 33,
@@ -9140,6 +9193,7 @@ mod tests {
                 amount_bits: amount.to_bits(),
                 operation_id,
                 slot_id,
+                display_id: 0,
             };
         let modifier = |id: &str, amount: f64, operation_id, slot_id| AttributeModifierSummary {
             attribute_id: 7,
@@ -9147,6 +9201,7 @@ mod tests {
             amount_bits: amount.to_bits(),
             operation_id,
             slot_id,
+            display_id: 0,
         };
         assert_eq!(
             selected(59, DataComponentPatchSummary::default()),
@@ -11171,6 +11226,7 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_STORED_ENCHANTMENTS = registerItem("component_condition_bundle_exact_stored_enchantments");
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_VILLAGER_VARIANT = registerItem("component_condition_bundle_exact_villager_variant");
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_LODESTONE_TRACKER = registerItem("component_condition_bundle_exact_lodestone_tracker");
+                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_ATTRIBUTE_MODIFIERS = registerItem("component_condition_bundle_exact_attribute_modifiers");
             }"#,
         );
         write_json(
@@ -12179,6 +12235,50 @@ mod tests {
                     "on_false": {
                         "type": "minecraft:model",
                         "model": "minecraft:item/component_condition_bundle_exact_lodestone_tracker_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_exact_attribute_modifiers.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "components": {
+                                            "minecraft:attribute_modifiers": [
+                                                {
+                                                    "type": "minecraft:generic.attack_damage",
+                                                    "id": "minecraft:test/attack",
+                                                    "amount": 2.5,
+                                                    "operation": "add_value",
+                                                    "slot": "mainhand",
+                                                    "display": {
+                                                        "type": "hidden"
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_attribute_modifiers_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_attribute_modifiers_absent"
                     }
                 }
             }"#,
@@ -14685,6 +14785,14 @@ mod tests {
             (
                 "component_condition_bundle_exact_lodestone_tracker_absent",
                 [45, 80, 100, 255],
+            ),
+            (
+                "component_condition_bundle_exact_attribute_modifiers_present",
+                [235, 165, 95, 255],
+            ),
+            (
+                "component_condition_bundle_exact_attribute_modifiers_absent",
+                [105, 55, 35, 255],
             ),
             (
                 "component_condition_container_components_present",

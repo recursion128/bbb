@@ -329,6 +329,8 @@ pub struct AttributeModifierSummary {
     pub amount_bits: u64,
     pub operation_id: i32,
     pub slot_id: i32,
+    #[serde(default)]
+    pub display_id: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1156,13 +1158,14 @@ fn decode_attribute_modifiers(decoder: &mut Decoder<'_>) -> Result<Vec<Attribute
         let amount_bits = decoder.read_f64()?.to_bits();
         let operation_id = decode_attribute_modifier_operation_id(decoder)?;
         let slot_id = decode_equipment_slot_group_id(decoder)?;
-        decode_attribute_modifier_display(decoder)?;
+        let display_id = decode_attribute_modifier_display(decoder)?;
         modifiers.push(AttributeModifierSummary {
             attribute_id,
             modifier_id,
             amount_bits,
             operation_id,
             slot_id,
+            display_id,
         });
     }
     Ok(modifiers)
@@ -1178,13 +1181,15 @@ fn decode_equipment_slot_group_id(decoder: &mut Decoder<'_>) -> Result<i32> {
     Ok(if (0..=10).contains(&id) { id } else { 0 })
 }
 
-fn decode_attribute_modifier_display(decoder: &mut Decoder<'_>) -> Result<()> {
-    match decoder.read_var_i32()? {
+fn decode_attribute_modifier_display(decoder: &mut Decoder<'_>) -> Result<i32> {
+    let display_id = decoder.read_var_i32()?;
+    match display_id {
         2 => {
             decode_component_summary_from_decoder(decoder)?;
-            Ok(())
+            Ok(2)
         }
-        _ => Ok(()),
+        0 | 1 => Ok(display_id),
+        _ => Ok(0),
     }
 }
 
@@ -2661,7 +2666,7 @@ mod tests {
         payload.write_var_i32(16);
         payload.write_var_i32(3);
         write_attribute_modifier_entry(&mut payload, "minecraft:test/default", 0, None);
-        write_attribute_modifier_entry(&mut payload, "minecraft:test/hidden", 99, None);
+        write_attribute_modifier_entry(&mut payload, "minecraft:test/hidden", 1, None);
         write_attribute_modifier_entry(
             &mut payload,
             "minecraft:test/override",
@@ -2685,6 +2690,7 @@ mod tests {
                         amount_bits: 1.5f64.to_bits(),
                         operation_id: 0,
                         slot_id: 1,
+                        display_id: 0,
                     },
                     AttributeModifierSummary {
                         attribute_id: 7,
@@ -2692,6 +2698,7 @@ mod tests {
                         amount_bits: 1.5f64.to_bits(),
                         operation_id: 0,
                         slot_id: 1,
+                        display_id: 1,
                     },
                     AttributeModifierSummary {
                         attribute_id: 7,
@@ -2699,6 +2706,7 @@ mod tests {
                         amount_bits: 1.5f64.to_bits(),
                         operation_id: 0,
                         slot_id: 1,
+                        display_id: 2,
                     },
                 ],
                 ..DataComponentPatchSummary::default()

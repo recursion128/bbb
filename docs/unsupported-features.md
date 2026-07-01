@@ -5920,7 +5920,9 @@ When an agent does any of the following, update this file in the same slice:
       registry-key maps, plus exact `minecraft:villager/variant` components
       for direct vanilla villager-type registry keys, plus exact
       `minecraft:lodestone_tracker` components for optional target `GlobalPos`
-      and `tracked`,
+      and `tracked`, plus exact `minecraft:attribute_modifiers` components for
+      ordered modifier lists with direct attribute registry keys, `id`,
+      `amount`, `operation`, `slot`, and default / hidden display types,
       `minecraft:firework_explosion`, `minecraft:fireworks`, `minecraft:trim`,
       `minecraft:jukebox_playable`, `minecraft:potion_contents`,
       `minecraft:writable_book_content`, `minecraft:written_book_content`,
@@ -5956,7 +5958,10 @@ When an agent does any of the following, update this file in the same slice:
       Exact `minecraft:villager/variant` components now compare decoded holder
       ids against direct vanilla villager-type registry keys. Exact
       `minecraft:lodestone_tracker` components now compare the decoded optional
-      target `GlobalPos` and `tracked` flag. Remaining
+      target `GlobalPos` and `tracked` flag. Exact
+      `minecraft:attribute_modifiers` components now compare decoded ordered
+      modifier entries against direct attribute registry keys, numeric amount,
+      operation, slot, and default / hidden display kind. Remaining
       constrained predicate types (inline enchantment holder payloads / server
       datapack tag remaps, broader NBT scalar typing, remaining concrete partial
       predicates and complex exact component codecs beyond simple literal name
@@ -5966,6 +5971,8 @@ When an agent does any of the following, update this file in the same slice:
       `firework_explosion` / `fireworks` components, plus direct-key exact
       `jukebox_playable` and `trim` components, exact
       `potion_contents` with non-empty custom-effect payload equality,
+      attribute modifier override display component text and inline / datapack
+      attribute holder payloads,
       non-literal / rich / styled written-book page `ComponentSerialization`
       equality, trim inline material or pattern payloads / datapack pattern
       registry-key remaps, datapack villager-type registry remaps, jukebox
