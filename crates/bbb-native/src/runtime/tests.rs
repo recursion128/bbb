@@ -6472,6 +6472,192 @@ fn hud_inventory_screen_projects_smithing_armor_stand_preview() {
 }
 
 #[test]
+fn hud_inventory_screen_projects_smithing_result_equipment_preview() {
+    const HELMET_ID: i32 = 0;
+    const CHESTPLATE_ID: i32 = 1;
+    const LEGGINGS_ID: i32 = 2;
+    const BOOTS_ID: i32 = 3;
+    const ELYTRA_ID: i32 = 4;
+    const SKELETON_SKULL_ID: i32 = 5;
+
+    let runtime = smithing_preview_item_runtime();
+
+    let mut enchanted_helmet = item_stack(HELMET_ID, 1);
+    enchanted_helmet.component_patch.dyed_color = Some(0x12_34_56);
+    enchanted_helmet.component_patch.enchantments.push(
+        bbb_protocol::packets::ItemEnchantmentSummary {
+            holder_id: 12,
+            level: 1,
+        },
+    );
+    let helmet_preview = smithing_preview_for_result_stack(enchanted_helmet, &runtime);
+    let helmet_state = &helmet_preview.entity.render_state;
+    assert_eq!(
+        helmet_state.head_armor,
+        Some(bbb_renderer::EntityArmorMaterial::Diamond)
+    );
+    assert_eq!(helmet_state.head_armor_dye, Some(0x12_34_56));
+    assert!(helmet_state.head_armor_foil);
+    assert_eq!(helmet_state.custom_head_skull, None);
+
+    let chest_preview = smithing_preview_for_result_stack(item_stack(CHESTPLATE_ID, 1), &runtime);
+    let chest_state = &chest_preview.entity.render_state;
+    assert_eq!(
+        chest_state.chest_armor,
+        Some(bbb_renderer::EntityArmorMaterial::Diamond)
+    );
+    assert!(chest_state.chest_equipment_has_humanoid);
+    assert!(!chest_state.chest_equipment_has_wings);
+    assert_eq!(chest_state.chest_wings_layer, None);
+
+    let legs_preview = smithing_preview_for_result_stack(item_stack(LEGGINGS_ID, 1), &runtime);
+    assert_eq!(
+        legs_preview.entity.render_state.legs_armor,
+        Some(bbb_renderer::EntityArmorMaterial::Diamond)
+    );
+
+    let feet_preview = smithing_preview_for_result_stack(item_stack(BOOTS_ID, 1), &runtime);
+    assert_eq!(
+        feet_preview.entity.render_state.feet_armor,
+        Some(bbb_renderer::EntityArmorMaterial::Diamond)
+    );
+
+    let elytra_preview = smithing_preview_for_result_stack(item_stack(ELYTRA_ID, 1), &runtime);
+    let elytra_state = &elytra_preview.entity.render_state;
+    assert_eq!(elytra_state.chest_armor, None);
+    assert!(!elytra_state.chest_armor_foil);
+    assert!(elytra_state.chest_equipment_has_wings);
+    assert!(!elytra_state.chest_equipment_has_humanoid);
+    assert_eq!(
+        elytra_state.chest_wings_layer,
+        Some(bbb_renderer::EntityEquipmentLayerTexture {
+            texture: bbb_renderer::EntityModelTextureRef {
+                path: "textures/entity/equipment/wings/elytra.png",
+                size: [64, 32],
+            },
+            use_player_texture: true,
+        })
+    );
+
+    let skull_preview =
+        smithing_preview_for_result_stack(item_stack(SKELETON_SKULL_ID, 1), &runtime);
+    let skull_state = &skull_preview.entity.render_state;
+    assert_eq!(skull_state.head_armor, None);
+    assert!(!skull_state.head_armor_foil);
+    assert_eq!(
+        skull_state.custom_head_skull,
+        Some(bbb_renderer::EntityCustomHeadSkull::Skeleton)
+    );
+}
+
+fn smithing_preview_for_result_stack(
+    stack: bbb_protocol::packets::ItemStackSummary,
+    runtime: &NativeItemRuntime,
+) -> HudEntityPreview {
+    let mut world = WorldStore::new();
+    world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+        container_id: 7,
+        menu_type_id: 21,
+        title: "Smithing".to_string(),
+    });
+    let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 40];
+    items[3] = stack;
+    world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items,
+        carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+    });
+
+    hud_inventory_screen(&world, Some(runtime), None, 0.0)
+        .unwrap()
+        .entity_previews
+        .into_iter()
+        .next()
+        .unwrap()
+}
+
+fn smithing_preview_item_runtime() -> NativeItemRuntime {
+    let registry: bbb_pack::ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+        "resource_ids": [
+            "minecraft:diamond_helmet",
+            "minecraft:diamond_chestplate",
+            "minecraft:diamond_leggings",
+            "minecraft:diamond_boots",
+            "minecraft:elytra",
+            "minecraft:skeleton_skull"
+        ],
+        "protocol_ids": {
+            "minecraft:diamond_helmet": 0,
+            "minecraft:diamond_chestplate": 1,
+            "minecraft:diamond_leggings": 2,
+            "minecraft:diamond_boots": 3,
+            "minecraft:elytra": 4,
+            "minecraft:skeleton_skull": 5
+        },
+        "default_equipment_slots": {
+            "minecraft:diamond_helmet": "head",
+            "minecraft:diamond_chestplate": "chest",
+            "minecraft:diamond_leggings": "legs",
+            "minecraft:diamond_boots": "feet",
+            "minecraft:elytra": "chest",
+            "minecraft:skeleton_skull": "head"
+        },
+        "humanoid_armor_assets": {
+            "minecraft:diamond_helmet": "diamond",
+            "minecraft:diamond_chestplate": "diamond",
+            "minecraft:diamond_leggings": "diamond",
+            "minecraft:diamond_boots": "diamond"
+        },
+        "equippable_assets": {
+            "minecraft:diamond_helmet": "diamond",
+            "minecraft:diamond_chestplate": "diamond",
+            "minecraft:diamond_leggings": "diamond",
+            "minecraft:diamond_boots": "diamond",
+            "minecraft:elytra": "elytra"
+        }
+    }))
+    .unwrap();
+    let equipment_assets: bbb_pack::EquipmentAssetCatalog =
+        serde_json::from_value(serde_json::json!({
+            "assets": {
+                "minecraft:diamond": {
+                    "layers": {
+                        "humanoid": [
+                            {
+                                "texture": "minecraft:diamond",
+                                "texture_location": "minecraft:textures/entity/equipment/humanoid/diamond.png",
+                                "use_player_texture": false
+                            }
+                        ],
+                        "humanoid_leggings": [
+                            {
+                                "texture": "minecraft:diamond",
+                                "texture_location": "minecraft:textures/entity/equipment/humanoid_leggings/diamond.png",
+                                "use_player_texture": false
+                            }
+                        ]
+                    }
+                },
+                "minecraft:elytra": {
+                    "layers": {
+                        "wings": [
+                            {
+                                "texture": "minecraft:elytra",
+                                "texture_location": "minecraft:textures/entity/equipment/wings/elytra.png",
+                                "use_player_texture": true
+                            }
+                        ]
+                    }
+                }
+            }
+        }))
+        .unwrap();
+
+    NativeItemRuntime::for_test_with_registry_and_equipment_assets(registry, equipment_assets)
+}
+
+#[test]
 fn hud_inventory_screen_projects_smithing_error_layer() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {

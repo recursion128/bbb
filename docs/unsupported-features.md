@@ -1115,10 +1115,11 @@ When an agent does any of the following, update this file in the same slice:
     `AbstractMountInventoryScreen` rect, scale, offset, and mouse-follow
     rotation. Smithing screens now fill the surface for the empty vanilla
     armor-stand preview with fixed rect / scale / translation / rotation,
-    visible arms, and hidden base plate. Result-slot equipment projection,
-    container/merchant/other screen call points, actual GPU PIP drawing, and
-    armor / held-item / head-item layer-order drawing remain subsequent P1-4
-    slices.
+    visible arms, and hidden base plate; the preview also projects smithing
+    result-slot humanoid armor material / dye / foil, elytra wings metadata,
+    and supported custom-head skulls. Generic held items, non-skull head-item
+    projection, container/merchant/other screen call points, actual GPU PIP
+    drawing, and broader layer-order drawing remain subsequent P1-4 slices.
     The dropped-item 3D model
     path and the legacy item-entity / thrown-item billboard path now sample the
     entity light probe through `WorldStore`, keep the vanilla full-bright
@@ -7208,7 +7209,8 @@ When an agent does any of the following, update this file in the same slice:
           - partial/full-inventory result transfers
           - level event side effects
         - deferred presentation parity work:
-          - armor stand preview
+          - generic held-item / non-skull head-item projection for the armor
+            stand preview
           - cycling empty-slot icons
           - tooltips
       - StonecutterMenu:

@@ -26,9 +26,10 @@ use bbb_renderer::{
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use bbb_world::{
-    BlockPos, BookScreenState, ContainerState, MerchantOfferState, MerchantOffersState,
-    MobEffectState, MountArmorSlotKind, MountInventoryKind, TerrainFluidKind, TerrainFluidState,
-    TerrainLight, TerrainMaterialClass, WorldLevelInfo, WorldStore, WorldWeatherState,
+    BlockPos, BookScreenState, ContainerState, ItemEquipmentSlot, MerchantOfferState,
+    MerchantOffersState, MobEffectState, MountArmorSlotKind, MountInventoryKind, TerrainFluidKind,
+    TerrainFluidState, TerrainLight, TerrainMaterialClass, WorldLevelInfo, WorldStore,
+    WorldWeatherState,
 };
 use tokio::sync::mpsc;
 
@@ -39,7 +40,7 @@ use crate::{
     code_of_conduct::CodeOfConductAcceptance,
     crosshair::{entity_target_outline_from_camera_at_partial_tick, selection_outline_from_camera},
     entity_scene::{
-        entity_model_instance_from_world_entity_at_partial_tick,
+        armor_material, entity_model_instance_from_world_entity_at_partial_tick,
         entity_model_instances_from_world_at_partial_tick,
         entity_scene_outline_from_world_at_partial_tick,
     },
@@ -2015,7 +2016,9 @@ fn hud_inventory_entity_previews(
                 .into_iter()
                 .collect()
         }
-        InventoryScreenBackground::Smithing => vec![hud_smithing_entity_preview()],
+        InventoryScreenBackground::Smithing => {
+            vec![hud_smithing_entity_preview(world, item_runtime)]
+        }
         _ => Vec::new(),
     }
 }
@@ -2131,7 +2134,10 @@ fn hud_entity_in_inventory_follows_mouse_preview(
     })
 }
 
-fn hud_smithing_entity_preview() -> HudEntityPreview {
+fn hud_smithing_entity_preview(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> HudEntityPreview {
     const ENTITY_ID: i32 = -1;
     const X0: i32 = 121;
     const Y0: i32 = 20;
@@ -2155,6 +2161,7 @@ fn hud_smithing_entity_preview() -> HudEntityPreview {
     entity.render_state.light_coords = ENTITY_FULL_BRIGHT_LIGHT_COORDS;
     entity.render_state.outline_color = 0;
     entity.render_state.appears_glowing = false;
+    apply_smithing_result_equipment(&mut entity, world, item_runtime);
 
     HudEntityPreview {
         entity,
@@ -2175,6 +2182,84 @@ fn hud_smithing_entity_preview() -> HudEntityPreview {
         scale: SCALE,
         depth_isolated: true,
     }
+}
+
+fn apply_smithing_result_equipment(
+    entity: &mut EntityModelInstance,
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+) {
+    const SMITHING_RESULT_SLOT: i16 = 3;
+
+    let Some(item_runtime) = item_runtime else {
+        return;
+    };
+    let Some(stack) = open_container_slot_item(world, SMITHING_RESULT_SLOT) else {
+        return;
+    };
+    if item_stack_is_empty(stack) {
+        return;
+    }
+    let Some(item_id) = stack.item_id else {
+        return;
+    };
+
+    match item_runtime.item_equipment_slot(item_id) {
+        Some(ItemEquipmentSlot::Head) if item_runtime.item_has_humanoid_armor_asset(item_id) => {
+            entity.render_state.head_armor =
+                armor_material(item_runtime.item_armor_material(item_id));
+            entity.render_state.head_armor_dye =
+                stack.component_patch.dyed_color.map(|dye| dye as u32);
+            entity.render_state.head_armor_foil =
+                entity.render_state.head_armor.is_some() && item_stack_has_foil(stack);
+        }
+        Some(ItemEquipmentSlot::Head) => {
+            entity.render_state.custom_head_skull = item_runtime.custom_head_skull_for_stack(stack);
+        }
+        Some(ItemEquipmentSlot::Chest) => {
+            entity.render_state.chest_armor =
+                armor_material(item_runtime.item_armor_material(item_id));
+            entity.render_state.chest_armor_dye =
+                stack.component_patch.dyed_color.map(|dye| dye as u32);
+            entity.render_state.chest_armor_foil =
+                entity.render_state.chest_armor.is_some() && item_stack_has_foil(stack);
+            entity.render_state.chest_wings_layer =
+                item_runtime.item_equipment_wings_layer(item_id);
+            entity.render_state.chest_equipment_has_wings =
+                item_runtime.item_equipment_asset_has_wings_layer(item_id);
+            entity.render_state.chest_equipment_has_humanoid =
+                item_runtime.item_equipment_asset_has_humanoid_layer(item_id);
+        }
+        Some(ItemEquipmentSlot::Legs) => {
+            entity.render_state.legs_armor =
+                armor_material(item_runtime.item_armor_material(item_id));
+            entity.render_state.legs_armor_dye =
+                stack.component_patch.dyed_color.map(|dye| dye as u32);
+            entity.render_state.legs_armor_foil =
+                entity.render_state.legs_armor.is_some() && item_stack_has_foil(stack);
+        }
+        Some(ItemEquipmentSlot::Feet) => {
+            entity.render_state.feet_armor =
+                armor_material(item_runtime.item_armor_material(item_id));
+            entity.render_state.feet_armor_dye =
+                stack.component_patch.dyed_color.map(|dye| dye as u32);
+            entity.render_state.feet_armor_foil =
+                entity.render_state.feet_armor.is_some() && item_stack_has_foil(stack);
+        }
+        Some(
+            ItemEquipmentSlot::MainHand
+            | ItemEquipmentSlot::OffHand
+            | ItemEquipmentSlot::Body
+            | ItemEquipmentSlot::Saddle,
+        )
+        | None => {}
+    }
+}
+
+fn item_stack_has_foil(item: &ItemStackSummary) -> bool {
+    item.component_patch
+        .enchantment_glint_override
+        .unwrap_or(!item.component_patch.enchantments.is_empty())
 }
 
 fn quaternion_x(angle_radians: f32) -> [f32; 4] {

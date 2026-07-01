@@ -3871,7 +3871,9 @@ fn creeper_powered(entity_type_id: i32, values: &[bbb_protocol::packets::EntityD
 /// overrides). A wither with no synced health defaults to full, so it reads un-powered.
 /// Maps a projected world armor material onto the renderer's `EntityArmorMaterial` for the
 /// `HumanoidArmorLayer` overlay (1:1; the two enums mirror the vanilla `ArmorMaterials` set).
-fn armor_material(material: Option<WorldArmorMaterialKind>) -> Option<EntityArmorMaterial> {
+pub(crate) fn armor_material(
+    material: Option<WorldArmorMaterialKind>,
+) -> Option<EntityArmorMaterial> {
     material.map(|material| match material {
         WorldArmorMaterialKind::Leather => EntityArmorMaterial::Leather,
         WorldArmorMaterialKind::Copper => EntityArmorMaterial::Copper,

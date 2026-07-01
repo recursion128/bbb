@@ -810,12 +810,27 @@ impl NativeItemRuntime {
             return slots;
         };
         for (protocol_id, resource_id) in registry.resource_ids().iter().enumerate() {
-            let Some(slot) = registry.equipment_slot(resource_id) else {
-                continue;
-            };
-            slots.insert(protocol_id as i32, world_item_equipment_slot(slot));
+            if let Some(slot) = self.item_equipment_slot_for_resource_id(registry, resource_id) {
+                slots.insert(protocol_id as i32, slot);
+            }
         }
         slots
+    }
+
+    pub(crate) fn item_equipment_slot(&self, protocol_id: i32) -> Option<WorldItemEquipmentSlot> {
+        let registry = self.registry.as_ref()?;
+        let resource_id = registry.resource_id(protocol_id)?;
+        self.item_equipment_slot_for_resource_id(registry, resource_id)
+    }
+
+    fn item_equipment_slot_for_resource_id(
+        &self,
+        registry: &ItemRegistryCatalog,
+        resource_id: &str,
+    ) -> Option<WorldItemEquipmentSlot> {
+        Some(world_item_equipment_slot(
+            registry.equipment_slot(resource_id)?,
+        ))
     }
 
     pub(crate) fn item_equipment_slot_count(&self) -> usize {
@@ -832,15 +847,26 @@ impl NativeItemRuntime {
             return materials;
         };
         for (protocol_id, resource_id) in registry.resource_ids().iter().enumerate() {
-            let Some(asset) = registry.humanoid_armor_asset(resource_id) else {
-                continue;
-            };
-            let Some(material) = WorldArmorMaterialKind::from_equipment_asset(asset) else {
-                continue;
-            };
-            materials.insert(protocol_id as i32, material);
+            if let Some(material) = self.item_armor_material_for_resource_id(registry, resource_id)
+            {
+                materials.insert(protocol_id as i32, material);
+            }
         }
         materials
+    }
+
+    pub(crate) fn item_armor_material(&self, protocol_id: i32) -> Option<WorldArmorMaterialKind> {
+        let registry = self.registry.as_ref()?;
+        let resource_id = registry.resource_id(protocol_id)?;
+        self.item_armor_material_for_resource_id(registry, resource_id)
+    }
+
+    fn item_armor_material_for_resource_id(
+        &self,
+        registry: &ItemRegistryCatalog,
+        resource_id: &str,
+    ) -> Option<WorldArmorMaterialKind> {
+        WorldArmorMaterialKind::from_equipment_asset(registry.humanoid_armor_asset(resource_id)?)
     }
 
     pub(crate) fn item_has_humanoid_armor_asset(&self, protocol_id: i32) -> bool {

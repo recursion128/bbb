@@ -1070,7 +1070,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     sanitizer 要求 PIP depth isolation，并按 `PictureInPictureRenderState.getBounds`
     语义过滤无 visible-bounds 的 preview。Tests pin transform、scissor、
     full-bright、outline 和 invalid-state filtering。
-  - armor / held item / head item 在 UI preview 中的 layer order。
+  - [x] smithing result-slot armor/skull/wings equipment projection：
+    native smithing armor-stand preview now mirrors vanilla
+    `SmithingScreen.updateArmorStandPreview` for currently expressed result
+    equipment: humanoid armor material / dye / foil, elytra wings metadata, and
+    supported custom-head skulls. Tests pin head/chest/legs/feet armor, elytra
+    layer texture, skull projection, tint, and foil.
+  - generic held item / non-skull head item 在 UI preview 中的 layer order。
 - screen integration：
   - [x] inventory local-player entity preview call point：
     native local inventory screen now emits a `HudEntityPreview` for the logged-in
@@ -1085,8 +1091,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - [x] smithing empty armor-stand preview call point：
     native smithing screens emit the vanilla empty armor-stand `HudEntityPreview`
     with fixed rect / scale / translation / rotation, `showArms = true`, and
-    hidden base plate; result-slot equipment projection remains the next
-    item/layer slice.
+    hidden base plate; result-slot armor/skull/wings equipment projection is now
+    covered above.
   - container、merchant、recipe/book/sign/advancement 等 screen 调用点。
   - GUI pass 与 world pass 的 load/clear/depth ordering。
 
