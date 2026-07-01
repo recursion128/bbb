@@ -500,6 +500,13 @@ impl ParticleCommandResolver {
                 }
                 self.simple_particle_batch(CLOUD_PARTICLE_TYPE_ID, spawns)
             }
+            BONEMEAL_GROWTH_PARTICLES_LEVEL_EVENT | HAPPY_VILLAGER_PARTICLES_LEVEL_EVENT => self
+                .particle_in_block_batch(
+                    event,
+                    HAPPY_VILLAGER_PARTICLE_TYPE_ID,
+                    event.data,
+                    random,
+                ),
             DISPENSER_WHITE_SMOKE_LEVEL_EVENT => {
                 self.shoot_particles(event, WHITE_SMOKE_PARTICLE_TYPE_ID, random)
             }
@@ -781,8 +788,29 @@ impl ParticleCommandResolver {
         event: &LevelEvent,
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch {
-        let mut spawns = Vec::with_capacity(10);
-        for _ in 0..10 {
+        self.particle_in_block_batch(event, POOF_PARTICLE_TYPE_ID, 10, random)
+    }
+
+    fn particle_in_block_batch(
+        &self,
+        event: &LevelEvent,
+        particle_type_id: i32,
+        count: i32,
+        random: &mut LevelEventSoundRandomState,
+    ) -> ParticleSpawnBatch {
+        if count <= 0 {
+            return ParticleSpawnBatch::default();
+        }
+        let template = match self.simple_particle_template(particle_type_id) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+
+        for _ in 0..count {
             let velocity = Vec3d {
                 x: random.next_gaussian() * 0.02,
                 y: random.next_gaussian() * 0.02,
@@ -793,19 +821,6 @@ impl ParticleCommandResolver {
                 y: f64::from(event.pos.y) + random.next_double(),
                 z: f64::from(event.pos.z) + random.next_double(),
             };
-            spawns.push((position, velocity));
-        }
-
-        let template = match self.simple_particle_template(POOF_PARTICLE_TYPE_ID) {
-            Ok(template) => template,
-            Err(batch) => return batch,
-        };
-        let mut batch = ParticleSpawnBatch {
-            missing_sprite_count: template.missing_sprite_count,
-            ..ParticleSpawnBatch::default()
-        };
-
-        for (position, velocity) in spawns {
             batch
                 .commands
                 .push(self.command_from_template(&template, position, velocity, false));
@@ -1136,6 +1151,8 @@ const DRAGON_FIREBALL_EXPLODE_LEVEL_EVENT: i32 = 2006;
 const EXPLOSION_LEVEL_EVENT: i32 = 2008;
 const SPLASH_CLOUD_LEVEL_EVENT: i32 = 2009;
 const DISPENSER_WHITE_SMOKE_LEVEL_EVENT: i32 = 2010;
+const BONEMEAL_GROWTH_PARTICLES_LEVEL_EVENT: i32 = 2011;
+const HAPPY_VILLAGER_PARTICLES_LEVEL_EVENT: i32 = 2012;
 const END_GATEWAY_SPAWN_LEVEL_EVENT: i32 = 3000;
 const ELECTRIC_SPARK_LEVEL_EVENT: i32 = 3002;
 const WAX_ON_LEVEL_EVENT: i32 = 3003;
@@ -1157,6 +1174,7 @@ const EXPLOSION_EMITTER_PARTICLE_TYPE_ID: i32 = 22;
 const EXPLOSION_PARTICLE_TYPE_ID: i32 = 23;
 const FLAME_PARTICLE_TYPE_ID: i32 = 32;
 const SOUL_FIRE_FLAME_PARTICLE_TYPE_ID: i32 = 40;
+const HAPPY_VILLAGER_PARTICLE_TYPE_ID: i32 = 43;
 const LARGE_SMOKE_PARTICLE_TYPE_ID: i32 = 55;
 const POOF_PARTICLE_TYPE_ID: i32 = 59;
 const SMOKE_PARTICLE_TYPE_ID: i32 = 62;
@@ -1914,6 +1932,60 @@ mod tests {
             true,
         );
 
+        let mut bonemeal_growth_random = LevelEventSoundRandomState::with_seed(0);
+        let bonemeal_growth = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 2011,
+                data: 3,
+                ..level_event_packet(2011)
+            },
+            &mut bonemeal_growth_random,
+        );
+        assert_eq!(bonemeal_growth.len(), 3);
+        assert_particle_command(
+            &bonemeal_growth.commands[0],
+            43,
+            "minecraft:happy_villager",
+            [
+                10.597_545_277_797_202,
+                64.333_218_399_476_65,
+                -2.614_810_815_259_281_7,
+            ],
+            [
+                0.016_050_661_274_780_612,
+                -0.018_030_921_768_350_243,
+                0.041_618_415_808_563_26,
+            ],
+            false,
+        );
+
+        let mut happy_villager_random = LevelEventSoundRandomState::with_seed(0);
+        let happy_villager = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 2012,
+                data: 2,
+                ..level_event_packet(2012)
+            },
+            &mut happy_villager_random,
+        );
+        assert_eq!(happy_villager.len(), 2);
+        assert_eq!(happy_villager.commands[0].particle_type_id, 43);
+        assert_eq!(
+            happy_villager.commands[0].particle_id,
+            "minecraft:happy_villager"
+        );
+
+        let mut zero_bonemeal_growth_random = LevelEventSoundRandomState::with_seed(0);
+        let zero_bonemeal_growth = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 2011,
+                data: 0,
+                ..level_event_packet(2011)
+            },
+            &mut zero_bonemeal_growth_random,
+        );
+        assert!(zero_bonemeal_growth.is_empty());
+
         let mut trial_detect_ominous_random = LevelEventSoundRandomState::with_seed(0);
         let trial_detect_ominous = resolver.resolve_level_event_particles(
             &LevelEvent {
@@ -2104,6 +2176,7 @@ mod tests {
                 "large_smoke_0",
                 "white_smoke_0",
                 "poof_0",
+                "happy_villager_0",
                 "small_flame",
                 "electric_spark_0",
                 "wax_on_0",
@@ -2209,6 +2282,14 @@ mod tests {
             r#"{
               "textures": [
                 "minecraft:poof_0"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("happy_villager.json"),
+            r#"{
+              "textures": [
+                "minecraft:happy_villager_0"
               ]
             }"#,
         );

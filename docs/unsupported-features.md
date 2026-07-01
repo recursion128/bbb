@@ -168,7 +168,7 @@ When an agent does any of the following, update this file in the same slice:
     - terrain/item particle option rendering
     - remaining level-event particle effects beyond the currently covered
       simple smoke/white-smoke/flame/dragon-breath/explosion/cloud/block-face/
-      trial-spawner side effects
+      trial-spawner/happy-villager side effects
   - Preserve missing definition/sprite diagnostics.
 - Evidence / boundary:
   - Current runtime:
@@ -211,6 +211,10 @@ When an agent does any of the following, update this file in the same slice:
       - event `2000`: ten directionally emitted `minecraft:smoke` particles
       - event `2010`: ten directionally emitted `minecraft:white_smoke`
         particles
+      - events `2011` and `2012`: vanilla
+        `ParticleUtils.spawnParticleInBlock`-shaped `minecraft:happy_villager`
+        particles for the current air/default spread-height path, using event
+        `data` as count and gaussian `0.02` velocity
       - event `2004`: twenty paired `minecraft:smoke` and `minecraft:flame`
         particles around the block center
       - event `2006`: 200 vanilla-positioned `minecraft:dragon_breath`

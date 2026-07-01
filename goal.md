@@ -1225,7 +1225,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
   - mip-level atlas animation beyond age-selected `SpriteSet` frame selection
     remains follow-up work.
 - LevelEvent particle side effects：
-  - smoke/flame/dragon-breath/explosion/cloud/block-face/trial-spawner 之外的剩余事件。
+  - [x] bonemeal / happy-villager in-block particles：events `2011` and
+    `2012` now mirror vanilla `ParticleUtils.spawnParticleInBlock` for the
+    air/default spread-height branch, using event `data` as count, gaussian
+    `0.02` velocity on all axes, and full-block random positions.
+  - block-state shape-sensitive `spawnParticleInBlock` heights plus
+    block/item option events remain follow-up work.
+  - smoke/flame/dragon-breath/explosion/cloud/block-face/trial-spawner/
+    happy-villager 之外的剩余事件。
 
 完成标准：
 
