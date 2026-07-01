@@ -3793,6 +3793,50 @@ mod tests {
         );
         assert_eq!(landing_lava.render_layer, ParticleRenderLayer::Opaque);
 
+        let mut dripping_water_random = ParticleRandom::new(90);
+        let dripping_water = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:dripping_water", 1.0),
+            &mut dripping_water_random,
+        );
+        assert_eq!(dripping_water.provider, "DripParticle.WaterHangProvider");
+        assert_range_f32(dripping_water.base_quad_size, 0.1, 0.2);
+        assert_eq!(dripping_water.color, [0.2, 0.3, 1.0, 1.0]);
+        assert_eq!(dripping_water.lifetime_ticks, 40);
+        assert_eq!(dripping_water.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(dripping_water.friction, 0.98);
+        assert_eq!(dripping_water.gravity, 0.0012);
+        assert_eq!(
+            dripping_water.tick_motion,
+            ParticleTickMotionDescriptor::DripHang
+        );
+        assert_eq!(
+            dripping_water.light_emission,
+            ParticleLightEmissionDescriptor::World
+        );
+        assert_eq!(dripping_water.render_layer, ParticleRenderLayer::Opaque);
+
+        let mut falling_water_random = ParticleRandom::new(91);
+        let falling_water = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:falling_water", 1.0),
+            &mut falling_water_random,
+        );
+        assert_eq!(falling_water.provider, "DripParticle.WaterFallProvider");
+        assert_range_f32(falling_water.base_quad_size, 0.1, 0.2);
+        assert_eq!(falling_water.color, [0.2, 0.3, 1.0, 1.0]);
+        assert!((64..=320).contains(&falling_water.lifetime_ticks));
+        assert_eq!(falling_water.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(falling_water.friction, 0.98);
+        assert_eq!(falling_water.gravity, 0.06);
+        assert_eq!(
+            falling_water.tick_motion,
+            ParticleTickMotionDescriptor::WaterDrop
+        );
+        assert_eq!(
+            falling_water.light_emission,
+            ParticleLightEmissionDescriptor::World
+        );
+        assert_eq!(falling_water.render_layer, ParticleRenderLayer::Opaque);
+
         let mut crimson_random = ParticleRandom::new(46);
         let crimson_spore = ParticleInstance::from_spawn_command(
             spawn_command("minecraft:crimson_spore", 1.0),
