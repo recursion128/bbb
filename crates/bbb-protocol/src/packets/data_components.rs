@@ -81,6 +81,12 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub firework_explosion_colors: Vec<i32>,
     #[serde(default)]
+    pub firework_explosion_shape: Option<FireworkExplosionShapeSummary>,
+    #[serde(default)]
+    pub firework_explosion_has_trail: Option<bool>,
+    #[serde(default)]
+    pub firework_explosion_has_twinkle: Option<bool>,
+    #[serde(default)]
     pub charged_projectiles_items: Vec<ItemStackTemplateSummary>,
     #[serde(default)]
     pub bundle_contents_items: Vec<ItemStackTemplateSummary>,
@@ -216,6 +222,28 @@ pub enum SwingAnimationTypeSummary {
     None,
     Whack,
     Stab,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FireworkExplosionShapeSummary {
+    SmallBall,
+    LargeBall,
+    Star,
+    Creeper,
+    Burst,
+}
+
+impl FireworkExplosionShapeSummary {
+    fn from_vanilla_id(id: i32) -> Self {
+        match id {
+            1 => Self::LargeBall,
+            2 => Self::Star,
+            3 => Self::Creeper,
+            4 => Self::Burst,
+            _ => Self::SmallBall,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -430,7 +458,11 @@ fn decode_typed_data_component_patch_summary(
                 summary.potion_custom_color = decode_potion_contents(decoder)?;
             }
             68 => {
-                summary.firework_explosion_colors = decode_firework_explosion(decoder)?;
+                let explosion = decode_firework_explosion(decoder)?;
+                summary.firework_explosion_colors = explosion.colors;
+                summary.firework_explosion_shape = Some(explosion.shape);
+                summary.firework_explosion_has_trail = Some(explosion.has_trail);
+                summary.firework_explosion_has_twinkle = Some(explosion.has_twinkle);
             }
             70 => {
                 summary.profile = Some(decode_resolvable_profile(decoder)?);
@@ -1528,13 +1560,27 @@ fn decode_fireworks(decoder: &mut Decoder<'_>) -> Result<()> {
     Ok(())
 }
 
-fn decode_firework_explosion(decoder: &mut Decoder<'_>) -> Result<Vec<i32>> {
-    decoder.read_var_i32()?;
+struct FireworkExplosionComponentSummary {
+    shape: FireworkExplosionShapeSummary,
+    colors: Vec<i32>,
+    has_trail: bool,
+    has_twinkle: bool,
+}
+
+fn decode_firework_explosion(
+    decoder: &mut Decoder<'_>,
+) -> Result<FireworkExplosionComponentSummary> {
+    let shape = FireworkExplosionShapeSummary::from_vanilla_id(decoder.read_var_i32()?);
     let colors = decode_int_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
     decode_int_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    decoder.read_bool()?;
-    decoder.read_bool()?;
-    Ok(colors)
+    let has_trail = decoder.read_bool()?;
+    let has_twinkle = decoder.read_bool()?;
+    Ok(FireworkExplosionComponentSummary {
+        shape,
+        colors,
+        has_trail,
+        has_twinkle,
+    })
 }
 
 fn decode_int_list(decoder: &mut Decoder<'_>, max: usize) -> Result<Vec<i32>> {
@@ -2644,6 +2690,9 @@ mod tests {
                 }),
                 potion_custom_color: Some(0x778899),
                 firework_explosion_colors: vec![0x010203, 0x040506],
+                firework_explosion_shape: Some(FireworkExplosionShapeSummary::Star),
+                firework_explosion_has_trail: Some(true),
+                firework_explosion_has_twinkle: Some(false),
                 writable_book_pages: vec!["raw page".to_string()],
                 written_book: Some(WrittenBookContentSummary {
                     title: "Title".to_string(),

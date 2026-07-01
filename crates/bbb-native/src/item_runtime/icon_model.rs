@@ -5,7 +5,8 @@ use bbb_pack::{
     ItemTintSource, SelectCase, TerrainColorMaps,
 };
 use bbb_protocol::packets::{
-    DataComponentPatchSummary, ItemRaritySummary, ItemStackTemplateSummary,
+    DataComponentPatchSummary, FireworkExplosionShapeSummary, ItemRaritySummary,
+    ItemStackTemplateSummary,
 };
 use chrono::{Datelike, FixedOffset, Local, TimeZone, Utc};
 use serde_json::Value;
@@ -1485,6 +1486,9 @@ fn item_stack_matches_component_predicate(
             ctx.default_max_damage,
         );
     }
+    if predicate == "minecraft:firework_explosion" {
+        return item_stack_matches_firework_explosion_predicate(property, ctx.component_patch);
+    }
     if let Some(component_id) = empty_single_component_predicate_id(property) {
         return item_stack_has_component_id(
             component_id,
@@ -1512,6 +1516,7 @@ fn component_condition_is_runtime_resolved(property: &ItemModelProperty) -> bool
         return false;
     };
     predicate == "minecraft:damage"
+        || component_condition_predicate(property) == Some("minecraft:firework_explosion")
         || empty_single_component_predicate_id(property).is_some()
         || component_condition_any_value_component_id(property).is_some()
 }
@@ -1545,6 +1550,57 @@ fn empty_single_component_predicate_id(property: &ItemModelProperty) -> Option<i
         "minecraft:fireworks" => Some(FIREWORKS_COMPONENT_ID),
         "minecraft:jukebox_playable" => Some(JUKEBOX_PLAYABLE_COMPONENT_ID),
         "minecraft:trim" => Some(TRIM_COMPONENT_ID),
+        _ => None,
+    }
+}
+
+fn item_stack_matches_firework_explosion_predicate(
+    property: &ItemModelProperty,
+    component_patch: Option<&DataComponentPatchSummary>,
+) -> bool {
+    let Some(component_patch) = component_patch else {
+        return false;
+    };
+    if component_patch
+        .removed_type_ids
+        .contains(&FIREWORK_EXPLOSION_COMPONENT_ID)
+        || !component_patch
+            .added_type_ids
+            .contains(&FIREWORK_EXPLOSION_COMPONENT_ID)
+    {
+        return false;
+    }
+    let Some(value) = property.raw().get("value").and_then(Value::as_object) else {
+        return false;
+    };
+    if let Some(expected_shape) = value.get("shape").and_then(Value::as_str) {
+        let Some(expected_shape) = firework_explosion_shape(expected_shape) else {
+            return false;
+        };
+        if component_patch.firework_explosion_shape != Some(expected_shape) {
+            return false;
+        }
+    }
+    if let Some(expected_twinkle) = value.get("has_twinkle").and_then(Value::as_bool) {
+        if component_patch.firework_explosion_has_twinkle != Some(expected_twinkle) {
+            return false;
+        }
+    }
+    if let Some(expected_trail) = value.get("has_trail").and_then(Value::as_bool) {
+        if component_patch.firework_explosion_has_trail != Some(expected_trail) {
+            return false;
+        }
+    }
+    true
+}
+
+fn firework_explosion_shape(value: &str) -> Option<FireworkExplosionShapeSummary> {
+    match value {
+        "small_ball" => Some(FireworkExplosionShapeSummary::SmallBall),
+        "large_ball" => Some(FireworkExplosionShapeSummary::LargeBall),
+        "star" => Some(FireworkExplosionShapeSummary::Star),
+        "creeper" => Some(FireworkExplosionShapeSummary::Creeper),
+        "burst" => Some(FireworkExplosionShapeSummary::Burst),
         _ => None,
     }
 }

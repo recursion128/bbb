@@ -19,8 +19,8 @@ use bbb_pack::{
     DEFAULT_LANGUAGE_CODE,
 };
 use bbb_protocol::packets::{
-    ConsumableSummary, DataComponentPatchSummary, ItemRaritySummary, ItemStackSummary,
-    ItemStackTemplateSummary, ResolvableProfileSummary, ResourceTextureSummary,
+    ConsumableSummary, DataComponentPatchSummary, FireworkExplosionShapeSummary, ItemRaritySummary,
+    ItemStackSummary, ItemStackTemplateSummary, ResolvableProfileSummary, ResourceTextureSummary,
 };
 use bbb_renderer::{
     DynamicPlayerSkinImage, DynamicPlayerTextureImage, EntityCustomHeadSkull,
@@ -5511,6 +5511,48 @@ mod tests {
             uv("component_condition_bundle_contents_constrained_absent")
         );
 
+        let star_trail = DataComponentPatchSummary {
+            added_type_ids: vec![68],
+            firework_explosion_shape: Some(FireworkExplosionShapeSummary::Star),
+            firework_explosion_has_trail: Some(true),
+            firework_explosion_has_twinkle: Some(false),
+            ..DataComponentPatchSummary::default()
+        };
+        assert_eq!(
+            selected(10, star_trail.clone()),
+            uv("component_condition_firework_explosion_star_present")
+        );
+        assert_eq!(
+            selected(
+                10,
+                DataComponentPatchSummary {
+                    firework_explosion_shape: Some(FireworkExplosionShapeSummary::Burst),
+                    ..star_trail.clone()
+                }
+            ),
+            uv("component_condition_firework_explosion_star_absent")
+        );
+        assert_eq!(
+            selected(
+                10,
+                DataComponentPatchSummary {
+                    firework_explosion_has_twinkle: Some(true),
+                    ..star_trail.clone()
+                }
+            ),
+            uv("component_condition_firework_explosion_star_absent")
+        );
+        assert_eq!(
+            selected(
+                10,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![68],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_firework_explosion_star_absent")
+        );
+
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -6969,6 +7011,7 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_JUKEBOX_PLAYABLE = registerItem("component_condition_jukebox_playable");
                 public static final Item COMPONENT_CONDITION_CONTAINER = registerItem("component_condition_container");
                 public static final Item COMPONENT_CONDITION_BUNDLE_CONTENTS_CONSTRAINED = registerItem("component_condition_bundle_contents_constrained");
+                public static final Item COMPONENT_CONDITION_FIREWORK_EXPLOSION_STAR = registerItem("component_condition_firework_explosion_star");
             }"#,
         );
         write_json(
@@ -7098,6 +7141,31 @@ mod tests {
                 }
             }"#,
         );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_firework_explosion_star.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:firework_explosion",
+                    "value": {
+                        "shape": "star",
+                        "has_trail": true,
+                        "has_twinkle": false
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_firework_explosion_star_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_firework_explosion_star_absent"
+                    }
+                }
+            }"#,
+        );
         for (model_id, color) in [
             ("component_condition_rarity_present", [80, 160, 220, 255]),
             ("component_condition_rarity_absent", [60, 40, 80, 255]),
@@ -7142,6 +7210,14 @@ mod tests {
             (
                 "component_condition_bundle_contents_constrained_absent",
                 [50, 50, 30, 255],
+            ),
+            (
+                "component_condition_firework_explosion_star_present",
+                [230, 180, 80, 255],
+            ),
+            (
+                "component_condition_firework_explosion_star_absent",
+                [70, 50, 30, 255],
             ),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);
