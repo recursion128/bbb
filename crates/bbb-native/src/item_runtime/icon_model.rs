@@ -1489,6 +1489,9 @@ fn item_stack_matches_component_predicate(
     if predicate == "minecraft:firework_explosion" {
         return item_stack_matches_firework_explosion_predicate(property, ctx.component_patch);
     }
+    if predicate == "minecraft:fireworks" {
+        return item_stack_matches_fireworks_predicate(property, ctx.component_patch);
+    }
     if let Some(component_id) = empty_single_component_predicate_id(property) {
         return item_stack_has_component_id(
             component_id,
@@ -1517,6 +1520,7 @@ fn component_condition_is_runtime_resolved(property: &ItemModelProperty) -> bool
     };
     predicate == "minecraft:damage"
         || component_condition_predicate(property) == Some("minecraft:firework_explosion")
+        || fireworks_component_predicate_is_supported(property)
         || empty_single_component_predicate_id(property).is_some()
         || component_condition_any_value_component_id(property).is_some()
 }
@@ -1552,6 +1556,46 @@ fn empty_single_component_predicate_id(property: &ItemModelProperty) -> Option<i
         "minecraft:trim" => Some(TRIM_COMPONENT_ID),
         _ => None,
     }
+}
+
+fn fireworks_component_predicate_is_supported(property: &ItemModelProperty) -> bool {
+    if component_condition_predicate(property) != Some("minecraft:fireworks") {
+        return false;
+    }
+    let Some(value) = property.raw().get("value").and_then(Value::as_object) else {
+        return false;
+    };
+    !value.contains_key("explosions")
+}
+
+fn item_stack_matches_fireworks_predicate(
+    property: &ItemModelProperty,
+    component_patch: Option<&DataComponentPatchSummary>,
+) -> bool {
+    if !fireworks_component_predicate_is_supported(property) {
+        return false;
+    }
+    let Some(component_patch) = component_patch else {
+        return false;
+    };
+    if component_patch
+        .removed_type_ids
+        .contains(&FIREWORKS_COMPONENT_ID)
+        || !component_patch
+            .added_type_ids
+            .contains(&FIREWORKS_COMPONENT_ID)
+    {
+        return false;
+    }
+    let Some(value) = property.raw().get("value").and_then(Value::as_object) else {
+        return false;
+    };
+    let Some(bounds) = value.get("flight_duration") else {
+        return true;
+    };
+    component_patch
+        .fireworks_flight_duration
+        .is_some_and(|flight_duration| min_max_int_bounds_match(Some(bounds), flight_duration))
 }
 
 fn item_stack_matches_firework_explosion_predicate(

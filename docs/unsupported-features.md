@@ -5852,10 +5852,12 @@ When an agent does any of the following, update this file in the same slice:
       and `minecraft:jukebox_playable` also match the vanilla
       component-present branch. `minecraft:firework_explosion` shape / trail /
       twinkle constraints are decoded from the component and matched against
-      vanilla `FireworkExplosionPredicate`. Remaining constrained predicate
-      types (enchantments, container/bundle item collection predicates, trim
-      material/pattern, `minecraft:fireworks` explosion collection /
-      flight-duration details, and similar) remain follow-up.
+      vanilla `FireworkExplosionPredicate`; `minecraft:fireworks` decodes and
+      matches `FireworksPredicate.flightDuration` `MinMaxBounds.Ints` when the
+      predicate has no `explosions` collection constraint. Remaining
+      constrained predicate types (enchantments, container/bundle item
+      collection predicates, trim material/pattern, `minecraft:fireworks`
+      explosion collection details, and similar) remain follow-up.
     - `minecraft:charge_type` — `Charge.get` (`ROCKET` when any charged
       projectile is `minecraft:firework_rocket`, `ARROW` when charged otherwise,
       else `NONE`), using the native item registry to identify the projectile

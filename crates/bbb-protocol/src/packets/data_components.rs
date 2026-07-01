@@ -87,6 +87,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub firework_explosion_has_twinkle: Option<bool>,
     #[serde(default)]
+    pub fireworks_flight_duration: Option<i32>,
+    #[serde(default)]
     pub charged_projectiles_items: Vec<ItemStackTemplateSummary>,
     #[serde(default)]
     pub bundle_contents_items: Vec<ItemStackTemplateSummary>,
@@ -464,6 +466,9 @@ fn decode_typed_data_component_patch_summary(
                 summary.firework_explosion_has_trail = Some(explosion.has_trail);
                 summary.firework_explosion_has_twinkle = Some(explosion.has_twinkle);
             }
+            69 => {
+                summary.fireworks_flight_duration = Some(decode_fireworks(decoder)?);
+            }
             70 => {
                 summary.profile = Some(decode_resolvable_profile(decoder)?);
             }
@@ -639,7 +644,9 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         68 => {
             decode_firework_explosion(decoder)?;
         }
-        69 => decode_fireworks(decoder)?,
+        69 => {
+            let _ = decode_fireworks(decoder)?;
+        }
         // banner_patterns, pot_decorations, and bees.
         72 => decode_banner_pattern_layers(decoder)?,
         74 => decode_pot_decorations(decoder)?,
@@ -1551,13 +1558,13 @@ fn decode_optional_component(decoder: &mut Decoder<'_>) -> Result<()> {
     Ok(())
 }
 
-fn decode_fireworks(decoder: &mut Decoder<'_>) -> Result<()> {
-    decoder.read_var_i32()?;
+fn decode_fireworks(decoder: &mut Decoder<'_>) -> Result<i32> {
+    let flight_duration = decoder.read_var_i32()?;
     let explosions = read_bounded_len(decoder, MAX_FIREWORK_EXPLOSIONS)?;
     for _ in 0..explosions {
         decode_firework_explosion(decoder)?;
     }
-    Ok(())
+    Ok(flight_duration)
 }
 
 struct FireworkExplosionComponentSummary {
@@ -2693,6 +2700,7 @@ mod tests {
                 firework_explosion_shape: Some(FireworkExplosionShapeSummary::Star),
                 firework_explosion_has_trail: Some(true),
                 firework_explosion_has_twinkle: Some(false),
+                fireworks_flight_duration: Some(1),
                 writable_book_pages: vec!["raw page".to_string()],
                 written_book: Some(WrittenBookContentSummary {
                     title: "Title".to_string(),

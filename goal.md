@@ -790,11 +790,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:jukebox_playable` now match vanilla's component-present path.
     `minecraft:firework_explosion` shape / trail / twinkle constraints are
     decoded from the component and matched against vanilla
-    `FireworkExplosionPredicate`. Remaining constrained
+    `FireworkExplosionPredicate`; `minecraft:fireworks` now decodes and
+    matches `FireworksPredicate.flightDuration` `MinMaxBounds.Ints` when the
+    predicate has no `explosions` collection constraint. Remaining constrained
     `DataComponentPredicate` types such as enchantments, bundle/container item
     collection predicates, trim material/pattern, and `minecraft:fireworks`
-    explosion collection / flight-duration details remain component-predicate
-    follow-up.
+    explosion collection details remain component-predicate follow-up.
   - [x] `minecraft:has_component` item-model condition now follows vanilla
     `HasComponent.get`: default prototype components such as
     `minecraft:max_stack_size`, `minecraft:item_model`, and

@@ -5553,6 +5553,62 @@ mod tests {
             uv("component_condition_firework_explosion_star_absent")
         );
 
+        assert_eq!(
+            selected(
+                11,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![69],
+                    fireworks_flight_duration: Some(2),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_fireworks_flight_present")
+        );
+        assert_eq!(
+            selected(
+                11,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![69],
+                    fireworks_flight_duration: Some(4),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_fireworks_flight_absent")
+        );
+        assert_eq!(
+            selected(
+                11,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![69],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_fireworks_flight_absent")
+        );
+        assert_eq!(
+            selected(
+                11,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![69],
+                    removed_type_ids: vec![69],
+                    fireworks_flight_duration: Some(2),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_fireworks_flight_absent")
+        );
+        assert_eq!(
+            selected(
+                12,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![69],
+                    fireworks_flight_duration: Some(2),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_fireworks_explosions_absent")
+        );
+
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -7012,6 +7068,8 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_CONTAINER = registerItem("component_condition_container");
                 public static final Item COMPONENT_CONDITION_BUNDLE_CONTENTS_CONSTRAINED = registerItem("component_condition_bundle_contents_constrained");
                 public static final Item COMPONENT_CONDITION_FIREWORK_EXPLOSION_STAR = registerItem("component_condition_firework_explosion_star");
+                public static final Item COMPONENT_CONDITION_FIREWORKS_FLIGHT = registerItem("component_condition_fireworks_flight");
+                public static final Item COMPONENT_CONDITION_FIREWORKS_EXPLOSIONS = registerItem("component_condition_fireworks_explosions");
             }"#,
         );
         write_json(
@@ -7166,6 +7224,57 @@ mod tests {
                 }
             }"#,
         );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_fireworks_flight.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:fireworks",
+                    "value": {
+                        "flight_duration": {
+                            "min": 2,
+                            "max": 3
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_fireworks_flight_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_fireworks_flight_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_fireworks_explosions.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:fireworks",
+                    "value": {
+                        "explosions": {
+                            "size": 1
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_fireworks_explosions_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_fireworks_explosions_absent"
+                    }
+                }
+            }"#,
+        );
         for (model_id, color) in [
             ("component_condition_rarity_present", [80, 160, 220, 255]),
             ("component_condition_rarity_absent", [60, 40, 80, 255]),
@@ -7218,6 +7327,22 @@ mod tests {
             (
                 "component_condition_firework_explosion_star_absent",
                 [70, 50, 30, 255],
+            ),
+            (
+                "component_condition_fireworks_flight_present",
+                [220, 100, 40, 255],
+            ),
+            (
+                "component_condition_fireworks_flight_absent",
+                [60, 30, 20, 255],
+            ),
+            (
+                "component_condition_fireworks_explosions_present",
+                [200, 220, 40, 255],
+            ),
+            (
+                "component_condition_fireworks_explosions_absent",
+                [50, 60, 20, 255],
             ),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);
