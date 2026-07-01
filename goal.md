@@ -1248,6 +1248,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     vanilla random sprite selection, `0.5..1.1` quad-size scaling, fixed `8`
     lifetime, command velocity with `-0.03` / `+0.03` y offset, `0.98`
     friction, zero gravity, physics metadata, and opaque particle layer.
+  - [x] `SquidInkParticle.Provider` / `GlowInkProvider`：renderer descriptor
+    now pins age sprite selection, fixed `0.5` quad size, black / glow-ink
+    tint, command velocity, `6 / (random * 0.8 + 0.2)` lifetime, `0.92`
+    friction, zero gravity, no physics, full-bright light, translucent layer,
+    and `SimpleAnimatedParticle` half-lifetime alpha fade updated on runtime
+    ticks and reused during vertex emission. The vanilla in-air downward drift
+    remains a world-coupled follow-up because particle ticking does not yet
+    query block states.
   - 初速度。
   - lifetime。
   - size curve。

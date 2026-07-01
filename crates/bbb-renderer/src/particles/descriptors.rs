@@ -1221,7 +1221,9 @@ impl ParticleDescriptor {
 
     pub(crate) fn alpha_curve(self) -> ParticleAlphaCurve {
         match self.provider {
-            "TotemParticle.Provider" => ParticleAlphaCurve::SimpleAnimatedFade,
+            "TotemParticle.Provider"
+            | "SquidInkParticle.Provider"
+            | "SquidInkParticle.GlowInkProvider" => ParticleAlphaCurve::SimpleAnimatedFade,
             "ShriekParticle.Provider" => ParticleAlphaCurve::ShriekFade,
             "FlyTowardsPositionParticle.VaultConnectionProvider" => {
                 ParticleAlphaCurve::VaultConnectionFade

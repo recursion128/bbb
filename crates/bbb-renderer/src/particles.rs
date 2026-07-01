@@ -681,12 +681,7 @@ impl ParticleInstance {
         match self.alpha_curve {
             ParticleAlphaCurve::Constant => {}
             ParticleAlphaCurve::SimpleAnimatedFade => {
-                let half_lifetime = self.lifetime_ticks / 2;
-                if self.age_ticks > half_lifetime {
-                    let lifetime = self.lifetime_ticks.max(1) as f32;
-                    self.color[3] =
-                        1.0 - (self.age_ticks.saturating_sub(half_lifetime) as f32 / lifetime);
-                }
+                self.color[3] = simple_animated_alpha(self.age_ticks, self.lifetime_ticks);
             }
             ParticleAlphaCurve::ShriekFade => {
                 let lifetime = self.lifetime_ticks.max(1) as f32;
@@ -957,19 +952,34 @@ fn shriek_particle_rotations() -> [Quat; 2] {
 
 fn particle_render_color(instance: &ParticleInstance) -> [f32; 4] {
     let mut color = instance.color;
-    if instance.alpha_curve == ParticleAlphaCurve::ShriekFade {
-        let lifetime = instance.lifetime_ticks.max(1) as f32;
-        color[3] = 1.0
-            - ((instance.age_ticks as f32 + DEFAULT_PARTICLE_RENDER_PARTIAL_TICK) / lifetime)
-                .clamp(0.0, 1.0);
-    } else if instance.alpha_curve == ParticleAlphaCurve::VaultConnectionFade {
-        color[3] = vault_connection_alpha(
-            instance.age_ticks,
-            instance.lifetime_ticks,
-            DEFAULT_PARTICLE_RENDER_PARTIAL_TICK,
-        );
+    match instance.alpha_curve {
+        ParticleAlphaCurve::Constant => {}
+        ParticleAlphaCurve::SimpleAnimatedFade => {}
+        ParticleAlphaCurve::ShriekFade => {
+            let lifetime = instance.lifetime_ticks.max(1) as f32;
+            color[3] = 1.0
+                - ((instance.age_ticks as f32 + DEFAULT_PARTICLE_RENDER_PARTIAL_TICK) / lifetime)
+                    .clamp(0.0, 1.0);
+        }
+        ParticleAlphaCurve::VaultConnectionFade => {
+            color[3] = vault_connection_alpha(
+                instance.age_ticks,
+                instance.lifetime_ticks,
+                DEFAULT_PARTICLE_RENDER_PARTIAL_TICK,
+            );
+        }
     }
     color
+}
+
+fn simple_animated_alpha(age_ticks: u32, lifetime_ticks: u32) -> f32 {
+    let lifetime = lifetime_ticks.max(1) as f32;
+    let half_lifetime = lifetime_ticks / 2;
+    if age_ticks <= half_lifetime {
+        1.0
+    } else {
+        1.0 - (age_ticks.saturating_sub(half_lifetime) as f32 / lifetime).clamp(0.0, 1.0)
+    }
 }
 
 fn vault_connection_alpha(age_ticks: u32, lifetime_ticks: u32, partial_tick: f32) -> f32 {
@@ -1565,6 +1575,21 @@ mod tests {
     }
 
     #[test]
+    fn particle_runtime_squid_ink_alpha_fades_after_half_lifetime() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:squid_ink", 20);
+        instance.age_ticks = 10;
+        instance.color[3] = 1.0;
+        particles.active_instances.push_back(instance);
+
+        particles.advance(1);
+
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 11);
+        assert_close_f32(instance.color[3], 0.95);
+    }
+
+    #[test]
     fn particle_runtime_vault_connection_alpha_follows_vanilla_lifetime_window() {
         let mut particles = ParticleRuntimeState::with_capacities(4, 4);
         let mut instance = test_instance_with_lifetime("minecraft:vault_connection", 40);
@@ -1995,6 +2020,11 @@ mod tests {
         assert_eq!(squid_ink.friction, 0.92);
         assert_eq!(squid_ink.gravity, 0.0);
         assert!(!squid_ink.has_physics);
+        assert_eq!(squid_ink.render_layer, ParticleRenderLayer::Translucent);
+        assert_eq!(
+            squid_ink.alpha_curve,
+            ParticleAlphaCurve::SimpleAnimatedFade
+        );
 
         let mut glow_ink_random = ParticleRandom::new(58);
         let glow_ink = ParticleInstance::from_spawn_command(
@@ -2006,6 +2036,8 @@ mod tests {
         assert_eq!(glow_ink.color, [0.2, 0.8, 0.6, 1.0]);
         assert!((6..=30).contains(&glow_ink.lifetime_ticks));
         assert!(!glow_ink.has_physics);
+        assert_eq!(glow_ink.render_layer, ParticleRenderLayer::Translucent);
+        assert_eq!(glow_ink.alpha_curve, ParticleAlphaCurve::SimpleAnimatedFade);
 
         let mut note_random = ParticleRandom::new(54);
         let mut note_command = spawn_command("minecraft:note", 1.0);
@@ -3100,6 +3132,36 @@ mod tests {
         assert_eq!(vertices[0].color[1], 0.45);
         assert_eq!(vertices[0].color[2], 0.5);
         assert_close_f32(vertices[0].color[3], 0.21);
+    }
+
+    #[test]
+    fn particle_billboard_vertices_use_simple_animated_runtime_alpha() {
+        let mut instance = test_instance_with_lifetime("minecraft:squid_ink", 20);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.current_sprite_id = Some("minecraft:generic_0".to_string());
+        instance.base_quad_size = 0.4;
+        instance.color = [0.0, 0.0, 0.0, 0.95];
+        instance.age_ticks = 11;
+        let sprite_uvs = BTreeMap::from([(
+            "minecraft:generic_0".to_string(),
+            ParticleUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+        )]);
+
+        let vertices = particle_billboard_vertices(
+            [&instance],
+            &sprite_uvs,
+            ParticleBillboardAxes {
+                right: Vec3::X,
+                up: Vec3::Y,
+            },
+            Some(ParticlePipelineKind::Translucent),
+        );
+
+        assert_eq!(vertices.len(), 6);
+        assert_close_f32(vertices[0].color[3], 0.95);
     }
 
     #[test]
