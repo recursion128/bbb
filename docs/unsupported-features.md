@@ -5885,7 +5885,10 @@ When an agent does any of the following, update this file in the same slice:
       `modifiers` collection predicates over direct registry-key or
       attribute-tag `attribute` HolderSets when `minecraft:attribute` registry
       keys are available, plus `id`, `amount`, `operation`, `slot`, and `size`
-      / `contains` / `count`.
+      / `contains` / `count`. Tool, sword, and spear item-prototype default
+      attack-damage / attack-speed modifiers now feed the same direct plus
+      bundle/container-nested predicate path unless the stack explicitly
+      removes or overrides `ATTRIBUTE_MODIFIERS`.
       `minecraft:custom_data` now preserves decoded custom-data NBT compound
       summaries and matches direct plus bundle/container-nested predicates with
       vanilla `NbtUtils.compareNbt(..., true)` subset-compound and partial-list
@@ -5927,7 +5930,7 @@ When an agent does any of the following, update this file in the same slice:
       `minecraft:enchanted_book` contributes its item-specific default empty
       `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
       constrained predicate types (inline enchantment holder payloads / server
-      datapack tag remaps, default item-prototype attribute modifiers,
+      datapack tag remaps, armor/equipment item-prototype attribute modifiers,
       custom-data SNBT-string predicate parsing / broader NBT scalar typing,
       remaining concrete partial predicates and complex exact
       component codecs, rich/styled written-book page `ComponentSerialization`

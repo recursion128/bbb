@@ -963,6 +963,9 @@ pub(super) struct IconResolveContext<'a> {
     pub compass_context: Option<ItemModelCompassContext<'a>>,
     pub default_max_stack_size_for_item: Option<&'a dyn Fn(i32) -> i32>,
     pub default_max_damage_for_item: Option<&'a dyn Fn(i32) -> Option<i32>>,
+    pub default_attribute_modifiers: &'a [AttributeModifierSummary],
+    pub default_attribute_modifiers_for_item:
+        Option<&'a dyn Fn(i32) -> Vec<AttributeModifierSummary>>,
     /// Item registry keys by protocol id, used for vanilla `ItemPredicate.items`
     /// matching inside collection component predicates.
     pub item_resource_ids: Option<&'a [String]>,
@@ -1650,6 +1653,7 @@ fn item_stack_matches_component_predicate(
         return item_stack_matches_attribute_modifiers_predicate(
             property,
             ctx.component_patch,
+            ctx.default_attribute_modifiers,
             ctx.attribute_keys,
             ctx.attribute_tags,
         );
@@ -2077,6 +2081,7 @@ fn item_stack_matches_bundle_contents_predicate(
         ctx.villager_type_tags,
         ctx.default_max_stack_size_for_item,
         ctx.default_max_damage_for_item,
+        ctx.default_attribute_modifiers_for_item,
     )
 }
 
@@ -2141,6 +2146,7 @@ fn item_stack_matches_container_predicate(
         ctx.villager_type_tags,
         ctx.default_max_stack_size_for_item,
         ctx.default_max_damage_for_item,
+        ctx.default_attribute_modifiers_for_item,
     )
 }
 
@@ -2550,6 +2556,7 @@ fn equipment_slot_group_is_supported(value: &Value) -> bool {
 fn item_stack_matches_attribute_modifiers_predicate(
     property: &ItemModelProperty,
     component_patch: Option<&DataComponentPatchSummary>,
+    default_attribute_modifiers: &[AttributeModifierSummary],
     attribute_keys: Option<&[String]>,
     attribute_tags: Option<&TagCatalog>,
 ) -> bool {
@@ -2562,6 +2569,7 @@ fn item_stack_matches_attribute_modifiers_predicate(
     item_stack_matches_attribute_modifiers_value(
         value,
         component_patch,
+        default_attribute_modifiers,
         attribute_keys,
         attribute_tags,
     )
@@ -2570,32 +2578,48 @@ fn item_stack_matches_attribute_modifiers_predicate(
 fn item_stack_matches_attribute_modifiers_value(
     value: &Value,
     component_patch: Option<&DataComponentPatchSummary>,
+    default_attribute_modifiers: &[AttributeModifierSummary],
     attribute_keys: Option<&[String]>,
     attribute_tags: Option<&TagCatalog>,
 ) -> bool {
-    let Some(component_patch) = component_patch else {
-        return false;
-    };
-    if component_patch
-        .removed_type_ids
-        .contains(&ATTRIBUTE_MODIFIERS_COMPONENT_ID)
-        || !component_patch
-            .added_type_ids
-            .contains(&ATTRIBUTE_MODIFIERS_COMPONENT_ID)
-    {
-        return false;
-    }
     let Some(value) = value.as_object() else {
         return false;
     };
-    value.get("modifiers").is_none_or(|modifiers| {
+    let Some(effective_modifiers) =
+        effective_attribute_modifiers(component_patch, default_attribute_modifiers)
+    else {
+        return false;
+    };
+    value.get("modifiers").is_none_or(|modifier_predicate| {
         attribute_modifier_collection_predicate_matches(
-            modifiers,
-            &component_patch.attribute_modifiers,
+            modifier_predicate,
+            effective_modifiers,
             attribute_keys,
             attribute_tags,
         )
     })
+}
+
+fn effective_attribute_modifiers<'a>(
+    component_patch: Option<&'a DataComponentPatchSummary>,
+    default_attribute_modifiers: &'a [AttributeModifierSummary],
+) -> Option<&'a [AttributeModifierSummary]> {
+    let Some(component_patch) = component_patch else {
+        return Some(default_attribute_modifiers);
+    };
+    if component_patch
+        .removed_type_ids
+        .contains(&ATTRIBUTE_MODIFIERS_COMPONENT_ID)
+    {
+        return None;
+    }
+    if component_patch
+        .added_type_ids
+        .contains(&ATTRIBUTE_MODIFIERS_COMPONENT_ID)
+    {
+        return Some(&component_patch.attribute_modifiers);
+    }
+    Some(default_attribute_modifiers)
 }
 
 fn attribute_modifier_collection_predicate_matches(
@@ -2788,6 +2812,7 @@ fn item_collection_predicate_matches(
     villager_type_tags: Option<&TagCatalog>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
+    default_attribute_modifiers_for_item: Option<&dyn Fn(i32) -> Vec<AttributeModifierSummary>>,
 ) -> bool {
     let Some(value) = value.as_object() else {
         return false;
@@ -2815,6 +2840,7 @@ fn item_collection_predicate_matches(
                     villager_type_tags,
                     default_max_stack_size_for_item,
                     default_max_damage_for_item,
+                    default_attribute_modifiers_for_item,
                 )
             })
         }) {
@@ -2843,6 +2869,7 @@ fn item_collection_predicate_matches(
                 villager_type_tags,
                 default_max_stack_size_for_item,
                 default_max_damage_for_item,
+                default_attribute_modifiers_for_item,
             )
         }) {
             return false;
@@ -2879,6 +2906,7 @@ fn item_predicate_count_entry_matches(
     villager_type_tags: Option<&TagCatalog>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
+    default_attribute_modifiers_for_item: Option<&dyn Fn(i32) -> Vec<AttributeModifierSummary>>,
 ) -> bool {
     let Some(entry) = entry.as_object() else {
         return false;
@@ -2906,6 +2934,7 @@ fn item_predicate_count_entry_matches(
                 villager_type_tags,
                 default_max_stack_size_for_item,
                 default_max_damage_for_item,
+                default_attribute_modifiers_for_item,
             )
         })
         .count();
@@ -2932,6 +2961,7 @@ fn item_predicate_matches(
     villager_type_tags: Option<&TagCatalog>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
+    default_attribute_modifiers_for_item: Option<&dyn Fn(i32) -> Vec<AttributeModifierSummary>>,
 ) -> bool {
     let Some(value) = value.as_object() else {
         return false;
@@ -2975,6 +3005,7 @@ fn item_predicate_matches(
             villager_type_tags,
             default_max_stack_size_for_item,
             default_max_damage_for_item,
+            default_attribute_modifiers_for_item,
         ) {
             return false;
         }
@@ -2998,6 +3029,7 @@ fn item_data_component_matchers_match(
     villager_type_tags: Option<&TagCatalog>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
+    default_attribute_modifiers_for_item: Option<&dyn Fn(i32) -> Vec<AttributeModifierSummary>>,
 ) -> bool {
     let Some(value) = value.as_object() else {
         return false;
@@ -3029,6 +3061,7 @@ fn item_data_component_matchers_match(
             attribute_tags,
             villager_type_tags,
             default_max_damage_for_item,
+            default_attribute_modifiers_for_item,
         ) {
             return false;
         }
@@ -3081,12 +3114,16 @@ fn item_partial_component_predicates_match(
     attribute_tags: Option<&TagCatalog>,
     villager_type_tags: Option<&TagCatalog>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
+    default_attribute_modifiers_for_item: Option<&dyn Fn(i32) -> Vec<AttributeModifierSummary>>,
 ) -> bool {
     let Some(predicates) = value.as_object() else {
         return false;
     };
     let default_max_damage =
         default_max_damage_for_item.and_then(|max_damage| max_damage(item.item_id));
+    let default_attribute_modifiers = default_attribute_modifiers_for_item
+        .map(|modifiers| modifiers(item.item_id))
+        .unwrap_or_default();
     predicates.iter().all(|(predicate, value)| {
         item_partial_component_predicate_match(
             predicate,
@@ -3104,6 +3141,7 @@ fn item_partial_component_predicates_match(
             attribute_keys,
             attribute_tags,
             villager_type_tags,
+            &default_attribute_modifiers,
         )
     })
 }
@@ -3124,6 +3162,7 @@ fn item_partial_component_predicate_match(
     attribute_keys: Option<&[String]>,
     attribute_tags: Option<&TagCatalog>,
     villager_type_tags: Option<&TagCatalog>,
+    default_attribute_modifiers: &[AttributeModifierSummary],
 ) -> bool {
     match predicate {
         "minecraft:custom_data" => item_stack_matches_custom_data_value(value, component_patch),
@@ -3159,6 +3198,7 @@ fn item_partial_component_predicate_match(
         "minecraft:attribute_modifiers" => item_stack_matches_attribute_modifiers_value(
             value,
             component_patch,
+            default_attribute_modifiers,
             attribute_keys,
             attribute_tags,
         ),

@@ -76,6 +76,8 @@ pub struct ItemRegistryCatalog {
     #[serde(default)]
     default_swing_animation_durations: BTreeMap<String, i32>,
     #[serde(default)]
+    default_attribute_modifiers: BTreeMap<String, Vec<ItemDefaultAttributeModifier>>,
+    #[serde(default)]
     default_use_effects: BTreeMap<String, ItemUseEffects>,
     #[serde(default)]
     crafting_remainders: BTreeMap<String, String>,
@@ -105,6 +107,15 @@ impl PartialEq for ItemAttackRange {
 }
 
 impl Eq for ItemAttackRange {}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ItemDefaultAttributeModifier {
+    pub attribute_key: String,
+    pub modifier_id: String,
+    pub amount_bits: u64,
+    pub operation_id: i32,
+    pub slot_id: i32,
+}
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 pub struct ItemUseEffects {
@@ -195,6 +206,7 @@ impl ItemRegistryCatalog {
         let mut default_piercing_weapon_ids = BTreeSet::new();
         let mut default_attack_ranges = BTreeMap::new();
         let mut default_swing_animation_durations = BTreeMap::new();
+        let mut default_attribute_modifiers = BTreeMap::new();
         let mut default_use_effects = BTreeMap::new();
         let mut crafting_remainders = BTreeMap::new();
         let mut mining_profiles = BTreeMap::new();
@@ -214,6 +226,8 @@ impl ItemRegistryCatalog {
             let default_attack_range = default_attack_range_for_declaration(expression)?;
             let default_swing_animation_duration =
                 default_swing_animation_duration_for_declaration(expression)?;
+            let default_attribute_modifier_entries =
+                default_attribute_modifiers_for_declaration(expression)?;
             let default_use_effect = default_use_effects_for_declaration(expression)?;
             let crafting_remainder =
                 crafting_remainder_for_declaration(expression, item_id_constants)?;
@@ -253,6 +267,12 @@ impl ItemRegistryCatalog {
                 if let Some(default_swing_animation_duration) = default_swing_animation_duration {
                     default_swing_animation_durations
                         .insert(resource_id.clone(), default_swing_animation_duration);
+                }
+                if !default_attribute_modifier_entries.is_empty() {
+                    default_attribute_modifiers.insert(
+                        resource_id.clone(),
+                        default_attribute_modifier_entries.clone(),
+                    );
                 }
                 if let Some(default_use_effect) = default_use_effect {
                     default_use_effects.insert(resource_id.clone(), default_use_effect);
@@ -294,6 +314,7 @@ impl ItemRegistryCatalog {
             default_piercing_weapon_ids,
             default_attack_ranges,
             default_swing_animation_durations,
+            default_attribute_modifiers,
             default_use_effects,
             crafting_remainders,
             mining_profiles,
@@ -404,6 +425,16 @@ impl ItemRegistryCatalog {
         self.default_swing_animation_durations
             .get(&resource_id)
             .copied()
+    }
+
+    pub fn default_attribute_modifiers(
+        &self,
+        resource_id: &str,
+    ) -> Option<&[ItemDefaultAttributeModifier]> {
+        let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
+        self.default_attribute_modifiers
+            .get(&resource_id)
+            .map(Vec::as_slice)
     }
 
     pub fn default_use_effects(&self, resource_id: &str) -> Option<ItemUseEffects> {
@@ -790,6 +821,83 @@ fn default_swing_animation_duration_for_declaration(expression: &str) -> Result<
     ))
 }
 
+fn default_attribute_modifiers_for_declaration(
+    expression: &str,
+) -> Result<Vec<ItemDefaultAttributeModifier>> {
+    let float = r#"-?[0-9]+(?:\.[0-9]+)?F?"#;
+    let properties_pattern = format!(
+        r#"(?s)\.(?:sword|pickaxe|axe|hoe|shovel)\(\s*ToolMaterial\.([A-Z_]+)\s*,\s*({float})\s*,\s*({float})\s*\)"#
+    );
+    let properties_regex = Regex::new(&properties_pattern)?;
+    if let Some(capture) = properties_regex.captures(expression) {
+        let material = capture.get(1).unwrap().as_str();
+        let attack_damage_baseline = parse_java_float_literal(capture.get(2).unwrap().as_str())?;
+        let attack_speed_baseline = parse_java_float_literal(capture.get(3).unwrap().as_str())?;
+        return tool_default_attribute_modifiers(
+            material,
+            attack_damage_baseline,
+            attack_speed_baseline,
+        );
+    }
+
+    let constructor_pattern = format!(
+        r#"(?s)new\s+(?:PickaxeItem|AxeItem|HoeItem|ShovelItem)\(\s*ToolMaterial\.([A-Z_]+)\s*,\s*({float})\s*,\s*({float})\s*,\s*p\s*\)"#
+    );
+    let constructor_regex = Regex::new(&constructor_pattern)?;
+    if let Some(capture) = constructor_regex.captures(expression) {
+        let material = capture.get(1).unwrap().as_str();
+        let attack_damage_baseline = parse_java_float_literal(capture.get(2).unwrap().as_str())?;
+        let attack_speed_baseline = parse_java_float_literal(capture.get(3).unwrap().as_str())?;
+        return tool_default_attribute_modifiers(
+            material,
+            attack_damage_baseline,
+            attack_speed_baseline,
+        );
+    }
+
+    if let Some((material, attack_duration)) = spear_material_and_attack_duration(expression)? {
+        let attack_damage = f64::from(material_attack_damage_bonus(&material)?);
+        let attack_speed = f64::from(1.0_f32 / attack_duration) - 4.0;
+        return Ok(attribute_modifier_entries(attack_damage, attack_speed));
+    }
+
+    Ok(Vec::new())
+}
+
+fn tool_default_attribute_modifiers(
+    material: &str,
+    attack_damage_baseline: f32,
+    attack_speed_baseline: f32,
+) -> Result<Vec<ItemDefaultAttributeModifier>> {
+    let attack_damage = f64::from(attack_damage_baseline + material_attack_damage_bonus(material)?);
+    Ok(attribute_modifier_entries(
+        attack_damage,
+        f64::from(attack_speed_baseline),
+    ))
+}
+
+fn attribute_modifier_entries(
+    attack_damage: f64,
+    attack_speed: f64,
+) -> Vec<ItemDefaultAttributeModifier> {
+    vec![
+        ItemDefaultAttributeModifier {
+            attribute_key: "minecraft:generic.attack_damage".to_string(),
+            modifier_id: "minecraft:base_attack_damage".to_string(),
+            amount_bits: attack_damage.to_bits(),
+            operation_id: 0,
+            slot_id: 1,
+        },
+        ItemDefaultAttributeModifier {
+            attribute_key: "minecraft:generic.attack_speed".to_string(),
+            modifier_id: "minecraft:base_attack_speed".to_string(),
+            amount_bits: attack_speed.to_bits(),
+            operation_id: 0,
+            slot_id: 1,
+        },
+    ]
+}
+
 fn spear_attack_duration_for_declaration(expression: &str) -> Result<Option<f32>> {
     let float = r#"-?[0-9]+(?:\.[0-9]+)?F?"#;
     let pattern = format!(r#"(?s)\.spear\(\s*ToolMaterial\.[A-Z_]+\s*,\s*({float})"#);
@@ -800,6 +908,30 @@ fn spear_attack_duration_for_declaration(expression: &str) -> Result<Option<f32>
     Ok(Some(parse_java_float_literal(
         capture.get(1).unwrap().as_str(),
     )?))
+}
+
+fn spear_material_and_attack_duration(expression: &str) -> Result<Option<(String, f32)>> {
+    let float = r#"-?[0-9]+(?:\.[0-9]+)?F?"#;
+    let pattern = format!(r#"(?s)\.spear\(\s*ToolMaterial\.([A-Z_]+)\s*,\s*({float})"#);
+    let regex = Regex::new(&pattern)?;
+    let Some(capture) = regex.captures(expression) else {
+        return Ok(None);
+    };
+    Ok(Some((
+        capture.get(1).unwrap().as_str().to_string(),
+        parse_java_float_literal(capture.get(2).unwrap().as_str())?,
+    )))
+}
+
+fn material_attack_damage_bonus(material: &str) -> Result<f32> {
+    match material {
+        "WOOD" | "GOLD" => Ok(0.0),
+        "STONE" | "COPPER" => Ok(1.0),
+        "IRON" => Ok(2.0),
+        "DIAMOND" => Ok(3.0),
+        "NETHERITE" => Ok(4.0),
+        _ => bail!("unsupported tool material ToolMaterial.{material}"),
+    }
 }
 
 fn default_use_effects_for_declaration(expression: &str) -> Result<Option<ItemUseEffects>> {
@@ -1260,6 +1392,112 @@ mod tests {
         assert_eq!(
             decoded.default_swing_animation_duration("minecraft:wooden_spear"),
             None
+        );
+    }
+
+    #[test]
+    fn item_registry_catalog_parses_default_attribute_modifiers() {
+        let source = r#"
+            public class Items {
+               public static final Item IRON_SWORD = registerItem("iron_sword", new Item.Properties().sword(ToolMaterial.IRON, 3.0F, -2.4F));
+               public static final Item IRON_SHOVEL = registerItem("iron_shovel", p -> new ShovelItem(ToolMaterial.IRON, 1.5F, -3.0F, p));
+               public static final Item WOODEN_SPEAR = registerItem(
+                  "wooden_spear",
+                  new Item.Properties().spear(ToolMaterial.WOOD, 0.65F, 0.7F, 0.75F, 5.0F, 14.0F, 10.0F, 5.1F, 15.0F, 4.6F)
+               );
+               public static final Item STICK = registerItem("stick");
+            }
+        "#;
+
+        let catalog =
+            ItemRegistryCatalog::from_items_java_source(source, &BTreeMap::new()).unwrap();
+        let amounts = |resource_id| {
+            catalog
+                .default_attribute_modifiers(resource_id)
+                .unwrap()
+                .iter()
+                .map(|modifier| {
+                    (
+                        modifier.attribute_key.as_str(),
+                        modifier.modifier_id.as_str(),
+                        f64::from_bits(modifier.amount_bits),
+                        modifier.operation_id,
+                        modifier.slot_id,
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+
+        assert_eq!(
+            amounts("minecraft:iron_sword"),
+            vec![
+                (
+                    "minecraft:generic.attack_damage",
+                    "minecraft:base_attack_damage",
+                    5.0,
+                    0,
+                    1,
+                ),
+                (
+                    "minecraft:generic.attack_speed",
+                    "minecraft:base_attack_speed",
+                    f64::from(-2.4_f32),
+                    0,
+                    1,
+                ),
+            ]
+        );
+        assert_eq!(
+            amounts("minecraft:iron_shovel"),
+            vec![
+                (
+                    "minecraft:generic.attack_damage",
+                    "minecraft:base_attack_damage",
+                    3.5,
+                    0,
+                    1,
+                ),
+                (
+                    "minecraft:generic.attack_speed",
+                    "minecraft:base_attack_speed",
+                    -3.0,
+                    0,
+                    1,
+                ),
+            ]
+        );
+        assert_eq!(
+            amounts("minecraft:wooden_spear"),
+            vec![
+                (
+                    "minecraft:generic.attack_damage",
+                    "minecraft:base_attack_damage",
+                    0.0,
+                    0,
+                    1,
+                ),
+                (
+                    "minecraft:generic.attack_speed",
+                    "minecraft:base_attack_speed",
+                    f64::from(1.0_f32 / 0.65_f32) - 4.0,
+                    0,
+                    1,
+                ),
+            ]
+        );
+        assert!(catalog
+            .default_attribute_modifiers("minecraft:stick")
+            .is_none());
+
+        let encoded = serde_json::to_value(&catalog).unwrap();
+        assert_eq!(
+            encoded["default_attribute_modifiers"]["minecraft:iron_sword"][0]["modifier_id"],
+            serde_json::json!("minecraft:base_attack_damage")
+        );
+        let decoded: ItemRegistryCatalog = serde_json::from_value(encoded).unwrap();
+        assert_eq!(
+            decoded.default_attribute_modifiers("minecraft:iron_sword"),
+            catalog.default_attribute_modifiers("minecraft:iron_sword")
         );
     }
 

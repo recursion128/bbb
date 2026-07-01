@@ -11,12 +11,13 @@ use bbb_pack::{
     BlockModelDisplayTransform, BlockModelDisplayTransforms, EquipmentAssetCatalog,
     EquipmentLayerType, FreezeImmuneWearableCatalog, FurnaceFuelCatalog,
     ItemAttackRange as PackItemAttackRange, ItemCuboidModel, ItemCuboidModelCatalog,
-    ItemCuboidModelSet, ItemCuboidTextureImageCatalog, ItemEquipmentSlot as PackItemEquipmentSlot,
-    ItemMiningProfile as PackItemMiningProfile, ItemMiningRule as PackItemMiningRule,
-    ItemModelCatalog, ItemModelDefinition, ItemMountBodyArmorKind as PackItemMountBodyArmorKind,
-    ItemRegistryCatalog, ItemTintSource, ItemUseEffects as PackItemUseEffects, LanguageCatalog,
-    PackResourceStack, PackRoots, ResourceLocation, SpriteImage, TagCatalog, TerrainColorMaps,
-    DEFAULT_LANGUAGE_CODE,
+    ItemCuboidModelSet, ItemCuboidTextureImageCatalog,
+    ItemDefaultAttributeModifier as PackItemDefaultAttributeModifier,
+    ItemEquipmentSlot as PackItemEquipmentSlot, ItemMiningProfile as PackItemMiningProfile,
+    ItemMiningRule as PackItemMiningRule, ItemModelCatalog, ItemModelDefinition,
+    ItemMountBodyArmorKind as PackItemMountBodyArmorKind, ItemRegistryCatalog, ItemTintSource,
+    ItemUseEffects as PackItemUseEffects, LanguageCatalog, PackResourceStack, PackRoots,
+    ResourceLocation, SpriteImage, TagCatalog, TerrainColorMaps, DEFAULT_LANGUAGE_CODE,
 };
 use bbb_protocol::packets::{
     AttributeModifierSummary, ConsumableSummary, DataComponentPatchSummary,
@@ -1443,6 +1444,10 @@ impl NativeItemRuntime {
             |item_id| self.default_max_stack_size_for_protocol_id(item_id);
         let default_max_damage_for_item =
             |item_id| self.default_max_damage_for_protocol_id(item_id);
+        let default_attribute_modifiers =
+            self.default_attribute_modifiers_for_resource_id(item_id, None);
+        let default_attribute_modifiers_for_item =
+            |item_id| self.default_attribute_modifiers_for_protocol_id(item_id, None);
         Some(
             self.item_icon_models
                 .get(item_id)
@@ -1479,6 +1484,10 @@ impl NativeItemRuntime {
                             compass_context: None,
                             default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
                             default_max_damage_for_item: Some(&default_max_damage_for_item),
+                            default_attribute_modifiers: &default_attribute_modifiers,
+                            default_attribute_modifiers_for_item: Some(
+                                &default_attribute_modifiers_for_item,
+                            ),
                             item_resource_ids: self
                                 .registry
                                 .as_ref()
@@ -2235,6 +2244,10 @@ impl NativeItemRuntime {
             |item_id| self.default_max_stack_size_for_protocol_id(item_id);
         let default_max_damage_for_item =
             |item_id| self.default_max_damage_for_protocol_id(item_id);
+        let default_attribute_modifiers =
+            self.default_attribute_modifiers_for_resource_id(item_id, attribute_keys);
+        let default_attribute_modifiers_for_item =
+            |item_id| self.default_attribute_modifiers_for_protocol_id(item_id, attribute_keys);
         let context = IconResolveContext {
             component_patch,
             stack_count,
@@ -2261,6 +2274,8 @@ impl NativeItemRuntime {
             compass_context,
             default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
             default_max_damage_for_item: Some(&default_max_damage_for_item),
+            default_attribute_modifiers: &default_attribute_modifiers,
+            default_attribute_modifiers_for_item: Some(&default_attribute_modifiers_for_item),
             item_resource_ids: self
                 .registry
                 .as_ref()
@@ -2406,6 +2421,10 @@ impl NativeItemRuntime {
         let default_max_stack_size = parent_context
             .default_max_stack_size_for_item
             .map(|max_stack_size| max_stack_size(template.item_id));
+        let default_attribute_modifiers = parent_context
+            .default_attribute_modifiers_for_item
+            .map(|modifiers| modifiers(template.item_id))
+            .unwrap_or_default();
         let context = IconResolveContext {
             component_patch: Some(&template.component_patch),
             stack_count: template.count,
@@ -2432,6 +2451,9 @@ impl NativeItemRuntime {
             compass_context: parent_context.compass_context,
             default_max_stack_size_for_item: parent_context.default_max_stack_size_for_item,
             default_max_damage_for_item: parent_context.default_max_damage_for_item,
+            default_attribute_modifiers: &default_attribute_modifiers,
+            default_attribute_modifiers_for_item: parent_context
+                .default_attribute_modifiers_for_item,
             item_resource_ids: parent_context.item_resource_ids,
             item_tags: parent_context.item_tags,
             enchantment_tags: parent_context.enchantment_tags,
@@ -2473,6 +2495,38 @@ impl NativeItemRuntime {
         })
     }
 
+    fn default_attribute_modifiers_for_resource_id(
+        &self,
+        resource_id: &str,
+        attribute_keys: Option<&[String]>,
+    ) -> Vec<AttributeModifierSummary> {
+        self.registry
+            .as_ref()
+            .and_then(|registry| registry.default_attribute_modifiers(resource_id))
+            .map(|modifiers| {
+                modifiers
+                    .iter()
+                    .map(|modifier| default_attribute_modifier_summary(modifier, attribute_keys))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    fn default_attribute_modifiers_for_protocol_id(
+        &self,
+        protocol_id: i32,
+        attribute_keys: Option<&[String]>,
+    ) -> Vec<AttributeModifierSummary> {
+        let Some(resource_id) = self
+            .registry
+            .as_ref()
+            .and_then(|registry| registry.resource_id(protocol_id))
+        else {
+            return Vec::new();
+        };
+        self.default_attribute_modifiers_for_resource_id(resource_id, attribute_keys)
+    }
+
     fn local_time_epoch_millis(&self) -> Option<i64> {
         self.local_time_epoch_millis_override
             .get()
@@ -2492,6 +2546,26 @@ fn current_epoch_millis() -> Option<i64> {
         .duration_since(UNIX_EPOCH)
         .ok()
         .and_then(|duration| i64::try_from(duration.as_millis()).ok())
+}
+
+fn default_attribute_modifier_summary(
+    modifier: &PackItemDefaultAttributeModifier,
+    attribute_keys: Option<&[String]>,
+) -> AttributeModifierSummary {
+    let attribute_id = attribute_keys
+        .and_then(|keys| {
+            keys.iter()
+                .position(|key| key == &modifier.attribute_key)
+                .and_then(|index| i32::try_from(index).ok())
+        })
+        .unwrap_or(-1);
+    AttributeModifierSummary {
+        attribute_id,
+        modifier_id: modifier.modifier_id.clone(),
+        amount_bits: modifier.amount_bits,
+        operation_id: modifier.operation_id,
+        slot_id: modifier.slot_id,
+    }
 }
 
 fn item_model_id_for_stack<'a>(
@@ -8734,6 +8808,82 @@ mod tests {
             selected_with_attribute_keys(69, bundle_attribute_patch(scale_modifier)),
             uv("component_condition_bundle_partial_attribute_modifiers_attribute_tag_absent")
         );
+        assert_eq!(
+            selected_with_attribute_keys(73, DataComponentPatchSummary::default()),
+            uv("component_condition_default_attribute_modifiers_present")
+        );
+        assert_eq!(
+            selected_with_attribute_keys(
+                73,
+                DataComponentPatchSummary {
+                    removed_type_ids: vec![16],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_default_attribute_modifiers_absent")
+        );
+        assert_eq!(
+            selected_with_attribute_keys(
+                73,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![16],
+                    attribute_modifiers: Vec::new(),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_default_attribute_modifiers_absent")
+        );
+        let default_attribute_item = |component_patch| ItemStackTemplateSummary {
+            item_id: 73,
+            count: 1,
+            component_patch,
+        };
+        let bundle_default_attribute_patch = |component_patch| DataComponentPatchSummary {
+            added_type_ids: vec![50],
+            bundle_contents_item_count: Some(1),
+            bundle_contents_items: vec![default_attribute_item(component_patch)],
+            ..DataComponentPatchSummary::default()
+        };
+        assert_eq!(
+            selected_with_attribute_keys(
+                74,
+                bundle_default_attribute_patch(DataComponentPatchSummary::default())
+            ),
+            uv("component_condition_bundle_partial_default_attribute_modifiers_present")
+        );
+        assert_eq!(
+            selected_with_attribute_keys(
+                74,
+                bundle_default_attribute_patch(DataComponentPatchSummary {
+                    removed_type_ids: vec![16],
+                    ..DataComponentPatchSummary::default()
+                })
+            ),
+            uv("component_condition_bundle_partial_default_attribute_modifiers_absent")
+        );
+        let container_default_attribute_patch = |component_patch| DataComponentPatchSummary {
+            added_type_ids: vec![75],
+            container_item_count: Some(1),
+            container_items: vec![default_attribute_item(component_patch)],
+            ..DataComponentPatchSummary::default()
+        };
+        assert_eq!(
+            selected_with_attribute_keys(
+                75,
+                container_default_attribute_patch(DataComponentPatchSummary::default())
+            ),
+            uv("component_condition_container_partial_default_attribute_modifiers_present")
+        );
+        assert_eq!(
+            selected_with_attribute_keys(
+                75,
+                container_default_attribute_patch(DataComponentPatchSummary {
+                    removed_type_ids: vec![16],
+                    ..DataComponentPatchSummary::default()
+                })
+            ),
+            uv("component_condition_container_partial_default_attribute_modifiers_absent")
+        );
         let custom_data_value = |owner: &str| {
             NbtSummaryValue::Compound(vec![
                 NbtSummaryEntry {
@@ -10398,6 +10548,9 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_VILLAGER_VARIANT_TAG = registerItem("component_condition_villager_variant_tag");
                 public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_VILLAGER_VARIANT_TAG = registerItem("component_condition_bundle_partial_villager_variant_tag");
                 public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_VILLAGER_VARIANT_TAG = registerItem("component_condition_container_partial_villager_variant_tag");
+                public static final Item COMPONENT_CONDITION_DEFAULT_ATTRIBUTE_MODIFIERS = registerItem("component_condition_default_attribute_modifiers", new Item.Properties().sword(ToolMaterial.IRON, 3.0F, -2.4F));
+                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_DEFAULT_ATTRIBUTE_MODIFIERS = registerItem("component_condition_bundle_partial_default_attribute_modifiers");
+                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_DEFAULT_ATTRIBUTE_MODIFIERS = registerItem("component_condition_container_partial_default_attribute_modifiers");
             }"#,
         );
         write_json(
@@ -12417,6 +12570,132 @@ mod tests {
         write_json(
             &assets
                 .join("items")
+                .join("component_condition_default_attribute_modifiers.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:attribute_modifiers",
+                    "value": {
+                        "modifiers": {
+                            "contains": [
+                                {
+                                    "attribute": "minecraft:generic.attack_damage",
+                                    "id": "minecraft:base_attack_damage",
+                                    "amount": 5.0,
+                                    "operation": "add_value",
+                                    "slot": "mainhand"
+                                }
+                            ],
+                            "size": 2
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_default_attribute_modifiers_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_default_attribute_modifiers_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_partial_default_attribute_modifiers.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "predicates": {
+                                            "minecraft:attribute_modifiers": {
+                                                "modifiers": {
+                                                    "contains": [
+                                                        {
+                                                            "attribute": "minecraft:generic.attack_damage",
+                                                            "id": "minecraft:base_attack_damage",
+                                                            "amount": 5.0,
+                                                            "operation": "add_value",
+                                                            "slot": "mainhand"
+                                                        }
+                                                    ],
+                                                    "size": 2
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_default_attribute_modifiers_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_default_attribute_modifiers_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_container_partial_default_attribute_modifiers.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:container",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "predicates": {
+                                            "minecraft:attribute_modifiers": {
+                                                "modifiers": {
+                                                    "contains": [
+                                                        {
+                                                            "attribute": "minecraft:generic.attack_damage",
+                                                            "id": "minecraft:base_attack_damage",
+                                                            "amount": 5.0,
+                                                            "operation": "add_value",
+                                                            "slot": "mainhand"
+                                                        }
+                                                    ],
+                                                    "size": 2
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_default_attribute_modifiers_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_default_attribute_modifiers_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
                 .join("component_condition_custom_data.json"),
             r#"{
                 "model": {
@@ -13265,6 +13544,30 @@ mod tests {
             (
                 "component_condition_bundle_partial_attribute_modifiers_attribute_tag_absent",
                 [85, 45, 95, 255],
+            ),
+            (
+                "component_condition_default_attribute_modifiers_present",
+                [245, 230, 150, 255],
+            ),
+            (
+                "component_condition_default_attribute_modifiers_absent",
+                [95, 85, 45, 255],
+            ),
+            (
+                "component_condition_bundle_partial_default_attribute_modifiers_present",
+                [245, 210, 150, 255],
+            ),
+            (
+                "component_condition_bundle_partial_default_attribute_modifiers_absent",
+                [95, 75, 45, 255],
+            ),
+            (
+                "component_condition_container_partial_default_attribute_modifiers_present",
+                [245, 190, 150, 255],
+            ),
+            (
+                "component_condition_container_partial_default_attribute_modifiers_absent",
+                [95, 65, 45, 255],
             ),
             (
                 "component_condition_custom_data_present",

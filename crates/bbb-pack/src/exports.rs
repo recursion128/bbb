@@ -27,8 +27,8 @@ pub use crate::item_models::{
     ItemTintSource, RangeDispatchEntry, SelectCase,
 };
 pub use crate::item_registry::{
-    ItemAttackRange, ItemEquipmentSlot, ItemMiningProfile, ItemMiningRule, ItemMountBodyArmorKind,
-    ItemRegistryCatalog, ItemUseEffects,
+    ItemAttackRange, ItemDefaultAttributeModifier, ItemEquipmentSlot, ItemMiningProfile,
+    ItemMiningRule, ItemMountBodyArmorKind, ItemRegistryCatalog, ItemUseEffects,
 };
 pub use crate::language::{LanguageCatalog, DEFAULT_LANGUAGE_CODE};
 pub use crate::metadata::{LanguageInfo, PackMetadataCatalog};
