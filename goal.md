@@ -762,12 +762,15 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:item_model`, `minecraft:rarity`, and
     `minecraft:enchantment_glint_override`, plus the synced integer
     `minecraft:map_id` `MapId` wrapper and the RGB integer wrappers
-    `minecraft:dyed_color` / `minecraft:map_color`. Tests pin texture
+    `minecraft:dyed_color` / `minecraft:map_color`, plus simple literal
+    JSON-string `minecraft:custom_name` values from `ComponentSerialization.CODEC`.
+    Tests pin texture
     selection for string, numeric, boolean, resource-id, default, patched,
-    explicit map-id, explicit color, and removed component values. Complex
-    object/list components, registry-backed component value decoding, and
-    transient components such as `minecraft:map_post_processing` remain
-    follow-up.
+    explicit map-id, explicit color, literal custom-name, and removed component
+    values. Complex object/list components, `item_name` default text,
+    style-sensitive component equality, registry-backed component value decoding,
+    and transient components that vanilla rejects from `ComponentContents`
+    selects, such as `minecraft:map_post_processing`, remain follow-up.
   - [x] `minecraft:custom_model_data` item-model condition now follows vanilla
     conditional `CustomModelDataProperty.get`: protocol preserves the
     `CustomModelData.flags` list, runtime reads `flags[index] == true`, and

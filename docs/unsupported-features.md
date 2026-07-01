@@ -5787,10 +5787,10 @@ When an agent does any of the following, update this file in the same slice:
     item attachments and GUI/HUD item icons that use the local-player owner
     context.
   - Extend `minecraft:component` select beyond the current decoded scalar /
-    enum subset as protocol/runtime summaries become available: complex
-    object/list component values, registry-backed component value codecs, custom
-    datapack component value decoding, and components without a persistent
-    codec remain follow-up.
+    enum / simple literal text subset as protocol/runtime summaries become
+    available: complex object/list component values, style-sensitive Component
+    equality, registry-backed component value codecs, custom datapack component
+    value decoding, and components without a persistent codec remain follow-up.
   - Audit remaining non-GUI item consumers that can render component-bearing
     generated item stacks and pass dynamic registry keys where vanilla resolves
     registry-backed item-model properties. Dropped-item `GROUND`, item-frame
@@ -6144,13 +6144,14 @@ When an agent does any of the following, update this file in the same slice:
       `minecraft:item_model`, `minecraft:rarity`, and
       `minecraft:enchantment_glint_override`, plus `minecraft:map_id` from the
       synced `MapId` int wrapper and the RGB int wrappers
-      `minecraft:dyed_color` / `minecraft:map_color`. Native item icons project
+      `minecraft:dyed_color` / `minecraft:map_color`, plus simple literal
+      JSON-string `minecraft:custom_name` components. Native item icons project
       vanilla common defaults (`max_stack_size=64`, `item_model=<item id>`,
       `rarity=common`) and damageable item defaults (`damage=0`,
       `max_damage=<item default>`), and removed component ids suppress the
       selected value before case matching. Tests pin texture selection for
       string, numeric, boolean, resource-id, default, patched, explicit map-id,
-      explicit color, and removed component cases.
+      explicit color, literal custom-name, and removed component cases.
     - `minecraft:cooldown` — `Cooldown.get`, matching the local player's
       `ItemCooldowns.getCooldownPercent(itemStack, 0.0F)` for GUI/HUD item
       icons. The item model property intentionally uses vanilla's `0.0F`
@@ -6220,8 +6221,9 @@ When an agent does any of the following, update this file in the same slice:
     applies the vanilla quick-craft remainder count while drag-distributing
     across multiple slots. Touchscreen split-stack and snapback animation remain
     GUI follow-up.
-    `minecraft:component` is wired for the scalar / enum component select subset
-    listed above, and the condition form covers component-type / AnyValue,
+    `minecraft:component` is wired for the scalar / enum / simple literal
+    custom-name component select subset listed above, and the condition form
+    covers component-type / AnyValue,
     `minecraft:damage`, empty single-component predicates, direct-key
     enchantment HolderSet predicates when the synced enchantment registry is
     available, and direct plus nested bundle/container writable/written-book

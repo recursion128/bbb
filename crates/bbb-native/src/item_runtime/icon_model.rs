@@ -736,6 +736,7 @@ pub(super) enum ComponentSelectProperty {
     Damage,
     ItemModel,
     Rarity,
+    CustomName,
     EnchantmentGlintOverride,
     MapId,
     DyedColor,
@@ -750,6 +751,7 @@ impl ComponentSelectProperty {
             "minecraft:damage" => Some(Self::Damage),
             "minecraft:item_model" => Some(Self::ItemModel),
             "minecraft:rarity" => Some(Self::Rarity),
+            "minecraft:custom_name" => Some(Self::CustomName),
             "minecraft:enchantment_glint_override" => Some(Self::EnchantmentGlintOverride),
             "minecraft:map_id" => Some(Self::MapId),
             "minecraft:dyed_color" => Some(Self::DyedColor),
@@ -765,6 +767,7 @@ impl ComponentSelectProperty {
             Self::Damage => DAMAGE_COMPONENT_ID,
             Self::ItemModel => ITEM_MODEL_COMPONENT_ID,
             Self::Rarity => RARITY_COMPONENT_ID,
+            Self::CustomName => CUSTOM_NAME_COMPONENT_ID,
             Self::EnchantmentGlintOverride => ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID,
             Self::MapId => MAP_ID_COMPONENT_ID,
             Self::DyedColor => DYED_COLOR_COMPONENT_ID,
@@ -820,6 +823,9 @@ impl ComponentSelectProperty {
                     .when_name()
                     .to_string(),
             )),
+            Self::CustomName => component_patch
+                .and_then(|patch| patch.custom_name.as_deref())
+                .map(|name| SelectCaseValue::String(name.to_string())),
             Self::EnchantmentGlintOverride => component_patch
                 .and_then(|patch| patch.enchantment_glint_override)
                 .map(SelectCaseValue::Bool),
@@ -3973,6 +3979,28 @@ fn item_exact_component_matches(
     default_max_damage: Option<i32>,
     default_attribute_modifiers: &[AttributeModifierSummary],
 ) -> bool {
+    if matches!(component, "minecraft:custom_name" | "minecraft:item_name") {
+        let Some(expected) = simple_component_text(expected) else {
+            return false;
+        };
+        let (component_id, actual) = match component {
+            "minecraft:custom_name" => (
+                CUSTOM_NAME_COMPONENT_ID,
+                item.component_patch.custom_name.as_deref(),
+            ),
+            "minecraft:item_name" => (
+                ITEM_NAME_COMPONENT_ID,
+                item.component_patch.item_name.as_deref(),
+            ),
+            _ => unreachable!(),
+        };
+        return !item
+            .component_patch
+            .removed_type_ids
+            .contains(&component_id)
+            && actual == Some(expected);
+    }
+
     if let Some(component) = ComponentSelectProperty::for_component(component) {
         let Some(expected) = SelectCaseValue::from_json(expected) else {
             return false;
@@ -4120,25 +4148,7 @@ fn item_exact_component_matches(
         return villager_variant_exact_match(expected, &item.component_patch);
     }
 
-    let Some(expected) = simple_component_text(expected) else {
-        return false;
-    };
-    let (component_id, actual) = match component {
-        "minecraft:custom_name" => (
-            CUSTOM_NAME_COMPONENT_ID,
-            item.component_patch.custom_name.as_deref(),
-        ),
-        "minecraft:item_name" => (
-            ITEM_NAME_COMPONENT_ID,
-            item.component_patch.item_name.as_deref(),
-        ),
-        _ => return false,
-    };
-    !item
-        .component_patch
-        .removed_type_ids
-        .contains(&component_id)
-        && actual == Some(expected)
+    false
 }
 
 fn item_partial_component_predicates_match(

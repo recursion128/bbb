@@ -10736,6 +10736,34 @@ mod tests {
             uv("component_map_color_fallback")
         );
 
+        // `DataComponents.CUSTOM_NAME` uses ComponentSerialization.CODEC;
+        // this pins the JSON-string literal case and removed id 6 suppression.
+        assert_eq!(
+            selected(9, DataComponentPatchSummary::default()),
+            uv("component_custom_name_fallback")
+        );
+        assert_eq!(
+            selected(
+                9,
+                DataComponentPatchSummary {
+                    custom_name: Some("Named Selector".to_string()),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_custom_name_named")
+        );
+        assert_eq!(
+            selected(
+                9,
+                DataComponentPatchSummary {
+                    custom_name: Some("Named Selector".to_string()),
+                    removed_type_ids: vec![6],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_custom_name_fallback")
+        );
+
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -15996,6 +16024,7 @@ mod tests {
                 public static final Item MAP_ID_COMPONENT_SELECTOR = registerItem("map_id_component_selector");
                 public static final Item DYED_COLOR_COMPONENT_SELECTOR = registerItem("dyed_color_component_selector");
                 public static final Item MAP_COLOR_COMPONENT_SELECTOR = registerItem("map_color_component_selector");
+                public static final Item CUSTOM_NAME_COMPONENT_SELECTOR = registerItem("custom_name_component_selector");
             }"#,
         );
         write_json(
@@ -16190,6 +16219,25 @@ mod tests {
                 }
             }"#,
         );
+        write_json(
+            &assets
+                .join("items")
+                .join("custom_name_component_selector.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:component",
+                    "component": "minecraft:custom_name",
+                    "cases": [
+                        {
+                            "when": "Named Selector",
+                            "model": { "type": "minecraft:model", "model": "minecraft:item/component_custom_name_named" }
+                        }
+                    ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/component_custom_name_fallback" }
+                }
+            }"#,
+        );
         for (model_id, color) in [
             ("component_rarity_common", [80, 80, 80, 255]),
             ("component_rarity_rare", [80, 180, 220, 255]),
@@ -16215,6 +16263,8 @@ mod tests {
             ("component_dyed_color_fallback", [60, 35, 70, 255]),
             ("component_map_color_456789", [0x45, 0x67, 0x89, 255]),
             ("component_map_color_fallback", [35, 65, 60, 255]),
+            ("component_custom_name_named", [210, 160, 80, 255]),
+            ("component_custom_name_fallback", [70, 45, 35, 255]),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);
         }
