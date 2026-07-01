@@ -3742,6 +3742,30 @@ fn hotbar_item_icons_project_world_time_range_dispatch() {
     let random_fallback_uv = item_runtime.icon_for_stack(&random_stack).unwrap().layers[0].uv;
     assert_eq!(selected_at_time(&random_stack, 18_000), random_fallback_uv);
 
+    let moon_phase_stack = item_stack(3, 1);
+    let moon_phase_fallback_uv = item_runtime
+        .icon_for_stack(&moon_phase_stack)
+        .unwrap()
+        .layers[0]
+        .uv;
+    let new_moon_uv = selected_at_time(&moon_phase_stack, 96_000);
+    assert_ne!(new_moon_uv, moon_phase_fallback_uv);
+
+    let mut moon_phase_world = world_with_dimension(0, "minecraft:overworld");
+    set_world_day_time(&mut moon_phase_world, 96_000);
+    moon_phase_world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: moon_phase_stack,
+    });
+    let moon_phase_icons = hotbar_item_icons(&moon_phase_world, Some(&item_runtime), 0.0);
+    assert_eq!(
+        moon_phase_icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: new_moon_uv.min,
+            max: new_moon_uv.max,
+        }
+    );
+
     std::fs::remove_dir_all(root).unwrap();
 }
 
@@ -8464,6 +8488,25 @@ fn write_runtime_time_range_dispatch_item_assets(root: &Path) {
             }
         }"#,
     );
+    write_runtime_json(
+        &assets.join("items").join("time_moon_phase_selector.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:range_dispatch",
+                "property": "minecraft:time",
+                "source": "moon_phase",
+                "wobble": false,
+                "scale": 8.0,
+                "entries": [
+                    {
+                        "threshold": 4.0,
+                        "model": { "type": "minecraft:model", "model": "minecraft:item/time_moon_phase_new" }
+                    }
+                ],
+                "fallback": { "type": "minecraft:model", "model": "minecraft:item/time_moon_phase_full" }
+            }
+        }"#,
+    );
     write_flat_runtime_item_model_and_texture(&assets, "time_selector_day", &[40, 80, 120, 255]);
     write_flat_runtime_item_model_and_texture(
         &assets,
@@ -8483,6 +8526,8 @@ fn write_runtime_time_range_dispatch_item_assets(root: &Path) {
     );
     write_flat_runtime_item_model_and_texture(&assets, "time_random_fallback", &[50, 70, 110, 255]);
     write_flat_runtime_item_model_and_texture(&assets, "time_random_stateful", &[180, 50, 90, 255]);
+    write_flat_runtime_item_model_and_texture(&assets, "time_moon_phase_full", &[40, 70, 130, 255]);
+    write_flat_runtime_item_model_and_texture(&assets, "time_moon_phase_new", &[130, 70, 40, 255]);
     write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
     write_runtime_json(
         &root
@@ -8497,6 +8542,7 @@ fn write_runtime_time_range_dispatch_item_assets(root: &Path) {
             public static final Item TIME_SELECTOR = registerItem("time_selector");
             public static final Item TIME_WOBBLED_SELECTOR = registerItem("time_wobbled_selector");
             public static final Item TIME_RANDOM_SELECTOR = registerItem("time_random_selector");
+            public static final Item TIME_MOON_PHASE_SELECTOR = registerItem("time_moon_phase_selector");
         }"#,
     );
 }

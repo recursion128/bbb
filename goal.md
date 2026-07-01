@@ -1000,9 +1000,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:time` range_dispatch for `wobble=false`
     `source=daytime` / `moon_phase`, matching vanilla `Time.get`
     non-wobbled target values from `EnvironmentAttributes`. Tests pin
-    no-level fallback, overworld day-time texture selection, and fallback
-    collapse for default `wobble=true` plus `source=random`. Stateful wobbler
-    smoothing and the vanilla per-property `RandomSource` remain follow-up.
+    no-level fallback, overworld day-time and moon-phase texture selection,
+    and fallback collapse for default `wobble=true` plus `source=random`.
+    Stateful wobbler smoothing and the vanilla per-property `RandomSource`
+    remain follow-up.
   - [x] GUI/HUD item icons now project `minecraft:compass` range_dispatch for
     `wobble=false` spawn targets from the local-player position / visual yaw and
     current default spawn, matching vanilla `CompassAngle.get`'s exact

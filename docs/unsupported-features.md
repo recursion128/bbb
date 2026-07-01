@@ -6119,9 +6119,9 @@ When an agent does any of the following, update this file in the same slice:
       from the overworld sun angle and `moon_phase` from the vanilla
       eight-phase `day_time / 24000` cycle, then applies vanilla range-dispatch
       threshold selection. Tests pin no-level `0.0` fallback, overworld
-      day-time texture selection, and fallback collapse for default
-      `wobble=true` plus `source=random`; stateful wobbler smoothing and the
-      vanilla per-property `RandomSource` remain follow-up.
+      day-time and moon-phase texture selection, and fallback collapse for
+      default `wobble=true` plus `source=random`; stateful wobbler smoothing
+      and the vanilla per-property `RandomSource` remain follow-up.
     - `minecraft:compass` — `CompassAngle.get`, for GUI/HUD item icons with a
       local-player owner and `ClientLevel` context when the model opts out of
       stateful wobble (`wobble=false`) and targets spawn, lodestone, or
