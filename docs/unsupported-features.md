@@ -163,7 +163,8 @@ When an agent does any of the following, update this file in the same slice:
     - light curves
     - remaining particle sorting beyond covered single-quad group/layer order
     - collision/player-coupled physics
-    - atlas mip animation
+    - atlas mip-level animation beyond covered age-based `SpriteSet` frame
+      selection
     - terrain/item particle option rendering
     - remaining level-event particle effects beyond the currently covered
       simple smoke/white-smoke/flame/dragon-breath/explosion/cloud/block-face/
@@ -180,6 +181,11 @@ When an agent does any of the following, update this file in the same slice:
       collection within the current particle-atlas path. Split solid vs
       translucent particle passes plus terrain/item atlas particle layers
       remain follow-up work.
+    - Advances age-selected particle sprites with vanilla
+      `SpriteSet.get(index, max)` shape (`index * (sprites.size() - 1) / max`),
+      keeps random-selected sprites stable after intake, and preserves missing
+      definition / missing sprite / unknown particle diagnostics through native
+      spawn resolution and renderer counters.
     - Applies vanilla `ClientLevel.doAddParticle` thinning for
       `ClientboundLevelParticlesPacket` spawns: non-override particles beyond
       camera distance squared `1024.0` are dropped, override-limiter particles

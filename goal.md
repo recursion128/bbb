@@ -1212,9 +1212,18 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `ALL` / `DECREASED` / `MINIMAL`，并用 vanilla-shaped Java `Random.nextInt`
     执行 `DECREASED` 的 `nextInt(3)` drop 与 `MINIMAL && alwaysShow` 的
     `nextInt(10)` promote / second `nextInt(3)` drop。
-- atlas mip animation：
-  - animated sprite frame advance。
-  - missing definition / missing sprite diagnostics。
+- atlas mip / animation：
+  - [x] age-based animated sprite frame advance：renderer particle runtime
+    mirrors vanilla `SpriteSet.get(index, max)` frame selection with
+    `index * (sprites.size() - 1) / max`, advances age-selected sprites on
+    client ticks, keeps random-selected sprites stable, and reaches the last
+    frame at the lifetime boundary.
+  - [x] missing definition / missing sprite diagnostics：native particle
+    resolution records missing definitions, unknown particle types, and missing
+    sprites without dropping otherwise renderable spawn commands; renderer
+    batch/counter paths preserve those diagnostic counts.
+  - mip-level atlas animation beyond age-selected `SpriteSet` frame selection
+    remains follow-up work.
 - LevelEvent particle side effects：
   - smoke/flame/dragon-breath/explosion/cloud/block-face/trial-spawner 之外的剩余事件。
 
