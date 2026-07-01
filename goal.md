@@ -1268,6 +1268,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     particle definitions; renderer runtime records explicit `LavaSmoke` child
     emission state and, after the lava tick, mirrors vanilla `random.nextFloat()
     > age / lifetime` smoke spawning at the current lava position/velocity.
+  - [x] option-colored `SpellParticle` providers：native `LevelParticles`
+    command resolution now decodes `SpellParticleOption` RGB + `power` for
+    `effect` / `instant_effect` and `ColorParticleOption` ARGB for
+    `entity_effect`; renderer maps them to vanilla
+    `SpellParticle.InstantProvider` / `MobEffectProvider`, applies option
+    tint/alpha, and mirrors `setPower(power)` velocity adjustment.
   - 初速度。
   - lifetime。
   - size curve。

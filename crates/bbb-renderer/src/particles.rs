@@ -51,6 +51,10 @@ pub struct ParticleSpawnCommand {
     pub initial_delay_ticks: u32,
     #[serde(default)]
     pub child_spawn_templates: Vec<ParticleChildSpawnTemplate>,
+    #[serde(default)]
+    pub option_color: Option<[f32; 4]>,
+    #[serde(default)]
+    pub option_power: Option<f32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -147,6 +151,10 @@ pub(crate) struct ParticleInstance {
     pub(crate) raw_options_len: usize,
     #[serde(default)]
     pub(crate) delay_ticks: u32,
+    #[serde(default)]
+    pub(crate) option_color: Option<[f32; 4]>,
+    #[serde(default)]
+    pub(crate) option_power: Option<f32>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -527,7 +535,12 @@ impl ParticleInstance {
         let render_group = particle_render_group_for_particle(&command.particle_id);
         let render_layer = particle_render_layer_for_particle(&command.particle_id);
         let mut position = descriptor.initial_position(command.position, random);
-        let velocity = descriptor.initial_velocity.sample(command.velocity, random);
+        let mut velocity = descriptor.initial_velocity.sample(command.velocity, random);
+        if descriptor.provider == "SpellParticle.InstantProvider" {
+            if let Some(power) = command.option_power {
+                velocity = apply_particle_power(velocity, power);
+            }
+        }
         if matches!(
             descriptor.provider,
             "FlyTowardsPositionParticle.EnchantProvider"
@@ -555,6 +568,7 @@ impl ParticleInstance {
         let visual = descriptor
             .visual
             .sample_for_command(random, command.velocity);
+        let color = command.option_color.unwrap_or(visual.color);
         Self {
             particle_type_id: command.particle_type_id,
             particle_id: command.particle_id,
@@ -568,7 +582,7 @@ impl ParticleInstance {
             age_ticks: 0,
             lifetime_ticks: descriptor.lifetime.sample(random),
             base_quad_size: visual.base_quad_size,
-            color: visual.color,
+            color,
             color_fade_target: descriptor.color_fade_target(),
             light: DEFAULT_PARTICLE_LIGHT,
             light_emission: descriptor.light_emission(),
@@ -591,6 +605,8 @@ impl ParticleInstance {
             always_show: command.always_show,
             raw_options_len: command.raw_options_len,
             delay_ticks: command.initial_delay_ticks,
+            option_color: command.option_color,
+            option_power: command.option_power,
         }
     }
 
@@ -772,6 +788,8 @@ impl ParticleInstance {
             raw_options_len: 0,
             initial_delay_ticks: 0,
             child_spawn_templates: Vec::new(),
+            option_color: None,
+            option_power: None,
         })
     }
 }
@@ -1064,6 +1082,15 @@ fn simple_animated_alpha(age_ticks: u32, lifetime_ticks: u32) -> f32 {
     }
 }
 
+fn apply_particle_power(velocity: [f64; 3], power: f32) -> [f64; 3] {
+    let power = f64::from(power);
+    [
+        velocity[0] * power,
+        (velocity[1] - 0.1) * power + 0.1,
+        velocity[2] * power,
+    ]
+}
+
 fn vault_connection_alpha(age_ticks: u32, lifetime_ticks: u32, partial_tick: f32) -> f32 {
     let lifetime = lifetime_ticks.max(1) as f32;
     let normalized = (age_ticks as f32 + partial_tick.clamp(0.0, 1.0)) / lifetime;
@@ -1089,6 +1116,9 @@ fn particle_render_layer_for_particle(particle_id: &str) -> ParticleRenderLayer 
         | "minecraft:sculk_charge_pop"
         | "minecraft:shriek"
         | "minecraft:vault_connection"
+        | "minecraft:effect"
+        | "minecraft:instant_effect"
+        | "minecraft:entity_effect"
         | "minecraft:infested"
         | "minecraft:raid_omen"
         | "minecraft:trial_omen"
@@ -2215,6 +2245,55 @@ mod tests {
         assert_range_f64(spell.velocity[0].abs(), 0.0, 0.008);
         assert_range_f64(spell.velocity[1], 0.0, 0.06);
         assert_range_f64(spell.velocity[2].abs(), 0.0, 0.008);
+
+        let mut base_effect_random = ParticleRandom::new(63);
+        let mut base_effect_command = spawn_command("minecraft:effect", 1.0);
+        base_effect_command.velocity = [1.0, 1.0, 0.0];
+        let base_effect =
+            ParticleInstance::from_spawn_command(base_effect_command, &mut base_effect_random);
+        let mut powered_effect_random = ParticleRandom::new(63);
+        let mut powered_effect_command = spawn_command("minecraft:effect", 1.0);
+        powered_effect_command.velocity = [1.0, 1.0, 0.0];
+        powered_effect_command.option_color = Some([0.2, 0.4, 0.6, 1.0]);
+        powered_effect_command.option_power = Some(0.5);
+        let powered_effect = ParticleInstance::from_spawn_command(
+            powered_effect_command,
+            &mut powered_effect_random,
+        );
+        assert_eq!(powered_effect.provider, "SpellParticle.InstantProvider");
+        assert_eq!(
+            powered_effect.render_layer,
+            ParticleRenderLayer::Translucent
+        );
+        assert_eq!(powered_effect.color, [0.2, 0.4, 0.6, 1.0]);
+        assert_eq!(powered_effect.option_power, Some(0.5));
+        assert_close_f64(powered_effect.velocity[0], base_effect.velocity[0] * 0.5);
+        assert_close_f64(
+            powered_effect.velocity[1],
+            (base_effect.velocity[1] - 0.1) * 0.5 + 0.1,
+        );
+        assert_close_f64(powered_effect.velocity[2], base_effect.velocity[2] * 0.5);
+
+        let mut entity_effect_random = ParticleRandom::new(64);
+        let mut entity_effect_command = spawn_command("minecraft:entity_effect", 1.0);
+        entity_effect_command.option_color = Some([0.1, 0.2, 0.3, 0.4]);
+        let entity_effect =
+            ParticleInstance::from_spawn_command(entity_effect_command, &mut entity_effect_random);
+        assert_eq!(entity_effect.provider, "SpellParticle.MobEffectProvider");
+        assert_eq!(entity_effect.render_layer, ParticleRenderLayer::Translucent);
+        assert_eq!(entity_effect.color, [0.1, 0.2, 0.3, 0.4]);
+        assert_eq!(entity_effect.option_power, None);
+
+        let mut instant_effect_random = ParticleRandom::new(65);
+        let mut instant_effect_command = spawn_command("minecraft:instant_effect", 1.0);
+        instant_effect_command.option_color = Some([0.9, 0.8, 0.7, 1.0]);
+        instant_effect_command.option_power = Some(1.25);
+        let instant_effect = ParticleInstance::from_spawn_command(
+            instant_effect_command,
+            &mut instant_effect_random,
+        );
+        assert_eq!(instant_effect.provider, "SpellParticle.InstantProvider");
+        assert_eq!(instant_effect.color, [0.9, 0.8, 0.7, 1.0]);
 
         let mut pause_random = ParticleRandom::new(59);
         let mut pause_command = spawn_command("minecraft:pause_mob_growth", 1.0);
@@ -3447,6 +3526,8 @@ mod tests {
             always_show: false,
             raw_options_len: 0,
             delay_ticks: 0,
+            option_color: None,
+            option_power: None,
         }
     }
 
@@ -3462,6 +3543,8 @@ mod tests {
             raw_options_len: 0,
             initial_delay_ticks: 0,
             child_spawn_templates: Vec::new(),
+            option_color: None,
+            option_power: None,
         }
     }
 

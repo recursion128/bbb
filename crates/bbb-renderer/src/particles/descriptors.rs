@@ -838,8 +838,19 @@ impl ParticleDescriptor {
                 has_physics: false,
                 speed_up_when_y_motion_is_blocked: true,
             },
-            "minecraft:infested" | "minecraft:raid_omen" | "minecraft:trial_omen" => Self {
-                provider: "SpellParticle.Provider",
+            "minecraft:effect"
+            | "minecraft:instant_effect"
+            | "minecraft:entity_effect"
+            | "minecraft:infested"
+            | "minecraft:raid_omen"
+            | "minecraft:trial_omen" => Self {
+                provider: match particle_id {
+                    "minecraft:effect" | "minecraft:instant_effect" => {
+                        "SpellParticle.InstantProvider"
+                    }
+                    "minecraft:entity_effect" => "SpellParticle.MobEffectProvider",
+                    _ => "SpellParticle.Provider",
+                },
                 lifetime: ParticleLifetimeDescriptor::EightOverRandom,
                 sprite_selection: ParticleSpriteSelection::Age,
                 visual: ParticleVisualDescriptor::SingleQuadScaled {
@@ -2730,6 +2741,31 @@ mod tests {
             assert_descriptor(
                 particle_id,
                 "SpellParticle.Provider",
+                ParticleLifetimeDescriptor::EightOverRandom,
+                ParticleSpriteSelection::Age,
+                ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 0.75,
+                    color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                0.96,
+                -0.1,
+                false,
+                true,
+            );
+            assert_eq!(
+                ParticleDescriptor::for_particle(particle_id).initial_velocity,
+                ParticleInitialVelocityDescriptor::Spell
+            );
+        }
+        for (particle_id, provider) in [
+            ("minecraft:effect", "SpellParticle.InstantProvider"),
+            ("minecraft:instant_effect", "SpellParticle.InstantProvider"),
+            ("minecraft:entity_effect", "SpellParticle.MobEffectProvider"),
+        ] {
+            assert_descriptor(
+                particle_id,
+                provider,
                 ParticleLifetimeDescriptor::EightOverRandom,
                 ParticleSpriteSelection::Age,
                 ParticleVisualDescriptor::SingleQuadScaled {

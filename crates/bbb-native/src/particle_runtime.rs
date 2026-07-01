@@ -203,6 +203,8 @@ impl ParticleCommandResolver {
             .count();
         let override_limiter = particle_type.override_limiter || packet.override_limiter;
         let raw_options_len = packet.particle.raw_options.len();
+        let (option_color, option_power) =
+            spell_particle_option_render_state(particle_type.id, &packet.particle.raw_options);
         let initial_delay_ticks = initial_delay_ticks_for_particle_options(
             particle_type.id,
             &packet.particle.raw_options,
@@ -236,6 +238,8 @@ impl ParticleCommandResolver {
                     override_limiter,
                     raw_options_len,
                     initial_delay_ticks,
+                    option_color,
+                    option_power,
                 ));
             }
         } else {
@@ -265,6 +269,8 @@ impl ParticleCommandResolver {
                         override_limiter,
                         raw_options_len,
                         initial_delay_ticks,
+                        option_color,
+                        option_power,
                     ));
                 }
             }
@@ -1088,6 +1094,8 @@ impl ParticleCommandResolver {
             always_show,
             0,
             0,
+            None,
+            None,
         )
     }
 
@@ -1101,6 +1109,8 @@ impl ParticleCommandResolver {
         override_limiter: bool,
         raw_options_len: usize,
         initial_delay_ticks: u32,
+        option_color: Option<[f32; 4]>,
+        option_power: Option<f32>,
     ) -> ParticleSpawnCommand {
         self.command_for_type(
             particle_type,
@@ -1111,6 +1121,8 @@ impl ParticleCommandResolver {
             packet.always_show,
             raw_options_len,
             initial_delay_ticks,
+            option_color,
+            option_power,
         )
     }
 
@@ -1124,6 +1136,8 @@ impl ParticleCommandResolver {
         always_show: bool,
         raw_options_len: usize,
         initial_delay_ticks: u32,
+        option_color: Option<[f32; 4]>,
+        option_power: Option<f32>,
     ) -> ParticleSpawnCommand {
         let child_spawn_templates = self.child_spawn_templates_for_type(particle_type);
         ParticleSpawnCommand {
@@ -1137,6 +1151,8 @@ impl ParticleCommandResolver {
             raw_options_len,
             initial_delay_ticks,
             child_spawn_templates,
+            option_color,
+            option_power,
         }
     }
 
@@ -1169,6 +1185,57 @@ fn initial_delay_ticks_for_particle_options(particle_type_id: i32, raw_options: 
         Ok(delay) if decoder.is_empty() => u32::try_from(delay).unwrap_or(0),
         _ => 0,
     }
+}
+
+fn spell_particle_option_render_state(
+    particle_type_id: i32,
+    raw_options: &[u8],
+) -> (Option<[f32; 4]>, Option<f32>) {
+    let mut decoder = Decoder::new(raw_options);
+    match particle_type_id {
+        EFFECT_PARTICLE_TYPE_ID | INSTANT_EFFECT_PARTICLE_TYPE_ID => {
+            let Ok(color) = decoder.read_i32() else {
+                return (None, None);
+            };
+            let Ok(power) = decoder.read_f32() else {
+                return (None, None);
+            };
+            if !decoder.is_empty() {
+                return (None, None);
+            }
+            (Some(rgb_particle_color(color)), Some(power))
+        }
+        ENTITY_EFFECT_PARTICLE_TYPE_ID => {
+            let Ok(color) = decoder.read_i32() else {
+                return (None, None);
+            };
+            if !decoder.is_empty() {
+                return (None, None);
+            }
+            (Some(argb_particle_color(color)), None)
+        }
+        _ => (None, None),
+    }
+}
+
+fn rgb_particle_color(color: i32) -> [f32; 4] {
+    let color = color as u32;
+    [
+        ((color >> 16) & 0xff) as f32 / 255.0,
+        ((color >> 8) & 0xff) as f32 / 255.0,
+        (color & 0xff) as f32 / 255.0,
+        1.0,
+    ]
+}
+
+fn argb_particle_color(color: i32) -> [f32; 4] {
+    let color = color as u32;
+    [
+        ((color >> 16) & 0xff) as f32 / 255.0,
+        ((color >> 8) & 0xff) as f32 / 255.0,
+        (color & 0xff) as f32 / 255.0,
+        ((color >> 24) & 0xff) as f32 / 255.0,
+    ]
 }
 
 fn append_particle_batch(batch: &mut ParticleSpawnBatch, mut other: ParticleSpawnBatch) {
@@ -1302,11 +1369,14 @@ const TRIAL_SPAWNER_OMINOUS_ACTIVATE_LEVEL_EVENT: i32 = 3020;
 const TRIAL_SPAWNER_SPAWN_ITEM_LEVEL_EVENT: i32 = 3021;
 const CLOUD_PARTICLE_TYPE_ID: i32 = 4;
 const DRAGON_BREATH_PARTICLE_TYPE_ID: i32 = 8;
+const EFFECT_PARTICLE_TYPE_ID: i32 = 16;
+const ENTITY_EFFECT_PARTICLE_TYPE_ID: i32 = 21;
 const EXPLOSION_EMITTER_PARTICLE_TYPE_ID: i32 = 22;
 const EXPLOSION_PARTICLE_TYPE_ID: i32 = 23;
 const FLAME_PARTICLE_TYPE_ID: i32 = 32;
 const SOUL_FIRE_FLAME_PARTICLE_TYPE_ID: i32 = 40;
 const HAPPY_VILLAGER_PARTICLE_TYPE_ID: i32 = 43;
+const INSTANT_EFFECT_PARTICLE_TYPE_ID: i32 = 46;
 const LARGE_SMOKE_PARTICLE_TYPE_ID: i32 = 55;
 const LAVA_PARTICLE_TYPE_ID: i32 = 56;
 const POOF_PARTICLE_TYPE_ID: i32 = 59;
@@ -1477,6 +1547,59 @@ mod tests {
         assert_eq!(child.particle_type_id, SMOKE_PARTICLE_TYPE_ID);
         assert_eq!(child.particle_id, "minecraft:smoke");
         assert_eq!(child.sprite_ids, vec!["minecraft:smoke_0".to_string()]);
+    }
+
+    #[test]
+    fn spell_particle_options_decode_color_and_power_into_spawn_command() {
+        let mut resolver = test_resolver(0);
+        let mut packet = level_particles_packet(EFFECT_PARTICLE_TYPE_ID, 0);
+        packet.particle.raw_options = spell_particle_options(0x0011_2233, 0.5);
+
+        let batch = resolver.resolve_level_particles(&packet);
+
+        assert_eq!(batch.len(), 1);
+        let command = &batch.commands[0];
+        assert_eq!(command.particle_id, "minecraft:effect");
+        assert_eq!(
+            command.option_color,
+            Some([
+                0x11 as f32 / 255.0,
+                0x22 as f32 / 255.0,
+                0x33 as f32 / 255.0,
+                1.0,
+            ])
+        );
+        assert_eq!(command.option_power, Some(0.5));
+
+        let mut instant_packet = level_particles_packet(INSTANT_EFFECT_PARTICLE_TYPE_ID, 0);
+        instant_packet.particle.raw_options = spell_particle_options(0x00aa_bbcc, 1.25);
+        let instant = resolver.resolve_level_particles(&instant_packet);
+        assert_eq!(instant.len(), 1);
+        assert_eq!(instant.commands[0].particle_id, "minecraft:instant_effect");
+        assert_eq!(instant.commands[0].option_power, Some(1.25));
+    }
+
+    #[test]
+    fn entity_effect_particle_options_decode_argb_color_into_spawn_command() {
+        let mut resolver = test_resolver(0);
+        let mut packet = level_particles_packet(ENTITY_EFFECT_PARTICLE_TYPE_ID, 0);
+        packet.particle.raw_options = 0x8011_2233_u32.to_be_bytes().to_vec();
+
+        let batch = resolver.resolve_level_particles(&packet);
+
+        assert_eq!(batch.len(), 1);
+        let command = &batch.commands[0];
+        assert_eq!(command.particle_id, "minecraft:entity_effect");
+        assert_eq!(
+            command.option_color,
+            Some([
+                0x11 as f32 / 255.0,
+                0x22 as f32 / 255.0,
+                0x33 as f32 / 255.0,
+                0x80 as f32 / 255.0,
+            ])
+        );
+        assert_eq!(command.option_power, None);
     }
 
     #[test]
@@ -2422,6 +2545,8 @@ mod tests {
                 "generic_3",
                 "generic_4",
                 "generic_5",
+                "effect_0",
+                "spell_0",
                 "dragon_breath_0",
                 "flame",
                 "soul_fire_flame",
@@ -2475,6 +2600,30 @@ mod tests {
             r#"{
               "textures": [
                 "minecraft:flame"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("effect.json"),
+            r#"{
+              "textures": [
+                "minecraft:effect_0"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("entity_effect.json"),
+            r#"{
+              "textures": [
+                "minecraft:effect_0"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("instant_effect.json"),
+            r#"{
+              "textures": [
+                "minecraft:spell_0"
               ]
             }"#,
         );
@@ -2692,6 +2841,13 @@ mod tests {
                 raw_options: vec![0xaa, 0xbb],
             },
         }
+    }
+
+    fn spell_particle_options(color: i32, power: f32) -> Vec<u8> {
+        let mut out = Vec::new();
+        out.extend_from_slice(&color.to_be_bytes());
+        out.extend_from_slice(&power.to_be_bytes());
+        out
     }
 
     fn level_event_packet(event_type: i32) -> LevelEvent {
