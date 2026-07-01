@@ -1110,9 +1110,12 @@ When an agent does any of the following, update this file in the same slice:
     scissor-derived visible bounds, and isolated PIP depth. The native local
     inventory screen now fills that surface for the logged-in player preview,
     using the vanilla inventory rect, scale, mouse-follow yaw/pitch, and
-    `LightCoordsUtil.FULL_BRIGHT` projection. Mount/container/merchant/other
-    screen call points, actual GPU PIP drawing, and armor / held-item /
-    head-item layer-order drawing remain subsequent P1-4 slices.
+    `LightCoordsUtil.FULL_BRIGHT` projection. Horse / nautilus mount inventory
+    screens also fill the surface for the mount entity using the vanilla
+    `AbstractMountInventoryScreen` rect, scale, offset, and mouse-follow
+    rotation. Container/merchant/other screen call points, actual GPU PIP
+    drawing, and armor / held-item / head-item layer-order drawing remain
+    subsequent P1-4 slices.
     The dropped-item 3D model
     path and the legacy item-entity / thrown-item billboard path now sample the
     entity light probe through `WorldStore`, keep the vanilla full-bright

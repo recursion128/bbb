@@ -1077,6 +1077,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     player, using vanilla `InventoryScreen.extractEntityInInventoryFollowsMouse`
     rect / scale / mouse-follow rotation, full-bright entity light, and isolated
     PIP depth metadata.
+  - [x] mount inventory entity preview call point：
+    native horse / nautilus mount inventory screens now reuse the same
+    entity-in-inventory preview path for the mount entity, with vanilla
+    `AbstractMountInventoryScreen` rect / scale / offset and mouse-follow
+    rotation.
   - container、merchant、recipe/book/sign/advancement 等 screen 调用点。
   - GUI pass 与 world pass 的 load/clear/depth ordering。
 

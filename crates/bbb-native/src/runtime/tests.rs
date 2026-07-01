@@ -5609,6 +5609,72 @@ fn hud_inventory_screen_projects_mount_horse_layout() {
 }
 
 #[test]
+fn hud_inventory_screen_projects_mount_entity_preview() {
+    let mut world = world_with_dimension_height(0, "minecraft:overworld", 384);
+    world.apply_add_entity(test_add_entity(77, 66));
+    world.apply_mount_screen_open(bbb_protocol::packets::MountScreenOpen {
+        container_id: 7,
+        inventory_columns: 5,
+        entity_id: 77,
+    });
+
+    let screen = hud_inventory_screen_with_local_state(
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState {
+            cursor_position: Some((5, 90)),
+            ..InventoryHudLocalState::default()
+        },
+        0.0,
+    )
+    .unwrap();
+
+    assert_eq!(screen.entity_previews.len(), 1);
+    let preview = &screen.entity_previews[0];
+    assert_eq!(preview.entity.entity_id, 77);
+    assert_eq!(preview.lighting, GuiItemLightingEntry::EntityInUi);
+    assert_eq!(
+        preview.rect,
+        HudEntityPreviewRect {
+            x: 26,
+            y: 18,
+            width: 52,
+            height: 52,
+        }
+    );
+    assert_eq!(preview.scissor, None);
+    assert_eq!(preview.scale, 17.0);
+    assert!(preview.depth_isolated);
+    let bounds = world.probe_entity_pick_bounds(77).unwrap();
+    assert_close3(
+        preview.translation,
+        [0.0, (bounds.max[1] - bounds.min[1]) / 2.0 + 0.25, 0.0],
+    );
+
+    let x_angle = ((52.0_f32 - 5.0) / 40.0).atan();
+    let y_angle = ((44.0_f32 - 90.0) / 40.0).atan();
+    let expected_yaw = x_angle * 20.0;
+    let expected_pitch = y_angle * 20.0;
+    let expected_camera = quaternion_x(expected_pitch.to_radians());
+    assert!((preview.entity.render_state.body_rot - (180.0 + expected_yaw)).abs() < 1.0e-6);
+    assert!((preview.entity.render_state.head_yaw - expected_yaw).abs() < 1.0e-6);
+    assert!((preview.entity.render_state.head_pitch + expected_pitch).abs() < 1.0e-6);
+    assert_close4(
+        preview.rotation,
+        quaternion_mul([0.0, 0.0, 1.0, 0.0], expected_camera),
+    );
+    assert_eq!(preview.override_camera_rotation, Some(expected_camera));
+    assert_eq!(
+        preview.entity.render_state.light_coords,
+        ENTITY_FULL_BRIGHT_LIGHT_COORDS
+    );
+    assert_eq!(preview.entity.render_state.outline_color, 0);
+    assert!(!preview.entity.render_state.appears_glowing);
+}
+
+#[test]
 fn hud_inventory_screen_projects_mount_nautilus_slot_placeholders() {
     let mut world = WorldStore::new();
     world.apply_add_entity(test_add_entity(42, 88));

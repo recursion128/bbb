@@ -2010,6 +2010,11 @@ fn hud_inventory_entity_previews(
                 .into_iter()
                 .collect()
         }
+        InventoryScreenBackground::Mount { .. } => {
+            hud_mount_inventory_entity_preview(world, item_runtime, local_state, partial_tick)
+                .into_iter()
+                .collect()
+        }
         _ => Vec::new(),
     }
 }
@@ -2026,20 +2031,70 @@ fn hud_local_inventory_entity_preview(
     const Y1: i32 = 78;
     const SCALE: f32 = 30.0;
     const OFFSET_Y: f32 = 0.0625;
-    const MOUSE_FOLLOW_DIVISOR: f32 = 40.0;
-    const ROTATION_SCALE_DEGREES: f32 = 20.0;
 
     let local_player_id = world.local_player_id()?;
-    let mut entity = entity_model_instance_from_world_entity_at_partial_tick(
+    hud_entity_in_inventory_follows_mouse_preview(
         world,
         item_runtime,
         local_player_id,
+        local_state,
+        partial_tick,
+        [X0, Y0, X1, Y1],
+        SCALE,
+        OFFSET_Y,
+    )
+}
+
+fn hud_mount_inventory_entity_preview(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    local_state: &InventoryHudLocalState,
+    partial_tick: f32,
+) -> Option<HudEntityPreview> {
+    const X0: i32 = 26;
+    const Y0: i32 = 18;
+    const X1: i32 = 78;
+    const Y1: i32 = 70;
+    const SCALE: f32 = 17.0;
+    const OFFSET_Y: f32 = 0.25;
+
+    let mount_entity_id = world.inventory().open_container.as_ref()?.mount?.entity_id;
+    hud_entity_in_inventory_follows_mouse_preview(
+        world,
+        item_runtime,
+        mount_entity_id,
+        local_state,
+        partial_tick,
+        [X0, Y0, X1, Y1],
+        SCALE,
+        OFFSET_Y,
+    )
+}
+
+fn hud_entity_in_inventory_follows_mouse_preview(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    entity_id: i32,
+    local_state: &InventoryHudLocalState,
+    partial_tick: f32,
+    rect: [i32; 4],
+    scale: f32,
+    offset_y: f32,
+) -> Option<HudEntityPreview> {
+    const MOUSE_FOLLOW_DIVISOR: f32 = 40.0;
+    const ROTATION_SCALE_DEGREES: f32 = 20.0;
+
+    let [x0, y0, x1, y1] = rect;
+    let mut entity = entity_model_instance_from_world_entity_at_partial_tick(
+        world,
+        item_runtime,
+        entity_id,
         partial_tick,
     )?;
-    let bounds = world.probe_entity_pick_bounds(local_player_id)?;
+    let bounds = world.probe_entity_pick_bounds(entity_id)?;
     let height = bounds.max[1] - bounds.min[1];
-    let center_x = (X0 + X1) as f32 / 2.0;
-    let center_y = (Y0 + Y1) as f32 / 2.0;
+    let center_x = (x0 + x1) as f32 / 2.0;
+    let center_y = (y0 + y1) as f32 / 2.0;
     let (mouse_x, mouse_y) = local_state
         .cursor_position
         .map(|(x, y)| (x as f32, y as f32))
@@ -2061,16 +2116,16 @@ fn hud_local_inventory_entity_preview(
         entity,
         lighting: GuiItemLightingEntry::EntityInUi,
         rect: HudEntityPreviewRect {
-            x: X0,
-            y: Y0,
-            width: u32::try_from(X1 - X0).ok()?,
-            height: u32::try_from(Y1 - Y0).ok()?,
+            x: x0,
+            y: y0,
+            width: u32::try_from(x1 - x0).ok()?,
+            height: u32::try_from(y1 - y0).ok()?,
         },
         scissor: None,
-        translation: [0.0, height / 2.0 + OFFSET_Y, 0.0],
+        translation: [0.0, height / 2.0 + offset_y, 0.0],
         rotation: quaternion_mul([0.0, 0.0, 1.0, 0.0], camera_x_rotation),
         override_camera_rotation: Some(camera_x_rotation),
-        scale: SCALE,
+        scale,
         depth_isolated: true,
     })
 }
