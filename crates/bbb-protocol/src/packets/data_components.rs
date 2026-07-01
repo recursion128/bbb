@@ -134,6 +134,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub jukebox_song_id: Option<i32>,
     #[serde(default)]
+    pub jukebox_direct_song: Option<JukeboxSongSummary>,
+    #[serde(default)]
     pub map_id: Option<i32>,
     #[serde(default)]
     pub map_post_processing: Option<MapPostProcessingSummary>,
@@ -182,6 +184,21 @@ pub struct NbtSummaryEntry {
 pub struct LodestoneTargetSummary {
     pub dimension: String,
     pub pos: chunks::BlockPos,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct JukeboxSongSummary {
+    pub sound_event: SoundEventSummary,
+    pub description: String,
+    pub length_in_seconds_bits: u32,
+    pub comparator_output: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SoundEventSummary {
+    pub registry_id: Option<i32>,
+    pub sound_id: Option<String>,
+    pub fixed_range_bits: Option<u32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -567,7 +584,9 @@ fn decode_typed_data_component_patch_summary(
                 summary.armor_trim_pattern_id = trim.pattern_id;
             }
             64 => {
-                summary.jukebox_song_id = decode_jukebox_song_holder_id(decoder)?;
+                let song = decode_jukebox_song_holder(decoder)?;
+                summary.jukebox_song_id = song.registry_id;
+                summary.jukebox_direct_song = song.direct;
             }
             50 => {
                 summary.bundle_contents_items =
@@ -1608,19 +1627,28 @@ fn decode_jukebox_playable(decoder: &mut Decoder<'_>) -> Result<()> {
     decode_holder_with_direct(decoder, decode_direct_jukebox_song)
 }
 
-/// Decodes the `JukeboxPlayable.song()` holder, returning the registry
-/// reference id (`holder_id - 1`) so item component predicates can match the
-/// vanilla jukebox-song registry key, or `None` for an inline direct song.
-fn decode_jukebox_song_holder_id(decoder: &mut Decoder<'_>) -> Result<Option<i32>> {
+struct JukeboxSongHolderSummary {
+    registry_id: Option<i32>,
+    direct: Option<JukeboxSongSummary>,
+}
+
+/// Decodes the `JukeboxPlayable.song()` holder, preserving either the registry
+/// reference id (`holder_id - 1`) or the inline direct song payload.
+fn decode_jukebox_song_holder(decoder: &mut Decoder<'_>) -> Result<JukeboxSongHolderSummary> {
     let id = decoder.read_var_i32()?;
     if id < 0 {
         return Err(ProtocolError::NegativeLength(id));
     }
     if id == 0 {
-        decode_direct_jukebox_song(decoder)?;
-        Ok(None)
+        Ok(JukeboxSongHolderSummary {
+            registry_id: None,
+            direct: Some(decode_direct_jukebox_song_summary(decoder)?),
+        })
     } else {
-        Ok(Some(id - 1))
+        Ok(JukeboxSongHolderSummary {
+            registry_id: Some(id - 1),
+            direct: None,
+        })
     }
 }
 
@@ -1758,20 +1786,56 @@ fn decode_optional_player_model_type(
 }
 
 fn decode_direct_jukebox_song(decoder: &mut Decoder<'_>) -> Result<()> {
-    decode_sound_event_holder(decoder)?;
-    decode_component_summary_from_decoder(decoder)?;
-    decoder.read_f32()?;
-    decoder.read_var_i32()?;
+    let _ = decode_direct_jukebox_song_summary(decoder)?;
     Ok(())
 }
 
-fn decode_sound_event_holder(decoder: &mut Decoder<'_>) -> Result<()> {
-    decode_holder_with_direct(decoder, decode_direct_sound_event)
+fn decode_direct_jukebox_song_summary(decoder: &mut Decoder<'_>) -> Result<JukeboxSongSummary> {
+    let sound_event = decode_sound_event_holder_summary(decoder)?;
+    let description = decode_component_summary_from_decoder(decoder)?;
+    let length_in_seconds_bits = decoder.read_f32()?.to_bits();
+    let comparator_output = decoder.read_var_i32()?;
+    Ok(JukeboxSongSummary {
+        sound_event,
+        description,
+        length_in_seconds_bits,
+        comparator_output,
+    })
 }
 
-fn decode_direct_sound_event(decoder: &mut Decoder<'_>) -> Result<()> {
-    decode_identifier(decoder)?;
-    decode_optional_f32(decoder)
+fn decode_sound_event_holder(decoder: &mut Decoder<'_>) -> Result<()> {
+    let _ = decode_sound_event_holder_summary(decoder)?;
+    Ok(())
+}
+
+fn decode_sound_event_holder_summary(decoder: &mut Decoder<'_>) -> Result<SoundEventSummary> {
+    let id = decoder.read_var_i32()?;
+    if id < 0 {
+        return Err(ProtocolError::NegativeLength(id));
+    }
+    if id == 0 {
+        decode_direct_sound_event_summary(decoder)
+    } else {
+        Ok(SoundEventSummary {
+            registry_id: Some(id - 1),
+            sound_id: None,
+            fixed_range_bits: None,
+        })
+    }
+}
+
+fn decode_direct_sound_event_summary(decoder: &mut Decoder<'_>) -> Result<SoundEventSummary> {
+    let sound_id = read_resource_location(decoder)?;
+    let fixed_range_bits = if decoder.read_bool()? {
+        Some(decoder.read_f32()?.to_bits())
+    } else {
+        None
+    };
+    Ok(SoundEventSummary {
+        registry_id: None,
+        sound_id: Some(sound_id),
+        fixed_range_bits,
+    })
 }
 
 fn decode_banner_pattern_layers(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -2231,6 +2295,42 @@ mod tests {
                 added: 1,
                 added_type_ids: vec![64],
                 jukebox_song_id: Some(2),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_inline_jukebox_playable_song_payload() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(64);
+        payload.write_var_i32(0);
+        write_direct_sound_event(&mut payload, "minecraft:test.song", Some(16.0));
+        payload.write_bytes(&nbt_string_root("Test song"));
+        payload.write_f32(3.5);
+        payload.write_var_i32(7);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![64],
+                jukebox_direct_song: Some(JukeboxSongSummary {
+                    sound_event: SoundEventSummary {
+                        registry_id: None,
+                        sound_id: Some("minecraft:test.song".to_string()),
+                        fixed_range_bits: Some(16.0f32.to_bits()),
+                    },
+                    description: "Test song".to_string(),
+                    length_in_seconds_bits: 3.5f32.to_bits(),
+                    comparator_output: 7,
+                }),
                 ..DataComponentPatchSummary::default()
             }
         );
@@ -3354,6 +3454,16 @@ mod tests {
                 container_item_count: Some(1),
                 armor_trim_material_id: Some(1),
                 armor_trim_pattern_id: Some(2),
+                jukebox_direct_song: Some(JukeboxSongSummary {
+                    sound_event: SoundEventSummary {
+                        registry_id: Some(0),
+                        sound_id: None,
+                        fixed_range_bits: None,
+                    },
+                    description: "Song".to_string(),
+                    length_in_seconds_bits: 120.0f32.to_bits(),
+                    comparator_output: 15,
+                }),
                 block_state_properties: BTreeMap::from([
                     ("facing".to_string(), "north".to_string()),
                     ("lit".to_string(), "true".to_string()),

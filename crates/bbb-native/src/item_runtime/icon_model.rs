@@ -7,8 +7,8 @@ use bbb_pack::{
 use bbb_protocol::packets::{
     AttributeModifierSummary, DataComponentPatchSummary, FireworkExplosionShapeSummary,
     FireworkExplosionSummary, ItemEnchantmentSummary, ItemRaritySummary, ItemStackTemplateSummary,
-    MobEffectDetailsSummary, MobEffectInstanceSummary, NbtSummaryEntry, NbtSummaryValue,
-    WrittenBookContentSummary,
+    JukeboxSongSummary, MobEffectDetailsSummary, MobEffectInstanceSummary, NbtSummaryEntry,
+    NbtSummaryValue, SoundEventSummary, WrittenBookContentSummary,
 };
 use chrono::{Datelike, FixedOffset, Local, TimeZone, Utc};
 use serde_json::Value;
@@ -4038,7 +4038,7 @@ fn item_exact_component_matches(
         let Some(expected) = jukebox_playable_exact_value(expected) else {
             return false;
         };
-        return jukebox_playable_exact_match(expected, &item.component_patch);
+        return jukebox_playable_exact_match(&expected, &item.component_patch);
     }
 
     if component == "minecraft:trim" {
@@ -4521,13 +4521,88 @@ fn item_stack_matches_jukebox_playable_value(
     registry_key_holder_set_matches(Some(song), song_key, jukebox_song_tags)
 }
 
-fn jukebox_playable_exact_value(value: &Value) -> Option<&str> {
-    let value = value.as_str()?;
+enum ExactJukeboxPlayable<'a> {
+    RegistryKey(&'a str),
+    DirectSong(ExactJukeboxSong),
+}
+
+struct ExactJukeboxSong {
+    sound_event: ExactSoundEvent,
+    description: String,
+    length_in_seconds_bits: u32,
+    comparator_output: i32,
+}
+
+struct ExactSoundEvent {
+    sound_id: String,
+    fixed_range_bits: Option<u32>,
+}
+
+fn jukebox_playable_exact_value(value: &Value) -> Option<ExactJukeboxPlayable<'_>> {
+    match value {
+        Value::String(value) => Some(ExactJukeboxPlayable::RegistryKey(direct_registry_key_str(
+            value,
+        )?)),
+        Value::Object(value) => {
+            if !value.keys().all(|key| {
+                key == "sound_event"
+                    || key == "description"
+                    || key == "length_in_seconds"
+                    || key == "comparator_output"
+            }) {
+                return None;
+            }
+            let length_in_seconds = json_f32(value.get("length_in_seconds")?)?;
+            if !length_in_seconds.is_finite() || length_in_seconds <= 0.0 {
+                return None;
+            }
+            let comparator_output = json_i32(value.get("comparator_output")?)?;
+            if !(0..=15).contains(&comparator_output) {
+                return None;
+            }
+            Some(ExactJukeboxPlayable::DirectSong(ExactJukeboxSong {
+                sound_event: exact_sound_event_value(value.get("sound_event")?)?,
+                description: component_summary_text(value.get("description")?)?,
+                length_in_seconds_bits: length_in_seconds.to_bits(),
+                comparator_output,
+            }))
+        }
+        _ => None,
+    }
+}
+
+fn direct_registry_key_str(value: &str) -> Option<&str> {
     (!value.is_empty() && !value.starts_with('#')).then_some(value)
 }
 
+fn exact_sound_event_value(value: &Value) -> Option<ExactSoundEvent> {
+    let value = value.as_object()?;
+    if !value.keys().all(|key| key == "sound_id" || key == "range") {
+        return None;
+    }
+    let sound_id = direct_registry_key_str(value.get("sound_id")?.as_str()?)?.to_string();
+    let fixed_range_bits = match value.get("range") {
+        None => None,
+        Some(range) => {
+            let range = json_f32(range)?;
+            if !range.is_finite() {
+                return None;
+            }
+            Some(range.to_bits())
+        }
+    };
+    Some(ExactSoundEvent {
+        sound_id,
+        fixed_range_bits,
+    })
+}
+
+fn json_f32(value: &Value) -> Option<f32> {
+    Some(value.as_f64()? as f32)
+}
+
 fn jukebox_playable_exact_match(
-    expected: &str,
+    expected: &ExactJukeboxPlayable<'_>,
     component_patch: &DataComponentPatchSummary,
 ) -> bool {
     if component_patch
@@ -4539,13 +4614,37 @@ fn jukebox_playable_exact_match(
     {
         return false;
     }
-    let Some(song_id) = component_patch.jukebox_song_id else {
-        return false;
-    };
-    let Ok(song_index) = usize::try_from(song_id) else {
-        return false;
-    };
-    VANILLA_JUKEBOX_SONG_KEYS.get(song_index) == Some(&expected)
+    match expected {
+        ExactJukeboxPlayable::RegistryKey(expected) => {
+            let Some(song_id) = component_patch.jukebox_song_id else {
+                return false;
+            };
+            let Ok(song_index) = usize::try_from(song_id) else {
+                return false;
+            };
+            VANILLA_JUKEBOX_SONG_KEYS.get(song_index) == Some(expected)
+        }
+        ExactJukeboxPlayable::DirectSong(expected) => component_patch
+            .jukebox_direct_song
+            .as_ref()
+            .is_some_and(|actual| jukebox_direct_song_exact_match(expected, actual)),
+    }
+}
+
+fn jukebox_direct_song_exact_match(
+    expected: &ExactJukeboxSong,
+    actual: &JukeboxSongSummary,
+) -> bool {
+    sound_event_exact_match(&expected.sound_event, &actual.sound_event)
+        && actual.description == expected.description
+        && actual.length_in_seconds_bits == expected.length_in_seconds_bits
+        && actual.comparator_output == expected.comparator_output
+}
+
+fn sound_event_exact_match(expected: &ExactSoundEvent, actual: &SoundEventSummary) -> bool {
+    actual.registry_id.is_none()
+        && actual.sound_id.as_deref() == Some(expected.sound_id.as_str())
+        && actual.fixed_range_bits == expected.fixed_range_bits
 }
 
 fn potion_contents_component_predicate_is_supported(property: &ItemModelProperty) -> bool {

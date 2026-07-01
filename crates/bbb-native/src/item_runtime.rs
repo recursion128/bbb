@@ -22,9 +22,9 @@ use bbb_pack::{
 use bbb_protocol::packets::{
     AttributeModifierSummary, ConsumableSummary, DataComponentPatchSummary,
     FireworkExplosionShapeSummary, FireworkExplosionSummary, ItemRaritySummary, ItemStackSummary,
-    ItemStackTemplateSummary, LodestoneTargetSummary, MobEffectDetailsSummary,
+    ItemStackTemplateSummary, JukeboxSongSummary, LodestoneTargetSummary, MobEffectDetailsSummary,
     MobEffectInstanceSummary, NbtSummaryEntry, NbtSummaryValue, ResolvableProfileSummary,
-    ResourceTextureSummary, WrittenBookContentSummary,
+    ResourceTextureSummary, SoundEventSummary, WrittenBookContentSummary,
 };
 use bbb_renderer::{
     DynamicPlayerSkinImage, DynamicPlayerTextureImage, EntityCustomHeadSkull,
@@ -7504,7 +7504,16 @@ mod tests {
         );
         let exact_jukebox_playable = DataComponentPatchSummary {
             added_type_ids: vec![64],
-            jukebox_song_id: Some(1),
+            jukebox_direct_song: Some(JukeboxSongSummary {
+                sound_event: SoundEventSummary {
+                    registry_id: None,
+                    sound_id: Some("minecraft:test.song".to_string()),
+                    fixed_range_bits: Some(16.0f32.to_bits()),
+                },
+                description: "Test song".to_string(),
+                length_in_seconds_bits: 3.5f32.to_bits(),
+                comparator_output: 7,
+            }),
             ..DataComponentPatchSummary::default()
         };
         assert_eq!(
@@ -7515,7 +7524,10 @@ mod tests {
             selected(
                 89,
                 named_bundle_entry(DataComponentPatchSummary {
-                    jukebox_song_id: Some(0),
+                    jukebox_direct_song: Some(JukeboxSongSummary {
+                        comparator_output: 8,
+                        ..exact_jukebox_playable.jukebox_direct_song.clone().unwrap()
+                    }),
                     ..exact_jukebox_playable.clone()
                 })
             ),
@@ -12173,7 +12185,22 @@ mod tests {
                                 {
                                     "components": {
                                         "components": {
-                                            "minecraft:jukebox_playable": "minecraft:cat"
+                                            "minecraft:jukebox_playable": {
+                                                "sound_event": {
+                                                    "sound_id": "minecraft:test.song",
+                                                    "range": 16.0
+                                                },
+                                                "description": {
+                                                    "text": "Test",
+                                                    "extra": [
+                                                        {
+                                                            "text": " song"
+                                                        }
+                                                    ]
+                                                },
+                                                "length_in_seconds": 3.5,
+                                                "comparator_output": 7
+                                            }
                                         }
                                     }
                                 }

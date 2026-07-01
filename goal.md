@@ -855,7 +855,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `has_twinkle`, plus exact `minecraft:fireworks` components for
     `flight_duration` and ordered explosion lists, plus nested partial
     `minecraft:damage`, plus exact `minecraft:jukebox_playable` components for
-    direct vanilla jukebox-song keys, plus exact `minecraft:trim` components
+    direct vanilla jukebox-song keys and inline direct-song objects with direct
+    sound-event payloads, description text summaries, `length_in_seconds`, and
+    `comparator_output`, plus exact `minecraft:trim` components
     for direct trim-material registry keys and direct vanilla trim-pattern
     keys, plus exact `minecraft:enchantments` and
     `minecraft:stored_enchantments` components for direct enchantment
@@ -915,8 +917,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     attribute holder payloads, full style-sensitive written-book page
     `ComponentSerialization` equality, trim inline material or pattern payloads
     / datapack pattern registry-key remaps, datapack villager-type registry
-    remaps, and jukebox inline song payloads / datapack
-    jukebox-song registry remaps remain component-predicate follow-up.
+    remaps, and jukebox-song datapack registry remaps plus registry
+    sound-event holders inside inline jukebox songs remain component-predicate
+    follow-up.
   - [x] `minecraft:has_component` item-model condition now follows vanilla
     `HasComponent.get`: default prototype components such as
     `minecraft:max_stack_size`, `minecraft:item_model`, `minecraft:rarity`,

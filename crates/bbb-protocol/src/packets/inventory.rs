@@ -12,12 +12,13 @@ pub use data_components::{
     decode_profile_textures_from_properties, AttackRangeSummary, AttributeModifierSummary,
     ConsumableSummary, CustomModelDataFloats, DataComponentPatchSummary,
     FireworkExplosionShapeSummary, FireworkExplosionSummary, GameProfilePropertySummary,
-    ItemEnchantmentSummary, ItemRaritySummary, ItemStackTemplateSummary, LodestoneTargetSummary,
-    MapPostProcessingSummary, MobEffectDetailsSummary, MobEffectInstanceSummary, NbtSummaryEntry,
-    NbtSummaryValue, PlayerModelTypeSummary, PlayerSkinPatchSummary, ProfileSkinTextureSummary,
-    ProfileTextureSummary, ProfileTexturesSummary, ResolvableProfileKindSummary,
-    ResolvableProfileSummary, ResourceTextureSummary, SwingAnimationSummary,
-    SwingAnimationTypeSummary, UseEffectsSummary, WrittenBookContentSummary,
+    ItemEnchantmentSummary, ItemRaritySummary, ItemStackTemplateSummary, JukeboxSongSummary,
+    LodestoneTargetSummary, MapPostProcessingSummary, MobEffectDetailsSummary,
+    MobEffectInstanceSummary, NbtSummaryEntry, NbtSummaryValue, PlayerModelTypeSummary,
+    PlayerSkinPatchSummary, ProfileSkinTextureSummary, ProfileTextureSummary,
+    ProfileTexturesSummary, ResolvableProfileKindSummary, ResolvableProfileSummary,
+    ResourceTextureSummary, SoundEventSummary, SwingAnimationSummary, SwingAnimationTypeSummary,
+    UseEffectsSummary, WrittenBookContentSummary,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
