@@ -396,8 +396,8 @@ When an agent does any of the following, update this file in the same slice:
       - `SculkChargePopParticle.Provider` uses vanilla command velocity,
         `alpha=1`, base quad size, age sprite selection,
         `6 + random.nextInt(4)` lifetime, `0.96` friction, and no-physics
-        metadata plus full-bright block override; the translucent particle layer
-        remains deferred until provider-specific render-layer state is represented
+        metadata plus full-bright block override and the translucent particle
+        layer
     - Uploads a stitched official particle atlas when assets are available.
     - Draws active particles as camera-facing textured billboards.
   - Follow-up work in the plan:
@@ -5674,6 +5674,11 @@ When an agent does any of the following, update this file in the same slice:
       - end gateway spawn and ender dragon growl sounds
       - sculk charge sounds for event `3006`, including the fixed pop branch
         and the randomized charged branch
+      - sculk-shrieker event `3007` now emits the vanilla ten
+        `minecraft:shriek` particles at `SculkShriekerBlock.TOP_Y` with
+        `ShriekParticleOption(i * 5)` delays; the waterlogged-gated
+        `SCULK_SHRIEKER_SHRIEK` local sound branch remains audio/world-state
+        follow-up
       - lava extinguish and redstone torch burnout now share the dispatcher
         path with renderer smoke side effects for events `1501` and `1502`
       - cobweb place event `3018` consumes the vanilla poof-particle random
@@ -5703,10 +5708,19 @@ When an agent does any of the following, update this file in the same slice:
         no-physics metadata.
       - particle descriptors map `SculkChargeParticle.Provider` to command
         velocity, alpha `1.0`, `1.5` quad-size scaling, age sprites,
-        `8..=19` lifetime, friction `0.96`, and no-physics metadata. Roll
-        option and the translucent particle layer remain deferred until those
-        provider-specific states are represented; full-bright block override is
-        represented.
+        `8..=19` lifetime, friction `0.96`, no-physics metadata,
+        translucent particle layer, and full-bright block override. Roll option
+        rendering remains a provider-specific visual follow-up.
+      - particle descriptors map `ShriekParticle.Provider` to
+        `ShriekParticleOption.delay` carried in
+        `ParticleSpawnCommand.initial_delay_ticks`; delayed instances do not
+        tick or emit vertices while `delay > 0`, then use vanilla random sprite
+        selection, fixed `0.85` quad size, `30` lifetime, fixed `(0, 0.1, 0)`
+        velocity, translucent layer, full-block light override,
+        `0.85 * clamp((age + partial) / lifetime * 0.75, 0, 1)` size curve,
+        and linear alpha fade. Vanilla's two rotated quads from
+        `ShriekParticle.extract` remain a visual-geometry follow-up; the current
+        atlas path still emits one camera-facing quad after delay clears.
       - particle descriptors map `EndRodParticle.Provider` to command velocity,
         `0.75` quad-size scaling, age sprites, `60..=71` lifetime, friction
         `0.91`, gravity `0.0125`, and full-bright light coords. Fade color,

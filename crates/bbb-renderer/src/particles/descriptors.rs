@@ -43,6 +43,7 @@ pub(crate) enum ParticleAlphaCurve {
     #[default]
     Constant,
     SimpleAnimatedFade,
+    ShriekFade,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -134,6 +135,7 @@ pub(crate) enum ParticleVisualDescriptor {
     },
     HugeExplosion,
     FlyTowardsPosition,
+    Shriek,
     Totem,
     Portal,
     ReversePortal,
@@ -187,6 +189,7 @@ pub(crate) enum ParticleQuadSizeCurve {
     Flame,
     Portal,
     ReversePortal,
+    Shriek,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -576,6 +579,17 @@ impl ParticleDescriptor {
                 friction: 0.96,
                 gravity: 0.0,
                 has_physics: false,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:shriek" => Self {
+                provider: "ShriekParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::Fixed(30),
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::Shriek,
+                initial_velocity: ParticleInitialVelocityDescriptor::Fixed([0.0, 0.1, 0.0]),
+                friction: 0.98,
+                gravity: 0.0,
+                has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
             "minecraft:gust" => Self {
@@ -1147,7 +1161,8 @@ impl ParticleDescriptor {
             "LavaParticle.Provider"
             | "SoulParticle.EmissiveProvider"
             | "SculkChargeParticle.Provider"
-            | "SculkChargePopParticle.Provider" => ParticleLightEmissionDescriptor::FullBlock,
+            | "SculkChargePopParticle.Provider"
+            | "ShriekParticle.Provider" => ParticleLightEmissionDescriptor::FullBlock,
             // Vanilla uses `LightCoordsUtil.addSmoothBlockEmission(..., (age + partialTick) / lifetime)`.
             "FlameParticle.Provider"
             | "FlameParticle.SmallFlameProvider"
@@ -1170,6 +1185,7 @@ impl ParticleDescriptor {
     pub(crate) fn alpha_curve(self) -> ParticleAlphaCurve {
         match self.provider {
             "TotemParticle.Provider" => ParticleAlphaCurve::SimpleAnimatedFade,
+            "ShriekParticle.Provider" => ParticleAlphaCurve::ShriekFade,
             _ => ParticleAlphaCurve::Constant,
         }
     }
@@ -1308,6 +1324,9 @@ impl ParticleVisualDescriptor {
                     [brightness * 0.9, brightness * 0.9, brightness, 1.0],
                     ParticleQuadSizeCurve::Constant,
                 )
+            }
+            Self::Shriek => {
+                ParticleVisualState::new(0.85, WHITE_PARTICLE_COLOR, ParticleQuadSizeCurve::Shriek)
             }
             Self::Totem => {
                 let color = if random.next_index(4) == Some(0) {
@@ -2278,6 +2297,21 @@ mod tests {
         assert_eq!(
             ParticleDescriptor::for_particle("minecraft:sculk_charge_pop").initial_velocity,
             ParticleInitialVelocityDescriptor::Command
+        );
+        assert_descriptor(
+            "minecraft:shriek",
+            "ShriekParticle.Provider",
+            ParticleLifetimeDescriptor::Fixed(30),
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::Shriek,
+            0.98,
+            0.0,
+            true,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:shriek").initial_velocity,
+            ParticleInitialVelocityDescriptor::Fixed([0.0, 0.1, 0.0])
         );
         assert_descriptor(
             "minecraft:gust",
@@ -3503,6 +3537,7 @@ mod tests {
             "minecraft:sculk_soul",
             "minecraft:sculk_charge",
             "minecraft:sculk_charge_pop",
+            "minecraft:shriek",
         ] {
             assert_eq!(
                 ParticleDescriptor::for_particle(particle_id).light_emission(),

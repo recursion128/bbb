@@ -5,6 +5,7 @@ use bbb_pack::{
     AtlasLayout, AtlasPacker, AtlasSprite, PackRoots, ParticleDefinitionCatalog,
     ParticleSpriteCatalog, SpriteImage,
 };
+use bbb_protocol::codec::Decoder;
 use bbb_protocol::packets::{ClientParticleStatus, LevelEvent, LevelParticles, Vec3d};
 use bbb_renderer::{
     ParticleSpawnBatch, ParticleSpawnCommand, ParticleSpriteUv, ParticleUvRect, Renderer,
@@ -201,6 +202,10 @@ impl ParticleCommandResolver {
             .count();
         let override_limiter = particle_type.override_limiter || packet.override_limiter;
         let raw_options_len = packet.particle.raw_options.len();
+        let initial_delay_ticks = initial_delay_ticks_for_particle_options(
+            particle_type.id,
+            &packet.particle.raw_options,
+        );
         let command_count = if packet.count == 0 {
             1
         } else {
@@ -229,6 +234,7 @@ impl ParticleCommandResolver {
                     velocity,
                     override_limiter,
                     raw_options_len,
+                    initial_delay_ticks,
                 ));
             }
         } else {
@@ -257,6 +263,7 @@ impl ParticleCommandResolver {
                         velocity,
                         override_limiter,
                         raw_options_len,
+                        initial_delay_ticks,
                     ));
                 }
             }
@@ -461,6 +468,7 @@ impl ParticleCommandResolver {
                 EGG_CRACK_PARTICLE_MAX,
                 random,
             ),
+            SCULK_SHRIEK_PARTICLES_LEVEL_EVENT => self.sculk_shriek_particle_batch(event),
             TRIAL_SPAWNER_SPAWN_PARTICLES_LEVEL_EVENT
             | TRIAL_SPAWNER_SPAWN_MOB_LEVEL_EVENT
             | TRIAL_SPAWNER_SPAWN_ITEM_LEVEL_EVENT => {
@@ -550,6 +558,31 @@ impl ParticleCommandResolver {
             spawns.push((position, velocity));
         }
         self.simple_particle_batch(particle_type_id, spawns)
+    }
+
+    fn sculk_shriek_particle_batch(&self, event: &LevelEvent) -> ParticleSpawnBatch {
+        let template = match self.simple_particle_template(SHRIEK_PARTICLE_TYPE_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+        let position = Vec3d {
+            x: f64::from(event.pos.x) + 0.5,
+            y: f64::from(event.pos.y) + SCULK_SHRIEKER_TOP_Y,
+            z: f64::from(event.pos.z) + 0.5,
+        };
+
+        for index in 0..SCULK_SHRIEK_PARTICLE_COUNT {
+            let mut command =
+                self.command_from_template(&template, position, Vec3d::default(), false);
+            command.initial_delay_ticks = index * SCULK_SHRIEK_DELAY_STEP_TICKS;
+            batch.commands.push(command);
+        }
+
+        batch
     }
 
     fn trial_spawn_particle_batch(
@@ -1053,6 +1086,7 @@ impl ParticleCommandResolver {
             template.particle_type.override_limiter,
             always_show,
             0,
+            0,
         )
     }
 
@@ -1065,6 +1099,7 @@ impl ParticleCommandResolver {
         velocity: Vec3d,
         override_limiter: bool,
         raw_options_len: usize,
+        initial_delay_ticks: u32,
     ) -> ParticleSpawnCommand {
         self.command_for_type(
             particle_type,
@@ -1074,6 +1109,7 @@ impl ParticleCommandResolver {
             override_limiter,
             packet.always_show,
             raw_options_len,
+            initial_delay_ticks,
         )
     }
 
@@ -1086,6 +1122,7 @@ impl ParticleCommandResolver {
         override_limiter: bool,
         always_show: bool,
         raw_options_len: usize,
+        initial_delay_ticks: u32,
     ) -> ParticleSpawnCommand {
         ParticleSpawnCommand {
             particle_type_id: particle_type.id,
@@ -1096,7 +1133,19 @@ impl ParticleCommandResolver {
             override_limiter,
             always_show,
             raw_options_len,
+            initial_delay_ticks,
         }
+    }
+}
+
+fn initial_delay_ticks_for_particle_options(particle_type_id: i32, raw_options: &[u8]) -> u32 {
+    if particle_type_id != SHRIEK_PARTICLE_TYPE_ID {
+        return 0;
+    }
+    let mut decoder = Decoder::new(raw_options);
+    match decoder.read_var_i32() {
+        Ok(delay) if decoder.is_empty() => u32::try_from(delay).unwrap_or(0),
+        _ => 0,
     }
 }
 
@@ -1218,6 +1267,7 @@ const ELECTRIC_SPARK_LEVEL_EVENT: i32 = 3002;
 const WAX_ON_LEVEL_EVENT: i32 = 3003;
 const WAX_OFF_LEVEL_EVENT: i32 = 3004;
 const SCRAPE_LEVEL_EVENT: i32 = 3005;
+const SCULK_SHRIEK_PARTICLES_LEVEL_EVENT: i32 = 3007;
 const EGG_CRACK_LEVEL_EVENT: i32 = 3009;
 const TRIAL_SPAWNER_SPAWN_PARTICLES_LEVEL_EVENT: i32 = 3011;
 const TRIAL_SPAWNER_SPAWN_MOB_LEVEL_EVENT: i32 = 3012;
@@ -1245,6 +1295,7 @@ const ELECTRIC_SPARK_PARTICLE_TYPE_ID: i32 = 103;
 const WAX_ON_PARTICLE_TYPE_ID: i32 = 101;
 const WAX_OFF_PARTICLE_TYPE_ID: i32 = 102;
 const SCRAPE_PARTICLE_TYPE_ID: i32 = 104;
+const SHRIEK_PARTICLE_TYPE_ID: i32 = 105;
 const EGG_CRACK_PARTICLE_TYPE_ID: i32 = 106;
 const TRIAL_SPAWNER_DETECTED_PLAYER_PARTICLE_TYPE_ID: i32 = 108;
 const TRIAL_SPAWNER_DETECTED_PLAYER_OMINOUS_PARTICLE_TYPE_ID: i32 = 109;
@@ -1265,6 +1316,9 @@ const ELECTRIC_SPARK_AXIS_MIN: i32 = 10;
 const ELECTRIC_SPARK_AXIS_MAX: i32 = 19;
 const EGG_CRACK_PARTICLE_MAX: i32 = 6;
 const ENDER_EYE_BREAK_ITEM_PARTICLE_COUNT: i32 = 8;
+const SCULK_SHRIEKER_TOP_Y: f64 = 0.5;
+const SCULK_SHRIEK_PARTICLE_COUNT: u32 = 10;
+const SCULK_SHRIEK_DELAY_STEP_TICKS: u32 = 5;
 
 fn default_particle_seed() -> i64 {
     SystemTime::now()
@@ -1382,6 +1436,24 @@ mod tests {
         assert!(command.override_limiter);
         assert!(command.always_show);
         assert_eq!(command.raw_options_len, 2);
+        assert_eq!(command.initial_delay_ticks, 0);
+    }
+
+    #[test]
+    fn level_particles_decodes_shriek_delay_option_into_spawn_command() {
+        let mut resolver = test_resolver(0);
+        let mut packet = level_particles_packet(SHRIEK_PARTICLE_TYPE_ID, 0);
+        packet.particle.raw_options = vec![17];
+
+        let batch = resolver.resolve_level_particles(&packet);
+
+        assert_eq!(batch.len(), 1);
+        let command = &batch.commands[0];
+        assert_eq!(command.particle_type_id, SHRIEK_PARTICLE_TYPE_ID);
+        assert_eq!(command.particle_id, "minecraft:shriek");
+        assert_eq!(command.sprite_ids, vec!["minecraft:shriek_0".to_string()]);
+        assert_eq!(command.raw_options_len, 1);
+        assert_eq!(command.initial_delay_ticks, 17);
     }
 
     #[test]
@@ -1609,6 +1681,34 @@ mod tests {
             [10.586_612_920_266_246, 64.8125, -2.597_298_844_123_192_6],
             [0.0, 0.0, 0.0],
             false,
+        );
+
+        let mut shriek_random = LevelEventSoundRandomState::with_seed(0);
+        let shriek = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 3007,
+                ..level_event_packet(3007)
+            },
+            &mut shriek_random,
+        );
+        assert_eq!(shriek.len(), 10);
+        assert_particle_command(
+            &shriek.commands[0],
+            SHRIEK_PARTICLE_TYPE_ID,
+            "minecraft:shriek",
+            [10.5, 64.5, -2.5],
+            [0.0, 0.0, 0.0],
+            false,
+        );
+        assert_eq!(shriek.commands[0].initial_delay_ticks, 0);
+        assert_particle_command_with_delay(
+            &shriek.commands[9],
+            SHRIEK_PARTICLE_TYPE_ID,
+            "minecraft:shriek",
+            [10.5, 64.5, -2.5],
+            [0.0, 0.0, 0.0],
+            false,
+            45,
         );
 
         let mut blaze_random = LevelEventSoundRandomState::with_seed(0);
@@ -2297,6 +2397,7 @@ mod tests {
                 "wax_on_0",
                 "wax_off_0",
                 "scrape_0",
+                "shriek_0",
                 "egg_crack_0",
                 "trial_spawner_detection_0",
                 "trial_spawner_detection_ominous_0",
@@ -2464,6 +2565,14 @@ mod tests {
             }"#,
         );
         write_json(
+            &particle_dir(&root).join("shriek.json"),
+            r#"{
+              "textures": [
+                "minecraft:shriek_0"
+              ]
+            }"#,
+        );
+        write_json(
             &particle_dir(&root).join("egg_crack.json"),
             r#"{
               "textures": [
@@ -2557,7 +2666,7 @@ mod tests {
         velocity: [f64; 3],
         override_limiter: bool,
     ) {
-        assert_particle_command_with_visibility(
+        assert_particle_command_with_visibility_and_delay(
             command,
             particle_type_id,
             particle_id,
@@ -2565,6 +2674,28 @@ mod tests {
             velocity,
             override_limiter,
             false,
+            0,
+        );
+    }
+
+    fn assert_particle_command_with_delay(
+        command: &ParticleSpawnCommand,
+        particle_type_id: i32,
+        particle_id: &str,
+        position: [f64; 3],
+        velocity: [f64; 3],
+        override_limiter: bool,
+        initial_delay_ticks: u32,
+    ) {
+        assert_particle_command_with_visibility_and_delay(
+            command,
+            particle_type_id,
+            particle_id,
+            position,
+            velocity,
+            override_limiter,
+            false,
+            initial_delay_ticks,
         );
     }
 
@@ -2577,6 +2708,28 @@ mod tests {
         override_limiter: bool,
         always_show: bool,
     ) {
+        assert_particle_command_with_visibility_and_delay(
+            command,
+            particle_type_id,
+            particle_id,
+            position,
+            velocity,
+            override_limiter,
+            always_show,
+            0,
+        );
+    }
+
+    fn assert_particle_command_with_visibility_and_delay(
+        command: &ParticleSpawnCommand,
+        particle_type_id: i32,
+        particle_id: &str,
+        position: [f64; 3],
+        velocity: [f64; 3],
+        override_limiter: bool,
+        always_show: bool,
+        initial_delay_ticks: u32,
+    ) {
         assert_eq!(command.particle_type_id, particle_type_id);
         assert_eq!(command.particle_id, particle_id);
         for (actual, expected) in command.position.iter().zip(position) {
@@ -2588,6 +2741,7 @@ mod tests {
         assert_eq!(command.override_limiter, override_limiter);
         assert_eq!(command.always_show, always_show);
         assert_eq!(command.raw_options_len, 0);
+        assert_eq!(command.initial_delay_ticks, initial_delay_ticks);
     }
 
     fn particle_dir(root: &Path) -> PathBuf {

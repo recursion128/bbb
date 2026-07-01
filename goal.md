@@ -1216,6 +1216,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `60 + random.nextInt(12)` lifetime, translucent layer, `0.6` friction,
     `1.25` gravity, full-bright light coords, both vanilla random color
     branches, and `SimpleAnimatedParticle` half-lifetime alpha fade.
+  - [x] `ShriekParticle.Provider`：native submission now preserves
+    `ShriekParticleOption.delay` as explicit `initial_delay_ticks`; renderer
+    descriptor mirrors vanilla random sprite selection, fixed `0.85` quad
+    size, `30` lifetime, fixed `(0, 0.1, 0)` velocity, translucent layer,
+    full-block light override, `0.85 * clamp((age + partial) / lifetime *
+    0.75, 0, 1)` size curve, and linear alpha fade after delay clears. The
+    delayed particle does not tick or submit vertices while `delay > 0`.
+    Vanilla's two rotated shriek quads remain a later visual geometry slice.
   - 初速度。
   - lifetime。
   - size curve。
@@ -1274,6 +1282,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `ParticleUtils.spawnParticleInBlock` for the air/default spread-height
     branch, using event `data` as count, gaussian `0.02` velocity on all axes,
     and full-block random positions.
+  - [x] sculk-shrieker particles：event `3007`
+    (`PARTICLES_SCULK_SHRIEK`) now emits the vanilla ten
+    `minecraft:shriek` submissions at block center / `SculkShriekerBlock.TOP_Y`
+    with `ShriekParticleOption(i * 5)` delays. The waterlogged-gated
+    `SCULK_SHRIEKER_SHRIEK` sound branch remains audio/world-state follow-up.
   - block-state shape-sensitive `spawnParticleInBlock` heights plus
     `1505` (`PARTICLES_AND_SOUND_PLANT_GROWTH`) BonemealableBlock / water
     branches plus block/item option events remain follow-up work.

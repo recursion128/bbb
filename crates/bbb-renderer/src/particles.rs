@@ -37,6 +37,8 @@ pub struct ParticleSpawnCommand {
     pub override_limiter: bool,
     pub always_show: bool,
     pub raw_options_len: usize,
+    #[serde(default)]
+    pub initial_delay_ticks: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -125,6 +127,8 @@ pub(crate) struct ParticleInstance {
     pub(crate) override_limiter: bool,
     pub(crate) always_show: bool,
     pub(crate) raw_options_len: usize,
+    #[serde(default)]
+    pub(crate) delay_ticks: u32,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -385,6 +389,11 @@ impl ParticleRuntimeState {
         let mut expired_instances = 0;
         let mut active_instances = VecDeque::with_capacity(self.active_instances.len());
         while let Some(mut instance) = self.active_instances.pop_front() {
+            if instance.delay_ticks > 0 {
+                instance.delay_ticks = instance.delay_ticks.saturating_sub(1);
+                active_instances.push_back(instance);
+                continue;
+            }
             if instance.age_ticks >= instance.lifetime_ticks {
                 self.decrement_particle_limit(instance.particle_limit);
                 expired_instances += 1;
@@ -543,6 +552,7 @@ impl ParticleInstance {
             override_limiter: command.override_limiter,
             always_show: command.always_show,
             raw_options_len: command.raw_options_len,
+            delay_ticks: command.initial_delay_ticks,
         }
     }
 
@@ -567,6 +577,9 @@ impl ParticleInstance {
             }
             ParticleQuadSizeCurve::ReversePortal => {
                 self.base_quad_size * (1.0 - progress / 1.5).max(0.0)
+            }
+            ParticleQuadSizeCurve::Shriek => {
+                self.base_quad_size * (progress * 0.75).clamp(0.0, 1.0)
             }
         }
     }
@@ -661,6 +674,10 @@ impl ParticleInstance {
                     self.color[3] =
                         1.0 - (self.age_ticks.saturating_sub(half_lifetime) as f32 / lifetime);
                 }
+            }
+            ParticleAlphaCurve::ShriekFade => {
+                let lifetime = self.lifetime_ticks.max(1) as f32;
+                self.color[3] = 1.0 - (self.age_ticks as f32 / lifetime).clamp(0.0, 1.0);
             }
         }
     }
@@ -779,6 +796,7 @@ fn particle_billboard_vertices<'a>(
     let mut instances: Vec<_> = instances
         .into_iter()
         .filter(|instance| instance.render_group != ParticleRenderGroup::NoRender)
+        .filter(|instance| instance.delay_ticks == 0)
         .filter(|instance| match pipeline_kind {
             Some(kind) => instance.render_layer.pipeline_kind() == kind,
             None => true,
@@ -881,6 +899,7 @@ fn particle_render_layer_for_particle(particle_id: &str) -> ParticleRenderLayer 
         | "minecraft:sculk_soul"
         | "minecraft:sculk_charge"
         | "minecraft:sculk_charge_pop"
+        | "minecraft:shriek"
         | "minecraft:infested"
         | "minecraft:raid_omen"
         | "minecraft:trial_omen"
@@ -1076,6 +1095,43 @@ mod tests {
         assert_eq!(summary.intaken_instances, 0);
         assert_eq!(summary.active_instances, 1);
         assert_eq!(particles.active_instances()[0].age_ticks, 3);
+    }
+
+    #[test]
+    fn particle_runtime_delays_shriek_tick_until_vanilla_delay_clears() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut command = spawn_command("minecraft:shriek", 1.0);
+        command.initial_delay_ticks = 2;
+        particles.submit_batch(ParticleSpawnBatch {
+            commands: vec![command],
+            ..ParticleSpawnBatch::default()
+        });
+        particles.advance(0);
+
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.delay_ticks, 2);
+        assert_eq!(instance.age_ticks, 0);
+        assert_eq!(instance.position, [1.0, 0.0, 0.0]);
+        assert_eq!(instance.velocity, [0.0, 0.1, 0.0]);
+
+        particles.advance(1);
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.delay_ticks, 1);
+        assert_eq!(instance.age_ticks, 0);
+        assert_eq!(instance.position, [1.0, 0.0, 0.0]);
+
+        particles.advance(1);
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.delay_ticks, 0);
+        assert_eq!(instance.age_ticks, 0);
+        assert_eq!(instance.position, [1.0, 0.0, 0.0]);
+
+        particles.advance(1);
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 1);
+        assert_close3(instance.position, [1.0, 0.1, 0.0]);
+        assert_close3(instance.velocity, [0.0, 0.098, 0.0]);
+        assert_close_f32(instance.color[3], 1.0 - 1.0 / 30.0);
     }
 
     #[test]
@@ -2288,6 +2344,28 @@ mod tests {
         assert_eq!(sculk_charge_pop.friction, 0.96);
         assert!(!sculk_charge_pop.has_physics);
 
+        let mut shriek_random = ParticleRandom::new(76);
+        let mut shriek_command = spawn_command("minecraft:shriek", 1.0);
+        shriek_command.velocity = [1.0, 2.0, 3.0];
+        shriek_command.initial_delay_ticks = 15;
+        let shriek = ParticleInstance::from_spawn_command(shriek_command, &mut shriek_random);
+        assert_eq!(shriek.provider, "ShriekParticle.Provider");
+        assert_eq!(shriek.sprite_selection, ParticleSpriteSelection::Random);
+        assert_close_f32(shriek.base_quad_size, 0.85);
+        assert_eq!(shriek.color, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(shriek.quad_size_curve, ParticleQuadSizeCurve::Shriek);
+        assert_eq!(shriek.alpha_curve, ParticleAlphaCurve::ShriekFade);
+        assert_eq!(
+            shriek.light_emission,
+            ParticleLightEmissionDescriptor::FullBlock
+        );
+        assert_eq!(shriek.lifetime_ticks, 30);
+        assert_eq!(shriek.velocity, [0.0, 0.1, 0.0]);
+        assert_eq!(shriek.friction, 0.98);
+        assert!(shriek.has_physics);
+        assert_eq!(shriek.render_layer, ParticleRenderLayer::Translucent);
+        assert_eq!(shriek.delay_ticks, 15);
+
         let mut gust_random = ParticleRandom::new(71);
         let mut gust_command = spawn_command("minecraft:gust", 1.0);
         gust_command.velocity = [1.0, 2.0, 3.0];
@@ -2506,6 +2584,14 @@ mod tests {
         assert_close_f32(reverse_portal.quad_size_at_partial_tick(0.0), 0.06);
         reverse_portal.age_ticks = 60;
         assert_close_f32(reverse_portal.quad_size_at_partial_tick(0.0), 0.03);
+
+        let mut shriek = test_instance_with_lifetime("minecraft:shriek", 30);
+        shriek.base_quad_size = 0.85;
+        shriek.quad_size_curve = ParticleQuadSizeCurve::Shriek;
+        assert_close_f32(shriek.quad_size_at_partial_tick(0.0), 0.0);
+        assert_close_f32(shriek.quad_size_at_partial_tick(0.5), 0.010_625);
+        shriek.age_ticks = 30;
+        assert_close_f32(shriek.quad_size_at_partial_tick(0.0), 0.637_5);
     }
 
     #[test]
@@ -2645,7 +2731,7 @@ mod tests {
     #[test]
     fn particle_runtime_applies_vanilla_particle_light_emission_overrides() {
         let sampled_light = [2.0 / 15.0, 7.0 / 15.0];
-        let mut particles = ParticleRuntimeState::with_capacities(12, 12);
+        let mut particles = ParticleRuntimeState::with_capacities(13, 13);
         let cloud = test_instance_with_lifetime("minecraft:cloud", 20);
         let mut flame = test_instance_with_lifetime("minecraft:flame", 20);
         flame.age_ticks = 4;
@@ -2663,6 +2749,7 @@ mod tests {
         portal.age_ticks = 20;
         let mut reverse_portal = test_instance_with_lifetime("minecraft:reverse_portal", 60);
         reverse_portal.age_ticks = 30;
+        let shriek = test_instance_with_lifetime("minecraft:shriek", 30);
 
         particles.active_instances.push_back(cloud);
         particles.active_instances.push_back(flame);
@@ -2676,6 +2763,7 @@ mod tests {
         particles.active_instances.push_back(enchant);
         particles.active_instances.push_back(portal);
         particles.active_instances.push_back(reverse_portal);
+        particles.active_instances.push_back(shriek);
 
         particles.refresh_lights(|_| sampled_light);
 
@@ -2720,6 +2808,10 @@ mod tests {
             sampled_light[0] + 0.5_f32.powi(4),
         );
         assert_close_f32(particles.active_instances()[11].light[1], sampled_light[1]);
+        assert_eq!(
+            particles.active_instances()[12].light,
+            [1.0, sampled_light[1]]
+        );
     }
 
     #[test]
@@ -2781,6 +2873,32 @@ mod tests {
         assert!(vertices.is_empty());
     }
 
+    #[test]
+    fn particle_billboard_vertices_skip_delayed_shriek_instances() {
+        let mut instance = test_instance_with_lifetime("minecraft:shriek", 30);
+        instance.current_sprite_id = Some("minecraft:generic_0".to_string());
+        instance.delay_ticks = 1;
+        let sprite_uvs = BTreeMap::from([(
+            "minecraft:generic_0".to_string(),
+            ParticleUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+        )]);
+
+        let vertices = particle_billboard_vertices(
+            [&instance],
+            &sprite_uvs,
+            ParticleBillboardAxes {
+                right: Vec3::X,
+                up: Vec3::Y,
+            },
+            Some(ParticlePipelineKind::Translucent),
+        );
+
+        assert!(vertices.is_empty());
+    }
+
     fn test_instance_with_lifetime(particle_id: &str, lifetime_ticks: u32) -> ParticleInstance {
         let descriptor = ParticleDescriptor::for_particle(particle_id);
         ParticleInstance {
@@ -2815,6 +2933,7 @@ mod tests {
             override_limiter: false,
             always_show: false,
             raw_options_len: 0,
+            delay_ticks: 0,
         }
     }
 
@@ -2828,6 +2947,7 @@ mod tests {
             override_limiter: false,
             always_show: false,
             raw_options_len: 0,
+            initial_delay_ticks: 0,
         }
     }
 
