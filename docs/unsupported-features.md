@@ -415,7 +415,14 @@ When an agent does any of the following, update this file in the same slice:
         `entity_effect` uses `SpellParticle.MobEffectProvider` ARGB color /
         alpha. `flash` now maps to `FireworkParticles.FlashProvider` with
         decoded ARGB color, fixed lifetime `4`, translucent layer, and the
-        vanilla overlay size / render-alpha formulas. `trail` now maps to
+        vanilla overlay size / render-alpha formulas. `firework` now maps to
+        `FireworkParticles.SparkProvider` with age sprites, vanilla
+        `SimpleAnimatedParticle` friction `0.91`, gravity `0.1`, full-bright
+        light, translucent layer, command velocity, `0.75` quad-size scale,
+        fixed initial alpha `0.99`, `48 + random.nextInt(12)` lifetime, and
+        the half-lifetime alpha fade formula; firework `Starter` trail/twinkle
+        child spawning and audio remain part of the broader firework rocket /
+        level-event presentation follow-up. `trail` now maps to
         `TrailParticle.Provider` with decoded target / RGB color / duration,
         vanilla random color scaling, target interpolation, full-bright light,
         and opaque layer. `vibration` now maps block `PositionSource` options
@@ -5852,6 +5859,14 @@ When an agent does any of the following, update this file in the same slice:
         formulas while overriding gravity to `0.5`; `ExplodeParticle.Provider`
         / `minecraft:poof` uses vanilla `command + +/-0.05` velocity and
         `0.9` friction.
+      - particle descriptors map `FireworkParticles.SparkProvider` for
+        `minecraft:firework` to age sprites, vanilla `SimpleAnimatedParticle`
+        friction `0.91`, gravity `0.1`, full-bright light, translucent
+        particle layer, command velocity, `0.75` quad-size scale, fixed
+        initial alpha `0.99`, `48 + random.nextInt(12)` lifetime, and the
+        half-lifetime alpha fade formula. Firework `Starter` trail/twinkle
+        child spawning and audio remain deferred to the broader firework
+        rocket / level-event presentation slice.
       - particle descriptors map `BubblePopParticle.Provider` to fixed lifetime
         `4`, age sprites, command velocity, default `SingleQuadParticle` white
         tint / quad-size sampling, gravity `0.008`, and its custom tick path

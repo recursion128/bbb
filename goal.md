@@ -1303,6 +1303,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `ColorParticleOption` ARGB for `minecraft:flash`; renderer maps the
     provider to fixed lifetime `4`, translucent layer, random sprite selection,
     option tint, and vanilla overlay `getQuadSize` / extract alpha formulas.
+  - [x] `FireworkParticles.SparkProvider`：renderer descriptor maps
+    `minecraft:firework` to age sprites, vanilla `SimpleAnimatedParticle`
+    friction `0.91`, gravity `0.1`, full-bright light, translucent layer,
+    command velocity, `0.75` quad-size scale, fixed initial alpha `0.99`,
+    `48 + random.nextInt(12)` lifetime, and the half-lifetime alpha fade
+    formula. Firework `Starter` trail/twinkle child spawning and audio remain
+    deferred to the broader firework rocket / level-event presentation slice.
   - [x] `TrailParticle.Provider`：native command resolution decodes
     `TrailParticleOption` target / RGB color / duration for `minecraft:trail`;
     renderer maps the provider to random sprite selection, option duration,

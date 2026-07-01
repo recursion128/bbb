@@ -1086,6 +1086,9 @@ impl ParticleInstance {
             ParticleAlphaCurve::SimpleAnimatedFade => {
                 self.color[3] = simple_animated_alpha(self.age_ticks, self.lifetime_ticks);
             }
+            ParticleAlphaCurve::FireworkSparkFade => {
+                self.color[3] = firework_spark_alpha(self.age_ticks, self.lifetime_ticks);
+            }
             ParticleAlphaCurve::ShriekFade => {
                 let lifetime = self.lifetime_ticks.max(1) as f32;
                 self.color[3] = 1.0 - (self.age_ticks as f32 / lifetime).clamp(0.0, 1.0);
@@ -1591,6 +1594,7 @@ fn particle_render_color(instance: &ParticleInstance) -> [f32; 4] {
     match instance.alpha_curve {
         ParticleAlphaCurve::Constant => {}
         ParticleAlphaCurve::SimpleAnimatedFade => {}
+        ParticleAlphaCurve::FireworkSparkFade => {}
         ParticleAlphaCurve::ShriekFade => {
             let lifetime = instance.lifetime_ticks.max(1) as f32;
             color[3] = 1.0
@@ -1621,6 +1625,16 @@ fn simple_animated_alpha(age_ticks: u32, lifetime_ticks: u32) -> f32 {
     let half_lifetime = lifetime_ticks / 2;
     if age_ticks <= half_lifetime {
         1.0
+    } else {
+        1.0 - (age_ticks.saturating_sub(half_lifetime) as f32 / lifetime).clamp(0.0, 1.0)
+    }
+}
+
+fn firework_spark_alpha(age_ticks: u32, lifetime_ticks: u32) -> f32 {
+    let lifetime = lifetime_ticks.max(1) as f32;
+    let half_lifetime = lifetime_ticks / 2;
+    if age_ticks <= half_lifetime {
+        0.99
     } else {
         1.0 - (age_ticks.saturating_sub(half_lifetime) as f32 / lifetime).clamp(0.0, 1.0)
     }
@@ -1750,6 +1764,7 @@ fn particle_render_layer_for_particle(particle_id: &str) -> ParticleRenderLayer 
         | "minecraft:instant_effect"
         | "minecraft:entity_effect"
         | "minecraft:flash"
+        | "minecraft:firework"
         | "minecraft:firefly"
         | "minecraft:elder_guardian"
         | "minecraft:infested"
@@ -2849,6 +2864,62 @@ mod tests {
                 ("minecraft:white_smoke", ParticleSpriteSelection::Age),
             ]
         );
+    }
+
+    #[test]
+    fn firework_spark_provider_uses_vanilla_simple_animated_state() {
+        let mut random = ParticleRandom::new(71);
+        let mut command = spawn_command("minecraft:firework", 1.0);
+        command.sprite_ids = vec![
+            "minecraft:firework_0".to_string(),
+            "minecraft:firework_1".to_string(),
+            "minecraft:firework_2".to_string(),
+        ];
+        command.velocity = [0.1, 0.2, 0.3];
+
+        let firework = ParticleInstance::from_spawn_command(command, &mut random);
+
+        assert_eq!(firework.provider, "FireworkParticles.SparkProvider");
+        assert_eq!(firework.sprite_selection, ParticleSpriteSelection::Age);
+        assert_eq!(
+            firework.current_sprite_id.as_deref(),
+            Some("minecraft:firework_0")
+        );
+        assert_range_f32(firework.base_quad_size, 0.075, 0.15);
+        assert!((48..=59).contains(&firework.lifetime_ticks));
+        assert_eq!(firework.color, [1.0, 1.0, 1.0, 0.99]);
+        assert_eq!(firework.velocity, [0.1, 0.2, 0.3]);
+        assert_eq!(firework.friction, 0.91);
+        assert_eq!(firework.gravity, 0.1);
+        assert!(firework.has_physics);
+        assert_eq!(firework.render_layer, ParticleRenderLayer::Translucent);
+        assert_eq!(
+            firework.light_emission,
+            ParticleLightEmissionDescriptor::FullBright
+        );
+    }
+
+    #[test]
+    fn particle_runtime_firework_spark_alpha_preserves_initial_then_fades() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:firework", 48);
+        instance.color[3] = 0.99;
+        instance.age_ticks = 23;
+        particles.active_instances.push_back(instance);
+
+        particles.advance(1);
+
+        let instance = &mut particles.active_instances[0];
+        assert_eq!(instance.age_ticks, 24);
+        assert_close_f32(instance.color[3], 0.99);
+        instance.age_ticks = 24;
+        instance.color[3] = 0.99;
+
+        particles.advance(1);
+
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 25);
+        assert_close_f32(instance.color[3], 1.0 - 1.0 / 48.0);
     }
 
     #[test]

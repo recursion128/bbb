@@ -72,6 +72,7 @@ pub(crate) enum ParticleAlphaCurve {
     #[default]
     Constant,
     SimpleAnimatedFade,
+    FireworkSparkFade,
     ShriekFade,
     VaultConnectionFade,
     FireflyFade,
@@ -1127,6 +1128,21 @@ impl ParticleDescriptor {
                 has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
+            "minecraft:firework" => Self {
+                provider: "FireworkParticles.SparkProvider",
+                lifetime: ParticleLifetimeDescriptor::RandomInclusive { min: 48, max: 59 },
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 0.75,
+                    color: ParticleColorDescriptor::FixedRgba([1.0, 1.0, 1.0, 0.99]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
+                friction: 0.91,
+                gravity: 0.1,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
             "minecraft:trail" => Self {
                 provider: "TrailParticle.Provider",
                 lifetime: ParticleLifetimeDescriptor::CommandOption { fallback: 1 },
@@ -1634,6 +1650,7 @@ impl ParticleDescriptor {
             | "SquidInkParticle.Provider"
             | "SquidInkParticle.GlowInkProvider"
             | "EndRodParticle.Provider"
+            | "FireworkParticles.SparkProvider"
             | "HugeExplosionParticle.Provider"
             | "SonicBoomParticle.Provider"
             | "GustParticle.Provider"
@@ -1684,6 +1701,7 @@ impl ParticleDescriptor {
             | "SquidInkParticle.Provider"
             | "SquidInkParticle.GlowInkProvider"
             | "EndRodParticle.Provider" => ParticleAlphaCurve::SimpleAnimatedFade,
+            "FireworkParticles.SparkProvider" => ParticleAlphaCurve::FireworkSparkFade,
             "ShriekParticle.Provider" => ParticleAlphaCurve::ShriekFade,
             "FlyTowardsPositionParticle.VaultConnectionProvider" => {
                 ParticleAlphaCurve::VaultConnectionFade
@@ -2573,6 +2591,35 @@ mod tests {
         assert_eq!(
             ParticleDescriptor::for_particle("minecraft:flash").initial_velocity,
             ParticleInitialVelocityDescriptor::Zero
+        );
+
+        assert_descriptor(
+            "minecraft:firework",
+            "FireworkParticles.SparkProvider",
+            ParticleLifetimeDescriptor::RandomInclusive { min: 48, max: 59 },
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::SingleQuadScaled {
+                scale: 0.75,
+                color: ParticleColorDescriptor::FixedRgba([1.0, 1.0, 1.0, 0.99]),
+                quad_size_curve: ParticleQuadSizeCurve::Constant,
+            },
+            0.91,
+            0.1,
+            true,
+            false,
+        );
+        let firework = ParticleDescriptor::for_particle("minecraft:firework");
+        assert_eq!(
+            firework.initial_velocity,
+            ParticleInitialVelocityDescriptor::Command
+        );
+        assert_eq!(
+            firework.alpha_curve(),
+            ParticleAlphaCurve::FireworkSparkFade
+        );
+        assert_eq!(
+            firework.light_emission(),
+            ParticleLightEmissionDescriptor::FullBright
         );
 
         assert_descriptor(
