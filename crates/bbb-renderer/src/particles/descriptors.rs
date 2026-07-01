@@ -28,6 +28,7 @@ pub(crate) enum ParticleTickMotionDescriptor {
     FlyTowardsPosition,
     TrailTarget,
     VibrationSignal,
+    CampfireSmoke,
     Portal,
     ReversePortal,
 }
@@ -243,6 +244,7 @@ pub(crate) enum ParticleInitialVelocityDescriptor {
         scale: f64,
         y_offset: f64,
     },
+    CampfireSmoke,
     Spell,
     GlowSquid,
     Lava,
@@ -985,6 +987,35 @@ impl ParticleDescriptor {
                 has_physics: false,
                 speed_up_when_y_motion_is_blocked: false,
             },
+            "minecraft:campfire_cosy_smoke" | "minecraft:campfire_signal_smoke" => Self {
+                provider: if particle_id == "minecraft:campfire_signal_smoke" {
+                    "CampfireSmokeParticle.SignalProvider"
+                } else {
+                    "CampfireSmokeParticle.CosyProvider"
+                },
+                lifetime: if particle_id == "minecraft:campfire_signal_smoke" {
+                    ParticleLifetimeDescriptor::RandomInclusive { min: 280, max: 329 }
+                } else {
+                    ParticleLifetimeDescriptor::RandomInclusive { min: 80, max: 129 }
+                },
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 3.0,
+                    color: ParticleColorDescriptor::FixedRgba(if particle_id
+                        == "minecraft:campfire_signal_smoke"
+                    {
+                        [1.0, 1.0, 1.0, 0.95]
+                    } else {
+                        [1.0, 1.0, 1.0, 0.9]
+                    }),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::CampfireSmoke,
+                friction: 0.98,
+                gravity: 3.0E-6,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
             "minecraft:large_smoke" => Self {
                 provider: "LargeSmokeParticle.Provider",
                 lifetime: ParticleLifetimeDescriptor::BaseAshSmoke {
@@ -1263,6 +1294,9 @@ impl ParticleDescriptor {
             }
             "TrailParticle.Provider" => ParticleTickMotionDescriptor::TrailTarget,
             "VibrationSignalParticle.Provider" => ParticleTickMotionDescriptor::VibrationSignal,
+            "CampfireSmokeParticle.CosyProvider" | "CampfireSmokeParticle.SignalProvider" => {
+                ParticleTickMotionDescriptor::CampfireSmoke
+            }
             "PortalParticle.Provider" => ParticleTickMotionDescriptor::Portal,
             "ReversePortalParticle.ReversePortalProvider" => {
                 ParticleTickMotionDescriptor::ReversePortal
@@ -1709,6 +1743,11 @@ impl ParticleInitialVelocityDescriptor {
                     z / length * speed * 0.4 * scale,
                 ]
             }
+            Self::CampfireSmoke => [
+                command_velocity[0],
+                command_velocity[1] + f64::from(random.next_f32()) / 500.0,
+                command_velocity[2],
+            ],
             Self::Spell | Self::GlowSquid => {
                 sample_random_horizontal_y_velocity(command_velocity, random)
             }
@@ -1894,7 +1933,7 @@ impl ParticleRandom {
         self.next_bits(24) as f32 / (1_u32 << 24) as f32
     }
 
-    fn next_bool(&mut self) -> bool {
+    pub(crate) fn next_bool(&mut self) -> bool {
         self.next_bits(1) != 0
     }
 
@@ -3044,6 +3083,47 @@ mod tests {
             false,
             false,
         );
+        for (particle_id, provider, lifetime, alpha) in [
+            (
+                "minecraft:campfire_cosy_smoke",
+                "CampfireSmokeParticle.CosyProvider",
+                ParticleLifetimeDescriptor::RandomInclusive { min: 80, max: 129 },
+                0.9,
+            ),
+            (
+                "minecraft:campfire_signal_smoke",
+                "CampfireSmokeParticle.SignalProvider",
+                ParticleLifetimeDescriptor::RandomInclusive { min: 280, max: 329 },
+                0.95,
+            ),
+        ] {
+            assert_descriptor(
+                particle_id,
+                provider,
+                lifetime,
+                ParticleSpriteSelection::Random,
+                ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 3.0,
+                    color: ParticleColorDescriptor::FixedRgba([1.0, 1.0, 1.0, alpha]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                0.98,
+                3.0E-6,
+                true,
+                false,
+            );
+            let descriptor = ParticleDescriptor::for_particle(particle_id);
+            assert_eq!(
+                descriptor.initial_velocity,
+                ParticleInitialVelocityDescriptor::CampfireSmoke,
+                "{particle_id}"
+            );
+            assert_eq!(
+                descriptor.tick_motion(),
+                ParticleTickMotionDescriptor::CampfireSmoke,
+                "{particle_id}"
+            );
+        }
         assert_descriptor(
             "minecraft:smoke",
             "SmokeParticle.Provider",

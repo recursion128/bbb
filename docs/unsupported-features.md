@@ -303,6 +303,13 @@ When an agent does any of the following, update this file in the same slice:
         emission. Lava spawn commands carry the pack-backed smoke child
         SpriteSet, and runtime emits smoke after lava ticks when
         `random.nextFloat() > age / lifetime`
+      - `CampfireSmokeParticle.CosyProvider` and `SignalProvider` use random
+        sprite selection, constructor `scale(3.0)`, fixed alpha `0.9` / `0.95`,
+        `80..129` / `280..329` lifetime, command x/z velocity plus
+        `yAux + random.nextFloat() / 500.0`, gravity `3.0E-6`, physics metadata,
+        translucent particle layer, vanilla random x/z drift, and alpha fade
+        during the final 60 ticks. World collision inside vanilla `move`
+        remains deferred with broader particle collision/physics work.
       - `SnowflakeParticle.Provider` age sprite selection, fixed pale-blue tint,
         `0.1 * (random * random + 1.0)` quad size, command velocity plus
         random `+-0.05` per axis, `16 / (random * 0.8 + 0.2) + 2` lifetime,
@@ -5770,6 +5777,13 @@ When an agent does any of the following, update this file in the same slice:
         gravity `0.75`, physics metadata, full-bright block light, and child
         smoke emission using the command-carried smoke SpriteSet and vanilla
         `random.nextFloat() > age / lifetime` post-tick odds.
+      - particle descriptors map `CampfireSmokeParticle.CosyProvider` and
+        `SignalProvider` to random sprites, constructor `scale(3.0)`, alpha
+        `0.9` / `0.95`, `80..129` / `280..329` lifetime, command x/z velocity
+        plus `yAux + random.nextFloat() / 500.0`, gravity `3.0E-6`, physics
+        metadata, translucent particle layer, random x/z drift, and final
+        60-tick alpha fade; world collision remains deferred with particle
+        collision state.
       - particle descriptors map `SnowflakeParticle.Provider` to age sprites,
         fixed pale-blue tint, `0.1 * (random * random + 1.0)` quad size,
         command velocity plus random `+-0.05` per axis,

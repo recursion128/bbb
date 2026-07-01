@@ -1268,6 +1268,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     particle definitions; renderer runtime records explicit `LavaSmoke` child
     emission state and, after the lava tick, mirrors vanilla `random.nextFloat()
     > age / lifetime` smoke spawning at the current lava position/velocity.
+  - [x] `CampfireSmokeParticle.CosyProvider` /
+    `SignalProvider`：renderer descriptor now mirrors vanilla random sprite
+    selection, constructor `scale(3.0)`, fixed alpha `0.9` / `0.95`,
+    lifetime `80..129` / `280..329`, command x/z velocity with
+    `yAux + random.nextFloat() / 500.0`, gravity `3.0E-6`, physics metadata,
+    translucent particle layer, random x/z drift, and alpha fade during the
+    final 60 ticks. World-collision resolution inside vanilla `move` remains
+    with the broader particle collision/physics follow-up.
   - [x] option-colored `SpellParticle` providers：native `LevelParticles`
     command resolution now decodes `SpellParticleOption` RGB + `power` for
     `effect` / `instant_effect` and `ColorParticleOption` ARGB for

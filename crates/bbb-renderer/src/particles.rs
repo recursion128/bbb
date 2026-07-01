@@ -466,7 +466,7 @@ impl ParticleRuntimeState {
                 expired_instances += 1;
                 continue;
             }
-            instance.tick_motion_without_collision();
+            instance.tick_motion_without_collision(&mut self.random);
             instance.age_ticks = instance.age_ticks.saturating_add(1);
             instance.update_sprite_from_age();
             instance.update_alpha_from_age();
@@ -750,7 +750,7 @@ impl ParticleInstance {
         }
     }
 
-    fn tick_motion_without_collision(&mut self) {
+    fn tick_motion_without_collision(&mut self, random: &mut ParticleRandom) {
         self.previous_position = self.position;
         match self.tick_motion {
             ParticleTickMotionDescriptor::DefaultParticleTick => {
@@ -837,6 +837,18 @@ impl ParticleInstance {
                 self.yaw = yaw;
                 self.previous_pitch = self.pitch;
                 self.pitch = pitch;
+            }
+            ParticleTickMotionDescriptor::CampfireSmoke => {
+                self.velocity[0] += f64::from(random.next_f32()) / 5000.0 * random_sign(random);
+                self.velocity[2] += f64::from(random.next_f32()) / 5000.0 * random_sign(random);
+                self.velocity[1] -= f64::from(self.gravity);
+                self.position[0] += self.velocity[0];
+                self.position[1] += self.velocity[1];
+                self.position[2] += self.velocity[2];
+                let next_age = self.age_ticks.saturating_add(1);
+                if next_age >= self.lifetime_ticks.saturating_sub(60) && self.color[3] > 0.01 {
+                    self.color[3] -= 0.015;
+                }
             }
             ParticleTickMotionDescriptor::Portal => {
                 let next_age = self.age_ticks.saturating_add(1);
@@ -1302,6 +1314,14 @@ fn trail_particle_color(color: [f32; 4], random: &mut ParticleRandom) -> [f32; 4
     ]
 }
 
+fn random_sign(random: &mut ParticleRandom) -> f64 {
+    if random.next_bool() {
+        1.0
+    } else {
+        -1.0
+    }
+}
+
 fn dust_particle_color(color: [f32; 4], base_factor: f32, random: &mut ParticleRandom) -> [f32; 4] {
     [
         (random.next_f32() * 0.2 + 0.8) * color[0] * base_factor,
@@ -1365,6 +1385,8 @@ fn particle_render_group_for_particle(_particle_id: &str) -> ParticleRenderGroup
 fn particle_render_layer_for_particle(particle_id: &str) -> ParticleRenderLayer {
     match particle_id {
         "minecraft:cloud"
+        | "minecraft:campfire_cosy_smoke"
+        | "minecraft:campfire_signal_smoke"
         | "minecraft:sneeze"
         | "minecraft:totem_of_undying"
         | "minecraft:squid_ink"
@@ -1638,6 +1660,30 @@ mod tests {
     }
 
     #[test]
+    fn particle_runtime_campfire_smoke_drifts_up_and_fades_near_lifetime_end() {
+        let mut particles = ParticleRuntimeState::with_capacities_and_seed(4, 4, 0);
+        let mut instance = test_instance_with_lifetime("minecraft:campfire_cosy_smoke", 100);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.0, 0.002, 0.0];
+        instance.age_ticks = 39;
+        instance.color = [1.0, 1.0, 1.0, 0.9];
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.expired_instances, 0);
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 40);
+        assert_close3(instance.previous_position, [1.0, 2.0, 3.0]);
+        assert_range_f64(instance.velocity[0].abs(), 0.0, 0.0002);
+        assert_range_f64(instance.velocity[2].abs(), 0.0, 0.0002);
+        assert_close_f64(instance.velocity[1], 0.002 - 3.0E-6);
+        assert_close_f64(instance.position[1], 2.0 + 0.002 - 3.0E-6);
+        assert_close_f32(instance.color[3], 0.885);
+    }
+
+    #[test]
     fn particle_runtime_lava_emits_child_smoke_after_tick_when_vanilla_odds_pass() {
         let mut particles = ParticleRuntimeState::with_capacities_and_seed(8, 8, 0);
         let mut lava = test_instance_with_lifetime("minecraft:lava", 20);
@@ -1797,7 +1843,7 @@ mod tests {
         terminal.position = [3.0, 6.0, 9.0];
         terminal.previous_position = terminal.position;
         terminal.option_target = Some([4.0, 8.0, 12.0]);
-        terminal.tick_motion_without_collision();
+        terminal.tick_motion_without_collision(&mut ParticleRandom::new(0));
 
         assert_close3(terminal.previous_position, [3.0, 6.0, 9.0]);
         assert_close3(terminal.position, [4.0, 8.0, 12.0]);
@@ -1838,7 +1884,7 @@ mod tests {
         terminal.position = [3.0, 6.0, 9.0];
         terminal.previous_position = terminal.position;
         terminal.option_target = Some([4.0, 8.0, 12.0]);
-        terminal.tick_motion_without_collision();
+        terminal.tick_motion_without_collision(&mut ParticleRandom::new(0));
 
         assert_close3(terminal.previous_position, [3.0, 6.0, 9.0]);
         assert_close3(terminal.position, [4.0, 8.0, 12.0]);
@@ -2187,6 +2233,36 @@ mod tests {
         assert_close_f32(small_flame.base_quad_size, flame.base_quad_size * 0.5);
         assert_eq!(flame.color, [1.0, 1.0, 1.0, 1.0]);
         assert_eq!(flame.quad_size_curve, ParticleQuadSizeCurve::Flame);
+
+        let mut cosy_random = ParticleRandom::new(46);
+        let mut cosy_command = spawn_command("minecraft:campfire_cosy_smoke", 1.0);
+        cosy_command.velocity = [0.1, 0.2, 0.3];
+        let cosy = ParticleInstance::from_spawn_command(cosy_command, &mut cosy_random);
+        assert_eq!(cosy.provider, "CampfireSmokeParticle.CosyProvider");
+        assert_eq!(cosy.sprite_selection, ParticleSpriteSelection::Random);
+        assert_range_f32(cosy.base_quad_size, 0.3, 0.6);
+        assert_eq!(cosy.color, [1.0, 1.0, 1.0, 0.9]);
+        assert!((80..=129).contains(&cosy.lifetime_ticks));
+        assert_eq!(cosy.velocity[0], 0.1);
+        assert_range_f64(cosy.velocity[1], 0.2, 0.202);
+        assert_eq!(cosy.velocity[2], 0.3);
+        assert_eq!(cosy.gravity, 3.0E-6);
+        assert_eq!(
+            cosy.tick_motion,
+            ParticleTickMotionDescriptor::CampfireSmoke
+        );
+        assert_eq!(cosy.render_layer, ParticleRenderLayer::Translucent);
+
+        let mut signal_random = ParticleRandom::new(47);
+        let signal = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:campfire_signal_smoke", 1.0),
+            &mut signal_random,
+        );
+        assert_eq!(signal.provider, "CampfireSmokeParticle.SignalProvider");
+        assert_range_f32(signal.base_quad_size, 0.3, 0.6);
+        assert_eq!(signal.color, [1.0, 1.0, 1.0, 0.95]);
+        assert!((280..=329).contains(&signal.lifetime_ticks));
+        assert_eq!(signal.render_layer, ParticleRenderLayer::Translucent);
 
         let mut lava_random = ParticleRandom::new(44);
         let lava = ParticleInstance::from_spawn_command(
