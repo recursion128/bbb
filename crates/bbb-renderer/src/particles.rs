@@ -3608,6 +3608,90 @@ mod tests {
         );
         assert_eq!(landing_honey.render_layer, ParticleRenderLayer::Opaque);
 
+        let mut dripping_obsidian_random = ParticleRandom::new(84);
+        let dripping_obsidian = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:dripping_obsidian_tear", 1.0),
+            &mut dripping_obsidian_random,
+        );
+        assert_eq!(
+            dripping_obsidian.provider,
+            "DripParticle.ObsidianTearHangProvider"
+        );
+        assert_range_f32(dripping_obsidian.base_quad_size, 0.1, 0.2);
+        assert_eq!(
+            dripping_obsidian.color,
+            [0.511_718_75, 0.031_25, 0.890_625, 1.0]
+        );
+        assert_eq!(dripping_obsidian.lifetime_ticks, 100);
+        assert_eq!(dripping_obsidian.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(dripping_obsidian.friction, 0.98);
+        assert_eq!(dripping_obsidian.gravity, 0.000_012);
+        assert_eq!(
+            dripping_obsidian.tick_motion,
+            ParticleTickMotionDescriptor::DripHang
+        );
+        assert_eq!(
+            dripping_obsidian.light_emission,
+            ParticleLightEmissionDescriptor::FullBlock
+        );
+        assert_eq!(dripping_obsidian.render_layer, ParticleRenderLayer::Opaque);
+
+        let mut falling_obsidian_random = ParticleRandom::new(85);
+        let falling_obsidian = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:falling_obsidian_tear", 1.0),
+            &mut falling_obsidian_random,
+        );
+        assert_eq!(
+            falling_obsidian.provider,
+            "DripParticle.ObsidianTearFallProvider"
+        );
+        assert_range_f32(falling_obsidian.base_quad_size, 0.1, 0.2);
+        assert_eq!(
+            falling_obsidian.color,
+            [0.511_718_75, 0.031_25, 0.890_625, 1.0]
+        );
+        assert!((64..=320).contains(&falling_obsidian.lifetime_ticks));
+        assert_eq!(falling_obsidian.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(falling_obsidian.friction, 0.98);
+        assert_eq!(falling_obsidian.gravity, 0.01);
+        assert_eq!(
+            falling_obsidian.tick_motion,
+            ParticleTickMotionDescriptor::WaterDrop
+        );
+        assert_eq!(
+            falling_obsidian.light_emission,
+            ParticleLightEmissionDescriptor::FullBlock
+        );
+        assert_eq!(falling_obsidian.render_layer, ParticleRenderLayer::Opaque);
+
+        let mut landing_obsidian_random = ParticleRandom::new(86);
+        let landing_obsidian = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:landing_obsidian_tear", 1.0),
+            &mut landing_obsidian_random,
+        );
+        assert_eq!(
+            landing_obsidian.provider,
+            "DripParticle.ObsidianTearLandProvider"
+        );
+        assert_range_f32(landing_obsidian.base_quad_size, 0.1, 0.2);
+        assert_eq!(
+            landing_obsidian.color,
+            [0.511_718_75, 0.031_25, 0.890_625, 1.0]
+        );
+        assert!((28..=140).contains(&landing_obsidian.lifetime_ticks));
+        assert_eq!(landing_obsidian.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(landing_obsidian.friction, 0.98);
+        assert_eq!(landing_obsidian.gravity, 0.06);
+        assert_eq!(
+            landing_obsidian.tick_motion,
+            ParticleTickMotionDescriptor::WaterDrop
+        );
+        assert_eq!(
+            landing_obsidian.light_emission,
+            ParticleLightEmissionDescriptor::FullBlock
+        );
+        assert_eq!(landing_obsidian.render_layer, ParticleRenderLayer::Opaque);
+
         let mut crimson_random = ParticleRandom::new(46);
         let crimson_spore = ParticleInstance::from_spawn_command(
             spawn_command("minecraft:crimson_spore", 1.0),

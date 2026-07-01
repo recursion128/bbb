@@ -606,6 +606,59 @@ impl ParticleDescriptor {
                 has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
+            "minecraft:dripping_obsidian_tear" => Self {
+                provider: "DripParticle.ObsidianTearHangProvider",
+                lifetime: ParticleLifetimeDescriptor::Fixed(100),
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 1.0,
+                    color: ParticleColorDescriptor::FixedRgb([0.511_718_75, 0.031_25, 0.890_625]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Zero,
+                friction: 0.98,
+                gravity: 0.000_012,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:falling_obsidian_tear" => Self {
+                provider: "DripParticle.ObsidianTearFallProvider",
+                lifetime: ParticleLifetimeDescriptor::RandomFloatDivisor {
+                    numerator: 64,
+                    min_tenths: 2,
+                    span_tenths: 8,
+                },
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 1.0,
+                    color: ParticleColorDescriptor::FixedRgb([0.511_718_75, 0.031_25, 0.890_625]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Zero,
+                friction: 0.98,
+                gravity: 0.01,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:landing_obsidian_tear" => Self {
+                provider: "DripParticle.ObsidianTearLandProvider",
+                lifetime: ParticleLifetimeDescriptor::RandomFloatDivisor {
+                    numerator: 28,
+                    min_tenths: 2,
+                    span_tenths: 8,
+                },
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 1.0,
+                    color: ParticleColorDescriptor::FixedRgb([0.511_718_75, 0.031_25, 0.890_625]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Zero,
+                friction: 0.98,
+                gravity: 0.06,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
             "minecraft:crimson_spore" | "minecraft:warped_spore" => Self {
                 provider: if particle_id == "minecraft:crimson_spore" {
                     "SuspendedParticle.CrimsonSporeProvider"
@@ -1663,7 +1716,9 @@ impl ParticleDescriptor {
             "CampfireSmokeParticle.CosyProvider" | "CampfireSmokeParticle.SignalProvider" => {
                 ParticleTickMotionDescriptor::CampfireSmoke
             }
-            "DripParticle.HoneyHangProvider" => ParticleTickMotionDescriptor::DripHang,
+            "DripParticle.HoneyHangProvider" | "DripParticle.ObsidianTearHangProvider" => {
+                ParticleTickMotionDescriptor::DripHang
+            }
             "DustPlumeParticle.Provider" => ParticleTickMotionDescriptor::DustPlume,
             "WaterDropParticle.Provider" | "SplashParticle.Provider" => {
                 ParticleTickMotionDescriptor::WaterDrop
@@ -1671,7 +1726,9 @@ impl ParticleDescriptor {
             "DripParticle.NectarFallProvider"
             | "DripParticle.SporeBlossomFallProvider"
             | "DripParticle.HoneyFallProvider"
-            | "DripParticle.HoneyLandProvider" => ParticleTickMotionDescriptor::WaterDrop,
+            | "DripParticle.HoneyLandProvider"
+            | "DripParticle.ObsidianTearFallProvider"
+            | "DripParticle.ObsidianTearLandProvider" => ParticleTickMotionDescriptor::WaterDrop,
             "WakeParticle.Provider" => ParticleTickMotionDescriptor::Wake,
             "PortalParticle.Provider" => ParticleTickMotionDescriptor::Portal,
             "ReversePortalParticle.ReversePortalProvider" => {
@@ -1717,6 +1774,9 @@ impl ParticleDescriptor {
             | "SoulParticle.EmissiveProvider"
             | "SculkChargeParticle.Provider"
             | "SculkChargePopParticle.Provider"
+            | "DripParticle.ObsidianTearHangProvider"
+            | "DripParticle.ObsidianTearFallProvider"
+            | "DripParticle.ObsidianTearLandProvider"
             | "ShriekParticle.Provider"
             | "VibrationSignalParticle.Provider"
             | "FlyTowardsPositionParticle.VaultConnectionProvider"
@@ -3214,6 +3274,65 @@ mod tests {
                 "{particle_id}"
             );
             assert_eq!(descriptor.tick_motion(), tick_motion, "{particle_id}");
+        }
+        for (particle_id, provider, lifetime, gravity, tick_motion) in [
+            (
+                "minecraft:dripping_obsidian_tear",
+                "DripParticle.ObsidianTearHangProvider",
+                ParticleLifetimeDescriptor::Fixed(100),
+                0.000_012,
+                ParticleTickMotionDescriptor::DripHang,
+            ),
+            (
+                "minecraft:falling_obsidian_tear",
+                "DripParticle.ObsidianTearFallProvider",
+                ParticleLifetimeDescriptor::RandomFloatDivisor {
+                    numerator: 64,
+                    min_tenths: 2,
+                    span_tenths: 8,
+                },
+                0.01,
+                ParticleTickMotionDescriptor::WaterDrop,
+            ),
+            (
+                "minecraft:landing_obsidian_tear",
+                "DripParticle.ObsidianTearLandProvider",
+                ParticleLifetimeDescriptor::RandomFloatDivisor {
+                    numerator: 28,
+                    min_tenths: 2,
+                    span_tenths: 8,
+                },
+                0.06,
+                ParticleTickMotionDescriptor::WaterDrop,
+            ),
+        ] {
+            assert_descriptor(
+                particle_id,
+                provider,
+                lifetime,
+                ParticleSpriteSelection::Random,
+                ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 1.0,
+                    color: ParticleColorDescriptor::FixedRgb([0.511_718_75, 0.031_25, 0.890_625]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                0.98,
+                gravity,
+                true,
+                false,
+            );
+            let descriptor = ParticleDescriptor::for_particle(particle_id);
+            assert_eq!(
+                descriptor.initial_velocity,
+                ParticleInitialVelocityDescriptor::Zero,
+                "{particle_id}"
+            );
+            assert_eq!(descriptor.tick_motion(), tick_motion, "{particle_id}");
+            assert_eq!(
+                descriptor.light_emission(),
+                ParticleLightEmissionDescriptor::FullBlock,
+                "{particle_id}"
+            );
         }
         for (particle_id, provider, color, initial_velocity) in [
             (
@@ -5184,6 +5303,9 @@ mod tests {
             "minecraft:sculk_soul",
             "minecraft:sculk_charge",
             "minecraft:sculk_charge_pop",
+            "minecraft:dripping_obsidian_tear",
+            "minecraft:falling_obsidian_tear",
+            "minecraft:landing_obsidian_tear",
             "minecraft:shriek",
             "minecraft:vault_connection",
         ] {

@@ -1264,6 +1264,17 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `0.06`. Hang-to-fall child spawning, fall-to-land child spawning, local
     drip sound, and on-ground collision remain in the world-coupled
     particle/audio follow-up.
+  - [x] `DripParticle.ObsidianTearHangProvider` /
+    `ObsidianTearFallProvider` / `ObsidianTearLandProvider`：renderer
+    descriptor now maps `dripping_obsidian_tear`, `falling_obsidian_tear`,
+    and `landing_obsidian_tear` to random sprites, vanilla DripParticle opaque
+    layer, zero initial velocity, physics metadata, fixed purple tint,
+    `0.98` friction, direct gravity motion, hang-particle `0.02` post-move
+    damping, glowing block-light override, lifetimes `100`,
+    `64 / (random * 0.8 + 0.2)`, and
+    `28 / (random * 0.8 + 0.2)`, with gravity `0.000012`, `0.01`, and
+    `0.06`. Hang-to-fall child spawning, fall-to-land child spawning, and
+    on-ground collision remain in the world-coupled particle/audio follow-up.
   - [x] `SuspendedParticle.CrimsonSporeProvider` /
     `WarpedSporeProvider`：renderer descriptor now mirrors vanilla random
     sprite selection, `y - 0.125` initial position, `0.6..1.2` quad-size
