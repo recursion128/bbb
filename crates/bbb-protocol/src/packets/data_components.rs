@@ -99,6 +99,10 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub bundle_contents_item_count: Option<usize>,
     #[serde(default)]
+    pub container_items: Vec<ItemStackTemplateSummary>,
+    #[serde(default)]
+    pub container_item_count: Option<usize>,
+    #[serde(default)]
     pub bees_count: usize,
     #[serde(default)]
     pub enchantments: Vec<ItemEnchantmentSummary>,
@@ -521,6 +525,10 @@ fn decode_typed_data_component_patch_summary(
                 summary.block_state_properties =
                     decode_string_map(decoder, MAX_BLOCK_STATE_PROPERTIES)?;
             }
+            75 => {
+                summary.container_items = decode_item_container_contents(decoder)?;
+                summary.container_item_count = Some(summary.container_items.len());
+            }
             77 => {
                 summary.bees_count = decode_bees(decoder)?;
             }
@@ -682,7 +690,9 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
             let _ = decode_string_map(decoder, MAX_BLOCK_STATE_PROPERTIES)?;
         }
         // container.
-        75 => decode_item_container_contents(decoder)?,
+        75 => {
+            let _ = decode_item_container_contents(decoder)?;
+        }
         other => {
             return Err(ProtocolError::InvalidData(format!(
                 "unsupported data component type id {other}"
@@ -1049,19 +1059,27 @@ fn decode_item_stack_template_list(
     Ok(items)
 }
 
-fn decode_optional_item_stack_template(decoder: &mut Decoder<'_>) -> Result<()> {
+fn decode_optional_item_stack_template(
+    decoder: &mut Decoder<'_>,
+) -> Result<Option<ItemStackTemplateSummary>> {
     if decoder.read_bool()? {
-        let _ = decode_item_stack_template(decoder)?;
+        Ok(Some(decode_item_stack_template(decoder)?))
+    } else {
+        Ok(None)
     }
-    Ok(())
 }
 
-fn decode_item_container_contents(decoder: &mut Decoder<'_>) -> Result<()> {
+fn decode_item_container_contents(
+    decoder: &mut Decoder<'_>,
+) -> Result<Vec<ItemStackTemplateSummary>> {
     let count = read_bounded_len(decoder, MAX_CONTAINER_ITEMS)?;
+    let mut items = Vec::new();
     for _ in 0..count {
-        decode_optional_item_stack_template(decoder)?;
+        if let Some(item) = decode_optional_item_stack_template(decoder)? {
+            items.push(item);
+        }
     }
-    Ok(())
+    Ok(items)
 }
 
 fn decode_tool(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -2814,6 +2832,12 @@ mod tests {
                     component_patch: DataComponentPatchSummary::default(),
                 }],
                 bundle_contents_item_count: Some(1),
+                container_items: vec![ItemStackTemplateSummary {
+                    item_id: 53,
+                    count: 4,
+                    component_patch: DataComponentPatchSummary::default(),
+                }],
+                container_item_count: Some(1),
                 armor_trim_material_id: Some(1),
                 armor_trim_pattern_id: Some(2),
                 block_state_properties: BTreeMap::from([

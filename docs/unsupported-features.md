@@ -5862,7 +5862,9 @@ When an agent does any of the following, update this file in the same slice:
       `items.size` constraints match vanilla `CollectionPredicate.size` against
       the decoded bundle item count, and `items.contains` / `count` now support
       vanilla `ItemPredicate` direct item-key plus stack-count bounds over
-      decoded bundle entries. `minecraft:fireworks`
+      decoded bundle entries. `minecraft:container` now decodes non-empty
+      container entries and matches the same direct item-key / stack-count
+      collection predicate subset. `minecraft:fireworks`
       `explosions.contains` / `count` predicates now match decoded explosion
       shape / trail / twinkle summaries. `minecraft:trim` direct vanilla
       registry-key pattern constraints now match decoded `ArmorTrim.pattern()`
@@ -5874,10 +5876,9 @@ When an agent does any of the following, update this file in the same slice:
       while `stored_enchantments` still requires a patch-visible component until
       item-specific default components are modeled. Remaining constrained
       predicate types (enchantment HolderSet matching / item-specific default
-      `stored_enchantments`, bundle item tags / nested component matchers,
-      container item collection predicates, trim tag sets / inline material or
-      pattern payloads / datapack pattern registry-key remaps, and similar)
-      remain follow-up.
+      `stored_enchantments`, bundle/container item tags and nested component
+      matchers, trim tag sets / inline material or pattern payloads / datapack
+      pattern registry-key remaps, and similar) remain follow-up.
     - `minecraft:charge_type` — `Charge.get` (`ROCKET` when any charged
       projectile is `minecraft:firework_rocket`, `ARROW` when charged otherwise,
       else `NONE`), using the native item registry to identify the projectile

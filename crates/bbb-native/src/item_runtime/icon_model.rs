@@ -1515,6 +1515,9 @@ fn item_stack_matches_component_predicate(
     if bundle_contents_component_predicate_is_supported(property) {
         return item_stack_matches_bundle_contents_predicate(property, ctx);
     }
+    if container_component_predicate_is_supported(property) {
+        return item_stack_matches_container_predicate(property, ctx);
+    }
     if enchantments_component_predicate_is_supported(property) {
         return item_stack_matches_enchantments_predicate(property, ctx.component_patch);
     }
@@ -1555,6 +1558,7 @@ fn component_condition_is_runtime_resolved(property: &ItemModelProperty) -> bool
     };
     predicate == "minecraft:damage"
         || bundle_contents_component_predicate_is_supported(property)
+        || container_component_predicate_is_supported(property)
         || enchantments_component_predicate_is_supported(property)
         || predicate == "minecraft:firework_explosion"
         || fireworks_component_predicate_is_supported(property)
@@ -1750,6 +1754,51 @@ fn item_stack_matches_bundle_contents_predicate(
         items,
         &component_patch.bundle_contents_items,
         component_patch.bundle_contents_item_count,
+        ctx.item_resource_ids,
+    )
+}
+
+fn container_component_predicate_is_supported(property: &ItemModelProperty) -> bool {
+    if component_condition_predicate(property) != Some("minecraft:container") {
+        return false;
+    }
+    let Some(value) = property.raw().get("value").and_then(Value::as_object) else {
+        return false;
+    };
+    if value.is_empty() {
+        return false;
+    }
+    let Some(items) = value.get("items") else {
+        return false;
+    };
+    value.len() == 1 && item_collection_predicate_is_supported(items)
+}
+
+fn item_stack_matches_container_predicate(
+    property: &ItemModelProperty,
+    ctx: IconResolveContext<'_>,
+) -> bool {
+    if !container_component_predicate_is_supported(property) {
+        return false;
+    }
+    if !item_stack_has_component_id(CONTAINER_COMPONENT_ID, ctx.component_patch, None, false) {
+        return false;
+    }
+    let Some(items) = property
+        .raw()
+        .get("value")
+        .and_then(Value::as_object)
+        .and_then(|value| value.get("items"))
+    else {
+        return true;
+    };
+    let Some(component_patch) = ctx.component_patch else {
+        return false;
+    };
+    item_collection_predicate_matches(
+        items,
+        &component_patch.container_items,
+        component_patch.container_item_count,
         ctx.item_resource_ids,
     )
 }

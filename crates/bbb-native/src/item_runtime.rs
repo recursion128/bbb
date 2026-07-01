@@ -5681,6 +5681,94 @@ mod tests {
             ),
             uv("component_condition_bundle_count_absent")
         );
+        assert_eq!(
+            selected(
+                23,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(1),
+                    container_items: vec![ItemStackTemplateSummary {
+                        item_id: 1,
+                        count: 4,
+                        component_patch: DataComponentPatchSummary::default(),
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_contains_present")
+        );
+        assert_eq!(
+            selected(
+                23,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(1),
+                    container_items: vec![ItemStackTemplateSummary {
+                        item_id: 1,
+                        count: 3,
+                        component_patch: DataComponentPatchSummary::default(),
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_contains_absent")
+        );
+        assert_eq!(
+            selected(
+                23,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    removed_type_ids: vec![75],
+                    container_item_count: Some(1),
+                    container_items: vec![ItemStackTemplateSummary {
+                        item_id: 1,
+                        count: 4,
+                        component_patch: DataComponentPatchSummary::default(),
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_contains_absent")
+        );
+        assert_eq!(
+            selected(
+                24,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(2),
+                    container_items: vec![
+                        ItemStackTemplateSummary {
+                            item_id: 0,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary::default(),
+                        },
+                        ItemStackTemplateSummary {
+                            item_id: 1,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary::default(),
+                        },
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_count_present")
+        );
+        assert_eq!(
+            selected(
+                24,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(1),
+                    container_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary::default(),
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_count_absent")
+        );
 
         let star_trail = DataComponentPatchSummary {
             added_type_ids: vec![68],
@@ -7613,6 +7701,8 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_FIREWORKS_COUNT = registerItem("component_condition_fireworks_count");
                 public static final Item COMPONENT_CONDITION_BUNDLE_CONTAINS = registerItem("component_condition_bundle_contains");
                 public static final Item COMPONENT_CONDITION_BUNDLE_COUNT = registerItem("component_condition_bundle_count");
+                public static final Item COMPONENT_CONDITION_CONTAINER_CONTAINS = registerItem("component_condition_container_contains");
+                public static final Item COMPONENT_CONDITION_CONTAINER_COUNT = registerItem("component_condition_container_count");
             }"#,
         );
         write_json(
@@ -7805,6 +7895,76 @@ mod tests {
                     "on_false": {
                         "type": "minecraft:model",
                         "model": "minecraft:item/component_condition_bundle_count_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_container_contains.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:container",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "items": "minecraft:component_condition_glint",
+                                    "count": 4
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_contains_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_contains_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_container_count.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:container",
+                    "value": {
+                        "items": {
+                            "count": [
+                                {
+                                    "test": {
+                                        "items": [
+                                            "minecraft:component_condition_rarity",
+                                            "minecraft:component_condition_glint"
+                                        ]
+                                    },
+                                    "count": {
+                                        "min": 2
+                                    }
+                                }
+                            ],
+                            "size": {
+                                "min": 2
+                            }
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_count_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_count_absent"
                     }
                 }
             }"#,
@@ -8149,6 +8309,22 @@ mod tests {
                 [80, 210, 150, 255],
             ),
             ("component_condition_bundle_count_absent", [30, 70, 50, 255]),
+            (
+                "component_condition_container_contains_present",
+                [90, 190, 230, 255],
+            ),
+            (
+                "component_condition_container_contains_absent",
+                [30, 60, 80, 255],
+            ),
+            (
+                "component_condition_container_count_present",
+                [190, 110, 230, 255],
+            ),
+            (
+                "component_condition_container_count_absent",
+                [60, 30, 80, 255],
+            ),
             (
                 "component_condition_firework_explosion_star_present",
                 [230, 180, 80, 255],
