@@ -3837,6 +3837,121 @@ mod tests {
         );
         assert_eq!(falling_water.render_layer, ParticleRenderLayer::Opaque);
 
+        let mut dripping_dripstone_lava_random = ParticleRandom::new(92);
+        let dripping_dripstone_lava = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:dripping_dripstone_lava", 1.0),
+            &mut dripping_dripstone_lava_random,
+        );
+        assert_eq!(
+            dripping_dripstone_lava.provider,
+            "DripParticle.DripstoneLavaHangProvider"
+        );
+        assert_range_f32(dripping_dripstone_lava.base_quad_size, 0.1, 0.2);
+        assert_eq!(dripping_dripstone_lava.color, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(dripping_dripstone_lava.lifetime_ticks, 40);
+        assert_eq!(dripping_dripstone_lava.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(dripping_dripstone_lava.friction, 0.98);
+        assert_eq!(dripping_dripstone_lava.gravity, 0.0012);
+        assert_eq!(
+            dripping_dripstone_lava.tick_motion,
+            ParticleTickMotionDescriptor::CoolingDripHang
+        );
+        assert_eq!(
+            dripping_dripstone_lava.light_emission,
+            ParticleLightEmissionDescriptor::World
+        );
+        assert_eq!(
+            dripping_dripstone_lava.render_layer,
+            ParticleRenderLayer::Opaque
+        );
+
+        let mut falling_dripstone_lava_random = ParticleRandom::new(93);
+        let falling_dripstone_lava = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:falling_dripstone_lava", 1.0),
+            &mut falling_dripstone_lava_random,
+        );
+        assert_eq!(
+            falling_dripstone_lava.provider,
+            "DripParticle.DripstoneLavaFallProvider"
+        );
+        assert_range_f32(falling_dripstone_lava.base_quad_size, 0.1, 0.2);
+        assert_eq!(
+            falling_dripstone_lava.color,
+            [1.0, 0.285_714_3, 0.083_333_336, 1.0]
+        );
+        assert!((64..=320).contains(&falling_dripstone_lava.lifetime_ticks));
+        assert_eq!(falling_dripstone_lava.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(falling_dripstone_lava.friction, 0.98);
+        assert_eq!(falling_dripstone_lava.gravity, 0.06);
+        assert_eq!(
+            falling_dripstone_lava.tick_motion,
+            ParticleTickMotionDescriptor::WaterDrop
+        );
+        assert_eq!(
+            falling_dripstone_lava.light_emission,
+            ParticleLightEmissionDescriptor::World
+        );
+        assert_eq!(
+            falling_dripstone_lava.render_layer,
+            ParticleRenderLayer::Opaque
+        );
+
+        let mut dripping_dripstone_water_random = ParticleRandom::new(94);
+        let dripping_dripstone_water = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:dripping_dripstone_water", 1.0),
+            &mut dripping_dripstone_water_random,
+        );
+        assert_eq!(
+            dripping_dripstone_water.provider,
+            "DripParticle.DripstoneWaterHangProvider"
+        );
+        assert_range_f32(dripping_dripstone_water.base_quad_size, 0.1, 0.2);
+        assert_eq!(dripping_dripstone_water.color, [0.2, 0.3, 1.0, 1.0]);
+        assert_eq!(dripping_dripstone_water.lifetime_ticks, 40);
+        assert_eq!(dripping_dripstone_water.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(dripping_dripstone_water.friction, 0.98);
+        assert_eq!(dripping_dripstone_water.gravity, 0.0012);
+        assert_eq!(
+            dripping_dripstone_water.tick_motion,
+            ParticleTickMotionDescriptor::DripHang
+        );
+        assert_eq!(
+            dripping_dripstone_water.light_emission,
+            ParticleLightEmissionDescriptor::World
+        );
+        assert_eq!(
+            dripping_dripstone_water.render_layer,
+            ParticleRenderLayer::Opaque
+        );
+
+        let mut falling_dripstone_water_random = ParticleRandom::new(95);
+        let falling_dripstone_water = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:falling_dripstone_water", 1.0),
+            &mut falling_dripstone_water_random,
+        );
+        assert_eq!(
+            falling_dripstone_water.provider,
+            "DripParticle.DripstoneWaterFallProvider"
+        );
+        assert_range_f32(falling_dripstone_water.base_quad_size, 0.1, 0.2);
+        assert_eq!(falling_dripstone_water.color, [0.2, 0.3, 1.0, 1.0]);
+        assert!((64..=320).contains(&falling_dripstone_water.lifetime_ticks));
+        assert_eq!(falling_dripstone_water.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(falling_dripstone_water.friction, 0.98);
+        assert_eq!(falling_dripstone_water.gravity, 0.06);
+        assert_eq!(
+            falling_dripstone_water.tick_motion,
+            ParticleTickMotionDescriptor::WaterDrop
+        );
+        assert_eq!(
+            falling_dripstone_water.light_emission,
+            ParticleLightEmissionDescriptor::World
+        );
+        assert_eq!(
+            falling_dripstone_water.render_layer,
+            ParticleRenderLayer::Opaque
+        );
+
         let mut crimson_random = ParticleRandom::new(46);
         let crimson_spore = ParticleInstance::from_spawn_command(
             spawn_command("minecraft:crimson_spore", 1.0),

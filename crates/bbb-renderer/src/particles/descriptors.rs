@@ -743,6 +743,74 @@ impl ParticleDescriptor {
                 has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
+            "minecraft:dripping_dripstone_lava" => Self {
+                provider: "DripParticle.DripstoneLavaHangProvider",
+                lifetime: ParticleLifetimeDescriptor::Fixed(40),
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 1.0,
+                    color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Zero,
+                friction: 0.98,
+                gravity: 0.0012,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:falling_dripstone_lava" => Self {
+                provider: "DripParticle.DripstoneLavaFallProvider",
+                lifetime: ParticleLifetimeDescriptor::RandomFloatDivisor {
+                    numerator: 64,
+                    min_tenths: 2,
+                    span_tenths: 8,
+                },
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 1.0,
+                    color: ParticleColorDescriptor::FixedRgb([1.0, 0.285_714_3, 0.083_333_336]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Zero,
+                friction: 0.98,
+                gravity: 0.06,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:dripping_dripstone_water" => Self {
+                provider: "DripParticle.DripstoneWaterHangProvider",
+                lifetime: ParticleLifetimeDescriptor::Fixed(40),
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 1.0,
+                    color: ParticleColorDescriptor::FixedRgb([0.2, 0.3, 1.0]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Zero,
+                friction: 0.98,
+                gravity: 0.0012,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:falling_dripstone_water" => Self {
+                provider: "DripParticle.DripstoneWaterFallProvider",
+                lifetime: ParticleLifetimeDescriptor::RandomFloatDivisor {
+                    numerator: 64,
+                    min_tenths: 2,
+                    span_tenths: 8,
+                },
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 1.0,
+                    color: ParticleColorDescriptor::FixedRgb([0.2, 0.3, 1.0]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Zero,
+                friction: 0.98,
+                gravity: 0.06,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
             "minecraft:crimson_spore" | "minecraft:warped_spore" => Self {
                 provider: if particle_id == "minecraft:crimson_spore" {
                     "SuspendedParticle.CrimsonSporeProvider"
@@ -1802,8 +1870,11 @@ impl ParticleDescriptor {
             }
             "DripParticle.HoneyHangProvider"
             | "DripParticle.ObsidianTearHangProvider"
-            | "DripParticle.WaterHangProvider" => ParticleTickMotionDescriptor::DripHang,
-            "DripParticle.LavaHangProvider" => ParticleTickMotionDescriptor::CoolingDripHang,
+            | "DripParticle.WaterHangProvider"
+            | "DripParticle.DripstoneWaterHangProvider" => ParticleTickMotionDescriptor::DripHang,
+            "DripParticle.LavaHangProvider" | "DripParticle.DripstoneLavaHangProvider" => {
+                ParticleTickMotionDescriptor::CoolingDripHang
+            }
             "DustPlumeParticle.Provider" => ParticleTickMotionDescriptor::DustPlume,
             "WaterDropParticle.Provider" | "SplashParticle.Provider" => {
                 ParticleTickMotionDescriptor::WaterDrop
@@ -1816,7 +1887,9 @@ impl ParticleDescriptor {
             | "DripParticle.ObsidianTearLandProvider"
             | "DripParticle.LavaFallProvider"
             | "DripParticle.LavaLandProvider"
-            | "DripParticle.WaterFallProvider" => ParticleTickMotionDescriptor::WaterDrop,
+            | "DripParticle.WaterFallProvider"
+            | "DripParticle.DripstoneLavaFallProvider"
+            | "DripParticle.DripstoneWaterFallProvider" => ParticleTickMotionDescriptor::WaterDrop,
             "WakeParticle.Provider" => ParticleTickMotionDescriptor::Wake,
             "PortalParticle.Provider" => ParticleTickMotionDescriptor::Portal,
             "ReversePortalParticle.ReversePortalProvider" => {
@@ -3508,6 +3581,76 @@ mod tests {
                 ParticleVisualDescriptor::SingleQuadScaled {
                     scale: 1.0,
                     color: ParticleColorDescriptor::FixedRgb([0.2, 0.3, 1.0]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                0.98,
+                gravity,
+                true,
+                false,
+            );
+            let descriptor = ParticleDescriptor::for_particle(particle_id);
+            assert_eq!(
+                descriptor.initial_velocity,
+                ParticleInitialVelocityDescriptor::Zero,
+                "{particle_id}"
+            );
+            assert_eq!(descriptor.tick_motion(), tick_motion, "{particle_id}");
+            assert_eq!(
+                descriptor.light_emission(),
+                ParticleLightEmissionDescriptor::World,
+                "{particle_id}"
+            );
+        }
+        for (particle_id, provider, lifetime, color, gravity, tick_motion) in [
+            (
+                "minecraft:dripping_dripstone_lava",
+                "DripParticle.DripstoneLavaHangProvider",
+                ParticleLifetimeDescriptor::Fixed(40),
+                [1.0, 1.0, 1.0],
+                0.0012,
+                ParticleTickMotionDescriptor::CoolingDripHang,
+            ),
+            (
+                "minecraft:falling_dripstone_lava",
+                "DripParticle.DripstoneLavaFallProvider",
+                ParticleLifetimeDescriptor::RandomFloatDivisor {
+                    numerator: 64,
+                    min_tenths: 2,
+                    span_tenths: 8,
+                },
+                [1.0, 0.285_714_3, 0.083_333_336],
+                0.06,
+                ParticleTickMotionDescriptor::WaterDrop,
+            ),
+            (
+                "minecraft:dripping_dripstone_water",
+                "DripParticle.DripstoneWaterHangProvider",
+                ParticleLifetimeDescriptor::Fixed(40),
+                [0.2, 0.3, 1.0],
+                0.0012,
+                ParticleTickMotionDescriptor::DripHang,
+            ),
+            (
+                "minecraft:falling_dripstone_water",
+                "DripParticle.DripstoneWaterFallProvider",
+                ParticleLifetimeDescriptor::RandomFloatDivisor {
+                    numerator: 64,
+                    min_tenths: 2,
+                    span_tenths: 8,
+                },
+                [0.2, 0.3, 1.0],
+                0.06,
+                ParticleTickMotionDescriptor::WaterDrop,
+            ),
+        ] {
+            assert_descriptor(
+                particle_id,
+                provider,
+                lifetime,
+                ParticleSpriteSelection::Random,
+                ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 1.0,
+                    color: ParticleColorDescriptor::FixedRgb(color),
                     quad_size_curve: ParticleQuadSizeCurve::Constant,
                 },
                 0.98,
