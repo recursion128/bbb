@@ -474,6 +474,18 @@ When an agent does any of the following, update this file in the same slice:
         reroll, alpha fade (`0.3` / `0.5`) and direct smooth block-light fade
         (`0.1` / `0.3`). The in-block removal gate remains deferred until
         particle ticking can query world block state.
+        `cherry_leaves`, `pale_oak_leaves`, and `tinted_leaves` now map to
+        `FallingLeavesParticle.CherryProvider` / `PaleOakProvider` /
+        `TintedLeavesProvider` with random sprites, fixed `300` lifetime,
+        opaque layer, `1.0` friction, physics metadata,
+        `scale * (0.05 | 0.075)` quad-size choice, cherry flow-away
+        parameters `(fall=0.25, side=2.0, startVelocity=0.0)`, pale/tinted
+        swirl parameters `(fall=0.07, side=10.0, startVelocity=0.021)`,
+        tinted `ColorParticleOption` ARGB command decode with renderer RGB
+        tinting, default particle alpha preservation, gravity
+        `fallAcceleration * 1.2 * 0.0025`, flow/swirl acceleration, and roll
+        spin acceleration. On-ground / blocked-axis removal remains deferred
+        until world-coupled particle collision state is represented.
         `dust` / `dust_color_transition` now map to their vanilla providers
         with decoded RGB colors, transition target color, clamped scale,
         scale-shaped quad size / lifetime, random color variation, age sprites,
@@ -5886,6 +5898,18 @@ When an agent does any of the following, update this file in the same slice:
         physics metadata, `0.98` friction, zero gravity, direct motion,
         damping, and wake sprite cycling via `SpriteSet.get((60-lifetime)%4,
         4)` during runtime ticks.
+      - particle descriptors map `FallingLeavesParticle.CherryProvider`,
+        `PaleOakProvider`, and `TintedLeavesProvider` for `cherry_leaves` /
+        `pale_oak_leaves` / `tinted_leaves` to random sprites, fixed `300`
+        lifetime, opaque particle layer, `1.0` friction, physics metadata,
+        vanilla `scale * (0.05 | 0.075)` quad-size choice, cherry flow-away
+        parameters `(fall=0.25, side=2.0, startVelocity=0.0)`, pale/tinted
+        swirl parameters `(fall=0.07, side=10.0, startVelocity=0.021)`,
+        tinted `ColorParticleOption` ARGB command decode with renderer RGB
+        tinting and default alpha preservation, gravity
+        `fallAcceleration * 1.2 * 0.0025`, flow/swirl acceleration, and roll
+        spin acceleration. On-ground / blocked-axis removal remains deferred
+        until world-coupled particle collision state is represented.
       - particle descriptors map
         `FlyStraightTowardsParticle.OminousSpawnProvider` for
         `ominous_spawning` to random sprites, command velocity, initial

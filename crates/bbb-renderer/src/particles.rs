@@ -11,10 +11,10 @@ mod gpu;
 
 use descriptors::{
     dust_lifetime, particle_limit_for_particle, select_initial_sprite, sprite_index_for_age,
-    ParticleAlphaCurve, ParticleChildEmissionDescriptor, ParticleDescriptor,
-    ParticleFacingCameraMode, ParticleLightEmissionDescriptor, ParticleLimitDescriptor,
-    ParticleQuadSizeCurve, ParticleRandom, ParticleSpriteSelection, ParticleTickMotionDescriptor,
-    DEFAULT_PARTICLE_RANDOM_SEED,
+    FallingLeavesDescriptor, ParticleAlphaCurve, ParticleChildEmissionDescriptor,
+    ParticleDescriptor, ParticleFacingCameraMode, ParticleLightEmissionDescriptor,
+    ParticleLimitDescriptor, ParticleQuadSizeCurve, ParticleRandom, ParticleSpriteSelection,
+    ParticleTickMotionDescriptor, DEFAULT_PARTICLE_RANDOM_SEED,
 };
 pub(super) use gpu::{
     create_particle_atlas_gpu, create_particle_pipeline, ParticleAtlasGpu, ParticlePipelineKind,
@@ -32,6 +32,7 @@ const HUGE_EXPLOSION_CHILD_PARTICLE_ID: &str = "minecraft:explosion";
 const GUST_CHILD_PARTICLE_ID: &str = "minecraft:gust";
 const OMINOUS_SPAWN_START_ARGB: u32 = 0xFF45_AEFE;
 const OMINOUS_SPAWN_END_ARGB: u32 = 0xFFFF_FFFF;
+const FALLING_LEAVES_ACCELERATION_SCALE: f64 = 0.0025;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ParticleChildSpawnTemplate {
@@ -176,6 +177,8 @@ pub(crate) struct ParticleInstance {
     pub(crate) child_emission: Option<ParticleChildEmissionDescriptor>,
     #[serde(default)]
     pub(crate) child_spawn_templates: Vec<ParticleChildSpawnTemplate>,
+    #[serde(default)]
+    falling_leaves_motion: Option<FallingLeavesRuntimeState>,
     pub(crate) sprite_selection: ParticleSpriteSelection,
     pub(crate) override_limiter: bool,
     pub(crate) always_show: bool,
@@ -218,6 +221,18 @@ pub(crate) enum ParticleRenderLayer {
     Translucent,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+struct FallingLeavesRuntimeState {
+    rot_speed: f32,
+    spin_acceleration: f32,
+    wind_big: f32,
+    swirl: bool,
+    flow_away: bool,
+    xa_flow_scale: f64,
+    za_flow_scale: f64,
+    swirl_period: f64,
+}
+
 impl ParticleRenderGroup {
     fn vanilla_order(self) -> u8 {
         match self {
@@ -248,6 +263,41 @@ impl ParticleRenderLayer {
                 ParticlePipelineKind::Translucent
             }
         }
+    }
+}
+
+impl FallingLeavesRuntimeState {
+    fn sample_angles(settings: FallingLeavesDescriptor, random: &mut ParticleRandom) -> Self {
+        let rot_speed = (if random.next_bool() {
+            -30.0_f32
+        } else {
+            30.0_f32
+        })
+        .to_radians();
+        let spin_acceleration = (if random.next_bool() {
+            -5.0_f32
+        } else {
+            5.0_f32
+        })
+        .to_radians();
+        Self {
+            rot_speed,
+            spin_acceleration,
+            wind_big: settings.side_acceleration,
+            swirl: settings.swirl,
+            flow_away: settings.flow_away,
+            xa_flow_scale: 0.0,
+            za_flow_scale: 0.0,
+            swirl_period: 0.0,
+        }
+    }
+
+    fn sample_flow(&mut self, settings: FallingLeavesDescriptor, random: &mut ParticleRandom) {
+        let particle_random = random.next_f32();
+        let flow_angle = f64::from((particle_random * 60.0).to_radians());
+        self.xa_flow_scale = flow_angle.cos() * f64::from(settings.side_acceleration);
+        self.za_flow_scale = flow_angle.sin() * f64::from(settings.side_acceleration);
+        self.swirl_period = f64::from((1000.0 + particle_random * 3000.0).to_radians());
     }
 }
 
@@ -615,9 +665,15 @@ impl ParticleInstance {
         };
         let (current_sprite_index, current_sprite_id) =
             select_initial_sprite(&command.sprite_ids, descriptor.sprite_selection, random);
+        let falling_leaves = descriptor.falling_leaves();
+        let mut falling_leaves_motion = falling_leaves
+            .map(|settings| FallingLeavesRuntimeState::sample_angles(settings, random));
         let mut visual = descriptor
             .visual
             .sample_for_command(random, command.velocity);
+        if let (Some(settings), Some(motion)) = (falling_leaves, falling_leaves_motion.as_mut()) {
+            motion.sample_flow(settings, random);
+        }
         let option_scale = command.option_scale.map(clamp_particle_option_scale);
         if matches!(
             descriptor.provider,
@@ -625,7 +681,18 @@ impl ParticleInstance {
         ) {
             visual.base_quad_size *= option_scale.unwrap_or(1.0);
         }
-        let mut color = command.option_color.unwrap_or(visual.color);
+        let mut color = if descriptor.provider == "FallingLeavesParticle.TintedLeavesProvider" {
+            command.option_color.map_or(visual.color, |option_color| {
+                [
+                    option_color[0],
+                    option_color[1],
+                    option_color[2],
+                    visual.color[3],
+                ]
+            })
+        } else {
+            command.option_color.unwrap_or(visual.color)
+        };
         let mut color_transition_target = None;
         let mut sampled_lifetime_ticks = None;
         if matches!(
@@ -714,6 +781,7 @@ impl ParticleInstance {
             particle_limit,
             child_emission,
             child_spawn_templates: command.child_spawn_templates,
+            falling_leaves_motion,
             sprite_selection: descriptor.sprite_selection,
             override_limiter: command.override_limiter,
             always_show: command.always_show,
@@ -954,7 +1022,47 @@ impl ParticleInstance {
                     ];
                 }
             }
+            ParticleTickMotionDescriptor::FallingLeaves => {
+                self.tick_falling_leaves_without_collision();
+            }
         }
+    }
+
+    fn tick_falling_leaves_without_collision(&mut self) {
+        let Some(motion) = self.falling_leaves_motion.as_mut() else {
+            return;
+        };
+        let alive_ticks = self.age_ticks.saturating_add(1);
+        let relative_age = (alive_ticks as f64 / 300.0).min(1.0);
+        let mut xa = 0.0;
+        let mut za = 0.0;
+        if motion.flow_away {
+            let flow = relative_age.powf(1.25);
+            xa += motion.xa_flow_scale * flow;
+            za += motion.za_flow_scale * flow;
+        }
+        if motion.swirl {
+            xa += relative_age
+                * (relative_age * motion.swirl_period).cos()
+                * f64::from(motion.wind_big);
+            za += relative_age
+                * (relative_age * motion.swirl_period).sin()
+                * f64::from(motion.wind_big);
+        }
+
+        self.velocity[0] += xa * FALLING_LEAVES_ACCELERATION_SCALE;
+        self.velocity[2] += za * FALLING_LEAVES_ACCELERATION_SCALE;
+        self.velocity[1] -= f64::from(self.gravity);
+        motion.rot_speed += motion.spin_acceleration / 20.0;
+        self.previous_roll = self.roll;
+        self.roll += motion.rot_speed / 20.0;
+        self.position[0] += self.velocity[0];
+        self.position[1] += self.velocity[1];
+        self.position[2] += self.velocity[2];
+        let friction = f64::from(self.friction);
+        self.velocity[0] *= friction;
+        self.velocity[1] *= friction;
+        self.velocity[2] *= friction;
     }
 
     fn update_sprite_from_age(&mut self) {
@@ -2741,6 +2849,114 @@ mod tests {
                 ("minecraft:white_smoke", ParticleSpriteSelection::Age),
             ]
         );
+    }
+
+    #[test]
+    fn particle_runtime_mirrors_falling_leaves_provider_state_and_motion() {
+        let mut particles = ParticleRuntimeState::with_capacities_and_seed(8, 8, 7);
+        let mut cherry = spawn_command("minecraft:cherry_leaves", 1.0);
+        cherry.sprite_ids = vec![
+            "minecraft:cherry_leaf_0".to_string(),
+            "minecraft:cherry_leaf_1".to_string(),
+        ];
+        let mut pale_oak = spawn_command("minecraft:pale_oak_leaves", 1.0);
+        pale_oak.sprite_ids = vec![
+            "minecraft:pale_oak_leaf_0".to_string(),
+            "minecraft:pale_oak_leaf_1".to_string(),
+        ];
+        let mut tinted = spawn_command("minecraft:tinted_leaves", 1.0);
+        tinted.sprite_ids = vec![
+            "minecraft:tinted_leaf_0".to_string(),
+            "minecraft:tinted_leaf_1".to_string(),
+        ];
+        tinted.option_color = Some([0.25, 0.5, 0.75, 0.25]);
+        particles.submit_batch(ParticleSpawnBatch {
+            commands: vec![cherry, pale_oak, tinted],
+            ..ParticleSpawnBatch::default()
+        });
+
+        particles.advance(0);
+
+        let initial_sprites: Vec<_> = particles
+            .active_instances()
+            .iter()
+            .map(|instance| instance.current_sprite_id.clone())
+            .collect();
+        let cherry = &particles.active_instances()[0];
+        assert_eq!(cherry.provider, "FallingLeavesParticle.CherryProvider");
+        assert_eq!(cherry.sprite_selection, ParticleSpriteSelection::Random);
+        assert!(matches!(
+            cherry.current_sprite_id.as_deref(),
+            Some("minecraft:cherry_leaf_0" | "minecraft:cherry_leaf_1")
+        ));
+        assert_eq!(cherry.lifetime_ticks, 300);
+        assert_range_f32(cherry.base_quad_size, 0.05, 0.075);
+        assert_eq!(cherry.color, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(cherry.velocity, [0.0, -0.0, 0.0]);
+        assert_eq!(cherry.friction, 1.0);
+        assert_close_f32(cherry.gravity, 0.00075);
+        assert_eq!(
+            cherry.tick_motion,
+            ParticleTickMotionDescriptor::FallingLeaves
+        );
+        assert_eq!(cherry.render_layer, ParticleRenderLayer::Opaque);
+        assert!(cherry.has_physics);
+        let cherry_motion = cherry.falling_leaves_motion.expect("falling leaves motion");
+        assert!(cherry_motion.flow_away);
+        assert!(!cherry_motion.swirl);
+        assert_close_f32(cherry_motion.wind_big, 2.0);
+
+        let pale_oak = &particles.active_instances()[1];
+        assert_eq!(pale_oak.provider, "FallingLeavesParticle.PaleOakProvider");
+        assert!(matches!(
+            pale_oak.current_sprite_id.as_deref(),
+            Some("minecraft:pale_oak_leaf_0" | "minecraft:pale_oak_leaf_1")
+        ));
+        assert_range_f32(pale_oak.base_quad_size, 0.1, 0.15);
+        assert_eq!(pale_oak.velocity, [0.0, -0.021, 0.0]);
+        assert_close_f32(pale_oak.gravity, 0.00021);
+        let pale_motion = pale_oak
+            .falling_leaves_motion
+            .expect("falling leaves motion");
+        assert!(!pale_motion.flow_away);
+        assert!(pale_motion.swirl);
+        assert_close_f32(pale_motion.wind_big, 10.0);
+
+        let tinted = &particles.active_instances()[2];
+        assert_eq!(
+            tinted.provider,
+            "FallingLeavesParticle.TintedLeavesProvider"
+        );
+        assert!(matches!(
+            tinted.current_sprite_id.as_deref(),
+            Some("minecraft:tinted_leaf_0" | "minecraft:tinted_leaf_1")
+        ));
+        assert_range_f32(tinted.base_quad_size, 0.1, 0.15);
+        assert_eq!(tinted.color, [0.25, 0.5, 0.75, 1.0]);
+        assert_eq!(tinted.velocity, [0.0, -0.021, 0.0]);
+        assert_close_f32(tinted.gravity, 0.00021);
+        assert_eq!(tinted.render_layer, ParticleRenderLayer::Opaque);
+
+        particles.advance(1);
+
+        for (instance, initial_sprite) in particles.active_instances().iter().zip(initial_sprites) {
+            assert_eq!(instance.age_ticks, 1);
+            assert_eq!(instance.current_sprite_id, initial_sprite);
+            assert_ne!(instance.roll, 0.0);
+            assert_eq!(instance.previous_roll, 0.0);
+        }
+        let cherry = &particles.active_instances()[0];
+        assert_close_f64(cherry.position[1], -0.00075);
+        assert_close_f64(cherry.velocity[1], -0.00075);
+        assert!(cherry.position[0] != 0.0 || cherry.position[2] != 0.0);
+        let pale_oak = &particles.active_instances()[1];
+        assert_close_f64(pale_oak.position[1], -0.02121);
+        assert_close_f64(pale_oak.velocity[1], -0.02121);
+        assert!(pale_oak.position[0] != 0.0 || pale_oak.position[2] != 0.0);
+        let tinted = &particles.active_instances()[2];
+        assert_close_f64(tinted.position[1], -0.02121);
+        assert_close_f64(tinted.velocity[1], -0.02121);
+        assert!(tinted.position[0] != 0.0 || tinted.position[2] != 0.0);
     }
 
     #[test]
@@ -5217,6 +5433,7 @@ mod tests {
             particle_limit: particle_limit_for_particle(particle_id),
             child_emission: descriptor.child_emission(),
             child_spawn_templates: Vec::new(),
+            falling_leaves_motion: None,
             sprite_selection: descriptor.sprite_selection,
             override_limiter: false,
             always_show: false,

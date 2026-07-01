@@ -1365,6 +1365,18 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     reroll, alpha fade (`0.3` / `0.5`) and direct smooth block-light fade
     (`0.1` / `0.3`). The in-block removal gate remains a world-coupled
     collision/state follow-up.
+  - [x] `FallingLeavesParticle.CherryProvider` / `PaleOakProvider` /
+    `TintedLeavesProvider`：native command resolution now decodes
+    `ColorParticleOption` ARGB for `minecraft:tinted_leaves`; renderer maps
+    `cherry_leaves`, `pale_oak_leaves`, and `tinted_leaves` to random sprites,
+    fixed `300` lifetime, opaque layer, `1.0` friction, physics metadata,
+    vanilla `scale * (0.05 | 0.075)` quad-size choice, cherry flow-away
+    parameters `(fall=0.25, side=2.0, startVelocity=0.0)`, pale/tinted swirl
+    parameters `(fall=0.07, side=10.0, startVelocity=0.021)`, tinted RGB
+    option color with alpha preserved at the particle default, gravity
+    `fallAcceleration * 1.2 * 0.0025`, flow/swirl acceleration, and roll
+    spin acceleration. The on-ground / blocked-axis removal gate remains in
+    the world-coupled particle collision/physics follow-up.
   - [x] `SculkChargeParticle.Provider` roll：native command resolution decodes
     `SculkChargeParticleOptions.roll` for `minecraft:sculk_charge`; renderer
     stores it as initial `oRoll` / `roll` and applies the vanilla billboard

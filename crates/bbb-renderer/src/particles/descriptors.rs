@@ -17,6 +17,16 @@ pub(crate) struct ParticleDescriptor {
     pub(crate) speed_up_when_y_motion_is_blocked: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct FallingLeavesDescriptor {
+    pub(crate) fall_acceleration: f32,
+    pub(crate) side_acceleration: f32,
+    pub(crate) swirl: bool,
+    pub(crate) flow_away: bool,
+    pub(crate) scale: f32,
+    pub(crate) start_velocity: f64,
+}
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) enum ParticleTickMotionDescriptor {
     #[default]
@@ -36,6 +46,7 @@ pub(crate) enum ParticleTickMotionDescriptor {
     Portal,
     ReversePortal,
     Firefly,
+    FallingLeaves,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -196,6 +207,10 @@ pub(crate) enum ParticleVisualDescriptor {
         color: SuspendedTownColorDescriptor,
     },
     Explode,
+    FallingLeaves {
+        scale: f32,
+        color: ParticleColorDescriptor,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -1166,6 +1181,33 @@ impl ParticleDescriptor {
                 has_physics: false,
                 speed_up_when_y_motion_is_blocked: true,
             },
+            "minecraft:cherry_leaves"
+            | "minecraft:pale_oak_leaves"
+            | "minecraft:tinted_leaves" => {
+                let falling = falling_leaves_descriptor_for_particle(particle_id);
+                Self {
+                    provider: match particle_id {
+                        "minecraft:cherry_leaves" => "FallingLeavesParticle.CherryProvider",
+                        "minecraft:pale_oak_leaves" => "FallingLeavesParticle.PaleOakProvider",
+                        _ => "FallingLeavesParticle.TintedLeavesProvider",
+                    },
+                    lifetime: ParticleLifetimeDescriptor::Fixed(300),
+                    sprite_selection: ParticleSpriteSelection::Random,
+                    visual: ParticleVisualDescriptor::FallingLeaves {
+                        scale: falling.scale,
+                        color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                    },
+                    initial_velocity: ParticleInitialVelocityDescriptor::Fixed([
+                        0.0,
+                        -falling.start_velocity,
+                        0.0,
+                    ]),
+                    friction: 1.0,
+                    gravity: falling.fall_acceleration * 1.2 * 0.0025,
+                    has_physics: true,
+                    speed_up_when_y_motion_is_blocked: false,
+                }
+            }
             "minecraft:pause_mob_growth" | "minecraft:reset_mob_growth" => Self {
                 provider: if particle_id == "minecraft:reset_mob_growth" {
                     "SimpleVerticalParticle.ResetMobGrowthProvider"
@@ -1564,7 +1606,23 @@ impl ParticleDescriptor {
                 ParticleTickMotionDescriptor::ReversePortal
             }
             "FireflyParticle.FireflyProvider" => ParticleTickMotionDescriptor::Firefly,
+            "FallingLeavesParticle.CherryProvider"
+            | "FallingLeavesParticle.PaleOakProvider"
+            | "FallingLeavesParticle.TintedLeavesProvider" => {
+                ParticleTickMotionDescriptor::FallingLeaves
+            }
             _ => ParticleTickMotionDescriptor::DefaultParticleTick,
+        }
+    }
+
+    pub(crate) fn falling_leaves(self) -> Option<FallingLeavesDescriptor> {
+        match self.provider {
+            "FallingLeavesParticle.CherryProvider" => Some(cherry_falling_leaves_descriptor()),
+            "FallingLeavesParticle.PaleOakProvider"
+            | "FallingLeavesParticle.TintedLeavesProvider" => {
+                Some(pale_oak_falling_leaves_descriptor())
+            }
+            _ => None,
         }
     }
 
@@ -1881,6 +1939,14 @@ impl ParticleVisualDescriptor {
                 ParticleVisualState::new(
                     base_quad_size,
                     [color, color, color, 1.0],
+                    ParticleQuadSizeCurve::Constant,
+                )
+            }
+            Self::FallingLeaves { scale, color } => {
+                let size = scale * if random.next_bool() { 0.05 } else { 0.075 };
+                ParticleVisualState::new(
+                    size,
+                    color.sample(random),
                     ParticleQuadSizeCurve::Constant,
                 )
             }
@@ -2331,6 +2397,38 @@ fn sample_range(random: &mut ParticleRandom, min: f32, max: f32) -> f32 {
     min + random.next_f32() * (max - min)
 }
 
+fn falling_leaves_descriptor_for_particle(particle_id: &str) -> FallingLeavesDescriptor {
+    match particle_id {
+        "minecraft:cherry_leaves" => cherry_falling_leaves_descriptor(),
+        "minecraft:pale_oak_leaves" | "minecraft:tinted_leaves" => {
+            pale_oak_falling_leaves_descriptor()
+        }
+        _ => unreachable!("falling leaves descriptor requested for {particle_id}"),
+    }
+}
+
+fn cherry_falling_leaves_descriptor() -> FallingLeavesDescriptor {
+    FallingLeavesDescriptor {
+        fall_acceleration: 0.25,
+        side_acceleration: 2.0,
+        swirl: false,
+        flow_away: true,
+        scale: 1.0,
+        start_velocity: 0.0,
+    }
+}
+
+fn pale_oak_falling_leaves_descriptor() -> FallingLeavesDescriptor {
+    FallingLeavesDescriptor {
+        fall_acceleration: 0.07,
+        side_acceleration: 10.0,
+        swirl: true,
+        flow_away: false,
+        scale: 2.0,
+        start_velocity: 0.021,
+    }
+}
+
 fn sample_water_drop_velocity(random: &mut ParticleRandom) -> [f64; 3] {
     let velocity =
         ParticleInitialVelocityDescriptor::ParticleConstructorZero.sample([0.0; 3], random);
@@ -2559,6 +2657,86 @@ mod tests {
             vibration.light_emission(),
             ParticleLightEmissionDescriptor::FullBlock
         );
+
+        for (
+            particle_id,
+            provider,
+            fall_acceleration,
+            side_acceleration,
+            swirl,
+            flow_away,
+            scale,
+            start_velocity,
+        ) in [
+            (
+                "minecraft:cherry_leaves",
+                "FallingLeavesParticle.CherryProvider",
+                0.25,
+                2.0,
+                false,
+                true,
+                1.0,
+                0.0,
+            ),
+            (
+                "minecraft:pale_oak_leaves",
+                "FallingLeavesParticle.PaleOakProvider",
+                0.07,
+                10.0,
+                true,
+                false,
+                2.0,
+                0.021,
+            ),
+            (
+                "minecraft:tinted_leaves",
+                "FallingLeavesParticle.TintedLeavesProvider",
+                0.07,
+                10.0,
+                true,
+                false,
+                2.0,
+                0.021,
+            ),
+        ] {
+            assert_descriptor(
+                particle_id,
+                provider,
+                ParticleLifetimeDescriptor::Fixed(300),
+                ParticleSpriteSelection::Random,
+                ParticleVisualDescriptor::FallingLeaves {
+                    scale,
+                    color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                },
+                1.0,
+                fall_acceleration * 1.2 * 0.0025,
+                true,
+                false,
+            );
+            let descriptor = ParticleDescriptor::for_particle(particle_id);
+            assert_eq!(
+                descriptor.initial_velocity,
+                ParticleInitialVelocityDescriptor::Fixed([0.0, -start_velocity, 0.0]),
+                "{particle_id}"
+            );
+            assert_eq!(
+                descriptor.tick_motion(),
+                ParticleTickMotionDescriptor::FallingLeaves,
+                "{particle_id}"
+            );
+            assert_eq!(
+                descriptor.falling_leaves(),
+                Some(FallingLeavesDescriptor {
+                    fall_acceleration,
+                    side_acceleration,
+                    swirl,
+                    flow_away,
+                    scale,
+                    start_velocity,
+                }),
+                "{particle_id}"
+            );
+        }
 
         for (particle_id, provider, gravity, initial_velocity) in [
             (

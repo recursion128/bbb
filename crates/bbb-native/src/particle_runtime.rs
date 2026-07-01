@@ -1571,7 +1571,9 @@ fn particle_option_render_state(
                 ..ParticleOptionRenderState::default()
             }
         }
-        ENTITY_EFFECT_PARTICLE_TYPE_ID | FLASH_PARTICLE_TYPE_ID => {
+        ENTITY_EFFECT_PARTICLE_TYPE_ID
+        | FLASH_PARTICLE_TYPE_ID
+        | TINTED_LEAVES_PARTICLE_TYPE_ID => {
             let Ok(color) = decoder.read_i32() else {
                 return ParticleOptionRenderState::default();
             };
@@ -1843,6 +1845,7 @@ const GUST_PARTICLE_TYPE_ID: i32 = 24;
 const GUST_EMITTER_LARGE_PARTICLE_TYPE_ID: i32 = 26;
 const GUST_EMITTER_SMALL_PARTICLE_TYPE_ID: i32 = 27;
 const FLAME_PARTICLE_TYPE_ID: i32 = 32;
+const TINTED_LEAVES_PARTICLE_TYPE_ID: i32 = 36;
 const SCULK_CHARGE_PARTICLE_TYPE_ID: i32 = 38;
 const SCULK_CHARGE_POP_PARTICLE_TYPE_ID: i32 = 39;
 const SOUL_FIRE_FLAME_PARTICLE_TYPE_ID: i32 = 40;
@@ -2162,6 +2165,33 @@ mod tests {
                 0x34 as f32 / 255.0,
                 0x56 as f32 / 255.0,
                 0x66 as f32 / 255.0,
+            ])
+        );
+        assert_eq!(command.option_power, None);
+    }
+
+    #[test]
+    fn tinted_leaves_particle_options_decode_argb_color_into_spawn_command() {
+        let mut resolver = test_resolver(0);
+        let mut packet = level_particles_packet(TINTED_LEAVES_PARTICLE_TYPE_ID, 0);
+        packet.particle.raw_options = 0x7f44_6688_u32.to_be_bytes().to_vec();
+
+        let batch = resolver.resolve_level_particles(&packet);
+
+        assert_eq!(batch.len(), 1);
+        let command = &batch.commands[0];
+        assert_eq!(command.particle_id, "minecraft:tinted_leaves");
+        assert_eq!(
+            command.sprite_ids,
+            vec!["minecraft:tinted_leaf_0".to_string()]
+        );
+        assert_eq!(
+            command.option_color,
+            Some([
+                0x44 as f32 / 255.0,
+                0x66 as f32 / 255.0,
+                0x88 as f32 / 255.0,
+                0x7f as f32 / 255.0,
             ])
         );
         assert_eq!(command.option_power, None);
@@ -3424,6 +3454,7 @@ mod tests {
                 "generic_5",
                 "effect_0",
                 "spell_0",
+                "tinted_leaf_0",
                 "dragon_breath_0",
                 "flash",
                 "vibration",
@@ -3505,6 +3536,14 @@ mod tests {
             r#"{
               "textures": [
                 "minecraft:spell_0"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("tinted_leaves.json"),
+            r#"{
+              "textures": [
+                "minecraft:tinted_leaf_0"
               ]
             }"#,
         );
