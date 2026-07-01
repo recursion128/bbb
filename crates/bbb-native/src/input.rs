@@ -104,6 +104,7 @@ pub(crate) struct ClientInputState {
     bundle_scroll_accumulated_x: f64,
     bundle_scroll_accumulated_y: f64,
     inventory_hovered_slot: Option<i16>,
+    inventory_cursor_position: Option<(i32, i32)>,
     inventory_last_click_slot: Option<i16>,
     inventory_last_click_button_num: Option<i8>,
     inventory_last_click_at: Option<Instant>,
@@ -204,6 +205,7 @@ impl ClientInputState {
         self.bundle_scroll_accumulated_x = 0.0;
         self.bundle_scroll_accumulated_y = 0.0;
         self.inventory_hovered_slot = None;
+        self.inventory_cursor_position = None;
         self.inventory_last_click_slot = None;
         self.inventory_last_click_button_num = None;
         self.inventory_last_click_at = None;
@@ -322,6 +324,10 @@ impl ClientInputState {
 
     pub(crate) fn inventory_hovered_slot(&self) -> Option<i16> {
         self.inventory_hovered_slot
+    }
+
+    pub(crate) fn inventory_cursor_position(&self) -> Option<(i32, i32)> {
+        self.inventory_cursor_position
     }
 
     pub(crate) fn stonecutter_recipe_scroll_row(&self) -> i32 {

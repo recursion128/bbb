@@ -786,16 +786,21 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     firework texture selection from decoded charged projectile item templates.
   - [x] `minecraft:selected` item-model condition resolves for HUD hotbar item
     icons from vanilla `IsSelected.get`: the local selected hotbar slot receives
-    the true branch and non-selected hotbar slots stay false. Inventory slot /
-    carried-cursor GUI identity cases remain follow-up with broader GUI owner
-    state.
+    the true branch and non-selected hotbar slots stay false. Broader inventory
+    slot identity cases remain follow-up with the GUI owner/state surface.
   - [x] `minecraft:carried` item-model condition is recognized and resolved
     through an explicit local-player carried-stack context bit from vanilla
     `IsCarried.get` (`LocalPlayer.containerMenu.getCarried() == itemStack`):
     ordinary HUD/GUI slots and generated recipe/offer display items stay on the
-    false branch, while future cursor-carried item call sites can pass true
-    without matching by stack contents. Visual mouse-cursor carried item
-    projection remains a GUI surface follow-up.
+    false branch, while call sites that own the actual carried stack can pass
+    true without matching by stack contents.
+  - [x] GUI inventory cursor-carried item projection now follows vanilla
+    `AbstractContainerScreen.extractCarriedItem` for the non-dragging path:
+    the world cursor stack renders as a floating GUI item at local
+    `mouseX - 8`, `mouseY - 8`, and resolves item-model `minecraft:carried`
+    as true while ordinary slots remain false. Tests pin cursor position,
+    count label, and carried-vs-slot texture branch selection. Dragging
+    split-stack and snapback animation remain broader GUI surface follow-up.
   - [x] `minecraft:bundle/has_selected_item` and
     `minecraft:bundle/selected_item` now resolve from the explicit local bundle
     selected-item index used by GUI/HUD item icons: unselected bundles stay on

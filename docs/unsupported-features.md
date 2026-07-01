@@ -5834,15 +5834,18 @@ When an agent does any of the following, update this file in the same slice:
       `minecraft:custom_model_data` component id 17 selects the false branch
     - `minecraft:selected` — `IsSelected.get`, for HUD hotbar item icons:
       the local selected hotbar slot resolves the true branch and non-selected
-      hotbar slots resolve false. Broader GUI slot identity and carried-cursor
-      item conditions remain follow-up with the GUI owner/state surface.
+      hotbar slots resolve false. Broader GUI slot identity remains follow-up
+      with the GUI owner/state surface.
     - `minecraft:carried` — `IsCarried.get`, projected as an explicit
       local-player carried-stack context bit in the native item icon resolver:
       ordinary HUD/GUI slot and generated recipe/offer item icons keep the
       false branch, while call sites that own the actual
       `containerMenu.getCarried()` stack can resolve the true branch without
-      matching by item contents. The visual mouse-cursor carried-item projection
-      is still a later GUI surface slice.
+      matching by item contents. GUI inventory cursor-carried items now use
+      that true branch while projecting vanilla
+      `AbstractContainerScreen.extractCarriedItem`'s non-dragging
+      `mouseX - 8`, `mouseY - 8` floating item position; dragging split-stack
+      and snapback animation remain broader GUI surface follow-up.
     - `minecraft:component` condition — `ComponentMatches.get`, currently for
       the `DataComponentPredicate` component-type / `AnyValue` branch plus the
       concrete `minecraft:damage` predicate. Native maps the AnyValue
@@ -6135,9 +6138,10 @@ When an agent does any of the following, update this file in the same slice:
     is wired for the default key names currently tracked by native input.
     `minecraft:fishing_rod/cast` is wired for GUI/HUD selected hotbar
     main-hand fishing rods while a local-player-owned fishing bobber exists.
-    `minecraft:carried` is wired as an explicit resolver context bit for future
-    cursor-carried item call sites, while the cursor item presentation itself
-    remains GUI follow-up.
+    `minecraft:carried` is wired as an explicit resolver context bit for the
+    GUI inventory cursor-carried item path, which now renders the world cursor
+    stack as a floating GUI item at vanilla's non-dragging cursor offset.
+    Dragging split-stack and snapback animation remain GUI follow-up.
     `minecraft:component` is wired for the scalar / enum component select subset
     listed above, and the condition form covers component-type / AnyValue,
     `minecraft:damage`, empty single-component predicates, direct-key

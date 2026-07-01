@@ -256,6 +256,8 @@ pub(crate) fn handle_inventory_cursor_moved(
     if !input.focused || inventory_screen_layout(world).is_none() {
         return false;
     }
+    input.inventory_cursor_position =
+        inventory_screen_cursor_position(world, cursor_position, surface_size);
 
     if input.merchant_trade_scrolling
         && update_merchant_trade_scroll_from_cursor(input, world, cursor_position, surface_size)
@@ -300,6 +302,8 @@ pub(crate) fn handle_inventory_mouse_input(
     if !input.focused || inventory_screen_layout(world).is_none() {
         return false;
     }
+    input.inventory_cursor_position =
+        inventory_screen_cursor_position(world, cursor_position, surface_size);
     let button_num = match button {
         MouseButton::Left => 0,
         MouseButton::Right => 1,
@@ -1627,6 +1631,19 @@ fn inventory_screen_hovered_slot(
         Some(InventoryClickTarget::Slot(slot)) => Some(slot),
         _ => None,
     }
+}
+
+fn inventory_screen_cursor_position(
+    world: &WorldStore,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> Option<(i32, i32)> {
+    let layout = inventory_screen_layout(world)?;
+    let cursor = cursor_position?;
+    let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
+    let x = cursor.x - origin_x;
+    let y = cursor.y - origin_y;
+    (x.is_finite() && y.is_finite()).then(|| (x.floor() as i32, y.floor() as i32))
 }
 
 fn enchantment_button_at_position(

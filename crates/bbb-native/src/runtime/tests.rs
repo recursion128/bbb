@@ -15,7 +15,8 @@ use bbb_protocol::packets::{
     BossEventOperation as ProtocolBossEventOperation, CommonPlayerSpawnInfo,
     DataComponentPatchSummary, DialogHolder, GameEvent as ProtocolGameEvent, InteractionHand,
     MerchantOffer, MerchantOffers, MobEffectFlags, OpenBook, OpenSignEditor, PlayLogin, PlayTime,
-    RemoveMobEffect, SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog, UpdateMobEffect,
+    RemoveMobEffect, SetCursorItem as ProtocolSetCursorItem,
+    SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog, UpdateMobEffect,
     WrittenBookContentSummary,
 };
 use bbb_world::{
@@ -2611,6 +2612,85 @@ fn hud_item_icons_use_carried_item_condition_only_when_marked_carried() {
             max: carried_uv.max,
         }
     );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn hud_inventory_screen_projects_cursor_item_as_carried_floating_item() {
+    let root = unique_runtime_temp_dir("hud-cursor-carried-condition");
+    write_runtime_carried_condition_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let stack = item_stack(0, 3);
+    let normal_uv = item_runtime.icon_for_stack(&stack).unwrap().layers[0].uv;
+    let carried_uv = item_runtime
+        .icon_for_stack_with_context_and_use_context_time_state(
+            &stack,
+            None,
+            false,
+            crate::item_runtime::ItemModelUseContext::inactive(),
+            bbb_pack::BlockModelDisplayContext::Gui,
+            0.0,
+            None,
+            None,
+            Some("minecraft:player"),
+            None,
+            None,
+            None,
+            false,
+            true,
+            false,
+            false,
+            ItemModelKeybindContext::default(),
+        )
+        .unwrap()
+        .layers[0]
+        .uv;
+
+    let mut world = WorldStore::new();
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: stack.clone(),
+    });
+    world.apply_set_cursor_item(ProtocolSetCursorItem {
+        item: stack.clone(),
+    });
+    assert!(world.open_local_inventory());
+
+    let screen = hud_inventory_screen_with_local_state(
+        &world,
+        Some(&item_runtime),
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState {
+            cursor_position: Some((40, 60)),
+            ..InventoryHudLocalState::default()
+        },
+        0.0,
+    )
+    .unwrap();
+
+    let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 36).unwrap();
+    assert_eq!(
+        hotbar.icon.as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: normal_uv.min,
+            max: normal_uv.max,
+        }
+    );
+    assert_eq!(screen.floating_items.len(), 1);
+    let cursor = &screen.floating_items[0];
+    assert_eq!((cursor.x, cursor.y), (32, 52));
+    assert_eq!(
+        cursor.icon.layers[0].uv,
+        HudUvRect {
+            min: carried_uv.min,
+            max: carried_uv.max,
+        }
+    );
+    assert_eq!(cursor.icon.count_label, Some(HudItemCountLabel::new("3")));
+    assert!(cursor.block_model.is_none());
 
     std::fs::remove_dir_all(root).unwrap();
 }

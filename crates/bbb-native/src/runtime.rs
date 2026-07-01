@@ -393,6 +393,7 @@ struct InventoryHudLocalState {
     loom_pattern_scroll_row: Option<i32>,
     loom_selected_pattern_index: Option<i32>,
     anvil_rename_text: Option<String>,
+    cursor_position: Option<(i32, i32)>,
     shift_down: bool,
     keybind_context: ItemModelKeybindContext,
 }
@@ -1568,6 +1569,7 @@ pub(crate) fn pump_network_and_terrain(
             loom_pattern_scroll_row: Some(input.loom_pattern_scroll_row()),
             loom_selected_pattern_index: input.loom_selected_pattern_index(),
             anvil_rename_text: Some(input.anvil_rename_text().to_string()),
+            cursor_position: input.inventory_cursor_position(),
             shift_down: input.shift_down(),
             keybind_context: item_model_keybind_context,
         },
@@ -1966,6 +1968,7 @@ fn hud_inventory_screen_with_local_state(
             terrain_textures,
             layout.background,
             local_state.stonecutter_recipe_scroll_row,
+            local_state.cursor_position,
             local_state.shift_down,
             local_state.keybind_context,
             partial_tick,
@@ -2292,11 +2295,12 @@ fn hud_inventory_floating_items(
     terrain_textures: &TerrainTextureState,
     background: InventoryScreenBackground,
     stonecutter_recipe_scroll_row: Option<i32>,
+    cursor_position: Option<(i32, i32)>,
     shift_down: bool,
     keybind_context: ItemModelKeybindContext,
     partial_tick: f32,
 ) -> Vec<HudInventoryItem> {
-    match background {
+    let mut items = match background {
         InventoryScreenBackground::Merchant => hud_merchant_trade_items(
             world,
             item_runtime,
@@ -2315,7 +2319,59 @@ fn hud_inventory_floating_items(
             partial_tick,
         ),
         _ => Vec::new(),
+    };
+    push_hud_inventory_cursor_item(
+        world,
+        item_runtime,
+        terrain_textures,
+        cursor_position,
+        shift_down,
+        keybind_context,
+        partial_tick,
+        &mut items,
+    );
+    items
+}
+
+fn push_hud_inventory_cursor_item(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    cursor_position: Option<(i32, i32)>,
+    shift_down: bool,
+    keybind_context: ItemModelKeybindContext,
+    partial_tick: f32,
+    items: &mut Vec<HudInventoryItem>,
+) {
+    let Some((cursor_x, cursor_y)) = cursor_position else {
+        return;
+    };
+    let item = &world.inventory().cursor_item;
+    if item_stack_is_empty(item) {
+        return;
     }
+    let Some(icon) = hud_item_icon_for_stack(
+        world,
+        item_runtime,
+        item,
+        None,
+        false,
+        false,
+        true,
+        false,
+        shift_down,
+        keybind_context,
+        partial_tick,
+    ) else {
+        return;
+    };
+    let block_model = block_item_3d_model(item, item_runtime, terrain_textures);
+    items.push(HudInventoryItem {
+        x: cursor_x - 8,
+        y: cursor_y - 8,
+        icon,
+        block_model,
+    });
 }
 
 fn hud_inventory_background_layers(
