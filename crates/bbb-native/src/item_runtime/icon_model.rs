@@ -3092,7 +3092,7 @@ struct ExactAttributeModifier<'a> {
     operation_id: i32,
     slot_id: i32,
     display_id: i32,
-    display_text: Option<&'a str>,
+    display_text: Option<String>,
 }
 
 fn attribute_modifiers_exact_value(value: &Value) -> Option<Vec<ExactAttributeModifier<'_>>> {
@@ -3133,7 +3133,7 @@ fn attribute_modifier_exact_value(value: &Value) -> Option<ExactAttributeModifie
     })
 }
 
-fn attribute_modifier_display_exact_value(value: Option<&Value>) -> Option<(i32, Option<&str>)> {
+fn attribute_modifier_display_exact_value(value: Option<&Value>) -> Option<(i32, Option<String>)> {
     let Some(value) = value else {
         return Some((0, None));
     };
@@ -3144,8 +3144,58 @@ fn attribute_modifier_display_exact_value(value: Option<&Value>) -> Option<(i32,
     match value.get("type")?.as_str()? {
         "default" if !value.contains_key("value") => Some((0, None)),
         "hidden" if !value.contains_key("value") => Some((1, None)),
-        "override" => Some((2, Some(simple_component_text(value.get("value")?)?))),
+        "override" => Some((2, Some(component_summary_text(value.get("value")?)?))),
         _ => None,
+    }
+}
+
+fn component_summary_text(value: &Value) -> Option<String> {
+    let mut out = String::new();
+    append_json_component_text(value, &mut out);
+    (!out.is_empty()).then_some(out)
+}
+
+fn append_json_component_text(value: &Value, out: &mut String) {
+    match value {
+        Value::String(text) => out.push_str(text),
+        Value::Array(items) => {
+            for item in items {
+                append_json_component_text(item, out);
+            }
+        }
+        Value::Object(entries) => {
+            append_primary_json_component_text(entries, out);
+            if let Some(extra) = entries.get("extra") {
+                append_json_component_text(extra, out);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn append_primary_json_component_text(entries: &serde_json::Map<String, Value>, out: &mut String) {
+    if let Some(text) = entries.get("text") {
+        append_json_component_text(text, out);
+        return;
+    }
+
+    if let Some(fallback) = entries.get("fallback") {
+        append_json_component_text(fallback, out);
+    } else if let Some(translate) = entries.get("translate") {
+        append_json_component_text(translate, out);
+    } else if let Some(keybind) = entries.get("keybind") {
+        append_json_component_text(keybind, out);
+    } else if let Some(selector) = entries.get("selector") {
+        append_json_component_text(selector, out);
+    } else if let Some(nbt) = entries.get("nbt") {
+        append_json_component_text(nbt, out);
+    }
+
+    if let Some(with) = entries.get("with") {
+        if !out.is_empty() {
+            out.push(' ');
+        }
+        append_json_component_text(with, out);
     }
 }
 
@@ -3178,7 +3228,7 @@ fn attribute_modifiers_exact_match(
                     && actual.operation_id == expected.operation_id
                     && actual.slot_id == expected.slot_id
                     && actual.display_id == expected.display_id
-                    && actual.display_text.as_deref() == expected.display_text
+                    && actual.display_text.as_deref() == expected.display_text.as_deref()
             })
 }
 

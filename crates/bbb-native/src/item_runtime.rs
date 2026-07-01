@@ -12408,7 +12408,16 @@ mod tests {
                                                     "slot": "hand",
                                                     "display": {
                                                         "type": "override",
-                                                        "value": "Heavy hit"
+                                                        "value": {
+                                                            "text": "Heavy",
+                                                            "bold": true,
+                                                            "extra": [
+                                                                {
+                                                                    "text": " hit",
+                                                                    "color": "red"
+                                                                }
+                                                            ]
+                                                        }
                                                     }
                                                 }
                                             ]

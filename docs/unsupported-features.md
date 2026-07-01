@@ -5927,7 +5927,7 @@ When an agent does any of the following, update this file in the same slice:
       and `tracked`, plus exact `minecraft:attribute_modifiers` components for
       ordered modifier lists with direct attribute registry keys, `id`,
       `amount`, `operation`, `slot`, and default / hidden / simple literal
-      override display types,
+      override display text summaries, including styled / extra component text,
       `minecraft:firework_explosion`, `minecraft:fireworks`, `minecraft:trim`,
       `minecraft:jukebox_playable`, `minecraft:potion_contents`,
       `minecraft:writable_book_content`, `minecraft:written_book_content`,
@@ -5966,8 +5966,8 @@ When an agent does any of the following, update this file in the same slice:
       target `GlobalPos` and `tracked` flag. Exact
       `minecraft:attribute_modifiers` components now compare decoded ordered
       modifier entries against direct attribute registry keys, numeric amount,
-      operation, slot, and default / hidden / simple literal override display
-      kind. Exact
+      operation, slot, and default / hidden / simple literal plus styled /
+      extra override display text summaries. Exact
       `minecraft:written_book_content` components now compare decoded raw /
       filtered title strings, author, generation, resolved, and ordered simple
       literal raw / filtered pages. Remaining
@@ -5978,9 +5978,8 @@ When an agent does any of the following, update this file in the same slice:
       filterable-page-list `writable_book_content` components, and full-field
       `firework_explosion` / `fireworks` components, plus direct-key exact
       `jukebox_playable` and `trim` components, potion / mob-effect datapack
-      registry remaps for `potion_contents`, attribute modifier rich / styled
-      override display component equality and inline / datapack attribute holder
-      payloads,
+      registry remaps for `potion_contents`, attribute modifier inline /
+      datapack attribute holder payloads,
       non-literal / rich / styled written-book page `ComponentSerialization`
       equality, trim inline material or pattern payloads / datapack pattern
       registry-key remaps, datapack villager-type registry remaps, jukebox
