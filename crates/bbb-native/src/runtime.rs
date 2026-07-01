@@ -4673,6 +4673,7 @@ fn hud_item_icon_for_stack(
     let time_context = world
         .world_time()
         .map(|time| crate::item_runtime::ItemModelTimeContext {
+            game_time: time.game_time,
             day_time: time.day_time,
         });
     let compass_spawn = world.local_player().default_spawn.as_ref().map(|spawn| {

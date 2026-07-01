@@ -3691,7 +3691,10 @@ fn hotbar_item_icons_project_world_time_range_dispatch() {
                 None,
                 Some("minecraft:player"),
                 Some("minecraft:overworld"),
-                Some(crate::item_runtime::ItemModelTimeContext { day_time }),
+                Some(crate::item_runtime::ItemModelTimeContext {
+                    game_time: day_time,
+                    day_time,
+                }),
                 None,
             )
             .unwrap()
@@ -3733,10 +3736,8 @@ fn hotbar_item_icons_project_world_time_range_dispatch() {
 
     let wobbled_stack = item_stack(1, 1);
     let wobbled_fallback_uv = item_runtime.icon_for_stack(&wobbled_stack).unwrap().layers[0].uv;
-    assert_eq!(
-        selected_at_time(&wobbled_stack, 18_000),
-        wobbled_fallback_uv
-    );
+    let wobbled_uv = selected_at_time(&wobbled_stack, 18_000);
+    assert_ne!(wobbled_uv, wobbled_fallback_uv);
 
     let random_stack = item_stack(2, 1);
     let random_fallback_uv = item_runtime.icon_for_stack(&random_stack).unwrap().layers[0].uv;
@@ -8461,7 +8462,7 @@ fn write_runtime_time_range_dispatch_item_assets(root: &Path) {
                 "scale": 4.0,
                 "entries": [
                     {
-                        "threshold": 1.0,
+                        "threshold": 3.0,
                         "model": { "type": "minecraft:model", "model": "minecraft:item/time_wobbled_stateful" }
                     }
                 ],

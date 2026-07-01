@@ -55,7 +55,7 @@ mod profile_skin;
 use icon_model::{
     contains_runtime_condition, default_item_name_translation_key,
     item_icon_model_ref_for_definition, CrossbowChargeType, IconResolveContext, ItemIconModel,
-    ItemIconModelRef,
+    ItemIconModelRef, TimeSource,
 };
 pub(crate) use profile_skin::default_player_skin_for_profile_id;
 use profile_skin::ProfileSkinCache;
@@ -334,6 +334,33 @@ impl LocalDynamicPlayerTextureCache {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct ItemTimeWobblerKey {
+    item_model_id: String,
+    state_id: u64,
+    source: TimeSource,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ItemNeedleWobbler {
+    rotation: f32,
+    delta_rotation: f32,
+    last_update_tick: Option<i64>,
+}
+
+impl ItemNeedleWobbler {
+    fn update(&mut self, tick: i64, target_rotation: f32, factor: f32) -> f32 {
+        if self.last_update_tick != Some(tick) {
+            self.last_update_tick = Some(tick);
+            let temp_delta_rotation = (target_rotation - self.rotation + 0.5).rem_euclid(1.0) - 0.5;
+            self.delta_rotation += temp_delta_rotation * 0.1;
+            self.delta_rotation *= factor;
+            self.rotation = (self.rotation + self.delta_rotation).rem_euclid(1.0);
+        }
+        self.rotation
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct NativeItemRuntime {
     item_definition_count: usize,
@@ -369,6 +396,7 @@ pub(crate) struct NativeItemRuntime {
     local_dynamic_textures: RefCell<LocalDynamicPlayerTextureCache>,
     profile_skins: RefCell<ProfileSkinCache>,
     local_time_epoch_millis_override: Cell<Option<i64>>,
+    time_wobblers: RefCell<HashMap<ItemTimeWobblerKey, ItemNeedleWobbler>>,
 }
 
 impl NativeItemRuntime {
@@ -672,6 +700,7 @@ impl NativeItemRuntime {
             local_dynamic_textures: RefCell::default(),
             profile_skins: RefCell::default(),
             local_time_epoch_millis_override: Cell::new(None),
+            time_wobblers: RefCell::default(),
         })
     }
 
@@ -714,6 +743,7 @@ impl NativeItemRuntime {
             local_dynamic_textures: RefCell::default(),
             profile_skins: RefCell::default(),
             local_time_epoch_millis_override: Cell::new(None),
+            time_wobblers: RefCell::default(),
         }
     }
 
@@ -1513,6 +1543,8 @@ impl NativeItemRuntime {
                             context_entity_type: None,
                             local_time_epoch_millis: self.local_time_epoch_millis(),
                             time_context: None,
+                            time_wobbler_model_id: item_id,
+                            time_wobbler: None,
                             compass_context: None,
                             default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
                             default_max_damage_for_item: Some(&default_max_damage_for_item),
@@ -2282,6 +2314,13 @@ impl NativeItemRuntime {
             self.default_attribute_modifiers_for_resource_id(item_id, attribute_keys);
         let default_attribute_modifiers_for_item =
             |item_id| self.default_attribute_modifiers_for_protocol_id(item_id, attribute_keys);
+        let time_wobbler = |model_id: &str,
+                            state_id: u64,
+                            source: TimeSource,
+                            game_time: i64,
+                            target_rotation: f32| {
+            self.resolve_time_wobbler(model_id, state_id, source, game_time, target_rotation)
+        };
         let context = IconResolveContext {
             component_patch,
             stack_count,
@@ -2306,6 +2345,8 @@ impl NativeItemRuntime {
             context_entity_type,
             local_time_epoch_millis: self.local_time_epoch_millis(),
             time_context,
+            time_wobbler_model_id: item_model_id,
+            time_wobbler: Some(&time_wobbler),
             compass_context,
             default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
             default_max_damage_for_item: Some(&default_max_damage_for_item),
@@ -2384,6 +2425,30 @@ impl NativeItemRuntime {
         } else {
             CrossbowChargeType::Arrow
         }
+    }
+
+    fn resolve_time_wobbler(
+        &self,
+        item_model_id: &str,
+        state_id: u64,
+        source: TimeSource,
+        game_time: i64,
+        target_rotation: f32,
+    ) -> f32 {
+        let key = ItemTimeWobblerKey {
+            item_model_id: item_model_id.to_string(),
+            state_id,
+            source,
+        };
+        self.time_wobblers
+            .borrow_mut()
+            .entry(key)
+            .or_insert(ItemNeedleWobbler {
+                rotation: 0.0,
+                delta_rotation: 0.0,
+                last_update_tick: None,
+            })
+            .update(game_time, target_rotation, 0.9)
     }
 
     pub(crate) fn item_model_use_context_for_stack(
@@ -2486,6 +2551,8 @@ impl NativeItemRuntime {
             context_entity_type: parent_context.context_entity_type,
             local_time_epoch_millis: parent_context.local_time_epoch_millis,
             time_context: parent_context.time_context,
+            time_wobbler_model_id: item_id,
+            time_wobbler: parent_context.time_wobbler,
             compass_context: parent_context.compass_context,
             default_max_stack_size_for_item: parent_context.default_max_stack_size_for_item,
             default_max_damage_for_item: parent_context.default_max_damage_for_item,
@@ -3321,6 +3388,7 @@ impl ItemModelKeybindContext {
 /// `minecraft:time`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct ItemModelTimeContext {
+    pub(crate) game_time: i64,
     pub(crate) day_time: i64,
 }
 

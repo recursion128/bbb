@@ -229,8 +229,8 @@ pub(super) enum ItemIconModelRef {
 
 /// The subset of vanilla `RangeSelectItemModelProperty` whose value is either a
 /// pure projection of the item stack or a narrow GUI owner value already
-/// threaded by the caller. Stateful needle wobblers and random-spin branches
-/// stay value-blind until the runtime owns that mutable state.
+/// threaded by the caller. Stateful random-spin branches stay value-blind until
+/// the runtime owns that mutable state.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) enum RangeDispatchProperty {
     /// `minecraft:damage` — `Damage.get`.
@@ -253,10 +253,13 @@ pub(super) enum RangeDispatchProperty {
     /// `wobble=false` target projection. Stateful wobble and no-target random
     /// spin remain follow-up.
     Compass { target: CompassTarget },
-    /// `minecraft:time` — `Time.get`, currently projecting the
-    /// `wobble=false` target value for `daytime` / `moon_phase`; vanilla
-    /// wobbler smoothing and random sources remain follow-up.
-    Time { source: TimeSource },
+    /// `minecraft:time` — `Time.get`, projecting `daytime` / `moon_phase`
+    /// target values and, when requested, applying vanilla standard wobbler
+    /// smoothing through the caller-owned runtime state.
+    Time {
+        source: TimeSource,
+        wobble_state: Option<u64>,
+    },
 }
 
 impl RangeDispatchProperty {
@@ -314,15 +317,21 @@ impl RangeDispatchProperty {
                     }
                 }
             }
-            Self::Time { source } => source.value(ctx),
+            Self::Time {
+                source,
+                wobble_state,
+            } => source.value(ctx, wobble_state),
             Self::Compass { target } => target.value(ctx),
         }
     }
 }
 
 /// Builds a [`RangeDispatchProperty`] for the value-aware numeric properties, or
-/// `None` for branches that still need stateful needle wobble / random spin.
-fn range_dispatch_property_for(property: &ItemModelProperty) -> Option<RangeDispatchProperty> {
+/// `None` for branches that still need vanilla random sources / random spin.
+fn range_dispatch_property_for(
+    property: &ItemModelProperty,
+    next_wobble_state: &mut u64,
+) -> Option<RangeDispatchProperty> {
     match property.property_type.as_str() {
         "minecraft:damage" => Some(RangeDispatchProperty::Damage {
             normalize: property
@@ -387,17 +396,23 @@ fn range_dispatch_property_for(property: &ItemModelProperty) -> Option<RangeDisp
                 .get("wobble")
                 .and_then(Value::as_bool)
                 .unwrap_or(true);
-            if wobble {
-                None
-            } else {
-                property
-                    .raw()
-                    .get("source")
-                    .and_then(Value::as_str)
-                    .and_then(TimeSource::parse)
-                    .filter(|source| !source.requires_stateful_rng())
-                    .map(|source| RangeDispatchProperty::Time { source })
-            }
+            property
+                .raw()
+                .get("source")
+                .and_then(Value::as_str)
+                .and_then(TimeSource::parse)
+                .filter(|source| !source.requires_stateful_rng())
+                .map(|source| {
+                    let wobble_state = wobble.then(|| {
+                        let state = *next_wobble_state;
+                        *next_wobble_state = next_wobble_state.saturating_add(1);
+                        state
+                    });
+                    RangeDispatchProperty::Time {
+                        source,
+                        wobble_state,
+                    }
+                })
         }
         _ => None,
     }
@@ -447,7 +462,7 @@ impl CompassTarget {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(super) enum TimeSource {
     Random,
     Daytime,
@@ -468,19 +483,34 @@ impl TimeSource {
         matches!(self, Self::Random)
     }
 
-    fn value(self, ctx: IconResolveContext<'_>) -> f32 {
+    fn value(self, ctx: IconResolveContext<'_>, wobble_state: Option<u64>) -> f32 {
         if ctx.context_entity_type.is_none() {
             return 0.0;
         }
         let Some(time) = ctx.time_context else {
             return 0.0;
         };
-        match self {
+        let target = match self {
             // Vanilla uses a persistent RandomSource for this branch. Keep the
             // no-context / deterministic fallback until that state exists.
             Self::Random => 0.0,
             Self::Daytime => overworld_sun_angle(time.day_time) / 360.0,
             Self::MoonPhase => moon_phase_index(time.day_time) as f32 / 8.0,
+        };
+        if let Some(state) = wobble_state {
+            ctx.time_wobbler
+                .map(|wobbler| {
+                    wobbler(
+                        ctx.time_wobbler_model_id,
+                        state,
+                        self,
+                        time.game_time,
+                        target,
+                    )
+                })
+                .unwrap_or(target)
+        } else {
+            target
         }
     }
 }
@@ -1156,6 +1186,11 @@ pub(super) struct IconResolveContext<'a> {
     /// Vanilla `Time.get`: world clock values. `None` means this native call
     /// site has no `ClientLevel` context, so the property returns `0.0`.
     pub time_context: Option<ItemModelTimeContext>,
+    /// Runtime-owned vanilla `NeedleDirectionHelper.standardWobbler` state for
+    /// wobbled `minecraft:time` properties. The model id plus per-model state
+    /// id approximates vanilla's baked-property identity.
+    pub time_wobbler_model_id: &'a str,
+    pub time_wobbler: Option<&'a dyn Fn(&str, u64, TimeSource, i64, f32) -> f32>,
     /// Vanilla `CompassAngle.get`: owner pose, level dimension, and known
     /// compass targets available to the GUI/HUD icon resolver.
     pub compass_context: Option<ItemModelCompassContext<'a>>,
@@ -1769,7 +1804,8 @@ pub(super) fn contains_runtime_condition(model: &ItemModelDefinition) -> bool {
             fallback,
             ..
         } => {
-            range_dispatch_property_for(property).is_some()
+            let mut ignored_wobble_state = 0;
+            range_dispatch_property_for(property, &mut ignored_wobble_state).is_some()
                 || entries
                     .iter()
                     .any(|entry| contains_runtime_condition(&entry.model))
@@ -1820,6 +1856,23 @@ pub(super) fn item_icon_model_ref_for_definition(
     model_tints: &HashMap<String, Vec<ItemTintSource>>,
     colormaps: Option<&TerrainColorMaps>,
 ) -> ItemIconModelRef {
+    let mut next_wobble_state = 0;
+    item_icon_model_ref_for_definition_with_state(
+        model,
+        cuboid_models,
+        model_tints,
+        colormaps,
+        &mut next_wobble_state,
+    )
+}
+
+fn item_icon_model_ref_for_definition_with_state(
+    model: &ItemModelDefinition,
+    cuboid_models: &ItemCuboidModelCatalog,
+    model_tints: &HashMap<String, Vec<ItemTintSource>>,
+    colormaps: Option<&TerrainColorMaps>,
+    next_wobble_state: &mut u64,
+) -> ItemIconModelRef {
     match model {
         ItemModelDefinition::Empty => ItemIconModelRef::Empty,
         ItemModelDefinition::BundleSelectedItem => ItemIconModelRef::BundleSelectedItem,
@@ -1835,10 +1888,20 @@ pub(super) fn item_icon_model_ref_for_definition(
             on_false,
             ..
         } => {
-            let on_true =
-                item_icon_model_ref_for_definition(on_true, cuboid_models, model_tints, colormaps);
-            let on_false =
-                item_icon_model_ref_for_definition(on_false, cuboid_models, model_tints, colormaps);
+            let on_true = item_icon_model_ref_for_definition_with_state(
+                on_true,
+                cuboid_models,
+                model_tints,
+                colormaps,
+                next_wobble_state,
+            );
+            let on_false = item_icon_model_ref_for_definition_with_state(
+                on_false,
+                cuboid_models,
+                model_tints,
+                colormaps,
+                next_wobble_state,
+            );
             if condition_property_is_runtime_resolved(property) {
                 ItemIconModelRef::Condition {
                     property: property.clone(),
@@ -1858,17 +1921,20 @@ pub(super) fn item_icon_model_ref_for_definition(
             fallback,
             ..
         } => {
-            if let Some(resolved_property) = range_dispatch_property_for(property) {
+            if let Some(resolved_property) =
+                range_dispatch_property_for(property, next_wobble_state)
+            {
                 let mut resolved_entries: Vec<(f32, Box<ItemIconModelRef>)> = entries
                     .iter()
                     .map(|entry| {
                         (
                             entry.threshold,
-                            Box::new(item_icon_model_ref_for_definition(
+                            Box::new(item_icon_model_ref_for_definition_with_state(
                                 &entry.model,
                                 cuboid_models,
                                 model_tints,
                                 colormaps,
+                                next_wobble_state,
                             )),
                         )
                     })
@@ -1877,11 +1943,12 @@ pub(super) fn item_icon_model_ref_for_definition(
                 let fallback = fallback
                     .as_deref()
                     .map(|model| {
-                        item_icon_model_ref_for_definition(
+                        item_icon_model_ref_for_definition_with_state(
                             model,
                             cuboid_models,
                             model_tints,
                             colormaps,
+                            next_wobble_state,
                         )
                     })
                     .unwrap_or(ItemIconModelRef::Empty);
@@ -1899,11 +1966,12 @@ pub(super) fn item_icon_model_ref_for_definition(
                     .as_deref()
                     .or_else(|| entries.first().map(|entry| entry.model.as_ref()))
                     .map(|model| {
-                        item_icon_model_ref_for_definition(
+                        item_icon_model_ref_for_definition_with_state(
                             model,
                             cuboid_models,
                             model_tints,
                             colormaps,
+                            next_wobble_state,
                         )
                     })
                     .unwrap_or(ItemIconModelRef::Empty)
@@ -1921,11 +1989,12 @@ pub(super) fn item_icon_model_ref_for_definition(
                     .map(|case| {
                         (
                             select_case_when_values(&resolved_property, case),
-                            Box::new(item_icon_model_ref_for_definition(
+                            Box::new(item_icon_model_ref_for_definition_with_state(
                                 &case.model,
                                 cuboid_models,
                                 model_tints,
                                 colormaps,
+                                next_wobble_state,
                             )),
                         )
                     })
@@ -1933,11 +2002,12 @@ pub(super) fn item_icon_model_ref_for_definition(
                 let fallback = fallback
                     .as_deref()
                     .map(|model| {
-                        item_icon_model_ref_for_definition(
+                        item_icon_model_ref_for_definition_with_state(
                             model,
                             cuboid_models,
                             model_tints,
                             colormaps,
+                            next_wobble_state,
                         )
                     })
                     .unwrap_or(ItemIconModelRef::Empty);
@@ -1952,11 +2022,12 @@ pub(super) fn item_icon_model_ref_for_definition(
                 // ambient context not available to the GUI icon resolver.
                 selected_icon_select_model(property, cases, fallback.as_deref())
                     .map(|model| {
-                        item_icon_model_ref_for_definition(
+                        item_icon_model_ref_for_definition_with_state(
                             model,
                             cuboid_models,
                             model_tints,
                             colormaps,
+                            next_wobble_state,
                         )
                     })
                     .unwrap_or(ItemIconModelRef::Empty)
@@ -1966,7 +2037,13 @@ pub(super) fn item_icon_model_ref_for_definition(
             models
                 .iter()
                 .map(|model| {
-                    item_icon_model_ref_for_definition(model, cuboid_models, model_tints, colormaps)
+                    item_icon_model_ref_for_definition_with_state(
+                        model,
+                        cuboid_models,
+                        model_tints,
+                        colormaps,
+                        next_wobble_state,
+                    )
                 })
                 .collect(),
         ),
