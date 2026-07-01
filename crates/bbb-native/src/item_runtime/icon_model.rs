@@ -2037,11 +2037,7 @@ fn item_data_component_matchers_is_supported(value: &Value) -> bool {
             .unwrap_or(true)
         && value
             .get("predicates")
-            .map(|predicates| {
-                predicates
-                    .as_object()
-                    .is_some_and(|predicates| predicates.is_empty())
-            })
+            .map(item_partial_component_predicates_are_supported)
             .unwrap_or(true)
 }
 
@@ -2051,6 +2047,29 @@ fn item_exact_components_are_supported(value: &Value) -> bool {
             ComponentSelectProperty::for_component(component)
                 .is_some_and(|_| SelectCaseValue::from_json(expected).is_some())
         })
+    })
+}
+
+fn item_partial_component_predicates_are_supported(value: &Value) -> bool {
+    value.as_object().is_some_and(|predicates| {
+        predicates.iter().all(|(predicate, value)| {
+            item_partial_component_predicate_is_supported(predicate, value)
+        })
+    })
+}
+
+fn item_partial_component_predicate_is_supported(predicate: &str, value: &Value) -> bool {
+    match predicate {
+        "minecraft:damage" => damage_component_predicate_value_is_supported(value),
+        _ => false,
+    }
+}
+
+fn damage_component_predicate_value_is_supported(value: &Value) -> bool {
+    value.as_object().is_some_and(|value| {
+        value
+            .keys()
+            .all(|key| key == "damage" || key == "durability")
     })
 }
 
@@ -2226,23 +2245,23 @@ fn item_data_component_matchers_match(
     let Some(value) = value.as_object() else {
         return false;
     };
-    if value
-        .get("predicates")
-        .and_then(Value::as_object)
-        .is_some_and(|predicates| !predicates.is_empty())
-    {
-        return false;
+    if let Some(components) = value.get("components") {
+        if !item_exact_components_match(
+            components,
+            item,
+            resource_id,
+            default_max_stack_size_for_item,
+            default_max_damage_for_item,
+        ) {
+            return false;
+        }
     }
-    let Some(components) = value.get("components") else {
-        return true;
-    };
-    item_exact_components_match(
-        components,
-        item,
-        resource_id,
-        default_max_stack_size_for_item,
-        default_max_damage_for_item,
-    )
+    if let Some(predicates) = value.get("predicates") {
+        if !item_partial_component_predicates_match(predicates, item, default_max_damage_for_item) {
+            return false;
+        }
+    }
+    true
 }
 
 fn item_exact_components_match(
@@ -2273,6 +2292,40 @@ fn item_exact_components_match(
             resource_id,
         ) == Some(expected)
     })
+}
+
+fn item_partial_component_predicates_match(
+    value: &Value,
+    item: &ItemStackTemplateSummary,
+    default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
+) -> bool {
+    let Some(predicates) = value.as_object() else {
+        return false;
+    };
+    let default_max_damage =
+        default_max_damage_for_item.and_then(|max_damage| max_damage(item.item_id));
+    predicates.iter().all(|(predicate, value)| {
+        item_partial_component_predicate_match(
+            predicate,
+            value,
+            Some(&item.component_patch),
+            default_max_damage,
+        )
+    })
+}
+
+fn item_partial_component_predicate_match(
+    predicate: &str,
+    value: &Value,
+    component_patch: Option<&DataComponentPatchSummary>,
+    default_max_damage: Option<i32>,
+) -> bool {
+    match predicate {
+        "minecraft:damage" => {
+            damage_component_predicate_matches_value(value, component_patch, default_max_damage)
+        }
+        _ => false,
+    }
 }
 
 fn item_holder_set_matches(
@@ -2679,12 +2732,20 @@ fn item_stack_matches_damage_component_predicate(
     component_patch: Option<&DataComponentPatchSummary>,
     default_max_damage: Option<i32>,
 ) -> bool {
+    let Some(value) = property.raw().get("value") else {
+        return false;
+    };
+    damage_component_predicate_matches_value(value, component_patch, default_max_damage)
+}
+
+fn damage_component_predicate_matches_value(
+    value: &Value,
+    component_patch: Option<&DataComponentPatchSummary>,
+    default_max_damage: Option<i32>,
+) -> bool {
     let Some((damage, max_damage)) =
         damage_component_predicate_state(component_patch, default_max_damage)
     else {
-        return false;
-    };
-    let Some(value) = property.raw().get("value") else {
         return false;
     };
     min_max_int_bounds_match(value.get("damage"), damage)

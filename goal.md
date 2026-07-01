@@ -806,9 +806,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     against the decoded bundle item count, and `items.contains` / `count`
     now support vanilla `ItemPredicate` direct item-key or item-tag HolderSets,
     stack-count bounds, and exact scalar/default `DataComponentMatchers`
-    components over decoded bundle entries. `minecraft:container` now decodes
-    non-empty container entries and matches the same direct item-key / item-tag /
-    stack-count / exact scalar component collection predicate subset.
+    components plus nested partial `minecraft:damage` predicates over decoded
+    bundle entries. `minecraft:container` now decodes non-empty container
+    entries and matches the same direct item-key / item-tag / stack-count /
+    exact scalar component / nested partial damage predicate collection subset.
     `minecraft:enchantments` and patch-backed
     `minecraft:stored_enchantments` now match decoded enchantment levels and
     direct registry-key or enchantment-tag HolderSet predicates when the
@@ -821,9 +822,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:enchanted_book` now also contributes its item-specific default
     empty `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
     constrained `DataComponentPredicate` types such as inline enchantment holder
-    payloads / server datapack tag remaps, bundle/container nested partial
-    predicates and complex exact component codecs, and trim inline material or
-    pattern payloads / datapack pattern registry-key remaps remain
+    payloads / server datapack tag remaps, bundle/container nested AnyValue or
+    non-damage partial predicates and complex exact component codecs, and trim
+    inline material or pattern payloads / datapack pattern registry-key remaps remain
     component-predicate follow-up.
   - [x] `minecraft:has_component` item-model condition now follows vanilla
     `HasComponent.get`: default prototype components such as

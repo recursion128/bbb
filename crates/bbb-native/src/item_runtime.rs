@@ -7023,6 +7023,129 @@ mod tests {
             ),
             uv("component_condition_container_components_absent")
         );
+        assert_eq!(
+            selected(
+                36,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 2,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            added_type_ids: vec![3],
+                            damage: Some(3),
+                            ..DataComponentPatchSummary::default()
+                        },
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_partial_damage_present")
+        );
+        assert_eq!(
+            selected(
+                36,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 2,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            added_type_ids: vec![3],
+                            damage: Some(4),
+                            ..DataComponentPatchSummary::default()
+                        },
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_partial_damage_absent")
+        );
+        assert_eq!(
+            selected(
+                36,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    removed_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 2,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            added_type_ids: vec![3],
+                            damage: Some(3),
+                            ..DataComponentPatchSummary::default()
+                        },
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_partial_damage_absent")
+        );
+        assert_eq!(
+            selected(
+                37,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(2),
+                    container_items: vec![
+                        ItemStackTemplateSummary {
+                            item_id: 2,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![3],
+                                damage: Some(3),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                        ItemStackTemplateSummary {
+                            item_id: 2,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![3],
+                                damage: Some(3),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_partial_damage_present")
+        );
+        assert_eq!(
+            selected(
+                37,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(2),
+                    container_items: vec![
+                        ItemStackTemplateSummary {
+                            item_id: 2,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![3],
+                                damage: Some(3),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                        ItemStackTemplateSummary {
+                            item_id: 2,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![3],
+                                damage: Some(4),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_partial_damage_absent")
+        );
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -8550,6 +8673,8 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_CONTAINER_COMPONENTS = registerItem("component_condition_container_components");
                 public static final Item COMPONENT_CONDITION_TRIM_MATERIAL_TAG = registerItem("component_condition_trim_material_tag");
                 public static final Item COMPONENT_CONDITION_TRIM_PATTERN_TAG = registerItem("component_condition_trim_pattern_tag");
+                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_DAMAGE = registerItem("component_condition_bundle_partial_damage");
+                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_DAMAGE = registerItem("component_condition_container_partial_damage");
             }"#,
         );
         write_json(
@@ -9010,6 +9135,85 @@ mod tests {
                     "on_false": {
                         "type": "minecraft:model",
                         "model": "minecraft:item/component_condition_container_components_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_partial_damage.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "predicates": {
+                                            "minecraft:damage": {
+                                                "damage": 3,
+                                                "durability": {
+                                                    "min": 4,
+                                                    "max": 8
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_damage_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_damage_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_container_partial_damage.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:container",
+                    "value": {
+                        "items": {
+                            "count": [
+                                {
+                                    "test": {
+                                        "components": {
+                                            "predicates": {
+                                                "minecraft:damage": {
+                                                    "damage": 3
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "count": {
+                                        "min": 2
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_damage_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_damage_absent"
                     }
                 }
             }"#,
@@ -9720,6 +9924,22 @@ mod tests {
             (
                 "component_condition_container_components_absent",
                 [30, 80, 60, 255],
+            ),
+            (
+                "component_condition_bundle_partial_damage_present",
+                [230, 160, 190, 255],
+            ),
+            (
+                "component_condition_bundle_partial_damage_absent",
+                [80, 40, 60, 255],
+            ),
+            (
+                "component_condition_container_partial_damage_present",
+                [160, 190, 230, 255],
+            ),
+            (
+                "component_condition_container_partial_damage_absent",
+                [40, 60, 80, 255],
             ),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);
