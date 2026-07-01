@@ -1183,6 +1183,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
 仍在推进：
 
 - 粒子 provider-specific behavior：
+  - [x] `PortalParticle.Provider`：renderer descriptor now mirrors vanilla
+    random sprite selection, `0.1 * (random * 0.2 + 0.5)` quad size,
+    brightness-derived `[0.9, 0.3, 1.0]` RGB scaling, `40..49` lifetime,
+    portal `1 - (1-progress)^2` render-size curve, start-position tick path,
+    and `(age / lifetime)^4` smooth block-light emission.
   - 初速度。
   - lifetime。
   - size curve。

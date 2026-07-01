@@ -22,6 +22,7 @@ pub(crate) enum ParticleTickMotionDescriptor {
     DefaultParticleTick,
     DirectGravityNoFriction,
     NoMotion,
+    Portal,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -31,6 +32,7 @@ pub(crate) enum ParticleLightEmissionDescriptor {
     FullBright,
     FullBlock,
     SmoothBlockByAge,
+    SmoothBlockByAgeQuartic,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -67,6 +69,7 @@ pub(crate) enum ParticleLifetimeDescriptor {
     SixteenOverRandom,
     SixteenOverRandomPlusTwo,
     FortyOverRandom,
+    Portal,
     RandomInclusive {
         min: u32,
         max: u32,
@@ -115,6 +118,7 @@ pub(crate) enum ParticleVisualDescriptor {
         color: ParticleColorDescriptor,
     },
     HugeExplosion,
+    Portal,
     BaseAshSmoke {
         scale: f32,
         color: ParticleColorDescriptor,
@@ -163,6 +167,7 @@ pub(crate) enum ParticleQuadSizeCurve {
     Constant,
     GrowToBase,
     Flame,
+    Portal,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -972,6 +977,17 @@ impl ParticleDescriptor {
                 has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
+            "minecraft:portal" => Self {
+                provider: "PortalParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::Portal,
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::Portal,
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
+                friction: 0.98,
+                gravity: 0.0,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: false,
+            },
             "minecraft:spit" => Self {
                 provider: "SpitParticle.Provider",
                 lifetime: ParticleLifetimeDescriptor::Explode,
@@ -1029,6 +1045,7 @@ impl ParticleDescriptor {
         match self.provider {
             "BubblePopParticle.Provider" => ParticleTickMotionDescriptor::DirectGravityNoFriction,
             "AttackSweepParticle.Provider" => ParticleTickMotionDescriptor::NoMotion,
+            "PortalParticle.Provider" => ParticleTickMotionDescriptor::Portal,
             _ => ParticleTickMotionDescriptor::DefaultParticleTick,
         }
     }
@@ -1057,6 +1074,8 @@ impl ParticleDescriptor {
             | "GlowParticle.ScrapeProvider"
             | "GlowParticle.WaxOffProvider"
             | "GlowParticle.WaxOnProvider" => ParticleLightEmissionDescriptor::SmoothBlockByAge,
+            // Vanilla portal particles add `(age / lifetime)^4` smooth block emission.
+            "PortalParticle.Provider" => ParticleLightEmissionDescriptor::SmoothBlockByAgeQuartic,
             _ => ParticleLightEmissionDescriptor::World,
         }
     }
@@ -1185,6 +1204,15 @@ impl ParticleVisualDescriptor {
                     size,
                     [color, color, color, 1.0],
                     ParticleQuadSizeCurve::Constant,
+                )
+            }
+            Self::Portal => {
+                let portal_size = base_quad_size * 0.2 + 0.03;
+                let brightness = random.next_f32() * 0.6 + 0.4;
+                ParticleVisualState::new(
+                    portal_size,
+                    [brightness * 0.9, brightness * 0.3, brightness, 1.0],
+                    ParticleQuadSizeCurve::Portal,
                 )
             }
             Self::BaseAshSmoke { scale, color } => ParticleVisualState::new(
@@ -1469,6 +1497,7 @@ impl ParticleLifetimeDescriptor {
                 ((16.0 / (random.next_f32() * 0.8 + 0.2)) as u32 + 2).max(1)
             }
             Self::FortyOverRandom => ((40.0 / (random.next_f32() * 0.8 + 0.2)) as u32).max(1),
+            Self::Portal => (random.next_f32() * 10.0) as u32 + 40,
             Self::RandomInclusive { min, max } => {
                 let span = max.saturating_sub(min).saturating_add(1);
                 min + random.next_index(span as usize).unwrap_or(0) as u32
@@ -2588,6 +2617,27 @@ mod tests {
                 command_scale: 1.0,
                 random_range: 0.05,
             }
+        );
+        assert_descriptor(
+            "minecraft:portal",
+            "PortalParticle.Provider",
+            ParticleLifetimeDescriptor::Portal,
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::Portal,
+            0.98,
+            0.0,
+            false,
+            false,
+        );
+        let portal = ParticleDescriptor::for_particle("minecraft:portal");
+        assert_eq!(
+            portal.initial_velocity,
+            ParticleInitialVelocityDescriptor::Command
+        );
+        assert_eq!(portal.tick_motion(), ParticleTickMotionDescriptor::Portal);
+        assert_eq!(
+            portal.light_emission(),
+            ParticleLightEmissionDescriptor::SmoothBlockByAgeQuartic
         );
         assert_descriptor(
             "minecraft:spit",

@@ -270,6 +270,11 @@ When an agent does any of the following, update this file in the same slice:
         friction, no-physics, and blocked-y speed-up metadata
       - `HeartParticle.AngryVillagerProvider` inherits heart behavior and
         applies the vanilla initial `y + 0.5` provider position offset
+      - `PortalParticle.Provider` random sprite selection,
+        `0.1 * (random * 0.2 + 0.5)` quad size, brightness-derived
+        `[0.9, 0.3, 1.0]` RGB scaling, `40..49` lifetime,
+        `1 - (1-progress)^2` render-size curve, start-position tick path, and
+        `(age / lifetime)^4` smooth block-light emission
       - `NoteParticle.Provider` command-x hue color formula, fixed lifetime,
         grow-to-base size curve, 1.5 quad-size scale, initial y-speed offset,
         friction, and blocked-y speed-up metadata

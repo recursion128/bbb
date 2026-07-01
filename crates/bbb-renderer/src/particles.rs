@@ -86,6 +86,8 @@ pub(crate) struct ParticleInstance {
     pub(crate) current_sprite_id: Option<String>,
     #[serde(default)]
     pub(crate) current_sprite_index: Option<usize>,
+    #[serde(default)]
+    pub(crate) start_position: [f64; 3],
     pub(crate) previous_position: [f64; 3],
     pub(crate) position: [f64; 3],
     pub(crate) velocity: [f64; 3],
@@ -474,6 +476,7 @@ impl ParticleInstance {
             sprite_ids: command.sprite_ids,
             current_sprite_id,
             current_sprite_index,
+            start_position: position,
             previous_position: position,
             position,
             velocity,
@@ -516,6 +519,9 @@ impl ParticleInstance {
             ParticleQuadSizeCurve::Flame => {
                 self.base_quad_size * (1.0 - progress * progress * 0.5).max(0.0)
             }
+            ParticleQuadSizeCurve::Portal => {
+                self.base_quad_size * (1.0 - (1.0 - progress) * (1.0 - progress))
+            }
         }
     }
 
@@ -539,6 +545,20 @@ impl ParticleInstance {
                 self.position[2] += self.velocity[2];
             }
             ParticleTickMotionDescriptor::NoMotion => {}
+            ParticleTickMotionDescriptor::Portal => {
+                let next_age = self.age_ticks.saturating_add(1);
+                let lifetime = self.lifetime_ticks.max(1) as f32;
+                let progress = (next_age as f32 / lifetime).clamp(0.0, 1.0);
+                let position_scale = 1.0 - (-progress + progress * progress * 2.0);
+                self.previous_position = self.position;
+                self.position[0] =
+                    self.start_position[0] + self.velocity[0] * f64::from(position_scale);
+                self.position[1] = self.start_position[1]
+                    + self.velocity[1] * f64::from(position_scale)
+                    + f64::from(1.0 - progress);
+                self.position[2] =
+                    self.start_position[2] + self.velocity[2] * f64::from(position_scale);
+            }
         }
     }
 
@@ -807,6 +827,11 @@ fn particle_light_with_emission(instance: &ParticleInstance, sampled_light: [f32
             );
             [(sampled_light[0] + emission).min(1.0), sampled_light[1]]
         }
+        ParticleLightEmissionDescriptor::SmoothBlockByAgeQuartic => {
+            let age = instance.age_ticks as f32 / instance.lifetime_ticks.max(1) as f32;
+            let emission = age * age * age * age;
+            [(sampled_light[0] + emission).min(1.0), sampled_light[1]]
+        }
     }
 }
 
@@ -1021,6 +1046,35 @@ mod tests {
         assert_close3(instance.previous_position, [1.0, 2.0, 3.0]);
         assert_close3(instance.position, [1.0, 2.0, 3.0]);
         assert_close3(instance.velocity, [0.5, 0.25, -0.5]);
+    }
+
+    #[test]
+    fn particle_runtime_portal_tick_uses_vanilla_start_position_curve() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:portal", 40);
+        instance.start_position = [10.0, 64.0, -2.0];
+        instance.position = instance.start_position;
+        instance.previous_position = instance.position;
+        instance.velocity = [-5.0, 0.5, 5.0];
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.expired_instances, 0);
+        let instance = &particles.active_instances()[0];
+        let progress = 1.0_f64 / 40.0;
+        let position_scale = 1.0 - (-progress + progress * progress * 2.0);
+        assert_eq!(instance.age_ticks, 1);
+        assert_close3(instance.previous_position, [10.0, 64.0, -2.0]);
+        assert_close3(
+            instance.position,
+            [
+                10.0 - 5.0 * position_scale,
+                64.0 + 0.5 * position_scale + (1.0 - progress),
+                -2.0 + 5.0 * position_scale,
+            ],
+        );
+        assert_close3(instance.velocity, [-5.0, 0.5, 5.0]);
     }
 
     #[test]
@@ -1817,6 +1871,28 @@ mod tests {
         assert_range_f32(poof.base_quad_size, 0.1, 0.7);
         assert_range_f32(poof.color[0], 0.7, 1.0);
 
+        let mut portal_random = ParticleRandom::new(80);
+        let mut portal_command = spawn_command("minecraft:portal", 1.0);
+        portal_command.velocity = [-5.0, 0.0, 5.0];
+        let portal = ParticleInstance::from_spawn_command(portal_command, &mut portal_random);
+        assert_eq!(portal.provider, "PortalParticle.Provider");
+        assert_eq!(portal.sprite_selection, ParticleSpriteSelection::Random);
+        assert_eq!(portal.quad_size_curve, ParticleQuadSizeCurve::Portal);
+        assert_range_f32(portal.base_quad_size, 0.05, 0.07);
+        assert_close_f32(portal.color[0], portal.color[2] * 0.9);
+        assert_close_f32(portal.color[1], portal.color[2] * 0.3);
+        assert_eq!(portal.color[3], 1.0);
+        assert!((40..=49).contains(&portal.lifetime_ticks));
+        assert_eq!(portal.velocity, [-5.0, 0.0, 5.0]);
+        assert_eq!(portal.friction, 0.98);
+        assert_eq!(portal.gravity, 0.0);
+        assert!(!portal.has_physics);
+        assert_eq!(portal.tick_motion, ParticleTickMotionDescriptor::Portal);
+        assert_eq!(
+            portal.light_emission,
+            ParticleLightEmissionDescriptor::SmoothBlockByAgeQuartic
+        );
+
         let mut explosion_random = ParticleRandom::new(70);
         let mut explosion_command = spawn_command("minecraft:explosion", 1.0);
         explosion_command.velocity = [0.5, 2.0, 3.0];
@@ -2020,6 +2096,15 @@ mod tests {
         assert_close_f32(flame.quad_size_at_partial_tick(0.0), 0.2);
         flame.age_ticks = 20;
         assert_close_f32(flame.quad_size_at_partial_tick(0.0), 0.1);
+
+        let mut portal = test_instance_with_lifetime("minecraft:portal", 40);
+        portal.base_quad_size = 0.06;
+        portal.quad_size_curve = ParticleQuadSizeCurve::Portal;
+        assert_close_f32(portal.quad_size_at_partial_tick(0.0), 0.0);
+        portal.age_ticks = 20;
+        assert_close_f32(portal.quad_size_at_partial_tick(0.0), 0.045);
+        portal.age_ticks = 40;
+        assert_close_f32(portal.quad_size_at_partial_tick(0.0), 0.06);
     }
 
     #[test]
@@ -2159,7 +2244,7 @@ mod tests {
     #[test]
     fn particle_runtime_applies_vanilla_particle_light_emission_overrides() {
         let sampled_light = [2.0 / 15.0, 7.0 / 15.0];
-        let mut particles = ParticleRuntimeState::with_capacities(8, 8);
+        let mut particles = ParticleRuntimeState::with_capacities(9, 9);
         let cloud = test_instance_with_lifetime("minecraft:cloud", 20);
         let mut flame = test_instance_with_lifetime("minecraft:flame", 20);
         flame.age_ticks = 4;
@@ -2170,6 +2255,8 @@ mod tests {
         let sculk_charge_pop = test_instance_with_lifetime("minecraft:sculk_charge_pop", 20);
         let attack_sweep = test_instance_with_lifetime("minecraft:sweep_attack", 4);
         let end_rod = test_instance_with_lifetime("minecraft:end_rod", 60);
+        let mut portal = test_instance_with_lifetime("minecraft:portal", 40);
+        portal.age_ticks = 20;
 
         particles.active_instances.push_back(cloud);
         particles.active_instances.push_back(flame);
@@ -2179,6 +2266,7 @@ mod tests {
         particles.active_instances.push_back(sculk_charge_pop);
         particles.active_instances.push_back(attack_sweep);
         particles.active_instances.push_back(end_rod);
+        particles.active_instances.push_back(portal);
 
         particles.refresh_lights(|_| sampled_light);
 
@@ -2207,6 +2295,11 @@ mod tests {
         );
         assert_eq!(particles.active_instances()[6].light, [1.0, 1.0]);
         assert_eq!(particles.active_instances()[7].light, [1.0, 1.0]);
+        assert_close_f32(
+            particles.active_instances()[8].light[0],
+            sampled_light[0] + 0.5_f32.powi(4),
+        );
+        assert_close_f32(particles.active_instances()[8].light[1], sampled_light[1]);
     }
 
     #[test]
@@ -2274,6 +2367,7 @@ mod tests {
             sprite_ids: Vec::new(),
             current_sprite_id: None,
             current_sprite_index: None,
+            start_position: [0.0, 0.0, 0.0],
             previous_position: [0.0, 0.0, 0.0],
             position: [0.0, 0.0, 0.0],
             velocity: [0.0, 0.0, 0.0],
