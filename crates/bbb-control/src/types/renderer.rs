@@ -76,6 +76,8 @@ pub struct RendererCounters {
     #[serde(default)]
     pub last_particle_active_drop_count: usize,
     #[serde(default)]
+    pub last_particle_limited_drop_count: usize,
+    #[serde(default)]
     pub particle_runtime_ticks: u64,
     #[serde(default)]
     pub particle_instances_created: u64,
@@ -83,4 +85,6 @@ pub struct RendererCounters {
     pub particle_instances_expired: u64,
     #[serde(default)]
     pub dropped_active_particle_instances: u64,
+    #[serde(default)]
+    pub dropped_limited_particle_instances: u64,
 }

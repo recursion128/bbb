@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 pub(crate) const DEFAULT_PARTICLE_RANDOM_SEED: i64 = 0x5EED_2601;
+pub(crate) const VANILLA_SPORE_BLOSSOM_PARTICLE_LIMIT: usize = 1000;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct ParticleDescriptor {
@@ -30,6 +31,19 @@ pub(crate) enum ParticleLightEmissionDescriptor {
     FullBright,
     FullBlock,
     SmoothBlockByAge,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub(crate) enum ParticleLimitDescriptor {
+    SporeBlossom,
+}
+
+impl ParticleLimitDescriptor {
+    pub(crate) const fn limit(self) -> usize {
+        match self {
+            Self::SporeBlossom => VANILLA_SPORE_BLOSSOM_PARTICLE_LIMIT,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1045,6 +1059,13 @@ impl ParticleDescriptor {
             | "GlowParticle.WaxOnProvider" => ParticleLightEmissionDescriptor::SmoothBlockByAge,
             _ => ParticleLightEmissionDescriptor::World,
         }
+    }
+}
+
+pub(crate) fn particle_limit_for_particle(particle_id: &str) -> Option<ParticleLimitDescriptor> {
+    match particle_id {
+        "minecraft:spore_blossom_air" => Some(ParticleLimitDescriptor::SporeBlossom),
+        _ => None,
     }
 }
 

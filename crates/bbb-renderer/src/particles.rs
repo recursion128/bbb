@@ -10,9 +10,10 @@ mod descriptors;
 mod gpu;
 
 use descriptors::{
-    select_initial_sprite, sprite_index_for_age, ParticleDescriptor,
-    ParticleLightEmissionDescriptor, ParticleQuadSizeCurve, ParticleRandom,
-    ParticleSpriteSelection, ParticleTickMotionDescriptor, DEFAULT_PARTICLE_RANDOM_SEED,
+    particle_limit_for_particle, select_initial_sprite, sprite_index_for_age, ParticleDescriptor,
+    ParticleLightEmissionDescriptor, ParticleLimitDescriptor, ParticleQuadSizeCurve,
+    ParticleRandom, ParticleSpriteSelection, ParticleTickMotionDescriptor,
+    DEFAULT_PARTICLE_RANDOM_SEED,
 };
 pub(super) use gpu::{
     create_particle_atlas_gpu, create_particle_pipeline, ParticleAtlasGpu, ParticleVertex,
@@ -71,6 +72,8 @@ pub(crate) struct ParticleRuntimeState {
     instances_created: u64,
     instances_expired: u64,
     dropped_active_instances: u64,
+    limited_particle_drops: u64,
+    limited_particle_counts: BTreeMap<ParticleLimitDescriptor, usize>,
     random: ParticleRandom,
 }
 
@@ -105,6 +108,8 @@ pub(crate) struct ParticleInstance {
     pub(crate) speed_up_when_y_motion_is_blocked: bool,
     #[serde(default)]
     pub(crate) tick_motion: ParticleTickMotionDescriptor,
+    #[serde(default)]
+    pub(crate) particle_limit: Option<ParticleLimitDescriptor>,
     pub(crate) sprite_selection: ParticleSpriteSelection,
     pub(crate) override_limiter: bool,
     pub(crate) always_show: bool,
@@ -134,6 +139,8 @@ pub(crate) struct ParticleAdvanceSummary {
     pub(crate) total_instances_created: u64,
     pub(crate) total_instances_expired: u64,
     pub(crate) total_dropped_active_instances: u64,
+    pub(crate) limited_particle_drops: usize,
+    pub(crate) total_limited_particle_drops: u64,
 }
 
 impl ParticleSpawnBatch {
@@ -207,6 +214,8 @@ impl ParticleRuntimeState {
             instances_created: 0,
             instances_expired: 0,
             dropped_active_instances: 0,
+            limited_particle_drops: 0,
+            limited_particle_counts: BTreeMap::new(),
             random,
         }
     }
@@ -255,13 +264,22 @@ impl ParticleRuntimeState {
         let mut intaken_instances = 0;
         let mut expired_instances = 0;
         let mut dropped_active_instances = 0;
+        let mut limited_particle_drops = 0;
 
         if ticks == 0 {
-            self.drain_pending_spawns(&mut intaken_instances, &mut dropped_active_instances);
+            self.drain_pending_spawns(
+                &mut intaken_instances,
+                &mut dropped_active_instances,
+                &mut limited_particle_drops,
+            );
         } else {
             for _ in 0..ticks {
                 expired_instances += self.tick_active_instances();
-                self.drain_pending_spawns(&mut intaken_instances, &mut dropped_active_instances);
+                self.drain_pending_spawns(
+                    &mut intaken_instances,
+                    &mut dropped_active_instances,
+                    &mut limited_particle_drops,
+                );
             }
         }
 
@@ -274,17 +292,22 @@ impl ParticleRuntimeState {
         self.dropped_active_instances = self
             .dropped_active_instances
             .saturating_add(dropped_active_instances as u64);
+        self.limited_particle_drops = self
+            .limited_particle_drops
+            .saturating_add(limited_particle_drops as u64);
 
         ParticleAdvanceSummary {
             ticks,
             intaken_instances,
             expired_instances,
             dropped_active_instances,
+            limited_particle_drops,
             pending_spawns: self.pending_spawns.len(),
             active_instances: self.active_instances.len(),
             total_instances_created: self.instances_created,
             total_instances_expired: self.instances_expired,
             total_dropped_active_instances: self.dropped_active_instances,
+            total_limited_particle_drops: self.limited_particle_drops,
         }
     }
 
@@ -293,6 +316,7 @@ impl ParticleRuntimeState {
         let mut active_instances = VecDeque::with_capacity(self.active_instances.len());
         while let Some(mut instance) = self.active_instances.pop_front() {
             if instance.age_ticks >= instance.lifetime_ticks {
+                self.decrement_particle_limit(instance.particle_limit);
                 expired_instances += 1;
                 continue;
             }
@@ -309,22 +333,56 @@ impl ParticleRuntimeState {
         &mut self,
         intaken_instances: &mut usize,
         dropped_active_instances: &mut usize,
+        limited_particle_drops: &mut usize,
     ) {
         while let Some(command) = self.pending_spawns.pop_front() {
             if self.max_active_instances == 0 {
                 *dropped_active_instances += 1;
                 continue;
             }
+            let instance = ParticleInstance::from_spawn_command(command, &mut self.random);
+            if !self.has_space_in_particle_limit(instance.particle_limit) {
+                *limited_particle_drops += 1;
+                continue;
+            }
             if self.active_instances.len() == self.max_active_instances {
-                self.active_instances.pop_front();
+                if let Some(evicted) = self.active_instances.pop_front() {
+                    self.decrement_particle_limit(evicted.particle_limit);
+                }
                 *dropped_active_instances += 1;
             }
-            self.active_instances
-                .push_back(ParticleInstance::from_spawn_command(
-                    command,
-                    &mut self.random,
-                ));
+            self.increment_particle_limit(instance.particle_limit);
+            self.active_instances.push_back(instance);
             *intaken_instances += 1;
+        }
+    }
+
+    fn has_space_in_particle_limit(&self, limit: Option<ParticleLimitDescriptor>) -> bool {
+        let Some(limit) = limit else {
+            return true;
+        };
+        self.limited_particle_counts
+            .get(&limit)
+            .copied()
+            .unwrap_or_default()
+            < limit.limit()
+    }
+
+    fn increment_particle_limit(&mut self, limit: Option<ParticleLimitDescriptor>) {
+        if let Some(limit) = limit {
+            *self.limited_particle_counts.entry(limit).or_default() += 1;
+        }
+    }
+
+    fn decrement_particle_limit(&mut self, limit: Option<ParticleLimitDescriptor>) {
+        if let Some(limit) = limit {
+            let Some(count) = self.limited_particle_counts.get_mut(&limit) else {
+                return;
+            };
+            *count = count.saturating_sub(1);
+            if *count == 0 {
+                self.limited_particle_counts.remove(&limit);
+            }
         }
     }
 
@@ -352,6 +410,7 @@ impl ParticleRuntimeState {
 impl ParticleInstance {
     fn from_spawn_command(command: ParticleSpawnCommand, random: &mut ParticleRandom) -> Self {
         let descriptor = ParticleDescriptor::for_particle(&command.particle_id);
+        let particle_limit = particle_limit_for_particle(&command.particle_id);
         let position = descriptor.initial_position(command.position, random);
         let velocity = descriptor.initial_velocity.sample(command.velocity, random);
         let (current_sprite_index, current_sprite_id) =
@@ -381,6 +440,7 @@ impl ParticleInstance {
             has_physics: descriptor.has_physics,
             speed_up_when_y_motion_is_blocked: descriptor.speed_up_when_y_motion_is_blocked,
             tick_motion: descriptor.tick_motion(),
+            particle_limit,
             sprite_selection: descriptor.sprite_selection,
             override_limiter: command.override_limiter,
             always_show: command.always_show,
@@ -505,6 +565,7 @@ impl Renderer {
         self.counters.last_particle_tick_count = summary.ticks as usize;
         self.counters.last_particle_expired_count = summary.expired_instances;
         self.counters.last_particle_active_drop_count = summary.dropped_active_instances;
+        self.counters.last_particle_limited_drop_count = summary.limited_particle_drops;
         self.counters.particle_runtime_ticks = self
             .counters
             .particle_runtime_ticks
@@ -512,6 +573,7 @@ impl Renderer {
         self.counters.particle_instances_created = summary.total_instances_created;
         self.counters.particle_instances_expired = summary.total_instances_expired;
         self.counters.dropped_active_particle_instances = summary.total_dropped_active_instances;
+        self.counters.dropped_limited_particle_instances = summary.total_limited_particle_drops;
     }
 
     pub fn refresh_particle_lights<F>(&mut self, mut light_at_position: F)
@@ -670,6 +732,7 @@ fn particle_light_emission_progress(age_ticks: u32, lifetime_ticks: u32, partial
 
 #[cfg(test)]
 mod tests {
+    use super::descriptors::VANILLA_SPORE_BLOSSOM_PARTICLE_LIMIT;
     use super::*;
 
     #[test]
@@ -1836,6 +1899,65 @@ mod tests {
     }
 
     #[test]
+    fn particle_runtime_enforces_vanilla_spore_blossom_particle_limit() {
+        let mut particles = ParticleRuntimeState::with_capacities(1105, 1105);
+        let commands = (0..=VANILLA_SPORE_BLOSSOM_PARTICLE_LIMIT)
+            .map(|index| spawn_command("minecraft:spore_blossom_air", index as f64))
+            .collect();
+        particles.submit_batch(ParticleSpawnBatch {
+            commands,
+            ..ParticleSpawnBatch::default()
+        });
+
+        let summary = particles.advance(0);
+
+        assert_eq!(summary.intaken_instances, 1000);
+        assert_eq!(summary.limited_particle_drops, 1);
+        assert_eq!(summary.total_limited_particle_drops, 1);
+        assert_eq!(summary.dropped_active_instances, 0);
+        assert_eq!(summary.active_instances, 1000);
+        assert_eq!(
+            particles.active_instances()[0].particle_limit,
+            Some(ParticleLimitDescriptor::SporeBlossom)
+        );
+        assert_eq!(
+            particles.active_instances()[0].position[0],
+            0.0,
+            "ParticleEngine.add rejects the over-limit particle instead of evicting accepted ones"
+        );
+        assert_eq!(particles.active_instances()[999].position[0], 999.0);
+    }
+
+    #[test]
+    fn particle_runtime_releases_spore_blossom_limit_counts_on_expiry() {
+        let mut particles = ParticleRuntimeState::with_capacities(1101, 1101);
+        let commands = (0..VANILLA_SPORE_BLOSSOM_PARTICLE_LIMIT)
+            .map(|index| spawn_command("minecraft:spore_blossom_air", index as f64))
+            .collect();
+        particles.submit_batch(ParticleSpawnBatch {
+            commands,
+            ..ParticleSpawnBatch::default()
+        });
+        let first_summary = particles.advance(0);
+        assert_eq!(first_summary.intaken_instances, 1000);
+        for instance in &mut particles.active_instances {
+            instance.lifetime_ticks = 0;
+        }
+        particles.submit_batch(ParticleSpawnBatch {
+            commands: vec![spawn_command("minecraft:spore_blossom_air", 1000.0)],
+            ..ParticleSpawnBatch::default()
+        });
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.expired_instances, 1000);
+        assert_eq!(summary.intaken_instances, 1);
+        assert_eq!(summary.limited_particle_drops, 0);
+        assert_eq!(summary.active_instances, 1);
+        assert_eq!(particles.active_instances()[0].position[0], 1000.0);
+    }
+
+    #[test]
     fn particle_runtime_refreshes_active_lights_from_world_positions() {
         let mut particles = ParticleRuntimeState::with_capacities(4, 4);
         let mut first = test_instance_with_lifetime("minecraft:cloud", 20);
@@ -1994,6 +2116,7 @@ mod tests {
             has_physics: descriptor.has_physics,
             speed_up_when_y_motion_is_blocked: descriptor.speed_up_when_y_motion_is_blocked,
             tick_motion: descriptor.tick_motion(),
+            particle_limit: particle_limit_for_particle(particle_id),
             sprite_selection: descriptor.sprite_selection,
             override_limiter: false,
             always_show: false,

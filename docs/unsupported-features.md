@@ -163,7 +163,7 @@ When an agent does any of the following, update this file in the same slice:
     - light curves
     - particle sorting
     - collision/player-coupled physics
-    - particle limits/settings
+    - client `ParticleStatus` / distance thinning settings
     - atlas mip animation
     - terrain/item particle option rendering
     - remaining level-event particle effects beyond the currently covered
@@ -173,6 +173,12 @@ When an agent does any of the following, update this file in the same slice:
 - Evidence / boundary:
   - Current runtime:
     - Drains level-particle spawn batches.
+    - Enforces vanilla `ParticleLimit.SPORE_BLOSSOM` (`1000`) for
+      `SuspendedParticle.SporeBlossomAirProvider`: over-limit
+      `minecraft:spore_blossom_air` spawns are rejected without evicting the
+      accepted particles, expiration releases the count, and diagnostics keep
+      limited drops separate from the 16384 active-particle queue. The
+      provider's visual motion/color formulas remain deferred.
     - Emits renderer spawn batches for simple vanilla `LevelEventHandler`
       side effects:
       - event `1501`: eight `minecraft:large_smoke` particles above lava
