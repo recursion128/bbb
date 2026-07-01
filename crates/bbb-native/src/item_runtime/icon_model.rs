@@ -1672,7 +1672,7 @@ fn item_stack_matches_enchantments_predicate(
         .component_patch
         .map(|patch| kind.enchantments(patch))
         .unwrap_or(&[]);
-    if !kind.component_is_present(ctx.component_patch, enchantments) {
+    if !kind.component_is_present(ctx.component_patch, enchantments, ctx.default_item_model_id) {
         return false;
     }
     predicates.iter().all(|predicate| {
@@ -1705,6 +1705,7 @@ impl EnchantmentComponentKind {
         self,
         component_patch: Option<&DataComponentPatchSummary>,
         enchantments: &[ItemEnchantmentSummary],
+        default_item_model_id: &str,
     ) -> bool {
         match self {
             Self::Enchantments => true,
@@ -1712,6 +1713,7 @@ impl EnchantmentComponentKind {
                 !enchantments.is_empty()
                     || component_patch
                         .is_some_and(|patch| patch.added_type_ids.contains(&self.component_id()))
+                    || default_item_model_id == "minecraft:enchanted_book"
             }
         }
     }

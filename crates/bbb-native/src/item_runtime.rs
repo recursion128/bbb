@@ -6416,6 +6416,20 @@ mod tests {
             uv("component_condition_stored_enchantments_empty_present")
         );
         assert_eq!(
+            selected(27, DataComponentPatchSummary::default()),
+            uv("component_condition_stored_enchantments_default_present")
+        );
+        assert_eq!(
+            selected(
+                27,
+                DataComponentPatchSummary {
+                    removed_type_ids: vec![42],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_stored_enchantments_default_absent")
+        );
+        assert_eq!(
             selected(
                 25,
                 DataComponentPatchSummary {
@@ -8019,6 +8033,7 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_CONTAINER_COUNT = registerItem("component_condition_container_count");
                 public static final Item COMPONENT_CONDITION_ENCHANTMENTS_HOLDER = registerItem("component_condition_enchantments_holder");
                 public static final Item COMPONENT_CONDITION_STORED_ENCHANTMENTS_HOLDER = registerItem("component_condition_stored_enchantments_holder");
+                public static final Item ENCHANTED_BOOK = registerItem("enchanted_book");
             }"#,
         );
         write_json(
@@ -8624,6 +8639,25 @@ mod tests {
                 }
             }"#,
         );
+        write_json(
+            &assets.join("items").join("enchanted_book.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:stored_enchantments",
+                    "value": [],
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_stored_enchantments_default_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_stored_enchantments_default_absent"
+                    }
+                }
+            }"#,
+        );
         for (model_id, color) in [
             ("component_condition_rarity_present", [80, 160, 220, 255]),
             ("component_condition_rarity_absent", [60, 40, 80, 255]),
@@ -8798,6 +8832,14 @@ mod tests {
             (
                 "component_condition_stored_enchantments_holder_absent",
                 [80, 70, 30, 255],
+            ),
+            (
+                "component_condition_stored_enchantments_default_present",
+                [250, 240, 150, 255],
+            ),
+            (
+                "component_condition_stored_enchantments_default_absent",
+                [90, 80, 40, 255],
             ),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);

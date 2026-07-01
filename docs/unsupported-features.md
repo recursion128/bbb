@@ -5879,14 +5879,13 @@ When an agent does any of the following, update this file in the same slice:
       `GROUND`, item-frame `FIXED`, and owner-backed third-person generated
       held-item paths now thread that registry context. Empty
       `minecraft:enchantments` predicate lists honor vanilla's default empty
-      `ENCHANTMENTS` component unless id 13 is removed, while
-      `stored_enchantments` still requires a patch-visible component until
-      item-specific default components are modeled. Remaining constrained
-      predicate types (enchantment tag HolderSets / inline or datapack holder
-      payloads / item-specific default `stored_enchantments`, bundle/container
-      item tags and nested component matchers, trim tag sets / inline material
-      or pattern payloads / datapack pattern registry-key remaps, and similar)
-      remain follow-up.
+      `ENCHANTMENTS` component unless id 13 is removed, and vanilla
+      `minecraft:enchanted_book` contributes its item-specific default empty
+      `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
+      constrained predicate types (enchantment tag HolderSets / inline or
+      datapack holder payloads, bundle/container item tags and nested component
+      matchers, trim tag sets / inline material or pattern payloads / datapack
+      pattern registry-key remaps, and similar) remain follow-up.
     - `minecraft:charge_type` — `Charge.get` (`ROCKET` when any charged
       projectile is `minecraft:firework_rocket`, `ARROW` when charged otherwise,
       else `NONE`), using the native item registry to identify the projectile
