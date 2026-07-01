@@ -861,7 +861,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:lodestone_tracker` components for optional target `GlobalPos`
     and `tracked`, plus exact `minecraft:attribute_modifiers` components for
     ordered modifier lists with direct attribute registry keys, `id`, `amount`,
-    `operation`, `slot`, and default / hidden display types,
+    `operation`, `slot`, and default / hidden / simple literal override display
+    types,
     `minecraft:firework_explosion`, `minecraft:fireworks`, `minecraft:trim`,
     `minecraft:jukebox_playable`,
     `minecraft:potion_contents`, `minecraft:writable_book_content`,
@@ -894,7 +895,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     target `GlobalPos` and `tracked` flag. Exact
     `minecraft:attribute_modifiers` components now compare decoded ordered
     modifier entries against direct attribute registry keys, numeric amount,
-    operation, slot, and default / hidden display kind. Exact
+    operation, slot, and default / hidden / simple literal override display
+    kind. Exact
     `minecraft:written_book_content` components now compare decoded raw /
     filtered title strings, author, generation, resolved, and ordered simple
     literal raw / filtered pages. Remaining
@@ -907,8 +909,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `firework_explosion` / `fireworks` components, plus direct-key exact
     `jukebox_playable` and `trim` components, exact
     `potion_contents` with non-empty custom-effect payload equality,
-    attribute modifier override display component text and inline / datapack
-    attribute holder payloads,
+    attribute modifier rich / styled override display component equality and
+    inline / datapack attribute holder payloads,
     non-literal / rich / styled written-book page
     `ComponentSerialization` equality, trim inline material or pattern payloads
     / datapack pattern registry-key remaps, datapack villager-type registry

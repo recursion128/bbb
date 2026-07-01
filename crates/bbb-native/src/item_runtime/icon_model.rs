@@ -3049,6 +3049,7 @@ struct ExactAttributeModifier<'a> {
     operation_id: i32,
     slot_id: i32,
     display_id: i32,
+    display_text: Option<&'a str>,
 }
 
 fn attribute_modifiers_exact_value(value: &Value) -> Option<Vec<ExactAttributeModifier<'_>>> {
@@ -3071,6 +3072,7 @@ fn attribute_modifier_exact_value(value: &Value) -> Option<ExactAttributeModifie
     }) {
         return None;
     }
+    let (display_id, display_text) = attribute_modifier_display_exact_value(value.get("display"))?;
     Some(ExactAttributeModifier {
         attribute: direct_registry_key_value(value.get("type")?)?,
         modifier_id: value.get("id")?.as_str()?,
@@ -3083,21 +3085,23 @@ fn attribute_modifier_exact_value(value: &Value) -> Option<ExactAttributeModifie
             .get("slot")
             .map(|slot| slot.as_str().and_then(equipment_slot_group_id))
             .unwrap_or(Some(0))?,
-        display_id: attribute_modifier_display_exact_id(value.get("display"))?,
+        display_id,
+        display_text,
     })
 }
 
-fn attribute_modifier_display_exact_id(value: Option<&Value>) -> Option<i32> {
+fn attribute_modifier_display_exact_value(value: Option<&Value>) -> Option<(i32, Option<&str>)> {
     let Some(value) = value else {
-        return Some(0);
+        return Some((0, None));
     };
     let value = value.as_object()?;
-    if !value.keys().all(|key| key == "type") {
+    if !value.keys().all(|key| key == "type" || key == "value") {
         return None;
     }
     match value.get("type")?.as_str()? {
-        "default" => Some(0),
-        "hidden" => Some(1),
+        "default" if !value.contains_key("value") => Some((0, None)),
+        "hidden" if !value.contains_key("value") => Some((1, None)),
+        "override" => Some((2, Some(simple_component_text(value.get("value")?)?))),
         _ => None,
     }
 }
@@ -3131,6 +3135,7 @@ fn attribute_modifiers_exact_match(
                     && actual.operation_id == expected.operation_id
                     && actual.slot_id == expected.slot_id
                     && actual.display_id == expected.display_id
+                    && actual.display_text.as_deref() == expected.display_text
             })
 }
 

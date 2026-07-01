@@ -2566,6 +2566,7 @@ fn default_attribute_modifier_summary(
         operation_id: modifier.operation_id,
         slot_id: modifier.slot_id,
         display_id: 0,
+        display_text: None,
     }
 }
 
@@ -7709,14 +7710,26 @@ mod tests {
         );
         let exact_attribute_modifiers = DataComponentPatchSummary {
             added_type_ids: vec![16],
-            attribute_modifiers: vec![AttributeModifierSummary {
-                attribute_id: 0,
-                modifier_id: "minecraft:test/attack".to_string(),
-                amount_bits: 2.5f64.to_bits(),
-                operation_id: 0,
-                slot_id: 1,
-                display_id: 1,
-            }],
+            attribute_modifiers: vec![
+                AttributeModifierSummary {
+                    attribute_id: 0,
+                    modifier_id: "minecraft:test/attack".to_string(),
+                    amount_bits: 2.5f64.to_bits(),
+                    operation_id: 0,
+                    slot_id: 1,
+                    display_id: 1,
+                    display_text: None,
+                },
+                AttributeModifierSummary {
+                    attribute_id: 1,
+                    modifier_id: "minecraft:test/scale".to_string(),
+                    amount_bits: 1.25f64.to_bits(),
+                    operation_id: 1,
+                    slot_id: 3,
+                    display_id: 2,
+                    display_text: Some("Heavy hit".to_string()),
+                },
+            ],
             ..DataComponentPatchSummary::default()
         };
         assert_eq!(
@@ -7727,10 +7740,14 @@ mod tests {
             selected_with_attribute_keys(
                 95,
                 named_bundle_entry(DataComponentPatchSummary {
-                    attribute_modifiers: vec![AttributeModifierSummary {
-                        display_id: 0,
-                        ..exact_attribute_modifiers.attribute_modifiers[0].clone()
-                    }],
+                    attribute_modifiers: vec![
+                        AttributeModifierSummary {
+                            display_id: 0,
+                            display_text: None,
+                            ..exact_attribute_modifiers.attribute_modifiers[0].clone()
+                        },
+                        exact_attribute_modifiers.attribute_modifiers[1].clone(),
+                    ],
                     ..exact_attribute_modifiers.clone()
                 })
             ),
@@ -7740,10 +7757,30 @@ mod tests {
             selected_with_attribute_keys(
                 95,
                 named_bundle_entry(DataComponentPatchSummary {
-                    attribute_modifiers: vec![AttributeModifierSummary {
-                        amount_bits: 3.0f64.to_bits(),
-                        ..exact_attribute_modifiers.attribute_modifiers[0].clone()
-                    }],
+                    attribute_modifiers: vec![
+                        AttributeModifierSummary {
+                            amount_bits: 3.0f64.to_bits(),
+                            display_text: None,
+                            ..exact_attribute_modifiers.attribute_modifiers[0].clone()
+                        },
+                        exact_attribute_modifiers.attribute_modifiers[1].clone(),
+                    ],
+                    ..exact_attribute_modifiers.clone()
+                })
+            ),
+            uv("component_condition_bundle_exact_attribute_modifiers_absent")
+        );
+        assert_eq!(
+            selected_with_attribute_keys(
+                95,
+                named_bundle_entry(DataComponentPatchSummary {
+                    attribute_modifiers: vec![
+                        exact_attribute_modifiers.attribute_modifiers[0].clone(),
+                        AttributeModifierSummary {
+                            display_text: Some("Light hit".to_string()),
+                            ..exact_attribute_modifiers.attribute_modifiers[1].clone()
+                        },
+                    ],
                     ..exact_attribute_modifiers.clone()
                 })
             ),
@@ -9255,6 +9292,7 @@ mod tests {
                 operation_id,
                 slot_id,
                 display_id: 0,
+                display_text: None,
             };
         let modifier = |id: &str, amount: f64, operation_id, slot_id| AttributeModifierSummary {
             attribute_id: 7,
@@ -9263,6 +9301,7 @@ mod tests {
             operation_id,
             slot_id,
             display_id: 0,
+            display_text: None,
         };
         assert_eq!(
             selected(59, DataComponentPatchSummary::default()),
@@ -12325,6 +12364,17 @@ mod tests {
                                                     "slot": "mainhand",
                                                     "display": {
                                                         "type": "hidden"
+                                                    }
+                                                },
+                                                {
+                                                    "type": "minecraft:generic.scale",
+                                                    "id": "minecraft:test/scale",
+                                                    "amount": 1.25,
+                                                    "operation": "add_multiplied_base",
+                                                    "slot": "hand",
+                                                    "display": {
+                                                        "type": "override",
+                                                        "value": "Heavy hit"
                                                     }
                                                 }
                                             ]
