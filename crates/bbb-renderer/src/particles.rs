@@ -1847,6 +1847,38 @@ mod tests {
         assert_eq!(underwater.gravity, 0.0);
         assert!(!underwater.has_physics);
 
+        let mut spore_random = ParticleRandom::new(78);
+        let spore_blossom_air = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:spore_blossom_air", 1.0),
+            &mut spore_random,
+        );
+        assert_eq!(
+            spore_blossom_air.provider,
+            "SuspendedParticle.SporeBlossomAirProvider"
+        );
+        assert_eq!(
+            spore_blossom_air.sprite_selection,
+            ParticleSpriteSelection::Random
+        );
+        assert_eq!(spore_blossom_air.previous_position, [1.0, -0.125, 0.0]);
+        assert_eq!(spore_blossom_air.position, [1.0, -0.125, 0.0]);
+        assert_eq!(
+            spore_blossom_air.quad_size_curve,
+            ParticleQuadSizeCurve::Constant
+        );
+        assert_range_f32(spore_blossom_air.base_quad_size, 0.06, 0.24);
+        assert_eq!(spore_blossom_air.color, [0.32, 0.5, 0.22, 1.0]);
+        assert!((500..=1000).contains(&spore_blossom_air.lifetime_ticks));
+        assert_eq!(spore_blossom_air.velocity, [0.0, -0.8, 0.0]);
+        assert_eq!(spore_blossom_air.friction, 1.0);
+        assert_eq!(spore_blossom_air.gravity, 0.01);
+        assert!(!spore_blossom_air.has_physics);
+        assert_eq!(
+            spore_blossom_air.particle_limit,
+            Some(ParticleLimitDescriptor::SporeBlossom)
+        );
+        assert_eq!(spore_blossom_air.render_layer, ParticleRenderLayer::Opaque);
+
         let mut glow_random = ParticleRandom::new(67);
         let mut glow_command = spawn_command("minecraft:glow", 1.0);
         glow_command.velocity = [0.0, 1.0, 0.0];

@@ -1236,6 +1236,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `16 / (random * 0.8 + 0.2) + 2` lifetime, `1.0` friction, `0.225`
     gravity, physics metadata, opaque layer, and post-tick damping
     (`xd *= 0.95`, `yd *= 0.9`, `zd *= 0.95`).
+  - [x] `SuspendedParticle.SporeBlossomAirProvider`：renderer descriptor now
+    mirrors vanilla random sprite selection, `y - 0.125` initial position,
+    `(0, -0.8, 0)` velocity, `0.6..1.2` quad-size multiplier, overridden
+    `500..1000` lifetime after consuming the constructor lifetime draw,
+    `[0.32, 0.5, 0.22]` color, `0.01` gravity, `1.0` friction, no physics,
+    opaque layer, and existing `ParticleLimit.SPORE_BLOSSOM` cap/release
+    behavior.
   - 初速度。
   - lifetime。
   - size curve。

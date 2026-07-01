@@ -82,6 +82,7 @@ pub(crate) enum ParticleLifetimeDescriptor {
     SixteenOverRandom,
     SixteenOverRandomPlusTwo,
     FortyOverRandom,
+    SporeBlossomAir,
     Portal,
     ReversePortal,
     RandomFloatSpan {
@@ -345,6 +346,22 @@ impl ParticleDescriptor {
                 initial_velocity: ParticleInitialVelocityDescriptor::Zero,
                 friction: 1.0,
                 gravity: 0.0,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:spore_blossom_air" => Self {
+                provider: "SuspendedParticle.SporeBlossomAirProvider",
+                lifetime: ParticleLifetimeDescriptor::SporeBlossomAir,
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::SingleQuadRandomScaled {
+                    min_scale: 0.6,
+                    max_scale: 1.2,
+                    color: ParticleColorDescriptor::FixedRgb([0.32, 0.5, 0.22]),
+                    quad_size_curve: ParticleQuadSizeCurve::Constant,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Fixed([0.0, -0.8, 0.0]),
+                friction: 1.0,
+                gravity: 0.01,
                 has_physics: false,
                 speed_up_when_y_motion_is_blocked: false,
             },
@@ -1133,7 +1150,8 @@ impl ParticleDescriptor {
                 command_position[1] + random_centered_offset(random, 0.05),
                 command_position[2] + random_centered_offset(random, 0.05),
             ],
-            "SuspendedParticle.UnderwaterProvider" => [
+            "SuspendedParticle.UnderwaterProvider"
+            | "SuspendedParticle.SporeBlossomAirProvider" => [
                 command_position[0],
                 command_position[1] - 0.125,
                 command_position[2],
@@ -1682,6 +1700,10 @@ impl ParticleLifetimeDescriptor {
                 ((16.0 / (random.next_f32() * 0.8 + 0.2)) as u32 + 2).max(1)
             }
             Self::FortyOverRandom => ((40.0 / (random.next_f32() * 0.8 + 0.2)) as u32).max(1),
+            Self::SporeBlossomAir => {
+                random.next_f32();
+                500 + random.next_index(501).unwrap_or(0) as u32
+            }
             Self::Portal => (random.next_f32() * 10.0) as u32 + 40,
             Self::ReversePortal => {
                 random.next_f32();
@@ -2004,6 +2026,31 @@ mod tests {
         );
         assert_eq!(
             underwater.initial_position([1.0, 2.0, 3.0], &mut ParticleRandom::new(1)),
+            [1.0, 1.875, 3.0]
+        );
+        assert_descriptor(
+            "minecraft:spore_blossom_air",
+            "SuspendedParticle.SporeBlossomAirProvider",
+            ParticleLifetimeDescriptor::SporeBlossomAir,
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::SingleQuadRandomScaled {
+                min_scale: 0.6,
+                max_scale: 1.2,
+                color: ParticleColorDescriptor::FixedRgb([0.32, 0.5, 0.22]),
+                quad_size_curve: ParticleQuadSizeCurve::Constant,
+            },
+            1.0,
+            0.01,
+            false,
+            false,
+        );
+        let spore_blossom_air = ParticleDescriptor::for_particle("minecraft:spore_blossom_air");
+        assert_eq!(
+            spore_blossom_air.initial_velocity,
+            ParticleInitialVelocityDescriptor::Fixed([0.0, -0.8, 0.0])
+        );
+        assert_eq!(
+            spore_blossom_air.initial_position([1.0, 2.0, 3.0], &mut ParticleRandom::new(1)),
             [1.0, 1.875, 3.0]
         );
 
@@ -3554,6 +3601,12 @@ mod tests {
         for _ in 0..32 {
             let lifetime = ParticleLifetimeDescriptor::SixteenOverRandomPlusTwo.sample(&mut random);
             assert!((18..=82).contains(&lifetime));
+        }
+
+        let mut random = ParticleRandom::new(5);
+        for _ in 0..32 {
+            let lifetime = ParticleLifetimeDescriptor::SporeBlossomAir.sample(&mut random);
+            assert!((500..=1000).contains(&lifetime));
         }
 
         let mut random = ParticleRandom::new(29);

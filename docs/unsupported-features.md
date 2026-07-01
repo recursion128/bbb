@@ -200,8 +200,12 @@ When an agent does any of the following, update this file in the same slice:
       `SuspendedParticle.SporeBlossomAirProvider`: over-limit
       `minecraft:spore_blossom_air` spawns are rejected without evicting the
       accepted particles, expiration releases the count, and diagnostics keep
-      limited drops separate from the 16384 active-particle queue. The
-      provider's visual motion/color formulas remain deferred.
+      limited drops separate from the 16384 active-particle queue. Its renderer
+      descriptor now also mirrors the vanilla random sprite, `y - 0.125`
+      initial position, `(0, -0.8, 0)` initial velocity, `0.6..1.2`
+      quad-size multiplier, `500..1000` overridden lifetime after consuming the
+      constructor lifetime draw, `[0.32, 0.5, 0.22]` color, `0.01` gravity,
+      `1.0` friction, no-physics metadata, and opaque particle layer.
     - Emits renderer spawn batches for simple vanilla `LevelEventHandler`
       side effects:
       - event `1501`: eight `minecraft:large_smoke` particles above lava
