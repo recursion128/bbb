@@ -1334,6 +1334,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     and preserves vanilla's horizontal command branch (`ya == 0 && (xa || za)`)
     as `(xa, 0.1, za)`. Ground/block/fluid removal remains in the
     world-coupled collision follow-up.
+  - [x] `WakeParticle.Provider`：renderer descriptor now maps `fishing` to
+    first sprite initialization, vanilla single-quad size,
+    `8 / (random * 0.8 + 0.2)` lifetime, command velocity, opaque layer,
+    physics metadata, `0.98` friction, zero gravity, direct motion, damping,
+    and the vanilla wake sprite cycle using `SpriteSet.get((60 - lifetime) %
+    4, 4)` during ticks.
   - [x] `SculkChargeParticle.Provider` roll：native command resolution decodes
     `SculkChargeParticleOptions.roll` for `minecraft:sculk_charge`; renderer
     stores it as initial `oRoll` / `roll` and applies the vanilla billboard

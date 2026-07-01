@@ -31,6 +31,7 @@ pub(crate) enum ParticleTickMotionDescriptor {
     CampfireSmoke,
     DustPlume,
     WaterDrop,
+    Wake,
     Portal,
     ReversePortal,
 }
@@ -366,6 +367,17 @@ impl ParticleDescriptor {
                 initial_velocity: ParticleInitialVelocityDescriptor::SplashWaterDrop,
                 friction: 0.98,
                 gravity: 0.04,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:fishing" => Self {
+                provider: "WakeParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::EightOverRandom,
+                sprite_selection: ParticleSpriteSelection::First,
+                visual: ParticleVisualDescriptor::BaseSingleQuad,
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
+                friction: 0.98,
+                gravity: 0.0,
                 has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
@@ -1412,6 +1424,7 @@ impl ParticleDescriptor {
             "WaterDropParticle.Provider" | "SplashParticle.Provider" => {
                 ParticleTickMotionDescriptor::WaterDrop
             }
+            "WakeParticle.Provider" => ParticleTickMotionDescriptor::Wake,
             "PortalParticle.Provider" => ParticleTickMotionDescriptor::Portal,
             "ReversePortalParticle.ReversePortalProvider" => {
                 ParticleTickMotionDescriptor::ReversePortal
@@ -2358,6 +2371,23 @@ mod tests {
                 "{particle_id}"
             );
         }
+        assert_descriptor(
+            "minecraft:fishing",
+            "WakeParticle.Provider",
+            ParticleLifetimeDescriptor::EightOverRandom,
+            ParticleSpriteSelection::First,
+            ParticleVisualDescriptor::BaseSingleQuad,
+            0.98,
+            0.0,
+            true,
+            false,
+        );
+        let wake = ParticleDescriptor::for_particle("minecraft:fishing");
+        assert_eq!(
+            wake.initial_velocity,
+            ParticleInitialVelocityDescriptor::Command
+        );
+        assert_eq!(wake.tick_motion(), ParticleTickMotionDescriptor::Wake);
 
         assert_descriptor(
             "minecraft:bubble",

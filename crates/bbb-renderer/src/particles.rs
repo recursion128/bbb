@@ -875,6 +875,22 @@ impl ParticleInstance {
                 self.velocity[1] *= friction;
                 self.velocity[2] *= friction;
             }
+            ParticleTickMotionDescriptor::Wake => {
+                let life =
+                    60_u32.saturating_sub(self.lifetime_ticks.saturating_sub(self.age_ticks));
+                self.velocity[1] -= f64::from(self.gravity);
+                self.position[0] += self.velocity[0];
+                self.position[1] += self.velocity[1];
+                self.position[2] += self.velocity[2];
+                let friction = f64::from(self.friction);
+                self.velocity[0] *= friction;
+                self.velocity[1] *= friction;
+                self.velocity[2] *= friction;
+                if let Some(index) = sprite_index_for_age(self.sprite_ids.len(), life % 4, 4) {
+                    self.current_sprite_index = Some(index);
+                    self.current_sprite_id = self.sprite_ids.get(index).cloned();
+                }
+            }
             ParticleTickMotionDescriptor::Portal => {
                 let next_age = self.age_ticks.saturating_add(1);
                 let lifetime = self.lifetime_ticks.max(1) as f32;
@@ -1748,6 +1764,42 @@ mod tests {
     }
 
     #[test]
+    fn particle_runtime_wake_uses_command_motion_and_vanilla_sprite_cycle() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:fishing", 39);
+        instance.sprite_ids = vec![
+            "minecraft:wake_0".to_string(),
+            "minecraft:wake_1".to_string(),
+            "minecraft:wake_2".to_string(),
+            "minecraft:wake_3".to_string(),
+            "minecraft:wake_4".to_string(),
+        ];
+        instance.current_sprite_index = Some(0);
+        instance.current_sprite_id = Some("minecraft:wake_0".to_string());
+        instance.position = [1.0, 2.0, 3.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.2, 0.3, -0.4];
+        instance.gravity = 0.0;
+        instance.friction = 0.98;
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.active_instances, 1);
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 1);
+        assert_close3(instance.previous_position, [1.0, 2.0, 3.0]);
+        assert_close3(instance.position, [1.2, 2.3, 2.6]);
+        assert_close3(instance.velocity, [0.196, 0.294, -0.392]);
+        assert_eq!(instance.current_sprite_index, Some(1));
+        assert_eq!(
+            instance.current_sprite_id.as_deref(),
+            Some("minecraft:wake_1")
+        );
+    }
+
+    #[test]
     fn particle_runtime_campfire_smoke_drifts_up_and_fades_near_lifetime_end() {
         let mut particles = ParticleRuntimeState::with_capacities_and_seed(4, 4, 0);
         let mut instance = test_instance_with_lifetime("minecraft:campfire_cosy_smoke", 100);
@@ -2470,6 +2522,31 @@ mod tests {
         assert!(splash.has_physics);
         assert_eq!(splash.tick_motion, ParticleTickMotionDescriptor::WaterDrop);
         assert_eq!(splash.render_layer, ParticleRenderLayer::Opaque);
+
+        let mut wake_random = ParticleRandom::new(64);
+        let mut wake_command = spawn_command("minecraft:fishing", 1.0);
+        wake_command.velocity = [0.25, 0.5, -0.75];
+        wake_command.sprite_ids = vec![
+            "minecraft:wake_0".to_string(),
+            "minecraft:wake_1".to_string(),
+            "minecraft:wake_2".to_string(),
+            "minecraft:wake_3".to_string(),
+            "minecraft:wake_4".to_string(),
+        ];
+        let wake = ParticleInstance::from_spawn_command(wake_command, &mut wake_random);
+        assert_eq!(wake.provider, "WakeParticle.Provider");
+        assert_eq!(wake.sprite_selection, ParticleSpriteSelection::First);
+        assert_eq!(wake.current_sprite_index, Some(0));
+        assert_eq!(wake.current_sprite_id.as_deref(), Some("minecraft:wake_0"));
+        assert_eq!(wake.quad_size_curve, ParticleQuadSizeCurve::Constant);
+        assert_range_f32(wake.base_quad_size, 0.1, 0.2);
+        assert!((8..=40).contains(&wake.lifetime_ticks));
+        assert_eq!(wake.velocity, [0.25, 0.5, -0.75]);
+        assert_eq!(wake.friction, 0.98);
+        assert_eq!(wake.gravity, 0.0);
+        assert!(wake.has_physics);
+        assert_eq!(wake.tick_motion, ParticleTickMotionDescriptor::Wake);
+        assert_eq!(wake.render_layer, ParticleRenderLayer::Opaque);
 
         let mut column_bubble_random = ParticleRandom::new(60);
         let mut column_bubble_command = spawn_command("minecraft:bubble_column_up", 1.0);

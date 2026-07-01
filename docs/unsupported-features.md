@@ -424,6 +424,12 @@ When an agent does any of the following, update this file in the same slice:
         gravity; `splash` uses `0.04` gravity and the horizontal command
         branch `(xa, 0.1, za)`. Ground/block/fluid removal remains with the
         world-coupled collision follow-up.
+        `fishing` now maps to `WakeParticle.Provider` with first sprite
+        initialization, vanilla single-quad size, `8 / (random * 0.8 + 0.2)`
+        lifetime, command velocity, opaque layer, physics metadata, `0.98`
+        friction, zero gravity, direct motion, damping, and the vanilla wake
+        sprite cycle using `SpriteSet.get((60 - lifetime) % 4, 4)` during
+        ticks.
         `dust` / `dust_color_transition` now map to their vanilla providers
         with decoded RGB colors, transition target color, clamped scale,
         scale-shaped quad size / lifetime, random color variation, age sprites,
@@ -5804,6 +5810,12 @@ When an agent does any of the following, update this file in the same slice:
         `splash` uses `0.04` gravity and the vanilla horizontal command
         branch `(xa, 0.1, za)`. Ground/block/fluid removal remains deferred
         until world-coupled particle collision state is represented.
+      - particle descriptors map `WakeParticle.Provider` for `fishing` to
+        first sprite initialization, vanilla single-quad size,
+        `8/(random*.8+.2)` lifetime, command velocity, opaque particle layer,
+        physics metadata, `0.98` friction, zero gravity, direct motion,
+        damping, and wake sprite cycling via `SpriteSet.get((60-lifetime)%4,
+        4)` during runtime ticks.
       - particle descriptors map `ShriekParticle.Provider` to
         `ShriekParticleOption.delay` carried in
         `ParticleSpawnCommand.initial_delay_ticks`; delayed instances do not
