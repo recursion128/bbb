@@ -842,8 +842,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:unbreakable` Unit exact components and exact
     `minecraft:custom_data` compound components (JSON-object or SNBT-string
     expected values), plus exact `minecraft:potion_contents` components for
-    direct potion keys, optional `custom_color`, empty `custom_effects`, and
-    optional `custom_name`, plus exact `minecraft:writable_book_content`
+    direct potion keys, optional `custom_color`, ordered direct mob-effect
+    `custom_effects` payloads including amplifier / duration / ambient /
+    particles / icon / recursive hidden-effect details, and optional
+    `custom_name`, plus exact `minecraft:writable_book_content`
     ordered `Filterable<String>` page lists with raw and optional filtered
     strings, plus exact `minecraft:written_book_content` components for raw /
     filtered title strings and ordered simple literal component pages, plus
@@ -903,14 +905,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     constrained `DataComponentPredicate` types such as inline enchantment holder
     payloads / server datapack tag remaps, broader NBT scalar typing, remaining
     concrete partial predicates and complex exact component codecs beyond
-    simple literal name/lore, Unit `unbreakable`, compound `custom_data`, and
-    direct-key / empty-custom-effects `potion_contents` components,
+    simple literal name/lore, Unit `unbreakable`, compound `custom_data`,
     filterable-page-list `writable_book_content` components, and full-field
     `firework_explosion` / `fireworks` components, plus direct-key exact
-    `jukebox_playable` and `trim` components, exact
-    `potion_contents` with non-empty custom-effect payload equality,
-    attribute modifier rich / styled override display component equality and
-    inline / datapack attribute holder payloads,
+    `jukebox_playable` and `trim` components, potion / mob-effect datapack
+    registry remaps for `potion_contents`, attribute modifier rich / styled
+    override display component equality and inline / datapack attribute holder
+    payloads,
     non-literal / rich / styled written-book page
     `ComponentSerialization` equality, trim inline material or pattern payloads
     / datapack pattern registry-key remaps, datapack villager-type registry

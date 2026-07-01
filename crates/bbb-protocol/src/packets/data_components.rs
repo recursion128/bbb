@@ -88,6 +88,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub potion_custom_effect_count: Option<usize>,
     #[serde(default)]
+    pub potion_custom_effects: Vec<MobEffectInstanceSummary>,
+    #[serde(default)]
     pub potion_custom_name: Option<String>,
     #[serde(default)]
     pub firework_explosion_colors: Vec<i32>,
@@ -180,6 +182,29 @@ pub struct NbtSummaryEntry {
 pub struct LodestoneTargetSummary {
     pub dimension: String,
     pub pos: chunks::BlockPos,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MobEffectInstanceSummary {
+    pub effect_id: i32,
+    pub amplifier: i32,
+    pub duration: i32,
+    pub ambient: bool,
+    pub show_particles: bool,
+    pub show_icon: bool,
+    #[serde(default)]
+    pub hidden_effect: Option<Box<MobEffectDetailsSummary>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MobEffectDetailsSummary {
+    pub amplifier: i32,
+    pub duration: i32,
+    pub ambient: bool,
+    pub show_particles: bool,
+    pub show_icon: bool,
+    #[serde(default)]
+    pub hidden_effect: Option<Box<MobEffectDetailsSummary>>,
 }
 
 /// The `floats` list of a `minecraft:custom_model_data` component, preserved so
@@ -553,7 +578,8 @@ fn decode_typed_data_component_patch_summary(
                 let potion = decode_potion_contents(decoder)?;
                 summary.potion_id = potion.potion_id;
                 summary.potion_custom_color = potion.custom_color;
-                summary.potion_custom_effect_count = Some(potion.custom_effect_count);
+                summary.potion_custom_effect_count = Some(potion.custom_effects.len());
+                summary.potion_custom_effects = potion.custom_effects;
                 summary.potion_custom_name = potion.custom_name;
             }
             68 => {
@@ -1814,7 +1840,7 @@ fn decode_swing_animation(decoder: &mut Decoder<'_>) -> Result<SwingAnimationSum
 struct PotionContentsSummary {
     potion_id: Option<i32>,
     custom_color: Option<i32>,
-    custom_effect_count: usize,
+    custom_effects: Vec<MobEffectInstanceSummary>,
     custom_name: Option<String>,
 }
 
@@ -1825,15 +1851,16 @@ fn decode_potion_contents(decoder: &mut Decoder<'_>) -> Result<PotionContentsSum
         None
     };
     let custom_color = decode_optional_i32_value(decoder)?;
-    let effects = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
-    for _ in 0..effects {
-        decode_mob_effect_instance(decoder)?;
+    let effect_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    let mut custom_effects = Vec::with_capacity(effect_count);
+    for _ in 0..effect_count {
+        custom_effects.push(decode_mob_effect_instance(decoder)?);
     }
     let custom_name = decode_optional_string_value(decoder, MAX_STRING_CHARS)?;
     Ok(PotionContentsSummary {
         potion_id,
         custom_color,
-        custom_effect_count: effects,
+        custom_effects,
         custom_name,
     })
 }
@@ -1847,26 +1874,47 @@ fn decode_suspicious_stew_effects(decoder: &mut Decoder<'_>) -> Result<()> {
     Ok(())
 }
 
-fn decode_mob_effect_instance(decoder: &mut Decoder<'_>) -> Result<()> {
-    decode_holder_registry(decoder)?;
-    decode_mob_effect_details(decoder, 0)
+fn decode_mob_effect_instance(decoder: &mut Decoder<'_>) -> Result<MobEffectInstanceSummary> {
+    let effect_id = decode_holder_registry_id(decoder)?;
+    let details = decode_mob_effect_details(decoder, 0)?;
+    Ok(MobEffectInstanceSummary {
+        effect_id,
+        amplifier: details.amplifier,
+        duration: details.duration,
+        ambient: details.ambient,
+        show_particles: details.show_particles,
+        show_icon: details.show_icon,
+        hidden_effect: details.hidden_effect,
+    })
 }
 
-fn decode_mob_effect_details(decoder: &mut Decoder<'_>, depth: usize) -> Result<()> {
+fn decode_mob_effect_details(
+    decoder: &mut Decoder<'_>,
+    depth: usize,
+) -> Result<MobEffectDetailsSummary> {
     if depth > MAX_MOB_EFFECT_DETAILS_DEPTH {
         return Err(ProtocolError::InvalidData(
             "mob effect details exceeded max depth".to_string(),
         ));
     }
-    decoder.read_var_i32()?;
-    decoder.read_var_i32()?;
-    decoder.read_bool()?;
-    decoder.read_bool()?;
-    decoder.read_bool()?;
-    if decoder.read_bool()? {
-        decode_mob_effect_details(decoder, depth + 1)?;
-    }
-    Ok(())
+    let amplifier = decoder.read_var_i32()?;
+    let duration = decoder.read_var_i32()?;
+    let ambient = decoder.read_bool()?;
+    let show_particles = decoder.read_bool()?;
+    let show_icon = decoder.read_bool()?;
+    let hidden_effect = if decoder.read_bool()? {
+        Some(Box::new(decode_mob_effect_details(decoder, depth + 1)?))
+    } else {
+        None
+    };
+    Ok(MobEffectDetailsSummary {
+        amplifier,
+        duration,
+        ambient,
+        show_particles,
+        show_icon,
+        hidden_effect,
+    })
 }
 
 struct WritableBookContentSummary {
@@ -3245,6 +3293,15 @@ mod tests {
                 potion_custom_color: Some(0x778899),
                 potion_id: Some(3),
                 potion_custom_effect_count: Some(1),
+                potion_custom_effects: vec![MobEffectInstanceSummary {
+                    effect_id: 2,
+                    amplifier: 1,
+                    duration: 200,
+                    ambient: false,
+                    show_particles: true,
+                    show_icon: true,
+                    hidden_effect: None,
+                }],
                 potion_custom_name: Some("healing".to_string()),
                 firework_explosion_colors: vec![0x010203, 0x040506],
                 firework_explosion_fade_colors: vec![0x070809],

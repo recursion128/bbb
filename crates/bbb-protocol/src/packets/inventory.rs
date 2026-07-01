@@ -13,11 +13,11 @@ pub use data_components::{
     ConsumableSummary, CustomModelDataFloats, DataComponentPatchSummary,
     FireworkExplosionShapeSummary, FireworkExplosionSummary, GameProfilePropertySummary,
     ItemEnchantmentSummary, ItemRaritySummary, ItemStackTemplateSummary, LodestoneTargetSummary,
-    MapPostProcessingSummary, NbtSummaryEntry, NbtSummaryValue, PlayerModelTypeSummary,
-    PlayerSkinPatchSummary, ProfileSkinTextureSummary, ProfileTextureSummary,
-    ProfileTexturesSummary, ResolvableProfileKindSummary, ResolvableProfileSummary,
-    ResourceTextureSummary, SwingAnimationSummary, SwingAnimationTypeSummary, UseEffectsSummary,
-    WrittenBookContentSummary,
+    MapPostProcessingSummary, MobEffectDetailsSummary, MobEffectInstanceSummary, NbtSummaryEntry,
+    NbtSummaryValue, PlayerModelTypeSummary, PlayerSkinPatchSummary, ProfileSkinTextureSummary,
+    ProfileTextureSummary, ProfileTexturesSummary, ResolvableProfileKindSummary,
+    ResolvableProfileSummary, ResourceTextureSummary, SwingAnimationSummary,
+    SwingAnimationTypeSummary, UseEffectsSummary, WrittenBookContentSummary,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

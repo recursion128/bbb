@@ -7,7 +7,8 @@ use bbb_pack::{
 use bbb_protocol::packets::{
     AttributeModifierSummary, DataComponentPatchSummary, FireworkExplosionShapeSummary,
     FireworkExplosionSummary, ItemEnchantmentSummary, ItemRaritySummary, ItemStackTemplateSummary,
-    NbtSummaryEntry, NbtSummaryValue, WrittenBookContentSummary,
+    MobEffectDetailsSummary, MobEffectInstanceSummary, NbtSummaryEntry, NbtSummaryValue,
+    WrittenBookContentSummary,
 };
 use chrono::{Datelike, FixedOffset, Local, TimeZone, Utc};
 use serde_json::Value;
@@ -139,6 +140,48 @@ const VANILLA_POTION_KEYS: &[&str] = &[
     "minecraft:weaving",
     "minecraft:oozing",
     "minecraft:infested",
+];
+const VANILLA_MOB_EFFECT_KEYS: &[&str] = &[
+    "minecraft:speed",
+    "minecraft:slowness",
+    "minecraft:haste",
+    "minecraft:mining_fatigue",
+    "minecraft:strength",
+    "minecraft:instant_health",
+    "minecraft:instant_damage",
+    "minecraft:jump_boost",
+    "minecraft:nausea",
+    "minecraft:regeneration",
+    "minecraft:resistance",
+    "minecraft:fire_resistance",
+    "minecraft:water_breathing",
+    "minecraft:invisibility",
+    "minecraft:blindness",
+    "minecraft:night_vision",
+    "minecraft:hunger",
+    "minecraft:weakness",
+    "minecraft:poison",
+    "minecraft:wither",
+    "minecraft:health_boost",
+    "minecraft:absorption",
+    "minecraft:saturation",
+    "minecraft:glowing",
+    "minecraft:levitation",
+    "minecraft:luck",
+    "minecraft:unluck",
+    "minecraft:slow_falling",
+    "minecraft:conduit_power",
+    "minecraft:dolphins_grace",
+    "minecraft:bad_omen",
+    "minecraft:hero_of_the_village",
+    "minecraft:darkness",
+    "minecraft:trial_omen",
+    "minecraft:raid_omen",
+    "minecraft:wind_charged",
+    "minecraft:weaving",
+    "minecraft:oozing",
+    "minecraft:infested",
+    "minecraft:breath_of_the_nautilus",
 ];
 const VANILLA_VILLAGER_TYPE_KEYS: &[&str] = &[
     "minecraft:desert",
@@ -4515,8 +4558,22 @@ fn item_stack_matches_potion_contents_value(
 struct ExactPotionContents<'a> {
     potion_key: Option<&'a str>,
     custom_color: Option<i32>,
-    custom_effect_count: usize,
+    custom_effects: Vec<ExactMobEffectInstance<'a>>,
     custom_name: Option<&'a str>,
+}
+
+struct ExactMobEffectInstance<'a> {
+    effect_key: &'a str,
+    details: ExactMobEffectDetails,
+}
+
+struct ExactMobEffectDetails {
+    amplifier: i32,
+    duration: i32,
+    ambient: bool,
+    show_particles: bool,
+    show_icon: bool,
+    hidden_effect: Option<Box<ExactMobEffectDetails>>,
 }
 
 fn potion_contents_exact_value(value: &Value) -> Option<ExactPotionContents<'_>> {
@@ -4524,7 +4581,7 @@ fn potion_contents_exact_value(value: &Value) -> Option<ExactPotionContents<'_>>
         Value::String(potion_key) => Some(ExactPotionContents {
             potion_key: Some(potion_contents_exact_key(potion_key)?),
             custom_color: None,
-            custom_effect_count: 0,
+            custom_effects: Vec::new(),
             custom_name: None,
         }),
         Value::Object(value) => {
@@ -4545,9 +4602,12 @@ fn potion_contents_exact_value(value: &Value) -> Option<ExactPotionContents<'_>>
                 None => None,
                 Some(custom_color) => Some(json_i32(custom_color)?),
             };
-            let custom_effect_count = match value.get("custom_effects") {
-                None => 0,
-                Some(Value::Array(custom_effects)) if custom_effects.is_empty() => 0,
+            let custom_effects = match value.get("custom_effects") {
+                None => Vec::new(),
+                Some(Value::Array(custom_effects)) => custom_effects
+                    .iter()
+                    .map(mob_effect_instance_exact_value)
+                    .collect::<Option<Vec<_>>>()?,
                 Some(_) => return None,
             };
             let custom_name = match value.get("custom_name") {
@@ -4558,7 +4618,7 @@ fn potion_contents_exact_value(value: &Value) -> Option<ExactPotionContents<'_>>
             Some(ExactPotionContents {
                 potion_key,
                 custom_color,
-                custom_effect_count,
+                custom_effects,
                 custom_name,
             })
         }
@@ -4567,6 +4627,82 @@ fn potion_contents_exact_value(value: &Value) -> Option<ExactPotionContents<'_>>
 }
 
 fn potion_contents_exact_key(value: &str) -> Option<&str> {
+    (!value.is_empty() && !value.starts_with('#')).then_some(value)
+}
+
+fn mob_effect_instance_exact_value(value: &Value) -> Option<ExactMobEffectInstance<'_>> {
+    let value = value.as_object()?;
+    if !value.keys().all(|key| {
+        matches!(
+            key.as_str(),
+            "id" | "amplifier"
+                | "duration"
+                | "ambient"
+                | "show_particles"
+                | "show_icon"
+                | "hidden_effect"
+        )
+    }) {
+        return None;
+    }
+    let effect_key = match value.get("id") {
+        Some(Value::String(effect_key)) => mob_effect_exact_key(effect_key)?,
+        _ => return None,
+    };
+    Some(ExactMobEffectInstance {
+        effect_key,
+        details: mob_effect_details_exact_value(value, true)?,
+    })
+}
+
+fn mob_effect_details_exact_value(
+    value: &serde_json::Map<String, Value>,
+    allow_id: bool,
+) -> Option<ExactMobEffectDetails> {
+    if !value.keys().all(|key| {
+        matches!(
+            key.as_str(),
+            "amplifier" | "duration" | "ambient" | "show_particles" | "show_icon" | "hidden_effect"
+        ) || (allow_id && key == "id")
+    }) {
+        return None;
+    }
+    let amplifier = value.get("amplifier").map(json_i32).unwrap_or(Some(0))?;
+    if !(0..=255).contains(&amplifier) {
+        return None;
+    }
+    let duration = value.get("duration").map(json_i32).unwrap_or(Some(0))?;
+    let ambient = value
+        .get("ambient")
+        .map(Value::as_bool)
+        .unwrap_or(Some(false))?;
+    let show_particles = value
+        .get("show_particles")
+        .map(Value::as_bool)
+        .unwrap_or(Some(true))?;
+    let show_icon = value
+        .get("show_icon")
+        .map(Value::as_bool)
+        .unwrap_or(Some(show_particles))?;
+    let hidden_effect = match value.get("hidden_effect") {
+        None => None,
+        Some(Value::Object(hidden_effect)) => Some(Box::new(mob_effect_details_exact_value(
+            hidden_effect,
+            false,
+        )?)),
+        Some(_) => return None,
+    };
+    Some(ExactMobEffectDetails {
+        amplifier,
+        duration,
+        ambient,
+        show_particles,
+        show_icon,
+        hidden_effect,
+    })
+}
+
+fn mob_effect_exact_key(value: &str) -> Option<&str> {
     (!value.is_empty() && !value.starts_with('#')).then_some(value)
 }
 
@@ -4596,8 +4732,70 @@ fn potion_contents_exact_match(
         _ => return false,
     }
     component_patch.potion_custom_color == expected.custom_color
-        && component_patch.potion_custom_effect_count == Some(expected.custom_effect_count)
+        && component_patch.potion_custom_effect_count == Some(expected.custom_effects.len())
+        && component_patch.potion_custom_effects.len() == expected.custom_effects.len()
+        && expected
+            .custom_effects
+            .iter()
+            .zip(&component_patch.potion_custom_effects)
+            .all(|(expected, actual)| mob_effect_instance_exact_match(expected, actual))
         && component_patch.potion_custom_name.as_deref() == expected.custom_name
+}
+
+fn mob_effect_instance_exact_match(
+    expected: &ExactMobEffectInstance<'_>,
+    actual: &MobEffectInstanceSummary,
+) -> bool {
+    let Ok(actual_index) = usize::try_from(actual.effect_id) else {
+        return false;
+    };
+    VANILLA_MOB_EFFECT_KEYS.get(actual_index) == Some(&expected.effect_key)
+        && expected.details.matches_instance(actual)
+}
+
+impl ExactMobEffectDetails {
+    fn matches_instance(&self, actual: &MobEffectInstanceSummary) -> bool {
+        self.matches_fields(
+            actual.amplifier,
+            actual.duration,
+            actual.ambient,
+            actual.show_particles,
+            actual.show_icon,
+            actual.hidden_effect.as_deref(),
+        )
+    }
+
+    fn matches_details(&self, actual: &MobEffectDetailsSummary) -> bool {
+        self.matches_fields(
+            actual.amplifier,
+            actual.duration,
+            actual.ambient,
+            actual.show_particles,
+            actual.show_icon,
+            actual.hidden_effect.as_deref(),
+        )
+    }
+
+    fn matches_fields(
+        &self,
+        amplifier: i32,
+        duration: i32,
+        ambient: bool,
+        show_particles: bool,
+        show_icon: bool,
+        hidden_effect: Option<&MobEffectDetailsSummary>,
+    ) -> bool {
+        self.amplifier == amplifier
+            && self.duration == duration
+            && self.ambient == ambient
+            && self.show_particles == show_particles
+            && self.show_icon == show_icon
+            && match (&self.hidden_effect, hidden_effect) {
+                (None, None) => true,
+                (Some(expected), Some(actual)) => expected.matches_details(actual),
+                _ => false,
+            }
+    }
 }
 
 struct ExactWritableBookContent<'a> {

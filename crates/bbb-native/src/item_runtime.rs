@@ -22,8 +22,9 @@ use bbb_pack::{
 use bbb_protocol::packets::{
     AttributeModifierSummary, ConsumableSummary, DataComponentPatchSummary,
     FireworkExplosionShapeSummary, FireworkExplosionSummary, ItemRaritySummary, ItemStackSummary,
-    ItemStackTemplateSummary, LodestoneTargetSummary, NbtSummaryEntry, NbtSummaryValue,
-    ResolvableProfileSummary, ResourceTextureSummary, WrittenBookContentSummary,
+    ItemStackTemplateSummary, LodestoneTargetSummary, MobEffectDetailsSummary,
+    MobEffectInstanceSummary, NbtSummaryEntry, NbtSummaryValue, ResolvableProfileSummary,
+    ResourceTextureSummary, WrittenBookContentSummary,
 };
 use bbb_renderer::{
     DynamicPlayerSkinImage, DynamicPlayerTextureImage, EntityCustomHeadSkull,
@@ -7343,11 +7344,28 @@ mod tests {
             ),
             uv("component_condition_bundle_exact_custom_data_absent")
         );
+        let exact_potion_effect = MobEffectInstanceSummary {
+            effect_id: 2,
+            amplifier: 1,
+            duration: 200,
+            ambient: false,
+            show_particles: true,
+            show_icon: true,
+            hidden_effect: Some(Box::new(MobEffectDetailsSummary {
+                amplifier: 0,
+                duration: 40,
+                ambient: false,
+                show_particles: true,
+                show_icon: false,
+                hidden_effect: None,
+            })),
+        };
         let exact_potion_contents = DataComponentPatchSummary {
             added_type_ids: vec![51],
             potion_id: Some(healing_potion_id),
             potion_custom_color: Some(0x77_88_99),
-            potion_custom_effect_count: Some(0),
+            potion_custom_effect_count: Some(1),
+            potion_custom_effects: vec![exact_potion_effect.clone()],
             potion_custom_name: Some("healing".to_string()),
             ..DataComponentPatchSummary::default()
         };
@@ -7359,7 +7377,10 @@ mod tests {
             selected(
                 85,
                 named_bundle_entry(DataComponentPatchSummary {
-                    potion_custom_effect_count: Some(1),
+                    potion_custom_effects: vec![MobEffectInstanceSummary {
+                        duration: 201,
+                        ..exact_potion_effect
+                    }],
                     ..exact_potion_contents.clone()
                 })
             ),
@@ -11972,7 +11993,20 @@ mod tests {
                                             "minecraft:potion_contents": {
                                                 "potion": "minecraft:healing",
                                                 "custom_color": 7833753,
-                                                "custom_effects": [],
+                                                "custom_effects": [
+                                                    {
+                                                        "id": "minecraft:haste",
+                                                        "amplifier": 1,
+                                                        "duration": 200,
+                                                        "hidden_effect": {
+                                                            "amplifier": 0,
+                                                            "duration": 40,
+                                                            "ambient": false,
+                                                            "show_particles": true,
+                                                            "show_icon": false
+                                                        }
+                                                    }
+                                                ],
                                                 "custom_name": "healing"
                                             }
                                         }
