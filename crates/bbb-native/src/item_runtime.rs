@@ -351,6 +351,7 @@ pub(crate) struct NativeItemRuntime {
     jukebox_song_tags: Option<TagCatalog>,
     potion_tags: Option<TagCatalog>,
     attribute_tags: Option<TagCatalog>,
+    villager_type_tags: Option<TagCatalog>,
     equipment_assets: EquipmentAssetCatalog,
     language: LanguageCatalog,
     map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
@@ -480,6 +481,14 @@ impl NativeItemRuntime {
                 err
             })
             .ok();
+        let villager_type_tags = roots
+            .load_tag_catalog("villager_type")
+            .context("load native villager type tags")
+            .map_err(|err| {
+                tracing::warn!(?err, "continuing without native villager type tag catalog");
+                err
+            })
+            .ok();
         let equipment_assets = roots
             .load_equipment_asset_catalog()
             .context("load equipment asset catalog")
@@ -534,6 +543,7 @@ impl NativeItemRuntime {
             jukebox_song_tags,
             potion_tags,
             attribute_tags,
+            villager_type_tags,
             roots.resource_stack(),
         )
     }
@@ -559,6 +569,7 @@ impl NativeItemRuntime {
         jukebox_song_tags: Option<TagCatalog>,
         potion_tags: Option<TagCatalog>,
         attribute_tags: Option<TagCatalog>,
+        villager_type_tags: Option<TagCatalog>,
         profile_texture_resources: PackResourceStack,
     ) -> Result<Self> {
         let mut texture_ids = BTreeSet::new();
@@ -643,6 +654,7 @@ impl NativeItemRuntime {
             jukebox_song_tags,
             potion_tags,
             attribute_tags,
+            villager_type_tags,
             equipment_assets,
             language,
             map_decoration_textures,
@@ -683,6 +695,7 @@ impl NativeItemRuntime {
             jukebox_song_tags: None,
             potion_tags: None,
             attribute_tags: None,
+            villager_type_tags: None,
             equipment_assets: EquipmentAssetCatalog::default(),
             language: LanguageCatalog::from_json_bytes(b"{}").expect("empty test language"),
             map_decoration_textures: Vec::new(),
@@ -1477,6 +1490,7 @@ impl NativeItemRuntime {
                             jukebox_song_tags: self.jukebox_song_tags.as_ref(),
                             potion_tags: self.potion_tags.as_ref(),
                             attribute_tags: self.attribute_tags.as_ref(),
+                            villager_type_tags: self.villager_type_tags.as_ref(),
                             trim_material_keys: None,
                             enchantment_keys: None,
                             attribute_keys: None,
@@ -2258,6 +2272,7 @@ impl NativeItemRuntime {
             jukebox_song_tags: self.jukebox_song_tags.as_ref(),
             potion_tags: self.potion_tags.as_ref(),
             attribute_tags: self.attribute_tags.as_ref(),
+            villager_type_tags: self.villager_type_tags.as_ref(),
             trim_material_keys,
             enchantment_keys,
             attribute_keys,
@@ -2425,6 +2440,7 @@ impl NativeItemRuntime {
             jukebox_song_tags: parent_context.jukebox_song_tags,
             potion_tags: parent_context.potion_tags,
             attribute_tags: parent_context.attribute_tags,
+            villager_type_tags: parent_context.villager_type_tags,
             trim_material_keys: parent_context.trim_material_keys,
             enchantment_keys: parent_context.enchantment_keys,
             attribute_keys: parent_context.attribute_keys,
@@ -8383,6 +8399,108 @@ mod tests {
             ),
             uv("component_condition_container_partial_villager_variant_absent")
         );
+        assert_eq!(
+            selected(
+                70,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![83],
+                    villager_variant_id: Some(2),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_villager_variant_tag_present")
+        );
+        assert_eq!(
+            selected(
+                70,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![83],
+                    villager_variant_id: Some(0),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_villager_variant_tag_absent")
+        );
+        assert_eq!(
+            selected(
+                71,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            added_type_ids: vec![83],
+                            villager_variant_id: Some(2),
+                            ..DataComponentPatchSummary::default()
+                        },
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_partial_villager_variant_tag_present")
+        );
+        assert_eq!(
+            selected(
+                71,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            added_type_ids: vec![83],
+                            villager_variant_id: Some(0),
+                            ..DataComponentPatchSummary::default()
+                        },
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_partial_villager_variant_tag_absent")
+        );
+        assert_eq!(
+            selected(
+                72,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(1),
+                    container_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            added_type_ids: vec![83],
+                            villager_variant_id: Some(2),
+                            ..DataComponentPatchSummary::default()
+                        },
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_partial_villager_variant_tag_present")
+        );
+        assert_eq!(
+            selected(
+                72,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(1),
+                    container_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            added_type_ids: vec![83],
+                            villager_variant_id: Some(0),
+                            ..DataComponentPatchSummary::default()
+                        },
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_partial_villager_variant_tag_absent")
+        );
 
         let modifier_with_attribute =
             |attribute_id, id: &str, amount: f64, operation_id, slot_id| AttributeModifierSummary {
@@ -10277,6 +10395,9 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_ATTRIBUTE_MODIFIERS_ATTRIBUTE = registerItem("component_condition_bundle_partial_attribute_modifiers_attribute");
                 public static final Item COMPONENT_CONDITION_ATTRIBUTE_MODIFIERS_ATTRIBUTE_TAG = registerItem("component_condition_attribute_modifiers_attribute_tag");
                 public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_ATTRIBUTE_MODIFIERS_ATTRIBUTE_TAG = registerItem("component_condition_bundle_partial_attribute_modifiers_attribute_tag");
+                public static final Item COMPONENT_CONDITION_VILLAGER_VARIANT_TAG = registerItem("component_condition_villager_variant_tag");
+                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_VILLAGER_VARIANT_TAG = registerItem("component_condition_bundle_partial_villager_variant_tag");
+                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_VILLAGER_VARIANT_TAG = registerItem("component_condition_container_partial_villager_variant_tag");
             }"#,
         );
         write_json(
@@ -10292,6 +10413,21 @@ mod tests {
                 "values": [
                     "minecraft:component_condition_rarity",
                     "minecraft:component_condition_glint"
+                ]
+            }"#,
+        );
+        write_json(
+            &root
+                .join("sources")
+                .join(bbb_pack::MC_VERSION)
+                .join("data")
+                .join("minecraft")
+                .join("tags")
+                .join("villager_type")
+                .join("component_condition_villager_types.json"),
+            r#"{
+                "values": [
+                    "minecraft:plains"
                 ]
             }"#,
         );
@@ -11884,6 +12020,93 @@ mod tests {
         write_json(
             &assets
                 .join("items")
+                .join("component_condition_villager_variant_tag.json"),
+            r##"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:villager/variant",
+                    "value": "#minecraft:component_condition_villager_types",
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_villager_variant_tag_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_villager_variant_tag_absent"
+                    }
+                }
+            }"##,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_partial_villager_variant_tag.json"),
+            r##"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "predicates": {
+                                            "minecraft:villager/variant": "#minecraft:component_condition_villager_types"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_villager_variant_tag_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_villager_variant_tag_absent"
+                    }
+                }
+            }"##,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_container_partial_villager_variant_tag.json"),
+            r##"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:container",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "predicates": {
+                                            "minecraft:villager/variant": "#minecraft:component_condition_villager_types"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_villager_variant_tag_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_villager_variant_tag_absent"
+                    }
+                }
+            }"##,
+        );
+        write_json(
+            &assets
+                .join("items")
                 .join("component_condition_attribute_modifiers.json"),
             r#"{
                 "model": {
@@ -12954,6 +13177,30 @@ mod tests {
             (
                 "component_condition_container_partial_villager_variant_absent",
                 [70, 90, 60, 255],
+            ),
+            (
+                "component_condition_villager_variant_tag_present",
+                [180, 245, 220, 255],
+            ),
+            (
+                "component_condition_villager_variant_tag_absent",
+                [55, 90, 75, 255],
+            ),
+            (
+                "component_condition_bundle_partial_villager_variant_tag_present",
+                [245, 180, 220, 255],
+            ),
+            (
+                "component_condition_bundle_partial_villager_variant_tag_absent",
+                [90, 55, 75, 255],
+            ),
+            (
+                "component_condition_container_partial_villager_variant_tag_present",
+                [220, 245, 180, 255],
+            ),
+            (
+                "component_condition_container_partial_villager_variant_tag_absent",
+                [75, 90, 55, 255],
             ),
             (
                 "component_condition_attribute_modifiers_present",

@@ -987,6 +987,9 @@ pub(super) struct IconResolveContext<'a> {
     /// `tags/attribute` catalog used for `#namespace:path` HolderSet entries
     /// in vanilla `AttributeModifiersPredicate.EntryPredicate.attribute`.
     pub attribute_tags: Option<&'a TagCatalog>,
+    /// `tags/villager_type` catalog used for `#namespace:path` HolderSet
+    /// entries in vanilla `VillagerTypePredicate`.
+    pub villager_type_tags: Option<&'a TagCatalog>,
     /// `minecraft:trim_material` registry keys by holder id (the dynamic
     /// registry, projected from `bbb-world` at the call site).
     pub trim_material_keys: Option<&'a [String]>,
@@ -1690,7 +1693,11 @@ fn item_stack_matches_component_predicate(
         return item_stack_matches_written_book_predicate(property, ctx.component_patch);
     }
     if villager_variant_component_predicate_is_supported(property) {
-        return item_stack_matches_villager_variant_predicate(property, ctx.component_patch);
+        return item_stack_matches_villager_variant_predicate(
+            property,
+            ctx.component_patch,
+            ctx.villager_type_tags,
+        );
     }
     if let Some(component_id) = empty_single_component_predicate_id(property) {
         return item_stack_has_component_id(
@@ -2067,6 +2074,7 @@ fn item_stack_matches_bundle_contents_predicate(
         ctx.potion_tags,
         ctx.attribute_keys,
         ctx.attribute_tags,
+        ctx.villager_type_tags,
         ctx.default_max_stack_size_for_item,
         ctx.default_max_damage_for_item,
     )
@@ -2130,6 +2138,7 @@ fn item_stack_matches_container_predicate(
         ctx.potion_tags,
         ctx.attribute_keys,
         ctx.attribute_tags,
+        ctx.villager_type_tags,
         ctx.default_max_stack_size_for_item,
         ctx.default_max_damage_for_item,
     )
@@ -2776,6 +2785,7 @@ fn item_collection_predicate_matches(
     potion_tags: Option<&TagCatalog>,
     attribute_keys: Option<&[String]>,
     attribute_tags: Option<&TagCatalog>,
+    villager_type_tags: Option<&TagCatalog>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
@@ -2802,6 +2812,7 @@ fn item_collection_predicate_matches(
                     potion_tags,
                     attribute_keys,
                     attribute_tags,
+                    villager_type_tags,
                     default_max_stack_size_for_item,
                     default_max_damage_for_item,
                 )
@@ -2829,6 +2840,7 @@ fn item_collection_predicate_matches(
                 potion_tags,
                 attribute_keys,
                 attribute_tags,
+                villager_type_tags,
                 default_max_stack_size_for_item,
                 default_max_damage_for_item,
             )
@@ -2864,6 +2876,7 @@ fn item_predicate_count_entry_matches(
     potion_tags: Option<&TagCatalog>,
     attribute_keys: Option<&[String]>,
     attribute_tags: Option<&TagCatalog>,
+    villager_type_tags: Option<&TagCatalog>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
@@ -2890,6 +2903,7 @@ fn item_predicate_count_entry_matches(
                 potion_tags,
                 attribute_keys,
                 attribute_tags,
+                villager_type_tags,
                 default_max_stack_size_for_item,
                 default_max_damage_for_item,
             )
@@ -2915,6 +2929,7 @@ fn item_predicate_matches(
     potion_tags: Option<&TagCatalog>,
     attribute_keys: Option<&[String]>,
     attribute_tags: Option<&TagCatalog>,
+    villager_type_tags: Option<&TagCatalog>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
@@ -2957,6 +2972,7 @@ fn item_predicate_matches(
             potion_tags,
             attribute_keys,
             attribute_tags,
+            villager_type_tags,
             default_max_stack_size_for_item,
             default_max_damage_for_item,
         ) {
@@ -2979,6 +2995,7 @@ fn item_data_component_matchers_match(
     potion_tags: Option<&TagCatalog>,
     attribute_keys: Option<&[String]>,
     attribute_tags: Option<&TagCatalog>,
+    villager_type_tags: Option<&TagCatalog>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
@@ -3010,6 +3027,7 @@ fn item_data_component_matchers_match(
             potion_tags,
             attribute_keys,
             attribute_tags,
+            villager_type_tags,
             default_max_damage_for_item,
         ) {
             return false;
@@ -3061,6 +3079,7 @@ fn item_partial_component_predicates_match(
     potion_tags: Option<&TagCatalog>,
     attribute_keys: Option<&[String]>,
     attribute_tags: Option<&TagCatalog>,
+    villager_type_tags: Option<&TagCatalog>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
     let Some(predicates) = value.as_object() else {
@@ -3084,6 +3103,7 @@ fn item_partial_component_predicates_match(
             potion_tags,
             attribute_keys,
             attribute_tags,
+            villager_type_tags,
         )
     })
 }
@@ -3103,6 +3123,7 @@ fn item_partial_component_predicate_match(
     potion_tags: Option<&TagCatalog>,
     attribute_keys: Option<&[String]>,
     attribute_tags: Option<&TagCatalog>,
+    villager_type_tags: Option<&TagCatalog>,
 ) -> bool {
     match predicate {
         "minecraft:custom_data" => item_stack_matches_custom_data_value(value, component_patch),
@@ -3133,7 +3154,7 @@ fn item_partial_component_predicate_match(
             item_stack_matches_written_book_value(value, component_patch)
         }
         "minecraft:villager/variant" => {
-            item_stack_matches_villager_variant_value(value, component_patch)
+            item_stack_matches_villager_variant_value(value, component_patch, villager_type_tags)
         }
         "minecraft:attribute_modifiers" => item_stack_matches_attribute_modifiers_value(
             value,
@@ -3668,6 +3689,7 @@ fn villager_variant_predicate_value_is_supported(value: &Value) -> bool {
 fn item_stack_matches_villager_variant_predicate(
     property: &ItemModelProperty,
     component_patch: Option<&DataComponentPatchSummary>,
+    villager_type_tags: Option<&TagCatalog>,
 ) -> bool {
     if !villager_variant_component_predicate_is_supported(property) {
         return false;
@@ -3675,12 +3697,13 @@ fn item_stack_matches_villager_variant_predicate(
     let Some(value) = property.raw().get("value") else {
         return false;
     };
-    item_stack_matches_villager_variant_value(value, component_patch)
+    item_stack_matches_villager_variant_value(value, component_patch, villager_type_tags)
 }
 
 fn item_stack_matches_villager_variant_value(
     value: &Value,
     component_patch: Option<&DataComponentPatchSummary>,
+    villager_type_tags: Option<&TagCatalog>,
 ) -> bool {
     let Some(component_patch) = component_patch else {
         return false;
@@ -3703,7 +3726,7 @@ fn item_stack_matches_villager_variant_value(
     let Some(variant_key) = VANILLA_VILLAGER_TYPE_KEYS.get(variant_index) else {
         return false;
     };
-    registry_key_holder_set_matches(Some(value), variant_key, None)
+    registry_key_holder_set_matches(Some(value), variant_key, villager_type_tags)
 }
 
 fn string_collection_predicate_matches(value: &Value, values: &[String]) -> bool {

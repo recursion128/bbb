@@ -813,7 +813,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:written_book_content` now matches decoded written-book raw
     title, author, `generation` `MinMaxBounds.Ints`, `resolved`, and
     plain-string page collection predicates. `minecraft:villager/variant` now
-    matches decoded 0-based `VillagerType` holder ids against the vanilla
+    matches decoded 0-based `VillagerType` holder ids against direct
+    registry-key or villager-type-tag HolderSets using the vanilla
     `VillagerType.bootstrap` registry-key order. `minecraft:attribute_modifiers`
     now preserves decoded modifier entries and matches direct plus
     bundle/container-nested `modifiers` collection predicates over direct
@@ -859,8 +860,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     typing, remaining concrete partial predicates
     and complex exact component codecs, rich/styled written-book page
     `ComponentSerialization` equality, trim inline material or pattern payloads
-    / datapack pattern registry-key remaps, villager type tags / datapack
-    villager-type registry remaps, and jukebox inline song payloads / datapack
+    / datapack pattern registry-key remaps, datapack villager-type registry
+    remaps, and jukebox inline song payloads / datapack
     jukebox-song registry remaps remain component-predicate follow-up.
   - [x] `minecraft:has_component` item-model condition now follows vanilla
     `HasComponent.get`: default prototype components such as

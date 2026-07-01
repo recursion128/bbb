@@ -5878,7 +5878,8 @@ When an agent does any of the following, update this file in the same slice:
       written-book raw title, author, `generation` `MinMaxBounds.Ints`,
       `resolved`, and plain-string page collection predicates.
       `minecraft:villager/variant` now matches decoded 0-based
-      `VillagerType` holder ids against the vanilla `VillagerType.bootstrap`
+      `VillagerType` holder ids against direct registry-key or
+      villager-type-tag HolderSets using the vanilla `VillagerType.bootstrap`
       registry-key order. `minecraft:attribute_modifiers` now preserves decoded
       modifier entries and matches direct plus bundle/container-nested
       `modifiers` collection predicates over direct registry-key or
@@ -5931,8 +5932,8 @@ When an agent does any of the following, update this file in the same slice:
       remaining concrete partial predicates and complex exact
       component codecs, rich/styled written-book page `ComponentSerialization`
       equality, trim inline material or pattern payloads / datapack pattern
-      registry-key remaps, villager type tags / datapack villager-type registry
-      remaps, jukebox inline song payloads / datapack jukebox-song registry
+      registry-key remaps, datapack villager-type registry remaps, jukebox
+      inline song payloads / datapack jukebox-song registry
       remaps, and similar) remain follow-up.
     - `minecraft:charge_type` — `Charge.get` (`ROCKET` when any charged
       projectile is `minecraft:firework_rocket`, `ARROW` when charged otherwise,
@@ -6088,11 +6089,11 @@ When an agent does any of the following, update this file in the same slice:
     enchantment HolderSet predicates when the synced enchantment registry is
     available, and direct plus nested bundle/container writable/written-book
     predicates for decoded raw string fields/pages, plus direct and
-    bundle/container-nested villager variant predicates for vanilla registry
-    keys, plus direct and bundle/container-nested attribute modifier predicates
-    for decoded direct registry-key or attribute-tag attribute / id / amount /
-    operation / slot entries when the synced attribute registry is available,
-    plus direct and
+    bundle/container-nested villager variant predicates for direct registry-key
+    or villager-type-tag HolderSets, plus direct and bundle/container-nested
+    attribute modifier predicates for decoded direct registry-key or
+    attribute-tag attribute / id / amount / operation / slot entries when the
+    synced attribute registry is available, plus direct and
     bundle/container-nested custom-data NBT compound predicates for JSON-object
     expected values; broader component-codec and remaining constrained
     `DataComponentPredicate` parity remains the documented follow-up.
