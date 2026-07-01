@@ -5856,6 +5856,43 @@ mod tests {
                 DataComponentPatchSummary {
                     added_type_ids: vec![56],
                     armor_trim_material_id: Some(1),
+                    armor_trim_pattern_id: Some(0),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_trim_pattern_present")
+        );
+        assert_eq!(
+            selected_with_trim_keys(
+                14,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![56],
+                    armor_trim_material_id: Some(1),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_trim_pattern_absent")
+        );
+        assert_eq!(
+            selected_with_trim_keys(
+                14,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![56],
+                    armor_trim_material_id: Some(1),
+                    armor_trim_pattern_id: Some(1),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_trim_pattern_absent")
+        );
+        assert_eq!(
+            selected_with_trim_keys(
+                14,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![56],
+                    removed_type_ids: vec![56],
+                    armor_trim_material_id: Some(1),
+                    armor_trim_pattern_id: Some(0),
                     ..DataComponentPatchSummary::default()
                 }
             ),

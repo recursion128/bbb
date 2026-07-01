@@ -798,7 +798,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:trim`
     direct registry-key material constraints now match the decoded
     `ArmorTrim.material()` holder id through dynamic trim-material registry keys
-    when no pattern constraint is present. `minecraft:bundle_contents`
+    and direct vanilla registry-key pattern constraints now match decoded
+    `ArmorTrim.pattern()` holder ids through vanilla `TrimPatterns.bootstrap`
+    order. `minecraft:bundle_contents`
     `items.size` constraints now match vanilla `CollectionPredicate.size`
     against the decoded bundle item count. `minecraft:enchantments` and
     patch-backed `minecraft:stored_enchantments` level-only predicates now match
@@ -809,8 +811,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     constrained `DataComponentPredicate` types such as enchantment HolderSet
     matching / item-specific default `stored_enchantments`,
     bundle `contains`/`count` item predicates, container item collection
-    predicates, and trim pattern / tag material sets / inline material payloads
-    remain component-predicate follow-up.
+    predicates, and trim tag sets / inline material or pattern payloads /
+    datapack pattern registry-key remaps remain component-predicate follow-up.
   - [x] `minecraft:has_component` item-model condition now follows vanilla
     `HasComponent.get`: default prototype components such as
     `minecraft:max_stack_size`, `minecraft:item_model`, and

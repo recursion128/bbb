@@ -109,6 +109,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub armor_trim_material_id: Option<i32>,
     #[serde(default)]
+    pub armor_trim_pattern_id: Option<i32>,
+    #[serde(default)]
     pub map_id: Option<i32>,
     #[serde(default)]
     pub map_post_processing: Option<MapPostProcessingSummary>,
@@ -463,7 +465,9 @@ fn decode_typed_data_component_patch_summary(
                     decode_item_stack_template_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
             }
             56 => {
-                summary.armor_trim_material_id = decode_armor_trim(decoder)?;
+                let trim = decode_armor_trim(decoder)?;
+                summary.armor_trim_material_id = trim.material_id;
+                summary.armor_trim_pattern_id = trim.pattern_id;
             }
             50 => {
                 summary.bundle_contents_items =
@@ -1197,10 +1201,18 @@ fn decode_equippable(decoder: &mut Decoder<'_>) -> Result<()> {
     Ok(())
 }
 
-fn decode_armor_trim(decoder: &mut Decoder<'_>) -> Result<Option<i32>> {
+struct ArmorTrimSummary {
+    material_id: Option<i32>,
+    pattern_id: Option<i32>,
+}
+
+fn decode_armor_trim(decoder: &mut Decoder<'_>) -> Result<ArmorTrimSummary> {
     let material_id = decode_trim_material_holder_id(decoder)?;
-    decode_trim_pattern_holder(decoder)?;
-    Ok(material_id)
+    let pattern_id = decode_trim_pattern_holder_id(decoder)?;
+    Ok(ArmorTrimSummary {
+        material_id,
+        pattern_id,
+    })
 }
 
 /// Decodes the `ArmorTrim.material()` holder, returning the registry reference id
@@ -1256,8 +1268,17 @@ fn decode_material_asset_group(decoder: &mut Decoder<'_>) -> Result<()> {
     Ok(())
 }
 
-fn decode_trim_pattern_holder(decoder: &mut Decoder<'_>) -> Result<()> {
-    decode_holder_with_direct(decoder, decode_direct_trim_pattern)
+fn decode_trim_pattern_holder_id(decoder: &mut Decoder<'_>) -> Result<Option<i32>> {
+    let id = decoder.read_var_i32()?;
+    if id < 0 {
+        return Err(ProtocolError::NegativeLength(id));
+    }
+    if id == 0 {
+        decode_direct_trim_pattern(decoder)?;
+        Ok(None)
+    } else {
+        Ok(Some(id - 1))
+    }
 }
 
 fn decode_direct_trim_pattern(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -2794,6 +2815,7 @@ mod tests {
                 }],
                 bundle_contents_item_count: Some(1),
                 armor_trim_material_id: Some(1),
+                armor_trim_pattern_id: Some(2),
                 block_state_properties: BTreeMap::from([
                     ("facing".to_string(), "north".to_string()),
                     ("lit".to_string(), "true".to_string()),
