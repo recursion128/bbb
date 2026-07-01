@@ -1019,8 +1019,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `NeedleDirectionHelper.standardWobbler(0.9F)`. Tests pin no-level fallback,
     overworld day-time and moon-phase texture selection, and a default-wobbled
     first-tick branch that raw non-wobbled target selection would miss.
-    The vanilla per-property `RandomSource` for `source=random` remains
-    follow-up.
+    `source=random` now uses a persistent per-property Java LCG-shaped random
+    source; vanilla seeds this with a client-local unique seed, so native keeps
+    a deterministic local seed while preserving per-property advancement.
+    Tests pin the random branch selecting a texture instead of falling back.
   - [x] GUI/HUD item icons now project `minecraft:compass` range_dispatch for
     `wobble=false` spawn targets from the local-player position / visual yaw and
     current default spawn, matching vanilla `CompassAngle.get`'s exact

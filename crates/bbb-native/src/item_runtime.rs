@@ -341,6 +341,12 @@ struct ItemTimeWobblerKey {
     source: TimeSource,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct ItemTimeRandomKey {
+    item_model_id: String,
+    state_id: u64,
+}
+
 #[derive(Debug, Clone, Copy)]
 struct ItemNeedleWobbler {
     rotation: f32,
@@ -359,6 +365,45 @@ impl ItemNeedleWobbler {
         }
         self.rotation
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ItemLegacyRandom {
+    seed: u64,
+}
+
+impl ItemLegacyRandom {
+    const MASK: u64 = (1u64 << 48) - 1;
+    const MULTIPLIER: u64 = 25_214_903_917;
+    const INCREMENT: u64 = 11;
+
+    fn new(seed: i64) -> Self {
+        Self {
+            seed: ((seed as u64) ^ Self::MULTIPLIER) & Self::MASK,
+        }
+    }
+
+    fn next_bits(&mut self, bits: u32) -> u32 {
+        self.seed = self
+            .seed
+            .wrapping_mul(Self::MULTIPLIER)
+            .wrapping_add(Self::INCREMENT)
+            & Self::MASK;
+        (self.seed >> (48 - bits)) as u32
+    }
+
+    fn next_float(&mut self) -> f32 {
+        self.next_bits(24) as f32 / (1u32 << 24) as f32
+    }
+}
+
+fn item_time_random_seed(item_model_id: &str, state_id: u64) -> i64 {
+    let mut hash = 0xcbf2_9ce4_8422_2325u64;
+    for byte in item_model_id.bytes() {
+        hash ^= u64::from(byte);
+        hash = hash.wrapping_mul(0x1000_0000_01b3);
+    }
+    (hash ^ state_id.wrapping_mul(0x9e37_79b9_7f4a_7c15)) as i64
 }
 
 #[derive(Debug)]
@@ -397,6 +442,7 @@ pub(crate) struct NativeItemRuntime {
     profile_skins: RefCell<ProfileSkinCache>,
     local_time_epoch_millis_override: Cell<Option<i64>>,
     time_wobblers: RefCell<HashMap<ItemTimeWobblerKey, ItemNeedleWobbler>>,
+    time_randoms: RefCell<HashMap<ItemTimeRandomKey, ItemLegacyRandom>>,
 }
 
 impl NativeItemRuntime {
@@ -701,6 +747,7 @@ impl NativeItemRuntime {
             profile_skins: RefCell::default(),
             local_time_epoch_millis_override: Cell::new(None),
             time_wobblers: RefCell::default(),
+            time_randoms: RefCell::default(),
         })
     }
 
@@ -744,6 +791,7 @@ impl NativeItemRuntime {
             profile_skins: RefCell::default(),
             local_time_epoch_millis_override: Cell::new(None),
             time_wobblers: RefCell::default(),
+            time_randoms: RefCell::default(),
         }
     }
 
@@ -1545,6 +1593,7 @@ impl NativeItemRuntime {
                             time_context: None,
                             time_wobbler_model_id: item_id,
                             time_wobbler: None,
+                            time_random: None,
                             compass_context: None,
                             default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
                             default_max_damage_for_item: Some(&default_max_damage_for_item),
@@ -2321,6 +2370,8 @@ impl NativeItemRuntime {
                             target_rotation: f32| {
             self.resolve_time_wobbler(model_id, state_id, source, game_time, target_rotation)
         };
+        let time_random =
+            |model_id: &str, state_id: u64| self.resolve_time_random(model_id, state_id);
         let context = IconResolveContext {
             component_patch,
             stack_count,
@@ -2347,6 +2398,7 @@ impl NativeItemRuntime {
             time_context,
             time_wobbler_model_id: item_model_id,
             time_wobbler: Some(&time_wobbler),
+            time_random: Some(&time_random),
             compass_context,
             default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
             default_max_damage_for_item: Some(&default_max_damage_for_item),
@@ -2451,6 +2503,20 @@ impl NativeItemRuntime {
             .update(game_time, target_rotation, 0.9)
     }
 
+    fn resolve_time_random(&self, item_model_id: &str, state_id: u64) -> f32 {
+        let key = ItemTimeRandomKey {
+            item_model_id: item_model_id.to_string(),
+            state_id,
+        };
+        self.time_randoms
+            .borrow_mut()
+            .entry(key)
+            .or_insert_with(|| {
+                ItemLegacyRandom::new(item_time_random_seed(item_model_id, state_id))
+            })
+            .next_float()
+    }
+
     pub(crate) fn item_model_use_context_for_stack(
         &self,
         stack: &ItemStackSummary,
@@ -2553,6 +2619,7 @@ impl NativeItemRuntime {
             time_context: parent_context.time_context,
             time_wobbler_model_id: item_id,
             time_wobbler: parent_context.time_wobbler,
+            time_random: parent_context.time_random,
             compass_context: parent_context.compass_context,
             default_max_stack_size_for_item: parent_context.default_max_stack_size_for_item,
             default_max_damage_for_item: parent_context.default_max_damage_for_item,

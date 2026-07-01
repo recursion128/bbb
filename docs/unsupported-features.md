@@ -5772,7 +5772,6 @@ When an agent does any of the following, update this file in the same slice:
     icon resolver as that state becomes available to the GUI icon path:
     - `minecraft:compass` stateful wobble plus no-target / invalid-target random
       spin
-    - `minecraft:time` per-property `source=random` RNG
   - Wire the remaining ambient-context `select` properties onto the same
     resolver:
     - `minecraft:context_entity_type` for any future non-GUI item consumer that
@@ -6135,8 +6134,11 @@ When an agent does any of the following, update this file in the same slice:
       vanilla range-dispatch threshold selection. Tests pin no-level `0.0`
       fallback, overworld day-time and moon-phase texture selection, and a
       default-wobbled first-tick branch that raw non-wobbled target selection
-      would miss. The vanilla per-property `RandomSource` for `source=random`
-      remains follow-up.
+      would miss. `source=random` uses a persistent per-property Java
+      LCG-shaped random source; vanilla seeds it with a client-local unique
+      seed, so native uses a deterministic local seed while preserving
+      per-property advancement. Tests pin the random branch selecting a texture
+      instead of falling back.
     - `minecraft:compass` — `CompassAngle.get`, for GUI/HUD item icons with a
       local-player owner and `ClientLevel` context when the model opts out of
       stateful wobble (`wobble=false`) and targets spawn, lodestone, or
@@ -6208,8 +6210,8 @@ When an agent does any of the following, update this file in the same slice:
     owner-position / yaw against the current default spawn,
     `LodestoneTracker.target`, or local-player `lastDeathLocation`.
     `minecraft:time` projects GUI/HUD `daytime` / `moon_phase` target values
-    from world time and applies the default `wobble=true` standard wobbler;
-    per-property `source=random` RNG remains follow-up.
+    from world time, applies the default `wobble=true` standard wobbler, and
+    advances per-property `source=random` state instead of falling back.
     `minecraft:local_time` resolves the vanilla chest/trapped-chest `MM-dd`
     selector and common root/en-locale ICU date-time patterns from wall-clock
     time, including fixed-offset / IANA `time_zone` IDs and `Z`/`X`/`x`

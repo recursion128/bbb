@@ -3741,7 +3741,8 @@ fn hotbar_item_icons_project_world_time_range_dispatch() {
 
     let random_stack = item_stack(2, 1);
     let random_fallback_uv = item_runtime.icon_for_stack(&random_stack).unwrap().layers[0].uv;
-    assert_eq!(selected_at_time(&random_stack, 18_000), random_fallback_uv);
+    let random_uv = selected_at_time(&random_stack, 18_000);
+    assert_ne!(random_uv, random_fallback_uv);
 
     let moon_phase_stack = item_stack(3, 1);
     let moon_phase_fallback_uv = item_runtime
@@ -8481,7 +8482,7 @@ fn write_runtime_time_range_dispatch_item_assets(root: &Path) {
                 "scale": 4.0,
                 "entries": [
                     {
-                        "threshold": 0.0,
+                        "threshold": 0.5,
                         "model": { "type": "minecraft:model", "model": "minecraft:item/time_random_stateful" }
                     }
                 ],

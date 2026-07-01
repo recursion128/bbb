@@ -254,11 +254,13 @@ pub(super) enum RangeDispatchProperty {
     /// spin remain follow-up.
     Compass { target: CompassTarget },
     /// `minecraft:time` — `Time.get`, projecting `daytime` / `moon_phase`
-    /// target values and, when requested, applying vanilla standard wobbler
-    /// smoothing through the caller-owned runtime state.
+    /// target values, per-property random source values, and, when requested,
+    /// vanilla standard wobbler smoothing through the caller-owned runtime
+    /// state.
     Time {
         source: TimeSource,
-        wobble_state: Option<u64>,
+        wobble: bool,
+        state_id: Option<u64>,
     },
 }
 
@@ -319,15 +321,16 @@ impl RangeDispatchProperty {
             }
             Self::Time {
                 source,
-                wobble_state,
-            } => source.value(ctx, wobble_state),
+                wobble,
+                state_id,
+            } => source.value(ctx, wobble, state_id),
             Self::Compass { target } => target.value(ctx),
         }
     }
 }
 
 /// Builds a [`RangeDispatchProperty`] for the value-aware numeric properties, or
-/// `None` for branches that still need vanilla random sources / random spin.
+/// `None` for branches that still need vanilla random spin.
 fn range_dispatch_property_for(
     property: &ItemModelProperty,
     next_wobble_state: &mut u64,
@@ -401,16 +404,16 @@ fn range_dispatch_property_for(
                 .get("source")
                 .and_then(Value::as_str)
                 .and_then(TimeSource::parse)
-                .filter(|source| !source.requires_stateful_rng())
                 .map(|source| {
-                    let wobble_state = wobble.then(|| {
+                    let state_id = (wobble || source.requires_random_source()).then(|| {
                         let state = *next_wobble_state;
                         *next_wobble_state = next_wobble_state.saturating_add(1);
                         state
                     });
                     RangeDispatchProperty::Time {
                         source,
-                        wobble_state,
+                        wobble,
+                        state_id,
                     }
                 })
         }
@@ -479,11 +482,11 @@ impl TimeSource {
         }
     }
 
-    fn requires_stateful_rng(self) -> bool {
+    fn requires_random_source(self) -> bool {
         matches!(self, Self::Random)
     }
 
-    fn value(self, ctx: IconResolveContext<'_>, wobble_state: Option<u64>) -> f32 {
+    fn value(self, ctx: IconResolveContext<'_>, wobble: bool, state_id: Option<u64>) -> f32 {
         if ctx.context_entity_type.is_none() {
             return 0.0;
         }
@@ -491,13 +494,16 @@ impl TimeSource {
             return 0.0;
         };
         let target = match self {
-            // Vanilla uses a persistent RandomSource for this branch. Keep the
-            // no-context / deterministic fallback until that state exists.
-            Self::Random => 0.0,
+            Self::Random => state_id
+                .and_then(|state| {
+                    ctx.time_random
+                        .map(|random| random(ctx.time_wobbler_model_id, state))
+                })
+                .unwrap_or(0.0),
             Self::Daytime => overworld_sun_angle(time.day_time) / 360.0,
             Self::MoonPhase => moon_phase_index(time.day_time) as f32 / 8.0,
         };
-        if let Some(state) = wobble_state {
+        if let (true, Some(state)) = (wobble, state_id) {
             ctx.time_wobbler
                 .map(|wobbler| {
                     wobbler(
@@ -1191,6 +1197,9 @@ pub(super) struct IconResolveContext<'a> {
     /// id approximates vanilla's baked-property identity.
     pub time_wobbler_model_id: &'a str,
     pub time_wobbler: Option<&'a dyn Fn(&str, u64, TimeSource, i64, f32) -> f32>,
+    /// Runtime-owned per-property `RandomSource` for
+    /// `minecraft:time source=random`.
+    pub time_random: Option<&'a dyn Fn(&str, u64) -> f32>,
     /// Vanilla `CompassAngle.get`: owner pose, level dimension, and known
     /// compass targets available to the GUI/HUD icon resolver.
     pub compass_context: Option<ItemModelCompassContext<'a>>,
