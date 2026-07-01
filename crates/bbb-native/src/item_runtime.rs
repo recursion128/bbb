@@ -350,6 +350,7 @@ pub(crate) struct NativeItemRuntime {
     trim_pattern_tags: Option<TagCatalog>,
     jukebox_song_tags: Option<TagCatalog>,
     potion_tags: Option<TagCatalog>,
+    attribute_tags: Option<TagCatalog>,
     equipment_assets: EquipmentAssetCatalog,
     language: LanguageCatalog,
     map_decoration_textures: Vec<ItemFrameMapDecorationTexture>,
@@ -471,6 +472,14 @@ impl NativeItemRuntime {
                 err
             })
             .ok();
+        let attribute_tags = roots
+            .load_tag_catalog("attribute")
+            .context("load native attribute tags")
+            .map_err(|err| {
+                tracing::warn!(?err, "continuing without native attribute tag catalog");
+                err
+            })
+            .ok();
         let equipment_assets = roots
             .load_equipment_asset_catalog()
             .context("load equipment asset catalog")
@@ -524,6 +533,7 @@ impl NativeItemRuntime {
             trim_pattern_tags,
             jukebox_song_tags,
             potion_tags,
+            attribute_tags,
             roots.resource_stack(),
         )
     }
@@ -548,6 +558,7 @@ impl NativeItemRuntime {
         trim_pattern_tags: Option<TagCatalog>,
         jukebox_song_tags: Option<TagCatalog>,
         potion_tags: Option<TagCatalog>,
+        attribute_tags: Option<TagCatalog>,
         profile_texture_resources: PackResourceStack,
     ) -> Result<Self> {
         let mut texture_ids = BTreeSet::new();
@@ -631,6 +642,7 @@ impl NativeItemRuntime {
             trim_pattern_tags,
             jukebox_song_tags,
             potion_tags,
+            attribute_tags,
             equipment_assets,
             language,
             map_decoration_textures,
@@ -670,6 +682,7 @@ impl NativeItemRuntime {
             trim_pattern_tags: None,
             jukebox_song_tags: None,
             potion_tags: None,
+            attribute_tags: None,
             equipment_assets: EquipmentAssetCatalog::default(),
             language: LanguageCatalog::from_json_bytes(b"{}").expect("empty test language"),
             map_decoration_textures: Vec::new(),
@@ -1463,6 +1476,7 @@ impl NativeItemRuntime {
                             trim_pattern_tags: self.trim_pattern_tags.as_ref(),
                             jukebox_song_tags: self.jukebox_song_tags.as_ref(),
                             potion_tags: self.potion_tags.as_ref(),
+                            attribute_tags: self.attribute_tags.as_ref(),
                             trim_material_keys: None,
                             enchantment_keys: None,
                             attribute_keys: None,
@@ -2243,6 +2257,7 @@ impl NativeItemRuntime {
             trim_pattern_tags: self.trim_pattern_tags.as_ref(),
             jukebox_song_tags: self.jukebox_song_tags.as_ref(),
             potion_tags: self.potion_tags.as_ref(),
+            attribute_tags: self.attribute_tags.as_ref(),
             trim_material_keys,
             enchantment_keys,
             attribute_keys,
@@ -2409,6 +2424,7 @@ impl NativeItemRuntime {
             trim_pattern_tags: parent_context.trim_pattern_tags,
             jukebox_song_tags: parent_context.jukebox_song_tags,
             potion_tags: parent_context.potion_tags,
+            attribute_tags: parent_context.attribute_tags,
             trim_material_keys: parent_context.trim_material_keys,
             enchantment_keys: parent_context.enchantment_keys,
             attribute_keys: parent_context.attribute_keys,
@@ -8574,12 +8590,31 @@ mod tests {
             ..DataComponentPatchSummary::default()
         };
         assert_eq!(
-            selected_with_attribute_keys(67, bundle_attribute_patch(attack_damage_modifier)),
+            selected_with_attribute_keys(
+                67,
+                bundle_attribute_patch(attack_damage_modifier.clone())
+            ),
             uv("component_condition_bundle_partial_attribute_modifiers_attribute_present")
         );
         assert_eq!(
             selected_with_attribute_keys(67, bundle_attribute_patch(scale_modifier.clone())),
             uv("component_condition_bundle_partial_attribute_modifiers_attribute_absent")
+        );
+        assert_eq!(
+            selected_with_attribute_keys(68, attribute_patch(attack_damage_modifier.clone())),
+            uv("component_condition_attribute_modifiers_attribute_tag_present")
+        );
+        assert_eq!(
+            selected_with_attribute_keys(68, attribute_patch(scale_modifier.clone())),
+            uv("component_condition_attribute_modifiers_attribute_tag_absent")
+        );
+        assert_eq!(
+            selected_with_attribute_keys(69, bundle_attribute_patch(attack_damage_modifier)),
+            uv("component_condition_bundle_partial_attribute_modifiers_attribute_tag_present")
+        );
+        assert_eq!(
+            selected_with_attribute_keys(69, bundle_attribute_patch(scale_modifier)),
+            uv("component_condition_bundle_partial_attribute_modifiers_attribute_tag_absent")
         );
         let custom_data_value = |owner: &str| {
             NbtSummaryValue::Compound(vec![
@@ -10240,6 +10275,8 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_CUSTOM_DATA = registerItem("component_condition_container_partial_custom_data");
                 public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_ATTRIBUTE_MODIFIERS = registerItem("component_condition_bundle_partial_attribute_modifiers");
                 public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_ATTRIBUTE_MODIFIERS_ATTRIBUTE = registerItem("component_condition_bundle_partial_attribute_modifiers_attribute");
+                public static final Item COMPONENT_CONDITION_ATTRIBUTE_MODIFIERS_ATTRIBUTE_TAG = registerItem("component_condition_attribute_modifiers_attribute_tag");
+                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_ATTRIBUTE_MODIFIERS_ATTRIBUTE_TAG = registerItem("component_condition_bundle_partial_attribute_modifiers_attribute_tag");
             }"#,
         );
         write_json(
@@ -10330,6 +10367,21 @@ mod tests {
             r#"{
                 "values": [
                     "minecraft:healing"
+                ]
+            }"#,
+        );
+        write_json(
+            &root
+                .join("sources")
+                .join(bbb_pack::MC_VERSION)
+                .join("data")
+                .join("minecraft")
+                .join("tags")
+                .join("attribute")
+                .join("component_condition_damage_attributes.json"),
+            r#"{
+                "values": [
+                    "minecraft:generic.attack_damage"
                 ]
             }"#,
         );
@@ -12070,6 +12122,78 @@ mod tests {
         write_json(
             &assets
                 .join("items")
+                .join("component_condition_attribute_modifiers_attribute_tag.json"),
+            r##"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:attribute_modifiers",
+                    "value": {
+                        "modifiers": {
+                            "contains": [
+                                {
+                                    "attribute": "#minecraft:component_condition_damage_attributes",
+                                    "id": "minecraft:test/speed"
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_attribute_modifiers_attribute_tag_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_attribute_modifiers_attribute_tag_absent"
+                    }
+                }
+            }"##,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_partial_attribute_modifiers_attribute_tag.json"),
+            r##"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "predicates": {
+                                            "minecraft:attribute_modifiers": {
+                                                "modifiers": {
+                                                    "contains": [
+                                                        {
+                                                            "attribute": "#minecraft:component_condition_damage_attributes",
+                                                            "id": "minecraft:test/speed"
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_attribute_modifiers_attribute_tag_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_attribute_modifiers_attribute_tag_absent"
+                    }
+                }
+            }"##,
+        );
+        write_json(
+            &assets
+                .join("items")
                 .join("component_condition_custom_data.json"),
             r#"{
                 "model": {
@@ -12878,6 +13002,22 @@ mod tests {
             (
                 "component_condition_bundle_partial_attribute_modifiers_attribute_absent",
                 [80, 35, 95, 255],
+            ),
+            (
+                "component_condition_attribute_modifiers_attribute_tag_present",
+                [140, 220, 245, 255],
+            ),
+            (
+                "component_condition_attribute_modifiers_attribute_tag_absent",
+                [45, 70, 95, 255],
+            ),
+            (
+                "component_condition_bundle_partial_attribute_modifiers_attribute_tag_present",
+                [220, 170, 245, 255],
+            ),
+            (
+                "component_condition_bundle_partial_attribute_modifiers_attribute_tag_absent",
+                [85, 45, 95, 255],
             ),
             (
                 "component_condition_custom_data_present",

@@ -5880,10 +5880,11 @@ When an agent does any of the following, update this file in the same slice:
       `minecraft:villager/variant` now matches decoded 0-based
       `VillagerType` holder ids against the vanilla `VillagerType.bootstrap`
       registry-key order. `minecraft:attribute_modifiers` now preserves decoded
-      modifier entries and matches direct plus bundle/container-nested `modifiers`
-      collection predicates over direct registry-key `attribute` HolderSets
-      when `minecraft:attribute` registry keys are available, plus `id`,
-      `amount`, `operation`, `slot`, and `size` / `contains` / `count`.
+      modifier entries and matches direct plus bundle/container-nested
+      `modifiers` collection predicates over direct registry-key or
+      attribute-tag `attribute` HolderSets when `minecraft:attribute` registry
+      keys are available, plus `id`, `amount`, `operation`, `slot`, and `size`
+      / `contains` / `count`.
       `minecraft:custom_data` now preserves decoded custom-data NBT compound
       summaries and matches direct plus bundle/container-nested predicates with
       vanilla `NbtUtils.compareNbt(..., true)` subset-compound and partial-list
@@ -5925,9 +5926,9 @@ When an agent does any of the following, update this file in the same slice:
       `minecraft:enchanted_book` contributes its item-specific default empty
       `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
       constrained predicate types (inline enchantment holder payloads / server
-      datapack tag remaps, attribute tag HolderSets / default item-prototype
-      attribute modifiers, custom-data SNBT-string predicate parsing / broader
-      NBT scalar typing, remaining concrete partial predicates and complex exact
+      datapack tag remaps, default item-prototype attribute modifiers,
+      custom-data SNBT-string predicate parsing / broader NBT scalar typing,
+      remaining concrete partial predicates and complex exact
       component codecs, rich/styled written-book page `ComponentSerialization`
       equality, trim inline material or pattern payloads / datapack pattern
       registry-key remaps, villager type tags / datapack villager-type registry
@@ -6088,9 +6089,10 @@ When an agent does any of the following, update this file in the same slice:
     available, and direct plus nested bundle/container writable/written-book
     predicates for decoded raw string fields/pages, plus direct and
     bundle/container-nested villager variant predicates for vanilla registry
-    keys, plus direct and bundle/container-nested attribute modifier predicates for
-    decoded direct registry-key attribute / id / amount / operation / slot
-    entries when the synced attribute registry is available, plus direct and
+    keys, plus direct and bundle/container-nested attribute modifier predicates
+    for decoded direct registry-key or attribute-tag attribute / id / amount /
+    operation / slot entries when the synced attribute registry is available,
+    plus direct and
     bundle/container-nested custom-data NBT compound predicates for JSON-object
     expected values; broader component-codec and remaining constrained
     `DataComponentPredicate` parity remains the documented follow-up.

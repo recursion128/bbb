@@ -816,10 +816,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     matches decoded 0-based `VillagerType` holder ids against the vanilla
     `VillagerType.bootstrap` registry-key order. `minecraft:attribute_modifiers`
     now preserves decoded modifier entries and matches direct plus
-    bundle/container-nested `modifiers` collection predicates over direct registry-key
-    `attribute` HolderSets when `minecraft:attribute` registry keys are
-    available, plus `id`, `amount`, `operation`, `slot`, and `size` /
-    `contains` / `count`. `minecraft:custom_data` now preserves decoded
+    bundle/container-nested `modifiers` collection predicates over direct
+    registry-key or attribute-tag `attribute` HolderSets when
+    `minecraft:attribute` registry keys are available, plus `id`, `amount`,
+    `operation`, `slot`, and `size` / `contains` / `count`.
+    `minecraft:custom_data` now preserves decoded
     custom-data NBT compound summaries and matches direct plus
     bundle/container-nested predicates with vanilla `NbtUtils.compareNbt(..., true)`
     subset-compound and partial-list semantics for JSON-object predicate values.
@@ -853,9 +854,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:enchanted_book` now also contributes its item-specific default
     empty `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
     constrained `DataComponentPredicate` types such as inline enchantment holder
-    payloads / server datapack tag remaps, attribute tag HolderSets / default
-    item-prototype attribute modifiers, custom-data SNBT-string predicate
-    parsing / broader NBT scalar typing, remaining concrete partial predicates
+    payloads / server datapack tag remaps, default item-prototype attribute
+    modifiers, custom-data SNBT-string predicate parsing / broader NBT scalar
+    typing, remaining concrete partial predicates
     and complex exact component codecs, rich/styled written-book page
     `ComponentSerialization` equality, trim inline material or pattern payloads
     / datapack pattern registry-key remaps, villager type tags / datapack
