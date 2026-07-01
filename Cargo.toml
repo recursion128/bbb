@@ -23,6 +23,7 @@ anyhow = "1"
 bytes = "1"
 bytemuck = { version = "1", features = ["derive"] }
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
+chrono-tz = "0.10"
 clap = { version = "4", features = ["derive"] }
 flate2 = "1"
 glam = "0.29"

@@ -1006,11 +1006,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     time for the vanilla 26.1 chest/trapped-chest `MM-dd` pattern and a broader
     root/en-locale ICU `SimpleDateFormat` subset (`y`/`M`/`d`, 24/12-hour
     `H`/`k`/`K`/`h`, `m`/`s`/`S`, `E`, `a`, and quoted literals), using fixed
-    `GMT`/UTC offset `time_zone` values when present or the system local zone
-    otherwise. Tests pin GMT Christmas selection plus a cross-midnight
-    `UTC+02:30` date-time / weekday / AM-PM branch from vanilla
-    `LocalTime.get`. Full ICU locale symbols and IANA timezone IDs remain
-    follow-up.
+    `GMT`/UTC offset and IANA `time_zone` IDs when present or the system local
+    zone otherwise. Tests pin GMT Christmas selection plus cross-midnight
+    `UTC+02:30` and `Asia/Tokyo` date-time / weekday / AM-PM branches from
+    vanilla `LocalTime.get`. Full ICU locale symbols and additional pattern
+    fields remain follow-up.
   - [x] GUI/HUD item icons now thread `WorldTimeState` into
     `minecraft:time` range_dispatch for `wobble=false`
     `source=daytime` / `moon_phase`, matching vanilla `Time.get`

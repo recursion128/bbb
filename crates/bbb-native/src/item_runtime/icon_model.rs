@@ -16,6 +16,7 @@ use bbb_protocol::packets::{
     WrittenBookContentSummary,
 };
 use chrono::{Datelike, FixedOffset, Local, TimeZone, Timelike, Utc, Weekday};
+use chrono_tz::Tz;
 use serde_json::Value;
 
 use super::{
@@ -1264,12 +1265,13 @@ fn local_time_select_value(
 ) -> Option<String> {
     let fields = match time_zone {
         Some(time_zone) => {
-            let offset = fixed_time_zone_offset(time_zone)?;
-            let date = Utc
-                .timestamp_millis_opt(epoch_millis)
-                .single()?
-                .with_timezone(&offset);
-            LocalTimeFields::from_datetime(date)
+            let utc = Utc.timestamp_millis_opt(epoch_millis).single()?;
+            if let Some(offset) = fixed_time_zone_offset(time_zone) {
+                LocalTimeFields::from_datetime(utc.with_timezone(&offset))
+            } else {
+                let time_zone = time_zone.parse::<Tz>().ok()?;
+                LocalTimeFields::from_datetime(utc.with_timezone(&time_zone))
+            }
         }
         None => {
             let date = Local.timestamp_millis_opt(epoch_millis).single()?;
@@ -1418,7 +1420,7 @@ fn fractional_second(millisecond: u32, width: usize) -> String {
     if width <= 3 {
         digits.truncate(width);
     } else {
-        digits.extend(std::iter::repeat_n('0', width - 3));
+        digits.extend(std::iter::repeat('0').take(width - 3));
     }
     digits
 }

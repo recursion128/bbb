@@ -5781,7 +5781,7 @@ When an agent does any of the following, update this file in the same slice:
       owner-backed generated held-item path
     - remaining `minecraft:local_time` coverage beyond the supported
       root/en-locale ICU numeric/date-time subset: full localized symbols and
-      IANA timezone IDs
+      additional ICU pattern fields
   - Audit remaining item consumers that vanilla renders with a living owner and
     pass that owner context into the item resolver. `minecraft:main_hand` and
     `minecraft:context_entity_type` are now wired for owner-backed generated
@@ -6120,11 +6120,11 @@ When an agent does any of the following, update this file in the same slice:
       the vanilla 26.1 chest/trapped-chest `MM-dd` selector plus a
       root/en-locale ICU `SimpleDateFormat` subset (`y`/`M`/`d`,
       24/12-hour `H`/`k`/`K`/`h`, `m`/`s`/`S`, `E`, `a`, and quoted
-      literals). Explicit `GMT`/UTC offset `time_zone` values use that offset;
-      absent `time_zone` uses the system local timezone like vanilla. Tests pin
-      GMT `12-25` selecting the Christmas branch, `12-27` selecting the
-      fallback, and a cross-midnight `UTC+02:30` date-time / weekday / AM-PM
-      branch.
+      literals). Explicit `GMT`/UTC offset and IANA `time_zone` IDs use that
+      zone; absent `time_zone` uses the system local timezone like vanilla.
+      Tests pin GMT `12-25` selecting the Christmas branch, `12-27` selecting
+      the fallback, and cross-midnight `UTC+02:30` plus `Asia/Tokyo`
+      date-time / weekday / AM-PM branches.
     - `minecraft:time` — `Time.get`, for GUI/HUD item icons with a local-player
       owner and `ClientLevel` context when the model opts out of stateful
       wobble (`wobble=false`). Native currently projects the `daytime` target
@@ -6209,7 +6209,8 @@ When an agent does any of the following, update this file in the same slice:
     per-property `source=random` RNG remain follow-up.
     `minecraft:local_time` resolves the vanilla chest/trapped-chest `MM-dd`
     selector and common root/en-locale ICU date-time patterns from wall-clock
-    time; full localized symbols and IANA timezone IDs remain follow-up.
+    time, including fixed-offset and IANA `time_zone` IDs; full localized
+    symbols and additional ICU pattern fields remain follow-up.
     GUI/HUD use-tick properties are wired for the local active stack,
     owner-backed third-person generated held-item paths use the entity render
     state's shared use tick counter, and both paths apply vanilla Quick
