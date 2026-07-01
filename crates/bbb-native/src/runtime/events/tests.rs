@@ -1,5 +1,5 @@
 use super::*;
-use crate::particle_runtime::ParticleEventSink;
+use crate::particle_runtime::{LevelParticleSpawnContext, ParticleEventSink};
 use crate::runtime::{clear_color_for_day_time, clear_color_for_world};
 use bbb_audio::{
     AudioCategory, AudioCommand, AudioCommandResolver, AudioResolveError, JukeboxSongRegistry,
@@ -2904,6 +2904,14 @@ fn level_particles_emit_particle_runtime_batch_and_world_counters() {
     tx.try_send(NetEvent::LevelParticles(packet.clone()))
         .unwrap();
     let mut world = WorldStore::new();
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 1.0,
+            y: 2.0,
+            z: 3.0,
+        },
+        ..LocalPlayerPoseState::default()
+    });
     let mut counters = NetCounters::default();
     let mut particles = RecordingParticleSink::default();
     let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
@@ -2923,6 +2931,12 @@ fn level_particles_emit_particle_runtime_batch_and_world_counters() {
     );
 
     assert_eq!(particles.packets, vec![packet]);
+    assert_eq!(
+        particles.contexts,
+        vec![LevelParticleSpawnContext {
+            camera_position: Some([1.0, 3.62, 3.0]),
+        }]
+    );
     assert_eq!(particles.batches.len(), 1);
     assert_eq!(world.counters().level_particles_packets, 1);
     assert_eq!(world.last_level_particles().unwrap().count, 0);
@@ -5471,6 +5485,7 @@ impl crate::audio_runtime::AudioEventSink for RecordingAudioSink {
 #[derive(Default)]
 struct RecordingParticleSink {
     packets: Vec<LevelParticles>,
+    contexts: Vec<LevelParticleSpawnContext>,
     level_events: Vec<LevelEvent>,
     batches: Vec<bbb_renderer::ParticleSpawnBatch>,
 }
@@ -5479,8 +5494,10 @@ impl ParticleEventSink for RecordingParticleSink {
     fn spawn_level_particles(
         &mut self,
         packet: &LevelParticles,
+        context: LevelParticleSpawnContext,
     ) -> bbb_renderer::ParticleSpawnBatch {
         self.packets.push(packet.clone());
+        self.contexts.push(context);
         let batch = bbb_renderer::ParticleSpawnBatch {
             missing_definition_count: 1,
             ..bbb_renderer::ParticleSpawnBatch::default()

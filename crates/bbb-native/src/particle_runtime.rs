@@ -5,7 +5,7 @@ use bbb_pack::{
     AtlasLayout, AtlasPacker, AtlasSprite, PackRoots, ParticleDefinitionCatalog,
     ParticleSpriteCatalog, SpriteImage,
 };
-use bbb_protocol::packets::{LevelEvent, LevelParticles, Vec3d};
+use bbb_protocol::packets::{ClientParticleStatus, LevelEvent, LevelParticles, Vec3d};
 use bbb_renderer::{
     ParticleSpawnBatch, ParticleSpawnCommand, ParticleSpriteUv, ParticleUvRect, Renderer,
 };
@@ -14,12 +14,21 @@ use bbb_world::LevelEventSoundRandomState;
 use crate::particle_registry::{vanilla_particle_type, ParticleTypeInfo};
 
 pub(crate) trait ParticleEventSink {
-    fn spawn_level_particles(&mut self, packet: &LevelParticles) -> ParticleSpawnBatch;
+    fn spawn_level_particles(
+        &mut self,
+        packet: &LevelParticles,
+        context: LevelParticleSpawnContext,
+    ) -> ParticleSpawnBatch;
     fn spawn_level_event_particles(
         &mut self,
         event: &LevelEvent,
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch;
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub(crate) struct LevelParticleSpawnContext {
+    pub(crate) camera_position: Option<[f64; 3]>,
 }
 
 pub(crate) struct NativeParticleRuntime {
@@ -28,7 +37,7 @@ pub(crate) struct NativeParticleRuntime {
 }
 
 impl NativeParticleRuntime {
-    pub(crate) fn load(roots: &PackRoots) -> Result<Self> {
+    pub(crate) fn load(roots: &PackRoots, particle_status: ClientParticleStatus) -> Result<Self> {
         let definitions = roots
             .load_particle_definition_catalog()
             .context("load particle definition catalog")?;
@@ -38,7 +47,7 @@ impl NativeParticleRuntime {
         let atlas = particle_atlas_from_images(sprites.sprites().values().cloned().collect())
             .context("stitch particle atlas")?;
         Ok(Self {
-            resolver: ParticleCommandResolver::new(definitions, sprites),
+            resolver: ParticleCommandResolver::new(definitions, sprites, particle_status),
             atlas,
         })
     }
@@ -54,8 +63,13 @@ impl NativeParticleRuntime {
 }
 
 impl ParticleEventSink for NativeParticleRuntime {
-    fn spawn_level_particles(&mut self, packet: &LevelParticles) -> ParticleSpawnBatch {
-        self.resolver.resolve_level_particles(packet)
+    fn spawn_level_particles(
+        &mut self,
+        packet: &LevelParticles,
+        context: LevelParticleSpawnContext,
+    ) -> ParticleSpawnBatch {
+        self.resolver
+            .resolve_level_particles_with_context(packet, context)
     }
 
     fn spawn_level_event_particles(
@@ -72,6 +86,8 @@ struct ParticleCommandResolver {
     definitions: ParticleDefinitionCatalog,
     sprites: ParticleSpriteCatalog,
     random: LegacyRandom,
+    particle_level_random: LegacyRandom,
+    particle_status: ClientParticleStatus,
 }
 
 #[derive(Debug, Clone)]
@@ -122,28 +138,45 @@ fn particle_uv_rect(layout: &AtlasLayout, sprite: &AtlasSprite) -> ParticleUvRec
 }
 
 impl ParticleCommandResolver {
-    fn new(definitions: ParticleDefinitionCatalog, sprites: ParticleSpriteCatalog) -> Self {
+    fn new(
+        definitions: ParticleDefinitionCatalog,
+        sprites: ParticleSpriteCatalog,
+        particle_status: ClientParticleStatus,
+    ) -> Self {
         Self {
             definitions,
             sprites,
             random: LegacyRandom::new(default_particle_seed()),
+            particle_level_random: LegacyRandom::new(default_particle_seed()),
+            particle_status,
         }
     }
 
     #[cfg(test)]
-    fn with_seed(
+    fn with_seed_and_particle_status(
         definitions: ParticleDefinitionCatalog,
         sprites: ParticleSpriteCatalog,
         seed: i64,
+        particle_status: ClientParticleStatus,
     ) -> Self {
         Self {
             definitions,
             sprites,
             random: LegacyRandom::new(seed),
+            particle_level_random: LegacyRandom::new(seed),
+            particle_status,
         }
     }
 
     fn resolve_level_particles(&mut self, packet: &LevelParticles) -> ParticleSpawnBatch {
+        self.resolve_level_particles_with_context(packet, LevelParticleSpawnContext::default())
+    }
+
+    fn resolve_level_particles_with_context(
+        &mut self,
+        packet: &LevelParticles,
+        context: LevelParticleSpawnContext,
+    ) -> ParticleSpawnBatch {
         if packet.count < 0 {
             return ParticleSpawnBatch::default();
         }
@@ -176,19 +209,28 @@ impl ParticleCommandResolver {
         let mut commands = Vec::with_capacity(command_count);
 
         if packet.count == 0 {
-            commands.push(self.command(
-                packet,
-                particle_type,
-                &sprite_ids,
-                packet.position,
-                Vec3d {
-                    x: packet.offset.x * f64::from(packet.max_speed),
-                    y: packet.offset.y * f64::from(packet.max_speed),
-                    z: packet.offset.z * f64::from(packet.max_speed),
-                },
+            let position = packet.position;
+            let velocity = Vec3d {
+                x: packet.offset.x * f64::from(packet.max_speed),
+                y: packet.offset.y * f64::from(packet.max_speed),
+                z: packet.offset.z * f64::from(packet.max_speed),
+            };
+            if self.should_spawn_level_particle(
                 override_limiter,
-                raw_options_len,
-            ));
+                packet.always_show,
+                position,
+                context.camera_position,
+            ) {
+                commands.push(self.command(
+                    packet,
+                    particle_type,
+                    &sprite_ids,
+                    position,
+                    velocity,
+                    override_limiter,
+                    raw_options_len,
+                ));
+            }
         } else {
             for _ in 0..packet.count {
                 let position = Vec3d {
@@ -201,15 +243,22 @@ impl ParticleCommandResolver {
                     y: self.random.next_gaussian() * f64::from(packet.max_speed),
                     z: self.random.next_gaussian() * f64::from(packet.max_speed),
                 };
-                commands.push(self.command(
-                    packet,
-                    particle_type,
-                    &sprite_ids,
-                    position,
-                    velocity,
+                if self.should_spawn_level_particle(
                     override_limiter,
-                    raw_options_len,
-                ));
+                    packet.always_show,
+                    position,
+                    context.camera_position,
+                ) {
+                    commands.push(self.command(
+                        packet,
+                        particle_type,
+                        &sprite_ids,
+                        position,
+                        velocity,
+                        override_limiter,
+                        raw_options_len,
+                    ));
+                }
             }
         }
 
@@ -218,6 +267,44 @@ impl ParticleCommandResolver {
             missing_sprite_count,
             ..ParticleSpawnBatch::default()
         }
+    }
+
+    fn should_spawn_level_particle(
+        &mut self,
+        override_limiter: bool,
+        always_show: bool,
+        position: Vec3d,
+        camera_position: Option<[f64; 3]>,
+    ) -> bool {
+        let particle_level = self.calculate_particle_level(always_show);
+        if override_limiter {
+            return true;
+        }
+        if let Some(camera_position) = camera_position {
+            let dx = position.x - camera_position[0];
+            let dy = position.y - camera_position[1];
+            let dz = position.z - camera_position[2];
+            if dx * dx + dy * dy + dz * dz > 1024.0 {
+                return false;
+            }
+        }
+        particle_level != ClientParticleStatus::Minimal
+    }
+
+    fn calculate_particle_level(&mut self, always_show: bool) -> ClientParticleStatus {
+        let mut particle_level = self.particle_status;
+        if always_show
+            && particle_level == ClientParticleStatus::Minimal
+            && self.particle_level_random.next_i32(10) == 0
+        {
+            particle_level = ClientParticleStatus::Decreased;
+        }
+        if particle_level == ClientParticleStatus::Decreased
+            && self.particle_level_random.next_i32(3) == 0
+        {
+            particle_level = ClientParticleStatus::Minimal;
+        }
+        particle_level
     }
 
     fn resolve_level_event_particles(
@@ -1147,6 +1234,20 @@ impl LegacyRandom {
         (high + low) as f64 / ((1_u64 << 53) as f64)
     }
 
+    fn next_i32(&mut self, bound: i32) -> i32 {
+        assert!(bound > 0);
+        if (bound & -bound) == bound {
+            return ((i64::from(bound) * i64::from(self.next_bits(31))) >> 31) as i32;
+        }
+        loop {
+            let bits = self.next_bits(31) as i32;
+            let value = bits % bound;
+            if bits - value + (bound - 1) >= 0 {
+                return value;
+            }
+        }
+    }
+
     fn next_bits(&mut self, bits: u32) -> u32 {
         self.seed = self
             .seed
@@ -1250,6 +1351,7 @@ mod tests {
     fn missing_sprite_records_diagnostic_without_dropping_spawn_command() {
         let mut resolver = test_resolver_with_cloud_textures(
             0,
+            ClientParticleStatus::All,
             &["minecraft:generic_7", "minecraft:missing_particle"],
             &["generic_7"],
         );
@@ -1265,6 +1367,109 @@ mod tests {
                 "minecraft:missing_particle".to_string(),
             ]
         );
+    }
+
+    #[test]
+    fn level_particles_drop_non_override_spawns_beyond_vanilla_camera_distance() {
+        let mut packet = level_particles_packet(4, 0);
+        packet.override_limiter = false;
+        packet.always_show = false;
+        packet.position = Vec3d {
+            x: 33.0,
+            y: 0.0,
+            z: 0.0,
+        };
+        let context = LevelParticleSpawnContext {
+            camera_position: Some([0.0, 0.0, 0.0]),
+        };
+        let mut resolver = test_resolver(0);
+
+        let batch = resolver.resolve_level_particles_with_context(&packet, context);
+
+        assert!(batch.commands.is_empty());
+        assert_eq!(batch.missing_definition_count, 0);
+        assert_eq!(batch.missing_sprite_count, 0);
+    }
+
+    #[test]
+    fn level_particles_override_limiter_bypasses_distance_and_particle_status() {
+        let mut packet = level_particles_packet(4, 0);
+        packet.override_limiter = true;
+        packet.always_show = false;
+        packet.position = Vec3d {
+            x: 33.0,
+            y: 0.0,
+            z: 0.0,
+        };
+        let context = LevelParticleSpawnContext {
+            camera_position: Some([0.0, 0.0, 0.0]),
+        };
+        let mut resolver = test_resolver_with_particle_status(0, ClientParticleStatus::Minimal);
+
+        let batch = resolver.resolve_level_particles_with_context(&packet, context);
+
+        assert_eq!(batch.len(), 1);
+        assert_eq!(batch.commands[0].position, [33.0, 0.0, 0.0]);
+        assert!(batch.commands[0].override_limiter);
+    }
+
+    #[test]
+    fn decreased_particle_status_uses_vanilla_next_int_three() {
+        let mut packet = level_particles_packet(4, 0);
+        packet.override_limiter = false;
+        packet.always_show = false;
+        packet.position = Vec3d::default();
+        let context = LevelParticleSpawnContext {
+            camera_position: Some([0.0, 0.0, 0.0]),
+        };
+        let mut dropping_resolver =
+            test_resolver_with_particle_status(0, ClientParticleStatus::Decreased);
+        let mut keeping_resolver =
+            test_resolver_with_particle_status(2, ClientParticleStatus::Decreased);
+
+        assert!(dropping_resolver
+            .resolve_level_particles_with_context(&packet, context)
+            .commands
+            .is_empty());
+        assert_eq!(
+            keeping_resolver
+                .resolve_level_particles_with_context(&packet, context)
+                .len(),
+            1
+        );
+    }
+
+    #[test]
+    fn minimal_particle_status_only_keeps_always_show_promoted_particles() {
+        let mut packet = level_particles_packet(4, 0);
+        packet.override_limiter = false;
+        packet.always_show = false;
+        packet.position = Vec3d::default();
+        let context = LevelParticleSpawnContext {
+            camera_position: Some([0.0, 0.0, 0.0]),
+        };
+        let mut plain_minimal =
+            test_resolver_with_particle_status(0, ClientParticleStatus::Minimal);
+        assert!(plain_minimal
+            .resolve_level_particles_with_context(&packet, context)
+            .commands
+            .is_empty());
+
+        packet.always_show = true;
+        let mut promoted = test_resolver_with_particle_status(0, ClientParticleStatus::Minimal);
+        assert_eq!(
+            promoted
+                .resolve_level_particles_with_context(&packet, context)
+                .len(),
+            1
+        );
+
+        let mut promoted_then_dropped =
+            test_resolver_with_particle_status(42, ClientParticleStatus::Minimal);
+        assert!(promoted_then_dropped
+            .resolve_level_particles_with_context(&packet, context)
+            .commands
+            .is_empty());
     }
 
     #[test]
@@ -1876,8 +2081,16 @@ mod tests {
     }
 
     fn test_resolver(seed: i64) -> ParticleCommandResolver {
+        test_resolver_with_particle_status(seed, ClientParticleStatus::All)
+    }
+
+    fn test_resolver_with_particle_status(
+        seed: i64,
+        particle_status: ClientParticleStatus,
+    ) -> ParticleCommandResolver {
         test_resolver_with_cloud_textures(
             seed,
+            particle_status,
             &["minecraft:generic_7", "minecraft:generic_6"],
             &[
                 "generic_7",
@@ -1906,6 +2119,7 @@ mod tests {
 
     fn test_resolver_with_cloud_textures(
         seed: i64,
+        particle_status: ClientParticleStatus,
         cloud_textures: &[&str],
         particle_textures: &[&str],
     ) -> ParticleCommandResolver {
@@ -2080,7 +2294,12 @@ mod tests {
             .load_particle_sprite_catalog()
             .unwrap();
         std::fs::remove_dir_all(root).unwrap();
-        ParticleCommandResolver::with_seed(catalog, sprites, seed)
+        ParticleCommandResolver::with_seed_and_particle_status(
+            catalog,
+            sprites,
+            seed,
+            particle_status,
+        )
     }
 
     fn level_particles_packet(particle_type_id: i32, count: i32) -> LevelParticles {

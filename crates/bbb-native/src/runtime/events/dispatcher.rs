@@ -9,7 +9,7 @@ use tokio::sync::mpsc;
 
 use crate::audio_runtime::AudioEventSink;
 use crate::input::queue_vehicle_move_command;
-use crate::particle_runtime::ParticleEventSink;
+use crate::particle_runtime::{LevelParticleSpawnContext, ParticleEventSink};
 
 use super::client_state::*;
 use super::control_state::apply_control_projection_event;
@@ -203,7 +203,12 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::LevelParticles(update) => {
                 world.apply_level_particles(update.clone());
-                emit_level_particles(&mut particle_events, &mut particle_renderer, &update);
+                emit_level_particles(
+                    &mut particle_events,
+                    &mut particle_renderer,
+                    &update,
+                    level_particle_spawn_context(world),
+                );
             }
             NetEvent::ProjectilePower(update) => {
                 world.apply_projectile_power(update);
@@ -709,12 +714,20 @@ fn emit_level_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
     particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
     packet: &bbb_protocol::packets::LevelParticles,
+    context: LevelParticleSpawnContext,
 ) {
     if let Some(particle_events) = particle_events.as_deref_mut() {
-        let batch = particle_events.spawn_level_particles(packet);
+        let batch = particle_events.spawn_level_particles(packet, context);
         if let Some(renderer) = particle_renderer.as_deref_mut() {
             renderer.submit_particle_spawns(batch);
         }
+    }
+}
+
+fn level_particle_spawn_context(world: &WorldStore) -> LevelParticleSpawnContext {
+    LevelParticleSpawnContext {
+        camera_position: camera_audio_position_from_world(world)
+            .map(|position| [position.x, position.y, position.z]),
     }
 }
 

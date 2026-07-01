@@ -163,7 +163,6 @@ When an agent does any of the following, update this file in the same slice:
     - light curves
     - particle sorting
     - collision/player-coupled physics
-    - client `ParticleStatus` / distance thinning settings
     - atlas mip animation
     - terrain/item particle option rendering
     - remaining level-event particle effects beyond the currently covered
@@ -173,6 +172,14 @@ When an agent does any of the following, update this file in the same slice:
 - Evidence / boundary:
   - Current runtime:
     - Drains level-particle spawn batches.
+    - Applies vanilla `ClientLevel.doAddParticle` thinning for
+      `ClientboundLevelParticlesPacket` spawns: non-override particles beyond
+      camera distance squared `1024.0` are dropped, override-limiter particles
+      bypass distance and particle-status filtering, and CLI `--client-particles`
+      drives `ParticleStatus.ALL` / `DECREASED` / `MINIMAL` with vanilla-shaped
+      `nextInt(3)`, `alwaysShow && MINIMAL` `nextInt(10)` promotion, and the
+      second decreased `nextInt(3)` drop. The camera position comes from the
+      same eye-position projection used by global level-event audio.
     - Enforces vanilla `ParticleLimit.SPORE_BLOSSOM` (`1000`) for
       `SuspendedParticle.SporeBlossomAirProvider`: over-limit
       `minecraft:spore_blossom_air` spawns are rejected without evicting the

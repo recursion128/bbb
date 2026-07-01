@@ -1196,7 +1196,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     拒收第 1001 个 `SuspendedParticle.SporeBlossomAirProvider`
     (`minecraft:spore_blossom_air`) 粒子，不淘汰已接纳粒子，并在粒子过期时释放
     limit 计数；`overrideLimiter` 仍只属于距离/选项降采样，不绕过该分组 limit。
-  - client `ParticleStatus` / distance thinning settings。
+  - [x] client `ParticleStatus` / distance thinning settings：native
+    `LevelParticles` dispatch now mirrors vanilla `ClientLevel.doAddParticle`：
+    非 override 粒子在 camera eye distance squared `> 1024.0` 时丢弃；
+    override-limiter 粒子绕过距离和粒子选项；`--client-particles` 固定
+    `ALL` / `DECREASED` / `MINIMAL`，并用 vanilla-shaped Java `Random.nextInt`
+    执行 `DECREASED` 的 `nextInt(3)` drop 与 `MINIMAL && alwaysShow` 的
+    `nextInt(10)` promote / second `nextInt(3)` drop。
 - atlas mip animation：
   - animated sprite frame advance。
   - missing definition / missing sprite diagnostics。

@@ -120,7 +120,7 @@ fn main() -> Result<()> {
         ),
     };
     let mut particle_runtime = pack_roots.as_ref().and_then(|roots| {
-        NativeParticleRuntime::load(roots)
+        NativeParticleRuntime::load(roots, args.client_particles.into())
             .map_err(|err| {
                 tracing::warn!(?err, "continuing without native particle runtime");
                 err
