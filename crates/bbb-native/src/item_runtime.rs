@@ -1362,6 +1362,8 @@ impl NativeItemRuntime {
         let item_id = self.registry.as_ref()?.resource_id(protocol_id)?;
         let default_max_stack_size_for_item =
             |item_id| self.default_max_stack_size_for_protocol_id(item_id);
+        let default_max_damage_for_item =
+            |item_id| self.default_max_damage_for_protocol_id(item_id);
         Some(
             self.item_icon_models
                 .get(item_id)
@@ -1397,6 +1399,7 @@ impl NativeItemRuntime {
                             time_context: None,
                             compass_context: None,
                             default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
+                            default_max_damage_for_item: Some(&default_max_damage_for_item),
                             item_resource_ids: self
                                 .registry
                                 .as_ref()
@@ -2128,6 +2131,8 @@ impl NativeItemRuntime {
             .and_then(|registry| registry.max_stack_size(item_id));
         let default_max_stack_size_for_item =
             |item_id| self.default_max_stack_size_for_protocol_id(item_id);
+        let default_max_damage_for_item =
+            |item_id| self.default_max_damage_for_protocol_id(item_id);
         let context = IconResolveContext {
             component_patch,
             stack_count,
@@ -2153,6 +2158,7 @@ impl NativeItemRuntime {
             time_context,
             compass_context,
             default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
+            default_max_damage_for_item: Some(&default_max_damage_for_item),
             item_resource_ids: self
                 .registry
                 .as_ref()
@@ -2316,6 +2322,7 @@ impl NativeItemRuntime {
             time_context: parent_context.time_context,
             compass_context: parent_context.compass_context,
             default_max_stack_size_for_item: parent_context.default_max_stack_size_for_item,
+            default_max_damage_for_item: parent_context.default_max_damage_for_item,
             item_resource_ids: parent_context.item_resource_ids,
             item_tags: parent_context.item_tags,
             enchantment_tags: parent_context.enchantment_tags,
@@ -2340,6 +2347,14 @@ impl NativeItemRuntime {
             })
             .unwrap_or(64)
             .clamp(1, 99)
+    }
+
+    fn default_max_damage_for_protocol_id(&self, protocol_id: i32) -> Option<i32> {
+        self.registry.as_ref().and_then(|registry| {
+            registry
+                .resource_id(protocol_id)
+                .and_then(|resource_id| registry.max_damage(resource_id))
+        })
     }
 
     fn local_time_epoch_millis(&self) -> Option<i64> {
@@ -6801,6 +6816,110 @@ mod tests {
             ),
             uv("component_condition_stored_enchantments_tag_absent")
         );
+        assert_eq!(
+            selected(
+                32,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            rarity: Some(ItemRaritySummary::Rare),
+                            ..DataComponentPatchSummary::default()
+                        },
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_components_present")
+        );
+        assert_eq!(
+            selected(
+                32,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary::default(),
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_components_absent")
+        );
+        assert_eq!(
+            selected(
+                32,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            rarity: Some(ItemRaritySummary::Rare),
+                            removed_type_ids: vec![12],
+                            ..DataComponentPatchSummary::default()
+                        },
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_components_absent")
+        );
+        assert_eq!(
+            selected(
+                33,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(2),
+                    container_items: vec![
+                        ItemStackTemplateSummary {
+                            item_id: 0,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary::default(),
+                        },
+                        ItemStackTemplateSummary {
+                            item_id: 1,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary::default(),
+                        },
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_components_present")
+        );
+        assert_eq!(
+            selected(
+                33,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(2),
+                    container_items: vec![
+                        ItemStackTemplateSummary {
+                            item_id: 0,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                rarity: Some(ItemRaritySummary::Rare),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                        ItemStackTemplateSummary {
+                            item_id: 1,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary::default(),
+                        },
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_components_absent")
+        );
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -8324,6 +8443,8 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_CONTAINER_TAG_COUNT = registerItem("component_condition_container_tag_count");
                 public static final Item COMPONENT_CONDITION_ENCHANTMENTS_TAG = registerItem("component_condition_enchantments_tag");
                 public static final Item COMPONENT_CONDITION_STORED_ENCHANTMENTS_TAG = registerItem("component_condition_stored_enchantments_tag");
+                public static final Item COMPONENT_CONDITION_BUNDLE_COMPONENTS = registerItem("component_condition_bundle_components");
+                public static final Item COMPONENT_CONDITION_CONTAINER_COMPONENTS = registerItem("component_condition_container_components");
             }"#,
         );
         write_json(
@@ -8686,6 +8807,77 @@ mod tests {
                     }
                 }
             }"##,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_components.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "components": {
+                                            "minecraft:rarity": "rare"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_components_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_components_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_container_components.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:container",
+                    "value": {
+                        "items": {
+                            "count": [
+                                {
+                                    "test": {
+                                        "components": {
+                                            "components": {
+                                                "minecraft:rarity": "common"
+                                            }
+                                        }
+                                    },
+                                    "count": {
+                                        "min": 2
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_components_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_components_absent"
+                    }
+                }
+            }"#,
         );
         write_json(
             &assets
@@ -9313,6 +9505,22 @@ mod tests {
             (
                 "component_condition_stored_enchantments_tag_absent",
                 [70, 70, 40, 255],
+            ),
+            (
+                "component_condition_bundle_components_present",
+                [190, 230, 120, 255],
+            ),
+            (
+                "component_condition_bundle_components_absent",
+                [60, 80, 30, 255],
+            ),
+            (
+                "component_condition_container_components_present",
+                [120, 230, 190, 255],
+            ),
+            (
+                "component_condition_container_components_absent",
+                [30, 80, 60, 255],
             ),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);

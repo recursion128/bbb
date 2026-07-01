@@ -538,52 +538,63 @@ impl ComponentSelectProperty {
     }
 
     fn value(self, ctx: IconResolveContext<'_>) -> Option<SelectCaseValue> {
-        if ctx
-            .component_patch
+        self.value_from_stack(
+            ctx.component_patch,
+            ctx.default_max_stack_size,
+            ctx.default_max_damage,
+            ctx.default_item_model_id,
+        )
+    }
+
+    fn value_from_stack(
+        self,
+        component_patch: Option<&DataComponentPatchSummary>,
+        default_max_stack_size: Option<i32>,
+        default_max_damage: Option<i32>,
+        default_item_model_id: &str,
+    ) -> Option<SelectCaseValue> {
+        if component_patch
             .is_some_and(|patch| patch.removed_type_ids.contains(&self.component_id()))
         {
             return None;
         }
 
         match self {
-            Self::MaxStackSize => Some(SelectCaseValue::I32(ctx.effective_max_stack_size())),
-            Self::MaxDamage => ctx
-                .component_patch
+            Self::MaxStackSize => Some(SelectCaseValue::I32(effective_item_max_stack_size(
+                component_patch,
+                default_max_stack_size,
+            ))),
+            Self::MaxDamage => component_patch
                 .and_then(|patch| patch.max_damage)
-                .or(ctx.default_max_damage)
+                .or(default_max_damage)
                 .map(SelectCaseValue::I32),
-            Self::Damage => ctx
-                .component_patch
+            Self::Damage => component_patch
                 .and_then(|patch| patch.damage)
-                .or_else(|| ctx.default_max_damage.map(|_| 0))
+                .or_else(|| default_max_damage.map(|_| 0))
                 .map(SelectCaseValue::I32),
             Self::ItemModel => Some(SelectCaseValue::String(
-                ctx.component_patch
+                component_patch
                     .and_then(|patch| patch.item_model.as_deref())
-                    .unwrap_or(ctx.default_item_model_id)
+                    .unwrap_or(default_item_model_id)
                     .to_string(),
             )),
             Self::Rarity => Some(SelectCaseValue::String(
-                ctx.component_patch
+                component_patch
                     .and_then(|patch| patch.rarity)
                     .unwrap_or(ItemRaritySummary::Common)
                     .when_name()
                     .to_string(),
             )),
-            Self::EnchantmentGlintOverride => ctx
-                .component_patch
+            Self::EnchantmentGlintOverride => component_patch
                 .and_then(|patch| patch.enchantment_glint_override)
                 .map(SelectCaseValue::Bool),
-            Self::MapId => ctx
-                .component_patch
+            Self::MapId => component_patch
                 .and_then(|patch| patch.map_id)
                 .map(SelectCaseValue::I32),
-            Self::DyedColor => ctx
-                .component_patch
+            Self::DyedColor => component_patch
                 .and_then(|patch| patch.dyed_color)
                 .map(SelectCaseValue::I32),
-            Self::MapColor => ctx
-                .component_patch
+            Self::MapColor => component_patch
                 .and_then(|patch| patch.map_color)
                 .map(SelectCaseValue::I32),
         }
@@ -865,6 +876,7 @@ pub(super) struct IconResolveContext<'a> {
     /// compass targets available to the GUI/HUD icon resolver.
     pub compass_context: Option<ItemModelCompassContext<'a>>,
     pub default_max_stack_size_for_item: Option<&'a dyn Fn(i32) -> i32>,
+    pub default_max_damage_for_item: Option<&'a dyn Fn(i32) -> Option<i32>>,
     /// Item registry keys by protocol id, used for vanilla `ItemPredicate.items`
     /// matching inside collection component predicates.
     pub item_resource_ids: Option<&'a [String]>,
@@ -1878,6 +1890,8 @@ fn item_stack_matches_bundle_contents_predicate(
         component_patch.bundle_contents_item_count,
         ctx.item_resource_ids,
         ctx.item_tags,
+        ctx.default_max_stack_size_for_item,
+        ctx.default_max_damage_for_item,
     )
 }
 
@@ -1930,6 +1944,8 @@ fn item_stack_matches_container_predicate(
         component_patch.container_item_count,
         ctx.item_resource_ids,
         ctx.item_tags,
+        ctx.default_max_stack_size_for_item,
+        ctx.default_max_damage_for_item,
     )
 }
 
@@ -1989,11 +2005,47 @@ fn item_predicate_is_supported(value: &Value) -> bool {
     let Some(value) = value.as_object() else {
         return false;
     };
-    value.keys().all(|key| key == "items" || key == "count")
+    value
+        .keys()
+        .all(|key| key == "items" || key == "count" || key == "components")
         && value
             .get("items")
             .map(item_holder_set_is_supported)
             .unwrap_or(true)
+        && value
+            .get("components")
+            .map(item_data_component_matchers_is_supported)
+            .unwrap_or(true)
+}
+
+fn item_data_component_matchers_is_supported(value: &Value) -> bool {
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    value
+        .keys()
+        .all(|key| key == "components" || key == "predicates")
+        && value
+            .get("components")
+            .map(item_exact_components_are_supported)
+            .unwrap_or(true)
+        && value
+            .get("predicates")
+            .map(|predicates| {
+                predicates
+                    .as_object()
+                    .is_some_and(|predicates| predicates.is_empty())
+            })
+            .unwrap_or(true)
+}
+
+fn item_exact_components_are_supported(value: &Value) -> bool {
+    value.as_object().is_some_and(|components| {
+        components.iter().all(|(component, expected)| {
+            ComponentSelectProperty::for_component(component)
+                .is_some_and(|_| SelectCaseValue::from_json(expected).is_some())
+        })
+    })
 }
 
 fn item_holder_set_is_supported(value: &Value) -> bool {
@@ -2022,6 +2074,8 @@ fn item_collection_predicate_matches(
     item_count: Option<usize>,
     item_resource_ids: Option<&[String]>,
     item_tags: Option<&TagCatalog>,
+    default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
+    default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
     let Some(value) = value.as_object() else {
         return false;
@@ -2031,9 +2085,16 @@ fn item_collection_predicate_matches(
             return false;
         };
         if !predicates.iter().all(|predicate| {
-            items
-                .iter()
-                .any(|item| item_predicate_matches(predicate, item, item_resource_ids, item_tags))
+            items.iter().any(|item| {
+                item_predicate_matches(
+                    predicate,
+                    item,
+                    item_resource_ids,
+                    item_tags,
+                    default_max_stack_size_for_item,
+                    default_max_damage_for_item,
+                )
+            })
         }) {
             return false;
         }
@@ -2043,7 +2104,14 @@ fn item_collection_predicate_matches(
             return false;
         };
         if !entries.iter().all(|entry| {
-            item_predicate_count_entry_matches(entry, items, item_resource_ids, item_tags)
+            item_predicate_count_entry_matches(
+                entry,
+                items,
+                item_resource_ids,
+                item_tags,
+                default_max_stack_size_for_item,
+                default_max_damage_for_item,
+            )
         }) {
             return false;
         }
@@ -2067,6 +2135,8 @@ fn item_predicate_count_entry_matches(
     items: &[ItemStackTemplateSummary],
     item_resource_ids: Option<&[String]>,
     item_tags: Option<&TagCatalog>,
+    default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
+    default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
     let Some(entry) = entry.as_object() else {
         return false;
@@ -2076,7 +2146,16 @@ fn item_predicate_count_entry_matches(
     };
     let count = items
         .iter()
-        .filter(|item| item_predicate_matches(test, item, item_resource_ids, item_tags))
+        .filter(|item| {
+            item_predicate_matches(
+                test,
+                item,
+                item_resource_ids,
+                item_tags,
+                default_max_stack_size_for_item,
+                default_max_damage_for_item,
+            )
+        })
         .count();
     let Ok(count) = i32::try_from(count) else {
         return false;
@@ -2089,6 +2168,8 @@ fn item_predicate_matches(
     item: &ItemStackTemplateSummary,
     item_resource_ids: Option<&[String]>,
     item_tags: Option<&TagCatalog>,
+    default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
+    default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
 ) -> bool {
     let Some(value) = value.as_object() else {
         return false;
@@ -2109,7 +2190,83 @@ fn item_predicate_matches(
             return false;
         }
     }
+    if let Some(components) = value.get("components") {
+        let Ok(item_index) = usize::try_from(item.item_id) else {
+            return false;
+        };
+        let Some(resource_id) = item_resource_ids.and_then(|ids| ids.get(item_index)) else {
+            return false;
+        };
+        if !item_data_component_matchers_match(
+            components,
+            item,
+            resource_id,
+            default_max_stack_size_for_item,
+            default_max_damage_for_item,
+        ) {
+            return false;
+        }
+    }
     true
+}
+
+fn item_data_component_matchers_match(
+    value: &Value,
+    item: &ItemStackTemplateSummary,
+    resource_id: &str,
+    default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
+    default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
+) -> bool {
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    if value
+        .get("predicates")
+        .and_then(Value::as_object)
+        .is_some_and(|predicates| !predicates.is_empty())
+    {
+        return false;
+    }
+    let Some(components) = value.get("components") else {
+        return true;
+    };
+    item_exact_components_match(
+        components,
+        item,
+        resource_id,
+        default_max_stack_size_for_item,
+        default_max_damage_for_item,
+    )
+}
+
+fn item_exact_components_match(
+    value: &Value,
+    item: &ItemStackTemplateSummary,
+    resource_id: &str,
+    default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
+    default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
+) -> bool {
+    let Some(components) = value.as_object() else {
+        return false;
+    };
+    let default_max_stack_size =
+        default_max_stack_size_for_item.map(|max_stack_size| max_stack_size(item.item_id));
+    let default_max_damage =
+        default_max_damage_for_item.and_then(|max_damage| max_damage(item.item_id));
+    components.iter().all(|(component, expected)| {
+        let Some(component) = ComponentSelectProperty::for_component(component) else {
+            return false;
+        };
+        let Some(expected) = SelectCaseValue::from_json(expected) else {
+            return false;
+        };
+        component.value_from_stack(
+            Some(&item.component_patch),
+            default_max_stack_size,
+            default_max_damage,
+            resource_id,
+        ) == Some(expected)
+    })
 }
 
 fn item_holder_set_matches(

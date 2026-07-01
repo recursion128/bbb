@@ -5867,10 +5867,12 @@ When an agent does any of the following, update this file in the same slice:
       keys when no pattern constraint is present. `minecraft:bundle_contents`
       `items.size` constraints match vanilla `CollectionPredicate.size` against
       the decoded bundle item count, and `items.contains` / `count` now support
-      vanilla `ItemPredicate` direct item-key or item-tag HolderSets plus
-      stack-count bounds over decoded bundle entries. `minecraft:container`
-      now decodes non-empty container entries and matches the same direct
-      item-key / item-tag / stack-count collection predicate subset.
+      vanilla `ItemPredicate` direct item-key or item-tag HolderSets,
+      stack-count bounds, and exact scalar/default `DataComponentMatchers`
+      components over decoded bundle entries. `minecraft:container` now decodes
+      non-empty container entries and matches the same direct item-key /
+      item-tag / stack-count / exact scalar component collection predicate
+      subset.
       `minecraft:fireworks`
       `explosions.contains` / `count` predicates now match decoded explosion
       shape / trail / twinkle summaries. `minecraft:trim` direct vanilla
@@ -5888,9 +5890,10 @@ When an agent does any of the following, update this file in the same slice:
       `minecraft:enchanted_book` contributes its item-specific default empty
       `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
       constrained predicate types (inline enchantment holder payloads / server
-      datapack tag remaps, bundle/container nested component matchers, trim tag
-      sets / inline material or pattern payloads / datapack pattern registry-key
-      remaps, and similar) remain follow-up.
+      datapack tag remaps, bundle/container nested partial predicates and
+      complex exact component codecs, trim tag sets / inline material or pattern
+      payloads / datapack pattern registry-key remaps, and similar) remain
+      follow-up.
     - `minecraft:charge_type` — `Charge.get` (`ROCKET` when any charged
       projectile is `minecraft:firework_rocket`, `ARROW` when charged otherwise,
       else `NONE`), using the native item registry to identify the projectile
