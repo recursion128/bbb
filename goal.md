@@ -814,7 +814,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     title, author, `generation` `MinMaxBounds.Ints`, `resolved`, and
     plain-string page collection predicates. `minecraft:villager/variant` now
     matches decoded 0-based `VillagerType` holder ids against the vanilla
-    `VillagerType.bootstrap` registry-key order.
+    `VillagerType.bootstrap` registry-key order. `minecraft:attribute_modifiers`
+    now preserves decoded modifier entries and matches direct plus
+    container-nested `modifiers` collection predicates over `id`, `amount`,
+    `operation`, `slot`, and `size` / `contains` / `count` when the predicate
+    does not require an `attribute` HolderSet.
     `minecraft:bundle_contents`
     `items.size` constraints now match vanilla `CollectionPredicate.size`
     against the decoded bundle item count, and `items.contains` / `count`
@@ -830,8 +834,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     the same direct item-key / item-tag / stack-count / exact scalar component /
     nested partial damage, enchantments, stored-enchantments,
     firework-explosion, fireworks, trim, jukebox-playable, potion-contents,
-    writable-book-content, written-book-content, villager-variant, and
-    AnyValue predicate collection subset.
+    writable-book-content, written-book-content, villager-variant,
+    attribute-modifiers, and AnyValue predicate collection subset.
     `minecraft:enchantments` and patch-backed
     `minecraft:stored_enchantments` now match decoded enchantment levels and
     direct registry-key or enchantment-tag HolderSet predicates when the
@@ -844,12 +848,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:enchanted_book` now also contributes its item-specific default
     empty `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
     constrained `DataComponentPredicate` types such as inline enchantment holder
-    payloads / server datapack tag remaps, remaining concrete partial
-    predicates and complex exact component codecs, rich/styled written-book
-    page `ComponentSerialization` equality, trim inline material or pattern
-    payloads / datapack pattern registry-key remaps, villager type tags /
-    datapack villager-type registry remaps, and jukebox inline song payloads /
-    datapack jukebox-song registry remaps remain component-predicate follow-up.
+    payloads / server datapack tag remaps, attribute HolderSet predicates /
+    default item-prototype attribute modifiers, remaining concrete partial
+    predicates and complex exact component codecs, rich/styled written-book page
+    `ComponentSerialization` equality, trim inline material or pattern payloads
+    / datapack pattern registry-key remaps, villager type tags / datapack
+    villager-type registry remaps, and jukebox inline song payloads / datapack
+    jukebox-song registry remaps remain component-predicate follow-up.
   - [x] `minecraft:has_component` item-model condition now follows vanilla
     `HasComponent.get`: default prototype components such as
     `minecraft:max_stack_size`, `minecraft:item_model`, `minecraft:rarity`,

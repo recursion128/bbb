@@ -5879,7 +5879,11 @@ When an agent does any of the following, update this file in the same slice:
       `resolved`, and plain-string page collection predicates.
       `minecraft:villager/variant` now matches decoded 0-based
       `VillagerType` holder ids against the vanilla `VillagerType.bootstrap`
-      registry-key order.
+      registry-key order. `minecraft:attribute_modifiers` now preserves decoded
+      modifier entries and matches direct plus container-nested `modifiers`
+      collection predicates over `id`, `amount`, `operation`, `slot`, and
+      `size` / `contains` / `count` when the predicate does not require an
+      `attribute` HolderSet.
       `minecraft:bundle_contents`
       `items.size` constraints match vanilla `CollectionPredicate.size` against
       the decoded bundle item count, and `items.contains` / `count` now support
@@ -5896,8 +5900,8 @@ When an agent does any of the following, update this file in the same slice:
       the same direct item-key / item-tag / stack-count / exact scalar component
       / nested partial damage, enchantments, stored-enchantments,
       firework-explosion, fireworks, trim, jukebox-playable, potion-contents,
-      writable-book-content, written-book-content, villager-variant, and
-      AnyValue predicate collection subset.
+      writable-book-content, written-book-content, villager-variant,
+      attribute-modifiers, and AnyValue predicate collection subset.
       `minecraft:fireworks`
       `explosions.contains` / `count` predicates now match decoded explosion
       shape / trail / twinkle summaries. `minecraft:trim` direct vanilla
@@ -5916,8 +5920,9 @@ When an agent does any of the following, update this file in the same slice:
       `minecraft:enchanted_book` contributes its item-specific default empty
       `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
       constrained predicate types (inline enchantment holder payloads / server
-      datapack tag remaps, remaining concrete partial predicates and complex
-      exact component codecs, rich/styled written-book page
+      datapack tag remaps, attribute HolderSet predicates / default
+      item-prototype attribute modifiers, remaining concrete partial predicates
+      and complex exact component codecs, rich/styled written-book page
       `ComponentSerialization` equality, trim inline material or pattern
       payloads / datapack pattern registry-key remaps, villager type tags /
       datapack villager-type registry remaps, jukebox inline song payloads /
@@ -6077,7 +6082,9 @@ When an agent does any of the following, update this file in the same slice:
     available, and direct plus nested bundle/container writable/written-book
     predicates for decoded raw string fields/pages, plus direct and
     bundle/container-nested villager variant predicates for vanilla registry
-    keys; broader
+    keys, plus direct and container-nested attribute modifier predicates for
+    decoded id / amount / operation / slot entries without attribute HolderSets;
+    broader
     component-codec and remaining constrained `DataComponentPredicate` parity
     remains the documented follow-up.
 

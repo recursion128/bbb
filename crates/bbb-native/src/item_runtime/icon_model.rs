@@ -5,8 +5,9 @@ use bbb_pack::{
     ItemTintSource, SelectCase, TagCatalog, TerrainColorMaps,
 };
 use bbb_protocol::packets::{
-    DataComponentPatchSummary, FireworkExplosionShapeSummary, FireworkExplosionSummary,
-    ItemEnchantmentSummary, ItemRaritySummary, ItemStackTemplateSummary, WrittenBookContentSummary,
+    AttributeModifierSummary, DataComponentPatchSummary, FireworkExplosionShapeSummary,
+    FireworkExplosionSummary, ItemEnchantmentSummary, ItemRaritySummary, ItemStackTemplateSummary,
+    WrittenBookContentSummary,
 };
 use chrono::{Datelike, FixedOffset, Local, TimeZone, Utc};
 use serde_json::Value;
@@ -25,6 +26,7 @@ const UNBREAKABLE_COMPONENT_ID: i32 = 4;
 const ITEM_MODEL_COMPONENT_ID: i32 = 10;
 const RARITY_COMPONENT_ID: i32 = 12;
 const ENCHANTMENTS_COMPONENT_ID: i32 = 13;
+const ATTRIBUTE_MODIFIERS_COMPONENT_ID: i32 = 16;
 const CUSTOM_MODEL_DATA_COMPONENT_ID: i32 = 17;
 const ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID: i32 = 21;
 const MAP_ID_COMPONENT_ID: i32 = 41;
@@ -1631,6 +1633,9 @@ fn item_stack_matches_component_predicate(
             ctx.default_max_damage,
         );
     }
+    if attribute_modifiers_component_predicate_is_supported(property) {
+        return item_stack_matches_attribute_modifiers_predicate(property, ctx.component_patch);
+    }
     if bundle_contents_component_predicate_is_supported(property) {
         return item_stack_matches_bundle_contents_predicate(property, ctx);
     }
@@ -1703,6 +1708,7 @@ fn component_condition_is_runtime_resolved(property: &ItemModelProperty) -> bool
     predicate == "minecraft:damage"
         || bundle_contents_component_predicate_is_supported(property)
         || container_component_predicate_is_supported(property)
+        || attribute_modifiers_component_predicate_is_supported(property)
         || enchantments_component_predicate_is_supported(property)
         || predicate == "minecraft:firework_explosion"
         || fireworks_component_predicate_is_supported(property)
@@ -2265,6 +2271,7 @@ fn item_partial_component_predicate_is_supported(predicate: &str, value: &Value)
         "minecraft:writable_book_content" => writable_book_predicate_value_is_supported(value),
         "minecraft:written_book_content" => written_book_predicate_value_is_supported(value),
         "minecraft:villager/variant" => villager_variant_predicate_value_is_supported(value),
+        "minecraft:attribute_modifiers" => attribute_modifiers_predicate_value_is_supported(value),
         "minecraft:firework_explosion" => firework_explosion_predicate_is_supported(value),
         "minecraft:fireworks" => fireworks_predicate_value_is_supported(value),
         _ => {
@@ -2280,6 +2287,274 @@ fn damage_component_predicate_value_is_supported(value: &Value) -> bool {
             .keys()
             .all(|key| key == "damage" || key == "durability")
     })
+}
+
+fn attribute_modifiers_component_predicate_is_supported(property: &ItemModelProperty) -> bool {
+    if component_condition_predicate(property) != Some("minecraft:attribute_modifiers") {
+        return false;
+    }
+    let Some(value) = property.raw().get("value") else {
+        return false;
+    };
+    attribute_modifiers_predicate_value_is_supported(value)
+}
+
+fn attribute_modifiers_predicate_value_is_supported(value: &Value) -> bool {
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    value.keys().all(|key| key == "modifiers")
+        && value
+            .get("modifiers")
+            .map(attribute_modifier_collection_predicate_is_supported)
+            .unwrap_or(true)
+}
+
+fn attribute_modifier_collection_predicate_is_supported(value: &Value) -> bool {
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    value
+        .keys()
+        .all(|key| key == "contains" || key == "count" || key == "size")
+        && value
+            .get("contains")
+            .map(attribute_modifier_predicate_list_is_supported)
+            .unwrap_or(true)
+        && value
+            .get("count")
+            .map(attribute_modifier_count_entries_are_supported)
+            .unwrap_or(true)
+        && value
+            .get("size")
+            .map(min_max_int_bounds_is_supported)
+            .unwrap_or(true)
+}
+
+fn attribute_modifier_predicate_list_is_supported(value: &Value) -> bool {
+    value.as_array().is_some_and(|values| {
+        values
+            .iter()
+            .all(attribute_modifier_entry_predicate_is_supported)
+    })
+}
+
+fn attribute_modifier_count_entries_are_supported(value: &Value) -> bool {
+    value.as_array().is_some_and(|entries| {
+        entries.iter().all(|entry| {
+            let Some(entry) = entry.as_object() else {
+                return false;
+            };
+            entry.keys().all(|key| key == "test" || key == "count")
+                && entry
+                    .get("test")
+                    .is_some_and(attribute_modifier_entry_predicate_is_supported)
+                && entry
+                    .get("count")
+                    .map(min_max_int_bounds_is_supported)
+                    .unwrap_or(true)
+        })
+    })
+}
+
+fn attribute_modifier_entry_predicate_is_supported(value: &Value) -> bool {
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    value
+        .keys()
+        .all(|key| key == "id" || key == "amount" || key == "operation" || key == "slot")
+        && value
+            .get("id")
+            .map(|id| id.as_str().is_some())
+            .unwrap_or(true)
+        && value
+            .get("amount")
+            .map(min_max_double_bounds_is_supported)
+            .unwrap_or(true)
+        && value
+            .get("operation")
+            .map(attribute_modifier_operation_is_supported)
+            .unwrap_or(true)
+        && value
+            .get("slot")
+            .map(equipment_slot_group_is_supported)
+            .unwrap_or(true)
+}
+
+fn attribute_modifier_operation_is_supported(value: &Value) -> bool {
+    value
+        .as_str()
+        .and_then(attribute_modifier_operation_id)
+        .is_some()
+}
+
+fn equipment_slot_group_is_supported(value: &Value) -> bool {
+    value.as_str().and_then(equipment_slot_group_id).is_some()
+}
+
+fn item_stack_matches_attribute_modifiers_predicate(
+    property: &ItemModelProperty,
+    component_patch: Option<&DataComponentPatchSummary>,
+) -> bool {
+    if !attribute_modifiers_component_predicate_is_supported(property) {
+        return false;
+    }
+    let Some(value) = property.raw().get("value") else {
+        return false;
+    };
+    item_stack_matches_attribute_modifiers_value(value, component_patch)
+}
+
+fn item_stack_matches_attribute_modifiers_value(
+    value: &Value,
+    component_patch: Option<&DataComponentPatchSummary>,
+) -> bool {
+    let Some(component_patch) = component_patch else {
+        return false;
+    };
+    if component_patch
+        .removed_type_ids
+        .contains(&ATTRIBUTE_MODIFIERS_COMPONENT_ID)
+        || !component_patch
+            .added_type_ids
+            .contains(&ATTRIBUTE_MODIFIERS_COMPONENT_ID)
+    {
+        return false;
+    }
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    value.get("modifiers").is_none_or(|modifiers| {
+        attribute_modifier_collection_predicate_matches(
+            modifiers,
+            &component_patch.attribute_modifiers,
+        )
+    })
+}
+
+fn attribute_modifier_collection_predicate_matches(
+    value: &Value,
+    modifiers: &[AttributeModifierSummary],
+) -> bool {
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    if let Some(contains) = value.get("contains") {
+        let Some(predicates) = contains.as_array() else {
+            return false;
+        };
+        if !predicates.iter().all(|predicate| {
+            modifiers
+                .iter()
+                .any(|modifier| attribute_modifier_entry_predicate_matches(predicate, modifier))
+        }) {
+            return false;
+        }
+    }
+    if let Some(counts) = value.get("count") {
+        let Some(entries) = counts.as_array() else {
+            return false;
+        };
+        if !entries
+            .iter()
+            .all(|entry| attribute_modifier_count_entry_matches(entry, modifiers))
+        {
+            return false;
+        }
+    }
+    if let Some(size) = value.get("size") {
+        let Ok(count) = i32::try_from(modifiers.len()) else {
+            return false;
+        };
+        if !min_max_int_bounds_match(Some(size), count) {
+            return false;
+        }
+    }
+    true
+}
+
+fn attribute_modifier_count_entry_matches(
+    value: &Value,
+    modifiers: &[AttributeModifierSummary],
+) -> bool {
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    let Some(test) = value.get("test") else {
+        return false;
+    };
+    let count = modifiers
+        .iter()
+        .filter(|modifier| attribute_modifier_entry_predicate_matches(test, modifier))
+        .count();
+    let Ok(count) = i32::try_from(count) else {
+        return false;
+    };
+    min_max_int_bounds_match(value.get("count"), count)
+}
+
+fn attribute_modifier_entry_predicate_matches(
+    value: &Value,
+    modifier: &AttributeModifierSummary,
+) -> bool {
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    if let Some(id) = value.get("id") {
+        if id.as_str() != Some(modifier.modifier_id.as_str()) {
+            return false;
+        }
+    }
+    if let Some(amount) = value.get("amount") {
+        if !min_max_double_bounds_match(Some(amount), f64::from_bits(modifier.amount_bits)) {
+            return false;
+        }
+    }
+    if let Some(operation) = value.get("operation") {
+        let Some(operation_id) = operation.as_str().and_then(attribute_modifier_operation_id)
+        else {
+            return false;
+        };
+        if modifier.operation_id != operation_id {
+            return false;
+        }
+    }
+    if let Some(slot) = value.get("slot") {
+        let Some(slot_id) = slot.as_str().and_then(equipment_slot_group_id) else {
+            return false;
+        };
+        if modifier.slot_id != slot_id {
+            return false;
+        }
+    }
+    true
+}
+
+fn attribute_modifier_operation_id(value: &str) -> Option<i32> {
+    match value {
+        "add_value" => Some(0),
+        "add_multiplied_base" => Some(1),
+        "add_multiplied_total" => Some(2),
+        _ => None,
+    }
+}
+
+fn equipment_slot_group_id(value: &str) -> Option<i32> {
+    match value {
+        "any" => Some(0),
+        "mainhand" => Some(1),
+        "offhand" => Some(2),
+        "hand" => Some(3),
+        "feet" => Some(4),
+        "legs" => Some(5),
+        "chest" => Some(6),
+        "head" => Some(7),
+        "armor" => Some(8),
+        "body" => Some(9),
+        "saddle" => Some(10),
+        _ => None,
+    }
 }
 
 fn item_holder_set_is_supported(value: &Value) -> bool {
@@ -2650,6 +2925,9 @@ fn item_partial_component_predicate_match(
         }
         "minecraft:villager/variant" => {
             item_stack_matches_villager_variant_value(value, component_patch)
+        }
+        "minecraft:attribute_modifiers" => {
+            item_stack_matches_attribute_modifiers_value(value, component_patch)
         }
         _ if let Some(kind) =
             enchantments_component_predicate_kind_from_parts(predicate, value) =>
@@ -3589,6 +3867,70 @@ fn min_max_int_bounds_match(bounds: Option<&Value>, value: i32) -> bool {
     min <= max && value >= min && value <= max
 }
 
+fn min_max_int_bounds_is_supported(bounds: &Value) -> bool {
+    if json_i32(bounds).is_some() {
+        return true;
+    }
+    let Some(object) = bounds.as_object() else {
+        return false;
+    };
+    object.keys().all(|key| key == "min" || key == "max")
+        && object
+            .get("min")
+            .map(json_i32)
+            .unwrap_or(Some(i32::MIN))
+            .is_some()
+        && object
+            .get("max")
+            .map(json_i32)
+            .unwrap_or(Some(i32::MAX))
+            .is_some()
+}
+
+fn min_max_double_bounds_match(bounds: Option<&Value>, value: f64) -> bool {
+    let Some(bounds) = bounds else {
+        return true;
+    };
+    if let Some(exact) = bounds.as_f64() {
+        return value == exact;
+    }
+    let Some(object) = bounds.as_object() else {
+        return false;
+    };
+    let min = object
+        .get("min")
+        .map(Value::as_f64)
+        .unwrap_or(Some(f64::NEG_INFINITY));
+    let max = object
+        .get("max")
+        .map(Value::as_f64)
+        .unwrap_or(Some(f64::INFINITY));
+    let (Some(min), Some(max)) = (min, max) else {
+        return false;
+    };
+    min <= max && value >= min && value <= max
+}
+
+fn min_max_double_bounds_is_supported(bounds: &Value) -> bool {
+    if bounds.as_f64().is_some() {
+        return true;
+    }
+    let Some(object) = bounds.as_object() else {
+        return false;
+    };
+    object.keys().all(|key| key == "min" || key == "max")
+        && object
+            .get("min")
+            .map(Value::as_f64)
+            .unwrap_or(Some(f64::NEG_INFINITY))
+            .is_some()
+        && object
+            .get("max")
+            .map(Value::as_f64)
+            .unwrap_or(Some(f64::INFINITY))
+            .is_some()
+}
+
 fn json_i32(value: &Value) -> Option<i32> {
     i32::try_from(value.as_i64()?).ok()
 }
@@ -3643,6 +3985,7 @@ fn data_component_type_id(component: &str) -> Option<i32> {
         "minecraft:unbreakable" => Some(UNBREAKABLE_COMPONENT_ID),
         "minecraft:item_model" => Some(ITEM_MODEL_COMPONENT_ID),
         "minecraft:rarity" => Some(RARITY_COMPONENT_ID),
+        "minecraft:attribute_modifiers" => Some(ATTRIBUTE_MODIFIERS_COMPONENT_ID),
         "minecraft:custom_model_data" => Some(CUSTOM_MODEL_DATA_COMPONENT_ID),
         "minecraft:enchantment_glint_override" => Some(ENCHANTMENT_GLINT_OVERRIDE_COMPONENT_ID),
         "minecraft:dyed_color" => Some(DYED_COLOR_COMPONENT_ID),

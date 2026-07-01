@@ -111,6 +111,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub stored_enchantments: Vec<ItemEnchantmentSummary>,
     #[serde(default)]
+    pub attribute_modifiers: Vec<AttributeModifierSummary>,
+    #[serde(default)]
     pub enchantment_glint_override: Option<bool>,
     #[serde(default)]
     pub armor_trim_material_id: Option<i32>,
@@ -278,6 +280,15 @@ pub struct FireworkExplosionSummary {
 pub struct ItemEnchantmentSummary {
     pub holder_id: i32,
     pub level: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AttributeModifierSummary {
+    pub attribute_id: i32,
+    pub modifier_id: String,
+    pub amount_bits: u64,
+    pub operation_id: i32,
+    pub slot_id: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -514,6 +525,9 @@ fn decode_typed_data_component_patch_summary(
             42 => {
                 summary.stored_enchantments = decode_varint_map(decoder)?;
             }
+            16 => {
+                summary.attribute_modifiers = decode_attribute_modifiers(decoder)?;
+            }
             21 => {
                 summary.enchantment_glint_override = Some(decoder.read_bool()?);
             }
@@ -610,7 +624,9 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         // can_place_on and can_break.
         14 | 15 => decode_adventure_mode_predicate(decoder)?,
         // attribute_modifiers.
-        16 => decode_attribute_modifiers(decoder)?,
+        16 => {
+            let _ = decode_attribute_modifiers(decoder)?;
+        }
         // custom_model_data: floats, flags, strings, colors.
         17 => {
             let _ = decode_custom_model_data(decoder)?;
@@ -924,29 +940,44 @@ fn decode_data_component_matchers(decoder: &mut Decoder<'_>) -> Result<()> {
     Ok(())
 }
 
-fn decode_attribute_modifiers(decoder: &mut Decoder<'_>) -> Result<()> {
+fn decode_attribute_modifiers(decoder: &mut Decoder<'_>) -> Result<Vec<AttributeModifierSummary>> {
     let count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    let mut modifiers = Vec::with_capacity(count);
     for _ in 0..count {
-        decode_holder_registry(decoder)?;
-        decode_identifier(decoder)?;
-        decoder.read_f64()?;
-        decoder.read_var_i32()?;
-        decoder.read_var_i32()?;
+        let attribute_id = decode_holder_registry_id(decoder)?;
+        let modifier_id = read_resource_location(decoder)?;
+        let amount_bits = decoder.read_f64()?.to_bits();
+        let operation_id = decode_attribute_modifier_operation_id(decoder)?;
+        let slot_id = decode_equipment_slot_group_id(decoder)?;
         decode_attribute_modifier_display(decoder)?;
+        modifiers.push(AttributeModifierSummary {
+            attribute_id,
+            modifier_id,
+            amount_bits,
+            operation_id,
+            slot_id,
+        });
     }
-    Ok(())
+    Ok(modifiers)
+}
+
+fn decode_attribute_modifier_operation_id(decoder: &mut Decoder<'_>) -> Result<i32> {
+    let id = decoder.read_var_i32()?;
+    Ok(if (0..=2).contains(&id) { id } else { 0 })
+}
+
+fn decode_equipment_slot_group_id(decoder: &mut Decoder<'_>) -> Result<i32> {
+    let id = decoder.read_var_i32()?;
+    Ok(if (0..=10).contains(&id) { id } else { 0 })
 }
 
 fn decode_attribute_modifier_display(decoder: &mut Decoder<'_>) -> Result<()> {
     match decoder.read_var_i32()? {
-        0 | 1 => Ok(()),
         2 => {
             decode_component_summary_from_decoder(decoder)?;
             Ok(())
         }
-        other => Err(ProtocolError::InvalidData(format!(
-            "invalid attribute modifier display type id {other}"
-        ))),
+        _ => Ok(()),
     }
 }
 
@@ -2354,7 +2385,7 @@ mod tests {
         payload.write_var_i32(16);
         payload.write_var_i32(3);
         write_attribute_modifier_entry(&mut payload, "minecraft:test/default", 0, None);
-        write_attribute_modifier_entry(&mut payload, "minecraft:test/hidden", 1, None);
+        write_attribute_modifier_entry(&mut payload, "minecraft:test/hidden", 99, None);
         write_attribute_modifier_entry(
             &mut payload,
             "minecraft:test/override",
@@ -2371,6 +2402,29 @@ mod tests {
                 added: 3,
                 added_type_ids: vec![14, 15, 16],
                 removed_type_ids: Vec::new(),
+                attribute_modifiers: vec![
+                    AttributeModifierSummary {
+                        attribute_id: 7,
+                        modifier_id: "minecraft:test/default".to_string(),
+                        amount_bits: 1.5f64.to_bits(),
+                        operation_id: 0,
+                        slot_id: 1,
+                    },
+                    AttributeModifierSummary {
+                        attribute_id: 7,
+                        modifier_id: "minecraft:test/hidden".to_string(),
+                        amount_bits: 1.5f64.to_bits(),
+                        operation_id: 0,
+                        slot_id: 1,
+                    },
+                    AttributeModifierSummary {
+                        attribute_id: 7,
+                        modifier_id: "minecraft:test/override".to_string(),
+                        amount_bits: 1.5f64.to_bits(),
+                        operation_id: 0,
+                        slot_id: 1,
+                    },
+                ],
                 ..DataComponentPatchSummary::default()
             }
         );
