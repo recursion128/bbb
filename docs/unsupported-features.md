@@ -260,6 +260,9 @@ When an agent does any of the following, update this file in the same slice:
       - event `3013`: normal trial spawner detected-player particles
       - event `3014`: trial spawner eject-item sound-side
         `minecraft:small_flame` and `minecraft:smoke` particles
+      - event `3016`: vault deactivation `minecraft:small_flame` /
+        `minecraft:soul_fire_flame` particles from `randomPosCenterOfCage`,
+        with gaussian `0.02` velocity
       - event `3017`: trial spawner eject-item `minecraft:small_flame` and
         `minecraft:smoke` particles
       - event `3018`: cobweb-place `minecraft:poof` particles

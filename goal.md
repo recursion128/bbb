@@ -1477,6 +1477,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:sculk_charge_pop` submissions with target-block full-shape
     context (`40` particles, `0.45` spread) vs non-full/unknown context
     (`20` particles, `0.25` spread), and `0.07` velocity scale.
+  - [x] vault deactivation particles：event `3016` now mirrors vanilla
+    `VaultBlockEntity.Client.emitDeactivationParticles`, selecting
+    `minecraft:small_flame` for `data == 0` or `minecraft:soul_fire_flame`
+    otherwise, spawning 20 particles from `randomPosCenterOfCage`
+    (`0.4..0.6` on each axis) with gaussian `0.02` velocity.
   - block-state shape-sensitive `spawnParticleInBlock` heights plus
     `1505` (`PARTICLES_AND_SOUND_PLANT_GROWTH`) BonemealableBlock / water
     branches plus remaining block/item option event particles remain follow-up

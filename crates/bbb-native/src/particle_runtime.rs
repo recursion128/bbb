@@ -518,6 +518,7 @@ impl ParticleCommandResolver {
             | TRIAL_SPAWNER_EJECT_ITEM_PARTICLES_LEVEL_EVENT => {
                 self.trial_eject_item_particle_batch(event, random)
             }
+            VAULT_DEACTIVATE_LEVEL_EVENT => self.vault_deactivation_particle_batch(event, random),
             TRIAL_SPAWNER_DETECT_PLAYER_OMINOUS_LEVEL_EVENT => self
                 .trial_detect_player_particle_batch(
                     event,
@@ -1049,6 +1050,44 @@ impl ParticleCommandResolver {
             data,
             random,
         );
+        batch
+    }
+
+    fn vault_deactivation_particle_batch(
+        &self,
+        event: &LevelEvent,
+        random: &mut LevelEventSoundRandomState,
+    ) -> ParticleSpawnBatch {
+        let flame_particle_type_id = if event.data == 0 {
+            SMALL_FLAME_PARTICLE_TYPE_ID
+        } else {
+            SOUL_FIRE_FLAME_PARTICLE_TYPE_ID
+        };
+        let template = match self.simple_particle_template(flame_particle_type_id) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+
+        for _ in 0..20 {
+            let position = Vec3d {
+                x: f64::from(event.pos.x) + random_between(random, 0.4, 0.6),
+                y: f64::from(event.pos.y) + random_between(random, 0.4, 0.6),
+                z: f64::from(event.pos.z) + random_between(random, 0.4, 0.6),
+            };
+            let velocity = Vec3d {
+                x: random.next_gaussian() * 0.02,
+                y: random.next_gaussian() * 0.02,
+                z: random.next_gaussian() * 0.02,
+            };
+            batch
+                .commands
+                .push(self.command_from_template(&template, position, velocity, false));
+        }
+
         batch
     }
 
@@ -1785,6 +1824,7 @@ const TRIAL_SPAWNER_SPAWN_PARTICLES_LEVEL_EVENT: i32 = 3011;
 const TRIAL_SPAWNER_SPAWN_MOB_LEVEL_EVENT: i32 = 3012;
 const TRIAL_SPAWNER_DETECT_PLAYER_LEVEL_EVENT: i32 = 3013;
 const TRIAL_SPAWNER_EJECT_ITEM_LEVEL_EVENT: i32 = 3014;
+const VAULT_DEACTIVATE_LEVEL_EVENT: i32 = 3016;
 const TRIAL_SPAWNER_EJECT_ITEM_PARTICLES_LEVEL_EVENT: i32 = 3017;
 const COBWEB_PLACE_PARTICLES_LEVEL_EVENT: i32 = 3018;
 const TRIAL_SPAWNER_DETECT_PLAYER_OMINOUS_LEVEL_EVENT: i32 = 3019;
@@ -3075,6 +3115,46 @@ mod tests {
         assert_eq!(trial_eject_sound_event.commands[0].particle_type_id, 93);
         assert_eq!(trial_eject_sound_event.commands[1].particle_type_id, 62);
 
+        let (vault_deactivation_position, vault_deactivation_velocity) =
+            first_vault_deactivation_particle();
+        let mut vault_deactivation_random = LevelEventSoundRandomState::with_seed(0);
+        let vault_deactivation = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 3016,
+                data: 0,
+                ..level_event_packet(3016)
+            },
+            &mut vault_deactivation_random,
+        );
+        assert_eq!(vault_deactivation.len(), 20);
+        assert_particle_command(
+            &vault_deactivation.commands[0],
+            SMALL_FLAME_PARTICLE_TYPE_ID,
+            "minecraft:small_flame",
+            vault_deactivation_position,
+            vault_deactivation_velocity,
+            false,
+        );
+
+        let mut ominous_vault_deactivation_random = LevelEventSoundRandomState::with_seed(0);
+        let ominous_vault_deactivation = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 3016,
+                data: 1,
+                ..level_event_packet(3016)
+            },
+            &mut ominous_vault_deactivation_random,
+        );
+        assert_eq!(ominous_vault_deactivation.len(), 20);
+        assert_particle_command(
+            &ominous_vault_deactivation.commands[0],
+            SOUL_FIRE_FLAME_PARTICLE_TYPE_ID,
+            "minecraft:soul_fire_flame",
+            vault_deactivation_position,
+            vault_deactivation_velocity,
+            false,
+        );
+
         let mut cobweb_poof_random = LevelEventSoundRandomState::with_seed(0);
         let cobweb_poof = resolver.resolve_level_event_particles(
             &LevelEvent {
@@ -3812,6 +3892,22 @@ mod tests {
                 1.0,
             ],
             dist as f32,
+        )
+    }
+
+    fn first_vault_deactivation_particle() -> ([f64; 3], [f64; 3]) {
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        (
+            [
+                10.0 + expected_random_between(&mut random, 0.4, 0.6),
+                64.0 + expected_random_between(&mut random, 0.4, 0.6),
+                -3.0 + expected_random_between(&mut random, 0.4, 0.6),
+            ],
+            [
+                random.next_gaussian() * 0.02,
+                random.next_gaussian() * 0.02,
+                random.next_gaussian() * 0.02,
+            ],
         )
     }
 
