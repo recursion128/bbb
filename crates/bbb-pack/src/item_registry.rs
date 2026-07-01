@@ -836,6 +836,12 @@ fn default_attribute_modifiers_for_declaration(
             return armor_default_attribute_modifiers(&material, "BODY");
         }
     }
+    if expression.contains(".attributes(MaceItem.createAttributes())") {
+        return Ok(attribute_modifier_entries(5.0, f64::from(-3.4_f32)));
+    }
+    if expression.contains(".attributes(TridentItem.createAttributes())") {
+        return Ok(attribute_modifier_entries(8.0, f64::from(-2.9_f32)));
+    }
 
     let float = r#"-?[0-9]+(?:\.[0-9]+)?F?"#;
     let properties_pattern = format!(
@@ -1714,6 +1720,84 @@ mod tests {
         assert!(catalog
             .default_attribute_modifiers("minecraft:stick")
             .is_none());
+    }
+
+    #[test]
+    fn item_registry_catalog_parses_bespoke_default_attribute_modifiers() {
+        let source = r#"
+            public class Items {
+               public static final Item MACE = registerItem(
+                  "mace",
+                  MaceItem::new,
+                  new Item.Properties()
+                     .attributes(MaceItem.createAttributes())
+               );
+               public static final Item TRIDENT = registerItem(
+                  "trident",
+                  TridentItem::new,
+                  new Item.Properties()
+                     .attributes(TridentItem.createAttributes())
+               );
+            }
+        "#;
+
+        let catalog =
+            ItemRegistryCatalog::from_items_java_source(source, &BTreeMap::new()).unwrap();
+        let amounts = |resource_id| {
+            catalog
+                .default_attribute_modifiers(resource_id)
+                .unwrap()
+                .iter()
+                .map(|modifier| {
+                    (
+                        modifier.attribute_key.as_str(),
+                        modifier.modifier_id.as_str(),
+                        f64::from_bits(modifier.amount_bits),
+                        modifier.operation_id,
+                        modifier.slot_id,
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+
+        assert_eq!(
+            amounts("minecraft:mace"),
+            vec![
+                (
+                    "minecraft:generic.attack_damage",
+                    "minecraft:base_attack_damage",
+                    5.0,
+                    0,
+                    1,
+                ),
+                (
+                    "minecraft:generic.attack_speed",
+                    "minecraft:base_attack_speed",
+                    f64::from(-3.4_f32),
+                    0,
+                    1,
+                ),
+            ]
+        );
+        assert_eq!(
+            amounts("minecraft:trident"),
+            vec![
+                (
+                    "minecraft:generic.attack_damage",
+                    "minecraft:base_attack_damage",
+                    8.0,
+                    0,
+                    1,
+                ),
+                (
+                    "minecraft:generic.attack_speed",
+                    "minecraft:base_attack_speed",
+                    f64::from(-2.9_f32),
+                    0,
+                    1,
+                ),
+            ]
+        );
     }
 
     #[test]
