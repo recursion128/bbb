@@ -28,6 +28,8 @@ const DEFAULT_PARTICLE_RENDER_PARTIAL_TICK: f32 = 0.5;
 const DEFAULT_PARTICLE_LIGHT: [f32; 2] = [1.0, 1.0];
 const SHRIEK_MAGICAL_X_ROT: f32 = 1.0472;
 const LAVA_CHILD_SMOKE_PARTICLE_ID: &str = "minecraft:smoke";
+const OMINOUS_SPAWN_START_ARGB: u32 = 0xFF45_AEFE;
+const OMINOUS_SPAWN_END_ARGB: u32 = 0xFFFF_FFFF;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ParticleChildSpawnTemplate {
@@ -584,24 +586,21 @@ impl ParticleInstance {
                 velocity = apply_particle_power(velocity, power);
             }
         }
-        if matches!(
+        let starts_at_velocity_position = matches!(
             descriptor.provider,
             "FlyTowardsPositionParticle.EnchantProvider"
                 | "FlyTowardsPositionParticle.NautilusProvider"
                 | "FlyTowardsPositionParticle.VaultConnectionProvider"
-        ) {
+                | "FlyStraightTowardsParticle.OminousSpawnProvider"
+        );
+        if starts_at_velocity_position {
             position = [
                 command.position[0] + velocity[0],
                 command.position[1] + velocity[1],
                 command.position[2] + velocity[2],
             ];
         }
-        let start_position = if matches!(
-            descriptor.provider,
-            "FlyTowardsPositionParticle.EnchantProvider"
-                | "FlyTowardsPositionParticle.NautilusProvider"
-                | "FlyTowardsPositionParticle.VaultConnectionProvider"
-        ) {
+        let start_position = if starts_at_velocity_position {
             command.position
         } else {
             position
@@ -840,6 +839,20 @@ impl ParticleInstance {
                 self.yaw = yaw;
                 self.previous_pitch = self.pitch;
                 self.pitch = pitch;
+            }
+            ParticleTickMotionDescriptor::FlyStraightTowards => {
+                let next_age = self.age_ticks.saturating_add(1);
+                let lifetime = self.lifetime_ticks.max(1) as f32;
+                let normalized_age = (next_age as f32 / lifetime).clamp(0.0, 1.0);
+                let pos_alpha = 1.0 - normalized_age;
+                self.position[0] = self.start_position[0] + self.velocity[0] * f64::from(pos_alpha);
+                self.position[1] = self.start_position[1] + self.velocity[1] * f64::from(pos_alpha);
+                self.position[2] = self.start_position[2] + self.velocity[2] * f64::from(pos_alpha);
+                self.color = argb_srgb_lerp_color(
+                    normalized_age,
+                    OMINOUS_SPAWN_START_ARGB,
+                    OMINOUS_SPAWN_END_ARGB,
+                );
             }
             ParticleTickMotionDescriptor::CampfireSmoke => {
                 self.velocity[0] += f64::from(random.next_f32()) / 5000.0 * random_sign(random);
@@ -1418,6 +1431,20 @@ fn lerp_f32(alpha: f32, start: f32, end: f32) -> f32 {
     start + alpha * (end - start)
 }
 
+fn argb_srgb_lerp_color(alpha: f32, start: u32, end: u32) -> [f32; 4] {
+    let lerp_channel = |shift: u32| -> f32 {
+        let from = ((start >> shift) & 0xFF) as i32;
+        let to = ((end >> shift) & 0xFF) as i32;
+        (from + (alpha * (to - from) as f32).floor() as i32) as f32 / 255.0
+    };
+    [
+        lerp_channel(16),
+        lerp_channel(8),
+        lerp_channel(0),
+        lerp_channel(24),
+    ]
+}
+
 fn rotated_billboard_axes(axes: ParticleBillboardAxes, roll: f32) -> (Vec3, Vec3) {
     if roll == 0.0 {
         return (axes.right, axes.up);
@@ -1959,6 +1986,31 @@ mod tests {
             ],
         );
         assert_close3(instance.velocity, [-4.0, 1.0, 5.0]);
+    }
+
+    #[test]
+    fn particle_runtime_fly_straight_towards_uses_vanilla_curve_and_srgb_lerp() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:ominous_spawning", 25);
+        instance.start_position = [1.0, 2.0, 3.0];
+        instance.position = [1.25, 2.5, 2.25];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.25, 0.5, -0.75];
+        instance.color = [69.0 / 255.0, 174.0 / 255.0, 254.0 / 255.0, 1.0];
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.expired_instances, 0);
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 1);
+        assert_close3(instance.previous_position, [1.25, 2.5, 2.25]);
+        assert_close3(instance.position, [1.24, 2.48, 2.28]);
+        assert_close3(instance.velocity, [0.25, 0.5, -0.75]);
+        assert_close_f32(instance.color[0], 76.0 / 255.0);
+        assert_close_f32(instance.color[1], 177.0 / 255.0);
+        assert_close_f32(instance.color[2], 254.0 / 255.0);
+        assert_close_f32(instance.color[3], 1.0);
     }
 
     #[test]
@@ -2547,6 +2599,52 @@ mod tests {
         assert!(wake.has_physics);
         assert_eq!(wake.tick_motion, ParticleTickMotionDescriptor::Wake);
         assert_eq!(wake.render_layer, ParticleRenderLayer::Opaque);
+
+        let mut ominous_spawn_random = ParticleRandom::new(65);
+        let mut ominous_spawn_command = spawn_command("minecraft:ominous_spawning", 1.0);
+        ominous_spawn_command.position = [1.0, 2.0, 3.0];
+        ominous_spawn_command.velocity = [0.25, 0.5, -0.75];
+        ominous_spawn_command.sprite_ids = vec![
+            "minecraft:ominous_spawn_0".to_string(),
+            "minecraft:ominous_spawn_1".to_string(),
+        ];
+        let ominous_spawn =
+            ParticleInstance::from_spawn_command(ominous_spawn_command, &mut ominous_spawn_random);
+        assert_eq!(
+            ominous_spawn.provider,
+            "FlyStraightTowardsParticle.OminousSpawnProvider"
+        );
+        assert_eq!(
+            ominous_spawn.sprite_selection,
+            ParticleSpriteSelection::Random
+        );
+        assert!(matches!(ominous_spawn.current_sprite_index, Some(0 | 1)));
+        assert!(matches!(
+            ominous_spawn.current_sprite_id.as_deref(),
+            Some("minecraft:ominous_spawn_0" | "minecraft:ominous_spawn_1")
+        ));
+        assert_eq!(ominous_spawn.start_position, [1.0, 2.0, 3.0]);
+        assert_eq!(ominous_spawn.previous_position, [1.25, 2.5, 2.25]);
+        assert_eq!(ominous_spawn.position, [1.25, 2.5, 2.25]);
+        assert_eq!(ominous_spawn.velocity, [0.25, 0.5, -0.75]);
+        assert_range_f32(ominous_spawn.base_quad_size, 0.06, 0.35);
+        assert_eq!(
+            ominous_spawn.color,
+            [69.0 / 255.0, 174.0 / 255.0, 254.0 / 255.0, 1.0]
+        );
+        assert!((25..=29).contains(&ominous_spawn.lifetime_ticks));
+        assert_eq!(ominous_spawn.friction, 0.98);
+        assert_eq!(ominous_spawn.gravity, 0.0);
+        assert!(!ominous_spawn.has_physics);
+        assert_eq!(
+            ominous_spawn.tick_motion,
+            ParticleTickMotionDescriptor::FlyStraightTowards
+        );
+        assert_eq!(ominous_spawn.render_layer, ParticleRenderLayer::Opaque);
+        assert_eq!(
+            ominous_spawn.light_emission,
+            ParticleLightEmissionDescriptor::FullBlock
+        );
 
         let mut column_bubble_random = ParticleRandom::new(60);
         let mut column_bubble_command = spawn_command("minecraft:bubble_column_up", 1.0);
@@ -3730,12 +3828,16 @@ mod tests {
             spawn_command("minecraft:vault_connection", 10.0),
             &mut random,
         );
-        let mut vibration_command = spawn_command("minecraft:vibration", 11.0);
+        let ominous_spawn = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:ominous_spawning", 11.0),
+            &mut random,
+        );
+        let mut vibration_command = spawn_command("minecraft:vibration", 12.0);
         vibration_command.option_target = Some([12.0, 1.0, 0.0]);
         vibration_command.option_duration_ticks = Some(20);
         let vibration = ParticleInstance::from_spawn_command(vibration_command, &mut random);
         let unresolved_vibration = ParticleInstance::from_spawn_command(
-            spawn_command("minecraft:vibration", 12.0),
+            spawn_command("minecraft:vibration", 13.0),
             &mut random,
         );
 
@@ -3749,6 +3851,7 @@ mod tests {
         assert_eq!(nautilus.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(totem.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(vault.render_group, ParticleRenderGroup::SingleQuads);
+        assert_eq!(ominous_spawn.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(vibration.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(
             unresolved_vibration.render_group,
@@ -3764,6 +3867,7 @@ mod tests {
         assert_eq!(enchant.render_layer, ParticleRenderLayer::Opaque);
         assert_eq!(nautilus.render_layer, ParticleRenderLayer::Opaque);
         assert_eq!(vault.render_layer, ParticleRenderLayer::Translucent);
+        assert_eq!(ominous_spawn.render_layer, ParticleRenderLayer::Opaque);
         assert_eq!(vibration.render_layer, ParticleRenderLayer::Translucent);
     }
 
@@ -4075,7 +4179,7 @@ mod tests {
     #[test]
     fn particle_runtime_applies_vanilla_particle_light_emission_overrides() {
         let sampled_light = [2.0 / 15.0, 7.0 / 15.0];
-        let mut particles = ParticleRuntimeState::with_capacities(15, 15);
+        let mut particles = ParticleRuntimeState::with_capacities(16, 16);
         let cloud = test_instance_with_lifetime("minecraft:cloud", 20);
         let mut flame = test_instance_with_lifetime("minecraft:flame", 20);
         flame.age_ticks = 4;
@@ -4096,6 +4200,7 @@ mod tests {
         let shriek = test_instance_with_lifetime("minecraft:shriek", 30);
         let vault_connection = test_instance_with_lifetime("minecraft:vault_connection", 40);
         let vibration = test_instance_with_lifetime("minecraft:vibration", 40);
+        let ominous_spawn = test_instance_with_lifetime("minecraft:ominous_spawning", 25);
 
         particles.active_instances.push_back(cloud);
         particles.active_instances.push_back(flame);
@@ -4112,6 +4217,7 @@ mod tests {
         particles.active_instances.push_back(shriek);
         particles.active_instances.push_back(vault_connection);
         particles.active_instances.push_back(vibration);
+        particles.active_instances.push_back(ominous_spawn);
 
         particles.refresh_lights(|_| sampled_light);
 
@@ -4166,6 +4272,10 @@ mod tests {
         );
         assert_eq!(
             particles.active_instances()[14].light,
+            [1.0, sampled_light[1]]
+        );
+        assert_eq!(
+            particles.active_instances()[15].light,
             [1.0, sampled_light[1]]
         );
     }

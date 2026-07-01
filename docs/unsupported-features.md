@@ -430,6 +430,14 @@ When an agent does any of the following, update this file in the same slice:
         friction, zero gravity, direct motion, damping, and the vanilla wake
         sprite cycle using `SpriteSet.get((60 - lifetime) % 4, 4)` during
         ticks.
+        `ominous_spawning` now maps to
+        `FlyStraightTowardsParticle.OminousSpawnProvider` with random sprites,
+        command velocity, initial position at `spawn + velocity` while keeping
+        `spawn` as the interpolation start, vanilla
+        `0.1 * (random * 0.5 + 0.2)` quad size followed by
+        `scale(randomBetween(3, 5))`, `25 + random * 5` lifetime, opaque
+        layer, no-physics metadata, full-block light, and the straight-toward
+        tick path plus `ARGB.srgbLerp` from `0xFF45AEFE` to white.
         `dust` / `dust_color_transition` now map to their vanilla providers
         with decoded RGB colors, transition target color, clamped scale,
         scale-shaped quad size / lifetime, random color variation, age sprites,
@@ -5816,6 +5824,15 @@ When an agent does any of the following, update this file in the same slice:
         physics metadata, `0.98` friction, zero gravity, direct motion,
         damping, and wake sprite cycling via `SpriteSet.get((60-lifetime)%4,
         4)` during runtime ticks.
+      - particle descriptors map
+        `FlyStraightTowardsParticle.OminousSpawnProvider` for
+        `ominous_spawning` to random sprites, command velocity, initial
+        position at `spawn + velocity` with `spawn` retained as the
+        interpolation start, vanilla `0.1*(random*.5+.2)` quad size followed
+        by `scale(randomBetween(3,5))`, `25+random*5` lifetime, opaque
+        particle layer, no-physics metadata, full-block light, and the
+        straight-toward tick path plus `ARGB.srgbLerp` from `0xFF45AEFE` to
+        white.
       - particle descriptors map `ShriekParticle.Provider` to
         `ShriekParticleOption.delay` carried in
         `ParticleSpawnCommand.initial_delay_ticks`; delayed instances do not

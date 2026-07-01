@@ -28,6 +28,7 @@ pub(crate) enum ParticleTickMotionDescriptor {
     FlyTowardsPosition,
     TrailTarget,
     VibrationSignal,
+    FlyStraightTowards,
     CampfireSmoke,
     DustPlume,
     WaterDrop,
@@ -164,6 +165,7 @@ pub(crate) enum ParticleVisualDescriptor {
     },
     HugeExplosion,
     FlyTowardsPosition,
+    OminousSpawn,
     VaultConnection,
     Shriek,
     Totem,
@@ -379,6 +381,17 @@ impl ParticleDescriptor {
                 friction: 0.98,
                 gravity: 0.0,
                 has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:ominous_spawning" => Self {
+                provider: "FlyStraightTowardsParticle.OminousSpawnProvider",
+                lifetime: ParticleLifetimeDescriptor::RandomFloatSpan { min: 25, span: 5 },
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::OminousSpawn,
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
+                friction: 0.98,
+                gravity: 0.0,
+                has_physics: false,
                 speed_up_when_y_motion_is_blocked: false,
             },
             "minecraft:bubble_pop" => Self {
@@ -1417,6 +1430,9 @@ impl ParticleDescriptor {
             }
             "TrailParticle.Provider" => ParticleTickMotionDescriptor::TrailTarget,
             "VibrationSignalParticle.Provider" => ParticleTickMotionDescriptor::VibrationSignal,
+            "FlyStraightTowardsParticle.OminousSpawnProvider" => {
+                ParticleTickMotionDescriptor::FlyStraightTowards
+            }
             "CampfireSmokeParticle.CosyProvider" | "CampfireSmokeParticle.SignalProvider" => {
                 ParticleTickMotionDescriptor::CampfireSmoke
             }
@@ -1454,7 +1470,8 @@ impl ParticleDescriptor {
             | "ShriekParticle.Provider"
             | "VibrationSignalParticle.Provider"
             | "FlyTowardsPositionParticle.VaultConnectionProvider"
-            | "TrialSpawnerDetectionParticle.Provider" => {
+            | "TrialSpawnerDetectionParticle.Provider"
+            | "FlyStraightTowardsParticle.OminousSpawnProvider" => {
                 ParticleLightEmissionDescriptor::FullBlock
             }
             // Vanilla uses `LightCoordsUtil.addSmoothBlockEmission(..., (age + partialTick) / lifetime)`.
@@ -1643,6 +1660,14 @@ impl ParticleVisualDescriptor {
                 ParticleVisualState::new(
                     size,
                     [brightness * 0.9, brightness * 0.9, brightness, 1.0],
+                    ParticleQuadSizeCurve::Constant,
+                )
+            }
+            Self::OminousSpawn => {
+                let size = 0.1 * (random.next_f32() * 0.5 + 0.2) * sample_range(random, 3.0, 5.0);
+                ParticleVisualState::new(
+                    size,
+                    [69.0 / 255.0, 174.0 / 255.0, 254.0 / 255.0, 1.0],
                     ParticleQuadSizeCurve::Constant,
                 )
             }
@@ -2388,6 +2413,31 @@ mod tests {
             ParticleInitialVelocityDescriptor::Command
         );
         assert_eq!(wake.tick_motion(), ParticleTickMotionDescriptor::Wake);
+
+        assert_descriptor(
+            "minecraft:ominous_spawning",
+            "FlyStraightTowardsParticle.OminousSpawnProvider",
+            ParticleLifetimeDescriptor::RandomFloatSpan { min: 25, span: 5 },
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::OminousSpawn,
+            0.98,
+            0.0,
+            false,
+            false,
+        );
+        let ominous_spawn = ParticleDescriptor::for_particle("minecraft:ominous_spawning");
+        assert_eq!(
+            ominous_spawn.initial_velocity,
+            ParticleInitialVelocityDescriptor::Command
+        );
+        assert_eq!(
+            ominous_spawn.tick_motion(),
+            ParticleTickMotionDescriptor::FlyStraightTowards
+        );
+        assert_eq!(
+            ominous_spawn.light_emission(),
+            ParticleLightEmissionDescriptor::FullBlock
+        );
 
         assert_descriptor(
             "minecraft:bubble",
@@ -3892,6 +3942,19 @@ mod tests {
         assert_range_f32(bubble.base_quad_size, 0.02, 0.16);
         assert_eq!(bubble.color, WHITE_PARTICLE_COLOR);
         assert_eq!(bubble.quad_size_curve, ParticleQuadSizeCurve::Constant);
+
+        let mut ominous_spawn_random = ParticleRandom::new(40);
+        let ominous_spawn = ParticleVisualDescriptor::OminousSpawn
+            .sample_for_command(&mut ominous_spawn_random, [0.0, 0.0, 0.0]);
+        assert_range_f32(ominous_spawn.base_quad_size, 0.06, 0.35);
+        assert_eq!(
+            ominous_spawn.color,
+            [69.0 / 255.0, 174.0 / 255.0, 254.0 / 255.0, 1.0]
+        );
+        assert_eq!(
+            ominous_spawn.quad_size_curve,
+            ParticleQuadSizeCurve::Constant
+        );
 
         let mut sneeze_random = ParticleRandom::new(22);
         let sneeze = ParticleVisualDescriptor::PlayerCloudTint {
