@@ -5768,9 +5768,9 @@ When an agent does any of the following, update this file in the same slice:
 - Owner: `bbb-protocol` + `bbb-native` + `bbb-pack`
 - Status: `partial`
 - Next action:
-  - Thread the ambient-context numeric `range_dispatch` properties through the
-    icon resolver as that state becomes available to the GUI icon path:
-    - `minecraft:compass` no-target / invalid-target random spin
+  - Thread any newly discovered ambient-context numeric `range_dispatch`
+    properties through the icon resolver as that state becomes available to the
+    GUI icon path.
   - Wire the remaining ambient-context `select` properties onto the same
     resolver:
     - `minecraft:context_entity_type` for any future non-GUI item consumer that
@@ -6148,10 +6148,18 @@ When an agent does any of the following, update this file in the same slice:
       `NeedleDirectionHelper` smoothing factor `0.8` for valid local-player
       targets, and then applies vanilla range-dispatch threshold selection.
       Tests pin no-pose `0.0` fallback, missing-component / missing-recovery
-      fallback, same-dimension spawn/lodestone/recovery texture selection,
-      cross-dimension invalid-target fallback, and a default-wobbled
-      valid-target spawn texture-selection branch. No-target / invalid-target
-      random spin remains follow-up.
+      threshold behavior, same-dimension spawn/lodestone/recovery texture
+      selection, compass invalid-target threshold behavior, and a
+      default-wobbled valid-target spawn texture-selection branch. No-target /
+      invalid-target rotation now follows vanilla
+      `getRandomlySpinningRotation`: `target=none` is parsed, each baked
+      property has a no-target wobbler/random state, `wobble=true` updates once
+      per game tick with factor `0.8`,
+      `wobble=false` uses the non-wobbler random value, and the item-model
+      seed hash is added before positive modulo. HUD hotbar icons pass
+      vanilla-shaped `slot_index + 1` seeds. Tests pin `target=none` and
+      cross-dimension spawn invalid-target branches selecting random-spin
+      textures instead of the old fixed `0.0` fallback.
     - `minecraft:component` — `ComponentContents.get`, currently matching
       decoded persistent scalar / enum components with typed `when` values:
       `minecraft:max_stack_size`, `minecraft:max_damage`, `minecraft:damage`,
@@ -6206,11 +6214,12 @@ When an agent does any of the following, update this file in the same slice:
   - `bbb-protocol` now preserves the `minecraft:bees` component occupant count
     (`DataComponents.BEES`, id 77) so bundle-fullness weight can distinguish
     beehive-like full-weight entries from ordinary stack-size weighted entries.
-  - The remaining numeric `minecraft:compass` debt is now limited to no-target /
-    invalid-target random spin; GUI/HUD spawn, lodestone, and recovery compasses
-    project owner-position / yaw against the current default spawn,
-    `LodestoneTracker.target`, or local-player `lastDeathLocation`, and apply
-    valid-target default wobble when requested by the model.
+  - The GUI/HUD numeric `minecraft:compass` path now covers spawn, lodestone,
+    recovery, and `none` targets: valid targets project owner-position / yaw
+    against the current default spawn, `LodestoneTracker.target`, or
+    local-player `lastDeathLocation`, default valid-target wobble is applied
+    when requested by the model, and no-target / invalid-target cases use the
+    vanilla random-spin branch instead of a fixed `0.0`.
     `minecraft:time` projects GUI/HUD `daytime` / `moon_phase` target values
     from world time, applies the default `wobble=true` standard wobbler, and
     advances per-property `source=random` state instead of falling back.

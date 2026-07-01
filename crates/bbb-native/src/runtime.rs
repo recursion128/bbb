@@ -1819,6 +1819,7 @@ fn hotbar_item_icons_with_input_context(
             fishing_rod_cast,
             shift_down,
             keybind_context,
+            i32::try_from(slot_index + 1).unwrap_or(0),
             partial_tick,
         );
     }
@@ -1954,6 +1955,7 @@ fn hud_inventory_screen_with_local_state(
                         false,
                         local_state.shift_down,
                         local_state.keybind_context,
+                        0,
                         partial_tick,
                     )
                 }),
@@ -2736,6 +2738,7 @@ fn push_hud_inventory_cursor_item(
         false,
         shift_down,
         keybind_context,
+        0,
         partial_tick,
     ) else {
         return;
@@ -3401,6 +3404,7 @@ fn push_merchant_trade_item(
         false,
         shift_down,
         keybind_context,
+        0,
         partial_tick,
     ) {
         let block_model = block_item_3d_model(&item, item_runtime, terrain_textures);
@@ -3435,6 +3439,7 @@ fn hud_stonecutter_recipe_items(
             false,
             shift_down,
             keybind_context,
+            0,
             partial_tick,
         ) {
             let block_model = block_item_3d_model(&option.stack, item_runtime, terrain_textures);
@@ -4661,6 +4666,7 @@ fn hud_item_icon_for_stack(
     fishing_rod_cast: bool,
     shift_down: bool,
     keybind_context: ItemModelKeybindContext,
+    item_model_seed: i32,
     partial_tick: f32,
 ) -> Option<HudItemIcon> {
     let item_runtime = item_runtime?;
@@ -4738,6 +4744,7 @@ fn hud_item_icon_for_stack(
             shift_down,
             keybind_context,
             fishing_rod_cast,
+            item_model_seed,
         )?;
     Some(HudItemIcon {
         lighting: GuiItemLightingEntry::ItemsFlat,

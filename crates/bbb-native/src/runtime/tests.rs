@@ -2769,6 +2769,7 @@ fn hud_item_icons_use_carried_item_condition_only_when_marked_carried() {
         false,
         false,
         ItemModelKeybindContext::default(),
+        0,
         0.0,
     )
     .unwrap();
@@ -2783,6 +2784,7 @@ fn hud_item_icons_use_carried_item_condition_only_when_marked_carried() {
         false,
         false,
         ItemModelKeybindContext::default(),
+        0,
         0.0,
     )
     .unwrap();
@@ -3841,6 +3843,49 @@ fn hotbar_item_icons_project_spawn_compass_range_dispatch() {
         .uv;
     assert_ne!(wobbled_fallback_uv, wobbled_east_uv);
 
+    let invalid_spin_stack = item_stack(2, 1);
+    let invalid_spin_fallback_uv = item_runtime
+        .icon_for_stack(&invalid_spin_stack)
+        .unwrap()
+        .layers[0]
+        .uv;
+    let mut invalid_spin_world = world_with_dimension(0, "minecraft:overworld");
+    invalid_spin_world.set_local_player_pose(local_player_pose([0.5, 64.0, 0.5], 0.0, 0.0));
+    set_default_spawn(&mut invalid_spin_world, "minecraft:the_nether", [10, 64, 0]);
+    invalid_spin_world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: invalid_spin_stack,
+    });
+    let invalid_spin_icons = hotbar_item_icons(&invalid_spin_world, Some(&item_runtime), 0.0);
+    assert_ne!(
+        invalid_spin_icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: invalid_spin_fallback_uv.min,
+            max: invalid_spin_fallback_uv.max,
+        }
+    );
+
+    let no_target_spin_stack = item_stack(3, 1);
+    let no_target_spin_fallback_uv = item_runtime
+        .icon_for_stack(&no_target_spin_stack)
+        .unwrap()
+        .layers[0]
+        .uv;
+    let mut no_target_spin_world = world_with_dimension(0, "minecraft:overworld");
+    no_target_spin_world.set_local_player_pose(local_player_pose([0.5, 64.0, 0.5], 0.0, 0.0));
+    no_target_spin_world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: no_target_spin_stack,
+    });
+    let no_target_spin_icons = hotbar_item_icons(&no_target_spin_world, Some(&item_runtime), 0.0);
+    assert_ne!(
+        no_target_spin_icons[0].as_ref().unwrap().layers[0].uv,
+        HudUvRect {
+            min: no_target_spin_fallback_uv.min,
+            max: no_target_spin_fallback_uv.max,
+        }
+    );
+
     let mut no_pose_world = world_with_dimension(0, "minecraft:overworld");
     set_default_spawn(&mut no_pose_world, "minecraft:overworld", [10, 64, 0]);
     no_pose_world.apply_set_player_inventory(ProtocolSetPlayerInventory {
@@ -3968,7 +4013,7 @@ fn hotbar_item_icons_project_lodestone_compass_range_dispatch() {
     });
     let missing_component_icons =
         hotbar_item_icons(&missing_component_world, Some(&item_runtime), 0.0);
-    assert_eq!(
+    assert_ne!(
         missing_component_icons[0].as_ref().unwrap().layers[0].uv,
         HudUvRect {
             min: fallback_uv.min,
@@ -8641,6 +8686,42 @@ fn write_runtime_spawn_compass_range_dispatch_item_assets(root: &Path) {
             }
         }"#,
     );
+    write_runtime_json(
+        &assets.join("items").join("spawn_compass_invalid_spin.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:range_dispatch",
+                "property": "minecraft:compass",
+                "target": "spawn",
+                "scale": 1.0,
+                "entries": [
+                    {
+                        "threshold": 0.1,
+                        "model": { "type": "minecraft:model", "model": "minecraft:item/spawn_compass_invalid_spin" }
+                    }
+                ],
+                "fallback": { "type": "minecraft:model", "model": "minecraft:item/spawn_compass_invalid_fallback" }
+            }
+        }"#,
+    );
+    write_runtime_json(
+        &assets.join("items").join("spawn_compass_none_spin.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:range_dispatch",
+                "property": "minecraft:compass",
+                "target": "none",
+                "scale": 1.0,
+                "entries": [
+                    {
+                        "threshold": 0.1,
+                        "model": { "type": "minecraft:model", "model": "minecraft:item/spawn_compass_none_spin" }
+                    }
+                ],
+                "fallback": { "type": "minecraft:model", "model": "minecraft:item/spawn_compass_none_fallback" }
+            }
+        }"#,
+    );
     write_flat_runtime_item_model_and_texture(
         &assets,
         "spawn_compass_fallback",
@@ -8657,6 +8738,26 @@ fn write_runtime_spawn_compass_range_dispatch_item_assets(root: &Path) {
         "spawn_compass_wobbled_east",
         &[140, 90, 50, 255],
     );
+    write_flat_runtime_item_model_and_texture(
+        &assets,
+        "spawn_compass_invalid_fallback",
+        &[35, 55, 95, 255],
+    );
+    write_flat_runtime_item_model_and_texture(
+        &assets,
+        "spawn_compass_invalid_spin",
+        &[190, 70, 80, 255],
+    );
+    write_flat_runtime_item_model_and_texture(
+        &assets,
+        "spawn_compass_none_fallback",
+        &[30, 45, 90, 255],
+    );
+    write_flat_runtime_item_model_and_texture(
+        &assets,
+        "spawn_compass_none_spin",
+        &[185, 85, 105, 255],
+    );
     write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
     write_runtime_json(
         &root
@@ -8670,6 +8771,8 @@ fn write_runtime_spawn_compass_range_dispatch_item_assets(root: &Path) {
         r#"public class Items {
             public static final Item SPAWN_COMPASS = registerItem("spawn_compass");
             public static final Item SPAWN_COMPASS_WOBBLED = registerItem("spawn_compass_wobbled");
+            public static final Item SPAWN_COMPASS_INVALID_SPIN = registerItem("spawn_compass_invalid_spin");
+            public static final Item SPAWN_COMPASS_NONE_SPIN = registerItem("spawn_compass_none_spin");
         }"#,
     );
 }

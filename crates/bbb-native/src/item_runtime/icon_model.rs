@@ -256,7 +256,7 @@ pub(super) enum RangeDispatchProperty {
     Compass {
         target: CompassTarget,
         wobble: bool,
-        state_id: Option<u64>,
+        state_id: u64,
     },
     /// `minecraft:time` — `Time.get`, projecting `daytime` / `moon_phase`
     /// target values, per-property random source values, and, when requested,
@@ -397,11 +397,11 @@ fn range_dispatch_property_for(
                 .and_then(Value::as_str)
                 .and_then(CompassTarget::parse)
                 .map(|target| {
-                    let state_id = wobble.then(|| {
+                    let state_id = {
                         let state = *next_wobble_state;
                         *next_wobble_state = next_wobble_state.saturating_add(1);
                         state
-                    });
+                    };
                     RangeDispatchProperty::Compass {
                         target,
                         wobble,
@@ -439,6 +439,7 @@ fn range_dispatch_property_for(
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(super) enum CompassTarget {
+    None,
     Lodestone,
     Recovery,
     Spawn,
@@ -447,6 +448,7 @@ pub(super) enum CompassTarget {
 impl CompassTarget {
     fn parse(value: &str) -> Option<Self> {
         match value {
+            "none" => Some(Self::None),
             "lodestone" => Some(Self::Lodestone),
             "recovery" => Some(Self::Recovery),
             "spawn" => Some(Self::Spawn),
@@ -454,11 +456,12 @@ impl CompassTarget {
         }
     }
 
-    fn value(self, ctx: IconResolveContext<'_>, wobble: bool, state_id: Option<u64>) -> f32 {
+    fn value(self, ctx: IconResolveContext<'_>, wobble: bool, state_id: u64) -> f32 {
         let Some(compass) = ctx.compass_context else {
             return 0.0;
         };
         let target_pos = match self {
+            Self::None => None,
             Self::Lodestone => ctx
                 .component_patch
                 .and_then(lodestone_target_for_patch)
@@ -473,15 +476,26 @@ impl CompassTarget {
                 .filter(|target| target.dimension == compass.level_dimension)
                 .map(|target| target.pos),
         };
-        let Some(target_pos) = target_pos else {
-            return 0.0;
-        };
-        let wobble_state = if wobble {
-            state_id.map(|state| (self, state))
-        } else {
-            None
-        };
-        compass_rotation_to_target(ctx, compass, target_pos, wobble_state).unwrap_or(0.0)
+        if let Some(target_pos) = target_pos {
+            let wobble_state = wobble.then_some((self, state_id));
+            if let Some(rotation) =
+                compass_rotation_to_target(ctx, compass, target_pos, wobble_state)
+            {
+                return rotation;
+            }
+        }
+        ctx.compass_no_target_rotation
+            .map(|random_spin| {
+                random_spin(
+                    ctx.stateful_model_id,
+                    state_id,
+                    self,
+                    wobble,
+                    compass.game_time,
+                    ctx.item_model_seed,
+                )
+            })
+            .unwrap_or(0.0)
     }
 }
 
@@ -1186,6 +1200,8 @@ pub(super) struct IconResolveContext<'a> {
     pub cooldown_progress: f32,
     pub crossbow_charge: CrossbowChargeType,
     pub display_context: &'a str,
+    /// Vanilla `ItemModelResolver` seed forwarded to item-model properties.
+    pub item_model_seed: i32,
     pub default_item_model_id: &'a str,
     pub default_item_name_translation_key: &'a str,
     /// Vanilla `MainHand.get`: `None` means this native call site has not
@@ -1215,6 +1231,8 @@ pub(super) struct IconResolveContext<'a> {
     /// compass targets available to the GUI/HUD icon resolver.
     pub compass_context: Option<ItemModelCompassContext<'a>>,
     pub compass_wobbler: Option<&'a dyn Fn(&str, u64, CompassTarget, i64, f32) -> f32>,
+    pub compass_no_target_rotation:
+        Option<&'a dyn Fn(&str, u64, CompassTarget, bool, i64, i32) -> f32>,
     pub default_max_stack_size_for_item: Option<&'a dyn Fn(i32) -> i32>,
     pub default_max_damage_for_item: Option<&'a dyn Fn(i32) -> Option<i32>>,
     pub default_attribute_modifiers: &'a [AttributeModifierSummary],

@@ -352,6 +352,14 @@ struct ItemCompassWobblerKey {
     item_model_id: String,
     state_id: u64,
     target: CompassTarget,
+    no_target: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct ItemCompassRandomKey {
+    item_model_id: String,
+    state_id: u64,
+    target: CompassTarget,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -362,8 +370,12 @@ struct ItemNeedleWobbler {
 }
 
 impl ItemNeedleWobbler {
+    fn should_update(&self, tick: i64) -> bool {
+        self.last_update_tick != Some(tick)
+    }
+
     fn update(&mut self, tick: i64, target_rotation: f32, factor: f32) -> f32 {
-        if self.last_update_tick != Some(tick) {
+        if self.should_update(tick) {
             self.last_update_tick = Some(tick);
             let temp_delta_rotation = (target_rotation - self.rotation + 0.5).rem_euclid(1.0) - 0.5;
             self.delta_rotation += temp_delta_rotation * 0.1;
@@ -413,6 +425,21 @@ fn item_time_random_seed(item_model_id: &str, state_id: u64) -> i64 {
     (hash ^ state_id.wrapping_mul(0x9e37_79b9_7f4a_7c15)) as i64
 }
 
+fn item_compass_random_seed(item_model_id: &str, state_id: u64, target: CompassTarget) -> i64 {
+    let target_hash = match target {
+        CompassTarget::None => 0x2d4f_51c3_4a2f_0b11,
+        CompassTarget::Lodestone => 0x45b9_4f80_637d_94f3,
+        CompassTarget::Recovery => 0xa6c8_6fd7_4a99_79d5,
+        CompassTarget::Spawn => 0x7f4a_7c15_9e37_79b9,
+    };
+    let seed_hash = item_time_random_seed(item_model_id, state_id) as u64;
+    (seed_hash ^ target_hash) as i64
+}
+
+fn compass_seed_offset(seed: i32) -> f32 {
+    seed.wrapping_mul(1_327_217_883) as f32 / 2_147_483_648.0
+}
+
 #[derive(Debug)]
 pub(crate) struct NativeItemRuntime {
     item_definition_count: usize,
@@ -451,6 +478,7 @@ pub(crate) struct NativeItemRuntime {
     time_wobblers: RefCell<HashMap<ItemTimeWobblerKey, ItemNeedleWobbler>>,
     time_randoms: RefCell<HashMap<ItemTimeRandomKey, ItemLegacyRandom>>,
     compass_wobblers: RefCell<HashMap<ItemCompassWobblerKey, ItemNeedleWobbler>>,
+    compass_randoms: RefCell<HashMap<ItemCompassRandomKey, ItemLegacyRandom>>,
 }
 
 impl NativeItemRuntime {
@@ -757,6 +785,7 @@ impl NativeItemRuntime {
             time_wobblers: RefCell::default(),
             time_randoms: RefCell::default(),
             compass_wobblers: RefCell::default(),
+            compass_randoms: RefCell::default(),
         })
     }
 
@@ -802,6 +831,7 @@ impl NativeItemRuntime {
             time_wobblers: RefCell::default(),
             time_randoms: RefCell::default(),
             compass_wobblers: RefCell::default(),
+            compass_randoms: RefCell::default(),
         }
     }
 
@@ -1594,6 +1624,7 @@ impl NativeItemRuntime {
                             display_context: item_display_context_name(
                                 BlockModelDisplayContext::Gui,
                             ),
+                            item_model_seed: 0,
                             default_item_model_id: item_id,
                             default_item_name_translation_key: &default_item_name_translation_key,
                             main_hand_left: None,
@@ -1606,6 +1637,7 @@ impl NativeItemRuntime {
                             time_random: None,
                             compass_context: None,
                             compass_wobbler: None,
+                            compass_no_target_rotation: None,
                             default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
                             default_max_damage_for_item: Some(&default_max_damage_for_item),
                             default_attribute_modifiers: &default_attribute_modifiers,
@@ -2094,7 +2126,7 @@ impl NativeItemRuntime {
         keybind_context: ItemModelKeybindContext,
         fishing_rod_cast: bool,
     ) -> Option<ItemAtlasIcon> {
-        self.icon_for_stack_with_model_registry_context(
+        self.icon_for_stack_with_model_registry_context_and_seed(
             stack,
             bundle_selected_item_index,
             using_item,
@@ -2115,6 +2147,7 @@ impl NativeItemRuntime {
             shift_down,
             keybind_context,
             fishing_rod_cast,
+            0,
         )
     }
 
@@ -2141,8 +2174,9 @@ impl NativeItemRuntime {
         shift_down: bool,
         keybind_context: ItemModelKeybindContext,
         fishing_rod_cast: bool,
+        item_model_seed: i32,
     ) -> Option<ItemAtlasIcon> {
-        self.icon_for_stack_with_model_registry_context(
+        self.icon_for_stack_with_model_registry_context_and_seed(
             stack,
             bundle_selected_item_index,
             using_item,
@@ -2163,6 +2197,7 @@ impl NativeItemRuntime {
             shift_down,
             keybind_context,
             fishing_rod_cast,
+            item_model_seed,
         )
     }
 
@@ -2271,6 +2306,56 @@ impl NativeItemRuntime {
         keybind_context: ItemModelKeybindContext,
         fishing_rod_cast: bool,
     ) -> Option<ItemAtlasIcon> {
+        self.icon_for_stack_with_model_registry_context_and_seed(
+            stack,
+            bundle_selected_item_index,
+            using_item,
+            use_context,
+            display_context,
+            cooldown_progress,
+            trim_material_keys,
+            enchantment_keys,
+            attribute_keys,
+            owner_main_hand_left,
+            context_entity_type,
+            context_dimension,
+            time_context,
+            compass_context,
+            selected_item,
+            carried_item,
+            view_entity,
+            shift_down,
+            keybind_context,
+            fishing_rod_cast,
+            0,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn icon_for_stack_with_model_registry_context_and_seed(
+        &self,
+        stack: &ItemStackSummary,
+        bundle_selected_item_index: Option<i32>,
+        using_item: bool,
+        use_context: ItemModelUseContext,
+        display_context: BlockModelDisplayContext,
+        cooldown_progress: f32,
+        trim_material_keys: Option<&[String]>,
+        enchantment_keys: Option<&[String]>,
+        attribute_keys: Option<&[String]>,
+        owner_main_hand_left: Option<bool>,
+        context_entity_type: Option<&str>,
+        context_dimension: Option<&str>,
+        time_context: Option<ItemModelTimeContext>,
+        compass_context: Option<ItemModelCompassContext<'_>>,
+        selected_item: bool,
+        carried_item: bool,
+        view_entity: bool,
+        shift_down: bool,
+        keybind_context: ItemModelKeybindContext,
+        fishing_rod_cast: bool,
+        item_model_seed: i32,
+    ) -> Option<ItemAtlasIcon> {
         let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
         let item_model_id = item_model_id_for_stack(item_id, Some(&stack.component_patch))?;
         self.icon_for_resource_id(
@@ -2297,6 +2382,7 @@ impl NativeItemRuntime {
             shift_down,
             keybind_context,
             fishing_rod_cast,
+            item_model_seed,
         )
     }
 
@@ -2327,6 +2413,7 @@ impl NativeItemRuntime {
             false,
             ItemModelKeybindContext::default(),
             false,
+            0,
         )
     }
 
@@ -2355,6 +2442,7 @@ impl NativeItemRuntime {
         shift_down: bool,
         keybind_context: ItemModelKeybindContext,
         fishing_rod_cast: bool,
+        item_model_seed: i32,
     ) -> Option<ItemAtlasIcon> {
         let default_max_damage = self
             .registry
@@ -2390,6 +2478,16 @@ impl NativeItemRuntime {
                                target_rotation: f32| {
             self.resolve_compass_wobbler(model_id, state_id, target, game_time, target_rotation)
         };
+        let compass_no_target_rotation = |model_id: &str,
+                                          state_id: u64,
+                                          target: CompassTarget,
+                                          wobble: bool,
+                                          game_time: i64,
+                                          seed: i32| {
+            self.resolve_compass_no_target_rotation(
+                model_id, state_id, target, wobble, game_time, seed,
+            )
+        };
         let context = IconResolveContext {
             component_patch,
             stack_count,
@@ -2407,6 +2505,7 @@ impl NativeItemRuntime {
             cooldown_progress,
             crossbow_charge: self.crossbow_charge_for(component_patch),
             display_context: item_display_context_name(display_context),
+            item_model_seed,
             default_item_model_id: item_id,
             default_item_name_translation_key: &default_item_name_translation_key,
             main_hand_left: owner_main_hand_left,
@@ -2419,6 +2518,7 @@ impl NativeItemRuntime {
             time_random: Some(&time_random),
             compass_context,
             compass_wobbler: Some(&compass_wobbler),
+            compass_no_target_rotation: Some(&compass_no_target_rotation),
             default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
             default_max_damage_for_item: Some(&default_max_damage_for_item),
             default_attribute_modifiers: &default_attribute_modifiers,
@@ -2548,6 +2648,7 @@ impl NativeItemRuntime {
             item_model_id: item_model_id.to_string(),
             state_id,
             target,
+            no_target: false,
         };
         self.compass_wobblers
             .borrow_mut()
@@ -2558,6 +2659,59 @@ impl NativeItemRuntime {
                 last_update_tick: None,
             })
             .update(game_time, target_rotation, 0.8)
+    }
+
+    fn resolve_compass_no_target_rotation(
+        &self,
+        item_model_id: &str,
+        state_id: u64,
+        target: CompassTarget,
+        wobble: bool,
+        game_time: i64,
+        seed: i32,
+    ) -> f32 {
+        let rotation = if wobble {
+            let key = ItemCompassWobblerKey {
+                item_model_id: item_model_id.to_string(),
+                state_id,
+                target,
+                no_target: true,
+            };
+            let mut wobblers = self.compass_wobblers.borrow_mut();
+            let wobbler = wobblers.entry(key).or_insert(ItemNeedleWobbler {
+                rotation: 0.0,
+                delta_rotation: 0.0,
+                last_update_tick: None,
+            });
+            if wobbler.should_update(game_time) {
+                let target_rotation = self.resolve_compass_random(item_model_id, state_id, target);
+                wobbler.update(game_time, target_rotation, 0.8);
+            }
+            wobbler.rotation
+        } else {
+            self.resolve_compass_random(item_model_id, state_id, target)
+        };
+        (rotation + compass_seed_offset(seed)).rem_euclid(1.0)
+    }
+
+    fn resolve_compass_random(
+        &self,
+        item_model_id: &str,
+        state_id: u64,
+        target: CompassTarget,
+    ) -> f32 {
+        let key = ItemCompassRandomKey {
+            item_model_id: item_model_id.to_string(),
+            state_id,
+            target,
+        };
+        self.compass_randoms
+            .borrow_mut()
+            .entry(key)
+            .or_insert_with(|| {
+                ItemLegacyRandom::new(item_compass_random_seed(item_model_id, state_id, target))
+            })
+            .next_float()
     }
 
     pub(crate) fn item_model_use_context_for_stack(
@@ -2653,6 +2807,7 @@ impl NativeItemRuntime {
             cooldown_progress: 0.0,
             crossbow_charge: self.crossbow_charge_for(Some(&template.component_patch)),
             display_context: parent_context.display_context,
+            item_model_seed: parent_context.item_model_seed,
             default_item_model_id: item_id,
             default_item_name_translation_key: &default_item_name_translation_key,
             main_hand_left: parent_context.main_hand_left,
@@ -2665,6 +2820,7 @@ impl NativeItemRuntime {
             time_random: parent_context.time_random,
             compass_context: parent_context.compass_context,
             compass_wobbler: parent_context.compass_wobbler,
+            compass_no_target_rotation: parent_context.compass_no_target_rotation,
             default_max_stack_size_for_item: parent_context.default_max_stack_size_for_item,
             default_max_damage_for_item: parent_context.default_max_damage_for_item,
             default_attribute_modifiers: &default_attribute_modifiers,
