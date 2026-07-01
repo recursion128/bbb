@@ -321,6 +321,14 @@ pub(super) struct HudDrawCommand<'a> {
     pub(super) end: u32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum HudItemIconDrawStep {
+    Layers,
+    DurabilityBar,
+    Cooldown,
+    CountLabel,
+}
+
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub(super) struct HudVertex {
@@ -2098,44 +2106,65 @@ fn push_hud_item_icon<'a>(
     // / cooldown overlays, which the 3D pass does not draw.
     skip_layers: bool,
 ) {
-    if !skip_layers {
-        for layer in &icon.layers {
-            push_hud_draw_with_uv_and_tint(
-                vertices,
-                commands,
-                item_atlas,
-                surface_size,
-                item_rect,
-                layer.uv,
-                layer.tint,
-            );
+    for_each_hud_item_icon_draw_step(icon, skip_layers, |step| match step {
+        HudItemIconDrawStep::Layers => {
+            for layer in &icon.layers {
+                push_hud_draw_with_uv_and_tint(
+                    vertices,
+                    commands,
+                    item_atlas,
+                    surface_size,
+                    item_rect,
+                    layer.uv,
+                    layer.tint,
+                );
+            }
         }
+        HudItemIconDrawStep::DurabilityBar => push_hud_item_durability_bar(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            item_rect,
+            icon.durability_bar.as_ref(),
+        ),
+        HudItemIconDrawStep::Cooldown => push_hud_item_cooldown(
+            vertices,
+            commands,
+            white_pixel,
+            surface_size,
+            item_rect,
+            icon.cooldown_progress,
+        ),
+        HudItemIconDrawStep::CountLabel => push_hud_item_count_label(
+            vertices,
+            commands,
+            digit_atlas,
+            glyphs,
+            surface_size,
+            item_rect,
+            icon.count_label.as_ref(),
+        ),
+    });
+}
+
+fn for_each_hud_item_icon_draw_step(
+    icon: &HudItemIcon,
+    skip_layers: bool,
+    mut emit: impl FnMut(HudItemIconDrawStep),
+) {
+    if !skip_layers && !icon.layers.is_empty() {
+        emit(HudItemIconDrawStep::Layers);
     }
-    push_hud_item_durability_bar(
-        vertices,
-        commands,
-        white_pixel,
-        surface_size,
-        item_rect,
-        icon.durability_bar.as_ref(),
-    );
-    push_hud_item_cooldown(
-        vertices,
-        commands,
-        white_pixel,
-        surface_size,
-        item_rect,
-        icon.cooldown_progress,
-    );
-    push_hud_item_count_label(
-        vertices,
-        commands,
-        digit_atlas,
-        glyphs,
-        surface_size,
-        item_rect,
-        icon.count_label.as_ref(),
-    );
+    if icon.durability_bar.is_some() {
+        emit(HudItemIconDrawStep::DurabilityBar);
+    }
+    if icon.cooldown_progress.is_some() {
+        emit(HudItemIconDrawStep::Cooldown);
+    }
+    if icon.count_label.is_some() {
+        emit(HudItemIconDrawStep::CountLabel);
+    }
 }
 
 fn push_hud_item_durability_bar<'a>(
@@ -2991,6 +3020,49 @@ mod tests {
         assert_eq!(icon.layers[1].uv.min, [0.25, 0.25]);
         assert_eq!(icon.layers[1].uv.max, [0.5, 0.5]);
         assert_eq!(icon.layers[1].tint, [0.75, 0.5, 0.25, 0.0]);
+    }
+
+    #[test]
+    fn hud_item_icon_draw_steps_match_vanilla_item_decoration_order() {
+        // Vanilla `GuiGraphicsExtractor.itemDecorations` calls `itemBar`,
+        // `itemCooldown`, then `itemCount`, after the item sprite itself has
+        // already been submitted to the GUI item atlas.
+        let icon = HudItemIcon {
+            lighting: GuiItemLightingEntry::ItemsFlat,
+            layers: vec![HudIconLayer::new(
+                HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+                HUD_TINT_WHITE,
+            )],
+            count_label: Some(HudItemCountLabel::new("64")),
+            durability_bar: Some(HudItemDurabilityBar::new(13, [1.0, 0.0, 0.0])),
+            cooldown_progress: Some(0.5),
+        };
+
+        let mut steps = Vec::new();
+        for_each_hud_item_icon_draw_step(&icon, false, |step| steps.push(step));
+        assert_eq!(
+            steps,
+            vec![
+                HudItemIconDrawStep::Layers,
+                HudItemIconDrawStep::DurabilityBar,
+                HudItemIconDrawStep::Cooldown,
+                HudItemIconDrawStep::CountLabel,
+            ]
+        );
+
+        let mut steps = Vec::new();
+        for_each_hud_item_icon_draw_step(&icon, true, |step| steps.push(step));
+        assert_eq!(
+            steps,
+            vec![
+                HudItemIconDrawStep::DurabilityBar,
+                HudItemIconDrawStep::Cooldown,
+                HudItemIconDrawStep::CountLabel,
+            ]
+        );
     }
 
     #[test]

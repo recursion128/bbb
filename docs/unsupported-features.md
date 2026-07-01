@@ -1093,9 +1093,13 @@ When an agent does any of the following, update this file in the same slice:
     GUI flat HUD icons now carry explicit `GuiItemLightingEntry::ItemsFlat`
     render-plan metadata and the HUD icon sanitizer rejects non-flat lighting,
     matching vanilla `GuiItemAtlas`'s `usesBlockLight() == false` branch to
-    `Lighting.Entry.ITEMS_FLAT`. ENTITY_IN_UI still has pipeline-state expression
-    but waits for the corresponding P1 entity-in-UI item/entity submission
-    surface.
+    `Lighting.Entry.ITEMS_FLAT`. The flat icon draw plan also pins vanilla
+    decoration order from `GuiGraphicsExtractor.itemDecorations`: item sprite
+    layers first, then durability bar, cooldown fill, and count label; GUI 3D
+    block items skip only the flat stand-in layers while preserving those
+    decorations after the 3D pass. ENTITY_IN_UI still has pipeline-state
+    expression but waits for the corresponding P1 entity-in-UI item/entity
+    submission surface.
     The dropped-item 3D model
     path and the legacy item-entity / thrown-item billboard path now sample the
     entity light probe through `WorldStore`, keep the vanilla full-bright

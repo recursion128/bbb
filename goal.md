@@ -1040,7 +1040,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `Lighting.Entry.ITEMS_FLAT`；native flat `HudItemIcon` 携带
     `GuiItemLightingEntry::ItemsFlat`，renderer sanitizer 拒绝非 flat lighting
     的 HUD icon，tests pin flat metadata filtering。
-  - generated item、flat sprite、count/durability/cooldown overlay 的 pass 顺序。
+  - [x] generated item、flat sprite、count/durability/cooldown overlay pass
+    order：vanilla `GuiGraphicsExtractor.itemDecorations` 在 item sprite 之后按
+    `itemBar` → `itemCooldown` → `itemCount` 执行；renderer
+    `for_each_hud_item_icon_draw_step` 固定 `Layers` → `DurabilityBar` →
+    `Cooldown` → `CountLabel`，`skip_layers` 只替换 GUI 3D block item 的 flat
+    stand-in sprite，同时保留 decoration 顺序。
 - GUI 3D item：
   - [x] `Lighting.Entry.ITEMS_3D` light directions / render-plan metadata：
     vanilla `GuiItemAtlas` 按 `usesBlockLight()` 选择 `ITEMS_3D`，native
