@@ -249,10 +249,15 @@ pub(super) enum RangeDispatchProperty {
     UseCycle { period: f32 },
     /// `minecraft:crossbow/pull` — `CrossbowPull.get`.
     CrossbowPull,
-    /// `minecraft:compass` — `CompassAngle.get`, currently for
-    /// `wobble=false` target projection. Stateful wobble and no-target random
-    /// spin remain follow-up.
-    Compass { target: CompassTarget },
+    /// `minecraft:compass` — `CompassAngle.get`, projecting valid target
+    /// rotations and, when requested, applying vanilla standard wobbler
+    /// smoothing through caller-owned runtime state. No-target / invalid-target
+    /// random spin remains follow-up.
+    Compass {
+        target: CompassTarget,
+        wobble: bool,
+        state_id: Option<u64>,
+    },
     /// `minecraft:time` — `Time.get`, projecting `daytime` / `moon_phase`
     /// target values, per-property random source values, and, when requested,
     /// vanilla standard wobbler smoothing through the caller-owned runtime
@@ -324,7 +329,11 @@ impl RangeDispatchProperty {
                 wobble,
                 state_id,
             } => source.value(ctx, wobble, state_id),
-            Self::Compass { target } => target.value(ctx),
+            Self::Compass {
+                target,
+                wobble,
+                state_id,
+            } => target.value(ctx, wobble, state_id),
         }
     }
 }
@@ -382,16 +391,23 @@ fn range_dispatch_property_for(
                 .get("wobble")
                 .and_then(Value::as_bool)
                 .unwrap_or(true);
-            if wobble {
-                None
-            } else {
-                property
-                    .raw()
-                    .get("target")
-                    .and_then(Value::as_str)
-                    .and_then(CompassTarget::parse)
-                    .map(|target| RangeDispatchProperty::Compass { target })
-            }
+            property
+                .raw()
+                .get("target")
+                .and_then(Value::as_str)
+                .and_then(CompassTarget::parse)
+                .map(|target| {
+                    let state_id = wobble.then(|| {
+                        let state = *next_wobble_state;
+                        *next_wobble_state = next_wobble_state.saturating_add(1);
+                        state
+                    });
+                    RangeDispatchProperty::Compass {
+                        target,
+                        wobble,
+                        state_id,
+                    }
+                })
         }
         "minecraft:time" => {
             let wobble = property
@@ -421,7 +437,7 @@ fn range_dispatch_property_for(
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(super) enum CompassTarget {
     Lodestone,
     Recovery,
@@ -438,30 +454,34 @@ impl CompassTarget {
         }
     }
 
-    fn value(self, ctx: IconResolveContext<'_>) -> f32 {
+    fn value(self, ctx: IconResolveContext<'_>, wobble: bool, state_id: Option<u64>) -> f32 {
         let Some(compass) = ctx.compass_context else {
             return 0.0;
         };
-        match self {
+        let target_pos = match self {
             Self::Lodestone => ctx
                 .component_patch
                 .and_then(lodestone_target_for_patch)
                 .filter(|target| target.dimension == compass.level_dimension)
-                .and_then(|target| {
-                    compass_rotation_to_target(compass, [target.pos.x, target.pos.y, target.pos.z])
-                })
-                .unwrap_or(0.0),
+                .map(|target| [target.pos.x, target.pos.y, target.pos.z]),
             Self::Recovery => compass
                 .recovery
                 .filter(|target| target.dimension == compass.level_dimension)
-                .and_then(|target| compass_rotation_to_target(compass, target.pos))
-                .unwrap_or(0.0),
+                .map(|target| target.pos),
             Self::Spawn => compass
                 .spawn
                 .filter(|target| target.dimension == compass.level_dimension)
-                .and_then(|target| compass_rotation_to_target(compass, target.pos))
-                .unwrap_or(0.0),
-        }
+                .map(|target| target.pos),
+        };
+        let Some(target_pos) = target_pos else {
+            return 0.0;
+        };
+        let wobble_state = if wobble {
+            state_id.map(|state| (self, state))
+        } else {
+            None
+        };
+        compass_rotation_to_target(ctx, compass, target_pos, wobble_state).unwrap_or(0.0)
     }
 }
 
@@ -497,7 +517,7 @@ impl TimeSource {
             Self::Random => state_id
                 .and_then(|state| {
                     ctx.time_random
-                        .map(|random| random(ctx.time_wobbler_model_id, state))
+                        .map(|random| random(ctx.stateful_model_id, state))
                 })
                 .unwrap_or(0.0),
             Self::Daytime => overworld_sun_angle(time.day_time) / 360.0,
@@ -505,15 +525,7 @@ impl TimeSource {
         };
         if let (true, Some(state)) = (wobble, state_id) {
             ctx.time_wobbler
-                .map(|wobbler| {
-                    wobbler(
-                        ctx.time_wobbler_model_id,
-                        state,
-                        self,
-                        time.game_time,
-                        target,
-                    )
-                })
+                .map(|wobbler| wobbler(ctx.stateful_model_id, state, self, time.game_time, target))
                 .unwrap_or(target)
         } else {
             target
@@ -1192,10 +1204,9 @@ pub(super) struct IconResolveContext<'a> {
     /// Vanilla `Time.get`: world clock values. `None` means this native call
     /// site has no `ClientLevel` context, so the property returns `0.0`.
     pub time_context: Option<ItemModelTimeContext>,
-    /// Runtime-owned vanilla `NeedleDirectionHelper.standardWobbler` state for
-    /// wobbled `minecraft:time` properties. The model id plus per-model state
-    /// id approximates vanilla's baked-property identity.
-    pub time_wobbler_model_id: &'a str,
+    /// Runtime-owned state for stateful item-model properties. The model id
+    /// plus per-model state id approximates vanilla's baked-property identity.
+    pub stateful_model_id: &'a str,
     pub time_wobbler: Option<&'a dyn Fn(&str, u64, TimeSource, i64, f32) -> f32>,
     /// Runtime-owned per-property `RandomSource` for
     /// `minecraft:time source=random`.
@@ -1203,6 +1214,7 @@ pub(super) struct IconResolveContext<'a> {
     /// Vanilla `CompassAngle.get`: owner pose, level dimension, and known
     /// compass targets available to the GUI/HUD icon resolver.
     pub compass_context: Option<ItemModelCompassContext<'a>>,
+    pub compass_wobbler: Option<&'a dyn Fn(&str, u64, CompassTarget, i64, f32) -> f32>,
     pub default_max_stack_size_for_item: Option<&'a dyn Fn(i32) -> i32>,
     pub default_max_damage_for_item: Option<&'a dyn Fn(i32) -> Option<i32>>,
     pub default_attribute_modifiers: &'a [AttributeModifierSummary],
@@ -1628,8 +1640,10 @@ fn moon_phase_index(day_time: i64) -> i64 {
 }
 
 fn compass_rotation_to_target(
+    ctx: IconResolveContext<'_>,
     compass: ItemModelCompassContext<'_>,
     target_pos: [i32; 3],
+    wobble_state: Option<(CompassTarget, u64)>,
 ) -> Option<f32> {
     let target_x = f64::from(target_pos[0]) + 0.5;
     let target_z = f64::from(target_pos[2]) + 0.5;
@@ -1640,7 +1654,24 @@ fn compass_rotation_to_target(
     }
     let angle_to_target = (dz.atan2(dx) / (std::f64::consts::PI * 2.0)) as f32;
     let owner_y_rotation = (compass.owner_y_rot_degrees / 360.0).rem_euclid(1.0);
-    Some((0.5 - (owner_y_rotation - 0.25 - angle_to_target)).rem_euclid(1.0))
+    if let Some((target, state)) = wobble_state {
+        let owner_rotation = 0.5 - (owner_y_rotation - 0.25);
+        let rotation = ctx
+            .compass_wobbler
+            .map(|wobbler| {
+                wobbler(
+                    ctx.stateful_model_id,
+                    state,
+                    target,
+                    compass.game_time,
+                    owner_rotation,
+                )
+            })
+            .unwrap_or(owner_rotation);
+        Some((angle_to_target + rotation).rem_euclid(1.0))
+    } else {
+        Some((0.5 - (owner_y_rotation - 0.25 - angle_to_target)).rem_euclid(1.0))
+    }
 }
 
 fn lodestone_target_for_patch(

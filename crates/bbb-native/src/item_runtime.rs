@@ -54,8 +54,8 @@ mod profile_skin;
 
 use icon_model::{
     contains_runtime_condition, default_item_name_translation_key,
-    item_icon_model_ref_for_definition, CrossbowChargeType, IconResolveContext, ItemIconModel,
-    ItemIconModelRef, TimeSource,
+    item_icon_model_ref_for_definition, CompassTarget, CrossbowChargeType, IconResolveContext,
+    ItemIconModel, ItemIconModelRef, TimeSource,
 };
 pub(crate) use profile_skin::default_player_skin_for_profile_id;
 use profile_skin::ProfileSkinCache;
@@ -347,6 +347,13 @@ struct ItemTimeRandomKey {
     state_id: u64,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct ItemCompassWobblerKey {
+    item_model_id: String,
+    state_id: u64,
+    target: CompassTarget,
+}
+
 #[derive(Debug, Clone, Copy)]
 struct ItemNeedleWobbler {
     rotation: f32,
@@ -443,6 +450,7 @@ pub(crate) struct NativeItemRuntime {
     local_time_epoch_millis_override: Cell<Option<i64>>,
     time_wobblers: RefCell<HashMap<ItemTimeWobblerKey, ItemNeedleWobbler>>,
     time_randoms: RefCell<HashMap<ItemTimeRandomKey, ItemLegacyRandom>>,
+    compass_wobblers: RefCell<HashMap<ItemCompassWobblerKey, ItemNeedleWobbler>>,
 }
 
 impl NativeItemRuntime {
@@ -748,6 +756,7 @@ impl NativeItemRuntime {
             local_time_epoch_millis_override: Cell::new(None),
             time_wobblers: RefCell::default(),
             time_randoms: RefCell::default(),
+            compass_wobblers: RefCell::default(),
         })
     }
 
@@ -792,6 +801,7 @@ impl NativeItemRuntime {
             local_time_epoch_millis_override: Cell::new(None),
             time_wobblers: RefCell::default(),
             time_randoms: RefCell::default(),
+            compass_wobblers: RefCell::default(),
         }
     }
 
@@ -1591,10 +1601,11 @@ impl NativeItemRuntime {
                             context_entity_type: None,
                             local_time_epoch_millis: self.local_time_epoch_millis(),
                             time_context: None,
-                            time_wobbler_model_id: item_id,
+                            stateful_model_id: item_id,
                             time_wobbler: None,
                             time_random: None,
                             compass_context: None,
+                            compass_wobbler: None,
                             default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
                             default_max_damage_for_item: Some(&default_max_damage_for_item),
                             default_attribute_modifiers: &default_attribute_modifiers,
@@ -2372,6 +2383,13 @@ impl NativeItemRuntime {
         };
         let time_random =
             |model_id: &str, state_id: u64| self.resolve_time_random(model_id, state_id);
+        let compass_wobbler = |model_id: &str,
+                               state_id: u64,
+                               target: CompassTarget,
+                               game_time: i64,
+                               target_rotation: f32| {
+            self.resolve_compass_wobbler(model_id, state_id, target, game_time, target_rotation)
+        };
         let context = IconResolveContext {
             component_patch,
             stack_count,
@@ -2396,10 +2414,11 @@ impl NativeItemRuntime {
             context_entity_type,
             local_time_epoch_millis: self.local_time_epoch_millis(),
             time_context,
-            time_wobbler_model_id: item_model_id,
+            stateful_model_id: item_model_id,
             time_wobbler: Some(&time_wobbler),
             time_random: Some(&time_random),
             compass_context,
+            compass_wobbler: Some(&compass_wobbler),
             default_max_stack_size_for_item: Some(&default_max_stack_size_for_item),
             default_max_damage_for_item: Some(&default_max_damage_for_item),
             default_attribute_modifiers: &default_attribute_modifiers,
@@ -2517,6 +2536,30 @@ impl NativeItemRuntime {
             .next_float()
     }
 
+    fn resolve_compass_wobbler(
+        &self,
+        item_model_id: &str,
+        state_id: u64,
+        target: CompassTarget,
+        game_time: i64,
+        target_rotation: f32,
+    ) -> f32 {
+        let key = ItemCompassWobblerKey {
+            item_model_id: item_model_id.to_string(),
+            state_id,
+            target,
+        };
+        self.compass_wobblers
+            .borrow_mut()
+            .entry(key)
+            .or_insert(ItemNeedleWobbler {
+                rotation: 0.0,
+                delta_rotation: 0.0,
+                last_update_tick: None,
+            })
+            .update(game_time, target_rotation, 0.8)
+    }
+
     pub(crate) fn item_model_use_context_for_stack(
         &self,
         stack: &ItemStackSummary,
@@ -2617,10 +2660,11 @@ impl NativeItemRuntime {
             context_entity_type: parent_context.context_entity_type,
             local_time_epoch_millis: parent_context.local_time_epoch_millis,
             time_context: parent_context.time_context,
-            time_wobbler_model_id: item_id,
+            stateful_model_id: item_id,
             time_wobbler: parent_context.time_wobbler,
             time_random: parent_context.time_random,
             compass_context: parent_context.compass_context,
+            compass_wobbler: parent_context.compass_wobbler,
             default_max_stack_size_for_item: parent_context.default_max_stack_size_for_item,
             default_max_damage_for_item: parent_context.default_max_damage_for_item,
             default_attribute_modifiers: &default_attribute_modifiers,
@@ -3463,6 +3507,7 @@ pub(crate) struct ItemModelTimeContext {
 /// properties.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct ItemModelCompassContext<'a> {
+    pub(crate) game_time: i64,
     pub(crate) level_dimension: &'a str,
     pub(crate) owner_position: [f64; 3],
     pub(crate) owner_y_rot_degrees: f32,

@@ -4694,6 +4694,7 @@ fn hud_item_icon_for_stack(
         world
             .local_player_pose()
             .map(|pose| crate::item_runtime::ItemModelCompassContext {
+                game_time: world.world_time().map(|time| time.game_time).unwrap_or(0),
                 level_dimension,
                 owner_position: [pose.position.x, pose.position.y, pose.position.z],
                 owner_y_rot_degrees: pose.y_rot,

@@ -3793,6 +3793,7 @@ fn hotbar_item_icons_project_spawn_compass_range_dispatch() {
             Some("minecraft:overworld"),
             None,
             Some(crate::item_runtime::ItemModelCompassContext {
+                game_time: 18_000,
                 level_dimension: "minecraft:overworld",
                 owner_position: [0.5, 64.0, 0.5],
                 owner_y_rot_degrees: 0.0,
@@ -3807,6 +3808,38 @@ fn hotbar_item_icons_project_spawn_compass_range_dispatch() {
         .layers[0]
         .uv;
     assert_ne!(fallback_uv, east_uv);
+
+    let wobbled_stack = item_stack(1, 1);
+    let wobbled_fallback_uv = item_runtime.icon_for_stack(&wobbled_stack).unwrap().layers[0].uv;
+    let wobbled_east_uv = item_runtime
+        .icon_for_stack_with_context_and_use_context_and_time_context(
+            &wobbled_stack,
+            None,
+            false,
+            crate::item_runtime::ItemModelUseContext::inactive(),
+            bbb_pack::BlockModelDisplayContext::Gui,
+            0.0,
+            None,
+            None,
+            Some("minecraft:player"),
+            Some("minecraft:overworld"),
+            None,
+            Some(crate::item_runtime::ItemModelCompassContext {
+                game_time: 18_000,
+                level_dimension: "minecraft:overworld",
+                owner_position: [0.5, 64.0, 0.5],
+                owner_y_rot_degrees: 0.0,
+                spawn: Some(crate::item_runtime::ItemModelCompassTarget {
+                    dimension: "minecraft:overworld",
+                    pos: [10, 64, 0],
+                }),
+                recovery: None,
+            }),
+        )
+        .unwrap()
+        .layers[0]
+        .uv;
+    assert_ne!(wobbled_fallback_uv, wobbled_east_uv);
 
     let mut no_pose_world = world_with_dimension(0, "minecraft:overworld");
     set_default_spawn(&mut no_pose_world, "minecraft:overworld", [10, 64, 0]);
@@ -3899,6 +3932,7 @@ fn hotbar_item_icons_project_lodestone_compass_range_dispatch() {
             Some("minecraft:overworld"),
             None,
             Some(crate::item_runtime::ItemModelCompassContext {
+                game_time: 18_000,
                 level_dimension: "minecraft:overworld",
                 owner_position: [0.5, 64.0, 0.5],
                 owner_y_rot_degrees: 0.0,
@@ -3989,6 +4023,7 @@ fn hotbar_item_icons_project_recovery_compass_range_dispatch() {
             Some("minecraft:overworld"),
             None,
             Some(crate::item_runtime::ItemModelCompassContext {
+                game_time: 18_000,
                 level_dimension: "minecraft:overworld",
                 owner_position: [0.5, 64.0, 0.5],
                 owner_y_rot_degrees: 0.0,
@@ -8588,12 +8623,40 @@ fn write_runtime_spawn_compass_range_dispatch_item_assets(root: &Path) {
             }
         }"#,
     );
+    write_runtime_json(
+        &assets.join("items").join("spawn_compass_wobbled.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:range_dispatch",
+                "property": "minecraft:compass",
+                "target": "spawn",
+                "scale": 4.0,
+                "entries": [
+                    {
+                        "threshold": 3.5,
+                        "model": { "type": "minecraft:model", "model": "minecraft:item/spawn_compass_wobbled_east" }
+                    }
+                ],
+                "fallback": { "type": "minecraft:model", "model": "minecraft:item/spawn_compass_wobbled_fallback" }
+            }
+        }"#,
+    );
     write_flat_runtime_item_model_and_texture(
         &assets,
         "spawn_compass_fallback",
         &[40, 80, 120, 255],
     );
     write_flat_runtime_item_model_and_texture(&assets, "spawn_compass_east", &[120, 80, 40, 255]);
+    write_flat_runtime_item_model_and_texture(
+        &assets,
+        "spawn_compass_wobbled_fallback",
+        &[45, 75, 115, 255],
+    );
+    write_flat_runtime_item_model_and_texture(
+        &assets,
+        "spawn_compass_wobbled_east",
+        &[140, 90, 50, 255],
+    );
     write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
     write_runtime_json(
         &root
@@ -8606,6 +8669,7 @@ fn write_runtime_spawn_compass_range_dispatch_item_assets(root: &Path) {
             .join("Items.java"),
         r#"public class Items {
             public static final Item SPAWN_COMPASS = registerItem("spawn_compass");
+            public static final Item SPAWN_COMPASS_WOBBLED = registerItem("spawn_compass_wobbled");
         }"#,
     );
 }

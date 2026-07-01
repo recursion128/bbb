@@ -5770,8 +5770,7 @@ When an agent does any of the following, update this file in the same slice:
 - Next action:
   - Thread the ambient-context numeric `range_dispatch` properties through the
     icon resolver as that state becomes available to the GUI icon path:
-    - `minecraft:compass` stateful wobble plus no-target / invalid-target random
-      spin
+    - `minecraft:compass` no-target / invalid-target random spin
   - Wire the remaining ambient-context `select` properties onto the same
     resolver:
     - `minecraft:context_entity_type` for any future non-GUI item consumer that
@@ -6140,16 +6139,19 @@ When an agent does any of the following, update this file in the same slice:
       per-property advancement. Tests pin the random branch selecting a texture
       instead of falling back.
     - `minecraft:compass` — `CompassAngle.get`, for GUI/HUD item icons with a
-      local-player owner and `ClientLevel` context when the model opts out of
-      stateful wobble (`wobble=false`) and targets spawn, lodestone, or
-      recovery. Native projects the default-spawn, `LodestoneTracker.target`,
+      local-player owner and `ClientLevel` context targeting spawn, lodestone,
+      or recovery. Native projects the default-spawn, `LodestoneTracker.target`,
       or local-player `lastDeathLocation` `GlobalPos`, validates it against the
       current dimension, computes vanilla's owner-position / visual-yaw
-      rotation toward the block center, and applies vanilla range-dispatch
-      threshold selection. Tests pin no-pose `0.0` fallback, missing-component /
-      missing-recovery fallback, same-dimension spawn/lodestone/recovery texture
-      selection, and cross-dimension invalid-target fallback. Stateful wobble
-      and no-target / invalid-target random spin remain follow-up.
+      rotation toward the block center, applies exact non-wobbled target
+      rotation for `wobble=false`, applies default `wobble=true`
+      `NeedleDirectionHelper` smoothing factor `0.8` for valid local-player
+      targets, and then applies vanilla range-dispatch threshold selection.
+      Tests pin no-pose `0.0` fallback, missing-component / missing-recovery
+      fallback, same-dimension spawn/lodestone/recovery texture selection,
+      cross-dimension invalid-target fallback, and a default-wobbled
+      valid-target spawn texture-selection branch. No-target / invalid-target
+      random spin remains follow-up.
     - `minecraft:component` — `ComponentContents.get`, currently matching
       decoded persistent scalar / enum components with typed `when` values:
       `minecraft:max_stack_size`, `minecraft:max_damage`, `minecraft:damage`,
@@ -6204,11 +6206,11 @@ When an agent does any of the following, update this file in the same slice:
   - `bbb-protocol` now preserves the `minecraft:bees` component occupant count
     (`DataComponents.BEES`, id 77) so bundle-fullness weight can distinguish
     beehive-like full-weight entries from ordinary stack-size weighted entries.
-  - The remaining numeric `minecraft:compass` debt is now limited to stateful
-    wobble plus no-target / invalid-target random spin; GUI/HUD
-    `wobble=false` spawn, lodestone, and recovery compasses project
-    owner-position / yaw against the current default spawn,
-    `LodestoneTracker.target`, or local-player `lastDeathLocation`.
+  - The remaining numeric `minecraft:compass` debt is now limited to no-target /
+    invalid-target random spin; GUI/HUD spawn, lodestone, and recovery compasses
+    project owner-position / yaw against the current default spawn,
+    `LodestoneTracker.target`, or local-player `lastDeathLocation`, and apply
+    valid-target default wobble when requested by the model.
     `minecraft:time` projects GUI/HUD `daytime` / `moon_phase` target values
     from world time, applies the default `wobble=true` standard wobbler, and
     advances per-property `source=random` state instead of falling back.
