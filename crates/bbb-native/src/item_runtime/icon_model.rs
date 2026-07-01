@@ -1971,6 +1971,90 @@ impl EnchantmentComponentKind {
     }
 }
 
+fn enchantment_component_kind_for_exact_component(
+    component: &str,
+) -> Option<EnchantmentComponentKind> {
+    match component {
+        "minecraft:enchantments" => Some(EnchantmentComponentKind::Enchantments),
+        "minecraft:stored_enchantments" => Some(EnchantmentComponentKind::StoredEnchantments),
+        _ => None,
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ExactEnchantment<'a> {
+    key: &'a str,
+    level: i32,
+}
+
+fn enchantments_exact_value(value: &Value) -> Option<Vec<ExactEnchantment<'_>>> {
+    value
+        .as_object()?
+        .iter()
+        .map(|(key, level)| {
+            if key.is_empty() || key.starts_with('#') {
+                return None;
+            }
+            let level = json_i32(level)?;
+            (1..=255)
+                .contains(&level)
+                .then_some(ExactEnchantment { key, level })
+        })
+        .collect()
+}
+
+fn enchantments_exact_match(
+    kind: EnchantmentComponentKind,
+    expected: &[ExactEnchantment<'_>],
+    component_patch: &DataComponentPatchSummary,
+    resource_id: &str,
+    enchantment_keys: Option<&[String]>,
+) -> bool {
+    if component_patch
+        .removed_type_ids
+        .contains(&kind.component_id())
+    {
+        return false;
+    }
+    let Some(actual) = exact_enchantments_for_component(kind, component_patch, resource_id) else {
+        return false;
+    };
+    if actual.len() != expected.len() {
+        return false;
+    }
+    let Some(enchantment_keys) = enchantment_keys else {
+        return actual.is_empty() && expected.is_empty();
+    };
+    expected.iter().all(|expected| {
+        actual.iter().any(|actual| {
+            usize::try_from(actual.holder_id)
+                .ok()
+                .and_then(|holder_id| enchantment_keys.get(holder_id))
+                .is_some_and(|actual_key| actual_key == expected.key)
+                && actual.level == expected.level
+        })
+    })
+}
+
+fn exact_enchantments_for_component<'a>(
+    kind: EnchantmentComponentKind,
+    component_patch: &'a DataComponentPatchSummary,
+    resource_id: &str,
+) -> Option<&'a [ItemEnchantmentSummary]> {
+    if component_patch
+        .added_type_ids
+        .contains(&kind.component_id())
+    {
+        return Some(kind.enchantments(component_patch));
+    }
+    match kind {
+        EnchantmentComponentKind::Enchantments => Some(&[]),
+        EnchantmentComponentKind::StoredEnchantments => {
+            (resource_id == "minecraft:enchanted_book").then_some(&[])
+        }
+    }
+}
+
 fn enchantment_predicate_matches(
     predicate: &Value,
     enchantments: &[ItemEnchantmentSummary],
@@ -2397,6 +2481,10 @@ fn item_exact_component_is_supported(component: &str, expected: &Value) -> bool 
         || (component == "minecraft:unbreakable" && unit_component_value_is_supported(expected))
         || (component == "minecraft:custom_data"
             && custom_data_predicate_value_to_nbt_summary(expected).is_some())
+        || (matches!(
+            component,
+            "minecraft:enchantments" | "minecraft:stored_enchantments"
+        ) && enchantments_exact_value(expected).is_some())
         || (component == "minecraft:potion_contents"
             && potion_contents_exact_value(expected).is_some())
         || (component == "minecraft:writable_book_content"
@@ -3470,6 +3558,7 @@ fn item_data_component_matchers_match(
             components,
             item,
             resource_id,
+            enchantment_keys,
             trim_material_keys,
             default_max_stack_size_for_item,
             default_max_damage_for_item,
@@ -3505,6 +3594,7 @@ fn item_exact_components_match(
     value: &Value,
     item: &ItemStackTemplateSummary,
     resource_id: &str,
+    enchantment_keys: Option<&[String]>,
     trim_material_keys: Option<&[String]>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
@@ -3522,6 +3612,7 @@ fn item_exact_components_match(
             expected,
             item,
             resource_id,
+            enchantment_keys,
             trim_material_keys,
             default_max_stack_size,
             default_max_damage,
@@ -3534,6 +3625,7 @@ fn item_exact_component_matches(
     expected: &Value,
     item: &ItemStackTemplateSummary,
     resource_id: &str,
+    enchantment_keys: Option<&[String]>,
     trim_material_keys: Option<&[String]>,
     default_max_stack_size: Option<i32>,
     default_max_damage: Option<i32>,
@@ -3589,6 +3681,25 @@ fn item_exact_component_matches(
                 .custom_data
                 .as_ref()
                 .is_some_and(|actual| nbt_summary_exact_matches(&expected, actual));
+    }
+
+    if matches!(
+        component,
+        "minecraft:enchantments" | "minecraft:stored_enchantments"
+    ) {
+        let Some(kind) = enchantment_component_kind_for_exact_component(component) else {
+            return false;
+        };
+        let Some(expected) = enchantments_exact_value(expected) else {
+            return false;
+        };
+        return enchantments_exact_match(
+            kind,
+            &expected,
+            &item.component_patch,
+            resource_id,
+            enchantment_keys,
+        );
     }
 
     if component == "minecraft:potion_contents" {

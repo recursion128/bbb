@@ -7534,6 +7534,95 @@ mod tests {
             ),
             uv("component_condition_bundle_exact_trim_absent")
         );
+        let exact_enchantments = DataComponentPatchSummary {
+            added_type_ids: vec![13],
+            enchantments: vec![
+                bbb_protocol::packets::ItemEnchantmentSummary {
+                    holder_id: 0,
+                    level: 3,
+                },
+                bbb_protocol::packets::ItemEnchantmentSummary {
+                    holder_id: 1,
+                    level: 1,
+                },
+            ],
+            ..DataComponentPatchSummary::default()
+        };
+        assert_eq!(
+            selected_with_enchantment_keys(91, named_bundle_entry(exact_enchantments.clone())),
+            uv("component_condition_bundle_exact_enchantments_present")
+        );
+        assert_eq!(
+            selected(91, named_bundle_entry(exact_enchantments.clone())),
+            uv("component_condition_bundle_exact_enchantments_absent")
+        );
+        assert_eq!(
+            selected_with_enchantment_keys(
+                91,
+                named_bundle_entry(DataComponentPatchSummary {
+                    enchantments: vec![
+                        bbb_protocol::packets::ItemEnchantmentSummary {
+                            holder_id: 0,
+                            level: 3,
+                        },
+                        bbb_protocol::packets::ItemEnchantmentSummary {
+                            holder_id: 1,
+                            level: 2,
+                        },
+                    ],
+                    ..exact_enchantments.clone()
+                })
+            ),
+            uv("component_condition_bundle_exact_enchantments_absent")
+        );
+        assert_eq!(
+            selected_with_enchantment_keys(
+                91,
+                named_bundle_entry(DataComponentPatchSummary {
+                    removed_type_ids: vec![13],
+                    ..exact_enchantments
+                })
+            ),
+            uv("component_condition_bundle_exact_enchantments_absent")
+        );
+        let exact_stored_enchantments = DataComponentPatchSummary {
+            added_type_ids: vec![42],
+            stored_enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                holder_id: 1,
+                level: 1,
+            }],
+            ..DataComponentPatchSummary::default()
+        };
+        assert_eq!(
+            selected_with_enchantment_keys(
+                92,
+                named_bundle_entry(exact_stored_enchantments.clone())
+            ),
+            uv("component_condition_bundle_exact_stored_enchantments_present")
+        );
+        assert_eq!(
+            selected_with_enchantment_keys(
+                92,
+                named_bundle_entry(DataComponentPatchSummary {
+                    stored_enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                        holder_id: 0,
+                        level: 1,
+                    }],
+                    ..exact_stored_enchantments.clone()
+                })
+            ),
+            uv("component_condition_bundle_exact_stored_enchantments_absent")
+        );
+        assert_eq!(
+            selected_with_enchantment_keys(
+                92,
+                named_bundle_entry(DataComponentPatchSummary {
+                    removed_type_ids: vec![42],
+                    ..exact_stored_enchantments
+                })
+            ),
+            uv("component_condition_bundle_exact_stored_enchantments_absent")
+        );
         assert_eq!(
             selected(
                 33,
@@ -10999,6 +11088,8 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_FIREWORKS = registerItem("component_condition_bundle_exact_fireworks");
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_JUKEBOX_PLAYABLE = registerItem("component_condition_bundle_exact_jukebox_playable");
                 public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_TRIM = registerItem("component_condition_bundle_exact_trim");
+                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_ENCHANTMENTS = registerItem("component_condition_bundle_exact_enchantments");
+                public static final Item COMPONENT_CONDITION_BUNDLE_EXACT_STORED_ENCHANTMENTS = registerItem("component_condition_bundle_exact_stored_enchantments");
             }"#,
         );
         write_json(
@@ -11860,6 +11951,77 @@ mod tests {
                     "on_false": {
                         "type": "minecraft:model",
                         "model": "minecraft:item/component_condition_bundle_exact_trim_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_exact_enchantments.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "components": {
+                                            "minecraft:enchantments": {
+                                                "minecraft:sharpness": 3,
+                                                "minecraft:mending": 1
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_enchantments_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_enchantments_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_exact_stored_enchantments.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "components": {
+                                            "minecraft:stored_enchantments": {
+                                                "minecraft:mending": 1
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_stored_enchantments_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_exact_stored_enchantments_absent"
                     }
                 }
             }"#,
@@ -14334,6 +14496,22 @@ mod tests {
             (
                 "component_condition_bundle_exact_trim_absent",
                 [75, 55, 105, 255],
+            ),
+            (
+                "component_condition_bundle_exact_enchantments_present",
+                [250, 225, 135, 255],
+            ),
+            (
+                "component_condition_bundle_exact_enchantments_absent",
+                [95, 75, 35, 255],
+            ),
+            (
+                "component_condition_bundle_exact_stored_enchantments_present",
+                [225, 245, 155, 255],
+            ),
+            (
+                "component_condition_bundle_exact_stored_enchantments_absent",
+                [70, 90, 45, 255],
             ),
             (
                 "component_condition_container_components_present",

@@ -852,10 +852,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:damage`, plus exact `minecraft:jukebox_playable` components for
     direct vanilla jukebox-song keys, plus exact `minecraft:trim` components
     for direct trim-material registry keys and direct vanilla trim-pattern
-    keys,
-    `minecraft:enchantments`,
-    `minecraft:stored_enchantments`, `minecraft:firework_explosion`,
-    `minecraft:fireworks`, `minecraft:trim`, `minecraft:jukebox_playable`,
+    keys, plus exact `minecraft:enchantments` and
+    `minecraft:stored_enchantments` components for direct enchantment
+    registry-key maps,
+    `minecraft:firework_explosion`, `minecraft:fireworks`, `minecraft:trim`,
+    `minecraft:jukebox_playable`,
     `minecraft:potion_contents`, `minecraft:writable_book_content`,
     `minecraft:written_book_content`, `minecraft:villager/variant`,
     `minecraft:attribute_modifiers`, `minecraft:custom_data`, and
@@ -876,7 +877,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:enchantments` predicate lists honor vanilla's default empty
     `ENCHANTMENTS` component unless id 13 is removed. Vanilla
     `minecraft:enchanted_book` now also contributes its item-specific default
-    empty `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
+    empty `STORED_ENCHANTMENTS` component unless id 42 is removed. Exact
+    `minecraft:enchantments` and `minecraft:stored_enchantments` component
+    maps now compare decoded holder ids and levels against direct enchantment
+    registry keys when that dynamic registry is available. Remaining
     constrained `DataComponentPredicate` types such as inline enchantment holder
     payloads / server datapack tag remaps, broader NBT scalar typing, remaining
     concrete partial predicates and complex exact component codecs beyond
