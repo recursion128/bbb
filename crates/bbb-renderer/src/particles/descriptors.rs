@@ -30,6 +30,7 @@ pub(crate) enum ParticleTickMotionDescriptor {
     VibrationSignal,
     CampfireSmoke,
     DustPlume,
+    WaterDrop,
     Portal,
     ReversePortal,
 }
@@ -260,6 +261,8 @@ pub(crate) enum ParticleInitialVelocityDescriptor {
     CrimsonSpore,
     WarpedSpore,
     CampfireSmoke,
+    WaterDrop,
+    SplashWaterDrop,
     Spell,
     GlowSquid,
     Lava,
@@ -342,6 +345,28 @@ impl ParticleDescriptor {
                 friction: 0.98,
                 gravity: 0.002,
                 has_physics: false,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:rain" => Self {
+                provider: "WaterDropParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::EightOverRandom,
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::BaseSingleQuad,
+                initial_velocity: ParticleInitialVelocityDescriptor::WaterDrop,
+                friction: 0.98,
+                gravity: 0.06,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:splash" => Self {
+                provider: "SplashParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::EightOverRandom,
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::BaseSingleQuad,
+                initial_velocity: ParticleInitialVelocityDescriptor::SplashWaterDrop,
+                friction: 0.98,
+                gravity: 0.04,
+                has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
             "minecraft:bubble_pop" => Self {
@@ -1384,6 +1409,9 @@ impl ParticleDescriptor {
                 ParticleTickMotionDescriptor::CampfireSmoke
             }
             "DustPlumeParticle.Provider" => ParticleTickMotionDescriptor::DustPlume,
+            "WaterDropParticle.Provider" | "SplashParticle.Provider" => {
+                ParticleTickMotionDescriptor::WaterDrop
+            }
             "PortalParticle.Provider" => ParticleTickMotionDescriptor::Portal,
             "ReversePortalParticle.ReversePortalProvider" => {
                 ParticleTickMotionDescriptor::ReversePortal
@@ -1843,6 +1871,16 @@ impl ParticleInitialVelocityDescriptor {
                 command_velocity[1] + f64::from(random.next_f32()) / 500.0,
                 command_velocity[2],
             ],
+            Self::WaterDrop => sample_water_drop_velocity(random),
+            Self::SplashWaterDrop => {
+                if command_velocity[1] == 0.0
+                    && (command_velocity[0] != 0.0 || command_velocity[2] != 0.0)
+                {
+                    [command_velocity[0], 0.1, command_velocity[2]]
+                } else {
+                    sample_water_drop_velocity(random)
+                }
+            }
             Self::CrimsonSpore => [
                 random.next_gaussian() * 1.0E-6,
                 random.next_gaussian() * 1.0E-4,
@@ -2107,6 +2145,16 @@ fn sample_range(random: &mut ParticleRandom, min: f32, max: f32) -> f32 {
     min + random.next_f32() * (max - min)
 }
 
+fn sample_water_drop_velocity(random: &mut ParticleRandom) -> [f64; 3] {
+    let velocity =
+        ParticleInitialVelocityDescriptor::ParticleConstructorZero.sample([0.0; 3], random);
+    [
+        velocity[0] * 0.3,
+        f64::from(random.next_f32()) * 0.2 + 0.1,
+        velocity[2] * 0.3,
+    ]
+}
+
 fn note_color(color: f32) -> [f32; 4] {
     [
         note_color_component(color, 0.0),
@@ -2273,6 +2321,43 @@ mod tests {
             vibration.light_emission(),
             ParticleLightEmissionDescriptor::FullBlock
         );
+
+        for (particle_id, provider, gravity, initial_velocity) in [
+            (
+                "minecraft:rain",
+                "WaterDropParticle.Provider",
+                0.06,
+                ParticleInitialVelocityDescriptor::WaterDrop,
+            ),
+            (
+                "minecraft:splash",
+                "SplashParticle.Provider",
+                0.04,
+                ParticleInitialVelocityDescriptor::SplashWaterDrop,
+            ),
+        ] {
+            assert_descriptor(
+                particle_id,
+                provider,
+                ParticleLifetimeDescriptor::EightOverRandom,
+                ParticleSpriteSelection::Random,
+                ParticleVisualDescriptor::BaseSingleQuad,
+                0.98,
+                gravity,
+                true,
+                false,
+            );
+            let descriptor = ParticleDescriptor::for_particle(particle_id);
+            assert_eq!(
+                descriptor.initial_velocity, initial_velocity,
+                "{particle_id}"
+            );
+            assert_eq!(
+                descriptor.tick_motion(),
+                ParticleTickMotionDescriptor::WaterDrop,
+                "{particle_id}"
+            );
+        }
 
         assert_descriptor(
             "minecraft:bubble",
@@ -4073,6 +4158,17 @@ mod tests {
         assert_range_f64(bubble_velocity[0], 0.18, 0.22);
         assert_range_f64(bubble_velocity[1], 0.38, 0.42);
         assert_range_f64(bubble_velocity[2], 0.58, 0.62);
+
+        let mut water_drop_random = ParticleRandom::new(41);
+        let water_drop = ParticleInitialVelocityDescriptor::WaterDrop
+            .sample([9.0, 9.0, 9.0], &mut water_drop_random);
+        assert_range_f64(water_drop[0], -0.06, 0.06);
+        assert_range_f64(water_drop[1], 0.1, 0.3);
+        assert_range_f64(water_drop[2], -0.06, 0.06);
+
+        let splash_horizontal = ParticleInitialVelocityDescriptor::SplashWaterDrop
+            .sample([0.25, 0.0, -0.75], &mut ParticleRandom::new(42));
+        assert_eq!(splash_horizontal, [0.25, 0.1, -0.75]);
 
         let mut zero_constructor_random = ParticleRandom::new(40);
         let zero_constructor_velocity = ParticleInitialVelocityDescriptor::ParticleConstructorZero

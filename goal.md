@@ -1324,6 +1324,16 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `0.5` initial gravity, `0.96` friction, `ARGB(0xBAB1C2) - random * 0.2`
     tint, grow-to-base size curve, and the provider tick override that applies
     `gravity *= 0.88` and `friction *= 0.92` before default particle motion.
+  - [x] `WaterDropParticle.Provider` / `SplashParticle.Provider`：renderer
+    descriptor now maps `rain` and `splash` to random sprites, vanilla
+    single-quad size, `8 / (random * 0.8 + 0.2)` lifetime, opaque layer,
+    physics metadata, `0.98` friction, direct gravity motion (`yd -=
+    gravity` rather than default `0.04 * gravity`), and water-drop damping.
+    `rain` mirrors the constructor random x/z velocity damped by `0.3` plus
+    `0.1..0.3` y velocity and `0.06` gravity; `splash` uses `0.04` gravity
+    and preserves vanilla's horizontal command branch (`ya == 0 && (xa || za)`)
+    as `(xa, 0.1, za)`. Ground/block/fluid removal remains in the
+    world-coupled collision follow-up.
   - [x] `SculkChargeParticle.Provider` roll：native command resolution decodes
     `SculkChargeParticleOptions.roll` for `minecraft:sculk_charge`; renderer
     stores it as initial `oRoll` / `roll` and applies the vanilla billboard

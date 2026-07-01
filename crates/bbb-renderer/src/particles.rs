@@ -865,6 +865,16 @@ impl ParticleInstance {
                 self.velocity[1] *= friction;
                 self.velocity[2] *= friction;
             }
+            ParticleTickMotionDescriptor::WaterDrop => {
+                self.velocity[1] -= f64::from(self.gravity);
+                self.position[0] += self.velocity[0];
+                self.position[1] += self.velocity[1];
+                self.position[2] += self.velocity[2];
+                let friction = f64::from(self.friction);
+                self.velocity[0] *= friction;
+                self.velocity[1] *= friction;
+                self.velocity[2] *= friction;
+            }
             ParticleTickMotionDescriptor::Portal => {
                 let next_age = self.age_ticks.saturating_add(1);
                 let lifetime = self.lifetime_ticks.max(1) as f32;
@@ -1716,6 +1726,28 @@ mod tests {
     }
 
     #[test]
+    fn particle_runtime_water_drop_uses_direct_gravity_and_friction() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:rain", 20);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.2, 0.3, -0.4];
+        instance.gravity = 0.06;
+        instance.friction = 0.98;
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.active_instances, 1);
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 1);
+        assert_close3(instance.previous_position, [1.0, 2.0, 3.0]);
+        assert_close3(instance.position, [1.2, 2.24, 2.6]);
+        assert_close3(instance.velocity, [0.196, 0.2352, -0.392]);
+    }
+
+    #[test]
     fn particle_runtime_campfire_smoke_drifts_up_and_fades_near_lifetime_end() {
         let mut particles = ParticleRuntimeState::with_capacities_and_seed(4, 4, 0);
         let mut instance = test_instance_with_lifetime("minecraft:campfire_cosy_smoke", 100);
@@ -2402,6 +2434,42 @@ mod tests {
         assert_range_f64(bubble.velocity[0], 0.18, 0.22);
         assert_range_f64(bubble.velocity[1], 0.38, 0.42);
         assert_range_f64(bubble.velocity[2], 0.58, 0.62);
+
+        let mut rain_random = ParticleRandom::new(62);
+        let rain = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:rain", 1.0),
+            &mut rain_random,
+        );
+        assert_eq!(rain.provider, "WaterDropParticle.Provider");
+        assert_eq!(rain.sprite_selection, ParticleSpriteSelection::Random);
+        assert_eq!(rain.quad_size_curve, ParticleQuadSizeCurve::Constant);
+        assert_range_f32(rain.base_quad_size, 0.1, 0.2);
+        assert_eq!(rain.color, [1.0, 1.0, 1.0, 1.0]);
+        assert!((8..=40).contains(&rain.lifetime_ticks));
+        assert_eq!(rain.friction, 0.98);
+        assert_eq!(rain.gravity, 0.06);
+        assert!(rain.has_physics);
+        assert!(!rain.speed_up_when_y_motion_is_blocked);
+        assert_eq!(rain.tick_motion, ParticleTickMotionDescriptor::WaterDrop);
+        assert_eq!(rain.render_layer, ParticleRenderLayer::Opaque);
+        assert_range_f64(rain.velocity[0], -0.06, 0.06);
+        assert_range_f64(rain.velocity[1], 0.1, 0.3);
+        assert_range_f64(rain.velocity[2], -0.06, 0.06);
+
+        let mut splash_random = ParticleRandom::new(63);
+        let mut splash_command = spawn_command("minecraft:splash", 1.0);
+        splash_command.velocity = [0.25, 0.0, -0.75];
+        let splash = ParticleInstance::from_spawn_command(splash_command, &mut splash_random);
+        assert_eq!(splash.provider, "SplashParticle.Provider");
+        assert_eq!(splash.sprite_selection, ParticleSpriteSelection::Random);
+        assert_range_f32(splash.base_quad_size, 0.1, 0.2);
+        assert!((8..=40).contains(&splash.lifetime_ticks));
+        assert_eq!(splash.velocity, [0.25, 0.1, -0.75]);
+        assert_eq!(splash.friction, 0.98);
+        assert_eq!(splash.gravity, 0.04);
+        assert!(splash.has_physics);
+        assert_eq!(splash.tick_motion, ParticleTickMotionDescriptor::WaterDrop);
+        assert_eq!(splash.render_layer, ParticleRenderLayer::Opaque);
 
         let mut column_bubble_random = ParticleRandom::new(60);
         let mut column_bubble_command = spawn_command("minecraft:bubble_column_up", 1.0);

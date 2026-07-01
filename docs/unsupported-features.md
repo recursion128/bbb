@@ -415,6 +415,15 @@ When an agent does any of the following, update this file in the same slice:
         `0.96` friction, `ARGB(0xBAB1C2) - random * 0.2` tint,
         grow-to-base size curve, and the provider tick override that decays
         gravity by `0.88` and friction by `0.92` before default motion.
+        `rain` and `splash` now map to `WaterDropParticle.Provider` /
+        `SplashParticle.Provider` with random sprites, vanilla single-quad
+        size, `8 / (random * 0.8 + 0.2)` lifetime, opaque layer, physics
+        metadata, `0.98` friction, direct gravity motion (`yd -= gravity`),
+        and water-drop damping. `rain` preserves the constructor random x/z
+        velocity damped by `0.3`, `0.1..0.3` y velocity, and `0.06`
+        gravity; `splash` uses `0.04` gravity and the horizontal command
+        branch `(xa, 0.1, za)`. Ground/block/fluid removal remains with the
+        world-coupled collision follow-up.
         `dust` / `dust_color_transition` now map to their vanilla providers
         with decoded RGB colors, transition target color, clamped scale,
         scale-shaped quad size / lifetime, random color variation, age sprites,
@@ -5786,6 +5795,15 @@ When an agent does any of the following, update this file in the same slice:
         initial gravity, `0.96` friction, `ARGB(0xBAB1C2)-random*.2`
         tint, grow-to-base size curve, and provider tick motion that decays
         gravity by `0.88` and friction by `0.92` before default motion.
+      - particle descriptors map `WaterDropParticle.Provider` and
+        `SplashParticle.Provider` for `rain` / `splash` to random sprites,
+        vanilla single-quad size, `8/(random*.8+.2)` lifetime, opaque
+        particle layer, physics metadata, `0.98` friction, direct gravity
+        motion, and damping. `rain` uses constructor random x/z velocity
+        damped by `0.3`, `0.1..0.3` y velocity, and `0.06` gravity;
+        `splash` uses `0.04` gravity and the vanilla horizontal command
+        branch `(xa, 0.1, za)`. Ground/block/fluid removal remains deferred
+        until world-coupled particle collision state is represented.
       - particle descriptors map `ShriekParticle.Provider` to
         `ShriekParticleOption.delay` carried in
         `ParticleSpawnCommand.initial_delay_ticks`; delayed instances do not
