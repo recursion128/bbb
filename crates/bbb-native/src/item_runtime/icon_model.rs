@@ -7,7 +7,7 @@ use bbb_pack::{
 use bbb_protocol::packets::{
     AttributeModifierSummary, DataComponentPatchSummary, FireworkExplosionShapeSummary,
     FireworkExplosionSummary, ItemEnchantmentSummary, ItemRaritySummary, ItemStackTemplateSummary,
-    WrittenBookContentSummary,
+    NbtSummaryEntry, NbtSummaryValue, WrittenBookContentSummary,
 };
 use chrono::{Datelike, FixedOffset, Local, TimeZone, Utc};
 use serde_json::Value;
@@ -19,6 +19,7 @@ use super::{
 };
 
 // 26.1 DataComponents ids from vanilla registration order.
+const CUSTOM_DATA_COMPONENT_ID: i32 = 0;
 const MAX_STACK_SIZE_COMPONENT_ID: i32 = 1;
 const MAX_DAMAGE_COMPONENT_ID: i32 = 2;
 const DAMAGE_COMPONENT_ID: i32 = 3;
@@ -1636,6 +1637,9 @@ fn item_stack_matches_component_predicate(
             ctx.default_max_damage,
         );
     }
+    if custom_data_component_predicate_is_supported(property) {
+        return item_stack_matches_custom_data_predicate(property, ctx.component_patch);
+    }
     if attribute_modifiers_component_predicate_is_supported(property) {
         return item_stack_matches_attribute_modifiers_predicate(
             property,
@@ -1713,6 +1717,7 @@ fn component_condition_is_runtime_resolved(property: &ItemModelProperty) -> bool
         return false;
     };
     predicate == "minecraft:damage"
+        || custom_data_component_predicate_is_supported(property)
         || bundle_contents_component_predicate_is_supported(property)
         || container_component_predicate_is_supported(property)
         || attribute_modifiers_component_predicate_is_supported(property)
@@ -2272,6 +2277,7 @@ fn item_partial_component_predicates_are_supported(value: &Value) -> bool {
 
 fn item_partial_component_predicate_is_supported(predicate: &str, value: &Value) -> bool {
     match predicate {
+        "minecraft:custom_data" => custom_data_predicate_value_is_supported(value),
         "minecraft:damage" => damage_component_predicate_value_is_supported(value),
         _ if enchantments_component_predicate_kind_from_parts(predicate, value).is_some() => true,
         "minecraft:trim" => trim_predicate_value_is_supported(value),
@@ -2296,6 +2302,127 @@ fn damage_component_predicate_value_is_supported(value: &Value) -> bool {
             .keys()
             .all(|key| key == "damage" || key == "durability")
     })
+}
+
+fn custom_data_component_predicate_is_supported(property: &ItemModelProperty) -> bool {
+    if component_condition_predicate(property) != Some("minecraft:custom_data") {
+        return false;
+    }
+    let Some(value) = property.raw().get("value") else {
+        return false;
+    };
+    custom_data_predicate_value_is_supported(value)
+}
+
+fn custom_data_predicate_value_is_supported(value: &Value) -> bool {
+    json_value_to_nbt_summary(value)
+        .is_some_and(|value| matches!(value, NbtSummaryValue::Compound(_)))
+}
+
+fn item_stack_matches_custom_data_predicate(
+    property: &ItemModelProperty,
+    component_patch: Option<&DataComponentPatchSummary>,
+) -> bool {
+    if !custom_data_component_predicate_is_supported(property) {
+        return false;
+    }
+    let Some(value) = property.raw().get("value") else {
+        return false;
+    };
+    item_stack_matches_custom_data_value(value, component_patch)
+}
+
+fn item_stack_matches_custom_data_value(
+    value: &Value,
+    component_patch: Option<&DataComponentPatchSummary>,
+) -> bool {
+    let Some(expected) = json_value_to_nbt_summary(value) else {
+        return false;
+    };
+    let empty = NbtSummaryValue::Compound(Vec::new());
+    let actual = component_patch
+        .and_then(|patch| {
+            if patch.removed_type_ids.contains(&CUSTOM_DATA_COMPONENT_ID) {
+                None
+            } else {
+                patch.custom_data.as_ref()
+            }
+        })
+        .unwrap_or(&empty);
+    nbt_summary_matches(&expected, actual, true)
+}
+
+fn json_value_to_nbt_summary(value: &Value) -> Option<NbtSummaryValue> {
+    match value {
+        Value::Null => None,
+        Value::Bool(value) => Some(NbtSummaryValue::Byte(i8::from(*value))),
+        Value::Number(value) => {
+            if let Some(value) = value.as_i64() {
+                Some(match i32::try_from(value) {
+                    Ok(value) => NbtSummaryValue::Int(value),
+                    Err(_) => NbtSummaryValue::Long(value),
+                })
+            } else {
+                value
+                    .as_f64()
+                    .map(|value| NbtSummaryValue::Double(value.to_bits()))
+            }
+        }
+        Value::String(value) => Some(NbtSummaryValue::String(value.clone())),
+        Value::Array(values) => values
+            .iter()
+            .map(json_value_to_nbt_summary)
+            .collect::<Option<Vec<_>>>()
+            .map(NbtSummaryValue::List),
+        Value::Object(values) => values
+            .iter()
+            .map(|(name, value)| {
+                Some(NbtSummaryEntry {
+                    name: name.clone(),
+                    value: json_value_to_nbt_summary(value)?,
+                })
+            })
+            .collect::<Option<Vec<_>>>()
+            .map(NbtSummaryValue::Compound),
+    }
+}
+
+fn nbt_summary_matches(
+    expected: &NbtSummaryValue,
+    actual: &NbtSummaryValue,
+    partial_list_matches: bool,
+) -> bool {
+    match (expected, actual) {
+        (NbtSummaryValue::Compound(expected), NbtSummaryValue::Compound(actual)) => {
+            if actual.len() < expected.len() {
+                return false;
+            }
+            expected.iter().all(|entry| {
+                actual
+                    .iter()
+                    .find(|actual_entry| actual_entry.name == entry.name)
+                    .is_some_and(|actual_entry| {
+                        nbt_summary_matches(&entry.value, &actual_entry.value, partial_list_matches)
+                    })
+            })
+        }
+        (NbtSummaryValue::List(expected), NbtSummaryValue::List(actual))
+            if partial_list_matches =>
+        {
+            if expected.is_empty() {
+                return actual.is_empty();
+            }
+            if actual.len() < expected.len() {
+                return false;
+            }
+            expected.iter().all(|expected_item| {
+                actual
+                    .iter()
+                    .any(|actual_item| nbt_summary_matches(expected_item, actual_item, true))
+            })
+        }
+        _ => expected == actual,
+    }
 }
 
 fn attribute_modifiers_component_predicate_is_supported(property: &ItemModelProperty) -> bool {
@@ -2956,6 +3083,7 @@ fn item_partial_component_predicate_match(
     attribute_keys: Option<&[String]>,
 ) -> bool {
     match predicate {
+        "minecraft:custom_data" => item_stack_matches_custom_data_value(value, component_patch),
         "minecraft:damage" => {
             damage_component_predicate_matches_value(value, component_patch, default_max_damage)
         }
@@ -4038,6 +4166,7 @@ fn data_component_predicate_type_is_complex(predicate: &str) -> bool {
 
 fn data_component_type_id(component: &str) -> Option<i32> {
     match component {
+        "minecraft:custom_data" => Some(CUSTOM_DATA_COMPONENT_ID),
         "minecraft:max_stack_size" => Some(MAX_STACK_SIZE_COMPONENT_ID),
         "minecraft:max_damage" => Some(MAX_DAMAGE_COMPONENT_ID),
         "minecraft:damage" => Some(DAMAGE_COMPONENT_ID),

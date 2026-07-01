@@ -5884,6 +5884,10 @@ When an agent does any of the following, update this file in the same slice:
       collection predicates over direct registry-key `attribute` HolderSets
       when `minecraft:attribute` registry keys are available, plus `id`,
       `amount`, `operation`, `slot`, and `size` / `contains` / `count`.
+      `minecraft:custom_data` now preserves decoded custom-data NBT compound
+      summaries and matches direct plus container-nested predicates with
+      vanilla `NbtUtils.compareNbt(..., true)` subset-compound and partial-list
+      semantics for JSON-object predicate values.
       `minecraft:bundle_contents`
       `items.size` constraints match vanilla `CollectionPredicate.size` against
       the decoded bundle item count, and `items.contains` / `count` now support
@@ -5921,12 +5925,13 @@ When an agent does any of the following, update this file in the same slice:
       `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
       constrained predicate types (inline enchantment holder payloads / server
       datapack tag remaps, attribute tag HolderSets / default item-prototype
-      attribute modifiers, remaining concrete partial predicates and complex
-      exact component codecs, rich/styled written-book page
-      `ComponentSerialization` equality, trim inline material or pattern
-      payloads / datapack pattern registry-key remaps, villager type tags /
-      datapack villager-type registry remaps, jukebox inline song payloads /
-      datapack jukebox-song registry remaps, and similar) remain follow-up.
+      attribute modifiers, custom-data SNBT-string predicate parsing / broader
+      NBT scalar typing, remaining concrete partial predicates and complex exact
+      component codecs, rich/styled written-book page `ComponentSerialization`
+      equality, trim inline material or pattern payloads / datapack pattern
+      registry-key remaps, villager type tags / datapack villager-type registry
+      remaps, jukebox inline song payloads / datapack jukebox-song registry
+      remaps, and similar) remain follow-up.
     - `minecraft:charge_type` — `Charge.get` (`ROCKET` when any charged
       projectile is `minecraft:firework_rocket`, `ARROW` when charged otherwise,
       else `NONE`), using the native item registry to identify the projectile
@@ -6084,9 +6089,10 @@ When an agent does any of the following, update this file in the same slice:
     bundle/container-nested villager variant predicates for vanilla registry
     keys, plus direct and container-nested attribute modifier predicates for
     decoded direct registry-key attribute / id / amount / operation / slot
-    entries when the synced attribute registry is available; broader
-    component-codec and remaining constrained `DataComponentPredicate` parity
-    remains the documented follow-up.
+    entries when the synced attribute registry is available, plus direct and
+    container-nested custom-data NBT compound predicates for JSON-object
+    expected values; broader component-codec and remaining constrained
+    `DataComponentPredicate` parity remains the documented follow-up.
 
 ### Native Input, Movement, Interaction, Inventory, And Command Flows
 

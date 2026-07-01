@@ -819,7 +819,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     container-nested `modifiers` collection predicates over direct registry-key
     `attribute` HolderSets when `minecraft:attribute` registry keys are
     available, plus `id`, `amount`, `operation`, `slot`, and `size` /
-    `contains` / `count`.
+    `contains` / `count`. `minecraft:custom_data` now preserves decoded
+    custom-data NBT compound summaries and matches direct plus
+    container-nested predicates with vanilla `NbtUtils.compareNbt(..., true)`
+    subset-compound and partial-list semantics for JSON-object predicate values.
     `minecraft:bundle_contents`
     `items.size` constraints now match vanilla `CollectionPredicate.size`
     against the decoded bundle item count, and `items.contains` / `count`
@@ -850,7 +853,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     empty `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
     constrained `DataComponentPredicate` types such as inline enchantment holder
     payloads / server datapack tag remaps, attribute tag HolderSets / default
-    item-prototype attribute modifiers, remaining concrete partial predicates
+    item-prototype attribute modifiers, custom-data SNBT-string predicate
+    parsing / broader NBT scalar typing, remaining concrete partial predicates
     and complex exact component codecs, rich/styled written-book page
     `ComponentSerialization` equality, trim inline material or pattern payloads
     / datapack pattern registry-key remaps, villager type tags / datapack

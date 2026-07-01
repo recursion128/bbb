@@ -21,8 +21,8 @@ use bbb_pack::{
 use bbb_protocol::packets::{
     AttributeModifierSummary, ConsumableSummary, DataComponentPatchSummary,
     FireworkExplosionShapeSummary, FireworkExplosionSummary, ItemRaritySummary, ItemStackSummary,
-    ItemStackTemplateSummary, ResolvableProfileSummary, ResourceTextureSummary,
-    WrittenBookContentSummary,
+    ItemStackTemplateSummary, NbtSummaryEntry, NbtSummaryValue, ResolvableProfileSummary,
+    ResourceTextureSummary, WrittenBookContentSummary,
 };
 use bbb_renderer::{
     DynamicPlayerSkinImage, DynamicPlayerTextureImage, EntityCustomHeadSkull,
@@ -8516,6 +8516,78 @@ mod tests {
             selected_with_attribute_keys(62, container_attribute_patch(scale_modifier)),
             uv("component_condition_container_partial_attribute_modifiers_attribute_absent")
         );
+        let custom_data_value = |owner: &str| {
+            NbtSummaryValue::Compound(vec![
+                NbtSummaryEntry {
+                    name: "owner".to_string(),
+                    value: NbtSummaryValue::String(owner.to_string()),
+                },
+                NbtSummaryEntry {
+                    name: "level".to_string(),
+                    value: NbtSummaryValue::Int(7),
+                },
+                NbtSummaryEntry {
+                    name: "nested".to_string(),
+                    value: NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                        name: "flag".to_string(),
+                        value: NbtSummaryValue::Byte(1),
+                    }]),
+                },
+                NbtSummaryEntry {
+                    name: "lore".to_string(),
+                    value: NbtSummaryValue::List(vec![
+                        NbtSummaryValue::String("one".to_string()),
+                        NbtSummaryValue::String("two".to_string()),
+                    ]),
+                },
+            ])
+        };
+        let custom_data_patch = |owner| DataComponentPatchSummary {
+            added_type_ids: vec![0],
+            custom_data: Some(custom_data_value(owner)),
+            ..DataComponentPatchSummary::default()
+        };
+        assert_eq!(
+            selected(63, DataComponentPatchSummary::default()),
+            uv("component_condition_custom_data_absent")
+        );
+        assert_eq!(
+            selected(63, custom_data_patch("Alex")),
+            uv("component_condition_custom_data_present")
+        );
+        assert_eq!(
+            selected(63, custom_data_patch("Steve")),
+            uv("component_condition_custom_data_absent")
+        );
+        assert_eq!(
+            selected(
+                63,
+                DataComponentPatchSummary {
+                    removed_type_ids: vec![0],
+                    custom_data: Some(custom_data_value("Alex")),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_custom_data_absent")
+        );
+        let container_custom_data_patch = |owner| DataComponentPatchSummary {
+            added_type_ids: vec![75],
+            container_item_count: Some(1),
+            container_items: vec![ItemStackTemplateSummary {
+                item_id: 0,
+                count: 1,
+                component_patch: custom_data_patch(owner),
+            }],
+            ..DataComponentPatchSummary::default()
+        };
+        assert_eq!(
+            selected(64, container_custom_data_patch("Alex")),
+            uv("component_condition_container_partial_custom_data_present")
+        );
+        assert_eq!(
+            selected(64, container_custom_data_patch("Steve")),
+            uv("component_condition_container_partial_custom_data_absent")
+        );
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -10070,6 +10142,8 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_ATTRIBUTE_MODIFIERS = registerItem("component_condition_container_partial_attribute_modifiers");
                 public static final Item COMPONENT_CONDITION_ATTRIBUTE_MODIFIERS_ATTRIBUTE = registerItem("component_condition_attribute_modifiers_attribute");
                 public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_ATTRIBUTE_MODIFIERS_ATTRIBUTE = registerItem("component_condition_container_partial_attribute_modifiers_attribute");
+                public static final Item COMPONENT_CONDITION_CUSTOM_DATA = registerItem("component_condition_custom_data");
+                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_CUSTOM_DATA = registerItem("component_condition_container_partial_custom_data");
             }"#,
         );
         write_json(
@@ -11814,6 +11888,72 @@ mod tests {
         write_json(
             &assets
                 .join("items")
+                .join("component_condition_custom_data.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:custom_data",
+                    "value": {
+                        "owner": "Alex",
+                        "nested": {
+                            "flag": true
+                        },
+                        "lore": ["one"]
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_custom_data_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_custom_data_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_container_partial_custom_data.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:container",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "predicates": {
+                                            "minecraft:custom_data": {
+                                                "owner": "Alex",
+                                                "nested": {
+                                                    "flag": true
+                                                },
+                                                "lore": ["two"]
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_custom_data_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_custom_data_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
                 .join("component_condition_enchantments_level.json"),
             r#"{
                 "model": {
@@ -12501,6 +12641,19 @@ mod tests {
             (
                 "component_condition_container_partial_attribute_modifiers_attribute_absent",
                 [90, 35, 95, 255],
+            ),
+            (
+                "component_condition_custom_data_present",
+                [245, 210, 120, 255],
+            ),
+            ("component_condition_custom_data_absent", [95, 70, 35, 255]),
+            (
+                "component_condition_container_partial_custom_data_present",
+                [245, 170, 120, 255],
+            ),
+            (
+                "component_condition_container_partial_custom_data_absent",
+                [95, 45, 35, 255],
             ),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);
