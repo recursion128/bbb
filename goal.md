@@ -1035,7 +1035,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
 仍在推进：
 
 - GUI flat item：
-  - front-lit / no-world-diffuse 的 shader context。
+  - [x] front-lit / no-world-diffuse render-plan metadata：
+    vanilla `GuiItemAtlas` 按 `usesBlockLight() == false` 选择
+    `Lighting.Entry.ITEMS_FLAT`；native flat `HudItemIcon` 携带
+    `GuiItemLightingEntry::ItemsFlat`，renderer sanitizer 拒绝非 flat lighting
+    的 HUD icon，tests pin flat metadata filtering。
   - generated item、flat sprite、count/durability/cooldown overlay 的 pass 顺序。
 - GUI 3D item：
   - [x] `Lighting.Entry.ITEMS_3D` light directions / render-plan metadata：

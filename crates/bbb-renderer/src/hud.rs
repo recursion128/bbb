@@ -56,6 +56,7 @@ impl HudIconLayer {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct HudItemIcon {
+    pub lighting: GuiItemLightingEntry,
     pub layers: Vec<HudIconLayer>,
     pub count_label: Option<HudItemCountLabel>,
     pub durability_bar: Option<HudItemDurabilityBar>,
@@ -65,6 +66,7 @@ pub struct HudItemIcon {
 impl HudItemIcon {
     pub fn single(uv: HudUvRect) -> Self {
         Self {
+            lighting: GuiItemLightingEntry::ItemsFlat,
             layers: vec![HudIconLayer::new(uv, HUD_TINT_WHITE)],
             count_label: None,
             durability_bar: None,
@@ -2601,12 +2603,16 @@ fn sanitize_hud_text_line(line: String) -> Option<String> {
 }
 
 fn sanitize_hud_item_icon(icon: HudItemIcon) -> Option<HudItemIcon> {
+    if icon.lighting != GuiItemLightingEntry::ItemsFlat {
+        return None;
+    }
     let layers = icon
         .layers
         .into_iter()
         .filter_map(sanitize_hud_icon_layer)
         .collect::<Vec<_>>();
     (!layers.is_empty()).then_some(HudItemIcon {
+        lighting: GuiItemLightingEntry::ItemsFlat,
         layers,
         count_label: icon.count_label.and_then(sanitize_hud_item_count_label),
         durability_bar: icon
@@ -2924,6 +2930,7 @@ mod tests {
         assert_eq!(
             icon,
             HudItemIcon {
+                lighting: GuiItemLightingEntry::ItemsFlat,
                 layers: vec![HudIconLayer::new(
                     HudUvRect {
                         min: [0.0, 0.25],
@@ -2963,6 +2970,7 @@ mod tests {
             [0.75, 0.5, 0.25, 0.0],
         );
         let icon = sanitize_hud_item_icon(HudItemIcon {
+            lighting: GuiItemLightingEntry::ItemsFlat,
             layers: vec![first, second],
             count_label: Some(HudItemCountLabel::new("64")),
             durability_bar: Some(HudItemDurabilityBar::new(99, [-1.0, 0.5, 1.5])),
@@ -2988,6 +2996,7 @@ mod tests {
     #[test]
     fn sanitize_hud_item_icon_discards_invalid_layers() {
         let icon = sanitize_hud_item_icon(HudItemIcon {
+            lighting: GuiItemLightingEntry::ItemsFlat,
             layers: vec![
                 HudIconLayer::new(
                     HudUvRect {
@@ -3026,6 +3035,24 @@ mod tests {
 
         assert_eq!(
             sanitize_hud_item_icon(HudItemIcon {
+                lighting: GuiItemLightingEntry::EntityInUi,
+                layers: vec![HudIconLayer::new(
+                    HudUvRect {
+                        min: [0.0, 0.0],
+                        max: [1.0, 1.0],
+                    },
+                    [1.0, 1.0, 1.0, 1.0],
+                )],
+                count_label: None,
+                durability_bar: None,
+                cooldown_progress: None,
+            }),
+            None
+        );
+
+        assert_eq!(
+            sanitize_hud_item_icon(HudItemIcon {
+                lighting: GuiItemLightingEntry::ItemsFlat,
                 layers: vec![HudIconLayer::new(
                     HudUvRect {
                         min: [f32::NAN, 0.0],
@@ -3100,6 +3127,7 @@ mod tests {
                     x: 8,
                     y: 84,
                     icon: Some(HudItemIcon {
+                        lighting: GuiItemLightingEntry::ItemsFlat,
                         layers: vec![HudIconLayer::new(
                             HudUvRect {
                                 min: [1.25, 0.75],
@@ -3118,6 +3146,7 @@ mod tests {
                     x: 26,
                     y: 84,
                     icon: Some(HudItemIcon {
+                        lighting: GuiItemLightingEntry::ItemsFlat,
                         layers: vec![HudIconLayer::new(
                             HudUvRect {
                                 min: [0.0, f32::NAN],
@@ -3205,6 +3234,7 @@ mod tests {
         assert_eq!(
             screen.slots[0].icon,
             Some(HudItemIcon {
+                lighting: GuiItemLightingEntry::ItemsFlat,
                 layers: vec![HudIconLayer::new(
                     HudUvRect {
                         min: [0.0, 0.25],
@@ -3271,6 +3301,7 @@ mod tests {
                     x: 33,
                     y: 19,
                     icon: HudItemIcon {
+                        lighting: GuiItemLightingEntry::ItemsFlat,
                         layers: vec![HudIconLayer::new(
                             HudUvRect {
                                 min: [1.25, 0.75],
@@ -3288,6 +3319,7 @@ mod tests {
                     x: 51,
                     y: 19,
                     icon: HudItemIcon {
+                        lighting: GuiItemLightingEntry::ItemsFlat,
                         layers: vec![HudIconLayer::new(
                             HudUvRect {
                                 min: [0.0, f32::NAN],
@@ -3313,6 +3345,7 @@ mod tests {
         assert_eq!(
             screen.floating_items[0].icon,
             HudItemIcon {
+                lighting: GuiItemLightingEntry::ItemsFlat,
                 layers: vec![HudIconLayer::new(
                     HudUvRect {
                         min: [0.0, 0.25],

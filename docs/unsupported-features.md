@@ -1090,8 +1090,12 @@ When an agent does any of the following, update this file in the same slice:
     item entity / thrown item submit paths that reach
     `ItemStackRenderState.submit(..., lightCoords, ...)` no longer use the old
     scalar light approximation or CPU-baked `Direction.getShade` RGB. The
-    ITEMS_FLAT and ENTITY_IN_UI have pipeline-state expression but wait for the
-    corresponding P1 GUI flat / entity-in-UI item/entity submission surfaces.
+    GUI flat HUD icons now carry explicit `GuiItemLightingEntry::ItemsFlat`
+    render-plan metadata and the HUD icon sanitizer rejects non-flat lighting,
+    matching vanilla `GuiItemAtlas`'s `usesBlockLight() == false` branch to
+    `Lighting.Entry.ITEMS_FLAT`. ENTITY_IN_UI still has pipeline-state expression
+    but waits for the corresponding P1 entity-in-UI item/entity submission
+    surface.
     The dropped-item 3D model
     path and the legacy item-entity / thrown-item billboard path now sample the
     entity light probe through `WorldStore`, keep the vanilla full-bright
@@ -2352,7 +2356,10 @@ When an agent does any of the following, update this file in the same slice:
         `Lighting.Entry.ITEMS_3D`; the renderer sanitizer rejects
         `HudBlockItemModel` inputs with non-3D GUI lighting so this pass cannot
         accidentally consume future flat/entity-in-UI submissions. Remaining
-        GUI flat and entity-in-UI item/entity lighting contexts are deferred to
+        GUI flat `HudItemIcon` submissions similarly carry
+        `GuiItemLightingEntry::ItemsFlat`, matching vanilla
+        `GuiItemAtlas`'s non-block-light branch to `Lighting.Entry.ITEMS_FLAT`.
+        Remaining entity-in-UI item/entity lighting contexts are deferred to
         P1 GUI surface work.
     - thrown-item projectiles (egg, snowball, ender pearl, eye of ender, splash/lingering potion,
       experience bottle, large fireball, small fireball) as camera-facing item-icon billboards on the

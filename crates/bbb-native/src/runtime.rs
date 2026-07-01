@@ -4384,6 +4384,7 @@ fn hud_item_icon_for_stack(
             fishing_rod_cast,
         )?;
     Some(HudItemIcon {
+        lighting: GuiItemLightingEntry::ItemsFlat,
         layers: icon
             .layers
             .into_iter()
