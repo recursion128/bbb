@@ -5896,8 +5896,8 @@ When an agent does any of the following, update this file in the same slice:
       the same direct item-key / item-tag / stack-count / exact scalar component
       / nested partial damage, enchantments, stored-enchantments,
       firework-explosion, fireworks, trim, jukebox-playable, potion-contents,
-      writable-book-content, written-book-content, and AnyValue predicate
-      collection subset.
+      writable-book-content, written-book-content, villager-variant, and
+      AnyValue predicate collection subset.
       `minecraft:fireworks`
       `explosions.contains` / `count` predicates now match decoded explosion
       shape / trail / twinkle summaries. `minecraft:trim` direct vanilla
@@ -5916,9 +5916,9 @@ When an agent does any of the following, update this file in the same slice:
       `minecraft:enchanted_book` contributes its item-specific default empty
       `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
       constrained predicate types (inline enchantment holder payloads / server
-      datapack tag remaps, bundle/container nested remaining concrete partial
-      predicates and complex exact component codecs, rich/styled written-book
-      page `ComponentSerialization` equality, trim inline material or pattern
+      datapack tag remaps, remaining concrete partial predicates and complex
+      exact component codecs, rich/styled written-book page
+      `ComponentSerialization` equality, trim inline material or pattern
       payloads / datapack pattern registry-key remaps, villager type tags /
       datapack villager-type registry remaps, jukebox inline song payloads /
       datapack jukebox-song registry remaps, and similar) remain follow-up.
@@ -6075,8 +6075,9 @@ When an agent does any of the following, update this file in the same slice:
     `minecraft:damage`, empty single-component predicates, direct-key
     enchantment HolderSet predicates when the synced enchantment registry is
     available, and direct plus nested bundle/container writable/written-book
-    predicates for decoded raw string fields/pages, plus direct and bundle-nested
-    villager variant predicates for vanilla registry keys; broader
+    predicates for decoded raw string fields/pages, plus direct and
+    bundle/container-nested villager variant predicates for vanilla registry
+    keys; broader
     component-codec and remaining constrained `DataComponentPredicate` parity
     remains the documented follow-up.
 

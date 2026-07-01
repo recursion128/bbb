@@ -8248,6 +8248,68 @@ mod tests {
             ),
             uv("component_condition_bundle_partial_villager_variant_absent")
         );
+        assert_eq!(
+            selected(
+                58,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(2),
+                    container_items: vec![
+                        ItemStackTemplateSummary {
+                            item_id: 0,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![83],
+                                villager_variant_id: Some(2),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                        ItemStackTemplateSummary {
+                            item_id: 1,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![83],
+                                villager_variant_id: Some(0),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_partial_villager_variant_present")
+        );
+        assert_eq!(
+            selected(
+                58,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![75],
+                    container_item_count: Some(2),
+                    container_items: vec![
+                        ItemStackTemplateSummary {
+                            item_id: 0,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![83],
+                                villager_variant_id: Some(0),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                        ItemStackTemplateSummary {
+                            item_id: 1,
+                            count: 1,
+                            component_patch: DataComponentPatchSummary {
+                                added_type_ids: vec![83],
+                                villager_variant_id: Some(0),
+                                ..DataComponentPatchSummary::default()
+                            },
+                        },
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_container_partial_villager_variant_absent")
+        );
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -9797,6 +9859,7 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_WRITTEN_BOOK = registerItem("component_condition_container_partial_written_book");
                 public static final Item COMPONENT_CONDITION_VILLAGER_VARIANT = registerItem("component_condition_villager_variant");
                 public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_VILLAGER_VARIANT = registerItem("component_condition_bundle_partial_villager_variant");
+                public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_VILLAGER_VARIANT = registerItem("component_condition_container_partial_villager_variant");
             }"#,
         );
         write_json(
@@ -11356,6 +11419,39 @@ mod tests {
         write_json(
             &assets
                 .join("items")
+                .join("component_condition_container_partial_villager_variant.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:container",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "predicates": {
+                                            "minecraft:villager/variant": "minecraft:plains"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_villager_variant_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_container_partial_villager_variant_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
                 .join("component_condition_enchantments_level.json"),
             r#"{
                 "model": {
@@ -12003,6 +12099,14 @@ mod tests {
             (
                 "component_condition_bundle_partial_villager_variant_absent",
                 [90, 60, 70, 255],
+            ),
+            (
+                "component_condition_container_partial_villager_variant_present",
+                [210, 245, 190, 255],
+            ),
+            (
+                "component_condition_container_partial_villager_variant_absent",
+                [70, 90, 60, 255],
             ),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);
