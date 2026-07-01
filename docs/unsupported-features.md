@@ -5862,9 +5862,9 @@ When an agent does any of the following, update this file in the same slice:
       matches `FireworksPredicate.flightDuration` `MinMaxBounds.Ints` plus
       `explosions.size` `CollectionPredicate.size` against the decoded
       explosions count. `minecraft:trim`
-      direct registry-key material constraints match the decoded
+      direct registry-key or trim-material-tag constraints match the decoded
       `ArmorTrim.material()` holder id through dynamic trim-material registry
-      keys when no pattern constraint is present. `minecraft:bundle_contents`
+      keys and native trim-material tag catalog. `minecraft:bundle_contents`
       `items.size` constraints match vanilla `CollectionPredicate.size` against
       the decoded bundle item count, and `items.contains` / `count` now support
       vanilla `ItemPredicate` direct item-key or item-tag HolderSets,
@@ -5876,8 +5876,9 @@ When an agent does any of the following, update this file in the same slice:
       `minecraft:fireworks`
       `explosions.contains` / `count` predicates now match decoded explosion
       shape / trail / twinkle summaries. `minecraft:trim` direct vanilla
-      registry-key pattern constraints now match decoded `ArmorTrim.pattern()`
-      holder ids through vanilla `TrimPatterns.bootstrap` order.
+      registry-key or trim-pattern-tag constraints now match decoded
+      `ArmorTrim.pattern()` holder ids through vanilla `TrimPatterns.bootstrap`
+      order and native trim-pattern tag catalog.
       `minecraft:enchantments` and patch-backed
       `minecraft:stored_enchantments` match decoded enchantment levels and
       direct registry-key or enchantment-tag HolderSet predicates when the
@@ -5891,9 +5892,8 @@ When an agent does any of the following, update this file in the same slice:
       `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
       constrained predicate types (inline enchantment holder payloads / server
       datapack tag remaps, bundle/container nested partial predicates and
-      complex exact component codecs, trim tag sets / inline material or pattern
-      payloads / datapack pattern registry-key remaps, and similar) remain
-      follow-up.
+      complex exact component codecs, trim inline material or pattern payloads /
+      datapack pattern registry-key remaps, and similar) remain follow-up.
     - `minecraft:charge_type` — `Charge.get` (`ROCKET` when any charged
       projectile is `minecraft:firework_rocket`, `ARROW` when charged otherwise,
       else `NONE`), using the native item registry to identify the projectile

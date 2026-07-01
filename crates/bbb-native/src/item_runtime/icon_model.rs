@@ -886,6 +886,12 @@ pub(super) struct IconResolveContext<'a> {
     /// `tags/enchantment` catalog used for `#namespace:path` HolderSet entries
     /// in vanilla `EnchantmentPredicate.enchantments`.
     pub enchantment_tags: Option<&'a TagCatalog>,
+    /// `tags/trim_material` catalog used for `#namespace:path` HolderSet
+    /// entries in vanilla `TrimPredicate.material`.
+    pub trim_material_tags: Option<&'a TagCatalog>,
+    /// `tags/trim_pattern` catalog used for `#namespace:path` HolderSet entries
+    /// in vanilla `TrimPredicate.pattern`.
+    pub trim_pattern_tags: Option<&'a TagCatalog>,
     /// `minecraft:trim_material` registry keys by holder id (the dynamic
     /// registry, projected from `bbb-world` at the call site).
     pub trim_material_keys: Option<&'a [String]>,
@@ -2411,7 +2417,11 @@ fn item_stack_matches_trim_predicate(
         else {
             return false;
         };
-        if !trim_registry_key_holder_set_matches(Some(material), material_key) {
+        if !trim_registry_key_holder_set_matches(
+            Some(material),
+            material_key,
+            ctx.trim_material_tags,
+        ) {
             return false;
         }
     }
@@ -2425,33 +2435,62 @@ fn item_stack_matches_trim_predicate(
         let Some(pattern_key) = VANILLA_TRIM_PATTERN_KEYS.get(pattern_index) else {
             return false;
         };
-        if !trim_registry_key_holder_set_matches(Some(pattern), pattern_key) {
+        if !trim_registry_key_holder_set_matches(Some(pattern), pattern_key, ctx.trim_pattern_tags)
+        {
             return false;
         }
     }
     true
 }
 
-fn trim_registry_key_holder_set_matches(value: Option<&Value>, registry_key: &str) -> bool {
+fn trim_registry_key_holder_set_matches(
+    value: Option<&Value>,
+    registry_key: &str,
+    registry_tags: Option<&TagCatalog>,
+) -> bool {
     match value {
         None => true,
-        Some(Value::String(expected)) => expected == registry_key,
-        Some(Value::Array(expected)) => expected
-            .iter()
-            .any(|expected| expected.as_str() == Some(registry_key)),
+        Some(Value::String(expected)) => {
+            trim_registry_key_holder_set_entry_matches(expected, registry_key, registry_tags)
+        }
+        Some(Value::Array(expected)) => expected.iter().any(|expected| {
+            expected.as_str().is_some_and(|expected| {
+                trim_registry_key_holder_set_entry_matches(expected, registry_key, registry_tags)
+            })
+        }),
         Some(_) => false,
+    }
+}
+
+fn trim_registry_key_holder_set_entry_matches(
+    expected: &str,
+    registry_key: &str,
+    registry_tags: Option<&TagCatalog>,
+) -> bool {
+    if let Some(tag_id) = expected.strip_prefix('#') {
+        registry_tags.is_some_and(|tags| tags.contains(tag_id, registry_key))
+    } else {
+        expected == registry_key
     }
 }
 
 fn trim_registry_key_holder_set_is_supported(value: &Value) -> bool {
     match value {
-        Value::String(expected) => !expected.starts_with('#'),
+        Value::String(expected) => trim_registry_key_holder_set_entry_is_supported(expected),
         Value::Array(expected) => expected.iter().all(|expected| {
             expected
                 .as_str()
-                .is_some_and(|expected| !expected.starts_with('#'))
+                .is_some_and(trim_registry_key_holder_set_entry_is_supported)
         }),
         _ => false,
+    }
+}
+
+fn trim_registry_key_holder_set_entry_is_supported(expected: &str) -> bool {
+    if let Some(tag_id) = expected.strip_prefix('#') {
+        !tag_id.is_empty()
+    } else {
+        !expected.is_empty()
     }
 }
 
