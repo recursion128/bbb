@@ -27,6 +27,7 @@ pub(crate) enum ParticleTickMotionDescriptor {
     Snowflake,
     FlyTowardsPosition,
     TrailTarget,
+    VibrationSignal,
     Portal,
     ReversePortal,
 }
@@ -896,6 +897,20 @@ impl ParticleDescriptor {
                 has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
+            "minecraft:vibration" => Self {
+                provider: "VibrationSignalParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::CommandOption { fallback: 1 },
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::FixedQuad {
+                    size: 0.3,
+                    color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Zero,
+                friction: 0.98,
+                gravity: 0.0,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
             "minecraft:effect"
             | "minecraft:instant_effect"
             | "minecraft:entity_effect"
@@ -1247,6 +1262,7 @@ impl ParticleDescriptor {
                 ParticleTickMotionDescriptor::FlyTowardsPosition
             }
             "TrailParticle.Provider" => ParticleTickMotionDescriptor::TrailTarget,
+            "VibrationSignalParticle.Provider" => ParticleTickMotionDescriptor::VibrationSignal,
             "PortalParticle.Provider" => ParticleTickMotionDescriptor::Portal,
             "ReversePortalParticle.ReversePortalProvider" => {
                 ParticleTickMotionDescriptor::ReversePortal
@@ -1274,6 +1290,7 @@ impl ParticleDescriptor {
             | "SculkChargeParticle.Provider"
             | "SculkChargePopParticle.Provider"
             | "ShriekParticle.Provider"
+            | "VibrationSignalParticle.Provider"
             | "FlyTowardsPositionParticle.VaultConnectionProvider" => {
                 ParticleLightEmissionDescriptor::FullBlock
             }
@@ -2050,6 +2067,34 @@ mod tests {
         assert_eq!(
             trail.light_emission(),
             ParticleLightEmissionDescriptor::FullBright
+        );
+
+        assert_descriptor(
+            "minecraft:vibration",
+            "VibrationSignalParticle.Provider",
+            ParticleLifetimeDescriptor::CommandOption { fallback: 1 },
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::FixedQuad {
+                size: 0.3,
+                color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+            },
+            0.98,
+            0.0,
+            true,
+            false,
+        );
+        let vibration = ParticleDescriptor::for_particle("minecraft:vibration");
+        assert_eq!(
+            vibration.initial_velocity,
+            ParticleInitialVelocityDescriptor::Zero
+        );
+        assert_eq!(
+            vibration.tick_motion(),
+            ParticleTickMotionDescriptor::VibrationSignal
+        );
+        assert_eq!(
+            vibration.light_emission(),
+            ParticleLightEmissionDescriptor::FullBlock
         );
 
         assert_descriptor(

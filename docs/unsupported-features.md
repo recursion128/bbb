@@ -377,7 +377,15 @@ When an agent does any of the following, update this file in the same slice:
         vanilla overlay size / render-alpha formulas. `trail` now maps to
         `TrailParticle.Provider` with decoded target / RGB color / duration,
         vanilla random color scaling, target interpolation, full-bright light,
-        and opaque layer. `sculk_charge` now carries decoded
+        and opaque layer. `vibration` now maps block `PositionSource` options
+        to `VibrationSignalParticle.Provider` with decoded target center /
+        arrival ticks, random sprite selection, fixed `0.3` quad size,
+        translucent layer, full-block light, target interpolation, vanilla
+        yaw/pitch/sway state, and the two rotated quads from
+        `VibrationSignalParticle.extract`. Entity `PositionSource` target
+        resolution is consumed without fabricating a target; renderer keeps
+        unresolved vibration instances out of vertex submission until particle
+        commands can query the world/entity table. `sculk_charge` now carries decoded
         `SculkChargeParticleOptions.roll` through to billboard roll rotation.
         `dust` / `dust_color_transition` now map to their vanilla providers
         with decoded RGB colors, transition target color, clamped scale,

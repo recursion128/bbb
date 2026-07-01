@@ -127,6 +127,14 @@ pub(crate) struct ParticleInstance {
     pub(crate) previous_roll: f32,
     #[serde(default)]
     pub(crate) roll: f32,
+    #[serde(default)]
+    pub(crate) previous_yaw: f32,
+    #[serde(default)]
+    pub(crate) yaw: f32,
+    #[serde(default)]
+    pub(crate) previous_pitch: f32,
+    #[serde(default)]
+    pub(crate) pitch: f32,
     #[serde(default = "default_particle_quad_size")]
     pub(crate) base_quad_size: f32,
     #[serde(default = "default_particle_color")]
@@ -559,7 +567,13 @@ impl ParticleInstance {
     fn from_spawn_command(command: ParticleSpawnCommand, random: &mut ParticleRandom) -> Self {
         let descriptor = ParticleDescriptor::for_particle(&command.particle_id);
         let particle_limit = particle_limit_for_particle(&command.particle_id);
-        let render_group = particle_render_group_for_particle(&command.particle_id);
+        let render_group = if descriptor.provider == "VibrationSignalParticle.Provider"
+            && command.option_target.is_none()
+        {
+            ParticleRenderGroup::NoRender
+        } else {
+            particle_render_group_for_particle(&command.particle_id)
+        };
         let render_layer = particle_render_layer_for_particle(&command.particle_id);
         let mut position = descriptor.initial_position(command.position, random);
         let mut velocity = descriptor.initial_velocity.sample(command.velocity, random);
@@ -640,6 +654,18 @@ impl ParticleInstance {
         } else {
             (0.0, 0.0)
         };
+        let (previous_yaw, yaw, previous_pitch, pitch) =
+            if descriptor.provider == "VibrationSignalParticle.Provider" {
+                command
+                    .option_target
+                    .map(|target| {
+                        let (yaw, pitch) = vibration_particle_angles(position, target);
+                        (yaw, yaw, pitch, pitch)
+                    })
+                    .unwrap_or((0.0, 0.0, 0.0, 0.0))
+            } else {
+                (0.0, 0.0, 0.0, 0.0)
+            };
         Self {
             particle_type_id: command.particle_type_id,
             particle_id: command.particle_id,
@@ -654,6 +680,10 @@ impl ParticleInstance {
             lifetime_ticks,
             previous_roll,
             roll,
+            previous_yaw,
+            yaw,
+            previous_pitch,
+            pitch,
             base_quad_size: visual.base_quad_size,
             color,
             color_fade_target: descriptor.color_fade_target(),
@@ -785,6 +815,28 @@ impl ParticleInstance {
                     lerp_f64(alpha, self.position[1], target[1]),
                     lerp_f64(alpha, self.position[2], target[2]),
                 ];
+            }
+            ParticleTickMotionDescriptor::VibrationSignal => {
+                let Some(target) = self.option_target else {
+                    return;
+                };
+                let next_age = self.age_ticks.saturating_add(1);
+                let ticks_remaining = self.lifetime_ticks.saturating_sub(next_age);
+                if ticks_remaining == 0 {
+                    self.position = target;
+                } else {
+                    let alpha = 1.0 / f64::from(ticks_remaining);
+                    self.position = [
+                        lerp_f64(alpha, self.position[0], target[0]),
+                        lerp_f64(alpha, self.position[1], target[1]),
+                        lerp_f64(alpha, self.position[2], target[2]),
+                    ];
+                }
+                let (yaw, pitch) = vibration_particle_angles(self.position, target);
+                self.previous_yaw = self.yaw;
+                self.yaw = yaw;
+                self.previous_pitch = self.pitch;
+                self.pitch = pitch;
             }
             ParticleTickMotionDescriptor::Portal => {
                 let next_age = self.age_ticks.saturating_add(1);
@@ -1082,6 +1134,13 @@ fn append_particle_instance_vertices(
         return;
     }
 
+    if instance.provider == "VibrationSignalParticle.Provider" {
+        for rotation in vibration_particle_rotations(instance) {
+            append_rotated_particle_quad(vertices, instance, uv, rotation);
+        }
+        return;
+    }
+
     vertices.extend(particle_instance_vertices(instance, uv, axes));
 }
 
@@ -1157,6 +1216,29 @@ fn shriek_particle_rotations() -> [Quat; 2] {
             SHRIEK_MAGICAL_X_ROT,
             0.0,
         ),
+    ]
+}
+
+fn vibration_particle_rotations(instance: &ParticleInstance) -> [Quat; 2] {
+    let random_sway =
+        vibration_particle_sway(instance.age_ticks, DEFAULT_PARTICLE_RENDER_PARTIAL_TICK);
+    let yaw = lerp_f32(
+        DEFAULT_PARTICLE_RENDER_PARTIAL_TICK,
+        instance.previous_yaw,
+        instance.yaw,
+    );
+    let pitch = lerp_f32(
+        DEFAULT_PARTICLE_RENDER_PARTIAL_TICK,
+        instance.previous_pitch,
+        instance.pitch,
+    ) + std::f32::consts::FRAC_PI_2;
+    [
+        Quat::from_rotation_y(yaw)
+            * Quat::from_rotation_x(-pitch)
+            * Quat::from_rotation_y(random_sway),
+        Quat::from_rotation_y(-std::f32::consts::PI + yaw)
+            * Quat::from_rotation_x(pitch)
+            * Quat::from_rotation_y(random_sway),
     ]
 }
 
@@ -1237,6 +1319,19 @@ fn flash_overlay_alpha(age_ticks: u32, partial_tick: f32) -> f32 {
     0.6 - (age_ticks as f32 + partial_tick.clamp(0.0, 1.0) - 1.0) * 0.25 * 0.5
 }
 
+fn vibration_particle_angles(position: [f64; 3], target: [f64; 3]) -> (f32, f32) {
+    let dx = position[0] - target[0];
+    let dy = position[1] - target[1];
+    let dz = position[2] - target[2];
+    let yaw = dx.atan2(dz) as f32;
+    let pitch = dy.atan2((dx * dx + dz * dz).sqrt()) as f32;
+    (yaw, pitch)
+}
+
+fn vibration_particle_sway(age_ticks: u32, partial_tick: f32) -> f32 {
+    ((age_ticks as f32 + partial_tick.clamp(0.0, 1.0) - std::f32::consts::TAU) * 0.05).sin() * 2.0
+}
+
 fn lerp_f64(alpha: f64, start: f64, end: f64) -> f64 {
     start + alpha * (end - start)
 }
@@ -1280,6 +1375,7 @@ fn particle_render_layer_for_particle(particle_id: &str) -> ParticleRenderLayer 
         | "minecraft:sculk_charge"
         | "minecraft:sculk_charge_pop"
         | "minecraft:shriek"
+        | "minecraft:vibration"
         | "minecraft:vault_connection"
         | "minecraft:effect"
         | "minecraft:instant_effect"
@@ -1697,6 +1793,47 @@ mod tests {
         assert_close3(instance.position, [1.0, 2.0, 3.0]);
 
         let mut terminal = test_instance_with_lifetime("minecraft:trail", 5);
+        terminal.age_ticks = 4;
+        terminal.position = [3.0, 6.0, 9.0];
+        terminal.previous_position = terminal.position;
+        terminal.option_target = Some([4.0, 8.0, 12.0]);
+        terminal.tick_motion_without_collision();
+
+        assert_close3(terminal.previous_position, [3.0, 6.0, 9.0]);
+        assert_close3(terminal.position, [4.0, 8.0, 12.0]);
+        assert!(terminal
+            .position
+            .iter()
+            .all(|coordinate| coordinate.is_finite()));
+    }
+
+    #[test]
+    fn particle_runtime_vibration_tick_interpolates_toward_option_target_and_rotation() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:vibration", 5);
+        instance.position = [0.0, 0.0, 0.0];
+        instance.previous_position = instance.position;
+        instance.option_target = Some([4.0, 8.0, 12.0]);
+        instance.previous_yaw = 8.0;
+        instance.yaw = 9.0;
+        instance.previous_pitch = 6.0;
+        instance.pitch = 7.0;
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.expired_instances, 0);
+        let instance = &particles.active_instances()[0];
+        let (yaw, pitch) = vibration_particle_angles([1.0, 2.0, 3.0], [4.0, 8.0, 12.0]);
+        assert_eq!(instance.age_ticks, 1);
+        assert_close3(instance.previous_position, [0.0, 0.0, 0.0]);
+        assert_close3(instance.position, [1.0, 2.0, 3.0]);
+        assert_close_f32(instance.previous_yaw, 9.0);
+        assert_close_f32(instance.yaw, yaw);
+        assert_close_f32(instance.previous_pitch, 7.0);
+        assert_close_f32(instance.pitch, pitch);
+
+        let mut terminal = test_instance_with_lifetime("minecraft:vibration", 5);
         terminal.age_ticks = 4;
         terminal.position = [3.0, 6.0, 9.0];
         terminal.previous_position = terminal.position;
@@ -2527,6 +2664,45 @@ mod tests {
         assert_eq!(particle_light_with_emission(&trail, [0.2, 0.3]), [1.0, 1.0]);
         assert_eq!(trail.render_layer, ParticleRenderLayer::Opaque);
 
+        let mut vibration_random = ParticleRandom::new(68);
+        let mut vibration_command = spawn_command("minecraft:vibration", 1.0);
+        vibration_command.position = [1.0, 2.0, 3.0];
+        vibration_command.velocity = [9.0, 9.0, 9.0];
+        vibration_command.option_target = Some([4.0, 6.0, 8.0]);
+        vibration_command.option_duration_ticks = Some(20);
+        let vibration =
+            ParticleInstance::from_spawn_command(vibration_command, &mut vibration_random);
+        let (yaw, pitch) = vibration_particle_angles([1.0, 2.0, 3.0], [4.0, 6.0, 8.0]);
+        assert_eq!(vibration.provider, "VibrationSignalParticle.Provider");
+        assert_eq!(
+            vibration.current_sprite_id.as_deref(),
+            Some("minecraft:generic_0")
+        );
+        assert_eq!(vibration.sprite_selection, ParticleSpriteSelection::Random);
+        assert_eq!(vibration.lifetime_ticks, 20);
+        assert_close_f32(vibration.base_quad_size, 0.3);
+        assert_eq!(vibration.color, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(vibration.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(
+            vibration.tick_motion,
+            ParticleTickMotionDescriptor::VibrationSignal
+        );
+        assert_eq!(vibration.option_target, Some([4.0, 6.0, 8.0]));
+        assert_eq!(vibration.option_duration_ticks, Some(20));
+        assert_close_f32(vibration.previous_yaw, yaw);
+        assert_close_f32(vibration.yaw, yaw);
+        assert_close_f32(vibration.previous_pitch, pitch);
+        assert_close_f32(vibration.pitch, pitch);
+        assert_eq!(
+            vibration.light_emission,
+            ParticleLightEmissionDescriptor::FullBlock
+        );
+        assert_eq!(
+            particle_light_with_emission(&vibration, [0.2, 0.3]),
+            [1.0, 0.3]
+        );
+        assert_eq!(vibration.render_layer, ParticleRenderLayer::Translucent);
+
         let mut spell_random = ParticleRandom::new(61);
         let mut spell_command = spawn_command("minecraft:infested", 1.0);
         spell_command.velocity = [0.0, 1.0, 0.0];
@@ -3178,6 +3354,14 @@ mod tests {
             spawn_command("minecraft:vault_connection", 10.0),
             &mut random,
         );
+        let mut vibration_command = spawn_command("minecraft:vibration", 11.0);
+        vibration_command.option_target = Some([12.0, 1.0, 0.0]);
+        vibration_command.option_duration_ticks = Some(20);
+        let vibration = ParticleInstance::from_spawn_command(vibration_command, &mut random);
+        let unresolved_vibration = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:vibration", 12.0),
+            &mut random,
+        );
 
         assert_eq!(opaque.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(cloud.render_group, ParticleRenderGroup::SingleQuads);
@@ -3189,6 +3373,11 @@ mod tests {
         assert_eq!(nautilus.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(totem.render_group, ParticleRenderGroup::SingleQuads);
         assert_eq!(vault.render_group, ParticleRenderGroup::SingleQuads);
+        assert_eq!(vibration.render_group, ParticleRenderGroup::SingleQuads);
+        assert_eq!(
+            unresolved_vibration.render_group,
+            ParticleRenderGroup::NoRender
+        );
         assert_eq!(opaque.render_layer, ParticleRenderLayer::Opaque);
         assert_eq!(cloud.render_layer, ParticleRenderLayer::Translucent);
         assert_eq!(squid_ink.render_layer, ParticleRenderLayer::Translucent);
@@ -3199,6 +3388,7 @@ mod tests {
         assert_eq!(enchant.render_layer, ParticleRenderLayer::Opaque);
         assert_eq!(nautilus.render_layer, ParticleRenderLayer::Opaque);
         assert_eq!(vault.render_layer, ParticleRenderLayer::Translucent);
+        assert_eq!(vibration.render_layer, ParticleRenderLayer::Translucent);
     }
 
     #[test]
@@ -3509,7 +3699,7 @@ mod tests {
     #[test]
     fn particle_runtime_applies_vanilla_particle_light_emission_overrides() {
         let sampled_light = [2.0 / 15.0, 7.0 / 15.0];
-        let mut particles = ParticleRuntimeState::with_capacities(14, 14);
+        let mut particles = ParticleRuntimeState::with_capacities(15, 15);
         let cloud = test_instance_with_lifetime("minecraft:cloud", 20);
         let mut flame = test_instance_with_lifetime("minecraft:flame", 20);
         flame.age_ticks = 4;
@@ -3529,6 +3719,7 @@ mod tests {
         reverse_portal.age_ticks = 30;
         let shriek = test_instance_with_lifetime("minecraft:shriek", 30);
         let vault_connection = test_instance_with_lifetime("minecraft:vault_connection", 40);
+        let vibration = test_instance_with_lifetime("minecraft:vibration", 40);
 
         particles.active_instances.push_back(cloud);
         particles.active_instances.push_back(flame);
@@ -3544,6 +3735,7 @@ mod tests {
         particles.active_instances.push_back(reverse_portal);
         particles.active_instances.push_back(shriek);
         particles.active_instances.push_back(vault_connection);
+        particles.active_instances.push_back(vibration);
 
         particles.refresh_lights(|_| sampled_light);
 
@@ -3594,6 +3786,10 @@ mod tests {
         );
         assert_eq!(
             particles.active_instances()[13].light,
+            [1.0, sampled_light[1]]
+        );
+        assert_eq!(
+            particles.active_instances()[14].light,
             [1.0, sampled_light[1]]
         );
     }
@@ -3870,6 +4066,49 @@ mod tests {
         assert_close_f32(vertices[6].color[3], 1.0 - 0.5 / 30.0);
     }
 
+    #[test]
+    fn particle_billboard_vertices_emit_vanilla_vibration_rotated_quads() {
+        let mut instance = test_instance_with_lifetime("minecraft:vibration", 20);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.current_sprite_id = Some("minecraft:generic_0".to_string());
+        instance.base_quad_size = 0.3;
+        instance.previous_pitch = -std::f32::consts::FRAC_PI_2;
+        instance.pitch = -std::f32::consts::FRAC_PI_2;
+        instance.light = [1.0, 0.4];
+        let sprite_uvs = BTreeMap::from([(
+            "minecraft:generic_0".to_string(),
+            ParticleUvRect {
+                min: [0.25, 0.5],
+                max: [0.75, 0.875],
+            },
+        )]);
+
+        let vertices = particle_billboard_vertices(
+            [&instance],
+            &sprite_uvs,
+            ParticleBillboardAxes {
+                right: Vec3::X,
+                up: Vec3::Y,
+            },
+            Some(ParticlePipelineKind::Translucent),
+        );
+
+        let half_size = 0.15;
+        let random_sway = vibration_particle_sway(0, DEFAULT_PARTICLE_RENDER_PARTIAL_TICK);
+        let first_rotation = Quat::from_rotation_y(random_sway);
+        let second_rotation = Quat::from_rotation_y(-std::f32::consts::PI + random_sway);
+        let center = Vec3::new(1.0, 2.0, 3.0);
+        let first_bottom_left = center + first_rotation * Vec3::new(-half_size, -half_size, 0.0);
+        let second_bottom_left = center + second_rotation * Vec3::new(-half_size, -half_size, 0.0);
+
+        assert_eq!(vertices.len(), 12);
+        assert_close3_f32(vertices[0].position, first_bottom_left.to_array());
+        assert_close3_f32(vertices[6].position, second_bottom_left.to_array());
+        assert_eq!(vertices[0].uv, [0.25, 0.875]);
+        assert_eq!(vertices[6].light, [1.0, 0.4]);
+        assert_eq!(vertices[6].color, [1.0, 1.0, 1.0, 1.0]);
+    }
+
     fn test_instance_with_lifetime(particle_id: &str, lifetime_ticks: u32) -> ParticleInstance {
         let descriptor = ParticleDescriptor::for_particle(particle_id);
         ParticleInstance {
@@ -3886,6 +4125,10 @@ mod tests {
             lifetime_ticks,
             previous_roll: 0.0,
             roll: 0.0,
+            previous_yaw: 0.0,
+            yaw: 0.0,
+            previous_pitch: 0.0,
+            pitch: 0.0,
             base_quad_size: DEFAULT_PARTICLE_QUAD_SIZE,
             color: [1.0, 1.0, 1.0, 1.0],
             color_fade_target: descriptor.color_fade_target(),

@@ -1279,6 +1279,24 @@ fn particle_option_render_state(
                 ..ParticleOptionRenderState::default()
             }
         }
+        VIBRATION_PARTICLE_TYPE_ID => {
+            let Ok(target) = decode_vibration_position_source_target(&mut decoder) else {
+                return ParticleOptionRenderState::default();
+            };
+            let Ok(arrival_ticks) = decoder.read_var_i32() else {
+                return ParticleOptionRenderState::default();
+            };
+            if !decoder.is_empty() {
+                return ParticleOptionRenderState::default();
+            }
+            ParticleOptionRenderState {
+                target,
+                duration_ticks: u32::try_from(arrival_ticks)
+                    .ok()
+                    .filter(|duration| *duration > 0),
+                ..ParticleOptionRenderState::default()
+            }
+        }
         TRAIL_PARTICLE_TYPE_ID => {
             let Ok(target) = decode_option_vec3d(&mut decoder) else {
                 return ParticleOptionRenderState::default();
@@ -1302,6 +1320,32 @@ fn particle_option_render_state(
             }
         }
         _ => ParticleOptionRenderState::default(),
+    }
+}
+
+fn decode_vibration_position_source_target(
+    decoder: &mut Decoder<'_>,
+) -> bbb_protocol::codec::Result<Option<[f64; 3]>> {
+    match decoder.read_var_i32()? {
+        0 => {
+            let packed = decoder.read_i64()?;
+            let x = (packed >> 38) as i32;
+            let y = ((packed << 52) >> 52) as i32;
+            let z = ((packed << 26) >> 38) as i32;
+            Ok(Some([
+                f64::from(x) + 0.5,
+                f64::from(y) + 0.5,
+                f64::from(z) + 0.5,
+            ]))
+        }
+        1 => {
+            decoder.read_var_i32()?;
+            decoder.read_f32()?;
+            Ok(None)
+        }
+        other => Err(bbb_protocol::codec::ProtocolError::InvalidData(format!(
+            "unknown position source type id {other}"
+        ))),
     }
 }
 
@@ -1480,6 +1524,7 @@ const SOUL_FIRE_FLAME_PARTICLE_TYPE_ID: i32 = 40;
 const FLASH_PARTICLE_TYPE_ID: i32 = 42;
 const HAPPY_VILLAGER_PARTICLE_TYPE_ID: i32 = 43;
 const INSTANT_EFFECT_PARTICLE_TYPE_ID: i32 = 46;
+const VIBRATION_PARTICLE_TYPE_ID: i32 = 48;
 const TRAIL_PARTICLE_TYPE_ID: i32 = 49;
 const LARGE_SMOKE_PARTICLE_TYPE_ID: i32 = 55;
 const LAVA_PARTICLE_TYPE_ID: i32 = 56;
@@ -1819,6 +1864,39 @@ mod tests {
         );
         assert_eq!(command.option_duration_ticks, Some(27));
         assert_eq!(command.option_power, None);
+    }
+
+    #[test]
+    fn vibration_particle_options_decode_block_target_and_arrival_into_spawn_command() {
+        let mut resolver = test_resolver(0);
+        let mut packet = level_particles_packet(VIBRATION_PARTICLE_TYPE_ID, 0);
+        packet.particle.raw_options = vibration_particle_block_options([1, 64, -2], 27);
+
+        let batch = resolver.resolve_level_particles(&packet);
+
+        assert_eq!(batch.len(), 1);
+        let command = &batch.commands[0];
+        assert_eq!(command.particle_id, "minecraft:vibration");
+        assert_eq!(command.sprite_ids, vec!["minecraft:vibration".to_string()]);
+        assert_eq!(command.option_target, Some([1.5, 64.5, -1.5]));
+        assert_eq!(command.option_duration_ticks, Some(27));
+        assert_eq!(command.option_color, None);
+        assert_eq!(command.option_power, None);
+    }
+
+    #[test]
+    fn vibration_particle_options_keep_entity_source_unresolved_for_later_lookup() {
+        let mut resolver = test_resolver(0);
+        let mut packet = level_particles_packet(VIBRATION_PARTICLE_TYPE_ID, 0);
+        packet.particle.raw_options = vibration_particle_entity_options(123, 0.75, 27);
+
+        let batch = resolver.resolve_level_particles(&packet);
+
+        assert_eq!(batch.len(), 1);
+        let command = &batch.commands[0];
+        assert_eq!(command.particle_id, "minecraft:vibration");
+        assert_eq!(command.option_target, None);
+        assert_eq!(command.option_duration_ticks, Some(27));
     }
 
     #[test]
@@ -2768,6 +2846,7 @@ mod tests {
                 "spell_0",
                 "dragon_breath_0",
                 "flash",
+                "vibration",
                 "sculk_charge_0",
                 "flame",
                 "soul_fire_flame",
@@ -2861,6 +2940,14 @@ mod tests {
             r#"{
               "textures": [
                 "minecraft:flash"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("vibration.json"),
+            r#"{
+              "textures": [
+                "minecraft:vibration"
               ]
             }"#,
         );
@@ -3134,6 +3221,33 @@ mod tests {
         out.extend_from_slice(&color.to_be_bytes());
         write_positive_var_i32(&mut out, duration);
         out
+    }
+
+    fn vibration_particle_block_options(pos: [i32; 3], arrival_ticks: i32) -> Vec<u8> {
+        let mut out = Vec::new();
+        write_positive_var_i32(&mut out, 0);
+        out.extend_from_slice(&encode_test_block_pos(pos).to_be_bytes());
+        write_positive_var_i32(&mut out, arrival_ticks);
+        out
+    }
+
+    fn vibration_particle_entity_options(
+        entity_id: i32,
+        y_offset: f32,
+        arrival_ticks: i32,
+    ) -> Vec<u8> {
+        let mut out = Vec::new();
+        write_positive_var_i32(&mut out, 1);
+        write_positive_var_i32(&mut out, entity_id);
+        out.extend_from_slice(&y_offset.to_be_bytes());
+        write_positive_var_i32(&mut out, arrival_ticks);
+        out
+    }
+
+    fn encode_test_block_pos(pos: [i32; 3]) -> i64 {
+        (((pos[0] as i64) & 0x3ffffff) << 38)
+            | (((pos[2] as i64) & 0x3ffffff) << 12)
+            | ((pos[1] as i64) & 0xfff)
     }
 
     fn write_positive_var_i32(out: &mut Vec<u8>, value: i32) {
