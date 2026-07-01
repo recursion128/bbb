@@ -1019,7 +1019,13 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     invalid-target random spin remain follow-up.
 - HUD / inventory：
   - vanilla font / count / durability / cooldown / tooltip / screen depth behavior。
-  - flat/generated item 与 3D block item 在 GUI pass 中的精确排序。
+  - [x] flat/generated item 与 3D block item 在 GUI pass 中的精确排序：
+    P1-4 已用 vanilla `GuiGraphicsExtractor.itemDecorations` /
+    `GuiItemAtlas` 旁证固定 flat/generated item sprite -> durability /
+    cooldown / count decoration order，并用 renderer source-order tests 固定
+    HUD base -> GUI 3D item depth-clear pass -> HUD overlay 的 pass 顺序。
+    剩余 HUD/inventory parity 继续限定为字体、count/durability/cooldown/
+    tooltip 的视觉细节和更宽 screen behavior。
 
 完成标准：
 

@@ -1105,7 +1105,10 @@ When an agent does any of the following, update this file in the same slice:
     decorations, front highlights, tooltips, and full-screen overlays. Renderer
     source-order tests pin the world-main-target -> transparency final blit ->
     HUD base -> GUI 3D item depth-clear pass -> HUD overlay -> screenshot
-    readback ordering. The
+    readback ordering. This closes the stale P1-3 flat/generated-vs-3D GUI pass
+    sorting gap; remaining HUD/inventory work is limited to font, count,
+    durability, cooldown, tooltip, and broader screen visual parity rather than
+    base/depth/overlay pass placement. The
     entity-in-UI preview surface now pins vanilla `GuiGraphicsExtractor.entity`
     / `GuiEntityRenderer` behavior at the render-plan boundary: `ENTITY_IN_UI`
     lighting, forced full-bright entity light coords, outline/glow disabled,
