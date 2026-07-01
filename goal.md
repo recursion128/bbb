@@ -1473,8 +1473,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `MultifaceBlock.unpack(data & 63)` face selection, vanilla `0.65` /
     `0.57` / `0.35` step factors, `+-0.005` speed supplier, and
     `SculkChargeParticleOptions` roll (`DOWN` for full block, `UP` for
-    multiface). The `count == 0` `sculk_charge_pop` branch remains deferred
-    because vanilla chooses count/spread from the target block collision shape.
+    multiface); the `count == 0` branch now emits vanilla
+    `minecraft:sculk_charge_pop` submissions with target-block full-shape
+    context (`40` particles, `0.45` spread) vs non-full/unknown context
+    (`20` particles, `0.25` spread), and `0.07` velocity scale.
   - block-state shape-sensitive `spawnParticleInBlock` heights plus
     `1505` (`PARTICLES_AND_SOUND_PLANT_GROWTH`) BonemealableBlock / water
     branches plus remaining block/item option event particles remain follow-up

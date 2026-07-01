@@ -24,6 +24,7 @@ pub(crate) trait ParticleEventSink {
     fn spawn_level_event_particles(
         &mut self,
         event: &LevelEvent,
+        context: LevelEventParticleContext,
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch;
 }
@@ -31,6 +32,11 @@ pub(crate) trait ParticleEventSink {
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub(crate) struct LevelParticleSpawnContext {
     pub(crate) camera_position: Option<[f64; 3]>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct LevelEventParticleContext {
+    pub(crate) sculk_charge_pop_full_block: Option<bool>,
 }
 
 pub(crate) struct NativeParticleRuntime {
@@ -77,9 +83,11 @@ impl ParticleEventSink for NativeParticleRuntime {
     fn spawn_level_event_particles(
         &mut self,
         event: &LevelEvent,
+        context: LevelEventParticleContext,
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch {
-        self.resolver.resolve_level_event_particles(event, random)
+        self.resolver
+            .resolve_level_event_particles_with_context(event, context, random)
     }
 }
 
@@ -328,6 +336,19 @@ impl ParticleCommandResolver {
         event: &LevelEvent,
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch {
+        self.resolve_level_event_particles_with_context(
+            event,
+            LevelEventParticleContext::default(),
+            random,
+        )
+    }
+
+    fn resolve_level_event_particles_with_context(
+        &self,
+        event: &LevelEvent,
+        context: LevelEventParticleContext,
+        random: &mut LevelEventSoundRandomState,
+    ) -> ParticleSpawnBatch {
         match event.event_type {
             LAVA_EXTINGUISH_LEVEL_EVENT => {
                 let mut spawns = Vec::with_capacity(8);
@@ -473,7 +494,7 @@ impl ParticleCommandResolver {
                 BLOCK_FACE_PARTICLE_MAX,
                 random,
             ),
-            SCULK_CHARGE_LEVEL_EVENT => self.sculk_charge_particle_batch(event, random),
+            SCULK_CHARGE_LEVEL_EVENT => self.sculk_charge_particle_batch(event, context, random),
             EGG_CRACK_LEVEL_EVENT => self.block_face_particle_batch(
                 event,
                 EGG_CRACK_PARTICLE_TYPE_ID,
@@ -539,11 +560,16 @@ impl ParticleCommandResolver {
     fn sculk_charge_particle_batch(
         &self,
         event: &LevelEvent,
+        context: LevelEventParticleContext,
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch {
         let count = event.data >> 6;
         if count <= 0 {
-            return ParticleSpawnBatch::default();
+            return self.sculk_charge_pop_particle_batch(
+                event,
+                context.sculk_charge_pop_full_block.unwrap_or(false),
+                random,
+            );
         }
 
         let template = match self.simple_particle_template(SCULK_CHARGE_PARTICLE_TYPE_ID) {
@@ -602,6 +628,53 @@ impl ParticleCommandResolver {
             }
         }
 
+        batch
+    }
+
+    fn sculk_charge_pop_particle_batch(
+        &self,
+        event: &LevelEvent,
+        is_full_block: bool,
+        random: &mut LevelEventSoundRandomState,
+    ) -> ParticleSpawnBatch {
+        let template = match self.simple_particle_template(SCULK_CHARGE_POP_PARTICLE_TYPE_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+        let particle_count = if is_full_block { 40 } else { 20 };
+        let spread = if is_full_block {
+            SCULK_CHARGE_POP_FULL_BLOCK_SPREAD
+        } else {
+            SCULK_CHARGE_POP_PARTIAL_BLOCK_SPREAD
+        };
+        for _ in 0..particle_count {
+            let velocity_x = 2.0 * f64::from(random.next_float()) - 1.0;
+            let velocity_y = 2.0 * f64::from(random.next_float()) - 1.0;
+            let velocity_z = 2.0 * f64::from(random.next_float()) - 1.0;
+            batch.commands.push(self.command_for_type(
+                template.particle_type,
+                &template.sprite_ids,
+                Vec3d {
+                    x: f64::from(event.pos.x) + 0.5 + velocity_x * spread,
+                    y: f64::from(event.pos.y) + 0.5 + velocity_y * spread,
+                    z: f64::from(event.pos.z) + 0.5 + velocity_z * spread,
+                },
+                Vec3d {
+                    x: velocity_x * SCULK_CHARGE_POP_SPEED,
+                    y: velocity_y * SCULK_CHARGE_POP_SPEED,
+                    z: velocity_z * SCULK_CHARGE_POP_SPEED,
+                },
+                template.particle_type.override_limiter,
+                false,
+                0,
+                0,
+                ParticleOptionRenderState::default(),
+            ));
+        }
         batch
     }
 
@@ -1731,6 +1804,7 @@ const GUST_EMITTER_LARGE_PARTICLE_TYPE_ID: i32 = 26;
 const GUST_EMITTER_SMALL_PARTICLE_TYPE_ID: i32 = 27;
 const FLAME_PARTICLE_TYPE_ID: i32 = 32;
 const SCULK_CHARGE_PARTICLE_TYPE_ID: i32 = 38;
+const SCULK_CHARGE_POP_PARTICLE_TYPE_ID: i32 = 39;
 const SOUL_FIRE_FLAME_PARTICLE_TYPE_ID: i32 = 40;
 const FLASH_PARTICLE_TYPE_ID: i32 = 42;
 const HAPPY_VILLAGER_PARTICLE_TYPE_ID: i32 = 43;
@@ -1770,6 +1844,9 @@ const SCULK_CHARGE_FULL_BLOCK_Y_FACTOR: f64 = 0.65;
 const SCULK_CHARGE_FULL_BLOCK_SIDE_FACTOR: f64 = 0.57;
 const SCULK_CHARGE_MULTIFACE_FACTOR: f64 = 0.35;
 const SCULK_CHARGE_SPEED_VAR: f64 = 0.005;
+const SCULK_CHARGE_POP_PARTIAL_BLOCK_SPREAD: f64 = 0.25;
+const SCULK_CHARGE_POP_FULL_BLOCK_SPREAD: f64 = 0.45;
+const SCULK_CHARGE_POP_SPEED: f64 = 0.07;
 const ELECTRIC_SPARK_AXIS_RADIUS: f64 = 0.125;
 const ELECTRIC_SPARK_AXIS_MIN: i32 = 10;
 const ELECTRIC_SPARK_AXIS_MAX: i32 = 19;
@@ -2808,7 +2885,38 @@ mod tests {
             },
             &mut sculk_charge_pop_random,
         );
-        assert!(sculk_charge_pop.is_empty());
+        let expected_sculk_charge_pop = expected_sculk_charge_pop_particles(false);
+        assert_eq!(sculk_charge_pop.len(), expected_sculk_charge_pop.len());
+        assert_sculk_charge_pop_command(
+            &sculk_charge_pop.commands[0],
+            &expected_sculk_charge_pop[0],
+        );
+        assert_eq!(
+            sculk_charge_pop.commands[0].sprite_ids,
+            vec!["minecraft:sculk_charge_pop_0".to_string()]
+        );
+
+        let mut sculk_charge_pop_full_random = LevelEventSoundRandomState::with_seed(0);
+        let sculk_charge_pop_full = resolver.resolve_level_event_particles_with_context(
+            &LevelEvent {
+                event_type: 3006,
+                data: 0,
+                ..level_event_packet(3006)
+            },
+            LevelEventParticleContext {
+                sculk_charge_pop_full_block: Some(true),
+            },
+            &mut sculk_charge_pop_full_random,
+        );
+        let expected_sculk_charge_pop_full = expected_sculk_charge_pop_particles(true);
+        assert_eq!(
+            sculk_charge_pop_full.len(),
+            expected_sculk_charge_pop_full.len()
+        );
+        assert_sculk_charge_pop_command(
+            &sculk_charge_pop_full.commands[0],
+            &expected_sculk_charge_pop_full[0],
+        );
 
         let mut egg_crack_random = LevelEventSoundRandomState::with_seed(0);
         let egg_crack = resolver.resolve_level_event_particles(
@@ -3240,6 +3348,7 @@ mod tests {
                 "flash",
                 "vibration",
                 "sculk_charge_0",
+                "sculk_charge_pop_0",
                 "flame",
                 "soul_fire_flame",
                 "explosion_0",
@@ -3380,6 +3489,14 @@ mod tests {
             r#"{
               "textures": [
                 "minecraft:sculk_charge_0"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("sculk_charge_pop.json"),
+            r#"{
+              "textures": [
+                "minecraft:sculk_charge_pop_0"
               ]
             }"#,
         );
@@ -3706,6 +3823,12 @@ mod tests {
         roll: f32,
     }
 
+    #[derive(Debug)]
+    struct ExpectedSculkChargePopParticle {
+        position: [f64; 3],
+        velocity: [f64; 3],
+    }
+
     fn expected_sculk_charge_particles(data: i32) -> Vec<ExpectedSculkChargeParticle> {
         let mut random = LevelEventSoundRandomState::with_seed(0);
         let count = data >> 6;
@@ -3789,6 +3912,37 @@ mod tests {
         }
     }
 
+    fn expected_sculk_charge_pop_particles(
+        is_full_block: bool,
+    ) -> Vec<ExpectedSculkChargePopParticle> {
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let particle_count = if is_full_block { 40 } else { 20 };
+        let spread = if is_full_block {
+            SCULK_CHARGE_POP_FULL_BLOCK_SPREAD
+        } else {
+            SCULK_CHARGE_POP_PARTIAL_BLOCK_SPREAD
+        };
+        (0..particle_count)
+            .map(|_| {
+                let velocity_x = 2.0 * f64::from(random.next_float()) - 1.0;
+                let velocity_y = 2.0 * f64::from(random.next_float()) - 1.0;
+                let velocity_z = 2.0 * f64::from(random.next_float()) - 1.0;
+                ExpectedSculkChargePopParticle {
+                    position: [
+                        10.5 + velocity_x * spread,
+                        64.5 + velocity_y * spread,
+                        -2.5 + velocity_z * spread,
+                    ],
+                    velocity: [
+                        velocity_x * SCULK_CHARGE_POP_SPEED,
+                        velocity_y * SCULK_CHARGE_POP_SPEED,
+                        velocity_z * SCULK_CHARGE_POP_SPEED,
+                    ],
+                }
+            })
+            .collect()
+    }
+
     fn expected_block_face_position(
         (step_x, step_y, step_z): (i32, i32, i32),
         step_factor: f64,
@@ -3830,6 +3984,21 @@ mod tests {
             true,
         );
         assert_eq!(command.option_roll, Some(expected.roll));
+    }
+
+    fn assert_sculk_charge_pop_command(
+        command: &ParticleSpawnCommand,
+        expected: &ExpectedSculkChargePopParticle,
+    ) {
+        assert_particle_command(
+            command,
+            SCULK_CHARGE_POP_PARTICLE_TYPE_ID,
+            "minecraft:sculk_charge_pop",
+            expected.position,
+            expected.velocity,
+            true,
+        );
+        assert_eq!(command.option_roll, None);
     }
 
     fn assert_particle_command(

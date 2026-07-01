@@ -247,7 +247,11 @@ When an agent does any of the following, update this file in the same slice:
         particles with `UniformInt.of(0, count)` repetition, full-block
         six-face vs `MultifaceBlock.unpack(data & 63)` face selection,
         `0.65` / `0.57` / `0.35` step factors, `+-0.005` speed supplier,
-        and `SculkChargeParticleOptions` roll
+        and `SculkChargeParticleOptions` roll; the `count == 0` branch now
+        emits vanilla `minecraft:sculk_charge_pop` submissions using the target
+        block's full-shape context for `40` particles / `0.45` spread or
+        non-full/unknown context for `20` particles / `0.25` spread, with
+        `0.07` velocity scale
       - event `3009`: vanilla block-face `minecraft:egg_crack` particles
       - event `3011`: trial spawner smoke plus normal/ominous flame spawn
         particles
@@ -271,9 +275,7 @@ When an agent does any of the following, update this file in the same slice:
       (`PARTICLES_AND_SOUND_PLANT_GROWTH`) also stays deferred because vanilla
       `BoneMealItem.addGrowthParticles` branches on the target block's
       `BonemealableBlock` type or water state before choosing the particle
-      spread. Event `3006`'s `count == 0` `minecraft:sculk_charge_pop` branch
-      remains deferred because vanilla chooses particle count/spread from the
-      target block collision shape.
+      spread.
     - Advances CPU-side common particles.
     - Samples vanilla-shaped curves for common particle providers:
       - size
@@ -5809,6 +5811,11 @@ When an agent does any of the following, update this file in the same slice:
       - end gateway spawn and ender dragon growl sounds
       - sculk charge sounds for event `3006`, including the fixed pop branch
         and the randomized charged branch
+      - sculk charge pop particles for event `3006` `data >> 6 == 0`: native
+        level-event particle context now carries the target block full-shape
+        classification, and the resolver emits `minecraft:sculk_charge_pop`
+        with vanilla `20` / `40` count, `0.25` / `0.45` spread, and `0.07`
+        velocity scale
       - sculk-shrieker event `3007` now emits the vanilla ten
         `minecraft:shriek` particles at `SculkShriekerBlock.TOP_Y` with
         `ShriekParticleOption(i * 5)` delays; the waterlogged-gated

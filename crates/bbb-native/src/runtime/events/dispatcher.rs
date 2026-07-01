@@ -9,7 +9,9 @@ use tokio::sync::mpsc;
 
 use crate::audio_runtime::AudioEventSink;
 use crate::input::queue_vehicle_move_command;
-use crate::particle_runtime::{LevelParticleSpawnContext, ParticleEventSink};
+use crate::particle_runtime::{
+    LevelEventParticleContext, LevelParticleSpawnContext, ParticleEventSink,
+};
 
 use super::client_state::*;
 use super::control_state::apply_control_projection_event;
@@ -361,6 +363,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                         &mut particle_events,
                         &mut particle_renderer,
                         &event,
+                        level_event_particle_context(world, &event),
                         level_event_sound_random,
                     );
                     if !particles_consumed_random {
@@ -391,6 +394,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                         &mut particle_events,
                         &mut particle_renderer,
                         &event,
+                        level_event_particle_context(world, &event),
                         level_event_sound_random,
                     );
                 }
@@ -735,16 +739,43 @@ fn emit_level_event_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
     particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
     event: &bbb_protocol::packets::LevelEvent,
+    context: LevelEventParticleContext,
     random: &mut LevelEventSoundRandomState,
 ) -> bool {
     if let Some(particle_events) = particle_events.as_deref_mut() {
-        let batch = particle_events.spawn_level_event_particles(event, random);
+        let batch = particle_events.spawn_level_event_particles(event, context, random);
         if let Some(renderer) = particle_renderer.as_deref_mut() {
             renderer.submit_particle_spawns(batch);
         }
         return true;
     }
     false
+}
+
+fn level_event_particle_context(
+    world: &WorldStore,
+    event: &bbb_protocol::packets::LevelEvent,
+) -> LevelEventParticleContext {
+    LevelEventParticleContext {
+        sculk_charge_pop_full_block: sculk_charge_pop_full_block_context(world, event),
+    }
+}
+
+fn sculk_charge_pop_full_block_context(
+    world: &WorldStore,
+    event: &bbb_protocol::packets::LevelEvent,
+) -> Option<bool> {
+    if event.event_type != 3006 || event.data >> 6 > 0 {
+        return None;
+    }
+    let pos = bbb_world::BlockPos {
+        x: event.pos.x,
+        y: event.pos.y,
+        z: event.pos.z,
+    };
+    world
+        .probe_block(pos)
+        .map(|probe| crate::block_outline::block_probe_has_full_block_shape(&probe))
 }
 
 fn with_level_event_sound_seed(

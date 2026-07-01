@@ -48,6 +48,10 @@ impl BlockOutlineShape {
                 .map(|outline| selection_box_for_outline_box(pos, *outline)),
         )
     }
+
+    pub(super) fn is_full_block(&self) -> bool {
+        matches!(self, Self::Single(outline) if *outline == BlockOutlineBox::FULL)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

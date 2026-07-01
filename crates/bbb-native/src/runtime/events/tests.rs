@@ -1,5 +1,7 @@
 use super::*;
-use crate::particle_runtime::{LevelParticleSpawnContext, ParticleEventSink};
+use crate::particle_runtime::{
+    LevelEventParticleContext, LevelParticleSpawnContext, ParticleEventSink,
+};
 use crate::runtime::{clear_color_for_day_time, clear_color_for_world};
 use bbb_audio::{
     AudioCategory, AudioCommand, AudioCommandResolver, AudioResolveError, JukeboxSongRegistry,
@@ -2979,6 +2981,87 @@ fn level_event_smoke_particles_emit_particle_runtime_batch_and_world_counters() 
 }
 
 #[test]
+fn sculk_charge_pop_level_event_threads_full_block_context_to_particles() {
+    let full_block_event = LevelEvent {
+        event_type: 3006,
+        pos: ProtocolBlockPos {
+            x: 16,
+            y: -64,
+            z: -32,
+        },
+        data: 0,
+        global: false,
+    };
+    let empty_block_event = LevelEvent {
+        event_type: 3006,
+        pos: ProtocolBlockPos {
+            x: 17,
+            y: -64,
+            z: -32,
+        },
+        data: 0,
+        global: false,
+    };
+    let (tx, mut rx) = mpsc::channel(4);
+    tx.try_send(NetEvent::LevelChunkWithLight(
+        synthetic_native_level_chunk_packet(),
+    ))
+    .unwrap();
+    tx.try_send(NetEvent::BlockUpdate(BlockUpdate {
+        pos: full_block_event.pos,
+        block_state_id: 1,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::LevelEvent(full_block_event)).unwrap();
+    tx.try_send(NetEvent::LevelEvent(empty_block_event))
+        .unwrap();
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+            &mut level_event_sound_random,
+        ),
+        4
+    );
+
+    assert_eq!(
+        world
+            .probe_block(bbb_world::BlockPos {
+                x: 16,
+                y: -64,
+                z: -32,
+            })
+            .and_then(|probe| probe.block_name),
+        Some("minecraft:stone".to_string())
+    );
+    assert_eq!(
+        particles.level_events,
+        vec![full_block_event, empty_block_event]
+    );
+    assert_eq!(
+        particles.level_event_contexts,
+        vec![
+            LevelEventParticleContext {
+                sculk_charge_pop_full_block: Some(true),
+            },
+            LevelEventParticleContext {
+                sculk_charge_pop_full_block: Some(false),
+            },
+        ]
+    );
+}
+
+#[test]
 fn projectile_power_updates_world_entity_state_and_world_counters() {
     const VANILLA_ENTITY_TYPE_FIREBALL_ID: i32 = 52;
 
@@ -5487,6 +5570,7 @@ struct RecordingParticleSink {
     packets: Vec<LevelParticles>,
     contexts: Vec<LevelParticleSpawnContext>,
     level_events: Vec<LevelEvent>,
+    level_event_contexts: Vec<LevelEventParticleContext>,
     batches: Vec<bbb_renderer::ParticleSpawnBatch>,
 }
 
@@ -5509,12 +5593,14 @@ impl ParticleEventSink for RecordingParticleSink {
     fn spawn_level_event_particles(
         &mut self,
         event: &LevelEvent,
+        context: LevelEventParticleContext,
         random: &mut LevelEventSoundRandomState,
     ) -> bbb_renderer::ParticleSpawnBatch {
         if event.event_type == 3018 {
             advance_cobweb_place_particle_randoms(random);
         }
         self.level_events.push(*event);
+        self.level_event_contexts.push(context);
         let batch = bbb_renderer::ParticleSpawnBatch {
             missing_sprite_count: 1,
             ..bbb_renderer::ParticleSpawnBatch::default()

@@ -58,6 +58,17 @@ pub(crate) fn selection_outline_for_probe(probe: &BlockProbe) -> Option<Selectio
         .map(|outline| outline.selection_outline(probe.pos))
 }
 
+pub(crate) fn block_probe_has_full_block_shape(probe: &BlockProbe) -> bool {
+    if matches!(
+        probe.material,
+        TerrainMaterialClass::Empty | TerrainMaterialClass::Fluid
+    ) {
+        return false;
+    }
+    outline_shape_for_block(probe.block_name.as_deref(), &probe.block_properties)
+        .is_some_and(|outline| outline.is_full_block())
+}
+
 pub(crate) fn selection_outline_for_block(pos: BlockPos) -> SelectionOutline {
     selection_outline_for_box(pos, BlockOutlineBox::FULL)
 }
