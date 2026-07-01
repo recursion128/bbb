@@ -1278,6 +1278,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `ColorParticleOption` ARGB for `minecraft:flash`; renderer maps the
     provider to fixed lifetime `4`, translucent layer, random sprite selection,
     option tint, and vanilla overlay `getQuadSize` / extract alpha formulas.
+  - [x] `TrailParticle.Provider`：native command resolution decodes
+    `TrailParticleOption` target / RGB color / duration for `minecraft:trail`;
+    renderer maps the provider to random sprite selection, option duration,
+    vanilla random RGB scaling, `0.26` quad size, opaque layer, full-bright
+    light, command velocity, and target interpolation toward the option target.
   - 初速度。
   - lifetime。
   - size curve。

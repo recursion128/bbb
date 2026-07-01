@@ -203,7 +203,7 @@ impl ParticleCommandResolver {
             .count();
         let override_limiter = particle_type.override_limiter || packet.override_limiter;
         let raw_options_len = packet.particle.raw_options.len();
-        let (option_color, option_power) =
+        let option_state =
             particle_option_render_state(particle_type.id, &packet.particle.raw_options);
         let initial_delay_ticks = initial_delay_ticks_for_particle_options(
             particle_type.id,
@@ -238,8 +238,7 @@ impl ParticleCommandResolver {
                     override_limiter,
                     raw_options_len,
                     initial_delay_ticks,
-                    option_color,
-                    option_power,
+                    option_state,
                 ));
             }
         } else {
@@ -269,8 +268,7 @@ impl ParticleCommandResolver {
                         override_limiter,
                         raw_options_len,
                         initial_delay_ticks,
-                        option_color,
-                        option_power,
+                        option_state,
                     ));
                 }
             }
@@ -1094,8 +1092,7 @@ impl ParticleCommandResolver {
             always_show,
             0,
             0,
-            None,
-            None,
+            ParticleOptionRenderState::default(),
         )
     }
 
@@ -1109,8 +1106,7 @@ impl ParticleCommandResolver {
         override_limiter: bool,
         raw_options_len: usize,
         initial_delay_ticks: u32,
-        option_color: Option<[f32; 4]>,
-        option_power: Option<f32>,
+        option_state: ParticleOptionRenderState,
     ) -> ParticleSpawnCommand {
         self.command_for_type(
             particle_type,
@@ -1121,8 +1117,7 @@ impl ParticleCommandResolver {
             packet.always_show,
             raw_options_len,
             initial_delay_ticks,
-            option_color,
-            option_power,
+            option_state,
         )
     }
 
@@ -1136,8 +1131,7 @@ impl ParticleCommandResolver {
         always_show: bool,
         raw_options_len: usize,
         initial_delay_ticks: u32,
-        option_color: Option<[f32; 4]>,
-        option_power: Option<f32>,
+        option_state: ParticleOptionRenderState,
     ) -> ParticleSpawnCommand {
         let child_spawn_templates = self.child_spawn_templates_for_type(particle_type);
         ParticleSpawnCommand {
@@ -1151,8 +1145,10 @@ impl ParticleCommandResolver {
             raw_options_len,
             initial_delay_ticks,
             child_spawn_templates,
-            option_color,
-            option_power,
+            option_color: option_state.color,
+            option_power: option_state.power,
+            option_target: option_state.target,
+            option_duration_ticks: option_state.duration_ticks,
         }
     }
 
@@ -1187,35 +1183,80 @@ fn initial_delay_ticks_for_particle_options(particle_type_id: i32, raw_options: 
     }
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+struct ParticleOptionRenderState {
+    color: Option<[f32; 4]>,
+    power: Option<f32>,
+    target: Option<[f64; 3]>,
+    duration_ticks: Option<u32>,
+}
+
 fn particle_option_render_state(
     particle_type_id: i32,
     raw_options: &[u8],
-) -> (Option<[f32; 4]>, Option<f32>) {
+) -> ParticleOptionRenderState {
     let mut decoder = Decoder::new(raw_options);
     match particle_type_id {
         EFFECT_PARTICLE_TYPE_ID | INSTANT_EFFECT_PARTICLE_TYPE_ID => {
             let Ok(color) = decoder.read_i32() else {
-                return (None, None);
+                return ParticleOptionRenderState::default();
             };
             let Ok(power) = decoder.read_f32() else {
-                return (None, None);
+                return ParticleOptionRenderState::default();
             };
             if !decoder.is_empty() {
-                return (None, None);
+                return ParticleOptionRenderState::default();
             }
-            (Some(rgb_particle_color(color)), Some(power))
+            ParticleOptionRenderState {
+                color: Some(rgb_particle_color(color)),
+                power: Some(power),
+                ..ParticleOptionRenderState::default()
+            }
         }
         ENTITY_EFFECT_PARTICLE_TYPE_ID | FLASH_PARTICLE_TYPE_ID => {
             let Ok(color) = decoder.read_i32() else {
-                return (None, None);
+                return ParticleOptionRenderState::default();
             };
             if !decoder.is_empty() {
-                return (None, None);
+                return ParticleOptionRenderState::default();
             }
-            (Some(argb_particle_color(color)), None)
+            ParticleOptionRenderState {
+                color: Some(argb_particle_color(color)),
+                ..ParticleOptionRenderState::default()
+            }
         }
-        _ => (None, None),
+        TRAIL_PARTICLE_TYPE_ID => {
+            let Ok(target) = decode_option_vec3d(&mut decoder) else {
+                return ParticleOptionRenderState::default();
+            };
+            let Ok(color) = decoder.read_i32() else {
+                return ParticleOptionRenderState::default();
+            };
+            let Ok(duration) = decoder.read_var_i32() else {
+                return ParticleOptionRenderState::default();
+            };
+            if !decoder.is_empty() {
+                return ParticleOptionRenderState::default();
+            }
+            ParticleOptionRenderState {
+                color: Some(rgb_particle_color(color)),
+                target: Some(target),
+                duration_ticks: u32::try_from(duration)
+                    .ok()
+                    .filter(|duration| *duration > 0),
+                ..ParticleOptionRenderState::default()
+            }
+        }
+        _ => ParticleOptionRenderState::default(),
     }
+}
+
+fn decode_option_vec3d(decoder: &mut Decoder<'_>) -> bbb_protocol::codec::Result<[f64; 3]> {
+    Ok([
+        decoder.read_f64()?,
+        decoder.read_f64()?,
+        decoder.read_f64()?,
+    ])
 }
 
 fn rgb_particle_color(color: i32) -> [f32; 4] {
@@ -1378,6 +1419,7 @@ const SOUL_FIRE_FLAME_PARTICLE_TYPE_ID: i32 = 40;
 const FLASH_PARTICLE_TYPE_ID: i32 = 42;
 const HAPPY_VILLAGER_PARTICLE_TYPE_ID: i32 = 43;
 const INSTANT_EFFECT_PARTICLE_TYPE_ID: i32 = 46;
+const TRAIL_PARTICLE_TYPE_ID: i32 = 49;
 const LARGE_SMOKE_PARTICLE_TYPE_ID: i32 = 55;
 const LAVA_PARTICLE_TYPE_ID: i32 = 56;
 const POOF_PARTICLE_TYPE_ID: i32 = 59;
@@ -1623,6 +1665,32 @@ mod tests {
                 0x66 as f32 / 255.0,
             ])
         );
+        assert_eq!(command.option_power, None);
+    }
+
+    #[test]
+    fn trail_particle_options_decode_target_color_and_duration_into_spawn_command() {
+        let mut resolver = test_resolver(0);
+        let mut packet = level_particles_packet(TRAIL_PARTICLE_TYPE_ID, 0);
+        packet.particle.raw_options = trail_particle_options([1.5, 65.25, -4.75], 0x0012_3456, 27);
+
+        let batch = resolver.resolve_level_particles(&packet);
+
+        assert_eq!(batch.len(), 1);
+        let command = &batch.commands[0];
+        assert_eq!(command.particle_id, "minecraft:trail");
+        assert_eq!(command.sprite_ids, vec!["minecraft:generic_0".to_string()]);
+        assert_eq!(command.option_target, Some([1.5, 65.25, -4.75]));
+        assert_eq!(
+            command.option_color,
+            Some([
+                0x12 as f32 / 255.0,
+                0x34 as f32 / 255.0,
+                0x56 as f32 / 255.0,
+                1.0,
+            ])
+        );
+        assert_eq!(command.option_duration_ticks, Some(27));
         assert_eq!(command.option_power, None);
     }
 
@@ -2669,6 +2737,14 @@ mod tests {
             }"#,
         );
         write_json(
+            &particle_dir(&root).join("trail.json"),
+            r#"{
+              "textures": [
+                "minecraft:generic_0"
+              ]
+            }"#,
+        );
+        write_json(
             &particle_dir(&root).join("soul_fire_flame.json"),
             r#"{
               "textures": [
@@ -2881,6 +2957,28 @@ mod tests {
         out.extend_from_slice(&color.to_be_bytes());
         out.extend_from_slice(&power.to_be_bytes());
         out
+    }
+
+    fn trail_particle_options(target: [f64; 3], color: i32, duration: i32) -> Vec<u8> {
+        let mut out = Vec::new();
+        for coordinate in target {
+            out.extend_from_slice(&coordinate.to_be_bytes());
+        }
+        out.extend_from_slice(&color.to_be_bytes());
+        write_positive_var_i32(&mut out, duration);
+        out
+    }
+
+    fn write_positive_var_i32(out: &mut Vec<u8>, value: i32) {
+        let mut value = value as u32;
+        loop {
+            if value & !0x7f == 0 {
+                out.push(value as u8);
+                return;
+            }
+            out.push(((value & 0x7f) | 0x80) as u8);
+            value >>= 7;
+        }
     }
 
     fn level_event_packet(event_type: i32) -> LevelEvent {

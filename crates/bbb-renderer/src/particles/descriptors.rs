@@ -26,6 +26,7 @@ pub(crate) enum ParticleTickMotionDescriptor {
     CurrentDown,
     Snowflake,
     FlyTowardsPosition,
+    TrailTarget,
     Portal,
     ReversePortal,
 }
@@ -98,6 +99,9 @@ pub(crate) enum ParticleLifetimeDescriptor {
     RandomInclusive {
         min: u32,
         max: u32,
+    },
+    CommandOption {
+        fallback: u32,
     },
     Explode,
 }
@@ -854,6 +858,20 @@ impl ParticleDescriptor {
                 has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
+            "minecraft:trail" => Self {
+                provider: "TrailParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::CommandOption { fallback: 1 },
+                sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::FixedQuad {
+                    size: 0.26,
+                    color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::Command,
+                friction: 0.98,
+                gravity: 0.0,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
             "minecraft:effect"
             | "minecraft:instant_effect"
             | "minecraft:entity_effect"
@@ -1204,6 +1222,7 @@ impl ParticleDescriptor {
             | "FlyTowardsPositionParticle.VaultConnectionProvider" => {
                 ParticleTickMotionDescriptor::FlyTowardsPosition
             }
+            "TrailParticle.Provider" => ParticleTickMotionDescriptor::TrailTarget,
             "PortalParticle.Provider" => ParticleTickMotionDescriptor::Portal,
             "ReversePortalParticle.ReversePortalProvider" => {
                 ParticleTickMotionDescriptor::ReversePortal
@@ -1223,7 +1242,8 @@ impl ParticleDescriptor {
             | "HugeExplosionParticle.Provider"
             | "SonicBoomParticle.Provider"
             | "GustParticle.Provider"
-            | "GustParticle.SmallProvider" => ParticleLightEmissionDescriptor::FullBright,
+            | "GustParticle.SmallProvider"
+            | "TrailParticle.Provider" => ParticleLightEmissionDescriptor::FullBright,
             // Vanilla keeps sky light from the world sample and forces block light to 15.
             "LavaParticle.Provider"
             | "SoulParticle.EmissiveProvider"
@@ -1764,6 +1784,7 @@ impl ParticleLifetimeDescriptor {
                 let span = max.saturating_sub(min).saturating_add(1);
                 min + random.next_index(span as usize).unwrap_or(0) as u32
             }
+            Self::CommandOption { fallback } => fallback,
             Self::Explode => (16.0 / (random.next_f64() * 0.8 + 0.2)) as u32 + 2,
         }
     }
@@ -1970,6 +1991,34 @@ mod tests {
         assert_eq!(
             ParticleDescriptor::for_particle("minecraft:flash").initial_velocity,
             ParticleInitialVelocityDescriptor::Zero
+        );
+
+        assert_descriptor(
+            "minecraft:trail",
+            "TrailParticle.Provider",
+            ParticleLifetimeDescriptor::CommandOption { fallback: 1 },
+            ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::FixedQuad {
+                size: 0.26,
+                color: ParticleColorDescriptor::FixedRgb([1.0, 1.0, 1.0]),
+            },
+            0.98,
+            0.0,
+            true,
+            false,
+        );
+        let trail = ParticleDescriptor::for_particle("minecraft:trail");
+        assert_eq!(
+            trail.initial_velocity,
+            ParticleInitialVelocityDescriptor::Command
+        );
+        assert_eq!(
+            trail.tick_motion(),
+            ParticleTickMotionDescriptor::TrailTarget
+        );
+        assert_eq!(
+            trail.light_emission(),
+            ParticleLightEmissionDescriptor::FullBright
         );
 
         assert_descriptor(

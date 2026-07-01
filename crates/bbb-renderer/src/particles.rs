@@ -55,6 +55,10 @@ pub struct ParticleSpawnCommand {
     pub option_color: Option<[f32; 4]>,
     #[serde(default)]
     pub option_power: Option<f32>,
+    #[serde(default)]
+    pub option_target: Option<[f64; 3]>,
+    #[serde(default)]
+    pub option_duration_ticks: Option<u32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -155,6 +159,10 @@ pub(crate) struct ParticleInstance {
     pub(crate) option_color: Option<[f32; 4]>,
     #[serde(default)]
     pub(crate) option_power: Option<f32>,
+    #[serde(default)]
+    pub(crate) option_target: Option<[f64; 3]>,
+    #[serde(default)]
+    pub(crate) option_duration_ticks: Option<u32>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -568,7 +576,18 @@ impl ParticleInstance {
         let visual = descriptor
             .visual
             .sample_for_command(random, command.velocity);
-        let color = command.option_color.unwrap_or(visual.color);
+        let mut color = command.option_color.unwrap_or(visual.color);
+        if descriptor.provider == "TrailParticle.Provider" {
+            if let Some(option_color) = command.option_color {
+                color = trail_particle_color(option_color, random);
+            }
+        }
+        let lifetime_ticks = match descriptor.lifetime {
+            descriptors::ParticleLifetimeDescriptor::CommandOption { .. } => command
+                .option_duration_ticks
+                .unwrap_or_else(|| descriptor.lifetime.sample(random)),
+            _ => descriptor.lifetime.sample(random),
+        };
         Self {
             particle_type_id: command.particle_type_id,
             particle_id: command.particle_id,
@@ -580,7 +599,7 @@ impl ParticleInstance {
             position,
             velocity,
             age_ticks: 0,
-            lifetime_ticks: descriptor.lifetime.sample(random),
+            lifetime_ticks,
             base_quad_size: visual.base_quad_size,
             color,
             color_fade_target: descriptor.color_fade_target(),
@@ -607,6 +626,8 @@ impl ParticleInstance {
             delay_ticks: command.initial_delay_ticks,
             option_color: command.option_color,
             option_power: command.option_power,
+            option_target: command.option_target,
+            option_duration_ticks: command.option_duration_ticks,
         }
     }
 
@@ -689,6 +710,23 @@ impl ParticleInstance {
                 self.position[1] = self.start_position[1] + self.velocity[1] * f64::from(pos)
                     - f64::from(pp * 1.2);
                 self.position[2] = self.start_position[2] + self.velocity[2] * f64::from(pos);
+            }
+            ParticleTickMotionDescriptor::TrailTarget => {
+                let Some(target) = self.option_target else {
+                    return;
+                };
+                let next_age = self.age_ticks.saturating_add(1);
+                let ticks_remaining = self.lifetime_ticks.saturating_sub(next_age);
+                if ticks_remaining == 0 {
+                    self.position = target;
+                    return;
+                }
+                let alpha = 1.0 / f64::from(ticks_remaining);
+                self.position = [
+                    lerp_f64(alpha, self.position[0], target[0]),
+                    lerp_f64(alpha, self.position[1], target[1]),
+                    lerp_f64(alpha, self.position[2], target[2]),
+                ];
             }
             ParticleTickMotionDescriptor::Portal => {
                 let next_age = self.age_ticks.saturating_add(1);
@@ -793,6 +831,8 @@ impl ParticleInstance {
             child_spawn_templates: Vec::new(),
             option_color: None,
             option_power: None,
+            option_target: None,
+            option_duration_ticks: None,
         })
     }
 }
@@ -1097,8 +1137,21 @@ fn apply_particle_power(velocity: [f64; 3], power: f32) -> [f64; 3] {
     ]
 }
 
+fn trail_particle_color(color: [f32; 4], random: &mut ParticleRandom) -> [f32; 4] {
+    [
+        color[0] * (0.875 + random.next_f32() * 0.25),
+        color[1] * (0.875 + random.next_f32() * 0.25),
+        color[2] * (0.875 + random.next_f32() * 0.25),
+        color[3],
+    ]
+}
+
 fn flash_overlay_alpha(age_ticks: u32, partial_tick: f32) -> f32 {
     0.6 - (age_ticks as f32 + partial_tick.clamp(0.0, 1.0) - 1.0) * 0.25 * 0.5
+}
+
+fn lerp_f64(alpha: f64, start: f64, end: f64) -> f64 {
+    start + alpha * (end - start)
 }
 
 fn vault_connection_alpha(age_ticks: u32, lifetime_ticks: u32, partial_tick: f32) -> f32 {
@@ -1522,6 +1575,38 @@ mod tests {
             ],
         );
         assert_close3(instance.velocity, [-4.0, 1.0, 5.0]);
+    }
+
+    #[test]
+    fn particle_runtime_trail_tick_interpolates_toward_option_target() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:trail", 5);
+        instance.position = [0.0, 0.0, 0.0];
+        instance.previous_position = instance.position;
+        instance.option_target = Some([4.0, 8.0, 12.0]);
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.expired_instances, 0);
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 1);
+        assert_close3(instance.previous_position, [0.0, 0.0, 0.0]);
+        assert_close3(instance.position, [1.0, 2.0, 3.0]);
+
+        let mut terminal = test_instance_with_lifetime("minecraft:trail", 5);
+        terminal.age_ticks = 4;
+        terminal.position = [3.0, 6.0, 9.0];
+        terminal.previous_position = terminal.position;
+        terminal.option_target = Some([4.0, 8.0, 12.0]);
+        terminal.tick_motion_without_collision();
+
+        assert_close3(terminal.previous_position, [3.0, 6.0, 9.0]);
+        assert_close3(terminal.position, [4.0, 8.0, 12.0]);
+        assert!(terminal
+            .position
+            .iter()
+            .all(|coordinate| coordinate.is_finite()));
     }
 
     #[test]
@@ -2250,6 +2335,54 @@ mod tests {
         assert_eq!(flash.quad_size_curve, ParticleQuadSizeCurve::FlashOverlay);
         assert_eq!(flash.velocity, [0.0, 0.0, 0.0]);
         assert_eq!(flash.render_layer, ParticleRenderLayer::Translucent);
+
+        let mut trail_random = ParticleRandom::new(67);
+        let mut trail_command = spawn_command("minecraft:trail", 1.0);
+        trail_command.velocity = [0.1, 0.2, 0.3];
+        trail_command.option_color = Some([0.2, 0.4, 0.8, 1.0]);
+        trail_command.option_target = Some([4.0, 6.0, 8.0]);
+        trail_command.option_duration_ticks = Some(12);
+        let mut expected_trail_random = ParticleRandom::new(67);
+        let _ = select_initial_sprite(
+            &trail_command.sprite_ids,
+            ParticleSpriteSelection::Random,
+            &mut expected_trail_random,
+        );
+        let _ = expected_trail_random.next_f32();
+        let expected_trail_color = [
+            0.2 * (0.875 + expected_trail_random.next_f32() * 0.25),
+            0.4 * (0.875 + expected_trail_random.next_f32() * 0.25),
+            0.8 * (0.875 + expected_trail_random.next_f32() * 0.25),
+            1.0,
+        ];
+        let trail = ParticleInstance::from_spawn_command(trail_command, &mut trail_random);
+        assert_eq!(trail.provider, "TrailParticle.Provider");
+        assert_eq!(
+            trail.current_sprite_id.as_deref(),
+            Some("minecraft:generic_0")
+        );
+        assert_eq!(trail.sprite_selection, ParticleSpriteSelection::Random);
+        assert_eq!(trail.lifetime_ticks, 12);
+        assert_close_f32(trail.base_quad_size, 0.26);
+        assert_close3_f32(
+            [trail.color[0], trail.color[1], trail.color[2]],
+            [
+                expected_trail_color[0],
+                expected_trail_color[1],
+                expected_trail_color[2],
+            ],
+        );
+        assert_eq!(trail.color[3], expected_trail_color[3]);
+        assert_eq!(trail.option_target, Some([4.0, 6.0, 8.0]));
+        assert_eq!(trail.option_duration_ticks, Some(12));
+        assert_eq!(trail.velocity, [0.1, 0.2, 0.3]);
+        assert_eq!(trail.tick_motion, ParticleTickMotionDescriptor::TrailTarget);
+        assert_eq!(
+            trail.light_emission,
+            ParticleLightEmissionDescriptor::FullBright
+        );
+        assert_eq!(particle_light_with_emission(&trail, [0.2, 0.3]), [1.0, 1.0]);
+        assert_eq!(trail.render_layer, ParticleRenderLayer::Opaque);
 
         let mut spell_random = ParticleRandom::new(61);
         let mut spell_command = spawn_command("minecraft:infested", 1.0);
@@ -3597,6 +3730,8 @@ mod tests {
             delay_ticks: 0,
             option_color: None,
             option_power: None,
+            option_target: None,
+            option_duration_ticks: None,
         }
     }
 
@@ -3614,6 +3749,8 @@ mod tests {
             child_spawn_templates: Vec::new(),
             option_color: None,
             option_power: None,
+            option_target: None,
+            option_duration_ticks: None,
         }
     }
 
