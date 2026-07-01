@@ -379,8 +379,11 @@ When an agent does any of the following, update this file in the same slice:
         vanilla random color scaling, target interpolation, full-bright light,
         and opaque layer. `sculk_charge` now carries decoded
         `SculkChargeParticleOptions.roll` through to billboard roll rotation.
-        Other non-spell particle option rendering remains separate follow-up
-        work.
+        `dust` / `dust_color_transition` now map to their vanilla providers
+        with decoded RGB colors, transition target color, clamped scale,
+        scale-shaped quad size / lifetime, random color variation, age sprites,
+        opaque layer, and transition partial-tick color lerp. Other non-spell
+        particle option rendering remains separate follow-up work.
       - `SpellParticle.WitchProvider` reuses the simple spell motion/lifetime
         metadata and applies the vanilla shared random magenta brightness
         (`0.35..0.85` for red and blue, zero green)

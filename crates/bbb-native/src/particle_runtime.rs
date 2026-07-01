@@ -1146,6 +1146,8 @@ impl ParticleCommandResolver {
             initial_delay_ticks,
             child_spawn_templates,
             option_color: option_state.color,
+            option_color_to: option_state.color_to,
+            option_scale: option_state.scale,
             option_power: option_state.power,
             option_target: option_state.target,
             option_duration_ticks: option_state.duration_ticks,
@@ -1187,6 +1189,8 @@ fn initial_delay_ticks_for_particle_options(particle_type_id: i32, raw_options: 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 struct ParticleOptionRenderState {
     color: Option<[f32; 4]>,
+    color_to: Option<[f32; 4]>,
+    scale: Option<f32>,
     power: Option<f32>,
     target: Option<[f64; 3]>,
     duration_ticks: Option<u32>,
@@ -1212,6 +1216,42 @@ fn particle_option_render_state(
             ParticleOptionRenderState {
                 color: Some(rgb_particle_color(color)),
                 power: Some(power),
+                ..ParticleOptionRenderState::default()
+            }
+        }
+        DUST_PARTICLE_TYPE_ID => {
+            let Ok(color) = decoder.read_i32() else {
+                return ParticleOptionRenderState::default();
+            };
+            let Ok(scale) = decoder.read_f32() else {
+                return ParticleOptionRenderState::default();
+            };
+            if !decoder.is_empty() {
+                return ParticleOptionRenderState::default();
+            }
+            ParticleOptionRenderState {
+                color: Some(rgb_particle_color(color)),
+                scale: Some(clamp_particle_option_scale(scale)),
+                ..ParticleOptionRenderState::default()
+            }
+        }
+        DUST_COLOR_TRANSITION_PARTICLE_TYPE_ID => {
+            let Ok(from_color) = decoder.read_i32() else {
+                return ParticleOptionRenderState::default();
+            };
+            let Ok(to_color) = decoder.read_i32() else {
+                return ParticleOptionRenderState::default();
+            };
+            let Ok(scale) = decoder.read_f32() else {
+                return ParticleOptionRenderState::default();
+            };
+            if !decoder.is_empty() {
+                return ParticleOptionRenderState::default();
+            }
+            ParticleOptionRenderState {
+                color: Some(rgb_particle_color(from_color)),
+                color_to: Some(rgb_particle_color(to_color)),
+                scale: Some(clamp_particle_option_scale(scale)),
                 ..ParticleOptionRenderState::default()
             }
         }
@@ -1281,6 +1321,10 @@ fn rgb_particle_color(color: i32) -> [f32; 4] {
         (color & 0xff) as f32 / 255.0,
         1.0,
     ]
+}
+
+fn clamp_particle_option_scale(scale: f32) -> f32 {
+    scale.clamp(0.01, 4.0)
 }
 
 fn argb_particle_color(color: i32) -> [f32; 4] {
@@ -1424,6 +1468,8 @@ const TRIAL_SPAWNER_OMINOUS_ACTIVATE_LEVEL_EVENT: i32 = 3020;
 const TRIAL_SPAWNER_SPAWN_ITEM_LEVEL_EVENT: i32 = 3021;
 const CLOUD_PARTICLE_TYPE_ID: i32 = 4;
 const DRAGON_BREATH_PARTICLE_TYPE_ID: i32 = 8;
+const DUST_PARTICLE_TYPE_ID: i32 = 14;
+const DUST_COLOR_TRANSITION_PARTICLE_TYPE_ID: i32 = 15;
 const EFFECT_PARTICLE_TYPE_ID: i32 = 16;
 const ENTITY_EFFECT_PARTICLE_TYPE_ID: i32 = 21;
 const EXPLOSION_EMITTER_PARTICLE_TYPE_ID: i32 = 22;
@@ -1681,6 +1727,52 @@ mod tests {
             ])
         );
         assert_eq!(command.option_power, None);
+    }
+
+    #[test]
+    fn dust_particle_options_decode_color_scale_and_transition_into_spawn_command() {
+        let mut resolver = test_resolver(0);
+        let mut packet = level_particles_packet(DUST_PARTICLE_TYPE_ID, 0);
+        packet.particle.raw_options = dust_particle_options(0x0012_3456, 2.5);
+
+        let batch = resolver.resolve_level_particles(&packet);
+
+        assert_eq!(batch.len(), 1);
+        let command = &batch.commands[0];
+        assert_eq!(command.particle_id, "minecraft:dust");
+        assert_eq!(command.sprite_ids, vec!["minecraft:generic_0".to_string()]);
+        assert_eq!(
+            command.option_color,
+            Some([
+                0x12 as f32 / 255.0,
+                0x34 as f32 / 255.0,
+                0x56 as f32 / 255.0,
+                1.0,
+            ])
+        );
+        assert_eq!(command.option_scale, Some(2.5));
+        assert_eq!(command.option_color_to, None);
+
+        let mut transition_packet =
+            level_particles_packet(DUST_COLOR_TRANSITION_PARTICLE_TYPE_ID, 0);
+        transition_packet.particle.raw_options =
+            dust_color_transition_options(0x0001_0203, 0x00a0_b0c0, 9.0);
+        let transition = resolver.resolve_level_particles(&transition_packet);
+        assert_eq!(transition.len(), 1);
+        let transition_command = &transition.commands[0];
+        assert_eq!(
+            transition_command.particle_id,
+            "minecraft:dust_color_transition"
+        );
+        assert_eq!(
+            transition_command.option_color,
+            Some([1.0 / 255.0, 2.0 / 255.0, 3.0 / 255.0, 1.0])
+        );
+        assert_eq!(
+            transition_command.option_color_to,
+            Some([160.0 / 255.0, 176.0 / 255.0, 192.0 / 255.0, 1.0])
+        );
+        assert_eq!(transition_command.option_scale, Some(4.0));
     }
 
     #[test]
@@ -2773,6 +2865,22 @@ mod tests {
             }"#,
         );
         write_json(
+            &particle_dir(&root).join("dust.json"),
+            r#"{
+              "textures": [
+                "minecraft:generic_0"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("dust_color_transition.json"),
+            r#"{
+              "textures": [
+                "minecraft:generic_0"
+              ]
+            }"#,
+        );
+        write_json(
             &particle_dir(&root).join("trail.json"),
             r#"{
               "textures": [
@@ -3000,6 +3108,21 @@ mod tests {
         let mut out = Vec::new();
         out.extend_from_slice(&color.to_be_bytes());
         out.extend_from_slice(&power.to_be_bytes());
+        out
+    }
+
+    fn dust_particle_options(color: i32, scale: f32) -> Vec<u8> {
+        let mut out = Vec::new();
+        out.extend_from_slice(&color.to_be_bytes());
+        out.extend_from_slice(&scale.to_be_bytes());
+        out
+    }
+
+    fn dust_color_transition_options(from_color: i32, to_color: i32, scale: f32) -> Vec<u8> {
+        let mut out = Vec::new();
+        out.extend_from_slice(&from_color.to_be_bytes());
+        out.extend_from_slice(&to_color.to_be_bytes());
+        out.extend_from_slice(&scale.to_be_bytes());
         out
     }
 

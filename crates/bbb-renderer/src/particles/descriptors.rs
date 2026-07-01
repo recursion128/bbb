@@ -103,6 +103,9 @@ pub(crate) enum ParticleLifetimeDescriptor {
     CommandOption {
         fallback: u32,
     },
+    DustScale {
+        fallback_scale: u32,
+    },
     Explode,
 }
 
@@ -332,6 +335,27 @@ impl ParticleDescriptor {
                 gravity: 0.008,
                 has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:dust" | "minecraft:dust_color_transition" => Self {
+                provider: if particle_id == "minecraft:dust_color_transition" {
+                    "DustColorTransitionParticle.Provider"
+                } else {
+                    "DustParticle.Provider"
+                },
+                lifetime: ParticleLifetimeDescriptor::DustScale { fallback_scale: 1 },
+                sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::SingleQuadScaled {
+                    scale: 0.75,
+                    color: ParticleColorDescriptor::FixedRgb([1.0, 0.0, 0.0]),
+                    quad_size_curve: ParticleQuadSizeCurve::GrowToBase,
+                },
+                initial_velocity: ParticleInitialVelocityDescriptor::ParticleConstructorScaled {
+                    scale: 0.1,
+                },
+                friction: 0.96,
+                gravity: 0.0,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: true,
             },
             "minecraft:sweep_attack" => Self {
                 provider: "AttackSweepParticle.Provider",
@@ -1785,9 +1809,16 @@ impl ParticleLifetimeDescriptor {
                 min + random.next_index(span as usize).unwrap_or(0) as u32
             }
             Self::CommandOption { fallback } => fallback,
+            Self::DustScale { fallback_scale } => dust_lifetime(random, fallback_scale as f32),
             Self::Explode => (16.0 / (random.next_f64() * 0.8 + 0.2)) as u32 + 2,
         }
     }
+}
+
+pub(crate) fn dust_lifetime(random: &mut ParticleRandom, scale: f32) -> u32 {
+    let scale = scale.clamp(0.01, 4.0);
+    let base_lifetime = (8.0 / (random.next_f64() * 0.8 + 0.2)) as u32;
+    ((base_lifetime as f32 * scale).max(1.0)) as u32
 }
 
 pub(crate) fn select_initial_sprite(
@@ -1838,7 +1869,7 @@ impl ParticleRandom {
         }
     }
 
-    fn next_f64(&mut self) -> f64 {
+    pub(crate) fn next_f64(&mut self) -> f64 {
         f64::from(self.next_bits(24)) / f64::from(1_u32 << 24)
     }
 
@@ -2101,6 +2132,40 @@ mod tests {
         assert_eq!(
             bubble_pop.tick_motion(),
             ParticleTickMotionDescriptor::DirectGravityNoFriction
+        );
+        assert_descriptor(
+            "minecraft:dust",
+            "DustParticle.Provider",
+            ParticleLifetimeDescriptor::DustScale { fallback_scale: 1 },
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::SingleQuadScaled {
+                scale: 0.75,
+                color: ParticleColorDescriptor::FixedRgb([1.0, 0.0, 0.0]),
+                quad_size_curve: ParticleQuadSizeCurve::GrowToBase,
+            },
+            0.96,
+            0.0,
+            true,
+            true,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:dust").initial_velocity,
+            ParticleInitialVelocityDescriptor::ParticleConstructorScaled { scale: 0.1 }
+        );
+        assert_descriptor(
+            "minecraft:dust_color_transition",
+            "DustColorTransitionParticle.Provider",
+            ParticleLifetimeDescriptor::DustScale { fallback_scale: 1 },
+            ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::SingleQuadScaled {
+                scale: 0.75,
+                color: ParticleColorDescriptor::FixedRgb([1.0, 0.0, 0.0]),
+                quad_size_curve: ParticleQuadSizeCurve::GrowToBase,
+            },
+            0.96,
+            0.0,
+            true,
+            true,
         );
         assert_descriptor(
             "minecraft:sweep_attack",

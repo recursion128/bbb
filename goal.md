@@ -1287,6 +1287,11 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `SculkChargeParticleOptions.roll` for `minecraft:sculk_charge`; renderer
     stores it as initial `oRoll` / `roll` and applies the vanilla billboard
     roll transform during vertex emission.
+  - [x] `DustParticle.Provider` / `DustColorTransitionParticle.Provider`：
+    native command resolution decodes RGB color(s) and clamped scale for
+    `minecraft:dust` / `minecraft:dust_color_transition`; renderer maps both
+    providers to age sprites, opaque layer, vanilla scale-shaped quad size /
+    lifetime, random color variation, and transition partial-tick color lerp.
   - 初速度。
   - lifetime。
   - size curve。

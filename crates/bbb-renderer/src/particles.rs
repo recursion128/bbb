@@ -10,10 +10,11 @@ mod descriptors;
 mod gpu;
 
 use descriptors::{
-    particle_limit_for_particle, select_initial_sprite, sprite_index_for_age, ParticleAlphaCurve,
-    ParticleChildEmissionDescriptor, ParticleDescriptor, ParticleLightEmissionDescriptor,
-    ParticleLimitDescriptor, ParticleQuadSizeCurve, ParticleRandom, ParticleSpriteSelection,
-    ParticleTickMotionDescriptor, DEFAULT_PARTICLE_RANDOM_SEED,
+    dust_lifetime, particle_limit_for_particle, select_initial_sprite, sprite_index_for_age,
+    ParticleAlphaCurve, ParticleChildEmissionDescriptor, ParticleDescriptor,
+    ParticleLightEmissionDescriptor, ParticleLimitDescriptor, ParticleQuadSizeCurve,
+    ParticleRandom, ParticleSpriteSelection, ParticleTickMotionDescriptor,
+    DEFAULT_PARTICLE_RANDOM_SEED,
 };
 pub(super) use gpu::{
     create_particle_atlas_gpu, create_particle_pipeline, ParticleAtlasGpu, ParticlePipelineKind,
@@ -53,6 +54,10 @@ pub struct ParticleSpawnCommand {
     pub child_spawn_templates: Vec<ParticleChildSpawnTemplate>,
     #[serde(default)]
     pub option_color: Option<[f32; 4]>,
+    #[serde(default)]
+    pub option_color_to: Option<[f32; 4]>,
+    #[serde(default)]
+    pub option_scale: Option<f32>,
     #[serde(default)]
     pub option_power: Option<f32>,
     #[serde(default)]
@@ -128,6 +133,8 @@ pub(crate) struct ParticleInstance {
     pub(crate) color: [f32; 4],
     #[serde(default)]
     pub(crate) color_fade_target: Option<[f32; 3]>,
+    #[serde(default)]
+    pub(crate) color_transition_target: Option<[f32; 3]>,
     #[serde(default = "default_particle_light")]
     pub(crate) light: [f32; 2],
     #[serde(default)]
@@ -163,6 +170,10 @@ pub(crate) struct ParticleInstance {
     pub(crate) delay_ticks: u32,
     #[serde(default)]
     pub(crate) option_color: Option<[f32; 4]>,
+    #[serde(default)]
+    pub(crate) option_color_to: Option<[f32; 4]>,
+    #[serde(default)]
+    pub(crate) option_scale: Option<f32>,
     #[serde(default)]
     pub(crate) option_power: Option<f32>,
     #[serde(default)]
@@ -581,20 +592,47 @@ impl ParticleInstance {
         };
         let (current_sprite_index, current_sprite_id) =
             select_initial_sprite(&command.sprite_ids, descriptor.sprite_selection, random);
-        let visual = descriptor
+        let mut visual = descriptor
             .visual
             .sample_for_command(random, command.velocity);
+        let option_scale = command.option_scale.map(clamp_particle_option_scale);
+        if matches!(
+            descriptor.provider,
+            "DustParticle.Provider" | "DustColorTransitionParticle.Provider"
+        ) {
+            visual.base_quad_size *= option_scale.unwrap_or(1.0);
+        }
         let mut color = command.option_color.unwrap_or(visual.color);
+        let mut color_transition_target = None;
+        let mut sampled_lifetime_ticks = None;
+        if matches!(
+            descriptor.provider,
+            "DustParticle.Provider" | "DustColorTransitionParticle.Provider"
+        ) {
+            let scale = option_scale.unwrap_or(1.0);
+            sampled_lifetime_ticks = Some(dust_lifetime(random, scale));
+            let base_factor = random.next_f32() * 0.4 + 0.6;
+            color = dust_particle_color(color, base_factor, random);
+            if descriptor.provider == "DustColorTransitionParticle.Provider" {
+                let to_color = command.option_color_to.unwrap_or(color);
+                let to_color = dust_particle_color(to_color, base_factor, random);
+                color_transition_target = Some([to_color[0], to_color[1], to_color[2]]);
+            }
+        }
         if descriptor.provider == "TrailParticle.Provider" {
             if let Some(option_color) = command.option_color {
                 color = trail_particle_color(option_color, random);
             }
         }
-        let lifetime_ticks = match descriptor.lifetime {
-            descriptors::ParticleLifetimeDescriptor::CommandOption { .. } => command
-                .option_duration_ticks
-                .unwrap_or_else(|| descriptor.lifetime.sample(random)),
-            _ => descriptor.lifetime.sample(random),
+        let lifetime_ticks = if let Some(lifetime_ticks) = sampled_lifetime_ticks {
+            lifetime_ticks
+        } else {
+            match descriptor.lifetime {
+                descriptors::ParticleLifetimeDescriptor::CommandOption { .. } => command
+                    .option_duration_ticks
+                    .unwrap_or_else(|| descriptor.lifetime.sample(random)),
+                _ => descriptor.lifetime.sample(random),
+            }
         };
         let (previous_roll, roll) = if descriptor.provider == "SculkChargeParticle.Provider" {
             let roll = command.option_roll.unwrap_or(0.0);
@@ -619,6 +657,7 @@ impl ParticleInstance {
             base_quad_size: visual.base_quad_size,
             color,
             color_fade_target: descriptor.color_fade_target(),
+            color_transition_target,
             light: DEFAULT_PARTICLE_LIGHT,
             light_emission: descriptor.light_emission(),
             alpha_curve: descriptor.alpha_curve(),
@@ -641,6 +680,8 @@ impl ParticleInstance {
             raw_options_len: command.raw_options_len,
             delay_ticks: command.initial_delay_ticks,
             option_color: command.option_color,
+            option_color_to: command.option_color_to,
+            option_scale,
             option_power: command.option_power,
             option_target: command.option_target,
             option_duration_ticks: command.option_duration_ticks,
@@ -847,6 +888,8 @@ impl ParticleInstance {
             initial_delay_ticks: 0,
             child_spawn_templates: Vec::new(),
             option_color: None,
+            option_color_to: None,
+            option_scale: None,
             option_power: None,
             option_target: None,
             option_duration_ticks: None,
@@ -1119,6 +1162,13 @@ fn shriek_particle_rotations() -> [Quat; 2] {
 
 fn particle_render_color(instance: &ParticleInstance) -> [f32; 4] {
     let mut color = instance.color;
+    if let Some(target) = instance.color_transition_target {
+        let alpha = (instance.age_ticks as f32 + DEFAULT_PARTICLE_RENDER_PARTIAL_TICK)
+            / (instance.lifetime_ticks as f32 + 1.0).max(1.0);
+        color[0] = lerp_f32(alpha, color[0], target[0]);
+        color[1] = lerp_f32(alpha, color[1], target[1]);
+        color[2] = lerp_f32(alpha, color[2], target[2]);
+    }
     match instance.alpha_curve {
         ParticleAlphaCurve::Constant => {}
         ParticleAlphaCurve::SimpleAnimatedFade => {}
@@ -1168,6 +1218,19 @@ fn trail_particle_color(color: [f32; 4], random: &mut ParticleRandom) -> [f32; 4
         color[2] * (0.875 + random.next_f32() * 0.25),
         color[3],
     ]
+}
+
+fn dust_particle_color(color: [f32; 4], base_factor: f32, random: &mut ParticleRandom) -> [f32; 4] {
+    [
+        (random.next_f32() * 0.2 + 0.8) * color[0] * base_factor,
+        (random.next_f32() * 0.2 + 0.8) * color[1] * base_factor,
+        (random.next_f32() * 0.2 + 0.8) * color[2] * base_factor,
+        color[3],
+    ]
+}
+
+fn clamp_particle_option_scale(scale: f32) -> f32 {
+    scale.clamp(0.01, 4.0)
 }
 
 fn flash_overlay_alpha(age_ticks: u32, partial_tick: f32) -> f32 {
@@ -2136,6 +2199,47 @@ mod tests {
             bubble_pop.tick_motion,
             ParticleTickMotionDescriptor::DirectGravityNoFriction
         );
+
+        let mut dust_random = ParticleRandom::new(79);
+        let mut dust_command = spawn_command("minecraft:dust", 1.0);
+        dust_command.velocity = [1.0, 2.0, 3.0];
+        dust_command.option_color = Some([0.25, 0.5, 0.75, 1.0]);
+        dust_command.option_scale = Some(2.0);
+        let dust = ParticleInstance::from_spawn_command(dust_command, &mut dust_random);
+        assert_eq!(dust.provider, "DustParticle.Provider");
+        assert_eq!(dust.sprite_selection, ParticleSpriteSelection::Age);
+        assert_eq!(
+            dust.current_sprite_id.as_deref(),
+            Some("minecraft:generic_0")
+        );
+        assert_eq!(dust.quad_size_curve, ParticleQuadSizeCurve::GrowToBase);
+        assert_range_f32(dust.base_quad_size, 0.15, 0.3);
+        assert_range_f32(dust.color[0], 0.25 * 0.48, 0.25);
+        assert_range_f32(dust.color[1], 0.5 * 0.48, 0.5);
+        assert_range_f32(dust.color[2], 0.75 * 0.48, 0.75);
+        assert_eq!(dust.color[3], 1.0);
+        assert!((16..=80).contains(&dust.lifetime_ticks));
+        assert_eq!(dust.option_scale, Some(2.0));
+        assert_eq!(dust.render_layer, ParticleRenderLayer::Opaque);
+        assert!(dust.speed_up_when_y_motion_is_blocked);
+
+        let mut transition_random = ParticleRandom::new(80);
+        let mut transition_command = spawn_command("minecraft:dust_color_transition", 1.0);
+        transition_command.option_color = Some([0.0, 0.0, 1.0, 1.0]);
+        transition_command.option_color_to = Some([1.0, 0.0, 0.0, 1.0]);
+        transition_command.option_scale = Some(1.0);
+        let mut transition =
+            ParticleInstance::from_spawn_command(transition_command, &mut transition_random);
+        assert_eq!(transition.provider, "DustColorTransitionParticle.Provider");
+        assert!(transition.color_transition_target.is_some());
+        transition.age_ticks = 10;
+        transition.lifetime_ticks = 20;
+        let target = transition.color_transition_target.unwrap();
+        let tint = particle_render_color(&transition);
+        let alpha = 10.5 / 21.0;
+        assert_close_f32(tint[0], lerp_f32(alpha, transition.color[0], target[0]));
+        assert_close_f32(tint[1], lerp_f32(alpha, transition.color[1], target[1]));
+        assert_close_f32(tint[2], lerp_f32(alpha, transition.color[2], target[2]));
 
         let mut sweep_random = ParticleRandom::new(76);
         let mut sweep_command = spawn_command("minecraft:sweep_attack", 1.0);
@@ -3785,6 +3889,7 @@ mod tests {
             base_quad_size: DEFAULT_PARTICLE_QUAD_SIZE,
             color: [1.0, 1.0, 1.0, 1.0],
             color_fade_target: descriptor.color_fade_target(),
+            color_transition_target: None,
             light: DEFAULT_PARTICLE_LIGHT,
             light_emission: descriptor.light_emission(),
             alpha_curve: descriptor.alpha_curve(),
@@ -3807,6 +3912,8 @@ mod tests {
             raw_options_len: 0,
             delay_ticks: 0,
             option_color: None,
+            option_color_to: None,
+            option_scale: None,
             option_power: None,
             option_target: None,
             option_duration_ticks: None,
@@ -3827,6 +3934,8 @@ mod tests {
             initial_delay_ticks: 0,
             child_spawn_templates: Vec::new(),
             option_color: None,
+            option_color_to: None,
+            option_scale: None,
             option_power: None,
             option_target: None,
             option_duration_ticks: None,
