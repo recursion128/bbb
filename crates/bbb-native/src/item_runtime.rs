@@ -5664,6 +5664,43 @@ mod tests {
                 DataComponentPatchSummary {
                     added_type_ids: vec![69],
                     fireworks_flight_duration: Some(2),
+                    fireworks_explosions_count: Some(1),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_fireworks_explosions_present")
+        );
+        assert_eq!(
+            selected(
+                12,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![69],
+                    fireworks_flight_duration: Some(2),
+                    fireworks_explosions_count: Some(2),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_fireworks_explosions_absent")
+        );
+        assert_eq!(
+            selected(
+                12,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![69],
+                    fireworks_flight_duration: Some(2),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_fireworks_explosions_absent")
+        );
+        assert_eq!(
+            selected(
+                12,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![69],
+                    removed_type_ids: vec![69],
+                    fireworks_flight_duration: Some(2),
+                    fireworks_explosions_count: Some(1),
                     ..DataComponentPatchSummary::default()
                 }
             ),

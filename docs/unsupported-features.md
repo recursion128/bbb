@@ -5853,8 +5853,9 @@ When an agent does any of the following, update this file in the same slice:
       component-present branch. `minecraft:firework_explosion` shape / trail /
       twinkle constraints are decoded from the component and matched against
       vanilla `FireworkExplosionPredicate`; `minecraft:fireworks` decodes and
-      matches `FireworksPredicate.flightDuration` `MinMaxBounds.Ints` when the
-      predicate has no `explosions` collection constraint. `minecraft:trim`
+      matches `FireworksPredicate.flightDuration` `MinMaxBounds.Ints` plus
+      `explosions.size` `CollectionPredicate.size` against the decoded
+      explosions count. `minecraft:trim`
       direct registry-key material constraints match the decoded
       `ArmorTrim.material()` holder id through dynamic trim-material registry
       keys when no pattern constraint is present. `minecraft:bundle_contents`
@@ -5866,7 +5867,7 @@ When an agent does any of the following, update this file in the same slice:
       matching / `stored_enchantments`, bundle `contains`/`count` item
       predicates, container item collection predicates, trim pattern / tag
       material sets / inline material payloads, `minecraft:fireworks` explosion
-      collection details, and similar) remain follow-up.
+      `contains`/`count` details, and similar) remain follow-up.
     - `minecraft:charge_type` — `Charge.get` (`ROCKET` when any charged
       projectile is `minecraft:firework_rocket`, `ARROW` when charged otherwise,
       else `NONE`), using the native item registry to identify the projectile

@@ -1638,13 +1638,10 @@ fn bundle_contents_component_predicate_is_supported(property: &ItemModelProperty
     if value.is_empty() {
         return false;
     }
-    let Some(items) = value.get("items").and_then(Value::as_object) else {
+    let Some(items) = value.get("items") else {
         return false;
     };
-    value.len() == 1
-        && !items.contains_key("contains")
-        && !items.contains_key("count")
-        && items.keys().all(|key| key == "size")
+    value.len() == 1 && collection_predicate_is_size_only(items)
 }
 
 fn item_stack_matches_bundle_contents_predicate(
@@ -1680,7 +1677,19 @@ fn fireworks_component_predicate_is_supported(property: &ItemModelProperty) -> b
     let Some(value) = property.raw().get("value").and_then(Value::as_object) else {
         return false;
     };
-    !value.contains_key("explosions")
+    value
+        .get("explosions")
+        .map(collection_predicate_is_size_only)
+        .unwrap_or(true)
+}
+
+fn collection_predicate_is_size_only(value: &Value) -> bool {
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    !value.contains_key("contains")
+        && !value.contains_key("count")
+        && value.keys().all(|key| key == "size")
 }
 
 fn trim_component_predicate_is_supported(property: &ItemModelProperty) -> bool {
@@ -1776,6 +1785,21 @@ fn item_stack_matches_fireworks_predicate(
     let Some(value) = property.raw().get("value").and_then(Value::as_object) else {
         return false;
     };
+    if let Some(size) = value
+        .get("explosions")
+        .and_then(Value::as_object)
+        .and_then(|explosions| explosions.get("size"))
+    {
+        let Some(explosions_count) = component_patch
+            .fireworks_explosions_count
+            .and_then(|count| i32::try_from(count).ok())
+        else {
+            return false;
+        };
+        if !min_max_int_bounds_match(Some(size), explosions_count) {
+            return false;
+        }
+    }
     let Some(bounds) = value.get("flight_duration") else {
         return true;
     };
