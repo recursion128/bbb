@@ -824,6 +824,19 @@ fn default_swing_animation_duration_for_declaration(expression: &str) -> Result<
 fn default_attribute_modifiers_for_declaration(
     expression: &str,
 ) -> Result<Vec<ItemDefaultAttributeModifier>> {
+    if let Some((material, armor_type)) = humanoid_armor_material_and_type(expression)? {
+        return armor_default_attribute_modifiers(&material, &armor_type);
+    }
+    for pattern in [
+        r#"\.wolfArmor\(\s*ArmorMaterials\.([A-Z_]+)"#,
+        r#"\.horseArmor\(\s*ArmorMaterials\.([A-Z_]+)"#,
+        r#"\.nautilusArmor\(\s*ArmorMaterials\.([A-Z_]+)"#,
+    ] {
+        if let Some(material) = optional_capture(pattern, expression)? {
+            return armor_default_attribute_modifiers(&material, "BODY");
+        }
+    }
+
     let float = r#"-?[0-9]+(?:\.[0-9]+)?F?"#;
     let properties_pattern = format!(
         r#"(?s)\.(?:sword|pickaxe|axe|hoe|shovel)\(\s*ToolMaterial\.([A-Z_]+)\s*,\s*({float})\s*,\s*({float})\s*\)"#
@@ -874,6 +887,106 @@ fn tool_default_attribute_modifiers(
         attack_damage,
         f64::from(attack_speed_baseline),
     ))
+}
+
+fn armor_default_attribute_modifiers(
+    material: &str,
+    armor_type: &str,
+) -> Result<Vec<ItemDefaultAttributeModifier>> {
+    let modifier_id = format!("minecraft:armor.{}", armor_type_name(armor_type)?);
+    let slot_id = armor_type_slot_group_id(armor_type)?;
+    let mut modifiers = vec![
+        ItemDefaultAttributeModifier {
+            attribute_key: "minecraft:generic.armor".to_string(),
+            modifier_id: modifier_id.clone(),
+            amount_bits: f64::from(armor_material_defense(material, armor_type)?).to_bits(),
+            operation_id: 0,
+            slot_id,
+        },
+        ItemDefaultAttributeModifier {
+            attribute_key: "minecraft:generic.armor_toughness".to_string(),
+            modifier_id: modifier_id.clone(),
+            amount_bits: f64::from(armor_material_toughness(material)?).to_bits(),
+            operation_id: 0,
+            slot_id,
+        },
+    ];
+    let knockback_resistance = armor_material_knockback_resistance(material)?;
+    if knockback_resistance > 0.0 {
+        modifiers.push(ItemDefaultAttributeModifier {
+            attribute_key: "minecraft:generic.knockback_resistance".to_string(),
+            modifier_id,
+            amount_bits: f64::from(knockback_resistance).to_bits(),
+            operation_id: 0,
+            slot_id,
+        });
+    }
+    Ok(modifiers)
+}
+
+fn armor_type_name(armor_type: &str) -> Result<&'static str> {
+    match armor_type {
+        "HELMET" => Ok("helmet"),
+        "CHESTPLATE" => Ok("chestplate"),
+        "LEGGINGS" => Ok("leggings"),
+        "BOOTS" => Ok("boots"),
+        "BODY" => Ok("body"),
+        _ => bail!("unsupported armor type ArmorType.{armor_type}"),
+    }
+}
+
+fn armor_type_slot_group_id(armor_type: &str) -> Result<i32> {
+    match armor_type {
+        "BOOTS" => Ok(4),
+        "LEGGINGS" => Ok(5),
+        "CHESTPLATE" => Ok(6),
+        "HELMET" => Ok(7),
+        "BODY" => Ok(9),
+        _ => bail!("unsupported armor type ArmorType.{armor_type}"),
+    }
+}
+
+fn armor_material_defense(material: &str, armor_type: &str) -> Result<i32> {
+    let defenses = match material {
+        "LEATHER" => [1, 2, 3, 1, 3],
+        "COPPER" => [1, 3, 4, 2, 4],
+        "CHAINMAIL" => [1, 4, 5, 2, 4],
+        "IRON" => [2, 5, 6, 2, 5],
+        "GOLD" => [1, 3, 5, 2, 7],
+        "DIAMOND" => [3, 6, 8, 3, 11],
+        "TURTLE_SCUTE" => [2, 5, 6, 2, 5],
+        "NETHERITE" => [3, 6, 8, 3, 19],
+        "ARMADILLO_SCUTE" => [3, 6, 8, 3, 11],
+        _ => bail!("unsupported armor material ArmorMaterials.{material}"),
+    };
+    let index = match armor_type {
+        "BOOTS" => 0,
+        "LEGGINGS" => 1,
+        "CHESTPLATE" => 2,
+        "HELMET" => 3,
+        "BODY" => 4,
+        _ => bail!("unsupported armor type ArmorType.{armor_type}"),
+    };
+    Ok(defenses[index])
+}
+
+fn armor_material_toughness(material: &str) -> Result<f32> {
+    match material {
+        "DIAMOND" => Ok(2.0),
+        "NETHERITE" => Ok(3.0),
+        "LEATHER" | "COPPER" | "CHAINMAIL" | "IRON" | "GOLD" | "TURTLE_SCUTE"
+        | "ARMADILLO_SCUTE" => Ok(0.0),
+        _ => bail!("unsupported armor material ArmorMaterials.{material}"),
+    }
+}
+
+fn armor_material_knockback_resistance(material: &str) -> Result<f32> {
+    match material {
+        "NETHERITE" => Ok(0.1),
+        "LEATHER" | "COPPER" | "CHAINMAIL" | "IRON" | "GOLD" | "DIAMOND" | "TURTLE_SCUTE"
+        | "ARMADILLO_SCUTE" => Ok(0.0),
+        _ => bail!("unsupported armor material ArmorMaterials.{material}"),
+    }
 }
 
 fn attribute_modifier_entries(
@@ -1499,6 +1612,108 @@ mod tests {
             decoded.default_attribute_modifiers("minecraft:iron_sword"),
             catalog.default_attribute_modifiers("minecraft:iron_sword")
         );
+    }
+
+    #[test]
+    fn item_registry_catalog_parses_default_armor_attribute_modifiers() {
+        let source = r#"
+            public class Items {
+               public static final Item DIAMOND_HELMET = registerItem("diamond_helmet", new Item.Properties().humanoidArmor(ArmorMaterials.DIAMOND, ArmorType.HELMET));
+               public static final Item NETHERITE_CHESTPLATE = registerItem(
+                  "netherite_chestplate",
+                  new Item.Properties().humanoidArmor(ArmorMaterials.NETHERITE, ArmorType.CHESTPLATE).fireResistant()
+               );
+               public static final Item HORSE_ARMOR = registerItem("horse_armor", new Item.Properties().horseArmor(ArmorMaterials.DIAMOND));
+               public static final Item STICK = registerItem("stick");
+            }
+        "#;
+
+        let catalog =
+            ItemRegistryCatalog::from_items_java_source(source, &BTreeMap::new()).unwrap();
+        let entries = |resource_id| {
+            catalog
+                .default_attribute_modifiers(resource_id)
+                .unwrap()
+                .iter()
+                .map(|modifier| {
+                    (
+                        modifier.attribute_key.as_str(),
+                        modifier.modifier_id.as_str(),
+                        f64::from_bits(modifier.amount_bits),
+                        modifier.operation_id,
+                        modifier.slot_id,
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+
+        assert_eq!(
+            entries("minecraft:diamond_helmet"),
+            vec![
+                (
+                    "minecraft:generic.armor",
+                    "minecraft:armor.helmet",
+                    3.0,
+                    0,
+                    7,
+                ),
+                (
+                    "minecraft:generic.armor_toughness",
+                    "minecraft:armor.helmet",
+                    2.0,
+                    0,
+                    7,
+                ),
+            ]
+        );
+        assert_eq!(
+            entries("minecraft:netherite_chestplate"),
+            vec![
+                (
+                    "minecraft:generic.armor",
+                    "minecraft:armor.chestplate",
+                    8.0,
+                    0,
+                    6,
+                ),
+                (
+                    "minecraft:generic.armor_toughness",
+                    "minecraft:armor.chestplate",
+                    3.0,
+                    0,
+                    6,
+                ),
+                (
+                    "minecraft:generic.knockback_resistance",
+                    "minecraft:armor.chestplate",
+                    f64::from(0.1_f32),
+                    0,
+                    6,
+                ),
+            ]
+        );
+        assert_eq!(
+            entries("minecraft:horse_armor"),
+            vec![
+                (
+                    "minecraft:generic.armor",
+                    "minecraft:armor.body",
+                    11.0,
+                    0,
+                    9,
+                ),
+                (
+                    "minecraft:generic.armor_toughness",
+                    "minecraft:armor.body",
+                    2.0,
+                    0,
+                    9,
+                ),
+            ]
+        );
+        assert!(catalog
+            .default_attribute_modifiers("minecraft:stick")
+            .is_none());
     }
 
     #[test]

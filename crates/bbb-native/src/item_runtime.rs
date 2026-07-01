@@ -5799,6 +5799,7 @@ mod tests {
         let attribute_keys = [
             "minecraft:generic.attack_damage".to_string(),
             "minecraft:generic.scale".to_string(),
+            "minecraft:generic.armor".to_string(),
         ];
         let healing_potion_id = 24;
         let selected_with_trim_keys = |item_id, component_patch| {
@@ -8884,6 +8885,20 @@ mod tests {
             ),
             uv("component_condition_container_partial_default_attribute_modifiers_absent")
         );
+        assert_eq!(
+            selected_with_attribute_keys(76, DataComponentPatchSummary::default()),
+            uv("component_condition_default_armor_attribute_modifiers_present")
+        );
+        assert_eq!(
+            selected_with_attribute_keys(
+                76,
+                DataComponentPatchSummary {
+                    removed_type_ids: vec![16],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_default_armor_attribute_modifiers_absent")
+        );
         let custom_data_value = |owner: &str| {
             NbtSummaryValue::Compound(vec![
                 NbtSummaryEntry {
@@ -10551,6 +10566,7 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_DEFAULT_ATTRIBUTE_MODIFIERS = registerItem("component_condition_default_attribute_modifiers", new Item.Properties().sword(ToolMaterial.IRON, 3.0F, -2.4F));
                 public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_DEFAULT_ATTRIBUTE_MODIFIERS = registerItem("component_condition_bundle_partial_default_attribute_modifiers");
                 public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_DEFAULT_ATTRIBUTE_MODIFIERS = registerItem("component_condition_container_partial_default_attribute_modifiers");
+                public static final Item COMPONENT_CONDITION_DEFAULT_ARMOR_ATTRIBUTE_MODIFIERS = registerItem("component_condition_default_armor_attribute_modifiers", new Item.Properties().humanoidArmor(ArmorMaterials.DIAMOND, ArmorType.HELMET));
             }"#,
         );
         write_json(
@@ -12696,6 +12712,40 @@ mod tests {
         write_json(
             &assets
                 .join("items")
+                .join("component_condition_default_armor_attribute_modifiers.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:attribute_modifiers",
+                    "value": {
+                        "modifiers": {
+                            "contains": [
+                                {
+                                    "attribute": "minecraft:generic.armor",
+                                    "id": "minecraft:armor.helmet",
+                                    "amount": 3.0,
+                                    "operation": "add_value",
+                                    "slot": "head"
+                                }
+                            ],
+                            "size": 2
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_default_armor_attribute_modifiers_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_default_armor_attribute_modifiers_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
                 .join("component_condition_custom_data.json"),
             r#"{
                 "model": {
@@ -13568,6 +13618,14 @@ mod tests {
             (
                 "component_condition_container_partial_default_attribute_modifiers_absent",
                 [95, 65, 45, 255],
+            ),
+            (
+                "component_condition_default_armor_attribute_modifiers_present",
+                [180, 230, 245, 255],
+            ),
+            (
+                "component_condition_default_armor_attribute_modifiers_absent",
+                [55, 85, 95, 255],
             ),
             (
                 "component_condition_custom_data_present",
