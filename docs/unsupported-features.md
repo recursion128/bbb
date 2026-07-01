@@ -496,6 +496,11 @@ When an agent does any of the following, update this file in the same slice:
         xAux-derived quad size, random gray tint, age sprite selection,
         `6 + random.nextInt(4)` lifetime, static zero velocity in the current
         CPU model, base physics metadata, and full-bright light coords
+      - `HugeExplosionSeedParticle.Provider` (`minecraft:explosion_emitter`)
+        is represented as a definition-less no-render emitter with fixed
+        lifetime `8`, six child `minecraft:explosion` submissions each tick,
+        `nextDouble() - nextDouble()` offsets scaled by `4.0`, and vanilla
+        child xAux `age / lifetime` feeding the explosion quad-size formula.
       - `SonicBoomParticle.Provider` uses vanilla fixed `1.5` quad size,
         random gray tint inherited from `HugeExplosionParticle`, age sprite
         selection, fixed lifetime `16`, static zero velocity in the current CPU

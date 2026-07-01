@@ -1225,18 +1225,22 @@ impl ParticleCommandResolver {
                 ..ParticleSpawnBatch::default()
             });
         };
-        let Some(definition) = self.definitions.definition(particle_type.name) else {
-            return Err(ParticleSpawnBatch {
-                missing_definition_count: 1,
-                ..ParticleSpawnBatch::default()
-            });
-        };
-
-        let sprite_ids = definition.textures.clone();
-        let missing_sprite_count = sprite_ids
-            .iter()
-            .filter(|sprite_id| self.sprites.sprite(sprite_id).is_none())
-            .count();
+        let (sprite_ids, missing_sprite_count) =
+            if let Some(definition) = self.definitions.definition(particle_type.name) {
+                let sprite_ids = definition.textures.clone();
+                let missing_sprite_count = sprite_ids
+                    .iter()
+                    .filter(|sprite_id| self.sprites.sprite(sprite_id).is_none())
+                    .count();
+                (sprite_ids, missing_sprite_count)
+            } else if definitionless_particle_type(particle_type.id) {
+                (Vec::new(), 0)
+            } else {
+                return Err(ParticleSpawnBatch {
+                    missing_definition_count: 1,
+                    ..ParticleSpawnBatch::default()
+                });
+            };
         Ok(SimpleParticleTemplate {
             particle_type,
             sprite_ids,
@@ -1345,6 +1349,7 @@ impl ParticleCommandResolver {
         particle_type: ParticleTypeInfo,
     ) -> Vec<ParticleChildSpawnTemplate> {
         let child_particle_type_id = match particle_type.id {
+            EXPLOSION_EMITTER_PARTICLE_TYPE_ID => EXPLOSION_PARTICLE_TYPE_ID,
             LAVA_PARTICLE_TYPE_ID => SMOKE_PARTICLE_TYPE_ID,
             GUST_EMITTER_LARGE_PARTICLE_TYPE_ID | GUST_EMITTER_SMALL_PARTICLE_TYPE_ID => {
                 GUST_PARTICLE_TYPE_ID
@@ -1378,7 +1383,9 @@ fn initial_delay_ticks_for_particle_options(particle_type_id: i32, raw_options: 
 fn definitionless_particle_type(particle_type_id: i32) -> bool {
     matches!(
         particle_type_id,
-        GUST_EMITTER_LARGE_PARTICLE_TYPE_ID | GUST_EMITTER_SMALL_PARTICLE_TYPE_ID
+        EXPLOSION_EMITTER_PARTICLE_TYPE_ID
+            | GUST_EMITTER_LARGE_PARTICLE_TYPE_ID
+            | GUST_EMITTER_SMALL_PARTICLE_TYPE_ID
     )
 }
 
@@ -1906,6 +1913,27 @@ mod tests {
         assert_eq!(child.particle_type_id, SMOKE_PARTICLE_TYPE_ID);
         assert_eq!(child.particle_id, "minecraft:smoke");
         assert_eq!(child.sprite_ids, vec!["minecraft:smoke_0".to_string()]);
+    }
+
+    #[test]
+    fn explosion_emitter_particle_commands_carry_explosion_child_template_without_definition() {
+        let mut resolver = test_resolver(0);
+        let batch = resolver.resolve_level_particles(&level_particles_packet(
+            EXPLOSION_EMITTER_PARTICLE_TYPE_ID,
+            0,
+        ));
+
+        assert_eq!(batch.len(), 1);
+        assert_eq!(batch.missing_definition_count, 0);
+        let command = &batch.commands[0];
+        assert_eq!(command.particle_type_id, EXPLOSION_EMITTER_PARTICLE_TYPE_ID);
+        assert_eq!(command.particle_id, "minecraft:explosion_emitter");
+        assert!(command.sprite_ids.is_empty());
+        assert_eq!(command.child_spawn_templates.len(), 1);
+        let child = &command.child_spawn_templates[0];
+        assert_eq!(child.particle_type_id, EXPLOSION_PARTICLE_TYPE_ID);
+        assert_eq!(child.particle_id, "minecraft:explosion");
+        assert_eq!(child.sprite_ids, vec!["minecraft:explosion_0".to_string()]);
     }
 
     #[test]
@@ -3197,7 +3225,6 @@ mod tests {
                 "sculk_charge_0",
                 "flame",
                 "soul_fire_flame",
-                "explosion_emitter_0",
                 "explosion_0",
                 "gust_0",
                 "smoke_0",
@@ -3352,14 +3379,6 @@ mod tests {
             r#"{
               "textures": [
                 "minecraft:explosion_0"
-              ]
-            }"#,
-        );
-        write_json(
-            &particle_dir(&root).join("explosion_emitter.json"),
-            r#"{
-              "textures": [
-                "minecraft:explosion_emitter_0"
               ]
             }"#,
         );

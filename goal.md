@@ -1374,6 +1374,12 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:dust` / `minecraft:dust_color_transition`; renderer maps both
     providers to age sprites, opaque layer, vanilla scale-shaped quad size /
     lifetime, random color variation, and transition partial-tick color lerp.
+  - [x] `HugeExplosionSeedParticle.Provider`：native command resolution now
+    allows the definition-less no-render `minecraft:explosion_emitter` while
+    attaching the `minecraft:explosion` child SpriteSet; renderer maps it to
+    fixed lifetime `8`, no-render group, six child explosion submissions per
+    tick, vanilla `nextDouble() - nextDouble()` offsets scaled by `4.0`, and
+    child xAux `age / lifetime` feeding `HugeExplosionParticle` quad size.
   - [x] `GustSeedParticle.Provider`：native command resolution now allows the
     definition-less no-render `gust_emitter_large` / `_small` particle types
     while attaching the `minecraft:gust` child SpriteSet; renderer maps the

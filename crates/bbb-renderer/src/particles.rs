@@ -28,6 +28,7 @@ const DEFAULT_PARTICLE_RENDER_PARTIAL_TICK: f32 = 0.5;
 const DEFAULT_PARTICLE_LIGHT: [f32; 2] = [1.0, 1.0];
 const SHRIEK_MAGICAL_X_ROT: f32 = 1.0472;
 const LAVA_CHILD_SMOKE_PARTICLE_ID: &str = "minecraft:smoke";
+const HUGE_EXPLOSION_CHILD_PARTICLE_ID: &str = "minecraft:explosion";
 const GUST_CHILD_PARTICLE_ID: &str = "minecraft:gust";
 const OMINOUS_SPAWN_START_ARGB: u32 = 0xFF45_AEFE;
 const OMINOUS_SPAWN_END_ARGB: u32 = 0xFFFF_FFFF;
@@ -576,7 +577,10 @@ impl ParticleInstance {
             && command.option_target.is_none())
             || matches!(
                 child_emission,
-                Some(ParticleChildEmissionDescriptor::GustSeed { .. })
+                Some(
+                    ParticleChildEmissionDescriptor::HugeExplosionSeed
+                        | ParticleChildEmissionDescriptor::GustSeed { .. }
+                )
             ) {
             ParticleRenderGroup::NoRender
         } else {
@@ -1006,6 +1010,9 @@ impl ParticleInstance {
                 .lava_child_smoke_spawn_command(random)
                 .into_iter()
                 .collect(),
+            Some(ParticleChildEmissionDescriptor::HugeExplosionSeed) => {
+                self.huge_explosion_seed_child_spawn_commands(random)
+            }
             Some(ParticleChildEmissionDescriptor::GustSeed {
                 scale_tenths,
                 vanilla_lifetime,
@@ -1051,6 +1058,53 @@ impl ParticleInstance {
             option_duration_ticks: None,
             option_roll: None,
         })
+    }
+
+    fn huge_explosion_seed_child_spawn_commands(
+        &self,
+        random: &mut ParticleRandom,
+    ) -> Vec<ParticleSpawnCommand> {
+        let Some(template) = self
+            .child_spawn_templates
+            .iter()
+            .find(|template| template.particle_id == HUGE_EXPLOSION_CHILD_PARTICLE_ID)
+        else {
+            return Vec::new();
+        };
+        let vanilla_age = self.age_ticks.saturating_sub(1);
+        let velocity = [
+            f64::from(vanilla_age) / f64::from(self.lifetime_ticks.max(1)),
+            0.0,
+            0.0,
+        ];
+        (0..6)
+            .map(|_| {
+                let position = [
+                    self.position[0] + (random.next_double() - random.next_double()) * 4.0,
+                    self.position[1] + (random.next_double() - random.next_double()) * 4.0,
+                    self.position[2] + (random.next_double() - random.next_double()) * 4.0,
+                ];
+                ParticleSpawnCommand {
+                    particle_type_id: template.particle_type_id,
+                    particle_id: template.particle_id.clone(),
+                    sprite_ids: template.sprite_ids.clone(),
+                    position,
+                    velocity,
+                    override_limiter: false,
+                    always_show: false,
+                    raw_options_len: 0,
+                    initial_delay_ticks: 0,
+                    child_spawn_templates: Vec::new(),
+                    option_color: None,
+                    option_color_to: None,
+                    option_scale: None,
+                    option_power: None,
+                    option_target: None,
+                    option_duration_ticks: None,
+                    option_roll: None,
+                }
+            })
+            .collect()
     }
 
     fn gust_seed_child_spawn_commands(
@@ -1999,6 +2053,70 @@ mod tests {
         assert_close3(smoke.position, lava.position);
         assert_close3(smoke.velocity, lava.velocity);
         assert!(smoke.child_spawn_templates.is_empty());
+    }
+
+    #[test]
+    fn particle_runtime_huge_explosion_seed_emits_vanilla_child_explosions() {
+        let explosion_template = ParticleChildSpawnTemplate {
+            particle_type_id: 23,
+            particle_id: "minecraft:explosion".to_string(),
+            sprite_ids: vec!["minecraft:explosion_0".to_string()],
+        };
+        let mut seed_for_command = test_instance_with_lifetime("minecraft:explosion_emitter", 8);
+        seed_for_command.position = [1.0, 0.0, 0.0];
+        seed_for_command.age_ticks = 3;
+        seed_for_command.child_spawn_templates = vec![explosion_template.clone()];
+        let commands = seed_for_command.child_spawn_commands(&mut ParticleRandom::new(0));
+        assert_eq!(commands.len(), 6);
+        for command in &commands {
+            assert_eq!(command.particle_type_id, 23);
+            assert_eq!(command.particle_id, "minecraft:explosion");
+            assert_close3(command.velocity, [2.0 / 8.0, 0.0, 0.0]);
+            assert_range_f64(command.position[0], -3.0, 5.0);
+            assert_range_f64(command.position[1], -4.0, 4.0);
+            assert_range_f64(command.position[2], -4.0, 4.0);
+        }
+
+        let mut particles = ParticleRuntimeState::with_capacities_and_seed(32, 32, 0);
+        let mut seed = spawn_command("minecraft:explosion_emitter", 1.0);
+        seed.child_spawn_templates = vec![explosion_template];
+        particles.submit_batch(ParticleSpawnBatch {
+            commands: vec![seed],
+            ..ParticleSpawnBatch::default()
+        });
+        particles.advance(0);
+
+        let seed = &particles.active_instances()[0];
+        assert_eq!(seed.provider, "HugeExplosionSeedParticle.Provider");
+        assert_eq!(seed.render_group, ParticleRenderGroup::NoRender);
+        assert_eq!(seed.lifetime_ticks, 8);
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.intaken_instances, 6);
+        assert_eq!(summary.active_instances, 7);
+        let seed = &particles.active_instances()[0];
+        assert_eq!(seed.age_ticks, 1);
+        for child in particles.active_instances().iter().skip(1) {
+            assert_eq!(child.particle_type_id, 23);
+            assert_eq!(child.particle_id, "minecraft:explosion");
+            assert_eq!(child.provider, "HugeExplosionParticle.Provider");
+            assert_eq!(
+                child.current_sprite_id.as_deref(),
+                Some("minecraft:explosion_0")
+            );
+            assert_close_f32(child.base_quad_size, 2.0);
+            assert_eq!(child.velocity, [0.0, 0.0, 0.0]);
+            assert!(child.child_spawn_templates.is_empty());
+        }
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.intaken_instances, 6);
+        assert_eq!(summary.active_instances, 13);
+        for child in particles.active_instances().iter().skip(7) {
+            assert_close_f32(child.base_quad_size, 1.875);
+        }
     }
 
     #[test]
@@ -3905,6 +4023,29 @@ mod tests {
         assert_eq!(explosion.velocity, [0.0, 0.0, 0.0]);
         assert_eq!(explosion.friction, 0.98);
         assert!(explosion.has_physics);
+
+        let mut explosion_emitter_command = spawn_command("minecraft:explosion_emitter", 1.0);
+        explosion_emitter_command.child_spawn_templates = vec![ParticleChildSpawnTemplate {
+            particle_type_id: 23,
+            particle_id: "minecraft:explosion".to_string(),
+            sprite_ids: vec!["minecraft:explosion_0".to_string()],
+        }];
+        let explosion_emitter =
+            ParticleInstance::from_spawn_command(explosion_emitter_command, &mut explosion_random);
+        assert_eq!(
+            explosion_emitter.provider,
+            "HugeExplosionSeedParticle.Provider"
+        );
+        assert_eq!(
+            explosion_emitter.render_group,
+            ParticleRenderGroup::NoRender
+        );
+        assert_eq!(explosion_emitter.lifetime_ticks, 8);
+        assert_eq!(explosion_emitter.velocity, [0.0, 0.0, 0.0]);
+        assert_eq!(
+            explosion_emitter.child_emission,
+            Some(ParticleChildEmissionDescriptor::HugeExplosionSeed)
+        );
 
         let mut sonic_boom_random = ParticleRandom::new(73);
         let mut sonic_boom_command = spawn_command("minecraft:sonic_boom", 1.0);

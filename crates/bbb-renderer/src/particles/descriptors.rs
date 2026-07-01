@@ -69,6 +69,7 @@ pub(crate) enum ParticleAlphaCurve {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) enum ParticleChildEmissionDescriptor {
     LavaSmoke,
+    HugeExplosionSeed,
     GustSeed {
         scale_tenths: u32,
         vanilla_lifetime: u32,
@@ -762,6 +763,17 @@ impl ParticleDescriptor {
                 lifetime: ParticleLifetimeDescriptor::RandomInclusive { min: 6, max: 9 },
                 sprite_selection: ParticleSpriteSelection::Age,
                 visual: ParticleVisualDescriptor::HugeExplosion,
+                initial_velocity: ParticleInitialVelocityDescriptor::Zero,
+                friction: 0.98,
+                gravity: 0.0,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:explosion_emitter" => Self {
+                provider: "HugeExplosionSeedParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::Fixed(8),
+                sprite_selection: ParticleSpriteSelection::First,
+                visual: ParticleVisualDescriptor::BaseSingleQuad,
                 initial_velocity: ParticleInitialVelocityDescriptor::Zero,
                 friction: 0.98,
                 gravity: 0.0,
@@ -1622,6 +1634,9 @@ impl ParticleDescriptor {
     pub(crate) fn child_emission(self) -> Option<ParticleChildEmissionDescriptor> {
         match self.provider {
             "LavaParticle.Provider" => Some(ParticleChildEmissionDescriptor::LavaSmoke),
+            "HugeExplosionSeedParticle.Provider" => {
+                Some(ParticleChildEmissionDescriptor::HugeExplosionSeed)
+            }
             "GustSeedParticle.Provider(3.0,7,0)" => {
                 Some(ParticleChildEmissionDescriptor::GustSeed {
                     scale_tenths: 30,
@@ -3194,6 +3209,25 @@ mod tests {
         assert_eq!(
             ParticleDescriptor::for_particle("minecraft:explosion").initial_velocity,
             ParticleInitialVelocityDescriptor::Zero
+        );
+        assert_descriptor(
+            "minecraft:explosion_emitter",
+            "HugeExplosionSeedParticle.Provider",
+            ParticleLifetimeDescriptor::Fixed(8),
+            ParticleSpriteSelection::First,
+            ParticleVisualDescriptor::BaseSingleQuad,
+            0.98,
+            0.0,
+            true,
+            false,
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:explosion_emitter").initial_velocity,
+            ParticleInitialVelocityDescriptor::Zero
+        );
+        assert_eq!(
+            ParticleDescriptor::for_particle("minecraft:explosion_emitter").child_emission(),
+            Some(ParticleChildEmissionDescriptor::HugeExplosionSeed)
         );
         assert_descriptor(
             "minecraft:sonic_boom",
