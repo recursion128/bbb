@@ -130,6 +130,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub armor_trim_material_id: Option<i32>,
     #[serde(default)]
+    pub armor_trim_material_direct: Option<TrimMaterialSummary>,
+    #[serde(default)]
     pub armor_trim_pattern_id: Option<i32>,
     #[serde(default)]
     pub armor_trim_pattern_direct: Option<TrimPatternSummary>,
@@ -201,6 +203,13 @@ pub struct SoundEventSummary {
     pub registry_id: Option<i32>,
     pub sound_id: Option<String>,
     pub fixed_range_bits: Option<u32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TrimMaterialSummary {
+    pub asset_name: String,
+    pub override_armor_assets: BTreeMap<String, String>,
+    pub description: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -590,6 +599,7 @@ fn decode_typed_data_component_patch_summary(
             56 => {
                 let trim = decode_armor_trim(decoder)?;
                 summary.armor_trim_material_id = trim.material_id;
+                summary.armor_trim_material_direct = trim.material_direct;
                 summary.armor_trim_pattern_id = trim.pattern_id;
                 summary.armor_trim_pattern_direct = trim.pattern_direct;
             }
@@ -1548,33 +1558,48 @@ fn decode_equippable(decoder: &mut Decoder<'_>) -> Result<()> {
 
 struct ArmorTrimSummary {
     material_id: Option<i32>,
+    material_direct: Option<TrimMaterialSummary>,
     pattern_id: Option<i32>,
     pattern_direct: Option<TrimPatternSummary>,
 }
 
 fn decode_armor_trim(decoder: &mut Decoder<'_>) -> Result<ArmorTrimSummary> {
-    let material_id = decode_trim_material_holder_id(decoder)?;
+    let material = decode_trim_material_holder_summary(decoder)?;
     let pattern = decode_trim_pattern_holder(decoder)?;
     Ok(ArmorTrimSummary {
-        material_id,
+        material_id: material.registry_id,
+        material_direct: material.direct,
         pattern_id: pattern.registry_id,
         pattern_direct: pattern.direct,
     })
 }
 
-/// Decodes the `ArmorTrim.material()` holder, returning the registry reference id
-/// (`holder_id - 1`) so the `minecraft:trim_material` select can project it
-/// through the dynamic registry, or `None` for an inline (direct) material.
-fn decode_trim_material_holder_id(decoder: &mut Decoder<'_>) -> Result<Option<i32>> {
+struct TrimMaterialHolderSummary {
+    registry_id: Option<i32>,
+    direct: Option<TrimMaterialSummary>,
+}
+
+/// Decodes the `ArmorTrim.material()` holder, preserving registry references as
+/// `holder_id - 1` so `minecraft:trim_material` can still project them through
+/// the dynamic registry while exact component predicates can compare inline
+/// material payloads.
+fn decode_trim_material_holder_summary(
+    decoder: &mut Decoder<'_>,
+) -> Result<TrimMaterialHolderSummary> {
     let id = decoder.read_var_i32()?;
     if id < 0 {
         return Err(ProtocolError::NegativeLength(id));
     }
     if id == 0 {
-        decode_direct_trim_material(decoder)?;
-        Ok(None)
+        Ok(TrimMaterialHolderSummary {
+            registry_id: None,
+            direct: Some(decode_direct_trim_material_summary(decoder)?),
+        })
     } else {
-        Ok(Some(id - 1))
+        Ok(TrimMaterialHolderSummary {
+            registry_id: Some(id - 1),
+            direct: None,
+        })
     }
 }
 
@@ -1600,19 +1625,32 @@ fn decode_trim_material_holder(decoder: &mut Decoder<'_>) -> Result<()> {
 }
 
 fn decode_direct_trim_material(decoder: &mut Decoder<'_>) -> Result<()> {
-    decode_material_asset_group(decoder)?;
-    decode_component_summary_from_decoder(decoder)?;
+    let _ = decode_direct_trim_material_summary(decoder)?;
     Ok(())
 }
 
-fn decode_material_asset_group(decoder: &mut Decoder<'_>) -> Result<()> {
-    decoder.read_string(MAX_STRING_CHARS)?;
+fn decode_direct_trim_material_summary(decoder: &mut Decoder<'_>) -> Result<TrimMaterialSummary> {
+    let (asset_name, override_armor_assets) = decode_material_asset_group_summary(decoder)?;
+    let description = decode_component_summary_from_decoder(decoder)?;
+    Ok(TrimMaterialSummary {
+        asset_name,
+        override_armor_assets,
+        description,
+    })
+}
+
+fn decode_material_asset_group_summary(
+    decoder: &mut Decoder<'_>,
+) -> Result<(String, BTreeMap<String, String>)> {
+    let asset_name = decoder.read_string(MAX_STRING_CHARS)?;
     let overrides = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    let mut override_armor_assets = BTreeMap::new();
     for _ in 0..overrides {
-        decode_identifier(decoder)?;
-        decoder.read_string(MAX_STRING_CHARS)?;
+        let equipment_asset = read_resource_location(decoder)?;
+        let suffix = decoder.read_string(MAX_STRING_CHARS)?;
+        override_armor_assets.insert(equipment_asset, suffix);
     }
-    Ok(())
+    Ok((asset_name, override_armor_assets))
 }
 
 struct TrimPatternHolderSummary {
@@ -2389,6 +2427,43 @@ mod tests {
                     description: "Test pattern".to_string(),
                     decal: true,
                 }),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_inline_trim_material_payload() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(56);
+        payload.write_var_i32(0);
+        payload.write_string("test_material");
+        payload.write_var_i32(1);
+        payload.write_string("minecraft:iron");
+        payload.write_string("test_material_iron");
+        payload.write_bytes(&nbt_string_root("Test material"));
+        payload.write_var_i32(1);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![56],
+                armor_trim_material_direct: Some(TrimMaterialSummary {
+                    asset_name: "test_material".to_string(),
+                    override_armor_assets: BTreeMap::from([(
+                        "minecraft:iron".to_string(),
+                        "test_material_iron".to_string()
+                    )]),
+                    description: "Test material".to_string(),
+                }),
+                armor_trim_pattern_id: Some(0),
                 ..DataComponentPatchSummary::default()
             }
         );

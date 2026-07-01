@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use bbb_pack::{
     ItemCuboidModelCatalog, ItemModelDefinition, ItemModelProperty, ItemModelPropertyKind,
@@ -8,7 +8,8 @@ use bbb_protocol::packets::{
     AttributeModifierSummary, DataComponentPatchSummary, FireworkExplosionShapeSummary,
     FireworkExplosionSummary, ItemEnchantmentSummary, ItemRaritySummary, ItemStackTemplateSummary,
     JukeboxSongSummary, MobEffectDetailsSummary, MobEffectInstanceSummary, NbtSummaryEntry,
-    NbtSummaryValue, SoundEventSummary, TrimPatternSummary, WrittenBookContentSummary,
+    NbtSummaryValue, SoundEventSummary, TrimMaterialSummary, TrimPatternSummary,
+    WrittenBookContentSummary,
 };
 use chrono::{Datelike, FixedOffset, Local, TimeZone, Utc};
 use serde_json::Value;
@@ -4399,8 +4400,19 @@ fn item_stack_matches_trim_value(
 }
 
 struct ExactTrim<'a> {
-    material: &'a str,
+    material: ExactTrimMaterial<'a>,
     pattern: ExactTrimPattern<'a>,
+}
+
+enum ExactTrimMaterial<'a> {
+    RegistryKey(&'a str),
+    Direct(ExactDirectTrimMaterial),
+}
+
+struct ExactDirectTrimMaterial {
+    asset_name: String,
+    override_armor_assets: BTreeMap<String, String>,
+    description: String,
 }
 
 enum ExactTrimPattern<'a> {
@@ -4423,9 +4435,54 @@ fn trim_exact_value(value: &Value) -> Option<ExactTrim<'_>> {
         return None;
     }
     Some(ExactTrim {
-        material: direct_registry_key_value(value.get("material")?)?,
+        material: trim_material_exact_value(value.get("material")?)?,
         pattern: trim_pattern_exact_value(value.get("pattern")?)?,
     })
+}
+
+fn trim_material_exact_value(value: &Value) -> Option<ExactTrimMaterial<'_>> {
+    match value {
+        Value::String(value) => Some(ExactTrimMaterial::RegistryKey(direct_registry_key_str(
+            value,
+        )?)),
+        Value::Object(value) => {
+            if !value.keys().all(|key| {
+                key == "asset_name" || key == "override_armor_assets" || key == "description"
+            }) {
+                return None;
+            }
+            Some(ExactTrimMaterial::Direct(ExactDirectTrimMaterial {
+                asset_name: trim_material_asset_suffix_exact_value(value.get("asset_name")?)?,
+                override_armor_assets: trim_material_override_assets_exact_value(
+                    value.get("override_armor_assets"),
+                )?,
+                description: component_summary_text(value.get("description")?)?,
+            }))
+        }
+        _ => None,
+    }
+}
+
+fn trim_material_override_assets_exact_value(
+    value: Option<&Value>,
+) -> Option<BTreeMap<String, String>> {
+    let Some(value) = value else {
+        return Some(BTreeMap::new());
+    };
+    let value = value.as_object()?;
+    let mut override_armor_assets = BTreeMap::new();
+    for (key, suffix) in value {
+        override_armor_assets.insert(
+            direct_registry_key_str(key)?.to_string(),
+            trim_material_asset_suffix_exact_value(suffix)?,
+        );
+    }
+    Some(override_armor_assets)
+}
+
+fn trim_material_asset_suffix_exact_value(value: &Value) -> Option<String> {
+    let value = value.as_str()?;
+    (!value.is_empty()).then_some(value.to_string())
 }
 
 fn trim_pattern_exact_value(value: &Value) -> Option<ExactTrimPattern<'_>> {
@@ -4470,15 +4527,40 @@ fn trim_exact_match(
     {
         return false;
     }
-    let Some(material_key) = component_patch
-        .armor_trim_material_id
-        .and_then(|id| usize::try_from(id).ok())
-        .and_then(|index| trim_material_keys.and_then(|keys| keys.get(index)))
-    else {
-        return false;
-    };
-    material_key.as_str() == expected.material
+    trim_material_exact_match(&expected.material, component_patch, trim_material_keys)
         && trim_pattern_exact_match(&expected.pattern, component_patch)
+}
+
+fn trim_material_exact_match(
+    expected: &ExactTrimMaterial<'_>,
+    component_patch: &DataComponentPatchSummary,
+    trim_material_keys: Option<&[String]>,
+) -> bool {
+    match expected {
+        ExactTrimMaterial::RegistryKey(expected) => {
+            let Some(material_key) = component_patch
+                .armor_trim_material_id
+                .and_then(|id| usize::try_from(id).ok())
+                .and_then(|index| trim_material_keys.and_then(|keys| keys.get(index)))
+            else {
+                return false;
+            };
+            material_key == expected
+        }
+        ExactTrimMaterial::Direct(expected) => component_patch
+            .armor_trim_material_direct
+            .as_ref()
+            .is_some_and(|actual| direct_trim_material_exact_match(expected, actual)),
+    }
+}
+
+fn direct_trim_material_exact_match(
+    expected: &ExactDirectTrimMaterial,
+    actual: &TrimMaterialSummary,
+) -> bool {
+    actual.asset_name == expected.asset_name
+        && actual.override_armor_assets == expected.override_armor_assets
+        && actual.description == expected.description
 }
 
 fn trim_pattern_exact_match(

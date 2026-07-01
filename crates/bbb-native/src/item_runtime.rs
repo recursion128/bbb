@@ -24,7 +24,8 @@ use bbb_protocol::packets::{
     FireworkExplosionShapeSummary, FireworkExplosionSummary, ItemRaritySummary, ItemStackSummary,
     ItemStackTemplateSummary, JukeboxSongSummary, LodestoneTargetSummary, MobEffectDetailsSummary,
     MobEffectInstanceSummary, NbtSummaryEntry, NbtSummaryValue, ResolvableProfileSummary,
-    ResourceTextureSummary, SoundEventSummary, TrimPatternSummary, WrittenBookContentSummary,
+    ResourceTextureSummary, SoundEventSummary, TrimMaterialSummary, TrimPatternSummary,
+    WrittenBookContentSummary,
 };
 use bbb_renderer::{
     DynamicPlayerSkinImage, DynamicPlayerTextureImage, EntityCustomHeadSkull,
@@ -3680,6 +3681,7 @@ mod tests {
     };
     use chrono::TimeZone;
     use std::{
+        collections::BTreeMap,
         io::Cursor,
         path::{Path, PathBuf},
         sync::{
@@ -7545,7 +7547,14 @@ mod tests {
         );
         let exact_trim = DataComponentPatchSummary {
             added_type_ids: vec![56],
-            armor_trim_material_id: Some(1),
+            armor_trim_material_direct: Some(TrimMaterialSummary {
+                asset_name: "test_material".to_string(),
+                override_armor_assets: BTreeMap::from([(
+                    "minecraft:iron".to_string(),
+                    "test_material_iron".to_string(),
+                )]),
+                description: "Test material".to_string(),
+            }),
             armor_trim_pattern_direct: Some(TrimPatternSummary {
                 asset_id: "minecraft:test_pattern".to_string(),
                 description: "Test pattern".to_string(),
@@ -7564,6 +7573,19 @@ mod tests {
                     armor_trim_pattern_direct: Some(TrimPatternSummary {
                         decal: false,
                         ..exact_trim.armor_trim_pattern_direct.clone().unwrap()
+                    }),
+                    ..exact_trim.clone()
+                })
+            ),
+            uv("component_condition_bundle_exact_trim_absent")
+        );
+        assert_eq!(
+            selected_with_trim_keys(
+                90,
+                named_bundle_entry(DataComponentPatchSummary {
+                    armor_trim_material_direct: Some(TrimMaterialSummary {
+                        description: "Other material".to_string(),
+                        ..exact_trim.armor_trim_material_direct.clone().unwrap()
                     }),
                     ..exact_trim.clone()
                 })
@@ -12241,7 +12263,15 @@ mod tests {
                                     "components": {
                                         "components": {
                                             "minecraft:trim": {
-                                                "material": "minecraft:diamond",
+                                                "material": {
+                                                    "asset_name": "test_material",
+                                                    "override_armor_assets": {
+                                                        "minecraft:iron": "test_material_iron"
+                                                    },
+                                                    "description": {
+                                                        "text": "Test material"
+                                                    }
+                                                },
                                                 "pattern": {
                                                     "asset_id": "minecraft:test_pattern",
                                                     "description": {

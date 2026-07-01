@@ -18,7 +18,7 @@ pub use data_components::{
     PlayerSkinPatchSummary, ProfileSkinTextureSummary, ProfileTextureSummary,
     ProfileTexturesSummary, ResolvableProfileKindSummary, ResolvableProfileSummary,
     ResourceTextureSummary, SoundEventSummary, SwingAnimationSummary, SwingAnimationTypeSummary,
-    TrimPatternSummary, UseEffectsSummary, WrittenBookContentSummary,
+    TrimMaterialSummary, TrimPatternSummary, UseEffectsSummary, WrittenBookContentSummary,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
