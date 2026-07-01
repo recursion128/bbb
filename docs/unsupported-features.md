@@ -6099,9 +6099,14 @@ When an agent does any of the following, update this file in the same slice:
       branch even while Shift is down.
     - `minecraft:keybind_down` — `IsKeybindDown.get`, for GUI/HUD local-player
       item icons whose condition references native-tracked default key names.
-      Native projects pressed movement/gameplay/inventory keys plus mouse
-      attack/use/pick buttons into the item icon resolver. User-rebound/custom
-      key mappings and broader debug/misc key coverage remain follow-up.
+      Native projects pressed movement/gameplay/inventory/multiplayer/misc/
+      creative non-debug keys plus mouse attack/use/pick buttons into the item
+      icon resolver, covering the vanilla `Options.keyMappings` defaults such
+      as social interactions, quick actions, screenshot, perspective, fullscreen,
+      GUI / spectator-shader toggles, creative toolbar activators,
+      spectator-hotbar, and hotbar 1-9. User-rebound/custom key mappings,
+      default-unknown keys such as smooth-camera / spectator-outlines, and
+      F3/debug modifier combos remain follow-up.
     - `minecraft:fishing_rod/cast` — `FishingRodCast.get`, for GUI/HUD
       local-player selected hotbar main-hand fishing rods when a fishing bobber
       add-entity has owner data equal to the local player id. Non-selected
@@ -6206,7 +6211,7 @@ When an agent does any of the following, update this file in the same slice:
     GUI/HUD local-player icons in the normal camera==player path, and
     `minecraft:extended_view` is wired for Shift-held GUI/HUD local-player
     icons while retaining vanilla's GUI display-context gate. `minecraft:keybind_down`
-    is wired for the default key names currently tracked by native input.
+    is wired for native-tracked default non-debug `Options.keyMappings` names.
     `minecraft:fishing_rod/cast` is wired for GUI/HUD selected hotbar
     main-hand fishing rods while a local-player-owned fishing bobber exists.
     `minecraft:carried` is wired as an explicit resolver context bit for the

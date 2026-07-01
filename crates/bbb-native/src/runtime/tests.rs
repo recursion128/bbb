@@ -3459,7 +3459,7 @@ fn hotbar_item_icons_use_keybind_down_condition_when_default_key_is_down() {
             true,
             false,
             ItemModelKeybindContext {
-                use_item: true,
+                quick_actions: true,
                 ..ItemModelKeybindContext::default()
             },
         )
@@ -3520,7 +3520,7 @@ fn hotbar_item_icons_use_keybind_down_condition_when_default_key_is_down() {
         0.0,
         false,
         ItemModelKeybindContext {
-            use_item: true,
+            quick_actions: true,
             ..ItemModelKeybindContext::default()
         },
     );
@@ -8269,7 +8269,7 @@ fn write_runtime_keybind_down_condition_item_assets(root: &Path) {
             "model": {
                 "type": "minecraft:condition",
                 "property": "minecraft:keybind_down",
-                "keybind": "key.use",
+                "keybind": "key.quickActions",
                 "on_true": { "type": "minecraft:model", "model": "minecraft:item/keybind_down_condition_use" },
                 "on_false": { "type": "minecraft:model", "model": "minecraft:item/keybind_down_condition" }
             }

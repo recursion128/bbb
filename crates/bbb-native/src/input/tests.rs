@@ -4095,6 +4095,56 @@ fn item_model_keybind_context_tracks_default_key_and_mouse_state() {
     assert!(!input.item_model_keybind_context().keybind_down("key.use"));
 }
 
+#[test]
+fn item_model_keybind_context_tracks_non_debug_default_keymappings() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+
+    for (code, keybind) in [
+        (KeyCode::KeyP, "key.socialInteractions"),
+        (KeyCode::F2, "key.screenshot"),
+        (KeyCode::F5, "key.togglePerspective"),
+        (KeyCode::F11, "key.fullscreen"),
+        (KeyCode::KeyL, "key.advancements"),
+        (KeyCode::KeyG, "key.quickActions"),
+        (KeyCode::F1, "key.toggleGui"),
+        (KeyCode::F4, "key.toggleSpectatorShaderEffects"),
+        (KeyCode::KeyC, "key.saveToolbarActivator"),
+        (KeyCode::KeyX, "key.loadToolbarActivator"),
+    ] {
+        handle_key_input_without_world(
+            &mut input,
+            &mut counters,
+            &None,
+            PhysicalKey::Code(code),
+            ElementState::Pressed,
+        );
+        assert!(input.item_model_keybind_context().keybind_down(keybind));
+        handle_key_input_without_world(
+            &mut input,
+            &mut counters,
+            &None,
+            PhysicalKey::Code(code),
+            ElementState::Released,
+        );
+        assert!(!input.item_model_keybind_context().keybind_down(keybind));
+    }
+
+    let mut world = WorldStore::new();
+    handle_mouse_input_at_partial_tick(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &None,
+        MouseButton::Middle,
+        ElementState::Pressed,
+        1.0,
+    );
+    let context = input.item_model_keybind_context();
+    assert!(context.keybind_down("key.pickItem"));
+    assert!(context.keybind_down("key.spectatorHotbar"));
+}
+
 fn assert_sprint_key_on_mount_only_queues_raw_player_input(entity_type_id: i32) {
     let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);

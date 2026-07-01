@@ -706,10 +706,14 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     false branch even while Shift is down.
   - [x] `minecraft:keybind_down` item-model condition resolves for GUI/HUD
     local-player item icons from vanilla `IsKeybindDown.get`: native projects
-    the currently pressed default movement/gameplay/inventory key names and
-    mouse buttons into the item icon resolver, including `key.use` /
-    `key.attack` / `key.pickItem` and hotbar 1-9. User-rebound/custom key
-    mappings and the wider debug/misc key set remain follow-up.
+    the currently pressed default movement/gameplay/inventory/multiplayer/misc/
+    creative non-debug key names and mouse buttons into the item icon resolver,
+    including `key.use` / `key.attack` / `key.pickItem`,
+    `key.socialInteractions`, `key.quickActions`, screenshot / perspective /
+    fullscreen / GUI toggles, creative toolbar activators, `key.spectatorHotbar`,
+    and hotbar 1-9. User-rebound/custom key mappings, default-unknown keys
+    such as `key.smoothCamera` / `key.spectatorOutlines`, and debug modifier
+    combos remain follow-up.
   - [x] `minecraft:fishing_rod/cast` item-model condition resolves for GUI/HUD
     hotbar local-player selected main-hand fishing rods from vanilla
     `FishingRodCast.get` / `FishingHookRenderer.getHoldingArm`: world tracks
