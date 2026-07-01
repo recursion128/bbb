@@ -5718,9 +5718,9 @@ When an agent does any of the following, update this file in the same slice:
         selection, fixed `0.85` quad size, `30` lifetime, fixed `(0, 0.1, 0)`
         velocity, translucent layer, full-block light override,
         `0.85 * clamp((age + partial) / lifetime * 0.75, 0, 1)` size curve,
-        and linear alpha fade. Vanilla's two rotated quads from
-        `ShriekParticle.extract` remain a visual-geometry follow-up; the current
-        atlas path still emits one camera-facing quad after delay clears.
+        linear alpha fade, and the vanilla two rotated quads from
+        `ShriekParticle.extract` (`rotationX(-1.0472)` and
+        `rotationYXZ(-PI, 1.0472, 0)`).
       - particle descriptors map `EndRodParticle.Provider` to command velocity,
         `0.75` quad-size scaling, age sprites, `60..=71` lifetime, friction
         `0.91`, gravity `0.0125`, and full-bright light coords. Fade color,

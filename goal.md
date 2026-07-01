@@ -1222,8 +1222,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     size, `30` lifetime, fixed `(0, 0.1, 0)` velocity, translucent layer,
     full-block light override, `0.85 * clamp((age + partial) / lifetime *
     0.75, 0, 1)` size curve, and linear alpha fade after delay clears. The
-    delayed particle does not tick or submit vertices while `delay > 0`.
-    Vanilla's two rotated shriek quads remain a later visual geometry slice.
+    delayed particle does not tick or submit vertices while `delay > 0`; once
+    visible, vertex collection emits the vanilla two rotated quads from
+    `ShriekParticle.extract` (`rotationX(-1.0472)` and
+    `rotationYXZ(-PI, 1.0472, 0)`).
   - 初速度。
   - lifetime。
   - size curve。

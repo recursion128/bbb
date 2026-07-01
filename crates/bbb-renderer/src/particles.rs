@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, VecDeque};
 
 use anyhow::Result;
-use glam::Vec3;
+use glam::{EulerRot, Quat, Vec3};
 use serde::{Deserialize, Serialize};
 
 use crate::Renderer;
@@ -25,6 +25,7 @@ const DEFAULT_MAX_ACTIVE_PARTICLE_INSTANCES: usize = 16_384;
 const DEFAULT_PARTICLE_QUAD_SIZE: f32 = 0.2;
 const DEFAULT_PARTICLE_RENDER_PARTIAL_TICK: f32 = 0.5;
 const DEFAULT_PARTICLE_LIGHT: [f32; 2] = [1.0, 1.0];
+const SHRIEK_MAGICAL_X_ROT: f32 = 1.0472;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ParticleSpawnCommand {
@@ -815,7 +816,7 @@ fn particle_billboard_vertices<'a>(
         let Some(uv) = sprite_uvs.get(sprite_id).copied() else {
             continue;
         };
-        vertices.extend(particle_instance_vertices(instance, uv, axes));
+        append_particle_instance_vertices(&mut vertices, instance, uv, axes);
     }
     vertices
 }
@@ -854,6 +855,22 @@ fn camera_billboard_axes(pose: crate::CameraPose) -> ParticleBillboardAxes {
     }
 }
 
+fn append_particle_instance_vertices(
+    vertices: &mut Vec<ParticleVertex>,
+    instance: &ParticleInstance,
+    uv: ParticleUvRect,
+    axes: ParticleBillboardAxes,
+) {
+    if instance.provider == "ShriekParticle.Provider" {
+        for rotation in shriek_particle_rotations() {
+            append_rotated_particle_quad(vertices, instance, uv, rotation);
+        }
+        return;
+    }
+
+    vertices.extend(particle_instance_vertices(instance, uv, axes));
+}
+
 fn particle_instance_vertices(
     instance: &ParticleInstance,
     uv: ParticleUvRect,
@@ -871,7 +888,7 @@ fn particle_instance_vertices(
     let bottom_right = center + right - up;
     let top_right = center + right + up;
     let top_left = center - right + up;
-    let tint = instance.color;
+    let tint = particle_render_color(instance);
 
     [
         particle_vertex(bottom_left, [uv.min[0], uv.max[1]], tint, instance.light),
@@ -881,6 +898,57 @@ fn particle_instance_vertices(
         particle_vertex(top_right, [uv.max[0], uv.min[1]], tint, instance.light),
         particle_vertex(top_left, [uv.min[0], uv.min[1]], tint, instance.light),
     ]
+}
+
+fn append_rotated_particle_quad(
+    vertices: &mut Vec<ParticleVertex>,
+    instance: &ParticleInstance,
+    uv: ParticleUvRect,
+    rotation: Quat,
+) {
+    let center = Vec3::new(
+        instance.position[0] as f32,
+        instance.position[1] as f32,
+        instance.position[2] as f32,
+    );
+    let half_size = instance.render_quad_size() * 0.5;
+    let bottom_left = center + rotation * Vec3::new(-half_size, -half_size, 0.0);
+    let bottom_right = center + rotation * Vec3::new(half_size, -half_size, 0.0);
+    let top_right = center + rotation * Vec3::new(half_size, half_size, 0.0);
+    let top_left = center + rotation * Vec3::new(-half_size, half_size, 0.0);
+    let tint = particle_render_color(instance);
+
+    vertices.extend([
+        particle_vertex(bottom_left, [uv.min[0], uv.max[1]], tint, instance.light),
+        particle_vertex(bottom_right, [uv.max[0], uv.max[1]], tint, instance.light),
+        particle_vertex(top_right, [uv.max[0], uv.min[1]], tint, instance.light),
+        particle_vertex(bottom_left, [uv.min[0], uv.max[1]], tint, instance.light),
+        particle_vertex(top_right, [uv.max[0], uv.min[1]], tint, instance.light),
+        particle_vertex(top_left, [uv.min[0], uv.min[1]], tint, instance.light),
+    ]);
+}
+
+fn shriek_particle_rotations() -> [Quat; 2] {
+    [
+        Quat::from_rotation_x(-SHRIEK_MAGICAL_X_ROT),
+        Quat::from_euler(
+            EulerRot::YXZ,
+            -std::f32::consts::PI,
+            SHRIEK_MAGICAL_X_ROT,
+            0.0,
+        ),
+    ]
+}
+
+fn particle_render_color(instance: &ParticleInstance) -> [f32; 4] {
+    let mut color = instance.color;
+    if instance.alpha_curve == ParticleAlphaCurve::ShriekFade {
+        let lifetime = instance.lifetime_ticks.max(1) as f32;
+        color[3] = 1.0
+            - ((instance.age_ticks as f32 + DEFAULT_PARTICLE_RENDER_PARTIAL_TICK) / lifetime)
+                .clamp(0.0, 1.0);
+    }
+    color
 }
 
 fn particle_render_group_for_particle(_particle_id: &str) -> ParticleRenderGroup {
@@ -2897,6 +2965,59 @@ mod tests {
         );
 
         assert!(vertices.is_empty());
+    }
+
+    #[test]
+    fn particle_billboard_vertices_emit_vanilla_shriek_rotated_quads() {
+        let mut instance = test_instance_with_lifetime("minecraft:shriek", 30);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.current_sprite_id = Some("minecraft:generic_0".to_string());
+        instance.base_quad_size = 0.85;
+        instance.quad_size_curve = ParticleQuadSizeCurve::Shriek;
+        instance.alpha_curve = ParticleAlphaCurve::ShriekFade;
+        instance.light = [1.0, 0.4];
+        let sprite_uvs = BTreeMap::from([(
+            "minecraft:generic_0".to_string(),
+            ParticleUvRect {
+                min: [0.25, 0.5],
+                max: [0.75, 0.875],
+            },
+        )]);
+
+        let vertices = particle_billboard_vertices(
+            [&instance],
+            &sprite_uvs,
+            ParticleBillboardAxes {
+                right: Vec3::X,
+                up: Vec3::Y,
+            },
+            Some(ParticlePipelineKind::Translucent),
+        );
+
+        assert_eq!(vertices.len(), 12);
+        assert_close3_f32(
+            vertices[0].position,
+            [0.994_687_5, 1.997_343_8, 3.004_600_8],
+        );
+        assert_close3_f32(
+            vertices[2].position,
+            [1.005_312_5, 2.002_656_2, 2.995_399_2],
+        );
+        assert_close3_f32(
+            vertices[6].position,
+            [1.005_312_5, 1.997_343_8, 3.004_600_8],
+        );
+        assert_close3_f32(
+            vertices[8].position,
+            [0.994_687_5, 2.002_656_2, 2.995_399_2],
+        );
+        assert_eq!(vertices[0].uv, [0.25, 0.875]);
+        assert_eq!(vertices[2].uv, [0.75, 0.5]);
+        assert_eq!(vertices[6].light, [1.0, 0.4]);
+        assert_eq!(vertices[6].color[0], 1.0);
+        assert_eq!(vertices[6].color[1], 1.0);
+        assert_eq!(vertices[6].color[2], 1.0);
+        assert_close_f32(vertices[6].color[3], 1.0 - 0.5 / 30.0);
     }
 
     fn test_instance_with_lifetime(particle_id: &str, lifetime_ticks: u32) -> ParticleInstance {
