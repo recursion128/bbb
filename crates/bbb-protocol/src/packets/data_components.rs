@@ -131,6 +131,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub profile: Option<ResolvableProfileSummary>,
     #[serde(default)]
+    pub villager_variant_id: Option<i32>,
+    #[serde(default)]
     pub lodestone_target: Option<LodestoneTargetSummary>,
 }
 
@@ -541,6 +543,9 @@ fn decode_typed_data_component_patch_summary(
             77 => {
                 summary.bees_count = decode_bees(decoder)?;
             }
+            83 => {
+                summary.villager_variant_id = Some(decode_holder_registry_id(decoder)?);
+            }
             _ => decode_data_component_value(decoder, type_id)?,
         }
         summary.added_type_ids.push(type_id);
@@ -714,6 +719,14 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
 fn decode_holder_registry(decoder: &mut Decoder<'_>) -> Result<()> {
     decoder.read_var_i32()?;
     Ok(())
+}
+
+fn decode_holder_registry_id(decoder: &mut Decoder<'_>) -> Result<i32> {
+    let id = decoder.read_var_i32()?;
+    if id < 0 {
+        return Err(ProtocolError::NegativeLength(id));
+    }
+    Ok(id)
 }
 
 fn decode_holder_with_direct(
@@ -1915,6 +1928,29 @@ mod tests {
                 item_name: Some("Item Name".to_string()),
                 lore: vec!["Lore one".to_string(), "Lore two".to_string()],
                 rarity: Some(ItemRaritySummary::Rare),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_villager_variant_holder_registry_id() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(83);
+        payload.write_var_i32(2);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![83],
+                villager_variant_id: Some(2),
                 ..DataComponentPatchSummary::default()
             }
         );

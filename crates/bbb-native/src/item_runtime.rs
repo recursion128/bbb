@@ -8170,6 +8170,84 @@ mod tests {
             ),
             uv("component_condition_container_partial_written_book_absent")
         );
+        assert_eq!(
+            selected(56, DataComponentPatchSummary::default()),
+            uv("component_condition_villager_variant_absent")
+        );
+        assert_eq!(
+            selected(
+                56,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![83],
+                    villager_variant_id: Some(2),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_villager_variant_present")
+        );
+        assert_eq!(
+            selected(
+                56,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![83],
+                    villager_variant_id: Some(0),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_villager_variant_absent")
+        );
+        assert_eq!(
+            selected(
+                56,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![83],
+                    removed_type_ids: vec![83],
+                    villager_variant_id: Some(2),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_villager_variant_absent")
+        );
+        assert_eq!(
+            selected(
+                57,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            added_type_ids: vec![83],
+                            villager_variant_id: Some(2),
+                            ..DataComponentPatchSummary::default()
+                        },
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_partial_villager_variant_present")
+        );
+        assert_eq!(
+            selected(
+                57,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![50],
+                    bundle_contents_item_count: Some(1),
+                    bundle_contents_items: vec![ItemStackTemplateSummary {
+                        item_id: 0,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            added_type_ids: vec![83],
+                            villager_variant_id: Some(0),
+                            ..DataComponentPatchSummary::default()
+                        },
+                    }],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_bundle_partial_villager_variant_absent")
+        );
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -9717,6 +9795,8 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_WRITTEN_BOOK_CONTENT = registerItem("component_condition_written_book_content");
                 public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_WRITABLE_BOOK = registerItem("component_condition_bundle_partial_writable_book");
                 public static final Item COMPONENT_CONDITION_CONTAINER_PARTIAL_WRITTEN_BOOK = registerItem("component_condition_container_partial_written_book");
+                public static final Item COMPONENT_CONDITION_VILLAGER_VARIANT = registerItem("component_condition_villager_variant");
+                public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_VILLAGER_VARIANT = registerItem("component_condition_bundle_partial_villager_variant");
             }"#,
         );
         write_json(
@@ -11219,6 +11299,63 @@ mod tests {
         write_json(
             &assets
                 .join("items")
+                .join("component_condition_villager_variant.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:villager/variant",
+                    "value": [
+                        "minecraft:plains",
+                        "minecraft:taiga"
+                    ],
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_villager_variant_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_villager_variant_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_bundle_partial_villager_variant.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:bundle_contents",
+                    "value": {
+                        "items": {
+                            "contains": [
+                                {
+                                    "components": {
+                                        "predicates": {
+                                            "minecraft:villager/variant": "minecraft:plains"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_villager_variant_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_bundle_partial_villager_variant_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
                 .join("component_condition_enchantments_level.json"),
             r#"{
                 "model": {
@@ -11850,6 +11987,22 @@ mod tests {
             (
                 "component_condition_container_partial_written_book_absent",
                 [90, 70, 70, 255],
+            ),
+            (
+                "component_condition_villager_variant_present",
+                [190, 245, 210, 255],
+            ),
+            (
+                "component_condition_villager_variant_absent",
+                [60, 90, 70, 255],
+            ),
+            (
+                "component_condition_bundle_partial_villager_variant_present",
+                [245, 190, 210, 255],
+            ),
+            (
+                "component_condition_bundle_partial_villager_variant_absent",
+                [90, 60, 70, 255],
             ),
         ] {
             write_flat_item_model_and_texture(&assets, model_id, &color);

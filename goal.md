@@ -812,7 +812,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     pages with vanilla `CollectionPredicate` `contains` / `count` / `size`;
     `minecraft:written_book_content` now matches decoded written-book raw
     title, author, `generation` `MinMaxBounds.Ints`, `resolved`, and
-    plain-string page collection predicates.
+    plain-string page collection predicates. `minecraft:villager/variant` now
+    matches decoded 0-based `VillagerType` holder ids against the vanilla
+    `VillagerType.bootstrap` registry-key order.
     `minecraft:bundle_contents`
     `items.size` constraints now match vanilla `CollectionPredicate.size`
     against the decoded bundle item count, and `items.contains` / `count`
@@ -822,8 +824,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `minecraft:stored_enchantments`, `minecraft:firework_explosion`,
     `minecraft:fireworks`, `minecraft:trim`, `minecraft:jukebox_playable`,
     `minecraft:potion_contents`, `minecraft:writable_book_content`,
-    `minecraft:written_book_content`, and data-component AnyValue predicates
-    over decoded bundle entries.
+    `minecraft:written_book_content`, `minecraft:villager/variant`, and
+    data-component AnyValue predicates over decoded bundle entries.
     `minecraft:container` now decodes non-empty container entries and matches
     the same direct item-key / item-tag / stack-count / exact scalar component /
     nested partial damage, enchantments, stored-enchantments,
@@ -845,9 +847,10 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     payloads / server datapack tag remaps, bundle/container nested remaining
     concrete partial predicates and complex exact component codecs, rich/styled
     written-book page `ComponentSerialization` equality, trim inline material
-    or pattern payloads / datapack pattern registry-key remaps, and jukebox
-    inline song payloads / datapack jukebox-song registry remaps remain
-    component-predicate follow-up.
+    or pattern payloads / datapack pattern registry-key remaps, villager type
+    tags / datapack villager-type registry remaps, and jukebox inline song
+    payloads / datapack jukebox-song registry remaps remain component-predicate
+    follow-up.
   - [x] `minecraft:has_component` item-model condition now follows vanilla
     `HasComponent.get`: default prototype components such as
     `minecraft:max_stack_size`, `minecraft:item_model`, `minecraft:rarity`,

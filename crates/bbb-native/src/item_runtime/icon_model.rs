@@ -41,6 +41,7 @@ const LODESTONE_TRACKER_COMPONENT_ID: i32 = 67;
 const FIREWORK_EXPLOSION_COMPONENT_ID: i32 = 68;
 const FIREWORKS_COMPONENT_ID: i32 = 69;
 const CONTAINER_COMPONENT_ID: i32 = 75;
+const VILLAGER_VARIANT_COMPONENT_ID: i32 = 83;
 
 const VANILLA_TRIM_PATTERN_KEYS: &[&str] = &[
     "minecraft:sentry",
@@ -132,6 +133,15 @@ const VANILLA_POTION_KEYS: &[&str] = &[
     "minecraft:weaving",
     "minecraft:oozing",
     "minecraft:infested",
+];
+const VANILLA_VILLAGER_TYPE_KEYS: &[&str] = &[
+    "minecraft:desert",
+    "minecraft:jungle",
+    "minecraft:plains",
+    "minecraft:savanna",
+    "minecraft:snow",
+    "minecraft:swamp",
+    "minecraft:taiga",
 ];
 const VANILLA_DEFAULT_MAX_STACK_SIZE: i32 = 64;
 const VANILLA_ABSOLUTE_MAX_STACK_SIZE: i32 = 99;
@@ -1659,6 +1669,9 @@ fn item_stack_matches_component_predicate(
     if written_book_component_predicate_is_supported(property) {
         return item_stack_matches_written_book_predicate(property, ctx.component_patch);
     }
+    if villager_variant_component_predicate_is_supported(property) {
+        return item_stack_matches_villager_variant_predicate(property, ctx.component_patch);
+    }
     if let Some(component_id) = empty_single_component_predicate_id(property) {
         return item_stack_has_component_id(
             component_id,
@@ -1698,6 +1711,7 @@ fn component_condition_is_runtime_resolved(property: &ItemModelProperty) -> bool
         || potion_contents_component_predicate_is_supported(property)
         || writable_book_component_predicate_is_supported(property)
         || written_book_component_predicate_is_supported(property)
+        || villager_variant_component_predicate_is_supported(property)
         || empty_single_component_predicate_id(property).is_some()
         || component_condition_any_value_component_id(property).is_some()
 }
@@ -2250,6 +2264,7 @@ fn item_partial_component_predicate_is_supported(predicate: &str, value: &Value)
         "minecraft:potion_contents" => potion_contents_predicate_value_is_supported(value),
         "minecraft:writable_book_content" => writable_book_predicate_value_is_supported(value),
         "minecraft:written_book_content" => written_book_predicate_value_is_supported(value),
+        "minecraft:villager/variant" => villager_variant_predicate_value_is_supported(value),
         "minecraft:firework_explosion" => firework_explosion_predicate_is_supported(value),
         "minecraft:fireworks" => fireworks_predicate_value_is_supported(value),
         _ => {
@@ -2632,6 +2647,9 @@ fn item_partial_component_predicate_match(
         }
         "minecraft:written_book_content" => {
             item_stack_matches_written_book_value(value, component_patch)
+        }
+        "minecraft:villager/variant" => {
+            item_stack_matches_villager_variant_value(value, component_patch)
         }
         _ if let Some(kind) =
             enchantments_component_predicate_kind_from_parts(predicate, value) =>
@@ -3143,6 +3161,61 @@ fn written_book_value_matches(
     true
 }
 
+fn villager_variant_component_predicate_is_supported(property: &ItemModelProperty) -> bool {
+    if component_condition_predicate(property) != Some("minecraft:villager/variant") {
+        return false;
+    }
+    let Some(value) = property.raw().get("value") else {
+        return false;
+    };
+    villager_variant_predicate_value_is_supported(value)
+}
+
+fn villager_variant_predicate_value_is_supported(value: &Value) -> bool {
+    registry_key_holder_set_is_supported(value)
+}
+
+fn item_stack_matches_villager_variant_predicate(
+    property: &ItemModelProperty,
+    component_patch: Option<&DataComponentPatchSummary>,
+) -> bool {
+    if !villager_variant_component_predicate_is_supported(property) {
+        return false;
+    }
+    let Some(value) = property.raw().get("value") else {
+        return false;
+    };
+    item_stack_matches_villager_variant_value(value, component_patch)
+}
+
+fn item_stack_matches_villager_variant_value(
+    value: &Value,
+    component_patch: Option<&DataComponentPatchSummary>,
+) -> bool {
+    let Some(component_patch) = component_patch else {
+        return false;
+    };
+    if component_patch
+        .removed_type_ids
+        .contains(&VILLAGER_VARIANT_COMPONENT_ID)
+        || !component_patch
+            .added_type_ids
+            .contains(&VILLAGER_VARIANT_COMPONENT_ID)
+    {
+        return false;
+    }
+    let Some(variant_id) = component_patch.villager_variant_id else {
+        return false;
+    };
+    let Ok(variant_index) = usize::try_from(variant_id) else {
+        return false;
+    };
+    let Some(variant_key) = VANILLA_VILLAGER_TYPE_KEYS.get(variant_index) else {
+        return false;
+    };
+    registry_key_holder_set_matches(Some(value), variant_key, None)
+}
+
 fn string_collection_predicate_matches(value: &Value, values: &[String]) -> bool {
     let Some(value) = value.as_object() else {
         return false;
@@ -3587,6 +3660,7 @@ fn data_component_type_id(component: &str) -> Option<i32> {
         "minecraft:firework_explosion" => Some(FIREWORK_EXPLOSION_COMPONENT_ID),
         "minecraft:fireworks" => Some(FIREWORKS_COMPONENT_ID),
         "minecraft:container" => Some(CONTAINER_COMPONENT_ID),
+        "minecraft:villager/variant" => Some(VILLAGER_VARIANT_COMPONENT_ID),
         _ => None,
     }
 }
