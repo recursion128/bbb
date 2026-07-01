@@ -813,8 +813,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     pages with vanilla `CollectionPredicate` `contains` / `count` / `size`;
     `minecraft:written_book_content` now matches decoded written-book raw
     title, author, `generation` `MinMaxBounds.Ints`, `resolved`, and
-    plain-string page collection predicates. `minecraft:villager/variant` now
-    matches decoded 0-based `VillagerType` holder ids against direct
+    plain-string plus simple literal `ComponentSerialization` text-object page
+    collection predicates. `minecraft:villager/variant` now matches decoded
+    0-based `VillagerType` holder ids against direct
     registry-key or villager-type-tag HolderSets using the vanilla
     `VillagerType.bootstrap` registry-key order. `minecraft:attribute_modifiers`
     now preserves decoded modifier entries and matches direct plus
@@ -863,7 +864,7 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     constrained `DataComponentPredicate` types such as inline enchantment holder
     payloads / server datapack tag remaps, broader NBT scalar typing, remaining
     concrete partial predicates and complex exact component codecs,
-    rich/styled written-book page
+    non-literal / rich / styled written-book page
     `ComponentSerialization` equality, trim inline material or pattern payloads
     / datapack pattern registry-key remaps, datapack villager-type registry
     remaps, and jukebox inline song payloads / datapack

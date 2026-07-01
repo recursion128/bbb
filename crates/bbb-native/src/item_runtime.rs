@@ -8222,6 +8222,31 @@ mod tests {
         );
         assert_eq!(
             selected(
+                80,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![55],
+                    written_book: Some(matching_written_book.clone()),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_written_book_component_page_present")
+        );
+        assert_eq!(
+            selected(
+                80,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![55],
+                    written_book: Some(WrittenBookContentSummary {
+                        pages: vec!["Other page".to_string(), "Second page".to_string()],
+                        ..matching_written_book.clone()
+                    }),
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_written_book_component_page_absent")
+        );
+        assert_eq!(
+            selected(
                 54,
                 DataComponentPatchSummary {
                     added_type_ids: vec![50],
@@ -10601,6 +10626,7 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_DEFAULT_MACE_ATTRIBUTE_MODIFIERS = registerItem("component_condition_default_mace_attribute_modifiers", MaceItem::new, new Item.Properties().attributes(MaceItem.createAttributes()));
                 public static final Item COMPONENT_CONDITION_CUSTOM_DATA_SNBT = registerItem("component_condition_custom_data_snbt");
                 public static final Item COMPONENT_CONDITION_BUNDLE_PARTIAL_CUSTOM_DATA_SNBT = registerItem("component_condition_bundle_partial_custom_data_snbt");
+                public static final Item COMPONENT_CONDITION_WRITTEN_BOOK_COMPONENT_PAGE = registerItem("component_condition_written_book_component_page");
             }"#,
         );
         write_json(
@@ -12021,6 +12047,44 @@ mod tests {
                     "on_false": {
                         "type": "minecraft:model",
                         "model": "minecraft:item/component_condition_written_book_content_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_written_book_component_page.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:written_book_content",
+                    "value": {
+                        "pages": {
+                            "contains": [
+                                {
+                                    "text": "First page"
+                                }
+                            ],
+                            "count": [
+                                {
+                                    "test": {
+                                        "text": "First page"
+                                    },
+                                    "count": 1
+                                }
+                            ],
+                            "size": 2
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_written_book_component_page_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_written_book_component_page_absent"
                     }
                 }
             }"#,
@@ -13591,6 +13655,14 @@ mod tests {
             (
                 "component_condition_written_book_content_absent",
                 [90, 70, 90, 255],
+            ),
+            (
+                "component_condition_written_book_component_page_present",
+                [230, 205, 170, 255],
+            ),
+            (
+                "component_condition_written_book_component_page_absent",
+                [105, 80, 65, 255],
             ),
             (
                 "component_condition_bundle_partial_writable_book_present",

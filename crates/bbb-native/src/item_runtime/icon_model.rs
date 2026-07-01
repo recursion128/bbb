@@ -2245,10 +2245,35 @@ fn string_collection_predicate_is_supported(value: &Value) -> bool {
             .unwrap_or(true)
 }
 
+fn component_text_collection_predicate_is_supported(value: &Value) -> bool {
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    value
+        .keys()
+        .all(|key| key == "contains" || key == "count" || key == "size")
+        && value
+            .get("contains")
+            .map(component_text_predicate_list_is_supported)
+            .unwrap_or(true)
+        && value
+            .get("count")
+            .map(component_text_predicate_count_list_is_supported)
+            .unwrap_or(true)
+}
+
 fn string_predicate_list_is_supported(value: &Value) -> bool {
     value
         .as_array()
         .is_some_and(|predicates| predicates.iter().all(Value::is_string))
+}
+
+fn component_text_predicate_list_is_supported(value: &Value) -> bool {
+    value.as_array().is_some_and(|predicates| {
+        predicates
+            .iter()
+            .all(|predicate| simple_component_text(predicate).is_some())
+    })
 }
 
 fn string_predicate_count_list_is_supported(value: &Value) -> bool {
@@ -2262,6 +2287,29 @@ fn string_predicate_count_list_is_supported(value: &Value) -> bool {
                 && entry.contains_key("count")
         })
     })
+}
+
+fn component_text_predicate_count_list_is_supported(value: &Value) -> bool {
+    value.as_array().is_some_and(|entries| {
+        entries.iter().all(|entry| {
+            let Some(entry) = entry.as_object() else {
+                return false;
+            };
+            entry.keys().all(|key| key == "test" || key == "count")
+                && entry
+                    .get("test")
+                    .is_some_and(|test| simple_component_text(test).is_some())
+                && entry.contains_key("count")
+        })
+    })
+}
+
+fn simple_component_text(value: &Value) -> Option<&str> {
+    match value {
+        Value::String(value) => Some(value.as_str()),
+        Value::Object(value) if value.len() == 1 => value.get("text").and_then(Value::as_str),
+        _ => None,
+    }
 }
 
 fn item_predicate_list_is_supported(value: &Value) -> bool {
@@ -3958,7 +4006,7 @@ fn written_book_predicate_value_is_supported(value: &Value) -> bool {
         && value.get("resolved").is_none_or(Value::is_boolean)
         && value
             .get("pages")
-            .map(string_collection_predicate_is_supported)
+            .map(component_text_collection_predicate_is_supported)
             .unwrap_or(true)
 }
 
@@ -4029,7 +4077,7 @@ fn written_book_value_matches(
         return false;
     }
     if let Some(pages) = value.get("pages") {
-        if !string_collection_predicate_matches(pages, &book.pages) {
+        if !component_text_collection_predicate_matches(pages, &book.pages) {
             return false;
         }
     }
@@ -4131,11 +4179,66 @@ fn string_collection_predicate_matches(value: &Value, values: &[String]) -> bool
     true
 }
 
+fn component_text_collection_predicate_matches(value: &Value, values: &[String]) -> bool {
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    if let Some(contains) = value.get("contains") {
+        let Some(predicates) = contains.as_array() else {
+            return false;
+        };
+        if !predicates.iter().all(|predicate| {
+            simple_component_text(predicate)
+                .is_some_and(|expected| values.iter().any(|actual| actual == expected))
+        }) {
+            return false;
+        }
+    }
+    if let Some(counts) = value.get("count") {
+        let Some(entries) = counts.as_array() else {
+            return false;
+        };
+        if !entries
+            .iter()
+            .all(|entry| component_text_count_entry_matches(entry, values))
+        {
+            return false;
+        }
+    }
+    if let Some(size) = value.get("size") {
+        let Ok(count) = i32::try_from(values.len()) else {
+            return false;
+        };
+        if !min_max_int_bounds_match(Some(size), count) {
+            return false;
+        }
+    }
+    true
+}
+
 fn string_count_entry_matches(entry: &Value, values: &[String]) -> bool {
     let Some(entry) = entry.as_object() else {
         return false;
     };
     let Some(expected) = entry.get("test").and_then(Value::as_str) else {
+        return false;
+    };
+    let Ok(count) = i32::try_from(
+        values
+            .iter()
+            .filter(|actual| actual.as_str() == expected)
+            .count(),
+    ) else {
+        return false;
+    };
+    min_max_int_bounds_match(entry.get("count"), count)
+}
+
+fn component_text_count_entry_matches(entry: &Value, values: &[String]) -> bool {
+    let Some(entry) = entry.as_object() else {
+        return false;
+    };
+    let Some(expected) = entry.get("test").and_then(simple_component_text) else {
         return false;
     };
     let Ok(count) = i32::try_from(

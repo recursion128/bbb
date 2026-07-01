@@ -5876,7 +5876,8 @@ When an agent does any of the following, update this file in the same slice:
       raw writable-book pages with vanilla `CollectionPredicate` `contains` /
       `count` / `size`; `minecraft:written_book_content` now matches decoded
       written-book raw title, author, `generation` `MinMaxBounds.Ints`,
-      `resolved`, and plain-string page collection predicates.
+      `resolved`, and plain-string plus simple literal
+      `ComponentSerialization` text-object page collection predicates.
       `minecraft:villager/variant` now matches decoded 0-based
       `VillagerType` holder ids against direct registry-key or
       villager-type-tag HolderSets using the vanilla `VillagerType.bootstrap`
@@ -5932,8 +5933,8 @@ When an agent does any of the following, update this file in the same slice:
       `STORED_ENCHANTMENTS` component unless id 42 is removed. Remaining
       constrained predicate types (inline enchantment holder payloads / server
       datapack tag remaps, broader NBT scalar typing, remaining concrete partial
-      predicates and complex exact component codecs, rich/styled written-book
-      page `ComponentSerialization`
+      predicates and complex exact component codecs, non-literal / rich /
+      styled written-book page `ComponentSerialization`
       equality, trim inline material or pattern payloads / datapack pattern
       registry-key remaps, datapack villager-type registry remaps, jukebox
       inline song payloads / datapack jukebox-song registry
