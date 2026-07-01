@@ -19,8 +19,9 @@ use bbb_pack::{
     DEFAULT_LANGUAGE_CODE,
 };
 use bbb_protocol::packets::{
-    ConsumableSummary, DataComponentPatchSummary, FireworkExplosionShapeSummary, ItemRaritySummary,
-    ItemStackSummary, ItemStackTemplateSummary, ResolvableProfileSummary, ResourceTextureSummary,
+    ConsumableSummary, DataComponentPatchSummary, FireworkExplosionShapeSummary,
+    FireworkExplosionSummary, ItemRaritySummary, ItemStackSummary, ItemStackTemplateSummary,
+    ResolvableProfileSummary, ResourceTextureSummary,
 };
 use bbb_renderer::{
     DynamicPlayerSkinImage, DynamicPlayerTextureImage, EntityCustomHeadSkull,
@@ -5579,6 +5580,15 @@ mod tests {
             firework_explosion_has_twinkle: Some(false),
             ..DataComponentPatchSummary::default()
         };
+        let fireworks_explosion =
+            |shape: FireworkExplosionShapeSummary, has_trail: bool, has_twinkle: bool| {
+                FireworkExplosionSummary {
+                    shape,
+                    colors: Vec::new(),
+                    has_trail,
+                    has_twinkle,
+                }
+            };
         assert_eq!(
             selected(10, star_trail.clone()),
             uv("component_condition_firework_explosion_star_present")
@@ -5705,6 +5715,90 @@ mod tests {
                 }
             ),
             uv("component_condition_fireworks_explosions_absent")
+        );
+        assert_eq!(
+            selected(
+                19,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![69],
+                    fireworks_flight_duration: Some(1),
+                    fireworks_explosions_count: Some(2),
+                    fireworks_explosions: vec![
+                        fireworks_explosion(FireworkExplosionShapeSummary::SmallBall, false, false),
+                        fireworks_explosion(FireworkExplosionShapeSummary::Star, true, false),
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_fireworks_contains_present")
+        );
+        assert_eq!(
+            selected(
+                19,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![69],
+                    fireworks_flight_duration: Some(1),
+                    fireworks_explosions_count: Some(1),
+                    fireworks_explosions: vec![fireworks_explosion(
+                        FireworkExplosionShapeSummary::Star,
+                        false,
+                        false,
+                    )],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_fireworks_contains_absent")
+        );
+        assert_eq!(
+            selected(
+                19,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![69],
+                    removed_type_ids: vec![69],
+                    fireworks_flight_duration: Some(1),
+                    fireworks_explosions_count: Some(1),
+                    fireworks_explosions: vec![fireworks_explosion(
+                        FireworkExplosionShapeSummary::Star,
+                        true,
+                        false,
+                    )],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_fireworks_contains_absent")
+        );
+        assert_eq!(
+            selected(
+                20,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![69],
+                    fireworks_flight_duration: Some(1),
+                    fireworks_explosions_count: Some(3),
+                    fireworks_explosions: vec![
+                        fireworks_explosion(FireworkExplosionShapeSummary::Star, true, true),
+                        fireworks_explosion(FireworkExplosionShapeSummary::Burst, false, true),
+                        fireworks_explosion(FireworkExplosionShapeSummary::SmallBall, false, false),
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_fireworks_count_present")
+        );
+        assert_eq!(
+            selected(
+                20,
+                DataComponentPatchSummary {
+                    added_type_ids: vec![69],
+                    fireworks_flight_duration: Some(1),
+                    fireworks_explosions_count: Some(2),
+                    fireworks_explosions: vec![
+                        fireworks_explosion(FireworkExplosionShapeSummary::Star, true, true),
+                        fireworks_explosion(FireworkExplosionShapeSummary::SmallBall, false, false),
+                    ],
+                    ..DataComponentPatchSummary::default()
+                }
+            ),
+            uv("component_condition_fireworks_count_absent")
         );
 
         assert_eq!(
@@ -7369,6 +7463,8 @@ mod tests {
                 public static final Item COMPONENT_CONDITION_ENCHANTMENTS_EMPTY = registerItem("component_condition_enchantments_empty");
                 public static final Item COMPONENT_CONDITION_STORED_ENCHANTMENTS_LEVEL = registerItem("component_condition_stored_enchantments_level");
                 public static final Item COMPONENT_CONDITION_STORED_ENCHANTMENTS_EMPTY = registerItem("component_condition_stored_enchantments_empty");
+                public static final Item COMPONENT_CONDITION_FIREWORKS_CONTAINS = registerItem("component_condition_fireworks_contains");
+                public static final Item COMPONENT_CONDITION_FIREWORKS_COUNT = registerItem("component_condition_fireworks_count");
             }"#,
         );
         write_json(
@@ -7570,6 +7666,68 @@ mod tests {
                     "on_false": {
                         "type": "minecraft:model",
                         "model": "minecraft:item/component_condition_fireworks_explosions_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_fireworks_contains.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:fireworks",
+                    "value": {
+                        "explosions": {
+                            "contains": [
+                                {
+                                    "shape": "star",
+                                    "has_trail": true
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_fireworks_contains_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_fireworks_contains_absent"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("items")
+                .join("component_condition_fireworks_count.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:component",
+                    "predicate": "minecraft:fireworks",
+                    "value": {
+                        "explosions": {
+                            "count": [
+                                {
+                                    "test": {
+                                        "has_twinkle": true
+                                    },
+                                    "count": 2
+                                }
+                            ]
+                        }
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_fireworks_count_present"
+                    },
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/component_condition_fireworks_count_absent"
                     }
                 }
             }"#,
@@ -7786,6 +7944,22 @@ mod tests {
             (
                 "component_condition_fireworks_explosions_absent",
                 [50, 60, 20, 255],
+            ),
+            (
+                "component_condition_fireworks_contains_present",
+                [240, 160, 80, 255],
+            ),
+            (
+                "component_condition_fireworks_contains_absent",
+                [80, 50, 30, 255],
+            ),
+            (
+                "component_condition_fireworks_count_present",
+                [120, 220, 210, 255],
+            ),
+            (
+                "component_condition_fireworks_count_absent",
+                [40, 80, 80, 255],
             ),
             (
                 "component_condition_trim_material_present",

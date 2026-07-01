@@ -91,6 +91,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub fireworks_explosions_count: Option<usize>,
     #[serde(default)]
+    pub fireworks_explosions: Vec<FireworkExplosionSummary>,
+    #[serde(default)]
     pub charged_projectiles_items: Vec<ItemStackTemplateSummary>,
     #[serde(default)]
     pub bundle_contents_items: Vec<ItemStackTemplateSummary>,
@@ -250,6 +252,14 @@ impl FireworkExplosionShapeSummary {
             _ => Self::SmallBall,
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FireworkExplosionSummary {
+    pub shape: FireworkExplosionShapeSummary,
+    pub colors: Vec<i32>,
+    pub has_trail: bool,
+    pub has_twinkle: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -473,7 +483,8 @@ fn decode_typed_data_component_patch_summary(
             69 => {
                 let fireworks = decode_fireworks(decoder)?;
                 summary.fireworks_flight_duration = Some(fireworks.flight_duration);
-                summary.fireworks_explosions_count = Some(fireworks.explosions_count);
+                summary.fireworks_explosions_count = Some(fireworks.explosions.len());
+                summary.fireworks_explosions = fireworks.explosions;
             }
             70 => {
                 summary.profile = Some(decode_resolvable_profile(decoder)?);
@@ -1569,37 +1580,29 @@ fn decode_optional_component(decoder: &mut Decoder<'_>) -> Result<()> {
 
 struct FireworksComponentSummary {
     flight_duration: i32,
-    explosions_count: usize,
+    explosions: Vec<FireworkExplosionSummary>,
 }
 
 fn decode_fireworks(decoder: &mut Decoder<'_>) -> Result<FireworksComponentSummary> {
     let flight_duration = decoder.read_var_i32()?;
-    let explosions = read_bounded_len(decoder, MAX_FIREWORK_EXPLOSIONS)?;
-    for _ in 0..explosions {
-        decode_firework_explosion(decoder)?;
+    let explosion_count = read_bounded_len(decoder, MAX_FIREWORK_EXPLOSIONS)?;
+    let mut explosions = Vec::with_capacity(explosion_count);
+    for _ in 0..explosion_count {
+        explosions.push(decode_firework_explosion(decoder)?);
     }
     Ok(FireworksComponentSummary {
         flight_duration,
-        explosions_count: explosions,
+        explosions,
     })
 }
 
-struct FireworkExplosionComponentSummary {
-    shape: FireworkExplosionShapeSummary,
-    colors: Vec<i32>,
-    has_trail: bool,
-    has_twinkle: bool,
-}
-
-fn decode_firework_explosion(
-    decoder: &mut Decoder<'_>,
-) -> Result<FireworkExplosionComponentSummary> {
+fn decode_firework_explosion(decoder: &mut Decoder<'_>) -> Result<FireworkExplosionSummary> {
     let shape = FireworkExplosionShapeSummary::from_vanilla_id(decoder.read_var_i32()?);
     let colors = decode_int_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
     decode_int_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
     let has_trail = decoder.read_bool()?;
     let has_twinkle = decoder.read_bool()?;
-    Ok(FireworkExplosionComponentSummary {
+    Ok(FireworkExplosionSummary {
         shape,
         colors,
         has_trail,
@@ -2758,6 +2761,12 @@ mod tests {
                 firework_explosion_has_twinkle: Some(false),
                 fireworks_flight_duration: Some(1),
                 fireworks_explosions_count: Some(1),
+                fireworks_explosions: vec![FireworkExplosionSummary {
+                    shape: FireworkExplosionShapeSummary::SmallBall,
+                    colors: vec![0x010203, 0x040506],
+                    has_trail: true,
+                    has_twinkle: false,
+                }],
                 writable_book_pages: vec!["raw page".to_string()],
                 written_book: Some(WrittenBookContentSummary {
                     title: "Title".to_string(),

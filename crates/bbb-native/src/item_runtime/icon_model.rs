@@ -5,8 +5,8 @@ use bbb_pack::{
     ItemTintSource, SelectCase, TerrainColorMaps,
 };
 use bbb_protocol::packets::{
-    DataComponentPatchSummary, FireworkExplosionShapeSummary, ItemEnchantmentSummary,
-    ItemRaritySummary, ItemStackTemplateSummary,
+    DataComponentPatchSummary, FireworkExplosionShapeSummary, FireworkExplosionSummary,
+    ItemEnchantmentSummary, ItemRaritySummary, ItemStackTemplateSummary,
 };
 use chrono::{Datelike, FixedOffset, Local, TimeZone, Utc};
 use serde_json::Value;
@@ -1730,9 +1730,12 @@ fn fireworks_component_predicate_is_supported(property: &ItemModelProperty) -> b
         return false;
     };
     value
-        .get("explosions")
-        .map(collection_predicate_is_size_only)
-        .unwrap_or(true)
+        .keys()
+        .all(|key| key == "explosions" || key == "flight_duration")
+        && value
+            .get("explosions")
+            .map(firework_explosions_collection_predicate_is_supported)
+            .unwrap_or(true)
 }
 
 fn collection_predicate_is_size_only(value: &Value) -> bool {
@@ -1742,6 +1745,67 @@ fn collection_predicate_is_size_only(value: &Value) -> bool {
     !value.contains_key("contains")
         && !value.contains_key("count")
         && value.keys().all(|key| key == "size")
+}
+
+fn firework_explosions_collection_predicate_is_supported(value: &Value) -> bool {
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    value
+        .keys()
+        .all(|key| key == "contains" || key == "count" || key == "size")
+        && value
+            .get("contains")
+            .map(firework_explosion_predicate_list_is_supported)
+            .unwrap_or(true)
+        && value
+            .get("count")
+            .map(firework_explosion_count_list_is_supported)
+            .unwrap_or(true)
+}
+
+fn firework_explosion_predicate_list_is_supported(value: &Value) -> bool {
+    value.as_array().is_some_and(|predicates| {
+        predicates
+            .iter()
+            .all(firework_explosion_predicate_is_supported)
+    })
+}
+
+fn firework_explosion_count_list_is_supported(value: &Value) -> bool {
+    value.as_array().is_some_and(|entries| {
+        entries.iter().all(|entry| {
+            let Some(entry) = entry.as_object() else {
+                return false;
+            };
+            entry.keys().all(|key| key == "test" || key == "count")
+                && entry
+                    .get("test")
+                    .is_some_and(firework_explosion_predicate_is_supported)
+                && entry.contains_key("count")
+        })
+    })
+}
+
+fn firework_explosion_predicate_is_supported(value: &Value) -> bool {
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    value
+        .keys()
+        .all(|key| key == "shape" || key == "has_twinkle" || key == "has_trail")
+        && value
+            .get("shape")
+            .map(|shape| shape.as_str().and_then(firework_explosion_shape).is_some())
+            .unwrap_or(true)
+        && value
+            .get("has_twinkle")
+            .map(Value::is_boolean)
+            .unwrap_or(true)
+        && value
+            .get("has_trail")
+            .map(Value::is_boolean)
+            .unwrap_or(true)
 }
 
 fn trim_component_predicate_is_supported(property: &ItemModelProperty) -> bool {
@@ -1837,18 +1901,8 @@ fn item_stack_matches_fireworks_predicate(
     let Some(value) = property.raw().get("value").and_then(Value::as_object) else {
         return false;
     };
-    if let Some(size) = value
-        .get("explosions")
-        .and_then(Value::as_object)
-        .and_then(|explosions| explosions.get("size"))
-    {
-        let Some(explosions_count) = component_patch
-            .fireworks_explosions_count
-            .and_then(|count| i32::try_from(count).ok())
-        else {
-            return false;
-        };
-        if !min_max_int_bounds_match(Some(size), explosions_count) {
+    if let Some(explosions) = value.get("explosions") {
+        if !firework_explosions_collection_predicate_matches(explosions, component_patch) {
             return false;
         }
     }
@@ -1858,6 +1912,100 @@ fn item_stack_matches_fireworks_predicate(
     component_patch
         .fireworks_flight_duration
         .is_some_and(|flight_duration| min_max_int_bounds_match(Some(bounds), flight_duration))
+}
+
+fn firework_explosions_collection_predicate_matches(
+    value: &Value,
+    component_patch: &DataComponentPatchSummary,
+) -> bool {
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    let explosions = component_patch.fireworks_explosions.as_slice();
+    if let Some(contains) = value.get("contains") {
+        let Some(predicates) = contains.as_array() else {
+            return false;
+        };
+        if !predicates.iter().all(|predicate| {
+            explosions
+                .iter()
+                .any(|explosion| firework_explosion_predicate_matches(predicate, explosion))
+        }) {
+            return false;
+        }
+    }
+    if let Some(counts) = value.get("count") {
+        let Some(entries) = counts.as_array() else {
+            return false;
+        };
+        if !entries
+            .iter()
+            .all(|entry| firework_explosion_count_entry_matches(entry, explosions))
+        {
+            return false;
+        }
+    }
+    if let Some(size) = value.get("size") {
+        let Some(explosions_count) = component_patch
+            .fireworks_explosions_count
+            .or(Some(explosions.len()))
+            .and_then(|count| i32::try_from(count).ok())
+        else {
+            return false;
+        };
+        if !min_max_int_bounds_match(Some(size), explosions_count) {
+            return false;
+        }
+    }
+    true
+}
+
+fn firework_explosion_count_entry_matches(
+    entry: &Value,
+    explosions: &[FireworkExplosionSummary],
+) -> bool {
+    let Some(entry) = entry.as_object() else {
+        return false;
+    };
+    let Some(test) = entry.get("test") else {
+        return false;
+    };
+    let count = explosions
+        .iter()
+        .filter(|explosion| firework_explosion_predicate_matches(test, explosion))
+        .count();
+    let Ok(count) = i32::try_from(count) else {
+        return false;
+    };
+    min_max_int_bounds_match(entry.get("count"), count)
+}
+
+fn firework_explosion_predicate_matches(
+    value: &Value,
+    explosion: &FireworkExplosionSummary,
+) -> bool {
+    let Some(value) = value.as_object() else {
+        return false;
+    };
+    if let Some(expected_shape) = value.get("shape").and_then(Value::as_str) {
+        let Some(expected_shape) = firework_explosion_shape(expected_shape) else {
+            return false;
+        };
+        if explosion.shape != expected_shape {
+            return false;
+        }
+    }
+    if let Some(expected_twinkle) = value.get("has_twinkle").and_then(Value::as_bool) {
+        if explosion.has_twinkle != expected_twinkle {
+            return false;
+        }
+    }
+    if let Some(expected_trail) = value.get("has_trail").and_then(Value::as_bool) {
+        if explosion.has_trail != expected_trail {
+            return false;
+        }
+    }
+    true
 }
 
 fn item_stack_matches_firework_explosion_predicate(

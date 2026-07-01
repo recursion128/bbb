@@ -793,7 +793,9 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     `FireworkExplosionPredicate`; `minecraft:fireworks` now decodes and
     matches `FireworksPredicate.flightDuration` `MinMaxBounds.Ints` plus
     `explosions.size` `CollectionPredicate.size` against the decoded explosions
-    count. `minecraft:trim`
+    count, and `minecraft:fireworks` `explosions.contains` / `count`
+    predicates now match decoded explosion shape / trail / twinkle summaries.
+    `minecraft:trim`
     direct registry-key material constraints now match the decoded
     `ArmorTrim.material()` holder id through dynamic trim-material registry keys
     when no pattern constraint is present. `minecraft:bundle_contents`
@@ -807,9 +809,8 @@ target 和排序，而不是长期停留在粗 bucket 折叠。
     constrained `DataComponentPredicate` types such as enchantment HolderSet
     matching / item-specific default `stored_enchantments`,
     bundle `contains`/`count` item predicates, container item collection
-    predicates, trim pattern / tag material sets / inline material payloads, and
-    `minecraft:fireworks` explosion `contains`/`count` details remain
-    component-predicate follow-up.
+    predicates, and trim pattern / tag material sets / inline material payloads
+    remain component-predicate follow-up.
   - [x] `minecraft:has_component` item-model condition now follows vanilla
     `HasComponent.get`: default prototype components such as
     `minecraft:max_stack_size`, `minecraft:item_model`, and
