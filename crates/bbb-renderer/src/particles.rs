@@ -102,6 +102,10 @@ pub(crate) struct ParticleInstance {
     #[serde(default)]
     pub(crate) quad_size_curve: ParticleQuadSizeCurve,
     pub(crate) provider: String,
+    #[serde(default)]
+    pub(crate) render_group: ParticleRenderGroup,
+    #[serde(default)]
+    pub(crate) render_layer: ParticleRenderLayer,
     pub(crate) friction: f32,
     pub(crate) gravity: f32,
     pub(crate) has_physics: bool,
@@ -114,6 +118,50 @@ pub(crate) struct ParticleInstance {
     pub(crate) override_limiter: bool,
     pub(crate) always_show: bool,
     pub(crate) raw_options_len: usize,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum ParticleRenderGroup {
+    #[default]
+    SingleQuads,
+    ItemPickup,
+    ElderGuardians,
+    NoRender,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum ParticleRenderLayer {
+    OpaqueTerrain,
+    TranslucentTerrain,
+    OpaqueItems,
+    TranslucentItems,
+    #[default]
+    Opaque,
+    Translucent,
+}
+
+impl ParticleRenderGroup {
+    fn vanilla_order(self) -> u8 {
+        match self {
+            Self::SingleQuads => 0,
+            Self::ItemPickup => 1,
+            Self::ElderGuardians => 2,
+            Self::NoRender => 3,
+        }
+    }
+}
+
+impl ParticleRenderLayer {
+    fn vanilla_solid_translucent_order(self) -> u8 {
+        match self {
+            Self::OpaqueTerrain => 0,
+            Self::OpaqueItems => 1,
+            Self::Opaque => 2,
+            Self::TranslucentTerrain => 3,
+            Self::TranslucentItems => 4,
+            Self::Translucent => 5,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -411,6 +459,8 @@ impl ParticleInstance {
     fn from_spawn_command(command: ParticleSpawnCommand, random: &mut ParticleRandom) -> Self {
         let descriptor = ParticleDescriptor::for_particle(&command.particle_id);
         let particle_limit = particle_limit_for_particle(&command.particle_id);
+        let render_group = particle_render_group_for_particle(&command.particle_id);
+        let render_layer = particle_render_layer_for_particle(&command.particle_id);
         let position = descriptor.initial_position(command.position, random);
         let velocity = descriptor.initial_velocity.sample(command.velocity, random);
         let (current_sprite_index, current_sprite_id) =
@@ -435,6 +485,8 @@ impl ParticleInstance {
             light_emission: descriptor.light_emission(),
             quad_size_curve: visual.quad_size_curve,
             provider: descriptor.provider.to_string(),
+            render_group,
+            render_layer,
             friction: descriptor.friction,
             gravity: descriptor.gravity,
             has_physics: descriptor.has_physics,
@@ -605,6 +657,16 @@ fn particle_billboard_vertices<'a>(
     axes: ParticleBillboardAxes,
 ) -> Vec<ParticleVertex> {
     let mut vertices = Vec::new();
+    let mut instances: Vec<_> = instances
+        .into_iter()
+        .filter(|instance| instance.render_group != ParticleRenderGroup::NoRender)
+        .collect();
+    instances.sort_by_key(|instance| {
+        (
+            instance.render_group.vanilla_order(),
+            instance.render_layer.vanilla_solid_translucent_order(),
+        )
+    });
     for instance in instances {
         let Some(sprite_id) = instance.current_sprite_id.as_deref() else {
             continue;
@@ -678,6 +740,29 @@ fn particle_instance_vertices(
         particle_vertex(top_right, [uv.max[0], uv.min[1]], tint, instance.light),
         particle_vertex(top_left, [uv.min[0], uv.min[1]], tint, instance.light),
     ]
+}
+
+fn particle_render_group_for_particle(_particle_id: &str) -> ParticleRenderGroup {
+    ParticleRenderGroup::SingleQuads
+}
+
+fn particle_render_layer_for_particle(particle_id: &str) -> ParticleRenderLayer {
+    match particle_id {
+        "minecraft:cloud"
+        | "minecraft:sneeze"
+        | "minecraft:squid_ink"
+        | "minecraft:glow_squid_ink"
+        | "minecraft:end_rod"
+        | "minecraft:soul"
+        | "minecraft:sculk_soul"
+        | "minecraft:sculk_charge"
+        | "minecraft:sculk_charge_pop"
+        | "minecraft:infested"
+        | "minecraft:raid_omen"
+        | "minecraft:trial_omen"
+        | "minecraft:witch" => ParticleRenderLayer::Translucent,
+        _ => ParticleRenderLayer::Opaque,
+    }
 }
 
 fn particle_vertex(
@@ -1831,6 +1916,95 @@ mod tests {
     }
 
     #[test]
+    fn particle_instances_record_vanilla_single_quad_render_layers() {
+        let mut random = ParticleRandom::new(0);
+        let opaque = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:flame", 1.0),
+            &mut random,
+        );
+        let cloud = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:cloud", 2.0),
+            &mut random,
+        );
+        let squid_ink = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:squid_ink", 3.0),
+            &mut random,
+        );
+        let sculk = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:sculk_charge", 4.0),
+            &mut random,
+        );
+        let glow =
+            ParticleInstance::from_spawn_command(spawn_command("minecraft:glow", 5.0), &mut random);
+
+        assert_eq!(opaque.render_group, ParticleRenderGroup::SingleQuads);
+        assert_eq!(cloud.render_group, ParticleRenderGroup::SingleQuads);
+        assert_eq!(squid_ink.render_group, ParticleRenderGroup::SingleQuads);
+        assert_eq!(sculk.render_group, ParticleRenderGroup::SingleQuads);
+        assert_eq!(glow.render_group, ParticleRenderGroup::SingleQuads);
+        assert_eq!(opaque.render_layer, ParticleRenderLayer::Opaque);
+        assert_eq!(cloud.render_layer, ParticleRenderLayer::Translucent);
+        assert_eq!(squid_ink.render_layer, ParticleRenderLayer::Translucent);
+        assert_eq!(sculk.render_layer, ParticleRenderLayer::Translucent);
+        assert_eq!(glow.render_layer, ParticleRenderLayer::Opaque);
+    }
+
+    #[test]
+    fn particle_render_group_and_layer_order_match_vanilla_extract_passes() {
+        assert_eq!(ParticleRenderGroup::SingleQuads.vanilla_order(), 0);
+        assert_eq!(ParticleRenderGroup::ItemPickup.vanilla_order(), 1);
+        assert_eq!(ParticleRenderGroup::ElderGuardians.vanilla_order(), 2);
+        assert_eq!(ParticleRenderGroup::NoRender.vanilla_order(), 3);
+
+        assert!(
+            ParticleRenderLayer::OpaqueTerrain.vanilla_solid_translucent_order()
+                < ParticleRenderLayer::TranslucentTerrain.vanilla_solid_translucent_order()
+        );
+        assert!(
+            ParticleRenderLayer::OpaqueItems.vanilla_solid_translucent_order()
+                < ParticleRenderLayer::TranslucentItems.vanilla_solid_translucent_order()
+        );
+        assert!(
+            ParticleRenderLayer::Opaque.vanilla_solid_translucent_order()
+                < ParticleRenderLayer::Translucent.vanilla_solid_translucent_order()
+        );
+    }
+
+    #[test]
+    fn particle_billboard_vertices_follow_vanilla_group_and_layer_order() {
+        let mut cloud = test_instance_with_lifetime("minecraft:cloud", 20);
+        cloud.position = [10.0, 0.0, 0.0];
+        cloud.current_sprite_id = Some("minecraft:generic_0".to_string());
+        let mut flame = test_instance_with_lifetime("minecraft:flame", 20);
+        flame.position = [20.0, 0.0, 0.0];
+        flame.current_sprite_id = Some("minecraft:generic_0".to_string());
+        let mut soul = test_instance_with_lifetime("minecraft:soul", 20);
+        soul.position = [30.0, 0.0, 0.0];
+        soul.current_sprite_id = Some("minecraft:generic_0".to_string());
+        let sprite_uvs = BTreeMap::from([(
+            "minecraft:generic_0".to_string(),
+            ParticleUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+        )]);
+
+        let vertices = particle_billboard_vertices(
+            [&cloud, &flame, &soul],
+            &sprite_uvs,
+            ParticleBillboardAxes {
+                right: Vec3::X,
+                up: Vec3::Y,
+            },
+        );
+
+        assert_eq!(vertices.len(), 18);
+        assert_close_f32(vertices[0].position[0], 19.9);
+        assert_close_f32(vertices[6].position[0], 9.9);
+        assert_close_f32(vertices[12].position[0], 29.9);
+    }
+
+    #[test]
     fn particle_quad_size_curves_follow_vanilla_shapes() {
         let mut cloud = test_instance_with_lifetime("minecraft:cloud", 64);
         cloud.base_quad_size = 0.4;
@@ -2111,6 +2285,8 @@ mod tests {
             light_emission: descriptor.light_emission(),
             quad_size_curve: ParticleQuadSizeCurve::Constant,
             provider: descriptor.provider.to_string(),
+            render_group: particle_render_group_for_particle(particle_id),
+            render_layer: particle_render_layer_for_particle(particle_id),
             friction: descriptor.friction,
             gravity: descriptor.gravity,
             has_physics: descriptor.has_physics,

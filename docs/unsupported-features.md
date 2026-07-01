@@ -161,7 +161,7 @@ When an agent does any of the following, update this file in the same slice:
   - Implement remaining renderer slices for:
     - provider-specific behavior
     - light curves
-    - particle sorting
+    - remaining particle sorting beyond covered single-quad group/layer order
     - collision/player-coupled physics
     - atlas mip animation
     - terrain/item particle option rendering
@@ -172,6 +172,14 @@ When an agent does any of the following, update this file in the same slice:
 - Evidence / boundary:
   - Current runtime:
     - Drains level-particle spawn batches.
+    - Records vanilla particle render-plan metadata for covered single-quad
+      providers: `ParticleRenderType.SINGLE_QUADS`,
+      `SingleQuadParticle.Layer.OPAQUE` / `TRANSLUCENT`, vanilla
+      `ParticleEngine` group order (`SINGLE_QUADS`, `ITEM_PICKUP`,
+      `ELDER_GUARDIANS`), and stable solid-before-translucent vertex
+      collection within the current particle-atlas path. Split solid vs
+      translucent particle passes plus terrain/item atlas particle layers
+      remain follow-up work.
     - Applies vanilla `ClientLevel.doAddParticle` thinning for
       `ClientboundLevelParticlesPacket` spawns: non-override particles beyond
       camera distance squared `1024.0` are dropped, override-limiter particles
